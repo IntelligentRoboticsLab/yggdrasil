@@ -43,12 +43,12 @@ pub fn system(args: TokenStream, item: TokenStream) -> TokenStream {
     let name = ident.to_string();
 
     TokenStream::from(quote! {
-        #vis fn #ident() -> tyr::system::System<#data> {
-            tyr::system::System::new(
+        #vis fn #ident() -> ::tyr::system::System<#data> {
+            ::tyr::system::System::new(
                 #name.into(),
                 #access {
-                    #(#exclusive: tyr::data::AccessMode::Exclusive,)*
-                    #(#shared: tyr::data::AccessMode::Shared,)*
+                    #(#exclusive: ::tyr::data::AccessMode::Exclusive,)*
+                    #(#shared: ::tyr::data::AccessMode::Shared,)*
                     ..Default::default()
                 },
                 Box::new(|data: *mut #data| {

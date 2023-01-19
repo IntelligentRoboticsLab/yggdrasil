@@ -30,16 +30,16 @@ pub fn derive(item: TokenStream) -> TokenStream {
 
 
     TokenStream::from(quote! {
-        impl Data for #ident {
+        impl ::tyr::data::Data for #ident {
             type Access = #ident_access;
         }
 
         #[derive(Default)]
         #vis struct #ident_access {
-            #(pub #fields: AccessMode),*
+            #(pub #fields: ::tyr::data::AccessMode),*
         }
 
-        impl Access for #ident_access {
+        impl ::tyr::data::Access for #ident_access {
             fn conflicts_with(&self, other: &Self) -> bool {
                 #(self.#fields.conflicts_with(other.#fields))|*
             }
