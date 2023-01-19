@@ -8,12 +8,12 @@ struct Hello {
 }
 
 #[system(Hello)]
-fn increment_foo(foo: &mut usize) {
+async fn increment_foo(foo: &mut usize) {
     *foo += 1;
 }
 
 #[system(Hello)]
-fn print_foo_and_wait(foo: &usize) {
+async fn print_foo_and_wait(foo: &usize) {
     println!("{}", foo);
     std::thread::sleep(std::time::Duration::from_millis(500));
 }
