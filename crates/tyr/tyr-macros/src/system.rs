@@ -55,7 +55,7 @@ pub fn system(args: TokenStream, item: TokenStream) -> TokenStream {
                     #(#attrs),* #sig #block
 
                     unsafe {
-                        #ident(#(&#args_mut (*data).#args_id),*)
+                        Box::pin(#ident(#(&#args_mut (*data).#args_id),*))
                     }
                 })
             )
