@@ -3,5 +3,9 @@
 version = 3
 
 [[package]]
-name = "baksteen"
+name = "tyr"
+version = "0.1.0"
+
+[[package]]
+name = "yggdrasil"
 version = "0.1.0"
