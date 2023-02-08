@@ -18,11 +18,12 @@ async fn print_foo_and_wait(foo: &usize) {
     std::thread::sleep(std::time::Duration::from_millis(500));
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut sched = Scheduler::new(Hello { foo: 0 });
 
     sched.add(increment_foo());
     sched.add(print_foo_and_wait());
 
-    sched.run();
+    sched.run().await;
 }
