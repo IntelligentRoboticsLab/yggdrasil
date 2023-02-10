@@ -1,2 +1,7 @@
 [workspace]
 members = ["yggdrasil", "crates/tyr"]
+
+
+[workspace.dependencies]
+tyr = { path = "crates/tyr" }
+tokio = { version = "1.25.0", features = ["full"] }

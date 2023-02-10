@@ -1,6 +1,6 @@
 use tyr::data::*;
-use tyr::system::*;
 use tyr::scheduler::*;
+use tyr::system::*;
 
 #[derive(Data)]
 struct Hello {

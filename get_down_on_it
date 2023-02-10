@@ -1,0 +1,9 @@
+#!/bin/sh
+echo Sourcing SDK...
+unset LD_LIBRARY_PATH
+source ~/.baksteen/0.1/environment-setup-corei7-64-aldebaran-linux
+echo Emerging yggdrasil 🐉
+cargo b -r --target=x86_64-aldebaran-linux-gnu 
+
+echo Copying to nao $1...
+scp ./target/x86_64-aldebaran-linux-gnu/release/yggdrasil nao@10.0.8.$1:~/
