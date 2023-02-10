@@ -10,8 +10,6 @@ pub fn derive(item: TokenStream) -> TokenStream {
         vis, ident, data, ..
     } = parse_macro_input!(item as DeriveInput);
 
-
-
     let ident_access = Ident::new(&format!("{}Access", ident), Span::call_site());
 
     let fields: Vec<_> = match &data {
@@ -26,8 +24,6 @@ pub fn derive(item: TokenStream) -> TokenStream {
             )
         }
     };
-
-
 
     TokenStream::from(quote! {
         impl ::tyr::data::Data for #ident {

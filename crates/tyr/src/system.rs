@@ -1,7 +1,7 @@
 pub use tyr_macros::system;
 
-use futures::future::BoxFuture;
 use crate::data::*;
+use futures::future::BoxFuture;
 
 pub type StartFn<D> = Box<dyn FnMut(*mut D) -> BoxFuture<'static, ()>>;
 
@@ -13,11 +13,7 @@ pub struct System<D: Data> {
 
 impl<D: Data> System<D> {
     pub fn new(name: String, access: D::Access, run: StartFn<D>) -> Self {
-        Self {
-            name,
-            access,
-            run,
-        }
+        Self { name, access, run }
     }
 
     pub fn name(&self) -> &str {
