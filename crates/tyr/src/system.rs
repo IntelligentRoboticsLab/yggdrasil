@@ -24,6 +24,10 @@ impl<D: Data> System<D> {
         &self.access
     }
 
+    /// Run the system
+    /// # Safety
+    /// This function is unsafe because of the way the required data
+    /// is accessed. At runtime this should be 100% safe.
     pub unsafe fn run(&mut self, data: *mut D) -> BoxFuture<()> {
         (self.run)(data)
     }
