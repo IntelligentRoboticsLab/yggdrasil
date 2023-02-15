@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_names, clippy::needless_update)]
 use tyr::data::*;
 use tyr::scheduler::*;
 use tyr::system::*;
