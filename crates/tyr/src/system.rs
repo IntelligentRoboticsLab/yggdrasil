@@ -1,0 +1,34 @@
+pub use tyr_macros::system;
+
+use crate::data::*;
+use futures::future::BoxFuture;
+
+pub type StartFn<D> = Box<dyn FnMut(*mut D) -> BoxFuture<'static, ()>>;
+
+pub struct System<D: Data> {
+    name: String,
+    access: D::Access,
+    run: StartFn<D>,
+}
+
+impl<D: Data> System<D> {
+    pub fn new(name: String, access: D::Access, run: StartFn<D>) -> Self {
+        Self { name, access, run }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn access(&self) -> &D::Access {
+        &self.access
+    }
+
+    /// Run the system
+    /// # Safety
+    /// This function is unsafe because of the way the required data
+    /// is accessed. At runtime this should be 100% safe.
+    pub unsafe fn run(&mut self, data: *mut D) -> BoxFuture<()> {
+        (self.run)(data)
+    }
+}
