@@ -1,13 +1,13 @@
 use std::f32::consts::PI;
 
 use super::bones;
-use crate::types::joints::LegJoints;
 use nalgebra::{geometry::Isometry3, Rotation3, Translation3, Vector3};
+use nidhogg::types::{LeftLegJoints, RightLegJoints};
 
 pub fn leg_angles(
     left_foot_to_torso: Isometry3<f32>,
     right_foot_to_torso: Isometry3<f32>,
-) -> (bool, LegJoints, LegJoints) {
+) -> (bool, LeftLegJoints<f32>, RightLegJoints<f32>) {
     let ratio = 0.5;
     let torso_to_left_pelvis = Isometry3::rotation(Vector3::x() * -1.0 * PI / 4.0)
         * Translation3::from(-bones::ROBOT_TO_LEFT_PELVIS);
@@ -102,22 +102,23 @@ pub fn leg_angles(
     let left_beta = -1.0 * left_cos_minus_beta.clamp(-1.0, 1.0).acos();
     let right_beta = -1.0 * right_cos_minus_beta.clamp(-1.0, 1.0).acos();
 
-    let left_leg = LegJoints {
-        hip_yaw_pitch: left_hip_yaw_pitch_combined,
-        hip_roll: left_hip_roll_in_hip + PI / 4.0,
-        hip_pitch: left_hip_pitch_minus_alpha + left_alpha,
-        knee_pitch: -left_alpha - left_beta,
-        ankle_pitch: left_foot_rotation_c2.x.atan2(left_foot_rotation_c2.z) + left_beta,
-        ankle_roll: (-1.0 * left_foot_rotation_c2.y).asin(),
-    };
-    let right_leg = LegJoints {
-        hip_yaw_pitch: left_hip_yaw_pitch_combined,
-        hip_roll: right_hip_roll_in_hip - PI / 4.0,
-        hip_pitch: right_hip_pitch_minus_alpha + right_alpha,
-        knee_pitch: -right_alpha - right_beta,
-        ankle_pitch: right_foot_rotation_c2.x.atan2(right_foot_rotation_c2.z) + right_beta,
-        ankle_roll: (-1.0 * right_foot_rotation_c2.y).asin(),
-    };
+    let left_leg = LeftLegJoints::builder()
+        .hip_yaw_pitch(left_hip_yaw_pitch_combined)
+        .hip_roll(left_hip_roll_in_hip + PI / 4.0)
+        .hip_pitch(left_hip_pitch_minus_alpha + left_alpha)
+        .knee_pitch(-left_alpha - left_beta)
+        .ankle_pitch(left_foot_rotation_c2.x.atan2(left_foot_rotation_c2.z) + left_beta)
+        .ankle_roll((-1.0 * left_foot_rotation_c2.y).asin())
+        .build();
+
+    let right_leg = RightLegJoints::builder()
+        .hip_roll(right_hip_roll_in_hip - PI / 4.0)
+        .hip_pitch(right_hip_pitch_minus_alpha + right_alpha)
+        .knee_pitch(-right_alpha - right_beta)
+        .ankle_pitch(right_foot_rotation_c2.x.atan2(right_foot_rotation_c2.z) + right_beta)
+        .ankle_roll((-1.0 * right_foot_rotation_c2.y).asin())
+        .build();
+
     let maximum_leg_extension = upper_leg + lower_leg;
     let is_reachable =
         left_height <= maximum_leg_extension && right_height <= maximum_leg_extension;

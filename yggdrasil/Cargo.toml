@@ -11,3 +11,5 @@ nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
 tyr = { workspace = true }
 tokio = { workspace = true }
 color-eyre = "0.6.2"
+tracing-subscriber = "0.3.16"
+tracing = "0.1.37"
