@@ -105,12 +105,15 @@ async fn run_ik(position: &mut JointArray<f32>) {
     const TORSO_SHIFT_OFFSET: f32 = 0.013;
     const WALK_HIP_HEIGHT: f32 = 0.185;
 
-    let left_foot_lift = 0.2;
+    let left_foot_lift = 0.05;
     let right_foot_lift = 0.0;
 
     let left_foot_to_torso = calculate_foot_to_robot(
         Side::Left,
-        FootOffsets::zero(),
+        FootOffsets {
+            forward: 0.05,
+            left: 0.0,
+        },
         0f32,
         left_foot_lift,
         TORSO_SHIFT_OFFSET,
@@ -174,7 +177,7 @@ async fn main() -> Result<()> {
     let mut sched = Scheduler::new(NaoState {
         nao,
         state,
-        stiffness: JointArray::default().fill(0.8),
+        stiffness: JointArray::default().fill(0.3),
         position: JointArray::default(),
     });
 
