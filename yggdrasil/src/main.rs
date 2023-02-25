@@ -1,4 +1,3 @@
-#![allow(clippy::needless_update)]
 use std::time::Duration;
 
 use color_eyre::Result;
