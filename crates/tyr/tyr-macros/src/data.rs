@@ -31,6 +31,7 @@ pub fn derive(item: TokenStream) -> TokenStream {
         }
 
         #[derive(Default)]
+        #[non_exhaustive]
         #vis struct #ident_access {
             #(pub #fields: ::tyr::data::AccessMode),*
         }
