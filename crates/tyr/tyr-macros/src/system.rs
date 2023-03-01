@@ -51,8 +51,8 @@ pub fn system(args: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(quote! {
         #vis fn #ident() -> ::tyr::system::System<#data> {
             let mut access = #access::default();
-            #(access.#exclusive = ::tyr::data::AccessMode::Exclusive);*;
-            #(access.#shared = ::tyr::data::AccessMode::Shared);*;
+            #(access.#exclusive = ::tyr::data::AccessMode::Exclusive;)*;
+            #(access.#shared = ::tyr::data::AccessMode::Shared;)*;
 
             ::tyr::system::System::new(
                 #name.into(),
