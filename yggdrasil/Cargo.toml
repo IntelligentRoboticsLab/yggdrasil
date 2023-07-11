@@ -9,3 +9,5 @@ edition = "2021"
 color-eyre = { workspace = true }
 nidhogg = { workspace = true }
 tyr = { path = "../crates/tyr" }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

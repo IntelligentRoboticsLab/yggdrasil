@@ -50,7 +50,7 @@ impl App {
     }
 
     /// Consumes self to construct a DAG from the specified structure and makes the app runnable
-    #[must_use]
+    #[must_use = "Scheduled app should be used!"]
     pub fn build(self) -> Result<ScheduledApp> {
         Ok(ScheduledApp {
             schedule: Schedule::with_system_orderings(self.systems)?,

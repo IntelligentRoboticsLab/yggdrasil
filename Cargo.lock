@@ -1075,6 +1075,8 @@ version = "0.1.0"
 dependencies = [
  "color-eyre",
  "nidhogg",
+ "tracing",
+ "tracing-subscriber",
  "tyr",
 ]
 
