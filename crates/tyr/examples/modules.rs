@@ -10,7 +10,7 @@ fn bar_system(counter: &mut i32) -> Result<()> {
 }
 
 impl Module for FooModule {
-    fn build(self, app: App) -> Result<App> {
+    fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_resource(Resource::<i32>::new(32))?
             .add_system(bar_system))

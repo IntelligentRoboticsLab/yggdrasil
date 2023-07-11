@@ -65,9 +65,13 @@ pub struct Schedule {
 // We need the input generic param for it to compile but its not used so we force it to ()
 pub trait IntoSystemOrdering<Input>: Sized {
     fn into_system_ordering(self) -> SystemOrdering<Input>;
+
+    /// Schedule the system before the system supplied as argument.
     fn before<OtherInput>(self, system: impl IntoSystem<OtherInput>) -> SystemOrdering<()> {
         self.into_system_ordering().before(system)
     }
+
+    /// Schedule the system after the system supplied as argument.
     fn after<OtherInput>(self, system: impl IntoSystem<OtherInput>) -> SystemOrdering<()> {
         self.into_system_ordering().after(system)
     }

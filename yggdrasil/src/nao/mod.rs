@@ -11,7 +11,7 @@ use tyr::{system, App, Module, Resource, Storage};
 pub struct NaoModule;
 
 impl Module for NaoModule {
-    fn build(self, app: App) -> Result<App> {
+    fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_startup_system(initialize_nao)?
             .add_resource(Resource::new(NaoControlMessage::default()))?
