@@ -10,14 +10,14 @@ use crate::{
 };
 
 use color_eyre::{eyre::eyre, Result};
-use petgraph::{algo::toposort, prelude::DiGraph, prelude::NodeIndex, Direction};
+use petgraph::{algo::toposort, prelude::NodeIndex, stable_graph::StableDiGraph, Direction};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SystemIndex(usize);
 
 #[derive(Default)]
 pub struct Dag {
-    graph: DiGraph<SystemIndex, (), usize>,
+    graph: StableDiGraph<SystemIndex, (), usize>,
 }
 
 impl Dag {
@@ -25,12 +25,6 @@ impl Dag {
         self.graph
             .node_weight(node_index)
             .expect("Could not get system index from node index!")
-    }
-
-    pub fn next_nodes(&self, node_index: NodeIndex<usize>) -> HashSet<NodeIndex<usize>> {
-        self.graph
-            .neighbors_directed(node_index, Direction::Outgoing)
-            .collect::<HashSet<_>>()
     }
 
     pub fn add_system(
@@ -177,6 +171,14 @@ impl Schedule {
         Ok(())
     }
 
+    fn system(&self, node_id: NodeIndex<usize>) -> &BoxedSystem {
+        &self.systems[self.dag.system_index(node_id).0]
+    }
+
+    fn system_name(&self, node_id: NodeIndex<usize>) -> &str {
+        self.system(node_id).system_name()
+    }
+
     #[allow(dead_code)]
     fn print_graph(&mut self) {
         let nodes = self.dag.graph.node_indices();
@@ -186,14 +188,14 @@ impl Schedule {
                 .dag
                 .graph
                 .neighbors_directed(idx, Direction::Incoming)
-                .map(|neighbor| self.systems[self.dag.system_index(neighbor).0].system_name())
+                .map(|neighbor| self.system_name(neighbor))
                 .collect::<Vec<_>>();
 
             let outgoing = self
                 .dag
                 .graph
                 .neighbors_directed(idx, Direction::Outgoing)
-                .map(|neighbor| self.systems[self.dag.system_index(neighbor).0].system_name())
+                .map(|neighbor| self.system_name(neighbor))
                 .collect::<Vec<_>>();
 
             println!("System `{name}`\nIncoming: `{incoming:?}`\nOutgoing: `{outgoing:?}`\n");
@@ -201,39 +203,34 @@ impl Schedule {
     }
 
     pub fn execute(&mut self, storage: &mut Storage) -> Result<()> {
-        self.print_graph();
+        let mut execution_graph = self.dag.graph.clone();
 
-        let mut next_nodes = HashSet::new();
-        let mut current_nodes = match toposort(&self.dag.graph, None) {
-            // No cycle: get all nodes that have no dependencies
-            Ok(sorted) => sorted
-                .into_iter()
-                .take_while(|idx| {
-                    self.dag
-                        .graph
-                        .neighbors_directed(*idx, Direction::Incoming)
-                        .count()
-                        == 0
-                })
-                .collect::<HashSet<_>>(),
-            // Cycle: fix yo code
-            Err(cycle) => {
-                return Err(eyre! { "Cycle found at node `{:?}`",
-                self.systems[self.dag.system_index(cycle.node_id()).0].system_name() })
-            }
-        };
+        while execution_graph.node_count() > 0 {
+            let current_nodes = match toposort(&execution_graph, None) {
+                // No cycle: get all nodes that have no dependencies
+                Ok(sorted) => sorted
+                    .into_iter()
+                    .take_while(|idx| {
+                        execution_graph
+                            .neighbors_directed(*idx, Direction::Incoming)
+                            .count()
+                            == 0
+                    })
+                    .collect::<HashSet<_>>(),
+                // Cycle: fix yo code
+                Err(cycle) => {
+                    return Err(eyre! { "Cycle found at node `{:?}`",
+                    self.system_name(cycle.node_id()) })
+                }
+            };
 
-        // TODO: parallel implementation
-        while !current_nodes.is_empty() {
+            // TODO: parallel implementation
             for node in &current_nodes {
                 self.systems[self.dag.system_index(*node).0].run(storage)?;
-                for next_node in self.dag.next_nodes(*node) {
-                    next_nodes.insert(next_node);
-                }
+                execution_graph.remove_node(*node);
             }
 
-            current_nodes.clear();
-            std::mem::swap(&mut current_nodes, &mut next_nodes);
+            std::thread::sleep(std::time::Duration::from_millis(500));
         }
 
         Ok(())
