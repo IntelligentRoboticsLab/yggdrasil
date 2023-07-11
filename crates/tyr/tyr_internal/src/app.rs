@@ -41,7 +41,10 @@ impl App {
     /// use color_eyre::Result;
     /// use crate::tyr_internal::{App, IntoSystemOrdering};
     ///
-    /// App::new().add_system(foo_system.after(bar_system).before(baz_system));
+    /// App::new()
+    ///     .add_system(foo_system)
+    ///     .add_system(bar_system.after(foo_system))
+    ///     .add_system(baz_system.before(bar_system));
     ///
     /// fn foo_system() -> Result<()> {
     ///     Ok(())
