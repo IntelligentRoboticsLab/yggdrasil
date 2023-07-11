@@ -8,6 +8,6 @@ tyr_internal = { path = "tyr_internal" }
 tyr_macros = { path = "tyr_macros" }
 
 [dev-dependencies]
-tracing-subscriber = "0.3"
-nidhogg = { workspace = true, features = ["lola", "coppelia"] }
+tracing-subscriber = { workspace = true }
+nidhogg = { workspace = true, features = ["lola"] }
 color-eyre = { workspace = true }
