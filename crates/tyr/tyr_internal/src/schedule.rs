@@ -75,7 +75,7 @@ pub trait IntoSystemOrdering<Input>: Sized {
         self.into_system_ordering().before(system)
     }
     fn after<OtherInput>(self, system: impl IntoSystem<OtherInput>) -> SystemOrdering<()> {
-        self.into_system_ordering().before(system)
+        self.into_system_ordering().after(system)
     }
 }
 
@@ -201,6 +201,8 @@ impl Schedule {
     }
 
     pub fn execute(&mut self, storage: &mut Storage) -> Result<()> {
+        self.print_graph();
+
         let mut next_nodes = HashSet::new();
         let mut current_nodes = match toposort(&self.dag.graph, None) {
             // No cycle: get all nodes that have no dependencies
