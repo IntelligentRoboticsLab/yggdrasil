@@ -229,8 +229,6 @@ impl Schedule {
                 self.systems[self.dag.system_index(*node).0].run(storage)?;
                 execution_graph.remove_node(*node);
             }
-
-            std::thread::sleep(std::time::Duration::from_millis(500));
         }
 
         Ok(())
