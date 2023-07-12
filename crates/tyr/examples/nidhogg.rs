@@ -11,7 +11,6 @@ fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     color_eyre::install()?;
 
-    // TODO: system sets, system ordering
     App::new()
         .add_resource(Resource::<nidhogg::NaoControlMessage>::default())?
         // startup systems that run once before the DAG is created
