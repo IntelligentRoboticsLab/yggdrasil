@@ -1,5 +1,5 @@
 use color_eyre::Result;
-use tyr::{system, App, Module, Resource};
+use tyr::prelude::*;
 
 struct FooModule;
 
@@ -21,7 +21,7 @@ fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     color_eyre::install()?;
 
-    App::new().add_module(FooModule)?.build()?.run()?;
+    App::new().add_module(FooModule)?.run()?;
 
     Ok(())
 }

@@ -6,7 +6,7 @@ use nidhogg::{
     NaoBackend, NaoControlMessage, NaoState,
 };
 use tracing::info;
-use tyr::{system, App, Module, Resource, Storage};
+use tyr::prelude::*;
 
 pub struct NaoModule;
 

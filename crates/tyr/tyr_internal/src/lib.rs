@@ -2,7 +2,7 @@ mod app;
 pub use app::App;
 
 mod schedule;
-pub use schedule::IntoSystemOrdering;
+pub use schedule::IntoDependencySystem;
 
 mod storage;
 pub use storage::{Resource, Storage};

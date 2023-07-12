@@ -175,6 +175,7 @@ pub trait SystemParam {
     fn type_info() -> Vec<TypeInfo>;
 }
 
+/// Immutable access to a [`Resource<T>`](`crate::Resource<T>`).
 pub struct Res<'a, T: Send + Sync + 'static> {
     value: RwLockReadGuard<'a, dyn Any + Send + Sync>,
     _marker: PhantomData<&'a T>,
@@ -193,7 +194,7 @@ impl<'res, T: Send + Sync + 'static> SystemParam for Res<'res, T> {
 
     fn retrieve(resources: &Storage) -> Self::Item<'_> {
         Res {
-            value: resources.get(&TypeId::of::<T>()).unwrap().read().unwrap(),
+            value: resources.get::<T>().unwrap().read().unwrap(),
             _marker: PhantomData,
         }
     }
@@ -206,6 +207,7 @@ impl<'res, T: Send + Sync + 'static> SystemParam for Res<'res, T> {
     }
 }
 
+/// Mutable access to a [`Resource<T>`](`crate::Resource<T>`).
 pub struct ResMut<'a, T: Send + Sync + 'static> {
     value: RwLockWriteGuard<'a, dyn Any + Send + Sync>,
     _marker: PhantomData<&'a T>,
@@ -230,7 +232,7 @@ impl<'res, T: Send + Sync + 'static> SystemParam for ResMut<'res, T> {
 
     fn retrieve(resources: &Storage) -> Self::Item<'_> {
         ResMut {
-            value: resources.get(&TypeId::of::<T>()).unwrap().write().unwrap(),
+            value: resources.get::<T>().unwrap().write().unwrap(),
             _marker: PhantomData,
         }
     }

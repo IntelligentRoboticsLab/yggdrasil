@@ -1,5 +1,5 @@
 use color_eyre::Result;
-use tyr::{system, App, IntoSystemOrdering, Resource};
+use tyr::prelude::*;
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
@@ -12,7 +12,6 @@ fn main() -> Result<()> {
         .add_system(update_cheese)
         .add_system(say_bye.before(update_cheese).after(say_hi))
         .add_system(say_hi_again)
-        .build()?
         .run()?;
 
     Ok(())

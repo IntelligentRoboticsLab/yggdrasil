@@ -16,7 +16,7 @@ use petgraph::{algo::toposort, prelude::NodeIndex, stable_graph::StableDiGraph, 
 pub struct SystemIndex(usize);
 
 #[derive(Default)]
-pub struct Dag {
+struct Dag {
     graph: StableDiGraph<SystemIndex, (), usize>,
 }
 
@@ -62,18 +62,18 @@ pub struct Schedule {
     dag: Dag,
 }
 
-// We need the input generic param for it to compile but its not used so we force it to ()
-pub trait IntoSystemOrdering<Input>: Sized {
-    fn into_system_ordering(self) -> SystemOrdering<Input>;
+/// Trait that allows systems to specify dependency data.
+pub trait IntoDependencySystem<Input>: Sized {
+    fn into_dependency_system(self) -> DependencySystem<Input>;
 
     /// Schedule the system before the system supplied as argument.
-    fn before<OtherInput>(self, system: impl IntoSystem<OtherInput>) -> SystemOrdering<()> {
-        self.into_system_ordering().before(system)
+    fn before<OtherInput>(self, system: impl IntoSystem<OtherInput>) -> DependencySystem<()> {
+        self.into_dependency_system().before(system)
     }
 
     /// Schedule the system after the system supplied as argument.
-    fn after<OtherInput>(self, system: impl IntoSystem<OtherInput>) -> SystemOrdering<()> {
-        self.into_system_ordering().after(system)
+    fn after<OtherInput>(self, system: impl IntoSystem<OtherInput>) -> DependencySystem<()> {
+        self.into_dependency_system().after(system)
     }
 }
 
@@ -82,7 +82,7 @@ pub enum Dependency {
     After(BoxedSystem),
 }
 
-pub struct SystemOrdering<I> {
+pub struct DependencySystem<I> {
     system: BoxedSystem,
     dependencies: Vec<Dependency>,
     _input: PhantomData<I>,
@@ -90,9 +90,9 @@ pub struct SystemOrdering<I> {
 
 // Get systems with all possible inputs
 // This `I` gets replaced later as we do not need it
-impl<S: IntoSystem<I>, I> IntoSystemOrdering<I> for S {
-    fn into_system_ordering(self) -> SystemOrdering<I> {
-        SystemOrdering {
+impl<S: IntoSystem<I>, I> IntoDependencySystem<I> for S {
+    fn into_dependency_system(self) -> DependencySystem<I> {
+        DependencySystem {
             system: Box::new(self.into_system()),
             dependencies: Vec::new(),
             _input: PhantomData,
@@ -100,9 +100,9 @@ impl<S: IntoSystem<I>, I> IntoSystemOrdering<I> for S {
     }
 }
 
-impl IntoSystemOrdering<()> for BoxedSystem {
-    fn into_system_ordering(self) -> SystemOrdering<()> {
-        SystemOrdering {
+impl IntoDependencySystem<()> for BoxedSystem {
+    fn into_dependency_system(self) -> DependencySystem<()> {
+        DependencySystem {
             system: self,
             dependencies: Vec::new(),
             _input: PhantomData,
@@ -110,24 +110,24 @@ impl IntoSystemOrdering<()> for BoxedSystem {
     }
 }
 
-impl<I> IntoSystemOrdering<()> for SystemOrdering<I> {
-    fn into_system_ordering(self) -> SystemOrdering<()> {
-        SystemOrdering {
+impl<I> IntoDependencySystem<()> for DependencySystem<I> {
+    fn into_dependency_system(self) -> DependencySystem<()> {
+        DependencySystem {
             system: self.system,
             dependencies: self.dependencies,
             _input: PhantomData,
         }
     }
 
-    fn before<'a, Input>(self, system: impl IntoSystem<Input>) -> SystemOrdering<()> {
-        let mut out = self.into_system_ordering();
+    fn before<'a, Input>(self, system: impl IntoSystem<Input>) -> DependencySystem<()> {
+        let mut out = self.into_dependency_system();
         out.dependencies
             .push(Dependency::Before(Box::new(system.into_system())));
         out
     }
 
-    fn after<'a, Input>(self, system: impl IntoSystem<Input>) -> SystemOrdering<()> {
-        let mut out = self.into_system_ordering();
+    fn after<'a, Input>(self, system: impl IntoSystem<Input>) -> DependencySystem<()> {
+        let mut out = self.into_dependency_system();
         out.dependencies
             .push(Dependency::After(Box::new(system.into_system())));
         out
@@ -135,11 +135,11 @@ impl<I> IntoSystemOrdering<()> for SystemOrdering<I> {
 }
 
 impl Schedule {
-    pub fn with_system_orderings(system_orderings: Vec<SystemOrdering<()>>) -> Result<Self> {
+    pub fn with_dependency_systems(dependency_systems: Vec<DependencySystem<()>>) -> Result<Self> {
         let mut schedule = Self::default();
 
-        for ordering in system_orderings {
-            schedule.add_system_ordering(ordering)?;
+        for ordering in dependency_systems {
+            schedule.add_dependency_system(ordering)?;
         }
 
         Ok(schedule)
@@ -163,7 +163,7 @@ impl PartialEq for BoxedSystem {
 impl Eq for BoxedSystem {}
 
 impl Schedule {
-    pub fn add_system_ordering(&mut self, ordering: SystemOrdering<()>) -> Result<()> {
+    pub fn add_dependency_system(&mut self, ordering: DependencySystem<()>) -> Result<()> {
         let system_index = SystemIndex(self.systems.len());
         self.systems.push(ordering.system.clone());
 

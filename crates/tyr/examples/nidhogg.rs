@@ -5,7 +5,7 @@ use nidhogg::{
     backend::{ConnectWithRetry, LolaBackend, ReadHardwareInfo},
     NaoBackend,
 };
-use tyr::{system, App, Resource, Storage};
+use tyr::prelude::*;
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
@@ -19,7 +19,6 @@ fn main() -> Result<()> {
         // to have Option<Nao> in our storage which would be annoying
         .add_startup_system(initialize_nao)?
         .add_system(update_lola)
-        .build()?
         .run()?;
 
     Ok(())
