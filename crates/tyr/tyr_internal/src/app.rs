@@ -106,7 +106,7 @@ impl App {
     }
 
     /// Consumes the [`Resource<T>`] and adds it to the app storage.
-    /// 
+    ///
     /// # Errors
     /// This function fails if there is already a resource of type `T` in the storage.
     pub fn add_resource<T: Send + Sync + 'static>(mut self, res: Resource<T>) -> Result<Self> {
