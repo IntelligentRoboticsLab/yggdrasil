@@ -61,7 +61,6 @@ impl Storage {
     ///
     /// # Errors
     /// This function fails if there is already a resource of type `T` in the storage.
-    ///
     pub fn add_resource<T: Send + Sync + 'static>(&mut self, res: Resource<T>) -> Result<()> {
         match self.0.insert(TypeId::of::<T>(), res.into()) {
             Some(_) => Err(eyre!(

@@ -105,14 +105,17 @@ impl App {
         Ok(self)
     }
 
-    /// Consumes the [`Resource<T>`] and adds it to the app storage
+    /// Consumes the [`Resource<T>`] and adds it to the app storage.
+    /// 
+    /// # Errors
+    /// This function fails if there is already a resource of type `T` in the storage.
     pub fn add_resource<T: Send + Sync + 'static>(mut self, res: Resource<T>) -> Result<Self> {
         self.storage.add_resource(res)?;
         Ok(self)
     }
 
     /// Consumes the [`Module`] and incorporates it into the app.
-    /// The module must implement the `Module` trait, which defines the `build` method.
+    /// The module must implement the [`Module`] trait, which defines the [`.initialize()`](`Module::initialize`) method.
     /// The [`.initialize()`](`Module::initialize`) method allows the [`Module`] to add resource and systems to the app.
     pub fn add_module<T: Module>(self, module: T) -> Result<Self> {
         module.initialize(self)

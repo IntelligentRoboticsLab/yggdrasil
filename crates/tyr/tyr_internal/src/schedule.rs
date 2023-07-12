@@ -62,7 +62,7 @@ pub struct Schedule {
     dag: Dag,
 }
 
-/// Trait that allows systems to specify dependency data.
+/// Trait that allows systems to specify explicit system ordering.
 pub trait IntoDependencySystem<Input>: Sized {
     fn into_dependency_system(self) -> DependencySystem<Input>;
 

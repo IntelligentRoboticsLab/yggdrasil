@@ -41,8 +41,8 @@ use color_eyre::Result;
 /// The [`initialize`](`Module::initialize`) method returns the modified application with the added
 /// resource and system.
 pub trait Module {
-    /// Initialize the [`Module`] for the provided [`App`].
+    /// Initialize the [`Module`] for the provided app.
     ///
-    /// This method should be used to add the required resources and systems to the [`App`].
+    /// This method should be used to add the required resources and systems to the application.
     fn initialize(self, app: App) -> Result<App>;
 }
