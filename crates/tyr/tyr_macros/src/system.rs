@@ -57,7 +57,7 @@ impl VisitMut for ArgTransformerVisitor {
 pub fn system(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut input = parse_macro_input!(input as ItemFn);
 
-    if let Some(non_exclusive_mutable_borrow_error) = check_exclusive_mutable_borrow(&input) {
+    if let Err(non_exclusive_mutable_borrow_error) = check_exclusive_mutable_borrow(&input) {
         return non_exclusive_mutable_borrow_error;
     }
 
@@ -83,7 +83,7 @@ pub fn system(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into()
 }
 
-fn check_exclusive_mutable_borrow(input: &ItemFn) -> Option<TokenStream> {
+fn check_exclusive_mutable_borrow(input: &ItemFn) -> Result<(), TokenStream> {
     let mut types = HashSet::new();
 
     for input in input.sig.inputs.iter() {
@@ -95,21 +95,19 @@ fn check_exclusive_mutable_borrow(input: &ItemFn) -> Option<TokenStream> {
         let ty_string = quote! { #ty }.to_string();
 
         if !types.insert(ty_string.clone()) {
-            return Some(
-                syn::Error::new_spanned(
-                    ty,
-                    format!(
-                        "Resource `{}` is borrowed mutably more than once, this is not allowed!",
-                        get_ty_string(ty)
-                    ),
-                )
-                .to_compile_error()
-                .into(),
-            );
+            return Err(syn::Error::new_spanned(
+                ty,
+                format!(
+                    "Resource `{}` is borrowed mutably more than once, this is not allowed!",
+                    get_ty_string(ty)
+                ),
+            )
+            .to_compile_error()
+            .into());
         }
     }
 
-    None
+    Ok(())
 }
 
 fn get_ty_string(ty: &Type) -> String {
@@ -126,19 +124,12 @@ fn build_ty_string(ty: &Type) -> String {
         .map(|token| token.span().source_text().unwrap_or(String::new()))
         .collect();
 
-    if let Some(first) = name_parts.get(0) {
-        if first == "&" {
-            if let Some(second) = name_parts.get(1) {
-                if second == "mut" {
-                    name_parts.insert(2, " ".into());
-                } else {
-                    name_parts.insert(1, " ".into());
-                }
-            } else {
-                name_parts.insert(1, " ".into());
-            }
+    if name_parts.get(0).is_some_and(|first| first == "&") {
+        if name_parts.get(1).is_some_and(|second| second == "mut") {
+            name_parts.insert(2, " ".into());
+        } else {
+            name_parts.insert(1, " ".into());
         }
     }
-
     name_parts.join("")
 }
