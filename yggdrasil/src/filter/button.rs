@@ -5,7 +5,7 @@ use nidhogg::NaoState;
 use tyr::prelude::*;
 
 /// Describes the time a button needs to be held down, in order to move to the [`ButtonState::Held`].
-const BUTTON_HELD_THRESHOLD: Duration = Duration::from_millis(750);
+const BUTTON_HELD_THRESHOLD: Duration = Duration::from_millis(500);
 
 pub struct ButtonFilter;
 
@@ -17,7 +17,7 @@ impl Module for ButtonFilter {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub enum ButtonState {
     /// State for when the button is not being pressed down.
     #[default]
