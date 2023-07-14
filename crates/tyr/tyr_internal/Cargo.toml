@@ -1,5 +1,5 @@
 [package]
-name = "yggdrasil"
+name = "tyr_internal"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,7 +7,5 @@ edition = "2021"
 
 [dependencies]
 color-eyre = { workspace = true }
-nidhogg = { workspace = true }
-tyr = { path = "../crates/tyr" }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
+dyn-clone = { workspace = true }
+petgraph = { workspace = true }
