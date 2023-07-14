@@ -7,6 +7,15 @@ use tyr::prelude::*;
 /// Describes the time a button needs to be held down, in order to move to the [`ButtonState::Held`].
 const BUTTON_HELD_THRESHOLD: Duration = Duration::from_millis(500);
 
+/// A module offering structured wrappers for each Nao button, derived from the raw [`NaoState`].
+///
+/// By allowing systems to depend only on necessary buttons, this design enhances the dependency graph's efficiency.
+///
+/// This module provides the following resources to the application:
+/// - [`HeadButtons`]
+/// - [`ChestButton`]
+///
+/// These resources include a [`ButtonState`], representing the button's current status.
 pub struct ButtonFilter;
 
 impl Module for ButtonFilter {
@@ -19,12 +28,12 @@ impl Module for ButtonFilter {
 
 #[derive(Default, Debug)]
 pub enum ButtonState {
-    /// State for when the button is not being pressed down.
+    /// The button is not being pressed.
     #[default]
     Neutral,
-    /// State for when the button is being pressed down.
+    /// The button is being pressed. [`Instant`] records the timestamp when the button was pressed.
     Pressed(Instant),
-    /// State for when the button is being held down, contains an [`Instant`] which is the timestamp since the button is held.
+    /// The button is held down. [`Instant`] records the timestamp since the button is held.
     Held(Instant),
 }
 
@@ -63,8 +72,11 @@ impl ButtonState {
 
 #[derive(Default)]
 pub struct HeadButtons {
+    /// Front button on the head of the Nao.
     pub front: ButtonState,
+    /// Front button on the head of the Nao.
     pub middle: ButtonState,
+    /// Rear button on the head of the Nao.
     pub rear: ButtonState,
 }
 
