@@ -17,6 +17,31 @@ pub struct Resource<T: Send + Sync + 'static> {
     value: Arc<RwLock<T>>,
 }
 
+/// Macro that generates wrapper structs to use a type as resource more than once.
+///
+/// This wrapper struct will implement both [`Deref`] and [`DerefMut`] for the target type, providing a seamless experience.
+#[macro_export]
+macro_rules! wrap {
+    ($name: ident, $ty: ty) => {
+        #[derive(Default)]
+        pub struct $name($ty);
+
+        impl std::ops::Deref for $name {
+            type Target = $ty;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl std::ops::DerefMut for $name {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
+            }
+        }
+    };
+}
+
 impl<T: Send + Sync + 'static> Resource<T> {
     pub fn new(value: T) -> Self {
         Self {

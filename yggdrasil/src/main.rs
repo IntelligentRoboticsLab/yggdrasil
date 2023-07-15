@@ -16,7 +16,8 @@ fn main() -> Result<()> {
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?
         .add_module(PrimaryStateModule)?
-        .add_module(GameControllerModule)?;
+        .add_module(GameControllerModule)?
+        .add_module(WalkingEngineModule)?;
 
     #[cfg(feature = "alsa")]
     let app = app.add_module(yggdrasil::audio::sound_manager::SoundManagerModule)?;
