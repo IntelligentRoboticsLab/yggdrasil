@@ -74,7 +74,7 @@ impl ButtonState {
 pub struct HeadButtons {
     /// Front button on the head of the Nao.
     pub front: ButtonState,
-    /// Front button on the head of the Nao.
+    /// Middle button on the head of the Nao.
     pub middle: ButtonState,
     /// Rear button on the head of the Nao.
     pub rear: ButtonState,
