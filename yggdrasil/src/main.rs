@@ -2,7 +2,7 @@ pub mod filter;
 pub mod nao;
 
 use color_eyre::Result;
-use filter::button::ButtonFilter;
+use filter::{button::ButtonFilter, force_sensitive_resistor::ForceSensitiveResitorFilter};
 use nao::NaoModule;
 use tyr::prelude::*;
 
@@ -13,6 +13,7 @@ fn main() -> Result<()> {
     App::new()
         .add_module(NaoModule)?
         .add_module(ButtonFilter)?
+        .add_module(ForceSensitiveResitorFilter)?
         .run()?;
 
     Ok(())
