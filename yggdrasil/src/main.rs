@@ -2,6 +2,7 @@ use yggdrasil::{
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, filter::FilterModule,
     game_controller::GameControllerModule, leds::LedsModule, nao::NaoModule, prelude::*,
     primary_state::PrimaryStateModule,
+    walk::WalkingEngineModule,
 };
 
 fn main() -> Result<()> {

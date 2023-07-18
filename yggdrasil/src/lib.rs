@@ -8,6 +8,7 @@ pub mod game_controller;
 pub mod leds;
 pub mod nao;
 pub mod primary_state;
+pub mod walk;
 
 pub use miette::Result;
 
