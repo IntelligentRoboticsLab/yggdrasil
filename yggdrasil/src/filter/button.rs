@@ -131,6 +131,7 @@ pub struct RightFootButtons {
     pub right: ButtonState,
 }
 
+/// Struct containing the button states of the buttons on the Nao's left hand.
 #[derive(Default)]
 pub struct LeftHandButtons {
     /// Left button on the left hand of the Nao.
@@ -141,6 +142,7 @@ pub struct LeftHandButtons {
     pub back: ButtonState,
 }
 
+/// Struct containing the button states of the buttons on the Nao's right hand.
 #[derive(Default)]
 pub struct RightHandButtons {
     /// Left button on the right hand of the Nao.
@@ -151,6 +153,7 @@ pub struct RightHandButtons {
     pub back: ButtonState,
 }
 
+/// Struct containing the button states of the buttons on the Nao's left foot.
 #[derive(Default)]
 pub struct LeftFootButtons {
     /// Left button on the left foot of the Nao.
@@ -159,6 +162,7 @@ pub struct LeftFootButtons {
     pub right: ButtonState,
 }
 
+/// Struct containing the button states of the buttons on the Nao's right foot.
 #[derive(Default)]
 pub struct RightFootButtons {
     /// Left button on the right foot of the Nao.
