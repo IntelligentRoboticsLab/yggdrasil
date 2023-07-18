@@ -14,6 +14,10 @@ const BUTTON_HELD_THRESHOLD: Duration = Duration::from_millis(500);
 /// This module provides the following resources to the application:
 /// - [`HeadButtons`]
 /// - [`ChestButton`]
+/// - [`LeftHandButtons`]
+/// - [`RightHandButtons`]
+/// - [`LeftFootButtons`]
+/// - [`RightFootButtons`]
 ///
 /// These resources include a [`ButtonState`], representing the button's current status.
 pub struct ButtonFilter;
@@ -22,7 +26,11 @@ impl Module for ButtonFilter {
     fn initialize(self, app: tyr::App) -> color_eyre::Result<tyr::App> {
         app.add_system(button_filter)
             .add_resource(Resource::new(HeadButtons::default()))?
-            .add_resource(Resource::new(ChestButton::default()))
+            .add_resource(Resource::new(ChestButton::default()))?
+            .add_resource(Resource::new(LeftHandButtons::default()))?
+            .add_resource(Resource::new(RightHandButtons::default()))?
+            .add_resource(Resource::new(LeftFootButtons::default()))?
+            .add_resource(Resource::new(RightFootButtons::default()))
     }
 }
 
@@ -83,18 +91,86 @@ pub struct HeadButtons {
 #[derive(Default)]
 pub struct ChestButton(ButtonState);
 
+#[derive(Default)]
+pub struct LeftHandButtons {
+    /// Left button on the left hand of the Nao.
+    pub left: ButtonState,
+    /// Right button on the left hand of the Nao.
+    pub right: ButtonState,
+    /// Back button on the back of the left hand of the Nao.
+    pub back: ButtonState,
+}
+
+#[derive(Default)]
+pub struct RightHandButtons {
+    /// Left button on the right hand of the Nao.
+    pub left: ButtonState,
+    /// Right button on the right hand of the Nao.
+    pub right: ButtonState,
+    /// Back button on the back of the right hand of the Nao.
+    pub back: ButtonState,
+}
+
+#[derive(Default)]
+pub struct LeftFootButtons {
+    /// Left button on the left foot of the Nao.
+    pub left: ButtonState,
+    /// Right button on the left foot of the Nao.
+    pub right: ButtonState,
+}
+
+#[derive(Default)]
+pub struct RightFootButtons {
+    /// Left button on the right foot of the Nao.
+    pub left: ButtonState,
+    /// Right button on the right foot of the Nao.
+    pub right: ButtonState,
+}
+
 #[system]
 fn button_filter(
     nao_state: &NaoState,
     head_buttons: &mut HeadButtons,
     chest_button: &mut ChestButton,
+    left_hand_buttons: &mut LeftHandButtons,
+    right_hand_buttons: &mut RightHandButtons,
+    left_foot_buttons: &mut LeftFootButtons,
+    right_foot_buttons: &mut RightFootButtons,
 ) -> Result<()> {
     head_buttons.front = head_buttons.front.next(nao_state.touch.head_front > 0.0);
     head_buttons.middle = head_buttons.middle.next(nao_state.touch.head_middle > 0.0);
     head_buttons.rear = head_buttons.rear.next(nao_state.touch.head_rear > 0.0);
     chest_button.0 = chest_button.0.next(nao_state.touch.chest_board > 0.0);
-
-    // TODO: rest of the touch sensors
+    left_hand_buttons.left = left_hand_buttons
+        .left
+        .next(nao_state.touch.left_hand_left > 0.0);
+    left_hand_buttons.right = left_hand_buttons
+        .right
+        .next(nao_state.touch.left_hand_right > 0.0);
+    left_hand_buttons.back = left_hand_buttons
+        .back
+        .next(nao_state.touch.left_hand_back > 0.0);
+    right_hand_buttons.left = right_hand_buttons
+        .left
+        .next(nao_state.touch.right_hand_left > 0.0);
+    right_hand_buttons.right = right_hand_buttons
+        .right
+        .next(nao_state.touch.right_hand_right > 0.0);
+    right_hand_buttons.back = right_hand_buttons
+        .back
+        .next(nao_state.touch.right_hand_back > 0.0);
+    left_foot_buttons.left = left_foot_buttons
+        .left
+        .next(nao_state.touch.left_foot_left > 0.0);
+    left_foot_buttons.right = left_foot_buttons
+        .right
+        .next(nao_state.touch.left_foot_right > 0.0);
+    right_foot_buttons.left = right_foot_buttons
+        .left
+        .next(nao_state.touch.right_foot_left > 0.0);
+    right_foot_buttons.right = right_foot_buttons
+        .right
+        .next(nao_state.touch.right_foot_right > 0.0);
 
     Ok(())
 }
