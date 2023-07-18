@@ -23,7 +23,7 @@ pub fn wrap(input: TokenStream) -> proc_macro::TokenStream {
 
     quote_spanned! {ident.span() =>
         #[doc = #doc]
-        #[derive(Default)]
+        #[derive(Debug, Default)]
         pub struct #ident (#ty_ident);
 
         impl std::ops::Deref for #ident {
