@@ -3,10 +3,10 @@ use nidhogg::{
     types::{Color, JointArray, LeftEye},
     NaoControlMessage,
 };
-use tracing::info;
+
 use tyr::system;
 
-use crate::filter::button::{HeadButtons, ChestButton};
+use crate::filter::button::{ChestButton, HeadButtons};
 
 #[derive(Default, PartialEq)]
 pub enum WalkingEngineState {
@@ -26,7 +26,7 @@ pub fn toggle_walking_engine(
     chest_button: &ChestButton,
     walking_engine: &mut WalkingEngine,
 ) -> Result<()> {
-    if chest_button.0.is_pressed() && walking_engine.state == WalkingEngineState::Standing {
+    if chest_button.is_pressed() && walking_engine.state == WalkingEngineState::Standing {
         walking_engine.state = WalkingEngineState::Walking;
     }
 
@@ -58,10 +58,10 @@ pub fn walking_engine(
         .color_315_deg(color)
         .build();
 
-        let stiffness = match walking_engine.state {
-            WalkingEngineState::Standing => 1.0,
-            WalkingEngineState::Walking => 0.6,
-        };
+    let stiffness = match walking_engine.state {
+        WalkingEngineState::Standing => 1.0,
+        WalkingEngineState::Walking => 0.6,
+    };
 
     control_message.stiffness = JointArray::<f32>::builder()
         .left_hip_pitch(stiffness)
@@ -79,13 +79,13 @@ pub fn walking_engine(
         control_message.position = JointArray::<f32>::default();
     } else {
         control_message.position = JointArray::<f32>::builder()
-        .left_ankle_pitch(-std::f32::consts::FRAC_PI_8)
-        .right_ankle_pitch(-std::f32::consts::FRAC_PI_8)
-        .left_knee_pitch(std::f32::consts::FRAC_PI_4)
-        .right_knee_pitch(std::f32::consts::FRAC_PI_4)
-        .left_hip_pitch(-std::f32::consts::FRAC_PI_6)
-        .right_hip_pitch(-std::f32::consts::FRAC_PI_6)
-        .build();
+            .left_ankle_pitch(-std::f32::consts::FRAC_PI_8)
+            .right_ankle_pitch(-std::f32::consts::FRAC_PI_8)
+            .left_knee_pitch(std::f32::consts::FRAC_PI_4)
+            .right_knee_pitch(std::f32::consts::FRAC_PI_4)
+            .left_hip_pitch(-std::f32::consts::FRAC_PI_6)
+            .right_hip_pitch(-std::f32::consts::FRAC_PI_6)
+            .build();
     }
 
     Ok(())
