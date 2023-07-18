@@ -89,11 +89,7 @@ pub struct HeadButtons {
     pub rear: ButtonState,
 }
 
-wrap!(
-    ChestButton,
-    ButtonState,
-    "Wrapper struct for [`ButtonState`] representing the chest button on the nao."
-);
+wrap!(ChestButton, ButtonState);
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's left hand.
 #[derive(Default)]
