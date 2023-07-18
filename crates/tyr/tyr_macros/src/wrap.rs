@@ -19,7 +19,7 @@ impl Parse for Wrap {
 
 pub fn wrap(input: TokenStream) -> proc_macro::TokenStream {
     let Wrap { ident, ty } = parse_macro_input!(input as Wrap);
-    let ty_string = quote! { #ty }.to_string();
+    let ty_string = quote! { #ty };
     let doc = format!(" Wrapper struct for [`{ty_string}`].\n\n This allows using [`{ty_string}`] as resource by disambiguating the [`TypeId`](`std::any::TypeId`).");
 
     quote_spanned! {ident.span() =>
