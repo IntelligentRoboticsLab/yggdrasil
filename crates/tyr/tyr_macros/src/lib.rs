@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
 
 mod system;
+mod wrap;
 
 /// Macro that performs substitution of parameter types, making the writing of systems more ergonomic.
 ///
@@ -25,4 +26,12 @@ mod system;
 #[proc_macro_attribute]
 pub fn system(_args: TokenStream, item: TokenStream) -> proc_macro::TokenStream {
     system::system(item)
+}
+
+/// Macro that generates wrapper structs to use a type as [`Resource`](../tyr/struct.Resource.html) more than once.
+///
+/// This wrapper struct will implement both [`Deref`](`std::ops::Deref`) and [`DerefMut`](`std::ops::DerefMut`) for the target type, providing a seamless experience.
+#[proc_macro]
+pub fn wrap(input: TokenStream) -> proc_macro::TokenStream {
+    wrap::wrap(input)
 }
