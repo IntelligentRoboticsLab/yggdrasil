@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 ssh nao@10.1.8.$1 -t systemctl stop hula
 
 if [ "$(uname)" = "Darwin" ]; then
