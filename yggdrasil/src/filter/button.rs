@@ -131,6 +131,42 @@ pub struct RightFootButtons {
     pub right: ButtonState,
 }
 
+#[derive(Default)]
+pub struct LeftHandButtons {
+    /// Left button on the left hand of the Nao.
+    pub left: ButtonState,
+    /// Right button on the left hand of the Nao.
+    pub right: ButtonState,
+    /// Back button on the back of the left hand of the Nao.
+    pub back: ButtonState,
+}
+
+#[derive(Default)]
+pub struct RightHandButtons {
+    /// Left button on the right hand of the Nao.
+    pub left: ButtonState,
+    /// Right button on the right hand of the Nao.
+    pub right: ButtonState,
+    /// Back button on the back of the right hand of the Nao.
+    pub back: ButtonState,
+}
+
+#[derive(Default)]
+pub struct LeftFootButtons {
+    /// Left button on the left foot of the Nao.
+    pub left: ButtonState,
+    /// Right button on the left foot of the Nao.
+    pub right: ButtonState,
+}
+
+#[derive(Default)]
+pub struct RightFootButtons {
+    /// Left button on the right foot of the Nao.
+    pub left: ButtonState,
+    /// Right button on the right foot of the Nao.
+    pub right: ButtonState,
+}
+
 #[system]
 fn button_filter(
     nao_state: &NaoState,
