@@ -89,49 +89,7 @@ pub struct HeadButtons {
     pub rear: ButtonState,
 }
 
-/// Struct containing the button state of the button on the Nao's chest.
-#[derive(Default)]
-pub struct ChestButton(ButtonState);
-
-/// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's left hand.
-#[derive(Default)]
-pub struct LeftHandButtons {
-    /// Left button on the left hand of the Nao.
-    pub left: ButtonState,
-    /// Right button on the left hand of the Nao.
-    pub right: ButtonState,
-    /// Back button on the back of the left hand of the Nao.
-    pub back: ButtonState,
-}
-
-/// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's right hand.
-#[derive(Default)]
-pub struct RightHandButtons {
-    /// Left button on the right hand of the Nao.
-    pub left: ButtonState,
-    /// Right button on the right hand of the Nao.
-    pub right: ButtonState,
-    /// Back button on the back of the right hand of the Nao.
-    pub back: ButtonState,
-}
-
-/// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's left foot.
-#[derive(Default)]
-pub struct LeftFootButtons {
-    /// Left button on the left foot of the Nao.
-    pub left: ButtonState,
-    /// Right button on the left foot of the Nao.
-    pub right: ButtonState,
-}
-
-/// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's right foot.
-#[derive(Default)]
-pub struct RightFootButtons {
-    /// Left button on the right foot of the Nao.
-    pub left: ButtonState,
-    /// Right button on the right foot of the Nao.
-    pub right: ButtonState,
-}
+wrap!(ChestButton, ButtonState);
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's left hand.
 #[derive(Default)]
