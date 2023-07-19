@@ -1,33 +1,34 @@
 use proc_macro::TokenStream;
-use quote::quote_spanned;
-use syn::{parse::Parse, parse_macro_input, Ident, Token};
+use quote::{quote, quote_spanned};
+use syn::{parse::Parse, parse_macro_input, Ident, Token, Type};
 
 struct Wrap {
     ident: Ident,
-    ty_ident: Ident,
+    ty: Type,
 }
 
 impl Parse for Wrap {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let ident: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
-        let ty_ident: Ident = input.parse()?;
+        let ty: Type = input.parse()?;
 
-        Ok(Wrap { ident, ty_ident })
+        Ok(Wrap { ident, ty })
     }
 }
 
 pub fn wrap(input: TokenStream) -> proc_macro::TokenStream {
-    let Wrap { ident, ty_ident } = parse_macro_input!(input as Wrap);
-    let doc = format!(" Wrapper struct for [`{ty_ident}`].\n\n This allows using [`{ty_ident}`] as resource by disambiguating the [`TypeId`](`std::any::TypeId`).");
+    let Wrap { ident, ty } = parse_macro_input!(input as Wrap);
+    let ty_string = quote! { #ty };
+    let doc = format!(" Wrapper struct for [`{ty_string}`].\n\n This allows using [`{ty_string}`] as resource by disambiguating the [`TypeId`](`std::any::TypeId`).");
 
     quote_spanned! {ident.span() =>
         #[doc = #doc]
         #[derive(Debug, Default)]
-        pub struct #ident (#ty_ident);
+        pub struct #ident (#ty);
 
         impl std::ops::Deref for #ident {
-            type Target = #ty_ident;
+            type Target = #ty;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
