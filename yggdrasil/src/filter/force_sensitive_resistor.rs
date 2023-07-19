@@ -5,9 +5,9 @@ use nidhogg::{
 };
 use tyr::prelude::*;
 
-pub struct ForceSensitiveResitorFilter;
+pub struct ForceSensitiveResistorFilter;
 
-impl Module for ForceSensitiveResitorFilter {
+impl Module for ForceSensitiveResistorFilter {
     fn initialize(self, app: tyr::App) -> color_eyre::Result<tyr::App> {
         app.add_system(force_sensitive_resistor_filter)
             .add_resource(Resource::new(ForceSensitiveResistors::default()))?
