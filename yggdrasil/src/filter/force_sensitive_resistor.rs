@@ -8,7 +8,7 @@ use tyr::prelude::*;
 pub struct ForceSensitiveResistorFilter;
 
 impl Module for ForceSensitiveResistorFilter {
-    fn initialize(self, app: tyr::App) -> color_eyre::Result<tyr::App> {
+    fn initialize(self, app: App) -> Result<App> {
         app.add_system(force_sensitive_resistor_filter)
             .add_resource(Resource::new(ForceSensitiveResistors::default()))?
             .add_resource(Resource::new(ForceSensitiveResistorFoot::default()))
