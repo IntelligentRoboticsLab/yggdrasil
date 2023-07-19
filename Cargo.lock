@@ -425,7 +425,11 @@ dependencies = [
 [[package]]
 name = "nidhogg"
 version = "0.1.0"
+<<<<<<< HEAD
 source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#b65b68f059b9abdf19dc03133d769299c81b1c88"
+=======
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#ebf16c5005d191317f4a66b5daa06c4d2c1ac104"
+>>>>>>> 92f6f89 (Add IMU and Sonar filter)
 dependencies = [
  "miette",
  "nidhogg_derive",
@@ -439,7 +443,11 @@ dependencies = [
 [[package]]
 name = "nidhogg_derive"
 version = "0.1.0"
+<<<<<<< HEAD
 source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#b65b68f059b9abdf19dc03133d769299c81b1c88"
+=======
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#ebf16c5005d191317f4a66b5daa06c4d2c1ac104"
+>>>>>>> 92f6f89 (Add IMU and Sonar filter)
 dependencies = [
  "itertools",
  "proc-macro2",
