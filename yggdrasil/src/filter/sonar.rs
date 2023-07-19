@@ -18,8 +18,8 @@ impl Module for SonarFilter {
 
 #[system]
 fn sonar_filter(nao_state: &NaoState, sonar: &mut SonarValues) -> Result<()> {
-    sonar.left = nao_state.sonar.left.clone();
-    sonar.right = nao_state.sonar.right.clone();
+    sonar.left = nao_state.sonar.left;
+    sonar.right = nao_state.sonar.right;
 
     Ok(())
 }
