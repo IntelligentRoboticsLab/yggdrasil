@@ -23,7 +23,7 @@ const BUTTON_HELD_THRESHOLD: Duration = Duration::from_millis(500);
 pub struct ButtonFilter;
 
 impl Module for ButtonFilter {
-    fn initialize(self, app: tyr::App) -> color_eyre::Result<tyr::App> {
+    fn initialize(self, app: App) -> Result<App> {
         app.add_system(button_filter)
             .add_resource(Resource::new(HeadButtons::default()))?
             .add_resource(Resource::new(ChestButton::default()))?
