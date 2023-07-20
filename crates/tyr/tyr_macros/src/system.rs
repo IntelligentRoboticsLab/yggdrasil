@@ -135,6 +135,7 @@ pub fn system(input: proc_macro::TokenStream, is_startup_system: bool) -> proc_m
     }
 
     quote! {
+        #[allow(clippy::unnecessary_wraps)]
         #input
     }
     .into()

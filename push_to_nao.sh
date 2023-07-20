@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-ssh nao@10.1.8.$1 -t systemctl stop hula
+ssh nao@10.0.8.$1 -t systemctl stop hula
 
 if [ "$(uname)" = "Darwin" ]; then
     # set cross compile flags for macos
@@ -19,9 +19,8 @@ cargo b -r --target=x86_64-unknown-linux-gnu
 
 # set interpreter to proper interpreter in compiled binary
 # todo: might not be necessary on linux
-patchelf target/x86_64-unknown-linux-gnu/release/yggdrasil --set-interpreter /lib/ld-linux-x86-64.so.2
+# patchelf target/x86_64-unknown-linux-gnu/release/yggdrasil --set-interpreter /lib/ld-linux-x86-64.so.2
 
 # copy binary to nao
-scp target/x86_64-unknown-linux-gnu/release/yggdrasil nao@10.1.8.$1:~/
-ssh nao@10.1.8.$1 -t ./yggdrasil
-ssh nao@10.1.8.$1 -t systemctl start hula
+scp target/x86_64-unknown-linux-gnu/release/yggdrasil nao@10.0.8.$1:~/
+ssh nao@10.0.8.$1 -t ./yggdrasil || ssh nao@10.0.8.$1 -t systemctl start hula

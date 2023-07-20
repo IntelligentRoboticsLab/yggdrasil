@@ -5,7 +5,6 @@ use nidhogg::{types::Vector2, types::Vector3, NaoState};
 ///
 /// This module provides the following resources to the application:
 /// - [`IMUValues`]
-///
 pub struct IMUFilter;
 
 impl Module for IMUFilter {

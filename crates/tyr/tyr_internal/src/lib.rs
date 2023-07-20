@@ -4,7 +4,6 @@ pub use app::App;
 mod schedule;
 pub use schedule::IntoDependencySystem;
 
-#[macro_use]
 mod storage;
 pub use storage::{DebugView, Resource, Storage};
 

@@ -5,6 +5,9 @@ use yggdrasil::{
     walk::WalkingEngineModule,
 };
 
+use miette::Result;
+
+#[cfg(feature = "lola")]
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     miette::set_panic_hook();

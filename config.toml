@@ -1,0 +1,4 @@
+speed = 0.60
+
+[legs]
+bend = false
