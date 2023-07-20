@@ -5,6 +5,14 @@ use nidhogg::{
 };
 use tyr::prelude::*;
 
+/// A module offering the Force Sensitive Resistor (FSR) sensor data of the Nao, derived from the raw [`NaoState`].
+///
+/// By allowing systems to depend only on the FSR data, this design enhances the dependency graph's efficiency.
+///
+/// This module provides the following resources to the application:
+/// - [`ForceSensitiveResistors`]
+///
+/// These resources include a [`ForceSensitiveResistorFoot`], containing the sensor values for each foot.
 pub struct ForceSensitiveResistorFilter;
 
 impl Module for ForceSensitiveResistorFilter {
