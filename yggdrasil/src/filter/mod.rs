@@ -12,10 +12,9 @@ pub struct FilterModule;
 
 impl Module for FilterModule {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_module(ButtonFilter)?
+        app.add_module(ButtonFilter)?
             .add_module(FSRFilter)?
             .add_module(IMUFilter)?
-            .add_module(SonarFilter)?)
+            .add_module(SonarFilter)
     }
 }
