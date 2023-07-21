@@ -13,9 +13,9 @@ use tyr::prelude::*;
 /// - [`ForceSensitiveResistors`]
 ///
 /// These resources include a [`ForceSensitiveResistorFoot`], containing the sensor values for each foot.
-pub struct ForceSensitiveResistorFilter;
+pub struct FSRFilter;
 
-impl Module for ForceSensitiveResistorFilter {
+impl Module for FSRFilter {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system(force_sensitive_resistor_filter)
             .add_resource(Resource::new(ForceSensitiveResistors::default()))?
