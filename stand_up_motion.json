@@ -1,0 +1,63 @@
+{
+  "initial_positions": {
+    "head_yaw": 0,
+    "head_pitch": 0,
+    "left_shoulder_roll": 0,
+    "left_shoulder_pitch": 1.57,
+    "left_elbow_roll": 0, 
+    "left_elbow_yaw": -1.57,
+    "left_wrist_yaw": 0,
+    "left_hip_yaw_pitch": 0.01077985763549805,
+    "left_hip_pitch": -0.98785400390625,
+    "left_hip_roll": 0,
+    "left_knee_pitch": 2.176704168319702,
+    "left_ankle_pitch": -1.227241992950439,
+    "left_ankle_roll": 0.09054803848266602,
+    "left_hand": 0,
+    "right_hip_pitch": -0.98785400390625,
+    "right_hip_roll": 0,
+    "right_knee_pitch": 2.176704168319702,
+    "right_ankle_pitch": -1.227241992950439,
+    "right_ankle_roll": -0.09054803848266602,
+    "right_shoulder_pitch": 1.57,
+    "right_shoulder_roll": 0,
+    "right_elbow_yaw": 1.57,
+    "right_elbow_roll": 0,
+    "right_wrist_yaw": 0,
+    "right_hand": 0
+  },
+  "movements": [
+    {
+      "duration": 1.0,
+      "positions": {
+        "head_yaw": 0,
+        "head_pitch": 0,
+        "left_shoulder_pitch": -1.581595897674561,
+        "left_shoulder_roll": 0.6043541431427002,
+        "left_elbow_yaw": 0,
+        "left_hip_roll": 0,
+        "left_elbow_roll": -0.5936160087585449,
+        "left_wrist_yaw": -1.725791931152344,
+        "right_shoulder_pitch": -1.581595897674561,
+        "right_shoulder_roll": -0.6043541431427002,
+        "right_elbow_roll": 0.5936160087585449,
+        "right_elbow_yaw": 0,
+        "right_wrist_yaw": 0,
+        "wrist_yaw": 1.725791931152344,
+        "left_hip_yaw_pitch": 0.01077985763549805,
+        "left_hip_pitch": -0.98785400390625,
+        "left_knee_pitch": 2.176704168319702,
+        "left_ankle_pitch": -1.227241992950439,
+        "left_ankle_roll": 0.09054803848266602,
+        "left_hand": 0,
+        "right_hip_yaw_pitch": 0.01077985763549805,
+        "right_hip_pitch": -0.98785400390625,
+        "right_hip_roll": 0,
+        "right_knee_pitch": 2.176704168319702,
+        "right_ankle_pitch": -1.227241992950439,
+        "right_ankle_roll": -0.09054803848266602,
+        "right_hand": 0
+      }
+    }
+  ]
+}

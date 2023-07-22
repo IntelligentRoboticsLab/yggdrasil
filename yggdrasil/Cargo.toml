@@ -11,3 +11,6 @@ nidhogg = { workspace = true }
 tyr = { path = "../crates/tyr" }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_with.workspace = true
