@@ -1,17 +1,127 @@
 name: check, test, lints and build
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  cicd:
+  fmt:
+    name: Cargo fmt
     runs-on: ubuntu-latest
     steps:
-      - name: Setup
-        run: sudo apt-get install -y -qq libasound2-dev libssl-dev libpulse-dev libdbus-1-dev portaudio19-dev 
-      - name: Check out repository
-        uses: actions/checkout@v3
-      - name: bondi-ci
-        uses: ./.github/workflows/bondi.yml
+      - name: Setup SSH client
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.BONDI_DEPLOY_KEY }}
+
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          components: rustfmt
+      - name: Installing needed Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y -qq libasound2-dev
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+  clippy:
+    name: Cargo clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH client
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.BONDI_DEPLOY_KEY }}
+
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          components: clippy
+      - name: Installing needed Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y -qq libasound2-dev
+      - name: Annotate commit with clippy warnings
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-targets --all-features -- -D warnings
+
+  test:
+    name: Cargo test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH client
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.BONDI_DEPLOY_KEY }}
+
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - name: Installing needed Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y -qq libasound2-dev
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+  build:
+    name: Cargo build & test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH client
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.BONDI_DEPLOY_KEY }}
+
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - name: Installing needed Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y -qq libasound2-dev
+      - name: Run cargo build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
