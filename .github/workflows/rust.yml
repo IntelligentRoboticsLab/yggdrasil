@@ -7,6 +7,11 @@ on:
 
 jobs:
   cicd:
-    uses: IntelligentRoboticsLab/bondi/.github/workflows/rust.yml@main
-    secrets:
-      BONDI_DEPLOY_KEY: ${{ secrets.BONDI_DEPLOY_KEY }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup
+        run: sudo apt-get install -y -qq libasound2-dev libssl-dev libpulse-dev libdbus-1-dev portaudio19-dev 
+      - name: Check out repository
+        uses: actions/checkout@v3
+      - name: bondi-ci
+        uses: ./.github/workflows/bondi
