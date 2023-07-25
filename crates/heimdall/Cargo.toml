@@ -1,0 +1,9 @@
+[package]
+name = "heimdall"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+linuxvideo = "0.2.0"
+itertools = "0.10.5"
+thiserror = "1.0.40"

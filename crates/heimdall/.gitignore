@@ -1,0 +1,11 @@
+
+target/
+debug/
+dead_code/
+
+**/*.swp
+
+**/*.sh
+
+/* for saving screenshots */
+**/*.jpeg

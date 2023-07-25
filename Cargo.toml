@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/tyr", "yggdrasil"]
+members = ["crates/tyr", "crates/heimdall", "yggdrasil"]
 
 [workspace.dependencies]
 derive_more = "0.99.17"
