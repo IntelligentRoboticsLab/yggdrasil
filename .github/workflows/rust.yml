@@ -14,4 +14,4 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v3
       - name: bondi-ci
-        uses: ./.github/workflows/bondi
+        uses: ./.github/workflows/bondi.yml
