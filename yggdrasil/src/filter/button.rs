@@ -91,7 +91,7 @@ pub struct HeadButtons {
 }
 
 /// Struct containing [`state`](`ButtonState`) of the buttons in the Nao's chest.
-#[derive(Default, Debug, Deref, DerefMut)]
+#[derive(Default, Debug)]
 pub struct ChestButton {
     /// The button in the chest of the Nao.
     pub state: ButtonState,
@@ -136,7 +136,7 @@ pub struct RightFootButtons {
     /// Right button on the right foot of the Nao.
     pub right: ButtonState,
 }
-
+c
 #[system]
 fn button_filter(
     nao_state: &NaoState,

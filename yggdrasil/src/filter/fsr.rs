@@ -17,13 +17,22 @@ impl Module for FSRFilter {
     }
 }
 
+/// Structuct containing the various contact points of the Nao.
+pub struct Contacts {
+    /// Whether the Nao is on the ground.
+    pub ground: bool,
+}
+
 #[system]
 fn force_sensitive_resistor_filter(
     nao_state: &NaoState,
     force_sensitive_resistors: &mut ForceSensitiveResistors,
+    contacts: &mut Contacts,
 ) -> Result<()> {
     force_sensitive_resistors.left_foot = nao_state.force_sensitive_resistors.left_foot.clone();
     force_sensitive_resistors.right_foot = nao_state.force_sensitive_resistors.right_foot.clone();
+
+    contacts.ground = nao_state.force_sensitive_resistors.avg() < 0.05;
 
     Ok(())
 }
