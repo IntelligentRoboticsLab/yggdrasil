@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use derive_more::{Deref, DerefMut};
 use miette::Result;
 use nidhogg::NaoState;
 use tyr::prelude::*;
@@ -79,7 +80,7 @@ impl ButtonState {
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's head.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct HeadButtons {
     /// Front button on the head of the Nao.
     pub front: ButtonState,
@@ -89,10 +90,15 @@ pub struct HeadButtons {
     pub rear: ButtonState,
 }
 
-wrap!(ChestButton, ButtonState);
+/// Struct containing [`state`](`ButtonState`) of the buttons in the Nao's chest.
+#[derive(Default, Debug, Deref, DerefMut)]
+pub struct ChestButton {
+    /// The button in the chest of the Nao.
+    pub state: ButtonState,
+}
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's left hand.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct LeftHandButtons {
     /// Left button on the left hand of the Nao.
     pub left: ButtonState,
@@ -103,7 +109,7 @@ pub struct LeftHandButtons {
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's right hand.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct RightHandButtons {
     /// Left button on the right hand of the Nao.
     pub left: ButtonState,
@@ -114,7 +120,7 @@ pub struct RightHandButtons {
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's left foot.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct LeftFootButtons {
     /// Left button on the left foot of the Nao.
     pub left: ButtonState,
@@ -123,7 +129,7 @@ pub struct LeftFootButtons {
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's right foot.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct RightFootButtons {
     /// Left button on the right foot of the Nao.
     pub left: ButtonState,
@@ -144,7 +150,7 @@ fn button_filter(
     head_buttons.front = head_buttons.front.next(nao_state.touch.head_front > 0.0);
     head_buttons.middle = head_buttons.middle.next(nao_state.touch.head_middle > 0.0);
     head_buttons.rear = head_buttons.rear.next(nao_state.touch.head_rear > 0.0);
-    chest_button.0 = chest_button.0.next(nao_state.touch.chest_board > 0.0);
+    chest_button.state = chest_button.state.next(nao_state.touch.chest_board > 0.0);
     left_hand_buttons.left = left_hand_buttons
         .left
         .next(nao_state.touch.left_hand_left > 0.0);
