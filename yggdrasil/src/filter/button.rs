@@ -136,7 +136,7 @@ pub struct RightFootButtons {
     /// Right button on the right foot of the Nao.
     pub right: ButtonState,
 }
-c
+
 #[system]
 fn button_filter(
     nao_state: &NaoState,
