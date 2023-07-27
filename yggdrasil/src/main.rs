@@ -2,8 +2,7 @@ pub mod audio;
 pub mod filter;
 pub mod nao;
 
-use audio::sound_manager::SoundManagerModule;
-
+use audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule};
 use color_eyre::Result;
 use filter::FilterModule;
 use nao::NaoModule;
@@ -17,6 +16,7 @@ fn main() -> Result<()> {
         .add_module(NaoModule)?
         .add_module(FilterModule)?
         .add_module(SoundManagerModule)?
+        .add_module(WeeSoundModule)?
         .run()?;
     Ok(())
 }
