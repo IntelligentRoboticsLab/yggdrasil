@@ -23,16 +23,16 @@ pub struct IMUValues {
     /// three axes (x, y and z) in radians per second (rad/s). The Z axis is facing up.
     ///
     /// Position relative to the torso frame: (-0.008, 0.006, 0.029) in m.
-    gyroscope: Vector3<f32>,
+    pub gyroscope: Vector3<f32>,
     /// The Accelerometer measures the proper acceleration along three axes (x, y, and z)
     /// in meters per second squared (m/s²). The Z axis is facing up.
     ///
     /// Position relative to the torso frame: (-0.008, 0.00606, 0.027) in m.
-    accelerometer: Vector3<f32>,
+    pub accelerometer: Vector3<f32>,
     /// Two inclination angles (x, y) of the robot's body.
     ///
     /// These angles represent the orientation of the robot and are measured in radians.
-    angles: Vector2<f32>,
+    pub angles: Vector2<f32>,
 }
 
 #[system]
