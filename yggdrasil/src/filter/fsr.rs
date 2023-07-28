@@ -2,6 +2,8 @@ use miette::Result;
 use nidhogg::{types::ForceSensitiveResistors, NaoState};
 use tyr::prelude::*;
 
+const GROUND_CONTACT_THRESHOLD: f32 = 0.01;
+
 /// A module offering the Force Sensitive Resistor (FSR) sensor data of the Nao, derived from the raw [`NaoState`].
 ///
 /// By allowing systems to depend only on the FSR data, this design enhances the dependency graph's efficiency.
@@ -32,7 +34,7 @@ fn force_sensitive_resistor_filter(
     force_sensitive_resistors.left_foot = nao_state.force_sensitive_resistors.left_foot.clone();
     force_sensitive_resistors.right_foot = nao_state.force_sensitive_resistors.right_foot.clone();
 
-    contacts.ground = nao_state.force_sensitive_resistors.avg() < 0.05;
+    contacts.ground = nao_state.force_sensitive_resistors.avg() < GROUND_CONTACT_THRESHOLD;
 
     Ok(())
 }
