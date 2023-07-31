@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use color_eyre::Result;
+use miette::Result;
 use nidhogg::NaoState;
 use tyr::prelude::*;
 

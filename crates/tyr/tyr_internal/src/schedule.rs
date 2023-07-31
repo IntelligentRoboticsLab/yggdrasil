@@ -9,7 +9,7 @@ use crate::{
     system::IntoSystem,
 };
 
-use color_eyre::{eyre::eyre, Result};
+use miette::{miette, Result};
 use petgraph::{algo::toposort, prelude::NodeIndex, stable_graph::StableDiGraph, Direction};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -223,7 +223,7 @@ impl Schedule {
                     .collect::<HashSet<_>>(),
                 // Cycle: fix yo code
                 Err(cycle) => {
-                    return Err(eyre! { "Cycle found at node `{:?}`",
+                    return Err(miette! { "Cycle found at node `{:?}`",
                     self.system_name(cycle.node_id()) })
                 }
             };

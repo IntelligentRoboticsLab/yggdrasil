@@ -6,7 +6,7 @@ use std::{
 
 use crate::system::System;
 
-use color_eyre::{eyre::eyre, Result};
+use miette::{miette, Result};
 
 pub type BoxedSystem = Box<dyn System + 'static>;
 
@@ -63,7 +63,7 @@ impl Storage {
     /// This function fails if there is already a resource of type `T` in the storage.
     pub fn add_resource<T: Send + Sync + 'static>(&mut self, res: Resource<T>) -> Result<()> {
         match self.0.insert(TypeId::of::<T>(), res.into()) {
-            Some(_) => Err(eyre!(
+            Some(_) => Err(miette!(
                 "Trying to add resource of type `{}`, but it already exists in storage!",
                 std::any::type_name::<T>()
             )),

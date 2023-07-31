@@ -2,7 +2,7 @@ use crate::schedule::{DependencySystem, Schedule};
 use crate::storage::{Resource, Storage};
 use crate::{IntoDependencySystem, Module};
 
-use color_eyre::Result;
+use miette::Result;
 
 /// The glue that binds systems and resources together, and allows them to be executed.
 #[derive(Default)]
@@ -44,7 +44,7 @@ impl App {
     ///
     /// # Example
     /// ```
-    /// use color_eyre::Result;
+    /// use miette::Result;
     /// use tyr_internal::*;
     ///
     /// fn main() {

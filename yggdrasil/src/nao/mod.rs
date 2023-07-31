@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use color_eyre::Result;
+use miette::Result;
 use nidhogg::{
     backend::{ConnectWithRetry, LolaBackend, ReadHardwareInfo},
     NaoBackend, NaoControlMessage, NaoState,

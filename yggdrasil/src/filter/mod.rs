@@ -1,4 +1,4 @@
-use color_eyre::Result;
+use miette::Result;
 use tyr::prelude::*;
 
 use self::{button::ButtonFilter, fsr::FSRFilter, imu::IMUFilter, sonar::SonarFilter};
