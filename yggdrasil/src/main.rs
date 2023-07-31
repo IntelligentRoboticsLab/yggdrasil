@@ -9,7 +9,7 @@ use yggdrasil::{
 };
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::fmt().pretty().init();
+    tracing_subscriber::fmt::fmt().init();
 
     miette::set_panic_hook();
 
