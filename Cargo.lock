@@ -238,6 +238,7 @@ dependencies = [
 [[package]]
 name = "nidhogg"
 version = "0.1.0"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#c7a90312b1e91c17690d68cd3ac2ba7a926454f8"
 dependencies = [
  "miette",
  "nidhogg_derive",
@@ -250,6 +251,7 @@ dependencies = [
 [[package]]
 name = "nidhogg_derive"
 version = "0.1.0"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#c7a90312b1e91c17690d68cd3ac2ba7a926454f8"
 dependencies = [
  "itertools",
  "proc-macro2",
