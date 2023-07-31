@@ -1,9 +1,8 @@
-use color_eyre::Result;
+use miette::Result;
 use tyr::prelude::*;
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
-    color_eyre::install()?;
 
     App::new()
         .add_resource(Resource::<Cheese>::default())?

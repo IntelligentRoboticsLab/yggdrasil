@@ -1,5 +1,5 @@
-use color_eyre::Result;
 use dyn_clone::DynClone;
+use miette::Result;
 use std::hash::Hash;
 use std::{
     any::{type_name, Any, TypeId},

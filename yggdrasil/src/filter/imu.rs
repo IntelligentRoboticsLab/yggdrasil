@@ -1,4 +1,4 @@
-use color_eyre::Result;
+use miette::Result;
 use nidhogg::{types::Vector2, types::Vector3, NaoState};
 use tyr::prelude::*;
 

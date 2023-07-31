@@ -1,5 +1,5 @@
 use crate::App;
-use color_eyre::Result;
+use miette::Result;
 
 /// A module represents a collection of resources and systems that can be added to an application [`App`].
 ///
@@ -11,7 +11,7 @@ use color_eyre::Result;
 /// # Example
 ///
 /// ```
-/// use color_eyre::Result;
+/// use miette::Result;
 /// use tyr_internal::*;
 ///
 /// // Define a module struct

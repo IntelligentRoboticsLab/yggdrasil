@@ -1,13 +1,12 @@
 pub mod filter;
 pub mod nao;
 
-use color_eyre::Result;
 use filter::FilterModule;
+use miette::Result;
 use nao::NaoModule;
 use tyr::prelude::*;
 
 fn main() -> Result<()> {
-    color_eyre::install()?;
     tracing_subscriber::fmt::init();
 
     App::new()

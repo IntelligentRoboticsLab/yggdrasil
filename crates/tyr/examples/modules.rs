@@ -1,4 +1,4 @@
-use color_eyre::Result;
+use miette::Result;
 use tyr::prelude::*;
 
 struct FooModule;
@@ -19,7 +19,6 @@ impl Module for FooModule {
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
-    color_eyre::install()?;
 
     App::new().add_module(FooModule)?.run()?;
 

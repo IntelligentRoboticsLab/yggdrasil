@@ -1,4 +1,4 @@
-use color_eyre::Result;
+use miette::Result;
 use nidhogg::{types::SonarValues, NaoState};
 use tyr::prelude::*;
 

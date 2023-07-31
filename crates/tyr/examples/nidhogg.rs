@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use color_eyre::Result;
+use miette::Result;
 use nidhogg::{
     backend::{ConnectWithRetry, LolaBackend, ReadHardwareInfo},
     NaoBackend,
@@ -9,7 +9,6 @@ use tyr::prelude::*;
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
-    color_eyre::install()?;
 
     App::new()
         .add_resource(Resource::<nidhogg::NaoControlMessage>::default())?

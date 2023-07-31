@@ -6,6 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-color-eyre = { workspace = true }
+miette = { workspace = true }
 dyn-clone = { workspace = true }
 petgraph = { workspace = true }
