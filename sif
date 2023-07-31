@@ -1,0 +1,8 @@
+#!/bin/bash
+set -e
+
+# install latest version of sif
+cargo install --path crates/sif
+
+# pass all arguments to sif
+sif $@

@@ -1,5 +1,5 @@
 [workspace]
-members = ["yggdrasil", "crates/tyr"]
+members = ["yggdrasil", "crates/tyr", "crates/sif"]
 
 [workspace.dependencies]
 derive_more = "0.99.17"
