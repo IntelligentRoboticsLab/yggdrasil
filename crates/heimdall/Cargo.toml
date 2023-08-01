@@ -8,3 +8,8 @@ linuxvideo = "0.2.0"
 itertools = "0.10.5"
 thiserror = "1.0.40"
 image = "0.24.6"
+criterion = "0.5.1"
+
+[[bench]]
+name = "yuyv_to_rgb_conversion"
+harness = false
