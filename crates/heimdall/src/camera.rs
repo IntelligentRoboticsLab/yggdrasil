@@ -93,7 +93,7 @@ impl Camera {
         (clip(red), clip(green), clip(blue))
     }
 
-    fn save_rgb_screenshot_from_yuyv(&mut self, mut destination: impl Write) -> Result<()> {
+    fn save_rgb_image_from_yuyv(&mut self, mut destination: impl Write) -> Result<()> {
         let num_pixels = (self.pix_format.width() * self.pix_format.height()) as usize;
 
         let stream = &mut self.camera_stream;
@@ -123,9 +123,9 @@ impl Camera {
     ///
     /// The buffer `destination` should have a size of at least
     /// [`image_width`](Camera::image_width) * [`image_height`](Camera::image_height) * 3 bytes.
-    pub fn save_rgb_screenshot(&mut self, destination: &mut [u8]) -> Result<()> {
+    pub fn save_rgb_image(&mut self, destination: &mut [u8]) -> Result<()> {
         match self.pix_format.pixelformat() {
-            Pixelformat::YUYV => self.save_rgb_screenshot_from_yuyv(destination),
+            Pixelformat::YUYV => self.save_rgb_image_from_yuyv(destination),
             pixel_format => Ok(eprintln!("Unsupported pixel format: {pixel_format}")),
         }
     }
@@ -133,17 +133,17 @@ impl Camera {
     /// Save an RGB image to a file.
     ///
     /// The resuling file is a raw stream of bytes, each three bytes representing a single pixel.
-    pub fn save_rgb_screenshot_to_file(&mut self, destination: &Path) -> Result<()> {
+    pub fn save_rgb_image_to_file(&mut self, destination: &Path) -> Result<()> {
         let output_file = File::create(destination)?;
         let mut output_file_buffer = BufWriter::with_capacity(4096, output_file);
 
         match self.pix_format.pixelformat() {
-            Pixelformat::YUYV => self.save_rgb_screenshot_from_yuyv(&mut output_file_buffer),
+            Pixelformat::YUYV => self.save_rgb_image_from_yuyv(&mut output_file_buffer),
             pixel_format => Ok(eprintln!("Unsupported pixel format: {pixel_format}")),
         }
     }
 
-    fn save_greyscale_screenshot_from_yuyv(&mut self, mut destination: impl Write) -> Result<()> {
+    fn save_greyscale_image_from_yuyv(&mut self, mut destination: impl Write) -> Result<()> {
         let num_pixels = (self.pix_format.width() * self.pix_format.height()) as usize;
 
         self.camera_stream.dequeue(|image_buffer_yuv_422| {
@@ -167,9 +167,9 @@ impl Camera {
     ///
     /// The buffer `destination` should have a size of at least
     /// [`image_width`](Camera::image_width) * [`image_height`](Camera::image_height) * 3 bytes.
-    pub fn save_greyscale_screenshot(&mut self, destination: &mut [u8]) -> Result<()> {
+    pub fn save_greyscale_image(&mut self, destination: &mut [u8]) -> Result<()> {
         match self.pix_format.pixelformat() {
-            Pixelformat::YUYV => self.save_greyscale_screenshot_from_yuyv(destination),
+            Pixelformat::YUYV => self.save_greyscale_image_from_yuyv(destination),
             pixel_format => Ok(eprintln!("Unsupported pixel format: {pixel_format}")),
         }
     }
@@ -177,12 +177,12 @@ impl Camera {
     /// Save a greyscale image to a file.
     ///
     /// The resuling file is a raw stream of bytes, each byte representing a single pixel.
-    pub fn save_greyscale_screenshot_to_file(&mut self, destination: &Path) -> Result<()> {
+    pub fn save_greyscale_image_to_file(&mut self, destination: &Path) -> Result<()> {
         let output_file = File::create(destination)?;
         let output_file_buffer = BufWriter::with_capacity(4096, output_file);
 
         match self.pix_format.pixelformat() {
-            Pixelformat::YUYV => self.save_greyscale_screenshot_from_yuyv(output_file_buffer),
+            Pixelformat::YUYV => self.save_greyscale_image_from_yuyv(output_file_buffer),
             pixel_format => Ok(eprintln!("Unsupported pixel format: {pixel_format}")),
         }
     }
