@@ -5,9 +5,19 @@
 //!
 //! by O. Bosgraaf
 
-use std::{fs::File, io::Write, path::Path};
+use std::{
+    fs::File,
+    io::{BufWriter, Write},
+    path::Path,
+};
 
 use crate::Result;
+
+/// The camera width of a NAO v6.
+const NAO_CAMERA_WIDTH: u32 = 1280;
+
+/// The camera height of a NAO v6.
+const NAO_CAMERA_HEIGHT: u32 = 960;
 
 use linuxvideo::{
     format::{PixFormat, Pixelformat},
@@ -15,17 +25,21 @@ use linuxvideo::{
     Device,
 };
 
+/// Struct for retrieving images from the NAO camera.
 pub struct Camera {
-    pub pix_format: PixFormat,
+    pix_format: PixFormat,
     camera_stream: ReadStream,
 }
 
 impl Camera {
-    pub fn new_from_path(
-        camera_path: &std::path::Path,
-        requested_pix_format: PixFormat,
-    ) -> Result<Self> {
-        let video_capture = Device::open(&camera_path)?.video_capture(requested_pix_format)?;
+    /// Create a new camera object from a path to the camera device.
+    pub fn new_from_path(camera_path: &Path) -> Result<Self> {
+        let requested_pix_format = linuxvideo::format::PixFormat::new(
+            NAO_CAMERA_WIDTH,
+            NAO_CAMERA_HEIGHT,
+            linuxvideo::format::Pixelformat::YUYV,
+        );
+        let video_capture = Device::open(camera_path)?.video_capture(requested_pix_format)?;
         let pix_format = video_capture.format();
 
         Ok(Self {
@@ -34,10 +48,11 @@ impl Camera {
                 pix_format.height(),
                 pix_format.pixelformat(),
             ),
-            camera_stream: video_capture.into_stream(3)?,
+            camera_stream: video_capture.into_stream(1)?,
         })
     }
 
+    /// Create a new camera object from a camera device.
     pub fn new_from_device(camera: Device, requested_pix_format: PixFormat) -> Result<Self> {
         let video_capture = camera.video_capture(requested_pix_format)?;
         let pix_format = video_capture.format();
@@ -52,60 +67,14 @@ impl Camera {
         })
     }
 
-    /// Prints all video devices and their capabilities
-    ///
-    /// # Examples
-    /// ```no_run
-    /// use linuxvideo::Device;
-    /// use heimdall::camera_handler::print_device_list;
-    ///
-    /// print_device_list();
-    /// ```
-    pub fn print_device_list() -> Result<()> {
-        for device in linuxvideo::list()? {
-            match device {
-                Ok(device) => Self::list_capabilities(device)?,
-                Err(e) => {
-                    eprintln!("Skipping device due to error: {e:?}");
-                }
-            }
-        }
-
-        Ok(())
+    /// Get the width of the images taken by this [Camera] object.
+    pub fn image_width(&self) -> u32 {
+        self.pix_format.width()
     }
 
-    /// Lists camera device capabilities
-    ///
-    /// # Arguments
-    /// * `device` -> a linuxvideo::Device
-    ///
-    /// # Examples
-    /// ```no_run
-    /// use linuxvideo::Device;
-    /// use heimdall::camera_handler::{
-    ///     new_device,
-    ///     list_capabilities,
-    /// };
-    ///
-    /// let path: String = String::from("/dev/video0");
-    /// let device: Device = new_device(path);
-    /// list_capabilities(device);
-    /// ```
-    pub fn list_capabilities(device: Device) -> Result<()> {
-        let capabilities = device.capabilities()?;
-        println!("- {}: {}", device.path()?.display(), capabilities.card());
-        println!("  driver: {}", capabilities.driver());
-        println!("  bus info: {}", capabilities.bus_info());
-        println!(
-            "  all capabilities:    {:?}",
-            capabilities.all_capabilities()
-        );
-        println!(
-            "  avail. capabilities: {:?}",
-            capabilities.device_capabilities()
-        );
-
-        Ok(())
+    /// Get the height of the images taken by this [Camera] object.
+    pub fn image_height(&self) -> u32 {
+        self.pix_format.height()
     }
 
     fn yuyv444_to_rgb(y: u8, u: u8, v: u8) -> (u8, u8, u8) {
@@ -152,7 +121,8 @@ impl Camera {
 
     /// Save a raw RGB photo to the buffer.
     ///
-    /// The buffer `destination` should have a size of at least WIDTH * HEIGHT * 3 bytes.
+    /// The buffer `destination` should have a size of at least
+    /// [`image_width`](Camera::image_width) * [`image_height`](Camera::image_height) * 3 bytes.
     pub fn save_rgb_screenshot(&mut self, destination: &mut [u8]) -> Result<()> {
         match self.pix_format.pixelformat() {
             Pixelformat::YUYV => self.save_rgb_screenshot_from_yuyv(destination),
@@ -160,9 +130,12 @@ impl Camera {
         }
     }
 
+    /// Save an RGB image to a file.
+    ///
+    /// The resuling file is a raw stream of bytes, each three bytes representing a single pixel.
     pub fn save_rgb_screenshot_to_file(&mut self, destination: &Path) -> Result<()> {
         let output_file = File::create(destination)?;
-        let mut output_file_buffer = std::io::BufWriter::with_capacity(4096, output_file);
+        let mut output_file_buffer = BufWriter::with_capacity(4096, output_file);
 
         match self.pix_format.pixelformat() {
             Pixelformat::YUYV => self.save_rgb_screenshot_from_yuyv(&mut output_file_buffer),
@@ -192,7 +165,8 @@ impl Camera {
 
     /// Save a greyscale photo to the buffer.
     ///
-    /// The buffer `destination` should have a size of at least WIDTH * HEIGHT bytes.
+    /// The buffer `destination` should have a size of at least
+    /// [`image_width`](Camera::image_width) * [`image_height`](Camera::image_height) * 3 bytes.
     pub fn save_greyscale_screenshot(&mut self, destination: &mut [u8]) -> Result<()> {
         match self.pix_format.pixelformat() {
             Pixelformat::YUYV => self.save_greyscale_screenshot_from_yuyv(destination),
@@ -200,13 +174,16 @@ impl Camera {
         }
     }
 
-    // pub fn save_greyscale_screenshot_to_file(&mut self, destination: &Path) -> Result<()> {
-    //     let output_file = File::create(destination)?;
-    //     let output_file_buffer = std::io::BufWriter::with_capacity(4096, output_file);
-    //
-    //     match self.pix_format.pixelformat() {
-    //         Pixelformat::YUYV => self.save_greyscale_screenshot_from_yuyv(output_file_buffer),
-    //         pixel_format => Ok(eprintln!("Unsupported pixel format: {pixel_format}")),
-    //     }
-    // }
+    /// Save a greyscale image to a file.
+    ///
+    /// The resuling file is a raw stream of bytes, each byte representing a single pixel.
+    pub fn save_greyscale_screenshot_to_file(&mut self, destination: &Path) -> Result<()> {
+        let output_file = File::create(destination)?;
+        let output_file_buffer = BufWriter::with_capacity(4096, output_file);
+
+        match self.pix_format.pixelformat() {
+            Pixelformat::YUYV => self.save_greyscale_screenshot_from_yuyv(output_file_buffer),
+            pixel_format => Ok(eprintln!("Unsupported pixel format: {pixel_format}")),
+        }
+    }
 }

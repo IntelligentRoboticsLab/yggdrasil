@@ -1,18 +1,10 @@
-use heimdall::{camera::*, Result, NAO_V6_CAMERA_HEIGHT, NAO_V6_CAMERA_WIDTH};
+use heimdall::{Camera, Result};
 use std::{env, path::Path};
 
 fn main() -> Result<()> {
     env::set_var("RUST_BACKTRACE", "1");
 
-    let mut camera = Camera::new_from_path(
-        std::path::Path::new("/dev/video-top"),
-        // std::path::Path::new("/dev/video-bottom"),
-        linuxvideo::format::PixFormat::new(
-            NAO_V6_CAMERA_WIDTH,
-            NAO_V6_CAMERA_HEIGHT,
-            linuxvideo::format::Pixelformat::YUYV,
-        ),
-    )?;
+    let mut camera = Camera::new_from_path(std::path::Path::new("/dev/video-top"))?;
 
     for _ in 0..10 {
         camera.save_rgb_screenshot_to_file(Path::new("camera_rgb_out.data"))?;
