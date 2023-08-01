@@ -143,6 +143,33 @@ impl Camera {
         }
     }
 
+    /// Save an RGB image as a jpeg.
+    ///
+    /// The resuling file is a raw stream of bytes, each three bytes representing a single pixel.
+    pub fn save_rgb_image_as_jpeg(&mut self, destination: &Path) -> Result<()> {
+        let output_file = File::create(destination)?;
+        let mut encoder = image::codecs::jpeg::JpegEncoder::new(output_file);
+
+        let mut rgb_buffer = Vec::<u8>::new();
+        rgb_buffer.resize((self.image_width() * self.image_height() * 3) as usize, 0);
+
+        match self.pix_format.pixelformat() {
+            Pixelformat::YUYV => self.save_rgb_image_from_yuyv(rgb_buffer.as_mut_slice()),
+            pixel_format => Ok(eprintln!("Unsupported pixel format: {pixel_format}")),
+        }?;
+
+        encoder
+            .encode(
+                rgb_buffer.as_mut_slice(),
+                self.image_width(),
+                self.image_height(),
+                image::ColorType::Rgb8,
+            )
+            .unwrap();
+
+        Ok(())
+    }
+
     fn save_greyscale_image_from_yuyv(&mut self, mut destination: impl Write) -> Result<()> {
         let num_pixels = (self.pix_format.width() * self.pix_format.height()) as usize;
 

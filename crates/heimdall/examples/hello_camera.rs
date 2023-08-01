@@ -9,6 +9,7 @@ fn main() -> Result<()> {
     for _ in 0..10 {
         camera.save_rgb_image_to_file(Path::new("camera_rgb_out.data"))?;
         camera.save_greyscale_image_to_file(Path::new("camera_grey_out.data"))?;
+        camera.save_rgb_image_as_jpeg(Path::new("camera_rgb_out.jpg"))?;
     }
     // camera.save_rgb_image_to_file(Path::new("camera_rgb_out.data"))?;
     // camera_handler.save_greyscale_image_to_file(Path::new("camera_grey_out.data"))?;
