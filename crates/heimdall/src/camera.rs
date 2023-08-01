@@ -88,13 +88,13 @@ impl Camera {
         let uuu = Simd::from([u as i32, u as i32, u as i32, 0]) - Simd::from([128, 128, 128, 0]);
         let vvv = Simd::from([v as i32, v as i32, v as i32, 0]) - Simd::from([128, 128, 128, 0]);
 
-        let res = (yyy * Simd::from([298, 298, 298, 0])
+        let rgb = (yyy * Simd::from([298, 298, 298, 0])
             + uuu * Simd::from([0, -100, 516, 0])
             + vvv * Simd::from([409, -208, 0, 0])
             + Simd::from([128, 128, 128, 0]))
             >> Simd::from([8, 8, 8, 0]);
 
-        (clip(res[0]), clip(res[1]), clip(res[2]))
+        (clip(rgb[0]), clip(rgb[1]), clip(rgb[2]))
 
         // let c = y as i32 - 16;
         // let d = u as i32 - 128;
@@ -122,15 +122,15 @@ impl Camera {
             v as i32, v as i32, v as i32, v as i32, v as i32, v as i32, 0, 0,
         ]) - Simd::from([128, 128, 128, 128, 128, 128, 0, 0]);
 
-        let res = (yyy1_yyy2 * Simd::from([298, 298, 298, 298, 298, 298, 0, 0])
+        let rgb1_rgb2 = (yyy1_yyy2 * Simd::from([298, 298, 298, 298, 298, 298, 0, 0])
             + uuu_uuu * Simd::from([0, -100, 516, 0, -100, 516, 0, 0])
             + vvv * Simd::from([409, -208, 0, 409, -208, 0, 0, 0])
             + Simd::from([128, 128, 128, 128, 128, 128, 0, 0]))
             >> Simd::from([8, 8, 8, 8, 8, 8, 0, 0]);
 
         (
-            (clip(res[0]), clip(res[1]), clip(res[2])),
-            (clip(res[3]), clip(res[4]), clip(res[5])),
+            (clip(rgb1_rgb2[0]), clip(rgb1_rgb2[1]), clip(rgb1_rgb2[2])),
+            (clip(rgb1_rgb2[3]), clip(rgb1_rgb2[4]), clip(rgb1_rgb2[5])),
         )
     }
 
