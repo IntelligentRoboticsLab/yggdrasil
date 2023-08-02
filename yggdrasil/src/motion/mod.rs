@@ -110,10 +110,10 @@ impl MotionManager {
     ///
     /// * `motion_type` - Type of the motion.
     /// * `motion_file` - Path to the file where the motion movements can be found.
-    pub fn add_motion(mut self, motion_type: MotionType, motion_file: &str) -> Result<Self> {
+    pub fn add_motion(&mut self, motion_type: MotionType, motion_file: &str) -> Result<()> {
         self.motions
             .insert(motion_type, Motion::from_path(Path::new(motion_file))?);
-        Ok(self)
+        Ok(())
     }
 
     /// Starts a new motion.
@@ -265,15 +265,15 @@ fn motion_executer(nao_state: &mut NaoState, motion_manager: &mut MotionManager)
 ///
 /// * `storage` - System storage.
 fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
-    let mut motion_manager = MotionManager::new()
-        .add_motion(
-            MotionType::SitDownFromStand,
-            "./sit_down_from_stand_motion.json",
-        )?
-        .add_motion(
-            MotionType::StandUpFromSit,
-            "./stand_up_from_sit_motion.json",
-        )?;
+    let mut motion_manager = MotionManager::new();
+    motion_manager.add_motion(
+        MotionType::SitDownFromStand,
+        "./sit_down_from_stand_motion.json",
+    )?;
+    motion_manager.add_motion(
+        MotionType::StandUpFromSit,
+        "./stand_up_from_sit_motion.json",
+    )?;
 
     // TODO: remove this, this is for testing
     motion_manager.start_new_motion(MotionType::StandUpFromSit);
