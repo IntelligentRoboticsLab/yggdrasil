@@ -40,7 +40,7 @@ impl Motion {
     ///
     /// * `path` - the `Path` to the file from which to read the motion.
     pub fn from_path(path: &Path) -> Result<Motion> {
-        match serde_json::from_reader(File::open(&path)?) {
+        match serde_json::from_reader(File::open(path)?) {
             Ok(val) => Ok(val),
             Err(err) => Err(eyre!("Could deserialize json {}: {}.", path.display(), err)),
         }
@@ -180,14 +180,15 @@ fn lerp(
 ///
 /// * `motion` - Current `Motion`.
 fn get_positions(motion: &Motion, duration: &Duration) -> Option<JointArray<f32>> {
-    match motion.get_surrounding_frames(duration) {
-        Some((frame_a, frame_b)) => Some(lerp(
-            &frame_a.target_positions,
-            &frame_b.target_positions,
-            duration.as_secs_f32() / LERP_TO_STARTING_POSITION_DURATION_SECS,
-        )),
-        None => None,
-    }
+    motion
+        .get_surrounding_frames(duration)
+        .map(|(frame_a, frame_b)| {
+            lerp(
+                &frame_a.target_positions,
+                &frame_b.target_positions,
+                duration.as_secs_f32() / LERP_TO_STARTING_POSITION_DURATION_SECS,
+            )
+        })
 }
 
 /// Executes the current motion.
