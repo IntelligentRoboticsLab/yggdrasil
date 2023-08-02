@@ -10,4 +10,4 @@ tyr_macros = { path = "tyr_macros" }
 [dev-dependencies]
 tracing-subscriber = { workspace = true }
 nidhogg = { workspace = true, features = ["lola"] }
-color-eyre = { workspace = true }
+miette = { workspace = true }

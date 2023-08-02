@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-color-eyre = { workspace = true }
+miette = { workspace = true, features = ["fancy"] }
 nidhogg = { workspace = true }
 tyr = { path = "../crates/tyr" }
 tracing = { workspace = true }
