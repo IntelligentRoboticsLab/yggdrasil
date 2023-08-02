@@ -10,6 +10,9 @@ use std::{path::Path, time::Duration};
 use tyr::prelude::*;
 use tyr::Module;
 
+const STARTING_POSITION_ERROR_MARGIN: f32 = 0.05;
+const LERP_TO_STARTING_POSITION_DURATION_SECS: f32 = 5.0;
+
 #[serde_as]
 #[derive(Deserialize, Debug, Clone)]
 /// Represents a single robot movement.
@@ -43,23 +46,22 @@ impl Motion {
         }
     }
 
-    /// TODO: implemenation
-    /// Get the frames that surround the current time.
+    /// Get the frames that surround the elapsed time.
     ///
     /// # Arguments
     ///
     /// * `motion_duration` - Current duration of the motion.
-    pub fn get_frames(&self, motion_duration: &Duration) -> Option<(Movement, Movement)> {
-        Some((
-            Movement {
-                target_positions: JointArray::<f32>::default(),
-                duration: Duration::default(),
-            },
-            Movement {
-                target_positions: JointArray::<f32>::default(),
-                duration: Duration::default(),
-            },
-        ))
+    pub fn get_surrounding_frames(
+        &self,
+        motion_duration: &Duration,
+    ) -> Option<(&Movement, &Movement)> {
+        for (i, movement) in self.movements.iter().enumerate() {
+            if *motion_duration >= movement.duration && i < self.movements.len() - 1 {
+                return Some((&self.movements[i], &self.movements[i + 1]));
+            }
+        }
+
+        None
     }
 }
 
@@ -77,6 +79,8 @@ struct MotionManager {
     current_motion: Option<Motion>,
     /// Keeps track of when a motion started.
     motion_starting_time: Option<SystemTime>,
+    /// Keeps track of when the execution of a motion started.
+    motion_execution_starting_time: Option<SystemTime>,
     /// Needed for checking if initial position still needs to be reached.
     started_executing_motion: bool,
     /// Contains the mapping from `MotionTypes` to `Motion`.
@@ -94,6 +98,7 @@ impl MotionManager {
         MotionManager {
             current_motion: None,
             motion_starting_time: None,
+            motion_execution_starting_time: None,
             started_executing_motion: false,
             motions: HashMap::new(),
         }
@@ -175,8 +180,14 @@ fn lerp(
 ///
 /// * `motion` - Current `Motion`.
 fn get_positions(motion: &Motion, duration: &Duration) -> Option<JointArray<f32>> {
-    motion.get_frames(duration);
-    Some(JointArray::<f32>::default())
+    match motion.get_surrounding_frames(duration) {
+        Some((frame_a, frame_b)) => Some(lerp(
+            &frame_a.target_positions,
+            &frame_b.target_positions,
+            duration.as_secs_f32() / LERP_TO_STARTING_POSITION_DURATION_SECS,
+        )),
+        None => None,
+    }
 }
 
 /// Executes the current motion.
@@ -189,25 +200,45 @@ fn get_positions(motion: &Motion, duration: &Duration) -> Option<JointArray<f32>
 fn motion_executer(nao_state: &mut NaoState, motion_manager: &mut MotionManager) -> Result<()> {
     if let Some(motion) = motion_manager.current_motion.clone() {
         if !motion_manager.started_executing_motion {
-            if !reached_position(&nao_state.position, &motion.initial_positions, 0.05) {
+            if motion_manager.motion_starting_time.is_none() {
+                motion_manager.motion_starting_time = Some(SystemTime::now());
+            }
+
+            if !reached_position(
+                &nao_state.position,
+                &motion.initial_positions,
+                STARTING_POSITION_ERROR_MARGIN,
+            ) {
                 // Starting position has not yet been reached, so lerp to start position, untill
                 // position has been reached.
-                // TODO: keep track of motion_starting_time and motion_execution_start_time.
+                let elapsed_time_since_start_of_motion: f32 = motion_manager
+                    .motion_starting_time
+                    .unwrap()
+                    .elapsed()
+                    .unwrap()
+                    .as_secs_f32();
+
+                nao_state.position = lerp(
+                    &nao_state.position,
+                    &motion.initial_positions,
+                    elapsed_time_since_start_of_motion / LERP_TO_STARTING_POSITION_DURATION_SECS,
+                );
+
                 return Ok(());
             } else {
-                motion_manager.motion_starting_time = Some(SystemTime::now());
+                motion_manager.motion_execution_starting_time = Some(SystemTime::now());
             }
 
             match get_positions(
                 &motion,
                 &motion_manager
-                    .motion_starting_time
+                    .motion_execution_starting_time
                     .unwrap()
                     .elapsed()
                     .unwrap(),
             ) {
                 Some(position) => {
-                    nao_state.position = JointArray::<f32>::default();
+                    nao_state.position = position;
                     // TODO: Add this to the motion files.
                     nao_state.stiffness = JointArray::<f32>::default();
                 }
@@ -215,6 +246,7 @@ fn motion_executer(nao_state: &mut NaoState, motion_manager: &mut MotionManager)
                     //Current motion is finished.
                     motion_manager.current_motion = None;
                     motion_manager.motion_starting_time = None;
+                    motion_manager.motion_execution_starting_time = None;
                     motion_manager.started_executing_motion = false;
                 }
             }
