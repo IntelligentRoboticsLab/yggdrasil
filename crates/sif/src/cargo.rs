@@ -1,16 +1,33 @@
-use std::{ffi::OsStr, fmt::Debug, process::Stdio};
+use std::{ffi::OsStr, fmt::Debug, process::Stdio, string::FromUtf8Error};
 
-use miette::{IntoDiagnostic, Result};
-use spinoff::{spinners, Color, Spinner};
+use miette::{Context, Diagnostic, Result};
 use tokio::process::Command;
+use thiserror::Error;
 
-pub async fn cargo<I, S>(args: I) -> Result<()>
+
+#[derive(Error, Diagnostic, Debug)]
+enum CargoErrorKind {
+    #[error(transparent)]
+    #[diagnostic(help("Failed to spawn cargo child process!"))]
+    IoError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    #[diagnostic(help("Failed to parse stderr"))]
+    FromUtf8Error(#[from] FromUtf8Error),
+
+    #[error(
+        "Cargo execution failed:
+        {0}"
+    )]
+    #[diagnostic(help("Cargo output is printed above!"))]
+    CargoError(String),
+}
+
+async fn cargo<I, S>(args: I) -> Result<(), CargoErrorKind>
 where
     I: IntoIterator<Item = S> + Debug,
     S: AsRef<OsStr>,
 {
-    println!("spawning cargo with args: {:?}", args);
-    let spinner = Spinner::new(spinners::Dots, "Building...", Color::Green);
     let output = Command::new("cargo")
         .args(args)
         .arg("--color") // always pass color, cargo doesn't pass color when it detects it's piped
@@ -18,15 +35,34 @@ where
         .stderr(Stdio::null())
         .output()
         .await
-        .into_diagnostic()?;
+        .map_err(CargoErrorKind::IoError)?;
 
     if !output.status.success() {
-        spinner.fail("Failed to build yggdrasil!");
-        println!("{}", String::from_utf8(output.stderr).into_diagnostic()?);
-        return Ok(());
+        let stderr = String::from_utf8(output.stderr).map_err(CargoErrorKind::FromUtf8Error)?;
+        // eprintln!("{stderr}");
+        Err(CargoErrorKind::CargoError(
+            stderr
+                .clone()
+        ))?;
     }
 
-    spinner.success("Finished building yggdrasil!");
-
     Ok(())
+}
+
+pub async fn build(binary: String, release: bool, target: Option<String>) -> Result<()> {
+    let mut cargo_args = vec!["build", "-p"];
+    cargo_args.push(&binary);
+
+    if release {
+        cargo_args.push("--release");
+    }
+
+    if let Some(target) = target.as_ref() {
+        cargo_args.push("--target");
+        cargo_args.push(target.as_str());
+    }
+
+    cargo(cargo_args)
+        .await
+        .wrap_err("Failed to build yggdrasil!")
 }
