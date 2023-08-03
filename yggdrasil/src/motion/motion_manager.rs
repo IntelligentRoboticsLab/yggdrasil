@@ -5,17 +5,21 @@ use std::path::Path;
 use std::time::SystemTime;
 use tyr::prelude::*;
 
+#[derive(Clone)]
+pub struct ActiveMotion {
+    /// Current motion.
+    pub motion: Motion,
+    /// Keeps track of when a motion started.
+    pub starting_time: SystemTime,
+}
+
 /// Manages motions, stores all possible motions and keeps track of information
 /// about the motion that is currently being executed.
 pub struct MotionManager {
-    /// Current motion.
-    pub current_motion: Option<Motion>,
-    /// Keeps track of when a motion started.
-    pub motion_starting_time: Option<SystemTime>,
+    /// Keeps track of information about the active motion.
+    pub active_motion: Option<ActiveMotion>,
     /// Keeps track of when the execution of a motion started.
     pub motion_execution_starting_time: Option<SystemTime>,
-    /// Needed for checking if initial position still needs to be reached.
-    pub started_executing_motion: bool,
     /// Contains the mapping from `MotionTypes` to `Motion`.
     pub motions: HashMap<MotionType, Motion>,
 }
@@ -29,10 +33,8 @@ impl MotionManager {
     ///               motions are stored.
     pub fn new() -> Self {
         MotionManager {
-            current_motion: None,
-            motion_starting_time: None,
+            active_motion: None,
             motion_execution_starting_time: None,
-            started_executing_motion: false,
             motions: HashMap::new(),
         }
     }
@@ -43,7 +45,7 @@ impl MotionManager {
     ///
     /// * `motion_type` - Type of the motion.
     /// * `motion_file` - Path to the file where the motion movements can be found.
-    pub fn add_motion(&mut self, motion_type: MotionType, motion_file: &str) -> Result<()> {
+    pub fn add_motion(&mut self, motion_type: MotionType, motion_file: &'static str) -> Result<()> {
         self.motions
             .insert(motion_type, Motion::from_path(Path::new(motion_file))?);
         Ok(())
@@ -55,8 +57,20 @@ impl MotionManager {
     ///
     /// * `motion_type` - The type of motion to start.
     pub fn start_new_motion(&mut self, motion_type: MotionType) {
-        self.started_executing_motion = false;
-        self.current_motion = self.motions.get(&motion_type).cloned();
+        self.motion_execution_starting_time = None;
+        self.active_motion = Some(ActiveMotion {
+            motion: self
+                .motions
+                .get(&motion_type)
+                .cloned()
+                .expect("Motion type not added to the motion manager"),
+            starting_time: SystemTime::now(),
+        });
+    }
+
+    /// Returns the current motion.
+    pub fn get_active_motion(&mut self) -> Option<ActiveMotion> {
+        self.active_motion.clone()
     }
 }
 

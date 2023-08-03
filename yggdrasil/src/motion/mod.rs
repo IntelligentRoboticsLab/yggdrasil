@@ -1,3 +1,4 @@
+use crate::nao::write_hardware_info;
 use miette::Result;
 use tyr::prelude::*;
 
@@ -21,6 +22,6 @@ impl Module for MotionModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_startup_system(motion_manager_initializer)?
-            .add_system(motion_executer))
+            .add_system(motion_executer.after(write_hardware_info)))
     }
 }
