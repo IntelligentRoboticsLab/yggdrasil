@@ -46,7 +46,7 @@ impl Motion {
     ///
     /// # Arguments
     ///
-    /// * `motion` - Current `Motion`.
+    /// * `motion_duration` - Duration of the current motion.
     pub fn get_position(&self, motion_duration: Duration) -> Option<JointArray<f32>> {
         self.get_surrounding_frames(motion_duration)
             .map(|(frame_a, frame_b)| {
@@ -64,7 +64,7 @@ impl Motion {
     ///
     /// # Arguments
     ///
-    /// * `motion_duration` - Current duration of the motion.
+    /// * `motion_duration` - Duration of the current motion.
     fn get_surrounding_frames(&self, motion_duration: Duration) -> Option<(&Movement, &Movement)> {
         for (i, movement) in self.movements.iter().enumerate() {
             if motion_duration >= movement.duration && i < self.movements.len() - 1 {

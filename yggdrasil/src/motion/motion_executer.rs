@@ -12,9 +12,9 @@ const LERP_TO_STARTING_POSITION_DURATION_SECS: f32 = 5.0;
 ///
 /// # Arguments
 ///
-/// * `current_positions` - Positions of which you want to check if they have reached a certain
-///                         position.
-/// * `target_positions` - Positions of which you want to check if they ahve been reached.
+/// * `current_position` - Position of which you want to check if it has reached a certain
+///                        position.
+/// * `target_position` - Position of which you want to check if it has been reached.
 /// * `error_margin` - Range within which a target position has been reached.
 fn reached_position(
     current_position: &JointArray<f32>,
@@ -33,8 +33,8 @@ fn reached_position(
 ///
 /// # Arguments
 ///
-/// * `current_positions` - Starting position.
-/// * `target_positions` - Final position.
+/// * `current_position` - Starting position.
+/// * `target_position` - Final position.
 /// * `scalar` - Scalar from 0-1 that indicates what weight to assign to each position.
 pub fn lerp(
     current_position: &JointArray<f32>,
@@ -56,6 +56,7 @@ pub fn lerp(
 ///
 /// * `nao_state` - State of the robot.
 /// * `motion_manager` - Keeps track of state needed for playing motions.
+/// * `nao_control_message` - Used to set the new joint positions.
 #[system]
 pub fn motion_executer(
     nao_state: &mut NaoState,
@@ -114,5 +115,5 @@ pub fn motion_executer(
         }
     }
 
-    return Ok(());
+    Ok(())
 }
