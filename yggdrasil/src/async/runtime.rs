@@ -1,5 +1,6 @@
 use std::future::Future;
 
+use futures_lite::future;
 use miette::Result;
 use tokio::{
     runtime::{self, Runtime},
@@ -8,8 +9,49 @@ use tokio::{
 
 use tyr::prelude::*;
 
-pub struct Task<T: Send + 'static> {
-    pub(super) join_handle: JoinHandle<T>,
+use crate::event::Event;
+
+pub struct AsyncTask<T: Send + 'static> {
+    pub(super) join_handle: Option<JoinHandle<T>>,
+}
+
+impl<T: Send + 'static> AsyncTask<T> {
+    pub fn new_dead() -> Self {
+        Self { join_handle: None }
+    }
+}
+
+impl<T: Send + 'static> Default for AsyncTask<T> {
+    fn default() -> Self {
+        Self::new_dead()
+    }
+}
+
+impl<T: Send + 'static> Event<T> for AsyncTask<T> {
+    type Data = AsyncTask<T>;
+
+    fn spawn(&mut self, data: Self::Data) {
+        *self = data;
+    }
+
+    fn is_alive(&self) -> bool {
+        self.join_handle.is_some()
+    }
+
+    fn poll(&mut self) -> Option<T> {
+        match &mut self.join_handle {
+            Some(join_handle) => future::block_on(async {
+                future::poll_once(join_handle)
+                    .await
+                    .map(|res| res.expect("Failed to join async task handle"))
+            }),
+            None => None,
+        }
+    }
+
+    fn kill(&mut self) {
+        self.join_handle = None;
+    }
 }
 
 pub struct AsyncDispatcher {
@@ -28,13 +70,13 @@ impl AsyncDispatcher {
         }
     }
 
-    pub fn spawn<F: Future + Send + 'static>(&self, future: F) -> Task<F::Output>
+    pub fn dispatch<F: Future + Send + 'static>(&self, future: F) -> AsyncTask<F::Output>
     where
         F::Output: Send,
     {
-        let join_handle = self.runtime.spawn(future);
+        let join_handle = Some(self.runtime.spawn(future));
 
-        Task { join_handle }
+        AsyncTask { join_handle }
     }
 }
 

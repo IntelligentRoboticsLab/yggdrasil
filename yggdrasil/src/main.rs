@@ -1,15 +1,16 @@
 pub mod r#async;
+pub mod event;
 pub mod filter;
 pub mod nao;
 
-use std::time::Duration;
+use std::{any::type_name, time::Duration};
 
+use event::Event;
 // use filter::FilterModule;
 use miette::Result;
 // use nao::NaoModule;
 use r#async::{
-    poll_task,
-    runtime::{AsyncDispatcher, Task},
+    runtime::{AsyncDispatcher, AsyncTask},
     AsyncModule,
 };
 use tyr::prelude::*;
@@ -18,9 +19,9 @@ use tyr::prelude::*;
 struct Cheese;
 
 #[system]
-fn send_cheese(dispatcher: &mut AsyncDispatcher, task: &mut Option<Task<Cheese>>) -> Result<()> {
+fn send_cheese(dispatcher: &mut AsyncDispatcher, task: &mut AsyncTask<Cheese>) -> Result<()> {
     // Task is already active
-    if task.is_some() {
+    if task.is_alive() {
         return Ok(());
     }
 
@@ -36,23 +37,23 @@ fn send_cheese(dispatcher: &mut AsyncDispatcher, task: &mut Option<Task<Cheese>>
         Cheese
     }
 
-    let new_task = dispatcher.spawn(get_cheese());
-
-    *task = Some(new_task);
+    task.spawn(dispatcher.dispatch(get_cheese()));
 
     Ok(())
 }
 
 #[system]
-fn receive_cheese(task: &mut Option<Task<Cheese>>) -> Result<()> {
-    let inner = task.as_mut().unwrap();
-
-    // TODO: make systems conditional based on task status
-    // - Runs with injected task result on completion
-    // - Does not run in pending state
-    if let Some(cheese) = poll_task(inner) {
-        println!("You got some {cheese:?}!");
-        *task = None;
+fn store_async_on_completion<T: Send + Sync + 'static>(
+    task: &mut AsyncTask<T>,
+    resource: &mut T,
+) -> Result<()> {
+    if let Some(result) = task.poll() {
+        *resource = result;
+        println!(
+            "Completed async task and stored resource of type `{}`",
+            type_name::<T>()
+        );
+        task.kill();
     }
 
     Ok(())
@@ -63,12 +64,13 @@ fn main() -> Result<()> {
 
     App::new()
         // TODO: Some kind of task/general event storage apart from resources?
-        .add_resource(Resource::<Option<Task<Cheese>>>::new(None))?
+        .add_resource(Resource::<AsyncTask<Cheese>>::default())?
+        .add_resource(Resource::new(Cheese))?
         // .add_module(NaoModule)?
         // .add_module(FilterModule)?
         .add_module(AsyncModule)?
         .add_system(send_cheese)
-        .add_system(receive_cheese.after(send_cheese))
+        .add_system(store_async_on_completion::<Cheese>.after(send_cheese))
         .run()?;
     Ok(())
 }
