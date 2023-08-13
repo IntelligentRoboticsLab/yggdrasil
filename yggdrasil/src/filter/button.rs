@@ -1,6 +1,5 @@
 use std::time::{Duration, Instant};
 
-use derive_more::{Deref, DerefMut};
 use miette::Result;
 use nidhogg::NaoState;
 use tyr::prelude::*;
