@@ -1,8 +1,5 @@
 use miette::Result;
-use nidhogg::{
-    types::{ForceSensitiveResistorFoot, ForceSensitiveResistors},
-    NaoState,
-};
+use nidhogg::{types::ForceSensitiveResistors, NaoState};
 use tyr::prelude::*;
 
 /// A module offering the Force Sensitive Resistor (FSR) sensor data of the Nao, derived from the raw [`NaoState`].
@@ -11,15 +8,12 @@ use tyr::prelude::*;
 ///
 /// This module provides the following resources to the application:
 /// - [`ForceSensitiveResistors`]
-///
-/// These resources include a [`ForceSensitiveResistorFoot`], containing the sensor values for each foot.
 pub struct FSRFilter;
 
 impl Module for FSRFilter {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system(force_sensitive_resistor_filter)
-            .add_resource(Resource::new(ForceSensitiveResistors::default()))?
-            .add_resource(Resource::new(ForceSensitiveResistorFoot::default()))
+            .add_resource(Resource::new(ForceSensitiveResistors::default()))
     }
 }
 
