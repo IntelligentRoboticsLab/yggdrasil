@@ -2,6 +2,9 @@ use miette::Result;
 use nidhogg::{types::ForceSensitiveResistors, NaoState};
 use tyr::prelude::*;
 
+/// Threshold for ground contact detection using average FSR sensor values from both feet.
+const GROUND_CONTACT_THRESHOLD: f32 = 0.01;
+
 /// A module offering the Force Sensitive Resistor (FSR) sensor data of the Nao, derived from the raw [`NaoState`].
 ///
 /// By allowing systems to depend only on the FSR data, this design enhances the dependency graph's efficiency.
@@ -17,13 +20,22 @@ impl Module for FSRFilter {
     }
 }
 
+/// Structuct containing the various contact points of the Nao.
+pub struct Contacts {
+    /// Whether the Nao is on the ground.
+    pub ground: bool,
+}
+
 #[system]
 fn force_sensitive_resistor_filter(
     nao_state: &NaoState,
     force_sensitive_resistors: &mut ForceSensitiveResistors,
+    contacts: &mut Contacts,
 ) -> Result<()> {
     force_sensitive_resistors.left_foot = nao_state.force_sensitive_resistors.left_foot.clone();
     force_sensitive_resistors.right_foot = nao_state.force_sensitive_resistors.right_foot.clone();
+
+    contacts.ground = nao_state.force_sensitive_resistors.avg() < GROUND_CONTACT_THRESHOLD;
 
     Ok(())
 }

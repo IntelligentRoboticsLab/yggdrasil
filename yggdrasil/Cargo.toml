@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 miette = { workspace = true, features = ["fancy"] }
+derive_more = { workspace = true }
 nidhogg = { workspace = true }
 tyr = { path = "../crates/tyr" }
 tracing = { workspace = true }

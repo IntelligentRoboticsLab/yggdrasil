@@ -13,4 +13,5 @@ syn = "2.0.22"
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", features = [
     "lola",
 ] }
+derive_more = "0.99.17"
 rustc_version = "0.4.0"
