@@ -1,6 +1,9 @@
 use crate::motion::motion_manager::{ActiveMotion, MotionManager};
 use miette::Result;
-use nidhogg::{types::JointArray, NaoControlMessage, NaoState};
+use nidhogg::{
+    types::{FillExt, JointArray},
+    NaoControlMessage, NaoState,
+};
 use std::time::SystemTime;
 use tyr::prelude::*;
 
@@ -88,7 +91,7 @@ pub fn motion_executer(
                 &motion.initial_position,
                 elapsed_time_since_start_of_motion / LERP_TO_STARTING_POSITION_DURATION_SECS,
             );
-            nao_control_message.stiffness = JointArray::<f32>::default();
+            nao_control_message.stiffness = JointArray::<f32>::fill(0.5);
 
             return Ok(());
         } else {
@@ -106,7 +109,7 @@ pub fn motion_executer(
         Some(position) => {
             nao_control_message.position = position;
             // TODO: Add stiffness to the motion files.
-            nao_control_message.stiffness = JointArray::<f32>::default();
+            nao_control_message.stiffness = JointArray::<f32>::fill(0.5);
         }
         None => {
             //Current motion is finished.

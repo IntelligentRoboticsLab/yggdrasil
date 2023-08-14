@@ -29,7 +29,7 @@
   "movements": [
     {
       "duration": 1.0,
-      "position": {
+      "target_position": {
         "head_yaw": 0,
         "head_pitch": 0,
         "left_shoulder_pitch": -1.581595897674561,
