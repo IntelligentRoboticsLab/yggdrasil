@@ -39,17 +39,28 @@ impl<T: Send + 'static> Event<T> for AsyncTask<T> {
     }
 
     fn poll(&mut self) -> Option<T> {
-        match &mut self.join_handle {
+        let output = match &mut self.join_handle {
             Some(join_handle) => future::block_on(async {
                 future::poll_once(join_handle)
                     .await
                     .map(|res| res.expect("Failed to join async task handle"))
             }),
             None => None,
+        };
+
+        // automatically kill the task so we don't poll a completed future
+        if output.is_some() {
+            self.kill();
         }
+
+        output
     }
 
     fn kill(&mut self) {
+        if let Some(handle) = &self.join_handle {
+            handle.abort();
+        };
+
         self.join_handle = None;
     }
 }

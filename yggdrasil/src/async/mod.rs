@@ -1,4 +1,8 @@
-pub mod runtime;
+mod resource;
+mod runtime;
+
+pub use resource::AsyncResource;
+pub use runtime::{AsyncDispatcher, AsyncTask};
 
 use miette::Result;
 use tyr::prelude::*;
