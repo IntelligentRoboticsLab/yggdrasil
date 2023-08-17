@@ -11,5 +11,3 @@ miette = { workspace = true, features = ["fancy"] }
 tyr = { path = "../crates/tyr" }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
-futures-lite = { workspace = true }

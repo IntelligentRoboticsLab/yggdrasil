@@ -1,11 +1,9 @@
-mod resource;
 mod runtime;
 
-pub use resource::AsyncResource;
-pub use runtime::{AsyncDispatcher, AsyncTask};
+pub use runtime::AsyncDispatcher;
 
 use miette::Result;
-use tyr::prelude::*;
+use tyr_internal::{App, Module};
 
 pub struct AsyncModule;
 
