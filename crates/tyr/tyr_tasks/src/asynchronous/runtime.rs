@@ -1,6 +1,6 @@
-use std::future::Future;
+use std::{any::type_name, future::Future};
 
-use miette::Result;
+use miette::{miette, IntoDiagnostic, Result};
 use tokio::runtime::{self, Handle, Runtime};
 use tyr_internal::{Resource, Storage};
 
@@ -19,13 +19,28 @@ impl AsyncDispatcher {
         }
     }
 
-    pub fn dispatch<F: Future + Send + 'static>(&self, future: F) -> Task<F::Output>
+    // Spawns the future on the async runtime and sets the task to alive status
+    pub fn dispatch<F: Future + Send + 'static>(
+        &self,
+        task: &mut Task<F::Output>,
+        future: F,
+    ) -> Result<()>
     where
         F::Output: Send,
     {
+        if task.is_alive() {
+            // TODO: proper error types
+            return Err(miette!(
+                "Trying to dispatch task `{}` which is already alive!",
+                type_name::<Task<F::Output>>()
+            ));
+        }
+
         let join_handle = Some(self.runtime_handle.spawn(future));
 
-        Task { join_handle }
+        *task = Task { join_handle };
+
+        Ok(())
     }
 }
 
@@ -34,7 +49,7 @@ pub fn initialize_runtime(storage: &mut Storage) -> Result<()> {
         .worker_threads(1)
         .enable_all()
         .build()
-        .unwrap();
+        .into_diagnostic()?;
 
     let dispatcher = AsyncDispatcher::new(&runtime);
 

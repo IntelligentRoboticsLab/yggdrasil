@@ -6,13 +6,13 @@ use std::{
     thread,
 };
 
-use miette::Result;
+use miette::{miette, IntoDiagnostic, Result};
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use tokio::sync::oneshot::{self, Receiver};
 
 use tyr_internal::{Resource, Storage};
 
-use crate::{r#async::AsyncDispatcher, task::Task};
+use crate::{asynchronous::AsyncDispatcher, task::Task};
 
 #[derive(Debug)]
 pub struct ComputeJoinHandle<T> {
@@ -39,14 +39,14 @@ pub struct ComputeDispatcher {
 
 #[allow(clippy::new_without_default)]
 impl ComputeDispatcher {
-    pub fn new(async_dispatcher: AsyncDispatcher) -> Self {
+    pub fn new(thread_pool: ThreadPool, async_dispatcher: AsyncDispatcher) -> Self {
         Self {
-            thread_pool: ThreadPoolBuilder::new().num_threads(2).build().unwrap(),
+            thread_pool,
             async_dispatcher,
         }
     }
 
-    pub fn dispatch<F, T>(&self, func: F) -> Task<T>
+    pub fn dispatch<F, T>(&self, task: &mut Task<T>, func: F) -> Result<()>
     where
         F: FnOnce() -> T + Send + 'static,
         T: Send + 'static,
@@ -59,17 +59,27 @@ impl ComputeDispatcher {
 
         let compute_join_handle = ComputeJoinHandle { rx };
 
-        self.async_dispatcher.dispatch(compute_join_handle)
+        self.async_dispatcher.dispatch(task, compute_join_handle)
     }
 }
 
 pub fn initialize_threadpool(storage: &mut Storage) -> Result<()> {
-    // todo: clean up this API
+    let thread_pool = ThreadPoolBuilder::new()
+        .num_threads(2)
+        .build()
+        .into_diagnostic()?;
+
     let dispatcher = {
-        let guard = storage.get::<AsyncDispatcher>().unwrap().read().unwrap();
+        let guard = storage
+            .get::<AsyncDispatcher>()
+            // TODO: proper error types
+            .ok_or(miette!("No `AsyncDispatcher` found. `ComputeDispatcher` relies on the `AsyncDispatcher`. Did you import the AsyncModule?",
+        ))?
+        .read().unwrap();
+
         let ad: &AsyncDispatcher = guard.downcast_ref().unwrap();
 
-        ComputeDispatcher::new(ad.clone())
+        ComputeDispatcher::new(thread_pool, ad.clone())
     };
 
     storage.add_resource(Resource::new(dispatcher))?;

@@ -2,10 +2,8 @@ use std::time::{Duration, Instant};
 
 use miette::Result;
 use tyr::{
-    event::Event,
     prelude::*,
-    r#async::{AsyncDispatcher, AsyncModule},
-    task::{Task, TaskResource},
+    tasks::{asynchronous::AsyncDispatcher, Task, TaskModule, TaskResource},
 };
 
 #[derive(Debug)]
@@ -17,20 +15,21 @@ struct Benchmark {
     start_time: Instant,
 }
 
-// Spawn a new compute task
-async fn calculate_cheese(sleep_duration: Duration) -> Cheese {
-    tokio::time::sleep(sleep_duration).await;
+// Spawn a new async task
+async fn fetch_cheese(duration: Duration) -> Cheese {
+    tokio::time::sleep(duration).await;
     Cheese
 }
 
 #[system]
-fn send_cheese(cd: &AsyncDispatcher, task: &mut Task<Cheese>, bench: &mut Benchmark) -> Result<()> {
+fn send_cheese(ad: &AsyncDispatcher, task: &mut Task<Cheese>, bench: &mut Benchmark) -> Result<()> {
     // Task is already active
     if task.is_alive() {
         return Ok(());
     }
 
-    task.spawn(cd.dispatch(calculate_cheese(Duration::from_millis(100))));
+    let duration = Duration::from_millis(100);
+    ad.dispatch(&mut task, fetch_cheese(duration))?;
 
     // Reset benchmark counters
     bench.poll_count = 0;
@@ -63,7 +62,7 @@ fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     App::new()
-        .add_module(AsyncModule)?
+        .add_module(TaskModule)?
         .add_task_resource(Resource::new(Cheese))?
         .add_resource(Resource::new(Benchmark {
             poll_count: 0,

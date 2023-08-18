@@ -2,11 +2,8 @@ use std::time::{Duration, Instant};
 
 use miette::Result;
 use tyr::{
-    compute::{ComputeDispatcher, ComputeModule},
-    event::Event,
     prelude::*,
-    r#async::AsyncModule,
-    task::{Task, TaskResource},
+    tasks::{compute::ComputeDispatcher, Task, TaskModule, TaskResource},
 };
 
 #[derive(Debug)]
@@ -19,8 +16,8 @@ struct Benchmark {
 }
 
 // Spawn a new compute task
-fn calculate_cheese(sleep_duration: Duration) -> Cheese {
-    std::thread::sleep(sleep_duration);
+fn calculate_cheese(duration: Duration) -> Cheese {
+    std::thread::sleep(duration);
     Cheese
 }
 
@@ -35,7 +32,8 @@ fn send_cheese(
         return Ok(());
     }
 
-    task.spawn(cd.dispatch(|| calculate_cheese(Duration::from_millis(100))));
+    let duration = Duration::from_millis(100);
+    cd.dispatch(&mut task, move || calculate_cheese(duration))?;
 
     // Reset benchmark counters
     bench.poll_count = 0;
@@ -68,8 +66,7 @@ fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     App::new()
-        .add_module(AsyncModule)?
-        .add_module(ComputeModule)?
+        .add_module(TaskModule)?
         .add_task_resource(Resource::new(Cheese))?
         .add_resource(Resource::new(Benchmark {
             poll_count: 0,
