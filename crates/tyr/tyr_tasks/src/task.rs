@@ -24,7 +24,7 @@ impl<T: Send + 'static> Task<T> {
             Some(join_handle) => future::block_on(async {
                 future::poll_once(join_handle)
                     .await
-                    .map(|res| res.expect("Failed to join async task handle"))
+                    .map(|res| res.expect("Failed to complete task!"))
             }),
             None => None,
         };

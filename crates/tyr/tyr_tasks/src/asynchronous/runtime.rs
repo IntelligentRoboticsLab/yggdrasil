@@ -47,6 +47,7 @@ impl AsyncDispatcher {
 pub fn initialize_runtime(storage: &mut Storage) -> Result<()> {
     let runtime = runtime::Builder::new_multi_thread()
         .worker_threads(1)
+        .thread_name("tokio-async-worker")
         .enable_all()
         .build()
         .into_diagnostic()?;

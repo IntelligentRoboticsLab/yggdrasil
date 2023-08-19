@@ -1,4 +1,5 @@
 use std::{
+    any::type_name,
     future::Future,
     panic::{catch_unwind, resume_unwind, AssertUnwindSafe},
     pin::Pin,
@@ -26,7 +27,9 @@ impl<T> Future for ComputeJoinHandle<T> {
         let rx = Pin::new(&mut self.rx);
         rx.poll(cx).map(|result| {
             result
+                // this shouldn't happen as we never close the oneshot channel
                 .expect("Channel is closed")
+                // the unwinding is carried from the rayon thread to our tokio runtime
                 .unwrap_or_else(|e| resume_unwind(e))
         })
     }
@@ -51,9 +54,19 @@ impl ComputeDispatcher {
         F: FnOnce() -> T + Send + 'static,
         T: Send + 'static,
     {
+        if task.is_alive() {
+            // TODO: proper error types
+            return Err(miette!(
+                "Trying to dispatch task `{}` which is already alive!",
+                type_name::<Task<T>>()
+            ));
+        }
+
         let (tx, rx) = oneshot::channel();
 
         self.thread_pool.spawn(move || {
+            // send the result of invoking the function back through the oneshot channel,
+            // capturing any panics that might occur
             let _result = tx.send(catch_unwind(AssertUnwindSafe(func)));
         });
 
@@ -66,6 +79,7 @@ impl ComputeDispatcher {
 pub fn initialize_threadpool(storage: &mut Storage) -> Result<()> {
     let thread_pool = ThreadPoolBuilder::new()
         .num_threads(2)
+        .thread_name(|idx| format!("rayon-compute-worker-{}", idx))
         .build()
         .into_diagnostic()?;
 
@@ -73,7 +87,7 @@ pub fn initialize_threadpool(storage: &mut Storage) -> Result<()> {
         let guard = storage
             .get::<AsyncDispatcher>()
             // TODO: proper error types
-            .ok_or(miette!("No `AsyncDispatcher` found. `ComputeDispatcher` relies on the `AsyncDispatcher`. Did you import the AsyncModule?",
+            .ok_or(miette!("No `AsyncDispatcher` found. `ComputeDispatcher` relies on the `AsyncDispatcher`. Did you import the `AsyncModule`?",
         ))?
         .read().unwrap();
 
