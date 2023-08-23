@@ -36,26 +36,19 @@ pub struct Camera {
 impl Camera {
     /// Create a new camera object from a path to the camera device.
     pub fn new_from_path(camera_path: &Path) -> Result<Self> {
+        let camera = Device::open(camera_path)?;
+
+        Self::new_from_device(camera)
+    }
+
+    /// Create a new camera object from a camera device.
+    pub fn new_from_device(camera: Device) -> Result<Self> {
         let requested_pix_format = linuxvideo::format::PixFormat::new(
             NAO_CAMERA_WIDTH,
             NAO_CAMERA_HEIGHT,
             linuxvideo::format::Pixelformat::YUYV,
         );
-        let video_capture = Device::open(camera_path)?.video_capture(requested_pix_format)?;
-        let pix_format = video_capture.format();
 
-        Ok(Self {
-            pix_format: PixFormat::new(
-                pix_format.width(),
-                pix_format.height(),
-                pix_format.pixelformat(),
-            ),
-            camera_stream: video_capture.into_stream(1)?,
-        })
-    }
-
-    /// Create a new camera object from a camera device.
-    pub fn new_from_device(camera: Device, requested_pix_format: PixFormat) -> Result<Self> {
         let video_capture = camera.video_capture(requested_pix_format)?;
         let pix_format = video_capture.format();
 
