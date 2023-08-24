@@ -54,6 +54,7 @@ async fn main() -> Result<()> {
     match args.action {
         Commands::Build(opts) => opts.build(args_bin).await?,
         Commands::Upload => todo!(),
+        Commands::Scan(opts) => opts.scan().await?,
     }
 
     Ok(())
