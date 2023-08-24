@@ -1,5 +1,6 @@
 #![warn(missing_docs)]
 #![feature(portable_simd)]
+#![feature(stdarch)]
 
 //! Contains functionality for the Heimdall camera module
 mod camera;
