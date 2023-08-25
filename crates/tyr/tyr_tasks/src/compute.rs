@@ -7,11 +7,9 @@ use std::{
     thread,
 };
 
-use miette::{miette, IntoDiagnostic, Result};
-use rayon::{ThreadPool, ThreadPoolBuilder};
+use miette::{miette, Result};
+use rayon::ThreadPool;
 use tokio::sync::oneshot::{self, Receiver};
-
-use tyr_internal::{Resource, Storage};
 
 use crate::{asynchronous::AsyncDispatcher, task::Task};
 
@@ -35,6 +33,8 @@ impl<T> Future for ComputeJoinHandle<T> {
     }
 }
 
+/// Dispatcher that allows functions to run on a separate threadpool that uses
+/// an efficient work-stealing scheduler.
 pub struct ComputeDispatcher {
     thread_pool: ThreadPool,
     async_dispatcher: AsyncDispatcher,
@@ -42,28 +42,64 @@ pub struct ComputeDispatcher {
 
 #[allow(clippy::new_without_default)]
 impl ComputeDispatcher {
-    pub fn new(thread_pool: ThreadPool, async_dispatcher: AsyncDispatcher) -> Self {
+    pub(crate) fn new(thread_pool: ThreadPool, async_dispatcher: AsyncDispatcher) -> Self {
         Self {
             thread_pool,
             async_dispatcher,
         }
     }
 
+    /// Spawns the function on a threadpool and sets the task to be alive.
+    ///
+    /// ```ignore
+    ///    fn big_ass_calculation() -> i32 {
+    ///         // We're gonna need a lot of resources...
+    ///         // ...
+    ///         // Finally, we get our processed value
+    ///         21
+    ///    }
+    ///
+    ///    #[system]
+    ///    fn do_calculation(dispatcher: &ComputeDispatcher, task: &mut Task<i32>) -> Result<()> {
+    ///        // Task is already running, so we can't dispatch more at this time...
+    ///        if task.is_alive() {
+    ///            return Ok(());
+    ///        }
+    ///
+    ///        // Dispatches the computation of `big_ass_calculation` to a background thread
+    ///        // where it can be efficiently computed in parallel and without blocking all
+    ///        // the other systems and tasks.
+    ///        //
+    ///        // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
+    ///        dispatcher.dispatch(&mut task, move || big_ass_calculation())?;
+    ///
+    ///        Ok(())
+    ///    }
+    ///
+    ///    #[system]
+    ///    fn handle_completion(
+    ///        task: &mut Task<i32>,
+    ///    ) -> Result<()> {
+    ///        if let Some(value) = task.poll() {
+    ///            // Our task is completed!
+    ///        }
+    ///        // Task is not yet ready!
+    ///        Ok(())
+    ///    }
+    /// ```
     pub fn dispatch<F, T>(&self, task: &mut Task<T>, func: F) -> Result<()>
     where
         F: FnOnce() -> T + Send + 'static,
         T: Send + 'static,
     {
         if task.is_alive() {
-            // TODO: proper error types
             return Err(miette!(
-                "Trying to dispatch task `{}` which is already alive!",
+                "Trying to dispatch compute task `{}` which is already alive!",
                 type_name::<Task<T>>()
             ));
         }
 
         let (tx, rx) = oneshot::channel();
-
         self.thread_pool.spawn(move || {
             // send the result of invoking the function back through the oneshot channel,
             // capturing any panics that might occur
@@ -74,29 +110,4 @@ impl ComputeDispatcher {
 
         self.async_dispatcher.dispatch(task, compute_join_handle)
     }
-}
-
-pub fn initialize_threadpool(storage: &mut Storage) -> Result<()> {
-    let thread_pool = ThreadPoolBuilder::new()
-        .num_threads(2)
-        .thread_name(|idx| format!("rayon-compute-worker-{}", idx))
-        .build()
-        .into_diagnostic()?;
-
-    let dispatcher = {
-        let guard = storage
-            .get::<AsyncDispatcher>()
-            // TODO: proper error types
-            .ok_or(miette!("No `AsyncDispatcher` found. `ComputeDispatcher` relies on the `AsyncDispatcher`. Did you import the `AsyncModule`?",
-        ))?
-        .read().unwrap();
-
-        let ad: &AsyncDispatcher = guard.downcast_ref().unwrap();
-
-        ComputeDispatcher::new(thread_pool, ad.clone())
-    };
-
-    storage.add_resource(Resource::new(dispatcher))?;
-
-    Ok(())
 }

@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use miette::Result;
 use tyr::{
     prelude::*,
-    tasks::{compute::ComputeDispatcher, Task, TaskModule, TaskResource},
+    tasks::{ComputeDispatcher, Task, TaskModule, TaskResource},
 };
 
 #[derive(Debug)]
