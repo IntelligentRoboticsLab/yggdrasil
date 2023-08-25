@@ -6,6 +6,9 @@ use sif::{
     cli::{Cli, Commands},
     error::Error,
 };
+use std::fs;
+
+use sif::config::SifConfig;
 
 fn assert_valid_bin(bin: Option<String>) -> Result<()> {
     const ERR_MESSAGE: &str = "The `--bin` flag has to be ran in a Cargo workspace.";
@@ -46,6 +49,9 @@ fn assert_valid_bin(bin: Option<String>) -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let toml_str = fs::read_to_string("sif.toml").expect("Failed to read sif.toml file");
+    let sif_config: SifConfig = toml::from_str(&toml_str).expect("Failed to deserialize sif.toml");
+
     let args = Cli::parse();
 
     assert_valid_bin(args.bin.clone())?;
@@ -54,7 +60,7 @@ async fn main() -> Result<()> {
     match args.action {
         Commands::Build(opts) => opts.build(args_bin).await?,
         Commands::Upload => todo!(),
-        Commands::Scan(opts) => opts.scan().await?,
+        Commands::Scan(opts) => opts.scan(sif_config).await?,
     }
 
     Ok(())

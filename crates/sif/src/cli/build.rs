@@ -28,16 +28,14 @@ impl Build {
         );
 
         match cargo::build(bin.clone(), self.build.release, None).await {
-            Ok(_) =>  {
+            Ok(_) => {
                 spinner.success("Finished building yggdrasil! 🌳");
-            },
+            }
             Err(err) => {
                 spinner.stop_and_persist("X", "FUCKING D");
                 return Err(err)?;
-            },
+            }
         }
-        
-        
 
         Ok(())
     }

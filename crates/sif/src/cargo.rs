@@ -1,9 +1,8 @@
 use std::{ffi::OsStr, fmt::Debug, process::Stdio, string::FromUtf8Error};
 
 use miette::{Context, Diagnostic, Result};
-use tokio::process::Command;
 use thiserror::Error;
-
+use tokio::process::Command;
 
 #[derive(Error, Diagnostic, Debug)]
 enum CargoErrorKind {
@@ -40,10 +39,7 @@ where
     if !output.status.success() {
         let stderr = String::from_utf8(output.stderr).map_err(CargoErrorKind::FromUtf8Error)?;
         // eprintln!("{stderr}");
-        Err(CargoErrorKind::CargoError(
-            stderr
-                .clone()
-        ))?;
+        Err(CargoErrorKind::CargoError(stderr.clone()))?;
     }
 
     Ok(())
