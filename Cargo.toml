@@ -11,6 +11,7 @@ proc-macro2 = "1.0.63"
 quote = "1.0.28"
 syn = "2.0.22"
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
+derive_more = "0.99.17"
 rustc_version = "0.4.0"
 tokio = { version = "1.31.0" }
 futures-lite = "1.13.0"
