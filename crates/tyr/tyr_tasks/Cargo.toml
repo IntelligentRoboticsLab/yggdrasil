@@ -6,8 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tyr_internal = { path = "../tyr_internal" }
-miette = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
 futures-lite = { workspace = true }
+miette = { workspace = true }
 rayon = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tyr_internal = { path = "../tyr_internal" }
