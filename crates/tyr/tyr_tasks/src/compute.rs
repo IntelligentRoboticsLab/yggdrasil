@@ -80,10 +80,11 @@ impl ComputeDispatcher {
     ///    fn handle_completion(
     ///        task: &mut Task<i32>,
     ///    ) -> Result<()> {
-    ///        if let Some(value) = task.poll() {
-    ///            // Our task is completed!
-    ///        }
-    ///        // Task is not yet ready!
+    ///        let Some(value) = task.poll() else {
+    ///            // Task is not yet ready, return early!
+    ///            return Ok(());
+    ///        };
+    ///        // Our task has completed! We can now use `value`!
     ///        Ok(())
     ///    }
     /// ```

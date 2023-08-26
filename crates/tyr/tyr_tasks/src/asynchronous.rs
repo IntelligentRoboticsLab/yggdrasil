@@ -59,10 +59,11 @@ impl AsyncDispatcher {
     ///    fn handle_completion(
     ///        task: &mut Task<i32>,
     ///    ) -> Result<()> {
-    ///        if let Some(money) = task.poll() {
-    ///            // Our task is completed! We can now use our money for legal purposes!
-    ///        }
-    ///        // Task is not yet ready!
+    ///        let Some(money) = task.poll() else {
+    ///            // Task is not yet ready, return early!
+    ///            return Ok(());
+    ///        };
+    ///        // Our task has completed! We can now use `money`!
     ///        Ok(())
     ///    }
     /// ```

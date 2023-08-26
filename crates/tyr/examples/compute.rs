@@ -1,63 +1,53 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use miette::Result;
 use tyr::{
     prelude::*,
-    tasks::{ComputeDispatcher, Task, TaskModule, TaskResource},
+    tasks::{ComputeDispatcher, Task, TaskModule},
 };
 
-#[derive(Debug)]
-struct Cheese;
+#[derive(Default)]
+struct Counter(u64);
+struct Name(String);
 
-#[derive(Debug)]
-struct Benchmark {
-    poll_count: u64,
-    start_time: Instant,
-}
-
-// Spawn a new compute task
-fn calculate_cheese(duration: Duration) -> Cheese {
+// this is an expensive function that needs a lot of calculation, blocking our main thread
+fn calculate_name(duration: Duration) -> Name {
     std::thread::sleep(duration);
-    Cheese
+    Name("Daphne".to_string())
 }
 
 #[system]
-fn send_cheese(
-    cd: &ComputeDispatcher,
-    task: &mut Task<Cheese>,
-    bench: &mut Benchmark,
-) -> Result<()> {
-    // Task is already active
+fn dispatch_name(cd: &ComputeDispatcher, task: &mut Task<Name>) -> Result<()> {
+    // If the task is alive already, we return early
     if task.is_alive() {
         return Ok(());
     }
 
-    let duration = Duration::from_millis(100);
-    cd.dispatch(&mut task, move || calculate_cheese(duration))?;
-
-    // Reset benchmark counters
-    bench.poll_count = 0;
-    bench.start_time = Instant::now();
+    // We dispatch a function onto a threadpool, and set task
+    // as alive by giving it the handle needed to poll it.
+    cd.dispatch(&mut task, move || calculate_name(Duration::from_secs(1)))?;
 
     Ok(())
 }
 
 #[system]
-fn store_task_on_completion<T: Send + Sync + 'static>(
-    task: &mut Task<T>,
-    resource: &mut T,
-    bench: &mut Benchmark,
-) -> Result<()> {
-    if let Some(result) = task.poll() {
-        *resource = result;
-        println!(
-            "Poll count: {}, time taken: {}ms",
-            bench.poll_count,
-            bench.start_time.elapsed().as_millis()
-        );
-    } else {
-        bench.poll_count += 1;
-    }
+fn poll_name(task: &mut Task<Name>, counter: &mut Counter) -> Result<()> {
+    // If the task hasn't completed yet, we return early
+    let Some(name) = task.poll() else {
+        return Ok(());
+    };
+
+    println!("Hello, {}! Counter is at {}", name.0, counter.0);
+    counter.0 = 0;
+
+    Ok(())
+}
+
+#[system]
+fn time_critical_task(counter: &mut Counter) -> Result<()> {
+    // This will still run many times a second even though
+    // `calculate_name` is sleeping for 1 second
+    counter.0 += 1;
 
     Ok(())
 }
@@ -67,13 +57,14 @@ fn main() -> Result<()> {
 
     App::new()
         .add_module(TaskModule)?
-        .add_task_resource(Resource::new(Cheese))?
-        .add_resource(Resource::new(Benchmark {
-            poll_count: 0,
-            start_time: Instant::now(),
-        }))?
-        .add_system(send_cheese)
-        .add_system(store_task_on_completion::<Cheese>.after(send_cheese))
+        .add_resource(Resource::<Counter>::default())?
+        .add_resource(Resource::<Task<Name>>::default())?
+        // There's also a `.add_task_resource()` as a shorthand
+        // for adding both a Resource<T> and Resource<Task<T>>.
+        .add_system(dispatch_name)
+        .add_system(poll_name)
+        .add_system(time_critical_task)
         .run()?;
+
     Ok(())
 }

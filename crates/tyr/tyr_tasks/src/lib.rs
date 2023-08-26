@@ -2,7 +2,7 @@ mod asynchronous;
 mod compute;
 mod task;
 
-/// Tasks allow functions to run over multiple cycles.
+/// Tasks allow functions to run over multiple execution cycles.
 pub mod tasks {
     use miette::{IntoDiagnostic, Result};
     use rayon::ThreadPoolBuilder;
