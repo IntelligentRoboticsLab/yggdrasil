@@ -1,6 +1,10 @@
 pub use tyr_internal::*;
 pub use tyr_macros::*;
-pub use tyr_tasks::*;
+
+/// Tasks allow functions to run over multiple execution cycles.
+pub mod tasks {
+    pub use tyr_tasks::*;
+}
 
 /// `use tyr::prelude::*;` to import commonly used items.
 pub mod prelude {
