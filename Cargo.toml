@@ -17,5 +17,3 @@ tokio = { version = "1.31.0" }
 futures-lite = "1.13.0"
 rayon = "1.7.0"
 
-[profile.release]
-lto = "fat"
