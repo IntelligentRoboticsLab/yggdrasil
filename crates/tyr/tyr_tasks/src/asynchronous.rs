@@ -5,6 +5,7 @@ use tokio::runtime::{Handle, Runtime};
 
 use crate::task::Task;
 
+/// A wrapper around the tokio runtime.
 pub struct TokioRuntime(Runtime);
 
 impl TokioRuntime {
@@ -30,6 +31,7 @@ impl AsyncDispatcher {
 
     /// Spawns the future on the async runtime and sets the task to be alive.
     ///
+    /// # Example
     /// ```ignore
     ///    async fn download_money() -> i32 {
     ///        // Needs to connect to a secret bank across the globe... this may take a while!
