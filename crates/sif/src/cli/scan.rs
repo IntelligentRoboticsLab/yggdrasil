@@ -1,12 +1,9 @@
+use std::process::Stdio;
+
 use clap::Parser;
 use colored::Colorize;
-use futures::future::join_all;
-use miette::{miette, Result};
-use rand::random;
-use std::net::IpAddr;
-use std::time::Duration;
-use surge_ping::{Client, Config, IcmpPacket, PingIdentifier, PingSequence};
-use tokio::time;
+use miette::{IntoDiagnostic, Result};
+use tokio::{process::Command, task::JoinSet};
 
 use crate::config::SifConfig;
 
@@ -21,11 +18,11 @@ pub struct ConfigOptsScan {
     #[clap(long, default_value_t = 26)]
     upper: u8,
 
-    /// Scan for wired (true) or wireless (false) robots [default: false] 
+    /// Scan for wired (true) or wireless (false) robots [default: false]
     #[clap(long)]
     lan: bool,
 
-    /// Team number [default: 8]
+    /// Team number [default: Set in `sif_config.toml`]
     #[clap(long)]
     team_number: Option<u8>,
 }
@@ -40,57 +37,60 @@ pub struct Scan {
 impl Scan {
     pub async fn scan(self, sif_config: SifConfig) -> Result<()> {
         println!("Looking for robots...");
-        let client_v4 = Client::new(&Config::default()).unwrap();
-        let mut tasks = Vec::new();
-
-        for nr in self.scan.lower..=self.scan.upper {
-            tasks.push(tokio::spawn(ping(
-                client_v4.clone(),
-                nr,
-                sif_config.clone(),
-                self.scan.clone(),
-            )));
+        let mut scan_set = JoinSet::new();
+        for robot_number in self.scan.lower..=self.scan.upper {
+            scan_set.spawn(ping(robot_number, sif_config.clone(), self.scan.clone()));
         }
-        join_all(tasks).await;
+
+        // wait until all ping commands have been completed
+        while let Some(res) = scan_set.join_next().await {
+            // if something went wrong, we'll want to print the diagnostic!
+            if let Err(diagnostic) = res.into_diagnostic()? {
+                eprintln!("{diagnostic}");
+            }
+        }
         Ok(())
     }
 }
 
-async fn ping(
-    client: Client,
-    robot_number: u8,
-    sif_config: SifConfig,
-    opts: ConfigOptsScan,
-) -> Result<()> {
-    let addr = sif_config
-        .robots
-        .get(&robot_number)
-        .ok_or_else(|| miette!("Robot {} not found", robot_number))?
-        .get_ip(opts.team_number.unwrap_or(sif_config.team_number), opts.lan);
-    let payload = [0; 8];
-    let mut pinger = client
-        .pinger(IpAddr::V4(addr), PingIdentifier(random()))
-        .await;
-    pinger.timeout(Duration::from_secs(1));
-    let mut interval = time::interval(Duration::from_secs(1));
+async fn ping(robot_number: u8, sif_config: SifConfig, opts: ConfigOptsScan) -> Result<()> {
+    let addr = format!(
+        "10.{}.{}.{}",
+        u8::from(opts.lan),
+        opts.team_number.unwrap_or(sif_config.team_number),
+        robot_number
+    );
 
-    for idx in 0..1 {
-        interval.tick().await;
-        match pinger.ping(PingSequence(idx), &payload).await {
-            Ok((IcmpPacket::V4(_), _)) => println!(
-                "[+] {} => {}: {}",
-                pinger.host,
-                sif_config.get_robot_name(robot_number).white().bold(),
-                "ONLINE".green().bold()
-            ),
-            Ok((IcmpPacket::V6(_), _)) => {}
-            Err(_) => println!(
-                "[+] {} | {} | {}",
-                "OFFLINE".red().bold(),
-                pinger.host,
-                sif_config.get_robot_name(robot_number).white().bold(),
-            ),
-        };
+    let code = Command::new("ping")
+        .arg("-W1") // 1 second time out
+        .arg("-q") // quiet output
+        .arg("-c2") // require only 2 replies
+        .arg("-s0") // number of data bytes to be sent
+        .arg(addr.clone())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .into_diagnostic()?
+        .wait()
+        .await
+        .into_diagnostic()?;
+
+    if code.success() {
+        println!(
+            "[+] {} => {}: {}",
+            addr,
+            sif_config.get_robot_name(robot_number).white().bold(),
+            "ONLINE".green().bold()
+        );
+        return Ok(());
     }
+
+    println!(
+        "[+] {} | {} | {}",
+        "OFFLINE".red().bold(),
+        addr,
+        sif_config.get_robot_name(robot_number).white().bold(),
+    );
+
     Ok(())
 }

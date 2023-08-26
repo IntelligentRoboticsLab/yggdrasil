@@ -1,3 +1,5 @@
+# the team number, used to construct ip addresses of
+# robots, e.g. 10.0.8.25
 team_number = 8
 
 [robots.20]

@@ -8,18 +8,18 @@ use tokio::process::Command;
 enum CargoErrorKind {
     #[error(transparent)]
     #[diagnostic(help("Failed to spawn cargo child process!"))]
-    IoError(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
 
     #[error(transparent)]
     #[diagnostic(help("Failed to parse stderr"))]
-    FromUtf8Error(#[from] FromUtf8Error),
+    FromUtf8(#[from] FromUtf8Error),
 
     #[error(
         "Cargo execution failed:
         {0}"
     )]
     #[diagnostic(help("Cargo output is printed above!"))]
-    CargoError(String),
+    Cargo(String),
 }
 
 async fn cargo<I, S>(args: I) -> Result<(), CargoErrorKind>
@@ -34,12 +34,12 @@ where
         .stderr(Stdio::null())
         .output()
         .await
-        .map_err(CargoErrorKind::IoError)?;
+        .map_err(CargoErrorKind::Io)?;
 
     if !output.status.success() {
-        let stderr = String::from_utf8(output.stderr).map_err(CargoErrorKind::FromUtf8Error)?;
+        let stderr = String::from_utf8(output.stderr).map_err(CargoErrorKind::FromUtf8)?;
         // eprintln!("{stderr}");
-        Err(CargoErrorKind::CargoError(stderr.clone()))?;
+        Err(CargoErrorKind::Cargo(stderr.clone()))?;
     }
 
     Ok(())
