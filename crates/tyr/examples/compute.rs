@@ -54,6 +54,7 @@ fn time_critical_task(counter: &mut Counter) -> Result<()> {
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
+    miette::set_panic_hook();
 
     App::new()
         .add_module(TaskModule)?

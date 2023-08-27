@@ -1,5 +1,5 @@
 use futures_lite::future;
-use miette::Result;
+use miette::{IntoDiagnostic, Result, WrapErr};
 use tokio::task::JoinHandle;
 
 use tyr_internal::{App, Resource};
@@ -35,9 +35,11 @@ impl<T: Send + 'static> Task<T> {
     pub fn poll(&mut self) -> Option<T> {
         let output = match &mut self.join_handle {
             Some(join_handle) => future::block_on(async {
-                future::poll_once(join_handle)
-                    .await
-                    .map(|res| res.expect("Failed to complete task!"))
+                future::poll_once(join_handle).await.map(|res| {
+                    res.into_diagnostic()
+                        .wrap_err("Failed to complete task")
+                        .unwrap()
+                })
             }),
             None => None,
         };

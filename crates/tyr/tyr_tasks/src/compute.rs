@@ -7,7 +7,7 @@ use std::{
     thread,
 };
 
-use miette::{miette, Result};
+use miette::{miette, IntoDiagnostic, Result, WrapErr};
 use rayon::ThreadPool;
 use tokio::sync::oneshot::{self, Receiver};
 
@@ -25,9 +25,15 @@ impl<T> Future for ComputeJoinHandle<T> {
         let rx = Pin::new(&mut self.rx);
         rx.poll(cx).map(|result| {
             result
-                // this shouldn't happen as we never close the oneshot channel
-                .expect("Channel is closed")
-                // the unwinding is carried from the rayon thread to our tokio runtime
+                .into_diagnostic()
+                .wrap_err_with(|| {
+                    format!(
+                        "Unable to poll for `{}`",
+                        std::any::type_name::<Self::Output>()
+                    )
+                })
+                .unwrap()
+                // handle caught panics by panicking from the tokio thread
                 .unwrap_or_else(|e| resume_unwind(e))
         })
     }
