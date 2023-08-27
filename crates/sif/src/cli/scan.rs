@@ -2,7 +2,7 @@ use std::process::Stdio;
 
 use clap::Parser;
 use colored::Colorize;
-use miette::{IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Result, miette};
 use tokio::{process::Command, task::JoinSet};
 
 use crate::config::SifConfig;
@@ -10,13 +10,8 @@ use crate::config::SifConfig;
 /// Configuration options for the scanning system, specifying the IP addresses to be pinged.
 #[derive(Clone, Debug, Default, Parser)]
 pub struct ConfigOptsScan {
-    /// The lower bound of the search range for the last octet of the IP address [default: 20]
-    #[clap(long, default_value_t = 20)]
-    lower: u8,
-
-    /// The upper bound of the search range for the last octet of the IP address [default: 26]
-    #[clap(long, default_value_t = 26)]
-    upper: u8,
+    #[clap(long, num_args = 2)]
+    range: Vec<u8>,
 
     /// Scan for wired (true) or wireless (false) robots [default: false]
     #[clap(long)]
@@ -36,9 +31,12 @@ pub struct Scan {
 
 impl Scan {
     pub async fn scan(self, sif_config: SifConfig) -> Result<()> {
+        if self.scan.range[0] > self.scan.range[1] {
+            return Err(miette!("The range should be in the form: [lower upper]"));
+        }
         println!("Looking for robots...");
         let mut scan_set = JoinSet::new();
-        for robot_number in self.scan.lower..=self.scan.upper {
+        for robot_number in self.scan.range[0]..=self.scan.range[1] {
             scan_set.spawn(ping(robot_number, sif_config.clone(), self.scan.clone()));
         }
 
