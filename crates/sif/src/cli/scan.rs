@@ -10,7 +10,8 @@ use crate::config::SifConfig;
 /// Configuration options for the scanning system, specifying the IP addresses to be pinged.
 #[derive(Clone, Debug, Default, Parser)]
 pub struct ConfigOptsScan {
-    #[clap(long, num_args = 2)]
+    /// The range of robot numbers to be pinged [default: 20 26]
+    #[clap(long, num_args = 2, default_values_t = [20, 26])]
     range: Vec<u8>,
 
     /// Scan for wired (true) or wireless (false) robots [default: false]
