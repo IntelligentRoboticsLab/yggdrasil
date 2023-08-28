@@ -1,6 +1,5 @@
 use clap::Parser;
 use miette::Result;
-use spinoff::{Color, Spinner};
 
 use crate::cargo;
 
@@ -21,18 +20,11 @@ pub struct Build {
 
 impl Build {
     pub async fn build(self, bin: String) -> Result<()> {
-        let spinner = Spinner::new(
-            spinoff::spinners::Aesthetic,
-            "Building yggdrasil",
-            Color::Green,
-        );
-
         match cargo::build(bin.clone(), self.build.release, None).await {
             Ok(_) => {
-                spinner.success("Finished building yggdrasil! 🌳");
+                println!("done!");
             }
             Err(err) => {
-                spinner.stop_and_persist("X", "FUCKING D");
                 return Err(err)?;
             }
         }
