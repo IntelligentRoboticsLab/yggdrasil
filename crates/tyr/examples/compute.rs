@@ -3,7 +3,7 @@ use std::time::Duration;
 use miette::Result;
 use tyr::{
     prelude::*,
-    tasks::{ComputeDispatcher, Task, TaskModule},
+    tasks::{ComputeDispatcher, Error, Task, TaskModule},
 };
 
 #[derive(Default)]
@@ -18,10 +18,17 @@ fn calculate_name(duration: Duration) -> Name {
 
 #[system]
 fn dispatch_name(cd: &ComputeDispatcher, task: &mut Task<Name>) -> Result<()> {
-    // We dispatch a function onto a threadpool, and set task
-    // as alive by giving it the handle needed to poll it.
-    let _ = cd.try_dispatch(&mut task, move || calculate_name(Duration::from_secs(1)));
-    Ok(())
+    // We dispatch a function onto a threadpool where it runs without blocking
+    // other systems.
+    //
+    // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
+    match cd.try_dispatch(&mut task, move || calculate_name(Duration::from_secs(1))) {
+        // Successfully dispatched the task
+        Ok(_) => Ok(()),
+        // This is also fine here, we are already running the task and can continue
+        // without dispatching it again
+        Err(Error::AlreadyDispatched) => Ok(()),
+    }
 }
 
 #[system]

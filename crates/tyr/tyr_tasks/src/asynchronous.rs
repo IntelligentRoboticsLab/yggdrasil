@@ -37,7 +37,7 @@ impl AsyncDispatcher {
     ///
     /// # Example
     /// ```
-    /// use tyr::{prelude::*, tasks::{AsyncDispatcher, Task}};
+    /// use tyr::{prelude::*, tasks::{AsyncDispatcher, Task, Error}};
     /// use miette::Result;
     ///
     /// async fn download_money() -> i32 {
@@ -55,11 +55,13 @@ impl AsyncDispatcher {
     ///     //
     ///     // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
     ///     //
-    ///     // If the task is already alive the function fails and the future is not dispatched,
-    ///     // this way we always have one task alive at a time.
-    ///     let _ = dispatcher.try_dispatch(&mut task, download_money());
-    ///
-    ///     Ok(())
+    ///     match dispatcher.try_dispatch(&mut task, download_money()) {
+    ///         // Successfully dispatched the task
+    ///         Ok(_) => Ok(()),
+    ///         // This is also fine here, we are already running the task and can continue
+    ///         // without dispatching it again
+    ///         Err(Error::AlreadyDispatched) => Ok(()),
+    ///     }
     /// }
     ///
     /// #[system]

@@ -3,7 +3,7 @@ use std::time::Duration;
 use miette::Result;
 use tyr::{
     prelude::*,
-    tasks::{AsyncDispatcher, Task, TaskModule},
+    tasks::{AsyncDispatcher, Error, Task, TaskModule},
 };
 
 #[derive(Default)]
@@ -18,11 +18,17 @@ async fn receive_name(duration: Duration) -> Name {
 
 #[system]
 fn dispatch_name(ad: &AsyncDispatcher, task: &mut Task<Name>) -> Result<()> {
-    // We dispatch a future onto a separate thread, and set task
-    // as alive by giving it the handle needed to poll it.
-    let _ = ad.try_dispatch(&mut task, receive_name(Duration::from_secs(1)));
-
-    Ok(())
+    // Dispatches a future to a background thread where it can be efficiently
+    // awaited without blocking all the other systems and tasks.
+    //
+    // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
+    match ad.try_dispatch(&mut task, receive_name(Duration::from_secs(1))) {
+        // Successfully dispatched the task
+        Ok(_) => Ok(()),
+        // This is also fine here, we are already running the task and can continue
+        // without dispatching it again
+        Err(Error::AlreadyDispatched) => Ok(()),
+    }
 }
 
 #[system]

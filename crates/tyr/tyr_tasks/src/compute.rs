@@ -61,7 +61,7 @@ impl ComputeDispatcher {
     ///
     /// # Example
     /// ```
-    /// use tyr::{prelude::*, tasks::{ComputeDispatcher, Task}};
+    /// use tyr::{prelude::*, tasks::{ComputeDispatcher, Task, Error}};
     /// use miette::Result;
     ///
     /// fn big_ass_calculation() -> i32 {
@@ -78,12 +78,13 @@ impl ComputeDispatcher {
     ///     // the other systems and tasks.
     ///     //
     ///     // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
-    ///     //
-    ///     // If the task is already alive the function fails and the future is not dispatched,
-    ///     // this way we always have one task alive at a time.
-    ///     let _ = dispatcher.try_dispatch(&mut task, move || big_ass_calculation());
-    ///
-    ///     Ok(())
+    ///     match dispatcher.try_dispatch(&mut task, move || big_ass_calculation()) {
+    ///         // Successfully dispatched the task
+    ///         Ok(_) => Ok(()),
+    ///         // This is also fine here, we are already running the task and can continue
+    ///         // without dispatching it again
+    ///         Err(Error::AlreadyDispatched) => Ok(()),
+    ///     }
     ///
     /// }
     ///

@@ -18,6 +18,10 @@ pub use crate::task::{Task, TaskResource};
 
 /// [`Module`](../../tyr/trait.Module.html) implementing asynchronous task execution.
 ///
+/// Adds the following usable [`Resource`]s to the [`App`]:
+///  - [`AsyncDispatcher`]
+///  - [`ComputeDispatcher`]
+///
 /// Some functions may block the main thread for a long time.
 /// Examples where this can happen include waiting on network messages, processing camera data or running big machine learning models.
 ///
