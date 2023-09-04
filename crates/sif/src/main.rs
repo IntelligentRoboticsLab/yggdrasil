@@ -49,8 +49,8 @@ fn assert_valid_bin(bin: Option<String>) -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let toml_str = fs::read_to_string("sif.toml").expect("Failed to read sif.toml file");
-    let sif_config: SifConfig = toml::from_str(&toml_str).expect("Failed to deserialize sif.toml");
+    let toml_str = fs::read_to_string("sif.toml").into_diagnostic()?;
+    let sif_config: SifConfig = toml::from_str(&toml_str).into_diagnostic()?;
 
     let args = Cli::parse();
 
