@@ -2,8 +2,9 @@ mod asynchronous;
 mod compute;
 mod task;
 
-use miette::{IntoDiagnostic, Result};
+use miette::{Diagnostic, IntoDiagnostic, Result as MietteResult};
 use rayon::ThreadPoolBuilder;
+use thiserror::Error;
 use tokio::runtime;
 use tyr_internal::{App, Module, Resource};
 
@@ -24,7 +25,7 @@ pub use crate::task::{Task, TaskResource};
 pub struct TaskModule;
 
 impl Module for TaskModule {
-    fn initialize(self, app: App) -> Result<App> {
+    fn initialize(self, app: App) -> MietteResult<App> {
         let runtime = TokioRuntime::new(
             runtime::Builder::new_multi_thread()
                 .worker_threads(1)
@@ -38,7 +39,7 @@ impl Module for TaskModule {
 
         let thread_pool = ThreadPoolBuilder::new()
             .num_threads(2)
-            .thread_name(|idx| format!("rayon-compute-worker-{}", idx))
+            .thread_name(|idx| format!("rayon-compute-worker-{idx}"))
             .build()
             .into_diagnostic()?;
 
@@ -48,4 +49,14 @@ impl Module for TaskModule {
             .add_resource(Resource::new(async_dispatcher))?
             .add_resource(Resource::new(compute_dispatcher))
     }
+}
+
+/// A specialized [`Result`] type returning an [`tyr::tasks::Error`](`enum@Error`)
+pub type Result<T> = std::result::Result<T, Error>;
+
+/// The error type for task operations
+#[derive(Debug, Error, Diagnostic)]
+pub enum Error {
+    #[error("Task is already dispatched")]
+    AlreadyDispatched,
 }

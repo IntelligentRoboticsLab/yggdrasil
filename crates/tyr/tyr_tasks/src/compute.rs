@@ -1,5 +1,4 @@
 use std::{
-    any::type_name,
     future::Future,
     panic::{catch_unwind, resume_unwind, AssertUnwindSafe},
     pin::Pin,
@@ -7,11 +6,11 @@ use std::{
     thread,
 };
 
-use miette::{miette, IntoDiagnostic, Result, WrapErr};
+use miette::{IntoDiagnostic, WrapErr};
 use rayon::ThreadPool;
 use tokio::sync::oneshot::{self, Receiver};
 
-use crate::{asynchronous::AsyncDispatcher, task::Task};
+use crate::{asynchronous::AsyncDispatcher, task::Task, Error};
 
 #[derive(Debug)]
 pub struct ComputeJoinHandle<T> {
@@ -46,7 +45,6 @@ pub struct ComputeDispatcher {
     async_dispatcher: AsyncDispatcher,
 }
 
-#[allow(clippy::new_without_default)]
 impl ComputeDispatcher {
     pub(crate) fn new(thread_pool: ThreadPool, async_dispatcher: AsyncDispatcher) -> Self {
         Self {
@@ -55,55 +53,59 @@ impl ComputeDispatcher {
         }
     }
 
-    /// Spawns the function on a threadpool and sets the task to be alive.
+    /// Tries to spawn the function on the threadpool and sets the task to be alive.
     ///
-    /// ```ignore
-    ///    fn big_ass_calculation() -> i32 {
-    ///         // We're gonna need a lot of resources...
-    ///         // ...
-    ///         // Finally, we get our processed value
-    ///         21
-    ///    }
+    /// # Errors
+    /// If the task is already alive, the function is not spawned and an [`Error::AlreadyDispatched`]
+    /// is returned instead.
     ///
-    ///    #[system]
-    ///    fn do_calculation(dispatcher: &ComputeDispatcher, task: &mut Task<i32>) -> Result<()> {
-    ///        // Task is already running, so we can't dispatch more at this time...
-    ///        if task.is_alive() {
-    ///            return Ok(());
-    ///        }
-    ///
-    ///        // Dispatches the computation of `big_ass_calculation` to a background thread
-    ///        // where it can be efficiently computed in parallel and without blocking all
-    ///        // the other systems and tasks.
-    ///        //
-    ///        // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
-    ///        dispatcher.dispatch(&mut task, move || big_ass_calculation())?;
-    ///
-    ///        Ok(())
-    ///    }
-    ///
-    ///    #[system]
-    ///    fn handle_completion(
-    ///        task: &mut Task<i32>,
-    ///    ) -> Result<()> {
-    ///        let Some(value) = task.poll() else {
-    ///            // Task is not yet ready, return early!
-    ///            return Ok(());
-    ///        };
-    ///        // Our task has completed! We can now use `value`!
-    ///        Ok(())
-    ///    }
+    /// # Example
     /// ```
-    pub fn dispatch<F, T>(&self, task: &mut Task<T>, func: F) -> Result<()>
+    /// use tyr::{prelude::*, tasks::{ComputeDispatcher, Task}};
+    /// use miette::Result;
+    ///
+    /// fn big_ass_calculation() -> i32 {
+    ///      // We're gonna need a lot of resources...
+    ///      // ...
+    ///      // Finally, we get our processed value
+    ///      21
+    /// }
+    ///
+    /// #[system]
+    /// fn do_calculation(dispatcher: &ComputeDispatcher, task: &mut Task<i32>) -> Result<()> {
+    ///     // Dispatches the computation of `big_ass_calculation` to a background thread
+    ///     // where it can be efficiently computed in parallel and without blocking all
+    ///     // the other systems and tasks.
+    ///     //
+    ///     // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
+    ///     //
+    ///     // If the task is already alive the function fails and the future is not dispatched,
+    ///     // this way we always have one task alive at a time.
+    ///     let _ = dispatcher.try_dispatch(&mut task, move || big_ass_calculation());
+    ///
+    ///     Ok(())
+    ///
+    /// }
+    ///
+    /// #[system]
+    /// fn handle_completion(
+    ///     task: &mut Task<i32>,
+    /// ) -> Result<()> {
+    ///     let Some(value) = task.poll() else {
+    ///         // Task is not yet ready, return early!
+    ///         return Ok(());
+    ///     };
+    ///     // Our task has completed! We can now use `value`!
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn try_dispatch<F, T>(&self, task: &mut Task<T>, func: F) -> crate::Result<()>
     where
         F: FnOnce() -> T + Send + 'static,
         T: Send + 'static,
     {
         if task.is_alive() {
-            return Err(miette!(
-                "Trying to dispatch compute task `{}` which is already alive!",
-                type_name::<Task<T>>()
-            ));
+            return Err(Error::AlreadyDispatched);
         }
 
         let (tx, rx) = oneshot::channel();
@@ -115,6 +117,8 @@ impl ComputeDispatcher {
 
         let compute_join_handle = ComputeJoinHandle { rx };
 
-        self.async_dispatcher.dispatch(task, compute_join_handle)
+        self.async_dispatcher.dispatch(task, compute_join_handle);
+
+        Ok(())
     }
 }

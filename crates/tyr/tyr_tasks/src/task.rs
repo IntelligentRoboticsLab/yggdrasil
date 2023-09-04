@@ -14,8 +14,7 @@ use tyr_internal::{App, Resource};
 ///
 /// To get the value out of a task, you must check it's completion using the [`Task::poll`] method.
 ///
-/// To activate a task you can use a dispatcher such as the [`AsyncDispatcher`](crate::tasks::AsyncDispatcher) or [`ComputeDispatcher`](crate::tasks::ComputeDispatcher)
-///
+/// To activate a task you can use a dispatcher such as the [`AsyncDispatcher`](crate::AsyncDispatcher) or [`ComputeDispatcher`](crate::ComputeDispatcher)
 pub struct Task<T: Send + 'static> {
     pub(crate) join_handle: Option<JoinHandle<T>>,
 }
@@ -72,14 +71,22 @@ impl<T: Send + 'static> Default for Task<T> {
 pub trait TaskResource {
     /// Consumes the [`Resource<T>`] and adds it, along with a dead [`Task<T>`] to the app storage.
     ///
-    /// ```ignore
-    /// fn main() {
-    ///    let app = App::new();
+    /// ```
+    /// use tyr::{prelude::*, tasks::{TaskResource, Task}};
+    /// use miette::Result;
     ///
-    ///    app.add_task_resource(resource);
-    ///    // Is equivalent to:
-    ///    app.add_resource(Resource::<Task<T>>::default())?
-    ///       .add_resource(resource);
+    /// fn main() -> Result<()> {
+    ///     let app = App::new();
+    ///
+    ///     app.add_task_resource(Resource::new(1_i32))?;
+    ///
+    ///     // Is equivalent to:
+    ///
+    ///     let app2 = App::new()
+    ///         .add_resource(Resource::<Task<i32>>::default())?
+    ///         .add_resource(Resource::new(1_i32))?;
+    ///
+    ///    Ok(())
     /// }
     /// ```
     fn add_task_resource<T: Send + Sync + 'static>(self, resource: Resource<T>) -> Result<Self>

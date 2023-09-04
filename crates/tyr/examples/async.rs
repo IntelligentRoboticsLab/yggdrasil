@@ -18,14 +18,9 @@ async fn receive_name(duration: Duration) -> Name {
 
 #[system]
 fn dispatch_name(ad: &AsyncDispatcher, task: &mut Task<Name>) -> Result<()> {
-    // If the task is alive already, we return early
-    if task.is_alive() {
-        return Ok(());
-    }
-
     // We dispatch a future onto a separate thread, and set task
     // as alive by giving it the handle needed to poll it.
-    ad.dispatch(&mut task, receive_name(Duration::from_secs(1)))?;
+    let _ = ad.try_dispatch(&mut task, receive_name(Duration::from_secs(1)));
 
     Ok(())
 }

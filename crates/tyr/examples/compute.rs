@@ -18,15 +18,9 @@ fn calculate_name(duration: Duration) -> Name {
 
 #[system]
 fn dispatch_name(cd: &ComputeDispatcher, task: &mut Task<Name>) -> Result<()> {
-    // If the task is alive already, we return early
-    if task.is_alive() {
-        return Ok(());
-    }
-
     // We dispatch a function onto a threadpool, and set task
     // as alive by giving it the handle needed to poll it.
-    cd.dispatch(&mut task, move || calculate_name(Duration::from_secs(1)))?;
-
+    let _ = cd.try_dispatch(&mut task, move || calculate_name(Duration::from_secs(1)));
     Ok(())
 }
 

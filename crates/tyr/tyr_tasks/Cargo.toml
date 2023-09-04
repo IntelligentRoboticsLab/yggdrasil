@@ -8,5 +8,9 @@ edition = "2021"
 futures-lite = { workspace = true }
 miette = { workspace = true }
 rayon = { workspace = true }
+thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tyr_internal = { path = "../tyr_internal" }
+
+[dev-dependencies]
+tyr = { path = "../" }

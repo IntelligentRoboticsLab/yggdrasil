@@ -1,9 +1,8 @@
-use std::{any::type_name, future::Future};
+use std::future::Future;
 
-use miette::{miette, Result};
 use tokio::runtime::{Handle, Runtime};
 
-use crate::task::Task;
+use crate::{task::Task, Error};
 
 /// A wrapper around the tokio runtime.
 pub struct TokioRuntime(Runtime);
@@ -30,66 +29,71 @@ impl AsyncDispatcher {
         Self { runtime_handle }
     }
 
-    /// Spawns the future on the async runtime and sets the task to be alive.
+    /// Tries to spawn the future on the async runtime and sets the task to be alive.
+    ///
+    /// # Errors
+    /// If the task is already alive, the future is not spawned and an [`Error::AlreadyDispatched`]
+    /// is returned instead.
     ///
     /// # Example
-    /// ```ignore
-    ///    async fn download_money() -> i32 {
-    ///        // Needs to connect to a secret bank across the globe... this may take a while!
-    ///        // ...
-    ///        // After downloading we get 20 money! Nice!
-    ///        20
-    ///    }
-    ///
-    ///    #[system]
-    ///    fn get_money(dispatcher: &AsyncDispatcher, task: &mut Task<i32>) -> Result<()> {
-    ///        // Task is already running, so we can't dispatch more at this time...
-    ///        if task.is_alive() {
-    ///            return Ok(());
-    ///        }
-    ///
-    ///        // Dispatches the future returned by `download_money` to a background thread
-    ///        // where it can be efficiently awaited without blocking all the other systems
-    ///        // and tasks.
-    ///        //
-    ///        // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
-    ///        dispatcher.dispatch(&mut task, download_money())?;
-    ///
-    ///        Ok(())
-    ///    }
-    ///
-    ///    #[system]
-    ///    fn handle_completion(
-    ///        task: &mut Task<i32>,
-    ///    ) -> Result<()> {
-    ///        let Some(money) = task.poll() else {
-    ///            // Task is not yet ready, return early!
-    ///            return Ok(());
-    ///        };
-    ///        // Our task has completed! We can now use `money`!
-    ///        Ok(())
-    ///    }
     /// ```
-    pub fn dispatch<F: Future + Send + 'static>(
+    /// use tyr::{prelude::*, tasks::{AsyncDispatcher, Task}};
+    /// use miette::Result;
+    ///
+    /// async fn download_money() -> i32 {
+    ///     // Needs to connect to a secret bank across the globe... this may take a while!
+    ///     // ...
+    ///     // After downloading we get 20 money! Nice!
+    ///     20
+    /// }
+    ///
+    /// #[system]
+    /// fn get_money(dispatcher: &AsyncDispatcher, task: &mut Task<i32>) -> Result<()> {
+    ///     // Dispatches the future returned by `download_money` to a background thread
+    ///     // where it can be efficiently awaited without blocking all the other systems
+    ///     // and tasks.
+    ///     //
+    ///     // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
+    ///     //
+    ///     // If the task is already alive the function fails and the future is not dispatched,
+    ///     // this way we always have one task alive at a time.
+    ///     let _ = dispatcher.try_dispatch(&mut task, download_money());
+    ///
+    ///     Ok(())
+    /// }
+    ///
+    /// #[system]
+    /// fn handle_completion(
+    ///     task: &mut Task<i32>,
+    /// ) -> Result<()> {
+    ///     let Some(money) = task.poll() else {
+    ///         // Task is not yet ready, return early!
+    ///         return Ok(());
+    ///     };
+    ///     // Our task has completed! We can now use `money`!
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn try_dispatch<F: Future + Send + 'static>(
         &self,
         task: &mut Task<F::Output>,
         future: F,
-    ) -> Result<()>
+    ) -> crate::Result<()>
     where
         F::Output: Send,
     {
-        // TODO: is this the behaviour do we want here? Perhaps a future version could include some kind of `TaskSet` that allow for multiple dispatches?
         if task.is_alive() {
-            return Err(miette!(
-                "Trying to dispatch async task `{}` which is already alive!",
-                type_name::<Task<F::Output>>()
-            ));
+            Err(Error::AlreadyDispatched)
+        } else {
+            self.dispatch(task, future);
+            Ok(())
         }
+    }
 
-        let join_handle = Some(self.runtime_handle.spawn(future));
-
-        *task = Task { join_handle };
-
-        Ok(())
+    pub(crate) fn dispatch<F: Future + Send + 'static>(&self, task: &mut Task<F::Output>, future: F)
+    where
+        F::Output: Send,
+    {
+        task.join_handle = Some(self.runtime_handle.spawn(future));
     }
 }
