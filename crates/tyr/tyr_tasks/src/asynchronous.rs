@@ -9,10 +9,11 @@ use crate::task::Task;
 pub struct TokioRuntime(Runtime);
 
 impl TokioRuntime {
-    pub fn new(runtime: Runtime) -> Self {
+    pub(crate) fn new(runtime: Runtime) -> Self {
         Self(runtime)
     }
 
+    /// Returns a raw tokio [`Handle`] to the underlying runtime
     pub fn handle(&self) -> &Handle {
         self.0.handle()
     }
