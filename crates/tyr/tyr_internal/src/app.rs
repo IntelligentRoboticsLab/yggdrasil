@@ -135,6 +135,8 @@ impl App {
 
 impl ScheduledApp {
     fn run(&mut self) -> Result<()> {
-        self.schedule.execute(&mut self.storage)
+        loop {
+            self.schedule.execute(&mut self.storage)?;
+        }
     }
 }
