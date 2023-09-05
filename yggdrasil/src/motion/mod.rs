@@ -5,6 +5,7 @@ use tyr::prelude::*;
 mod motion_executer;
 mod motion_manager;
 mod motion_types;
+mod motion_util;
 
 use motion_executer::motion_executer;
 use motion_manager::motion_manager_initializer;

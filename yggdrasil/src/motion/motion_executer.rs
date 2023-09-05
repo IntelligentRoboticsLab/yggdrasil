@@ -1,4 +1,5 @@
 use crate::motion::motion_manager::{ActiveMotion, MotionManager};
+use crate::motion::motion_util::MotionUtilExt;
 use miette::Result;
 use nidhogg::{
     types::{FillExt, JointArray},
@@ -24,11 +25,9 @@ fn reached_position(
     target_position: &JointArray<f32>,
     error_margin: f32,
 ) -> bool {
-    let curr_iter = current_position.clone().into_iter();
-    let target_iter = target_position.clone().into_iter();
-
-    curr_iter
-        .zip(target_iter)
+    current_position
+        .clone()
+        .zip(target_position.clone())
         .all(|(curr, target)| target - error_margin <= curr && curr <= target + error_margin)
 }
 
@@ -44,13 +43,10 @@ pub fn lerp(
     target_position: &JointArray<f32>,
     scalar: f32,
 ) -> JointArray<f32> {
-    let curr_iter = current_position.clone().into_iter();
-    let target_iter = target_position.clone().into_iter();
-
-    curr_iter
-        .zip(target_iter)
+    current_position
+        .clone()
+        .zip(target_position.clone())
         .map(|(curr, target)| curr * scalar + target * (1.0 - scalar))
-        .collect()
 }
 
 /// Executes the current motion.

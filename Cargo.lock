@@ -376,7 +376,7 @@ dependencies = [
 [[package]]
 name = "nidhogg"
 version = "0.1.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?branch=jkaiser/iterable_macro#1b4fd8686d27565c7bfe77f9198870e2a28a1f1c"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#b9f87fb8a8b83136fff21f084bebf5028918cc21"
 dependencies = [
  "miette",
  "nidhogg_derive",
@@ -389,7 +389,7 @@ dependencies = [
 [[package]]
 name = "nidhogg_derive"
 version = "0.1.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?branch=jkaiser/iterable_macro#1b4fd8686d27565c7bfe77f9198870e2a28a1f1c"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#b9f87fb8a8b83136fff21f084bebf5028918cc21"
 dependencies = [
  "itertools",
  "proc-macro2",

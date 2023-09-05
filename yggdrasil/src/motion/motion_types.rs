@@ -80,6 +80,7 @@ impl Motion {
 #[derive(PartialEq, Eq, Hash, Debug)]
 #[non_exhaustive]
 pub enum MotionType {
+    Test,
     SitDownFromStand,
     StandUpFromSit,
 }
