@@ -19,6 +19,7 @@ fn main() -> Result<()> {
         .add_module(FilterModule)?
         .add_module(SoundManagerModule)?
         .add_module(WeeSoundModule)?
+        .add_module(WebSocketModule)?
         .run()?;
     Ok(())
 }
