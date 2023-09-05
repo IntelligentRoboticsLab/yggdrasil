@@ -54,7 +54,6 @@ impl AsyncDispatcher {
     ///     // and tasks.
     ///     //
     ///     // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
-    ///     //
     ///     match dispatcher.try_dispatch(&mut task, download_money()) {
     ///         // Successfully dispatched the task
     ///         Ok(_) => Ok(()),
