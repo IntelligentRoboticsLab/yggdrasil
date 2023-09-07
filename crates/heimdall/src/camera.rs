@@ -4,14 +4,14 @@
 //! <https://github.com/intelligentroboticslab>
 //!
 //! by O. Bosgraaf
-
 use std::{
+    ffi::OsStr,
     fs::File,
     io::{BufWriter, Write},
     path::Path,
 };
 
-use crate::Result;
+use crate::{error::Error, Result};
 
 /// The camera width of a NAO v6.
 const NAO_CAMERA_WIDTH: u32 = 1280;
@@ -25,7 +25,7 @@ use linuxvideo::{
     Device,
 };
 
-use core::arch::x86_64::*;
+use core::{arch::x86_64::*, slice::SlicePattern};
 
 use simdeez::sse2::*;
 use simdeez::sse41::*;
@@ -212,7 +212,7 @@ impl Camera {
             let rgb2 = _mm_srai_epi32(rgb2, 8);
             let rgb2 = clip(rgb2);
 
-            destination.write(&[
+            destination.write_all(&[
                 _mm_extract_epi32(rgb1, 0) as u8,
                 _mm_extract_epi32(rgb1, 1) as u8,
                 _mm_extract_epi32(rgb1, 2) as u8,
@@ -292,8 +292,12 @@ impl Camera {
         let output_file = File::create(destination)?;
         let mut encoder = image::codecs::jpeg::JpegEncoder::new(output_file);
 
-        let mut rgb_buffer = Vec::<u8>::new();
-        rgb_buffer.resize((self.image_width() * self.image_height() * 3) as usize, 0);
+        let mut rgb_buffer =
+            Vec::<u8>::with_capacity((self.image_width() * self.image_height() * 3 * 3) as usize);
+        rgb_buffer.resize(
+            (self.image_height() * self.image_width() * 3 * 3) as usize,
+            0,
+        );
 
         match self.pix_format.pixelformat() {
             Pixelformat::YUYV => self.save_rgb_image_from_yuyv(rgb_buffer.as_mut_slice()),
@@ -354,5 +358,22 @@ impl Camera {
             Pixelformat::YUYV => self.save_greyscale_image_from_yuyv(output_file_buffer),
             pixel_format => Ok(eprintln!("Unsupported pixel format: {pixel_format}")),
         }
+    }
+
+    pub fn save_yuyv_image_to_file<P: AsRef<Path>>(&mut self, destination: P) -> Result<()> {
+        let path = destination.as_ref();
+        let mut output_file = File::create(path)?;
+        eprintln!("size: {}, {}", self.image_width(), self.image_height());
+
+        match self.pix_format.pixelformat() {
+            Pixelformat::YUYV => self.camera_stream.dequeue(|image_buffer_yuv_422| {     
+                let buf: Vec<_> = image_buffer_yuv_422.chunks(4).into_iter().rev().flatten().cloned().collect();
+                output_file.write_all(buf.as_slice())?;
+                Ok(())
+            }),
+            _ => unimplemented!("lmao"),
+        }?;
+
+        Ok(())
     }
 }
