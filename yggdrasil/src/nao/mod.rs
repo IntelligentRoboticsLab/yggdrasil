@@ -36,7 +36,7 @@ fn initialize_nao(storage: &mut Storage) -> Result<()> {
 }
 
 #[system]
-fn write_hardware_info(
+pub fn write_hardware_info(
     nao: &mut LolaBackend,
     robot_state: &mut NaoState,
     update: &NaoControlMessage,

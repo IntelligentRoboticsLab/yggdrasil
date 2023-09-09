@@ -1,5 +1,5 @@
 use std::{
-    any::{Any, TypeId},
+    any::{type_name, Any, TypeId},
     collections::HashMap,
     sync::{Arc, LockResult, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
@@ -77,5 +77,29 @@ impl Storage {
     pub fn get<T: 'static>(&self) -> Option<&ErasedResource> {
         let type_id = TypeId::of::<T>();
         self.0.get(&type_id)
+    }
+
+    /// TODO: docs
+    pub fn map_resource_ref<T: 'static, F: Fn(&T) -> R, R>(&self, f: F) -> R {
+        let resource = self
+            .get::<T>()
+            .unwrap_or_else(|| panic!("Resource of type `{}` does not exist", type_name::<T>()));
+        let guard = resource
+            .read()
+            .unwrap_or_else(|_| panic!("Failed to lock resource of type `{}`", type_name::<T>()));
+
+        f(guard.downcast_ref().unwrap())
+    }
+
+    /// TODO: docs
+    pub fn map_resource_mut<T: 'static, F: Fn(&mut T) -> R, R>(&self, f: F) -> R {
+        let resource = self
+            .get::<T>()
+            .unwrap_or_else(|| panic!("Resource of type `{}` does not exist", type_name::<T>()));
+        let mut guard = resource
+            .write()
+            .unwrap_or_else(|_| panic!("Failed to lock resource of type `{}`", type_name::<T>()));
+
+        f(guard.downcast_mut().unwrap())
     }
 }

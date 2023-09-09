@@ -2,7 +2,7 @@ use std::future::Future;
 
 use tokio::runtime::{Handle, Runtime};
 
-use crate::{task::Task, Error};
+use crate::{task::Task, Error, TaskSet};
 
 /// A wrapper around the tokio runtime.
 pub struct TokioRuntime(Runtime);
@@ -27,6 +27,11 @@ pub struct AsyncDispatcher {
 impl AsyncDispatcher {
     pub(crate) fn new(runtime_handle: Handle) -> Self {
         Self { runtime_handle }
+    }
+
+    /// Return a handle to the underlying tokio runtime
+    pub fn handle(&self) -> &Handle {
+        &self.runtime_handle
     }
 
     /// Tries to spawn the future on the async runtime and sets the task to be alive.
@@ -86,15 +91,20 @@ impl AsyncDispatcher {
         if task.is_alive() {
             Err(Error::AlreadyDispatched)
         } else {
-            self.dispatch(task, future);
+            task.join_handle = Some(self.runtime_handle.spawn(future));
             Ok(())
         }
     }
 
-    pub(crate) fn dispatch<F: Future + Send + 'static>(&self, task: &mut Task<F::Output>, future: F)
-    where
-        F::Output: Send,
+    /// Dispatches a task onto a `[TaskSet<T>]`
+    pub fn dispatch_set<F: Future + Send + 'static>(
+        &self,
+        task_set: &mut TaskSet<F::Output>,
+        future: F,
+    ) where
+        F::Output: Send + Unpin,
     {
-        task.join_handle = Some(self.runtime_handle.spawn(future));
+        let _guard = self.runtime_handle.enter();
+        task_set.join_set.spawn(future);
     }
 }

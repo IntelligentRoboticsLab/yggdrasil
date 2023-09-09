@@ -2,21 +2,26 @@ pub mod filter;
 pub mod nao;
 pub mod websocket;
 
-use filter::FilterModule;
-use miette::Result;
-use nao::NaoModule;
 use tyr::{prelude::*, tasks::TaskModule};
-use websocket::WebsocketModule;
+
+use miette::Result;
+
+use filter::FilterModule;
+use nao::NaoModule;
+use websocket::WebSocketModule;
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt::fmt()
+        .pretty()
+        .with_max_level(tracing::Level::DEBUG)
+        .init();
     miette::set_panic_hook();
 
     App::new()
         .add_module(TaskModule)?
         .add_module(NaoModule)?
         .add_module(FilterModule)?
-        .add_module(WebsocketModule)?
+        .add_module(WebSocketModule)?
         .run()?;
     Ok(())
 }

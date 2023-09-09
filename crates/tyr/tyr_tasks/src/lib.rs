@@ -12,7 +12,7 @@ use crate::asynchronous::TokioRuntime;
 
 pub use crate::asynchronous::AsyncDispatcher;
 pub use crate::compute::ComputeDispatcher;
-pub use crate::task::{Task, TaskResource};
+pub use crate::task::{Task, TaskResource, TaskSet};
 
 // TODO: customisable async/compute thread count through config
 

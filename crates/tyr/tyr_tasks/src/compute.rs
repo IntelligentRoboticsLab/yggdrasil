@@ -118,7 +118,7 @@ impl ComputeDispatcher {
 
         let compute_join_handle = ComputeJoinHandle { rx };
 
-        self.async_dispatcher.dispatch(task, compute_join_handle);
+        task.join_handle = Some(self.async_dispatcher.handle().spawn(compute_join_handle));
 
         Ok(())
     }

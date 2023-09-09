@@ -1,6 +1,8 @@
-use futures_lite::future;
+use std::{pin::pin, task::Poll};
+
+use futures::{executor, poll};
 use miette::{IntoDiagnostic, Result, WrapErr};
-use tokio::task::JoinHandle;
+use tokio::task::{JoinHandle, JoinSet};
 
 use tyr_internal::{App, Resource};
 
@@ -15,14 +17,14 @@ use tyr_internal::{App, Resource};
 /// To get the value out of a task, you must check it's completion using the [`Task::poll`] method.
 ///
 /// To activate a task you can use a dispatcher such as the [`AsyncDispatcher`](crate::AsyncDispatcher) or [`ComputeDispatcher`](crate::ComputeDispatcher)
-pub struct Task<T: Send + 'static> {
+pub struct Task<T: Send> {
     pub(crate) join_handle: Option<JoinHandle<T>>,
 }
 
 impl<T: Send + 'static> Task<T> {
     /// Spawns a new, dead task
     pub fn new() -> Self {
-        Self { join_handle: None }
+        Self::default()
     }
 
     /// Checks if the task is alive.
@@ -33,12 +35,15 @@ impl<T: Send + 'static> Task<T> {
     /// Polls the task status, returning `Some(T)` if it is completed and `None` if the task is still in progress or the task is dead.
     pub fn poll(&mut self) -> Option<T> {
         let output = match &mut self.join_handle {
-            Some(join_handle) => future::block_on(async {
-                future::poll_once(join_handle).await.map(|res| {
-                    res.into_diagnostic()
-                        .wrap_err("Failed to complete task")
-                        .unwrap()
-                })
+            Some(join_handle) => executor::block_on(async {
+                match poll!(join_handle) {
+                    Poll::Ready(res) => Some(
+                        res.into_diagnostic()
+                            .wrap_err("Failed to complete task")
+                            .unwrap(),
+                    ),
+                    Poll::Pending => None,
+                }
             }),
             None => None,
         };
@@ -63,7 +68,59 @@ impl<T: Send + 'static> Task<T> {
 
 impl<T: Send + 'static> Default for Task<T> {
     fn default() -> Self {
-        Self::new()
+        Self { join_handle: None }
+    }
+}
+
+pub struct TaskSet<T: Send + 'static + Unpin> {
+    pub(crate) join_set: JoinSet<T>,
+}
+
+impl<T: Send + 'static + Unpin> TaskSet<T> {
+    /// Spawns a new, dead task set
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Checks if any task is alive.
+    pub fn is_alive(&self) -> bool {
+        !self.join_set.is_empty()
+    }
+
+    /// Polls the task status, returning `Some(T)` if it is completed and `None` if the task is still in progress or the task is dead.
+    pub fn poll_next(&mut self) -> Option<T> {
+        if !self.is_alive() {
+            return None;
+        }
+
+        executor::block_on(async {
+            let future = self.join_set.join_next();
+            match poll!(pin!(future)) {
+                Poll::Ready(Some(res)) => Some(
+                    res.into_diagnostic()
+                        .wrap_err("Failed to complete task")
+                        .unwrap(),
+                ),
+                // This should never occur as we check if there are any remaining tasks before this
+                Poll::Ready(None) => unreachable!(),
+                Poll::Pending => None,
+            }
+        })
+    }
+
+    /// Calls [`Self::poll_next`] for the amount of tasks in the set
+    pub fn poll_all(&mut self) -> Vec<T> {
+        (0..self.join_set.len())
+            .flat_map(|_| self.poll_next())
+            .collect()
+    }
+}
+
+impl<T: Send + 'static + Unpin> Default for TaskSet<T> {
+    fn default() -> Self {
+        Self {
+            join_set: JoinSet::new(),
+        }
     }
 }
 
