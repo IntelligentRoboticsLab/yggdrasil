@@ -1,20 +1,19 @@
-pub mod listener;
 pub mod message;
+pub mod stream;
 
 use std::net::SocketAddr;
 
-use bifrost::serialization::Encode;
-use miette::{miette, IntoDiagnostic, Result};
+use miette::{miette, Result};
 use tyr::{
     prelude::*,
     tasks::{AsyncDispatcher, Error, Task, TaskSet},
 };
 
-use listener::{Connections, WebSocketListener};
+use stream::{Connections, Listener};
 
 use self::{
-    listener::{WebSocketReceiver, WebSocketSender},
     message::{Message, Payload},
+    stream::{Receiver, Sender},
 };
 
 pub const ADDR: &str = "0.0.0.0:1984";
@@ -27,9 +26,7 @@ impl Module for WebSocketModule {
 
         Ok(app
             .add_resource(Resource::<Connections>::default())?
-            .add_resource(
-                Resource::<Task<Result<(WebSocketSender, WebSocketReceiver)>>>::default(),
-            )?
+            .add_resource(Resource::<Task<Result<(Sender, Receiver)>>>::default())?
             .add_resource(Resource::<TaskSet<Result<RecvCompletion>>>::default())?
             .add_resource(Resource::<TaskSet<Result<SendCompletion>>>::default())?
             .add_startup_system(init_server)?
@@ -44,9 +41,8 @@ impl Module for WebSocketModule {
 }
 
 fn init_server(storage: &mut Storage) -> Result<()> {
-    let socket = storage.map_resource_ref(|ad: &AsyncDispatcher| {
-        ad.handle().block_on(WebSocketListener::bind(ADDR))
-    })?;
+    let socket = storage
+        .map_resource_ref(|ad: &AsyncDispatcher| ad.handle().block_on(Listener::bind(ADDR)))?;
 
     tracing::info!("WebSocket listening on {ADDR}");
 
@@ -58,10 +54,10 @@ fn init_server(storage: &mut Storage) -> Result<()> {
 #[system]
 fn accept_sockets(
     ad: &AsyncDispatcher,
-    accept_task: &mut Task<Result<(WebSocketSender, WebSocketReceiver)>>,
+    accept_task: &mut Task<Result<(Sender, Receiver)>>,
     recv_tasks: &mut TaskSet<Result<RecvCompletion>>,
     connections: &mut Connections,
-    socket: &WebSocketListener,
+    socket: &Listener,
 ) -> Result<()> {
     match ad.try_dispatch(&mut accept_task, {
         let socket = socket.clone();
@@ -74,7 +70,7 @@ fn accept_sockets(
                 tracing::info!("Opened ws connection with {}", sender.address);
 
                 // Start receiving messages
-                ad.dispatch_set(&mut recv_tasks, recv_message(receiver, sender.address));
+                ad.dispatch_set(&mut recv_tasks, recv_message(receiver));
 
                 connections.insert(sender);
             }
@@ -100,9 +96,11 @@ fn recv_messages(
             RecvCompletion::ConnectionClosed(address) => {
                 connections.remove(address);
             }
+            // NOTE: this way we receive only one message per connection every
+            // LoLA cycle. Shouldn't be an issue but something to keep in mind
             RecvCompletion::Message { rx, msg } => {
-                // Receive more messages 😎
-                ad.dispatch_set(&mut recv_tasks, recv_message(rx, msg.address));
+                // Try to receive another message 😎
+                ad.dispatch_set(&mut recv_tasks, recv_message(rx));
 
                 handle_message(msg, &ad, &mut send_tasks, &connections)?;
             }
@@ -134,7 +132,6 @@ fn handle_message(
     send_tasks: &mut TaskSet<Result<SendCompletion>>,
     connections: &Connections,
 ) -> Result<()> {
-    // handle message
     match msg.payload {
         Payload::Ping => {
             let conn = connections
@@ -153,27 +150,23 @@ fn handle_message(
 
 enum RecvCompletion {
     ConnectionClosed(SocketAddr),
-    Message { rx: WebSocketReceiver, msg: Message },
+    Message { rx: Receiver, msg: Message },
 }
 
-async fn recv_message(mut rx: WebSocketReceiver, address: SocketAddr) -> Result<RecvCompletion> {
-    // Receive messages in stream
-    let Some(payload) = rx.recv_next().await? else {
+async fn recv_message(mut rx: Receiver) -> Result<RecvCompletion> {
+    // Receive a single message in stream
+    let Some(msg) = rx.recv_next().await? else {
         // No more messages, the connection is likely closed
-        return Ok(RecvCompletion::ConnectionClosed(address));
+        return Ok(RecvCompletion::ConnectionClosed(rx.address));
     };
 
-    let msg = Message { address, payload };
     Ok(RecvCompletion::Message { rx, msg })
 }
 
 struct SendCompletion;
 
-async fn send_message(conn: WebSocketSender, payload: Payload) -> Result<SendCompletion> {
-    let mut buf = Vec::with_capacity(payload.encode_len());
-    payload.encode(&mut buf).into_diagnostic()?;
-
-    conn.send(buf).await?;
+async fn send_message(conn: Sender, payload: Payload) -> Result<SendCompletion> {
+    conn.send(payload).await?;
 
     Ok(SendCompletion)
 }

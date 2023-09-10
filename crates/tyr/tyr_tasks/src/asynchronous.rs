@@ -96,7 +96,7 @@ impl AsyncDispatcher {
         }
     }
 
-    /// Dispatches a task onto a `[TaskSet<T>]`
+    /// Dispatches a task onto a [`TaskSet<T>`]
     pub fn dispatch_set<F: Future + Send + 'static>(
         &self,
         task_set: &mut TaskSet<F::Output>,
