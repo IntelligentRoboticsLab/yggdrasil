@@ -1,10 +1,7 @@
-# get file completetions
-$schema: 
-
 version: 2
 updates:
   - package-ecosystem: "cargo"
     # look for Cargo.toml and Cargo.lock in the root directory
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
