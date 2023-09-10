@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
 
     match args.action {
         Commands::Build(opts) => opts.build(args_bin).await?,
-        Commands::Upload => todo!(),
+        Commands::Upload(opts) => opts.upload().await?,
         Commands::Scan(opts) => opts.scan(sif_config).await?,
     }
 

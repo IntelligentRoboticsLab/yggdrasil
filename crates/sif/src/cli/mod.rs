@@ -2,6 +2,7 @@ use clap::Parser;
 
 pub mod build;
 pub mod scan;
+pub mod upload;
 
 #[derive(Parser)]
 #[clap(name = "sif")]
@@ -21,6 +22,6 @@ pub struct Cli {
 #[derive(Parser)]
 pub enum Commands {
     Build(build::Build),
-    Upload,
+    Upload(upload::Upload),
     Scan(scan::Scan),
 }
