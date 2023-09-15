@@ -60,7 +60,7 @@ async fn ping(robot_number: u8, sif_config: SifConfig, opts: ConfigOptsScan) -> 
         robot_number
     );
 
-    let code = Command::new("ping")
+    let ping = Command::new("ping")
         .arg("-W1") // 1 second time out
         .arg("-q") // quiet output
         .arg("-c2") // require only 2 replies
@@ -74,20 +74,20 @@ async fn ping(robot_number: u8, sif_config: SifConfig, opts: ConfigOptsScan) -> 
         .await
         .into_diagnostic()?;
 
-    if code.success() {
+    if ping.success() {
         println!(
-            "[+] {} => {}: {}",
+            "[+] {} | {} | {}",
             addr,
+            "ONLINE ".green().bold(),
             sif_config.get_robot_name(robot_number).white().bold(),
-            "ONLINE".green().bold()
         );
         return Ok(());
     }
 
     println!(
         "[+] {} | {} | {}",
-        "OFFLINE".red().bold(),
         addr,
+        "OFFLINE".red().bold(),
         sif_config.get_robot_name(robot_number).white().bold(),
     );
 
