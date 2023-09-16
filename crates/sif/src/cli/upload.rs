@@ -1,9 +1,7 @@
-use std::path::PathBuf;
-
 use clap::Parser;
-use miette::{miette, Result};
-use rusync::{self, ConsoleProgressInfo, SyncOptions, Syncer};
+use miette::{Result, IntoDiagnostic, miette};
 use tokio::process::Command;
+use std::fs;
 
 use crate::{cargo, config::SifConfig};
 
@@ -40,24 +38,50 @@ impl Upload {
         );
 
         cargo::build("yggdrasil".to_owned(), true, Some("x86_64-unknown-linux-gnu".to_owned())).await?;
+        fs::copy("./target/x86_64-unknown-linux-gnu/release/yggdrasil", "./deploy/yggdrasil").into_diagnostic()?;
 
-        let upload_target = format!("nao@{}:~/yggdrasil", addr.clone());
-        println!("built target: {upload_target}");
-        let syncer = Syncer::new(
-            &PathBuf::from("/home/joost/Documents/GitHub/yggdrasil/target/x86_64-unknown-linux-gnu/release/yggdrasil"),
-            &PathBuf::from(upload_target),
-            SyncOptions::default(),
-            Box::new(ConsoleProgressInfo::default()),
-        );
-
-        let synkie = syncer.sync().map_err(|_| miette!("oops"))?;
-        println!("sync result: {synkie:?}");
-
-        let ssh_status = Command::new("ssh")
-            .arg(format!("nao@{}", addr.clone()))
-            .arg("./yggdrasil")
-            .status()
-            .await;
+        clone(addr.clone()).await?;
+        ssh(addr.clone()).await?;
+        
         Ok(())
     }
+}
+
+/// Copy the contents of the 'deploy' folder to the robot.
+async fn clone(addr: String) -> Result<()> { 
+    println!("Cloning into the nao.");
+
+    let clone = Command::new("scp")
+    .arg("-r")
+    .arg("./deploy/.")
+    .arg(format!("nao@{}:~/", addr.clone()))
+    .spawn()
+    .into_diagnostic()?
+    .wait()
+    .await
+    .into_diagnostic()?;
+
+    if !clone.success() {
+        return Err(miette!("Failed to secure copy to the nao."));
+    }
+
+    Ok(())
+}
+
+/// SSH into the robot.
+async fn ssh(addr: String) -> Result<()> {
+    let ssh_status = Command::new("ssh")
+        .arg(format!("nao@{}", addr.clone()))
+        .arg("~/yggdrasil")
+        .spawn()
+        .into_diagnostic()?
+        .wait()
+        .await
+        .into_diagnostic()?;
+
+    if !ssh_status.success() {
+        return Err(miette!("Failed to ssh into the nao."));
+    }
+
+    Ok(())
 }
