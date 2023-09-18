@@ -66,7 +66,7 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets --all-features -- -D warnings
+          args: --config target.x86_64-unknown-linux-gnu.rustflags=[] --all-targets --all-features -- -D warnings
 
   test:
     name: Cargo test
@@ -95,7 +95,7 @@ jobs:
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
-          command: test
+          command: test --config target.x86_64-unknown-linux-gnu.rustflags=[]
 
   build:
     name: Cargo build & test
@@ -124,4 +124,4 @@ jobs:
       - name: Run cargo build
         uses: actions-rs/cargo@v1
         with:
-          command: build
+          command: build --config target.x86_64-unknown-linux-gnu.rustflags=[]
