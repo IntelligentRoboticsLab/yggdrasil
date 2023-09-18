@@ -8,7 +8,7 @@ use std::{
 
 use console::style;
 use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
-use miette::{Context, Diagnostic, IntoDiagnostic, Result};
+use miette::{Context, Diagnostic, Result};
 use regex::Regex;
 use thiserror::Error;
 use tokio::{
@@ -30,10 +30,6 @@ enum CargoErrorKind {
     #[diagnostic(help("Failed to parse regex pattern!"))]
     Regex(#[from] regex::Error),
 
-    #[error("Failed to get unit count from cargo")]
-    #[diagnostic(help("Do you have a nightly toolchain installed?"))]
-    Units,
-
     #[error(transparent)]
     #[diagnostic(help("Failed to parse stderr"))]
     FromUtf8(#[from] FromUtf8Error),
@@ -45,28 +41,6 @@ enum CargoErrorKind {
     #[diagnostic(help("Cargo output is printed above!"))]
     Cargo(String),
 }
-
-/// Get the total number of compile units for the specified argument.
-async fn get_units<I, S>(args: I) -> Result<usize, CargoErrorKind>
-where
-    I: IntoIterator<Item = S> + Debug,
-    S: AsRef<OsStr>,
-{
-    let output = Command::new("cargo")
-        .arg("+nightly")
-        .args(args)
-        .args(["--unit-graph", "-Z", "unstable-options"])
-        .output()
-        .await
-        .map_err(|_| CargoErrorKind::Cargo("wtf".to_string()))?;
-
-    let json = String::from_utf8(output.stdout)?;
-    let val: serde_json::Value = serde_json::from_str(&json)?;
-    val.get("units")
-        .and_then(|units| units.as_array().map(|a| a.len()))
-        .ok_or(CargoErrorKind::Units)
-}
-
 async fn cargo<I, S>(args: I) -> Result<(), CargoErrorKind>
 where
     I: IntoIterator<Item = S> + Debug + Clone,
@@ -75,7 +49,7 @@ where
     let progress_regex = Regex::new(r"\]\s+(\d+)/(\d+)")?;
     let module_regex = Regex::new(r"\d+\d+: (.+?)(?:\r\n|\r|\n|$)")?;
     let m = MultiProgress::new();
-    let pb = m.add(ProgressBar::new(1000 as u64));
+    let pb = m.add(ProgressBar::new(1000));
     pb.set_style(
         ProgressStyle::with_template("{prefix} 🔨 Building yggdrasil... ({elapsed})")
             .unwrap()
