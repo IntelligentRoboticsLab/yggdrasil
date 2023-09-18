@@ -8,8 +8,8 @@ use crate::{cargo, config::SifConfig};
 #[derive(Clone, Debug, Parser)]
 pub struct ConfigOptsUpload {
     /// Robot number
-    #[clap(long)]
-    robot_number: u8,
+    #[clap(long, short)]
+    number: u8,
 
     /// Scan for wired (true) or wireless (false) robots [default: false]
     #[clap(long)]
@@ -34,7 +34,7 @@ impl Upload {
             "10.{}.{}.{}",
             u8::from(self.upload.lan),
             self.upload.team_number.unwrap_or(sif_config.team_number),
-            self.upload.robot_number
+            self.upload.number
         );
 
         cargo::build("yggdrasil".to_owned(), true, Some("x86_64-unknown-linux-gnu".to_owned())).await?;

@@ -19,8 +19,8 @@ pub enum Sound {
 impl Sound {
     fn file_path(&self) -> &'static str {
         match self {
-            Self::Weee => "sounds/weeeee.wav",
-            Self::Ghast => "sounds/ghast.wav",
+            Self::Weee => "./deploy/assets/sounds/weeeee.wav",
+            Self::Ghast => "./deploy/assets/sounds/ghast.wav",
         }
     }
 }
