@@ -1,7 +1,7 @@
 use clap::Parser;
-use miette::{Result, IntoDiagnostic, miette};
-use tokio::process::Command;
+use miette::{miette, IntoDiagnostic, Result};
 use std::fs;
+use tokio::process::Command;
 
 use crate::{cargo, config::SifConfig};
 
@@ -37,29 +37,38 @@ impl Upload {
             self.upload.number
         );
 
-        cargo::build("yggdrasil".to_owned(), true, Some("x86_64-unknown-linux-gnu".to_owned())).await?;
-        fs::copy("./target/x86_64-unknown-linux-gnu/release/yggdrasil", "./deploy/yggdrasil").into_diagnostic()?;
+        cargo::build(
+            "yggdrasil".to_owned(),
+            true,
+            Some("x86_64-unknown-linux-gnu".to_owned()),
+        )
+        .await?;
+        fs::copy(
+            "./target/x86_64-unknown-linux-gnu/release/yggdrasil",
+            "./deploy/yggdrasil",
+        )
+        .into_diagnostic()?;
 
         clone(addr.clone()).await?;
         ssh(addr.clone()).await?;
-        
+
         Ok(())
     }
 }
 
 /// Copy the contents of the 'deploy' folder to the robot.
-async fn clone(addr: String) -> Result<()> { 
+async fn clone(addr: String) -> Result<()> {
     println!("Cloning into the nao.");
 
     let clone = Command::new("scp")
-    .arg("-r")
-    .arg("./deploy/.")
-    .arg(format!("nao@{}:~/", addr.clone()))
-    .spawn()
-    .into_diagnostic()?
-    .wait()
-    .await
-    .into_diagnostic()?;
+        .arg("-r")
+        .arg("./deploy/.")
+        .arg(format!("nao@{}:~/", addr.clone()))
+        .spawn()
+        .into_diagnostic()?
+        .wait()
+        .await
+        .into_diagnostic()?;
 
     if !clone.success() {
         return Err(miette!("Failed to secure copy to the nao."));

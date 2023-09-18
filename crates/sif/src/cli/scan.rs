@@ -2,7 +2,7 @@ use std::process::Stdio;
 
 use clap::Parser;
 use colored::Colorize;
-use miette::{IntoDiagnostic, Result, miette};
+use miette::{miette, IntoDiagnostic, Result};
 use tokio::{process::Command, task::JoinSet};
 
 use crate::config::SifConfig;

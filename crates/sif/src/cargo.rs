@@ -77,15 +77,13 @@ where
     let m = MultiProgress::new();
     let pb = m.add(ProgressBar::new(1000 as u64));
     pb.set_style(
-        ProgressStyle::with_template(
-            "{prefix} 🔨 Building yggdrasil... ({elapsed})",
-        )
-        .unwrap()
-        .with_key("eta", |state: &ProgressState, w: &mut dyn Write| {
-            write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap()
-        })
-        .tick_strings(&[".  ", ".. ", "...", "   "])
-        .progress_chars("#>-"),
+        ProgressStyle::with_template("{prefix} 🔨 Building yggdrasil... ({elapsed})")
+            .unwrap()
+            .with_key("eta", |state: &ProgressState, w: &mut dyn Write| {
+                write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap()
+            })
+            .tick_strings(&[".  ", ".. ", "...", "   "])
+            .progress_chars("#>-"),
     );
     pb.set_prefix(style("[1/1]").bold().dim().to_string());
 
