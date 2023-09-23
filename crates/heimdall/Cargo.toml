@@ -4,13 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-linuxvideo = "0.2.0"
-itertools = "0.10.5"
+image = "0.24.7"
+rscam = "0.5.5"
 thiserror = "1.0.40"
-image = "0.24.6"
-criterion = "0.5.1"
-simdeez = "1.0.8"
-
-[[bench]]
-name = "yuyv_to_rgb_conversion"
-harness = false
