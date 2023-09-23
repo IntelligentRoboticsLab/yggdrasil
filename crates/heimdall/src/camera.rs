@@ -5,7 +5,7 @@ pub const IMAGE_WIDTH: u32 = 1280;
 pub const IMAGE_HEIGHT: u32 = 960;
 
 const DEFAULT_CAMERA_CONFIG: Config = Config {
-    interval: (1, 5),
+    interval: (1, 30),
     resolution: (IMAGE_WIDTH, IMAGE_HEIGHT),
     format: b"YUYV",
     field: FIELD_NONE,
@@ -93,7 +93,7 @@ impl Image {
         yuyv_to_rgb(&self.frame[..], &mut rgb_buffer)?;
 
         encoder.encode(
-            rgb_buffer.as_mut_slice(),
+            rgb_buffer.as_slice(),
             IMAGE_WIDTH,
             IMAGE_HEIGHT,
             image::ColorType::Rgb8,
@@ -136,7 +136,7 @@ impl Camera {
         Ok(Self { camera })
     }
 
-    /// Get fetch the next image.
+    /// Get the next image.
     ///
     /// # Errors
     /// This function fails if the [`Camera`] cannot take an image.
