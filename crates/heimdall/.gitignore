@@ -10,4 +10,4 @@ dead_code/
 /* for saving screenshots */
 **/*.jpeg
 
-./Cargo.lock
+Cargo.lock
