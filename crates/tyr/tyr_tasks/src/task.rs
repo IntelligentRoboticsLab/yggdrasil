@@ -1,10 +1,15 @@
-use std::{pin::pin, task::Poll};
+use std::{collections::HashMap, hash::Hash, task::Poll};
 
 use futures::{executor, poll};
 use miette::{IntoDiagnostic, Result, WrapErr};
-use tokio::task::{JoinHandle, JoinSet};
+use tokio::task::JoinHandle;
 
-use tyr_internal::{App, Resource};
+use tyr_internal::{App, Resource, Storage};
+
+// TODO: look at exports again
+// TODO: get rid of some pub/pub(crates)
+// TODO: look at all docs!!!
+use crate::{asynchronous::AsyncTask, compute::ComputeTask, AsyncDispatcher, ComputeDispatcher};
 
 /// Tasks allow functions to complete after multiple execution cycles.
 ///
@@ -17,110 +22,96 @@ use tyr_internal::{App, Resource};
 /// To get the value out of a task, you must check it's completion using the [`Task::poll`] method.
 ///
 /// To activate a task you can use a dispatcher such as the [`AsyncDispatcher`](crate::AsyncDispatcher) or [`ComputeDispatcher`](crate::ComputeDispatcher)
-pub struct Task<T: Send> {
-    pub(crate) join_handle: Option<JoinHandle<T>>,
+pub struct Task<T: Send, D> {
+    pub(crate) inner: Option<RawTask<T>>,
+    pub(crate) dispatcher: D,
 }
 
-impl<T: Send + 'static> Task<T> {
+impl<T: Send + 'static, D> Task<T, D> {
     /// Spawns a new, dead task
-    pub fn new() -> Self {
-        Self::default()
+    pub fn dead(dispatcher: D) -> Self {
+        Self {
+            inner: None,
+            dispatcher,
+        }
     }
 
     /// Checks if the task is alive.
     pub fn is_alive(&self) -> bool {
-        self.join_handle.is_some()
+        self.inner.is_some()
+    }
+
+    pub fn poll(&mut self) -> Option<T> {
+        let Some(task) = &mut self.inner else {
+            return None;
+        };
+
+        match task.poll() {
+            Some(output) => {
+                self.inner = None;
+                Some(output)
+            }
+            None => None,
+        }
+    }
+}
+
+pub(crate) struct RawTask<T: Send> {
+    pub join_handle: JoinHandle<T>,
+}
+
+impl<T: Send> RawTask<T> {
+    pub fn is_finished(&self) -> bool {
+        self.join_handle.is_finished()
     }
 
     /// Polls the task status, returning `Some(T)` if it is completed and `None` if the task is still in progress or the task is dead.
     pub fn poll(&mut self) -> Option<T> {
-        let output = match &mut self.join_handle {
-            Some(join_handle) => executor::block_on(async {
-                match poll!(join_handle) {
-                    Poll::Ready(res) => Some(
-                        res.into_diagnostic()
-                            .wrap_err("Failed to complete task")
-                            .unwrap(),
-                    ),
-                    Poll::Pending => None,
-                }
-            }),
-            None => None,
-        };
-
-        // automatically kill the task so we don't poll a resolved future
-        if output.is_some() {
-            self.kill();
-        }
-
-        output
-    }
-
-    /// Kills the task, aborting the execution of anything that might be running.
-    fn kill(&mut self) {
-        if let Some(handle) = &self.join_handle {
-            handle.abort();
-        };
-
-        self.join_handle = None;
-    }
-}
-
-impl<T: Send + 'static> Default for Task<T> {
-    fn default() -> Self {
-        Self { join_handle: None }
-    }
-}
-
-pub struct TaskSet<T: Send + 'static + Unpin> {
-    pub(crate) join_set: JoinSet<T>,
-}
-
-impl<T: Send + 'static + Unpin> TaskSet<T> {
-    /// Spawns a new, dead task set
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Checks if any task is alive.
-    pub fn is_alive(&self) -> bool {
-        !self.join_set.is_empty()
-    }
-
-    /// Polls the task status, returning `Some(T)` if it is completed and `None` if the task is still in progress or the task is dead.
-    pub fn poll_next(&mut self) -> Option<T> {
-        if !self.is_alive() {
-            return None;
-        }
-
         executor::block_on(async {
-            let future = self.join_set.join_next();
-            match poll!(pin!(future)) {
-                Poll::Ready(Some(res)) => Some(
+            match poll!(&mut self.join_handle) {
+                Poll::Ready(res) => Some(
                     res.into_diagnostic()
                         .wrap_err("Failed to complete task")
                         .unwrap(),
                 ),
-                // This should never occur as we check if there are any remaining tasks before this
-                Poll::Ready(None) => unreachable!(),
                 Poll::Pending => None,
             }
         })
     }
-
-    /// Calls [`Self::poll_next`] for the amount of tasks in the set
-    pub fn poll_all(&mut self) -> Vec<T> {
-        (0..self.join_set.len())
-            .flat_map(|_| self.poll_next())
-            .collect()
-    }
 }
 
-impl<T: Send + 'static + Unpin> Default for TaskSet<T> {
-    fn default() -> Self {
+pub struct TaskMap<K: Hash + Eq + PartialEq, V: Send + 'static, D> {
+    pub(crate) map: HashMap<K, RawTask<V>>,
+    pub(crate) dispatcher: D,
+}
+
+impl<K: Hash + Eq + PartialEq, V: Send + 'static, D> TaskMap<K, V, D> {
+    /// Spawns a new, dead [`TaskMap`]
+    pub fn dead(dispatcher: D) -> Self {
         Self {
-            join_set: JoinSet::new(),
+            map: HashMap::default(),
+            dispatcher,
         }
+    }
+
+    /// Checks if task with key `K` is alive.
+    pub fn is_alive(&self, key: &K) -> bool {
+        self.map.contains_key(key)
+    }
+
+    /// Polls the task status, returning a T for every finished task.
+    pub fn poll(&mut self) -> Vec<V> {
+        // get all finished tasks
+        let finished = self
+            .map
+            .iter_mut()
+            .filter_map(|(_, raw)| raw.poll())
+            .collect();
+
+        // remove the unfinished tasks
+        self.map.retain(|_, raw| !raw.is_finished());
+
+        finished
     }
 }
 
@@ -146,17 +137,49 @@ pub trait TaskResource {
     ///    Ok(())
     /// }
     /// ```
-    fn add_task_resource<T: Send + Sync + 'static>(self, resource: Resource<T>) -> Result<Self>
+    fn add_async_task<T: Send + Sync + 'static>(self) -> Result<Self>
+    where
+        Self: Sized;
+
+    fn add_compute_task<T: Send + Sync + 'static>(self) -> Result<Self>
     where
         Self: Sized;
 }
 
 impl TaskResource for App {
-    fn add_task_resource<T: Send + Sync + 'static>(self, resource: Resource<T>) -> Result<Self>
+    fn add_async_task<T: Send + Sync + 'static>(self) -> Result<Self>
     where
         Self: Sized,
     {
-        self.add_resource(Resource::<Task<T>>::default())?
-            .add_resource(resource)
+        fn add<T: Send + Sync + 'static>(s: &mut Storage) -> Result<()> {
+            let dispatcher = s.map_resource_ref(|ad: &AsyncDispatcher| ad.clone());
+
+            s.add_resource(Resource::new(AsyncTask::<T> {
+                inner: None,
+                dispatcher,
+            }))?;
+
+            Ok(())
+        }
+
+        self.add_startup_system(add::<T>)
+    }
+
+    fn add_compute_task<T: Send + Sync + 'static>(self) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        fn add<T: Send + Sync + 'static>(s: &mut Storage) -> Result<()> {
+            let dispatcher = s.map_resource_ref(|cd: &ComputeDispatcher| cd.clone());
+
+            s.add_resource(Resource::new(ComputeTask::<T> {
+                inner: None,
+                dispatcher,
+            }))?;
+
+            Ok(())
+        }
+
+        self.add_startup_system(add::<T>)
     }
 }

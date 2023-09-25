@@ -19,8 +19,8 @@ fn main() -> Result<()> {
 
     App::new()
         .add_module(TaskModule)?
-        .add_module(NaoModule)?
-        .add_module(FilterModule)?
+        // .add_module(NaoModule)?
+        // .add_module(FilterModule)?
         .add_module(WebSocketModule)?
         .run()?;
     Ok(())

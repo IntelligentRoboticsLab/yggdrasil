@@ -1,7 +1,9 @@
 use std::{
     future::Future,
+    hash::Hash,
     panic::{catch_unwind, resume_unwind, AssertUnwindSafe},
     pin::Pin,
+    sync::Arc,
     task::{Context, Poll},
     thread,
 };
@@ -10,7 +12,29 @@ use miette::{IntoDiagnostic, WrapErr};
 use rayon::ThreadPool;
 use tokio::sync::oneshot::{self, Receiver};
 
-use crate::{asynchronous::AsyncDispatcher, task::Task, Error};
+use crate::{
+    asynchronous::AsyncDispatcher,
+    task::{RawTask, Task},
+    Error, TaskMap,
+};
+
+pub struct RayonThreadPool(Arc<ThreadPool>);
+
+impl RayonThreadPool {
+    pub fn new(thread_pool: Arc<ThreadPool>) -> Self {
+        Self(thread_pool)
+    }
+
+    pub fn spawn<OP: FnOnce() + Send + 'static>(&self, op: OP) {
+        self.0.spawn(op);
+    }
+}
+
+impl Clone for RayonThreadPool {
+    fn clone(&self) -> Self {
+        Self(Arc::clone(&self.0))
+    }
+}
 
 #[derive(Debug)]
 pub struct ComputeJoinHandle<T> {
@@ -38,21 +62,9 @@ impl<T> Future for ComputeJoinHandle<T> {
     }
 }
 
-/// Dispatcher that allows functions to run on a separate threadpool that uses
-/// an efficient work-stealing scheduler.
-pub struct ComputeDispatcher {
-    thread_pool: ThreadPool,
-    async_dispatcher: AsyncDispatcher,
-}
+pub type ComputeTask<T> = Task<T, ComputeDispatcher>;
 
-impl ComputeDispatcher {
-    pub(crate) fn new(thread_pool: ThreadPool, async_dispatcher: AsyncDispatcher) -> Self {
-        Self {
-            thread_pool,
-            async_dispatcher,
-        }
-    }
-
+impl<T: Send + 'static> ComputeTask<T> {
     /// Tries to spawn the function on the threadpool and sets the task to be alive.
     ///
     /// # Errors
@@ -100,26 +112,80 @@ impl ComputeDispatcher {
     ///     Ok(())
     /// }
     /// ```
-    pub fn try_dispatch<F, T>(&self, task: &mut Task<T>, func: F) -> crate::Result<()>
+    pub fn try_spawn<F>(&mut self, func: F) -> crate::Result<()>
     where
         F: FnOnce() -> T + Send + 'static,
         T: Send + 'static,
     {
-        if task.is_alive() {
-            return Err(Error::AlreadyDispatched);
+        if self.is_alive() {
+            return Err(Error::AlreadyAlive);
         }
 
         let (tx, rx) = oneshot::channel();
-        self.thread_pool.spawn(move || {
+        self.dispatcher.thread_pool.spawn(move || {
             // send the result of invoking the function back through the oneshot channel,
             // capturing any panics that might occur
             let _result = tx.send(catch_unwind(AssertUnwindSafe(func)));
         });
 
         let compute_join_handle = ComputeJoinHandle { rx };
+        let join_handle = self
+            .dispatcher
+            .async_dispatcher
+            .handle()
+            .spawn(compute_join_handle);
 
-        task.join_handle = Some(self.async_dispatcher.handle().spawn(compute_join_handle));
+        self.inner = Some(RawTask { join_handle });
 
         Ok(())
+    }
+}
+
+pub type ComputeTaskMap<K, T> = TaskMap<K, T, ComputeDispatcher>;
+
+impl<K: Hash + Eq + PartialEq, T: Send + 'static> ComputeTaskMap<K, T> {
+    pub fn try_spawn<F>(&mut self, key: K, func: F) -> crate::Result<()>
+    where
+        F: FnOnce() -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        if self.is_alive(&key) {
+            return Err(Error::AlreadyAlive);
+        }
+
+        let (tx, rx) = oneshot::channel();
+        self.dispatcher.thread_pool.spawn(move || {
+            // send the result of invoking the function back through the oneshot channel,
+            // capturing any panics that might occur
+            let _result = tx.send(catch_unwind(AssertUnwindSafe(func)));
+        });
+
+        let compute_join_handle = ComputeJoinHandle { rx };
+        let join_handle = self
+            .dispatcher
+            .async_dispatcher
+            .handle()
+            .spawn(compute_join_handle);
+
+        self.map.insert(key, RawTask { join_handle });
+
+        Ok(())
+    }
+}
+
+/// Dispatcher that allows functions to run on a separate threadpool that uses
+/// an efficient work-stealing scheduler.
+#[derive(Clone)]
+pub struct ComputeDispatcher {
+    pub(crate) thread_pool: RayonThreadPool,
+    pub(crate) async_dispatcher: AsyncDispatcher,
+}
+
+impl ComputeDispatcher {
+    pub(crate) fn new(thread_pool: RayonThreadPool, async_dispatcher: AsyncDispatcher) -> Self {
+        Self {
+            thread_pool,
+            async_dispatcher,
+        }
     }
 }

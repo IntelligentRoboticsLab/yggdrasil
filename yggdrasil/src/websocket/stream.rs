@@ -12,10 +12,10 @@ use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use miette::{bail, IntoDiagnostic, Result};
+use miette::{miette, IntoDiagnostic, Result};
 use tokio::{
     net::{TcpListener, TcpStream, ToSocketAddrs},
-    sync::Mutex,
+    sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
 };
 use tokio_tungstenite::{tungstenite, WebSocketStream};
 
@@ -40,10 +40,7 @@ impl Listener {
 
         let (tx, rx) = socket.split();
 
-        let sender = Sender {
-            tx: Arc::new(Mutex::new(tx)),
-            address,
-        };
+        let sender = Sender { tx, address };
 
         let receiver = Receiver { rx, address };
 
@@ -51,13 +48,13 @@ impl Listener {
     }
 }
 
-type Tx = SplitSink<WebSocketStream<TcpStream>, tungstenite::Message>;
-type Rx = SplitStream<WebSocketStream<TcpStream>>;
+type WsSender = SplitSink<WebSocketStream<TcpStream>, tungstenite::Message>;
+type WsReceiver = SplitStream<WebSocketStream<TcpStream>>;
 
 /// A handle to send messages to a WebSocket stream.
 #[derive(Debug)]
 pub struct Sender {
-    tx: Arc<Mutex<Tx>>,
+    tx: WsSender,
     pub address: SocketAddr,
 }
 
@@ -66,9 +63,13 @@ impl Sender {
         let mut buf = Vec::with_capacity(payload.encode_len());
         payload.encode(&mut buf).into_diagnostic()?;
 
+        // TEMP
         self.tx
-            .lock()
+            .send(tungstenite::Message::Text(String::from("hiiiiiiii")))
             .await
+            .into_diagnostic()?;
+
+        self.tx
             .send(tungstenite::Message::Binary(buf))
             .await
             .into_diagnostic()
@@ -78,7 +79,7 @@ impl Sender {
 impl Clone for Sender {
     fn clone(&self) -> Self {
         Self {
-            tx: Arc::clone(&self.tx),
+            tx: self.tx,
             address: self.address,
         }
     }
@@ -88,55 +89,62 @@ impl Clone for Sender {
 #[derive(Debug)]
 pub struct Receiver {
     pub address: SocketAddr,
-    rx: Rx,
+    rx: WsReceiver,
 }
 
 impl Receiver {
-    pub async fn recv_next(&mut self) -> Result<Option<Message>> {
-        let Some(msg) = self.rx.next().await.transpose().into_diagnostic()? else {
-            return Ok(None);
-        };
-
-        // We only make use of bifrost encoded messages through the `Payload` type
-        if !msg.is_binary() {
-            bail!("Received non-binary message: `{msg:?}`");
-        }
+    pub async fn next(&mut self) -> Result<Message> {
+        let msg = self
+            .rx
+            .next()
+            .await
+            .ok_or_else(|| miette!("No more messages in the stream"))?
+            .into_diagnostic()?;
 
         let payload = Payload::decode(msg.into_data().as_slice()).into_diagnostic()?;
 
-        Ok(Some(Message {
+        Ok(Message {
             address: self.address,
             payload,
-        }))
+        })
     }
 }
 
 /// A map that holds the [`Sender`]s for each connected [`SocketAddr`].
-#[derive(Debug, Default)]
-pub struct Connections(HashMap<SocketAddr, Sender>);
+#[derive(Debug)]
+pub struct Connections {
+    tx: UnboundedSender<Message>,
+    rx: UnboundedReceiver<Message>,
+    map: HashMap<SocketAddr, Sender>,
+}
 
 impl Connections {
     pub fn new() -> Self {
-        Self::default()
+        let (tx, rx) = mpsc::unbounded_channel();
+        Self {
+            tx,
+            rx,
+            map: HashMap::new(),
+        }
     }
 
     pub fn get(&self, address: SocketAddr) -> Option<&Sender> {
-        self.0.get(&address)
+        self.map.get(&address)
     }
 
     pub fn insert(&mut self, connection: Sender) -> Option<Sender> {
-        self.0.insert(connection.address, connection)
+        self.map.insert(connection.address, connection)
     }
 
     pub fn remove(&mut self, address: SocketAddr) -> Option<Sender> {
-        self.0.remove(&address)
+        self.map.remove(&address)
     }
 
     pub fn values(&self) -> Values<SocketAddr, Sender> {
-        self.0.values()
+        self.map.values()
     }
 
     pub fn values_mut(&mut self) -> ValuesMut<SocketAddr, Sender> {
-        self.0.values_mut()
+        self.map.values_mut()
     }
 }

@@ -3,8 +3,9 @@ use std::time::Duration;
 use miette::Result;
 use tyr::{
     prelude::*,
-    tasks::{AsyncDispatcher, Error, Task, TaskModule},
+    tasks::{Error, TaskModule},
 };
+use tyr_tasks::{AsyncTask, TaskResource};
 
 #[derive(Default)]
 struct Counter(u64);
@@ -17,22 +18,22 @@ async fn receive_name(duration: Duration) -> Name {
 }
 
 #[system]
-fn dispatch_name(ad: &AsyncDispatcher, task: &mut Task<Name>) -> Result<()> {
+fn dispatch_name(task: &mut AsyncTask<Name>) -> Result<()> {
     // Dispatches a future to a background thread where it can be efficiently
     // awaited without blocking all the other systems and tasks.
     //
     // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
-    match ad.try_dispatch(&mut task, receive_name(Duration::from_secs(1))) {
+    match task.try_spawn(receive_name(Duration::from_secs(1))) {
         // Successfully dispatched the task
         Ok(_) => Ok(()),
         // This is also fine here, we are already running the task and can continue
         // without dispatching it again
-        Err(Error::AlreadyDispatched) => Ok(()),
+        Err(Error::AlreadyAlive) => Ok(()),
     }
 }
 
 #[system]
-fn poll_name(task: &mut Task<Name>, counter: &mut Counter) -> Result<()> {
+fn poll_name(task: &mut AsyncTask<Name>, counter: &mut Counter) -> Result<()> {
     // If the task hasn't completed yet, we return early
     let Some(name) = task.poll() else {
         return Ok(());
@@ -58,8 +59,8 @@ fn main() -> Result<()> {
 
     App::new()
         .add_module(TaskModule)?
-        .add_resource(Resource::<Counter>::default())?
-        .add_resource(Resource::<Task<Name>>::default())?
+        .init_resource::<Counter>()?
+        .add_async_task::<Name>()?
         // There's also a `.add_task_resource()` as a shorthand
         // for adding both a Resource<T> and Resource<Task<T>>.
         .add_system(dispatch_name)

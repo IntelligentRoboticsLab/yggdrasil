@@ -2,6 +2,9 @@ mod asynchronous;
 mod compute;
 mod task;
 
+use std::sync::Arc;
+
+use compute::RayonThreadPool;
 use miette::{Diagnostic, IntoDiagnostic, Result as MietteResult};
 use rayon::ThreadPoolBuilder;
 use thiserror::Error;
@@ -10,9 +13,9 @@ use tyr_internal::{App, Module, Resource};
 
 use crate::asynchronous::TokioRuntime;
 
-pub use crate::asynchronous::AsyncDispatcher;
-pub use crate::compute::ComputeDispatcher;
-pub use crate::task::{Task, TaskResource, TaskSet};
+pub use crate::asynchronous::{AsyncDispatcher, AsyncTask};
+pub use crate::compute::{ComputeDispatcher, ComputeTask};
+pub use crate::task::{TaskMap, TaskResource};
 
 // TODO: customisable async/compute thread count through config
 
@@ -41,15 +44,19 @@ impl Module for TaskModule {
 
         let async_dispatcher = AsyncDispatcher::new(runtime.handle().clone());
 
-        let thread_pool = ThreadPoolBuilder::new()
-            .num_threads(2)
-            .thread_name(|idx| format!("rayon-compute-worker-{idx}"))
-            .build()
-            .into_diagnostic()?;
+        let thread_pool = RayonThreadPool::new(Arc::new(
+            ThreadPoolBuilder::new()
+                .num_threads(2)
+                .thread_name(|idx| format!("rayon-compute-worker-{idx}"))
+                .build()
+                .into_diagnostic()?,
+        ));
 
-        let compute_dispatcher = ComputeDispatcher::new(thread_pool, async_dispatcher.clone());
+        let compute_dispatcher =
+            ComputeDispatcher::new(thread_pool.clone(), async_dispatcher.clone());
 
         app.add_resource(Resource::new(runtime))?
+            .add_resource(Resource::new(thread_pool))?
             .add_resource(Resource::new(async_dispatcher))?
             .add_resource(Resource::new(compute_dispatcher))
     }
@@ -62,5 +69,5 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Error, Diagnostic)]
 pub enum Error {
     #[error("Task is already dispatched")]
-    AlreadyDispatched,
+    AlreadyAlive,
 }

@@ -1,8 +1,11 @@
-use std::future::Future;
+use std::{future::Future, hash::Hash};
 
 use tokio::runtime::{Handle, Runtime};
 
-use crate::{task::Task, Error, TaskSet};
+use crate::{
+    task::{RawTask, Task},
+    Error, TaskMap,
+};
 
 /// A wrapper around the tokio runtime.
 pub struct TokioRuntime(Runtime);
@@ -13,6 +16,7 @@ impl TokioRuntime {
     }
 
     /// Returns a raw tokio [`Handle`] to the underlying runtime
+    #[must_use]
     pub fn handle(&self) -> &Handle {
         self.0.handle()
     }
@@ -24,16 +28,9 @@ pub struct AsyncDispatcher {
     runtime_handle: Handle,
 }
 
-impl AsyncDispatcher {
-    pub(crate) fn new(runtime_handle: Handle) -> Self {
-        Self { runtime_handle }
-    }
+pub type AsyncTask<T> = Task<T, AsyncDispatcher>;
 
-    /// Return a handle to the underlying tokio runtime
-    pub fn handle(&self) -> &Handle {
-        &self.runtime_handle
-    }
-
+impl<T: Send + 'static> AsyncTask<T> {
     /// Tries to spawn the future on the async runtime and sets the task to be alive.
     ///
     /// # Errors
@@ -80,31 +77,50 @@ impl AsyncDispatcher {
     ///     Ok(())
     /// }
     /// ```
-    pub fn try_dispatch<F: Future + Send + 'static>(
-        &self,
-        task: &mut Task<F::Output>,
+    pub fn try_spawn<F: Future<Output = T> + Send + 'static>(
+        &mut self,
         future: F,
-    ) -> crate::Result<()>
-    where
-        F::Output: Send,
-    {
-        if task.is_alive() {
-            Err(Error::AlreadyDispatched)
-        } else {
-            task.join_handle = Some(self.runtime_handle.spawn(future));
-            Ok(())
+    ) -> crate::Result<()> {
+        if self.is_alive() {
+            return Err(Error::AlreadyAlive);
         }
+
+        let join_handle = self.dispatcher.runtime_handle.spawn(future);
+
+        self.inner = Some(RawTask { join_handle });
+
+        Ok(())
+    }
+}
+
+pub type AsyncTaskMap<K, T> = TaskMap<K, T, AsyncDispatcher>;
+
+impl<K: Hash + Eq + PartialEq, T: Send + 'static> AsyncTaskMap<K, T> {
+    pub fn try_spawn<F: Future<Output = T> + Send + 'static>(
+        &mut self,
+        key: K,
+        future: F,
+    ) -> crate::Result<()> {
+        if self.is_alive(&key) {
+            return Err(Error::AlreadyAlive);
+        }
+
+        let join_handle = self.dispatcher.runtime_handle.spawn(future);
+
+        self.map.insert(key, RawTask { join_handle });
+
+        Ok(())
+    }
+}
+
+impl AsyncDispatcher {
+    pub(crate) fn new(runtime_handle: Handle) -> Self {
+        Self { runtime_handle }
     }
 
-    /// Dispatches a task onto a [`TaskSet<T>`]
-    pub fn dispatch_set<F: Future + Send + 'static>(
-        &self,
-        task_set: &mut TaskSet<F::Output>,
-        future: F,
-    ) where
-        F::Output: Send + Unpin,
-    {
-        let _guard = self.runtime_handle.enter();
-        task_set.join_set.spawn(future);
+    /// Return a handle to the underlying tokio runtime
+    #[must_use]
+    pub fn handle(&self) -> &Handle {
+        &self.runtime_handle
     }
 }

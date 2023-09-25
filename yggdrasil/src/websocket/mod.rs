@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 use miette::{miette, Result};
 use tyr::{
     prelude::*,
-    tasks::{AsyncDispatcher, Error, Task, TaskSet},
+    tasks::{AsyncDispatcher, Error, Task, TaskMap},
 };
 
 use stream::{Connections, Listener};
@@ -24,17 +24,23 @@ impl Module for WebSocketModule {
     fn initialize(self, app: App) -> Result<App> {
         use crate::nao;
 
+        fn sleep() -> Result<()> {
+            Ok(std::thread::sleep(std::time::Duration::from_secs(1)))
+        }
+
         Ok(app
             .add_resource(Resource::<Connections>::default())?
             .add_resource(Resource::<Task<Result<(Sender, Receiver)>>>::default())?
-            .add_resource(Resource::<TaskSet<Result<RecvCompletion>>>::default())?
-            .add_resource(Resource::<TaskSet<Result<SendCompletion>>>::default())?
+            .add_resource(Resource::<TaskMap<SocketAddr, Result<RecvCompletion>>>::default())?
+            .add_resource(Resource::<TaskMap<SocketAddr, Result<SendCompletion>>>::default())?
             .add_startup_system(init_server)?
             .add_system(accept_sockets)
             .add_system(recv_messages)
+            .add_system(sleep)
             .add_system(
                 send_messages
-                    .after(nao::write_hardware_info)
+                    // .after(nao::write_hardware_info)
+                    .after(sleep)
                     .after(recv_messages),
             ))
     }
@@ -55,22 +61,22 @@ fn init_server(storage: &mut Storage) -> Result<()> {
 fn accept_sockets(
     ad: &AsyncDispatcher,
     accept_task: &mut Task<Result<(Sender, Receiver)>>,
-    recv_tasks: &mut TaskSet<Result<RecvCompletion>>,
+    recv_tasks: &mut TaskMap<SocketAddr, Result<RecvCompletion>>,
     connections: &mut Connections,
     socket: &Listener,
 ) -> Result<()> {
-    match ad.try_dispatch(&mut accept_task, {
+    match ad.spawn(&mut accept_task, {
         let socket = socket.clone();
         async move { socket.accept().await }
     }) {
         Ok(()) => (),
-        Err(Error::AlreadyDispatched) => {
+        Err(Error::AlreadyAlive) => {
             // Task is already dispatched so we poll it
             if let Some((sender, receiver)) = accept_task.poll().transpose()? {
                 tracing::info!("Opened ws connection with {}", sender.address);
 
                 // Start receiving messages
-                ad.dispatch_set(&mut recv_tasks, recv_message(receiver));
+                ad.spawn_map(&mut recv_tasks, sender.address, recv_message(receiver));
 
                 connections.insert(sender);
             }
@@ -83,12 +89,12 @@ fn accept_sockets(
 #[system]
 fn recv_messages(
     ad: &AsyncDispatcher,
-    send_tasks: &mut TaskSet<Result<SendCompletion>>,
-    recv_tasks: &mut TaskSet<Result<RecvCompletion>>,
+    send_tasks: &mut TaskMap<SocketAddr, Result<SendCompletion>>,
+    recv_tasks: &mut TaskMap<SocketAddr, Result<RecvCompletion>>,
     connections: &mut Connections,
 ) -> Result<()> {
     // Poll for new messages
-    let msgs = recv_tasks.poll_all();
+    let msgs = recv_tasks.poll();
 
     for res in msgs {
         // Check if any connections got closed
@@ -100,7 +106,7 @@ fn recv_messages(
             // LoLA cycle. Shouldn't be an issue but something to keep in mind
             RecvCompletion::Message { rx, msg } => {
                 // Try to receive another message 😎
-                ad.dispatch_set(&mut recv_tasks, recv_message(rx));
+                ad.spawn_map(&mut recv_tasks, rx.address, recv_message(rx));
 
                 handle_message(msg, &ad, &mut send_tasks, &connections)?;
             }
@@ -113,12 +119,13 @@ fn recv_messages(
 #[system]
 fn send_messages(
     ad: &AsyncDispatcher,
-    send_tasks: &mut TaskSet<Result<SendCompletion>>,
+    send_tasks: &mut TaskMap<SocketAddr, Result<SendCompletion>>,
     connections: &Connections,
 ) -> Result<()> {
     for conn in connections.values() {
-        ad.dispatch_set(
+        ad.spawn_map(
             &mut send_tasks,
+            conn.address,
             send_message(conn.clone(), Payload::text("Hello world!")),
         );
     }
@@ -129,7 +136,7 @@ fn send_messages(
 fn handle_message(
     msg: Message,
     ad: &AsyncDispatcher,
-    send_tasks: &mut TaskSet<Result<SendCompletion>>,
+    send_tasks: &mut TaskMap<SocketAddr, Result<SendCompletion>>,
     connections: &Connections,
 ) -> Result<()> {
     match msg.payload {
@@ -139,7 +146,11 @@ fn handle_message(
                 .ok_or_else(|| miette!("Connection with address `{}` not found", msg.address))?;
 
             // send back a pong
-            ad.dispatch_set(send_tasks, send_message(conn.clone(), Payload::Pong));
+            ad.spawn_map(
+                send_tasks,
+                conn.address,
+                send_message(conn.clone(), Payload::Pong),
+            );
         }
         Payload::Pong => (),
         Payload::Text(t) => tracing::debug!("Received text: `{t}`"),
@@ -150,17 +161,17 @@ fn handle_message(
 
 enum RecvCompletion {
     ConnectionClosed(SocketAddr),
-    Message { rx: Receiver, msg: Message },
+    Message(Message),
 }
 
 async fn recv_message(mut rx: Receiver) -> Result<RecvCompletion> {
     // Receive a single message in stream
-    let Some(msg) = rx.recv_next().await? else {
-        // No more messages, the connection is likely closed
-        return Ok(RecvCompletion::ConnectionClosed(rx.address));
-    };
+    while let Ok(msg) = rx.next().await {
+        // Ok(RecvCompletion::Message { rx, msg })
+    }
 
-    Ok(RecvCompletion::Message { rx, msg })
+    // No more messages, the connection is likely closed
+    return Ok(RecvCompletion::ConnectionClosed(rx.address));
 }
 
 struct SendCompletion;
