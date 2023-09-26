@@ -14,13 +14,6 @@ fn main() -> Result<()> {
 
     miette::set_panic_hook();
 
-    let mut camera = Camera::new("/dev/video0").unwrap();
-
-    for i in 0..10 {
-        let image = camera.get_image().unwrap();
-        image.store_jpeg(&format!("image-{}.jpeg", i)).unwrap();
-    }
-
     App::new()
         .add_module(TaskModule)?
         .add_module(NaoModule)?
