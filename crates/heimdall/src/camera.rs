@@ -16,13 +16,13 @@ use std::{fs::File, io::Write, ops::Deref};
 
 use crate::Result;
 
-use rscam::{Config, FIELD_NONE};
+use rscam::{Config, Frame, FIELD_NONE};
 
 /// An object that holds a YUYV NAO camera image.
 ///
 /// The image has a width of [`IMAGE_WIDTH`] and a height of [`IMAGE_HEIGHT`].
 pub struct Image {
-    frame: rscam::Frame,
+    frame: Frame,
 }
 
 fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
