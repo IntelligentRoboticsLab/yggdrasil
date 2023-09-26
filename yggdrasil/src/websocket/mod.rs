@@ -1,5 +1,5 @@
-pub mod message;
-pub mod stream;
+mod message;
+mod stream;
 
 use std::net::SocketAddr;
 
@@ -10,11 +10,10 @@ use tyr::{
     tasks::{AsyncDispatcher, AsyncTask, AsyncTaskMap, AsyncTaskSet, TaskResource},
 };
 
-use crate::websocket::{message::Payload, stream::WebSocketServer};
-
-use self::{
-    message::Message,
-    stream::{WebSocketRx, WebSocketTx},
+pub use message::{Message, Payload};
+pub use stream::{
+    WebSocketReceiver as Receiver, WebSocketSender as Sender, WebSocketServer,
+    WebSocketServerHandle,
 };
 
 pub const ADDR: &str = "0.0.0.0:1984";
@@ -23,10 +22,9 @@ pub struct WebSocketModule;
 
 impl Module for WebSocketModule {
     fn initialize(self, app: App) -> Result<App> {
-        // use crate::nao;
-
         fn sleep() -> Result<()> {
-            Ok(std::thread::sleep(std::time::Duration::from_secs(1)))
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            Ok(())
         }
 
         Ok(app
@@ -64,13 +62,11 @@ fn accept_sockets(
     server: &WebSocketServer,
     task: &mut AsyncTask<Result<AcceptCompleted>>,
 ) -> Result<()> {
-    let server = server.handle();
-
-    let _ = task.try_spawn(async move {
-        loop {
-            match server.accept().await {
-                Ok(_) => (),
-                Err(e) => return Err(e),
+    let _ = task.try_spawn({
+        let server = server.handle().clone();
+        async move {
+            loop {
+                server.accept().await?
             }
         }
     });
@@ -111,17 +107,10 @@ fn handle_message(
     msg: Message,
     server: &mut WebSocketServer,
     receive_tasks: &mut AsyncTaskMap<SocketAddr, Result<RecvCompleted>>,
-    // send_tasks: &mut AsyncTaskSet<Result<SendCompleted>>,
 ) -> Result<()> {
     match msg {
         Message::Payload { address, payload } => {
             println!("Received message `{:?}` from address {}", payload, address);
-
-            // let Some(tx) = server.connections.get(&address) else {
-            //     bail!("Can't send message to unconnected address");
-            // };
-
-            // send_tasks.spawn(send_message(tx.clone(), Payload::text("Awesome reply")));
         }
         Message::OpenConnection { tx, rx, address } => {
             tracing::info!("Opened connection with {address}");
@@ -143,7 +132,7 @@ fn send_funny_message(
     send_tasks: &mut AsyncTaskSet<Result<SendCompleted>>,
 ) -> Result<()> {
     for tx in server.connections.values() {
-        send_tasks.spawn(send_message(tx.clone(), Payload::text("hi")));
+        send_tasks.spawn(send_message(tx.clone(), Payload::text("🦀🦀🦀")));
     }
 
     Ok(())
@@ -151,7 +140,7 @@ fn send_funny_message(
 
 struct RecvCompleted;
 
-async fn receive_messages(mut rx: WebSocketRx) -> Result<RecvCompleted> {
+async fn receive_messages(mut rx: Receiver) -> Result<RecvCompleted> {
     // Keep receiving messages
     while let Some(payload) = rx.recv().await? {
         let msg = Message::Payload {
@@ -174,7 +163,7 @@ async fn receive_messages(mut rx: WebSocketRx) -> Result<RecvCompleted> {
 
 struct SendCompleted;
 
-async fn send_message(mut tx: WebSocketTx, payload: Payload) -> Result<SendCompleted> {
+async fn send_message(mut tx: Sender, payload: Payload) -> Result<SendCompleted> {
     tx.send(payload).await?;
 
     Ok(SendCompleted)

@@ -3,8 +3,8 @@ use std::{future::Future, hash::Hash};
 use tokio::runtime::{Handle, Runtime};
 
 use crate::{
-    task::{RawTask, Task, TaskSet},
-    Error, TaskMap,
+    task::{RawTask, Task, TaskMap, TaskSet},
+    Error,
 };
 
 /// A wrapper around the tokio runtime.

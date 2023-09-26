@@ -14,8 +14,8 @@ use tokio::sync::oneshot::{self, Receiver};
 
 use crate::{
     asynchronous::AsyncDispatcher,
-    task::{RawTask, Task, TaskSet},
-    Error, TaskMap,
+    task::{RawTask, Task, TaskMap, TaskSet},
+    Error,
 };
 
 pub struct RayonThreadPool(Arc<ThreadPool>);

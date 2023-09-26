@@ -1,14 +1,8 @@
-pub mod filter;
-pub mod nao;
-pub mod websocket;
-
 use tyr::{prelude::*, tasks::TaskModule};
 
 use miette::Result;
 
-// use filter::FilterModule;
-// use nao::NaoModule;
-use websocket::WebSocketModule;
+use yggdrasil::websocket::WebSocketModule;
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::fmt().pretty().init();

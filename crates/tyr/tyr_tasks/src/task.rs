@@ -136,14 +136,11 @@ impl<T: Send + 'static, D> TaskSet<T, D> {
     /// Polls the task status, returning a T for every finished task.
     pub fn poll(&mut self) -> Vec<T> {
         // get all finished tasks
-        let finished = (0..self.set.len())
-            .into_iter()
+        (0..self.set.len())
             .filter_map(|_| {
                 executor::block_on(async { self.set.join_next().await.transpose().unwrap() })
             })
-            .collect();
-
-        finished
+            .collect()
     }
 }
 

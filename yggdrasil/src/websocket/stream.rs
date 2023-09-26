@@ -15,26 +15,33 @@ use tokio::{
 };
 use tokio_tungstenite::{tungstenite, WebSocketStream};
 
-use crate::websocket::message::Payload;
+use super::message::{Message, Payload};
 
-use super::message::Message;
+pub type MessageQueueSender = UnboundedSender<Message>;
+pub type MessageQueueReceiver = UnboundedReceiver<Message>;
 
-pub type MessageQueueTx = UnboundedSender<Message>;
-pub type MessageQueueRx = UnboundedReceiver<Message>;
-
-type RawWebSocketTx = SplitSink<WebSocketStream<TcpStream>, tungstenite::Message>;
-type RawWebSocketRx = SplitStream<WebSocketStream<TcpStream>>;
+type RawWebSocketSender = SplitSink<WebSocketStream<TcpStream>, tungstenite::Message>;
+type RawWebSocketReceiver = SplitStream<WebSocketStream<TcpStream>>;
 
 pub struct WebSocketServer {
-    listener: Arc<TcpListener>,
-    pub connections: HashMap<SocketAddr, WebSocketTx>,
-    pub rx: MessageQueueRx,
-    tx: MessageQueueTx,
+    handle: WebSocketServerHandle,
+    pub rx: MessageQueueReceiver,
+    pub connections: HashMap<SocketAddr, WebSocketSender>,
 }
 
+// Clonable handle so we can accept from other threads
 pub struct WebSocketServerHandle {
     listener: Arc<TcpListener>,
-    tx: MessageQueueTx,
+    tx: MessageQueueSender,
+}
+
+impl Clone for WebSocketServerHandle {
+    fn clone(&self) -> Self {
+        Self {
+            listener: Arc::clone(&self.listener),
+            tx: self.tx.clone(),
+        }
+    }
 }
 
 impl WebSocketServer {
@@ -43,19 +50,21 @@ impl WebSocketServer {
         let connections = HashMap::new();
         let (tx, rx) = mpsc::unbounded_channel::<Message>();
 
+        let handle = WebSocketServerHandle { listener, tx };
+
         Ok(Self {
-            listener,
+            handle,
             connections,
             rx,
-            tx,
         })
     }
 
-    pub fn handle(&self) -> WebSocketServerHandle {
-        WebSocketServerHandle {
-            listener: self.listener.clone(),
-            tx: self.tx.clone(),
-        }
+    pub fn handle(&self) -> &WebSocketServerHandle {
+        &self.handle
+    }
+
+    pub async fn accept(&self) -> Result<()> {
+        self.handle.accept().await
     }
 }
 
@@ -68,12 +77,12 @@ impl WebSocketServerHandle {
 
         let (raw_ws_tx, raw_ws_rx) = socket.split();
 
-        let tx = WebSocketTx {
+        let tx = WebSocketSender {
             raw: Arc::new(Mutex::new(raw_ws_tx)),
             address,
         };
 
-        let rx = WebSocketRx {
+        let rx = WebSocketReceiver {
             websocket_rx: raw_ws_rx,
             address,
             message_queue_tx: self.tx.clone(),
@@ -87,12 +96,12 @@ impl WebSocketServerHandle {
     }
 }
 
-pub struct WebSocketTx {
-    raw: Arc<Mutex<RawWebSocketTx>>,
+pub struct WebSocketSender {
+    raw: Arc<Mutex<RawWebSocketSender>>,
     pub address: SocketAddr,
 }
 
-impl WebSocketTx {
+impl WebSocketSender {
     pub async fn send(&mut self, payload: Payload) -> Result<()> {
         let mut buf = Vec::with_capacity(payload.encode_len());
         payload.encode(&mut buf).into_diagnostic()?;
@@ -106,7 +115,7 @@ impl WebSocketTx {
     }
 }
 
-impl Clone for WebSocketTx {
+impl Clone for WebSocketSender {
     fn clone(&self) -> Self {
         Self {
             raw: Arc::clone(&self.raw),
@@ -115,13 +124,13 @@ impl Clone for WebSocketTx {
     }
 }
 
-pub struct WebSocketRx {
-    websocket_rx: RawWebSocketRx,
+pub struct WebSocketReceiver {
+    websocket_rx: RawWebSocketReceiver,
     pub address: SocketAddr,
-    pub message_queue_tx: MessageQueueTx,
+    pub message_queue_tx: MessageQueueSender,
 }
 
-impl WebSocketRx {
+impl WebSocketReceiver {
     pub async fn recv(&mut self) -> Result<Option<Payload>> {
         if let Some(msg) = self
             .websocket_rx

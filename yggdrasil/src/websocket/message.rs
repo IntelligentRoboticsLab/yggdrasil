@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use bifrost::serialization::{Decode, Encode};
 
-use super::stream::{WebSocketRx, WebSocketTx};
+use super::stream::{WebSocketReceiver, WebSocketSender};
 
 pub enum Message {
     Payload {
@@ -10,9 +10,9 @@ pub enum Message {
         payload: Payload,
     },
     OpenConnection {
-        tx: WebSocketTx,
-        rx: WebSocketRx,
         address: SocketAddr,
+        tx: WebSocketSender,
+        rx: WebSocketReceiver,
     },
     CloseConnection {
         address: SocketAddr,
