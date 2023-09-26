@@ -2,14 +2,18 @@ use std::{collections::HashMap, hash::Hash, task::Poll};
 
 use futures::{executor, poll};
 use miette::{IntoDiagnostic, Result, WrapErr};
-use tokio::task::JoinHandle;
+use tokio::task::{JoinHandle, JoinSet};
 
 use tyr_internal::{App, Resource, Storage};
 
 // TODO: look at exports again
 // TODO: get rid of some pub/pub(crates)
 // TODO: look at all docs!!!
-use crate::{asynchronous::AsyncTask, compute::ComputeTask, AsyncDispatcher, ComputeDispatcher};
+use crate::{
+    asynchronous::{AsyncTask, AsyncTaskMap},
+    compute::{ComputeTask, ComputeTaskMap},
+    AsyncDispatcher, AsyncTaskSet, ComputeDispatcher, ComputeTaskSet,
+};
 
 /// Tasks allow functions to complete after multiple execution cycles.
 ///
@@ -115,6 +119,34 @@ impl<K: Hash + Eq + PartialEq, V: Send + 'static, D> TaskMap<K, V, D> {
     }
 }
 
+pub struct TaskSet<T: Send + 'static, D> {
+    pub(crate) set: JoinSet<T>,
+    pub(crate) dispatcher: D,
+}
+
+impl<T: Send + 'static, D> TaskSet<T, D> {
+    /// Spawns a new, dead [`TaskSet`]
+    pub fn dead(dispatcher: D) -> Self {
+        Self {
+            set: JoinSet::new(),
+            dispatcher,
+        }
+    }
+
+    /// Polls the task status, returning a T for every finished task.
+    pub fn poll(&mut self) -> Vec<T> {
+        // get all finished tasks
+        let finished = (0..self.set.len())
+            .into_iter()
+            .filter_map(|_| {
+                executor::block_on(async { self.set.join_next().await.transpose().unwrap() })
+            })
+            .collect();
+
+        finished
+    }
+}
+
 /// Provides a convenience method for adding corresponding tasks and resources to an app.
 pub trait TaskResource {
     /// Consumes the [`Resource<T>`] and adds it, along with a dead [`Task<T>`] to the app storage.
@@ -137,13 +169,37 @@ pub trait TaskResource {
     ///    Ok(())
     /// }
     /// ```
-    fn add_async_task<T: Send + Sync + 'static>(self) -> Result<Self>
+    fn add_async_task<T>(self) -> Result<Self>
     where
-        Self: Sized;
+        Self: Sized,
+        T: Send + Sync + 'static;
 
-    fn add_compute_task<T: Send + Sync + 'static>(self) -> Result<Self>
+    fn add_async_task_map<K, T>(self) -> Result<Self>
     where
-        Self: Sized;
+        Self: Sized,
+        K: Hash + Eq + PartialEq + Send + Sync + 'static,
+        T: Send + Sync + 'static;
+
+    fn add_async_task_set<T>(self) -> Result<Self>
+    where
+        Self: Sized,
+        T: Send + Sync + 'static;
+
+    fn add_compute_task<T>(self) -> Result<Self>
+    where
+        Self: Sized,
+        T: Send + Sync + 'static;
+
+    fn add_compute_task_map<K, T>(self) -> Result<Self>
+    where
+        Self: Sized,
+        K: Hash + Eq + PartialEq + Send + Sync + 'static,
+        T: Send + Sync + 'static;
+
+    fn add_compute_task_set<T>(self) -> Result<Self>
+    where
+        Self: Sized,
+        T: Send + Sync + 'static;
 }
 
 impl TaskResource for App {
@@ -154,7 +210,59 @@ impl TaskResource for App {
         fn add<T: Send + Sync + 'static>(s: &mut Storage) -> Result<()> {
             let dispatcher = s.map_resource_ref(|ad: &AsyncDispatcher| ad.clone());
 
-            s.add_resource(Resource::new(AsyncTask::<T> {
+            s.add_resource(Resource::new(AsyncTask::<T>::dead(dispatcher)))?;
+
+            Ok(())
+        }
+
+        self.add_startup_system(add::<T>)
+    }
+
+    fn add_async_task_map<K, T>(self) -> Result<Self>
+    where
+        Self: Sized,
+        K: Hash + Eq + PartialEq + Send + Sync + 'static,
+        T: Send + Sync + 'static,
+    {
+        fn add<K, T>(s: &mut Storage) -> Result<()>
+        where
+            K: Hash + Eq + PartialEq + Send + Sync + 'static,
+            T: Send + Sync + 'static,
+        {
+            let dispatcher = s.map_resource_ref(|ad: &AsyncDispatcher| ad.clone());
+
+            s.add_resource(Resource::new(AsyncTaskMap::<K, T>::dead(dispatcher)))?;
+
+            Ok(())
+        }
+
+        self.add_startup_system(add::<K, T>)
+    }
+
+    fn add_async_task_set<T: Send + Sync + 'static>(self) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        fn add<T: Send + Sync + 'static>(s: &mut Storage) -> Result<()> {
+            let dispatcher = s.map_resource_ref(|ad: &AsyncDispatcher| ad.clone());
+
+            s.add_resource(Resource::new(AsyncTaskSet::<T>::dead(dispatcher)))?;
+
+            Ok(())
+        }
+
+        self.add_startup_system(add::<T>)
+    }
+
+    fn add_compute_task<T>(self) -> Result<Self>
+    where
+        Self: Sized,
+        T: Send + Sync + 'static,
+    {
+        fn add<T: Send + Sync + 'static>(s: &mut Storage) -> Result<()> {
+            let dispatcher = s.map_resource_ref(|cd: &ComputeDispatcher| cd.clone());
+
+            s.add_resource(Resource::new(ComputeTask::<T> {
                 inner: None,
                 dispatcher,
             }))?;
@@ -165,17 +273,33 @@ impl TaskResource for App {
         self.add_startup_system(add::<T>)
     }
 
-    fn add_compute_task<T: Send + Sync + 'static>(self) -> Result<Self>
+    fn add_compute_task_map<K, T>(self) -> Result<Self>
+    where
+        Self: Sized,
+        K: Hash + Eq + PartialEq + Send + Sync + 'static,
+        T: Send + Sync + 'static,
+    {
+        fn add<K: Hash + Eq + PartialEq + Send + Sync + 'static, T: Send + Sync + 'static>(
+            s: &mut Storage,
+        ) -> Result<()> {
+            let dispatcher = s.map_resource_ref(|cd: &ComputeDispatcher| cd.clone());
+
+            s.add_resource(Resource::new(ComputeTaskMap::<K, T>::dead(dispatcher)))?;
+
+            Ok(())
+        }
+
+        self.add_startup_system(add::<K, T>)
+    }
+
+    fn add_compute_task_set<T: Send + Sync + 'static>(self) -> Result<Self>
     where
         Self: Sized,
     {
         fn add<T: Send + Sync + 'static>(s: &mut Storage) -> Result<()> {
             let dispatcher = s.map_resource_ref(|cd: &ComputeDispatcher| cd.clone());
 
-            s.add_resource(Resource::new(ComputeTask::<T> {
-                inner: None,
-                dispatcher,
-            }))?;
+            s.add_resource(Resource::new(ComputeTaskSet::<T>::dead(dispatcher)))?;
 
             Ok(())
         }

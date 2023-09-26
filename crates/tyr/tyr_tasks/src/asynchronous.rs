@@ -3,7 +3,7 @@ use std::{future::Future, hash::Hash};
 use tokio::runtime::{Handle, Runtime};
 
 use crate::{
-    task::{RawTask, Task},
+    task::{RawTask, Task, TaskSet},
     Error, TaskMap,
 };
 
@@ -110,6 +110,15 @@ impl<K: Hash + Eq + PartialEq, T: Send + 'static> AsyncTaskMap<K, T> {
         self.map.insert(key, RawTask { join_handle });
 
         Ok(())
+    }
+}
+
+pub type AsyncTaskSet<T> = TaskSet<T, AsyncDispatcher>;
+
+impl<T: Send + 'static> AsyncTaskSet<T> {
+    pub fn spawn<F: Future<Output = T> + Send + 'static>(&mut self, future: F) {
+        let _guard = self.dispatcher.runtime_handle.enter();
+        self.set.spawn(future);
     }
 }
 

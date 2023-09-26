@@ -2,16 +2,25 @@ use std::net::SocketAddr;
 
 use bifrost::serialization::{Decode, Encode};
 
-#[derive(Debug)]
-pub struct Message {
-    pub address: SocketAddr,
-    pub payload: Payload,
+use super::stream::{WebSocketRx, WebSocketTx};
+
+pub enum Message {
+    Payload {
+        address: SocketAddr,
+        payload: Payload,
+    },
+    OpenConnection {
+        tx: WebSocketTx,
+        rx: WebSocketRx,
+        address: SocketAddr,
+    },
+    CloseConnection {
+        address: SocketAddr,
+    },
 }
 
 #[derive(Debug, Encode, Decode)]
 pub enum Payload {
-    Ping,
-    Pong,
     Text(String),
 }
 

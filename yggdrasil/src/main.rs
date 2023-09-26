@@ -6,15 +6,13 @@ use tyr::{prelude::*, tasks::TaskModule};
 
 use miette::Result;
 
-use filter::FilterModule;
-use nao::NaoModule;
+// use filter::FilterModule;
+// use nao::NaoModule;
 use websocket::WebSocketModule;
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::fmt()
-        .pretty()
-        .with_max_level(tracing::Level::DEBUG)
-        .init();
+    tracing_subscriber::fmt::fmt().pretty().init();
+
     miette::set_panic_hook();
 
     App::new()

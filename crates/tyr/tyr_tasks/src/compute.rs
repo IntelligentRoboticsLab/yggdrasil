@@ -14,7 +14,7 @@ use tokio::sync::oneshot::{self, Receiver};
 
 use crate::{
     asynchronous::AsyncDispatcher,
-    task::{RawTask, Task},
+    task::{RawTask, Task, TaskSet},
     Error, TaskMap,
 };
 
@@ -168,6 +168,30 @@ impl<K: Hash + Eq + PartialEq, T: Send + 'static> ComputeTaskMap<K, T> {
             .spawn(compute_join_handle);
 
         self.map.insert(key, RawTask { join_handle });
+
+        Ok(())
+    }
+}
+
+pub type ComputeTaskSet<T> = TaskSet<T, ComputeDispatcher>;
+
+impl<T: Send + 'static> ComputeTaskSet<T> {
+    pub fn try_spawn<F>(&mut self, func: F) -> crate::Result<()>
+    where
+        F: FnOnce() -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        let (tx, rx) = oneshot::channel();
+        self.dispatcher.thread_pool.spawn(move || {
+            // send the result of invoking the function back through the oneshot channel,
+            // capturing any panics that might occur
+            let _result = tx.send(catch_unwind(AssertUnwindSafe(func)));
+        });
+
+        let compute_join_handle = ComputeJoinHandle { rx };
+
+        let _guard = self.dispatcher.async_dispatcher.handle().enter();
+        self.set.spawn(compute_join_handle);
 
         Ok(())
     }

@@ -13,8 +13,8 @@ use tyr_internal::{App, Module, Resource};
 
 use crate::asynchronous::TokioRuntime;
 
-pub use crate::asynchronous::{AsyncDispatcher, AsyncTask};
-pub use crate::compute::{ComputeDispatcher, ComputeTask};
+pub use crate::asynchronous::{AsyncDispatcher, AsyncTask, AsyncTaskMap, AsyncTaskSet};
+pub use crate::compute::{ComputeDispatcher, ComputeTask, ComputeTaskMap, ComputeTaskSet};
 pub use crate::task::{TaskMap, TaskResource};
 
 // TODO: customisable async/compute thread count through config
