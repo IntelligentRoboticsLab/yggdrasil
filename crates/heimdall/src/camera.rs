@@ -1,5 +1,6 @@
 use std::{fs::File, io::Write, ops::Deref};
 
+use image::codecs::jpeg::JpegEncoder;
 use rscam::{Config, Frame, FIELD_NONE};
 
 use crate::Result;
@@ -86,7 +87,7 @@ impl Image {
     /// file.
     pub fn store_jpeg(&self, file_path: &str) -> Result<()> {
         let output_file = File::create(file_path)?;
-        let mut encoder = image::codecs::jpeg::JpegEncoder::new(output_file);
+        let mut encoder = JpegEncoder::new(output_file);
 
         let mut rgb_buffer = Vec::<u8>::with_capacity((IMAGE_WIDTH * IMAGE_HEIGHT * 3) as usize);
 
