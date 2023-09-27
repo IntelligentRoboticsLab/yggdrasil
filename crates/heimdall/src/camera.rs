@@ -26,10 +26,10 @@ pub struct Image {
 }
 
 fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
-    fn clip(value: i32) -> u8 {
+    fn clamp(value: i32) -> u8 {
         #[allow(clippy::cast_sign_loss)]
         #[allow(clippy::cast_possible_truncation)]
-        return i32::min(i32::max(value, 0), 255) as u8;
+        return value.clamp(0, 255) as u8;
     }
 
     fn yuyv422_to_rgb(y1: u8, u: u8, y2: u8, v: u8) -> ((u8, u8, u8), (u8, u8, u8)) {
@@ -47,8 +47,8 @@ fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
         let blue2 = (298 * y2 + 516 * u + 128) >> 8;
 
         (
-            (clip(red1), clip(green1), clip(blue1)),
-            (clip(red2), clip(green2), clip(blue2)),
+            (clamp(red1), clamp(green1), clamp(blue1)),
+            (clamp(red2), clamp(green2), clamp(blue2)),
         )
     }
 
