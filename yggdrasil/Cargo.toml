@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+alsa = { workspace = true }
 derive_more = { workspace = true }
 kira = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
