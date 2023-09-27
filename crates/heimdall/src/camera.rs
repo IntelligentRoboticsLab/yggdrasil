@@ -68,6 +68,8 @@ fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
         let ((red1, green1, blue1), (red2, green2, blue2)) = yuyv422_to_rgb(y1, u, y2, v);
 
         destination.write_all(&[red2, green2, blue2, red1, green1, blue1])?;
+        // Use this if the image should not be flipped.
+        // destination.write_all(&[red1, green1, blue1, red2, green2, blue2])?;
     }
 
     Ok(())
@@ -91,10 +93,10 @@ impl Image {
 
         let mut rgb_buffer = Vec::<u8>::with_capacity((IMAGE_WIDTH * IMAGE_HEIGHT * 3) as usize);
 
-        yuyv_to_rgb(&self.frame[..], &mut rgb_buffer)?;
+        yuyv_to_rgb(self, &mut rgb_buffer)?;
 
         encoder.encode(
-            rgb_buffer.as_slice(),
+            &rgb_buffer,
             IMAGE_WIDTH,
             IMAGE_HEIGHT,
             image::ColorType::Rgb8,
@@ -108,7 +110,7 @@ impl Image {
     /// # Errors
     /// This function fails if it cannot completely write the RGB image to `destination`.
     pub fn to_rgb(&self, destination: impl Write) -> Result<()> {
-        yuyv_to_rgb(&self.frame[..], destination)
+        yuyv_to_rgb(self, destination)
     }
 }
 
