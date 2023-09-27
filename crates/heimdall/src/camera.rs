@@ -1,3 +1,9 @@
+use std::{fs::File, io::Write, ops::Deref};
+
+use rscam::{Config, Frame, FIELD_NONE};
+
+use crate::Result;
+
 /// The width of a NAO [`Image`]
 pub const IMAGE_WIDTH: u32 = 1280;
 
@@ -11,12 +17,6 @@ const DEFAULT_CAMERA_CONFIG: Config = Config {
     field: FIELD_NONE,
     nbuffers: 2,
 };
-
-use std::{fs::File, io::Write, ops::Deref};
-
-use crate::Result;
-
-use rscam::{Config, Frame, FIELD_NONE};
 
 /// An object that holds a YUYV NAO camera image.
 ///
