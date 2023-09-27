@@ -1,8 +1,8 @@
 use clap::Parser;
 
 pub mod build;
-pub mod scan;
 pub mod deploy;
+pub mod scan;
 
 #[derive(Parser)]
 #[clap(name = "sindri")]

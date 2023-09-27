@@ -4,8 +4,8 @@ use clap::Parser;
 use miette::{IntoDiagnostic, Result};
 use sindri::{
     cli::{Cli, Commands},
-    error::Error,
     config::SindriConfig,
+    error::Error,
 };
 use std::fs;
 
