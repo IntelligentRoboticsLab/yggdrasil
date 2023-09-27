@@ -3,10 +3,10 @@ use miette::{miette, IntoDiagnostic, Result};
 use std::fs;
 use tokio::process::Command;
 
-use crate::{cargo, config::SifConfig};
+use crate::{cargo, config::SindriConfig};
 
 #[derive(Clone, Debug, Parser)]
-pub struct ConfigOptsUpload {
+pub struct ConfigOptsDeploy {
     /// Robot number
     #[clap(long, short)]
     number: u8,
@@ -15,26 +15,26 @@ pub struct ConfigOptsUpload {
     #[clap(long)]
     lan: bool,
 
-    /// Team number [default: Set in `sif_config.toml`]
+    /// Team number [default: Set in `sindri_config.toml`]
     #[clap(long)]
     team_number: Option<u8>,
 }
 
 #[derive(Parser)]
-#[clap(name = "upload")]
-pub struct Upload {
+#[clap(name = "deploy")]
+pub struct Deploy {
     #[clap(flatten)]
-    pub upload: ConfigOptsUpload,
+    pub deploy: ConfigOptsDeploy,
 }
 
-impl Upload {
-    /// Constructs IP and uploads to the robot
-    pub async fn upload(self, sif_config: SifConfig) -> Result<()> {
+impl Deploy {
+    /// Constructs IP and deploys to the robot
+    pub async fn deploy(self, sindri_config: SindriConfig) -> Result<()> {
         let addr = format!(
             "10.{}.{}.{}",
-            u8::from(self.upload.lan),
-            self.upload.team_number.unwrap_or(sif_config.team_number),
-            self.upload.number
+            u8::from(self.deploy.lan),
+            self.deploy.team_number.unwrap_or(sindri_config.team_number),
+            self.deploy.number
         );
 
         cargo::build(

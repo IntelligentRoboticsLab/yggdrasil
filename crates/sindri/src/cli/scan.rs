@@ -5,7 +5,7 @@ use colored::Colorize;
 use miette::{miette, IntoDiagnostic, Result};
 use tokio::{process::Command, task::JoinSet};
 
-use crate::config::SifConfig;
+use crate::config::SindriConfig;
 
 /// Configuration options for the scanning system, specifying the IP addresses to be pinged.
 #[derive(Clone, Debug, Default, Parser)]
@@ -18,7 +18,7 @@ pub struct ConfigOptsScan {
     #[clap(long)]
     lan: bool,
 
-    /// Team number [default: Set in `sif_config.toml`]
+    /// Team number [default: Set in `sindri_config.toml`]
     #[clap(long)]
     team_number: Option<u8>,
 }
@@ -31,14 +31,14 @@ pub struct Scan {
 }
 
 impl Scan {
-    pub async fn scan(self, sif_config: SifConfig) -> Result<()> {
+    pub async fn scan(self, sindri_config: SindriConfig) -> Result<()> {
         if self.scan.range[0] > self.scan.range[1] {
             return Err(miette!("The range should be in the form: [lower upper]"));
         }
         println!("Looking for robots...");
         let mut scan_set = JoinSet::new();
         for robot_number in self.scan.range[0]..=self.scan.range[1] {
-            scan_set.spawn(ping(robot_number, sif_config.clone(), self.scan.clone()));
+            scan_set.spawn(ping(robot_number, sindri_config.clone(), self.scan.clone()));
         }
 
         // wait until all ping commands have been completed
@@ -52,11 +52,11 @@ impl Scan {
     }
 }
 
-async fn ping(robot_number: u8, sif_config: SifConfig, opts: ConfigOptsScan) -> Result<()> {
+async fn ping(robot_number: u8, sindri_config: SindriConfig, opts: ConfigOptsScan) -> Result<()> {
     let addr = format!(
         "10.{}.{}.{}",
         u8::from(opts.lan),
-        opts.team_number.unwrap_or(sif_config.team_number),
+        opts.team_number.unwrap_or(sindri_config.team_number),
         robot_number
     );
 
@@ -79,7 +79,7 @@ async fn ping(robot_number: u8, sif_config: SifConfig, opts: ConfigOptsScan) -> 
             "[+] {} | {} | {}",
             addr,
             "ONLINE ".green().bold(),
-            sif_config.get_robot_name(robot_number).white().bold(),
+            sindri_config.get_robot_name(robot_number).white().bold(),
         );
         return Ok(());
     }
@@ -88,7 +88,7 @@ async fn ping(robot_number: u8, sif_config: SifConfig, opts: ConfigOptsScan) -> 
         "[+] {} | {} | {}",
         addr,
         "OFFLINE".red().bold(),
-        sif_config.get_robot_name(robot_number).white().bold(),
+        sindri_config.get_robot_name(robot_number).white().bold(),
     );
 
     Ok(())

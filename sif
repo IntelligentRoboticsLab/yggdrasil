@@ -1,7 +1,0 @@
-#!/bin/bash
-set -e
-
-# install latest version of sif
-
-# pass all arguments to sif
-cargo run -p sif -- $@

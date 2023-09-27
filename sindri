@@ -1,0 +1,7 @@
+#!/bin/bash
+set -e
+
+# install latest version of sindri
+
+# pass all arguments to sindri
+cargo run -p sindri -- $@

@@ -1,5 +1,5 @@
 [workspace]
-members = ["yggdrasil", "crates/tyr", "crates/sif"]
+members = ["yggdrasil", "crates/tyr", "crates/sindri"]
 
 [workspace.dependencies]
 clap = "4.4.3"

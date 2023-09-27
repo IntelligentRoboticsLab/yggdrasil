@@ -3,10 +3,10 @@ use serde_with::{serde_as, DisplayFromStr};
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
 
-/// Configuration structure for sif (.toml), containing team number and robot information
+/// Configuration structure for sindri (.toml), containing team number and robot information
 #[serde_as]
 #[derive(Debug, Deserialize, Clone)]
-pub struct SifConfig {
+pub struct SindriConfig {
     /// The configured team number, used to construct IPs.
     pub team_number: u8,
 
@@ -15,7 +15,7 @@ pub struct SifConfig {
     pub robots: HashMap<u8, Robot>,
 }
 
-impl SifConfig {
+impl SindriConfig {
     /// Retrieve the name of a robot based on its number
     ///
     /// This will return `unknown` if the robot's name hasn't been configured!

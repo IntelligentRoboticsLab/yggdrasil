@@ -2,13 +2,12 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use miette::{IntoDiagnostic, Result};
-use sif::{
+use sindri::{
     cli::{Cli, Commands},
     error::Error,
+    config::SindriConfig,
 };
 use std::fs;
-
-use sif::config::SifConfig;
 
 fn assert_valid_bin(bin: Option<String>) -> Result<()> {
     const ERR_MESSAGE: &str = "The `--bin` flag has to be ran in a Cargo workspace.";
@@ -49,8 +48,8 @@ fn assert_valid_bin(bin: Option<String>) -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let toml_str = fs::read_to_string("sif.toml").into_diagnostic()?;
-    let sif_config: SifConfig = toml::from_str(&toml_str).into_diagnostic()?;
+    let toml_str = fs::read_to_string("sindri.toml").into_diagnostic()?;
+    let sindri_config: SindriConfig = toml::from_str(&toml_str).into_diagnostic()?;
 
     let args = Cli::parse();
 
@@ -59,8 +58,8 @@ async fn main() -> Result<()> {
 
     match args.action {
         Commands::Build(opts) => opts.build(args_bin).await?,
-        Commands::Upload(opts) => opts.upload(sif_config).await?,
-        Commands::Scan(opts) => opts.scan(sif_config).await?,
+        Commands::Deploy(opts) => opts.deploy(sindri_config).await?,
+        Commands::Scan(opts) => opts.scan(sindri_config).await?,
     }
 
     Ok(())

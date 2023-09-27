@@ -2,10 +2,10 @@ use clap::Parser;
 
 pub mod build;
 pub mod scan;
-pub mod upload;
+pub mod deploy;
 
 #[derive(Parser)]
-#[clap(name = "sif")]
+#[clap(name = "sindri")]
 pub struct Cli {
     #[clap(subcommand)]
     pub action: Commands,
@@ -22,6 +22,6 @@ pub struct Cli {
 #[derive(Parser)]
 pub enum Commands {
     Build(build::Build),
-    Upload(upload::Upload),
+    Deploy(deploy::Deploy),
     Scan(scan::Scan),
 }
