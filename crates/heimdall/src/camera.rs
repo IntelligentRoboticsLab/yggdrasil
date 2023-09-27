@@ -109,14 +109,6 @@ impl Image {
     pub fn to_rgb(&self, destination: impl Write) -> Result<()> {
         yuyv_to_rgb(&self.frame[..], destination)
     }
-
-    /// Extracts a slice containing the entire vector.
-    ///
-    /// Equivalent to &image[..].
-    #[must_use]
-    pub fn as_slice(&self) -> &[u8] {
-        &self.frame[..]
-    }
 }
 
 impl Deref for Image {
