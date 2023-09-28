@@ -6,8 +6,8 @@ use crate::cargo;
 /// Config options for the build system
 #[derive(Clone, Debug, Default, Parser)]
 pub struct ConfigOptsBuild {
-    /// Build in release mode [default: false]
-    #[clap(long)]
+    /// Build in release mode
+    #[clap(long, short)]
     pub release: bool,
 }
 

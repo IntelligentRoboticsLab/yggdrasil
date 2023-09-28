@@ -1,3 +1,4 @@
+use miette::{miette, Report};
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use std::collections::HashMap;
@@ -18,12 +19,12 @@ pub struct SindriConfig {
 impl SindriConfig {
     /// Retrieve the name of a robot based on its number
     ///
-    /// This will return `unknown` if the robot's name hasn't been configured!
-    #[must_use]
-    pub fn get_robot_name(&self, number: u8) -> String {
+    /// This will return `Robot number not found!` if the robot's name hasn't been configured yet!
+    pub fn get_robot_name(&self, number: u8) -> Result<&str, Report> {
         self.robots
             .get(&number)
-            .map_or("unknown".to_string(), |robot| robot.name.to_string())
+            .map(|robot| robot.name.as_str())
+            .ok_or_else(|| miette!("Robot number not found!"))
     }
 }
 

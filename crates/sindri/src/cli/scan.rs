@@ -65,7 +65,7 @@ async fn ping(robot_number: u8, sindri_config: SindriConfig, opts: ConfigOptsSca
         .arg("-q") // quiet output
         .arg("-c2") // require only 2 replies
         .arg("-s0") // number of data bytes to be sent
-        .arg(addr.clone())
+        .arg(&addr)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -74,21 +74,20 @@ async fn ping(robot_number: u8, sindri_config: SindriConfig, opts: ConfigOptsSca
         .await
         .into_diagnostic()?;
 
-    if ping.success() {
-        println!(
-            "[+] {} | {} | {}",
-            addr,
-            "ONLINE ".green().bold(),
-            sindri_config.get_robot_name(robot_number).white().bold(),
-        );
-        return Ok(());
-    }
-
+    let online_status = if ping.success() {
+        "ONLINE ".green().bold()
+    } else {
+        "OFFLINE".red().bold()
+    };
     println!(
         "[+] {} | {} | {}",
         addr,
-        "OFFLINE".red().bold(),
-        sindri_config.get_robot_name(robot_number).white().bold(),
+        online_status,
+        sindri_config
+            .get_robot_name(robot_number)
+            .unwrap_or("unknown")
+            .white()
+            .bold(),
     );
 
     Ok(())
