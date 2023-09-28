@@ -1,0 +1,24 @@
+use miette::Result;
+use tyr::prelude::*;
+
+pub struct BehaviourModule;
+
+impl Module for BehaviourModule {
+    fn initialize(self, app: App) -> Result<App> {
+        Ok(app
+            .add_resource(Resource::new(WeCanStoreSomethingHere {}))?
+            .add_system(random_func))
+    }
+}
+
+struct WeCanStoreSomethingHere {}
+
+fn init_func(storage: &mut Storage) -> Result<()> {
+
+}
+
+#[system]
+fn execution_func() -> Result<()> {
+    println!("doing something");
+    Ok(())
+}
