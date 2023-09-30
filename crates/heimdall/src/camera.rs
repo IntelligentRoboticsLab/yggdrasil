@@ -11,6 +11,12 @@ pub const IMAGE_WIDTH: u32 = 1280;
 /// The height of a NAO [`Image`]
 pub const IMAGE_HEIGHT: u32 = 960;
 
+/// Absolute path to the lower camera of the NAO.
+pub const CAMERA_BOTTOM: &str = "/dev/video0";
+
+/// Absolute path to the upper camera of the NAO.
+pub const CAMERA_TOP: &str = "/dev/video1";
+
 const DEFAULT_CAMERA_CONFIG: Config = Config {
     interval: (1, 30),
     resolution: (IMAGE_WIDTH, IMAGE_HEIGHT),
