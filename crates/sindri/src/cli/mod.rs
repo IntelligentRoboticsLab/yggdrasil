@@ -16,7 +16,7 @@ pub struct Cli {
 
     /// Specify bin target
     #[clap(global = true, long, default_value = "yggdrasil")]
-    pub bin: Option<String>,
+    pub bin: String,
 }
 
 #[derive(Parser)]

@@ -37,12 +37,7 @@ impl Deploy {
             self.deploy.number
         );
 
-        cargo::build(
-            "yggdrasil".to_owned(),
-            true,
-            Some("x86_64-unknown-linux-gnu".to_owned()),
-        )
-        .await?;
+        cargo::build("yggdrasil", true, Some("x86_64-unknown-linux-gnu")).await?;
         fs::copy(
             "./target/x86_64-unknown-linux-gnu/release/yggdrasil",
             "./deploy/yggdrasil",

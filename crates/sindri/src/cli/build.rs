@@ -19,8 +19,8 @@ pub struct Build {
 }
 
 impl Build {
-    pub async fn build(self, bin: String) -> Result<()> {
-        match cargo::build(bin.clone(), self.build.release, None).await {
+    pub async fn build(self, bin: &str) -> Result<()> {
+        match cargo::build(bin, self.build.release, None).await {
             Ok(_) => {
                 println!("done!");
             }

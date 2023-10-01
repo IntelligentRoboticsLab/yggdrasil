@@ -146,9 +146,9 @@ where
     Ok(())
 }
 
-pub async fn build(binary: String, release: bool, target: Option<String>) -> Result<()> {
+pub async fn build(binary: &str, release: bool, target: Option<&str>) -> Result<()> {
     let mut cargo_args = vec!["build", "-p"];
-    cargo_args.push(&binary);
+    cargo_args.push(binary);
 
     if release {
         cargo_args.push("--release");
@@ -156,7 +156,7 @@ pub async fn build(binary: String, release: bool, target: Option<String>) -> Res
 
     if let Some(target) = target.as_ref() {
         cargo_args.push("--target");
-        cargo_args.push(target.as_str());
+        cargo_args.push(target);
     }
 
     cargo(cargo_args)
