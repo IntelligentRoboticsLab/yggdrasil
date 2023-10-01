@@ -145,6 +145,14 @@ impl RgbImage {
     }
 }
 
+impl Deref for RgbImage {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        &self.frame
+    }
+}
+
 /// Struct for retrieving images from the NAO camera.
 pub struct Camera {
     camera: rscam::Camera,
