@@ -28,8 +28,15 @@ const DEFAULT_CAMERA_CONFIG: Config = Config {
 /// An object that holds a YUYV NAO camera image.
 ///
 /// The image has a width of [`IMAGE_WIDTH`] and a height of [`IMAGE_HEIGHT`].
-pub struct Image {
+pub struct YuyvImage {
     frame: Frame,
+}
+
+/// An object that holds a YUYV NAO camera image.
+///
+/// The image has a width of [`IMAGE_WIDTH`] and a height of [`IMAGE_HEIGHT`].
+pub struct RgbImage {
+    frame: Vec<u8>,
 }
 
 fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
@@ -81,7 +88,7 @@ fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
     Ok(())
 }
 
-impl Image {
+impl YuyvImage {
     /// Return the timestamp of the image in microseconds.
     #[must_use]
     pub fn timestamp(&self) -> u64 {
@@ -115,16 +122,26 @@ impl Image {
     ///
     /// # Errors
     /// This function fails if it cannot completely write the RGB image to `destination`.
-    pub fn to_rgb(&self, destination: impl Write) -> Result<()> {
-        yuyv_to_rgb(self, destination)
+    pub fn to_rgb(&self, rgb_image: &mut RgbImage) -> Result<()> {
+        rgb_image.frame.clear();
+        yuyv_to_rgb(self, &mut rgb_image.frame)
     }
 }
 
-impl Deref for Image {
+impl Deref for YuyvImage {
     type Target = [u8];
 
     fn deref(&self) -> &[u8] {
         &self.frame
+    }
+}
+
+impl RgbImage {
+    #[must_use]
+    pub fn new(image_width: u32, image_height: u32) -> RgbImage {
+        RgbImage {
+            frame: vec![0; (image_width * image_height * 3) as usize],
+        }
     }
 }
 
@@ -149,9 +166,9 @@ impl Camera {
     ///
     /// # Errors
     /// This function fails if the [`Camera`] cannot take an image.
-    pub fn get_image(&mut self) -> Result<Image> {
+    pub fn get_yuyv_image(&mut self) -> Result<YuyvImage> {
         let frame = self.camera.capture()?;
 
-        Ok(Image { frame })
+        Ok(YuyvImage { frame })
     }
 }
