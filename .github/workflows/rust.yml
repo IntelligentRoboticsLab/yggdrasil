@@ -30,7 +30,7 @@ jobs:
       - name: Installing needed Ubuntu dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y -qq build-devel libasound2-dev
+          sudo apt-get install -y -qq build-essential libasound2-dev
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
         with:
@@ -61,7 +61,7 @@ jobs:
       - name: Installing needed Ubuntu dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y -qq build-devel libasound2-dev
+          sudo apt-get install -y -qq build-essential libasound2-dev
       - name: Annotate commit with clippy warnings
         uses: actions-rs/clippy-check@v1
         with:
@@ -89,7 +89,7 @@ jobs:
       - name: Installing needed Ubuntu dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y -qq build-devel libasound2-dev
+          sudo apt-get install -y -qq build-essential libasound2-dev
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
@@ -118,7 +118,7 @@ jobs:
       - name: Installing needed Ubuntu dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y -qq build-devel libasound2-dev
+          sudo apt-get install -y -qq build-essential libasound2-dev
       - name: Run cargo build
         uses: actions-rs/cargo@v1
         with:
