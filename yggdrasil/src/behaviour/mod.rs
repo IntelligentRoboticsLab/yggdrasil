@@ -42,6 +42,7 @@ fn execution_func() -> Result<()> {
     // Call decision state to change the state
 
     // Based on robotstate, change currentActions
-        // call 
+        // make struct for robotstate
+        // call action-deciders for the current robotstate
     Ok(())
 }
