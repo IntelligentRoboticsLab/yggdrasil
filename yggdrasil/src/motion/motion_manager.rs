@@ -51,12 +51,21 @@ impl MotionManager {
         Ok(())
     }
 
+    pub fn stop_motion(&mut self) {
+        self.active_motion = None;
+        self.motion_execution_starting_time = None;
+    }
+
     /// Starts a new motion.
     ///
     /// # Arguments
     ///
     /// * `motion_type` - The type of motion to start.
     pub fn start_new_motion(&mut self, motion_type: MotionType) {
+        if self.active_motion.is_some() {
+            return;
+        }
+
         self.motion_execution_starting_time = None;
         self.active_motion = Some(ActiveMotion {
             motion: self
@@ -76,25 +85,15 @@ impl MotionManager {
 
 /// Initializes the `MotionManager`. Adds motions to the `MotionManger` by reading
 /// and deserializing the motions from motion files. Then adds the `MotionManager`
-/// as resource
+/// as resource. If you want to add new motions, add the motions here.
 ///
 /// # Arguments
 ///
 /// * `storage` - System storage.
 pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
     let mut motion_manager = MotionManager::new();
-    motion_manager.add_motion(
-        MotionType::SitDownFromStand,
-        "./assets/motions/sit_down_from_stand_motion.json",
-    )?;
-    motion_manager.add_motion(MotionType::Test, "./assets/motions/test.json")?;
-    motion_manager.add_motion(
-        MotionType::StandUpFromSit,
-        "./assets/motions/stand_up_from_sit_motion.json",
-    )?;
-
-    // TODO: remove this, this is for testing
-    motion_manager.start_new_motion(MotionType::Test);
+    // Add new motions here!
+    motion_manager.add_motion(MotionType::Example, "./assets/motions/example.json")?;
     storage.add_resource(Resource::new(motion_manager))?;
 
     Ok(())

@@ -1,4 +1,4 @@
-use crate::motion::motion_executer::lerp;
+use crate::motion::motion_util::lerp;
 use miette::{miette, IntoDiagnostic, Result};
 use nidhogg::types::JointArray;
 use serde::Deserialize;
@@ -41,34 +41,46 @@ impl Motion {
         }
     }
 
-    /// Retrieves the current position by using linear interpolation between the
-    /// two nearest positions based on the starting time and current time.
+    /// Retrieves the a target position for each joint by using linear
+    /// interpolation between the two nearest positions based on the starting
+    /// time and current time.
     ///
     /// # Arguments
     ///
     /// * `motion_duration` - Duration of the current motion.
     pub fn get_position(&self, motion_duration: Duration) -> Option<JointArray<f32>> {
-        self.get_surrounding_frames(motion_duration)
-            .map(|(frame_a, frame_b)| {
+        self.get_surrounding_frames_as_joint_array(motion_duration)
+            .map(|(target_positions_a, target_positions_b, duration)| {
                 lerp(
-                    &frame_a.target_position,
-                    &frame_b.target_position,
-                    motion_duration.as_secs_f32()
-                        / (frame_b.duration - frame_a.duration).as_secs_f32(),
+                    &target_positions_a,
+                    &target_positions_b,
+                    motion_duration.as_secs_f32() / duration.as_secs_f32(),
                 )
             })
     }
 
     /// Get the nearest position that the robot should have before the
-    /// duration and the nearest position after the duration.
+    /// duration and the nearest position after the duration and the total
+    /// duration of the corresponding motion.
     ///
     /// # Arguments
     ///
-    /// * `motion_duration` - Duration of the current motion.
-    fn get_surrounding_frames(&self, motion_duration: Duration) -> Option<(&Movement, &Movement)> {
+    /// * `motion_duration` - Current duration of the current motion.
+    fn get_surrounding_frames_as_joint_array(
+        &self,
+        motion_duration: Duration,
+    ) -> Option<(&JointArray<f32>, &JointArray<f32>, &Duration)> {
         for (i, movement) in self.movements.iter().enumerate() {
-            if motion_duration >= movement.duration && i < self.movements.len() - 1 {
-                return Some((&self.movements[i], &self.movements[i + 1]));
+            if motion_duration <= movement.duration && i < self.movements.len() {
+                let start_position = if i == 0 {
+                    &self.initial_position
+                } else {
+                    &self.movements[i - 1].target_position
+                };
+                let target_position = &movement.target_position;
+                let duration = &movement.duration;
+
+                return Some((start_position, target_position, duration));
             }
         }
 
@@ -80,7 +92,5 @@ impl Motion {
 #[derive(PartialEq, Eq, Hash, Debug)]
 #[non_exhaustive]
 pub enum MotionType {
-    Test,
-    SitDownFromStand,
-    StandUpFromSit,
+    Example,
 }

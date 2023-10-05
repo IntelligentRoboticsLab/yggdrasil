@@ -77,3 +77,21 @@ impl<T: Clone> MotionUtilExt<T> for JointArray<T> {
             || t.right_hand
     }
 }
+
+/// Performs linear interpolation between two `JointArray<f32>`.
+///
+/// # Arguments
+///
+/// * `current_position` - Starting position.
+/// * `target_position` - Final position.
+/// * `scalar` - Scalar from 0-1 that indicates what weight to assign to each position.
+pub fn lerp(
+    current_position: &JointArray<f32>,
+    target_position: &JointArray<f32>,
+    scalar: f32,
+) -> JointArray<f32> {
+    current_position
+        .clone()
+        .zip(target_position.clone())
+        .map(|(curr, target)| curr * (1.0 - scalar) + target * scalar)
+}

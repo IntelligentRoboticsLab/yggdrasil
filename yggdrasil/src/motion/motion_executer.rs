@@ -1,5 +1,5 @@
 use crate::motion::motion_manager::{ActiveMotion, MotionManager};
-use crate::motion::motion_util::MotionUtilExt;
+use crate::motion::motion_util::{lerp, MotionUtilExt};
 use miette::Result;
 use nidhogg::{
     types::{FillExt, JointArray},
@@ -8,8 +8,9 @@ use nidhogg::{
 use std::time::SystemTime;
 use tyr::prelude::*;
 
-const STARTING_POSITION_ERROR_MARGIN: f32 = 0.05;
-const LERP_TO_STARTING_POSITION_DURATION_SECS: f32 = 5.0;
+const STARTING_POSITION_ERROR_MARGIN: f32 = 0.20;
+const LERP_TO_STARTING_POSITION_DURATION_SECS: f32 = 2.0;
+const STIFFNESS: f32 = 0.8;
 
 /// Checks if the current position has reached the target position with a certain
 /// margin of error.
@@ -25,28 +26,29 @@ fn reached_position(
     target_position: &JointArray<f32>,
     error_margin: f32,
 ) -> bool {
-    current_position
+    let mut t = current_position
         .clone()
         .zip(target_position.clone())
-        .all(|(curr, target)| target - error_margin <= curr && curr <= target + error_margin)
-}
+        .map(|(curr, target)| target - error_margin <= curr && curr <= target + error_margin);
 
-/// Performs linear interpolation between two `JointArray<f32>`.
-///
-/// # Arguments
-///
-/// * `current_position` - Starting position.
-/// * `target_position` - Final position.
-/// * `scalar` - Scalar from 0-1 that indicates what weight to assign to each position.
-pub fn lerp(
-    current_position: &JointArray<f32>,
-    target_position: &JointArray<f32>,
-    scalar: f32,
-) -> JointArray<f32> {
-    current_position
-        .clone()
-        .zip(target_position.clone())
-        .map(|(curr, target)| curr * scalar + target * (1.0 - scalar))
+    println!(
+        "CHECK1 {:?} {:?} {:?}",
+        current_position.right_shoulder_pitch,
+        target_position.right_shoulder_pitch,
+        t.right_shoulder_pitch
+    );
+
+    println!(
+        "CHECK {:?} {:?} {:?}",
+        current_position.left_shoulder_pitch,
+        target_position.left_shoulder_pitch,
+        t.left_shoulder_pitch
+    );
+
+    // Ignore hands.
+    t.left_hand = true;
+    t.right_hand = true;
+    t.all(|elem| elem == true)
 }
 
 /// Executes the current motion.
@@ -77,6 +79,7 @@ pub fn motion_executer(
             &motion.initial_position,
             STARTING_POSITION_ERROR_MARGIN,
         ) {
+            println!("Not reached starting position");
             // Starting position has not yet been reached, so lerp to start
             // position, until position has been reached.
             let elapsed_time_since_start_of_motion: f32 =
@@ -87,21 +90,22 @@ pub fn motion_executer(
                 &motion.initial_position,
                 elapsed_time_since_start_of_motion / LERP_TO_STARTING_POSITION_DURATION_SECS,
             );
-            nao_control_message.stiffness = JointArray::<f32>::fill(0.5);
+            nao_control_message.stiffness = JointArray::<f32>::fill(STIFFNESS);
 
             return Ok(());
         } else {
+            println!("Reached starting position");
             motion_manager.motion_execution_starting_time = Some(SystemTime::now());
         }
     }
 
-    match motion.get_position(
-        motion_manager
-            .motion_execution_starting_time
-            .unwrap()
-            .elapsed()
-            .unwrap(),
-    ) {
+    let motion_duration = motion_manager
+        .motion_execution_starting_time
+        .unwrap()
+        .elapsed()
+        .unwrap();
+
+    match motion.get_position(motion_duration) {
         Some(position) => {
             nao_control_message.position = position;
             // TODO: Add stiffness to the motion files.
