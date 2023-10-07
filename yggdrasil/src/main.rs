@@ -1,11 +1,13 @@
 use miette::Result;
 use tyr::{prelude::*, tasks::TaskModule};
 
+pub mod audio;
 pub mod behaviour;
 pub mod filter;
 pub mod leds;
 pub mod nao;
 
+use audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule};
 use behaviour::BehaviourModule;
 use filter::FilterModule;
 use leds::LedsModule;
@@ -20,7 +22,9 @@ fn main() -> Result<()> {
         .add_module(FilterModule)?
         .add_module(LedsModule)?
         .add_module(NaoModule)?
+        .add_module(SoundManagerModule)?
         .add_module(TaskModule)?
+        .add_module(WeeSoundModule)?
         .run()?;
     Ok(())
 }
