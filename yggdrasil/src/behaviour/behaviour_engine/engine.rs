@@ -1,12 +1,16 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, error::Error};
 
-use miette::Result;
+use miette::{Diagnostic, Report, Result};
+use nidhogg::NaoControlMessage;
 use tyr::prelude::*;
 
+use crate::behaviour::behaviour_engine::behaviours::*;
+
 #[derive(Eq, PartialEq, Hash)]
-pub enum Behaviour {
+pub enum BehaviourType {
     Defend,
     Dribble,
+    Falling,
     GetReadyForKickOff,
     GetReadyForPenalty,
     LookForBall,
@@ -19,25 +23,51 @@ pub enum Behaviour {
     WalkToBall,
 }
 
-pub struct BehaviourEngine {
-    current_behaviour: Behaviour,
-    behaviours: HashMap<Behaviour, i32>,
+type Behaviour = Box<dyn ImplBehaviour + Sync + Send>;
+
+pub trait ImplBehaviour {
+    fn execute(&self) -> NaoControlMessage;
 }
+
+pub struct BehaviourEngine {
+    current_behaviour: BehaviourType,
+    behaviours: HashMap<BehaviourType, Behaviour>,
+}
+
+#[derive(Debug)]
+struct NoImplementationError;
+impl std::fmt::Display for NoImplementationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Could not find implementation")
+    }
+}
+impl Error for NoImplementationError {}
+impl Diagnostic for NoImplementationError {}
 
 impl BehaviourEngine {
     pub fn new() -> Self {
         BehaviourEngine {
-            current_behaviour: Behaviour::None,
+            current_behaviour: BehaviourType::None,
             behaviours: HashMap::new(),
         }
     }
 
-    pub fn transition(&mut self, new_behaviour: Behaviour) {
-        self.current_behaviour = new_behaviour;
+    pub fn execute_current_behaviour(&self) -> Result<()> {
+        if let Some(behaviour_implementation) = self.behaviours.get(&self.current_behaviour) {
+            behaviour_implementation.execute();
+        } else {
+            return Err(Report::new(NoImplementationError {}));
+        }
+
+        Ok(())
     }
 
-    pub fn add_behaviour(&mut self, new_behaviour: Behaviour, t: i32) {
-        self.behaviours.insert(new_behaviour, t);
+    pub fn transition(&mut self, behaviour_type: BehaviourType) {
+        self.current_behaviour = behaviour_type;
+    }
+
+    pub fn add_behaviour(&mut self, new_behaviour: BehaviourType, implementation: Behaviour) {
+        self.behaviours.insert(new_behaviour, implementation);
     }
 }
 
@@ -45,7 +75,7 @@ pub fn initializer(storage: &mut Storage) -> Result<()> {
     let mut behaviour_engine = BehaviourEngine::new();
 
     // Add more behaviours here.
-    behaviour_engine.add_behaviour(Behaviour::Sit, 4);
+    behaviour_engine.add_behaviour(BehaviourType::LookAround, Box::new(LookAround {}));
 
     storage.add_resource(Resource::new(behaviour_engine))?;
     Ok(())
@@ -53,6 +83,6 @@ pub fn initializer(storage: &mut Storage) -> Result<()> {
 
 #[system]
 pub fn executor(engine: &mut BehaviourEngine) -> Result<()> {
-    // engine.current_behaviour.execute();
+    engine.execute_current_behaviour()?;
     Ok(())
 }

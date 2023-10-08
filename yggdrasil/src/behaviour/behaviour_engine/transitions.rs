@@ -2,12 +2,12 @@ use miette::Result;
 use tyr::prelude::*;
 
 use crate::{
-    behaviour::{Behaviour, BehaviourEngine, Role},
+    behaviour::{BehaviourEngine, BehaviourType, Role},
     game_phase::GamePhase,
 };
 
 #[system]
-pub fn transitions(
+pub fn transitions<'a>(
     role: &Role,
     engine: &mut BehaviourEngine,
     game_phase: &GamePhase,
@@ -26,8 +26,8 @@ pub fn transitions(
 fn update_keeper_behaviour(engine: &mut BehaviourEngine, game_phase: &GamePhase) {
     // This is just an example
     let new_behaviour = match *game_phase {
-        GamePhase::Normal => Behaviour::Stand,
-        _ => Behaviour::Stand,
+        GamePhase::Normal => BehaviourType::Stand,
+        _ => BehaviourType::Stand,
     };
 
     engine.transition(new_behaviour);

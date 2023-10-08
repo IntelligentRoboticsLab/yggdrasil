@@ -1,12 +1,13 @@
 use tyr::prelude::*;
 
+mod behaviours;
 mod engine;
 mod transitions;
 
 use engine::{executor, initializer};
 use transitions::transitions;
 
-pub use engine::{Behaviour, BehaviourEngine};
+pub use engine::{BehaviourEngine, BehaviourType};
 
 pub struct BehaviourEngineModule;
 
