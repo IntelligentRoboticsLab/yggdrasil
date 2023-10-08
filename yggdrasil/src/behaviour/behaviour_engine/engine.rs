@@ -1,3 +1,14 @@
+// Right now we would need to pass all information necessary for every possible behaviour into the
+// execute function, which is not ideal. Especially when behaviour modules are statefull and need to keep track
+// of their own state this might become a little chaotic and makes it unpleasant to add new
+// behaviours that would depend on new states.
+//
+// An alternative might be defining behaviours as systems so they can specify the data they
+// need. This means every behaviour would run every cycle. We would then only use the results
+// we actually need. Will make it a lot easier to add new behaviours with their own states.
+// However, everything is then always run which is a bit of a waist of computation. If we
+// decide that this computation is not super expensive then this would probably be the best option.
+
 use std::{collections::HashMap, error::Error};
 
 use miette::{Diagnostic, Report, Result};
@@ -26,9 +37,6 @@ pub enum BehaviourType {
 type Behaviour = Box<dyn ImplBehaviour + Sync + Send>;
 
 pub trait ImplBehaviour {
-    // Here we need to pass all information necessary for every possible behaviour.
-    // An alternative might be defining behaviours as systems so they can specify the data they
-    // need. However, in that case all those modules would be run every cycle which is a waist.
     fn execute(&self) -> NaoControlMessage;
 }
 
