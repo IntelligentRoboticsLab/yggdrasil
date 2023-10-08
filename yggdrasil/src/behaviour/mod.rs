@@ -1,24 +1,24 @@
 use miette::Result;
 use tyr::prelude::*;
 
-mod robot_primary_state;
-pub use robot_primary_state::RobotPrimaryState;
-use robot_primary_state::RobotPrimaryStateModule;
+mod behaviour_engine;
+mod primary_state;
+mod roles;
+
+use behaviour_engine::BehaviourEngineModule;
+use primary_state::PrimaryStateModule;
+use roles::RoleModule;
+
+pub use behaviour_engine::{Behaviour, BehaviourEngine};
+pub use roles::Role;
 
 pub struct BehaviourModule;
 
 impl Module for BehaviourModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
-            .add_module(RobotPrimaryStateModule)?
-            .add_startup_system(initialize_states)?)
+            .add_module(PrimaryStateModule)?
+            .add_module(RoleModule)?
+            .add_module(BehaviourEngineModule)?)
     }
-}
-
-struct CurrentAction {}
-
-fn initialize_states(storage: &mut Storage) -> Result<()> {
-    storage.add_resource(Resource::new(CurrentAction {}))?;
-
-    Ok(())
 }

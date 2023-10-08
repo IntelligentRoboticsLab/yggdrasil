@@ -27,7 +27,7 @@ pub struct Led {
     pub right_foot: Color,
     pub skull: Skull,
 
-    /// States that are used for more complicated patterns.
+    /// States that are used for more complicated patterns can be added below.
     chest_blink: Option<ChestBlink>,
 }
 
