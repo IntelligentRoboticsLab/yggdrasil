@@ -1,13 +1,28 @@
+// TODO: put in RFC
+//
+// Thoughts:
+//
 // Right now we would need to pass all information necessary for every possible behaviour into the
-// execute function, which is not ideal. Especially when behaviour modules are statefull and need to keep track
+// execute function of each behaviour implemenation, which is not ideal. Especially when behaviour
+// modules are statefull and need to keep track
 // of their own state this might become a little chaotic and makes it unpleasant to add new
-// behaviours that would depend on new states.
+// behaviours that would depend on new states. We could probably wrap all the data in a single
+// struct to make this less cumbersome.
 //
 // An alternative might be defining behaviours as systems so they can specify the data they
 // need. This means every behaviour would run every cycle. We would then only use the results
 // we actually need. Will make it a lot easier to add new behaviours with their own states.
 // However, everything is then always run which is a bit of a waist of computation. If we
 // decide that this computation is not super expensive then this would probably be the best option.
+//
+//
+// Something that is not entirely clear for me yet is how we would incorporate for example the
+// walking engine. Currently the walking engine directly writes to the nao control message. Maybe
+// the walking engine could be dependent on the Behaviour state for computing the correct joint
+// values then store the resulting joint values in some intermediate representation which is then
+// used by the behaviour modules.
+// Lets say that in a behaviour we want to walk to a specific position, how would we pass that
+// information to the walking engine in this case?
 
 use std::{collections::HashMap, error::Error};
 
