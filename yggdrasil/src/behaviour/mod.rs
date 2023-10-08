@@ -9,7 +9,7 @@ use behaviour_engine::BehaviourEngineModule;
 use primary_state::PrimaryStateModule;
 use roles::RoleModule;
 
-pub use behaviour_engine::{Behaviour, BehaviourEngine};
+pub use behaviour_engine::{BehaviourEngine, BehaviourType};
 pub use roles::Role;
 
 pub struct BehaviourModule;
