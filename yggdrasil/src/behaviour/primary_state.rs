@@ -5,19 +5,19 @@ use miette::Result;
 use nidhogg::types::Color;
 use tyr::prelude::*;
 
-pub struct RobotPrimaryStateModule;
+pub struct PrimaryStateModule;
 
-impl Module for RobotPrimaryStateModule {
+impl Module for PrimaryStateModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
-            .add_resource(Resource::new(RobotPrimaryState::Initial))?
-            .add_system(show_primary_state)
-            .add_system(update_primary_state))
+            .add_resource(Resource::new(PrimaryState::Initial))?
+            .add_system(update_primary_state)
+            .add_system(show_primary_state.after(update_primary_state)))
     }
 }
 
 #[allow(dead_code)]
-pub enum RobotPrimaryState {
+pub enum PrimaryState {
     Unstiff,
     Initial,
     Ready,
@@ -29,14 +29,15 @@ pub enum RobotPrimaryState {
 }
 
 #[system]
-fn update_primary_state(_primary_state: &mut RobotPrimaryState) -> Result<()> {
+#[allow(unused_variables)]
+fn update_primary_state(primary_state: &mut PrimaryState) -> Result<()> {
     // TODO: update primary state based on gamecontroller messages.
     Ok(())
 }
 
 #[system]
-fn show_primary_state(primary_state: &mut RobotPrimaryState, led: &mut Led) -> Result<()> {
-    use RobotPrimaryState::*;
+fn show_primary_state(primary_state: &mut PrimaryState, led: &mut Led) -> Result<()> {
+    use PrimaryState::*;
 
     match *primary_state {
         Unstiff => led.chest_blink(Color::BLUE, Duration::from_secs(1)),
