@@ -20,9 +20,11 @@
 // walking engine. Currently the walking engine directly writes to the nao control message. Maybe
 // the walking engine could be dependent on the Behaviour state for computing the correct joint
 // values then store the resulting joint values in some intermediate representation which is then
-// used by the behaviour modules.
-// Lets say that in a behaviour we want to walk to a specific position, how would we pass that
+// used by the behaviour modules. Lets say that in a behaviour we want to walk to a specific position, how would we pass that
 // information to the walking engine in this case?
+//
+// A solution might be one similar to what hulks has, the result of a behaviour is a motion
+// command. Which is then used by other modules for computing the correct joint angles.
 
 use std::{collections::HashMap, error::Error};
 
