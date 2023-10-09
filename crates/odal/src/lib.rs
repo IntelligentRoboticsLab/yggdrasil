@@ -16,7 +16,8 @@ pub fn generate_config(main: Table, overlay: Table, add_key: bool) -> Table {
                 if let toml::Value::Table(main_table) = v {
                     if let toml::Value::Table(overlay_table) = overlay_value {
                         // Recursively merge the subtables
-                        let merged_table = generate_config(main_table.clone(), overlay_table.clone(), add_key);
+                        let merged_table =
+                            generate_config(main_table.clone(), overlay_table.clone(), add_key);
                         generated_toml.insert(k.clone(), toml::Value::Table(merged_table));
                     }
                 } else {

@@ -1,7 +1,7 @@
+use odal::{generate_config, Configuration};
 use serde::{Deserialize, Serialize};
-use toml::Table;
 use std::fs;
-use odal::{Configuration, generate_config};
+use toml::Table;
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct MainConfig {
@@ -11,7 +11,6 @@ pub struct MainConfig {
 
 impl Configuration for MainConfig {
     fn load(path: &str) -> Self {
-
         let main_cfg: String = fs::read_to_string("../config/yggdrasil.toml").unwrap();
         let main_table: Table = toml::from_str(&main_cfg).unwrap();
 

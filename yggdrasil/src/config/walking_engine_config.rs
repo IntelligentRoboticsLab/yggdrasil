@@ -1,7 +1,7 @@
+use odal::{generate_config, Configuration};
 use serde::{Deserialize, Serialize};
-use toml::Table;
 use std::fs;
-use odal::{Configuration, generate_config};
+use toml::Table;
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct WalkingEngineConfig {
@@ -13,7 +13,6 @@ pub struct WalkingEngineConfig {
 
 impl Configuration for WalkingEngineConfig {
     fn load(path: &str) -> Self {
-
         let main_cfg: String = fs::read_to_string("../config/walking_engine.toml").unwrap();
         let main_table: Table = toml::from_str(&main_cfg).unwrap();
 
