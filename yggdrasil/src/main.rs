@@ -1,3 +1,7 @@
+use odal::Configuration;
+use std::fs;
+use toml::Table;
+
 use tyr::{prelude::*, tasks::TaskModule};
 
 use miette::Result;
@@ -27,6 +31,7 @@ fn main() -> Result<()> {
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?
         .add_module(PrimaryStateModule)?
+        .add_module(ConfigModule)?
         .run()?;
     Ok(())
 }
