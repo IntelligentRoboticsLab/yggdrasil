@@ -26,6 +26,10 @@
 // A solution might be one similar to what hulks has, the result of a behaviour is a motion
 // command. Which is then used by other modules for computing the correct joint angles.
 
+// Instead of hashmap, use a match statement without dymanic dispatch
+// Add context
+// Add Behaviour states
+
 use std::{collections::HashMap, error::Error};
 
 use miette::{Diagnostic, Report, Result};
@@ -42,7 +46,7 @@ pub enum BehaviourType {
     GetReadyForKickOff,
     GetReadyForPenalty,
     LookForBall,
-    LookAround,
+    // LookAround(LookAroundState),
     None,
     Penalized,
     Stand,
@@ -71,6 +75,11 @@ impl BehaviourEngine {
     }
 
     pub fn execute_current_behaviour(&self) -> Result<NaoControlMessage> {
+        // match (self.current_behaviour) {
+        //     BehaviourType::Sit =>,
+        //     _ => {}
+        // }
+
         if let Some(behaviour_implementation) = self.behaviours.get(&self.current_behaviour) {
             Ok(behaviour_implementation.execute())
         } else {
@@ -91,7 +100,10 @@ pub fn initializer(storage: &mut Storage) -> Result<()> {
     let mut behaviour_engine = BehaviourEngine::new();
 
     // Add more behaviours here.
-    behaviour_engine.add_behaviour(BehaviourType::LookAround, Box::new(LookAround {}));
+    // behaviour_engine.add_behaviour(
+    //     BehaviourType::LookAround(LookAroundState::new()),
+    //     Box::new(LookAround {}),
+    // );
 
     storage.add_resource(Resource::new(behaviour_engine))?;
     Ok(())

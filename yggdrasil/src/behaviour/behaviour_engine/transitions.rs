@@ -1,3 +1,5 @@
+// Add folder, put the main function into mod.rs
+// Define all transition functions in seperate files
 use miette::Result;
 use tyr::prelude::*;
 
@@ -7,7 +9,7 @@ use crate::{
 };
 
 #[system]
-pub fn transitions<'a>(
+pub fn transitions(
     role: &Role,
     engine: &mut BehaviourEngine,
     game_phase: &GamePhase,
