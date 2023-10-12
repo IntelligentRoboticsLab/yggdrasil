@@ -5,6 +5,8 @@ on:
   pull_request:
     branches: [main]
 
+# Disable custom linker flags (set in `.cargo/config.toml`) in CI
+# because these break the build.
 env:
   RUSTFLAGS: ""
 
@@ -100,7 +102,7 @@ jobs:
 
   build:
     name: Cargo build & test
-    runs-on: ubuntu-latest      
+    runs-on: ubuntu-latest    
     steps:
       - name: Setup SSH client
         uses: webfactory/ssh-agent@v0.7.0

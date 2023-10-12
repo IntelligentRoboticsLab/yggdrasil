@@ -1,13 +1,14 @@
-use miette::{miette, Report};
+use miette::{miette, IntoDiagnostic, Report, Result};
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
+use tokio::process::Command;
 
 /// Configuration structure for sindri (.toml), containing team number and robot information
 #[serde_as]
 #[derive(Debug, Deserialize, Clone)]
-pub struct SindriConfig {
+pub struct Config {
     /// The configured team number, used to construct IPs.
     pub team_number: u8,
 
@@ -16,7 +17,7 @@ pub struct SindriConfig {
     pub robots: HashMap<u8, Robot>,
 }
 
-impl SindriConfig {
+impl Config {
     /// Retrieve the name of a robot based on its number
     ///
     /// This will return `Robot number not found!` if the robot's name hasn't been configured yet!
@@ -40,5 +41,23 @@ impl Robot {
     #[must_use]
     pub fn get_ip(&self, team_number: u8, wired: bool) -> Ipv4Addr {
         Ipv4Addr::new(10, u8::from(wired), team_number, self.number)
+    }
+
+    /// SSH into the robot.
+    pub async fn ssh(addr: String) -> Result<()> {
+        let ssh_status = Command::new("ssh")
+            .arg(format!("nao@{}", addr.clone()))
+            .arg("~/yggdrasil")
+            .spawn()
+            .into_diagnostic()?
+            .wait()
+            .await
+            .into_diagnostic()?;
+
+        if !ssh_status.success() {
+            return Err(miette!("Failed to ssh into the nao."));
+        }
+
+        Ok(())
     }
 }

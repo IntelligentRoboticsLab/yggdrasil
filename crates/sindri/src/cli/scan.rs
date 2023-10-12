@@ -5,7 +5,7 @@ use colored::Colorize;
 use miette::{miette, IntoDiagnostic, Result};
 use tokio::{process::Command, task::JoinSet};
 
-use crate::config::SindriConfig;
+use crate::config::Config;
 
 /// Configuration options for the scanning system, specifying the IP addresses to be pinged.
 #[derive(Clone, Debug, Default, Parser)]
@@ -18,7 +18,7 @@ pub struct ConfigOptsScan {
     #[clap(long)]
     lan: bool,
 
-    /// Team number [default: Set in `sindri_config.toml`]
+    /// Team number [default: Set in `sindri.toml`]
     #[clap(long)]
     team_number: Option<u8>,
 }
@@ -31,14 +31,16 @@ pub struct Scan {
 }
 
 impl Scan {
-    pub async fn scan(self, sindri_config: SindriConfig) -> Result<()> {
+    pub async fn scan(self, config: Config) -> Result<()> {
         if self.scan.range[0] > self.scan.range[1] {
-            return Err(miette!("The range should be in the form: [lower upper]"));
+            return Err(miette!(
+                "Invalid range format! The range should be in the following format: [lower upper]"
+            ));
         }
         println!("Looking for robots...");
         let mut scan_set = JoinSet::new();
         for robot_number in self.scan.range[0]..=self.scan.range[1] {
-            scan_set.spawn(ping(robot_number, sindri_config.clone(), self.scan.clone()));
+            scan_set.spawn(ping(robot_number, config.clone(), self.scan.clone()));
         }
 
         // wait until all ping commands have been completed
@@ -52,11 +54,11 @@ impl Scan {
     }
 }
 
-async fn ping(robot_number: u8, sindri_config: SindriConfig, opts: ConfigOptsScan) -> Result<()> {
+async fn ping(robot_number: u8, config: Config, opts: ConfigOptsScan) -> Result<()> {
     let addr = format!(
         "10.{}.{}.{}",
         u8::from(opts.lan),
-        opts.team_number.unwrap_or(sindri_config.team_number),
+        opts.team_number.unwrap_or(config.team_number),
         robot_number
     );
 
@@ -83,7 +85,7 @@ async fn ping(robot_number: u8, sindri_config: SindriConfig, opts: ConfigOptsSca
         "[+] {} | {} | {}",
         addr,
         online_status,
-        sindri_config
+        config
             .get_robot_name(robot_number)
             .unwrap_or("unknown")
             .white()

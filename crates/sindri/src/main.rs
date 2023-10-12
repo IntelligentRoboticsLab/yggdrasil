@@ -4,7 +4,7 @@ use clap::Parser;
 use miette::{IntoDiagnostic, Result};
 use sindri::{
     cli::{Cli, Commands},
-    config::SindriConfig,
+    config::Config,
     error::Error,
 };
 use std::fs;
@@ -44,7 +44,7 @@ fn assert_valid_bin(bin: &str) -> Result<()> {
 #[tokio::main]
 async fn main() -> Result<()> {
     let toml_str = fs::read_to_string("sindri.toml").into_diagnostic()?;
-    let sindri_config: SindriConfig = toml::from_str(&toml_str).into_diagnostic()?;
+    let config: Config = toml::from_str(&toml_str).into_diagnostic()?;
 
     let args = Cli::parse();
 
@@ -52,8 +52,8 @@ async fn main() -> Result<()> {
 
     match args.action {
         Commands::Build(opts) => opts.build(&args.bin).await?,
-        Commands::Deploy(opts) => opts.deploy(sindri_config).await?,
-        Commands::Scan(opts) => opts.scan(sindri_config).await?,
+        Commands::Deploy(opts) => opts.deploy(config).await?,
+        Commands::Scan(opts) => opts.scan(config).await?,
     }
 
     Ok(())
