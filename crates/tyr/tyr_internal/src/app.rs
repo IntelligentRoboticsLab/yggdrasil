@@ -105,7 +105,7 @@ impl App {
         Ok(self)
     }
 
-    /// Creates a [`Resource<T>`] on [`T`]s that implement [`Default`] and adds it to the app storage.
+    /// Creates a [`Resource<T>`] on `T`s that implement [`Default`] and adds it to the app storage.
     ///
     /// # Errors
     /// This function fails if there is already a resource of type `T` in the storage.

@@ -3,9 +3,12 @@ use std::time::Duration;
 use miette::Result;
 use tyr::{
     prelude::*,
-    tasks::{Error, TaskModule},
+    tasks::{
+        asynchronous::AsyncTask,
+        task::{Pollable, TaskResource},
+        Error, TaskModule,
+    },
 };
-use tyr_tasks::{AsyncTask, TaskResource};
 
 #[derive(Default)]
 struct Counter(u64);
@@ -22,13 +25,13 @@ fn dispatch_name(task: &mut AsyncTask<Name>) -> Result<()> {
     // Dispatches a future to a background thread where it can be efficiently
     // awaited without blocking all the other systems and tasks.
     //
-    // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
+    // Also marks the task as active, so we can't accidentally dispatch it twice.
     match task.try_spawn(receive_name(Duration::from_secs(1))) {
-        // Successfully dispatched the task
+        // Dispatched!
         Ok(_) => Ok(()),
-        // This is also fine here, we are already running the task and can continue
-        // without dispatching it again
-        Err(Error::AlreadyAlive) => Ok(()),
+        // This is also fine here, we were already running the task from another cycle
+        // and can return without dispatching it again
+        Err(Error::AlreadyActive) => Ok(()),
     }
 }
 
@@ -56,13 +59,12 @@ fn time_critical_task(counter: &mut Counter) -> Result<()> {
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
+    miette::set_panic_hook();
 
     App::new()
         .add_module(TaskModule)?
         .init_resource::<Counter>()?
-        .add_async_task::<Name>()?
-        // There's also a `.add_task_resource()` as a shorthand
-        // for adding both a Resource<T> and Resource<Task<T>>.
+        .add_task::<AsyncTask<Name>>()?
         .add_system(dispatch_name)
         .add_system(poll_name)
         .add_system(time_critical_task)

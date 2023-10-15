@@ -7,7 +7,10 @@ use miette::{IntoDiagnostic, Result};
 use tokio::sync::mpsc::error::TryRecvError;
 use tyr::{
     prelude::*,
-    tasks::{AsyncDispatcher, AsyncTask, AsyncTaskMap, AsyncTaskSet, TaskResource},
+    tasks::{
+        asynchronous::{AsyncDispatcher, AsyncTask, AsyncTaskMap, AsyncTaskSet},
+        task::{Dispatcher, Pollable, TaskResource},
+    },
 };
 
 pub use message::{Message, Payload};
@@ -22,24 +25,16 @@ pub struct WebSocketModule;
 
 impl Module for WebSocketModule {
     fn initialize(self, app: App) -> Result<App> {
-        fn sleep() -> Result<()> {
-            std::thread::sleep(std::time::Duration::from_secs(1));
-            Ok(())
-        }
+        use crate::nao;
 
         Ok(app
             .add_startup_system(init_server)?
             .add_system(accept_sockets)
-            .add_async_task::<Result<AcceptCompleted>>()?
+            .add_task::<AsyncTask<Result<AcceptCompleted>>>()?
             .add_system(handle_messages)
-            .add_async_task_map::<SocketAddr, Result<RecvCompleted>>()?
-            .add_async_task_set::<Result<SendCompleted>>()?
-            .add_system(sleep)
-            .add_system(
-                send_funny_message
-                    // .after(nao::write_hardware_info)
-                    .after(sleep),
-            ))
+            .add_task::<AsyncTaskMap<SocketAddr, Result<RecvCompleted>>>()?
+            .add_task::<AsyncTaskSet<Result<SendCompleted>>>()?
+            .add_system(send_funny_message.after(nao::write_hardware_info)))
     }
 }
 

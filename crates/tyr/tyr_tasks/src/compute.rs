@@ -1,3 +1,64 @@
+//! Task types specialized for computationally heavy tasks
+//!
+//! # Example
+//! ```
+//! use tyr::prelude::*;
+//! use miette::Result;
+//!
+//! struct ProcessCompletion;
+//!
+//! fn process() -> ProcessCompletion {
+//!     // Processing a video might take a lot of time and resources
+//!     // ...
+//!     // Finished processing
+//!     ProcessCompletion
+//! }
+//!
+//! // In this system we want to handle spawning our task.
+//! #[system]
+//! fn process_video(task: &mut ComputeTask<ProcessCompletion>) -> Result<()> {
+//!     // We want to process one video at a time,
+//!     // as more would be an inefficient use of resources.
+//!
+//!     // If you want to handle multiple tasks at any given time, take a look
+//!     // at the `TaskMap` or `TaskSet`.
+//!
+//!     // Because tasks run can execute over multiple system cycles,
+//!     // this system might run at a time the task is already active.
+//!     // therefore `try_spawn` can match with two different variants
+//!     match task.try_spawn(process) {
+//!         // Option 1: The task was inactive, so we can successfully spawn the task
+//!         // Also marks the task as active while we haven't received the result,
+//!         // so we can't accidentally dispatch it twice.
+//!         Ok(_) => Ok(()),
+//!
+//!         // Option 2: The task was already active, we don't need to do anything
+//!         // else here, so we can just return from the function normally.
+//!         Err(Error::AlreadyActive) => Ok(()),
+//!     }
+//! }
+//!
+//! // In this system we want to handle the completion of tasks
+//! #[system]
+//! fn handle_completion(
+//!     task: &mut ComputeTask<ProcessCompletion>,
+//! ) -> Result<()> {
+//!     // We check if the task has completed by polling it.
+//!     // If we get Some(_), we can run other code,
+//!     // if we get None, we return early
+//!     let Some(_) = task.poll() else {
+//!         // Task is not yet ready
+//!         return Ok(());
+//!     };
+//!
+//!     // Our task has finished in this cycle!
+//!     // We can call code that runs on completion here!
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+
 use std::{
     future::Future,
     hash::Hash,
@@ -10,22 +71,25 @@ use std::{
 
 use miette::{IntoDiagnostic, WrapErr};
 use rayon::ThreadPool;
-use tokio::sync::oneshot::{self, Receiver};
+use tokio::{
+    runtime::Handle,
+    sync::oneshot::{self, Receiver},
+};
 
 use crate::{
     asynchronous::AsyncDispatcher,
-    task::{RawTask, Task, TaskMap, TaskSet},
+    task::{Dispatcher, RawTask, Task, TaskMap, TaskSet},
     Error,
 };
 
-pub struct RayonThreadPool(Arc<ThreadPool>);
+pub(super) struct RayonThreadPool(Arc<ThreadPool>);
 
 impl RayonThreadPool {
-    pub fn new(thread_pool: Arc<ThreadPool>) -> Self {
+    pub(super) fn new(thread_pool: Arc<ThreadPool>) -> Self {
         Self(thread_pool)
     }
 
-    pub fn spawn<OP: FnOnce() + Send + 'static>(&self, op: OP) {
+    fn spawn<OP: FnOnce() + Send + 'static>(&self, op: OP) {
         self.0.spawn(op);
     }
 }
@@ -37,7 +101,7 @@ impl Clone for RayonThreadPool {
 }
 
 #[derive(Debug)]
-pub struct ComputeJoinHandle<T> {
+struct ComputeJoinHandle<T> {
     rx: Receiver<thread::Result<T>>,
 }
 
@@ -62,110 +126,100 @@ impl<T> Future for ComputeJoinHandle<T> {
     }
 }
 
+/// Dispatcher that allows functions to run on a separate threadpool that uses
+/// an efficient work-stealing scheduler.
+///
+/// Can be used to obtain a handle to the underlying Tokio runtime.
+#[derive(Clone)]
+pub struct ComputeDispatcher {
+    thread_pool: RayonThreadPool,
+    async_dispatcher: AsyncDispatcher,
+}
+
+impl ComputeDispatcher {
+    pub(super) fn new(thread_pool: RayonThreadPool, async_dispatcher: AsyncDispatcher) -> Self {
+        Self {
+            thread_pool,
+            async_dispatcher,
+        }
+    }
+
+    fn spawn<T: Send + 'static, F: FnOnce() -> T + Send + 'static>(
+        &self,
+        func: F,
+    ) -> ComputeJoinHandle<T> {
+        let (tx, rx) = oneshot::channel();
+        self.thread_pool.spawn(move || {
+            // send the result of invoking the function back through the oneshot channel,
+            // capturing any panics that might occur
+            let _result = tx.send(catch_unwind(AssertUnwindSafe(func)));
+        });
+
+        ComputeJoinHandle { rx }
+    }
+}
+
+impl Dispatcher for ComputeDispatcher {
+    fn handle(&self) -> &Handle {
+        self.async_dispatcher.handle()
+    }
+}
+
+/// A [`Task`] variant specialized for compute tasks.
+///
+/// For more explanation, see [`Task`].
+///
+/// To spawn a task, use the [`Self::try_spawn`](Task#impl-Task<T,+ComputeDispatcher>) method.
 pub type ComputeTask<T> = Task<T, ComputeDispatcher>;
 
 impl<T: Send + 'static> ComputeTask<T> {
-    /// Tries to spawn the function on the threadpool and sets the task to be alive.
+    /// Tries to spawn the function on the thread pool and sets the task to be active by tracking
+    /// its progress.
     ///
     /// # Errors
-    /// If the task is already alive, the function is not spawned and an [`Error::AlreadyDispatched`]
-    /// is returned instead.
-    ///
-    /// # Example
-    /// ```
-    /// use tyr::{prelude::*, tasks::{ComputeDispatcher, Task, Error}};
-    /// use miette::Result;
-    ///
-    /// fn big_ass_calculation() -> i32 {
-    ///      // We're gonna need a lot of resources...
-    ///      // ...
-    ///      // Finally, we get our processed value
-    ///      21
-    /// }
-    ///
-    /// #[system]
-    /// fn do_calculation(dispatcher: &ComputeDispatcher, task: &mut Task<i32>) -> Result<()> {
-    ///     // Dispatches the computation of `big_ass_calculation` to a background thread
-    ///     // where it can be efficiently computed in parallel and without blocking all
-    ///     // the other systems and tasks.
-    ///     //
-    ///     // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
-    ///     match dispatcher.try_dispatch(&mut task, move || big_ass_calculation()) {
-    ///         // Successfully dispatched the task
-    ///         Ok(_) => Ok(()),
-    ///         // This is also fine here, we are already running the task and can continue
-    ///         // without dispatching it again
-    ///         Err(Error::AlreadyDispatched) => Ok(()),
-    ///     }
-    ///
-    /// }
-    ///
-    /// #[system]
-    /// fn handle_completion(
-    ///     task: &mut Task<i32>,
-    /// ) -> Result<()> {
-    ///     let Some(value) = task.poll() else {
-    ///         // Task is not yet ready, return early!
-    ///         return Ok(());
-    ///     };
-    ///     // Our task has completed! We can now use `value`!
-    ///     Ok(())
-    /// }
-    /// ```
+    /// Returns an [`Error::AlreadyActive`] if the task is active already.
     pub fn try_spawn<F>(&mut self, func: F) -> crate::Result<()>
     where
         F: FnOnce() -> T + Send + 'static,
         T: Send + 'static,
     {
-        if self.is_alive() {
-            return Err(Error::AlreadyAlive);
+        if self.active() {
+            return Err(Error::AlreadyActive);
         }
 
-        let (tx, rx) = oneshot::channel();
-        self.dispatcher.thread_pool.spawn(move || {
-            // send the result of invoking the function back through the oneshot channel,
-            // capturing any panics that might occur
-            let _result = tx.send(catch_unwind(AssertUnwindSafe(func)));
-        });
+        let compute_join_handle = self.dispatcher.spawn(func);
+        let join_handle = self.dispatcher.async_dispatcher.spawn(compute_join_handle);
 
-        let compute_join_handle = ComputeJoinHandle { rx };
-        let join_handle = self
-            .dispatcher
-            .async_dispatcher
-            .handle()
-            .spawn(compute_join_handle);
-
-        self.inner = Some(RawTask { join_handle });
+        self.raw = Some(RawTask { join_handle });
 
         Ok(())
     }
 }
 
+/// A [`TaskMap`] variant specialized for compute tasks.
+///
+/// For more explanation, see [`TaskMap`].
+///
+/// To spawn a task, use the [`Self::try_spawn`](TaskMap#impl-TaskMap<K,+T,+ComputeDispatcher>) method.
 pub type ComputeTaskMap<K, T> = TaskMap<K, T, ComputeDispatcher>;
 
 impl<K: Hash + Eq + PartialEq, T: Send + 'static> ComputeTaskMap<K, T> {
+    /// Tries to spawn the function on the thread pool and adds progress tracking at the
+    /// value of the given key.
+    ///
+    /// # Errors
+    /// Returns an [`Error::AlreadyActive`] if the task for the given key is active already.
     pub fn try_spawn<F>(&mut self, key: K, func: F) -> crate::Result<()>
     where
         F: FnOnce() -> T + Send + 'static,
         T: Send + 'static,
     {
-        if self.is_alive(&key) {
-            return Err(Error::AlreadyAlive);
+        if self.active(&key) {
+            return Err(Error::AlreadyActive);
         }
 
-        let (tx, rx) = oneshot::channel();
-        self.dispatcher.thread_pool.spawn(move || {
-            // send the result of invoking the function back through the oneshot channel,
-            // capturing any panics that might occur
-            let _result = tx.send(catch_unwind(AssertUnwindSafe(func)));
-        });
-
-        let compute_join_handle = ComputeJoinHandle { rx };
-        let join_handle = self
-            .dispatcher
-            .async_dispatcher
-            .handle()
-            .spawn(compute_join_handle);
+        let compute_join_handle = self.dispatcher.spawn(func);
+        let join_handle = self.dispatcher.async_dispatcher.spawn(compute_join_handle);
 
         self.map.insert(key, RawTask { join_handle });
 
@@ -173,43 +227,23 @@ impl<K: Hash + Eq + PartialEq, T: Send + 'static> ComputeTaskMap<K, T> {
     }
 }
 
+/// A [`TaskSet`] variant specialized for compute tasks.
+///
+/// For more explanation, see [`TaskSet`].
+///
+/// To spawn a task, use the [`Self::spawn`](TaskSet#impl-TaskSet<T,+ComputeDispatcher>) method.
 pub type ComputeTaskSet<T> = TaskSet<T, ComputeDispatcher>;
 
 impl<T: Send + 'static> ComputeTaskSet<T> {
-    pub fn try_spawn<F>(&mut self, func: F) -> crate::Result<()>
+    /// Spawns the function on the thread pool and adds progress tracking to the set
+    pub fn spawn<F>(&mut self, func: F)
     where
         F: FnOnce() -> T + Send + 'static,
         T: Send + 'static,
     {
-        let (tx, rx) = oneshot::channel();
-        self.dispatcher.thread_pool.spawn(move || {
-            // send the result of invoking the function back through the oneshot channel,
-            // capturing any panics that might occur
-            let _result = tx.send(catch_unwind(AssertUnwindSafe(func)));
-        });
-
-        let compute_join_handle = ComputeJoinHandle { rx };
+        let compute_join_handle = self.dispatcher.spawn(func);
 
         let _guard = self.dispatcher.async_dispatcher.handle().enter();
         self.set.spawn(compute_join_handle);
-
-        Ok(())
-    }
-}
-
-/// Dispatcher that allows functions to run on a separate threadpool that uses
-/// an efficient work-stealing scheduler.
-#[derive(Clone)]
-pub struct ComputeDispatcher {
-    pub(crate) thread_pool: RayonThreadPool,
-    pub(crate) async_dispatcher: AsyncDispatcher,
-}
-
-impl ComputeDispatcher {
-    pub(crate) fn new(thread_pool: RayonThreadPool, async_dispatcher: AsyncDispatcher) -> Self {
-        Self {
-            thread_pool,
-            async_dispatcher,
-        }
     }
 }

@@ -1,77 +1,107 @@
-use std::{collections::HashMap, hash::Hash, task::Poll};
+//! Basic traits and types for managing tasks
+//!
+//! Tasks allow functions to execute over multiple system cycles.
+//!
+//! Tasks might be in either an active or inactive state.
+//! - A task is active when the execution of code is being awaited or calculated.
+//! - A task is inactive when there is nothing to be awaited or calculated.
+//!
+//! To get the result out of a task, you must check if it is completed using the [`Pollable::poll`] method.
+//!
+//! # Note 📝
+//!
+//! Tasks are identified by their return type, so multiple tasks returning the same type would interfere
+//! (even returning 'nothing' returns `()` implicitly)! Therefore it is always recommended to create a unique
+//! struct for the task output, even if the code executed doesn't need to return anything.
+//!
+//! ## Example
+//! ```
+//! // A struct without any data associated, but that uniquely identifies this task
+//! struct Completed;
+//!
+//! fn calculation() -> Completed {
+//!     // Do calculation...
+//!     
+//!     // Return an instance of the `Completed` struct
+//!     Completed
+//! }
+//! ```  
+//!
 
-use futures::{executor, poll};
+use std::{collections::HashMap, hash::Hash, pin::pin, task::Poll};
+
+use futures::poll;
 use miette::{IntoDiagnostic, Result, WrapErr};
-use tokio::task::{JoinHandle, JoinSet};
+use tokio::{
+    runtime::Handle,
+    task::{JoinHandle, JoinSet},
+};
 
 use tyr_internal::{App, Resource, Storage};
 
-// TODO: look at exports again
-// TODO: get rid of some pub/pub(crates)
-// TODO: look at all docs!!!
-use crate::{
-    asynchronous::{AsyncTask, AsyncTaskMap},
-    compute::{ComputeTask, ComputeTaskMap},
-    AsyncDispatcher, AsyncTaskSet, ComputeDispatcher, ComputeTaskSet,
-};
-
-/// Tasks allow functions to complete after multiple execution cycles.
-///
-/// Tasks might be in either a dead or alive state.
-/// - A task is alive when the value of `T` is being awaited or calculated.
-/// - A task is dead when there is nothing to be awaited or calculated.
-///
-/// You can check if it is alive using the [`Task::is_alive`] method.
-///
-/// To get the value out of a task, you must check it's completion using the [`Task::poll`] method.
-///
-/// To activate a task you can use a dispatcher such as the [`AsyncDispatcher`](crate::AsyncDispatcher) or [`ComputeDispatcher`](crate::ComputeDispatcher)
-pub struct Task<T: Send, D> {
-    pub(crate) inner: Option<RawTask<T>>,
-    pub(crate) dispatcher: D,
+/// A dispatcher manages tasks of a specific type (e.g. async/compute).
+pub trait Dispatcher {
+    /// Returns a raw tokio [`Handle`] to the underlying runtime.
+    ///
+    /// # Warning ⚠️
+    /// If you are looking to run async functions, this is often not what you want.
+    /// When using Tokio directly, it is easy to block the main thread or spawn futures repeatedly by accident.
+    ///
+    /// You should try one of the `AsyncTask*` types first.
+    ///
+    /// If you do think you need this, remember that **with great power comes great responsibility**.
+    ///
+    fn handle(&self) -> &Handle;
 }
 
-impl<T: Send + 'static, D> Task<T, D> {
-    /// Spawns a new, dead task
-    pub fn dead(dispatcher: D) -> Self {
-        Self {
-            inner: None,
-            dispatcher,
-        }
-    }
+/// Methods for creating and polling tasks.
+pub trait Pollable {
+    /// The type of dispatcher this task is using.
+    type Dispatcher: Dispatcher;
+    /// The type of the value this task returns.
+    type Output;
 
-    /// Checks if the task is alive.
-    pub fn is_alive(&self) -> bool {
-        self.inner.is_some()
-    }
+    /// Creates a new inactive task.
+    fn new(dispatcher: Self::Dispatcher) -> Self;
 
-    pub fn poll(&mut self) -> Option<T> {
-        let Some(task) = &mut self.inner else {
-            return None;
-        };
-
-        match task.poll() {
-            Some(output) => {
-                self.inner = None;
-                Some(output)
-            }
-            None => None,
-        }
-    }
+    /// Checks the task progress and returns any new results.
+    ///
+    /// # Example
+    /// ```
+    /// use tyr::prelude::*;
+    /// use miette::Result;
+    ///
+    /// struct Foo;
+    ///
+    /// #[system]
+    /// fn check_finished(task: &mut AsyncTask<Foo>) -> Result<()> {
+    ///     let Some(foo) = task.poll() else {
+    ///         // Task is not yet ready
+    ///         return Ok(());
+    ///     };
+    ///
+    ///     // Task has finished
+    ///     // can use `foo` here
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    fn poll(&mut self) -> Self::Output;
 }
 
-pub(crate) struct RawTask<T: Send> {
+pub(super) struct RawTask<T: Send> {
     pub join_handle: JoinHandle<T>,
 }
 
 impl<T: Send> RawTask<T> {
+    /// Check if the task is finished and a value can be returned.
     pub fn is_finished(&self) -> bool {
         self.join_handle.is_finished()
     }
 
-    /// Polls the task status, returning `Some(T)` if it is completed and `None` if the task is still in progress or the task is dead.
-    pub fn poll(&mut self) -> Option<T> {
-        executor::block_on(async {
+    /// Polls the task status, returning `Some(T)` if it is completed and `None` if the task is still in progress or the task is inactive.
+    pub fn poll(&mut self, handle: &Handle) -> Option<T> {
+        handle.block_on(async {
             match poll!(&mut self.join_handle) {
                 Poll::Ready(res) => Some(
                     res.into_diagnostic()
@@ -84,32 +114,88 @@ impl<T: Send> RawTask<T> {
     }
 }
 
-pub struct TaskMap<K: Hash + Eq + PartialEq, V: Send + 'static, D> {
-    pub(crate) map: HashMap<K, RawTask<V>>,
-    pub(crate) dispatcher: D,
+/// The simplest kind of task storage. It can await execution of one task at a time.
+///
+/// # Note 📝
+/// You probably don't need to use this type directly.
+/// Instead, use:
+/// - [`AsyncTask<T>`](`crate::asynchronous::AsyncTask`)
+/// - [`ComputeTask<T>`](`crate::compute::ComputeTask`)
+pub struct Task<T: Send, D: Dispatcher> {
+    pub(super) raw: Option<RawTask<T>>,
+    pub(super) dispatcher: D,
 }
 
-impl<K: Hash + Eq + PartialEq, V: Send + 'static, D> TaskMap<K, V, D> {
-    /// Spawns a new, dead [`TaskMap`]
-    pub fn dead(dispatcher: D) -> Self {
+impl<T: Send, D: Dispatcher> Task<T, D> {
+    /// Checks if the task is active (something is being executed) or not.
+    pub fn active(&self) -> bool {
+        self.raw.is_some()
+    }
+}
+
+impl<T: Send, D: Dispatcher> Pollable for Task<T, D> {
+    type Dispatcher = D;
+    type Output = Option<T>;
+
+    fn new(dispatcher: Self::Dispatcher) -> Self {
+        Self {
+            raw: None,
+            dispatcher,
+        }
+    }
+
+    fn poll(&mut self) -> Self::Output {
+        let Some(task) = &mut self.raw else {
+            return None;
+        };
+
+        match task.poll(self.dispatcher.handle()) {
+            Some(output) => {
+                self.raw = None;
+                Some(output)
+            }
+            None => None,
+        }
+    }
+}
+
+/// A key/value based task storage. Use it if you want to await execution of one task per key.
+///
+/// # Note 📝
+/// You probably don't need to use this type directly.
+/// Instead, use:
+/// - [`AsyncTaskMap<T>`](`crate::asynchronous::AsyncTaskMap`)
+/// - [`ComputeTaskMap<T>`](`crate::compute::ComputeTaskMap`)
+pub struct TaskMap<K: Hash + Eq + PartialEq, V: Send + 'static, D: Dispatcher> {
+    pub(super) map: HashMap<K, RawTask<V>>,
+    pub(super) dispatcher: D,
+}
+
+impl<K: Hash + Eq + PartialEq, V: Send + 'static, D: Dispatcher> TaskMap<K, V, D> {
+    /// Checks if the task associated with a key is active (something is being executed) or not.
+    pub fn active(&self, key: &K) -> bool {
+        self.map.contains_key(key)
+    }
+}
+
+impl<K: Hash + Eq + PartialEq, V: Send + 'static, D: Dispatcher> Pollable for TaskMap<K, V, D> {
+    type Dispatcher = D;
+    type Output = Vec<V>;
+
+    fn new(dispatcher: Self::Dispatcher) -> Self {
         Self {
             map: HashMap::default(),
             dispatcher,
         }
     }
 
-    /// Checks if task with key `K` is alive.
-    pub fn is_alive(&self, key: &K) -> bool {
-        self.map.contains_key(key)
-    }
-
     /// Polls the task status, returning a T for every finished task.
-    pub fn poll(&mut self) -> Vec<V> {
+    fn poll(&mut self) -> Self::Output {
         // get all finished tasks
         let finished = self
             .map
             .iter_mut()
-            .filter_map(|(_, raw)| raw.poll())
+            .filter_map(|(_, raw)| raw.poll(self.dispatcher.handle()))
             .collect();
 
         // remove the unfinished tasks
@@ -119,14 +205,23 @@ impl<K: Hash + Eq + PartialEq, V: Send + 'static, D> TaskMap<K, V, D> {
     }
 }
 
-pub struct TaskSet<T: Send + 'static, D> {
-    pub(crate) set: JoinSet<T>,
-    pub(crate) dispatcher: D,
+/// An unordered set of tasks. Allows for any amount of tasks to be stored, and they may finish in any order.
+///
+/// # Note 📝
+/// You probably don't need to use this type directly.
+/// Instead, use:
+/// - [`AsyncTaskSet<T>`](`crate::asynchronous::AsyncTaskSet`)
+/// - [`ComputeTaskSet<T>`](`crate::compute::ComputeTaskSet`)
+pub struct TaskSet<T: Send + 'static, D: Dispatcher> {
+    pub(super) set: JoinSet<T>,
+    pub(super) dispatcher: D,
 }
 
-impl<T: Send + 'static, D> TaskSet<T, D> {
-    /// Spawns a new, dead [`TaskSet`]
-    pub fn dead(dispatcher: D) -> Self {
+impl<T: Send + 'static, D: Dispatcher> Pollable for TaskSet<T, D> {
+    type Dispatcher = D;
+    type Output = Vec<T>;
+
+    fn new(dispatcher: Self::Dispatcher) -> Self {
         Self {
             set: JoinSet::new(),
             dispatcher,
@@ -134,169 +229,70 @@ impl<T: Send + 'static, D> TaskSet<T, D> {
     }
 
     /// Polls the task status, returning a T for every finished task.
-    pub fn poll(&mut self) -> Vec<T> {
-        // get all finished tasks
-        (0..self.set.len())
-            .filter_map(|_| {
-                executor::block_on(async { self.set.join_next().await.transpose().unwrap() })
-            })
-            .collect()
+    fn poll(&mut self) -> Self::Output {
+        self.dispatcher.handle().block_on(async {
+            let mut completed = vec![];
+
+            // Poll once for every task in the set
+            for _ in 0..self.set.len() {
+                let poll_result = match poll!(pin!(self.set.join_next())) {
+                    Poll::Ready(v) => v.transpose().unwrap(),
+                    Poll::Pending => None,
+                };
+
+                // We might have polled an empty set
+                if let Some(value) = poll_result {
+                    completed.push(value);
+                };
+            }
+
+            completed
+        })
     }
 }
 
-/// Provides a convenience method for adding corresponding tasks and resources to an app.
+/// Provides a convenience method for adding tasks to an app.
 pub trait TaskResource {
-    /// Consumes the [`Resource<T>`] and adds it, along with a dead [`Task<T>`] to the app storage.
-    ///
+    /// Adds a task to the app that gets initialized with its corresponding dispatcher
+    /// # Example
     /// ```
-    /// use tyr::{prelude::*, tasks::{TaskResource, Task}};
+    /// use tyr::prelude::*;
     /// use miette::Result;
     ///
+    /// struct Foo;
+    ///
     /// fn main() -> Result<()> {
-    ///     let app = App::new();
-    ///
-    ///     app.add_task_resource(Resource::new(1_i32))?;
-    ///
-    ///     // Is equivalent to:
-    ///
-    ///     let app2 = App::new()
-    ///         .add_resource(Resource::<Task<i32>>::default())?
-    ///         .add_resource(Resource::new(1_i32))?;
-    ///
-    ///    Ok(())
+    ///     let app = App::new()
+    ///         .add_module(TaskModule)?
+    ///         .add_task::<AsyncTask<Foo>>()?
+    ///         .add_task::<ComputeTaskSet<Foo>>()?
+    ///         .add_task::<AsyncTaskMap<i32, Foo>>()?
+    ///         .add_task::<ComputeTask<Foo>>()?;
+    ///     
+    ///     Ok(())
     /// }
     /// ```
-    fn add_async_task<T>(self) -> Result<Self>
+    fn add_task<T>(self) -> Result<Self>
     where
         Self: Sized,
-        T: Send + Sync + 'static;
-
-    fn add_async_task_map<K, T>(self) -> Result<Self>
-    where
-        Self: Sized,
-        K: Hash + Eq + PartialEq + Send + Sync + 'static,
-        T: Send + Sync + 'static;
-
-    fn add_async_task_set<T>(self) -> Result<Self>
-    where
-        Self: Sized,
-        T: Send + Sync + 'static;
-
-    fn add_compute_task<T>(self) -> Result<Self>
-    where
-        Self: Sized,
-        T: Send + Sync + 'static;
-
-    fn add_compute_task_map<K, T>(self) -> Result<Self>
-    where
-        Self: Sized,
-        K: Hash + Eq + PartialEq + Send + Sync + 'static,
-        T: Send + Sync + 'static;
-
-    fn add_compute_task_set<T>(self) -> Result<Self>
-    where
-        Self: Sized,
-        T: Send + Sync + 'static;
+        T: Pollable + Send + Sync + 'static,
+        T::Dispatcher: Clone + 'static;
 }
 
 impl TaskResource for App {
-    fn add_async_task<T: Send + Sync + 'static>(self) -> Result<Self>
+    fn add_task<T>(self) -> Result<Self>
     where
         Self: Sized,
+        T: Pollable + Send + Sync + 'static,
+        T::Dispatcher: Clone + 'static,
     {
-        fn add<T: Send + Sync + 'static>(s: &mut Storage) -> Result<()> {
-            let dispatcher = s.map_resource_ref(|ad: &AsyncDispatcher| ad.clone());
-
-            s.add_resource(Resource::new(AsyncTask::<T>::dead(dispatcher)))?;
-
-            Ok(())
-        }
-
-        self.add_startup_system(add::<T>)
-    }
-
-    fn add_async_task_map<K, T>(self) -> Result<Self>
-    where
-        Self: Sized,
-        K: Hash + Eq + PartialEq + Send + Sync + 'static,
-        T: Send + Sync + 'static,
-    {
-        fn add<K, T>(s: &mut Storage) -> Result<()>
+        fn add<T: Pollable + Send + Sync + 'static>(storage: &mut Storage) -> Result<()>
         where
-            K: Hash + Eq + PartialEq + Send + Sync + 'static,
-            T: Send + Sync + 'static,
+            T::Dispatcher: Clone + 'static,
         {
-            let dispatcher = s.map_resource_ref(|ad: &AsyncDispatcher| ad.clone());
+            let dispatcher = storage.map_resource_ref(|d: &T::Dispatcher| d.clone())?;
 
-            s.add_resource(Resource::new(AsyncTaskMap::<K, T>::dead(dispatcher)))?;
-
-            Ok(())
-        }
-
-        self.add_startup_system(add::<K, T>)
-    }
-
-    fn add_async_task_set<T: Send + Sync + 'static>(self) -> Result<Self>
-    where
-        Self: Sized,
-    {
-        fn add<T: Send + Sync + 'static>(s: &mut Storage) -> Result<()> {
-            let dispatcher = s.map_resource_ref(|ad: &AsyncDispatcher| ad.clone());
-
-            s.add_resource(Resource::new(AsyncTaskSet::<T>::dead(dispatcher)))?;
-
-            Ok(())
-        }
-
-        self.add_startup_system(add::<T>)
-    }
-
-    fn add_compute_task<T>(self) -> Result<Self>
-    where
-        Self: Sized,
-        T: Send + Sync + 'static,
-    {
-        fn add<T: Send + Sync + 'static>(s: &mut Storage) -> Result<()> {
-            let dispatcher = s.map_resource_ref(|cd: &ComputeDispatcher| cd.clone());
-
-            s.add_resource(Resource::new(ComputeTask::<T> {
-                inner: None,
-                dispatcher,
-            }))?;
-
-            Ok(())
-        }
-
-        self.add_startup_system(add::<T>)
-    }
-
-    fn add_compute_task_map<K, T>(self) -> Result<Self>
-    where
-        Self: Sized,
-        K: Hash + Eq + PartialEq + Send + Sync + 'static,
-        T: Send + Sync + 'static,
-    {
-        fn add<K: Hash + Eq + PartialEq + Send + Sync + 'static, T: Send + Sync + 'static>(
-            s: &mut Storage,
-        ) -> Result<()> {
-            let dispatcher = s.map_resource_ref(|cd: &ComputeDispatcher| cd.clone());
-
-            s.add_resource(Resource::new(ComputeTaskMap::<K, T>::dead(dispatcher)))?;
-
-            Ok(())
-        }
-
-        self.add_startup_system(add::<K, T>)
-    }
-
-    fn add_compute_task_set<T: Send + Sync + 'static>(self) -> Result<Self>
-    where
-        Self: Sized,
-    {
-        fn add<T: Send + Sync + 'static>(s: &mut Storage) -> Result<()> {
-            let dispatcher = s.map_resource_ref(|cd: &ComputeDispatcher| cd.clone());
-
-            s.add_resource(Resource::new(ComputeTaskSet::<T>::dead(dispatcher)))?;
+            storage.add_resource(Resource::new(T::new(dispatcher)))?;
 
             Ok(())
         }

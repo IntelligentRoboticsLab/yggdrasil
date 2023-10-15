@@ -5,7 +5,10 @@ use tyr::{
     prelude::*,
     tasks::{Error, TaskModule},
 };
-use tyr_tasks::{ComputeTask, TaskResource};
+use tyr_tasks::{
+    compute::ComputeTask,
+    task::{Pollable, TaskResource},
+};
 
 #[derive(Default)]
 struct Counter(u64);
@@ -22,14 +25,13 @@ fn dispatch_name(task: &mut ComputeTask<Name>) -> Result<()> {
     // We dispatch a function onto a threadpool where it runs without blocking
     // other systems.
     //
-    // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
-
+    // Also marks the task as active, so we can't accidentally dispatch it twice.
     match task.try_spawn(move || calculate_name(Duration::from_secs(1))) {
         // Dispatched!
         Ok(_) => Ok(()),
-        // This is also fine here, we are already running the task and can continue
-        // without dispatching it again
-        Err(Error::AlreadyAlive) => Ok(()),
+        // This is also fine here, we were already running the task from another cycle
+        // and can return without dispatching it again
+        Err(Error::AlreadyActive) => Ok(()),
     }
 }
 
@@ -62,9 +64,7 @@ fn main() -> Result<()> {
     App::new()
         .add_module(TaskModule)?
         .init_resource::<Counter>()?
-        .add_compute_task::<Name>()?
-        // There's also a `.add_task_resource()` as a shorthand
-        // for adding both a Resource<T> and Resource<Task<T>>.
+        .add_task::<ComputeTask<Name>>()?
         .add_system(dispatch_name)
         .add_system(poll_name)
         .add_system(time_critical_task)

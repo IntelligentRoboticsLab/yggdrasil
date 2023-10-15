@@ -74,32 +74,58 @@ impl Storage {
     /// Try to get a resource based on `T` its [`std::any::TypeId`].
     ///
     /// Returns `None` if the type does not exist in the storage.
-    pub fn get<T: 'static>(&self) -> Option<&ErasedResource> {
+    pub(super) fn get<T: 'static>(&self) -> Option<&ErasedResource> {
         let type_id = TypeId::of::<T>();
         self.0.get(&type_id)
     }
 
-    /// TODO: docs
-    pub fn map_resource_ref<T: 'static, F: Fn(&T) -> R, R>(&self, f: F) -> R {
+    /// Try to get a resource from the storage by reference, and map it to something else
+    ///
+    /// This can be useful in startup systems where you depend on other resources being available
+    /// already.
+    ///
+    /// # Example
+    /// ```
+    /// use tyr::prelude::*;
+    /// use miette::Result;
+    ///
+    /// fn init_server(storage: &mut Storage) -> Result<()> {
+    ///    let handle = storage.map_resource_ref(|ad: &AsyncDispatcher| {
+    ///        ad.handle().clone()
+    ///    })?;
+    ///    
+    ///    // Now we can use a previously initialized Tokio runtime
+    ///    // from a startup system!
+    ///
+    ///    Ok(())
+    /// }
+    /// ```
+    ///
+    pub fn map_resource_ref<T: 'static, F: Fn(&T) -> R, R>(&self, f: F) -> Result<R> {
         let resource = self
             .get::<T>()
-            .unwrap_or_else(|| panic!("Resource of type `{}` does not exist", type_name::<T>()));
+            .ok_or_else(|| miette!("Resource of type `{}` does not exist", type_name::<T>()))?;
+
         let guard = resource
             .read()
-            .unwrap_or_else(|_| panic!("Failed to lock resource of type `{}`", type_name::<T>()));
+            .unwrap_or_else(|_| panic!("Failed to lock resource of type `{}`", type_name::<&T>()));
 
-        f(guard.downcast_ref().unwrap())
+        Ok(f(guard.downcast_ref().unwrap()))
     }
 
-    /// TODO: docs
-    pub fn map_resource_mut<T: 'static, F: Fn(&mut T) -> R, R>(&self, f: F) -> R {
+    /// Try to get a resource from the storage by mutable reference, and map it to something else
+    pub fn map_resource_mut<T: 'static, F: Fn(&mut T) -> R, R>(&self, f: F) -> Result<R> {
         let resource = self
             .get::<T>()
-            .unwrap_or_else(|| panic!("Resource of type `{}` does not exist", type_name::<T>()));
-        let mut guard = resource
-            .write()
-            .unwrap_or_else(|_| panic!("Failed to lock resource of type `{}`", type_name::<T>()));
+            .ok_or_else(|| miette!("Resource of type `{}` does not exist", type_name::<T>()))?;
 
-        f(guard.downcast_mut().unwrap())
+        let mut guard = resource.write().unwrap_or_else(|_| {
+            panic!(
+                "Failed to lock resource of type `{}`",
+                type_name::<&mut T>()
+            )
+        });
+
+        Ok(f(guard.downcast_mut().unwrap()))
     }
 }
