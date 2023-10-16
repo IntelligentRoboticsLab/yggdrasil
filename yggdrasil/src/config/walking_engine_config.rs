@@ -4,12 +4,7 @@ use std::fs;
 use toml::Table;
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
-pub struct WalkingEngineConfig {
-    #[serde(default)]
-    pub balance: BalanceConfig,
-    #[serde(default)]
-    pub speed: SpeedConfig,
-}
+pub struct WalkingEngineConfig {}
 
 impl Configuration for WalkingEngineConfig {
     fn load(path: &str) -> Self {
@@ -39,8 +34,3 @@ impl Configuration for WalkingEngineConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
-pub struct BalanceConfig;
-
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
-pub struct SpeedConfig;

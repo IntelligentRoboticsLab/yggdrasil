@@ -1,0 +1,15 @@
+[bulbasaur]
+hp = 5
+attack = 6
+defense = 7
+speed = 8
+
+[charmander]
+hp = 5
+attack = 6
+defense = 7
+speed = 8
+
+[charmander.moves]
+flamethrower = 1
+growl = "Grrr"

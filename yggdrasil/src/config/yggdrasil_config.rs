@@ -4,12 +4,9 @@ use std::fs;
 use toml::Table;
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
-pub struct MainConfig {
-    #[serde(default)]
-    pub nao: RobotConfig,
-}
+pub struct YggdrasilConfig {}
 
-impl Configuration for MainConfig {
+impl Configuration for YggdrasilConfig {
     fn load(path: &str) -> Self {
         let main_cfg: String = fs::read_to_string("../config/yggdrasil.toml").unwrap();
         let main_table: Table = toml::from_str(&main_cfg).unwrap();
@@ -35,22 +32,4 @@ impl Configuration for MainConfig {
 
         fs::write(path, result.to_string()).unwrap();
     }
-}
-
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
-pub struct RobotConfig {
-    #[serde(default)]
-    pub name: String,
-    #[serde(default)]
-    pub ip: String,
-    #[serde(default)]
-    pub walk_config: WalkConfig,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
-pub struct WalkConfig {
-    #[serde(default)]
-    pub hip_height: f32,
-    #[serde(default)]
-    pub knee_stiffness: f32,
 }
