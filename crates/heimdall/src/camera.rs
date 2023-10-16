@@ -153,6 +153,12 @@ impl Deref for RgbImage {
     }
 }
 
+impl Default for RgbImage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Struct for retrieving images from the NAO camera.
 pub struct Camera {
     camera: rscam::Camera,
