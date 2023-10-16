@@ -138,9 +138,9 @@ impl Deref for YuyvImage {
 
 impl RgbImage {
     #[must_use]
-    pub fn new(image_width: u32, image_height: u32) -> RgbImage {
+    pub fn new() -> RgbImage {
         RgbImage {
-            frame: vec![0; (image_width * image_height * 3) as usize],
+            frame: vec![0; (IMAGE_HEIGHT * IMAGE_WIDTH * 3) as usize],
         }
     }
 }
