@@ -167,7 +167,15 @@ impl Camera {
         let mut camera = rscam::Camera::new(device_path)?;
         camera.start(&DEFAULT_CAMERA_CONFIG)?;
 
-        Ok(Self { camera })
+        let mut camera = Self { camera };
+
+        // Grab some images to make startup the camera.
+        // Without it, the first couple of images will return an empty buffer.
+        for _ in 0..4 {
+            camera.get_yuyv_image()?;
+        }
+
+        Ok(camera)
     }
 
     /// Get the next image.
