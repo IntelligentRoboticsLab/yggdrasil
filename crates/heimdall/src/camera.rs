@@ -22,7 +22,7 @@ const DEFAULT_CAMERA_CONFIG: Config = Config {
     resolution: (IMAGE_WIDTH, IMAGE_HEIGHT),
     format: b"YUYV",
     field: FIELD_NONE,
-    nbuffers: 2,
+    nbuffers: 3,
 };
 
 /// An object that holds a YUYV NAO camera image.
