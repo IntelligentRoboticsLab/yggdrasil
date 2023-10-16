@@ -1,7 +1,7 @@
 mod message;
 mod stream;
 
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, SocketAddr};
 
 use miette::{IntoDiagnostic, Result};
 use tokio::sync::mpsc::error::TryRecvError;
@@ -19,7 +19,8 @@ pub use stream::{
     WebSocketServerHandle,
 };
 
-pub const ADDR: &str = "0.0.0.0:1984";
+pub const PORT: u16 = 1984;
+pub const ADDR: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 
 pub struct WebSocketModule;
 
@@ -40,10 +41,10 @@ impl Module for WebSocketModule {
 
 fn init_server(storage: &mut Storage) -> Result<()> {
     let server = storage.map_resource_ref(|ad: &AsyncDispatcher| {
-        ad.handle().block_on(WebSocketServer::bind(ADDR))
+        ad.handle().block_on(WebSocketServer::bind((ADDR, PORT)))
     })?;
 
-    tracing::info!("Started WebSocket server, listening on {ADDR}");
+    tracing::info!("Started WebSocket server, listening on {ADDR}:{PORT}");
 
     storage.add_resource(Resource::new(server))?;
 
