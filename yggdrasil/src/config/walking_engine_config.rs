@@ -33,4 +33,3 @@ impl Configuration for WalkingEngineConfig {
         fs::write(path, result.to_string()).unwrap();
     }
 }
-

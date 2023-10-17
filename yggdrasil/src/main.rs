@@ -2,6 +2,9 @@ use odal::Configuration;
 use std::fs;
 use toml::Table;
 
+use config::{
+    walking_engine_config::WalkingEngineConfig, yggdrasil_config::YggdrasilConfig, ConfigModule,
+};
 use tyr::{prelude::*, tasks::TaskModule};
 
 use miette::Result;
