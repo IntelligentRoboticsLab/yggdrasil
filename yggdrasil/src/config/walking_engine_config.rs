@@ -22,7 +22,7 @@ impl Configuration for WalkingEngineConfig {
         generated_toml
     }
 
-    fn store(path: &str, updates: Table) {
+    fn save(path: &str, updates: Table) {
         let overlay_cfg: String = fs::read_to_string(path).unwrap();
         let overlay_table: Table = toml::from_str(&overlay_cfg).unwrap();
 

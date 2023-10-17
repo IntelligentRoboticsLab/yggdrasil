@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 toml = { workspace = true }
 miette = { workspace = true }
+tyr = { path = "../tyr" }

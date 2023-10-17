@@ -33,7 +33,7 @@ impl Configuration for PokemonConfig {
 
     /// Takes a path to an overlay and updates in a toml format (Table) and writes the requested
     /// changes to the overlay toml file.
-    fn store(path: &str, updates: Table) {
+    fn save(path: &str, updates: Table) {
         let overlay_cfg: String = fs::read_to_string(path).unwrap();
         let overlay_table: Table = toml::from_str(&overlay_cfg).unwrap();
 
@@ -73,7 +73,10 @@ fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     miette::set_panic_hook();
 
-    // add_config functionality
+    App::new()
+        // Add the loaded config to the system
+        .add_config::<PokemonConfig>("../examples/config/example.toml")
+        .run();
 
     Ok(())
 }

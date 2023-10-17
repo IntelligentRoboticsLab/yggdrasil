@@ -4,7 +4,6 @@ use tyr::prelude::*;
 use self::{button::ButtonFilter, fsr::FSRFilter, imu::IMUFilter, sonar::SonarFilter};
 
 pub mod button;
-pub mod falling;
 pub mod fsr;
 pub mod imu;
 pub mod sonar;

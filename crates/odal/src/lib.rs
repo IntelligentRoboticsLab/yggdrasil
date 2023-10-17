@@ -1,8 +1,25 @@
 use toml::Table;
+use tyr::prelude::*;
+use miette::Result;
 
 pub trait Configuration {
     fn load(path: &str) -> Self;
-    fn store(path: &str, parameters: Table);
+    fn save(path: &str, parameters: Table);
+}
+
+pub trait ConfigResource {
+/// Wrapper around Resource in order to add threadsafe configurations to the app.
+fn add_config<T: Configuration + Send + Sync + 'static>(self, path: &str) -> Result<Self>
+    where
+        Self: Sized;
+}
+
+impl ConfigResource for App {
+    fn add_config<T: Configuration + Send + Sync + 'static>(self, path: &str) -> Result<Self>
+    where
+        Self: Sized {
+            self.add_resource(Resource::new(T::load(path)))
+    }
 }
 
 pub fn generate_config(main: Table, overlay: Table, add_key: bool) -> Table {
