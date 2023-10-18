@@ -30,9 +30,15 @@
 // Add context
 // Add Behaviour states
 
-use std::{collections::HashMap, error::Error};
+use std::error::Error;
 
-use miette::{Diagnostic, Report, Result};
+use crate::{
+    behaviour::Role,
+    behaviour::primary_state::PrimaryState,
+    game_phase::GamePhase,
+};
+
+use miette::{Diagnostic, Result};
 use nidhogg::NaoControlMessage;
 use tyr::prelude::*;
 
@@ -46,7 +52,7 @@ pub enum BehaviourType {
     GetReadyForKickOff,
     GetReadyForPenalty,
     LookForBall,
-    LookAround,
+    LookAround(LookAroundState),
     None,
     Penalized,
     Stand,
@@ -55,7 +61,7 @@ pub enum BehaviourType {
     WalkToBall,
 }
 
-type Behaviour = Box<dyn ImplBehaviour + Sync + Send>;
+// type Behaviour = Box<dyn ImplBehaviour + Sync + Send>;
 
 pub trait ImplBehaviour {
     fn execute(&self) -> NaoControlMessage;
@@ -63,9 +69,18 @@ pub trait ImplBehaviour {
 
 pub struct BehaviourEngine {
     current_behaviour: BehaviourType,
+    current_behaviour_context: BehaviourContext
 }
 
-struct BehaviourContext;
+// struct BehaviourContext;
+pub struct BehaviourContext {
+    pub ball: Vec<f32>,
+    pub game_phase: GamePhase,
+    pub robot_pos: Vec<f32>,
+    pub player_number: i32,
+    pub primary_state: PrimaryState,
+    pub role: Role,
+}
 
 impl BehaviourEngine {
     pub fn new() -> Self {
@@ -74,9 +89,11 @@ impl BehaviourEngine {
         }
     }
 
-    pub fn execute_current_behaviour(&self, ctx: BehaviourContext) -> Result<NaoControlMessage> {
-        Ok(match (self.current_behaviour) {
-            BehaviourType::LookAround => LookAround.execute(ctx),
+    pub fn execute_current_behaviour(&self, &mut ctx) -> Result<NaoControlMessage> {
+
+
+        Ok(match self.current_behaviour {
+            BehaviourType::LookAround(_) => LookAround.execute(ctx),
             _ => NaoControlMessage::default(),
         })
     }
@@ -87,34 +104,46 @@ impl BehaviourEngine {
 }
 
 #[system]
-pub fn executor(engine: &mut BehaviourEngine, ctrl_msg: &mut NaoControlMessage) -> Result<()> {
-    let NaoControlMessage {
-        position,
-        stiffness,
-        sonar,
-        left_ear,
-        right_ear,
-        chest,
-        left_eye,
-        right_eye,
-        left_foot,
-        right_foot,
-        skull,
-    } = engine.execute_current_behaviour()?;
+pub fn executor(
+    engine: &mut BehaviourEngine,
+    ctrl_msg: &mut NaoControlMessage,
+    //ball_positio
+) -> Result<()> {
+    let mut ctx = BehaviourContext {
+    // &mut engin.current_behaviour
+    // ball positio
+    };
+
+
+    // let NaoControlMessage {
+    //     position,
+    //     stiffness,
+    //     sonar,
+    //     left_ear,
+    //     right_ear,
+    //     chest,
+    //     left_eye,
+    //     right_eye,
+    //     left_foot,
+    //     right_foot,
+    //     skull,
+    // }
+    // pass to this instad of 
+    ctrl_msg = engine.execute_current_behaviour(&mut ctx)?;
 
     // This can be overwritten over override field written by other modules,
     // prob needs improvement
-    ctrl_msg.position = position;
-    ctrl_msg.stiffness = stiffness;
-    ctrl_msg.sonar = sonar;
-    ctrl_msg.left_ear = left_ear;
-    ctrl_msg.right_ear = right_ear;
-    ctrl_msg.chest = chest;
-    ctrl_msg.left_eye = left_eye;
-    ctrl_msg.right_eye = right_eye;
-    ctrl_msg.left_foot = left_foot;
-    ctrl_msg.right_foot = right_foot;
-    ctrl_msg.skull = skull;
+    // ctrl_msg.position = position;
+    // ctrl_msg.stiffness = stiffness;
+    // ctrl_msg.sonar = sonar;
+    // ctrl_msg.left_ear = left_ear;
+    // ctrl_msg.right_ear = right_ear;
+    // ctrl_msg.chest = chest;
+    // ctrl_msg.left_eye = left_eye;
+    // ctrl_msg.right_eye = right_eye;
+    // ctrl_msg.left_foot = left_foot;
+    // ctrl_msg.right_foot = right_foot;
+    // ctrl_msg.skull = skull;
 
     Ok(())
 }
