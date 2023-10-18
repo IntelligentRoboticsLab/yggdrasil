@@ -14,7 +14,9 @@ pub struct LookAroundState {
 pub struct LookAround;
 
 impl ImplBehaviour for LookAround {
-    fn execute(&self) -> NaoControlMessage {
+    fn execute(&self, ctx) -> NaoControlMessage {
+        //ctx.ball_position
+        //ctx.currntb = new LookAroundState{}
         NaoControlMessage::default()
     }
 }

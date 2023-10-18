@@ -7,7 +7,7 @@ mod transitions;
 use engine::executor;
 use transitions::transitions;
 
-pub use engine::{BehaviourEngine, BehaviourType};
+pub use engine::{BehaviourEngine, BehaviourType, BehaviourContext};
 
 pub struct BehaviourEngineModule;
 
