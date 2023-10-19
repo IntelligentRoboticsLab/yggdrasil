@@ -2,7 +2,7 @@ use tyr::{prelude::*, tasks::TaskModule};
 
 use miette::Result;
 
-use yggdrasil::{filter::FilterModule, nao::NaoModule, websocket::WebSocketModule};
+use yggdrasil::{filter::FilterModule, nao::NaoModule};
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::fmt().pretty().init();
@@ -13,7 +13,6 @@ fn main() -> Result<()> {
         .add_module(TaskModule)?
         .add_module(NaoModule)?
         .add_module(FilterModule)?
-        .add_module(WebSocketModule)?
         .run()?;
     Ok(())
 }
