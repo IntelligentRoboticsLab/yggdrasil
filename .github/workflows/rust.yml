@@ -13,7 +13,9 @@ jobs:
       - name: Setup SSH client
         uses: webfactory/ssh-agent@v0.7.0
         with:
-          ssh-private-key: ${{ secrets.BONDI_DEPLOY_KEY }}
+          ssh-private-key: |
+            ${{ secrets.BONDI_DEPLOY_KEY }}
+            ${{ secrets.BIFROST_DEPLOY_KEY }}
 
       - name: Checkout sources
         uses: actions/checkout@v2
