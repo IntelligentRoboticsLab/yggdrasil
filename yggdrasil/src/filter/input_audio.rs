@@ -22,7 +22,16 @@ impl Module for InputAudioFilter {
 // define InputAudio as vector (number of channels * number of frames)
 #[derive(Default)]
 pub struct InputAudio{
-    audio: Vec<i32>, //placeholder for now
+    // save pcm
+    // call on buffer of n last samples
+    audio: Vec<i16>, //placeholder for now
+    samples: usize,
+}
+
+impl InputAudio {
+    pub fn with_samples(mut self, number_samples: usize) -> () {
+        self.samples = number_samples;
+    }
 }
 
 #[system]
@@ -38,7 +47,21 @@ fn input_audio_filter(
         hwp.set_period_size(FRAMES, ValueOr::Nearest).unwrap();
         pcm.hw_params(&hwp).unwrap();
     }
-    pcm.start().unwrap();
-    // input_audio.audio = pcm;
+
+    if input_audio.samples != 0 {
+        pcm.start().unwrap();
+        let io = pcm.io_i16().unwrap();
+        let samples = input_audio.samples;
+        let mut buffer = vec![0i16; samples];
+        for i in 0..samples {
+            let sample = io.readi(&mut buffer[i..i + 1]).unwrap();
+            if sample == 0 {
+                break;
+            }
+        }
+        input_audio.audio = buffer;
+        input_audio.samples = 0;
+        println!("{:?}", input_audio.audio);
+    }
     Ok(())
 }
