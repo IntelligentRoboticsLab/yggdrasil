@@ -22,7 +22,7 @@
 //!     // as more connections would get suspicious.
 //!
 //!     // If you want to handle multiple tasks at any given time, take a look
-//!     // at the `TaskMap` or `TaskSet`.
+//!     // at the `AsyncTaskMap` or `AsyncTaskSet` types.
 //!
 //!     // Because tasks run can execute over multiple system cycles,
 //!     // this system might run at a time the task is already active.

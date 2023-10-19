@@ -21,7 +21,7 @@
 //!     // as more would be an inefficient use of resources.
 //!
 //!     // If you want to handle multiple tasks at any given time, take a look
-//!     // at the `TaskMap` or `TaskSet`.
+//!     // at the `ComputeTaskMap` or `ComputeTaskSet` types.
 //!
 //!     // Because tasks run can execute over multiple system cycles,
 //!     // this system might run at a time the task is already active.
