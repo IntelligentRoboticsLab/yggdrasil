@@ -1,13 +1,12 @@
+pub mod audio;
+pub mod filter;
+pub mod nao;
+
+use audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule};
 use tyr::{prelude::*, tasks::TaskModule};
 
 use miette::Result;
-
-use yggdrasil::{
-    audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule},
-    debug::WebSocketModule,
-    filter::FilterModule,
-    nao::NaoModule,
-};
+use yggdrasil::{debug::WebSocketModule, filter::FilterModule, nao::NaoModule};
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::fmt().init();
