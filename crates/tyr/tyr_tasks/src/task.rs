@@ -254,6 +254,11 @@ impl<T: Send + 'static, D: Dispatcher> Pollable for TaskSet<T, D> {
 /// Provides a convenience method for adding tasks to an app.
 pub trait TaskResource {
     /// Adds a task to the app that gets initialized with its corresponding dispatcher
+    ///
+    /// # Errors
+    /// This function fails if the needed dispatcher doesn't already exist in storage,
+    /// or if the task already exists in storage.
+    ///
     /// # Example
     /// ```
     /// use tyr::prelude::*;
