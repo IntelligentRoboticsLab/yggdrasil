@@ -14,7 +14,7 @@ impl Module for NaoModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_startup_system(initialize_nao)?
-            .add_resource(Resource::new(NaoControlMessage::default()))?
+            .init_resource::<NaoControlMessage>()?
             .add_system(write_hardware_info))
     }
 }

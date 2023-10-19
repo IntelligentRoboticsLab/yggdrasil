@@ -11,8 +11,7 @@ pub struct SonarFilter;
 
 impl Module for SonarFilter {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(sonar_filter)
-            .add_resource(Resource::new(SonarValues::default()))
+        app.add_system(sonar_filter).init_resource::<SonarValues>()
     }
 }
 

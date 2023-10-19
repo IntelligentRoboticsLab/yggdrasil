@@ -25,12 +25,12 @@ pub struct ButtonFilter;
 impl Module for ButtonFilter {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system(button_filter)
-            .add_resource(Resource::new(HeadButtons::default()))?
-            .add_resource(Resource::new(ChestButton::default()))?
-            .add_resource(Resource::new(LeftHandButtons::default()))?
-            .add_resource(Resource::new(RightHandButtons::default()))?
-            .add_resource(Resource::new(LeftFootButtons::default()))?
-            .add_resource(Resource::new(RightFootButtons::default()))
+            .init_resource::<HeadButtons>()?
+            .init_resource::<ChestButton>()?
+            .init_resource::<LeftHandButtons>()?
+            .init_resource::<RightHandButtons>()?
+            .init_resource::<LeftFootButtons>()?
+            .init_resource::<RightFootButtons>()
     }
 }
 
