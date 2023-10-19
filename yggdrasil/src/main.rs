@@ -4,6 +4,7 @@ use miette::Result;
 
 use yggdrasil::{
     audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule},
+    debug::WebSocketModule,
     filter::FilterModule,
     nao::NaoModule,
 };
