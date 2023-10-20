@@ -11,7 +11,7 @@ struct PokemonConfig {
 }
 
 impl Configuration for PokemonConfig {
-    // Specify the path to a root config
+    // Specify the path to a root config.
     const PATH: &'static str = "../config/examples/example.toml";
 }
 
@@ -44,7 +44,7 @@ fn main() -> Result<()> {
     miette::set_panic_hook();
 
     App::new()
-        // Add a loaded config to the system at runtime
+        // Adds a loaded config to the system at runtime.
         .add_config::<PokemonConfig>("../examples/config/overlays/charmander/example.toml")?
         .run()?;
 

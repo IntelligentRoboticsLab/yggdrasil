@@ -35,8 +35,6 @@ fn main() -> Result<()> {
         .add_module(LedsModule)?
         .add_module(PrimaryStateModule)?
         .add_module(ConfigModule)?
-        .add_config::<YggdrasilConfig>("../config/yggdrasil.toml")?
-        .add_config::<WalkingEngineConfig>("../config/walking_engine.toml")?
         .run()?;
     Ok(())
 }
