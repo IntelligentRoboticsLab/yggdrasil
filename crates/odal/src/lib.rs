@@ -51,7 +51,7 @@ impl ConfigResource for App {
     where
         Self: Sized,
     {
-        Ok(self.add_resource(Resource::new(T::load(path)))?)
+        self.add_resource(Resource::new(T::load(path)))
     }
 }
 
