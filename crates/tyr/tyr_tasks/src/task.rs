@@ -99,7 +99,7 @@ impl<T: Send> RawTask<T> {
         self.join_handle.is_finished()
     }
 
-    /// Polls the task status, returning `Some(T)` if it is completed and `None` if the task is still in progress or the task is inactive.
+    /// Polls the task status, returning `Some(T)` if the task is finished and `None` if the task is still in progress or inactive.
     pub fn poll(&mut self, handle: &Handle) -> Option<T> {
         handle.block_on(async {
             match poll!(&mut self.join_handle) {
@@ -253,7 +253,7 @@ impl<T: Send + 'static, D: Dispatcher> Pollable for TaskSet<T, D> {
 
 /// Provides a convenience method for adding tasks to an app.
 pub trait TaskResource {
-    /// Adds a task to the app that gets initialized with its corresponding dispatcher
+    /// Adds a task to the app that gets initialized with its corresponding dispatcher.
     ///
     /// # Errors
     /// This function fails if the needed dispatcher doesn't already exist in storage,
