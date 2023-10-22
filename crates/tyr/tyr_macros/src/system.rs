@@ -121,7 +121,7 @@ fn get_ty_string(ty: &Type) -> String {
 fn build_ty_string(ty: &Type) -> String {
     let iter = ty.to_token_stream().into_iter();
     let mut name_parts: Vec<_> = iter
-        .map(|token| token.span().source_text().unwrap_or(String::new()))
+        .map(|token| token.span().source_text().unwrap_or_default())
         .collect();
 
     if name_parts.get(0).is_some_and(|first| first == "&") {
