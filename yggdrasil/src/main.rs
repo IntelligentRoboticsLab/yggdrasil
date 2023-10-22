@@ -2,7 +2,11 @@ use tyr::{prelude::*, tasks::TaskModule};
 
 use miette::Result;
 
-use yggdrasil::{filter::FilterModule, nao::NaoModule};
+use yggdrasil::{
+    audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule},
+    filter::FilterModule,
+    nao::NaoModule,
+};
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::fmt().pretty().init();
@@ -13,6 +17,8 @@ fn main() -> Result<()> {
         .add_module(TaskModule)?
         .add_module(NaoModule)?
         .add_module(FilterModule)?
+        .add_module(SoundManagerModule)?
+        .add_module(WeeSoundModule)?
         .run()?;
     Ok(())
 }

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["yggdrasil", "crates/tyr"]
+members = ["crates/tyr", "yggdrasil"]
 
 [workspace.dependencies]
 derive_more = "0.99.17"
@@ -8,6 +8,7 @@ dyn-clone = "1.0.11"
 futures = "0.3.28"
 miette = "5.10.0"
 bifrost = { git = "ssh://git@github.com/IntelligentRoboticsLab/bifrost.git" }
+kira = "0.8.4"
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
 petgraph = "0.6.3"
 proc-macro2 = "1.0.63"
