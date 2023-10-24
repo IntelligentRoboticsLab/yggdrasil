@@ -2,7 +2,6 @@ use tyr::{prelude::*, tasks::TaskModule};
 
 use miette::Result;
 
-use heimdall::Camera;
 use yggdrasil::{
     audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule},
     filter::FilterModule,
