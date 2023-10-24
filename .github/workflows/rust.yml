@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-github-pat/
+        with:
+          CI_TOKEN: ${{ secrets.CI_TOKEN }}
       - uses: ./.github/actions/install-ubuntu-deps/
-      - name: Setup PAT for private repo access
-        run: |
-          git config --global url."https://${{ secrets.BONDI_TOKEN }}@github.com".insteadOf ssh://git@github.com
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo test --all-targets --all-features
 
@@ -26,11 +26,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: webfactory/ssh-agent@v0.7.0
+      - uses: ./.github/actions/setup-github-pat/
         with:
-          ssh-private-key: |
-            ${{ secrets.BONDI_DEPLOY_KEY }}
-            ${{ secrets.BIFROST_DEPLOY_KEY }}
+          CI_TOKEN: ${{ secrets.CI_TOKEN }}
       - uses: ./.github/actions/install-ubuntu-deps/
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -43,11 +41,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: webfactory/ssh-agent@v0.7.0
+      - uses: ./.github/actions/setup-github-pat/
         with:
-          ssh-private-key: |
-            ${{ secrets.BONDI_DEPLOY_KEY }}
-            ${{ secrets.BIFROST_DEPLOY_KEY }}
+          CI_TOKEN: ${{ secrets.CI_TOKEN }}
       - uses: ./.github/actions/install-ubuntu-deps/
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:

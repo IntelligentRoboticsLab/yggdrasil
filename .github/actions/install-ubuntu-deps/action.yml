@@ -1,5 +1,5 @@
 name: Install deps
-description: Install needed Ubuntu dependencies
+description: Install required Ubuntu dependencies
 runs:
   using: "composite"
   steps:
