@@ -12,16 +12,14 @@ jobs:
   test:
     name: cargo test
     runs-on: ubuntu-latest
+    env:
     steps:
       - uses: actions/checkout@v4
-      - uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: |
-            ${{ secrets.BONDI_DEPLOY_KEY }}
-            ${{ secrets.BIFROST_DEPLOY_KEY }}
       - uses: ./.github/actions/install-ubuntu-deps/
+      - name: Setup PAT for private repo access
+        run: |
+           git config --global url."https://${{ secrets.BONDI_TOKEN }}@github.com".insteadOf git@github.com
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-
       - run: cargo test --all-targets --all-features
 
   clippy:
