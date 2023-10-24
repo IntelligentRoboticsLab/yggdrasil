@@ -1,15 +1,16 @@
-pub mod audio;
-pub mod filter;
-pub mod nao;
-
-use audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule};
-use filter::FilterModule;
-use miette::Result;
-use nao::NaoModule;
 use tyr::{prelude::*, tasks::TaskModule};
 
+use miette::Result;
+
+use yggdrasil::{
+    audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule},
+    filter::FilterModule,
+    nao::NaoModule,
+};
+
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt::fmt().pretty().init();
+
     miette::set_panic_hook();
 
     App::new()

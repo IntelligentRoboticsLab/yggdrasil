@@ -194,7 +194,11 @@ impl<'res, T: Send + Sync + 'static> SystemParam for Res<'res, T> {
 
     fn retrieve(resources: &Storage) -> Self::Item<'_> {
         Res {
-            value: resources.get::<T>().unwrap().read().unwrap(),
+            value: resources
+                .get::<T>()
+                .unwrap_or_else(|| panic!("Cannot get `&{}`", type_name::<T>()))
+                .read()
+                .unwrap(),
             _marker: PhantomData,
         }
     }
@@ -232,7 +236,11 @@ impl<'res, T: Send + Sync + 'static> SystemParam for ResMut<'res, T> {
 
     fn retrieve(resources: &Storage) -> Self::Item<'_> {
         ResMut {
-            value: resources.get::<T>().unwrap().write().unwrap(),
+            value: resources
+                .get::<T>()
+                .unwrap_or_else(|| panic!("Cannot get `&mut {}`", type_name::<T>()))
+                .write()
+                .unwrap(),
             _marker: PhantomData,
         }
     }

@@ -16,8 +16,8 @@ pub struct FSRFilter;
 impl Module for FSRFilter {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system(force_sensitive_resistor_filter)
-            .add_resource(Resource::new(ForceSensitiveResistors::default()))?
-            .add_resource(Resource::new(Contacts::default()))
+            .init_resource::<ForceSensitiveResistors>()?
+            .init_resource::<Contacts>()
     }
 }
 

@@ -11,8 +11,7 @@ pub struct IMUFilter;
 
 impl Module for IMUFilter {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(imu_filter)
-            .add_resource(Resource::new(IMUValues::default()))
+        app.add_system(imu_filter).init_resource::<IMUValues>()
     }
 }
 

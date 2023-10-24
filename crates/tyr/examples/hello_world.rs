@@ -5,7 +5,7 @@ fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     App::new()
-        .add_resource(Resource::<Cheese>::default())?
+        .init_resource::<Cheese>()?
         .add_resource(Resource::new(Sausage("Salami".to_string())))?
         .add_system(say_hi)
         .add_system(update_cheese)

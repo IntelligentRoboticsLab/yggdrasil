@@ -105,6 +105,15 @@ impl App {
         Ok(self)
     }
 
+    /// Creates a [`Resource<T>`] on `T`s that implement [`Default`] and adds it to the app storage.
+    ///
+    /// # Errors
+    /// This function fails if there is already a resource of type `T` in the storage.
+    pub fn init_resource<T: Default + Send + Sync + 'static>(mut self) -> Result<Self> {
+        self.storage.add_resource(Resource::<T>::default())?;
+        Ok(self)
+    }
+
     /// Consumes the [`Resource<T>`] and adds it to the app storage.
     ///
     /// # Errors
