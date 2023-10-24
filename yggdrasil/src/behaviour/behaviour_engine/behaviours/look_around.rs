@@ -1,6 +1,7 @@
 use nidhogg::NaoControlMessage;
+use tyr::ResMut;
 
-use crate::behaviour::behaviour_engine::engine::ImplBehaviour;
+use crate::behaviour::behaviour_engine::engine::{ImplBehaviour, BehaviourContext};
 
 #[derive(Hash, PartialEq, Eq)]
 pub struct LookAroundState {
@@ -14,10 +15,10 @@ pub struct LookAroundState {
 pub struct LookAround;
 
 impl ImplBehaviour for LookAround {
-    fn execute(&self, ctx) -> NaoControlMessage {
+    fn execute(&self, ctx: &mut BehaviourContext) -> ResMut<NaoControlMessage> {
         //ctx.ball_position
         //ctx.currntb = new LookAroundState{}
-        NaoControlMessage::default()
+        ResMut{NaoControlMessage::default(); _}
     }
 }
 
