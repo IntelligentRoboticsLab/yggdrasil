@@ -64,12 +64,11 @@ pub enum BehaviourType {
 // type Behaviour = Box<dyn ImplBehaviour + Sync + Send>;
 
 pub trait ImplBehaviour {
-    fn execute(&self) -> NaoControlMessage;
+    fn execute(&self, ctx: &mut BehaviourContext) -> ResMut<NaoControlMessage>;
 }
 
 pub struct BehaviourEngine {
     current_behaviour: BehaviourType,
-    current_behaviour_context: BehaviourContext
 }
 
 // struct BehaviourContext;
@@ -85,13 +84,11 @@ pub struct BehaviourContext {
 impl BehaviourEngine {
     pub fn new() -> Self {
         BehaviourEngine {
-            current_behaviour: BehaviourType::None,
+            current_behaviour: BehaviourType::None
         }
     }
 
-    pub fn execute_current_behaviour(&self, &mut ctx) -> Result<NaoControlMessage> {
-
-
+    pub fn execute_current_behaviour(&self, ctx: &mut BehaviourContext) -> ResMut<NaoControlMessage> {
         Ok(match self.current_behaviour {
             BehaviourType::LookAround(_) => LookAround.execute(ctx),
             _ => NaoControlMessage::default(),
@@ -108,11 +105,11 @@ pub fn executor(
     engine: &mut BehaviourEngine,
     ctrl_msg: &mut NaoControlMessage,
     //ball_positio
+    // ball_position: Vec<f32>,
+    // robot_position: Vec<32>,
+    behaviour_context: &mut BehaviourContext, // Pass all information needed to the engine
 ) -> Result<()> {
-    let mut ctx = BehaviourContext {
-    // &mut engin.current_behaviour
-    // ball positio
-    };
+    let mut ctx = behaviour_context;
 
 
     // let NaoControlMessage {
@@ -129,8 +126,7 @@ pub fn executor(
     //     skull,
     // }
     // pass to this instad of 
-    ctrl_msg = engine.execute_current_behaviour(&mut ctx)?;
-
+    ctrl_msg = engine.execute_current_behaviour(ctx);
     // This can be overwritten over override field written by other modules,
     // prob needs improvement
     // ctrl_msg.position = position;
