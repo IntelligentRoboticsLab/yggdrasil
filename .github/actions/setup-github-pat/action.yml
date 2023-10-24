@@ -9,3 +9,4 @@ runs:
   steps:
     - name: Setup PAT for private repo access
       run: git config --global url."https://${{ inputs.CI_TOKEN }}@github.com".insteadOf ssh://git@github.com
+      shell: bash
