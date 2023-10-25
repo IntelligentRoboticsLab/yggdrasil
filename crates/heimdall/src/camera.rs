@@ -122,9 +122,14 @@ impl YuyvImage {
     ///
     /// # Errors
     /// This function fails if it cannot completely write the RGB image to `destination`.
-    pub fn to_rgb(&self, rgb_image: &mut RgbImage) -> Result<()> {
-        rgb_image.frame.clear();
-        yuyv_to_rgb(self, &mut rgb_image.frame)
+    pub fn to_rgb(&self) -> Result<RgbImage> {
+        let mut rgb_image_buffer =
+            Vec::<u8>::with_capacity((IMAGE_HEIGHT * IMAGE_WIDTH * 3) as usize);
+        yuyv_to_rgb(self, &mut rgb_image_buffer)?;
+
+        Ok(RgbImage {
+            frame: rgb_image_buffer,
+        })
     }
 }
 
@@ -136,26 +141,11 @@ impl Deref for YuyvImage {
     }
 }
 
-impl RgbImage {
-    #[must_use]
-    pub fn new() -> RgbImage {
-        RgbImage {
-            frame: vec![0; (IMAGE_HEIGHT * IMAGE_WIDTH * 3) as usize],
-        }
-    }
-}
-
 impl Deref for RgbImage {
     type Target = [u8];
 
     fn deref(&self) -> &[u8] {
         &self.frame
-    }
-}
-
-impl Default for RgbImage {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

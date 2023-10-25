@@ -1,8 +1,8 @@
 use std::io::Write;
 
-use heimdall::{Camera, RgbImage, CAMERA_TOP};
+use heimdall::{Camera, CAMERA_TOP};
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 
 fn criterion_benchmark(c: &mut Criterion) {
     let mut camera = Camera::new(CAMERA_TOP).unwrap();
@@ -11,10 +11,8 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut file = std::fs::File::create("image.raw").unwrap();
     file.write_all(&image).unwrap();
 
-    let mut rgb_image = RgbImage::new();
-
     c.bench_function("rgb conversion", |b| {
-        b.iter(|| image.to_rgb(black_box(&mut rgb_image)));
+        b.iter(|| image.to_rgb());
     });
 }
 
