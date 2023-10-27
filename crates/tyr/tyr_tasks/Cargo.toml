@@ -1,0 +1,15 @@
+[package]
+name = "tyr_tasks"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+futures-lite = { workspace = true }
+miette = { workspace = true }
+rayon = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tyr_internal = { path = "../tyr_internal" }
+
+[dev-dependencies]
+tyr = { path = "../" }
