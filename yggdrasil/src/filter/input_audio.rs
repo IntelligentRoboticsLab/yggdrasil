@@ -2,7 +2,6 @@ use miette::Result;
 use tyr::prelude::*;
 use alsa::pcm::*;
 use alsa::{Direction, ValueOr};
-use hound::{SampleFormat, WavWriter};
 
 pub struct InputAudioFilter;
 
@@ -25,14 +24,8 @@ impl Module for InputAudioFilter {
 pub struct InputAudio{
     // save pcm
     // call on buffer of n last samples
-    audio: Vec<i16>, //placeholder for now
-    samples: usize,
-}
-
-impl InputAudio {
-    pub fn with_samples(mut self, number_samples: usize) -> () {
-        self.samples = number_samples;
-    }
+    pub audio: Vec<i16>, //placeholder for now
+    pub samples: usize,
 }
 
 #[system]
@@ -60,22 +53,9 @@ fn input_audio_filter(
                 break;
             }
 
-        let spec = hound::WavSpec {
-            channels: 1,
-            sample_rate: 44100,
-            bits_per_sample: 16,
-            sample_format: SampleFormat::Int,
-            };
-
-        let mut writer = WavWriter::create("output3.wav", spec).unwrap();
-        for sample in buffer {
-            writer.write_sample(sample).unwrap();
-            }
-
         }
         input_audio.audio = buffer;
         input_audio.samples = 0;
-        println!("{:?}", input_audio.audio);
     }
     Ok(())
 }
