@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 alsa = { workspace = true }
 derive_more = { workspace = true }
+hound = { workspace = true }
 kira = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 nidhogg = { workspace = true, features = ["lola"] }

@@ -2,13 +2,14 @@ use miette::Result;
 use tyr::prelude::*;
 use alsa::pcm::*;
 use alsa::{Direction, ValueOr};
+use hound::{SampleFormat, WavWriter};
 
 pub struct InputAudioFilter;
 
 // constants
 // sample rate , frames, format, access
 const SAMPLE_RATE: u32 = 44100;
-const FRAMES: i64 = 2048;
+//const FRAMES: i64 = 2048;
 const FORMAT: Format = Format::s16();
 const ACCESS: Access = Access::RWInterleaved;
 
@@ -44,7 +45,7 @@ fn input_audio_filter(
         hwp.set_rate(SAMPLE_RATE, ValueOr::Nearest).unwrap();
         hwp.set_format(FORMAT).unwrap();
         hwp.set_access(ACCESS).unwrap();
-        hwp.set_period_size(FRAMES, ValueOr::Nearest).unwrap();
+        //hwp.set_period_size(FRAMES, ValueOr::Nearest).unwrap();
         pcm.hw_params(&hwp).unwrap();
     }
 
@@ -58,6 +59,19 @@ fn input_audio_filter(
             if sample == 0 {
                 break;
             }
+
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: 44100,
+            bits_per_sample: 16,
+            sample_format: SampleFormat::Int,
+            };
+
+        let mut writer = WavWriter::create("output3.wav", spec).unwrap();
+        for sample in buffer {
+            writer.write_sample(sample).unwrap();
+            }
+
         }
         input_audio.audio = buffer;
         input_audio.samples = 0;
