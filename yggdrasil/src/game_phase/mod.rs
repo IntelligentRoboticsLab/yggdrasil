@@ -12,6 +12,7 @@ impl Module for GamePhaseModule {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Copy, Clone)]
 pub enum GamePhase {
     Normal,
     PenaltyShootout,

@@ -12,6 +12,7 @@ impl Module for RoleModule {
 }
 
 // TODO: add other roles
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Role {
     Keeper,
 }

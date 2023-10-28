@@ -17,6 +17,7 @@ impl Module for PrimaryStateModule {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Copy, Clone)]
 pub enum PrimaryState {
     Unstiff,
     Initial,

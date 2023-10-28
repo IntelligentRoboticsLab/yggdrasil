@@ -72,10 +72,11 @@ pub struct BehaviourEngine {
 }
 
 // struct BehaviourContext;
+#[derive(Debug, Clone, Copy)]
 pub struct BehaviourContext {
-    pub ball: Vec<f32>,
+    pub ball: [f64; 3],
     pub game_phase: GamePhase,
-    pub robot_pos: Vec<f32>,
+    pub robot_pos: [f64; 3],
     pub player_number: i32,
     pub primary_state: PrimaryState,
     pub role: Role,
@@ -89,7 +90,6 @@ impl BehaviourEngine {
     }
 
     pub fn execute_current_behaviour(&self, ctx: &mut BehaviourContext) -> Result<NaoControlMessage, i32> {
-        let mut res: NaoControlMessage;
         match self.current_behaviour {
             BehaviourType::LookAround(_) => Ok(LookAround.execute(ctx)),
             _ => Err(0),
@@ -110,42 +110,27 @@ pub fn executor(
     // robot_position: Vec<32>,
     behaviour_context: &mut BehaviourContext, // Pass all information needed to the engine
 ) -> Result<()> {
-    let mut ctx = behaviour_context;
+    let mut ctx = *behaviour_context;
 
-
-    // let NaoControlMessage {
-    //     position,
-    //     stiffness,
-    //     sonar,
-    //     left_ear,
-    //     right_ear,
-    //     chest,
-    //     left_eye,
-    //     right_eye,
-    //     left_foot,
-    //     right_foot,
-    //     skull,
-    // }
     // pass to this instad of
-    let mut message = match engine.execute_current_behaviour(ctx) {
-        Err(e) => NaoControlMessage::default(),
+    let message = match engine.execute_current_behaviour(&mut ctx) {
+        Err(_e) => NaoControlMessage::default(),
         Ok(res) => res,
     };
 
-    ctrl_msg = message;
-    // This can be overwritten over override field written by other modules,
-    // prob needs improvement
+    *ctrl_msg = message;
+
     // ctrl_msg.position = position;
-    // ctrl_msg.stiffness = stiffness;
-    // ctrl_msg.sonar = sonar;
-    // ctrl_msg.left_ear = left_ear;
-    // ctrl_msg.right_ear = right_ear;
+        // ctrl_msg.stiffness = stiffness;
+        // ctrl_msg.sonar = sonar;
+        // ctrl_msg.left_ear = left_ear;
+        // ctrl_msg.right_ear = right_ear;
     // ctrl_msg.chest = chest;
-    // ctrl_msg.left_eye = left_eye;
-    // ctrl_msg.right_eye = right_eye;
-    // ctrl_msg.left_foot = left_foot;
-    // ctrl_msg.right_foot = right_foot;
-    // ctrl_msg.skull = skull;
+        // ctrl_msg.left_eye = left_eye;
+        // ctrl_msg.right_eye = right_eye;
+        // ctrl_msg.left_foot = left_foot;
+        // ctrl_msg.right_foot = right_foot;
+        // ctrl_msg.skull = skull;
 
     Ok(())
 }
