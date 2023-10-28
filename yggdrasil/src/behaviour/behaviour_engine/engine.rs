@@ -44,7 +44,7 @@ use tyr::prelude::*;
 
 use crate::behaviour::behaviour_engine::behaviours::*;
 
-#[derive(Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 pub enum BehaviourType {
     Defend,
     Dribble,
@@ -76,6 +76,7 @@ pub struct BehaviourEngine {
 pub struct BehaviourContext {
     pub ball: [f64; 3],
     pub game_phase: GamePhase,
+    pub current_behaviour: BehaviourType,
     pub robot_pos: [f64; 3],
     pub player_number: i32,
     pub primary_state: PrimaryState,

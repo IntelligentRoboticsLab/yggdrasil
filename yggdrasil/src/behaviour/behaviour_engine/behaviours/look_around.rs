@@ -5,7 +5,7 @@ use crate::behaviour::behaviour_engine::engine::{ImplBehaviour, BehaviourContext
 
 use crate::behaviour::Role::*;
 
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub struct LookAroundState {
     test: i8,
 }
