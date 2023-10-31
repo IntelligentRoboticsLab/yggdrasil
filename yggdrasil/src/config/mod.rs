@@ -3,8 +3,8 @@ use miette::Result;
 use odal::ConfigResource;
 use tyr::prelude::*;
 
-pub mod walking_engine_config;
-pub mod yggdrasil_config;
+mod walking_engine_config;
+mod yggdrasil_config;
 
 pub struct ConfigModule;
 
