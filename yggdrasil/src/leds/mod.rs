@@ -52,13 +52,14 @@ impl Led {
 
 #[system]
 fn write_led_values(led: &mut Led, ctrl_msg: &mut NaoControlMessage) -> Result<()> {
+    ctrl_msg.chest = led.chest;
+    ctrl_msg.left_foot = led.left_foot;
+    ctrl_msg.right_foot = led.right_foot;
+
     ctrl_msg.left_ear = led.left_ear.clone();
     ctrl_msg.right_ear = led.right_ear.clone();
-    ctrl_msg.chest = led.chest.clone();
     ctrl_msg.left_eye = led.left_eye.clone();
     ctrl_msg.right_eye = led.right_eye.clone();
-    ctrl_msg.left_foot = led.left_foot.clone();
-    ctrl_msg.right_foot = led.right_foot.clone();
     ctrl_msg.skull = led.skull.clone();
 
     if let Some(mut blink) = led.chest_blink.clone() {
