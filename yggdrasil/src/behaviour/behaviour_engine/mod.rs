@@ -4,19 +4,17 @@ mod behaviours;
 mod engine;
 mod transitions;
 
-use engine::executor;
-use transitions::transitions;
+use engine::{executor, transition_behaviour};
 
-pub use engine::{BehaviourEngine, BehaviourType, BehaviourContext};
+pub use engine::{Behaviour, BehaviourContext, BehaviourEngine};
 
 pub struct BehaviourEngineModule;
 
 impl Module for BehaviourEngineModule {
     fn initialize(self, app: App) -> miette::Result<App> {
-        // Is this the correct behaviour to start with?
         Ok(app
-            .add_resource(Resource::new(BehaviourEngine::new()))?
+            .add_resource(Resource::new(BehaviourEngine::default()))?
             .add_system(executor)
-            .add_system(transitions))
+            .add_system(transition_behaviour))
     }
 }

@@ -9,16 +9,16 @@ use behaviour_engine::BehaviourEngineModule;
 use primary_state::PrimaryStateModule;
 use roles::RoleModule;
 
-pub use behaviour_engine::{BehaviourEngine, BehaviourType};
+pub use behaviour_engine::{Behaviour, BehaviourEngine};
+pub use primary_state::PrimaryState;
 pub use roles::Role;
 
 pub struct BehaviourModule;
 
 impl Module for BehaviourModule {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_module(PrimaryStateModule)?
+        app.add_module(PrimaryStateModule)?
             .add_module(RoleModule)?
-            .add_module(BehaviourEngineModule)?)
+            .add_module(BehaviourEngineModule)
     }
 }
