@@ -38,7 +38,13 @@ struct CharmandersEpicMoves {
     growl: String,
 }
 
-#[allow(dead_code)]
+// Retrieve and use a config value from storage.
+impl CharmanderConfig {
+    fn add_hp(&mut self, hp_amount: i32) {
+        self.hp += hp_amount;
+    }
+}
+
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     miette::set_panic_hook();
