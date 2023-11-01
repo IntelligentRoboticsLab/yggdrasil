@@ -3,15 +3,7 @@ name = "heimdall"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-bench = false
-
 [dependencies]
-criterion = { workspace = true }
 image = { workspace = true }
 rscam = { workspace = true }
 thiserror = { workspace = true }
-
-[[bench]]
-name = "rgb_conversion_bench"
-harness = false
