@@ -1,0 +1,9 @@
+[package]
+name = "heimdall"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+image = { workspace = true }
+rscam = { workspace = true }
+thiserror = { workspace = true }

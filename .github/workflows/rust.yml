@@ -33,7 +33,6 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: clippy
-
       - run: cargo clippy --all-targets --all-features -- -D warnings
 
   fmt:

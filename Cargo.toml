@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/tyr", "yggdrasil"]
+members = ["crates/tyr", "crates/heimdall", "yggdrasil"]
 
 [workspace.dependencies]
 derive_more = "0.99.17"
@@ -8,12 +8,14 @@ dyn-clone = "1.0.11"
 futures = "0.3.28"
 miette = "5.10.0"
 bifrost = { git = "ssh://git@github.com/IntelligentRoboticsLab/bifrost.git" }
+image = "0.24.7"
 kira = "0.8.4"
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
 petgraph = "0.6.3"
 proc-macro2 = "1.0.63"
 quote = "1.0.28"
 rayon = "1.7.0"
+rscam = "0.5.5"
 rustc_version = "0.4.0"
 syn = "2.0.22"
 thiserror = "1.0.48"
