@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/tyr", "crates/heimdall", "crates/sindri", "yggdrasil"]
+members = ["crates/heimdall", "crates/sindri", "crates/tyr", "yggdrasil"]
 
 [workspace.dependencies]
 clap = "4.4.3"
