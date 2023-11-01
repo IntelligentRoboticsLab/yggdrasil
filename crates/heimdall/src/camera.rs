@@ -5,10 +5,10 @@ use rscam::{Config, Frame, FIELD_NONE};
 
 use crate::Result;
 
-/// The width of a NAO [`Image`]
+/// The width of a NAO [`Image`].
 pub const IMAGE_WIDTH: u32 = 1280;
 
-/// The height of a NAO [`Image`]
+/// The height of a NAO [`Image`].
 pub const IMAGE_HEIGHT: u32 = 960;
 
 /// Absolute path to the lower camera of the NAO.
@@ -95,7 +95,7 @@ impl YuyvImage {
         self.frame.get_timestamp()
     }
 
-    /// Store the image as a jpeg to a file
+    /// Store the image as a jpeg to a file.
     ///
     /// # Errors
     /// This function fails if it cannot convert the taken image, or if it cannot write to the
