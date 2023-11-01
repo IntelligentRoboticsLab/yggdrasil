@@ -18,7 +18,7 @@ pub enum Behaviour {
 
 #[derive(Debug)]
 pub struct BehaviourEngine {
-    current_behaviour: Behaviour,
+    pub current_behaviour: Behaviour,
 }
 
 impl Default for BehaviourEngine {
@@ -93,7 +93,6 @@ pub fn transition_behaviour(
     game_phase: &GamePhase,
     primary_state: &PrimaryState,
 ) -> Result<()> {
-    //TODO is there a better way to do this?
     let ctx = TransitionContext {
         role: &role,
         primary_state: &primary_state,

@@ -14,7 +14,8 @@ impl Module for BehaviourEngineModule {
     fn initialize(self, app: App) -> miette::Result<App> {
         Ok(app
             .add_resource(Resource::new(BehaviourEngine::default()))?
-            .add_system(executor)
-            .add_system(transition_behaviour))
+            .add_system(transition_behaviour)
+            .add_system(executor.after(transition_behaviour))
+)
     }
 }
