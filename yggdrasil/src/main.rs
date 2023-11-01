@@ -2,17 +2,13 @@ use odal::Configuration;
 use std::fs;
 use toml::Table;
 
-use config::{
-    walking_engine_config::WalkingEngineConfig, yggdrasil_config::YggdrasilConfig, ConfigModule,
-};
 use tyr::{prelude::*, tasks::TaskModule};
-
-use miette::Result;
 
 use yggdrasil::{
     audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule},
     behavior::BehaviorModule,
     camera::CameraModule,
+    config::ConfigModule,
     filter::FilterModule,
     leds::LedsModule,
     nao::NaoModule,
