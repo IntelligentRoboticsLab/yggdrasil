@@ -1,13 +1,13 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::Parser;
+use colored::Colorize;
 use miette::{IntoDiagnostic, Result};
 use sindri::{
     cli::{Cli, Commands},
     config::Config,
     error::Error,
 };
-use std::fs;
 
 fn assert_valid_bin(bin: &str) -> Result<()> {
     const ERR_MESSAGE: &str = "The `--bin` flag has to be ran in a Cargo workspace.";
@@ -41,10 +41,21 @@ fn assert_valid_bin(bin: &str) -> Result<()> {
     ))?
 }
 
+const CONFIG_FILE: &str = "sindri.toml";
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    let toml_str = fs::read_to_string("sindri.toml").into_diagnostic()?;
-    let config: Config = toml::from_str(&toml_str).into_diagnostic()?;
+    let config_file = Path::new(CONFIG_FILE);
+    let config = if !config_file.exists() {
+        println!(
+            "{}",
+            "No config file found! Using default config...".dimmed()
+        );
+        Config::default()
+    } else {
+        let config_data = std::fs::read_to_string(config_file).into_diagnostic()?;
+        toml::from_str(&config_data).into_diagnostic()?
+    };
 
     let args = Cli::parse();
 
