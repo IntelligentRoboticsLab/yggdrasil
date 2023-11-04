@@ -2,7 +2,6 @@
 name = "sindri"
 version = "0.1.0"
 edition = "2021"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -13,11 +12,17 @@ console = { workspace = true }
 indicatif = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 regex = { workspace = true }
-ssh2 = { version = "0.9.4" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
+ssh2 = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["macros", "net", "process", "rt-multi-thread", "signal"] }
+tokio = { workspace = true, features = [
+    "macros",
+    "net",
+    "process",
+    "rt-multi-thread",
+    "signal",
+] }
 toml = { workspace = true }
-walkdir = { version = "2.4.0" }
+walkdir = { workspace = true }
