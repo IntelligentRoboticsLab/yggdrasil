@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use clap::Parser;
 use colored::Colorize;
@@ -24,7 +24,6 @@ pub struct Build {
 
 impl Build {
     pub async fn build(self, bin: &str) -> Result<()> {
-        let started = Instant::now();
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(Duration::from_millis(80));
         pb.set_style(
@@ -32,7 +31,7 @@ impl Build {
                 "  {prefix:.green.bold} yggdrasil {msg} {spinner:.green.bold}",
             )
             .unwrap()
-            .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
+            .tick_chars("⠋⠙⠚⠞⠖⠦⠴⠲⠳⠓ "),
         );
 
         pb.set_message(format!(
@@ -50,7 +49,7 @@ impl Build {
                 println!(
                     "   {} in {}",
                     "Finished".green().bold(),
-                    HumanDuration(started.elapsed())
+                    HumanDuration(pb.elapsed())
                 );
             }
             Err(err) => {
