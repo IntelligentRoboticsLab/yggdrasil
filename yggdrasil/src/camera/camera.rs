@@ -87,12 +87,12 @@ fn camera_system(
 ) -> Result<()> {
     if let Some(new_top_image) = top_image_task.poll() {
         *top_image = new_top_image?;
-        top_image_task.try_spawn(receive_top_image((*top_camera).clone()))?;
+        top_image_task.try_spawn(receive_top_image(top_camera.clone()))?;
     }
 
     if let Some(new_bottom_image) = bottom_image_task.poll() {
         *bottom_image = new_bottom_image?;
-        bottom_image_task.try_spawn(receive_bottom_image((*bottom_camera).clone()))?;
+        bottom_image_task.try_spawn(receive_bottom_image(bottom_camera.clone()))?;
     }
 
     Ok(())
