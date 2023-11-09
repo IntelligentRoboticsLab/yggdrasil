@@ -29,26 +29,6 @@ impl Config {
     }
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        let mut robots = HashMap::with_capacity(7);
-
-        // Insert all DNT robots here as default values
-        robots.insert(20, Robot::new("sam", 20));
-        robots.insert(21, Robot::new("moos", 21));
-        robots.insert(22, Robot::new("phineas", 22));
-        robots.insert(23, Robot::new("ferb", 23));
-        robots.insert(24, Robot::new("momo", 24));
-        robots.insert(25, Robot::new("appa", 25));
-        robots.insert(26, Robot::new("daphne", 26));
-
-        Self {
-            team_number: 8,
-            robots,
-        }
-    }
-}
-
 /// Struct representing a robot with its name and number
 #[derive(Debug, Deserialize, Clone)]
 pub struct Robot {

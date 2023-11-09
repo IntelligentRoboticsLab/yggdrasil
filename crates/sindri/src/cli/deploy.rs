@@ -1,11 +1,12 @@
 use crate::{
     cargo,
     config::{Config, Robot},
+    error::{Error, Result},
 };
 use clap::Parser;
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
-use miette::{Context, IntoDiagnostic, Result};
+use miette::{Context, IntoDiagnostic};
 use ssh2::{ErrorCode, OpenFlags, OpenType, Session, Sftp};
 use std::{
     fs,
@@ -65,7 +66,7 @@ pub struct Deploy {
 
 impl Deploy {
     /// Constructs IP and deploys to the robot
-    pub async fn deploy(self, config: Config) -> Result<()> {
+    pub async fn deploy(self, config: Config) -> miette::Result<()> {
         let compile_start = Instant::now();
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(Duration::from_millis(80));
@@ -159,25 +160,42 @@ async fn deploy_to_robot(pb: &ProgressBar, addr: String) -> Result<()> {
         "to".dimmed(),
         addr.clone().bold(),
     ));
-    let tcp = TcpStream::connect(format!("{}:22", addr))
-        .await
-        .into_diagnostic()
-        .wrap_err("Failed to connect to robot!")?;
-    let mut session = Session::new()
-        .into_diagnostic()
-        .wrap_err("Failed to create ssh session!")?;
+    let tcp = tokio::time::timeout(
+        Duration::from_secs(5),
+        TcpStream::connect(format!("{}:22", addr)),
+    )
+    .await
+    .map_err(Error::ElapsedError)?
+    .unwrap();
+    // .into_diagnostic()
+    // .wrap_err("Failed to connect to robot!")?;
+    let mut session = Session::new().map_err(|e| Error::SftpError {
+        source: e,
+        msg: "Failed to create ssh session!".to_owned(),
+    })?;
+    // .into_diagnostic()
+    // .wrap_err("Failed to create ssh session!")?;
 
     session.set_tcp_stream(tcp);
+    session.handshake().map_err(|e| Error::SftpError {
+        source: e,
+        msg: "Failed to perform ssh handshake!".to_owned(),
+    })?;
+    // .into_diagnostic()
+    // .wrap_err("Failed to perform ssh handshake!")?;
     session
-        .handshake()
-        .into_diagnostic()
-        .wrap_err("Failed to perform ssh handshake!")?;
-    session.userauth_password("nao", "").into_diagnostic()?;
+        .userauth_password("nao", "")
+        .map_err(|e| Error::SftpError {
+            source: e,
+            msg: "Failed to authenticate using ssh!".to_owned(),
+        })?;
 
-    let sftp = session
-        .sftp()
-        .into_diagnostic()
-        .wrap_err("Failed to create sftp session!")?;
+    let sftp = session.sftp().map_err(|e| Error::SftpError {
+        source: e,
+        msg: "Failed to create sftp session!".to_owned(),
+    })?;
+    // .into_diagnostic()
+    // .wrap_err("Failed to create sftp session!")?;
     pb.set_message(format!("{}", "Ensuring host directories exist".dimmed()));
 
     // Ensure asset directory and sounds directory exist on remote
@@ -193,7 +211,7 @@ async fn deploy_to_robot(pb: &ProgressBar, addr: String) -> Result<()> {
         .progress_chars("=>-"),
     );
     for entry in WalkDir::new("./deploy").contents_first(true) {
-        let entry = entry.into_diagnostic()?;
+        let entry = entry.unwrap();
         if entry.path().is_dir() {
             continue;
         }
@@ -206,27 +224,31 @@ async fn deploy_to_robot(pb: &ProgressBar, addr: String) -> Result<()> {
                 0o777,
                 OpenType::File,
             )
-            .into_diagnostic()
-            .wrap_err(format!("Failed to open remote file: {:?}", remote_path))?;
+            .map_err(|e| Error::SftpError {
+                source: e,
+                msg: format!("Failed to open remote file {:?}!", entry.path()),
+            })?;
+        // .into_diagnostic()
+        // .wrap_err(format!("Failed to open remote file: {:?}", remote_path))?;
 
-        let mut file_local = std::fs::File::open(entry.path())
-            .into_diagnostic()
-            .context(format!("Failed to open local file: {:?}", entry.path()))?;
+        let mut file_local = std::fs::File::open(entry.path())?;
+        // .into_diagnostic()
+        // .context(format!("Failed to open local file: {:?}", entry.path()))?;
 
         // Since `file_remote` impl's Write, we can just copy directly using a BufWriter!
         // The Write impl is rather slow, so we set a large buffer size of 1 mb.
         let file_length = file_local
-            .metadata()
-            .into_diagnostic()
-            .wrap_err(format!("Failed to get file length: {:?}", entry.path()))?
+            .metadata()?
+            // .into_diagnostic()
+            // .wrap_err(format!("Failed to get file length: {:?}", entry.path()))?
             .len();
         pb.set_length(file_length);
         pb.set_message(format!("{}", entry.path().to_string_lossy()));
 
         let buf_writer = BufWriter::with_capacity(UPLOAD_BUFFER_SIZE, file_remote);
-        std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer))
-            .into_diagnostic()
-            .wrap_err(format!("Failed to copy {:?} to the robot!", entry.path()))?;
+        std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer)).map_err(Error::IoError)?;
+        // .into_diagnostic()
+        // .wrap_err(format!("Failed to copy {:?} to the robot!", entry.path()))?;
 
         pb.println(format!(
             "{} {}",
@@ -243,9 +265,10 @@ fn ensure_directory_exists(sftp: &Sftp, path: impl AsRef<Path>) -> Result<()> {
         Ok(_) => Ok(()),
         // Error code 4, means the directory already exists, so we can ignore it
         Err(error) if error.code() == ErrorCode::SFTP(4) => Ok(()),
-        Err(error) => Err(error)
-            .into_diagnostic()
-            .wrap_err("Failed to ensure directory exists!"),
+        Err(error) => Err(Error::SftpError {
+            source: error,
+            msg: "Failed to ensure directory exists".to_owned(),
+        }),
     }
 }
 
@@ -253,7 +276,7 @@ fn get_remote_path(local_path: &Path) -> PathBuf {
     let mut remote_path = PathBuf::from("/home/nao");
 
     for component in local_path.components() {
-        // Would be nice to replace this with a if let chain once https://github.com/rust-lang/rust/issues/53667#issuecomment-1374336460 is stable.
+        // Would be nice to replace this with an if let chain once https://github.com/rust-lang/rust/issues/53667#issuecomment-1374336460 is stable.
         match component {
             // Prevent "deploy" from being added to the remote path, as we'll deploy directly to home directory.
             Component::Normal(c) if c != "deploy" => remote_path.push(c),
