@@ -17,7 +17,7 @@ pub trait Configuration: Sized + for<'de> Deserialize<'de> {
         let main_cfg: Table = from_str(&fs::read_to_string(Self::PATH)?)?;
         let overlay_cfg: Table = from_str(&fs::read_to_string(overlay_path)?)?;
         let generated_cfg: Self =
-            from_str(&generate_config(main_cfg, overlay_cfg, false).to_string())?;
+            from_str(&merge_tables_with_overlay(main_cfg, overlay_cfg, false).to_string())?;
 
         Ok(generated_cfg)
     }
@@ -25,7 +25,7 @@ pub trait Configuration: Sized + for<'de> Deserialize<'de> {
     /// Adds new K/V pairs to an overlay or overwrites existing pairs with the requested updates.
     fn save(overlay_path: &str, updates: Table) -> Result<()> {
         let overlay_cfg: Table = from_str(&fs::read_to_string(overlay_path)?)?;
-        let result = generate_config(overlay_cfg, updates, true);
+        let result = merge_tables_with_overlay(overlay_cfg, updates, true);
         fs::write(overlay_path, result.to_string())?;
 
         Ok(())
@@ -55,7 +55,7 @@ impl ConfigResource for App {
     }
 }
 
-pub fn generate_config(main: Table, overlay: Table, add_keys: bool) -> Table {
+pub fn merge_tables_with_overlay(main: Table, overlay: Table, add_keys: bool) -> Table {
     let mut generated_toml: Table = Table::new();
 
     // Process keys in main table.
@@ -67,7 +67,7 @@ pub fn generate_config(main: Table, overlay: Table, add_keys: bool) -> Table {
                     if let Value::Table(overlay_table) = overlay_value {
                         // Recursively merge the subtables.
                         let merged_table =
-                            generate_config(main_table, overlay_table.clone(), add_keys);
+                            merge_tables_with_overlay(main_table, overlay_table.clone(), add_keys);
                         generated_toml.insert(k, Value::Table(merged_table));
                     }
                 } else {
