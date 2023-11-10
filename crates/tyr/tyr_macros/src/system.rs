@@ -82,6 +82,7 @@ pub fn system(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     visitor
         .args
         .iter()
+        .rev()
         .for_each(|SystemArg { mutable, ident }| {
             let stmt = if *mutable {
                 // let ident = DerefMut::deref_mut(&mut ident);
