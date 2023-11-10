@@ -6,7 +6,7 @@ pub mod scan;
 pub mod test;
 
 #[derive(Parser)]
-#[clap(name = "sindri")]
+#[clap(name = "sindri", version)]
 pub struct Cli {
     #[clap(subcommand)]
     pub action: Commands,

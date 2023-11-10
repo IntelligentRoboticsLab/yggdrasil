@@ -1,18 +1,19 @@
 use crate::{
     cargo,
-    config::{Config, Robot},
+    config::Config,
     error::{Error, Result},
 };
 use clap::Parser;
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
-use miette::{Context, IntoDiagnostic};
+use miette::{miette, Context, IntoDiagnostic};
 use ssh2::{ErrorCode, OpenFlags, OpenType, Session, Sftp};
 use std::{
     fs,
     io::BufWriter,
+    net::Ipv4Addr,
     path::{Component, Path, PathBuf},
-    time::{Duration, Instant},
+    time::Duration,
 };
 use tokio::net::TcpStream;
 use walkdir::WalkDir;
@@ -25,17 +26,17 @@ const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 ///
 /// This is currently set to 1 MiB, as the [`Write`] implementation for [`ssh2::sftp::File`]
 /// is rather slow due to the locking mechanism.
-const UPLOAD_BUFFER_SIZE: usize = 1_048_576;
+const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
 
 #[derive(Clone, Debug, Parser)]
 pub struct ConfigOptsDeploy {
-    /// Robot number
-    #[clap(index = 1, name = "robot number")]
+    /// Number of the robot to deploy to.
+    #[clap(index = 1, name = "Robot number")]
     number: u8,
 
     /// Scan for wired (true) or wireless (false) robots [default: false]
-    #[clap(long)]
-    lan: bool,
+    #[clap(long, short)]
+    wired: bool,
 
     /// Team number [default: Set in `sindri.toml`]
     #[clap(long)]
@@ -47,10 +48,10 @@ pub struct ConfigOptsDeploy {
 }
 
 impl ConfigOptsDeploy {
-    pub fn new(number: u8, lan: bool, team_number: Option<u8>, test: bool) -> Self {
+    pub fn new(number: u8, wired: bool, team_number: Option<u8>, test: bool) -> Self {
         Self {
             number,
-            lan,
+            wired,
             team_number,
             test,
         }
@@ -67,7 +68,6 @@ pub struct Deploy {
 impl Deploy {
     /// Constructs IP and deploys to the robot
     pub async fn deploy(self, config: Config) -> miette::Result<()> {
-        let compile_start = Instant::now();
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(Duration::from_millis(80));
         pb.set_style(
@@ -88,35 +88,28 @@ impl Deploy {
         ));
         pb.set_prefix("Compiling");
 
-        match cargo::build("yggdrasil", true, Some(ROBOT_TARGET)).await {
-            Ok(_) => {
-                pb.println(format!(
-                    "{} {} {}{}, {}{}{}",
-                    "   Compiling".green().bold(),
-                    "yggdrasil".bold(),
-                    "(release: ".dimmed(),
-                    "true".red(),
-                    "target: ".dimmed(),
-                    ROBOT_TARGET.bold(),
-                    ")".dimmed()
-                ));
-                pb.println(format!(
-                    "{} in {}",
-                    "    Finished".green().bold(),
-                    HumanDuration(compile_start.elapsed()),
-                ));
-            }
-            Err(err) => {
-                return Err(err)?;
-            }
-        }
+        cargo::build("yggdrasil", true, Some(ROBOT_TARGET)).await?;
+        pb.println(format!(
+            "{} {} {}{}, {}{}{}",
+            "   Compiling".green().bold(),
+            "yggdrasil".bold(),
+            "(release: ".dimmed(),
+            "true".red(),
+            "target: ".dimmed(),
+            ROBOT_TARGET.bold(),
+            ")".dimmed()
+        ));
+        pb.println(format!(
+            "{} in {}",
+            "    Finished".green().bold(),
+            HumanDuration(pb.elapsed()),
+        ));
+        pb.reset_elapsed();
 
-        let addr = format!(
-            "10.{}.{}.{}",
-            u8::from(self.deploy.lan),
-            self.deploy.team_number.unwrap_or(config.team_number),
+        let robot = config.by_number(self.deploy.number).ok_or(miette!(format!(
+            "Invalid robot specified, number {} is not configured!",
             self.deploy.number
-        );
+        )))?;
 
         pb.set_style(
             ProgressStyle::with_template("   {prefix:.blue.bold} {msg} {spinner:.blue.bold}")
@@ -124,26 +117,34 @@ impl Deploy {
                 .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
         );
 
-        let deploy_start = Instant::now();
         pb.set_prefix("Deploying");
         pb.set_message(format!("{}", "Preparing deployment...".dimmed()));
         fs::copy(RELEASE_PATH, DEPLOY_PATH)
             .into_diagnostic()
             .wrap_err("Failed to copy binary to deploy directory!")?;
 
-        deploy_to_robot(&pb, addr.clone())
+        let addr = robot.ip(
+            self.deploy.team_number.unwrap_or(config.team_number),
+            self.deploy.wired,
+        );
+        deploy_to_robot(&pb, addr)
             .await
             .wrap_err("Failed to deploy yggdrasil files to robot")?;
 
         pb.println(format!(
             "{} in {}",
             "  Deployed to robot".bold(),
-            HumanDuration(deploy_start.elapsed()),
+            HumanDuration(pb.elapsed()),
         ));
         pb.finish_and_clear();
 
         if self.deploy.test {
-            Robot::ssh(addr.clone(), "./yggdrasil".to_owned())?
+            robot
+                .ssh(
+                    self.deploy.team_number.unwrap_or(config.team_number),
+                    self.deploy.wired,
+                    "./yggdrasil".to_owned(),
+                )?
                 .wait()
                 .await
                 .into_diagnostic()?;
@@ -153,49 +154,16 @@ impl Deploy {
 }
 
 /// Copy the contents of the 'deploy' folder to the robot.
-async fn deploy_to_robot(pb: &ProgressBar, addr: String) -> Result<()> {
+async fn deploy_to_robot(pb: &ProgressBar, addr: Ipv4Addr) -> Result<()> {
     pb.println(format!(
         "{} {} {}",
         "  Connecting".bright_blue().bold(),
         "to".dimmed(),
-        addr.clone().bold(),
+        addr.to_string().clone().bold(),
     ));
-    let tcp = tokio::time::timeout(
-        Duration::from_secs(5),
-        TcpStream::connect(format!("{}:22", addr)),
-    )
-    .await
-    .map_err(Error::ElapsedError)?
-    .unwrap();
-    // .into_diagnostic()
-    // .wrap_err("Failed to connect to robot!")?;
-    let mut session = Session::new().map_err(|e| Error::SftpError {
-        source: e,
-        msg: "Failed to create ssh session!".to_owned(),
-    })?;
-    // .into_diagnostic()
-    // .wrap_err("Failed to create ssh session!")?;
 
-    session.set_tcp_stream(tcp);
-    session.handshake().map_err(|e| Error::SftpError {
-        source: e,
-        msg: "Failed to perform ssh handshake!".to_owned(),
-    })?;
-    // .into_diagnostic()
-    // .wrap_err("Failed to perform ssh handshake!")?;
-    session
-        .userauth_password("nao", "")
-        .map_err(|e| Error::SftpError {
-            source: e,
-            msg: "Failed to authenticate using ssh!".to_owned(),
-        })?;
+    let sftp = create_sftp_connection(addr).await?;
 
-    let sftp = session.sftp().map_err(|e| Error::SftpError {
-        source: e,
-        msg: "Failed to create sftp session!".to_owned(),
-    })?;
-    // .into_diagnostic()
-    // .wrap_err("Failed to create sftp session!")?;
     pb.set_message(format!("{}", "Ensuring host directories exist".dimmed()));
 
     // Ensure asset directory and sounds directory exist on remote
@@ -258,6 +226,39 @@ async fn deploy_to_robot(pb: &ProgressBar, addr: String) -> Result<()> {
     }
 
     Ok(())
+}
+
+async fn create_sftp_connection(ip: Ipv4Addr) -> Result<Sftp> {
+    let tcp = tokio::time::timeout(
+        Duration::from_secs(5),
+        TcpStream::connect(format!("{}:22", ip)),
+    )
+    .await
+    .map_err(Error::ElapsedError)?
+    .unwrap();
+    let mut session = Session::new().map_err(|e| Error::SftpError {
+        source: e,
+        msg: "Failed to create ssh session!".to_owned(),
+    })?;
+    // .into_diagnostic()
+    // .wrap_err("Failed to create ssh session!")?;
+
+    session.set_tcp_stream(tcp);
+    session.handshake().map_err(|e| Error::SftpError {
+        source: e,
+        msg: "Failed to perform ssh handshake!".to_owned(),
+    })?;
+    session
+        .userauth_password("nao", "")
+        .map_err(|e| Error::SftpError {
+            source: e,
+            msg: "Failed to authenticate using ssh!".to_owned(),
+        })?;
+
+    session.sftp().map_err(|e| Error::SftpError {
+        source: e,
+        msg: "Failed to create sftp session!".to_owned(),
+    })
 }
 
 fn ensure_directory_exists(sftp: &Sftp, path: impl AsRef<Path>) -> Result<()> {

@@ -43,19 +43,18 @@ impl Build {
         ));
         pb.set_prefix("Building");
 
-        match cargo::build(bin, self.build.release, None).await {
-            Ok(_) => {
-                pb.finish();
-                println!(
-                    "   {} in {}",
-                    "Finished".green().bold(),
-                    HumanDuration(pb.elapsed())
-                );
-            }
-            Err(err) => {
-                return Err(err)?;
-            }
-        }
+        cargo::build(bin, self.build.release, None)
+            .await
+            .map_err(|e| {
+                pb.abandon();
+                e
+            })?;
+        pb.finish_and_clear();
+        println!(
+            "   {} in {}",
+            "Finished".green().bold(),
+            HumanDuration(pb.elapsed())
+        );
         Ok(())
     }
 }

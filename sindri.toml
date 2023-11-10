@@ -2,30 +2,30 @@
 # robots, e.g. 10.0.8.25
 team_number = 8
 
-[robots.20]
-name = "sam"
+[[robots]]
 number = 20
+name = "sam"
 
-[robots.21]
-name = "moos"
+[[robots]]
 number = 21
+name = "moos"
 
-[robots.22]
-name = "phineas"
+[[robots]]
 number = 22
+name = "phineas"
 
-[robots.23]
-name = "ferb"
+[[robots]]
 number = 23
+name = "ferb"
 
-[robots.24]
-name = "momo"
+[[robots]]
 number = 24
+name = "momo"
 
-[robots.25]
-name = "appa"
+[[robots]]
 number = 25
+name = "appa"
 
-[robots.26]
-name = "daphne"
+[[robots]]
 number = 26
+name = "daphne"
