@@ -11,8 +11,8 @@ pub struct TopCamera(Arc<Mutex<Camera>>);
 #[derive(Clone)]
 pub struct BottomCamera(Arc<Mutex<Camera>>);
 
-pub struct TopImage(YuyvImage);
-pub struct BottomImage(YuyvImage);
+pub struct TopImage(Arc<YuyvImage>);
+pub struct BottomImage(Arc<YuyvImage>);
 
 impl Module for CameraModule {
     fn initialize(self, app: App) -> Result<App> {
@@ -23,24 +23,24 @@ impl Module for CameraModule {
             Camera::new(CAMERA_BOTTOM).into_diagnostic()?,
         )));
 
-        let top_image_resource = Resource::new(TopImage(
+        let top_image_resource = Resource::new(TopImage(Arc::new(
             top_camera
                 .0
                 .lock()
                 .unwrap()
                 .get_yuyv_image()
                 .into_diagnostic()?,
-        ));
+        )));
         let top_camera_resource = Resource::new(top_camera);
 
-        let bottom_image_resource = Resource::new(TopImage(
+        let bottom_image_resource = Resource::new(TopImage(Arc::new(
             bottom_camera
                 .0
                 .lock()
                 .unwrap()
                 .get_yuyv_image()
                 .into_diagnostic()?,
-        ));
+        )));
         let bottom_camera_resource = Resource::new(bottom_camera);
 
         Ok(app
@@ -55,25 +55,25 @@ impl Module for CameraModule {
 }
 
 async fn receive_top_image(top_camera: TopCamera) -> Result<TopImage> {
-    Ok(TopImage(
+    Ok(TopImage(Arc::new(
         top_camera
             .0
             .lock()
             .unwrap()
             .get_yuyv_image()
             .into_diagnostic()?,
-    ))
+    )))
 }
 
 async fn receive_bottom_image(bottom_camera: BottomCamera) -> Result<BottomImage> {
-    Ok(BottomImage(
+    Ok(BottomImage(Arc::new(
         bottom_camera
             .0
             .lock()
             .unwrap()
             .get_yuyv_image()
             .into_diagnostic()?,
-    ))
+    )))
 }
 
 #[system]
