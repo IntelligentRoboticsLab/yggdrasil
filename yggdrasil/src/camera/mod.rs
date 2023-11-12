@@ -4,15 +4,13 @@ use tyr::prelude::*;
 
 use heimdall::{Camera, YuyvImage, CAMERA_BOTTOM, CAMERA_TOP};
 
-pub struct CameraModule;
+struct CameraModule;
 
-#[derive(Clone)]
-pub struct TopCamera(Arc<Mutex<Camera>>);
-#[derive(Clone)]
-pub struct BottomCamera(Arc<Mutex<Camera>>);
+struct TopCamera(Arc<Mutex<Camera>>);
+struct BottomCamera(Arc<Mutex<Camera>>);
 
-pub struct TopImage(Arc<YuyvImage>);
-pub struct BottomImage(Arc<YuyvImage>);
+pub struct TopImage(pub Arc<YuyvImage>);
+pub struct BottomImage(pub Arc<YuyvImage>);
 
 impl Module for CameraModule {
     fn initialize(self, app: App) -> Result<App> {
@@ -54,10 +52,9 @@ impl Module for CameraModule {
     }
 }
 
-async fn receive_top_image(top_camera: TopCamera) -> Result<TopImage> {
+async fn receive_top_image(top_camera: Arc<Mutex<Camera>>) -> Result<TopImage> {
     Ok(TopImage(Arc::new(
         top_camera
-            .0
             .lock()
             .unwrap()
             .get_yuyv_image()
@@ -65,10 +62,9 @@ async fn receive_top_image(top_camera: TopCamera) -> Result<TopImage> {
     )))
 }
 
-async fn receive_bottom_image(bottom_camera: BottomCamera) -> Result<BottomImage> {
+async fn receive_bottom_image(bottom_camera: Arc<Mutex<Camera>>) -> Result<BottomImage> {
     Ok(BottomImage(Arc::new(
         bottom_camera
-            .0
             .lock()
             .unwrap()
             .get_yuyv_image()
@@ -87,12 +83,12 @@ fn camera_system(
 ) -> Result<()> {
     if let Some(new_top_image) = top_image_task.poll() {
         *top_image = new_top_image?;
-        top_image_task.try_spawn(receive_top_image(top_camera.clone()))?;
+        top_image_task.try_spawn(receive_top_image(top_camera.0.clone()))?;
     }
 
     if let Some(new_bottom_image) = bottom_image_task.poll() {
         *bottom_image = new_bottom_image?;
-        bottom_image_task.try_spawn(receive_bottom_image(bottom_camera.clone()))?;
+        bottom_image_task.try_spawn(receive_bottom_image(bottom_camera.0.clone()))?;
     }
 
     Ok(())
