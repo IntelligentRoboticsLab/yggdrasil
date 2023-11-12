@@ -84,6 +84,8 @@ pub fn system(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .iter()
         .rev()
         .for_each(|SystemArg { mutable, ident }| {
+            // adds one of two statements to the beginning of the function block,
+            // depending on the mutability of the system argument
             let stmt = if *mutable {
                 // let ident = DerefMut::deref_mut(&mut ident);
                 parse_quote! { let #ident = std::ops::DerefMut::deref_mut(&mut #ident); }
