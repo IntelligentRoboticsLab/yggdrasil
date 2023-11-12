@@ -87,10 +87,10 @@ pub fn system(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             // adds one of two statements to the beginning of the function block,
             // depending on the mutability of the system argument
             let stmt = if *mutable {
-                // let ident = DerefMut::deref_mut(&mut ident);
+                // Expands to `let ident = DerefMut::deref_mut(&mut ident);`
                 parse_quote! { let #ident = std::ops::DerefMut::deref_mut(&mut #ident); }
             } else {
-                // let ident = Deref::deref(&ident);
+                // Expands to `let ident = Deref::deref(&ident);`
                 parse_quote! { let #ident = std::ops::Deref::deref(&#ident); }
             };
 
