@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use proc_macro::TokenStream;
+use proc_macro2::Ident;
 use quote::{quote, ToTokens};
 use syn::Type;
 use syn::{
@@ -11,10 +12,17 @@ use syn::{
 #[cfg(nightly)]
 use syn::spanned::Spanned;
 
-// A visitor that transforms function arguments and records errors.
+/// An argument in a system.
+struct SystemArg {
+    mutable: bool,
+    ident: Ident,
+}
+
+/// A visitor that transforms function arguments and records errors.
 #[derive(Default)]
 struct ArgTransformerVisitor {
     errors: Vec<syn::Error>,
+    args: Vec<SystemArg>,
 }
 
 impl VisitMut for ArgTransformerVisitor {
@@ -31,11 +39,17 @@ impl VisitMut for ArgTransformerVisitor {
                         mutability, elem, ..
                     }),
                 ) => {
-                    if mutability.is_some() {
-                        *arg = parse_quote! { mut #ident: ::tyr::ResMut<#elem> };
-                    } else {
-                        *arg = parse_quote! { #ident: ::tyr::Res<#elem> };
-                    }
+                    let ident = ident.clone();
+                    let mutable = mutability.is_some();
+
+                    // substitute function argument
+                    *arg = match mutable {
+                        true => parse_quote! { mut #ident: ::tyr::ResMut<#elem> },
+                        false => parse_quote! { #ident: ::tyr::Res<#elem> },
+                    };
+
+                    // save argument information
+                    self.args.push(SystemArg { mutable, ident });
                 }
                 (_, ty) => {
                     self.errors.push(syn::Error::new_spanned(
@@ -63,6 +77,25 @@ pub fn system(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let mut visitor = ArgTransformerVisitor::default();
     syn::visit_mut::visit_item_fn_mut(&mut visitor, &mut input);
+
+    // automatically deref to a reference at the beginning of a system
+    visitor
+        .args
+        .iter()
+        .rev()
+        .for_each(|SystemArg { mutable, ident }| {
+            // adds one of two statements to the beginning of the function block,
+            // depending on the mutability of the system argument
+            let stmt = if *mutable {
+                // Expands to `let ident = DerefMut::deref_mut(&mut ident);`
+                parse_quote! { let #ident = std::ops::DerefMut::deref_mut(&mut #ident); }
+            } else {
+                // Expands to `let ident = Deref::deref(&ident);`
+                parse_quote! { let #ident = std::ops::Deref::deref(&#ident); }
+            };
+
+            input.block.stmts.insert(0, stmt);
+        });
 
     let errors: TokenStream = visitor
         .errors
