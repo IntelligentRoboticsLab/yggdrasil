@@ -12,13 +12,13 @@ use syn::{
 #[cfg(nightly)]
 use syn::spanned::Spanned;
 
-// An argument in a system
+/// An argument in a system.
 struct SystemArg {
     mutable: bool,
     ident: Ident,
 }
 
-// A visitor that transforms function arguments and records errors.
+/// A visitor that transforms function arguments and records errors.
 #[derive(Default)]
 struct ArgTransformerVisitor {
     errors: Vec<syn::Error>,
