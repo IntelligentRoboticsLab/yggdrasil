@@ -7,7 +7,6 @@ default-run = "yggdrasil"
 
 [dependencies]
 bifrost = { workspace = true }
-derive_more = { workspace = true }
 # heimdall = { path = "../crates/heimdall" }
 kira = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
