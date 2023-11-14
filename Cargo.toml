@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/heimdall", "crates/sindri", "crates/tyr", "yggdrasil"]
+members = ["crates/sindri", "crates/tyr", "yggdrasil"]
 
 [workspace.dependencies]
 bifrost = { git = "ssh://git@github.com/IntelligentRoboticsLab/bifrost.git" }
@@ -21,7 +21,7 @@ proc-macro2 = "1.0.63"
 quote = "1.0.28"
 rayon = "1.7.0"
 regex = "1.9.4"
-rscam = "0.5.5"
+# rscam = "0.5.5"
 rustc_version = "0.4.0"
 serde = "1.0.171"
 serde_json = "1.0.105"

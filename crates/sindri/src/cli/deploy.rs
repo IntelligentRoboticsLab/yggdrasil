@@ -32,19 +32,19 @@ const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
 pub struct ConfigOptsDeploy {
     /// Number of the robot to deploy to.
     #[clap(index = 1, name = "Robot number")]
-    number: u8,
+    pub number: u8,
 
     /// Scan for wired (true) or wireless (false) robots [default: false]
     #[clap(long, short)]
-    wired: bool,
+    pub wired: bool,
 
     /// Team number [default: Set in `sindri.toml`]
     #[clap(long)]
-    team_number: Option<u8>,
+    pub team_number: Option<u8>,
 
     // Whether to automatically run the yggdrasil binary once it's deployed. [default: false]
     #[clap(long)]
-    test: bool,
+    pub test: bool,
 }
 
 impl ConfigOptsDeploy {
@@ -139,6 +139,7 @@ impl Deploy {
         pb.finish_and_clear();
 
         if self.deploy.test {
+            println!("me test pls!");
             robot
                 .ssh(
                     self.deploy.team_number.unwrap_or(config.team_number),
