@@ -7,8 +7,7 @@ use miette::Result;
 use nidhogg::NaoControlMessage;
 use tyr::prelude::*;
 
-use crate::behaviour::behaviour_engine::behaviours::*;
-use crate::behaviour::behaviour_engine::transitions::*;
+use crate::behaviour::behaviour_engine::{behaviours::*, transitions::*};
 
 #[derive(Debug)]
 pub enum Behaviour {
@@ -101,7 +100,7 @@ pub fn transition_behaviour(
 
     use Role::*;
     match *role {
-        ExampleRole => update_example_role_behaviour(&mut engine, &ctx),
+        Keeper => update_example_role_behaviour(&mut engine, &ctx),
     }
 
     Ok(())

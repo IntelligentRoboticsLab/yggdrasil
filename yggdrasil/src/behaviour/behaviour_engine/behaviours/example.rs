@@ -3,7 +3,7 @@ use nidhogg::NaoControlMessage;
 
 use crate::behaviour::behaviour_engine::engine::{BehaviourContext, ImplBehaviour};
 
-use crate::behaviour::Role::ExampleRole;
+use crate::behaviour::Role::Keeper;
 
 #[derive(Debug, Default)]
 pub struct ExampleBehaviour {
@@ -12,7 +12,7 @@ pub struct ExampleBehaviour {
 
 impl ImplBehaviour for ExampleBehaviour {
     fn execute(&mut self, ctx: &mut BehaviourContext, ctrl_message: &mut NaoControlMessage) {
-        if *ctx.role == ExampleRole {
+        if *ctx.role == Keeper {
             ctrl_message.chest = Color {
                 red: 255.0,
                 green: 0.0,
