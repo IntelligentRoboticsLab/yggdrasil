@@ -14,7 +14,7 @@ impl Module for RoleModule {
 #[derive(Debug, PartialEq, Default)]
 pub enum Role {
     #[default]
-    ExampleRole,
+    Keeper,
 }
 
 #[system]

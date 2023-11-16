@@ -62,7 +62,7 @@ fn write_led_values(led: &mut Led, ctrl_msg: &mut NaoControlMessage) -> Result<(
     ctrl_msg.right_eye = led.right_eye.clone();
     ctrl_msg.skull = led.skull.clone();
 
-    if let Some(mut blink) = led.chest_blink.clone() {
+    if let Some(blink) = led.chest_blink.as_mut() {
         if blink.start.elapsed() > blink.interval {
             blink.on = !blink.on;
             blink.start = Instant::now();
