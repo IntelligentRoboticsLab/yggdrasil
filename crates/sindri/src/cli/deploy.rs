@@ -139,7 +139,6 @@ impl Deploy {
         pb.finish_and_clear();
 
         if self.deploy.test {
-            println!("me test pls!");
             robot
                 .ssh(
                     self.deploy.team_number.unwrap_or(config.team_number),
