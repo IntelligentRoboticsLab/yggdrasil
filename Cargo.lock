@@ -1721,7 +1721,6 @@ dependencies = [
  "cargo_toml",
  "clap",
  "colored",
- "console",
  "indicatif",
  "miette",
  "regex",

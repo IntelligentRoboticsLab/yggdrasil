@@ -197,27 +197,19 @@ async fn deploy_to_robot(pb: &ProgressBar, addr: Ipv4Addr) -> Result<()> {
                 source: e,
                 msg: format!("Failed to open remote file {:?}!", entry.path()),
             })?;
-        // .into_diagnostic()
-        // .wrap_err(format!("Failed to open remote file: {:?}", remote_path))?;
 
         let mut file_local = std::fs::File::open(entry.path())?;
-        // .into_diagnostic()
-        // .context(format!("Failed to open local file: {:?}", entry.path()))?;
 
         // Since `file_remote` impl's Write, we can just copy directly using a BufWriter!
         // The Write impl is rather slow, so we set a large buffer size of 1 mb.
         let file_length = file_local
             .metadata()?
-            // .into_diagnostic()
-            // .wrap_err(format!("Failed to get file length: {:?}", entry.path()))?
             .len();
         pb.set_length(file_length);
         pb.set_message(format!("{}", entry.path().to_string_lossy()));
 
         let buf_writer = BufWriter::with_capacity(UPLOAD_BUFFER_SIZE, file_remote);
         std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer)).map_err(Error::IoError)?;
-        // .into_diagnostic()
-        // .wrap_err(format!("Failed to copy {:?} to the robot!", entry.path()))?;
 
         pb.println(format!(
             "{} {}",
@@ -241,8 +233,6 @@ async fn create_sftp_connection(ip: Ipv4Addr) -> Result<Sftp> {
         source: e,
         msg: "Failed to create ssh session!".to_owned(),
     })?;
-    // .into_diagnostic()
-    // .wrap_err("Failed to create ssh session!")?;
 
     session.set_tcp_stream(tcp);
     session.handshake().map_err(|e| Error::SftpError {
