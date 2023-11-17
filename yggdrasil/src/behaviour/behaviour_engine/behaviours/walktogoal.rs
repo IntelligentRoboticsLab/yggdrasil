@@ -6,11 +6,11 @@ use crate::behaviour::behaviour_engine::engine::{BehaviourContext, ImplBehaviour
 use crate::behaviour::Role::Keeper;
 
 #[derive(Debug, Default)]
-pub struct ExampleBehaviour {
+pub struct WalkToGoal {
     some_state: i8,
 }
 
-impl ImplBehaviour for ExampleBehaviour {
+impl ImplBehaviour for WalkToGoal {
     fn execute(&mut self, ctx: &mut BehaviourContext, ctrl_message: &mut NaoControlMessage) {
         if *ctx.role == Keeper {
             ctrl_message.chest = Color {

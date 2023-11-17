@@ -1,2 +1,2 @@
-mod example;
-pub use example::ExampleBehaviour;
+mod walktogoal;
+pub use walktogoal::WalkToGoal;

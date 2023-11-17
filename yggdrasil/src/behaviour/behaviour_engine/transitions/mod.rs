@@ -1,2 +1,2 @@
-mod example;
-pub use example::update_example_role_behaviour;
+mod keeper;
+pub use keeper::update_keeper_role_behaviour;
