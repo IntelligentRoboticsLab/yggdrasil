@@ -8,7 +8,7 @@ use tokio::process::Command;
 use crate::error::Error;
 
 #[derive(Error, Diagnostic, Debug)]
-enum CargoErrorKind {
+enum CargoError {
     #[error(transparent)]
     #[diagnostic(help("Failed to spawn cargo child process!"))]
     Io(#[from] std::io::Error),
@@ -33,7 +33,7 @@ enum CargoErrorKind {
     Cargo(String),
 }
 
-async fn cargo<I, S>(args: I) -> Result<(), CargoErrorKind>
+async fn cargo<I, S>(args: I) -> Result<(), CargoError>
 where
     I: IntoIterator<Item = S> + Debug + Clone,
     S: AsRef<OsStr>,
@@ -50,7 +50,7 @@ where
     if !output.status.success() {
         // build failed for whatever reason, print to stdout
         let stderr = String::from_utf8(output.stderr)?;
-        return Err(CargoErrorKind::Cargo(stderr));
+        return Err(CargoError::Cargo(stderr));
     }
 
     Ok(())
