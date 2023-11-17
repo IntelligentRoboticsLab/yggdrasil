@@ -15,7 +15,6 @@ impl Module for BehaviourEngineModule {
         Ok(app
             .add_resource(Resource::new(BehaviourEngine::default()))?
             .add_system(transition_behaviour)
-            .add_system(executor.after(transition_behaviour))
-)
+            .add_system(executor.after(transition_behaviour)))
     }
 }
