@@ -11,7 +11,7 @@ use crate::behaviour::behaviour_engine::{behaviours::*, transitions::*};
 
 #[derive(Debug)]
 pub enum Behaviour {
-    Example(ExampleBehaviour),
+    WalkToGoal(WalkToGoal),
     None,
 }
 
@@ -38,7 +38,7 @@ impl BehaviourEngine {
         //is not necessary and we can just directly call behaviour.execute().
         use Behaviour::*;
         match self.current_behaviour {
-            Example(ref mut behaviour) => behaviour.execute(ctx, ctrl_msg),
+            WalkToGoal(ref mut behaviour) => behaviour.execute(ctx, ctrl_msg),
             None => (),
         }
     }
@@ -100,7 +100,7 @@ pub fn transition_behaviour(
 
     use Role::*;
     match *role {
-        Keeper => update_example_role_behaviour(&mut engine, &ctx),
+        Keeper => update_keeper_role_behaviour(&mut engine, &ctx),
     }
 
     Ok(())
