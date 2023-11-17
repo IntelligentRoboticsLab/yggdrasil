@@ -202,9 +202,7 @@ async fn deploy_to_robot(pb: &ProgressBar, addr: Ipv4Addr) -> Result<()> {
 
         // Since `file_remote` impl's Write, we can just copy directly using a BufWriter!
         // The Write impl is rather slow, so we set a large buffer size of 1 mb.
-        let file_length = file_local
-            .metadata()?
-            .len();
+        let file_length = file_local.metadata()?.len();
         pb.set_length(file_length);
         pb.set_message(format!("{}", entry.path().to_string_lossy()));
 
@@ -224,7 +222,7 @@ async fn deploy_to_robot(pb: &ProgressBar, addr: Ipv4Addr) -> Result<()> {
 async fn create_sftp_connection(ip: Ipv4Addr) -> Result<Sftp> {
     let tcp = tokio::time::timeout(
         Duration::from_secs(5),
-        TcpStream::connect(format!("{}:22", ip)),
+        TcpStream::connect(format!("{ip}:22")),
     )
     .await
     .map_err(Error::ElapsedError)?

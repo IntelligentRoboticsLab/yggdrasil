@@ -73,6 +73,9 @@ pub async fn build(binary: &str, release: bool, target: Option<&str>) -> Result<
         .wrap_err("Failed to build yggdrasil!")
 }
 
+/// Assert that the provided bin is valid for the current cargo workspace.
+///
+/// This will result in an error if the command isn't executed in a cargo workspace, or if the provided bin isn't found.
 pub fn assert_valid_bin(bin: &str) -> Result<()> {
     let manifest =
         cargo_toml::Manifest::from_path("./Cargo.toml").map_err(Error::CargoManifestError)?;
