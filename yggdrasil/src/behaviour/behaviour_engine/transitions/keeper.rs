@@ -4,8 +4,8 @@ use crate::behaviour::behaviour_engine::{
 };
 use crate::game_phase::GamePhase;
 
-pub fn update_keeper_role_behaviour(engine: &mut BehaviourEngine, ctx: &TransitionContext) {
-    let new_behaviour = match *ctx.game_phase {
+pub fn update_keeper_role_behaviour(engine: &mut BehaviourEngine, context: &TransitionContext) {
+    let new_behaviour = match *context.game_phase {
         GamePhase::Normal => Behaviour::WalkToGoal(WalkToGoal::default()),
         _ => Behaviour::None,
     };

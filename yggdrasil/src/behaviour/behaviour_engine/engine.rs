@@ -31,14 +31,14 @@ impl Default for BehaviourEngine {
 impl BehaviourEngine {
     pub fn execute_current_behaviour(
         &mut self,
-        ctx: &mut BehaviourContext,
-        ctrl_msg: &mut NaoControlMessage,
+        context: &mut BehaviourContext,
+        control_message: &mut NaoControlMessage,
     ) {
         //TODO: just use dynamic dispatch instead? Seems cleaner, then the entire match statement
         //is not necessary and we can just directly call behaviour.execute().
         use Behaviour::*;
         match self.current_behaviour {
-            WalkToGoal(ref mut behaviour) => behaviour.execute(ctx, ctrl_msg),
+            WalkToGoal(ref mut behaviour) => behaviour.execute(context, control_message),
             None => (),
         }
     }
@@ -56,24 +56,24 @@ pub struct BehaviourContext<'a> {
 }
 
 pub trait ImplBehaviour {
-    fn execute(&mut self, ctx: &mut BehaviourContext, ctrl_msg: &mut NaoControlMessage);
+    fn execute(&mut self, context: &mut BehaviourContext, control_message: &mut NaoControlMessage);
 }
 
 #[system]
 pub fn executor(
     engine: &mut BehaviourEngine,
-    ctrl_msg: &mut NaoControlMessage,
+    control_message: &mut NaoControlMessage,
     role: &Role,
     game_phase: &GamePhase,
     primary_state: &PrimaryState,
 ) -> Result<()> {
-    let mut ctx = BehaviourContext {
+    let mut context = BehaviourContext {
         primary_state: &primary_state,
         game_phase: &game_phase,
         role: &role,
     };
 
-    engine.execute_current_behaviour(&mut ctx, &mut ctrl_msg);
+    engine.execute_current_behaviour(&mut context, &mut control_message);
 
     Ok(())
 }
@@ -92,7 +92,7 @@ pub fn transition_behaviour(
     game_phase: &GamePhase,
     primary_state: &PrimaryState,
 ) -> Result<()> {
-    let ctx = TransitionContext {
+    let context = TransitionContext {
         role: &role,
         primary_state: &primary_state,
         game_phase: &game_phase,
@@ -100,7 +100,7 @@ pub fn transition_behaviour(
 
     use Role::*;
     match *role {
-        Keeper => update_keeper_role_behaviour(&mut engine, &ctx),
+        Keeper => update_keeper_role_behaviour(&mut engine, &context),
     }
 
     Ok(())
