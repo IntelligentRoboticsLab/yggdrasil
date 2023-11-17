@@ -51,16 +51,16 @@ impl Led {
 }
 
 #[system]
-fn write_led_values(led: &mut Led, ctrl_msg: &mut NaoControlMessage) -> Result<()> {
-    ctrl_msg.chest = led.chest;
-    ctrl_msg.left_foot = led.left_foot;
-    ctrl_msg.right_foot = led.right_foot;
+fn write_led_values(led: &mut Led, control_message: &mut NaoControlMessage) -> Result<()> {
+    control_message.chest = led.chest;
+    control_message.left_foot = led.left_foot;
+    control_message.right_foot = led.right_foot;
 
-    ctrl_msg.left_ear = led.left_ear.clone();
-    ctrl_msg.right_ear = led.right_ear.clone();
-    ctrl_msg.left_eye = led.left_eye.clone();
-    ctrl_msg.right_eye = led.right_eye.clone();
-    ctrl_msg.skull = led.skull.clone();
+    control_message.left_ear = led.left_ear.clone();
+    control_message.right_ear = led.right_ear.clone();
+    control_message.left_eye = led.left_eye.clone();
+    control_message.right_eye = led.right_eye.clone();
+    control_message.skull = led.skull.clone();
 
     if let Some(blink) = led.chest_blink.as_mut() {
         if blink.start.elapsed() > blink.interval {
@@ -69,9 +69,9 @@ fn write_led_values(led: &mut Led, ctrl_msg: &mut NaoControlMessage) -> Result<(
         }
 
         if blink.on {
-            ctrl_msg.chest = blink.color;
+            control_message.chest = blink.color;
         } else {
-            ctrl_msg.chest = Color::GRAY;
+            control_message.chest = Color::GRAY;
         }
     }
 
