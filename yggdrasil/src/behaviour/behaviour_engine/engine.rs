@@ -36,10 +36,10 @@ impl BehaviourEngine {
     ) {
         //TODO: just use dynamic dispatch instead? Seems cleaner, then the entire match statement
         //is not necessary and we can just directly call behaviour.execute().
-        use Behaviour::*;
+        use Behaviour as B;
         match self.current_behaviour {
-            WalkToGoal(ref mut behaviour) => behaviour.execute(context, control_message),
-            None => (),
+            B::WalkToGoal(ref mut behaviour) => behaviour.execute(context, control_message),
+            B::None => (),
         }
     }
 
@@ -82,7 +82,6 @@ pub fn executor(
 pub struct TransitionContext<'a> {
     pub game_phase: &'a GamePhase,
     pub primary_state: &'a PrimaryState,
-    pub role: &'a Role,
 }
 
 #[system]
@@ -93,14 +92,13 @@ pub fn transition_behaviour(
     primary_state: &PrimaryState,
 ) -> Result<()> {
     let context = TransitionContext {
-        role: &role,
         primary_state: &primary_state,
         game_phase: &game_phase,
     };
 
-    use Role::*;
+    use Role as R;
     match *role {
-        Keeper => update_keeper_role_behaviour(&mut engine, &context),
+        R::Keeper => transition_keeper_role_behaviour(&mut engine, &context),
     }
 
     Ok(())

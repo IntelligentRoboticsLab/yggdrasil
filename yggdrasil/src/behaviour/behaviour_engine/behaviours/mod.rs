@@ -1,2 +1,2 @@
-mod walktogoal;
-pub use walktogoal::WalkToGoal;
+mod walk_to_goal;
+pub use walk_to_goal::WalkToGoal;

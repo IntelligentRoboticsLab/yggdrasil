@@ -1,2 +1,2 @@
 mod keeper;
-pub use keeper::update_keeper_role_behaviour;
+pub use keeper::transition_keeper_role_behaviour;
