@@ -1,5 +1,5 @@
 use std::{
-    ffi::OsStr, fmt::Debug, path::PathBuf, process::Stdio, result::Result, string::FromUtf8Error,
+    ffi::OsStr, fmt::Debug, path::Path, process::Stdio, result::Result, string::FromUtf8Error,
 };
 
 use miette::Diagnostic;
@@ -15,7 +15,11 @@ pub enum CargoError {
     Io(#[from] std::io::Error),
 
     #[error(transparent)]
-    CargoManifestError(#[from] cargo_toml::Error),
+    Manifest(#[from] cargo_toml::Error),
+
+    #[error("The --bin flag has to be used in a Cargo workspace.")]
+    #[diagnostic(help("Make sure you run sindri in the root of yggdrasil!"))]
+    Workspace,
 
     #[error(transparent)]
     #[diagnostic(help("Failed to deserialize cargo unit-graph!"))]
@@ -88,17 +92,14 @@ pub async fn build(binary: &str, release: bool, target: Option<&str>) -> Result<
 ///
 /// This will result in an error if the command isn't executed in a cargo workspace, or if the provided bin isn't found.
 pub fn assert_valid_bin(bin: &str) -> Result<(), CargoError> {
-    let manifest =
-        cargo_toml::Manifest::from_path("./Cargo.toml").map_err(CargoError::CargoManifestError)?;
+    let manifest = cargo_toml::Manifest::from_path("./Cargo.toml").map_err(CargoError::Manifest)?;
 
     let Some(workspace) = manifest.workspace else {
-        Err(CargoError::Execution(
-            "The `--bin` flag has to be ran in a Cargo workspace.".to_owned(),
-        ))?
+        Err(CargoError::Workspace)?
     };
 
     for item in workspace.members.iter() {
-        let path = PathBuf::from(item);
+        let path = Path::new(item);
 
         if !path.exists() || !path.is_dir() {
             continue;
