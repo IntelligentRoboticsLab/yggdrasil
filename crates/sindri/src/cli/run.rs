@@ -24,7 +24,9 @@ impl Run {
 
         Deploy {
             deploy: self.deploy,
-        }.deploy(config).await?;
+        }
+        .deploy(config)
+        .await?;
 
         robot.ssh("./yggdrasil")?.wait().await.into_diagnostic()?;
 
