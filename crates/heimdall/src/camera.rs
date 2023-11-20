@@ -89,12 +89,6 @@ fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
 }
 
 impl YuyvImage {
-    /// Return the timestamp of the image in microseconds.
-    #[must_use]
-    pub fn timestamp(&self) -> u64 {
-        self.frame.get_timestamp()
-    }
-
     /// Store the image as a jpeg to a file.
     ///
     /// # Errors
