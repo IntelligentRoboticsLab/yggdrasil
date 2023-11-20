@@ -19,4 +19,4 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 # pass all arguments to sindri
-cargo run -p sindri -- $@
+cargo run -r -p sindri -- $@

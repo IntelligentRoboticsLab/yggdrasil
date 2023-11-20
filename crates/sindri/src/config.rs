@@ -5,6 +5,25 @@ use std::net::Ipv4Addr;
 use std::ops::RangeInclusive;
 use tokio::process::{Child, Command};
 
+/// A robot as defined in the sindri configuration
+#[derive(Debug, Deserialize, Clone)]
+pub struct ConfigRobot {
+    pub name: String,
+    pub number: u8,
+}
+
+impl ConfigRobot {
+    #[must_use]
+    pub fn to_robot(self, team_number: u8, wired: bool) -> Robot {
+        Robot {
+            name: self.name,
+            number: self.number,
+            team_number,
+            wired,
+        }
+    }
+}
+
 /// Configuration structure for sindri (.toml), containing team number and robot information
 #[serde_as]
 #[derive(Debug, Deserialize, Clone)]
@@ -13,24 +32,19 @@ pub struct Config {
     pub team_number: u8,
 
     /// A [`Vec`] containing all robots configured in the configuration file.
-    pub robots: Vec<Robot>,
+    pub robots: Vec<ConfigRobot>,
 }
 
-impl Config {
-    /// Retrieve the name of a robot based on its number
-    ///
-    /// This will return `Robot number not found!` if the robot's name hasn't been configured yet!
-    pub fn robot_name(&self, number: u8) -> Result<&str> {
-        self.by_number(number)
-            .map(|r| r.name.as_str())
-            .ok_or_else(|| miette!("Robot number not found!"))
-    }
-
+impl<'a> Config {
     /// Get a [`Robot`] instance using the provided number.
     ///
     /// If there's no [`Robot`] configured with the provided number, this will return an [`Option::None`].
-    pub fn by_number(&self, number: u8) -> Option<&Robot> {
-        self.robots.iter().find(|r| r.number == number)
+    pub fn robot(&'a self, number: u8, wired: bool) -> Option<Robot> {
+        self.robots
+            .iter()
+            .find(|r| r.number == number)
+            .cloned()
+            .map(|c| c.to_robot(self.team_number, wired))
     }
 
     /// Retrieve a range from the minimum robot number to the maximum robot number defined in this config.
@@ -42,7 +56,7 @@ impl Config {
             .iter()
             .map(|r| r.number)
             .min()
-            .ok_or(miette!("Faild to get minimum robot number!"))?;
+            .ok_or(miette!("Failed to get minimum robot number!"))?;
 
         let max = self
             .robots
@@ -55,34 +69,37 @@ impl Config {
     }
 }
 
-/// Struct representing a robot with its name and number
+/// Struct representing a robot to which we can connect
 #[derive(Debug, Deserialize, Clone)]
 pub struct Robot {
     pub name: String,
     pub number: u8,
+    pub team_number: u8,
+    pub wired: bool,
 }
 
 impl Robot {
-    /// Creates a new [`Robot`] struct.
-    pub fn new(name: impl Into<String>, number: u8) -> Self {
+    pub fn new(name: impl Into<String>, number: u8, team_number: u8, wired: bool) -> Self {
         Self {
             name: name.into(),
             number,
+            team_number,
+            wired,
         }
     }
 
     /// Create an Ipv4 address for the robot based on robot number, team number and wired/wireless.
     #[must_use]
-    pub fn ip(&self, team_number: u8, wired: bool) -> Ipv4Addr {
-        Ipv4Addr::new(10, u8::from(wired), team_number, self.number)
+    pub fn ip(&self) -> Ipv4Addr {
+        Ipv4Addr::new(10, u8::from(self.wired), self.team_number, self.number)
     }
 
     /// SSH into the robot and run the provided command.
     ///
     /// This returns the spawned [`Child`] process.
-    pub fn ssh(&self, team_number: u8, wired: bool, command: impl Into<String>) -> Result<Child> {
+    pub fn ssh(&self, command: impl Into<String>) -> Result<Child> {
         Command::new("ssh")
-            .arg(format!("nao@{}", self.ip(team_number, wired)))
+            .arg(format!("nao@{}", self.ip()))
             .arg("-t")
             .args(command.into().split(' ').collect::<Vec<&str>>())
             .kill_on_drop(true)

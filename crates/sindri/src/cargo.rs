@@ -45,6 +45,12 @@ pub enum CargoError {
     InvalidBin(String),
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Profile {
+    Debug,
+    Release,
+}
+
 async fn cargo<I, S>(args: I) -> Result<(), CargoError>
 where
     I: IntoIterator<Item = S> + Debug + Clone,
@@ -73,10 +79,10 @@ where
 /// This spawns a cargo process using the provided properties as arguments.
 ///
 /// If `target` is set to [`Option::None`], it will default to the current system's target.
-pub async fn build(binary: &str, release: bool, target: Option<&str>) -> Result<(), CargoError> {
+pub async fn build(binary: &str, profile: Profile, target: Option<&str>) -> Result<(), CargoError> {
     let mut cargo_args = vec!["build", "-p", binary];
 
-    if release {
+    if matches!(profile, Profile::Release) {
         cargo_args.push("--release");
     }
 
@@ -98,7 +104,7 @@ pub fn assert_valid_bin(bin: &str) -> Result<(), CargoError> {
         Err(CargoError::Workspace)?
     };
 
-    for item in workspace.members.iter() {
+    for item in &workspace.members {
         let path = Path::new(item);
 
         if !path.exists() || !path.is_dir() {

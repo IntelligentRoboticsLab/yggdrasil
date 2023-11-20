@@ -1,5 +1,5 @@
 use crate::{
-    cargo,
+    cargo::{self, Profile},
     config::Config,
     error::{Error, Result},
 };
@@ -22,45 +22,40 @@ const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
 const RELEASE_PATH: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
 const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 
-/// The size of the BufWriter's buffer.
+/// The size of the `BufWriter`'s buffer.
 ///
 /// This is currently set to 1 MiB, as the [`Write`] implementation for [`ssh2::sftp::File`]
 /// is rather slow due to the locking mechanism.
 const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
 
-/// Compile and deploy the specified binary to the robot.
 #[derive(Clone, Debug, Parser)]
 pub struct ConfigOptsDeploy {
     /// Number of the robot to deploy to.
-    #[clap(index = 1, name = "Robot number")]
+    #[clap(index = 1, name = "robot-number")]
     pub number: u8,
 
     /// Scan for wired (true) or wireless (false) robots [default: false]
-    #[clap(long, short)]
+    #[clap(short, long)]
     pub wired: bool,
 
     /// Team number [default: Set in `sindri.toml`]
-    #[clap(long)]
+    #[clap(short, long)]
     pub team_number: Option<u8>,
-
-    // Whether to automatically run the yggdrasil binary once it's deployed. [default: false]
-    #[clap(long)]
-    pub test: bool,
 }
 
 impl ConfigOptsDeploy {
-    pub fn new(number: u8, wired: bool, team_number: Option<u8>, test: bool) -> Self {
+    #[must_use]
+    pub fn new(number: u8, wired: bool, team_number: Option<u8>) -> Self {
         Self {
             number,
             wired,
             team_number,
-            test,
         }
     }
 }
 
+/// Compile and deploy the specified binary to the robot.
 #[derive(Parser)]
-#[clap(name = "deploy")]
 pub struct Deploy {
     #[clap(flatten)]
     pub deploy: ConfigOptsDeploy,
@@ -89,7 +84,9 @@ impl Deploy {
         ));
         pb.set_prefix("Compiling");
 
-        cargo::build("yggdrasil", true, Some(ROBOT_TARGET)).await?;
+        // Build yggdrasil with cargo
+        cargo::build("yggdrasil", Profile::Release, Some(ROBOT_TARGET)).await?;
+
         pb.println(format!(
             "{} {} {}{}, {}{}{}",
             "   Compiling".green().bold(),
@@ -100,6 +97,7 @@ impl Deploy {
             ROBOT_TARGET.bold(),
             ")".dimmed()
         ));
+
         pb.println(format!(
             "{} in {}",
             "    Finished".green().bold(),
@@ -107,10 +105,13 @@ impl Deploy {
         ));
         pb.reset_elapsed();
 
-        let robot = config.by_number(self.deploy.number).ok_or(miette!(format!(
-            "Invalid robot specified, number {} is not configured!",
-            self.deploy.number
-        )))?;
+        // Check if the robot exists
+        let robot = config
+            .robot(self.deploy.number, self.deploy.wired)
+            .ok_or(miette!(format!(
+                "Invalid robot specified, number {} is not configured!",
+                self.deploy.number
+            )))?;
 
         pb.set_style(
             ProgressStyle::with_template("   {prefix:.blue.bold} {msg} {spinner:.blue.bold}")
@@ -120,15 +121,13 @@ impl Deploy {
 
         pb.set_prefix("Deploying");
         pb.set_message(format!("{}", "Preparing deployment...".dimmed()));
+
+        // Copy over the files that need to be deployed
         fs::copy(RELEASE_PATH, DEPLOY_PATH)
             .into_diagnostic()
             .wrap_err("Failed to copy binary to deploy directory!")?;
 
-        let addr = robot.ip(
-            self.deploy.team_number.unwrap_or(config.team_number),
-            self.deploy.wired,
-        );
-        deploy_to_robot(&pb, addr)
+        deploy_to_robot(&pb, robot.ip())
             .await
             .wrap_err("Failed to deploy yggdrasil files to robot")?;
 
@@ -139,17 +138,6 @@ impl Deploy {
         ));
         pb.finish_and_clear();
 
-        if self.deploy.test {
-            robot
-                .ssh(
-                    self.deploy.team_number.unwrap_or(config.team_number),
-                    self.deploy.wired,
-                    "./yggdrasil".to_owned(),
-                )?
-                .wait()
-                .await
-                .into_diagnostic()?;
-        }
         Ok(())
     }
 }
@@ -252,7 +240,7 @@ async fn create_sftp_connection(ip: Ipv4Addr) -> Result<Sftp> {
 
 fn ensure_directory_exists(sftp: &Sftp, path: impl AsRef<Path>) -> Result<()> {
     match sftp.mkdir(path.as_ref(), 0o777) {
-        Ok(_) => Ok(()),
+        Ok(()) => Ok(()),
         // Error code 4, means the directory already exists, so we can ignore it
         Err(error) if error.code() == ErrorCode::SFTP(4) => Ok(()),
         Err(error) => Err(Error::SftpError {

@@ -25,9 +25,8 @@ async fn main() -> Result<()> {
     assert_valid_bin(&args.bin)?;
 
     match args.action {
-        Commands::Build(opts) => opts.build(&args.bin).await?,
         Commands::Deploy(opts) => opts.deploy(config).await?,
-        Commands::Test(opts) => opts.test(config).await?,
+        Commands::Run(opts) => opts.run(config).await?,
         Commands::Scan(opts) => opts.scan(config).await?,
     }
 

@@ -1,9 +1,8 @@
 use clap::Parser;
 
-pub mod build;
 pub mod deploy;
+pub mod run;
 pub mod scan;
-pub mod test;
 
 /// `sindri` - The build tool for yggdrasil
 ///
@@ -44,8 +43,8 @@ pub struct Cli {
     pub action: Commands,
 
     /// Enable verbose logging
-    #[clap(short)]
-    pub v: bool,
+    #[clap(short, long)]
+    pub verbose: bool,
 
     /// Specify bin target
     #[clap(global = true, long, default_value = "yggdrasil")]
@@ -55,8 +54,7 @@ pub struct Cli {
 /// All possible commands for the cli, used for clap derive macros.
 #[derive(Parser)]
 pub enum Commands {
-    Build(build::Build),
     Deploy(deploy::Deploy),
-    Test(test::Test),
+    Run(run::Run),
     Scan(scan::Scan),
 }
