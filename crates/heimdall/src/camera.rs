@@ -1,7 +1,7 @@
 use std::{fs::File, io::Write, ops::Deref};
 
 use image::codecs::jpeg::JpegEncoder;
-use rscam::{Config, Frame, FIELD_NONE};
+use linuxvideo::{format::PixFormat, format::PixelFormat, stream::ReadStream, Device};
 
 use crate::Result;
 
@@ -17,19 +17,16 @@ pub const CAMERA_BOTTOM: &str = "/dev/video-bottom";
 /// Absolute path to the upper camera of the NAO.
 pub const CAMERA_TOP: &str = "/dev/video-top";
 
-const DEFAULT_CAMERA_CONFIG: Config = Config {
-    interval: (1, 30),
-    resolution: (IMAGE_WIDTH, IMAGE_HEIGHT),
-    format: b"YUYV",
-    field: FIELD_NONE,
-    nbuffers: 3,
-};
+fn default_camera_config() -> PixFormat {
+    PixFormat::new(IMAGE_WIDTH, IMAGE_HEIGHT, PixelFormat::YUYV)
+}
 
 /// An object that holds a YUYV NAO camera image.
 ///
 /// The image has a width of [`IMAGE_WIDTH`] and a height of [`IMAGE_HEIGHT`].
 pub struct YuyvImage {
-    frame: Frame,
+    // frame: Frame,
+    frame: Vec<u8>,
 }
 
 /// An object that holds a YUYV NAO camera image.
@@ -145,7 +142,7 @@ impl Deref for RgbImage {
 
 /// Struct for retrieving images from the NAO camera.
 pub struct Camera {
-    camera: rscam::Camera,
+    camera: ReadStream,
 }
 
 impl Camera {
@@ -154,8 +151,9 @@ impl Camera {
     /// # Errors
     /// This function fails if the [`Camera`] cannot be opened.
     pub fn new(device_path: &str) -> Result<Self> {
-        let mut camera = rscam::Camera::new(device_path)?;
-        camera.start(&DEFAULT_CAMERA_CONFIG)?;
+        let camera = Device::open(device_path)?
+            .video_capture(default_camera_config())?
+            .into_stream()?;
 
         let mut camera = Self { camera };
 
@@ -173,7 +171,7 @@ impl Camera {
     /// # Errors
     /// This function fails if the [`Camera`] cannot take an image.
     pub fn get_yuyv_image(&mut self) -> Result<YuyvImage> {
-        let frame = self.camera.capture()?;
+        let frame = self.camera.dequeue(|buf| Ok(buf.to_owned()))?;
 
         Ok(YuyvImage { frame })
     }

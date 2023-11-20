@@ -11,10 +11,6 @@ pub enum Error {
     #[error(transparent)]
     IO(#[from] std::io::Error),
 
-    /// Camera error, this wraps a [rscam::Error]
-    #[error(transparent)]
-    Camera(#[from] rscam::Error),
-
     /// Image error, this wraps a [image::ImageError]
     #[error(transparent)]
     Image(#[from] image::ImageError),
