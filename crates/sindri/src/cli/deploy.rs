@@ -28,6 +28,7 @@ const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 /// is rather slow due to the locking mechanism.
 const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
 
+/// Compile and deploy the specified binary to the robot.
 #[derive(Clone, Debug, Parser)]
 pub struct ConfigOptsDeploy {
     /// Number of the robot to deploy to.

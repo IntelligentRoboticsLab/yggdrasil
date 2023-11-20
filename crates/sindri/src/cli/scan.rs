@@ -7,7 +7,7 @@ use tokio::{process::Command, task::JoinSet};
 
 use crate::config::Config;
 
-/// Configuration options for the scanning system, specifying the IP addresses to be pinged.
+/// Scan the current network for online robots.
 #[derive(Clone, Debug, Default, Parser)]
 pub struct ConfigOptsScan {
     /// The range of robot numbers to be pinged [default: 20 26]

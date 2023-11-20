@@ -5,6 +5,7 @@ use miette::Result;
 
 use super::deploy::{ConfigOptsDeploy, Deploy};
 
+/// Compile, deploy and execute the provided binary on the robot. Useful for testing!
 #[derive(Clone, Debug, Parser)]
 pub struct ConfigOptsTest {
     /// Robot number

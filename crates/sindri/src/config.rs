@@ -26,6 +26,9 @@ impl Config {
             .ok_or_else(|| miette!("Robot number not found!"))
     }
 
+    /// Get a [`Robot`] instance using the provided number.
+    ///
+    /// If there's no [`Robot`] configured with the provided number, this will return an [`Option::None`].
     pub fn by_number(&self, number: u8) -> Option<&Robot> {
         self.robots.iter().find(|r| r.number == number)
     }

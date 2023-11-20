@@ -7,7 +7,7 @@ use miette::Result;
 
 use crate::cargo;
 
-/// Config options for the build system
+/// Build the provided binary.
 #[derive(Clone, Debug, Default, Parser)]
 pub struct ConfigOptsBuild {
     /// Build in release mode
