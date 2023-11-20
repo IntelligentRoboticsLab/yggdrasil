@@ -90,7 +90,7 @@ fn handle_messages(
     // Receive new messages
     loop {
         match server.rx.try_recv() {
-            Ok(msg) => handle_message(msg, &mut server, &mut receive_tasks)?,
+            Ok(msg) => handle_message(msg, server, receive_tasks)?,
             Err(TryRecvError::Empty) => break,
             Err(e) => return Err(e).into_diagnostic(),
         }
