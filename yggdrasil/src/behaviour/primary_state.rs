@@ -38,17 +38,17 @@ fn update_primary_state(primary_state: &mut PrimaryState) -> Result<()> {
 
 #[system]
 fn show_primary_state(primary_state: &mut PrimaryState, led: &mut Led) -> Result<()> {
-    use PrimaryState::*;
+    use PrimaryState as PS;
 
     match *primary_state {
-        Unstiff => led.chest_blink(Color::BLUE, Duration::from_secs(1)),
-        Initial => led.chest = Color::GRAY,
-        Ready => led.chest = Color::BLUE,
-        Set => led.chest = Color::YELLOW,
-        Playing => led.chest = Color::GREEN,
-        Penalized => led.chest = Color::RED,
-        Finished => led.chest = Color::GRAY,
-        Calibration => led.chest = Color::PURPLE,
+        PS::Unstiff => led.chest_blink(Color::BLUE, Duration::from_secs(1)),
+        PS::Initial => led.chest = Color::GRAY,
+        PS::Ready => led.chest = Color::BLUE,
+        PS::Set => led.chest = Color::YELLOW,
+        PS::Playing => led.chest = Color::GREEN,
+        PS::Penalized => led.chest = Color::RED,
+        PS::Finished => led.chest = Color::GRAY,
+        PS::Calibration => led.chest = Color::PURPLE,
     };
 
     Ok(())
