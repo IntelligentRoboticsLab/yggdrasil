@@ -1,17 +1,21 @@
-use std::{ffi::OsStr, fmt::Debug, path::PathBuf, process::Stdio, string::FromUtf8Error};
+use std::{
+    ffi::OsStr, fmt::Debug, path::PathBuf, process::Stdio, result::Result, string::FromUtf8Error,
+};
 
-use miette::{Context, Diagnostic, Result};
+use miette::Diagnostic;
 
 use thiserror::Error;
 use tokio::process::Command;
 
-use crate::error::Error;
-
+/// Error kind that can occur when running cargo operations in sindri.
 #[derive(Error, Diagnostic, Debug)]
-enum CargoError {
+pub enum CargoError {
     #[error(transparent)]
     #[diagnostic(help("Failed to spawn cargo child process!"))]
     Io(#[from] std::io::Error),
+
+    #[error(transparent)]
+    CargoManifestError(#[from] cargo_toml::Error),
 
     #[error(transparent)]
     #[diagnostic(help("Failed to deserialize cargo unit-graph!"))]
@@ -30,7 +34,11 @@ enum CargoError {
         {0}"
     )]
     #[diagnostic(help("Cargo output is printed above!"))]
-    Cargo(String),
+    Execution(String),
+
+    #[error("Invalid bin specified {0}")]
+    #[diagnostic(help("Make sure you specify a valid bin, such as `yggdrasil`!"))]
+    InvalidBin(String),
 }
 
 async fn cargo<I, S>(args: I) -> Result<(), CargoError>
@@ -50,13 +58,18 @@ where
     if !output.status.success() {
         // build failed for whatever reason, print to stdout
         let stderr = String::from_utf8(output.stderr)?;
-        return Err(CargoError::Cargo(stderr));
+        return Err(CargoError::Execution(stderr));
     }
 
     Ok(())
 }
 
-pub async fn build(binary: &str, release: bool, target: Option<&str>) -> Result<()> {
+/// Perform a `cargo build` command using the specified arguments.
+///
+/// This spawns a cargo process using the provided properties as arguments.
+///
+/// If `target` is set to [`Option::None`], it will default to the current system's target.
+pub async fn build(binary: &str, release: bool, target: Option<&str>) -> Result<(), CargoError> {
     let mut cargo_args = vec!["build", "-p", binary];
 
     if release {
@@ -68,20 +81,18 @@ pub async fn build(binary: &str, release: bool, target: Option<&str>) -> Result<
         cargo_args.push(target);
     }
 
-    cargo(cargo_args)
-        .await
-        .wrap_err("Failed to build yggdrasil!")
+    cargo(cargo_args).await
 }
 
 /// Assert that the provided bin is valid for the current cargo workspace.
 ///
 /// This will result in an error if the command isn't executed in a cargo workspace, or if the provided bin isn't found.
-pub fn assert_valid_bin(bin: &str) -> Result<()> {
+pub fn assert_valid_bin(bin: &str) -> Result<(), CargoError> {
     let manifest =
-        cargo_toml::Manifest::from_path("./Cargo.toml").map_err(Error::CargoManifestError)?;
+        cargo_toml::Manifest::from_path("./Cargo.toml").map_err(CargoError::CargoManifestError)?;
 
     let Some(workspace) = manifest.workspace else {
-        Err(Error::CargoError(
+        Err(CargoError::Execution(
             "The `--bin` flag has to be ran in a Cargo workspace.".to_owned(),
         ))?
     };
@@ -98,8 +109,6 @@ pub fn assert_valid_bin(bin: &str) -> Result<()> {
         }
     }
 
-    // If the bin exists but we couldn't find it
-    Err(Error::CargoError(
-        "The specified bin does not exist.".to_string(),
-    ))?
+    // We couldn't find it the bin!
+    Err(CargoError::InvalidBin(bin.to_string()))?
 }

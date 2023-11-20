@@ -2,18 +2,17 @@ use miette::Diagnostic;
 use thiserror::Error;
 use tokio::time::error::Elapsed;
 
-pub type Result<T> = miette::Result<T, Error>;
+/// Type alias for [`std::result::Result`] containing a sindri [`Error`].
+pub type Result<T> = std::result::Result<T, Error>;
 
+/// Enum describing the possible errors that can occur in sindri.
 #[derive(Error, Diagnostic, Debug)]
 pub enum Error {
     #[error(transparent)]
     IoError(#[from] std::io::Error),
 
     #[error(transparent)]
-    CargoManifestError(#[from] cargo_toml::Error),
-
-    #[error("Cargo Error: {0}")]
-    CargoError(String),
+    CargoError(crate::cargo::CargoError),
 
     #[error("Sftp error: {msg}")]
     SftpError {
