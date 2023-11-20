@@ -45,6 +45,7 @@ pub enum CargoError {
     InvalidBin(String),
 }
 
+/// Possible profiles used when building.
 #[derive(Debug, Clone, Copy)]
 pub enum Profile {
     Debug,

@@ -22,11 +22,9 @@ impl Run {
                 self.deploy.number
             )))?;
 
-        let deploy = Deploy {
+        Deploy {
             deploy: self.deploy,
-        };
-
-        deploy.deploy(config).await?;
+        }.deploy(config).await?;
 
         robot.ssh("./yggdrasil")?.wait().await.into_diagnostic()?;
 
