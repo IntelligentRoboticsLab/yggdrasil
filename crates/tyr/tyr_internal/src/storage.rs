@@ -1,6 +1,7 @@
 use std::{
     any::{type_name, Any, TypeId},
     collections::HashMap,
+    fmt::Debug,
     sync::{Arc, LockResult, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
@@ -11,7 +12,7 @@ use miette::{miette, Result};
 pub type BoxedSystem = Box<dyn System + 'static>;
 
 /// A thread-safe container that holds one instance of type `T`
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub struct Resource<T: Send + Sync + 'static> {
     value: Arc<RwLock<T>>,
 }
@@ -21,6 +22,12 @@ impl<T: Send + Sync + 'static> Resource<T> {
         Self {
             value: Arc::new(RwLock::new(value)),
         }
+    }
+}
+
+impl<T: Send + Sync + 'static> Clone for Resource<T> {
+    fn clone(&self) -> Self {
+        Self { value: self.value.clone() }
     }
 }
 
@@ -44,14 +51,34 @@ impl ErasedResource {
     }
 }
 
+impl<T: Debug + Send + Sync + 'static> From<Resource<T>> for DebuggableResource {
+    fn from(resource: Resource<T>) -> Self {
+        Self(std::any::type_name::<T>(), resource.value)
+    }
+}
+
+/// A type-erased resource that is debuggable.
+#[derive(Debug, Clone)]
+pub struct DebuggableResource(&'static str, Arc<RwLock<dyn Debug + Send + Sync + 'static>>);
+
+impl DebuggableResource {
+    pub fn read(&self) -> LockResult<RwLockReadGuard<dyn Debug + Send + Sync + 'static>> {
+        self.1.read()
+    }
+
+    pub fn write(&self) -> LockResult<RwLockWriteGuard<dyn Debug + Send + Sync + 'static>> {
+        self.1.write()
+    }
+}
+
 /// Wrapper around a [`HashMap`](`std::collections::HashMap`) that stores type-erased pointers to a resource, based on their [`TypeId`](`std::any::TypeId`).
 #[derive(Debug, Default, Clone)]
-pub struct Storage(HashMap<TypeId, ErasedResource>);
+pub struct Storage(HashMap<TypeId, ErasedResource>, Vec<DebuggableResource>);
 
 impl Storage {
     /// Create a new resource storage.
     pub fn new() -> Self {
-        Storage(HashMap::new())
+        Storage(HashMap::new(), Vec::new())
     }
 
     /// Consumes the [`Resource<T>`] and adds it to the storage.
@@ -68,6 +95,26 @@ impl Storage {
                 std::any::type_name::<T>()
             )),
             None => Ok(()),
+        }
+    }
+
+    /// Consumes the [`Resource<T>`] and adds it to the storage as well as the debug pointer list.
+    ///
+    /// Internally, this works by allocating it on the heap and storing a type-erased pointer
+    /// in a [`HashMap`](`std::collections::HashMap`) based on the type's [`TypeId`](`std::any::TypeId`).
+    ///
+    /// # Errors
+    /// This function fails if there is already a resource of type `T` in the storage.
+    pub fn add_debuggable_resource<T: Debug + Send + Sync + 'static>(&mut self, res: Resource<T>) -> Result<()> {
+        match self.0.insert(TypeId::of::<T>(), res.clone().into()) {
+            Some(_) => Err(miette!(
+                "Trying to add resource of type `{}`, but it already exists in storage!",
+                std::any::type_name::<T>()
+            )),
+            None => {
+                self.1.push(res.into());
+                Ok(())
+            },
         }
     }
 
