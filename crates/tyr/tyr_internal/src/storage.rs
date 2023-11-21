@@ -27,7 +27,9 @@ impl<T: Send + Sync + 'static> Resource<T> {
 
 impl<T: Send + Sync + 'static> Clone for Resource<T> {
     fn clone(&self) -> Self {
-        Self { value: self.value.clone() }
+        Self {
+            value: self.value.clone(),
+        }
     }
 }
 
@@ -105,7 +107,10 @@ impl Storage {
     ///
     /// # Errors
     /// This function fails if there is already a resource of type `T` in the storage.
-    pub fn add_debuggable_resource<T: Debug + Send + Sync + 'static>(&mut self, res: Resource<T>) -> Result<()> {
+    pub fn add_debuggable_resource<T: Debug + Send + Sync + 'static>(
+        &mut self,
+        res: Resource<T>,
+    ) -> Result<()> {
         match self.0.insert(TypeId::of::<T>(), res.clone().into()) {
             Some(_) => Err(miette!(
                 "Trying to add resource of type `{}`, but it already exists in storage!",
@@ -114,7 +119,7 @@ impl Storage {
             None => {
                 self.1.push(res.into());
                 Ok(())
-            },
+            }
         }
     }
 

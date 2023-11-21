@@ -11,6 +11,7 @@ fn main() -> Result<()> {
         .add_system(update_cheese)
         .add_system(say_bye.before(update_cheese).after(say_hi))
         .add_system(say_hi_again)
+        .add_debuggable_resource(DebuggableResource::new(Carot::default()))
         .run()?;
 
     Ok(())
@@ -21,6 +22,9 @@ struct Cheese(String);
 
 #[derive(Default)]
 struct Sausage(String);
+
+#[derive(Default, Debug)]
+struct Carrot(String);
 
 #[system]
 fn say_hi(cheese: &Cheese) -> Result<()> {

@@ -123,6 +123,21 @@ impl App {
         Ok(self)
     }
 
+    /// Consumes the [`Resource<T>`] and adds it to the app storage.
+    ///
+    /// This method is used to mark [`Resource<T>`] as a debuggable resource, making it
+    /// show up in the debug panel.
+    ///
+    /// # Errors
+    /// This functions fails if there is already a resource of type `T` in the storage.
+    pub fn add_debuggable_resource<T: std::fmt::Debug + Send + Sync + 'static>(
+        mut self,
+        res: Resource<T>,
+    ) -> Result<Self> {
+        self.storage.add_debuggable_resource(res)?;
+        Ok(self)
+    }
+
     /// Consumes the [`Module`] and incorporates it into the app.
     /// The module must implement the [`Module`] trait, which defines the [`.initialize()`](`Module::initialize`) method.
     /// The [`.initialize()`](`Module::initialize`) method allows the [`Module`] to add resource and systems to the app.
