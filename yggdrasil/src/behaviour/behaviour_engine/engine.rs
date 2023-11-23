@@ -9,58 +9,68 @@ use tyr::prelude::*;
 
 use crate::behaviour::behaviour_engine::{behaviours::*, transitions::*};
 
-#[derive(Debug)]
-pub enum Behaviour {
-    WalkToGoal(WalkToGoal),
-    None,
-}
-
-#[derive(Debug)]
-pub struct BehaviourEngine {
-    pub current_behaviour: Behaviour,
-}
-
-impl Default for BehaviourEngine {
-    fn default() -> Self {
-        BehaviourEngine {
-            current_behaviour: Behaviour::None,
-        }
-    }
-}
-
-impl BehaviourEngine {
-    pub fn execute_current_behaviour(
-        &mut self,
-        context: &mut BehaviourContext,
-        control_message: &mut NaoControlMessage,
-    ) {
-        //TODO: just use dynamic dispatch instead? Seems cleaner, then the entire match statement
-        //is not necessary and we can just directly call behaviour.execute().
-        use Behaviour as B;
-        match self.current_behaviour {
-            B::WalkToGoal(ref mut behaviour) => behaviour.execute(context, control_message),
-            B::None => (),
-        }
-    }
-
-    pub fn transition(&mut self, behaviour_type: Behaviour) {
-        self.current_behaviour = behaviour_type;
-    }
-}
-
-#[derive(Debug)]
-pub struct BehaviourContext<'a> {
-    pub game_phase: &'a GamePhase,
-    pub primary_state: &'a PrimaryState,
-    pub role: &'a Role,
+#[derive(Copy, Clone)]
+pub struct BehaviourState<S: Copy> {
+    pub state: S,
 }
 
 pub trait ImplBehaviour {
     fn execute(&mut self, context: &mut BehaviourContext, control_message: &mut NaoControlMessage);
 }
 
+pub struct BehaviourContext<'a> {
+    pub game_phase: &'a GamePhase,
+    pub primary_state: &'a PrimaryState,
+    pub role: &'a Role,
+}
+
+#[derive(Copy, Clone)]
+pub enum Behaviour {
+    InitialBehaviour(BehaviourState<InitialBehaviour>),
+    ExampleBehaviour(BehaviourState<ExampleBehaviour>),
+}
+
+impl Default for Behaviour {
+    fn default() -> Self {
+        Behaviour::InitialBehaviour(BehaviourState::<InitialBehaviour>::default())
+    }
+}
+
+impl Behaviour {
+    fn transition(self, context: &BehaviourContext) -> Self {
+        use Role as R;
+        match context.role {
+            R::Keeper => transition_keeper_role_behaviour(self, &context),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct BehaviourEngine {
+    current_behaviour: Behaviour,
+}
+
+impl BehaviourEngine {
+    fn execute(&mut self, context: &mut BehaviourContext, control_message: &mut NaoControlMessage) {
+        use Behaviour as B;
+        match self.current_behaviour {
+            B::InitialBehaviour(ref mut behaviour) => behaviour.execute(context, control_message),
+            B::ExampleBehaviour(ref mut behaviour) => behaviour.execute(context, control_message),
+        }
+    }
+
+    pub fn step(
+        &mut self,
+        context: &mut BehaviourContext,
+        control_message: &mut NaoControlMessage,
+    ) {
+        self.execute(context, control_message);
+        self.current_behaviour = self.current_behaviour.transition(context);
+    }
+}
+
 #[system]
-pub fn executor(
+pub fn step(
     engine: &mut BehaviourEngine,
     control_message: &mut NaoControlMessage,
     role: &Role,
@@ -73,33 +83,7 @@ pub fn executor(
         role: &role,
     };
 
-    engine.execute_current_behaviour(&mut context, &mut control_message);
-
-    Ok(())
-}
-
-#[derive(Debug)]
-pub struct TransitionContext<'a> {
-    pub game_phase: &'a GamePhase,
-    pub primary_state: &'a PrimaryState,
-}
-
-#[system]
-pub fn transition_behaviour(
-    role: &Role,
-    engine: &mut BehaviourEngine,
-    game_phase: &GamePhase,
-    primary_state: &PrimaryState,
-) -> Result<()> {
-    let context = TransitionContext {
-        primary_state: &primary_state,
-        game_phase: &game_phase,
-    };
-
-    use Role as R;
-    match *role {
-        R::Keeper => transition_keeper_role_behaviour(&mut engine, &context),
-    }
+    engine.step(&mut context, &mut control_message);
 
     Ok(())
 }
