@@ -5,10 +5,11 @@ pub fn transition_keeper_role_behaviour(
     behaviour: Behaviour,
     context: &BehaviourContext,
 ) -> Behaviour {
-    use Behaviour as B;
+    use Behaviour::*;
+    use GamePhase::*;
     match (behaviour, context.game_phase) {
-        (B::InitialBehaviour(state), GamePhase::Normal) => B::ExampleBehaviour(state.into()),
-        (B::InitialBehaviour(state), GamePhase::Timeout) => B::ExampleBehaviour(state.into()),
-        _ => B::InitialBehaviour(BehaviourState::default()),
+        (InitialBehaviour(state), Normal) => ExampleBehaviour(state.into()),
+        (InitialBehaviour(state), Timeout) => ExampleBehaviour(state.into()),
+        _ => InitialBehaviour(BehaviourState::default()),
     }
 }

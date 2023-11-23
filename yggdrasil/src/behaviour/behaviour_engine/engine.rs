@@ -38,9 +38,9 @@ impl Default for Behaviour {
 
 impl Behaviour {
     fn transition(self, context: &BehaviourContext) -> Self {
-        use Role as R;
+        use Role::*;
         match context.role {
-            R::Keeper => transition_keeper_role_behaviour(self, &context),
+            Keeper => transition_keeper_role_behaviour(self, &context),
         }
     }
 }
@@ -52,10 +52,10 @@ pub struct BehaviourEngine {
 
 impl BehaviourEngine {
     fn execute(&mut self, context: &mut BehaviourContext, control_message: &mut NaoControlMessage) {
-        use Behaviour as B;
+        use Behaviour::*;
         match self.current_behaviour {
-            B::InitialBehaviour(ref mut behaviour) => behaviour.execute(context, control_message),
-            B::ExampleBehaviour(ref mut behaviour) => behaviour.execute(context, control_message),
+            InitialBehaviour(ref mut behaviour) => behaviour.execute(context, control_message),
+            ExampleBehaviour(ref mut behaviour) => behaviour.execute(context, control_message),
         }
     }
 
