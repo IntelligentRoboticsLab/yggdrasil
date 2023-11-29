@@ -123,6 +123,18 @@ impl App {
         Ok(self)
     }
 
+    /// Creates a [`Resource<T>`] on `T`s that implement [`Default`] and adds it to the app storage.
+    ///
+    /// This method is used to mark [`Resource<T>`] as a debuggable resource, making it
+    /// show up in the debug panel.
+    ///
+    /// # Errors
+    /// This function fails if there is already a resource of type `T` in the storage.
+    pub fn init_debuggable_resource<T: std::fmt::Debug + Default + Send + Sync + 'static>(mut self) -> Result<Self> {
+        self.storage.add_debuggable_resource(Resource::<T>::default())?;
+        Ok(self)
+    }
+
     /// Consumes the [`Resource<T>`] and adds it to the app storage.
     ///
     /// This method is used to mark [`Resource<T>`] as a debuggable resource, making it
