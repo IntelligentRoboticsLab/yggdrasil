@@ -1,7 +1,7 @@
 use std::{fs::File, io::Write, ops::Deref};
 
 use image::codecs::jpeg::JpegEncoder;
-use linuxvideo::{format::PixFormat, format::PixelFormat, stream::ReadStream, Device};
+use linuxvideo::{format::PixFormat, format::PixelFormat, stream::FrameProvider, Device};
 
 use crate::Result;
 
@@ -26,7 +26,8 @@ fn default_camera_config() -> PixFormat {
 /// The image has a width of [`IMAGE_WIDTH`] and a height of [`IMAGE_HEIGHT`].
 pub struct YuyvImage {
     // frame: Frame,
-    frame: Vec<u8>,
+    // frame: Vec<u8>,
+    frame: linuxvideo::Frame,
 }
 
 /// An object that holds a YUYV NAO camera image.
@@ -142,7 +143,8 @@ impl Deref for RgbImage {
 
 /// Struct for retrieving images from the NAO camera.
 pub struct Camera {
-    camera: ReadStream,
+    // camera: ReadStream,
+    camera: FrameProvider,
 }
 
 impl Camera {
@@ -153,7 +155,8 @@ impl Camera {
     pub fn new(device_path: &str) -> Result<Self> {
         let camera = Device::open(device_path)?
             .video_capture(default_camera_config())?
-            .into_stream()?;
+            .into_stream_num_buffers(2)?
+            .into_frame_provider();
 
         let mut camera = Self { camera };
 
@@ -171,7 +174,7 @@ impl Camera {
     /// # Errors
     /// This function fails if the [`Camera`] cannot take an image.
     pub fn get_yuyv_image(&mut self) -> Result<YuyvImage> {
-        let frame = self.camera.dequeue(|buf| Ok(buf.to_owned()))?;
+        let frame = self.camera.fetch_frame()?;
 
         Ok(YuyvImage { frame })
     }
