@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 image = { workspace = true }
-linuxvideo = { workspace = true }
+linuxvideo = { path = "../LinuxVideo/" }
 thiserror = { workspace = true }
