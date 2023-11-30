@@ -174,8 +174,15 @@ impl Camera {
             height,
             PixelFormat::YUYV,
         ))?;
+        if capture_device.format().pixel_format() != PixelFormat::YUYV {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "Pixel formats other than YUYV are not supported",
+            ))?;
+        }
         let width = capture_device.format().width();
         let height = capture_device.format().height();
+
         let camera = capture_device
             .into_stream_num_buffers(num_buffers)?
             .into_frame_provider();
