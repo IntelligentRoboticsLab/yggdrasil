@@ -1,8 +1,5 @@
 use miette::{IntoDiagnostic, Result};
-use std::{
-    sync::{Arc, Mutex},
-    time::{Duration, Instant},
-};
+use std::sync::{Arc, Mutex};
 use tyr::prelude::*;
 
 use heimdall::{Camera, YuyvImage};
@@ -14,8 +11,6 @@ struct BottomCamera(Arc<Mutex<Camera>>);
 
 pub struct TopImage(pub Arc<YuyvImage>);
 pub struct BottomImage(pub Arc<YuyvImage>);
-
-pub struct TopImageInstant(Instant, u32);
 
 impl Module for CameraModule {
     fn initialize(self, app: App) -> Result<App> {
@@ -53,7 +48,6 @@ impl Module for CameraModule {
             .add_resource(bottom_camera_resource)?
             .add_task::<AsyncTask<Result<TopImage>>>()?
             .add_task::<AsyncTask<Result<BottomImage>>>()?
-            .add_resource(Resource::new(TopImageInstant(Instant::now(), 0)))?
             .add_system(camera_system))
     }
 }
@@ -86,16 +80,8 @@ fn camera_system(
     bottom_image: &mut BottomImage,
     top_image_task: &mut AsyncTask<Result<TopImage>>,
     bottom_image_task: &mut AsyncTask<Result<BottomImage>>,
-    top_image_instant: &mut TopImageInstant,
 ) -> Result<()> {
     eprintln!("HERE");
-    if top_image_instant.0.duration_since(Instant::now()) > Duration::from_secs(2) {
-        top_image
-            .0
-            .store_jpeg(&format!("/home/nao/image_{}.jpg", top_image_instant.1))
-            .into_diagnostic()?;
-    }
-
     if let Some(new_top_image) = top_image_task.poll() {
         *top_image = new_top_image?;
         top_image_task.try_spawn(receive_top_image(top_camera.0.clone()))?;
