@@ -1090,7 +1090,7 @@ checksum = "da2479e8c062e40bf0066ffa0bc823de0a9368974af99c9f6df941d2c231e03f"
 [[package]]
 name = "linuxvideo"
 version = "0.3.2"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git#ad2f3333c35ba70f9b8b1a775a7ccccce71cbc23"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git#c791449f86bbf3f650f6999b6c34153ae098d3ba"
 dependencies = [
  "bitflags 1.3.2",
  "log",
