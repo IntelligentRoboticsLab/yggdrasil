@@ -15,7 +15,7 @@ fn main() -> Result<()> {
 
     miette::set_panic_hook();
 
-    let mut camera = heimdall::Camera::new("/dev/video0").unwrap();
+    let mut camera = heimdall::Camera::new("/dev/video0", 1280, 720, 3).unwrap();
     for _ in 0..10 {
         let yuyv = camera.get_yuyv_image().unwrap();
         yuyv.store_jpeg("out.jpeg").unwrap();
