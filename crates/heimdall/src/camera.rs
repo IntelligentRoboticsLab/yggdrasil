@@ -6,35 +6,49 @@ use linuxvideo::{format::PixFormat, format::PixelFormat, stream::FrameProvider, 
 use crate::Result;
 
 /// The width of a NAO [`Image`].
-pub const IMAGE_WIDTH: u32 = 1280;
+const IMAGE_WIDTH: u32 = 1280;
 
 /// The height of a NAO [`Image`].
-pub const IMAGE_HEIGHT: u32 = 960;
+const IMAGE_HEIGHT: u32 = 960;
 
 /// Absolute path to the lower camera of the NAO.
-pub const CAMERA_BOTTOM: &str = "/dev/video-bottom";
+const CAMERA_BOTTOM: &str = "/dev/video-bottom";
 
 /// Absolute path to the upper camera of the NAO.
-pub const CAMERA_TOP: &str = "/dev/video-top";
-
-fn default_camera_config() -> PixFormat {
-    PixFormat::new(IMAGE_WIDTH, IMAGE_HEIGHT, PixelFormat::YUYV)
-}
+const CAMERA_TOP: &str = "/dev/video-top";
 
 /// An object that holds a YUYV NAO camera image.
-///
-/// The image has a width of [`IMAGE_WIDTH`] and a height of [`IMAGE_HEIGHT`].
 pub struct YuyvImage {
-    // frame: Frame,
-    // frame: Vec<u8>,
     frame: linuxvideo::Frame,
+    width: u32,
+    height: u32,
+}
+
+impl YuyvImage {
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
 }
 
 /// An object that holds a YUYV NAO camera image.
-///
-/// The image has a width of [`IMAGE_WIDTH`] and a height of [`IMAGE_HEIGHT`].
 pub struct RgbImage {
     frame: Vec<u8>,
+    width: u32,
+    height: u32,
+}
+
+impl RgbImage {
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
 }
 
 fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
@@ -64,7 +78,7 @@ fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
         )
     }
 
-    let num_pixels = (IMAGE_WIDTH * IMAGE_HEIGHT) as usize;
+    let num_pixels = source.len() / 2;
 
     for pixel_duo_id in 0..(num_pixels / 2) {
         let input_offset: usize = (num_pixels / 2 - pixel_duo_id - 1) * 4;
@@ -96,16 +110,11 @@ impl YuyvImage {
         let output_file = File::create(file_path)?;
         let mut encoder = JpegEncoder::new(output_file);
 
-        let mut rgb_buffer = Vec::<u8>::with_capacity((IMAGE_WIDTH * IMAGE_HEIGHT * 3) as usize);
+        let mut rgb_buffer = Vec::<u8>::with_capacity((self.width * self.height * 3) as usize);
 
         yuyv_to_rgb(self, &mut rgb_buffer)?;
 
-        encoder.encode(
-            &rgb_buffer,
-            IMAGE_WIDTH,
-            IMAGE_HEIGHT,
-            image::ColorType::Rgb8,
-        )?;
+        encoder.encode(&rgb_buffer, self.width, self.height, image::ColorType::Rgb8)?;
 
         Ok(())
     }
@@ -116,11 +125,13 @@ impl YuyvImage {
     /// This function fails if it cannot completely write the RGB image to `destination`.
     pub fn to_rgb(&self) -> Result<RgbImage> {
         let mut rgb_image_buffer =
-            Vec::<u8>::with_capacity((IMAGE_HEIGHT * IMAGE_WIDTH * 3) as usize);
+            Vec::<u8>::with_capacity((self.width * self.height * 3) as usize);
         yuyv_to_rgb(self, &mut rgb_image_buffer)?;
 
         Ok(RgbImage {
             frame: rgb_image_buffer,
+            width: self.width,
+            height: self.height,
         })
     }
 }
@@ -143,8 +154,9 @@ impl Deref for RgbImage {
 
 /// Struct for retrieving images from the NAO camera.
 pub struct Camera {
-    // camera: ReadStream,
     camera: FrameProvider,
+    height: u32,
+    width: u32,
 }
 
 impl Camera {
@@ -152,21 +164,39 @@ impl Camera {
     ///
     /// # Errors
     /// This function fails if the [`Camera`] cannot be opened.
-    pub fn new(device_path: &str) -> Result<Self> {
-        let camera = Device::open(device_path)?
-            .video_capture(default_camera_config())?
-            .into_stream_num_buffers(2)?
+    pub fn new(device_path: &str, width: u32, height: u32, num_buffers: u32) -> Result<Self> {
+        let capture_device = Device::open(device_path)?.video_capture(PixFormat::new(
+            width,
+            height,
+            PixelFormat::YUYV,
+        ))?;
+        let width = capture_device.format().width().clone();
+        let height = capture_device.format().height().clone();
+        let camera = capture_device
+            .into_stream_num_buffers(num_buffers)?
             .into_frame_provider();
 
-        let mut camera = Self { camera };
+        let mut camera = Self {
+            camera,
+            width,
+            height,
+        };
 
         // Grab some images to make startup the camera.
         // Without it, the first couple of images will return an empty buffer.
-        for _ in 0..4 {
+        for _ in 0..num_buffers {
             camera.get_yuyv_image()?;
         }
 
         Ok(camera)
+    }
+
+    pub fn new_nao_top(num_buffers: u32) -> Result<Self> {
+        Self::new(CAMERA_TOP, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
+    }
+
+    pub fn new_nao_bottom(num_buffers: u32) -> Result<Self> {
+        Self::new(CAMERA_BOTTOM, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
     }
 
     /// Get the next image.
@@ -176,6 +206,10 @@ impl Camera {
     pub fn get_yuyv_image(&mut self) -> Result<YuyvImage> {
         let frame = self.camera.fetch_frame()?;
 
-        Ok(YuyvImage { frame })
+        Ok(YuyvImage {
+            frame,
+            width: self.width,
+            height: self.height,
+        })
     }
 }
