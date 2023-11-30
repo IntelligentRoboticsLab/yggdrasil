@@ -25,10 +25,12 @@ pub struct YuyvImage {
 }
 
 impl YuyvImage {
+    #[must_use]
     pub fn width(&self) -> u32 {
         self.width
     }
 
+    #[must_use]
     pub fn height(&self) -> u32 {
         self.height
     }
@@ -42,10 +44,12 @@ pub struct RgbImage {
 }
 
 impl RgbImage {
+    #[must_use]
     pub fn width(&self) -> u32 {
         self.width
     }
 
+    #[must_use]
     pub fn height(&self) -> u32 {
         self.height
     }
@@ -155,8 +159,8 @@ impl Deref for RgbImage {
 /// Struct for retrieving images from the NAO camera.
 pub struct Camera {
     camera: FrameProvider,
-    height: u32,
     width: u32,
+    height: u32,
 }
 
 impl Camera {
@@ -170,8 +174,8 @@ impl Camera {
             height,
             PixelFormat::YUYV,
         ))?;
-        let width = capture_device.format().width().clone();
-        let height = capture_device.format().height().clone();
+        let width = capture_device.format().width();
+        let height = capture_device.format().height();
         let camera = capture_device
             .into_stream_num_buffers(num_buffers)?
             .into_frame_provider();
@@ -191,10 +195,18 @@ impl Camera {
         Ok(camera)
     }
 
+    /// Create a new camera object for the NAO's top camera.
+    ///
+    /// # Errors
+    /// This function fails if the [`Camera`] cannot be opened.
     pub fn new_nao_top(num_buffers: u32) -> Result<Self> {
         Self::new(CAMERA_TOP, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
     }
 
+    /// Create a new camera object for the NAO's bottom camera.
+    ///
+    /// # Errors
+    /// This function fails if the [`Camera`] cannot be opened.
     pub fn new_nao_bottom(num_buffers: u32) -> Result<Self> {
         Self::new(CAMERA_BOTTOM, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
     }
