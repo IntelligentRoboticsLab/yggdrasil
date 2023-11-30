@@ -4,6 +4,10 @@ use tyr::prelude::*;
 
 use heimdall::{Camera, YuyvImage};
 
+/// These variable specify how many `TopImage`'s' or `BottomImage`'s can be alive at the same time.
+const NUMBER_OF_TOP_CAMERA_BUFFERS: u32 = 2;
+const NUMBER_OF_BOTTOM_CAMERA_BUFFERS: u32 = 2;
+
 pub struct CameraModule;
 
 struct TopCamera(Arc<Mutex<Camera>>);
@@ -15,10 +19,10 @@ pub struct BottomImage(pub Arc<YuyvImage>);
 impl Module for CameraModule {
     fn initialize(self, app: App) -> Result<App> {
         let top_camera = TopCamera(Arc::new(Mutex::new(
-            Camera::new_nao_top(3).into_diagnostic()?,
+            Camera::new_nao_top(NUMBER_OF_TOP_CAMERA_BUFFERS).into_diagnostic()?,
         )));
         let bottom_camera = BottomCamera(Arc::new(Mutex::new(
-            Camera::new_nao_bottom(3).into_diagnostic()?,
+            Camera::new_nao_bottom(NUMBER_OF_BOTTOM_CAMERA_BUFFERS).into_diagnostic()?,
         )));
 
         let top_image_resource = Resource::new(TopImage(Arc::new(
