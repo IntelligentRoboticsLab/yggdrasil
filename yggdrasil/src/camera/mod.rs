@@ -5,7 +5,7 @@ use std::{
 };
 use tyr::prelude::*;
 
-use heimdall::{Camera, YuyvImage, CAMERA_BOTTOM, CAMERA_TOP};
+use heimdall::{Camera, YuyvImage};
 
 pub struct CameraModule;
 
@@ -20,10 +20,10 @@ pub struct TopImageInstant(Instant, u32);
 impl Module for CameraModule {
     fn initialize(self, app: App) -> Result<App> {
         let top_camera = TopCamera(Arc::new(Mutex::new(
-            Camera::new(CAMERA_TOP).into_diagnostic()?,
+            Camera::new_nao_top(3).into_diagnostic()?,
         )));
         let bottom_camera = BottomCamera(Arc::new(Mutex::new(
-            Camera::new(CAMERA_BOTTOM).into_diagnostic()?,
+            Camera::new_nao_bottom(3).into_diagnostic()?,
         )));
 
         let top_image_resource = Resource::new(TopImage(Arc::new(
