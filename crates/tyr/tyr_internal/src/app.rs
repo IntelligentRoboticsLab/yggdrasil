@@ -130,8 +130,11 @@ impl App {
     ///
     /// # Errors
     /// This function fails if there is already a resource of type `T` in the storage.
-    pub fn init_debuggable_resource<T: std::fmt::Debug + Default + Send + Sync + 'static>(mut self) -> Result<Self> {
-        self.storage.add_debuggable_resource(Resource::<T>::default())?;
+    pub fn init_debuggable_resource<T: std::fmt::Debug + Default + Send + Sync + 'static>(
+        mut self,
+    ) -> Result<Self> {
+        self.storage
+            .add_debuggable_resource(Resource::<T>::default())?;
         Ok(self)
     }
 

@@ -11,7 +11,7 @@ fn main() -> Result<()> {
         .add_system(update_cheese)
         .add_system(say_bye.before(update_cheese).after(say_hi))
         .add_system(say_hi_again)
-        .add_debuggable_resource(DebuggableResource::new(Carot::default()))
+        .add_debuggable_resource(Resource::new(Carrot::default()))?
         .run()?;
 
     Ok(())

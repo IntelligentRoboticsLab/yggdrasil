@@ -81,7 +81,10 @@ impl Storage {
     /// Create a new resource storage.
     pub fn new() -> Self {
         let mut map = HashMap::new();
-        map.insert(TypeId::of::<DebugView>(), Resource::new(DebugView::new()).into());
+        map.insert(
+            TypeId::of::<DebugView>(),
+            Resource::new(DebugView::new()).into(),
+        );
         Storage(map)
     }
 
@@ -119,7 +122,8 @@ impl Storage {
                 std::any::type_name::<T>()
             )),
             None => {
-                self.map_resource_mut(|view: &mut DebugView| view.push(res.into())).unwrap();
+                self.map_resource_mut(|view: &mut DebugView| view.push(res.into()))
+                    .unwrap();
                 Ok(())
             }
         }
@@ -160,9 +164,9 @@ impl Storage {
             .get::<T>()
             .ok_or_else(|| miette!("Resource of type `{}` does not exist", type_name::<T>()))?;
 
-        let guard = resource
-            .read()
-            .unwrap_or_else(|_| panic!("Failed to lock    resource of type `{}`", type_name::<&T>()));
+        let guard = resource.read().unwrap_or_else(|_| {
+            panic!("Failed to lock    resource of type `{}`", type_name::<&T>())
+        });
 
         Ok(f(guard.downcast_ref().unwrap()))
     }
@@ -184,6 +188,7 @@ impl Storage {
     }
 }
 
+#[derive(Default)]
 pub struct DebugView(Vec<DebuggableResource>);
 
 impl DebugView {
