@@ -1,4 +1,8 @@
-use std::{fs::File, io::Write, ops::Deref};
+use std::{
+    fs::File,
+    io::{self, Write},
+    ops::Deref,
+};
 
 use image::codecs::jpeg::JpegEncoder;
 use linuxvideo::{format::PixFormat, format::PixelFormat, stream::FrameProvider, Device};
@@ -169,6 +173,13 @@ impl Camera {
     /// # Errors
     /// This function fails if the [`Camera`] cannot be opened.
     pub fn new(device_path: &str, width: u32, height: u32, num_buffers: u32) -> Result<Self> {
+        if num_buffers == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Camera must have at least one buffer",
+            ))?;
+        }
+
         let capture_device = Device::open(device_path)?.video_capture(PixFormat::new(
             width,
             height,
