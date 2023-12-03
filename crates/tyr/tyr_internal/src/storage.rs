@@ -80,11 +80,11 @@ pub struct Storage(HashMap<TypeId, ErasedResource>);
 impl Storage {
     /// Create a new resource storage.
     pub fn new() -> Self {
-        let mut map = HashMap::new();
-        map.insert(
+        let map = HashMap::from([(
             TypeId::of::<DebugView>(),
             Resource::new(DebugView::new()).into(),
-        );
+        )]);
+
         Storage(map)
     }
 
@@ -164,9 +164,9 @@ impl Storage {
             .get::<T>()
             .ok_or_else(|| miette!("Resource of type `{}` does not exist", type_name::<T>()))?;
 
-        let guard = resource.read().unwrap_or_else(|_| {
-            panic!("Failed to lock    resource of type `{}`", type_name::<&T>())
-        });
+        let guard = resource
+            .read()
+            .unwrap_or_else(|_| panic!("Failed to lock resource of type `{}`", type_name::<&T>()));
 
         Ok(f(guard.downcast_ref().unwrap()))
     }
