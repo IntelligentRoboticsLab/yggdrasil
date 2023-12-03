@@ -1,3 +1,4 @@
+#[cfg(feature = "lola")]
 use tyr::{prelude::*, tasks::TaskModule};
 
 use miette::Result;
@@ -6,6 +7,7 @@ use yggdrasil::{
     debug::WebSocketModule, filter::FilterModule, nao::NaoModule,
 };
 
+#[cfg(feature = "lola")]
 fn main() -> Result<()> {
     tracing_subscriber::fmt::fmt().init();
 

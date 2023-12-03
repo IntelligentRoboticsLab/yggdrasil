@@ -8,12 +8,16 @@ default-run = "yggdrasil"
 [dependencies]
 bifrost = { path = "../crates/bifrost/" }
 heimdall = { path = "../crates/heimdall" }
-kira = { workspace = true }
-futures = { workspace = true }
+kira = { workspace = true, optional = true }
+futures = { workspace = true, optional = true }
 miette = { workspace = true, features = ["fancy"] }
-nidhogg = { workspace = true, features = ["lola"] }
+nidhogg = { workspace = true, default-features = false  }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-tyr = { path = "../crates/tyr" }
-tokio = { workspace = true, features = ["full"] }
-tokio-tungstenite = { workspace = true }
+tyr = { path = "../crates/tyr", optional = true }
+tokio = { workspace = true, features = ["full"], optional = true }
+tokio-tungstenite = { workspace = true, optional = true }
+
+[features]
+default = ["lola", "nidhogg/serde"]
+lola = ["nidhogg/lola", "dep:tyr", "dep:tokio", "dep:tokio-tungstenite", "dep:kira", "dep:futures"]

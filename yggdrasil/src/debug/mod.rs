@@ -1,10 +1,16 @@
 mod message;
+
+#[cfg(feature = "lola")]
 mod stream;
 
 use std::net::{Ipv4Addr, SocketAddr};
 
 use miette::{IntoDiagnostic, Result};
+
+#[cfg(feature = "lola")]
 use tokio::sync::mpsc::error::TryRecvError;
+
+#[cfg(feature = "lola")]
 use tyr::{
     prelude::*,
     tasks::{
@@ -13,7 +19,12 @@ use tyr::{
     },
 };
 
-pub use message::{DebugPayload, Message};
+pub use message::DebugPayload;
+
+#[cfg(feature = "lola")]
+pub use message::Message;
+
+#[cfg(feature = "lola")]
 pub use stream::{
     WebSocketReceiver as Receiver, WebSocketSender as Sender, WebSocketServer,
     WebSocketServerHandle,
@@ -22,8 +33,10 @@ pub use stream::{
 pub const PORT: u16 = 1984;
 pub const ADDR: Ipv4Addr = Ipv4Addr::new(0, 0, 0, 0);
 
+#[cfg(feature = "lola")]
 pub struct WebSocketModule;
 
+#[cfg(feature = "lola")]
 impl Module for WebSocketModule {
     fn initialize(self, app: App) -> Result<App> {
         use crate::nao;
@@ -39,6 +52,7 @@ impl Module for WebSocketModule {
     }
 }
 
+#[cfg(feature = "lola")]
 fn init_server(storage: &mut Storage) -> Result<()> {
     let server = storage.map_resource_ref(|ad: &AsyncDispatcher| {
         ad.handle().block_on(WebSocketServer::bind((ADDR, PORT)))
@@ -51,8 +65,10 @@ fn init_server(storage: &mut Storage) -> Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "lola")]
 struct AcceptCompleted;
 
+#[cfg(feature = "lola")]
 #[system]
 fn accept_sockets(
     server: &WebSocketServer,
@@ -70,6 +86,7 @@ fn accept_sockets(
     Ok(())
 }
 
+#[cfg(feature = "lola")]
 #[system]
 fn handle_messages(
     server: &mut WebSocketServer,
@@ -99,6 +116,7 @@ fn handle_messages(
     Ok(())
 }
 
+#[cfg(feature = "lola")]
 fn handle_message(
     msg: Message,
     server: &mut WebSocketServer,
@@ -122,6 +140,7 @@ fn handle_message(
     Ok(())
 }
 
+#[cfg(feature = "lola")]
 #[system]
 fn send_debuggables(
     server: &WebSocketServer,
@@ -137,8 +156,10 @@ fn send_debuggables(
     Ok(())
 }
 
+#[cfg(feature = "lola")]
 struct RecvCompleted;
 
+#[cfg(feature = "lola")]
 async fn receive_messages(mut rx: Receiver) -> Result<RecvCompleted> {
     // Keep receiving messages
     while let Some(payload) = rx.recv().await? {
@@ -160,8 +181,10 @@ async fn receive_messages(mut rx: Receiver) -> Result<RecvCompleted> {
     Ok(RecvCompleted)
 }
 
+#[cfg(feature = "lola")]
 struct SendCompleted;
 
+#[cfg(feature = "lola")]
 async fn send_message(mut tx: Sender, payload: DebugPayload) -> Result<SendCompleted> {
     tx.send(payload).await?;
 

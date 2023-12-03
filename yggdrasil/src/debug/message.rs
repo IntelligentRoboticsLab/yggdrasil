@@ -2,8 +2,10 @@ use std::net::SocketAddr;
 
 use bifrost::serialization::{Decode, Encode};
 
+#[cfg(feature = "lola")]
 use super::stream::{WebSocketReceiver, WebSocketSender};
 
+#[cfg(feature = "lola")]
 pub enum Message {
     Payload {
         address: SocketAddr,
