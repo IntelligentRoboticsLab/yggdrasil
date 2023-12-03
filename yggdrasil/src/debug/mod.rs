@@ -13,7 +13,7 @@ use tyr::{
     },
 };
 
-pub use message::{Message, Payload};
+pub use message::{DebugPayload, Message};
 pub use stream::{
     WebSocketReceiver as Receiver, WebSocketSender as Sender, WebSocketServer,
     WebSocketServerHandle,
@@ -35,14 +35,14 @@ impl Module for WebSocketModule {
             .add_system(handle_messages)
             .add_task::<AsyncTaskMap<SocketAddr, Result<RecvCompleted>>>()?
             .add_task::<AsyncTaskSet<Result<SendCompleted>>>()?
-            .add_system(send_funny_message.after(nao::write_hardware_info)))
+            .add_system(send_debuggables.after(nao::write_hardware_info)))
     }
 }
 
 fn init_server(storage: &mut Storage) -> Result<()> {
     let server = storage.map_resource_ref(|ad: &AsyncDispatcher| {
         ad.handle().block_on(WebSocketServer::bind((ADDR, PORT)))
-    })?;
+    })??;
 
     tracing::info!("Started WebSocket server, listening on {ADDR}:{PORT}");
 
@@ -123,12 +123,15 @@ fn handle_message(
 }
 
 #[system]
-fn send_funny_message(
+fn send_debuggables(
     server: &WebSocketServer,
     send_tasks: &mut AsyncTaskSet<Result<SendCompleted>>,
 ) -> Result<()> {
     for tx in server.connections.values() {
-        send_tasks.spawn(send_message(tx.clone(), Payload::text("🦀🦀🦀")));
+        send_tasks.spawn(send_message(
+            tx.clone(),
+            DebugPayload::Text("test".to_string(), "🦀🦀🦀".to_string()),
+        ));
     }
 
     Ok(())
@@ -159,7 +162,7 @@ async fn receive_messages(mut rx: Receiver) -> Result<RecvCompleted> {
 
 struct SendCompleted;
 
-async fn send_message(mut tx: Sender, payload: Payload) -> Result<SendCompleted> {
+async fn send_message(mut tx: Sender, payload: DebugPayload) -> Result<SendCompleted> {
     tx.send(payload).await?;
 
     Ok(SendCompleted)

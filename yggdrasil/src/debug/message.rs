@@ -7,7 +7,7 @@ use super::stream::{WebSocketReceiver, WebSocketSender};
 pub enum Message {
     Payload {
         address: SocketAddr,
-        payload: Payload,
+        payload: DebugPayload,
     },
     OpenConnection {
         address: SocketAddr,
@@ -20,12 +20,6 @@ pub enum Message {
 }
 
 #[derive(Debug, Encode, Decode)]
-pub enum Payload {
-    Text(String),
-}
-
-impl Payload {
-    pub fn text(text: impl Into<String>) -> Self {
-        Self::Text(text.into())
-    }
+pub enum DebugPayload {
+    Text(String, String),
 }

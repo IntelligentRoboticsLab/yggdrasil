@@ -1,6 +1,6 @@
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
-use bifrost::serialization::{Decode, Encode};
+use bifrost::serialization::codec::{Decode, Encode};
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
@@ -15,7 +15,7 @@ use tokio::{
 };
 use tokio_tungstenite::{tungstenite, WebSocketStream};
 
-use super::message::{Message, Payload};
+use super::message::{DebugPayload, Message};
 
 pub type MessageQueueSender = UnboundedSender<Message>;
 pub type MessageQueueReceiver = UnboundedReceiver<Message>;
@@ -102,7 +102,7 @@ pub struct WebSocketSender {
 }
 
 impl WebSocketSender {
-    pub async fn send(&mut self, payload: Payload) -> Result<()> {
+    pub async fn send(&mut self, payload: DebugPayload) -> Result<()> {
         let mut buf = Vec::with_capacity(payload.encode_len());
         payload.encode(&mut buf).into_diagnostic()?;
 
@@ -131,7 +131,7 @@ pub struct WebSocketReceiver {
 }
 
 impl WebSocketReceiver {
-    pub async fn recv(&mut self) -> Result<Option<Payload>> {
+    pub async fn recv(&mut self) -> Result<Option<DebugPayload>> {
         if let Some(msg) = self
             .websocket_rx
             .next()
@@ -144,7 +144,7 @@ impl WebSocketReceiver {
             }
 
             let bytes = msg.into_data();
-            let payload = Payload::decode(bytes.as_slice()).into_diagnostic()?;
+            let payload = DebugPayload::decode(bytes.as_slice()).into_diagnostic()?;
 
             return Ok(Some(payload));
         }
