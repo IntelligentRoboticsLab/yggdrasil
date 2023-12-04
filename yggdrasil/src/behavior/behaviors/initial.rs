@@ -1,0 +1,15 @@
+use crate::behavior::engine::{Context, Execute, Role};
+use nidhogg::NaoControlMessage;
+
+#[derive(Copy, Clone, Debug, Default)]
+pub struct Initial;
+
+impl Execute for Initial {
+    fn execute(
+        &mut self,
+        _context: Context,
+        _current_role: &Role,
+        _control_message: &mut NaoControlMessage,
+    ) {
+    }
+}

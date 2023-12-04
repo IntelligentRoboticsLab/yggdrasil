@@ -7,9 +7,9 @@ use yggdrasil::{
     behaviour::BehaviourModule,
     camera::CameraModule,
     filter::FilterModule,
-    game_phase::GamePhaseModule,
     leds::LedsModule,
     nao::NaoModule,
+    primary_state::PrimaryStateModule,
 };
 
 fn main() -> Result<()> {
