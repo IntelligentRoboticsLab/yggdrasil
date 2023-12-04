@@ -40,7 +40,7 @@ impl Behaviour {
     fn transition(self, context: &BehaviourContext) -> Self {
         use Role::*;
         match context.role {
-            Keeper => transition_keeper_role_behaviour(self, &context),
+            Keeper => transition_keeper_role_behaviour(self, context),
         }
     }
 }
@@ -78,9 +78,9 @@ pub fn step(
     primary_state: &PrimaryState,
 ) -> Result<()> {
     let mut context = BehaviourContext {
-        primary_state: &primary_state,
-        game_phase: &game_phase,
-        role: &role,
+        primary_state,
+        game_phase,
+        role,
     };
 
     engine.step(&mut context, control_message);
