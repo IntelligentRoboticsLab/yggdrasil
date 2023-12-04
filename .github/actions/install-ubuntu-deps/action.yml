@@ -1,0 +1,9 @@
+name: Install deps
+description: Install required Ubuntu dependencies
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        sudo apt-get update
+        sudo apt-get install -y -qq libasound2-dev libv4l-dev
+      shell: bash

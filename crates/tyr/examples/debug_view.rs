@@ -5,26 +5,32 @@ fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     App::new()
-        .init_resource::<Cheese>()?
-        .add_resource(Resource::new(Sausage("Salami".to_string())))?
+        .init_debuggable_resource::<Cheese>()?
+        .add_debuggable_resource(Resource::new(Sausage("Salami".to_string())))?
+        .add_system(dump_debug_info)
         .add_system(say_hi)
         .add_system(update_cheese)
         .add_system(say_bye.before(update_cheese).after(say_hi))
         .add_system(say_hi_again)
-        .add_debuggable_resource(Resource::new(Carrot::default()))?
         .run()?;
 
     Ok(())
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct Cheese(String);
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct Sausage(String);
 
-#[derive(Default, Debug)]
-struct Carrot(String);
+#[system]
+fn dump_debug_info(view: &tyr::DebugView) -> Result<()> {
+    for res in view.resources() {
+        println!("{:?}", res);
+    }
+
+    Ok(())
+}
 
 #[system]
 fn say_hi(cheese: &Cheese) -> Result<()> {

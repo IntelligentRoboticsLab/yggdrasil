@@ -1,0 +1,12 @@
+name: Setup GitHub PAT
+description: Setup the PAT to access private repositories
+inputs:
+  CI_TOKEN:
+    description: "The GitHub PAT token with access to private repositories"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Setup PAT for private repo access
+      run: git config --global url."https://${{ inputs.CI_TOKEN }}@github.com".insteadOf ssh://git@github.com
+      shell: bash

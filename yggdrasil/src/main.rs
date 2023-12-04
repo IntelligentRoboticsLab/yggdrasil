@@ -1,22 +1,19 @@
-use miette::Result;
 use tyr::{prelude::*, tasks::TaskModule};
 
-pub mod audio;
-pub mod behaviour;
-pub mod filter;
-pub mod game_phase;
-pub mod leds;
-pub mod nao;
+use miette::Result;
 
-use audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule};
-use behaviour::BehaviourModule;
-use filter::FilterModule;
-use game_phase::GamePhaseModule;
-use leds::LedsModule;
-use nao::NaoModule;
+use yggdrasil::{
+    audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule},
+    behaviour::BehaviourModule,
+    filter::FilterModule,
+    game_phase::GamePhaseModule,
+    leds::LedsModule,
+    nao::NaoModule,
+};
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt::fmt().init();
+
     miette::set_panic_hook();
 
     App::new()

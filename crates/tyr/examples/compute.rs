@@ -3,7 +3,11 @@ use std::time::Duration;
 use miette::Result;
 use tyr::{
     prelude::*,
-    tasks::{ComputeDispatcher, Error, Task, TaskModule},
+    tasks::{Error, TaskModule},
+};
+use tyr_tasks::{
+    compute::ComputeTask,
+    task::{Pollable, TaskResource},
 };
 
 #[derive(Default)]
@@ -17,22 +21,22 @@ fn calculate_name(duration: Duration) -> Name {
 }
 
 #[system]
-fn dispatch_name(cd: &ComputeDispatcher, task: &mut Task<Name>) -> Result<()> {
+fn dispatch_name(task: &mut ComputeTask<Name>) -> Result<()> {
     // We dispatch a function onto a threadpool where it runs without blocking
     // other systems.
     //
-    // Also marks the task as `alive`, so we can't accidentally dispatch it twice.
-    match cd.try_dispatch(&mut task, move || calculate_name(Duration::from_secs(1))) {
-        // Successfully dispatched the task
+    // Also marks the task as active, so we can't accidentally dispatch it twice.
+    match task.try_spawn(move || calculate_name(Duration::from_secs(1))) {
+        // Dispatched!
         Ok(_) => Ok(()),
-        // This is also fine here, we are already running the task and can continue
-        // without dispatching it again
-        Err(Error::AlreadyDispatched) => Ok(()),
+        // This is also fine here, we were already running the task from another cycle
+        // and can return without dispatching it again
+        Err(Error::AlreadyActive) => Ok(()),
     }
 }
 
 #[system]
-fn poll_name(task: &mut Task<Name>, counter: &mut Counter) -> Result<()> {
+fn poll_name(task: &mut ComputeTask<Name>, counter: &mut Counter) -> Result<()> {
     // If the task hasn't completed yet, we return early
     let Some(name) = task.poll() else {
         return Ok(());
@@ -59,10 +63,8 @@ fn main() -> Result<()> {
 
     App::new()
         .add_module(TaskModule)?
-        .add_resource(Resource::<Counter>::default())?
-        .add_resource(Resource::<Task<Name>>::default())?
-        // There's also a `.add_task_resource()` as a shorthand
-        // for adding both a Resource<T> and Resource<Task<T>>.
+        .init_resource::<Counter>()?
+        .add_task::<ComputeTask<Name>>()?
         .add_system(dispatch_name)
         .add_system(poll_name)
         .add_system(time_critical_task)

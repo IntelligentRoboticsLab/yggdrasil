@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-futures-lite = { workspace = true }
+futures = { workspace = true }
 miette = { workspace = true }
 rayon = { workspace = true }
 thiserror = { workspace = true }

@@ -2,11 +2,12 @@
 name = "yggdrasil"
 version = "0.1.0"
 edition = "2021"
-
+default-run = "yggdrasil"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-derive_more = { workspace = true }
+bifrost = { workspace = true }
+heimdall = { path = "../crates/heimdall" }
 kira = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 nidhogg = { workspace = true, features = ["lola"] }

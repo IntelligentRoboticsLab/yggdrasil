@@ -83,7 +83,7 @@ pub fn step(
         role: &role,
     };
 
-    engine.step(&mut context, &mut control_message);
+    engine.step(&mut context, control_message);
 
     Ok(())
 }
