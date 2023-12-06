@@ -15,6 +15,7 @@ impl Module for RoleModule {
 pub enum Role {
     #[default]
     Keeper,
+    Striker,
 }
 
 #[system]

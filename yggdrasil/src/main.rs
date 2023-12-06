@@ -4,7 +4,7 @@ use miette::Result;
 
 use yggdrasil::{
     audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule},
-    behaviour::BehaviourModule,
+    behavior::BehaviorModule,
     filter::FilterModule,
     game_phase::GamePhaseModule,
     leds::LedsModule,
@@ -17,7 +17,7 @@ fn main() -> Result<()> {
     miette::set_panic_hook();
 
     App::new()
-        .add_module(BehaviourModule)?
+        .add_module(BehaviorModule)?
         .add_module(FilterModule)?
         .add_module(GamePhaseModule)?
         .add_module(LedsModule)?
