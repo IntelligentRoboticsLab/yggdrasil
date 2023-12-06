@@ -17,14 +17,14 @@ impl BehaviorState for Initial {
             // do something if role is keeper
             Context {
                 role: Role::Keeper, ..
-            } => Behavior::Initial(Initial::default()),
+            } => Behavior::Initial(Initial),
             // do something with other role and game phase info
             Context {
                 role, game_phase, ..
             } => {
                 let _ = role;
                 let _ = game_phase;
-                Behavior::Example(Example::default())
+                Behavior::Example(Example)
             }
         }
     }

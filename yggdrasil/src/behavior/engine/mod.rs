@@ -52,7 +52,7 @@ pub enum Behavior {
 
 impl Behavior {
     fn initial() -> Self {
-        Behavior::Initial(Initial::default())
+        Behavior::Initial(Initial)
     }
 }
 

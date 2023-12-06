@@ -12,8 +12,8 @@ impl BehaviorState for Example {
 
     fn transition(self, ctx: &Context) -> Behavior {
         match ctx.game_phase {
-            GamePhase::Timeout => Behavior::Example(Example::default()),
-            _ => Behavior::Initial(Initial::default()),
+            GamePhase::Timeout => Behavior::Example(Example),
+            _ => Behavior::Initial(Initial),
         }
     }
 }
