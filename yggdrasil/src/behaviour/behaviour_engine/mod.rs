@@ -2,18 +2,15 @@ use tyr::prelude::*;
 
 mod behaviours;
 mod engine;
-mod transitions;
 
 use engine::step;
 
-pub use engine::{BehaviourContext, BehaviourEngine, BehaviourState, ImplBehaviour};
+pub use engine::{Behave, BehaviourEngine, Context};
 
-pub struct BehaviourEngineModule;
+pub struct BehaviorEngineModule;
 
-impl Module for BehaviourEngineModule {
+impl Module for BehaviorEngineModule {
     fn initialize(self, app: App) -> miette::Result<App> {
-        Ok(app
-            .add_resource(Resource::new(BehaviourEngine::default()))?
-            .add_system(step))
+        Ok(app.init_resource::<BehaviourEngine>()?.add_system(step))
     }
 }

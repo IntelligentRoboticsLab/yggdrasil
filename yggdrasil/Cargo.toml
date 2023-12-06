@@ -14,3 +14,4 @@ nidhogg = { workspace = true, features = ["lola"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tyr = { path = "../crates/tyr" }
+enum_dispatch = { workspace = true }

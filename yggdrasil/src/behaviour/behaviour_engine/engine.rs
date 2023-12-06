@@ -3,47 +3,55 @@ use crate::{
     game_phase::GamePhase,
 };
 
+use enum_dispatch::enum_dispatch;
 use miette::Result;
 use nidhogg::NaoControlMessage;
 use tyr::prelude::*;
 
-use crate::behaviour::behaviour_engine::{behaviours::*, transitions::*};
+use crate::behaviour::behaviour_engine::behaviours::*;
 
-#[derive(Copy, Clone)]
-pub struct BehaviourState<S: Copy> {
-    pub state: S,
-}
-
-pub trait ImplBehaviour {
-    fn execute(&mut self, context: &mut BehaviourContext, control_message: &mut NaoControlMessage);
-}
-
-pub struct BehaviourContext<'a> {
+pub struct Context<'a> {
     pub game_phase: &'a GamePhase,
     pub primary_state: &'a PrimaryState,
     pub role: &'a Role,
 }
 
+#[enum_dispatch]
+pub trait Behave {
+    fn transition(self, ctx: &Context) -> Behaviour;
+    fn execute(&mut self, ctx: &mut Context, control_message: &mut NaoControlMessage);
+}
+
 #[derive(Copy, Clone)]
+#[enum_dispatch(Behave)]
 pub enum Behaviour {
-    InitialBehaviour(BehaviourState<InitialBehaviour>),
-    ExampleBehaviour(BehaviourState<ExampleBehaviour>),
+    Initial(Initial),
+    Example(Example),
 }
 
 impl Default for Behaviour {
     fn default() -> Self {
-        Behaviour::InitialBehaviour(BehaviourState::<InitialBehaviour>::default())
+        Behaviour::Initial(Initial::default())
     }
 }
 
-impl Behaviour {
-    fn transition(self, context: &BehaviourContext) -> Self {
-        use Role as R;
-        match context.role {
-            R::Keeper => transition_keeper_role_behaviour(self, context),
-        }
-    }
-}
+// enum_dispatch crate doet dit voor ons
+
+// impl Behave for Behaviour {
+//     fn transition(self, context: &Context) -> Self {
+//         match self {
+//             Behaviour::Initial(state) => state.transition(context),
+//             Behaviour::Example(state) => state.transition(context),
+//         }
+//     }
+
+//     fn execute(&mut self, ctx: &mut Context, control_message: &mut NaoControlMessage) {
+//         match self {
+//             Behaviour::Initial(state) => state.execute(ctx, control_message),
+//             Behaviour::Example(state) => state.execute(ctx, control_message),
+//         }
+//     }
+// }
 
 #[derive(Default)]
 pub struct BehaviourEngine {
@@ -51,21 +59,9 @@ pub struct BehaviourEngine {
 }
 
 impl BehaviourEngine {
-    fn execute(&mut self, context: &mut BehaviourContext, control_message: &mut NaoControlMessage) {
-        use Behaviour as B;
-        match self.current_behaviour {
-            B::InitialBehaviour(ref mut behaviour) => behaviour.execute(context, control_message),
-            B::ExampleBehaviour(ref mut behaviour) => behaviour.execute(context, control_message),
-        }
-    }
-
-    pub fn step(
-        &mut self,
-        context: &mut BehaviourContext,
-        control_message: &mut NaoControlMessage,
-    ) {
-        self.execute(context, control_message);
-        self.current_behaviour = self.current_behaviour.transition(context);
+    pub fn step(&mut self, ctx: &mut Context, control_message: &mut NaoControlMessage) {
+        self.current_behaviour.execute(ctx, control_message);
+        self.current_behaviour = self.current_behaviour.transition(ctx);
     }
 }
 
@@ -77,7 +73,7 @@ pub fn step(
     game_phase: &GamePhase,
     primary_state: &PrimaryState,
 ) -> Result<()> {
-    let mut context = BehaviourContext {
+    let mut context = Context {
         primary_state,
         game_phase,
         role,
