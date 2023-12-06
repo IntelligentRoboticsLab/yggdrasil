@@ -3,7 +3,7 @@ mod message;
 #[cfg(feature = "lola")]
 mod stream;
 
-use std::net::{Ipv4Addr, SocketAddr};
+use std::{net::{Ipv4Addr, SocketAddr}, sync::RwLockReadGuard};
 
 use miette::{IntoDiagnostic, Result};
 
@@ -17,6 +17,7 @@ use tyr::{
         asynchronous::{AsyncDispatcher, AsyncTask, AsyncTaskMap, AsyncTaskSet},
         task::{Dispatcher, Pollable, TaskResource},
     },
+    DebugView,
 };
 
 pub use message::DebugPayload;
@@ -48,8 +49,15 @@ impl Module for WebSocketModule {
             .add_system(handle_messages)
             .add_task::<AsyncTaskMap<SocketAddr, Result<RecvCompleted>>>()?
             .add_task::<AsyncTaskSet<Result<SendCompleted>>>()?
-            .add_system(send_debuggables.after(nao::write_hardware_info)))
+            .add_debuggable_resource(Resource::new(Magic { data: "hello".to_string(), something: 10}))?
+            .add_system(send_debuggables))
     }
+}
+
+#[derive(Debug)]
+struct Magic {
+    data: String,
+    something: u32,
 }
 
 #[cfg(feature = "lola")]
@@ -140,17 +148,32 @@ fn handle_message(
     Ok(())
 }
 
+struct DebuggableTraitObject<'a>(RwLockReadGuard<'a, dyn std::fmt::Debug + Send + Sync>);
+
+impl<'a> std::fmt::Debug for DebuggableTraitObject<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 #[cfg(feature = "lola")]
 #[system]
 fn send_debuggables(
     server: &WebSocketServer,
+    debug_view: &DebugView,
     send_tasks: &mut AsyncTaskSet<Result<SendCompleted>>,
 ) -> Result<()> {
     for tx in server.connections.values() {
-        send_tasks.spawn(send_message(
-            tx.clone(),
-            DebugPayload::Text("test".to_string(), "🦀🦀🦀".to_string()),
-        ));
+        for resource in debug_view.resources() {
+            let dbg = resource.read().unwrap();
+    ;
+            let data = format!("{:?}", x);
+
+            send_tasks.spawn(send_message(
+                tx.clone(),
+                DebugPayload::Text(resource.0.to_string(), data),
+            ));
+        }
     }
 
     Ok(())

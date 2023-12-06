@@ -15,10 +15,10 @@ fn main() -> Result<()> {
 
     App::new()
         .add_module(TaskModule)?
-        .add_module(NaoModule)?
-        .add_module(FilterModule)?
-        .add_module(SoundManagerModule)?
-        .add_module(WeeSoundModule)?
+        // .add_module(NaoModule)?
+        // .add_module(FilterModule)?
+        // .add_module(SoundManagerModule)?
+        // .add_module(WeeSoundModule)?
         .add_module(WebSocketModule)?
         .run()?;
     Ok(())
