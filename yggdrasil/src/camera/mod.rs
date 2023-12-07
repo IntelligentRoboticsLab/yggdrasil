@@ -87,17 +87,17 @@ fn camera_system(
     top_image_task: &mut AsyncTask<Result<TopImage>>,
     bottom_image_task: &mut AsyncTask<Result<BottomImage>>,
 ) -> Result<()> {
-    if !top_image_task.active() {
-        top_image_task.try_spawn(receive_top_image(top_camera.0.clone()))?;
-    } else if let Some(new_top_image) = top_image_task.poll() {
+    if let Some(new_top_image) = top_image_task.poll() {
         *top_image = new_top_image?;
+        top_image_task.try_spawn(receive_top_image(top_camera.0.clone()))?;
+    } else {
         top_image_task.try_spawn(receive_top_image(top_camera.0.clone()))?;
     }
 
-    if !bottom_image_task.active() {
-        bottom_image_task.try_spawn(receive_bottom_image(bottom_camera.0.clone()))?;
-    } else if let Some(new_bottom_image) = bottom_image_task.poll() {
+    if let Some(new_bottom_image) = bottom_image_task.poll() {
         *bottom_image = new_bottom_image?;
+        bottom_image_task.try_spawn(receive_bottom_image(bottom_camera.0.clone()))?;
+    } else {
         bottom_image_task.try_spawn(receive_bottom_image(bottom_camera.0.clone()))?;
     }
 
