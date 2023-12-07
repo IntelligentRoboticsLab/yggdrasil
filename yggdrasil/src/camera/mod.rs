@@ -37,7 +37,7 @@ impl Module for CameraModule {
         )));
         let top_camera_resource = Resource::new(top_camera);
 
-        let bottom_image_resource = Resource::new(TopImage(Arc::new(
+        let bottom_image_resource = Resource::new(BottomImage(Arc::new(
             bottom_camera
                 .0
                 .lock()
