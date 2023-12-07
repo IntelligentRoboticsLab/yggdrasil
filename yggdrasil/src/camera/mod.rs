@@ -4,8 +4,10 @@ use tyr::prelude::*;
 
 use heimdall::{Camera, YuyvImage};
 
-/// These variable specify how many `TopImage`'s' or `BottomImage`'s can be alive at the same time.
+/// This variable specifies how many `TopImage`'s' can be alive at the same time.
 const NUMBER_OF_TOP_CAMERA_BUFFERS: u32 = 2;
+
+/// This variable specifies how many `BottomImage`'s' can be alive at the same time.
 const NUMBER_OF_BOTTOM_CAMERA_BUFFERS: u32 = 2;
 
 pub struct CameraModule;
