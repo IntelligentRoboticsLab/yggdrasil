@@ -48,10 +48,12 @@ pub struct Image {
 }
 
 impl Image {
+    /// Return the captured image in yuyv format.
     pub fn image(&self) -> &YuyvImage {
         &self.image
     }
 
+    /// Return the instant at which the image was captured.
     pub fn instant(&self) -> &Instant {
         &self.instant
     }
