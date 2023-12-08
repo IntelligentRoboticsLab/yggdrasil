@@ -42,48 +42,47 @@ impl BottomCamera {
     }
 }
 
-pub struct Image {
-    image: YuyvImage,
-    instant: Instant,
-}
+#[derive(Clone)]
+pub struct Image(Arc<(YuyvImage, Instant)>);
 
 impl Image {
     /// Return the captured image in yuyv format.
     pub fn image(&self) -> &YuyvImage {
-        &self.image
+        &self.0 .0
     }
 
     /// Return the instant at which the image was captured.
     pub fn instant(&self) -> &Instant {
-        &self.instant
+        &self.0 .1
     }
 }
 
-pub struct TopImage(Arc<Image>);
-pub struct BottomImage(Arc<Image>);
+pub struct TopImage(Image);
+
+pub struct BottomImage(Image);
 
 impl TopImage {
     fn new(camera: Arc<Mutex<Camera>>) -> Result<Self> {
-        Ok(TopImage(Arc::new(Image {
-            image: camera.lock().unwrap().get_yuyv_image().into_diagnostic()?,
-            instant: Instant::now(),
-        })))
+        Ok(TopImage(Image(Arc::new((
+            camera.lock().unwrap().get_yuyv_image().into_diagnostic()?,
+            Instant::now(),
+        )))))
     }
 
-    pub fn get(&self) -> Arc<Image> {
+    pub fn get(&self) -> Image {
         self.0.clone()
     }
 }
 
 impl BottomImage {
     fn new(camera: Arc<Mutex<Camera>>) -> Result<Self> {
-        Ok(BottomImage(Arc::new(Image {
-            image: camera.lock().unwrap().get_yuyv_image().into_diagnostic()?,
-            instant: Instant::now(),
-        })))
+        Ok(BottomImage(Image(Arc::new((
+            camera.lock().unwrap().get_yuyv_image().into_diagnostic()?,
+            Instant::now(),
+        )))))
     }
 
-    pub fn get(&self) -> Arc<Image> {
+    pub fn get(&self) -> Image {
         self.0.clone()
     }
 }
