@@ -127,7 +127,7 @@ impl YuyvImage {
         Ok(())
     }
 
-    /// Convert this [`Image`] to RGB and store it in `destination`.
+    /// Convert this [`YuyvImage`] to RGB and store it in `destination`.
     ///
     /// # Errors
     /// This function fails if it cannot completely write the RGB image to `destination`.

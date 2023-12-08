@@ -2,7 +2,7 @@ use miette::Diagnostic;
 use thiserror::Error;
 use tokio::time::error::Elapsed;
 
-/// Type alias for [`std::result::Result`] containing a sindri [`Error`].
+/// Type alias for [`std::result::Result`] containing a sindri [`enum@Error`].
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Enum describing the possible errors that can occur in sindri.
