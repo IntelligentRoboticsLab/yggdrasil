@@ -9,8 +9,8 @@ use tyr::prelude::*;
 /// A sound which can be played by the [`SoundManager`].
 ///
 /// These sounds are streamed into memory on demand.
-///
-/// When adding new sounds the path should be specified in [`Sound::file_path`].
+
+// When adding new sounds the path should be specified in [`Sound::file_path`].
 pub enum Sound {
     Weee,
     Ghast,
