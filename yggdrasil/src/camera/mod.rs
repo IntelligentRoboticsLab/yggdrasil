@@ -23,21 +23,15 @@ const NUMBER_OF_BOTTOM_CAMERA_BUFFERS: u32 = 2;
 /// - [`BottomImage`]
 pub struct CameraModule;
 
-struct TopCamera(Arc<Mutex<Camera>>);
-struct BottomCamera(Arc<Mutex<Camera>>);
+struct NaoCamera(Arc<Mutex<Camera>>);
 
-impl TopCamera {
-    fn new() -> Result<Self> {
-        Ok(Self(Arc::new(Mutex::new(
-            Camera::new_nao_top(NUMBER_OF_TOP_CAMERA_BUFFERS).into_diagnostic()?,
-        ))))
-    }
-}
+type TopCamera = NaoCamera;
+type BottomCamera = NaoCamera;
 
-impl BottomCamera {
-    fn new() -> Result<Self> {
+impl NaoCamera {
+    fn new(num_buffers: u32) -> Result<Self> {
         Ok(Self(Arc::new(Mutex::new(
-            Camera::new_nao_bottom(NUMBER_OF_BOTTOM_CAMERA_BUFFERS).into_diagnostic()?,
+            Camera::new_nao_top(num_buffers).into_diagnostic()?,
         ))))
     }
 }
@@ -54,7 +48,7 @@ impl Image {
     }
 
     /// Return the captured image in yuyv format.
-    pub fn image(&self) -> &YuyvImage {
+    pub fn yuyv_image(&self) -> &YuyvImage {
         &self.0 .0
     }
 
@@ -64,34 +58,25 @@ impl Image {
     }
 }
 
-pub struct TopImage(Image);
+pub struct NaoImage(Image);
 
-pub struct BottomImage(Image);
+pub type TopImage = NaoImage;
+pub type BottomImage = NaoImage;
 
-impl TopImage {
+impl NaoImage {
     fn new(camera: &mut Camera) -> Result<Self> {
         Ok(Self(Image::new(camera)?))
     }
 
-    pub fn get(&self) -> Image {
-        self.0.clone()
-    }
-}
-
-impl BottomImage {
-    fn new(camera: &mut Camera) -> Result<Self> {
-        Ok(Self(Image::new(camera)?))
-    }
-
-    pub fn get(&self) -> Image {
+    pub fn image(&self) -> Image {
         self.0.clone()
     }
 }
 
 impl Module for CameraModule {
     fn initialize(self, app: App) -> Result<App> {
-        let top_camera = TopCamera::new()?;
-        let bottom_camera = BottomCamera::new()?;
+        let top_camera = TopCamera::new(NUMBER_OF_TOP_CAMERA_BUFFERS)?;
+        let bottom_camera = BottomCamera::new(NUMBER_OF_BOTTOM_CAMERA_BUFFERS)?;
 
         let top_image_resource = Resource::new(TopImage::new(&mut top_camera.0.lock().unwrap())?);
         let top_camera_resource = Resource::new(top_camera);
