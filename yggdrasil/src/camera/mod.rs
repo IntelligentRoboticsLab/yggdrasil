@@ -46,6 +46,13 @@ impl BottomCamera {
 pub struct Image(Arc<(YuyvImage, Instant)>);
 
 impl Image {
+    fn new(camera: &mut Camera) -> Result<Self> {
+        Ok(Self(Arc::new((
+            camera.get_yuyv_image().into_diagnostic()?,
+            Instant::now(),
+        ))))
+    }
+
     /// Return the captured image in yuyv format.
     pub fn image(&self) -> &YuyvImage {
         &self.0 .0
@@ -63,10 +70,7 @@ pub struct BottomImage(Image);
 
 impl TopImage {
     fn new(camera: &mut Camera) -> Result<Self> {
-        Ok(Self(Image(Arc::new((
-            camera.get_yuyv_image().into_diagnostic()?,
-            Instant::now(),
-        )))))
+        Ok(Self(Image::new(camera)?))
     }
 
     pub fn get(&self) -> Image {
@@ -76,10 +80,7 @@ impl TopImage {
 
 impl BottomImage {
     fn new(camera: &mut Camera) -> Result<Self> {
-        Ok(Self(Image(Arc::new((
-            camera.get_yuyv_image().into_diagnostic()?,
-            Instant::now(),
-        )))))
+        Ok(Self(Image::new(camera)?))
     }
 
     pub fn get(&self) -> Image {
