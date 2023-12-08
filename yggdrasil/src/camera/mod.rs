@@ -54,7 +54,7 @@ impl Image {
     }
 
     /// Return the captured image in yuyv format.
-    pub fn image(&self) -> &YuyvImage {
+    pub fn yuyv_image(&self) -> &YuyvImage {
         &self.0 .0
     }
 
@@ -73,7 +73,7 @@ impl TopImage {
         Ok(Self(Image::new(camera)?))
     }
 
-    pub fn get(&self) -> Image {
+    pub fn image(&self) -> Image {
         self.0.clone()
     }
 }
@@ -83,7 +83,7 @@ impl BottomImage {
         Ok(Self(Image::new(camera)?))
     }
 
-    pub fn get(&self) -> Image {
+    pub fn image(&self) -> Image {
         self.0.clone()
     }
 }
