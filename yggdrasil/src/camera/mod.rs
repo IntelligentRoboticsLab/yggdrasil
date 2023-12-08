@@ -28,7 +28,7 @@ struct BottomCamera(Arc<Mutex<Camera>>);
 
 impl TopCamera {
     fn new() -> Result<Self> {
-        Ok(TopCamera(Arc::new(Mutex::new(
+        Ok(Self(Arc::new(Mutex::new(
             Camera::new_nao_top(NUMBER_OF_TOP_CAMERA_BUFFERS).into_diagnostic()?,
         ))))
     }
@@ -36,7 +36,7 @@ impl TopCamera {
 
 impl BottomCamera {
     fn new() -> Result<Self> {
-        Ok(BottomCamera(Arc::new(Mutex::new(
+        Ok(Self(Arc::new(Mutex::new(
             Camera::new_nao_bottom(NUMBER_OF_BOTTOM_CAMERA_BUFFERS).into_diagnostic()?,
         ))))
     }
@@ -63,7 +63,7 @@ pub struct BottomImage(Image);
 
 impl TopImage {
     fn new(camera: &mut Camera) -> Result<Self> {
-        Ok(TopImage(Image(Arc::new((
+        Ok(Self(Image(Arc::new((
             camera.get_yuyv_image().into_diagnostic()?,
             Instant::now(),
         )))))
@@ -76,7 +76,7 @@ impl TopImage {
 
 impl BottomImage {
     fn new(camera: &mut Camera) -> Result<Self> {
-        Ok(BottomImage(Image(Arc::new((
+        Ok(Self(Image(Arc::new((
             camera.get_yuyv_image().into_diagnostic()?,
             Instant::now(),
         )))))
