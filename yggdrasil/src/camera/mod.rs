@@ -62,9 +62,9 @@ pub struct TopImage(Image);
 pub struct BottomImage(Image);
 
 impl TopImage {
-    fn new(camera: Arc<Mutex<Camera>>) -> Result<Self> {
+    fn new(camera: &mut Camera) -> Result<Self> {
         Ok(TopImage(Image(Arc::new((
-            camera.lock().unwrap().get_yuyv_image().into_diagnostic()?,
+            camera.get_yuyv_image().into_diagnostic()?,
             Instant::now(),
         )))))
     }
@@ -75,9 +75,9 @@ impl TopImage {
 }
 
 impl BottomImage {
-    fn new(camera: Arc<Mutex<Camera>>) -> Result<Self> {
+    fn new(camera: &mut Camera) -> Result<Self> {
         Ok(BottomImage(Image(Arc::new((
-            camera.lock().unwrap().get_yuyv_image().into_diagnostic()?,
+            camera.get_yuyv_image().into_diagnostic()?,
             Instant::now(),
         )))))
     }
@@ -92,10 +92,11 @@ impl Module for CameraModule {
         let top_camera = TopCamera::new()?;
         let bottom_camera = BottomCamera::new()?;
 
-        let top_image_resource = Resource::new(TopImage::new(top_camera.0.clone())?);
+        let top_image_resource = Resource::new(TopImage::new(&mut top_camera.0.lock().unwrap())?);
         let top_camera_resource = Resource::new(top_camera);
 
-        let bottom_image_resource = Resource::new(BottomImage::new(bottom_camera.0.clone())?);
+        let bottom_image_resource =
+            Resource::new(BottomImage::new(&mut bottom_camera.0.lock().unwrap())?);
         let bottom_camera_resource = Resource::new(bottom_camera);
 
         Ok(app
@@ -110,11 +111,11 @@ impl Module for CameraModule {
 }
 
 async fn receive_top_image(top_camera: Arc<Mutex<Camera>>) -> Result<TopImage> {
-    TopImage::new(top_camera)
+    TopImage::new(&mut top_camera.lock().unwrap())
 }
 
 async fn receive_bottom_image(bottom_camera: Arc<Mutex<Camera>>) -> Result<BottomImage> {
-    BottomImage::new(bottom_camera)
+    BottomImage::new(&mut bottom_camera.lock().unwrap())
 }
 
 #[system]
