@@ -13,6 +13,14 @@ const NUMBER_OF_TOP_CAMERA_BUFFERS: u32 = 2;
 /// This variable specifies how many `BottomImage`'s' can be alive at the same time.
 const NUMBER_OF_BOTTOM_CAMERA_BUFFERS: u32 = 2;
 
+/// This module captures images using the top- and bottom camera of the NAO.
+///
+/// The captured images are stored as image resources, which are updated whenever a newer image is
+/// available from the camera.
+///
+/// This module provides the following resources to the application:
+/// - [`TopImage`]
+/// - [`BottomImage`]
 pub struct CameraModule;
 
 struct TopCamera(Arc<Mutex<Camera>>);
