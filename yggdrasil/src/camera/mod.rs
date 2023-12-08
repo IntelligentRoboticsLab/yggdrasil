@@ -1,5 +1,8 @@
 use miette::{IntoDiagnostic, Result};
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Instant,
+};
 use tyr::prelude::*;
 
 use heimdall::{Camera, YuyvImage};
@@ -31,37 +34,46 @@ impl BottomCamera {
     }
 }
 
-pub trait Image {
-    fn yuyv_image(&self) -> Arc<YuyvImage>;
+pub struct Image {
+    image: YuyvImage,
+    instant: Instant,
 }
 
-pub struct TopImage(Arc<YuyvImage>);
-pub struct BottomImage(Arc<YuyvImage>);
+impl Image {
+    pub fn image(&self) -> &YuyvImage {
+        &self.image
+    }
+
+    pub fn instant(&self) -> &Instant {
+        &self.instant
+    }
+}
+
+pub struct TopImage(Arc<Image>);
+pub struct BottomImage(Arc<Image>);
 
 impl TopImage {
     fn new(camera: Arc<Mutex<Camera>>) -> Result<Self> {
-        Ok(TopImage(Arc::new(
-            camera.lock().unwrap().get_yuyv_image().into_diagnostic()?,
-        )))
+        Ok(TopImage(Arc::new(Image {
+            image: camera.lock().unwrap().get_yuyv_image().into_diagnostic()?,
+            instant: Instant::now(),
+        })))
+    }
+
+    pub fn get(&self) -> Arc<Image> {
+        self.0.clone()
     }
 }
 
 impl BottomImage {
     fn new(camera: Arc<Mutex<Camera>>) -> Result<Self> {
-        Ok(BottomImage(Arc::new(
-            camera.lock().unwrap().get_yuyv_image().into_diagnostic()?,
-        )))
+        Ok(BottomImage(Arc::new(Image {
+            image: camera.lock().unwrap().get_yuyv_image().into_diagnostic()?,
+            instant: Instant::now(),
+        })))
     }
-}
 
-impl Image for TopImage {
-    fn yuyv_image(&self) -> Arc<YuyvImage> {
-        self.0.clone()
-    }
-}
-
-impl Image for BottomImage {
-    fn yuyv_image(&self) -> Arc<YuyvImage> {
+    pub fn get(&self) -> Arc<Image> {
         self.0.clone()
     }
 }
