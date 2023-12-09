@@ -73,8 +73,8 @@ impl TopImage {
         Ok(Self(Image::new(camera)?))
     }
 
-    pub fn image(&self) -> Image {
-        self.0.clone()
+    pub fn image(&self) -> &Image {
+        &self.0
     }
 }
 
@@ -83,8 +83,8 @@ impl BottomImage {
         Ok(Self(Image::new(camera)?))
     }
 
-    pub fn image(&self) -> Image {
-        self.0.clone()
+    pub fn image(&self) -> &Image {
+        &self.0
     }
 }
 
