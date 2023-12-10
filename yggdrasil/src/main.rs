@@ -9,6 +9,7 @@ use yggdrasil::{
     game_phase::GamePhaseModule,
     leds::LedsModule,
     nao::NaoModule,
+    primary_state::PrimaryStateModule,
 };
 
 fn main() -> Result<()> {
@@ -21,9 +22,10 @@ fn main() -> Result<()> {
         .add_module(FilterModule)?
         .add_module(GamePhaseModule)?
         .add_module(LedsModule)?
+        .add_module(NaoModule)?
+        .add_module(PrimaryStateModule)?
         .add_module(SoundManagerModule)?
         .add_module(TaskModule)?
-        .add_module(NaoModule)?
         .add_module(WeeSoundModule)?
         .run()?;
     Ok(())

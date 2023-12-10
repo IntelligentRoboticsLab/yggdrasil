@@ -4,3 +4,4 @@ pub mod filter;
 pub mod game_phase;
 pub mod leds;
 pub mod nao;
+pub mod primary_state;
