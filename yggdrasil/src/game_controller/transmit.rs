@@ -10,6 +10,17 @@ use tyr::prelude::*;
 
 pub struct GameControllerSendModule;
 
+impl Module for GameControllerSendModule {
+    fn initialize(self, app: App) -> Result<App> {
+        let game_controller_return_message = Resource::<Option<()>>::new(None);
+
+        Ok(app
+            .add_resource(game_controller_return_message)?
+            .add_task::<AsyncTask<Result<RoboCupGameControlReturnData>>>()?
+            .add_system(send_system))
+    }
+}
+
 async fn send_message(
     game_controller_socket: Arc<Mutex<UdpSocket>>,
     game_controller_return_address: SocketAddr,
@@ -31,17 +42,6 @@ async fn send_message(
         .into_diagnostic()?;
 
     Ok(game_controller_return_message)
-}
-
-impl Module for GameControllerSendModule {
-    fn initialize(self, app: App) -> Result<App> {
-        let game_controller_return_message = Resource::<Option<()>>::new(None);
-
-        Ok(app
-            .add_resource(game_controller_return_message)?
-            .add_task::<AsyncTask<Result<RoboCupGameControlReturnData>>>()?
-            .add_system(send_system))
-    }
 }
 
 #[system]
