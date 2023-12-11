@@ -7,7 +7,7 @@ pub struct Initial;
 impl Execute for Initial {
     fn execute(
         &mut self,
-        _ctx: &mut Context,
+        _ctx: Context,
         _current_role: &Role,
         _control_message: &mut NaoControlMessage,
     ) {

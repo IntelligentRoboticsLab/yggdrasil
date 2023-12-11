@@ -13,6 +13,7 @@ use crate::{
     primary_state::PrimaryState,
 };
 
+#[derive(Clone, Copy)]
 pub struct Context<'a> {
     pub game_phase: &'a GamePhase,
     pub primary_state: &'a PrimaryState,
@@ -22,7 +23,7 @@ pub struct Context<'a> {
 pub trait Execute {
     fn execute(
         &mut self,
-        ctx: &mut Context,
+        ctx: Context,
         current_role: &Role,
         control_message: &mut NaoControlMessage,
     );
@@ -42,11 +43,7 @@ impl Default for Behavior {
 
 #[enum_dispatch]
 pub trait Transition {
-    fn transition_behavior(
-        &mut self,
-        ctx: &mut Context,
-        current_behavior: &mut Behavior,
-    ) -> Behavior;
+    fn transition_behavior(&mut self, ctx: Context, current_behavior: &mut Behavior) -> Behavior;
 }
 
 #[enum_dispatch(Transition)]
@@ -69,12 +66,12 @@ pub struct Engine {
 }
 
 impl Engine {
-    fn assign_role(&self, _ctx: &Context) -> Role {
+    fn assign_role(&self, _ctx: Context) -> Role {
         //TODO assign roles
         Role::default()
     }
 
-    pub fn step(&mut self, ctx: &mut Context, control_message: &mut NaoControlMessage) {
+    pub fn step(&mut self, ctx: Context, control_message: &mut NaoControlMessage) {
         self.role = self.assign_role(ctx);
         self.behavior = self.role.transition_behavior(ctx, &mut self.behavior);
         self.behavior.execute(ctx, &self.role, control_message);
@@ -88,12 +85,12 @@ pub fn step(
     game_phase: &GamePhase,
     primary_state: &PrimaryState,
 ) -> Result<()> {
-    let mut context = Context {
+    let context = Context {
         primary_state,
         game_phase,
     };
 
-    engine.step(&mut context, control_message);
+    engine.step(context, control_message);
 
     Ok(())
 }
