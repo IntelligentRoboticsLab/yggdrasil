@@ -1,7 +1,14 @@
-use crate::behavior::engine::{Behavior, Context, Role};
+use crate::behavior::{engine::Transition, Behavior, Context};
 
-impl Role {
-    pub fn keeper_behaviour(&self, _ctx: &mut Context) -> Behavior {
-        Behavior::initial()
+pub struct Keeper;
+
+impl Transition for Keeper {
+    fn transition_behavior(
+        &mut self,
+        _ctx: &mut Context,
+        _current_behavior: &mut Behavior,
+    ) -> Behavior {
+        todo!()
     }
 }
+

@@ -4,94 +4,80 @@ use nidhogg::NaoControlMessage;
 
 use tyr::prelude::*;
 
-use crate::{game_phase::GamePhase, primary_state::PrimaryState};
-
-use crate::behavior::behaviors::{Example, Initial};
+use crate::{
+    behavior::{
+        behaviors::{Example, Initial},
+        roles::{Keeper, Striker},
+    },
+    game_phase::GamePhase,
+    primary_state::PrimaryState,
+};
 
 pub struct Context<'a> {
     pub game_phase: &'a GamePhase,
     pub primary_state: &'a PrimaryState,
-    pub role: &'a Role,
 }
 
 #[enum_dispatch]
-pub trait BehaviorState {
-    fn execute(&mut self, ctx: &mut Context, control_message: &mut NaoControlMessage);
+pub trait Execute {
+    fn execute(
+        &mut self,
+        ctx: &mut Context,
+        current_role: &Role,
+        control_message: &mut NaoControlMessage,
+    );
 }
 
-#[derive(Copy, Clone)]
-#[enum_dispatch(BehaviorState)]
+#[enum_dispatch(Execute)]
 pub enum Behavior {
     Initial(Initial),
     Example(Example),
 }
 
-// enum_dispatch macro generates this for us :D
-
-// impl Behave for Behavior {
-//     fn execute(&mut self, ctx: &mut Context, control_message: &mut NaoControlMessage) {
-//         match self {
-//             Behavior::Initial(state) => state.execute(ctx, control_message),
-//             Behavior::Example(state) => state.execute(ctx, control_message),
-//         }
-//     }
-// }
-
-impl Behavior {
-    pub fn initial() -> Self {
+impl Default for Behavior {
+    fn default() -> Self {
         Behavior::Initial(Initial)
     }
 }
 
-pub enum RoleType {
-    Keeper,
-    Striker,
+#[enum_dispatch]
+pub trait Transition {
+    fn transition_behavior(
+        &mut self,
+        ctx: &mut Context,
+        current_behavior: &mut Behavior,
+    ) -> Behavior;
 }
 
-pub struct Role {
-    role_type: RoleType,
-    behavior: Behavior,
+#[enum_dispatch(Transition)]
+pub enum Role {
+    Keeper(Keeper),
+    Striker(Striker),
 }
 
-impl Role {
-    fn initial() -> Self {
-        // Do this based on the player number
-        return Role {
-            role_type: RoleType::Keeper,
-            behavior: Behavior::initial(),
-        };
-    }
-
-    fn transition_behaviour(&mut self, ctx: &mut Context) -> Behavior {
-        match self.role_type {
-            RoleType::Keeper => self.keeper_behaviour(ctx),
-            RoleType::Striker => self.striker_behaviour(ctx),
-        }
+impl Default for Role {
+    fn default() -> Self {
+        //TODO assign roles
+        Role::Keeper(Keeper {})
     }
 }
 
+#[derive(Default)]
 pub struct Engine {
     role: Role,
-}
-
-impl Default for Engine {
-    fn default() -> Self {
-        Self {
-            role: Role::initial(),
-        }
-    }
+    behavior: Behavior,
 }
 
 impl Engine {
     fn assign_role(&self, _ctx: &Context) -> Role {
         //TODO assign roles
-        return Role::initial();
+        Role::default()
     }
 
     pub fn step(&mut self, ctx: &mut Context, control_message: &mut NaoControlMessage) {
         self.role = self.assign_role(ctx);
-        self.role.behavior = self.role.transition_behaviour(ctx);
-        self.role.behavior.execute(ctx, control_message);
+        self.behavior = self.role.transition_behavior(ctx, &mut self.behavior);
+        self.behavior.execute(ctx, &self.role, control_message);
     }
 }
 
@@ -99,14 +85,12 @@ impl Engine {
 pub fn step(
     engine: &mut Engine,
     control_message: &mut NaoControlMessage,
-    role: &Role,
     game_phase: &GamePhase,
     primary_state: &PrimaryState,
 ) -> Result<()> {
     let mut context = Context {
         primary_state,
         game_phase,
-        role,
     };
 
     engine.step(&mut context, control_message);
