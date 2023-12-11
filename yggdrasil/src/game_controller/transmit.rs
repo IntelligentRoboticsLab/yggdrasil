@@ -17,7 +17,7 @@ async fn send_message(
     let mut buffer = vec![0u8; 1024];
 
     let game_controller_return_message =
-        RoboCupGameControlReturnData::new(1, 8, 0, [0f32, 0f32, 0f32], -1f32, [0f32, 0f32]);
+        RoboCupGameControlReturnData::new(2, 8, 0, [0f32; 3], -1f32, [0f32; 2]);
 
     eprintln!("{:?}", game_controller_return_address);
 

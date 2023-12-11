@@ -1,4 +1,4 @@
-use std::net::UdpSocket;
+use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket};
 use std::sync::{Arc, Mutex};
 
 use bifrost::communication::GAMECONTROLLER_DATA_PORT;
@@ -14,7 +14,11 @@ pub struct GameControllerModule;
 impl Module for GameControllerModule {
     fn initialize(self, app: App) -> Result<App> {
         let game_controller_socket = Resource::new(Arc::new(Mutex::new(
-            UdpSocket::bind(format!("0.0.0.0:{}", GAMECONTROLLER_DATA_PORT)).into_diagnostic()?,
+            UdpSocket::bind(SocketAddrV4::new(
+                Ipv4Addr::UNSPECIFIED,
+                GAMECONTROLLER_DATA_PORT,
+            ))
+            .into_diagnostic()?,
         )));
 
         Ok(app
