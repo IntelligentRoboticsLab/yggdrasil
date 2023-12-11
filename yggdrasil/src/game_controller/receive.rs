@@ -25,11 +25,11 @@ impl Module for GameControllerReceiveModule {
 }
 
 async fn receive_message(
-    game_controller_communicator: Arc<Mutex<UdpSocket>>,
+    game_controller_socket: Arc<Mutex<UdpSocket>>,
 ) -> Result<(RoboCupGameControlData, SocketAddr)> {
     let mut buffer = vec![0u8; 1024];
 
-    let (_bytes_received, mut game_controller_return_address) = game_controller_communicator
+    let (_bytes_received, mut game_controller_return_address) = game_controller_socket
         .lock()
         .unwrap()
         .recv_from(&mut buffer)
