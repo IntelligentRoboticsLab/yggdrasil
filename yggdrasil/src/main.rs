@@ -7,6 +7,7 @@ use yggdrasil::{
     behavior::BehaviorModule,
     camera::CameraModule,
     filter::FilterModule,
+    game_controller::GameControllerModule,
     leds::LedsModule,
     nao::NaoModule,
     primary_state::PrimaryStateModule,
