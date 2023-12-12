@@ -25,12 +25,6 @@ pub(crate) fn send_system(game_controller_data: &mut GameControllerData) -> Resu
         return Ok(());
     };
 
-    let mut buffer = [0u8; 1024];
-
-    game_controller_address.set_port(GAMECONTROLLER_RETURN_PORT);
-    let game_controller_message =
-        RoboCupGameControlReturnData::new(2, 8, 0, [0f32; 3], -1f32, [0f32; 2]);
-
     let duration_to_wait = game_controller_data
         .last_send_message_instant
         .add(Duration::from_millis(GAMECONTROLLER_RETURN_DELAY_MS))
@@ -39,6 +33,12 @@ pub(crate) fn send_system(game_controller_data: &mut GameControllerData) -> Resu
     if !duration_to_wait.is_zero() {
         return Ok(());
     }
+
+    let mut buffer = [0u8; 1024];
+
+    game_controller_address.set_port(GAMECONTROLLER_RETURN_PORT);
+    let game_controller_message =
+        RoboCupGameControlReturnData::new(2, 8, 0, [0f32; 3], -1f32, [0f32; 2]);
 
     game_controller_message
         .encode(buffer.as_mut_slice())
