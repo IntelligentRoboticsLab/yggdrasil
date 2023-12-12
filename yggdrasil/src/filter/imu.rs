@@ -1,11 +1,18 @@
 use crate::prelude::*;
+use miette::Result;
+use nidhogg::types::FillExt;
 use nidhogg::{types::Vector2, types::Vector3, NaoState};
+use num::traits::pow::Pow;
+use std::collections::VecDeque;
+use std::ops::Div;
+
+/// Amount of accelerometer measurements to calculate standard deviation over
+const ACCELEROMETER_DEVIATION_WINDOW: usize = 50;
 
 /// A module offering a structured wrapper for the parts of the IMU, derived from the raw [`NaoState`].
 ///
 /// This module provides the following resources to the application:
 /// - [`IMUValues`]
-///
 pub struct IMUFilter;
 
 impl Module for IMUFilter {
@@ -15,7 +22,6 @@ impl Module for IMUFilter {
 }
 
 /// Struct containing gyroscope, accelerometer and angles.
-#[derive(Default)]
 pub struct IMUValues {
     /// The Gyroscope provides direct measurements of the rotational speed along
     /// three axes (x, y and z) in radians per second (rad/s). The Z axis is facing up.
@@ -31,13 +37,54 @@ pub struct IMUValues {
     ///
     /// These angles represent the orientation of the robot and are measured in radians.
     pub angles: Vector2<f32>,
+
+    pub accelerometer_std: Vector3<f32>,
+
+    accelerometer_measurements: VecDeque<Vector3<f32>>,
+}
+
+impl Default for IMUValues {
+    fn default() -> Self {
+        IMUValues {
+            gyroscope: Vector3::default(),
+            accelerometer: Vector3::default(),
+            angles: Vector2::default(),
+            accelerometer_std: Vector3::default(),
+            accelerometer_measurements: VecDeque::with_capacity(ACCELEROMETER_DEVIATION_WINDOW),
+        }
+    }
+}
+
+fn standard_deviation(measurements: VecDeque<Vector3<f32>>) -> Vector3<f32> {
+    let measurement_avg: Vector3<f32> = measurements
+        .iter()
+        .sum::<Vector3<f32>>()
+        .div(Vector3::fill(measurements.len() as f32));
+
+    measurements.iter().fold(Vector3::default(), |acc, item| {
+        let diff: Vector3<f32> = measurement_avg - item;
+        acc + diff.pow(2)
+    })
 }
 
 #[system]
 fn imu_filter(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()> {
-    imu_values.gyroscope = nao_state.gyroscope.clone();
-    imu_values.accelerometer = nao_state.accelerometer.clone();
-    imu_values.angles = nao_state.angles.clone();
+    imu_values.gyroscope = nao_state.gyroscope;
+    imu_values.accelerometer = nao_state.accelerometer;
+    imu_values.angles = nao_state.angles;
+
+    // adding accelerometer measurements to the VecDeque
+    imu_values
+        .accelerometer_measurements
+        .push_back(nao_state.accelerometer);
+
+    // FIFO, maximum of 50 measurements
+    if imu_values.accelerometer_measurements.len() > ACCELEROMETER_DEVIATION_WINDOW {
+        imu_values.accelerometer_measurements.pop_front();
+    }
+
+    imu_values.accelerometer_std =
+        standard_deviation(imu_values.accelerometer_measurements.clone());
 
     Ok(())
 }

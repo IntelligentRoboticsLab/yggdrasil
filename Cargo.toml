@@ -16,8 +16,8 @@ indicatif = "0.17.6"
 kira = "0.8.6"
 linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git" }
 miette = "5.10.0"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
-num = "0.4.0"
+nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", branch = "svisser/vector3-operations" }
+num = "0.4.1"
 petgraph = "0.6.3"
 proc-macro2 = "1.0.78"
 quote = "1.0.35"
