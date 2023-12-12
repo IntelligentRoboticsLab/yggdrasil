@@ -1,6 +1,7 @@
+use super::GameControllerSocket;
+
 use bifrost::communication::{RoboCupGameControlData, GAMECONTROLLER_RETURN_PORT};
 use std::net::SocketAddr;
-use std::net::UdpSocket;
 use std::sync::{Arc, Mutex};
 
 use bifrost::serialization::Decode;
@@ -25,7 +26,7 @@ impl Module for GameControllerReceiveModule {
 }
 
 async fn receive_message(
-    game_controller_socket: Arc<Mutex<UdpSocket>>,
+    game_controller_socket: Arc<Mutex<GameControllerSocket>>,
 ) -> Result<(RoboCupGameControlData, SocketAddr)> {
     let mut buffer = vec![0u8; 1024];
 
@@ -44,7 +45,7 @@ async fn receive_message(
 #[system]
 pub fn receive_system(
     game_controller_message: &mut Option<RoboCupGameControlData>,
-    game_controller_socket: &mut Arc<Mutex<UdpSocket>>,
+    game_controller_socket: &mut Arc<Mutex<GameControllerSocket>>,
     game_controller_return_address: &mut Option<SocketAddr>,
     receive_message_task: &mut AsyncTask<Result<(RoboCupGameControlData, SocketAddr)>>,
 ) -> Result<()> {
