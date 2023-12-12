@@ -44,6 +44,7 @@ impl Module for FilterModule {
         let app = app
             .add_module(ButtonFilter)?
             .add_module(FSRFilter)?
+            .add_module(FallingFilter)?
             .add_module(IMUFilter)?
             .add_module(SonarFilter)?
             .add_module(FallingFilter)?;
