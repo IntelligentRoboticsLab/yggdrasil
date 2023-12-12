@@ -1,12 +1,16 @@
 use crate::prelude::*;
 
-use self::{button::ButtonFilter, fsr::FSRFilter, imu::IMUFilter, sonar::SonarFilter};
+use self::{
+    button::ButtonFilter, falling::FallingFilter, fsr::FSRFilter, imu::IMUFilter,
+    sonar::SonarFilter,
+};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 use std::time::Duration;
 
 pub mod button;
+pub mod falling;
 pub mod fsr;
 pub mod imu;
 pub mod sonar;
@@ -41,8 +45,8 @@ impl Module for FilterModule {
             .add_module(ButtonFilter)?
             .add_module(FSRFilter)?
             .add_module(IMUFilter)?
-            .add_module(SonarFilter)?;
-
+            .add_module(SonarFilter)?
+            .add_module(FallingFilter)?;
         Ok(app)
     }
 }
