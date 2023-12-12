@@ -36,9 +36,23 @@ pub(crate) fn send_system(game_controller_data: &mut GameControllerData) -> Resu
 
     let mut buffer = [0u8; 1024];
 
+    // TODO: Substitute with real data from resources and/or configs.
+    let robot_number = 2;
+    let team_number = 8;
+    let fallen = false;
+    let pose = [0f32; 3];
+    let ball_age = -1f32;
+    let ball_position = [0f32; 2];
+
     game_controller_address.set_port(GAMECONTROLLER_RETURN_PORT);
-    let game_controller_message =
-        RoboCupGameControlReturnData::new(2, 8, 0, [0f32; 3], -1f32, [0f32; 2]);
+    let game_controller_message = RoboCupGameControlReturnData::new(
+        robot_number,
+        team_number,
+        fallen as u8,
+        pose,
+        ball_age,
+        ball_position,
+    );
 
     game_controller_message
         .encode(buffer.as_mut_slice())
