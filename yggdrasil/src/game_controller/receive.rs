@@ -40,7 +40,7 @@ pub(crate) fn receive_system(
 
             Ok(())
         }
-        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => Ok(()),
-        Err(err) => Err(err).into_diagnostic()?,
+        Err(ref error) if error.kind() == std::io::ErrorKind::WouldBlock => Ok(()),
+        Err(error) => Err(error).into_diagnostic()?,
     }
 }
