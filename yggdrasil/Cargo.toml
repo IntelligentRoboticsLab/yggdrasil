@@ -13,6 +13,5 @@ miette = { workspace = true, features = ["fancy"] }
 nidhogg = { workspace = true, features = ["lola"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-tokio = { workspace = true }
 tyr = { path = "../crates/tyr" }
 enum_dispatch = { workspace = true }
