@@ -1,5 +1,4 @@
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
-use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use bifrost::communication::GAMECONTROLLER_DATA_PORT;
@@ -48,9 +47,8 @@ impl Module for GameControllerModule {
     fn initialize(self, app: App) -> Result<App> {
         let game_controller_data = Self::new_game_controller_data()?;
 
-        let game_controller_data_resource = Resource::<Arc<Mutex<GameControllerData>>>::new(
-            Arc::new(Mutex::new(game_controller_data)),
-        );
+        let game_controller_data_resource =
+            Resource::<GameControllerData>::new(game_controller_data);
 
         app.add_resource(game_controller_data_resource)?
             .add_module(receive::GameControllerReceiveModule)?

@@ -4,7 +4,6 @@ use bifrost::communication::{RoboCupGameControlReturnData, GAMECONTROLLER_RETURN
 use bifrost::serialization::Encode;
 
 use std::ops::Add;
-use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use miette::{IntoDiagnostic, Result};
@@ -21,9 +20,7 @@ impl Module for GameControllerSendModule {
 }
 
 #[system]
-pub(crate) fn send_system(game_controller_data: &Arc<Mutex<GameControllerData>>) -> Result<()> {
-    let mut game_controller_data = game_controller_data.lock().unwrap();
-
+pub(crate) fn send_system(game_controller_data: &mut GameControllerData) -> Result<()> {
     let Some(mut game_controller_address) = game_controller_data.game_controller_address else {
         return Ok(());
     };
