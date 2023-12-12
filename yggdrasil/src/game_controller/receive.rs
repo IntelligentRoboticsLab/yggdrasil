@@ -1,4 +1,4 @@
-use super::GameControllerSocket;
+use super::GameControllerData;
 
 use bifrost::communication::RoboCupGameControlData;
 use std::net::SocketAddr;
@@ -27,22 +27,19 @@ impl Module for GameControllerReceiveModule {
 #[system]
 pub(crate) fn receive_system(
     game_controller_message: &mut Option<RoboCupGameControlData>,
-    game_controller_socket: &mut Arc<Mutex<GameControllerSocket>>,
-    game_controller_address: &mut Option<SocketAddr>,
+    game_controller_data: &Arc<Mutex<GameControllerData>>,
 ) -> Result<()> {
     let mut buffer = [0u8; 1024];
 
-    match game_controller_socket
-        .lock()
-        .unwrap()
-        .recv_from(&mut buffer)
-    {
+    let mut game_controller_data = game_controller_data.lock().unwrap();
+
+    match game_controller_data.socket.recv_from(&mut buffer) {
         Ok((_bytes_received, new_game_controller_address)) => {
             let new_game_controller_message =
                 RoboCupGameControlData::decode(&mut buffer.as_slice()).into_diagnostic()?;
 
             *game_controller_message = Some(new_game_controller_message);
-            *game_controller_address = Some(new_game_controller_address);
+            game_controller_data.game_controller_address = Some(new_game_controller_address);
 
             Ok(())
         }
