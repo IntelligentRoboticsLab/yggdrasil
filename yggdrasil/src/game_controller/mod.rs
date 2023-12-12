@@ -1,6 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket};
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use bifrost::communication::GAMECONTROLLER_DATA_PORT;
 
@@ -10,7 +11,9 @@ use tyr::prelude::*;
 mod receive;
 mod transmit;
 
-pub struct GameControllerModule;
+pub(crate) struct GameControllerData {
+    last_send_message_instant: Instant,
+}
 
 pub struct GameControllerSocket(UdpSocket);
 
@@ -27,6 +30,8 @@ impl DerefMut for GameControllerSocket {
         &mut self.0
     }
 }
+
+pub struct GameControllerModule;
 
 impl Module for GameControllerModule {
     fn initialize(self, app: App) -> Result<App> {
@@ -45,7 +50,15 @@ impl Module for GameControllerModule {
         let game_controller_socket_resource =
             Resource::new(Arc::new(Mutex::new(game_controller_socket)));
 
+        let game_controller_data = GameControllerData {
+            last_send_message_instant: Instant::now(),
+        };
+        let game_controller_data_resource = Resource::<Arc<Mutex<GameControllerData>>>::new(
+            Arc::new(Mutex::new(game_controller_data)),
+        );
+
         Ok(app
+            .add_resource(game_controller_data_resource)?
             .add_resource(game_controller_socket_resource)?
             .add_module(receive::GameControllerReceiveModule)?
             .add_module(transmit::GameControllerSendModule)?)
