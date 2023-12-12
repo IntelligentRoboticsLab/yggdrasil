@@ -29,7 +29,11 @@
     },
     "movements": [
       {
+<<<<<<< HEAD
         "duration": 0.5,
+=======
+        "duration": 0.7,
+>>>>>>> 8af10e6 (Motion jsons added)
         "target_position": {
           "head_yaw": -0.0153820515,
           "head_pitch": 0.49237204,
