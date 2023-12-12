@@ -24,10 +24,7 @@ fn main() -> Result<()> {
         .add_module(FilterModule)?
         .add_module(SoundManagerModule)?
         .add_module(WeeSoundModule)?
-        .add_module(CameraModule)?
-        .add_module(BehaviorModule)?
-        .add_module(LedsModule)?
-        .add_module(PrimaryStateModule)?
+        .add_module(GameControllerModule)?
         .run()?;
     Ok(())
 }
