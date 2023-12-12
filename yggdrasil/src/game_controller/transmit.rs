@@ -4,6 +4,7 @@ use bifrost::serialization::Encode;
 use std::net::SocketAddr;
 use std::net::UdpSocket;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use miette::{IntoDiagnostic, Result};
 use tyr::prelude::*;
@@ -25,16 +26,17 @@ async fn send_message(
     game_controller_socket: Arc<Mutex<UdpSocket>>,
     game_controller_return_address: SocketAddr,
 ) -> Result<RoboCupGameControlReturnData> {
-    let mut buffer = vec![0u8; 1024];
+    let mut buffer = [0u8; 1024];
 
     let game_controller_return_message =
         RoboCupGameControlReturnData::new(2, 8, 0, [0f32; 3], -1f32, [0f32; 2]);
 
-    eprintln!("{:?}", game_controller_return_address);
+    std::thread::sleep(Duration::from_secs(1));
 
     game_controller_return_message
-        .encode(&mut buffer)
+        .encode(buffer.as_mut_slice())
         .into_diagnostic()?;
+
     game_controller_socket
         .lock()
         .unwrap()

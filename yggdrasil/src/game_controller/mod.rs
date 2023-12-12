@@ -19,9 +19,9 @@ impl Module for GameControllerModule {
         ))
         .into_diagnostic()?;
 
-        // game_controller_socket
-        //     .set_nonblocking(true)
-        //     .into_diagnostic()?;
+        game_controller_socket
+            .set_nonblocking(true)
+            .into_diagnostic()?;
 
         let game_controller_socket_resource =
             Resource::new(Arc::new(Mutex::new(game_controller_socket)));
