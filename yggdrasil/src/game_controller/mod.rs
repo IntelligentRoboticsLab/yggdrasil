@@ -1,5 +1,4 @@
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
-use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -15,22 +14,6 @@ pub(crate) struct GameControllerData {
     pub socket: UdpSocket,
     pub last_send_message_instant: Instant,
     pub game_controller_address: Option<SocketAddr>,
-}
-
-pub struct GameControllerSocket(UdpSocket);
-
-impl Deref for GameControllerSocket {
-    type Target = UdpSocket;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for GameControllerSocket {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
 }
 
 pub struct GameControllerModule;
