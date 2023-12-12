@@ -1,6 +1,6 @@
 use super::GameControllerSocket;
 
-use bifrost::communication::{RoboCupGameControlData, GAMECONTROLLER_RETURN_PORT};
+use bifrost::communication::RoboCupGameControlData;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
@@ -30,34 +30,33 @@ async fn receive_message(
 ) -> Result<(RoboCupGameControlData, SocketAddr)> {
     let mut buffer = vec![0u8; 1024];
 
-    let (_bytes_received, mut game_controller_return_address) = game_controller_socket
+    let (_bytes_received, game_controller_address) = game_controller_socket
         .lock()
         .unwrap()
         .recv_from(&mut buffer)
         .into_diagnostic()?;
 
     let message = RoboCupGameControlData::decode(&mut buffer.as_slice()).into_diagnostic()?;
-    game_controller_return_address.set_port(GAMECONTROLLER_RETURN_PORT);
 
-    Ok((message, game_controller_return_address))
+    Ok((message, game_controller_address))
 }
 
 #[system]
 pub fn receive_system(
     game_controller_message: &mut Option<RoboCupGameControlData>,
     game_controller_socket: &mut Arc<Mutex<GameControllerSocket>>,
-    game_controller_return_address: &mut Option<SocketAddr>,
+    game_controller_address: &mut Option<SocketAddr>,
     receive_message_task: &mut AsyncTask<Result<(RoboCupGameControlData, SocketAddr)>>,
 ) -> Result<()> {
     if !receive_message_task.active() {
         receive_message_task
             .try_spawn(receive_message(game_controller_socket.clone()))
             .into_diagnostic()?;
-    } else if let Some(Ok((new_game_controller_message, new_game_controller_return_address))) =
+    } else if let Some(Ok((new_game_controller_message, new_game_controller_address))) =
         receive_message_task.poll()
     {
         *game_controller_message = Some(new_game_controller_message);
-        *game_controller_return_address = Some(new_game_controller_return_address);
+        *game_controller_address = Some(new_game_controller_address);
     }
 
     Ok(())

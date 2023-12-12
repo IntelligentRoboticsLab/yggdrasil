@@ -1,6 +1,6 @@
 use super::GameControllerSocket;
 
-use bifrost::communication::RoboCupGameControlReturnData;
+use bifrost::communication::{RoboCupGameControlReturnData, GAMECONTROLLER_RETURN_PORT};
 use bifrost::serialization::Encode;
 
 use std::net::SocketAddr;
@@ -25,26 +25,27 @@ impl Module for GameControllerSendModule {
 
 async fn send_message(
     game_controller_socket: Arc<Mutex<GameControllerSocket>>,
-    game_controller_return_address: SocketAddr,
+    mut game_controller_address: SocketAddr,
 ) -> Result<RoboCupGameControlReturnData> {
     let mut buffer = [0u8; 1024];
 
-    let game_controller_return_message =
+    game_controller_address.set_port(GAMECONTROLLER_RETURN_PORT);
+    let game_controller_message =
         RoboCupGameControlReturnData::new(2, 8, 0, [0f32; 3], -1f32, [0f32; 2]);
 
     std::thread::sleep(Duration::from_secs(1));
 
-    game_controller_return_message
+    game_controller_message
         .encode(buffer.as_mut_slice())
         .into_diagnostic()?;
 
     game_controller_socket
         .lock()
         .unwrap()
-        .send_to(buffer.as_slice(), game_controller_return_address)
+        .send_to(buffer.as_slice(), game_controller_address)
         .into_diagnostic()?;
 
-    Ok(game_controller_return_message)
+    Ok(game_controller_message)
 }
 
 #[system]
