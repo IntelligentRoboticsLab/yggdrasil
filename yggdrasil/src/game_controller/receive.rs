@@ -28,7 +28,7 @@ impl Module for GameControllerReceiveModule {
 async fn receive_message(
     game_controller_socket: Arc<Mutex<GameControllerSocket>>,
 ) -> Result<(RoboCupGameControlData, SocketAddr)> {
-    let mut buffer = vec![0u8; 1024];
+    let mut buffer = [0u8; 1024];
 
     let (_bytes_received, game_controller_address) = game_controller_socket
         .lock()
