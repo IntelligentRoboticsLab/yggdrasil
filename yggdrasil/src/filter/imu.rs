@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::iter::Sum;
 
 use crate::prelude::*;
 use nidhogg::{types::Vector2, types::Vector3, NaoState};
@@ -51,26 +50,29 @@ impl Default for IMUValues {
     }
 }
 
-// impl Sum<Vector3<f32>> for Vector3<f32> {
-//     fn sum<I: Iterator<Item = Vector3<f32>>>(iter: I) -> Self {
-//         // iter.y
-//         Vector3::default()
-//     }
-// }
+fn standard_deviation(measurements: VecDeque<Vector3<f32>>) -> Vector3<f32> {
+    // TODO: impl sum
 
-fn standard_deviation(measurements: &VecDeque<Vector3<f32>>) -> Vector3<f32> {
-    // let avg: Vector3<f32> = measurements.iter().sum();
-    //  / measurements.len() as f32;
+    let Vector3 { x, y, z } = measurements
+        .clone()
+        .into_iter()
+        .fold(Vector3::default(), |acc, item| acc + item);
 
-    // let variance: f32 = array
-    //     .iter()
-    //     .map(|val| (val - avg) * (val - avg))
-    //     .sum::<f32>()
-    //     / array.len() as f32;
+    let l = measurements.len() as f32;
+    let avg = Vector3 {
+        x: x / l,
+        y: y / l,
+        z: z / l,
+    };
 
-    // variance
-    // avg
-    Vector3::default()
+    // TODO impl power
+    measurements
+        .clone()
+        .into_iter()
+        .fold(Vector3::default(), |acc, item| {
+            let diff = avg.clone() - item;
+            acc + diff.clone() * diff
+        })
 }
 
 #[system]
@@ -87,7 +89,8 @@ pub fn imu_filter(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()
         imu_values.accelerometer_measurements.pop_front();
     }
 
-    imu_values.accelerometer_std = standard_deviation(&imu_values.accelerometer_measurements);
+    imu_values.accelerometer_std =
+        standard_deviation(imu_values.accelerometer_measurements.clone());
 
     Ok(())
 }
