@@ -5,6 +5,7 @@ pub mod camera;
 pub mod config;
 pub mod debug;
 pub mod filter;
+pub mod motion;
 pub mod game_controller;
 pub mod kinematics;
 pub mod leds;

@@ -6,7 +6,6 @@ pub mod motion_executer;
 pub mod motion_manager;
 pub mod motion_types;
 pub mod motion_util;
-pub mod motion_types;
 
 use motion_executer::motion_executer;
 use motion_manager::motion_manager_initializer;
