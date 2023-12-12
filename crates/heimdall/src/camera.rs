@@ -355,7 +355,7 @@ impl Camera {
     /// # Errors
     /// This function fails if the [`Camera`] cannot take an image.
     pub fn try_get_yuyv_image(&mut self) -> Result<YuyvImage> {
-        let frame = self.camera.try_fetch_frame()?;
+        let frame = self.camera.fetch_frame()?;
 
         Ok(YuyvImage {
             frame,

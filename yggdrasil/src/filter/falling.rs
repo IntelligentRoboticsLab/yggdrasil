@@ -1,127 +1,120 @@
-use crate::filter::imu::IMUValues;
-use crate::motion::motion_executer::reached_position;
-use crate::motion::motion_manager::MotionManager;
-use crate::motion::motion_types::{Motion, MotionType, Movement};
+use crate::filter::{fsr::Contacts, imu::IMUValues};
 use miette::Result;
 use tyr::prelude::*;
 
-use nidhogg::{
-    types::{FillExt, LeftEar, RightEar},
-    NaoControlMessage, NaoState,
-};
+/// Maximum angle for standing upright.
+const MAX_UPRIGHT_ANGLE: f32 = 0.1;
+/// Minimum angle for falling detection.
+const MIN_FALL_ANGLE: f32 = 0.6;
+/// Minimum velocity for falling detection.
+const MIN_FALL_VELOCITY: f32 = 1.0;
+// Minimum angle for lying confirmation.
+const MIN_LYING_ANGLE: f32 = 1.5;
+/// Minimum accelerometer deviation for lying confirmation.
+const MAX_ACC_DEVIATION: f32 = 0.175;
 
+/// A module offering a Pose resource, containing the current pose state of the robot, and rudimentary falling detection.
+///
+/// This module provides the following resources to the application:
+/// - [`Fall`]
 pub struct FallingFilter;
 
 impl Module for FallingFilter {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_resource(Resource::new(FallingStateWrapper::default()))?
-            .add_system(falling_filter))
+        app.add_system(pose_filter)
+            .add_resource(Resource::new(Fall::default()))
     }
 }
 
+/// Struct containing the current FallState of the NAO.
 #[derive(Default)]
-struct FallingStateWrapper {
-    state: FallingState,
+pub struct Fall {
+    pub state: FallState,
 }
 
-#[derive(Default)]
-enum FallingState {
-    Falling(Direction),
+/// FallState contains the variants: Falling, Upright and Lying. Both Falling and Lying have their
+/// associated values which are again, enum types containing the directions the robot can fall or
+/// lie in.
+#[derive(Default, Clone, Debug)]
+pub enum FallState {
+    Falling(FallDirection),
     #[default]
-    Standing,
-    Fallen(FallenPosition),
+    Upright,
+    Lying(LyingDirection),
 }
 
-enum Direction {
+/// FallDirection contains four variants which are associated with the direction of the fall.
+#[derive(Clone, Debug)]
+pub enum FallDirection {
     Forwards,
     Backwards,
-    Leftwards,
-    Rightwards,
+    Leftways,
+    Rightways,
 }
 
-enum FallenPosition {
-    Up,
-    Down,
+/// LyingDirection contains two variants which are associated with the position of a fallen robot.
+#[derive(Clone, Debug)]
+pub enum LyingDirection {
+    FacingUp,
+    FacingDown,
 }
 
-const MAXIMUM_DEVIATION: f32 = 0.175;
-const POSITION_ERROR_MARGIN: f32 = 0.20;
-
-pub struct DamPrevResources {
-    pub acc_values: [f32; 50],
-    pub acc_iterator: u32,
-    pub brace_for_impact: bool,
-    pub active_motion: Option<Motion>,
+/// Is the robot falling forward based on its angle and gyroscope.
+fn is_falling_forward(imu_values: &IMUValues) -> bool {
+    imu_values.angles.y > MIN_FALL_ANGLE && imu_values.gyroscope.y.abs() > MIN_FALL_VELOCITY
+}
+/// Is the robot falling backwards based on its angle and gyroscope.
+fn is_falling_backward(imu_values: &IMUValues) -> bool {
+    imu_values.angles.y > -MIN_FALL_ANGLE && imu_values.gyroscope.y.abs() > MIN_FALL_VELOCITY
+}
+/// Is the robot falling left based on its angle and gyroscope.
+fn is_falling_left(imu_values: &IMUValues) -> bool {
+    imu_values.angles.x > MIN_FALL_ANGLE && imu_values.gyroscope.x.abs() > MIN_FALL_VELOCITY
+}
+/// Is the robot falling right based on its angle and gyroscope.
+fn is_falling_right(imu_values: &IMUValues) -> bool {
+    imu_values.angles.x > -MIN_FALL_ANGLE && imu_values.gyroscope.x.abs() > MIN_FALL_VELOCITY
 }
 
+/// Is the robot standing upright based on its angles and ground contact.
+fn is_standing_upright(imu_values: &IMUValues, contacts: &Contacts) -> bool {
+    imu_values.angles.x < MAX_UPRIGHT_ANGLE
+        && imu_values.angles.y < MAX_UPRIGHT_ANGLE
+        && contacts.ground
+}
+
+/// Is the robot lying on its stomach based on the accelerometer and angle.
+fn is_lying_on_stomach(imu_values: &IMUValues) -> bool {
+    imu_values.accelerometer_std.y < MAX_ACC_DEVIATION && imu_values.angles.y >= MIN_LYING_ANGLE
+}
+/// Is the robot lying on its back based on the accelerometer and angle.
+fn is_lying_on_back(imu_values: &IMUValues) -> bool {
+    imu_values.accelerometer_std.y < MAX_ACC_DEVIATION && imu_values.angles.y <= -MIN_LYING_ANGLE
+}
+
+/// Checks position of the robot and sets [`FallState`], [`FallDirection`] and [`LyingDirection`]
+/// accordingly.
 #[system]
-fn falling_filter(imu_values: &IMUValues, fallingstate: &mut FallingStateWrapper) -> Result<()> {
-    fallingstate.state = match (
-        imu_values.angles.y > 0.5,
-        imu_values.angles.x > 0.5,
-        imu_values.angles.y < -0.5,
-        imu_values.angles.x < -0.5,
-    ) {
-        (true, false, _, false) => FallingState::Falling(Direction::Forwards), // forwards middle
-        (true, false, _, true) => FallingState::Falling(Direction::Forwards),  // forwards left
-        (true, true, _, false) => FallingState::Falling(Direction::Forwards),  // forwards right
-        (_, false, true, false) => FallingState::Falling(Direction::Backwards), // backwards middle
-        (_, false, true, true) => FallingState::Falling(Direction::Backwards), // backwards left
-        (_, true, true, false) => FallingState::Falling(Direction::Backwards), // backwards right
-        (false, _, false, true) => FallingState::Falling(Direction::Leftwards), // left
-        (false, true, false, _) => FallingState::Falling(Direction::Rightwards), // right
-        (_, _, _, _) => FallingState::Standing,
-    };
-    Ok(())
-}
-
-fn standard_deviation(array: &[f32]) -> f32 {
-    let avg: f32 = array.iter().sum::<f32>() / array.len() as f32;
-
-    let variance: f32 = array
-        .iter()
-        .map(|val| (val - avg) * (val - avg))
-        .sum::<f32>()
-        / array.len() as f32;
-
-    variance
-}
-
-fn lying_down(imu_values: &IMUValues, acc_values: &[f32; 50]) -> i8 {
-    if acc_values[49] != 0.0 {
-        let variance = standard_deviation(acc_values);
-
-        // lying on stomach
-        if variance < MAXIMUM_DEVIATION && imu_values.angles.y >= 1.5 {
-            return 0;
-        // lying on back
-        } else if variance < MAXIMUM_DEVIATION && imu_values.angles.y <= -1.5 {
-            return 1;
-        }
-    }
-    return 2;
-}
-
-#[system]
-fn fallconfirm(
-    imu_values: &IMUValues,
-    control: &mut NaoControlMessage,
-    damprevresources: &mut DamPrevResources,
-) -> Result<()> {
-    let acc_iterator = damprevresources.acc_iterator;
-
-    damprevresources.acc_values[acc_iterator as usize] = imu_values.accelerometer.y;
-
-    if lying_down(&imu_values, &damprevresources.acc_values) <= 1 {
-        control.left_ear = LeftEar::fill(1.0);
-        control.right_ear = RightEar::fill(1.0);
-    } else {
-        control.left_ear = LeftEar::fill(0.0);
-        control.right_ear = RightEar::fill(0.0);
+fn pose_filter(imu_values: &IMUValues, fallingstate: &mut Fall, contacts: &Contacts) -> Result<()> {
+    if is_falling_forward(imu_values) {
+        fallingstate.state = FallState::Falling(FallDirection::Forwards);
+    } else if is_falling_backward(imu_values) {
+        fallingstate.state = FallState::Falling(FallDirection::Backwards)
+    } else if is_falling_left(imu_values) {
+        fallingstate.state = FallState::Falling(FallDirection::Leftways)
+    } else if is_falling_right(imu_values) {
+        fallingstate.state = FallState::Falling(FallDirection::Rightways)
     }
 
-    damprevresources.acc_iterator = (acc_iterator + 1) % 50;
+    if is_standing_upright(imu_values, contacts) {
+        fallingstate.state = FallState::Upright;
+    }
+
+    if is_lying_on_stomach(imu_values) {
+        fallingstate.state = FallState::Lying(LyingDirection::FacingDown);
+    } else if is_lying_on_back(imu_values) {
+        fallingstate.state = FallState::Lying(LyingDirection::FacingUp);
+    }
 
     Ok(())
 }

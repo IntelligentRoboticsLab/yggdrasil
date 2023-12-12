@@ -14,7 +14,8 @@ heimdall = { path = "../crates/heimdall" }
 kira = { workspace = true, optional = true }
 miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true }
-nidhogg = { workspace = true }
+nidhogg = { workspace = true, features = ["lola"] }
+num = { workspace = true }
 odal = { path = "../crates/odal" }
 rerun = { workspace = true, optional = true, features = [
     "image",

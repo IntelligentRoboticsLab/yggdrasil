@@ -18,7 +18,7 @@ linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git
 miette = "5.10.0"
 nalgebra = "0.32.4"
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
-num = "0.4.0"
+num = "0.4.1"
 petgraph = "0.6.3"
 proc-macro2 = "1.0.78"
 quote = "1.0.35"

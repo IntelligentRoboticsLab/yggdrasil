@@ -5,7 +5,6 @@ use nidhogg::{types::SonarValues, NaoState};
 ///
 /// This module provides the following resources to the application:
 /// - [`SonarValues`]
-///
 pub struct SonarFilter;
 
 impl Module for SonarFilter {
