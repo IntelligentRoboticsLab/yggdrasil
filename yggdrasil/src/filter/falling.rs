@@ -11,9 +11,8 @@ pub struct FallingFilter;
 
 impl Module for FallingFilter {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_system(pose_filter)
-            .add_resource(Resource::new(Pose::default()))?)
+        app.add_system(pose_filter)
+            .add_resource(Resource::new(Pose::default()))
     }
 }
 
