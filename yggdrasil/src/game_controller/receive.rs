@@ -42,7 +42,7 @@ async fn receive_message(
 }
 
 #[system]
-pub fn receive_system(
+pub(crate) fn receive_system(
     game_controller_message: &mut Option<RoboCupGameControlData>,
     game_controller_socket: &mut Arc<Mutex<GameControllerSocket>>,
     game_controller_address: &mut Option<SocketAddr>,
