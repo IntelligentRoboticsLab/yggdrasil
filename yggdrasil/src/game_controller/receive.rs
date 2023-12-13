@@ -30,16 +30,16 @@ fn init_receive_game_controller_data_task(storage: &mut Storage) -> Result<()> {
             game_controller_data.socket.clone()
         })?;
 
-    storage.map_resource_mut(
-        |receive_game_controller_data_task: &mut AsyncTask<
-            Result<(RoboCupGameControlData, SocketAddr)>,
-        >| {
-            receive_game_controller_data_task
-                .try_spawn(receive_game_controller_data(game_controller_socket))
-        },
-    )??;
-
-    Ok(())
+    storage
+        .map_resource_mut(
+            |receive_game_controller_data_task: &mut AsyncTask<
+                Result<(RoboCupGameControlData, SocketAddr)>,
+            >| {
+                receive_game_controller_data_task
+                    .try_spawn(receive_game_controller_data(game_controller_socket))
+            },
+        )?
+        .into_diagnostic()
 }
 
 async fn receive_game_controller_data(
