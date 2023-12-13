@@ -15,12 +15,10 @@ pub struct GameControllerReceiveModule;
 impl Module for GameControllerReceiveModule {
     fn initialize(self, app: App) -> Result<App> {
         let game_controller_receive_message = Resource::<Option<RoboCupGameControlData>>::new(None);
-        let game_controller_address = Resource::<Option<SocketAddr>>::new(None);
 
         Ok(app
             .add_task::<AsyncTask<Result<(RoboCupGameControlData, SocketAddr)>>>()?
             .add_resource(game_controller_receive_message)?
-            .add_resource(game_controller_address)?
             .add_startup_system(init_receive_game_controller_data_task)?
             .add_system(receive_system))
     }
