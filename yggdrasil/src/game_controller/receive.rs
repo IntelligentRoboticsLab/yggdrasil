@@ -21,8 +21,27 @@ impl Module for GameControllerReceiveModule {
             .add_task::<AsyncTask<Result<(RoboCupGameControlData, SocketAddr)>>>()?
             .add_resource(game_controller_receive_message)?
             .add_resource(game_controller_address)?
+            .add_startup_system(init_receive_game_controller_data_task)?
             .add_system(receive_system))
     }
+}
+
+fn init_receive_game_controller_data_task(storage: &mut Storage) -> Result<()> {
+    let game_controller_socket =
+        storage.map_resource_mut(|game_controller_data: &mut GameControllerData| {
+            game_controller_data.socket.clone()
+        })?;
+
+    storage.map_resource_mut(
+        |receive_game_controller_data_task: &mut AsyncTask<
+            Result<(RoboCupGameControlData, SocketAddr)>,
+        >| {
+            receive_game_controller_data_task
+                .try_spawn(receive_game_controller_data(game_controller_socket))
+        },
+    )??;
+
+    Ok(())
 }
 
 async fn receive_game_controller_data(
@@ -47,20 +66,19 @@ pub(crate) fn receive_system(
     game_controller_data: &mut GameControllerData,
     receive_game_controller_data_task: &mut AsyncTask<Result<(RoboCupGameControlData, SocketAddr)>>,
 ) -> Result<()> {
-    if receive_game_controller_data_task
-        .try_spawn(receive_game_controller_data(
-            game_controller_data.socket.clone(),
-        ))
-        .is_err()
-    {
-        match receive_game_controller_data_task.poll() {
-            Some(Ok((new_game_controller_message, new_game_controller_address))) => {
-                *game_controller_message = Some(new_game_controller_message);
-                game_controller_data.game_controller_address = Some(new_game_controller_address);
-            }
-            Some(Err(error)) => tracing::warn!("Failed to decode game controller message: {error}"),
-            None => {}
+    match receive_game_controller_data_task.poll() {
+        Some(Ok((new_game_controller_message, new_game_controller_address))) => {
+            *game_controller_message = Some(new_game_controller_message);
+            game_controller_data.game_controller_address = Some(new_game_controller_address);
+
+            receive_game_controller_data_task
+                .try_spawn(receive_game_controller_data(
+                    game_controller_data.socket.clone(),
+                ))
+                .into_diagnostic()?;
         }
+        Some(Err(error)) => tracing::warn!("Failed to decode game controller message: {error}"),
+        None => {}
     }
 
     Ok(())
