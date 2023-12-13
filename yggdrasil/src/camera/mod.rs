@@ -115,6 +115,8 @@ impl Module for CameraModule {
             .add_resource(bottom_camera_resource)?
             .add_task::<AsyncTask<Result<TopImage>>>()?
             .add_task::<AsyncTask<Result<BottomImage>>>()?
+            .add_startup_system(init_top_image_task)?
+            .add_startup_system(init_bottom_image_task)?
             .add_system(camera_system))
     }
 }
@@ -125,6 +127,27 @@ async fn receive_top_image(top_camera: Arc<Mutex<Camera>>) -> Result<TopImage> {
 
 async fn receive_bottom_image(bottom_camera: Arc<Mutex<Camera>>) -> Result<BottomImage> {
     BottomImage::new(&mut bottom_camera.lock().unwrap())
+}
+
+fn init_top_image_task(storage: &mut Storage) -> Result<()> {
+    let top_camera = storage.map_resource_mut(|top_camera: &mut TopCamera| top_camera.0.clone())?;
+
+    storage
+        .map_resource_mut(|top_image_task: &mut AsyncTask<Result<TopImage>>| {
+            top_image_task.try_spawn(receive_top_image(top_camera))
+        })?
+        .into_diagnostic()
+}
+
+fn init_bottom_image_task(storage: &mut Storage) -> Result<()> {
+    let bottom_camera =
+        storage.map_resource_mut(|bottom_camera: &mut BottomCamera| bottom_camera.0.clone())?;
+
+    storage
+        .map_resource_mut(|bottom_image_task: &mut AsyncTask<Result<BottomImage>>| {
+            bottom_image_task.try_spawn(receive_bottom_image(bottom_camera))
+        })?
+        .into_diagnostic()
 }
 
 #[system]
@@ -139,14 +162,10 @@ fn camera_system(
     if let Some(new_top_image) = top_image_task.poll() {
         *top_image = new_top_image?;
         top_image_task.try_spawn(receive_top_image(top_camera.0.clone()))?;
-    } else if !top_image_task.active() {
-        top_image_task.try_spawn(receive_top_image(top_camera.0.clone()))?;
     }
 
     if let Some(new_bottom_image) = bottom_image_task.poll() {
         *bottom_image = new_bottom_image?;
-        bottom_image_task.try_spawn(receive_bottom_image(bottom_camera.0.clone()))?;
-    } else if !bottom_image_task.active() {
         bottom_image_task.try_spawn(receive_bottom_image(bottom_camera.0.clone()))?;
     }
 
