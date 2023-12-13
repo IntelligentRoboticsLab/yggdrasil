@@ -15,7 +15,7 @@ mod transmit;
 pub(crate) struct GameControllerData {
     pub socket: Arc<UdpSocket>,
     pub last_send_message_instant: Instant,
-    pub game_controller_address: Option<SocketAddr>,
+    pub game_controller_address: Option<(SocketAddr, Instant)>,
 }
 
 pub struct GameControllerModule;
@@ -41,8 +41,8 @@ impl GameControllerModule {
             })??;
 
         storage.add_resource(Resource::new(GameControllerData {
-            last_send_message_instant: Instant::now(),
             socket: Arc::new(game_controller_socket),
+            last_send_message_instant: Instant::now(),
             game_controller_address: None,
         }))?;
 

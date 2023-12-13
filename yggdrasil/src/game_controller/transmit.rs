@@ -75,7 +75,7 @@ pub(super) fn send_system(
         Result<(RoboCupGameControlReturnData, Instant)>,
     >,
 ) -> Result<()> {
-    let Some(game_controller_address) = game_controller_data.game_controller_address else {
+    let Some((game_controller_address, _)) = game_controller_data.game_controller_address else {
         return Ok(());
     };
 

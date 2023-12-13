@@ -1,7 +1,13 @@
 use super::GameControllerData;
 
 use bifrost::communication::RoboCupGameControlData;
-use std::{io, mem::size_of, net::SocketAddr, sync::Arc};
+use std::{
+    io,
+    mem::size_of,
+    net::SocketAddr,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use tokio::net::UdpSocket;
 
 use bifrost::serialization::Decode;
@@ -9,6 +15,8 @@ use bifrost::serialization::Decode;
 use miette::{IntoDiagnostic, Result};
 
 use tyr::prelude::*;
+
+const GAME_CONTROLLER_TIMEOUT_MS: u64 = 5000;
 
 pub struct GameControllerReceiveModule;
 
@@ -77,7 +85,8 @@ pub(super) fn receive_system(
     match receive_game_controller_data_task.poll() {
         Some(Ok((new_game_controller_message, new_game_controller_address))) => {
             *game_controller_message = Some(new_game_controller_message);
-            game_controller_data.game_controller_address = Some(new_game_controller_address);
+            game_controller_data.game_controller_address =
+                Some((new_game_controller_address, Instant::now()));
 
             receive_game_controller_data_task
                 .try_spawn(receive_game_controller_data(
@@ -87,6 +96,17 @@ pub(super) fn receive_system(
         }
         Some(Err(error)) => tracing::warn!("Failed to decode game controller message: {error}"),
         None => {}
+    }
+
+    // Check if we have lost contant to the game-controller for an extended period of time.
+    if game_controller_data
+        .game_controller_address
+        .is_some_and(|(_, instant)| {
+            instant.elapsed() > Duration::from_millis(GAME_CONTROLLER_TIMEOUT_MS)
+        })
+    {
+        *game_controller_message = None;
+        game_controller_data.game_controller_address = None;
     }
 
     Ok(())
