@@ -1,6 +1,8 @@
 use super::GameControllerData;
 
 use bifrost::communication::RoboCupGameControlData;
+use bifrost::serialization::Decode;
+
 use std::{
     io,
     mem::size_of,
@@ -8,12 +10,10 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
+
 use tokio::net::UdpSocket;
 
-use bifrost::serialization::Decode;
-
 use miette::{IntoDiagnostic, Result};
-
 use tyr::prelude::*;
 
 const GAME_CONTROLLER_TIMEOUT_MS: u64 = 5000;

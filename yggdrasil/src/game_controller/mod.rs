@@ -1,10 +1,10 @@
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-use std::sync::Arc;
-use std::time::Instant;
+use bifrost::communication::GAMECONTROLLER_DATA_PORT;
 
 use tokio::net::UdpSocket;
 
-use bifrost::communication::GAMECONTROLLER_DATA_PORT;
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::sync::Arc;
+use std::time::Instant;
 
 use miette::{IntoDiagnostic, Result};
 use tyr::prelude::*;

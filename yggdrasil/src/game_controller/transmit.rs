@@ -2,6 +2,7 @@ use super::GameControllerData;
 
 use bifrost::communication::{RoboCupGameControlReturnData, GAMECONTROLLER_RETURN_PORT};
 use bifrost::serialization::Encode;
+
 use tokio::net::UdpSocket;
 use tokio::time::sleep;
 
