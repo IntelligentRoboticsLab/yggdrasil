@@ -23,7 +23,7 @@ impl Module for GameControllerSendModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_task::<AsyncTask<Result<(RoboCupGameControlReturnData, Instant)>>>()?
-            .add_system(send_system))
+            .add_system(transmit_system))
     }
 }
 
@@ -70,7 +70,7 @@ async fn transmit_game_controller_return_data(
 }
 
 #[system]
-pub(super) fn send_system(
+pub(super) fn transmit_system(
     game_controller_data: &mut GameControllerData,
     transmit_game_controller_return_data_task: &mut AsyncTask<
         Result<(RoboCupGameControlReturnData, Instant)>,

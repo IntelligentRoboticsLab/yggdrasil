@@ -28,7 +28,8 @@ impl Module for GameControllerReceiveModule {
             .add_task::<AsyncTask<Result<(RoboCupGameControlData, SocketAddr)>>>()?
             .add_resource(game_controller_receive_message)?
             .add_startup_system(init_receive_game_controller_data_task)?
-            .add_system(receive_system))
+            .add_system(receive_system)
+            .add_system(check_game_controller_connection_system.after(receive_system)))
     }
 }
 
@@ -98,7 +99,14 @@ pub(super) fn receive_system(
         None => {}
     }
 
-    // Check if we have lost contant to the game-controller for an extended period of time.
+    Ok(())
+}
+
+#[system]
+fn check_game_controller_connection_system(
+    game_controller_message: &mut Option<RoboCupGameControlData>,
+    game_controller_data: &mut GameControllerData,
+) -> Result<()> {
     if game_controller_data
         .game_controller_address
         .is_some_and(|(_, instant)| {
