@@ -80,22 +80,21 @@ pub(super) fn transmit_system(
         return Ok(());
     };
 
-    if transmit_game_controller_return_data_task
-        .try_spawn(transmit_game_controller_return_data(
-            game_controller_data.socket.clone(),
-            game_controller_data.last_send_message_instant,
-            game_controller_address,
-        ))
-        .is_err()
-    {
-        match transmit_game_controller_return_data_task.poll() {
-            Some(Ok((_game_controller_return_message, last_transmitted_instant))) => {
-                game_controller_data.last_send_message_instant = last_transmitted_instant
-            }
-            Some(Err(error)) => {
-                tracing::warn!("Failed to transmit game controller return data: {error}");
-            }
-            None => {}
+    match transmit_game_controller_return_data_task.poll() {
+        Some(Ok((_game_controller_return_message, last_transmitted_instant))) => {
+            game_controller_data.last_send_message_instant = last_transmitted_instant;
+        }
+        Some(Err(error)) => {
+            tracing::warn!("Failed to transmit game controller return data: {error}");
+        }
+        None => {
+            _ = transmit_game_controller_return_data_task.try_spawn(
+                transmit_game_controller_return_data(
+                    game_controller_data.socket.clone(),
+                    game_controller_data.last_send_message_instant,
+                    game_controller_address,
+                ),
+            );
         }
     }
 

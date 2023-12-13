@@ -83,8 +83,12 @@ pub(super) fn receive_system(
     game_controller_data: &mut GameControllerData,
     receive_game_controller_data_task: &mut AsyncTask<Result<(RoboCupGameControlData, SocketAddr)>>,
 ) -> Result<()> {
-    match receive_game_controller_data_task.poll() {
-        Some(Ok((new_game_controller_message, new_game_controller_address))) => {
+    let Some(receive_task_result) = receive_game_controller_data_task.poll() else {
+        return Ok(());
+    };
+
+    match receive_task_result {
+        Ok((new_game_controller_message, new_game_controller_address)) => {
             *game_controller_message = Some(new_game_controller_message);
             game_controller_data.game_controller_address =
                 Some((new_game_controller_address, Instant::now()));
@@ -95,8 +99,7 @@ pub(super) fn receive_system(
                 ))
                 .into_diagnostic()?;
         }
-        Some(Err(error)) => tracing::warn!("Failed to decode game controller message: {error}"),
-        None => {}
+        Err(error) => tracing::warn!("Failed to decode game controller message: {error}"),
     }
 
     Ok(())
