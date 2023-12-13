@@ -5,6 +5,7 @@ use bifrost::serialization::Encode;
 use tokio::net::UdpSocket;
 use tokio::time::sleep;
 
+use std::mem::size_of;
 use std::net::SocketAddr;
 use std::ops::Add;
 use std::sync::Arc;
@@ -30,7 +31,7 @@ async fn transmit_game_controller_return_data(
     last_send_return_message: Instant,
     mut game_controller_address: SocketAddr,
 ) -> Result<(RoboCupGameControlReturnData, Instant)> {
-    let mut buffer = [0u8; 1024];
+    let mut buffer = [0u8; size_of::<RoboCupGameControlReturnData>()];
 
     let duration_to_wait = last_send_return_message
         .add(Duration::from_millis(GAMECONTROLLER_RETURN_DELAY_MS))
@@ -68,7 +69,7 @@ async fn transmit_game_controller_return_data(
 }
 
 #[system]
-pub(crate) fn send_system(
+pub(super) fn send_system(
     game_controller_data: &mut GameControllerData,
     transmit_game_controller_return_data_task: &mut AsyncTask<
         Result<(RoboCupGameControlReturnData, Instant)>,

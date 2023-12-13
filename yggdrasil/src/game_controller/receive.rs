@@ -1,7 +1,7 @@
 use super::GameControllerData;
 
 use bifrost::communication::RoboCupGameControlData;
-use std::{net::SocketAddr, sync::Arc};
+use std::{io, mem::size_of, net::SocketAddr, sync::Arc};
 use tokio::net::UdpSocket;
 
 use bifrost::serialization::Decode;
@@ -45,7 +45,9 @@ fn init_receive_game_controller_data_task(storage: &mut Storage) -> Result<()> {
 async fn receive_game_controller_data(
     game_controller_socket: Arc<UdpSocket>,
 ) -> Result<(RoboCupGameControlData, SocketAddr)> {
-    let mut buffer = [0u8; 1024];
+    // The buffer is larger than necesary, in case we somehow receive invalid data, which can be a
+    // bit longer than a normal `RoboCupGameControlData`.
+    let mut buffer = [0u8; 2 * size_of::<RoboCupGameControlData>()];
 
     let (_bytes_received, new_game_controller_address) = game_controller_socket
         .recv_from(&mut buffer)
@@ -55,11 +57,19 @@ async fn receive_game_controller_data(
     let new_game_controller_message =
         RoboCupGameControlData::decode(&mut buffer.as_slice()).into_diagnostic()?;
 
+    if !new_game_controller_message.is_valid() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Received invalid data from the game controller",
+        ))
+        .into_diagnostic();
+    }
+
     Ok((new_game_controller_message, new_game_controller_address))
 }
 
 #[system]
-pub(crate) fn receive_system(
+pub(super) fn receive_system(
     game_controller_message: &mut Option<RoboCupGameControlData>,
     game_controller_data: &mut GameControllerData,
     receive_game_controller_data_task: &mut AsyncTask<Result<(RoboCupGameControlData, SocketAddr)>>,
