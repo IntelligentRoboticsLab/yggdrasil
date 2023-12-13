@@ -18,6 +18,17 @@ pub(crate) struct GameControllerData {
     pub game_controller_address: Option<(SocketAddr, Instant)>,
 }
 
+/// This module handles the communication with the game-controller.
+///
+/// The last received game-controller message is stored in an resource. If no message has been
+/// received yet from the game-controller, or if connection to the game-controller has been lost
+/// for an extended period of time, that resource is set to `None`.
+///
+/// The module send status updates back to the game-controller. These messages include data like
+/// the robot's- number and position.
+///
+/// This module provides the following resources to the application:
+/// - [`Option`]<[`RoboCupGameControlData`](bifrost::communication::RoboCupGameControlData)>
 pub struct GameControllerModule;
 
 impl GameControllerModule {
