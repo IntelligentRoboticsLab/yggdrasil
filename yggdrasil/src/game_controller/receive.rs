@@ -47,13 +47,12 @@ pub(crate) fn receive_system(
     game_controller_data: &mut GameControllerData,
     receive_game_controller_data_task: &mut AsyncTask<Result<(RoboCupGameControlData, SocketAddr)>>,
 ) -> Result<()> {
-    if !receive_game_controller_data_task.active() {
-        receive_game_controller_data_task
-            .try_spawn(receive_game_controller_data(
-                game_controller_data.socket.clone(),
-            ))
-            .into_diagnostic()?;
-    } else {
+    if receive_game_controller_data_task
+        .try_spawn(receive_game_controller_data(
+            game_controller_data.socket.clone(),
+        ))
+        .is_err()
+    {
         match receive_game_controller_data_task.poll() {
             Some(Ok((new_game_controller_message, new_game_controller_address))) => {
                 *game_controller_message = Some(new_game_controller_message);
