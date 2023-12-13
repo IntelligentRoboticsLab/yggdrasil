@@ -113,6 +113,8 @@ fn check_game_controller_connection_system(
             instant.elapsed() > Duration::from_millis(GAME_CONTROLLER_TIMEOUT_MS)
         })
     {
+        tracing::warn!("Lost connection to the game controller");
+
         *game_controller_message = None;
         game_controller_data.game_controller_address = None;
     }
