@@ -92,15 +92,15 @@ pub(super) fn receive_system(
             *game_controller_message = Some(new_game_controller_message);
             game_controller_data.game_controller_address =
                 Some((new_game_controller_address, Instant::now()));
-
-            receive_game_controller_data_task
-                .try_spawn(receive_game_controller_data(
-                    game_controller_data.socket.clone(),
-                ))
-                .into_diagnostic()?;
         }
         Err(error) => tracing::warn!("Failed to decode game controller message: {error}"),
     }
+
+    receive_game_controller_data_task
+        .try_spawn(receive_game_controller_data(
+            game_controller_data.socket.clone(),
+        ))
+        .into_diagnostic()?;
 
     Ok(())
 }
