@@ -13,7 +13,7 @@ use bifrost_derive::{Decode, Encode};
 /// The port from which the `GameController` sends the [`GameControllerData`] to the robots.
 pub const GAMECONTROLLER_DATA_PORT: u16 = 3838;
 
-/// The port on which the robots send the return data to the `GameController`.
+/// The port on which the robots send the [`GameControllerReturnData`] data to the `GameController`.
 pub const GAMECONTROLLER_RETURN_PORT: u16 = 3939;
 
 /// The header of the data sent by the `GameController`.
