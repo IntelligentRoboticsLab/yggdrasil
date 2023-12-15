@@ -107,7 +107,7 @@ pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
     )?;
     motion_manager.add_motion(
         MotionType::FallRightways,
-        "./assets/motions/fallrightways.json",
+        "./assets/motions/fallbackwards.json",
     )?;
     motion_manager.add_motion(MotionType::Neutral, "./assets/motions/neutral.json")?;
     motion_manager.add_motion(MotionType::Example, "./assets/motions/example.json")?;
