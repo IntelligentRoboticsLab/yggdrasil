@@ -11,22 +11,22 @@
 use bifrost_derive::{Decode, Encode};
 
 /// The port from which the `GameController` sends the [`GameControllerData`] to the robots.
-pub const GAMECONTROLLER_DATA_PORT: u16 = 3838;
+pub const GAME_CONTROLLER_DATA_PORT: u16 = 3838;
 
 /// The port on which the robots send the [`GameControllerReturnData`] data to the `GameController`.
-pub const GAMECONTROLLER_RETURN_PORT: u16 = 3939;
+pub const GAME_CONTROLLER_RETURN_PORT: u16 = 3939;
 
 /// The header of the data sent by the `GameController`.
-const GAMECONTROLLER_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'm', b'e'];
+const GAME_CONTROLLER_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'm', b'e'];
 
 /// The version of the data sent by the `GameController`.
 const GAMECONTROLLER_STRUCT_VERSION: u8 = 15;
 
 /// The header of the data sent by the robots.
-const GAMECONTROLLER_RETURN_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'r', b't'];
+const GAME_CONTROLLER_RETURN_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'r', b't'];
 
 /// The version of the data sent by the robots.
-const GAMECONTROLLER_RETURN_STRUCT_VERSION: u8 = 4;
+const GAME_CONTROLLER_RETURN_STRUCT_VERSION: u8 = 4;
 
 /// The maximum number of players
 const MAX_NUM_PLAYERS: u8 = 20;
@@ -298,7 +298,7 @@ impl GameControllerData {
     /// the number of players does not exceed the maximum number of players per team.
     #[must_use]
     pub fn is_valid(&self) -> bool {
-        self.header == GAMECONTROLLER_STRUCT_HEADER
+        self.header == GAME_CONTROLLER_STRUCT_HEADER
             && self.version == GAMECONTROLLER_STRUCT_VERSION
             && self.players_per_team <= MAX_NUM_PLAYERS
     }
@@ -317,8 +317,8 @@ impl GameControllerReturnData {
         ball: [f32; 2],
     ) -> Self {
         Self {
-            header: GAMECONTROLLER_RETURN_STRUCT_HEADER,
-            version: GAMECONTROLLER_RETURN_STRUCT_VERSION,
+            header: GAME_CONTROLLER_RETURN_STRUCT_HEADER,
+            version: GAME_CONTROLLER_RETURN_STRUCT_VERSION,
             player_num,
             team_num,
             fallen,

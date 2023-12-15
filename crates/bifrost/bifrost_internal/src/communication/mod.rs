@@ -3,8 +3,8 @@ mod game_controller_message;
 
 pub use game_controller_message::{
     CompetitionPhase, CompetitionType, GameControllerData, GameControllerReturnData, GamePhase,
-    GameState, Half, Penalty, RobotInfo, SetPlay, TeamColor, TeamInfo, GAMECONTROLLER_DATA_PORT,
-    GAMECONTROLLER_RETURN_PORT,
+    GameState, Half, Penalty, RobotInfo, SetPlay, TeamColor, TeamInfo, GAME_CONTROLLER_DATA_PORT,
+    GAME_CONTROLLER_RETURN_PORT,
 };
 
 /// The maximum allowed size in bytes of an udp message for robot-to-robot communication.
