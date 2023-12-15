@@ -1,18 +1,24 @@
+use tyr::{prelude::*, tasks::TaskModule};
+
+use miette::Result;
+
 use yggdrasil::{
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, debug::DebugModule,
     filter::FilterModule, game_controller::GameControllerModule, leds::LedsModule, nao::NaoModule,
-    prelude::*, primary_state::PrimaryStateModule, walk::WalkingEngineModule,
+    prelude::*, primary_state::PrimaryStateModule, walk::WalkingEngineModule, motion::MotionModule,
 };
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt::fmt().init();
+
     miette::set_panic_hook();
 
-    let app = App::new()
+    App::new()
+        .add_module(TaskModule)?
         .add_module(NaoModule)?
-        .add_module(ConfigModule)?
         .add_module(FilterModule)?
         .add_module(CameraModule)?
+        .add_module(MotionModule)?
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?
         .add_module(PrimaryStateModule)?
