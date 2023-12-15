@@ -17,26 +17,27 @@ impl Module for FallingFilter {
 }
 
 #[derive(Default)]
-struct Pose {
-    state: PoseState,
+pub struct Pose {
+    pub state: PoseState,
 }
 
-#[derive(Default)]
-enum PoseState {
+#[derive(Default, Clone)]
+pub enum PoseState {
     Falling(FallDirection),
     #[default]
     Upright,
     Lying(LyingFacing),
 }
-
-enum FallDirection {
+#[derive(Clone)]
+pub enum FallDirection {
     Forwards,
     Backwards,
     Leftways,
     Rightways,
 }
 
-enum LyingFacing {
+#[derive(Clone)]
+pub enum LyingFacing {
     Up,
     Down,
 }
@@ -50,20 +51,19 @@ fn pose_filter(
     control: &mut NaoControlMessage,
 ) -> Result<()> {
     fallingstate.state = match (
-        imu_values.angles.y > 0.5,
-        imu_values.angles.x > 0.5,
-        imu_values.angles.y < -0.5,
-        imu_values.angles.x < -0.5,
+        imu_values.angles.y > 0.6,
+        imu_values.angles.y < -0.6,
+        imu_values.angles.x > 0.6,
+        imu_values.angles.x < -0.6,
+        imu_values.gyroscope.y.abs() > 2.25,
+        imu_values.gyroscope.x.abs() > 2.25,
     ) {
-        (true, false, _, false) => PoseState::Falling(FallDirection::Forwards), // forwards middle
-        (true, false, _, true) => PoseState::Falling(FallDirection::Forwards),  // forwards left
-        (true, true, _, false) => PoseState::Falling(FallDirection::Forwards),  // forwards right
-        (_, false, true, false) => PoseState::Falling(FallDirection::Backwards), // backwards middle
-        (_, false, true, true) => PoseState::Falling(FallDirection::Backwards), // backwards left
-        (_, true, true, false) => PoseState::Falling(FallDirection::Backwards), // backwards right
-        (false, _, false, true) => PoseState::Falling(FallDirection::Leftways), // left
-        (false, true, false, _) => PoseState::Falling(FallDirection::Rightways), // right
-        (_, _, _, _) => PoseState::Upright,
+        (true, _, _, _, true, _) => PoseState::Falling(FallDirection::Forwards), // forwards
+        (_, true, _, _, true, _) => PoseState::Falling(FallDirection::Backwards), // backwards
+        (_, _, true, _, _, true) => PoseState::Falling(FallDirection::Rightways), // right
+        (_, _, _, true, _, true) => PoseState::Falling(FallDirection::Leftways), // left
+        (false, false, false, false, false, false) => PoseState::Upright,        // upright
+        (_, _, _, _, _, _) => fallingstate.state.clone(),
     };
 
     // lying on stomach
