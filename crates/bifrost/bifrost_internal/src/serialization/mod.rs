@@ -78,5 +78,3 @@ pub use bifrost_derive::Decode;
 /// }
 /// ```
 pub use bifrost_derive::Encode;
-
-
