@@ -1,9 +1,14 @@
 [workspace]
 resolver = "2"
-members = ["crates/sindri", "crates/heimdall", "crates/tyr", "yggdrasil"]
+members = [
+  "crates/bifrost",
+  "crates/sindri",
+  "crates/heimdall",
+  "crates/tyr",
+  "yggdrasil",
+]
 
 [workspace.dependencies]
-bifrost = { git = "ssh://git@github.com/IntelligentRoboticsLab/bifrost.git" }
 cargo_toml = "0.17.0"
 clap = "4.4.3"
 colored = "2.0.4"

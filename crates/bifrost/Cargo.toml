@@ -1,0 +1,8 @@
+[package]
+name = "bifrost"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bifrost_internal = { path = "bifrost_internal" }
+bifrost_derive = { path = "bifrost_derive" }
