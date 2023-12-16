@@ -1,10 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-  "crates/bifrost",
-  "crates/sindri",
-  "crates/heimdall",
-  "crates/tyr",
+  "crates/*",
   "yggdrasil",
 ]
 
