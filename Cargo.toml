@@ -1,9 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
-  "crates/*",
-  "yggdrasil",
-]
+members = ["crates/*", "yggdrasil"]
 
 [workspace.dependencies]
 async-trait = "0.1.62"
