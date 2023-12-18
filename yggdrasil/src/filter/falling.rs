@@ -21,14 +21,14 @@ pub struct Pose {
     pub state: PoseState,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub enum PoseState {
     Falling(FallDirection),
     #[default]
     Upright,
     Lying(LyingFacing),
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum FallDirection {
     Forwards,
     Backwards,
@@ -36,7 +36,7 @@ pub enum FallDirection {
     Rightways,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum LyingFacing {
     Up,
     Down,
@@ -55,14 +55,13 @@ fn pose_filter(
         imu_values.angles.y < -0.6,
         imu_values.angles.x > 0.6,
         imu_values.angles.x < -0.6,
-        imu_values.gyroscope.y.abs() > 2.25,
-        imu_values.gyroscope.x.abs() > 2.25,
+        imu_values.gyroscope.y.abs() > 1.0,
+        imu_values.gyroscope.x.abs() > 1.0,
     ) {
         (true, _, _, _, true, _) => PoseState::Falling(FallDirection::Forwards), // forwards
         (_, true, _, _, true, _) => PoseState::Falling(FallDirection::Backwards), // backwards
         (_, _, true, _, _, true) => PoseState::Falling(FallDirection::Rightways), // right
         (_, _, _, true, _, true) => PoseState::Falling(FallDirection::Leftways), // left
-        (false, false, false, false, false, false) => PoseState::Upright,        // upright
         (_, _, _, _, _, _) => fallingstate.state.clone(),
     };
 

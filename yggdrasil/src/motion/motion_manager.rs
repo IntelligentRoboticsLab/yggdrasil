@@ -95,22 +95,22 @@ pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
     // Add new motions here!
     motion_manager.add_motion(
         MotionType::FallForwards,
-        "./deploy/assets/motions/fallforwards.json",
+        "./assets/motions/fallforwards.json",
     )?;
     motion_manager.add_motion(
         MotionType::FallBackwards,
-        "./deploy/assets/motions/fallbackwards.json",
+        "./assets/motions/fallbackwards.json",
     )?;
     motion_manager.add_motion(
         MotionType::FallLeftways,
-        "./deploy/assets/motions/fallleftways.json",
+        "./assets/motions/fallleftways.json",
     )?;
     motion_manager.add_motion(
         MotionType::FallRightways,
-        "./deploy/assets/motions/fallrightways.json",
+        "./assets/motions/fallrightways.json",
     )?;
-    motion_manager.add_motion(MotionType::Neutral, "./deploy/assets/motions/neutral.json")?;
-    motion_manager.add_motion(MotionType::Example, "./deploy/assets/motions/example.json")?;
+    motion_manager.add_motion(MotionType::Neutral, "./assets/motions/neutral.json")?;
+    motion_manager.add_motion(MotionType::Example, "./assets/motions/example.json")?;
     storage.add_resource(Resource::new(motion_manager))?;
 
     Ok(())

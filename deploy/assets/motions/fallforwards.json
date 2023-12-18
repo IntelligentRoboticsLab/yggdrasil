@@ -29,7 +29,7 @@
     },
     "movements": [
         {
-            "duration": 0.7,
+            "duration": 0.5,
             "target_position": {
             "head_yaw": 0.026036024,
             "head_pitch": -0.7455659,
