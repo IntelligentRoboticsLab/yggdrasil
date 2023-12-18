@@ -13,3 +13,6 @@ async-trait = { workspace = true }
 tokio-test = { workspace = true }
 byteorder = { workspace = true }
 bifrost_derive = { path = "../bifrost_derive" }
+
+[dev-dependencies]
+bifrost = { path = "../" }

@@ -14,7 +14,6 @@ pub use codec::{Decode, Encode, VarInt};
 ///
 /// ## Examples
 /// ```no_run
-/// # use bifrost_internal as bifrost;
 /// use std::io::Read;
 /// use bifrost::{Result, serialization::Decode};
 ///
@@ -28,7 +27,6 @@ pub use codec::{Decode, Encode, VarInt};
 ///
 /// ## Examples
 /// ```no_run
-/// # use bifrost_internal as bifrost;
 /// use std::io::Read;
 /// use bifrost::{Result, serialization::Decode};
 ///
@@ -52,7 +50,6 @@ pub use bifrost_derive::Decode;
 ///
 /// ## Examples
 /// ```no_run
-/// # use bifrost_internal as bifrost;
 /// use std::io::Write;
 /// use bifrost::{Result, serialization::Encode};
 ///
@@ -66,7 +63,6 @@ pub use bifrost_derive::Decode;
 ///
 /// ## Examples
 /// ```no_run
-/// # use bifrost_internal as bifrost;
 /// use std::io::Write;
 /// use bifrost::{Result, serialization::Encode};
 ///

@@ -21,7 +21,6 @@ use bifrost::{Error, Result};
 /// variant for encodig/decoding.
 ///
 /// ```no_run
-/// # use bifrost_internal as bifrost;
 /// use bifrost::{serialization::Encode};
 ///
 /// #[derive(Encode)]
