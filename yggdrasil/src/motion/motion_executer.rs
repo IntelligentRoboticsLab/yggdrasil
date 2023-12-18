@@ -8,8 +8,8 @@ use nidhogg::{
 use std::time::SystemTime;
 use tyr::prelude::*;
 
-const STARTING_POSITION_ERROR_MARGIN: f32 = 0.20;
-const LERP_TO_STARTING_POSITION_DURATION_SECS: f32 = 2.0;
+const STARTING_POSITION_ERROR_MARGIN: f32 = 0.40;
+const LERP_TO_STARTING_POSITION_DURATION_SECS: f32 = 0.5;
 const STIFFNESS: f32 = 0.8;
 
 /// Checks if the current position has reached the target position with a certain

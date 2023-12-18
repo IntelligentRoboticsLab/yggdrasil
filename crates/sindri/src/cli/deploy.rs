@@ -158,6 +158,7 @@ async fn deploy_to_robot(pb: &ProgressBar, addr: Ipv4Addr) -> Result<()> {
     // Ensure asset directory and sounds directory exist on remote
     ensure_directory_exists(&sftp, "/home/nao/assets")?;
     ensure_directory_exists(&sftp, "/home/nao/assets/sounds")?;
+    ensure_directory_exists(&sftp, "/home/nao/assets/motions")?;
 
     pb.set_style(
         ProgressStyle::with_template(
