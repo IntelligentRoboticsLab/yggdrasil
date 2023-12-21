@@ -86,6 +86,18 @@ fn contains_our_team_number(game_controller_message: &RoboCupGameControlData) ->
     teams[0].team_number == team_number || teams[1].team_number == team_number
 }
 
+fn replace_old_game_controller_message(
+    old_game_controller_address: Option<&(SocketAddr, Instant)>,
+    new_game_controller_address: SocketAddr,
+) -> bool {
+    old_game_controller_address.map_or_else(
+        || true,
+        |(old_game_controller_address, _)| {
+            *old_game_controller_address == new_game_controller_address
+        },
+    )
+}
+
 #[system]
 pub(super) fn receive_system(
     game_controller_message: &mut Option<RoboCupGameControlData>,
@@ -104,9 +116,10 @@ pub(super) fn receive_system(
             // it as well, because it means that there are multiple game controllers active on
             // the network.
             if contains_our_team_number(&new_game_controller_message)
-                && !game_controller_data
-                    .game_controller_address
-                    .is_some_and(|(old_address, _)| old_address != new_game_controller_address)
+                && replace_old_game_controller_message(
+                    game_controller_data.game_controller_address.as_ref(),
+                    new_game_controller_address,
+                )
             {
                 *game_controller_message = Some(new_game_controller_message);
                 game_controller_data.game_controller_address =
