@@ -54,11 +54,8 @@ impl BottomCamera {
 pub struct Image(Arc<(YuyvImage, Instant)>);
 
 impl Image {
-    fn new(camera: &mut Camera) -> Result<Self> {
-        Ok(Self(Arc::new((
-            camera.get_yuyv_image().into_diagnostic()?,
-            Instant::now(),
-        ))))
+    fn new(yuyv_image: YuyvImage) -> Self {
+        Self(Arc::new((yuyv_image, Instant::now())))
     }
 
     /// Return the captured image in yuyv format.
@@ -77,8 +74,12 @@ pub struct TopImage(Image);
 pub struct BottomImage(Image);
 
 impl TopImage {
-    fn new(camera: &mut Camera) -> Result<Self> {
-        Ok(Self(Image::new(camera)?))
+    fn new(yuyv_image: YuyvImage) -> Self {
+        Self(Image::new(yuyv_image))
+    }
+
+    fn take_image(camera: &mut Camera) -> Result<Self> {
+        Ok(Self(Image::new(camera.get_yuyv_image().into_diagnostic()?)))
     }
 
     pub fn image(&self) -> &Image {
@@ -87,8 +88,12 @@ impl TopImage {
 }
 
 impl BottomImage {
-    fn new(camera: &mut Camera) -> Result<Self> {
-        Ok(Self(Image::new(camera)?))
+    fn new(yuyv_image: YuyvImage) -> Self {
+        Self(Image::new(yuyv_image))
+    }
+
+    fn take_image(camera: &mut Camera) -> Result<Self> {
+        Ok(Self(Image::new(camera.get_yuyv_image().into_diagnostic()?)))
     }
 
     pub fn image(&self) -> &Image {
@@ -101,11 +106,13 @@ impl Module for CameraModule {
         let top_camera = TopCamera::new()?;
         let bottom_camera = BottomCamera::new()?;
 
-        let top_image_resource = Resource::new(TopImage::new(&mut top_camera.0.lock().unwrap())?);
+        let top_image_resource =
+            Resource::new(TopImage::take_image(&mut top_camera.0.lock().unwrap())?);
         let top_camera_resource = Resource::new(top_camera);
 
-        let bottom_image_resource =
-            Resource::new(BottomImage::new(&mut bottom_camera.0.lock().unwrap())?);
+        let bottom_image_resource = Resource::new(BottomImage::take_image(
+            &mut bottom_camera.0.lock().unwrap(),
+        )?);
         let bottom_camera_resource = Resource::new(bottom_camera);
 
         Ok(app
@@ -113,41 +120,27 @@ impl Module for CameraModule {
             .add_resource(top_camera_resource)?
             .add_resource(bottom_image_resource)?
             .add_resource(bottom_camera_resource)?
-            .add_task::<AsyncTask<Result<TopImage>>>()?
-            .add_task::<AsyncTask<Result<BottomImage>>>()?
-            .add_startup_system(init_top_image_task)?
-            .add_startup_system(init_bottom_image_task)?
             .add_system(camera_system))
     }
 }
 
-async fn receive_top_image(top_camera: Arc<Mutex<Camera>>) -> Result<TopImage> {
-    TopImage::new(&mut top_camera.lock().unwrap())
+fn try_get_top_image(top_camera: &mut TopCamera) -> Option<TopImage> {
+    let Ok(mut top_camera) = top_camera.0.try_lock() else {
+        return None;
+    };
+
+    top_camera.try_get_yuyv_image().ok().map(TopImage::new)
 }
 
-async fn receive_bottom_image(bottom_camera: Arc<Mutex<Camera>>) -> Result<BottomImage> {
-    BottomImage::new(&mut bottom_camera.lock().unwrap())
-}
+fn try_get_bottom_image(top_camera: &mut BottomCamera) -> Option<BottomImage> {
+    let Ok(mut bottom_camera) = top_camera.0.try_lock() else {
+        return None;
+    };
 
-fn init_top_image_task(storage: &mut Storage) -> Result<()> {
-    let top_camera = storage.map_resource_mut(|top_camera: &mut TopCamera| top_camera.0.clone())?;
-
-    storage
-        .map_resource_mut(|top_image_task: &mut AsyncTask<Result<TopImage>>| {
-            top_image_task.try_spawn(receive_top_image(top_camera))
-        })?
-        .into_diagnostic()
-}
-
-fn init_bottom_image_task(storage: &mut Storage) -> Result<()> {
-    let bottom_camera =
-        storage.map_resource_mut(|bottom_camera: &mut BottomCamera| bottom_camera.0.clone())?;
-
-    storage
-        .map_resource_mut(|bottom_image_task: &mut AsyncTask<Result<BottomImage>>| {
-            bottom_image_task.try_spawn(receive_bottom_image(bottom_camera))
-        })?
-        .into_diagnostic()
+    bottom_camera
+        .try_get_yuyv_image()
+        .ok()
+        .map(BottomImage::new)
 }
 
 #[system]
@@ -156,17 +149,13 @@ fn camera_system(
     bottom_camera: &mut BottomCamera,
     top_image: &mut TopImage,
     bottom_image: &mut BottomImage,
-    top_image_task: &mut AsyncTask<Result<TopImage>>,
-    bottom_image_task: &mut AsyncTask<Result<BottomImage>>,
 ) -> Result<()> {
-    if let Some(new_top_image) = top_image_task.poll() {
-        *top_image = new_top_image?;
-        top_image_task.try_spawn(receive_top_image(top_camera.0.clone()))?;
+    if let Some(new_top_image) = try_get_top_image(top_camera) {
+        *top_image = new_top_image;
     }
 
-    if let Some(new_bottom_image) = bottom_image_task.poll() {
-        *bottom_image = new_bottom_image?;
-        bottom_image_task.try_spawn(receive_bottom_image(bottom_camera.0.clone()))?;
+    if let Some(new_bottom_image) = try_get_bottom_image(bottom_camera) {
+        *bottom_image = new_bottom_image;
     }
 
     Ok(())

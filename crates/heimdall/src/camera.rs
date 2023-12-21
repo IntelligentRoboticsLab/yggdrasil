@@ -242,4 +242,18 @@ impl Camera {
             height: self.height,
         })
     }
+
+    /// Get the next image.
+    ///
+    /// # Errors
+    /// This function fails if the [`Camera`] cannot take an image.
+    pub fn try_get_yuyv_image(&mut self) -> Result<YuyvImage> {
+        let frame = self.camera.try_fetch_frame()?;
+
+        Ok(YuyvImage {
+            frame,
+            width: self.width,
+            height: self.height,
+        })
+    }
 }
