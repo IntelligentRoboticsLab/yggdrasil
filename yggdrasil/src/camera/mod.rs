@@ -1,5 +1,6 @@
 use miette::{IntoDiagnostic, Result};
 use std::{
+    ops::Deref,
     sync::{Arc, Mutex},
     time::Instant,
 };
@@ -83,8 +84,12 @@ impl TopImage {
     fn take_image(camera: &mut Camera) -> Result<Self> {
         Ok(Self(Image::new(camera.get_yuyv_image().into_diagnostic()?)))
     }
+}
 
-    pub fn image(&self) -> &Image {
+impl Deref for TopImage {
+    type Target = Image;
+
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
@@ -97,8 +102,12 @@ impl BottomImage {
     fn take_image(camera: &mut Camera) -> Result<Self> {
         Ok(Self(Image::new(camera.get_yuyv_image().into_diagnostic()?)))
     }
+}
 
-    pub fn image(&self) -> &Image {
+impl Deref for BottomImage {
+    type Target = Image;
+
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
