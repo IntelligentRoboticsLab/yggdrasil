@@ -72,8 +72,10 @@ impl Image {
     }
 }
 
+#[derive(Clone)]
 pub struct TopImage(Image);
 
+#[derive(Clone)]
 pub struct BottomImage(Image);
 
 impl TopImage {
