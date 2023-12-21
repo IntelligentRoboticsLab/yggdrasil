@@ -12,6 +12,7 @@ use heimdall::{Camera, YuyvImage};
 /// It is recommended to have at least one more buffer than is required. This way, the next frame
 /// from the camera can already be stored in a buffer, reducing the latency between destructing a
 /// `TopImage` and being able to fetch the newest `TopImage`.
+// TODO: Replace with value from Odal.
 const NUMBER_OF_TOP_CAMERA_BUFFERS: u32 = 2;
 
 /// This variable specifies how many `BottomImage`'s' can be alive at the same time.
@@ -19,6 +20,7 @@ const NUMBER_OF_TOP_CAMERA_BUFFERS: u32 = 2;
 /// It is recommended to have at least one more buffer than is required. This way, the next frame
 /// from the camera can already be stored in a buffer, reducing the latency between destructing a
 /// `BottomImage` and being able to fetch the newest `BottomImage`.
+// TODO: Replace with value from Odal.
 const NUMBER_OF_BOTTOM_CAMERA_BUFFERS: u32 = 2;
 
 /// This module captures images using the top- and bottom camera of the NAO.
