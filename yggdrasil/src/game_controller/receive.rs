@@ -77,6 +77,15 @@ async fn receive_game_controller_data(
     Ok((new_game_controller_message, new_game_controller_address))
 }
 
+/// Check if the game controller message contains our team-number.
+fn contains_our_team_number(game_controller_message: &RoboCupGameControlData) -> bool {
+    // TODO: Replace with value from Odal.
+    let team_number = 8;
+
+    let teams = game_controller_message.teams;
+    teams[0].team_number == team_number || teams[1].team_number == team_number
+}
+
 #[system]
 pub(super) fn receive_system(
     game_controller_message: &mut Option<RoboCupGameControlData>,
@@ -89,9 +98,20 @@ pub(super) fn receive_system(
 
     match receive_task_result {
         Ok((new_game_controller_message, new_game_controller_address)) => {
-            *game_controller_message = Some(new_game_controller_message);
-            game_controller_data.game_controller_address =
-                Some((new_game_controller_address, Instant::now()));
+            // If the new game-controller message doesn't contain our team number, we ignore it.
+            // If the new game-controller message came from a different game controller than the
+            // last message we received less than `GAME_CONTROLLER_TIMEOUT_MS`, we ignore
+            // it as well, because it means that there are multiple game controllers active on
+            // the network.
+            if contains_our_team_number(&new_game_controller_message)
+                && !game_controller_data
+                    .game_controller_address
+                    .is_some_and(|(old_address, _)| old_address != new_game_controller_address)
+            {
+                *game_controller_message = Some(new_game_controller_message);
+                game_controller_data.game_controller_address =
+                    Some((new_game_controller_address, Instant::now()));
+            }
         }
         Err(error) => tracing::warn!("Failed to decode game controller message: {error}"),
     }
