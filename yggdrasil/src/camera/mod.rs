@@ -137,7 +137,7 @@ impl Module for CameraModule {
     }
 }
 
-fn try_get_top_image(top_camera: &mut TopCamera) -> Option<TopImage> {
+fn try_fetch_top_image(top_camera: &mut TopCamera) -> Option<TopImage> {
     let Ok(mut top_camera) = top_camera.0.try_lock() else {
         return None;
     };
@@ -145,7 +145,7 @@ fn try_get_top_image(top_camera: &mut TopCamera) -> Option<TopImage> {
     top_camera.try_get_yuyv_image().ok().map(TopImage::new)
 }
 
-fn try_get_bottom_image(top_camera: &mut BottomCamera) -> Option<BottomImage> {
+fn try_fetch_bottom_image(top_camera: &mut BottomCamera) -> Option<BottomImage> {
     let Ok(mut bottom_camera) = top_camera.0.try_lock() else {
         return None;
     };
@@ -163,11 +163,11 @@ fn camera_system(
     top_image: &mut TopImage,
     bottom_image: &mut BottomImage,
 ) -> Result<()> {
-    if let Some(new_top_image) = try_get_top_image(top_camera) {
+    if let Some(new_top_image) = try_fetch_top_image(top_camera) {
         *top_image = new_top_image;
     }
 
-    if let Some(new_bottom_image) = try_get_bottom_image(bottom_camera) {
+    if let Some(new_bottom_image) = try_fetch_bottom_image(bottom_camera) {
         *bottom_image = new_bottom_image;
     }
 
