@@ -34,8 +34,30 @@ const NUMBER_OF_BOTTOM_CAMERA_BUFFERS: u32 = 2;
 /// - [`BottomImage`]
 pub struct CameraModule;
 
+impl Module for CameraModule {
+    fn initialize(self, app: App) -> Result<App> {
+        let top_camera = TopCamera::new()?;
+        let bottom_camera = BottomCamera::new()?;
+
+        let top_image_resource =
+            Resource::new(TopImage::take_image(&mut top_camera.0.lock().unwrap())?);
+        let top_camera_resource = Resource::new(top_camera);
+
+        let bottom_image_resource = Resource::new(BottomImage::take_image(
+            &mut bottom_camera.0.lock().unwrap(),
+        )?);
+        let bottom_camera_resource = Resource::new(bottom_camera);
+
+        Ok(app
+            .add_resource(top_image_resource)?
+            .add_resource(top_camera_resource)?
+            .add_resource(bottom_image_resource)?
+            .add_resource(bottom_camera_resource)?
+            .add_system(camera_system))
+    }
+}
+
 struct TopCamera(Arc<Mutex<Camera>>);
-struct BottomCamera(Arc<Mutex<Camera>>);
 
 impl TopCamera {
     fn new() -> Result<Self> {
@@ -44,6 +66,8 @@ impl TopCamera {
         ))))
     }
 }
+
+struct BottomCamera(Arc<Mutex<Camera>>);
 
 impl BottomCamera {
     fn new() -> Result<Self> {
@@ -75,9 +99,6 @@ impl Image {
 #[derive(Clone)]
 pub struct TopImage(Image);
 
-#[derive(Clone)]
-pub struct BottomImage(Image);
-
 impl TopImage {
     fn new(yuyv_image: YuyvImage) -> Self {
         Self(Image::new(yuyv_image))
@@ -96,6 +117,9 @@ impl Deref for TopImage {
     }
 }
 
+#[derive(Clone)]
+pub struct BottomImage(Image);
+
 impl BottomImage {
     fn new(yuyv_image: YuyvImage) -> Self {
         Self(Image::new(yuyv_image))
@@ -111,29 +135,6 @@ impl Deref for BottomImage {
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-impl Module for CameraModule {
-    fn initialize(self, app: App) -> Result<App> {
-        let top_camera = TopCamera::new()?;
-        let bottom_camera = BottomCamera::new()?;
-
-        let top_image_resource =
-            Resource::new(TopImage::take_image(&mut top_camera.0.lock().unwrap())?);
-        let top_camera_resource = Resource::new(top_camera);
-
-        let bottom_image_resource = Resource::new(BottomImage::take_image(
-            &mut bottom_camera.0.lock().unwrap(),
-        )?);
-        let bottom_camera_resource = Resource::new(bottom_camera);
-
-        Ok(app
-            .add_resource(top_image_resource)?
-            .add_resource(top_camera_resource)?
-            .add_resource(bottom_image_resource)?
-            .add_resource(bottom_camera_resource)?
-            .add_system(camera_system))
     }
 }
 
