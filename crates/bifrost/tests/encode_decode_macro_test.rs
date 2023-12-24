@@ -1,4 +1,4 @@
-use bifrost_internal::{
+use bifrost::{
     serialization::{Decode, Encode},
     Result,
 };
