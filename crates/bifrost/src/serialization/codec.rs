@@ -5,7 +5,7 @@
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{Read, Write};
 
-use bifrost::{Error, Result};
+use crate::{Error, Result};
 
 /// The `Encode` trait allows objects to be encoded to raw bytes.
 /// See [`Decode`] for decoding objects from raw bytes.

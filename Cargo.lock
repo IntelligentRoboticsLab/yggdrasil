@@ -196,8 +196,13 @@ checksum = "35636a1494ede3b646cc98f74f8e62c773a38a659ebc777a2cf26b9b74171df9"
 name = "bifrost"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bifrost_derive",
- "bifrost_internal",
+ "byteorder",
+ "num",
+ "thiserror",
+ "tokio",
+ "tokio-test",
 ]
 
 [[package]]
@@ -207,20 +212,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.41",
-]
-
-[[package]]
-name = "bifrost_internal"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "bifrost",
- "bifrost_derive",
- "byteorder",
- "num",
- "thiserror",
- "tokio",
- "tokio-test",
 ]
 
 [[package]]

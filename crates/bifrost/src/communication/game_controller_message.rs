@@ -8,7 +8,7 @@
 //! For an example of how to use this module, see the documentation for the `SPLStandardMessage` struct.
 //!
 
-use bifrost_derive::{Decode, Encode};
+use crate::serialization::{Decode, Encode};
 
 /// The port from which the `GameController` sends the [`GameControllerData`] to the robots.
 pub const GAME_CONTROLLER_DATA_PORT: u16 = 3838;
