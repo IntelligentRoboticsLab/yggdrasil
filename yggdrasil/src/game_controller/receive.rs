@@ -108,25 +108,28 @@ pub(super) fn receive_system(
         return Ok(());
     };
 
-    match receive_task_result {
-        Ok((new_game_controller_message, new_game_controller_address)) => {
-            // If the new game-controller message doesn't contain our team number, we ignore it.
-            // If the new game-controller message came from a different game controller than the
-            // last message we received less than `GAME_CONTROLLER_TIMEOUT_MS`, we ignore
-            // it as well, because it means that there are multiple game controllers active on
-            // the network.
-            if contains_our_team_number(&new_game_controller_message)
-                && replace_old_game_controller_message(
-                    game_controller_data.game_controller_address.as_ref(),
-                    new_game_controller_address,
-                )
-            {
-                *game_controller_message = Some(new_game_controller_message);
-                game_controller_data.game_controller_address =
-                    Some((new_game_controller_address, Instant::now()));
-            }
+    let (new_game_controller_message, new_game_controller_address) = match receive_task_result {
+        Ok(receive_task_result) => receive_task_result,
+        Err(error) => {
+            tracing::warn!("Failed to decode game controller message: {error}");
+            return Ok(());
         }
-        Err(error) => tracing::warn!("Failed to decode game controller message: {error}"),
+    };
+
+    // If the new game-controller message doesn't contain our team number, we ignore it.
+    // If the new game-controller message came from a different game controller than the
+    // last message we received less than `GAME_CONTROLLER_TIMEOUT_MS`, we ignore
+    // it as well, because it means that there are multiple game controllers active on
+    // the network.
+    if contains_our_team_number(&new_game_controller_message)
+        && replace_old_game_controller_message(
+            game_controller_data.game_controller_address.as_ref(),
+            new_game_controller_address,
+        )
+    {
+        *game_controller_message = Some(new_game_controller_message);
+        game_controller_data.game_controller_address =
+            Some((new_game_controller_address, Instant::now()));
     }
 
     receive_game_controller_data_task
