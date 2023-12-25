@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 use miette::{IntoDiagnostic, Result};
 use tyr::prelude::*;
 
-const GAME_CONTROLLER_RETURN_DELAY_MS: u64 = 500;
+const GAME_CONTROLLER_RETURN_DELAY: Duration = Duration::from_millis(500);
 
 pub struct GameControllerSendModule;
 
@@ -35,7 +35,7 @@ async fn transmit_game_controller_return_data(
     let mut buffer = [0u8; size_of::<GameControllerReturnData>()];
 
     let duration_to_wait = last_send_return_message
-        .add(Duration::from_millis(GAME_CONTROLLER_RETURN_DELAY_MS))
+        .add(GAME_CONTROLLER_RETURN_DELAY)
         .duration_since(Instant::now());
 
     sleep(duration_to_wait).await;

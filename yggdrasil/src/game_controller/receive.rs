@@ -16,7 +16,7 @@ use tokio::net::UdpSocket;
 use miette::{IntoDiagnostic, Result};
 use tyr::prelude::*;
 
-const GAME_CONTROLLER_TIMEOUT_MS: u64 = 5000;
+const GAME_CONTROLLER_TIMEOUT: Duration = Duration::from_millis(5000);
 
 pub struct GameControllerReceiveModule;
 
@@ -144,9 +144,7 @@ fn check_game_controller_connection_system(
 ) -> Result<()> {
     if game_controller_data
         .game_controller_address
-        .is_some_and(|(_, instant)| {
-            instant.elapsed() > Duration::from_millis(GAME_CONTROLLER_TIMEOUT_MS)
-        })
+        .is_some_and(|(_, instant)| instant.elapsed() > GAME_CONTROLLER_TIMEOUT)
     {
         tracing::warn!("Lost connection to the game controller");
 
