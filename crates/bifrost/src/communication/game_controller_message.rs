@@ -10,10 +10,10 @@
 
 use crate::serialization::{Decode, Encode};
 
-/// The port from which the `GameController` sends the [`GameControllerData`] to the robots.
+/// The port from which the `GameController` sends the [`GameControllerMessage`] to the robots.
 pub const GAME_CONTROLLER_DATA_PORT: u16 = 3838;
 
-/// The port on which the robots send the [`GameControllerReturnData`] data to the `GameController`.
+/// The port on which the robots send the [`GameControllerReturnMessage`] data to the `GameController`.
 pub const GAME_CONTROLLER_RETURN_PORT: u16 = 3939;
 
 /// The header of the data sent by the `GameController`.
@@ -210,11 +210,11 @@ pub struct TeamInfo {
 
 /// A struct representing the `RoboCupGameControlData` received by the Robots.
 #[derive(Encode, Decode, Debug, PartialEq)]
-pub struct GameControllerData {
+pub struct GameControllerMessage {
     /// Header to identify the structure
     pub header: [u8; 4],
 
-    /// Version of the data structure
+    /// Version of the game-controller protocol
     pub version: u8,
 
     /// Number incremented with each packet sent (with wraparound)
@@ -254,9 +254,9 @@ pub struct GameControllerData {
     pub teams: [TeamInfo; 2],
 }
 
-/// A struct representing the `RoboCupGameControlReturnData` send by the Robots.
+/// A struct representing the `RoboCupGameControlReturnMessage` send by the Robots.
 #[derive(Encode, Decode, Debug, PartialEq)]
-pub struct GameControllerReturnData {
+pub struct GameControllerReturnMessage {
     /// "RGrt"
     pub header: [u8; 4],
 
@@ -293,8 +293,8 @@ pub struct GameControllerReturnData {
     pub ball: [f32; 2],
 }
 
-impl GameControllerData {
-    /// Check if the [`GameControllerData`] has a valid header and version and
+impl GameControllerMessage {
+    /// Check if the [`GameControllerMessage`] has a valid header and version and
     /// the number of players does not exceed the maximum number of players per team.
     #[must_use]
     pub fn is_valid(&self) -> bool {
@@ -304,9 +304,9 @@ impl GameControllerData {
     }
 }
 
-/// Implement a new constructor for [`GameControllerReturnData`] with default header and version
-impl GameControllerReturnData {
-    /// Construct a new [`GameControllerReturnData`] using the specified arguments.
+/// Implement a new constructor for [`GameControllerReturnMessage`] with default header and version
+impl GameControllerReturnMessage {
+    /// Construct a new [`GameControllerReturnMessage`] using the specified arguments.
     #[must_use]
     pub fn new(
         player_num: u8,
