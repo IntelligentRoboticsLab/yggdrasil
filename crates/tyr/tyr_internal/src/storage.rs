@@ -61,7 +61,10 @@ impl<T: Debug + Send + Sync + 'static> From<Resource<T>> for DebuggableResource 
 
 /// A type-erased resource that is debuggable.
 #[derive(Debug, Clone)]
-pub struct DebuggableResource(pub &'static str, Arc<RwLock<dyn Debug + Send + Sync + 'static>>);
+pub struct DebuggableResource(
+    pub &'static str,
+    Arc<RwLock<dyn Debug + Send + Sync + 'static>>,
+);
 
 impl DebuggableResource {
     pub fn read(&self) -> LockResult<RwLockReadGuard<dyn Debug + Send + Sync + 'static>> {

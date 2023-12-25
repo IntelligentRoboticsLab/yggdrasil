@@ -3,7 +3,10 @@ mod message;
 #[cfg(feature = "lola")]
 mod stream;
 
-use std::{net::{Ipv4Addr, SocketAddr}, sync::RwLockReadGuard};
+use std::{
+    net::{Ipv4Addr, SocketAddr},
+    sync::RwLockReadGuard,
+};
 
 use miette::{IntoDiagnostic, Result};
 
@@ -49,7 +52,10 @@ impl Module for WebSocketModule {
             .add_system(handle_messages)
             .add_task::<AsyncTaskMap<SocketAddr, Result<RecvCompleted>>>()?
             .add_task::<AsyncTaskSet<Result<SendCompleted>>>()?
-            .add_debuggable_resource(Resource::new(Magic { data: "hello".to_string(), something: 10}))?
+            .add_debuggable_resource(Resource::new(Magic {
+                data: "hello".to_string(),
+                something: 10,
+            }))?
             .add_system(send_debuggables))
     }
 }
@@ -166,7 +172,7 @@ fn send_debuggables(
     for tx in server.connections.values() {
         for resource in debug_view.resources() {
             let dbg = resource.read().unwrap();
-    ;
+            let x = DebuggableTraitObject(dbg);
             let data = format!("{:?}", x);
 
             send_tasks.spawn(send_message(

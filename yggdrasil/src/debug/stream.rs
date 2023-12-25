@@ -1,6 +1,6 @@
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
-use bifrost::serialization::codec::{Decode, Encode};
+use bifrost::serialization::{Decode, Encode};
 use futures::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
