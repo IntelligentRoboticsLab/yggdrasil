@@ -110,24 +110,23 @@ pub(super) fn receive_system(
         return Ok(());
     };
 
-    let (new_game_controller_message, new_game_controller_address) = match receive_task_result {
-        Ok(receive_task_result) => receive_task_result,
+    match receive_task_result {
+        Ok((new_game_controller_message, new_game_controller_address)) => {
+            if contains_our_team_number(&new_game_controller_message)
+                && should_replace_old_game_controller_message(
+                    game_controller_data.game_controller_address.as_ref(),
+                    new_game_controller_address,
+                )
+            {
+                *game_controller_message = Some(new_game_controller_message);
+                game_controller_data.game_controller_address =
+                    Some((new_game_controller_address, Instant::now()));
+            }
+        }
         Err(error) => {
             tracing::warn!("Failed to decode game controller message: {error}");
-            return Ok(());
         }
     };
-
-    if contains_our_team_number(&new_game_controller_message)
-        && should_replace_old_game_controller_message(
-            game_controller_data.game_controller_address.as_ref(),
-            new_game_controller_address,
-        )
-    {
-        *game_controller_message = Some(new_game_controller_message);
-        game_controller_data.game_controller_address =
-            Some((new_game_controller_address, Instant::now()));
-    }
 
     receive_game_controller_data_task
         .try_spawn(receive_game_controller_data(
