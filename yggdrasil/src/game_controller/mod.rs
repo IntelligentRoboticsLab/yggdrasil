@@ -1,4 +1,4 @@
-use bifrost::communication::GAMECONTROLLER_DATA_PORT;
+use bifrost::communication::GAME_CONTROLLER_DATA_PORT;
 
 use tokio::net::UdpSocket;
 
@@ -12,7 +12,7 @@ use tyr::prelude::*;
 mod receive;
 mod transmit;
 
-pub(crate) struct GameControllerData {
+pub(crate) struct GameControllerConfig {
     pub socket: Arc<UdpSocket>,
     pub last_send_message_instant: Instant,
     pub game_controller_address: Option<(SocketAddr, Instant)>,
@@ -28,14 +28,14 @@ pub(crate) struct GameControllerData {
 /// the robot's- number and position.
 ///
 /// This module provides the following resources to the application:
-/// - [`Option`]<[`RoboCupGameControlData`](bifrost::communication::RoboCupGameControlData)>
+/// - [`Option`]<[`GameControllerData`](bifrost::communication::GameControllerData)>
 pub struct GameControllerModule;
 
 impl GameControllerModule {
     async fn new_game_controller_socket() -> Result<UdpSocket> {
         let game_controller_socket = UdpSocket::bind(SocketAddrV4::new(
             Ipv4Addr::UNSPECIFIED,
-            GAMECONTROLLER_DATA_PORT,
+            GAME_CONTROLLER_DATA_PORT,
         ))
         .await
         .into_diagnostic()?;
@@ -51,7 +51,7 @@ impl GameControllerModule {
                     .block_on(Self::new_game_controller_socket())
             })??;
 
-        storage.add_resource(Resource::new(GameControllerData {
+        storage.add_resource(Resource::new(GameControllerConfig {
             socket: Arc::new(game_controller_socket),
             last_send_message_instant: Instant::now(),
             game_controller_address: None,

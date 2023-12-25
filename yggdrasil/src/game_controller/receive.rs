@@ -1,6 +1,6 @@
-use super::GameControllerData;
+use super::GameControllerConfig;
 
-use bifrost::communication::RoboCupGameControlData;
+use bifrost::communication::GameControllerData;
 use bifrost::serialization::Decode;
 
 use std::{
@@ -22,10 +22,10 @@ pub struct GameControllerReceiveModule;
 
 impl Module for GameControllerReceiveModule {
     fn initialize(self, app: App) -> Result<App> {
-        let game_controller_receive_message = Resource::<Option<RoboCupGameControlData>>::new(None);
+        let game_controller_receive_message = Resource::<Option<GameControllerData>>::new(None);
 
         Ok(app
-            .add_task::<AsyncTask<Result<(RoboCupGameControlData, SocketAddr)>>>()?
+            .add_task::<AsyncTask<Result<(GameControllerData, SocketAddr)>>>()?
             .add_resource(game_controller_receive_message)?
             .add_startup_system(init_receive_game_controller_data_task)?
             .add_system(receive_system)
@@ -35,14 +35,14 @@ impl Module for GameControllerReceiveModule {
 
 fn init_receive_game_controller_data_task(storage: &mut Storage) -> Result<()> {
     let game_controller_socket =
-        storage.map_resource_mut(|game_controller_data: &mut GameControllerData| {
+        storage.map_resource_mut(|game_controller_data: &mut GameControllerConfig| {
             game_controller_data.socket.clone()
         })?;
 
     storage
         .map_resource_mut(
             |receive_game_controller_data_task: &mut AsyncTask<
-                Result<(RoboCupGameControlData, SocketAddr)>,
+                Result<(GameControllerData, SocketAddr)>,
             >| {
                 receive_game_controller_data_task
                     .try_spawn(receive_game_controller_data(game_controller_socket))
@@ -53,10 +53,10 @@ fn init_receive_game_controller_data_task(storage: &mut Storage) -> Result<()> {
 
 async fn receive_game_controller_data(
     game_controller_socket: Arc<UdpSocket>,
-) -> Result<(RoboCupGameControlData, SocketAddr)> {
+) -> Result<(GameControllerData, SocketAddr)> {
     // The buffer is larger than necesary, in case we somehow receive invalid data, which can be a
-    // bit longer than a normal `RoboCupGameControlData`.
-    let mut buffer = [0u8; 2 * size_of::<RoboCupGameControlData>()];
+    // bit longer than a normal `GameControllerData`.
+    let mut buffer = [0u8; 2 * size_of::<GameControllerData>()];
 
     let (_bytes_received, new_game_controller_address) = game_controller_socket
         .recv_from(&mut buffer)
@@ -64,7 +64,7 @@ async fn receive_game_controller_data(
         .into_diagnostic()?;
 
     let new_game_controller_message =
-        RoboCupGameControlData::decode(&mut buffer.as_slice()).into_diagnostic()?;
+        GameControllerData::decode(&mut buffer.as_slice()).into_diagnostic()?;
 
     if !new_game_controller_message.is_valid() {
         return Err(io::Error::new(
@@ -78,7 +78,7 @@ async fn receive_game_controller_data(
 }
 
 /// Check if the game controller message contains our team-number.
-fn contains_our_team_number(game_controller_message: &RoboCupGameControlData) -> bool {
+fn contains_our_team_number(game_controller_message: &GameControllerData) -> bool {
     // TODO: Replace with value from Odal.
     let team_number = 8;
 
@@ -100,9 +100,9 @@ fn replace_old_game_controller_message(
 
 #[system]
 pub(super) fn receive_system(
-    game_controller_message: &mut Option<RoboCupGameControlData>,
-    game_controller_data: &mut GameControllerData,
-    receive_game_controller_data_task: &mut AsyncTask<Result<(RoboCupGameControlData, SocketAddr)>>,
+    game_controller_message: &mut Option<GameControllerData>,
+    game_controller_data: &mut GameControllerConfig,
+    receive_game_controller_data_task: &mut AsyncTask<Result<(GameControllerData, SocketAddr)>>,
 ) -> Result<()> {
     let Some(receive_task_result) = receive_game_controller_data_task.poll() else {
         return Ok(());
@@ -140,8 +140,8 @@ pub(super) fn receive_system(
 
 #[system]
 fn check_game_controller_connection_system(
-    game_controller_message: &mut Option<RoboCupGameControlData>,
-    game_controller_data: &mut GameControllerData,
+    game_controller_message: &mut Option<GameControllerData>,
+    game_controller_data: &mut GameControllerConfig,
 ) -> Result<()> {
     if game_controller_data
         .game_controller_address

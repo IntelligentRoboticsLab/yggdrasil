@@ -1,6 +1,6 @@
-use super::GameControllerData;
+use super::GameControllerConfig;
 
-use bifrost::communication::{RoboCupGameControlReturnData, GAMECONTROLLER_RETURN_PORT};
+use bifrost::communication::{GameControllerReturnData, GAME_CONTROLLER_RETURN_PORT};
 use bifrost::serialization::Encode;
 
 use tokio::net::UdpSocket;
@@ -15,14 +15,14 @@ use std::time::{Duration, Instant};
 use miette::{IntoDiagnostic, Result};
 use tyr::prelude::*;
 
-const GAMECONTROLLER_RETURN_DELAY_MS: u64 = 500;
+const GAME_CONTROLLER_RETURN_DELAY_MS: u64 = 500;
 
 pub struct GameControllerSendModule;
 
 impl Module for GameControllerSendModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
-            .add_task::<AsyncTask<Result<(RoboCupGameControlReturnData, Instant)>>>()?
+            .add_task::<AsyncTask<Result<(GameControllerReturnData, Instant)>>>()?
             .add_system(transmit_system))
     }
 }
@@ -31,11 +31,11 @@ async fn transmit_game_controller_return_data(
     game_controller_socket: Arc<UdpSocket>,
     last_send_return_message: Instant,
     mut game_controller_address: SocketAddr,
-) -> Result<(RoboCupGameControlReturnData, Instant)> {
-    let mut buffer = [0u8; size_of::<RoboCupGameControlReturnData>()];
+) -> Result<(GameControllerReturnData, Instant)> {
+    let mut buffer = [0u8; size_of::<GameControllerReturnData>()];
 
     let duration_to_wait = last_send_return_message
-        .add(Duration::from_millis(GAMECONTROLLER_RETURN_DELAY_MS))
+        .add(Duration::from_millis(GAME_CONTROLLER_RETURN_DELAY_MS))
         .duration_since(Instant::now());
 
     sleep(duration_to_wait).await;
@@ -48,7 +48,7 @@ async fn transmit_game_controller_return_data(
     let ball_age = -1f32;
     let ball_position = [0f32; 2];
 
-    let game_controller_message = RoboCupGameControlReturnData::new(
+    let game_controller_message = GameControllerReturnData::new(
         robot_number,
         team_number,
         fallen as u8,
@@ -60,7 +60,7 @@ async fn transmit_game_controller_return_data(
         .encode(buffer.as_mut_slice())
         .into_diagnostic()?;
 
-    game_controller_address.set_port(GAMECONTROLLER_RETURN_PORT);
+    game_controller_address.set_port(GAME_CONTROLLER_RETURN_PORT);
     game_controller_socket
         .send_to(buffer.as_slice(), game_controller_address)
         .await
@@ -71,9 +71,9 @@ async fn transmit_game_controller_return_data(
 
 #[system]
 pub(super) fn transmit_system(
-    game_controller_data: &mut GameControllerData,
+    game_controller_data: &mut GameControllerConfig,
     transmit_game_controller_return_data_task: &mut AsyncTask<
-        Result<(RoboCupGameControlReturnData, Instant)>,
+        Result<(GameControllerReturnData, Instant)>,
     >,
 ) -> Result<()> {
     let Some((game_controller_address, _)) = game_controller_data.game_controller_address else {
