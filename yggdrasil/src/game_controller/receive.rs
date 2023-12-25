@@ -86,16 +86,18 @@ fn contains_our_team_number(game_controller_message: &GameControllerData) -> boo
     teams[0].team_number == team_number || teams[1].team_number == team_number
 }
 
-fn replace_old_game_controller_message(
+// Check if we should replace the game-controller message.
+//
+// Check if the new game-controller message came from a different game controller than the
+// last message received from the old game-controller, less than `GAME_CONTROLLER_TIMEOUT_MS` ago.
+// If it does, it probably means that multiple game-controllers are active on the same network.
+fn should_replace_old_game_controller_message(
     old_game_controller_address: Option<&(SocketAddr, Instant)>,
     new_game_controller_address: SocketAddr,
 ) -> bool {
-    old_game_controller_address.map_or_else(
-        || true,
-        |(old_game_controller_address, _)| {
-            *old_game_controller_address == new_game_controller_address
-        },
-    )
+    old_game_controller_address.map_or(true, |(old_game_controller_address, _)| {
+        *old_game_controller_address == new_game_controller_address
+    })
 }
 
 #[system]
@@ -116,13 +118,8 @@ pub(super) fn receive_system(
         }
     };
 
-    // If the new game-controller message doesn't contain our team number, we ignore it.
-    // If the new game-controller message came from a different game controller than the
-    // last message we received less than `GAME_CONTROLLER_TIMEOUT_MS`, we ignore
-    // it as well, because it means that there are multiple game controllers active on
-    // the network.
     if contains_our_team_number(&new_game_controller_message)
-        && replace_old_game_controller_message(
+        && should_replace_old_game_controller_message(
             game_controller_data.game_controller_address.as_ref(),
             new_game_controller_address,
         )
