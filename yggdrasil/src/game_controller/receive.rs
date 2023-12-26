@@ -18,7 +18,7 @@ use tyr::prelude::*;
 
 const GAME_CONTROLLER_TIMEOUT: Duration = Duration::from_millis(5000);
 
-pub struct GameControllerReceiveModule;
+pub(super) struct GameControllerReceiveModule;
 
 impl Module for GameControllerReceiveModule {
     fn initialize(self, app: App) -> Result<App> {
@@ -101,7 +101,7 @@ fn should_replace_old_game_controller_message(
 }
 
 #[system]
-pub(super) fn receive_system(
+fn receive_system(
     game_controller_message: &mut Option<GameControllerMessage>,
     game_controller_data: &mut GameControllerData,
     receive_game_controller_message_task: &mut AsyncTask<

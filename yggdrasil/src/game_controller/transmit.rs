@@ -17,7 +17,7 @@ use tyr::prelude::*;
 
 const GAME_CONTROLLER_RETURN_DELAY: Duration = Duration::from_millis(500);
 
-pub struct GameControllertransmitModule;
+pub(super) struct GameControllertransmitModule;
 
 impl Module for GameControllertransmitModule {
     fn initialize(self, app: App) -> Result<App> {
@@ -68,7 +68,7 @@ async fn transmit_game_controller_return_message(
 }
 
 #[system]
-pub(super) fn transmit_system(
+fn transmit_system(
     game_controller_data: &mut GameControllerData,
     transmit_game_controller_return_message_task: &mut AsyncTask<
         Result<(GameControllerReturnMessage, Instant)>,

@@ -12,7 +12,7 @@ use tyr::prelude::*;
 mod receive;
 mod transmit;
 
-pub(crate) struct GameControllerData {
+struct GameControllerData {
     pub socket: Arc<UdpSocket>,
     pub game_controller_address: Option<(SocketAddr, Instant)>,
 }
