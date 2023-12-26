@@ -144,7 +144,7 @@ fn check_game_controller_connection_system(
 ) -> Result<()> {
     if game_controller_data
         .game_controller_address
-        .is_some_and(|(_, instant)| instant.elapsed() > GAME_CONTROLLER_TIMEOUT)
+        .is_some_and(|(_, timestamp)| timestamp.elapsed() > GAME_CONTROLLER_TIMEOUT)
     {
         tracing::warn!("Lost connection to the game controller");
 

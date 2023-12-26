@@ -83,8 +83,8 @@ pub(super) fn transmit_system(
     };
 
     match transmit_game_controller_return_data_task.poll() {
-        Some(Ok((_game_controller_return_message, last_transmitted_instant))) => {
-            last_send_update_timestamp = last_transmitted_instant;
+        Some(Ok((_game_controller_return_message, last_transmitted_timestamp))) => {
+            last_send_update_timestamp = last_transmitted_timestamp;
         }
         Some(Err(error)) => {
             tracing::warn!("Failed to transmit game controller return data: {error}");
