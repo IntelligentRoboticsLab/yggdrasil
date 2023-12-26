@@ -96,7 +96,7 @@ fn should_replace_old_game_controller_message(
     new_game_controller_address: SocketAddr,
 ) -> bool {
     old_game_controller_address.map_or(true, |(old_game_controller_address, _)| {
-        *old_game_controller_address == new_game_controller_address
+        old_game_controller_address.ip() == new_game_controller_address.ip()
     })
 }
 

@@ -76,13 +76,15 @@ pub(super) fn transmit_system(
         Result<(GameControllerReturnData, Instant)>,
     >,
 ) -> Result<()> {
-    let Some((game_controller_address, _)) = game_controller_data.game_controller_address else {
+    let Some((game_controller_address, mut last_send_update_timestamp)) =
+        game_controller_data.game_controller_address
+    else {
         return Ok(());
     };
 
     match transmit_game_controller_return_data_task.poll() {
         Some(Ok((_game_controller_return_message, last_transmitted_instant))) => {
-            game_controller_data.last_send_message_timestamp = last_transmitted_instant;
+            last_send_update_timestamp = last_transmitted_instant;
         }
         Some(Err(error)) => {
             tracing::warn!("Failed to transmit game controller return data: {error}");
@@ -92,7 +94,7 @@ pub(super) fn transmit_system(
 
     _ = transmit_game_controller_return_data_task.try_spawn(transmit_game_controller_return_data(
         game_controller_data.socket.clone(),
-        game_controller_data.last_send_message_timestamp,
+        last_send_update_timestamp,
         game_controller_address,
     ));
 
