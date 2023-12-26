@@ -1,4 +1,4 @@
-use super::GameControllerConfig;
+use super::GameControllerData;
 
 use bifrost::communication::GameControllerMessage;
 use bifrost::serialization::Decode;
@@ -27,31 +27,31 @@ impl Module for GameControllerReceiveModule {
         Ok(app
             .add_task::<AsyncTask<Result<(GameControllerMessage, SocketAddr)>>>()?
             .add_resource(game_controller_receive_message)?
-            .add_startup_system(init_receive_game_controller_data_task)?
+            .add_startup_system(init_receive_game_controller_message_task)?
             .add_system(receive_system)
             .add_system(check_game_controller_connection_system.after(receive_system)))
     }
 }
 
-fn init_receive_game_controller_data_task(storage: &mut Storage) -> Result<()> {
+fn init_receive_game_controller_message_task(storage: &mut Storage) -> Result<()> {
     let game_controller_socket =
-        storage.map_resource_mut(|game_controller_data: &mut GameControllerConfig| {
+        storage.map_resource_mut(|game_controller_data: &mut GameControllerData| {
             game_controller_data.socket.clone()
         })?;
 
     storage
         .map_resource_mut(
-            |receive_game_controller_data_task: &mut AsyncTask<
+            |receive_game_controller_message_task: &mut AsyncTask<
                 Result<(GameControllerMessage, SocketAddr)>,
             >| {
-                receive_game_controller_data_task
-                    .try_spawn(receive_game_controller_data(game_controller_socket))
+                receive_game_controller_message_task
+                    .try_spawn(receive_game_controller_message(game_controller_socket))
             },
         )?
         .into_diagnostic()
 }
 
-async fn receive_game_controller_data(
+async fn receive_game_controller_message(
     game_controller_socket: Arc<UdpSocket>,
 ) -> Result<(GameControllerMessage, SocketAddr)> {
     // The buffer is larger than necesary, in case we somehow receive invalid data, which can be a
@@ -103,10 +103,12 @@ fn should_replace_old_game_controller_message(
 #[system]
 pub(super) fn receive_system(
     game_controller_message: &mut Option<GameControllerMessage>,
-    game_controller_data: &mut GameControllerConfig,
-    receive_game_controller_data_task: &mut AsyncTask<Result<(GameControllerMessage, SocketAddr)>>,
+    game_controller_data: &mut GameControllerData,
+    receive_game_controller_message_task: &mut AsyncTask<
+        Result<(GameControllerMessage, SocketAddr)>,
+    >,
 ) -> Result<()> {
-    let Some(receive_task_result) = receive_game_controller_data_task.poll() else {
+    let Some(receive_task_result) = receive_game_controller_message_task.poll() else {
         return Ok(());
     };
 
@@ -128,8 +130,8 @@ pub(super) fn receive_system(
         }
     };
 
-    receive_game_controller_data_task
-        .try_spawn(receive_game_controller_data(
+    receive_game_controller_message_task
+        .try_spawn(receive_game_controller_message(
             game_controller_data.socket.clone(),
         ))
         .into_diagnostic()?;
@@ -140,7 +142,7 @@ pub(super) fn receive_system(
 #[system]
 fn check_game_controller_connection_system(
     game_controller_message: &mut Option<GameControllerMessage>,
-    game_controller_data: &mut GameControllerConfig,
+    game_controller_data: &mut GameControllerData,
 ) -> Result<()> {
     if game_controller_data
         .game_controller_address

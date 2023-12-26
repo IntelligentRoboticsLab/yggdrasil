@@ -1,4 +1,4 @@
-use super::GameControllerConfig;
+use super::GameControllerData;
 
 use bifrost::communication::{GameControllerReturnMessage, GAME_CONTROLLER_RETURN_PORT};
 use bifrost::serialization::Encode;
@@ -27,7 +27,7 @@ impl Module for GameControllertransmitModule {
     }
 }
 
-async fn transmit_game_controller_return_data(
+async fn transmit_game_controller_return_message(
     game_controller_socket: Arc<UdpSocket>,
     last_transmitted_return_message: Instant,
     mut game_controller_address: SocketAddr,
@@ -69,8 +69,8 @@ async fn transmit_game_controller_return_data(
 
 #[system]
 pub(super) fn transmit_system(
-    game_controller_data: &mut GameControllerConfig,
-    transmit_game_controller_return_data_task: &mut AsyncTask<
+    game_controller_data: &mut GameControllerData,
+    transmit_game_controller_return_message_task: &mut AsyncTask<
         Result<(GameControllerReturnMessage, Instant)>,
     >,
 ) -> Result<()> {
@@ -80,21 +80,23 @@ pub(super) fn transmit_system(
         return Ok(());
     };
 
-    match transmit_game_controller_return_data_task.poll() {
+    match transmit_game_controller_return_message_task.poll() {
         Some(Ok((_game_controller_return_message, new_last_transmitted_timestamp))) => {
             last_transmitted_update_timestamp = new_last_transmitted_timestamp;
         }
         Some(Err(error)) => {
-            tracing::warn!("Failed to transmit game controller return data: {error}");
+            tracing::warn!("Failed to transmit game controller return message: {error}");
         }
         None => {}
     }
 
-    _ = transmit_game_controller_return_data_task.try_spawn(transmit_game_controller_return_data(
-        game_controller_data.socket.clone(),
-        last_transmitted_update_timestamp,
-        game_controller_address,
-    ));
+    _ = transmit_game_controller_return_message_task.try_spawn(
+        transmit_game_controller_return_message(
+            game_controller_data.socket.clone(),
+            last_transmitted_update_timestamp,
+            game_controller_address,
+        ),
+    );
 
     Ok(())
 }

@@ -12,7 +12,7 @@ use tyr::prelude::*;
 mod receive;
 mod transmit;
 
-pub(crate) struct GameControllerConfig {
+pub(crate) struct GameControllerData {
     pub socket: Arc<UdpSocket>,
     pub game_controller_address: Option<(SocketAddr, Instant)>,
 }
@@ -27,7 +27,7 @@ pub(crate) struct GameControllerConfig {
 /// the robot's- number and position.
 ///
 /// This module provides the following resources to the application:
-/// - [`Option`]<[`GameControllerData`](bifrost::communication::GameControllerData)>
+/// - [`Option`]<[`GameControllerMessage`](bifrost::communication::GameControllerMessage)>
 pub struct GameControllerModule;
 
 impl GameControllerModule {
@@ -50,7 +50,7 @@ impl GameControllerModule {
                     .block_on(Self::new_game_controller_socket())
             })??;
 
-        storage.add_resource(Resource::new(GameControllerConfig {
+        storage.add_resource(Resource::new(GameControllerData {
             socket: Arc::new(game_controller_socket),
             game_controller_address: None,
         }))?;
