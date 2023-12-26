@@ -32,12 +32,9 @@ async fn transmit_game_controller_return_data(
     last_transmitted_return_message: Instant,
     mut game_controller_address: SocketAddr,
 ) -> Result<(GameControllerReturnData, Instant)> {
-    let mut buffer = [0u8; size_of::<GameControllerReturnData>()];
-
     let duration_to_wait = last_transmitted_return_message
         .add(GAME_CONTROLLER_RETURN_DELAY)
         .duration_since(Instant::now());
-
     sleep(duration_to_wait).await;
 
     // TODO: Substitute with real data from resources and/or configs.
@@ -48,6 +45,7 @@ async fn transmit_game_controller_return_data(
     let ball_age = -1f32;
     let ball_position = [0f32; 2];
 
+    let mut message_buffer = [0u8; size_of::<GameControllerReturnData>()];
     let game_controller_message = GameControllerReturnData::new(
         robot_number,
         team_number,
@@ -57,12 +55,12 @@ async fn transmit_game_controller_return_data(
         ball_position,
     );
     game_controller_message
-        .encode(buffer.as_mut_slice())
+        .encode(message_buffer.as_mut_slice())
         .into_diagnostic()?;
 
     game_controller_address.set_port(GAME_CONTROLLER_RETURN_PORT);
     game_controller_socket
-        .send_to(buffer.as_slice(), game_controller_address)
+        .send_to(message_buffer.as_slice(), game_controller_address)
         .await
         .into_diagnostic()?;
 
