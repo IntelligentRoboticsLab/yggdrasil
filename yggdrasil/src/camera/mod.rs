@@ -91,7 +91,7 @@ impl Image {
     }
 
     /// Return the instant at which the image was captured.
-    pub fn instant(&self) -> &Instant {
+    pub fn timestamp(&self) -> &Instant {
         &self.0 .1
     }
 }
