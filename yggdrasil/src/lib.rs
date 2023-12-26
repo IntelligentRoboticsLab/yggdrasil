@@ -1,5 +1,5 @@
 pub mod audio;
-pub mod behaviour;
+pub mod behavior;
 pub mod camera;
 pub mod filter;
 pub mod leds;
