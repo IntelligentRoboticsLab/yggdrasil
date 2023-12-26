@@ -1,6 +1,6 @@
 use super::GameControllerConfig;
 
-use bifrost::communication::{GameControllerReturnData, GAME_CONTROLLER_RETURN_PORT};
+use bifrost::communication::{GameControllerReturnMessage, GAME_CONTROLLER_RETURN_PORT};
 use bifrost::serialization::Encode;
 
 use tokio::net::UdpSocket;
@@ -22,7 +22,7 @@ pub struct GameControllertransmitModule;
 impl Module for GameControllertransmitModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
-            .add_task::<AsyncTask<Result<(GameControllerReturnData, Instant)>>>()?
+            .add_task::<AsyncTask<Result<(GameControllerReturnMessage, Instant)>>>()?
             .add_system(transmit_system))
     }
 }
@@ -31,7 +31,7 @@ async fn transmit_game_controller_return_data(
     game_controller_socket: Arc<UdpSocket>,
     last_transmitted_return_message: Instant,
     mut game_controller_address: SocketAddr,
-) -> Result<(GameControllerReturnData, Instant)> {
+) -> Result<(GameControllerReturnMessage, Instant)> {
     let duration_to_wait = last_transmitted_return_message
         .add(GAME_CONTROLLER_RETURN_DELAY)
         .duration_since(Instant::now());
@@ -45,8 +45,8 @@ async fn transmit_game_controller_return_data(
     let ball_age = -1f32;
     let ball_position = [0f32; 2];
 
-    let mut message_buffer = [0u8; size_of::<GameControllerReturnData>()];
-    let game_controller_message = GameControllerReturnData::new(
+    let mut message_buffer = [0u8; size_of::<GameControllerReturnMessage>()];
+    let game_controller_message = GameControllerReturnMessage::new(
         robot_number,
         team_number,
         fallen as u8,
@@ -71,7 +71,7 @@ async fn transmit_game_controller_return_data(
 pub(super) fn transmit_system(
     game_controller_data: &mut GameControllerConfig,
     transmit_game_controller_return_data_task: &mut AsyncTask<
-        Result<(GameControllerReturnData, Instant)>,
+        Result<(GameControllerReturnMessage, Instant)>,
     >,
 ) -> Result<()> {
     let Some((game_controller_address, mut last_transmitted_update_timestamp)) =
