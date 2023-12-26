@@ -31,26 +31,23 @@ pub struct Context<'a> {
 /// The behavior is dependent on the current context, and any control messages.
 ///
 /// # Examples
-/// ```no_run
+/// ```
 /// use yggdrasil::behavior::engine::{Behavior, Context};
 /// use nidhogg::NaoControlMessage;
 ///
-/// struct EvilBehavior;
+/// struct Dance;
 ///
-/// impl Behavior for EvilBehavior {
+/// impl Behavior for Dance {
 ///     fn execute(
 ///         &mut self,
 ///         context: Context,
 ///         control_message: &mut NaoControlMessage,
 ///     ) {
-///         // Do evil stuff 👹
+///         // Dance like no one's watching 🕺!
 ///     }
 /// }
 /// ```
-///
-/// # Notes
-/// - This trait is marked with `#[enum_dispatch]`, allowing for more efficient dynamic dispatch of
-///   methods when dealing with multiple behavior implementations.
+// This trait is marked with `#[enum_dispatch]` to reduce boilerplate when adding new behaviors
 #[enum_dispatch]
 pub trait Behavior {
     /// Defines what the robot does when the corresponding behavior is executed.
@@ -70,7 +67,7 @@ pub trait Behavior {
 pub enum BehaviorKind {
     Initial(Initial),
     Example(Example),
-    // Add new behaviors here
+    // Add new behaviors here!
 }
 
 impl Default for BehaviorKind {
@@ -86,8 +83,11 @@ impl Default for BehaviorKind {
 /// based on the role.
 ///
 /// # Examples
-/// ```no_run
-/// use yggdrasil::behavior::engine::{BehaviorKind, Context, Role};
+/// ```
+/// use yggdrasil::behavior::{
+///     behaviors::Initial,
+///     engine::{BehaviorKind, Context, Role}
+/// };
 ///
 /// struct SecretAgent;
 ///
@@ -98,21 +98,18 @@ impl Default for BehaviorKind {
 ///         current_behavior: &mut BehaviorKind,
 ///     ) -> BehaviorKind {
 ///         // Implement behavior transitions for secret agent 🕵️
-///         // E.g. DisguiseBehavior -> Assassinate Behavior
-///         BehaviorKind::Initial(yggdrasil::behavior::behaviors::Initial::default())
+///         // E.g. Disguise -> Assassinate
+///         BehaviorKind::Initial(Initial::default())
 ///     }
 /// }
 /// ```
-///
-/// # Notes
-/// - This trait is marked with `#[enum_dispatch]` for efficient dynamic dispatch when dealing with
-///   multiple role implementations.
-///
-/// # Returns
-/// - Returns the [`BehaviorKind`] the robot should transition to.
+// This trait is marked with `#[enum_dispatch]` to reduce boilerplate when adding new roles
 #[enum_dispatch]
 pub trait Role {
     /// Defines the behavior transitions for a specific role.
+    ///
+    /// # Returns
+    /// - Returns the [`BehaviorKind`] the robot should transition to.
     fn transition_behavior(
         &mut self,
         context: Context,
@@ -134,6 +131,7 @@ pub trait Role {
 pub enum RoleKind {
     Keeper(Keeper),
     Striker(Striker),
+    // Add new roles here!
 }
 
 impl RoleKind {
@@ -165,7 +163,7 @@ impl Engine {
     /// Assigns roles based on player number and other information like what
     /// robot is closest to the ball, missing robots, etc.
     fn assign_role(&self, _context: Context) -> RoleKind {
-        //TODO: assign roles based on robot player numbers and missing robots, etc.
+        // TODO: assign roles based on robot player numbers and missing robots, etc.
         RoleKind::by_player_number()
     }
 
