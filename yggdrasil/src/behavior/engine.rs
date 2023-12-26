@@ -13,9 +13,10 @@ use crate::{
     primary_state::PrimaryState,
 };
 
-/// Context that is passed into the behavior engine. It contains all necessary
-/// information for executing behaviors and transitioning between different
-/// behaviors
+/// Context that is passed into the behavior engine.
+///
+/// It contains all necessary information for executing behaviors and
+/// transitioning between different behaviors.
 #[derive(Clone, Copy)]
 pub struct Context<'a> {
     /// Primary state of the robot
@@ -30,7 +31,10 @@ pub struct Context<'a> {
 /// The behavior is dependent on the current context, and any control messages.
 ///
 /// # Examples
-/// ```
+/// ```no_run
+/// use yggdrasil::behavior::engine::{Behavior, Context};
+/// use nidhogg::NaoControlMessage;
+///
 /// struct EvilBehavior;
 ///
 /// impl Behavior for EvilBehavior {
@@ -53,12 +57,20 @@ pub trait Behavior {
     fn execute(&mut self, context: Context, control_message: &mut NaoControlMessage);
 }
 
-/// Defines a behavior and a state for each behavior
+/// An enum containing the possible behaviors for a robot.
+///
+/// Each variant of this enum corresponds to a specific behavior and its associated
+/// state.
+/// The actual behavior is defined by implementing the [`Behavior`] trait for the state of each variant.
+///
+/// # Notes
+/// - New behavior implementations should be added as new variants to this enum.
+/// - The specific struct for each behavior (e.g., [`Initial`], [`Example`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
 pub enum BehaviorKind {
     Initial(Initial),
     Example(Example),
-    // Add new behaviors above
+    // Add new behaviors here
 }
 
 impl Default for BehaviorKind {
@@ -74,7 +86,9 @@ impl Default for BehaviorKind {
 /// based on the role.
 ///
 /// # Examples
-/// ```
+/// ```no_run
+/// use yggdrasil::behavior::engine::{BehaviorKind, Context, Role};
+///
 /// struct SecretAgent;
 ///
 /// impl Role for SecretAgent {
@@ -85,6 +99,7 @@ impl Default for BehaviorKind {
 ///     ) -> BehaviorKind {
 ///         // Implement behavior transitions for secret agent 🕵️
 ///         // E.g. DisguiseBehavior -> Assassinate Behavior
+///         BehaviorKind::Initial(yggdrasil::behavior::behaviors::Initial::default())
 ///     }
 /// }
 /// ```
@@ -105,7 +120,16 @@ pub trait Role {
     ) -> BehaviorKind;
 }
 
-/// Defines a role and corresponding state
+/// An enum containing the possible roles for a robot.
+///
+/// Each variant of this enum corresponds to a specific role and its associated
+/// state. The state is used to define the underlying behaviors for the role, and
+/// transitions between various behaviors are handled by implementing the [`Role`]
+/// trait for the state.
+///
+/// # Notes
+/// - New role implementations should be added as new variants to this enum
+/// - The specific struct for each role (e.g., [`Keeper`], [`Striker`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
 pub enum RoleKind {
     Keeper(Keeper),
