@@ -24,73 +24,115 @@ pub struct Context<'a> {
     pub head_buttons: &'a HeadButtons,
 }
 
-/// Trait that has be implemented for each behavior and what that behavior
-/// does.
+/// A trait representing a behavior that can be performed.
+///
+/// It is used to define the actions the robot will take when the corresponding behavior is executed.
+/// The behavior is dependent on the current context, and any control messages.
+///
+/// # Examples
+/// ```
+/// struct EvilBehavior;
+///
+/// impl Behavior for EvilBehavior {
+///     fn execute(
+///         &mut self,
+///         context: Context,
+///         control_message: &mut NaoControlMessage,
+///     ) {
+///         // Do evil stuff 👹
+///     }
+/// }
+/// ```
+///
+/// # Notes
+/// - This trait is marked with `#[enum_dispatch]`, allowing for more efficient dynamic dispatch of
+///   methods when dealing with multiple behavior implementations.
 #[enum_dispatch]
-pub trait Execute {
+pub trait Behavior {
     /// Defines what the robot does when the corresponding behavior is executed.
-    fn execute(
-        &mut self,
-        context: Context,
-        current_role: &Role,
-        control_message: &mut NaoControlMessage,
-    );
+    fn execute(&mut self, context: Context, control_message: &mut NaoControlMessage);
 }
 
 /// Defines a behavior and a state for each behavior
-#[enum_dispatch(Execute)]
-pub enum Behavior {
+#[enum_dispatch(Behavior)]
+pub enum BehaviorKind {
     Initial(Initial),
     Example(Example),
     // Add new behaviors above
 }
 
-impl Default for Behavior {
+impl Default for BehaviorKind {
     fn default() -> Self {
-        Behavior::Initial(Initial)
+        BehaviorKind::Initial(Initial)
     }
 }
 
-/// Trait that has to be implemented for each role and defines what behaviors
-/// a robot with that role should perform.
+/// A trait representing a role for the robot.
+///
+/// This trait must be implemented for each specific role.
+/// It defines the set of behaviors and how transitions between these behaviors should be handled
+/// based on the role.
+///
+/// # Examples
+/// ```
+/// struct SecretAgent;
+///
+/// impl Role for SecretAgent {
+///     fn transition_behavior(
+///         &mut self,
+///         context: Context,
+///         current_behavior: &mut BehaviorKind,
+///     ) -> BehaviorKind {
+///         // Implement behavior transitions for secret agent 🕵️
+///         // E.g. DisguiseBehavior -> Assassinate Behavior
+///     }
+/// }
+/// ```
+///
+/// # Notes
+/// - This trait is marked with `#[enum_dispatch]` for efficient dynamic dispatch when dealing with
+///   multiple role implementations.
+///
+/// # Returns
+/// - Returns the [`BehaviorKind`] the robot should transition to.
 #[enum_dispatch]
-pub trait Transition {
+pub trait Role {
     /// Defines the behavior transitions for a specific role.
     fn transition_behavior(
         &mut self,
         context: Context,
-        current_behavior: &mut Behavior,
-    ) -> Behavior;
+        current_behavior: &mut BehaviorKind,
+    ) -> BehaviorKind;
 }
 
 /// Defines a role and corresponding state
-#[enum_dispatch(Transition)]
-pub enum Role {
+#[enum_dispatch(Role)]
+pub enum RoleKind {
     Keeper(Keeper),
     Striker(Striker),
 }
 
-impl Role {
+impl RoleKind {
     /// Get the default role for each robot based on that robots player number
     fn by_player_number() -> Self {
         // TODO: get the default role for each robot by player number
-        Role::Keeper(Keeper)
+        RoleKind::Keeper(Keeper)
     }
 }
 
 /// Resource that is exposed and keeps track of the current role and behavior
 pub struct Engine {
     /// Current robot role
-    role: Role,
+    role: RoleKind,
     /// Current robot behavior
-    behavior: Behavior,
+    behavior: BehaviorKind,
 }
 
 impl Default for Engine {
     fn default() -> Self {
         Self {
-            role: Role::by_player_number(),
-            behavior: Behavior::default(),
+            role: RoleKind::by_player_number(),
+            behavior: BehaviorKind::default(),
         }
     }
 }
@@ -98,16 +140,16 @@ impl Default for Engine {
 impl Engine {
     /// Assigns roles based on player number and other information like what
     /// robot is closest to the ball, missing robots, etc.
-    fn assign_role(&self, _context: Context) -> Role {
+    fn assign_role(&self, _context: Context) -> RoleKind {
         //TODO: assign roles based on robot player numbers and missing robots, etc.
-        Role::by_player_number()
+        RoleKind::by_player_number()
     }
 
     /// Executes one step of the behavior engine
     pub fn step(&mut self, context: Context, control_message: &mut NaoControlMessage) {
         self.role = self.assign_role(context);
         self.behavior = self.role.transition_behavior(context, &mut self.behavior);
-        self.behavior.execute(context, &self.role, control_message);
+        self.behavior.execute(context, control_message);
     }
 }
 

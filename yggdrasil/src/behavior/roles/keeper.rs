@@ -1,20 +1,23 @@
-use crate::behavior::{behaviors::Example, engine::Transition, Behavior, Context};
+use crate::behavior::{
+    behaviors::Example,
+    engine::{BehaviorKind, Context, Role},
+};
 
 pub struct Keeper;
 
-impl Transition for Keeper {
+impl Role for Keeper {
     fn transition_behavior(
         &mut self,
         context: Context,
-        current_behavior: &mut Behavior,
-    ) -> Behavior {
+        current_behavior: &mut BehaviorKind,
+    ) -> BehaviorKind {
         if context.head_buttons.middle.is_pressed() {
             match current_behavior {
-                Behavior::Example(state) => Behavior::Example(*state),
-                _ => Behavior::Example(Example::default()),
+                BehaviorKind::Example(state) => BehaviorKind::Example(*state),
+                _ => BehaviorKind::Example(Example::default()),
             }
         } else {
-            Behavior::default()
+            BehaviorKind::default()
         }
     }
 }

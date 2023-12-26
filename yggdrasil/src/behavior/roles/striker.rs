@@ -1,13 +1,13 @@
-use crate::behavior::engine::{Behavior, Context, Transition};
+use crate::behavior::engine::{BehaviorKind, Context, Role};
 
 pub struct Striker;
 
-impl Transition for Striker {
+impl Role for Striker {
     fn transition_behavior(
         &mut self,
         _context: Context,
-        _current_behavior: &mut Behavior,
-    ) -> Behavior {
-        Behavior::default()
+        _current_behavior: &mut BehaviorKind,
+    ) -> BehaviorKind {
+        BehaviorKind::default()
     }
 }

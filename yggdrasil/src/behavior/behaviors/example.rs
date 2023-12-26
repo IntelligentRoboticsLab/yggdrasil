@@ -1,4 +1,4 @@
-use crate::behavior::engine::{Context, Execute, Role};
+use crate::behavior::engine::{Behavior, Context};
 use nidhogg::{
     types::{Color, FillExt, RightEye},
     NaoControlMessage,
@@ -9,13 +9,8 @@ pub struct Example {
     iter: i32,
 }
 
-impl Execute for Example {
-    fn execute(
-        &mut self,
-        _context: Context,
-        _current_role: &Role,
-        control_message: &mut NaoControlMessage,
-    ) {
+impl Behavior for Example {
+    fn execute(&mut self, _context: Context, control_message: &mut NaoControlMessage) {
         self.iter += 1;
 
         println!("{}", self.iter);

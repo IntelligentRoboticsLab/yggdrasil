@@ -1,8 +1,6 @@
 pub mod behaviors;
-mod engine;
+pub mod engine;
 pub mod roles;
-
-pub use engine::{Behavior, Context, Engine};
 
 use miette::Result;
 use tyr::prelude::*;
