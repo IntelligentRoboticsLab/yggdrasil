@@ -26,6 +26,6 @@ impl Execute for Example {
             RightEye::fill(Color::BLUE)
         };
 
-        _control_message.right_eye = right_eye;
+        control_message.right_eye = right_eye;
     }
 }
