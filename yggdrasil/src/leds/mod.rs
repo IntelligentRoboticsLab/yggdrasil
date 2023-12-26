@@ -27,7 +27,7 @@ pub struct Leds {
     pub left_ear: LeftEar,
     /// LEDs in the right ear
     pub right_ear: RightEar,
-    /// LED in the chest``
+    /// LED in the chest
     pub chest: Color,
     /// LEDs in the left eye
     pub left_eye: LeftEye,
