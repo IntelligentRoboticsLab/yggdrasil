@@ -20,7 +20,7 @@ pub const GAME_CONTROLLER_RETURN_PORT: u16 = 3939;
 const GAME_CONTROLLER_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'm', b'e'];
 
 /// The version of the data sent by the `GameController`.
-const GAMECONTROLLER_STRUCT_VERSION: u8 = 15;
+const GAME_CONTROLLER_STRUCT_VERSION: u8 = 15;
 
 /// The header of the data sent by the robots.
 const GAME_CONTROLLER_RETURN_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'r', b't'];
@@ -299,7 +299,7 @@ impl GameControllerMessage {
     #[must_use]
     pub fn is_valid(&self) -> bool {
         self.header == GAME_CONTROLLER_STRUCT_HEADER
-            && self.version == GAMECONTROLLER_STRUCT_VERSION
+            && self.version == GAME_CONTROLLER_STRUCT_VERSION
             && self.players_per_team <= MAX_NUM_PLAYERS
     }
 }
