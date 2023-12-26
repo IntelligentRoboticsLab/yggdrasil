@@ -26,7 +26,7 @@ fn main() -> Result<()> {
         .add_module(CameraModule)?
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?
-        .add_module(GamePhaseModule)?
+        .add_module(PrimaryStateModule)?
         .run()?;
     Ok(())
 }
