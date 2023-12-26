@@ -17,9 +17,9 @@ use tyr::prelude::*;
 
 const GAME_CONTROLLER_RETURN_DELAY: Duration = Duration::from_millis(500);
 
-pub struct GameControllerSendModule;
+pub struct GameControllertransmitModule;
 
-impl Module for GameControllerSendModule {
+impl Module for GameControllertransmitModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_task::<AsyncTask<Result<(GameControllerReturnData, Instant)>>>()?
@@ -29,12 +29,12 @@ impl Module for GameControllerSendModule {
 
 async fn transmit_game_controller_return_data(
     game_controller_socket: Arc<UdpSocket>,
-    last_send_return_message: Instant,
+    last_transmitted_return_message: Instant,
     mut game_controller_address: SocketAddr,
 ) -> Result<(GameControllerReturnData, Instant)> {
     let mut buffer = [0u8; size_of::<GameControllerReturnData>()];
 
-    let duration_to_wait = last_send_return_message
+    let duration_to_wait = last_transmitted_return_message
         .add(GAME_CONTROLLER_RETURN_DELAY)
         .duration_since(Instant::now());
 
@@ -76,15 +76,15 @@ pub(super) fn transmit_system(
         Result<(GameControllerReturnData, Instant)>,
     >,
 ) -> Result<()> {
-    let Some((game_controller_address, mut last_send_update_timestamp)) =
+    let Some((game_controller_address, mut last_transmitted_update_timestamp)) =
         game_controller_data.game_controller_address
     else {
         return Ok(());
     };
 
     match transmit_game_controller_return_data_task.poll() {
-        Some(Ok((_game_controller_return_message, last_transmitted_timestamp))) => {
-            last_send_update_timestamp = last_transmitted_timestamp;
+        Some(Ok((_game_controller_return_message, new_last_transmitted_timestamp))) => {
+            last_transmitted_update_timestamp = new_last_transmitted_timestamp;
         }
         Some(Err(error)) => {
             tracing::warn!("Failed to transmit game controller return data: {error}");
@@ -94,7 +94,7 @@ pub(super) fn transmit_system(
 
     _ = transmit_game_controller_return_data_task.try_spawn(transmit_game_controller_return_data(
         game_controller_data.socket.clone(),
-        last_send_update_timestamp,
+        last_transmitted_update_timestamp,
         game_controller_address,
     ));
 

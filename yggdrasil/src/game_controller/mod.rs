@@ -23,7 +23,7 @@ pub(crate) struct GameControllerConfig {
 /// received yet from the game-controller, or if connection to the game-controller has been lost
 /// for an extended period of time, that resource is set to `None`.
 ///
-/// The module send status updates back to the game-controller. These messages include data like
+/// The module transmits status updates back to the game-controller. These messages include data like
 /// the robot's- number and position.
 ///
 /// This module provides the following resources to the application:
@@ -63,6 +63,6 @@ impl Module for GameControllerModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_startup_system(Self::init_udp_socket)?
             .add_module(receive::GameControllerReceiveModule)?
-            .add_module(transmit::GameControllerSendModule)
+            .add_module(transmit::GameControllertransmitModule)
     }
 }
