@@ -1,3 +1,5 @@
+//! The engine managing behavior execution and role state.
+
 use enum_dispatch::enum_dispatch;
 use miette::Result;
 use nidhogg::NaoControlMessage;
@@ -43,7 +45,7 @@ pub struct Context<'a> {
 ///         context: Context,
 ///         control_message: &mut NaoControlMessage,
 ///     ) {
-///         // Dance like no one's watching 🕺!
+///         // Dance like nobody's watching 🕺!
 ///     }
 /// }
 /// ```
@@ -142,7 +144,7 @@ impl RoleKind {
     }
 }
 
-/// Resource that is exposed and keeps track of the current role and behavior
+/// Resource that is exposed and keeps track of the current role and behavior.
 pub struct Engine {
     /// Current robot role
     role: RoleKind,
@@ -198,10 +200,10 @@ pub fn step(
 ///
 /// Each behavior has an execute function that is called to
 /// execute that behavior, this functionality can be implemented by
-/// implementing the `Execute` trait.
+/// implementing the [`Behavior`] trait.
 ///
 /// Transitions between various behaviors are defined per role. New roles can
-/// be defined by implementing the `Transition` trait.
+/// be defined by implementing the [`Role`] trait.
 ///
 /// This module provides the following resources to the application:
 /// - [`Engine`]

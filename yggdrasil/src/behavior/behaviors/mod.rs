@@ -1,3 +1,5 @@
+//! All the behaviors that the robot can execute.
+
 mod example;
 mod initial;
 
