@@ -62,6 +62,10 @@ impl Leds {
             start: Instant::now(),
         });
     }
+    
+    pub fn unset_chest_blink(&mut self) {
+        self.chest_blink = None;
+    }
 }
 
 #[system]
