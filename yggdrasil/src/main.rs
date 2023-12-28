@@ -4,9 +4,12 @@ use miette::Result;
 
 use yggdrasil::{
     audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule},
+    behavior::BehaviorModule,
     camera::CameraModule,
     filter::FilterModule,
+    leds::LedsModule,
     nao::NaoModule,
+    primary_state::PrimaryStateModule,
 };
 
 fn main() -> Result<()> {
@@ -21,6 +24,9 @@ fn main() -> Result<()> {
         .add_module(SoundManagerModule)?
         .add_module(WeeSoundModule)?
         .add_module(CameraModule)?
+        .add_module(BehaviorModule)?
+        .add_module(LedsModule)?
+        .add_module(PrimaryStateModule)?
         .run()?;
     Ok(())
 }

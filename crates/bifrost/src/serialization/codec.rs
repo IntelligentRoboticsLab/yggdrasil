@@ -78,8 +78,6 @@ pub trait Encode {
 ///
 ///
 /// ```
-/// # use crate::bifrost_internal as bifrost;
-///
 /// use bifrost::{Result, serialization::Decode};
 /// use std::io::Read;
 ///
