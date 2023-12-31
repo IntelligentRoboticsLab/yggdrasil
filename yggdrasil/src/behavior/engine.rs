@@ -178,7 +178,6 @@ impl Engine {
 }
 
 /// System that is called to execute one step of the behavior engine each cycle
-/// Makes use of [`DoesNotExist`] struct
 #[system]
 pub fn step(
     engine: &mut Engine,
@@ -186,8 +185,6 @@ pub fn step(
     primary_state: &PrimaryState,
     head_buttons: &HeadButtons,
 ) -> Result<()> {
-    let test = 0;
-
     let context = Context {
         primary_state,
         head_buttons,
