@@ -1,7 +1,42 @@
 version: 2
 updates:
-  - package-ecosystem: "cargo"
-    # look for Cargo.toml and Cargo.lock in the root directory
-    directory: "/"
-    schedule:
-      interval: "weekly"
+- package-ecosystem: cargo
+  directory: /
+  schedule:
+    interval: weekly
+- package-ecosystem: cargo
+  directory: crates/sindri
+  schedule:
+    interval: weekly
+- package-ecosystem: cargo
+  directory: crates/tyr
+  schedule:
+    interval: weekly
+- package-ecosystem: cargo
+  directory: crates/tyr/tyr_tasks
+  schedule:
+    interval: weekly
+- package-ecosystem: cargo
+  directory: crates/tyr/tyr_internal
+  schedule:
+    interval: weekly
+- package-ecosystem: cargo
+  directory: crates/tyr/tyr_macros
+  schedule:
+    interval: weekly
+- package-ecosystem: cargo
+  directory: crates/bifrost
+  schedule:
+    interval: weekly
+- package-ecosystem: cargo
+  directory: crates/bifrost/bifrost_derive
+  schedule:
+    interval: weekly
+- package-ecosystem: cargo
+  directory: crates/heimdall
+  schedule:
+    interval: weekly
+- package-ecosystem: cargo
+  directory: yggdrasil
+  schedule:
+    interval: weekly
