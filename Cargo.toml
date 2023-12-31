@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/*", "yggdrasil"]
 
 [workspace.dependencies]
-async-trait = "0.1.62"
+async-trait = "0.1.76"
 byteorder = "1.4.3"
 cargo_toml = "0.17.0"
 clap = "4.4.12"
