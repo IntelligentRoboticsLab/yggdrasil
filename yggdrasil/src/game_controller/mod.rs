@@ -27,7 +27,7 @@ struct GameControllerData {
 /// the robot's- number and position.
 ///
 /// This module provides the following resources to the application:
-/// - [`Option`]<[`GameControllerMessage`](bifrost::communication::GameControllerMessage)>
+/// - <code>[Option]<[GameControllerMessage](bifrost::communication::GameControllerMessage)></code>
 pub struct GameControllerModule;
 
 impl GameControllerModule {
