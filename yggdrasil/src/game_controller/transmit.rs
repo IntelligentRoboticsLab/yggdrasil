@@ -87,7 +87,7 @@ fn transmit_system(
         Some(Err(error)) => {
             tracing::warn!("Failed to transmit game controller return message: {error}");
         }
-        None => {}
+        None => (),
     }
 
     _ = transmit_game_controller_return_message_task.try_spawn(
