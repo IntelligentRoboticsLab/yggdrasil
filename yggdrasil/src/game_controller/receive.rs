@@ -22,11 +22,9 @@ pub(super) struct GameControllerReceiveModule;
 
 impl Module for GameControllerReceiveModule {
     fn initialize(self, app: App) -> Result<App> {
-        let game_controller_receive_message = Resource::<Option<GameControllerMessage>>::new(None);
-
         Ok(app
             .add_task::<AsyncTask<Result<(GameControllerMessage, SocketAddr)>>>()?
-            .add_resource(game_controller_receive_message)?
+            .init_resource::<Option<GameControllerMessage>>()?
             .add_startup_system(init_receive_game_controller_message_task)?
             .add_system(receive_system)
             .add_system(check_game_controller_connection_system.after(receive_system)))
