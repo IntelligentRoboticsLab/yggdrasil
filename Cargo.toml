@@ -20,7 +20,7 @@ nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
 num = "0.4.0"
 petgraph = "0.6.3"
 proc-macro2 = "1.0.72"
-quote = "1.0.28"
+quote = "1.0.34"
 rayon = "1.7.0"
 regex = "1.9.4"
 rustc_version = "0.4.0"
