@@ -63,6 +63,6 @@ impl Module for GameControllerModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_startup_system(Self::init_udp_socket)?
             .add_module(receive::GameControllerReceiveModule)?
-            .add_module(transmit::GameControllertransmitModule)
+            .add_module(transmit::GameControllerTransmitModule)
     }
 }
