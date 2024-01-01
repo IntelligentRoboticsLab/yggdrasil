@@ -90,7 +90,7 @@ fn contains_our_team_number(game_controller_message: &GameControllerMessage) -> 
 // last message received from the old game-controller, less than `GAME_CONTROLLER_TIMEOUT_MS` ago.
 // If it does, it probably means that multiple game-controllers are active on the same network.
 fn should_replace_old_game_controller_message(
-    old_game_controller_address: Option<&(SocketAddr, Instant)>,
+    old_game_controller_address: Option<(SocketAddr, Instant)>,
     new_game_controller_address: SocketAddr,
 ) -> bool {
     old_game_controller_address.map_or(true, |(old_game_controller_address, _)| {
@@ -114,7 +114,7 @@ fn receive_system(
         Ok((new_game_controller_message, new_game_controller_address)) => {
             if contains_our_team_number(&new_game_controller_message)
                 && should_replace_old_game_controller_message(
-                    game_controller_data.game_controller_address.as_ref(),
+                    game_controller_data.game_controller_address,
                     new_game_controller_address,
                 )
             {
