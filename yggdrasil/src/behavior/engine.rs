@@ -1,5 +1,6 @@
 //! The engine managing behavior execution and role state.
 
+use bifrost::communication::GameControllerMessage;
 use enum_dispatch::enum_dispatch;
 use miette::Result;
 use nidhogg::NaoControlMessage;
@@ -26,6 +27,8 @@ pub struct Context<'a> {
     pub primary_state: &'a PrimaryState,
     /// State of the headbuttons of a robot
     pub head_buttons: &'a HeadButtons,
+
+    pub game_controller_message: &'a GameControllerMessage,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -185,10 +188,16 @@ pub fn step(
     control_message: &mut NaoControlMessage,
     primary_state: &PrimaryState,
     head_buttons: &HeadButtons,
+    game_controller_message: &Option<GameControllerMessage>,
 ) -> Result<()> {
+    let Some(game_controller_message) = game_controller_message else {
+        return Ok(());
+    };
+
     let context = Context {
         primary_state,
         head_buttons,
+        game_controller_message,
     };
 
     engine.step(context, control_message);
