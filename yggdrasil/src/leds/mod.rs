@@ -6,6 +6,8 @@ use tyr::prelude::*;
 
 pub use nidhogg::types::{Color, FillExt, LeftEar, LeftEye, RightEar, RightEye, Skull};
 
+use crate::{behavior, nao};
+
 /// A module providing functionality to manipulate the colors of various LEDS
 /// on the NAO robot.
 ///
@@ -17,7 +19,11 @@ impl Module for LedsModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_resource(Resource::new(Leds::default()))?
-            .add_system(write_led_values))
+            .add_system(
+                write_led_values
+                    .before(behavior::engine::step)
+                    .after(nao::write_hardware_info),
+            ))
     }
 }
 
@@ -69,7 +75,7 @@ impl Leds {
 }
 
 #[system]
-fn write_led_values(leds: &mut Leds, control_message: &mut NaoControlMessage) -> Result<()> {
+pub fn write_led_values(leds: &mut Leds, control_message: &mut NaoControlMessage) -> Result<()> {
     control_message.chest = leds.chest;
     control_message.left_foot = leds.left_foot;
     control_message.right_foot = leds.right_foot;
