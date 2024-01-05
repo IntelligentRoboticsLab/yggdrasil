@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::{filter::button::HeadButtons, leds::Leds};
-use bifrost::communication::{GameControllerMessage, GamePhase, GameState};
+use bifrost::communication::{GameControllerMessage, GameState};
 use miette::Result;
 use nidhogg::types::Color;
 use tyr::prelude::*;
