@@ -1,7 +1,4 @@
-use std::{
-    env::{self},
-    time::Duration,
-};
+use std::{env, time::Duration};
 
 use miette::{IntoDiagnostic, Result};
 use nidhogg::{
