@@ -1,6 +1,9 @@
-use std::time::Duration;
+use std::{
+    env::{self, VarError},
+    time::Duration,
+};
 
-use miette::Result;
+use miette::{IntoDiagnostic, Result};
 use nidhogg::{
     backend::{ConnectWithRetry, LolaBackend, ReadHardwareInfo},
     NaoBackend, NaoControlMessage, NaoState,
@@ -8,6 +11,32 @@ use nidhogg::{
 use tracing::info;
 use tyr::prelude::*;
 
+pub struct RobotInfo {
+    pub name: String,
+    pub id: u32,
+    pub head_id: String,
+    pub body_id: String,
+}
+
+impl RobotInfo {
+    fn new(head_id: String, body_id: String) -> Result<Self> {
+        let name = env::var("ROBOT_NAME").into_diagnostic()?;
+        let id = str::parse(&env::var("ROBOT_ID").into_diagnostic()?).into_diagnostic()?;
+
+        Ok(Self {
+            name,
+            id,
+            head_id,
+            body_id,
+        })
+    }
+}
+
+/// This module provides the following resources to the application:
+/// - [`LolaBackend`]
+/// - [`NaoState`]
+/// - [`NaoControlMessage`]
+/// - [`RobotInfo`]
 pub struct NaoModule;
 
 impl Module for NaoModule {
@@ -31,6 +60,7 @@ fn initialize_nao(storage: &mut Storage) -> Result<()> {
 
     storage.add_resource(Resource::new(nao))?;
     storage.add_resource(Resource::new(state))?;
+    storage.add_resource(Resource::new(RobotInfo::new(info.head_id, info.body_id)))?;
 
     Ok(())
 }
