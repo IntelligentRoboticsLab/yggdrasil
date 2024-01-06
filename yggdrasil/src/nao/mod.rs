@@ -1,5 +1,5 @@
 use std::{
-    env::{self, VarError},
+    env::{self},
     time::Duration,
 };
 
