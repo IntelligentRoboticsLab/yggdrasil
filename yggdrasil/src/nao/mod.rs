@@ -10,9 +10,9 @@ use tyr::prelude::*;
 /// Information that uniquely identifies a robot
 pub struct RobotInfo {
     /// Name of the robot
-    pub name: String,
+    pub robot_name: String,
     /// Robot id/number used to assign IP
-    pub id: u32,
+    pub robot_id: u32,
     /// Unique hardware id of the head
     pub head_id: String,
     /// Hardware version of the head
@@ -32,12 +32,12 @@ impl RobotInfo {
             head_version,
         } = backend.read_hardware_info()?;
 
-        let name = env::var("ROBOT_NAME").into_diagnostic()?;
-        let id = str::parse(&env::var("ROBOT_ID").into_diagnostic()?).into_diagnostic()?;
+        let robot_name = env::var("ROBOT_NAME").into_diagnostic()?;
+        let robot_id = str::parse(&env::var("ROBOT_ID").into_diagnostic()?).into_diagnostic()?;
 
         Ok(Self {
-            name,
-            id,
+            robot_name,
+            robot_id,
             head_id,
             body_id,
             head_version,
