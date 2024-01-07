@@ -3,20 +3,35 @@ use std::{env, time::Duration};
 use miette::{IntoDiagnostic, Result};
 use nidhogg::{
     backend::{ConnectWithRetry, LolaBackend, ReadHardwareInfo},
-    NaoBackend, NaoControlMessage, NaoState,
+    HardwareInfo, NaoBackend, NaoControlMessage, NaoState,
 };
-use tracing::info;
 use tyr::prelude::*;
 
+/// Information that uniquely identifies a robot
 pub struct RobotInfo {
+    /// Name of the robot
     pub name: String,
+    /// Robot id/number used to assign IP
     pub id: u32,
+    /// Unique hardware id of the head
     pub head_id: String,
+    /// Hardware version of the head
+    pub head_version: String,
+    /// Unique hardware id of the body
     pub body_id: String,
+    /// Hardware version of the body
+    pub body_version: String,
 }
 
 impl RobotInfo {
-    fn new(head_id: String, body_id: String) -> Result<Self> {
+    fn new<T: ReadHardwareInfo>(backend: &mut T) -> Result<Self> {
+        let HardwareInfo {
+            body_id,
+            head_id,
+            body_version,
+            head_version,
+        } = backend.read_hardware_info()?;
+
         let name = env::var("ROBOT_NAME").into_diagnostic()?;
         let id = str::parse(&env::var("ROBOT_ID").into_diagnostic()?).into_diagnostic()?;
 
@@ -25,6 +40,8 @@ impl RobotInfo {
             id,
             head_id,
             body_id,
+            head_version,
+            body_version,
         })
     }
 }
@@ -47,17 +64,18 @@ impl Module for NaoModule {
 
 fn initialize_nao(storage: &mut Storage) -> Result<()> {
     let mut nao = LolaBackend::connect_with_retry(10, Duration::from_millis(500))?;
+    let info = RobotInfo::new(&mut nao)?;
     let state = nao.read_nao_state()?;
 
-    let info = nao.read_hardware_info()?;
-    info!(
+    tracing::info!(
         "Launched yggdrasil on nao with head_id: {}, body_id: {}",
-        info.head_id, info.body_id
+        info.head_id,
+        info.body_id
     );
 
     storage.add_resource(Resource::new(nao))?;
     storage.add_resource(Resource::new(state))?;
-    storage.add_resource(Resource::new(RobotInfo::new(info.head_id, info.body_id)))?;
+    storage.add_resource(Resource::new(info))?;
 
     Ok(())
 }
