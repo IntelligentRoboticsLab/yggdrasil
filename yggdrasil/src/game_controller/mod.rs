@@ -42,7 +42,7 @@ impl GameControllerModule {
         Ok(game_controller_socket)
     }
 
-    fn init_udp_socket(storage: &mut Storage) -> Result<()> {
+    fn add_resources(storage: &mut Storage) -> Result<()> {
         let game_controller_socket =
             storage.map_resource_ref(|async_dispatcher: &AsyncDispatcher| {
                 async_dispatcher
@@ -61,7 +61,7 @@ impl GameControllerModule {
 
 impl Module for GameControllerModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_startup_system(Self::init_udp_socket)?
+        app.add_startup_system(Self::add_resources)?
             .add_module(receive::GameControllerReceiveModule)?
             .add_module(transmit::GameControllerTransmitModule)
     }
