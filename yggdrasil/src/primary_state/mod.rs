@@ -87,6 +87,8 @@ fn update_primary_state(
 
     // Only set color if the primary state is changed, with the exception of `Initial`.
     if next_primary_state != *primary_state {
+        led.unset_chest_blink();
+
         match next_primary_state {
             PS::Unstiff => led.set_chest_blink(Color::BLUE, CHEST_BLINK_INTERVAL),
             PS::Initial => led.chest = Color::GRAY,
