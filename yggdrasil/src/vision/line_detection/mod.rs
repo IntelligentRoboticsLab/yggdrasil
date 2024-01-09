@@ -1,3 +1,9 @@
+pub mod detect_lines;
+pub mod ransac;
+pub mod segmentation;
+
+use nalgebra::DMatrix;
+
 use std::ops::Deref;
 
 use miette::Result;
@@ -18,11 +24,13 @@ impl Module for LineDetectionModule {
 }
 
 pub struct Line {
-    pub x1: f32,
-    pub y1: f32,
-    pub x2: f32,
-    pub y2: f32,
+    pub x1: u32,
+    pub y1: u32,
+    pub x2: u32,
+    pub y2: u32,
 }
+
+pub type YUVImage = DMatrix<(u8, u8, u8)>;
 
 fn detect_lines(image: Image) -> Result<Vec<Line>> {
     Ok(Vec::new())
