@@ -22,9 +22,9 @@ pub fn detect_lines(image: &YuyvImage) -> Vec<Line> {
         .flat_map(|x| vec![(x[0], x[1], x[3]), (x[2], x[1], x[3])])
         .collect::<Vec<(u8, u8, u8)>>();
 
-    let yuyv_image = YUVImage::from_vec(1280, 960, yuv_tuples).transpose();
+    let yuv_image = YUVImage::from_vec(1280, 960, yuv_tuples).transpose();
 
-    let segmented_image = segment_image(&yuyv_image);
+    let segmented_image = segment_image(&yuv_image);
 
     let lines = fit_lines(
         &segmented_image
