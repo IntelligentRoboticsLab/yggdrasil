@@ -16,26 +16,6 @@ use super::Line;
 
 use super::segmentation::segment_image;
 
-// fn main() -> Result<()> {
-//     const VIRTUAL_CAMERA: &str = "/dev/video42";
-//     let mut camera = Camera::new(VIRTUAL_CAMERA, 1280, 960, 2)?;
-//     let image = camera.get_yuyv_image()?;
-//
-//     let before = Instant::now();
-//
-//     let lines = detect_lines(&image);
-//
-//     println!("Elapsed time: {:.2?}", before.elapsed());
-//
-//     plot_image(lines.clone(), image).unwrap();
-//
-//     for line in lines {
-//         println!("{:?}, {:?}, {:?}, {:?}", line.x1, line.y1, line.x2, line.y2);
-//     }
-//
-//     Ok(())
-// }
-
 pub fn detect_lines(image: &YuyvImage) -> Vec<Line> {
     let yuv_tuples = image
         .chunks_exact(4)
@@ -100,7 +80,7 @@ fn save_sub_image_jpeg(image: &DMatrix<(u8, u8, u8)>, filename: &str) -> Result<
 
 const OUT_FILE_NAME: &str = "line-detection_result.png";
 
-pub fn plot_image(lines: Vec<Line>, image: YuyvImage) -> Result<()> {
+pub fn plot_image(lines: Vec<Line>, image: &YuyvImage) -> Result<()> {
     // Convert the image to something image::load can read
 
     let image_buffer = image::ImageBuffer::from_raw(1280, 960, image.to_rgb()?.to_vec()).unwrap();
