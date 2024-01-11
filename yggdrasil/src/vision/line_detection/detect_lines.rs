@@ -1,7 +1,8 @@
-use heimdall::{Camera, YuyvImage};
+use heimdall::YuyvImage;
 use image::codecs::jpeg::JpegEncoder;
 use nalgebra::DMatrix;
 use std::fs::File;
+use std::time::Instant;
 
 use miette::{IntoDiagnostic, Result};
 
@@ -11,29 +12,40 @@ use plotters::prelude::*;
 use super::YUVImage;
 
 use super::ransac::fit_lines;
-use super::segmentation::{Segment, SegmentType};
+use super::segmentation::{Segment, SegmentType, VERTICAL_SPLIT_SIZE, draw_segments};
 use super::Line;
 
 use super::segmentation::segment_image;
 
 pub fn detect_lines(image: &YuyvImage) -> Vec<Line> {
+    let before = Instant::now();
+    
     let yuv_tuples = image
-        .chunks_exact(4)
-        .flat_map(|x| vec![(x[0], x[1], x[3]), (x[2], x[1], x[3])])
-        .collect::<Vec<(u8, u8, u8)>>();
+    .chunks_exact(4)
+    .flat_map(|x| IntoIterator::into_iter([(x[0], x[1], x[3]), (x[2], x[1], x[3])]));
 
-    let yuv_image = YUVImage::from_vec(1280, 960, yuv_tuples).transpose();
+    let yuv_image = YUVImage::from_iterator(1280, 960, yuv_tuples).transpose();
 
     let segmented_image = segment_image(&yuv_image);
 
+    // Simple field boundary detection, Time 0ms
+    let field_barrier_segment = segmented_image.row_iter().enumerate().find(|(_, row)| {
+        let field_segments = row.iter().filter(|x| x.seg_type == SegmentType::Field).count();
+        
+        field_segments > row.len() / 3
+    }).map(|(i, _)| i).unwrap_or(0) as u32;
+    
+    let field_barrier = field_barrier_segment * VERTICAL_SPLIT_SIZE as u32;
+    draw_segments(&segmented_image, field_barrier);
+    
     let lines = fit_lines(
         &segmented_image
-            .iter()
-            .filter(|x| x.seg_type == SegmentType::Line && x.y > 300)
-            .copied()
-            .collect::<Vec<Segment>>(),
-    );
-
+        .iter()
+        .filter(|x| x.seg_type == SegmentType::Line && x.y > field_barrier
+        ).map(|x| *x)
+        .collect::<Vec<Segment>>());
+    
+    println!("Elapsed time: {:.2?}", before.elapsed());
     lines
 }
 

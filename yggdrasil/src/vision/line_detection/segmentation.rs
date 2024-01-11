@@ -22,67 +22,96 @@ impl Segment {
     }
 }
 
+const HORIZONTAL_SPLITS: usize = 128;
+const VERTICAL_SPLITS: usize = 160;
+
+pub const HORIZONTAL_SPLIT_SIZE: usize = 1280 / HORIZONTAL_SPLITS;
+pub const VERTICAL_SPLIT_SIZE: usize = 960 / VERTICAL_SPLITS;
+
 pub type SegmentMatrix = DMatrix<Segment>;
 
 pub fn segment_image(image: &YUVImage) -> SegmentMatrix {
-    let horizontal_splits = 128;
-    let vertical_splits = 160;
-
-    let horizontal_split_size = 960 / horizontal_splits;
-    let vertical_split_size = 1280 / vertical_splits;
-
-    fn is_green(pixel: (u8, u8, u8)) -> bool {
+    fn get_segment_type(pixel: (u8, u8, u8)) -> SegmentType {
         let (y, u, v) = pixel;
-        (y > 65) && (y < 140) && (u > 90) && (u < 110) && (v > 115) && (v < 135)
-    }
-
-    fn is_white(pixel: (u8, u8, u8)) -> bool {
-        let (y, u, v) = pixel;
-        (y > 190) && (u > 110) && (u < 140) && (v > 115) && (v < 140)
+        if (y > 65) && (y < 140) && (u > 90) && (u < 110) && (v > 115) && (v < 135) {
+            SegmentType::Field
+        } else if (y > 190) && (u > 110) && (u < 140) && (v > 115) && (v < 140) {
+            SegmentType::Line
+        } else {
+            SegmentType::Other
+        }
     }
 
     let mut segment_matrix = SegmentMatrix::from_element(
-        horizontal_splits,
-        vertical_splits,
+        VERTICAL_SPLITS,
+        HORIZONTAL_SPLITS,
         Segment::new(0, 0, SegmentType::Other),
     );
 
-    for j in 0..vertical_splits {
-        for i in 0..horizontal_splits {
+    for i in 0..VERTICAL_SPLITS {
+        for j in 0..HORIZONTAL_SPLITS {
             let segment = image.view(
-                (i * horizontal_split_size, j * vertical_split_size),
-                (horizontal_split_size, vertical_split_size),
-            );
+                (i * VERTICAL_SPLIT_SIZE, j * HORIZONTAL_SPLIT_SIZE), 
+                (VERTICAL_SPLIT_SIZE, HORIZONTAL_SPLIT_SIZE)
+            );     
 
-            let mut red_sum: u32 = 0;
-            let mut green_sum: u32 = 0;
-            let mut blue_sum: u32 = 0;
+            let mut field_sum: u32 = 0;
+            let mut line_sum: u32 = 0;
+            let mut other_sum: u32 = 0;
 
+            
             for pixel in segment.iter() {
-                red_sum += pixel.0 as u32;
-                green_sum += pixel.1 as u32;
-                blue_sum += pixel.2 as u32;
+                match get_segment_type(*pixel) {
+                    SegmentType::Field => field_sum += 1,
+                    SegmentType::Line => line_sum += 1,
+                    SegmentType::Other => other_sum += 1,
+                }
             }
 
-            let red_average = red_sum / (segment.nrows() * segment.ncols()) as u32;
-            let green_average = green_sum / (segment.nrows() * segment.ncols()) as u32;
-            let blue_average = blue_sum / (segment.nrows() * segment.ncols()) as u32;
-            let average = (red_average as u8, green_average as u8, blue_average as u8);
-            if is_white(average) {
-                segment_matrix[(i, j)] = Segment::new(
-                    (j * vertical_split_size + vertical_split_size / 2) as u32,
-                    (i * horizontal_split_size + horizontal_split_size / 2) as u32,
-                    SegmentType::Line,
-                );
-            } else if is_green(average) {
-                segment_matrix[(i, j)] = Segment::new(
-                    (j * vertical_split_size + vertical_split_size / 2) as u32,
-                    (i * horizontal_split_size + horizontal_split_size / 2) as u32,
-                    SegmentType::Field,
-                );
-            }
+            let seg_type = if line_sum > other_sum {
+                SegmentType::Line
+            } else if field_sum > line_sum && field_sum > other_sum {
+                SegmentType::Field
+            } else {
+                SegmentType::Other
+            };
+
+            let x = (j * HORIZONTAL_SPLIT_SIZE + HORIZONTAL_SPLIT_SIZE / 2) as u32;
+            let y = (i * VERTICAL_SPLIT_SIZE + VERTICAL_SPLIT_SIZE / 2) as u32;
+            segment_matrix[(i, j)] = Segment::new(x, y, seg_type);
         }
     }
 
     segment_matrix
+}
+
+pub fn draw_segments(segment_matrix: &SegmentMatrix, field_barrier: u32) {
+    use image::{Rgb, RgbImage};
+
+    let mut img = DMatrix::<(u8, u8, u8)>::from_element( 960, 1280, (255, 0, 0));
+
+    segment_matrix.iter().for_each(|segment| {
+            let color = match segment.seg_type {
+                SegmentType::Other => (0, 0, 0),
+                SegmentType::Field => (0, 255, 0),
+                SegmentType::Line => (255, 255, 255)
+            };
+
+            img
+            .view_mut( 
+                ((segment.y as usize - VERTICAL_SPLIT_SIZE / 2), (segment.x as usize - HORIZONTAL_SPLIT_SIZE / 2)), 
+                (VERTICAL_SPLIT_SIZE as usize, HORIZONTAL_SPLIT_SIZE as usize) )
+            .fill(color);
+
+    });
+
+    img.row_mut(field_barrier as usize).fill((255, 0, 0));
+
+    let img = RgbImage::from_fn(1280, 960, |x, y| {
+        let (r, g, b) = img[(y as usize, x as usize)];
+        Rgb([r, g, b])
+    });
+
+    img.save("line-detection_segmentation.png").unwrap();
+
 }

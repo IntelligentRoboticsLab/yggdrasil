@@ -10,6 +10,8 @@ impl Line {
     }
 }
 
+const MIN_INLIERS: usize = 25;
+
 pub fn fit_line_ransac(
     points: &Vec<Segment>,
     min_samples: usize,
@@ -83,6 +85,9 @@ pub fn fit_lines(segments: &Vec<Segment>) -> Vec<Line> {
         // Indexes within the leftover_points vector that are outliers
         let outliers: Vec<bool> = inliers.iter().map(|&b| !b).collect();
 
+        // Calculate number of inliers
+        let number_of_inliers = inliers.iter().filter(|&&b| b).count();
+
         // Filter out inlier data
         let inlier_data = leftover_points
             .iter()
@@ -92,22 +97,23 @@ pub fn fit_lines(segments: &Vec<Segment>) -> Vec<Line> {
             .collect::<Vec<Segment>>();
 
         // Calculate line points using the model
-        let line_x: Vec<u32> = ((inlier_data[0].x)..=(inlier_data.last().unwrap().x)).collect();
-        let line_y_robust: Vec<u32> = line_x.iter().map(|&x| polyval(&model, x)).collect();
+        let mut line_x: Vec<u32> = ((inlier_data[0].x)..=(inlier_data.last().unwrap().x)).collect();
+        let mut line_y_robust: Vec<u32> = line_x.iter().map(|&x| polyval(&model, x)).collect();
 
-        // Plotting code is omitted
-        if line_x.len() > 0 {
+        // Calculate the points outside the image in line_y_robust
+        let start_index = line_y_robust.iter().position(|&y| y <= 960).unwrap_or(0);
+        let end_index = line_y_robust.iter().rposition(|&y| y <= 960).unwrap_or(line_y_robust.len() - 1);
+
+        line_y_robust = line_y_robust[start_index..=end_index].to_vec();
+        line_x = line_x[start_index..=end_index].to_vec();
+
+        if number_of_inliers > MIN_INLIERS {
             lines.push(Line::new(
                 line_x[0],
                 line_y_robust[0],
                 *line_x.last().unwrap(),
                 *line_y_robust.last().unwrap(),
             ));
-            // Print model
-            // println!("Model: {:?}", model);
-        } else {
-            println!("Line_x is empty");
-            println!("Inlier data: {:?}", inlier_data);
         }
 
         leftover_points = leftover_points

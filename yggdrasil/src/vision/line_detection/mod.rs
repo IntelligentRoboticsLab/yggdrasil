@@ -3,6 +3,7 @@ pub mod ransac;
 pub mod segmentation;
 
 use nalgebra::DMatrix;
+use rand::random;
 
 use std::{ops::Deref, time::Instant};
 
@@ -38,17 +39,14 @@ pub type YUVImage = DMatrix<(u8, u8, u8)>;
 
 /// TODO: Delete this function and use [`detect_lines::detect_lines`] directly.
 fn detect_lines(image: Image) -> Result<Vec<Line>> {
-    let before = Instant::now();
 
     let lines = detect_lines::detect_lines(image.yuyv_image());
 
-    println!("Elapsed time: {:.2?}", before.elapsed());
-
-    plot_image(lines.clone(), image.yuyv_image()).unwrap();
-
-    for line in lines {
-        println!("{:?}, {:?}, {:?}, {:?}", line.x1, line.y1, line.x2, line.y2);
+    // Don't draw on every frame, cause it will be to fast to see the image :)
+    if rand::random::<u8>() < 32 {
+        plot_image(lines.clone(), image.yuyv_image()).unwrap();
     }
+
     Ok(Vec::new())
 }
 
