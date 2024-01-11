@@ -1,6 +1,6 @@
 use nalgebra::DMatrix;
 
-use super::YUVImage;
+use super::{YUVImage, LineDetectionConfig};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SegmentType {
@@ -22,15 +22,9 @@ impl Segment {
     }
 }
 
-const HORIZONTAL_SPLITS: usize = 128;
-const VERTICAL_SPLITS: usize = 160;
-
-pub const HORIZONTAL_SPLIT_SIZE: usize = 1280 / HORIZONTAL_SPLITS;
-pub const VERTICAL_SPLIT_SIZE: usize = 960 / VERTICAL_SPLITS;
-
 pub type SegmentMatrix = DMatrix<Segment>;
 
-pub fn segment_image(image: &YUVImage) -> SegmentMatrix {
+pub fn segment_image(config: &LineDetectionConfig, image: &YUVImage) -> SegmentMatrix {
     fn get_segment_type(pixel: (u8, u8, u8)) -> SegmentType {
         let (y, u, v) = pixel;
         if (y > 65) && (y < 140) && (u > 90) && (u < 110) && (v > 115) && (v < 135) {
@@ -42,17 +36,23 @@ pub fn segment_image(image: &YUVImage) -> SegmentMatrix {
         }
     }
 
+    let vertical_splits = config.vertical_splits;
+    let horizontal_splits = config.horizontal_splits;
+
+    let vertical_split_size = image.nrows() / vertical_splits;
+    let horizontal_split_size = image.ncols() / horizontal_splits;
+
     let mut segment_matrix = SegmentMatrix::from_element(
-        VERTICAL_SPLITS,
-        HORIZONTAL_SPLITS,
+        vertical_splits,
+        horizontal_splits,
         Segment::new(0, 0, SegmentType::Other),
     );
 
-    for i in 0..VERTICAL_SPLITS {
-        for j in 0..HORIZONTAL_SPLITS {
+    for i in 0..vertical_splits {
+        for j in 0..horizontal_splits {
             let segment = image.view(
-                (i * VERTICAL_SPLIT_SIZE, j * HORIZONTAL_SPLIT_SIZE), 
-                (VERTICAL_SPLIT_SIZE, HORIZONTAL_SPLIT_SIZE)
+                (i * vertical_split_size, j * horizontal_split_size), 
+                (vertical_split_size, horizontal_split_size)
             );     
 
             let mut field_sum: u32 = 0;
@@ -76,8 +76,8 @@ pub fn segment_image(image: &YUVImage) -> SegmentMatrix {
                 SegmentType::Other
             };
 
-            let x = (j * HORIZONTAL_SPLIT_SIZE + HORIZONTAL_SPLIT_SIZE / 2) as u32;
-            let y = (i * VERTICAL_SPLIT_SIZE + VERTICAL_SPLIT_SIZE / 2) as u32;
+            let x = (j * horizontal_split_size + horizontal_split_size / 2) as u32;
+            let y = (i * vertical_split_size + vertical_split_size / 2) as u32;
             segment_matrix[(i, j)] = Segment::new(x, y, seg_type);
         }
     }
@@ -85,10 +85,13 @@ pub fn segment_image(image: &YUVImage) -> SegmentMatrix {
     segment_matrix
 }
 
-pub fn draw_segments(segment_matrix: &SegmentMatrix, field_barrier: u32) {
+pub fn draw_segments(config: &LineDetectionConfig,image: &YUVImage, segment_matrix: &SegmentMatrix, field_barrier: u32) {
     use image::{Rgb, RgbImage};
 
-    let mut img = DMatrix::<(u8, u8, u8)>::from_element( 960, 1280, (255, 0, 0));
+    let vertical_split_size = image.nrows() / config.vertical_splits;
+    let horizontal_split_size = image.ncols() / config.horizontal_splits;
+
+    let mut img = DMatrix::<(u8, u8, u8)>::from_element(image.nrows(), image.ncols(), (255, 0, 0));
 
     segment_matrix.iter().for_each(|segment| {
             let color = match segment.seg_type {
@@ -99,15 +102,15 @@ pub fn draw_segments(segment_matrix: &SegmentMatrix, field_barrier: u32) {
 
             img
             .view_mut( 
-                ((segment.y as usize - VERTICAL_SPLIT_SIZE / 2), (segment.x as usize - HORIZONTAL_SPLIT_SIZE / 2)), 
-                (VERTICAL_SPLIT_SIZE as usize, HORIZONTAL_SPLIT_SIZE as usize) )
+                ((segment.y as usize - vertical_split_size / 2), (segment.x as usize - horizontal_split_size / 2)), 
+                (vertical_split_size as usize, horizontal_split_size as usize) )
             .fill(color);
 
     });
 
     img.row_mut(field_barrier as usize).fill((255, 0, 0));
 
-    let img = RgbImage::from_fn(1280, 960, |x, y| {
+    let img = RgbImage::from_fn(image.ncols() as u32, image.nrows() as u32, |x, y| {
         let (r, g, b) = img[(y as usize, x as usize)];
         Rgb([r, g, b])
     });

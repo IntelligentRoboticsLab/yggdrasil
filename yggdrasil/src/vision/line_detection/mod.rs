@@ -37,10 +37,43 @@ pub struct Line {
 
 pub type YUVImage = DMatrix<(u8, u8, u8)>;
 
+pub struct RansacConfig {
+    pub min_samples: usize,
+    pub residual_threshold: f64,
+    pub max_trials: usize,
+    pub min_inliers: usize,
+}
+
+pub struct LineDetectionConfig {
+    // The percentage of field pixels for a row to be considered the field barrier
+    pub field_barrier_percentage: f32,
+
+    pub horizontal_splits: usize,
+    pub vertical_splits: usize,
+
+    pub ransac: RansacConfig,
+    
+}
+
 /// TODO: Delete this function and use [`detect_lines::detect_lines`] directly.
 fn detect_lines(image: Image) -> Result<Vec<Line>> {
+    
 
-    let lines = detect_lines::detect_lines(image.yuyv_image());
+    let config = LineDetectionConfig {
+        field_barrier_percentage: 0.3,
+        horizontal_splits: 128,
+        vertical_splits: 160,
+
+        ransac: RansacConfig {
+            min_samples: 4,
+            residual_threshold: 20.0,
+            max_trials: 1000,
+            min_inliers: 25,
+        },
+
+    };
+
+    let lines = detect_lines::detect_lines(config, image.yuyv_image());
 
     // Don't draw on every frame, cause it will be to fast to see the image :)
     if rand::random::<u8>() < 32 {

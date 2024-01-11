@@ -9,36 +9,37 @@ use miette::{IntoDiagnostic, Result};
 use image::imageops::FilterType;
 use plotters::prelude::*;
 
-use super::YUVImage;
+use super::{YUVImage, LineDetectionConfig};
 
 use super::ransac::fit_lines;
-use super::segmentation::{Segment, SegmentType, VERTICAL_SPLIT_SIZE, draw_segments};
+use super::segmentation::{Segment, SegmentType, draw_segments};
 use super::Line;
 
 use super::segmentation::segment_image;
 
-pub fn detect_lines(image: &YuyvImage) -> Vec<Line> {
+pub fn detect_lines(config: LineDetectionConfig, image: &YuyvImage) -> Vec<Line> {
     let before = Instant::now();
     
     let yuv_tuples = image
     .chunks_exact(4)
     .flat_map(|x| IntoIterator::into_iter([(x[0], x[1], x[3]), (x[2], x[1], x[3])]));
 
-    let yuv_image = YUVImage::from_iterator(1280, 960, yuv_tuples).transpose();
+    let yuv_image = YUVImage::from_iterator(image.width() as usize, image.height() as usize, yuv_tuples).transpose();
 
-    let segmented_image = segment_image(&yuv_image);
+    let segmented_image = segment_image(&config, &yuv_image);
 
     // Simple field boundary detection, Time 0ms
     let field_barrier_segment = segmented_image.row_iter().enumerate().find(|(_, row)| {
         let field_segments = row.iter().filter(|x| x.seg_type == SegmentType::Field).count();
         
-        field_segments > row.len() / 3
+        field_segments > row.len() / (config.field_barrier_percentage * 10.0) as usize
     }).map(|(i, _)| i).unwrap_or(0) as u32;
     
-    let field_barrier = field_barrier_segment * VERTICAL_SPLIT_SIZE as u32;
-    draw_segments(&segmented_image, field_barrier);
+    let field_barrier = field_barrier_segment * image.height() / config.vertical_splits as u32;
+    draw_segments(&config, &yuv_image, &segmented_image, field_barrier);
     
     let lines = fit_lines(
+        &config,
         &segmented_image
         .iter()
         .filter(|x| x.seg_type == SegmentType::Line && x.y > field_barrier

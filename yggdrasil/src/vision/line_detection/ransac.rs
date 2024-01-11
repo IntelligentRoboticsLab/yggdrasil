@@ -2,15 +2,13 @@ use rand::seq::SliceRandom;
 
 use super::segmentation::Segment;
 
-use super::Line;
+use super::{Line, LineDetectionConfig};
 
 impl Line {
     fn new(x1: u32, y1: u32, x2: u32, y2: u32) -> Self {
         Line { x1, y1, x2, y2 }
     }
 }
-
-const MIN_INLIERS: usize = 25;
 
 pub fn fit_line_ransac(
     points: &Vec<Segment>,
@@ -73,14 +71,14 @@ fn polyval(coefficients: &(f64, f64), x: u32) -> u32 {
     (coefficients.0 * x as f64 + coefficients.1) as u32
 }
 
-pub fn fit_lines(segments: &Vec<Segment>) -> Vec<Line> {
+pub fn fit_lines(config: &LineDetectionConfig, segments: &Vec<Segment>) -> Vec<Line> {
     let mut leftover_points: Vec<Segment> = segments.clone();
     leftover_points.sort_by(|a, b| a.x.cmp(&b.x));
     let mut lines: Vec<Line> = Vec::new();
 
     while leftover_points.len() > 5 {
         // Robustly fit line only using inlier data with RANSAC algorithm
-        let (model, inliers) = fit_line_ransac(&leftover_points, 4, 20.0, 1000);
+        let (model, inliers) = fit_line_ransac(&leftover_points, config.ransac.min_samples, config.ransac.residual_threshold, config.ransac.max_trials);
 
         // Indexes within the leftover_points vector that are outliers
         let outliers: Vec<bool> = inliers.iter().map(|&b| !b).collect();
@@ -107,7 +105,7 @@ pub fn fit_lines(segments: &Vec<Segment>) -> Vec<Line> {
         line_y_robust = line_y_robust[start_index..=end_index].to_vec();
         line_x = line_x[start_index..=end_index].to_vec();
 
-        if number_of_inliers > MIN_INLIERS {
+        if number_of_inliers > config.ransac.min_inliers {
             lines.push(Line::new(
                 line_x[0],
                 line_y_robust[0],
