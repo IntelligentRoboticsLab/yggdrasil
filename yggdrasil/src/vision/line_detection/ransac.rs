@@ -67,8 +67,8 @@ fn polyval(coefficients: &(f64, f64), x: u32) -> u32 {
     (coefficients.0 * x as f64 + coefficients.1) as u32
 }
 
-pub fn fit_lines(config: &LineDetectionConfig, segments: &Vec<Segment>) -> Vec<Line> {
-    let mut leftover_points: Vec<Segment> = segments.clone();
+pub fn fit_lines(config: &LineDetectionConfig, segments: &[Segment]) -> Vec<Line> {
+    let mut leftover_points: Vec<Segment> = segments.to_owned();
     leftover_points.sort_by(|a, b| a.x.cmp(&b.x));
     let mut lines: Vec<Line> = Vec::new();
 

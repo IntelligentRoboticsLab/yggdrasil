@@ -8,13 +8,13 @@ use miette::{IntoDiagnostic, Result};
 use image::imageops::FilterType;
 use plotters::prelude::*;
 
-use super::{YUVImage, LineDetectionConfig};
-
-use super::ransac::fit_lines;
-use super::segmentation::{Segment, SegmentType};
-use super::Line;
-
-use super::segmentation::segment_image;
+use super::{
+    Line, 
+    LineDetectionConfig, 
+    ransac::fit_lines, 
+    segmentation::{Segment, SegmentType, segment_image},
+    YUVImage,
+};
 
 pub fn detect_lines(config: LineDetectionConfig, image: &YuyvImage) -> Vec<Line> {
     let yuv_tuples = image
@@ -38,7 +38,7 @@ pub fn detect_lines(config: LineDetectionConfig, image: &YuyvImage) -> Vec<Line>
         &segmented_image
         .iter()
         .filter(|x| x.seg_type == SegmentType::Line && x.y > field_barrier)
-        .map(|x| *x)
+        .copied()
         .collect::<Vec<Segment>>()
     );
     

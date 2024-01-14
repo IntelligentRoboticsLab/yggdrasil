@@ -1,4 +1,4 @@
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 use tyr::prelude::*;
 
 pub mod line_detection;

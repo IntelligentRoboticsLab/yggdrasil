@@ -102,7 +102,7 @@ pub fn draw_segments(config: &LineDetectionConfig,image: &YUVImage, segment_matr
             img
             .view_mut( 
                 ((segment.y as usize - vertical_split_size / 2), (segment.x as usize - horizontal_split_size / 2)), 
-                (vertical_split_size as usize, horizontal_split_size as usize) )
+                (vertical_split_size, horizontal_split_size) )
             .fill(color);
 
     });

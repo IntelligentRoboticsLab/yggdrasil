@@ -1,6 +1,20 @@
 use yggdrasil::{
+<<<<<<< HEAD
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, filter::FilterModule,
     game_controller::GameControllerModule, leds::LedsModule, nao::NaoModule, prelude::*,
+=======
+    // audio::{
+    //     sound_manager::SoundManagerModule, 
+    //     wee_sound::WeeSoundModule
+    // },
+    // behavior::BehaviorModule,
+    camera::CameraModule,
+    filter::FilterModule,
+    game_controller::GameControllerModule,
+    leds::LedsModule,
+    nao::NaoModule,
+    prelude::*,
+>>>>>>> e7f15c0 (Clippy errors fixed)
     primary_state::PrimaryStateModule,
     vision::VisionModule,
 };
