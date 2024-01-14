@@ -1,6 +1,6 @@
 use nalgebra::DMatrix;
 
-use super::{YUVImage, LineDetectionConfig};
+use super::{LineDetectionConfig, YUVImage};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SegmentType {
@@ -51,9 +51,9 @@ pub fn segment_image(config: &LineDetectionConfig, image: &YUVImage) -> SegmentM
     (0..vertical_splits).for_each(|row| {
         (0..horizontal_splits).for_each(|column| {
             let segment = image.view(
-                (row * vertical_split_size, column * horizontal_split_size), 
-                (vertical_split_size, horizontal_split_size)
-            );     
+                (row * vertical_split_size, column * horizontal_split_size),
+                (vertical_split_size, horizontal_split_size),
+            );
 
             let mut field_sum: u32 = 0;
             let mut line_sum: u32 = 0;
@@ -84,7 +84,12 @@ pub fn segment_image(config: &LineDetectionConfig, image: &YUVImage) -> SegmentM
     segment_matrix
 }
 
-pub fn draw_segments(config: &LineDetectionConfig,image: &YUVImage, segment_matrix: &SegmentMatrix, field_barrier: u32) {
+pub fn draw_segments(
+    config: &LineDetectionConfig,
+    image: &YUVImage,
+    segment_matrix: &SegmentMatrix,
+    field_barrier: u32,
+) {
     use image::{Rgb, RgbImage};
 
     let vertical_split_size = image.nrows() / config.vertical_splits;
@@ -93,18 +98,20 @@ pub fn draw_segments(config: &LineDetectionConfig,image: &YUVImage, segment_matr
     let mut img = DMatrix::<(u8, u8, u8)>::from_element(image.nrows(), image.ncols(), (255, 0, 0));
 
     segment_matrix.iter().for_each(|segment| {
-            let color = match segment.seg_type {
-                SegmentType::Other => (0, 0, 0),
-                SegmentType::Field => (0, 255, 0),
-                SegmentType::Line => (255, 255, 255)
-            };
+        let color = match segment.seg_type {
+            SegmentType::Other => (0, 0, 0),
+            SegmentType::Field => (0, 255, 0),
+            SegmentType::Line => (255, 255, 255),
+        };
 
-            img
-            .view_mut( 
-                ((segment.y as usize - vertical_split_size / 2), (segment.x as usize - horizontal_split_size / 2)), 
-                (vertical_split_size, horizontal_split_size) )
-            .fill(color);
-
+        img.view_mut(
+            (
+                (segment.y as usize - vertical_split_size / 2),
+                (segment.x as usize - horizontal_split_size / 2),
+            ),
+            (vertical_split_size, horizontal_split_size),
+        )
+        .fill(color);
     });
 
     img.row_mut(field_barrier as usize).fill((255, 0, 0));
@@ -115,5 +122,4 @@ pub fn draw_segments(config: &LineDetectionConfig,image: &YUVImage, segment_matr
     });
 
     img.save("line-detection_segmentation.png").unwrap();
-
 }

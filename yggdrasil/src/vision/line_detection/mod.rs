@@ -51,12 +51,10 @@ pub struct LineDetectionConfig {
     pub vertical_splits: usize,
 
     pub ransac: RansacConfig,
-    
 }
 
 /// TODO: Delete this function and use [`detect_lines::detect_lines`] directly.
 fn detect_lines(image: Image) -> Result<Vec<Line>> {
-    
     let config = LineDetectionConfig {
         field_barrier_percentage: 0.3,
         horizontal_splits: 128,
@@ -68,7 +66,6 @@ fn detect_lines(image: Image) -> Result<Vec<Line>> {
             max_trials: 1000,
             min_inliers: 25,
         },
-
     };
 
     let lines = detect_lines::detect_lines(config, image.yuyv_image());

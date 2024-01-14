@@ -74,7 +74,12 @@ pub fn fit_lines(config: &LineDetectionConfig, segments: &[Segment]) -> Vec<Line
 
     while leftover_points.len() > config.ransac.min_samples {
         // Fit line only using remaining data with RANSAC algorithm
-        let (model, inliers) = fit_line_ransac(&leftover_points, config.ransac.min_samples, config.ransac.residual_threshold, config.ransac.max_trials);
+        let (model, inliers) = fit_line_ransac(
+            &leftover_points,
+            config.ransac.min_samples,
+            config.ransac.residual_threshold,
+            config.ransac.max_trials,
+        );
 
         // Indexes within the leftover_points vector that are outliers
         let outliers: Vec<bool> = inliers.iter().map(|&b| !b).collect();
@@ -96,7 +101,10 @@ pub fn fit_lines(config: &LineDetectionConfig, segments: &[Segment]) -> Vec<Line
 
         // Calculate the points outside the image in line_y_robust
         let start_index = line_y_robust.iter().position(|&y| y <= 960).unwrap_or(0);
-        let end_index = line_y_robust.iter().rposition(|&y| y <= 960).unwrap_or(line_y_robust.len() - 1);
+        let end_index = line_y_robust
+            .iter()
+            .rposition(|&y| y <= 960)
+            .unwrap_or(line_y_robust.len() - 1);
 
         // Filter out the points outside the image
         line_y_robust = line_y_robust[start_index..=end_index].to_vec();
