@@ -48,10 +48,10 @@ pub fn segment_image(config: &LineDetectionConfig, image: &YUVImage) -> SegmentM
         Segment::new(0, 0, SegmentType::Other),
     );
 
-    for i in 0..vertical_splits {
-        for j in 0..horizontal_splits {
+    (0..vertical_splits).for_each(|row| {
+        (0..horizontal_splits).for_each(|column| {
             let segment = image.view(
-                (i * vertical_split_size, j * horizontal_split_size), 
+                (row * vertical_split_size, column * horizontal_split_size), 
                 (vertical_split_size, horizontal_split_size)
             );     
 
@@ -59,7 +59,6 @@ pub fn segment_image(config: &LineDetectionConfig, image: &YUVImage) -> SegmentM
             let mut line_sum: u32 = 0;
             let mut other_sum: u32 = 0;
 
-            
             for pixel in segment.iter() {
                 match get_segment_type(*pixel) {
                     SegmentType::Field => field_sum += 1,
@@ -76,11 +75,11 @@ pub fn segment_image(config: &LineDetectionConfig, image: &YUVImage) -> SegmentM
                 SegmentType::Other
             };
 
-            let x = (j * horizontal_split_size + horizontal_split_size / 2) as u32;
-            let y = (i * vertical_split_size + vertical_split_size / 2) as u32;
-            segment_matrix[(i, j)] = Segment::new(x, y, seg_type);
-        }
-    }
+            let x = (column * horizontal_split_size + horizontal_split_size / 2) as u32;
+            let y = (row * vertical_split_size + vertical_split_size / 2) as u32;
+            segment_matrix[(row, column)] = Segment::new(x, y, seg_type);
+        });
+    });
 
     segment_matrix
 }

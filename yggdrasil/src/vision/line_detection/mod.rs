@@ -3,9 +3,8 @@ pub mod ransac;
 pub mod segmentation;
 
 use nalgebra::DMatrix;
-use rand::random;
 
-use std::{ops::Deref, time::Instant};
+use std::ops::Deref;
 
 use miette::Result;
 use tyr::prelude::*;
@@ -58,7 +57,6 @@ pub struct LineDetectionConfig {
 /// TODO: Delete this function and use [`detect_lines::detect_lines`] directly.
 fn detect_lines(image: Image) -> Result<Vec<Line>> {
     
-
     let config = LineDetectionConfig {
         field_barrier_percentage: 0.3,
         horizontal_splits: 128,
@@ -75,12 +73,9 @@ fn detect_lines(image: Image) -> Result<Vec<Line>> {
 
     let lines = detect_lines::detect_lines(config, image.yuyv_image());
 
-    // Don't draw on every frame, cause it will be to fast to see the image :)
-    if rand::random::<u8>() < 32 {
-        plot_image(lines.clone(), image.yuyv_image()).unwrap();
-    }
+    plot_image(lines.clone(), image.yuyv_image())?;
 
-    Ok(Vec::new())
+    Ok(lines)
 }
 
 #[system]

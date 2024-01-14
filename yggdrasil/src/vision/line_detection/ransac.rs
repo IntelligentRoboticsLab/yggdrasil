@@ -19,10 +19,6 @@ pub fn fit_line_ransac(
     let mut best_model: Option<(f64, f64)> = None;
     let mut best_inliers: Option<Vec<bool>> = None;
 
-    // for point in points {
-    //     println!("{:?}, {:?}", point.x, point.y);
-    // }
-
     for _ in 0..max_trials {
         // Randomly sample points to form a model
         let sample: Vec<Segment> = points
@@ -76,8 +72,8 @@ pub fn fit_lines(config: &LineDetectionConfig, segments: &Vec<Segment>) -> Vec<L
     leftover_points.sort_by(|a, b| a.x.cmp(&b.x));
     let mut lines: Vec<Line> = Vec::new();
 
-    while leftover_points.len() > 5 {
-        // Robustly fit line only using inlier data with RANSAC algorithm
+    while leftover_points.len() > config.ransac.min_samples {
+        // Fit line only using remaining data with RANSAC algorithm
         let (model, inliers) = fit_line_ransac(&leftover_points, config.ransac.min_samples, config.ransac.residual_threshold, config.ransac.max_trials);
 
         // Indexes within the leftover_points vector that are outliers
@@ -102,9 +98,11 @@ pub fn fit_lines(config: &LineDetectionConfig, segments: &Vec<Segment>) -> Vec<L
         let start_index = line_y_robust.iter().position(|&y| y <= 960).unwrap_or(0);
         let end_index = line_y_robust.iter().rposition(|&y| y <= 960).unwrap_or(line_y_robust.len() - 1);
 
+        // Filter out the points outside the image
         line_y_robust = line_y_robust[start_index..=end_index].to_vec();
         line_x = line_x[start_index..=end_index].to_vec();
 
+        // Add the line to the list of lines if it has enough inliers
         if number_of_inliers > config.ransac.min_inliers {
             lines.push(Line::new(
                 line_x[0],
@@ -114,6 +112,7 @@ pub fn fit_lines(config: &LineDetectionConfig, segments: &Vec<Segment>) -> Vec<L
             ));
         }
 
+        // Filter out the inlier data from the leftover_points vector
         leftover_points = leftover_points
             .into_iter()
             .zip(outliers)
