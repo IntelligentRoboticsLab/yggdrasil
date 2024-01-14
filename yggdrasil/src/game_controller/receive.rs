@@ -91,7 +91,7 @@ fn contains_our_team_number(game_controller_message: &GameControllerMessage) -> 
 // an update. If the newer game-controller message came from a different game-controller, we should
 // ignore it.
 //
-// Ofcourse if we're not connected to a game-controller at all (`old_game_controller_address` ==
+// If we're not connected to a game-controller at all (`old_game_controller_address` ==
 // None), then we should also replace the game-controller message.
 fn should_replace_old_game_controller_message(
     old_game_controller_address: Option<(SocketAddr, Instant)>,
