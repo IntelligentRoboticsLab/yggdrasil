@@ -19,7 +19,7 @@ struct GameControllerData {
 
 /// This module handles the communication with the game-controller.
 ///
-/// The last received game-controller message is stored in an resource. If no message has been
+/// The last received game-controller message is stored in a resource. If no message has been
 /// received yet from the game-controller, or if connection to the game-controller has been lost
 /// for an extended period of time, that resource is set to `None`.
 ///
