@@ -86,9 +86,13 @@ fn contains_our_team_number(game_controller_message: &GameControllerMessage) -> 
 
 // Check if we should replace the game-controller message.
 //
-// Check if the new game-controller message came from a different game controller than the
-// last message received from the old game-controller, less than `GAME_CONTROLLER_TIMEOUT_MS` ago.
-// If it does, it probably means that multiple game-controllers are active on the same network.
+// First, check whether the new game-controller message came from the currently connected game-controller.
+// If it does, we should replace the game-controller message, because this newer message is simply
+// an update. If the newer game-controller message came from a different game-controller, we should
+// ignore it.
+//
+// Ofcourse if we're not connected to a game-controller at all (`old_game_controller_address` ==
+// None), then we should also replace the game-controller message.
 fn should_replace_old_game_controller_message(
     old_game_controller_address: Option<(SocketAddr, Instant)>,
     new_game_controller_address: SocketAddr,
