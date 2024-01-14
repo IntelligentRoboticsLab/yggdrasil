@@ -69,7 +69,7 @@ pub fn segment_image(config: &LineDetectionConfig, image: &YUVImage) -> SegmentM
 
             let seg_type = if line_sum > other_sum {
                 SegmentType::Line
-            } else if field_sum > line_sum && field_sum > other_sum {
+            } else if field_sum > other_sum {
                 SegmentType::Field
             } else {
                 SegmentType::Other

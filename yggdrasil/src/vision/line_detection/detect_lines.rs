@@ -10,7 +10,7 @@ use plotters::prelude::*;
 
 use super::{
     ransac::fit_lines,
-    segmentation::{segment_image, Segment, SegmentType},
+    segmentation::{segment_image, Segment, SegmentType, draw_segments},
     Line, LineDetectionConfig, YUVImage,
 };
 
@@ -40,6 +40,9 @@ pub fn detect_lines(config: LineDetectionConfig, image: &YuyvImage) -> Vec<Line>
         .unwrap_or(0) as u32;
 
     let field_barrier = field_barrier_segment * image.height() / config.vertical_splits as u32;
+
+    draw_segments(&config, &yuv_image, &segmented_image, field_barrier);
+
 
     let lines = fit_lines(
         &config,
