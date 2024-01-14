@@ -16,10 +16,10 @@ const IMAGE_WIDTH: u32 = 1280;
 const IMAGE_HEIGHT: u32 = 960;
 
 /// Absolute path to the lower camera of the NAO.
-const CAMERA_BOTTOM: &str = "/dev/video42";
+const CAMERA_BOTTOM: &str = "/dev/video-bottom";
 
 /// Absolute path to the upper camera of the NAO.
-const CAMERA_TOP: &str = "/dev/video42";
+const CAMERA_TOP: &str = "/dev/video-top";
 
 /// A wrapper around a [`Device`] that contains utilities to flip the image.
 pub struct CameraDevice {
