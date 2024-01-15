@@ -52,7 +52,7 @@ fn init_receive_game_controller_message_task(storage: &mut Storage) -> Result<()
 async fn receive_game_controller_message(
     game_controller_socket: Arc<UdpSocket>,
 ) -> Result<(GameControllerMessage, SocketAddr)> {
-    // The buffer is larger than necesary, in case we somehow receive invalid data, which can be a
+    // The buffer is larger than necessary, in case we somehow receive invalid data, which can be a
     // bit longer than a normal `GameControllerMessage`.
     let mut buffer = [0u8; 2 * size_of::<GameControllerMessage>()];
 
