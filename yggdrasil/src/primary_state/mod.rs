@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use crate::{filter::button::HeadButtons, leds::Leds};
+use bifrost::communication::{GameControllerMessage, GameState};
 use miette::Result;
 use nidhogg::types::Color;
 use tyr::prelude::*;
@@ -47,20 +48,47 @@ pub enum PrimaryState {
 #[system]
 fn update_primary_state(
     primary_state: &mut PrimaryState,
+    game_controller_message: &Option<GameControllerMessage>,
     led: &mut Leds,
     head_buttons: &HeadButtons,
 ) -> Result<()> {
     use PrimaryState as PS;
-    // TODO: update primary state based on gamecontroller messages.
 
-    let next_primary_state = if head_buttons.front.is_pressed() {
-        PrimaryState::Unstiff
-    } else {
-        *primary_state
+    // TODO: add penalized state
+    // We need the robot's id and check the `RobotInfo` array in the game-controller message, to
+    // see if this robot has received a penalty.
+
+    let next_primary_state = match game_controller_message {
+        Some(message) => match message {
+            GameControllerMessage {
+                state: GameState::Initial,
+                ..
+            } => PrimaryState::Initial,
+            GameControllerMessage {
+                state: GameState::Ready,
+                ..
+            } => PrimaryState::Ready,
+            GameControllerMessage {
+                state: GameState::Set,
+                ..
+            } => PrimaryState::Set,
+            GameControllerMessage {
+                state: GameState::Playing,
+                ..
+            } => PrimaryState::Playing,
+            GameControllerMessage {
+                state: GameState::Finished,
+                ..
+            } => PrimaryState::Finished,
+        },
+        None if head_buttons.middle.is_pressed() => PrimaryState::Unstiff,
+        None => *primary_state,
     };
 
     // Only set color if the primary state is changed, with the exception of `Initial`.
     if next_primary_state != *primary_state {
+        led.unset_chest_blink();
+
         match next_primary_state {
             PS::Unstiff => led.set_chest_blink(Color::BLUE, CHEST_BLINK_INTERVAL),
             PS::Initial => led.chest = Color::GRAY,

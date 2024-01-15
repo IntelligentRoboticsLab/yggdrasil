@@ -12,6 +12,7 @@ use crate::{
         roles::{Keeper, Striker},
     },
     filter::button::HeadButtons,
+    nao,
     primary_state::PrimaryState,
 };
 
@@ -211,6 +212,8 @@ pub struct BehaviorEngineModule;
 
 impl Module for BehaviorEngineModule {
     fn initialize(self, app: App) -> miette::Result<App> {
-        Ok(app.init_resource::<Engine>()?.add_system(step))
+        Ok(app
+            .init_resource::<Engine>()?
+            .add_system(step.after(nao::write_hardware_info)))
     }
 }

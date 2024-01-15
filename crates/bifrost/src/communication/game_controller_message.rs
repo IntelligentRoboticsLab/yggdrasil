@@ -260,7 +260,7 @@ pub struct GameControllerReturnMessage {
     /// "RGrt"
     pub header: [u8; 4],
 
-    /// Has to be set to GAMECONTROLLER_RETURN_STRUCT_VERSION
+    /// Has to be set to GAME_CONTROLLER_RETURN_STRUCT_VERSION
     pub version: u8,
 
     /// Player number starts with 1

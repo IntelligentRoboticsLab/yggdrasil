@@ -7,6 +7,7 @@ use yggdrasil::{
     behavior::BehaviorModule,
     camera::CameraModule,
     filter::FilterModule,
+    game_controller::GameControllerModule,
     leds::LedsModule,
     nao::NaoModule,
     primary_state::PrimaryStateModule,
@@ -27,6 +28,7 @@ fn main() -> Result<()> {
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?
         .add_module(PrimaryStateModule)?
+        .add_module(GameControllerModule)?
         .run()?;
     Ok(())
 }

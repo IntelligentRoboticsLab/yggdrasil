@@ -13,8 +13,6 @@ impl Behavior for Example {
     fn execute(&mut self, _context: Context, control_message: &mut NaoControlMessage) {
         self.iter += 1;
 
-        println!("{}", self.iter);
-
         let right_eye = if self.iter < 100 {
             RightEye::fill(Color::RED)
         } else {

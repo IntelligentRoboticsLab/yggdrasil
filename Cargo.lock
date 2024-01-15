@@ -2880,6 +2880,7 @@ dependencies = [
  "kira",
  "miette",
  "nidhogg",
+ "tokio",
  "tracing",
  "tracing-subscriber",
  "tyr",
