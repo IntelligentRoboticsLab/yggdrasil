@@ -7,6 +7,7 @@ use nidhogg::{
 };
 use tyr::prelude::*;
 
+#[derive(Clone, Debug)]
 /// Information that uniquely identifies a robot
 pub struct RobotInfo {
     /// Name of the robot
@@ -68,10 +69,13 @@ fn initialize_nao(storage: &mut Storage) -> Result<()> {
     let state = nao.read_nao_state()?;
 
     tracing::info!(
-        "Launched yggdrasil on nao with head_id: {}, body_id: {}",
+        "Launched yggdrasil on {} with head_id: {}, body_id: {}",
+        info.robot_name,
         info.head_id,
         info.body_id
     );
+
+    tracing::info!("{:?}", info);
 
     storage.add_resource(Resource::new(nao))?;
     storage.add_resource(Resource::new(state))?;
