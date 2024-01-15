@@ -95,7 +95,7 @@ pub fn write_led_values(leds: &mut Leds, control_message: &mut NaoControlMessage
         if blink.on {
             control_message.chest = blink.color;
         } else {
-            control_message.chest = Color::GRAY;
+            control_message.chest = Color::EMPTY;
         }
     }
 
