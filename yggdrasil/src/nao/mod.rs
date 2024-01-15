@@ -75,8 +75,6 @@ fn initialize_nao(storage: &mut Storage) -> Result<()> {
         info.body_id
     );
 
-    tracing::info!("{:?}", info);
-
     storage.add_resource(Resource::new(nao))?;
     storage.add_resource(Resource::new(state))?;
     storage.add_resource(Resource::new(info))?;
