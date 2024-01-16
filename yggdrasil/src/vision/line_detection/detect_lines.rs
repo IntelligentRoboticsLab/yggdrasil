@@ -25,19 +25,21 @@ pub fn detect_lines(config: LineDetectionConfig, image: &YuyvImage) -> Vec<Line>
 
     let segmented_image = segment_image(&config, &yuv_image);
 
-    let field_barrier_segment = segmented_image
-        .row_iter()
-        .enumerate()
-        .find(|(_, row)| {
-            let field_segments = row
-                .iter()
-                .filter(|x| x.seg_type == SegmentType::Field)
-                .count();
+    let mut field_barrier_segment = 0 as u32;
+    for i in (0..segmented_image.nrows()).rev() {
+        let row = segmented_image.row(i);
 
-            field_segments > row.len() / (config.field_barrier_percentage * 10.0) as usize
-        })
-        .map(|(i, _)| i)
-        .unwrap_or(0) as u32;
+        let field_segments = row
+            .iter()
+            .filter(|x| x.seg_type == SegmentType::Field)
+            .count();
+
+        if field_segments > row.len() / (config.field_barrier_percentage * 10.0) as usize {
+            break;
+        }
+
+        field_barrier_segment = i as u32;
+    }
 
     let field_barrier = field_barrier_segment * image.height() / config.vertical_splits as u32;
 
@@ -47,7 +49,7 @@ pub fn detect_lines(config: LineDetectionConfig, image: &YuyvImage) -> Vec<Line>
         &config,
         &segmented_image
             .iter()
-            .filter(|x| x.seg_type == SegmentType::Line && x.y > field_barrier)
+            .filter(|x| x.seg_type == SegmentType::Line && x.y < field_barrier)
             .copied()
             .collect::<Vec<Segment>>(),
     );
