@@ -106,18 +106,22 @@ impl YuyvImage {
         })
     }
 
+    #[must_use]
     pub fn yuv_row_iter(&self) -> YuvRowIter {
         YuvRowIter::new(self)
     }
 
+    #[must_use]
     pub fn yuv_rev_row_iter(&self) -> YuvRevRowIter {
         YuvRevRowIter::new(self)
     }
 
+    #[must_use]
     pub fn yuv_col_iter(&self) -> YuvColIter {
         YuvColIter::new(self)
     }
 
+    #[must_use]
     pub fn yuv_rev_col_iter(&self) -> YuvRevColIter {
         YuvRevColIter::new(self)
     }
@@ -297,6 +301,7 @@ impl<'a> Iterator for YuvRevColIter<'a> {
             self.current_row = self.yuyv_image.height as isize - 1;
         }
 
+        #[allow(clippy::cast_sign_loss)]
         let offset = ((self.current_row * (self.yuyv_image.width as isize) + self.current_col - 1)
             / 2
             * 4) as usize;
