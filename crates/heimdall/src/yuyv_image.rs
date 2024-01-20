@@ -5,13 +5,6 @@ use image::codecs::jpeg::JpegEncoder;
 use crate::rgb_image::RgbImage;
 use crate::Result;
 
-/// An object that holds a YUYV NAO camera image.
-pub struct YuyvImage {
-    pub(super) frame: linuxvideo::Frame,
-    pub(super) width: u32,
-    pub(super) height: u32,
-}
-
 fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
     fn clamp(value: i32) -> u8 {
         #[allow(clippy::cast_sign_loss)]
@@ -59,6 +52,13 @@ fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// An object that holds a YUYV NAO camera image.
+pub struct YuyvImage {
+    pub(super) frame: linuxvideo::Frame,
+    pub(super) width: u32,
+    pub(super) height: u32,
 }
 
 impl YuyvImage {
