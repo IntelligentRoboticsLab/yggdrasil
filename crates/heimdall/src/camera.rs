@@ -2,7 +2,7 @@ use std::io;
 
 use linuxvideo::{format::PixFormat, format::PixelFormat, stream::FrameProvider, Device};
 
-use super::YuyvImage;
+use crate::yuyv_image::YuyvImage;
 use crate::Result;
 
 /// The width of a NAO [`Image`].

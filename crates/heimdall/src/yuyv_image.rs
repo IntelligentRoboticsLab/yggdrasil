@@ -2,7 +2,7 @@ use std::{fs::File, io::Write, ops::Deref};
 
 use image::codecs::jpeg::JpegEncoder;
 
-use super::RgbImage;
+use crate::rgb_image::RgbImage;
 use crate::Result;
 
 /// An object that holds a YUYV NAO camera image.
