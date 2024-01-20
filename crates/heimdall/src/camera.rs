@@ -147,8 +147,16 @@ impl YuyvImage {
         YuvRowIter::new(self)
     }
 
+    pub fn yuv_rev_row_iter(&self) -> YuvRevRowIter {
+        YuvRevRowIter::new(self)
+    }
+
     pub fn yuv_col_iter(&self) -> YuvColIter {
         YuvColIter::new(self)
+    }
+
+    pub fn yuv_rev_col_iter(&self) -> YuvRevColIter {
+        YuvRevColIter::new(self)
     }
 }
 
@@ -193,6 +201,47 @@ impl<'a> Iterator for YuvRowIter<'a> {
     }
 }
 
+pub struct YuvRevRowIter<'a> {
+    yuyv_image: &'a YuyvImage,
+    current_pos: usize,
+}
+
+impl<'a> YuvRevRowIter<'a> {
+    pub(crate) fn new(yuyv_image: &'a YuyvImage) -> Self {
+        Self {
+            yuyv_image,
+            current_pos: (yuyv_image.width() * yuyv_image.height()) as usize,
+        }
+    }
+}
+
+impl<'a> Iterator for YuvRevRowIter<'a> {
+    type Item = (u8, u8, u8);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_pos == 0 {
+            return None;
+        }
+
+        self.current_pos -= 1;
+        let offset = (self.current_pos / 2) * 4;
+
+        Some(if self.current_pos % 2 == 0 {
+            (
+                self.yuyv_image[offset],
+                self.yuyv_image[offset + 1],
+                self.yuyv_image[offset + 3],
+            )
+        } else {
+            (
+                self.yuyv_image[offset + 2],
+                self.yuyv_image[offset + 1],
+                self.yuyv_image[offset + 3],
+            )
+        })
+    }
+}
+
 impl Deref for YuyvImage {
     type Target = [u8];
 
@@ -206,6 +255,16 @@ pub struct YuvColIter<'a> {
 
     current_row: usize,
     current_col: usize,
+}
+
+impl<'a> YuvColIter<'a> {
+    pub(crate) fn new(yuyv_image: &'a YuyvImage) -> Self {
+        Self {
+            yuyv_image,
+            current_row: 0,
+            current_col: 0,
+        }
+    }
 }
 
 impl<'a> Iterator for YuvColIter<'a> {
@@ -242,13 +301,57 @@ impl<'a> Iterator for YuvColIter<'a> {
     }
 }
 
-impl<'a> YuvColIter<'a> {
+pub struct YuvRevColIter<'a> {
+    yuyv_image: &'a YuyvImage,
+
+    current_row: isize,
+    current_col: isize,
+}
+
+impl<'a> YuvRevColIter<'a> {
     pub(crate) fn new(yuyv_image: &'a YuyvImage) -> Self {
         Self {
             yuyv_image,
-            current_row: 0,
-            current_col: 0,
+            current_row: yuyv_image.height() as isize,
+            current_col: yuyv_image.width() as isize,
         }
+    }
+}
+
+impl<'a> Iterator for YuvRevColIter<'a> {
+    type Item = (u8, u8, u8);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.current_row -= 1;
+
+        if self.current_row == -1 {
+            self.current_col -= 1;
+
+            if self.current_col == -1 {
+                return None;
+            }
+
+            self.current_row = self.yuyv_image.height() as isize - 1;
+        }
+
+        let offset = ((self.current_row * (self.yuyv_image.width() as isize) + self.current_col
+            - 1)
+            / 2
+            * 4) as usize;
+
+        Some(if self.current_col % 2 == 1 {
+            (
+                self.yuyv_image[offset],
+                self.yuyv_image[offset + 1],
+                self.yuyv_image[offset + 3],
+            )
+        } else {
+            (
+                self.yuyv_image[offset + 2],
+                self.yuyv_image[offset + 1],
+                self.yuyv_image[offset + 3],
+            )
+        })
     }
 }
 
