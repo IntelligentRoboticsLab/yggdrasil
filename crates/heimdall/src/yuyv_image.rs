@@ -135,6 +135,12 @@ impl Deref for YuyvImage {
     }
 }
 
+pub struct YuvPixel {
+    pub y: u8,
+    pub u: u8,
+    pub v: u8,
+}
+
 pub struct YuvRowIter<'a> {
     yuyv_image: &'a YuyvImage,
     current_pos: usize,
@@ -150,7 +156,7 @@ impl<'a> YuvRowIter<'a> {
 }
 
 impl<'a> Iterator for YuvRowIter<'a> {
-    type Item = (u8, u8, u8);
+    type Item = YuvPixel;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_pos == (self.yuyv_image.width * self.yuyv_image.height) as usize {
@@ -161,17 +167,17 @@ impl<'a> Iterator for YuvRowIter<'a> {
         self.current_pos += 1;
 
         Some(if self.current_pos % 2 == 1 {
-            (
-                self.yuyv_image[offset],
-                self.yuyv_image[offset + 1],
-                self.yuyv_image[offset + 3],
-            )
+            YuvPixel {
+                y: self.yuyv_image[offset],
+                u: self.yuyv_image[offset + 1],
+                v: self.yuyv_image[offset + 3],
+            }
         } else {
-            (
-                self.yuyv_image[offset + 2],
-                self.yuyv_image[offset + 1],
-                self.yuyv_image[offset + 3],
-            )
+            YuvPixel {
+                y: self.yuyv_image[offset + 2],
+                u: self.yuyv_image[offset + 1],
+                v: self.yuyv_image[offset + 3],
+            }
         })
     }
 }
@@ -191,7 +197,7 @@ impl<'a> YuvRevRowIter<'a> {
 }
 
 impl<'a> Iterator for YuvRevRowIter<'a> {
-    type Item = (u8, u8, u8);
+    type Item = YuvPixel;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_pos == 0 {
@@ -202,17 +208,17 @@ impl<'a> Iterator for YuvRevRowIter<'a> {
         let offset = (self.current_pos / 2) * 4;
 
         Some(if self.current_pos % 2 == 0 {
-            (
-                self.yuyv_image[offset],
-                self.yuyv_image[offset + 1],
-                self.yuyv_image[offset + 3],
-            )
+            YuvPixel {
+                y: self.yuyv_image[offset],
+                u: self.yuyv_image[offset + 1],
+                v: self.yuyv_image[offset + 3],
+            }
         } else {
-            (
-                self.yuyv_image[offset + 2],
-                self.yuyv_image[offset + 1],
-                self.yuyv_image[offset + 3],
-            )
+            YuvPixel {
+                y: self.yuyv_image[offset + 2],
+                u: self.yuyv_image[offset + 1],
+                v: self.yuyv_image[offset + 3],
+            }
         })
     }
 }
@@ -235,7 +241,7 @@ impl<'a> YuvColIter<'a> {
 }
 
 impl<'a> Iterator for YuvColIter<'a> {
-    type Item = (u8, u8, u8);
+    type Item = YuvPixel;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_row == self.yuyv_image.height as usize {
@@ -253,17 +259,17 @@ impl<'a> Iterator for YuvColIter<'a> {
         self.current_row += 1;
 
         Some(if self.current_col % 2 == 0 {
-            (
-                self.yuyv_image[offset],
-                self.yuyv_image[offset + 1],
-                self.yuyv_image[offset + 3],
-            )
+            YuvPixel {
+                y: self.yuyv_image[offset],
+                u: self.yuyv_image[offset + 1],
+                v: self.yuyv_image[offset + 3],
+            }
         } else {
-            (
-                self.yuyv_image[offset + 2],
-                self.yuyv_image[offset + 1],
-                self.yuyv_image[offset + 3],
-            )
+            YuvPixel {
+                y: self.yuyv_image[offset + 2],
+                u: self.yuyv_image[offset + 1],
+                v: self.yuyv_image[offset + 3],
+            }
         })
     }
 }
@@ -286,7 +292,7 @@ impl<'a> YuvRevColIter<'a> {
 }
 
 impl<'a> Iterator for YuvRevColIter<'a> {
-    type Item = (u8, u8, u8);
+    type Item = YuvPixel;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.current_row -= 1;
@@ -307,17 +313,17 @@ impl<'a> Iterator for YuvRevColIter<'a> {
             * 4) as usize;
 
         Some(if self.current_col % 2 == 1 {
-            (
-                self.yuyv_image[offset],
-                self.yuyv_image[offset + 1],
-                self.yuyv_image[offset + 3],
-            )
+            YuvPixel {
+                y: self.yuyv_image[offset],
+                u: self.yuyv_image[offset + 1],
+                v: self.yuyv_image[offset + 3],
+            }
         } else {
-            (
-                self.yuyv_image[offset + 2],
-                self.yuyv_image[offset + 1],
-                self.yuyv_image[offset + 3],
-            )
+            YuvPixel {
+                y: self.yuyv_image[offset + 2],
+                u: self.yuyv_image[offset + 1],
+                v: self.yuyv_image[offset + 3],
+            }
         })
     }
 }
