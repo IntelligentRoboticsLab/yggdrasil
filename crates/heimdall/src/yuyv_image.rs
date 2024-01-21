@@ -324,3 +324,151 @@ impl<'a> Iterator for YuvRevColIter<'a> {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::{Camera, Result};
+
+    #[test]
+    #[ignore]
+    fn yuv_row_iter_test() -> Result<()> {
+        let mut camera = Camera::new("/dev/video0", 1280, 960, 3)?;
+        let image = camera.get_yuyv_image()?;
+
+        let mut num: usize = 0;
+        let mut image_iter = image.yuv_row_iter();
+
+        image.iter().as_slice().chunks_exact(4).for_each(|yuyv| {
+            num += 1;
+
+            let y1: u8 = yuyv[0];
+            let u: u8 = yuyv[1];
+            let y2: u8 = yuyv[2];
+            let v: u8 = yuyv[3];
+
+            let yuv_pixel = image_iter.next().unwrap();
+            assert_eq!(y1, yuv_pixel.y);
+            assert_eq!(u, yuv_pixel.u);
+            assert_eq!(v, yuv_pixel.v);
+
+            let yuv_pixel = image_iter.next().unwrap();
+            assert_eq!(y2, yuv_pixel.y);
+            assert_eq!(u, yuv_pixel.u);
+            assert_eq!(v, yuv_pixel.v);
+        });
+        assert!(image_iter.next().is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    #[ignore]
+    fn yuv_rev_row_iter_test() -> Result<()> {
+        let mut camera = Camera::new("/dev/video0", 1280, 960, 3)?;
+        let image = camera.get_yuyv_image()?;
+
+        let mut image_iter = image.yuv_rev_row_iter();
+        for row in (0..image.height()).rev() {
+            for col in (0..image.width()).rev() {
+                let offset = ((row * image.width() + col) / 2) * 4;
+
+                let (y, u, v) = if col % 2 == 0 {
+                    (
+                        (&*image)[offset as usize],
+                        (&*image)[offset as usize + 1],
+                        (&*image)[offset as usize + 3],
+                    )
+                } else {
+                    (
+                        (&*image)[offset as usize + 2],
+                        (&*image)[offset as usize + 1],
+                        (&*image)[offset as usize + 3],
+                    )
+                };
+
+                let yuv_pixel = image_iter.next().unwrap();
+
+                assert_eq!(y, yuv_pixel.y);
+                assert_eq!(u, yuv_pixel.u);
+                assert_eq!(v, yuv_pixel.v);
+            }
+        }
+        assert!(image_iter.next().is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    #[ignore]
+    fn yuv_col_iter_test() -> Result<()> {
+        let mut camera = Camera::new("/dev/video0", 1280, 960, 3)?;
+        let image = camera.get_yuyv_image()?;
+
+        let mut image_iter = image.yuv_col_iter();
+        for col in 0..image.width() {
+            for row in 0..image.height() {
+                let offset = ((row * image.width() + col) / 2) * 4;
+
+                let (y, u, v) = if col % 2 == 0 {
+                    (
+                        (&*image)[offset as usize],
+                        (&*image)[offset as usize + 1],
+                        (&*image)[offset as usize + 3],
+                    )
+                } else {
+                    (
+                        (&*image)[offset as usize + 2],
+                        (&*image)[offset as usize + 1],
+                        (&*image)[offset as usize + 3],
+                    )
+                };
+
+                let yuv_pixel = image_iter.next().unwrap();
+
+                assert_eq!(y, yuv_pixel.y);
+                assert_eq!(u, yuv_pixel.u);
+                assert_eq!(v, yuv_pixel.v);
+            }
+        }
+        assert!(image_iter.next().is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    #[ignore]
+    fn yuv_rev_col_iter_test() -> Result<()> {
+        let mut camera = Camera::new("/dev/video0", 1280, 960, 3)?;
+        let image = camera.get_yuyv_image()?;
+
+        let mut image_iter = image.yuv_rev_col_iter();
+        for col in (0..image.width()).rev() {
+            for row in (0..image.height()).rev() {
+                let offset = ((row * image.width() + col) / 2) * 4;
+
+                let (y, u, v) = if col % 2 == 0 {
+                    (
+                        (&*image)[offset as usize],
+                        (&*image)[offset as usize + 1],
+                        (&*image)[offset as usize + 3],
+                    )
+                } else {
+                    (
+                        (&*image)[offset as usize + 2],
+                        (&*image)[offset as usize + 1],
+                        (&*image)[offset as usize + 3],
+                    )
+                };
+
+                let yuv_pixel = image_iter.next().unwrap();
+
+                assert_eq!(y, yuv_pixel.y);
+                assert_eq!(u, yuv_pixel.u);
+                assert_eq!(v, yuv_pixel.v);
+            }
+        }
+        assert!(image_iter.next().is_none());
+
+        Ok(())
+    }
+}
