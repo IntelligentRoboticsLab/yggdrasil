@@ -277,16 +277,16 @@ impl<'a> Iterator for YuvColIter<'a> {
 pub struct YuvRevColIter<'a> {
     yuyv_image: &'a YuyvImage,
 
-    current_row: isize,
-    current_col: isize,
+    current_row: usize,
+    current_col: usize,
 }
 
 impl<'a> YuvRevColIter<'a> {
     pub(crate) fn new(yuyv_image: &'a YuyvImage) -> Self {
         Self {
             yuyv_image,
-            current_row: yuyv_image.height as isize,
-            current_col: yuyv_image.width as isize,
+            current_row: yuyv_image.height as usize,
+            current_col: yuyv_image.width as usize,
         }
     }
 }
@@ -295,22 +295,19 @@ impl<'a> Iterator for YuvRevColIter<'a> {
     type Item = YuvPixel;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.current_row -= 1;
-
-        if self.current_row == -1 {
+        if self.current_row == 0 {
             self.current_col -= 1;
 
-            if self.current_col == -1 {
+            if self.current_col == 0 {
                 return None;
             }
 
-            self.current_row = self.yuyv_image.height as isize - 1;
+            self.current_row = self.yuyv_image.height as usize;
         }
+        self.current_row -= 1;
 
-        #[allow(clippy::cast_sign_loss)]
-        let offset = ((self.current_row * (self.yuyv_image.width as isize) + self.current_col - 1)
-            / 2
-            * 4) as usize;
+        let offset =
+            (self.current_row * (self.yuyv_image.width as usize) + self.current_col - 1) / 2 * 4;
 
         Some(if self.current_col % 2 == 1 {
             YuvPixel {
