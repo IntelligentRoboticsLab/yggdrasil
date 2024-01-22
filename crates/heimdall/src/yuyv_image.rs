@@ -266,10 +266,6 @@ impl<'a> DoubleEndedIterator for YuvColIter<'a> {
         if self.current_rev_row == 0 {
             self.current_rev_col -= 1;
 
-            if self.current_rev_col == 0 {
-                return None;
-            }
-
             self.current_rev_row = self.yuyv_image.height as usize;
         }
         self.current_rev_row -= 1;
@@ -299,10 +295,15 @@ impl<'a> DoubleEndedIterator for YuvColIter<'a> {
 mod tests {
     use super::super::{Camera, Result};
 
+    const CAMERA_PATH: &str = "/dev/video0";
+    const CAMERA_WIDTH: u32 = 1280;
+    const CAMERA_HEIGHT: u32 = 960;
+    const NUM_BUFFERS: u32 = 1;
+
     #[test]
     #[ignore]
     fn yuv_row_iter_test() -> Result<()> {
-        let mut camera = Camera::new("/dev/video0", 1280, 960, 3)?;
+        let mut camera = Camera::new(CAMERA_PATH, CAMERA_WIDTH, CAMERA_HEIGHT, NUM_BUFFERS)?;
         let image = camera.get_yuyv_image()?;
 
         let mut num: usize = 0;
@@ -334,7 +335,7 @@ mod tests {
     #[test]
     #[ignore]
     fn yuv_rev_row_iter_test() -> Result<()> {
-        let mut camera = Camera::new("/dev/video0", 1280, 960, 3)?;
+        let mut camera = Camera::new(CAMERA_PATH, CAMERA_WIDTH, CAMERA_HEIGHT, NUM_BUFFERS)?;
         let image = camera.get_yuyv_image()?;
 
         let mut image_iter = image.yuv_row_iter().rev();
@@ -371,7 +372,7 @@ mod tests {
     #[test]
     #[ignore]
     fn yuv_col_iter_test() -> Result<()> {
-        let mut camera = Camera::new("/dev/video0", 1280, 960, 3)?;
+        let mut camera = Camera::new(CAMERA_PATH, CAMERA_WIDTH, CAMERA_HEIGHT, NUM_BUFFERS)?;
         let image = camera.get_yuyv_image()?;
 
         let mut image_iter = image.yuv_col_iter();
@@ -408,7 +409,7 @@ mod tests {
     #[test]
     #[ignore]
     fn yuv_rev_col_iter_test() -> Result<()> {
-        let mut camera = Camera::new("/dev/video0", 1280, 960, 3)?;
+        let mut camera = Camera::new(CAMERA_PATH, CAMERA_WIDTH, CAMERA_HEIGHT, NUM_BUFFERS)?;
         let image = camera.get_yuyv_image()?;
 
         let mut image_iter = image.yuv_col_iter().rev();
