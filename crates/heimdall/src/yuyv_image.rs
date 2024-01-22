@@ -202,21 +202,16 @@ impl<'a> DoubleEndedIterator for YuvRowIter<'a> {
 pub struct YuvColIter<'a> {
     yuyv_image: &'a YuyvImage,
 
-    current_row: usize,
-    current_col: usize,
-
-    current_rev_row: usize,
-    current_rev_col: usize,
+    current_pos: usize,
+    current_rev_pos: usize,
 }
 
 impl<'a> YuvColIter<'a> {
     pub(crate) fn new(yuyv_image: &'a YuyvImage) -> Self {
         Self {
             yuyv_image,
-            current_row: 0,
-            current_col: 0,
-            current_rev_row: yuyv_image.height as usize,
-            current_rev_col: yuyv_image.width as usize,
+            current_pos: 0,
+            current_rev_pos: (yuyv_image.width * yuyv_image.height) as usize,
         }
     }
 }
@@ -225,22 +220,18 @@ impl<'a> Iterator for YuvColIter<'a> {
     type Item = YuvPixel;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_row == self.current_rev_row && self.current_col + 1 == self.current_rev_col
-        {
+        if self.current_pos == self.current_rev_pos {
             return None;
         }
 
-        if self.current_row == self.yuyv_image.height as usize {
-            self.current_row = 0;
-            self.current_col += 1;
-        }
+        let col = self.current_pos / self.yuyv_image.height as usize;
+        let row = self.current_pos % self.yuyv_image.height as usize;
 
-        let offset =
-            (self.current_row * (self.yuyv_image.width as usize) + self.current_col) / 2 * 4;
+        let offset = (row * self.yuyv_image.width as usize + col) / 2 * 4;
 
-        self.current_row += 1;
+        self.current_pos += 1;
 
-        Some(if self.current_col % 2 == 0 {
+        Some(if col % 2 == 0 {
             YuvPixel {
                 y: self.yuyv_image[offset],
                 u: self.yuyv_image[offset + 1],
@@ -258,24 +249,18 @@ impl<'a> Iterator for YuvColIter<'a> {
 
 impl<'a> DoubleEndedIterator for YuvColIter<'a> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        if self.current_row == self.current_rev_row && self.current_col + 1 == self.current_rev_col
-        {
+        if self.current_pos == self.current_rev_pos {
             return None;
         }
 
-        if self.current_rev_row == 0 {
-            self.current_rev_col -= 1;
+        self.current_rev_pos -= 1;
 
-            self.current_rev_row = self.yuyv_image.height as usize;
-        }
-        self.current_rev_row -= 1;
+        let col = self.current_rev_pos / self.yuyv_image.height as usize;
+        let row = self.current_rev_pos % self.yuyv_image.height as usize;
 
-        let offset =
-            (self.current_rev_row * (self.yuyv_image.width as usize) + self.current_rev_col - 1)
-                / 2
-                * 4;
+        let offset = (row * self.yuyv_image.width as usize + col) / 2 * 4;
 
-        Some(if self.current_rev_col % 2 == 1 {
+        Some(if col % 2 == 0 {
             YuvPixel {
                 y: self.yuyv_image[offset],
                 u: self.yuyv_image[offset + 1],
