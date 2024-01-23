@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::{fs::File, io::Write, ops::Deref};
 
 use image::codecs::jpeg::JpegEncoder;
@@ -67,7 +68,7 @@ impl YuyvImage {
     /// # Errors
     /// This function fails if it cannot convert the taken image, or if it cannot write to the
     /// file.
-    pub fn store_jpeg(&self, file_path: &str) -> Result<()> {
+    pub fn store_jpeg(&self, file_path: impl AsRef<Path>) -> Result<()> {
         let output_file = File::create(file_path)?;
         let mut encoder = JpegEncoder::new(output_file);
 
