@@ -29,6 +29,9 @@ impl Camera {
     ///
     /// # Errors
     /// This function fails if the [`Camera`] cannot be opened.
+    ///
+    /// # Panics
+    /// This function pannics if it cannot convert a `u32` value to `usize`.
     pub fn new(device_path: &str, width: u32, height: u32, num_buffers: u32) -> Result<Self> {
         if num_buffers == 0 {
             return Err(io::Error::new(

@@ -68,6 +68,9 @@ impl YuyvImage {
     /// # Errors
     /// This function fails if it cannot convert the taken image, or if it cannot write to the
     /// file.
+    ///
+    /// # Panics
+    /// This function pannics if it cannot convert a `u32` value to `usize`.
     pub fn store_jpeg(&self, file_path: impl AsRef<Path>) -> Result<()> {
         let output_file = File::create(file_path)?;
         let mut encoder = JpegEncoder::new(output_file);
