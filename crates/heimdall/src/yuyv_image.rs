@@ -159,19 +159,15 @@ impl<'a> Iterator for YuvRowIter<'a> {
         let offset = (self.current_pos / 2) * 4;
         self.current_pos += 1;
 
-        Some(if self.current_pos % 2 == 1 {
-            YuvPixel {
-                y: self.yuyv_image[offset],
-                u: self.yuyv_image[offset + 1],
-                v: self.yuyv_image[offset + 3],
-            }
+        let y = if self.current_pos % 2 == 1 {
+            self.yuyv_image[offset]
         } else {
-            YuvPixel {
-                y: self.yuyv_image[offset + 2],
-                u: self.yuyv_image[offset + 1],
-                v: self.yuyv_image[offset + 3],
-            }
-        })
+            self.yuyv_image[offset + 2]
+        };
+        let u = self.yuyv_image[offset + 1];
+        let v = self.yuyv_image[offset + 3];
+
+        Some(YuvPixel { y, u, v })
     }
 }
 
@@ -184,19 +180,15 @@ impl<'a> DoubleEndedIterator for YuvRowIter<'a> {
         self.current_rev_pos -= 1;
         let offset = (self.current_rev_pos / 2) * 4;
 
-        Some(if self.current_rev_pos % 2 == 0 {
-            YuvPixel {
-                y: self.yuyv_image[offset],
-                u: self.yuyv_image[offset + 1],
-                v: self.yuyv_image[offset + 3],
-            }
+        let y = if self.current_rev_pos % 2 == 0 {
+            self.yuyv_image[offset]
         } else {
-            YuvPixel {
-                y: self.yuyv_image[offset + 2],
-                u: self.yuyv_image[offset + 1],
-                v: self.yuyv_image[offset + 3],
-            }
-        })
+            self.yuyv_image[offset + 2]
+        };
+        let u = self.yuyv_image[offset + 1];
+        let v = self.yuyv_image[offset + 3];
+
+        Some(YuvPixel { y, u, v })
     }
 }
 
@@ -232,19 +224,15 @@ impl<'a> Iterator for YuvColIter<'a> {
 
         self.current_pos += 1;
 
-        Some(if col % 2 == 0 {
-            YuvPixel {
-                y: self.yuyv_image[offset],
-                u: self.yuyv_image[offset + 1],
-                v: self.yuyv_image[offset + 3],
-            }
+        let y = if col % 2 == 0 {
+            self.yuyv_image[offset]
         } else {
-            YuvPixel {
-                y: self.yuyv_image[offset + 2],
-                u: self.yuyv_image[offset + 1],
-                v: self.yuyv_image[offset + 3],
-            }
-        })
+            self.yuyv_image[offset + 2]
+        };
+        let u = self.yuyv_image[offset + 1];
+        let v = self.yuyv_image[offset + 3];
+
+        Some(YuvPixel { y, u, v })
     }
 }
 
@@ -261,19 +249,15 @@ impl<'a> DoubleEndedIterator for YuvColIter<'a> {
 
         let offset = (row * self.yuyv_image.width as usize + col) / 2 * 4;
 
-        Some(if col % 2 == 0 {
-            YuvPixel {
-                y: self.yuyv_image[offset],
-                u: self.yuyv_image[offset + 1],
-                v: self.yuyv_image[offset + 3],
-            }
+        let y = if col % 2 == 0 {
+            self.yuyv_image[offset]
         } else {
-            YuvPixel {
-                y: self.yuyv_image[offset + 2],
-                u: self.yuyv_image[offset + 1],
-                v: self.yuyv_image[offset + 3],
-            }
-        })
+            self.yuyv_image[offset + 2]
+        };
+        let u = self.yuyv_image[offset + 1];
+        let v = self.yuyv_image[offset + 3];
+
+        Some(YuvPixel { y, u, v })
     }
 }
 
