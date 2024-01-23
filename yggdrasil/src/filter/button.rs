@@ -1,6 +1,6 @@
+use miette::Result;
 use std::time::{Duration, Instant};
 
-use miette::Result;
 use nidhogg::NaoState;
 use tyr::prelude::*;
 
@@ -184,11 +184,13 @@ fn button_filter(
     Ok(())
 }
 
+#[cfg(test)]
 mod tests {
+    use super::*;
 
     #[test]
     fn button_update() {
-        let mut button = crate::filter::button::ButtonState::default();
+        let mut button = ButtonState::default();
 
         assert!(
             !button.is_pressed(),
@@ -210,7 +212,7 @@ mod tests {
             "Button should have `is_held == false` after single update!"
         );
 
-        std::thread::sleep(super::BUTTON_HELD_THRESHOLD);
+        std::thread::sleep(BUTTON_HELD_THRESHOLD);
         button = button.next(true);
 
         assert!(
@@ -233,7 +235,7 @@ mod tests {
         );
 
         button = button.next(true);
-        std::thread::sleep(super::BUTTON_HELD_THRESHOLD / 2);
+        std::thread::sleep(BUTTON_HELD_THRESHOLD / 2);
         button = button.next(true);
 
         assert!(
