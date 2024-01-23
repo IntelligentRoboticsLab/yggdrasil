@@ -6,55 +6,6 @@ use image::codecs::jpeg::JpegEncoder;
 use crate::rgb_image::RgbImage;
 use crate::Result;
 
-fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
-    fn clamp(value: i32) -> u8 {
-        #[allow(clippy::cast_sign_loss)]
-        #[allow(clippy::cast_possible_truncation)]
-        return value.clamp(0, 255) as u8;
-    }
-
-    fn yuyv422_to_rgb(y1: u8, u: u8, y2: u8, v: u8) -> ((u8, u8, u8), (u8, u8, u8)) {
-        let y1 = i32::from(y1) - 16;
-        let u = i32::from(u) - 128;
-        let y2 = i32::from(y2) - 16;
-        let v = i32::from(v) - 128;
-
-        let red1 = (298 * y1 + 409 * v + 128) >> 8;
-        let green1 = (298 * y1 - 100 * u - 208 * v + 128) >> 8;
-        let blue1 = (298 * y1 + 516 * u + 128) >> 8;
-
-        let red2 = (298 * y2 + 409 * v + 128) >> 8;
-        let green2 = (298 * y2 - 100 * u - 208 * v + 128) >> 8;
-        let blue2 = (298 * y2 + 516 * u + 128) >> 8;
-
-        (
-            (clamp(red1), clamp(green1), clamp(blue1)),
-            (clamp(red2), clamp(green2), clamp(blue2)),
-        )
-    }
-
-    let num_pixels = source.len() / 2;
-
-    for pixel_duo_id in 0..(num_pixels / 2) {
-        let input_offset: usize = (num_pixels / 2 - pixel_duo_id - 1) * 4;
-        // Use this if the image should not be flipped.
-        // let input_offset: usize = pixel_duo_id * 4;
-
-        let y1 = source[input_offset];
-        let u = source[input_offset + 1];
-        let y2 = source[input_offset + 2];
-        let v = source[input_offset + 3];
-
-        let ((red1, green1, blue1), (red2, green2, blue2)) = yuyv422_to_rgb(y1, u, y2, v);
-
-        destination.write_all(&[red2, green2, blue2, red1, green1, blue1])?;
-        // Use this if the image should not be flipped.
-        // destination.write_all(&[red1, green1, blue1, red2, green2, blue2])?;
-    }
-
-    Ok(())
-}
-
 /// An object that holds a YUYV NAO camera image.
 pub struct YuyvImage {
     pub(super) frame: linuxvideo::Frame,
@@ -63,6 +14,55 @@ pub struct YuyvImage {
 }
 
 impl YuyvImage {
+    fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
+        fn clamp(value: i32) -> u8 {
+            #[allow(clippy::cast_sign_loss)]
+            #[allow(clippy::cast_possible_truncation)]
+            return value.clamp(0, 255) as u8;
+        }
+
+        fn yuyv422_to_rgb(y1: u8, u: u8, y2: u8, v: u8) -> ((u8, u8, u8), (u8, u8, u8)) {
+            let y1 = i32::from(y1) - 16;
+            let u = i32::from(u) - 128;
+            let y2 = i32::from(y2) - 16;
+            let v = i32::from(v) - 128;
+
+            let red1 = (298 * y1 + 409 * v + 128) >> 8;
+            let green1 = (298 * y1 - 100 * u - 208 * v + 128) >> 8;
+            let blue1 = (298 * y1 + 516 * u + 128) >> 8;
+
+            let red2 = (298 * y2 + 409 * v + 128) >> 8;
+            let green2 = (298 * y2 - 100 * u - 208 * v + 128) >> 8;
+            let blue2 = (298 * y2 + 516 * u + 128) >> 8;
+
+            (
+                (clamp(red1), clamp(green1), clamp(blue1)),
+                (clamp(red2), clamp(green2), clamp(blue2)),
+            )
+        }
+
+        let num_pixels = source.len() / 2;
+
+        for pixel_duo_id in 0..(num_pixels / 2) {
+            let input_offset: usize = (num_pixels / 2 - pixel_duo_id - 1) * 4;
+            // Use this if the image should not be flipped.
+            // let input_offset: usize = pixel_duo_id * 4;
+
+            let y1 = source[input_offset];
+            let u = source[input_offset + 1];
+            let y2 = source[input_offset + 2];
+            let v = source[input_offset + 3];
+
+            let ((red1, green1, blue1), (red2, green2, blue2)) = yuyv422_to_rgb(y1, u, y2, v);
+
+            destination.write_all(&[red2, green2, blue2, red1, green1, blue1])?;
+            // Use this if the image should not be flipped.
+            // destination.write_all(&[red1, green1, blue1, red2, green2, blue2])?;
+        }
+
+        Ok(())
+    }
+
     /// Store the image as a jpeg to a file.
     ///
     /// # Errors
@@ -77,7 +77,7 @@ impl YuyvImage {
 
         let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
 
-        yuyv_to_rgb(self, &mut rgb_buffer)?;
+        Self::yuyv_to_rgb(self, &mut rgb_buffer)?;
 
         encoder.encode(
             &rgb_buffer,
@@ -105,7 +105,7 @@ impl YuyvImage {
     /// This function fails if it cannot completely write the RGB image to `destination`.
     pub fn to_rgb(&self) -> Result<RgbImage> {
         let mut rgb_image_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
-        yuyv_to_rgb(self, &mut rgb_image_buffer)?;
+        Self::yuyv_to_rgb(self, &mut rgb_image_buffer)?;
 
         Ok(RgbImage {
             frame: rgb_image_buffer,
