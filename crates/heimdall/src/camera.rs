@@ -20,8 +20,8 @@ const CAMERA_TOP: &str = "/dev/video-top";
 /// Struct for retrieving images from the NAO camera.
 pub struct Camera {
     camera: FrameProvider,
-    width: u32,
-    height: u32,
+    width: usize,
+    height: usize,
 }
 
 impl Camera {
@@ -48,8 +48,8 @@ impl Camera {
                 "Pixel formats other than YUYV are not supported",
             ))?;
         }
-        let width = capture_device.format().width();
-        let height = capture_device.format().height();
+        let width = usize::try_from(capture_device.format().width()).unwrap();
+        let height = usize::try_from(capture_device.format().height()).unwrap();
 
         let camera = capture_device
             .into_stream_num_buffers(num_buffers)?

@@ -58,8 +58,8 @@ fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
 /// An object that holds a YUYV NAO camera image.
 pub struct YuyvImage {
     pub(super) frame: linuxvideo::Frame,
-    pub(super) width: u32,
-    pub(super) height: u32,
+    pub(super) width: usize,
+    pub(super) height: usize,
 }
 
 impl YuyvImage {
@@ -72,22 +72,27 @@ impl YuyvImage {
         let output_file = File::create(file_path)?;
         let mut encoder = JpegEncoder::new(output_file);
 
-        let mut rgb_buffer = Vec::<u8>::with_capacity((self.width * self.height * 3) as usize);
+        let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
 
         yuyv_to_rgb(self, &mut rgb_buffer)?;
 
-        encoder.encode(&rgb_buffer, self.width, self.height, image::ColorType::Rgb8)?;
+        encoder.encode(
+            &rgb_buffer,
+            u32::try_from(self.width).unwrap(),
+            u32::try_from(self.height).unwrap(),
+            image::ColorType::Rgb8,
+        )?;
 
         Ok(())
     }
 
     #[must_use]
-    pub fn width(&self) -> u32 {
+    pub fn width(&self) -> usize {
         self.width
     }
 
     #[must_use]
-    pub fn height(&self) -> u32 {
+    pub fn height(&self) -> usize {
         self.height
     }
 
@@ -96,8 +101,7 @@ impl YuyvImage {
     /// # Errors
     /// This function fails if it cannot completely write the RGB image to `destination`.
     pub fn to_rgb(&self) -> Result<RgbImage> {
-        let mut rgb_image_buffer =
-            Vec::<u8>::with_capacity((self.width * self.height * 3) as usize);
+        let mut rgb_image_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
         yuyv_to_rgb(self, &mut rgb_image_buffer)?;
 
         Ok(RgbImage {
@@ -143,7 +147,7 @@ impl<'a> YuvRowIter<'a> {
         Self {
             yuyv_image,
             current_pos: 0,
-            current_rev_pos: (yuyv_image.width * yuyv_image.height) as usize,
+            current_rev_pos: yuyv_image.width() * yuyv_image.height(),
         }
     }
 }
@@ -204,7 +208,7 @@ impl<'a> YuvColIter<'a> {
         Self {
             yuyv_image,
             current_pos: 0,
-            current_rev_pos: (yuyv_image.width * yuyv_image.height) as usize,
+            current_rev_pos: yuyv_image.width * yuyv_image.height,
         }
     }
 }
@@ -217,10 +221,10 @@ impl<'a> Iterator for YuvColIter<'a> {
             return None;
         }
 
-        let col = self.current_pos / self.yuyv_image.height as usize;
-        let row = self.current_pos % self.yuyv_image.height as usize;
+        let col = self.current_pos / self.yuyv_image.height;
+        let row = self.current_pos % self.yuyv_image.height;
 
-        let offset = (row * self.yuyv_image.width as usize + col) / 2 * 4;
+        let offset = (row * self.yuyv_image.width + col) / 2 * 4;
 
         self.current_pos += 1;
 
@@ -244,10 +248,10 @@ impl<'a> DoubleEndedIterator for YuvColIter<'a> {
 
         self.current_rev_pos -= 1;
 
-        let col = self.current_rev_pos / self.yuyv_image.height as usize;
-        let row = self.current_rev_pos % self.yuyv_image.height as usize;
+        let col = self.current_rev_pos / self.yuyv_image.height;
+        let row = self.current_rev_pos % self.yuyv_image.height;
 
-        let offset = (row * self.yuyv_image.width as usize + col) / 2 * 4;
+        let offset = (row * self.yuyv_image.width + col) / 2 * 4;
 
         let y = if col % 2 == 0 {
             self.yuyv_image[offset]
@@ -315,15 +319,15 @@ mod tests {
 
                 let (y, u, v) = if col % 2 == 0 {
                     (
-                        (&*image)[offset as usize],
-                        (&*image)[offset as usize + 1],
-                        (&*image)[offset as usize + 3],
+                        (&*image)[offset],
+                        (&*image)[offset + 1],
+                        (&*image)[offset + 3],
                     )
                 } else {
                     (
-                        (&*image)[offset as usize + 2],
-                        (&*image)[offset as usize + 1],
-                        (&*image)[offset as usize + 3],
+                        (&*image)[offset + 2],
+                        (&*image)[offset + 1],
+                        (&*image)[offset + 3],
                     )
                 };
 
@@ -352,15 +356,15 @@ mod tests {
 
                 let (y, u, v) = if col % 2 == 0 {
                     (
-                        (&*image)[offset as usize],
-                        (&*image)[offset as usize + 1],
-                        (&*image)[offset as usize + 3],
+                        (&*image)[offset],
+                        (&*image)[offset + 1],
+                        (&*image)[offset + 3],
                     )
                 } else {
                     (
-                        (&*image)[offset as usize + 2],
-                        (&*image)[offset as usize + 1],
-                        (&*image)[offset as usize + 3],
+                        (&*image)[offset + 2],
+                        (&*image)[offset + 1],
+                        (&*image)[offset + 3],
                     )
                 };
 
@@ -389,15 +393,15 @@ mod tests {
 
                 let (y, u, v) = if col % 2 == 0 {
                     (
-                        (&*image)[offset as usize],
-                        (&*image)[offset as usize + 1],
-                        (&*image)[offset as usize + 3],
+                        (&*image)[offset],
+                        (&*image)[offset + 1],
+                        (&*image)[offset + 3],
                     )
                 } else {
                     (
-                        (&*image)[offset as usize + 2],
-                        (&*image)[offset as usize + 1],
-                        (&*image)[offset as usize + 3],
+                        (&*image)[offset + 2],
+                        (&*image)[offset + 1],
+                        (&*image)[offset + 3],
                     )
                 };
 

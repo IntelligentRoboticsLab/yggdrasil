@@ -3,18 +3,18 @@ use std::ops::Deref;
 /// An object that holds a YUYV NAO camera image.
 pub struct RgbImage {
     pub(super) frame: Vec<u8>,
-    pub(super) width: u32,
-    pub(super) height: u32,
+    pub(super) width: usize,
+    pub(super) height: usize,
 }
 
 impl RgbImage {
     #[must_use]
-    pub fn width(&self) -> u32 {
+    pub fn width(&self) -> usize {
         self.width
     }
 
     #[must_use]
-    pub fn height(&self) -> u32 {
+    pub fn height(&self) -> usize {
         self.height
     }
 }
