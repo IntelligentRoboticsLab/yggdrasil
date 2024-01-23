@@ -150,7 +150,7 @@ impl<'a> YuvRowIter<'a> {
         Self {
             yuyv_image,
             current_pos: 0,
-            current_rev_pos: yuyv_image.width() * yuyv_image.height(),
+            current_rev_pos: yuyv_image.width * yuyv_image.height,
         }
     }
 }
