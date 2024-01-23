@@ -114,11 +114,19 @@ impl YuyvImage {
         })
     }
 
+    /// Return a row-iterator over the image.
+    ///
+    /// This iterator iterates over the image, row by row, from left to right column, starting at the
+    /// top row.
     #[must_use]
     pub fn yuv_row_iter(&self) -> YuvRowIter {
         YuvRowIter::new(self)
     }
 
+    /// Return a column-iterator over the image.
+    ///
+    /// This iterator iterates over the image, column by column, from the top row to the bottom row, starting at the
+    /// most left column.
     #[must_use]
     pub fn yuv_col_iter(&self) -> YuvColIter {
         YuvColIter::new(self)
@@ -145,6 +153,10 @@ pub struct YuvRowIter<'a> {
     current_rev_pos: usize,
 }
 
+/// A row-iterator over a [`YuyvImage`].
+///
+/// This iterator iterates over the image, row by row, from left to right column, starting at the
+/// top row.
 impl<'a> YuvRowIter<'a> {
     pub(crate) fn new(yuyv_image: &'a YuyvImage) -> Self {
         Self {
@@ -199,6 +211,10 @@ impl<'a> DoubleEndedIterator for YuvRowIter<'a> {
     }
 }
 
+/// A column-iterator over a [`YuyvImage`].
+///
+/// This iterator iterates over the image, column by column, from the top row to the bottom row, starting at the
+/// most left column.
 pub struct YuvColIter<'a> {
     yuyv_image: &'a YuyvImage,
 
