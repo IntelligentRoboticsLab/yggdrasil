@@ -14,7 +14,11 @@ pub struct YuyvImage {
 }
 
 impl YuyvImage {
-    fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
+    fn yuyv_to_rgb(
+        source: &[u8],
+        mut destination: impl Write,
+        rotate_180_degrees: bool,
+    ) -> Result<()> {
         fn clamp(value: i32) -> u8 {
             #[allow(clippy::cast_sign_loss)]
             #[allow(clippy::cast_possible_truncation)]
@@ -41,12 +45,19 @@ impl YuyvImage {
             )
         }
 
-        let num_pixels = source.len() / 2;
-
-        for pixel_duo_id in 0..(num_pixels / 2) {
-            let input_offset: usize = (num_pixels / 2 - pixel_duo_id - 1) * 4;
-            // Use this if the image should not be flipped.
-            // let input_offset: usize = pixel_duo_id * 4;
+        // Two pixels are stored in four bytes. Those four bytes are the y1, u, y2, v values in
+        // that order. Because two pixels share the same u and v value, we decode both pixels at
+        // the same time (using `yuyv422_to_rgb`), instead of one-by-one, to improve performance.
+        //
+        // A `pixel_duo` here refers to the two pixels with the same u and v values.
+        // We iterate over all the pixel duo's in `source`, which is why we take steps of four
+        // bytes.
+        for pixel_duo_id in 0..(source.len() / 4) {
+            let input_offset: usize = if rotate_180_degrees {
+                source.len() - 4 * pixel_duo_id - 4
+            } else {
+                pixel_duo_id * 4
+            };
 
             let y1 = source[input_offset];
             let u = source[input_offset + 1];
@@ -55,15 +66,19 @@ impl YuyvImage {
 
             let ((red1, green1, blue1), (red2, green2, blue2)) = yuyv422_to_rgb(y1, u, y2, v);
 
-            destination.write_all(&[red2, green2, blue2, red1, green1, blue1])?;
-            // Use this if the image should not be flipped.
-            // destination.write_all(&[red1, green1, blue1, red2, green2, blue2])?;
+            if rotate_180_degrees {
+                destination.write_all(&[red2, green2, blue2, red1, green1, blue1])?;
+            } else {
+                destination.write_all(&[red1, green1, blue1, red2, green2, blue2])?;
+            }
         }
 
         Ok(())
     }
 
     /// Store the image as a jpeg to a file.
+    ///
+    /// The image is rotated 180 degrees.
     ///
     /// # Errors
     /// This function fails if it cannot convert the taken image, or if it cannot write to the
@@ -77,7 +92,7 @@ impl YuyvImage {
 
         let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
 
-        Self::yuyv_to_rgb(self, &mut rgb_buffer)?;
+        Self::yuyv_to_rgb(self, &mut rgb_buffer, true)?;
 
         encoder.encode(
             &rgb_buffer,
@@ -105,7 +120,7 @@ impl YuyvImage {
     /// This function fails if it cannot completely write the RGB image to `destination`.
     pub fn to_rgb(&self) -> Result<RgbImage> {
         let mut rgb_image_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
-        Self::yuyv_to_rgb(self, &mut rgb_image_buffer)?;
+        Self::yuyv_to_rgb(self, &mut rgb_image_buffer, false)?;
 
         Ok(RgbImage {
             frame: rgb_image_buffer,
