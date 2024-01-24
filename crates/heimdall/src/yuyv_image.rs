@@ -114,10 +114,10 @@ impl YuyvImage {
         self.height
     }
 
-    /// Convert this [`YuyvImage`] to RGB and store it in `destination`.
+    /// Convert this [`YuyvImage`] to an [`RgbImage`].
     ///
     /// # Errors
-    /// This function fails if it cannot completely write the RGB image to `destination`.
+    /// This function fails if it cannot allocate an [`RgbImage`].
     pub fn to_rgb(&self) -> Result<RgbImage> {
         let mut rgb_image_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
         Self::yuyv_to_rgb(self, &mut rgb_image_buffer, false)?;
