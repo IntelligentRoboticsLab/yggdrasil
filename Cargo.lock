@@ -1488,6 +1488,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "odal"
+version = "0.1.0"
+dependencies = [
+ "miette",
+ "serde",
+ "thiserror",
+ "toml",
+ "tracing",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2880,6 +2891,8 @@ dependencies = [
  "kira",
  "miette",
  "nidhogg",
+ "odal",
+ "serde",
  "tokio",
  "tracing",
  "tracing-subscriber",

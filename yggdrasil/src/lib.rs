@@ -1,6 +1,7 @@
 pub mod audio;
 pub mod behavior;
 pub mod camera;
+pub mod config;
 pub mod filter;
 pub mod game_controller;
 pub mod leds;

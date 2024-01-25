@@ -1,0 +1,6 @@
+number = 42
+name = "generic robot"
+robot = true
+
+[table]
+number = 10

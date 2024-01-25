@@ -23,7 +23,7 @@ tokio = { workspace = true, features = [
     "process",
     "rt-multi-thread",
     "signal",
-    "time"
+    "time",
 ] }
 toml = { workspace = true }
 walkdir = { workspace = true }
