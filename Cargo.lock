@@ -2486,6 +2486,7 @@ dependencies = [
  "futures",
  "miette",
  "rayon",
+ "serde",
  "thiserror",
  "tokio",
  "tyr_internal",

@@ -7,6 +7,10 @@ edition = "2021"
 futures = { workspace = true }
 miette = { workspace = true }
 rayon = { workspace = true }
+serde = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tyr_internal = { path = "../tyr_internal" }
+
+[features]
+serde = ["dep:serde"]

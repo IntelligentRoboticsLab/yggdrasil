@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 tyr_internal = { path = "tyr_internal" }
 tyr_macros = { path = "tyr_macros" }
-tyr_tasks = { path = "tyr_tasks" }
+tyr_tasks = { path = "tyr_tasks", features = ["serde"] }
 
 [dev-dependencies]
 miette = { workspace = true }

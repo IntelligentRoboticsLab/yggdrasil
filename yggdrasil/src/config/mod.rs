@@ -2,12 +2,13 @@ pub mod yggdrasil;
 
 use std::path::PathBuf;
 
-use odal::Configuration;
+use odal::{Config, ConfigKind, Error, ErrorKind};
 use tyr::prelude::*;
 
 use crate::nao::RobotInfo;
 
-use yggdrasil::YggdrasilConfig;
+use miette::IntoDiagnostic;
+use yggdrasil::TyrModule;
 
 pub struct ConfigModule;
 
@@ -15,8 +16,7 @@ impl Module for ConfigModule {
     fn initialize(self, app: App) -> miette::Result<App> {
         Ok(app
             .add_startup_system(initialize_config_roots)?
-            .add_config::<YggdrasilConfig>()?
-            .add_system(|a: Res<YggdrasilConfig>| {
+            .add_system(|a: Res<TyrModule>| {
                 println!("{:#?}", *a);
                 std::thread::sleep(std::time::Duration::from_secs(1));
                 Ok(())
@@ -56,24 +56,42 @@ impl<T: Into<PathBuf>> From<T> for OverlayConfigRoot {
     }
 }
 
+/// Trait for adding configs to an [`App`]
 pub trait ConfigResource {
-    /// Adds a configuration to the [`App`]
-    fn add_config<T: Configuration + Send + Sync + 'static>(self) -> miette::Result<Self>
+    fn init_module<T: Module + Config>(self) -> miette::Result<Self>
+    where
+        Self: Sized;
+
+    /// Adds the configuration `T` to the app
+    fn init_config<T: Config + Send + Sync + 'static>(self) -> miette::Result<Self>
     where
         Self: Sized;
 }
 
 impl ConfigResource for App {
-    fn add_config<T: Configuration + Send + Sync + 'static>(self) -> miette::Result<Self>
+    fn init_module<T: Module + Config>(self) -> miette::Result<Self>
     where
         Self: Sized,
     {
-        self.add_startup_system(_add_config::<T>)
+        {
+            let module = load_config::<T>(&self)?;
+
+            self.add_module(module)
+        }
+    }
+
+    fn init_config<T: Config + Send + Sync + 'static>(self) -> miette::Result<Self>
+    where
+        Self: Sized,
+    {
+        let config = load_config::<T>(&self)?;
+
+        self.add_resource(Resource::new(config))
     }
 }
 
 #[startup_system]
-fn _add_config<T: Configuration + Send + Sync + 'static>(
+fn add_config<T: Configuration + Send + Sync + 'static>(
     storage: &mut Storage,
     main_path: &MainConfigRoot,
     overlay_path: &OverlayConfigRoot,

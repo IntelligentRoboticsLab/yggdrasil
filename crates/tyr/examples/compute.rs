@@ -51,7 +51,10 @@ fn time_critical_task(counter: &mut Counter) -> Result<()> {
 
 fn main() -> Result<()> {
     App::new()
-        .add_module(TaskModule)?
+        .add_module(TaskModule {
+            tokio_threads: 1,
+            rayon_threads: 1,
+        })?
         .init_resource::<Counter>()?
         .add_task::<ComputeTask<Name>>()?
         .add_system(dispatch_name)

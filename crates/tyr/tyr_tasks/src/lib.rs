@@ -8,10 +8,14 @@ use std::sync::Arc;
 
 use miette::{Diagnostic, IntoDiagnostic, Result as MietteResult};
 use rayon::ThreadPoolBuilder;
+
 use thiserror::Error;
 use tokio::runtime;
 
 use tyr_internal::{App, Module, Resource};
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 use asynchronous::TokioRuntime;
 use compute::RayonThreadPool;
@@ -28,13 +32,18 @@ use compute::RayonThreadPool;
 /// Examples where this can happen include waiting on network messages, processing camera data or running big machine learning models.
 /// These are ideal use cases for tasks, as they allow you to offload work to other threads. This way the robot control can keep
 /// running smoothly.
-pub struct TaskModule;
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug)]
+pub struct TaskModule {
+    pub tokio_threads: usize,
+    pub rayon_threads: usize,
+}
 
 impl Module for TaskModule {
     fn initialize(self, app: App) -> MietteResult<App> {
         let runtime = TokioRuntime::new(
             runtime::Builder::new_multi_thread()
-                .worker_threads(1)
+                .worker_threads(self.tokio_threads)
                 .thread_name("tokio-async-worker")
                 .enable_all()
                 .build()
@@ -45,7 +54,7 @@ impl Module for TaskModule {
 
         let thread_pool = RayonThreadPool::new(Arc::new(
             ThreadPoolBuilder::new()
-                .num_threads(2)
+                .num_threads(self.rayon_threads)
                 .thread_name(|idx| format!("rayon-compute-worker-{idx}"))
                 .build()
                 .into_diagnostic()?,
