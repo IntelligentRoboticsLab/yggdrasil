@@ -179,16 +179,6 @@ impl App {
 
         app.run()
     }
-
-    /// Try to get a resource from the storage by reference, and map it to something else
-    pub fn map_resource_ref<T: 'static, F: FnOnce(&T) -> R, R>(&self, f: F) -> Result<R> {
-        self.storage.map_resource_ref(f)
-    }
-
-    /// Try to get a resource from the storage by mutable reference, and map it to something else
-    pub fn map_resource_mut<T: 'static, F: FnOnce(&mut T) -> R, R>(&self, f: F) -> Result<R> {
-        self.storage.map_resource_mut(f)
-    }
 }
 
 impl ScheduledApp {

@@ -7,7 +7,8 @@ use std::{
     path::Path,
 };
 
-use miette::Diagnostic;
+use miette::NamedSource;
+use miette::{Diagnostic, SourceSpan};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use toml::{Table, Value};
@@ -54,9 +55,15 @@ pub enum ErrorKind {
     },
     #[error("Failed to seralize toml")]
     Serialize(#[from] toml::ser::Error),
-    #[error("Failed to deseralize toml")]
-    Deserialize(#[from] toml::de::Error),
-    #[error("Invalid subtable `{key}` in overlay")]
+    #[error("Failed to deserialize toml:\n{message}\n")]
+    DeserializeCool {
+        #[source_code]
+        definition_source: NamedSource,
+        #[label("hi here look!!")]
+        parse_error_pos: Option<SourceSpan>,
+        message: String,
+    },
+    #[error("Failed to parse subtable `{key}` in overlay")]
     Subtable { key: String, source: Box<ErrorKind> },
 }
 
@@ -66,6 +73,7 @@ pub enum ErrorKind {
 pub struct Error {
     pub name: String,
     #[source]
+    #[diagnostic_source]
     pub kind: ErrorKind,
 }
 
@@ -76,6 +84,17 @@ impl Error {
             name: T::name().to_string(),
             kind,
         }
+    }
+
+    pub fn deserialize<T: Config>(path: impl AsRef<Path>, source: toml::de::Error) -> Self {
+        let path = path.as_ref();
+        let toml_string = read_to_string(path).unwrap();
+
+        Self::from_kind::<T>(ErrorKind::DeserializeCool {
+            definition_source: NamedSource::new(path.to_string_lossy().to_string(), toml_string),
+            parse_error_pos: source.span().map(Into::into),
+            message: source.message().to_string(),
+        })
     }
 }
 
@@ -94,10 +113,10 @@ pub trait Config: for<'de> Deserialize<'de> + Serialize {
 
     /// Loads a configuration from a path
     fn load_without_overlay(path: impl AsRef<Path>) -> Result<Self> {
-        let main = load_table::<Self>(path, ConfigKind::Main)?;
+        let main = load_table::<Self>(path.as_ref(), ConfigKind::Main)?;
 
         main.try_into()
-            .map_err(|e| Error::from_kind::<Self>(ErrorKind::Deserialize(e)))
+            .map_err(|e| Error::deserialize::<Self>(path.as_ref(), e))
     }
 
     /// Loads a configuration from two paths and overlays values from the second over the first
@@ -105,13 +124,14 @@ pub trait Config: for<'de> Deserialize<'de> + Serialize {
         main_path: impl AsRef<Path>,
         overlay_path: impl AsRef<Path>,
     ) -> Result<Self> {
-        let mut main = load_table::<Self>(main_path, ConfigKind::Main)?;
+        let mut main = load_table::<Self>(main_path.as_ref(), ConfigKind::Main)?;
+
         let mut overlay = load_table::<Self>(overlay_path, ConfigKind::Overlay)?;
 
         Self::merge_tables(&mut main, &mut overlay)?;
 
         main.try_into()
-            .map_err(|e| Error::from_kind::<Self>(ErrorKind::Deserialize(e)))
+            .map_err(|e| Error::deserialize::<Self>(main_path.as_ref(), e))
     }
 
     /// Stores the configuration in a file at the specified path
@@ -188,14 +208,15 @@ pub trait Config: for<'de> Deserialize<'de> + Serialize {
 fn load_table<T: Config>(path: impl AsRef<Path>, config_kind: ConfigKind) -> Result<Table> {
     let full_path = path.as_ref().join(T::PATH);
 
-    read_to_string(&full_path)
-        .map_err(|e| {
-            Error::from_kind::<T>(ErrorKind::ReadIo {
-                path: full_path.display().to_string(),
-                config_kind,
-                source: e,
-            })
-        })?
+    let toml_string = read_to_string(&full_path).map_err(|e| {
+        Error::from_kind::<T>(ErrorKind::ReadIo {
+            path: full_path.display().to_string(),
+            config_kind,
+            source: e,
+        })
+    })?;
+
+    toml_string
         .parse()
-        .map_err(|e| Error::from_kind::<T>(ErrorKind::Deserialize(e)))
+        .map_err(|e| Error::deserialize::<T>(full_path, e))
 }

@@ -8,7 +8,7 @@ pub struct TyrModule {
 }
 
 impl Config for TyrModule {
-    const PATH: &'static str = "./tyr.toml";
+    const PATH: &'static str = "tyr.toml";
 }
 
 impl Module for TyrModule {

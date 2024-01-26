@@ -2465,7 +2465,6 @@ dependencies = [
  "dyn-clone",
  "miette",
  "petgraph",
- "tyr",
 ]
 
 [[package]]

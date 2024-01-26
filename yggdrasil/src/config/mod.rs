@@ -2,25 +2,17 @@ pub mod yggdrasil;
 
 use std::path::PathBuf;
 
-use odal::{Config, ConfigKind, Error, ErrorKind};
-use tyr::prelude::*;
+use crate::{nao::RobotInfo, prelude::*};
 
-use crate::nao::RobotInfo;
+use odal::{Config, ConfigKind, Error, ErrorKind};
 
 use miette::IntoDiagnostic;
-use yggdrasil::TyrModule;
 
 pub struct ConfigModule;
 
 impl Module for ConfigModule {
     fn initialize(self, app: App) -> miette::Result<App> {
-        Ok(app
-            .add_startup_system(initialize_config_roots)?
-            .add_system(|a: Res<TyrModule>| {
-                println!("{:#?}", *a);
-                std::thread::sleep(std::time::Duration::from_secs(1));
-                Ok(())
-            }))
+        app.add_startup_system(initialize_config_roots)
     }
 }
 
@@ -58,10 +50,6 @@ impl<T: Into<PathBuf>> From<T> for OverlayConfigRoot {
 
 /// Trait for adding configs to an [`App`]
 pub trait ConfigResource {
-    fn init_module<T: Module + Config>(self) -> miette::Result<Self>
-    where
-        Self: Sized;
-
     /// Adds the configuration `T` to the app
     fn init_config<T: Config + Send + Sync + 'static>(self) -> miette::Result<Self>
     where
@@ -69,29 +57,16 @@ pub trait ConfigResource {
 }
 
 impl ConfigResource for App {
-    fn init_module<T: Module + Config>(self) -> miette::Result<Self>
-    where
-        Self: Sized,
-    {
-        {
-            let module = load_config::<T>(&self)?;
-
-            self.add_module(module)
-        }
-    }
-
     fn init_config<T: Config + Send + Sync + 'static>(self) -> miette::Result<Self>
     where
         Self: Sized,
     {
-        let config = load_config::<T>(&self)?;
-
-        self.add_resource(Resource::new(config))
+        self.add_startup_system(add_config::<T>)
     }
 }
 
 #[startup_system]
-fn add_config<T: Configuration + Send + Sync + 'static>(
+fn add_config<T: Config + Send + Sync + 'static>(
     storage: &mut Storage,
     main_path: &MainConfigRoot,
     overlay_path: &OverlayConfigRoot,
@@ -100,9 +75,24 @@ fn add_config<T: Configuration + Send + Sync + 'static>(
     let main_path = main_path.0.join(T::PATH);
     let overlay_path = overlay_path.0.join(T::PATH);
 
-    let config = YggdrasilConfig::load(&main_path, &overlay_path)?;
+    let config = match T::load_with_overlay(&main_path, &overlay_path) {
+        Ok(t) => Ok(t),
+        // failed to read overlay
+        Err(Error {
+            name,
+            kind:
+                ErrorKind::ReadIo {
+                    path,
+                    config_kind: ConfigKind::Overlay,
+                    ..
+                },
+        }) => {
+            tracing::debug!("`{name}`: Failed to read overlay from `{path}`");
+            // use only root in that case
+            T::load_without_overlay(&main_path).into_diagnostic()
+        }
+        Err(e) => Err(e.into()),
+    }?;
 
-    storage.add_resource(Resource::new(config))?;
-
-    Ok(())
+    storage.add_resource(Resource::new(config))
 }

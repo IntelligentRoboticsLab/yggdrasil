@@ -33,6 +33,7 @@ use compute::RayonThreadPool;
 /// These are ideal use cases for tasks, as they allow you to offload work to other threads. This way the robot control can keep
 /// running smoothly.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[derive(Debug)]
 pub struct TaskModule {
     pub tokio_threads: usize,

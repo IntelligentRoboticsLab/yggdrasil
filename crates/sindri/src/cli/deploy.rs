@@ -155,10 +155,6 @@ async fn deploy_to_robot(pb: &ProgressBar, addr: Ipv4Addr) -> Result<()> {
 
     pb.set_message(format!("{}", "Ensuring host directories exist".dimmed()));
 
-    // Ensure asset directory and sounds directory exist on remote
-    ensure_directory_exists(&sftp, "/home/nao/assets")?;
-    ensure_directory_exists(&sftp, "/home/nao/assets/sounds")?;
-
     pb.set_style(
         ProgressStyle::with_template(
             "   {prefix:.blue.bold} {msg} [{bar:.blue/cyan}] {spinner:.blue.bold}",
@@ -167,12 +163,16 @@ async fn deploy_to_robot(pb: &ProgressBar, addr: Ipv4Addr) -> Result<()> {
         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
         .progress_chars("=>-"),
     );
-    for entry in WalkDir::new("./deploy").contents_first(true) {
+
+    for entry in WalkDir::new("./deploy") {
         let entry = entry.unwrap();
+        let remote_path = get_remote_path(entry.path());
+
         if entry.path().is_dir() {
+            // Ensure all directories exist on remote
+            ensure_directory_exists(&sftp, remote_path)?;
             continue;
         }
-        let remote_path = get_remote_path(entry.path());
 
         let file_remote = sftp
             .open_mode(
@@ -238,8 +238,8 @@ async fn create_sftp_connection(ip: Ipv4Addr) -> Result<Sftp> {
     })
 }
 
-fn ensure_directory_exists(sftp: &Sftp, path: impl AsRef<Path>) -> Result<()> {
-    match sftp.mkdir(path.as_ref(), 0o777) {
+fn ensure_directory_exists(sftp: &Sftp, remote_path: impl AsRef<Path>) -> Result<()> {
+    match sftp.mkdir(remote_path.as_ref(), 0o777) {
         Ok(()) => Ok(()),
         // Error code 4, means the directory already exists, so we can ignore it
         Err(error) if error.code() == ErrorCode::SFTP(4) => Ok(()),
