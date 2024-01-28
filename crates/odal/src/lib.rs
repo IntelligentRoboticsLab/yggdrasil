@@ -1,105 +1,16 @@
 //! Odal helps you define configuration structs from toml files, overlay them, and catch silly🪿 mistakes while doing these things. 🗒️
+mod error;
+
+pub use error::*;
 
 use std::{
     any::type_name,
-    fmt::Display,
     fs::{self, read_to_string},
     path::Path,
 };
 
-use miette::NamedSource;
-use miette::{Diagnostic, SourceSpan};
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-use toml::{Table, Value};
-
-/// The kind of config: main or overlay
-#[derive(Debug)]
-pub enum ConfigKind {
-    Main,
-    Overlay,
-}
-
-impl Display for ConfigKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let name = match self {
-            ConfigKind::Main => "main",
-            ConfigKind::Overlay => "overlay",
-        };
-
-        f.write_str(name)
-    }
-}
-
-/// Error kinds that can occur when using odal configs
-#[derive(Debug, Error, Diagnostic)]
-pub enum ErrorKind {
-    #[error("Found key `{key}` in overlay that does not exist in main config")]
-    ExtraKey { key: String, value: Value },
-    #[error("Type of value is different between main config and overlay for key `{key}`")]
-    TypeMismatch {
-        key: String,
-        main_value: Value,
-        overlay_value: Value,
-    },
-    #[error("Failed to load {config_kind} config from `{path}`")]
-    ReadIo {
-        path: String,
-        config_kind: ConfigKind,
-        source: std::io::Error,
-    },
-    #[error("Failed to store at `{path}`")]
-    StoreIo {
-        path: String,
-        source: std::io::Error,
-    },
-    #[error("Failed to seralize toml")]
-    Serialize(#[from] toml::ser::Error),
-    #[error("Failed to deserialize toml:\n{message}\n")]
-    DeserializeCool {
-        #[source_code]
-        definition_source: NamedSource,
-        #[label("hi here look!!")]
-        parse_error_pos: Option<SourceSpan>,
-        message: String,
-    },
-    #[error("Failed to parse subtable `{key}` in overlay")]
-    Subtable { key: String, source: Box<ErrorKind> },
-}
-
-/// Error type for an odal config
-#[derive(Debug, Error, Diagnostic)]
-#[error("Config `{name}` failed")]
-pub struct Error {
-    pub name: String,
-    #[source]
-    #[diagnostic_source]
-    pub kind: ErrorKind,
-}
-
-impl Error {
-    /// Create an error that automatically inserts the config name
-    pub fn from_kind<T: Config>(kind: ErrorKind) -> Self {
-        Self {
-            name: T::name().to_string(),
-            kind,
-        }
-    }
-
-    pub fn deserialize<T: Config>(path: impl AsRef<Path>, source: toml::de::Error) -> Self {
-        let path = path.as_ref();
-        let toml_string = read_to_string(path).unwrap();
-
-        Self::from_kind::<T>(ErrorKind::DeserializeCool {
-            definition_source: NamedSource::new(path.to_string_lossy().to_string(), toml_string),
-            parse_error_pos: source.span().map(Into::into),
-            message: source.message().to_string(),
-        })
-    }
-}
-
-/// Result type that returns an [`struct@Error`]
-pub type Result<T> = std::result::Result<T, Error>;
+use toml::Table;
 
 /// Trait that defines a configuration file for the implementor
 pub trait Config: for<'de> Deserialize<'de> + Serialize {
@@ -112,7 +23,7 @@ pub trait Config: for<'de> Deserialize<'de> + Serialize {
     }
 
     /// Loads a configuration from a path
-    fn load_without_overlay(path: impl AsRef<Path>) -> Result<Self> {
+    fn load(path: impl AsRef<Path>) -> Result<Self> {
         let main = load_table::<Self>(path.as_ref(), ConfigKind::Main)?;
 
         main.try_into()
@@ -124,14 +35,11 @@ pub trait Config: for<'de> Deserialize<'de> + Serialize {
         main_path: impl AsRef<Path>,
         overlay_path: impl AsRef<Path>,
     ) -> Result<Self> {
-        let mut main = load_table::<Self>(main_path.as_ref(), ConfigKind::Main)?;
-
+        let mut main = load_table::<Self>(main_path, ConfigKind::Main)?;
         let mut overlay = load_table::<Self>(overlay_path, ConfigKind::Overlay)?;
 
-        Self::merge_tables(&mut main, &mut overlay)?;
-
-        main.try_into()
-            .map_err(|e| Error::deserialize::<Self>(main_path.as_ref(), e))
+        merge_tables::<Self>(&mut main, &mut overlay)?;
+        from_table::<Self>(main)
     }
 
     /// Stores the configuration in a file at the specified path
@@ -142,63 +50,11 @@ pub trait Config: for<'de> Deserialize<'de> + Serialize {
             .map_err(|e| Error::from_kind::<Self>(ErrorKind::Serialize(e)))?;
 
         fs::write(path, config_string).map_err(|e| {
-            Error::from_kind::<Self>(ErrorKind::StoreIo {
+            Error::from_kind::<Self>(ErrorKind::Store {
                 path: path.display().to_string(),
                 source: e,
             })
         })?;
-
-        Ok(())
-    }
-
-    /// Overlay values from the overlay into the main table.
-    ///
-    /// # Warning ⚠️
-    /// This function swaps values between tables and therefore leaves the overlay table in a garbage state.
-    fn merge_tables(main: &mut Table, overlay: &mut Table) -> Result<()> {
-        // check if the overlay doesn't contain any keys that don't exist in the main overlay,
-        // which might be indicative of an error made when configuring the overlay
-        for (key, value) in overlay.iter() {
-            if !main.contains_key(key) {
-                return Err(Error::from_kind::<Self>(ErrorKind::ExtraKey {
-                    key: key.to_string(),
-                    value: value.clone(),
-                }));
-            }
-        }
-
-        for (key, value) in main.iter_mut() {
-            // try next key if there is no overlay value
-            let Some(overlay_value) = overlay.get_mut(key) else {
-                continue;
-            };
-
-            // values must be of the same type
-            if std::mem::discriminant(value) != std::mem::discriminant(overlay_value) {
-                return Err(Error::from_kind::<Self>(ErrorKind::TypeMismatch {
-                    key: key.to_string(),
-                    main_value: value.clone(),
-                    overlay_value: overlay_value.clone(),
-                }));
-            }
-
-            if value.is_table() {
-                // recursively merge tables
-                Self::merge_tables(
-                    value.as_table_mut().unwrap(),
-                    overlay_value.as_table_mut().unwrap(),
-                )
-                .map_err(|e| {
-                    Error::from_kind::<Self>(ErrorKind::Subtable {
-                        key: key.clone(),
-                        source: Box::new(e.kind),
-                    })
-                })?;
-            } else {
-                // or replace main value with the overlay value
-                std::mem::swap(value, overlay_value);
-            }
-        }
 
         Ok(())
     }
@@ -209,7 +65,7 @@ fn load_table<T: Config>(path: impl AsRef<Path>, config_kind: ConfigKind) -> Res
     let full_path = path.as_ref().join(T::PATH);
 
     let toml_string = read_to_string(&full_path).map_err(|e| {
-        Error::from_kind::<T>(ErrorKind::ReadIo {
+        Error::from_kind::<T>(ErrorKind::Load {
             path: full_path.display().to_string(),
             config_kind,
             source: e,
@@ -219,4 +75,63 @@ fn load_table<T: Config>(path: impl AsRef<Path>, config_kind: ConfigKind) -> Res
     toml_string
         .parse()
         .map_err(|e| Error::deserialize::<T>(full_path, e))
+}
+
+/// Overlay values from the overlay into the main table.
+///
+/// # Warning ⚠️
+/// This function swaps values between tables and therefore leaves the overlay table in a garbage state.
+fn merge_tables<T: Config>(main: &mut Table, overlay: &mut Table) -> Result<()> {
+    // check if the overlay doesn't contain any keys that don't exist in the main overlay,
+    // which might be indicative of an error made when configuring the overlay
+    for (key, value) in overlay.iter() {
+        if !main.contains_key(key) {
+            return Err(Error::from_kind::<T>(ErrorKind::ExtraKey {
+                key: key.to_string(),
+                value: value.clone(),
+            }));
+        }
+    }
+
+    for (key, value) in main.iter_mut() {
+        // try next key if there is no overlay value
+        let Some(overlay_value) = overlay.get_mut(key) else {
+            continue;
+        };
+
+        // values must be of the same type
+        if std::mem::discriminant(value) != std::mem::discriminant(overlay_value) {
+            return Err(Error::from_kind::<T>(ErrorKind::TypeMismatch {
+                key: key.to_string(),
+                main_value: value.clone(),
+                overlay_value: overlay_value.clone(),
+            }));
+        }
+
+        if value.is_table() {
+            // recursively merge tables
+            merge_tables::<T>(
+                value.as_table_mut().unwrap(),
+                overlay_value.as_table_mut().unwrap(),
+            )
+            .map_err(|e| {
+                Error::from_kind::<T>(ErrorKind::Subtable {
+                    key: key.clone(),
+                    source: Box::new(e.kind),
+                })
+            })?;
+        } else {
+            // or replace main value with the overlay value
+            std::mem::swap(value, overlay_value);
+        }
+    }
+
+    Ok(())
+}
+
+/// Parses a [`Table`] into [`Self`]
+fn from_table<T: Config>(table: Table) -> Result<T> {
+    table
+        .try_into()
+        .map_err(|e| Error::from_kind::<T>(ErrorKind::Parse(e)))
 }

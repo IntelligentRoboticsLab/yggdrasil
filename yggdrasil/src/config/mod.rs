@@ -6,8 +6,6 @@ use crate::{nao::RobotInfo, prelude::*};
 
 use odal::{Config, ConfigKind, Error, ErrorKind};
 
-use miette::IntoDiagnostic;
-
 pub struct ConfigModule;
 
 impl Module for ConfigModule {
@@ -70,26 +68,27 @@ fn add_config<T: Config + Send + Sync + 'static>(
     storage: &mut Storage,
     main_path: &MainConfigRoot,
     overlay_path: &OverlayConfigRoot,
-) -> miette::Result<()> {
+) -> crate::Result<()> {
     // add config file path to the config roots
     let main_path = main_path.0.join(T::PATH);
     let overlay_path = overlay_path.0.join(T::PATH);
 
     let config = match T::load_with_overlay(&main_path, &overlay_path) {
         Ok(t) => Ok(t),
-        // failed to read overlay
+        // failed to load any overlay
         Err(Error {
             name,
             kind:
-                ErrorKind::ReadIo {
+                ErrorKind::Load {
                     path,
                     config_kind: ConfigKind::Overlay,
                     ..
                 },
         }) => {
+            // log and use only main config
             tracing::debug!("`{name}`: Failed to read overlay from `{path}`");
             // use only root in that case
-            T::load_without_overlay(&main_path).into_diagnostic()
+            T::load(&main_path)
         }
         Err(e) => Err(e.into()),
     }?;
