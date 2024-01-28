@@ -5,50 +5,41 @@ fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     App::new()
-        .init_resource::<Cheese>()?
-        .add_resource(Resource::new(Sausage("Salami".to_string())))?
-        .add_system(say_hi)
-        .add_system(update_cheese)
-        .add_system(say_bye.before(update_cheese).after(say_hi))
-        .add_system(say_hi_again)
-        .add_debuggable_resource(Resource::new(Carrot::default()))?
+        .add_startup_system(initialize_first)?
+        .add_startup_system(initialize_second)?
         .run()?;
 
     Ok(())
 }
 
-#[derive(Default)]
-struct Cheese(String);
+#[derive(Debug, Default)]
+struct A(String);
 
-#[derive(Default)]
-struct Sausage(String);
+#[derive(Debug, Default)]
+struct B(String);
 
-#[derive(Default, Debug)]
-struct Carrot(String);
+#[derive(Debug, Default)]
+struct C(String);
 
-#[system]
-fn say_hi(cheese: &Cheese) -> Result<()> {
-    println!("Hi, currently the cheese is `{}`!", cheese.0);
+#[startup_system]
+fn initialize_first(storage: &mut Storage) -> Result<()> {
+    let a = A("a".to_string());
+    let b = B("b".to_string());
+
+    storage.add_resource(Resource::new(a))?;
+    storage.add_resource(Resource::new(b))?;
+
     Ok(())
 }
 
-#[system]
-fn say_hi_again(cheese: &Cheese) -> Result<()> {
-    println!("Hello, currently the cheese is `{}`!", cheese.0);
-    Ok(())
-}
+#[startup_system]
+fn initialize_second(storage: &mut Storage, a: &A, b: &mut B) -> Result<()> {
+    let c = C("c".to_string());
 
-#[system]
-fn update_cheese(cheese: &mut Cheese) -> Result<()> {
-    cheese.0 = "Parmigiano Reggiano".to_string();
-    Ok(())
-}
+    println!("{a:?}");
+    println!("{b:?}");
 
-#[system]
-fn say_bye(cheese: &Cheese, sausage: &Sausage) -> Result<()> {
-    println!(
-        "Bye! the cheese was `{}`. The sausage was `{}`.",
-        cheese.0, sausage.0
-    );
+    storage.add_resource(Resource::new(c))?;
+
     Ok(())
 }

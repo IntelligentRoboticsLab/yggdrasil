@@ -1,16 +1,19 @@
+use std::any::Any;
 use std::collections::HashSet;
 
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::{quote, ToTokens};
-use syn::Type;
+use syn::token::Mut;
 use syn::{
     parse_macro_input, parse_quote, visit_mut::VisitMut, FnArg, ItemFn, Pat, PatIdent, PatType,
     TypeReference,
 };
+use syn::{Type, TypePath};
 
 #[cfg(nightly)]
 use syn::spanned::Spanned;
+use tyr_internal::Storage;
 
 /// An argument in a system.
 struct SystemArg {
@@ -21,12 +24,18 @@ struct SystemArg {
 /// A visitor that transforms function arguments and records errors.
 #[derive(Default)]
 struct ArgTransformerVisitor {
+    skip_first: bool,
     errors: Vec<syn::Error>,
     args: Vec<SystemArg>,
 }
 
 impl VisitMut for ArgTransformerVisitor {
     fn visit_fn_arg_mut(&mut self, arg: &mut FnArg) {
+        if self.skip_first {
+            self.skip_first = false;
+            return;
+        }
+
         match arg {
             FnArg::Typed(PatType { pat, ty, .. }) => match (pat.as_ref(), ty.as_ref()) {
                 (
@@ -76,6 +85,81 @@ pub fn system(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     }
 
     let mut visitor = ArgTransformerVisitor::default();
+    syn::visit_mut::visit_item_fn_mut(&mut visitor, &mut input);
+
+    // automatically deref to a reference at the beginning of a system
+    visitor
+        .args
+        .iter()
+        .rev()
+        .for_each(|SystemArg { mutable, ident }| {
+            // adds one of two statements to the beginning of the function block,
+            // depending on the mutability of the system argument
+            let stmt = if *mutable {
+                // Expands to `let ident = DerefMut::deref_mut(&mut ident);`
+                parse_quote! { let #ident = std::ops::DerefMut::deref_mut(&mut #ident); }
+            } else {
+                // Expands to `let ident = Deref::deref(&ident);`
+                parse_quote! { let #ident = std::ops::Deref::deref(&#ident); }
+            };
+
+            input.block.stmts.insert(0, stmt);
+        });
+
+    let errors: TokenStream = visitor
+        .errors
+        .iter_mut()
+        .fold(proc_macro2::TokenStream::default(), |mut acc, error| {
+            acc.extend::<proc_macro2::TokenStream>(error.clone().into_compile_error());
+            acc
+        })
+        .into();
+
+    if !errors.is_empty() {
+        return errors;
+    }
+
+    quote! {
+        #input
+    }
+    .into()
+}
+
+pub fn startup_system(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let mut input = parse_macro_input!(input as ItemFn);
+
+    if let Err(non_exclusive_mutable_borrow_error) = check_exclusive_mutable_borrow(&input) {
+        return non_exclusive_mutable_borrow_error;
+    }
+
+    let arg = input
+        .sig
+        .inputs
+        .first()
+        .unwrap_or_else(|| panic!("Startup systems must have at least one parameter!"));
+
+    match arg {
+        FnArg::Receiver(_) => panic!("Systems do not support receiver arguments, as they should be implemented as plain functions!"),
+        FnArg::Typed(PatType { ty, .. }) => match ty.as_ref() {
+            Type::Reference(TypeReference { mutability: Some(_), elem, .. }) => match elem.as_ref() {
+                Type::Path(p) if *p == parse_quote! { Storage } => (),
+                _ => panic!("First argument must be a &mut Storage!"),
+            },
+            _ => panic!("First argument must be a &mut Storage!"),
+        },
+    };
+
+    // if arg != std::any::TypeId::of::<&mut Storage>() {
+    //     panic!(
+    //         "First parameter in a startup system must be &mut Storage!, {:?}, {:?} != {:?}",
+    //         arg,
+    //         arg,
+    //         std::any::TypeId::of::<&mut Storage>()
+    //     );
+    // }
+
+    let mut visitor = ArgTransformerVisitor::default();
+    visitor.skip_first = true;
     syn::visit_mut::visit_item_fn_mut(&mut visitor, &mut input);
 
     // automatically deref to a reference at the beginning of a system

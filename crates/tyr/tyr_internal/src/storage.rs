@@ -2,6 +2,7 @@ use std::{
     any::{type_name, Any, TypeId},
     collections::HashMap,
     fmt::Debug,
+    ops::Deref,
     sync::{Arc, LockResult, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
@@ -9,7 +10,7 @@ use crate::system::System;
 
 use miette::{miette, Result};
 
-pub type BoxedSystem = Box<dyn System + 'static>;
+pub type BoxedSystem = Box<dyn System<false> + 'static>;
 
 /// A thread-safe container that holds one instance of type `T`
 #[derive(Debug, Default)]
@@ -50,6 +51,14 @@ impl ErasedResource {
 
     pub fn write(&self) -> LockResult<RwLockWriteGuard<dyn Any + Send + Sync + 'static>> {
         self.0.write()
+    }
+}
+
+impl Deref for ErasedResource {
+    type Target = RwLock<dyn Any + Send + Sync + 'static>;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.deref()
     }
 }
 

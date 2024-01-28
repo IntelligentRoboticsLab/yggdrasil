@@ -1,5 +1,6 @@
 use crate::schedule::{DependencySystem, Schedule};
 use crate::storage::{Resource, Storage};
+use crate::system::{IntoSystem, System};
 use crate::{IntoDependencySystem, Module};
 
 use miette::Result;
@@ -97,11 +98,11 @@ impl App {
     ///     Ok(())
     /// }
     /// ```
-    pub fn add_startup_system<F: FnOnce(&mut Storage) -> Result<()>>(
+    pub fn add_startup_system<Input>(
         mut self,
-        system: F,
+        system: impl IntoSystem<true, Input>,
     ) -> Result<Self> {
-        system(&mut self.storage)?;
+        system.into_system().run(&mut self.storage)?;
         Ok(self)
     }
 

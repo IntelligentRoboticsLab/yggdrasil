@@ -26,3 +26,8 @@ mod system;
 pub fn system(_args: TokenStream, item: TokenStream) -> proc_macro::TokenStream {
     system::system(item)
 }
+
+#[proc_macro_attribute]
+pub fn startup_system(_args: TokenStream, item: TokenStream) -> proc_macro::TokenStream {
+    system::startup_system(item)
+}
