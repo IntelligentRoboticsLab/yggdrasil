@@ -1,7 +1,6 @@
 use dyn_clone::DynClone;
 use miette::Result;
 use std::hash::Hash;
-use std::sync::RwLock;
 use std::{
     any::{type_name, Any, TypeId},
     marker::PhantomData,
@@ -249,9 +248,10 @@ impl TypeInfo {
 
 pub trait SystemParam {
     type Item<'new>;
+    type ErasedResources;
 
-    fn retrieve(resource: &RwLock<dyn Any + Send + Sync>) -> Self::Item<'_>;
-    fn get_resource(storage: &Storage) -> ErasedResource;
+    fn retrieve<'a>(resource: &'a Self::ErasedResources) -> Self::Item<'a>;
+    fn get_resource(storage: &Storage) -> Self::ErasedResources;
     fn type_info() -> Vec<TypeInfo>;
 }
 
@@ -271,15 +271,16 @@ impl<'a, T: Send + Sync + 'static> Deref for Res<'a, T> {
 
 impl<'res, T: Send + Sync + 'static> SystemParam for Res<'res, T> {
     type Item<'new> = Res<'new, T>;
+    type ErasedResources = ErasedResource;
 
-    fn retrieve(resource: &RwLock<dyn Any + Send + Sync>) -> Self::Item<'_> {
+    fn retrieve<'a>(resource: &'a Self::ErasedResources) -> Self::Item<'a> {
         Res {
             value: resource.read().unwrap(),
             _marker: PhantomData,
         }
     }
 
-    fn get_resource(storage: &Storage) -> ErasedResource {
+    fn get_resource(storage: &Storage) -> Self::ErasedResources {
         storage.get::<T>().unwrap().clone()
     }
 
@@ -313,15 +314,16 @@ impl<'a, T: Send + Sync + 'static> DerefMut for ResMut<'a, T> {
 
 impl<'res, T: Send + Sync + 'static> SystemParam for ResMut<'res, T> {
     type Item<'new> = ResMut<'new, T>;
+    type ErasedResources = ErasedResource;
 
-    fn retrieve(resource: &RwLock<dyn Any + Send + Sync>) -> Self::Item<'_> {
+    fn retrieve<'a>(resource: &'a Self::ErasedResources) -> Self::Item<'a> {
         ResMut {
             value: resource.write().unwrap(),
             _marker: PhantomData,
         }
     }
 
-    fn get_resource(storage: &Storage) -> ErasedResource {
+    fn get_resource(storage: &Storage) -> Self::ErasedResources {
         storage.get::<T>().unwrap().clone()
     }
 
@@ -341,16 +343,18 @@ macro_rules! impl_system_param {
         #[allow(unused)]
         impl<$($params: SystemParam),*> SystemParam for ($($params,)*) {
             type Item<'new> = ($($params::Item<'new>,)*);
+            type ErasedResources = ($($params::ErasedResources,)*);
 
             #[allow(clippy::unused_unit)]
-            fn retrieve(resource: &RwLock<dyn Any + Send + Sync>) -> Self::Item<'_> {
-                ($($params::retrieve(resource),)*)
+            #[allow(non_snake_case)]
+            fn retrieve<'a>(resource: &'a Self::ErasedResources) -> Self::Item<'a> {
+                let ($($params,)*) = resource;
+                ($($params::retrieve($params),)*)
             }
 
-            fn get_resource(storage: &Storage) -> ErasedResource {
-                todo!()
+            fn get_resource(storage: &Storage) -> Self::ErasedResources {
+                ($($params::get_resource(storage),)*)
             }
-
 
             fn type_info() -> Vec<TypeInfo> {
                 let mut out = Vec::new();

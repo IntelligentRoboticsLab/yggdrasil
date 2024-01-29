@@ -1,19 +1,16 @@
-use std::any::Any;
 use std::collections::HashSet;
 
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::{quote, ToTokens};
-use syn::token::Mut;
+use syn::Type;
 use syn::{
     parse_macro_input, parse_quote, visit_mut::VisitMut, FnArg, ItemFn, Pat, PatIdent, PatType,
     TypeReference,
 };
-use syn::{Type, TypePath};
 
 #[cfg(nightly)]
 use syn::spanned::Spanned;
-use tyr_internal::Storage;
 
 /// An argument in a system.
 struct SystemArg {
