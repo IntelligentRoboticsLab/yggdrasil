@@ -34,10 +34,12 @@ fn initialize_first(storage: &mut Storage) -> Result<()> {
 
 #[startup_system]
 fn initialize_second(storage: &mut Storage, a: &A, b: &mut B) -> Result<()> {
+    b.0 = "🅱️".to_string();
+
     let c = C("c".to_string());
 
-    println!("{a:?}");
-    println!("{b:?}");
+    println!("{}", a.0);
+    println!("{}", b.0);
 
     storage.add_resource(Resource::new(c))?;
 
