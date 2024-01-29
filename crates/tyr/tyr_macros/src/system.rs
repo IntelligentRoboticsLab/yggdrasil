@@ -238,12 +238,11 @@ fn build_ty_string(ty: &Type) -> String {
         .map(|token| token.span().source_text().unwrap_or_default())
         .collect();
 
-    if name_parts.first().is_some_and(|first| first == "&") {
-        if name_parts.get(1).is_some_and(|second| second == "mut") {
-            name_parts.insert(2, " ".into());
-        } else {
-            name_parts.insert(1, " ".into());
-        }
+    if name_parts.first().is_some_and(|first| first == "&")
+        && name_parts.get(1).is_some_and(|second| second == "mut")
+    {
+        name_parts.insert(2, " ".into());
     }
+
     name_parts.join("")
 }
