@@ -27,6 +27,5 @@ fn main() -> Result<()> {
         .add_module(LedsModule)?
         .add_module(PrimaryStateModule)?
         .add_module(GameControllerModule)?
-        .run()?;
-    Ok(())
+        .run()
 }
