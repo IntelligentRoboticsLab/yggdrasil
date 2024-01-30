@@ -82,9 +82,8 @@ impl ButtonState {
                     Self::Pressed(*start)
                 }
             }
-            (ButtonState::Pressed(_), false) => Self::Tapped,
             (ButtonState::Held(start), true) => Self::Held(*start),
-            (ButtonState::Held(_), false) => Self::Tapped,
+            (ButtonState::Held(_) | ButtonState::Pressed(_), false) => Self::Tapped,
         }
     }
 }
