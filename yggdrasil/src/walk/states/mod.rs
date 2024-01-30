@@ -1,10 +1,9 @@
 mod idle;
 mod walking;
 
-use std::time::Duration;
-
 use enum_dispatch::enum_dispatch;
 use nidhogg::types::{ForceSensitiveResistors, Vector2};
+use std::time::Duration;
 
 use crate::filter::imu::IMUValues;
 

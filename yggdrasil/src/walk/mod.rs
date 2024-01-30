@@ -1,5 +1,6 @@
-pub mod dnt_walk;
+pub mod engine;
 pub mod smoothing;
+mod states;
 
 use std::{
     ops::Add,
@@ -38,15 +39,15 @@ impl Module for WalkingEngineModule {
         Ok(app
             .add_startup_system(initialize_cycle_counter)?
             .add_system(update_cycle_time.after(nao::write_hardware_info))
-            .add_resource(Resource::new(dnt_walk::WalkingEngine::default()))?
+            .add_resource(Resource::new(engine::WalkingEngine::default()))?
             .init_resource::<Odometry>()?
             .add_system(
-                dnt_walk::walking_engine
+                engine::walking_engine
                     .after(update_cycle_time)
                     .after(filter::fsr::force_sensitive_resistor_filter)
                     .after(filter::imu::imu_filter),
             )
-            .add_system(dnt_walk::toggle_walking_engine.before(dnt_walk::walking_engine)))
+            .add_system(engine::toggle_walking_engine.before(engine::walking_engine)))
     }
 }
 
