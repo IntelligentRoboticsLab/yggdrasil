@@ -60,7 +60,6 @@ macro_rules! impl_system {
                 )*
 
                 $(
-
                     let $params = $params::retrieve(&$params);
                 )*
 
