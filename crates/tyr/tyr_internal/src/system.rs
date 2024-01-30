@@ -10,14 +10,28 @@ use std::{
 
 use crate::storage::{ErasedResource, Storage};
 
-pub trait System<const STARTUP: bool>: DynClone + Send + Sync + 'static {
+use self::private::SystemType;
+
+pub struct NormalSystem;
+pub struct StartupSystem;
+
+// Use a sealed trait so we limit the amount of system types
+mod private {
+    use super::{NormalSystem, StartupSystem};
+
+    pub trait SystemType {}
+    impl SystemType for NormalSystem {}
+    impl SystemType for StartupSystem {}
+}
+
+pub trait System<T: SystemType>: DynClone + Send + Sync + 'static {
     fn run(&mut self, resources: &mut Storage) -> Result<()>;
     fn required_resources(&self) -> Vec<TypeInfo>;
     fn system_type(&self) -> TypeId;
     fn system_name(&self) -> &str;
 }
 
-dyn_clone::clone_trait_object!(<const STARTUP: bool> System<STARTUP>);
+dyn_clone::clone_trait_object!(<T: SystemType> System<T>);
 
 macro_rules! impl_system {
     (
@@ -25,7 +39,7 @@ macro_rules! impl_system {
     ) => {
         #[allow(non_snake_case)]
         #[allow(unused)]
-        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> System<false> for FunctionSystem<($($params,)*), F>
+        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> System<NormalSystem> for FunctionSystem<($($params,)*), F>
             where
                 for<'a, 'b> &'a mut F:
                     FnMut( $($params),* ) -> Result<()> +
@@ -40,18 +54,17 @@ macro_rules! impl_system {
                     f($($params),*)
                 }
 
+                // I have NO idea why but these need to be separated
                 $(
                     let $params = $params::get_resource(&resources)?;
                 )*
 
-                {
-                    $(
+                $(
 
-                        let $params = $params::retrieve(&$params);
-                    )*
+                    let $params = $params::retrieve(&$params);
+                )*
 
-                    call_inner(&mut self.f, $($params),*)
-                }
+                call_inner(&mut self.f, $($params),*)
             }
 
             fn required_resources(&self) -> Vec<TypeInfo> {
@@ -80,7 +93,7 @@ macro_rules! impl_system {
 
         #[allow(non_snake_case)]
         #[allow(unused)]
-        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> System<true> for FunctionSystem<($($params,)*), F>
+        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> System<StartupSystem> for FunctionSystem<($($params,)*), F>
             where
                 for<'a, 'b> &'a mut F:
                 FnOnce( &mut Storage, $($params),* ) -> Result<()> +
@@ -99,14 +112,11 @@ macro_rules! impl_system {
                         let $params = $params::get_resource(&resources)?;
                     )*
 
-                    {
-                        $(
-                            let $params = $params::retrieve(&$params);
-                        )*
+                    $(
+                        let $params = $params::retrieve(&$params);
+                    )*
 
-
-                        call_inner(&mut self.f, resources, $($params),*)
-                    }
+                    call_inner(&mut self.f, resources, $($params),*)
             }
 
             fn required_resources(&self) -> Vec<TypeInfo> {
@@ -180,8 +190,8 @@ impl<Input: 'static, F: Clone + 'static> Clone for FunctionSystem<Input, F> {
     }
 }
 
-pub trait IntoSystem<const STARTUP: bool, Input>: Clone {
-    type System: System<STARTUP>;
+pub trait IntoSystem<T: SystemType, Input>: Clone {
+    type System: System<T>;
 
     fn into_system(self) -> Self::System;
 }
@@ -190,7 +200,7 @@ macro_rules! impl_into_system {
     (
         $($params:ident),*
     ) => {
-        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> IntoSystem<false, ($($params,)*)> for F
+        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> IntoSystem<NormalSystem, ($($params,)*)> for F
             where
                 for<'a, 'b> &'a mut F:
                     FnMut( $($params),* ) -> Result<()> +
@@ -206,7 +216,7 @@ macro_rules! impl_into_system {
             }
         }
 
-        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> IntoSystem<true, ($($params,)*)> for F
+        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> IntoSystem<StartupSystem, ($($params,)*)> for F
             where
                 for<'a, 'b> &'a mut F:
                     FnOnce( &mut Storage, $($params),* ) -> Result<()> +

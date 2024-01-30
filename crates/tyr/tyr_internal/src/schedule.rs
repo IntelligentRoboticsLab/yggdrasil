@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     storage::{BoxedSystem, Storage},
-    system::IntoSystem,
+    system::{IntoSystem, NormalSystem},
 };
 
 use miette::{miette, Result};
@@ -69,13 +69,16 @@ pub trait IntoDependencySystem<Input>: Sized {
     /// Schedule the system before the system supplied as argument.
     fn before<OtherInput>(
         self,
-        system: impl IntoSystem<false, OtherInput>,
+        system: impl IntoSystem<NormalSystem, OtherInput>,
     ) -> DependencySystem<()> {
         self.into_dependency_system().before(system)
     }
 
     /// Schedule the system after the system supplied as argument.
-    fn after<OtherInput>(self, system: impl IntoSystem<false, OtherInput>) -> DependencySystem<()> {
+    fn after<OtherInput>(
+        self,
+        system: impl IntoSystem<NormalSystem, OtherInput>,
+    ) -> DependencySystem<()> {
         self.into_dependency_system().after(system)
     }
 }
@@ -93,7 +96,7 @@ pub struct DependencySystem<I> {
 
 // Get systems with all possible inputs
 // This `I` gets replaced later as we do not need it
-impl<S: IntoSystem<false, I>, I> IntoDependencySystem<I> for S {
+impl<S: IntoSystem<NormalSystem, I>, I> IntoDependencySystem<I> for S {
     fn into_dependency_system(self) -> DependencySystem<I> {
         DependencySystem {
             system: Box::new(self.into_system()),
@@ -122,14 +125,20 @@ impl<I> IntoDependencySystem<()> for DependencySystem<I> {
         }
     }
 
-    fn before<'a, Input>(self, system: impl IntoSystem<false, Input>) -> DependencySystem<()> {
+    fn before<'a, Input>(
+        self,
+        system: impl IntoSystem<NormalSystem, Input>,
+    ) -> DependencySystem<()> {
         let mut out = self.into_dependency_system();
         out.dependencies
             .push(Dependency::Before(Box::new(system.into_system())));
         out
     }
 
-    fn after<'a, Input>(self, system: impl IntoSystem<false, Input>) -> DependencySystem<()> {
+    fn after<'a, Input>(
+        self,
+        system: impl IntoSystem<NormalSystem, Input>,
+    ) -> DependencySystem<()> {
         let mut out = self.into_dependency_system();
         out.dependencies
             .push(Dependency::After(Box::new(system.into_system())));
