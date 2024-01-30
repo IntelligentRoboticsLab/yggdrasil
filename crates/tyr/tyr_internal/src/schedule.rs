@@ -196,7 +196,7 @@ impl Schedule {
     }
 
     #[allow(dead_code)]
-    pub fn print_graph(&mut self) {
+    fn print_graph(&mut self) {
         let nodes = self.dag.graph.node_indices();
         for idx in nodes {
             let name = self.systems[self.dag.graph.node_weight(idx).unwrap().0].system_name();

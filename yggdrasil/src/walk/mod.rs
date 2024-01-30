@@ -1,16 +1,36 @@
 pub mod dnt_walk;
-pub mod engine;
 pub mod kinematics;
+pub mod smoothing;
 
-use std::time::{Duration, Instant};
+use std::{
+    ops::Add,
+    time::{Duration, Instant},
+};
 
 use miette::Result;
 
 use tyr::prelude::*;
 
-use crate::nao;
+use crate::{filter, nao};
 
-use self::engine::WalkingEngine;
+#[derive(Default, Debug, Clone)]
+pub struct Odometry {
+    pub forward: f32,
+    pub left: f32,
+    pub turn: f32,
+}
+
+impl Add for Odometry {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            forward: self.forward + rhs.forward,
+            left: self.left + rhs.left,
+            turn: self.turn + rhs.turn,
+        }
+    }
+}
 
 pub struct WalkingEngineModule;
 
@@ -20,19 +40,14 @@ impl Module for WalkingEngineModule {
             .add_startup_system(initialize_cycle_counter)?
             .add_system(update_cycle_time.after(nao::write_hardware_info))
             .add_resource(Resource::new(dnt_walk::WalkingEngine::default()))?
+            .init_resource::<Odometry>()?
             .add_system(
                 dnt_walk::walking_engine
                     .after(update_cycle_time)
-                    .after(super::filter::fsr::force_sensitive_resistor_filter)
-                    .after(super::filter::imu::imu_filter),
+                    .after(filter::fsr::force_sensitive_resistor_filter)
+                    .after(filter::imu::imu_filter),
             )
-            .add_system(dnt_walk::toggle_walking_engine.before(dnt_walk::walking_engine))
-            .add_system(
-                crate::framework::filter::imu::fallingstate.after(dnt_walk::walking_engine),
-            ))
-        // .add_resource(Resource::new(WalkingEngine::default()))?
-        // .add_system(engine::walking_engine.after(nao::write_hardware_info))
-        // .add_system(engine::toggle_walking_engine.before(engine::walking_engine)))
+            .add_system(dnt_walk::toggle_walking_engine.before(dnt_walk::walking_engine)))
     }
 }
 

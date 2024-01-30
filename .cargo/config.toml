@@ -1,5 +1,0 @@
-[target.x86_64-unknown-linux-gnu]
-rustflags = [
-  "-C", "link-arg=-Wl,-dynamic-link,/lib/ld-linux-x86-64.so.2"
-]
-

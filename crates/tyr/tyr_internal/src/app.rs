@@ -183,7 +183,6 @@ impl App {
 
 impl ScheduledApp {
     fn run(&mut self) -> Result<()> {
-        self.schedule.print_graph();
         loop {
             self.schedule.execute(&mut self.storage)?;
         }

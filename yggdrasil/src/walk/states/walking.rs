@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use miette::Result;
 use nidhogg::{
     types::{
         FillExt, ForceSensitiveResistors, JointArray, LeftLegJoints, RightLegJoints, Vector2,
@@ -8,21 +7,17 @@ use nidhogg::{
     },
     NaoControlMessage,
 };
-use tyr::system;
 
 use crate::{
-    filter::{
-        button::{ChestButton, HeadButtons},
-        imu::IMUValues,
+    filter::imu::IMUValues,
+    kinematics::{self, FootOffset},
+    walk::{
+        engine::{Side, StepOffsets, WalkCommand},
+        smoothing, Odometry,
     },
-    primary_state::PrimaryState,
-    walk::smoothing,
 };
 
-use super::{
-    kinematics::{self, FootOffset},
-    CycleTime, Odometry,
-};
+use super::{WalkContext, WalkState, WalkStateKind};
 
 /// forward (the / by 4 is because the CoM moves as well and forwardL is wrt the CoM
 const COM_MULTIPLIER: f32 = 0.25;
@@ -39,170 +34,31 @@ const BASE_FOOT_LIFT: f32 = 0.01;
 /// The hip height of the robot during the walking cycle
 const HIP_HEIGHT: f32 = 0.185;
 
-/// The hip height of the robot when sitting, 10cm
-const SITTING_HIP_HEIGHT: f32 = 0.0975;
-
-enum WalkState {
-    Idle,
-    _Standing {
-        hip_height: f32,
-    },
-    _Starting {
-        hip_height: f32,
-    },
-    _Stopping,
-    Walking {
-        walk_parameters: WalkCommand,
-        swing_foot: Side,
-        phase_time: Duration,
-        next_foot_switch: Duration,
-        previous_step: StepOffsets,
-        filtered_gyro: Vector2<f32>,
-    },
+pub struct WalkingState {
+    pub swing_foot: Side,
+    phase_time: Duration,
+    next_foot_switch: Duration,
+    previous_step: StepOffsets,
 }
 
-impl Default for WalkState {
-    fn default() -> Self {
-        Self::Idle
+impl WalkState for WalkingState {
+    fn next_state<'a>(&self, context: &'a mut WalkContext) -> WalkStateKind {
+        let linear_time =
+            (self.phase_time.as_secs_f32() / self.next_foot_switch.as_secs_f32()).clamp(0.0, 1.0);
+
+        // ... do actual walk here
+
+        WalkStateKind::Walking(WalkingState {
+            swing_foot: Side::Left,
+            phase_time: Duration::ZERO,
+            next_foot_switch: Duration::from_secs_f32(0.5),
+            previous_step: StepOffsets::default(),
+        })
     }
-}
-
-#[derive(Default, Clone)]
-struct WalkCommand {
-    /// forward in meters per second
-    forward: f32,
-    /// side step in meters per second
-    left: f32,
-    /// turn in radians per second
-    turn: f32,
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
-pub enum Side {
-    #[default]
-    Left,
-    Right,
-}
-
-impl Side {
-    pub fn next(&self) -> Self {
-        match self {
-            Side::Left => Side::Right,
-            Side::Right => Side::Left,
-        }
-    }
-}
-
-#[derive(Default)]
-struct StepOffsets {
-    pub swing: FootOffset,
-    pub support: FootOffset,
-}
-
-#[derive(Default)]
-pub struct WalkingEngine {
-    state: WalkState,
-}
-
-#[system]
-pub fn toggle_walking_engine(
-    head_button: &HeadButtons,
-    chest_button: &ChestButton,
-    walking_engine: &mut WalkingEngine,
-) -> Result<()> {
-    match (
-        chest_button.state.is_pressed(),
-        head_button.front.is_pressed(),
-        &walking_engine.state,
-    ) {
-        // (true, false, WalkState::Idle { .. }) => {
-        //     walking_engine.state = WalkState::Walking {
-        //         walk_parameters: WalkCommand {
-        //             forward: 0.04,
-        //             left: 0.00,
-        //             turn: 0.0,
-        //             // turn: std::f32::consts::FRAC_PI_4,
-        //         },
-        //         swing_foot: Side::Left,
-        //         phase_time: Duration::ZERO,
-        //         filtered_gyro: Vector2::<f32>::default(),
-        //         next_foot_switch: BASE_STEP_PERIOD,
-        //         previous_step: StepOffsets::default(),
-        //     };
-        // }
-        (true, false, WalkState::Idle) => {
-            walking_engine.state = WalkState::Idle;
-            // walking_engine.state = WalkState::Starting { hip_height: 0.10 };
-        }
-        (false, true, WalkState::_Starting { .. }) => {
-            walking_engine.state = WalkState::Idle;
-        }
-        _ => (),
-    };
-
-    Ok(())
-}
-
-#[system]
-pub fn walking_engine(
-    walking_engine: &mut WalkingEngine,
-    primary_state: &PrimaryState,
-    cycle_time: &CycleTime,
-    fsr: &ForceSensitiveResistors,
-    imu: &IMUValues,
-    control_message: &mut NaoControlMessage,
-    odometry: &mut Odometry,
-) -> Result<()> {
-    // We don't run the walking engne whenever we're in unstiff.
-    // This is a semi hacky way to prevent the robot from jumping up and
-    // unstiffing itself when it's not supposed to.
-    // We should definitely fix this in the future.
-    if *primary_state == PrimaryState::Unstiff {
-        // This sets the robot to be completely unstiff, completely disabling the joint motors.
-        control_message.stiffness = JointArray::<f32>::fill(-1.0);
-        return Ok(());
-    }
-
-    let dt = cycle_time.duration;
-
-    walking_engine.state = match &walking_engine.state {
-        WalkState::Idle => {
-            *odometry = Default::default();
-            // control_message.stiffness = JointArray::<f32>::builder()
-            //     .left_leg_joints(LeftLegJoints::fill(-1.0))
-            //     .right_leg_joints(RightLegJoints::fill(-1.0))
-            //     .build();
-            idle_state(control_message)
-        }
-        WalkState::_Standing { .. } => todo!(),
-        WalkState::_Starting { .. } => todo!(),
-        WalkState::_Stopping => todo!(),
-        WalkState::Walking {
-            walk_parameters,
-            swing_foot,
-            phase_time,
-            next_foot_switch,
-            previous_step,
-            filtered_gyro,
-        } => walk_state(
-            walk_parameters,
-            swing_foot,
-            *phase_time + dt,
-            next_foot_switch,
-            previous_step,
-            filtered_gyro,
-            fsr,
-            imu,
-            control_message,
-            odometry,
-        ),
-    };
-
-    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
-fn walk_state(
+pub(crate) fn walk_state(
     walk_command: &WalkCommand,
     swing_foot: &Side,
     phase_time: Duration,
@@ -213,7 +69,7 @@ fn walk_state(
     imu: &IMUValues,
     control_message: &mut NaoControlMessage,
     odometry: &mut Odometry,
-) -> WalkState {
+) -> WalkStateKind {
     // let's figure out the parameters for the walk in this current cycle
     let WalkCommand {
         forward,
@@ -362,7 +218,7 @@ fn next_walk_state(
     support_offset: FootOffset,
     filtered_gyro: &Vector2<f32>,
     fsr: &ForceSensitiveResistors,
-) -> WalkState {
+) -> WalkStateKind {
     let mut next_swing_foot = *swing_foot;
     let mut phase_time = *phase_time;
     let mut next_foot_switch = *next_foot_switch;
@@ -392,14 +248,13 @@ fn next_walk_state(
         // previous_step.support.left = previous_step.support.left;
     }
 
-    WalkState::Walking {
-        walk_parameters: walk_command.clone(),
+    WalkStateKind::Walking(WalkingState {
+        // walk_parameters: walk_command.clone(),
         swing_foot: next_swing_foot,
         phase_time,
         next_foot_switch,
-        filtered_gyro: filtered_gyro.clone(),
         previous_step,
-    }
+    })
 }
 
 fn filter_gyro_values(filtered_gyro: &Vector2<f32>, gyroscope: &Vector3<f32>) -> Vector2<f32> {
@@ -416,29 +271,6 @@ fn has_support_foot_changed(side: &Side, fsr: &ForceSensitiveResistors) -> bool 
         Side::Left => left_foot_pressure,
         Side::Right => right_foot_pressure,
     }) > COP_PRESSURE_THRESHOLD
-}
-
-fn idle_state(control_message: &mut NaoControlMessage) -> WalkState {
-    let foot_position = FootOffset {
-        forward: 0.0,
-        left: 0.0,
-        turn: 0.0,
-        hip_height: SITTING_HIP_HEIGHT,
-        lift: 0.0,
-    };
-
-    let (left_legs, right_legs) = kinematics::inverse::leg_angles(&foot_position, &foot_position);
-    control_message.stiffness = JointArray::<f32>::builder()
-        .left_leg_joints(LeftLegJoints::fill(0.0))
-        .right_leg_joints(RightLegJoints::fill(0.0))
-        .build();
-
-    control_message.position = JointArray::builder()
-        .left_leg_joints(left_legs)
-        .right_leg_joints(right_legs)
-        .build();
-
-    WalkState::Idle
 }
 
 fn compute_swing_offset(

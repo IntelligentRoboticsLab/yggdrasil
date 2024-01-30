@@ -61,12 +61,21 @@ struct ChestBlink {
 impl Leds {
     /// Makes the LED in the chest blink a given color with a given interval.
     pub fn set_chest_blink(&mut self, color: Color, interval: Duration) {
-        self.chest_blink = Some(ChestBlink {
-            color,
-            interval,
-            on: true,
-            start: Instant::now(),
-        });
+        match &mut self.chest_blink {
+            Some(blink) => {
+                // We can just update the existing blink
+                blink.color = color;
+                blink.interval = interval;
+            }
+            None => {
+                self.chest_blink = Some(ChestBlink {
+                    color,
+                    interval,
+                    on: true,
+                    start: Instant::now(),
+                });
+            }
+        }
     }
 
     pub fn unset_chest_blink(&mut self) {

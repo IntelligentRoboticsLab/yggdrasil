@@ -3,7 +3,6 @@ name = "yggdrasil"
 version = "0.1.0"
 edition = "2021"
 default-run = "yggdrasil"
-resolver = "2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -19,7 +18,6 @@ nidhogg = { workspace = true, features = ["lola"] }
 odal = { path = "../crates/odal" }
 serde = { workspace = true }
 tokio = { workspace = true }
-great_filter = { path = "../crates/great_filter" }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tyr = { path = "../crates/tyr", features = ["odal"] }

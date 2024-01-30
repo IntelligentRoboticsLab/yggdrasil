@@ -1,8 +1,7 @@
 use crate::prelude::*;
 
-use std::time::{Duration, Instant};
-
 use nidhogg::NaoState;
+use std::time::{Duration, Instant};
 
 /// The threshold for a button to be considered pressed.
 const BUTTON_ACTIVATION_THRESHOLD: f32 = 0.5;
@@ -207,7 +206,7 @@ mod tests {
 
     #[test]
     fn button_update() {
-        let mut button = ButtonState::default();
+        let mut button = crate::filter::button::ButtonState::default();
 
         assert!(!button.is_tapped());
         assert!(!button.is_pressed());

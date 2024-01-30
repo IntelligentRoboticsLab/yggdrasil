@@ -1,9 +1,8 @@
-use crate::{filter::button::HeadButtons, leds::Leds, prelude::*};
-
-use std::time::Duration;
+use crate::{filter::button::ChestButton, leds::Leds, prelude::*};
 
 use bifrost::communication::{GameControllerMessage, GameState};
 use nidhogg::types::Color;
+use std::time::Duration;
 
 const CHEST_BLINK_INTERVAL: Duration = Duration::from_millis(1000);
 
@@ -18,7 +17,7 @@ pub struct PrimaryStateModule;
 impl Module for PrimaryStateModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
-            .add_resource(Resource::new(PrimaryState::Initial))?
+            .add_resource(Resource::new(PrimaryState::Unstiff))?
             .add_system(update_primary_state))
     }
 }
@@ -49,7 +48,7 @@ fn update_primary_state(
     primary_state: &mut PrimaryState,
     game_controller_message: &Option<GameControllerMessage>,
     led: &mut Leds,
-    head_buttons: &HeadButtons,
+    chest_button: &ChestButton,
 ) -> Result<()> {
     use PrimaryState as PS;
 
@@ -80,7 +79,7 @@ fn update_primary_state(
                 ..
             } => PrimaryState::Finished,
         },
-        None if head_buttons.middle.is_pressed() => PrimaryState::Unstiff,
+        None if chest_button.state.is_pressed() => PrimaryState::Initial,
         None => *primary_state,
     };
 
@@ -98,8 +97,8 @@ fn update_primary_state(
             PS::Finished => led.chest = Color::GRAY,
             PS::Calibration => led.chest = Color::PURPLE,
         };
-    } else if next_primary_state == PS::Initial {
-        led.chest = Color::GRAY;
+    } else if next_primary_state == PS::Unstiff {
+        led.set_chest_blink(Color::BLUE, CHEST_BLINK_INTERVAL)
     }
 
     *primary_state = next_primary_state;
