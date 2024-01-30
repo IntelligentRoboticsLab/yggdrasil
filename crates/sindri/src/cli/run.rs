@@ -6,11 +6,14 @@ use crate::{
     config::Config,
 };
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 /// Compile, deploy and run the specified binary to the robot.
 pub struct Run {
     #[clap(flatten)]
     pub deploy: ConfigOptsDeploy,
+    /// Also print debug logs to stdout [default: false]
+    #[clap(long, short)]
+    pub debug: bool,
 }
 
 impl Run {
@@ -28,7 +31,13 @@ impl Run {
         .deploy(config)
         .await?;
 
-        robot.ssh("./yggdrasil")?.wait().await.into_diagnostic()?;
+        let command = if self.debug {
+            "RUST_LOG=debug ./yggdrasil"
+        } else {
+            "./yggdrasil"
+        };
+
+        robot.ssh(command)?.wait().await.into_diagnostic()?;
 
         Ok(())
     }
