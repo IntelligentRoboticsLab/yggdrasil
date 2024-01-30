@@ -4,8 +4,12 @@ use std::time::{Duration, Instant};
 use nidhogg::NaoState;
 use tyr::prelude::*;
 
+/// The threshold for a button to be considered pressed.
+const BUTTON_ACTIVATION_THRESHOLD: f32 = 0.5;
+
 /// Describes the time a button needs to be held down, in order to move to the [`ButtonState::Held`].
-const BUTTON_HELD_THRESHOLD: Duration = Duration::from_millis(500);
+const BUTTON_HELD_DURATION_THRESHOLD: Duration = Duration::from_millis(500);
+
 
 /// A module offering structured wrappers for each Nao button, derived from the raw [`NaoState`].
 ///
@@ -72,7 +76,7 @@ impl ButtonState {
             (ButtonState::Pressed(start), true) => {
                 if Instant::now()
                     .checked_duration_since(*start)
-                    .is_some_and(|duration| duration >= BUTTON_HELD_THRESHOLD)
+                    .is_some_and(|duration| duration >= BUTTON_HELD_DURATION_THRESHOLD)
                 {
                     Self::Held(Instant::now())
                 } else {
@@ -154,40 +158,40 @@ fn button_filter(
     left_foot_buttons: &mut LeftFootButtons,
     right_foot_buttons: &mut RightFootButtons,
 ) -> Result<()> {
-    head_buttons.front = head_buttons.front.next(nao_state.touch.head_front > 0.0);
-    head_buttons.middle = head_buttons.middle.next(nao_state.touch.head_middle > 0.0);
-    head_buttons.rear = head_buttons.rear.next(nao_state.touch.head_rear > 0.0);
-    chest_button.state = chest_button.state.next(nao_state.touch.chest_board > 0.0);
+    head_buttons.front = head_buttons.front.next(nao_state.touch.head_front >= BUTTON_ACTIVATION_THRESHOLD);
+    head_buttons.middle = head_buttons.middle.next(nao_state.touch.head_middle >= BUTTON_ACTIVATION_THRESHOLD);
+    head_buttons.rear = head_buttons.rear.next(nao_state.touch.head_rear >= BUTTON_ACTIVATION_THRESHOLD);
+    chest_button.state = chest_button.state.next(nao_state.touch.chest_board >= BUTTON_ACTIVATION_THRESHOLD);
     left_hand_buttons.left = left_hand_buttons
         .left
-        .next(nao_state.touch.left_hand_left > 0.0);
+        .next(nao_state.touch.left_hand_left >= BUTTON_ACTIVATION_THRESHOLD);
     left_hand_buttons.right = left_hand_buttons
         .right
-        .next(nao_state.touch.left_hand_right > 0.0);
+        .next(nao_state.touch.left_hand_right >= BUTTON_ACTIVATION_THRESHOLD);
     left_hand_buttons.back = left_hand_buttons
         .back
-        .next(nao_state.touch.left_hand_back > 0.0);
+        .next(nao_state.touch.left_hand_back >= BUTTON_ACTIVATION_THRESHOLD);
     right_hand_buttons.left = right_hand_buttons
         .left
-        .next(nao_state.touch.right_hand_left > 0.0);
+        .next(nao_state.touch.right_hand_left >= BUTTON_ACTIVATION_THRESHOLD);
     right_hand_buttons.right = right_hand_buttons
         .right
-        .next(nao_state.touch.right_hand_right > 0.0);
+        .next(nao_state.touch.right_hand_right >= BUTTON_ACTIVATION_THRESHOLD);
     right_hand_buttons.back = right_hand_buttons
         .back
-        .next(nao_state.touch.right_hand_back > 0.0);
+        .next(nao_state.touch.right_hand_back >= BUTTON_ACTIVATION_THRESHOLD);
     left_foot_buttons.left = left_foot_buttons
         .left
-        .next(nao_state.touch.left_foot_left > 0.0);
+        .next(nao_state.touch.left_foot_left >= BUTTON_ACTIVATION_THRESHOLD);
     left_foot_buttons.right = left_foot_buttons
         .right
-        .next(nao_state.touch.left_foot_right > 0.0);
+        .next(nao_state.touch.left_foot_right >= BUTTON_ACTIVATION_THRESHOLD);
     right_foot_buttons.left = right_foot_buttons
         .left
-        .next(nao_state.touch.right_foot_left > 0.0);
+        .next(nao_state.touch.right_foot_left >= BUTTON_ACTIVATION_THRESHOLD);
     right_foot_buttons.right = right_foot_buttons
         .right
-        .next(nao_state.touch.right_foot_right > 0.0);
+        .next(nao_state.touch.right_foot_right >= BUTTON_ACTIVATION_THRESHOLD);
 
     Ok(())
 }
@@ -210,7 +214,7 @@ mod tests {
         assert!(button.is_pressed());
         assert!(!button.is_held());
 
-        std::thread::sleep(BUTTON_HELD_THRESHOLD);
+        std::thread::sleep(BUTTON_HELD_DURATION_THRESHOLD);
         button = button.next(true);
 
         assert!(!button.is_tapped());
@@ -224,7 +228,7 @@ mod tests {
         assert!(!button.is_held(),);
 
         button = button.next(true);
-        std::thread::sleep(BUTTON_HELD_THRESHOLD / 2);
+        std::thread::sleep(BUTTON_HELD_DURATION_THRESHOLD / 2);
         button = button.next(true);
 
         assert!(!button.is_tapped());
