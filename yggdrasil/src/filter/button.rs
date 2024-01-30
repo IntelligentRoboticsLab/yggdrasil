@@ -10,7 +10,6 @@ const BUTTON_ACTIVATION_THRESHOLD: f32 = 0.5;
 /// Describes the time a button needs to be held down, in order to move to the [`ButtonState::Held`].
 const BUTTON_HELD_DURATION_THRESHOLD: Duration = Duration::from_millis(500);
 
-
 /// A module offering structured wrappers for each Nao button, derived from the raw [`NaoState`].
 ///
 /// By allowing systems to depend only on necessary buttons, this design enhances the dependency graph's efficiency.
@@ -158,10 +157,18 @@ fn button_filter(
     left_foot_buttons: &mut LeftFootButtons,
     right_foot_buttons: &mut RightFootButtons,
 ) -> Result<()> {
-    head_buttons.front = head_buttons.front.next(nao_state.touch.head_front >= BUTTON_ACTIVATION_THRESHOLD);
-    head_buttons.middle = head_buttons.middle.next(nao_state.touch.head_middle >= BUTTON_ACTIVATION_THRESHOLD);
-    head_buttons.rear = head_buttons.rear.next(nao_state.touch.head_rear >= BUTTON_ACTIVATION_THRESHOLD);
-    chest_button.state = chest_button.state.next(nao_state.touch.chest_board >= BUTTON_ACTIVATION_THRESHOLD);
+    head_buttons.front = head_buttons
+        .front
+        .next(nao_state.touch.head_front >= BUTTON_ACTIVATION_THRESHOLD);
+    head_buttons.middle = head_buttons
+        .middle
+        .next(nao_state.touch.head_middle >= BUTTON_ACTIVATION_THRESHOLD);
+    head_buttons.rear = head_buttons
+        .rear
+        .next(nao_state.touch.head_rear >= BUTTON_ACTIVATION_THRESHOLD);
+    chest_button.state = chest_button
+        .state
+        .next(nao_state.touch.chest_board >= BUTTON_ACTIVATION_THRESHOLD);
     left_hand_buttons.left = left_hand_buttons
         .left
         .next(nao_state.touch.left_hand_left >= BUTTON_ACTIVATION_THRESHOLD);
