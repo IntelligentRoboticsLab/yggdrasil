@@ -71,8 +71,8 @@ impl ButtonState {
         match (self, is_pressed) {
             (ButtonState::Pressed(start), true) => {
                 if Instant::now()
-                .checked_duration_since(*start)
-                .is_some_and(|duration| duration >= BUTTON_HELD_DURATION_THRESHOLD)
+                    .checked_duration_since(*start)
+                    .is_some_and(|duration| duration >= BUTTON_HELD_DURATION_THRESHOLD)
                 {
                     Self::Held(Instant::now())
                 } else {
