@@ -69,19 +69,18 @@ impl ButtonState {
     /// Get the next state based on whether the button is currently pressed down.
     pub fn next(&self, is_pressed: bool) -> Self {
         match (self, is_pressed) {
-            (ButtonState::Neutral | ButtonState::Tapped, true) => Self::Pressed(Instant::now()),
-            (ButtonState::Neutral, false) => Self::Neutral,
-            (ButtonState::Tapped, false) => Self::Neutral,
             (ButtonState::Pressed(start), true) => {
                 if Instant::now()
-                    .checked_duration_since(*start)
-                    .is_some_and(|duration| duration >= BUTTON_HELD_DURATION_THRESHOLD)
+                .checked_duration_since(*start)
+                .is_some_and(|duration| duration >= BUTTON_HELD_DURATION_THRESHOLD)
                 {
                     Self::Held(Instant::now())
                 } else {
                     Self::Pressed(*start)
                 }
             }
+            (ButtonState::Neutral | ButtonState::Tapped, true) => Self::Pressed(Instant::now()),
+            (ButtonState::Neutral | ButtonState::Tapped, false) => Self::Neutral,
             (ButtonState::Held(start), true) => Self::Held(*start),
             (ButtonState::Held(_) | ButtonState::Pressed(_), false) => Self::Tapped,
         }
