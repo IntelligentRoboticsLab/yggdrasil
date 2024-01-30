@@ -2,6 +2,7 @@ use super::GameControllerData;
 
 use bifrost::communication::GameControllerMessage;
 use bifrost::serialization::Decode;
+use miette::IntoDiagnostic;
 
 use std::{
     io,
@@ -13,8 +14,7 @@ use std::{
 
 use tokio::net::UdpSocket;
 
-use miette::{IntoDiagnostic, Result};
-use tyr::prelude::*;
+use crate::prelude::*;
 
 const GAME_CONTROLLER_TIMEOUT: Duration = Duration::from_millis(5000);
 
@@ -31,21 +31,18 @@ impl Module for GameControllerReceiveModule {
     }
 }
 
-fn init_receive_game_controller_message_task(storage: &mut Storage) -> Result<()> {
-    let game_controller_socket =
-        storage.map_resource_mut(|game_controller_data: &mut GameControllerData| {
-            game_controller_data.socket.clone()
-        })?;
+#[startup_system]
+fn init_receive_game_controller_message_task(
+    _storage: &mut Storage,
+    game_controller_data: &mut GameControllerData,
+    receive_game_controller_message_task: &mut AsyncTask<
+        Result<(GameControllerMessage, SocketAddr)>,
+    >,
+) -> Result<()> {
+    let game_controller_socket = game_controller_data.socket.clone();
 
-    storage
-        .map_resource_mut(
-            |receive_game_controller_message_task: &mut AsyncTask<
-                Result<(GameControllerMessage, SocketAddr)>,
-            >| {
-                receive_game_controller_message_task
-                    .try_spawn(receive_game_controller_message(game_controller_socket))
-            },
-        )?
+    receive_game_controller_message_task
+        .try_spawn(receive_game_controller_message(game_controller_socket))
         .into_diagnostic()
 }
 

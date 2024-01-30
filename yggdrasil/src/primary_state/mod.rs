@@ -1,10 +1,9 @@
+use crate::{filter::button::HeadButtons, leds::Leds, prelude::*};
+
 use std::time::Duration;
 
-use crate::{filter::button::HeadButtons, leds::Leds};
 use bifrost::communication::{GameControllerMessage, GameState};
-use miette::Result;
 use nidhogg::types::Color;
-use tyr::prelude::*;
 
 const CHEST_BLINK_INTERVAL: Duration = Duration::from_millis(1000);
 

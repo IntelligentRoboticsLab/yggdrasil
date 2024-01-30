@@ -1,5 +1,5 @@
 use dyn_clone::DynClone;
-use miette::Result;
+use miette::{miette, Result};
 use std::hash::Hash;
 use std::{
     any::{type_name, Any, TypeId},
@@ -41,7 +41,7 @@ macro_rules! impl_system {
                 }
 
                 $(
-                    let $params = $params::get_resource(&resources);
+                    let $params = $params::get_resource(&resources)?;
                 )*
 
                 {
@@ -96,7 +96,7 @@ macro_rules! impl_system {
                     f(storage, $($params),*)
                 }
                     $(
-                        let $params = $params::get_resource(&resources);
+                        let $params = $params::get_resource(&resources)?;
                     )*
 
                     {
@@ -250,8 +250,8 @@ pub trait SystemParam {
     type Item<'new>;
     type ErasedResources;
 
-    fn retrieve<'a>(resource: &'a Self::ErasedResources) -> Self::Item<'a>;
-    fn get_resource(storage: &Storage) -> Self::ErasedResources;
+    fn retrieve(resource: &Self::ErasedResources) -> Self::Item<'_>;
+    fn get_resource(storage: &Storage) -> Result<Self::ErasedResources>;
     fn type_info() -> Vec<TypeInfo>;
 }
 
@@ -265,7 +265,9 @@ impl<'a, T: Send + Sync + 'static> Deref for Res<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.value.downcast_ref::<T>().expect("L")
+        self.value
+            .downcast_ref::<T>()
+            .expect("Failed to downcast resource")
     }
 }
 
@@ -273,15 +275,20 @@ impl<'res, T: Send + Sync + 'static> SystemParam for Res<'res, T> {
     type Item<'new> = Res<'new, T>;
     type ErasedResources = ErasedResource;
 
-    fn retrieve<'a>(resource: &'a Self::ErasedResources) -> Self::Item<'a> {
+    fn retrieve(resource: &Self::ErasedResources) -> Self::Item<'_> {
         Res {
-            value: resource.read().unwrap(),
+            value: resource
+                .read()
+                .expect("Failed to read resource because lock is poisoned!"),
             _marker: PhantomData,
         }
     }
 
-    fn get_resource(storage: &Storage) -> Self::ErasedResources {
-        storage.get::<T>().unwrap().clone()
+    fn get_resource(storage: &Storage) -> Result<Self::ErasedResources> {
+        Ok(storage
+            .get::<T>()
+            .ok_or_else(|| miette!("Resource `&{}` missing in storage", type_name::<T>()))?
+            .clone())
     }
 
     fn type_info() -> Vec<TypeInfo> {
@@ -302,13 +309,17 @@ impl<'a, T: Send + Sync + 'static> Deref for ResMut<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.value.downcast_ref::<T>().unwrap()
+        self.value
+            .downcast_ref::<T>()
+            .expect("Failed to downcast resource")
     }
 }
 
 impl<'a, T: Send + Sync + 'static> DerefMut for ResMut<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.value.downcast_mut::<T>().unwrap()
+        self.value
+            .downcast_mut::<T>()
+            .expect("Failed to downcast resource")
     }
 }
 
@@ -316,15 +327,20 @@ impl<'res, T: Send + Sync + 'static> SystemParam for ResMut<'res, T> {
     type Item<'new> = ResMut<'new, T>;
     type ErasedResources = ErasedResource;
 
-    fn retrieve<'a>(resource: &'a Self::ErasedResources) -> Self::Item<'a> {
+    fn retrieve(resource: &Self::ErasedResources) -> Self::Item<'_> {
         ResMut {
-            value: resource.write().unwrap(),
+            value: resource
+                .write()
+                .expect("Failed to read resource because lock is poisoned!"),
             _marker: PhantomData,
         }
     }
 
-    fn get_resource(storage: &Storage) -> Self::ErasedResources {
-        storage.get::<T>().unwrap().clone()
+    fn get_resource(storage: &Storage) -> Result<Self::ErasedResources> {
+        Ok(storage
+            .get::<T>()
+            .ok_or_else(|| miette!("Resource `&mut {}` missing in storage", type_name::<T>()))?
+            .clone())
     }
 
     fn type_info() -> Vec<TypeInfo> {
@@ -347,13 +363,13 @@ macro_rules! impl_system_param {
 
             #[allow(clippy::unused_unit)]
             #[allow(non_snake_case)]
-            fn retrieve<'a>(resource: &'a Self::ErasedResources) -> Self::Item<'a> {
+            fn retrieve(resource: &Self::ErasedResources) -> Self::Item<'_> {
                 let ($($params,)*) = resource;
                 ($($params::retrieve($params),)*)
             }
 
-            fn get_resource(storage: &Storage) -> Self::ErasedResources {
-                ($($params::get_resource(storage),)*)
+            fn get_resource(storage: &Storage) -> Result<Self::ErasedResources> {
+                Ok(($($params::get_resource(storage)?,)*))
             }
 
             fn type_info() -> Vec<TypeInfo> {

@@ -1,14 +1,6 @@
 use std::time::Duration;
 
-use miette::Result;
-use tyr::{
-    prelude::*,
-    tasks::{Error, TaskModule},
-};
-use tyr_tasks::{
-    compute::ComputeTask,
-    task::{Pollable, TaskResource},
-};
+use yggdrasil::prelude::*;
 
 #[derive(Default)]
 struct Counter(u64);
@@ -58,9 +50,6 @@ fn time_critical_task(counter: &mut Counter) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-    miette::set_panic_hook();
-
     App::new()
         .add_module(TaskModule)?
         .init_resource::<Counter>()?

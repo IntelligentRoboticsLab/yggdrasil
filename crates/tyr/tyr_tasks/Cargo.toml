@@ -10,6 +10,3 @@ rayon = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tyr_internal = { path = "../tyr_internal" }
-
-[dev-dependencies]
-tyr = { path = "../" }

@@ -107,7 +107,7 @@ impl Storage {
     pub fn add_resource<T: Send + Sync + 'static>(&mut self, res: Resource<T>) -> Result<()> {
         match self.0.insert(TypeId::of::<T>(), res.into()) {
             Some(_) => Err(miette!(
-                "Trying to add resource of type `{}`, but it already exists in storage!",
+                "Trying to add resource of type `{}`, but it already exists in storage! Only 1 resource can exist per type.",
                 std::any::type_name::<T>()
             )),
             None => Ok(()),
@@ -127,7 +127,7 @@ impl Storage {
     ) -> Result<()> {
         match self.0.insert(TypeId::of::<T>(), res.clone().into()) {
             Some(_) => Err(miette!(
-                "Trying to add resource of type `{}`, but it already exists in storage!",
+                "Trying to add resource of type `{}`, but it already exists in storage! Only 1 resource can exist per type.",
                 std::any::type_name::<T>()
             )),
             None => {
@@ -147,28 +147,8 @@ impl Storage {
     }
 
     /// Try to get a resource from the storage by reference, and map it to something else
-    ///
-    /// This can be useful in startup systems where you depend on other resources being available
-    /// already.
-    ///
-    /// # Example
-    /// ```
-    /// use tyr::prelude::*;
-    /// use miette::Result;
-    ///
-    /// fn init_server(storage: &mut Storage) -> Result<()> {
-    ///    let handle = storage.map_resource_ref(|ad: &AsyncDispatcher| {
-    ///        ad.handle().clone()
-    ///    })?;
-    ///    
-    ///    // Now we can use a previously initialized Tokio runtime
-    ///    // from a startup system!
-    ///
-    ///    Ok(())
-    /// }
-    /// ```
-    ///
-    pub fn map_resource_ref<T: 'static, F: FnOnce(&T) -> R, R>(&self, f: F) -> Result<R> {
+    #[allow(dead_code)]
+    fn map_resource_ref<T: 'static, F: FnOnce(&T) -> R, R>(&self, f: F) -> Result<R> {
         let resource = self
             .get::<T>()
             .ok_or_else(|| miette!("Resource of type `{}` does not exist", type_name::<T>()))?;
@@ -181,7 +161,8 @@ impl Storage {
     }
 
     /// Try to get a resource from the storage by mutable reference, and map it to something else
-    pub fn map_resource_mut<T: 'static, F: FnOnce(&mut T) -> R, R>(&self, f: F) -> Result<R> {
+    #[allow(dead_code)]
+    fn map_resource_mut<T: 'static, F: FnOnce(&mut T) -> R, R>(&self, f: F) -> Result<R> {
         let resource = self
             .get::<T>()
             .ok_or_else(|| miette!("Resource of type `{}` does not exist", type_name::<T>()))?;

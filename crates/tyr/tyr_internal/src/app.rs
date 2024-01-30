@@ -82,11 +82,19 @@ impl App {
     /// A startup system is executed once when the app starts up,
     /// and is provided access to the [`Storage`] of the app.
     ///
-    /// All startup systems must be functions with the following signature:
+    /// All startup systems must be functions with at least the following signature:
     /// ```ignore
+    /// #[startup_system]
     /// fn my_startup_system(storage: &mut Storage) -> Result<()>
     /// ```
+    /// After the first parameter, you can query any resource `T` by using `&T` or `&mut T` like in a normal system.
+    /// ```ignore
+    /// #[startup_system]
+    /// fn another_startup_system(storage: &mut Storage, foo: &Foo, bar: &Bar) -> Result<()>
+    /// ```
+    ///
     /// Startup systems can be useful for values that need to be initialized once before they are used.
+    ///
     /// # Example
     /// ```ignore
     /// fn get_robot_connection(storage: &mut Storage) -> Result<()> {
