@@ -1,5 +1,4 @@
 pub mod dnt_walk;
-pub mod kinematics;
 pub mod smoothing;
 
 use std::{

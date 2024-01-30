@@ -15,14 +15,12 @@ use crate::{
         button::{ChestButton, HeadButtons},
         imu::IMUValues,
     },
+    kinematics::{self, FootOffset},
     primary_state::PrimaryState,
     walk::smoothing,
 };
 
-use super::{
-    kinematics::{self, FootOffset},
-    CycleTime, Odometry,
-};
+use super::{CycleTime, Odometry};
 
 /// forward (the / by 4 is because the CoM moves as well and forwardL is wrt the CoM
 const COM_MULTIPLIER: f32 = 0.25;
