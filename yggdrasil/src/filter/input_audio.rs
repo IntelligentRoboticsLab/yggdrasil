@@ -19,7 +19,7 @@ pub struct InputAudioFilter;
 
 impl Module for InputAudioFilter {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_task::<ComputeTask<[f32; BUFSIZE]>>()?
+        app.add_task::<ComputeTask<AudioSample>>()?
             .add_system(dispatch_buffer)
             .add_resource(Resource::new(InputAudio::new()?))
     }
