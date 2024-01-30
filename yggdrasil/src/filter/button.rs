@@ -39,6 +39,8 @@ pub enum ButtonState {
     /// The button is not being pressed.
     #[default]
     Neutral,
+    /// The button has been tapped, meaning it was just released.
+    Tapped,
     /// The button is being pressed. [`Instant`] records the timestamp when the button was pressed.
     Pressed(Instant),
     /// The button is held down. [`Instant`] records the timestamp since the button is held.
@@ -48,7 +50,12 @@ pub enum ButtonState {
 impl ButtonState {
     /// Tell whether the button is currently pressed down.
     pub fn is_pressed(&self) -> bool {
-        !matches!(self, Self::Neutral)
+        !matches!(self, Self::Neutral | Self::Tapped)
+    }
+
+    /// Tell whether the button has been tapped, meaning it was just released.
+    pub fn is_tapped(&self) -> bool {
+        matches!(self, Self::Tapped)
     }
 
     /// Tell whether the button is currently being held down.
@@ -59,8 +66,9 @@ impl ButtonState {
     /// Get the next state based on whether the button is currently pressed down.
     pub fn next(&self, is_pressed: bool) -> Self {
         match (self, is_pressed) {
-            (ButtonState::Neutral, true) => Self::Pressed(Instant::now()),
+            (ButtonState::Neutral | ButtonState::Tapped, true) => Self::Pressed(Instant::now()),
             (ButtonState::Neutral, false) => Self::Neutral,
+            (ButtonState::Tapped, false) => Self::Neutral,
             (ButtonState::Pressed(start), true) => {
                 if Instant::now()
                     .checked_duration_since(*start)
@@ -71,9 +79,9 @@ impl ButtonState {
                     Self::Pressed(*start)
                 }
             }
-            (ButtonState::Pressed(_), false) => Self::Neutral,
+            (ButtonState::Pressed(_), false) => Self::Tapped,
             (ButtonState::Held(start), true) => Self::Held(*start),
-            (ButtonState::Held(_), false) => Self::Neutral,
+            (ButtonState::Held(_), false) => Self::Tapped,
         }
     }
 }
@@ -192,69 +200,41 @@ mod tests {
     fn button_update() {
         let mut button = ButtonState::default();
 
-        assert!(
-            !button.is_pressed(),
-            "Button should initialize with `is_pressed == false`"
-        );
-        assert!(
-            !button.is_held(),
-            "Button should initialize with `is_held == false`"
-        );
+        assert!(!button.is_tapped());
+        assert!(!button.is_pressed());
+        assert!(!button.is_held());
 
         button = button.next(true);
 
-        assert!(
-            button.is_pressed(),
-            "Button should have `is_pressed == true` after update!"
-        );
-        assert!(
-            !button.is_held(),
-            "Button should have `is_held == false` after single update!"
-        );
+        assert!(!button.is_tapped());
+        assert!(button.is_pressed());
+        assert!(!button.is_held());
 
         std::thread::sleep(BUTTON_HELD_THRESHOLD);
         button = button.next(true);
 
-        assert!(
-            button.is_pressed(),
-            "Button should have `is_pressed == true` after update!"
-        );
-        assert!(
-            button.is_held(),
-            "Button should have `is_held == true` after `BUTTON_HELD_THRESHHOLD` has passed!"
-        );
+        assert!(!button.is_tapped());
+        assert!(button.is_pressed());
+        assert!(button.is_held());
 
         button = button.next(false);
-        assert!(
-            !button.is_pressed(),
-            "Button should have `is_pressed == false` after no longer pressed!"
-        );
-        assert!(
-            !button.is_held(),
-            "Button should have `is_held == false` after no longer pressed!"
-        );
+
+        assert!(button.is_tapped());
+        assert!(!button.is_pressed(),);
+        assert!(!button.is_held(),);
 
         button = button.next(true);
         std::thread::sleep(BUTTON_HELD_THRESHOLD / 2);
         button = button.next(true);
 
-        assert!(
-            button.is_pressed(),
-            "Button should have `is_pressed == true` after update!"
-        );
-        assert!(
-            !button.is_held(),
-            "Button should have `is_held == false` after `BUTTON_HELD_THRESHHOLD / 2` has passed!"
-        );
+        assert!(!button.is_tapped());
+        assert!(button.is_pressed());
+        assert!(!button.is_held());
 
         button = button.next(false);
-        assert!(
-            !button.is_pressed(),
-            "Button should have `is_pressed == false` after no longer pressed!"
-        );
-        assert!(
-            !button.is_held(),
-            "Button should have `is_held == false` after no longer pressed!"
-        );
+
+        assert!(button.is_tapped());
+        assert!(!button.is_pressed());
+        assert!(!button.is_held());
     }
 }
