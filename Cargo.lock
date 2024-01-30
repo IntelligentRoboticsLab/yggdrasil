@@ -2451,11 +2451,9 @@ dependencies = [
  "miette",
  "nidhogg",
  "tokio",
- "tracing-subscriber",
  "tyr_internal",
  "tyr_macros",
  "tyr_tasks",
- "yggdrasil",
 ]
 
 [[package]]

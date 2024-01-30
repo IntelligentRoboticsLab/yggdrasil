@@ -12,7 +12,7 @@ use rayon::ThreadPoolBuilder;
 use thiserror::Error;
 use tokio::runtime;
 
-use tyr_internal::{App, Module, Resource};
+use tyr_internal::{App, Module, Res, Resource, Storage};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -20,9 +20,10 @@ use serde::{Deserialize, Serialize};
 use asynchronous::TokioRuntime;
 use compute::RayonThreadPool;
 
-// TODO: customisable async/compute thread count through config
-
 /// [`Module`](../../tyr/trait.Module.html) implementing asynchronous task execution.
+///
+/// # Warning ⚠️
+/// Initialization of this module requires a [`TaskConfig`] resource to be in storage.
 ///
 /// Adds the following usable [`Resource`]s to the [`App`]:
 ///  - [`AsyncDispatcher`](`asynchronous::AsyncDispatcher`)
@@ -32,43 +33,54 @@ use compute::RayonThreadPool;
 /// Examples where this can happen include waiting on network messages, processing camera data or running big machine learning models.
 /// These are ideal use cases for tasks, as they allow you to offload work to other threads. This way the robot control can keep
 /// running smoothly.
+#[derive(Debug)]
+pub struct TaskModule;
+
+/// Sets
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[derive(Debug)]
-pub struct TaskModule {
+pub struct TaskConfig {
     pub tokio_threads: usize,
     pub rayon_threads: usize,
 }
 
 impl Module for TaskModule {
     fn initialize(self, app: App) -> MietteResult<App> {
-        let runtime = TokioRuntime::new(
-            runtime::Builder::new_multi_thread()
-                .worker_threads(self.tokio_threads)
-                .thread_name("tokio-async-worker")
-                .enable_all()
-                .build()
-                .into_diagnostic()?,
-        );
-
-        let async_dispatcher = asynchronous::AsyncDispatcher::new(runtime.handle().clone());
-
-        let thread_pool = RayonThreadPool::new(Arc::new(
-            ThreadPoolBuilder::new()
-                .num_threads(self.rayon_threads)
-                .thread_name(|idx| format!("rayon-compute-worker-{idx}"))
-                .build()
-                .into_diagnostic()?,
-        ));
-
-        let compute_dispatcher =
-            compute::ComputeDispatcher::new(thread_pool.clone(), async_dispatcher.clone());
-
-        app.add_resource(Resource::new(runtime))?
-            .add_resource(Resource::new(thread_pool))?
-            .add_resource(Resource::new(async_dispatcher))?
-            .add_resource(Resource::new(compute_dispatcher))
+        app.add_startup_system(init_tasks)
     }
+}
+
+/// Initializes tasks according to the [`TaskConfig`] resource.
+fn init_tasks(storage: &mut Storage, config: Res<TaskConfig>) -> MietteResult<()> {
+    let runtime = TokioRuntime::new(
+        runtime::Builder::new_multi_thread()
+            .worker_threads(config.tokio_threads)
+            .thread_name("tokio-async-worker")
+            .enable_all()
+            .build()
+            .into_diagnostic()?,
+    );
+
+    let async_dispatcher = asynchronous::AsyncDispatcher::new(runtime.handle().clone());
+
+    let thread_pool = RayonThreadPool::new(Arc::new(
+        ThreadPoolBuilder::new()
+            .num_threads(config.rayon_threads)
+            .thread_name(|idx| format!("rayon-compute-worker-{idx}"))
+            .build()
+            .into_diagnostic()?,
+    ));
+
+    let compute_dispatcher =
+        compute::ComputeDispatcher::new(thread_pool.clone(), async_dispatcher.clone());
+
+    storage.add_resource(Resource::new(runtime))?;
+    storage.add_resource(Resource::new(thread_pool))?;
+    storage.add_resource(Resource::new(async_dispatcher))?;
+    storage.add_resource(Resource::new(compute_dispatcher))?;
+
+    Ok(())
 }
 
 /// A specialized [`Result`] type returning a [`tyr::tasks::Error`](`enum@Error`).
@@ -90,6 +102,5 @@ pub mod prelude {
         asynchronous::{AsyncDispatcher, AsyncTask, AsyncTaskMap, AsyncTaskSet},
         compute::{ComputeDispatcher, ComputeTask, ComputeTaskMap, ComputeTaskSet},
         task::{Dispatcher, Pollable, TaskResource},
-        Error, Result, TaskModule,
     };
 }

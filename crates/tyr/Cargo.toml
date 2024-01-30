@@ -12,5 +12,3 @@ tyr_tasks = { path = "tyr_tasks", features = ["serde"] }
 miette = { workspace = true }
 nidhogg = { workspace = true, features = ["lola"] }
 tokio = { workspace = true }
-tracing-subscriber = { workspace = true }
-yggdrasil = { path = "../../yggdrasil" }

@@ -1,4 +1,6 @@
-pub mod yggdrasil;
+mod tyr;
+
+use tyr::TyrModule;
 
 use std::path::PathBuf;
 
@@ -10,7 +12,10 @@ pub struct ConfigModule;
 
 impl Module for ConfigModule {
     fn initialize(self, app: App) -> miette::Result<App> {
-        app.add_startup_system(initialize_config_roots)
+        app.add_startup_system(initialize_config_roots)?
+            // Tyr configuration is done at this point,
+            // as it can only be done after we initialize the config module
+            .add_module(TyrModule)
     }
 }
 
@@ -73,7 +78,7 @@ fn add_config<T: Config + Send + Sync + 'static>(
     let main_path = main_path.0.join(T::PATH);
     let overlay_path = overlay_path.0.join(T::PATH);
 
-    let config = match T::load_with_overlay(&main_path, &overlay_path) {
+    let config = match T::load_with_overlay(&main_path, overlay_path) {
         Ok(t) => Ok(t),
         // failed to load any overlay
         Err(Error {
@@ -90,7 +95,7 @@ fn add_config<T: Config + Send + Sync + 'static>(
             // use only root in that case
             T::load(&main_path)
         }
-        Err(e) => Err(e.into()),
+        Err(e) => Err(e),
     }?;
 
     storage.add_resource(Resource::new(config))
