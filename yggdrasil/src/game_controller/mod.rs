@@ -6,8 +6,9 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
 use std::time::Instant;
 
-use miette::{IntoDiagnostic, Result};
-use tyr::prelude::*;
+use miette::IntoDiagnostic;
+
+use crate::prelude::*;
 
 mod receive;
 mod transmit;
@@ -42,13 +43,11 @@ impl GameControllerModule {
         Ok(game_controller_socket)
     }
 
-    fn add_resources(storage: &mut Storage) -> Result<()> {
-        let game_controller_socket =
-            storage.map_resource_ref(|async_dispatcher: &AsyncDispatcher| {
-                async_dispatcher
-                    .handle()
-                    .block_on(Self::new_game_controller_socket())
-            })??;
+    #[startup_system]
+    fn add_resources(storage: &mut Storage, dispatcher: &AsyncDispatcher) -> Result<()> {
+        let game_controller_socket = dispatcher
+            .handle()
+            .block_on(Self::new_game_controller_socket())?;
 
         storage.add_resource(Resource::new(GameControllerData {
             socket: Arc::new(game_controller_socket),

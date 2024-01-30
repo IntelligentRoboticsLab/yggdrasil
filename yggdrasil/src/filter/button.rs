@@ -1,8 +1,8 @@
-use miette::Result;
+use crate::prelude::*;
+
 use std::time::{Duration, Instant};
 
 use nidhogg::NaoState;
-use tyr::prelude::*;
 
 /// Describes the time a button needs to be held down, in order to move to the [`ButtonState::Held`].
 const BUTTON_HELD_THRESHOLD: Duration = Duration::from_millis(500);

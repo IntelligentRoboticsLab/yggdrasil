@@ -1,6 +1,5 @@
-use miette::Result;
+use crate::prelude::*;
 use nidhogg::{types::SonarValues, NaoState};
-use tyr::prelude::*;
 
 /// A module offering structured wrappers for sonar, derived from the raw [`NaoState`].
 ///
