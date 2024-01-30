@@ -32,7 +32,7 @@ impl Module for InputAudioFilter {
 }
 
 /// Contains a vector that stores the captured PCM audio data. The audio samples are stored
-/// with access RWInterleaved, which means alternating between the left and right channel: LRLRLR.
+/// with [`Access::RWInterleaved`], which means alternating between the left and right channel: LRLRLR.
 pub struct InputAudio {
     pub buffer: Arc<[f32; BUFSIZE]>,
     device: Arc<Mutex<PCM>>,
