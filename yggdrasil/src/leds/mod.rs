@@ -1,8 +1,8 @@
+use crate::prelude::*;
+
 use std::time::{Duration, Instant};
 
-use miette::Result;
 use nidhogg::NaoControlMessage;
-use tyr::prelude::*;
 
 pub use nidhogg::types::{Color, FillExt, LeftEar, LeftEye, RightEar, RightEye, Skull};
 

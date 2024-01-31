@@ -21,12 +21,18 @@ struct SystemArg {
 /// A visitor that transforms function arguments and records errors.
 #[derive(Default)]
 struct ArgTransformerVisitor {
+    skip_first: bool,
     errors: Vec<syn::Error>,
     args: Vec<SystemArg>,
 }
 
 impl VisitMut for ArgTransformerVisitor {
     fn visit_fn_arg_mut(&mut self, arg: &mut FnArg) {
+        if self.skip_first {
+            self.skip_first = false;
+            return;
+        }
+
         match arg {
             FnArg::Typed(PatType { pat, ty, .. }) => match (pat.as_ref(), ty.as_ref()) {
                 (
@@ -68,7 +74,7 @@ impl VisitMut for ArgTransformerVisitor {
     }
 }
 
-pub fn system(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn system(input: proc_macro::TokenStream, is_startup_system: bool) -> proc_macro::TokenStream {
     let mut input = parse_macro_input!(input as ItemFn);
 
     if let Err(non_exclusive_mutable_borrow_error) = check_exclusive_mutable_borrow(&input) {
@@ -76,6 +82,24 @@ pub fn system(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     }
 
     let mut visitor = ArgTransformerVisitor::default();
+
+    // startup sytem specific stuff
+    if is_startup_system {
+        // don't transform first arg
+        visitor.skip_first = true;
+
+        let inputs = &input.sig.inputs;
+        if let Some(arg) = inputs.first() {
+            // verify the type is `&mut Storage`
+            check_mut_storage(&mut visitor, arg);
+        } else {
+            visitor.errors.push(syn::Error::new_spanned(
+                inputs,
+                "First argument must be a &mut Storage!",
+            ))
+        };
+    }
+
     syn::visit_mut::visit_item_fn_mut(&mut visitor, &mut input);
 
     // automatically deref to a reference at the beginning of a system
@@ -157,12 +181,49 @@ fn build_ty_string(ty: &Type) -> String {
         .map(|token| token.span().source_text().unwrap_or_default())
         .collect();
 
-    if name_parts.first().is_some_and(|first| first == "&") {
-        if name_parts.get(1).is_some_and(|second| second == "mut") {
-            name_parts.insert(2, " ".into());
-        } else {
-            name_parts.insert(1, " ".into());
-        }
+    if name_parts.first().is_some_and(|first| first == "&")
+        && name_parts.get(1).is_some_and(|second| second == "mut")
+    {
+        name_parts.insert(2, " ".into());
     }
+
     name_parts.join("")
+}
+
+fn check_mut_storage(visitor: &mut ArgTransformerVisitor, arg: &FnArg) {
+    let FnArg::Typed(PatType { ty, .. }) = arg else {
+        visitor.errors.push(syn::Error::new_spanned(
+            arg,
+            "Systems do not support receiver arguments!",
+        ));
+        return;
+    };
+
+    let Type::Reference(TypeReference {
+        mutability: Some(_),
+        elem,
+        ..
+    }) = ty.as_ref()
+    else {
+        visitor.errors.push(syn::Error::new_spanned(
+            arg,
+            "First argument must be a &mut Storage!",
+        ));
+        return;
+    };
+
+    let Type::Path(path) = elem.as_ref() else {
+        visitor.errors.push(syn::Error::new_spanned(
+            arg,
+            "First argument must be a &mut Storage!",
+        ));
+        return;
+    };
+
+    if *path != parse_quote! { Storage } {
+        visitor.errors.push(syn::Error::new_spanned(
+            arg,
+            "First argument must be a &mut Storage!",
+        ));
+    };
 }

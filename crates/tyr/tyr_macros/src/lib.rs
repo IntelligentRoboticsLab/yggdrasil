@@ -24,5 +24,10 @@ mod system;
 ///
 #[proc_macro_attribute]
 pub fn system(_args: TokenStream, item: TokenStream) -> proc_macro::TokenStream {
-    system::system(item)
+    system::system(item, false)
+}
+
+#[proc_macro_attribute]
+pub fn startup_system(_args: TokenStream, item: TokenStream) -> proc_macro::TokenStream {
+    system::system(item, true)
 }

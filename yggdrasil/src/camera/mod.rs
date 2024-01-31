@@ -1,10 +1,11 @@
-use miette::{IntoDiagnostic, Result};
+use crate::prelude::*;
+
+use miette::IntoDiagnostic;
 use std::{
     ops::Deref,
     sync::{Arc, Mutex},
     time::Instant,
 };
-use tyr::prelude::*;
 
 use heimdall::{Camera, YuyvImage};
 
