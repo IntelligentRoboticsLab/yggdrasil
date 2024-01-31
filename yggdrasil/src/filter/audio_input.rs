@@ -38,22 +38,26 @@ pub struct AudioInput {
 }
 
 impl AudioInput {
+    fn set_hardware_params(device: &PCM) -> Result<()> {
+        let hwp = HwParams::any(device).into_diagnostic()?;
+        hwp.set_channels(NUMBER_OF_CHANNELS as u32)
+            .into_diagnostic()?;
+        hwp.set_rate_near(SAMPLE_RATE as u32, ValueOr::Nearest)
+            .into_diagnostic()?;
+        hwp.set_format(FORMAT).into_diagnostic()?;
+        hwp.set_access(ACCESS).into_diagnostic()?;
+        device.hw_params(&hwp).into_diagnostic()?;
+
+        Ok(())
+    }
+
     /// Initialize PCM and add the necesarry hardware parameters.
     fn new() -> Result<Self> {
         let device = PCM::new("default", Direction::Capture, false).into_diagnostic()?;
         let buffer = vec![Vec::with_capacity(NUMBER_OF_SAMPLES); NUMBER_OF_CHANNELS];
         let buffer = Arc::new(buffer);
 
-        {
-            let hwp = HwParams::any(&device).into_diagnostic()?;
-            hwp.set_channels(NUMBER_OF_CHANNELS as u32)
-                .into_diagnostic()?;
-            hwp.set_rate_near(SAMPLE_RATE as u32, ValueOr::Nearest)
-                .into_diagnostic()?;
-            hwp.set_format(FORMAT).into_diagnostic()?;
-            hwp.set_access(ACCESS).into_diagnostic()?;
-            device.hw_params(&hwp).into_diagnostic()?;
-        }
+        Self::set_hardware_params(&device)?;
 
         let device = Arc::new(Mutex::new(device));
         let audio_input = Self { buffer, device };
