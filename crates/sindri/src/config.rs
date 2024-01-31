@@ -1,8 +1,8 @@
 use miette::{miette, IntoDiagnostic, Result};
 use serde::Deserialize;
 use serde_with::serde_as;
-use std::net::Ipv4Addr;
 use std::ops::RangeInclusive;
+use std::{ffi::OsStr, net::Ipv4Addr};
 use tokio::process::{Child, Command};
 
 /// A robot as defined in the sindri configuration
@@ -97,10 +97,29 @@ impl Robot {
     /// SSH into the robot and run the provided command.
     ///
     /// This returns the spawned [`Child`] process.
-    pub fn ssh(&self, command: impl Into<String>) -> Result<Child> {
+    pub fn ssh<K, V>(
+        &self,
+        command: impl Into<String>,
+        // Environment variables to run the command with
+        remote_envs: impl IntoIterator<Item = (K, V)>,
+    ) -> Result<Child>
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        let remote_envs = remote_envs.into_iter().map(|(k, v)| {
+            // k="v"
+            let mut mapping = k.as_ref().to_os_string();
+            mapping.push("=\"");
+            mapping.push(v);
+            mapping.push("\"");
+            mapping
+        });
+
         Command::new("ssh")
             .arg(format!("nao@{}", self.ip()))
             .arg("-t")
+            .args(remote_envs)
             .args(command.into().split(' ').collect::<Vec<&str>>())
             .kill_on_drop(true)
             .spawn()
