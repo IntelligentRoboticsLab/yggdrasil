@@ -31,13 +31,17 @@ impl Run {
         .deploy(config)
         .await?;
 
-        let command = if self.debug {
-            "RUST_LOG=debug ./yggdrasil"
-        } else {
-            "./yggdrasil"
+        let mut envs = Vec::new();
+
+        if self.debug {
+            envs.push(("RUST_LOG", "debug"));
         };
 
-        robot.ssh(command)?.wait().await.into_diagnostic()?;
+        robot
+            .ssh("./yggdrasil", envs)?
+            .wait()
+            .await
+            .into_diagnostic()?;
 
         Ok(())
     }
