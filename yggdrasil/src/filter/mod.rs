@@ -2,14 +2,14 @@ use miette::Result;
 use tyr::prelude::*;
 
 use self::{
-    button::ButtonFilter, fsr::FSRFilter, imu::IMUFilter, input_audio::InputAudioFilter,
+    audio_input::AudioInputFilter, button::ButtonFilter, fsr::FSRFilter, imu::IMUFilter,
     sonar::SonarFilter,
 };
 
+pub mod audio_input;
 pub mod button;
 pub mod fsr;
 pub mod imu;
-pub mod input_audio;
 pub mod sonar;
 
 pub struct FilterModule;
@@ -20,6 +20,6 @@ impl Module for FilterModule {
             .add_module(FSRFilter)?
             .add_module(IMUFilter)?
             .add_module(SonarFilter)?
-            .add_module(InputAudioFilter)
+            .add_module(AudioInputFilter)
     }
 }

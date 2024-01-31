@@ -10,39 +10,38 @@ pub const SAMPLE_RATE: usize = 44100;
 pub const NUMBER_OF_SAMPLES: usize = 2048;
 /// The NAO has 4 microphones but alsa records audio in stereo so you get two channels.
 pub const NUMBER_OF_CHANNELS: usize = 2;
-/// The size of the audio buffer. Calculated by number of samples multiplied by number of channels.
-pub const BUFSIZE: usize = NUMBER_OF_SAMPLES * NUMBER_OF_CHANNELS;
 /// The audio samples are in 32 bit float with a little endian layout.
 pub const FORMAT: Format = Format::FloatLE;
 /// Alternate samples for the left and right channel (LRLRLR).
 pub const ACCESS: Access = Access::RWInterleaved;
 
-/// A module providing the microphone input audio data in the form of an audio vector.
-///
 /// This module provides the following resources to the application:
-/// - [`InputAudio`]
-pub struct InputAudioFilter;
+/// - [`AudioInput`]
+pub struct AudioInputFilter;
 
-impl Module for InputAudioFilter {
+impl Module for AudioInputFilter {
     fn initialize(self, app: App) -> Result<App> {
         app.add_task::<ComputeTask<AudioSample>>()?
             .add_system(dispatch_buffer)
-            .add_resource(Resource::new(InputAudio::new()?))
+            .add_resource(Resource::new(AudioInput::new()?))
     }
 }
 
 /// Contains a vector that stores the captured PCM audio data. The audio samples are stored
-/// with [`Access::RWInterleaved`], which means alternating between the left and right channel: LRLRLR.
-pub struct InputAudio {
-    pub buffer: Arc<[f32; BUFSIZE]>,
+/// with [`Access::RWInterleaved`], which means alternating between the left and right
+/// channel, e.g. 'LRLRLR'.
+pub struct AudioInput {
+    /// Buffer containing audio samples with access [`Access::RWInterleaved`], which means
+    /// alternating samples between the left and right channel, e.g. 'LRLRLR'.
+    pub buffer: Arc<Vec<Vec<f32>>>,
     device: Arc<Mutex<PCM>>,
 }
 
-impl InputAudio {
+impl AudioInput {
     /// Initialize PCM and add the necesarry hardware parameters.
     fn new() -> Result<Self> {
         let device = PCM::new("default", Direction::Capture, false).into_diagnostic()?;
-        let buffer = [0.0; BUFSIZE];
+        let buffer = vec![Vec::with_capacity(NUMBER_OF_SAMPLES); NUMBER_OF_CHANNELS];
         let buffer = Arc::new(buffer);
 
         {
@@ -57,32 +56,42 @@ impl InputAudio {
         }
 
         let device = Arc::new(Mutex::new(device));
-        let input_audio = Self { buffer, device };
-        input_audio
+        let audio_input = Self { buffer, device };
+        audio_input
             .device
             .lock()
             .expect("Failed to lock device.")
             .prepare()
             .into_diagnostic()?;
-        Ok(input_audio)
+        Ok(audio_input)
     }
 }
 
-pub struct AudioSample(Arc<[f32; BUFSIZE]>);
+struct AudioSample(Arc<Vec<Vec<f32>>>);
 
 /// Reads audio samples into a temp buffer and returns that buffer.
 fn microphone_input(device: Arc<Mutex<PCM>>) -> Result<AudioSample> {
     let io_device = device.lock().expect("Failed to lock device.");
     let io = io_device.io_f32().into_diagnostic().expect("Failed to io.");
 
-    let mut interleaved_buffer = Arc::new([0.0; BUFSIZE]);
-    io.readi(
-        Arc::get_mut(&mut interleaved_buffer)
-            .expect("Failed to get a mutable reference to interleaved buffer."),
-    )
-    .into_diagnostic()?;
+    let mut interleaved_buffer = vec![0.0 as f32; NUMBER_OF_SAMPLES * NUMBER_OF_CHANNELS];
+    let number_of_frames = io.readi(&mut interleaved_buffer).into_diagnostic()?;
 
-    Ok(AudioSample(interleaved_buffer))
+    assert_eq!(number_of_frames, NUMBER_OF_SAMPLES);
+
+    let mut non_interleaved_buffer =
+        vec![Vec::with_capacity(NUMBER_OF_SAMPLES); NUMBER_OF_CHANNELS];
+
+    for (channel_idx, non_interleaved_buffer) in non_interleaved_buffer.iter_mut().enumerate() {
+        non_interleaved_buffer.extend(
+            interleaved_buffer
+                .iter()
+                .skip(channel_idx)
+                .step_by(NUMBER_OF_CHANNELS),
+        );
+    }
+
+    Ok(AudioSample(Arc::new(non_interleaved_buffer)))
 }
 
 /// Checks wether the [`microphone_input`] function can be dispatched. This is the case when the
@@ -91,15 +100,17 @@ fn microphone_input(device: Arc<Mutex<PCM>>) -> Result<AudioSample> {
 #[system]
 fn dispatch_buffer(
     task: &mut ComputeTask<AudioSample>,
-    input_audio: &mut InputAudio,
+    audio_input: &mut AudioInput,
 ) -> Result<()> {
     if task.active() {
         let Some(buf) = task.poll() else {
             return Ok(());
         };
-        input_audio.buffer = buf.0;
+        audio_input.buffer = buf.0;
     }
-    let device = input_audio.device.clone();
+
+    // Immediately spawn task again, to prevent it from blocking main thread.
+    let device = audio_input.device.clone();
     task.try_spawn(move || microphone_input(device).expect("Failed to get buffer."))
         .into_diagnostic()?;
 
