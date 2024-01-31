@@ -100,17 +100,27 @@ impl Robot {
     pub fn ssh<K, V>(
         &self,
         command: impl Into<String>,
-        envs: impl IntoIterator<Item = (K, V)>,
+        // Environment variables to run the command with
+        remote_envs: impl IntoIterator<Item = (K, V)>,
     ) -> Result<Child>
     where
         K: AsRef<OsStr>,
         V: AsRef<OsStr>,
     {
+        let remote_envs = remote_envs.into_iter().map(|(k, v)| {
+            // k="v"
+            let mut mapping = k.as_ref().to_os_string();
+            mapping.push("=\"");
+            mapping.push(v);
+            mapping.push("\"");
+            mapping
+        });
+
         Command::new("ssh")
             .arg(format!("nao@{}", self.ip()))
             .arg("-t")
+            .args(remote_envs)
             .args(command.into().split(' ').collect::<Vec<&str>>())
-            .envs(envs)
             .kill_on_drop(true)
             .spawn()
             .into_diagnostic()
