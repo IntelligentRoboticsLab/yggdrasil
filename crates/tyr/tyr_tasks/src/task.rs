@@ -37,7 +37,7 @@ use tokio::{
     task::{JoinHandle, JoinSet},
 };
 
-use tyr_internal::{App, Resource, Storage};
+use tyr_internal::{self, App, Res, Resource, Storage};
 
 /// A dispatcher manages tasks of a specific type (e.g. async/compute).
 pub trait Dispatcher {
@@ -65,27 +65,6 @@ pub trait Pollable {
     fn new(dispatcher: Self::Dispatcher) -> Self;
 
     /// Checks the task progress and returns any new results.
-    ///
-    /// # Example
-    /// ```
-    /// use tyr::prelude::*;
-    /// use miette::Result;
-    ///
-    /// struct Foo;
-    ///
-    /// #[system]
-    /// fn check_finished(task: &mut AsyncTask<Foo>) -> Result<()> {
-    ///     let Some(foo) = task.poll() else {
-    ///         // Task is not yet ready
-    ///         return Ok(());
-    ///     };
-    ///
-    ///     // Task has finished
-    ///     // can use `foo` here
-    ///
-    ///     Ok(())
-    /// }
-    /// ```
     fn poll(&mut self) -> Self::Output;
 }
 
@@ -258,30 +237,11 @@ pub trait TaskResource {
     /// # Errors
     /// This function fails if the needed dispatcher doesn't already exist in storage,
     /// or if the task already exists in storage.
-    ///
-    /// # Example
-    /// ```
-    /// use tyr::prelude::*;
-    /// use miette::Result;
-    ///
-    /// struct Foo;
-    ///
-    /// fn main() -> Result<()> {
-    ///     let app = App::new()
-    ///         .add_module(TaskModule)?
-    ///         .add_task::<AsyncTask<Foo>>()?
-    ///         .add_task::<ComputeTaskSet<Foo>>()?
-    ///         .add_task::<AsyncTaskMap<i32, Foo>>()?
-    ///         .add_task::<ComputeTask<Foo>>()?;
-    ///     
-    ///     Ok(())
-    /// }
-    /// ```
     fn add_task<T>(self) -> Result<Self>
     where
         Self: Sized,
         T: Pollable + Send + Sync + 'static,
-        T::Dispatcher: Clone + 'static;
+        T::Dispatcher: Clone + Send + Sync;
 }
 
 impl TaskResource for App {
@@ -289,19 +249,20 @@ impl TaskResource for App {
     where
         Self: Sized,
         T: Pollable + Send + Sync + 'static,
-        T::Dispatcher: Clone + 'static,
+        T::Dispatcher: Clone + Send + Sync,
     {
-        fn add<T: Pollable + Send + Sync + 'static>(storage: &mut Storage) -> Result<()>
+        fn _add_task<T: Pollable + Send + Sync + 'static>(
+            storage: &mut Storage,
+            dispatcher: Res<T::Dispatcher>,
+        ) -> Result<()>
         where
-            T::Dispatcher: Clone + 'static,
+            T::Dispatcher: Clone + Send + Sync,
         {
-            let dispatcher = storage.map_resource_ref(|d: &T::Dispatcher| d.clone())?;
-
-            storage.add_resource(Resource::new(T::new(dispatcher)))?;
+            storage.add_resource(Resource::new(T::new(dispatcher.clone())))?;
 
             Ok(())
         }
 
-        self.add_startup_system(add::<T>)
+        self.add_startup_system(_add_task::<T>)
     }
 }

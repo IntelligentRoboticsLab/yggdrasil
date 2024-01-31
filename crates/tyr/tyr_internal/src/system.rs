@@ -1,5 +1,5 @@
 use dyn_clone::DynClone;
-use miette::Result;
+use miette::{miette, Result};
 use std::hash::Hash;
 use std::{
     any::{type_name, Any, TypeId},
@@ -8,16 +8,30 @@ use std::{
     sync::{RwLockReadGuard, RwLockWriteGuard},
 };
 
-use crate::storage::Storage;
+use crate::storage::{ErasedResource, Storage};
 
-pub trait System: DynClone + Send + Sync + 'static {
+use self::private::SystemType;
+
+pub struct NormalSystem;
+pub struct StartupSystem;
+
+// Use a sealed trait so we limit the amount of system types
+mod private {
+    use super::{NormalSystem, StartupSystem};
+
+    pub trait SystemType {}
+    impl SystemType for NormalSystem {}
+    impl SystemType for StartupSystem {}
+}
+
+pub trait System<T: SystemType>: DynClone + Send + Sync + 'static {
     fn run(&mut self, resources: &mut Storage) -> Result<()>;
     fn required_resources(&self) -> Vec<TypeInfo>;
     fn system_type(&self) -> TypeId;
     fn system_name(&self) -> &str;
 }
 
-dyn_clone::clone_trait_object!(System);
+dyn_clone::clone_trait_object!(<T: SystemType> System<T>);
 
 macro_rules! impl_system {
     (
@@ -25,7 +39,7 @@ macro_rules! impl_system {
     ) => {
         #[allow(non_snake_case)]
         #[allow(unused)]
-        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> System for FunctionSystem<($($params,)*), F>
+        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> System<NormalSystem> for FunctionSystem<($($params,)*), F>
             where
                 for<'a, 'b> &'a mut F:
                     FnMut( $($params),* ) -> Result<()> +
@@ -40,11 +54,68 @@ macro_rules! impl_system {
                     f($($params),*)
                 }
 
+                // I have NO idea why but these need to be separated
                 $(
-                    let $params = $params::retrieve(resources);
+                    let $params = $params::get_resource(&resources)?;
+                )*
+
+                $(
+                    let $params = $params::retrieve(&$params);
                 )*
 
                 call_inner(&mut self.f, $($params),*)
+            }
+
+            fn required_resources(&self) -> Vec<TypeInfo> {
+                let mut types = Vec::new();
+
+                $(
+                    let mut param_types: Vec<TypeInfo> = <$params as SystemParam>::type_info()
+                        .into_iter()
+                        .collect();
+
+                    types.append(&mut param_types);
+                )*
+
+                types
+            }
+
+            fn system_type(&self) -> TypeId {
+                TypeId::of::<($($params,)*)>()
+            }
+
+            fn system_name(&self) -> &str {
+                std::any::type_name::<F>()
+            }
+
+        }
+
+        #[allow(non_snake_case)]
+        #[allow(unused)]
+        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> System<StartupSystem> for FunctionSystem<($($params,)*), F>
+            where
+                for<'a, 'b> &'a mut F:
+                FnOnce( &mut Storage, $($params),* ) -> Result<()> +
+                FnOnce( &mut Storage, $(<$params as SystemParam>::Item<'b>),* ) -> Result<()>
+        {
+            fn run(&mut self, resources: &mut Storage) -> Result<()> {
+                #[allow(clippy::too_many_arguments)]
+                fn call_inner<$($params),*> (
+                    mut f: impl FnOnce(&mut Storage, $($params),*) -> Result<()>,
+                    storage: &mut Storage,
+                    $($params: $params),*
+                ) -> Result<()> {
+                    f(storage, $($params),*)
+                }
+                    $(
+                        let $params = $params::get_resource(&resources)?;
+                    )*
+
+                    $(
+                        let $params = $params::retrieve(&$params);
+                    )*
+
+                    call_inner(&mut self.f, resources, $($params),*)
             }
 
             fn required_resources(&self) -> Vec<TypeInfo> {
@@ -118,8 +189,8 @@ impl<Input: 'static, F: Clone + 'static> Clone for FunctionSystem<Input, F> {
     }
 }
 
-pub trait IntoSystem<Input>: Clone {
-    type System: System;
+pub trait IntoSystem<T: SystemType, Input>: Clone {
+    type System: System<T>;
 
     fn into_system(self) -> Self::System;
 }
@@ -128,11 +199,27 @@ macro_rules! impl_into_system {
     (
         $($params:ident),*
     ) => {
-        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> IntoSystem<($($params,)*)> for F
+        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> IntoSystem<NormalSystem, ($($params,)*)> for F
             where
                 for<'a, 'b> &'a mut F:
                     FnMut( $($params),* ) -> Result<()> +
                     FnMut( $(<$params as SystemParam>::Item<'b>),* )  -> Result<()>
+        {
+            type System = FunctionSystem<($($params,)*), Self>;
+
+            fn into_system(self) -> Self::System {
+                FunctionSystem {
+                    f: self,
+                    _marker: FunctionSystemTypes(PhantomData),
+                }
+            }
+        }
+
+        impl<F: Clone + Send + Sync + 'static, $($params: SystemParam + 'static),*> IntoSystem<StartupSystem, ($($params,)*)> for F
+            where
+                for<'a, 'b> &'a mut F:
+                    FnOnce( &mut Storage, $($params),* ) -> Result<()> +
+                    FnOnce( &mut Storage, $(<$params as SystemParam>::Item<'b>),* )  -> Result<()>
         {
             type System = FunctionSystem<($($params,)*), Self>;
 
@@ -170,37 +257,47 @@ impl TypeInfo {
 
 pub trait SystemParam {
     type Item<'new>;
+    type ErasedResources;
 
-    fn retrieve(resources: &Storage) -> Self::Item<'_>;
+    fn retrieve(resource: &Self::ErasedResources) -> Self::Item<'_>;
+    fn get_resource(storage: &Storage) -> Result<Self::ErasedResources>;
     fn type_info() -> Vec<TypeInfo>;
 }
 
 /// Immutable access to a [`Resource<T>`](`crate::Resource<T>`).
 pub struct Res<'a, T: Send + Sync + 'static> {
     value: RwLockReadGuard<'a, dyn Any + Send + Sync>,
-    _marker: PhantomData<&'a T>,
+    _marker: PhantomData<T>,
 }
 
 impl<'a, T: Send + Sync + 'static> Deref for Res<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.value.downcast_ref::<T>().expect("L")
+        self.value
+            .downcast_ref::<T>()
+            .expect("Failed to downcast resource")
     }
 }
 
 impl<'res, T: Send + Sync + 'static> SystemParam for Res<'res, T> {
     type Item<'new> = Res<'new, T>;
+    type ErasedResources = ErasedResource;
 
-    fn retrieve(resources: &Storage) -> Self::Item<'_> {
+    fn retrieve(resource: &Self::ErasedResources) -> Self::Item<'_> {
         Res {
-            value: resources
-                .get::<T>()
-                .unwrap_or_else(|| panic!("Cannot get `&{}`", type_name::<T>()))
+            value: resource
                 .read()
-                .unwrap(),
+                .expect("Failed to read resource because lock is poisoned!"),
             _marker: PhantomData,
         }
+    }
+
+    fn get_resource(storage: &Storage) -> Result<Self::ErasedResources> {
+        Ok(storage
+            .get::<T>()
+            .ok_or_else(|| miette!("Resource `&{}` missing in storage", type_name::<T>()))?
+            .clone())
     }
 
     fn type_info() -> Vec<TypeInfo> {
@@ -214,35 +311,45 @@ impl<'res, T: Send + Sync + 'static> SystemParam for Res<'res, T> {
 /// Mutable access to a [`Resource<T>`](`crate::Resource<T>`).
 pub struct ResMut<'a, T: Send + Sync + 'static> {
     value: RwLockWriteGuard<'a, dyn Any + Send + Sync>,
-    _marker: PhantomData<&'a T>,
+    _marker: PhantomData<T>,
 }
 
 impl<'a, T: Send + Sync + 'static> Deref for ResMut<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.value.downcast_ref::<T>().unwrap()
+        self.value
+            .downcast_ref::<T>()
+            .expect("Failed to downcast resource")
     }
 }
 
 impl<'a, T: Send + Sync + 'static> DerefMut for ResMut<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.value.downcast_mut::<T>().unwrap()
+        self.value
+            .downcast_mut::<T>()
+            .expect("Failed to downcast resource")
     }
 }
 
 impl<'res, T: Send + Sync + 'static> SystemParam for ResMut<'res, T> {
     type Item<'new> = ResMut<'new, T>;
+    type ErasedResources = ErasedResource;
 
-    fn retrieve(resources: &Storage) -> Self::Item<'_> {
+    fn retrieve(resource: &Self::ErasedResources) -> Self::Item<'_> {
         ResMut {
-            value: resources
-                .get::<T>()
-                .unwrap_or_else(|| panic!("Cannot get `&mut {}`", type_name::<T>()))
+            value: resource
                 .write()
-                .unwrap(),
+                .expect("Failed to read resource because lock is poisoned!"),
             _marker: PhantomData,
         }
+    }
+
+    fn get_resource(storage: &Storage) -> Result<Self::ErasedResources> {
+        Ok(storage
+            .get::<T>()
+            .ok_or_else(|| miette!("Resource `&mut {}` missing in storage", type_name::<T>()))?
+            .clone())
     }
 
     fn type_info() -> Vec<TypeInfo> {
@@ -261,10 +368,17 @@ macro_rules! impl_system_param {
         #[allow(unused)]
         impl<$($params: SystemParam),*> SystemParam for ($($params,)*) {
             type Item<'new> = ($($params::Item<'new>,)*);
+            type ErasedResources = ($($params::ErasedResources,)*);
 
             #[allow(clippy::unused_unit)]
-            fn retrieve(resources: &Storage) -> Self::Item<'_> {
-                ($($params::retrieve(resources),)*)
+            #[allow(non_snake_case)]
+            fn retrieve(resource: &Self::ErasedResources) -> Self::Item<'_> {
+                let ($($params,)*) = resource;
+                ($($params::retrieve($params),)*)
+            }
+
+            fn get_resource(storage: &Storage) -> Result<Self::ErasedResources> {
+                Ok(($($params::get_resource(storage)?,)*))
             }
 
             fn type_info() -> Vec<TypeInfo> {

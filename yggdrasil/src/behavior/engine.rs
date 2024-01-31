@@ -1,10 +1,7 @@
 //! The engine managing behavior execution and role state.
 
 use enum_dispatch::enum_dispatch;
-use miette::Result;
 use nidhogg::NaoControlMessage;
-
-use tyr::prelude::*;
 
 use crate::{
     behavior::{
@@ -13,6 +10,7 @@ use crate::{
     },
     filter::button::HeadButtons,
     nao,
+    prelude::*,
     primary_state::PrimaryState,
 };
 

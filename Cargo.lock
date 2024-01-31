@@ -2390,6 +2390,7 @@ dependencies = [
  "tyr_internal",
  "tyr_macros",
  "tyr_tasks",
+ "yggdrasil",
 ]
 
 [[package]]
@@ -2421,7 +2422,6 @@ dependencies = [
  "rayon",
  "thiserror",
  "tokio",
- "tyr",
  "tyr_internal",
 ]
 

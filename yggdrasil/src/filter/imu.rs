@@ -1,6 +1,5 @@
-use miette::Result;
+use crate::prelude::*;
 use nidhogg::{types::Vector2, types::Vector3, NaoState};
-use tyr::prelude::*;
 
 /// A module offering a structured wrapper for the parts of the IMU, derived from the raw [`NaoState`].
 ///

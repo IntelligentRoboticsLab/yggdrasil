@@ -1,11 +1,12 @@
+use crate::prelude::*;
+
 use std::{env, time::Duration};
 
-use miette::{IntoDiagnostic, Result};
+use miette::IntoDiagnostic;
 use nidhogg::{
     backend::{ConnectWithRetry, LolaBackend, ReadHardwareInfo},
     HardwareInfo, NaoBackend, NaoControlMessage, NaoState,
 };
-use tyr::prelude::*;
 
 #[derive(Clone, Debug)]
 /// Information that uniquely identifies a robot

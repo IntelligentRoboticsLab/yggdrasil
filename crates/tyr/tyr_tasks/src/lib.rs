@@ -1,3 +1,5 @@
+//! Tasks allow functions to run over multiple execution cycles.
+
 pub mod asynchronous;
 pub mod compute;
 pub mod task;

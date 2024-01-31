@@ -1,10 +1,10 @@
+use crate::prelude::*;
 use kira::{
     manager::{backend::DefaultBackend, AudioManager, AudioManagerSettings},
     sound::streaming::{StreamingSoundData, StreamingSoundSettings},
 };
-use miette::{Context, IntoDiagnostic, Result};
+use miette::{Context, IntoDiagnostic};
 use std::sync::{Arc, Mutex};
-use tyr::prelude::*;
 
 /// A sound which can be played by the [`SoundManager`].
 ///

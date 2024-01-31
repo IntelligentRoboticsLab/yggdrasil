@@ -1,5 +1,6 @@
 use crate::schedule::{DependencySystem, Schedule};
 use crate::storage::{Resource, Storage};
+use crate::system::{IntoSystem, StartupSystem, System};
 use crate::{IntoDependencySystem, Module};
 
 use miette::Result;
@@ -81,11 +82,19 @@ impl App {
     /// A startup system is executed once when the app starts up,
     /// and is provided access to the [`Storage`] of the app.
     ///
-    /// All startup systems must be functions with the following signature:
+    /// All startup systems must be functions with at least the following signature:
     /// ```ignore
+    /// #[startup_system]
     /// fn my_startup_system(storage: &mut Storage) -> Result<()>
     /// ```
+    /// After the first parameter, you can query any resource `T` by using `&T` or `&mut T` like in a normal system.
+    /// ```ignore
+    /// #[startup_system]
+    /// fn another_startup_system(storage: &mut Storage, foo: &Foo, bar: &Bar) -> Result<()>
+    /// ```
+    ///
     /// Startup systems can be useful for values that need to be initialized once before they are used.
+    ///
     /// # Example
     /// ```ignore
     /// fn get_robot_connection(storage: &mut Storage) -> Result<()> {
@@ -97,11 +106,11 @@ impl App {
     ///     Ok(())
     /// }
     /// ```
-    pub fn add_startup_system<F: FnOnce(&mut Storage) -> Result<()>>(
+    pub fn add_startup_system<Input>(
         mut self,
-        system: F,
+        system: impl IntoSystem<StartupSystem, Input>,
     ) -> Result<Self> {
-        system(&mut self.storage)?;
+        system.into_system().run(&mut self.storage)?;
         Ok(self)
     }
 

@@ -12,8 +12,9 @@ use std::ops::Add;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use miette::{IntoDiagnostic, Result};
-use tyr::prelude::*;
+use miette::IntoDiagnostic;
+
+use crate::prelude::*;
 
 const GAME_CONTROLLER_RETURN_DELAY: Duration = Duration::from_millis(500);
 
