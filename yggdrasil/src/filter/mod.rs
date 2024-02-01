@@ -21,6 +21,7 @@ impl Module for FilterModule {
             .add_module(ButtonFilter)?
             .add_module(FSRFilter)?
             .add_module(IMUFilter)?
+            .add_module(FallingFilter)?
             .add_module(SonarFilter)?;
 
         #[cfg(feature = "alsa")]
