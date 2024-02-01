@@ -59,7 +59,7 @@ impl AudioInput {
         device.prepare().into_diagnostic()?;
         let device = Arc::new(Mutex::new(device));
 
-        let buffer = Arc::new(array::from_fn(|_| Vec::with_capacity(NUMBER_OF_SAMPLES)));
+        let buffer = Arc::new(array::from_fn(|_| vec![0.0; NUMBER_OF_SAMPLES]));
 
         Ok(Self { buffer, device })
     }
