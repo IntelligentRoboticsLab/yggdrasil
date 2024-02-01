@@ -77,7 +77,7 @@ struct AudioSample(Arc<[Vec<f32>; NUMBER_OF_CHANNELS]>);
 /// Reads audio samples into a temp buffer and returns that buffer.
 fn microphone_input(device: Arc<Mutex<PCM>>) -> Result<AudioSample> {
     let io_device = device.lock().expect("Failed to lock device.");
-    let io = io_device.io_f32().into_diagnostic().expect("Failed to io.");
+    let io = io_device.io_f32().into_diagnostic()?;
 
     let mut interleaved_buffer = [0.0_f32; NUMBER_OF_SAMPLES * NUMBER_OF_CHANNELS];
     let number_of_frames = io.readi(&mut interleaved_buffer).into_diagnostic()?;
