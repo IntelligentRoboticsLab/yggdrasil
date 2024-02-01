@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use miette::Result;
 use nidhogg::{
     types::{FillExt, ForceSensitiveResistors, JointArray},
@@ -15,7 +17,7 @@ use crate::{
 };
 
 use super::{
-    states::{self, WalkState},
+    states::{self, WalkContext, WalkState, WalkStateKind},
     CycleTime, Odometry,
 };
 
@@ -53,7 +55,7 @@ pub struct StepOffsets {
 
 #[derive(Default)]
 pub struct WalkingEngine {
-    state: WalkState,
+    state: WalkStateKind,
 }
 
 #[system]
@@ -115,40 +117,50 @@ pub fn walking_engine(
         return Ok(());
     }
 
-    let dt = cycle_time.duration;
-
-    walking_engine.state = match &walking_engine.state {
-        WalkState::Idle => {
-            *odometry = Default::default();
-            // control_message.stiffness = JointArray::<f32>::builder()
-            //     .left_leg_joints(LeftLegJoints::fill(-1.0))
-            //     .right_leg_joints(RightLegJoints::fill(-1.0))
-            //     .build();
-            states::idle_state(control_message)
-        }
-        WalkState::_Standing { .. } => todo!(),
-        WalkState::_Starting { .. } => todo!(),
-        WalkState::_Stopping => todo!(),
-        WalkState::Walking {
-            walk_parameters,
-            swing_foot,
-            phase_time,
-            next_foot_switch,
-            previous_step,
-            filtered_gyro,
-        } => states::walk_state(
-            walk_parameters,
-            swing_foot,
-            *phase_time + dt,
-            next_foot_switch,
-            previous_step,
-            filtered_gyro,
-            fsr,
-            imu,
-            control_message,
-            odometry,
-        ),
+    let mut context = WalkContext {
+        walk_command: WalkCommand::default(),
+        dt: cycle_time.duration,
+        filtered_gyro: Default::default(),
+        fsr: *fsr,
+        imu: *imu,
+        control_message
     };
+    walking_engine.state = walking_engine.state.next_state(&context);
+
+    
+
+    // walking_engine.state = match &walking_engine.state {
+    //     WalkState::Idle => {
+    //         *odometry = Default::default();
+    //         // control_message.stiffness = JointArray::<f32>::builder()
+    //         //     .left_leg_joints(LeftLegJoints::fill(-1.0))
+    //         //     .right_leg_joints(RightLegJoints::fill(-1.0))
+    //         //     .build();
+    //         states::idle_state(control_message)
+    //     }
+    //     WalkState::_Standing { .. } => todo!(),
+    //     WalkState::_Starting { .. } => todo!(),
+    //     WalkState::_Stopping => todo!(),
+    //     WalkState::Walking {
+    //         walk_parameters,
+    //         swing_foot,
+    //         phase_time,
+    //         next_foot_switch,
+    //         previous_step,
+    //         filtered_gyro,
+    //     } => states::walk_state(
+    //         walk_parameters,
+    //         swing_foot,
+    //         *phase_time + dt,
+    //         next_foot_switch,
+    //         previous_step,
+    //         filtered_gyro,
+    //         fsr,
+    //         imu,
+    //         control_message,
+    //         odometry,
+    //     ),
+    // };
 
     Ok(())
 }
