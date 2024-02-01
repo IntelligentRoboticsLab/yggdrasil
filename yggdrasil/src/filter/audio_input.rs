@@ -55,20 +55,13 @@ impl AudioInput {
     /// Initialize PCM and add the necesarry hardware parameters.
     fn new() -> Result<Self> {
         let device = PCM::new("default", Direction::Capture, false).into_diagnostic()?;
-        let buffer = array::from_fn(|_| Vec::with_capacity(NUMBER_OF_SAMPLES));
-        let buffer = Arc::new(buffer);
-
         Self::set_hardware_params(&device)?;
-
+        device.prepare().into_diagnostic()?;
         let device = Arc::new(Mutex::new(device));
-        let audio_input = Self { buffer, device };
-        audio_input
-            .device
-            .lock()
-            .expect("Failed to lock device.")
-            .prepare()
-            .into_diagnostic()?;
-        Ok(audio_input)
+
+        let buffer = Arc::new(array::from_fn(|_| Vec::with_capacity(NUMBER_OF_SAMPLES)));
+
+        Ok(Self { buffer, device })
     }
 }
 
