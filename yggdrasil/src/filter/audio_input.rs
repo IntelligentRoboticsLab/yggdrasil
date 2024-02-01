@@ -1,6 +1,7 @@
 use alsa::pcm::*;
 use alsa::{Direction, ValueOr};
 use miette::{miette, IntoDiagnostic, Result};
+use std::array;
 use std::sync::{Arc, Mutex};
 use tyr::prelude::*;
 
@@ -33,7 +34,7 @@ impl Module for AudioInputFilter {
 pub struct AudioInput {
     /// Buffer containing audio samples with access [`Access::RWInterleaved`], which means
     /// alternating samples between the left and right channel, e.g. 'LRLRLR'.
-    pub buffer: Arc<Vec<Vec<f32>>>,
+    pub buffer: Arc<[Vec<f32>; NUMBER_OF_CHANNELS]>,
     device: Arc<Mutex<PCM>>,
 }
 
@@ -54,7 +55,7 @@ impl AudioInput {
     /// Initialize PCM and add the necesarry hardware parameters.
     fn new() -> Result<Self> {
         let device = PCM::new("default", Direction::Capture, false).into_diagnostic()?;
-        let buffer = vec![Vec::with_capacity(NUMBER_OF_SAMPLES); NUMBER_OF_CHANNELS];
+        let buffer = array::from_fn(|_| Vec::with_capacity(NUMBER_OF_SAMPLES));
         let buffer = Arc::new(buffer);
 
         Self::set_hardware_params(&device)?;
@@ -71,7 +72,7 @@ impl AudioInput {
     }
 }
 
-struct AudioSample(Arc<Vec<Vec<f32>>>);
+struct AudioSample(Arc<[Vec<f32>; NUMBER_OF_CHANNELS]>);
 
 /// Reads audio samples into a temp buffer and returns that buffer.
 fn microphone_input(device: Arc<Mutex<PCM>>) -> Result<AudioSample> {
@@ -87,8 +88,7 @@ fn microphone_input(device: Arc<Mutex<PCM>>) -> Result<AudioSample> {
         ));
     }
 
-    let mut non_interleaved_buffer =
-        vec![Vec::with_capacity(NUMBER_OF_SAMPLES); NUMBER_OF_CHANNELS];
+    let mut non_interleaved_buffer = array::from_fn(|_| Vec::with_capacity(NUMBER_OF_SAMPLES));
 
     for (channel_idx, non_interleaved_buffer) in non_interleaved_buffer.iter_mut().enumerate() {
         non_interleaved_buffer.extend(
