@@ -22,7 +22,7 @@ pub struct AudioInputFilter;
 
 impl Module for AudioInputFilter {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_task::<ComputeTask<AudioSample>>()?
+        app.add_task::<ComputeTask<Result<AudioSample>>>()?
             .add_system(dispatch_buffer)
             .add_resource(Resource::new(AudioInput::new()?))
     }
@@ -107,19 +107,20 @@ fn microphone_input(device: Arc<Mutex<PCM>>) -> Result<AudioSample> {
 /// the buffer that is returned from the task to [`input_audio`] so it can be used as a resource.
 #[system]
 fn dispatch_buffer(
-    task: &mut ComputeTask<AudioSample>,
+    task: &mut ComputeTask<Result<AudioSample>>,
     audio_input: &mut AudioInput,
 ) -> Result<()> {
     if task.active() {
-        let Some(buf) = task.poll() else {
+        let Some(task_result) = task.poll() else {
             return Ok(());
         };
-        audio_input.buffer = buf.0;
+
+        audio_input.buffer = task_result?.0;
     }
 
     // Immediately spawn task again, to prevent it from blocking main thread.
     let device = audio_input.device.clone();
-    task.try_spawn(move || microphone_input(device).expect("Failed to get buffer."))
+    task.try_spawn(move || microphone_input(device))
         .into_diagnostic()?;
 
     Ok(())
