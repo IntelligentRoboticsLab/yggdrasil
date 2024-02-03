@@ -47,7 +47,6 @@ impl Module for ConfigModule {
         app.add_startup_system(initialize_config_roots)?
             .init_config::<TyrConfig>()?
             .add_startup_system(tyr::configure_tyr_hack)?
-            .add_system(print_task_config)
             .add_module(TaskModule)
     }
 }
@@ -137,10 +136,4 @@ fn _init_config<T: Config + Send + Sync + 'static>(
     }?;
 
     storage.add_resource(Resource::new(config))
-}
-
-#[system]
-fn print_task_config(c: &TaskConfig) -> Result<()> {
-    println!("{c:#?}");
-    Ok(())
 }
