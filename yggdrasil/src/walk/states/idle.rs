@@ -21,17 +21,16 @@ impl Default for IdleState {
 }
 
 impl WalkState for IdleState {
-    fn next_state<'a>(&self, context: &'a mut WalkContext) -> WalkStateKind {
+    fn next_state(&self, context: &mut WalkContext) -> WalkStateKind {
         let hip_height = self.hip_height;
         let foot_position = FootOffset {
             forward: 0.0,
             left: 0.0,
             turn: 0.0,
-            hip_height: hip_height,
+            hip_height,
             lift: 0.0,
         };
 
-        
         let (left_leg, right_leg) = kinematics::inverse::leg_angles(&foot_position, &foot_position);
         context.control_message.position = JointArray::<f32>::builder()
             .left_leg_joints(left_leg)
@@ -41,7 +40,6 @@ impl WalkState for IdleState {
             .left_leg_joints(LeftLegJoints::fill(0.5))
             .right_leg_joints(RightLegJoints::fill(0.5))
             .build();
-
 
         if hip_height < 0.18 {
             WalkStateKind::Idle(IdleState {

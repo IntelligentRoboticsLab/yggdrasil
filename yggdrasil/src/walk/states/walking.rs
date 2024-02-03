@@ -1,19 +1,12 @@
 use std::time::Duration;
 
-use nidhogg::{
-    types::{
-        FillExt, ForceSensitiveResistors, JointArray, LeftLegJoints, RightLegJoints, Vector2,
-        Vector3,
-    },
-    NaoControlMessage,
-};
+use nidhogg::types::{FillExt, ForceSensitiveResistors, JointArray, LeftLegJoints, RightLegJoints};
 
 use crate::{
-    filter::imu::IMUValues,
     kinematics::{self, FootOffset},
     walk::{
         engine::{Side, StepOffsets, WalkCommand},
-        smoothing, Odometry,
+        smoothing,
     },
 };
 
@@ -54,7 +47,7 @@ impl Default for WalkingState {
 }
 
 impl WalkState for WalkingState {
-    fn next_state<'a>(&self, context: &'a mut WalkContext) -> WalkStateKind {
+    fn next_state(&self, context: &mut WalkContext) -> WalkStateKind {
         let phase_time = self.phase_time + context.dt;
         // this is the linear progression of this step, a value from 0 to 1 which describes the progress of the current step.
         let linear_time =
@@ -69,8 +62,6 @@ impl WalkState for WalkingState {
             left,
             turn: _,
         } = context.walk_command;
-
-        tracing::info!("walk_command: {:?}", context.walk_command);
         // compute the max foot height, for moving forward/left we slightly increase the max height
         let max_foot_height = BASE_FOOT_LIFT + (forward.abs() * 0.01) + (left.abs() * 0.02);
         // compute the swing foot height for the current cycle in the step phase
@@ -109,17 +100,6 @@ impl WalkState for WalkingState {
             context.fsr.left_foot.sum(),
             context.fsr.right_foot.sum()
         );
-
-        // TODO: this is hacky at best, should optimise these params
-        let new_odometry = Odometry {
-            forward: (swing_offset.forward - previous_step.swing.forward) * 1.0,
-            left: (swing_offset.left - previous_step.swing.left) * 1.23,
-            turn: (swing_offset.turn - previous_step.swing.turn) * -0.53,
-        };
-
-        // Update that shit
-        // println!("new_odo: {new_odometry:?} old: odo: {odometry:?}");
-        // *odometry = new_odometry;
 
         let next_state = self.next_walk_state(context.dt, linear_time, &context.fsr);
 
@@ -185,13 +165,18 @@ fn has_support_foot_changed(side: &Side, fsr: &ForceSensitiveResistors) -> bool 
 }
 
 impl WalkingState {
-    fn next_walk_state(&self, dt: Duration, linear_time: f32, fsr: &ForceSensitiveResistors) -> WalkStateKind {
-        let mut next_swing_foot = self.swing_foot.clone();
+    fn next_walk_state(
+        &self,
+        dt: Duration,
+        linear_time: f32,
+        fsr: &ForceSensitiveResistors,
+    ) -> WalkStateKind {
+        let mut next_swing_foot = self.swing_foot;
         let mut phase_time = self.phase_time + dt;
         let mut next_foot_switch = self.next_foot_switch;
 
-        let swing_offset = self.previous_step.swing.clone();
-        let support_offset = self.previous_step.support.clone();
+        let swing_offset = self.previous_step.swing;
+        let support_offset = self.previous_step.support;
 
         let mut previous_step = self.previous_step.clone();
         // figure out whether the support foot has changed
@@ -233,15 +218,11 @@ fn compute_swing_offset(
     let left_t0 = step_t0.left;
     let turn_t0 = step_t0.turn;
     let parabolic_time = smoothing::parabolic_step(linear_time);
-    
 
     let turn_multiplier = match side {
         Side::Left => -2.0 / 3.0,
         Side::Right => 2.0 / 3.0,
     };
-
-    tracing::info!("linear_time: {}, parabolic_time: {}", linear_time, parabolic_time);
-
     FootOffset {
         forward: forward_t0 + (walk_command.forward * COM_MULTIPLIER - forward_t0) * parabolic_time,
         left: left_t0 + (walk_command.left / 2.0 - left_t0) * parabolic_time,

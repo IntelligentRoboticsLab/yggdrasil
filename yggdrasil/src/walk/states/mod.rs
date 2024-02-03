@@ -5,10 +5,7 @@ use enum_dispatch::enum_dispatch;
 use nidhogg::types::{ForceSensitiveResistors, Vector2};
 use std::time::Duration;
 
-use crate::filter::imu::IMUValues;
-
 use super::engine::WalkCommand;
-
 pub struct WalkContext<'a> {
     pub walk_command: WalkCommand,
     pub dt: Duration,
@@ -19,7 +16,7 @@ pub struct WalkContext<'a> {
 
 #[enum_dispatch]
 pub trait WalkState {
-    fn next_state<'a>(&self, context: &'a mut WalkContext) -> WalkStateKind;
+    fn next_state(&self, context: &mut WalkContext) -> WalkStateKind;
 }
 
 #[derive(Debug)]

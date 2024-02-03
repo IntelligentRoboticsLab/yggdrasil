@@ -1,23 +1,18 @@
-use std::time::Duration;
-
-use miette::Result;
 use nidhogg::{
-    types::{FillExt, ForceSensitiveResistors, JointArray, Vector2, Vector3},
+    types::{FillExt, ForceSensitiveResistors, JointArray},
     NaoControlMessage,
 };
-use tyr::system;
 
 use crate::{
-    filter::{
-        button::{ChestButton, HeadButtons},
-        imu::IMUValues,
-    },
+    filter::button::{ChestButton, HeadButtons},
     kinematics::FootOffset,
+    prelude::*,
     primary_state::PrimaryState,
 };
 
 use super::{
-    states::{self, WalkContext, WalkState, WalkStateKind}, CycleTime, FilteredGyroscope, Odometry
+    states::{self, WalkContext, WalkState, WalkStateKind},
+    CycleTime, FilteredGyroscope,
 };
 
 #[derive(Default, Clone, Debug)]
@@ -63,11 +58,11 @@ pub fn toggle_walking_engine(
     head_button: &HeadButtons,
     chest_button: &ChestButton,
     walking_engine: &mut WalkingEngine,
-    filtered_gyro: &mut FilteredGyroscope
+    filtered_gyro: &mut FilteredGyroscope,
 ) -> Result<()> {
     // If we're in unstiff, we don't want to do anything.
     if *primary_state == PrimaryState::Unstiff {
-        return Ok(())
+        return Ok(());
     }
     match (
         chest_button.state.is_tapped(),
@@ -78,7 +73,7 @@ pub fn toggle_walking_engine(
             filtered_gyro.reset();
             walking_engine.state = WalkStateKind::Walking(states::walking::WalkingState::default())
         }
-        (false, true, WalkStateKind::Walking( states::walking::WalkingState { .. } )) => {
+        (false, true, WalkStateKind::Walking(states::walking::WalkingState { .. })) => {
             walking_engine.state = WalkStateKind::Idle(states::idle::IdleState { hip_height: 0.18 })
         }
         _ => (),
@@ -86,7 +81,6 @@ pub fn toggle_walking_engine(
 
     Ok(())
 }
-
 
 #[system]
 pub fn walking_engine(
@@ -96,7 +90,6 @@ pub fn walking_engine(
     fsr: &ForceSensitiveResistors,
     filtered_gyro: &FilteredGyroscope,
     control_message: &mut NaoControlMessage,
-    // odometry: &mut Odometry,
 ) -> Result<()> {
     // We don't run the walking engne whenever we're in unstiff.
     // This is a semi hacky way to prevent the robot from jumping up and
@@ -111,8 +104,8 @@ pub fn walking_engine(
     let mut context = WalkContext {
         walk_command: WalkCommand {
             forward: 0.00,
-            left: 0.0,
-            turn: 0.7,
+            left: 0.03,
+            turn: 0.0,
         },
         dt: cycle_time.duration,
         filtered_gyro: filtered_gyro.0.clone(),
