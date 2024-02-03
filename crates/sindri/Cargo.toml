@@ -18,12 +18,12 @@ ssh2 = { workspace = true }
 thiserror = { workspace = true }
 
 tokio = { workspace = true, features = [
-    "macros",
-    "net",
-    "process",
-    "rt-multi-thread",
-    "signal",
-    "time",
+  "macros",
+  "net",
+  "process",
+  "rt-multi-thread",
+  "signal",
+  "time",
 ] }
 toml = { workspace = true }
 walkdir = { workspace = true }

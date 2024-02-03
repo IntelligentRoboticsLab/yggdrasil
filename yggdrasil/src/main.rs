@@ -13,7 +13,6 @@ use yggdrasil::{
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
-
     miette::set_panic_hook();
 
     App::new()

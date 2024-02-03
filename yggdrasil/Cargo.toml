@@ -6,6 +6,7 @@ default-run = "yggdrasil"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+alsa = { workspace = true }
 bifrost = { path = "../crates/bifrost/" }
 enum_dispatch = { workspace = true }
 heimdall = { path = "../crates/heimdall" }
