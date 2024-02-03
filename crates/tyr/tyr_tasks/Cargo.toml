@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 futures = { workspace = true }
 miette = { workspace = true }
+odal = { path = "../../odal", optional = true }
 rayon = { workspace = true }
 serde = { workspace = true, optional = true }
 thiserror = { workspace = true }
@@ -13,4 +14,4 @@ tokio = { workspace = true, features = ["full"] }
 tyr_internal = { path = "../tyr_internal" }
 
 [features]
-serde = ["dep:serde"]
+odal = ["dep:odal", "dep:serde"]

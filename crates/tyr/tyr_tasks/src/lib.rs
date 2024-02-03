@@ -14,7 +14,7 @@ use tokio::runtime;
 
 use tyr_internal::{App, Module, Res, Resource, Storage};
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "odal")]
 use serde::{Deserialize, Serialize};
 
 use asynchronous::TokioRuntime;
@@ -37,9 +37,9 @@ use compute::RayonThreadPool;
 pub struct TaskModule;
 
 /// Configuration for the task dispatchers
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-#[derive(Debug)]
+#[cfg_attr(feature = "odal", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "odal", serde(deny_unknown_fields))]
+#[derive(Debug, Clone)]
 pub struct TaskConfig {
     // The amount of threads the underlying tokio runtime may use
     pub async_threads: usize,
