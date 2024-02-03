@@ -36,13 +36,15 @@ use compute::RayonThreadPool;
 #[derive(Debug)]
 pub struct TaskModule;
 
-/// Sets
+/// Configuration for the task dispatchers
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 #[derive(Debug)]
 pub struct TaskConfig {
-    pub tokio_threads: usize,
-    pub rayon_threads: usize,
+    // The amount of threads the underlying tokio runtime may use
+    pub async_threads: usize,
+    // The amount of threads the underlying rayon threadpool may use
+    pub compute_threads: usize,
 }
 
 impl Module for TaskModule {
@@ -55,7 +57,7 @@ impl Module for TaskModule {
 fn init_tasks(storage: &mut Storage, config: Res<TaskConfig>) -> MietteResult<()> {
     let runtime = TokioRuntime::new(
         runtime::Builder::new_multi_thread()
-            .worker_threads(config.tokio_threads)
+            .worker_threads(config.async_threads)
             .thread_name("tokio-async-worker")
             .enable_all()
             .build()
@@ -66,7 +68,7 @@ fn init_tasks(storage: &mut Storage, config: Res<TaskConfig>) -> MietteResult<()
 
     let thread_pool = RayonThreadPool::new(Arc::new(
         ThreadPoolBuilder::new()
-            .num_threads(config.rayon_threads)
+            .num_threads(config.compute_threads)
             .thread_name(|idx| format!("rayon-compute-worker-{idx}"))
             .build()
             .into_diagnostic()?,

@@ -53,8 +53,8 @@ fn time_critical_task(counter: &mut Counter) -> Result<()> {
 
 fn main() -> Result<()> {
     let task_config = TaskConfig {
-        tokio_threads: 1,
-        rayon_threads: 1,
+        async_threads: 1,
+        compute_threads: 1,
     };
 
     App::new()
