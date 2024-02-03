@@ -7,7 +7,7 @@ use crate::{nao::RobotInfo, prelude::*};
 use ::tyr::tasks::TaskModule;
 use odal::{ConfigKind, Error, ErrorKind};
 
-use self::tyr::TyrConfig;
+use tyr::TyrConfig;
 
 /// This module adds functionality to load configuration structs from files.
 ///
