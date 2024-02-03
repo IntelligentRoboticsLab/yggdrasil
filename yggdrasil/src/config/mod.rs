@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::{nao::RobotInfo, prelude::*};
 
-use ::tyr::tasks::{TaskConfig, TaskModule};
+use ::tyr::tasks::TaskModule;
 use odal::{ConfigKind, Error, ErrorKind};
 
 use self::tyr::TyrConfig;
