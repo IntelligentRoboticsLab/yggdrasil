@@ -64,35 +64,35 @@ pub fn toggle_walking_engine(
     chest_button: &ChestButton,
     walking_engine: &mut WalkingEngine,
 ) -> Result<()> {
-    match (
-        chest_button.state.is_pressed(),
-        head_button.front.is_pressed(),
-        &walking_engine.state,
-    ) {
-        // (true, false, WalkState::Idle { .. }) => {
-        //     walking_engine.state = WalkState::Walking {
-        //         walk_parameters: WalkCommand {
-        //             forward: 0.04,
-        //             left: 0.00,
-        //             turn: 0.0,
-        //             // turn: std::f32::consts::FRAC_PI_4,
-        //         },
-        //         swing_foot: Side::Left,
-        //         phase_time: Duration::ZERO,
-        //         filtered_gyro: Vector2::<f32>::default(),
-        //         next_foot_switch: BASE_STEP_PERIOD,
-        //         previous_step: StepOffsets::default(),
-        //     };
-        // }
-        (true, false, WalkState::Idle) => {
-            walking_engine.state = WalkState::Idle;
-            // walking_engine.state = WalkState::Starting { hip_height: 0.10 };
-        }
-        (false, true, WalkState::_Starting { .. }) => {
-            walking_engine.state = WalkState::Idle;
-        }
-        _ => (),
-    };
+    // match (
+    //     chest_button.state.is_pressed(),
+    //     head_button.front.is_pressed(),
+    //     &walking_engine.state,
+    // ) {
+    //     // (true, false, WalkState::Idle { .. }) => {
+    //     //     walking_engine.state = WalkState::Walking {
+    //     //         walk_parameters: WalkCommand {
+    //     //             forward: 0.04,
+    //     //             left: 0.00,
+    //     //             turn: 0.0,
+    //     //             // turn: std::f32::consts::FRAC_PI_4,
+    //     //         },
+    //     //         swing_foot: Side::Left,
+    //     //         phase_time: Duration::ZERO,
+    //     //         filtered_gyro: Vector2::<f32>::default(),
+    //     //         next_foot_switch: BASE_STEP_PERIOD,
+    //     //         previous_step: StepOffsets::default(),
+    //     //     };
+    //     // }
+    //     (true, false, WalkState::Idle) => {
+    //         walking_engine.state = WalkState::Idle;
+    //         // walking_engine.state = WalkState::Starting { hip_height: 0.10 };
+    //     }
+    //     (false, true, WalkState::_Starting { .. }) => {
+    //         walking_engine.state = WalkState::Idle;
+    //     }
+    //     _ => (),
+    // };
 
     Ok(())
 }
@@ -121,13 +121,11 @@ pub fn walking_engine(
         walk_command: WalkCommand::default(),
         dt: cycle_time.duration,
         filtered_gyro: Default::default(),
-        fsr: *fsr,
-        imu: *imu,
-        control_message
+        fsr: fsr.clone(),
+        imu: imu.clone(),
+        control_message,
     };
-    walking_engine.state = walking_engine.state.next_state(&context);
-
-    
+    walking_engine.state = walking_engine.state.next_state(&mut context);
 
     // walking_engine.state = match &walking_engine.state {
     //     WalkState::Idle => {

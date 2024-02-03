@@ -14,7 +14,7 @@ impl Module for IMUFilter {
 }
 
 /// Struct containing gyroscope, accelerometer and angles.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct IMUValues {
     /// The Gyroscope provides direct measurements of the rotational speed along
     /// three axes (x, y and z) in radians per second (rad/s). The Z axis is facing up.
