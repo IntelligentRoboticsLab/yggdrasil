@@ -145,7 +145,7 @@ pub struct RightFootButtons {
 }
 
 #[system]
-fn button_filter(
+pub fn button_filter(
     nao_state: &NaoState,
     head_buttons: &mut HeadButtons,
     chest_button: &mut ChestButton,

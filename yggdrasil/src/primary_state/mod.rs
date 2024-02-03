@@ -18,7 +18,7 @@ impl Module for PrimaryStateModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_resource(Resource::new(PrimaryState::Unstiff))?
-            .add_system(update_primary_state))
+            .add_system(update_primary_state.after(crate::filter::button::button_filter)))
     }
 }
 
@@ -44,7 +44,7 @@ pub enum PrimaryState {
 }
 
 #[system]
-fn update_primary_state(
+pub fn update_primary_state(
     primary_state: &mut PrimaryState,
     game_controller_message: &Option<GameControllerMessage>,
     led: &mut Leds,
@@ -79,7 +79,7 @@ fn update_primary_state(
                 ..
             } => PrimaryState::Finished,
         },
-        None if chest_button.state.is_pressed() => PrimaryState::Initial,
+        None if chest_button.state.is_tapped() => PrimaryState::Initial,
         None => *primary_state,
     };
 

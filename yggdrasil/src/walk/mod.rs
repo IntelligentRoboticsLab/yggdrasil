@@ -9,9 +9,10 @@ use std::{
 
 use miette::Result;
 
+use nidhogg::types::{Vector2, Vector3};
 use tyr::prelude::*;
 
-use crate::{filter, nao};
+use crate::{filter, nao, primary_state};
 
 #[derive(Default, Debug, Clone)]
 pub struct Odometry {
@@ -32,6 +33,21 @@ impl Add for Odometry {
     }
 }
 
+/// Filtered gyroscope values
+#[derive(Default, Debug, Clone)]
+pub struct FilteredGyroscope(Vector2<f32>);
+
+impl FilteredGyroscope {
+    pub fn update(&mut self, gyroscope: &Vector3<f32>) {
+        self.0.x = 0.8 * self.0.x + 0.2 * gyroscope.x;
+        self.0.y = 0.8 * self.0.y + 0.2 * gyroscope.y;
+    }
+
+    pub fn reset(&mut self) {
+        self.0 = Vector2::default();
+    }
+}
+
 pub struct WalkingEngineModule;
 
 impl Module for WalkingEngineModule {
@@ -40,14 +56,25 @@ impl Module for WalkingEngineModule {
             .add_startup_system(initialize_cycle_counter)?
             .add_system(update_cycle_time.after(nao::write_hardware_info))
             .add_resource(Resource::new(engine::WalkingEngine::default()))?
-            .init_resource::<Odometry>()?
+            .init_resource::<FilteredGyroscope>()?
             .add_system(
-                engine::walking_engine
-                    .after(update_cycle_time)
-                    .after(filter::fsr::force_sensitive_resistor_filter)
+                filter_gyro_values
+                    .after(nao::write_hardware_info)
                     .after(filter::imu::imu_filter),
             )
-            .add_system(engine::toggle_walking_engine.before(engine::walking_engine)))
+            .add_system(
+                engine::walking_engine
+                    .before(primary_state::update_primary_state)
+                    .after(update_cycle_time)
+                    .after(filter_gyro_values)
+                    .after(filter::fsr::force_sensitive_resistor_filter),
+            )
+            .add_system(
+                engine::toggle_walking_engine
+                    .before(primary_state::update_primary_state)
+                    .after(filter::button::button_filter)
+                    .before(engine::walking_engine),
+            ))
     }
 }
 
@@ -69,6 +96,16 @@ fn update_cycle_time(cycle_time: &mut CycleTime) -> Result<()> {
     cycle_time.duration = Instant::now().duration_since(cycle_time.cycle_start);
     cycle_time.cycle_start = Instant::now();
     // info!("cycle_time: {}ms", cycle_time.duration.as_millis());
+
+    Ok(())
+}
+
+#[system]
+fn filter_gyro_values(
+    imu_values: &filter::imu::IMUValues,
+    filtered_gyro: &mut FilteredGyroscope,
+) -> Result<()> {
+    filtered_gyro.update(&imu_values.gyroscope);
 
     Ok(())
 }

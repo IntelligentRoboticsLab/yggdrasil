@@ -1,5 +1,5 @@
-mod idle;
-mod walking;
+pub mod idle;
+pub mod walking;
 
 use enum_dispatch::enum_dispatch;
 use nidhogg::types::{ForceSensitiveResistors, Vector2};
@@ -14,7 +14,6 @@ pub struct WalkContext<'a> {
     pub dt: Duration,
     pub filtered_gyro: Vector2<f32>,
     pub fsr: ForceSensitiveResistors,
-    pub imu: IMUValues,
     pub control_message: &'a mut nidhogg::NaoControlMessage,
 }
 
@@ -23,6 +22,7 @@ pub trait WalkState {
     fn next_state<'a>(&self, context: &'a mut WalkContext) -> WalkStateKind;
 }
 
+#[derive(Debug)]
 #[enum_dispatch(WalkState)]
 pub enum WalkStateKind {
     Idle(idle::IdleState),
@@ -31,6 +31,6 @@ pub enum WalkStateKind {
 
 impl Default for WalkStateKind {
     fn default() -> Self {
-        Self::Idle(idle::IdleState)
+        Self::Idle(idle::IdleState::default())
     }
 }

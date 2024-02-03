@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use miette::Result;
 use nidhogg::{
-    types::{FillExt, ForceSensitiveResistors, JointArray},
+    types::{FillExt, ForceSensitiveResistors, JointArray, Vector2, Vector3},
     NaoControlMessage,
 };
 use tyr::system;
@@ -17,11 +17,10 @@ use crate::{
 };
 
 use super::{
-    states::{self, WalkContext, WalkState, WalkStateKind},
-    CycleTime, Odometry,
+    states::{self, WalkContext, WalkState, WalkStateKind}, CycleTime, FilteredGyroscope, Odometry
 };
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct WalkCommand {
     /// forward in meters per second
     pub forward: f32,
@@ -47,7 +46,7 @@ impl Side {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default, Clone)]
 pub struct StepOffsets {
     pub swing: FootOffset,
     pub support: FootOffset,
@@ -60,42 +59,34 @@ pub struct WalkingEngine {
 
 #[system]
 pub fn toggle_walking_engine(
+    primary_state: &PrimaryState,
     head_button: &HeadButtons,
     chest_button: &ChestButton,
     walking_engine: &mut WalkingEngine,
+    filtered_gyro: &mut FilteredGyroscope
 ) -> Result<()> {
-    // match (
-    //     chest_button.state.is_pressed(),
-    //     head_button.front.is_pressed(),
-    //     &walking_engine.state,
-    // ) {
-    //     // (true, false, WalkState::Idle { .. }) => {
-    //     //     walking_engine.state = WalkState::Walking {
-    //     //         walk_parameters: WalkCommand {
-    //     //             forward: 0.04,
-    //     //             left: 0.00,
-    //     //             turn: 0.0,
-    //     //             // turn: std::f32::consts::FRAC_PI_4,
-    //     //         },
-    //     //         swing_foot: Side::Left,
-    //     //         phase_time: Duration::ZERO,
-    //     //         filtered_gyro: Vector2::<f32>::default(),
-    //     //         next_foot_switch: BASE_STEP_PERIOD,
-    //     //         previous_step: StepOffsets::default(),
-    //     //     };
-    //     // }
-    //     (true, false, WalkState::Idle) => {
-    //         walking_engine.state = WalkState::Idle;
-    //         // walking_engine.state = WalkState::Starting { hip_height: 0.10 };
-    //     }
-    //     (false, true, WalkState::_Starting { .. }) => {
-    //         walking_engine.state = WalkState::Idle;
-    //     }
-    //     _ => (),
-    // };
+    // If we're in unstiff, we don't want to do anything.
+    if *primary_state == PrimaryState::Unstiff {
+        return Ok(())
+    }
+    match (
+        chest_button.state.is_tapped(),
+        head_button.front.is_tapped(),
+        &walking_engine.state,
+    ) {
+        (true, false, WalkStateKind::Idle { .. }) => {
+            filtered_gyro.reset();
+            walking_engine.state = WalkStateKind::Walking(states::walking::WalkingState::default())
+        }
+        (false, true, WalkStateKind::Walking( states::walking::WalkingState { .. } )) => {
+            walking_engine.state = WalkStateKind::Idle(states::idle::IdleState { hip_height: 0.18 })
+        }
+        _ => (),
+    };
 
     Ok(())
 }
+
 
 #[system]
 pub fn walking_engine(
@@ -103,9 +94,9 @@ pub fn walking_engine(
     primary_state: &PrimaryState,
     cycle_time: &CycleTime,
     fsr: &ForceSensitiveResistors,
-    imu: &IMUValues,
+    filtered_gyro: &FilteredGyroscope,
     control_message: &mut NaoControlMessage,
-    odometry: &mut Odometry,
+    // odometry: &mut Odometry,
 ) -> Result<()> {
     // We don't run the walking engne whenever we're in unstiff.
     // This is a semi hacky way to prevent the robot from jumping up and
@@ -118,47 +109,17 @@ pub fn walking_engine(
     }
 
     let mut context = WalkContext {
-        walk_command: WalkCommand::default(),
+        walk_command: WalkCommand {
+            forward: 0.00,
+            left: 0.0,
+            turn: 0.7,
+        },
         dt: cycle_time.duration,
-        filtered_gyro: Default::default(),
+        filtered_gyro: filtered_gyro.0.clone(),
         fsr: fsr.clone(),
-        imu: imu.clone(),
         control_message,
     };
     walking_engine.state = walking_engine.state.next_state(&mut context);
-
-    // walking_engine.state = match &walking_engine.state {
-    //     WalkState::Idle => {
-    //         *odometry = Default::default();
-    //         // control_message.stiffness = JointArray::<f32>::builder()
-    //         //     .left_leg_joints(LeftLegJoints::fill(-1.0))
-    //         //     .right_leg_joints(RightLegJoints::fill(-1.0))
-    //         //     .build();
-    //         states::idle_state(control_message)
-    //     }
-    //     WalkState::_Standing { .. } => todo!(),
-    //     WalkState::_Starting { .. } => todo!(),
-    //     WalkState::_Stopping => todo!(),
-    //     WalkState::Walking {
-    //         walk_parameters,
-    //         swing_foot,
-    //         phase_time,
-    //         next_foot_switch,
-    //         previous_step,
-    //         filtered_gyro,
-    //     } => states::walk_state(
-    //         walk_parameters,
-    //         swing_foot,
-    //         *phase_time + dt,
-    //         next_foot_switch,
-    //         previous_step,
-    //         filtered_gyro,
-    //         fsr,
-    //         imu,
-    //         control_message,
-    //         odometry,
-    //     ),
-    // };
 
     Ok(())
 }
