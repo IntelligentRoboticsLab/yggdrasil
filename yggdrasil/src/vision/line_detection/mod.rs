@@ -34,7 +34,7 @@ pub struct Line {
     pub y2: u32,
 }
 
-pub type YUVImage = DMatrix<(u8, u8, u8)>;
+pub type YUVImage = DMatrix<heimdall::YuvPixel>;
 
 pub struct RansacConfig {
     pub min_samples: usize,

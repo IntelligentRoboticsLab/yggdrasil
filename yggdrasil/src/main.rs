@@ -53,6 +53,7 @@ fn main() -> Result<()> {
         .add_module(SoundManagerModule)?
         .add_module(WeeSoundModule)?
         .add_module(CameraModule)?
+        .add_module(GameControllerModule)?
         .add_module(VisionModule)?
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?

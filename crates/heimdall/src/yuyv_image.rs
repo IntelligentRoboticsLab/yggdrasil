@@ -156,6 +156,7 @@ impl Deref for YuyvImage {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct YuvPixel {
     pub y: u8,
     pub u: u8,

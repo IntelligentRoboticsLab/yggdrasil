@@ -25,11 +25,10 @@ impl Segment {
 pub type SegmentMatrix = DMatrix<Segment>;
 
 pub fn segment_image(config: &LineDetectionConfig, image: &YUVImage) -> SegmentMatrix {
-    fn get_segment_type(pixel: (u8, u8, u8)) -> SegmentType {
-        let (y, u, v) = pixel;
-        if (y > 65) && (y < 140) && (u > 90) && (u < 110) && (v > 115) && (v < 135) {
+    fn get_segment_type(heimdall::YuvPixel { y, u, v }: &heimdall::YuvPixel) -> SegmentType {
+        if (y > &65) && (y < &140) && (u > &90) && (u < &110) && (v > &115) && (v < &135) {
             SegmentType::Field
-        } else if (y > 190) && (u > 110) && (u < 140) && (v > 115) && (v < 140) {
+        } else if (y > &190) && (u > &110) && (u < &140) && (v > &115) && (v < &140) {
             SegmentType::Line
         } else {
             SegmentType::Other
@@ -60,7 +59,8 @@ pub fn segment_image(config: &LineDetectionConfig, image: &YUVImage) -> SegmentM
             let mut other_sum: u32 = 0;
 
             for pixel in segment.iter() {
-                match get_segment_type(*pixel) {
+                // match get_segment_type(*pixel) {
+                match get_segment_type(pixel) {
                     SegmentType::Field => field_sum += 1,
                     SegmentType::Line => line_sum += 1,
                     SegmentType::Other => other_sum += 1,
