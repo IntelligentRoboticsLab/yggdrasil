@@ -38,7 +38,7 @@ pub(crate) struct WalkingState {
 impl Default for WalkingState {
     fn default() -> Self {
         Self {
-            swing_foot: Side::Left,
+            swing_foot: Side::Right,
             phase_time: Duration::ZERO,
             next_foot_switch: BASE_STEP_PERIOD,
             previous_step: StepOffsets::default(),
@@ -54,7 +54,13 @@ impl WalkState for WalkingState {
             (phase_time.as_secs_f32() / self.next_foot_switch.as_secs_f32()).clamp(0.0, 1.0);
 
         if self.next_foot_switch.as_secs_f32() <= 0.0 {
-            return self.next_walk_state(context.dt, linear_time, &context.fsr);
+            return self.next_walk_state(
+                context.dt,
+                linear_time,
+                &context.fsr,
+                self.previous_step.swing,
+                self.previous_step.support,
+            );
         }
 
         let WalkCommand {
@@ -92,16 +98,24 @@ impl WalkState for WalkingState {
         //         swing_offset.left *= 0.25;
         //     }
         // }
-        println!(
-            "walk: {:?} forward: {} left: {}: left_pressure: {}, right_pressure: {}",
-            swing_foot,
-            swing_offset.forward,
-            swing_offset.left,
-            context.fsr.left_foot.sum(),
-            context.fsr.right_foot.sum()
-        );
+        match self.swing_foot {
+            Side::Left => {
+                println!("{}, {}", swing_offset.forward, support_offset.forward);
+            }
+            Side::Right => {
+                println!("{}, {}", support_offset.forward, swing_offset.forward);
+            }
+        }
 
-        let next_state = self.next_walk_state(context.dt, linear_time, &context.fsr);
+        std::thread::sleep(Duration::from_millis(11));
+
+        let next_state = self.next_walk_state(
+            context.dt,
+            linear_time,
+            &context.fsr,
+            swing_offset,
+            support_offset,
+        );
 
         let (left_foot, right_foot) = match swing_foot {
             Side::Left => (swing_offset, support_offset),
@@ -156,12 +170,13 @@ impl WalkState for WalkingState {
 }
 
 fn has_support_foot_changed(side: &Side, fsr: &ForceSensitiveResistors) -> bool {
-    let left_foot_pressure = fsr.left_foot.sum();
-    let right_foot_pressure = fsr.right_foot.sum();
-    (match side {
-        Side::Left => left_foot_pressure,
-        Side::Right => right_foot_pressure,
-    }) > COP_PRESSURE_THRESHOLD
+    true
+    // let left_foot_pressure = fsr.left_foot.sum();
+    // let right_foot_pressure = fsr.right_foot.sum();
+    // (match side {
+    //     Side::Left => left_foot_pressure,
+    //     Side::Right => right_foot_pressure,
+    // }) > COP_PRESSURE_THRESHOLD
 }
 
 impl WalkingState {
@@ -170,13 +185,12 @@ impl WalkingState {
         dt: Duration,
         linear_time: f32,
         fsr: &ForceSensitiveResistors,
+        swing_offset: FootOffset,
+        support_offset: FootOffset,
     ) -> WalkStateKind {
         let mut next_swing_foot = self.swing_foot;
         let mut phase_time = self.phase_time + dt;
         let mut next_foot_switch = self.next_foot_switch;
-
-        let swing_offset = self.previous_step.swing;
-        let support_offset = self.previous_step.support;
 
         let mut previous_step = self.previous_step.clone();
         // figure out whether the support foot has changed
@@ -218,6 +232,17 @@ fn compute_swing_offset(
     let left_t0 = step_t0.left;
     let turn_t0 = step_t0.turn;
     let parabolic_time = smoothing::parabolic_step(linear_time);
+    // println!(
+    //     "forward_t0: {} walk_command_forwad: {}",
+    //     forward_t0, walk_command.forward
+    // );
+    // println!(
+    //     "side: {:?} linear_time: {}, parabolic_time: {} forward: {}",
+    //     side,
+    //     linear_time,
+    //     parabolic_time,
+    //     forward_t0 + (walk_command.forward * COM_MULTIPLIER - forward_t0) * parabolic_time
+    // );
 
     let turn_multiplier = match side {
         Side::Left => -2.0 / 3.0,
