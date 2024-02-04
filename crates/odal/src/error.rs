@@ -49,7 +49,7 @@ pub enum ErrorKind {
         parse_error_pos: Option<SourceSpan>,
         message: String,
     },
-    #[error("Failed to parse toml into struct`")]
+    #[error("Failed to parse table into struct")]
     Parse(#[from] toml::de::Error),
     #[error("Found key `{key}` in overlay that does not exist in main config")]
     ExtraKey { key: String, value: Value },
