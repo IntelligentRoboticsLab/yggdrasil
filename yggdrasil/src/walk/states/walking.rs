@@ -31,7 +31,7 @@ const HIP_HEIGHT: f32 = 0.185;
 
 #[derive(Debug)]
 pub(crate) struct WalkingState {
-    pub swing_foot: Side,
+    swing_foot: Side,
     phase_time: Duration,
     next_foot_switch: Duration,
     previous_step: StepOffsets,
