@@ -68,8 +68,8 @@ fn initialize_config_roots(storage: &mut Storage, info: &RobotInfo) -> miette::R
     Ok(())
 }
 
-#[derive(Debug)]
 /// Directory where the main configs are stored
+#[derive(Debug)]
 pub struct MainConfigDir(PathBuf);
 
 impl<T: Into<PathBuf>> From<T> for MainConfigDir {
@@ -78,8 +78,8 @@ impl<T: Into<PathBuf>> From<T> for MainConfigDir {
     }
 }
 
-#[derive(Debug)]
 /// Directory where the overlay configs are stored
+#[derive(Debug)]
 pub struct OverlayConfigDir(PathBuf);
 
 impl<T: Into<PathBuf>> From<T> for OverlayConfigDir {

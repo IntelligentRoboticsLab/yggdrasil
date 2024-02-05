@@ -8,6 +8,8 @@ use toml::Value;
 use crate::Config;
 
 /// The kind of config: main or overlay
+/// 
+/// The main config is a global configuration that applies to all robots. Optionally, an overlay config can be provided for a specific robot, which includes overrides for the global default.
 #[derive(Debug)]
 pub enum ConfigKind {
     Main,
