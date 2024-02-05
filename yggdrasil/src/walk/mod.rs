@@ -95,7 +95,6 @@ fn initialize_cycle_counter(storage: &mut Storage) -> Result<()> {
 fn update_cycle_time(cycle_time: &mut CycleTime) -> Result<()> {
     cycle_time.duration = Instant::now().duration_since(cycle_time.cycle_start);
     cycle_time.cycle_start = Instant::now();
-    // info!("cycle_time: {}ms", cycle_time.duration.as_millis());
 
     Ok(())
 }

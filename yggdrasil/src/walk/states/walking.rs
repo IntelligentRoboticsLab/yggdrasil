@@ -4,19 +4,16 @@ use nidhogg::types::{FillExt, ForceSensitiveResistors, JointArray, LeftLegJoints
 
 use crate::{
     kinematics::{self, FootOffset},
-    walk::{
-        engine::{Side, StepOffsets, WalkCommand},
-        smoothing,
-    },
+    walk::{engine::{Side, StepOffsets, WalkCommand}, smoothing},
 };
 
 use super::{WalkContext, WalkState, WalkStateKind};
 
-/// forward (the / by 4 is because the CoM moves as well and forwardL is wrt the CoM
+/// forward (the / by 4 is because the CoM moves as well and the step length is wrt the CoM
 const COM_MULTIPLIER: f32 = 0.25;
 
 /// The base amount of time for one step, e.g. half a walk cycle.
-const BASE_STEP_PERIOD: Duration = Duration::from_millis(240);
+const BASE_STEP_PERIOD: Duration = Duration::from_millis(280);
 
 // the center of pressure threshold for switching support foot
 const COP_PRESSURE_THRESHOLD: f32 = 0.2;
@@ -130,9 +127,9 @@ impl WalkState for WalkingState {
         let (mut left_leg_joints, mut right_leg_joints) =
             kinematics::inverse::leg_angles(&left_foot, &right_foot);
 
-        // balance adjustment
+        // // balance adjustment
         let balance_adjustment = context.filtered_gyro.y / 25.0;
-        if self.next_foot_switch.as_secs_f32() > 0.0 {
+        if self.next_foot_switch.as_millis() > 0 {
             match swing_foot {
                 Side::Left => {
                     right_leg_joints.ankle_pitch += balance_adjustment;
@@ -152,6 +149,8 @@ impl WalkState for WalkingState {
             .left_shoulder_roll(stiffness)
             .right_shoulder_pitch(stiffness)
             .right_shoulder_roll(stiffness)
+            .head_pitch(1.0)
+            .head_yaw(1.0)
             .left_leg_joints(LeftLegJoints::fill(stiffness))
             .right_leg_joints(RightLegJoints::fill(stiffness))
             .build();
@@ -199,6 +198,7 @@ impl WalkingState {
 
         // if the support foot has in fact changed, we should update the relevant parameters
         if has_support_foot_changed {
+            tracing::info!("FOOT SWITCHED");
             next_swing_foot = self.swing_foot.next();
 
             // reset phase
