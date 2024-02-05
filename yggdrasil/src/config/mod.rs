@@ -101,7 +101,11 @@ impl ConfigResource for App {
     where
         Self: Sized,
     {
-        self.add_startup_system(_init_config::<T>)
+        let app = self.add_startup_system(_init_config::<T>)?;
+
+        tracing::info!("Loaded config `{}`", T::name());
+
+        Ok(app)
     }
 }
 
