@@ -1,9 +1,11 @@
 use std::io;
 
-use linuxvideo::{format::PixFormat, format::PixelFormat, stream::FrameProvider, Device};
+use linuxvideo::{
+    format::PixFormat, format::PixelFormat, stream::FrameProvider, uvc::UvcExt, Device,
+};
 
 use crate::yuyv_image::YuyvImage;
-use crate::Result;
+use crate::{Error, Result};
 
 /// The width of a NAO [`Image`].
 const IMAGE_WIDTH: u32 = 1280;
@@ -32,7 +34,13 @@ impl Camera {
     ///
     /// # Panics
     /// This function pannics if it cannot convert a `u32` value to `usize`.
-    pub fn new(device_path: &str, width: u32, height: u32, num_buffers: u32) -> Result<Self> {
+    pub fn new(
+        device_path: &str,
+        width: u32,
+        height: u32,
+        num_buffers: u32,
+        rotate_180: bool,
+    ) -> Result<Self> {
         if num_buffers == 0 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -40,11 +48,19 @@ impl Camera {
             ))?;
         }
 
-        let capture_device = Device::open(device_path)?.video_capture(PixFormat::new(
-            width,
-            height,
-            PixelFormat::YUYV,
-        ))?;
+        let device = Device::open(device_path)?;
+        if rotate_180 {
+            let mut uvc_extension = UvcExt::new(&device);
+            uvc_extension
+                .horizontal_flip()
+                .map_err(|_| Error::HorizontalFlip)?;
+            uvc_extension
+                .vertical_flip()
+                .map_err(|_| Error::VerticalFlip)?;
+        }
+
+        let capture_device =
+            device.video_capture(PixFormat::new(width, height, PixelFormat::YUYV))?;
         if capture_device.format().pixel_format() != PixelFormat::YUYV {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Unsupported,
@@ -78,7 +94,8 @@ impl Camera {
     /// # Errors
     /// This function fails if the [`Camera`] cannot be opened.
     pub fn new_nao_top(num_buffers: u32) -> Result<Self> {
-        Self::new(CAMERA_TOP, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
+        // We need to flip the top camera, because it's upside down in the robot.
+        Self::new(CAMERA_TOP, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers, true)
     }
 
     /// Create a new camera object for the NAO's bottom camera.
@@ -86,7 +103,7 @@ impl Camera {
     /// # Errors
     /// This function fails if the [`Camera`] cannot be opened.
     pub fn new_nao_bottom(num_buffers: u32) -> Result<Self> {
-        Self::new(CAMERA_BOTTOM, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
+        Self::new(CAMERA_BOTTOM, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers, false)
     }
 
     /// Get the next image.
