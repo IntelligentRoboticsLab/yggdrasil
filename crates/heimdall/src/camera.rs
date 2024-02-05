@@ -1,11 +1,13 @@
 use std::io;
 
 use linuxvideo::{
-    format::PixFormat, format::PixelFormat, stream::FrameProvider, uvc::UvcExt, Device,
+    format::{PixFormat, PixelFormat},
+    stream::FrameProvider,
+    uvc::UvcExt,
+    Device,
 };
 
-use crate::yuyv_image::YuyvImage;
-use crate::{Error, Result};
+use super::{Error, Result, YuyvImage};
 
 /// The width of a NAO [`Image`].
 const IMAGE_WIDTH: u32 = 1280;
