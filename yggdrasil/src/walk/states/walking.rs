@@ -4,7 +4,10 @@ use nidhogg::types::{FillExt, ForceSensitiveResistors, JointArray, LeftLegJoints
 
 use crate::{
     kinematics::{self, FootOffset},
-    walk::{engine::{Side, StepOffsets, WalkCommand}, smoothing},
+    walk::{
+        engine::{Side, StepOffsets, WalkCommand},
+        smoothing,
+    },
 };
 
 use super::{WalkContext, WalkState, WalkStateKind};
@@ -13,13 +16,13 @@ use super::{WalkContext, WalkState, WalkStateKind};
 const COM_MULTIPLIER: f32 = 0.25;
 
 /// The base amount of time for one step, e.g. half a walk cycle.
-const BASE_STEP_PERIOD: Duration = Duration::from_millis(280);
+const BASE_STEP_PERIOD: Duration = Duration::from_millis(270);
 
 // the center of pressure threshold for switching support foot
 const COP_PRESSURE_THRESHOLD: f32 = 0.2;
 
 /// the base amount to lift a foot, in meters
-const BASE_FOOT_LIFT: f32 = 0.01;
+const BASE_FOOT_LIFT: f32 = 0.015;
 
 /// The hip height of the robot during the walking cycle
 const HIP_HEIGHT: f32 = 0.185;
@@ -104,8 +107,6 @@ impl WalkState for WalkingState {
             }
         }
 
-        std::thread::sleep(Duration::from_millis(11));
-
         let next_state = self.next_walk_state(
             context.dt,
             linear_time,
@@ -128,7 +129,7 @@ impl WalkState for WalkingState {
             kinematics::inverse::leg_angles(&left_foot, &right_foot);
 
         // // balance adjustment
-        let balance_adjustment = context.filtered_gyro.y / 25.0;
+        let balance_adjustment = context.filtered_gyro.y / 20.0;
         if self.next_foot_switch.as_millis() > 0 {
             match swing_foot {
                 Side::Left => {
@@ -169,13 +170,13 @@ impl WalkState for WalkingState {
 }
 
 fn has_support_foot_changed(side: &Side, fsr: &ForceSensitiveResistors) -> bool {
-    true
-    // let left_foot_pressure = fsr.left_foot.sum();
-    // let right_foot_pressure = fsr.right_foot.sum();
-    // (match side {
-    //     Side::Left => left_foot_pressure,
-    //     Side::Right => right_foot_pressure,
-    // }) > COP_PRESSURE_THRESHOLD
+    // true
+    let left_foot_pressure = fsr.left_foot.sum();
+    let right_foot_pressure = fsr.right_foot.sum();
+    (match side {
+        Side::Left => left_foot_pressure,
+        Side::Right => right_foot_pressure,
+    }) > COP_PRESSURE_THRESHOLD
 }
 
 impl WalkingState {
@@ -198,7 +199,6 @@ impl WalkingState {
 
         // if the support foot has in fact changed, we should update the relevant parameters
         if has_support_foot_changed {
-            tracing::info!("FOOT SWITCHED");
             next_swing_foot = self.swing_foot.next();
 
             // reset phase

@@ -103,7 +103,7 @@ pub fn walking_engine(
 
     let mut context = WalkContext {
         walk_command: WalkCommand {
-            forward: 0.1,
+            forward: 0.10,
             left: 0.00,
             turn: 0.0,
         },

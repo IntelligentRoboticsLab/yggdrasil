@@ -16,7 +16,7 @@ pub fn leg_angles(
     let right_foot = right_foot.into_right();
 
     // TODO: properly use
-    let torso_offset = 0.02;
+    let torso_offset = 0.025;
     let left_foot_to_left_pelvis = left_foot.to_pelvis(torso_offset);
     let left_hip_yaw_pitch =
         -1.0 * super::SidedFootOffset::<Left>::compute_hip_yaw_pitch(&left_foot_to_left_pelvis);
