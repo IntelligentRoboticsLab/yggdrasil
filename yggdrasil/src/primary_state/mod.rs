@@ -43,6 +43,16 @@ pub enum PrimaryState {
     Calibration,
 }
 
+impl PrimaryState {
+    /// Tell whether the robot should walk in this state.
+    pub fn should_walk(&self) -> bool {
+        !matches!(
+            self,
+            Self::Unstiff | Self::Penalized | Self::Finished | Self::Calibration
+        )
+    }
+}
+
 #[system]
 pub fn update_primary_state(
     primary_state: &mut PrimaryState,

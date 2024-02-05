@@ -12,7 +12,9 @@ use crate::{
 
 use super::{WalkContext, WalkState, WalkStateKind};
 
-/// forward (the / by 4 is because the CoM moves as well and the step length is wrt the CoM
+/// The Center of Mass (CoM) multiplier, this is used to adjust the forward movement of the robot.
+///
+/// We multiply it by 0.25 as the CoM moves as well, and the step length is with regard to the CoM.
 const COM_MULTIPLIER: f32 = 0.25;
 
 /// The base amount of time for one step, e.g. half a walk cycle.
@@ -91,13 +93,6 @@ impl WalkState for WalkingState {
             &previous_step.swing,
         );
 
-        // TODO: the robot's feet hit against each other, this is a temporary fix but we should fix this properly
-        // match swing_foot {
-        //     Side::Left => {}
-        //     Side::Right => {
-        //         swing_offset.left *= 0.25;
-        //     }
-        // }
         match self.swing_foot {
             Side::Left => {
                 println!("{}, {}", swing_offset.forward, support_offset.forward);
@@ -128,7 +123,7 @@ impl WalkState for WalkingState {
         let (mut left_leg_joints, mut right_leg_joints) =
             kinematics::inverse::leg_angles(&left_foot, &right_foot);
 
-        // // balance adjustment
+        // Balance adjustment
         let balance_adjustment = context.filtered_gyro.y / 20.0;
         if self.next_foot_switch.as_millis() > 0 {
             match swing_foot {
@@ -170,7 +165,6 @@ impl WalkState for WalkingState {
 }
 
 fn has_support_foot_changed(side: &Side, fsr: &ForceSensitiveResistors) -> bool {
-    // true
     let left_foot_pressure = fsr.left_foot.sum();
     let right_foot_pressure = fsr.right_foot.sum();
     (match side {
@@ -232,17 +226,6 @@ fn compute_swing_offset(
     let left_t0 = step_t0.left;
     let turn_t0 = step_t0.turn;
     let parabolic_time = smoothing::parabolic_step(linear_time);
-    // println!(
-    //     "forward_t0: {} walk_command_forwad: {}",
-    //     forward_t0, walk_command.forward
-    // );
-    // println!(
-    //     "side: {:?} linear_time: {}, parabolic_time: {} forward: {}",
-    //     side,
-    //     linear_time,
-    //     parabolic_time,
-    //     forward_t0 + (walk_command.forward * COM_MULTIPLIER - forward_t0) * parabolic_time
-    // );
 
     let turn_multiplier = match side {
         Side::Left => -2.0 / 3.0,

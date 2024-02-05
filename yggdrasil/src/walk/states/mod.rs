@@ -6,6 +6,7 @@ use nidhogg::types::{ForceSensitiveResistors, Vector2};
 use std::time::Duration;
 
 use super::engine::WalkCommand;
+
 pub struct WalkContext<'a> {
     pub walk_command: WalkCommand,
     pub dt: Duration,

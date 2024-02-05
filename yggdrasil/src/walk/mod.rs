@@ -14,6 +14,8 @@ use tyr::prelude::*;
 
 use crate::{filter, nao, primary_state};
 
+use self::engine::WalkingEngine;
+
 #[derive(Default, Debug, Clone)]
 pub struct Odometry {
     pub forward: f32,
@@ -48,6 +50,12 @@ impl FilteredGyroscope {
     }
 }
 
+/// A module providing the walking engine for the robot.
+///
+/// This module provides the following resources to the application:
+/// - [`WalkingEngine`]
+/// - [`FilteredGyroscope`]
+/// - [`CycleTime`]
 pub struct WalkingEngineModule;
 
 impl Module for WalkingEngineModule {
@@ -55,7 +63,7 @@ impl Module for WalkingEngineModule {
         Ok(app
             .add_startup_system(initialize_cycle_counter)?
             .add_system(update_cycle_time.after(nao::write_hardware_info))
-            .add_resource(Resource::new(engine::WalkingEngine::default()))?
+            .init_resource::<WalkingEngine>()?
             .init_resource::<FilteredGyroscope>()?
             .add_system(
                 filter_gyro_values

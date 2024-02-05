@@ -206,7 +206,7 @@ mod tests {
 
     #[test]
     fn button_update() {
-        let mut button = crate::filter::button::ButtonState::default();
+        let mut button = ButtonState::default();
 
         assert!(!button.is_tapped());
         assert!(!button.is_pressed());

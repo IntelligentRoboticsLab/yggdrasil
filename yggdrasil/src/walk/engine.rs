@@ -60,10 +60,11 @@ pub fn toggle_walking_engine(
     walking_engine: &mut WalkingEngine,
     filtered_gyro: &mut FilteredGyroscope,
 ) -> Result<()> {
-    // If we're in unstiff, we don't want to do anything.
-    if *primary_state == PrimaryState::Unstiff {
+    // If we're in a state where we shouldn't walk, we don't.
+    if !primary_state.should_walk() {
         return Ok(());
     }
+
     match (
         chest_button.state.is_tapped(),
         head_button.front.is_tapped(),
@@ -91,11 +92,11 @@ pub fn walking_engine(
     filtered_gyro: &FilteredGyroscope,
     control_message: &mut NaoControlMessage,
 ) -> Result<()> {
-    // We don't run the walking engne whenever we're in unstiff.
+    // We don't run the walking engine whenever we're in a state where we shouldn't.
     // This is a semi hacky way to prevent the robot from jumping up and
     // unstiffing itself when it's not supposed to.
-    // We should definitely fix this in the future.
-    if *primary_state == PrimaryState::Unstiff {
+    // TODO: We should definitely fix this in the future.
+    if !primary_state.should_walk() {
         // This sets the robot to be completely unstiff, completely disabling the joint motors.
         control_message.stiffness = JointArray::<f32>::fill(-1.0);
         return Ok(());

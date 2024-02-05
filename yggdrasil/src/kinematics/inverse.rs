@@ -15,7 +15,10 @@ pub fn leg_angles(
     let left_foot = left_foot.into_left();
     let right_foot = right_foot.into_right();
 
-    // TODO: properly use
+    // TODO: Properly use this value.
+    // The torso offset is the offset of the torso w.r.t. the pelvis.
+    // Currently it's set to a constant 2.5 cm (forward), but it should perhaps be a parameter.
+    // Or something that can be set dynamically to balance the robot.
     let torso_offset = 0.025;
     let left_foot_to_left_pelvis = left_foot.to_pelvis(torso_offset);
     let left_hip_yaw_pitch =
@@ -38,8 +41,13 @@ fn right_leg_angles(
     right_foot_to_right_pelvis: Isometry3<f32>,
     hip_yaw_pitch_combined: f32,
 ) -> RightLegJoints<f32> {
-    let (hip_roll_in_hip, hip_pitch_minus_alpha, alpha, beta, foot_rotation_c2) =
-        compute_joint_angles(hip_yaw_pitch_combined, right_foot_to_right_pelvis);
+    let LegJointAngleComponents {
+        hip_roll_in_hip,
+        hip_pitch_minus_alpha,
+        alpha,
+        beta,
+        foot_rotation_c2,
+    } = compute_joint_angles(hip_yaw_pitch_combined, right_foot_to_right_pelvis);
 
     RightLegJoints {
         hip_roll: hip_roll_in_hip - PI / 4.0,
@@ -54,25 +62,37 @@ fn left_leg_angles(
     left_foot_to_left_pelvis: Isometry3<f32>,
     hip_yaw_pitch_combined: f32,
 ) -> LeftLegJoints<f32> {
-    // leg kinematics:
-    let (left_hip_roll_in_hip, left_hip_pitch_minus_alpha, alpha, beta, left_foot_rotation_c2) =
-        compute_joint_angles(hip_yaw_pitch_combined, left_foot_to_left_pelvis);
+    let LegJointAngleComponents {
+        hip_roll_in_hip,
+        hip_pitch_minus_alpha,
+        alpha,
+        beta,
+        foot_rotation_c2,
+    } = compute_joint_angles(hip_yaw_pitch_combined, left_foot_to_left_pelvis);
 
     LeftLegJoints {
         hip_yaw_pitch: hip_yaw_pitch_combined,
-        hip_roll: left_hip_roll_in_hip + PI / 4.0,
-        hip_pitch: left_hip_pitch_minus_alpha + alpha,
+        hip_roll: hip_roll_in_hip + PI / 4.0,
+        hip_pitch: hip_pitch_minus_alpha + alpha,
         knee_pitch: -alpha - beta,
-        ankle_pitch: left_foot_rotation_c2.x.atan2(left_foot_rotation_c2.z) + beta,
-        ankle_roll: (-1.0 * left_foot_rotation_c2.y).asin(),
+        ankle_pitch: foot_rotation_c2.x.atan2(foot_rotation_c2.z) + beta,
+        ankle_roll: (-1.0 * foot_rotation_c2.y).asin(),
     }
+}
+
+struct LegJointAngleComponents {
+    hip_roll_in_hip: f32,
+    hip_pitch_minus_alpha: f32,
+    alpha: f32,
+    beta: f32,
+    foot_rotation_c2: Matrix3x1<f32>,
 }
 
 #[inline]
 fn compute_joint_angles(
     hip_yaw_pitch_combined: f32,
     foot_to_pelvis: Isometry3<f32>,
-) -> (f32, f32, f32, f32, Matrix3x1<f32>) {
+) -> LegJointAngleComponents {
     let pelvis_to_hip = Isometry3::rotation(Vector3::z() * hip_yaw_pitch_combined);
     let foot_to_hip = pelvis_to_hip * foot_to_pelvis;
     let hip_to_foot = foot_to_hip.translation;
@@ -99,11 +119,11 @@ fn compute_joint_angles(
     let alpha = -1.0 * alpha_cos.clamp(-1.0, 1.0).acos();
     let beta = -1.0 * beta_cos.clamp(-1.0, 1.0).acos();
 
-    (
+    LegJointAngleComponents {
         hip_roll_in_hip,
         hip_pitch_minus_alpha,
         alpha,
         beta,
         foot_rotation_c2,
-    )
+    }
 }

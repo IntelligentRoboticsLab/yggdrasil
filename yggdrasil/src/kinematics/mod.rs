@@ -52,6 +52,9 @@ impl FootOffset {
     }
 }
 
+/// The position of a specific foot relative to the robot's pelvis.
+///
+/// See [`FootOffset`] for more information.
 #[derive(Default, Clone, Copy, Debug, PartialEq)]
 pub struct SidedFootOffset<T: FootKinematics> {
     pub forward: f32,
@@ -65,6 +68,9 @@ pub struct SidedFootOffset<T: FootKinematics> {
 pub(crate) struct Left;
 pub(crate) struct Right;
 
+/// Trait for kinematics of a specific foot of the robot.
+///
+/// This trait is used to implement the kinematics of the left and right foot of the robot.
 pub trait FootKinematics {
     fn torso_to_pelvis() -> Isometry3<f32>;
     fn robot_to_pelvis() -> Isometry3<f32>;
@@ -137,7 +143,7 @@ where
         // get vector pointing from pelvis to foot, to compute the angles
         let pelvis_to_foot = foot_to_pelvis.inverse().translation;
 
-        // TODO: diagram
+        // Compute the foot roll in the pelvis frame
         let foot_roll_in_pelvis = pelvis_to_foot.y.atan2(pelvis_to_foot.z);
 
         // Compute the foot pitch in the pelvis frame, by projecting the foot vector

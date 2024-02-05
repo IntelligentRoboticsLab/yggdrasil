@@ -7,6 +7,9 @@ use super::{WalkContext, WalkState, WalkStateKind};
 /// The hip height of the robot when sitting, 10cm
 const SITTING_HIP_HEIGHT: f32 = 0.0975;
 
+/// The hip height of the robot when idle, 18cm
+const IDLE_HIP_HEIGHT: f32 = 0.18;
+
 #[derive(Debug)]
 pub(crate) struct IdleState {
     pub(crate) hip_height: f32,
@@ -41,12 +44,9 @@ impl WalkState for IdleState {
             .right_leg_joints(RightLegJoints::fill(0.5))
             .build();
 
-        if hip_height < 0.18 {
-            WalkStateKind::Idle(IdleState {
-                hip_height: hip_height + 0.0025,
-            })
-        } else {
-            WalkStateKind::Idle(IdleState { hip_height })
-        }
+        // Slowly stand up, by moving towards the idle hip height.
+        WalkStateKind::Idle(IdleState {
+            hip_height: (hip_height + 0.0025).min(IDLE_HIP_HEIGHT),
+        })
     }
 }
