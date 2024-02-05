@@ -41,7 +41,7 @@ impl Camera {
         width: u32,
         height: u32,
         num_buffers: u32,
-        rotate_180: bool,
+        rotate_180_degrees: bool,
     ) -> Result<Self> {
         if num_buffers == 0 {
             return Err(io::Error::new(
@@ -51,7 +51,7 @@ impl Camera {
         }
 
         let device = Device::open(device_path)?;
-        if rotate_180 {
+        if rotate_180_degrees {
             let mut uvc_extension = UvcExt::new(&device);
             uvc_extension
                 .horizontal_flip()
