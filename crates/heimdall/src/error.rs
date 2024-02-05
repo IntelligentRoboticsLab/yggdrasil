@@ -15,4 +15,10 @@ pub enum Error {
     /// Image error, this wraps a [image::ImageError]
     #[error(transparent)]
     Image(#[from] image::ImageError),
+
+    #[error("Failed to horizontally flip the camera")]
+    HorizontalFlip,
+
+    #[error("Failed to vertically flip the camera")]
+    VerticalFlip,
 }
