@@ -74,7 +74,7 @@ fn load_table<T: Config>(path: impl AsRef<Path>, config_kind: ConfigKind) -> Res
 
     toml_string
         .parse()
-        .map_err(|e| Error::deserialize::<T>(full_path, e))
+        .map_err(|e| Error::deserialize::<T>(path.as_ref(), e))
 }
 
 /// Overlay values from the overlay into the main table.

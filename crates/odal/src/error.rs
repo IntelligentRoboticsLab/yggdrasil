@@ -84,8 +84,8 @@ impl Error {
     }
 
     pub fn deserialize<T: Config>(path: impl AsRef<Path>, source: toml::de::Error) -> Self {
-        let path = path.as_ref();
-        let toml_string = read_to_string(path).unwrap();
+        let path = path.as_ref().join(T::PATH);
+        let toml_string = read_to_string(&path).unwrap();
 
         Self::from_kind::<T>(ErrorKind::Deserialize {
             definition_source: NamedSource::new(path.to_string_lossy(), toml_string),
