@@ -2,6 +2,7 @@
 set -e
 
 # set cross compile flags for macos
+echo $(uname)
 if [ "$(uname)" = "Darwin" ]; then
     export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
     export LDFLAGS="-L/opt/homebrew/opt/llvm/lib"
@@ -13,7 +14,7 @@ if [ "$(uname)" = "Darwin" ]; then
     export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-unknown-linux-gnu-gcc
 
     # set the cross compile flags for alsa
-    export PKG_CONFIG_PATH=/opt/homebrew/Cellar//x86_64-unknown-linux-gnu-alsa-lib/1.2.10/lib/x86_64-unknown-linux-gnu/pkgconfig
+    export PKG_CONFIG_PATH=/opt/homebrew/Cellar//x86_64-unknown-linux-gnu-alsa-lib/1.2.10/lib/x86_64-unknown-linux-gnu/pkgconfig:/usr/local/Cellar/x86_64-unknown-linux-gnu-alsa-lib/1.2.10/lib/x86_64-unknown-linux-gnu/pkgconfig
     export PKG_CONFIG_LIB_DIR=/opt/homebrew/Cellar//x86_64-unknown-linux-gnu-alsa-lib/1.2.10/lib/
     export PKG_CONFIG_ALLOW_CROSS=1
 fi

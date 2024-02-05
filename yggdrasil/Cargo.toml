@@ -16,6 +16,7 @@ miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true }
 nidhogg = { workspace = true, features = ["lola"] }
 odal = { path = "../crates/odal" }
+rerun = { workspace = true }
 serde = { workspace = true }
 serde_with = { workspace = true }
 tokio = { workspace = true }
