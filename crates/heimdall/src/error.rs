@@ -1,4 +1,6 @@
 //! Result and Error types for the crate.
+use std::io;
+
 use miette::Diagnostic;
 use thiserror::Error;
 
@@ -16,9 +18,9 @@ pub enum Error {
     #[error(transparent)]
     Image(#[from] image::ImageError),
 
-    #[error("Failed to horizontally flip the camera")]
-    HorizontalFlip,
+    #[error(transparent)]
+    HorizontalFlip(io::Error),
 
-    #[error("Failed to vertically flip the camera")]
-    VerticalFlip,
+    #[error(transparent)]
+    VerticalFlip(io::Error),
 }
