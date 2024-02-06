@@ -55,10 +55,8 @@ impl Camera {
             let mut uvc_extension = UvcExt::new(&device);
             uvc_extension
                 .horizontal_flip()
-                .map_err(|io_error| Error::HorizontalFlip(io_error))?;
-            uvc_extension
-                .vertical_flip()
-                .map_err(|io_error| Error::VerticalFlip(io_error))?;
+                .map_err(Error::HorizontalFlip)?;
+            uvc_extension.vertical_flip().map_err(Error::VerticalFlip)?;
         }
 
         let capture_device =
