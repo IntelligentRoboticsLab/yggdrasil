@@ -1,6 +1,8 @@
 use std::time::Duration;
 
-use yggdrasil::prelude::*;
+use miette::Result;
+use tyr::prelude::*;
+use tyr::tasks::{Error, TaskConfig, TaskModule};
 
 #[derive(Default)]
 struct Counter(u64);
@@ -50,7 +52,13 @@ fn time_critical_task(counter: &mut Counter) -> Result<()> {
 }
 
 fn main() -> Result<()> {
+    let task_config = TaskConfig {
+        async_threads: 1,
+        compute_threads: 1,
+    };
+
     App::new()
+        .add_resource(Resource::new(task_config))?
         .add_module(TaskModule)?
         .init_resource::<Counter>()?
         .add_task::<ComputeTask<Name>>()?

@@ -1458,6 +1458,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "odal"
+version = "0.1.0"
+dependencies = [
+ "miette",
+ "serde",
+ "thiserror",
+ "toml",
+ "tracing",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2386,11 +2397,9 @@ dependencies = [
  "miette",
  "nidhogg",
  "tokio",
- "tracing-subscriber",
  "tyr_internal",
  "tyr_macros",
  "tyr_tasks",
- "yggdrasil",
 ]
 
 [[package]]
@@ -2400,7 +2409,6 @@ dependencies = [
  "dyn-clone",
  "miette",
  "petgraph",
- "tyr",
 ]
 
 [[package]]
@@ -2419,7 +2427,9 @@ version = "0.1.0"
 dependencies = [
  "futures",
  "miette",
+ "odal",
  "rayon",
+ "serde",
  "thiserror",
  "tokio",
  "tyr_internal",
@@ -2817,6 +2827,8 @@ dependencies = [
  "kira",
  "miette",
  "nidhogg",
+ "odal",
+ "serde",
  "tokio",
  "tracing",
  "tracing-subscriber",

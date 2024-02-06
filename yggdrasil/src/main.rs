@@ -2,6 +2,7 @@ use yggdrasil::{
     audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule},
     behavior::BehaviorModule,
     camera::CameraModule,
+    config::ConfigModule,
     filter::FilterModule,
     game_controller::GameControllerModule,
     leds::LedsModule,
@@ -15,8 +16,8 @@ fn main() -> Result<()> {
     miette::set_panic_hook();
 
     App::new()
-        .add_module(TaskModule)?
         .add_module(NaoModule)?
+        .add_module(ConfigModule)?
         .add_module(FilterModule)?
         .add_module(SoundManagerModule)?
         .add_module(WeeSoundModule)?

@@ -16,7 +16,7 @@ async fn main() -> Result<()> {
     let config_data = std::fs::read_to_string(config_file)
         .into_diagnostic()
         .wrap_err("Failed to read config file! Does it exist?")?;
-    let config = toml::from_str(&config_data)
+    let config = toml::de::from_str(&config_data)
         .into_diagnostic()
         .wrap_err("Failed to parse config file!")?;
 

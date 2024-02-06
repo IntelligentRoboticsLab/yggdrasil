@@ -9,6 +9,3 @@ edition = "2021"
 dyn-clone = { workspace = true }
 miette = { workspace = true }
 petgraph = { workspace = true }
-
-[dev-dependencies]
-tyr = { path = "../" }

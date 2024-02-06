@@ -8,8 +8,6 @@ use nidhogg::{
 use tyr::prelude::*;
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
     App::new()
         .init_resource::<nidhogg::NaoControlMessage>()?
         // startup systems that run once before the DAG is created
@@ -17,9 +15,7 @@ fn main() -> Result<()> {
         // to have Option<Nao> in our storage which would be annoying
         .add_startup_system(initialize_nao)?
         .add_system(update_lola)
-        .run()?;
-
-    Ok(())
+        .run()
 }
 
 fn initialize_nao(storage: &mut Storage) -> Result<()> {
