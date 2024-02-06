@@ -1,4 +1,6 @@
 //! Result and Error types for the crate.
+use std::io;
+
 use miette::Diagnostic;
 use thiserror::Error;
 
@@ -15,4 +17,10 @@ pub enum Error {
     /// Image error, this wraps a [image::ImageError]
     #[error(transparent)]
     Image(#[from] image::ImageError),
+
+    #[error(transparent)]
+    HorizontalFlip(io::Error),
+
+    #[error(transparent)]
+    VerticalFlip(io::Error),
 }

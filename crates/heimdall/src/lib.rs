@@ -1,5 +1,5 @@
 mod camera;
-pub use camera::Camera;
+pub use camera::{Camera, CameraDevice};
 
 mod yuyv_image;
 pub use yuyv_image::{YuvColIter, YuvPixel, YuvRowIter, YuyvImage};
