@@ -99,7 +99,7 @@ impl Camera {
             height,
         };
 
-        // Grab some images to make startup the camera.
+        // Grab some images to startup the camera.
         // Without it, the first couple of images will return an empty buffer.
         for _ in 0..num_buffers {
             camera.get_yuyv_image()?;
