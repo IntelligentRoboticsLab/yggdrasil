@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use crate::prelude::*;
 
 /// A resource that keeps track of the time it takes to complete a full cycle of the yggdrasil framework.
-/// 
+///
 /// This should always be around 11-12ms, as the hardware runs at around 83Hz. However a slow system might result in a higher cycle time.
 #[derive(Debug)]
 pub struct CycleTime {
