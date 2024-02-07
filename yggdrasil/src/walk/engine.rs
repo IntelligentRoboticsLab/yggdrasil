@@ -65,20 +65,17 @@ pub fn toggle_walking_engine(
         return Ok(());
     }
 
-    match (
-        chest_button.state.is_tapped(),
-        head_button.front.is_tapped(),
-        &walking_engine.state,
-    ) {
-        (true, false, WalkStateKind::Idle { .. }) => {
-            filtered_gyro.reset();
-            walking_engine.state = WalkStateKind::Walking(states::walking::WalkingState::default())
-        }
-        (false, true, WalkStateKind::Walking(states::walking::WalkingState { .. })) => {
-            walking_engine.state = WalkStateKind::Idle(states::idle::IdleState { hip_height: 0.18 })
-        }
-        _ => (),
-    };
+    // Start walking
+    if chest_button.state.is_tapped() {
+        filtered_gyro.reset();
+        walking_engine.state = WalkStateKind::Walking(states::walking::WalkingState::default());
+        return Ok(());
+    }
+    // Stop walking
+    if head_button.front.is_tapped() {
+        walking_engine.state = WalkStateKind::Idle(states::idle::IdleState { hip_height: 0.18 });
+        return Ok(());
+    }
 
     Ok(())
 }
