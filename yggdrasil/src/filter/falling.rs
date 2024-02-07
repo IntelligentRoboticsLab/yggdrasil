@@ -22,7 +22,7 @@ pub struct FallingFilter;
 impl Module for FallingFilter {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system(pose_filter)
-            .add_resource(Resource::new(Fall::default()))
+            .init_resource::<Fall>()
     }
 }
 
