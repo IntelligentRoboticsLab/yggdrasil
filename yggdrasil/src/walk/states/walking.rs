@@ -95,10 +95,10 @@ impl WalkState for WalkingState {
 
         match self.swing_foot {
             Side::Left => {
-                println!("{}, {}", swing_offset.forward, support_offset.forward);
+                println!("{}, {}", swing_offset.left, support_offset.left);
             }
             Side::Right => {
-                println!("{}, {}", support_offset.forward, swing_offset.forward);
+                println!("{}, {}", support_offset.left, swing_offset.left);
             }
         }
 
@@ -203,7 +203,7 @@ impl WalkingState {
             previous_step.support = swing_offset;
             previous_step.swing = support_offset;
 
-            previous_step.swing.left = previous_step.support.left;
+            previous_step.swing.left = -previous_step.support.left;
         }
 
         WalkStateKind::Walking(WalkingState {
