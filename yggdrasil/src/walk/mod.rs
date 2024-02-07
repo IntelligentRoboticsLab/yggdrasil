@@ -60,7 +60,6 @@ impl FilteredGyroscope {
 /// This module provides the following resources to the application:
 /// - [`WalkingEngine`]
 /// - [`FilteredGyroscope`]
-/// - [`CycleTime`]
 pub struct WalkingEngineModule;
 
 impl Module for WalkingEngineModule {
