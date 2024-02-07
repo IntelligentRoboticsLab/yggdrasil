@@ -12,8 +12,9 @@ use crate::{
 
 use super::{
     states::{self, WalkContext, WalkState, WalkStateKind},
-    CycleTime, FilteredGyroscope,
+    FilteredGyroscope,
 };
+use crate::nao::CycleTime;
 
 #[derive(Default, Clone, Debug)]
 pub struct WalkCommand {
@@ -101,7 +102,7 @@ pub fn walking_engine(
 
     let context = WalkContext {
         walk_command: WalkCommand {
-            forward: 0.0,
+            forward: 0.1,
             left: 0.0,
             turn: 0.0,
         },
