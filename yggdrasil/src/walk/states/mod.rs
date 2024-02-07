@@ -2,22 +2,22 @@ pub mod idle;
 pub mod walking;
 
 use enum_dispatch::enum_dispatch;
-use nidhogg::types::{ForceSensitiveResistors, Vector2};
+use nidhogg::types::ForceSensitiveResistors;
 use std::time::Duration;
 
-use super::engine::WalkCommand;
+use super::{engine::WalkCommand, FilteredGyroscope};
 
 pub struct WalkContext<'a> {
     pub walk_command: WalkCommand,
     pub dt: Duration,
-    pub filtered_gyro: Vector2<f32>,
-    pub fsr: ForceSensitiveResistors,
+    pub filtered_gyro: &'a FilteredGyroscope,
+    pub fsr: &'a ForceSensitiveResistors,
     pub control_message: &'a mut nidhogg::NaoControlMessage,
 }
 
 #[enum_dispatch]
 pub trait WalkState {
-    fn next_state(&self, context: &mut WalkContext) -> WalkStateKind;
+    fn next_state(&self, context: WalkContext) -> WalkStateKind;
 }
 
 #[derive(Debug)]

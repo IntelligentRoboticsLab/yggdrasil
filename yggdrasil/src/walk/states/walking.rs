@@ -49,7 +49,7 @@ impl Default for WalkingState {
 }
 
 impl WalkState for WalkingState {
-    fn next_state(&self, context: &mut WalkContext) -> WalkStateKind {
+    fn next_state(&self, context: WalkContext) -> WalkStateKind {
         let phase_time = self.phase_time + context.dt;
         // this is the linear progression of this step, a value from 0 to 1 which describes the progress of the current step.
         let linear_time =
@@ -59,7 +59,7 @@ impl WalkState for WalkingState {
             return self.next_walk_state(
                 context.dt,
                 linear_time,
-                &context.fsr,
+                context.fsr,
                 self.previous_step.swing,
                 self.previous_step.support,
             );
@@ -105,7 +105,7 @@ impl WalkState for WalkingState {
         let next_state = self.next_walk_state(
             context.dt,
             linear_time,
-            &context.fsr,
+            context.fsr,
             swing_offset,
             support_offset,
         );
@@ -124,7 +124,7 @@ impl WalkState for WalkingState {
             kinematics::inverse::leg_angles(&left_foot, &right_foot);
 
         // Balance adjustment
-        let balance_adjustment = context.filtered_gyro.y / 20.0;
+        let balance_adjustment = context.filtered_gyro.y() / 20.0;
         if self.next_foot_switch.as_millis() > 0 {
             match swing_foot {
                 Side::Left => {

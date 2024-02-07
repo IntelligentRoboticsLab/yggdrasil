@@ -48,6 +48,14 @@ impl FilteredGyroscope {
     pub fn reset(&mut self) {
         self.0 = Vector2::default();
     }
+
+    pub fn x(&self) -> f32 {
+        self.0.x
+    }
+
+    pub fn y(&self) -> f32 {
+        self.0.y
+    }
 }
 
 /// A module providing the walking engine for the robot.

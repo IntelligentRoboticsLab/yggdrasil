@@ -102,18 +102,18 @@ pub fn walking_engine(
         return Ok(());
     }
 
-    let mut context = WalkContext {
+    let context = WalkContext {
         walk_command: WalkCommand {
-            forward: 0.1,
-            left: 0.00,
+            forward: 0.0,
+            left: 0.0,
             turn: 0.0,
         },
         dt: cycle_time.duration,
-        filtered_gyro: filtered_gyro.0.clone(),
-        fsr: fsr.clone(),
+        filtered_gyro,
+        fsr,
         control_message,
     };
-    walking_engine.state = walking_engine.state.next_state(&mut context);
+    walking_engine.state = walking_engine.state.next_state(context);
 
     Ok(())
 }
