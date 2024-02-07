@@ -5,11 +5,12 @@ use enum_dispatch::enum_dispatch;
 use nidhogg::types::ForceSensitiveResistors;
 use std::time::Duration;
 
-use super::{engine::WalkCommand, FilteredGyroscope};
+use super::{engine::WalkCommand, FilteredGyroscope, WalkingEngineConfig};
 
 pub struct WalkContext<'a> {
     pub walk_command: WalkCommand,
     pub dt: Duration,
+    pub config: &'a WalkingEngineConfig,
     pub filtered_gyro: &'a FilteredGyroscope,
     pub fsr: &'a ForceSensitiveResistors,
     pub control_message: &'a mut nidhogg::NaoControlMessage,
@@ -25,10 +26,4 @@ pub trait WalkState {
 pub enum WalkStateKind {
     Idle(idle::IdleState),
     Walking(walking::WalkingState),
-}
-
-impl Default for WalkStateKind {
-    fn default() -> Self {
-        Self::Idle(idle::IdleState::default())
-    }
 }

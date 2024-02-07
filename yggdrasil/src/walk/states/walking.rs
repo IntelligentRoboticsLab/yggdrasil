@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use nidhogg::types::{FillExt, ForceSensitiveResistors, JointArray, LeftLegJoints, RightLegJoints};
+use nidhogg::types::{FillExt, JointArray, LeftLegJoints, RightLegJoints};
 
 use crate::{
     kinematics::{self, FootOffset},
@@ -11,23 +11,6 @@ use crate::{
 };
 
 use super::{WalkContext, WalkState, WalkStateKind};
-
-/// The Center of Mass (CoM) multiplier, this is used to adjust the forward movement of the robot.
-///
-/// We multiply it by 0.25 as the CoM moves as well, and the step length is with regard to the CoM.
-const COM_MULTIPLIER: f32 = 0.25;
-
-/// The base amount of time for one step, e.g. half a walk cycle.
-const BASE_STEP_PERIOD: Duration = Duration::from_millis(270);
-
-// the center of pressure threshold for switching support foot
-const COP_PRESSURE_THRESHOLD: f32 = 0.2;
-
-/// the base amount to lift a foot, in meters
-const BASE_FOOT_LIFT: f32 = 0.015;
-
-/// The hip height of the robot during the walking cycle
-const HIP_HEIGHT: f32 = 0.185;
 
 #[derive(Debug)]
 pub(crate) struct WalkingState {
@@ -42,7 +25,7 @@ impl Default for WalkingState {
         Self {
             swing_foot: Side::Right,
             phase_time: Duration::ZERO,
-            next_foot_switch: BASE_STEP_PERIOD,
+            next_foot_switch: Duration::ZERO,
             previous_step: StepOffsets::default(),
         }
     }
@@ -59,7 +42,7 @@ impl WalkState for WalkingState {
             return self.next_walk_state(
                 context.dt,
                 linear_time,
-                context.fsr,
+                &context,
                 self.previous_step.swing,
                 self.previous_step.support,
             );
@@ -71,7 +54,8 @@ impl WalkState for WalkingState {
             turn: _,
         } = context.walk_command;
         // compute the max foot height, for moving forward/left we slightly increase the max height
-        let max_foot_height = BASE_FOOT_LIFT + (forward.abs() * 0.01) + (left.abs() * 0.02);
+        let max_foot_height =
+            context.config.base_foot_lift + (forward.abs() * 0.01) + (left.abs() * 0.02);
         // compute the swing foot height for the current cycle in the step phase
         let swing_foot_height = max_foot_height * smoothing::parabolic_return(linear_time);
 
@@ -79,14 +63,10 @@ impl WalkState for WalkingState {
         let previous_step = self.previous_step.clone();
 
         // compute the offsets for the support and swing feet
-        let support_offset = compute_support_offset(
-            &context.walk_command,
-            &swing_foot,
-            linear_time,
-            &previous_step.support,
-        );
+        let support_offset =
+            compute_support_offset(&context, &swing_foot, linear_time, &previous_step.support);
         let swing_offset = compute_swing_offset(
-            &context.walk_command,
+            &context,
             &swing_foot,
             swing_foot_height,
             linear_time,
@@ -96,7 +76,7 @@ impl WalkState for WalkingState {
         let next_state = self.next_walk_state(
             context.dt,
             linear_time,
-            context.fsr,
+            &context,
             swing_offset,
             support_offset,
         );
@@ -155,13 +135,13 @@ impl WalkState for WalkingState {
     }
 }
 
-fn has_support_foot_changed(side: &Side, fsr: &ForceSensitiveResistors) -> bool {
-    let left_foot_pressure = fsr.left_foot.sum();
-    let right_foot_pressure = fsr.right_foot.sum();
+fn has_support_foot_changed(side: &Side, context: &WalkContext) -> bool {
+    let left_foot_pressure = context.fsr.left_foot.sum();
+    let right_foot_pressure = context.fsr.right_foot.sum();
     (match side {
         Side::Left => left_foot_pressure,
         Side::Right => right_foot_pressure,
-    }) > COP_PRESSURE_THRESHOLD
+    }) > context.config.cop_pressure_threshold
 }
 
 impl WalkingState {
@@ -169,7 +149,7 @@ impl WalkingState {
         &self,
         dt: Duration,
         linear_time: f32,
-        fsr: &ForceSensitiveResistors,
+        context: &WalkContext,
         swing_offset: FootOffset,
         support_offset: FootOffset,
     ) -> WalkStateKind {
@@ -180,14 +160,14 @@ impl WalkingState {
         let mut previous_step = self.previous_step.clone();
         // figure out whether the support foot has changed
         let has_support_foot_changed =
-            linear_time > 0.75 && has_support_foot_changed(&self.swing_foot, fsr);
+            linear_time > 0.75 && has_support_foot_changed(&self.swing_foot, context);
 
         // if the support foot has in fact changed, we should update the relevant parameters
         if has_support_foot_changed {
             next_swing_foot = self.swing_foot.next();
 
             // reset phase
-            next_foot_switch = BASE_STEP_PERIOD;
+            next_foot_switch = context.config.base_step_period;
             phase_time = Duration::ZERO;
 
             // Switch these around, so the offsets are maintained throughout the walk cycle
@@ -207,12 +187,14 @@ impl WalkingState {
 }
 
 fn compute_swing_offset(
-    walk_command: &WalkCommand,
+    context: &WalkContext,
     side: &Side,
     foot_height: f32,
     linear_time: f32,
     step_t0: &FootOffset,
 ) -> FootOffset {
+    let walk_command = &context.walk_command;
+    let config = &context.config;
     let forward_t0 = step_t0.forward;
     let left_t0 = step_t0.left;
     let turn_t0 = step_t0.turn;
@@ -223,20 +205,23 @@ fn compute_swing_offset(
         Side::Right => 2.0 / 3.0,
     };
     FootOffset {
-        forward: forward_t0 + (walk_command.forward * COM_MULTIPLIER - forward_t0) * parabolic_time,
+        forward: forward_t0
+            + (walk_command.forward * config.com_multiplier - forward_t0) * parabolic_time,
         left: left_t0 + (walk_command.left / 2.0 - left_t0) * parabolic_time,
         turn: turn_t0 + (walk_command.turn * turn_multiplier - turn_t0) * parabolic_time,
-        hip_height: HIP_HEIGHT,
+        hip_height: config.hip_height,
         lift: foot_height,
     }
 }
 
 fn compute_support_offset(
-    walk_command: &WalkCommand,
+    context: &WalkContext,
     side: &Side,
     linear_time: f32,
     step_t0: &FootOffset,
 ) -> FootOffset {
+    let walk_command = &context.walk_command;
+    let config = &context.config;
     let forward_t0 = step_t0.forward;
     let left_t0 = step_t0.left;
     let turn_t0 = step_t0.turn;
@@ -247,10 +232,11 @@ fn compute_support_offset(
     };
 
     FootOffset {
-        forward: forward_t0 + (-walk_command.forward * COM_MULTIPLIER - forward_t0) * linear_time,
+        forward: forward_t0
+            + (-walk_command.forward * config.com_multiplier - forward_t0) * linear_time,
         left: left_t0 + (-walk_command.left / 2.0 - left_t0) * linear_time,
         turn: turn_t0 + (-walk_command.turn * turn_multiplier - turn_t0) * linear_time,
-        hip_height: HIP_HEIGHT,
+        hip_height: config.hip_height,
         lift: 0.0,
     }
 }

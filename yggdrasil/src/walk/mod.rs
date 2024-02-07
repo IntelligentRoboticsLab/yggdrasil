@@ -2,37 +2,18 @@ pub mod engine;
 pub mod smoothing;
 mod states;
 
-use std::ops::Add;
+use std::time::Duration;
 
-use miette::Result;
-
+use crate::prelude::*;
 use nidhogg::types::{Vector2, Vector3};
-use tyr::prelude::*;
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DurationMilliSeconds};
 
 use crate::{filter, nao, primary_state};
 
 use self::engine::WalkingEngine;
 
-#[derive(Default, Debug, Clone)]
-pub struct Odometry {
-    pub forward: f32,
-    pub left: f32,
-    pub turn: f32,
-}
-
-impl Add for Odometry {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            forward: self.forward + rhs.forward,
-            left: self.left + rhs.left,
-            turn: self.turn + rhs.turn,
-        }
-    }
-}
-
-/// Filtered gyroscope values
+/// Filtered gyroscope values.
 #[derive(Default, Debug, Clone)]
 pub struct FilteredGyroscope(Vector2<f32>);
 
@@ -55,6 +36,23 @@ impl FilteredGyroscope {
     }
 }
 
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct WalkingEngineConfig {
+    #[serde_as(as = "DurationMilliSeconds")]
+    pub base_step_period: Duration,
+    pub com_multiplier: f32,
+    pub cop_pressure_threshold: f32,
+    pub base_foot_lift: f32,
+    pub hip_height: f32,
+    pub sitting_hip_height: f32,
+}
+
+impl Config for WalkingEngineConfig {
+    const PATH: &'static str = "walking_engine.toml";
+}
+
 /// A module providing the walking engine for the robot.
 ///
 /// This module provides the following resources to the application:
@@ -65,8 +63,9 @@ pub struct WalkingEngineModule;
 impl Module for WalkingEngineModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
-            .init_resource::<WalkingEngine>()?
+            .init_config::<WalkingEngineConfig>()?
             .init_resource::<FilteredGyroscope>()?
+            .add_startup_system(init_walking_engine)?
             .add_system(
                 filter_gyro_values
                     .after(nao::write_hardware_info)
@@ -86,6 +85,11 @@ impl Module for WalkingEngineModule {
                     .before(engine::walking_engine),
             ))
     }
+}
+
+#[startup_system]
+fn init_walking_engine(storage: &mut Storage, config: &WalkingEngineConfig) -> Result<()> {
+    storage.add_resource(Resource::new(WalkingEngine::new(config)))
 }
 
 #[system]

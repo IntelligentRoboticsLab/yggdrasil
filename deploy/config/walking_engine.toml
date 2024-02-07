@@ -1,0 +1,20 @@
+# The base amount of time (in milliseconds) for one step, e.g. half a walk cycle.
+base_step_period = 240
+
+# The Center of Mass (CoM) multiplier, this is used to adjust the forward movement of the robot.
+# Because the CoM moves forward during a step, the step length is with regard to the CoM.
+com_multiplier = 0.25
+
+# The center of pressure threshold for switching support foot
+cop_pressure_threshold = 0.2
+
+# The base amount to lift the feet in swing phase, in metres.
+# The foot lift is increased slightly, based on the forward and left in the command.
+base_foot_lift = 0.015
+
+# The height of the robot's hips relative to the ankle joint, in metres.
+hip_height = 0.185
+
+# The hip height when the robot is sitting, in metres
+# This is used as a starting point for the stand-up motion in the idle state.
+sitting_hip_height = 0.0975

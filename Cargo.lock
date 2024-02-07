@@ -3096,6 +3096,7 @@ dependencies = [
  "nidhogg",
  "odal",
  "serde",
+ "serde_with",
  "tokio",
  "tracing",
  "tracing-subscriber",

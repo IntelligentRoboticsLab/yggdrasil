@@ -17,6 +17,7 @@ nalgebra = { workspace = true }
 nidhogg = { workspace = true, features = ["lola"] }
 odal = { path = "../crates/odal" }
 serde = { workspace = true }
+serde_with = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

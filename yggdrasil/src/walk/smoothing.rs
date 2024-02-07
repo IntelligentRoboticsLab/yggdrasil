@@ -1,5 +1,7 @@
 //! Functions for smoothing out the various trajectories in the walking engine.
 
+use std::f32::consts::{FRAC_PI_2, PI};
+
 /// Returns a value between 0 and 1, where 0 is the start of the path and 1 is the end.
 ///
 /// The path is a parabola, where the start and end are at the same height.
@@ -14,7 +16,7 @@
 /// assert_eq!(parabolic_return(1.0), 0.0);
 /// ```
 pub fn parabolic_return(t: f32) -> f32 {
-    0.5 * (2.0 * std::f32::consts::PI * t - std::f32::consts::FRAC_PI_2).sin() + 0.5
+    0.5 * (2.0 * PI * t - FRAC_PI_2).sin() + 0.5
 }
 
 /// Returns a value between 0 and 1, where 0 is the start of the path and 1 is the end.

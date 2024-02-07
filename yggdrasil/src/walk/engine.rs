@@ -12,7 +12,7 @@ use crate::{
 
 use super::{
     states::{self, WalkContext, WalkState, WalkStateKind},
-    FilteredGyroscope,
+    FilteredGyroscope, WalkingEngineConfig,
 };
 use crate::nao::CycleTime;
 
@@ -48,9 +48,16 @@ pub struct StepOffsets {
     pub support: FootOffset,
 }
 
-#[derive(Default)]
 pub struct WalkingEngine {
     state: WalkStateKind,
+}
+
+impl WalkingEngine {
+    pub fn new(config: &WalkingEngineConfig) -> Self {
+        Self {
+            state: WalkStateKind::Idle(states::idle::IdleState::new(config)),
+        }
+    }
 }
 
 #[system]
@@ -84,6 +91,7 @@ pub fn toggle_walking_engine(
 #[system]
 pub fn walking_engine(
     walking_engine: &mut WalkingEngine,
+    config: &WalkingEngineConfig,
     primary_state: &PrimaryState,
     cycle_time: &CycleTime,
     fsr: &ForceSensitiveResistors,
@@ -106,6 +114,7 @@ pub fn walking_engine(
             left: 0.0,
             turn: 0.0,
         },
+        config,
         dt: cycle_time.duration,
         filtered_gyro,
         fsr,
