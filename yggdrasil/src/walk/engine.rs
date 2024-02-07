@@ -65,6 +65,7 @@ pub fn toggle_walking_engine(
     primary_state: &PrimaryState,
     head_button: &HeadButtons,
     chest_button: &ChestButton,
+    walking_config: &WalkingEngineConfig,
     walking_engine: &mut WalkingEngine,
     filtered_gyro: &mut FilteredGyroscope,
 ) -> Result<()> {
@@ -81,7 +82,7 @@ pub fn toggle_walking_engine(
     }
     // Stop walking
     if head_button.front.is_tapped() {
-        walking_engine.state = WalkStateKind::Idle(states::idle::IdleState { hip_height: 0.18 });
+        walking_engine.state = WalkStateKind::Idle(states::idle::IdleState { hip_height: walking_config.hip_height });
         return Ok(());
     }
 
@@ -110,7 +111,7 @@ pub fn walking_engine(
 
     let context = WalkContext {
         walk_command: WalkCommand {
-            forward: 0.1,
+            forward: 0.0,
             left: 0.0,
             turn: 0.0,
         },

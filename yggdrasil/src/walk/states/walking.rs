@@ -86,16 +86,18 @@ impl WalkState for WalkingState {
             Side::Right => (support_offset, swing_offset),
         };
 
-        // the shoulder pitch is "approximated" by taking the opposite direction * 6
+        // the shoulder pitch is "approximated" by taking the opposite direction multiplied by a constant.
         // this results in a swing motion that moves in the opposite direction as the foot.
-        let left_shoulder_pitch = -left_foot.forward * 6.0;
-        let right_shoulder_pitch = -right_foot.forward * 6.0;
+        let balancing_config = &context.config.balancing;
+        let left_shoulder_pitch = -left_foot.forward * balancing_config.arm_swing_multiplier;
+        let right_shoulder_pitch = -right_foot.forward * balancing_config.arm_swing_multiplier;
 
         let (mut left_leg_joints, mut right_leg_joints) =
             kinematics::inverse::leg_angles(&left_foot, &right_foot);
 
         // Balance adjustment
-        let balance_adjustment = context.filtered_gyro.y() / 20.0;
+        let balance_adjustment =
+            context.filtered_gyro.y() * balancing_config.filtered_gyro_y_multiplier;
         if self.next_foot_switch.as_millis() > 0 {
             match swing_foot {
                 Side::Left => {
