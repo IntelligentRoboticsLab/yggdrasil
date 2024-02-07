@@ -82,7 +82,9 @@ pub fn toggle_walking_engine(
     }
     // Stop walking
     if head_button.front.is_tapped() {
-        walking_engine.state = WalkStateKind::Idle(states::idle::IdleState { hip_height: walking_config.hip_height });
+        walking_engine.state = WalkStateKind::Idle(states::idle::IdleState {
+            hip_height: walking_config.hip_height,
+        });
         return Ok(());
     }
 

@@ -83,12 +83,7 @@ fn initialize_nao(storage: &mut Storage) -> Result<()> {
         info.body_id
     );
 
-    tracing::info!(
-        "Battery level: {}",
-        state.battery.charge,
-    );
-
-    
+    tracing::info!("Battery level: {}", state.battery.charge,);
 
     storage.add_resource(Resource::new(nao))?;
     storage.add_resource(Resource::new(state))?;
