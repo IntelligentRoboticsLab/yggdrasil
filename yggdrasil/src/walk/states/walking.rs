@@ -93,15 +93,6 @@ impl WalkState for WalkingState {
             &previous_step.swing,
         );
 
-        match self.swing_foot {
-            Side::Left => {
-                println!("{}, {}", swing_offset.left, support_offset.left);
-            }
-            Side::Right => {
-                println!("{}, {}", support_offset.left, swing_offset.left);
-            }
-        }
-
         let next_state = self.next_walk_state(
             context.dt,
             linear_time,
