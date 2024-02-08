@@ -15,16 +15,14 @@ use super::{
 };
 
 pub fn detect_lines(config: LineDetectionConfig, image: &YuyvImage) -> Vec<Line> {
-    let start = Instant::now();
-    let yuv_tuples: Vec<_> = image.yuv_row_iter().collect();
+    let yuv_tuples: Vec<_> = image.yuv_row_iter().rev().collect();
 
-    let yuv_image = YUVImage::from_column_slice(image.width(), image.height(), &yuv_tuples);
-    println!("elapsed: {}ms", start.elapsed().as_millis());
+    let yuv_image = YUVImage::from_row_slice(image.height(), image.width(), &yuv_tuples);
 
     let segmented_image = segment_image(&config, &yuv_image);
 
     let mut field_barrier_segment = 0;
-    for i in (0..segmented_image.nrows()).rev() {
+    for i in 0..segmented_image.nrows() {
         let row = segmented_image.row(i);
 
         let field_segments = row
