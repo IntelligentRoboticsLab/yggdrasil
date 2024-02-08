@@ -50,7 +50,7 @@ pub fn fit_line_ransac(
 }
 
 // Fit a line using least squares
-fn polyfit(points: &Vec<Segment>) -> (f64, f64) {
+fn polyfit(points: &[Segment]) -> (f64, f64) {
     let n = points.len();
     let sum_x: f64 = points.iter().map(|p| p.x as f64).sum();
     let sum_y: f64 = points.iter().map(|p| p.y as f64).sum();

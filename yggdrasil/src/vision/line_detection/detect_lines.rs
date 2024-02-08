@@ -1,7 +1,7 @@
 use heimdall::YuyvImage;
 use image::codecs::jpeg::JpegEncoder;
 use nalgebra::DMatrix;
-use std::{fs::File, time::Instant};
+use std::fs::File;
 
 use miette::{IntoDiagnostic, Result};
 
