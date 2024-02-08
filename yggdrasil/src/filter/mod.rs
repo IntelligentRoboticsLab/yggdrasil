@@ -1,10 +1,8 @@
 use crate::prelude::*;
 
-use self::{
-    audio_input::AudioInputFilter, button::ButtonFilter, fsr::FSRFilter, imu::IMUFilter,
-    sonar::SonarFilter,
-};
+use self::{button::ButtonFilter, fsr::FSRFilter, imu::IMUFilter, sonar::SonarFilter};
 
+#[cfg(feature = "alsa")]
 pub mod audio_input;
 pub mod button;
 pub mod fsr;
@@ -15,10 +13,15 @@ pub struct FilterModule;
 
 impl Module for FilterModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_module(ButtonFilter)?
+        let app = app
+            .add_module(ButtonFilter)?
             .add_module(FSRFilter)?
             .add_module(IMUFilter)?
-            .add_module(SonarFilter)?
-            .add_module(AudioInputFilter)
+            .add_module(SonarFilter)?;
+
+        #[cfg(feature = "alsa")]
+        let app = app.add_module(audio_input::AudioInputFilter)?;
+
+        Ok(app)
     }
 }

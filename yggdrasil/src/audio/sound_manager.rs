@@ -6,6 +6,8 @@ use kira::{
 use miette::{Context, IntoDiagnostic};
 use std::sync::{Arc, Mutex};
 
+use super::wee_sound::WeeSoundModule;
+
 /// A sound which can be played by the [`SoundManager`].
 ///
 /// These sounds are streamed into memory on demand.
@@ -30,7 +32,8 @@ pub struct SoundManagerModule;
 
 impl Module for SoundManagerModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_resource(Resource::new(SoundManager::new()?))
+        app.add_resource(Resource::new(SoundManager::new()?))?
+            .add_module(WeeSoundModule)
     }
 }
 

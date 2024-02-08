@@ -81,7 +81,7 @@ where
 ///
 /// If `target` is set to [`Option::None`], it will default to the current system's target.
 pub async fn build(binary: &str, profile: Profile, target: Option<&str>) -> Result<(), CargoError> {
-    let mut cargo_args = vec!["build", "-p", binary];
+    let mut cargo_args = vec!["build", "-p", binary, "--all-features"];
 
     if matches!(profile, Profile::Release) {
         cargo_args.push("--release");
