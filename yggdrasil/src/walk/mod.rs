@@ -1,6 +1,6 @@
 pub mod engine;
 pub mod smoothing;
-mod states;
+pub mod states;
 
 use std::time::Duration;
 

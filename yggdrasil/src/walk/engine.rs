@@ -49,7 +49,7 @@ pub struct StepOffsets {
 }
 
 pub struct WalkingEngine {
-    state: WalkStateKind,
+    pub state: WalkStateKind,
 }
 
 impl WalkingEngine {

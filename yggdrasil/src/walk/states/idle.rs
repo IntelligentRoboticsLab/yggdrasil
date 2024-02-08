@@ -8,14 +8,14 @@ use crate::{
 use super::{WalkContext, WalkState, WalkStateKind};
 
 #[derive(Debug)]
-pub(crate) struct IdleState {
-    pub(crate) hip_height: f32,
+pub struct IdleState {
+    pub hip_height: f32,
 }
 
 impl IdleState {
     pub fn new(config: &WalkingEngineConfig) -> Self {
         Self {
-            hip_height: config.hip_height,
+            hip_height: config.sitting_hip_height,
         }
     }
 }

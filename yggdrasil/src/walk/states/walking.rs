@@ -13,7 +13,7 @@ use crate::{
 use super::{WalkContext, WalkState, WalkStateKind};
 
 #[derive(Debug)]
-pub(crate) struct WalkingState {
+pub struct WalkingState {
     swing_foot: Side,
     phase_time: Duration,
     next_foot_switch: Duration,
