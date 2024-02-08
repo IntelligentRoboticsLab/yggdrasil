@@ -13,40 +13,29 @@ impl Module for DebugModule {
 
 #[derive(Debug)]
 pub struct DebugMachine {
-    rec_stream: rerun::RecordingStream,
-    pub behaviour_origins: Vec<rerun::Position2D>,
-    pub behaviour_directions: Vec<rerun::Vector2D>,
-    pub behaviour_labels: Vec<String>,
-    pub behaviour_color: Vec<rerun::Color>,
+    rec_stream: rerun::RecordingStream
 }
 
 impl DebugMachine {
     fn new(rec: rerun::RecordingStream) -> DebugMachine {
         DebugMachine {
-            rec_stream: rec,
-            behaviour_origins: Vec::new(),
-            behaviour_directions: Vec::new(),
-            behaviour_labels:  Vec::new(),
-            behaviour_color: Vec::new(),
+            rec_stream: rec
         }
     }
 
     pub fn log_behavior(&mut self) {
         self.rec_stream.log("behaviour/transitions",
-            &rerun::Arrows2D::from_vectors(self.behaviour_directions.clone())
+            &rerun::Arrows2D::from_vectors([[1.0, 0.0], [0.0, -1.0], [-0.7, 0.7]])
             .with_radii([0.025])
-            .with_origins(self.behaviour_origins.clone())
-            .with_colors(self.behaviour_color.clone())
-            .with_labels(self.behaviour_labels.clone()),
+            .with_origins([[0.25, 0.0], [0.25, 0.0], [-0.1, -0.1]])
+            .with_colors([[255, 0, 0], [0, 255, 0], [127, 0, 255]])
+            .with_labels(["right", "up", "left-down"]),
         );
     }
 }
 
 #[startup_system]
 fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher) -> Result<()> {
-
-    // let handle = storage.map_resource_ref(|ad: &AsyncDispatcher| ad.handle().clone())?;
-
     let handle = ad.handle().clone();
     let _guard = handle.enter();
     let rec = rerun::RecordingStreamBuilder::new("example_nao")
@@ -59,7 +48,6 @@ fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher) -> Result<()> {
         )
         .into_diagnostic()?;
 
-    // rec.flush_blocking();
     storage.add_resource(Resource::new(DebugMachine::new(rec)))
 }
 
@@ -67,9 +55,6 @@ fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher) -> Result<()> {
 pub fn run_debug(
     panel: &mut DebugMachine
 ) -> Result<()> {
-    //engine.current_behavior;
-    // Check if the behaviour needs to be updated
-    //  update the behaviour
     panel.log_behavior();
     Ok(())
 }
