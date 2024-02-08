@@ -16,7 +16,7 @@ miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true }
 nidhogg = { workspace = true, features = ["lola"] }
 odal = { path = "../crates/odal" }
-rerun = { workspace = true }
+rerun = { workspace = true, optional=true }
 serde = { workspace = true }
 serde_with = { workspace = true }
 tokio = { workspace = true }
@@ -28,4 +28,4 @@ tyr = { path = "../crates/tyr", features = ["odal"] }
 [features]
 default = []
 alsa = ["dep:alsa", "dep:kira"]
-debug = []
+rerun = ["dep:rerun"]

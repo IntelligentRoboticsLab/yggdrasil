@@ -11,7 +11,6 @@ impl Module for DebugModule {
     }
 }
 
-
 #[derive(Debug)]
 pub struct DebugMachine {
     rec_stream: rerun::RecordingStream,

@@ -3,6 +3,7 @@ pub mod audio;
 pub mod behavior;
 pub mod camera;
 pub mod config;
+#[cfg(feature = "rerun")]
 pub mod debug;
 pub mod filter;
 pub mod game_controller;

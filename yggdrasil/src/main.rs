@@ -4,29 +4,26 @@ use yggdrasil::{
     primary_state::PrimaryStateModule, walk::WalkingEngineModule,
 };
 
-#[cfg(feature = "debug")]
-use yggdrasil::debug::DebugModule;
-
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     miette::set_panic_hook();
 
     let app = App::new()
+        .add_module(TaskModule)?
         .add_module(NaoModule)?
-        .add_module(ConfigModule)?
         .add_module(FilterModule)?
+        .add_module(WeeSoundModule)?
         .add_module(CameraModule)?
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?
         .add_module(PrimaryStateModule)?
         .add_module(GameControllerModule)?
-        .add_module(WalkingEngineModule)?
-        .add_module(DebugModule)?;
+        .add_module(WalkingEngineModule)?;
 
     #[cfg(feature = "alsa")]
     let app = app.add_module(yggdrasil::audio::sound_manager::SoundManagerModule)?;
 
-    #[cfg(feature = "debug")]
+    #[cfg(feature = "rerun")]
     let app = app.add_module(yggdrasil::debug::DebugModule)?;
 
     app.run()
