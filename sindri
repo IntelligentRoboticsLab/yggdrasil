@@ -4,9 +4,8 @@ set -e
 # set cross compile flags for macos
 echo $(uname)
 if [ "$(uname)" = "Darwin" ]; then
-    export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
-    export LDFLAGS="-L/opt/homebrew/opt/llvm/lib"
-    export CPPFLAGS="-I/opt/homebrew/opt/llvm/include"
+    # export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+    export PATH="/usr/local/opt/llvm/bin:$PATH"
     export TARGET_CC=$(which clang)
     export CC_X86_64_UNKNOWN_LINUX_GNU=x86_64-unknown-linux-gnu-gcc
     export CXX_X86_64_UNKNOWN_LINUX_GNU=x86_64-unknown-linux-gnu-g++
@@ -20,4 +19,4 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 # pass all arguments to sindri
-cargo run -r -p sindri -- $@
+cargo run "$@" -r -p sindri --

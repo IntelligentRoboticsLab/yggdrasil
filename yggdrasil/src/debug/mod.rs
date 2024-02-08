@@ -1,6 +1,3 @@
-use std::f32::consts::TAU;
-
-use rerun::external::glam;
 use miette::IntoDiagnostic;
 
 use crate::prelude::*;

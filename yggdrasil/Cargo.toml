@@ -28,3 +28,4 @@ tyr = { path = "../crates/tyr", features = ["odal"] }
 [features]
 default = []
 alsa = ["dep:alsa", "dep:kira"]
+debug = []

@@ -1,21 +1,11 @@
 use yggdrasil::{
-<<<<<<< HEAD
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, filter::FilterModule,
     game_controller::GameControllerModule, leds::LedsModule, nao::NaoModule, prelude::*,
     primary_state::PrimaryStateModule, walk::WalkingEngineModule,
-=======
-    audio::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule},
-    behavior::BehaviorModule,
-    camera::CameraModule,
-    debug::DebugModule,
-    filter::FilterModule,
-    game_controller::GameControllerModule,
-    leds::LedsModule,
-    nao::NaoModule,
-    prelude::*,
-    primary_state::PrimaryStateModule,
->>>>>>> e7e01e3 (basic start of implementing debug panel)
 };
+
+#[cfg(feature = "debug")]
+use yggdrasil::debug::DebugModule;
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
@@ -35,6 +25,9 @@ fn main() -> Result<()> {
 
     #[cfg(feature = "alsa")]
     let app = app.add_module(yggdrasil::audio::sound_manager::SoundManagerModule)?;
+
+    #[cfg(feature = "debug")]
+    let app = app.add_module(yggdrasil::debug::DebugModule)?;
 
     app.run()
 }
