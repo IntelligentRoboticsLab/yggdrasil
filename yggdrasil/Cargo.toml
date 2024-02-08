@@ -11,7 +11,7 @@ bifrost = { path = "../crates/bifrost/" }
 enum_dispatch = { workspace = true }
 heimdall = { path = "../crates/heimdall" }
 image = { workspace = true }
-kira = { workspace = true }
+kira = { workspace = true, optional = true }
 miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true }
 nidhogg = { workspace = true, features = ["lola"] }
