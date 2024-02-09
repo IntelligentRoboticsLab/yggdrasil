@@ -5,7 +5,6 @@ use nidhogg::{types::Vector2, types::Vector3, NaoState};
 ///
 /// This module provides the following resources to the application:
 /// - [`IMUValues`]
-///
 pub struct IMUFilter;
 
 impl Module for IMUFilter {
@@ -15,7 +14,7 @@ impl Module for IMUFilter {
 }
 
 /// Struct containing gyroscope, accelerometer and angles.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct IMUValues {
     /// The Gyroscope provides direct measurements of the rotational speed along
     /// three axes (x, y and z) in radians per second (rad/s). The Z axis is facing up.
@@ -34,7 +33,7 @@ pub struct IMUValues {
 }
 
 #[system]
-fn imu_filter(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()> {
+pub fn imu_filter(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()> {
     imu_values.gyroscope = nao_state.gyroscope;
     imu_values.accelerometer = nao_state.accelerometer;
     imu_values.angles = nao_state.angles;

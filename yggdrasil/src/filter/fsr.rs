@@ -29,7 +29,7 @@ pub struct Contacts {
 }
 
 #[system]
-fn force_sensitive_resistor_filter(
+pub fn force_sensitive_resistor_filter(
     nao_state: &NaoState,
     force_sensitive_resistors: &mut ForceSensitiveResistors,
     contacts: &mut Contacts,

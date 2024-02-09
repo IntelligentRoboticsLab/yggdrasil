@@ -5,9 +5,11 @@ pub mod camera;
 pub mod config;
 pub mod filter;
 pub mod game_controller;
+pub mod kinematics;
 pub mod leds;
 pub mod nao;
 pub mod primary_state;
+pub mod walk;
 
 pub use miette::Result;
 

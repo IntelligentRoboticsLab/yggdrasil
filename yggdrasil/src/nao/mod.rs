@@ -1,4 +1,7 @@
+mod cycle_time;
+
 use crate::prelude::*;
+pub use cycle_time::*;
 
 use std::{env, time::Duration};
 
@@ -53,6 +56,7 @@ impl RobotInfo {
 /// - [`NaoState`]
 /// - [`NaoControlMessage`]
 /// - [`RobotInfo`]
+/// - [`CycleTime`]
 pub struct NaoModule;
 
 impl Module for NaoModule {
@@ -60,10 +64,13 @@ impl Module for NaoModule {
         Ok(app
             .add_startup_system(initialize_nao)?
             .init_resource::<NaoControlMessage>()?
-            .add_system(write_hardware_info))
+            .add_system(write_hardware_info)
+            .add_startup_system(cycle_time::initialize_cycle_counter)?
+            .add_system(cycle_time::update_cycle_time.after(write_hardware_info)))
     }
 }
 
+#[startup_system]
 fn initialize_nao(storage: &mut Storage) -> Result<()> {
     let mut nao = LolaBackend::connect_with_retry(10, Duration::from_millis(500))?;
     let info = RobotInfo::new(&mut nao)?;
@@ -75,6 +82,8 @@ fn initialize_nao(storage: &mut Storage) -> Result<()> {
         info.head_id,
         info.body_id
     );
+
+    tracing::info!("Battery level: {}", state.battery.charge,);
 
     storage.add_resource(Resource::new(nao))?;
     storage.add_resource(Resource::new(state))?;
