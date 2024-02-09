@@ -656,6 +656,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
+name = "forward_ref_generic"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d39b515240e7f7e94b1c3471425f0778762d2f98de03e846bd4221c856752209"
+
+[[package]]
 name = "futures"
 version = "0.3.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1236,10 +1242,12 @@ dependencies = [
 [[package]]
 name = "nidhogg"
 version = "0.1.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#93391582cdc6578e977567bc9d1b0386e50d3a77"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#8df3e141ca922a6522fbac121820c5ea6b25168b"
 dependencies = [
+ "forward_ref_generic",
  "miette",
  "nidhogg_derive",
+ "num",
  "rmp-serde",
  "serde",
  "thiserror",
@@ -1249,7 +1257,7 @@ dependencies = [
 [[package]]
 name = "nidhogg_derive"
 version = "0.1.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#93391582cdc6578e977567bc9d1b0386e50d3a77"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#8df3e141ca922a6522fbac121820c5ea6b25168b"
 dependencies = [
  "itertools",
  "proc-macro2",
