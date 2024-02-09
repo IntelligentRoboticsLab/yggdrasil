@@ -14,11 +14,7 @@ pub struct YuyvImage {
 }
 
 impl YuyvImage {
-    fn yuyv_to_rgb(
-        source: &[u8],
-        mut destination: impl Write,
-        rotate_180_degrees: bool,
-    ) -> Result<()> {
+    fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
         fn clamp(value: i32) -> u8 {
             #[allow(clippy::cast_sign_loss)]
             #[allow(clippy::cast_possible_truncation)]
@@ -53,11 +49,7 @@ impl YuyvImage {
         // We iterate over all the pixel duo's in `source`, which is why we take steps of four
         // bytes.
         for pixel_duo_id in 0..(source.len() / 4) {
-            let input_offset: usize = if rotate_180_degrees {
-                source.len() - 4 * pixel_duo_id - 4
-            } else {
-                pixel_duo_id * 4
-            };
+            let input_offset = pixel_duo_id * 4;
 
             let y1 = source[input_offset];
             let u = source[input_offset + 1];
@@ -66,11 +58,7 @@ impl YuyvImage {
 
             let ((red1, green1, blue1), (red2, green2, blue2)) = yuyv422_to_rgb(y1, u, y2, v);
 
-            if rotate_180_degrees {
-                destination.write_all(&[red2, green2, blue2, red1, green1, blue1])?;
-            } else {
-                destination.write_all(&[red1, green1, blue1, red2, green2, blue2])?;
-            }
+            destination.write_all(&[red1, green1, blue1, red2, green2, blue2])?;
         }
 
         Ok(())
@@ -92,7 +80,7 @@ impl YuyvImage {
 
         let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
 
-        Self::yuyv_to_rgb(self, &mut rgb_buffer, true)?;
+        Self::yuyv_to_rgb(self, &mut rgb_buffer)?;
 
         encoder.encode(
             &rgb_buffer,
@@ -120,7 +108,7 @@ impl YuyvImage {
     /// This function fails if it cannot allocate an [`RgbImage`].
     pub fn to_rgb(&self) -> Result<RgbImage> {
         let mut rgb_image_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
-        Self::yuyv_to_rgb(self, &mut rgb_image_buffer, false)?;
+        Self::yuyv_to_rgb(self, &mut rgb_image_buffer)?;
 
         Ok(RgbImage {
             frame: rgb_image_buffer,
