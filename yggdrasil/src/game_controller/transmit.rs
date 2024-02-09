@@ -1,3 +1,4 @@
+use super::GameControllerConfig;
 use super::GameControllerData;
 
 use bifrost::communication::{GameControllerReturnMessage, GAME_CONTROLLER_RETURN_PORT};
@@ -10,13 +11,12 @@ use std::mem::size_of;
 use std::net::SocketAddr;
 use std::ops::Add;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use std::time::Instant;
 
 use miette::IntoDiagnostic;
 
 use crate::prelude::*;
-
-const GAME_CONTROLLER_RETURN_DELAY: Duration = Duration::from_millis(500);
 
 pub(super) struct GameControllerTransmitModule;
 
@@ -32,9 +32,10 @@ async fn transmit_game_controller_return_message(
     game_controller_socket: Arc<UdpSocket>,
     last_transmitted_return_message: Instant,
     mut game_controller_address: SocketAddr,
+    game_controller_return_delay: Duration,
 ) -> Result<(GameControllerReturnMessage, Instant)> {
     let duration_to_wait = last_transmitted_return_message
-        .add(GAME_CONTROLLER_RETURN_DELAY)
+        .add(game_controller_return_delay)
         .duration_since(Instant::now());
     sleep(duration_to_wait).await;
 
@@ -74,6 +75,7 @@ fn transmit_system(
     transmit_game_controller_return_message_task: &mut AsyncTask<
         Result<(GameControllerReturnMessage, Instant)>,
     >,
+    config: &GameControllerConfig,
 ) -> Result<()> {
     let Some((game_controller_address, mut last_transmitted_update_timestamp)) =
         game_controller_data.game_controller_address
@@ -96,6 +98,7 @@ fn transmit_system(
             game_controller_data.socket.clone(),
             last_transmitted_update_timestamp,
             game_controller_address,
+            config.game_controller_return_delay.clone(),
         ),
     );
 

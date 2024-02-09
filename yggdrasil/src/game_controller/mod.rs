@@ -2,9 +2,11 @@ use bifrost::communication::GAME_CONTROLLER_DATA_PORT;
 
 use tokio::net::UdpSocket;
 
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DurationMilliSeconds};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use miette::IntoDiagnostic;
 
@@ -12,6 +14,20 @@ use crate::prelude::*;
 
 mod receive;
 mod transmit;
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct GameControllerConfig {
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub game_controller_timeout: Duration,
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub game_controller_return_delay: Duration,
+}
+
+impl Config for GameControllerConfig {
+    const PATH: &'static str = "game_controller.toml";
+}
 
 struct GameControllerData {
     pub socket: Arc<UdpSocket>,
@@ -60,7 +76,8 @@ impl GameControllerModule {
 
 impl Module for GameControllerModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_startup_system(Self::add_resources)?
+        app.init_config::<GameControllerConfig>()?
+            .add_startup_system(Self::add_resources)?
             .add_module(receive::GameControllerReceiveModule)?
             .add_module(transmit::GameControllerTransmitModule)
     }

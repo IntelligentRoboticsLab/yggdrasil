@@ -1,10 +1,24 @@
 use crate::{filter::button::ChestButton, leds::Leds, prelude::*};
 
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DurationMilliSeconds};
+use std::time::Duration;
+
 use bifrost::communication::{GameControllerMessage, GameState};
 use nidhogg::types::color;
 use std::time::Duration;
 
-const CHEST_BLINK_INTERVAL: Duration = Duration::from_millis(1000);
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct PrimaryStateConfig {
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub chest_blink_interval: Duration,
+}
+
+impl Config for PrimaryStateConfig {
+    const PATH: &'static str = "primary_state.toml";
+}
 
 /// A module providing information about the primary state of the robot. These
 /// states include: "Unstiff", "Initial", "Ready", "Set", "Playing",
@@ -16,9 +30,9 @@ pub struct PrimaryStateModule;
 
 impl Module for PrimaryStateModule {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_resource(Resource::new(PrimaryState::Unstiff))?
+        Ok(app.add_resource(Resource::new(PrimaryState::Unstiff))?
             .add_system(update_primary_state.after(crate::filter::button::button_filter)))
+            .init_config::<PrimaryStateConfig>()?
     }
 }
 
@@ -59,6 +73,7 @@ pub fn update_primary_state(
     game_controller_message: &Option<GameControllerMessage>,
     led: &mut Leds,
     chest_button: &ChestButton,
+    config: &PrimaryStateConfig,
 ) -> Result<()> {
     use PrimaryState as PS;
 
@@ -98,17 +113,17 @@ pub fn update_primary_state(
         led.unset_chest_blink();
 
         match next_primary_state {
-            PS::Unstiff => led.set_chest_blink(color::f32::BLUE, CHEST_BLINK_INTERVAL),
-            PS::Initial => led.chest = color::f32::GRAY,
-            PS::Ready => led.chest = color::f32::BLUE,
-            PS::Set => led.chest = color::f32::YELLOW,
-            PS::Playing => led.chest = color::f32::GREEN,
-            PS::Penalized => led.chest = color::f32::RED,
-            PS::Finished => led.chest = color::f32::GRAY,
-            PS::Calibration => led.chest = color::f32::PURPLE,
+            PS::Unstiff => led.set_chest_blink(Color::BLUE, config.chest_blink_interval),
+            PS::Initial => led.chest = Color::GRAY,
+            PS::Ready => led.chest = Color::BLUE,
+            PS::Set => led.chest = Color::YELLOW,
+            PS::Playing => led.chest = Color::GREEN,
+            PS::Penalized => led.chest = Color::RED,
+            PS::Finished => led.chest = Color::GRAY,
+            PS::Calibration => led.chest = Color::PURPLE,
         };
     } else if next_primary_state == PS::Unstiff {
-        led.set_chest_blink(color::f32::BLUE, CHEST_BLINK_INTERVAL)
+        led.set_chest_blink(Color::BLUE, config.chest_blink_interval)
     }
 
     *primary_state = next_primary_state;

@@ -1,13 +1,10 @@
 use crate::prelude::*;
 
+use std::time::Instant;
+
+use super::FilterConfig;
 use nidhogg::NaoState;
 use std::time::{Duration, Instant};
-
-/// The threshold for a button to be considered pressed.
-const BUTTON_ACTIVATION_THRESHOLD: f32 = 0.5;
-
-/// Describes the time a button needs to be held down, in order to move to the [`ButtonState::Held`].
-const BUTTON_HELD_DURATION_THRESHOLD: Duration = Duration::from_millis(500);
 
 /// A module offering structured wrappers for each Nao button, derived from the raw [`NaoState`].
 ///
@@ -66,12 +63,12 @@ impl ButtonState {
     }
 
     /// Get the next state based on whether the button is currently pressed down.
-    pub fn next(&self, is_pressed: bool) -> Self {
+    pub fn next(&self, config: &FilterConfig, is_pressed: bool) -> Self {
         match (self, is_pressed) {
             (ButtonState::Pressed(start), true) => {
                 if Instant::now()
                     .checked_duration_since(*start)
-                    .is_some_and(|duration| duration >= BUTTON_HELD_DURATION_THRESHOLD)
+                    .is_some_and(|duration| duration >= config.button_held_duration_threshold)
                 {
                     Self::Held(Instant::now())
                 } else {
@@ -153,49 +150,64 @@ pub fn button_filter(
     right_hand_buttons: &mut RightHandButtons,
     left_foot_buttons: &mut LeftFootButtons,
     right_foot_buttons: &mut RightFootButtons,
+    config: &FilterConfig,
 ) -> Result<()> {
-    head_buttons.front = head_buttons
-        .front
-        .next(nao_state.touch.head_front >= BUTTON_ACTIVATION_THRESHOLD);
-    head_buttons.middle = head_buttons
-        .middle
-        .next(nao_state.touch.head_middle >= BUTTON_ACTIVATION_THRESHOLD);
-    head_buttons.rear = head_buttons
-        .rear
-        .next(nao_state.touch.head_rear >= BUTTON_ACTIVATION_THRESHOLD);
-    chest_button.state = chest_button
-        .state
-        .next(nao_state.touch.chest_board >= BUTTON_ACTIVATION_THRESHOLD);
-    left_hand_buttons.left = left_hand_buttons
-        .left
-        .next(nao_state.touch.left_hand_left >= BUTTON_ACTIVATION_THRESHOLD);
-    left_hand_buttons.right = left_hand_buttons
-        .right
-        .next(nao_state.touch.left_hand_right >= BUTTON_ACTIVATION_THRESHOLD);
-    left_hand_buttons.back = left_hand_buttons
-        .back
-        .next(nao_state.touch.left_hand_back >= BUTTON_ACTIVATION_THRESHOLD);
-    right_hand_buttons.left = right_hand_buttons
-        .left
-        .next(nao_state.touch.right_hand_left >= BUTTON_ACTIVATION_THRESHOLD);
-    right_hand_buttons.right = right_hand_buttons
-        .right
-        .next(nao_state.touch.right_hand_right >= BUTTON_ACTIVATION_THRESHOLD);
-    right_hand_buttons.back = right_hand_buttons
-        .back
-        .next(nao_state.touch.right_hand_back >= BUTTON_ACTIVATION_THRESHOLD);
-    left_foot_buttons.left = left_foot_buttons
-        .left
-        .next(nao_state.touch.left_foot_left >= BUTTON_ACTIVATION_THRESHOLD);
-    left_foot_buttons.right = left_foot_buttons
-        .right
-        .next(nao_state.touch.left_foot_right >= BUTTON_ACTIVATION_THRESHOLD);
-    right_foot_buttons.left = right_foot_buttons
-        .left
-        .next(nao_state.touch.right_foot_left >= BUTTON_ACTIVATION_THRESHOLD);
-    right_foot_buttons.right = right_foot_buttons
-        .right
-        .next(nao_state.touch.right_foot_right >= BUTTON_ACTIVATION_THRESHOLD);
+    head_buttons.front = head_buttons.front.next(
+        config,
+        nao_state.touch.head_front >= config.button_activation_threshold,
+    );
+    head_buttons.middle = head_buttons.middle.next(
+        config,
+        nao_state.touch.head_middle >= config.button_activation_threshold,
+    );
+    head_buttons.rear = head_buttons.rear.next(
+        config,
+        nao_state.touch.head_rear >= config.button_activation_threshold,
+    );
+    chest_button.state = chest_button.state.next(
+        config,
+        nao_state.touch.chest_board >= config.button_activation_threshold,
+    );
+    left_hand_buttons.left = left_hand_buttons.left.next(
+        config,
+        nao_state.touch.left_hand_left >= config.button_activation_threshold,
+    );
+    left_hand_buttons.right = left_hand_buttons.right.next(
+        config,
+        nao_state.touch.left_hand_right >= config.button_activation_threshold,
+    );
+    left_hand_buttons.back = left_hand_buttons.back.next(
+        config,
+        nao_state.touch.left_hand_back >= config.button_activation_threshold,
+    );
+    right_hand_buttons.left = right_hand_buttons.left.next(
+        config,
+        nao_state.touch.right_hand_left >= config.button_activation_threshold,
+    );
+    right_hand_buttons.right = right_hand_buttons.right.next(
+        config,
+        nao_state.touch.right_hand_right >= config.button_activation_threshold,
+    );
+    right_hand_buttons.back = right_hand_buttons.back.next(
+        config,
+        nao_state.touch.right_hand_back >= config.button_activation_threshold,
+    );
+    left_foot_buttons.left = left_foot_buttons.left.next(
+        config,
+        nao_state.touch.left_foot_left >= config.button_activation_threshold,
+    );
+    left_foot_buttons.right = left_foot_buttons.right.next(
+        config,
+        nao_state.touch.left_foot_right >= config.button_activation_threshold,
+    );
+    right_foot_buttons.left = right_foot_buttons.left.next(
+        config,
+        nao_state.touch.right_foot_left >= config.button_activation_threshold,
+    );
+    right_foot_buttons.right = right_foot_buttons.right.next(
+        config,
+        nao_state.touch.right_foot_right >= config.button_activation_threshold,
+    );
 
     Ok(())
 }
@@ -203,6 +215,15 @@ pub fn button_filter(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use std::time::Duration;
+
+    // Note that this is not an odal config, it's just here to make the tests work.
+    const CONFIG: &FilterConfig = &FilterConfig {
+        button_activation_threshold: 0.5,
+        button_held_duration_threshold: Duration::from_millis(500),
+        ground_contact_threshold: 0.01,
+    };
 
     #[test]
     fn button_update() {
@@ -212,34 +233,34 @@ mod tests {
         assert!(!button.is_pressed());
         assert!(!button.is_held());
 
-        button = button.next(true);
+        button = button.next(CONFIG, true);
 
         assert!(!button.is_tapped());
         assert!(button.is_pressed());
         assert!(!button.is_held());
 
-        std::thread::sleep(BUTTON_HELD_DURATION_THRESHOLD);
-        button = button.next(true);
+        std::thread::sleep(CONFIG.button_held_duration_threshold);
+        button = button.next(CONFIG, true);
 
         assert!(!button.is_tapped());
         assert!(button.is_pressed());
         assert!(button.is_held());
 
-        button = button.next(false);
+        button = button.next(CONFIG, false);
 
         assert!(button.is_tapped());
         assert!(!button.is_pressed(),);
         assert!(!button.is_held(),);
 
-        button = button.next(true);
-        std::thread::sleep(BUTTON_HELD_DURATION_THRESHOLD / 2);
-        button = button.next(true);
+        button = button.next(CONFIG, true);
+        std::thread::sleep(CONFIG.button_held_duration_threshold / 2);
+        button = button.next(CONFIG, true);
 
         assert!(!button.is_tapped());
         assert!(button.is_pressed());
         assert!(!button.is_held());
 
-        button = button.next(false);
+        button = button.next(CONFIG, false);
 
         assert!(button.is_tapped());
         assert!(!button.is_pressed());
