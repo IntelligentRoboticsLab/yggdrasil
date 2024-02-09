@@ -33,7 +33,7 @@ pub struct IMUValues {
 }
 
 #[system]
-fn imu_filter(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()> {
+pub fn imu_filter(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()> {
     imu_values.gyroscope = nao_state.gyroscope;
     imu_values.accelerometer = nao_state.accelerometer;
     imu_values.angles = nao_state.angles;
