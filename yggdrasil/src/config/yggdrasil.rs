@@ -18,4 +18,3 @@ pub struct YggdrasilConfig {
 impl Config for YggdrasilConfig {
     const PATH: &'static str = "yggdrasil.toml";
 }
-
