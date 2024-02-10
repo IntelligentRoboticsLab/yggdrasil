@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use self::{button::ButtonFilter, fsr::FSRFilter, imu::IMUFilter,sonar::SonarFilter};
+use self::{button::ButtonFilter, fsr::FSRFilter, imu::IMUFilter, sonar::SonarFilter};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
