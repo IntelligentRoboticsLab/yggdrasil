@@ -1,3 +1,4 @@
+use tyr::tasks::TaskModule;
 use yggdrasil::{
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, filter::FilterModule,
     game_controller::GameControllerModule, leds::LedsModule, nao::NaoModule, prelude::*,
@@ -11,8 +12,8 @@ fn main() -> Result<()> {
     let app = App::new()
         .add_module(TaskModule)?
         .add_module(NaoModule)?
+        .add_module(ConfigModule)?
         .add_module(FilterModule)?
-        .add_module(WeeSoundModule)?
         .add_module(CameraModule)?
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?
