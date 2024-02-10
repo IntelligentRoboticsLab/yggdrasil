@@ -23,10 +23,12 @@ pub struct GameControllerConfig {
     pub game_controller_timeout: Duration,
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub game_controller_return_delay: Duration,
-}
-
-impl Config for GameControllerConfig {
-    const PATH: &'static str = "game_controller.toml";
+    pub player_number: u8,
+    pub team_number: u8,
+    pub fallen: bool,
+    pub pose:[f32; 3],
+    pub ball_age: f32,
+    pub ball_position:[f32; 2],
 }
 
 struct GameControllerData {
@@ -76,8 +78,7 @@ impl GameControllerModule {
 
 impl Module for GameControllerModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.init_config::<GameControllerConfig>()?
-            .add_startup_system(Self::add_resources)?
+        app.add_startup_system(Self::add_resources)?
             .add_module(receive::GameControllerReceiveModule)?
             .add_module(transmit::GameControllerTransmitModule)
     }

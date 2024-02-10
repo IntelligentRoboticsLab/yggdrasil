@@ -1,9 +1,6 @@
 use crate::prelude::*;
 
-use self::{
-    audio_input::AudioInputFilter, button::ButtonFilter, fsr::FSRFilter, imu::IMUFilter,
-    sonar::SonarFilter,
-};
+use self::{button::ButtonFilter, fsr::FSRFilter, imu::IMUFilter,sonar::SonarFilter};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
@@ -26,15 +23,11 @@ pub struct FilterConfig {
     pub ground_contact_threshold: f32,
 }
 
-impl Config for FilterConfig {
-    const PATH: &'static str = "filter.toml";
-}
-
 pub struct FilterModule;
 
 impl Module for FilterModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.init_config::<FilterConfig>()?
+        let app = app
             .add_module(ButtonFilter)?
             .add_module(FSRFilter)?
             .add_module(IMUFilter)?
@@ -42,7 +35,6 @@ impl Module for FilterModule {
 
         #[cfg(feature = "alsa")]
         let app = app.add_module(audio_input::AudioInputFilter)?;
-
         Ok(app)
     }
 }

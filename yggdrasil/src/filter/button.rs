@@ -1,10 +1,8 @@
 use crate::prelude::*;
 
-use std::time::Instant;
-
 use super::FilterConfig;
 use nidhogg::NaoState;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 /// A module offering structured wrappers for each Nao button, derived from the raw [`NaoState`].
 ///
@@ -141,6 +139,7 @@ pub struct RightFootButtons {
     pub right: ButtonState,
 }
 
+#[allow(clippy::too_many_arguments)]
 #[system]
 pub fn button_filter(
     nao_state: &NaoState,

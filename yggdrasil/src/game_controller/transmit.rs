@@ -11,7 +11,6 @@ use std::mem::size_of;
 use std::net::SocketAddr;
 use std::ops::Add;
 use std::sync::Arc;
-use std::time::Duration;
 use std::time::Instant;
 
 use miette::IntoDiagnostic;
@@ -32,29 +31,21 @@ async fn transmit_game_controller_return_message(
     game_controller_socket: Arc<UdpSocket>,
     last_transmitted_return_message: Instant,
     mut game_controller_address: SocketAddr,
-    game_controller_return_delay: Duration,
+    config: GameControllerConfig,
 ) -> Result<(GameControllerReturnMessage, Instant)> {
     let duration_to_wait = last_transmitted_return_message
-        .add(game_controller_return_delay)
+        .add(config.game_controller_return_delay)
         .duration_since(Instant::now());
     sleep(duration_to_wait).await;
 
-    // TODO: Substitute with real data from resources and/or configs.
-    let robot_number = 2;
-    let team_number = 8;
-    let fallen = false;
-    let pose = [0f32; 3];
-    let ball_age = -1f32;
-    let ball_position = [0f32; 2];
-
     let mut message_buffer = [0u8; size_of::<GameControllerReturnMessage>()];
     let game_controller_message = GameControllerReturnMessage::new(
-        robot_number,
-        team_number,
-        fallen as u8,
-        pose,
-        ball_age,
-        ball_position,
+        config.player_number,
+        config.team_number,
+        config.fallen as u8,
+        config.pose,
+        config.ball_age,
+        config.ball_position,
     );
     game_controller_message
         .encode(message_buffer.as_mut_slice())
@@ -92,13 +83,13 @@ fn transmit_system(
         }
         None => (),
     }
-
+    let config = config.clone();
     _ = transmit_game_controller_return_message_task.try_spawn(
         transmit_game_controller_return_message(
             game_controller_data.socket.clone(),
             last_transmitted_update_timestamp,
             game_controller_address,
-            config.game_controller_return_delay.clone(),
+            *config,
         ),
     );
 

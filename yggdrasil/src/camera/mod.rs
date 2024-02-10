@@ -17,10 +17,6 @@ pub struct CameraConfig {
     pub number_of_bottom_camera_buffers: u32,
 }
 
-impl Config for CameraConfig {
-    const PATH: &'static str = "camera.toml";
-}
-
 /// This module captures images using the top- and bottom camera of the NAO.
 ///
 /// The captured images are stored as image resources, which are updated whenever a newer image is
@@ -34,7 +30,6 @@ pub struct CameraModule;
 impl Module for CameraModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
-            .init_config::<CameraConfig>()?
             .add_startup_system(initialize_cameras)?
             .add_system(camera_system))
     }

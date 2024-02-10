@@ -1,13 +1,36 @@
+[camera]
 # This variable specifies how many `TopImage`'s' can be alive at the same time.
-#
 # It is recommended to have at least one more buffer than is required. This way, the next frame
 # from the camera can already be stored in a buffer, reducing the latency between destructing a
 # `TopImage` and being able to fetch the newest `TopImage`.
 number_of_top_camera_buffers = 2
 
 # This variable specifies how many `BottomImage`'s' can be alive at the same time.
-#
 # It is recommended to have at least one more buffer than is required. This way, the next frame
 # from the camera can already be stored in a buffer, reducing the latency between destructing a
 # `BottomImage` and being able to fetch the newest `BottomImage`.
 number_of_bottom_camera_buffers = 2
+
+[filter]
+# The threshold for a button to be considered pressed.
+button_activation_threshold = 0.5
+
+# Describes the time in ms a button needs to be held down, in order to move to the [`ButtonState::Held`].
+button_held_duration_threshold = 500
+
+# Threshold for ground contact detection using average FSR sensor values from both feet.
+ground_contact_threshold = 0.01
+
+[primary_state]
+# Time duration between chest blinks in ms.
+chest_blink_interval = 1000
+
+[game_controller]
+game_controller_return_delay = 500
+game_controller_timeout = 5000
+player_number = 2
+team_number = 8
+fallen = false
+pose = [0.0, 0.0, 0.0]
+ball_age = -1.0
+ball_position = [0.0, 0.0]

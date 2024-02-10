@@ -1,4 +1,5 @@
 pub mod tyr;
+pub mod yggdrasil;
 
 use std::path::{Path, PathBuf};
 
@@ -8,6 +9,7 @@ use ::tyr::tasks::TaskModule;
 use odal::{ConfigKind, Error, ErrorKind};
 
 use tyr::TyrConfig;
+use yggdrasil::YggdrasilConfig;
 
 /// This module adds functionality to load configuration structs from files.
 ///
@@ -46,6 +48,7 @@ impl Module for ConfigModule {
     fn initialize(self, app: App) -> miette::Result<App> {
         app.add_startup_system(initialize_config_roots)?
             .init_config::<TyrConfig>()?
+            .init_config::<YggdrasilConfig>()?
             .add_startup_system(tyr::configure_tyr_hack)?
             .add_module(TaskModule)
     }

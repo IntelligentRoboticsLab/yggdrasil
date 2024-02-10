@@ -5,8 +5,7 @@ use serde_with::{serde_as, DurationMilliSeconds};
 use std::time::Duration;
 
 use bifrost::communication::{GameControllerMessage, GameState};
-use nidhogg::types::color;
-use std::time::Duration;
+use nidhogg::types::Color;
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
@@ -14,10 +13,6 @@ use std::time::Duration;
 pub struct PrimaryStateConfig {
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub chest_blink_interval: Duration,
-}
-
-impl Config for PrimaryStateConfig {
-    const PATH: &'static str = "primary_state.toml";
 }
 
 /// A module providing information about the primary state of the robot. These
@@ -30,9 +25,9 @@ pub struct PrimaryStateModule;
 
 impl Module for PrimaryStateModule {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app.add_resource(Resource::new(PrimaryState::Unstiff))?
+        Ok(app
+            .add_resource(Resource::new(PrimaryState::Unstiff))?
             .add_system(update_primary_state.after(crate::filter::button::button_filter)))
-            .init_config::<PrimaryStateConfig>()?
     }
 }
 

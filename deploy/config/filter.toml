@@ -1,6 +1,0 @@
-# The threshold for a button to be considered pressed.
-button_activation_threshold = 0.5
-# Describes the time in ms a button needs to be held down, in order to move to the [`ButtonState::Held`].
-button_held_duration_threshold = 500
-# Threshold for ground contact detection using average FSR sensor values from both feet.
-ground_contact_threshold = 0.01
