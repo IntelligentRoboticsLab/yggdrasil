@@ -16,7 +16,7 @@ mod receive;
 mod transmit;
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct GameControllerConfig {
     #[serde_as(as = "DurationMilliSeconds<u64>")]
@@ -26,9 +26,9 @@ pub struct GameControllerConfig {
     pub player_number: u8,
     pub team_number: u8,
     pub fallen: bool,
-    pub pose:[f32; 3],
+    pub pose: [f32; 3],
     pub ball_age: f32,
-    pub ball_position:[f32; 2],
+    pub ball_position: [f32; 2],
 }
 
 struct GameControllerData {

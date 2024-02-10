@@ -83,13 +83,12 @@ fn transmit_system(
         }
         None => (),
     }
-    let config = config.clone();
     _ = transmit_game_controller_return_message_task.try_spawn(
         transmit_game_controller_return_message(
             game_controller_data.socket.clone(),
             last_transmitted_update_timestamp,
             game_controller_address,
-            *config,
+            config.clone(),
         ),
     );
 
