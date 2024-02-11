@@ -14,9 +14,9 @@ heimdall = { path = "../crates/heimdall" }
 kira = { workspace = true, optional = true }
 miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true }
-nidhogg = { workspace = true, features = ["lola"] }
+nidhogg = { workspace = true }
 odal = { path = "../crates/odal" }
-rerun = { workspace = true, optional=true }
+rerun = { workspace = true }
 serde = { workspace = true }
 serde_with = { workspace = true }
 tokio = { workspace = true }
@@ -28,4 +28,3 @@ tyr = { path = "../crates/tyr", features = ["odal"] }
 [features]
 default = []
 alsa = ["dep:alsa", "dep:kira"]
-rerun = ["dep:rerun"]

@@ -1,4 +1,6 @@
 use miette::IntoDiagnostic;
+use rerun::RecordingStream;
+use std::time::Instant;
 
 use crate::prelude::*;
 
@@ -12,27 +14,7 @@ impl Module for DebugModule {
     }
 }
 
-#[derive(Debug)]
-pub struct DebugMachine {
-    rec_stream: rerun::RecordingStream,
-}
-
-impl DebugMachine {
-    fn new(rec: rerun::RecordingStream) -> DebugMachine {
-        DebugMachine { rec_stream: rec }
-    }
-
-    pub fn log_behavior(&mut self) {
-        self.rec_stream.log(
-            "behaviour/transitions",
-            &rerun::Arrows2D::from_vectors([[1.0, 0.0], [0.0, -1.0], [-0.7, 0.7]])
-                .with_radii([0.025])
-                .with_origins([[0.25, 0.0], [0.25, 0.0], [-0.1, -0.1]])
-                .with_colors([[255, 0, 0], [0, 255, 0], [127, 0, 255]])
-                .with_labels(["right", "up", "left-down"]),
-        );
-    }
-}
+struct RerunStartTime(Instant);
 
 #[startup_system]
 fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher) -> Result<()> {
@@ -48,11 +30,13 @@ fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher) -> Result<()> {
         )
         .into_diagnostic()?;
 
-    storage.add_resource(Resource::new(DebugMachine::new(rec)))
+    // Recording stream is a essentially an Arc, so we can freely clone it
+    storage.add_resource(Resource::new(rec.clone()))?;
+    storage.add_resource(Resource::new(RerunStartTime(Instant::now())))
 }
 
 #[system]
-pub fn run_debug(panel: &mut DebugMachine) -> Result<()> {
-    panel.log_behavior();
+fn run_debug(rec: &RecordingStream, start_time: &RerunStartTime) -> Result<()> {
+    rec.set_time_seconds("control_loop", start_time.0.elapsed().as_secs_f64());
     Ok(())
 }
