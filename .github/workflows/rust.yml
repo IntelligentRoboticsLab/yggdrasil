@@ -8,6 +8,7 @@ on:
 env:
   CARGO_NET_GIT_FETCH_WITH_CLI: true
   RUSTDOCFLAGS: -D warnings
+  RERUN_IS_PUBLISHING: false
 
 jobs:
   test:
