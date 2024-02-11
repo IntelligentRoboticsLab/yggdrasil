@@ -2,7 +2,7 @@ use miette::IntoDiagnostic;
 use rerun::RecordingStream;
 use std::time::Instant;
 
-use crate::prelude::*;
+use crate::{nao::RobotInfo, prelude::*};
 
 pub struct DebugModule;
 
@@ -17,12 +17,17 @@ impl Module for DebugModule {
 struct RerunStartTime(Instant);
 
 #[startup_system]
-fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher) -> Result<()> {
+fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher, robot_info: &RobotInfo) -> Result<()> {
+    // To spawn a recording stream in serve mode, the tokio runtime needs to be in scope.
     let handle = ad.handle().clone();
     let _guard = handle.enter();
+
+    // Manually set the server address to the robot's IP address, instead of 0.0.0.0
+    // to ensure the rerun server prints the correct connection URL on startup
+    let server_address = format!("10.0.8.{}", robot_info.robot_id);
     let rec = rerun::RecordingStreamBuilder::new("example_nao")
         .serve(
-            "0.0.0.0",
+            &server_address,
             Default::default(),
             Default::default(),
             rerun::MemoryLimit::from_fraction_of_total(0.05),
