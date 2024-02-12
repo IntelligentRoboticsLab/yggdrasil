@@ -43,7 +43,7 @@ fn horizontal_scan_lines(yuyv_image: &YuyvImage, buffer: &mut [u8]) {
 }
 
 fn vertical_scan_lines(yuyv_image: &YuyvImage, buffer: &mut [u8]) {
-    // Warning is disabled, because iterators are to slow here.
+    // Warning is disabled, because iterators are too slow here.
     #[allow(clippy::needless_range_loop)]
     for col_id in 0..yuyv_image.width() / COL_SCAN_LINE_INTERVAL {
         for row_id in 0..yuyv_image.height() {
