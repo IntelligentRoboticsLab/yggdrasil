@@ -3,13 +3,13 @@
 # It is recommended to have at least one more buffer than is required. This way, the next frame
 # from the camera can already be stored in a buffer, reducing the latency between destructing a
 # `TopImage` and being able to fetch the newest `TopImage`.
-number_of_top_camera_buffers = 2
+number_of_top_camera_buffers = 3
 
 # This variable specifies how many `BottomImage`'s' can be alive at the same time.
 # It is recommended to have at least one more buffer than is required. This way, the next frame
 # from the camera can already be stored in a buffer, reducing the latency between destructing a
 # `BottomImage` and being able to fetch the newest `BottomImage`.
-number_of_bottom_camera_buffers = 2
+number_of_bottom_camera_buffers = 3
 
 [filter]
 # The threshold for a button to be considered pressed.
