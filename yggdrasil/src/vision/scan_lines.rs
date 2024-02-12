@@ -1,6 +1,9 @@
 use std::{ops::Deref, time::Instant};
 
-use crate::{camera::TopImage, prelude::*};
+use crate::{
+    camera::{BottomImage, Image, TopImage},
+    prelude::*,
+};
 
 use heimdall::YuyvImage;
 
@@ -12,23 +15,18 @@ pub struct ScanLinesModule;
 impl Module for ScanLinesModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system(scan_lines_system)
-            .add_startup_system(init_buffers)?
-            .add_resource(Resource::new(PreviouslyExecutedAt {
-                horizontal: Instant::now(),
-                vertical: Instant::now(),
-            }))
+            .add_startup_system(init_buffers)
     }
 }
 
-pub struct PreviouslyExecutedAt {
-    horizontal: Instant,
-    vertical: Instant,
-}
-
-#[derive(Default)]
 pub struct ScanLines {
-    pub horizontal: Vec<u8>,
-    pub vertical: Vec<u8>,
+    pub top_horizontal: Vec<u8>,
+    pub top_vertical: Vec<u8>,
+    top_last_executed: Instant,
+
+    pub bottom_horizontal: Vec<u8>,
+    pub bottom_vertical: Vec<u8>,
+    bottom_last_executed: Instant,
 }
 
 fn horizontal_scan_lines(yuyv_image: &YuyvImage, buffer: &mut [u8]) {
@@ -38,7 +36,7 @@ fn horizontal_scan_lines(yuyv_image: &YuyvImage, buffer: &mut [u8]) {
         let buffer_offset = (row_id * yuyv_image.width()) * 4;
         let image_offset = (yuyv_image.width() * 2) * (row_id * ROW_SCAN_LINE_INTERVAL);
 
-        buffer[buffer_offset..buffer_offset + 4].copy_from_slice(
+        buffer[buffer_offset..buffer_offset + yuyv_image.width() * 2].copy_from_slice(
             &yuyv_image.deref()[image_offset..image_offset + yuyv_image.width() * 2],
         );
     }
@@ -59,22 +57,38 @@ fn vertical_scan_lines(yuyv_image: &YuyvImage, buffer: &mut [u8]) {
     }
 }
 
+fn calc_buffer_size(image: &Image) -> (usize, usize) {
+    let horizontal_buffer_size =
+        image.yuyv_image().width() * 4 * (image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL);
+    let vertical_buffer_size =
+        image.yuyv_image().height() * 4 * (image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL);
+
+    (horizontal_buffer_size, vertical_buffer_size)
+}
+
 #[startup_system]
-pub fn init_buffers(storage: &mut Storage, top_image: &TopImage) -> Result<()> {
-    let scan_lines = ScanLines {
-        horizontal: vec![
-            0u8;
-            top_image.yuyv_image().width()
-                * 4
-                * (top_image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL)
-        ],
-        vertical: vec![
-            0u8;
-            top_image.yuyv_image().height()
-                * 4
-                * (top_image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL)
-        ],
+pub fn init_buffers(
+    storage: &mut Storage,
+    top_image: &TopImage,
+    bottom_image: &BottomImage,
+) -> Result<()> {
+    let (top_horizontal_buffer_size, top_vertical_buffer_size) = calc_buffer_size(top_image);
+    let (bottom_horizontal_buffer_size, bottom_vertical_buffer_size) =
+        calc_buffer_size(bottom_image);
+
+    let mut scan_lines = ScanLines {
+        top_horizontal: vec![0u8; top_horizontal_buffer_size],
+        top_vertical: vec![0u8; top_vertical_buffer_size],
+        top_last_executed: *top_image.timestamp(),
+        bottom_horizontal: vec![0u8; bottom_horizontal_buffer_size],
+        bottom_vertical: vec![0u8; bottom_vertical_buffer_size],
+        bottom_last_executed: *bottom_image.timestamp(),
     };
+
+    horizontal_scan_lines(top_image.yuyv_image(), &mut scan_lines.top_horizontal);
+    vertical_scan_lines(top_image.yuyv_image(), &mut scan_lines.top_vertical);
+    horizontal_scan_lines(bottom_image.yuyv_image(), &mut scan_lines.bottom_horizontal);
+    vertical_scan_lines(bottom_image.yuyv_image(), &mut scan_lines.bottom_vertical);
 
     storage.add_resource(Resource::new(scan_lines))?;
 
@@ -83,20 +97,22 @@ pub fn init_buffers(storage: &mut Storage, top_image: &TopImage) -> Result<()> {
 
 #[system]
 pub fn scan_lines_system(
-    previously_executed_at: &mut PreviouslyExecutedAt,
     scan_lines: &mut ScanLines,
     top_image: &TopImage,
+    bottom_image: &BottomImage,
 ) -> Result<()> {
-    if previously_executed_at.horizontal != *top_image.timestamp() {
-        horizontal_scan_lines(top_image.yuyv_image(), &mut scan_lines.horizontal);
+    if scan_lines.top_last_executed != *top_image.timestamp() {
+        horizontal_scan_lines(top_image.yuyv_image(), &mut scan_lines.top_horizontal);
+        vertical_scan_lines(top_image.yuyv_image(), &mut scan_lines.top_vertical);
 
-        previously_executed_at.horizontal = *top_image.timestamp();
+        scan_lines.top_last_executed = *top_image.timestamp();
     }
 
-    if previously_executed_at.vertical != *top_image.timestamp() {
-        vertical_scan_lines(top_image.yuyv_image(), &mut scan_lines.vertical);
+    if scan_lines.bottom_last_executed != *bottom_image.timestamp() {
+        horizontal_scan_lines(bottom_image.yuyv_image(), &mut scan_lines.bottom_horizontal);
+        vertical_scan_lines(bottom_image.yuyv_image(), &mut scan_lines.bottom_vertical);
 
-        previously_executed_at.vertical = *top_image.timestamp();
+        scan_lines.bottom_last_executed = *bottom_image.timestamp();
     }
 
     Ok(())
