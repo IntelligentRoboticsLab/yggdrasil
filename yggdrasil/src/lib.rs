@@ -10,6 +10,7 @@ pub mod kinematics;
 pub mod leds;
 pub mod nao;
 pub mod primary_state;
+pub mod vision;
 pub mod walk;
 
 pub use miette::Result;
