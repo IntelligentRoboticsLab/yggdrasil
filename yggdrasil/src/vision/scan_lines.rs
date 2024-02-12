@@ -36,9 +36,13 @@ fn horizontal_scan_lines(yuyv_image: &YuyvImage, buffer: &mut [u8]) {
         let buffer_offset = (row_id * yuyv_image.width()) * 4;
         let image_offset = (yuyv_image.width() * 2) * (row_id * ROW_SCAN_LINE_INTERVAL);
 
-        buffer[buffer_offset..buffer_offset + yuyv_image.width() * 2].copy_from_slice(
-            &yuyv_image.deref()[image_offset..image_offset + yuyv_image.width() * 2],
-        );
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                yuyv_image.as_ptr().byte_add(image_offset),
+                buffer.as_mut_ptr().byte_add(buffer_offset),
+                yuyv_image.width() * 2,
+            );
+        }
     }
 }
 
@@ -51,8 +55,13 @@ fn vertical_scan_lines(yuyv_image: &YuyvImage, buffer: &mut [u8]) {
             let image_offset =
                 row_id * yuyv_image.width() * 2 + col_id * COL_SCAN_LINE_INTERVAL * 2;
 
-            buffer[buffer_offset..buffer_offset + 4]
-                .copy_from_slice(&yuyv_image[image_offset..image_offset + 4]);
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    yuyv_image.as_ptr().byte_add(image_offset),
+                    buffer.as_mut_ptr().byte_add(buffer_offset),
+                    4,
+                );
+            }
         }
     }
 }
