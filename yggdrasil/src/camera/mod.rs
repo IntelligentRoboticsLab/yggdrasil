@@ -178,7 +178,7 @@ fn camera_system(
             top_camera_debug.try_spawn(|| {
                 log_jpeg_image(cloned, rec, "top_image").expect("failed to log top image");
                 JpegTopImage
-            });
+            })?;
         }
     }
 
@@ -191,7 +191,7 @@ fn camera_system(
             bottom_camera_debug.try_spawn(|| {
                 log_jpeg_image(cloned, rec, "bottom_image").expect("failed to log top image");
                 JpegBottomImage
-            });
+            })?;
         }
     }
 
