@@ -176,9 +176,11 @@ fn camera_system(
         let rec = rec.clone();
         if !top_camera_debug.active() {
             top_camera_debug.try_spawn(|| {
-                log_jpeg_image(cloned, rec, "top_image").expect("failed to log top image");
+                log_jpeg_image(cloned, rec, "top_camera/image").expect("failed to log top image");
                 JpegTopImage
             })?;
+        } else {
+            top_camera_debug.poll();
         }
     }
 
@@ -189,9 +191,12 @@ fn camera_system(
         let rec = rec.clone();
         if !bottom_camera_debug.active() {
             bottom_camera_debug.try_spawn(|| {
-                log_jpeg_image(cloned, rec, "bottom_image").expect("failed to log top image");
+                log_jpeg_image(cloned, rec, "bottom_camera/image")
+                    .expect("failed to log top image");
                 JpegBottomImage
             })?;
+        } else {
+            bottom_camera_debug.poll();
         }
     }
 
