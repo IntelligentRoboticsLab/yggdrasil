@@ -20,13 +20,39 @@ impl Module for ScanLinesModule {
 }
 
 pub struct ScanLines {
-    pub top_horizontal: Vec<u8>,
-    pub top_vertical: Vec<u8>,
+    top_horizontal: Vec<u8>,
+    top_vertical: Vec<u8>,
     top_last_executed: Instant,
 
-    pub bottom_horizontal: Vec<u8>,
-    pub bottom_vertical: Vec<u8>,
+    bottom_horizontal: Vec<u8>,
+    bottom_vertical: Vec<u8>,
     bottom_last_executed: Instant,
+}
+
+impl ScanLines {
+    pub fn top_timestamp(&self) -> Instant {
+        self.top_last_executed
+    }
+
+    pub fn bottom_timestamp(&self) -> Instant {
+        self.bottom_last_executed
+    }
+
+    pub fn raw_top_horizontal(&self) -> &[u8] {
+        &self.top_horizontal
+    }
+
+    pub fn raw_top_vertical(&self) -> &[u8] {
+        &self.top_vertical
+    }
+
+    pub fn raw_bottom_horizontal(&self) -> &[u8] {
+        &self.bottom_horizontal
+    }
+
+    pub fn raw_bottom_vertical(&self) -> &[u8] {
+        &self.bottom_vertical
+    }
 }
 
 fn horizontal_scan_lines(yuyv_image: &YuyvImage, buffer: &mut [u8]) {
