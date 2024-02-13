@@ -1099,6 +1099,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cmake"
+version = "0.1.50"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a31c789563b815f77f4250caee12365734369f942439b7defd71e18a48197130"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "cocoa"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2629,6 +2638,7 @@ dependencies = [
  "linuxvideo",
  "miette",
  "thiserror",
+ "turbojpeg",
 ]
 
 [[package]]
@@ -6777,6 +6787,29 @@ dependencies = [
  "thiserror",
  "url",
  "utf-8",
+]
+
+[[package]]
+name = "turbojpeg"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb5080f5adaa92c82bf84f825dd092e9692c923ee652f1634835e9a1f372518d"
+dependencies = [
+ "libc",
+ "thiserror",
+ "turbojpeg-sys",
+]
+
+[[package]]
+name = "turbojpeg-sys"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3fa6daade3b979fb7454cce5ebcb9772ce7a1cf476ea27ed20ed06e13d9bc983"
+dependencies = [
+ "anyhow",
+ "cmake",
+ "libc",
+ "pkg-config",
 ]
 
 [[package]]

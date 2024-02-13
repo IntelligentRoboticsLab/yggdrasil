@@ -1,7 +1,10 @@
+use core::slice::SlicePattern;
 use std::path::Path;
+use std::time::Instant;
 use std::{fs::File, io::Write, ops::Deref};
 
-use image::codecs::jpeg::JpegEncoder;
+use image::codecs::jpeg::{JpegEncoder, PixelDensity};
+use miette::IntoDiagnostic;
 
 use crate::rgb_image::RgbImage;
 use crate::Result;
@@ -92,19 +95,25 @@ impl YuyvImage {
         Ok(())
     }
 
-    pub fn to_jpeg(&self, buf: impl Write) -> Result<()> {
-        let mut encoder = JpegEncoder::new(buf);
+    pub fn to_jpeg(&self) -> Result<&[u8]> {
         let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
 
+        let start = Instant::now();
         Self::yuyv_to_rgb(self, &mut rgb_buffer)?;
-        encoder.encode(
-            &rgb_buffer,
-            u32::try_from(self.width).unwrap(),
-            u32::try_from(self.height).unwrap(),
-            image::ColorType::Rgb8,
-        )?;
+        println!("yuyv2rgb: {}ms", start.elapsed().as_millis());
+        let start = Instant::now();
+        let img = turbojpeg::Image {
+            pixels: rgb_buffer.as_slice(),
+            width: 640,
+            pitch: 0,
+            height: 480,
+            format: turbojpeg::PixelFormat::RGB,
+        };
+        let jpeg = turbojpeg::compress(img, 30, turbojpeg::Subsamp::Sub2x2).unwrap();
 
-        Ok(())
+        println!("jpeg encode: {}ms", start.elapsed().as_millis());
+
+        Ok(&jpeg)
     }
 
     #[must_use]

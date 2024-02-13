@@ -16,7 +16,7 @@ use heimdall::{Camera, YuyvImage};
 /// from the camera can already be stored in a buffer, reducing the latency between destructing a
 /// `TopImage` and being able to fetch the newest `TopImage`.
 // TODO: Replace with value from Odal.
-const NUMBER_OF_TOP_CAMERA_BUFFERS: u32 = 2;
+const NUMBER_OF_TOP_CAMERA_BUFFERS: u32 = 3;
 
 /// This variable specifies how many `BottomImage`'s' can be alive at the same time.
 ///
@@ -24,7 +24,7 @@ const NUMBER_OF_TOP_CAMERA_BUFFERS: u32 = 2;
 /// from the camera can already be stored in a buffer, reducing the latency between destructing a
 /// `BottomImage` and being able to fetch the newest `BottomImage`.
 // TODO: Replace with value from Odal.
-const NUMBER_OF_BOTTOM_CAMERA_BUFFERS: u32 = 2;
+const NUMBER_OF_BOTTOM_CAMERA_BUFFERS: u32 = 3;
 
 /// This module captures images using the top- and bottom camera of the NAO.
 ///
@@ -208,9 +208,7 @@ pub struct JpegBottomImage;
 
 fn log_jpeg_image(image: Image, rec: RecordingStream, path: impl Into<EntityPath>) -> Result<()> {
     let yuyv_image = image.yuyv_image();
-    let mut jpeg = Vec::new();
-
-    yuyv_image.to_jpeg(&mut jpeg)?;
+    let mut jpeg = yuyv_image.to_jpeg()?;
     let tensor_data = TensorData::from_jpeg_bytes(jpeg).into_diagnostic()?;
     let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
     rec.log(path, &img).into_diagnostic()?;
