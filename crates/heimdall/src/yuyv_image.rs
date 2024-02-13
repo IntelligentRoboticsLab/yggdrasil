@@ -1,10 +1,10 @@
-use core::slice::SlicePattern;
 use std::path::Path;
 use std::time::Instant;
 use std::{fs::File, io::Write, ops::Deref};
 
 use image::codecs::jpeg::{JpegEncoder, PixelDensity};
 use miette::IntoDiagnostic;
+use turbojpeg::OwnedBuf;
 
 use crate::rgb_image::RgbImage;
 use crate::Result;
@@ -95,7 +95,7 @@ impl YuyvImage {
         Ok(())
     }
 
-    pub fn to_jpeg(&self) -> Result<&[u8]> {
+    pub fn to_jpeg(&self) -> Result<OwnedBuf> {
         let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
 
         let start = Instant::now();
@@ -113,7 +113,7 @@ impl YuyvImage {
 
         println!("jpeg encode: {}ms", start.elapsed().as_millis());
 
-        Ok(&jpeg)
+        Ok(jpeg)
     }
 
     #[must_use]
