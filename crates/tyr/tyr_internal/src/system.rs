@@ -8,7 +8,9 @@ use std::{
     sync::{RwLockReadGuard, RwLockWriteGuard},
 };
 
+use crate::schedule::DependencySystem;
 use crate::storage::{ErasedResource, Storage};
+use crate::IntoDependencySystem;
 
 use self::private::SystemType;
 
@@ -403,3 +405,64 @@ impl_system_param!(T1, T2, T3, T4, T5);
 impl_system_param!(T1, T2, T3, T4, T5, T6);
 impl_system_param!(T1, T2, T3, T4, T5, T6, T7);
 impl_system_param!(T1, T2, T3, T4, T5, T6, T7, T8);
+
+pub trait IntoSystemChain<I> {
+    fn chain(self) -> Vec<DependencySystem<()>>;
+}
+
+// impl<T1: System<NormalSystem> + 'static> SystemChain for T1 {
+//     fn chain(self) -> Vec<Box<dyn System<NormalSystem>>> {
+//         let system: Box<dyn System<NormalSystem>> = Box::new(self);
+//         Vec::from([system])
+//     }
+// }
+
+// Implements system chains that run sequentially
+macro_rules! impl_system_chain {
+    (
+        $(($systems:ident, $params:ident)),*
+    ) => {
+        #[allow(unused)]
+        #[allow(non_snake_case)]
+        impl<$($systems: IntoDependencySystem<$params>, $params),*> IntoSystemChain<($($params),*)> for ($($systems),*) {
+            fn chain(self) -> Vec<DependencySystem<()>> {
+                // let (T1, T2, ...) = self;
+                let ($($systems,)*) = self;
+
+                // IntoDependencySystem<I> -> DependencySystem<I> -> DependencySystem<()>
+                $(
+                    let $systems: DependencySystem<()> = $systems.into_dependency_system().into_dependency_system();
+                )*
+
+                Vec::from([$($systems),*])
+            }
+        }
+    };
+}
+
+// don't need to chain a single system
+// impl_system_chain!(T1);
+impl_system_chain!((T1, S1), (T2, S2));
+impl_system_chain!((T1, S1), (T2, S2), (T3, S3));
+impl_system_chain!((T1, S1), (T2, S2), (T3, S3), (T4, S4));
+impl_system_chain!((T1, S1), (T2, S2), (T3, S3), (T4, S4), (T5, S5));
+impl_system_chain!((T1, S1), (T2, S2), (T3, S3), (T4, S4), (T5, S5), (T6, S6));
+impl_system_chain!(
+    (T1, S1),
+    (T2, S2),
+    (T3, S3),
+    (T4, S4),
+    (T5, S5),
+    (T6, S6),
+    (T7, S7)
+);
+impl_system_chain!(
+    (T1, S1),
+    (T2, S2),
+    (T3, S3),
+    (T4, S4),
+    (T5, S5),
+    (T6, S6),
+    (T7, S7),
+    (T8, S8)
+);
