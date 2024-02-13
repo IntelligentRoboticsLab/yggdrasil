@@ -13,8 +13,8 @@ use heimdall::{Camera, YuyvImage};
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct CameraConfig {
-    pub number_of_top_camera_buffers: u32,
-    pub number_of_bottom_camera_buffers: u32,
+    pub num_top_buffers: u32,
+    pub num_bottom_buffers: u32,
 }
 
 /// This module captures images using the top- and bottom camera of the NAO.
@@ -40,7 +40,7 @@ struct TopCamera(Arc<Mutex<Camera>>);
 impl TopCamera {
     fn new(config: &CameraConfig) -> Result<Self> {
         Ok(Self(Arc::new(Mutex::new(
-            Camera::new_nao_top(config.number_of_top_camera_buffers).into_diagnostic()?,
+            Camera::new_nao_top(config.num_top_buffers).into_diagnostic()?,
         ))))
     }
 }
@@ -50,7 +50,7 @@ struct BottomCamera(Arc<Mutex<Camera>>);
 impl BottomCamera {
     fn new(config: &CameraConfig) -> Result<Self> {
         Ok(Self(Arc::new(Mutex::new(
-            Camera::new_nao_bottom(config.number_of_bottom_camera_buffers).into_diagnostic()?,
+            Camera::new_nao_bottom(config.num_bottom_buffers).into_diagnostic()?,
         ))))
     }
 }

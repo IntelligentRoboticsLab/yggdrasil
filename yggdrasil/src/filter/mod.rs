@@ -13,13 +13,23 @@ pub mod fsr;
 pub mod imu;
 pub mod sonar;
 
-#[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct FilterConfig {
-    pub button_activation_threshold: f32,
+    pub fsr: FSRConfig,
+    pub button: ButtonConfig,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ButtonConfig {
+    pub activation_threshold: f32,
     #[serde_as(as = "DurationMilliSeconds<u64>")]
-    pub button_held_duration_threshold: Duration,
+    pub held_duration_threshold: Duration,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FSRConfig {
     pub ground_contact_threshold: f32,
 }
 

@@ -37,7 +37,8 @@ pub fn force_sensitive_resistor_filter(
     force_sensitive_resistors.left_foot = nao_state.force_sensitive_resistors.left_foot.clone();
     force_sensitive_resistors.right_foot = nao_state.force_sensitive_resistors.right_foot.clone();
 
-    contacts.ground = nao_state.force_sensitive_resistors.avg() < config.ground_contact_threshold;
+    contacts.ground =
+        nao_state.force_sensitive_resistors.avg() < config.fsr.ground_contact_threshold;
 
     Ok(())
 }
