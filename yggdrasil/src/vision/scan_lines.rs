@@ -20,6 +20,11 @@ impl Module for ScanLinesModule {
 }
 
 pub struct ScanLines {
+    top_width: usize,
+    top_height: usize,
+    bottom_width: usize,
+    bottom_height: usize,
+
     top_horizontal: Vec<u8>,
     top_vertical: Vec<u8>,
     top_last_executed: Instant,
@@ -72,6 +77,30 @@ impl ScanLines {
 
     pub fn bottom_vertical_ids(&self) -> &Vec<usize> {
         &self.bottom_vertical_ids
+    }
+
+    pub fn top_horizontal_line(&self, line_id: usize) -> &[u8] {
+        let offset = line_id * self.top_width * 4;
+
+        &self.top_horizontal.as_slice()[offset..offset + self.top_width * 4]
+    }
+
+    pub fn top_vertical_line(&self, line_id: usize) -> &[u8] {
+        let offset = line_id * self.top_height * 4;
+
+        &self.top_horizontal.as_slice()[offset..offset + self.top_height * 4]
+    }
+
+    pub fn bottom_horizontal_line(&self, line_id: usize) -> &[u8] {
+        let offset = line_id * self.bottom_width * 4;
+
+        &self.bottom_horizontal.as_slice()[offset..offset + self.bottom_width * 4]
+    }
+
+    pub fn bottom_vertical_line(&self, line_id: usize) -> &[u8] {
+        let offset = line_id * self.bottom_height * 4;
+
+        &self.bottom_horizontal.as_slice()[offset..offset + self.bottom_height * 4]
     }
 }
 
@@ -192,6 +221,11 @@ pub fn init_buffers(
         calc_buffer_size(bottom_image);
 
     let mut scan_lines = ScanLines {
+        top_width: top_image.yuyv_image().width(),
+        top_height: top_image.yuyv_image().height(),
+        bottom_width: bottom_image.yuyv_image().width(),
+        bottom_height: bottom_image.yuyv_image().height(),
+
         top_horizontal: vec![0u8; top_horizontal_buffer_size],
         top_vertical: vec![0u8; top_vertical_buffer_size],
         top_last_executed: *top_image.timestamp(),
