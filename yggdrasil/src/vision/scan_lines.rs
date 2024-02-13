@@ -116,8 +116,8 @@ fn horizontal_scan_lines(
     for row_id in 0..yuyv_image.height() / ROW_SCAN_LINE_INTERVAL {
         horizontal_ids.push(row_id);
 
-        let buffer_offset = (row_id * yuyv_image.width()) * 4;
         let image_offset = (yuyv_image.width() * 2) * (row_id * ROW_SCAN_LINE_INTERVAL);
+        let buffer_offset = (row_id * yuyv_image.width()) * 2;
 
         unsafe {
             std::ptr::copy_nonoverlapping(
@@ -138,9 +138,8 @@ fn vertical_scan_lines(yuyv_image: &YuyvImage, buffer: &mut [u8], vertical_ids: 
         vertical_ids.push(col_id);
 
         for row_id in 0..yuyv_image.height() {
+            let image_offset = (row_id * yuyv_image.width() + col_id * COL_SCAN_LINE_INTERVAL) * 2;
             let buffer_offset = (col_id * yuyv_image.height() + row_id) * 4;
-            let image_offset =
-                row_id * yuyv_image.width() * 2 + col_id * COL_SCAN_LINE_INTERVAL * 2;
 
             unsafe {
                 std::ptr::copy_nonoverlapping(
@@ -155,7 +154,7 @@ fn vertical_scan_lines(yuyv_image: &YuyvImage, buffer: &mut [u8], vertical_ids: 
 
 fn calc_buffer_size(image: &Image) -> (usize, usize) {
     let horizontal_buffer_size =
-        image.yuyv_image().width() * 4 * (image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL);
+        image.yuyv_image().width() * 2 * (image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL);
     let vertical_buffer_size =
         image.yuyv_image().height() * 4 * (image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL);
 
