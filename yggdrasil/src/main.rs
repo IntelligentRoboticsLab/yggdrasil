@@ -1,7 +1,7 @@
 use yggdrasil::{
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, debug::DebugModule,
     filter::FilterModule, game_controller::GameControllerModule, leds::LedsModule, nao::NaoModule,
-    prelude::*, primary_state::PrimaryStateModule, walk::WalkingEngineModule,
+    prelude::*, primary_state::PrimaryStateModule, vision::VisionModule, walk::WalkingEngineModule,
 };
 
 fn main() -> Result<()> {
@@ -18,7 +18,8 @@ fn main() -> Result<()> {
         .add_module(PrimaryStateModule)?
         .add_module(GameControllerModule)?
         .add_module(WalkingEngineModule)?
-        .add_module(DebugModule)?;
+        .add_module(DebugModule)?
+        .add_module(VisionModule)?;
 
     #[cfg(feature = "alsa")]
     let app = app.add_module(yggdrasil::audio::AudioModule)?;
