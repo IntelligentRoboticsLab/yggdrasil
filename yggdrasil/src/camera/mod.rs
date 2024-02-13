@@ -209,7 +209,7 @@ pub struct JpegBottomImage;
 fn log_jpeg_image(image: Image, rec: RecordingStream, path: impl Into<EntityPath>) -> Result<()> {
     let yuyv_image = image.yuyv_image();
     let jpeg = yuyv_image.to_jpeg()?;
-    let tensor_data = TensorData::from_jpeg_bytes(jpeg.deref().to_owned()).into_diagnostic()?;
+    let tensor_data = TensorData::from_jpeg_bytes(jpeg.to_owned()).into_diagnostic()?;
     let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
     rec.log(path, &img).into_diagnostic()?;
 
