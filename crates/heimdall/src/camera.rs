@@ -10,10 +10,10 @@ use linuxvideo::{
 use super::{Error, Result, YuyvImage};
 
 /// The width of a NAO [`Image`].
-const IMAGE_WIDTH: u32 = 1280;
+const IMAGE_WIDTH: u32 = 640;
 
 /// The height of a NAO [`Image`].
-const IMAGE_HEIGHT: u32 = 960;
+const IMAGE_HEIGHT: u32 = 480;
 
 /// Absolute path to the lower camera of the NAO.
 const CAMERA_BOTTOM: &str = "/dev/video-bottom";

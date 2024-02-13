@@ -92,6 +92,21 @@ impl YuyvImage {
         Ok(())
     }
 
+    pub fn to_jpeg(&self, buf: impl Write) -> Result<()> {
+        let mut encoder = JpegEncoder::new(buf);
+        let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
+
+        Self::yuyv_to_rgb(self, &mut rgb_buffer)?;
+        encoder.encode(
+            &rgb_buffer,
+            u32::try_from(self.width).unwrap(),
+            u32::try_from(self.height).unwrap(),
+            image::ColorType::Rgb8,
+        )?;
+
+        Ok(())
+    }
+
     #[must_use]
     pub fn width(&self) -> usize {
         self.width

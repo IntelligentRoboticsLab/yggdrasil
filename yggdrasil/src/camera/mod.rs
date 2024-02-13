@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 use miette::IntoDiagnostic;
+use rerun::{EntityPath, RecordingStream, TensorData};
 use std::{
     ops::Deref,
     sync::{Arc, Mutex},
@@ -49,12 +50,13 @@ impl Module for CameraModule {
         )?);
         let bottom_camera_resource = Resource::new(bottom_camera);
 
-        Ok(app
-            .add_resource(top_image_resource)?
+        app.add_resource(top_image_resource)?
             .add_resource(top_camera_resource)?
             .add_resource(bottom_image_resource)?
             .add_resource(bottom_camera_resource)?
-            .add_system(camera_system))
+            .add_system(camera_system)
+            .add_task::<ComputeTask<JpegTopImage>>()?
+            .add_task::<ComputeTask<JpegBottomImage>>()
     }
 }
 
@@ -164,14 +166,49 @@ fn camera_system(
     bottom_camera: &mut BottomCamera,
     top_image: &mut TopImage,
     bottom_image: &mut BottomImage,
+    rec: &RecordingStream,
+    top_camera_debug: &mut ComputeTask<JpegTopImage>,
+    bottom_camera_debug: &mut ComputeTask<JpegBottomImage>,
 ) -> Result<()> {
     if let Some(new_top_image) = try_fetch_top_image(top_camera) {
         *top_image = new_top_image;
+        let cloned = top_image.0.clone();
+        let rec = rec.clone();
+        if !top_camera_debug.active() {
+            top_camera_debug.try_spawn(|| {
+                log_jpeg_image(cloned, rec, "top_image").expect("failed to log top image");
+                JpegTopImage
+            });
+        }
     }
 
     if let Some(new_bottom_image) = try_fetch_bottom_image(bottom_camera) {
         *bottom_image = new_bottom_image;
+
+        let cloned = bottom_image.0.clone();
+        let rec = rec.clone();
+        if !bottom_camera_debug.active() {
+            bottom_camera_debug.try_spawn(|| {
+                log_jpeg_image(cloned, rec, "bottom_image").expect("failed to log top image");
+                JpegBottomImage
+            });
+        }
     }
+
+    Ok(())
+}
+
+pub struct JpegTopImage;
+pub struct JpegBottomImage;
+
+fn log_jpeg_image(image: Image, rec: RecordingStream, path: impl Into<EntityPath>) -> Result<()> {
+    let yuyv_image = image.yuyv_image();
+    let mut jpeg = Vec::new();
+
+    yuyv_image.to_jpeg(&mut jpeg)?;
+    let tensor_data = TensorData::from_jpeg_bytes(jpeg).into_diagnostic()?;
+    let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
+    rec.log(path, &img).into_diagnostic()?;
 
     Ok(())
 }
