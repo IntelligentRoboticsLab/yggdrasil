@@ -71,11 +71,11 @@ impl ScanLines {
         &self.top_vertical_ids
     }
 
-    pub fn bottom_horizontal_ids(&self) -> &Vec<usize> {
+    pub fn bottom_horizontal_ids(&self) -> &[usize] {
         &self.bottom_horizontal_ids
     }
 
-    pub fn bottom_vertical_ids(&self) -> &Vec<usize> {
+    pub fn bottom_vertical_ids(&self) -> &[usize] {
         &self.bottom_vertical_ids
     }
 
