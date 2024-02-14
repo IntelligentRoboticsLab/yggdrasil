@@ -83,13 +83,16 @@ impl YuyvImage {
         Ok(())
     }
 
+    /// Convert this [`YuyvImage`] to a JPEG image.
+    ///
+    /// The quality of the JPEG image is determined by the `quality` parameter. The value should be
+    /// between 1 and 100, where 1 is the worst quality and 100 is the best quality.
+    ///
+    /// # Errors
+    /// This function fails if it cannot convert the taken image.
     pub fn to_jpeg(&self, quality: i32) -> Result<OwnedBuf> {
         let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
-
-        let start = Instant::now();
         Self::yuyv_to_rgb(self, &mut rgb_buffer)?;
-        println!("yuyv2rgb: {}ms", start.elapsed().as_millis());
-        let start = Instant::now();
         let img = turbojpeg::Image {
             pixels: rgb_buffer.as_slice(),
             width: self.width(),
@@ -98,9 +101,6 @@ impl YuyvImage {
             format: turbojpeg::PixelFormat::RGB,
         };
         let jpeg = turbojpeg::compress(img, quality, turbojpeg::Subsamp::Sub2x2).unwrap();
-
-        println!("jpeg encode: {}ms", start.elapsed().as_millis());
-
         Ok(jpeg)
     }
 
