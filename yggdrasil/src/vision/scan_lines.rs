@@ -91,7 +91,7 @@ pub fn store_jpeg(
 
     Ok(())
 }
-use std::{fs::File, io::Write, path::Path, time::Instant};
+use std::{fs::File, io::Write, ops::Deref, path::Path, time::Instant};
 
 use crate::{
     camera::{BottomImage, Image, TopImage},
@@ -113,103 +113,80 @@ impl Module for ScanLinesModule {
 }
 
 pub struct ScanLines {
-    top_width: usize,
-    top_height: usize,
-    bottom_width: usize,
-    bottom_height: usize,
+    width: usize,
+    height: usize,
 
-    top_horizontal: Vec<u8>,
-    top_vertical: Vec<u8>,
-    top_last_executed: Instant,
-    top_horizontal_ids: Vec<usize>,
-    top_vertical_ids: Vec<usize>,
+    horizontal: Vec<u8>,
+    vertical: Vec<u8>,
+    last_executed: Instant,
 
-    bottom_horizontal: Vec<u8>,
-    bottom_vertical: Vec<u8>,
-    bottom_last_executed: Instant,
-    bottom_horizontal_ids: Vec<usize>,
-    bottom_vertical_ids: Vec<usize>,
+    horizontal_ids: Vec<usize>,
+    vertical_ids: Vec<usize>,
 }
 
 impl ScanLines {
-    pub fn top_width(&self) -> usize {
-        self.top_width
+    pub fn width(&self) -> usize {
+        self.width
     }
 
-    pub fn top_height(&self) -> usize {
-        self.top_height
+    pub fn height(&self) -> usize {
+        self.height
     }
 
-    pub fn bottom_width(&self) -> usize {
-        self.bottom_width
+    pub fn timestamp(&self) -> Instant {
+        self.last_executed
     }
 
-    pub fn bottom_height(&self) -> usize {
-        self.bottom_height
+    pub fn raw_horizontal(&self) -> &[u8] {
+        &self.horizontal
     }
 
-    pub fn top_timestamp(&self) -> Instant {
-        self.top_last_executed
+    pub fn raw_vertical(&self) -> &[u8] {
+        &self.vertical
     }
 
-    pub fn bottom_timestamp(&self) -> Instant {
-        self.bottom_last_executed
+    pub fn horizontal_ids(&self) -> &Vec<usize> {
+        &self.horizontal_ids
     }
 
-    pub fn raw_top_horizontal(&self) -> &[u8] {
-        &self.top_horizontal
+    pub fn vertical_ids(&self) -> &Vec<usize> {
+        &self.vertical_ids
     }
 
-    pub fn raw_top_vertical(&self) -> &[u8] {
-        &self.top_vertical
+    pub fn horizontal_line(&self, line_id: usize) -> &[u8] {
+        let offset = line_id * self.width * 2;
+
+        &self.horizontal.as_slice()[offset..offset + self.width * 2]
     }
 
-    pub fn raw_bottom_horizontal(&self) -> &[u8] {
-        &self.bottom_horizontal
+    pub fn vertical_line(&self, line_id: usize) -> &[u8] {
+        let offset = line_id * self.height * 4;
+
+        &self.vertical.as_slice()[offset..offset + self.height * 4]
     }
+}
 
-    pub fn raw_bottom_vertical(&self) -> &[u8] {
-        &self.bottom_vertical
+pub struct TopScanLines {
+    scan_lines: ScanLines,
+}
+
+impl Deref for TopScanLines {
+    type Target = ScanLines;
+
+    fn deref(&self) -> &Self::Target {
+        &self.scan_lines
     }
+}
 
-    pub fn top_horizontal_ids(&self) -> &Vec<usize> {
-        &self.top_horizontal_ids
-    }
+pub struct BottomScanLines {
+    scan_lines: ScanLines,
+}
 
-    pub fn top_vertical_ids(&self) -> &Vec<usize> {
-        &self.top_vertical_ids
-    }
+impl Deref for BottomScanLines {
+    type Target = ScanLines;
 
-    pub fn bottom_horizontal_ids(&self) -> &[usize] {
-        &self.bottom_horizontal_ids
-    }
-
-    pub fn bottom_vertical_ids(&self) -> &[usize] {
-        &self.bottom_vertical_ids
-    }
-
-    pub fn top_horizontal_line(&self, line_id: usize) -> &[u8] {
-        let offset = line_id * self.top_width * 2;
-
-        &self.top_horizontal.as_slice()[offset..offset + self.top_width * 2]
-    }
-
-    pub fn top_vertical_line(&self, line_id: usize) -> &[u8] {
-        let offset = line_id * self.top_height * 4;
-
-        &self.top_vertical.as_slice()[offset..offset + self.top_height * 4]
-    }
-
-    pub fn bottom_horizontal_line(&self, line_id: usize) -> &[u8] {
-        let offset = line_id * self.bottom_width * 2;
-
-        &self.bottom_horizontal.as_slice()[offset..offset + self.bottom_width * 2]
-    }
-
-    pub fn bottom_vertical_line(&self, line_id: usize) -> &[u8] {
-        let offset = line_id * self.bottom_height * 4;
-
-        &self.bottom_vertical.as_slice()[offset..offset + self.bottom_height * 4]
+    fn deref(&self) -> &Self::Target {
+        &self.scan_lines
     }
 }
 
@@ -270,12 +247,12 @@ fn calc_buffer_size(image: &Image) -> (usize, usize) {
     (horizontal_buffer_size, vertical_buffer_size)
 }
 
-fn update_top_scan_lines(top_image: &TopImage, scan_lines: &mut ScanLines) {
+fn update_top_scan_lines(top_image: &TopImage, top_scan_lines: &mut TopScanLines) {
     let top_start = Instant::now();
     horizontal_scan_lines(
         top_image.yuyv_image(),
-        &mut scan_lines.top_horizontal,
-        &mut scan_lines.top_horizontal_ids,
+        &mut top_scan_lines.scan_lines.horizontal,
+        &mut top_scan_lines.scan_lines.horizontal_ids,
     );
     eprintln!(
         "top_horizontal elapsed: {}us",
@@ -285,8 +262,8 @@ fn update_top_scan_lines(top_image: &TopImage, scan_lines: &mut ScanLines) {
     let top_start = Instant::now();
     vertical_scan_lines(
         top_image.yuyv_image(),
-        &mut scan_lines.top_vertical,
-        &mut scan_lines.top_vertical_ids,
+        &mut top_scan_lines.scan_lines.vertical,
+        &mut top_scan_lines.scan_lines.vertical_ids,
     );
     eprintln!(
         "top_vertical elapsed:   {}us",
@@ -294,12 +271,12 @@ fn update_top_scan_lines(top_image: &TopImage, scan_lines: &mut ScanLines) {
     );
 }
 
-fn update_bottom_scan_lines(bottom_image: &BottomImage, scan_lines: &mut ScanLines) {
+fn update_bottom_scan_lines(bottom_image: &BottomImage, bottom_scan_lines: &mut BottomScanLines) {
     let bottom_start = Instant::now();
     horizontal_scan_lines(
         bottom_image.yuyv_image(),
-        &mut scan_lines.bottom_horizontal,
-        &mut scan_lines.bottom_horizontal_ids,
+        &mut bottom_scan_lines.scan_lines.horizontal,
+        &mut bottom_scan_lines.scan_lines.horizontal_ids,
     );
     eprintln!(
         "bottom_horizontal elapsed: {}us",
@@ -309,8 +286,8 @@ fn update_bottom_scan_lines(bottom_image: &BottomImage, scan_lines: &mut ScanLin
     let bottom_start = Instant::now();
     vertical_scan_lines(
         bottom_image.yuyv_image(),
-        &mut scan_lines.bottom_vertical,
-        &mut scan_lines.bottom_vertical_ids,
+        &mut bottom_scan_lines.scan_lines.vertical,
+        &mut bottom_scan_lines.scan_lines.vertical_ids,
     );
     eprintln!(
         "bottom_vertical elapsed:   {}us",
@@ -325,78 +302,87 @@ pub fn init_buffers(
     bottom_image: &BottomImage,
 ) -> Result<()> {
     let (top_horizontal_buffer_size, top_vertical_buffer_size) = calc_buffer_size(top_image);
-    let (bottom_horizontal_buffer_size, bottom_vertical_buffer_size) =
-        calc_buffer_size(bottom_image);
+    let mut top_scan_lines = TopScanLines {
+        scan_lines: ScanLines {
+            width: top_image.yuyv_image().width(),
+            height: top_image.yuyv_image().height(),
 
-    let mut scan_lines = ScanLines {
-        top_width: top_image.yuyv_image().width(),
-        top_height: top_image.yuyv_image().height(),
-        bottom_width: bottom_image.yuyv_image().width(),
-        bottom_height: bottom_image.yuyv_image().height(),
-
-        top_horizontal: vec![0u8; top_horizontal_buffer_size],
-        top_vertical: vec![0u8; top_vertical_buffer_size],
-        top_last_executed: *top_image.timestamp(),
-        top_horizontal_ids: Vec::with_capacity(
-            top_image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL,
-        ),
-        top_vertical_ids: Vec::with_capacity(
-            top_image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL,
-        ),
-        bottom_horizontal: vec![0u8; bottom_horizontal_buffer_size],
-        bottom_vertical: vec![0u8; bottom_vertical_buffer_size],
-        bottom_last_executed: *bottom_image.timestamp(),
-        bottom_horizontal_ids: Vec::with_capacity(
-            bottom_image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL,
-        ),
-        bottom_vertical_ids: Vec::with_capacity(
-            bottom_image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL,
-        ),
+            horizontal: vec![0u8; top_horizontal_buffer_size],
+            vertical: vec![0u8; top_vertical_buffer_size],
+            last_executed: *top_image.timestamp(),
+            horizontal_ids: Vec::with_capacity(
+                top_image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL,
+            ),
+            vertical_ids: Vec::with_capacity(
+                top_image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL,
+            ),
+        },
     };
 
-    update_top_scan_lines(top_image, &mut scan_lines);
-    update_bottom_scan_lines(bottom_image, &mut scan_lines);
+    let (bottom_horizontal_buffer_size, bottom_vertical_buffer_size) =
+        calc_buffer_size(bottom_image);
+    let mut bottom_scan_lines = BottomScanLines {
+        scan_lines: ScanLines {
+            width: bottom_image.yuyv_image().width(),
+            height: bottom_image.yuyv_image().height(),
 
-    storage.add_resource(Resource::new(scan_lines))?;
+            horizontal: vec![0u8; bottom_horizontal_buffer_size],
+            vertical: vec![0u8; bottom_vertical_buffer_size],
+            last_executed: *bottom_image.timestamp(),
+            horizontal_ids: Vec::with_capacity(
+                bottom_image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL,
+            ),
+            vertical_ids: Vec::with_capacity(
+                bottom_image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL,
+            ),
+        },
+    };
+
+    update_top_scan_lines(top_image, &mut top_scan_lines);
+    update_bottom_scan_lines(bottom_image, &mut bottom_scan_lines);
+
+    storage.add_resource(Resource::new(top_scan_lines))?;
+    storage.add_resource(Resource::new(bottom_scan_lines))?;
 
     Ok(())
 }
 
 #[system]
 pub fn scan_lines_system(
-    scan_lines: &mut ScanLines,
+    top_scan_lines: &mut TopScanLines,
+    bottom_scan_lines: &mut BottomScanLines,
     top_image: &TopImage,
     bottom_image: &BottomImage,
 ) -> Result<()> {
-    if scan_lines.top_last_executed != *top_image.timestamp() {
+    if top_scan_lines.last_executed != *top_image.timestamp() {
         let top_start = Instant::now();
-        update_top_scan_lines(top_image, scan_lines);
+        update_top_scan_lines(top_image, top_scan_lines);
         eprintln!("top elapsed: {}us", top_start.elapsed().as_micros());
 
-        scan_lines.top_last_executed = *top_image.timestamp();
+        top_scan_lines.scan_lines.last_executed = *top_image.timestamp();
 
-        let mut row_yuyv_buffer = vec![0u8; scan_lines.top_width() * scan_lines.top_height() * 2];
-        for (row_id, _) in scan_lines.top_horizontal_ids().iter().enumerate() {
-            let row = scan_lines.top_horizontal_line(row_id);
-            let offset = row_id * scan_lines.top_width() * ROW_SCAN_LINE_INTERVAL * 2;
+        let mut row_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
+        for (row_id, _) in top_scan_lines.horizontal_ids().iter().enumerate() {
+            let row = top_scan_lines.horizontal_line(row_id);
+            let offset = row_id * top_scan_lines.width() * ROW_SCAN_LINE_INTERVAL * 2;
 
-            row_yuyv_buffer.as_mut_slice()[offset..offset + scan_lines.top_width() * 2]
+            row_yuyv_buffer.as_mut_slice()[offset..offset + top_scan_lines.width() * 2]
                 .copy_from_slice(row);
         }
         store_jpeg(
             row_yuyv_buffer,
-            scan_lines.top_width(),
-            scan_lines.top_height(),
+            top_scan_lines.width(),
+            top_scan_lines.height(),
             "yggdrasil_row_image.jpeg",
         )?;
 
         // This is to test whether to creation of `cols_buffer` went correctly.
-        let mut col_yuyv_buffer = vec![0u8; scan_lines.top_width() * scan_lines.top_height() * 2];
-        for (col_id, _) in scan_lines.top_vertical_ids().iter().enumerate() {
-            for row_id in 0..scan_lines.top_height() {
-                let col = scan_lines.top_vertical_line(col_id);
+        let mut col_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
+        for (col_id, _) in top_scan_lines.vertical_ids().iter().enumerate() {
+            for row_id in 0..top_scan_lines.height() {
+                let col = top_scan_lines.vertical_line(col_id);
                 let offset =
-                    row_id * scan_lines.top_width() * 2 + col_id * COL_SCAN_LINE_INTERVAL * 2;
+                    row_id * top_scan_lines.width() * 2 + col_id * COL_SCAN_LINE_INTERVAL * 2;
 
                 col_yuyv_buffer.as_mut_slice()[offset..offset + 4]
                     .copy_from_slice(&col[row_id * 4..row_id * 4 + 4]);
@@ -404,20 +390,20 @@ pub fn scan_lines_system(
         }
         store_jpeg(
             col_yuyv_buffer,
-            scan_lines.top_width(),
-            scan_lines.top_height(),
+            top_scan_lines.width(),
+            top_scan_lines.height(),
             "yggdrasil_col_image.jpeg",
         )?;
 
         std::process::exit(0);
     }
 
-    if scan_lines.bottom_last_executed != *bottom_image.timestamp() {
+    if bottom_scan_lines.last_executed != *bottom_image.timestamp() {
         let bottom_start = Instant::now();
-        update_bottom_scan_lines(bottom_image, scan_lines);
+        update_bottom_scan_lines(bottom_image, bottom_scan_lines);
         eprintln!("bottom elapsed: {}us", bottom_start.elapsed().as_micros());
 
-        scan_lines.bottom_last_executed = *bottom_image.timestamp();
+        bottom_scan_lines.scan_lines.last_executed = *bottom_image.timestamp();
     }
 
     Ok(())
