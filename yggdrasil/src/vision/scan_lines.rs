@@ -6,9 +6,7 @@ fn yuyv_to_rgb(
     rotate_180_degrees: bool,
 ) -> Result<()> {
     fn clamp(value: i32) -> u8 {
-        #[allow(clippy::cast_sign_loss)]
-        #[allow(clippy::cast_possible_truncation)]
-        return value.clamp(0, 255) as u8;
+        value.clamp(0, 255) as u8
     }
 
     fn yuyv422_to_rgb(y1: u8, u: u8, y2: u8, v: u8) -> ((u8, u8, u8), (u8, u8, u8)) {
