@@ -4,6 +4,14 @@ yggdrasil is the robot framework built by the Dutch Nao Team for the SPL competi
 ## Building
 yggdrasil supports building for both linux and macos. Building on windows is not supported, but it is possible to build using WSL.
 
+Once all required dependencies have been installed, building is as simple as running the following command:
+
+```bash
+./sindri run <robot-number>
+```
+
+## Dependencies
+
 ### Linux
 Building for linux is incredibly simple, as it only requires the following dependencies:
 
@@ -33,3 +41,4 @@ brew install llvm \ # llvm for the cross compilation toolchain
     x86_64-unknown-linux-gnu-alsa-lib \ # alsa library for audio
     nasm \ # The nasm assembler for libturbojpeg
 ```
+
