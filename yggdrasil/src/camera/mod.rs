@@ -1,7 +1,6 @@
-use crate::prelude::*;
+use crate::{debug::DebugContext, prelude::*};
 
 use miette::IntoDiagnostic;
-use rerun::{EntityPath, RecordingStream, TensorData};
 use std::{
     ops::Deref,
     sync::{Arc, Mutex},
@@ -55,6 +54,7 @@ impl Module for CameraModule {
             .add_resource(bottom_image_resource)?
             .add_resource(bottom_camera_resource)?
             .add_system(camera_system)
+            .add_system(debug_camera_system.after(camera_system))
             .add_task::<ComputeTask<JpegTopImage>>()?
             .add_task::<ComputeTask<JpegBottomImage>>()
     }
@@ -166,52 +166,60 @@ fn camera_system(
     bottom_camera: &mut BottomCamera,
     top_image: &mut TopImage,
     bottom_image: &mut BottomImage,
-    rec: &RecordingStream,
-    top_camera_debug: &mut ComputeTask<JpegTopImage>,
-    bottom_camera_debug: &mut ComputeTask<JpegBottomImage>,
 ) -> Result<()> {
     if let Some(new_top_image) = try_fetch_top_image(top_camera) {
         *top_image = new_top_image;
-        let cloned = top_image.0.clone();
-        let rec = rec.clone();
-        if !top_camera_debug.active() {
-            top_camera_debug.try_spawn(|| {
-                log_jpeg_image(cloned, rec, "top_camera/image").expect("failed to log top image");
-                JpegTopImage
-            })?;
-        } else {
-            top_camera_debug.poll();
-        }
     }
 
     if let Some(new_bottom_image) = try_fetch_bottom_image(bottom_camera) {
         *bottom_image = new_bottom_image;
-
-        let cloned = bottom_image.0.clone();
-        let rec = rec.clone();
-        if !bottom_camera_debug.active() {
-            bottom_camera_debug.try_spawn(|| {
-                log_jpeg_image(cloned, rec, "bottom_camera/image")
-                    .expect("failed to log top image");
-                JpegBottomImage
-            })?;
-        } else {
-            bottom_camera_debug.poll();
-        }
     }
 
     Ok(())
 }
 
-pub struct JpegTopImage;
-pub struct JpegBottomImage;
+struct JpegTopImage(Instant);
+struct JpegBottomImage(Instant);
 
-fn log_jpeg_image(image: Image, rec: RecordingStream, path: impl Into<EntityPath>) -> Result<()> {
-    let yuyv_image = image.yuyv_image();
-    let jpeg = yuyv_image.to_jpeg()?;
-    let tensor_data = TensorData::from_jpeg_bytes(jpeg.to_owned()).into_diagnostic()?;
-    let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
-    rec.log(path, &img).into_diagnostic()?;
+#[system]
+fn debug_camera_system(
+    ctx: &DebugContext,
+    bottom_image: &BottomImage,
+    bottom_task: &mut ComputeTask<JpegBottomImage>,
+    top_image: &TopImage,
+    top_task: &mut ComputeTask<JpegTopImage>,
+) -> Result<()> {
+    let mut bottom_timestamp = Instant::now();
+    if let Some(bottom) = bottom_task.poll() {
+        bottom_timestamp = bottom.0;
+    }
+
+    if &bottom_timestamp != bottom_image.timestamp() {
+        let cloned = bottom_image.clone();
+        let ctx = ctx.clone();
+        bottom_task.try_spawn(move || {
+            let img_timestamp = cloned.0 .0 .1;
+            ctx.log_image("bottom_camera/image", cloned.0, 20)
+                .expect("failed to log bottom image");
+            JpegBottomImage(img_timestamp)
+        })?;
+    }
+
+    let mut top_timestamp = Instant::now();
+    if let Some(top) = top_task.poll() {
+        top_timestamp = top.0;
+    }
+
+    if &top_timestamp != top_image.timestamp() {
+        let cloned = top_image.clone();
+        let ctx = ctx.clone();
+        top_task.try_spawn(move || {
+            let img_timestamp = cloned.0 .0 .1;
+            ctx.log_image("top_camera/image", cloned.0, 20)
+                .expect("failed to log top image");
+            JpegTopImage(img_timestamp)
+        })?;
+    }
 
     Ok(())
 }

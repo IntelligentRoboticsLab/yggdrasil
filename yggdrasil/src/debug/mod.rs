@@ -1,8 +1,12 @@
+#[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
-use rerun::RecordingStream;
-use std::time::Instant;
+use nidhogg::types::Color;
 
-use crate::{nao::RobotInfo, prelude::*};
+use crate::{
+    camera::Image,
+    nao::{Cycle, RobotInfo},
+    prelude::*,
+};
 
 pub struct DebugModule;
 
@@ -10,38 +14,147 @@ impl Module for DebugModule {
     fn initialize(self, app: App) -> miette::Result<tyr::prelude::App> {
         Ok(app
             .add_startup_system(init_rerun)?
-            .add_system(run_debug.after(crate::nao::write_hardware_info)))
+            .add_system(set_debug_cycle.after(crate::nao::write_hardware_info)))
     }
 }
 
-struct RerunStartTime(Instant);
+/// The central context used for logging debug data to [rerun](https://rerun.io).
+///
+/// If yggdrasil is not compiled with the `rerun` feature, all calls will result in a no-op.
+#[derive(Clone)]
+pub struct DebugContext {
+    #[cfg(feature = "rerun")]
+    rec: rerun::RecordingStream,
+}
+
+#[allow(unused)]
+impl DebugContext {
+    /// Initializes a new [`DebugContext`].
+    ///
+    /// If yggdrasil is not compiled with the `rerun` feature, this will return a [`DebugContext`] that
+    /// does nothing.
+    fn init(
+        recording_name: impl AsRef<str>,
+        server_address: impl AsRef<str>,
+        memory_limit: f32,
+        ad: &AsyncDispatcher,
+    ) -> Result<Self> {
+        #[cfg(feature = "rerun")]
+        {
+            // To spawn a recording stream in serve mode, the tokio runtime needs to be in scope.
+            let handle = ad.handle().clone();
+            let _guard = handle.enter();
+
+            let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
+                .serve(
+                    server_address.as_ref(),
+                    Default::default(),
+                    Default::default(),
+                    rerun::MemoryLimit::from_fraction_of_total(memory_limit),
+                    false,
+                )
+                .into_diagnostic()?;
+
+            Ok(DebugContext { rec })
+        }
+
+        #[cfg(not(feature = "rerun"))]
+        Ok(DebugContext {})
+    }
+
+    /// Set the current cycle index for the debug viewer.
+    ///
+    /// This will be used to align logs with the cycle index in the debug viewer.
+    fn set_cycle(&self, cycle: &Cycle) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec.set_time_sequence("cycle", cycle.0 as i64);
+        }
+
+        Ok(())
+    }
+
+    /// Log a Yuyv encoded image to the debug viewer.
+    ///
+    /// The image is first converted to a jpeg encoded image.
+    pub fn log_image(&self, path: impl AsRef<str>, img: Image, jpeg_quality: i32) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let jpeg = img.yuyv_image().to_jpeg(jpeg_quality)?;
+            let tensor_data =
+                rerun::TensorData::from_jpeg_bytes(jpeg.to_owned()).into_diagnostic()?;
+            let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
+            self.rec.log(path.as_ref(), &img);
+        }
+
+        Ok(())
+    }
+
+    /// Set the style for a scalar series.
+    ///
+    /// The style will be applied to all logs of the series.
+    pub fn set_scalar_series_style(
+        &self,
+        path: impl AsRef<str>,
+        name: impl AsRef<str>,
+        color: Color,
+        line_width: f32,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            // Use timeless logging to set the style for the entire series
+            self.rec
+                .log_timeless(
+                    path.as_ref(),
+                    &rerun::SeriesLine::new()
+                        .with_color([
+                            (color.red * 255.0) as u8,
+                            (color.green * 255.0) as u8,
+                            (color.blue * 255.0) as u8,
+                        ])
+                        .with_name(name.as_ref())
+                        .with_width(line_width),
+                )
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
+
+    /// Log an [`f32`] scalar value to the debug viewer.
+    ///
+    /// The styling for the scalar series can be set using the [`DebugContext::set_scalar_series_style`] function.
+    pub fn log_scalar_f32(&self, path: impl AsRef<str>, scalar: f32) -> Result<()> {
+        self.log_scalar(path, scalar as f64)
+    }
+
+    // Log an [`f64`] scalar value to the debug viewer.
+    //
+    // The styling for the scalar series can be set using the [`DebugContext::set_scalar_series_style`] function.
+    pub fn log_scalar(&self, path: impl AsRef<str>, scalar: f64) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec.log(path.as_ref(), &rerun::Scalar::new(scalar));
+        }
+
+        Ok(())
+    }
+}
 
 #[startup_system]
 fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher, robot_info: &RobotInfo) -> Result<()> {
-    // To spawn a recording stream in serve mode, the tokio runtime needs to be in scope.
-    let handle = ad.handle().clone();
-    let _guard = handle.enter();
-
     // Manually set the server address to the robot's IP address, instead of 0.0.0.0
     // to ensure the rerun server prints the correct connection URL on startup
     let server_address = format!("10.0.8.{}", robot_info.robot_id);
-    let rec = rerun::RecordingStreamBuilder::new("example_nao")
-        .serve(
-            &server_address,
-            Default::default(),
-            Default::default(),
-            rerun::MemoryLimit::from_fraction_of_total(0.05),
-            false,
-        )
-        .into_diagnostic()?;
 
-    // Recording stream is a essentially an Arc, so we can freely clone it
-    storage.add_resource(Resource::new(rec.clone()))?;
-    storage.add_resource(Resource::new(RerunStartTime(Instant::now())))
+    // init debug context with 5% of the total memory, as cache size limit.
+    let ctx = DebugContext::init("yggdrasil", server_address, 0.05, ad)?;
+
+    storage.add_resource(Resource::new(ctx))
 }
 
 #[system]
-fn run_debug(rec: &RecordingStream, start_time: &RerunStartTime) -> Result<()> {
-    rec.set_time_seconds("control_loop", start_time.0.elapsed().as_secs_f64());
+fn set_debug_cycle(ctx: &DebugContext, cycle: &Cycle) -> Result<()> {
+    ctx.set_cycle(cycle)?;
     Ok(())
 }

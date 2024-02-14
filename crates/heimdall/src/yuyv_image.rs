@@ -77,13 +77,13 @@ impl YuyvImage {
     /// This function pannics if it cannot convert a `u32` value to `usize`.
     pub fn store_jpeg(&self, file_path: impl AsRef<Path>) -> Result<()> {
         let mut output_file = File::create(file_path)?;
-        let jpeg = self.to_jpeg()?;
+        let jpeg = self.to_jpeg(20)?;
         output_file.write_all(&jpeg)?;
 
         Ok(())
     }
 
-    pub fn to_jpeg(&self) -> Result<OwnedBuf> {
+    pub fn to_jpeg(&self, quality: i32) -> Result<OwnedBuf> {
         let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
 
         let start = Instant::now();
@@ -92,12 +92,12 @@ impl YuyvImage {
         let start = Instant::now();
         let img = turbojpeg::Image {
             pixels: rgb_buffer.as_slice(),
-            width: 640,
-            pitch: 640 * 3,
-            height: 480,
+            width: self.width(),
+            pitch: self.width() * 3,
+            height: self.height(),
             format: turbojpeg::PixelFormat::RGB,
         };
-        let jpeg = turbojpeg::compress(img, 30, turbojpeg::Subsamp::Sub2x2).unwrap();
+        let jpeg = turbojpeg::compress(img, quality, turbojpeg::Subsamp::Sub2x2).unwrap();
 
         println!("jpeg encode: {}ms", start.elapsed().as_millis());
 

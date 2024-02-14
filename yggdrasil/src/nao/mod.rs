@@ -1,8 +1,7 @@
-mod cycle_time;
+mod cycle;
+pub use cycle::*;
 
 use crate::prelude::*;
-pub use cycle_time::*;
-
 use std::{env, time::Duration};
 
 use miette::IntoDiagnostic;
@@ -65,8 +64,8 @@ impl Module for NaoModule {
             .add_startup_system(initialize_nao)?
             .init_resource::<NaoControlMessage>()?
             .add_system(write_hardware_info)
-            .add_startup_system(cycle_time::initialize_cycle_counter)?
-            .add_system(cycle_time::update_cycle_time.after(write_hardware_info)))
+            .add_startup_system(cycle::initialize_cycle_counter)?
+            .add_system(cycle::update_cycle_stats.after(write_hardware_info)))
     }
 }
 

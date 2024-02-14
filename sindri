@@ -30,4 +30,3 @@ fi
 
 # TODO: temporary hack; need to implement proper versioning in sindri and automatically install any updates.
 target/release/sindri "$@"
-
