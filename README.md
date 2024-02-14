@@ -6,16 +6,13 @@ yggdrasil supports building for both linux and macos. Building on windows is not
 
 ### Linux
 Building for linux is incredibly simple, as it only requires the following dependencies:
-- alsa
-- v4l2
-- nasm
 
-#### Ubuntu
+**Ubuntu**
 ```bash
 sudo apt-get install libasound2-dev libv4l-dev nasm
 ```
 
-### Arch
+**Arch**
 ```bash
 sudo pacman -S alsa-lib v4l-utils nasm
 ```
