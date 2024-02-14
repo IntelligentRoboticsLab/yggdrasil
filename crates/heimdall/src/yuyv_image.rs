@@ -93,7 +93,7 @@ impl YuyvImage {
         let img = turbojpeg::Image {
             pixels: rgb_buffer.as_slice(),
             width: 640,
-            pitch: 0,
+            pitch: 640 * 3,
             height: 480,
             format: turbojpeg::PixelFormat::RGB,
         };
