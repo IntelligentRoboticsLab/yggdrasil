@@ -410,13 +410,6 @@ pub trait IntoSystemChain<I> {
     fn chain(self) -> Vec<DependencySystem<()>>;
 }
 
-// impl<T1: System<NormalSystem> + 'static> SystemChain for T1 {
-//     fn chain(self) -> Vec<Box<dyn System<NormalSystem>>> {
-//         let system: Box<dyn System<NormalSystem>> = Box::new(self);
-//         Vec::from([system])
-//     }
-// }
-
 // Implements system chains that run sequentially
 macro_rules! impl_system_chain {
     (
