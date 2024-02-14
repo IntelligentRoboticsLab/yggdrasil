@@ -8,6 +8,10 @@ use crate::{
     prelude::*,
 };
 
+/// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
+///
+/// This module provides the following resources to the application:
+/// - [`DebugContext`]
 pub struct DebugModule;
 
 impl Module for DebugModule {
@@ -84,7 +88,7 @@ impl DebugContext {
             let tensor_data =
                 rerun::TensorData::from_jpeg_bytes(jpeg.to_owned()).into_diagnostic()?;
             let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
-            self.rec.log(path.as_ref(), &img);
+            self.rec.log(path.as_ref(), &img).into_diagnostic()?;
         }
 
         Ok(())
@@ -134,7 +138,9 @@ impl DebugContext {
     pub fn log_scalar(&self, path: impl AsRef<str>, scalar: f64) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.rec.log(path.as_ref(), &rerun::Scalar::new(scalar));
+            self.rec
+                .log(path.as_ref(), &rerun::Scalar::new(scalar))
+                .into_diagnostic()?;
         }
 
         Ok(())
@@ -155,6 +161,5 @@ fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher, robot_info: &RobotInf
 
 #[system]
 fn set_debug_cycle(ctx: &DebugContext, cycle: &Cycle) -> Result<()> {
-    ctx.set_cycle(cycle)?;
-    Ok(())
+    ctx.set_cycle(cycle)
 }
