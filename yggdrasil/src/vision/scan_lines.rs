@@ -88,7 +88,7 @@ impl ScanLines {
     pub fn top_vertical_line(&self, line_id: usize) -> &[u8] {
         let offset = line_id * self.top_height * 4;
 
-        &self.top_horizontal.as_slice()[offset..offset + self.top_height * 4]
+        &self.top_vertical.as_slice()[offset..offset + self.top_height * 4]
     }
 
     pub fn bottom_horizontal_line(&self, line_id: usize) -> &[u8] {
@@ -100,7 +100,7 @@ impl ScanLines {
     pub fn bottom_vertical_line(&self, line_id: usize) -> &[u8] {
         let offset = line_id * self.bottom_height * 4;
 
-        &self.bottom_horizontal.as_slice()[offset..offset + self.bottom_height * 4]
+        &self.bottom_vertical.as_slice()[offset..offset + self.bottom_height * 4]
     }
 }
 
