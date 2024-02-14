@@ -39,6 +39,22 @@ pub struct ScanLines {
 }
 
 impl ScanLines {
+    pub fn top_width(&self) -> usize {
+        self.top_width
+    }
+
+    pub fn top_height(&self) -> usize {
+        self.top_height
+    }
+
+    pub fn bottom_width(&self) -> usize {
+        self.bottom_width
+    }
+
+    pub fn bottom_height(&self) -> usize {
+        self.bottom_height
+    }
+
     pub fn top_timestamp(&self) -> Instant {
         self.top_last_executed
     }
