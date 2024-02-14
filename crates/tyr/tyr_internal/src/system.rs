@@ -420,7 +420,7 @@ pub trait IntoSystemChain<I> {
 // Implements system chains that run sequentially
 macro_rules! impl_system_chain {
     (
-        $(($systems:ident, $params:ident)),*
+        $($systems:ident, $params:ident),*
     ) => {
         #[allow(unused)]
         #[allow(non_snake_case)]
@@ -440,29 +440,13 @@ macro_rules! impl_system_chain {
     };
 }
 
-// don't need to chain a single system
-// impl_system_chain!(T1);
-impl_system_chain!((T1, S1), (T2, S2));
-impl_system_chain!((T1, S1), (T2, S2), (T3, S3));
-impl_system_chain!((T1, S1), (T2, S2), (T3, S3), (T4, S4));
-impl_system_chain!((T1, S1), (T2, S2), (T3, S3), (T4, S4), (T5, S5));
-impl_system_chain!((T1, S1), (T2, S2), (T3, S3), (T4, S4), (T5, S5), (T6, S6));
-impl_system_chain!(
-    (T1, S1),
-    (T2, S2),
-    (T3, S3),
-    (T4, S4),
-    (T5, S5),
-    (T6, S6),
-    (T7, S7)
-);
-impl_system_chain!(
-    (T1, S1),
-    (T2, S2),
-    (T3, S3),
-    (T4, S4),
-    (T5, S5),
-    (T6, S6),
-    (T7, S7),
-    (T8, S8)
-);
+// every system needs a generic for the system `S*` and its parameters `T*`
+// we don't need to chain a single system
+// impl_system_chain!(S1, T1);
+impl_system_chain!(S1, T1, S2, T2);
+impl_system_chain!(S1, T1, S2, T2, S3, T3);
+impl_system_chain!(S1, T1, S2, T2, S3, T3, S4, T4);
+impl_system_chain!(S1, T1, S2, T2, S3, T3, S4, T4, S5, T5);
+impl_system_chain!(S1, T1, S2, T2, S3, T3, S4, T4, S5, T5, S6, T6);
+impl_system_chain!(S1, T1, S2, T2, S3, T3, S4, T4, S5, T5, S6, T6, S7, T7);
+impl_system_chain!(S1, T1, S2, T2, S3, T3, S4, T4, S5, T5, S6, T6, S7, T7, S8, T8);

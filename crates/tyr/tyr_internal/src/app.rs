@@ -78,6 +78,18 @@ impl App {
     }
 
     #[must_use]
+    /// Adds a chain of systems to the app
+    ///
+    /// The systems added run sequentially, i.e.:
+    /// ```ignore
+    /// app.add_system_chain((first, second, third))
+    /// ```
+    /// is equivalent to
+    /// ```ignore
+    /// app.add_system(first)
+    ///    .add_system(second.after(first))
+    ///    .add_system(third.after(second))
+    /// ```
     pub fn add_system_chain<I>(self, systems: impl IntoSystemChain<I>) -> Self {
         let mut system_chain = systems.chain();
 
