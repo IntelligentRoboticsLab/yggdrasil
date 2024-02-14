@@ -82,18 +82,16 @@ impl App {
         let mut system_chain = systems.chain();
 
         for i in 1..system_chain.len() {
-            let prev = &system_chain[i - 1];
-            let prev_system = prev.boxed_system().clone();
+            // create a dependency on the previous system
+            let prev_system = system_chain[i - 1].boxed_system();
+            let dependency = Dependency::After(prev_system.clone());
 
-            let curr = &mut system_chain[i];
-
-            let dependency = Dependency::After(prev_system);
-            curr.add_dependency(dependency);
+            system_chain[i].add_dependency(dependency);
         }
 
         system_chain
             .into_iter()
-            .fold(self, |self_, system| self_.add_system(system))
+            .fold(self, |app, system| app.add_system(system))
     }
 
     /// Adds a startup system to the app.
