@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::time::Instant;
 use std::{fs::File, io::Write, ops::Deref};
 
 use turbojpeg::OwnedBuf;
