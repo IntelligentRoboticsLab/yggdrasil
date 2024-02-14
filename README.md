@@ -11,6 +11,14 @@ Once all required dependencies have been installed, building is as simple as run
 ```
 
 ## Dependencies
+yggdrasil is built using rust, and as such requires the rust toolchain to be installed.
+We recommend installing it using rustup, which can be found [here](https://rustup.rs/).
+
+The robots run our own arch linux based distribution, and as such the `x86_64-unknown-linux-gnu` target is required for cross compilation:
+
+```bash
+rustup target add x86_64-unknown-linux-gnu
+```
 
 ### Linux
 Building for linux is incredibly simple, as it only requires the following dependencies:
