@@ -2,8 +2,6 @@ use std::path::Path;
 use std::time::Instant;
 use std::{fs::File, io::Write, ops::Deref};
 
-use image::codecs::jpeg::{JpegEncoder, PixelDensity};
-use miette::IntoDiagnostic;
 use turbojpeg::OwnedBuf;
 
 use crate::rgb_image::RgbImage;
@@ -78,19 +76,9 @@ impl YuyvImage {
     /// # Panics
     /// This function pannics if it cannot convert a `u32` value to `usize`.
     pub fn store_jpeg(&self, file_path: impl AsRef<Path>) -> Result<()> {
-        let output_file = File::create(file_path)?;
-        let mut encoder = JpegEncoder::new(output_file);
-
-        let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
-
-        Self::yuyv_to_rgb(self, &mut rgb_buffer)?;
-
-        encoder.encode(
-            &rgb_buffer,
-            u32::try_from(self.width).unwrap(),
-            u32::try_from(self.height).unwrap(),
-            image::ColorType::Rgb8,
-        )?;
+        let mut output_file = File::create(file_path)?;
+        let jpeg = self.to_jpeg()?;
+        output_file.write_all(&jpeg)?;
 
         Ok(())
     }
