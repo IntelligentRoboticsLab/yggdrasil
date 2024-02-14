@@ -94,22 +94,22 @@ pub struct DependencySystem<I> {
     _input: PhantomData<I>,
 }
 
+impl DependencySystem<()> {
+    pub(crate) fn boxed_system(&self) -> &BoxedSystem {
+        &self.system
+    }
+
+    pub(crate) fn add_dependency(&mut self, dependency: Dependency) {
+        self.dependencies.push(dependency)
+    }
+}
+
 // Get systems with all possible inputs
 // This `I` gets replaced later as we do not need it
 impl<S: IntoSystem<NormalSystem, I>, I> IntoDependencySystem<I> for S {
     fn into_dependency_system(self) -> DependencySystem<I> {
         DependencySystem {
             system: Box::new(self.into_system()),
-            dependencies: Vec::new(),
-            _input: PhantomData,
-        }
-    }
-}
-
-impl IntoDependencySystem<()> for BoxedSystem {
-    fn into_dependency_system(self) -> DependencySystem<()> {
-        DependencySystem {
-            system: self,
             dependencies: Vec::new(),
             _input: PhantomData,
         }

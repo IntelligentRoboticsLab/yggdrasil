@@ -1,6 +1,6 @@
-use crate::schedule::{DependencySystem, Schedule};
+use crate::schedule::{Dependency, DependencySystem, Schedule};
 use crate::storage::{Resource, Storage};
-use crate::system::{IntoSystem, StartupSystem, System};
+use crate::system::{IntoSystem, IntoSystemChain, StartupSystem, System};
 use crate::{IntoDependencySystem, Module};
 
 use miette::Result;
@@ -75,6 +75,35 @@ impl App {
             // Turns system into `DependencySystem<I>` then transforms it to `DependencySystem<()>`
             .push(system.into_dependency_system().into_dependency_system());
         self
+    }
+
+    #[must_use]
+    /// Adds a chain of systems to the app
+    ///
+    /// The systems added run sequentially, i.e.:
+    /// ```ignore
+    /// app.add_system_chain((first, second, third))
+    /// ```
+    /// is equivalent to
+    /// ```ignore
+    /// app.add_system(first)
+    ///    .add_system(second.after(first))
+    ///    .add_system(third.after(second))
+    /// ```
+    pub fn add_system_chain<I>(self, systems: impl IntoSystemChain<I>) -> Self {
+        let mut system_chain = systems.chain();
+
+        for i in 1..system_chain.len() {
+            // create a dependency on the previous system
+            let prev_system = system_chain[i - 1].boxed_system();
+            let dependency = Dependency::After(prev_system.clone());
+
+            system_chain[i].add_dependency(dependency);
+        }
+
+        system_chain
+            .into_iter()
+            .fold(self, |app, system| app.add_system(system))
     }
 
     /// Adds a startup system to the app.
