@@ -1,4 +1,97 @@
-use std::time::Instant;
+use image::codecs::jpeg::JpegEncoder;
+fn yuyv_to_rgb(
+    source: &[u8],
+    len: usize,
+    mut destination: impl Write,
+    rotate_180_degrees: bool,
+) -> Result<()> {
+    fn clamp(value: i32) -> u8 {
+        #[allow(clippy::cast_sign_loss)]
+        #[allow(clippy::cast_possible_truncation)]
+        return value.clamp(0, 255) as u8;
+    }
+
+    fn yuyv422_to_rgb(y1: u8, u: u8, y2: u8, v: u8) -> ((u8, u8, u8), (u8, u8, u8)) {
+        let y1 = i32::from(y1) - 16;
+        let u = i32::from(u) - 128;
+        let y2 = i32::from(y2) - 16;
+        let v = i32::from(v) - 128;
+
+        let red1 = (298 * y1 + 409 * v + 128) >> 8;
+        let green1 = (298 * y1 - 100 * u - 208 * v + 128) >> 8;
+        let blue1 = (298 * y1 + 516 * u + 128) >> 8;
+
+        let red2 = (298 * y2 + 409 * v + 128) >> 8;
+        let green2 = (298 * y2 - 100 * u - 208 * v + 128) >> 8;
+        let blue2 = (298 * y2 + 516 * u + 128) >> 8;
+
+        (
+            (clamp(red1), clamp(green1), clamp(blue1)),
+            (clamp(red2), clamp(green2), clamp(blue2)),
+        )
+    }
+
+    // Two pixels are stored in four bytes. Those four bytes are the y1, u, y2, v values in
+    // that order. Because two pixels share the same u and v value, we decode both pixels at
+    // the same time (using `yuyv422_to_rgb`), instead of one-by-one, to improve performance.
+    //
+    // A `pixel_duo` here refers to the two pixels with the same u and v values.
+    // We iterate over all the pixel duo's in `source`, which is why we take steps of four
+    // bytes.
+    // for pixel_duo_id in 0..(source.len() / 4) {
+    for pixel_duo_id in 0..len / 2 {
+        let input_offset: usize = if rotate_180_degrees {
+            source.len() - 4 * pixel_duo_id - 4
+        } else {
+            pixel_duo_id * 4
+        };
+
+        let y1 = source[input_offset];
+        let u = source[input_offset + 1];
+        let y2 = source[input_offset + 2];
+        let v = source[input_offset + 3];
+
+        let ((red1, green1, blue1), (red2, green2, blue2)) = yuyv422_to_rgb(y1, u, y2, v);
+
+        if rotate_180_degrees {
+            destination
+                .write_all(&[red2, green2, blue2, red1, green1, blue1])
+                .unwrap();
+        } else {
+            destination
+                .write_all(&[red1, green1, blue1, red2, green2, blue2])
+                .unwrap();
+        }
+    }
+
+    Ok(())
+}
+
+pub fn store_jpeg(
+    image: Vec<u8>,
+    width: usize,
+    height: usize,
+    file_path: impl AsRef<Path>,
+) -> Result<()> {
+    let output_file = File::create(file_path).unwrap();
+    let mut encoder = JpegEncoder::new(output_file);
+
+    let mut rgb_buffer = Vec::<u8>::with_capacity(width * height * 3);
+
+    yuyv_to_rgb(&image, width * height, &mut rgb_buffer, false)?;
+
+    encoder
+        .encode(
+            &rgb_buffer,
+            u32::try_from(width).unwrap(),
+            u32::try_from(height).unwrap(),
+            image::ColorType::Rgb8,
+        )
+        .unwrap();
+
+    Ok(())
+}
+use std::{fs::File, io::Write, path::Path, time::Instant};
 
 use crate::{
     camera::{BottomImage, Image, TopImage},
@@ -281,6 +374,42 @@ pub fn scan_lines_system(
         eprintln!("top elapsed: {}us", top_start.elapsed().as_micros());
 
         scan_lines.top_last_executed = *top_image.timestamp();
+
+        let mut row_yuyv_buffer = vec![0u8; scan_lines.top_width() * scan_lines.top_height() * 2];
+        for (row_id, _) in scan_lines.top_horizontal_ids().iter().enumerate() {
+            let row = scan_lines.top_horizontal_line(row_id);
+            let offset = row_id * scan_lines.top_width() * ROW_SCAN_LINE_INTERVAL * 2;
+
+            row_yuyv_buffer.as_mut_slice()[offset..offset + scan_lines.top_width() * 2]
+                .copy_from_slice(row);
+        }
+        store_jpeg(
+            row_yuyv_buffer,
+            scan_lines.top_width(),
+            scan_lines.top_height(),
+            "yggdrasil_row_image.jpeg",
+        )?;
+
+        // This is to test whether to creation of `cols_buffer` went correctly.
+        let mut col_yuyv_buffer = vec![0u8; scan_lines.top_width() * scan_lines.top_height() * 2];
+        for (col_id, _) in scan_lines.top_vertical_ids().iter().enumerate() {
+            for row_id in 0..scan_lines.top_height() {
+                let col = scan_lines.top_vertical_line(col_id);
+                let offset =
+                    row_id * scan_lines.top_width() * 2 + col_id * COL_SCAN_LINE_INTERVAL * 2;
+
+                col_yuyv_buffer.as_mut_slice()[offset..offset + 4]
+                    .copy_from_slice(&col[row_id * 4..row_id * 4 + 4]);
+            }
+        }
+        store_jpeg(
+            col_yuyv_buffer,
+            scan_lines.top_width(),
+            scan_lines.top_height(),
+            "yggdrasil_col_image.jpeg",
+        )?;
+
+        std::process::exit(0);
     }
 
     if scan_lines.bottom_last_executed != *bottom_image.timestamp() {

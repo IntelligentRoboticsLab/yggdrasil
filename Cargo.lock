@@ -7947,6 +7947,7 @@ dependencies = [
  "bifrost",
  "enum_dispatch",
  "heimdall",
+ "image",
  "kira",
  "miette",
  "nalgebra",
