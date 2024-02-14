@@ -60,18 +60,10 @@ impl WalkState for WalkingState {
         let swing_foot_height = max_foot_height * smoothing::parabolic_return(linear_time);
 
         let swing_foot = self.swing_foot;
-        let previous_step = self.previous_step.clone();
 
         // compute the offsets for the support and swing feet
-        let support_offset =
-            compute_support_offset(&context, &swing_foot, linear_time, &previous_step.support);
-        let swing_offset = compute_swing_offset(
-            &context,
-            &swing_foot,
-            swing_foot_height,
-            linear_time,
-            &previous_step.swing,
-        );
+        let support_offset = self.compute_support_offset(&context, linear_time);
+        let swing_offset = self.compute_swing_offset(&context, swing_foot_height, linear_time);
 
         let next_state = self.next_walk_state(
             context.dt,
@@ -137,17 +129,8 @@ impl WalkState for WalkingState {
     }
 }
 
-fn has_support_foot_changed(side: &Side, context: &WalkContext) -> bool {
-    let left_foot_pressure = context.fsr.left_foot.sum();
-    let right_foot_pressure = context.fsr.right_foot.sum();
-    (match side {
-        Side::Left => left_foot_pressure,
-        Side::Right => right_foot_pressure,
-    }) > context.config.cop_pressure_threshold
-}
-
 impl WalkingState {
-    fn next_walk_state(
+    pub fn next_walk_state(
         &self,
         dt: Duration,
         linear_time: f32,
@@ -161,8 +144,7 @@ impl WalkingState {
 
         let mut previous_step = self.previous_step.clone();
         // figure out whether the support foot has changed
-        let has_support_foot_changed =
-            linear_time > 0.75 && has_support_foot_changed(&self.swing_foot, context);
+        let has_support_foot_changed = linear_time > 0.75 && self.has_support_foot_changed(context);
 
         // if the support foot has in fact changed, we should update the relevant parameters
         if has_support_foot_changed {
@@ -186,59 +168,70 @@ impl WalkingState {
             previous_step,
         })
     }
-}
 
-fn compute_swing_offset(
-    context: &WalkContext,
-    side: &Side,
-    foot_height: f32,
-    linear_time: f32,
-    step_t0: &FootOffset,
-) -> FootOffset {
-    let walk_command = &context.walk_command;
-    let config = &context.config;
-    let forward_t0 = step_t0.forward;
-    let left_t0 = step_t0.left;
-    let turn_t0 = step_t0.turn;
-    let parabolic_time = smoothing::parabolic_step(linear_time);
-
-    let turn_multiplier = match side {
-        Side::Left => -2.0 / 3.0,
-        Side::Right => 2.0 / 3.0,
-    };
-    FootOffset {
-        forward: forward_t0
-            + (walk_command.forward * config.com_multiplier - forward_t0) * parabolic_time,
-        left: left_t0 + (walk_command.left / 2.0 - left_t0) * parabolic_time,
-        turn: turn_t0 + (walk_command.turn * turn_multiplier - turn_t0) * parabolic_time,
-        hip_height: config.hip_height,
-        lift: foot_height,
+    pub fn has_support_foot_changed(&self, context: &WalkContext) -> bool {
+        let left_foot_pressure = context.fsr.left_foot.sum();
+        let right_foot_pressure = context.fsr.right_foot.sum();
+        (match self.swing_foot {
+            Side::Left => left_foot_pressure,
+            Side::Right => right_foot_pressure,
+        }) > context.config.cop_pressure_threshold
     }
-}
 
-fn compute_support_offset(
-    context: &WalkContext,
-    side: &Side,
-    linear_time: f32,
-    step_t0: &FootOffset,
-) -> FootOffset {
-    let walk_command = &context.walk_command;
-    let config = &context.config;
-    let forward_t0 = step_t0.forward;
-    let left_t0 = step_t0.left;
-    let turn_t0 = step_t0.turn;
+    pub fn compute_swing_offset(
+        &self,
+        context: &WalkContext,
+        foot_height: f32,
+        linear_time: f32,
+    ) -> FootOffset {
+        let walk_command = &context.walk_command;
+        let config = &context.config;
+        let FootOffset {
+            forward: forward_t0,
+            left: left_t0,
+            turn: turn_t0,
+            hip_height: _,
+            lift: _,
+        } = self.previous_step.swing;
+        let parabolic_time = smoothing::parabolic_step(linear_time);
 
-    let turn_multiplier = match side {
-        Side::Left => -1.0 / 3.0,
-        Side::Right => 1.0 / 3.0,
-    };
+        let turn_multiplier = match self.swing_foot {
+            Side::Left => -2.0 / 3.0,
+            Side::Right => 2.0 / 3.0,
+        };
+        FootOffset {
+            forward: forward_t0
+                + (walk_command.forward * config.com_multiplier - forward_t0) * parabolic_time,
+            left: left_t0 + (walk_command.left / 2.0 - left_t0) * parabolic_time,
+            turn: turn_t0 + (walk_command.turn * turn_multiplier - turn_t0) * parabolic_time,
+            hip_height: config.hip_height,
+            lift: foot_height,
+        }
+    }
 
-    FootOffset {
-        forward: forward_t0
-            + (-walk_command.forward * config.com_multiplier - forward_t0) * linear_time,
-        left: left_t0 + (-walk_command.left / 2.0 - left_t0) * linear_time,
-        turn: turn_t0 + (-walk_command.turn * turn_multiplier - turn_t0) * linear_time,
-        hip_height: config.hip_height,
-        lift: 0.0,
+    pub fn compute_support_offset(&self, context: &WalkContext, linear_time: f32) -> FootOffset {
+        let walk_command = &context.walk_command;
+        let config = &context.config;
+        let FootOffset {
+            forward: forward_t0,
+            left: left_t0,
+            turn: turn_t0,
+            hip_height: _,
+            lift: _,
+        } = self.previous_step.support;
+
+        let turn_multiplier = match self.swing_foot {
+            Side::Left => -1.0 / 3.0,
+            Side::Right => 1.0 / 3.0,
+        };
+
+        FootOffset {
+            forward: forward_t0
+                + (-walk_command.forward * config.com_multiplier - forward_t0) * linear_time,
+            left: left_t0 + (-walk_command.left / 2.0 - left_t0) * linear_time,
+            turn: turn_t0 + (-walk_command.turn * turn_multiplier - turn_t0) * linear_time,
+            hip_height: config.hip_height,
+            lift: 0.0,
+        }
     }
 }
