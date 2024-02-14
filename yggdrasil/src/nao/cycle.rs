@@ -17,6 +17,7 @@ pub struct CycleTime {
 
 #[startup_system]
 pub(crate) fn initialize_cycle_counter(storage: &mut Storage) -> Result<()> {
+    storage.add_resource(Resource::new(Cycle::default()))?;
     storage.add_resource(Resource::new(CycleTime {
         cycle_start: Instant::now(),
         duration: Duration::from_secs(0),

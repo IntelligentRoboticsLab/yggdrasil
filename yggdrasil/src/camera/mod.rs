@@ -194,7 +194,7 @@ fn debug_camera_system(
         bottom_timestamp = bottom.0;
     }
 
-    if &bottom_timestamp != bottom_image.timestamp() {
+    if !bottom_task.active() && &bottom_timestamp != bottom_image.timestamp() {
         let cloned = bottom_image.clone();
         let ctx = ctx.clone();
         bottom_task.try_spawn(move || {
@@ -210,7 +210,7 @@ fn debug_camera_system(
         top_timestamp = top.0;
     }
 
-    if &top_timestamp != top_image.timestamp() {
+    if !top_task.active() && &top_timestamp != top_image.timestamp() {
         let cloned = top_image.clone();
         let ctx = ctx.clone();
         top_task.try_spawn(move || {
