@@ -1,6 +1,7 @@
 use std::{io, path::Path};
 
 use linuxvideo::{
+    controls::Cid,
     format::{PixFormat, PixelFormat},
     stream::FrameProvider,
     uvc::UvcExt,
@@ -46,6 +47,93 @@ impl CameraDevice {
     pub fn vertical_flip(&self) -> Result<()> {
         let mut uvc_extension = UvcExt::new(&self.device);
         uvc_extension.vertical_flip().map_err(Error::VerticalFlip)
+    }
+
+    pub fn set_autofocus(&mut self, enable: bool) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::FOCUS_AUTO, enable as i32)?;
+
+        Ok(())
+    }
+
+    pub fn set_focus_absolute(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::FOCUS_ABSOLUTE, value)?;
+
+        Ok(())
+    }
+
+    // `value` is in range [-127, 128].
+    pub fn set_brightness(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::BRIGHTNESS, value)?;
+
+        Ok(())
+    }
+
+    // `value` is in range [0, 30].
+    pub fn set_contrast(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::CONTRAST, value)?;
+
+        Ok(())
+    }
+
+    // `value` is in range [0, 127].
+    pub fn set_saturation(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::SATURATION, value)?;
+
+        Ok(())
+    }
+
+    // `value` is in range [-180, 180].
+    pub fn set_hue(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::SATURATION, value)?;
+
+        Ok(())
+    }
+
+    pub fn set_hue_auto(&mut self, enabled: bool) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::HUE_AUTO, enabled as i32)?;
+
+        Ok(())
+    }
+
+    pub fn set_auto_white_balance(&mut self, enabled: bool) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::AUTO_WHITE_BALANCE, enabled as i32)?;
+
+        Ok(())
+    }
+
+    // TODO: FIND THE VALUE RANGE
+    // `value` is in range [, ].
+    pub fn set_white_balance_temperature(&mut self, value: i32) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::WHITE_BALANCE_TEMPERATURE, value)?;
+
+        Ok(())
+    }
+
+    pub fn set_sharpness(&mut self, enabled: bool) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::SHARPNESS, enabled as i32)?;
+
+        Ok(())
+    }
+
+    pub fn set_exposure_auto(&mut self, enabled: bool) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::EXPOSURE_AUTO, enabled as i32)?;
+
+        Ok(())
+    }
+
+    // TODO: FIND THE VALUE RANGE
+    // `value` is in range [, ].
+    pub fn set_exposure_absolute(&mut self, value: i32) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::EXPOSURE_ABSOLUTE, value)?;
+
+        Ok(())
     }
 }
 
