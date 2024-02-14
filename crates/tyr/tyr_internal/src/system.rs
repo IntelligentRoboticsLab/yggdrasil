@@ -415,7 +415,6 @@ macro_rules! impl_system_chain {
     (
         $($systems:ident, $params:ident),*
     ) => {
-        #[allow(unused)]
         #[allow(non_snake_case)]
         impl<$($systems: IntoDependencySystem<$params>, $params),*> IntoSystemChain<($($params),*)> for ($($systems),*) {
             fn chain(self) -> Vec<DependencySystem<()>> {
