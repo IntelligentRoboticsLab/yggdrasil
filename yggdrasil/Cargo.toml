@@ -27,7 +27,6 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tyr = { path = "../crates/tyr", features = ["odal"] }
 
-
 [features]
 default = []
 alsa = ["dep:alsa", "dep:kira"]
