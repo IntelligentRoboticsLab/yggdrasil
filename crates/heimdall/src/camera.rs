@@ -1,6 +1,7 @@
 use std::{io, path::Path};
 
 use linuxvideo::{
+    controls::Cid,
     format::{PixFormat, PixelFormat},
     stream::FrameProvider,
     uvc::UvcExt,
@@ -36,6 +37,7 @@ impl CameraDevice {
         Ok(Self { device })
     }
 
+    /// Flip the image horizontally.
     pub fn horizontal_flip(&self) -> Result<()> {
         let mut uvc_extension = UvcExt::new(&self.device);
         uvc_extension
@@ -43,9 +45,134 @@ impl CameraDevice {
             .map_err(Error::HorizontalFlip)
     }
 
+    /// Flip the image vertically.
     pub fn vertical_flip(&self) -> Result<()> {
         let mut uvc_extension = UvcExt::new(&self.device);
         uvc_extension.vertical_flip().map_err(Error::VerticalFlip)
+    }
+
+    /// Enable or disable the autofocus.
+    ///
+    /// Default=false.
+    pub fn set_focus_auto(&mut self, enable: bool) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::FOCUS_AUTO, enable as i32)?;
+
+        Ok(())
+    }
+
+    /// Set the autofocus of the camera device.
+    ///
+    /// `value` is in range [0, 250], default=0, step=25.
+    pub fn set_focus_absolute(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::FOCUS_ABSOLUTE, value)?;
+
+        Ok(())
+    }
+
+    /// Set the brightness of the camera device.
+    ///
+    /// `value` is in range [-255, 255], default=0, step=1.
+    pub fn set_brightness(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::BRIGHTNESS, value)?;
+
+        Ok(())
+    }
+
+    /// Set the contrast of the camera device.
+    ///
+    /// `value` is in range [0, 255], default=32, step=1.
+    pub fn set_contrast(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::CONTRAST, value)?;
+
+        Ok(())
+    }
+
+    /// Set the saturation of the camera device.
+    ///
+    /// `value` is in range [0, 255], default=64, step=1.
+    pub fn set_saturation(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::SATURATION, value)?;
+
+        Ok(())
+    }
+
+    /// Set the hue of the camera device.
+    ///
+    /// `value` is in range [-180, 180], default=0, step=1.
+    pub fn set_hue(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::SATURATION, value)?;
+
+        Ok(())
+    }
+
+    // Enable or disable the auto hue of the camera device.
+    ///
+    /// Default=true.
+    pub fn set_hue_auto(&mut self, enabled: bool) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::HUE_AUTO, enabled as i32)?;
+
+        Ok(())
+    }
+
+    /// Enable or disable to auto white balance temperature.
+    ///
+    /// Default=true.
+    pub fn set_white_balance_temperature_auto(&mut self, enabled: bool) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::AUTO_WHITE_BALANCE, enabled as i32)?;
+
+        Ok(())
+    }
+
+    /// Set the white balance as a color temperature in Kelvin.
+    ///
+    /// `value` is in range [2500, 6500], default=2500, step=500.
+    pub fn set_white_balance_temperature(&mut self, value: i32) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::WHITE_BALANCE_TEMPERATURE, value)?;
+
+        Ok(())
+    }
+
+    /// Set the gain of the camera device.
+    ///
+    /// `value` is in range [0, 1023], default=16, step=1.
+    pub fn set_gain(&mut self, value: i32) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::WHITE_BALANCE_TEMPERATURE, value)?;
+
+        Ok(())
+    }
+
+    /// Set the sharpness of the camera device.
+    ///
+    /// `value` is in range [0, 9], default=4, step=1.
+    pub fn set_sharpness(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::SHARPNESS, value)?;
+
+        Ok(())
+    }
+
+    /// Enable or disable the auto exposure.
+    ///
+    /// Default=true.
+    pub fn set_exposure_auto(&mut self, enabled: bool) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::EXPOSURE_AUTO, !enabled as i32)?;
+
+        Ok(())
+    }
+
+    /// Set the exposure of the camera device.
+    ///
+    /// `value` is in range [0, 1048575], default=512, step=1.
+    pub fn set_exposure_absolute(&mut self, value: i32) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::EXPOSURE_ABSOLUTE, value)?;
+
+        Ok(())
     }
 }
 
