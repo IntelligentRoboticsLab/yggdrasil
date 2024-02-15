@@ -1,10 +1,9 @@
 use std::path::Path;
 use std::{fs::File, io::Write, ops::Deref};
-
-use image::codecs::jpeg::JpegEncoder;
+use turbojpeg::OwnedBuf;
 
 use crate::rgb_image::RgbImage;
-use crate::Result;
+use crate::{Error, Result};
 
 /// An object that holds a YUYV NAO camera image.
 pub struct YuyvImage {
@@ -75,21 +74,32 @@ impl YuyvImage {
     /// # Panics
     /// This function pannics if it cannot convert a `u32` value to `usize`.
     pub fn store_jpeg(&self, file_path: impl AsRef<Path>) -> Result<()> {
-        let output_file = File::create(file_path)?;
-        let mut encoder = JpegEncoder::new(output_file);
-
-        let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
-
-        Self::yuyv_to_rgb(self, &mut rgb_buffer)?;
-
-        encoder.encode(
-            &rgb_buffer,
-            u32::try_from(self.width).unwrap(),
-            u32::try_from(self.height).unwrap(),
-            image::ColorType::Rgb8,
-        )?;
+        let mut output_file = File::create(file_path)?;
+        let jpeg = self.to_jpeg(20)?;
+        output_file.write_all(&jpeg)?;
 
         Ok(())
+    }
+
+    /// Convert this [`YuyvImage`] to a JPEG image.
+    ///
+    /// The quality of the JPEG image is determined by the `quality` parameter. The value should be
+    /// between 1 and 100, where 1 is the worst quality and 100 is the best quality.
+    ///
+    /// # Errors
+    /// This function fails if it cannot convert the taken image.
+    pub fn to_jpeg(&self, quality: i32) -> Result<OwnedBuf> {
+        let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
+        Self::yuyv_to_rgb(self, &mut rgb_buffer)?;
+        let img = turbojpeg::Image {
+            pixels: rgb_buffer.as_slice(),
+            width: self.width(),
+            pitch: self.width() * 3,
+            height: self.height(),
+            format: turbojpeg::PixelFormat::RGB,
+        };
+
+        turbojpeg::compress(img, quality, turbojpeg::Subsamp::Sub2x2).map_err(Error::Jpeg)
     }
 
     #[must_use]

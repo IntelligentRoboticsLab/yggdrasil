@@ -8,3 +8,4 @@ image = { workspace = true }
 linuxvideo = { workspace = true }
 miette = { workspace = true }
 thiserror = { workspace = true }
+turbojpeg = { workspace = true }

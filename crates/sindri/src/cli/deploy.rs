@@ -41,15 +41,20 @@ pub struct ConfigOptsDeploy {
     /// Team number [default: Set in `sindri.toml`]
     #[clap(short, long)]
     pub team_number: Option<u8>,
+
+    /// Whether to embed the rerun viewer for debugging [default: false]
+    #[clap(long, short)]
+    pub rerun: bool,
 }
 
 impl ConfigOptsDeploy {
     #[must_use]
-    pub fn new(number: u8, wired: bool, team_number: Option<u8>) -> Self {
+    pub fn new(number: u8, wired: bool, team_number: Option<u8>, rerun: bool) -> Self {
         Self {
             number,
             wired,
             team_number,
+            rerun,
         }
     }
 }
@@ -84,8 +89,13 @@ impl Deploy {
         ));
         pb.set_prefix("Compiling");
 
+        let mut features = vec!["alsa"];
+        if self.deploy.rerun {
+            features.push("rerun");
+        }
+
         // Build yggdrasil with cargo
-        cargo::build("yggdrasil", Profile::Release, Some(ROBOT_TARGET)).await?;
+        cargo::build("yggdrasil", Profile::Release, Some(ROBOT_TARGET), features).await?;
 
         pb.println(format!(
             "{} {} {}{}, {}{}{}",

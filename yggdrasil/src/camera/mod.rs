@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{debug::DebugContext, prelude::*};
 
 use miette::IntoDiagnostic;
 use std::{
@@ -15,7 +15,7 @@ use heimdall::{Camera, YuyvImage};
 /// from the camera can already be stored in a buffer, reducing the latency between destructing a
 /// `TopImage` and being able to fetch the newest `TopImage`.
 // TODO: Replace with value from Odal.
-const NUMBER_OF_TOP_CAMERA_BUFFERS: u32 = 2;
+const NUMBER_OF_TOP_CAMERA_BUFFERS: u32 = 3;
 
 /// This variable specifies how many `BottomImage`'s' can be alive at the same time.
 ///
@@ -23,7 +23,7 @@ const NUMBER_OF_TOP_CAMERA_BUFFERS: u32 = 2;
 /// from the camera can already be stored in a buffer, reducing the latency between destructing a
 /// `BottomImage` and being able to fetch the newest `BottomImage`.
 // TODO: Replace with value from Odal.
-const NUMBER_OF_BOTTOM_CAMERA_BUFFERS: u32 = 2;
+const NUMBER_OF_BOTTOM_CAMERA_BUFFERS: u32 = 3;
 
 /// This module captures images using the top- and bottom camera of the NAO.
 ///
@@ -49,12 +49,14 @@ impl Module for CameraModule {
         )?);
         let bottom_camera_resource = Resource::new(bottom_camera);
 
-        Ok(app
-            .add_resource(top_image_resource)?
+        app.add_resource(top_image_resource)?
             .add_resource(top_camera_resource)?
             .add_resource(bottom_image_resource)?
             .add_resource(bottom_camera_resource)?
-            .add_system(camera_system))
+            .add_system(camera_system)
+            .add_system(debug_camera_system.after(camera_system))
+            .add_task::<ComputeTask<JpegTopImage>>()?
+            .add_task::<ComputeTask<JpegBottomImage>>()
     }
 }
 
@@ -174,4 +176,54 @@ fn camera_system(
     }
 
     Ok(())
+}
+
+struct JpegTopImage(Instant);
+struct JpegBottomImage(Instant);
+
+#[system]
+fn debug_camera_system(
+    ctx: &DebugContext,
+    bottom_image: &BottomImage,
+    bottom_task: &mut ComputeTask<JpegBottomImage>,
+    top_image: &TopImage,
+    top_task: &mut ComputeTask<JpegTopImage>,
+) -> Result<()> {
+    let mut bottom_timestamp = Instant::now();
+    if let Some(bottom) = bottom_task.poll() {
+        bottom_timestamp = bottom.0;
+    }
+
+    if !bottom_task.active() && &bottom_timestamp != bottom_image.timestamp() {
+        let cloned = bottom_image.clone();
+        let ctx = ctx.clone();
+        bottom_task.try_spawn(move || {
+            log_bottom_image(ctx, cloned).expect("Failed to log bottom image")
+        })?;
+    }
+
+    let mut top_timestamp = Instant::now();
+    if let Some(top) = top_task.poll() {
+        top_timestamp = top.0;
+    }
+
+    if !top_task.active() && &top_timestamp != top_image.timestamp() {
+        let cloned = top_image.clone();
+        let ctx = ctx.clone();
+        top_task.try_spawn(move || log_top_image(ctx, cloned).expect("Failed to log top image"))?;
+    }
+
+    Ok(())
+}
+
+fn log_bottom_image(ctx: DebugContext, bottom_image: BottomImage) -> Result<JpegBottomImage> {
+    let timestamp = bottom_image.0 .0 .1;
+    ctx.log_image("bottom_camera/image", bottom_image.0, 20)?;
+    Ok(JpegBottomImage(timestamp))
+}
+
+fn log_top_image(ctx: DebugContext, top_image: TopImage) -> Result<JpegTopImage> {
+    let timestamp = top_image.0 .0 .1;
+    ctx.log_image("top_camera/image", top_image.0, 20)?;
+    Ok(JpegTopImage(timestamp))
 }

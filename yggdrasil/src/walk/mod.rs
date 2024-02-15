@@ -81,7 +81,7 @@ impl Module for WalkingEngineModule {
             .add_system(
                 engine::walking_engine
                     .before(primary_state::update_primary_state)
-                    .after(nao::update_cycle_time)
+                    .after(nao::update_cycle_stats)
                     .after(filter_gyro_values)
                     .after(filter::fsr::force_sensitive_resistor_filter),
             )
