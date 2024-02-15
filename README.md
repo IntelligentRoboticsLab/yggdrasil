@@ -2,7 +2,7 @@
 yggdrasil is the robot framework built by the Dutch Nao Team for the SPL competition. 
 
 ## Building
-yggdrasil supports building for both linux and macos. Building on windows is not supported, but it is possible to build using WSL.
+yggdrasil supports building for both Linux and macOS. Building on Windows is not supported, but it is possible to build using WSL.
 
 Once all required dependencies have been installed, building is as simple as running the following command:
 
@@ -21,7 +21,7 @@ rustup target add x86_64-unknown-linux-gnu
 ```
 
 ### Linux
-Building for linux is incredibly simple, as it only requires the following dependencies:
+Building for Linux is incredibly simple, as it only requires the following dependencies:
 
 **Ubuntu**
 ```bash
@@ -36,7 +36,7 @@ sudo pacman -S alsa-lib v4l-utils nasm
 ### macOS
 Building for macOS is supported for both ARM/Intel macs, but it does require a cross compilation toolchain. 
 
-Both the toolchain and the required libraries can be installed using homebrew:
+Both the toolchain and the required libraries can be installed using Homebrew:
 
 ```bash
 # First we add the tap for the cross compilation toolchains
