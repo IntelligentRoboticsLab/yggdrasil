@@ -116,7 +116,7 @@ pub struct ScanLines {
 
     horizontal: Vec<u8>,
     vertical: Vec<u8>,
-    last_executed: Instant,
+    image: Image,
 
     horizontal_ids: Vec<usize>,
     vertical_ids: Vec<usize>,
@@ -131,8 +131,8 @@ impl ScanLines {
         self.height
     }
 
-    pub fn timestamp(&self) -> Instant {
-        self.last_executed
+    pub fn image(&self) -> &Image {
+        &self.image
     }
 
     pub fn raw_horizontal(&self) -> &[u8] {
@@ -307,7 +307,7 @@ pub fn init_buffers(
 
             horizontal: vec![0u8; top_horizontal_buffer_size],
             vertical: vec![0u8; top_vertical_buffer_size],
-            last_executed: *top_image.timestamp(),
+            image: top_image.deref().clone(),
             horizontal_ids: Vec::with_capacity(
                 top_image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL,
             ),
@@ -326,7 +326,7 @@ pub fn init_buffers(
 
             horizontal: vec![0u8; bottom_horizontal_buffer_size],
             vertical: vec![0u8; bottom_vertical_buffer_size],
-            last_executed: *bottom_image.timestamp(),
+            image: bottom_image.deref().clone(),
             horizontal_ids: Vec::with_capacity(
                 bottom_image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL,
             ),
@@ -352,12 +352,12 @@ pub fn scan_lines_system(
     top_image: &TopImage,
     bottom_image: &BottomImage,
 ) -> Result<()> {
-    if top_scan_lines.last_executed != *top_image.timestamp() {
+    if top_scan_lines.image.timestamp() != top_image.timestamp() {
         let top_start = Instant::now();
         update_top_scan_lines(top_image, top_scan_lines);
         eprintln!("top elapsed: {}us", top_start.elapsed().as_micros());
 
-        top_scan_lines.scan_lines.last_executed = *top_image.timestamp();
+        top_scan_lines.scan_lines.image = top_image.deref().clone();
 
         let mut row_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
         for (row_id, _) in top_scan_lines.horizontal_ids().iter().enumerate() {
@@ -396,12 +396,12 @@ pub fn scan_lines_system(
         std::process::exit(0);
     }
 
-    if bottom_scan_lines.last_executed != *bottom_image.timestamp() {
+    if bottom_scan_lines.image.timestamp() != bottom_image.timestamp() {
         let bottom_start = Instant::now();
         update_bottom_scan_lines(bottom_image, bottom_scan_lines);
         eprintln!("bottom elapsed: {}us", bottom_start.elapsed().as_micros());
 
-        bottom_scan_lines.scan_lines.last_executed = *bottom_image.timestamp();
+        bottom_scan_lines.scan_lines.image = bottom_image.deref().clone();
     }
 
     Ok(())
