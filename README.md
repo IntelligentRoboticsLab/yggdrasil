@@ -11,10 +11,10 @@ Once all required dependencies have been installed, building is as simple as run
 ```
 
 ## Dependencies
-yggdrasil is built using rust, and as such requires the rust toolchain to be installed.
+yggdrasil is built using Rust, and as such requires the Rust toolchain to be installed.
 We recommend installing it using rustup, which can be found [here](https://rustup.rs/).
 
-The robots run our own arch linux based distribution, and as such the `x86_64-unknown-linux-gnu` target is required for cross compilation:
+The robots run our own Arch linux based distribution, and as such the `x86_64-unknown-linux-gnu` target is required for cross compilation:
 
 ```bash
 rustup target add x86_64-unknown-linux-gnu
@@ -33,8 +33,8 @@ sudo apt-get install libasound2-dev libv4l-dev nasm
 sudo pacman -S alsa-lib v4l-utils nasm
 ```
 
-### macos
-Building for macos is supported for both arm/intel macs, but it does require a cross compilation toolchain. 
+### macOS
+Building for macOS is supported for both ARM/Intel macs, but it does require a cross compilation toolchain. 
 
 Both the toolchain and the required libraries can be installed using homebrew:
 
