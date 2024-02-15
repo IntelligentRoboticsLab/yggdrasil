@@ -149,9 +149,8 @@ impl CameraDevice {
     /// Set the sharpness of the camera device.
     ///
     /// `value` is in range [0, 9], default=4, step=1.
-    pub fn set_sharpness(&mut self, enabled: bool) -> Result<()> {
-        self.device
-            .write_control_raw(Cid::SHARPNESS, enabled as i32)?;
+    pub fn set_sharpness(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::SHARPNESS, value)?;
 
         Ok(())
     }
