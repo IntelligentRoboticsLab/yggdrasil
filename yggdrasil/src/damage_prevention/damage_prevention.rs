@@ -234,7 +234,7 @@ fn joint_locking_recorder(
         "lock" => match args[1] {
             "all" => {
                 nao_control_message.stiffness = JointArray::<f32>::fill(0.3);
-                print!("STUCK!");
+                print!("LOCKED!");
             }
             _ => {}
         },

@@ -70,8 +70,8 @@ fn standard_deviation(measurements: VecDeque<Vector3<f32>>) -> Vector3<f32> {
         .clone()
         .into_iter()
         .fold(Vector3::default(), |acc, item| {
-            let diff = avg.clone() - item;
-            acc + diff.clone() * diff
+            let diff = avg - item;
+            acc + diff * diff
         })
 }
 
@@ -83,7 +83,7 @@ pub fn imu_filter(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()
 
     imu_values
         .accelerometer_measurements
-        .push_back(nao_state.accelerometer.clone());
+        .push_back(nao_state.accelerometer);
 
     if imu_values.accelerometer_measurements.len() > 50 {
         imu_values.accelerometer_measurements.pop_front();

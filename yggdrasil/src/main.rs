@@ -19,7 +19,6 @@ fn main() -> Result<()> {
         .add_module(CameraModule)?
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?
-        .add_module(ConfigModule)?
         .add_module(PrimaryStateModule)?
         .add_module(GameControllerModule)?
         .add_module(WalkingEngineModule)?
