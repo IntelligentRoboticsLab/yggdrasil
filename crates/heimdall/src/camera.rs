@@ -54,7 +54,7 @@ impl CameraDevice {
     /// Enable or disable the autofocus.
     ///
     /// Default=false.
-    pub fn set_autofocus(&mut self, enable: bool) -> Result<()> {
+    pub fn set_focus_auto(&mut self, enable: bool) -> Result<()> {
         self.device
             .write_control_raw(Cid::FOCUS_AUTO, enable as i32)?;
 
@@ -116,10 +116,10 @@ impl CameraDevice {
         Ok(())
     }
 
-    /// Enable or disable to auto white (temperature) balance.
+    /// Enable or disable to auto white balance temperature.
     ///
     /// Default=true.
-    pub fn set_auto_white_balance(&mut self, enabled: bool) -> Result<()> {
+    pub fn set_white_balance_temperature_auto(&mut self, enabled: bool) -> Result<()> {
         self.device
             .write_control_raw(Cid::AUTO_WHITE_BALANCE, enabled as i32)?;
 
