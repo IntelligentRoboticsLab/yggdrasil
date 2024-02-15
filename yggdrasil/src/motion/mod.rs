@@ -4,9 +4,11 @@ use tyr::prelude::*;
 
 pub mod motion_executer;
 pub mod motion_manager;
+pub mod motion_recorder;
 pub mod motion_types;
 pub mod motion_util;
 
+use self::motion_recorder::Test;
 use motion_executer::motion_executer;
 use motion_manager::motion_manager_initializer;
 
@@ -22,6 +24,7 @@ impl Module for MotionModule {
     /// * `app` - App.
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
+            .add_module(Test)?
             .add_startup_system(motion_manager_initializer)?
             .add_system(motion_executer.after(write_hardware_info)))
     }

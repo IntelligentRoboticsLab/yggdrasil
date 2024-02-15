@@ -2,8 +2,8 @@ use crate::motion::motion_util::lerp;
 use miette::{miette, IntoDiagnostic, Result};
 use nidhogg::types::JointArray;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationSecondsWithFrac};
 use serde_json;
+use serde_with::{serde_as, DurationSecondsWithFrac};
 use std::fs::File;
 use std::{path::Path, time::Duration};
 

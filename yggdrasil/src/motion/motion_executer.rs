@@ -48,7 +48,7 @@ pub fn reached_position(
     // Ignore hands.
     t.left_hand = true;
     t.right_hand = true;
-    t.all(|elem| elem == true)
+    t.all(|elem| elem)
 }
 
 /// Executes the current motion.

@@ -1,10 +1,11 @@
-use tyr::tasks::TaskModule;
 use miette::Result;
+use tyr::tasks::TaskModule;
 
 use yggdrasil::{
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, debug::DebugModule,
-    filter::FilterModule, game_controller::GameControllerModule, leds::LedsModule, nao::NaoModule,
-    prelude::*, primary_state::PrimaryStateModule, walk::WalkingEngineModule, motion::MotionModule,
+    filter::FilterModule, game_controller::GameControllerModule, leds::LedsModule,
+    motion::MotionModule, nao::NaoModule, prelude::*, primary_state::PrimaryStateModule,
+    walk::WalkingEngineModule,
 };
 
 fn main() -> Result<()> {
@@ -13,14 +14,13 @@ fn main() -> Result<()> {
     miette::set_panic_hook();
 
     let app = App::new()
-        .add_module(TaskModule)?
         .add_module(NaoModule)?
+        .add_module(ConfigModule)?
         .add_module(FilterModule)?
         .add_module(CameraModule)?
         .add_module(MotionModule)?
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?
-        .add_module(ConfigModule)?
         .add_module(PrimaryStateModule)?
         .add_module(GameControllerModule)?
         .add_module(WalkingEngineModule)?
