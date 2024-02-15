@@ -53,8 +53,8 @@ impl Motion {
         self.get_surrounding_frames_as_joint_array(motion_duration)
             .map(|(target_positions_a, target_positions_b, duration)| {
                 lerp(
-                    &target_positions_a,
-                    &target_positions_b,
+                    target_positions_a,
+                    target_positions_b,
                     motion_duration.as_secs_f32() / duration.as_secs_f32(),
                 )
             })

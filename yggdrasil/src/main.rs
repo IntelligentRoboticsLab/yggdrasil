@@ -1,5 +1,4 @@
-use tyr::{prelude::*, tasks::TaskModule};
-
+use tyr::tasks::TaskModule;
 use miette::Result;
 
 use yggdrasil::{
@@ -13,7 +12,7 @@ fn main() -> Result<()> {
 
     miette::set_panic_hook();
 
-    App::new()
+    let app = App::new()
         .add_module(TaskModule)?
         .add_module(NaoModule)?
         .add_module(FilterModule)?
@@ -21,6 +20,7 @@ fn main() -> Result<()> {
         .add_module(MotionModule)?
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?
+        .add_module(ConfigModule)?
         .add_module(PrimaryStateModule)?
         .add_module(GameControllerModule)?
         .add_module(WalkingEngineModule)?
