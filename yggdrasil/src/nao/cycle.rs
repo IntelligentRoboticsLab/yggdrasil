@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use crate::prelude::*;
 
-/// A resources that keeps track of the number of cycles since yggdrasil has been running.
+/// A resource that keeps track of the number of cycles since yggdrasil has been running.
 #[derive(Default, Debug, Clone, Copy)]
 pub struct Cycle(pub usize);
 
@@ -20,7 +20,7 @@ pub(crate) fn initialize_cycle_counter(storage: &mut Storage) -> Result<()> {
     storage.add_resource(Resource::new(Cycle::default()))?;
     storage.add_resource(Resource::new(CycleTime {
         cycle_start: Instant::now(),
-        duration: Duration::from_secs(0),
+        duration: Duration::ZERO,
     }))
 }
 

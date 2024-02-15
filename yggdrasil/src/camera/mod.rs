@@ -198,10 +198,7 @@ fn debug_camera_system(
         let cloned = bottom_image.clone();
         let ctx = ctx.clone();
         bottom_task.try_spawn(move || {
-            let img_timestamp = cloned.0 .0 .1;
-            ctx.log_image("bottom_camera/image", cloned.0, 20)
-                .expect("failed to log bottom image");
-            JpegBottomImage(img_timestamp)
+            log_bottom_image(ctx, cloned).expect("Failed to log bottom image")
         })?;
     }
 
@@ -213,13 +210,20 @@ fn debug_camera_system(
     if !top_task.active() && &top_timestamp != top_image.timestamp() {
         let cloned = top_image.clone();
         let ctx = ctx.clone();
-        top_task.try_spawn(move || {
-            let img_timestamp = cloned.0 .0 .1;
-            ctx.log_image("top_camera/image", cloned.0, 20)
-                .expect("failed to log top image");
-            JpegTopImage(img_timestamp)
-        })?;
+        top_task.try_spawn(move || log_top_image(ctx, cloned).expect("Failed to log top image"))?;
     }
 
     Ok(())
+}
+
+fn log_bottom_image(ctx: DebugContext, bottom_image: BottomImage) -> Result<JpegBottomImage> {
+    let timestamp = bottom_image.0 .0 .1;
+    ctx.log_image("bottom_camera/image", bottom_image.0, 20)?;
+    Ok(JpegBottomImage(timestamp))
+}
+
+fn log_top_image(ctx: DebugContext, top_image: TopImage) -> Result<JpegTopImage> {
+    let timestamp = top_image.0 .0 .1;
+    ctx.log_image("top_camera/image", top_image.0, 20)?;
+    Ok(JpegTopImage(timestamp))
 }

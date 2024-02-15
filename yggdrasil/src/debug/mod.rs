@@ -1,3 +1,5 @@
+use std::net::Ipv4Addr;
+
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 use nidhogg::types::Color;
@@ -39,7 +41,7 @@ impl DebugContext {
     /// does nothing.
     fn init(
         recording_name: impl AsRef<str>,
-        server_address: impl AsRef<str>,
+        server_address: Ipv4Addr,
         memory_limit: f32,
         ad: &AsyncDispatcher,
     ) -> Result<Self> {
@@ -51,7 +53,7 @@ impl DebugContext {
 
             let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
                 .serve(
-                    server_address.as_ref(),
+                    &server_address.to_string(),
                     Default::default(),
                     Default::default(),
                     rerun::MemoryLimit::from_fraction_of_total(memory_limit),
@@ -151,7 +153,7 @@ impl DebugContext {
 fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher, robot_info: &RobotInfo) -> Result<()> {
     // Manually set the server address to the robot's IP address, instead of 0.0.0.0
     // to ensure the rerun server prints the correct connection URL on startup
-    let server_address = format!("10.0.8.{}", robot_info.robot_id);
+    let server_address = Ipv4Addr::new(10, 0, 8, robot_info.robot_id as u8);
 
     // init debug context with 5% of the total memory, as cache size limit.
     let ctx = DebugContext::init("yggdrasil", server_address, 0.05, ad)?;

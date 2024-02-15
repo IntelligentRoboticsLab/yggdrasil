@@ -1,10 +1,9 @@
 use std::path::Path;
 use std::{fs::File, io::Write, ops::Deref};
-
 use turbojpeg::OwnedBuf;
 
 use crate::rgb_image::RgbImage;
-use crate::Result;
+use crate::{Error, Result};
 
 /// An object that holds a YUYV NAO camera image.
 pub struct YuyvImage {
@@ -99,8 +98,8 @@ impl YuyvImage {
             height: self.height(),
             format: turbojpeg::PixelFormat::RGB,
         };
-        let jpeg = turbojpeg::compress(img, quality, turbojpeg::Subsamp::Sub2x2).unwrap();
-        Ok(jpeg)
+
+        turbojpeg::compress(img, quality, turbojpeg::Subsamp::Sub2x2).map_err(Error::Jpeg)
     }
 
     #[must_use]

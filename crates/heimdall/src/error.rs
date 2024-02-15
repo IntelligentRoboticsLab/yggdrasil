@@ -23,4 +23,7 @@ pub enum Error {
 
     #[error(transparent)]
     VerticalFlip(io::Error),
+
+    #[error(transparent)]
+    Jpeg(turbojpeg::Error),
 }
