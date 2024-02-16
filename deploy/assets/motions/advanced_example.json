@@ -1,0 +1,109 @@
+{
+  "motion_settings": {
+    "interpolation_type": "Linear",
+    "wait_time": 0.5
+  },
+  "Motion": [
+    "Situp",
+    "Wait",
+    "StandUp"
+  ],
+  "Sub_Motions": {
+    "Situp": {
+      "joint_stifness": 0.5,
+      "chest_angle_bounds": {"min": -0.4, "max": 0.4},
+      "conditions": [
+        {
+          "variable": "gyroscope_x",
+          "range": {"min": -0.1, "max": 0.1}
+        },
+        {
+          "variable": "gyroscope_y",
+          "range": {"min": -0.1, "max": 0.1}
+        },
+        {
+          "variable": "gyroscope_z",
+          "range": {"min": -0.1, "max": 0.1}
+        },
+        {
+          "variable": "angles_x",
+          "range": {"min": -0.1, "max": 0.1}
+        },
+        {
+          "variable": "angles_y",
+          "range": {"min": -0.1, "max": 0.1}
+        }
+      ],
+      "keyframes": [
+        {
+          "duration": 0.5,
+          "target_position": {
+          }
+        },
+        {
+          "duration": 0.5,
+          "target_position": {
+          }
+        },
+        {
+          "duration": 0.5,
+          "target_position": {
+          }
+        },
+        {
+          "duration": 0.5,
+          "target_position": {
+          }
+        }
+      ]
+    },
+    "StandUp": {
+      "joint_stifness": 0.5,
+      "chest_angle_bounds": {"min": -0.4, "max": 0.4},
+      "conditions": [
+        {
+          "variable": "gyroscope_x",
+          "range": {"min": -0.1, "max": 0.1}
+        },
+        {
+          "variable": "gyroscope_y",
+          "range": {"min": -0.1, "max": 0.1}
+        },
+        {
+          "variable": "gyroscope_z",
+          "range": {"min": -0.1, "max": 0.1}
+        },
+        {
+          "variable": "angles_x",
+          "range": {"min": -0.1, "max": 0.1}
+        },
+        {
+          "variable": "angles_y",
+          "range": {"min": -0.1, "max": 0.1}
+        }
+      ],
+      "keyframes": [
+        {
+          "duration": 0.5,
+          "target_position": {
+          }
+        },
+        {
+          "duration": 0.5,
+          "target_position": {
+          }
+        },
+        {
+          "duration": 0.5,
+          "target_position": {
+          }
+        },
+        {
+          "duration": 0.5,
+          "target_position": {
+          }
+        }
+      ]
+    }
+  }
+}
