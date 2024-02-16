@@ -14,10 +14,10 @@ use super::{WalkContext, WalkState, WalkStateKind};
 
 #[derive(Debug)]
 pub struct WalkingState {
-    swing_foot: Side,
-    phase_time: Duration,
-    next_foot_switch: Duration,
-    previous_step: StepOffsets,
+    pub swing_foot: Side,
+    pub phase_time: Duration,
+    pub next_foot_switch: Duration,
+    pub previous_step: StepOffsets,
 }
 
 impl Default for WalkingState {
@@ -33,10 +33,7 @@ impl Default for WalkingState {
 
 impl WalkState for WalkingState {
     fn next_state(&self, context: WalkContext) -> WalkStateKind {
-        let phase_time = self.phase_time + context.dt;
-        // this is the linear progression of this step, a value from 0 to 1 which describes the progress of the current step.
-        let linear_time =
-            (phase_time.as_secs_f32() / self.next_foot_switch.as_secs_f32()).clamp(0.0, 1.0);
+        let linear_time = self.linear_time(&context);
 
         if self.next_foot_switch.as_secs_f32() <= 0.0 {
             return self.next_walk_state(
@@ -121,10 +118,9 @@ impl WalkState for WalkingState {
             .left_shoulder_roll(7f32.to_radians())
             .right_shoulder_pitch(90f32.to_radians() + right_shoulder_pitch)
             .right_shoulder_roll(-7f32.to_radians())
-            .left_leg_joints(left_leg_joints)
-            .right_leg_joints(right_leg_joints)
+            .left_leg_joints(left_leg_joints.clone())
+            .right_leg_joints(right_leg_joints.clone())
             .build();
-
         next_state
     }
 }
@@ -233,5 +229,11 @@ impl WalkingState {
             hip_height: config.hip_height,
             lift: 0.0,
         }
+    }
+
+    pub fn linear_time(&self, ctx: &WalkContext) -> f32 {
+        let phase_time = self.phase_time + ctx.dt;
+        // this is the linear progression of this step, a value from 0 to 1 which describes the progress of the current step.
+        (phase_time.as_secs_f32() / self.next_foot_switch.as_secs_f32()).clamp(0.0, 1.0)
     }
 }
