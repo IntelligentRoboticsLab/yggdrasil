@@ -1,6 +1,6 @@
-use miette::Result;
+use crate::prelude::*;
+
 use nidhogg::{types::ForceSensitiveResistors, NaoState};
-use tyr::prelude::*;
 
 /// Threshold for ground contact detection using average FSR sensor values from both feet.
 const GROUND_CONTACT_THRESHOLD: f32 = 0.01;
@@ -29,7 +29,7 @@ pub struct Contacts {
 }
 
 #[system]
-fn force_sensitive_resistor_filter(
+pub fn force_sensitive_resistor_filter(
     nao_state: &NaoState,
     force_sensitive_resistors: &mut ForceSensitiveResistors,
     contacts: &mut Contacts,

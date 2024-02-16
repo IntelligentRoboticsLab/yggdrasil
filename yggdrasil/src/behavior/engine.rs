@@ -1,0 +1,217 @@
+//! The engine managing behavior execution and role state.
+
+use enum_dispatch::enum_dispatch;
+use nidhogg::NaoControlMessage;
+
+use crate::{
+    behavior::{
+        behaviors::{Example, Initial},
+        roles::{Keeper, Striker},
+    },
+    filter::button::HeadButtons,
+    nao,
+    prelude::*,
+    primary_state::PrimaryState,
+};
+
+/// Context that is passed into the behavior engine.
+///
+/// It contains all necessary information for executing behaviors and
+/// transitioning between different behaviors.
+#[derive(Clone, Copy)]
+pub struct Context<'a> {
+    /// Primary state of the robot
+    pub primary_state: &'a PrimaryState,
+    /// State of the headbuttons of a robot
+    pub head_buttons: &'a HeadButtons,
+}
+
+/// A trait representing a behavior that can be performed.
+///
+/// It is used to define the actions the robot will take when the corresponding behavior is executed.
+/// The behavior is dependent on the current context, and any control messages.
+///
+/// # Examples
+/// ```
+/// use yggdrasil::behavior::engine::{Behavior, Context};
+/// use nidhogg::NaoControlMessage;
+///
+/// struct Dance;
+///
+/// impl Behavior for Dance {
+///     fn execute(
+///         &mut self,
+///         context: Context,
+///         control_message: &mut NaoControlMessage,
+///     ) {
+///         // Dance like nobody's watching 🕺!
+///     }
+/// }
+/// ```
+// This trait is marked with `#[enum_dispatch]` to reduce boilerplate when adding new behaviors
+#[enum_dispatch]
+pub trait Behavior {
+    /// Defines what the robot does when the corresponding behavior is executed.
+    fn execute(&mut self, context: Context, control_message: &mut NaoControlMessage);
+}
+
+/// An enum containing the possible behaviors for a robot.
+///
+/// Each variant of this enum corresponds to a specific behavior and its associated
+/// state.
+/// The actual behavior is defined by implementing the [`Behavior`] trait for the state of each variant.
+///
+/// # Notes
+/// - New behavior implementations should be added as new variants to this enum.
+/// - The specific struct for each behavior (e.g., [`Initial`], [`Example`]) should implement the [`Behavior`] trait.
+#[enum_dispatch(Behavior)]
+pub enum BehaviorKind {
+    Initial(Initial),
+    Example(Example),
+    // Add new behaviors here!
+}
+
+impl Default for BehaviorKind {
+    fn default() -> Self {
+        BehaviorKind::Initial(Initial)
+    }
+}
+
+/// A trait representing a role for the robot.
+///
+/// This trait must be implemented for each specific role.
+/// It defines the set of behaviors and how transitions between these behaviors should be handled
+/// based on the role.
+///
+/// # Examples
+/// ```
+/// use yggdrasil::behavior::{
+///     behaviors::Initial,
+///     engine::{BehaviorKind, Context, Role}
+/// };
+///
+/// struct SecretAgent;
+///
+/// impl Role for SecretAgent {
+///     fn transition_behavior(
+///         &mut self,
+///         context: Context,
+///         current_behavior: &mut BehaviorKind,
+///     ) -> BehaviorKind {
+///         // Implement behavior transitions for secret agent 🕵️
+///         // E.g. Disguise -> Assassinate
+///         BehaviorKind::Initial(Initial::default())
+///     }
+/// }
+/// ```
+// This trait is marked with `#[enum_dispatch]` to reduce boilerplate when adding new roles
+#[enum_dispatch]
+pub trait Role {
+    /// Defines the behavior transitions for a specific role.
+    ///
+    /// # Returns
+    /// - Returns the [`BehaviorKind`] the robot should transition to.
+    fn transition_behavior(
+        &mut self,
+        context: Context,
+        current_behavior: &mut BehaviorKind,
+    ) -> BehaviorKind;
+}
+
+/// An enum containing the possible roles for a robot.
+///
+/// Each variant of this enum corresponds to a specific role and its associated
+/// state. The state is used to define the underlying behaviors for the role, and
+/// transitions between various behaviors are handled by implementing the [`Role`]
+/// trait for the state.
+///
+/// # Notes
+/// - New role implementations should be added as new variants to this enum
+/// - The specific struct for each role (e.g., [`Keeper`], [`Striker`]) should implement the [`Role`] trait.
+#[enum_dispatch(Role)]
+pub enum RoleKind {
+    Keeper(Keeper),
+    Striker(Striker),
+    // Add new roles here!
+}
+
+impl RoleKind {
+    /// Get the default role for each robot based on that robots player number
+    fn by_player_number() -> Self {
+        // TODO: get the default role for each robot by player number
+        RoleKind::Keeper(Keeper)
+    }
+}
+
+/// Resource that is exposed and keeps track of the current role and behavior.
+pub struct Engine {
+    /// Current robot role
+    role: RoleKind,
+    /// Current robot behavior
+    behavior: BehaviorKind,
+}
+
+impl Default for Engine {
+    fn default() -> Self {
+        Self {
+            role: RoleKind::by_player_number(),
+            behavior: BehaviorKind::default(),
+        }
+    }
+}
+
+impl Engine {
+    /// Assigns roles based on player number and other information like what
+    /// robot is closest to the ball, missing robots, etc.
+    fn assign_role(&self, _context: Context) -> RoleKind {
+        // TODO: assign roles based on robot player numbers and missing robots, etc.
+        RoleKind::by_player_number()
+    }
+
+    /// Executes one step of the behavior engine
+    pub fn step(&mut self, context: Context, control_message: &mut NaoControlMessage) {
+        self.role = self.assign_role(context);
+        self.behavior = self.role.transition_behavior(context, &mut self.behavior);
+        self.behavior.execute(context, control_message);
+    }
+}
+
+/// System that is called to execute one step of the behavior engine each cycle
+#[system]
+pub fn step(
+    engine: &mut Engine,
+    control_message: &mut NaoControlMessage,
+    primary_state: &PrimaryState,
+    head_buttons: &HeadButtons,
+) -> Result<()> {
+    let context = Context {
+        primary_state,
+        head_buttons,
+    };
+
+    engine.step(context, control_message);
+
+    Ok(())
+}
+
+/// A module providing a state machine that keeps track of what behavior a
+/// robot is doing.
+///
+/// Each behavior has an execute function that is called to
+/// execute that behavior, this functionality can be implemented by
+/// implementing the [`Behavior`] trait.
+///
+/// Transitions between various behaviors are defined per role. New roles can
+/// be defined by implementing the [`Role`] trait.
+///
+/// This module provides the following resources to the application:
+/// - [`Engine`]
+pub struct BehaviorEngineModule;
+
+impl Module for BehaviorEngineModule {
+    fn initialize(self, app: App) -> miette::Result<App> {
+        Ok(app
+            .init_resource::<Engine>()?
+            .add_system(step.after(nao::write_hardware_info)))
+    }
+}

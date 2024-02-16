@@ -7,6 +7,7 @@ on:
 
 env:
   CARGO_NET_GIT_FETCH_WITH_CLI: true
+  RUSTDOCFLAGS: -D warnings
 
 jobs:
   test:
@@ -33,7 +34,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: clippy
-      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo clippy --all-targets --all-features
 
   fmt:
     name: cargo fmt
@@ -50,3 +51,15 @@ jobs:
 
       - name: Rustfmt Check
         uses: actions-rust-lang/rustfmt@v1
+
+  doc:
+    name: cargo doc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-github-pat/
+        with:
+          CI_TOKEN: ${{ secrets.CI_TOKEN }}
+      - uses: ./.github/actions/install-ubuntu-deps/
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo doc --all-features --no-deps

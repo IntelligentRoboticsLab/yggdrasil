@@ -3,17 +3,39 @@ name = "yggdrasil"
 version = "0.1.0"
 edition = "2021"
 default-run = "yggdrasil"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bifrost = { workspace = true }
+alsa = { workspace = true, optional = true }
+bifrost = { path = "../crates/bifrost/" }
+enum_dispatch = { workspace = true }
 heimdall = { path = "../crates/heimdall" }
-kira = { workspace = true }
+kira = { workspace = true, optional = true }
 miette = { workspace = true, features = ["fancy"] }
-nidhogg = { workspace = true, features = ["lola"] }
+nalgebra = { workspace = true }
+nidhogg = { workspace = true }
+odal = { path = "../crates/odal" }
+rerun = { workspace = true, optional = true, features = [
+    "image",
+    "web_viewer",
+] }
+serde = { workspace = true }
+serde_with = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+<<<<<<< HEAD
 tyr = { path = "../crates/tyr" }
 serde = { workspace = true }
 serde_with = { workspace = true }
 serde_json = { workspace = true }
+=======
+tyr = { path = "../crates/tyr", features = ["odal"] }
+
+[features]
+default = []
+alsa = ["dep:alsa", "dep:kira"]
+rerun = ["dep:rerun"]
+>>>>>>> ceeff45ea380ffba4d81a2169e6c3717906344fd

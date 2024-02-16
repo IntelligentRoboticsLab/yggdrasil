@@ -1,19 +1,20 @@
-use std::{
-    fs::File,
-    io::{self, Write},
-    ops::Deref,
+use std::{io, path::Path};
+
+use linuxvideo::{
+    controls::Cid,
+    format::{PixFormat, PixelFormat},
+    stream::FrameProvider,
+    uvc::UvcExt,
+    Device,
 };
 
-use image::codecs::jpeg::JpegEncoder;
-use linuxvideo::{format::PixFormat, format::PixelFormat, stream::FrameProvider, Device};
-
-use crate::Result;
+use super::{Error, Result, YuyvImage};
 
 /// The width of a NAO [`Image`].
-const IMAGE_WIDTH: u32 = 1280;
+const IMAGE_WIDTH: u32 = 640;
 
 /// The height of a NAO [`Image`].
-const IMAGE_HEIGHT: u32 = 960;
+const IMAGE_HEIGHT: u32 = 480;
 
 /// Absolute path to the lower camera of the NAO.
 const CAMERA_BOTTOM: &str = "/dev/video-bottom";
@@ -21,150 +22,165 @@ const CAMERA_BOTTOM: &str = "/dev/video-bottom";
 /// Absolute path to the upper camera of the NAO.
 const CAMERA_TOP: &str = "/dev/video-top";
 
-/// An object that holds a YUYV NAO camera image.
-pub struct YuyvImage {
-    frame: linuxvideo::Frame,
-    width: u32,
-    height: u32,
+/// A wrapper around a [`Device`] that contains utilities to flip the image.
+pub struct CameraDevice {
+    device: Device,
 }
 
-impl YuyvImage {
-    #[must_use]
-    pub fn width(&self) -> u32 {
-        self.width
+impl CameraDevice {
+    pub fn new<A>(device_path: A) -> Result<Self>
+    where
+        A: AsRef<Path>,
+    {
+        let device = Device::open(device_path)?;
+
+        Ok(Self { device })
     }
 
-    #[must_use]
-    pub fn height(&self) -> u32 {
-        self.height
-    }
-}
-
-/// An object that holds a YUYV NAO camera image.
-pub struct RgbImage {
-    frame: Vec<u8>,
-    width: u32,
-    height: u32,
-}
-
-impl RgbImage {
-    #[must_use]
-    pub fn width(&self) -> u32 {
-        self.width
+    /// Flip the image horizontally.
+    pub fn horizontal_flip(&self) -> Result<()> {
+        let mut uvc_extension = UvcExt::new(&self.device);
+        uvc_extension
+            .horizontal_flip()
+            .map_err(Error::HorizontalFlip)
     }
 
-    #[must_use]
-    pub fn height(&self) -> u32 {
-        self.height
-    }
-}
-
-fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
-    fn clamp(value: i32) -> u8 {
-        #[allow(clippy::cast_sign_loss)]
-        #[allow(clippy::cast_possible_truncation)]
-        return value.clamp(0, 255) as u8;
+    /// Flip the image vertically.
+    pub fn vertical_flip(&self) -> Result<()> {
+        let mut uvc_extension = UvcExt::new(&self.device);
+        uvc_extension.vertical_flip().map_err(Error::VerticalFlip)
     }
 
-    fn yuyv422_to_rgb(y1: u8, u: u8, y2: u8, v: u8) -> ((u8, u8, u8), (u8, u8, u8)) {
-        let y1 = i32::from(y1) - 16;
-        let u = i32::from(u) - 128;
-        let y2 = i32::from(y2) - 16;
-        let v = i32::from(v) - 128;
-
-        let red1 = (298 * y1 + 409 * v + 128) >> 8;
-        let green1 = (298 * y1 - 100 * u - 208 * v + 128) >> 8;
-        let blue1 = (298 * y1 + 516 * u + 128) >> 8;
-
-        let red2 = (298 * y2 + 409 * v + 128) >> 8;
-        let green2 = (298 * y2 - 100 * u - 208 * v + 128) >> 8;
-        let blue2 = (298 * y2 + 516 * u + 128) >> 8;
-
-        (
-            (clamp(red1), clamp(green1), clamp(blue1)),
-            (clamp(red2), clamp(green2), clamp(blue2)),
-        )
-    }
-
-    let num_pixels = source.len() / 2;
-
-    for pixel_duo_id in 0..(num_pixels / 2) {
-        let input_offset: usize = (num_pixels / 2 - pixel_duo_id - 1) * 4;
-        // Use this if the image should not be flipped.
-        // let input_offset: usize = pixel_duo_id * 4;
-
-        let y1 = source[input_offset];
-        let u = source[input_offset + 1];
-        let y2 = source[input_offset + 2];
-        let v = source[input_offset + 3];
-
-        let ((red1, green1, blue1), (red2, green2, blue2)) = yuyv422_to_rgb(y1, u, y2, v);
-
-        destination.write_all(&[red2, green2, blue2, red1, green1, blue1])?;
-        // Use this if the image should not be flipped.
-        // destination.write_all(&[red1, green1, blue1, red2, green2, blue2])?;
-    }
-
-    Ok(())
-}
-
-impl YuyvImage {
-    /// Store the image as a jpeg to a file.
+    /// Enable or disable the autofocus.
     ///
-    /// # Errors
-    /// This function fails if it cannot convert the taken image, or if it cannot write to the
-    /// file.
-    pub fn store_jpeg(&self, file_path: &str) -> Result<()> {
-        let output_file = File::create(file_path)?;
-        let mut encoder = JpegEncoder::new(output_file);
-
-        let mut rgb_buffer = Vec::<u8>::with_capacity((self.width * self.height * 3) as usize);
-
-        yuyv_to_rgb(self, &mut rgb_buffer)?;
-
-        encoder.encode(&rgb_buffer, self.width, self.height, image::ColorType::Rgb8)?;
+    /// Default=false.
+    pub fn set_focus_auto(&mut self, enable: bool) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::FOCUS_AUTO, enable as i32)?;
 
         Ok(())
     }
 
-    /// Convert this [`YuyvImage`] to RGB and store it in `destination`.
+    /// Set the autofocus of the camera device.
     ///
-    /// # Errors
-    /// This function fails if it cannot completely write the RGB image to `destination`.
-    pub fn to_rgb(&self) -> Result<RgbImage> {
-        let mut rgb_image_buffer =
-            Vec::<u8>::with_capacity((self.width * self.height * 3) as usize);
-        yuyv_to_rgb(self, &mut rgb_image_buffer)?;
+    /// `value` is in range [0, 250], default=0, step=25.
+    pub fn set_focus_absolute(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::FOCUS_ABSOLUTE, value)?;
 
-        Ok(RgbImage {
-            frame: rgb_image_buffer,
-            width: self.width,
-            height: self.height,
-        })
+        Ok(())
     }
-}
 
-impl Deref for YuyvImage {
-    type Target = [u8];
+    /// Set the brightness of the camera device.
+    ///
+    /// `value` is in range [-255, 255], default=0, step=1.
+    pub fn set_brightness(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::BRIGHTNESS, value)?;
 
-    fn deref(&self) -> &[u8] {
-        &self.frame
+        Ok(())
     }
-}
 
-impl Deref for RgbImage {
-    type Target = [u8];
+    /// Set the contrast of the camera device.
+    ///
+    /// `value` is in range [0, 255], default=32, step=1.
+    pub fn set_contrast(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::CONTRAST, value)?;
 
-    fn deref(&self) -> &[u8] {
-        &self.frame
+        Ok(())
+    }
+
+    /// Set the saturation of the camera device.
+    ///
+    /// `value` is in range [0, 255], default=64, step=1.
+    pub fn set_saturation(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::SATURATION, value)?;
+
+        Ok(())
+    }
+
+    /// Set the hue of the camera device.
+    ///
+    /// `value` is in range [-180, 180], default=0, step=1.
+    pub fn set_hue(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::SATURATION, value)?;
+
+        Ok(())
+    }
+
+    // Enable or disable the auto hue of the camera device.
+    ///
+    /// Default=true.
+    pub fn set_hue_auto(&mut self, enabled: bool) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::HUE_AUTO, enabled as i32)?;
+
+        Ok(())
+    }
+
+    /// Enable or disable to auto white balance temperature.
+    ///
+    /// Default=true.
+    pub fn set_white_balance_temperature_auto(&mut self, enabled: bool) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::AUTO_WHITE_BALANCE, enabled as i32)?;
+
+        Ok(())
+    }
+
+    /// Set the white balance as a color temperature in Kelvin.
+    ///
+    /// `value` is in range [2500, 6500], default=2500, step=500.
+    pub fn set_white_balance_temperature(&mut self, value: i32) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::WHITE_BALANCE_TEMPERATURE, value)?;
+
+        Ok(())
+    }
+
+    /// Set the gain of the camera device.
+    ///
+    /// `value` is in range [0, 1023], default=16, step=1.
+    pub fn set_gain(&mut self, value: i32) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::WHITE_BALANCE_TEMPERATURE, value)?;
+
+        Ok(())
+    }
+
+    /// Set the sharpness of the camera device.
+    ///
+    /// `value` is in range [0, 9], default=4, step=1.
+    pub fn set_sharpness(&mut self, value: i32) -> Result<()> {
+        self.device.write_control_raw(Cid::SHARPNESS, value)?;
+
+        Ok(())
+    }
+
+    /// Enable or disable the auto exposure.
+    ///
+    /// Default=true.
+    pub fn set_exposure_auto(&mut self, enabled: bool) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::EXPOSURE_AUTO, !enabled as i32)?;
+
+        Ok(())
+    }
+
+    /// Set the exposure of the camera device.
+    ///
+    /// `value` is in range [0, 1048575], default=512, step=1.
+    pub fn set_exposure_absolute(&mut self, value: i32) -> Result<()> {
+        self.device
+            .write_control_raw(Cid::EXPOSURE_ABSOLUTE, value)?;
+
+        Ok(())
     }
 }
 
 /// Struct for retrieving images from the NAO camera.
 pub struct Camera {
     camera: FrameProvider,
-    width: u32,
-    height: u32,
+    width: usize,
+    height: usize,
 }
 
 impl Camera {
@@ -172,7 +188,15 @@ impl Camera {
     ///
     /// # Errors
     /// This function fails if the [`Camera`] cannot be opened.
-    pub fn new(device_path: &str, width: u32, height: u32, num_buffers: u32) -> Result<Self> {
+    ///
+    /// # Panics
+    /// This function pannics if it cannot convert a `u32` value to `usize`.
+    pub fn new(
+        camera_device: CameraDevice,
+        width: u32,
+        height: u32,
+        num_buffers: u32,
+    ) -> Result<Self> {
         if num_buffers == 0 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -180,19 +204,18 @@ impl Camera {
             ))?;
         }
 
-        let capture_device = Device::open(device_path)?.video_capture(PixFormat::new(
-            width,
-            height,
-            PixelFormat::YUYV,
-        ))?;
+        let capture_device =
+            camera_device
+                .device
+                .video_capture(PixFormat::new(width, height, PixelFormat::YUYV))?;
         if capture_device.format().pixel_format() != PixelFormat::YUYV {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Unsupported,
                 "Pixel formats other than YUYV are not supported",
             ))?;
         }
-        let width = capture_device.format().width();
-        let height = capture_device.format().height();
+        let width = usize::try_from(capture_device.format().width()).unwrap();
+        let height = usize::try_from(capture_device.format().height()).unwrap();
 
         let camera = capture_device
             .into_stream_num_buffers(num_buffers)?
@@ -204,7 +227,7 @@ impl Camera {
             height,
         };
 
-        // Grab some images to make startup the camera.
+        // Grab some images to startup the camera.
         // Without it, the first couple of images will return an empty buffer.
         for _ in 0..num_buffers {
             camera.get_yuyv_image()?;
@@ -218,7 +241,12 @@ impl Camera {
     /// # Errors
     /// This function fails if the [`Camera`] cannot be opened.
     pub fn new_nao_top(num_buffers: u32) -> Result<Self> {
-        Self::new(CAMERA_TOP, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
+        let camera_device = CameraDevice::new(CAMERA_TOP)?;
+        // We need to rotate the top camera 180 degrees, because it's upside down in the robot.
+        camera_device.horizontal_flip()?;
+        camera_device.vertical_flip()?;
+
+        Self::new(camera_device, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
     }
 
     /// Create a new camera object for the NAO's bottom camera.
@@ -226,7 +254,9 @@ impl Camera {
     /// # Errors
     /// This function fails if the [`Camera`] cannot be opened.
     pub fn new_nao_bottom(num_buffers: u32) -> Result<Self> {
-        Self::new(CAMERA_BOTTOM, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
+        let camera_device = CameraDevice::new(CAMERA_BOTTOM)?;
+
+        Self::new(camera_device, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
     }
 
     /// Get the next image.
@@ -235,6 +265,20 @@ impl Camera {
     /// This function fails if the [`Camera`] cannot take an image.
     pub fn get_yuyv_image(&mut self) -> Result<YuyvImage> {
         let frame = self.camera.fetch_frame()?;
+
+        Ok(YuyvImage {
+            frame,
+            width: self.width,
+            height: self.height,
+        })
+    }
+
+    /// Get the next image.
+    ///
+    /// # Errors
+    /// This function fails if the [`Camera`] cannot take an image.
+    pub fn try_get_yuyv_image(&mut self) -> Result<YuyvImage> {
+        let frame = self.camera.try_fetch_frame()?;
 
         Ok(YuyvImage {
             frame,

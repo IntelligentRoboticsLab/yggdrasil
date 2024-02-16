@@ -1,14 +1,8 @@
 use std::time::Duration;
 
 use miette::Result;
-use tyr::{
-    prelude::*,
-    tasks::{
-        asynchronous::AsyncTask,
-        task::{Pollable, TaskResource},
-        Error, TaskModule,
-    },
-};
+use tyr::prelude::*;
+use tyr::tasks::{Error, TaskConfig, TaskModule};
 
 #[derive(Default)]
 struct Counter(u64);
@@ -58,17 +52,18 @@ fn time_critical_task(counter: &mut Counter) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-    miette::set_panic_hook();
+    let task_config = TaskConfig {
+        async_threads: 1,
+        compute_threads: 1,
+    };
 
     App::new()
+        .add_resource(Resource::new(task_config))?
         .add_module(TaskModule)?
         .init_resource::<Counter>()?
         .add_task::<AsyncTask<Name>>()?
         .add_system(dispatch_name)
         .add_system(poll_name)
         .add_system(time_critical_task)
-        .run()?;
-
-    Ok(())
+        .run()
 }

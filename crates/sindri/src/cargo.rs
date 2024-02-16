@@ -80,7 +80,12 @@ where
 /// This spawns a cargo process using the provided properties as arguments.
 ///
 /// If `target` is set to [`Option::None`], it will default to the current system's target.
-pub async fn build(binary: &str, profile: Profile, target: Option<&str>) -> Result<(), CargoError> {
+pub async fn build(
+    binary: &str,
+    profile: Profile,
+    target: Option<&str>,
+    features: Vec<&str>,
+) -> Result<(), CargoError> {
     let mut cargo_args = vec!["build", "-p", binary];
 
     if matches!(profile, Profile::Release) {
@@ -90,6 +95,12 @@ pub async fn build(binary: &str, profile: Profile, target: Option<&str>) -> Resu
     if let Some(target) = target {
         cargo_args.push("--target");
         cargo_args.push(target);
+    }
+
+    let feature_string = features.join(",");
+    if !features.is_empty() {
+        cargo_args.push("--features");
+        cargo_args.push(feature_string.as_str());
     }
 
     cargo(cargo_args).await

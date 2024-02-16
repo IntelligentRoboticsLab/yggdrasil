@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     storage::{BoxedSystem, Storage},
-    system::IntoSystem,
+    system::{IntoSystem, NormalSystem},
 };
 
 use miette::{miette, Result};
@@ -67,12 +67,18 @@ pub trait IntoDependencySystem<Input>: Sized {
     fn into_dependency_system(self) -> DependencySystem<Input>;
 
     /// Schedule the system before the system supplied as argument.
-    fn before<OtherInput>(self, system: impl IntoSystem<OtherInput>) -> DependencySystem<()> {
+    fn before<OtherInput>(
+        self,
+        system: impl IntoSystem<NormalSystem, OtherInput>,
+    ) -> DependencySystem<()> {
         self.into_dependency_system().before(system)
     }
 
     /// Schedule the system after the system supplied as argument.
-    fn after<OtherInput>(self, system: impl IntoSystem<OtherInput>) -> DependencySystem<()> {
+    fn after<OtherInput>(
+        self,
+        system: impl IntoSystem<NormalSystem, OtherInput>,
+    ) -> DependencySystem<()> {
         self.into_dependency_system().after(system)
     }
 }
@@ -88,22 +94,22 @@ pub struct DependencySystem<I> {
     _input: PhantomData<I>,
 }
 
-// Get systems with all possible inputs
-// This `I` gets replaced later as we do not need it
-impl<S: IntoSystem<I>, I> IntoDependencySystem<I> for S {
-    fn into_dependency_system(self) -> DependencySystem<I> {
-        DependencySystem {
-            system: Box::new(self.into_system()),
-            dependencies: Vec::new(),
-            _input: PhantomData,
-        }
+impl DependencySystem<()> {
+    pub(crate) fn boxed_system(&self) -> &BoxedSystem {
+        &self.system
+    }
+
+    pub(crate) fn add_dependency(&mut self, dependency: Dependency) {
+        self.dependencies.push(dependency)
     }
 }
 
-impl IntoDependencySystem<()> for BoxedSystem {
-    fn into_dependency_system(self) -> DependencySystem<()> {
+// Get systems with all possible inputs
+// This `I` gets replaced later as we do not need it
+impl<S: IntoSystem<NormalSystem, I>, I> IntoDependencySystem<I> for S {
+    fn into_dependency_system(self) -> DependencySystem<I> {
         DependencySystem {
-            system: self,
+            system: Box::new(self.into_system()),
             dependencies: Vec::new(),
             _input: PhantomData,
         }
@@ -119,14 +125,20 @@ impl<I> IntoDependencySystem<()> for DependencySystem<I> {
         }
     }
 
-    fn before<'a, Input>(self, system: impl IntoSystem<Input>) -> DependencySystem<()> {
+    fn before<'a, Input>(
+        self,
+        system: impl IntoSystem<NormalSystem, Input>,
+    ) -> DependencySystem<()> {
         let mut out = self.into_dependency_system();
         out.dependencies
             .push(Dependency::Before(Box::new(system.into_system())));
         out
     }
 
-    fn after<'a, Input>(self, system: impl IntoSystem<Input>) -> DependencySystem<()> {
+    fn after<'a, Input>(
+        self,
+        system: impl IntoSystem<NormalSystem, Input>,
+    ) -> DependencySystem<()> {
         let mut out = self.into_dependency_system();
         out.dependencies
             .push(Dependency::After(Box::new(system.into_system())));

@@ -2,6 +2,7 @@ use crate::motion::motion_util::lerp;
 use miette::{miette, IntoDiagnostic, Result};
 use nidhogg::types::JointArray;
 use serde::{Deserialize, Serialize};
+use serde_json;
 use serde_with::{serde_as, DurationSecondsWithFrac};
 use std::fs::File;
 use std::{path::Path, time::Duration};
@@ -52,8 +53,8 @@ impl Motion {
         self.get_surrounding_frames_as_joint_array(motion_duration)
             .map(|(target_positions_a, target_positions_b, duration)| {
                 lerp(
-                    &target_positions_a,
-                    &target_positions_b,
+                    target_positions_a,
+                    target_positions_b,
                     motion_duration.as_secs_f32() / duration.as_secs_f32(),
                 )
             })

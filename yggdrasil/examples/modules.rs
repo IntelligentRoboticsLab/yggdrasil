@@ -1,3 +1,5 @@
+//! An example that shows how initialization of an app can be compartmentalized using modules
+
 use miette::Result;
 use tyr::prelude::*;
 
@@ -18,9 +20,5 @@ impl Module for FooModule {
 }
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
-    App::new().add_module(FooModule)?.run()?;
-
-    Ok(())
+    App::new().add_module(FooModule)?.run()
 }

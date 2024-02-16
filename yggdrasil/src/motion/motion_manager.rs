@@ -24,6 +24,15 @@ pub struct MotionManager {
     pub motions: HashMap<MotionType, Motion>,
 }
 
+<<<<<<< HEAD
+=======
+impl Default for MotionManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+>>>>>>> ceeff45ea380ffba4d81a2169e6c3717906344fd
 impl MotionManager {
     /// Initializes a `MotionManger`.
     ///

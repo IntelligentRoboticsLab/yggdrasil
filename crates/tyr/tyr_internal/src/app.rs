@@ -1,5 +1,6 @@
-use crate::schedule::{DependencySystem, Schedule};
+use crate::schedule::{Dependency, DependencySystem, Schedule};
 use crate::storage::{Resource, Storage};
+use crate::system::{IntoSystem, IntoSystemChain, StartupSystem, System};
 use crate::{IntoDependencySystem, Module};
 
 use miette::Result;
@@ -76,16 +77,53 @@ impl App {
         self
     }
 
+    #[must_use]
+    /// Adds a chain of systems to the app
+    ///
+    /// The systems added run sequentially, i.e.:
+    /// ```ignore
+    /// app.add_system_chain((first, second, third))
+    /// ```
+    /// is equivalent to
+    /// ```ignore
+    /// app.add_system(first)
+    ///    .add_system(second.after(first))
+    ///    .add_system(third.after(second))
+    /// ```
+    pub fn add_system_chain<I>(self, systems: impl IntoSystemChain<I>) -> Self {
+        let mut system_chain = systems.chain();
+
+        for i in 1..system_chain.len() {
+            // create a dependency on the previous system
+            let prev_system = system_chain[i - 1].boxed_system();
+            let dependency = Dependency::After(prev_system.clone());
+
+            system_chain[i].add_dependency(dependency);
+        }
+
+        system_chain
+            .into_iter()
+            .fold(self, |app, system| app.add_system(system))
+    }
+
     /// Adds a startup system to the app.
     ///
     /// A startup system is executed once when the app starts up,
     /// and is provided access to the [`Storage`] of the app.
     ///
-    /// All startup systems must be functions with the following signature:
+    /// All startup systems must be functions with at least the following signature:
     /// ```ignore
+    /// #[startup_system]
     /// fn my_startup_system(storage: &mut Storage) -> Result<()>
     /// ```
+    /// After the first parameter, you can query any resource `T` by using `&T` or `&mut T` like in a normal system.
+    /// ```ignore
+    /// #[startup_system]
+    /// fn another_startup_system(storage: &mut Storage, foo: &Foo, bar: &Bar) -> Result<()>
+    /// ```
+    ///
     /// Startup systems can be useful for values that need to be initialized once before they are used.
+    ///
     /// # Example
     /// ```ignore
     /// fn get_robot_connection(storage: &mut Storage) -> Result<()> {
@@ -97,11 +135,11 @@ impl App {
     ///     Ok(())
     /// }
     /// ```
-    pub fn add_startup_system<F: FnOnce(&mut Storage) -> Result<()>>(
+    pub fn add_startup_system<Input>(
         mut self,
-        system: F,
+        system: impl IntoSystem<StartupSystem, Input>,
     ) -> Result<Self> {
-        system(&mut self.storage)?;
+        system.into_system().run(&mut self.storage)?;
         Ok(self)
     }
 

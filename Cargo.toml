@@ -1,35 +1,47 @@
 [workspace]
 resolver = "2"
-members = ["crates/sindri", "crates/heimdall", "crates/tyr", "yggdrasil"]
+members = ["crates/*", "yggdrasil"]
 
 [workspace.dependencies]
-bifrost = { git = "ssh://git@github.com/IntelligentRoboticsLab/bifrost.git" }
+async-trait = "0.1.77"
+byteorder = "1.4.3"
 cargo_toml = "0.17.0"
-clap = "4.4.3"
+clap = "4.4.18"
 colored = "2.0.4"
 dyn-clone = "1.0.11"
+enum_dispatch = "0.3.12"
 futures = "0.3.28"
-image = "0.24.7"
-indicatif = "0.17.6"
-kira = "0.8.4"
+image = "0.24.8"
+indicatif = "0.17.8"
+kira = "0.8.7"
 linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git" }
 miette = "5.10.0"
+<<<<<<< HEAD
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", branch = "svisser/vector3-sum" }
+=======
+nalgebra = "0.32.3"
+nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
+num = "0.4.0"
+>>>>>>> ceeff45ea380ffba4d81a2169e6c3717906344fd
 petgraph = "0.6.3"
-proc-macro2 = "1.0.63"
-quote = "1.0.28"
-rayon = "1.7.0"
-regex = "1.9.4"
+proc-macro2 = "1.0.78"
+quote = "1.0.35"
+rayon = "1.8.1"
+regex = "1.10.3"
+rerun = { version = "0.13" }
+alsa = "0.8.1"
 rustc_version = "0.4.0"
-serde = "1.0.171"
-serde_json = "1.0.105"
-serde_with = "3.3.0"
+serde = "1.0.196"
+serde_json = "1.0.113"
+serde_with = "3.5.1"
 ssh2 = "0.9.4"
-syn = "2.0.22"
-thiserror = "1.0.48"
-tokio = "1.31.0"
+syn = "2.0.48"
+thiserror = "1.0.57"
+tokio = "1.36.0"
+tokio-test = "0.4.2"
 tokio-tungstenite = "0.20.0"
-toml = "0.8.6"
+toml = "0.8.9"
 tracing = "0.1.37"
 tracing-subscriber = "0.3"
+turbojpeg = "1.0.0"
 walkdir = "2.4.0"

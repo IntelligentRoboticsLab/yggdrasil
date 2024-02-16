@@ -1,11 +1,13 @@
+use crate::prelude::*;
+
+use nidhogg::NaoState;
 use std::time::{Duration, Instant};
 
-use miette::Result;
-use nidhogg::NaoState;
-use tyr::prelude::*;
+/// The threshold for a button to be considered pressed.
+const BUTTON_ACTIVATION_THRESHOLD: f32 = 0.5;
 
 /// Describes the time a button needs to be held down, in order to move to the [`ButtonState::Held`].
-const BUTTON_HELD_THRESHOLD: Duration = Duration::from_millis(500);
+const BUTTON_HELD_DURATION_THRESHOLD: Duration = Duration::from_millis(500);
 
 /// A module offering structured wrappers for each Nao button, derived from the raw [`NaoState`].
 ///
@@ -39,6 +41,8 @@ pub enum ButtonState {
     /// The button is not being pressed.
     #[default]
     Neutral,
+    /// The button has been tapped, meaning it was just released.
+    Tapped,
     /// The button is being pressed. [`Instant`] records the timestamp when the button was pressed.
     Pressed(Instant),
     /// The button is held down. [`Instant`] records the timestamp since the button is held.
@@ -48,7 +52,12 @@ pub enum ButtonState {
 impl ButtonState {
     /// Tell whether the button is currently pressed down.
     pub fn is_pressed(&self) -> bool {
-        !matches!(self, Self::Neutral)
+        !matches!(self, Self::Neutral | Self::Tapped)
+    }
+
+    /// Tell whether the button has been tapped, meaning it was just released.
+    pub fn is_tapped(&self) -> bool {
+        matches!(self, Self::Tapped)
     }
 
     /// Tell whether the button is currently being held down.
@@ -59,21 +68,20 @@ impl ButtonState {
     /// Get the next state based on whether the button is currently pressed down.
     pub fn next(&self, is_pressed: bool) -> Self {
         match (self, is_pressed) {
-            (ButtonState::Neutral, true) => Self::Pressed(Instant::now()),
-            (ButtonState::Neutral, false) => Self::Neutral,
             (ButtonState::Pressed(start), true) => {
                 if Instant::now()
                     .checked_duration_since(*start)
-                    .is_some_and(|duration| duration >= BUTTON_HELD_THRESHOLD)
+                    .is_some_and(|duration| duration >= BUTTON_HELD_DURATION_THRESHOLD)
                 {
                     Self::Held(Instant::now())
                 } else {
                     Self::Pressed(*start)
                 }
             }
-            (ButtonState::Pressed(_), false) => Self::Neutral,
+            (ButtonState::Neutral | ButtonState::Tapped, true) => Self::Pressed(Instant::now()),
+            (ButtonState::Neutral | ButtonState::Tapped, false) => Self::Neutral,
             (ButtonState::Held(start), true) => Self::Held(*start),
-            (ButtonState::Held(_), false) => Self::Neutral,
+            (ButtonState::Held(_) | ButtonState::Pressed(_), false) => Self::Tapped,
         }
     }
 }
@@ -137,7 +145,7 @@ pub struct RightFootButtons {
 }
 
 #[system]
-fn button_filter(
+pub fn button_filter(
     nao_state: &NaoState,
     head_buttons: &mut HeadButtons,
     chest_button: &mut ChestButton,
@@ -146,113 +154,95 @@ fn button_filter(
     left_foot_buttons: &mut LeftFootButtons,
     right_foot_buttons: &mut RightFootButtons,
 ) -> Result<()> {
-    head_buttons.front = head_buttons.front.next(nao_state.touch.head_front > 0.0);
-    head_buttons.middle = head_buttons.middle.next(nao_state.touch.head_middle > 0.0);
-    head_buttons.rear = head_buttons.rear.next(nao_state.touch.head_rear > 0.0);
-    chest_button.state = chest_button.state.next(nao_state.touch.chest_board > 0.0);
+    head_buttons.front = head_buttons
+        .front
+        .next(nao_state.touch.head_front >= BUTTON_ACTIVATION_THRESHOLD);
+    head_buttons.middle = head_buttons
+        .middle
+        .next(nao_state.touch.head_middle >= BUTTON_ACTIVATION_THRESHOLD);
+    head_buttons.rear = head_buttons
+        .rear
+        .next(nao_state.touch.head_rear >= BUTTON_ACTIVATION_THRESHOLD);
+    chest_button.state = chest_button
+        .state
+        .next(nao_state.touch.chest_board >= BUTTON_ACTIVATION_THRESHOLD);
     left_hand_buttons.left = left_hand_buttons
         .left
-        .next(nao_state.touch.left_hand_left > 0.0);
+        .next(nao_state.touch.left_hand_left >= BUTTON_ACTIVATION_THRESHOLD);
     left_hand_buttons.right = left_hand_buttons
         .right
-        .next(nao_state.touch.left_hand_right > 0.0);
+        .next(nao_state.touch.left_hand_right >= BUTTON_ACTIVATION_THRESHOLD);
     left_hand_buttons.back = left_hand_buttons
         .back
-        .next(nao_state.touch.left_hand_back > 0.0);
+        .next(nao_state.touch.left_hand_back >= BUTTON_ACTIVATION_THRESHOLD);
     right_hand_buttons.left = right_hand_buttons
         .left
-        .next(nao_state.touch.right_hand_left > 0.0);
+        .next(nao_state.touch.right_hand_left >= BUTTON_ACTIVATION_THRESHOLD);
     right_hand_buttons.right = right_hand_buttons
         .right
-        .next(nao_state.touch.right_hand_right > 0.0);
+        .next(nao_state.touch.right_hand_right >= BUTTON_ACTIVATION_THRESHOLD);
     right_hand_buttons.back = right_hand_buttons
         .back
-        .next(nao_state.touch.right_hand_back > 0.0);
+        .next(nao_state.touch.right_hand_back >= BUTTON_ACTIVATION_THRESHOLD);
     left_foot_buttons.left = left_foot_buttons
         .left
-        .next(nao_state.touch.left_foot_left > 0.0);
+        .next(nao_state.touch.left_foot_left >= BUTTON_ACTIVATION_THRESHOLD);
     left_foot_buttons.right = left_foot_buttons
         .right
-        .next(nao_state.touch.left_foot_right > 0.0);
+        .next(nao_state.touch.left_foot_right >= BUTTON_ACTIVATION_THRESHOLD);
     right_foot_buttons.left = right_foot_buttons
         .left
-        .next(nao_state.touch.right_foot_left > 0.0);
+        .next(nao_state.touch.right_foot_left >= BUTTON_ACTIVATION_THRESHOLD);
     right_foot_buttons.right = right_foot_buttons
         .right
-        .next(nao_state.touch.right_foot_right > 0.0);
+        .next(nao_state.touch.right_foot_right >= BUTTON_ACTIVATION_THRESHOLD);
 
     Ok(())
 }
 
+#[cfg(test)]
 mod tests {
+    use super::*;
 
     #[test]
     fn button_update() {
-        let mut button = crate::filter::button::ButtonState::default();
+        let mut button = ButtonState::default();
 
-        assert!(
-            !button.is_pressed(),
-            "Button should initialize with `is_pressed == false`"
-        );
-        assert!(
-            !button.is_held(),
-            "Button should initialize with `is_held == false`"
-        );
+        assert!(!button.is_tapped());
+        assert!(!button.is_pressed());
+        assert!(!button.is_held());
 
         button = button.next(true);
 
-        assert!(
-            button.is_pressed(),
-            "Button should have `is_pressed == true` after update!"
-        );
-        assert!(
-            !button.is_held(),
-            "Button should have `is_held == false` after single update!"
-        );
+        assert!(!button.is_tapped());
+        assert!(button.is_pressed());
+        assert!(!button.is_held());
 
-        std::thread::sleep(super::BUTTON_HELD_THRESHOLD);
+        std::thread::sleep(BUTTON_HELD_DURATION_THRESHOLD);
         button = button.next(true);
 
-        assert!(
-            button.is_pressed(),
-            "Button should have `is_pressed == true` after update!"
-        );
-        assert!(
-            button.is_held(),
-            "Button should have `is_held == true` after `BUTTON_HELD_THRESHHOLD` has passed!"
-        );
+        assert!(!button.is_tapped());
+        assert!(button.is_pressed());
+        assert!(button.is_held());
 
         button = button.next(false);
-        assert!(
-            !button.is_pressed(),
-            "Button should have `is_pressed == false` after no longer pressed!"
-        );
-        assert!(
-            !button.is_held(),
-            "Button should have `is_held == false` after no longer pressed!"
-        );
+
+        assert!(button.is_tapped());
+        assert!(!button.is_pressed(),);
+        assert!(!button.is_held(),);
 
         button = button.next(true);
-        std::thread::sleep(super::BUTTON_HELD_THRESHOLD / 2);
+        std::thread::sleep(BUTTON_HELD_DURATION_THRESHOLD / 2);
         button = button.next(true);
 
-        assert!(
-            button.is_pressed(),
-            "Button should have `is_pressed == true` after update!"
-        );
-        assert!(
-            !button.is_held(),
-            "Button should have `is_held == false` after `BUTTON_HELD_THRESHHOLD / 2` has passed!"
-        );
+        assert!(!button.is_tapped());
+        assert!(button.is_pressed());
+        assert!(!button.is_held());
 
         button = button.next(false);
-        assert!(
-            !button.is_pressed(),
-            "Button should have `is_pressed == false` after no longer pressed!"
-        );
-        assert!(
-            !button.is_held(),
-            "Button should have `is_held == false` after no longer pressed!"
-        );
+
+        assert!(button.is_tapped());
+        assert!(!button.is_pressed());
+        assert!(!button.is_held());
     }
 }

@@ -1,4 +1,6 @@
-use miette::Result;
+use std::collections::VecDeque;
+
+use crate::prelude::*;
 use nidhogg::{types::Vector2, types::Vector3, NaoState};
 use std::collections::VecDeque;
 use tyr::prelude::*;
@@ -7,7 +9,6 @@ use tyr::prelude::*;
 ///
 /// This module provides the following resources to the application:
 /// - [`IMUValues`]
-///
 pub struct IMUFilter;
 
 impl Module for IMUFilter {
@@ -70,16 +71,27 @@ fn standard_deviation(measurements: VecDeque<Vector3<f32>>) -> Vector3<f32> {
         .clone()
         .into_iter()
         .fold(Vector3::default(), |acc, item| {
-            let diff = avg.clone() - item;
-            acc + diff.clone() * diff
+            let diff = avg - item;
+            acc + diff * diff
         })
 }
 
 #[system]
-fn imu_filter(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()> {
-    imu_values.gyroscope = nao_state.gyroscope.clone();
-    imu_values.accelerometer = nao_state.accelerometer.clone();
-    imu_values.angles = nao_state.angles.clone();
+pub fn imu_filter(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()> {
+    imu_values.gyroscope = nao_state.gyroscope;
+    imu_values.accelerometer = nao_state.accelerometer;
+    imu_values.angles = nao_state.angles;
+
+    imu_values
+        .accelerometer_measurements
+        .push_back(nao_state.accelerometer);
+
+    if imu_values.accelerometer_measurements.len() > 50 {
+        imu_values.accelerometer_measurements.pop_front();
+    }
+
+    imu_values.accelerometer_std =
+        standard_deviation(imu_values.accelerometer_measurements.clone());
 
     imu_values
         .accelerometer_measurements
