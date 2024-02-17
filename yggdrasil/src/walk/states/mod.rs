@@ -5,6 +5,8 @@ use enum_dispatch::enum_dispatch;
 use nidhogg::types::ForceSensitiveResistors;
 use std::time::Duration;
 
+use crate::kinematics::FootOffset;
+
 use super::{engine::WalkCommand, FilteredGyroscope, WalkingEngineConfig};
 
 pub struct WalkContext<'a> {
@@ -13,15 +15,15 @@ pub struct WalkContext<'a> {
     pub config: &'a WalkingEngineConfig,
     pub filtered_gyro: &'a FilteredGyroscope,
     pub fsr: &'a ForceSensitiveResistors,
-    pub control_message: &'a mut nidhogg::NaoControlMessage,
 }
 
 #[enum_dispatch]
 pub trait WalkState {
-    fn next_state(&self, context: WalkContext) -> WalkStateKind;
+    fn next_state(self, context: WalkContext) -> WalkStateKind;
+    fn get_foot_offsets(&self) -> (FootOffset, FootOffset);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[enum_dispatch(WalkState)]
 pub enum WalkStateKind {
     Idle(idle::IdleState),

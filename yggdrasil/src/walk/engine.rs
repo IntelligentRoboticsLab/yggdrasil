@@ -123,7 +123,7 @@ pub fn walking_engine(
         fsr,
         control_message,
     };
-    walking_engine.state = walking_engine.state.next_state(context);
+    walking_engine.state = walking_engine.state.clone().next_state(context);
 
     Ok(())
 }

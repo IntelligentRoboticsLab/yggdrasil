@@ -12,7 +12,7 @@ use crate::{
 
 use super::{WalkContext, WalkState, WalkStateKind};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WalkingState {
     swing_foot: Side,
     phase_time: Duration,
@@ -32,7 +32,7 @@ impl Default for WalkingState {
 }
 
 impl WalkState for WalkingState {
-    fn next_state(&self, context: WalkContext) -> WalkStateKind {
+    fn next_state(self, context: WalkContext) -> WalkStateKind {
         let phase_time = self.phase_time + context.dt;
         // this is the linear progression of this step, a value from 0 to 1 which describes the progress of the current step.
         let linear_time =
