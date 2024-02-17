@@ -1,4 +1,4 @@
-use image::codecs::jpeg::JpegEncoder;
+use image::{codecs::jpeg::JpegEncoder, Pixel};
 fn yuyv_to_rgb(
     source: &[u8],
     len: usize,
@@ -89,7 +89,7 @@ pub fn store_jpeg(
 
     Ok(())
 }
-use std::{fs::File, io::Write, ops::Deref, path::Path, time::Instant};
+use std::{fs::File, io::Write, mem::transmute, ops::Deref, path::Path, time::Instant};
 
 use crate::{
     camera::{BottomImage, Image, TopImage},
@@ -114,8 +114,8 @@ pub struct ScanLines {
     width: usize,
     height: usize,
 
-    horizontal: Vec<u8>,
-    vertical: Vec<u8>,
+    horizontal: Vec<PixelColor>,
+    vertical: Vec<PixelColor>,
     image: Image,
 
     horizontal_ids: Vec<usize>,
@@ -135,11 +135,11 @@ impl ScanLines {
         &self.image
     }
 
-    pub fn raw_horizontal(&self) -> &[u8] {
+    pub fn raw_horizontal(&self) -> &[PixelColor] {
         &self.horizontal
     }
 
-    pub fn raw_vertical(&self) -> &[u8] {
+    pub fn raw_vertical(&self) -> &[PixelColor] {
         &self.vertical
     }
 
@@ -151,16 +151,16 @@ impl ScanLines {
         &self.vertical_ids
     }
 
-    pub fn horizontal_line(&self, line_id: usize) -> &[u8] {
-        let offset = line_id * self.width * 2;
+    pub fn horizontal_line(&self, line_id: usize) -> &[PixelColor] {
+        let offset = line_id * self.width;
 
-        &self.horizontal.as_slice()[offset..offset + self.width * 2]
+        &self.horizontal.as_slice()[offset..offset + self.width]
     }
 
-    pub fn vertical_line(&self, line_id: usize) -> &[u8] {
-        let offset = line_id * self.height * 4;
+    pub fn vertical_line(&self, line_id: usize) -> &[PixelColor] {
+        let offset = line_id * self.height;
 
-        &self.vertical.as_slice()[offset..offset + self.height * 4]
+        &self.vertical.as_slice()[offset..offset + self.height]
     }
 }
 
@@ -188,59 +188,178 @@ impl Deref for BottomScanLines {
     }
 }
 
-fn horizontal_scan_lines(
-    yuyv_image: &YuyvImage,
-    buffer: &mut [u8],
-    horizontal_ids: &mut Vec<usize>,
-) {
-    horizontal_ids.clear();
+#[repr(u8)]
+#[derive(Copy, Clone)]
+pub enum PixelColor {
+    White,
+    Black,
+    Green,
+    Unknown,
+}
 
-    // Warning is disabled, because iterators are to slow here.
-    #[allow(clippy::needless_range_loop)]
-    for row_id in 0..yuyv_image.height() / ROW_SCAN_LINE_INTERVAL {
-        horizontal_ids.push(row_id);
-
-        let image_offset = (yuyv_image.width() * 2) * (row_id * ROW_SCAN_LINE_INTERVAL);
-        let buffer_offset = (row_id * yuyv_image.width()) * 2;
-
-        unsafe {
-            std::ptr::copy_nonoverlapping(
-                yuyv_image.as_ptr().byte_add(image_offset),
-                buffer.as_mut_ptr().byte_add(buffer_offset),
-                yuyv_image.width() * 2,
-            );
+impl PixelColor {
+    fn classify_yuv_pixel(y1: u8, u: u8, _y2: u8, v: u8) -> Self {
+        if y1 > 140 {
+            Self::White
+        // } else if (y1 > 65) && (u > 90) && (u < 110) && (v > 90) && (v < 135) {
+        } else if (y1 > 45) && (u > 70) && (u < 160) && (v > 70) && (v < 160) {
+            Self::Green
+        } else if (y1 < 50) && (u > 110) && (u < 150) && (v > 110) && (v < 150) {
+            Self::Black
+        } else {
+            Self::Unknown
         }
     }
 }
 
-fn vertical_scan_lines(yuyv_image: &YuyvImage, buffer: &mut [u8], vertical_ids: &mut Vec<usize>) {
+fn horizontal_scan_lines(
+    yuyv_image: &YuyvImage,
+    buffer: &mut [PixelColor],
+    horizontal_ids: &mut Vec<usize>,
+) {
+    // TODO: Remove this once unnused.
+    horizontal_ids.clear();
+    for row_id in 0..yuyv_image.height() / ROW_SCAN_LINE_INTERVAL {
+        horizontal_ids.push(row_id * ROW_SCAN_LINE_INTERVAL);
+    }
+
+    // Warning is disabled, because iterators are to slow here.
+    #[allow(clippy::needless_range_loop)]
+    for row_id in 0..yuyv_image.height() / ROW_SCAN_LINE_INTERVAL {
+        for col_id in 0..yuyv_image.width() / 2 {
+            let image_offset =
+                (yuyv_image.width() * 2) * (row_id * ROW_SCAN_LINE_INTERVAL) + col_id * 4;
+
+            let (y1, u, y2, v) = unsafe {
+                (
+                    yuyv_image.as_ptr().byte_add(image_offset).read_unaligned(),
+                    yuyv_image
+                        .as_ptr()
+                        .byte_add(image_offset + 1)
+                        .read_unaligned(),
+                    yuyv_image
+                        .as_ptr()
+                        .byte_add(image_offset + 2)
+                        .read_unaligned(),
+                    yuyv_image
+                        .as_ptr()
+                        .byte_add(image_offset + 3)
+                        .read_unaligned(),
+                )
+            };
+
+            let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
+            let buffer_offset = row_id * yuyv_image.width() + col_id * 2;
+
+            unsafe {
+                buffer
+                    .as_mut_ptr()
+                    .byte_add(buffer_offset)
+                    .write_unaligned(pixel_color);
+                buffer
+                    .as_mut_ptr()
+                    .byte_add(buffer_offset + 1)
+                    .write_unaligned(pixel_color);
+            };
+        }
+
+        // let image_offset = (yuyv_image.width() * 2) * (row_id * ROW_SCAN_LINE_INTERVAL);
+        // for row_quadruple in 0..yuyv_image.width() / 4 {
+        //     let mut pixel_colors = [PixelColor::Unknown; 4];
+        //     let mut pixel_bytes = [0u8; 4 * 2];
+        //
+        //     // TODO: Use this instead of the slower save one.
+        //     // unsafe {
+        //     //     std::ptr::copy_nonoverlapping(
+        //     //         yuyv_image
+        //     //             .as_ptr()
+        //     //             .byte_add(image_offset + row_quadruple * 2 * 4),
+        //     //         pixel_bytes.as_mut_ptr(),
+        //     //         4 * 2,
+        //     //     );
+        //     // }
+        //     pixel_bytes.copy_from_slice(
+        //         &yuyv_image[image_offset + row_quadruple * 2 * 4
+        //             ..image_offset + row_quadruple * 2 * 4 + 4 * 2],
+        //     );
+        //
+        //     let pixel_color1 = PixelColor::classify_yuv_pixel(
+        //         pixel_bytes[0],
+        //         pixel_bytes[1],
+        //         pixel_bytes[2],
+        //         pixel_bytes[3],
+        //     );
+        //     let pixel_color2 = PixelColor::classify_yuv_pixel(
+        //         pixel_bytes[4],
+        //         pixel_bytes[5],
+        //         pixel_bytes[6],
+        //         pixel_bytes[7],
+        //     );
+        //
+        //     pixel_colors[0] = pixel_color1;
+        //     pixel_colors[1] = pixel_color1;
+        //     pixel_colors[2] = pixel_color2;
+        //     pixel_colors[3] = pixel_color2;
+        //
+        //     let buffer_offset = row_id * yuyv_image.width() + row_quadruple * 4;
+        //
+        //     buffer[buffer_offset..buffer_offset + 4].copy_from_slice(&pixel_colors);
+        // }
+    }
+}
+
+fn vertical_scan_lines(
+    yuyv_image: &YuyvImage,
+    buffer: &mut [PixelColor],
+    vertical_ids: &mut Vec<usize>,
+) {
+    // TODO: Remove this once unnused.
     vertical_ids.clear();
+    for col_id in 0..yuyv_image.width() / COL_SCAN_LINE_INTERVAL {
+        vertical_ids.push(col_id * COL_SCAN_LINE_INTERVAL);
+    }
 
     // Warning is disabled, because iterators are too slow here.
     #[allow(clippy::needless_range_loop)]
-    for col_id in 0..yuyv_image.width() / COL_SCAN_LINE_INTERVAL {
-        vertical_ids.push(col_id);
-
-        for row_id in 0..yuyv_image.height() {
+    for row_id in 0..yuyv_image.height() {
+        for col_id in 0..yuyv_image.width() / COL_SCAN_LINE_INTERVAL {
             let image_offset = (row_id * yuyv_image.width() + col_id * COL_SCAN_LINE_INTERVAL) * 2;
-            let buffer_offset = (col_id * yuyv_image.height() + row_id) * 4;
 
+            let (y1, u, y2, v) = unsafe {
+                (
+                    yuyv_image.as_ptr().byte_add(image_offset).read_unaligned(),
+                    yuyv_image
+                        .as_ptr()
+                        .byte_add(image_offset + 1)
+                        .read_unaligned(),
+                    yuyv_image
+                        .as_ptr()
+                        .byte_add(image_offset + 2)
+                        .read_unaligned(),
+                    yuyv_image
+                        .as_ptr()
+                        .byte_add(image_offset + 3)
+                        .read_unaligned(),
+                )
+            };
+            let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
+
+            let buffer_offset = col_id * yuyv_image.height() + row_id;
             unsafe {
-                std::ptr::copy_nonoverlapping(
-                    yuyv_image.as_ptr().byte_add(image_offset),
-                    buffer.as_mut_ptr().byte_add(buffer_offset),
-                    4,
-                );
-            }
+                buffer
+                    .as_mut_ptr()
+                    .byte_add(buffer_offset)
+                    .write_unaligned(pixel_color)
+            };
         }
     }
 }
 
 fn calc_buffer_size(image: &Image) -> (usize, usize) {
     let horizontal_buffer_size =
-        image.yuyv_image().width() * 2 * (image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL);
+        image.yuyv_image().width() * (image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL);
     let vertical_buffer_size =
-        image.yuyv_image().height() * 4 * (image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL);
+        image.yuyv_image().height() * (image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL);
 
     (horizontal_buffer_size, vertical_buffer_size)
 }
@@ -276,10 +395,10 @@ fn update_bottom_scan_lines(bottom_image: &BottomImage, bottom_scan_lines: &mut 
         &mut bottom_scan_lines.scan_lines.horizontal,
         &mut bottom_scan_lines.scan_lines.horizontal_ids,
     );
-    eprintln!(
-        "bottom_horizontal elapsed: {}us",
-        bottom_start.elapsed().as_micros()
-    );
+    // eprintln!(
+    //     "bottom_horizontal elapsed: {}us",
+    //     bottom_start.elapsed().as_micros()
+    // );
 
     let bottom_start = Instant::now();
     vertical_scan_lines(
@@ -287,10 +406,10 @@ fn update_bottom_scan_lines(bottom_image: &BottomImage, bottom_scan_lines: &mut 
         &mut bottom_scan_lines.scan_lines.vertical,
         &mut bottom_scan_lines.scan_lines.vertical_ids,
     );
-    eprintln!(
-        "bottom_vertical elapsed:   {}us",
-        bottom_start.elapsed().as_micros()
-    );
+    // eprintln!(
+    //     "bottom_vertical elapsed:   {}us",
+    //     bottom_start.elapsed().as_micros()
+    // );
 }
 
 #[startup_system]
@@ -300,13 +419,14 @@ pub fn init_buffers(
     bottom_image: &BottomImage,
 ) -> Result<()> {
     let (top_horizontal_buffer_size, top_vertical_buffer_size) = calc_buffer_size(top_image);
+
     let mut top_scan_lines = TopScanLines {
         scan_lines: ScanLines {
             width: top_image.yuyv_image().width(),
             height: top_image.yuyv_image().height(),
 
-            horizontal: vec![0u8; top_horizontal_buffer_size],
-            vertical: vec![0u8; top_vertical_buffer_size],
+            horizontal: vec![PixelColor::Unknown; top_horizontal_buffer_size],
+            vertical: vec![PixelColor::Unknown; top_vertical_buffer_size],
             image: top_image.deref().clone(),
             horizontal_ids: Vec::with_capacity(
                 top_image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL,
@@ -324,8 +444,8 @@ pub fn init_buffers(
             width: bottom_image.yuyv_image().width(),
             height: bottom_image.yuyv_image().height(),
 
-            horizontal: vec![0u8; bottom_horizontal_buffer_size],
-            vertical: vec![0u8; bottom_vertical_buffer_size],
+            horizontal: vec![PixelColor::Unknown; bottom_horizontal_buffer_size],
+            vertical: vec![PixelColor::Unknown; bottom_vertical_buffer_size],
             image: bottom_image.deref().clone(),
             horizontal_ids: Vec::with_capacity(
                 bottom_image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL,
@@ -362,10 +482,20 @@ pub fn scan_lines_system(
         let mut row_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
         for (row_id, _) in top_scan_lines.horizontal_ids().iter().enumerate() {
             let row = top_scan_lines.horizontal_line(row_id);
+
             let offset = row_id * top_scan_lines.width() * ROW_SCAN_LINE_INTERVAL * 2;
 
-            row_yuyv_buffer.as_mut_slice()[offset..offset + top_scan_lines.width() * 2]
-                .copy_from_slice(row);
+            for pixel_duo in 0..top_image.yuyv_image().width() / 2 {
+                let yuyv_pixel_duo = match row[pixel_duo * 2] {
+                    PixelColor::White => [128u8, 255u8, 128u8, 255u8],
+                    PixelColor::Black => [128u8, 0u8, 128u8, 255u8],
+                    PixelColor::Green => [128u8, 255u8, 128u8, 0u8],
+                    PixelColor::Unknown => [0u8, 0u8, 0u8, 0u8],
+                };
+
+                row_yuyv_buffer.as_mut_slice()[offset + pixel_duo * 4..offset + pixel_duo * 4 + 4]
+                    .copy_from_slice(&yuyv_pixel_duo);
+            }
         }
         store_jpeg(
             row_yuyv_buffer,
@@ -374,32 +504,57 @@ pub fn scan_lines_system(
             "yggdrasil_row_image.jpeg",
         )?;
 
-        // This is to test whether to creation of `cols_buffer` went correctly.
-        let mut col_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
-        for (col_id, _) in top_scan_lines.vertical_ids().iter().enumerate() {
-            for row_id in 0..top_scan_lines.height() {
-                let col = top_scan_lines.vertical_line(col_id);
-                let offset =
-                    row_id * top_scan_lines.width() * 2 + col_id * COL_SCAN_LINE_INTERVAL * 2;
+        // let mut col_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
+        // for (vertical_id, col_id) in top_scan_lines.vertical_ids().iter().enumerate() {
+        //     eprintln!(
+        //         "col: {col_id}/{}",
+        //         top_scan_lines.image().yuyv_image().width()
+        //     );
+        //     eprintln!("ver: {vertical_id}/{}", top_scan_lines.vertical_ids().len());
+        //     let col = top_scan_lines.vertical_line(vertical_id);
+        //
+        //     for (row_id, pixel) in col.iter().enumerate() {
+        //         let buffer_offset = (row_id * top_scan_lines.width() + col_id) * 2;
+        //
+        //         let yuyv_pixel_duo = match pixel {
+        //             PixelColor::White => [128u8, 255u8, 128u8, 255u8],
+        //             PixelColor::Black => [128u8, 0u8, 128u8, 255u8],
+        //             PixelColor::Green => [128u8, 255u8, 128u8, 0u8],
+        //             PixelColor::Unknown => [0u8, 0u8, 0u8, 0u8],
+        //         };
+        //
+        //         col_yuyv_buffer.as_mut_slice()[buffer_offset..buffer_offset + 4]
+        //             .copy_from_slice(&yuyv_pixel_duo);
+        //     }
+        //
+        //     // for pixel_duo in 0..top_image.yuyv_image().width() / 2 {
+        //     //     let yuyv_pixel_duo = match col[pixel_duo * 2] {
+        //     //         PixelColor::White => [128u8, 255u8, 128u8, 255u8],
+        //     //         PixelColor::Black => [128u8, 0u8, 128u8, 255u8],
+        //     //         PixelColor::Green => [128u8, 255u8, 128u8, 0u8],
+        //     //         PixelColor::Unknown => [0u8, 0u8, 0u8, 0u8],
+        //     //     };
+        //     //
+        //     //     col_yuyv_buffer.as_mut_slice()[offset + pixel_duo * 4..offset + pixel_duo * 4 + 4]
+        //     //         .copy_from_slice(&yuyv_pixel_duo);
+        //     // }
+        //     // row_yuyv_buffer.as_mut_slice()[offset..offset + top_scan_lines.width() * 2]
+        //     //     .copy_from_slice(row);
+        // }
+        // store_jpeg(
+        //     col_yuyv_buffer,
+        //     top_scan_lines.width(),
+        //     top_scan_lines.height(),
+        //     "yggdrasil_col_image.jpeg",
+        // )?;
 
-                col_yuyv_buffer.as_mut_slice()[offset..offset + 4]
-                    .copy_from_slice(&col[row_id * 4..row_id * 4 + 4]);
-            }
-        }
-        store_jpeg(
-            col_yuyv_buffer,
-            top_scan_lines.width(),
-            top_scan_lines.height(),
-            "yggdrasil_col_image.jpeg",
-        )?;
-
-        std::process::exit(0);
+        // std::process::exit(0);
     }
 
     if bottom_scan_lines.image.timestamp() != bottom_image.timestamp() {
         let bottom_start = Instant::now();
         update_bottom_scan_lines(bottom_image, bottom_scan_lines);
-        eprintln!("bottom elapsed: {}us", bottom_start.elapsed().as_micros());
+        // eprintln!("bottom elapsed: {}us", bottom_start.elapsed().as_micros());
 
         bottom_scan_lines.scan_lines.image = bottom_image.deref().clone();
     }
