@@ -89,7 +89,7 @@ pub fn store_jpeg(
 
     Ok(())
 }
-use std::{fs::File, io::Write, mem::transmute, ops::Deref, path::Path, time::Instant};
+use std::{fs::File, io::Write, ops::Deref, path::Path, process::exit, time::Instant};
 
 use crate::{
     camera::{BottomImage, Image, TopImage},
@@ -262,49 +262,6 @@ fn horizontal_scan_lines(
                     .write_unaligned(pixel_color);
             };
         }
-
-        // let image_offset = (yuyv_image.width() * 2) * (row_id * ROW_SCAN_LINE_INTERVAL);
-        // for row_quadruple in 0..yuyv_image.width() / 4 {
-        //     let mut pixel_colors = [PixelColor::Unknown; 4];
-        //     let mut pixel_bytes = [0u8; 4 * 2];
-        //
-        //     // TODO: Use this instead of the slower save one.
-        //     // unsafe {
-        //     //     std::ptr::copy_nonoverlapping(
-        //     //         yuyv_image
-        //     //             .as_ptr()
-        //     //             .byte_add(image_offset + row_quadruple * 2 * 4),
-        //     //         pixel_bytes.as_mut_ptr(),
-        //     //         4 * 2,
-        //     //     );
-        //     // }
-        //     pixel_bytes.copy_from_slice(
-        //         &yuyv_image[image_offset + row_quadruple * 2 * 4
-        //             ..image_offset + row_quadruple * 2 * 4 + 4 * 2],
-        //     );
-        //
-        //     let pixel_color1 = PixelColor::classify_yuv_pixel(
-        //         pixel_bytes[0],
-        //         pixel_bytes[1],
-        //         pixel_bytes[2],
-        //         pixel_bytes[3],
-        //     );
-        //     let pixel_color2 = PixelColor::classify_yuv_pixel(
-        //         pixel_bytes[4],
-        //         pixel_bytes[5],
-        //         pixel_bytes[6],
-        //         pixel_bytes[7],
-        //     );
-        //
-        //     pixel_colors[0] = pixel_color1;
-        //     pixel_colors[1] = pixel_color1;
-        //     pixel_colors[2] = pixel_color2;
-        //     pixel_colors[3] = pixel_color2;
-        //
-        //     let buffer_offset = row_id * yuyv_image.width() + row_quadruple * 4;
-        //
-        //     buffer[buffer_offset..buffer_offset + 4].copy_from_slice(&pixel_colors);
-        // }
     }
 }
 
@@ -342,9 +299,10 @@ fn vertical_scan_lines(
                         .read_unaligned(),
                 )
             };
-            let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
 
+            let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
             let buffer_offset = col_id * yuyv_image.height() + row_id;
+
             unsafe {
                 buffer
                     .as_mut_ptr()
@@ -504,51 +462,30 @@ pub fn scan_lines_system(
             "yggdrasil_row_image.jpeg",
         )?;
 
-        // let mut col_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
-        // for (vertical_id, col_id) in top_scan_lines.vertical_ids().iter().enumerate() {
-        //     eprintln!(
-        //         "col: {col_id}/{}",
-        //         top_scan_lines.image().yuyv_image().width()
-        //     );
-        //     eprintln!("ver: {vertical_id}/{}", top_scan_lines.vertical_ids().len());
-        //     let col = top_scan_lines.vertical_line(vertical_id);
-        //
-        //     for (row_id, pixel) in col.iter().enumerate() {
-        //         let buffer_offset = (row_id * top_scan_lines.width() + col_id) * 2;
-        //
-        //         let yuyv_pixel_duo = match pixel {
-        //             PixelColor::White => [128u8, 255u8, 128u8, 255u8],
-        //             PixelColor::Black => [128u8, 0u8, 128u8, 255u8],
-        //             PixelColor::Green => [128u8, 255u8, 128u8, 0u8],
-        //             PixelColor::Unknown => [0u8, 0u8, 0u8, 0u8],
-        //         };
-        //
-        //         col_yuyv_buffer.as_mut_slice()[buffer_offset..buffer_offset + 4]
-        //             .copy_from_slice(&yuyv_pixel_duo);
-        //     }
-        //
-        //     // for pixel_duo in 0..top_image.yuyv_image().width() / 2 {
-        //     //     let yuyv_pixel_duo = match col[pixel_duo * 2] {
-        //     //         PixelColor::White => [128u8, 255u8, 128u8, 255u8],
-        //     //         PixelColor::Black => [128u8, 0u8, 128u8, 255u8],
-        //     //         PixelColor::Green => [128u8, 255u8, 128u8, 0u8],
-        //     //         PixelColor::Unknown => [0u8, 0u8, 0u8, 0u8],
-        //     //     };
-        //     //
-        //     //     col_yuyv_buffer.as_mut_slice()[offset + pixel_duo * 4..offset + pixel_duo * 4 + 4]
-        //     //         .copy_from_slice(&yuyv_pixel_duo);
-        //     // }
-        //     // row_yuyv_buffer.as_mut_slice()[offset..offset + top_scan_lines.width() * 2]
-        //     //     .copy_from_slice(row);
-        // }
-        // store_jpeg(
-        //     col_yuyv_buffer,
-        //     top_scan_lines.width(),
-        //     top_scan_lines.height(),
-        //     "yggdrasil_col_image.jpeg",
-        // )?;
+        let mut col_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
+        for (vertical_id, col_id) in top_scan_lines.vertical_ids().iter().enumerate() {
+            let col = top_scan_lines.vertical_line(vertical_id);
 
-        // std::process::exit(0);
+            for (row_id, pixel) in col.iter().enumerate() {
+                let buffer_offset = (row_id * top_scan_lines.width() + col_id) * 2;
+
+                let yuyv_pixel_duo = match pixel {
+                    PixelColor::White => [128u8, 255u8, 128u8, 255u8],
+                    PixelColor::Black => [128u8, 0u8, 128u8, 255u8],
+                    PixelColor::Green => [128u8, 255u8, 128u8, 0u8],
+                    PixelColor::Unknown => [0u8, 0u8, 0u8, 0u8],
+                };
+
+                col_yuyv_buffer.as_mut_slice()[buffer_offset..buffer_offset + 4]
+                    .copy_from_slice(&yuyv_pixel_duo);
+            }
+        }
+        store_jpeg(
+            col_yuyv_buffer,
+            top_scan_lines.width(),
+            top_scan_lines.height(),
+            "yggdrasil_col_image.jpeg",
+        )?;
     }
 
     if bottom_scan_lines.image.timestamp() != bottom_image.timestamp() {
