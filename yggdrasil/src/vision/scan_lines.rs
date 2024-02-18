@@ -1,4 +1,6 @@
+// TODO: Remove import after testing phase is over.
 use image::codecs::jpeg::JpegEncoder;
+// TODO: Remove this function after testing phase is over.
 fn yuyv_to_rgb(
     source: &[u8],
     len: usize,
@@ -65,6 +67,7 @@ fn yuyv_to_rgb(
     Ok(())
 }
 
+// TODO: Remove this function after testing phase is over.
 pub fn store_jpeg(
     image: Vec<u8>,
     width: usize,
@@ -196,6 +199,7 @@ pub enum PixelColor {
 
 impl PixelColor {
     fn classify_yuv_pixel(y1: u8, u: u8, _y2: u8, v: u8) -> Self {
+        // TODO: Find a better way to classify pixels.
         if y1 > 140 {
             Self::White
         // } else if (y1 > 65) && (u > 90) && (u < 110) && (v > 90) && (v < 135) {
