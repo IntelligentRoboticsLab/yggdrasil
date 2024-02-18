@@ -1,4 +1,4 @@
-use image::{codecs::jpeg::JpegEncoder, Pixel};
+use image::codecs::jpeg::JpegEncoder;
 fn yuyv_to_rgb(
     source: &[u8],
     len: usize,
@@ -89,7 +89,7 @@ pub fn store_jpeg(
 
     Ok(())
 }
-use std::{fs::File, io::Write, ops::Deref, path::Path, process::exit, time::Instant};
+use std::{fs::File, io::Write, ops::Deref, path::Path, time::Instant};
 
 use crate::{
     camera::{BottomImage, Image, TopImage},
@@ -212,23 +212,14 @@ impl PixelColor {
     }
 }
 
-fn horizontal_scan_lines(
-    yuyv_image: &YuyvImage,
-    buffer: &mut [PixelColor],
-    horizontal_ids: &mut Vec<usize>,
-) {
-    // TODO: Remove this once unnused.
-    horizontal_ids.clear();
-    for row_id in 0..yuyv_image.height() / ROW_SCAN_LINE_INTERVAL {
-        horizontal_ids.push(row_id * ROW_SCAN_LINE_INTERVAL);
-    }
-
+fn horizontal_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
     // Warning is disabled, because iterators are to slow here.
     #[allow(clippy::needless_range_loop)]
-    for row_id in 0..yuyv_image.height() / ROW_SCAN_LINE_INTERVAL {
+    for horizontal_id in 0..scan_lines.horizontal_ids().len() {
+        let row_id = scan_lines.horizontal_ids()[horizontal_id];
+
         for col_id in 0..yuyv_image.width() / 2 {
-            let image_offset =
-                (yuyv_image.width() * 2) * (row_id * ROW_SCAN_LINE_INTERVAL) + col_id * 4;
+            let image_offset = (yuyv_image.width() * 2) * row_id + col_id * 4;
 
             let (y1, u, y2, v) = unsafe {
                 (
@@ -249,14 +240,16 @@ fn horizontal_scan_lines(
             };
 
             let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
-            let buffer_offset = row_id * yuyv_image.width() + col_id * 2;
+            let buffer_offset = horizontal_id * yuyv_image.width() + col_id * 2;
 
             unsafe {
-                buffer
+                scan_lines
+                    .horizontal
                     .as_mut_ptr()
                     .byte_add(buffer_offset)
                     .write_unaligned(pixel_color);
-                buffer
+                scan_lines
+                    .horizontal
                     .as_mut_ptr()
                     .byte_add(buffer_offset + 1)
                     .write_unaligned(pixel_color);
@@ -324,11 +317,7 @@ fn calc_buffer_size(image: &Image) -> (usize, usize) {
 
 fn update_top_scan_lines(top_image: &TopImage, top_scan_lines: &mut TopScanLines) {
     let top_start = Instant::now();
-    horizontal_scan_lines(
-        top_image.yuyv_image(),
-        &mut top_scan_lines.scan_lines.horizontal,
-        &mut top_scan_lines.scan_lines.horizontal_ids,
-    );
+    horizontal_scan_lines(top_image.yuyv_image(), &mut top_scan_lines.scan_lines);
     eprintln!(
         "top_horizontal elapsed: {}us",
         top_start.elapsed().as_micros()
@@ -348,11 +337,7 @@ fn update_top_scan_lines(top_image: &TopImage, top_scan_lines: &mut TopScanLines
 
 fn update_bottom_scan_lines(bottom_image: &BottomImage, bottom_scan_lines: &mut BottomScanLines) {
     let bottom_start = Instant::now();
-    horizontal_scan_lines(
-        bottom_image.yuyv_image(),
-        &mut bottom_scan_lines.scan_lines.horizontal,
-        &mut bottom_scan_lines.scan_lines.horizontal_ids,
-    );
+    horizontal_scan_lines(bottom_image.yuyv_image(), &mut bottom_scan_lines.scan_lines);
     // eprintln!(
     //     "bottom_horizontal elapsed: {}us",
     //     bottom_start.elapsed().as_micros()
@@ -370,6 +355,27 @@ fn update_bottom_scan_lines(bottom_image: &BottomImage, bottom_scan_lines: &mut 
     // );
 }
 
+fn make_horizontal_ids(image: &Image) -> Vec<usize> {
+    let mut horizontal_ids =
+        Vec::with_capacity(image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL);
+
+    for row_id in 0..image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL {
+        horizontal_ids.push(row_id * ROW_SCAN_LINE_INTERVAL);
+    }
+
+    horizontal_ids
+}
+
+fn make_vertical_ids(image: &Image) -> Vec<usize> {
+    let mut vertical_ids = Vec::with_capacity(image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL);
+
+    for col_id in 0..image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL {
+        vertical_ids.push(col_id * COL_SCAN_LINE_INTERVAL);
+    }
+
+    vertical_ids
+}
+
 #[startup_system]
 pub fn init_buffers(
     storage: &mut Storage,
@@ -377,6 +383,8 @@ pub fn init_buffers(
     bottom_image: &BottomImage,
 ) -> Result<()> {
     let (top_horizontal_buffer_size, top_vertical_buffer_size) = calc_buffer_size(top_image);
+    let top_horizontal_ids = make_horizontal_ids(top_image);
+    let top_vertical_ids = make_vertical_ids(top_image);
 
     let mut top_scan_lines = TopScanLines {
         scan_lines: ScanLines {
@@ -386,12 +394,8 @@ pub fn init_buffers(
             horizontal: vec![PixelColor::Unknown; top_horizontal_buffer_size],
             vertical: vec![PixelColor::Unknown; top_vertical_buffer_size],
             image: top_image.deref().clone(),
-            horizontal_ids: Vec::with_capacity(
-                top_image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL,
-            ),
-            vertical_ids: Vec::with_capacity(
-                top_image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL,
-            ),
+            horizontal_ids: top_horizontal_ids,
+            vertical_ids: top_vertical_ids,
         },
     };
 
