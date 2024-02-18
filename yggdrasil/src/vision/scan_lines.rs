@@ -258,22 +258,13 @@ fn horizontal_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
     }
 }
 
-fn vertical_scan_lines(
-    yuyv_image: &YuyvImage,
-    buffer: &mut [PixelColor],
-    vertical_ids: &mut Vec<usize>,
-) {
-    // TODO: Remove this once unnused.
-    vertical_ids.clear();
-    for col_id in 0..yuyv_image.width() / COL_SCAN_LINE_INTERVAL {
-        vertical_ids.push(col_id * COL_SCAN_LINE_INTERVAL);
-    }
-
+fn vertical_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
     // Warning is disabled, because iterators are too slow here.
     #[allow(clippy::needless_range_loop)]
     for row_id in 0..yuyv_image.height() {
-        for col_id in 0..yuyv_image.width() / COL_SCAN_LINE_INTERVAL {
-            let image_offset = (row_id * yuyv_image.width() + col_id * COL_SCAN_LINE_INTERVAL) * 2;
+        for line_id in 0..scan_lines.vertical_ids().len() {
+            let col_id = scan_lines.vertical_ids()[line_id];
+            let image_offset = (row_id * yuyv_image.width() + col_id) * 2;
 
             let (y1, u, y2, v) = unsafe {
                 (
@@ -294,10 +285,11 @@ fn vertical_scan_lines(
             };
 
             let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
-            let buffer_offset = col_id * yuyv_image.height() + row_id;
+            let buffer_offset = line_id * yuyv_image.height() + row_id;
 
             unsafe {
-                buffer
+                scan_lines
+                    .vertical
                     .as_mut_ptr()
                     .byte_add(buffer_offset)
                     .write_unaligned(pixel_color)
@@ -326,11 +318,7 @@ fn update_top_scan_lines(top_image: &TopImage, top_scan_lines: &mut TopScanLines
     );
 
     let top_start = Instant::now();
-    vertical_scan_lines(
-        top_image.yuyv_image(),
-        &mut top_scan_lines.scan_lines.vertical,
-        &mut top_scan_lines.scan_lines.vertical_ids,
-    );
+    vertical_scan_lines(top_image.yuyv_image(), &mut top_scan_lines.scan_lines);
     eprintln!(
         "top_vertical elapsed:   {}us",
         top_start.elapsed().as_micros()
@@ -346,11 +334,7 @@ fn update_bottom_scan_lines(bottom_image: &BottomImage, bottom_scan_lines: &mut 
     // );
 
     let bottom_start = Instant::now();
-    vertical_scan_lines(
-        bottom_image.yuyv_image(),
-        &mut bottom_scan_lines.scan_lines.vertical,
-        &mut bottom_scan_lines.scan_lines.vertical_ids,
-    );
+    vertical_scan_lines(bottom_image.yuyv_image(), &mut bottom_scan_lines.scan_lines);
     // eprintln!(
     //     "bottom_vertical elapsed:   {}us",
     //     bottom_start.elapsed().as_micros()
