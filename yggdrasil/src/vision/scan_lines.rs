@@ -213,92 +213,6 @@ impl PixelColor {
     }
 }
 
-fn horizontal_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
-    // Warning is disabled, because iterators are to slow here.
-    #[allow(clippy::needless_range_loop)]
-    for line_id in 0..scan_lines.horizontal_ids().len() {
-        let row_id = scan_lines.horizontal_ids()[line_id];
-
-        for col_id in 0..yuyv_image.width() / 2 {
-            let image_offset = (yuyv_image.width() * 2) * row_id + col_id * 4;
-
-            let (y1, u, y2, v) = unsafe {
-                (
-                    yuyv_image.as_ptr().byte_add(image_offset).read_unaligned(),
-                    yuyv_image
-                        .as_ptr()
-                        .byte_add(image_offset + 1)
-                        .read_unaligned(),
-                    yuyv_image
-                        .as_ptr()
-                        .byte_add(image_offset + 2)
-                        .read_unaligned(),
-                    yuyv_image
-                        .as_ptr()
-                        .byte_add(image_offset + 3)
-                        .read_unaligned(),
-                )
-            };
-
-            let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
-            let buffer_offset = line_id * yuyv_image.width() + col_id * 2;
-
-            unsafe {
-                scan_lines
-                    .horizontal
-                    .as_mut_ptr()
-                    .byte_add(buffer_offset)
-                    .write_unaligned(pixel_color);
-                scan_lines
-                    .horizontal
-                    .as_mut_ptr()
-                    .byte_add(buffer_offset + 1)
-                    .write_unaligned(pixel_color);
-            };
-        }
-    }
-}
-
-fn vertical_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
-    // Warning is disabled, because iterators are too slow here.
-    #[allow(clippy::needless_range_loop)]
-    for row_id in 0..yuyv_image.height() {
-        for line_id in 0..scan_lines.vertical_ids().len() {
-            let col_id = scan_lines.vertical_ids()[line_id];
-            let image_offset = (row_id * yuyv_image.width() + col_id) * 2;
-
-            let (y1, u, y2, v) = unsafe {
-                (
-                    yuyv_image.as_ptr().byte_add(image_offset).read_unaligned(),
-                    yuyv_image
-                        .as_ptr()
-                        .byte_add(image_offset + 1)
-                        .read_unaligned(),
-                    yuyv_image
-                        .as_ptr()
-                        .byte_add(image_offset + 2)
-                        .read_unaligned(),
-                    yuyv_image
-                        .as_ptr()
-                        .byte_add(image_offset + 3)
-                        .read_unaligned(),
-                )
-            };
-
-            let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
-            let buffer_offset = line_id * yuyv_image.height() + row_id;
-
-            unsafe {
-                scan_lines
-                    .vertical
-                    .as_mut_ptr()
-                    .byte_add(buffer_offset)
-                    .write_unaligned(pixel_color)
-            };
-        }
-    }
-}
-
 fn calc_buffer_size(
     image: &Image,
     horizontal_ids: &[usize],
@@ -308,38 +222,6 @@ fn calc_buffer_size(
     let vertical_buffer_size = image.yuyv_image().height() * vertical_ids.len();
 
     (horizontal_buffer_size, vertical_buffer_size)
-}
-
-fn update_top_scan_lines(top_image: &TopImage, top_scan_lines: &mut TopScanLines) {
-    let top_start = Instant::now();
-    horizontal_scan_lines(top_image.yuyv_image(), &mut top_scan_lines.scan_lines);
-    eprintln!(
-        "top_horizontal elapsed: {}us",
-        top_start.elapsed().as_micros()
-    );
-
-    let top_start = Instant::now();
-    vertical_scan_lines(top_image.yuyv_image(), &mut top_scan_lines.scan_lines);
-    eprintln!(
-        "top_vertical elapsed:   {}us",
-        top_start.elapsed().as_micros()
-    );
-}
-
-fn update_bottom_scan_lines(bottom_image: &BottomImage, bottom_scan_lines: &mut BottomScanLines) {
-    let bottom_start = Instant::now();
-    horizontal_scan_lines(bottom_image.yuyv_image(), &mut bottom_scan_lines.scan_lines);
-    eprintln!(
-        "bottom_horizontal elapsed: {}us",
-        bottom_start.elapsed().as_micros()
-    );
-
-    let bottom_start = Instant::now();
-    vertical_scan_lines(bottom_image.yuyv_image(), &mut bottom_scan_lines.scan_lines);
-    eprintln!(
-        "bottom_vertical elapsed:   {}us",
-        bottom_start.elapsed().as_micros()
-    );
 }
 
 /// TODO: Make this configurable using Odal.
@@ -431,6 +313,124 @@ pub fn init_buffers(
     storage.add_resource(Resource::new(bottom_scan_lines))?;
 
     Ok(())
+}
+
+fn horizontal_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
+    // Warning is disabled, because iterators are to slow here.
+    #[allow(clippy::needless_range_loop)]
+    for line_id in 0..scan_lines.horizontal_ids().len() {
+        let row_id = scan_lines.horizontal_ids()[line_id];
+
+        for col_id in 0..yuyv_image.width() / 2 {
+            let image_offset = (yuyv_image.width() * 2) * row_id + col_id * 4;
+
+            let (y1, u, y2, v) = unsafe {
+                (
+                    yuyv_image.as_ptr().byte_add(image_offset).read_unaligned(),
+                    yuyv_image
+                        .as_ptr()
+                        .byte_add(image_offset + 1)
+                        .read_unaligned(),
+                    yuyv_image
+                        .as_ptr()
+                        .byte_add(image_offset + 2)
+                        .read_unaligned(),
+                    yuyv_image
+                        .as_ptr()
+                        .byte_add(image_offset + 3)
+                        .read_unaligned(),
+                )
+            };
+
+            let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
+            let buffer_offset = line_id * yuyv_image.width() + col_id * 2;
+
+            unsafe {
+                scan_lines
+                    .horizontal
+                    .as_mut_ptr()
+                    .byte_add(buffer_offset)
+                    .write_unaligned(pixel_color);
+                scan_lines
+                    .horizontal
+                    .as_mut_ptr()
+                    .byte_add(buffer_offset + 1)
+                    .write_unaligned(pixel_color);
+            };
+        }
+    }
+}
+
+fn vertical_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
+    // Warning is disabled, because iterators are too slow here.
+    #[allow(clippy::needless_range_loop)]
+    for row_id in 0..yuyv_image.height() {
+        for line_id in 0..scan_lines.vertical_ids().len() {
+            let col_id = scan_lines.vertical_ids()[line_id];
+            let image_offset = (row_id * yuyv_image.width() + col_id) * 2;
+
+            let (y1, u, y2, v) = unsafe {
+                (
+                    yuyv_image.as_ptr().byte_add(image_offset).read_unaligned(),
+                    yuyv_image
+                        .as_ptr()
+                        .byte_add(image_offset + 1)
+                        .read_unaligned(),
+                    yuyv_image
+                        .as_ptr()
+                        .byte_add(image_offset + 2)
+                        .read_unaligned(),
+                    yuyv_image
+                        .as_ptr()
+                        .byte_add(image_offset + 3)
+                        .read_unaligned(),
+                )
+            };
+
+            let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
+            let buffer_offset = line_id * yuyv_image.height() + row_id;
+
+            unsafe {
+                scan_lines
+                    .vertical
+                    .as_mut_ptr()
+                    .byte_add(buffer_offset)
+                    .write_unaligned(pixel_color)
+            };
+        }
+    }
+}
+
+fn update_top_scan_lines(top_image: &TopImage, top_scan_lines: &mut TopScanLines) {
+    let top_start = Instant::now();
+    horizontal_scan_lines(top_image.yuyv_image(), &mut top_scan_lines.scan_lines);
+    eprintln!(
+        "top_horizontal elapsed: {}us",
+        top_start.elapsed().as_micros()
+    );
+
+    let top_start = Instant::now();
+    vertical_scan_lines(top_image.yuyv_image(), &mut top_scan_lines.scan_lines);
+    eprintln!(
+        "top_vertical elapsed:   {}us",
+        top_start.elapsed().as_micros()
+    );
+}
+
+fn update_bottom_scan_lines(bottom_image: &BottomImage, bottom_scan_lines: &mut BottomScanLines) {
+    let bottom_start = Instant::now();
+    horizontal_scan_lines(bottom_image.yuyv_image(), &mut bottom_scan_lines.scan_lines);
+    eprintln!(
+        "bottom_horizontal elapsed: {}us",
+        bottom_start.elapsed().as_micros()
+    );
+
+    let bottom_start = Instant::now();
+    vertical_scan_lines(bottom_image.yuyv_image(), &mut bottom_scan_lines.scan_lines);
+    eprintln!(
+        "bottom_vertical elapsed:   {}us",
+        bottom_start.elapsed().as_micros()
+    );
 }
 
 #[system]
