@@ -159,7 +159,7 @@ impl ScanLines {
     ///     let row = scan_lines.horizontal_line(horizontal_line_id);
     /// }
     /// ```
-    pub fn row_ids(&self) -> &Vec<usize> {
+    pub fn row_ids(&self) -> &[usize] {
         &self.horizontal_ids
     }
 
@@ -175,7 +175,7 @@ impl ScanLines {
     ///     let column = scan_lines.vertical_line(vertical_line_id);
     /// }
     /// ```
-    pub fn column_ids(&self) -> &Vec<usize> {
+    pub fn column_ids(&self) -> &[usize] {
         &self.vertical_ids
     }
 
@@ -264,17 +264,18 @@ fn make_horizontal_ids(image: &Image) -> Vec<usize> {
         }
     }
     for row_id in image.yuyv_image().height() / 4..image.yuyv_image().height() / 2 {
-        if row_id % 12 == 0 {
+        // if row_id % 12 == 0 {
+        if row_id % 8 == 0 {
             horizontal_ids.push(row_id);
         }
     }
     for row_id in image.yuyv_image().height() / 2..image.yuyv_image().height() * 3 / 4 {
-        if (row_id - 8) % 18 == 0 {
+        if (row_id - 4) % 16 == 0 {
             horizontal_ids.push(row_id);
         }
     }
     for row_id in image.yuyv_image().height() * 3 / 4..image.yuyv_image().height() {
-        if (row_id - 8) % 30 == 0 {
+        if (row_id) % 32 == 0 {
             horizontal_ids.push(row_id);
         }
     }
