@@ -22,6 +22,7 @@ pub struct FilterConfig {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct ButtonConfig {
     pub activation_threshold: f32,
     #[serde_as(as = "DurationMilliSeconds<u64>")]
@@ -29,6 +30,7 @@ pub struct ButtonConfig {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct FSRConfig {
     pub ground_contact_threshold: f32,
 }

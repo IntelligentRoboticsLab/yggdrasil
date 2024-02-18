@@ -25,7 +25,11 @@ ground_contact_threshold = 0.01
 chest_blink_interval = 1000
 
 [game_controller]
+# Delay (in ms) between the status updates the robot sends to the game-controller.
 game_controller_return_delay = 500
+# The maximum time (in ms) allowed between game-controller messages.
+# If the robot doesn't receive a game-controller message for this amount of time,
+# it will consider the connection to the game-controller as "lost".
 game_controller_timeout = 5000
 player_number = 2
 team_number = 8

@@ -25,8 +25,8 @@ pub struct WeeSound {
 }
 
 impl WeeSound {
-    fn timed_out(&self, config: &AudioConfig) -> bool {
-        matches!(self.last_played, Some(instant) if instant.elapsed() < config.wee_sound_timeout)
+    fn timed_out(&self, timeout: Duration) -> bool {
+        matches!(self.last_played, Some(instant) if instant.elapsed() < timeout)
     }
 }
 
@@ -37,7 +37,7 @@ pub fn wee_sound_system(
     contacts: &Contacts,
     config: &AudioConfig,
 ) -> Result<()> {
-    if wee_sound.timed_out(config) {
+    if wee_sound.timed_out(config.wee_sound_timeout) {
         return Ok(());
     }
 
