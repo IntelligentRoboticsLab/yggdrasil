@@ -153,7 +153,7 @@ impl ScanLines {
     /// corresponding horizontal scan line id.
     ///
     /// # Example
-    /// ```no_run
+    /// ```ignore
     /// for horizontal_line_id in 0..scan_lines.row_ids() {
     ///     let row_id = scan_lines.row_ids()[horizontal_line_id];
     ///     let row = scan_lines.horizontal_line(horizontal_line_id);
@@ -169,7 +169,7 @@ impl ScanLines {
     /// corresponding vertical scan line id.
     ///
     /// # Example
-    /// ```no_run
+    /// ```ignore
     /// for vertical_line_id in 0..scan_lines.column_ids() {
     ///     let column_id = scan_lines.column_ids()[vertical_line_id];
     ///     let column = scan_lines.vertical_line(vertical_line_id);
@@ -312,7 +312,7 @@ fn init_scan_lines(image: &Image) -> ScanLines {
 }
 
 #[startup_system]
-pub fn init_buffers(
+fn init_buffers(
     storage: &mut Storage,
     top_image: &TopImage,
     bottom_image: &BottomImage,
