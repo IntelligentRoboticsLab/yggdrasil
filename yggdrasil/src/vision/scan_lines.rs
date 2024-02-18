@@ -215,8 +215,8 @@ impl PixelColor {
 fn horizontal_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
     // Warning is disabled, because iterators are to slow here.
     #[allow(clippy::needless_range_loop)]
-    for horizontal_id in 0..scan_lines.horizontal_ids().len() {
-        let row_id = scan_lines.horizontal_ids()[horizontal_id];
+    for line_id in 0..scan_lines.horizontal_ids().len() {
+        let row_id = scan_lines.horizontal_ids()[line_id];
 
         for col_id in 0..yuyv_image.width() / 2 {
             let image_offset = (yuyv_image.width() * 2) * row_id + col_id * 4;
@@ -240,7 +240,7 @@ fn horizontal_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
             };
 
             let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
-            let buffer_offset = horizontal_id * yuyv_image.width() + col_id * 2;
+            let buffer_offset = line_id * yuyv_image.width() + col_id * 2;
 
             unsafe {
                 scan_lines
@@ -306,11 +306,13 @@ fn vertical_scan_lines(
     }
 }
 
-fn calc_buffer_size(image: &Image) -> (usize, usize) {
-    let horizontal_buffer_size =
-        image.yuyv_image().width() * (image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL);
-    let vertical_buffer_size =
-        image.yuyv_image().height() * (image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL);
+fn calc_buffer_size(
+    image: &Image,
+    horizontal_ids: &[usize],
+    vertical_ids: &[usize],
+) -> (usize, usize) {
+    let horizontal_buffer_size = image.yuyv_image().width() * horizontal_ids.len();
+    let vertical_buffer_size = image.yuyv_image().height() * vertical_ids.len();
 
     (horizontal_buffer_size, vertical_buffer_size)
 }
@@ -356,11 +358,27 @@ fn update_bottom_scan_lines(bottom_image: &BottomImage, bottom_scan_lines: &mut 
 }
 
 fn make_horizontal_ids(image: &Image) -> Vec<usize> {
-    let mut horizontal_ids =
-        Vec::with_capacity(image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL);
+    let mut horizontal_ids = Vec::new();
 
-    for row_id in 0..image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL {
-        horizontal_ids.push(row_id * ROW_SCAN_LINE_INTERVAL);
+    for row_id in 0..image.yuyv_image().height() / 4 {
+        if row_id % 8 == 0 {
+            horizontal_ids.push(row_id);
+        }
+    }
+    for row_id in image.yuyv_image().height() / 4..image.yuyv_image().height() / 2 {
+        if row_id % 12 == 0 {
+            horizontal_ids.push(row_id);
+        }
+    }
+    for row_id in image.yuyv_image().height() / 2..image.yuyv_image().height() * 3 / 4 {
+        if row_id % 18 == 0 {
+            horizontal_ids.push(row_id);
+        }
+    }
+    for row_id in image.yuyv_image().height() * 3 / 4..image.yuyv_image().height() {
+        if row_id % 30 == 0 {
+            horizontal_ids.push(row_id);
+        }
     }
 
     horizontal_ids
@@ -382,9 +400,10 @@ pub fn init_buffers(
     top_image: &TopImage,
     bottom_image: &BottomImage,
 ) -> Result<()> {
-    let (top_horizontal_buffer_size, top_vertical_buffer_size) = calc_buffer_size(top_image);
     let top_horizontal_ids = make_horizontal_ids(top_image);
     let top_vertical_ids = make_vertical_ids(top_image);
+    let (top_horizontal_buffer_size, top_vertical_buffer_size) =
+        calc_buffer_size(top_image, &top_horizontal_ids, &top_vertical_ids);
 
     let mut top_scan_lines = TopScanLines {
         scan_lines: ScanLines {
