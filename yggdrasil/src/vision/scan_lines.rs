@@ -371,12 +371,12 @@ fn make_horizontal_ids(image: &Image) -> Vec<usize> {
         }
     }
     for row_id in image.yuyv_image().height() / 2..image.yuyv_image().height() * 3 / 4 {
-        if row_id % 18 == 0 {
+        if (row_id - 8) % 18 == 0 {
             horizontal_ids.push(row_id);
         }
     }
     for row_id in image.yuyv_image().height() * 3 / 4..image.yuyv_image().height() {
-        if row_id % 30 == 0 {
+        if (row_id - 8) % 30 == 0 {
             horizontal_ids.push(row_id);
         }
     }
