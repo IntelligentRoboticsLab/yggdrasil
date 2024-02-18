@@ -418,8 +418,10 @@ pub fn init_buffers(
         },
     };
 
+    let bottom_horizontal_ids = make_horizontal_ids(bottom_image);
+    let bottom_vertical_ids = make_vertical_ids(bottom_image);
     let (bottom_horizontal_buffer_size, bottom_vertical_buffer_size) =
-        calc_buffer_size(bottom_image);
+        calc_buffer_size(bottom_image, &bottom_horizontal_ids, &bottom_vertical_ids);
     let mut bottom_scan_lines = BottomScanLines {
         scan_lines: ScanLines {
             width: bottom_image.yuyv_image().width(),
@@ -428,12 +430,8 @@ pub fn init_buffers(
             horizontal: vec![PixelColor::Unknown; bottom_horizontal_buffer_size],
             vertical: vec![PixelColor::Unknown; bottom_vertical_buffer_size],
             image: bottom_image.deref().clone(),
-            horizontal_ids: Vec::with_capacity(
-                bottom_image.yuyv_image().height() / ROW_SCAN_LINE_INTERVAL,
-            ),
-            vertical_ids: Vec::with_capacity(
-                bottom_image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL,
-            ),
+            horizontal_ids: bottom_horizontal_ids,
+            vertical_ids: bottom_vertical_ids,
         },
     };
 
