@@ -111,9 +111,6 @@ impl Module for ScanLinesModule {
 }
 
 pub struct ScanLines {
-    width: usize,
-    height: usize,
-
     horizontal: Vec<PixelColor>,
     vertical: Vec<PixelColor>,
     image: Image,
@@ -123,44 +120,77 @@ pub struct ScanLines {
 }
 
 impl ScanLines {
+    /// Return the number of pixels per row.
     pub fn width(&self) -> usize {
-        self.width
+        self.image.yuyv_image().width()
     }
 
+    /// Return the number of pixels per column.
     pub fn height(&self) -> usize {
-        self.height
+        self.image.yuyv_image().height()
     }
 
+    /// Return the original image.
+    ///
+    /// The scan lines were created from this image.
     pub fn image(&self) -> &Image {
         &self.image
     }
 
+    /// Return a slice over all the horizontal scan lines.
     pub fn raw_horizontal(&self) -> &[PixelColor] {
         &self.horizontal
     }
 
+    /// Return a slice over all the vertical scan lines.
     pub fn raw_vertical(&self) -> &[PixelColor] {
         &self.vertical
     }
 
-    pub fn horizontal_ids(&self) -> &Vec<usize> {
+    /// Return the id's of the rows from which a scan line was created.
+    ///
+    /// The row id's are sorted in ascending order, and therefore can be indexed by their
+    /// corresponding horizontal scan line id.
+    ///
+    /// # Example
+    /// ```no_run
+    /// for horizontal_line_id in 0..scan_lines.row_ids() {
+    ///     let row_id = scan_lines.row_ids()[horizontal_line_id];
+    ///     let row = scan_lines.horizontal_line(horizontal_line_id);
+    /// }
+    /// ```
+    pub fn row_ids(&self) -> &Vec<usize> {
         &self.horizontal_ids
     }
 
-    pub fn vertical_ids(&self) -> &Vec<usize> {
+    /// Return the id's of the columns from which a scan line was created.
+    ///
+    /// The column id's are sorted in ascending order, and therefore can be indexed by their
+    /// corresponding vertical scan line id.
+    ///
+    /// # Example
+    /// ```no_run
+    /// for vertical_line_id in 0..scan_lines.column_ids() {
+    ///     let column_id = scan_lines.column_ids()[vertical_line_id];
+    ///     let column = scan_lines.vertical_line(vertical_line_id);
+    /// }
+    /// ```
+    pub fn column_ids(&self) -> &Vec<usize> {
         &self.vertical_ids
     }
 
+    /// Return the horizontal scan line with scan line id `line_id`.
     pub fn horizontal_line(&self, line_id: usize) -> &[PixelColor] {
-        let offset = line_id * self.width;
+        let offset = line_id * self.width();
 
-        &self.horizontal.as_slice()[offset..offset + self.width]
+        &self.horizontal.as_slice()[offset..offset + self.width()]
     }
 
+    /// Return the vertical scan line with scan line id `line_id`.
     pub fn vertical_line(&self, line_id: usize) -> &[PixelColor] {
-        let offset = line_id * self.height;
+        let offset = line_id * self.height();
 
-        &self.vertical.as_slice()[offset..offset + self.height]
+        &self.vertical.as_slice()[offset..offset + self.height()]
     }
 }
 
@@ -272,9 +302,6 @@ fn init_scan_lines(image: &Image) -> ScanLines {
         calc_buffer_size(image, &horizontal_ids, &vertical_ids);
 
     ScanLines {
-        width: image.yuyv_image().width(),
-        height: image.yuyv_image().height(),
-
         horizontal: vec![PixelColor::Unknown; horizontal_buffer_size],
         vertical: vec![PixelColor::Unknown; vertical_buffer_size],
         image: image.clone(),
@@ -309,8 +336,8 @@ pub fn init_buffers(
 fn horizontal_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
     // Warning is disabled, because iterators are to slow here.
     #[allow(clippy::needless_range_loop)]
-    for line_id in 0..scan_lines.horizontal_ids().len() {
-        let row_id = scan_lines.horizontal_ids()[line_id];
+    for line_id in 0..scan_lines.row_ids().len() {
+        let row_id = scan_lines.row_ids()[line_id];
 
         for col_id in 0..yuyv_image.width() / 2 {
             let image_offset = (yuyv_image.width() * 2) * row_id + col_id * 4;
@@ -356,8 +383,8 @@ fn vertical_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
     // Warning is disabled, because iterators are too slow here.
     #[allow(clippy::needless_range_loop)]
     for row_id in 0..yuyv_image.height() {
-        for line_id in 0..scan_lines.vertical_ids().len() {
-            let col_id = scan_lines.vertical_ids()[line_id];
+        for line_id in 0..scan_lines.column_ids().len() {
+            let col_id = scan_lines.column_ids()[line_id];
             let image_offset = (row_id * yuyv_image.width() + col_id) * 2;
 
             let (y1, u, y2, v) = unsafe {
@@ -426,7 +453,7 @@ pub fn scan_lines_system(
     // TODO: Remove this. This stores the horizontal scan lines as a jpeg.
     {
         let mut row_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
-        for (horizontal_id, row_id) in top_scan_lines.horizontal_ids().iter().enumerate() {
+        for (horizontal_id, row_id) in top_scan_lines.row_ids().iter().enumerate() {
             let row = top_scan_lines.horizontal_line(horizontal_id);
 
             let offset = row_id * top_scan_lines.width() * 2;
@@ -454,7 +481,7 @@ pub fn scan_lines_system(
     // TODO: Remove this. This stores the vertical scan lines as a jpeg.
     {
         let mut col_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
-        for (vertical_id, col_id) in top_scan_lines.vertical_ids().iter().enumerate() {
+        for (vertical_id, col_id) in top_scan_lines.column_ids().iter().enumerate() {
             let col = top_scan_lines.vertical_line(vertical_id);
 
             for (row_id, pixel) in col.iter().enumerate() {
