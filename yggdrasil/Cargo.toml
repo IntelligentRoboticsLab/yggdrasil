@@ -17,8 +17,8 @@ nalgebra = { workspace = true }
 nidhogg = { workspace = true }
 odal = { path = "../crates/odal" }
 rerun = { workspace = true, optional = true, features = [
-    "image",
-    "web_viewer",
+  "image",
+  "web_viewer",
 ] }
 serde = { workspace = true }
 serde_with = { workspace = true }
@@ -26,6 +26,7 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tyr = { path = "../crates/tyr", features = ["odal"] }
+## TODO: Remove this, it was only was storing the scan lines as jpeg's.
 image = "0.24.8"
 
 [features]
