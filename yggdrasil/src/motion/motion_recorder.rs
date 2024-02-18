@@ -1,4 +1,4 @@
-use crate::filter::button::{LeftFootButtons, RightFootButtons};
+use crate::filter::button::{LeftFootButtons, RightFootButtons, HeadButtons};
 use miette::Result;
 use tyr::prelude::*;
 
@@ -12,14 +12,24 @@ impl Module for Test {
 
 #[system]
 fn register_button_press(
+    head_button: &mut HeadButtons,
     left_button: &mut LeftFootButtons,
     right_button: &mut RightFootButtons,
 ) -> Result<()> {
-    if left_button.left.is_held() {
+    if left_button.left.is_tapped() {
         println!("Left Pressed!");
     }
-    if right_button.left.is_held() {
+    if right_button.left.is_tapped() {
         println!("Right Pressed!");
+    }
+    if head_button.front.is_tapped() {
+        println!("Head Front Pressed!");
+    }
+    if head_button.middle.is_tapped() {
+        println!("Head Middle Pressed!");
+    }
+    if head_button.rear.is_tapped() {
+        println!("Head Rear Pressed!");
     }
     Ok(())
 }
