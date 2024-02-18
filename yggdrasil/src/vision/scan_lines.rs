@@ -408,6 +408,7 @@ pub fn scan_lines_system(
     if top_scan_lines.image.timestamp() != top_image.timestamp() {
         let top_start = Instant::now();
         update_scan_lines(top_image, &mut top_scan_lines.scan_lines);
+        // TODO: Remove this debug print.
         eprintln!("top elapsed: {}us", top_start.elapsed().as_micros());
 
         top_scan_lines.scan_lines.image = top_image.deref().clone();
@@ -416,6 +417,7 @@ pub fn scan_lines_system(
     if bottom_scan_lines.image.timestamp() != bottom_image.timestamp() {
         let bottom_start = Instant::now();
         update_scan_lines(bottom_image, &mut bottom_scan_lines.scan_lines);
+        // TODO: Remove this debug print.
         eprintln!("bottom elapsed: {}us", bottom_start.elapsed().as_micros());
 
         bottom_scan_lines.scan_lines.image = bottom_image.deref().clone();
