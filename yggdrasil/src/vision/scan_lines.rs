@@ -338,6 +338,7 @@ fn update_bottom_scan_lines(bottom_image: &BottomImage, bottom_scan_lines: &mut 
     );
 }
 
+/// TODO: Make this configurable using Odal.
 fn make_horizontal_ids(image: &Image) -> Vec<usize> {
     let mut horizontal_ids = Vec::new();
 
@@ -365,6 +366,7 @@ fn make_horizontal_ids(image: &Image) -> Vec<usize> {
     horizontal_ids
 }
 
+/// TODO: Make this configurable using Odal.
 fn make_vertical_ids(image: &Image) -> Vec<usize> {
     const COL_SCAN_LINE_INTERVAL: usize = 16;
 
@@ -442,62 +444,68 @@ pub fn scan_lines_system(
         top_scan_lines.scan_lines.image = top_image.deref().clone();
     }
 
-    let mut row_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
-    for (horizontal_id, row_id) in top_scan_lines.horizontal_ids().iter().enumerate() {
-        let row = top_scan_lines.horizontal_line(horizontal_id);
-
-        let offset = row_id * top_scan_lines.width() * 2;
-
-        for pixel_duo in 0..top_image.yuyv_image().width() / 2 {
-            let yuyv_pixel_duo = match row[pixel_duo * 2] {
-                PixelColor::White => [128u8, 255u8, 128u8, 255u8],
-                PixelColor::Black => [128u8, 0u8, 128u8, 255u8],
-                PixelColor::Green => [128u8, 255u8, 128u8, 0u8],
-                PixelColor::Unknown => [0u8, 0u8, 0u8, 0u8],
-            };
-
-            row_yuyv_buffer.as_mut_slice()[offset + pixel_duo * 4..offset + pixel_duo * 4 + 4]
-                .copy_from_slice(&yuyv_pixel_duo);
-        }
-    }
-    store_jpeg(
-        row_yuyv_buffer,
-        top_scan_lines.width(),
-        top_scan_lines.height(),
-        "yggdrasil_row_image.jpeg",
-    )?;
-
-    let mut col_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
-    for (vertical_id, col_id) in top_scan_lines.vertical_ids().iter().enumerate() {
-        let col = top_scan_lines.vertical_line(vertical_id);
-
-        for (row_id, pixel) in col.iter().enumerate() {
-            let buffer_offset = (row_id * top_scan_lines.width() + col_id) * 2;
-
-            let yuyv_pixel_duo = match pixel {
-                PixelColor::White => [128u8, 255u8, 128u8, 255u8],
-                PixelColor::Black => [128u8, 0u8, 128u8, 255u8],
-                PixelColor::Green => [128u8, 255u8, 128u8, 0u8],
-                PixelColor::Unknown => [0u8, 0u8, 0u8, 0u8],
-            };
-
-            col_yuyv_buffer.as_mut_slice()[buffer_offset..buffer_offset + 4]
-                .copy_from_slice(&yuyv_pixel_duo);
-        }
-    }
-    store_jpeg(
-        col_yuyv_buffer,
-        top_scan_lines.width(),
-        top_scan_lines.height(),
-        "yggdrasil_col_image.jpeg",
-    )?;
-
     if bottom_scan_lines.image.timestamp() != bottom_image.timestamp() {
         let bottom_start = Instant::now();
         update_bottom_scan_lines(bottom_image, bottom_scan_lines);
         eprintln!("bottom elapsed: {}us", bottom_start.elapsed().as_micros());
 
         bottom_scan_lines.scan_lines.image = bottom_image.deref().clone();
+    }
+
+    // TODO: Remove this. This stores the horizontal scan lines as a jpeg.
+    {
+        let mut row_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
+        for (horizontal_id, row_id) in top_scan_lines.horizontal_ids().iter().enumerate() {
+            let row = top_scan_lines.horizontal_line(horizontal_id);
+
+            let offset = row_id * top_scan_lines.width() * 2;
+
+            for pixel_duo in 0..top_image.yuyv_image().width() / 2 {
+                let yuyv_pixel_duo = match row[pixel_duo * 2] {
+                    PixelColor::White => [128u8, 255u8, 128u8, 255u8],
+                    PixelColor::Black => [128u8, 0u8, 128u8, 255u8],
+                    PixelColor::Green => [128u8, 255u8, 128u8, 0u8],
+                    PixelColor::Unknown => [0u8, 0u8, 0u8, 0u8],
+                };
+
+                row_yuyv_buffer.as_mut_slice()[offset + pixel_duo * 4..offset + pixel_duo * 4 + 4]
+                    .copy_from_slice(&yuyv_pixel_duo);
+            }
+        }
+        store_jpeg(
+            row_yuyv_buffer,
+            top_scan_lines.width(),
+            top_scan_lines.height(),
+            "yggdrasil_row_image.jpeg",
+        )?;
+    }
+
+    // TODO: Remove this. This stores the vertical scan lines as a jpeg.
+    {
+        let mut col_yuyv_buffer = vec![0u8; top_scan_lines.width() * top_scan_lines.height() * 2];
+        for (vertical_id, col_id) in top_scan_lines.vertical_ids().iter().enumerate() {
+            let col = top_scan_lines.vertical_line(vertical_id);
+
+            for (row_id, pixel) in col.iter().enumerate() {
+                let buffer_offset = (row_id * top_scan_lines.width() + col_id) * 2;
+
+                let yuyv_pixel_duo = match pixel {
+                    PixelColor::White => [128u8, 255u8, 128u8, 255u8],
+                    PixelColor::Black => [128u8, 0u8, 128u8, 255u8],
+                    PixelColor::Green => [128u8, 255u8, 128u8, 0u8],
+                    PixelColor::Unknown => [0u8, 0u8, 0u8, 0u8],
+                };
+
+                col_yuyv_buffer.as_mut_slice()[buffer_offset..buffer_offset + 4]
+                    .copy_from_slice(&yuyv_pixel_duo);
+            }
+        }
+        store_jpeg(
+            col_yuyv_buffer,
+            top_scan_lines.width(),
+            top_scan_lines.height(),
+            "yggdrasil_col_image.jpeg",
+        )?;
     }
 
     exit(0);
