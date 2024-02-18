@@ -89,7 +89,7 @@ pub fn store_jpeg(
 
     Ok(())
 }
-use std::{fs::File, io::Write, ops::Deref, path::Path, time::Instant};
+use std::{fs::File, io::Write, ops::Deref, path::Path, process::exit, time::Instant};
 
 use crate::{
     camera::{BottomImage, Image, TopImage},
@@ -97,9 +97,6 @@ use crate::{
 };
 
 use heimdall::YuyvImage;
-
-const ROW_SCAN_LINE_INTERVAL: usize = 16;
-const COL_SCAN_LINE_INTERVAL: usize = 16;
 
 pub struct ScanLinesModule;
 
@@ -328,17 +325,17 @@ fn update_top_scan_lines(top_image: &TopImage, top_scan_lines: &mut TopScanLines
 fn update_bottom_scan_lines(bottom_image: &BottomImage, bottom_scan_lines: &mut BottomScanLines) {
     let bottom_start = Instant::now();
     horizontal_scan_lines(bottom_image.yuyv_image(), &mut bottom_scan_lines.scan_lines);
-    // eprintln!(
-    //     "bottom_horizontal elapsed: {}us",
-    //     bottom_start.elapsed().as_micros()
-    // );
+    eprintln!(
+        "bottom_horizontal elapsed: {}us",
+        bottom_start.elapsed().as_micros()
+    );
 
     let bottom_start = Instant::now();
     vertical_scan_lines(bottom_image.yuyv_image(), &mut bottom_scan_lines.scan_lines);
-    // eprintln!(
-    //     "bottom_vertical elapsed:   {}us",
-    //     bottom_start.elapsed().as_micros()
-    // );
+    eprintln!(
+        "bottom_vertical elapsed:   {}us",
+        bottom_start.elapsed().as_micros()
+    );
 }
 
 fn make_horizontal_ids(image: &Image) -> Vec<usize> {
@@ -369,7 +366,9 @@ fn make_horizontal_ids(image: &Image) -> Vec<usize> {
 }
 
 fn make_vertical_ids(image: &Image) -> Vec<usize> {
-    let mut vertical_ids = Vec::with_capacity(image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL);
+    const COL_SCAN_LINE_INTERVAL: usize = 16;
+
+    let mut vertical_ids = Vec::new();
 
     for col_id in 0..image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL {
         vertical_ids.push(col_id * COL_SCAN_LINE_INTERVAL);
@@ -496,10 +495,12 @@ pub fn scan_lines_system(
     if bottom_scan_lines.image.timestamp() != bottom_image.timestamp() {
         let bottom_start = Instant::now();
         update_bottom_scan_lines(bottom_image, bottom_scan_lines);
-        // eprintln!("bottom elapsed: {}us", bottom_start.elapsed().as_micros());
+        eprintln!("bottom elapsed: {}us", bottom_start.elapsed().as_micros());
 
         bottom_scan_lines.scan_lines.image = bottom_image.deref().clone();
     }
+
+    exit(0);
 
     Ok(())
 }
