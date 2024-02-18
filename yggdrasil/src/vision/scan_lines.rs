@@ -265,49 +265,40 @@ fn make_vertical_ids(image: &Image) -> Vec<usize> {
     vertical_ids
 }
 
+fn init_scan_lines(image: &Image) -> ScanLines {
+    let horizontal_ids = make_horizontal_ids(image);
+    let vertical_ids = make_vertical_ids(image);
+    let (horizontal_buffer_size, vertical_buffer_size) =
+        calc_buffer_size(image, &horizontal_ids, &vertical_ids);
+
+    ScanLines {
+        width: image.yuyv_image().width(),
+        height: image.yuyv_image().height(),
+
+        horizontal: vec![PixelColor::Unknown; horizontal_buffer_size],
+        vertical: vec![PixelColor::Unknown; vertical_buffer_size],
+        image: image.clone(),
+        horizontal_ids,
+        vertical_ids,
+    }
+}
+
 #[startup_system]
 pub fn init_buffers(
     storage: &mut Storage,
     top_image: &TopImage,
     bottom_image: &BottomImage,
 ) -> Result<()> {
-    let top_horizontal_ids = make_horizontal_ids(top_image);
-    let top_vertical_ids = make_vertical_ids(top_image);
-    let (top_horizontal_buffer_size, top_vertical_buffer_size) =
-        calc_buffer_size(top_image, &top_horizontal_ids, &top_vertical_ids);
-
     let mut top_scan_lines = TopScanLines {
-        scan_lines: ScanLines {
-            width: top_image.yuyv_image().width(),
-            height: top_image.yuyv_image().height(),
-
-            horizontal: vec![PixelColor::Unknown; top_horizontal_buffer_size],
-            vertical: vec![PixelColor::Unknown; top_vertical_buffer_size],
-            image: top_image.deref().clone(),
-            horizontal_ids: top_horizontal_ids,
-            vertical_ids: top_vertical_ids,
-        },
+        scan_lines: init_scan_lines(top_image),
     };
 
-    let bottom_horizontal_ids = make_horizontal_ids(bottom_image);
-    let bottom_vertical_ids = make_vertical_ids(bottom_image);
-    let (bottom_horizontal_buffer_size, bottom_vertical_buffer_size) =
-        calc_buffer_size(bottom_image, &bottom_horizontal_ids, &bottom_vertical_ids);
     let mut bottom_scan_lines = BottomScanLines {
-        scan_lines: ScanLines {
-            width: bottom_image.yuyv_image().width(),
-            height: bottom_image.yuyv_image().height(),
-
-            horizontal: vec![PixelColor::Unknown; bottom_horizontal_buffer_size],
-            vertical: vec![PixelColor::Unknown; bottom_vertical_buffer_size],
-            image: bottom_image.deref().clone(),
-            horizontal_ids: bottom_horizontal_ids,
-            vertical_ids: bottom_vertical_ids,
-        },
+        scan_lines: init_scan_lines(bottom_image),
     };
 
-    update_top_scan_lines(top_image, &mut top_scan_lines);
-    update_bottom_scan_lines(bottom_image, &mut bottom_scan_lines);
+    update_scan_lines(top_image, &mut top_scan_lines.scan_lines);
+    update_scan_lines(bottom_image, &mut bottom_scan_lines.scan_lines);
 
     storage.add_resource(Resource::new(top_scan_lines))?;
     storage.add_resource(Resource::new(bottom_scan_lines))?;
@@ -401,36 +392,10 @@ fn vertical_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
     }
 }
 
-fn update_top_scan_lines(top_image: &TopImage, top_scan_lines: &mut TopScanLines) {
-    let top_start = Instant::now();
-    horizontal_scan_lines(top_image.yuyv_image(), &mut top_scan_lines.scan_lines);
-    eprintln!(
-        "top_horizontal elapsed: {}us",
-        top_start.elapsed().as_micros()
-    );
+fn update_scan_lines(image: &Image, scan_lines: &mut ScanLines) {
+    horizontal_scan_lines(image.yuyv_image(), scan_lines);
 
-    let top_start = Instant::now();
-    vertical_scan_lines(top_image.yuyv_image(), &mut top_scan_lines.scan_lines);
-    eprintln!(
-        "top_vertical elapsed:   {}us",
-        top_start.elapsed().as_micros()
-    );
-}
-
-fn update_bottom_scan_lines(bottom_image: &BottomImage, bottom_scan_lines: &mut BottomScanLines) {
-    let bottom_start = Instant::now();
-    horizontal_scan_lines(bottom_image.yuyv_image(), &mut bottom_scan_lines.scan_lines);
-    eprintln!(
-        "bottom_horizontal elapsed: {}us",
-        bottom_start.elapsed().as_micros()
-    );
-
-    let bottom_start = Instant::now();
-    vertical_scan_lines(bottom_image.yuyv_image(), &mut bottom_scan_lines.scan_lines);
-    eprintln!(
-        "bottom_vertical elapsed:   {}us",
-        bottom_start.elapsed().as_micros()
-    );
+    vertical_scan_lines(image.yuyv_image(), scan_lines);
 }
 
 #[system]
@@ -442,7 +407,7 @@ pub fn scan_lines_system(
 ) -> Result<()> {
     if top_scan_lines.image.timestamp() != top_image.timestamp() {
         let top_start = Instant::now();
-        update_top_scan_lines(top_image, top_scan_lines);
+        update_scan_lines(top_image, &mut top_scan_lines.scan_lines);
         eprintln!("top elapsed: {}us", top_start.elapsed().as_micros());
 
         top_scan_lines.scan_lines.image = top_image.deref().clone();
@@ -450,7 +415,7 @@ pub fn scan_lines_system(
 
     if bottom_scan_lines.image.timestamp() != bottom_image.timestamp() {
         let bottom_start = Instant::now();
-        update_bottom_scan_lines(bottom_image, bottom_scan_lines);
+        update_scan_lines(bottom_image, &mut bottom_scan_lines.scan_lines);
         eprintln!("bottom elapsed: {}us", bottom_start.elapsed().as_micros());
 
         bottom_scan_lines.scan_lines.image = bottom_image.deref().clone();
