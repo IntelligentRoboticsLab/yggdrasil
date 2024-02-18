@@ -512,6 +512,7 @@ pub fn scan_lines_system(
         )?;
     }
 
+    // TODO: Remove this.
     exit(0);
 
     Ok(())
