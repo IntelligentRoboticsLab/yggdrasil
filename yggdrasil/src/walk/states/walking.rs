@@ -6,7 +6,7 @@ use crate::{
     kinematics::{self, FootOffset},
     walk::{
         engine::{Side, StepOffsets, WalkCommand},
-        smoothing,
+        smoothing, WalkingEngineConfig,
     },
 };
 
@@ -20,13 +20,16 @@ pub struct WalkingState {
     previous_step: StepOffsets,
 }
 
-impl Default for WalkingState {
-    fn default() -> Self {
+impl WalkingState {
+    pub fn new(config: &WalkingEngineConfig, left: FootOffset, right: FootOffset) -> Self {
         Self {
-            swing_foot: Side::Right,
+            swing_foot: Side::Left,
             phase_time: Duration::ZERO,
-            next_foot_switch: Duration::ZERO,
-            previous_step: StepOffsets::default(),
+            next_foot_switch: config.base_step_period,
+            previous_step: StepOffsets {
+                swing: left,
+                support: right,
+            },
         }
     }
 }
@@ -73,46 +76,46 @@ impl WalkState for WalkingState {
             &previous_step.swing,
         );
 
-        let next_state = self.next_walk_state(
+        self.next_walk_state(
             context.dt,
             linear_time,
             &context,
             swing_offset,
             support_offset,
-        );
+        )
 
-        let (left_foot, right_foot) = match swing_foot {
-            Side::Left => (swing_offset, support_offset),
-            Side::Right => (support_offset, swing_offset),
-        };
+        // let (left_foot, right_foot) = match swing_foot {
+        //     Side::Left => (swing_offset, support_offset),
+        //     Side::Right => (support_offset, swing_offset),
+        // };
 
-        // the shoulder pitch is "approximated" by taking the opposite direction multiplied by a constant.
-        // this results in a swing motion that moves in the opposite direction as the foot.
-        let balancing_config = &context.config.balancing;
-        let left_shoulder_pitch = -left_foot.forward * balancing_config.arm_swing_multiplier;
-        let right_shoulder_pitch = -right_foot.forward * balancing_config.arm_swing_multiplier;
+        // // the shoulder pitch is "approximated" by taking the opposite direction multiplied by a constant.
+        // // this results in a swing motion that moves in the opposite direction as the foot.
+        // let balancing_config = &context.config.balancing;
+        // let left_shoulder_pitch = -left_foot.forward * balancing_config.arm_swing_multiplier;
+        // let right_shoulder_pitch = -right_foot.forward * balancing_config.arm_swing_multiplier;
 
-        let (mut left_leg_joints, mut right_leg_joints) =
-            kinematics::inverse::leg_angles(&left_foot, &right_foot);
+        // let (mut left_leg_joints, mut right_leg_joints) =
+        //     kinematics::inverse::leg_angles(&left_foot, &right_foot);
 
-        // Balance adjustment
-        let balance_adjustment =
-            context.filtered_gyro.y() * balancing_config.filtered_gyro_y_multiplier;
-        if self.next_foot_switch.as_millis() > 0 {
-            match swing_foot {
-                Side::Left => {
-                    right_leg_joints.ankle_pitch += balance_adjustment;
-                }
-                Side::Right => {
-                    left_leg_joints.ankle_pitch += balance_adjustment;
-                }
-            }
-        } else {
-            right_leg_joints.ankle_pitch += balance_adjustment;
-            left_leg_joints.ankle_pitch += balance_adjustment;
-        }
+        // // Balance adjustment
+        // let balance_adjustment =
+        //     context.filtered_gyro.y() * balancing_config.filtered_gyro_y_multiplier;
+        // if self.next_foot_switch.as_millis() > 0 {
+        //     match swing_foot {
+        //         Side::Left => {
+        //             right_leg_joints.ankle_pitch += balance_adjustment;
+        //         }
+        //         Side::Right => {
+        //             left_leg_joints.ankle_pitch += balance_adjustment;
+        //         }
+        //     }
+        // } else {
+        //     right_leg_joints.ankle_pitch += balance_adjustment;
+        //     left_leg_joints.ankle_pitch += balance_adjustment;
+        // }
 
-        let stiffness = 1.0;
+        // let stiffness = 1.0;
         // context.control_message.stiffness = JointArray::<f32>::builder()
         //     .left_shoulder_pitch(stiffness)
         //     .left_shoulder_roll(stiffness)
@@ -133,7 +136,7 @@ impl WalkState for WalkingState {
         //     .right_leg_joints(right_leg_joints)
         //     .build();
 
-        next_state
+        // next_state
     }
 
     fn get_foot_offsets(&self) -> (FootOffset, FootOffset) {
@@ -176,6 +179,7 @@ impl WalkingState {
         // if the support foot has in fact changed, we should update the relevant parameters
         if has_support_foot_changed {
             next_swing_foot = self.swing_foot.next();
+            tracing::info!("[{}] foot switched to {:?}", linear_time, next_swing_foot);
 
             // reset phase
             next_foot_switch = context.config.base_step_period;
