@@ -113,27 +113,36 @@ impl WalkState for WalkingState {
         }
 
         let stiffness = 1.0;
-        context.control_message.stiffness = JointArray::<f32>::builder()
-            .left_shoulder_pitch(stiffness)
-            .left_shoulder_roll(stiffness)
-            .right_shoulder_pitch(stiffness)
-            .right_shoulder_roll(stiffness)
-            .head_pitch(1.0)
-            .head_yaw(1.0)
-            .left_leg_joints(LeftLegJoints::fill(stiffness))
-            .right_leg_joints(RightLegJoints::fill(stiffness))
-            .build();
+        // context.control_message.stiffness = JointArray::<f32>::builder()
+        //     .left_shoulder_pitch(stiffness)
+        //     .left_shoulder_roll(stiffness)
+        //     .right_shoulder_pitch(stiffness)
+        //     .right_shoulder_roll(stiffness)
+        //     .head_pitch(1.0)
+        //     .head_yaw(1.0)
+        //     .left_leg_joints(LeftLegJoints::fill(stiffness))
+        //     .right_leg_joints(RightLegJoints::fill(stiffness))
+        //     .build();
 
-        context.control_message.position = JointArray::<f32>::builder()
-            .left_shoulder_pitch(90f32.to_radians() + left_shoulder_pitch)
-            .left_shoulder_roll(7f32.to_radians())
-            .right_shoulder_pitch(90f32.to_radians() + right_shoulder_pitch)
-            .right_shoulder_roll(-7f32.to_radians())
-            .left_leg_joints(left_leg_joints)
-            .right_leg_joints(right_leg_joints)
-            .build();
+        // context.control_message.position = JointArray::<f32>::builder()
+        //     .left_shoulder_pitch(90f32.to_radians() + left_shoulder_pitch)
+        //     .left_shoulder_roll(7f32.to_radians())
+        //     .right_shoulder_pitch(90f32.to_radians() + right_shoulder_pitch)
+        //     .right_shoulder_roll(-7f32.to_radians())
+        //     .left_leg_joints(left_leg_joints)
+        //     .right_leg_joints(right_leg_joints)
+        //     .build();
 
         next_state
+    }
+
+    fn get_foot_offsets(&self) -> (FootOffset, FootOffset) {
+        let swing_foot = self.swing_foot;
+        let previous_step = &self.previous_step;
+        match swing_foot {
+            Side::Left => (previous_step.swing, previous_step.support),
+            Side::Right => (previous_step.support, previous_step.swing),
+        }
     }
 }
 

@@ -1,5 +1,5 @@
 use nidhogg::{
-    types::{FillExt, ForceSensitiveResistors, JointArray},
+    types::{FillExt, ForceSensitiveResistors, JointArray, LeftLegJoints, RightLegJoints},
     NaoControlMessage,
 };
 
@@ -113,7 +113,7 @@ pub fn walking_engine(
 
     let context = WalkContext {
         walk_command: WalkCommand {
-            forward: 0.0,
+            forward: 0.01,
             left: 0.0,
             turn: 0.0,
         },
@@ -121,9 +121,24 @@ pub fn walking_engine(
         dt: cycle_time.duration,
         filtered_gyro,
         fsr,
-        control_message,
     };
     walking_engine.state = walking_engine.state.clone().next_state(context);
+    let (mut left_foot, mut right_foot) = walking_engine.state.get_foot_offsets();
+    left_foot.hip_height = config.hip_height;
+    right_foot.hip_height = config.hip_height;
+    tracing::info!("left foot: {:?}, right foot: {:?}", left_foot, right_foot);
+
+    // set the stiffness and position of the legs
+    let (left_leg, right_leg) = crate::kinematics::inverse::leg_angles(&left_foot, &right_foot);
+    control_message.position = JointArray::<f32>::builder()
+        .left_leg_joints(left_leg)
+        .right_leg_joints(right_leg)
+        .build();
+
+    control_message.stiffness = JointArray::<f32>::builder()
+        .left_leg_joints(LeftLegJoints::fill(0.5))
+        .right_leg_joints(RightLegJoints::fill(0.5))
+        .build();
 
     Ok(())
 }
