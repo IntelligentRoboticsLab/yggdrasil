@@ -1,3 +1,5 @@
+mod matrix;
+
 use crate::{debug::DebugContext, prelude::*};
 
 use derive_more::{Deref, DerefMut};
