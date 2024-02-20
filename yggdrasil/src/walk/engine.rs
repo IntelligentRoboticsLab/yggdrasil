@@ -120,7 +120,7 @@ pub fn walking_engine(
 
     let context = WalkContext {
         walk_command: WalkCommand {
-            forward: 0.08,
+            forward: 0.03,
             left: 0.0,
             turn: 0.0,
         },
@@ -130,8 +130,9 @@ pub fn walking_engine(
         fsr,
     };
 
+    walking_engine.state = walking_engine.state.clone().next_state(context);
     let (left_foot, right_foot) = walking_engine.state.get_foot_offsets();
-    tracing::info!("left: {} right: {}", left_foot.forward, right_foot.forward);
+    // tracing::info!("left: {} right: {}", left_foot.forward, right_foot.forward);
 
     // set the stiffness and position of the legs
     let (left_leg, right_leg) = crate::kinematics::inverse::leg_angles(&left_foot, &right_foot);
@@ -141,11 +142,9 @@ pub fn walking_engine(
         .build();
 
     control_message.stiffness = JointArray::<f32>::builder()
-        .left_leg_joints(LeftLegJoints::fill(0.8))
-        .right_leg_joints(RightLegJoints::fill(0.8))
+        .left_leg_joints(LeftLegJoints::fill(1.0))
+        .right_leg_joints(RightLegJoints::fill(1.0))
         .build();
-
-    walking_engine.state = walking_engine.state.clone().next_state(context);
 
     Ok(())
 }

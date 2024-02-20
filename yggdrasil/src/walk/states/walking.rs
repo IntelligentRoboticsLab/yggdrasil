@@ -1,14 +1,11 @@
-use std::time::Duration;
-
-use nidhogg::types::{FillExt, JointArray, LeftLegJoints, RightLegJoints};
-
 use crate::{
-    kinematics::{self, FootOffset},
+    kinematics::FootOffset,
     walk::{
         engine::{Side, StepOffsets, WalkCommand},
         smoothing, WalkingEngineConfig,
     },
 };
+use std::time::Duration;
 
 use super::{WalkContext, WalkState, WalkStateKind};
 
@@ -63,17 +60,16 @@ impl WalkState for WalkingState {
         let swing_foot_height = max_foot_height * smoothing::parabolic_return(linear_time);
 
         let swing_foot = self.swing_foot;
-        let previous_step = self.previous_step.clone();
 
         // compute the offsets for the support and swing feet
-        let support_offset =
-            compute_support_offset(&context, &swing_foot, linear_time, &previous_step.support);
-        let swing_offset = compute_swing_offset(
-            &context,
-            &swing_foot,
-            swing_foot_height,
-            linear_time,
-            &previous_step.swing,
+        let support_offset = self.compute_support_offset(&context, &swing_foot, linear_time);
+        let swing_offset =
+            self.compute_swing_offset(&context, &swing_foot, swing_foot_height, linear_time);
+
+        tracing::info!(
+            "previous swing: {} next swing: {}",
+            self.previous_step.swing.forward,
+            swing_offset.forward
         );
 
         self.next_walk_state(
@@ -83,60 +79,6 @@ impl WalkState for WalkingState {
             swing_offset,
             support_offset,
         )
-
-        // let (left_foot, right_foot) = match swing_foot {
-        //     Side::Left => (swing_offset, support_offset),
-        //     Side::Right => (support_offset, swing_offset),
-        // };
-
-        // // the shoulder pitch is "approximated" by taking the opposite direction multiplied by a constant.
-        // // this results in a swing motion that moves in the opposite direction as the foot.
-        // let balancing_config = &context.config.balancing;
-        // let left_shoulder_pitch = -left_foot.forward * balancing_config.arm_swing_multiplier;
-        // let right_shoulder_pitch = -right_foot.forward * balancing_config.arm_swing_multiplier;
-
-        // let (mut left_leg_joints, mut right_leg_joints) =
-        //     kinematics::inverse::leg_angles(&left_foot, &right_foot);
-
-        // // Balance adjustment
-        // let balance_adjustment =
-        //     context.filtered_gyro.y() * balancing_config.filtered_gyro_y_multiplier;
-        // if self.next_foot_switch.as_millis() > 0 {
-        //     match swing_foot {
-        //         Side::Left => {
-        //             right_leg_joints.ankle_pitch += balance_adjustment;
-        //         }
-        //         Side::Right => {
-        //             left_leg_joints.ankle_pitch += balance_adjustment;
-        //         }
-        //     }
-        // } else {
-        //     right_leg_joints.ankle_pitch += balance_adjustment;
-        //     left_leg_joints.ankle_pitch += balance_adjustment;
-        // }
-
-        // let stiffness = 1.0;
-        // context.control_message.stiffness = JointArray::<f32>::builder()
-        //     .left_shoulder_pitch(stiffness)
-        //     .left_shoulder_roll(stiffness)
-        //     .right_shoulder_pitch(stiffness)
-        //     .right_shoulder_roll(stiffness)
-        //     .head_pitch(1.0)
-        //     .head_yaw(1.0)
-        //     .left_leg_joints(LeftLegJoints::fill(stiffness))
-        //     .right_leg_joints(RightLegJoints::fill(stiffness))
-        //     .build();
-
-        // context.control_message.position = JointArray::<f32>::builder()
-        //     .left_shoulder_pitch(90f32.to_radians() + left_shoulder_pitch)
-        //     .left_shoulder_roll(7f32.to_radians())
-        //     .right_shoulder_pitch(90f32.to_radians() + right_shoulder_pitch)
-        //     .right_shoulder_roll(-7f32.to_radians())
-        //     .left_leg_joints(left_leg_joints)
-        //     .right_leg_joints(right_leg_joints)
-        //     .build();
-
-        // next_state
     }
 
     fn get_foot_offsets(&self) -> (FootOffset, FootOffset) {
@@ -199,59 +141,77 @@ impl WalkingState {
             previous_step,
         })
     }
-}
 
-fn compute_swing_offset(
-    context: &WalkContext,
-    side: &Side,
-    foot_height: f32,
-    linear_time: f32,
-    step_t0: &FootOffset,
-) -> FootOffset {
-    let walk_command = &context.walk_command;
-    let config = &context.config;
-    let forward_t0 = step_t0.forward;
-    let left_t0 = step_t0.left;
-    let turn_t0 = step_t0.turn;
-    let parabolic_time = smoothing::parabolic_step(linear_time);
+    fn compute_swing_offset(
+        &self,
+        context: &WalkContext,
+        side: &Side,
+        foot_height: f32,
+        linear_time: f32,
+    ) -> FootOffset {
+        let walk_command = &context.walk_command;
+        let config = &context.config;
+        let FootOffset {
+            forward: forward_t0,
+            left: left_t0,
+            turn: turn_t0,
+            hip_height: _,
+            lift: _,
+        } = self.previous_step.swing;
+        let parabolic_time = smoothing::parabolic_step(linear_time);
 
-    let turn_multiplier = match side {
-        Side::Left => -2.0 / 3.0,
-        Side::Right => 2.0 / 3.0,
-    };
-    FootOffset {
-        forward: forward_t0
-            + (walk_command.forward * config.com_multiplier - forward_t0) * parabolic_time,
-        left: left_t0 + (walk_command.left / 2.0 - left_t0) * parabolic_time,
-        turn: turn_t0 + (walk_command.turn * turn_multiplier - turn_t0) * parabolic_time,
-        hip_height: config.hip_height,
-        lift: foot_height,
+        let turn_multiplier = match side {
+            Side::Left => -2.0 / 3.0,
+            Side::Right => 2.0 / 3.0,
+        };
+
+        tracing::info!(
+            "forward_t0: {} forward: {} parabolic_time: {}, new forward: {}",
+            forward_t0,
+            walk_command.forward * config.com_multiplier,
+            parabolic_time,
+            forward_t0
+                + (walk_command.forward * config.com_multiplier - forward_t0) * parabolic_time
+        );
+
+        FootOffset {
+            forward: forward_t0
+                + (walk_command.forward * config.com_multiplier - forward_t0) * parabolic_time,
+            left: left_t0 + (walk_command.left / 2.0 - left_t0) * parabolic_time,
+            turn: turn_t0 + (walk_command.turn * turn_multiplier - turn_t0) * parabolic_time,
+            hip_height: config.hip_height,
+            lift: foot_height,
+        }
     }
-}
 
-fn compute_support_offset(
-    context: &WalkContext,
-    side: &Side,
-    linear_time: f32,
-    step_t0: &FootOffset,
-) -> FootOffset {
-    let walk_command = &context.walk_command;
-    let config = &context.config;
-    let forward_t0 = step_t0.forward;
-    let left_t0 = step_t0.left;
-    let turn_t0 = step_t0.turn;
+    fn compute_support_offset(
+        &self,
+        context: &WalkContext,
+        side: &Side,
+        linear_time: f32,
+    ) -> FootOffset {
+        let walk_command = &context.walk_command;
+        let config = &context.config;
+        let FootOffset {
+            forward: forward_t0,
+            left: left_t0,
+            turn: turn_t0,
+            hip_height: _,
+            lift: _,
+        } = self.previous_step.support;
 
-    let turn_multiplier = match side {
-        Side::Left => -1.0 / 3.0,
-        Side::Right => 1.0 / 3.0,
-    };
+        let turn_multiplier = match side {
+            Side::Left => -1.0 / 3.0,
+            Side::Right => 1.0 / 3.0,
+        };
 
-    FootOffset {
-        forward: forward_t0
-            + (-walk_command.forward * config.com_multiplier - forward_t0) * linear_time,
-        left: left_t0 + (-walk_command.left / 2.0 - left_t0) * linear_time,
-        turn: turn_t0 + (-walk_command.turn * turn_multiplier - turn_t0) * linear_time,
-        hip_height: config.hip_height,
-        lift: 0.0,
+        FootOffset {
+            forward: forward_t0
+                + (-walk_command.forward * config.com_multiplier - forward_t0) * linear_time,
+            left: left_t0 + (-walk_command.left / 2.0 - left_t0) * linear_time,
+            turn: turn_t0 + (-walk_command.turn * turn_multiplier - turn_t0) * linear_time,
+            hip_height: config.hip_height,
+            lift: 0.0,
+        }
     }
 }
