@@ -1,9 +1,5 @@
 #[cfg(feature = "alsa")]
 pub mod audio;
-<<<<<<< HEAD
-pub mod behaviour;
-pub mod filter;
-=======
 pub mod behavior;
 pub mod camera;
 pub mod config;
@@ -12,7 +8,6 @@ pub mod filter;
 pub mod game_controller;
 pub mod kinematics;
 pub mod leds;
->>>>>>> ceeff45ea380ffba4d81a2169e6c3717906344fd
 pub mod motion;
 pub mod nao;
 pub mod primary_state;
