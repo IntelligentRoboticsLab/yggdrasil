@@ -6,6 +6,7 @@ use nidhogg::{
 };
 
 use crate::{
+    debug::DebugContext,
     filter::button::{ChestButton, HeadButtons},
     kinematics::FootOffset,
     prelude::*,
@@ -107,6 +108,7 @@ pub fn walking_engine(
     fsr: &ForceSensitiveResistors,
     filtered_gyro: &FilteredGyroscope,
     control_message: &mut NaoControlMessage,
+    dbg: &DebugContext,
 ) -> Result<()> {
     // We don't run the walking engine whenever we're in a state where we shouldn't.
     // This is a semi hacky way to prevent the robot from jumping up and
@@ -128,22 +130,59 @@ pub fn walking_engine(
         dt: cycle_time.duration,
         filtered_gyro,
         fsr,
+        dbg: dbg.clone(),
     };
 
     walking_engine.state = walking_engine.state.clone().next_state(context);
     let (left_foot, right_foot) = walking_engine.state.get_foot_offsets();
-    // tracing::info!("left: {} right: {}", left_foot.forward, right_foot.forward);
+
+    dbg.log_scalar_f32("/foot/left", left_foot.forward)?;
+    dbg.log_scalar_f32("/foot/right", right_foot.forward)?;
 
     // set the stiffness and position of the legs
-    let (left_leg, right_leg) = crate::kinematics::inverse::leg_angles(&left_foot, &right_foot);
+    let (mut left_leg_joints, mut right_leg_joints) =
+        crate::kinematics::inverse::leg_angles(&left_foot, &right_foot);
+
+    // balancing
+    let swing = walking_engine.state.swing_foot();
+
+    // the shoulder pitch is "approximated" by taking the opposite direction multiplied by a constant.
+    // this results in a swing motion that moves in the opposite direction as the foot.
+    let balancing_config = &config.balancing;
+    let left_shoulder_pitch = -left_foot.forward * balancing_config.arm_swing_multiplier;
+    let right_shoulder_pitch = -right_foot.forward * balancing_config.arm_swing_multiplier;
+
+    // Balance adjustment
+    let balance_adjustment = filtered_gyro.y() * balancing_config.filtered_gyro_y_multiplier;
+    match swing {
+        Side::Left => {
+            right_leg_joints.ankle_pitch += balance_adjustment;
+        }
+        Side::Right => {
+            left_leg_joints.ankle_pitch += balance_adjustment;
+        }
+    }
+
     control_message.position = JointArray::<f32>::builder()
-        .left_leg_joints(left_leg)
-        .right_leg_joints(right_leg)
+        .left_shoulder_pitch(90f32.to_radians() + left_shoulder_pitch)
+        .left_shoulder_roll(7f32.to_radians())
+        .right_shoulder_pitch(90f32.to_radians() + right_shoulder_pitch)
+        .right_shoulder_roll(-7f32.to_radians())
+        .left_leg_joints(left_leg_joints)
+        .right_leg_joints(right_leg_joints)
         .build();
 
+    let stiffness = 1.0;
+
     control_message.stiffness = JointArray::<f32>::builder()
-        .left_leg_joints(LeftLegJoints::fill(1.0))
-        .right_leg_joints(RightLegJoints::fill(1.0))
+        .left_shoulder_pitch(stiffness)
+        .left_shoulder_roll(stiffness)
+        .right_shoulder_pitch(stiffness)
+        .right_shoulder_roll(stiffness)
+        .head_pitch(stiffness)
+        .head_yaw(stiffness)
+        .left_leg_joints(LeftLegJoints::fill(stiffness))
+        .right_leg_joints(RightLegJoints::fill(stiffness))
         .build();
 
     Ok(())

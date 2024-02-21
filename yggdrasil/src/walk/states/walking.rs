@@ -14,7 +14,7 @@ pub struct WalkingState {
     swing_foot: Side,
     phase_time: Duration,
     next_foot_switch: Duration,
-    previous_step: StepOffsets,
+    previous_step_offsets: StepOffsets,
 }
 
 impl WalkingState {
@@ -23,7 +23,7 @@ impl WalkingState {
             swing_foot: Side::Left,
             phase_time: Duration::ZERO,
             next_foot_switch: config.base_step_period,
-            previous_step: StepOffsets {
+            previous_step_offsets: StepOffsets {
                 swing: left,
                 support: right,
             },
@@ -38,13 +38,18 @@ impl WalkState for WalkingState {
         let linear_time =
             (phase_time.as_secs_f32() / self.next_foot_switch.as_secs_f32()).clamp(0.0, 1.0);
 
+        context
+            .dbg
+            .log_scalar_f32("/foot/linear_time", linear_time)
+            .unwrap();
+
         if self.next_foot_switch.as_secs_f32() <= 0.0 {
             return self.next_walk_state(
                 context.dt,
                 linear_time,
                 &context,
-                self.previous_step.swing,
-                self.previous_step.support,
+                self.previous_step_offsets.swing,
+                self.previous_step_offsets.support,
             );
         }
 
@@ -66,12 +71,6 @@ impl WalkState for WalkingState {
         let swing_offset =
             self.compute_swing_offset(&context, &swing_foot, swing_foot_height, linear_time);
 
-        tracing::info!(
-            "previous swing: {} next swing: {}",
-            self.previous_step.swing.forward,
-            swing_offset.forward
-        );
-
         self.next_walk_state(
             context.dt,
             linear_time,
@@ -83,21 +82,16 @@ impl WalkState for WalkingState {
 
     fn get_foot_offsets(&self) -> (FootOffset, FootOffset) {
         let swing_foot = self.swing_foot;
-        let previous_step = &self.previous_step;
+        let previous_step = &self.previous_step_offsets;
         match swing_foot {
             Side::Left => (previous_step.swing, previous_step.support),
             Side::Right => (previous_step.support, previous_step.swing),
         }
     }
-}
 
-fn has_support_foot_changed(side: &Side, context: &WalkContext) -> bool {
-    let left_foot_pressure = context.fsr.left_foot.sum();
-    let right_foot_pressure = context.fsr.right_foot.sum();
-    (match side {
-        Side::Left => left_foot_pressure,
-        Side::Right => right_foot_pressure,
-    }) > context.config.cop_pressure_threshold
+    fn swing_foot(&self) -> Side {
+        self.swing_foot
+    }
 }
 
 impl WalkingState {
@@ -113,15 +107,17 @@ impl WalkingState {
         let mut phase_time = self.phase_time + dt;
         let mut next_foot_switch = self.next_foot_switch;
 
-        let mut previous_step = self.previous_step.clone();
+        let mut previous_step = StepOffsets {
+            swing: swing_offset,
+            support: support_offset,
+        };
+
         // figure out whether the support foot has changed
-        let has_support_foot_changed =
-            linear_time > 0.75 && has_support_foot_changed(&self.swing_foot, context);
+        let has_support_foot_changed = linear_time > 0.75 && self.has_support_foot_changed(context);
 
         // if the support foot has in fact changed, we should update the relevant parameters
         if has_support_foot_changed {
             next_swing_foot = self.swing_foot.next();
-            tracing::info!("[{}] foot switched to {:?}", linear_time, next_swing_foot);
 
             // reset phase
             next_foot_switch = context.config.base_step_period;
@@ -138,8 +134,17 @@ impl WalkingState {
             swing_foot: next_swing_foot,
             phase_time,
             next_foot_switch,
-            previous_step,
+            previous_step_offsets: previous_step,
         })
+    }
+
+    fn has_support_foot_changed(&self, context: &WalkContext) -> bool {
+        let left_foot_pressure = context.fsr.left_foot.sum();
+        let right_foot_pressure = context.fsr.right_foot.sum();
+        (match self.swing_foot {
+            Side::Left => left_foot_pressure,
+            Side::Right => right_foot_pressure,
+        }) > context.config.cop_pressure_threshold
     }
 
     fn compute_swing_offset(
@@ -157,22 +162,13 @@ impl WalkingState {
             turn: turn_t0,
             hip_height: _,
             lift: _,
-        } = self.previous_step.swing;
+        } = self.previous_step_offsets.swing;
         let parabolic_time = smoothing::parabolic_step(linear_time);
 
         let turn_multiplier = match side {
             Side::Left => -2.0 / 3.0,
             Side::Right => 2.0 / 3.0,
         };
-
-        tracing::info!(
-            "forward_t0: {} forward: {} parabolic_time: {}, new forward: {}",
-            forward_t0,
-            walk_command.forward * config.com_multiplier,
-            parabolic_time,
-            forward_t0
-                + (walk_command.forward * config.com_multiplier - forward_t0) * parabolic_time
-        );
 
         FootOffset {
             forward: forward_t0
@@ -198,7 +194,7 @@ impl WalkingState {
             turn: turn_t0,
             hip_height: _,
             lift: _,
-        } = self.previous_step.support;
+        } = self.previous_step_offsets.support;
 
         let turn_multiplier = match side {
             Side::Left => -1.0 / 3.0,

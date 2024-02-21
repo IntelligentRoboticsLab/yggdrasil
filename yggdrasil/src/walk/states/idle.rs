@@ -1,6 +1,6 @@
 use crate::{
     kinematics::FootOffset,
-    walk::WalkingEngineConfig,
+    walk::{engine::Side, WalkingEngineConfig},
 };
 
 use super::{WalkContext, WalkState, WalkStateKind};
@@ -22,7 +22,7 @@ impl WalkState for IdleState {
     fn next_state(self, context: WalkContext) -> WalkStateKind {
         // Slowly stand up, by moving towards the idle hip height.
         WalkStateKind::Idle(IdleState {
-            hip_height: ( self.hip_height + 0.0025).min(context.config.hip_height),
+            hip_height: (self.hip_height + 0.0025).min(context.config.hip_height),
         })
     }
 
@@ -37,5 +37,9 @@ impl WalkState for IdleState {
         };
 
         (foot_position, foot_position)
+    }
+
+    fn swing_foot(&self) -> Side {
+        Side::Left
     }
 }
