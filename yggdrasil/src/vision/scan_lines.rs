@@ -345,19 +345,10 @@ fn horizontal_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
 
             let (y1, u, y2, v) = unsafe {
                 (
-                    yuyv_image.as_ptr().byte_add(image_offset).read_unaligned(),
-                    yuyv_image
-                        .as_ptr()
-                        .byte_add(image_offset + 1)
-                        .read_unaligned(),
-                    yuyv_image
-                        .as_ptr()
-                        .byte_add(image_offset + 2)
-                        .read_unaligned(),
-                    yuyv_image
-                        .as_ptr()
-                        .byte_add(image_offset + 3)
-                        .read_unaligned(),
+                    *yuyv_image.get_unchecked(image_offset),
+                    *yuyv_image.get_unchecked(image_offset + 1),
+                    *yuyv_image.get_unchecked(image_offset + 2),
+                    *yuyv_image.get_unchecked(image_offset + 3),
                 )
             };
 
@@ -365,16 +356,8 @@ fn horizontal_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
             let buffer_offset = line_id * yuyv_image.width() + col_id * 2;
 
             unsafe {
-                scan_lines
-                    .horizontal
-                    .as_mut_ptr()
-                    .byte_add(buffer_offset)
-                    .write_unaligned(pixel_color);
-                scan_lines
-                    .horizontal
-                    .as_mut_ptr()
-                    .byte_add(buffer_offset + 1)
-                    .write_unaligned(pixel_color);
+                *scan_lines.horizontal.get_unchecked_mut(buffer_offset) = pixel_color;
+                *scan_lines.horizontal.get_unchecked_mut(buffer_offset + 1) = pixel_color;
             };
         }
     }
@@ -390,19 +373,10 @@ fn vertical_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
 
             let (y1, u, y2, v) = unsafe {
                 (
-                    yuyv_image.as_ptr().byte_add(image_offset).read_unaligned(),
-                    yuyv_image
-                        .as_ptr()
-                        .byte_add(image_offset + 1)
-                        .read_unaligned(),
-                    yuyv_image
-                        .as_ptr()
-                        .byte_add(image_offset + 2)
-                        .read_unaligned(),
-                    yuyv_image
-                        .as_ptr()
-                        .byte_add(image_offset + 3)
-                        .read_unaligned(),
+                    *yuyv_image.get_unchecked(image_offset),
+                    *yuyv_image.get_unchecked(image_offset + 1),
+                    *yuyv_image.get_unchecked(image_offset + 2),
+                    *yuyv_image.get_unchecked(image_offset + 3),
                 )
             };
 
@@ -410,11 +384,7 @@ fn vertical_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
             let buffer_offset = line_id * yuyv_image.height() + row_id;
 
             unsafe {
-                scan_lines
-                    .vertical
-                    .as_mut_ptr()
-                    .byte_add(buffer_offset)
-                    .write_unaligned(pixel_color)
+                *scan_lines.vertical.get_unchecked_mut(buffer_offset) = pixel_color;
             };
         }
     }
