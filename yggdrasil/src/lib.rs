@@ -9,6 +9,7 @@ pub mod game_controller;
 pub mod kinematics;
 pub mod leds;
 pub mod nao;
+pub mod neural_networks;
 pub mod primary_state;
 pub mod walk;
 
