@@ -159,11 +159,42 @@ impl DebugContext {
         Ok(())
     }
 
-    pub fn log_text(&self, path: impl AsRef<str>, text: String) -> Result<()> {
+    pub fn log_point2d(&self, path: impl AsRef<str>, x: f32, y: f32) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
             self.rec
-                .log(path.as_ref(), &rerun::TextLog::new(text))
+                .log(path.as_ref(), &rerun::Points2D::new([(x, y)]))
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn log_points2d_for_image(
+        &self,
+        path: impl AsRef<str>,
+        points: &[(f32, f32)],
+        img: Image,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let image_timestamp = img.timestamp();
+            self.rec.set_time_seconds(
+                "image",
+                image_timestamp
+                    .duration_since(self.start_time)
+                    .as_secs_f64(),
+            );
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Points2D::new(points).with_colors(vec![
+                        rerun::Color::from_rgb(
+                            255, 0, 0,
+                        );
+                        points.len()
+                    ]),
+                )
                 .into_diagnostic()?;
         }
 
