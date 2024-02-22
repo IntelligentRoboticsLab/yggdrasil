@@ -33,6 +33,8 @@ impl Module for DebugModule {
 pub struct DebugContext {
     #[cfg(feature = "rerun")]
     rec: rerun::RecordingStream,
+    #[cfg(feature = "rerun")]
+    start_time: std::time::Instant,
 }
 
 #[allow(unused)]
@@ -63,7 +65,10 @@ impl DebugContext {
                 )
                 .into_diagnostic()?;
 
-            Ok(DebugContext { rec })
+            Ok(DebugContext {
+                rec,
+                start_time: std::time::Instant::now(),
+            })
         }
 
         #[cfg(not(feature = "rerun"))]
@@ -88,11 +93,19 @@ impl DebugContext {
     pub fn log_image(&self, path: impl AsRef<str>, img: Image, jpeg_quality: i32) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
+            self.rec.set_time_seconds(
+                "image",
+                img.timestamp()
+                    .duration_since(self.start_time)
+                    .as_secs_f64(),
+            );
             let jpeg = img.yuyv_image().to_jpeg(jpeg_quality)?;
             let tensor_data =
                 rerun::TensorData::from_jpeg_bytes(jpeg.to_owned()).into_diagnostic()?;
             let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
+
             self.rec.log(path.as_ref(), &img).into_diagnostic()?;
+            self.rec.disable_timeline("image");
         }
 
         Ok(())
@@ -146,11 +159,42 @@ impl DebugContext {
         Ok(())
     }
 
-    pub fn log_text(&self, path: impl AsRef<str>, text: String) -> Result<()> {
+    pub fn log_point2d(&self, path: impl AsRef<str>, x: f32, y: f32) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
             self.rec
-                .log(path.as_ref(), &rerun::TextLog::new(text))
+                .log(path.as_ref(), &rerun::Points2D::new([(x, y)]))
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn log_points2d_for_image(
+        &self,
+        path: impl AsRef<str>,
+        points: &[(f32, f32)],
+        img: Image,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let image_timestamp = img.timestamp();
+            self.rec.set_time_seconds(
+                "image",
+                image_timestamp
+                    .duration_since(self.start_time)
+                    .as_secs_f64(),
+            );
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Points2D::new(points).with_colors(vec![
+                        rerun::Color::from_rgb(
+                            255, 0, 0,
+                        );
+                        points.len()
+                    ]),
+                )
                 .into_diagnostic()?;
         }
 
