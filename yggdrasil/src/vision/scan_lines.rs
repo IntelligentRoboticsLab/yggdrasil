@@ -7,6 +7,11 @@ use heimdall::YuyvImage;
 
 use std::ops::Deref;
 
+/// Module that generates scan-lines from taken NAO images.
+///
+/// This module provides the following resources to the application:
+/// - [`TopScanLines`]
+/// - [`BottomScanLines`]
 pub struct ScanLinesModule;
 
 impl Module for ScanLinesModule {
