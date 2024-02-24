@@ -36,11 +36,11 @@ pub enum Error {
     #[error(transparent)]
     Image(#[from] image::ImageError),
 
-    #[error(transparent)]
-    HorizontalFlip(io::Error),
+    #[error("Failed to flip camera horizontally")]
+    HorizontalFlip(#[source] io::Error),
 
-    #[error(transparent)]
-    VerticalFlip(io::Error),
+    #[error("Failed to flip camera vertically")]
+    VerticalFlip(#[source] io::Error),
 
     #[error(transparent)]
     Jpeg(turbojpeg::Error),
