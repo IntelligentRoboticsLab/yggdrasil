@@ -72,7 +72,7 @@ impl CameraDevice {
         Ok(())
     }
 
-    /// Set the autofocus of the camera device.
+    /// Set the focus of the camera device.
     ///
     /// `value` is in range [0, 250], default=0, step=25.
     pub fn set_focus_absolute(&mut self, value: i32) -> Result<()> {
