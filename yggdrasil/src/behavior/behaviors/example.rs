@@ -1,6 +1,6 @@
 use crate::behavior::engine::{Behavior, Context};
 use nidhogg::{
-    types::{Color, FillExt, RightEye},
+    types::{color, FillExt, RightEye},
     NaoControlMessage,
 };
 
@@ -14,9 +14,9 @@ impl Behavior for Example {
         self.iter += 1;
 
         let right_eye = if self.iter < 100 {
-            RightEye::fill(Color::RED)
+            RightEye::fill(color::f32::RED)
         } else {
-            RightEye::fill(Color::BLUE)
+            RightEye::fill(color::f32::BLUE)
         };
 
         control_message.right_eye = right_eye;

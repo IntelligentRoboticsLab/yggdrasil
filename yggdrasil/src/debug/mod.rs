@@ -1,8 +1,8 @@
-use std::net::Ipv4Addr;
+use std::{convert::Into, net::Ipv4Addr};
 
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
-use nidhogg::types::Color;
+use nidhogg::types::RgbU8;
 
 use crate::{
     camera::Image,
@@ -103,7 +103,7 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         name: impl AsRef<str>,
-        color: Color,
+        color: RgbU8,
         line_width: f32,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
@@ -113,11 +113,7 @@ impl DebugContext {
                 .log_timeless(
                     path.as_ref(),
                     &rerun::SeriesLine::new()
-                        .with_color([
-                            (color.red * 255.0) as u8,
-                            (color.green * 255.0) as u8,
-                            (color.blue * 255.0) as u8,
-                        ])
+                        .with_color(Into::<[u8; 3]>::into(color))
                         .with_name(name.as_ref())
                         .with_width(line_width),
                 )

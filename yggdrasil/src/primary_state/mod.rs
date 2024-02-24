@@ -1,7 +1,7 @@
 use crate::{filter::button::ChestButton, leds::Leds, prelude::*};
 
 use bifrost::communication::{GameControllerMessage, GameState};
-use nidhogg::types::Color;
+use nidhogg::types::color;
 use std::time::Duration;
 
 const CHEST_BLINK_INTERVAL: Duration = Duration::from_millis(1000);
@@ -98,17 +98,17 @@ pub fn update_primary_state(
         led.unset_chest_blink();
 
         match next_primary_state {
-            PS::Unstiff => led.set_chest_blink(Color::BLUE, CHEST_BLINK_INTERVAL),
-            PS::Initial => led.chest = Color::GRAY,
-            PS::Ready => led.chest = Color::BLUE,
-            PS::Set => led.chest = Color::YELLOW,
-            PS::Playing => led.chest = Color::GREEN,
-            PS::Penalized => led.chest = Color::RED,
-            PS::Finished => led.chest = Color::GRAY,
-            PS::Calibration => led.chest = Color::PURPLE,
+            PS::Unstiff => led.set_chest_blink(color::f32::BLUE, CHEST_BLINK_INTERVAL),
+            PS::Initial => led.chest = color::f32::GRAY,
+            PS::Ready => led.chest = color::f32::BLUE,
+            PS::Set => led.chest = color::f32::YELLOW,
+            PS::Playing => led.chest = color::f32::GREEN,
+            PS::Penalized => led.chest = color::f32::RED,
+            PS::Finished => led.chest = color::f32::GRAY,
+            PS::Calibration => led.chest = color::f32::PURPLE,
         };
     } else if next_primary_state == PS::Unstiff {
-        led.set_chest_blink(Color::BLUE, CHEST_BLINK_INTERVAL)
+        led.set_chest_blink(color::f32::BLUE, CHEST_BLINK_INTERVAL)
     }
 
     *primary_state = next_primary_state;
