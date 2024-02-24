@@ -32,7 +32,13 @@ impl CameraDevice {
     where
         A: AsRef<Path>,
     {
-        let device = Device::open(device_path)?;
+        let path = device_path
+            .as_ref()
+            .to_owned()
+            .to_string_lossy()
+            .to_string();
+        let device =
+            Device::open(device_path).map_err(|source| Error::DeviceOpen { path, source })?;
 
         Ok(Self { device })
     }
@@ -54,18 +60,29 @@ impl CameraDevice {
     /// Enable or disable the autofocus.
     ///
     /// Default=false.
-    pub fn set_focus_auto(&mut self, enable: bool) -> Result<()> {
+    pub fn set_focus_auto(&mut self, enabled: bool) -> Result<()> {
         self.device
-            .write_control_raw(Cid::FOCUS_AUTO, enable as i32)?;
+            .write_control_raw(Cid::FOCUS_AUTO, enabled as i32)
+            .map_err(|source| Error::DeviceProperty {
+                property: "focus_auto".to_string(),
+                value: enabled.to_string(),
+                source,
+            })?;
 
         Ok(())
     }
 
-    /// Set the autofocus of the camera device.
+    /// Set the focus of the camera device.
     ///
     /// `value` is in range [0, 250], default=0, step=25.
     pub fn set_focus_absolute(&mut self, value: i32) -> Result<()> {
-        self.device.write_control_raw(Cid::FOCUS_ABSOLUTE, value)?;
+        self.device
+            .write_control_raw(Cid::FOCUS_ABSOLUTE, value)
+            .map_err(|source| Error::DeviceProperty {
+                property: "focus_absolute".to_string(),
+                value: value.to_string(),
+                source,
+            })?;
 
         Ok(())
     }
@@ -74,7 +91,13 @@ impl CameraDevice {
     ///
     /// `value` is in range [-255, 255], default=0, step=1.
     pub fn set_brightness(&mut self, value: i32) -> Result<()> {
-        self.device.write_control_raw(Cid::BRIGHTNESS, value)?;
+        self.device
+            .write_control_raw(Cid::BRIGHTNESS, value)
+            .map_err(|source| Error::DeviceProperty {
+                property: "brightness".to_string(),
+                value: value.to_string(),
+                source,
+            })?;
 
         Ok(())
     }
@@ -83,7 +106,13 @@ impl CameraDevice {
     ///
     /// `value` is in range [0, 255], default=32, step=1.
     pub fn set_contrast(&mut self, value: i32) -> Result<()> {
-        self.device.write_control_raw(Cid::CONTRAST, value)?;
+        self.device
+            .write_control_raw(Cid::CONTRAST, value)
+            .map_err(|source| Error::DeviceProperty {
+                property: "contrast".to_string(),
+                value: value.to_string(),
+                source,
+            })?;
 
         Ok(())
     }
@@ -92,7 +121,13 @@ impl CameraDevice {
     ///
     /// `value` is in range [0, 255], default=64, step=1.
     pub fn set_saturation(&mut self, value: i32) -> Result<()> {
-        self.device.write_control_raw(Cid::SATURATION, value)?;
+        self.device
+            .write_control_raw(Cid::SATURATION, value)
+            .map_err(|source| Error::DeviceProperty {
+                property: "saturation".to_string(),
+                value: value.to_string(),
+                source,
+            })?;
 
         Ok(())
     }
@@ -101,7 +136,13 @@ impl CameraDevice {
     ///
     /// `value` is in range [-180, 180], default=0, step=1.
     pub fn set_hue(&mut self, value: i32) -> Result<()> {
-        self.device.write_control_raw(Cid::SATURATION, value)?;
+        self.device
+            .write_control_raw(Cid::HUE, value)
+            .map_err(|source| Error::DeviceProperty {
+                property: "hue".to_string(),
+                value: value.to_string(),
+                source,
+            })?;
 
         Ok(())
     }
@@ -111,7 +152,12 @@ impl CameraDevice {
     /// Default=true.
     pub fn set_hue_auto(&mut self, enabled: bool) -> Result<()> {
         self.device
-            .write_control_raw(Cid::HUE_AUTO, enabled as i32)?;
+            .write_control_raw(Cid::HUE_AUTO, enabled as i32)
+            .map_err(|source| Error::DeviceProperty {
+                property: "hue_auto".to_string(),
+                value: enabled.to_string(),
+                source,
+            })?;
 
         Ok(())
     }
@@ -121,7 +167,12 @@ impl CameraDevice {
     /// Default=true.
     pub fn set_white_balance_temperature_auto(&mut self, enabled: bool) -> Result<()> {
         self.device
-            .write_control_raw(Cid::AUTO_WHITE_BALANCE, enabled as i32)?;
+            .write_control_raw(Cid::AUTO_WHITE_BALANCE, enabled as i32)
+            .map_err(|source| Error::DeviceProperty {
+                property: "white_balance_temperature_auto".to_string(),
+                value: enabled.to_string(),
+                source,
+            })?;
 
         Ok(())
     }
@@ -131,7 +182,12 @@ impl CameraDevice {
     /// `value` is in range [2500, 6500], default=2500, step=500.
     pub fn set_white_balance_temperature(&mut self, value: i32) -> Result<()> {
         self.device
-            .write_control_raw(Cid::WHITE_BALANCE_TEMPERATURE, value)?;
+            .write_control_raw(Cid::WHITE_BALANCE_TEMPERATURE, value)
+            .map_err(|source| Error::DeviceProperty {
+                property: "white_balance_temperature".to_string(),
+                value: value.to_string(),
+                source,
+            })?;
 
         Ok(())
     }
@@ -141,7 +197,12 @@ impl CameraDevice {
     /// `value` is in range [0, 1023], default=16, step=1.
     pub fn set_gain(&mut self, value: i32) -> Result<()> {
         self.device
-            .write_control_raw(Cid::WHITE_BALANCE_TEMPERATURE, value)?;
+            .write_control_raw(Cid::GAIN, value)
+            .map_err(|source| Error::DeviceProperty {
+                property: "gain".to_string(),
+                value: value.to_string(),
+                source,
+            })?;
 
         Ok(())
     }
@@ -150,7 +211,13 @@ impl CameraDevice {
     ///
     /// `value` is in range [0, 9], default=4, step=1.
     pub fn set_sharpness(&mut self, value: i32) -> Result<()> {
-        self.device.write_control_raw(Cid::SHARPNESS, value)?;
+        self.device
+            .write_control_raw(Cid::SHARPNESS, value)
+            .map_err(|source| Error::DeviceProperty {
+                property: "sharpness".to_string(),
+                value: value.to_string(),
+                source,
+            })?;
 
         Ok(())
     }
@@ -160,7 +227,12 @@ impl CameraDevice {
     /// Default=true.
     pub fn set_exposure_auto(&mut self, enabled: bool) -> Result<()> {
         self.device
-            .write_control_raw(Cid::EXPOSURE_AUTO, !enabled as i32)?;
+            .write_control_raw(Cid::EXPOSURE_AUTO, !enabled as i32)
+            .map_err(|source| Error::DeviceProperty {
+                property: "exposure_auto".to_string(),
+                value: enabled.to_string(),
+                source,
+            })?;
 
         Ok(())
     }
@@ -170,7 +242,12 @@ impl CameraDevice {
     /// `value` is in range [0, 1048575], default=512, step=1.
     pub fn set_exposure_absolute(&mut self, value: i32) -> Result<()> {
         self.device
-            .write_control_raw(Cid::EXPOSURE_ABSOLUTE, value)?;
+            .write_control_raw(Cid::EXPOSURE_ABSOLUTE, value)
+            .map_err(|source| Error::DeviceProperty {
+                property: "exposure_absolute".to_string(),
+                value: value.to_string(),
+                source,
+            })?;
 
         Ok(())
     }
@@ -204,10 +281,10 @@ impl Camera {
             ))?;
         }
 
-        let capture_device =
-            camera_device
-                .device
-                .video_capture(PixFormat::new(width, height, PixelFormat::YUYV))?;
+        let capture_device = camera_device
+            .device
+            .video_capture(PixFormat::new(width, height, PixelFormat::YUYV))
+            .map_err(Error::VideoCapture)?;
         if capture_device.format().pixel_format() != PixelFormat::YUYV {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Unsupported,

@@ -14,15 +14,33 @@ pub enum Error {
     #[error(transparent)]
     IO(#[from] std::io::Error),
 
+    #[error("Failed to open camera device at `{path}`")]
+    DeviceOpen {
+        path: String,
+        #[source]
+        source: std::io::Error,
+    },
+
+    #[error("Failed to set camera property `{property}` to `{value}`")]
+    DeviceProperty {
+        property: String,
+        value: String,
+        #[source]
+        source: std::io::Error,
+    },
+
+    #[error("Failed to set the device to video capture mode")]
+    VideoCapture(#[source] io::Error),
+
     /// Image error, this wraps a [image::ImageError]
     #[error(transparent)]
     Image(#[from] image::ImageError),
 
-    #[error(transparent)]
-    HorizontalFlip(io::Error),
+    #[error("Failed to flip camera horizontally")]
+    HorizontalFlip(#[source] io::Error),
 
-    #[error(transparent)]
-    VerticalFlip(io::Error),
+    #[error("Failed to flip camera vertically")]
+    VerticalFlip(#[source] io::Error),
 
     #[error(transparent)]
     Jpeg(turbojpeg::Error),
