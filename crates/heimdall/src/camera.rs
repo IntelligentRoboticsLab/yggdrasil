@@ -35,8 +35,7 @@ impl CameraDevice {
         let path = device_path
             .as_ref()
             .to_owned()
-            .to_str()
-            .expect("Failed to convert camera path to String!")
+            .to_string_lossy()
             .to_string();
         let device =
             Device::open(device_path).map_err(|source| Error::DeviceOpen { path, source })?;
