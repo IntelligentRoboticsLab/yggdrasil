@@ -244,8 +244,6 @@ fn init_buffers(
 }
 
 fn horizontal_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
-    // Warning is disabled, because iterators are to slow here.
-    #[allow(clippy::needless_range_loop)]
     for line_id in 0..scan_lines.row_ids().len() {
         let row_id = *unsafe { scan_lines.row_ids().get_unchecked(line_id) };
 
@@ -273,8 +271,6 @@ fn horizontal_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
 }
 
 fn vertical_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
-    // Warning is disabled, because iterators are too slow here.
-    #[allow(clippy::needless_range_loop)]
     for row_id in 0..yuyv_image.height() {
         for line_id in 0..scan_lines.column_ids().len() {
             let col_id = *unsafe { scan_lines.column_ids().get_unchecked(line_id) };
