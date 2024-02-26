@@ -297,8 +297,9 @@ fn vertical_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
 
 fn update_scan_lines(image: &Image, scan_lines: &mut ScanLines) {
     horizontal_scan_lines(image.yuyv_image(), scan_lines);
-
     vertical_scan_lines(image.yuyv_image(), scan_lines);
+
+    scan_lines.image = image.clone();
 }
 
 #[system]
@@ -310,14 +311,10 @@ pub fn scan_lines_system(
 ) -> Result<()> {
     if top_scan_lines.image.timestamp() != top_image.timestamp() {
         update_scan_lines(top_image, &mut top_scan_lines.scan_lines);
-
-        top_scan_lines.scan_lines.image = top_image.deref().clone();
     }
 
     if bottom_scan_lines.image.timestamp() != bottom_image.timestamp() {
         update_scan_lines(bottom_image, &mut bottom_scan_lines.scan_lines);
-
-        bottom_scan_lines.scan_lines.image = bottom_image.deref().clone();
     }
     Ok(())
 }
