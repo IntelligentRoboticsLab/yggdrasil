@@ -3,7 +3,7 @@ base_step_period = 270
 
 # The Center of Mass (CoM) multiplier, this is used to adjust the forward movement of the robot.
 # Because the CoM moves forward during a step, the step length is with regard to the CoM.
-com_multiplier = 0.25
+com_multiplier = 0.2
 
 # The center of pressure threshold for switching support foot
 cop_pressure_threshold = 0.2

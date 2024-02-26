@@ -1,4 +1,1 @@
-hip_height = 0.20
 
-[balancing]
-filtered_gyro_y_multiplier = 0.1

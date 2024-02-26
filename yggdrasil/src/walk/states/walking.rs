@@ -43,7 +43,17 @@ impl WalkState for WalkingState {
             .log_scalar_f32("/foot/linear_time", linear_time)
             .unwrap();
 
-        if self.next_foot_switch.as_secs_f32() <= 0.0 {
+        context
+            .dbg
+            .log_scalar_f32(
+                "/foot/parabolic_time",
+                smoothing::parabolic_step(linear_time),
+            )
+            .unwrap();
+
+        // if self.next_foot_switch.as_secs_f32() <= 0.0 {
+        if self.next_foot_switch.as_secs_f32() - phase_time.as_secs_f32() <= 0.0 {
+            tracing::info!("early switch!");
             return self.next_walk_state(
                 context.dt,
                 linear_time,
@@ -53,23 +63,25 @@ impl WalkState for WalkingState {
             );
         }
 
-        let WalkCommand {
-            forward,
-            left,
-            turn: _,
-        } = context.walk_command;
+        let command = self.adjust_command(context.config, context.walk_command.clone());
         // compute the max foot height, for moving forward/left we slightly increase the max height
-        let max_foot_height =
-            context.config.base_foot_lift + (forward.abs() * 0.01) + (left.abs() * 0.02);
+        let max_foot_height = context.config.base_foot_lift
+            + (command.forward.abs() * 0.01)
+            + (command.left.abs() * 0.02);
         // compute the swing foot height for the current cycle in the step phase
         let swing_foot_height = max_foot_height * smoothing::parabolic_return(linear_time);
-
         let swing_foot = self.swing_foot;
 
         // compute the offsets for the support and swing feet
-        let support_offset = self.compute_support_offset(&context, &swing_foot, linear_time);
-        let swing_offset =
-            self.compute_swing_offset(&context, &swing_foot, swing_foot_height, linear_time);
+        let support_offset =
+            self.compute_support_offset(&command, context.config, &swing_foot, linear_time);
+        let swing_offset = self.compute_swing_offset(
+            &command,
+            context.config,
+            &swing_foot,
+            swing_foot_height,
+            linear_time,
+        );
 
         self.next_walk_state(
             context.dt,
@@ -95,6 +107,22 @@ impl WalkState for WalkingState {
 }
 
 impl WalkingState {
+    fn adjust_command(&self, config: &WalkingEngineConfig, command: WalkCommand) -> WalkCommand {
+        // we multiply the walk command values by 2T as there's two steps per period
+        let period = 2.0 * config.base_step_period.as_secs_f32();
+
+        let new = WalkCommand {
+            forward: command.forward * period,
+            left: command.left * period * 0.82,
+            turn: command.turn * period * 1.43,
+        };
+        tracing::info!(
+            "period: {period}, old: {}, new: {}",
+            command.forward,
+            new.forward
+        );
+        new
+    }
     fn next_walk_state(
         &self,
         dt: Duration,
@@ -149,13 +177,12 @@ impl WalkingState {
 
     fn compute_swing_offset(
         &self,
-        context: &WalkContext,
+        walk_command: &WalkCommand,
+        config: &WalkingEngineConfig,
         side: &Side,
         foot_height: f32,
         linear_time: f32,
     ) -> FootOffset {
-        let walk_command = &context.walk_command;
-        let config = &context.config;
         let FootOffset {
             forward: forward_t0,
             left: left_t0,
@@ -182,12 +209,11 @@ impl WalkingState {
 
     fn compute_support_offset(
         &self,
-        context: &WalkContext,
+        walk_command: &WalkCommand,
+        config: &WalkingEngineConfig,
         side: &Side,
         linear_time: f32,
     ) -> FootOffset {
-        let walk_command = &context.walk_command;
-        let config = &context.config;
         let FootOffset {
             forward: forward_t0,
             left: left_t0,
@@ -203,7 +229,7 @@ impl WalkingState {
 
         FootOffset {
             forward: forward_t0
-                + (-walk_command.forward * config.com_multiplier - forward_t0) * linear_time,
+                + (-(walk_command.forward) * config.com_multiplier - forward_t0) * linear_time,
             left: left_t0 + (-walk_command.left / 2.0 - left_t0) * linear_time,
             turn: turn_t0 + (-walk_command.turn * turn_multiplier - turn_t0) * linear_time,
             hip_height: config.hip_height,

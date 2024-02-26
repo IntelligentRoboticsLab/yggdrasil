@@ -122,8 +122,8 @@ pub fn walking_engine(
 
     let context = WalkContext {
         walk_command: WalkCommand {
-            forward: 0.03,
-            left: 0.0,
+            forward: 0.0,
+            left: 0.05,
             turn: 0.0,
         },
         config,
@@ -136,8 +136,11 @@ pub fn walking_engine(
     walking_engine.state = walking_engine.state.clone().next_state(context);
     let (left_foot, right_foot) = walking_engine.state.get_foot_offsets();
 
-    dbg.log_scalar_f32("/foot/left", left_foot.forward)?;
-    dbg.log_scalar_f32("/foot/right", right_foot.forward)?;
+    dbg.log_scalar_f32("/foot/left/forward", left_foot.forward)?;
+    dbg.log_scalar_f32("/foot/left/lift", left_foot.lift)?;
+
+    dbg.log_scalar_f32("/foot/right/forward", right_foot.forward)?;
+    dbg.log_scalar_f32("/foot/right/lift", right_foot.lift)?;
 
     // set the stiffness and position of the legs
     let (mut left_leg_joints, mut right_leg_joints) =
