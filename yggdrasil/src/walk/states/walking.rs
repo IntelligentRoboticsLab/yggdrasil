@@ -14,7 +14,9 @@ pub struct WalkingState {
     swing_foot: Side,
     phase_time: Duration,
     next_foot_switch: Duration,
+    phase_time_on_last_phase_end: Duration,
     previous_step_offsets: StepOffsets,
+    max_swing_lift_last_step: f32,
 }
 
 impl WalkingState {
@@ -22,11 +24,13 @@ impl WalkingState {
         Self {
             swing_foot: Side::Left,
             phase_time: Duration::ZERO,
+            phase_time_on_last_phase_end: config.base_step_period,
             next_foot_switch: config.base_step_period,
             previous_step_offsets: StepOffsets {
                 swing: left,
                 support: right,
             },
+            max_swing_lift_last_step: 0.0,
         }
     }
 }
@@ -52,7 +56,7 @@ impl WalkState for WalkingState {
             .unwrap();
 
         // if self.next_foot_switch.as_secs_f32() <= 0.0 {
-        if self.next_foot_switch.as_secs_f32() - phase_time.as_secs_f32() <= 0.0 {
+        if self.next_foot_switch.as_secs_f32() <= 0.0 {
             tracing::info!("early switch!");
             return self.next_walk_state(
                 context.dt,
@@ -60,6 +64,7 @@ impl WalkState for WalkingState {
                 &context,
                 self.previous_step_offsets.swing,
                 self.previous_step_offsets.support,
+                context.config.base_foot_lift,
             );
         }
 
@@ -74,7 +79,7 @@ impl WalkState for WalkingState {
 
         // compute the offsets for the support and swing feet
         let support_offset =
-            self.compute_support_offset(&command, context.config, &swing_foot, linear_time);
+            self.compute_support_offset(&command, context.config, &swing_foot, phase_time);
         let swing_offset = self.compute_swing_offset(
             &command,
             context.config,
@@ -89,6 +94,7 @@ impl WalkState for WalkingState {
             &context,
             swing_offset,
             support_offset,
+            max_foot_height,
         )
     }
 
@@ -96,8 +102,8 @@ impl WalkState for WalkingState {
         let swing_foot = self.swing_foot;
         let previous_step = &self.previous_step_offsets;
         match swing_foot {
-            Side::Left => (previous_step.swing, previous_step.support),
-            Side::Right => (previous_step.support, previous_step.swing),
+            Side::Right => (previous_step.swing, previous_step.support),
+            Side::Left => (previous_step.support, previous_step.swing),
         }
     }
 
@@ -130,9 +136,11 @@ impl WalkingState {
         context: &WalkContext,
         swing_offset: FootOffset,
         support_offset: FootOffset,
+        max_foot_height: f32,
     ) -> WalkStateKind {
         let mut next_swing_foot = self.swing_foot;
         let mut phase_time = self.phase_time + dt;
+        let mut phase_time_on_last_phase_end = self.phase_time_on_last_phase_end;
         let mut next_foot_switch = self.next_foot_switch;
 
         let mut previous_step = StepOffsets {
@@ -149,6 +157,7 @@ impl WalkingState {
 
             // reset phase
             next_foot_switch = context.config.base_step_period;
+            phase_time_on_last_phase_end = phase_time;
             phase_time = Duration::ZERO;
 
             // Switch these around, so the offsets are maintained throughout the walk cycle
@@ -161,8 +170,10 @@ impl WalkingState {
         WalkStateKind::Walking(WalkingState {
             swing_foot: next_swing_foot,
             phase_time,
+            phase_time_on_last_phase_end,
             next_foot_switch,
             previous_step_offsets: previous_step,
+            max_swing_lift_last_step: max_foot_height,
         })
     }
 
@@ -212,7 +223,7 @@ impl WalkingState {
         walk_command: &WalkCommand,
         config: &WalkingEngineConfig,
         side: &Side,
-        linear_time: f32,
+        phase_time: Duration,
     ) -> FootOffset {
         let FootOffset {
             forward: forward_t0,
@@ -227,13 +238,21 @@ impl WalkingState {
             Side::Right => 1.0 / 3.0,
         };
 
+        let linear_time = phase_time.as_secs_f32() / config.base_step_period.as_secs_f32();
+        let support_foot_lift = self.max_swing_lift_last_step
+            * smoothing::parabolic_return(
+                ((self.phase_time_on_last_phase_end.as_secs_f32() + phase_time.as_secs_f32())
+                    / config.base_step_period.as_secs_f32())
+                .clamp(0.0, 1.0),
+            );
+
         FootOffset {
             forward: forward_t0
                 + (-(walk_command.forward) * config.com_multiplier - forward_t0) * linear_time,
             left: left_t0 + (-walk_command.left / 2.0 - left_t0) * linear_time,
             turn: turn_t0 + (-walk_command.turn * turn_multiplier - turn_t0) * linear_time,
             hip_height: config.hip_height,
-            lift: 0.0,
+            lift: support_foot_lift,
         }
     }
 }

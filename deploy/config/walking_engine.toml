@@ -3,10 +3,10 @@ base_step_period = 270
 
 # The Center of Mass (CoM) multiplier, this is used to adjust the forward movement of the robot.
 # Because the CoM moves forward during a step, the step length is with regard to the CoM.
-com_multiplier = 0.2
+com_multiplier = 0.5
 
 # The center of pressure threshold for switching support foot
-cop_pressure_threshold = 0.2
+cop_pressure_threshold = 0.8
 
 # The base amount to lift the feet in swing phase, in metres.
 # The foot lift is increased slightly, based on the forward and left in the command.
@@ -30,4 +30,4 @@ arm_swing_multiplier = 6.0
 # The multiplier for the filtered gyro y value
 # Increasing this value will use a larger portion of the filtered gyro value
 # to adjust the pitch of the robot's ankles
-filtered_gyro_y_multiplier = 0.05
+filtered_gyro_y_multiplier = 0.04

@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use nidhogg::{
     types::{FillExt, ForceSensitiveResistors, JointArray, LeftLegJoints, RightLegJoints},
     NaoControlMessage,
@@ -99,6 +97,7 @@ pub fn toggle_walking_engine(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 #[system]
 pub fn walking_engine(
     walking_engine: &mut WalkingEngine,
@@ -122,8 +121,8 @@ pub fn walking_engine(
 
     let context = WalkContext {
         walk_command: WalkCommand {
-            forward: 0.0,
-            left: 0.05,
+            forward: 0.03,
+            left: 0.0,
             turn: 0.0,
         },
         config,
