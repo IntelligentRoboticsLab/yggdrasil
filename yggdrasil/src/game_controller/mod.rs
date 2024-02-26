@@ -25,10 +25,6 @@ pub struct GameControllerConfig {
     pub game_controller_return_delay: Duration,
     pub player_number: u8,
     pub team_number: u8,
-    pub fallen: bool,
-    pub pose: [f32; 3],
-    pub ball_age: f32,
-    pub ball_position: [f32; 2],
 }
 
 struct GameControllerData {

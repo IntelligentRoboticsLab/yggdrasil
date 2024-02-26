@@ -36,8 +36,6 @@ struct TransmitGameControllerData {
     ball: [f32; 2],
 }
 
-
-
 async fn transmit_game_controller_return_message(
     game_controller_socket: Arc<UdpSocket>,
     last_transmitted_return_message: Instant,

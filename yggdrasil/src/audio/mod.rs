@@ -1,11 +1,15 @@
 use crate::prelude::*;
 
-use self::{sound_manager::SoundManagerModule, wee_sound::WeeSoundModule};
+use self::{
+    audio_input::AudioInputModule, sound_manager::SoundManagerModule,
+};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 use std::time::Duration;
 
+#[cfg(feature = "alsa")]
+pub mod audio_input;
 pub mod sound_manager;
 pub mod wee_sound;
 
@@ -25,8 +29,13 @@ pub struct AudioModule;
 
 impl Module for AudioModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.init_config::<AudioConfig>()?
-            .add_module(WeeSoundModule)?
-            .add_module(SoundManagerModule)
+        let app = app
+            .init_config::<AudioConfig>()?
+            .add_module(SoundManagerModule)?;
+
+        #[cfg(feature = "alsa")]
+        let app = app.add_module(audio_input::AudioInputModule)?;
+
+        Ok(app)
     }
 }

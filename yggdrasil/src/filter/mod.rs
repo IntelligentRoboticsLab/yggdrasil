@@ -6,14 +6,12 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 use std::time::Duration;
 
-#[cfg(feature = "alsa")]
-pub mod audio_input;
 pub mod button;
 pub mod fsr;
 pub mod imu;
 pub mod sonar;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct FilterConfig {
     pub fsr: FSRConfig,
@@ -21,7 +19,7 @@ pub struct FilterConfig {
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct ButtonConfig {
     pub activation_threshold: f32,
@@ -29,7 +27,7 @@ pub struct ButtonConfig {
     pub held_duration_threshold: Duration,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct FSRConfig {
     pub ground_contact_threshold: f32,
@@ -45,8 +43,6 @@ impl Module for FilterModule {
             .add_module(IMUFilter)?
             .add_module(SonarFilter)?;
 
-        #[cfg(feature = "alsa")]
-        let app = app.add_module(audio_input::AudioInputFilter)?;
         Ok(app)
     }
 }

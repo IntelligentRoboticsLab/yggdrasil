@@ -10,7 +10,7 @@ use std::{
 
 use heimdall::{Camera, YuyvImage};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct CameraConfig {
     pub num_top_buffers: u32,

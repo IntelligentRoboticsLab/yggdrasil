@@ -5,7 +5,7 @@ use crate::filter::fsr::Contacts;
 use super::sound_manager::{Sound, SoundManager};
 use super::AudioConfig;
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 /// Add the [`WeeSound`] as a resource, and [`wee_sound_system`] as a system to the framework.
 pub struct WeeSoundModule;

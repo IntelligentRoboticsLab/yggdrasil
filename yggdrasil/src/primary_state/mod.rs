@@ -8,7 +8,7 @@ use bifrost::communication::{GameControllerMessage, GameState};
 use nidhogg::types::Color;
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct PrimaryStateConfig {
     #[serde_as(as = "DurationMilliSeconds<u64>")]
