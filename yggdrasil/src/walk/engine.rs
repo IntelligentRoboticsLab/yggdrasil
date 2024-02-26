@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use nidhogg::{
     types::{FillExt, ForceSensitiveResistors, JointArray, LeftLegJoints, RightLegJoints},
     NaoControlMessage,
@@ -11,20 +13,24 @@ use crate::{
     primary_state::PrimaryState,
 };
 
-use super::{
-    states::{self, WalkContext, WalkState, WalkStateKind},
-    FilteredGyroscope, WalkingEngineConfig,
-};
+use super::{FilteredGyroscope, WalkingEngineConfig};
 use crate::nao::CycleTime;
 
 #[derive(Default, Clone, Debug)]
-pub struct WalkCommand {
+pub struct Step {
     /// forward in meters per second
     pub forward: f32,
     /// side step in meters per second
     pub left: f32,
     /// turn in radians per second
     pub turn: f32,
+}
+
+#[derive(Debug, Default, Clone)]
+pub enum WalkRequest {
+    #[default]
+    Idle,
+    Walk(Step),
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -44,57 +50,26 @@ impl Side {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct StepOffsets {
-    pub swing: FootOffset,
-    pub support: FootOffset,
+pub struct FootOffsets {
+    pub left: FootOffset,
+    pub right: FootOffset,
+}
+
+pub enum WalkState {
+    Idle,
+    Starting(Step),
+    Walking(Step),
+    Stopping,
 }
 
 pub struct WalkingEngine {
-    pub state: WalkStateKind,
-}
+    pub state: WalkState,
+    pub request: WalkRequest,
+    pub t: Duration,
 
-impl WalkingEngine {
-    pub fn new(config: &WalkingEngineConfig) -> Self {
-        Self {
-            state: WalkStateKind::Idle(states::idle::IdleState::new(config)),
-        }
-    }
-}
-
-#[system]
-pub fn toggle_walking_engine(
-    primary_state: &PrimaryState,
-    head_button: &HeadButtons,
-    chest_button: &ChestButton,
-    walking_config: &WalkingEngineConfig,
-    walking_engine: &mut WalkingEngine,
-    filtered_gyro: &mut FilteredGyroscope,
-) -> Result<()> {
-    // If we're in a state where we shouldn't walk, we don't.
-    if !primary_state.should_walk() {
-        return Ok(());
-    }
-
-    // Start walking
-    if chest_button.state.is_tapped() {
-        filtered_gyro.reset();
-        let (swing, support) = walking_engine.state.get_foot_offsets();
-        walking_engine.state = WalkStateKind::Walking(states::walking::WalkingState::new(
-            walking_config,
-            swing,
-            support,
-        ));
-        return Ok(());
-    }
-    // Stop walking
-    if head_button.front.is_tapped() {
-        walking_engine.state = WalkStateKind::Idle(states::idle::IdleState {
-            hip_height: walking_config.hip_height,
-        });
-        return Ok(());
-    }
-
-    Ok(())
+    pub swing_side: Side,
+    pub foot_offsets: FootOffsets,
+    pub foot_offsets_t0: FootOffsets,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -119,18 +94,26 @@ pub fn walking_engine(
         return Ok(());
     }
 
-    let context = WalkContext {
-        walk_command: WalkCommand {
-            forward: 0.03,
-            left: 0.0,
-            turn: 0.0,
-        },
-        config,
-        dt: cycle_time.duration,
-        filtered_gyro,
-        fsr,
-        dbg: dbg.clone(),
-    };
+    // If this is start of a new step phase, we'll need initialise the state.
+    if walking_engine.t.is_zero() {
+        walking_engine.foot_offsets_t0 = walking_engine.foot_offsets.clone();
+    }
+
+    match walking_engine.state {
+        WalkState::Idle => todo!("Run idle phase"),
+        WalkState::Starting(_) | WalkState::Walking(_) | WalkState::Stopping => {
+            todo!("Run walk phase")
+        }
+    }
+
+    // check whether support foot has been switched
+    let left_foot_fsr = fsr.left_foot.avg();
+    let right_foot_fsr = fsr.right_foot.avg();
+
+    let has_foot_switched = match walking_engine.swing_side {
+        Side::Left => left_foot_fsr,
+        Side::Right => right_foot_fsr,
+    } > config.cop_pressure_threshold;
 
     walking_engine.state = walking_engine.state.clone().next_state(context);
     let (left_foot, right_foot) = walking_engine.state.get_foot_offsets();
@@ -146,17 +129,17 @@ pub fn walking_engine(
         crate::kinematics::inverse::leg_angles(&left_foot, &right_foot);
 
     // balancing
-    let swing = walking_engine.state.swing_foot();
+    let left = walking_engine.state.swing_foot();
 
     // the shoulder pitch is "approximated" by taking the opposite direction multiplied by a constant.
-    // this results in a swing motion that moves in the opposite direction as the foot.
+    // this results in a left motion that moves in the opposite direction as the foot.
     let balancing_config = &config.balancing;
     let left_shoulder_pitch = -left_foot.forward * balancing_config.arm_swing_multiplier;
     let right_shoulder_pitch = -right_foot.forward * balancing_config.arm_swing_multiplier;
 
     // Balance adjustment
     let balance_adjustment = filtered_gyro.y() * balancing_config.filtered_gyro_y_multiplier;
-    match swing {
+    match left {
         Side::Left => {
             right_leg_joints.ankle_pitch += balance_adjustment;
         }
