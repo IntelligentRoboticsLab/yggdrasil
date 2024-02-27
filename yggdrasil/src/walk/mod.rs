@@ -21,7 +21,7 @@ use serde_with::{serde_as, DurationMilliSeconds};
 
 use crate::{filter, nao, primary_state};
 
-use self::engine::{FootOffsets, Side, Step, WalkState, WalkingEngine};
+use self::engine::{FootOffsets, Step, SwingSide, WalkState, WalkingEngine};
 
 /// Filtered gyroscope values.
 #[derive(Default, Debug, Clone)]
@@ -81,6 +81,7 @@ impl Module for WalkingEngineModule {
         Ok(app
             .init_config::<WalkingEngineConfig>()?
             .init_resource::<FilteredGyroscope>()?
+            .init_resource::<SwingSide>()?
             .add_startup_system(init_walking_engine)?
             // .add_system_chain((
             //     (nao::write_hardware_info, nao::update_cycle_stats),
@@ -93,6 +94,7 @@ impl Module for WalkingEngineModule {
             //         filter_gyro_values,
             //         toggle_walking_engine,
             //         run_walking_engine,
+            //         update_swing_side,
             //         primary_state::update_primary_state,
             //     ),
             // )))
@@ -113,7 +115,8 @@ impl Module for WalkingEngineModule {
                     .before(primary_state::update_primary_state)
                     .after(filter::button::button_filter)
                     .before(run_walking_engine),
-            ))
+            )
+            .add_system(update_swing_side.after(run_walking_engine)))
     }
 }
 
@@ -149,9 +152,9 @@ pub fn toggle_walking_engine(
     if chest_button.state.is_tapped() {
         filtered_gyro.reset();
         walking_engine.state = WalkState::Starting(Step {
-            forward: 0.0,
+            forward: 0.05,
             left: 0.0,
-            turn: 0.52,
+            turn: 0.0,
         });
         return Ok(());
     }
@@ -202,8 +205,8 @@ pub fn run_walking_engine(
     let right_foot_fsr = fsr.right_foot.sum();
 
     let has_foot_switched = match walking_engine.swing_side {
-        Side::Left => left_foot_fsr,
-        Side::Right => right_foot_fsr,
+        SwingSide::Left => left_foot_fsr,
+        SwingSide::Right => right_foot_fsr,
     } > config.cop_pressure_threshold;
 
     let liner_time = (walking_engine.t.as_secs_f32()
@@ -219,7 +222,6 @@ pub fn run_walking_engine(
         right: right_foot,
     } = walking_engine.foot_offsets.clone();
 
-    // dbg.log_scalar_f32("/foot/linear_time", liner_time)?;
     dbg.log_scalar_f32("/foot/left/forward", left_foot.forward)?;
     dbg.log_scalar_f32("/foot/left/left", left_foot.left)?;
     dbg.log_scalar_f32("/foot/left/turn", left_foot.turn)?;
@@ -233,7 +235,7 @@ pub fn run_walking_engine(
     let (mut left_leg_joints, mut right_leg_joints) =
         crate::kinematics::inverse::leg_angles(&left_foot, &right_foot);
 
-    // balancing
+    // TODO: proper balancing
 
     // the shoulder pitch is "approximated" by taking the opposite direction multiplied by a constant.
     // this results in a left motion that moves in the opposite direction as the foot.
@@ -244,11 +246,11 @@ pub fn run_walking_engine(
     // Balance adjustment
     let balance_adjustment = filtered_gyro.y() * balancing_config.filtered_gyro_y_multiplier;
     match walking_engine.swing_side {
-        Side::Left => {
+        SwingSide::Left => {
             right_leg_joints.ankle_pitch += balance_adjustment;
             left_shoulder_pitch = 0.0;
         }
-        Side::Right => {
+        SwingSide::Right => {
             left_leg_joints.ankle_pitch += balance_adjustment;
             right_shoulder_pitch = 0.0;
         }
@@ -272,5 +274,11 @@ pub fn run_walking_engine(
         .right_leg_joints(RightLegJoints::fill(stiffness))
         .build();
 
+    Ok(())
+}
+
+#[system]
+fn update_swing_side(walking_engine: &WalkingEngine, swing_side: &mut SwingSide) -> Result<()> {
+    *swing_side = walking_engine.swing_side;
     Ok(())
 }
