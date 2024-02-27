@@ -29,6 +29,16 @@ pub struct FootOffset {
 }
 
 impl FootOffset {
+    pub fn zero(hip_height: f32) -> Self {
+        Self {
+            forward: 0.0,
+            left: 0.0,
+            turn: 0.0,
+            hip_height,
+            lift: 0.0,
+        }
+    }
+
     pub(crate) fn into_left(self) -> SidedFootOffset<Left> {
         SidedFootOffset {
             forward: self.forward,
@@ -48,16 +58,6 @@ impl FootOffset {
             hip_height: self.hip_height,
             lift: self.lift,
             _side: PhantomData,
-        }
-    }
-
-    pub fn zero(hip_height: f32) -> Self {
-        Self {
-            forward: 0.0,
-            left: 0.0,
-            turn: 0.0,
-            hip_height,
-            lift: 0.0,
         }
     }
 }
