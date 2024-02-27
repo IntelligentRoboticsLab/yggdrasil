@@ -77,7 +77,7 @@ impl WalkState {
     pub fn next(&self) -> Self {
         match self {
             WalkState::Idle => WalkState::Idle,
-            WalkState::Starting(step) => WalkState::Walking(step.clone()),
+            WalkState::Starting(step) => WalkState::Walking(*step),
             WalkState::Walking(_) => self.clone(),
             WalkState::Stopping => WalkState::Idle,
         }
