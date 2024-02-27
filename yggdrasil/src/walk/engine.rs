@@ -173,8 +173,9 @@ impl WalkingEngine {
         let swing_lift = self.max_foot_lift * smoothing::parabolic_return(linear_time);
         let support_lift = 0.0;
 
-        let swing_foot = self.compute_foot_offset(step, swing_t0, swing_lift, parabolic_time);
-        let support_foot = self.compute_foot_offset(-step, support_t0, support_lift, linear_time);
+        let swing_foot = self.compute_foot_offset(step, swing_t0, swing_lift, 2.0, parabolic_time);
+        let support_foot =
+            self.compute_foot_offset(-step, support_t0, support_lift, 1.0, linear_time);
         match self.swing_side {
             Side::Left => FootOffsets {
                 left: swing_foot,
@@ -192,11 +193,12 @@ impl WalkingEngine {
         step: Step,
         foot_t0: FootOffset,
         lift: f32,
+        turn_base: f32,
         smoothing: f32,
     ) -> FootOffset {
         let turn_multiplier = match self.swing_side {
-            Side::Left => 2.0,
-            Side::Right => -2.0,
+            Side::Left => turn_base,
+            Side::Right => -turn_base,
         } / 3.0;
 
         FootOffset {

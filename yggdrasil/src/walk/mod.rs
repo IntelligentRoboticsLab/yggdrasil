@@ -149,9 +149,9 @@ pub fn toggle_walking_engine(
     if chest_button.state.is_tapped() {
         filtered_gyro.reset();
         walking_engine.state = WalkState::Starting(Step {
-            forward: 0.06,
+            forward: 0.0,
             left: 0.0,
-            turn: 0.0,
+            turn: 0.52,
         });
         return Ok(());
     }
@@ -219,13 +219,15 @@ pub fn run_walking_engine(
         right: right_foot,
     } = walking_engine.foot_offsets.clone();
 
-    dbg.log_text("/foot/swing", format!("{:?}", walking_engine.swing_side))?;
-    dbg.log_text("/foot/state", format!("{:?}", walking_engine.state))?;
     // dbg.log_scalar_f32("/foot/linear_time", liner_time)?;
     dbg.log_scalar_f32("/foot/left/forward", left_foot.forward)?;
+    dbg.log_scalar_f32("/foot/left/left", left_foot.left)?;
+    dbg.log_scalar_f32("/foot/left/turn", left_foot.turn)?;
     dbg.log_scalar_f32("/foot/left/lift", left_foot.lift)?;
 
     dbg.log_scalar_f32("/foot/right/forward", right_foot.forward)?;
+    dbg.log_scalar_f32("/foot/right/left", right_foot.left)?;
+    dbg.log_scalar_f32("/foot/right/turn", right_foot.turn)?;
     dbg.log_scalar_f32("/foot/right/lift", right_foot.lift)?;
 
     let (mut left_leg_joints, mut right_leg_joints) =
@@ -263,9 +265,7 @@ pub fn run_walking_engine(
 
     control_message.stiffness = JointArray::<f32>::builder()
         .left_shoulder_pitch(stiffness)
-        .left_shoulder_roll(stiffness)
         .right_shoulder_pitch(stiffness)
-        .right_shoulder_roll(stiffness)
         .head_pitch(stiffness)
         .head_yaw(stiffness)
         .left_leg_joints(LeftLegJoints::fill(stiffness))
