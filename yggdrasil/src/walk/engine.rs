@@ -63,27 +63,32 @@ impl FootOffsets {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub enum WalkState {
-    #[default]
-    Idle,
+    Idle(f32),
     Starting(Step),
     Walking(Step),
     Stopping,
 }
 
 impl WalkState {
-    pub fn next(&self) -> Self {
+    pub fn from_config(config: &WalkingEngineConfig) -> Self {
+        WalkState::Idle(config.sitting_hip_height)
+    }
+
+    pub fn next(&self, config: &WalkingEngineConfig) -> Self {
         match self {
-            WalkState::Idle => WalkState::Idle,
+            WalkState::Idle(hip_height) => {
+                WalkState::Idle((*hip_height + 0.002).min(config.hip_height))
+            }
             WalkState::Starting(step) => WalkState::Walking(*step),
             WalkState::Walking(_) => self.clone(),
-            WalkState::Stopping => WalkState::Idle,
+            WalkState::Stopping => WalkState::Idle(config.hip_height),
         }
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct WalkingEngine {
     pub state: WalkState,
     pub request: WalkRequest,
@@ -100,11 +105,19 @@ pub struct WalkingEngine {
 }
 
 impl WalkingEngine {
-    pub fn new(config: &WalkingEngineConfig) -> Self {
+    pub fn from_config(config: &WalkingEngineConfig) -> Self {
         tracing::info!("Using hip height: {}", config.hip_height);
         WalkingEngine {
-            hip_height: config.hip_height,
-            ..Default::default()
+            state: WalkState::from_config(config),
+            request: WalkRequest::Idle,
+            current_step: Step::default(),
+            t: Duration::ZERO,
+            next_foot_switch: Duration::ZERO,
+            swing_side: Default::default(),
+            foot_offsets: FootOffsets::zero(config.sitting_hip_height),
+            foot_offsets_t0: FootOffsets::zero(config.sitting_hip_height),
+            hip_height: config.sitting_hip_height,
+            max_foot_lift: config.base_foot_lift,
         }
     }
 
@@ -118,14 +131,15 @@ impl WalkingEngine {
 
     pub fn init_step_phase(&mut self, config: &WalkingEngineConfig) {
         self.foot_offsets_t0 = self.foot_offsets.clone();
-        self.state = self.state.next();
+        self.state = self.state.next(config);
 
         match self.state {
-            WalkState::Idle => {
+            WalkState::Idle(hip_height) => {
                 self.current_step = Step::default();
                 self.next_foot_switch = Duration::ZERO;
                 self.swing_side = Side::Left;
                 self.max_foot_lift = 0.0;
+                self.hip_height = hip_height;
             }
             WalkState::Starting(_) => {
                 self.current_step = Step::default();

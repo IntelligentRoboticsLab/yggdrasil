@@ -127,7 +127,7 @@ impl Module for WalkingEngineModule {
 
 #[startup_system]
 fn init_walking_engine(storage: &mut Storage, config: &WalkingEngineConfig) -> Result<()> {
-    storage.add_resource(Resource::new(WalkingEngine::new(config)))
+    storage.add_resource(Resource::new(WalkingEngine::from_config(config)))
 }
 
 #[system]
@@ -190,6 +190,8 @@ pub fn run_walking_engine(
     // unstiffing itself when it's not supposed to.
     // TODO: We should definitely fix this in the future.deploy/assets deploy/config
     if !primary_state.should_walk() {
+        // This sets the robot to be completely unstiff, completely disabling the joint motors.
+        control_message.stiffness = JointArray::<f32>::fill(-1.0);
         return Ok(());
     }
 
@@ -199,7 +201,7 @@ pub fn run_walking_engine(
     }
 
     match walking_engine.state {
-        WalkState::Idle => walking_engine.reset(),
+        WalkState::Idle(_) => walking_engine.reset(),
         WalkState::Starting(_) | WalkState::Walking(_) | WalkState::Stopping => {
             walking_engine.step_phase(cycle_time.duration);
         }
