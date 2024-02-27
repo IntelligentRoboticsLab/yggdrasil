@@ -54,23 +54,13 @@ impl DebugContext {
             let handle = ad.handle().clone();
             let _guard = handle.enter();
 
-            // let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
-            //     .serve(
-            //         &server_address.to_string(),
-            //         Default::default(),
-            //         Default::default(),
-            //         rerun::MemoryLimit::from_fraction_of_total(memory_limit),
-            //         false,
-            //     )
-            //     .into_diagnostic()?;
-
-            let rec = rerun::RecordingStreamBuilder::new("yggdrasil")
-                .connect_opts(
-                    std::net::SocketAddr::new(
-                        std::net::IpAddr::V4(Ipv4Addr::new(10, 0, 8, 38)),
-                        9876,
-                    ),
-                    rerun::default_flush_timeout(),
+            let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
+                .serve(
+                    &server_address.to_string(),
+                    Default::default(),
+                    Default::default(),
+                    rerun::MemoryLimit::from_fraction_of_total(memory_limit),
+                    false,
                 )
                 .into_diagnostic()?;
 
