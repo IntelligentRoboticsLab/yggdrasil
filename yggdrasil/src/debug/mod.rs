@@ -51,14 +51,18 @@ impl DebugContext {
             let handle = ad.handle().clone();
             let _guard = handle.enter();
 
-            let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
-                .serve(
-                    &server_address.to_string(),
-                    Default::default(),
-                    Default::default(),
-                    rerun::MemoryLimit::from_fraction_of_total(memory_limit),
-                    false,
-                )
+            // let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
+            //     .serve(
+            //         &server_address.to_string(),
+            //         Default::default(),
+            //         Default::default(),
+            //         rerun::MemoryLimit::from_fraction_of_total(memory_limit),
+            //         false,
+            //     )
+            //     .into_diagnostic()?;
+
+            let rec = rerun::RecordingStreamBuilder::new("yggdrasil")
+                .connect()
                 .into_diagnostic()?;
 
             Ok(DebugContext { rec })
@@ -143,13 +147,25 @@ impl DebugContext {
 
         Ok(())
     }
+
+    pub fn log_text(&self, path: impl AsRef<str>, text: String) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(path.as_ref(), &rerun::TextLog::new(text))
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
 }
 
 #[startup_system]
 fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher, robot_info: &RobotInfo) -> Result<()> {
     // Manually set the server address to the robot's IP address, instead of 0.0.0.0
     // to ensure the rerun server prints the correct connection URL on startup
-    let server_address = Ipv4Addr::new(10, 0, 8, robot_info.robot_id as u8);
+    // let server_address = Ipv4Addr::new(10, 0, 8, robot_info.robot_id as u8);
+    let server_address = Ipv4Addr::LOCALHOST;
 
     // init debug context with 5% of the total memory, as cache size limit.
     let ctx = DebugContext::init("yggdrasil", server_address, 0.05, ad)?;

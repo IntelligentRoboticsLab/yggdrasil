@@ -1,7 +1,5 @@
 pub mod engine;
 pub mod smoothing;
-pub mod states;
-
 use std::time::Duration;
 
 use crate::prelude::*;
@@ -84,13 +82,13 @@ impl Module for WalkingEngineModule {
                     .after(nao::update_cycle_stats)
                     .after(filter_gyro_values)
                     .after(filter::fsr::force_sensitive_resistor_filter),
-            )
-            .add_system(
-                engine::toggle_walking_engine
-                    .before(primary_state::update_primary_state)
-                    .after(filter::button::button_filter)
-                    .before(engine::walking_engine),
             ))
+        // .add_system(
+        //     engine::toggle_walking_engine
+        //         .before(primary_state::update_primary_state)
+        //         .after(filter::button::button_filter)
+        //         .before(engine::walking_engine),
+        // ))
     }
 }
 

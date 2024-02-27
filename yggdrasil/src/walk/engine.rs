@@ -11,12 +11,13 @@ use crate::{
     kinematics::FootOffset,
     prelude::*,
     primary_state::PrimaryState,
+    walk,
 };
 
-use super::{FilteredGyroscope, WalkingEngineConfig};
+use super::{smoothing, FilteredGyroscope, WalkingEngineConfig};
 use crate::nao::CycleTime;
 
-#[derive(Default, Clone, Debug)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Step {
     /// forward in meters per second
     pub forward: f32,
@@ -55,6 +56,7 @@ pub struct FootOffsets {
     pub right: FootOffset,
 }
 
+#[derive(Debug, Clone)]
 pub enum WalkState {
     Idle,
     Starting(Step),
@@ -62,14 +64,156 @@ pub enum WalkState {
     Stopping,
 }
 
+impl Default for WalkState {
+    fn default() -> Self {
+        WalkState::Starting(Step {
+            forward: 0.1,
+            left: 0.0,
+            turn: 0.0,
+        })
+    }
+}
+
+impl WalkState {
+    pub fn next(&self) -> Self {
+        match self {
+            WalkState::Idle => WalkState::Idle,
+            WalkState::Starting(step) => WalkState::Walking(step.clone()),
+            WalkState::Walking(_) => self.clone(),
+            WalkState::Stopping => WalkState::Idle,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct WalkingEngine {
     pub state: WalkState,
     pub request: WalkRequest,
+    pub current_step: Step,
     pub t: Duration,
+    pub next_foot_switch: Duration,
 
     pub swing_side: Side,
     pub foot_offsets: FootOffsets,
     pub foot_offsets_t0: FootOffsets,
+
+    pub hip_height: f32,
+    pub max_foot_lift: f32,
+}
+
+impl WalkingEngine {
+    pub fn new(config: &WalkingEngineConfig) -> Self {
+        WalkingEngine {
+            hip_height: config.hip_height,
+            ..Default::default()
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.current_step = Step::default();
+        self.t = Duration::ZERO;
+        self.foot_offsets = FootOffsets::default();
+        self.foot_offsets_t0 = FootOffsets::default();
+        self.swing_side = Side::Left;
+    }
+
+    pub fn init_step_phase(&mut self, config: &WalkingEngineConfig) {
+        self.foot_offsets_t0 = self.foot_offsets.clone();
+        self.state = self.state.next();
+
+        tracing::info!("init phase! {:?}", self.state);
+
+        match self.state {
+            WalkState::Idle => {
+                self.current_step = Step::default();
+                self.next_foot_switch = Duration::ZERO;
+                self.swing_side = Side::Left;
+                self.max_foot_lift = 0.0;
+            }
+            WalkState::Starting(_) => {
+                self.current_step = Step::default();
+                self.next_foot_switch = config.base_step_period;
+                self.swing_side = self.swing_side.next();
+            }
+            WalkState::Walking(step) => {
+                let next_swing_foot = self.swing_side.next();
+
+                // TODO: step duration increase?
+                self.current_step = step;
+                self.next_foot_switch = config.base_step_period;
+
+                self.swing_side = next_swing_foot;
+                self.max_foot_lift =
+                    config.base_foot_lift + (step.forward.abs() * 0.01) + (step.left.abs() * 0.02);
+            }
+            WalkState::Stopping => {
+                self.current_step = Step::default();
+                self.next_foot_switch = config.base_step_period;
+                self.swing_side = self.swing_side.next();
+                self.max_foot_lift = config.base_foot_lift;
+            }
+        }
+    }
+
+    pub fn step_phase(&mut self, cycle_time: Duration, config: &WalkingEngineConfig) {
+        self.t += cycle_time;
+        self.foot_offsets = self.compute_foot_offsets(self.current_step);
+    }
+
+    pub fn end_step_phase(&mut self) {
+        self.t = Duration::ZERO;
+    }
+
+    pub fn compute_foot_offsets(&self, step: Step) -> FootOffsets {
+        match self.swing_side {
+            Side::Left => FootOffsets {
+                left: self.compute_swing_foot(step, self.foot_offsets_t0.left),
+                right: self.compute_support_foot(step, self.foot_offsets_t0.right),
+            },
+            Side::Right => FootOffsets {
+                left: self.compute_support_foot(step, self.foot_offsets_t0.left),
+                right: self.compute_swing_foot(step, self.foot_offsets_t0.right),
+            },
+        }
+    }
+
+    fn compute_support_foot(&self, step: Step, support_t0: FootOffset) -> FootOffset {
+        let linear_time =
+            (self.t.as_secs_f32() / self.next_foot_switch.as_secs_f32()).clamp(0.0, 1.0);
+
+        let turn_multiplier = match self.swing_side {
+            Side::Left => 2.0,
+            Side::Right => -2.0,
+        } / 3.0;
+
+        FootOffset {
+            forward: support_t0.forward
+                + (-(step.forward) / 2.0 - support_t0.forward) * linear_time,
+            left: support_t0.left + (-step.left / 2.0 - support_t0.left) * linear_time,
+            turn: support_t0.turn + (-step.turn * turn_multiplier - support_t0.turn) * linear_time,
+            hip_height: self.hip_height,
+            lift: 0.0,
+        }
+    }
+
+    fn compute_swing_foot(&self, step: Step, swing_t0: FootOffset) -> FootOffset {
+        let linear_time =
+            (self.t.as_secs_f32() / self.next_foot_switch.as_secs_f32()).clamp(0.0, 1.0);
+        let parabolic_time = smoothing::parabolic_step(linear_time);
+
+        let turn_multiplier = match self.swing_side {
+            Side::Left => 2.0,
+            Side::Right => -2.0,
+        } / 3.0;
+
+        FootOffset {
+            forward: swing_t0.forward + (step.forward / 2.0 - swing_t0.forward) * parabolic_time,
+            left: swing_t0.left + (step.left / 2.0 - swing_t0.left) * parabolic_time,
+            turn: swing_t0.turn + (step.turn * turn_multiplier - swing_t0.turn) * parabolic_time,
+            hip_height: self.hip_height,
+            lift: self.max_foot_lift * smoothing::parabolic_return(linear_time),
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -87,49 +231,57 @@ pub fn walking_engine(
     // We don't run the walking engine whenever we're in a state where we shouldn't.
     // This is a semi hacky way to prevent the robot from jumping up and
     // unstiffing itself when it's not supposed to.
-    // TODO: We should definitely fix this in the future.
-    if !primary_state.should_walk() {
-        // This sets the robot to be completely unstiff, completely disabling the joint motors.
-        control_message.stiffness = JointArray::<f32>::fill(-1.0);
-        return Ok(());
-    }
+    // TODO: We should definitely fix this in the future.deploy/assets deploy/config
 
     // If this is start of a new step phase, we'll need initialise the state.
     if walking_engine.t.is_zero() {
-        walking_engine.foot_offsets_t0 = walking_engine.foot_offsets.clone();
+        walking_engine.init_step_phase(config)
     }
 
     match walking_engine.state {
-        WalkState::Idle => todo!("Run idle phase"),
+        WalkState::Idle => walking_engine.reset(),
         WalkState::Starting(_) | WalkState::Walking(_) | WalkState::Stopping => {
-            todo!("Run walk phase")
+            walking_engine.step_phase(cycle_time.duration, config);
         }
     }
 
     // check whether support foot has been switched
-    let left_foot_fsr = fsr.left_foot.avg();
-    let right_foot_fsr = fsr.right_foot.avg();
+    let left_foot_fsr = fsr.left_foot.sum();
+    let right_foot_fsr = fsr.right_foot.sum();
 
     let has_foot_switched = match walking_engine.swing_side {
         Side::Left => left_foot_fsr,
         Side::Right => right_foot_fsr,
     } > config.cop_pressure_threshold;
 
-    walking_engine.state = walking_engine.state.clone().next_state(context);
-    let (left_foot, right_foot) = walking_engine.state.get_foot_offsets();
+    // TODO: remove
+    let has_foot_switched = true;
 
+    let liner_time = (walking_engine.t.as_secs_f32()
+        / walking_engine.next_foot_switch.as_secs_f32())
+    .clamp(0.0, 1.0);
+
+    if has_foot_switched && liner_time > 0.75 {
+        walking_engine.end_step_phase();
+    }
+
+    let FootOffsets {
+        left: left_foot,
+        right: right_foot,
+    } = walking_engine.foot_offsets.clone();
+
+    dbg.log_text("/foot/swing", format!("{:?}", walking_engine.swing_side))?;
+    dbg.log_scalar_f32("/foot/linear_time", liner_time)?;
     dbg.log_scalar_f32("/foot/left/forward", left_foot.forward)?;
     dbg.log_scalar_f32("/foot/left/lift", left_foot.lift)?;
 
     dbg.log_scalar_f32("/foot/right/forward", right_foot.forward)?;
     dbg.log_scalar_f32("/foot/right/lift", right_foot.lift)?;
 
-    // set the stiffness and position of the legs
     let (mut left_leg_joints, mut right_leg_joints) =
         crate::kinematics::inverse::leg_angles(&left_foot, &right_foot);
 
     // balancing
-    let left = walking_engine.state.swing_foot();
 
     // the shoulder pitch is "approximated" by taking the opposite direction multiplied by a constant.
     // this results in a left motion that moves in the opposite direction as the foot.
@@ -139,7 +291,7 @@ pub fn walking_engine(
 
     // Balance adjustment
     let balance_adjustment = filtered_gyro.y() * balancing_config.filtered_gyro_y_multiplier;
-    match left {
+    match walking_engine.swing_side {
         Side::Left => {
             right_leg_joints.ankle_pitch += balance_adjustment;
         }
