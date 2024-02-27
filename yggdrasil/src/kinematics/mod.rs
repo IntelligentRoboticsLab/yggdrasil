@@ -50,6 +50,16 @@ impl FootOffset {
             _side: PhantomData,
         }
     }
+
+    pub fn zero(hip_height: f32) -> Self {
+        Self {
+            forward: 0.0,
+            left: 0.0,
+            turn: 0.0,
+            hip_height,
+            lift: 0.0,
+        }
+    }
 }
 
 /// The position of a specific foot relative to the robot's pelvis.

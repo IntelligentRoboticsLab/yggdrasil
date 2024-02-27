@@ -1,8 +1,11 @@
-use std::{convert::Into, net::Ipv4Addr};
-
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
+
+#[cfg(feature = "rerun")]
+use std::convert::Into;
+
 use nidhogg::types::RgbU8;
+use std::net::Ipv4Addr;
 
 use crate::{
     camera::Image,
@@ -62,7 +65,13 @@ impl DebugContext {
             //     .into_diagnostic()?;
 
             let rec = rerun::RecordingStreamBuilder::new("yggdrasil")
-                .connect()
+                .connect_opts(
+                    std::net::SocketAddr::new(
+                        std::net::IpAddr::V4(Ipv4Addr::new(10, 0, 8, 38)),
+                        9876,
+                    ),
+                    rerun::default_flush_timeout(),
+                )
                 .into_diagnostic()?;
 
             Ok(DebugContext { rec })
@@ -164,8 +173,7 @@ impl DebugContext {
 fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher, robot_info: &RobotInfo) -> Result<()> {
     // Manually set the server address to the robot's IP address, instead of 0.0.0.0
     // to ensure the rerun server prints the correct connection URL on startup
-    // let server_address = Ipv4Addr::new(10, 0, 8, robot_info.robot_id as u8);
-    let server_address = Ipv4Addr::LOCALHOST;
+    let server_address = Ipv4Addr::new(10, 0, 8, robot_info.robot_id as u8);
 
     // init debug context with 5% of the total memory, as cache size limit.
     let ctx = DebugContext::init("yggdrasil", server_address, 0.05, ad)?;

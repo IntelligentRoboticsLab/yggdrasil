@@ -11,7 +11,6 @@ use crate::{
     kinematics::FootOffset,
     prelude::*,
     primary_state::PrimaryState,
-    walk,
 };
 
 use super::{smoothing, FilteredGyroscope, WalkingEngineConfig};
@@ -56,22 +55,22 @@ pub struct FootOffsets {
     pub right: FootOffset,
 }
 
-#[derive(Debug, Clone)]
+impl FootOffsets {
+    pub fn zero(hip_height: f32) -> Self {
+        FootOffsets {
+            left: FootOffset::zero(hip_height),
+            right: FootOffset::zero(hip_height),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone)]
 pub enum WalkState {
+    #[default]
     Idle,
     Starting(Step),
     Walking(Step),
     Stopping,
-}
-
-impl Default for WalkState {
-    fn default() -> Self {
-        WalkState::Starting(Step {
-            forward: 0.1,
-            left: 0.0,
-            turn: 0.0,
-        })
-    }
 }
 
 impl WalkState {
@@ -103,6 +102,7 @@ pub struct WalkingEngine {
 
 impl WalkingEngine {
     pub fn new(config: &WalkingEngineConfig) -> Self {
+        tracing::info!("Using hip height: {}", config.hip_height);
         WalkingEngine {
             hip_height: config.hip_height,
             ..Default::default()
@@ -112,8 +112,8 @@ impl WalkingEngine {
     pub fn reset(&mut self) {
         self.current_step = Step::default();
         self.t = Duration::ZERO;
-        self.foot_offsets = FootOffsets::default();
-        self.foot_offsets_t0 = FootOffsets::default();
+        self.foot_offsets = FootOffsets::zero(self.hip_height);
+        self.foot_offsets_t0 = FootOffsets::zero(self.hip_height);
         self.swing_side = Side::Left;
     }
 
@@ -121,7 +121,7 @@ impl WalkingEngine {
         self.foot_offsets_t0 = self.foot_offsets.clone();
         self.state = self.state.next();
 
-        tracing::info!("init phase! {:?}", self.state);
+        // tracing::info!("init phase! {:?}", self.state);
 
         match self.state {
             WalkState::Idle => {
@@ -155,7 +155,7 @@ impl WalkingEngine {
         }
     }
 
-    pub fn step_phase(&mut self, cycle_time: Duration, config: &WalkingEngineConfig) {
+    pub fn step_phase(&mut self, cycle_time: Duration) {
         self.t += cycle_time;
         self.foot_offsets = self.compute_foot_offsets(self.current_step);
     }
@@ -216,6 +216,39 @@ impl WalkingEngine {
     }
 }
 
+#[system]
+pub fn toggle_walking_engine(
+    primary_state: &PrimaryState,
+    head_button: &HeadButtons,
+    chest_button: &ChestButton,
+    walking_engine: &mut WalkingEngine,
+    filtered_gyro: &mut FilteredGyroscope,
+) -> Result<()> {
+    // If we're in a state where we shouldn't walk, we don't.
+    if !primary_state.should_walk() {
+        return Ok(());
+    }
+
+    // Start walking
+    if chest_button.state.is_tapped() {
+        filtered_gyro.reset();
+        walking_engine.state = WalkState::Starting(Step {
+            forward: 0.06,
+            left: 0.0,
+            turn: 0.0,
+        });
+        return Ok(());
+    }
+
+    // Stop walking
+    if head_button.front.is_tapped() {
+        walking_engine.state = WalkState::Stopping;
+        return Ok(());
+    }
+
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 #[system]
 pub fn walking_engine(
@@ -232,6 +265,9 @@ pub fn walking_engine(
     // This is a semi hacky way to prevent the robot from jumping up and
     // unstiffing itself when it's not supposed to.
     // TODO: We should definitely fix this in the future.deploy/assets deploy/config
+    if !primary_state.should_walk() {
+        return Ok(());
+    }
 
     // If this is start of a new step phase, we'll need initialise the state.
     if walking_engine.t.is_zero() {
@@ -241,7 +277,7 @@ pub fn walking_engine(
     match walking_engine.state {
         WalkState::Idle => walking_engine.reset(),
         WalkState::Starting(_) | WalkState::Walking(_) | WalkState::Stopping => {
-            walking_engine.step_phase(cycle_time.duration, config);
+            walking_engine.step_phase(cycle_time.duration);
         }
     }
 
@@ -253,9 +289,6 @@ pub fn walking_engine(
         Side::Left => left_foot_fsr,
         Side::Right => right_foot_fsr,
     } > config.cop_pressure_threshold;
-
-    // TODO: remove
-    let has_foot_switched = true;
 
     let liner_time = (walking_engine.t.as_secs_f32()
         / walking_engine.next_foot_switch.as_secs_f32())
@@ -270,8 +303,8 @@ pub fn walking_engine(
         right: right_foot,
     } = walking_engine.foot_offsets.clone();
 
-    dbg.log_text("/foot/swing", format!("{:?}", walking_engine.swing_side))?;
-    dbg.log_scalar_f32("/foot/linear_time", liner_time)?;
+    // dbg.log_text("/foot/swing", format!("{:?}", walking_engine.swing_side))?;
+    // dbg.log_scalar_f32("/foot/linear_time", liner_time)?;
     dbg.log_scalar_f32("/foot/left/forward", left_foot.forward)?;
     dbg.log_scalar_f32("/foot/left/lift", left_foot.lift)?;
 
@@ -286,25 +319,25 @@ pub fn walking_engine(
     // the shoulder pitch is "approximated" by taking the opposite direction multiplied by a constant.
     // this results in a left motion that moves in the opposite direction as the foot.
     let balancing_config = &config.balancing;
-    let left_shoulder_pitch = -left_foot.forward * balancing_config.arm_swing_multiplier;
-    let right_shoulder_pitch = -right_foot.forward * balancing_config.arm_swing_multiplier;
+    let mut left_shoulder_pitch = -left_foot.forward * balancing_config.arm_swing_multiplier;
+    let mut right_shoulder_pitch = -right_foot.forward * balancing_config.arm_swing_multiplier;
 
     // Balance adjustment
     let balance_adjustment = filtered_gyro.y() * balancing_config.filtered_gyro_y_multiplier;
     match walking_engine.swing_side {
         Side::Left => {
             right_leg_joints.ankle_pitch += balance_adjustment;
+            left_shoulder_pitch = 0.0;
         }
         Side::Right => {
             left_leg_joints.ankle_pitch += balance_adjustment;
+            right_shoulder_pitch = 0.0;
         }
     }
 
     control_message.position = JointArray::<f32>::builder()
         .left_shoulder_pitch(90f32.to_radians() + left_shoulder_pitch)
-        .left_shoulder_roll(7f32.to_radians())
         .right_shoulder_pitch(90f32.to_radians() + right_shoulder_pitch)
-        .right_shoulder_roll(-7f32.to_radians())
         .left_leg_joints(left_leg_joints)
         .right_leg_joints(right_leg_joints)
         .build();

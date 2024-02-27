@@ -1,19 +1,19 @@
 # The base amount of time (in milliseconds) for one step, e.g. half a walk cycle.
-base_step_period = 250
+base_step_period = 270
 
 # The Center of Mass (CoM) multiplier, this is used to adjust the forward movement of the robot.
 # Because the CoM moves forward during a step, the step length is with regard to the CoM.
 com_multiplier = 0.5
 
 # The center of pressure threshold for switching support foot
-cop_pressure_threshold = 0.5
+cop_pressure_threshold = 0.2
 
 # The base amount to lift the feet in swing phase, in metres.
 # The foot lift is increased slightly, based on the forward and left in the command.
 base_foot_lift = 0.01
 
 # The height of the robot's hips relative to the ankle joint, in metres.
-hip_height = 0.18
+hip_height = 0.19
 
 # The hip height when the robot is sitting, in metres
 # This is used as a starting point for the stand-up motion in the idle state.
@@ -25,7 +25,7 @@ sitting_hip_height = 0.0975
 # based on the forward walk command.
 # The shoulder pitch value is "approximated" is computed by multiplying the
 # forward walk command by this value.
-arm_swing_multiplier = 6.0
+arm_swing_multiplier = 0
 
 # The multiplier for the filtered gyro y value
 # Increasing this value will use a larger portion of the filtered gyro value
