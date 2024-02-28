@@ -211,7 +211,7 @@ pub fn run_walking_engine(
     let left_foot_fsr = fsr.left_foot.sum();
     let right_foot_fsr = fsr.right_foot.sum();
 
-    let has_foot_switched = match walking_engine.swing_side {
+    let has_foot_switched = match walking_engine.swing_foot {
         Side::Left => left_foot_fsr,
         Side::Right => right_foot_fsr,
     } > config.cop_pressure_threshold;
@@ -252,7 +252,7 @@ pub fn run_walking_engine(
 
     // Balance adjustment
     let balance_adjustment = filtered_gyro.y() * balancing_config.filtered_gyro_y_multiplier;
-    match walking_engine.swing_side {
+    match walking_engine.swing_foot {
         Side::Left => {
             right_leg_joints.ankle_pitch += balance_adjustment;
             left_shoulder_pitch = 0.0;
@@ -286,6 +286,6 @@ pub fn run_walking_engine(
 
 #[system]
 fn update_swing_side(walking_engine: &WalkingEngine, swing_foot: &mut SwingFoot) -> Result<()> {
-    swing_foot.side = walking_engine.swing_side;
+    swing_foot.side = walking_engine.swing_foot;
     Ok(())
 }
