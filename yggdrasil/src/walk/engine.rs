@@ -51,7 +51,7 @@ impl WalkState {
 
 /// An omni-directional humanoid gait generator based on Hengst, 2014
 ///
-/// https://cgi.cse.unsw.edu.au/~robocup/2014ChampionTeamPaperReports/20140930-Bernhard.Hengst-Walk2014Report.pdf
+/// <https://cgi.cse.unsw.edu.au/~robocup/2014ChampionTeamPaperReports/20140930-Bernhard.Hengst-Walk2014Report.pdf>
 #[derive(Debug)]
 pub struct WalkingEngine {
     /// The current state of the walking engine
