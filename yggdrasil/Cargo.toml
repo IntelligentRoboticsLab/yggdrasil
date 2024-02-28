@@ -13,6 +13,7 @@ derive_more = { workspace = true }
 enum_dispatch = { workspace = true }
 heimdall = { path = "../crates/heimdall" }
 kira = { workspace = true, optional = true }
+linreg = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true }
 nidhogg = { workspace = true }
