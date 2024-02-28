@@ -1,5 +1,13 @@
 # The base amount of time (in milliseconds) for one step, e.g. half a walk cycle.
-base_step_period = 270
+base_step_period = 250
+
+# The stiffness value used for the leg joints, higher means the robot's joints will
+# wear out faster, but the robot will be more stable.
+leg_stiffness = 0.8
+
+# The stiffness value used for the arm joints, higher means the robot's joints will
+# wear out faster, but the robot will be more stable.
+arm_stiffness = 0.5
 
 # The center of pressure threshold for switching support foot
 cop_pressure_threshold = 0.2
@@ -9,7 +17,7 @@ cop_pressure_threshold = 0.2
 base_foot_lift = 0.01
 
 # The height of the robot's hips relative to the ankle joint, in metres.
-hip_height = 0.19
+hip_height = 0.18
 
 # The hip height when the robot is sitting, in metres
 # This is used as a starting point for the stand-up motion in the idle state.
@@ -26,4 +34,4 @@ arm_swing_multiplier = 0
 # The multiplier for the filtered gyro y value
 # Increasing this value will use a larger portion of the filtered gyro value
 # to adjust the pitch of the robot's ankles
-filtered_gyro_y_multiplier = 0.04
+filtered_gyro_y_multiplier = 0.06

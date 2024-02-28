@@ -63,6 +63,8 @@ pub struct BalancingConfig {
 pub struct WalkingEngineConfig {
     #[serde_as(as = "DurationMilliSeconds")]
     pub base_step_period: Duration,
+    pub leg_stiffness: f32,
+    pub arm_stiffness: f32,
     pub cop_pressure_threshold: f32,
     pub base_foot_lift: f32,
     pub hip_height: f32,
@@ -88,40 +90,17 @@ impl Module for WalkingEngineModule {
             .init_resource::<FilteredGyroscope>()?
             .init_resource::<SwingFoot>()?
             .add_startup_system(init_walking_engine)?
-            // .add_system_chain((
-            //     (nao::write_hardware_info, nao::update_cycle_stats),
-            //     (
-            //         filter::button::button_filter,
-            //         filter::fsr::force_sensitive_resistor_filter,
-            //         filter::imu::imu_filter,
-            //     ),
-            //     (
-            //         filter_gyro_values,
-            //         toggle_walking_engine,
-            //         run_walking_engine,
-            //         update_swing_side,
-            //         primary_state::update_primary_state,
-            //     ),
-            // )))
-            .add_system(
+            .add_system_chain((
                 filter_gyro_values
                     .after(nao::write_hardware_info)
-                    .after(filter::imu::imu_filter),
-            )
-            .add_system(
-                run_walking_engine
-                    .before(primary_state::update_primary_state)
                     .after(nao::update_cycle_stats)
-                    .after(filter_gyro_values)
-                    .after(filter::fsr::force_sensitive_resistor_filter),
-            )
-            .add_system(
+                    .after(filter::imu::imu_filter),
                 toggle_walking_engine
-                    .before(primary_state::update_primary_state)
                     .after(filter::button::button_filter)
-                    .before(run_walking_engine),
-            )
-            .add_system(update_swing_side.after(run_walking_engine)))
+                    .before(primary_state::update_primary_state),
+                run_walking_engine.after(filter::fsr::force_sensitive_resistor_filter),
+                update_swing_side,
+            )))
     }
 }
 
@@ -157,7 +136,7 @@ pub fn toggle_walking_engine(
     if chest_button.state.is_tapped() {
         filtered_gyro.reset();
         walking_engine.state = WalkState::Starting(Step {
-            forward: 0.05,
+            forward: 0.0,
             left: 0.0,
             turn: 0.0,
         });
@@ -270,15 +249,13 @@ pub fn run_walking_engine(
         .right_leg_joints(right_leg_joints)
         .build();
 
-    let stiffness = 1.0;
-
     control_message.stiffness = JointArray::<f32>::builder()
-        .left_shoulder_pitch(stiffness)
-        .right_shoulder_pitch(stiffness)
-        .head_pitch(stiffness)
-        .head_yaw(stiffness)
-        .left_leg_joints(LeftLegJoints::fill(stiffness))
-        .right_leg_joints(RightLegJoints::fill(stiffness))
+        .left_shoulder_pitch(config.arm_stiffness)
+        .right_shoulder_pitch(config.arm_stiffness)
+        .head_pitch(0.5) // temporary value, until we get some head motion control in place
+        .head_yaw(0.5)
+        .left_leg_joints(LeftLegJoints::fill(config.leg_stiffness))
+        .right_leg_joints(RightLegJoints::fill(config.leg_stiffness))
         .build();
 
     Ok(())
