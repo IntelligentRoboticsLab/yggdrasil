@@ -81,6 +81,7 @@ impl Config for WalkingEngineConfig {
 /// This module provides the following resources to the application:
 /// - [`WalkingEngine`]
 /// - [`FilteredGyroscope`]
+/// - [`SwingFoot`]
 pub struct WalkingEngineModule;
 
 impl Module for WalkingEngineModule {
