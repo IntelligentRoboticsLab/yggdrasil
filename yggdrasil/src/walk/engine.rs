@@ -18,7 +18,7 @@ pub enum WalkState {
     /// Executes the walking action using the provided [`Step`].
     ///
     /// During this phase, the robot performs the provided step while alternating
-    /// the swing foot to maintain balance.    
+    /// the swing foot to maintain balance.
     Walking(Step),
 
     /// Ends the walking phase.
