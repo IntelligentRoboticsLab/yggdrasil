@@ -195,11 +195,11 @@ pub fn run_walking_engine(
         Side::Right => right_foot_fsr,
     } > config.cop_pressure_threshold;
 
-    let liner_time = (walking_engine.t.as_secs_f32()
+    let linear_time = (walking_engine.t.as_secs_f32()
         / walking_engine.next_foot_switch.as_secs_f32())
     .clamp(0.0, 1.0);
 
-    if has_foot_switched && liner_time > 0.75 {
+    if has_foot_switched && linear_time > 0.75 {
         walking_engine.end_step_phase();
     }
 
