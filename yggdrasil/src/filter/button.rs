@@ -212,25 +212,16 @@ pub fn button_filter(
 
 #[cfg(test)]
 mod tests {
-    use crate::filter::{ButtonConfig, FSRConfig};
+    use crate::filter::ButtonConfig;
 
     use super::*;
 
     use std::time::Duration;
 
     // Note that this is not an odal config, it's just here to make the tests work.
-    const CONFIG: &FilterConfig = &FilterConfig {
-        fsr: FSR,
-        button: BUTTON,
-    };
-
-    const BUTTON: ButtonConfig = ButtonConfig {
+    const CONFIG: ButtonConfig = ButtonConfig {
         activation_threshold: 0.5,
         held_duration_threshold: Duration::from_millis(500),
-    };
-
-    const FSR: FSRConfig = FSRConfig {
-        ground_contact_threshold: 0.01,
     };
 
     #[test]
@@ -241,34 +232,34 @@ mod tests {
         assert!(!button.is_pressed());
         assert!(!button.is_held());
 
-        button = button.next(CONFIG, true);
+        button = button.next(&CONFIG, true);
 
         assert!(!button.is_tapped());
         assert!(button.is_pressed());
         assert!(!button.is_held());
 
-        std::thread::sleep(CONFIG.button.held_duration_threshold);
-        button = button.next(CONFIG, true);
+        std::thread::sleep(CONFIG.held_duration_threshold);
+        button = button.next(&CONFIG, true);
 
         assert!(!button.is_tapped());
         assert!(button.is_pressed());
         assert!(button.is_held());
 
-        button = button.next(CONFIG, false);
+        button = button.next(&CONFIG, false);
 
         assert!(button.is_tapped());
         assert!(!button.is_pressed(),);
         assert!(!button.is_held(),);
 
-        button = button.next(CONFIG, true);
-        std::thread::sleep(CONFIG.button.held_duration_threshold / 2);
-        button = button.next(CONFIG, true);
+        button = button.next(&CONFIG, true);
+        std::thread::sleep(CONFIG.held_duration_threshold / 2);
+        button = button.next(&CONFIG, true);
 
         assert!(!button.is_tapped());
         assert!(button.is_pressed());
         assert!(!button.is_held());
 
-        button = button.next(CONFIG, false);
+        button = button.next(&CONFIG, false);
 
         assert!(button.is_tapped());
         assert!(!button.is_pressed());
