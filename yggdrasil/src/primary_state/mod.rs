@@ -5,7 +5,7 @@ use serde_with::{serde_as, DurationMilliSeconds};
 use std::time::Duration;
 
 use bifrost::communication::{GameControllerMessage, GameState};
-use nidhogg::types::Color;
+use nidhogg::types::color;
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -108,17 +108,17 @@ pub fn update_primary_state(
         led.unset_chest_blink();
 
         match next_primary_state {
-            PS::Unstiff => led.set_chest_blink(Color::BLUE, config.chest_blink_interval),
-            PS::Initial => led.chest = Color::GRAY,
-            PS::Ready => led.chest = Color::BLUE,
-            PS::Set => led.chest = Color::YELLOW,
-            PS::Playing => led.chest = Color::GREEN,
-            PS::Penalized => led.chest = Color::RED,
-            PS::Finished => led.chest = Color::GRAY,
-            PS::Calibration => led.chest = Color::PURPLE,
+            PS::Unstiff => led.set_chest_blink(color::f32::BLUE, config.chest_blink_interval),
+            PS::Initial => led.chest = color::f32::GRAY,
+            PS::Ready => led.chest = color::f32::BLUE,
+            PS::Set => led.chest = color::f32::YELLOW,
+            PS::Playing => led.chest = color::f32::GREEN,
+            PS::Penalized => led.chest = color::f32::RED,
+            PS::Finished => led.chest = color::f32::GRAY,
+            PS::Calibration => led.chest = color::f32::PURPLE,
         };
     } else if next_primary_state == PS::Unstiff {
-        led.set_chest_blink(Color::BLUE, config.chest_blink_interval)
+        led.set_chest_blink(color::f32::BLUE, config.chest_blink_interval)
     }
 
     *primary_state = next_primary_state;
