@@ -1,9 +1,6 @@
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 
-#[cfg(feature = "rerun")]
-use std::convert::Into;
-
 use nidhogg::types::RgbU8;
 use std::net::Ipv4Addr;
 
