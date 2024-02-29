@@ -154,7 +154,6 @@ pub fn toggle_walking_engine(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 #[system]
 pub fn run_walking_engine(
     walking_engine: &mut WalkingEngine,
