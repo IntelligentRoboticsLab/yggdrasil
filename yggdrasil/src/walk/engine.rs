@@ -168,18 +168,11 @@ impl WalkingEngine {
     pub fn compute_foot_offsets(&self, step: Step) -> FootOffsets {
         let linear_time =
             (self.t.as_secs_f32() / self.next_foot_switch.as_secs_f32()).clamp(0.0, 1.0);
-        let parabolic_time = smoothing::parabolic_step(linear_time);
-
-        let (swing_t0, support_t0) = match self.swing_foot {
-            Side::Left => (self.foot_offsets_t0.left, self.foot_offsets_t0.right),
-            Side::Right => (self.foot_offsets_t0.right, self.foot_offsets_t0.left),
-        };
         let swing_lift = self.max_swing_foot_lift * smoothing::parabolic_return(linear_time);
-        let support_lift = 0.0;
 
-        let swing_foot = self.compute_foot_offset(step, swing_t0, swing_lift, 2.0, parabolic_time);
-        let support_foot =
-            self.compute_foot_offset(-step, support_t0, support_lift, 1.0, linear_time);
+        let swing_foot = self.compute_swing_foot(step, swing_lift, linear_time);
+        let support_foot = self.compute_support_foot(step, linear_time);
+
         match self.swing_foot {
             Side::Left => FootOffsets {
                 left: swing_foot,
@@ -192,19 +185,41 @@ impl WalkingEngine {
         }
     }
 
+    fn compute_swing_foot(&self, step: Step, lift: f32, linear_time: f32) -> FootOffset {
+        let smoothing = smoothing::parabolic_return(linear_time);
+        let foot_t0 = match self.swing_foot {
+            Side::Left => self.foot_offsets_t0.left,
+            Side::Right => self.foot_offsets_t0.right,
+        };
+        self.compute_foot_offset(step, foot_t0, lift, true, smoothing)
+    }
+
+    fn compute_support_foot(&self, step: Step, linear_time: f32) -> FootOffset {
+        let smoothing = linear_time;
+        let foot_t0 = match self.swing_foot {
+            Side::Left => self.foot_offsets_t0.right,
+            Side::Right => self.foot_offsets_t0.left,
+        };
+        self.compute_foot_offset(-step, foot_t0, 0.0, false, smoothing)
+    }
+
     fn compute_foot_offset(
         &self,
         step: Step,
         foot_t0: FootOffset,
         lift: f32,
-        turn_base: f32,
+        swing: bool,
         smoothing: f32,
     ) -> FootOffset {
+        // The turn multiplier is divided by three, as the swing foot is active for two thirds of the step,
+        // and the support foot is active for one third of the step.
+        let turn_base = if swing { 2.0 } else { 1.0 };
         let turn_multiplier = match self.swing_foot {
             Side::Left => turn_base,
             Side::Right => -turn_base,
         } / 3.0;
 
+        // The components are divided by two, as the step is split into two phases.
         FootOffset {
             forward: foot_t0.forward + (step.forward / 2.0 - foot_t0.forward) * smoothing,
             left: foot_t0.left + (step.left / 2.0 - foot_t0.left) * smoothing,

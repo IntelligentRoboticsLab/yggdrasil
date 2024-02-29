@@ -253,7 +253,7 @@ pub fn run_walking_engine(
     control_message.stiffness = JointArray::<f32>::builder()
         .left_shoulder_pitch(config.arm_stiffness)
         .right_shoulder_pitch(config.arm_stiffness)
-        .head_pitch(0.5) // temporary value, until we get some head motion control in place
+        .head_pitch(0.5) // TODO: temporary value, until we get some head motion control in place
         .head_yaw(0.5)
         .left_leg_joints(LeftLegJoints::fill(config.leg_stiffness))
         .right_leg_joints(RightLegJoints::fill(config.leg_stiffness))
