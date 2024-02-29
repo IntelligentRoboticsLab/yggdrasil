@@ -22,7 +22,7 @@ impl Module for ScanLinesModule {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum PixelColor {
     White,
     Black,
@@ -45,16 +45,13 @@ impl PixelColor {
     }
 }
 
-pub struct ScanLines {
-    horizontal: Vec<PixelColor>,
-    vertical: Vec<PixelColor>,
+pub struct ScanGrid {
     image: Image,
-
-    horizontal_ids: Vec<usize>,
-    vertical_ids: Vec<usize>,
+    horizontal: ScanLines,
+    vertical: ScanLines,
 }
 
-impl ScanLines {
+impl ScanGrid {
     /// Return the number of pixels per row.
     pub fn width(&self) -> usize {
         self.image.yuyv_image().width()
@@ -72,100 +69,16 @@ impl ScanLines {
         &self.image
     }
 
-    /// Return a slice over all the horizontal scan lines.
-    pub fn raw_horizontal(&self) -> &[PixelColor] {
+    /// Return the horizontal scan-lines.
+    pub fn horizontal(&self) -> &ScanLines {
         &self.horizontal
     }
 
-    /// Return a slice over all the vertical scan lines.
-    pub fn raw_vertical(&self) -> &[PixelColor] {
+    /// Return the vertical scan-lines.
+    pub fn vertical(&self) -> &ScanLines {
         &self.vertical
     }
 
-    /// Return the id's of the rows from which a scan line was created.
-    ///
-    /// The row id's are sorted in ascending order, and therefore can be indexed by their
-    /// corresponding horizontal scan line id.
-    ///
-    /// # Example
-    /// ```ignore
-    /// for horizontal_line_id in 0..scan_lines.row_ids() {
-    ///     let row_id = scan_lines.row_ids()[horizontal_line_id];
-    ///     let row = scan_lines.horizontal_line(horizontal_line_id);
-    /// }
-    /// ```
-    pub fn row_ids(&self) -> &[usize] {
-        &self.horizontal_ids
-    }
-
-    /// Return the id's of the columns from which a scan line was created.
-    ///
-    /// The column id's are sorted in ascending order, and therefore can be indexed by their
-    /// corresponding vertical scan line id.
-    ///
-    /// # Example
-    /// ```ignore
-    /// for vertical_line_id in 0..scan_lines.column_ids() {
-    ///     let column_id = scan_lines.column_ids()[vertical_line_id];
-    ///     let column = scan_lines.vertical_line(vertical_line_id);
-    /// }
-    /// ```
-    pub fn column_ids(&self) -> &[usize] {
-        &self.vertical_ids
-    }
-
-    /// Return the horizontal scan line with scan line id `line_id`.
-    pub fn horizontal_line(&self, line_id: usize) -> &[PixelColor] {
-        let offset = line_id * self.width();
-
-        &self.horizontal.as_slice()[offset..offset + self.width()]
-    }
-
-    /// Return the vertical scan line with scan line id `line_id`.
-    pub fn vertical_line(&self, line_id: usize) -> &[PixelColor] {
-        let offset = line_id * self.height();
-
-        &self.vertical.as_slice()[offset..offset + self.height()]
-    }
-}
-
-pub struct TopScanLines {
-    scan_lines: ScanLines,
-}
-
-impl Deref for TopScanLines {
-    type Target = ScanLines;
-
-    fn deref(&self) -> &Self::Target {
-        &self.scan_lines
-    }
-}
-
-impl DerefMut for TopScanLines {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.scan_lines
-    }
-}
-
-pub struct BottomScanLines {
-    scan_lines: ScanLines,
-}
-
-impl Deref for BottomScanLines {
-    type Target = ScanLines;
-
-    fn deref(&self) -> &Self::Target {
-        &self.scan_lines
-    }
-}
-
-impl DerefMut for BottomScanLines {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.scan_lines
-    }
-}
-
-impl ScanLines {
     fn calc_buffer_size(
         image: &Image,
         horizontal_ids: &[usize],
@@ -220,18 +133,26 @@ impl ScanLines {
         vertical_ids
     }
 
-    fn build(image: &Image) -> ScanLines {
+    fn build(image: &Image) -> ScanGrid {
         let horizontal_ids = Self::make_horizontal_ids(image);
         let vertical_ids = Self::make_vertical_ids(image);
         let (horizontal_buffer_size, vertical_buffer_size) =
             Self::calc_buffer_size(image, &horizontal_ids, &vertical_ids);
 
-        ScanLines {
-            horizontal: vec![PixelColor::Unknown; horizontal_buffer_size],
-            vertical: vec![PixelColor::Unknown; vertical_buffer_size],
+        let horizontal = ScanLines {
+            pixels: vec![PixelColor::Unknown; horizontal_buffer_size],
+            ids: horizontal_ids,
+        };
+
+        let vertical = ScanLines {
+            pixels: vec![PixelColor::Unknown; vertical_buffer_size],
+            ids: vertical_ids,
+        };
+
+        ScanGrid {
+            horizontal,
+            vertical,
             image: image.clone(),
-            horizontal_ids,
-            vertical_ids,
         }
     }
 
@@ -243,8 +164,8 @@ impl ScanLines {
     }
 
     fn update_horizontal(&mut self, yuyv_image: &YuyvImage) {
-        for line_id in 0..self.row_ids().len() {
-            let row_id = *unsafe { self.row_ids().get_unchecked(line_id) };
+        for line_id in 0..self.horizontal().line_ids().len() {
+            let row_id = *unsafe { self.horizontal().line_ids().get_unchecked(line_id) };
 
             for col_id in 0..yuyv_image.width() / 2 {
                 let image_offset = (yuyv_image.width() * 2) * row_id + col_id * 4;
@@ -262,8 +183,8 @@ impl ScanLines {
                 let buffer_offset = line_id * yuyv_image.width() + col_id * 2;
 
                 unsafe {
-                    *self.horizontal.get_unchecked_mut(buffer_offset) = pixel_color;
-                    *self.horizontal.get_unchecked_mut(buffer_offset + 1) = pixel_color;
+                    *self.horizontal.pixels.get_unchecked_mut(buffer_offset) = pixel_color;
+                    *self.horizontal.pixels.get_unchecked_mut(buffer_offset + 1) = pixel_color;
                 };
             }
         }
@@ -271,8 +192,8 @@ impl ScanLines {
 
     fn update_vertical(&mut self, yuyv_image: &YuyvImage) {
         for row_id in 0..yuyv_image.height() {
-            for line_id in 0..self.column_ids().len() {
-                let col_id = *unsafe { self.column_ids().get_unchecked(line_id) };
+            for line_id in 0..self.vertical().line_ids().len() {
+                let col_id = *unsafe { self.vertical().line_ids().get_unchecked(line_id) };
                 let image_offset = (row_id * yuyv_image.width() + col_id) * 2;
 
                 let (y1, u, y2, v) = unsafe {
@@ -288,10 +209,89 @@ impl ScanLines {
                 let buffer_offset = line_id * yuyv_image.height() + row_id;
 
                 unsafe {
-                    *self.vertical.get_unchecked_mut(buffer_offset) = pixel_color;
+                    *self.vertical.pixels.get_unchecked_mut(buffer_offset) = pixel_color;
                 };
             }
         }
+    }
+}
+
+pub struct TopScanGrid {
+    scan_grid: ScanGrid,
+}
+
+impl Deref for TopScanGrid {
+    type Target = ScanGrid;
+
+    fn deref(&self) -> &Self::Target {
+        &self.scan_grid
+    }
+}
+
+impl DerefMut for TopScanGrid {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.scan_grid
+    }
+}
+
+pub struct BottomScanGrid {
+    scan_grid: ScanGrid,
+}
+
+impl Deref for BottomScanGrid {
+    type Target = ScanGrid;
+
+    fn deref(&self) -> &Self::Target {
+        &self.scan_grid
+    }
+}
+
+impl DerefMut for BottomScanGrid {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.scan_grid
+    }
+}
+
+pub struct ScanLines {
+    pixels: Vec<PixelColor>,
+    ids: Vec<usize>,
+}
+
+impl ScanLines {
+    /// Return a slice over all the scan lines.
+    pub fn raw(&self) -> &[PixelColor] {
+        &self.pixels
+    }
+
+    /// Return a slice of all the row/column id's from which the scan-lines have been created.
+    /// The id's are sorted in ascending order, and therefore can be indexed by their
+    /// corresponding scan-line id.
+    ///
+    /// # Example
+    /// ```ignore
+    /// for horizontal_line_id in 0..scan_lines.horizontal().ids() {
+    ///     let row_id = scan_lines.horizontal().ids()[horizontal_line_id];
+    ///     let row = scan_lines.horizontal().line(horizontal_line_id);
+    /// }
+    /// ```
+    ///
+    /// # Example
+    /// ```ignore
+    /// for vertical_line_id in 0..scan_lines.vertical().ids() {
+    ///     let column_id = scan_lines.vertical().ids()[vertical_line_id];
+    ///     let column = scan_lines.vertical().line(vertical_line_id);
+    /// }
+    /// ```
+    pub fn line_ids(&self) -> &[usize] {
+        &self.ids
+    }
+
+    /// Return the scan-line with scan-line id `line_id`.
+    pub fn line(&self, line_id: usize) -> &[PixelColor] {
+        let line_length = self.pixels.len() / self.ids.len();
+        let offset = line_id * line_length;
+
+        &self.pixels.as_slice()[offset..offset + line_length]
     }
 }
 
@@ -301,12 +301,12 @@ fn init_buffers(
     top_image: &TopImage,
     bottom_image: &BottomImage,
 ) -> Result<()> {
-    let mut top_scan_lines = TopScanLines {
-        scan_lines: ScanLines::build(top_image),
+    let mut top_scan_lines = TopScanGrid {
+        scan_grid: ScanGrid::build(top_image),
     };
 
-    let mut bottom_scan_lines = BottomScanLines {
-        scan_lines: ScanLines::build(bottom_image),
+    let mut bottom_scan_lines = BottomScanGrid {
+        scan_grid: ScanGrid::build(bottom_image),
     };
 
     top_scan_lines.update_scan_lines(top_image);
@@ -320,17 +320,18 @@ fn init_buffers(
 
 #[system]
 pub fn scan_lines_system(
-    top_scan_lines: &mut TopScanLines,
-    bottom_scan_lines: &mut BottomScanLines,
+    top_scan_grid: &mut TopScanGrid,
+    bottom_scan_grid: &mut BottomScanGrid,
     top_image: &TopImage,
     bottom_image: &BottomImage,
 ) -> Result<()> {
-    if top_scan_lines.image.timestamp() != top_image.timestamp() {
-        top_scan_lines.update_scan_lines(top_image);
+    if top_scan_grid.image.timestamp() != top_image.timestamp() {
+        top_scan_grid.update_scan_lines(top_image);
     }
 
-    if bottom_scan_lines.image.timestamp() != bottom_image.timestamp() {
-        bottom_scan_lines.update_scan_lines(bottom_image);
+    if bottom_scan_grid.image.timestamp() != bottom_image.timestamp() {
+        bottom_scan_grid.update_scan_lines(bottom_image);
     }
+
     Ok(())
 }
