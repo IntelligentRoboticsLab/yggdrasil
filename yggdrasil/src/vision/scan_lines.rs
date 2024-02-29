@@ -5,7 +5,7 @@ use crate::{
 
 use heimdall::YuyvImage;
 
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 /// Module that generates scan-lines from taken NAO images.
 ///
@@ -18,6 +18,30 @@ impl Module for ScanLinesModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system(scan_lines_system)
             .add_startup_system(init_buffers)
+    }
+}
+
+#[repr(u8)]
+#[derive(Copy, Clone)]
+pub enum PixelColor {
+    White,
+    Black,
+    Green,
+    Unknown,
+}
+
+impl PixelColor {
+    fn classify_yuv_pixel(y1: u8, u: u8, _y2: u8, v: u8) -> Self {
+        // TODO: Find a better way to classify pixels.
+        if y1 > 140 {
+            Self::White
+        } else if (y1 > 45) && (u > 70) && (u < 160) && (v > 70) && (v < 160) {
+            Self::Green
+        } else if (y1 < 50) && (u > 110) && (u < 150) && (v > 110) && (v < 150) {
+            Self::Black
+        } else {
+            Self::Unknown
+        }
     }
 }
 
@@ -117,6 +141,12 @@ impl Deref for TopScanLines {
     }
 }
 
+impl DerefMut for TopScanLines {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.scan_lines
+    }
+}
+
 pub struct BottomScanLines {
     scan_lines: ScanLines,
 }
@@ -129,94 +159,137 @@ impl Deref for BottomScanLines {
     }
 }
 
-#[repr(u8)]
-#[derive(Copy, Clone)]
-pub enum PixelColor {
-    White,
-    Black,
-    Green,
-    Unknown,
-}
-
-impl PixelColor {
-    fn classify_yuv_pixel(y1: u8, u: u8, _y2: u8, v: u8) -> Self {
-        // TODO: Find a better way to classify pixels.
-        if y1 > 140 {
-            Self::White
-        } else if (y1 > 45) && (u > 70) && (u < 160) && (v > 70) && (v < 160) {
-            Self::Green
-        } else if (y1 < 50) && (u > 110) && (u < 150) && (v > 110) && (v < 150) {
-            Self::Black
-        } else {
-            Self::Unknown
-        }
+impl DerefMut for BottomScanLines {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.scan_lines
     }
 }
 
-fn calc_buffer_size(
-    image: &Image,
-    horizontal_ids: &[usize],
-    vertical_ids: &[usize],
-) -> (usize, usize) {
-    let horizontal_buffer_size = image.yuyv_image().width() * horizontal_ids.len();
-    let vertical_buffer_size = image.yuyv_image().height() * vertical_ids.len();
+impl ScanLines {
+    fn calc_buffer_size(
+        image: &Image,
+        horizontal_ids: &[usize],
+        vertical_ids: &[usize],
+    ) -> (usize, usize) {
+        let horizontal_buffer_size = image.yuyv_image().width() * horizontal_ids.len();
+        let vertical_buffer_size = image.yuyv_image().height() * vertical_ids.len();
 
-    (horizontal_buffer_size, vertical_buffer_size)
-}
+        (horizontal_buffer_size, vertical_buffer_size)
+    }
 
-/// TODO: Make this configurable using Odal.
-fn make_horizontal_ids(image: &Image) -> Vec<usize> {
-    let mut horizontal_ids = Vec::new();
+    /// TODO: Make this configurable using Odal.
+    fn make_horizontal_ids(image: &Image) -> Vec<usize> {
+        let mut horizontal_ids = Vec::new();
 
-    for row_id in 0..image.yuyv_image().height() / 4 {
-        if row_id % 8 == 0 {
-            horizontal_ids.push(row_id);
+        for row_id in 0..image.yuyv_image().height() / 4 {
+            if row_id % 8 == 0 {
+                horizontal_ids.push(row_id);
+            }
+        }
+        for row_id in image.yuyv_image().height() / 4..image.yuyv_image().height() / 2 {
+            if row_id % 8 == 0 {
+                horizontal_ids.push(row_id);
+            }
+        }
+        for row_id in image.yuyv_image().height() / 2..image.yuyv_image().height() * 3 / 4 {
+            if (row_id - 4) % 16 == 0 {
+                horizontal_ids.push(row_id);
+            }
+        }
+        for row_id in image.yuyv_image().height() * 3 / 4..image.yuyv_image().height() {
+            if (row_id) % 32 == 0 {
+                horizontal_ids.push(row_id);
+            }
+        }
+
+        horizontal_ids
+    }
+
+    /// TODO: Make this configurable using Odal.
+    fn make_vertical_ids(image: &Image) -> Vec<usize> {
+        const COL_SCAN_LINE_INTERVAL: usize = 16;
+
+        let mut vertical_ids = Vec::new();
+
+        for col_id in 0..image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL {
+            vertical_ids.push(col_id * COL_SCAN_LINE_INTERVAL);
+        }
+
+        vertical_ids
+    }
+
+    fn build(image: &Image) -> ScanLines {
+        let horizontal_ids = Self::make_horizontal_ids(image);
+        let vertical_ids = Self::make_vertical_ids(image);
+        let (horizontal_buffer_size, vertical_buffer_size) =
+            Self::calc_buffer_size(image, &horizontal_ids, &vertical_ids);
+
+        ScanLines {
+            horizontal: vec![PixelColor::Unknown; horizontal_buffer_size],
+            vertical: vec![PixelColor::Unknown; vertical_buffer_size],
+            image: image.clone(),
+            horizontal_ids,
+            vertical_ids,
         }
     }
-    for row_id in image.yuyv_image().height() / 4..image.yuyv_image().height() / 2 {
-        if row_id % 8 == 0 {
-            horizontal_ids.push(row_id);
+
+    fn update_scan_lines(&mut self, image: &Image) {
+        self.update_horizontal(image.yuyv_image());
+        self.update_vertical(image.yuyv_image());
+
+        self.image = image.clone();
+    }
+
+    fn update_horizontal(&mut self, yuyv_image: &YuyvImage) {
+        for line_id in 0..self.row_ids().len() {
+            let row_id = *unsafe { self.row_ids().get_unchecked(line_id) };
+
+            for col_id in 0..yuyv_image.width() / 2 {
+                let image_offset = (yuyv_image.width() * 2) * row_id + col_id * 4;
+
+                let (y1, u, y2, v) = unsafe {
+                    (
+                        *yuyv_image.get_unchecked(image_offset),
+                        *yuyv_image.get_unchecked(image_offset + 1),
+                        *yuyv_image.get_unchecked(image_offset + 2),
+                        *yuyv_image.get_unchecked(image_offset + 3),
+                    )
+                };
+
+                let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
+                let buffer_offset = line_id * yuyv_image.width() + col_id * 2;
+
+                unsafe {
+                    *self.horizontal.get_unchecked_mut(buffer_offset) = pixel_color;
+                    *self.horizontal.get_unchecked_mut(buffer_offset + 1) = pixel_color;
+                };
+            }
         }
     }
-    for row_id in image.yuyv_image().height() / 2..image.yuyv_image().height() * 3 / 4 {
-        if (row_id - 4) % 16 == 0 {
-            horizontal_ids.push(row_id);
+
+    fn update_vertical(&mut self, yuyv_image: &YuyvImage) {
+        for row_id in 0..yuyv_image.height() {
+            for line_id in 0..self.column_ids().len() {
+                let col_id = *unsafe { self.column_ids().get_unchecked(line_id) };
+                let image_offset = (row_id * yuyv_image.width() + col_id) * 2;
+
+                let (y1, u, y2, v) = unsafe {
+                    (
+                        *yuyv_image.get_unchecked(image_offset),
+                        *yuyv_image.get_unchecked(image_offset + 1),
+                        *yuyv_image.get_unchecked(image_offset + 2),
+                        *yuyv_image.get_unchecked(image_offset + 3),
+                    )
+                };
+
+                let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
+                let buffer_offset = line_id * yuyv_image.height() + row_id;
+
+                unsafe {
+                    *self.vertical.get_unchecked_mut(buffer_offset) = pixel_color;
+                };
+            }
         }
-    }
-    for row_id in image.yuyv_image().height() * 3 / 4..image.yuyv_image().height() {
-        if (row_id) % 32 == 0 {
-            horizontal_ids.push(row_id);
-        }
-    }
-
-    horizontal_ids
-}
-
-/// TODO: Make this configurable using Odal.
-fn make_vertical_ids(image: &Image) -> Vec<usize> {
-    const COL_SCAN_LINE_INTERVAL: usize = 16;
-
-    let mut vertical_ids = Vec::new();
-
-    for col_id in 0..image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL {
-        vertical_ids.push(col_id * COL_SCAN_LINE_INTERVAL);
-    }
-
-    vertical_ids
-}
-
-fn init_scan_lines(image: &Image) -> ScanLines {
-    let horizontal_ids = make_horizontal_ids(image);
-    let vertical_ids = make_vertical_ids(image);
-    let (horizontal_buffer_size, vertical_buffer_size) =
-        calc_buffer_size(image, &horizontal_ids, &vertical_ids);
-
-    ScanLines {
-        horizontal: vec![PixelColor::Unknown; horizontal_buffer_size],
-        vertical: vec![PixelColor::Unknown; vertical_buffer_size],
-        image: image.clone(),
-        horizontal_ids,
-        vertical_ids,
     }
 }
 
@@ -227,79 +300,20 @@ fn init_buffers(
     bottom_image: &BottomImage,
 ) -> Result<()> {
     let mut top_scan_lines = TopScanLines {
-        scan_lines: init_scan_lines(top_image),
+        scan_lines: ScanLines::build(top_image),
     };
 
     let mut bottom_scan_lines = BottomScanLines {
-        scan_lines: init_scan_lines(bottom_image),
+        scan_lines: ScanLines::build(bottom_image),
     };
 
-    update_scan_lines(top_image, &mut top_scan_lines.scan_lines);
-    update_scan_lines(bottom_image, &mut bottom_scan_lines.scan_lines);
+    top_scan_lines.update_scan_lines(top_image);
+    bottom_scan_lines.update_scan_lines(bottom_image);
 
     storage.add_resource(Resource::new(top_scan_lines))?;
     storage.add_resource(Resource::new(bottom_scan_lines))?;
 
     Ok(())
-}
-
-fn horizontal_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
-    for line_id in 0..scan_lines.row_ids().len() {
-        let row_id = *unsafe { scan_lines.row_ids().get_unchecked(line_id) };
-
-        for col_id in 0..yuyv_image.width() / 2 {
-            let image_offset = (yuyv_image.width() * 2) * row_id + col_id * 4;
-
-            let (y1, u, y2, v) = unsafe {
-                (
-                    *yuyv_image.get_unchecked(image_offset),
-                    *yuyv_image.get_unchecked(image_offset + 1),
-                    *yuyv_image.get_unchecked(image_offset + 2),
-                    *yuyv_image.get_unchecked(image_offset + 3),
-                )
-            };
-
-            let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
-            let buffer_offset = line_id * yuyv_image.width() + col_id * 2;
-
-            unsafe {
-                *scan_lines.horizontal.get_unchecked_mut(buffer_offset) = pixel_color;
-                *scan_lines.horizontal.get_unchecked_mut(buffer_offset + 1) = pixel_color;
-            };
-        }
-    }
-}
-
-fn vertical_scan_lines(yuyv_image: &YuyvImage, scan_lines: &mut ScanLines) {
-    for row_id in 0..yuyv_image.height() {
-        for line_id in 0..scan_lines.column_ids().len() {
-            let col_id = *unsafe { scan_lines.column_ids().get_unchecked(line_id) };
-            let image_offset = (row_id * yuyv_image.width() + col_id) * 2;
-
-            let (y1, u, y2, v) = unsafe {
-                (
-                    *yuyv_image.get_unchecked(image_offset),
-                    *yuyv_image.get_unchecked(image_offset + 1),
-                    *yuyv_image.get_unchecked(image_offset + 2),
-                    *yuyv_image.get_unchecked(image_offset + 3),
-                )
-            };
-
-            let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
-            let buffer_offset = line_id * yuyv_image.height() + row_id;
-
-            unsafe {
-                *scan_lines.vertical.get_unchecked_mut(buffer_offset) = pixel_color;
-            };
-        }
-    }
-}
-
-fn update_scan_lines(image: &Image, scan_lines: &mut ScanLines) {
-    horizontal_scan_lines(image.yuyv_image(), scan_lines);
-    vertical_scan_lines(image.yuyv_image(), scan_lines);
-
-    scan_lines.image = image.clone();
 }
 
 #[system]
@@ -310,11 +324,11 @@ pub fn scan_lines_system(
     bottom_image: &BottomImage,
 ) -> Result<()> {
     if top_scan_lines.image.timestamp() != top_image.timestamp() {
-        update_scan_lines(top_image, &mut top_scan_lines.scan_lines);
+        top_scan_lines.update_scan_lines(top_image);
     }
 
     if bottom_scan_lines.image.timestamp() != bottom_image.timestamp() {
-        update_scan_lines(bottom_image, &mut bottom_scan_lines.scan_lines);
+        bottom_scan_lines.update_scan_lines(bottom_image);
     }
     Ok(())
 }
