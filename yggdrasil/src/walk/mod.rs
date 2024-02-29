@@ -51,14 +51,14 @@ impl FilteredGyroscope {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BalancingConfig {
     pub arm_swing_multiplier: f32,
     pub filtered_gyro_y_multiplier: f32,
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct WalkingEngineConfig {
     #[serde_as(as = "DurationMilliSeconds")]
@@ -67,6 +67,7 @@ pub struct WalkingEngineConfig {
     pub arm_stiffness: f32,
     pub cop_pressure_threshold: f32,
     pub base_foot_lift: f32,
+    pub foot_lift_modifier: Step,
     pub hip_height: f32,
     pub sitting_hip_height: f32,
     pub balancing: BalancingConfig,
@@ -157,7 +158,6 @@ pub fn toggle_walking_engine(
 #[system]
 pub fn run_walking_engine(
     walking_engine: &mut WalkingEngine,
-    config: &WalkingEngineConfig,
     primary_state: &PrimaryState,
     cycle_time: &CycleTime,
     fsr: &ForceSensitiveResistors,
@@ -177,7 +177,7 @@ pub fn run_walking_engine(
 
     // If this is start of a new step phase, we'll need to initialise the new phase.
     if walking_engine.t.is_zero() {
-        walking_engine.init_step_phase(config)
+        walking_engine.init_step_phase();
     }
 
     match walking_engine.state {
@@ -188,6 +188,7 @@ pub fn run_walking_engine(
     }
 
     // check whether support foot has been switched
+    let config = walking_engine.config.clone();
     let left_foot_fsr = fsr.left_foot.sum();
     let right_foot_fsr = fsr.right_foot.sum();
 

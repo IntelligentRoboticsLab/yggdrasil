@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::kinematics::FootOffset;
 use std::{ops::Neg, time::Duration};
 
@@ -74,6 +76,8 @@ pub struct WalkingEngine {
     pub hip_height: f32,
     /// The maximum distance the swing foot can be lifted off the ground in meters.
     pub max_swing_foot_lift: f32,
+    /// The configuration of the walking engine.
+    pub config: WalkingEngineConfig,
 }
 
 impl WalkingEngine {
@@ -90,6 +94,7 @@ impl WalkingEngine {
             foot_offsets_t0: FootOffsets::zero(config.sitting_hip_height),
             hip_height: config.sitting_hip_height,
             max_swing_foot_lift: config.base_foot_lift,
+            config: config.clone(),
         }
     }
 
@@ -106,7 +111,8 @@ impl WalkingEngine {
     ///
     /// This will set the t0 foot offsets, and transition to the next [`WalkState`].
     /// It will then update the properties of the walking engine based on this new state.
-    pub fn init_step_phase(&mut self, config: &WalkingEngineConfig) {
+    pub fn init_step_phase(&mut self) {
+        let config = &self.config;
         self.foot_offsets_t0 = self.foot_offsets.clone();
         self.state = self.state.next(config);
 
@@ -131,8 +137,9 @@ impl WalkingEngine {
                 self.next_foot_switch = config.base_step_period;
 
                 self.swing_foot = next_swing_foot;
-                self.max_swing_foot_lift =
-                    config.base_foot_lift + (step.forward.abs() * 0.01) + (step.left.abs() * 0.02);
+                self.max_swing_foot_lift = config.base_foot_lift
+                    + (step.forward.abs() * config.foot_lift_modifier.forward)
+                    + (step.left.abs() * config.foot_lift_modifier.left);
             }
             WalkState::Stopping => {
                 self.current_step = Step::default();
@@ -208,7 +215,7 @@ impl WalkingEngine {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
 pub struct Step {
     /// forward in meters per second
     pub forward: f32,
