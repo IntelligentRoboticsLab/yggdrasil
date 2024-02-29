@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use super::FilterConfig;
+use super::{ButtonConfig, FilterConfig};
 use nidhogg::NaoState;
 use std::time::Instant;
 
@@ -61,12 +61,12 @@ impl ButtonState {
     }
 
     /// Get the next state based on whether the button is currently pressed down.
-    pub fn next(&self, config: &FilterConfig, is_pressed: bool) -> Self {
+    pub fn next(&self, config: &ButtonConfig, is_pressed: bool) -> Self {
         match (self, is_pressed) {
             (ButtonState::Pressed(start), true) => {
                 if Instant::now()
                     .checked_duration_since(*start)
-                    .is_some_and(|duration| duration >= config.button.held_duration_threshold)
+                    .is_some_and(|duration| duration >= config.held_duration_threshold)
                 {
                     Self::Held(Instant::now())
                 } else {
@@ -151,62 +151,61 @@ pub fn button_filter(
     right_foot_buttons: &mut RightFootButtons,
     config: &FilterConfig,
 ) -> Result<()> {
-    head_buttons.front = head_buttons.front.next(
-        config,
-        nao_state.touch.head_front >= config.button.activation_threshold,
-    );
-    head_buttons.middle = head_buttons.middle.next(
-        config,
-        nao_state.touch.head_middle >= config.button.activation_threshold,
-    );
-    head_buttons.rear = head_buttons.rear.next(
-        config,
-        nao_state.touch.head_rear >= config.button.activation_threshold,
-    );
-    chest_button.state = chest_button.state.next(
-        config,
-        nao_state.touch.chest_board >= config.button.activation_threshold,
-    );
-    left_hand_buttons.left = left_hand_buttons.left.next(
-        config,
-        nao_state.touch.left_hand_left >= config.button.activation_threshold,
-    );
-    left_hand_buttons.right = left_hand_buttons.right.next(
-        config,
-        nao_state.touch.left_hand_right >= config.button.activation_threshold,
-    );
-    left_hand_buttons.back = left_hand_buttons.back.next(
-        config,
-        nao_state.touch.left_hand_back >= config.button.activation_threshold,
-    );
-    right_hand_buttons.left = right_hand_buttons.left.next(
-        config,
-        nao_state.touch.right_hand_left >= config.button.activation_threshold,
-    );
-    right_hand_buttons.right = right_hand_buttons.right.next(
-        config,
-        nao_state.touch.right_hand_right >= config.button.activation_threshold,
-    );
-    right_hand_buttons.back = right_hand_buttons.back.next(
-        config,
-        nao_state.touch.right_hand_back >= config.button.activation_threshold,
-    );
-    left_foot_buttons.left = left_foot_buttons.left.next(
-        config,
-        nao_state.touch.left_foot_left >= config.button.activation_threshold,
-    );
-    left_foot_buttons.right = left_foot_buttons.right.next(
-        config,
-        nao_state.touch.left_foot_right >= config.button.activation_threshold,
-    );
-    right_foot_buttons.left = right_foot_buttons.left.next(
-        config,
-        nao_state.touch.right_foot_left >= config.button.activation_threshold,
-    );
-    right_foot_buttons.right = right_foot_buttons.right.next(
-        config,
-        nao_state.touch.right_foot_right >= config.button.activation_threshold,
-    );
+    let touch = nao_state.touch.clone();
+    let config = &config.button;
+    let threshold = config.activation_threshold;
+
+    // Hand buttons
+    head_buttons.front = head_buttons
+        .front
+        .next(config, touch.head_front >= threshold);
+    head_buttons.middle = head_buttons
+        .middle
+        .next(config, touch.head_middle >= threshold);
+    head_buttons.rear = head_buttons.rear.next(config, touch.head_rear >= threshold);
+
+    // Chest buttons
+    chest_button.state = chest_button
+        .state
+        .next(config, touch.chest_board >= threshold);
+
+    // Left hand buttons
+    left_hand_buttons.left = left_hand_buttons
+        .left
+        .next(config, touch.left_hand_left >= threshold);
+    left_hand_buttons.right = left_hand_buttons
+        .right
+        .next(config, touch.left_hand_right >= threshold);
+    left_hand_buttons.back = left_hand_buttons
+        .back
+        .next(config, touch.left_hand_back >= threshold);
+
+    // Right hand buttons
+    right_hand_buttons.left = right_hand_buttons
+        .left
+        .next(config, touch.right_hand_left >= threshold);
+    right_hand_buttons.right = right_hand_buttons
+        .right
+        .next(config, touch.right_hand_right >= threshold);
+    right_hand_buttons.back = right_hand_buttons
+        .back
+        .next(config, touch.right_hand_back >= threshold);
+
+    // Left foot buttons
+    left_foot_buttons.left = left_foot_buttons
+        .left
+        .next(config, touch.left_foot_left >= threshold);
+    left_foot_buttons.right = left_foot_buttons
+        .right
+        .next(config, touch.left_foot_right >= threshold);
+
+    // Right foot buttons
+    right_foot_buttons.left = right_foot_buttons
+        .left
+        .next(config, touch.right_foot_left >= threshold);
+    right_foot_buttons.right = right_foot_buttons
+        .right
+        .next(config, touch.right_foot_right >= threshold);
 
     Ok(())
 }

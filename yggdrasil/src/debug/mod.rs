@@ -1,4 +1,7 @@
 #[cfg(feature = "rerun")]
+use std::convert::Into;
+
+#[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 
 use nidhogg::types::RgbU8;
