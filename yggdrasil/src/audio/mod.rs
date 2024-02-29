@@ -1,8 +1,6 @@
 use crate::prelude::*;
 
-use self::{
-    audio_input::AudioInputModule, sound_manager::SoundManagerModule,
-};
+use self::sound_manager::SoundManagerModule;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
