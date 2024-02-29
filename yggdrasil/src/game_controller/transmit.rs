@@ -11,7 +11,7 @@ use std::mem::size_of;
 use std::net::SocketAddr;
 use std::ops::Add;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use miette::IntoDiagnostic;
 
@@ -40,11 +40,11 @@ async fn transmit_game_controller_return_message(
     game_controller_socket: Arc<UdpSocket>,
     last_transmitted_return_message: Instant,
     mut game_controller_address: SocketAddr,
-    config: GameControllerConfig,
+    game_controller_return_delay: Duration,
     transmit_game_controller_data: TransmitGameControllerData,
 ) -> Result<(GameControllerReturnMessage, Instant)> {
     let duration_to_wait = last_transmitted_return_message
-        .add(config.game_controller_return_delay)
+        .add(game_controller_return_delay)
         .duration_since(Instant::now());
     sleep(duration_to_wait).await;
 
@@ -85,8 +85,8 @@ fn transmit_system(
     };
 
     let transmit_game_controller_data = TransmitGameControllerData {
-        player_num: 2,
-        team_num: 8,
+        player_num: config.player_number,
+        team_num: config.team_number,
         fallen: 0,
         pose: [0f32; 3],
         ball_age: 0.0,
@@ -102,12 +102,13 @@ fn transmit_system(
         }
         None => (),
     }
+
     _ = transmit_game_controller_return_message_task.try_spawn(
         transmit_game_controller_return_message(
             game_controller_data.socket.clone(),
             last_transmitted_update_timestamp,
             game_controller_address,
-            config.clone(),
+            config.game_controller_return_delay,
             transmit_game_controller_data,
         ),
     );
