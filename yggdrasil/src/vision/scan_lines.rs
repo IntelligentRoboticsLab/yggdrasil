@@ -178,6 +178,8 @@ impl ScanLines {
     }
 
     /// TODO: Make this configurable using Odal.
+    /// TODO: We want to sample more frequently higher up in the frame,
+    /// as lines there are further away and therefore smaller and harder to detect with a large sampling distance.
     fn make_horizontal_ids(image: &Image) -> Vec<usize> {
         let mut horizontal_ids = Vec::new();
 
