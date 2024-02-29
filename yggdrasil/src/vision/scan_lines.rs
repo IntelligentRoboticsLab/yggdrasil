@@ -10,8 +10,8 @@ use std::ops::{Deref, DerefMut};
 /// Module that generates scan-lines from taken NAO images.
 ///
 /// This module provides the following resources to the application:
-/// - [`TopScanLines`]
-/// - [`BottomScanLines`]
+/// - [`TopScanGrid`]
+/// - [`BottomScanGrid`]
 pub struct ScanLinesModule;
 
 impl Module for ScanLinesModule {
