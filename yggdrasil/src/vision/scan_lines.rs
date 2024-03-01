@@ -23,6 +23,7 @@ impl Module for ScanLinesModule {
     }
 }
 
+/// The classified color of a scan-line pixel
 #[repr(u8)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum PixelColor {
@@ -47,6 +48,7 @@ impl PixelColor {
     }
 }
 
+/// The horizontal and vertical scan-lines for an image
 pub struct ScanGrid {
     image: Image,
     horizontal: ScanLines,
@@ -148,11 +150,15 @@ impl ScanGrid {
 }
 
 #[derive(Deref, DerefMut)]
+/// Scan grid for the top image
+/// See [`ScanGrid`] for more info
 pub struct TopScanGrid {
     scan_grid: ScanGrid,
 }
 
 #[derive(Deref, DerefMut)]
+/// Scan grid for the bottom image
+/// See [`ScanGrid`] for more info
 pub struct BottomScanGrid {
     scan_grid: ScanGrid,
 }
@@ -200,6 +206,7 @@ fn make_vertical_ids(image: &Image) -> Vec<usize> {
     vertical_ids
 }
 
+/// A set of scan-lines stored in row-major order, with the ids of the subsampled indices from the original image  
 pub struct ScanLines {
     pixels: Vec<PixelColor>,
     ids: Vec<usize>,
