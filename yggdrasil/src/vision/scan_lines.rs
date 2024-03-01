@@ -10,8 +10,6 @@ use heimdall::YuyvImage;
 use derive_more::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 
-// use std::ops::{Deref, DerefMut};
-
 /// Module that generates scan-lines from taken NAO images.
 ///
 /// This module provides the following resources to the application:
