@@ -5,7 +5,9 @@ use crate::{
 
 use heimdall::YuyvImage;
 
-use std::ops::{Deref, DerefMut};
+use derive_more::{Deref, DerefMut};
+
+// use std::ops::{Deref, DerefMut};
 
 /// Module that generates scan-lines from taken NAO images.
 ///
@@ -145,40 +147,14 @@ impl ScanGrid {
     }
 }
 
+#[derive(Deref, DerefMut)]
 pub struct TopScanGrid {
     scan_grid: ScanGrid,
 }
 
-impl Deref for TopScanGrid {
-    type Target = ScanGrid;
-
-    fn deref(&self) -> &Self::Target {
-        &self.scan_grid
-    }
-}
-
-impl DerefMut for TopScanGrid {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.scan_grid
-    }
-}
-
+#[derive(Deref, DerefMut)]
 pub struct BottomScanGrid {
     scan_grid: ScanGrid,
-}
-
-impl Deref for BottomScanGrid {
-    type Target = ScanGrid;
-
-    fn deref(&self) -> &Self::Target {
-        &self.scan_grid
-    }
-}
-
-impl DerefMut for BottomScanGrid {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.scan_grid
-    }
 }
 
 /// TODO: Make this configurable using Odal.
