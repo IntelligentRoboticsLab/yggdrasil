@@ -32,3 +32,4 @@ tyr = { path = "../crates/tyr", features = ["odal"] }
 default = []
 alsa = ["dep:alsa", "dep:kira"]
 rerun = ["dep:rerun"]
+local = []
