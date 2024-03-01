@@ -158,6 +158,10 @@ impl DebugContext {
     }
 }
 
+pub fn test(#[cfg(not(feature = "local"))] robot_info: &RobotInfo) -> i32 {
+    5
+}
+
 #[startup_system]
 fn init_rerun(
     storage: &mut Storage,
