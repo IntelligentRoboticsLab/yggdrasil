@@ -249,19 +249,33 @@ impl ScanLines {
     /// corresponding scan-line id.
     ///
     /// # Example
-    /// ```ignore
-    /// for horizontal_line_id in 0..scan_lines.horizontal().ids() {
-    ///     let row_id = scan_lines.horizontal().ids()[horizontal_line_id];
-    ///     let row = scan_lines.horizontal().line(horizontal_line_id);
+    /// ```
+    /// # use yggdrasil::vision::scan_lines::ScanLines;
+    /// # fn loop_over_lines(horizontal_scan_lines: ScanLines) {
+    /// for horizontal_line_id in 0..horizontal_scan_lines.line_ids().len() {
+    ///     let row_id = horizontal_scan_lines.line_ids()[horizontal_line_id];
+    ///     let row = horizontal_scan_lines.line(horizontal_line_id);
     /// }
+    ///
+    /// for (horizontal_line_id, row_id) in horizontal_scan_lines.line_ids().iter().enumerate() {
+    ///     let row = horizontal_scan_lines.line(horizontal_line_id);
+    /// }
+    /// # }
     /// ```
     ///
     /// # Example
-    /// ```ignore
-    /// for vertical_line_id in 0..scan_lines.vertical().ids() {
-    ///     let column_id = scan_lines.vertical().ids()[vertical_line_id];
-    ///     let column = scan_lines.vertical().line(vertical_line_id);
+    /// ```
+    /// # use yggdrasil::vision::scan_lines::ScanLines;
+    /// # fn loop_over_lines(vertical_scan_lines: ScanLines) {
+    /// for vertical_line_id in 0..vertical_scan_lines.line_ids().len() {
+    ///     let column_id = vertical_scan_lines.line_ids()[vertical_line_id];
+    ///     let column = vertical_scan_lines.line(vertical_line_id);
     /// }
+    ///
+    /// for (vertical_line_id, column_id) in vertical_scan_lines.line_ids().iter().enumerate() {
+    ///     let column = vertical_scan_lines.line(vertical_line_id);
+    /// }
+    /// # }
     /// ```
     pub fn line_ids(&self) -> &[usize] {
         &self.ids
