@@ -35,3 +35,7 @@ game_controller_timeout = 5000
 player_number = 2
 # TODO: Make this an environment variable.
 team_number = 8
+
+[vision.scan_lines]
+horizontal_scan_line_interval = 16
+vertical_scan_line_interval = 16

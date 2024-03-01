@@ -61,6 +61,7 @@ fn init_subconfigs(storage: &mut Storage, yggdrasil_config: &mut YggdrasilConfig
     storage.add_resource(Resource::new(yggdrasil_config.filter.clone()))?;
     storage.add_resource(Resource::new(yggdrasil_config.game_controller.clone()))?;
     storage.add_resource(Resource::new(yggdrasil_config.primary_state.clone()))?;
+    storage.add_resource(Resource::new(yggdrasil_config.vision.clone()))?;
 
     Ok(())
 }
