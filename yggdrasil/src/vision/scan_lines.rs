@@ -237,8 +237,8 @@ impl ScanLines {
         &self.pixels
     }
 
-    /// Return a slice of all the row/column id's from which the scan-lines have been created.
-    /// The id's are sorted in ascending order, and therefore can be indexed by their
+    /// Return a slice of all the row/column ids from which the scan-lines have been created.
+    /// The ids are sorted in ascending order, and therefore can be indexed by their
     /// corresponding scan-line id.
     ///
     /// # Example
