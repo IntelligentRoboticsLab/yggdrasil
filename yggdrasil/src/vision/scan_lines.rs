@@ -3,6 +3,8 @@ use crate::{
     prelude::*,
 };
 
+use super::VisionConfig;
+
 use heimdall::YuyvImage;
 
 use derive_more::{Deref, DerefMut};
@@ -284,14 +286,14 @@ fn init_buffers(
     storage: &mut Storage,
     top_image: &TopImage,
     bottom_image: &BottomImage,
-    config: &ScanLinesConfig,
+    config: &VisionConfig,
 ) -> Result<()> {
     let mut top_scan_lines = TopScanGrid {
-        scan_grid: ScanGrid::build(top_image, config),
+        scan_grid: ScanGrid::build(top_image, &config.scan_lines),
     };
 
     let mut bottom_scan_lines = BottomScanGrid {
-        scan_grid: ScanGrid::build(bottom_image, config),
+        scan_grid: ScanGrid::build(bottom_image, &config.scan_lines),
     };
 
     top_scan_lines.update_scan_lines(top_image);
