@@ -14,7 +14,7 @@ pub mod sonar;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct FilterConfig {
-    pub fsr: FSRConfig,
+    pub fsr: FsrConfig,
     pub button: ButtonConfig,
 }
 
@@ -29,7 +29,7 @@ pub struct ButtonConfig {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-pub struct FSRConfig {
+pub struct FsrConfig {
     pub ground_contact_threshold: f32,
 }
 
