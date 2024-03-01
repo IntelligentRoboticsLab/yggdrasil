@@ -6,6 +6,7 @@ use crate::{
 use heimdall::YuyvImage;
 
 use derive_more::{Deref, DerefMut};
+use serde::{Deserialize, Serialize};
 
 // use std::ops::{Deref, DerefMut};
 
@@ -21,6 +22,13 @@ impl Module for ScanLinesModule {
         app.add_system(scan_lines_system)
             .add_startup_system(init_buffers)
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct ScanLinesConfig {
+    horizontal_scan_line_interval: usize,
+    vertical_scan_line_interval: usize,
 }
 
 /// The classified color of a scan-line pixel.
@@ -83,10 +91,10 @@ impl ScanGrid {
         &self.vertical
     }
 
-    fn build(image: &Image) -> ScanGrid {
+    fn build(image: &Image, config: &ScanLinesConfig) -> ScanGrid {
         ScanGrid {
-            horizontal: ScanLines::build_horizontal(image),
-            vertical: ScanLines::build_vertical(image),
+            horizontal: ScanLines::build_horizontal(image, config.horizontal_scan_line_interval),
+            vertical: ScanLines::build_vertical(image, config.vertical_scan_line_interval),
             image: image.clone(),
         }
     }
@@ -166,41 +174,22 @@ pub struct BottomScanGrid {
 /// TODO: Make this configurable using Odal.
 /// TODO: We want to sample more frequently higher up in the frame,
 /// as lines there are further away and therefore smaller and harder to detect with a large sampling distance.
-fn make_horizontal_ids(image: &Image) -> Vec<usize> {
+fn make_horizontal_ids(image: &Image, scan_line_interval: usize) -> Vec<usize> {
     let mut horizontal_ids = Vec::new();
 
-    for row_id in 0..image.yuyv_image().height() / 4 {
-        if row_id % 8 == 0 {
-            horizontal_ids.push(row_id);
-        }
-    }
-    for row_id in image.yuyv_image().height() / 4..image.yuyv_image().height() / 2 {
-        if row_id % 8 == 0 {
-            horizontal_ids.push(row_id);
-        }
-    }
-    for row_id in image.yuyv_image().height() / 2..image.yuyv_image().height() * 3 / 4 {
-        if (row_id - 4) % 16 == 0 {
-            horizontal_ids.push(row_id);
-        }
-    }
-    for row_id in image.yuyv_image().height() * 3 / 4..image.yuyv_image().height() {
-        if (row_id) % 32 == 0 {
-            horizontal_ids.push(row_id);
-        }
+    for row_id in 0..image.yuyv_image().height() / scan_line_interval {
+        horizontal_ids.push(row_id * scan_line_interval);
     }
 
     horizontal_ids
 }
 
 /// TODO: Make this configurable using Odal.
-fn make_vertical_ids(image: &Image) -> Vec<usize> {
-    const COL_SCAN_LINE_INTERVAL: usize = 16;
-
+fn make_vertical_ids(image: &Image, scan_line_interval: usize) -> Vec<usize> {
     let mut vertical_ids = Vec::new();
 
-    for col_id in 0..image.yuyv_image().width() / COL_SCAN_LINE_INTERVAL {
-        vertical_ids.push(col_id * COL_SCAN_LINE_INTERVAL);
+    for col_id in 0..image.yuyv_image().width() / scan_line_interval {
+        vertical_ids.push(col_id * scan_line_interval);
     }
 
     vertical_ids
@@ -221,8 +210,8 @@ impl ScanLines {
         image.yuyv_image().height() * vertical_ids.len()
     }
 
-    fn build_horizontal(image: &Image) -> Self {
-        let ids = make_horizontal_ids(image);
+    fn build_horizontal(image: &Image, scan_line_interval: usize) -> Self {
+        let ids = make_horizontal_ids(image, scan_line_interval);
 
         let buffer_size = Self::horizontal_buffer_size(image, &ids);
         let pixels = vec![PixelColor::Unknown; buffer_size];
@@ -230,8 +219,8 @@ impl ScanLines {
         Self { pixels, ids }
     }
 
-    fn build_vertical(image: &Image) -> Self {
-        let ids = make_vertical_ids(image);
+    fn build_vertical(image: &Image, scan_line_interval: usize) -> Self {
+        let ids = make_vertical_ids(image, scan_line_interval);
 
         let buffer_size = Self::vertical_buffer_size(image, &ids);
         let pixels = vec![PixelColor::Unknown; buffer_size];
@@ -295,13 +284,14 @@ fn init_buffers(
     storage: &mut Storage,
     top_image: &TopImage,
     bottom_image: &BottomImage,
+    config: &ScanLinesConfig,
 ) -> Result<()> {
     let mut top_scan_lines = TopScanGrid {
-        scan_grid: ScanGrid::build(top_image),
+        scan_grid: ScanGrid::build(top_image, config),
     };
 
     let mut bottom_scan_lines = BottomScanGrid {
-        scan_grid: ScanGrid::build(bottom_image),
+        scan_grid: ScanGrid::build(bottom_image, config),
     };
 
     top_scan_lines.update_scan_lines(top_image);
