@@ -21,7 +21,7 @@ fn main() -> Result<()> {
         .add_module(DebugModule)?;
 
     #[cfg(feature = "alsa")]
-    let app = app.add_module(yggdrasil::audio::sound_manager::SoundManagerModule)?;
+    let app = app.add_module(yggdrasil::audio::AudioModule)?;
 
     app.run()
 }

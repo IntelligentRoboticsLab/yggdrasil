@@ -14,7 +14,8 @@ pub mod walk;
 
 pub use miette::Result;
 
-/// The yggdrasil prelude conveniently includes commonly needed types and traits for writing code in the framework
+/// The yggdrasil prelude conveniently includes commonly needed types and traits for writing code
+/// in the framework.
 pub mod prelude {
     pub use crate::{config::ConfigResource, Result};
     pub use odal::Config;

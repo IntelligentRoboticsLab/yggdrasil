@@ -1,6 +1,7 @@
-use crate::{debug::DebugContext, prelude::*};
+use crate::prelude::*;
 
 use miette::IntoDiagnostic;
+use serde::{Deserialize, Serialize};
 use std::{
     ops::Deref,
     sync::{Arc, Mutex},
@@ -9,21 +10,12 @@ use std::{
 
 use heimdall::{Camera, YuyvImage};
 
-/// This variable specifies how many `TopImage`'s' can be alive at the same time.
-///
-/// It is recommended to have at least one more buffer than is required. This way, the next frame
-/// from the camera can already be stored in a buffer, reducing the latency between destructing a
-/// `TopImage` and being able to fetch the newest `TopImage`.
-// TODO: Replace with value from Odal.
-const NUMBER_OF_TOP_CAMERA_BUFFERS: u32 = 3;
-
-/// This variable specifies how many `BottomImage`'s' can be alive at the same time.
-///
-/// It is recommended to have at least one more buffer than is required. This way, the next frame
-/// from the camera can already be stored in a buffer, reducing the latency between destructing a
-/// `BottomImage` and being able to fetch the newest `BottomImage`.
-// TODO: Replace with value from Odal.
-const NUMBER_OF_BOTTOM_CAMERA_BUFFERS: u32 = 3;
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct CameraConfig {
+    pub num_top_buffers: u32,
+    pub num_bottom_buffers: u32,
+}
 
 /// This module captures images using the top- and bottom camera of the NAO.
 ///
@@ -37,35 +29,18 @@ pub struct CameraModule;
 
 impl Module for CameraModule {
     fn initialize(self, app: App) -> Result<App> {
-        let top_camera = TopCamera::new()?;
-        let bottom_camera = BottomCamera::new()?;
-
-        let top_image_resource =
-            Resource::new(TopImage::take_image(&mut top_camera.0.lock().unwrap())?);
-        let top_camera_resource = Resource::new(top_camera);
-
-        let bottom_image_resource = Resource::new(BottomImage::take_image(
-            &mut bottom_camera.0.lock().unwrap(),
-        )?);
-        let bottom_camera_resource = Resource::new(bottom_camera);
-
-        app.add_resource(top_image_resource)?
-            .add_resource(top_camera_resource)?
-            .add_resource(bottom_image_resource)?
-            .add_resource(bottom_camera_resource)?
-            .add_system(camera_system)
-            .add_system(debug_camera_system.after(camera_system))
-            .add_task::<ComputeTask<JpegTopImage>>()?
-            .add_task::<ComputeTask<JpegBottomImage>>()
+        Ok(app
+            .add_startup_system(initialize_cameras)?
+            .add_system(camera_system))
     }
 }
 
 struct TopCamera(Arc<Mutex<Camera>>);
 
 impl TopCamera {
-    fn new() -> Result<Self> {
+    fn new(config: &CameraConfig) -> Result<Self> {
         Ok(Self(Arc::new(Mutex::new(
-            Camera::new_nao_top(NUMBER_OF_TOP_CAMERA_BUFFERS).into_diagnostic()?,
+            Camera::new_nao_top(config.num_top_buffers).into_diagnostic()?,
         ))))
     }
 }
@@ -73,9 +48,9 @@ impl TopCamera {
 struct BottomCamera(Arc<Mutex<Camera>>);
 
 impl BottomCamera {
-    fn new() -> Result<Self> {
+    fn new(config: &CameraConfig) -> Result<Self> {
         Ok(Self(Arc::new(Mutex::new(
-            Camera::new_nao_bottom(NUMBER_OF_BOTTOM_CAMERA_BUFFERS).into_diagnostic()?,
+            Camera::new_nao_bottom(config.num_bottom_buffers).into_diagnostic()?,
         ))))
     }
 }
@@ -178,52 +153,24 @@ fn camera_system(
     Ok(())
 }
 
-struct JpegTopImage(Instant);
-struct JpegBottomImage(Instant);
+#[startup_system]
+fn initialize_cameras(storage: &mut Storage, config: &CameraConfig) -> Result<()> {
+    let top_camera = TopCamera::new(config)?;
+    let bottom_camera = BottomCamera::new(config)?;
 
-#[system]
-fn debug_camera_system(
-    ctx: &DebugContext,
-    bottom_image: &BottomImage,
-    bottom_task: &mut ComputeTask<JpegBottomImage>,
-    top_image: &TopImage,
-    top_task: &mut ComputeTask<JpegTopImage>,
-) -> Result<()> {
-    let mut bottom_timestamp = Instant::now();
-    if let Some(bottom) = bottom_task.poll() {
-        bottom_timestamp = bottom.0;
-    }
+    let top_image_resource =
+        Resource::new(TopImage::take_image(&mut top_camera.0.lock().unwrap())?);
+    let top_camera_resource = Resource::new(top_camera);
 
-    if !bottom_task.active() && &bottom_timestamp != bottom_image.timestamp() {
-        let cloned = bottom_image.clone();
-        let ctx = ctx.clone();
-        bottom_task.try_spawn(move || {
-            log_bottom_image(ctx, cloned).expect("Failed to log bottom image")
-        })?;
-    }
+    let bottom_image_resource = Resource::new(BottomImage::take_image(
+        &mut bottom_camera.0.lock().unwrap(),
+    )?);
+    let bottom_camera_resource = Resource::new(bottom_camera);
 
-    let mut top_timestamp = Instant::now();
-    if let Some(top) = top_task.poll() {
-        top_timestamp = top.0;
-    }
-
-    if !top_task.active() && &top_timestamp != top_image.timestamp() {
-        let cloned = top_image.clone();
-        let ctx = ctx.clone();
-        top_task.try_spawn(move || log_top_image(ctx, cloned).expect("Failed to log top image"))?;
-    }
+    storage.add_resource(top_image_resource)?;
+    storage.add_resource(top_camera_resource)?;
+    storage.add_resource(bottom_image_resource)?;
+    storage.add_resource(bottom_camera_resource)?;
 
     Ok(())
-}
-
-fn log_bottom_image(ctx: DebugContext, bottom_image: BottomImage) -> Result<JpegBottomImage> {
-    let timestamp = bottom_image.0 .0 .1;
-    ctx.log_image("bottom_camera/image", bottom_image.0, 20)?;
-    Ok(JpegBottomImage(timestamp))
-}
-
-fn log_top_image(ctx: DebugContext, top_image: TopImage) -> Result<JpegTopImage> {
-    let timestamp = top_image.0 .0 .1;
-    ctx.log_image("top_camera/image", top_image.0, 20)?;
-    Ok(JpegTopImage(timestamp))
 }

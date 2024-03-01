@@ -2,9 +2,11 @@ use bifrost::communication::GAME_CONTROLLER_DATA_PORT;
 
 use tokio::net::UdpSocket;
 
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DurationMilliSeconds};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use miette::IntoDiagnostic;
 
@@ -12,6 +14,18 @@ use crate::prelude::*;
 
 mod receive;
 mod transmit;
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct GameControllerConfig {
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub game_controller_timeout: Duration,
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub game_controller_return_delay: Duration,
+    pub player_number: u8,
+    pub team_number: u8,
+}
 
 struct GameControllerData {
     pub socket: Arc<UdpSocket>,

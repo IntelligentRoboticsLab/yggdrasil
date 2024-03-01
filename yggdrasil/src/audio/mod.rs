@@ -1,2 +1,39 @@
+use crate::prelude::*;
+
+use self::sound_manager::SoundManagerModule;
+
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DurationMilliSeconds};
+use std::time::Duration;
+
+#[cfg(feature = "alsa")]
+pub mod audio_input;
 pub mod sound_manager;
 pub mod wee_sound;
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct AudioConfig {
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub wee_sound_timeout: Duration,
+}
+
+impl Config for AudioConfig {
+    const PATH: &'static str = "audio.toml";
+}
+
+pub struct AudioModule;
+
+impl Module for AudioModule {
+    fn initialize(self, app: App) -> Result<App> {
+        let app = app
+            .init_config::<AudioConfig>()?
+            .add_module(SoundManagerModule)?;
+
+        #[cfg(feature = "alsa")]
+        let app = app.add_module(audio_input::AudioInputModule)?;
+
+        Ok(app)
+    }
+}
