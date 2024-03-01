@@ -76,7 +76,7 @@ impl ScanGrid {
 
     /// Return the original image.
     ///
-    /// The scan lines were created from this image.
+    /// The scan-lines were created from this image.
     pub fn image(&self) -> &Image {
         &self.image
     }
@@ -228,7 +228,7 @@ impl ScanLines {
         Self { pixels, ids }
     }
 
-    /// Return a slice over all the scan lines.
+    /// Return a slice over all the scan-lines.
     pub fn raw(&self) -> &[PixelColor] {
         &self.pixels
     }
