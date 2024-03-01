@@ -4,10 +4,9 @@ use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::{quote, ToTokens};
 use syn::{
-    parse_macro_input, parse_quote, visit_mut::VisitMut, FnArg, ItemFn, Pat, PatIdent, PatType,
-    TypeReference,
+    parse_macro_input, parse_quote, visit_mut::VisitMut, Attribute, FnArg, ItemFn, Pat, PatIdent,
+    PatType, Type, TypeReference,
 };
-use syn::{Attribute, Type};
 
 #[cfg(nightly)]
 use syn::spanned::Spanned;
