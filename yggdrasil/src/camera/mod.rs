@@ -46,24 +46,33 @@ impl Module for CameraModule {
     }
 }
 
+fn setup_camera_device(settings: &CameraSettings) -> Result<CameraDevice> {
+    let camera_device = CameraDevice::new(&settings.path)?;
+    if settings.flip_horizontally {
+        camera_device.horizontal_flip()?;
+    }
+    if settings.flip_vertically {
+        camera_device.vertical_flip()?;
+    }
+
+    Ok(camera_device)
+}
+
+fn setup_camera(camera_device: CameraDevice, settings: &CameraSettings) -> Result<Camera> {
+    Ok(Camera::new(
+        camera_device,
+        settings.width,
+        settings.height,
+        settings.num_buffers,
+    )?)
+}
+
 struct TopCamera(Arc<Mutex<Camera>>);
 
 impl TopCamera {
     fn new(config: &CameraConfig) -> Result<Self> {
-        let camera_device = CameraDevice::new(&config.top.path)?;
-        if config.top.flip_horizontally {
-            camera_device.horizontal_flip()?;
-        }
-        if config.top.flip_vertically {
-            camera_device.vertical_flip()?;
-        }
-
-        let camera = Camera::new(
-            camera_device,
-            config.top.width,
-            config.top.height,
-            config.top.num_buffers,
-        )?;
+        let camera_device = setup_camera_device(&config.top)?;
+        let camera = setup_camera(camera_device, &config.bottom)?;
 
         Ok(Self(Arc::new(Mutex::new(camera))))
     }
@@ -73,20 +82,8 @@ struct BottomCamera(Arc<Mutex<Camera>>);
 
 impl BottomCamera {
     fn new(config: &CameraConfig) -> Result<Self> {
-        let camera_device = CameraDevice::new(&config.bottom.path)?;
-        if config.bottom.flip_horizontally {
-            camera_device.horizontal_flip()?;
-        }
-        if config.bottom.flip_vertically {
-            camera_device.vertical_flip()?;
-        }
-
-        let camera = Camera::new(
-            camera_device,
-            config.bottom.width,
-            config.bottom.height,
-            config.bottom.num_buffers,
-        )?;
+        let camera_device = setup_camera_device(&config.bottom)?;
+        let camera = setup_camera(camera_device, &config.bottom)?;
 
         Ok(Self(Arc::new(Mutex::new(camera))))
     }
