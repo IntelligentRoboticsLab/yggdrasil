@@ -31,7 +31,7 @@ pub enum PixelColor {
 }
 
 impl PixelColor {
-    fn classify_yuv_pixel(y1: u8, u: u8, _y2: u8, v: u8) -> Self {
+    fn classify_yuv_pixel(y1: u8, u: u8, v: u8) -> Self {
         // TODO: Find a better way to classify pixels.
         if y1 > 140 {
             Self::White
@@ -101,16 +101,15 @@ impl ScanGrid {
             for col_id in 0..yuyv_image.width() / 2 {
                 let image_offset = (yuyv_image.width() * 2) * row_id + col_id * 4;
 
-                let (y1, u, y2, v) = unsafe {
-                    (
+                let [y1, u, v] = unsafe {
+                    [
                         *yuyv_image.get_unchecked(image_offset),
                         *yuyv_image.get_unchecked(image_offset + 1),
-                        *yuyv_image.get_unchecked(image_offset + 2),
                         *yuyv_image.get_unchecked(image_offset + 3),
-                    )
+                    ]
                 };
 
-                let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
+                let pixel_color = PixelColor::classify_yuv_pixel(y1, u, v);
                 let buffer_offset = line_id * yuyv_image.width() + col_id * 2;
 
                 unsafe {
@@ -127,16 +126,15 @@ impl ScanGrid {
                 let col_id = *unsafe { self.vertical().line_ids().get_unchecked(line_id) };
                 let image_offset = (row_id * yuyv_image.width() + col_id) * 2;
 
-                let (y1, u, y2, v) = unsafe {
-                    (
+                let [y1, u, v] = unsafe {
+                    [
                         *yuyv_image.get_unchecked(image_offset),
                         *yuyv_image.get_unchecked(image_offset + 1),
-                        *yuyv_image.get_unchecked(image_offset + 2),
                         *yuyv_image.get_unchecked(image_offset + 3),
-                    )
+                    ]
                 };
 
-                let pixel_color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
+                let pixel_color = PixelColor::classify_yuv_pixel(y1, u, v);
                 let buffer_offset = line_id * yuyv_image.height() + row_id;
 
                 unsafe {
