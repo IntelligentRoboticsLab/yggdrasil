@@ -186,7 +186,7 @@ impl WalkingEngine {
     }
 
     fn compute_swing_foot(&self, step: Step, lift: f32, linear_time: f32) -> FootOffset {
-        let smoothing = smoothing::parabolic_return(linear_time);
+        let smoothing = smoothing::parabolic_step(linear_time);
         let foot_t0 = match self.swing_foot {
             Side::Left => self.foot_offsets_t0.left,
             Side::Right => self.foot_offsets_t0.right,
