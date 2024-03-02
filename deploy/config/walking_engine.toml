@@ -39,4 +39,4 @@ arm_swing_multiplier = 0
 # The multiplier for the filtered gyro y value
 # Increasing this value will use a larger portion of the filtered gyro value
 # to adjust the pitch of the robot's ankles
-filtered_gyro_y_multiplier = 0.06
+filtered_gyro_y_multiplier = 0.02

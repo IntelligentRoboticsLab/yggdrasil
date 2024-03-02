@@ -4,6 +4,7 @@ use nalgebra::{Isometry3, Rotation3, Translation3, Vector3};
 
 use self::robot_dimensions::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS};
 
+pub mod forward;
 pub mod inverse;
 pub mod robot_dimensions;
 

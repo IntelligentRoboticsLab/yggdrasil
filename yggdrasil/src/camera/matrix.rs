@@ -1,6 +1,6 @@
 use nalgebra::{Isometry3, UnitQuaternion, Vector2, Vector3};
 
-use crate::kinematics::robot_dimensions;
+use crate::{filter::imu::IMUValues, kinematics::robot_dimensions, walk::SwingFoot};
 
 const CAMERA_TOP_PITCH_DEGREES: f32 = 1.2;
 const CAMERA_BOTTOM_PITCH_DEGREES: f32 = 39.7;
@@ -15,6 +15,12 @@ struct CameraConfiguration {
 pub enum CameraPosition {
     Top,
     Bottom,
+}
+
+pub fn robot_to_ground(swing_foot: SwingFoot, imu: IMUValues) -> Isometry3<f32> {
+    let roll_pitch = imu.angles;
+    let roll = roll_pitch.x;
+    let pitch = roll_pitch.y;
 }
 
 pub fn camera_to_head(
