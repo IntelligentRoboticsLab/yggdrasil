@@ -118,34 +118,12 @@ pub fn system(input: proc_macro::TokenStream, is_startup_system: bool) -> proc_m
             // depending on the mutability of the system argument
             let stmt = if *mutable {
                 // Expands to:
-                // ```
-                // <attributes>
-                // let ident = DerefMut::deref_mut(&mut ident);`
-                //
-                // ```
-                //
-                // Note that the extra newline is necessary to separate the variables in case one of the
-                // attributes is a feature flag.
-                parse_quote! {
-                    #(#attrs)*
-                    let #ident = std::ops::DerefMut::deref_mut(&mut #ident);
-
-                }
+                // <attributes let ident = DerefMut::deref_mut(&mut ident);
+                parse_quote! { #(#attrs)* let #ident = std::ops::DerefMut::deref_mut(&mut #ident); }
             } else {
-                // Expands to:
-                // ```
-                // <attibutes>
-                // let ident = Deref::deref(&ident);
-                //
-                // ```
-                //
-                // Note that the extra newline is necessary to separate the variables in case one of the
-                // attributes is a feature flag.
-                parse_quote! {
-                    #(#attrs)*
-                    let #ident = std::ops::Deref::deref(&#ident);
-
-                }
+                // Expands to
+                // <attibutes> let ident = Deref::deref(&ident);
+                parse_quote! { #(#attrs)* let #ident = std::ops::Deref::deref(&#ident); }
             };
 
             input.block.stmts.insert(0, stmt);
