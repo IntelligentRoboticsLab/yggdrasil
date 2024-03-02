@@ -8,13 +8,24 @@ use std::{
     time::Instant,
 };
 
-use heimdall::{Camera, YuyvImage};
+use heimdall::{Camera, CameraDevice, YuyvImage};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct CameraConfig {
-    pub num_top_buffers: u32,
-    pub num_bottom_buffers: u32,
+    pub top: CameraSettings,
+    pub bottom: CameraSettings,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct CameraSettings {
+    pub path: String,
+    pub width: u32,
+    pub height: u32,
+    pub num_buffers: u32,
+    pub flip_horizontally: bool,
+    pub flip_vertically: bool,
 }
 
 /// This module captures images using the top- and bottom camera of the NAO.
@@ -35,13 +46,35 @@ impl Module for CameraModule {
     }
 }
 
+fn setup_camera_device(settings: &CameraSettings) -> Result<CameraDevice> {
+    let camera_device = CameraDevice::new(&settings.path)?;
+    if settings.flip_horizontally {
+        camera_device.horizontal_flip()?;
+    }
+    if settings.flip_vertically {
+        camera_device.vertical_flip()?;
+    }
+
+    Ok(camera_device)
+}
+
+fn setup_camera(camera_device: CameraDevice, settings: &CameraSettings) -> Result<Camera> {
+    Ok(Camera::new(
+        camera_device,
+        settings.width,
+        settings.height,
+        settings.num_buffers,
+    )?)
+}
+
 struct TopCamera(Arc<Mutex<Camera>>);
 
 impl TopCamera {
     fn new(config: &CameraConfig) -> Result<Self> {
-        Ok(Self(Arc::new(Mutex::new(
-            Camera::new_nao_top(config.num_top_buffers).into_diagnostic()?,
-        ))))
+        let camera_device = setup_camera_device(&config.top)?;
+        let camera = setup_camera(camera_device, &config.top)?;
+
+        Ok(Self(Arc::new(Mutex::new(camera))))
     }
 }
 
@@ -49,9 +82,10 @@ struct BottomCamera(Arc<Mutex<Camera>>);
 
 impl BottomCamera {
     fn new(config: &CameraConfig) -> Result<Self> {
-        Ok(Self(Arc::new(Mutex::new(
-            Camera::new_nao_bottom(config.num_bottom_buffers).into_diagnostic()?,
-        ))))
+        let camera_device = setup_camera_device(&config.bottom)?;
+        let camera = setup_camera(camera_device, &config.bottom)?;
+
+        Ok(Self(Arc::new(Mutex::new(camera))))
     }
 }
 

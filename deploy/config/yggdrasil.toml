@@ -1,14 +1,36 @@
-[camera]
+[camera.top]
+# The path to the camera device.
+path = "/dev/video-top"
+# The requested width of the image.
+width = 640
+# The requested height of the image.
+height = 480
 # This variable specifies how many images from the top camera can be alive at the same time.
 # It is recommended to have at least one more buffer than is required. This way, the next frame
 # from the camera can already be stored in a buffer, reducing the latency between destructing a
 # `TopImage` and being able to fetch the newest `TopImage`.
-num_top_buffers = 3
+num_buffers = 3
+# Whether the image should be flipped horizontally.
+flip_horizontally = true
+# Whether the image should be flipped vertically.
+flip_vertically = true
+
+[camera.bottom]
+# The path to the camera device.
+path = "/dev/video-top"
+# The requested width of the image.
+width = 640
+# The requested height of the image.
+height = 480
 # This variable specifies how many images from the bottom camera can be alive at the same time.
 # It is recommended to have at least one more buffer than is required. This way, the next frame
 # from the camera can already be stored in a buffer, reducing the latency between destructing a
 # `BottomImage` and being able to fetch the newest `BottomImage`.
-num_bottom_buffers = 3
+num_buffers = 3
+# Whether the image should be flipped horizontally.
+flip_horizontally = false
+# Whether the image should be flipped vertically.
+flip_vertically = false
 
 [filter.button]
 # The threshold for a button to be considered pressed.

@@ -10,18 +10,6 @@ use linuxvideo::{
 
 use super::{Error, Result, YuyvImage};
 
-/// The width of a NAO [`Image`].
-const IMAGE_WIDTH: u32 = 640;
-
-/// The height of a NAO [`Image`].
-const IMAGE_HEIGHT: u32 = 480;
-
-/// Absolute path to the lower camera of the NAO.
-const CAMERA_BOTTOM: &str = "/dev/video-bottom";
-
-/// Absolute path to the upper camera of the NAO.
-const CAMERA_TOP: &str = "/dev/video-top";
-
 /// A wrapper around a [`Device`] that contains utilities to flip the image.
 pub struct CameraDevice {
     device: Device,
@@ -311,29 +299,6 @@ impl Camera {
         }
 
         Ok(camera)
-    }
-
-    /// Create a new camera object for the NAO's top camera.
-    ///
-    /// # Errors
-    /// This function fails if the [`Camera`] cannot be opened.
-    pub fn new_nao_top(num_buffers: u32) -> Result<Self> {
-        let camera_device = CameraDevice::new(CAMERA_TOP)?;
-        // We need to rotate the top camera 180 degrees, because it's upside down in the robot.
-        camera_device.horizontal_flip()?;
-        camera_device.vertical_flip()?;
-
-        Self::new(camera_device, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
-    }
-
-    /// Create a new camera object for the NAO's bottom camera.
-    ///
-    /// # Errors
-    /// This function fails if the [`Camera`] cannot be opened.
-    pub fn new_nao_bottom(num_buffers: u32) -> Result<Self> {
-        let camera_device = CameraDevice::new(CAMERA_BOTTOM)?;
-
-        Self::new(camera_device, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
     }
 
     /// Get the next image.
