@@ -42,7 +42,7 @@ pub enum PixelColor {
 }
 
 impl PixelColor {
-    fn classify_yuv_pixel(y1: u8, u: u8, v: u8) -> Self {
+    pub fn classify_yuv_pixel(y1: u8, u: u8, v: u8) -> Self {
         // TODO: Find a better way to classify pixels.
         if y1 > 140 {
             Self::White

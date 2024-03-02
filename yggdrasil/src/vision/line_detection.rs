@@ -1,16 +1,10 @@
 use std::mem;
-use std::ops::Not;
-use std::process::exit;
-use std::time::Instant;
-
-use nalgebra::ComplexField;
-use rerun::external::arrow2::offset;
 
 use crate::camera::Image;
+use crate::debug::DebugContext;
 use crate::prelude::*;
-use crate::{camera::TopImage, debug::DebugContext};
 
-use super::scan_lines::{BottomScanLines, PixelColor, ScanLines, TopScanLines};
+use super::scan_lines::{BottomScanGrid, PixelColor, TopScanGrid};
 
 pub struct LineDetectionModule;
 
@@ -25,16 +19,15 @@ struct Line {
 }
 
 fn is_white(column: usize, row: usize, image: &Image) -> bool {
-    let column = ((column >> 1) << 1);
+    let column = (column >> 1) << 1;
     assert_eq!(column % 2, 0);
     let offset = row * image.yuyv_image().width() * 2 + column * 2;
 
     let y1 = image.yuyv_image()[offset..offset + 4][0];
     let u = image.yuyv_image()[offset..offset + 4][1];
-    let y2 = image.yuyv_image()[offset..offset + 4][2];
     let v = image.yuyv_image()[offset..offset + 4][3];
 
-    let color = PixelColor::classify_yuv_pixel(y1, u, y2, v);
+    let color = PixelColor::classify_yuv_pixel(y1, u, v);
 
     color == PixelColor::White
 }
@@ -43,19 +36,24 @@ const MIN_ROW: usize = 230;
 
 #[system]
 fn line_detection_system(
-    top_scan_lines: &mut TopScanLines,
-    bottom_scan_lines: &mut BottomScanLines,
+    top_scan_grid: &mut TopScanGrid,
+    bottom_scan_grid: &mut BottomScanGrid,
     dbg: &DebugContext,
 ) -> Result<()> {
     let mut points = Vec::with_capacity(30_000);
 
-    for horizontal_line_id in 0..top_scan_lines.row_ids().len() {
-        let row_id = *unsafe { top_scan_lines.row_ids().get_unchecked(horizontal_line_id) };
+    for horizontal_line_id in 0..top_scan_grid.horizontal().line_ids().len() {
+        let row_id = *unsafe {
+            top_scan_grid
+                .horizontal()
+                .line_ids()
+                .get_unchecked(horizontal_line_id)
+        };
         // TODO: Delete this if statement and use proper field boundary detection.
-        if (row_id < MIN_ROW) {
+        if row_id < MIN_ROW {
             continue;
         }
-        let row = top_scan_lines.horizontal_line(horizontal_line_id);
+        let row = top_scan_grid.horizontal().line(horizontal_line_id);
 
         let mut start_opt = Option::<usize>::None;
         for column_id in 0..row.len() {
@@ -72,9 +70,14 @@ fn line_detection_system(
         }
     }
 
-    for vertical_line_id in 0..top_scan_lines.column_ids().len() {
-        let column_id = *unsafe { top_scan_lines.column_ids().get_unchecked(vertical_line_id) };
-        let column = top_scan_lines.vertical_line(vertical_line_id);
+    for vertical_line_id in 0..top_scan_grid.vertical().line_ids().len() {
+        let column_id = *unsafe {
+            top_scan_grid
+                .vertical()
+                .line_ids()
+                .get_unchecked(vertical_line_id)
+        };
+        let column = top_scan_grid.vertical().line(vertical_line_id);
 
         let mut start_opt = None;
         for row_id in MIN_ROW..column.len() {
@@ -110,8 +113,9 @@ fn line_detection_system(
             line.points.push(*point);
 
             let Ok((slope, intercept)) =
-                linreg::linear_regression_of::<f32, f32, f32>(&line.points) else {
-                continue
+                linreg::linear_regression_of::<f32, f32, f32>(&line.points)
+            else {
+                continue;
             };
 
             let start_column = line.points.first().unwrap().0;
@@ -122,7 +126,7 @@ fn line_detection_system(
             for column in start_column as usize..end_column as usize {
                 let row: f32 = slope * column as f32 + intercept;
 
-                if !is_white(column, row as usize, top_scan_lines.image()) {
+                if !is_white(column, row as usize, top_scan_grid.image()) {
                     if allowed_mistakes == 0 {
                         break;
                     }
@@ -136,8 +140,7 @@ fn line_detection_system(
         }
         if line.points.len() > 3 {
             lines.push(line);
-        }
-        else {
+        } else {
             // TODO: Can this be unsorted now?
             // line.points.iter().for_each(|point| points_next.push(*point));
             // points_next.push(*line.points.first().unwrap());
@@ -156,9 +159,9 @@ fn line_detection_system(
         let end_column = line.points.last().unwrap().0;
         assert!(start_column <= end_column);
 
-        let Ok((slope, intercept)) =
-            linreg::linear_regression_of::<f32, f32, f32>(&line.points) else {
-            continue
+        let Ok((slope, intercept)) = linreg::linear_regression_of::<f32, f32, f32>(&line.points)
+        else {
+            continue;
         };
 
         for column in start_column as usize..end_column as usize {
@@ -175,7 +178,7 @@ fn line_detection_system(
     dbg.log_points2d_for_image(
         "top_camera/image",
         &all_line_points,
-        top_scan_lines.image().clone(),
+        top_scan_grid.image().clone(),
     )?;
 
     Ok(())

@@ -2,6 +2,7 @@ use crate::prelude::*;
 
 use serde::{Deserialize, Serialize};
 
+pub mod line_detection;
 pub mod scan_lines;
 
 use scan_lines::{ScanLinesConfig, ScanLinesModule};
