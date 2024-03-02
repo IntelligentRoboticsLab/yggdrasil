@@ -32,7 +32,8 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
     color == PixelColor::White
 }
 
-const MIN_ROW: usize = 230;
+const MIN_ROW: usize = 166;
+// const MIN_ROW: usize = 226;
 
 #[system]
 fn line_detection_system(
@@ -95,6 +96,7 @@ fn line_detection_system(
         }
     }
 
+    let points_clone = points.clone();
     points.sort_by(|(col1, _row1), (col2, _row2)| col1.partial_cmp(col2).unwrap());
     let mut points_next = Vec::<(f32, f32)>::new();
 
@@ -180,7 +182,12 @@ fn line_detection_system(
         // all_line_points.extend(&line.points);
     }
 
-    // dbg.log_points2d_for_image("top_camera/image", &line_points, top_image.0.clone())?;
+    // dbg.log_points2d_for_image(
+    //     "top_camera/image",
+    //     &points_clone,
+    //     top_scan_grid.image().clone(),
+    // )?;
+    dbg.log_points2d_for_image("top_camera/image", &points, top_scan_grid.image().clone())?;
     dbg.log_points2d_for_image(
         "top_camera/image",
         &all_line_points,
