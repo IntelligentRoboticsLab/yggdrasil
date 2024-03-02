@@ -32,8 +32,8 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
     color == PixelColor::White
 }
 
-// const MIN_ROW: usize = 166;
-const MIN_ROW: usize = 226;
+const MIN_ROW: usize = 166;
+// const MIN_ROW: usize = 226;
 // const MIN_ROW: usize = 170;
 
 #[system]
