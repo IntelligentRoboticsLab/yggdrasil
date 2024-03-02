@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{debug::DebugContext, prelude::*};
 
 use miette::IntoDiagnostic;
 use serde::{Deserialize, Serialize};
@@ -40,9 +40,11 @@ pub struct CameraModule;
 
 impl Module for CameraModule {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_startup_system(initialize_cameras)?
-            .add_system(camera_system))
+        app.add_startup_system(initialize_cameras)?
+            .add_system(camera_system)
+            .add_system(debug_camera_system.after(camera_system))
+            .add_task::<ComputeTask<JpegTopImage>>()?
+            .add_task::<ComputeTask<JpegBottomImage>>()
     }
 }
 
@@ -207,4 +209,54 @@ fn initialize_cameras(storage: &mut Storage, config: &CameraConfig) -> Result<()
     storage.add_resource(bottom_camera_resource)?;
 
     Ok(())
+}
+
+struct JpegTopImage(Instant);
+struct JpegBottomImage(Instant);
+
+#[system]
+fn debug_camera_system(
+    ctx: &DebugContext,
+    bottom_image: &BottomImage,
+    bottom_task: &mut ComputeTask<JpegBottomImage>,
+    top_image: &TopImage,
+    top_task: &mut ComputeTask<JpegTopImage>,
+) -> Result<()> {
+    let mut bottom_timestamp = Instant::now();
+    if let Some(bottom) = bottom_task.poll() {
+        bottom_timestamp = bottom.0;
+    }
+
+    if !bottom_task.active() && &bottom_timestamp != bottom_image.timestamp() {
+        let cloned = bottom_image.clone();
+        let ctx = ctx.clone();
+        bottom_task.try_spawn(move || {
+            log_bottom_image(ctx, cloned).expect("Failed to log bottom image")
+        })?;
+    }
+
+    let mut top_timestamp = Instant::now();
+    if let Some(top) = top_task.poll() {
+        top_timestamp = top.0;
+    }
+
+    if !top_task.active() && &top_timestamp != top_image.timestamp() {
+        let cloned = top_image.clone();
+        let ctx = ctx.clone();
+        top_task.try_spawn(move || log_top_image(ctx, cloned).expect("Failed to log top image"))?;
+    }
+
+    Ok(())
+}
+
+fn log_bottom_image(ctx: DebugContext, bottom_image: BottomImage) -> Result<JpegBottomImage> {
+    let timestamp = bottom_image.0 .0 .1;
+    ctx.log_image("bottom_camera/image", bottom_image.0, 20)?;
+    Ok(JpegBottomImage(timestamp))
+}
+
+fn log_top_image(ctx: DebugContext, top_image: TopImage) -> Result<JpegTopImage> {
+    let timestamp = top_image.0 .0 .1;
+    ctx.log_image("top_camera/image", top_image.0, 20)?;
+    Ok(JpegTopImage(timestamp))
 }
