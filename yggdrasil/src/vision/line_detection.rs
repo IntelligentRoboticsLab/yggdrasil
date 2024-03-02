@@ -121,10 +121,16 @@ fn line_detection_system(
             let start_column = line.points.first().unwrap().0;
             let end_column = point.0;
             assert!(start_column <= end_column);
+            if start_column < 0f32 || end_column >= 640f32 {
+                continue;
+            }
 
             let mut allowed_mistakes = 4u32;
             for column in start_column as usize..end_column as usize {
                 let row: f32 = slope * column as f32 + intercept;
+                if row < 0f32 || row >= 480f32 {
+                    continue;
+                }
 
                 if !is_white(column, row as usize, top_scan_grid.image()) {
                     if allowed_mistakes == 0 {
