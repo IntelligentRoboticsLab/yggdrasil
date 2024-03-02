@@ -104,6 +104,24 @@ impl TopCamera {
 
         Ok(Self(YggdrasilCamera::new(camera)))
     }
+
+    #[cfg(feature = "local")]
+    fn try_fetch_image(&mut self) -> Option<TopImage> {
+        let Ok(mut top_camera) = self.0.try_lock() else {
+            return None;
+        };
+
+        top_camera.get_yuyv_image().ok().map(TopImage::new)
+    }
+
+    #[cfg(not(feature = "local"))]
+    fn try_fetch_image(&mut self) -> Option<TopImage> {
+        let Ok(mut top_camera) = self.0.try_lock() else {
+            return None;
+        };
+
+        top_camera.try_get_yuyv_image().ok().map(TopImage::new)
+    }
 }
 
 #[derive(Deref, DerefMut)]
@@ -115,6 +133,27 @@ impl BottomCamera {
         let camera = setup_camera(camera_device, &config.bottom)?;
 
         Ok(Self(YggdrasilCamera::new(camera)))
+    }
+
+    #[cfg(feature = "local")]
+    fn try_fetch_image(&mut self) -> Option<BottomImage> {
+        let Ok(mut bottom_camera) = self.0.try_lock() else {
+            return None;
+        };
+
+        bottom_camera.get_yuyv_image().ok().map(BottomImage::new)
+    }
+
+    #[cfg(not(feature = "local"))]
+    fn try_fetch_image(&mut self) -> Option<BottomImage> {
+        let Ok(mut bottom_camera) = self.0.try_lock() else {
+            return None;
+        };
+
+        bottom_camera
+            .try_get_yuyv_image()
+            .ok()
+            .map(BottomImage::new)
     }
 }
 
