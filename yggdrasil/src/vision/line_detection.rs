@@ -1,4 +1,4 @@
-use std::mem;
+use std::{mem, time::Instant};
 
 use crate::camera::Image;
 use crate::debug::DebugContext;
@@ -32,8 +32,9 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
     color == PixelColor::White
 }
 
-const MIN_ROW: usize = 166;
-// const MIN_ROW: usize = 226;
+// const MIN_ROW: usize = 166;
+const MIN_ROW: usize = 226;
+// const MIN_ROW: usize = 170;
 
 #[system]
 fn line_detection_system(
@@ -41,7 +42,8 @@ fn line_detection_system(
     bottom_scan_grid: &mut BottomScanGrid,
     dbg: &DebugContext,
 ) -> Result<()> {
-    let mut points = Vec::with_capacity(30_000);
+    let start = Instant::now();
+    let mut points = Vec::with_capacity(300);
 
     for horizontal_line_id in 0..top_scan_grid.horizontal().line_ids().len() {
         let row_id = *unsafe {
@@ -127,7 +129,7 @@ fn line_detection_system(
                 continue;
             }
 
-            let mut allowed_mistakes = 4u32;
+            let mut allowed_mistakes = 3u32;
             for column in start_column as usize..end_column as usize {
                 let row: f32 = slope * column as f32 + intercept;
                 if row < 0f32 || row >= 480f32 {
@@ -150,14 +152,19 @@ fn line_detection_system(
             lines.push(line);
         } else {
             // TODO: Can this be unsorted now?
-            // line.points.iter().for_each(|point| points_next.push(*point));
+            line.points
+                .iter()
+                .skip(1)
+                .for_each(|point| points_next.push(*point));
             // points_next.push(*line.points.first().unwrap());
-            // points_next.sort_by(|(col1, _row1), (col2, _row2)| col1.partial_cmp(col2).unwrap());
+            points_next.sort_by(|(col1, _row1), (col2, _row2)| col1.partial_cmp(col2).unwrap());
         }
 
         points.clear();
         mem::swap(&mut points, &mut points_next);
     }
+
+    println!("elapsed: {:?}", start.elapsed());
 
     let mut all_line_points = Vec::<(f32, f32)>::new();
 
@@ -187,7 +194,11 @@ fn line_detection_system(
     //     &points_clone,
     //     top_scan_grid.image().clone(),
     // )?;
-    dbg.log_points2d_for_image("top_camera/image", &points, top_scan_grid.image().clone())?;
+    // dbg.log_points2d_for_image(
+    //     "top_camera/image",
+    //     &points_clone,
+    //     top_scan_grid.image().clone(),
+    // )?;
     dbg.log_points2d_for_image(
         "top_camera/image",
         &all_line_points,
