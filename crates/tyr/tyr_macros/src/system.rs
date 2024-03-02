@@ -51,8 +51,8 @@ impl VisitMut for ArgTransformerVisitor {
 
                     // substitute function argument
                     *arg = match mutable {
-                        true => parse_quote! { #(#attrs),* mut #ident: ::tyr::ResMut<#elem> },
-                        false => parse_quote! { #(#attrs),* #ident: ::tyr::Res<#elem> },
+                        true => parse_quote! { #(#attrs)* mut #ident: ::tyr::ResMut<#elem> },
+                        false => parse_quote! { #(#attrs)* #ident: ::tyr::Res<#elem> },
                     };
 
                     // save argument information
