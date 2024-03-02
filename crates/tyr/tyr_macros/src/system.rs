@@ -3,10 +3,9 @@ use std::collections::HashSet;
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::{quote, ToTokens};
-use syn::Type;
 use syn::{
-    parse_macro_input, parse_quote, visit_mut::VisitMut, FnArg, ItemFn, Pat, PatIdent, PatType,
-    TypeReference,
+    parse_macro_input, parse_quote, visit_mut::VisitMut, Attribute, FnArg, ItemFn, Pat, PatIdent,
+    PatType, Type, TypeReference,
 };
 
 #[cfg(nightly)]
@@ -14,6 +13,7 @@ use syn::spanned::Spanned;
 
 /// An argument in a system.
 struct SystemArg {
+    attrs: Vec<Attribute>,
     mutable: bool,
     ident: Ident,
 }
@@ -34,7 +34,7 @@ impl VisitMut for ArgTransformerVisitor {
         }
 
         match arg {
-            FnArg::Typed(PatType { pat, ty, .. }) => match (pat.as_ref(), ty.as_ref()) {
+            FnArg::Typed(PatType { attrs, pat, ty, .. }) => match (pat.as_ref(), ty.as_ref()) {
                 (
                     Pat::Ident(PatIdent {
                         ident,
@@ -47,15 +47,20 @@ impl VisitMut for ArgTransformerVisitor {
                 ) => {
                     let ident = ident.clone();
                     let mutable = mutability.is_some();
+                    let attrs = attrs.clone();
 
                     // substitute function argument
                     *arg = match mutable {
-                        true => parse_quote! { mut #ident: ::tyr::ResMut<#elem> },
-                        false => parse_quote! { #ident: ::tyr::Res<#elem> },
+                        true => parse_quote! { #(#attrs)* mut #ident: ::tyr::ResMut<#elem> },
+                        false => parse_quote! { #(#attrs)* #ident: ::tyr::Res<#elem> },
                     };
 
                     // save argument information
-                    self.args.push(SystemArg { mutable, ident });
+                    self.args.push(SystemArg {
+                        attrs,
+                        mutable,
+                        ident,
+                    });
                 }
                 (_, ty) => {
                     self.errors.push(syn::Error::new_spanned(
@@ -103,23 +108,27 @@ pub fn system(input: proc_macro::TokenStream, is_startup_system: bool) -> proc_m
     syn::visit_mut::visit_item_fn_mut(&mut visitor, &mut input);
 
     // automatically deref to a reference at the beginning of a system
-    visitor
-        .args
-        .iter()
-        .rev()
-        .for_each(|SystemArg { mutable, ident }| {
+    visitor.args.iter().rev().for_each(
+        |SystemArg {
+             mutable,
+             ident,
+             attrs,
+         }| {
             // adds one of two statements to the beginning of the function block,
             // depending on the mutability of the system argument
             let stmt = if *mutable {
-                // Expands to `let ident = DerefMut::deref_mut(&mut ident);`
-                parse_quote! { let #ident = std::ops::DerefMut::deref_mut(&mut #ident); }
+                // Expands to:
+                // <attributes> let ident = DerefMut::deref_mut(&mut ident);
+                parse_quote! { #(#attrs)* let #ident = std::ops::DerefMut::deref_mut(&mut #ident); }
             } else {
-                // Expands to `let ident = Deref::deref(&ident);`
-                parse_quote! { let #ident = std::ops::Deref::deref(&#ident); }
+                // Expands to
+                // <attibutes> let ident = Deref::deref(&ident);
+                parse_quote! { #(#attrs)* let #ident = std::ops::Deref::deref(&#ident); }
             };
 
             input.block.stmts.insert(0, stmt);
-        });
+        },
+    );
 
     let errors: TokenStream = visitor
         .errors
