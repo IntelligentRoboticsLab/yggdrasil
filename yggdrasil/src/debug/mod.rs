@@ -1,16 +1,13 @@
 #[cfg(feature = "rerun")]
-use std::convert::Into;
-
-#[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
-
 use nidhogg::types::RgbU8;
 use std::{net::Ipv4Addr, time::Instant};
 
-use crate::{camera::Image, nao::Cycle, prelude::*};
-
-#[cfg(not(feature = "local"))]
-use crate::{config::yggdrasil::YggdrasilConfig, nao::RobotInfo};
+use crate::{
+    camera::Image,
+    nao::{Cycle, RobotInfo},
+    prelude::*,
+};
 
 /// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
 ///
