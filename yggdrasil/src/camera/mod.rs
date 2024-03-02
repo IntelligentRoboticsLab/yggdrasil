@@ -76,6 +76,24 @@ impl TopCamera {
 
         Ok(Self(Arc::new(Mutex::new(camera))))
     }
+
+    #[cfg(feature = "local")]
+    fn try_fetch_image(&mut self) -> Option<TopImage> {
+        let Ok(mut top_camera) = self.0.try_lock() else {
+            return None;
+        };
+
+        top_camera.get_yuyv_image().ok().map(TopImage::new)
+    }
+
+    #[cfg(not(feature = "local"))]
+    fn try_fetch_image(&mut self) -> Option<TopImage> {
+        let Ok(mut top_camera) = self.0.try_lock() else {
+            return None;
+        };
+
+        top_camera.try_get_yuyv_image().ok().map(TopImage::new)
+    }
 }
 
 struct BottomCamera(Arc<Mutex<Camera>>);
@@ -86,6 +104,27 @@ impl BottomCamera {
         let camera = setup_camera(camera_device, &config.bottom)?;
 
         Ok(Self(Arc::new(Mutex::new(camera))))
+    }
+
+    #[cfg(feature = "local")]
+    fn try_fetch_image(&mut self) -> Option<BottomImage> {
+        let Ok(mut bottom_camera) = self.0.try_lock() else {
+            return None;
+        };
+
+        bottom_camera.get_yuyv_image().ok().map(BottomImage::new)
+    }
+
+    #[cfg(not(feature = "local"))]
+    fn try_fetch_image(&mut self) -> Option<BottomImage> {
+        let Ok(mut bottom_camera) = self.0.try_lock() else {
+            return None;
+        };
+
+        bottom_camera
+            .try_get_yuyv_image()
+            .ok()
+            .map(BottomImage::new)
     }
 }
 
@@ -150,25 +189,6 @@ impl Deref for BottomImage {
     }
 }
 
-fn try_fetch_top_image(top_camera: &mut TopCamera) -> Option<TopImage> {
-    let Ok(mut top_camera) = top_camera.0.try_lock() else {
-        return None;
-    };
-
-    top_camera.try_get_yuyv_image().ok().map(TopImage::new)
-}
-
-fn try_fetch_bottom_image(top_camera: &mut BottomCamera) -> Option<BottomImage> {
-    let Ok(mut bottom_camera) = top_camera.0.try_lock() else {
-        return None;
-    };
-
-    bottom_camera
-        .try_get_yuyv_image()
-        .ok()
-        .map(BottomImage::new)
-}
-
 #[system]
 fn camera_system(
     top_camera: &mut TopCamera,
@@ -176,11 +196,11 @@ fn camera_system(
     top_image: &mut TopImage,
     bottom_image: &mut BottomImage,
 ) -> Result<()> {
-    if let Some(new_top_image) = try_fetch_top_image(top_camera) {
+    if let Some(new_top_image) = top_camera.try_fetch_image() {
         *top_image = new_top_image;
     }
 
-    if let Some(new_bottom_image) = try_fetch_bottom_image(bottom_camera) {
+    if let Some(new_bottom_image) = bottom_camera.try_fetch_image() {
         *bottom_image = new_bottom_image;
     }
 
