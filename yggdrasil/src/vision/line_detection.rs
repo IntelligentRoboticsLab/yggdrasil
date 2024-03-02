@@ -114,6 +114,11 @@ fn line_detection_system(
         };
 
         for point in points.iter().skip(1) {
+            if (line.points.last().unwrap().0 - point.0).abs() > 40f32 {
+                points_next.push(*point);
+                continue;
+            }
+            let last_point = *line.points.last().unwrap();
             line.points.push(*point);
 
             let Ok((slope, intercept)) =
@@ -125,11 +130,8 @@ fn line_detection_system(
             let start_column = line.points.first().unwrap().0;
             let end_column = point.0;
             assert!(start_column <= end_column);
-            if start_column < 0f32 || end_column >= 640f32 {
-                continue;
-            }
 
-            let mut allowed_mistakes = 3u32;
+            let mut allowed_mistakes = 4u32;
             for column in start_column as usize..end_column as usize {
                 let row: f32 = slope * column as f32 + intercept;
                 if row < 0f32 || row >= 480f32 {
@@ -148,7 +150,7 @@ fn line_detection_system(
                 points_next.push(*point);
             }
         }
-        if line.points.len() > 3 {
+        if line.points.len() > 4 {
             lines.push(line);
         } else {
             // TODO: Can this be unsorted now?
