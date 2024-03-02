@@ -72,7 +72,7 @@ struct TopCamera(Arc<Mutex<Camera>>);
 impl TopCamera {
     fn new(config: &CameraConfig) -> Result<Self> {
         let camera_device = setup_camera_device(&config.top)?;
-        let camera = setup_camera(camera_device, &config.bottom)?;
+        let camera = setup_camera(camera_device, &config.top)?;
 
         Ok(Self(Arc::new(Mutex::new(camera))))
     }
