@@ -118,7 +118,7 @@ pub fn system(input: proc_macro::TokenStream, is_startup_system: bool) -> proc_m
             // depending on the mutability of the system argument
             let stmt = if *mutable {
                 // Expands to:
-                // <attributes let ident = DerefMut::deref_mut(&mut ident);
+                // <attributes> let ident = DerefMut::deref_mut(&mut ident);
                 parse_quote! { #(#attrs)* let #ident = std::ops::DerefMut::deref_mut(&mut #ident); }
             } else {
                 // Expands to
