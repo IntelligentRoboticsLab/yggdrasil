@@ -43,5 +43,8 @@ pub enum Error {
     VerticalFlip(#[source] io::Error),
 
     #[error(transparent)]
+    SetAutoExposureWeights(io::Error),
+
+    #[error(transparent)]
     Jpeg(turbojpeg::Error),
 }

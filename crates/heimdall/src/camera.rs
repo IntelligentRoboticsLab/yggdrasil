@@ -31,6 +31,12 @@ impl CameraDevice {
         Ok(Self { device })
     }
 
+    pub fn clone(&self) -> Self {
+        Self {
+            device: self.device.clone(),
+        }
+    }
+
     /// Flip the image horizontally.
     pub fn horizontal_flip(&self) -> Result<()> {
         let mut uvc_extension = UvcExt::new(&self.device);
@@ -44,6 +50,18 @@ impl CameraDevice {
         let mut uvc_extension = UvcExt::new(&self.device);
         uvc_extension.vertical_flip().map_err(Error::VerticalFlip)
     }
+
+    /// Set the exposure weights of the camera device.
+    pub fn set_auto_exposure_weights(&self, bytes: [u8; 17]) -> Result<()> {
+        let mut uvc_extension = UvcExt::new(&self.device);
+
+        let mut bytes = bytes;
+
+        uvc_extension
+            .set_auto_exposure_weights(&mut bytes)
+            .map_err(Error::SetAutoExposureWeights)
+    }
+
 
     /// Enable or disable the autofocus.
     ///
@@ -244,6 +262,7 @@ impl CameraDevice {
 /// Struct for retrieving images from the NAO camera.
 pub struct Camera {
     camera: FrameProvider,
+    camera_device: CameraDevice,
     width: usize,
     height: usize,
 }
@@ -269,6 +288,8 @@ impl Camera {
             ))?;
         }
 
+        let camera_device_clone = camera_device.clone();
+
         let capture_device = camera_device
             .device
             .video_capture(PixFormat::new(width, height, PixelFormat::YUYV))
@@ -288,6 +309,7 @@ impl Camera {
 
         let mut camera = Self {
             camera,
+            camera_device: camera_device_clone,
             width,
             height,
         };
@@ -339,5 +361,9 @@ impl Camera {
             width: self.width,
             height: self.height,
         })
+    }
+
+    pub fn get_camera_device(&self) -> &CameraDevice {
+        &self.camera_device
     }
 }

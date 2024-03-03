@@ -10,7 +10,7 @@ use std::{
     time::Instant,
 };
 
-use heimdall::{Camera, CameraDevice, CameraMatrix, YuyvImage};
+use heimdall::{Camera, CameraDevice, CameraMatrix, ExposureWeights, YuyvImage};
 use matrix::{CalibrationConfig, CameraMatrices};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -53,6 +53,7 @@ impl Module for CameraModule {
         app.add_startup_system(initialize_cameras)?
             .add_system(camera_system)
             .add_system(debug_camera_system.after(camera_system))
+            .add_system(set_exposure_weights)
             .add_task::<ComputeTask<JpegTopImage>>()?
             .add_task::<ComputeTask<JpegBottomImage>>()?
             .add_module(matrix::CameraMatrixModule)
@@ -204,10 +205,13 @@ fn initialize_cameras(storage: &mut Storage, config: &CameraConfig) -> Result<()
     let bottom_image_resource = Resource::new(BottomImage::new(bottom_camera.loop_fetch_image()?));
     let bottom_camera_resource = Resource::new(bottom_camera);
 
+    let exposure_weights = Resource::new(ExposureWeights::new((config.top.width, config.top.height)));
+
     storage.add_resource(top_image_resource)?;
     storage.add_resource(top_camera_resource)?;
     storage.add_resource(bottom_image_resource)?;
     storage.add_resource(bottom_camera_resource)?;
+    storage.add_resource(exposure_weights)?;
 
     Ok(())
 }
@@ -289,4 +293,30 @@ fn log_top_image(
         top_image.clone().0,
     )?;
     Ok(JpegTopImage(timestamp))
+}
+
+#[system]
+fn set_exposure_weights(
+    exposure_weights: &mut ExposureWeights,
+    top_camera: &TopCamera,
+    bottom_camera: &BottomCamera,
+) -> Result<()> {
+    let top_table = exposure_weights.top_weights.encode();
+
+    let bottom_table = exposure_weights.bottom_weights.encode();
+
+    let top_camera = top_camera.0.try_lock().expect("Failed to lock top camera");
+
+    let bottom_camera = bottom_camera.0.try_lock().expect("Failed to lock bottom camera");
+
+
+    top_camera
+        .get_camera_device()
+        .set_auto_exposure_weights(top_table)?;
+
+    bottom_camera
+        .get_camera_device()
+        .set_auto_exposure_weights(bottom_table)?;
+
+    Ok(())
 }
