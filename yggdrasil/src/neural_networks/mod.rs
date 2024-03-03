@@ -2,13 +2,15 @@
 //! it will probably be very similary to the `compute` example for the task
 //! module in tyr/examples/compute.rs
 
+// TODO: use evil-hack branch
+
 use crate::prelude::*;
 
-use self::backend::MLBackend;
+use self::backend::MLTask;
 
 mod backend;
 
-pub trait Model {
+pub trait Model: 'static {
     /// Returns a path to the weights of the model.
     const ONNX: &'static str;
     const INPUT_SHAPE: [usize; 4]; 
@@ -27,44 +29,30 @@ impl Model for ExampleModel {
 // #[model(onnx = "/path/to/onnx"), input_shape=(480, 640)]
 // pub struct ExampleModel;
 
-
 #[startup_system]
-fn initialize(storage: &mut Storage) -> Result<()> {
+fn initialize(
+    storage: &mut Storage,
+    dispatcher: &ComputeDispatcher
+) -> Result<()> {
     let mut core = backend::load_core();
 
-    let model = MLBackend::<ExampleModel>::new(&mut core);
-    // storage.add_resource(Resource::new(model))?;
-    Ok(())
-}
-
-#[system]
-pub fn call_model(_model: &mut ComputeTask<ExampleModel>) -> Result<()> {
-    // Do preprocessing here
-    // let random_input = Vec::<u8>::new();
-
-    // match model.run_inference(random_input) {
-    //     Ok(_) => Ok(()),
-    //     Err(Error::AlreadyActive) => Ok(()),
-    // }
+    storage.add_resource(Resource::new(
+        MLTask::<ExampleModel>::new(&mut core, dispatcher.clone())
+    ))?;
 
     Ok(())
 }
 
 #[system]
-pub fn process_model_output(_model: &mut ComputeTask<ExampleModel>) -> Result<()> {
-    // let random_input = Vec::<u8>::new();
-    // model.call(random_input);
-
-    // match model.call(random_input) {
-    //     Ok(_) => Ok(()),
-    //     Err(Error::AlreadyActive) => Ok(()),
-    // }
-    //
-    // if let Some(output) = model.poll() else {
-    //     return Ok(());
-    // }
+pub fn call_model(task: &mut MLTask<ExampleModel>) -> Result<()> {
+    // do preprocessing here
+    let random_input = Vec::<u8>::new();
     
-    // have output heredo whatever
+    // try to start to run inference, if it fails it's already
+    //  running inference
+    let _ = task.try_infer(&random_input);
+
+    // call `task.poll` to process the result
     Ok(())
 }
 
@@ -74,7 +62,6 @@ impl Module for ExampleModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_startup_system(initialize)?
-            .add_system(process_model_output)
             .add_system(call_model)
         )
     }
