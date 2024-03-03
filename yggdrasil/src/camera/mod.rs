@@ -75,22 +75,12 @@ impl YggdrasilCamera {
         Self(Arc::new(Mutex::new(camera)))
     }
 
-    #[cfg(feature = "local")]
     fn try_fetch_image(&mut self) -> Option<Image> {
         let Ok(mut camera) = self.0.try_lock() else {
             return None;
         };
 
         camera.get_yuyv_image().ok().map(Image::new)
-    }
-
-    #[cfg(not(feature = "local"))]
-    fn try_fetch_image(&mut self) -> Option<Image> {
-        let Ok(mut camera) = self.0.try_lock() else {
-            return None;
-        };
-
-        camera.try_get_yuyv_image().ok(Image::new)
     }
 }
 
