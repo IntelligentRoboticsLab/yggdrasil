@@ -1,5 +1,6 @@
 use crate::{debug::DebugContext, prelude::*};
 
+use derive_more::{Deref, DerefMut};
 use miette::IntoDiagnostic;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -69,25 +70,43 @@ fn setup_camera(camera_device: CameraDevice, settings: &CameraSettings) -> Resul
     )?)
 }
 
-struct TopCamera(Arc<Mutex<Camera>>);
+struct YggdrasilCamera(Arc<Mutex<Camera>>);
+
+impl YggdrasilCamera {
+    fn new(camera: Camera) -> Self {
+        Self(Arc::new(Mutex::new(camera)))
+    }
+
+    fn try_fetch_image(&mut self) -> Option<Image> {
+        let Ok(mut camera) = self.0.try_lock() else {
+            return None;
+        };
+
+        camera.get_yuyv_image().ok().map(Image::new)
+    }
+}
+
+#[derive(Deref, DerefMut)]
+struct TopCamera(YggdrasilCamera);
 
 impl TopCamera {
     fn new(config: &CameraConfig) -> Result<Self> {
         let camera_device = setup_camera_device(&config.top)?;
         let camera = setup_camera(camera_device, &config.top)?;
 
-        Ok(Self(Arc::new(Mutex::new(camera))))
+        Ok(Self(YggdrasilCamera::new(camera)))
     }
 }
 
-struct BottomCamera(Arc<Mutex<Camera>>);
+#[derive(Deref, DerefMut)]
+struct BottomCamera(YggdrasilCamera);
 
 impl BottomCamera {
     fn new(config: &CameraConfig) -> Result<Self> {
         let camera_device = setup_camera_device(&config.bottom)?;
         let camera = setup_camera(camera_device, &config.bottom)?;
 
-        Ok(Self(Arc::new(Mutex::new(camera))))
+        Ok(Self(YggdrasilCamera::new(camera)))
     }
 }
 
@@ -110,12 +129,12 @@ impl Image {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deref)]
 pub struct TopImage(Image);
 
 impl TopImage {
-    fn new(yuyv_image: YuyvImage) -> Self {
-        Self(Image::new(yuyv_image))
+    fn new(image: Image) -> Self {
+        Self(image)
     }
 
     fn take_image(camera: &mut Camera) -> Result<Self> {
@@ -123,52 +142,17 @@ impl TopImage {
     }
 }
 
-impl Deref for TopImage {
-    type Target = Image;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, Deref)]
 pub struct BottomImage(Image);
 
 impl BottomImage {
-    fn new(yuyv_image: YuyvImage) -> Self {
-        Self(Image::new(yuyv_image))
+    fn new(image: Image) -> Self {
+        Self(image)
     }
 
     fn take_image(camera: &mut Camera) -> Result<Self> {
         Ok(Self(Image::new(camera.get_yuyv_image().into_diagnostic()?)))
     }
-}
-
-impl Deref for BottomImage {
-    type Target = Image;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-fn try_fetch_top_image(top_camera: &mut TopCamera) -> Option<TopImage> {
-    let Ok(mut top_camera) = top_camera.0.try_lock() else {
-        return None;
-    };
-
-    top_camera.try_get_yuyv_image().ok().map(TopImage::new)
-}
-
-fn try_fetch_bottom_image(top_camera: &mut BottomCamera) -> Option<BottomImage> {
-    let Ok(mut bottom_camera) = top_camera.0.try_lock() else {
-        return None;
-    };
-
-    bottom_camera
-        .try_get_yuyv_image()
-        .ok()
-        .map(BottomImage::new)
 }
 
 #[system]
@@ -178,12 +162,12 @@ fn camera_system(
     top_image: &mut TopImage,
     bottom_image: &mut BottomImage,
 ) -> Result<()> {
-    if let Some(new_top_image) = try_fetch_top_image(top_camera) {
-        *top_image = new_top_image;
+    if let Some(new_top_image) = top_camera.try_fetch_image() {
+        *top_image = TopImage::new(new_top_image);
     }
 
-    if let Some(new_bottom_image) = try_fetch_bottom_image(bottom_camera) {
-        *bottom_image = new_bottom_image;
+    if let Some(new_bottom_image) = bottom_camera.try_fetch_image() {
+        *bottom_image = BottomImage::new(new_bottom_image);
     }
 
     Ok(())
@@ -194,12 +178,13 @@ fn initialize_cameras(storage: &mut Storage, config: &CameraConfig) -> Result<()
     let top_camera = TopCamera::new(config)?;
     let bottom_camera = BottomCamera::new(config)?;
 
-    let top_image_resource =
-        Resource::new(TopImage::take_image(&mut top_camera.0.lock().unwrap())?);
+    let top_image_resource = Resource::new(TopImage::take_image(
+        &mut top_camera.deref().0.lock().unwrap(),
+    )?);
     let top_camera_resource = Resource::new(top_camera);
 
     let bottom_image_resource = Resource::new(BottomImage::take_image(
-        &mut bottom_camera.0.lock().unwrap(),
+        &mut bottom_camera.deref().0.lock().unwrap(),
     )?);
     let bottom_camera_resource = Resource::new(bottom_camera);
 
