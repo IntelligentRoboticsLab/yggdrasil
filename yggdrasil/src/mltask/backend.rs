@@ -1,6 +1,7 @@
+//! Implementation of ML methods using an OpenVINO backend.
+
 use std::{marker::PhantomData, sync::Mutex};
 use miette::{Context, IntoDiagnostic, Result};
-use openvino::{Blob, InferRequest, Layout, Precision, TensorDesc};
 use super::MLModel;
 
 pub type MLOutput = Result<Vec<u8>>;
@@ -63,25 +64,29 @@ impl<M: MLModel> MLBackend<M> {
 }
 
 pub struct MLInferRequest {
-    req: InferRequest,
+    req: openvino::InferRequest,
     /// Name of output layer.
     output_name: String
 }
 
 impl MLInferRequest {
     fn new<M: MLModel>(
-        mut req: InferRequest, input: &[u8], input_name: &str, output_name: String
+        mut req: openvino::InferRequest, input: &[u8], input_name: &str, output_name: String
     ) -> Result<Self> {
         // format input data
-        let blob = Blob::new(
-            &TensorDesc::new(Layout::NCHW, &M::input_shape(), Precision::FP32),
+        let blob = openvino::Blob::new(
+            &openvino::TensorDesc::new(
+                openvino::Layout::NCHW, &M::input_shape(), openvino::Precision::FP32
+            ),
             input
         ).into_diagnostic().wrap_err(
             "ML inference input does not meet model input requirements"
         )?;
 
         // set input data
-        req.set_blob(input_name, &blob).unwrap();
+        req.set_blob(input_name, &blob).into_diagnostic().wrap_err(
+            "ML inference input does not match model structure"
+        )?;
 
         Ok(Self {
             req, output_name

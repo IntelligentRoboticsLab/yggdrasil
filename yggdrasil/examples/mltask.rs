@@ -1,10 +1,12 @@
 //! This is an example of how to implement a ML model.
+//! The code does not run, but a model can be implemented
+//! with the same structure, provided model parameters
+//! and logic for processing in- and output is written.
 
 use miette::Result;
-use tyr::{system, App};
-use yggdrasil::mltask::{MLModel, MLTask, MLTaskResource};
+use tyr::{system, tasks::{TaskConfig, TaskModule}, App, Resource};
+use yggdrasil::mltask::{MLModel, MLModule, MLTask, MLTaskResource};
 
-/// Imagine this implements the chatGPT 4.0 model.
 struct ChatGPT4;
 
 // implement MLModel to make it compatible with the rest of the system
@@ -38,9 +40,9 @@ fn process_chat(
         match model.try_start_infer(bytes) {
             Ok(()) => {}
             Err(_) => {
-                // We can only start inference if the previous
-                //  task has been completed. Whenever `try_infer` fails, it means
-                //  the model inference has not finished yet.
+                // Whenever `try_infer` fails, it means
+                //  the model inference has not finished yet
+                //  since the previous call.
             }
         }
     }
@@ -63,7 +65,16 @@ fn process_chat(
 }
 
 fn main() -> Result<()> {
+    let task_config = TaskConfig {
+        async_threads: 1,
+        compute_threads: 1
+    };
+
     App::new()
+        .add_resource(Resource::new(Prompt(Some("input".into()))))?
+        .add_resource(Resource::new(task_config))?
+        .add_module(TaskModule)?
+        .add_module(MLModule)?
         // add the ML model
         .add_ml_task::<ChatGPT4>()?
         // use the ML model

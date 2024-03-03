@@ -1,5 +1,3 @@
-// TODO: move into tyr?
-
 use miette::{Context, IntoDiagnostic, Result};
 use tyr::{tasks::{compute::{ComputeDispatcher, ComputeTask}, task::Pollable}, App, Module, Res, ResMut, Resource, Storage};
 use crate::mltask::backend::MLCore;
@@ -55,6 +53,9 @@ impl<M: MLModel> MLTask<M> {
 
 pub trait MLTaskResource {
     /// Adds a [`MLTask`] to the app that can run the given model type.
+    /// ## Errors
+    /// Fails if no [`MLCore`] is in storage. Add [`MLModule`]
+    /// to the app to accomplish this.
     fn add_ml_task<M>(self) -> Result<Self>
         where 
             Self: Sized,
@@ -69,12 +70,12 @@ impl MLTaskResource for App {
     {
         fn add_ml_task<M: MLModel + Send + Sync + 'static>(
             storage: &mut Storage,
-            dispatcher: Res<ComputeDispatcher>,
-            mut core: ResMut<MLCore>
+            mut core: ResMut<MLCore>,
+            dispatcher: Res<ComputeDispatcher>
         ) -> Result<()>
         {
             storage.add_resource(
-                Resource::new(MLTask::<M>::new(&mut core, dispatcher.clone()))
+                Resource::new(MLTask::<M>::new(&mut core, dispatcher.clone())?)
             )
         }
         
@@ -82,11 +83,11 @@ impl MLTaskResource for App {
     }
 }
 
-/// Instantiates the necessary resources to load ML models.
+/// Instantiates the necessary resources to work with ML models.
 pub struct MLModule;
 
 impl Module for MLModule {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app.add_resource(Resource::new(MLCore::new()))?)
+        Ok(app.add_resource(Resource::new(MLCore::new()?))?)
     }
 }
