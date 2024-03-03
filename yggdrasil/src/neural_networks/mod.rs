@@ -13,7 +13,7 @@ mod backend;
 pub trait Model: 'static {
     /// Returns a path to the weights of the model.
     const ONNX: &'static str;
-    const INPUT_SHAPE: [usize; 4]; 
+    const INPUT_SHAPE: [usize; 4];
 }
 
 // API usage below:
@@ -29,30 +29,25 @@ impl Model for ExampleModel {
 // #[model(onnx = "/path/to/onnx"), input_shape=(480, 640)]
 // pub struct ExampleModel;
 
-#[startup_system]
-fn initialize(
-    storage: &mut Storage,
-    dispatcher: &ComputeDispatcher
-) -> Result<()> {
-    let mut core = backend::load_core();
-
-    storage.add_resource(Resource::new(
-        MLTask::<ExampleModel>::new(&mut core, dispatcher.clone())
-    ))?;
-
-    Ok(())
-}
-
 #[system]
 pub fn call_model(task: &mut MLTask<ExampleModel>) -> Result<()> {
     // do preprocessing here
     let random_input = Vec::<u8>::new();
-    
+
     // try to start to run inference, if it fails it's already
     //  running inference
     let _ = task.try_infer(&random_input);
 
     // call `task.poll` to process the result
+    Ok(())
+}
+
+#[system]
+pub fn poll_model(task: &mut MLTask<ExampleModel>) -> Result<()> {
+    if Some(res) = task.poll() {
+        // Do some thing with the result
+    }
+
     Ok(())
 }
 
@@ -62,7 +57,8 @@ impl Module for ExampleModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_startup_system(initialize)?
+            .add_task::<MLTask<ExampleModel>>()?
             .add_system(call_model)
-        )
+            .add_system(poll_model))
     }
 }
