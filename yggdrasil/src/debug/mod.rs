@@ -95,6 +95,36 @@ impl DebugContext {
 
         Ok(())
     }
+    pub fn log_camera_matrix(
+        &self,
+        path: impl AsRef<str>,
+        matrix: &crate::camera::matrix::CameraMatrix,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let focal_x = 640.0 * -0.95;
+            let focal_y = 480.0 * -1.27;
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Pinhole::from_focal_length_and_resolution(
+                        [focal_x, focal_y],
+                        [640.0, 480.0],
+                    )
+                    .with_camera_xyz(rerun::components::ViewCoordinates::FRD),
+                )
+                .into_diagnostic()?;
+            self.rec.log(
+                path.as_ref(),
+                &rerun::Transform3D::from_translation((0.2, 0.0, 0.0)),
+            );
+            self.rec
+                .log("top_camera/test", &rerun::Points3D::new([(0.2, 0.0, 0.0)]))
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
 
     /// Set the style for a scalar series.
     ///
