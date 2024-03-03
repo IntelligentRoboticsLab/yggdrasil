@@ -11,11 +11,13 @@ pub mod leds;
 pub mod nao;
 pub mod mltask;
 pub mod primary_state;
+pub mod vision;
 pub mod walk;
 
 pub use miette::Result;
 
-/// The yggdrasil prelude conveniently includes commonly needed types and traits for writing code in the framework
+/// The yggdrasil prelude conveniently includes commonly needed types and traits for writing code
+/// in the framework.
 pub mod prelude {
     pub use crate::{config::ConfigResource, Result};
     pub use odal::Config;

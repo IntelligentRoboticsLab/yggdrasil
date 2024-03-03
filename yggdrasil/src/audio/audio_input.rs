@@ -18,9 +18,9 @@ pub const ACCESS: Access = Access::RWInterleaved;
 
 /// This module provides the following resources to the application:
 /// - [`AudioInput`]
-pub struct AudioInputFilter;
+pub struct AudioInputModule;
 
-impl Module for AudioInputFilter {
+impl Module for AudioInputModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_task::<ComputeTask<Result<AudioSample>>>()?
             .add_system(dispatch_buffer)
@@ -107,7 +107,6 @@ fn dispatch_buffer(
         let Some(task_result) = task.poll() else {
             return Ok(());
         };
-
         audio_input.buffer = task_result?.0;
     }
 

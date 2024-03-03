@@ -1,11 +1,11 @@
 use crate::prelude::*;
-use std::time::{Duration, Instant};
 
 use crate::filter::fsr::Contacts;
 
 use super::sound_manager::{Sound, SoundManager};
+use super::AudioConfig;
 
-const WEE_SOUND_TIMEOUT: Duration = Duration::from_secs(3);
+use std::time::{Duration, Instant};
 
 /// Add the [`WeeSound`] as a resource, and [`wee_sound_system`] as a system to the framework.
 pub struct WeeSoundModule;
@@ -25,8 +25,8 @@ pub struct WeeSound {
 }
 
 impl WeeSound {
-    fn timed_out(&self) -> bool {
-        matches!(self.last_played, Some(instant) if instant.elapsed() < WEE_SOUND_TIMEOUT)
+    fn timed_out(&self, timeout: Duration) -> bool {
+        matches!(self.last_played, Some(instant) if instant.elapsed() < timeout)
     }
 }
 
@@ -35,8 +35,9 @@ pub fn wee_sound_system(
     wee_sound: &mut WeeSound,
     sounds: &mut SoundManager,
     contacts: &Contacts,
+    config: &AudioConfig,
 ) -> Result<()> {
-    if wee_sound.timed_out() {
+    if wee_sound.timed_out(config.wee_sound_timeout) {
         return Ok(());
     }
 

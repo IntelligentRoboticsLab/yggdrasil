@@ -3,7 +3,7 @@ use yggdrasil::{
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, debug::DebugModule,
     filter::FilterModule, game_controller::GameControllerModule, leds::LedsModule, nao::NaoModule,
     mltask::MLModule, prelude::*, primary_state::PrimaryStateModule,
-    walk::WalkingEngineModule,
+    walk::WalkingEngineModule, vision::VisionModule
 };
 
 fn main() -> Result<()> {
@@ -13,20 +13,19 @@ fn main() -> Result<()> {
     let app = App::new()
         .add_module(NaoModule)?
         .add_module(MLModule)?
-        // .add_module(NaoModule)?
-        // .add_module(ConfigModule)?
-        // .add_module(FilterModule)?
-        // .add_module(CameraModule)?
-        // .add_module(BehaviorModule)?
-        // .add_module(LedsModule)?
-        // .add_module(PrimaryStateModule)?
-        // .add_module(GameControllerModule)?
-        // .add_module(WalkingEngineModule)?
-        // .add_module(DebugModule)?
-    ;
+        .add_module(ConfigModule)?
+        .add_module(FilterModule)?
+        .add_module(CameraModule)?
+        .add_module(BehaviorModule)?
+        .add_module(LedsModule)?
+        .add_module(PrimaryStateModule)?
+        .add_module(GameControllerModule)?
+        .add_module(WalkingEngineModule)?
+        .add_module(DebugModule)?
+        .add_module(VisionModule)?;
 
     #[cfg(feature = "alsa")]
-    let app = app.add_module(yggdrasil::audio::sound_manager::SoundManagerModule)?;
+    let app = app.add_module(yggdrasil::audio::AudioModule)?;
 
     app.run()
 }

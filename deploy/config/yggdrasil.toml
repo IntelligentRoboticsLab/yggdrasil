@@ -1,0 +1,63 @@
+[camera.top]
+# The path to the camera device.
+path = "/dev/video-top"
+# The requested width of the image.
+width = 640
+# The requested height of the image.
+height = 480
+# This variable specifies how many images from the top camera can be alive at the same time.
+# It is recommended to have at least one more buffer than is required. This way, the next frame
+# from the camera can already be stored in a buffer, reducing the latency between destructing a
+# `TopImage` and being able to fetch the newest `TopImage`.
+num_buffers = 3
+# Whether the image should be flipped horizontally.
+flip_horizontally = true
+# Whether the image should be flipped vertically.
+flip_vertically = true
+
+[camera.bottom]
+# The path to the camera device.
+path = "/dev/video-top"
+# The requested width of the image.
+width = 640
+# The requested height of the image.
+height = 480
+# This variable specifies how many images from the bottom camera can be alive at the same time.
+# It is recommended to have at least one more buffer than is required. This way, the next frame
+# from the camera can already be stored in a buffer, reducing the latency between destructing a
+# `BottomImage` and being able to fetch the newest `BottomImage`.
+num_buffers = 3
+# Whether the image should be flipped horizontally.
+flip_horizontally = false
+# Whether the image should be flipped vertically.
+flip_vertically = false
+
+[filter.button]
+# The threshold for a button to be considered pressed.
+activation_threshold = 0.5
+# The time (in ms) a button needs to be held down, in order to be considered held down.
+held_duration_threshold = 500
+
+[filter.fsr]
+# Threshold for ground contact detection using average FSR sensor values from both feet.
+ground_contact_threshold = 0.01
+
+[primary_state]
+# Time duration between chest blinks in ms.
+chest_blink_interval = 1000
+
+[game_controller]
+# Delay (in ms) between the status updates the robot sends to the game-controller.
+game_controller_return_delay = 500
+# The maximum time (in ms) allowed between game-controller messages.
+# If the robot doesn't receive a game-controller message for this amount of time,
+# it will consider the connection to the game-controller as "lost".
+game_controller_timeout = 5000
+# TODO: Make this an environment variable.
+player_number = 2
+# TODO: Make this an environment variable.
+team_number = 8
+
+[vision.scan_lines]
+horizontal_scan_line_interval = 16
+vertical_scan_line_interval = 16

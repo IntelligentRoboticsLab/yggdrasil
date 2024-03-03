@@ -1,14 +1,16 @@
-use std::net::Ipv4Addr;
+#[cfg(feature = "rerun")]
+use std::convert::Into;
 
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
-use nidhogg::types::Color;
 
-use crate::{
-    camera::Image,
-    nao::{Cycle, RobotInfo},
-    prelude::*,
-};
+use nidhogg::types::RgbU8;
+use std::net::Ipv4Addr;
+
+use crate::{camera::Image, nao::Cycle, prelude::*};
+
+#[cfg(not(feature = "local"))]
+use crate::{config::yggdrasil::YggdrasilConfig, nao::RobotInfo};
 
 /// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
 ///
@@ -103,7 +105,7 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         name: impl AsRef<str>,
-        color: Color,
+        color: RgbU8,
         line_width: f32,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
@@ -113,11 +115,7 @@ impl DebugContext {
                 .log_timeless(
                     path.as_ref(),
                     &rerun::SeriesLine::new()
-                        .with_color([
-                            (color.red * 255.0) as u8,
-                            (color.green * 255.0) as u8,
-                            (color.blue * 255.0) as u8,
-                        ])
+                        .with_color(Into::<[u8; 3]>::into(color))
                         .with_name(name.as_ref())
                         .with_width(line_width),
                 )
@@ -147,13 +145,37 @@ impl DebugContext {
 
         Ok(())
     }
+
+    pub fn log_text(&self, path: impl AsRef<str>, text: String) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(path.as_ref(), &rerun::TextLog::new(text))
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
 }
 
 #[startup_system]
-fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher, robot_info: &RobotInfo) -> Result<()> {
+fn init_rerun(
+    storage: &mut Storage,
+    ad: &AsyncDispatcher,
+    #[cfg(not(feature = "local"))] robot_info: &RobotInfo,
+    #[cfg(not(feature = "local"))] yggdrasil_config: &YggdrasilConfig,
+) -> Result<()> {
+    #[cfg(feature = "local")]
+    let server_address = Ipv4Addr::LOCALHOST;
     // Manually set the server address to the robot's IP address, instead of 0.0.0.0
     // to ensure the rerun server prints the correct connection URL on startup
-    let server_address = Ipv4Addr::new(10, 0, 8, robot_info.robot_id as u8);
+    #[cfg(not(feature = "local"))]
+    let server_address = Ipv4Addr::new(
+        10,
+        0,
+        yggdrasil_config.game_controller.team_number,
+        robot_info.robot_id as u8,
+    );
 
     // init debug context with 5% of the total memory, as cache size limit.
     let ctx = DebugContext::init("yggdrasil", server_address, 0.05, ad)?;

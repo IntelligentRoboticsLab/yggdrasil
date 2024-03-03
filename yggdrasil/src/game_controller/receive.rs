@@ -1,22 +1,16 @@
 use super::GameControllerData;
 
+use super::GameControllerConfig;
 use bifrost::communication::GameControllerMessage;
+
 use bifrost::serialization::Decode;
 use miette::IntoDiagnostic;
 
-use std::{
-    io,
-    mem::size_of,
-    net::SocketAddr,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{io, mem::size_of, net::SocketAddr, sync::Arc, time::Instant};
 
 use tokio::net::UdpSocket;
 
 use crate::prelude::*;
-
-const GAME_CONTROLLER_TIMEOUT: Duration = Duration::from_millis(5000);
 
 pub(super) struct GameControllerReceiveModule;
 
@@ -142,10 +136,11 @@ fn receive_system(
 fn check_game_controller_connection_system(
     game_controller_message: &mut Option<GameControllerMessage>,
     game_controller_data: &mut GameControllerData,
+    config: &GameControllerConfig,
 ) -> Result<()> {
     if game_controller_data
         .game_controller_address
-        .is_some_and(|(_, timestamp)| timestamp.elapsed() > GAME_CONTROLLER_TIMEOUT)
+        .is_some_and(|(_, timestamp)| timestamp.elapsed() > config.game_controller_timeout)
     {
         tracing::warn!("Lost connection to the game controller");
 

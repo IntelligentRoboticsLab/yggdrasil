@@ -4,7 +4,10 @@ use std::time::{Duration, Instant};
 
 use nidhogg::NaoControlMessage;
 
-pub use nidhogg::types::{Color, FillExt, LeftEar, LeftEye, RightEar, RightEye, Skull};
+pub use nidhogg::types::{
+    color::{self, RgbF32},
+    FillExt, LeftEar, LeftEye, RightEar, RightEye, Skull,
+};
 
 use crate::{behavior, nao};
 
@@ -34,15 +37,15 @@ pub struct Leds {
     /// LEDs in the right ear
     pub right_ear: RightEar,
     /// LED in the chest
-    pub chest: Color,
+    pub chest: RgbF32,
     /// LEDs in the left eye
     pub left_eye: LeftEye,
     /// LEDs in the right eye
     pub right_eye: RightEye,
     /// LED in the left foot
-    pub left_foot: Color,
+    pub left_foot: RgbF32,
     /// LED in the right foot
-    pub right_foot: Color,
+    pub right_foot: RgbF32,
     /// LEDs on the head
     pub skull: Skull,
     /// Keeps track of information for letting the chest LED blink.
@@ -52,7 +55,7 @@ pub struct Leds {
 
 #[derive(Clone)]
 struct ChestBlink {
-    color: Color,
+    color: RgbF32,
     interval: Duration,
     on: bool,
     start: Instant,
@@ -60,7 +63,7 @@ struct ChestBlink {
 
 impl Leds {
     /// Makes the LED in the chest blink a given color with a given interval.
-    pub fn set_chest_blink(&mut self, color: Color, interval: Duration) {
+    pub fn set_chest_blink(&mut self, color: RgbF32, interval: Duration) {
         match &mut self.chest_blink {
             Some(blink) => {
                 // We can just update the existing blink
@@ -104,7 +107,7 @@ pub fn write_led_values(leds: &mut Leds, control_message: &mut NaoControlMessage
         if blink.on {
             control_message.chest = blink.color;
         } else {
-            control_message.chest = Color::EMPTY;
+            control_message.chest = color::f32::EMPTY;
         }
     }
 
