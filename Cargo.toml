@@ -19,7 +19,7 @@ miette = "5.10.0"
 nalgebra = "0.32.4"
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
 num = "0.4.0"
-openvino = "0.6.0"
+openvino = { git = "https://github.com/YukumoHunter/openvino-rs.git", branch = "evil-hack" }
 petgraph = "0.6.3"
 proc-macro2 = "1.0.78"
 quote = "1.0.35"

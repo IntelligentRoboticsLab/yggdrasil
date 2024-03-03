@@ -2,7 +2,7 @@
 use yggdrasil::{
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, debug::DebugModule,
     filter::FilterModule, game_controller::GameControllerModule, leds::LedsModule, nao::NaoModule,
-    neural_networks::ExampleModule, prelude::*, primary_state::PrimaryStateModule,
+    mltask::MLModule, prelude::*, primary_state::PrimaryStateModule,
     walk::WalkingEngineModule,
 };
 
@@ -12,7 +12,7 @@ fn main() -> Result<()> {
 
     let app = App::new()
         .add_module(NaoModule)?
-        .add_module(ExampleModule)?
+        .add_module(MLModule)?
         // .add_module(NaoModule)?
         // .add_module(ConfigModule)?
         // .add_module(FilterModule)?
