@@ -17,7 +17,7 @@ flip_vertically = true
 
 [camera.bottom]
 # The path to the camera device.
-path = "/dev/video-top"
+path = "/dev/video-bottom"
 # The requested width of the image.
 width = 640
 # The requested height of the image.
