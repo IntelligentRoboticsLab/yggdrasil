@@ -57,6 +57,7 @@ impl PixelColor {
 }
 
 /// The horizontal and vertical scan-lines for an image.
+#[derive(Clone)]
 pub struct ScanGrid {
     image: Image,
     horizontal: ScanLines,
@@ -196,6 +197,7 @@ fn make_vertical_ids(image: &Image, scan_line_interval: usize) -> Vec<usize> {
 }
 
 /// A set of scan-lines stored in row-major order, with the ids of the subsampled indices from the original image.
+#[derive(Clone)]
 pub struct ScanLines {
     pixels: Vec<PixelColor>,
     ids: Vec<usize>,
