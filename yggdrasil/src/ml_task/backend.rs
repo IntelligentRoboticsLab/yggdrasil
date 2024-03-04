@@ -39,7 +39,7 @@ impl<M: MlModel> MlBackend<M> {
 
         // load model
         let model = core
-            .read_network_from_file(M::onnx_path(), "AUTO")
+            .read_network_from_file(M::ONNX_PATH, "AUTO")
             .into_diagnostic()
             .wrap_err("Failed to load ML .onnx file")?;
         let exec = Mutex::new(
@@ -91,7 +91,7 @@ impl MlInferRequest {
         let blob = openvino::Blob::new(
             &openvino::TensorDesc::new(
                 openvino::Layout::NCHW,
-                &M::input_shape(),
+                M::INPUT_SHAPE,
                 openvino::Precision::FP32,
             ),
             input,

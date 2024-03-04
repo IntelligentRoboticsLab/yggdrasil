@@ -14,10 +14,10 @@ use tyr::{
 /// A ML model type. For now, only models
 /// with 32 bit floating point precision work properly.
 pub trait MlModel {
-    /// Returns a path to the model parameters.
-    fn onnx_path() -> &'static str;
-    /// Returns the dimensions of the input.
-    fn input_shape() -> Vec<usize>;
+    /// Path to the model parameters.
+    const ONNX_PATH: &'static str;
+    /// Dimensions of the input.
+    const INPUT_SHAPE: &'static [usize];
 }
 
 /// Machine learning (ML) task that runs ML models in a [`ComputeTask`].

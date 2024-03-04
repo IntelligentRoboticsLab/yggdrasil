@@ -15,13 +15,8 @@ struct ChatGPT4;
 
 // implement MLModel to make it compatible with the rest of the system
 impl MlModel for ChatGPT4 {
-    fn onnx_path() -> &'static str {
-        "microsoft/gpt4.onnx"
-    }
-
-    fn input_shape() -> Vec<usize> {
-        vec![256]
-    }
+    const ONNX_PATH: &'static str = "microsoft/gpt4.onnx";
+    const INPUT_SHAPE: &'static [usize] = &[256];
 }
 
 struct Prompt(Option<String>);
