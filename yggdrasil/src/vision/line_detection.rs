@@ -34,6 +34,7 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
         || PixelColor::classify_yuv_pixel(y2, u, v) == PixelColor::White
 }
 
+// TODO: Replace with proper field-boundary detection.
 const MIN_ROW: usize = 166;
 // const MIN_ROW: usize = 226;
 // const MIN_ROW: usize = 170;
@@ -48,7 +49,6 @@ fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
                 .line_ids()
                 .get_unchecked(horizontal_line_id)
         };
-        // TODO: Delete this if statement and use proper field boundary detection.
         if row_id < MIN_ROW {
             continue;
         }
