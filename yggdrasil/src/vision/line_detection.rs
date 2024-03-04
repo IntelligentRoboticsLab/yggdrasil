@@ -1,4 +1,4 @@
-use std::{mem, time::Instant};
+use std::mem;
 
 use crate::camera::Image;
 use crate::debug::DebugContext;
