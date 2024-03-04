@@ -8,7 +8,7 @@ use crate::camera::Image;
 use crate::debug::DebugContext;
 use crate::prelude::*;
 
-use super::scan_lines::{BottomScanGrid, PixelColor, TopScanGrid};
+use super::scan_lines::{BottomScanGrid, PixelColor, ScanGrid, TopScanGrid};
 
 pub struct LineDetectionModule;
 
@@ -40,18 +40,13 @@ const MIN_ROW: usize = 166;
 // const MIN_ROW: usize = 226;
 // const MIN_ROW: usize = 170;
 
-#[system]
-fn line_detection_system(
-    top_scan_grid: &mut TopScanGrid,
-    bottom_scan_grid: &mut BottomScanGrid,
-    dbg: &DebugContext,
-) -> Result<()> {
+fn detect_lines(scan_grid: &ScanGrid) -> Result<Vec<Line>> {
     let start = Instant::now();
     let mut points = Vec::with_capacity(300);
 
-    for horizontal_line_id in 0..top_scan_grid.horizontal().line_ids().len() {
+    for horizontal_line_id in 0..scan_grid.horizontal().line_ids().len() {
         let row_id = *unsafe {
-            top_scan_grid
+            scan_grid
                 .horizontal()
                 .line_ids()
                 .get_unchecked(horizontal_line_id)
@@ -60,7 +55,7 @@ fn line_detection_system(
         if row_id < MIN_ROW {
             continue;
         }
-        let row = top_scan_grid.horizontal().line(horizontal_line_id);
+        let row = scan_grid.horizontal().line(horizontal_line_id);
 
         let mut start_opt = Option::<usize>::None;
         for column_id in 0..row.len() {
@@ -77,14 +72,14 @@ fn line_detection_system(
         }
     }
 
-    for vertical_line_id in 0..top_scan_grid.vertical().line_ids().len() {
+    for vertical_line_id in 0..scan_grid.vertical().line_ids().len() {
         let column_id = *unsafe {
-            top_scan_grid
+            scan_grid
                 .vertical()
                 .line_ids()
                 .get_unchecked(vertical_line_id)
         };
-        let column = top_scan_grid.vertical().line(vertical_line_id);
+        let column = scan_grid.vertical().line(vertical_line_id);
 
         let mut start_opt = None;
         for row_id in MIN_ROW..column.len() {
@@ -122,7 +117,7 @@ fn line_detection_system(
             line.points.push(*point);
 
             let (slope, intercept) = linreg::linear_regression_of::<f32, f32, f32>(&line.points)
-                .unwrap_or((top_scan_grid.height() as f32, 0f32));
+                .unwrap_or((scan_grid.height() as f32, 0f32));
             let start_column = line
                 .points
                 .iter()
@@ -152,11 +147,11 @@ fn line_detection_system(
             if end_row - start_row > end_column - start_column {
                 for row in start_row as usize..end_row as usize {
                     let column = (row as f32 - intercept) / slope;
-                    if column < 0f32 || column >= top_scan_grid.width() as f32 {
+                    if column < 0f32 || column >= scan_grid.width() as f32 {
                         continue;
                     }
 
-                    if !is_white(column as usize, row, top_scan_grid.image()) {
+                    if !is_white(column as usize, row, scan_grid.image()) {
                         if allowed_mistakes == 0 {
                             break;
                         }
@@ -166,11 +161,11 @@ fn line_detection_system(
             } else {
                 for column in start_column as usize..end_column as usize {
                     let row: f32 = slope * column as f32 + intercept;
-                    if row < 0f32 || row >= top_scan_grid.height() as f32 {
+                    if row < 0f32 || row >= scan_grid.height() as f32 {
                         continue;
                     }
 
-                    if !is_white(column, row as usize, top_scan_grid.image()) {
+                    if !is_white(column, row as usize, scan_grid.image()) {
                         if allowed_mistakes == 0 {
                             break;
                         }
@@ -198,9 +193,15 @@ fn line_detection_system(
 
     println!("elapsed: {:?}", start.elapsed());
 
+    Ok(lines)
+}
+
+fn draw_lines(dbg: &DebugContext, lines: &[Line], scan_grid: &ScanGrid) -> Result<()> {
     let mut all_line_points = Vec::<(f32, f32)>::new();
 
-    for line in lines.iter_mut() {
+    for line in lines {
+        let (slope, intercept) = linreg::linear_regression_of::<f32, f32, f32>(&line.points)
+            .unwrap_or((scan_grid.height() as f32, 0f32));
         let start_column = line
             .points
             .iter()
@@ -225,35 +226,19 @@ fn line_detection_system(
             .fold(f32::NEG_INFINITY, |row1, &row2| row1.max(row2));
         assert!(start_row <= end_row);
 
-        let Ok((slope, intercept)) = linreg::linear_regression_of::<f32, f32, f32>(&line.points)
-        else {
-            line.points
-                .sort_by(|(_col1, row1), (_col2, row2)| row1.partial_cmp(row2).unwrap());
-
-            let start_row = line.points.first().unwrap().1;
-            let end_row = line.points.last().unwrap().1;
-            let column = line.points.first().unwrap().1;
-
-            for row in start_row as usize..end_row as usize {
-                all_line_points.push((column as f32, row as f32));
-            }
-
-            continue;
-        };
-
         if end_row - start_row > end_column - start_column {
             for row in start_row as usize..end_row as usize {
                 let column = (row as f32 - intercept) / slope;
-                if column < 0f32 || column >= 640f32 {
+                if column < 0f32 || column >= scan_grid.width() as f32 {
                     continue;
                 }
 
-                all_line_points.push((column as f32, row as f32));
+                all_line_points.push((column, row as f32));
             }
         } else {
             for column in start_column as usize..end_column as usize {
                 let row = slope * column as f32 + intercept;
-                if row < 0f32 || row >= 480f32 {
+                if row < 0f32 || row >= scan_grid.height() as f32 {
                     continue;
                 }
 
@@ -262,16 +247,23 @@ fn line_detection_system(
         }
     }
 
-    // dbg.log_points2d_for_image(
-    //     "top_camera/image",
-    //     &points_clone,
-    //     top_scan_grid.image().clone(),
-    // )?;
     dbg.log_points2d_for_image(
         "top_camera/image",
         &all_line_points,
-        top_scan_grid.image().clone(),
+        scan_grid.image().clone(),
     )?;
+
+    Ok(())
+}
+
+#[system]
+fn line_detection_system(
+    top_scan_grid: &mut TopScanGrid,
+    bottom_scan_grid: &mut BottomScanGrid,
+    dbg: &DebugContext,
+) -> Result<()> {
+    let lines = detect_lines(top_scan_grid)?;
+    draw_lines(dbg, &lines, top_scan_grid)?;
 
     Ok(())
 }
