@@ -4,13 +4,17 @@
 //! and logic for processing in- and output is written.
 
 use miette::Result;
-use tyr::{system, tasks::{TaskConfig, TaskModule}, App, Resource};
-use yggdrasil::mltask::{MLModel, MLModule, MLTask, MLTaskResource};
+use tyr::{
+    system,
+    tasks::{TaskConfig, TaskModule},
+    App, Resource,
+};
+use yggdrasil::ml_task::{MlModel, MlModule, MlTask, MlTaskResource};
 
 struct ChatGPT4;
 
 // implement MLModel to make it compatible with the rest of the system
-impl MLModel for ChatGPT4 {
+impl MlModel for ChatGPT4 {
     fn onnx_path() -> &'static str {
         "microsoft/gpt4.onnx"
     }
@@ -25,9 +29,9 @@ struct Prompt(Option<String>);
 #[system]
 fn process_chat(
     // ML model (note the MLTask wrapper)
-    model: &mut MLTask<ChatGPT4>,
+    model: &mut MlTask<ChatGPT4>,
     // model input
-    prompt: &mut Prompt
+    prompt: &mut Prompt,
 ) -> Result<()> {
     // check if input is available
     if let Some(input) = prompt.0.take() {
@@ -52,7 +56,7 @@ fn process_chat(
         // note that inference might have failed
         let bytes = match output {
             Ok(bytes) => bytes,
-            Err(e) => return Err(e.wrap_err("chatGPT failed to run!"))
+            Err(e) => return Err(e.wrap_err("chatGPT failed to run!")),
         };
 
         // convert output to desired type
@@ -67,14 +71,14 @@ fn process_chat(
 fn main() -> Result<()> {
     let task_config = TaskConfig {
         async_threads: 1,
-        compute_threads: 1
+        compute_threads: 1,
     };
 
     App::new()
         .add_resource(Resource::new(Prompt(Some("input".into()))))?
         .add_resource(Resource::new(task_config))?
         .add_module(TaskModule)?
-        .add_module(MLModule)?
+        .add_module(MlModule)?
         // add the ML model
         .add_ml_task::<ChatGPT4>()?
         // use the ML model
