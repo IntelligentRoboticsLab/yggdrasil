@@ -1,20 +1,18 @@
-use std::{
-    f32::{INFINITY, NEG_INFINITY},
-    mem,
-    time::Instant,
-};
+use std::{mem, time::Instant};
 
 use crate::camera::Image;
 use crate::debug::DebugContext;
 use crate::prelude::*;
 
-use super::scan_lines::{BottomScanGrid, PixelColor, ScanGrid, TopScanGrid};
+use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
 pub struct LineDetectionModule;
 
 impl Module for LineDetectionModule {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app.add_system(line_detection_system))
+        app.add_system(line_detection_system)
+            .add_task::<ComputeTask<Result<Vec<Line>>>>()?
+            .add_startup_system(start_line_detection_task)
     }
 }
 
@@ -29,11 +27,11 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
 
     let y1 = image.yuyv_image()[offset..offset + 4][0];
     let u = image.yuyv_image()[offset..offset + 4][1];
+    let y2 = image.yuyv_image()[offset..offset + 4][2];
     let v = image.yuyv_image()[offset..offset + 4][3];
 
-    let color = PixelColor::classify_yuv_pixel(y1, u, v);
-
-    color == PixelColor::White
+    PixelColor::classify_yuv_pixel(y1, u, v) == PixelColor::White
+        || PixelColor::classify_yuv_pixel(y2, u, v) == PixelColor::White
 }
 
 const MIN_ROW: usize = 166;
@@ -98,10 +96,9 @@ fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
     Ok(points)
 }
 
-fn detect_lines(scan_grid: &ScanGrid) -> Result<Vec<Line>> {
-    let start = Instant::now();
-
-    let mut points = extract_line_points(scan_grid)?;
+fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
+    let mut points = extract_line_points(&scan_grid)?;
+    points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
     let mut points_next = Vec::<(f32, f32)>::with_capacity(300);
 
     let mut lines = Vec::<Line>::new();
@@ -184,22 +181,21 @@ fn detect_lines(scan_grid: &ScanGrid) -> Result<Vec<Line>> {
                 points_next.push(*point);
             }
         }
-        if line.points.len() > 2 {
+        if line.points.len() > 3 {
             lines.push(line);
         } else {
             points_next.extend(line.points.iter().skip(1));
+            points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
         }
 
         points.clear();
         mem::swap(&mut points, &mut points_next);
     }
 
-    println!("elapsed: {:?}", start.elapsed());
-
     Ok(lines)
 }
 
-fn draw_lines(dbg: &DebugContext, lines: &[Line], scan_grid: &ScanGrid) -> Result<()> {
+fn draw_lines(dbg: &DebugContext, lines: &[Line], scan_grid: ScanGrid) -> Result<()> {
     let mut all_line_points = Vec::<(f32, f32)>::new();
 
     for line in lines {
@@ -259,14 +255,37 @@ fn draw_lines(dbg: &DebugContext, lines: &[Line], scan_grid: &ScanGrid) -> Resul
     Ok(())
 }
 
+#[startup_system]
+fn start_line_detection_task(
+    _storage: &mut Storage,
+    top_scan_grid: &mut TopScanGrid,
+    detect_lines_task: &mut ComputeTask<Result<Vec<Line>>>,
+) -> Result<()> {
+    let top_scan_grid = top_scan_grid.clone();
+    detect_lines_task
+        .try_spawn(move || detect_lines(top_scan_grid))
+        .unwrap();
+
+    Ok(())
+}
+
 #[system]
 fn line_detection_system(
     top_scan_grid: &mut TopScanGrid,
-    bottom_scan_grid: &mut BottomScanGrid,
     dbg: &DebugContext,
+    detect_lines_task: &mut ComputeTask<Result<Vec<Line>>>,
 ) -> Result<()> {
-    let lines = detect_lines(top_scan_grid)?;
-    draw_lines(dbg, &lines, top_scan_grid)?;
+    let start = Instant::now();
+    if let Some(detect_lines_result) = detect_lines_task.poll() {
+        let lines = detect_lines_result?;
+        draw_lines(dbg, &lines, top_scan_grid.clone())?;
+
+        let top_scan_grid = top_scan_grid.clone();
+        detect_lines_task
+            .try_spawn(move || detect_lines(top_scan_grid))
+            .unwrap();
+    }
+    println!("elapsed: {:?}", start.elapsed());
 
     Ok(())
 }
