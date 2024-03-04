@@ -55,6 +55,7 @@ fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
         let row = scan_grid.horizontal().line(horizontal_line_id);
 
         let mut start_opt = Option::<usize>::None;
+        #[allow(clippy::needless_range_loop)]
         for column_id in 0..row.len() {
             if row[column_id] == PixelColor::White {
                 if start_opt.is_none() {
@@ -79,6 +80,7 @@ fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
         let column = scan_grid.vertical().line(vertical_line_id);
 
         let mut start_opt = None;
+        #[allow(clippy::needless_range_loop)]
         for row_id in MIN_ROW..column.len() {
             if column[row_id] == PixelColor::White {
                 if start_opt.is_none() {
