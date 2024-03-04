@@ -114,35 +114,69 @@ fn line_detection_system(
         };
 
         for point in points.iter().skip(1) {
-            if (line.points.last().unwrap().0 - point.0).abs() > 40f32 {
+            if (line.points.last().unwrap().0 - point.0).abs() > 20f32 {
                 points_next.push(*point);
                 continue;
             }
             let last_point = *line.points.last().unwrap();
             line.points.push(*point);
 
-            let Ok((slope, intercept)) =
-                linreg::linear_regression_of::<f32, f32, f32>(&line.points)
-            else {
-                continue;
-            };
+            // let Ok((slope, intercept)) =
+            //     linreg::linear_regression_of::<f32, f32, f32>(&line.points)
+            // else {
+            //     // eprintln!("DETECTION HERE");
+            //
+            //     continue;
+            // };
+            let (slope, intercept) =
+                match linreg::linear_regression_of::<f32, f32, f32>(&line.points) {
+                    Ok((slope, intercept)) => (slope, intercept),
+                    Err(err) => match err {
+                        linreg::Error::TooSteep => (480f32, 0f32),
+                        linreg::Error::Mean => todo!(),
+                        linreg::Error::InputLenDif => todo!(),
+                        linreg::Error::NoElements => todo!(),
+                    },
+                };
 
             let start_column = line.points.first().unwrap().0;
             let end_column = point.0;
             assert!(start_column <= end_column);
 
-            let mut allowed_mistakes = 4u32;
-            for column in start_column as usize..end_column as usize {
-                let row: f32 = slope * column as f32 + intercept;
-                if row < 0f32 || row >= 480f32 {
-                    continue;
-                }
+            let mut points_clone = line.points.clone();
+            points_clone.sort_by(|(_col1, row1), (_col2, row2)| row1.partial_cmp(row2).unwrap());
+            let start_row = points_clone.first().unwrap().1;
+            let end_row = points_clone.last().unwrap().1;
 
-                if !is_white(column, row as usize, top_scan_grid.image()) {
-                    if allowed_mistakes == 0 {
-                        break;
+            let mut allowed_mistakes = 4u32;
+
+            if end_row - start_row > end_column - start_column {
+                for row in start_row as usize..end_row as usize {
+                    let column = (row as f32 - intercept) / slope;
+                    if column < 0f32 || column >= 640f32 {
+                        continue;
                     }
-                    allowed_mistakes -= 1;
+
+                    if !is_white(column as usize, row as usize, top_scan_grid.image()) {
+                        if allowed_mistakes == 0 {
+                            break;
+                        }
+                        allowed_mistakes -= 1;
+                    }
+                }
+            } else {
+                for column in start_column as usize..end_column as usize {
+                    let mut row: f32 = slope * column as f32 + intercept;
+                    if row < 0f32 || row >= 480f32 {
+                        continue;
+                    }
+
+                    if !is_white(column, row as usize, top_scan_grid.image()) {
+                        if allowed_mistakes == 0 {
+                            break;
+                        }
+                        allowed_mistakes -= 1;
+                    }
                 }
             }
             if allowed_mistakes == 0 {
@@ -170,42 +204,68 @@ fn line_detection_system(
 
     let mut all_line_points = Vec::<(f32, f32)>::new();
 
-    for mut line in lines.iter() {
+    for mut line in lines.iter_mut() {
         // eprintln!("len:{}", line.points.len());
         let start_column = line.points.first().unwrap().0;
         let end_column = line.points.last().unwrap().0;
         assert!(start_column <= end_column);
 
+        let mut points_clone = line.points.clone();
+        points_clone.sort_by(|(_col1, row1), (_col2, row2)| row1.partial_cmp(row2).unwrap());
+        let start_row = points_clone.first().unwrap().1;
+        let end_row = points_clone.last().unwrap().1;
+
         let Ok((slope, intercept)) = linreg::linear_regression_of::<f32, f32, f32>(&line.points)
         else {
+            // eprintln!("DRAWING HERE");
+            line.points
+                .sort_by(|(_col1, row1), (_col2, row2)| row1.partial_cmp(row2).unwrap());
+
+            let start_row = line.points.first().unwrap().1;
+            let end_row = line.points.last().unwrap().1;
+            let column = line.points.first().unwrap().1;
+
+            for row in start_row as usize..end_row as usize {
+                all_line_points.push((column as f32, row as f32));
+            }
+
             continue;
         };
 
-        for column in start_column as usize..end_column as usize {
-            let row = slope * column as f32 + intercept;
+        if end_row - start_row > end_column - start_column {
+            for row in start_row as usize..end_row as usize {
+                let column = (row as f32 - intercept) / slope;
+                if column < 0f32 || column >= 640f32 {
+                    continue;
+                }
 
-            all_line_points.push((column as f32, row));
+                all_line_points.push((column as f32, row as f32));
+            }
+        } else {
+            for column in start_column as usize..end_column as usize {
+                let row = slope * column as f32 + intercept;
+                if row < 0f32 || row >= 480f32 {
+                    continue;
+                }
+
+                all_line_points.push((column as f32, row));
+            }
         }
 
         // all_line_points.extend(&line.points[0..4]);
         // all_line_points.extend(&line.points);
     }
 
-    // dbg.log_points2d_for_image(
-    //     "top_camera/image",
-    //     &points_clone,
-    //     top_scan_grid.image().clone(),
-    // )?;
-    // dbg.log_points2d_for_image(
-    //     "top_camera/image",
-    //     &points_clone,
-    //     top_scan_grid.image().clone(),
-    // )?;
     dbg.log_points2d_for_image(
         "top_camera/image",
-        &all_line_points,
+        &points_clone,
         top_scan_grid.image().clone(),
     )?;
+    // dbg.log_points2d_for_image(
+    //     "top_camera/image",
+    //     &all_line_points,
+    //     top_scan_grid.image().clone(),
+    // )?;
 
     Ok(())
 }
