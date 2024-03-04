@@ -1,4 +1,8 @@
-use std::{mem, time::Instant};
+use std::{
+    f32::{INFINITY, NEG_INFINITY},
+    mem,
+    time::Instant,
+};
 
 use crate::camera::Image;
 use crate::debug::DebugContext;
@@ -119,7 +123,6 @@ fn line_detection_system(
 
             let (slope, intercept) = linreg::linear_regression_of::<f32, f32, f32>(&line.points)
                 .unwrap_or((top_scan_grid.height() as f32, 0f32));
-
             let start_column = line
                 .points
                 .iter()
@@ -149,11 +152,11 @@ fn line_detection_system(
             if end_row - start_row > end_column - start_column {
                 for row in start_row as usize..end_row as usize {
                     let column = (row as f32 - intercept) / slope;
-                    if column < 0f32 || column >= 640f32 {
+                    if column < 0f32 || column >= top_scan_grid.width() as f32 {
                         continue;
                     }
 
-                    if !is_white(column as usize, row as usize, top_scan_grid.image()) {
+                    if !is_white(column as usize, row, top_scan_grid.image()) {
                         if allowed_mistakes == 0 {
                             break;
                         }
@@ -162,8 +165,8 @@ fn line_detection_system(
                 }
             } else {
                 for column in start_column as usize..end_column as usize {
-                    let mut row: f32 = slope * column as f32 + intercept;
-                    if row < 0f32 || row >= 480f32 {
+                    let row: f32 = slope * column as f32 + intercept;
+                    if row < 0f32 || row >= top_scan_grid.height() as f32 {
                         continue;
                     }
 
@@ -197,7 +200,7 @@ fn line_detection_system(
 
     let mut all_line_points = Vec::<(f32, f32)>::new();
 
-    for mut line in lines.iter_mut() {
+    for line in lines.iter_mut() {
         let start_column = line
             .points
             .iter()
