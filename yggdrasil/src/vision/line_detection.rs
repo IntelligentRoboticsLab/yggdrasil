@@ -40,8 +40,7 @@ const MIN_ROW: usize = 166;
 // const MIN_ROW: usize = 226;
 // const MIN_ROW: usize = 170;
 
-fn detect_lines(scan_grid: &ScanGrid) -> Result<Vec<Line>> {
-    let start = Instant::now();
+fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
     let mut points = Vec::with_capacity(300);
 
     for horizontal_line_id in 0..scan_grid.horizontal().line_ids().len() {
@@ -96,6 +95,13 @@ fn detect_lines(scan_grid: &ScanGrid) -> Result<Vec<Line>> {
         }
     }
 
+    Ok(points)
+}
+
+fn detect_lines(scan_grid: &ScanGrid) -> Result<Vec<Line>> {
+    let start = Instant::now();
+
+    let mut points = extract_line_points(scan_grid)?;
     let mut points_next = Vec::<(f32, f32)>::with_capacity(300);
 
     let mut lines = Vec::<Line>::new();
