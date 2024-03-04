@@ -275,7 +275,6 @@ fn line_detection_system(
     dbg: &DebugContext,
     detect_lines_task: &mut ComputeTask<Result<Vec<Line>>>,
 ) -> Result<()> {
-    let start = Instant::now();
     if let Some(detect_lines_result) = detect_lines_task.poll() {
         let lines = detect_lines_result?;
         draw_lines(dbg, &lines, top_scan_grid.clone())?;
@@ -285,7 +284,6 @@ fn line_detection_system(
             .try_spawn(move || detect_lines(top_scan_grid))
             .unwrap();
     }
-    println!("elapsed: {:?}", start.elapsed());
 
     Ok(())
 }
