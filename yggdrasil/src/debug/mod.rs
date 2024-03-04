@@ -6,7 +6,7 @@ use nidhogg::types::RgbU8;
 
 use crate::{camera::Image, nao::Cycle, prelude::*};
 
-#[cfg(not(feature = "rerun"))]
+#[cfg(not(feature = "local"))]
 use crate::{config::yggdrasil::YggdrasilConfig, nao::RobotInfo};
 
 /// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
