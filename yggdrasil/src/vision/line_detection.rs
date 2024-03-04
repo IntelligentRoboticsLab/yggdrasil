@@ -187,10 +187,7 @@ fn detect_lines(scan_grid: &ScanGrid) -> Result<Vec<Line>> {
         if line.points.len() > 2 {
             lines.push(line);
         } else {
-            line.points
-                .iter()
-                .skip(1)
-                .for_each(|point| points_next.push(*point));
+            points_next.extend(line.points.iter().skip(1));
         }
 
         points.clear();
