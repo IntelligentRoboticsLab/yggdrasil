@@ -1,7 +1,10 @@
+use std::{net::Ipv4Addr, time::Instant};
+
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 use nidhogg::types::RgbU8;
-use std::{net::Ipv4Addr, time::Instant};
+#[cfg(feature = "rerun")]
+use std::convert::Into;
 
 use crate::{camera::Image, nao::Cycle, prelude::*};
 
