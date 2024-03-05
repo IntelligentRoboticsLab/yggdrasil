@@ -5,6 +5,24 @@ use std::path::Path;
 use std::time::SystemTime;
 use tyr::prelude::*;
 
+use super::motion_types::ComplexMotion;
+
+// using an enum currently to be able to have both the complexmotion and normal motion as options for activemotion
+#[derive(Clone)]
+pub enum ActiveTypes {
+    Normal(ActiveMotion),
+    Complex(ActiveComplexMotion),
+}
+
+// exactly the same as activemotion, just for complex motions. Will be changed
+#[derive(Clone)]
+pub struct ActiveComplexMotion {
+    /// Current complex motion.
+    pub complexmotion: ComplexMotion,
+    /// Keeps track of when a motion started.
+    pub starting_time: SystemTime,
+}
+
 #[derive(Clone)]
 pub struct ActiveMotion {
     /// Current motion.
@@ -17,7 +35,7 @@ pub struct ActiveMotion {
 /// about the motion that is currently being executed.
 pub struct MotionManager {
     /// Keeps track of information about the active motion.
-    pub active_motion: Option<ActiveMotion>,
+    pub active_motion: Option<ActiveTypes>,
     /// Keeps track of when the execution of a motion started.
     pub motion_execution_starting_time: Option<SystemTime>,
     /// Contains the mapping from `MotionTypes` to `Motion`.
@@ -72,19 +90,21 @@ impl MotionManager {
             return;
         }
 
+        // TODO will add an aditional variable to the motion types, to indicate whether normal or complex motion
+        // Currently no complex motions will be detected here, so crash will ensue
         self.motion_execution_starting_time = None;
-        self.active_motion = Some(ActiveMotion {
+        self.active_motion = Some(ActiveTypes::Normal(ActiveMotion {
             motion: self
                 .motions
                 .get(&motion_type)
                 .cloned()
                 .expect("Motion type not added to the motion manager"),
             starting_time: SystemTime::now(),
-        });
+        }));
     }
 
     /// Returns the current motion.
-    pub fn get_active_motion(&mut self) -> Option<ActiveMotion> {
+    pub fn get_active_motion(&mut self) -> Option<ActiveTypes> {
         self.active_motion.clone()
     }
 }

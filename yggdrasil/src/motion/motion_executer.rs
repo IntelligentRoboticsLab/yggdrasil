@@ -1,4 +1,6 @@
-use crate::motion::motion_manager::{ActiveMotion, MotionManager};
+use crate::motion::motion_manager::{
+    ActiveComplexMotion, ActiveMotion, ActiveTypes, MotionManager,
+};
 use crate::motion::motion_util::{lerp, MotionUtilExt};
 use miette::Result;
 use nidhogg::{
@@ -68,10 +70,28 @@ pub fn motion_executer(
         return Ok(());
     }
 
+    // CLONE HAPPENING HERE, WILL BE REMOVED ONCE BOTH FUNCTIONS ARE INTEGRATED HERE
+    match motion_manager.active_motion.clone() {
+        Some(ActiveTypes::Normal(motion)) => {
+            return normal_motion_executor(nao_state, motion_manager, nao_control_message, &motion)
+        }
+        Some(ActiveTypes::Complex(motion)) => {
+            return complex_motion_executor(nao_state, motion_manager, nao_control_message, &motion)
+        }
+        _ => Ok(()),
+    }
+}
+
+pub fn normal_motion_executor(
+    nao_state: &mut NaoState,
+    motion_manager: &mut MotionManager,
+    nao_control_message: &mut NaoControlMessage,
+    activemotion: &ActiveMotion,
+) -> Result<()> {
     let ActiveMotion {
         motion,
         starting_time,
-    } = motion_manager.get_active_motion().unwrap();
+    } = activemotion;
 
     if motion_manager.motion_execution_starting_time.is_none() {
         if !reached_position(
@@ -118,5 +138,15 @@ pub fn motion_executer(
         }
     }
 
+    Ok(())
+}
+
+pub fn complex_motion_executor(
+    nao_state: &mut NaoState,
+    motion_manager: &mut MotionManager,
+    nao_control_message: &mut NaoControlMessage,
+    motion: &ActiveComplexMotion,
+) -> Result<()> {
+    // TODO IMPLEMENT COMPLEX MOTION EXECUTION
     Ok(())
 }
