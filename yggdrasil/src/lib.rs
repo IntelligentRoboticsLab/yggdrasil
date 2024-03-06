@@ -12,6 +12,7 @@ pub mod motion;
 pub mod nao;
 pub mod primary_state;
 pub mod walk;
+pub mod damage_prevention;
 
 pub use miette::Result;
 
