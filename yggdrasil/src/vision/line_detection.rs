@@ -98,8 +98,7 @@ fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
     Ok(points)
 }
 
-fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
-    let mut points = extract_line_points(&scan_grid)?;
+fn detect_lines(mut points: Vec<(f32, f32)>, scan_grid: ScanGrid) -> Result<Vec<Line>> {
     points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
     let mut points_next = Vec::<(f32, f32)>::with_capacity(300);
 
@@ -147,7 +146,7 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
                 .fold(f32::NEG_INFINITY, |row1, &row2| row1.max(row2));
             assert!(start_row <= end_row);
 
-            let mut allowed_mistakes = 4u32;
+            let mut allowed_mistakes = 3u32;
 
             if end_row - start_row > end_column - start_column {
                 for row in start_row as usize..end_row as usize {
@@ -263,9 +262,10 @@ fn start_line_detection_task(
     top_scan_grid: &mut TopScanGrid,
     detect_lines_task: &mut ComputeTask<Result<Vec<Line>>>,
 ) -> Result<()> {
+    let line_points = extract_line_points(top_scan_grid)?;
     let top_scan_grid = top_scan_grid.clone();
     detect_lines_task
-        .try_spawn(move || detect_lines(top_scan_grid))
+        .try_spawn(move || detect_lines(line_points, top_scan_grid))
         .unwrap();
 
     Ok(())
@@ -281,9 +281,10 @@ fn line_detection_system(
         let lines = detect_lines_result?;
         draw_lines(dbg, &lines, top_scan_grid.clone())?;
 
+        let line_points = extract_line_points(top_scan_grid)?;
         let top_scan_grid = top_scan_grid.clone();
         detect_lines_task
-            .try_spawn(move || detect_lines(top_scan_grid))
+            .try_spawn(move || detect_lines(line_points, top_scan_grid))
             .unwrap();
     }
 
