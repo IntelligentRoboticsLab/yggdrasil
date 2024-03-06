@@ -82,7 +82,7 @@ impl YggdrasilCamera {
             return None;
         };
 
-        camera.get_yuyv_image().ok().map(Image::new)
+        camera.try_get_yuyv_image().ok().map(Image::new)
     }
 }
 
