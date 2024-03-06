@@ -29,7 +29,7 @@ pub fn update_camera_matrix(
     let extrinsic_rotation = vector![0.0, 0.0, 0.0];
 
     let focal_lengths = vector![0.0, 0.0];
-    let cc_optical_center = vector![0, 0];
+    let cc_optical_center = vector![0.5, 0.5];
 
     let top_camera_to_head = camera_to_head(CameraPosition::Top, extrinsic_rotation);
     let top_camera_matrix = CameraMatrix::from_normalized_focal_and_center(
