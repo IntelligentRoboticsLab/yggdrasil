@@ -11,6 +11,7 @@ alsa = { workspace = true, optional = true }
 bifrost = { path = "../crates/bifrost/" }
 derive_more = { workspace = true }
 enum_dispatch = { workspace = true }
+fast-math = { workpsace = true }
 heimdall = { path = "../crates/heimdall" }
 kira = { workspace = true, optional = true }
 linreg = { workspace = true }
