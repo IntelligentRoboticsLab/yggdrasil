@@ -1,5 +1,6 @@
 use crate::{
     camera::{BottomImage, Image, TopImage},
+    debug::DebugContext,
     prelude::*,
 };
 
@@ -328,6 +329,7 @@ pub fn scan_lines_system(
     bottom_scan_grid: &mut BottomScanGrid,
     top_image: &TopImage,
     bottom_image: &BottomImage,
+    dbg: &DebugContext,
 ) -> Result<()> {
     if top_scan_grid.image().timestamp() != top_image.timestamp() {
         top_scan_grid.update_scan_lines(top_image);
@@ -336,6 +338,31 @@ pub fn scan_lines_system(
     if bottom_scan_grid.image().timestamp() != bottom_image.timestamp() {
         bottom_scan_grid.update_scan_lines(bottom_image);
     }
+
+    // let mut points = Vec::with_capacity(3000);
+    // for horizontal_line_id in 0..top_scan_grid.horizontal.line_ids().len() {
+    //     let row_id = top_scan_grid.horizontal.line_ids()[horizontal_line_id];
+    //     let row = top_scan_grid.horizontal.line(horizontal_line_id);
+    //
+    //     for column_id in 0..row.len() {
+    //         if row[column_id] == PixelColor::Black {
+    //             points.push((column_id as f32, row_id as f32));
+    //         }
+    //     }
+    // }
+    //
+    // for vertical_line_id in 0..top_scan_grid.vertical.line_ids().len() {
+    //     let column_id = top_scan_grid.vertical.line_ids()[vertical_line_id];
+    //     let column = top_scan_grid.vertical.line(vertical_line_id);
+    //
+    //     for row_id in 0..column.len() {
+    //         if column[row_id] == PixelColor::Black {
+    //             points.push((column_id as f32, row_id as f32));
+    //         }
+    //     }
+    // }
+    //
+    // dbg.log_points2d_for_image("top_camera/image", &points, top_scan_grid.image().clone())?;
 
     Ok(())
 }
