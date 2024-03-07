@@ -67,10 +67,21 @@ impl<M: MlModel> MlTask<M> {
     /// the generic `O`, which can be anything that implements [`Output`].
     /// ## Example Usage
     /// ```
-    /// fn poll_the_thing(task: &mut MlModel<ResNet18>) -> MlArray<f32> {
+    /// use yggdrasil::ml_task::{MlTask, MlModel, data_type::MlArray};
+    ///
+    /// struct ResNet18;
+    ///
+    /// impl MlModel for ResNet18 {
+    ///     type InputType = f32;
+    ///     type OutputType = f32;
+    ///     const ONNX_PATH: &'static str = "secret-folder/resnet18.onnx";
+    /// }
+    ///
+    /// fn poll_the_thing(task: &mut MlTask<ResNet18>) -> MlArray<f32> {
     ///     // store the model output in an n-dimensional array
     ///     let output = task.poll::<MlArray<f32>>();
-    ///     return output;
+    ///     // we're sure there are no issues (never do this)
+    ///     return output.unwrap().unwrap();
     /// }
     /// ```
     pub fn poll<O>(&mut self) -> Option<Result<O>>
