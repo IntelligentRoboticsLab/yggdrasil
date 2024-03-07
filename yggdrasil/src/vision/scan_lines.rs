@@ -54,9 +54,9 @@ impl PixelColor {
         let u_normed = u - 128;
 
         let y = y1;
-        let h = (fast_math::atan2(v_normed as f32, u_normed as f32) * std::f32::consts::FRAC_1_PI
-            + 1.0)
-            * 127.0;
+        let h =
+            fast_math::atan2(v_normed as f32, u_normed as f32) * std::f32::consts::FRAC_1_PI * 127.
+                + 127.;
         let s2 = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y as f32;
 
         (y as f32, h, s2)
