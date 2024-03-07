@@ -61,12 +61,12 @@ impl PixelColor {
         let (y, h, s2) = Self::to_yhs2(y1, u, v);
 
         // TODO: Find a better way to classify pixels.
-        if y > 140.0 && s2 < 60.0 {
+        if y > 120.0 && s2 < 50.0 {
             Self::White
-        } else if y < 140.0 && (h < 20.0 || h > 250.0) && s2 > 45.0 {
-            Self::Green
         } else if y < 80.0 && s2 < 40.0 {
             Self::Black
+        } else if y < 140.0 && (h < 20.0 || h > 250.0) && s2 > 45.0 {
+            Self::Green
         } else {
             Self::Unknown
         }
