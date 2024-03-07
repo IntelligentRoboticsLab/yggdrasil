@@ -9,34 +9,37 @@ use tyr::{
     tasks::{TaskConfig, TaskModule},
     App, Resource,
 };
-use yggdrasil::ml_task::{MlModel, MlModule, MlTask, MlTaskResource};
+use yggdrasil::ml_task::{data_type::MlArray, MlModel, MlModule, MlTask, MlTaskResource};
 
-struct ChatGPT4;
+struct ResNet18;
 
 // implement MLModel to make it compatible with the rest of the system
-impl MlModel for ChatGPT4 {
-    const ONNX_PATH: &'static str = "microsoft/gpt4.onnx";
-    const INPUT_SHAPE: &'static [usize] = &[256];
+impl MlModel for ResNet18 {
+    type InputType = f32;
+    type OutputType = f32;
+
+    const ONNX_PATH: &'static str = "secret-folder/resnet18.onnx";
 }
 
-struct Prompt(Option<String>);
+struct Image(Option<MlArray<f32>>);
 
 #[system]
-fn process_chat(
+fn process_image(
     // ML model (note the MLTask wrapper)
-    model: &mut MlTask<ChatGPT4>,
+    model: &mut MlTask<ResNet18>,
     // model input
-    prompt: &mut Prompt,
+    image: &mut Image,
 ) -> Result<()> {
     // check if input is available
-    if let Some(input) = prompt.0.take() {
-        println!("user: {input}");
+    if let Some(input) = image.0.take() {
+        println!("Starting inference!");
 
-        // convert input to bytes
-        let bytes = input.as_bytes();
+        // not all ndarrays are contiguous in memory, but
+        //  we know this one is thus we can unwrap safely
+        let slice = input.as_slice_memory_order().unwrap();
 
         // run model inference
-        match model.try_start_infer(bytes) {
+        match model.try_start_infer(slice) {
             Ok(()) => {}
             Err(_) => {
                 // Whenever `try_infer` fails, it means
@@ -47,14 +50,11 @@ fn process_chat(
     }
 
     // check if output is available
-    if let Some(output) = model.poll() {
+    if let Some(output) = model.poll::<Vec<f32>>() {
         // note that inference might have failed
-        let bytes = output?;
+        let res = output?;
 
-        // convert output to desired type
-        let text = std::str::from_utf8(&bytes).unwrap();
-
-        println!("chatGPT4: {text}");
+        println!("ResNet18 results: {res:?}");
     }
 
     Ok(())
@@ -67,14 +67,13 @@ fn main() -> Result<()> {
     };
 
     App::new()
-        .add_resource(Resource::new(Prompt(Some("input".into()))))?
         .add_resource(Resource::new(task_config))?
         .add_module(TaskModule)?
         .add_module(MlModule)?
         // add the ML model
-        .add_ml_task::<ChatGPT4>()?
+        .add_ml_task::<ResNet18>()?
         // use the ML model
-        .add_system(process_chat)
+        .add_system(process_image)
         .run()?;
 
     Ok(())

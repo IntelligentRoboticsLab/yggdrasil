@@ -1,9 +1,10 @@
 //! Implementation of ML methods using an OpenVINO backend.
 
-use super::{Error, MlModel, Result};
+use super::{
+    data_type::{Elem, InputElem, Output},
+    Error, MlModel, Result,
+};
 use std::{marker::PhantomData, sync::Mutex};
-
-pub type MlOutput = Result<Vec<u8>>;
 
 /// Wrapper around [`openvino::Core`], i.e. the OpenVINO engine.
 /// It's used for creating and using ML models.
@@ -15,20 +16,23 @@ impl MlCore {
     }
 }
 
-/// An ML model.
+/// A ML model.
 pub struct MlBackend<M: MlModel> {
     /// Model executor.
     exec: Mutex<openvino::ExecutableNetwork>,
 
-    // names of in- and output layer
-    input_name: String,
-    output_name: String,
+    // descriptions of in- and output layer tensors
+    input_descr: TensorDescr,
+    output_descr: TensorDescr,
     _marker: PhantomData<M>,
 }
 
 impl<M: MlModel> MlBackend<M> {
     /// ## Error
-    /// Fails if the model cannot be loaded.
+    /// Fails if:
+    /// * the model cannot be loaded.
+    /// * an inference request cannot be created, which
+    /// is needed to load relevant model settings.
     pub fn new(core: &mut MlCore) -> Result<Self> {
         let core = core.0.get_mut().unwrap();
 
@@ -39,7 +43,7 @@ impl<M: MlModel> MlBackend<M> {
                 path: M::ONNX_PATH,
                 source: e,
             })?;
-        let exec = Mutex::new(
+        let mut exec = Mutex::new(
             core.load_network(&model, "CPU")
                 .map_err(Error::LoadExecutableNetwork)?,
         );
@@ -49,72 +53,133 @@ impl<M: MlModel> MlBackend<M> {
         let input_name = model.get_input_name(0).unwrap();
         let output_name = model.get_output_name(0).unwrap();
 
-        Ok(Self {
-            exec,
-            input_name,
-            output_name,
-            _marker: PhantomData,
-        })
+        // only through an inference request can we access
+        //  in- and output tensor descriptions
+        let mut infer = exec
+            .get_mut()
+            .unwrap()
+            .create_infer_request()
+            .map_err(Error::StartInference)?;
+
+        let input_descr = TensorDescr {
+            cfg: infer.get_blob(&input_name).unwrap().tensor_desc().unwrap(),
+            name: input_name,
+        };
+        let output_descr = TensorDescr {
+            cfg: infer.get_blob(&output_name).unwrap().tensor_desc().unwrap(),
+            name: output_name,
+        };
+
+        // check if `MlModel` and loaded model in- and output types are compatible
+        if !M::InputType::is_compatible(input_descr.cfg.precision()) {
+            Err(Error::InputType {
+                path: M::ONNX_PATH,
+                expected: std::any::type_name::<M::InputType>().into(),
+                imported: input_descr.cfg.precision(),
+            })
+        } else if !M::OutputType::is_compatible(output_descr.cfg.precision()) {
+            Err(Error::OutputType {
+                path: M::ONNX_PATH,
+                expected: std::any::type_name::<M::OutputType>().into(),
+                imported: input_descr.cfg.precision(),
+            })
+        } else {
+            Ok(Self {
+                exec,
+                input_descr,
+                output_descr,
+                _marker: PhantomData,
+            })
+        }
     }
 
     /// Requests to run inference.
-    pub fn request_infer(&mut self, input: &[u8]) -> Result<MlInferRequest> {
+    pub fn request_infer(&mut self, input: &[M::InputType]) -> Result<MlInferRequest<M>> {
         let exec = self.exec.get_mut().unwrap();
 
-        MlInferRequest::new::<M>(
+        MlInferRequest::new(
             exec.create_infer_request().map_err(Error::StartInference)?,
             input,
-            &self.input_name,
-            self.output_name.clone(),
+            &self.input_descr,
+            self.output_descr.clone(),
         )
     }
 }
 
-pub struct MlInferRequest {
+pub struct MlInferRequest<M: MlModel> {
     request: openvino::InferRequest,
-    /// Name of output layer.
-    output_name: String,
+    /// Output layer tensor description.
+    output_descr: TensorDescr,
+    _marker: PhantomData<M>,
 }
 
-impl MlInferRequest {
-    fn new<M: MlModel>(
+impl<M: MlModel> MlInferRequest<M> {
+    fn new(
         mut request: openvino::InferRequest,
-        input: &[u8],
-        input_name: &str,
-        output_name: String,
+        input: &[M::InputType],
+        input_descr: &TensorDescr,
+        output_descr: TensorDescr,
     ) -> Result<Self> {
         // format input data
         let blob = openvino::Blob::new(
             &openvino::TensorDesc::new(
-                openvino::Layout::NCHW,
-                M::INPUT_SHAPE,
-                openvino::Precision::FP32,
+                input_descr.cfg.layout(),
+                input_descr.cfg.dims(),
+                input_descr.cfg.precision(),
             ),
-            input,
+            M::InputType::view_slice_bytes(input),
         )
         .map_err(Error::InferenceInput)?;
 
         // set input data
         request
-            .set_blob(input_name, &blob)
+            .set_blob(&input_descr.name, &blob)
             .map_err(Error::InferenceInput)?;
 
         Ok(Self {
             request,
-            output_name,
+            output_descr,
+            _marker: PhantomData,
         })
     }
 
     /// Runs inference.
-    pub fn infer(mut self) -> MlOutput {
+    pub fn infer(mut self) -> Result<Self> {
         self.request.infer().map_err(Error::RunInference)?;
+        Ok(self)
+    }
 
-        Ok(self
-            .request
-            .get_blob(&self.output_name)
-            .unwrap() // fine, because the tensor called output_name is guaranteed to exist
-            .buffer_mut()
-            .unwrap()
-            .to_vec())
+    pub fn get_output<O>(mut self) -> O
+    where
+        O: Output<M::OutputType>,
+    {
+        // the tensor called `output_name` is guaranteed to exist
+        let blob = self.request.get_blob(&self.output_descr.name).unwrap();
+
+        // we know the output tensor data type is compatible with `M::OutputType`
+        //  due to the check in `MlBackend::new`, meaning it's safe
+        //  to cast to this type
+        let data = unsafe { blob.buffer_as_type::<M::OutputType>().unwrap() };
+
+        O::from_slice(data, self.output_descr.cfg.dims())
+    }
+}
+
+/// Description of a tensor.
+struct TensorDescr {
+    name: String,
+    cfg: openvino::TensorDesc,
+}
+
+impl Clone for TensorDescr {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            cfg: openvino::TensorDesc::new(
+                self.cfg.layout(),
+                self.cfg.dims(),
+                self.cfg.precision(),
+            ),
+        }
     }
 }

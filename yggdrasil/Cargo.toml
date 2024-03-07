@@ -15,6 +15,7 @@ heimdall = { path = "../crates/heimdall" }
 kira = { workspace = true, optional = true }
 miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true }
+ndarray = { workspace = true }
 nidhogg = { workspace = true }
 odal = { path = "../crates/odal" }
 openvino = { workspace = true }

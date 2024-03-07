@@ -18,6 +18,7 @@ kira = "0.8.7"
 linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git" }
 miette = "5.10.0"
 nalgebra = "0.32.4"
+ndarray = "0.15.6"
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
 num = "0.4.0"
 openvino = { git = "https://github.com/YukumoHunter/openvino-rs.git", branch = "evil-hack" }

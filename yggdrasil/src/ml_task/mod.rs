@@ -1,8 +1,12 @@
-pub mod backend;
+mod backend;
+pub mod data_type;
 
-use self::backend::{MlBackend, MlOutput};
+use self::{
+    backend::{MlBackend, MlInferRequest},
+    data_type::{Elem, InputElem, Output},
+};
 use crate::ml_task::backend::MlCore;
-use miette::{Diagnostic, IntoDiagnostic};
+use miette::Diagnostic;
 use thiserror::Error;
 use tyr::{
     tasks::{
@@ -14,17 +18,20 @@ use tyr::{
 
 /// A ML model type. For now, only models
 /// with 32 bit floating point precision work properly.
-pub trait MlModel {
+pub trait MlModel: Send + 'static {
+    /// Type of model input elements.
+    type InputType: InputElem;
+    /// Type of model output elements.
+    type OutputType: Elem;
+
     /// Path to the model parameters.
     const ONNX_PATH: &'static str;
-    /// Dimensions of the input.
-    const INPUT_SHAPE: &'static [usize];
 }
 
 /// Machine learning (ML) task that runs ML models in a [`ComputeTask`].
 pub struct MlTask<M: MlModel> {
     model: MlBackend<M>,
-    task: ComputeTask<MlOutput>,
+    task: ComputeTask<Result<MlInferRequest<M>>>,
 }
 
 impl<M: MlModel> MlTask<M> {
@@ -41,18 +48,41 @@ impl<M: MlModel> MlTask<M> {
     /// Fails if:
     /// * The task was not yet finished from a previous call.
     /// * Inference could not be started, e.g. because the input size is incorrect.
-    pub fn try_start_infer(&mut self, input: &[u8]) -> Result<()> {
+    /// * The input failed to yield a byte view.
+    pub fn try_start_infer(&mut self, input: &[M::InputType]) -> Result<()> {
         let req = self.model.request_infer(input)?;
 
         self.task.try_spawn(move || req.infer())?;
         Ok(())
     }
 
-    /// Checks if the output is available and returns it.
+    /// Returns the output if available, or else [`None`].
     /// Once returned the same output cannot be polled again,
     /// so make sure to store the result or run inference again.
-    pub fn poll(&mut self) -> Option<MlOutput> {
-        self.task.poll()
+    /// ## Errors
+    /// Returns `Some(`[`Error::RunInference`]`)` if an error occurred during
+    /// inference.
+    /// ## Return Collection
+    /// The output is stored in the collection type provided by the user through
+    /// the generic `O`, which can be anything that implements [`Output`].
+    /// ## Example Usage
+    /// ```
+    /// fn poll_the_thing(task: &mut MlModel<ResNet18>) -> MlArray<f32> {
+    ///     // store the model output in an n-dimensional array
+    ///     let output = task.poll::<MlArray<f32>>();
+    ///     return output;
+    /// }
+    /// ```
+    pub fn poll<O>(&mut self) -> Option<Result<O>>
+    where
+        O: Output<M::OutputType>,
+    {
+        let infer_result = self.task.poll()?;
+
+        match infer_result {
+            Ok(infer) => Some(Ok(infer.get_output())),
+            Err(e) => Some(Err(e)),
+        }
     }
 }
 
@@ -77,9 +107,10 @@ impl MlTaskResource for App {
             mut core: ResMut<MlCore>,
             dispatcher: Res<ComputeDispatcher>,
         ) -> miette::Result<()> {
-            storage.add_resource(Resource::new(
-                MlTask::<M>::new(&mut core, dispatcher.clone()).into_diagnostic()?,
-            ))
+            storage.add_resource(Resource::new(MlTask::<M>::new(
+                &mut core,
+                dispatcher.clone(),
+            )?))
         }
 
         self.add_startup_system(add_ml_task::<M>)
@@ -109,6 +140,26 @@ pub enum Error {
 
     #[error("Failed to create executable network")]
     LoadExecutableNetwork(#[source] openvino::InferenceError),
+
+    #[error(
+        "`MlModel` input type ({expected}) is incompatible with imported model input type\
+            ({imported:?}) from `{path}`"
+    )]
+    InputType {
+        path: &'static str,
+        expected: String,
+        imported: openvino::Precision,
+    },
+
+    #[error(
+        "`MlModel` output type ({expected}) is incompatible with imported model output type\
+            ({imported:?}) from `{path}`"
+    )]
+    OutputType {
+        path: &'static str,
+        expected: String,
+        imported: openvino::Precision,
+    },
 
     #[error("Failed to start inference")]
     StartInference(#[source] openvino::InferenceError),
