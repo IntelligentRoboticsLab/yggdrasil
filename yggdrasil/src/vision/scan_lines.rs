@@ -42,13 +42,30 @@ pub enum PixelColor {
 }
 
 impl PixelColor {
+    pub fn to_yhs2(y1: u8, u: u8, v: u8) -> (f32, f32, f32) {
+        let y1 = y1 as f32;
+        let u = u as f32;
+        let v = v as f32;
+
+        let v_normed = v - 128.0;
+        let u_normed = u - 128.0;
+
+        let y = y1;
+        let h = ((v_normed).atan2(u_normed) * std::f32::consts::FRAC_1_PI + 1.0) * 127.0;
+        let s2 = ((v_normed.powi(2) + u_normed.powi(2)) * 2.0).sqrt() / y * 255.0;
+
+        (y, h, s2)
+    }
+
     pub fn classify_yuv_pixel(y1: u8, u: u8, v: u8) -> Self {
+        let (y, h, s2) = Self::to_yhs2(y1, u, v);
+
         // TODO: Find a better way to classify pixels.
-        if y1 > 140 {
+        if y > 140.0 && s2 < 60.0 {
             Self::White
-        } else if (y1 > 45) && (u > 70) && (u < 160) && (v > 70) && (v < 160) {
+        } else if y < 140.0 && (h < 20.0 || h > 250.0) && s2 > 45.0 {
             Self::Green
-        } else if (y1 < 50) && (u > 110) && (u < 150) && (v > 110) && (v < 150) {
+        } else if y < 80.0 && s2 < 40.0 {
             Self::Black
         } else {
             Self::Unknown
