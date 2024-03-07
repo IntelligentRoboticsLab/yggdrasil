@@ -49,10 +49,7 @@ fn process_chat(
     // check if output is available
     if let Some(output) = model.poll() {
         // note that inference might have failed
-        let bytes = match output {
-            Ok(bytes) => bytes,
-            Err(e) => return Err(e.wrap_err("chatGPT failed to run!")),
-        };
+        let bytes = output?;
 
         // convert output to desired type
         let text = std::str::from_utf8(&bytes).unwrap();

@@ -2,7 +2,8 @@ pub mod backend;
 
 use self::backend::{MlBackend, MlOutput};
 use crate::ml_task::backend::MlCore;
-use miette::{Context, IntoDiagnostic, Result};
+use miette::{Diagnostic, IntoDiagnostic};
+use thiserror::Error;
 use tyr::{
     tasks::{
         compute::{ComputeDispatcher, ComputeTask},
@@ -40,14 +41,11 @@ impl<M: MlModel> MlTask<M> {
     /// Fails if:
     /// * The task was not yet finished from a previous call.
     /// * Inference could not be started, e.g. because the input size is incorrect.
-    /// * Inference started, but failed at some point for some reason.
     pub fn try_start_infer(&mut self, input: &[u8]) -> Result<()> {
         let req = self.model.request_infer(input)?;
 
-        self.task
-            .try_spawn(move || req.infer())
-            .into_diagnostic()
-            .wrap_err("Failed ML inference")
+        self.task.try_spawn(move || req.infer())?;
+        Ok(())
     }
 
     /// Checks if the output is available and returns it.
@@ -62,14 +60,14 @@ pub trait MlTaskResource {
     /// Adds a [`MlTask`] to the app that can run the given model type.
     /// ## Errors
     /// Fails if no [`MlCore`] is in storage. Add [`MlModule`] to the app to accomplish this.
-    fn add_ml_task<M>(self) -> Result<Self>
+    fn add_ml_task<M>(self) -> miette::Result<Self>
     where
         Self: Sized,
         M: MlModel + Send + Sync + 'static;
 }
 
 impl MlTaskResource for App {
-    fn add_ml_task<M>(self) -> Result<Self>
+    fn add_ml_task<M>(self) -> miette::Result<Self>
     where
         Self: Sized,
         M: MlModel + Send + Sync + 'static,
@@ -78,11 +76,10 @@ impl MlTaskResource for App {
             storage: &mut Storage,
             mut core: ResMut<MlCore>,
             dispatcher: Res<ComputeDispatcher>,
-        ) -> Result<()> {
-            storage.add_resource(Resource::new(MlTask::<M>::new(
-                &mut core,
-                dispatcher.clone(),
-            )?))
+        ) -> miette::Result<()> {
+            storage.add_resource(Resource::new(
+                MlTask::<M>::new(&mut core, dispatcher.clone()).into_diagnostic()?,
+            ))
         }
 
         self.add_startup_system(add_ml_task::<M>)
@@ -93,7 +90,37 @@ impl MlTaskResource for App {
 pub struct MlModule;
 
 impl Module for MlModule {
-    fn initialize(self, app: App) -> Result<App> {
+    fn initialize(self, app: App) -> miette::Result<App> {
         app.add_resource(Resource::new(MlCore::new()?))
     }
 }
+
+#[derive(Debug, Error, Diagnostic)]
+pub enum Error {
+    #[error("Failed to load OpenVINO core engine")]
+    LoadCore(#[from] openvino::SetupError),
+
+    #[error("Failed to load model from `{path}`")]
+    LoadModel {
+        path: &'static str,
+        #[source]
+        source: openvino::InferenceError,
+    },
+
+    #[error("Failed to create executable network")]
+    LoadExecutableNetwork(#[source] openvino::InferenceError),
+
+    #[error("Failed to start inference")]
+    StartInference(#[source] openvino::InferenceError),
+
+    #[error("Inference input does not meet model requirements")]
+    InferenceInput(#[source] openvino::InferenceError),
+
+    #[error("Failed to run inference")]
+    RunInference(#[source] openvino::InferenceError),
+
+    #[error(transparent)]
+    Tyr(#[from] tyr::tasks::Error),
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
