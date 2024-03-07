@@ -17,7 +17,7 @@ impl MlCore {
 }
 
 /// A ML model.
-pub struct MlBackend<M: MlModel> {
+pub struct ModelExecutor<M: MlModel> {
     /// Model executor.
     exec: Mutex<openvino::ExecutableNetwork>,
 
@@ -27,7 +27,7 @@ pub struct MlBackend<M: MlModel> {
     _marker: PhantomData<M>,
 }
 
-impl<M: MlModel> MlBackend<M> {
+impl<M: MlModel> ModelExecutor<M> {
     /// ## Error
     /// Fails if:
     /// * the model cannot be loaded.
@@ -70,7 +70,7 @@ impl<M: MlModel> MlBackend<M> {
             name: output_name,
         };
 
-        // check if `MlModel` and loaded model in- and output types are compatible
+        // check if `M: MlModel` and loaded model in- and output types are compatible
         if !M::InputType::is_compatible(input_descr.cfg.precision()) {
             Err(Error::InputType {
                 path: M::ONNX_PATH,
@@ -94,10 +94,10 @@ impl<M: MlModel> MlBackend<M> {
     }
 
     /// Requests to run inference.
-    pub fn request_infer(&mut self, input: &[M::InputType]) -> Result<MlInferRequest<M>> {
+    pub fn request_infer(&mut self, input: &[M::InputType]) -> Result<InferRequest<M>> {
         let exec = self.exec.get_mut().unwrap();
 
-        MlInferRequest::new(
+        InferRequest::new(
             exec.create_infer_request().map_err(Error::StartInference)?,
             input,
             &self.input_descr,
@@ -106,14 +106,16 @@ impl<M: MlModel> MlBackend<M> {
     }
 }
 
-pub struct MlInferRequest<M: MlModel> {
+pub struct InferRequest<M: MlModel> {
     request: openvino::InferRequest,
     /// Output layer tensor description.
     output_descr: TensorDescr,
-    _marker: PhantomData<M>,
+    // note `fn(M)` as opposed to just `M`, such that
+    //  `Self` implements Send, even though `M` does not
+    _marker: PhantomData<fn(M)>,
 }
 
-impl<M: MlModel> MlInferRequest<M> {
+impl<M: MlModel> InferRequest<M> {
     fn new(
         mut request: openvino::InferRequest,
         input: &[M::InputType],

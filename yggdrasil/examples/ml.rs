@@ -9,7 +9,7 @@ use tyr::{
     tasks::{TaskConfig, TaskModule},
     App, Resource,
 };
-use yggdrasil::ml_task::{data_type::MlArray, MlModel, MlModule, MlTask, MlTaskResource};
+use yggdrasil::ml::{data_type::MlArray, MlModel, MlModule, MlTask, MlTaskResource};
 
 struct ResNet18;
 

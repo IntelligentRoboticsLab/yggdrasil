@@ -1,16 +1,48 @@
+//! Trait implementations for data types that are used in a ML model as
+//! in- and output. This involves the type system in defining and utilizing models.
+
 /// Conveniency type representing an n-dimensional array.  
 pub type MlArray<E> = ndarray::Array<E, ndarray::Dim<ndarray::IxDynImpl>>;
 
-/// An element type that can serve as an
+/// Implements [`Elem`] on a data type and maps it to an OpenVINO data type.
+/// In other words, the data type can be used as an in- and output element of a
+/// ML model, if that model uses the mapped OpenVINO data type internally.
+///
+/// Note that this is unsafe, see [`Elem`].
+macro_rules! impl_elem {
+    (unsafe { $elem:ty => $precision:path }) => {
+        unsafe impl Elem for $elem {
+            fn is_compatible(precision: openvino::Precision) -> bool {
+                match precision {
+                    $precision => true,
+                    _ => false,
+                }
+            }
+        }
+
+        impl InputElem for $elem {
+            fn view_slice_bytes(slice: &[Self]) -> &[u8] {
+                let ptr = slice.as_ptr() as *const u8;
+                let len = slice.len() * std::mem::size_of::<$elem>() / std::mem::size_of::<u8>();
+
+                // this is a safe conversion
+                unsafe { std::slice::from_raw_parts(ptr, len) }
+            }
+        }
+    };
+}
+
+/// A data type that can serve as an
 /// input, granted it implements [`InputElem`],
 /// and output type of a ML model.
+///
 /// ## Safety
 /// OpenVINO internally stores data in tensor with some precision/data type,
 /// but when this data is requested it's returned as a byte buffer.
-/// To judge if casting to a type that implements [`Elem`] is safe
+/// To judge if casting to a type that implements [`Elem`] is safe,
 /// [`Elem::is_compatible`] is called. The rest of the implementation
 /// relies on the fact that this method functions correctly, or else
-/// we end up with undefined behavior.
+/// we wind up with undefined behavior.
 pub unsafe trait Elem: Sized {
     /// Returns `true` if `Self` is compatible with
     /// `precision`, i.e. instances of `precision` can be safely
@@ -22,15 +54,6 @@ unsafe impl Elem for u8 {
     fn is_compatible(_: openvino::Precision) -> bool {
         // we can interpret any data type as bytes.
         true
-    }
-}
-
-unsafe impl Elem for f32 {
-    fn is_compatible(precision: openvino::Precision) -> bool {
-        match precision {
-            openvino::Precision::FP32 => true,
-            _ => false,
-        }
     }
 }
 
@@ -46,15 +69,10 @@ impl InputElem for u8 {
     }
 }
 
-impl InputElem for f32 {
-    fn view_slice_bytes(slice: &[Self]) -> &[u8] {
-        let ptr = slice.as_ptr() as *const u8;
-        let len = slice.len() * std::mem::size_of::<f32>() / std::mem::size_of::<u8>();
-
-        // this is a safe conversion
-        unsafe { std::slice::from_raw_parts(ptr, len) }
-    }
-}
+impl_elem!(unsafe { f32 => openvino::Precision::FP32 });
+impl_elem!(unsafe { f64 => openvino::Precision::FP64 });
+impl_elem!(unsafe { u32 => openvino::Precision::U32 });
+impl_elem!(unsafe { i32 => openvino::Precision::I32 });
 
 /// Output of a ML model, where `E` is the element type.
 pub trait Output<E: Elem>: Sized {
