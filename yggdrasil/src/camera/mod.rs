@@ -50,14 +50,13 @@ impl Module for CameraModule {
 }
 
 fn setup_camera_device(settings: &CameraSettings) -> Result<CameraDevice> {
-    let mut camera_device = CameraDevice::new(&settings.path)?;
+    let camera_device = CameraDevice::new(&settings.path)?;
     if settings.flip_horizontally {
         camera_device.horizontal_flip()?;
     }
     if settings.flip_vertically {
         camera_device.vertical_flip()?;
     }
-    camera_device.set_focus_auto(false);
 
     Ok(camera_device)
 }
