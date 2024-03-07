@@ -45,23 +45,7 @@ pub enum PixelColor {
 }
 
 impl PixelColor {
-    // pub fn to_yhs2(y1: u8, u: u8, v: u8) -> (f32, f32, f32) {
-    //     let y1 = y1 as f32;
-    //     let u = u as f32;
-    //     let v = v as f32;
-    //
-    //     let v_normed = v - 128.0;
-    //     let u_normed = u - 128.0;
-    //
-    //     let y = y1;
-    // let h = (fast_math::atan2(v_normed as f32, u_normed as f32) * std::f32::consts::FRAC_1_PI
-    //     + 1.0)
-    //     * 127.0;
-    //     let s2 = ((v_normed.powi(2) + u_normed.powi(2)) * 2.0).sqrt() / y * 255.0;
-    //
-    //     (y, h, s2)
-    // }
-    pub fn to_yhs2(y1: u8, u: u8, v: u8) -> (i32, i32, i32) {
+    pub fn to_yhs2(y1: u8, u: u8, v: u8) -> (f32, f32, f32) {
         let y1 = y1 as i32;
         let u = u as i32;
         let v = v as i32;
@@ -69,37 +53,23 @@ impl PixelColor {
         let v_normed = v - 128;
         let u_normed = u - 128;
 
-        let v_normed_squared = (v - 128) * (v - 128);
-        let u_normed_squared = (u - 128) * (u - 128);
-
         let y = y1;
         let h = (fast_math::atan2(v_normed as f32, u_normed as f32) * std::f32::consts::FRAC_1_PI
             + 1.0)
             * 127.0;
-        let s2 = ((v_normed.pow(2) + u_normed.pow(2)) as f32 * 2.0).sqrt() * 255.0 / y as f32;
-        // let s2 = ((v_normed_squared + u_normed_squared) as f32 * 2.0).sqrt() * 255.0 / y as f32;
+        let s2 = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y as f32;
 
-        (y, h as i32, s2 as i32)
+        (y as f32, h, s2)
     }
 
     pub fn classify_yuv_pixel(y1: u8, u: u8, v: u8) -> Self {
         let (y, h, s2) = Self::to_yhs2(y1, u, v);
 
-        // TODO: Find a better way to classify pixels.
-        // if y > 120.0 && s2 < 50.0 {
-        //     Self::White
-        // } else if y < 80.0 && s2 < 40.0 {
-        //     Self::Black
-        // } else if y < 140.0 && (h < 20.0 || h > 250.0) && s2 > 45.0 {
-        //     Self::Green
-        // } else {
-        //     Self::Unknown
-        // }
-        if y > 120 && s2 < 45 {
+        if y > 120. && s2 < 45. {
             Self::White
-        } else if y < 80 && s2 < 40 {
+        } else if y < 80. && s2 < 40. {
             Self::Black
-        } else if y < 140 && (h < 20 || h > 250) && s2 > 45 {
+        } else if y < 140. && (h < 20. || h > 250.) && s2 > 45. {
             Self::Green
         } else {
             Self::Unknown
