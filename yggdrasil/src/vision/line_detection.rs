@@ -62,7 +62,7 @@ fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
                     start_opt = Some(column_id);
                 }
             } else if let Some(start) = start_opt {
-                if column_id - start < 40 {
+                if column_id - start < 50 {
                     points.push((((column_id + start) / 2) as f32, row_id as f32));
                 }
                 start_opt = None;
