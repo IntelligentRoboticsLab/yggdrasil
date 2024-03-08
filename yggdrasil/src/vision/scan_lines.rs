@@ -1,8 +1,5 @@
-use std::time::Instant;
-
 use crate::{
     camera::{BottomImage, Image, TopImage},
-    debug::DebugContext,
     prelude::*,
 };
 
@@ -57,9 +54,9 @@ impl PixelColor {
         let h =
             fast_math::atan2(v_normed as f32, u_normed as f32) * std::f32::consts::FRAC_1_PI * 127.
                 + 127.;
-        let s2 = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y as f32;
+        let s = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y as f32;
 
-        (y as f32, h, s2)
+        (y as f32, h, s)
     }
 
     pub fn classify_yuv_pixel(y1: u8, u: u8, v: u8) -> Self {
@@ -69,11 +66,26 @@ impl PixelColor {
             Self::White
         } else if y < 80. && s2 < 40. {
             Self::Black
-        } else if y < 140. && (h < 20. || h > 250.) && s2 > 45. {
+        } else if y < 120. && !(20.0..=250.0).contains(&h) && s2 > 45. {
             Self::Green
         } else {
             Self::Unknown
         }
+    }
+
+    pub fn is_white_yuyv(y1: u8, u: u8, y2: u8, v: u8) -> bool {
+        let y1 = y1 as i32;
+        let u = u as i32;
+        let y2 = y2 as i32;
+        let v = v as i32;
+
+        let v_normed = v - 128;
+        let u_normed = u - 128;
+
+        let s1 = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y1 as f32;
+        let s2 = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y2 as f32;
+
+        (y1 > 120 && s1 < 45.) || (y2 > 120 && s2 < 45.0)
     }
 }
 
@@ -332,42 +344,14 @@ pub fn scan_lines_system(
     bottom_scan_grid: &mut BottomScanGrid,
     top_image: &TopImage,
     bottom_image: &BottomImage,
-    dbg: &DebugContext,
 ) -> Result<()> {
     if top_scan_grid.image().timestamp() != top_image.timestamp() {
-        let start = Instant::now();
         top_scan_grid.update_scan_lines(top_image);
-        eprintln!("elapsed: {:?}", start.elapsed());
     }
 
     if bottom_scan_grid.image().timestamp() != bottom_image.timestamp() {
         bottom_scan_grid.update_scan_lines(bottom_image);
     }
-
-    // let mut points = Vec::with_capacity(3000);
-    // for horizontal_line_id in 0..top_scan_grid.horizontal.line_ids().len() {
-    //     let row_id = top_scan_grid.horizontal.line_ids()[horizontal_line_id];
-    //     let row = top_scan_grid.horizontal.line(horizontal_line_id);
-    //
-    //     for column_id in 0..row.len() {
-    //         if row[column_id] == PixelColor::Black {
-    //             points.push((column_id as f32, row_id as f32));
-    //         }
-    //     }
-    // }
-    //
-    // for vertical_line_id in 0..top_scan_grid.vertical.line_ids().len() {
-    //     let column_id = top_scan_grid.vertical.line_ids()[vertical_line_id];
-    //     let column = top_scan_grid.vertical.line(vertical_line_id);
-    //
-    //     for row_id in 0..column.len() {
-    //         if column[row_id] == PixelColor::Black {
-    //             points.push((column_id as f32, row_id as f32));
-    //         }
-    //     }
-    // }
-    //
-    // dbg.log_points2d_for_image("top_camera/image", &points, top_scan_grid.image().clone())?;
 
     Ok(())
 }

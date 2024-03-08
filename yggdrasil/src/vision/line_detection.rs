@@ -30,14 +30,11 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
     let y2 = image.yuyv_image()[offset..offset + 4][2];
     let v = image.yuyv_image()[offset..offset + 4][3];
 
-    PixelColor::classify_yuv_pixel(y1, u, v) == PixelColor::White
-        || PixelColor::classify_yuv_pixel(y2, u, v) == PixelColor::White
+    PixelColor::is_white_yuyv(y1, u, y2, v)
 }
 
 // TODO: Replace with proper field-boundary detection.
 const MIN_ROW: usize = 166;
-// const MIN_ROW: usize = 226;
-// const MIN_ROW: usize = 170;
 
 fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
     let mut points = Vec::with_capacity(300);
@@ -98,7 +95,8 @@ fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
     Ok(points)
 }
 
-fn detect_lines(mut points: Vec<(f32, f32)>, scan_grid: ScanGrid) -> Result<Vec<Line>> {
+fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
+    let mut points = extract_line_points(&scan_grid)?;
     points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
     let mut points_next = Vec::<(f32, f32)>::with_capacity(300);
 
@@ -262,10 +260,9 @@ fn start_line_detection_task(
     top_scan_grid: &mut TopScanGrid,
     detect_lines_task: &mut ComputeTask<Result<Vec<Line>>>,
 ) -> Result<()> {
-    let line_points = extract_line_points(top_scan_grid)?;
     let top_scan_grid = top_scan_grid.clone();
     detect_lines_task
-        .try_spawn(move || detect_lines(line_points, top_scan_grid))
+        .try_spawn(move || detect_lines(top_scan_grid))
         .unwrap();
 
     Ok(())
@@ -281,10 +278,9 @@ fn line_detection_system(
         let lines = detect_lines_result?;
         draw_lines(dbg, &lines, top_scan_grid.clone())?;
 
-        let line_points = extract_line_points(top_scan_grid)?;
         let top_scan_grid = top_scan_grid.clone();
         detect_lines_task
-            .try_spawn(move || detect_lines(line_points, top_scan_grid))
+            .try_spawn(move || detect_lines(top_scan_grid))
             .unwrap();
     }
 
