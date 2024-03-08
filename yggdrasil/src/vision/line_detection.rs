@@ -30,11 +30,11 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
     let y2 = image.yuyv_image()[offset..offset + 4][2];
     let v = image.yuyv_image()[offset..offset + 4][3];
 
-    PixelColor::is_white_yuyv(y1, u, y2, v)
+    PixelColor::yuyv_is_white(y1, u, y2, v)
 }
 
 // TODO: Replace with proper field-boundary detection.
-const MIN_ROW: usize = 166;
+const MIN_ROW: usize = 240;
 
 fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
     let mut points = Vec::with_capacity(300);
