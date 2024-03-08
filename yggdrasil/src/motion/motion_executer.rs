@@ -1,6 +1,4 @@
-use crate::motion::motion_manager::{
-    ActiveComplexMotion, ActiveMotion, ActiveTypes, MotionManager,
-};
+use crate::motion::motion_manager::{ActiveMotion, MotionCategory, MotionManager};
 use crate::motion::motion_util::{lerp, MotionUtilExt};
 use miette::Result;
 use nidhogg::{
@@ -9,6 +7,9 @@ use nidhogg::{
 };
 use std::time::SystemTime;
 use tyr::prelude::*;
+
+use super::motion_manager;
+use super::motion_types::Motion;
 
 const STARTING_POSITION_ERROR_MARGIN: f32 = 0.40;
 const LERP_TO_STARTING_POSITION_DURATION_SECS: f32 = 0.5;
@@ -70,15 +71,24 @@ pub fn motion_executer(
         return Ok(());
     }
 
-    // CLONE HAPPENING HERE, WILL BE REMOVED ONCE BOTH FUNCTIONS ARE INTEGRATED HERE
-    match motion_manager.active_motion.clone() {
-        Some(ActiveTypes::Normal(motion)) => {
-            return normal_motion_executor(nao_state, motion_manager, nao_control_message, &motion)
+    let active_motion = motion_manager.active_motion.clone().unwrap();
+    match active_motion.motioncategory {
+        MotionCategory::Normal => {
+            return normal_motion_executor(
+                nao_state,
+                motion_manager,
+                nao_control_message,
+                &active_motion,
+            )
         }
-        Some(ActiveTypes::Complex(motion)) => {
-            return complex_motion_executor(nao_state, motion_manager, nao_control_message, &motion)
+        MotionCategory::Complex => {
+            return complex_motion_executor(
+                nao_state,
+                motion_manager,
+                nao_control_message,
+                &active_motion,
+            )
         }
-        _ => Ok(()),
     }
 }
 
@@ -90,13 +100,14 @@ pub fn normal_motion_executor(
 ) -> Result<()> {
     let ActiveMotion {
         motion,
+        motioncategory: _,
         starting_time,
     } = activemotion;
 
     if motion_manager.motion_execution_starting_time.is_none() {
         if !reached_position(
             &nao_state.position,
-            &motion.initial_position,
+            &motion.initial_movement().target_position,
             STARTING_POSITION_ERROR_MARGIN,
         ) {
             println!("Not reached starting position");
@@ -107,8 +118,9 @@ pub fn normal_motion_executor(
 
             nao_control_message.position = lerp(
                 &nao_state.position,
-                &motion.initial_position,
-                elapsed_time_since_start_of_motion / LERP_TO_STARTING_POSITION_DURATION_SECS,
+                &motion.initial_movement().target_position,
+                elapsed_time_since_start_of_motion
+                    / &motion.initial_movement().duration.as_secs_f32(),
             );
             nao_control_message.stiffness = JointArray::<f32>::fill(STIFFNESS);
 
@@ -145,7 +157,7 @@ pub fn complex_motion_executor(
     nao_state: &mut NaoState,
     motion_manager: &mut MotionManager,
     nao_control_message: &mut NaoControlMessage,
-    motion: &ActiveComplexMotion,
+    activemotion: &ActiveMotion,
 ) -> Result<()> {
     // TODO IMPLEMENT COMPLEX MOTION EXECUTION
     Ok(())
