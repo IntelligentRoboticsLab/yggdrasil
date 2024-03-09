@@ -206,75 +206,47 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
 }
 
 fn line_builder_to_line(line_builder: &LineBuilder) -> Line {
-    let start_column = line_builder.start_column;
-    let end_column = line_builder.end_column;
+    let mut start_column = line_builder.start_column;
+    let mut end_column = line_builder.end_column;
     assert!(start_column <= end_column);
 
     let mut start_row = line_builder.start_row;
     let mut end_row = line_builder.end_row;
     assert!(start_row <= end_row);
 
-    if let Ok((slope, intercept)) =
-        linreg::linear_regression_of::<f32, f32, f32>(&line_builder.points)
-    {
-        if end_column - start_column < end_row - start_row {
-            if slope > -0.1 && slope < 0.1 {
-                Line(
-                    LinePoint {
-                        row: start_row,
-                        column: start_column,
-                    },
-                    LinePoint {
-                        row: end_row,
-                        column: end_column,
-                    },
-                )
-            } else {
-                let start_column = (start_row - intercept) / slope;
-                let end_column = (end_row - intercept) / slope;
+    let (slope, intercept) =
+        linreg::linear_regression_of::<f32, f32, f32>(&line_builder.points).unwrap_or((100., 0.));
 
-                Line(
-                    LinePoint {
-                        row: start_row,
-                        column: start_column,
-                    },
-                    LinePoint {
-                        row: end_row,
-                        column: end_column,
-                    },
-                )
-            }
-        } else {
-            let start_row = start_column * slope + intercept;
-            let end_row = end_column * slope + intercept;
-
-            Line(
-                LinePoint {
-                    row: start_row,
-                    column: start_column,
-                },
-                LinePoint {
-                    row: end_row,
-                    column: end_column,
-                },
-            )
+    if end_column - start_column < end_row - start_row {
+        if !(-0.1..0.1).contains(&slope) {
+            start_column = (start_row - intercept) / slope;
+            end_column = (end_row - intercept) / slope;
         }
-    } else {
-        if start_row > end_row {
-            std::mem::swap(&mut start_row, &mut end_row);
-        }
-
-        Line(
-            LinePoint {
-                row: start_row,
-                column: start_column,
-            },
-            LinePoint {
-                row: end_row,
-                column: end_column,
-            },
-        )
+    } else if (-10.0..10.).contains(&slope) {
+        start_row = start_column * slope + intercept;
+        end_row = end_column * slope + intercept;
     }
+
+    assert!(start_row >= 0.);
+    assert!(end_row >= 0.);
+    assert!(start_column >= 0.);
+    assert!(end_column >= 0.);
+
+    assert!(start_row < 480.);
+    assert!(end_row < 480.);
+    assert!(start_column < 640.);
+    assert!(end_column < 640.);
+
+    Line(
+        LinePoint {
+            row: start_row,
+            column: start_column,
+        },
+        LinePoint {
+            row: end_row,
+            column: end_column,
+        },
+    )
 }
 
 fn draw_lines(dbg: &DebugContext, lines: &[Line], scan_grid: ScanGrid) -> Result<()> {
