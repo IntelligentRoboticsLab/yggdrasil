@@ -48,10 +48,10 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
     assert_eq!(column % 2, 0);
     let offset = row * image.yuyv_image().width() * 2 + column * 2;
 
-    let y1 = image.yuyv_image()[offset..offset + 4][0];
-    let u = image.yuyv_image()[offset..offset + 4][1];
-    let y2 = image.yuyv_image()[offset..offset + 4][2];
-    let v = image.yuyv_image()[offset..offset + 4][3];
+    let y1 = image.yuyv_image()[offset];
+    let u = image.yuyv_image()[offset + 1];
+    let y2 = image.yuyv_image()[offset + 2];
+    let v = image.yuyv_image()[offset + 3];
 
     PixelColor::yuyv_is_white(y1, u, y2, v)
 }
