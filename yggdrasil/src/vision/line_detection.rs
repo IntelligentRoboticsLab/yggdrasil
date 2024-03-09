@@ -31,6 +31,18 @@ struct LineBuilder {
     end_row: f32,
 }
 
+impl LineBuilder {
+    fn new(first_point: (f32, f32)) -> Self {
+        LineBuilder {
+            points: vec![first_point],
+            start_column: first_point.0,
+            end_column: first_point.0,
+            start_row: first_point.1,
+            end_row: first_point.1,
+        }
+    }
+}
+
 fn is_white(column: usize, row: usize, image: &Image) -> bool {
     let column = (column >> 1) << 1;
     assert_eq!(column % 2, 0);
@@ -118,13 +130,7 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
             break;
         }
 
-        let mut line_builder = LineBuilder {
-            points: vec![points[0]],
-            start_column: points[0].0,
-            end_column: points[0].0,
-            start_row: points[0].1,
-            end_row: points[0].1,
-        };
+        let mut line_builder = LineBuilder::new(points[0]);
 
         for point in points.iter().skip(1) {
             if (line_builder.points.last().unwrap().0 - point.0).abs() > 30f32
