@@ -14,7 +14,7 @@ pub struct LineDetectionModule;
 
 impl Module for LineDetectionModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(line_detection_system)
+        app.add_system(line_detection_system.after(super::scan_lines::scan_lines_system))
             .add_task::<ComputeTask<Result<Vec<Line>>>>()?
             .add_startup_system(start_line_detection_task)?
             .init_resource::<Vec<Line>>()
