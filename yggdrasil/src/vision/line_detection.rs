@@ -134,7 +134,7 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
 
         for point in points.iter().skip(1) {
             if (line_builder.points.last().unwrap().0 - point.0).abs() > 30f32
-                || (line_builder.points.last().unwrap().1 - point.1).abs() > 60f32
+                || (line_builder.points.last().unwrap().1 - point.1).abs() > 40f32
             {
                 points_next.push(*point);
                 continue;
