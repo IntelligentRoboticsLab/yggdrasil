@@ -208,38 +208,24 @@ fn line_builder_to_line(line_builder: &LineBuilder) -> Line {
     let mut end_row = line_builder.end_row;
     assert!(start_row <= end_row);
 
-    match linreg::linear_regression_of::<f32, f32, f32>(&line_builder.points) {
-        Ok((slope, intercept)) => {
-            if end_column - start_column < end_row - start_row {
-                if slope > -0.1 && slope < 0.1 {
-                    Line(
-                        LinePoint {
-                            row: start_row,
-                            column: start_column,
-                        },
-                        LinePoint {
-                            row: end_row,
-                            column: end_column,
-                        },
-                    )
-                } else {
-                    let start_column = (start_row - intercept) / slope;
-                    let end_column = (end_row - intercept) / slope;
-
-                    Line(
-                        LinePoint {
-                            row: start_row,
-                            column: start_column,
-                        },
-                        LinePoint {
-                            row: end_row,
-                            column: end_column,
-                        },
-                    )
-                }
+    if let Ok((slope, intercept)) =
+        linreg::linear_regression_of::<f32, f32, f32>(&line_builder.points)
+    {
+        if end_column - start_column < end_row - start_row {
+            if slope > -0.1 && slope < 0.1 {
+                Line(
+                    LinePoint {
+                        row: start_row,
+                        column: start_column,
+                    },
+                    LinePoint {
+                        row: end_row,
+                        column: end_column,
+                    },
+                )
             } else {
-                let start_row = start_column * slope + intercept;
-                let end_row = end_column * slope + intercept;
+                let start_column = (start_row - intercept) / slope;
+                let end_column = (end_row - intercept) / slope;
 
                 Line(
                     LinePoint {
@@ -252,11 +238,10 @@ fn line_builder_to_line(line_builder: &LineBuilder) -> Line {
                     },
                 )
             }
-        }
-        Err(error) => {
-            if start_row > end_row {
-                std::mem::swap(&mut start_row, &mut end_row);
-            }
+        } else {
+            let start_row = start_column * slope + intercept;
+            let end_row = end_column * slope + intercept;
+
             Line(
                 LinePoint {
                     row: start_row,
@@ -268,6 +253,21 @@ fn line_builder_to_line(line_builder: &LineBuilder) -> Line {
                 },
             )
         }
+    } else {
+        if start_row > end_row {
+            std::mem::swap(&mut start_row, &mut end_row);
+        }
+
+        Line(
+            LinePoint {
+                row: start_row,
+                column: start_column,
+            },
+            LinePoint {
+                row: end_row,
+                column: end_column,
+            },
+        )
     }
 }
 
