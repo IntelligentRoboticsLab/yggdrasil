@@ -16,8 +16,19 @@ impl Module for LineDetectionModule {
     }
 }
 
-struct Line {
+struct LinePoint {
+    row: f32,
+    column: f32,
+}
+
+struct Line(LinePoint, LinePoint);
+
+struct LineBuilder {
     points: Vec<(f32, f32)>,
+    start_column: f32,
+    end_column: f32,
+    start_row: f32,
+    end_row: f32,
 }
 
 fn is_white(column: usize, row: usize, image: &Image) -> bool {
@@ -100,51 +111,38 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
     points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
     let mut points_next = Vec::<(f32, f32)>::with_capacity(300);
 
-    let mut lines = Vec::<Line>::new();
+    let mut line_builders = Vec::<LineBuilder>::new();
 
     loop {
         if points.is_empty() {
             break;
         }
 
-        let mut line = Line {
+        let mut line_builder = LineBuilder {
             points: vec![points[0]],
+            start_column: points[0].0,
+            end_column: points[0].0,
+            start_row: points[0].1,
+            end_row: points[0].1,
         };
 
         for point in points.iter().skip(1) {
-            if (line.points.last().unwrap().0 - point.0).abs() > 30f32
-                || (line.points.last().unwrap().1 - point.1).abs() > 60f32
+            if (line_builder.points.last().unwrap().0 - point.0).abs() > 30f32
+                || (line_builder.points.last().unwrap().1 - point.1).abs() > 60f32
             {
                 points_next.push(*point);
                 continue;
             }
-            line.points.push(*point);
+            line_builder.points.push(*point);
 
-            let (slope, intercept) = linreg::linear_regression_of::<f32, f32, f32>(&line.points)
-                .unwrap_or((scan_grid.height() as f32, 0f32));
-            let start_column = line
-                .points
-                .iter()
-                .map(|(col, _)| col)
-                .fold(f32::INFINITY, |col1, &col2| col1.min(col2));
-            let end_column = line
-                .points
-                .iter()
-                .map(|(col, _)| col)
-                .fold(f32::NEG_INFINITY, |col1, &col2| col1.max(col2));
-            assert!(start_column <= end_column);
+            let (slope, intercept) =
+                linreg::linear_regression_of::<f32, f32, f32>(&line_builder.points)
+                    .unwrap_or((scan_grid.height() as f32, 0f32));
 
-            let start_row = line
-                .points
-                .iter()
-                .map(|(_, row)| row)
-                .fold(f32::INFINITY, |row1, &row2| row1.min(row2));
-            let end_row = line
-                .points
-                .iter()
-                .map(|(_, row)| row)
-                .fold(f32::NEG_INFINITY, |row1, &row2| row1.max(row2));
-            assert!(start_row <= end_row);
+            let start_column = line_builder.start_column.min(point.0);
+            let end_column = line_builder.end_column.max(point.0);
+            let start_row = line_builder.start_row.min(point.1);
+            let end_row = line_builder.end_row.max(point.1);
 
             let mut allowed_mistakes = 4u32;
 
@@ -178,14 +176,19 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
                 }
             }
             if allowed_mistakes == 0 {
-                line.points.pop().unwrap();
+                line_builder.points.pop().unwrap();
                 points_next.push(*point);
+            } else {
+                line_builder.start_column = start_column;
+                line_builder.end_column = end_column;
+                line_builder.start_row = start_row;
+                line_builder.end_row = end_row;
             }
         }
-        if line.points.len() > 3 {
-            lines.push(line);
+        if line_builder.points.len() > 3 {
+            line_builders.push(line_builder);
         } else {
-            points_next.extend(line.points.iter().skip(1));
+            points_next.extend(line_builder.points.iter().skip(1));
             points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
         }
 
@@ -193,67 +196,97 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
         mem::swap(&mut points, &mut points_next);
     }
 
-    Ok(lines)
+    Ok(line_builders.iter().map(line_builder_to_line).collect())
+}
+
+fn line_builder_to_line(line_builder: &LineBuilder) -> Line {
+    let start_column = line_builder.start_column;
+    let end_column = line_builder.end_column;
+    assert!(start_column <= end_column);
+
+    let mut start_row = line_builder.start_row;
+    let mut end_row = line_builder.end_row;
+    assert!(start_row <= end_row);
+
+    match linreg::linear_regression_of::<f32, f32, f32>(&line_builder.points) {
+        Ok((slope, intercept)) => {
+            if end_column - start_column < end_row - start_row {
+                if slope > -0.1 && slope < 0.1 {
+                    Line(
+                        LinePoint {
+                            row: start_row,
+                            column: start_column,
+                        },
+                        LinePoint {
+                            row: end_row,
+                            column: end_column,
+                        },
+                    )
+                } else {
+                    let start_column = (start_row - intercept) / slope;
+                    let end_column = (end_row - intercept) / slope;
+
+                    Line(
+                        LinePoint {
+                            row: start_row,
+                            column: start_column,
+                        },
+                        LinePoint {
+                            row: end_row,
+                            column: end_column,
+                        },
+                    )
+                }
+            } else {
+                let start_row = start_column * slope + intercept;
+                let end_row = end_column * slope + intercept;
+
+                Line(
+                    LinePoint {
+                        row: start_row,
+                        column: start_column,
+                    },
+                    LinePoint {
+                        row: end_row,
+                        column: end_column,
+                    },
+                )
+            }
+        }
+        Err(error) => {
+            if start_row > end_row {
+                std::mem::swap(&mut start_row, &mut end_row);
+            }
+            Line(
+                LinePoint {
+                    row: start_row,
+                    column: start_column,
+                },
+                LinePoint {
+                    row: end_row,
+                    column: end_column,
+                },
+            )
+        }
+    }
 }
 
 fn draw_lines(dbg: &DebugContext, lines: &[Line], scan_grid: ScanGrid) -> Result<()> {
-    let mut all_lines = Vec::<[(f32, f32); 2]>::new();
-
-    for line in lines {
-        let start_column = line
-            .points
-            .iter()
-            .map(|(col, _)| col)
-            .fold(f32::INFINITY, |col1, &col2| col1.min(col2));
-        let end_column = line
-            .points
-            .iter()
-            .map(|(col, _)| col)
-            .fold(f32::NEG_INFINITY, |col1, &col2| col1.max(col2));
-        assert!(start_column <= end_column);
-
-        let mut start_row = line
-            .points
-            .iter()
-            .map(|(_, row)| row)
-            .fold(f32::INFINITY, |row1, &row2| row1.min(row2));
-        let mut end_row = line
-            .points
-            .iter()
-            .map(|(_, row)| row)
-            .fold(f32::NEG_INFINITY, |row1, &row2| row1.max(row2));
-        assert!(start_row <= end_row);
-
-        match linreg::linear_regression_of::<f32, f32, f32>(&line.points) {
-            Ok((slope, intercept)) => {
-                if end_column - start_column < end_row - start_row {
-                    if slope > -0.1 && slope < 0.1 {
-                        all_lines.push([(start_column, start_row), (end_column, end_row)]);
-                    } else {
-                        let start_column = (start_row - intercept) / slope;
-                        let end_column = (end_row - intercept) / slope;
-
-                        all_lines.push([(start_column, start_row), (end_column, end_row)]);
-                    }
-                } else {
-                    let start_row = start_column * slope + intercept;
-                    let end_row = end_column * slope + intercept;
-                    all_lines.push([(start_column, start_row), (end_column, end_row)]);
-                }
-            }
-            Err(error) => match error {
-                linreg::Error::TooSteep => {
-                    if start_row > end_row {
-                        std::mem::swap(&mut start_row, &mut end_row);
-                    }
-                    all_lines.push([(start_column, start_row), (end_column, end_row)]);
-                }
-                _ => {
-                    todo!()
-                }
-            },
-        }
-    }
+    let all_lines = lines
+        .iter()
+        .map(
+            |Line(
+                LinePoint {
+                    row: first_row,
+                    column: first_column,
+                },
+                LinePoint {
+                    row: second_row,
+                    column: second_column,
+                },
+            )| [(*first_column, *first_row), (*second_column, *second_row)],
+        )
+        .collect::<Vec<_>>();
 
     dbg.log_lines2d_for_image("top_camera/lines", &all_lines, scan_grid.image().clone())?;
 
