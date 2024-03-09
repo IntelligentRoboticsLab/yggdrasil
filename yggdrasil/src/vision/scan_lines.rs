@@ -80,7 +80,7 @@ impl PixelColor {
     pub fn classify_yuv_pixel(y1: u8, u: u8, v: u8) -> Self {
         let (y, h, s2) = Self::yuv_to_yhs2(y1, u, v);
 
-        if y > 120. && s2 < 45. {
+        if y > 120. && s2 < 55. {
             Self::White
         } else if y < 80. && s2 < 40. {
             Self::Black
@@ -94,7 +94,7 @@ impl PixelColor {
     pub fn classify_yuyv_pixel(y1: u8, u: u8, y2: u8, v: u8) -> (Self, Self) {
         let ((y1, h1, s1), (y2, h2, s2)) = Self::yuyv_to_yhs2(y1, u, y2, v);
 
-        let first = if y1 > 120. && s1 < 45. {
+        let first = if y1 > 120. && s1 < 55. {
             Self::White
         } else if y1 < 80. && s1 < 40. {
             Self::Black
@@ -104,7 +104,7 @@ impl PixelColor {
             Self::Unknown
         };
 
-        let second = if y2 > 120. && s2 < 45. {
+        let second = if y2 > 120. && s2 < 55. {
             Self::White
         } else if y2 < 80. && s2 < 40. {
             Self::Black
@@ -129,7 +129,8 @@ impl PixelColor {
         let s1 = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y1 as f32;
         let s2 = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y2 as f32;
 
-        (y1 > 120 && s1 < 45.) || (y2 > 120 && s2 < 45.0)
+        // (y1 > 120 && s1 < 45.) || (y2 > 120 && s2 < 45.0)
+        (y1 > 80 && s1 < 55.) || (y2 > 80 && s2 < 55.0)
     }
 }
 
