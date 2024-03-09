@@ -6,22 +6,27 @@ use crate::prelude::*;
 
 use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
+/// Module that detect lines from scan-lines.
+///
+/// This module provides the following resources to the application:
+/// - <code>[Vec]<[Line]></code>
 pub struct LineDetectionModule;
 
 impl Module for LineDetectionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system(line_detection_system)
             .add_task::<ComputeTask<Result<Vec<Line>>>>()?
-            .add_startup_system(start_line_detection_task)
+            .add_startup_system(start_line_detection_task)?
+            .init_resource::<Vec<Line>>()
     }
 }
 
-struct LinePoint {
-    row: f32,
-    column: f32,
+pub struct LinePoint {
+    pub row: f32,
+    pub column: f32,
 }
 
-struct Line(LinePoint, LinePoint);
+pub struct Line(pub LinePoint, pub LinePoint);
 
 struct LineBuilder {
     points: Vec<(f32, f32)>,
@@ -290,10 +295,11 @@ fn line_detection_system(
     top_scan_grid: &mut TopScanGrid,
     dbg: &DebugContext,
     detect_lines_task: &mut ComputeTask<Result<Vec<Line>>>,
+    lines: &mut Vec<Line>,
 ) -> Result<()> {
     if let Some(detect_lines_result) = detect_lines_task.poll() {
-        let lines = detect_lines_result?;
-        draw_lines(dbg, &lines, top_scan_grid.clone())?;
+        *lines = detect_lines_result?;
+        draw_lines(dbg, lines, top_scan_grid.clone())?;
 
         let points = extract_line_points(top_scan_grid)?;
         dbg.log_points2d_for_image(
