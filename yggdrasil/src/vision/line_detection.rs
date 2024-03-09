@@ -227,7 +227,7 @@ fn draw_lines(dbg: &DebugContext, lines: &[Line], scan_grid: ScanGrid) -> Result
         match linreg::linear_regression_of::<f32, f32, f32>(&line.points) {
             Ok((slope, intercept)) => {
                 if end_column - start_column < end_row - start_row {
-                    if slope > -0.001 && slope < 0.001 {
+                    if slope > -0.1 && slope < 0.1 {
                         all_lines.push([(start_column, start_row), (end_column, end_row)]);
                     } else {
                         let start_column = (start_row - intercept) / slope;
