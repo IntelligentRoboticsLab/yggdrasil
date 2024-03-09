@@ -42,7 +42,7 @@ pub enum PixelColor {
 }
 
 impl PixelColor {
-    pub fn yuv_to_yhs2(y1: u8, u: u8, v: u8) -> (f32, f32, f32) {
+    pub fn yuv_to_yhs(y1: u8, u: u8, v: u8) -> (f32, f32, f32) {
         let y1 = y1 as i32;
         let u = u as i32;
         let v = v as i32;
@@ -59,7 +59,7 @@ impl PixelColor {
         (y as f32, h, s)
     }
 
-    pub fn yuyv_to_yhs2(y1: u8, u: u8, y2: u8, v: u8) -> ((f32, f32, f32), (f32, f32, f32)) {
+    pub fn yuyv_to_yhs(y1: u8, u: u8, y2: u8, v: u8) -> ((f32, f32, f32), (f32, f32, f32)) {
         let y1 = y1 as i32;
         let u = u as i32;
         let y2 = y2 as i32;
@@ -77,47 +77,7 @@ impl PixelColor {
         ((y1 as f32, h, s1), (y2 as f32, h, s2))
     }
 
-    pub fn classify_yuv_pixel(y1: u8, u: u8, v: u8) -> Self {
-        let (y, h, s2) = Self::yuv_to_yhs2(y1, u, v);
-
-        if y > 120. && s2 < 55. {
-            Self::White
-        } else if y < 80. && s2 < 40. {
-            Self::Black
-        } else if y < 120. && !(20.0..=250.0).contains(&h) && s2 > 45. {
-            Self::Green
-        } else {
-            Self::Unknown
-        }
-    }
-
-    pub fn classify_yuyv_pixel(y1: u8, u: u8, y2: u8, v: u8) -> (Self, Self) {
-        let ((y1, h1, s1), (y2, h2, s2)) = Self::yuyv_to_yhs2(y1, u, y2, v);
-
-        let first = if y1 > 120. && s1 < 55. {
-            Self::White
-        } else if y1 < 80. && s1 < 40. {
-            Self::Black
-        } else if y1 < 120. && !(20.0..=250.0).contains(&h1) && s1 > 45. {
-            Self::Green
-        } else {
-            Self::Unknown
-        };
-
-        let second = if y2 > 120. && s2 < 55. {
-            Self::White
-        } else if y2 < 80. && s2 < 40. {
-            Self::Black
-        } else if y2 < 120. && !(20.0..=250.0).contains(&h2) && s2 > 45. {
-            Self::Green
-        } else {
-            Self::Unknown
-        };
-
-        (first, second)
-    }
-
-    pub fn yuyv_is_white(y1: u8, u: u8, y2: u8, v: u8) -> bool {
+    fn yuyv_to_ss(y1: u8, u: u8, y2: u8, v: u8) -> (f32, f32) {
         let y1 = y1 as i32;
         let u = u as i32;
         let y2 = y2 as i32;
@@ -129,8 +89,65 @@ impl PixelColor {
         let s1 = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y1 as f32;
         let s2 = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y2 as f32;
 
-        // (y1 > 120 && s1 < 45.) || (y2 > 120 && s2 < 45.0)
-        (y1 > 80 && s1 < 55.) || (y2 > 80 && s2 < 55.0)
+        (s1, s2)
+    }
+
+    pub fn classify_yuv_pixel(y1: u8, u: u8, v: u8) -> Self {
+        let (y, h, s) = Self::yuv_to_yhs(y1, u, v);
+
+        if Self::ys_is_white(y, s) {
+            Self::White
+        } else if Self::ys_is_black(y, s) {
+            Self::Black
+        } else if Self::yhs_is_green(y, h, s) {
+            Self::Green
+        } else {
+            Self::Unknown
+        }
+    }
+
+    fn ys_is_white(y: f32, s: f32) -> bool {
+        y > 120. && s < 55.
+    }
+
+    fn ys_is_black(y: f32, s: f32) -> bool {
+        y < 80. && s < 40.
+    }
+
+    fn yhs_is_green(y: f32, h: f32, s: f32) -> bool {
+        y < 120. && !(20.0..=250.0).contains(&h) && s > 45.
+    }
+
+    pub fn classify_yuyv_pixel(y1: u8, u: u8, y2: u8, v: u8) -> (Self, Self) {
+        let ((y1, h1, s1), (y2, h2, s2)) = Self::yuyv_to_yhs(y1, u, y2, v);
+
+        let first = if Self::ys_is_white(y1, s1) {
+            Self::White
+        } else if Self::ys_is_black(y1, s1) {
+            Self::Black
+        } else if Self::yhs_is_green(y1, h1, s1) {
+            Self::Green
+        } else {
+            Self::Unknown
+        };
+
+        let second = if Self::ys_is_white(y2, s2) {
+            Self::White
+        } else if Self::ys_is_black(y2, s2) {
+            Self::Black
+        } else if Self::yhs_is_green(y2, h2, s2) {
+            Self::Green
+        } else {
+            Self::Unknown
+        };
+
+        (first, second)
+    }
+
+    pub fn yuyv_is_white(y1: u8, u: u8, y2: u8, v: u8) -> bool {
+        let (s1, s2) = Self::yuyv_to_ss(y1, u, y2, v);
+
+        Self::ys_is_white(y1 as f32, s1) || Self::ys_is_white(y2 as f32, s2)
     }
 }
 
