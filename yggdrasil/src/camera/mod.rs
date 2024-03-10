@@ -4,7 +4,6 @@ use derive_more::{Deref, DerefMut};
 use miette::IntoDiagnostic;
 use serde::{Deserialize, Serialize};
 use std::{
-    ops::Deref,
     sync::{Arc, Mutex},
     time::Instant,
 };
@@ -84,6 +83,15 @@ impl YggdrasilCamera {
 
         camera.try_get_yuyv_image().ok().map(Image::new)
     }
+
+    fn loop_fetch_image(&self) -> Result<Image> {
+        let mut camera = self.0.lock().unwrap();
+
+        camera
+            .loop_try_get_yuyv_image()
+            .into_diagnostic()
+            .map(Image::new)
+    }
 }
 
 #[derive(Deref, DerefMut)]
@@ -136,10 +144,6 @@ impl TopImage {
     fn new(image: Image) -> Self {
         Self(image)
     }
-
-    fn take_image(camera: &mut Camera) -> Result<Self> {
-        Ok(Self(Image::new(camera.get_yuyv_image().into_diagnostic()?)))
-    }
 }
 
 #[derive(Clone, Deref)]
@@ -148,10 +152,6 @@ pub struct BottomImage(Image);
 impl BottomImage {
     fn new(image: Image) -> Self {
         Self(image)
-    }
-
-    fn take_image(camera: &mut Camera) -> Result<Self> {
-        Ok(Self(Image::new(camera.get_yuyv_image().into_diagnostic()?)))
     }
 }
 
@@ -178,14 +178,10 @@ fn initialize_cameras(storage: &mut Storage, config: &CameraConfig) -> Result<()
     let top_camera = TopCamera::new(config)?;
     let bottom_camera = BottomCamera::new(config)?;
 
-    let top_image_resource = Resource::new(TopImage::take_image(
-        &mut top_camera.deref().0.lock().unwrap(),
-    )?);
+    let top_image_resource = Resource::new(TopImage::new(top_camera.loop_fetch_image()?));
     let top_camera_resource = Resource::new(top_camera);
 
-    let bottom_image_resource = Resource::new(BottomImage::take_image(
-        &mut bottom_camera.deref().0.lock().unwrap(),
-    )?);
+    let bottom_image_resource = Resource::new(BottomImage::new(bottom_camera.loop_fetch_image()?));
     let bottom_camera_resource = Resource::new(bottom_camera);
 
     storage.add_resource(top_image_resource)?;

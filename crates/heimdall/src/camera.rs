@@ -25,8 +25,8 @@ impl CameraDevice {
             .to_owned()
             .to_string_lossy()
             .to_string();
-        let device =
-            Device::open(device_path).map_err(|source| Error::DeviceOpen { path, source })?;
+        let device = Device::open_non_blocking(device_path)
+            .map_err(|source| Error::DeviceOpen { path, source })?;
 
         Ok(Self { device })
     }
@@ -294,8 +294,8 @@ impl Camera {
 
         // Grab some images to startup the camera.
         // Without it, the first couple of images will return an empty buffer.
-        for _ in 0..num_buffers {
-            camera.get_yuyv_image()?;
+        for _ in 0..num_buffers * 2 {
+            camera.loop_try_get_yuyv_image()?;
         }
 
         Ok(camera)
@@ -305,7 +305,7 @@ impl Camera {
     ///
     /// # Errors
     /// This function fails if the [`Camera`] cannot take an image.
-    pub fn get_yuyv_image(&mut self) -> Result<YuyvImage> {
+    pub fn try_get_yuyv_image(&mut self) -> Result<YuyvImage> {
         let frame = self.camera.fetch_frame()?;
 
         Ok(YuyvImage {
@@ -317,10 +317,22 @@ impl Camera {
 
     /// Get the next image.
     ///
+    /// This is the same as `try_get_yuyv_image`, however this function infinite loops until it it
+    /// has actually fetched an image. This can be useful when the camera device has been opened in
+    /// non-blocking mode.
+    ///
     /// # Errors
     /// This function fails if the [`Camera`] cannot take an image.
-    pub fn try_get_yuyv_image(&mut self) -> Result<YuyvImage> {
-        let frame = self.camera.try_fetch_frame()?;
+    pub fn loop_try_get_yuyv_image(&mut self) -> Result<YuyvImage> {
+        let mut fetch_frame_result = self.camera.fetch_frame();
+        while fetch_frame_result
+            .as_ref()
+            .is_err_and(|io_error| io_error.kind() == std::io::ErrorKind::WouldBlock)
+        {
+            fetch_frame_result = self.camera.fetch_frame();
+        }
+
+        let frame = fetch_frame_result?;
 
         Ok(YuyvImage {
             frame,
