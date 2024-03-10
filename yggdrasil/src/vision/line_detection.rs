@@ -222,17 +222,25 @@ fn line_builder_to_line(line_builder: &LineBuilder, scan_grid: &ScanGrid) -> Lin
     let mut end_row = line_builder.end_row;
     assert!(start_row <= end_row);
 
-    let (slope, intercept) =
-        linreg::linear_regression_of::<f32, f32, f32>(&line_builder.points).unwrap_or((scan_grid.height()., 0.));
+    let (slope, intercept) = linreg::linear_regression_of::<f32, f32, f32>(&line_builder.points)
+        .unwrap_or((scan_grid.height() as f32, 0.));
 
     if end_column - start_column < end_row - start_row {
         if !(-0.05..0.05).contains(&slope) {
-            start_column = ((start_row - intercept) / slope).min(scan_grid.width() - 1.).max(0.);
-            end_column = ((end_row - intercept) / slope).min(scan_grid.width() - 1.).max(0.);
+            start_column = ((start_row - intercept) / slope)
+                .min(scan_grid.width() as f32 - 1.)
+                .max(0.);
+            end_column = ((end_row - intercept) / slope)
+                .min(scan_grid.width() as f32 - 1.)
+                .max(0.);
         }
     } else if (-20.0..20.).contains(&slope) {
-        start_row = (start_column * slope + intercept).min(scan_grid.height() - 1.).max(0.);
-        end_row = (end_column * slope + intercept).min(scan_grid.height() - 1.).max(0.);
+        start_row = (start_column * slope + intercept)
+            .min(scan_grid.height() as f32 - 1.)
+            .max(0.);
+        end_row = (end_column * slope + intercept)
+            .min(scan_grid.height() as f32 - 1.)
+            .max(0.);
     }
 
     assert!(start_row >= 0.);
@@ -240,10 +248,10 @@ fn line_builder_to_line(line_builder: &LineBuilder, scan_grid: &ScanGrid) -> Lin
     assert!(start_column >= 0.);
     assert!(end_column >= 0.);
 
-    assert!(start_row < scan_grid.height());
-    assert!(end_row < scan_grid.height());
-    assert!(start_column < scan_grid.width());
-    assert!(end_column < scan_grid.width());
+    assert!(start_row < scan_grid.height() as f32);
+    assert!(end_row < scan_grid.height() as f32);
+    assert!(start_column < scan_grid.width() as f32);
+    assert!(end_column < scan_grid.width() as f32);
 
     Line(
         LinePoint {
