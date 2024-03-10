@@ -31,8 +31,7 @@ impl Horizon {
                 + focal_length.y
                     * (rotation_matrix[(2, 0)]
                         + optical_center.x * rotation_matrix[(2, 1)] / focal_length.x)
-                    / (rotation_matrix[(2, 2)]
-                        + optical_center.x * rotation_matrix[(2, 2)] / focal_length.x);
+                    / rotation_matrix[(2, 2)];
 
             let slope = -focal_length.y * rotation_matrix[(2, 1)]
                 / (focal_length.x * rotation_matrix[(2, 2)]);

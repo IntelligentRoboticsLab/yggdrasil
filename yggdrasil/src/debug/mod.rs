@@ -102,8 +102,8 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            let focal_x = 640.0 * -0.95;
-            let focal_y = 480.0 * -1.27;
+            let focal_x = 300.0;
+            let focal_y = 300.0;
             self.rec
                 .log(
                     path.as_ref(),
@@ -111,16 +111,25 @@ impl DebugContext {
                         [focal_x, focal_y],
                         [640.0, 480.0],
                     )
-                    .with_camera_xyz(rerun::components::ViewCoordinates::FRD),
+                    .with_camera_xyz(rerun::components::ViewCoordinates::FLU),
                 )
                 .into_diagnostic()?;
+            let camera_translation = matrix.camera_to_ground.inverse();
+            let translation = [
+                camera_translation.translation.x,
+                camera_translation.translation.y,
+                camera_translation.translation.z,
+            ];
+            let rotation = rerun::Quaternion::from_xyzw([
+                camera_translation.rotation.coords.x,
+                camera_translation.rotation.coords.y,
+                camera_translation.rotation.coords.z,
+                camera_translation.rotation.coords.w,
+            ]);
             self.rec.log(
                 path.as_ref(),
-                &rerun::Transform3D::from_translation((0.2, 0.0, 0.0)),
+                &rerun::Transform3D::from_translation_rotation(translation, rotation).from_parent(),
             );
-            self.rec
-                .log("top_camera/test", &rerun::Points3D::new([(0.2, 0.0, 0.0)]))
-                .into_diagnostic()?;
         }
 
         Ok(())
@@ -185,11 +194,11 @@ impl DebugContext {
         Ok(())
     }
 
-    pub fn log_point2d(&self, path: impl AsRef<str>, x: f32, y: f32) -> Result<()> {
+    pub fn log_points_2d(&self, path: impl AsRef<str>, points: Vec<(f32, f32)>) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
             self.rec
-                .log(path.as_ref(), &rerun::Points2D::new([(x, y)]))
+                .log(path.as_ref(), &rerun::Points2D::new(points))
                 .into_diagnostic()?;
         }
 
@@ -261,6 +270,16 @@ impl DebugContext {
                 .into_diagnostic()?;
         }
 
+        Ok(())
+    }
+
+    pub fn log_points_3d(&self, path: impl AsRef<str>, points: Vec<(f32, f32, f32)>) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(path.as_ref(), &rerun::Points3D::new(points))
+                .into_diagnostic()?;
+        }
         Ok(())
     }
 }

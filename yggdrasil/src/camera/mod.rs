@@ -12,6 +12,8 @@ use std::{
 
 use heimdall::{Camera, CameraDevice, YuyvImage};
 
+use self::matrix::TopCameraMatrix;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct CameraConfig {
@@ -43,6 +45,7 @@ pub struct CameraModule;
 impl Module for CameraModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_startup_system(initialize_cameras)?
+            .init_resource::<TopCameraMatrix>()?
             .add_system(camera_system)
             .add_system(debug_camera_system.after(camera_system))
             .add_system(matrix::update_camera_matrix.after(camera_system))
