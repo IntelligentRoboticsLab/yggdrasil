@@ -15,10 +15,10 @@ futures = "0.3.28"
 image = "0.24.8"
 indicatif = "0.17.8"
 kira = "0.8.7"
-linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git" }
+linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git", rev = "849ec8a6be65b09abf2b6bbbe87bf76a0c9d5b44" }
 miette = "5.10.0"
 nalgebra = "0.32.4"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
+nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "77f8b64f5f2a7a31d7adfada90aefe75145f13b9" }
 num = "0.4.0"
 petgraph = "0.6.3"
 proc-macro2 = "1.0.78"
