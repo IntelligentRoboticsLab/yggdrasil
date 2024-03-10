@@ -223,13 +223,13 @@ fn line_builder_to_line(line_builder: &LineBuilder) -> Line {
         linreg::linear_regression_of::<f32, f32, f32>(&line_builder.points).unwrap_or((100., 0.));
 
     if end_column - start_column < end_row - start_row {
-        if !(-0.2..0.2).contains(&slope) {
-            start_column = (start_row - intercept) / slope;
-            end_column = (end_row - intercept) / slope;
+        if !(-0.1..0.1).contains(&slope) {
+            start_column = ((start_row - intercept) / slope).min(640. - 1.).max(0.);
+            end_column = ((end_row - intercept) / slope).min(640. - 1.).max(0.);
         }
     } else if (-20.0..20.).contains(&slope) {
-        start_row = start_column * slope + intercept;
-        end_row = end_column * slope + intercept;
+        start_row = (start_column * slope + intercept).min(480. - 1.).max(0.);
+        end_row = (end_column * slope + intercept).min(480. - 1.).max(0.);
     }
 
     assert!(start_row >= 0.);
