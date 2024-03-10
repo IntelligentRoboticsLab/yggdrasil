@@ -1,0 +1,42 @@
+# The base amount of time (in milliseconds) for one step, e.g. half a walk cycle.
+base_step_period = 250
+
+# The stiffness value used for the leg joints, higher means the robot's joints will
+# wear out faster, but the robot will be more stable.
+leg_stiffness = 0.8
+
+# The stiffness value used for the arm joints, higher means the robot's joints will
+# wear out faster, but the robot will be more stable.
+arm_stiffness = 0.5
+
+# The center of pressure threshold for switching support foot
+cop_pressure_threshold = 0.2
+
+# The base amount to lift the feet in swing phase, in metres.
+# The foot lift is increased slightly, based on the forward and left in the command.
+base_foot_lift = 0.01
+
+# The multiplier for each component of a step command to adjust the foot lift.
+# These values are multiplied by their respective component of the step command
+# and added to the base foot lift.
+foot_lift_modifier = { forward = 0.01, left = 0.02, turn = 0.0 }
+
+# The height of the robot's hips relative to the ankle joint, in metres.
+hip_height = 0.18
+
+# The hip height when the robot is sitting, in metres
+# This is used as a starting point for the stand-up motion in the idle state.
+sitting_hip_height = 0.0975
+
+# This section contains parameters for the balance control
+[balancing]
+# The arm swing multiplier, this is used to adjust the amount of arm swing
+# based on the forward walk command.
+# The shoulder pitch value is "approximated" is computed by multiplying the
+# forward walk command by this value.
+arm_swing_multiplier = 0
+
+# The multiplier for the filtered gyro y value
+# Increasing this value will use a larger portion of the filtered gyro value
+# to adjust the pitch of the robot's ankles
+filtered_gyro_y_multiplier = 0.06

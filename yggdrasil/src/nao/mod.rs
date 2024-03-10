@@ -10,6 +10,8 @@ use nidhogg::{
     HardwareInfo, NaoBackend, NaoControlMessage, NaoState,
 };
 
+const SOCKET_PATH: &str = "/tmp/yggdrasil";
+
 #[derive(Clone, Debug)]
 /// Information that uniquely identifies a robot
 pub struct RobotInfo {
@@ -71,7 +73,9 @@ impl Module for NaoModule {
 
 #[startup_system]
 fn initialize_nao(storage: &mut Storage) -> Result<()> {
-    let mut nao = LolaBackend::connect_with_retry(10, Duration::from_millis(500))?;
+    let mut nao =
+        LolaBackend::connect_with_retry(10, Duration::from_millis(500), Some(SOCKET_PATH))?;
+
     let info = RobotInfo::new(&mut nao)?;
     let state = nao.read_nao_state()?;
 
@@ -98,6 +102,8 @@ pub fn write_hardware_info(
     update: &NaoControlMessage,
 ) -> Result<()> {
     *robot_state = nao.read_nao_state()?;
+    println!("Finished reading");
     nao.send_control_msg(update.clone())?;
+    println!("Finished writing");
     Ok(())
 }
