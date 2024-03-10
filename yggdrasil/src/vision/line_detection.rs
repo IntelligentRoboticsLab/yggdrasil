@@ -138,7 +138,7 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
         let mut line_builder = LineBuilder::new(points[0]);
 
         for point in points.iter().skip(1) {
-            if (line_builder.points.last().unwrap().0 - point.0).abs() > 30f32
+            if (line_builder.points.last().unwrap().0 - point.0).abs() > 40f32
                 || (line_builder.points.last().unwrap().1 - point.1).abs() > 40f32
             {
                 points_next.push(*point);
@@ -155,7 +155,7 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
             let start_row = line_builder.start_row.min(point.1);
             let end_row = line_builder.end_row.max(point.1);
 
-            let mut allowed_mistakes = 4u32;
+            let mut allowed_mistakes = 6u32;
 
             if end_row - start_row > end_column - start_column {
                 for row in start_row as usize..end_row as usize {
@@ -223,11 +223,11 @@ fn line_builder_to_line(line_builder: &LineBuilder) -> Line {
         linreg::linear_regression_of::<f32, f32, f32>(&line_builder.points).unwrap_or((100., 0.));
 
     if end_column - start_column < end_row - start_row {
-        if !(-0.1..0.1).contains(&slope) {
+        if !(-0.2..0.2).contains(&slope) {
             start_column = (start_row - intercept) / slope;
             end_column = (end_row - intercept) / slope;
         }
-    } else if (-10.0..10.).contains(&slope) {
+    } else if (-20.0..20.).contains(&slope) {
         start_row = start_column * slope + intercept;
         end_row = end_column * slope + intercept;
     }
