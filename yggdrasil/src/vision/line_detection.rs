@@ -200,7 +200,7 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
             line_builders.push(line_builder);
         } else {
             points_next.extend(line_builder.points.iter().skip(1));
-            points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
+            points_next.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
         }
 
         points.clear();
