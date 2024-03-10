@@ -155,7 +155,7 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
             let start_row = line_builder.start_row.min(point.1);
             let end_row = line_builder.end_row.max(point.1);
 
-            let mut allowed_mistakes = 6u32;
+            let mut allowed_mistakes = 3u32;
 
             if end_row - start_row > end_column - start_column {
                 for row in start_row as usize..end_row as usize {
