@@ -5,8 +5,8 @@
 pub type MlArray<E> = ndarray::Array<E, ndarray::Dim<ndarray::IxDynImpl>>;
 
 /// Implements [`Elem`] on a data type and maps it to an OpenVINO data type.
-/// In other words, the data type can be used as an in- and output element of a
-/// ML model, if that model uses the mapped OpenVINO data type internally.
+/// In other words, the data type can now be used as in- and output of a
+/// ML model, granted that model uses the mapped OpenVINO data type internally.
 ///
 /// Note that this is unsafe, see [`Elem`].
 macro_rules! impl_elem {
@@ -32,12 +32,12 @@ macro_rules! impl_elem {
     };
 }
 
-/// A data type that can serve as an
+/// A data type that can serve as
 /// input, granted it implements [`InputElem`],
-/// and output type of a ML model.
+/// and output of a ML model.
 ///
 /// ## Safety
-/// OpenVINO internally stores data in tensor with some precision/data type,
+/// OpenVINO internally stores data in tensors with some precision (aka data type),
 /// but when this data is requested it's returned as a byte buffer.
 /// To judge if casting to a type that implements [`Elem`] is safe,
 /// [`Elem::is_compatible`] is called. The rest of the implementation
@@ -57,7 +57,10 @@ unsafe impl Elem for u8 {
     }
 }
 
-/// Input element type of a ML model.
+/// Input element type of a ML model. The reason this
+/// trait is separate from [`Elem`] is that a user should technically
+/// be allowed to implement just [`Elem`] (and not [`InputElem`])
+/// for an output type and use another type as input.
 pub trait InputElem: Elem {
     /// Returns a view to the bytes of a slice of `Self`s.
     fn view_slice_bytes(slice: &[Self]) -> &[u8];
@@ -73,8 +76,9 @@ impl_elem!(unsafe { f32 => openvino::Precision::FP32 });
 impl_elem!(unsafe { f64 => openvino::Precision::FP64 });
 impl_elem!(unsafe { u32 => openvino::Precision::U32 });
 impl_elem!(unsafe { i32 => openvino::Precision::I32 });
+// NOTE: implement for more types if necessary
 
-/// Output of a ML model, where `E` is the element type.
+/// Output container of a ML model, where `E` is the element type that is contained.
 pub trait Output<E: Elem>: Sized {
     /// Instantiate `Self` from a slice and the dimensions of the data.
     fn from_slice(slice: &[E], shape: &[usize]) -> Self;
@@ -89,7 +93,7 @@ impl<E: Elem + Clone> Output<E> for Vec<E> {
 impl<E: Elem + Clone> Output<E> for MlArray<E> {
     fn from_slice(slice: &[E], shape: &[usize]) -> Self {
         // with the implementation of the backend this should never panic
-        ndarray::Array::from_shape_vec(shape, slice.to_vec()).expect(&format!(
+        ndarray::Array::from_shape_vec(shape, slice.to_vec()).unwrap_or_else(|_| panic!(
             "Given shape does not match the number of elements in the slice (shape: {shape:?}, size: {})",
             slice.len()
         ))

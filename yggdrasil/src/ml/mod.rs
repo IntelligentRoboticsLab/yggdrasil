@@ -49,7 +49,21 @@ pub trait MlModel: 'static {
     const ONNX_PATH: &'static str;
 }
 
-/// Machine learning (ML) task that runs ML models in a [`ComputeTask`].
+/// Machine learning (ML) task that runs a [`MlModel`] in a [`ComputeTask`].
+///
+/// ## Example Usage
+/// Add a ML task to the app as follows:
+/// ```
+/// use tyr::App;
+/// use yggdrasil::ml::{MlModel, MlTaskResource, MlModule};
+///
+/// fn build_app<Model: MlModel + Send + Sync>() -> miette::Result<()> {
+///     let app = App::new()
+///         .add_module(MlModule)?
+///         .add_ml_task::<Model>()?;
+///     Ok(())
+/// }
+/// ```
 pub struct MlTask<M: MlModel> {
     model: ModelExecutor<M>,
     task: ComputeTask<Result<InferRequest<M>>>,
@@ -68,12 +82,13 @@ impl<M: MlModel> MlTask<M> {
     ///
     /// ## Errors
     /// Fails if:
+    /// * The input size is incorrect.
     /// * The task was not yet finished from a previous call.
-    /// * Inference could not be started, e.g. because the input size is incorrect.
+    /// * Inference could not be started for some internal reason.
     pub fn try_start_infer(&mut self, input: &[M::InputType]) -> Result<()> {
-        let req = self.model.request_infer(input)?;
+        let infer_req = self.model.request_infer(input)?;
 
-        self.task.try_spawn(move || req.infer())?;
+        self.task.try_spawn(move || infer_req.run())?;
         Ok(())
     }
 
@@ -85,13 +100,13 @@ impl<M: MlModel> MlTask<M> {
     /// Returns `Some(`[`Error::RunInference`]`)` if an error occurred during
     /// inference.
     ///
-    /// ## Return Collection
+    /// ## Returns
     /// The output is stored in the collection type provided by the user through
     /// the generic `O`, which can be anything that implements [`Output`].
     ///
     /// ## Example Usage
     /// ```
-    /// use yggdrasil::ml::{MlTask, MlModel, data_type::MlArray};
+    /// use yggdrasil::ml::{MlTask, MlModel, data_type::MlArray, Result};
     ///
     /// struct ResNet18;
     ///
@@ -101,11 +116,9 @@ impl<M: MlModel> MlTask<M> {
     ///     const ONNX_PATH: &'static str = "secret-folder/resnet18.onnx";
     /// }
     ///
-    /// fn poll_the_thing(task: &mut MlTask<ResNet18>) -> MlArray<f32> {
+    /// fn poll_the_thing(task: &mut MlTask<ResNet18>) -> Option<Result<MlArray<f32>>> {
     ///     // store the model output in an n-dimensional array
-    ///     let output = task.poll::<MlArray<f32>>();
-    ///     // we're sure there are no issues (never do this)
-    ///     return output.unwrap().unwrap();
+    ///     task.poll::<MlArray<f32>>()
     /// }
     /// ```
     pub fn poll<O>(&mut self) -> Option<Result<O>>
@@ -115,7 +128,7 @@ impl<M: MlModel> MlTask<M> {
         let infer_result = self.task.poll()?;
 
         match infer_result {
-            Ok(infer) => Some(Ok(infer.get_output())),
+            Ok(infer) => Some(infer.get_output()),
             Err(e) => Some(Err(e)),
         }
     }
@@ -204,11 +217,16 @@ pub enum Error {
     #[error("Failed to start inference")]
     StartInference(#[source] openvino::InferenceError),
 
-    #[error("Inference input does not meet model requirements")]
-    InferenceInput(#[source] openvino::InferenceError),
+    #[error(
+        "Inference input is of size {actual}, while the model expects an input of size {expected}"
+    )]
+    InferenceInputSize { expected: usize, actual: usize },
 
     #[error("Failed to run inference")]
     RunInference(#[source] openvino::InferenceError),
+
+    #[error("OpenVINO threw an unexpected error")]
+    UnexpectedOpenVino(#[source] openvino::InferenceError),
 
     #[error(transparent)]
     Tyr(#[from] tyr::tasks::Error),
