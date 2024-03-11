@@ -42,21 +42,117 @@ pub enum PixelColor {
 }
 
 impl PixelColor {
-    fn classify_yuv_pixel(y1: u8, u: u8, v: u8) -> Self {
-        // TODO: Find a better way to classify pixels.
-        if y1 > 140 {
+    pub fn yuv_to_yhs(y1: u8, u: u8, v: u8) -> (f32, f32, f32) {
+        let y1 = y1 as i32;
+        let u = u as i32;
+        let v = v as i32;
+
+        let v_normed = v - 128;
+        let u_normed = u - 128;
+
+        let y = y1;
+        let h =
+            fast_math::atan2(v_normed as f32, u_normed as f32) * std::f32::consts::FRAC_1_PI * 127.
+                + 127.;
+        let s = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y as f32;
+
+        (y as f32, h, s)
+    }
+
+    pub fn yuyv_to_yhs(y1: u8, u: u8, y2: u8, v: u8) -> ((f32, f32, f32), (f32, f32, f32)) {
+        let y1 = y1 as i32;
+        let u = u as i32;
+        let y2 = y2 as i32;
+        let v = v as i32;
+
+        let v_normed = v - 128;
+        let u_normed = u - 128;
+
+        let h =
+            fast_math::atan2(v_normed as f32, u_normed as f32) * std::f32::consts::FRAC_1_PI * 127.
+                + 127.;
+        let s1 = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y1 as f32;
+        let s2 = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y2 as f32;
+
+        ((y1 as f32, h, s1), (y2 as f32, h, s2))
+    }
+
+    fn yuyv_to_ss(y1: u8, u: u8, y2: u8, v: u8) -> (f32, f32) {
+        let y1 = y1 as i32;
+        let u = u as i32;
+        let y2 = y2 as i32;
+        let v = v as i32;
+
+        let v_normed = v - 128;
+        let u_normed = u - 128;
+
+        let s1 = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y1 as f32;
+        let s2 = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y2 as f32;
+
+        (s1, s2)
+    }
+
+    pub fn classify_yuv_pixel(y1: u8, u: u8, v: u8) -> Self {
+        let (y, h, s) = Self::yuv_to_yhs(y1, u, v);
+
+        if Self::ys_is_white(y, s) {
             Self::White
-        } else if (y1 > 45) && (u > 70) && (u < 160) && (v > 70) && (v < 160) {
-            Self::Green
-        } else if (y1 < 50) && (u > 110) && (u < 150) && (v > 110) && (v < 150) {
+        } else if Self::ys_is_black(y, s) {
             Self::Black
+        } else if Self::yhs_is_green(y, h, s) {
+            Self::Green
         } else {
             Self::Unknown
         }
     }
+
+    fn ys_is_white(y: f32, s: f32) -> bool {
+        y > 160. && s < 45.
+    }
+
+    fn ys_is_black(y: f32, s: f32) -> bool {
+        y < 80. && s < 40.
+    }
+
+    fn yhs_is_green(y: f32, h: f32, s: f32) -> bool {
+        y < 120. && !(20.0..=250.0).contains(&h) && s > 45.
+    }
+
+    pub fn classify_yuyv_pixel(y1: u8, u: u8, y2: u8, v: u8) -> (Self, Self) {
+        let ((y1, h1, s1), (y2, h2, s2)) = Self::yuyv_to_yhs(y1, u, y2, v);
+
+        let first = if Self::ys_is_white(y1, s1) {
+            Self::White
+        } else if Self::ys_is_black(y1, s1) {
+            Self::Black
+        } else if Self::yhs_is_green(y1, h1, s1) {
+            Self::Green
+        } else {
+            Self::Unknown
+        };
+
+        let second = if Self::ys_is_white(y2, s2) {
+            Self::White
+        } else if Self::ys_is_black(y2, s2) {
+            Self::Black
+        } else if Self::yhs_is_green(y2, h2, s2) {
+            Self::Green
+        } else {
+            Self::Unknown
+        };
+
+        (first, second)
+    }
+
+    pub fn yuyv_is_white(y1: u8, u: u8, y2: u8, v: u8) -> bool {
+        let (s1, s2) = Self::yuyv_to_ss(y1, u, y2, v);
+
+        Self::ys_is_white(y1 as f32, s1) || Self::ys_is_white(y2 as f32, s2)
+    }
 }
 
 /// The horizontal and vertical scan-lines for an image.
+#[derive(Clone)]
 pub struct ScanGrid {
     image: Image,
     horizontal: ScanLines,
@@ -113,20 +209,21 @@ impl ScanGrid {
             for col_id in 0..yuyv_image.width() / 2 {
                 let image_offset = (yuyv_image.width() * 2) * row_id + col_id * 4;
 
-                let [y1, u, v] = unsafe {
+                let [y1, u, y2, v] = unsafe {
                     [
                         *yuyv_image.get_unchecked(image_offset),
                         *yuyv_image.get_unchecked(image_offset + 1),
+                        *yuyv_image.get_unchecked(image_offset + 2),
                         *yuyv_image.get_unchecked(image_offset + 3),
                     ]
                 };
 
-                let pixel_color = PixelColor::classify_yuv_pixel(y1, u, v);
+                let (pixel_color1, pixel_color2) = PixelColor::classify_yuyv_pixel(y1, u, y2, v);
                 let buffer_offset = line_id * yuyv_image.width() + col_id * 2;
 
                 unsafe {
-                    *self.horizontal.pixels.get_unchecked_mut(buffer_offset) = pixel_color;
-                    *self.horizontal.pixels.get_unchecked_mut(buffer_offset + 1) = pixel_color;
+                    *self.horizontal.pixels.get_unchecked_mut(buffer_offset) = pixel_color1;
+                    *self.horizontal.pixels.get_unchecked_mut(buffer_offset + 1) = pixel_color2;
                 };
             }
         }
@@ -196,6 +293,7 @@ fn make_vertical_ids(image: &Image, scan_line_interval: usize) -> Vec<usize> {
 }
 
 /// A set of scan-lines stored in row-major order, with the ids of the subsampled indices from the original image.
+#[derive(Clone)]
 pub struct ScanLines {
     pixels: Vec<PixelColor>,
     ids: Vec<usize>,

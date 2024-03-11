@@ -52,14 +52,16 @@ pub enum Profile {
     Release,
 }
 
-async fn cargo<I, S>(args: I) -> Result<(), CargoError>
+async fn cargo<I, E, S>(args: I, envs: E) -> Result<(), CargoError>
 where
     I: IntoIterator<Item = S> + Debug + Clone,
+    E: IntoIterator<Item = (S, S)> + Debug + Clone,
     S: AsRef<OsStr>,
 {
     let output = Command::new("cargo")
         .args(args)
         .args(["--color", "always"]) // always pass color, cargo doesn't pass color when it detects it's piped
+        .envs(envs)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?
@@ -85,6 +87,7 @@ pub async fn build(
     profile: Profile,
     target: Option<&str>,
     features: Vec<&str>,
+    envs: Option<Vec<(&str, &str)>>,
 ) -> Result<(), CargoError> {
     let mut cargo_args = vec!["build", "-p", binary];
 
@@ -103,7 +106,7 @@ pub async fn build(
         cargo_args.push(feature_string.as_str());
     }
 
-    cargo(cargo_args).await
+    cargo(cargo_args, envs.unwrap_or_default()).await
 }
 
 /// Assert that the provided bin is valid for the current cargo workspace.
