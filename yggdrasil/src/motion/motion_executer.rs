@@ -1,5 +1,5 @@
-use crate::motion::motion_manager::{ActiveMotion, MotionCategory, MotionManager};
-use crate::motion::motion_util::{lerp, MotionUtilExt};
+use crate::motion::motion_manager::{ActiveMotion, MotionManager};
+use crate::motion::motion_util::{lerp, reached_position};
 use miette::Result;
 use nidhogg::{
     types::{FillExt, JointArray},
@@ -8,51 +8,7 @@ use nidhogg::{
 use std::time::SystemTime;
 use tyr::prelude::*;
 
-use super::motion_manager;
-use super::motion_types::Motion;
-
 const STARTING_POSITION_ERROR_MARGIN: f32 = 0.40;
-const LERP_TO_STARTING_POSITION_DURATION_SECS: f32 = 0.5;
-const STIFFNESS: f32 = 0.8;
-
-/// Checks if the current position has reached the target position with a certain
-/// margin of error.
-///
-/// # Arguments
-///
-/// * `current_position` - Position of which you want to check if it has reached a certain
-///                        position.
-/// * `target_position` - Position of which you want to check if it has been reached.
-/// * `error_margin` - Range within which a target position has been reached.
-pub fn reached_position(
-    current_position: &JointArray<f32>,
-    target_position: &JointArray<f32>,
-    error_margin: f32,
-) -> bool {
-    let mut t = current_position
-        .clone()
-        .zip(target_position.clone())
-        .map(|(curr, target)| target - error_margin <= curr && curr <= target + error_margin);
-
-    println!(
-        "CHECK1 {:?} {:?} {:?}",
-        current_position.right_shoulder_pitch,
-        target_position.right_shoulder_pitch,
-        t.right_shoulder_pitch
-    );
-
-    println!(
-        "CHECK {:?} {:?} {:?}",
-        current_position.left_shoulder_pitch,
-        target_position.left_shoulder_pitch,
-        t.left_shoulder_pitch
-    );
-
-    // Ignore hands.
-    t.left_hand = true;
-    t.right_hand = true;
-    t.all(|elem| elem)
-}
 
 /// Executes the current motion.
 ///
@@ -71,38 +27,13 @@ pub fn motion_executer(
         return Ok(());
     }
 
-    let active_motion = motion_manager.active_motion.clone().unwrap();
-    match active_motion.motioncategory {
-        MotionCategory::Normal => {
-            return normal_motion_executor(
-                nao_state,
-                motion_manager,
-                nao_control_message,
-                &active_motion,
-            )
-        }
-        MotionCategory::Complex => {
-            return complex_motion_executor(
-                nao_state,
-                motion_manager,
-                nao_control_message,
-                &active_motion,
-            )
-        }
-    }
-}
-
-pub fn normal_motion_executor(
-    nao_state: &mut NaoState,
-    motion_manager: &mut MotionManager,
-    nao_control_message: &mut NaoControlMessage,
-    activemotion: &ActiveMotion,
-) -> Result<()> {
     let ActiveMotion {
         motion,
-        motioncategory: _,
+        current_sub_motion,
+        mut prev_keyframe_index,
+        mut movement_start,
         starting_time,
-    } = activemotion;
+    } = motion_manager.get_active_motion().unwrap();
 
     if motion_manager.motion_execution_starting_time.is_none() {
         if !reached_position(
@@ -122,7 +53,8 @@ pub fn normal_motion_executor(
                 elapsed_time_since_start_of_motion
                     / &motion.initial_movement().duration.as_secs_f32(),
             );
-            nao_control_message.stiffness = JointArray::<f32>::fill(STIFFNESS);
+            nao_control_message.stiffness =
+                JointArray::<f32>::fill(motion.submotions[&current_sub_motion.0].joint_stifness);
 
             return Ok(());
         } else {
@@ -131,34 +63,35 @@ pub fn normal_motion_executor(
         }
     }
 
-    let motion_duration = motion_manager
-        .motion_execution_starting_time
-        .unwrap()
-        .elapsed()
-        .unwrap();
-
-    match motion.get_position(motion_duration) {
+    // set next joint positions
+    match motion.get_position(
+        &current_sub_motion.0,
+        &mut prev_keyframe_index,
+        &mut movement_start,
+    ) {
         Some(position) => {
             nao_control_message.position = position;
-            // TODO: Add stiffness to the motion files.
-            nao_control_message.stiffness = JointArray::<f32>::fill(0.5);
+            nao_control_message.stiffness =
+                JointArray::<f32>::fill(motion.submotions[&current_sub_motion.0].joint_stifness);
         }
         None => {
-            //Current motion is finished.
-            motion_manager.active_motion = None;
-            motion_manager.motion_execution_starting_time = None;
+            //Current submotion is finished, transition to next submotion.
+            let active_motion = motion_manager.get_active_motion().unwrap();
+
+            match active_motion.get_next_submotion() {
+                // If there is a next submotion, we attempt a transition
+                Some(submotion_name) => {
+                    motion_manager.active_motion =
+                        Some(active_motion.transition(nao_state, submotion_name))
+                }
+                None => {
+                    // if no submotion is found, the motion has finished
+                    motion_manager.active_motion = None;
+                    motion_manager.motion_execution_starting_time = None;
+                }
+            }
         }
     }
 
-    Ok(())
-}
-
-pub fn complex_motion_executor(
-    nao_state: &mut NaoState,
-    motion_manager: &mut MotionManager,
-    nao_control_message: &mut NaoControlMessage,
-    activemotion: &ActiveMotion,
-) -> Result<()> {
-    // TODO IMPLEMENT COMPLEX MOTION EXECUTION
     Ok(())
 }

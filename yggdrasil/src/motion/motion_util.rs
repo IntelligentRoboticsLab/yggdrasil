@@ -95,3 +95,42 @@ pub fn lerp(
         .zip(target_position.clone())
         .map(|(curr, target)| curr * (1.0 - scalar) + target * scalar)
 }
+
+// Checks if the current position has reached the target position with a certain
+/// margin of error.
+///
+/// # Arguments
+///
+/// * `current_position` - Position of which you want to check if it has reached a certain
+///                        position.
+/// * `target_position` - Position of which you want to check if it has been reached.
+/// * `error_margin` - Range within which a target position has been reached.
+pub fn reached_position(
+    current_position: &JointArray<f32>,
+    target_position: &JointArray<f32>,
+    error_margin: f32,
+) -> bool {
+    let mut t = current_position
+        .clone()
+        .zip(target_position.clone())
+        .map(|(curr, target)| target - error_margin <= curr && curr <= target + error_margin);
+
+    println!(
+        "CHECK1 {:?} {:?} {:?}",
+        current_position.right_shoulder_pitch,
+        target_position.right_shoulder_pitch,
+        t.right_shoulder_pitch
+    );
+
+    println!(
+        "CHECK {:?} {:?} {:?}",
+        current_position.left_shoulder_pitch,
+        target_position.left_shoulder_pitch,
+        t.left_shoulder_pitch
+    );
+
+    // Ignore hands.
+    t.left_hand = true;
+    t.right_hand = true;
+    t.all(|elem| elem)
+}
