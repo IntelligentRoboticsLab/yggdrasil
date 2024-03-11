@@ -102,8 +102,6 @@ pub fn write_hardware_info(
     update: &NaoControlMessage,
 ) -> Result<()> {
     *robot_state = nao.read_nao_state()?;
-    println!("Finished reading");
     nao.send_control_msg(update.clone())?;
-    println!("Finished writing");
     Ok(())
 }
