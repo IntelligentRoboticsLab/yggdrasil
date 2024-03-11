@@ -3,11 +3,17 @@
     "interpolation_type": "Linear",
     "wait_time": 0.5
   },
-  "submotions": [
-    {
+  "motion_order": [
+    "Situp",
+    "Wait",
+    "Standup"
+  ],
+  "submotions": {
+    "Situp": {
       "joint_stifness": 0.5,
       "chest_angle_bound_upper": -0.4,
       "chest_angle_bound_lower": 0.4,
+      "fail_routine": "Retry",
       "conditions": [
           {
           "variable": "gyroscope_x",
@@ -57,6 +63,6 @@
           }
           }
       ]
+    }
   }
-  ]
 }

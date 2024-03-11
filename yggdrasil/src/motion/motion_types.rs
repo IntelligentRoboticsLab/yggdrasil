@@ -4,9 +4,11 @@ use nidhogg::types::JointArray;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use serde_with::{serde_as, DurationSecondsWithFrac};
+use std::collections::HashMap;
 use std::fs::File;
 use std::{path::Path, time::Duration};
-use tokio::io::Join;
+
+use std::time::SystemTime;
 
 use toml;
 
@@ -20,15 +22,6 @@ pub struct Movement {
     #[serde_as(as = "DurationSecondsWithFrac<f64>")]
     pub duration: Duration,
 }
-
-// #[derive(Serialize, Deserialize, Debug, Clone)]
-// /// Represents a robot motion that consists of multiple movements.
-// pub struct Motion {
-//     /// Joint starting positions for the motion.
-//     pub initial_position: JointArray<f32>,
-//     /// Vector containing movements needed to reach the final position.
-//     pub movements: Vec<Movement>,
-// }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum InterpolationType {
@@ -46,6 +39,12 @@ pub enum ConditionalVariable {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum FailRoutine {
+    Retry,
+    Abort,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MotionCondition {
     pub variable: ConditionalVariable,
     pub min: f32,
@@ -53,10 +52,10 @@ pub struct MotionCondition {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MotionConfig {
+pub struct MotionSettings {
     pub interpolation_type: InterpolationType,
     pub wait_time: f32,
-    pub submotions: Vec<String>,
+    pub motion_order: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -64,45 +63,16 @@ pub struct SubMotion {
     pub joint_stifness: f32,
     pub chest_angle_bound_upper: f32,
     pub chest_angle_bound_lower: f32,
-    pub conditions: MotionCondition,
+    pub fail_routine: FailRoutine,
+    pub conditions: Vec<MotionCondition>,
     pub keyframes: Vec<Movement>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Motion {
-    pub motion_config: MotionConfig,
-    pub submotions: Vec<SubMotion>,
+    pub motion_settings: MotionSettings,
+    pub submotions: HashMap<String, SubMotion>,
 }
-
-// impl Motion {
-//     /// Get the nearest position that the robot should have before the
-//     /// duration and the nearest position after the duration and the total
-//     /// duration of the corresponding motion.
-//     ///
-//     /// # Arguments
-//     ///
-//     /// * `motion_duration` - Current duration of the current motion.
-// fn get_surrounding_frames_as_joint_array(
-//     &self,
-//     motion_duration: Duration,
-// ) -> Option<(&JointArray<f32>, &JointArray<f32>, &Duration)> {
-//     for (i, movement) in self.movements.iter().enumerate() {
-//         if motion_duration <= movement.duration && i < self.movements.len() {
-//             let start_position = if i == 0 {
-//                 &self.initial_position
-//             } else {
-//                 &self.movements[i - 1].target_position
-//             };
-//             let target_position = &movement.target_position;
-//             let duration = &movement.duration;
-
-//             return Some((start_position, target_position, duration));
-//         }
-//     }
-
-//     None
-// }
-// }
 
 impl Motion {
     /// Initializes a motion from a motion file. Uses serde for deserialization.
@@ -117,23 +87,26 @@ impl Motion {
         if !motion_path.exists() {
             // if not, we generate it based on the existing config file
             let motion_config_data = std::fs::read_to_string(path).into_diagnostic()?;
-            let config: MotionConfig = toml::de::from_str(&motion_config_data).into_diagnostic()?;
+            let config: MotionSettings =
+                toml::de::from_str(&motion_config_data).into_diagnostic()?;
 
             // based on the gathered config file, we not generate a new Motion
             let mut complexmotion: Motion = Motion {
-                motion_config: config.clone(),
-                submotions: Vec::new(),
+                motion_settings: config.clone(),
+                submotions: HashMap::new(),
             };
 
             // populating the submotions property of Motion with the correct SubMotions
-            for submotion_name in config.submotions.iter() {
+            for submotion_name in config.motion_order.iter() {
                 let submotion_path = Path::new("./assets/motions/submotions")
                     .join(submotion_name)
                     .with_extension(".json");
                 let submotion: SubMotion =
                     serde_json::from_reader(File::open(submotion_path).into_diagnostic()?)
                         .expect("Reading Submotion file during Motion construction");
-                complexmotion.submotions.push(submotion)
+                complexmotion
+                    .submotions
+                    .insert(submotion_name.clone(), submotion);
             }
 
             // when the Motion has been created, we save it to the assets/motions folder
@@ -156,56 +129,51 @@ impl Motion {
         }
     }
 
-    /// Retrieves the a target position for each joint by using linear
-    /// interpolation between the two nearest positions based on the starting
-    /// time and current time.
+    /// Returns the next position the robot should be in by interpolating between the previous and next keyframe.
     ///
     /// # Arguments
     ///
-    /// * `motion_duration` - Duration of the current motion.
-    pub fn get_position(&self, motion_duration: Duration) -> Option<JointArray<f32>> {
-        self.get_surrounding_frames_as_joint_array(motion_duration)
-            .map(|(target_positions_a, target_positions_b, duration)| {
-                lerp(
-                    target_positions_a,
-                    target_positions_b,
-                    motion_duration.as_secs_f32() / duration.as_secs_f32(),
-                )
-            })
+    /// * `current_sub_motion` - the current sub motion the robot is executing.
+    /// * `keyframe_index` - the index of the previous keyframe, in the current submotion.
+    /// * `movement_start` - the exact time the current movement has started executing.
+    pub fn get_position(
+        &self,
+        current_sub_motion: &String,
+        keyframe_index: &mut i32,
+        movement_start: &mut SystemTime,
+    ) -> Option<JointArray<f32>> {
+        let keyframes = &self.submotions[current_sub_motion].keyframes;
+
+        // Check if we have reached the end of the current submotion
+        if keyframes.len() >= *keyframe_index as usize + 2 {
+            // if the current movement has been completed:
+            if movement_start.elapsed().unwrap().as_secs_f32()
+                > keyframes[*keyframe_index as usize + 1]
+                    .duration
+                    .as_secs_f32()
+            {
+                // update the index
+                *keyframe_index += 1;
+
+                // update the time of the start of the movement
+                *movement_start = SystemTime::now();
+            }
+
+            return Some(lerp(
+                &keyframes[*keyframe_index as usize].target_position,
+                &keyframes[*keyframe_index as usize + 1].target_position,
+                (movement_start.elapsed().unwrap()).as_secs_f32()
+                    / keyframes[*keyframe_index as usize + 1]
+                        .duration
+                        .as_secs_f32(),
+            ));
+        }
+
+        return None;
     }
 
     pub fn initial_movement(&self) -> &Movement {
-        return &self.submotions[0].keyframes[0];
-    }
-
-    /// Get the nearest position that the robot should have before the
-    /// duration and the nearest position after the duration and the total
-    /// duration of the corresponding motion.
-    ///
-    /// # Arguments
-    ///
-    /// * `motion_duration` - Current duration of the current motion.
-    fn get_surrounding_frames_as_joint_array(
-        &self,
-        motion_duration: Duration,
-    ) -> Option<(&JointArray<f32>, &JointArray<f32>, &Duration)> {
-        // TODO IMPLEMENT SURROUNDING FRAMES FUNCTION
-
-        // for (i, movement) in self.movements.iter().enumerate() {
-        //     if motion_duration <= movement.duration && i < self.movements.len() {
-        //         let start_position = if i == 0 {
-        //             &self.initial_position
-        //         } else {
-        //             &self.movements[i - 1].target_position
-        //         };
-        //         let target_position = &movement.target_position;
-        //         let duration = &movement.duration;
-
-        //         return Some((start_position, target_position, duration));
-        //     }
-        // }
-
-        None
+        return &self.submotions[&self.motion_settings.motion_order[0]].keyframes[0];
     }
 }
 
