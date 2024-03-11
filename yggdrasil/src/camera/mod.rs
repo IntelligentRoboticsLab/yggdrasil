@@ -54,6 +54,7 @@ impl Module for CameraModule {
             .add_system(camera_system)
             .add_system(debug_camera_system.after(camera_system))
             .add_system(set_exposure_weights)
+            .add_system(update_exposure_weights)
             .add_task::<ComputeTask<JpegTopImage>>()?
             .add_task::<ComputeTask<JpegBottomImage>>()?
             .add_module(matrix::CameraMatrixModule)
@@ -301,22 +302,40 @@ fn set_exposure_weights(
     top_camera: &TopCamera,
     bottom_camera: &BottomCamera,
 ) -> Result<()> {
-    let top_table = exposure_weights.top_weights.encode();
+    let top_camera = top_camera.0.0.try_lock().expect("Failed to lock top camera");
+    let bottom_camera = bottom_camera.0.0.try_lock().expect("Failed to lock bottom camera");
 
-    let bottom_table = exposure_weights.bottom_weights.encode();
+    let top_table = &exposure_weights.top_weights;
+    let bottom_table = &exposure_weights.bottom_weights;
 
-    let top_camera = top_camera.0.try_lock().expect("Failed to lock top camera");
+    // top_camera
+    //     .get_camera_device()
+    //     .set_auto_exposure_weights(top_table.encode())?;
 
-    let bottom_camera = bottom_camera.0.try_lock().expect("Failed to lock bottom camera");
+    // bottom_camera
+    //     .get_camera_device()
+    //     .set_auto_exposure_weights(bottom_table.encode())?;
+
+    Ok(())
+}
+
+#[system]
+fn update_exposure_weights(
+    exposure_weights: &mut ExposureWeights,
+    top_image: &TopImage,
+    bottom_image: &BottomImage,
+) -> Result<()> {
+    // time
+    let timer = Instant::now();
+
+    exposure_weights.top_weights.update(top_image.yuyv_image());
+    exposure_weights.bottom_weights.update(bottom_image.yuyv_image());
 
 
-    top_camera
-        .get_camera_device()
-        .set_auto_exposure_weights(top_table)?;
 
-    bottom_camera
-        .get_camera_device()
-        .set_auto_exposure_weights(bottom_table)?;
+
+    let elapsed = timer.elapsed();
+    println!("update_exposure_weights: {:?}", elapsed);
 
     Ok(())
 }

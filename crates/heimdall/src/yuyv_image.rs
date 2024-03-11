@@ -144,6 +144,20 @@ impl YuyvImage {
     pub fn yuv_col_iter(&self) -> YuvColIter {
         YuvColIter::new(self)
     }
+
+    pub fn get_pixel(&self, x: usize, y: usize) -> YuvPixel {
+        let offset = ((y * self.width + x) / 2) * 4;
+
+        let y1 = if x % 2 == 0 {
+            self.frame[offset]
+        } else {
+            self.frame[offset + 2]
+        };
+        let u = self.frame[offset + 1];
+        let v = self.frame[offset + 3];
+
+        YuvPixel { y:y1, u, v }
+    }
 }
 
 impl Deref for YuyvImage {
@@ -154,10 +168,51 @@ impl Deref for YuyvImage {
     }
 }
 
+impl<Idx> std::ops::Index<Idx> for YuyvImage
+where
+    Idx: std::slice::SliceIndex<[u8]>,
+{
+    type Output = Idx::Output;
+
+    fn index(&self, index: Idx) -> &Self::Output {
+        &self.frame[index]
+    }
+}
+
+pub struct RGBPixel {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+
 pub struct YuvPixel {
     pub y: u8,
     pub u: u8,
     pub v: u8,
+}
+
+impl YuvPixel {
+    pub fn to_rgb(&self) -> RGBPixel {
+        fn clamp(value: i32) -> u8 {
+            #[allow(clippy::cast_sign_loss)]
+            #[allow(clippy::cast_possible_truncation)]
+            return value.clamp(0, 255) as u8;
+        }
+
+        let y = i32::from(self.y) - 16;
+        let u = i32::from(self.u) - 128;
+        let v = i32::from(self.v) - 128;
+
+        let red = (298 * y + 409 * v + 128) >> 8;
+        let green = (298 * y - 100 * u - 208 * v + 128) >> 8;
+        let blue = (298 * y + 516 * u + 128) >> 8;
+
+        RGBPixel {
+            r: clamp(red),
+            g: clamp(green),
+            b: clamp(blue),
+        }
+    }    
 }
 
 pub struct YuvRowIter<'a> {
