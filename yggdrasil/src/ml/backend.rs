@@ -113,6 +113,16 @@ impl<M: MlModel> ModelExecutor<M> {
             self.output_descr.clone(),
         )
     }
+
+    /// Description of the input tensor.
+    pub fn input_descr(&self) -> &TensorDescr {
+        &self.input_descr
+    }
+
+    /// Description of the output tensor.
+    pub fn output_descr(&self) -> &TensorDescr {
+        &self.output_descr
+    }
 }
 
 pub struct InferRequest<M: MlModel> {
@@ -168,7 +178,7 @@ impl<M: MlModel> InferRequest<M> {
         Ok(self)
     }
 
-    pub fn get_output<O>(mut self) -> Result<O>
+    pub fn fetch_output<O>(mut self) -> Result<O>
     where
         O: Output<M::OutputType>,
     {
@@ -179,7 +189,7 @@ impl<M: MlModel> InferRequest<M> {
             .map_err(Error::UnexpectedOpenVino)?;
 
         // we know the output tensor data type is compatible with `M::OutputType`
-        //  due to the check in `MlBackend::new`, meaning it's safe
+        //  due to the check in `ModelExecutor::new`, meaning it's safe
         //  to cast to this type
         let data = unsafe {
             blob.buffer_as_type::<M::OutputType>()
@@ -191,9 +201,16 @@ impl<M: MlModel> InferRequest<M> {
 }
 
 /// Description of a tensor.
-struct TensorDescr {
+pub struct TensorDescr {
     name: String,
     cfg: openvino::TensorDesc,
+}
+
+impl TensorDescr {
+    /// Dimensions of the tensor.
+    pub fn dims(&self) -> &[usize] {
+        self.cfg.dims()
+    }
 }
 
 impl Clone for TensorDescr {

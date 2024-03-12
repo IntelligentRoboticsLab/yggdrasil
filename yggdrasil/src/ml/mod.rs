@@ -128,9 +128,13 @@ impl<M: MlModel> MlTask<M> {
         let infer_result = self.task.poll()?;
 
         match infer_result {
-            Ok(infer) => Some(infer.get_output()),
+            Ok(infer_req) => Some(infer_req.fetch_output()),
             Err(e) => Some(Err(e)),
         }
+    }
+
+    pub fn model(&self) -> &ModelExecutor<M> {
+        &self.model
     }
 }
 

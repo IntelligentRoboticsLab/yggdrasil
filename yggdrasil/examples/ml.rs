@@ -1,7 +1,8 @@
-//! This is an example of how to implement a ML model.
-//! The code does not run, but a model can be implemented
-//! with the same structure, provided model parameters
-//! and logic for processing in- and output is written.
+//! This is a showcase of an example architecture
+//! that a machine learning application within the framework could have.
+//! The example runs if a valid image and model path are provided.
+
+use std::time::Duration;
 
 use miette::Result;
 use tyr::{
@@ -9,7 +10,10 @@ use tyr::{
     tasks::{TaskConfig, TaskModule},
     App, Resource,
 };
-use yggdrasil::ml::{data_type::MlArray, MlModel, MlModule, MlTask, MlTaskResource};
+use yggdrasil::ml::{self, MlModel, MlModule, MlTask, MlTaskResource};
+
+/// Link here to your favorite 224x224 image.
+const IMAGE_PATH: &str = "animalos-folder/cat.jpg";
 
 struct ResNet18;
 
@@ -18,43 +22,83 @@ impl MlModel for ResNet18 {
     type InputType = f32;
     type OutputType = f32;
 
-    const ONNX_PATH: &'static str = "secret-folder/resnet18.onnx";
+    /// Link here to the .onnx model.
+    const ONNX_PATH: &'static str = "ai-folder/resnet18.onnx";
 }
 
-struct Image(Option<MlArray<f32>>);
+struct Image(Option<Vec<f32>>);
+
+#[system]
+fn generate_input(input_img: &mut Image) -> Result<()> {
+    if input_img.0.is_none() {
+        println!("Generating input...");
+        std::thread::sleep(Duration::from_secs(1));
+
+        // load image
+        let img = image::io::Reader::open(IMAGE_PATH)
+            .unwrap()
+            .decode()
+            .unwrap();
+        let vec = img.into_rgb32f().into_vec();
+
+        let r = vec
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| (i % 3 == 0).then(|| v));
+        let g = vec
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| (i % 3 == 1).then(|| v));
+        let b = vec
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| (i % 3 == 2).then(|| v));
+
+        // convert to correct format
+        let nchw_vec = r.chain(g).chain(b).copied().collect::<Vec<_>>();
+
+        input_img.0 = Some(nchw_vec);
+    }
+
+    Ok(())
+}
 
 #[system]
 fn process_image(
     // ML model (note the MLTask wrapper)
-    model: &mut MlTask<ResNet18>,
+    ml_task: &mut MlTask<ResNet18>,
     // model input
-    image: &mut Image,
+    input_img: &mut Image,
 ) -> Result<()> {
     // check if input is available
-    if let Some(input) = image.0.take() {
-        println!("Starting inference!");
-
-        // not all ndarrays are contiguous in memory, but
-        //  we know this one is thus we can unwrap safely
-        let slice = input.as_slice_memory_order().unwrap();
-
+    if let Some(input) = input_img.0.take() {
         // run model inference
-        match model.try_start_infer(slice) {
-            Ok(()) => {}
-            Err(_) => {
-                // Whenever `try_infer` fails, it means
-                //  the model inference has not finished yet
-                //  since the previous call.
-            }
+        match ml_task.try_start_infer(&input) {
+            Ok(()) => println!("Starting inference!"),
+            // ML inference has not finished yet
+            //  since the previous call, this is no problemo
+            Err(ml::Error::Tyr(tyr::tasks::Error::AlreadyActive)) => {}
+            // any other errors we might want to deal with
+            error => error?,
         }
     }
 
     // check if output is available
-    if let Some(output) = model.poll::<Vec<f32>>() {
+    if let Some(output) = ml_task.poll::<Vec<f32>>() {
         // note that inference might have failed
         let res = output?;
 
-        println!("ResNet18 results: {res:?}");
+        // take class with highest probability
+        let argmax = res
+            .iter()
+            .enumerate()
+            .max_by(|(_, v0), (_, v1)| v0.total_cmp(v1))
+            .unwrap()
+            .0;
+
+        // check here if the output is correct
+        // https://deeplearning.cms.waikato.ac.nz/user-guide/class-maps/IMAGENET/
+        println!("ResNet18 prediction: {argmax}");
     }
 
     Ok(())
@@ -67,11 +111,14 @@ fn main() -> Result<()> {
     };
 
     App::new()
+        // necessary to run compute tasks
         .add_resource(Resource::new(task_config))?
         .add_module(TaskModule)?
         .add_module(MlModule)?
+        .add_resource(Resource::new(Image(None)))?
         // add the ML model
         .add_ml_task::<ResNet18>()?
+        .add_system(generate_input)
         // use the ML model
         .add_system(process_image)
         .run()?;
