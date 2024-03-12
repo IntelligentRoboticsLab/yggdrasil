@@ -29,7 +29,7 @@ mod cross {
     pub const ENVS: &[(&str, &str)] = &[];
 
     #[cfg(target_os = "macos")]
-    pub const ENVS: &[(& str, &str)] = &[
+    pub const ENVS: &[(&str, &str)] = &[
         (
             "PKG_CONFIG_PATH",
             // homebrew directory is different for x86_64 and aarch64 macs!
