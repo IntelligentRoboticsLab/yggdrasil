@@ -32,34 +32,36 @@ pub fn motion_executer(
         motion_manager.motion_execution_starting_time = Some(SystemTime::now());
     }
 
+    // setting up some variables that are used frequently
     let ActiveMotion {
         motion,
         cur_sub_motion,
         mut prev_keyframe_index,
         mut movement_start,
-        starting_time,
     } = motion_manager.get_active_motion().unwrap();
 
-    let submotion_stiffness = motion.submotions[&cur_sub_motion.0].joint_stifness;
+    let sub_motion_index: &String = &cur_sub_motion.0;
+    let submotion_stiffness: f32 = motion.submotions[sub_motion_index].joint_stifness;
 
+    // at the start of a new submotion, we need to lerp to the starting position
     if motion_manager.submotion_execution_starting_time.is_none() {
         if !reached_position(
             &nao_state.position,
-            &motion.initial_movement(&cur_sub_motion.0).target_position,
+            &motion.initial_movement(sub_motion_index).target_position,
             STARTING_POSITION_ERROR_MARGIN,
         ) {
             println!("Not reached starting position");
             // Starting position has not yet been reached, so lerp to start
             // position, until position has been reached.
             let elapsed_time_since_start_of_motion: f32 =
-                starting_time.elapsed().unwrap().as_secs_f32();
+                movement_start.elapsed().unwrap().as_secs_f32();
 
             nao_control_message.position = lerp(
                 &nao_state.position,
-                &motion.initial_movement(&cur_sub_motion.0).target_position,
+                &motion.initial_movement(sub_motion_index).target_position,
                 elapsed_time_since_start_of_motion
                     / &motion
-                        .initial_movement(&cur_sub_motion.0)
+                        .initial_movement(sub_motion_index)
                         .duration
                         .as_secs_f32(),
             );
@@ -74,7 +76,7 @@ pub fn motion_executer(
 
     // set next joint positions
     match motion.get_position(
-        &cur_sub_motion.0,
+        sub_motion_index,
         &mut prev_keyframe_index,
         &mut movement_start,
     ) {
@@ -84,7 +86,7 @@ pub fn motion_executer(
         }
         None => {
             // current submotion is finished, transition to next submotion.
-            let mut active_motion = motion_manager.get_active_motion().unwrap();
+            let mut active_motion: ActiveMotion = motion_manager.get_active_motion().unwrap();
 
             match active_motion.get_next_submotion() {
                 // If there is a next submotion, we attempt a transition

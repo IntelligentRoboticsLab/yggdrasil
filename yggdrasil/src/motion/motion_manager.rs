@@ -14,12 +14,10 @@ pub struct ActiveMotion {
     pub motion: Motion,
     /// name and index of current submotion being executed
     pub cur_sub_motion: (String, i32),
-    /// Previous Keyframe
+    /// Previous Keyframe index
     pub prev_keyframe_index: i32,
     /// Current movement starting time
     pub movement_start: SystemTime,
-    /// Keeps track of when a motion started.
-    pub starting_time: SystemTime,
 }
 
 impl ActiveMotion {
@@ -36,7 +34,12 @@ impl ActiveMotion {
         None
     }
 
-    /// Transitions between SubMotions
+    /// Returns the next submotion to be executed.
+    ///
+    /// # Arguments
+    ///
+    /// * `nao_state` - Current state of the Nao.
+    /// * `submotion_name` - Name of the next submotion.
     pub fn transition(
         &mut self,
         nao_state: &mut NaoState,
@@ -138,7 +141,6 @@ impl MotionManager {
             prev_keyframe_index: 0,
             motion: chosen_motion,
             movement_start: SystemTime::now(),
-            starting_time: SystemTime::now(),
         });
     }
 
@@ -181,6 +183,12 @@ pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
     Ok(())
 }
 
+/// Checks whether the current NaoState fulfills a specified condition.
+///
+/// # Arguments
+///
+/// * `nao_state` - Current state of the Nao.
+/// * `condition` - The condition which needs to be checked.
 fn check_condition(nao_state: &mut NaoState, condition: MotionCondition) -> bool {
     match condition.variable {
         ConditionalVariable::GyroscopeX => {
@@ -198,7 +206,12 @@ fn check_condition(nao_state: &mut NaoState, condition: MotionCondition) -> bool
     }
 }
 
-/// Yes
+/// Matches a specified motion fail routine with the correct next motion.
+///
+/// # Arguments
+///
+/// * `active_motion` - The current active motion of the Nao.
+/// * `routine` - The routine that will be matched with an according motion.
 fn select_routine(mut active_motion: ActiveMotion, routine: FailRoutine) -> Option<ActiveMotion> {
     match routine {
         // aborts the current motion
