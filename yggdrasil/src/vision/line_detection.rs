@@ -28,7 +28,7 @@ pub struct LinePoint {
 
 pub struct Line(pub LinePoint, pub LinePoint);
 
-struct LineBuilder {
+struct LinePoints {
     points: Vec<(f32, f32)>,
     start_column: f32,
     end_column: f32,
@@ -36,9 +36,9 @@ struct LineBuilder {
     end_row: f32,
 }
 
-impl LineBuilder {
+impl LinePoints {
     fn new(first_point: (f32, f32)) -> Self {
-        LineBuilder {
+        LinePoints {
             points: vec![first_point],
             start_column: first_point.0,
             end_column: first_point.0,
@@ -128,32 +128,32 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
     points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
     let mut points_next = Vec::<(f32, f32)>::with_capacity(300);
 
-    let mut line_builders = Vec::<LineBuilder>::new();
+    let mut line_pointss = Vec::<LinePoints>::new();
 
     loop {
         if points.is_empty() {
             break;
         }
 
-        let mut line_builder = LineBuilder::new(points[0]);
+        let mut line_points = LinePoints::new(points[0]);
 
         for point in points.iter().skip(1) {
-            if (line_builder.points.last().unwrap().0 - point.0).abs() > 40f32
-                || (line_builder.points.last().unwrap().1 - point.1).abs() > 40f32
+            if (line_points.points.last().unwrap().0 - point.0).abs() > 60f32
+                || (line_points.points.last().unwrap().1 - point.1).abs() > 60f32
             {
                 points_next.push(*point);
                 continue;
             }
-            line_builder.points.push(*point);
+            line_points.points.push(*point);
 
             let (slope, intercept) =
-                linreg::linear_regression_of::<f32, f32, f32>(&line_builder.points)
+                linreg::linear_regression_of::<f32, f32, f32>(&line_points.points)
                     .unwrap_or((scan_grid.height() as f32, 0f32));
 
-            let start_column = line_builder.start_column.min(point.0);
-            let end_column = line_builder.end_column.max(point.0);
-            let start_row = line_builder.start_row.min(point.1);
-            let end_row = line_builder.end_row.max(point.1);
+            let start_column = line_points.start_column.min(point.0);
+            let end_column = line_points.end_column.max(point.0);
+            let start_row = line_points.start_row.min(point.1);
+            let end_row = line_points.end_row.max(point.1);
 
             let mut allowed_mistakes = 3u32;
 
@@ -187,19 +187,19 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
                 }
             }
             if allowed_mistakes == 0 {
-                line_builder.points.pop().unwrap();
+                line_points.points.pop().unwrap();
                 points_next.push(*point);
             } else {
-                line_builder.start_column = start_column;
-                line_builder.end_column = end_column;
-                line_builder.start_row = start_row;
-                line_builder.end_row = end_row;
+                line_points.start_column = start_column;
+                line_points.end_column = end_column;
+                line_points.start_row = start_row;
+                line_points.end_row = end_row;
             }
         }
-        if line_builder.points.len() > 3 {
-            line_builders.push(line_builder);
+        if line_points.points.len() > 3 {
+            line_pointss.push(line_points);
         } else {
-            points_next.extend(line_builder.points.iter().skip(1));
+            points_next.extend(line_points.points.iter().skip(1));
             points_next.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
         }
 
@@ -207,22 +207,22 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
         mem::swap(&mut points, &mut points_next);
     }
 
-    Ok(line_builders
+    Ok(line_pointss
         .iter()
-        .map(|line_builder| line_builder_to_line(line_builder, &scan_grid))
+        .map(|line_points| line_points_to_line(line_points, &scan_grid))
         .collect())
 }
 
-fn line_builder_to_line(line_builder: &LineBuilder, scan_grid: &ScanGrid) -> Line {
-    let mut start_column = line_builder.start_column;
-    let mut end_column = line_builder.end_column;
+fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> Line {
+    let mut start_column = line_points.start_column;
+    let mut end_column = line_points.end_column;
     assert!(start_column <= end_column);
 
-    let mut start_row = line_builder.start_row;
-    let mut end_row = line_builder.end_row;
+    let mut start_row = line_points.start_row;
+    let mut end_row = line_points.end_row;
     assert!(start_row <= end_row);
 
-    let (slope, intercept) = linreg::linear_regression_of::<f32, f32, f32>(&line_builder.points)
+    let (slope, intercept) = linreg::linear_regression_of::<f32, f32, f32>(&line_points.points)
         .unwrap_or((scan_grid.height() as f32, 0.));
 
     if end_column - start_column < end_row - start_row {
