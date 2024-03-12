@@ -3,29 +3,29 @@
 team_number = 8
 
 [[robots]]
-number = 20
 name = "sam"
+number = 20
 
 [[robots]]
-number = 21
 name = "moos"
+number = 21
 
 [[robots]]
-number = 22
 name = "phineas"
+number = 22
 
 [[robots]]
-number = 23
 name = "ferb"
+number = 23
 
 [[robots]]
-number = 24
 name = "momo"
+number = 24
 
 [[robots]]
-number = 25
 name = "appa"
+number = 25
 
 [[robots]]
-number = 26
 name = "daphne"
+number = 26

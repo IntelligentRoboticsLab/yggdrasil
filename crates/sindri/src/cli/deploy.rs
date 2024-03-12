@@ -1,5 +1,5 @@
 use crate::{
-    cargo::{self, Profile},
+    cargo::{self, assert_valid_bin, Profile},
     config::Config,
     error::{Error, Result},
 };
@@ -45,16 +45,21 @@ pub struct ConfigOptsDeploy {
     /// Whether to embed the rerun viewer for debugging [default: false]
     #[clap(long, short)]
     pub rerun: bool,
+
+    /// Specify bin target
+    #[clap(global = true, long, default_value = "yggdrasil")]
+    pub bin: String,
 }
 
 impl ConfigOptsDeploy {
     #[must_use]
-    pub fn new(number: u8, wired: bool, team_number: Option<u8>, rerun: bool) -> Self {
+    pub fn new(number: u8, wired: bool, team_number: Option<u8>, rerun: bool, bin: String) -> Self {
         Self {
             number,
             wired,
             team_number,
             rerun,
+            bin,
         }
     }
 }
@@ -69,6 +74,9 @@ pub struct Deploy {
 impl Deploy {
     /// Constructs IP and deploys to the robot
     pub async fn deploy(self, config: Config) -> miette::Result<()> {
+        assert_valid_bin(&self.deploy.bin)
+            .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
+
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(Duration::from_millis(80));
         pb.set_style(
