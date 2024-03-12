@@ -22,6 +22,34 @@ const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
 const RELEASE_PATH: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
 const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 
+/// Environment variables that are required to cross compile for the robot, depending
+/// on the current host architecture.
+mod cross {
+    #[cfg(host = "linux")]
+    pub const ENVS: &[(&str, &str)] = &[];
+
+    #[cfg(target_os = "macos")]
+    pub const ENVS: &[(& str, &str)] = &[
+        (
+            "PKG_CONFIG_PATH",
+            // homebrew directory is different for x86_64 and aarch64 macs!
+            #[cfg(target_arch = "aarch64")]
+            "/opt/homebrew/opt/x86_64-unknown-linux-gnu-alsa-lib/lib/x86_64-unknown-linux-gnu/pkgconfig",
+            #[cfg(target_arch = "x86_64")]
+            "/usr/local/opt/x86_64-unknown-linux-gnu-alsa-lib/lib/x86_64-unknown-linux-gnu/pkgconfig",
+        ),
+        ("PKG_CONFIG_ALLOW_CROSS", "1"),
+        ("TARGET_CC", "x86_64-unknown-linux-gnu-gcc"),
+        ("TARGET_CC", "x86_64-unknown-linux-gnu-gcc"),
+        ("TARGET_CXX", "x86_64-unknown-linux-gnu-g++"),
+        ("TARGET_AR", "x86_64-unknown-linux-gnu-ar"),
+        (
+            "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER",
+            "x86_64-unknown-linux-gnu-gcc",
+        ),
+    ];
+}
+
 /// The size of the `BufWriter`'s buffer.
 ///
 /// This is currently set to 1 MiB, as the [`Write`] implementation for [`ssh2::sftp::File`]
@@ -103,7 +131,14 @@ impl Deploy {
         }
 
         // Build yggdrasil with cargo
-        cargo::build("yggdrasil", Profile::Release, Some(ROBOT_TARGET), features).await?;
+        cargo::build(
+            "yggdrasil",
+            Profile::Release,
+            Some(ROBOT_TARGET),
+            features,
+            cross::ENVS.to_owned(),
+        )
+        .await?;
 
         pb.println(format!(
             "{} {} {}{}, {}{}{}",
