@@ -313,7 +313,7 @@ mod tests {
     fn yuv_row_iter_test() -> Result<()> {
         let camera_device = CameraDevice::new(CAMERA_PATH)?;
         let mut camera = Camera::new(camera_device, CAMERA_WIDTH, CAMERA_HEIGHT, NUM_BUFFERS)?;
-        let image = camera.get_yuyv_image()?;
+        let image = camera.loop_try_get_yuyv_image()?;
 
         let mut num: usize = 0;
         let mut image_iter = image.yuv_row_iter();
@@ -346,7 +346,7 @@ mod tests {
     fn yuv_rev_row_iter_test() -> Result<()> {
         let camera_device = CameraDevice::new(CAMERA_PATH)?;
         let mut camera = Camera::new(camera_device, CAMERA_WIDTH, CAMERA_HEIGHT, NUM_BUFFERS)?;
-        let image = camera.get_yuyv_image()?;
+        let image = camera.loop_try_get_yuyv_image()?;
 
         let mut image_iter = image.yuv_row_iter().rev();
         for row in (0..image.height()).rev() {
@@ -384,7 +384,7 @@ mod tests {
     fn yuv_col_iter_test() -> Result<()> {
         let camera_device = CameraDevice::new(CAMERA_PATH)?;
         let mut camera = Camera::new(camera_device, CAMERA_WIDTH, CAMERA_HEIGHT, NUM_BUFFERS)?;
-        let image = camera.get_yuyv_image()?;
+        let image = camera.loop_try_get_yuyv_image()?;
 
         let mut image_iter = image.yuv_col_iter();
         for col in 0..image.width() {
@@ -422,7 +422,7 @@ mod tests {
     fn yuv_rev_col_iter_test() -> Result<()> {
         let camera_device = CameraDevice::new(CAMERA_PATH)?;
         let mut camera = Camera::new(camera_device, CAMERA_WIDTH, CAMERA_HEIGHT, NUM_BUFFERS)?;
-        let image = camera.get_yuyv_image()?;
+        let image = camera.loop_try_get_yuyv_image()?;
 
         let mut image_iter = image.yuv_col_iter().rev();
         for col in (0..image.width()).rev() {
