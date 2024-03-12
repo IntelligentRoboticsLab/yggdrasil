@@ -25,7 +25,7 @@ const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 /// Environment variables that are required to cross compile for the robot, depending
 /// on the current host architecture.
 mod cross {
-    #[cfg(host = "linux")]
+    #[cfg(target_os = "linux")]
     pub const ENVS: &[(&str, &str)] = &[];
 
     #[cfg(target_os = "macos")]
