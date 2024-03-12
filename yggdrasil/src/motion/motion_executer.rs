@@ -27,18 +27,25 @@ pub fn motion_executer(
         return Ok(());
     }
 
+    // keeping track of the moment that the current motion has started
+    if motion_manager.motion_execution_starting_time.is_none() {
+        motion_manager.motion_execution_starting_time = Some(SystemTime::now());
+    }
+
     let ActiveMotion {
         motion,
-        current_sub_motion,
+        cur_sub_motion,
         mut prev_keyframe_index,
         mut movement_start,
         starting_time,
     } = motion_manager.get_active_motion().unwrap();
 
-    if motion_manager.motion_execution_starting_time.is_none() {
+    let submotion_stiffness = motion.submotions[&cur_sub_motion.0].joint_stifness;
+
+    if motion_manager.submotion_execution_starting_time.is_none() {
         if !reached_position(
             &nao_state.position,
-            &motion.initial_movement().target_position,
+            &motion.initial_movement(&cur_sub_motion.0).target_position,
             STARTING_POSITION_ERROR_MARGIN,
         ) {
             println!("Not reached starting position");
@@ -49,45 +56,47 @@ pub fn motion_executer(
 
             nao_control_message.position = lerp(
                 &nao_state.position,
-                &motion.initial_movement().target_position,
+                &motion.initial_movement(&cur_sub_motion.0).target_position,
                 elapsed_time_since_start_of_motion
-                    / &motion.initial_movement().duration.as_secs_f32(),
+                    / &motion
+                        .initial_movement(&cur_sub_motion.0)
+                        .duration
+                        .as_secs_f32(),
             );
-            nao_control_message.stiffness =
-                JointArray::<f32>::fill(motion.submotions[&current_sub_motion.0].joint_stifness);
+            nao_control_message.stiffness = JointArray::<f32>::fill(submotion_stiffness);
 
             return Ok(());
         } else {
             println!("Reached starting position");
-            motion_manager.motion_execution_starting_time = Some(SystemTime::now());
+            motion_manager.submotion_execution_starting_time = Some(SystemTime::now());
         }
     }
 
     // set next joint positions
     match motion.get_position(
-        &current_sub_motion.0,
+        &cur_sub_motion.0,
         &mut prev_keyframe_index,
         &mut movement_start,
     ) {
         Some(position) => {
             nao_control_message.position = position;
-            nao_control_message.stiffness =
-                JointArray::<f32>::fill(motion.submotions[&current_sub_motion.0].joint_stifness);
+            nao_control_message.stiffness = JointArray::<f32>::fill(submotion_stiffness);
         }
         None => {
-            //Current submotion is finished, transition to next submotion.
-            let active_motion = motion_manager.get_active_motion().unwrap();
+            // current submotion is finished, transition to next submotion.
+            let mut active_motion = motion_manager.get_active_motion().unwrap();
 
             match active_motion.get_next_submotion() {
                 // If there is a next submotion, we attempt a transition
                 Some(submotion_name) => {
                     motion_manager.active_motion =
-                        Some(active_motion.transition(nao_state, submotion_name))
+                        active_motion.transition(nao_state, submotion_name)
                 }
                 None => {
                     // if no submotion is found, the motion has finished
                     motion_manager.active_motion = None;
                     motion_manager.motion_execution_starting_time = None;
+                    motion_manager.submotion_execution_starting_time = None;
                 }
             }
         }

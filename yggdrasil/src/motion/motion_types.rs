@@ -42,6 +42,7 @@ pub enum ConditionalVariable {
 pub enum FailRoutine {
     Retry,
     Abort,
+    Catch,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -172,14 +173,10 @@ impl Motion {
         return None;
     }
 
-    pub fn initial_movement(&self) -> &Movement {
-        return &self.submotions[&self.motion_settings.motion_order[0]].keyframes[0];
+    pub fn initial_movement(&self, submotion_name: &String) -> &Movement {
+        return &self.submotions[submotion_name].keyframes[0];
     }
 }
-
-// impl SubMotion {
-//     pub fn initial_position() -> JointArray<f32> {}
-// }
 
 /// An enumeration of all possible motions.
 #[derive(PartialEq, Eq, Hash, Debug)]

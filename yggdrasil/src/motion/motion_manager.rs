@@ -1,4 +1,6 @@
-use crate::motion::motion_types::{Motion, MotionType};
+use crate::motion::motion_types::{
+    ConditionalVariable, FailRoutine, Motion, MotionCondition, MotionType,
+};
 use miette::Result;
 use nidhogg::NaoState;
 use std::collections::HashMap;
@@ -6,14 +8,12 @@ use std::path::Path;
 use std::time::SystemTime;
 use tyr::prelude::*;
 
-use super::motion_types::{FailRoutine, MotionCondition};
-
 #[derive(Clone)]
 pub struct ActiveMotion {
     /// Current motion.
     pub motion: Motion,
-    /// current submotion being executed
-    pub current_sub_motion: (String, i32),
+    /// name and index of current submotion being executed
+    pub cur_sub_motion: (String, i32),
     /// Previous Keyframe
     pub prev_keyframe_index: i32,
     /// Current movement starting time
@@ -25,42 +25,42 @@ pub struct ActiveMotion {
 impl ActiveMotion {
     /// Fetches the next submotion name to be executed.
     pub fn get_next_submotion(&self) -> Option<String> {
-        let next_index = self.current_sub_motion.1 as usize + 1;
+        let next_index = self.cur_sub_motion.1 as usize + 1;
 
         // check whether a next submotion exists
         if self.motion.motion_settings.motion_order.len() >= next_index + 1 {
             return Some(self.motion.motion_settings.motion_order[next_index].clone());
         }
 
+        // if no submotion exists, the motion has ended
         None
     }
 
-    pub fn transition(&self, nao_state: &mut NaoState, submotion_name: String) -> ActiveMotion {
-        let next_submotion = self.motion.submotions[&submotion_name];
+    /// Transitions between SubMotions
+    pub fn transition(
+        &mut self,
+        nao_state: &mut NaoState,
+        submotion_name: String,
+    ) -> Option<ActiveMotion> {
+        let next_submotion = self.motion.submotions[&submotion_name].clone();
 
         for condition in next_submotion.conditions {
             if !check_condition(nao_state, condition) {
                 return select_routine(
-                    self.motion.submotions[&self.current_sub_motion.0].fail_routine,
+                    self.clone(),
+                    self.motion.submotions[&self.cur_sub_motion.0]
+                        .fail_routine
+                        .clone(),
                 );
             }
         }
 
-        self.current_sub_motion = (submotion_name, self.current_sub_motion.1 + 1);
+        self.cur_sub_motion = (submotion_name, self.cur_sub_motion.1 + 1);
         self.prev_keyframe_index = 0;
         self.movement_start = SystemTime::now();
 
-        *self
+        Some(self.clone())
     }
-}
-
-pub fn check_condition(nao_state: &mut NaoState, condition: MotionCondition) -> bool {
-    // TODO
-    true
-}
-
-pub fn select_routine(routine: FailRoutine) -> ActiveMotion {
-    // TODO
 }
 
 /// Manages motions, stores all possible motions and keeps track of information
@@ -70,6 +70,8 @@ pub struct MotionManager {
     pub active_motion: Option<ActiveMotion>,
     /// Keeps track of when the execution of a motion started.
     pub motion_execution_starting_time: Option<SystemTime>,
+    // Keeps track of when the execution of the current submotion started.
+    pub submotion_execution_starting_time: Option<SystemTime>,
     /// Contains the mapping from `MotionTypes` to `Motion`.
     pub motions: HashMap<MotionType, Motion>,
 }
@@ -91,6 +93,7 @@ impl MotionManager {
         MotionManager {
             active_motion: None,
             motion_execution_starting_time: None,
+            submotion_execution_starting_time: None,
             motions: HashMap::new(),
         }
     }
@@ -131,7 +134,7 @@ impl MotionManager {
             .expect("Motion type not added to the motion manager");
 
         self.active_motion = Some(ActiveMotion {
-            current_sub_motion: (chosen_motion.motion_settings.motion_order[0].clone(), 0),
+            cur_sub_motion: (chosen_motion.motion_settings.motion_order[0].clone(), 0),
             prev_keyframe_index: 0,
             motion: chosen_motion,
             movement_start: SystemTime::now(),
@@ -176,4 +179,37 @@ pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
     storage.add_resource(Resource::new(motion_manager))?;
 
     Ok(())
+}
+
+fn check_condition(nao_state: &mut NaoState, condition: MotionCondition) -> bool {
+    match condition.variable {
+        ConditionalVariable::GyroscopeX => {
+            nao_state.gyroscope.x > condition.min && nao_state.gyroscope.x < condition.max
+        }
+        ConditionalVariable::GyroscopeY => {
+            nao_state.gyroscope.y > condition.min && nao_state.gyroscope.y < condition.max
+        }
+        ConditionalVariable::AngleX => {
+            nao_state.angles.x > condition.min && nao_state.angles.x < condition.max
+        }
+        ConditionalVariable::AngleY => {
+            nao_state.angles.y > condition.min && nao_state.angles.y < condition.max
+        }
+    }
+}
+
+/// Yes
+fn select_routine(mut active_motion: ActiveMotion, routine: FailRoutine) -> Option<ActiveMotion> {
+    match routine {
+        // aborts the current motion
+        FailRoutine::Abort => None,
+        // TODO implement catch routine
+        FailRoutine::Catch => None,
+        // retry the previous submotion
+        FailRoutine::Retry => {
+            active_motion.prev_keyframe_index = 0;
+            active_motion.movement_start = SystemTime::now();
+            Some(active_motion)
+        }
+    }
 }
