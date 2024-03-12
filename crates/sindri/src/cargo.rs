@@ -87,7 +87,7 @@ pub async fn build(
     profile: Profile,
     target: Option<&str>,
     features: Vec<&str>,
-    envs: Vec<(&str, &str)>,
+    envs: Option<Vec<(&str, &str)>>,
 ) -> Result<(), CargoError> {
     let mut cargo_args = vec!["build", "-p", binary];
 
@@ -105,6 +105,10 @@ pub async fn build(
         cargo_args.push("--features");
         cargo_args.push(feature_string.as_str());
     }
+
+    // add required environment variables for cross compilation
+    let mut envs = envs.unwrap_or_default();
+    envs.extend_from_slice(cross::ENV_VARS);
 
     cargo(cargo_args, envs).await
 }
@@ -133,4 +137,32 @@ pub fn assert_valid_bin(bin: &str) -> Result<(), CargoError> {
 
     // We couldn't find it the bin!
     Err(CargoError::InvalidBin(bin.to_string()))?
+}
+
+/// Environment variables that are required to cross compile for the robot, depending
+/// on the current host architecture.
+mod cross {
+    #[cfg(target_os = "linux")]
+    pub const ENV_VARS: &[(&str, &str)] = &[];
+
+    #[cfg(target_os = "macos")]
+    pub const ENV_VARS: &[(&str, &str)] = &[
+        (
+            "PKG_CONFIG_PATH",
+            // homebrew directory is different for x86_64 and aarch64 macs!
+            #[cfg(target_arch = "aarch64")]
+            "/opt/homebrew/opt/x86_64-unknown-linux-gnu-alsa-lib/lib/x86_64-unknown-linux-gnu/pkgconfig",
+            #[cfg(target_arch = "x86_64")]
+            "/usr/local/opt/x86_64-unknown-linux-gnu-alsa-lib/lib/x86_64-unknown-linux-gnu/pkgconfig",
+        ),
+        ("PKG_CONFIG_ALLOW_CROSS", "1"),
+        ("TARGET_CC", "x86_64-unknown-linux-gnu-gcc"),
+        ("TARGET_CC", "x86_64-unknown-linux-gnu-gcc"),
+        ("TARGET_CXX", "x86_64-unknown-linux-gnu-g++"),
+        ("TARGET_AR", "x86_64-unknown-linux-gnu-ar"),
+        (
+            "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER",
+            "x86_64-unknown-linux-gnu-gcc",
+        ),
+    ];
 }
