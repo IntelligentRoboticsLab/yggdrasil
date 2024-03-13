@@ -6,6 +6,23 @@ use crate::prelude::*;
 
 use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
+// TODO: Replace with proper field-boundary detection.
+const MIN_ROW: usize = 160;
+
+const MAX_VERTICAL_LINE_WIDTH: usize = 50;
+
+const MAX_HORIZONTAL_LINE_HEIGHT: usize = 30;
+
+const MAX_VERTICAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 60.;
+
+const MAX_HORIZONTAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 60.;
+
+const MAX_ALLOWED_MISTAKES: u32 = 3;
+
+const MIN_POINTS_PER_LINE: usize = 4;
+
+const MINIMUM_LINE_SLOP: f32 = 0.05;
+
 /// Module that detect lines from scan-lines.
 ///
 /// This module provides the following resources to the application:
@@ -61,9 +78,6 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
     PixelColor::yuyv_is_white(y1, u, y2, v)
 }
 
-// TODO: Replace with proper field-boundary detection.
-const MIN_ROW: usize = 160;
-
 fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
     let mut points = Vec::with_capacity(300);
 
@@ -87,7 +101,7 @@ fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
                     start_opt = Some(column_id);
                 }
             } else if let Some(start) = start_opt {
-                if column_id - start < 50 {
+                if column_id - start < MAX_VERTICAL_LINE_WIDTH {
                     points.push((((column_id + start) / 2) as f32, row_id as f32));
                 }
                 start_opt = None;
@@ -112,7 +126,7 @@ fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
                     start_opt = Some(row_id);
                 }
             } else if let Some(start) = start_opt {
-                if row_id - start < 30 {
+                if row_id - start < MAX_HORIZONTAL_LINE_HEIGHT {
                     points.push((column_id as f32, ((row_id + start) / 2) as f32));
                 }
                 start_opt = None;
@@ -138,8 +152,10 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
         let mut line_points = LinePoints::new(points[0]);
 
         for point in points.iter().skip(1) {
-            if (line_points.points.last().unwrap().0 - point.0).abs() > 60f32
-                || (line_points.points.last().unwrap().1 - point.1).abs() > 60f32
+            if (line_points.points.last().unwrap().0 - point.0).abs()
+                > MAX_HORIZONTAL_DISTANCE_BETWEEN_LINE_POINTS
+                || (line_points.points.last().unwrap().1 - point.1).abs()
+                    > MAX_VERTICAL_DISTANCE_BETWEEN_LINE_POINTS
             {
                 points_next.push(*point);
                 continue;
@@ -155,7 +171,7 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
             let start_row = line_points.start_row.min(point.1);
             let end_row = line_points.end_row.max(point.1);
 
-            let mut allowed_mistakes = 3u32;
+            let mut allowed_mistakes = MAX_ALLOWED_MISTAKES;
 
             if end_row - start_row > end_column - start_column {
                 for row in start_row as usize..end_row as usize {
@@ -196,7 +212,7 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
                 line_points.end_row = end_row;
             }
         }
-        if line_points.points.len() > 3 {
+        if line_points.points.len() >= MIN_POINTS_PER_LINE {
             line_pointss.push(line_points);
         } else {
             points_next.extend(line_points.points.iter().skip(1));
@@ -226,7 +242,7 @@ fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> Line {
         .unwrap_or((scan_grid.height() as f32, 0.));
 
     if end_column - start_column < end_row - start_row {
-        if !(-0.05..0.05).contains(&slope) {
+        if !(-MINIMUM_LINE_SLOP..MINIMUM_LINE_SLOP).contains(&slope) {
             start_column = ((start_row - intercept) / slope)
                 .min(scan_grid.width() as f32 - 1.)
                 .max(0.);
@@ -234,7 +250,7 @@ fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> Line {
                 .min(scan_grid.width() as f32 - 1.)
                 .max(0.);
         }
-    } else if (-20.0..20.).contains(&slope) {
+    } else if (-(1. / MINIMUM_LINE_SLOP)..(1. / MINIMUM_LINE_SLOP)).contains(&slope) {
         start_row = (start_column * slope + intercept)
             .min(scan_grid.height() as f32 - 1.)
             .max(0.);
