@@ -96,17 +96,14 @@ fn install_ssh_keys(home_dir: &Path, config: Config) -> io::Result<()> {
         .robots
         .iter()
         .map(|robot| {
-            let name = robot.name.as_str();
-            let number = robot.number;
-
             format!(
                 concat!(
                     "Host {}\n",
-                    "    Hostname 10.0.8.{}\n",
+                    "    Hostname 10.0.{}.{}\n",
                     "    user nao\n",
                     "    Port 22\n",
                 ),
-                name, number,
+                robot.name, config.team_number, robot.number,
             )
         })
         .collect::<Vec<_>>()
