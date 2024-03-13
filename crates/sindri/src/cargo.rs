@@ -157,7 +157,6 @@ mod cross {
         ),
         ("PKG_CONFIG_ALLOW_CROSS", "1"),
         ("TARGET_CC", "x86_64-unknown-linux-gnu-gcc"),
-        ("TARGET_CC", "x86_64-unknown-linux-gnu-gcc"),
         ("TARGET_CXX", "x86_64-unknown-linux-gnu-g++"),
         ("TARGET_AR", "x86_64-unknown-linux-gnu-ar"),
         (
