@@ -6,6 +6,8 @@ use crate::prelude::*;
 
 use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
+use derive_more::Deref;
+
 // TODO: Replace with proper field-boundary detection.
 const MIN_ROW: usize = 160;
 
@@ -26,23 +28,39 @@ const MINIMUM_LINE_SLOP: f32 = 0.05;
 /// Module that detect lines from scan-lines.
 ///
 /// This module provides the following resources to the application:
-/// - <code>[Vec]<[Line]></code>
+/// - [`TopLines`]
 pub struct LineDetectionModule;
 
 impl Module for LineDetectionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system(line_detection_system.after(super::scan_lines::scan_lines_system))
-            .add_task::<ComputeTask<Result<Vec<Line>>>>()?
+            .add_task::<ComputeTask<Result<TopLineDetectionData>>>()?
             .add_startup_system(start_line_detection_task)?
-            .init_resource::<Vec<Line>>()
+            .init_resource::<TopLines>()?
+            .init_resource::<TopLineDetectionData>()
     }
 }
 
+#[derive(Default)]
+struct LineDetectionData {
+    line_points: Vec<(f32, f32)>,
+    line_points_next: Vec<(f32, f32)>,
+    lines: Vec<Line>,
+}
+
+#[derive(Default)]
+struct TopLineDetectionData(LineDetectionData);
+
+#[derive(Default, Deref)]
+pub struct TopLines(Vec<Line>);
+
+#[derive(Default)]
 pub struct LinePoint {
     pub row: f32,
     pub column: f32,
 }
 
+#[derive(Default)]
 pub struct Line(pub LinePoint, pub LinePoint);
 
 struct LinePoints {
@@ -78,9 +96,10 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
     PixelColor::yuyv_is_white(y1, u, y2, v)
 }
 
-fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
-    let mut points = Vec::with_capacity(300);
-
+fn extract_line_points(
+    scan_grid: &ScanGrid,
+    mut points: Vec<(f32, f32)>,
+) -> Result<Vec<(f32, f32)>> {
     for horizontal_line_id in 0..scan_grid.horizontal().line_ids().len() {
         let row_id = *unsafe {
             scan_grid
@@ -137,12 +156,25 @@ fn extract_line_points(scan_grid: &ScanGrid) -> Result<Vec<(f32, f32)>> {
     Ok(points)
 }
 
-fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
-    let mut points = extract_line_points(&scan_grid)?;
-    points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
-    let mut points_next = Vec::<(f32, f32)>::with_capacity(300);
+fn detect_top_lines(
+    line_detection_data: TopLineDetectionData,
+    scan_grid: ScanGrid,
+) -> Result<TopLineDetectionData> {
+    Ok(TopLineDetectionData(detect_lines(
+        line_detection_data.0,
+        scan_grid,
+    )?))
+}
 
-    let mut line_pointss = Vec::<LinePoints>::new();
+fn detect_lines(
+    line_detection_data: LineDetectionData,
+    scan_grid: ScanGrid,
+) -> Result<LineDetectionData> {
+    let mut points = extract_line_points(&scan_grid, line_detection_data.line_points)?;
+    points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
+    let mut points_next = line_detection_data.line_points_next;
+
+    let mut lines_points = Vec::<LinePoints>::new();
 
     loop {
         if points.is_empty() {
@@ -213,7 +245,7 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
             }
         }
         if line_points.points.len() >= MIN_POINTS_PER_LINE {
-            line_pointss.push(line_points);
+            lines_points.push(line_points);
         } else {
             points_next.extend(line_points.points.iter().skip(1));
             points_next.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
@@ -223,10 +255,20 @@ fn detect_lines(scan_grid: ScanGrid) -> Result<Vec<Line>> {
         mem::swap(&mut points, &mut points_next);
     }
 
-    Ok(line_pointss
-        .iter()
-        .map(|line_points| line_points_to_line(line_points, &scan_grid))
-        .collect())
+    let mut lines = line_detection_data.lines;
+    lines.clear();
+    for line_points in lines_points.iter() {
+        lines.push(line_points_to_line(line_points, &scan_grid));
+    }
+
+    points.clear();
+    points_next.clear();
+
+    Ok(LineDetectionData {
+        line_points: points,
+        line_points_next: points_next,
+        lines,
+    })
 }
 
 fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> Line {
@@ -307,11 +349,12 @@ fn draw_lines(dbg: &DebugContext, lines: &[Line], scan_grid: ScanGrid) -> Result
 fn start_line_detection_task(
     _storage: &mut Storage,
     top_scan_grid: &mut TopScanGrid,
-    detect_lines_task: &mut ComputeTask<Result<Vec<Line>>>,
+    detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
 ) -> Result<()> {
     let top_scan_grid = top_scan_grid.clone();
-    detect_lines_task
-        .try_spawn(move || detect_lines(top_scan_grid))
+
+    detect_top_lines_task
+        .try_spawn(move || detect_top_lines(Default::default(), top_scan_grid))
         .unwrap();
 
     Ok(())
@@ -321,14 +364,16 @@ fn start_line_detection_task(
 fn line_detection_system(
     top_scan_grid: &mut TopScanGrid,
     dbg: &DebugContext,
-    detect_lines_task: &mut ComputeTask<Result<Vec<Line>>>,
-    lines: &mut Vec<Line>,
+    detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
+    top_lines: &mut TopLines,
 ) -> Result<()> {
-    if let Some(detect_lines_result) = detect_lines_task.poll() {
-        *lines = detect_lines_result?;
-        draw_lines(dbg, lines, top_scan_grid.clone())?;
+    if let Some(detect_lines_result) = detect_top_lines_task.poll() {
+        let mut detect_lines_result = detect_lines_result?;
+        std::mem::swap(&mut top_lines.0, &mut detect_lines_result.0.lines);
 
-        let points = extract_line_points(top_scan_grid)?;
+        draw_lines(dbg, top_lines, top_scan_grid.clone())?;
+
+        let points = extract_line_points(top_scan_grid, Default::default())?;
         dbg.log_points2d_for_image(
             "top_camera/line_points",
             &points,
@@ -336,8 +381,8 @@ fn line_detection_system(
         )?;
 
         let top_scan_grid = top_scan_grid.clone();
-        detect_lines_task
-            .try_spawn(move || detect_lines(top_scan_grid))
+        detect_top_lines_task
+            .try_spawn(move || detect_top_lines(detect_lines_result, top_scan_grid))
             .unwrap();
     }
 
