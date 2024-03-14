@@ -1,10 +1,11 @@
-use std::{net::Ipv4Addr, time::Instant};
+#[cfg(feature = "rerun")]
+use std::convert::Into;
 
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
+
 use nidhogg::types::RgbU8;
-#[cfg(feature = "rerun")]
-use std::convert::Into;
+use std::{net::Ipv4Addr, time::Instant};
 
 use crate::{camera::Image, nao::Cycle, prelude::*};
 
@@ -152,6 +153,17 @@ impl DebugContext {
         {
             self.rec
                 .log(path.as_ref(), &rerun::Scalar::new(scalar))
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn log_text(&self, path: impl AsRef<str>, text: String) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(path.as_ref(), &rerun::TextLog::new(text))
                 .into_diagnostic()?;
         }
 
