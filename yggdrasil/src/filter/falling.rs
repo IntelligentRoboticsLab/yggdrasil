@@ -104,16 +104,16 @@ fn is_lying_on_back(imu_values: &IMUValues) -> bool {
 fn pose_filter(imu_values: &IMUValues, fallingstate: &mut Fall, contacts: &Contacts) -> Result<()> {
     if is_falling_forward(imu_values) {
         fallingstate.state = FallState::Falling(FallDirection::Forwards);
-        println!("falling forward");
+        // println!("falling forward");
     } else if is_falling_backward(imu_values) {
         fallingstate.state = FallState::Falling(FallDirection::Backwards);
-        println!("falling backward");
+        // println!("falling backward");
     } else if is_falling_left(imu_values) {
         fallingstate.state = FallState::Falling(FallDirection::Leftways);
-        println!("falling left");
+        // println!("falling left");
     } else if is_falling_right(imu_values) {
         fallingstate.state = FallState::Falling(FallDirection::Rightways);
-        println!("falling right");
+        // println!("falling right");
     }
 
     if is_standing_upright(imu_values, contacts) {
