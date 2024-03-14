@@ -1,9 +1,31 @@
-use miette::{miette, IntoDiagnostic, Result};
+use miette::{miette, Context, IntoDiagnostic, Result};
 use serde::Deserialize;
 use serde_with::serde_as;
 use std::ops::RangeInclusive;
+use std::path::PathBuf;
 use std::{ffi::OsStr, net::Ipv4Addr};
 use tokio::process::{Child, Command};
+
+// Config location relative to home directory
+const CONFIG_FILE: &str = ".config/sindri/sindri.toml";
+
+pub fn config_file() -> PathBuf {
+    home::home_dir()
+        .expect("Failed to get home directory")
+        .join(CONFIG_FILE)
+}
+
+pub fn load_config() -> Result<Config> {
+    let config_file = config_file();
+
+    let config_data = std::fs::read_to_string(config_file)
+        .into_diagnostic()
+        .wrap_err("Failed to read config file")?;
+
+    toml::de::from_str(&config_data)
+        .into_diagnostic()
+        .wrap_err("Failed to parse config file!")
+}
 
 /// A robot as defined in the sindri configuration
 #[derive(Debug, Deserialize, Clone)]
