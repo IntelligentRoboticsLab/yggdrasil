@@ -13,8 +13,8 @@ use tokio::{net::unix::pipe::pipe, process::Command};
 use std::io::Stdin;
 
 const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
-const RELEASE_PATH: &str = "./target/x86_64-unknown-linux-gnu/release/odr";
-const DEPLOY_PATH: &str = "./deploy/odr";
+const RELEASE_PATH: &str = "./target/x86_64-unknown-linux-gnu/release/skadi";
+const DEPLOY_PATH: &str = "./deploy/skadi";
 
 
 #[derive(Clone, Debug, Parser)]
@@ -57,7 +57,7 @@ impl Record {
         pb.enable_steady_tick(Duration::from_millis(80));
         pb.set_style(
             ProgressStyle::with_template(
-                "   {prefix:.green.bold} odr {msg} {spinner:.green.bold}",
+                "   {prefix:.green.bold} skadi {msg} {spinner:.green.bold}",
             )
             .unwrap()
             .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
@@ -74,12 +74,12 @@ impl Record {
         pb.set_prefix("Compiling");
 
         // Build yggdrasil with cargo
-        cargo::build("odr", Profile::Release, Some(ROBOT_TARGET), Vec::new()).await?;
+        cargo::build("skadi", Profile::Release, Some(ROBOT_TARGET), Vec::new()).await?;
 
         pb.println(format!(
             "{} {} {}{}, {}{}{}",
             "   Compiling".green().bold(),
-            "odr".bold(),
+            "skadi".bold(),
             "(release: ".dimmed(),
             "true".red(),
             "target: ".dimmed(),
@@ -128,7 +128,7 @@ impl Record {
         pb.finish_and_clear();
 
         robot
-            .ssh("./odr", Vec::<(&str, &str)>::new())?
+            .ssh("./skadi", Vec::<(&str, &str)>::new())?
             .wait()
             .await
             .into_diagnostic()?;

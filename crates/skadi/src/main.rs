@@ -11,6 +11,8 @@ use nidhogg::{
 // The write call to the backend end is blocking. So if you make a loop and write in it every iteration, that should work.
 // The difficult thing wil be, reading user input, but not blocking on it and still making sure messages are sent. 
 
+// Dario note: We will need to add threads, async, etc. USE TOKIO, WATCH TUTORIALS
+
 fn main() -> miette::Result<()> {
     let mut nao = LolaBackend::connect_with_retry(10, Duration::from_millis(500))?;
 
@@ -23,11 +25,11 @@ fn main() -> miette::Result<()> {
     let msg = NaoControlMessage::builder().position(JointArray::<f32>::fill(0.0)).build();
     let b = nao.send_control_msg(msg)?;
 
-    println!("Hello, world!");
-    let mut buffer = String::new();
-    while io::stdin().read_line(&mut buffer).unwrap() > 0 {
-        println!("{}", buffer);
-    }
+    // println!("Hello, world!");
+    // let mut buffer = String::new();
+    // while io::stdin().read_line(&mut buffer).unwrap() > 0 {
+    //     println!("{}", buffer);
+    // }
 
     Ok(())
 }

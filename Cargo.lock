@@ -3921,14 +3921,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "odr"
-version = "0.1.0"
-dependencies = [
- "miette",
- "nidhogg",
-]
-
-[[package]]
 name = "once_cell"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5998,6 +5990,14 @@ dependencies = [
  "tokio",
  "toml",
  "walkdir",
+]
+
+[[package]]
+name = "skadi"
+version = "0.1.0"
+dependencies = [
+ "miette",
+ "nidhogg",
 ]
 
 [[package]]

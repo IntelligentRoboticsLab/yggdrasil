@@ -5,11 +5,11 @@ use tyr::prelude::*;
 
 pub struct MotionRecorder;
 
-impl Module for MotionRecorder {
-    fn initialize(self, app: App) -> Result<App> {
-        Ok(app.add_system(joint_locking_recorder))
-    }
-}
+// impl Module for MotionRecorder {
+//     fn initialize(self, app: App) -> Result<App> {
+//         Ok(app.add_system(joint_locking_recorder))
+//     }
+// }
 
 // #[system]
 // fn joint_locking_recorder(
@@ -66,11 +66,3 @@ impl Module for MotionRecorder {
 //     }
 //     Ok(())
 // }
-
-#[system]
-fn joint_locking_recorder(
-    nao_state: &NaoState,
-    nao_control_message: &mut NaoControlMessage,
-    // recordingresources: &mut RecordingResources,
-    headbutton: &HeadButtons
-) -> Result<()> {Ok(())}

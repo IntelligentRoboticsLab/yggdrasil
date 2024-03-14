@@ -24,7 +24,7 @@ impl Module for MotionModule {
     /// * `app` - App.
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
-            .add_module(MotionRecorder)?
+            // .add_module(MotionRecorder)?
             .add_startup_system(motion_manager_initializer)?
             .add_system(motion_executer.after(write_hardware_info)))
     }
