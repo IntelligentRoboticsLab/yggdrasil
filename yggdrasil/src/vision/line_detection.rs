@@ -10,15 +10,15 @@ use derive_more::Deref;
 use nidhogg::types::color;
 
 // TODO: Replace with proper field-boundary detection.
-const MIN_ROW: usize = 160;
+const MIN_ROW: usize = 200;
 
 const MAX_VERTICAL_LINE_WIDTH: usize = 50;
 
 const MAX_HORIZONTAL_LINE_HEIGHT: usize = 30;
 
-const MAX_VERTICAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 60.;
+const MAX_VERTICAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 50.;
 
-const MAX_HORIZONTAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 60.;
+const MAX_HORIZONTAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 50.;
 
 const MAX_ALLOWED_MISTAKES: u32 = 3;
 
@@ -47,6 +47,7 @@ struct LineDetectionData {
     line_points: Vec<(f32, f32)>,
     line_points_next: Vec<(f32, f32)>,
     lines: Vec<Line>,
+    lines_points: Vec<LinePoints>,
 }
 
 #[derive(Default)]
@@ -81,6 +82,18 @@ impl LinePoints {
             start_row: first_point.1,
             end_row: first_point.1,
         }
+    }
+
+    fn reuse(mut self, first_point: (f32, f32)) -> Self {
+        self.points.clear();
+        self.points.push(first_point);
+
+        self.start_column = first_point.0;
+        self.end_column = first_point.0;
+        self.start_row = first_point.1;
+        self.end_row = first_point.1;
+
+        self
     }
 }
 
@@ -175,14 +188,18 @@ fn detect_lines(
     points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
     let mut points_next = line_detection_data.line_points_next;
 
-    let mut lines_points = Vec::<LinePoints>::new();
+    let mut lines_points_old = line_detection_data.lines_points;
+    let mut lines_points = Vec::new();
 
     loop {
         if points.is_empty() {
             break;
         }
 
-        let mut line_points = LinePoints::new(points[0]);
+        let mut line_points = lines_points_old
+            .pop()
+            .map(|line_points| line_points.reuse(points[0]))
+            .unwrap_or_else(|| LinePoints::new(points[0]));
 
         for point in points.iter().skip(1) {
             if (line_points.points.last().unwrap().0 - point.0).abs()
@@ -269,6 +286,7 @@ fn detect_lines(
         line_points: points,
         line_points_next: points_next,
         lines,
+        lines_points,
     })
 }
 
