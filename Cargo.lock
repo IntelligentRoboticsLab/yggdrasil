@@ -5998,6 +5998,7 @@ version = "0.1.0"
 dependencies = [
  "miette",
  "nidhogg",
+ "yggdrasil",
 ]
 
 [[package]]

@@ -6,5 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-miette.workspace = true
+miette = { workspace = true }
+yggdrasil = { path = "../../yggdrasil" }
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
