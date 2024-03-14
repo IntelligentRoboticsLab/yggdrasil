@@ -15,7 +15,9 @@ const INIT_DIR: &str = "init/";
 /// Generate or change the robot configuration
 #[derive(Subcommand)]
 pub enum ConfigCommand {
+    /// Initialize a new sindri config and rerun the setup wizard
     Init,
+    /// Opens the sindri config in the default text editor
     Open,
 }
 
