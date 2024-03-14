@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 miette = { workspace = true }
 yggdrasil = { path = "../../yggdrasil" }
+tyr = { path = "../tyr" }
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
