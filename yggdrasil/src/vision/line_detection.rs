@@ -7,6 +7,7 @@ use crate::prelude::*;
 use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
 use derive_more::Deref;
+use nidhogg::types::color;
 
 // TODO: Replace with proper field-boundary detection.
 const MIN_ROW: usize = 160;
@@ -340,7 +341,12 @@ fn draw_lines(dbg: &DebugContext, lines: &[Line], scan_grid: ScanGrid) -> Result
         )
         .collect::<Vec<_>>();
 
-    dbg.log_lines2d_for_image("top_camera/lines", &all_lines, scan_grid.image().clone())?;
+    dbg.log_lines2d_for_image(
+        "top_camera/lines",
+        &all_lines,
+        scan_grid.image().clone(),
+        color::u8::RED,
+    )?;
 
     Ok(())
 }
@@ -378,6 +384,7 @@ fn line_detection_system(
             "top_camera/line_points",
             &points,
             top_scan_grid.image().clone(),
+            color::u8::BLUE,
         )?;
 
         let top_scan_grid = top_scan_grid.clone();
