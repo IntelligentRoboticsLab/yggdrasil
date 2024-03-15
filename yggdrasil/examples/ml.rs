@@ -44,15 +44,15 @@ fn generate_input(input_img: &mut Image) -> Result<()> {
         let r = vec
             .iter()
             .enumerate()
-            .filter_map(|(i, v)| (i % 3 == 0).then(|| v));
+            .filter_map(|(i, v)| (i % 3 == 0).then_some(v));
         let g = vec
             .iter()
             .enumerate()
-            .filter_map(|(i, v)| (i % 3 == 1).then(|| v));
+            .filter_map(|(i, v)| (i % 3 == 1).then_some(v));
         let b = vec
             .iter()
             .enumerate()
-            .filter_map(|(i, v)| (i % 3 == 2).then(|| v));
+            .filter_map(|(i, v)| (i % 3 == 2).then_some(v));
 
         // convert to correct format
         let nchw_vec = r.chain(g).chain(b).copied().collect::<Vec<_>>();
