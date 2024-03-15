@@ -15,7 +15,7 @@ fn main() -> Result<()> {
         async_threads: 1,
         compute_threads: 1,
     };
-    
+
     let app = App::new()
         .add_module(NaoModule)?
         .add_module(ConfigModule)?
