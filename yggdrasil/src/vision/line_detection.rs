@@ -397,14 +397,6 @@ fn line_detection_system(
 
         draw_lines(dbg, top_lines, top_scan_grid.clone())?;
 
-        let points = extract_line_points(top_scan_grid, Default::default())?;
-        dbg.log_points2d_for_image(
-            "top_camera/line_points",
-            &points,
-            top_scan_grid.image().clone(),
-            color::u8::BLUE,
-        )?;
-
         let top_scan_grid = top_scan_grid.clone();
         detect_top_lines_task
             .try_spawn(move || detect_top_lines(detect_lines_result, top_scan_grid))
