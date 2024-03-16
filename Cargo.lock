@@ -3577,7 +3577,7 @@ checksum = "c96aba5aa877601bb3f6dd6a63a969e1f82e60646e81e71b14496995e9853c91"
 [[package]]
 name = "nidhogg"
 version = "0.1.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=77f8b64f5f2a7a31d7adfada90aefe75145f13b9#77f8b64f5f2a7a31d7adfada90aefe75145f13b9"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?branch=jkaiser/public-socket#0df030d89a7c4d2b8e0ef9232eceeac7ec9ae8f8"
 dependencies = [
  "forward_ref_generic",
  "miette",
@@ -3592,7 +3592,7 @@ dependencies = [
 [[package]]
 name = "nidhogg_derive"
 version = "0.1.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=77f8b64f5f2a7a31d7adfada90aefe75145f13b9#77f8b64f5f2a7a31d7adfada90aefe75145f13b9"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?branch=jkaiser/public-socket#0df030d89a7c4d2b8e0ef9232eceeac7ec9ae8f8"
 dependencies = [
  "itertools 0.11.0",
  "proc-macro2",
