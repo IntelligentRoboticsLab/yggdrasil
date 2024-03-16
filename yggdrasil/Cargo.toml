@@ -13,18 +13,22 @@ derive_more = { workspace = true }
 enum_dispatch = { workspace = true }
 fast-math = { workspace = true }
 heimdall = { path = "../crates/heimdall" }
+image = { workspace = true }
 kira = { workspace = true, optional = true }
 linreg = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true }
+ndarray = { workspace = true }
 nidhogg = { workspace = true }
 odal = { path = "../crates/odal" }
+openvino = { workspace = true }
 rerun = { workspace = true, optional = true, features = [
   "image",
   "web_viewer",
 ] }
 serde = { workspace = true }
 serde_with = { workspace = true }
+thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

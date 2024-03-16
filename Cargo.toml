@@ -23,8 +23,12 @@ linreg = "0.2.0"
 linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git", rev = "71e97ee76ccd93f24f20d215a980f2927424fce2" }
 miette = "5.10.0"
 nalgebra = "0.32.4"
+ndarray = "0.15.6"
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "77f8b64f5f2a7a31d7adfada90aefe75145f13b9" }
 num = "0.4.0"
+openvino = { git = "https://github.com/YukumoHunter/openvino-rs.git", branch = "evil-hack", features = [
+  "runtime-linking",
+] }
 petgraph = "0.6.3"
 proc-macro2 = "1.0.78"
 quote = "1.0.35"

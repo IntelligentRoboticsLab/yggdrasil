@@ -6,6 +6,7 @@ on:
     branches: [main]
 
 env:
+  OPENVINO_SKIP_LINKING: 1
   CARGO_NET_GIT_FETCH_WITH_CLI: true
   RUSTDOCFLAGS: -D warnings
 

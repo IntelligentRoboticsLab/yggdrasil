@@ -1,7 +1,9 @@
+#[allow(unused_imports)]
 use yggdrasil::{
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, debug::DebugModule,
-    filter::FilterModule, game_controller::GameControllerModule, leds::LedsModule, nao::NaoModule,
-    prelude::*, primary_state::PrimaryStateModule, vision::VisionModule, walk::WalkingEngineModule,
+    filter::FilterModule, game_controller::GameControllerModule, leds::LedsModule, ml::MlModule,
+    nao::NaoModule, prelude::*, primary_state::PrimaryStateModule, vision::VisionModule,
+    walk::WalkingEngineModule,
 };
 
 fn main() -> Result<()> {
@@ -11,6 +13,7 @@ fn main() -> Result<()> {
     let app = App::new()
         .add_module(NaoModule)?
         .add_module(ConfigModule)?
+        .add_module(MlModule)?
         .add_module(FilterModule)?
         .add_module(CameraModule)?
         .add_module(BehaviorModule)?

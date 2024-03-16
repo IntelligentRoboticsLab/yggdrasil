@@ -1918,6 +1918,7 @@ dependencies = [
  "humantime",
  "is-terminal",
  "log",
+ "regex",
  "termcolor",
 ]
 
@@ -3995,6 +3996,36 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "openvino"
+version = "0.6.0"
+source = "git+https://github.com/YukumoHunter/openvino-rs.git?branch=evil-hack#151b481b5d7c6449f2f41685ca861978309ead52"
+dependencies = [
+ "openvino-finder",
+ "openvino-sys",
+ "thiserror",
+]
+
+[[package]]
+name = "openvino-finder"
+version = "0.6.0"
+source = "git+https://github.com/YukumoHunter/openvino-rs.git?branch=evil-hack#151b481b5d7c6449f2f41685ca861978309ead52"
+dependencies = [
+ "cfg-if",
+ "log",
+]
+
+[[package]]
+name = "openvino-sys"
+version = "0.6.0"
+source = "git+https://github.com/YukumoHunter/openvino-rs.git?branch=evil-hack#151b481b5d7c6449f2f41685ca861978309ead52"
+dependencies = [
+ "env_logger",
+ "libloading 0.8.1",
+ "once_cell",
+ "openvino-finder",
 ]
 
 [[package]]
@@ -8026,15 +8057,19 @@ dependencies = [
  "enum_dispatch",
  "fast-math",
  "heimdall",
+ "image",
  "kira",
  "linreg",
  "miette",
  "nalgebra",
+ "ndarray",
  "nidhogg",
  "odal",
+ "openvino",
  "rerun",
  "serde",
  "serde_with",
+ "thiserror",
  "tokio",
  "tracing",
  "tracing-subscriber",
