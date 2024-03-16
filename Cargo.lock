@@ -4023,6 +4023,8 @@ version = "0.6.0"
 source = "git+https://github.com/YukumoHunter/openvino-rs.git?branch=evil-hack#151b481b5d7c6449f2f41685ca861978309ead52"
 dependencies = [
  "env_logger",
+ "libloading 0.8.1",
+ "once_cell",
  "openvino-finder",
 ]
 
