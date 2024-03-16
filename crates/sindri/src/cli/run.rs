@@ -38,9 +38,6 @@ impl Run {
         };
 
         if local {
-            envs.push(("ROBOT_ID", "0"));
-            envs.push(("ROBOT_NAME", "local"));
-
             robot
                 .local("yggdrasil", envs)?
                 .wait()
