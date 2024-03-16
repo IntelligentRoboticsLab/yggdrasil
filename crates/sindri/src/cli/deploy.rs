@@ -46,6 +46,9 @@ pub struct ConfigOptsDeploy {
     #[clap(long, short)]
     pub rerun: bool,
 
+    #[clap(long, short)]
+    pub local: bool,
+
     /// Specify bin target
     #[clap(global = true, long, default_value = "yggdrasil")]
     pub bin: String,
@@ -53,12 +56,20 @@ pub struct ConfigOptsDeploy {
 
 impl ConfigOptsDeploy {
     #[must_use]
-    pub fn new(number: u8, wired: bool, team_number: Option<u8>, rerun: bool, bin: String) -> Self {
+    pub fn new(
+        number: u8,
+        wired: bool,
+        team_number: Option<u8>,
+        rerun: bool,
+        local: bool,
+        bin: String,
+    ) -> Self {
         Self {
             number,
             wired,
             team_number,
             rerun,
+            local,
             bin,
         }
     }
@@ -101,6 +112,9 @@ impl Deploy {
         if self.deploy.rerun {
             features.push("rerun");
         }
+        if self.deploy.local {
+            features.push("local");
+        }
 
         // Build yggdrasil with cargo
         cargo::build(
@@ -130,6 +144,15 @@ impl Deploy {
         ));
         pb.reset_elapsed();
 
+        // Copy over the files that need to be deployed
+        fs::copy(RELEASE_PATH, DEPLOY_PATH)
+            .into_diagnostic()
+            .wrap_err("Failed to copy binary to deploy directory!")?;
+
+        if self.deploy.local {
+            return Ok(());
+        }
+
         // Check if the robot exists
         let robot = config
             .robot(self.deploy.number, self.deploy.wired)
@@ -146,11 +169,6 @@ impl Deploy {
 
         pb.set_prefix("Deploying");
         pb.set_message(format!("{}", "Preparing deployment...".dimmed()));
-
-        // Copy over the files that need to be deployed
-        fs::copy(RELEASE_PATH, DEPLOY_PATH)
-            .into_diagnostic()
-            .wrap_err("Failed to copy binary to deploy directory!")?;
 
         deploy_to_robot(&pb, robot.ip())
             .await
