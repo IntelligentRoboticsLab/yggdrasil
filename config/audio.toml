@@ -1,2 +1,0 @@
-# Minimum time duration in ms between playing the wee sound on pick-up.
-wee_sound_timeout = 3000

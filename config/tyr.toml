@@ -1,3 +1,0 @@
-[tasks]
-async_threads = 1
-compute_threads = 2
