@@ -39,7 +39,7 @@ impl Run {
 
         if local {
             robot
-                .local("yggdrasil", envs)?
+                .local("./yggdrasil", envs)?
                 .wait()
                 .await
                 .into_diagnostic()?;
