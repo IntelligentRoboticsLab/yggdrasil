@@ -125,10 +125,6 @@ impl Robot {
         K: AsRef<OsStr>,
         V: AsRef<OsStr>,
     {
-        let robot_id = self.number.to_string();
-        let robot_envs: Vec<(&str, &str)> =
-            vec![("ROBOT_ID", &robot_id), ("ROBOT_NAME", &self.name)];
-
         let working_dir = format!(
             "{}/deploy/",
             std::env::current_dir().into_diagnostic()?.display()
@@ -137,7 +133,8 @@ impl Robot {
         Command::new(working_dir.to_string() + &command.into())
             .current_dir(&working_dir)
             .envs(envs)
-            .envs(robot_envs)
+            .env("ROBOT_ID", &self.number.to_string())
+            .env("ROBOT_NAME", &self.name)
             .kill_on_drop(true)
             .spawn()
             .into_diagnostic()
