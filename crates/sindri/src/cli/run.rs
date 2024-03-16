@@ -25,6 +25,7 @@ impl Run {
                 self.deploy.number
             )))?;
 
+        let local = self.deploy.local;
         Deploy {
             deploy: self.deploy,
         }
@@ -32,16 +33,26 @@ impl Run {
         .await?;
 
         let mut envs = Vec::new();
-
         if self.debug {
             envs.push(("RUST_LOG", "debug"));
         };
 
-        robot
-            .ssh("./yggdrasil", envs)?
-            .wait()
-            .await
-            .into_diagnostic()?;
+        if local {
+            envs.push(("ROBOT_ID", "0"));
+            envs.push(("ROBOT_NAME", "local"));
+
+            robot
+                .local("yggdrasil", envs)?
+                .wait()
+                .await
+                .into_diagnostic()?;
+        } else {
+            robot
+                .ssh("./yggdrasil", envs)?
+                .wait()
+                .await
+                .into_diagnostic()?;
+        }
 
         Ok(())
     }
