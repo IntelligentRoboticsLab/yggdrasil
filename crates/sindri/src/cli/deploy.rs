@@ -22,6 +22,8 @@ const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
 const RELEASE_PATH: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
 const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 
+const LOCAL_ROBOT_ID_STR: &str = "0";
+
 /// The size of the `BufWriter`'s buffer.
 ///
 /// This is currently set to 1 MiB, as the [`Write`] implementation for [`ssh2::sftp::File`]
@@ -36,7 +38,7 @@ pub struct ConfigOptsDeploy {
         name = "robot-number",
         required(false),
         required_unless_present("local"),
-        default_value_if("local", "true", Some("0")),
+        default_value_if("local", "true", Some(LOCAL_ROBOT_ID_STR)),
         conflicts_with("local")
     )]
     pub number: u8,
