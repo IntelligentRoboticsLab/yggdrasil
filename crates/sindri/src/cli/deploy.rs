@@ -31,7 +31,14 @@ const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
 #[derive(Clone, Debug, Parser)]
 pub struct ConfigOptsDeploy {
     /// Number of the robot to deploy to.
-    #[clap(index = 1, name = "robot-number")]
+    #[clap(
+        index = 1,
+        name = "robot-number",
+        required(false),
+        required_unless_present("local"),
+        default_value_if("local", "true", Some("0")),
+        conflicts_with("local")
+    )]
     pub number: u8,
 
     /// Scan for wired (true) or wireless (false) robots [default: false]
