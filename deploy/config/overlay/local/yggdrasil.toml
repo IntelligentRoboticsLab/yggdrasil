@@ -8,4 +8,4 @@ flip_vertically = false
 
 [camera.bottom]
 # The path to the camera device.
-path = "/dev/video42"
+path = "/dev/video43"
