@@ -23,10 +23,6 @@ impl Module for FilterModule {
             .add_module(IMUFilter)?
             .add_module(FallingFilter)?
             .add_module(SonarFilter)?;
-
-        #[cfg(feature = "alsa")]
-        let app = app.add_module(audio_input::AudioInputFilter)?;
-
         Ok(app)
     }
 }

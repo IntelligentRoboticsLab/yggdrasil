@@ -16,6 +16,7 @@ miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true }
 nidhogg = { workspace = true, features = ["lola"] }
 num = { workspace = true }
+<<<<<<< HEAD
 odal = { path = "../crates/odal" }
 rerun = { workspace = true, optional = true, features = [
     "image",
@@ -23,6 +24,8 @@ rerun = { workspace = true, optional = true, features = [
 ] }
 serde = { workspace = true }
 serde_with = { workspace = true }
+=======
+>>>>>>> 77830e452f031e75c76c293c272ac7724eb86568
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
