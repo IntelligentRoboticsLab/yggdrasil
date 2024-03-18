@@ -10,18 +10,6 @@ use linuxvideo::{
 
 use super::{Error, Result, YuyvImage};
 
-/// The width of a NAO [`Image`].
-const IMAGE_WIDTH: u32 = 640;
-
-/// The height of a NAO [`Image`].
-const IMAGE_HEIGHT: u32 = 480;
-
-/// Absolute path to the lower camera of the NAO.
-const CAMERA_BOTTOM: &str = "/dev/video-bottom";
-
-/// Absolute path to the upper camera of the NAO.
-const CAMERA_TOP: &str = "/dev/video-top";
-
 /// A wrapper around a [`Device`] that contains utilities to flip the image.
 pub struct CameraDevice {
     device: Device,
@@ -37,8 +25,8 @@ impl CameraDevice {
             .to_owned()
             .to_string_lossy()
             .to_string();
-        let device =
-            Device::open(device_path).map_err(|source| Error::DeviceOpen { path, source })?;
+        let device = Device::open_non_blocking(device_path)
+            .map_err(|source| Error::DeviceOpen { path, source })?;
 
         Ok(Self { device })
     }
@@ -306,41 +294,18 @@ impl Camera {
 
         // Grab some images to startup the camera.
         // Without it, the first couple of images will return an empty buffer.
-        for _ in 0..num_buffers {
-            camera.get_yuyv_image()?;
+        for _ in 0..num_buffers * 2 {
+            camera.loop_try_get_yuyv_image()?;
         }
 
         Ok(camera)
-    }
-
-    /// Create a new camera object for the NAO's top camera.
-    ///
-    /// # Errors
-    /// This function fails if the [`Camera`] cannot be opened.
-    pub fn new_nao_top(num_buffers: u32) -> Result<Self> {
-        let camera_device = CameraDevice::new(CAMERA_TOP)?;
-        // We need to rotate the top camera 180 degrees, because it's upside down in the robot.
-        camera_device.horizontal_flip()?;
-        camera_device.vertical_flip()?;
-
-        Self::new(camera_device, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
-    }
-
-    /// Create a new camera object for the NAO's bottom camera.
-    ///
-    /// # Errors
-    /// This function fails if the [`Camera`] cannot be opened.
-    pub fn new_nao_bottom(num_buffers: u32) -> Result<Self> {
-        let camera_device = CameraDevice::new(CAMERA_BOTTOM)?;
-
-        Self::new(camera_device, IMAGE_WIDTH, IMAGE_HEIGHT, num_buffers)
     }
 
     /// Get the next image.
     ///
     /// # Errors
     /// This function fails if the [`Camera`] cannot take an image.
-    pub fn get_yuyv_image(&mut self) -> Result<YuyvImage> {
+    pub fn try_get_yuyv_image(&mut self) -> Result<YuyvImage> {
         let frame = self.camera.fetch_frame()?;
 
         Ok(YuyvImage {
@@ -352,10 +317,22 @@ impl Camera {
 
     /// Get the next image.
     ///
+    /// This is the same as `try_get_yuyv_image`, however this function infinite loops until it it
+    /// has actually fetched an image. This can be useful when the camera device has been opened in
+    /// non-blocking mode.
+    ///
     /// # Errors
     /// This function fails if the [`Camera`] cannot take an image.
-    pub fn try_get_yuyv_image(&mut self) -> Result<YuyvImage> {
-        let frame = self.camera.fetch_frame()?;
+    pub fn loop_try_get_yuyv_image(&mut self) -> Result<YuyvImage> {
+        let mut fetch_frame_result = self.camera.fetch_frame();
+        while fetch_frame_result
+            .as_ref()
+            .is_err_and(|io_error| io_error.kind() == std::io::ErrorKind::WouldBlock)
+        {
+            fetch_frame_result = self.camera.fetch_frame();
+        }
+
+        let frame = fetch_frame_result?;
 
         Ok(YuyvImage {
             frame,

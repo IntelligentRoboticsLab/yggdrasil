@@ -1,10 +1,19 @@
 use crate::{filter::button::ChestButton, leds::Leds, prelude::*};
 
-use bifrost::communication::{GameControllerMessage, GameState};
-use nidhogg::types::color;
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DurationMilliSeconds};
 use std::time::Duration;
 
-const CHEST_BLINK_INTERVAL: Duration = Duration::from_millis(1000);
+use bifrost::communication::{GameControllerMessage, GameState};
+use nidhogg::types::color;
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct PrimaryStateConfig {
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub chest_blink_interval: Duration,
+}
 
 /// A module providing information about the primary state of the robot. These
 /// states include: "Unstiff", "Initial", "Ready", "Set", "Playing",
@@ -59,6 +68,7 @@ pub fn update_primary_state(
     game_controller_message: &Option<GameControllerMessage>,
     led: &mut Leds,
     chest_button: &ChestButton,
+    config: &PrimaryStateConfig,
 ) -> Result<()> {
     use PrimaryState as PS;
 
@@ -98,7 +108,7 @@ pub fn update_primary_state(
         led.unset_chest_blink();
 
         match next_primary_state {
-            PS::Unstiff => led.set_chest_blink(color::f32::BLUE, CHEST_BLINK_INTERVAL),
+            PS::Unstiff => led.set_chest_blink(color::f32::BLUE, config.chest_blink_interval),
             PS::Initial => led.chest = color::f32::GRAY,
             PS::Ready => led.chest = color::f32::BLUE,
             PS::Set => led.chest = color::f32::YELLOW,
@@ -108,7 +118,7 @@ pub fn update_primary_state(
             PS::Calibration => led.chest = color::f32::PURPLE,
         };
     } else if next_primary_state == PS::Unstiff {
-        led.set_chest_blink(color::f32::BLUE, CHEST_BLINK_INTERVAL)
+        led.set_chest_blink(color::f32::BLUE, config.chest_blink_interval)
     }
 
     *primary_state = next_primary_state;

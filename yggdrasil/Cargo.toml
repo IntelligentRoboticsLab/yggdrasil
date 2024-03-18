@@ -9,23 +9,27 @@ default-run = "yggdrasil"
 [dependencies]
 alsa = { workspace = true, optional = true }
 bifrost = { path = "../crates/bifrost/" }
+derive_more = { workspace = true }
 enum_dispatch = { workspace = true }
+fast-math = { workspace = true }
 heimdall = { path = "../crates/heimdall" }
+image = { workspace = true }
 kira = { workspace = true, optional = true }
+linreg = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true }
+ndarray = { workspace = true }
 nidhogg = { workspace = true, features = ["lola"] }
 num = { workspace = true }
-<<<<<<< HEAD
 odal = { path = "../crates/odal" }
+openvino = { workspace = true }
 rerun = { workspace = true, optional = true, features = [
-    "image",
-    "web_viewer",
+  "image",
+  "web_viewer",
 ] }
 serde = { workspace = true }
 serde_with = { workspace = true }
-=======
->>>>>>> 77830e452f031e75c76c293c272ac7724eb86568
+thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
@@ -35,3 +39,4 @@ tyr = { path = "../crates/tyr", features = ["odal"] }
 default = []
 alsa = ["dep:alsa", "dep:kira"]
 rerun = ["dep:rerun"]
+local = []

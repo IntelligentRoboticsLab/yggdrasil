@@ -1,5 +1,5 @@
 use crate::{
-    cargo::{self, Profile},
+    cargo::{self, assert_valid_bin, Profile},
     config::Config,
     error::{Error, Result},
 };
@@ -45,16 +45,21 @@ pub struct ConfigOptsDeploy {
     /// Whether to embed the rerun viewer for debugging [default: false]
     #[clap(long, short)]
     pub rerun: bool,
+
+    /// Specify bin target
+    #[clap(global = true, long, default_value = "yggdrasil")]
+    pub bin: String,
 }
 
 impl ConfigOptsDeploy {
     #[must_use]
-    pub fn new(number: u8, wired: bool, team_number: Option<u8>, rerun: bool) -> Self {
+    pub fn new(number: u8, wired: bool, team_number: Option<u8>, rerun: bool, bin: String) -> Self {
         Self {
             number,
             wired,
             team_number,
             rerun,
+            bin,
         }
     }
 }
@@ -69,6 +74,9 @@ pub struct Deploy {
 impl Deploy {
     /// Constructs IP and deploys to the robot
     pub async fn deploy(self, config: Config) -> miette::Result<()> {
+        assert_valid_bin(&self.deploy.bin)
+            .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
+
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(Duration::from_millis(80));
         pb.set_style(
@@ -95,7 +103,14 @@ impl Deploy {
         }
 
         // Build yggdrasil with cargo
-        cargo::build("yggdrasil", Profile::Release, Some(ROBOT_TARGET), features).await?;
+        cargo::build(
+            "yggdrasil",
+            Profile::Release,
+            Some(ROBOT_TARGET),
+            features,
+            Some(cross::ENV_VARS.to_vec()),
+        )
+        .await?;
 
         pb.println(format!(
             "{} {} {}{}, {}{}{}",
@@ -279,4 +294,31 @@ fn get_remote_path(local_path: &Path) -> PathBuf {
     }
 
     remote_path
+}
+
+/// Environment variables that are required to cross compile for the robot, depending
+/// on the current host architecture.
+mod cross {
+    #[cfg(target_os = "linux")]
+    pub const ENV_VARS: &[(&str, &str)] = &[];
+
+    #[cfg(target_os = "macos")]
+    pub const ENV_VARS: &[(&str, &str)] = &[
+        (
+            "PKG_CONFIG_PATH",
+            // homebrew directory is different for x86_64 and aarch64 macs!
+            #[cfg(target_arch = "aarch64")]
+            "/opt/homebrew/opt/x86_64-unknown-linux-gnu-alsa-lib/lib/x86_64-unknown-linux-gnu/pkgconfig",
+            #[cfg(target_arch = "x86_64")]
+            "/usr/local/opt/x86_64-unknown-linux-gnu-alsa-lib/lib/x86_64-unknown-linux-gnu/pkgconfig",
+        ),
+        ("PKG_CONFIG_ALLOW_CROSS", "1"),
+        ("TARGET_CC", "x86_64-unknown-linux-gnu-gcc"),
+        ("TARGET_CXX", "x86_64-unknown-linux-gnu-g++"),
+        ("TARGET_AR", "x86_64-unknown-linux-gnu-ar"),
+        (
+            "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER",
+            "x86_64-unknown-linux-gnu-gcc",
+        ),
+    ];
 }
