@@ -130,7 +130,7 @@ impl Deploy {
             "yggdrasil",
             Profile::Release,
             Some(ROBOT_TARGET),
-            features,
+            &features,
             Some(cross::ENV_VARS.to_vec()),
         )
         .await?;
