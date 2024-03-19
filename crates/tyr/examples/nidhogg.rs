@@ -19,7 +19,7 @@ fn main() -> Result<()> {
 }
 
 fn initialize_nao(storage: &mut Storage) -> Result<()> {
-    let mut nao = LolaBackend::connect_with_retry(10, Duration::from_millis(500))?;
+    let mut nao = LolaBackend::connect_with_retry(10, Duration::from_millis(500), None)?;
     let state = nao.read_nao_state()?;
 
     let info = nao.read_hardware_info()?;
