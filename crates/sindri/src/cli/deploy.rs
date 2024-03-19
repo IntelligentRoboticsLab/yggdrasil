@@ -19,7 +19,8 @@ use tokio::net::TcpStream;
 use walkdir::WalkDir;
 
 const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
-const RELEASE_PATH: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
+const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
+const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
 const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 
 const LOCAL_ROBOT_ID_STR: &str = "0";
@@ -58,6 +59,15 @@ pub struct ConfigOptsDeploy {
     #[clap(long, short)]
     pub local: bool,
 
+    #[clap(
+        long,
+        short,
+        default_value = "false",
+        default_value_if("bin", "yggdrasil", Some("true")),
+        default_value_if("local", "true", Some("false"))
+    )]
+    pub alsa: bool,
+
     /// Specify bin target
     #[clap(global = true, long, default_value = "yggdrasil")]
     pub bin: String,
@@ -71,6 +81,7 @@ impl ConfigOptsDeploy {
         team_number: Option<u8>,
         rerun: bool,
         local: bool,
+        alsa: bool,
         bin: String,
     ) -> Self {
         Self {
@@ -80,6 +91,7 @@ impl ConfigOptsDeploy {
             rerun,
             local,
             bin,
+            alsa,
         }
     }
 }
@@ -117,7 +129,10 @@ impl Deploy {
         ));
         pb.set_prefix("Compiling");
 
-        let mut features = vec!["alsa"];
+        let mut features = vec![];
+        if self.deploy.alsa {
+            features.push("alsa");
+        }
         if self.deploy.rerun {
             features.push("rerun");
         }
@@ -125,11 +140,17 @@ impl Deploy {
             features.push("local");
         }
 
+        let target = if self.deploy.local {
+            None
+        } else {
+            Some(ROBOT_TARGET)
+        };
+
         // Build yggdrasil with cargo
         cargo::build(
             "yggdrasil",
             Profile::Release,
-            Some(ROBOT_TARGET),
+            target,
             &features,
             Some(cross::ENV_VARS.to_vec()),
         )
@@ -153,8 +174,14 @@ impl Deploy {
         ));
         pb.reset_elapsed();
 
+        let release_path = if self.deploy.local {
+            RELEASE_PATH_LOCAL
+        } else {
+            RELEASE_PATH_REMOTE
+        };
+
         // Copy over the files that need to be deployed
-        fs::copy(RELEASE_PATH, DEPLOY_PATH)
+        fs::copy(release_path, DEPLOY_PATH)
             .into_diagnostic()
             .wrap_err("Failed to copy binary to deploy directory!")?;
 
