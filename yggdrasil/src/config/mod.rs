@@ -1,3 +1,4 @@
+pub mod general;
 pub mod tyr;
 pub mod yggdrasil;
 
@@ -8,6 +9,7 @@ use crate::{nao::RobotInfo, prelude::*};
 use ::tyr::tasks::TaskModule;
 use odal::{ConfigKind, Error, ErrorKind};
 
+use general::LayoutConfig;
 use tyr::TyrConfig;
 use yggdrasil::YggdrasilConfig;
 
@@ -47,6 +49,7 @@ pub struct ConfigModule;
 impl Module for ConfigModule {
     fn initialize(self, app: App) -> miette::Result<App> {
         app.add_startup_system(initialize_config_roots)?
+            .init_config::<LayoutConfig>()?
             .init_config::<TyrConfig>()?
             .init_config::<YggdrasilConfig>()?
             .add_startup_system(tyr::configure_tyr_hack)?

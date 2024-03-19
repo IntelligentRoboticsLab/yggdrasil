@@ -5,10 +5,11 @@ use nidhogg::NaoControlMessage;
 
 use crate::{
     behavior::{
-        behaviors::{Example, Initial},
-        roles::{Keeper, Striker},
+        behaviors::{Initial, Passive},
+        roles::Base,
     },
-    filter::button::HeadButtons,
+    config::general::LayoutConfig,
+    filter::button::{ChestButton, HeadButtons},
     nao,
     prelude::*,
     primary_state::PrimaryState,
@@ -24,6 +25,10 @@ pub struct Context<'a> {
     pub primary_state: &'a PrimaryState,
     /// State of the headbuttons of a robot
     pub head_buttons: &'a HeadButtons,
+    /// State of the chest button of a robot
+    pub chest_button: &'a ChestButton,
+    /// Config containing information about the layout of the field.
+    pub layout_config: &'a LayoutConfig,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -66,13 +71,14 @@ pub trait Behavior {
 /// - The specific struct for each behavior (e.g., [`Initial`], [`Example`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
 pub enum BehaviorKind {
+    Passive(Passive),
     Initial(Initial),
-    Example(Example),
     // Add new behaviors here!
 }
 
 impl Default for BehaviorKind {
     fn default() -> Self {
+        // BehaviorKind::Passive(Passive)
         BehaviorKind::Initial(Initial)
     }
 }
@@ -130,8 +136,7 @@ pub trait Role {
 /// - The specific struct for each role (e.g., [`Keeper`], [`Striker`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
 pub enum RoleKind {
-    Keeper(Keeper),
-    Striker(Striker),
+    Base(Base),
     // Add new roles here!
 }
 
@@ -139,7 +144,7 @@ impl RoleKind {
     /// Get the default role for each robot based on that robots player number
     fn by_player_number() -> Self {
         // TODO: get the default role for each robot by player number
-        RoleKind::Keeper(Keeper)
+        RoleKind::Base(Base)
     }
 }
 
@@ -183,10 +188,14 @@ pub fn step(
     control_message: &mut NaoControlMessage,
     primary_state: &PrimaryState,
     head_buttons: &HeadButtons,
+    chest_button: &ChestButton,
+    layout_config: &LayoutConfig,
 ) -> Result<()> {
     let context = Context {
         primary_state,
         head_buttons,
+        chest_button,
+        layout_config,
     };
 
     engine.step(context, control_message);
