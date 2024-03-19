@@ -118,7 +118,7 @@ impl Robot {
 
     pub fn local<K, V>(
         &self,
-        command: impl Into<String>,
+        command: &str,
         envs: impl IntoIterator<Item = (K, V)>,
     ) -> Result<Child>
     where
@@ -130,7 +130,7 @@ impl Robot {
             std::env::current_dir().into_diagnostic()?.display()
         );
 
-        Command::new(working_dir.to_string() + &command.into())
+        Command::new(command)
             .current_dir(&working_dir)
             .envs(envs)
             .env("ROBOT_ID", &self.number.to_string())
