@@ -199,10 +199,12 @@ impl MotionArbiter {
 /// Priority order for the motion arbiter commands.
 ///
 /// Priories are in the range [0, 100].
+#[derive(Default)]
 pub enum Priority {
     /// Has priority `10`.
     Low,
     /// Has priority `30`.
+    #[default]
     Medium,
     /// Has priority `60`.
     High,

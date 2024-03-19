@@ -5,11 +5,12 @@ use nidhogg::NaoControlMessage;
 
 use crate::{
     behavior::{
-        behaviors::{Example, Initial},
-        roles::{Keeper, Striker},
+        behaviors::{Initial, Passive},
+        roles::Base,
     },
-    config::general::LayoutConfig,
-    filter::button::HeadButtons,
+    config::{general::LayoutConfig, yggdrasil::YggdrasilConfig},
+    filter::button::{ChestButton, HeadButtons},
+    motion::arbiter::MotionArbiter,
     nao,
     prelude::*,
     primary_state::PrimaryState,
@@ -25,8 +26,12 @@ pub struct Context<'a> {
     pub primary_state: &'a PrimaryState,
     /// State of the headbuttons of a robot
     pub head_buttons: &'a HeadButtons,
+    /// State of the chest button of a robot
+    pub chest_button: &'a ChestButton,
     /// Config containing information about the layout of the field.
     pub layout_config: &'a LayoutConfig,
+    /// Config containing general information.
+    pub yggdrasil_config: &'a YggdrasilConfig,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -55,7 +60,12 @@ pub struct Context<'a> {
 #[enum_dispatch]
 pub trait Behavior {
     /// Defines what the robot does when the corresponding behavior is executed.
-    fn execute(&mut self, context: Context, control_message: &mut NaoControlMessage);
+    fn execute(
+        &mut self,
+        context: Context,
+        motion_arbiter: &mut MotionArbiter,
+        control_msg: &mut NaoControlMessage,
+    );
 }
 
 /// An enum containing the possible behaviors for a robot.
@@ -69,13 +79,14 @@ pub trait Behavior {
 /// - The specific struct for each behavior (e.g., [`Initial`], [`Example`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
 pub enum BehaviorKind {
+    Passive(Passive),
     Initial(Initial),
-    Example(Example),
     // Add new behaviors here!
 }
 
 impl Default for BehaviorKind {
     fn default() -> Self {
+        // BehaviorKind::Passive(Passive)
         BehaviorKind::Initial(Initial)
     }
 }
@@ -133,8 +144,7 @@ pub trait Role {
 /// - The specific struct for each role (e.g., [`Keeper`], [`Striker`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
 pub enum RoleKind {
-    Keeper(Keeper),
-    Striker(Striker),
+    Base(Base),
     // Add new roles here!
 }
 
@@ -142,7 +152,7 @@ impl RoleKind {
     /// Get the default role for each robot based on that robots player number
     fn by_player_number() -> Self {
         // TODO: get the default role for each robot by player number
-        RoleKind::Keeper(Keeper)
+        RoleKind::Base(Base)
     }
 }
 
@@ -172,10 +182,15 @@ impl Engine {
     }
 
     /// Executes one step of the behavior engine
-    pub fn step(&mut self, context: Context, control_message: &mut NaoControlMessage) {
+    pub fn step(
+        &mut self,
+        context: Context,
+        motion_arbiter: &mut MotionArbiter,
+        control_msg: &mut NaoControlMessage,
+    ) {
         self.role = self.assign_role(context);
         self.behavior = self.role.transition_behavior(context, &mut self.behavior);
-        self.behavior.execute(context, control_message);
+        self.behavior.execute(context, motion_arbiter, control_msg);
     }
 }
 
@@ -184,17 +199,22 @@ impl Engine {
 pub fn step(
     engine: &mut Engine,
     control_message: &mut NaoControlMessage,
+    motion_arbiter: &mut MotionArbiter,
     primary_state: &PrimaryState,
     head_buttons: &HeadButtons,
+    chest_button: &ChestButton,
     layout_config: &LayoutConfig,
+    yggdrasil_config: &YggdrasilConfig,
 ) -> Result<()> {
     let context = Context {
         primary_state,
         head_buttons,
+        chest_button,
         layout_config,
+        yggdrasil_config,
     };
 
-    engine.step(context, control_message);
+    engine.step(context, motion_arbiter, control_message);
 
     Ok(())
 }

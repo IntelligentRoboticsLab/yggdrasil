@@ -9,10 +9,9 @@ use crate::{nao::RobotInfo, prelude::*};
 use ::tyr::tasks::TaskModule;
 use odal::{ConfigKind, Error, ErrorKind};
 
+use general::LayoutConfig;
 use tyr::TyrConfig;
 use yggdrasil::YggdrasilConfig;
-
-use self::general::LayoutConfig;
 
 /// This module adds functionality to load configuration structs from files.
 ///
