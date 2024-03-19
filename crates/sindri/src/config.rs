@@ -116,6 +116,30 @@ impl Robot {
         Ipv4Addr::new(10, u8::from(self.wired), self.team_number, self.number)
     }
 
+    pub fn local<K, V>(
+        &self,
+        command: &str,
+        envs: impl IntoIterator<Item = (K, V)>,
+    ) -> Result<Child>
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        let working_dir = format!(
+            "{}/deploy/",
+            std::env::current_dir().into_diagnostic()?.display()
+        );
+
+        Command::new(command)
+            .current_dir(&working_dir)
+            .envs(envs)
+            .env("ROBOT_ID", &self.number.to_string())
+            .env("ROBOT_NAME", &self.name)
+            .kill_on_drop(true)
+            .spawn()
+            .into_diagnostic()
+    }
+
     /// SSH into the robot and run the provided command.
     ///
     /// This returns the spawned [`Child`] process.
