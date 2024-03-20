@@ -8,6 +8,7 @@ use crate::{
         behaviors::{Example, Initial},
         roles::{Keeper, Striker},
     },
+    config::general::LayoutConfig,
     filter::button::HeadButtons,
     nao,
     prelude::*,
@@ -24,6 +25,8 @@ pub struct Context<'a> {
     pub primary_state: &'a PrimaryState,
     /// State of the headbuttons of a robot
     pub head_buttons: &'a HeadButtons,
+    /// Config containing information about the layout of the field.
+    pub layout_config: &'a LayoutConfig,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -183,10 +186,12 @@ pub fn step(
     control_message: &mut NaoControlMessage,
     primary_state: &PrimaryState,
     head_buttons: &HeadButtons,
+    layout_config: &LayoutConfig,
 ) -> Result<()> {
     let context = Context {
         primary_state,
         head_buttons,
+        layout_config,
     };
 
     engine.step(context, control_message);
