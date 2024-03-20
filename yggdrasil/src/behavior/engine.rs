@@ -78,8 +78,7 @@ pub enum BehaviorKind {
 
 impl Default for BehaviorKind {
     fn default() -> Self {
-        // BehaviorKind::Passive(Passive)
-        BehaviorKind::Initial(Initial)
+        BehaviorKind::Passive(Passive)
     }
 }
 

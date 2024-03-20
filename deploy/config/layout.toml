@@ -62,3 +62,42 @@ centre_circle_diameter = 1500
 
 # Width of the border strip (K).
 border_strip_width = 700
+
+
+# The fields below indicate the starting position of each robot based on its
+# player number. This configuration assumes the center has coordinates (0, 0).
+
+# Initial position of player one.
+[initial_positions.one]
+# Left
+x = -1500
+# Back
+y = -3000
+
+# Initial position of player two.
+[initial_positions.two]
+# Right
+x = 1500
+# Middle
+y = -2000
+
+# Initial position of player three.
+[initial_positions.three]
+# Left
+x = -1500
+# Middle
+y = -2000
+
+# Initial position of player four.
+[initial_positions.four]
+# Right
+x = 1500
+# Front
+y = -1000
+
+# Initial position of player five.
+[initial_positions.five]
+# Left
+x = -1500
+# Front
+y = -1000

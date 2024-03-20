@@ -20,8 +20,7 @@ impl Role for Base {
                 BehaviorKind::Initial(state) => BehaviorKind::Initial(*state),
             }
         } else {
-            BehaviorKind::Initial(Initial)
-            // BehaviorKind::Passive(Passive)
+            BehaviorKind::Passive(Passive)
         }
     }
 }
