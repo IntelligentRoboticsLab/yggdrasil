@@ -13,6 +13,7 @@ pub struct LayoutConfig {
 /// Config that contains information about the field dimensions.
 /// A schematic overview is given below:
 ///
+/// ```markdown
 /// .---------------------------------------------------------------------------.
 /// |                                                                           |
 /// |                                                                           |
@@ -40,7 +41,11 @@ pub struct LayoutConfig {
 /// |                                                                 K         |
 /// |                                                                 v         |
 /// .---------------------------------------------------------------------------.
+/// ```
 ///
+/// Here it is assumed the centre point as coordinates (0, 0).
+/// The x axis points towards the opponents' goal and runs parallel with A.
+/// The y axis points towards the top and runs parallel with B.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct FieldConfig {
@@ -72,23 +77,17 @@ pub struct FieldConfig {
 /// This configuration assumes the center has coordinates (0, 0).
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-pub struct InitialPositionsConfig {
-    /// Position of the first robot
-    pub one: RobotPosition,
-    /// Position of the second robot
-    pub two: RobotPosition,
-    /// Position of the third robot
-    pub three: RobotPosition,
-    /// Position of the fourth robot
-    pub four: RobotPosition,
-    /// Position of the fifth robot
-    pub five: RobotPosition,
-}
+pub struct InitialPositionsConfig(Vec<RobotPosition>);
 
 /// Contains the coordinates for one robot position.
+/// Here it is assumed the centre point as coordinates (0, 0).
+/// The x axis points towards the opponents' goal.
+/// The y axis points towards the top (to the left with respect to  the x axis).
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct RobotPosition {
+    /// Player number
+    pub player_number: i32,
     /// Robot x-coordinate
     pub x: i32,
     /// Robot y-coordinate
