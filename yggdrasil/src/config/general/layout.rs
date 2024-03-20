@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 use odal::Config;
 use serde::{Deserialize, Serialize};
 
@@ -79,6 +81,19 @@ pub struct FieldConfig {
 #[serde(deny_unknown_fields)]
 pub struct InitialPositionsConfig(Vec<RobotPosition>);
 
+impl Index<usize> for InitialPositionsConfig {
+    type Output = RobotPosition;
+
+    // Required method
+    fn index(&self, index: usize) -> &Self::Output {
+        &self
+            .0
+            .iter()
+            .find(|elem| elem.player_number == index)
+            .expect("Player number not in layout configuration!")
+    }
+}
+
 /// Contains the coordinates for one robot position.
 /// Here it is assumed the centre point as coordinates (0, 0).
 /// The x axis points towards the opponents' goal.
@@ -87,7 +102,7 @@ pub struct InitialPositionsConfig(Vec<RobotPosition>);
 #[serde(deny_unknown_fields)]
 pub struct RobotPosition {
     /// Player number
-    pub player_number: i32,
+    pub player_number: usize,
     /// Robot x-coordinate
     pub x: i32,
     /// Robot y-coordinate
