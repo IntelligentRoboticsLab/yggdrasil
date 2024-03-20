@@ -14,17 +14,11 @@ use nidhogg::NaoControlMessage;
 pub struct Initial;
 
 impl Behavior for Initial {
-    fn execute(&mut self, context: Context, _control_message: &mut NaoControlMessage) {
-        println!("test");
+    fn execute(&mut self, _context: Context, _control_message: &mut NaoControlMessage) {
         // TODO
-        // - Add field config
-        // - Add robot starting position for each player number
-        // - Load current robot playing number
-        //
+        // - Load current robot playing number and corresponding position
         // - Stand up straight
         // - Look at middle circle
-        // - Once standing turn head back and fourth 3x after pressing of chest button
-        println!("{}", context.layout_config.field.width);
-        println!("{}", context.layout_config.field.length);
+        // - Once standing turn head back and fourth 3x after pressing of chest button.
     }
 }
