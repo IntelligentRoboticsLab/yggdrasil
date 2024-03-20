@@ -37,6 +37,7 @@ impl RobotInfo {
             body_version,
             head_version,
         } = backend.read_hardware_info()?;
+        backend.send_control_msg(NaoControlMessage::default())?;
 
         let robot_name = env::var("ROBOT_NAME").into_diagnostic()?;
         let robot_id = str::parse(&env::var("ROBOT_ID").into_diagnostic()?).into_diagnostic()?;
@@ -78,6 +79,7 @@ fn initialize_nao(storage: &mut Storage) -> Result<()> {
 
     let info = RobotInfo::new(&mut nao)?;
     let state = nao.read_nao_state()?;
+    nao.send_control_msg(NaoControlMessage::default())?;
 
     tracing::info!(
         "Launched yggdrasil on {} with head_id: {}, body_id: {}",
