@@ -76,7 +76,7 @@ pub trait Behavior {
 ///
 /// # Notes
 /// - New behavior implementations should be added as new variants to this enum.
-/// - The specific struct for each behavior (e.g., [`Initial`], [`Example`]) should implement the [`Behavior`] trait.
+/// - The specific struct for each behavior (e.g., [`Initial`], [`Passive`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
 pub enum BehaviorKind {
     Passive(Passive),
