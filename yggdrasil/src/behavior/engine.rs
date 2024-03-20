@@ -1,6 +1,7 @@
 //! The engine managing behavior execution and role state.
 
 use enum_dispatch::enum_dispatch;
+use miette::Result;
 use nidhogg::NaoControlMessage;
 
 use crate::{
@@ -10,7 +11,7 @@ use crate::{
     },
     config::general::LayoutConfig,
     filter::button::{ChestButton, HeadButtons},
-    nao,
+    nao::{self, RobotInfo},
     prelude::*,
     primary_state::PrimaryState,
 };
@@ -29,6 +30,8 @@ pub struct Context<'a> {
     pub chest_button: &'a ChestButton,
     /// Config containing information about the layout of the field.
     pub layout_config: &'a LayoutConfig,
+    /// Contains information unique to this robot
+    pub robot_info: &'a RobotInfo,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -57,7 +60,7 @@ pub struct Context<'a> {
 #[enum_dispatch]
 pub trait Behavior {
     /// Defines what the robot does when the corresponding behavior is executed.
-    fn execute(&mut self, context: Context, control_message: &mut NaoControlMessage);
+    fn execute(&mut self, context: Context, control_message: &mut NaoControlMessage) -> Result<()>;
 }
 
 /// An enum containing the possible behaviors for a robot.
@@ -173,10 +176,14 @@ impl Engine {
     }
 
     /// Executes one step of the behavior engine
-    pub fn step(&mut self, context: Context, control_message: &mut NaoControlMessage) {
+    pub fn step(
+        &mut self,
+        context: Context,
+        control_message: &mut NaoControlMessage,
+    ) -> Result<()> {
         self.role = self.assign_role(context);
         self.behavior = self.role.transition_behavior(context, &mut self.behavior);
-        self.behavior.execute(context, control_message);
+        self.behavior.execute(context, control_message)
     }
 }
 
@@ -189,17 +196,17 @@ pub fn step(
     head_buttons: &HeadButtons,
     chest_button: &ChestButton,
     layout_config: &LayoutConfig,
+    robot_info: &RobotInfo,
 ) -> Result<()> {
     let context = Context {
         primary_state,
         head_buttons,
         chest_button,
         layout_config,
+        robot_info,
     };
 
-    engine.step(context, control_message);
-
-    Ok(())
+    engine.step(context, control_message)
 }
 
 /// A module providing a state machine that keeps track of what behavior a

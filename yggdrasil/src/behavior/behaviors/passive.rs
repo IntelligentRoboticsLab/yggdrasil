@@ -1,4 +1,5 @@
 use crate::behavior::engine::{Behavior, Context};
+use miette::Result;
 use nidhogg::{
     types::{color, FillExt, JointArray, RightEye},
     NaoControlMessage,
@@ -11,10 +12,15 @@ use nidhogg::{
 pub struct Passive;
 
 impl Behavior for Passive {
-    fn execute(&mut self, _context: Context, control_message: &mut NaoControlMessage) {
+    fn execute(
+        &mut self,
+        _context: Context,
+        control_message: &mut NaoControlMessage,
+    ) -> Result<()> {
         // Makes right eye blue.
         control_message.right_eye = RightEye::fill(color::f32::BLUE);
         // Turns off motors
         control_message.stiffness = JointArray::fill(-1.0);
+        Ok(())
     }
 }

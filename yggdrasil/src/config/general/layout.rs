@@ -74,15 +74,15 @@ pub struct FieldConfig {
 #[serde(deny_unknown_fields)]
 pub struct InitialPositionsConfig {
     /// Position of the first robot
-    one: RobotPosition,
+    pub one: RobotPosition,
     /// Position of the second robot
-    two: RobotPosition,
+    pub two: RobotPosition,
     /// Position of the third robot
-    three: RobotPosition,
+    pub three: RobotPosition,
     /// Position of the fourth robot
-    four: RobotPosition,
+    pub four: RobotPosition,
     /// Position of the fifth robot
-    five: RobotPosition,
+    pub five: RobotPosition,
 }
 
 /// Contains the coordinates for one robot position.
@@ -90,9 +90,9 @@ pub struct InitialPositionsConfig {
 #[serde(deny_unknown_fields)]
 pub struct RobotPosition {
     /// Robot x-coordinate
-    x: i32,
+    pub x: i32,
     /// Robot y-coordinate
-    y: i32,
+    pub y: i32,
 }
 
 impl Config for LayoutConfig {

@@ -25,6 +25,8 @@ pub struct RobotInfo {
     pub body_id: String,
     /// Hardware version of the body
     pub body_version: String,
+    /// Initial player number,
+    pub initial_player_number: i32,
 }
 
 impl RobotInfo {
@@ -38,6 +40,8 @@ impl RobotInfo {
 
         let robot_name = env::var("ROBOT_NAME").into_diagnostic()?;
         let robot_id = str::parse(&env::var("ROBOT_ID").into_diagnostic()?).into_diagnostic()?;
+        let initial_player_number =
+            str::parse(&env::var("PLAYER_NUMBER").into_diagnostic()?).into_diagnostic()?;
 
         Ok(Self {
             robot_name,
@@ -46,6 +50,7 @@ impl RobotInfo {
             body_id,
             head_version,
             body_version,
+            initial_player_number,
         })
     }
 }
