@@ -11,6 +11,7 @@ colored = { workspace = true }
 dialoguer = { workspace = true }
 home = { workspace = true }
 indicatif = { workspace = true }
+local-ip-address = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 regex = { workspace = true }
 serde = { workspace = true }

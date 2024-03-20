@@ -26,6 +26,7 @@ impl Run {
             )))?;
 
         let local = self.deploy.local;
+        let rerun = self.deploy.rerun;
         Deploy {
             deploy: self.deploy,
         }
@@ -35,7 +36,12 @@ impl Run {
         let mut envs = Vec::new();
         if self.debug {
             envs.push(("RUST_LOG", "debug"));
-        };
+        }
+
+        if rerun {
+            let local = local_ip_address::local_ip().into_diagnostic()?;
+            envs.push(("RERUN_HOST", local.to_string().leak()));
+        }
 
         if local {
             robot

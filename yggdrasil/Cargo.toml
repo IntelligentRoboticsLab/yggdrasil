@@ -22,10 +22,7 @@ ndarray = { workspace = true }
 nidhogg = { workspace = true }
 odal = { path = "../crates/odal" }
 openvino = { workspace = true }
-rerun = { workspace = true, optional = true, features = [
-  "image",
-  "web_viewer",
-] }
+rerun = { workspace = true, optional = true, features = ["image"] }
 serde = { workspace = true }
 serde_with = { workspace = true }
 thiserror = { workspace = true }

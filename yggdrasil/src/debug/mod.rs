@@ -1,5 +1,9 @@
 #[cfg(feature = "rerun")]
-use std::{convert::Into, time::Instant};
+use std::{
+    convert::Into,
+    net::{IpAddr, SocketAddr},
+    time::Instant,
+};
 
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
@@ -8,9 +12,6 @@ use nidhogg::types::RgbU8;
 use std::net::Ipv4Addr;
 
 use crate::{camera::Image, nao::Cycle, prelude::*};
-
-#[cfg(not(feature = "local"))]
-use crate::{config::yggdrasil::YggdrasilConfig, nao::RobotInfo};
 
 /// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
 ///
@@ -45,23 +46,15 @@ impl DebugContext {
     /// does nothing.
     fn init(
         recording_name: impl AsRef<str>,
-        server_address: Ipv4Addr,
+        rerun_host: Ipv4Addr,
         memory_limit: f32,
-        ad: &AsyncDispatcher,
     ) -> Result<Self> {
         #[cfg(feature = "rerun")]
         {
-            // To spawn a recording stream in serve mode, the tokio runtime needs to be in scope.
-            let handle = ad.handle().clone();
-            let _guard = handle.enter();
-
             let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
-                .serve(
-                    &server_address.to_string(),
-                    Default::default(),
-                    Default::default(),
-                    rerun::MemoryLimit::from_fraction_of_total(memory_limit),
-                    false,
+                .connect_opts(
+                    SocketAddr::new(IpAddr::V4(rerun_host), rerun::default_server_addr().port()),
+                    rerun::default_flush_timeout(),
                 )
                 .into_diagnostic()?;
 
@@ -251,26 +244,20 @@ impl DebugContext {
 }
 
 #[startup_system]
-fn init_rerun(
-    storage: &mut Storage,
-    ad: &AsyncDispatcher,
-    #[cfg(not(feature = "local"))] robot_info: &RobotInfo,
-    #[cfg(not(feature = "local"))] yggdrasil_config: &YggdrasilConfig,
-) -> Result<()> {
-    #[cfg(feature = "local")]
+fn init_rerun(storage: &mut Storage) -> Result<()> {
+    #[cfg(any(feature = "local", not(feature = "rerun")))]
     let server_address = Ipv4Addr::LOCALHOST;
     // Manually set the server address to the robot's IP address, instead of 0.0.0.0
     // to ensure the rerun server prints the correct connection URL on startup
-    #[cfg(not(feature = "local"))]
-    let server_address = Ipv4Addr::new(
-        10,
-        0,
-        yggdrasil_config.game_controller.team_number,
-        robot_info.robot_id as u8,
-    );
+    #[cfg(all(not(feature = "local"), feature = "rerun"))]
+    let server_address = {
+        let host = std::env::var("RERUN_HOST").into_diagnostic()?;
+
+        Ipv4Addr::from_str(host.as_str()).into_diagnostic()?
+    };
 
     // init debug context with 5% of the total memory, as cache size limit.
-    let ctx = DebugContext::init("yggdrasil", server_address, 0.05, ad)?;
+    let ctx = DebugContext::init("yggdrasil", server_address, 0.05)?;
 
     storage.add_resource(Resource::new(ctx))
 }
