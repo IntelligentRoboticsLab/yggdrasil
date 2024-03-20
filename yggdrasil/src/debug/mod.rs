@@ -5,7 +5,7 @@ use std::convert::Into;
 use miette::IntoDiagnostic;
 
 use nidhogg::types::RgbU8;
-use std::{net::Ipv4Addr, time::Instant};
+use std::net::Ipv4Addr;
 
 use crate::{camera::Image, nao::Cycle, prelude::*};
 

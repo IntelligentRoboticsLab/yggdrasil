@@ -6,7 +6,7 @@ use std::{env, time::Duration};
 
 use miette::IntoDiagnostic;
 use nidhogg::{
-    backend::{ConnectWithRetry, LolaBackend, ReadHardwareInfo},
+    backend::{LolaBackend, ReadHardwareInfo},
     HardwareInfo, NaoBackend, NaoControlMessage, NaoState,
 };
 
@@ -37,7 +37,10 @@ impl RobotInfo {
             body_version,
             head_version,
         } = backend.read_hardware_info()?;
+
+        println!("Read message");
         backend.send_control_msg(NaoControlMessage::default())?;
+        println!("Sent message");
 
         let robot_name = env::var("ROBOT_NAME").into_diagnostic()?;
         let robot_id = str::parse(&env::var("ROBOT_ID").into_diagnostic()?).into_diagnostic()?;
@@ -75,9 +78,9 @@ impl Module for NaoModule {
 #[startup_system]
 fn initialize_nao(storage: &mut Storage) -> Result<()> {
     let mut nao =
-        LolaBackend::connect_with_retry(10, Duration::from_millis(500), Some(SOCKET_PATH))?;
-
+        LolaBackend::connect_with_path_with_retry(10, Duration::from_millis(500), SOCKET_PATH)?;
     let info = RobotInfo::new(&mut nao)?;
+
     let state = nao.read_nao_state()?;
     nao.send_control_msg(NaoControlMessage::default())?;
 
