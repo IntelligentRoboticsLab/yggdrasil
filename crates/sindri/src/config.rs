@@ -166,6 +166,7 @@ impl Robot {
             .arg(format!("nao@{}", self.ip()))
             .arg("-t")
             .args(remote_envs)
+            .arg("bash -ic")
             .args(command.into().split(' ').collect::<Vec<&str>>())
             .kill_on_drop(true)
             .spawn()
