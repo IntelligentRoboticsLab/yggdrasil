@@ -1,0 +1,103 @@
+[field]
+# This config contains the layout of the field as provided in the SPL rule book.
+# A schematic overview is given below:
+#
+# .---------------------------------------------------------------------------.
+# |                                                                           |
+# |                                                                           |
+# |        <----------------------------A--------------------------->         |
+# |      .------------------------------------------------------------.       |
+# |    ^ |                              |                             |       |
+# |    | | <--G-->                      |                             |       |
+# |    | |----------.                   |                  .----------|       |
+# |    | |          | ^                 |                  |          |       |
+# |    | |<E>       | |                 |                  |          |       |
+# |    | |---.      | |                 |                  |      .---|       |
+# |    | |   | ^    | |               -----                |      |   |       |
+# |    | |   | |    | |              /  |  \               |      |   |       |
+# |    B |   | F 0  | H             |<--J-->|              |  0<--I-->|       |
+# |    | |   | |    | |              \  |  /               |      |   |       |
+# |    | |   | v    | |               -----                |      |   |       |
+# |    | |---.      | |                 |                  |      .---|       |
+# |    | |          | |                 |                  |          |       |
+# |    | |          | v                 |                  |          |       |
+# |    | |----------.                   |                  .----------|       |
+# |    | |                              |                             |       |
+# |    v |                              |                             |<--K-->|
+# |      .------------------------------------------------------------.       |
+# |                                                                 ^         |
+# |                                                                 K         |
+# |                                                                 v         |
+# .---------------------------------------------------------------------------.
+
+# Field length in millimeters (A).
+length = 9000
+
+# Field width in millimeters (B).
+width = 6000
+
+# Width of lines on the field (|).
+line_width = 50
+
+# Size of the penalty mark (0).
+penalty_mark_size = 100
+
+# Length of the goal area (E).
+goal_area_length = 600
+
+# Width of the goal area (F).
+goal_area_width = 2200
+
+# Length of the penalty area (G).
+penalty_area_length = 1650
+
+# Width of the penalty area (H).
+penalty_area_width = 4000
+
+# Distance to the penalty mark from the side of the field (I).
+penalty_mark_distance = 1300
+
+# Diameter of the centre circle (J).
+centre_circle_diameter = 1500
+
+# Width of the border strip (K).
+border_strip_width = 700
+
+
+# The fields below indicate the starting position of each robot based on its
+# player number. This configuration assumes the center has coordinates (0, 0).
+
+# Initial position of player one.
+[initial_positions.one]
+# Left
+x = -1500
+# Back
+y = -3000
+
+# Initial position of player two.
+[initial_positions.two]
+# Right
+x = 1500
+# Middle
+y = -2000
+
+# Initial position of player three.
+[initial_positions.three]
+# Left
+x = -1500
+# Middle
+y = -2000
+
+# Initial position of player four.
+[initial_positions.four]
+# Right
+x = 1500
+# Front
+y = -1000
+
+# Initial position of player five.
+[initial_positions.five]
+# Left
+x = -1500
+# Front
+y = -1000
