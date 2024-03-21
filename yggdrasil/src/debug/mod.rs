@@ -9,7 +9,7 @@ use std::{
 use miette::IntoDiagnostic;
 
 use nidhogg::types::RgbU8;
-use std::net::Ipv4Addr;
+use std::{net::Ipv4Addr, str::FromStr};
 
 use crate::{camera::Image, nao::Cycle, prelude::*};
 
