@@ -3545,7 +3545,7 @@ checksum = "c96aba5aa877601bb3f6dd6a63a969e1f82e60646e81e71b14496995e9853c91"
 [[package]]
 name = "nidhogg"
 version = "0.1.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?branch=jkaiser/public-socket#baa56c2c0be87c6a02a7d486f4e74acacfe13dd0"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=6b6d07b08a079b9a84cbe972be455d468780df10#6b6d07b08a079b9a84cbe972be455d468780df10"
 dependencies = [
  "forward_ref_generic",
  "miette",
@@ -3560,7 +3560,7 @@ dependencies = [
 [[package]]
 name = "nidhogg_derive"
 version = "0.1.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?branch=jkaiser/public-socket#baa56c2c0be87c6a02a7d486f4e74acacfe13dd0"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=6b6d07b08a079b9a84cbe972be455d468780df10#6b6d07b08a079b9a84cbe972be455d468780df10"
 dependencies = [
  "itertools 0.11.0",
  "proc-macro2",
@@ -6020,9 +6020,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.13.1"
+version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6ecd384b10a64542d77071bd64bd7b231f4ed5940fba55e98c3de13824cf3d7"
+checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 dependencies = [
  "serde",
 ]
@@ -6577,7 +6577,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "toml_edit 0.22.8",
+ "toml_edit 0.22.9",
 ]
 
 [[package]]
@@ -6613,9 +6613,9 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.22.8"
+version = "0.22.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c12219811e0c1ba077867254e5ad62ee2c9c190b0d957110750ac0cda1ae96cd"
+checksum = "8e40bb779c5187258fd7aad0eb68cb8706a0a81fa712fbea808ab43c4b8374c4"
 dependencies = [
  "indexmap 2.2.5",
  "serde",

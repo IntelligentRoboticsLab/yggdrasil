@@ -37,10 +37,7 @@ impl RobotInfo {
             body_version,
             head_version,
         } = backend.read_hardware_info()?;
-
-        println!("Read message");
         backend.send_control_msg(NaoControlMessage::default())?;
-        println!("Sent message");
 
         let robot_name = env::var("ROBOT_NAME").into_diagnostic()?;
         let robot_id = str::parse(&env::var("ROBOT_ID").into_diagnostic()?).into_diagnostic()?;

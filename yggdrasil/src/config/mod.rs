@@ -56,10 +56,7 @@ impl Module for ConfigModule {
 }
 
 #[startup_system]
-pub fn init_subconfigs(
-    storage: &mut Storage,
-    yggdrasil_config: &mut YggdrasilConfig,
-) -> Result<()> {
+fn init_subconfigs(storage: &mut Storage, yggdrasil_config: &mut YggdrasilConfig) -> Result<()> {
     storage.add_resource(Resource::new(yggdrasil_config.camera.clone()))?;
     storage.add_resource(Resource::new(yggdrasil_config.filter.clone()))?;
     storage.add_resource(Resource::new(yggdrasil_config.game_controller.clone()))?;
