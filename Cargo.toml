@@ -24,7 +24,7 @@ linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git
 miette = "5.10.0"
 nalgebra = "0.32.4"
 ndarray = "0.15.6"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "6b6d07b08a079b9a84cbe972be455d468780df10" }
+nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "ec691b6edc1585a969807c8f3383d1c7d5ccea8d" }
 num = "0.4.0"
 openvino = { git = "https://github.com/YukumoHunter/openvino-rs.git", branch = "evil-hack", features = [
   "runtime-linking",
