@@ -151,7 +151,7 @@ impl MotionManager {
             .build()
     }
 
-    pub fn to_joint_stiffness(&self) -> JointArray<JointDataType> {
+    pub fn to_joint_stiffnesses(&self) -> JointArray<JointDataType> {
         JointArray::builder()
             .leg_joints(self.leg_settings.joints_stiffness.clone())
             .arm_joints(self.arm_settings.joints_stiffness.clone())
