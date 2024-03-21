@@ -86,7 +86,7 @@ pub async fn build(
     binary: &str,
     profile: Profile,
     target: Option<&str>,
-    features: Vec<&str>,
+    features: &[&str],
     envs: Option<Vec<(&str, &str)>>,
 ) -> Result<(), CargoError> {
     let mut cargo_args = vec!["build", "-p", binary];
