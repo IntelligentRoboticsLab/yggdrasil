@@ -39,8 +39,8 @@ impl Run {
         }
 
         if rerun {
-            let local = local_ip_address::local_ip().into_diagnostic()?;
-            envs.push(("RERUN_HOST", local.to_string().leak()));
+            let local_ip = local_ip_address::local_ip().into_diagnostic()?;
+            envs.push(("RERUN_HOST", local_ip.to_string().leak()));
         }
 
         if local {
