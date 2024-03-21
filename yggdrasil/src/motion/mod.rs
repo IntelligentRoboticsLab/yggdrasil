@@ -201,9 +201,3 @@ impl Priority {
         }
     }
 }
-
-#[derive(Error, Debug, Diagnostic)]
-pub enum MotionRequestError {
-    #[error("There is already a motion command with a higher priority scheduled")]
-    PriorityTooLow,
-}
