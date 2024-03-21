@@ -127,7 +127,7 @@ impl MotionManager {
         )
     }
 
-    pub fn unstiff_arm(&mut self, priority: Priority) -> &mut Self {
+    pub fn unstiff_arms(&mut self, priority: Priority) -> &mut Self {
         self.set_arms(
             self.arm_settings.joints_position.clone(),
             ArmJoints::<f32>::fill(-1.),
