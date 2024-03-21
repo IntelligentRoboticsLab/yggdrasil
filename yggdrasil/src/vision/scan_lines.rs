@@ -1,11 +1,5 @@
-use std::time::Instant;
-
 use crate::{
-    camera::{
-        matrix::{CameraMatrix, TopCameraMatrix},
-        BottomImage, Image, TopImage,
-    },
-    debug::DebugContext,
+    camera::{BottomImage, Image, TopImage},
     prelude::*,
 };
 
@@ -14,7 +8,6 @@ use super::VisionConfig;
 use heimdall::YuyvImage;
 
 use derive_more::{Deref, DerefMut};
-use nalgebra::point;
 use serde::{Deserialize, Serialize};
 
 /// Module that generates scan-lines from taken NAO images.
@@ -414,8 +407,6 @@ pub fn scan_lines_system(
     bottom_scan_grid: &mut BottomScanGrid,
     top_image: &TopImage,
     bottom_image: &BottomImage,
-    camera_matrix: &TopCameraMatrix,
-    dbg: &DebugContext,
 ) -> Result<()> {
     if top_scan_grid.image().timestamp() != top_image.timestamp() {
         top_scan_grid.update_scan_lines(top_image);
@@ -424,14 +415,5 @@ pub fn scan_lines_system(
     if bottom_scan_grid.image().timestamp() != bottom_image.timestamp() {
         bottom_scan_grid.update_scan_lines(bottom_image);
     }
-
-    // tracing::info!(
-    //     "found {} 3d points, took: {:?}",
-    //     points_3d.len(),
-    //     start.elapsed()
-    // );
-    // dbg.log_points_2d("top_camera/image/points_2d", points_2d)?;
-    // dbg.log_points_3d("top_camera/points_3d", points_3d)?;
-
     Ok(())
 }

@@ -2,10 +2,10 @@ use miette::bail;
 use nalgebra::{
     point, vector, Isometry3, Matrix, Point2, Point3, UnitQuaternion, Vector2, Vector3,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::{
     camera::matrix::horizon::Horizon,
-    debug::DebugContext,
     filter::imu::IMUValues,
     kinematics::{robot_dimensions, RobotKinematics},
     prelude::*,
@@ -15,10 +15,11 @@ use crate::{
 const CAMERA_TOP_PITCH_DEGREES: f32 = 1.2;
 const CAMERA_BOTTOM_PITCH_DEGREES: f32 = 39.7;
 
-struct CameraConfiguration {
-    extrinsic_rotation: Vector3<f32>,
-    focal_lengths: Vector2<f32>,
-    cc_optical_center: Vector2<f32>,
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
+pub struct CameraConfiguration {
+    extrinsic_rotation: nidhogg::types::Vector3<f32>,
+    focal_lengths: nidhogg::types::Vector2<f32>,
+    cc_optical_center: nidhogg::types::Vector2<f32>,
 }
 
 #[derive(derive_more::Deref, Default)]
@@ -29,7 +30,6 @@ pub fn update_camera_matrix(
     swing_foot: &SwingFoot,
     imu: &IMUValues,
     kinematics: &RobotKinematics,
-    dbg: &DebugContext,
     top_camera_matrix: &mut TopCameraMatrix,
 ) -> Result<()> {
     let image_size = vector![640.0, 480.0];

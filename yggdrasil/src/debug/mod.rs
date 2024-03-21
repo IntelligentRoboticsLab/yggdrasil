@@ -4,7 +4,6 @@ use std::{convert::Into, net::SocketAddr, time::Instant};
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 
-use nalgebra::{point, vector};
 use nidhogg::types::RgbU8;
 use std::net::IpAddr;
 
@@ -125,11 +124,11 @@ impl DebugContext {
             self.rec.log(path.as_ref(), &pinhole).into_diagnostic()?;
             self.log_with_camera_matrix_transformation(path.as_ref(), matrix, image.clone())?;
 
-            let camera_ray = matrix.pixel_to_camera(point![269.0 - 320.0, 438.0 - 240.0]);
+            let camera_ray = matrix.pixel_to_camera(nalgebra::point![269.0 - 320.0, 438.0 - 240.0]);
             self.rec
                 .log(
                     "top_camera/camera_ray",
-                    &rerun::Arrows3D::from_vectors([Vec3D::new(
+                    &rerun::Arrows3D::from_vectors([rerun::Vec3D::new(
                         camera_ray.x,
                         camera_ray.y,
                         camera_ray.z,

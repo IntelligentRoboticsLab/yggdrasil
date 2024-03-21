@@ -3,8 +3,8 @@ use std::mem;
 use crate::camera::matrix::TopCameraMatrix;
 use crate::camera::{matrix::CameraMatrix, Image};
 use crate::debug::DebugContext;
-use crate::kinematics::RobotKinematics;
-use crate::{kinematics, prelude::*};
+
+use crate::prelude::*;
 
 use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
@@ -434,7 +434,6 @@ fn line_detection_system(
     detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
     top_lines: &mut TopLines,
     camera_matrix: &TopCameraMatrix,
-    kinematics: &RobotKinematics,
 ) -> Result<()> {
     if let Some(detect_lines_result) = detect_top_lines_task.poll() {
         let mut detect_lines_result = detect_lines_result?;
