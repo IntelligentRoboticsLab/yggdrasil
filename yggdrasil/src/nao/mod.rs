@@ -74,8 +74,11 @@ impl Module for NaoModule {
 
 #[startup_system]
 fn initialize_nao(storage: &mut Storage) -> Result<()> {
-    let mut nao =
-        LolaBackend::connect_with_path_with_retry(10, Duration::from_millis(500), LOLA_SOCKET_PATH)?;
+    let mut nao = LolaBackend::connect_with_path_with_retry(
+        10,
+        Duration::from_millis(500),
+        LOLA_SOCKET_PATH,
+    )?;
     let info = RobotInfo::new(&mut nao)?;
 
     let state = nao.read_nao_state()?;
