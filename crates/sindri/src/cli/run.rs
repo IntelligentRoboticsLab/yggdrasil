@@ -1,5 +1,9 @@
+use std::process::Stdio;
+
 use clap::Parser;
+use colored::Colorize;
 use miette::{miette, IntoDiagnostic, Result};
+use tokio::process::Command;
 
 use crate::{
     cli::deploy::{ConfigOptsDeploy, Deploy},
@@ -27,6 +31,17 @@ impl Run {
 
         let local = self.deploy.local;
         let rerun = self.deploy.rerun;
+
+        let has_rerun = has_rerun().await?;
+
+        if rerun && !has_rerun {
+            println!(
+                "{}: {}",
+                "warning".bold().yellow(),
+                "rerun is not installed, install it using `cargo install rerun`".white()
+            );
+        }
+
         Deploy {
             deploy: self.deploy,
         }
@@ -39,8 +54,15 @@ impl Run {
         }
 
         if rerun {
+            // Always set the host, so that rerun can connect to the correct host.
+            // even if the host doesn't have rerun viewer installed, there could be
+            // some case where the viewer is launched through a different method than the cli.
             let local_ip = local_ip_address::local_ip().into_diagnostic()?;
             envs.push(("RERUN_HOST", local_ip.to_string().leak()));
+
+            if has_rerun {
+                spawn_rerun_viewer()?;
+            }
         }
 
         if local {
@@ -59,4 +81,33 @@ impl Run {
 
         Ok(())
     }
+}
+
+/// Check if the `rerun` binary is installed.
+///
+/// We check if the `rerun` binary is installed by running `rerun --version` and checking if the
+/// command was successful.
+async fn has_rerun() -> Result<bool> {
+    Ok(Command::new("rerun")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .into_diagnostic()?
+        .wait_with_output()
+        .await
+        .into_diagnostic()?
+        .status
+        .success())
+}
+
+/// Spawn a rerun viewer in the background.
+fn spawn_rerun_viewer() -> Result<()> {
+    Command::new("rerun")
+        .kill_on_drop(false) // Don't kill the rerun process when sindri exits
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .into_diagnostic()?;
+    Ok(())
 }
