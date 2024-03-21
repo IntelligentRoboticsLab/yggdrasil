@@ -52,27 +52,27 @@ pub struct LayoutConfig {
 #[serde(deny_unknown_fields)]
 pub struct FieldConfig {
     /// Field length in millimeters (A)
-    pub length: i32,
+    pub length: u32,
     /// Field width in millimeters (B)
-    pub width: i32,
+    pub width: u32,
     /// Width of lines on the field (|)
-    pub line_width: i32,
+    pub line_width: u32,
     /// Size of the penalty mark (0)
-    pub penalty_mark_size: i32,
+    pub penalty_mark_size: u32,
     /// Length of the goal area (E)
-    pub goal_area_length: i32,
+    pub goal_area_length: u32,
     /// Width of the goal area (F)
-    pub goal_area_width: i32,
+    pub goal_area_width: u32,
     /// Length of the penalty area (G)
-    pub penalty_area_length: i32,
+    pub penalty_area_length: u32,
     /// Width of the penalty area (H)
-    pub penalty_area_width: i32,
+    pub penalty_area_width: u32,
     /// Distance to the penalty mark from the side of the field (I)
-    pub penalty_mark_distance: i32,
+    pub penalty_mark_distance: u32,
     /// Diameter of the centre circle (J)
-    pub centre_circle_diameter: i32,
+    pub centre_circle_diameter: u32,
     /// Width of the border strip (K)
-    pub border_strip_width: i32,
+    pub border_strip_width: u32,
 }
 
 /// Containst the coordinates for the starting positions for each robot.
