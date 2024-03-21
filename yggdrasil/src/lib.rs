@@ -8,6 +8,7 @@ pub mod filter;
 pub mod game_controller;
 pub mod kinematics;
 pub mod leds;
+pub mod ml;
 pub mod nao;
 pub mod primary_state;
 pub mod vision;

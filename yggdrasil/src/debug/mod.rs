@@ -1,5 +1,5 @@
 #[cfg(feature = "rerun")]
-use std::convert::Into;
+use std::{convert::Into, time::Instant};
 
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;

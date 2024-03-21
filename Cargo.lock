@@ -1916,6 +1916,7 @@ dependencies = [
  "humantime",
  "is-terminal",
  "log",
+ "regex",
  "termcolor",
 ]
 
@@ -3171,9 +3172,9 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "1.1.15"
+version = "1.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "037731f5d3aaa87a5675e895b63ddff1a87624bc29f77004ea829809654e48f6"
+checksum = "5e143b5e666b2695d28f6bca6497720813f699c9602dd7f5cac91008b8ada7f9"
 dependencies = [
  "cc",
  "libc",
@@ -3920,6 +3921,36 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "openvino"
+version = "0.6.0"
+source = "git+https://github.com/YukumoHunter/openvino-rs.git?branch=evil-hack#151b481b5d7c6449f2f41685ca861978309ead52"
+dependencies = [
+ "openvino-finder",
+ "openvino-sys",
+ "thiserror",
+]
+
+[[package]]
+name = "openvino-finder"
+version = "0.6.0"
+source = "git+https://github.com/YukumoHunter/openvino-rs.git?branch=evil-hack#151b481b5d7c6449f2f41685ca861978309ead52"
+dependencies = [
+ "cfg-if",
+ "log",
+]
+
+[[package]]
+name = "openvino-sys"
+version = "0.6.0"
+source = "git+https://github.com/YukumoHunter/openvino-rs.git?branch=evil-hack#151b481b5d7c6449f2f41685ca861978309ead52"
+dependencies = [
+ "env_logger",
+ "libloading 0.8.3",
+ "once_cell",
+ "openvino-finder",
 ]
 
 [[package]]
@@ -7972,15 +8003,19 @@ dependencies = [
  "enum_dispatch",
  "fast-math",
  "heimdall",
+ "image",
  "kira",
  "linreg",
  "miette",
  "nalgebra",
+ "ndarray",
  "nidhogg",
  "odal",
+ "openvino",
  "rerun",
  "serde",
  "serde_with",
+ "thiserror",
  "tokio",
  "tracing",
  "tracing-subscriber",
