@@ -75,7 +75,7 @@ pub struct FieldConfig {
     pub border_strip_width: u32,
 }
 
-/// Containst the coordinates for the starting positions for each robot.
+/// Contains the coordinates for the starting positions for each robot.
 /// This configuration assumes the center has coordinates (0, 0).
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
@@ -86,8 +86,7 @@ impl Index<usize> for InitialPositionsConfig {
 
     // Required method
     fn index(&self, index: usize) -> &Self::Output {
-        &self
-            .0
+        self.0
             .iter()
             .find(|elem| elem.player_number == index)
             .expect("Player number not in layout configuration!")
