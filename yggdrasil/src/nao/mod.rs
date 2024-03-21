@@ -1,7 +1,7 @@
 mod cycle;
 pub use cycle::*;
 
-use crate::prelude::*;
+use crate::{motion::MotionManager, prelude::*};
 use std::{env, time::Duration};
 
 use miette::IntoDiagnostic;
@@ -109,8 +109,17 @@ pub fn write_hardware_info(
     nao: &mut LolaBackend,
     robot_state: &mut NaoState,
     update: &NaoControlMessage,
+    motion_manager: &mut MotionManager,
 ) -> Result<()> {
     *robot_state = nao.read_nao_state()?;
-    nao.send_control_msg(update.clone())?;
+
+    let mut update = update.clone();
+    update.position = motion_manager.to_joint_positions();
+    update.stiffness = motion_manager.to_joint_stiffness();
+
+    nao.send_control_msg(update)?;
+
+    motion_manager.clear_priorities();
+
     Ok(())
 }
