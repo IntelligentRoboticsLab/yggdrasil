@@ -10,7 +10,7 @@ use nidhogg::{
     HardwareInfo, NaoBackend, NaoControlMessage, NaoState,
 };
 
-const SOCKET_PATH: &str = "/tmp/yggdrasil";
+const LOLA_SOCKET_PATH: &str = "/tmp/yggdrasil";
 
 #[derive(Clone, Debug)]
 /// Information that uniquely identifies a robot
@@ -75,7 +75,7 @@ impl Module for NaoModule {
 #[startup_system]
 fn initialize_nao(storage: &mut Storage) -> Result<()> {
     let mut nao =
-        LolaBackend::connect_with_path_with_retry(10, Duration::from_millis(500), SOCKET_PATH)?;
+        LolaBackend::connect_with_path_with_retry(10, Duration::from_millis(500), LOLA_SOCKET_PATH)?;
     let info = RobotInfo::new(&mut nao)?;
 
     let state = nao.read_nao_state()?;
