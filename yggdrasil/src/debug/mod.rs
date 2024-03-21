@@ -9,7 +9,7 @@ use std::{
 use miette::IntoDiagnostic;
 
 use nidhogg::types::RgbU8;
-use std::{net::Ipv4Addr, str::FromStr};
+use std::net::Ipv4Addr;
 
 use crate::{camera::Image, nao::Cycle, prelude::*};
 
@@ -253,7 +253,7 @@ fn init_rerun(storage: &mut Storage) -> Result<()> {
     let server_address = {
         let host = std::env::var("RERUN_HOST").into_diagnostic()?;
 
-        Ipv4Addr::from_str(host.as_str()).into_diagnostic()?
+        std::str::FromStr::from_str(host.as_str()).into_diagnostic()?
     };
 
     // init debug context with 5% of the total memory, as cache size limit.
