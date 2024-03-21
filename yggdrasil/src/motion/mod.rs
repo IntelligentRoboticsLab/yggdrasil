@@ -119,28 +119,6 @@ impl MotionManager {
         self
     }
 
-    pub fn look_at(
-        &mut self,
-        x_angle: JointDataType,
-        y_angle: JointDataType,
-        stiffness: JointDataType,
-        priority: Priority,
-    ) -> &mut Self {
-        self.set_head(
-            HeadJoints {
-                yaw: x_angle,
-                pitch: y_angle,
-            },
-            HeadJoints {
-                yaw: stiffness,
-                pitch: stiffness,
-            },
-            priority,
-        );
-
-        self
-    }
-
     pub fn unstiff_legs(&mut self, priority: Priority) -> &mut Self {
         self.set_legs(
             self.leg_settings.joints_position.clone(),
