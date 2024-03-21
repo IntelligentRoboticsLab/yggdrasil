@@ -3,6 +3,10 @@
 team_number = 8
 
 [[robots]]
+name = "local"
+number = 0
+
+[[robots]]
 name = "sam"
 number = 20
 

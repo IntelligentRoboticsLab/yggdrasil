@@ -19,8 +19,11 @@ use tokio::net::TcpStream;
 use walkdir::WalkDir;
 
 const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
-const RELEASE_PATH: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
+const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
+const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
 const DEPLOY_PATH: &str = "./deploy/yggdrasil";
+
+const LOCAL_ROBOT_ID_STR: &str = "0";
 
 /// The size of the `BufWriter`'s buffer.
 ///
@@ -31,7 +34,14 @@ const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
 #[derive(Clone, Debug, Parser)]
 pub struct ConfigOptsDeploy {
     /// Number of the robot to deploy to.
-    #[clap(index = 1, name = "robot-number")]
+    #[clap(
+        index = 1,
+        name = "robot-number",
+        required(false),
+        required_unless_present("local"),
+        default_value_if("local", "true", Some(LOCAL_ROBOT_ID_STR)),
+        conflicts_with("local")
+    )]
     pub number: u8,
 
     /// Scan for wired (true) or wireless (false) robots [default: false]
@@ -46,6 +56,18 @@ pub struct ConfigOptsDeploy {
     #[clap(long, short)]
     pub rerun: bool,
 
+    #[clap(long, short)]
+    pub local: bool,
+
+    #[clap(
+        long,
+        short,
+        default_value = "false",
+        default_value_if("bin", "yggdrasil", Some("true")),
+        default_value_if("local", "true", Some("false"))
+    )]
+    pub alsa: bool,
+
     /// Specify bin target
     #[clap(global = true, long, default_value = "yggdrasil")]
     pub bin: String,
@@ -53,13 +75,23 @@ pub struct ConfigOptsDeploy {
 
 impl ConfigOptsDeploy {
     #[must_use]
-    pub fn new(number: u8, wired: bool, team_number: Option<u8>, rerun: bool, bin: String) -> Self {
+    pub fn new(
+        number: u8,
+        wired: bool,
+        team_number: Option<u8>,
+        rerun: bool,
+        local: bool,
+        alsa: bool,
+        bin: String,
+    ) -> Self {
         Self {
             number,
             wired,
             team_number,
             rerun,
+            local,
             bin,
+            alsa,
         }
     }
 }
@@ -97,17 +129,29 @@ impl Deploy {
         ));
         pb.set_prefix("Compiling");
 
-        let mut features = vec!["alsa"];
+        let mut features = vec![];
+        if self.deploy.alsa {
+            features.push("alsa");
+        }
         if self.deploy.rerun {
             features.push("rerun");
         }
+        if self.deploy.local {
+            features.push("local");
+        }
+
+        let target = if self.deploy.local {
+            None
+        } else {
+            Some(ROBOT_TARGET)
+        };
 
         // Build yggdrasil with cargo
         cargo::build(
             "yggdrasil",
             Profile::Release,
-            Some(ROBOT_TARGET),
-            features,
+            target,
+            &features,
             Some(cross::ENV_VARS.to_vec()),
         )
         .await?;
@@ -130,6 +174,21 @@ impl Deploy {
         ));
         pb.reset_elapsed();
 
+        let release_path = if self.deploy.local {
+            RELEASE_PATH_LOCAL
+        } else {
+            RELEASE_PATH_REMOTE
+        };
+
+        // Copy over the files that need to be deployed
+        fs::copy(release_path, DEPLOY_PATH)
+            .into_diagnostic()
+            .wrap_err("Failed to copy binary to deploy directory!")?;
+
+        if self.deploy.local {
+            return Ok(());
+        }
+
         // Check if the robot exists
         let robot = config
             .robot(self.deploy.number, self.deploy.wired)
@@ -146,11 +205,6 @@ impl Deploy {
 
         pb.set_prefix("Deploying");
         pb.set_message(format!("{}", "Preparing deployment...".dimmed()));
-
-        // Copy over the files that need to be deployed
-        fs::copy(RELEASE_PATH, DEPLOY_PATH)
-            .into_diagnostic()
-            .wrap_err("Failed to copy binary to deploy directory!")?;
 
         deploy_to_robot(&pb, robot.ip())
             .await
@@ -238,8 +292,7 @@ async fn create_sftp_connection(ip: Ipv4Addr) -> Result<Sftp> {
         TcpStream::connect(format!("{ip}:22")),
     )
     .await
-    .map_err(Error::ElapsedError)?
-    .unwrap();
+    .map_err(Error::ElapsedError)??;
     let mut session = Session::new().map_err(|e| Error::SftpError {
         source: e,
         msg: "Failed to create ssh session!".to_owned(),

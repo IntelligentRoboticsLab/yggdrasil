@@ -6,7 +6,7 @@ use yggdrasil::prelude::*;
 
 struct A(String);
 struct B(String);
-struct C(String);
+struct C();
 
 /// Startup systems differ from normal systems in three main ways
 /// The first difference is that they are marked with a different macro
@@ -32,7 +32,7 @@ fn first(storage: &mut Storage) -> Result<()> {
 fn second(storage: &mut Storage, a: &A, b: &mut B) -> Result<()> {
     b.0 = "🅱️".to_string();
 
-    let c = C("c".to_string());
+    let c = C();
 
     println!("{}", a.0);
     println!("{}", b.0);

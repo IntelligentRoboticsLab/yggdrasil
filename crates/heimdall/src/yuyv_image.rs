@@ -150,7 +150,7 @@ impl Deref for YuyvImage {
     type Target = [u8];
 
     fn deref(&self) -> &[u8] {
-        &self.frame
+        &self.frame[0..self.width * self.height * 2]
     }
 }
 
