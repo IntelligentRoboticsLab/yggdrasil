@@ -1,6 +1,4 @@
-use miette::Diagnostic;
 use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
-use thiserror::Error;
 
 use crate::{nao, prelude::*};
 
