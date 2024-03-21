@@ -2,14 +2,29 @@ use miette::Diagnostic;
 use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 use thiserror::Error;
 
-use crate::prelude::*;
+use crate::{nao, prelude::*};
 
 pub struct MotionManagerModule;
 
+/// A module providing the motion manager.
+///
+/// All systems that want to set joint values using the motion manager, should be executed after
+/// [`clear_priorities`].
+///
+/// This module provides the following resources to the application:
+/// - [`MotionManager`]
 impl Module for MotionManagerModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.init_resource::<MotionManager>()
+        app.add_system(clear_priorities.after(nao::write_hardware_info))
+            .init_resource::<MotionManager>()
     }
+}
+
+#[system]
+pub fn clear_priorities(motion_manager: &mut MotionManager) -> Result<()> {
+    motion_manager.clear_priorities();
+
+    Ok(())
 }
 
 pub type JointDataType = f32;
