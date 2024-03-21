@@ -29,6 +29,7 @@ rerun = { workspace = true, optional = true, features = [
 serde = { workspace = true }
 serde_with = { workspace = true }
 thiserror = { workspace = true }
+serde_json = { workspace = true }
 tokio = { workspace = true }
 toml = { workspace = true }
 tracing = { workspace = true }

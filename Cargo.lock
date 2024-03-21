@@ -8014,6 +8014,7 @@ dependencies = [
  "openvino",
  "rerun",
  "serde",
+ "serde_json",
  "serde_with",
  "thiserror",
  "tokio",

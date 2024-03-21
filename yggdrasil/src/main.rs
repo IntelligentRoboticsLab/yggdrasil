@@ -2,8 +2,8 @@
 use yggdrasil::{
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, debug::DebugModule,
     filter::FilterModule, game_controller::GameControllerModule, leds::LedsModule, ml::MlModule,
-    nao::NaoModule, prelude::*, primary_state::PrimaryStateModule, vision::VisionModule,
-    walk::WalkingEngineModule,
+    motion::MotionModule, nao::NaoModule, prelude::*, primary_state::PrimaryStateModule,
+    vision::VisionModule, walk::WalkingEngineModule,
 };
 
 fn main() -> Result<()> {
@@ -17,6 +17,7 @@ fn main() -> Result<()> {
         .add_module(MlModule)?
         .add_module(FilterModule)?
         .add_module(CameraModule)?
+        .add_module(MotionModule)?
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?
         .add_module(PrimaryStateModule)?
