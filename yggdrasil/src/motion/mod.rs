@@ -4,6 +4,8 @@ use crate::{nao, prelude::*};
 
 pub struct MotionManagerModule;
 
+const STIFFNESS_UNSTIFF: f32 = -1.;
+
 /// A module providing the motion manager.
 ///
 /// All systems that want to set joint values using the motion manager, should be executed after
@@ -120,7 +122,7 @@ impl MotionManager {
     pub fn unstiff_legs(&mut self, priority: Priority) -> &mut Self {
         self.set_legs(
             self.leg_settings.joints_position.clone(),
-            LegJoints::fill(-1.),
+            LegJoints::fill(STIFFNESS_UNSTIFF),
             priority,
         )
     }
@@ -128,7 +130,7 @@ impl MotionManager {
     pub fn unstiff_arms(&mut self, priority: Priority) -> &mut Self {
         self.set_arms(
             self.arm_settings.joints_position.clone(),
-            ArmJoints::<f32>::fill(-1.),
+            ArmJoints::<f32>::fill(STIFFNESS_UNSTIFF),
             priority,
         )
     }
@@ -136,7 +138,7 @@ impl MotionManager {
     pub fn unstiff_head(&mut self, priority: Priority) -> &mut Self {
         self.set_head(
             self.head_settings.joints_position.clone(),
-            HeadJoints::fill(-1.),
+            HeadJoints::fill(STIFFNESS_UNSTIFF),
             priority,
         )
     }
