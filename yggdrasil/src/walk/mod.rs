@@ -10,12 +10,9 @@ use crate::{
     prelude::*,
     primary_state::PrimaryState,
 };
-use nidhogg::{
-    types::{
-        ArmJoints, FillExt, ForceSensitiveResistors, JointArray, LeftArmJoints, LeftLegJoints,
-        LeftLegJointsBuilder, LegJoints, RightArmJoints, RightLegJoints, Vector2, Vector3,
-    },
-    NaoControlMessage,
+use nidhogg::types::{
+    ArmJoints, FillExt, ForceSensitiveResistors, LeftArmJoints, LeftLegJoints, LegJoints,
+    RightArmJoints, RightLegJoints, Vector2, Vector3,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
