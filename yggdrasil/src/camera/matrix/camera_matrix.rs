@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use miette::bail;
 use nalgebra::{
     point, vector, Isometry3, Matrix, Point2, Point3, UnitQuaternion, Vector2, Vector3,
@@ -49,8 +47,6 @@ pub fn update_camera_matrix(
         kinematics.head_to_robot,
         robot_to_ground(swing_foot, imu, kinematics),
     );
-
-    dbg.log_camera_matrix("top_camera/image", &camera_matrix)?;
     top_camera_matrix.0 = camera_matrix;
 
     Ok(())

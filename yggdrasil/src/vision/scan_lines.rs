@@ -425,40 +425,13 @@ pub fn scan_lines_system(
         bottom_scan_grid.update_scan_lines(bottom_image);
     }
 
-    let mut points_3d = vec![];
-    let mut points_2d = vec![];
-    let start = Instant::now();
-
-    tracing::info!("starting...");
-    for vertical_line_id in 0..top_scan_grid.vertical.line_ids().len() {
-        let column_id = top_scan_grid.vertical.line_ids()[vertical_line_id];
-        let column = top_scan_grid.vertical.line(vertical_line_id);
-
-        let x = column_id;
-        for y in (0..column.len()).step_by(4) {
-            let pixel = column[y];
-
-            if pixel != PixelColor::White {
-                continue;
-            }
-
-            points_2d.push((x as f32, y as f32));
-
-            if let Ok(world) = camera_matrix.pixel_to_ground(point![x as f32, y as f32], 0.0) {
-                points_3d.push((world.x * 640.0, world.y * 480.0, world.z));
-            } else {
-                tracing::info!("Failed to project");
-            }
-        }
-    }
-
-    tracing::info!(
-        "found {} 3d points, took: {:?}",
-        points_3d.len(),
-        start.elapsed()
-    );
-    dbg.log_points_2d("top_camera/image/points_2d", points_2d)?;
-    dbg.log_points_3d("top_camera/points_3d", points_3d)?;
+    // tracing::info!(
+    //     "found {} 3d points, took: {:?}",
+    //     points_3d.len(),
+    //     start.elapsed()
+    // );
+    // dbg.log_points_2d("top_camera/image/points_2d", points_2d)?;
+    // dbg.log_points_3d("top_camera/points_3d", points_3d)?;
 
     Ok(())
 }

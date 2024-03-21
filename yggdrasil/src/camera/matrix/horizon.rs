@@ -36,7 +36,13 @@ impl Horizon {
             let slope = -focal_length.y * rotation_matrix[(2, 1)]
                 / (focal_length.x * rotation_matrix[(2, 2)]);
 
-            let right_horizon_y = left_horizon_y + slope * image_width;
+            // Guesses if image size is in "normalized" (1.0 x 1.0) dimensions
+            let adjusted_image_width = if image_width <= 1.0 {
+                image_width
+            } else {
+                image_width - 1.0
+            };
+            let right_horizon_y = left_horizon_y + (slope * adjusted_image_width);
 
             Self {
                 left_horizon_y,

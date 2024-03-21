@@ -4,10 +4,15 @@ use std::{convert::Into, net::SocketAddr, time::Instant};
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 
+use nalgebra::{point, vector};
 use nidhogg::types::RgbU8;
 use std::net::IpAddr;
 
-use crate::{camera::Image, nao::Cycle, prelude::*};
+use crate::{
+    camera::{matrix::CameraMatrix, Image},
+    nao::Cycle,
+    prelude::*,
+};
 
 /// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
 ///
@@ -99,37 +104,52 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         matrix: &crate::camera::matrix::CameraMatrix,
+        image: Image,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            let focal_x = 300.0;
-            let focal_y = 300.0;
+            let image_timestamp = image.timestamp();
+            self.rec.set_time_seconds(
+                "image",
+                image_timestamp
+                    .duration_since(self.start_time)
+                    .as_secs_f64(),
+            );
+            let focal_x = 609.0;
+            let focal_y = 608.6;
+            let pinhole = rerun::Pinhole::from_focal_length_and_resolution(
+                [focal_x, focal_y],
+                [640.0, 480.0],
+            )
+            .with_camera_xyz(rerun::components::ViewCoordinates::FLU);
+            self.rec.log(path.as_ref(), &pinhole).into_diagnostic()?;
+            self.log_with_camera_matrix_transformation(path.as_ref(), matrix, image.clone())?;
+
+            let camera_ray = matrix.pixel_to_camera(point![269.0 - 320.0, 438.0 - 240.0]);
             self.rec
                 .log(
-                    path.as_ref(),
-                    &rerun::Pinhole::from_focal_length_and_resolution(
-                        [focal_x, focal_y],
-                        [640.0, 480.0],
-                    )
-                    .with_camera_xyz(rerun::components::ViewCoordinates::FLU),
+                    "top_camera/camera_ray",
+                    &rerun::Arrows3D::from_vectors([Vec3D::new(
+                        camera_ray.x,
+                        camera_ray.y,
+                        camera_ray.z,
+                    )]),
                 )
                 .into_diagnostic()?;
-            let camera_translation = matrix.camera_to_ground.inverse();
-            let translation = [
-                camera_translation.translation.x,
-                camera_translation.translation.y,
-                camera_translation.translation.z,
-            ];
-            let rotation = rerun::Quaternion::from_xyzw([
-                camera_translation.rotation.coords.x,
-                camera_translation.rotation.coords.y,
-                camera_translation.rotation.coords.z,
-                camera_translation.rotation.coords.w,
-            ]);
-            self.rec.log(
-                path.as_ref(),
-                &rerun::Transform3D::from_translation_rotation(translation, rotation).from_parent(),
-            );
+            self.log_with_camera_matrix_transformation(
+                "top_camera/camera_ray",
+                matrix,
+                image.clone(),
+            )?;
+            // self.rec
+            //     .log(
+            //         "top_camera/projected",
+            //         &rerun::LineStrips3D::new(&[[(p1.x, p1.y, p1.z), (p2.x, p2.y, p2.z)]])
+            //             .with_colors([rerun::Color::from_rgb(255, 255, 0)]),
+            //     )
+            //     .into_diagnostic()?;
+
+            self.rec.disable_timeline("image");
         }
 
         Ok(())
@@ -234,6 +254,7 @@ impl DebugContext {
                     ]),
                 )
                 .into_diagnostic()?;
+            self.rec.disable_timeline("image");
         }
 
         Ok(())
@@ -268,6 +289,80 @@ impl DebugContext {
                     ]),
                 )
                 .into_diagnostic()?;
+
+            self.rec.disable_timeline("image");
+        }
+
+        Ok(())
+    }
+
+    pub fn log_lines3d_for_image(
+        &self,
+        path: impl AsRef<str>,
+        lines: &[[(f32, f32, f32); 2]],
+        img: Image,
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let image_timestamp = img.timestamp();
+            self.rec.set_time_seconds(
+                "image",
+                image_timestamp
+                    .duration_since(self.start_time)
+                    .as_secs_f64(),
+            );
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::LineStrips3D::new(lines).with_colors(vec![
+                        rerun::Color::from_rgb(
+                            color.red,
+                            color.green,
+                            color.blue,
+                        );
+                        lines.len()
+                    ]),
+                )
+                .into_diagnostic()?;
+            self.rec.disable_timeline("image");
+        }
+
+        Ok(())
+    }
+
+    pub fn log_with_camera_matrix_transformation(
+        &self,
+        path: impl AsRef<str>,
+        matrix: &CameraMatrix,
+        image: Image,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let image_timestamp = image.timestamp();
+            self.rec.set_time_seconds(
+                "image",
+                image_timestamp
+                    .duration_since(self.start_time)
+                    .as_secs_f64(),
+            );
+            let camera_translation = matrix.camera_to_ground;
+            let translation = [
+                camera_translation.translation.x,
+                camera_translation.translation.y,
+                camera_translation.translation.z,
+            ];
+            let rotation = rerun::Quaternion::from_xyzw([
+                camera_translation.rotation.coords.x,
+                camera_translation.rotation.coords.y,
+                camera_translation.rotation.coords.z,
+                camera_translation.rotation.coords.w,
+            ]);
+            self.rec.log(
+                path.as_ref(),
+                &rerun::Transform3D::from_translation_rotation(translation, rotation),
+            );
+            self.rec.disable_timeline("image");
         }
 
         Ok(())

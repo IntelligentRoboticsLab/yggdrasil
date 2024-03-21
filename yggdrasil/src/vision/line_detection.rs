@@ -1,12 +1,15 @@
 use std::mem;
 
-use crate::camera::Image;
+use crate::camera::matrix::TopCameraMatrix;
+use crate::camera::{matrix::CameraMatrix, Image};
 use crate::debug::DebugContext;
-use crate::prelude::*;
+use crate::kinematics::RobotKinematics;
+use crate::{kinematics, prelude::*};
 
 use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
 use derive_more::Deref;
+use nalgebra::point;
 use nidhogg::types::color;
 
 // TODO: Replace with proper field-boundary detection.
@@ -342,7 +345,12 @@ fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> Line {
     )
 }
 
-fn draw_lines(dbg: &DebugContext, lines: &[Line], scan_grid: ScanGrid) -> Result<()> {
+fn draw_lines(
+    dbg: &DebugContext,
+    lines: &[Line],
+    scan_grid: ScanGrid,
+    matrix: &CameraMatrix,
+) -> Result<()> {
     let all_lines = lines
         .iter()
         .map(
@@ -359,12 +367,47 @@ fn draw_lines(dbg: &DebugContext, lines: &[Line], scan_grid: ScanGrid) -> Result
         )
         .collect::<Vec<_>>();
 
+    let all_3d_points = all_lines
+        .clone()
+        .iter()
+        .filter_map(|line| {
+            let (x1, y1) = line[0];
+            let (x2, y2) = line[1];
+
+            matrix
+                .pixel_to_ground(point![x1 - 320.0, y1 - 240.0], 0.0)
+                // .pixel_to_ground(point![x1, y1], 0.0)
+                .ok()
+                .and_then(|p1| {
+                    matrix
+                        .pixel_to_ground(point![x2 - 320.0, y2 - 240.0], 0.0)
+                        // .pixel_to_ground(point![x2, y2], 0.0)
+                        .ok()
+                        .map(|p2| [(p1[0], p1[1], p1[2]), (p2[0], p2[1], p2[2])])
+                })
+        })
+        .collect::<Vec<_>>();
+
+    dbg.log_camera_matrix("top_camera/image", &matrix, scan_grid.image().clone())?;
+
     dbg.log_lines2d_for_image(
-        "top_camera/lines",
+        "top_camera/image/lines",
         &all_lines,
         scan_grid.image().clone(),
         color::u8::RED,
     )?;
+
+    dbg.log_lines3d_for_image(
+        "top_camera/lines_3d",
+        &all_3d_points,
+        scan_grid.image().clone(),
+        color::u8::BLUE,
+    )?;
+    // dbg.log_with_camera_matrix_transformation(
+    //     "top_camera/lines_3d",
+    //     matrix,
+    //     scan_grid.image().clone(),
+    // )?;
 
     Ok(())
 }
@@ -390,12 +433,14 @@ fn line_detection_system(
     dbg: &DebugContext,
     detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
     top_lines: &mut TopLines,
+    camera_matrix: &TopCameraMatrix,
+    kinematics: &RobotKinematics,
 ) -> Result<()> {
     if let Some(detect_lines_result) = detect_top_lines_task.poll() {
         let mut detect_lines_result = detect_lines_result?;
         std::mem::swap(&mut top_lines.0, &mut detect_lines_result.0.lines);
 
-        draw_lines(dbg, top_lines, top_scan_grid.clone())?;
+        draw_lines(dbg, top_lines, top_scan_grid.clone(), camera_matrix)?;
 
         let top_scan_grid = top_scan_grid.clone();
         detect_top_lines_task
