@@ -14,7 +14,7 @@ fn main() -> Result<()> {
     let app = App::new()
         .add_module(NaoModule)?
         .add_module(ConfigModule)?
-        .add_module(MlModule)?
+        // .add_module(MlModule)?
         .add_module(FilterModule)?
         .add_module(CameraModule)?
         .add_module(MotionModule)?
@@ -22,9 +22,9 @@ fn main() -> Result<()> {
         .add_module(LedsModule)?
         .add_module(PrimaryStateModule)?
         .add_module(GameControllerModule)?
-        .add_module(WalkingEngineModule)?
-        .add_module(DebugModule)?
-        .add_module(VisionModule)?;
+        // .add_module(WalkingEngineModule)?
+        .add_module(DebugModule)?;
+    // .add_module(VisionModule)?;
 
     #[cfg(feature = "alsa")]
     let app = app.add_module(yggdrasil::audio::AudioModule)?;

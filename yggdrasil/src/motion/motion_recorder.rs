@@ -1,35 +1,20 @@
-use crate::filter::button::{HeadButtons, LeftFootButtons, RightFootButtons};
+use crate::filter::button::HeadButtons;
 use miette::Result;
+use nidhogg::NaoState;
 use tyr::prelude::*;
 
-pub struct Test;
+pub struct MotionRecorder;
 
-impl Module for Test {
+impl Module for MotionRecorder {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app.add_system(register_button_press))
     }
 }
 
 #[system]
-fn register_button_press(
-    head_button: &mut HeadButtons,
-    left_button: &mut LeftFootButtons,
-    right_button: &mut RightFootButtons,
-) -> Result<()> {
-    if left_button.left.is_tapped() {
-        println!("Left Pressed!");
-    }
-    if right_button.left.is_tapped() {
-        println!("Right Pressed!");
-    }
-    if head_button.front.is_tapped() {
-        println!("Head Front Pressed!");
-    }
+fn register_button_press(head_button: &mut HeadButtons, naostate: &NaoState) -> Result<()> {
     if head_button.middle.is_tapped() {
-        println!("Head Middle Pressed!");
-    }
-    if head_button.rear.is_tapped() {
-        println!("Head Rear Pressed!");
+        println!("{:?}", naostate.position);
     }
     Ok(())
 }
