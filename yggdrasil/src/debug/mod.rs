@@ -1,15 +1,11 @@
 #[cfg(feature = "rerun")]
-use std::{
-    convert::Into,
-    net::{IpAddr, SocketAddr},
-    time::Instant,
-};
+use std::{convert::Into, net::SocketAddr, time::Instant};
 
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 
 use nidhogg::types::RgbU8;
-use std::net::Ipv4Addr;
+use std::net::IpAddr;
 
 use crate::{camera::Image, nao::Cycle, prelude::*};
 
@@ -44,16 +40,12 @@ impl DebugContext {
     ///
     /// If yggdrasil is not compiled with the `rerun` feature, this will return a [`DebugContext`] that
     /// does nothing.
-    fn init(
-        recording_name: impl AsRef<str>,
-        rerun_host: Ipv4Addr,
-        memory_limit: f32,
-    ) -> Result<Self> {
+    fn init(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
         #[cfg(feature = "rerun")]
         {
             let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
                 .connect_opts(
-                    SocketAddr::new(IpAddr::V4(rerun_host), rerun::default_server_addr().port()),
+                    SocketAddr::new(rerun_host, rerun::default_server_addr().port()),
                     rerun::default_flush_timeout(),
                 )
                 .into_diagnostic()?;
@@ -246,7 +238,7 @@ impl DebugContext {
 #[startup_system]
 fn init_rerun(storage: &mut Storage) -> Result<()> {
     #[cfg(any(feature = "local", not(feature = "rerun")))]
-    let server_address = Ipv4Addr::LOCALHOST;
+    let server_address = IpAddr::V4(std::net::Ipv4Addr::LOCALHOST);
     // Manually set the server address to the robot's IP address, instead of 0.0.0.0
     // to ensure the rerun server prints the correct connection URL on startup
     #[cfg(all(not(feature = "local"), feature = "rerun"))]
@@ -256,8 +248,7 @@ fn init_rerun(storage: &mut Storage) -> Result<()> {
         std::str::FromStr::from_str(host.as_str()).into_diagnostic()?
     };
 
-    // init debug context with 5% of the total memory, as cache size limit.
-    let ctx = DebugContext::init("yggdrasil", server_address, 0.05)?;
+    let ctx = DebugContext::init("yggdrasil", server_address)?;
 
     storage.add_resource(Resource::new(ctx))
 }
