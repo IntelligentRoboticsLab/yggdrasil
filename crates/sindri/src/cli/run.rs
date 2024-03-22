@@ -93,12 +93,9 @@ async fn has_rerun() -> bool {
             .arg("--version")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .spawn()
-            .into_diagnostic()?
-            .wait_with_output()
+            .status()
             .await
             .into_diagnostic()?
-            .status
             .success())
     }
 

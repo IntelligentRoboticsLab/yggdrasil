@@ -74,7 +74,7 @@ impl Scan {
 async fn ping(robot: Robot) -> Result<()> {
     let addr = robot.ip();
 
-    let ping = Command::new("ping")
+    let ping_status = Command::new("ping")
         .arg("-W1") // 1 second time out
         .arg("-q") // quiet output
         .arg("-c2") // require only 2 replies
@@ -82,13 +82,11 @@ async fn ping(robot: Robot) -> Result<()> {
         .arg(addr.to_string())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .spawn()
-        .into_diagnostic()?
-        .wait()
+        .status()
         .await
         .into_diagnostic()?;
 
-    let online_status = match ping.success() {
+    let online_status = match ping_status.success() {
         true => "ONLINE ".green().bold(),
         false => "OFFLINE".red().bold(),
     };
