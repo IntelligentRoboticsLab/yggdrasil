@@ -112,7 +112,6 @@ pub fn assert_valid_bin(bin: &str) -> Result<(), CargoError> {
 
     let members: Vec<_> = manifest
         .workspace
-        .clone()
         .iter()
         .flat_map(|workspace| workspace.members.clone())
         .flat_map(|member| glob::glob_with(&member, Default::default()))
