@@ -32,7 +32,7 @@ impl Run {
         let local = self.deploy.local;
         let rerun = self.deploy.rerun;
 
-        let has_rerun = has_rerun().await?;
+        let has_rerun = has_rerun().await.is_ok_and(|success| success);
 
         if rerun && !has_rerun {
             println!(
