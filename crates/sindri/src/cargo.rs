@@ -124,7 +124,6 @@ pub fn assert_valid_bin(bin: &str) -> Result<(), CargoError> {
         .flat_map(|path| cargo_toml::Manifest::from_path(path).map_err(CargoError::Manifest))
         .flat_map(|manifest| manifest.bin)
         .filter_map(|bin| bin.name)
-        .any(|name| name == bin)
-        .then_some(())
+        .find_map(|name| (name == bin).then_some(()))
         .ok_or(CargoError::InvalidBin(bin.to_string()))
 }
