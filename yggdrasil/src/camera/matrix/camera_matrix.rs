@@ -5,7 +5,7 @@ use nalgebra::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    camera::matrix::horizon::Horizon,
+    camera::{matrix::horizon::Horizon, CameraConfig},
     filter::imu::IMUValues,
     kinematics::{robot_dimensions, RobotKinematics},
     prelude::*,
@@ -31,9 +31,15 @@ pub fn update_camera_matrix(
     imu: &IMUValues,
     kinematics: &RobotKinematics,
     top_camera_matrix: &mut TopCameraMatrix,
+    config: &CameraConfig,
 ) -> Result<()> {
+    let calibration_config = config.top.calibration;
     let image_size = vector![640.0, 480.0];
-    let extrinsic_rotation = vector![0.03999999910593033, -3.009999990463257, 1.2999999523162842];
+    let extrinsic_rotation = vector![
+        calibration_config.extrinsic_rotation[0],
+        calibration_config.extrinsic_rotation[1],
+        calibration_config.extrinsic_rotation[2]
+    ];
 
     let focal_lengths = vector![0.95, 1.27];
     let cc_optical_center = point![0.5, 0.5];
