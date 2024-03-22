@@ -5998,6 +5998,9 @@ version = "0.1.0"
 dependencies = [
  "miette",
  "nidhogg",
+ "serde",
+ "serde_json",
+ "serde_with",
  "tyr",
  "yggdrasil",
 ]

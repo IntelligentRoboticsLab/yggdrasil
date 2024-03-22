@@ -1,7 +1,9 @@
 pub mod motion_capture;
 
 use yggdrasil::{
-    config::ConfigModule, filter::FilterModule, leds::LedsModule, motion::MotionModule, nao::NaoModule, prelude::*
+    config::ConfigModule, filter::FilterModule, 
+    // leds::LedsModule,
+    motion::MotionModule, nao::NaoModule, prelude::*
 };
 use crate::motion_capture::Sk;
 
@@ -13,8 +15,10 @@ fn main() -> Result<()> {
         .add_module(ConfigModule)?
         .add_module(FilterModule)?
         .add_module(MotionModule)?
-        .add_module(LedsModule)?
+        // .add_module(LedsModule)?;
         .add_module(Sk)?;
 
     app.run()
 }
+
+// Leds module calls behaviour engine, thus making it crash. This will be a fix for later.

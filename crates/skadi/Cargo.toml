@@ -10,3 +10,6 @@ miette = { workspace = true }
 yggdrasil = { path = "../../yggdrasil" }
 tyr = { path = "../tyr" }
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
+serde = { workspace = true }
+serde_with = { workspace = true }
+serde_json = { workspace = true }
