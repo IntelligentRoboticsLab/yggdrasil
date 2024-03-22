@@ -102,7 +102,7 @@ impl DebugContext {
     pub fn log_camera_matrix(
         &self,
         path: impl AsRef<str>,
-        matrix: &crate::camera::matrix::CameraMatrix,
+        matrix: &CameraMatrix,
         image: Image,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]

@@ -388,7 +388,7 @@ fn draw_lines(
         })
         .collect::<Vec<_>>();
 
-    dbg.log_camera_matrix("top_camera/image", &matrix, scan_grid.image().clone())?;
+    dbg.log_camera_matrix("top_camera/image", matrix, scan_grid.image().clone())?;
 
     dbg.log_lines2d_for_image(
         "top_camera/image/lines",
