@@ -1,4 +1,4 @@
-use std::process::Stdio;
+use std::{os::unix::process::CommandExt, process::Stdio};
 
 use clap::Parser;
 use colored::Colorize;
