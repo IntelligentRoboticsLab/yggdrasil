@@ -38,7 +38,7 @@ impl Run {
             println!(
                 "{}: {}",
                 "warning".bold().yellow(),
-                "rerun is not installed, install it using `cargo install rerun`".white()
+                "rerun is not installed, install it using `cargo install rerun-cli`".white()
             );
         }
 
