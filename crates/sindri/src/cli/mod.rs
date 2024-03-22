@@ -4,6 +4,7 @@ pub mod config;
 pub mod deploy;
 pub mod run;
 pub mod scan;
+pub mod update;
 
 /// `sindri` - The build tool for yggdrasil
 ///
@@ -52,4 +53,5 @@ pub enum Commands {
     Scan(scan::Scan),
     #[command(subcommand)]
     Config(config::ConfigCommand),
+    Update(update::Update),
 }

@@ -23,6 +23,7 @@ async fn main() -> Result<()> {
         Commands::Run(opts) => opts.run(config).await?,
         Commands::Scan(opts) => opts.scan(config).await?,
         Commands::Config(opts) => opts.config()?,
+        Commands::Update(opts) => opts.update().await?,
     }
 
     Ok(())
