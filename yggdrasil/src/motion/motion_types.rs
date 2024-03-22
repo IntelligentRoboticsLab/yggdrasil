@@ -1,6 +1,6 @@
 use crate::motion::motion_util::lerp;
 use miette::{miette, IntoDiagnostic, Result};
-use nidhogg::types::JointArray;
+use nidhogg::types::{FillExt, JointArray};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use serde_with::{serde_as, DurationSecondsWithFrac};
@@ -8,9 +8,11 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::{path::Path, time::Duration};
 
-use std::time::SystemTime;
+use std::time::Instant;
 
 use toml;
+
+use super::motion_manager::ActiveMotion;
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -82,10 +84,11 @@ impl Motion {
     ///
     /// * `path` - the `Path` to the file from which to read the motion.
     pub fn from_path(path: &Path) -> Result<Motion> {
-        let motion_path = path.with_extension(".json");
+        let motion_path = path.with_extension("json");
 
         // checking whether the specified complex motion file has been generated
-        if !motion_path.exists() {
+        // if !motion_path.exists() {
+        if true {
             // if not, we generate it based on the existing config file
             let motion_config_data = std::fs::read_to_string(path).into_diagnostic()?;
             let config: MotionSettings =
@@ -101,7 +104,12 @@ impl Motion {
             for submotion_name in config.motion_order.iter() {
                 let submotion_path = Path::new("./assets/motions/submotions")
                     .join(submotion_name)
-                    .with_extension(".json");
+                    .with_extension("json");
+                if !submotion_path.exists() {
+                    return Err(miette! {
+                       "Submotion {:?} does not exist, no file: {:?} could be found", submotion_name, submotion_path
+                    });
+                }
                 let submotion: SubMotion =
                     serde_json::from_reader(File::open(submotion_path).into_diagnostic()?)
                         .expect("Reading Submotion file during Motion construction");
@@ -111,7 +119,6 @@ impl Motion {
             }
 
             // when the Motion has been created, we save it to the assets/motions folder
-
             serde_json::to_writer(
                 &File::create(motion_path).into_diagnostic()?,
                 &complexmotion,
@@ -135,42 +142,70 @@ impl Motion {
     /// # Arguments
     ///
     /// * `current_sub_motion` - the current sub motion the robot is executing.
-    /// * `keyframe_index` - the index of the previous keyframe, in the current submotion.
-    /// * `movement_start` - the exact time the current movement has started executing.
+    /// * `active_motion` - the currently active motion
     pub fn get_position(
         &self,
         current_sub_motion: &String,
-        keyframe_index: &mut i32,
-        movement_start: &mut SystemTime,
+        active_motion: &mut ActiveMotion,
     ) -> Option<JointArray<f32>> {
         let keyframes = &self.submotions[current_sub_motion].keyframes;
 
         // Check if we have reached the end of the current submotion
-        if keyframes.len() >= *keyframe_index as usize + 2 {
-            // if the current movement has been completed:
-            if movement_start.elapsed().unwrap().as_secs_f32()
-                > keyframes[*keyframe_index as usize + 1]
-                    .duration
-                    .as_secs_f32()
-            {
-                // update the index
-                *keyframe_index += 1;
-
-                // update the time of the start of the movement
-                *movement_start = SystemTime::now();
-            }
-
-            return Some(lerp(
-                &keyframes[*keyframe_index as usize].target_position,
-                &keyframes[*keyframe_index as usize + 1].target_position,
-                (movement_start.elapsed().unwrap()).as_secs_f32()
-                    / keyframes[*keyframe_index as usize + 1]
-                        .duration
-                        .as_secs_f32(),
-            ));
+        if keyframes.len() < active_motion.prev_keyframe_index as usize + 2 {
+            return None;
         }
 
-        return None;
+        // if the current movement has been completed:
+        if active_motion.movement_start.elapsed().as_secs_f32()
+            > keyframes[active_motion.prev_keyframe_index as usize + 1]
+                .duration
+                .as_secs_f32()
+        {
+            // update the index
+            active_motion.prev_keyframe_index += 1;
+
+            // update the time of the start of the movement
+            active_motion.movement_start = Instant::now();
+        }
+
+        let zero = &JointArray::<f32>::fill(0.0);
+        let one = &JointArray::<f32>::fill(1.0);
+
+        println!(
+            "movement_start.elapsed(): {:?}",
+            active_motion.movement_start.elapsed().as_secs_f32()
+        );
+        println!(
+            "keyframes.duration: {:?}",
+            keyframes[active_motion.prev_keyframe_index as usize + 1]
+                .duration
+                .as_secs_f32()
+        );
+        println!("keyframe index: {:?}", active_motion.prev_keyframe_index);
+        println!("movement_start: {:?}", active_motion.movement_start);
+        println!(
+            "next position: {:?}\n\n",
+            Some(
+                lerp(
+                    zero,
+                    one,
+                    (active_motion.movement_start.elapsed()).as_secs_f32()
+                        / keyframes[active_motion.prev_keyframe_index as usize + 1]
+                            .duration
+                            .as_secs_f32(),
+                )
+                .right_ankle_pitch
+            )
+        );
+
+        return Some(lerp(
+            &keyframes[active_motion.prev_keyframe_index as usize].target_position,
+            &keyframes[active_motion.prev_keyframe_index as usize + 1].target_position,
+            (active_motion.movement_start.elapsed()).as_secs_f32()
+                / keyframes[active_motion.prev_keyframe_index as usize + 1]
+                    .duration
+                    .as_secs_f32(),
+        ));
     }
 
     pub fn initial_movement(&self, submotion_name: &String) -> &Movement {
@@ -188,4 +223,5 @@ pub enum MotionType {
     FallLeftways,
     FallRightways,
     Neutral,
+    Test,
 }

@@ -115,20 +115,6 @@ pub fn reached_position(
         .zip(target_position.clone())
         .map(|(curr, target)| target - error_margin <= curr && curr <= target + error_margin);
 
-    println!(
-        "CHECK1 {:?} {:?} {:?}",
-        current_position.right_shoulder_pitch,
-        target_position.right_shoulder_pitch,
-        t.right_shoulder_pitch
-    );
-
-    println!(
-        "CHECK {:?} {:?} {:?}",
-        current_position.left_shoulder_pitch,
-        target_position.left_shoulder_pitch,
-        t.left_shoulder_pitch
-    );
-
     // Ignore hands.
     t.left_hand = true;
     t.right_hand = true;

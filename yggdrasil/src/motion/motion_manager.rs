@@ -5,7 +5,7 @@ use miette::Result;
 use nidhogg::NaoState;
 use std::collections::HashMap;
 use std::path::Path;
-use std::time::SystemTime;
+use std::time::Instant;
 use tyr::prelude::*;
 
 #[derive(Clone)]
@@ -17,7 +17,7 @@ pub struct ActiveMotion {
     /// Previous Keyframe index
     pub prev_keyframe_index: i32,
     /// Current movement starting time
-    pub movement_start: SystemTime,
+    pub movement_start: Instant,
 }
 
 impl ActiveMotion {
@@ -60,7 +60,7 @@ impl ActiveMotion {
 
         self.cur_sub_motion = (submotion_name, self.cur_sub_motion.1 + 1);
         self.prev_keyframe_index = 0;
-        self.movement_start = SystemTime::now();
+        self.movement_start = Instant::now();
 
         Some(self.clone())
     }
@@ -72,9 +72,9 @@ pub struct MotionManager {
     /// Keeps track of information about the active motion.
     pub active_motion: Option<ActiveMotion>,
     /// Keeps track of when the execution of a motion started.
-    pub motion_execution_starting_time: Option<SystemTime>,
+    pub motion_execution_starting_time: Option<Instant>,
     // Keeps track of when the execution of the current submotion started.
-    pub submotion_execution_starting_time: Option<SystemTime>,
+    pub submotion_execution_starting_time: Option<Instant>,
     /// Contains the mapping from `MotionTypes` to `Motion`.
     pub motions: HashMap<MotionType, Motion>,
 }
@@ -140,7 +140,7 @@ impl MotionManager {
             cur_sub_motion: (chosen_motion.motion_settings.motion_order[0].clone(), 0),
             prev_keyframe_index: 0,
             motion: chosen_motion,
-            movement_start: SystemTime::now(),
+            movement_start: Instant::now(),
         });
     }
 
@@ -160,24 +160,25 @@ impl MotionManager {
 pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
     let mut motion_manager = MotionManager::new();
     // Add new motions here!
-    motion_manager.add_motion(
-        MotionType::FallForwards,
-        "./assets/motions/fallforwards.json",
-    )?;
-    motion_manager.add_motion(
-        MotionType::FallBackwards,
-        "./assets/motions/fallbackwards.json",
-    )?;
-    motion_manager.add_motion(
-        MotionType::FallLeftways,
-        "./assets/motions/fallleftways.json",
-    )?;
-    motion_manager.add_motion(
-        MotionType::FallRightways,
-        "./assets/motions/fallrightways.json",
-    )?;
-    motion_manager.add_motion(MotionType::Neutral, "./assets/motions/neutral.json")?;
-    motion_manager.add_motion(MotionType::Example, "./assets/motions/example.json")?;
+    motion_manager.add_motion(MotionType::Test, "./assets/motions/complex_test.toml")?;
+    // motion_manager.add_motion(
+    //     MotionType::FallForwards,
+    //     "./assets/motions/fallforwards.json",
+    // )?;
+    // motion_manager.add_motion(
+    //     MotionType::FallBackwards,
+    //     "./assets/motions/fallbackwards.json",
+    // )?;
+    // motion_manager.add_motion(
+    //     MotionType::FallLeftways,
+    //     "./assets/motions/fallleftways.json",
+    // )?;
+    // motion_manager.add_motion(
+    //     MotionType::FallRightways,
+    //     "./assets/motions/fallrightways.json",
+    // )?;
+    // motion_manager.add_motion(MotionType::Neutral, "./assets/motions/neutral.json")?;
+    // motion_manager.add_motion(MotionType::Example, "./assets/motions/example.json")?;
     storage.add_resource(Resource::new(motion_manager))?;
 
     Ok(())
@@ -221,7 +222,7 @@ fn select_routine(mut active_motion: ActiveMotion, routine: FailRoutine) -> Opti
         // retry the previous submotion
         FailRoutine::Retry => {
             active_motion.prev_keyframe_index = 0;
-            active_motion.movement_start = SystemTime::now();
+            active_motion.movement_start = Instant::now();
             Some(active_motion)
         }
     }

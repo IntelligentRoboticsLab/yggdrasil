@@ -3,6 +3,9 @@ use miette::Result;
 use nidhogg::NaoState;
 use tyr::prelude::*;
 
+use crate::motion::motion_manager::MotionManager;
+use crate::motion::motion_types::MotionType;
+
 pub struct MotionRecorder;
 
 impl Module for MotionRecorder {
@@ -12,9 +15,10 @@ impl Module for MotionRecorder {
 }
 
 #[system]
-fn register_button_press(head_button: &mut HeadButtons, naostate: &NaoState) -> Result<()> {
+fn register_button_press(head_button: &mut HeadButtons, mmng: &mut MotionManager) -> Result<()> {
     if head_button.middle.is_tapped() {
-        println!("{:?}", naostate.position);
+        // println!("-----------------\n{:?}\n\n", naostate.position);
+        mmng.start_new_motion(MotionType::Test)
     }
     Ok(())
 }
