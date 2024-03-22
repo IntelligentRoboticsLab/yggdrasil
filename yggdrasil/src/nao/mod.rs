@@ -10,7 +10,11 @@ use nidhogg::{
     HardwareInfo, NaoBackend, NaoControlMessage, NaoState,
 };
 
+#[cfg(not(feature = "local"))]
 const LOLA_SOCKET_PATH: &str = "/tmp/yggdrasil";
+
+#[cfg(feature = "local")]
+const LOLA_SOCKET_PATH: &str = "/tmp/robocup";
 
 #[derive(Clone, Debug)]
 /// Information that uniquely identifies a robot
