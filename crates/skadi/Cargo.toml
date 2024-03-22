@@ -13,3 +13,4 @@ nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
 serde = { workspace = true }
 serde_with = { workspace = true }
 serde_json = { workspace = true }
+clearscreen = "2.0.1"

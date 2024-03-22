@@ -1,21 +1,14 @@
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 
 use nidhogg::{types::{FillExt, JointArray}, NaoControlMessage, NaoState};
 use yggdrasil::filter::button::{LeftFootButtons, RightFootButtons, HeadButtons};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
-use std::collections::HashMap;
 use std::path::Path;
-use std::string::ToString;
 use miette::{IntoDiagnostic, Result};
 use yggdrasil::prelude::*;
 
-// I have setup a connection to Lola, however it it necessary to write a message to the backend very 12ms. 
-// The write call to the backend end is blocking. So if you make a loop and write in it every iteration, that should work.
-// The difficult thing wil be, reading user input, but not blocking on it and still making sure messages are sent. 
-
-// Dario note: We will need to add threads, async, etc. USE TOKIO, WATCH TUTORIALS
 
 
 pub struct Sk;
@@ -37,7 +30,7 @@ pub enum ConditionalVariable {
     AngleY,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SubMotion {
     pub joint_stifness: f32,
     pub chest_angle_bound_upper: f32,
@@ -54,8 +47,9 @@ pub struct MotionCondition {
     pub max: f32,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub enum FailRoutine {
+    #[default]
     Retry,
     Abort,
     Catch,
@@ -65,7 +59,7 @@ impl Module for Sk {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_resource(Resource::new(MotionCapResources::new()))?
-            .add_system(register_button_press))
+            .add_system(register_button_press.after(yggdrasil::filter::button::button_filter)))
     }
 }
 
@@ -73,11 +67,13 @@ pub struct MotionCapResources {
     pub locked: bool,
     pub new_motion_init: bool,
     pub motion_counter: u32,
+    pub currentmotion: SubMotion,
+    pub submotion_path: PathBuf,
 }
 
 impl MotionCapResources {
     fn new() -> MotionCapResources {
-        MotionCapResources { locked: false, new_motion_init: false, motion_counter: 0}
+        MotionCapResources { locked: false, new_motion_init: false, motion_counter: 0, currentmotion: SubMotion::default(), submotion_path: PathBuf::default()}
     }
 }
 
@@ -111,20 +107,38 @@ fn register_button_press(
     }
     if head_button.middle.is_tapped() {
         if !motioncapresources.new_motion_init {
-            println!("Initialize new motion");
-            let submotion_path = Path::new("/home/nao/assets/motions/submotions")
+            clearscreen::clear().expect("failed to clear screen");
+            println!("New motion initialized.");
+            motioncapresources.submotion_path = Path::new("/home/nao/assets/motions/submotions")
                     .join(format!("new_motion{}", motioncapresources.motion_counter.clone()))
                     .with_extension("json");
             
-            
-
-            serde_json::to_writer_pretty(&File::create(submotion_path).into_diagnostic()?, &naostate.position.clone()).into_diagnostic()?;
-            //TODO: initialize a new motion, use svisser/damageprevention (motiontypes.rs en de assets). create json file in correct format in order for us to add keyframes
+            motioncapresources.currentmotion = SubMotion {
+                joint_stifness: 0.7,
+                chest_angle_bound_upper: 0.4,
+                chest_angle_bound_lower: -0.4,
+                fail_routine: FailRoutine::Retry,
+                conditions: Vec::new(),
+                keyframes: Vec::new()
+            };
+            motioncapresources.new_motion_init = true;
+        }
+        else {
+            println!("Saving file to {:?}", motioncapresources.submotion_path);
+            serde_json::to_writer_pretty(&File::create(motioncapresources.submotion_path.clone()).into_diagnostic()?, &motioncapresources.currentmotion).into_diagnostic()?;
+            motioncapresources.new_motion_init = false;
+            motioncapresources.motion_counter += 1;
         }
     }
     if head_button.rear.is_tapped() {
-        println!("Head Rear Pressed!");
-        println!("{:?}", naostate.position.clone());
+        if motioncapresources.new_motion_init {
+            println!("Keyframe recorded:");
+            println!("{:?}", naostate.position.clone());
+            motioncapresources.currentmotion.keyframes.push(Movement{target_position: naostate.position.clone(), duration: Duration::from_secs(1)});
+        }
+        else {
+            println!("No motion recording active, press the middle headbutton to initialize a movement.")
+        }        
         
     }
     Ok(())
