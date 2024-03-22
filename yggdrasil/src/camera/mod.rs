@@ -30,7 +30,7 @@ pub struct CameraSettings {
     pub num_buffers: u32,
     pub flip_horizontally: bool,
     pub flip_vertically: bool,
-    pub matrix: CalibrationConfig,
+    pub calibration: CalibrationConfig,
 }
 
 /// This module captures images using the top- and bottom camera of the NAO.
