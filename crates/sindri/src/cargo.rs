@@ -114,7 +114,7 @@ pub fn assert_valid_bin(bin: &str) -> Result<(), CargoError> {
         .workspace
         .iter()
         .flat_map(|workspace| workspace.members.clone())
-        .flat_map(|member| glob::glob_with(&member, Default::default()))
+        .flat_map(|member| glob::glob_with(&member, glob::MatchOptions::new()))
         .flatten()
         .filter_map(core::result::Result::ok)
         .collect();
