@@ -2628,6 +2628,7 @@ dependencies = [
  "image",
  "linuxvideo",
  "miette",
+ "nalgebra",
  "thiserror",
  "turbojpeg",
 ]

@@ -375,13 +375,11 @@ fn draw_lines(
             let (x2, y2) = line[1];
 
             matrix
-                .pixel_to_ground(point![x1 - 320.0, y1 - 240.0], 0.0)
-                // .pixel_to_ground(point![x1, y1], 0.0)
+                .pixel_to_ground(point![x1, y1], 0.0)
                 .ok()
                 .and_then(|p1| {
                     matrix
-                        .pixel_to_ground(point![x2 - 320.0, y2 - 240.0], 0.0)
-                        // .pixel_to_ground(point![x2, y2], 0.0)
+                        .pixel_to_ground(point![x2, y2], 0.0)
                         .ok()
                         .map(|p2| [(p1[0], p1[1], p1[2]), (p2[0], p2[1], p2[2])])
                 })

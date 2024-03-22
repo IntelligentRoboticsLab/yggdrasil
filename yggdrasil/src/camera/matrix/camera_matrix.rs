@@ -155,7 +155,7 @@ impl CameraMatrix {
         );
 
         Self {
-            optical_center: cc_optical_center,
+            optical_center: optical_center_scaled,
             camera_to_head,
             robot_to_camera: camera_to_robot.inverse(),
             camera_to_ground,
