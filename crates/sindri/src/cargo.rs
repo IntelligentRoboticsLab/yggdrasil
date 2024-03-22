@@ -108,37 +108,24 @@ pub async fn build(
 ///
 /// This will result in an error if the command isn't executed in a cargo workspace, or if the provided bin isn't found.
 pub fn assert_valid_bin(bin: &str) -> Result<(), CargoError> {
-    let manifest = cargo_toml::Manifest::from_path("./Cargo.toml").map_err(CargoError::Manifest)?;
-
-    let members: Vec<_> = manifest
+    cargo_toml::Manifest::from_path("./Cargo.toml")
+        .map_err(CargoError::Manifest)?
         .workspace
         .iter()
         .flat_map(|workspace| workspace.members.clone())
         .flat_map(|member| glob::glob_with(&member, glob::MatchOptions::new()))
         .flatten()
         .filter_map(core::result::Result::ok)
-        .collect();
-
-    for member in members {
-        let mut path = member;
-        path.push("Cargo.toml");
-
-        if !path.exists() {
-            continue;
-        }
-
-        let member_manifest =
-            cargo_toml::Manifest::from_path(&path).map_err(CargoError::Manifest)?;
-
-        for member_bin in member_manifest.bin {
-            if let Some(member_bin_name) = member_bin.name {
-                if member_bin_name == bin {
-                    return Ok(());
-                }
-            }
-        }
-    }
-
-    // We couldn't find it the bin!
-    Err(CargoError::InvalidBin(bin.to_string()))?
+        .map(|mut member| {
+            member.push("Cargo.toml");
+            member
+        })
+        .filter(|path| path.exists() && path.is_file())
+        .map(|path| cargo_toml::Manifest::from_path(path).map_err(CargoError::Manifest))
+        .filter_map(core::result::Result::ok)
+        .flat_map(|manifest| manifest.bin)
+        .filter_map(|bin| bin.name)
+        .any(|name| name == bin)
+        .then_some(())
+        .ok_or(CargoError::InvalidBin(bin.to_string()))
 }
