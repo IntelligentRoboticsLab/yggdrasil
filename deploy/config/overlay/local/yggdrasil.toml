@@ -1,0 +1,11 @@
+[camera.top]
+# The path to the camera device.
+path = "/dev/video42"
+# Whether the image should be flipped horizontally.
+flip_horizontally = false
+# Whether the image should be flipped vertically.
+flip_vertically = false
+
+[camera.bottom]
+# The path to the camera device.
+path = "/dev/video43"

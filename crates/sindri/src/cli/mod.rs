@@ -1,5 +1,6 @@
 use clap::Parser;
 
+pub mod config;
 pub mod deploy;
 pub mod run;
 pub mod scan;
@@ -42,14 +43,6 @@ pub mod record;
 pub struct Cli {
     #[clap(subcommand)]
     pub action: Commands,
-
-    /// Enable verbose logging
-    #[clap(short, long)]
-    pub verbose: bool,
-
-    /// Specify bin target
-    #[clap(global = true, long, default_value = "yggdrasil")]
-    pub bin: String,
 }
 
 /// All possible commands for the cli, used for clap derive macros.
@@ -59,4 +52,6 @@ pub enum Commands {
     Run(run::Run),
     Scan(scan::Scan),
     Record(record::Record),
+    #[command(subcommand)]
+    Config(config::ConfigCommand),
 }

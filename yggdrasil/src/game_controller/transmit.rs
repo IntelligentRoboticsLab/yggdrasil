@@ -1,3 +1,4 @@
+use super::GameControllerConfig;
 use super::GameControllerData;
 
 use bifrost::communication::{GameControllerReturnMessage, GAME_CONTROLLER_RETURN_PORT};
@@ -16,8 +17,6 @@ use miette::IntoDiagnostic;
 
 use crate::prelude::*;
 
-const GAME_CONTROLLER_RETURN_DELAY: Duration = Duration::from_millis(500);
-
 pub(super) struct GameControllerTransmitModule;
 
 impl Module for GameControllerTransmitModule {
@@ -28,32 +27,35 @@ impl Module for GameControllerTransmitModule {
     }
 }
 
+struct TransmitGameControllerData {
+    player_num: u8,
+    team_num: u8,
+    fallen: u8,
+    pose: [f32; 3],
+    ball_age: f32,
+    ball: [f32; 2],
+}
+
 async fn transmit_game_controller_return_message(
     game_controller_socket: Arc<UdpSocket>,
     last_transmitted_return_message: Instant,
     mut game_controller_address: SocketAddr,
+    game_controller_return_delay: Duration,
+    transmit_game_controller_data: TransmitGameControllerData,
 ) -> Result<(GameControllerReturnMessage, Instant)> {
     let duration_to_wait = last_transmitted_return_message
-        .add(GAME_CONTROLLER_RETURN_DELAY)
+        .add(game_controller_return_delay)
         .duration_since(Instant::now());
     sleep(duration_to_wait).await;
 
-    // TODO: Substitute with real data from resources and/or configs.
-    let robot_number = 2;
-    let team_number = 8;
-    let fallen = false;
-    let pose = [0f32; 3];
-    let ball_age = -1f32;
-    let ball_position = [0f32; 2];
-
     let mut message_buffer = [0u8; size_of::<GameControllerReturnMessage>()];
     let game_controller_message = GameControllerReturnMessage::new(
-        robot_number,
-        team_number,
-        fallen as u8,
-        pose,
-        ball_age,
-        ball_position,
+        transmit_game_controller_data.player_num,
+        transmit_game_controller_data.team_num,
+        transmit_game_controller_data.fallen,
+        transmit_game_controller_data.pose,
+        transmit_game_controller_data.ball_age,
+        transmit_game_controller_data.ball,
     );
     game_controller_message
         .encode(message_buffer.as_mut_slice())
@@ -74,11 +76,21 @@ fn transmit_system(
     transmit_game_controller_return_message_task: &mut AsyncTask<
         Result<(GameControllerReturnMessage, Instant)>,
     >,
+    config: &GameControllerConfig,
 ) -> Result<()> {
     let Some((game_controller_address, mut last_transmitted_update_timestamp)) =
         game_controller_data.game_controller_address
     else {
         return Ok(());
+    };
+
+    let transmit_game_controller_data = TransmitGameControllerData {
+        player_num: config.player_number,
+        team_num: config.team_number,
+        fallen: 0,
+        pose: [0f32; 3],
+        ball_age: 0.0,
+        ball: [0f32; 2],
     };
 
     match transmit_game_controller_return_message_task.poll() {
@@ -96,6 +108,8 @@ fn transmit_system(
             game_controller_data.socket.clone(),
             last_transmitted_update_timestamp,
             game_controller_address,
+            config.game_controller_return_delay,
+            transmit_game_controller_data,
         ),
     );
 

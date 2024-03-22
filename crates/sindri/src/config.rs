@@ -1,10 +1,32 @@
-use miette::{miette, IntoDiagnostic, Result};
+use miette::{miette, Context, IntoDiagnostic, Result};
 use serde::Deserialize;
 use serde_with::serde_as;
 use std::ops::RangeInclusive;
 use std::process::Stdio;
+use std::path::PathBuf;
 use std::{ffi::OsStr, net::Ipv4Addr};
 use tokio::process::{Child, Command};
+
+// Config location relative to home directory
+const CONFIG_FILE: &str = ".config/sindri/sindri.toml";
+
+pub fn config_file() -> PathBuf {
+    home::home_dir()
+        .expect("Failed to get home directory")
+        .join(CONFIG_FILE)
+}
+
+pub fn load_config() -> Result<Config> {
+    let config_file = config_file();
+
+    let config_data = std::fs::read_to_string(config_file)
+        .into_diagnostic()
+        .wrap_err("Failed to read config file")?;
+
+    toml::de::from_str(&config_data)
+        .into_diagnostic()
+        .wrap_err("Failed to parse config file!")
+}
 
 /// A robot as defined in the sindri configuration
 #[derive(Debug, Deserialize, Clone)]
@@ -95,6 +117,30 @@ impl Robot {
         Ipv4Addr::new(10, u8::from(self.wired), self.team_number, self.number)
     }
 
+    pub fn local<K, V>(
+        &self,
+        command: &str,
+        envs: impl IntoIterator<Item = (K, V)>,
+    ) -> Result<Child>
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        let working_dir = format!(
+            "{}/deploy/",
+            std::env::current_dir().into_diagnostic()?.display()
+        );
+
+        Command::new(command)
+            .current_dir(&working_dir)
+            .envs(envs)
+            .env("ROBOT_ID", &self.number.to_string())
+            .env("ROBOT_NAME", &self.name)
+            .kill_on_drop(true)
+            .spawn()
+            .into_diagnostic()
+    }
+
     /// SSH into the robot and run the provided command.
     ///
     /// This returns the spawned [`Child`] process.
@@ -121,6 +167,7 @@ impl Robot {
             .arg(format!("nao@{}", self.ip()))
             .arg("-t")
             .args(remote_envs)
+            .arg("bash -ilc")
             .args(command.into().split(' ').collect::<Vec<&str>>())
             .kill_on_drop(true)
             .spawn()

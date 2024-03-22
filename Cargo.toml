@@ -1,43 +1,52 @@
 [workspace]
-resolver = "2"
 members = ["crates/*", "yggdrasil"]
+resolver = "2"
 
 [workspace.dependencies]
-async-trait = "0.1.77"
+alsa = "0.8.1"
+async-trait = "0.1.78"
 byteorder = "1.4.3"
 cargo_toml = "0.17.0"
-clap = "4.4.18"
+clap = "4.5.3"
 colored = "2.0.4"
-dyn-clone = "1.0.11"
+derive_more = "0.99.17"
+dialoguer = "0.11.0"
+dyn-clone = "1.0.17"
 enum_dispatch = "0.3.12"
+fast-math = "0.1.1"
 futures = "0.3.28"
+home = "0.5.9"
 image = "0.24.8"
 indicatif = "0.17.8"
 kira = "0.8.7"
-linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git" }
+linreg = "0.2.0"
+linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git", rev = "71e97ee76ccd93f24f20d215a980f2927424fce2" }
 miette = "5.10.0"
-nalgebra = "0.32.3"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git" }
+nalgebra = "0.32.4"
+ndarray = "0.15.6"
+nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "ec691b6edc1585a969807c8f3383d1c7d5ccea8d" }
 num = "0.4.0"
+openvino = { git = "https://github.com/YukumoHunter/openvino-rs.git", branch = "evil-hack", features = [
+  "runtime-linking",
+] }
 petgraph = "0.6.3"
-proc-macro2 = "1.0.78"
+proc-macro2 = "1.0.79"
 quote = "1.0.35"
-rayon = "1.8.1"
+rayon = "1.9.0"
 regex = "1.10.3"
 rerun = { version = "0.13" }
-alsa = "0.8.1"
 rustc_version = "0.4.0"
 serde = "1.0.196"
 serde_json = "1.0.113"
-serde_with = "3.5.1"
+serde_with = "3.7.0"
 ssh2 = "0.9.4"
-syn = "2.0.48"
-thiserror = "1.0.57"
+syn = "2.0.53"
+thiserror = "1.0.58"
 tokio = "1.36.0"
 tokio-test = "0.4.2"
 tokio-tungstenite = "0.20.0"
-toml = "0.8.9"
+toml = "0.8.11"
 tracing = "0.1.37"
 tracing-subscriber = "0.3"
-turbojpeg = "1.0.0"
-walkdir = "2.4.0"
+turbojpeg = "1.0.1"
+walkdir = "2.5.0"

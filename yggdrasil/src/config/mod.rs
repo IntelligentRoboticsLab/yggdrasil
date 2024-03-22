@@ -1,4 +1,5 @@
 pub mod tyr;
+pub mod yggdrasil;
 
 use std::path::{Path, PathBuf};
 
@@ -8,6 +9,7 @@ use ::tyr::tasks::TaskModule;
 use odal::{ConfigKind, Error, ErrorKind};
 
 use tyr::TyrConfig;
+use yggdrasil::YggdrasilConfig;
 
 /// This module adds functionality to load configuration structs from files.
 ///
@@ -46,13 +48,26 @@ impl Module for ConfigModule {
     fn initialize(self, app: App) -> miette::Result<App> {
         app.add_startup_system(initialize_config_roots)?
             .init_config::<TyrConfig>()?
+            .init_config::<YggdrasilConfig>()?
             .add_startup_system(tyr::configure_tyr_hack)?
+            .add_startup_system(init_subconfigs)?
             .add_module(TaskModule)
     }
 }
 
 #[startup_system]
-fn initialize_config_roots(storage: &mut Storage, info: &RobotInfo) -> miette::Result<()> {
+fn init_subconfigs(storage: &mut Storage, yggdrasil_config: &mut YggdrasilConfig) -> Result<()> {
+    storage.add_resource(Resource::new(yggdrasil_config.camera.clone()))?;
+    storage.add_resource(Resource::new(yggdrasil_config.filter.clone()))?;
+    storage.add_resource(Resource::new(yggdrasil_config.game_controller.clone()))?;
+    storage.add_resource(Resource::new(yggdrasil_config.primary_state.clone()))?;
+    storage.add_resource(Resource::new(yggdrasil_config.vision.clone()))?;
+
+    Ok(())
+}
+
+#[startup_system]
+fn initialize_config_roots(storage: &mut Storage, info: &RobotInfo) -> Result<()> {
     let main_dir = PathBuf::from("./config/");
     let overlay_dir = PathBuf::from(format!("./config/overlay/{}/", info.robot_name));
 
@@ -91,13 +106,13 @@ impl<T: Into<PathBuf>> From<T> for OverlayConfigDir {
 /// Trait for adding configs to an [`App`]
 pub trait ConfigResource {
     /// Adds the configuration `T` to the app
-    fn init_config<T: Config + Send + Sync + 'static>(self) -> miette::Result<Self>
+    fn init_config<T: Config + Send + Sync + 'static>(self) -> Result<Self>
     where
         Self: Sized;
 }
 
 impl ConfigResource for App {
-    fn init_config<T: Config + Send + Sync + 'static>(self) -> miette::Result<Self>
+    fn init_config<T: Config + Send + Sync + 'static>(self) -> Result<Self>
     where
         Self: Sized,
     {
@@ -114,7 +129,7 @@ fn _init_config<T: Config + Send + Sync + 'static>(
     storage: &mut Storage,
     main_dir: &MainConfigDir,
     overlay_dir: &OverlayConfigDir,
-) -> crate::Result<()> {
+) -> Result<()> {
     // add config file path to the config roots
     let main_path: &Path = main_dir.0.as_ref();
     let overlay_path: &Path = overlay_dir.0.as_ref();

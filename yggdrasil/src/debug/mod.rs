@@ -1,14 +1,16 @@
-use std::net::Ipv4Addr;
+#[cfg(feature = "rerun")]
+use std::{convert::Into, time::Instant};
 
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
-use nidhogg::types::Color;
 
-use crate::{
-    camera::Image,
-    nao::{Cycle, RobotInfo},
-    prelude::*,
-};
+use nidhogg::types::RgbU8;
+use std::net::Ipv4Addr;
+
+use crate::{camera::Image, nao::Cycle, prelude::*};
+
+#[cfg(not(feature = "local"))]
+use crate::{config::yggdrasil::YggdrasilConfig, nao::RobotInfo};
 
 /// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
 ///
@@ -31,6 +33,8 @@ impl Module for DebugModule {
 pub struct DebugContext {
     #[cfg(feature = "rerun")]
     rec: rerun::RecordingStream,
+    #[cfg(feature = "rerun")]
+    start_time: std::time::Instant,
 }
 
 #[allow(unused)]
@@ -61,7 +65,10 @@ impl DebugContext {
                 )
                 .into_diagnostic()?;
 
-            Ok(DebugContext { rec })
+            Ok(DebugContext {
+                rec,
+                start_time: Instant::now(),
+            })
         }
 
         #[cfg(not(feature = "rerun"))]
@@ -86,11 +93,19 @@ impl DebugContext {
     pub fn log_image(&self, path: impl AsRef<str>, img: Image, jpeg_quality: i32) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
+            self.rec.set_time_seconds(
+                "image",
+                img.timestamp()
+                    .duration_since(self.start_time)
+                    .as_secs_f64(),
+            );
             let jpeg = img.yuyv_image().to_jpeg(jpeg_quality)?;
             let tensor_data =
                 rerun::TensorData::from_jpeg_bytes(jpeg.to_owned()).into_diagnostic()?;
             let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
+
             self.rec.log(path.as_ref(), &img).into_diagnostic()?;
+            self.rec.disable_timeline("image");
         }
 
         Ok(())
@@ -103,7 +118,7 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         name: impl AsRef<str>,
-        color: Color,
+        color: RgbU8,
         line_width: f32,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
@@ -113,11 +128,7 @@ impl DebugContext {
                 .log_timeless(
                     path.as_ref(),
                     &rerun::SeriesLine::new()
-                        .with_color([
-                            (color.red * 255.0) as u8,
-                            (color.green * 255.0) as u8,
-                            (color.blue * 255.0) as u8,
-                        ])
+                        .with_color(Into::<[u8; 3]>::into(color))
                         .with_name(name.as_ref())
                         .with_width(line_width),
                 )
@@ -147,13 +158,116 @@ impl DebugContext {
 
         Ok(())
     }
+
+    pub fn log_text(&self, path: impl AsRef<str>, text: String) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(path.as_ref(), &rerun::TextLog::new(text))
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn log_point2d(&self, path: impl AsRef<str>, x: f32, y: f32) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(path.as_ref(), &rerun::Points2D::new([(x, y)]))
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn log_points2d_for_image(
+        &self,
+        path: impl AsRef<str>,
+        points: &[(f32, f32)],
+        img: Image,
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let image_timestamp = img.timestamp();
+            self.rec.set_time_seconds(
+                "image",
+                image_timestamp
+                    .duration_since(self.start_time)
+                    .as_secs_f64(),
+            );
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Points2D::new(points).with_colors(vec![
+                        rerun::Color::from_rgb(
+                            color.red,
+                            color.green,
+                            color.blue,
+                        );
+                        points.len()
+                    ]),
+                )
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn log_lines2d_for_image(
+        &self,
+        path: impl AsRef<str>,
+        lines: &[[(f32, f32); 2]],
+        img: Image,
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let image_timestamp = img.timestamp();
+            self.rec.set_time_seconds(
+                "image",
+                image_timestamp
+                    .duration_since(self.start_time)
+                    .as_secs_f64(),
+            );
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::LineStrips2D::new(lines).with_colors(vec![
+                        rerun::Color::from_rgb(
+                            color.red,
+                            color.green,
+                            color.blue,
+                        );
+                        lines.len()
+                    ]),
+                )
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
 }
 
 #[startup_system]
-fn init_rerun(storage: &mut Storage, ad: &AsyncDispatcher, robot_info: &RobotInfo) -> Result<()> {
+fn init_rerun(
+    storage: &mut Storage,
+    ad: &AsyncDispatcher,
+    #[cfg(not(feature = "local"))] robot_info: &RobotInfo,
+    #[cfg(not(feature = "local"))] yggdrasil_config: &YggdrasilConfig,
+) -> Result<()> {
+    #[cfg(feature = "local")]
+    let server_address = Ipv4Addr::LOCALHOST;
     // Manually set the server address to the robot's IP address, instead of 0.0.0.0
     // to ensure the rerun server prints the correct connection URL on startup
-    let server_address = Ipv4Addr::new(10, 0, 8, robot_info.robot_id as u8);
+    #[cfg(not(feature = "local"))]
+    let server_address = Ipv4Addr::new(
+        10,
+        0,
+        yggdrasil_config.game_controller.team_number,
+        robot_info.robot_id as u8,
+    );
 
     // init debug context with 5% of the total memory, as cache size limit.
     let ctx = DebugContext::init("yggdrasil", server_address, 0.05, ad)?;
