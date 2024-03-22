@@ -115,6 +115,8 @@ fn register_button_press(
             let submotion_path = Path::new("/home/nao/assets/motions/submotions")
                     .join(format!("new_motion{}", motioncapresources.motion_counter.clone()))
                     .with_extension("json");
+            
+            
 
             serde_json::to_writer_pretty(&File::create(submotion_path).into_diagnostic()?, &naostate.position.clone()).into_diagnostic()?;
             //TODO: initialize a new motion, use svisser/damageprevention (motiontypes.rs en de assets). create json file in correct format in order for us to add keyframes
