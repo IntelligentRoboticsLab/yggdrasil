@@ -104,11 +104,16 @@ async fn has_rerun() -> bool {
 
 /// Spawn a rerun viewer in the background.
 fn spawn_rerun_viewer() -> Result<()> {
-    Command::new("rerun")
-        .kill_on_drop(false) // Don't kill the rerun process when sindri exits
+    let mut process = std::process::Command::new("rerun");
+    process
         .stdout(Stdio::null())
         .stderr(Stdio::null())
+        .process_group(0);
+
+    Command::from(process)
+        .kill_on_drop(false)
         .spawn()
         .into_diagnostic()?;
+
     Ok(())
 }
