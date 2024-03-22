@@ -32,7 +32,7 @@ impl Run {
         let local = self.deploy.local;
         let rerun = self.deploy.rerun;
 
-        let has_rerun = has_rerun().await.is_ok_and(|success| success);
+        let has_rerun = has_rerun().await;
 
         if rerun && !has_rerun {
             println!(
@@ -87,18 +87,22 @@ impl Run {
 ///
 /// We check if the `rerun` binary is installed by running `rerun --version` and checking if the
 /// command was successful.
-async fn has_rerun() -> Result<bool> {
-    Ok(Command::new("rerun")
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .into_diagnostic()?
-        .wait_with_output()
-        .await
-        .into_diagnostic()?
-        .status
-        .success())
+async fn has_rerun() -> bool {
+    async fn get_rerun_version() -> Result<bool> {
+        Ok(Command::new("rerun")
+            .arg("--version")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .into_diagnostic()?
+            .wait_with_output()
+            .await
+            .into_diagnostic()?
+            .status
+            .success())
+    }
+
+    get_rerun_version().await.is_ok_and(|success| success)
 }
 
 /// Spawn a rerun viewer in the background.
