@@ -16,10 +16,10 @@ const CAMERA_TOP_PITCH_DEGREES: f32 = 1.2;
 const CAMERA_BOTTOM_PITCH_DEGREES: f32 = 39.7;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
-pub struct CameraConfiguration {
-    extrinsic_rotation: nidhogg::types::Vector3<f32>,
-    focal_lengths: nidhogg::types::Vector2<f32>,
-    cc_optical_center: nidhogg::types::Vector2<f32>,
+pub struct CalibrationConfig {
+    extrinsic_rotation: [f32; 3],
+    focal_lengths: [f32; 2],
+    cc_optical_center: [f32; 2],
 }
 
 #[derive(derive_more::Deref, Default)]

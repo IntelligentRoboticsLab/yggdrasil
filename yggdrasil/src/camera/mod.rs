@@ -12,7 +12,7 @@ use std::{
 
 use heimdall::{Camera, CameraDevice, YuyvImage};
 
-use self::matrix::TopCameraMatrix;
+use self::matrix::{CalibrationConfig, TopCameraMatrix};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
@@ -30,6 +30,7 @@ pub struct CameraSettings {
     pub num_buffers: u32,
     pub flip_horizontally: bool,
     pub flip_vertically: bool,
+    pub matrix: CalibrationConfig,
 }
 
 /// This module captures images using the top- and bottom camera of the NAO.
