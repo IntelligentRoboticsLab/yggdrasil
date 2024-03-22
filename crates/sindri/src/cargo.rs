@@ -1,4 +1,4 @@
-use std::{ffi::OsStr, fmt::Debug, path::Path, result::Result, string::FromUtf8Error};
+use std::{ffi::OsStr, fmt::Debug, result::Result, string::FromUtf8Error};
 
 use miette::Diagnostic;
 
@@ -110,19 +110,33 @@ pub async fn build(
 pub fn assert_valid_bin(bin: &str) -> Result<(), CargoError> {
     let manifest = cargo_toml::Manifest::from_path("./Cargo.toml").map_err(CargoError::Manifest)?;
 
-    let Some(workspace) = manifest.workspace else {
-        Err(CargoError::Workspace)?
-    };
+    let members: Vec<_> = manifest
+        .workspace
+        .clone()
+        .iter()
+        .flat_map(|workspace| workspace.members.clone())
+        .flat_map(|member| glob::glob_with(&member, Default::default()))
+        .flatten()
+        .filter_map(core::result::Result::ok)
+        .collect();
 
-    for item in &workspace.members {
-        let path = Path::new(item);
+    for member in members {
+        let mut path = member;
+        path.push("Cargo.toml");
 
-        if !path.exists() || !path.is_dir() {
+        if !path.exists() {
             continue;
         }
 
-        if path.ends_with(bin) {
-            return Ok(());
+        let member_manifest =
+            cargo_toml::Manifest::from_path(&path).map_err(CargoError::Manifest)?;
+
+        for member_bin in member_manifest.bin {
+            if let Some(member_bin_name) = member_bin.name {
+                if member_bin_name == bin {
+                    return Ok(());
+                }
+            }
         }
     }
 

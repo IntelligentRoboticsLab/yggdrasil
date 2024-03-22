@@ -5965,6 +5965,7 @@ dependencies = [
  "clap",
  "colored",
  "dialoguer",
+ "glob",
  "home",
  "indicatif",
  "local-ip-address",
