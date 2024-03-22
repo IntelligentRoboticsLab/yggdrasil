@@ -121,8 +121,7 @@ pub fn assert_valid_bin(bin: &str) -> Result<(), CargoError> {
             member
         })
         .filter(|path| path.exists() && path.is_file())
-        .map(|path| cargo_toml::Manifest::from_path(path).map_err(CargoError::Manifest))
-        .filter_map(core::result::Result::ok)
+        .flat_map(|path| cargo_toml::Manifest::from_path(path).map_err(CargoError::Manifest))
         .flat_map(|manifest| manifest.bin)
         .filter_map(|bin| bin.name)
         .any(|name| name == bin)
