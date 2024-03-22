@@ -74,7 +74,7 @@ impl Record {
         pb.set_prefix("Compiling");
 
         // Build yggdrasil with cargo
-        cargo::build("skadi", Profile::Release, Some(ROBOT_TARGET), Vec::new()).await?;
+        cargo::build("skadi", Profile::Release, Some(ROBOT_TARGET), &Vec::new(), None).await?;
 
         pb.println(format!(
             "{} {} {}{}, {}{}{}",

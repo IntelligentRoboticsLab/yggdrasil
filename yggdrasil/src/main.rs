@@ -20,7 +20,6 @@ fn main() -> Result<()> {
         .add_module(MlModule)?
         .add_module(FilterModule)?
         .add_module(CameraModule)?
-        .add_module(MotionModule)?
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?
         .add_module(PrimaryStateModule)?
