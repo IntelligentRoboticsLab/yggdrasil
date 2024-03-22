@@ -292,8 +292,7 @@ async fn create_sftp_connection(ip: Ipv4Addr) -> Result<Sftp> {
         TcpStream::connect(format!("{ip}:22")),
     )
     .await
-    .map_err(Error::ElapsedError)?
-    .unwrap();
+    .map_err(Error::ElapsedError)??;
     let mut session = Session::new().map_err(|e| Error::SftpError {
         source: e,
         msg: "Failed to create ssh session!".to_owned(),
