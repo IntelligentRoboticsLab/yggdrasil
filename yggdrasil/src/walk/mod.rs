@@ -242,14 +242,14 @@ pub fn run_walking_engine(
         }
     }
 
-    let leg_positions = LegJoints {
-        left_leg: left_leg_joints,
-        right_leg: right_leg_joints,
-    };
-    let leg_stiffness = LegJoints {
-        left_leg: LeftLegJoints::fill(config.leg_stiffness),
-        right_leg: RightLegJoints::fill(config.leg_stiffness),
-    };
+    let leg_positions = LegJoints::builder()
+        .left_leg(left_leg_joints)
+        .right_leg(right_leg_joints)
+        .build();
+    let leg_stiffness = LegJoints::builder()
+        .left_leg(LeftLegJoints::fill(config.leg_stiffness))
+        .right_leg(RightLegJoints::fill(config.leg_stiffness))
+        .build();
 
     let arm_positions = ArmJoints::builder()
         .left_arm(
