@@ -5,7 +5,7 @@ use std::time::Duration;
 use crate::{
     debug::DebugContext,
     filter::button::{ChestButton, HeadButtons},
-    motion::{MotionManager, Priority},
+    motion::arbiter::{MotionArbiter, Priority},
     nao::CycleTime,
     prelude::*,
     primary_state::PrimaryState,
@@ -159,7 +159,7 @@ pub fn run_walking_engine(
     cycle_time: &CycleTime,
     fsr: &ForceSensitiveResistors,
     filtered_gyro: &FilteredGyroscope,
-    motion_manager: &mut MotionManager,
+    motion_arbiter: &mut MotionArbiter,
     dbg: &DebugContext,
 ) -> Result<()> {
     // We don't run the walking engine whenever we're in a state where we shouldn't.
@@ -168,7 +168,7 @@ pub fn run_walking_engine(
     // TODO: We should definitely fix this in the future.deploy/assets deploy/config
     if !primary_state.should_walk() {
         // This sets the robot to be completely unstiff, completely disabling the joint motors.
-        motion_manager.unstiff_legs(Priority::Low);
+        motion_arbiter.unstiff_legs(Priority::Low);
 
         return Ok(());
     }
@@ -276,9 +276,9 @@ pub fn run_walking_engine(
         )
         .build();
 
-    motion_manager
-        .set_legs(leg_positions, leg_stiffness, Priority::Low)
-        .set_arms(arm_positions, arm_stiffness, Priority::Low);
+    motion_arbiter
+        .set_legs(leg_positions, leg_stiffness, Priority::High)
+        .set_arms(arm_positions, arm_stiffness, Priority::High);
 
     Ok(())
 }
