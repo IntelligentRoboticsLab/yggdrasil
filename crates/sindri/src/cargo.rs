@@ -123,8 +123,8 @@ pub fn find_bin_manifest(bin: &str) -> Result<cargo_toml::Manifest, CargoError> 
             manifest
                 .bin
                 .iter()
-                .filter_map(|product| (product.name.as_ref().map(|name| (name == bin))))
-                .next()
+                .filter_map(|product| product.name.clone())
+                .find(|name| name == bin)
                 .map(|_| manifest)
         })
         .ok_or_else(|| CargoError::InvalidBin(bin.to_string()))
