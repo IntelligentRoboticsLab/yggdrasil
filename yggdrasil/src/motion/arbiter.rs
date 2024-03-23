@@ -80,6 +80,12 @@ impl MotionArbiter {
         self.head_settings.priority = None;
     }
 
+    /// Sets the joint position and stifnes of the leg joints.
+    ///
+    /// The joint positions are degrees in radians.
+    ///
+    /// The joint stifness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// stiffness. A value of `-1` will disable the stiffness altogether.
     pub fn set_legs(
         &mut self,
         joint_positions: LegJoints<JointDataType>,
@@ -96,6 +102,12 @@ impl MotionArbiter {
         self
     }
 
+    /// Sets the joint position and stifnes of the arm joints.
+    ///
+    /// The joint positions are degrees in radians.
+    ///
+    /// The joint stifness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// stiffness. A value of `-1` will disable the stiffness altogether.
     pub fn set_arms(
         &mut self,
         joint_positions: ArmJoints<JointDataType>,
@@ -112,6 +124,12 @@ impl MotionArbiter {
         self
     }
 
+    /// Sets the joint position and stifnes of the head joints.
+    ///
+    /// The joint positions are degrees in radians.
+    ///
+    /// The joint stifness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// stiffness. A value of `-1` will disable the stiffness altogether.
     pub fn set_head(
         &mut self,
         joint_positions: HeadJoints<JointDataType>,
@@ -128,6 +146,7 @@ impl MotionArbiter {
         self
     }
 
+    /// Disable the stiffness of the legs.
     pub fn unstiff_legs(&mut self, priority: Priority) -> &mut Self {
         self.set_legs(
             self.leg_settings.joints_position.clone(),
@@ -136,6 +155,7 @@ impl MotionArbiter {
         )
     }
 
+    /// Disable the stiffness of the legs.
     pub fn unstiff_arms(&mut self, priority: Priority) -> &mut Self {
         self.set_arms(
             self.arm_settings.joints_position.clone(),
@@ -144,6 +164,7 @@ impl MotionArbiter {
         )
     }
 
+    /// Disable the stiffness of the legs.
     pub fn unstiff_head(&mut self, priority: Priority) -> &mut Self {
         self.set_head(
             self.head_settings.joints_position.clone(),
