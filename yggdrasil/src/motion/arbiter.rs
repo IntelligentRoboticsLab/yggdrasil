@@ -7,7 +7,7 @@ use crate::{nao, prelude::*};
 
 const STIFFNESS_UNSTIFF: f32 = -1.;
 
-pub struct MotionArbiterModule;
+pub type JointDataType = f32;
 
 /// A module providing the motion arbiter.
 ///
@@ -16,6 +16,8 @@ pub struct MotionArbiterModule;
 ///
 /// This module provides the following resources to the application:
 /// - [`MotionArbiter`]
+pub struct MotionArbiterModule;
+
 impl Module for MotionArbiterModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system(update_nao_control_message.before(nao::write_hardware_info))
@@ -36,8 +38,6 @@ pub fn update_nao_control_message(
     Ok(())
 }
 
-pub type JointDataType = f32;
-
 #[derive(Default)]
 struct JointSettings<T> {
     joints_position: T,
@@ -45,6 +45,12 @@ struct JointSettings<T> {
     priority: Option<Priority>,
 }
 
+/// Arbit the motions of multiple modules requesting motions at the same time.
+///
+/// Modules can request motions through the motion arbiter with a given priority.
+/// Each cycle, the motion arbiter will update the [`NaoControlMessage`] with the motions that have the highest
+/// priorties.
+/// If multiple motion request with the same priority are made, the first request will be chosen.
 #[derive(Default)]
 pub struct MotionArbiter {
     leg_settings: JointSettings<LegJoints<JointDataType>>,
