@@ -9,13 +9,13 @@ const STIFFNESS_UNSTIFF: f32 = -1.;
 
 pub struct MotionArbiterModule;
 
-/// A module providing the motion manager.
+/// A module providing the motion arbiter.
 ///
-/// All systems that want to set joint values using the motion manager, should be executed after
-/// [`clear_priorities`].
+/// All systems that want to set joint values using the motion arbiter, should be executed after
+/// [`update_nao_control_message`].
 ///
 /// This module provides the following resources to the application:
-/// - [`MotionManager`]
+/// - [`MotionArbiter`]
 impl Module for MotionArbiterModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system(update_nao_control_message.before(nao::write_hardware_info))
@@ -74,7 +74,7 @@ impl MotionArbiter {
         current_settings.priority = Some(priority);
     }
 
-    pub fn clear_priorities(&mut self) {
+    fn clear_priorities(&mut self) {
         self.leg_settings.priority = None;
         self.arm_settings.priority = None;
         self.head_settings.priority = None;
@@ -169,11 +169,19 @@ impl MotionArbiter {
     }
 }
 
+/// Priority order for the motion arbiter commands.
+///
+/// Priories are in the range [0, 100].
 pub enum Priority {
+    /// Has priority `10`.
     Low,
+    /// Has priority `30`.
     Medium,
+    /// Has priority `60`.
     High,
+    /// Has priority `90`.
     Critical,
+    /// Custom priority, should be in range [0, 100].
     Custom(u32),
 }
 
@@ -184,7 +192,10 @@ impl Priority {
             Priority::Medium => 30,
             Priority::High => 60,
             Priority::Critical => 90,
-            Priority::Custom(value) => *value,
+            Priority::Custom(value) => {
+                assert!(value <= &100u32);
+                *value
+            }
         }
     }
 }
