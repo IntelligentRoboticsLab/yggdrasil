@@ -103,7 +103,7 @@ impl VersionInfo {
             .arg("-1")
             .arg("--date=short")
             .arg("--format=%H %h %cd")
-            .arg(".")
+            .arg("crates/sindri")
             .output()
         {
             Ok(output) if output.status.success() => output,
