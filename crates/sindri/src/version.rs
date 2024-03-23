@@ -9,7 +9,7 @@ use miette::{miette, Result};
 /// Checks if the current version of matches the current version in the workspace.
 /// If the versions differ, a message is printed to the console
 pub fn check_current_version() {
-    let sindri_version = VersionInfo::create();
+    let sindri_version = VersionInfo::current();
     let Ok(latest_version) = VersionInfo::find_latest() else {
         return;
     };
@@ -69,7 +69,7 @@ impl From<VersionInfo> for clap::builder::Str {
 }
 
 impl VersionInfo {
-    pub fn create() -> VersionInfo {
+    pub fn current() -> VersionInfo {
         let version = option_env!("CARGO_PKG_VERSION")
             .unwrap_or("0.0.0")
             .to_string();
