@@ -7,7 +7,7 @@ pub struct Update {}
 
 impl Update {
     pub async fn update(self) -> Result<()> {
-        crate::cargo::assert_valid_bin("sindri")
+        crate::cargo::find_bin_manifest("sindri")
             .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
 
         tokio::process::Command::new("cargo")

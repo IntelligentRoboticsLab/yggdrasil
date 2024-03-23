@@ -39,7 +39,7 @@ pub mod update;
 /// For more advanced options use `sindri --help`.
 
 #[derive(Parser)]
-#[clap(name = "sindri", version)]
+#[clap(name = "sindri", version = crate::version::VersionInfo::create())]
 pub struct Cli {
     #[clap(subcommand)]
     pub action: Commands,

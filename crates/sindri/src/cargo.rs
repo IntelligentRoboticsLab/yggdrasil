@@ -104,10 +104,7 @@ pub async fn build(
     cargo(cargo_args, envs.unwrap_or_default()).await
 }
 
-/// Assert that the provided bin is valid for the current cargo workspace.
-///
-/// This will result in an error if the command isn't executed in a cargo workspace, or if the provided bin isn't found.
-pub fn assert_valid_bin(bin: &str) -> Result<(), CargoError> {
+pub fn find_bin_manifest(bin: &str) -> Result<cargo_toml::Manifest, CargoError> {
     cargo_toml::Manifest::from_path("./Cargo.toml")
         .map_err(CargoError::Manifest)?
         .workspace
@@ -122,8 +119,17 @@ pub fn assert_valid_bin(bin: &str) -> Result<(), CargoError> {
         })
         .filter(|path| path.exists() && path.is_file())
         .flat_map(|path| cargo_toml::Manifest::from_path(path).map_err(CargoError::Manifest))
-        .flat_map(|manifest| manifest.bin)
-        .filter_map(|bin| bin.name)
-        .find_map(|name| (name == bin).then_some(()))
-        .ok_or(CargoError::InvalidBin(bin.to_string()))
+        .find_map(|manifest| {
+            manifest
+                .bin
+                .iter()
+                .filter_map(|product| product.name.clone())
+                .find(|name| name == bin)
+                .map(|_| manifest)
+        })
+        .ok_or_else(|| CargoError::InvalidBin(bin.to_string()))
+}
+
+pub fn find_bin_version(bin: &str) -> Result<String, CargoError> {
+    find_bin_manifest(bin).map(|manifest| manifest.package().version().to_string())
 }

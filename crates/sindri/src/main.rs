@@ -18,6 +18,8 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
 
+    sindri::version::check_current_version();
+
     match args.action {
         Commands::Deploy(opts) => opts.deploy(config).await?,
         Commands::Run(opts) => opts.run(config).await?,
