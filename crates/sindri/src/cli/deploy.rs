@@ -1,5 +1,5 @@
 use crate::{
-    cargo::{self, assert_valid_bin, Profile},
+    cargo::{self, find_bin_manifest, Profile},
     config::Config,
     error::{Error, Result},
 };
@@ -106,7 +106,7 @@ pub struct Deploy {
 impl Deploy {
     /// Constructs IP and deploys to the robot
     pub async fn deploy(self, config: Config) -> miette::Result<()> {
-        assert_valid_bin(&self.deploy.bin)
+        find_bin_manifest(&self.deploy.bin)
             .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
 
         let pb = ProgressBar::new_spinner();

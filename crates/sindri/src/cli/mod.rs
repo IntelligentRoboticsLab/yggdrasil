@@ -4,6 +4,7 @@ pub mod config;
 pub mod deploy;
 pub mod run;
 pub mod scan;
+pub mod update;
 
 /// `sindri` - The build tool for yggdrasil
 ///
@@ -38,7 +39,7 @@ pub mod scan;
 /// For more advanced options use `sindri --help`.
 
 #[derive(Parser)]
-#[clap(name = "sindri", version)]
+#[clap(name = "sindri", version = crate::version::VersionInfo::current())]
 pub struct Cli {
     #[clap(subcommand)]
     pub action: Commands,
@@ -52,4 +53,5 @@ pub enum Commands {
     Scan(scan::Scan),
     #[command(subcommand)]
     Config(config::ConfigCommand),
+    Update(update::Update),
 }

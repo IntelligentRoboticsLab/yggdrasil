@@ -1,4 +1,4 @@
-use std::{ffi::OsStr, fmt::Debug, path::Path, result::Result, string::FromUtf8Error};
+use std::{ffi::OsStr, fmt::Debug, result::Result, string::FromUtf8Error};
 
 use miette::Diagnostic;
 
@@ -104,28 +104,32 @@ pub async fn build(
     cargo(cargo_args, envs.unwrap_or_default()).await
 }
 
-/// Assert that the provided bin is valid for the current cargo workspace.
-///
-/// This will result in an error if the command isn't executed in a cargo workspace, or if the provided bin isn't found.
-pub fn assert_valid_bin(bin: &str) -> Result<(), CargoError> {
-    let manifest = cargo_toml::Manifest::from_path("./Cargo.toml").map_err(CargoError::Manifest)?;
+pub fn find_bin_manifest(bin: &str) -> Result<cargo_toml::Manifest, CargoError> {
+    cargo_toml::Manifest::from_path("./Cargo.toml")
+        .map_err(CargoError::Manifest)?
+        .workspace
+        .iter()
+        .flat_map(|workspace| &workspace.members)
+        .flat_map(|member| glob::glob_with(member, glob::MatchOptions::new()))
+        .flatten()
+        .flatten()
+        .map(|mut member| {
+            member.push("Cargo.toml");
+            member
+        })
+        .filter(|path| path.exists() && path.is_file())
+        .flat_map(|path| cargo_toml::Manifest::from_path(path).map_err(CargoError::Manifest))
+        .find_map(|manifest| {
+            manifest
+                .bin
+                .iter()
+                .filter_map(|product| product.name.clone())
+                .find(|name| name == bin)
+                .map(|_| manifest)
+        })
+        .ok_or_else(|| CargoError::InvalidBin(bin.to_string()))
+}
 
-    let Some(workspace) = manifest.workspace else {
-        Err(CargoError::Workspace)?
-    };
-
-    for item in &workspace.members {
-        let path = Path::new(item);
-
-        if !path.exists() || !path.is_dir() {
-            continue;
-        }
-
-        if path.ends_with(bin) {
-            return Ok(());
-        }
-    }
-
-    // We couldn't find it the bin!
-    Err(CargoError::InvalidBin(bin.to_string()))?
+pub fn find_bin_version(bin: &str) -> Result<String, CargoError> {
+    find_bin_manifest(bin).map(|manifest| manifest.package().version().to_string())
 }
