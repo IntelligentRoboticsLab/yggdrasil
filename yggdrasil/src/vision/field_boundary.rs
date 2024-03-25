@@ -28,7 +28,6 @@ impl Module for FieldBoundaryModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_ml_task::<FieldBoundaryModel>()?
-            .add_task::<AsyncTask<FieldBoundaryImage>>()?
             .add_startup_system(init_field_boundary)?
             .add_system(detect_field_boundary)
             .add_system(log_boundary_points))
@@ -156,15 +155,10 @@ fn log_boundary_points(
 /// For keeping track of the image that a field boundary is detected from
 struct FieldBoundaryImage(Image);
 
-/// Puts image in limbo while we wait for the model to finish
-async fn send_image(image: Image) -> FieldBoundaryImage {
-    FieldBoundaryImage(image)
-}
-
 #[system]
 fn detect_field_boundary(
     model: &mut MlTask<FieldBoundaryModel>,
-    image_task: &mut AsyncTask<FieldBoundaryImage>,
+    field_boundary_image: &mut FieldBoundaryImage,
     boundary: &mut FieldBoundary,
     top_image: &TopImage,
 ) -> Result<()> {
@@ -176,9 +170,7 @@ fn detect_field_boundary(
             // We need to keep track of the image we started the inference with
             //
             // TODO: We should find a better way to do this bundling of mltask + metadata
-            image_task
-                .try_spawn(send_image(top_image.deref().clone()))
-                .expect("Failed to spawn image task");
+            *field_boundary_image = FieldBoundaryImage(top_image.deref().clone());
         };
     }
 
@@ -200,10 +192,8 @@ fn detect_field_boundary(
             })
             .collect::<Vec<_>>();
 
-        // Sending of the image should always be started together with the model inference
-        let FieldBoundaryImage(image) = image_task
-            .poll()
-            .expect("Failed to get field boundary image");
+        // Get the image we set when we started inference
+        let image = field_boundary_image.0.clone();
 
         *boundary = fit_model(points, 2, image)?;
     }
@@ -364,6 +354,8 @@ fn fit_model(points: Vec<FieldBoundaryPoint>, step: usize, image: Image) -> Resu
 
 #[startup_system]
 fn init_field_boundary(storage: &mut Storage, top_image: &TopImage) -> Result<()> {
+    let field_boundary_image = FieldBoundaryImage(top_image.deref().clone());
+
     // Initialize the field boundary with a single line at the top of the image
     let boundary = FieldBoundary {
         lines: FieldBoundaryLines::One {
@@ -377,5 +369,8 @@ fn init_field_boundary(storage: &mut Storage, top_image: &TopImage) -> Result<()
         image: top_image.deref().clone(),
     };
 
-    storage.add_resource(Resource::new(boundary))
+    storage.add_resource(Resource::new(field_boundary_image))?;
+    storage.add_resource(Resource::new(boundary))?;
+
+    Ok(())
 }
