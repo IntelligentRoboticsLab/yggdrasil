@@ -28,6 +28,7 @@ impl Module for FieldBoundaryModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_ml_task::<FieldBoundaryModel>()?
+            .add_task::<AsyncTask<FieldBoundaryImage>>()?
             .add_startup_system(init_field_boundary)?
             .add_system(detect_field_boundary)
             .add_system(log_boundary_points))
