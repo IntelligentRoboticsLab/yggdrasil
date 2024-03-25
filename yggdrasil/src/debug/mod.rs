@@ -1,17 +1,14 @@
 #[cfg(feature = "rerun")]
 use std::{convert::Into, net::SocketAddr, time::Instant};
 
+use heimdall::CameraMatrix;
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 
 use nidhogg::types::RgbU8;
 use std::net::IpAddr;
 
-use crate::{
-    camera::{matrix::CameraMatrix, Image},
-    nao::Cycle,
-    prelude::*,
-};
+use crate::{camera::Image, nao::Cycle, prelude::*};
 
 /// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
 ///
@@ -114,32 +111,33 @@ impl DebugContext {
                     .duration_since(self.start_time)
                     .as_secs_f64(),
             );
-            let focal_x = 609.0;
-            let focal_y = 608.6;
             let pinhole = rerun::Pinhole::from_focal_length_and_resolution(
-                [focal_x, focal_y],
-                [640.0, 480.0],
+                [matrix.focal_lengths.x, matrix.focal_lengths.y],
+                [
+                    image.yuyv_image().width() as f32,
+                    image.yuyv_image().height() as f32,
+                ],
             )
             .with_camera_xyz(rerun::components::ViewCoordinates::FLU);
             self.rec.log(path.as_ref(), &pinhole).into_diagnostic()?;
             self.log_with_camera_matrix_transformation(path.as_ref(), matrix, image.clone())?;
 
-            let camera_ray = matrix.pixel_to_camera(nalgebra::point![269.0 - 320.0, 438.0 - 240.0]);
-            self.rec
-                .log(
-                    "top_camera/camera_ray",
-                    &rerun::Arrows3D::from_vectors([rerun::Vec3D::new(
-                        camera_ray.x,
-                        camera_ray.y,
-                        camera_ray.z,
-                    )]),
-                )
-                .into_diagnostic()?;
-            self.log_with_camera_matrix_transformation(
-                "top_camera/camera_ray",
-                matrix,
-                image.clone(),
-            )?;
+            // let camera_ray = matrix.pixel_to_camera(nalgebra::point![269.0 - 320.0, 438.0 - 240.0]);
+            // self.rec
+            //     .log(
+            //         "top_camera/camera_ray",
+            //         &rerun::Arrows3D::from_vectors([rerun::Vec3D::new(
+            //             camera_ray.x,
+            //             camera_ray.y,
+            //             camera_ray.z,
+            //         )]),
+            //     )
+            //     .into_diagnostic()?;
+            // self.log_with_camera_matrix_transformation(
+            //     "top_camera/camera_ray",
+            //     matrix,
+            //     image.clone(),
+            // )?;
             // self.rec
             //     .log(
             //         "top_camera/projected",

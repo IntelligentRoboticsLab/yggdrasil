@@ -1,7 +1,6 @@
 use std::mem;
 
-use crate::camera::matrix::TopCameraMatrix;
-use crate::camera::{matrix::CameraMatrix, Image};
+use crate::camera::{matrix::CameraMatrices, Image};
 use crate::debug::DebugContext;
 
 use crate::prelude::*;
@@ -9,6 +8,7 @@ use crate::prelude::*;
 use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
 use derive_more::Deref;
+use heimdall::CameraMatrix;
 use nalgebra::point;
 use nidhogg::types::color;
 
@@ -431,13 +431,13 @@ fn line_detection_system(
     dbg: &DebugContext,
     detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
     top_lines: &mut TopLines,
-    camera_matrix: &TopCameraMatrix,
+    camera_matrices: &CameraMatrices,
 ) -> Result<()> {
     if let Some(detect_lines_result) = detect_top_lines_task.poll() {
         let mut detect_lines_result = detect_lines_result?;
         std::mem::swap(&mut top_lines.0, &mut detect_lines_result.0.lines);
 
-        draw_lines(dbg, top_lines, top_scan_grid.clone(), camera_matrix)?;
+        draw_lines(dbg, top_lines, top_scan_grid.clone(), &camera_matrices.top)?;
 
         let top_scan_grid = top_scan_grid.clone();
         detect_top_lines_task

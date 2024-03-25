@@ -12,7 +12,7 @@ use std::{
 
 use heimdall::{Camera, CameraDevice, YuyvImage};
 
-use self::matrix::{CalibrationConfig, TopCameraMatrix};
+use self::matrix::CalibrationConfig;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
@@ -33,6 +33,12 @@ pub struct CameraSettings {
     pub calibration: CalibrationConfig,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum CameraPosition {
+    Top,
+    Bottom,
+}
+
 /// This module captures images using the top- and bottom camera of the NAO.
 ///
 /// The captured images are stored as image resources, which are updated whenever a newer image is
@@ -46,12 +52,11 @@ pub struct CameraModule;
 impl Module for CameraModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_startup_system(initialize_cameras)?
-            .init_resource::<TopCameraMatrix>()?
             .add_system(camera_system)
             .add_system(debug_camera_system.after(camera_system))
-            .add_system(matrix::update_camera_matrix.after(camera_system))
             .add_task::<ComputeTask<JpegTopImage>>()?
-            .add_task::<ComputeTask<JpegBottomImage>>()
+            .add_task::<ComputeTask<JpegBottomImage>>()?
+            .add_module(matrix::CameraMatrixModule)
     }
 }
 
