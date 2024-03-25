@@ -12,6 +12,7 @@ use crate::{
 use fast_image_resize as fr;
 use heimdall::YuyvImage;
 use lstsq::Lstsq;
+use nalgebra::Point2;
 use nidhogg::types::color;
 
 const MODEL_INPUT_WIDTH: u32 = 40;
@@ -52,7 +53,7 @@ pub enum FieldBoundaryLines {
     Two {
         left_line: Line,
         right_line: Line,
-        intersection: Point,
+        intersection: Point2<f32>,
     },
 }
 
@@ -236,13 +237,6 @@ impl MlModel for FieldBoundaryModel {
     const ONNX_PATH: &'static str = "models/field_boundary.onnx";
 }
 
-/// A 2d point with x and y coordinates
-#[derive(Debug, Clone)]
-pub struct Point {
-    pub x: f32,
-    pub y: f32,
-}
-
 /// A 2d line with a slope and intercept
 #[derive(Debug, Clone)]
 pub struct Line {
@@ -255,11 +249,11 @@ impl Line {
         self.slope * x + self.intercept
     }
 
-    pub fn intersection_point(&self, other: &Line) -> Point {
+    pub fn intersection_point(&self, other: &Line) -> Point2<f32> {
         let x = (other.intercept - self.intercept) / (self.slope - other.slope);
         let y = self.slope * x + self.intercept;
 
-        Point { x, y }
+        Point2::new(x, y)
     }
 }
 
