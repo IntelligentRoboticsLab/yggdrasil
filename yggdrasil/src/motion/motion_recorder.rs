@@ -2,7 +2,7 @@ use crate::filter::button::HeadButtons;
 use miette::Result;
 use nidhogg::{
     types::{FillExt, JointArray},
-    NaoControlMessage, NaoState,
+    NaoControlMessage,
 };
 use tyr::prelude::*;
 
