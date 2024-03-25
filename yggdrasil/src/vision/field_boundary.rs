@@ -68,7 +68,7 @@ pub struct FieldBoundary {
     /// The predicted points used to fit the boundary
     points: Vec<FieldBoundaryPoint>,
     /// The image the boundary was predicted from
-    image: Image,
+    pub image: Image,
 }
 
 impl FieldBoundary {
