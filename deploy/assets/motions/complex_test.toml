@@ -1,5 +1,6 @@
 interpolation_type = "Linear"
 wait_time = 0.5
 motion_order = [
-    "TestDance",
+    "TestDance1",
+    "TestDance2"
 ]

@@ -6,9 +6,15 @@ use std::{env, time::Duration};
 
 use miette::IntoDiagnostic;
 use nidhogg::{
-    backend::{ConnectWithRetry, LolaBackend, ReadHardwareInfo},
+    backend::{LolaBackend, ReadHardwareInfo},
     HardwareInfo, NaoBackend, NaoControlMessage, NaoState,
 };
+
+#[cfg(not(feature = "local"))]
+const LOLA_SOCKET_PATH: &str = "/tmp/yggdrasil";
+
+#[cfg(feature = "local")]
+const LOLA_SOCKET_PATH: &str = "/tmp/robocup";
 
 #[derive(Clone, Debug)]
 /// Information that uniquely identifies a robot
@@ -35,6 +41,7 @@ impl RobotInfo {
             body_version,
             head_version,
         } = backend.read_hardware_info()?;
+        backend.send_control_msg(NaoControlMessage::default())?;
 
         let robot_name = env::var("ROBOT_NAME").into_diagnostic()?;
         let robot_id = str::parse(&env::var("ROBOT_ID").into_diagnostic()?).into_diagnostic()?;
@@ -71,9 +78,15 @@ impl Module for NaoModule {
 
 #[startup_system]
 fn initialize_nao(storage: &mut Storage) -> Result<()> {
-    let mut nao = LolaBackend::connect_with_retry(10, Duration::from_millis(500))?;
+    let mut nao = LolaBackend::connect_with_path_with_retry(
+        10,
+        Duration::from_millis(500),
+        LOLA_SOCKET_PATH,
+    )?;
     let info = RobotInfo::new(&mut nao)?;
+
     let state = nao.read_nao_state()?;
+    nao.send_control_msg(NaoControlMessage::default())?;
 
     tracing::info!(
         "Launched yggdrasil on {} with head_id: {}, body_id: {}",

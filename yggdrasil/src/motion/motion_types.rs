@@ -151,7 +151,7 @@ impl Motion {
         let keyframes = &self.submotions[current_sub_motion].keyframes;
 
         // Check if we have reached the end of the current submotion
-        if keyframes.len() < active_motion.prev_keyframe_index as usize + 2 {
+        if keyframes.len() <= active_motion.prev_keyframe_index as usize + 2 {
             return None;
         }
 
@@ -167,36 +167,6 @@ impl Motion {
             // update the time of the start of the movement
             active_motion.movement_start = Instant::now();
         }
-
-        let zero = &JointArray::<f32>::fill(0.0);
-        let one = &JointArray::<f32>::fill(1.0);
-
-        println!(
-            "movement_start.elapsed(): {:?}",
-            active_motion.movement_start.elapsed().as_secs_f32()
-        );
-        println!(
-            "keyframes.duration: {:?}",
-            keyframes[active_motion.prev_keyframe_index as usize + 1]
-                .duration
-                .as_secs_f32()
-        );
-        println!("keyframe index: {:?}", active_motion.prev_keyframe_index);
-        println!("movement_start: {:?}", active_motion.movement_start);
-        println!(
-            "next position: {:?}\n\n",
-            Some(
-                lerp(
-                    zero,
-                    one,
-                    (active_motion.movement_start.elapsed()).as_secs_f32()
-                        / keyframes[active_motion.prev_keyframe_index as usize + 1]
-                            .duration
-                            .as_secs_f32(),
-                )
-                .right_ankle_pitch
-            )
-        );
 
         return Some(lerp(
             &keyframes[active_motion.prev_keyframe_index as usize].target_position,

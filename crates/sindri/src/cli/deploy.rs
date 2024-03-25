@@ -1,5 +1,5 @@
 use crate::{
-    cargo::{self, assert_valid_bin, Profile},
+    cargo::{self, find_bin_manifest, Profile},
     config::Config,
     error::{Error, Result},
 };
@@ -106,7 +106,7 @@ pub struct Deploy {
 impl Deploy {
     /// Constructs IP and deploys to the robot
     pub async fn deploy(self, config: Config) -> miette::Result<()> {
-        assert_valid_bin(&self.deploy.bin)
+        find_bin_manifest(&self.deploy.bin)
             .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
 
         let pb = ProgressBar::new_spinner();
@@ -292,8 +292,7 @@ async fn create_sftp_connection(ip: Ipv4Addr) -> Result<Sftp> {
         TcpStream::connect(format!("{ip}:22")),
     )
     .await
-    .map_err(Error::ElapsedError)?
-    .unwrap();
+    .map_err(Error::ElapsedError)??;
     let mut session = Session::new().map_err(|e| Error::SftpError {
         source: e,
         msg: "Failed to create ssh session!".to_owned(),

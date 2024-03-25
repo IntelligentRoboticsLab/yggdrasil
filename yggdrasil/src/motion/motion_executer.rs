@@ -50,24 +50,10 @@ pub fn motion_executer(
             &motion.initial_movement(sub_motion_index).target_position,
             STARTING_POSITION_ERROR_MARGIN,
         ) {
-            println!("Not reached starting position");
-            println!(
-                "motion_execution_starting_time: {:?}",
-                motion_manager.motion_execution_starting_time.unwrap()
-            );
-            println!("nao_state.position: {:?}", nao_state.position);
-            println!(
-                "target_position: {:?}",
-                motion.initial_movement(sub_motion_index).target_position
-            );
             // Starting position has not yet been reached, so lerp to start
             // position, until position has been reached.
             let elapsed_time_since_start_of_motion: f32 = movement_start.elapsed().as_secs_f32();
 
-            println!(
-                "elapsed_time_since_start_of_motion: {:?}",
-                elapsed_time_since_start_of_motion
-            );
             nao_control_message.position = lerp(
                 &nao_state.position,
                 &motion.initial_movement(sub_motion_index).target_position,
@@ -81,8 +67,12 @@ pub fn motion_executer(
 
             return Ok(());
         } else {
-            println!("Reached starting position");
             motion_manager.submotion_execution_starting_time = Some(Instant::now());
+            motion_manager
+                .active_motion
+                .as_mut()
+                .unwrap()
+                .movement_start = Instant::now();
         }
     }
 

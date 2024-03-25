@@ -1,6 +1,9 @@
 use crate::filter::button::HeadButtons;
 use miette::Result;
-use nidhogg::NaoState;
+use nidhogg::{
+    types::{FillExt, JointArray},
+    NaoControlMessage, NaoState,
+};
 use tyr::prelude::*;
 
 use crate::motion::motion_manager::MotionManager;
@@ -15,10 +18,20 @@ impl Module for MotionRecorder {
 }
 
 #[system]
-fn register_button_press(head_button: &mut HeadButtons, mmng: &mut MotionManager) -> Result<()> {
+fn register_button_press(
+    head_button: &mut HeadButtons,
+    mmng: &mut MotionManager,
+    nao_control_message: &mut NaoControlMessage,
+) -> Result<()> {
     if head_button.middle.is_tapped() {
+        println!("MOTION ACTIVATED");
         // println!("-----------------\n{:?}\n\n", naostate.position);
         mmng.start_new_motion(MotionType::Test)
+    } else if head_button.rear.is_tapped() {
+        println!("MOTION SLOPPY");
+        mmng.stop_motion();
+        nao_control_message.stiffness = JointArray::<f32>::fill(0.0);
+        // println!("-----------------\n{:?}\n\n", naostate.position);
     }
     Ok(())
 }
