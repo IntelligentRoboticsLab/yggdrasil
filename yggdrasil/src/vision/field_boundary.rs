@@ -113,7 +113,7 @@ impl FieldBoundary {
                 let y2 = right_line.y(width);
 
                 vec![
-                    [(0.0, y0), (width, y1)],
+                    [(0.0, y0), (intersection.x, y1)],
                     [(intersection.x, y1), (width, y2)],
                 ]
             }
