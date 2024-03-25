@@ -28,6 +28,7 @@ impl Module for FieldBoundaryModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_ml_task::<FieldBoundaryModel>()?
+            .add_task::<AsyncTask<FieldBoundaryImage>>()?
             .add_startup_system(init_field_boundary)?
             .add_system(detect_field_boundary)
             .add_system(log_boundary_points))
@@ -152,19 +153,33 @@ fn log_boundary_points(
     Ok(())
 }
 
+/// For keeping track of the image that a field boundary is detected from
+struct FieldBoundaryImage(Image);
+
+/// Puts image in limbo while we wait for the model to finish
+async fn send_image(image: Image) -> FieldBoundaryImage {
+    FieldBoundaryImage(image)
+}
+
 #[system]
 fn detect_field_boundary(
     model: &mut MlTask<FieldBoundaryModel>,
+    image_task: &mut AsyncTask<FieldBoundaryImage>,
     boundary: &mut FieldBoundary,
     top_image: &TopImage,
 ) -> Result<()> {
     // Start a new inference if the image has changed
     // TODO: Some kind of callback/event system would be nice to avoid doing the timestamp comparison everywhere
-    if boundary.image.timestamp() != top_image.timestamp() {
+    if boundary.image.timestamp() != top_image.timestamp() && !model.active() {
         let resized_image = resize_yuyv(top_image.yuyv_image());
-        let _ = model.try_start_infer(&resized_image);
-
-        return Ok(());
+        if let Ok(()) = model.try_start_infer(&resized_image) {
+            // We need to keep track of the image we started the inference with
+            //
+            // TODO: We should find a better way to do this bundling of mltask + metadata
+            image_task
+                .try_spawn(send_image(top_image.deref().clone()))
+                .expect("Failed to spawn image task");
+        };
     }
 
     // Otherwise, poll the model for the result
@@ -185,11 +200,12 @@ fn detect_field_boundary(
             })
             .collect::<Vec<_>>();
 
-        // TODO: The image we assign here might technically be the wrong one if we take too long,
-        // but we currently have no nice way to bundle other data with a task.
-        //
-        // We should probably find a better way to do this.
-        *boundary = fit_model(points, 2, top_image.deref().clone())?;
+        // Sending of the image should always be started together with the model inference
+        let FieldBoundaryImage(image) = image_task
+            .poll()
+            .expect("Failed to get field boundary image");
+
+        *boundary = fit_model(points, 2, image)?;
     }
 
     Ok(())
