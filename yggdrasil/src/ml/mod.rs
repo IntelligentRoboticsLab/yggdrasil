@@ -133,6 +133,11 @@ impl<M: MlModel> MlTask<M> {
         }
     }
 
+    /// Returns whether the task is currently active.
+    pub fn active(&self) -> bool {
+        self.task.active()
+    }
+
     pub fn model(&self) -> &ModelExecutor<M> {
         &self.model
     }
