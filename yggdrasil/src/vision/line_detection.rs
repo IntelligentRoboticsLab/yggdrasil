@@ -367,7 +367,14 @@ fn draw_lines(
         )
         .collect::<Vec<_>>();
 
-    let all_3d_points = all_lines
+    dbg.log_lines2d_for_image(
+        "top_camera/image/lines",
+        &all_lines,
+        scan_grid.image().clone(),
+        color::u8::RED,
+    )?;
+
+    let points_to_ground = all_lines
         .clone()
         .iter()
         .filter_map(|line| {
@@ -386,26 +393,12 @@ fn draw_lines(
         })
         .collect::<Vec<_>>();
 
-    dbg.log_camera_matrix("top_camera/image", matrix, scan_grid.image().clone())?;
-
-    dbg.log_lines2d_for_image(
-        "top_camera/image/lines",
-        &all_lines,
-        scan_grid.image().clone(),
-        color::u8::RED,
-    )?;
-
     dbg.log_lines3d_for_image(
         "top_camera/lines_3d",
-        &all_3d_points,
+        &points_to_ground,
         scan_grid.image().clone(),
         color::u8::BLUE,
     )?;
-    // dbg.log_with_camera_matrix_transformation(
-    //     "top_camera/lines_3d",
-    //     matrix,
-    //     scan_grid.image().clone(),
-    // )?;
 
     Ok(())
 }

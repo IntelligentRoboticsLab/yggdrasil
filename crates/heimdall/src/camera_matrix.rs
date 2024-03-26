@@ -48,6 +48,8 @@ impl CameraMatrix {
 
     /// Project a pixel to the ground coordinate frame at a given height.
     ///
+    /// We assume the ground is at z = 0.0
+    ///
     /// # Errors
     /// This fails if the point is above the horizon and cannot be projected to the ground.
     pub fn pixel_to_ground(&self, pixel: Point2<f32>, z: f32) -> Result<Point3<f32>> {

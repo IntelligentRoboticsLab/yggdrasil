@@ -3,8 +3,8 @@ use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    filter::imu::IMUValues,
-    kinematics::{robot_dimensions, RobotKinematics},
+    filter::{self, imu::IMUValues},
+    kinematics::{self, robot_dimensions, RobotKinematics},
     prelude::*,
     walk::{engine::Side, SwingFoot},
 };
@@ -31,9 +31,12 @@ pub struct CameraMatrixModule;
 
 impl Module for CameraMatrixModule {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .init_resource::<CameraMatrices>()?
-            .add_system(update_camera_matrix.after(super::camera_system)))
+        Ok(app.init_resource::<CameraMatrices>()?.add_system(
+            update_camera_matrix
+                .before(super::camera_system)
+                .after(filter::imu::imu_filter)
+                .after(kinematics::update_kinematics),
+        ))
     }
 }
 

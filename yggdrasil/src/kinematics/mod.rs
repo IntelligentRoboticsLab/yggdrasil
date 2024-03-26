@@ -29,7 +29,7 @@ impl Module for KinematicsModule {
 }
 
 #[system]
-fn update_kinematics(robot_kinematics: &mut RobotKinematics, state: &NaoState) -> Result<()> {
+pub fn update_kinematics(robot_kinematics: &mut RobotKinematics, state: &NaoState) -> Result<()> {
     *robot_kinematics = RobotKinematics::from(&state.position);
     Ok(())
 }

@@ -5,6 +5,7 @@ use heimdall::CameraMatrix;
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 
+use nalgebra::Isometry3;
 use nidhogg::types::RgbU8;
 use std::net::IpAddr;
 
@@ -96,6 +97,10 @@ impl DebugContext {
 
         Ok(())
     }
+
+    /// Log a camera matrix to the debug viewer.
+    ///
+    /// The camera matrix is logged as a pinhole camera, without any transforms applied.
     pub fn log_camera_matrix(
         &self,
         path: impl AsRef<str>,
@@ -120,32 +125,6 @@ impl DebugContext {
             )
             .with_camera_xyz(rerun::components::ViewCoordinates::FLU);
             self.rec.log(path.as_ref(), &pinhole).into_diagnostic()?;
-            self.log_with_camera_matrix_transformation(path.as_ref(), matrix, image.clone())?;
-
-            // let camera_ray = matrix.pixel_to_camera(nalgebra::point![269.0 - 320.0, 438.0 - 240.0]);
-            // self.rec
-            //     .log(
-            //         "top_camera/camera_ray",
-            //         &rerun::Arrows3D::from_vectors([rerun::Vec3D::new(
-            //             camera_ray.x,
-            //             camera_ray.y,
-            //             camera_ray.z,
-            //         )]),
-            //     )
-            //     .into_diagnostic()?;
-            // self.log_with_camera_matrix_transformation(
-            //     "top_camera/camera_ray",
-            //     matrix,
-            //     image.clone(),
-            // )?;
-            // self.rec
-            //     .log(
-            //         "top_camera/projected",
-            //         &rerun::LineStrips3D::new(&[[(p1.x, p1.y, p1.z), (p2.x, p2.y, p2.z)]])
-            //             .with_colors([rerun::Color::from_rgb(255, 255, 0)]),
-            //     )
-            //     .into_diagnostic()?;
-
             self.rec.disable_timeline("image");
         }
 
@@ -200,6 +179,7 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Log a text message to the debug viewer.
     pub fn log_text(&self, path: impl AsRef<str>, text: String) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
@@ -211,7 +191,12 @@ impl DebugContext {
         Ok(())
     }
 
-    pub fn log_points_2d(&self, path: impl AsRef<str>, points: Vec<(f32, f32)>) -> Result<()> {
+    /// Log a set of 2D points to the debug viewer.
+    pub fn log_points_2d(
+        &self,
+        path: impl AsRef<str>,
+        points: impl IntoIterator<Item = (f32, f32)>,
+    ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
             self.rec
@@ -222,6 +207,7 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
     pub fn log_points2d_for_image(
         &self,
         path: impl AsRef<str>,
@@ -257,6 +243,7 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Log a set of 2D lines to the debug viewer, using the timestamp of the provided image.
     pub fn log_lines2d_for_image(
         &self,
         path: impl AsRef<str>,
@@ -293,6 +280,22 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Log a set of 3D points to the debug viewer.
+    pub fn log_points_3d(
+        &self,
+        path: impl AsRef<str>,
+        points: impl IntoIterator<Item = (f32, f32, f32)>,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(path.as_ref(), &rerun::Points3D::new(points))
+                .into_diagnostic()?;
+        }
+        Ok(())
+    }
+
+    /// Log a set of 3D lines to the debug viewer, using the timestamp of the provided image.
     pub fn log_lines3d_for_image(
         &self,
         path: impl AsRef<str>,
@@ -328,10 +331,11 @@ impl DebugContext {
         Ok(())
     }
 
-    pub fn log_with_camera_matrix_transformation(
+    /// Log a transformation to the entities at the provided path.
+    pub fn log_transformation(
         &self,
         path: impl AsRef<str>,
-        matrix: &CameraMatrix,
+        transform: &Isometry3<f32>,
         image: Image,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
@@ -343,35 +347,20 @@ impl DebugContext {
                     .duration_since(self.start_time)
                     .as_secs_f64(),
             );
-            let camera_translation = matrix.camera_to_ground;
-            let translation = [
-                camera_translation.translation.x,
-                camera_translation.translation.y,
-                camera_translation.translation.z,
-            ];
-            let rotation = rerun::Quaternion::from_xyzw([
-                camera_translation.rotation.coords.x,
-                camera_translation.rotation.coords.y,
-                camera_translation.rotation.coords.z,
-                camera_translation.rotation.coords.w,
-            ]);
+
+            let translation = transform.translation;
+            let rotation = transform.rotation.coords;
+
             self.rec.log(
                 path.as_ref(),
-                &rerun::Transform3D::from_translation_rotation(translation, rotation),
+                &rerun::Transform3D::from_translation_rotation(
+                    (translation.x, translation.y, translation.z),
+                    rerun::Quaternion([rotation.x, rotation.y, rotation.z, rotation.w]),
+                ),
             );
             self.rec.disable_timeline("image");
         }
 
-        Ok(())
-    }
-
-    pub fn log_points_3d(&self, path: impl AsRef<str>, points: Vec<(f32, f32, f32)>) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            self.rec
-                .log(path.as_ref(), &rerun::Points3D::new(points))
-                .into_diagnostic()?;
-        }
         Ok(())
     }
 }

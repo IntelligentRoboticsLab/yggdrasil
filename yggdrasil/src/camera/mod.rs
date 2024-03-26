@@ -10,9 +10,9 @@ use std::{
     time::Instant,
 };
 
-use heimdall::{Camera, CameraDevice, YuyvImage};
+use heimdall::{Camera, CameraDevice, CameraMatrix, YuyvImage};
 
-use self::matrix::CalibrationConfig;
+use self::matrix::{CalibrationConfig, CameraMatrices};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
@@ -210,6 +210,7 @@ struct JpegBottomImage(Instant);
 #[system]
 fn debug_camera_system(
     ctx: &DebugContext,
+    camera_matrices: &CameraMatrices,
     bottom_image: &BottomImage,
     bottom_task: &mut ComputeTask<JpegBottomImage>,
     top_image: &TopImage,
@@ -222,9 +223,10 @@ fn debug_camera_system(
 
     if !bottom_task.active() && &bottom_timestamp != bottom_image.timestamp() {
         let cloned = bottom_image.clone();
+        let matrix = camera_matrices.bottom.clone();
         let ctx = ctx.clone();
         bottom_task.try_spawn(move || {
-            log_bottom_image(ctx, cloned).expect("Failed to log bottom image")
+            log_bottom_image(ctx, cloned, &matrix).expect("Failed to log bottom image")
         })?;
     }
 
@@ -235,21 +237,48 @@ fn debug_camera_system(
 
     if !top_task.active() && &top_timestamp != top_image.timestamp() {
         let cloned = top_image.clone();
+        let matrix = camera_matrices.top.clone();
         let ctx = ctx.clone();
-        top_task.try_spawn(move || log_top_image(ctx, cloned).expect("Failed to log top image"))?;
+        top_task.try_spawn(move || {
+            log_top_image(ctx, cloned, &matrix).expect("Failed to log top image")
+        })?;
     }
 
     Ok(())
 }
 
-fn log_bottom_image(ctx: DebugContext, bottom_image: BottomImage) -> Result<JpegBottomImage> {
+fn log_bottom_image(
+    ctx: DebugContext,
+    bottom_image: BottomImage,
+    camera_matrix: &CameraMatrix,
+) -> Result<JpegBottomImage> {
     let timestamp = bottom_image.0 .0 .1;
-    ctx.log_image("bottom_camera/image", bottom_image.0, 20)?;
+    ctx.log_image("bottom_camera/image", bottom_image.clone().0, 20)?;
+    ctx.log_camera_matrix("bottom_camera/image", camera_matrix, bottom_image.clone().0)?;
+
+    // For now, let's also transform the pinhole camera to the ground frame.
+    ctx.log_transformation(
+        "bottom_camera/image",
+        &camera_matrix.camera_to_ground,
+        bottom_image.clone().0,
+    )?;
     Ok(JpegBottomImage(timestamp))
 }
 
-fn log_top_image(ctx: DebugContext, top_image: TopImage) -> Result<JpegTopImage> {
+fn log_top_image(
+    ctx: DebugContext,
+    top_image: TopImage,
+    camera_matrix: &CameraMatrix,
+) -> Result<JpegTopImage> {
     let timestamp = top_image.0 .0 .1;
-    ctx.log_image("top_camera/image", top_image.0, 20)?;
+    ctx.log_image("top_camera/image", top_image.clone().0, 20)?;
+    ctx.log_camera_matrix("top_camera/image", camera_matrix, top_image.clone().0)?;
+
+    // For now, let's also transform the pinhole camera to the ground frame.
+    ctx.log_transformation(
+        "top_camera/image",
+        &camera_matrix.camera_to_ground,
+        top_image.clone().0,
+    )?;
     Ok(JpegTopImage(timestamp))
 }

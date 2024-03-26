@@ -15,13 +15,13 @@ fn main() -> Result<()> {
         .add_module(ConfigModule)?
         .add_module(MlModule)?
         .add_module(FilterModule)?
+        .add_module(KinematicsModule)?
         .add_module(CameraModule)?
         .add_module(BehaviorModule)?
         .add_module(LedsModule)?
         .add_module(PrimaryStateModule)?
         .add_module(GameControllerModule)?
         .add_module(WalkingEngineModule)?
-        .add_module(KinematicsModule)?
         .add_module(DebugModule)?
         .add_module(VisionModule)?
         .add_module(MotionModule)?;
