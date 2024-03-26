@@ -1,11 +1,13 @@
 //! The forward kinematics for the robot.
 //!
-//! This module is loosely based on the implementation in the HULKs 2023 code release.
+//! This module is based on the implementation in the HULKs 2023 code release.
 
 use std::f32::consts::FRAC_PI_4;
 
 use nalgebra::{Isometry3, Translation, Vector3};
-use nidhogg::types::{HeadJoints, JointArray, LeftArmJoints, LeftLegJoints, RightLegJoints};
+use nidhogg::types::{
+    HeadJoints, JointArray, LeftArmJoints, LeftLegJoints, RightArmJoints, RightLegJoints,
+};
 
 use super::robot_dimensions;
 
@@ -14,6 +16,16 @@ pub struct RobotKinematics {
     pub neck_to_robot: Isometry3<f32>,
     pub head_to_robot: Isometry3<f32>,
     pub torso_to_robot: Isometry3<f32>,
+    pub left_shoulder_to_robot: Isometry3<f32>,
+    pub left_upper_arm_to_robot: Isometry3<f32>,
+    pub left_elbow_to_robot: Isometry3<f32>,
+    pub left_forearm_to_robot: Isometry3<f32>,
+    pub left_wrist_to_robot: Isometry3<f32>,
+    pub right_shoulder_to_robot: Isometry3<f32>,
+    pub right_upper_arm_to_robot: Isometry3<f32>,
+    pub right_elbow_to_robot: Isometry3<f32>,
+    pub right_forearm_to_robot: Isometry3<f32>,
+    pub right_wrist_to_robot: Isometry3<f32>,
     pub left_pelvis_to_robot: Isometry3<f32>,
     pub left_hip_to_robot: Isometry3<f32>,
     pub left_thigh_to_robot: Isometry3<f32>,
@@ -40,9 +52,28 @@ impl From<&JointArray<f32>> for RobotKinematics {
 
         // torso
         let torso_to_robot = Isometry3::from(robot_dimensions::ROBOT_TO_TORSO);
+
         // left arm
+        let left_arm_joints = joints.left_arm_joints();
+        let left_shoulder_to_robot = left_shoulder_to_robot(&left_arm_joints);
+        let left_upper_arm_to_robot =
+            left_shoulder_to_robot * left_upper_arm_to_shoulder(&left_arm_joints);
+        let left_elbow_to_robot =
+            left_upper_arm_to_robot * left_elbow_to_left_upper_arm(&left_arm_joints);
+        let left_forearm_to_robot = left_elbow_to_robot * left_under_arm_to_elbow(&left_arm_joints);
+        let left_wrist_to_robot = left_forearm_to_robot * left_wrist_to_under_arm(&left_arm_joints);
 
         // right arm
+        let right_arm_joints = joints.right_arm_joints();
+        let right_shoulder_to_robot = right_shoulder_to_robot(&right_arm_joints);
+        let right_upper_arm_to_robot =
+            right_shoulder_to_robot * right_upper_arm_to_shoulder(&right_arm_joints);
+        let right_elbow_to_robot =
+            right_upper_arm_to_robot * right_elbow_to_right_upper_arm(&right_arm_joints);
+        let right_forearm_to_robot =
+            right_elbow_to_robot * right_under_arm_to_elbow(&right_arm_joints);
+        let right_wrist_to_robot =
+            right_forearm_to_robot * right_wrist_to_under_arm(&right_arm_joints);
 
         // left leg
         let left_leg_joints = joints.left_leg_joints();
@@ -76,6 +107,16 @@ impl From<&JointArray<f32>> for RobotKinematics {
             neck_to_robot,
             head_to_robot,
             torso_to_robot,
+            left_shoulder_to_robot,
+            left_upper_arm_to_robot,
+            left_elbow_to_robot,
+            left_forearm_to_robot,
+            left_wrist_to_robot,
+            right_shoulder_to_robot,
+            right_upper_arm_to_robot,
+            right_elbow_to_robot,
+            right_forearm_to_robot,
+            right_wrist_to_robot,
             left_pelvis_to_robot,
             left_hip_to_robot,
             left_thigh_to_robot,
@@ -103,6 +144,8 @@ pub fn head_to_neck(joints: &HeadJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::y() * joints.pitch)
 }
 
+// Left arm
+
 pub fn left_shoulder_to_robot(joints: &LeftArmJoints<f32>) -> Isometry3<f32> {
     Translation::from(robot_dimensions::ROBOT_TO_LEFT_SHOULDER)
         * Isometry3::rotation(Vector3::y() * joints.shoulder_pitch)
@@ -126,6 +169,30 @@ pub fn left_wrist_to_under_arm(joints: &LeftArmJoints<f32>) -> Isometry3<f32> {
         * Isometry3::rotation(Vector3::x() * joints.wrist_yaw)
 }
 
+pub fn right_shoulder_to_robot(joints: &RightArmJoints<f32>) -> Isometry3<f32> {
+    Translation::from(robot_dimensions::ROBOT_TO_RIGHT_SHOULDER)
+        * Isometry3::rotation(Vector3::y() * joints.shoulder_pitch)
+}
+
+pub fn right_upper_arm_to_shoulder(joints: &RightArmJoints<f32>) -> Isometry3<f32> {
+    Isometry3::rotation(Vector3::z() * joints.shoulder_roll)
+}
+
+pub fn right_elbow_to_right_upper_arm(joints: &RightArmJoints<f32>) -> Isometry3<f32> {
+    Translation::from(robot_dimensions::RIGHT_SHOULDER_TO_RIGHT_ELBOW)
+        * Isometry3::rotation(Vector3::x() * joints.elbow_yaw)
+}
+
+pub fn right_under_arm_to_elbow(joints: &RightArmJoints<f32>) -> Isometry3<f32> {
+    Isometry3::rotation(Vector3::z() * joints.elbow_roll)
+}
+
+pub fn right_wrist_to_under_arm(joints: &RightArmJoints<f32>) -> Isometry3<f32> {
+    Translation::from(robot_dimensions::ELBOW_TO_WRIST)
+        * Isometry3::rotation(Vector3::x() * joints.wrist_yaw)
+}
+
+// Left leg
 pub fn left_pelvis_to_robot(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
     // The pelvis joint controls both the yaw and pitch of the pelvis, so we correct for this
     // by applying a 45 degree roll to the pelvis, then applying the yaw and pitch rotations.
@@ -158,7 +225,7 @@ pub fn left_foot_to_left_ankle(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::x() * joints.ankle_roll)
 }
 
-// right leg
+// Right leg
 
 /// We use the left leg joints to calculate the right leg kinematics, because the right leg is
 /// is the only leg that contains the `hip_yaw_pitch` joint.
