@@ -1,12 +1,12 @@
 {
-    "joint_stifness": 0.7,
+    "joint_stifness": 1.0,
     "chest_angle_bound_upper": -0.4,
     "chest_angle_bound_lower": 0.4,
     "fail_routine":"Abort",
     "conditions": [],
     "keyframes": [
         {
-        "duration": 1.0,
+        "duration": 0.5,
         "target_position": {
             "head_yaw": -0.042994022, 
             "head_pitch": 0.5123141, 

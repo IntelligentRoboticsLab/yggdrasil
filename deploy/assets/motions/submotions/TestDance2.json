@@ -1,5 +1,5 @@
 {
-    "joint_stifness": 0.7,
+    "joint_stifness": 1.0,
     "chest_angle_bound_upper": -0.4,
     "chest_angle_bound_lower": 0.4,
     "fail_routine":"Abort",
@@ -12,7 +12,7 @@
     ],
     "keyframes": [
         {
-        "duration": 0.5,
+        "duration": 1.0,
         "target_position": {
             "head_yaw": -0.042994022, 
             "head_pitch": 0.5123141, 
@@ -42,7 +42,7 @@
         }
         },
         {
-        "duration": 0.5,
+        "duration": 1.0,
         "target_position": {
             "head_yaw": -0.042994022, 
             "head_pitch": 0.5123141, 
@@ -72,7 +72,7 @@
         }
         },
         {
-        "duration": 0.5,
+        "duration": 1.0,
         "target_position": {
             "head_yaw": -0.042994022, 
             "head_pitch": 0.5123141, 
@@ -102,7 +102,7 @@
         }
         },
         {
-        "duration": 0.5,
+        "duration": 1.0,
         "target_position": {
             "head_yaw": -0.041460037, 
             "head_pitch": 0.5107801, 
@@ -132,7 +132,7 @@
         }
         },
         {
-        "duration": 0.5,
+        "duration": 1.0,
         "target_position": {
             "head_yaw": -0.042994022, 
             "head_pitch": 0.5123141, 
@@ -162,7 +162,7 @@
         }
         },
         {
-            "duration": 0.5,
+            "duration": 1.0,
             "target_position": {
                 "head_yaw": -0.041460037, 
                 "head_pitch": 0.5107801, 
