@@ -136,7 +136,7 @@ pub fn toggle_walking_engine(
     if chest_button.state.is_tapped() {
         filtered_gyro.reset();
         walking_engine.state = WalkState::Starting(Step {
-            forward: 0.06,
+            forward: 0.0,
             left: 0.0,
             turn: 0.0,
         });

@@ -1,14 +1,23 @@
 use miette::{bail, Result};
 use nalgebra::{point, vector, Isometry3, Point2, Point3, Vector2, Vector3};
 
+/// A camera matrix that is able to project points.
+///
+/// The camera matrix is defined as follows:
+/// - `cc_optical_center`: The optical center of the camera in the image plane, in pixels.
+/// - `focal_lengths`: The focal lengths of the camera in pixels.
+/// - `field_of_view`: The field of view of the camera in radians.
+/// - `camera_to_head`: The transformation from the camera frame to the head frame.
+/// - `robot_to_camera`: The transformation from the robot to the camera frame.
+/// - `camera_to_ground`: The transformation from camera frame to the ground frame.
 #[derive(Default, Debug, Clone)]
 pub struct CameraMatrix {
     pub cc_optical_center: Point2<f32>,
+    pub focal_lengths: Vector2<f32>,
+    pub field_of_view: Vector2<f32>,
     pub camera_to_head: Isometry3<f32>,
     pub robot_to_camera: Isometry3<f32>,
     pub camera_to_ground: Isometry3<f32>,
-    pub focal_lengths: Vector2<f32>,
-    pub field_of_view: Vector2<f32>,
 }
 
 impl CameraMatrix {
@@ -27,11 +36,11 @@ impl CameraMatrix {
 
         Self {
             cc_optical_center,
+            focal_lengths,
+            field_of_view,
             camera_to_head,
             robot_to_camera: camera_to_robot.inverse(),
             camera_to_ground,
-            focal_lengths,
-            field_of_view,
         }
     }
 

@@ -11,8 +11,7 @@ use std::{
 };
 
 use heimdall::{Camera, CameraDevice, CameraMatrix, YuyvImage};
-
-use self::matrix::{CalibrationConfig, CameraMatrices};
+use matrix::{CalibrationConfig, CameraMatrices};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
