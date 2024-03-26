@@ -415,5 +415,6 @@ pub fn scan_lines_system(
     if bottom_scan_grid.image().timestamp() != bottom_image.timestamp() {
         bottom_scan_grid.update_scan_lines(bottom_image);
     }
+
     Ok(())
 }
