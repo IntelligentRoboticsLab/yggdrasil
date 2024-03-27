@@ -73,16 +73,11 @@ fn compute_camera_matrix(
     config: &CameraSettings,
     kinematics: &RobotKinematics,
 ) -> CameraMatrix {
-    let calibration_config = match position {
-        CameraPosition::Top => config.calibration,
-        CameraPosition::Bottom => config.calibration,
-    };
-
     let image_size = vector![config.width as f32, config.height as f32];
-    let camera_to_head = camera_to_head(position, calibration_config.extrinsic_rotation);
+    let camera_to_head = camera_to_head(position, config.calibration.extrinsic_rotation);
     CameraMatrix::new(
-        calibration_config.focal_lengths,
-        calibration_config.cc_optical_center,
+        config.calibration.focal_lengths,
+        config.calibration.cc_optical_center,
         image_size,
         camera_to_head,
         kinematics.head_to_robot,
