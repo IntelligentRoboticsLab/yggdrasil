@@ -62,7 +62,7 @@ impl Default for IMUValues {
 }
 
 /// Calculate the variance of `measurements`, multiplied by `ACCELEROMETER_DEVIATION_WINDOW`.
-fn variance(measurements: VecDeque<Vector3<f32>>) -> Vector3<f32> {
+fn variance(measurements: &VecDeque<Vector3<f32>>) -> Vector3<f32> {
     let measurement_avg: Vector3<f32> = measurements
         .iter()
         .sum::<Vector3<f32>>()
@@ -85,7 +85,7 @@ pub fn imu_filter(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()
         .accelerometer_measurements
         .push_back(nao_state.accelerometer);
 
-    imu_values.accelerometer_variance = variance(imu_values.accelerometer_measurements.clone());
+    imu_values.accelerometer_variance = variance(&imu_values.accelerometer_measurements);
 
     Ok(())
 }
