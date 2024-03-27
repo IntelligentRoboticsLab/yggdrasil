@@ -375,7 +375,6 @@ fn draw_lines(
     )?;
 
     let points_to_ground = all_lines
-        .clone()
         .iter()
         .filter_map(|line| {
             let (x1, y1) = line[0];
