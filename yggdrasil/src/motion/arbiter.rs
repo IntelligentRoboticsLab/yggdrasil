@@ -11,8 +11,8 @@ type JointValue = f32;
 
 /// A module providing the motion arbiter.
 ///
-/// All systems that want to set joint values using the motion arbiter, should be executed after
-/// [`update_nao_control_message`].
+/// All systems that want to set joint values using the motion arbiter, should be executed before
+/// [`finalize`].
 ///
 /// This module provides the following resources to the application:
 /// - [`MotionArbiter`]
@@ -20,13 +20,13 @@ pub struct MotionArbiterModule;
 
 impl Module for MotionArbiterModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(update_nao_control_message.before(nao::write_hardware_info))
+        app.add_system(finalize.before(nao::write_hardware_info))
             .init_resource::<MotionArbiter>()
     }
 }
 
 #[system]
-pub fn update_nao_control_message(
+pub fn finalize(
     control_message: &mut NaoControlMessage,
     motion_manager: &mut MotionArbiter,
 ) -> Result<()> {
