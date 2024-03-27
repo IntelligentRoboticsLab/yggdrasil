@@ -7,7 +7,7 @@ use crate::{nao, prelude::*};
 
 const STIFFNESS_UNSTIFF: f32 = -1.;
 
-pub type JointDataType = f32;
+type JointValue = f32;
 
 /// A module providing the motion arbiter.
 ///
@@ -53,9 +53,9 @@ struct JointSettings<T> {
 /// If multiple motion request with the same priority are made, the first request will be chosen.
 #[derive(Default)]
 pub struct MotionArbiter {
-    leg_settings: JointSettings<LegJoints<JointDataType>>,
-    arm_settings: JointSettings<ArmJoints<JointDataType>>,
-    head_settings: JointSettings<HeadJoints<JointDataType>>,
+    leg_settings: JointSettings<LegJoints<JointValue>>,
+    arm_settings: JointSettings<ArmJoints<JointValue>>,
+    head_settings: JointSettings<HeadJoints<JointValue>>,
 }
 
 impl MotionArbiter {
@@ -94,8 +94,8 @@ impl MotionArbiter {
     /// stiffness. A value of `-1` will disable the stiffness altogether.
     pub fn set_legs(
         &mut self,
-        joint_positions: LegJoints<JointDataType>,
-        joint_stiffness: LegJoints<JointDataType>,
+        joint_positions: LegJoints<JointValue>,
+        joint_stiffness: LegJoints<JointValue>,
         priority: Priority,
     ) -> &mut Self {
         Self::set_settings(
@@ -116,8 +116,8 @@ impl MotionArbiter {
     /// stiffness. A value of `-1` will disable the stiffness altogether.
     pub fn set_arms(
         &mut self,
-        joint_positions: ArmJoints<JointDataType>,
-        joint_stiffness: ArmJoints<JointDataType>,
+        joint_positions: ArmJoints<JointValue>,
+        joint_stiffness: ArmJoints<JointValue>,
         priority: Priority,
     ) -> &mut Self {
         Self::set_settings(
@@ -138,8 +138,8 @@ impl MotionArbiter {
     /// stiffness. A value of `-1` will disable the stiffness altogether.
     pub fn set_head(
         &mut self,
-        joint_positions: HeadJoints<JointDataType>,
-        joint_stiffness: HeadJoints<JointDataType>,
+        joint_positions: HeadJoints<JointValue>,
+        joint_stiffness: HeadJoints<JointValue>,
         priority: Priority,
     ) -> &mut Self {
         Self::set_settings(
@@ -165,7 +165,7 @@ impl MotionArbiter {
     pub fn unstiff_arms(&mut self, priority: Priority) -> &mut Self {
         self.set_arms(
             self.arm_settings.joints_position.clone(),
-            ArmJoints::<f32>::fill(STIFFNESS_UNSTIFF),
+            ArmJoints::fill(STIFFNESS_UNSTIFF),
             priority,
         )
     }
@@ -179,7 +179,7 @@ impl MotionArbiter {
         )
     }
 
-    pub fn to_joint_positions(&self) -> JointArray<JointDataType> {
+    fn to_joint_positions(&self) -> JointArray<JointValue> {
         JointArray::builder()
             .leg_joints(self.leg_settings.joints_position.clone())
             .arm_joints(self.arm_settings.joints_position.clone())
@@ -187,7 +187,7 @@ impl MotionArbiter {
             .build()
     }
 
-    pub fn to_joint_stiffnesses(&self) -> JointArray<JointDataType> {
+    fn to_joint_stiffnesses(&self) -> JointArray<JointValue> {
         JointArray::builder()
             .leg_joints(self.leg_settings.joints_stiffness.clone())
             .arm_joints(self.arm_settings.joints_stiffness.clone())
