@@ -61,6 +61,7 @@ impl Default for IMUValues {
     }
 }
 
+/// Calculate the variance of `measurements`, multiplied by `ACCELEROMETER_DEVIATION_WINDOW`.
 fn variance(measurements: VecDeque<Vector3<f32>>) -> Vector3<f32> {
     let measurement_avg: Vector3<f32> = measurements
         .iter()
