@@ -97,12 +97,14 @@ fn is_standing_upright(imu_values: &IMUValues, contacts: &Contacts) -> bool {
 
 /// Is the robot lying on its stomach based on the accelerometer and angle.
 fn is_lying_on_stomach(imu_values: &IMUValues) -> bool {
-    imu_values.accelerometer_std.y < MAX_ACC_DEVIATION && imu_values.angles.y >= MIN_LYING_ANGLE
+    imu_values.accelerometer_variance.y < MAX_ACC_DEVIATION
+        && imu_values.angles.y >= MIN_LYING_ANGLE
 }
 
 /// Is the robot lying on its back based on the accelerometer and angle.
 fn is_lying_on_back(imu_values: &IMUValues) -> bool {
-    imu_values.accelerometer_std.y < MAX_ACC_DEVIATION && imu_values.angles.y <= -MIN_LYING_ANGLE
+    imu_values.accelerometer_variance.y < MAX_ACC_DEVIATION
+        && imu_values.angles.y <= -MIN_LYING_ANGLE
 }
 
 /// Checks position of the robot and sets [`FallState`], [`FallDirection`] and [`LyingDirection`]
