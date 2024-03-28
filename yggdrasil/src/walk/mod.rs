@@ -4,15 +4,20 @@ use std::time::Duration;
 
 use crate::{
     debug::DebugContext,
-    filter::button::{ChestButton, HeadButtons},
+
+    filter::{
+        button::{ChestButton, HeadButtons},
+        low_pass_filter::LowPassFilter,
+    },
     nao::manager::{NaoManager, Priority},
+    motion::arbiter::{MotionArbiter, Priority},
     nao::CycleTime,
     prelude::*,
     primary_state::PrimaryState,
 };
 use nidhogg::types::{
     ArmJoints, FillExt, ForceSensitiveResistors, LeftArmJoints, LeftLegJoints, LegJoints,
-    RightArmJoints, RightLegJoints, Vector2, Vector3,
+    RightArmJoints, RightLegJoints, Vector3,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
@@ -28,24 +33,27 @@ pub struct SwingFoot {
 
 /// Filtered gyroscope values.
 #[derive(Default, Debug, Clone)]
-pub struct FilteredGyroscope(Vector2<f32>);
+pub struct FilteredGyroscope(LowPassFilter<Vector3<f32>>);
 
 impl FilteredGyroscope {
-    pub fn update(&mut self, gyroscope: &Vector3<f32>) {
-        self.0.x = 0.8 * self.0.x + 0.2 * gyroscope.x;
-        self.0.y = 0.8 * self.0.y + 0.2 * gyroscope.y;
+    pub fn update(&mut self, gyro: Vector3<f32>) {
+        self.0.update(gyro);
     }
 
     pub fn reset(&mut self) {
-        self.0 = Vector2::default();
+        self.0.state = Vector3::default();
     }
 
     pub fn x(&self) -> f32 {
-        self.0.x
+        self.0.state.x
     }
 
     pub fn y(&self) -> f32 {
-        self.0.y
+        self.0.state.y
+    }
+
+    pub fn z(&self) -> f32 {
+        self.0.state.z
     }
 }
 
@@ -87,7 +95,6 @@ impl Module for WalkingEngineModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .init_config::<WalkingEngineConfig>()?
-            .init_resource::<FilteredGyroscope>()?
             .init_resource::<SwingFoot>()?
             .add_startup_system(init_walking_engine)?
             .add_system_chain((
@@ -106,7 +113,12 @@ impl Module for WalkingEngineModule {
 
 #[startup_system]
 fn init_walking_engine(storage: &mut Storage, config: &WalkingEngineConfig) -> Result<()> {
-    storage.add_resource(Resource::new(WalkingEngine::from_config(config)))
+    storage.add_resource(Resource::new(WalkingEngine::from_config(config)))?;
+    storage.add_resource(Resource::new(FilteredGyroscope(LowPassFilter::new(
+        Vector3::default(),
+        Vector3::fill(0.8),
+        Vector3::fill(0.2),
+    ))))
 }
 
 #[system]
@@ -114,7 +126,7 @@ fn filter_gyro_values(
     imu_values: &filter::imu::IMUValues,
     filtered_gyro: &mut FilteredGyroscope,
 ) -> Result<()> {
-    filtered_gyro.update(&imu_values.gyroscope);
+    filtered_gyro.update(imu_values.gyroscope.clone());
 
     Ok(())
 }

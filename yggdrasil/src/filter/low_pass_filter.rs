@@ -1,6 +1,6 @@
 use std::ops::{Add, Mul};
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Debug)]
 pub struct LowPassFilter<T: Default + Clone + Copy + Add<Output = T> + Mul<Output = T>> {
     pub state: T,
     params: (T, T),
