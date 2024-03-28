@@ -42,12 +42,12 @@ pub fn wee_sound_system(
     }
 
     // Play the sound once upon losing ground contact
-    if contacts.ground && !wee_sound.sound_played {
+    if !contacts.ground && !wee_sound.sound_played {
         wee_sound.sound_played = true;
         wee_sound.last_played = Some(Instant::now());
         sounds.play_sound(Sound::Weee)?;
     // Reset played state upon regaining ground contact
-    } else if !contacts.ground {
+    } else if contacts.ground {
         wee_sound.sound_played = false;
     }
 
