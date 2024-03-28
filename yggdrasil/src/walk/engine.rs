@@ -87,7 +87,7 @@ impl WalkingEngine {
     }
 
     /// Requests the [`WalkingEngine`] to perform the provided [`Step`].
-    pub fn request_step(&mut self, step: Step) {
+    pub fn request_walk(&mut self, step: Step) {
         self.request = WalkRequest::Walk(step);
     }
 

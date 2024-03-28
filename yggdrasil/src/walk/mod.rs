@@ -135,7 +135,7 @@ pub fn toggle_walking_engine(
     // Start walking
     if chest_button.state.is_tapped() {
         filtered_gyro.reset();
-        walking_engine.request_step(Step {
+        walking_engine.request_walk(Step {
             forward: 0.04,
             left: 0.0,
             turn: 0.0,
