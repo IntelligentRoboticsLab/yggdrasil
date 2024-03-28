@@ -5,15 +5,15 @@ use crate::debug::DebugContext;
 
 use crate::prelude::*;
 
-use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
+use super::{
+    field_boundary::FieldBoundary,
+    scan_lines::{PixelColor, ScanGrid, TopScanGrid},
+};
 
 use derive_more::Deref;
 use heimdall::CameraMatrix;
 use nalgebra::point;
 use nidhogg::types::color;
-
-// TODO: Replace with proper field-boundary detection.
-const MIN_ROW: usize = 200;
 
 const MAX_VERTICAL_LINE_WIDTH: usize = 50;
 
@@ -116,6 +116,7 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
 fn extract_line_points(
     scan_grid: &ScanGrid,
     mut points: Vec<(f32, f32)>,
+    boundary: &FieldBoundary,
 ) -> Result<Vec<(f32, f32)>> {
     for horizontal_line_id in 0..scan_grid.horizontal().line_ids().len() {
         let row_id = *unsafe {
@@ -124,14 +125,15 @@ fn extract_line_points(
                 .line_ids()
                 .get_unchecked(horizontal_line_id)
         };
-        if row_id < MIN_ROW {
-            continue;
-        }
         let row = scan_grid.horizontal().line(horizontal_line_id);
 
         let mut start_opt = Option::<usize>::None;
         #[allow(clippy::needless_range_loop)]
         for column_id in 0..row.len() {
+            if row_id < boundary.height_at_pixel(column_id as f32) as usize {
+                continue;
+            }
+
             if row[column_id] == PixelColor::White {
                 if start_opt.is_none() {
                     start_opt = Some(column_id);
@@ -156,7 +158,7 @@ fn extract_line_points(
 
         let mut start_opt = None;
         #[allow(clippy::needless_range_loop)]
-        for row_id in MIN_ROW..column.len() {
+        for row_id in boundary.height_at_pixel(column_id as f32) as usize..column.len() {
             if column[row_id] == PixelColor::White {
                 if start_opt.is_none() {
                     start_opt = Some(row_id);
@@ -176,18 +178,21 @@ fn extract_line_points(
 fn detect_top_lines(
     line_detection_data: TopLineDetectionData,
     scan_grid: ScanGrid,
+    boundary: FieldBoundary,
 ) -> Result<TopLineDetectionData> {
     Ok(TopLineDetectionData(detect_lines(
         line_detection_data.0,
         scan_grid,
+        boundary,
     )?))
 }
 
 fn detect_lines(
     line_detection_data: LineDetectionData,
     scan_grid: ScanGrid,
+    boundary: FieldBoundary,
 ) -> Result<LineDetectionData> {
-    let mut points = extract_line_points(&scan_grid, line_detection_data.line_points)?;
+    let mut points = extract_line_points(&scan_grid, line_detection_data.line_points, &boundary)?;
     points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
     let mut points_next = line_detection_data.line_points_next;
 
@@ -407,11 +412,13 @@ fn start_line_detection_task(
     _storage: &mut Storage,
     top_scan_grid: &mut TopScanGrid,
     detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
+    top_boundary: &mut FieldBoundary,
 ) -> Result<()> {
     let top_scan_grid = top_scan_grid.clone();
 
+    let top_boundary = top_boundary.clone();
     detect_top_lines_task
-        .try_spawn(move || detect_top_lines(Default::default(), top_scan_grid))
+        .try_spawn(move || detect_top_lines(Default::default(), top_scan_grid, top_boundary))
         .unwrap();
 
     Ok(())
@@ -424,6 +431,7 @@ fn line_detection_system(
     detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
     top_lines: &mut TopLines,
     camera_matrices: &CameraMatrices,
+    top_boundary: &mut FieldBoundary,
 ) -> Result<()> {
     if let Some(detect_lines_result) = detect_top_lines_task.poll() {
         let mut detect_lines_result = detect_lines_result?;
@@ -432,8 +440,9 @@ fn line_detection_system(
         draw_lines(dbg, top_lines, top_scan_grid.clone(), &camera_matrices.top)?;
 
         let top_scan_grid = top_scan_grid.clone();
+        let top_boundary = top_boundary.clone();
         detect_top_lines_task
-            .try_spawn(move || detect_top_lines(detect_lines_result, top_scan_grid))
+            .try_spawn(move || detect_top_lines(detect_lines_result, top_scan_grid, top_boundary))
             .unwrap();
     }
 
