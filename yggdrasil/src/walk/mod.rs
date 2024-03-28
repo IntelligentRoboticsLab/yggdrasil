@@ -5,16 +5,14 @@ use std::time::Duration;
 use crate::{
     debug::DebugContext,
     filter::button::{ChestButton, HeadButtons},
+    motion::arbiter::{MotionArbiter, Priority},
     nao::CycleTime,
     prelude::*,
     primary_state::PrimaryState,
 };
-use nidhogg::{
-    types::{
-        FillExt, ForceSensitiveResistors, JointArray, LeftLegJoints, RightLegJoints, Vector2,
-        Vector3,
-    },
-    NaoControlMessage,
+use nidhogg::types::{
+    ArmJoints, FillExt, ForceSensitiveResistors, LeftArmJoints, LeftLegJoints, LegJoints,
+    RightArmJoints, RightLegJoints, Vector2, Vector3,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
@@ -161,7 +159,7 @@ pub fn run_walking_engine(
     cycle_time: &CycleTime,
     fsr: &ForceSensitiveResistors,
     filtered_gyro: &FilteredGyroscope,
-    control_message: &mut NaoControlMessage,
+    motion_arbiter: &mut MotionArbiter,
     dbg: &DebugContext,
 ) -> Result<()> {
     // We don't run the walking engine whenever we're in a state where we shouldn't.
@@ -170,7 +168,8 @@ pub fn run_walking_engine(
     // TODO: We should definitely fix this in the future.deploy/assets deploy/config
     if !primary_state.should_walk() {
         // This sets the robot to be completely unstiff, completely disabling the joint motors.
-        control_message.stiffness = JointArray::<f32>::fill(-1.0);
+        motion_arbiter.unstiff_legs(Priority::Low);
+
         return Ok(());
     }
 
@@ -243,21 +242,43 @@ pub fn run_walking_engine(
         }
     }
 
-    control_message.position = JointArray::<f32>::builder()
-        .left_shoulder_pitch(90f32.to_radians() + left_shoulder_pitch)
-        .right_shoulder_pitch(90f32.to_radians() + right_shoulder_pitch)
-        .left_leg_joints(left_leg_joints)
-        .right_leg_joints(right_leg_joints)
+    let leg_positions = LegJoints::builder()
+        .left_leg(left_leg_joints)
+        .right_leg(right_leg_joints)
+        .build();
+    let leg_stiffness = LegJoints::builder()
+        .left_leg(LeftLegJoints::fill(config.leg_stiffness))
+        .right_leg(RightLegJoints::fill(config.leg_stiffness))
         .build();
 
-    control_message.stiffness = JointArray::<f32>::builder()
-        .left_shoulder_pitch(config.arm_stiffness)
-        .right_shoulder_pitch(config.arm_stiffness)
-        .head_pitch(0.5) // TODO: temporary value, until we get some head motion control in place
-        .head_yaw(0.5)
-        .left_leg_joints(LeftLegJoints::fill(config.leg_stiffness))
-        .right_leg_joints(RightLegJoints::fill(config.leg_stiffness))
+    let arm_positions = ArmJoints::builder()
+        .left_arm(
+            LeftArmJoints::builder()
+                .shoulder_pitch(90f32.to_radians() + left_shoulder_pitch)
+                .build(),
+        )
+        .right_arm(
+            RightArmJoints::builder()
+                .shoulder_pitch(90f32.to_radians() + right_shoulder_pitch)
+                .build(),
+        )
         .build();
+    let arm_stiffness = ArmJoints::builder()
+        .left_arm(
+            LeftArmJoints::builder()
+                .shoulder_pitch(config.arm_stiffness)
+                .build(),
+        )
+        .right_arm(
+            RightArmJoints::builder()
+                .shoulder_pitch(config.arm_stiffness)
+                .build(),
+        )
+        .build();
+
+    motion_arbiter
+        .set_legs(leg_positions, leg_stiffness, Priority::High)
+        .set_arms(arm_positions, arm_stiffness, Priority::High);
 
     Ok(())
 }

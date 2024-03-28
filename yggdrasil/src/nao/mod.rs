@@ -111,6 +111,8 @@ pub fn write_hardware_info(
     update: &NaoControlMessage,
 ) -> Result<()> {
     *robot_state = nao.read_nao_state()?;
+
     nao.send_control_msg(update.clone())?;
+
     Ok(())
 }
