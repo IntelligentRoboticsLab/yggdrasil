@@ -5,10 +5,7 @@ use crate::debug::DebugContext;
 
 use crate::prelude::*;
 
-use super::{
-    field_boundary::FieldBoundary,
-    scan_lines::{PixelColor, ScanGrid, TopScanGrid},
-};
+use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
 use derive_more::Deref;
 use heimdall::CameraMatrix;
@@ -115,7 +112,6 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
 fn extract_line_points(
     scan_grid: &ScanGrid,
     mut points: Vec<(f32, f32)>,
-    boundary: &FieldBoundary,
 ) -> Result<Vec<(f32, f32)>> {
     let boundary = scan_grid.boundary();
 
@@ -179,7 +175,6 @@ fn extract_line_points(
 fn detect_top_lines(
     line_detection_data: LineDetectionData,
     scan_grid: ScanGrid,
-    boundary: FieldBoundary,
 ) -> Result<TopLineDetectionData> {
     Ok(TopLineDetectionData(Some(detect_lines(
         line_detection_data,
@@ -190,9 +185,8 @@ fn detect_top_lines(
 fn detect_lines(
     line_detection_data: LineDetectionData,
     scan_grid: ScanGrid,
-    boundary: FieldBoundary,
 ) -> Result<LineDetectionData> {
-    let mut points = extract_line_points(&scan_grid, line_detection_data.line_points, &boundary)?;
+    let mut points = extract_line_points(&scan_grid, line_detection_data.line_points)?;
     points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
     let mut points_next = line_detection_data.line_points_next;
 
@@ -412,7 +406,6 @@ fn start_line_detection_task(
     storage: &mut Storage,
     top_scan_grid: &mut TopScanGrid,
     detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
-    top_boundary: &mut FieldBoundary,
 ) -> Result<()> {
     storage.add_resource(Resource::new(TopLines(
         Vec::new(),
@@ -421,7 +414,7 @@ fn start_line_detection_task(
 
     let top_scan_grid = top_scan_grid.clone();
     detect_top_lines_task
-        .try_spawn(move || detect_top_lines(Default::default(), top_scan_grid, top_boundary))
+        .try_spawn(move || detect_top_lines(Default::default(), top_scan_grid))
         .unwrap();
 
     Ok(())
@@ -435,7 +428,6 @@ fn line_detection_system(
     top_line_detection_data: &mut TopLineDetectionData,
     top_lines: &mut TopLines,
     camera_matrices: &CameraMatrices,
-    top_boundary: &mut FieldBoundary,
 ) -> Result<()> {
     if let Some(detect_lines_result) = detect_top_lines_task.poll() {
         *top_line_detection_data = detect_lines_result?;
