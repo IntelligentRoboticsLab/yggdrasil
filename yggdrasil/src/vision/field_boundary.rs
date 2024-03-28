@@ -331,7 +331,7 @@ fn fit_model(points: Vec<FieldBoundaryPoint>, step: usize, image: Image) -> Resu
             }
 
             // make sure intersection is concave
-            if intersection.y > left_line.slope.max(right_line.intercept) {
+            if left_line.slope > 0. || right_line.slope < 0. {
                 continue;
             }
 
