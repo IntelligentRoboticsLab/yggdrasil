@@ -5,10 +5,7 @@ use crate::debug::DebugContext;
 
 use crate::prelude::*;
 
-use super::{
-    field_boundary::FieldBoundary,
-    scan_lines::{PixelColor, ScanGrid, TopScanGrid},
-};
+use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
 use derive_more::Deref;
 use heimdall::CameraMatrix;
@@ -40,7 +37,6 @@ impl Module for LineDetectionModule {
         app.add_system(line_detection_system.after(super::scan_lines::scan_lines_system))
             .add_task::<ComputeTask<Result<TopLineDetectionData>>>()?
             .add_startup_system(start_line_detection_task)?
-            .init_resource::<TopLines>()?
             .init_resource::<TopLineDetectionData>()
     }
 }
@@ -54,10 +50,10 @@ struct LineDetectionData {
 }
 
 #[derive(Default)]
-struct TopLineDetectionData(LineDetectionData);
+struct TopLineDetectionData(Option<LineDetectionData>);
 
-#[derive(Default, Deref)]
-pub struct TopLines(Vec<Line>);
+#[derive(Deref)]
+pub struct TopLines(#[deref] pub Vec<Line>, Image);
 
 #[derive(Default)]
 pub struct LinePoint {
@@ -116,8 +112,9 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
 fn extract_line_points(
     scan_grid: &ScanGrid,
     mut points: Vec<(f32, f32)>,
-    boundary: &FieldBoundary,
 ) -> Result<Vec<(f32, f32)>> {
+    let boundary = scan_grid.boundary();
+
     for horizontal_line_id in 0..scan_grid.horizontal().line_ids().len() {
         let row_id = *unsafe {
             scan_grid
@@ -176,23 +173,20 @@ fn extract_line_points(
 }
 
 fn detect_top_lines(
-    line_detection_data: TopLineDetectionData,
+    line_detection_data: LineDetectionData,
     scan_grid: ScanGrid,
-    boundary: FieldBoundary,
 ) -> Result<TopLineDetectionData> {
-    Ok(TopLineDetectionData(detect_lines(
-        line_detection_data.0,
+    Ok(TopLineDetectionData(Some(detect_lines(
+        line_detection_data,
         scan_grid,
-        boundary,
-    )?))
+    )?)))
 }
 
 fn detect_lines(
     line_detection_data: LineDetectionData,
     scan_grid: ScanGrid,
-    boundary: FieldBoundary,
 ) -> Result<LineDetectionData> {
-    let mut points = extract_line_points(&scan_grid, line_detection_data.line_points, &boundary)?;
+    let mut points = extract_line_points(&scan_grid, line_detection_data.line_points)?;
     points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
     let mut points_next = line_detection_data.line_points_next;
 
@@ -409,16 +403,18 @@ fn draw_lines(
 
 #[startup_system]
 fn start_line_detection_task(
-    _storage: &mut Storage,
+    storage: &mut Storage,
     top_scan_grid: &mut TopScanGrid,
     detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
-    top_boundary: &mut FieldBoundary,
 ) -> Result<()> {
-    let top_scan_grid = top_scan_grid.clone();
+    storage.add_resource(Resource::new(TopLines(
+        Vec::new(),
+        top_scan_grid.image().clone(),
+    )))?;
 
-    let top_boundary = top_boundary.clone();
+    let top_scan_grid = top_scan_grid.clone();
     detect_top_lines_task
-        .try_spawn(move || detect_top_lines(Default::default(), top_scan_grid, top_boundary))
+        .try_spawn(move || detect_top_lines(Default::default(), top_scan_grid))
         .unwrap();
 
     Ok(())
@@ -429,20 +425,27 @@ fn line_detection_system(
     top_scan_grid: &mut TopScanGrid,
     dbg: &DebugContext,
     detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
+    top_line_detection_data: &mut TopLineDetectionData,
     top_lines: &mut TopLines,
     camera_matrices: &CameraMatrices,
-    top_boundary: &mut FieldBoundary,
 ) -> Result<()> {
     if let Some(detect_lines_result) = detect_top_lines_task.poll() {
-        let mut detect_lines_result = detect_lines_result?;
-        std::mem::swap(&mut top_lines.0, &mut detect_lines_result.0.lines);
+        *top_line_detection_data = detect_lines_result?;
+        std::mem::swap(
+            &mut top_lines.0,
+            &mut top_line_detection_data.0.as_mut().unwrap().lines,
+        );
 
         draw_lines(dbg, top_lines, top_scan_grid.clone(), &camera_matrices.top)?;
+    }
 
+    if !detect_top_lines_task.active()
+        && top_lines.1.timestamp() != top_scan_grid.image().timestamp()
+    {
         let top_scan_grid = top_scan_grid.clone();
-        let top_boundary = top_boundary.clone();
+        let line_detection_data = top_line_detection_data.0.take().unwrap();
         detect_top_lines_task
-            .try_spawn(move || detect_top_lines(detect_lines_result, top_scan_grid, top_boundary))
+            .try_spawn(move || detect_top_lines(line_detection_data, top_scan_grid))
             .unwrap();
     }
 
