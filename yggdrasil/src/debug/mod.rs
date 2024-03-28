@@ -368,7 +368,7 @@ impl DebugContext {
 #[startup_system]
 fn init_rerun(storage: &mut Storage) -> Result<()> {
     #[cfg(any(feature = "local", not(feature = "rerun")))]
-    let server_address = IpAddr::V4(std::net::Ipv4Addr::LOCALHOST);
+    let server_address = IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
     // Manually set the server address to the robot's IP address, instead of 0.0.0.0
     // to ensure the rerun server prints the correct connection URL on startup
     #[cfg(all(not(feature = "local"), feature = "rerun"))]
