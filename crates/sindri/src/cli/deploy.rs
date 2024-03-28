@@ -59,18 +59,19 @@ pub struct ConfigOptsDeploy {
     #[clap(long, short)]
     pub local: bool,
 
-    #[clap(
-        long,
-        short,
-        default_value = "false",
-        default_value_if("bin", "yggdrasil", Some("true")),
-        default_value_if("local", "true", Some("false"))
-    )]
-    pub alsa: bool,
-
     /// Specify bin target
     #[clap(global = true, long, default_value = "yggdrasil")]
     pub bin: String,
+
+    #[clap(
+        long,
+        short,
+        default_value_ifs([
+            ("local", "true", Some("false")),
+            ("bin", "yggdrasil", Some("true")),
+        ]),
+    )]
+    pub alsa: bool,
 }
 
 impl ConfigOptsDeploy {
