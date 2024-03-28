@@ -146,7 +146,7 @@ fn log_boundary_points(
         "top_camera/boundary_line_segments",
         &line_segments,
         image.deref().clone(),
-        color::u8::TEAL,
+        color::u8::PURPLE,
     )?;
 
     Ok(())
