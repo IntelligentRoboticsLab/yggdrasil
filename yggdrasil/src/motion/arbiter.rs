@@ -28,12 +28,12 @@ impl Module for MotionArbiterModule {
 #[system]
 pub fn finalize(
     control_message: &mut NaoControlMessage,
-    motion_manager: &mut MotionArbiter,
+    motion_arbiter: &mut MotionArbiter,
 ) -> Result<()> {
-    control_message.position = motion_manager.to_joint_positions();
-    control_message.stiffness = motion_manager.to_joint_stiffnesses();
+    control_message.position = motion_arbiter.to_joint_positions();
+    control_message.stiffness = motion_arbiter.to_joint_stiffnesses();
 
-    motion_manager.clear_priorities();
+    motion_arbiter.clear_priorities();
 
     Ok(())
 }
