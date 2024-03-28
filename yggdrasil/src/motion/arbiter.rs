@@ -30,8 +30,8 @@ pub fn finalize(
     control_message: &mut NaoControlMessage,
     motion_arbiter: &mut MotionArbiter,
 ) -> Result<()> {
-    control_message.position = motion_arbiter.to_joint_positions();
-    control_message.stiffness = motion_arbiter.to_joint_stiffnesses();
+    control_message.position = motion_arbiter.make_joint_positions();
+    control_message.stiffness = motion_arbiter.make_joint_stiffnesses();
 
     motion_arbiter.clear_priorities();
 
@@ -179,7 +179,7 @@ impl MotionArbiter {
         )
     }
 
-    fn to_joint_positions(&self) -> JointArray<JointValue> {
+    fn make_joint_positions(&self) -> JointArray<JointValue> {
         JointArray::builder()
             .leg_joints(self.leg_settings.joints_position.clone())
             .arm_joints(self.arm_settings.joints_position.clone())
@@ -187,7 +187,7 @@ impl MotionArbiter {
             .build()
     }
 
-    fn to_joint_stiffnesses(&self) -> JointArray<JointValue> {
+    fn make_joint_stiffnesses(&self) -> JointArray<JointValue> {
         JointArray::builder()
             .leg_joints(self.leg_settings.joints_stiffness.clone())
             .arm_joints(self.arm_settings.joints_stiffness.clone())
