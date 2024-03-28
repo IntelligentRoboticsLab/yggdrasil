@@ -1,8 +1,9 @@
-use crate::prelude::*;
+use crate::{
+    nao::arbiter::{NaoArbiter, Priority},
+    prelude::*,
+};
 
 use std::time::{Duration, Instant};
-
-use nidhogg::NaoControlMessage;
 
 pub use nidhogg::types::{
     color::{self, RgbF32},
@@ -87,16 +88,16 @@ impl Leds {
 }
 
 #[system]
-pub fn write_led_values(leds: &mut Leds, control_message: &mut NaoControlMessage) -> Result<()> {
-    control_message.chest = leds.chest;
-    control_message.left_foot = leds.left_foot;
-    control_message.right_foot = leds.right_foot;
-
-    control_message.left_ear = leds.left_ear.clone();
-    control_message.right_ear = leds.right_ear.clone();
-    control_message.left_eye = leds.left_eye.clone();
-    control_message.right_eye = leds.right_eye.clone();
-    control_message.skull = leds.skull.clone();
+pub fn write_led_values(leds: &mut Leds, nao_arbiter: &mut NaoArbiter) -> Result<()> {
+    nao_arbiter
+        .set_chest_led(leds.chest, Priority::High)
+        .set_left_foot_led(leds.left_foot, Priority::High)
+        .set_right_foot_led(leds.right_foot, Priority::High)
+        .set_left_ear_led(leds.left_ear.clone(), Priority::High)
+        .set_right_ear_led(leds.right_ear.clone(), Priority::High)
+        .set_left_eye_led(leds.left_eye.clone(), Priority::High)
+        .set_right_eye_led(leds.right_eye.clone(), Priority::High)
+        .set_skull_led(leds.skull.clone(), Priority::High);
 
     if let Some(blink) = leds.chest_blink.as_mut() {
         if blink.start.elapsed() > blink.interval {
@@ -105,9 +106,9 @@ pub fn write_led_values(leds: &mut Leds, control_message: &mut NaoControlMessage
         }
 
         if blink.on {
-            control_message.chest = blink.color;
+            nao_arbiter.set_chest_led(blink.color, Priority::High);
         } else {
-            control_message.chest = color::f32::EMPTY;
+            nao_arbiter.set_chest_led(color::f32::EMPTY, Priority::High);
         }
     }
 
