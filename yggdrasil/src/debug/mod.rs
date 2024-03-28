@@ -1,9 +1,11 @@
 #[cfg(feature = "rerun")]
 use std::{convert::Into, net::SocketAddr, time::Instant};
 
+use heimdall::CameraMatrix;
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 
+use nalgebra::Isometry3;
 use nidhogg::types::RgbU8;
 use std::net::IpAddr;
 
@@ -96,6 +98,39 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Log a camera matrix to the debug viewer.
+    ///
+    /// The camera matrix is logged as a pinhole camera, without any transforms applied.
+    pub fn log_camera_matrix(
+        &self,
+        path: impl AsRef<str>,
+        matrix: &CameraMatrix,
+        image: Image,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let image_timestamp = image.timestamp();
+            self.rec.set_time_seconds(
+                "image",
+                image_timestamp
+                    .duration_since(self.start_time)
+                    .as_secs_f64(),
+            );
+            let pinhole = rerun::Pinhole::from_focal_length_and_resolution(
+                [matrix.focal_lengths.x, matrix.focal_lengths.y],
+                [
+                    image.yuyv_image().width() as f32,
+                    image.yuyv_image().height() as f32,
+                ],
+            )
+            .with_camera_xyz(rerun::components::ViewCoordinates::FLU);
+            self.rec.log(path.as_ref(), &pinhole).into_diagnostic()?;
+            self.rec.disable_timeline("image");
+        }
+
+        Ok(())
+    }
+
     /// Set the style for a scalar series.
     ///
     /// The style will be applied to all logs of the series.
@@ -144,6 +179,7 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Log a text message to the debug viewer.
     pub fn log_text(&self, path: impl AsRef<str>, text: String) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
@@ -155,17 +191,23 @@ impl DebugContext {
         Ok(())
     }
 
-    pub fn log_point2d(&self, path: impl AsRef<str>, x: f32, y: f32) -> Result<()> {
+    /// Log a set of 2D points to the debug viewer.
+    pub fn log_points_2d(
+        &self,
+        path: impl AsRef<str>,
+        points: impl IntoIterator<Item = (f32, f32)>,
+    ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
             self.rec
-                .log(path.as_ref(), &rerun::Points2D::new([(x, y)]))
+                .log(path.as_ref(), &rerun::Points2D::new(points))
                 .into_diagnostic()?;
         }
 
         Ok(())
     }
 
+    /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
     pub fn log_points2d_for_image(
         &self,
         path: impl AsRef<str>,
@@ -195,11 +237,13 @@ impl DebugContext {
                     ]),
                 )
                 .into_diagnostic()?;
+            self.rec.disable_timeline("image");
         }
 
         Ok(())
     }
 
+    /// Log a set of 2D lines to the debug viewer, using the timestamp of the provided image.
     pub fn log_lines2d_for_image(
         &self,
         path: impl AsRef<str>,
@@ -229,6 +273,92 @@ impl DebugContext {
                     ]),
                 )
                 .into_diagnostic()?;
+
+            self.rec.disable_timeline("image");
+        }
+
+        Ok(())
+    }
+
+    /// Log a set of 3D points to the debug viewer.
+    pub fn log_points_3d(
+        &self,
+        path: impl AsRef<str>,
+        points: impl IntoIterator<Item = (f32, f32, f32)>,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(path.as_ref(), &rerun::Points3D::new(points))
+                .into_diagnostic()?;
+        }
+        Ok(())
+    }
+
+    /// Log a set of 3D lines to the debug viewer, using the timestamp of the provided image.
+    pub fn log_lines3d_for_image(
+        &self,
+        path: impl AsRef<str>,
+        lines: &[[(f32, f32, f32); 2]],
+        img: Image,
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let image_timestamp = img.timestamp();
+            self.rec.set_time_seconds(
+                "image",
+                image_timestamp
+                    .duration_since(self.start_time)
+                    .as_secs_f64(),
+            );
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::LineStrips3D::new(lines).with_colors(vec![
+                        rerun::Color::from_rgb(
+                            color.red,
+                            color.green,
+                            color.blue,
+                        );
+                        lines.len()
+                    ]),
+                )
+                .into_diagnostic()?;
+            self.rec.disable_timeline("image");
+        }
+
+        Ok(())
+    }
+
+    /// Log a transformation to the entities at the provided path.
+    pub fn log_transformation(
+        &self,
+        path: impl AsRef<str>,
+        transform: &Isometry3<f32>,
+        image: Image,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let image_timestamp = image.timestamp();
+            self.rec.set_time_seconds(
+                "image",
+                image_timestamp
+                    .duration_since(self.start_time)
+                    .as_secs_f64(),
+            );
+
+            let translation = transform.translation;
+            let rotation = transform.rotation.coords;
+
+            self.rec.log(
+                path.as_ref(),
+                &rerun::Transform3D::from_translation_rotation(
+                    (translation.x, translation.y, translation.z),
+                    rerun::Quaternion([rotation.x, rotation.y, rotation.z, rotation.w]),
+                ),
+            );
+            self.rec.disable_timeline("image");
         }
 
         Ok(())
