@@ -81,7 +81,17 @@ pub struct WalkingEngine {
 }
 
 impl WalkingEngine {
-    pub fn from_config(config: &WalkingEngineConfig) -> Self {
+    /// Requests the [`WalkingEngine`] to halt to an idle standing position.
+    pub fn request_idle(&mut self) {
+        self.request = WalkRequest::Idle;
+    }
+
+    /// Requests the [`WalkingEngine`] to perform the provided [`Step`].
+    pub fn request_step(&mut self, step: Step) {
+        self.request = WalkRequest::Walk(step);
+    }
+
+    pub(super) fn from_config(config: &WalkingEngineConfig) -> Self {
         tracing::info!("Using hip height: {}", config.hip_height);
         WalkingEngine {
             state: WalkState::from_config(config),
@@ -99,7 +109,7 @@ impl WalkingEngine {
     }
 
     /// Resets the properties of the walking engine, such that it results in a stationary upright position.
-    pub fn reset(&mut self) {
+    pub(super) fn reset(&mut self) {
         self.current_step = Step::default();
         self.t = Duration::ZERO;
         self.foot_offsets = FootOffsets::zero(self.hip_height);
@@ -111,7 +121,7 @@ impl WalkingEngine {
     ///
     /// This will set the t0 foot offsets, and transition to the next [`WalkState`].
     /// It will then update the properties of the walking engine based on this new state.
-    pub fn init_step_phase(&mut self) {
+    pub(super) fn init_step_phase(&mut self) {
         let config = &self.config;
         self.foot_offsets_t0 = self.foot_offsets.clone();
         self.state = self.state.next(config);
@@ -148,12 +158,37 @@ impl WalkingEngine {
                 self.max_swing_foot_lift = config.base_foot_lift;
             }
         }
+
+        if let Some(new_state) = self.new_state_from_request() {
+            self.state = new_state;
+        }
+    }
+
+    fn new_state_from_request(&self) -> Option<WalkState> {
+        match (&self.request, &self.state) {
+            (WalkRequest::Idle, WalkState::Idle(_) | WalkState::Stopping) => None,
+            (WalkRequest::Idle, WalkState::Starting(_) | WalkState::Walking(_)) => {
+                Some(WalkState::Stopping)
+            }
+            (WalkRequest::Walk(requested_step), WalkState::Idle(_) | WalkState::Stopping) => {
+                Some(WalkState::Walking(*requested_step))
+            }
+            (WalkRequest::Walk(requested_step), state) => match state {
+                WalkState::Starting(current_step) if current_step != requested_step => {
+                    Some(WalkState::Starting(*requested_step))
+                }
+                WalkState::Walking(current_step) if current_step != requested_step => {
+                    Some(WalkState::Walking(*requested_step))
+                }
+                _ => None,
+            },
+        }
     }
 
     /// Process the step phase.
     ///
     /// This increments the current phase time and computes the next foot offsets for the current step.
-    pub fn step_phase(&mut self, cycle_time: Duration) {
+    pub(super) fn step_phase(&mut self, cycle_time: Duration) {
         self.t += cycle_time;
         self.foot_offsets = self.compute_foot_offsets(self.current_step);
     }
@@ -161,11 +196,11 @@ impl WalkingEngine {
     /// End the current step phase.
     ///
     /// This will reset the current phase time to 0.
-    pub fn end_step_phase(&mut self) {
+    pub(super) fn end_step_phase(&mut self) {
         self.t = Duration::ZERO;
     }
 
-    pub fn compute_foot_offsets(&self, step: Step) -> FootOffsets {
+    pub(super) fn compute_foot_offsets(&self, step: Step) -> FootOffsets {
         let linear_time =
             (self.t.as_secs_f32() / self.next_foot_switch.as_secs_f32()).clamp(0.0, 1.0);
         let swing_lift = self.max_swing_foot_lift * smoothing::parabolic_return(linear_time);
@@ -230,7 +265,7 @@ impl WalkingEngine {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Step {
     /// forward in meters per second
     pub forward: f32,
