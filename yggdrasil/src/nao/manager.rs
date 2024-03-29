@@ -124,11 +124,11 @@ impl NaoManager {
         self.head_settings.priority = None;
     }
 
-    /// Sets the joint position and stifnes of the leg joints.
+    /// Sets the joint position and stiffness of the leg joints.
     ///
     /// The joint positions are degrees in radians.
     ///
-    /// The joint stifness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
     /// stiffness. A value of `-1` will disable the stiffness altogether.
     pub fn set_legs(
         &mut self,
@@ -146,11 +146,11 @@ impl NaoManager {
         self
     }
 
-    /// Sets the joint position and stifnes of the arm joints.
+    /// Sets the joint position and stiffness of the arm joints.
     ///
     /// The joint positions are degrees in radians.
     ///
-    /// The joint stifness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
     /// stiffness. A value of `-1` will disable the stiffness altogether.
     pub fn set_arms(
         &mut self,
@@ -168,11 +168,11 @@ impl NaoManager {
         self
     }
 
-    /// Sets the joint position and stifnes of the head joints.
+    /// Sets the joint position and stiffness of the head joints.
     ///
     /// The joint positions are degrees in radians.
     ///
-    /// The joint stifness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
     /// stiffness. A value of `-1` will disable the stiffness altogether.
     pub fn set_head(
         &mut self,
