@@ -38,16 +38,14 @@ impl Behavior for Initial {
     fn execute(&mut self, context: Context, nao_manager: &mut NaoManager) {
         match context.contacts.ground {
             true => {
-                if self.lifted == true {
+                if self.lifted {
                     self.placed_at = Some(Instant::now());
                     self.lifted = false;
-                } else {
-                    if self.placed_at.is_some()
-                        && self.placed_at.unwrap().elapsed()
-                            > Duration::from_secs(PLACED_DURATION_THRESHOLD)
-                    {
-                        self.at_starting_position = true;
-                    }
+                } else if self.placed_at.is_some()
+                    && self.placed_at.unwrap().elapsed()
+                        > Duration::from_secs(PLACED_DURATION_THRESHOLD)
+                {
+                    self.at_starting_position = true;
                 }
             }
             false => {

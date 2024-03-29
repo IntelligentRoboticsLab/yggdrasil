@@ -190,6 +190,7 @@ impl Engine {
 
 /// System that is called to execute one step of the behavior engine each cycle
 #[system]
+#[allow(clippy::too_many_arguments)]
 pub fn step(
     engine: &mut Engine,
     nao_manager: &mut NaoManager,
