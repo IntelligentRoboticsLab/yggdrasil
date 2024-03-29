@@ -9,7 +9,10 @@ use crate::{
         roles::Base,
     },
     config::{general::LayoutConfig, yggdrasil::YggdrasilConfig},
-    filter::button::{ChestButton, HeadButtons},
+    filter::{
+        button::{ChestButton, HeadButtons},
+        fsr::Contacts,
+    },
     motion::arbiter::MotionArbiter,
     nao,
     prelude::*,
@@ -28,9 +31,11 @@ pub struct Context<'a> {
     pub head_buttons: &'a HeadButtons,
     /// State of the chest button of a robot
     pub chest_button: &'a ChestButton,
-    /// Config containing information about the layout of the field.
+    /// Contains information on whether the nao is touching the ground
+    pub contacts: &'a Contacts,
+    /// Config containing information about the layout of the field
     pub layout_config: &'a LayoutConfig,
-    /// Config containing general information.
+    /// Config containing general information
     pub yggdrasil_config: &'a YggdrasilConfig,
 }
 
@@ -78,6 +83,7 @@ pub trait Behavior {
 /// - New behavior implementations should be added as new variants to this enum.
 /// - The specific struct for each behavior (e.g., [`Initial`], [`Passive`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
+#[derive(Debug)]
 pub enum BehaviorKind {
     Passive(Passive),
     Initial(Initial),
@@ -86,7 +92,8 @@ pub enum BehaviorKind {
 
 impl Default for BehaviorKind {
     fn default() -> Self {
-        BehaviorKind::Passive(Passive)
+        BehaviorKind::Initial(Initial::default())
+        // BehaviorKind::Passive(Passive)
     }
 }
 
@@ -202,6 +209,7 @@ pub fn step(
     primary_state: &PrimaryState,
     head_buttons: &HeadButtons,
     chest_button: &ChestButton,
+    contacts: &Contacts,
     layout_config: &LayoutConfig,
     yggdrasil_config: &YggdrasilConfig,
 ) -> Result<()> {
@@ -209,6 +217,7 @@ pub fn step(
         primary_state,
         head_buttons,
         chest_button,
+        contacts,
         layout_config,
         yggdrasil_config,
     };

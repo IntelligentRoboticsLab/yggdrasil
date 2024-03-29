@@ -13,14 +13,16 @@ impl Role for Base {
         context: Context,
         current_behavior: &mut BehaviorKind,
     ) -> BehaviorKind {
-        if context.chest_button.state.is_pressed() {
-            // If chest button is pressed transition to initial behavior.
-            match current_behavior {
-                BehaviorKind::Passive(_) => BehaviorKind::Initial(Initial),
-                BehaviorKind::Initial(state) => BehaviorKind::Initial(*state),
+        match current_behavior {
+            BehaviorKind::Passive(_) => {
+                // If chest button is pressed transition to initial behavior.
+                if context.chest_button.state.is_pressed() {
+                    BehaviorKind::Initial(Initial::default())
+                } else {
+                    BehaviorKind::Passive(Passive)
+                }
             }
-        } else {
-            BehaviorKind::Passive(Passive)
+            BehaviorKind::Initial(state) => BehaviorKind::Initial(*state),
         }
     }
 }
