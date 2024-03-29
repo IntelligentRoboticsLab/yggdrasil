@@ -1,11 +1,8 @@
 use crate::{
     behavior::engine::{Behavior, Context},
-    motion::arbiter::MotionArbiter,
+    nao::manager::{NaoManager, Priority},
 };
-use nidhogg::{
-    types::{color, FillExt, JointArray, RightEye},
-    NaoControlMessage,
-};
+use nidhogg::types::{color, FillExt, RightEye};
 
 /// This is the default behavior of the robot.
 /// In this state the robot does nothing and all motors are turned off.
@@ -14,15 +11,14 @@ use nidhogg::{
 pub struct Passive;
 
 impl Behavior for Passive {
-    fn execute(
-        &mut self,
-        _context: Context,
-        motion_arbiter: &mut MotionArbiter,
-        control_msg: &mut NaoControlMessage,
-    ) {
-        // Makes right eye blue.
-        control_msg.right_eye = RightEye::fill(color::f32::BLUE);
+    fn execute(&mut self, _context: Context, nao_manager: &mut NaoManager) {
         // Turns off motors
-        control_msg.stiffness = JointArray::fill(-1.0);
+        nao_manager
+            .unstiff_legs(Priority::default())
+            .unstiff_arms(Priority::default())
+            .unstiff_head(Priority::default());
+
+        // Makes right eye blue.
+        nao_manager.set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());
     }
 }

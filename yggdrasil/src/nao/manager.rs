@@ -1,39 +1,47 @@
 use nidhogg::{
-    types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints},
+    types::{
+        ArmJoints, FillExt, HeadJoints, JointArray, LeftEar, LeftEye, LegJoints, RgbF32, RightEar,
+        RightEye, Skull,
+    },
     NaoControlMessage,
 };
 
-use crate::{nao, prelude::*};
+use crate::prelude::*;
 
 const STIFFNESS_UNSTIFF: f32 = -1.;
 
 type JointValue = f32;
 
-/// A module providing the motion arbiter.
+/// A module providing the nao manager.
 ///
-/// All systems that want to set joint values using the motion arbiter, should be executed before
+/// All systems that want to set joint values using the nao-manager, should be executed before
 /// [`finalize`].
 ///
 /// This module provides the following resources to the application:
-/// - [`MotionArbiter`]
-pub struct MotionArbiterModule;
+/// - [`NaoManager`]
+pub struct NaoManagerModule;
 
-impl Module for MotionArbiterModule {
+impl Module for NaoManagerModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(finalize.before(nao::write_hardware_info))
-            .init_resource::<MotionArbiter>()
+        app.add_system(finalize).init_resource::<NaoManager>()
     }
 }
 
 #[system]
-pub fn finalize(
-    control_message: &mut NaoControlMessage,
-    motion_arbiter: &mut MotionArbiter,
-) -> Result<()> {
-    control_message.position = motion_arbiter.make_joint_positions();
-    control_message.stiffness = motion_arbiter.make_joint_stiffnesses();
+pub fn finalize(control_message: &mut NaoControlMessage, manager: &mut NaoManager) -> Result<()> {
+    control_message.position = manager.make_joint_positions();
+    control_message.stiffness = manager.make_joint_stiffnesses();
 
-    motion_arbiter.clear_priorities();
+    control_message.left_ear = manager.led_left_ear.value.clone();
+    control_message.right_ear = manager.led_right_ear.value.clone();
+    control_message.chest = manager.led_chest.value;
+    control_message.left_eye = manager.led_left_eye.value.clone();
+    control_message.right_eye = manager.led_right_eye.value.clone();
+    control_message.left_foot = manager.led_left_foot.value;
+    control_message.right_foot = manager.led_right_foot.value;
+    control_message.skull = manager.led_skull.value.clone();
+
+    manager.clear_priorities();
 
     Ok(())
 }
@@ -45,21 +53,36 @@ struct JointSettings<T> {
     priority: Option<Priority>,
 }
 
-/// Arbit the motions of multiple modules requesting motions at the same time.
-///
-/// Modules can request motions through the motion arbiter with a given priority.
-/// Each cycle, the motion arbiter will update the [`NaoControlMessage`] with the motions that have the highest
-/// priorties.
-/// If multiple motion request with the same priority are made, the first request will be chosen.
 #[derive(Default)]
-pub struct MotionArbiter {
+struct LedSettings<T> {
+    value: T,
+    priority: Option<Priority>,
+}
+
+/// Manager the requests of multiple modules changing the nao state at the same time.
+///
+/// Modules can request through the nao manager with a given priority.
+/// Each cycle, the nao manager will update the [`NaoControlMessage`] with the requests that have the highest
+/// priorties.
+/// If multiple requests with the same priority are made, the first request will be prioritized.
+#[derive(Default)]
+pub struct NaoManager {
     leg_settings: JointSettings<LegJoints<JointValue>>,
     arm_settings: JointSettings<ArmJoints<JointValue>>,
     head_settings: JointSettings<HeadJoints<JointValue>>,
+
+    led_left_ear: LedSettings<LeftEar>,
+    led_right_ear: LedSettings<RightEar>,
+    led_chest: LedSettings<RgbF32>,
+    led_left_eye: LedSettings<LeftEye>,
+    led_right_eye: LedSettings<RightEye>,
+    led_left_foot: LedSettings<RgbF32>,
+    led_right_foot: LedSettings<RgbF32>,
+    led_skull: LedSettings<Skull>,
 }
 
-impl MotionArbiter {
-    fn set_settings<T>(
+impl NaoManager {
+    fn set_joint_settings<T>(
         current_settings: &mut JointSettings<T>,
         joint_positions: T,
         joint_stiffness: T,
@@ -77,6 +100,21 @@ impl MotionArbiter {
 
         current_settings.joints_position = joint_positions;
         current_settings.joints_stiffness = joint_stiffness;
+        current_settings.priority = Some(priority);
+    }
+
+    fn set_led_settings<T>(current_settings: &mut LedSettings<T>, leds: T, priority: Priority) {
+        if current_settings
+            .priority
+            .as_ref()
+            .is_some_and(|current_priority| {
+                current_priority.priority_value() >= priority.priority_value()
+            })
+        {
+            return;
+        }
+
+        current_settings.value = leds;
         current_settings.priority = Some(priority);
     }
 
@@ -98,7 +136,7 @@ impl MotionArbiter {
         joint_stiffness: LegJoints<JointValue>,
         priority: Priority,
     ) -> &mut Self {
-        Self::set_settings(
+        Self::set_joint_settings(
             &mut self.leg_settings,
             joint_positions,
             joint_stiffness,
@@ -120,7 +158,7 @@ impl MotionArbiter {
         joint_stiffness: ArmJoints<JointValue>,
         priority: Priority,
     ) -> &mut Self {
-        Self::set_settings(
+        Self::set_joint_settings(
             &mut self.arm_settings,
             joint_positions,
             joint_stiffness,
@@ -142,7 +180,7 @@ impl MotionArbiter {
         joint_stiffness: HeadJoints<JointValue>,
         priority: Priority,
     ) -> &mut Self {
-        Self::set_settings(
+        Self::set_joint_settings(
             &mut self.head_settings,
             joint_positions,
             joint_stiffness,
@@ -179,6 +217,54 @@ impl MotionArbiter {
         )
     }
 
+    pub fn set_left_ear_led(&mut self, left_ear: LeftEar, priority: Priority) -> &mut Self {
+        Self::set_led_settings(&mut self.led_left_ear, left_ear, priority);
+
+        self
+    }
+
+    pub fn set_right_ear_led(&mut self, right_ear: RightEar, priority: Priority) -> &mut Self {
+        Self::set_led_settings(&mut self.led_right_ear, right_ear, priority);
+
+        self
+    }
+
+    pub fn set_chest_led(&mut self, chest: RgbF32, priority: Priority) -> &mut Self {
+        Self::set_led_settings(&mut self.led_chest, chest, priority);
+
+        self
+    }
+
+    pub fn set_left_eye_led(&mut self, left_eye: LeftEye, priority: Priority) -> &mut Self {
+        Self::set_led_settings(&mut self.led_left_eye, left_eye, priority);
+
+        self
+    }
+
+    pub fn set_right_eye_led(&mut self, right_eye: RightEye, priority: Priority) -> &mut Self {
+        Self::set_led_settings(&mut self.led_right_eye, right_eye, priority);
+
+        self
+    }
+
+    pub fn set_left_foot_led(&mut self, left_foot: RgbF32, priority: Priority) -> &mut Self {
+        Self::set_led_settings(&mut self.led_left_foot, left_foot, priority);
+
+        self
+    }
+
+    pub fn set_right_foot_led(&mut self, right_foot: RgbF32, priority: Priority) -> &mut Self {
+        Self::set_led_settings(&mut self.led_right_foot, right_foot, priority);
+
+        self
+    }
+
+    pub fn set_skull_led(&mut self, skull: Skull, priority: Priority) -> &mut Self {
+        Self::set_led_settings(&mut self.led_skull, skull, priority);
+
+        self
+    }
+
     fn make_joint_positions(&self) -> JointArray<JointValue> {
         JointArray::builder()
             .leg_joints(self.leg_settings.joints_position.clone())
@@ -196,7 +282,7 @@ impl MotionArbiter {
     }
 }
 
-/// Priority order for the motion arbiter commands.
+/// Priority order for the nao manager commands.
 ///
 /// Priories are in the range [0, 100].
 #[derive(Default)]

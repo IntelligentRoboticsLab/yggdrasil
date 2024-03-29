@@ -1,10 +1,9 @@
 use crate::{
     behavior::engine::{Behavior, Context},
     config::general::layout::RobotPosition,
-    motion::arbiter::{MotionArbiter, Priority},
+    nao::manager::{NaoManager, Priority},
 };
 use nidhogg::types::{FillExt, HeadJoints};
-use nidhogg::NaoControlMessage;
 use std::time::{Duration, Instant};
 
 /// During a match the chest button is pressed before starting a match.
@@ -27,21 +26,16 @@ pub struct Initial {
 const ROTATION_SPEED: f32 = 1_f32;
 const PLACED_DURATION_THRESHOLD: u64 = 30;
 
-fn look_around(motion_arbiter: &mut MotionArbiter, placed_time: Instant) {
+fn look_around(nao_manager: &mut NaoManager, placed_time: Instant) {
     let yaw = (placed_time.elapsed().as_millis() as f32 * 1000_f32 * ROTATION_SPEED).sin();
     let position = HeadJoints { yaw, pitch: 0.0 };
     let stiffness = HeadJoints::fill(0.3);
 
-    motion_arbiter.set_head(position, stiffness, Priority::default());
+    nao_manager.set_head(position, stiffness, Priority::default());
 }
 
 impl Behavior for Initial {
-    fn execute(
-        &mut self,
-        context: Context,
-        motion_arbiter: &mut MotionArbiter,
-        _control_message: &mut NaoControlMessage,
-    ) {
+    fn execute(&mut self, context: Context, nao_manager: &mut NaoManager) {
         match context.contacts.ground {
             true => {
                 if self.lifted == true {
@@ -80,9 +74,9 @@ impl Behavior for Initial {
             let position = HeadJoints { yaw, pitch: 0.0 };
             let stiffness = HeadJoints::fill(0.3);
 
-            motion_arbiter.set_head(position, stiffness, Priority::default());
+            nao_manager.set_head(position, stiffness, Priority::default());
         } else {
-            look_around(motion_arbiter, self.placed_at.unwrap());
+            look_around(nao_manager, self.placed_at.unwrap());
         }
     }
 }

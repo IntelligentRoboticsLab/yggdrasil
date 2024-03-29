@@ -1,7 +1,6 @@
 //! The engine managing behavior execution and role state.
 
 use enum_dispatch::enum_dispatch;
-use nidhogg::NaoControlMessage;
 
 use crate::{
     behavior::{
@@ -13,8 +12,7 @@ use crate::{
         button::{ChestButton, HeadButtons},
         fsr::Contacts,
     },
-    motion::arbiter::MotionArbiter,
-    nao,
+    nao::{self, manager::NaoManager},
     prelude::*,
     primary_state::PrimaryState,
 };
@@ -47,7 +45,7 @@ pub struct Context<'a> {
 /// # Examples
 /// ```
 /// use yggdrasil::behavior::engine::{Behavior, Context};
-/// use nidhogg::NaoControlMessage;
+/// use yggdrasil::nao::manager::NaoManager;
 ///
 /// struct Dance;
 ///
@@ -55,7 +53,7 @@ pub struct Context<'a> {
 ///     fn execute(
 ///         &mut self,
 ///         context: Context,
-///         control_message: &mut NaoControlMessage,
+///         nao_manager: &mut NaoManager,
 ///     ) {
 ///         // Dance like nobody's watching 🕺!
 ///     }
@@ -65,12 +63,7 @@ pub struct Context<'a> {
 #[enum_dispatch]
 pub trait Behavior {
     /// Defines what the robot does when the corresponding behavior is executed.
-    fn execute(
-        &mut self,
-        context: Context,
-        motion_arbiter: &mut MotionArbiter,
-        control_msg: &mut NaoControlMessage,
-    );
+    fn execute(&mut self, context: Context, nao_manager: &mut NaoManager);
 }
 
 /// An enum containing the possible behaviors for a robot.
@@ -188,15 +181,10 @@ impl Engine {
     }
 
     /// Executes one step of the behavior engine
-    pub fn step(
-        &mut self,
-        context: Context,
-        motion_arbiter: &mut MotionArbiter,
-        control_msg: &mut NaoControlMessage,
-    ) {
+    pub fn step(&mut self, context: Context, nao_manager: &mut NaoManager) {
         self.role = self.assign_role(context);
         self.behavior = self.role.transition_behavior(context, &mut self.behavior);
-        self.behavior.execute(context, motion_arbiter, control_msg);
+        self.behavior.execute(context, nao_manager);
     }
 }
 
@@ -204,8 +192,7 @@ impl Engine {
 #[system]
 pub fn step(
     engine: &mut Engine,
-    control_message: &mut NaoControlMessage,
-    motion_arbiter: &mut MotionArbiter,
+    nao_manager: &mut NaoManager,
     primary_state: &PrimaryState,
     head_buttons: &HeadButtons,
     chest_button: &ChestButton,
@@ -222,7 +209,7 @@ pub fn step(
         yggdrasil_config,
     };
 
-    engine.step(context, motion_arbiter, control_message);
+    engine.step(context, nao_manager);
 
     Ok(())
 }
