@@ -26,6 +26,7 @@ async fn main() -> Result<()> {
         Commands::Scan(opts) => opts.scan(config).await?,
         Commands::Config(opts) => opts.config()?,
         Commands::Update(opts) => opts.update().await?,
+        Commands::Pregame(opts) => opts.pregame(config).await?,
     }
 
     Ok(())

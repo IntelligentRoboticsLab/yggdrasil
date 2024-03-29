@@ -4,7 +4,11 @@ pub mod config;
 pub mod deploy;
 pub mod run;
 pub mod scan;
+<<<<<<< HEAD
 pub mod update;
+=======
+pub mod pregame;
+>>>>>>> 9ac9f49 (Start of pregame command in sindri)
 
 /// `sindri` - The build tool for yggdrasil
 ///
@@ -54,4 +58,5 @@ pub enum Commands {
     #[command(subcommand)]
     Config(config::ConfigCommand),
     Update(update::Update),
+    Pregame(pregame::Pregame),
 }
