@@ -18,7 +18,7 @@ type JointValue = f32;
 /// [`finalize`].
 ///
 /// This module provides the following resources to the application:
-/// - [`Naomanager`]
+/// - [`NaoManager`]
 pub struct NaoManagerModule;
 
 impl Module for NaoManagerModule {

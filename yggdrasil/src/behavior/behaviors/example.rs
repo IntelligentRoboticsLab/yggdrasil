@@ -1,8 +1,8 @@
-use crate::behavior::engine::{Behavior, Context};
-use nidhogg::{
-    types::{color, FillExt, RightEye},
-    NaoControlMessage,
+use crate::{
+    behavior::engine::{Behavior, Context},
+    nao::manager::{NaoManager, Priority},
 };
+use nidhogg::types::{color, FillExt, RightEye};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Example {
@@ -10,7 +10,7 @@ pub struct Example {
 }
 
 impl Behavior for Example {
-    fn execute(&mut self, _context: Context, control_message: &mut NaoControlMessage) {
+    fn execute(&mut self, _context: Context, nao_manager: &mut NaoManager) {
         self.iter += 1;
 
         let right_eye = if self.iter < 100 {
@@ -19,6 +19,6 @@ impl Behavior for Example {
             RightEye::fill(color::f32::BLUE)
         };
 
-        control_message.right_eye = right_eye;
+        nao_manager.set_right_eye_led(right_eye, Priority::Medium);
     }
 }
