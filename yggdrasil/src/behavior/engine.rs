@@ -34,7 +34,7 @@ pub struct Context<'a> {
 /// # Examples
 /// ```
 /// use yggdrasil::behavior::engine::{Behavior, Context};
-/// use nidhogg::NaoControlMessage;
+/// use crate::nao::manager::NaoManager,
 ///
 /// struct Dance;
 ///
@@ -42,7 +42,7 @@ pub struct Context<'a> {
 ///     fn execute(
 ///         &mut self,
 ///         context: Context,
-///         control_message: &mut NaoControlMessage,
+///         nao_manager: &mut NaoManager,
 ///     ) {
 ///         // Dance like nobody's watching 🕺!
 ///     }

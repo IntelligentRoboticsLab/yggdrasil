@@ -1,5 +1,5 @@
 use crate::{
-    nao::arbiter::{NaoArbiter, Priority},
+    nao::manager::{NaoManager, Priority},
     prelude::*,
 };
 
@@ -88,8 +88,8 @@ impl Leds {
 }
 
 #[system]
-pub fn write_led_values(leds: &mut Leds, nao_arbiter: &mut NaoArbiter) -> Result<()> {
-    nao_arbiter
+pub fn write_led_values(leds: &mut Leds, nao_manager: &mut NaoManager) -> Result<()> {
+    nao_manager
         .set_chest_led(leds.chest, Priority::High)
         .set_left_foot_led(leds.left_foot, Priority::High)
         .set_right_foot_led(leds.right_foot, Priority::High)
@@ -106,9 +106,9 @@ pub fn write_led_values(leds: &mut Leds, nao_arbiter: &mut NaoArbiter) -> Result
         }
 
         if blink.on {
-            nao_arbiter.set_chest_led(blink.color, Priority::High);
+            nao_manager.set_chest_led(blink.color, Priority::High);
         } else {
-            nao_arbiter.set_chest_led(color::f32::EMPTY, Priority::High);
+            nao_manager.set_chest_led(color::f32::EMPTY, Priority::High);
         }
     }
 

@@ -12,36 +12,36 @@ const STIFFNESS_UNSTIFF: f32 = -1.;
 
 type JointValue = f32;
 
-/// A module providing the nao arbiter.
+/// A module providing the nao manager.
 ///
-/// All systems that want to set joint values using the nao-arbiter, should be executed before
+/// All systems that want to set joint values using the nao-manager, should be executed before
 /// [`finalize`].
 ///
 /// This module provides the following resources to the application:
-/// - [`NaoArbiter`]
-pub struct NaoArbiterModule;
+/// - [`Naomanager`]
+pub struct NaoManagerModule;
 
-impl Module for NaoArbiterModule {
+impl Module for NaoManagerModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(finalize).init_resource::<NaoArbiter>()
+        app.add_system(finalize).init_resource::<NaoManager>()
     }
 }
 
 #[system]
-pub fn finalize(control_message: &mut NaoControlMessage, arbiter: &mut NaoArbiter) -> Result<()> {
-    control_message.position = arbiter.make_joint_positions();
-    control_message.stiffness = arbiter.make_joint_stiffnesses();
+pub fn finalize(control_message: &mut NaoControlMessage, manager: &mut NaoManager) -> Result<()> {
+    control_message.position = manager.make_joint_positions();
+    control_message.stiffness = manager.make_joint_stiffnesses();
 
-    control_message.left_ear = arbiter.led_left_ear.value.clone();
-    control_message.right_ear = arbiter.led_right_ear.value.clone();
-    control_message.chest = arbiter.led_chest.value;
-    control_message.left_eye = arbiter.led_left_eye.value.clone();
-    control_message.right_eye = arbiter.led_right_eye.value.clone();
-    control_message.left_foot = arbiter.led_left_foot.value;
-    control_message.right_foot = arbiter.led_right_foot.value;
-    control_message.skull = arbiter.led_skull.value.clone();
+    control_message.left_ear = manager.led_left_ear.value.clone();
+    control_message.right_ear = manager.led_right_ear.value.clone();
+    control_message.chest = manager.led_chest.value;
+    control_message.left_eye = manager.led_left_eye.value.clone();
+    control_message.right_eye = manager.led_right_eye.value.clone();
+    control_message.left_foot = manager.led_left_foot.value;
+    control_message.right_foot = manager.led_right_foot.value;
+    control_message.skull = manager.led_skull.value.clone();
 
-    arbiter.clear_priorities();
+    manager.clear_priorities();
 
     Ok(())
 }
@@ -59,14 +59,14 @@ struct LedSettings<T> {
     priority: Option<Priority>,
 }
 
-/// Arbit the requests of multiple modules changing the nao state at the same time.
+/// Manager the requests of multiple modules changing the nao state at the same time.
 ///
-/// Modules can request through the nao arbiter with a given priority.
-/// Each cycle, the nao arbiter will update the [`NaoControlMessage`] with the requests that have the highest
+/// Modules can request through the nao manager with a given priority.
+/// Each cycle, the nao manager will update the [`NaoControlMessage`] with the requests that have the highest
 /// priorties.
 /// If multiple requests with the same priority are made, the first request will be prioritized.
 #[derive(Default)]
-pub struct NaoArbiter {
+pub struct NaoManager {
     leg_settings: JointSettings<LegJoints<JointValue>>,
     arm_settings: JointSettings<ArmJoints<JointValue>>,
     head_settings: JointSettings<HeadJoints<JointValue>>,
@@ -81,7 +81,7 @@ pub struct NaoArbiter {
     led_skull: LedSettings<Skull>,
 }
 
-impl NaoArbiter {
+impl NaoManager {
     fn set_joint_settings<T>(
         current_settings: &mut JointSettings<T>,
         joint_positions: T,
@@ -282,7 +282,7 @@ impl NaoArbiter {
     }
 }
 
-/// Priority order for the nao arbiter commands.
+/// Priority order for the nao manager commands.
 ///
 /// Priories are in the range [0, 100].
 pub enum Priority {
