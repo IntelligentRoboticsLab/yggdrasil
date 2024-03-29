@@ -1,4 +1,8 @@
-use crate::{filter::button::ChestButton, leds::Leds, prelude::*};
+use crate::{
+    filter::button::ChestButton,
+    nao::manager::{NaoManager, Priority},
+    prelude::*,
+};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
@@ -66,7 +70,7 @@ impl PrimaryState {
 pub fn update_primary_state(
     primary_state: &mut PrimaryState,
     game_controller_message: &Option<GameControllerMessage>,
-    led: &mut Leds,
+    nao_manager: &mut NaoManager,
     chest_button: &ChestButton,
     config: &PrimaryStateConfig,
 ) -> Result<()> {
@@ -105,20 +109,26 @@ pub fn update_primary_state(
 
     // Only set color if the primary state is changed, with the exception of `Initial`.
     if next_primary_state != *primary_state {
-        led.unset_chest_blink();
-
         match next_primary_state {
-            PS::Unstiff => led.set_chest_blink(color::f32::BLUE, config.chest_blink_interval),
-            PS::Initial => led.chest = color::f32::GRAY,
-            PS::Ready => led.chest = color::f32::BLUE,
-            PS::Set => led.chest = color::f32::YELLOW,
-            PS::Playing => led.chest = color::f32::GREEN,
-            PS::Penalized => led.chest = color::f32::RED,
-            PS::Finished => led.chest = color::f32::GRAY,
-            PS::Calibration => led.chest = color::f32::PURPLE,
+            PS::Unstiff => nao_manager.set_chest_blink_led(
+                color::f32::BLUE,
+                config.chest_blink_interval,
+                Priority::Medium,
+            ),
+            PS::Initial => nao_manager.set_chest_led(color::f32::GRAY, Priority::Medium),
+            PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Medium),
+            PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Medium),
+            PS::Playing => nao_manager.set_chest_led(color::f32::GREEN, Priority::Medium),
+            PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Medium),
+            PS::Finished => nao_manager.set_chest_led(color::f32::GRAY, Priority::Medium),
+            PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Medium),
         };
     } else if next_primary_state == PS::Unstiff {
-        led.set_chest_blink(color::f32::BLUE, config.chest_blink_interval)
+        nao_manager.set_chest_blink_led(
+            color::f32::BLUE,
+            config.chest_blink_interval,
+            Priority::Medium,
+        );
     }
 
     *primary_state = next_primary_state;
