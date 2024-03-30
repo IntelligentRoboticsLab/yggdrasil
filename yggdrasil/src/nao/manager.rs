@@ -48,8 +48,6 @@ pub fn finalize(control_message: &mut NaoControlMessage, manager: &mut NaoManage
 
     manager.clear_priorities();
 
-    manager.set_chest_blink_led(color::f32::BLUE, Duration::from_secs(3), Priority::Critical);
-
     Ok(())
 }
 
