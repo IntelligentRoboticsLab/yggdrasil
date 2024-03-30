@@ -377,8 +377,10 @@ impl NaoManager {
 /// Priority order for the nao manager commands.
 ///
 /// Priories are in the range [0, 100].
+#[derive(Default)]
 pub enum Priority {
     /// Has priority `10`.
+    #[default]
     Low,
     /// Has priority `30`.
     Medium,
