@@ -61,10 +61,10 @@ struct JointSettings<T> {
 }
 
 enum ChestBlink {
-    Disabled {
+    Static {
         color: RgbF32,
     },
-    Enabled {
+    Blinking {
         color: RgbF32,
         interval: Duration,
         on: bool,
@@ -75,8 +75,8 @@ enum ChestBlink {
 impl ChestBlink {
     pub fn color(&mut self) -> RgbF32 {
         match self {
-            ChestBlink::Disabled { color } => *color,
-            ChestBlink::Enabled {
+            ChestBlink::Static { color } => *color,
+            ChestBlink::Blinking {
                 color,
                 interval,
                 on,
@@ -99,7 +99,7 @@ impl ChestBlink {
 
 impl Default for ChestBlink {
     fn default() -> Self {
-        ChestBlink::Disabled {
+        ChestBlink::Static {
             color: color::f32::EMPTY,
         }
     }
@@ -284,7 +284,7 @@ impl NaoManager {
     pub fn set_chest_led(&mut self, chest: RgbF32, priority: Priority) -> &mut Self {
         Self::set_led_settings(
             &mut self.led_chest,
-            ChestBlink::Disabled { color: chest },
+            ChestBlink::Static { color: chest },
             priority,
         );
 
@@ -298,10 +298,10 @@ impl NaoManager {
         priority: Priority,
     ) -> &mut Self {
         match self.led_chest.value {
-            ChestBlink::Disabled { .. } => {
+            ChestBlink::Static { .. } => {
                 Self::set_led_settings(
                     &mut self.led_chest,
-                    ChestBlink::Enabled {
+                    ChestBlink::Blinking {
                         color: chest,
                         interval,
                         on: false,
@@ -310,10 +310,10 @@ impl NaoManager {
                     priority,
                 );
             }
-            ChestBlink::Enabled { on, start, .. } => {
+            ChestBlink::Blinking { on, start, .. } => {
                 Self::set_led_settings(
                     &mut self.led_chest,
-                    ChestBlink::Enabled {
+                    ChestBlink::Blinking {
                         color: chest,
                         interval,
                         on,
