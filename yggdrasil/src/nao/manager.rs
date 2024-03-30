@@ -13,13 +13,13 @@ use nidhogg::{
 
 use crate::prelude::*;
 
-const STIFFNESS_UNSTIFF: f32 = -1.;
+const STIFFNESS_UNSTIFF: f32 = -1.0;
 
 type JointValue = f32;
 
 /// A module providing the nao manager.
 ///
-/// All systems that want to set joint- or LED values using the nao-manager, should be executed before
+/// All systems that want to set joint- or LED values using the nao manager, should be executed before
 /// [`finalize`].
 ///
 /// This module provides the following resources to the application:
@@ -111,7 +111,7 @@ struct LedSettings<T> {
     priority: Option<Priority>,
 }
 
-/// Manager the requests of multiple modules changing the nao state at the same time.
+/// Manager that handles the requests of multiple systems changing the desired nao state at the same time.
 ///
 /// Modules can request through the nao manager with a given priority.
 /// Each cycle, the nao manager will update the [`NaoControlMessage`] with the requests that have the highest
@@ -242,7 +242,7 @@ impl NaoManager {
         self
     }
 
-    /// Disable the stiffness of the legs.
+    /// Disable all motors in the legs.
     pub fn unstiff_legs(&mut self, priority: Priority) -> &mut Self {
         self.set_legs(
             self.leg_settings.joints_position.clone(),
@@ -251,7 +251,7 @@ impl NaoManager {
         )
     }
 
-    /// Disable the stiffness of the legs.
+    /// Disable all motors in the arms.
     pub fn unstiff_arms(&mut self, priority: Priority) -> &mut Self {
         self.set_arms(
             self.arm_settings.joints_position.clone(),
@@ -260,7 +260,7 @@ impl NaoManager {
         )
     }
 
-    /// Disable the stiffness of the legs.
+    /// Disable all motors in the head.
     pub fn unstiff_head(&mut self, priority: Priority) -> &mut Self {
         self.set_head(
             self.head_settings.joints_position.clone(),
