@@ -1,6 +1,8 @@
 mod cycle;
 pub use cycle::*;
 
+pub mod manager;
+
 use crate::prelude::*;
 use std::{env, time::Duration};
 
@@ -70,7 +72,8 @@ impl Module for NaoModule {
         Ok(app
             .add_startup_system(initialize_nao)?
             .init_resource::<NaoControlMessage>()?
-            .add_system(write_hardware_info)
+            .add_module(manager::NaoManagerModule)?
+            .add_system(write_hardware_info.after(manager::finalize))
             .add_startup_system(cycle::initialize_cycle_counter)?
             .add_system(cycle::update_cycle_stats.after(write_hardware_info)))
     }
