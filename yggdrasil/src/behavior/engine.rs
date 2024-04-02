@@ -7,7 +7,7 @@ use crate::{
         behaviors::{Example, Initial},
         roles::{Keeper, Striker},
     },
-    config::general::LayoutConfig,
+    config::layout::LayoutConfig,
     filter::button::HeadButtons,
     nao::{self, manager::NaoManager},
     prelude::*,

@@ -1,4 +1,4 @@
-pub mod general;
+pub mod layout;
 pub mod tyr;
 pub mod yggdrasil;
 
@@ -12,7 +12,7 @@ use odal::{ConfigKind, Error, ErrorKind};
 use tyr::TyrConfig;
 use yggdrasil::YggdrasilConfig;
 
-use self::general::LayoutConfig;
+use layout::LayoutConfig;
 
 /// This module adds functionality to load configuration structs from files.
 ///
