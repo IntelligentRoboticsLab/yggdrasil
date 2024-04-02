@@ -24,7 +24,7 @@ impl Module for KinematicsModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .init_resource::<RobotKinematics>()?
-            .add_system(update_kinematics.after(crate::nao::write_hardware_info)))
+            .add_system(update_kinematics.after(crate::nao::manager::finalize)))
     }
 }
 
