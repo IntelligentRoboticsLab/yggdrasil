@@ -6,6 +6,7 @@ use crate::{
     behavior::{
         behaviors::{Initial, Passive},
         roles::Base,
+        BehaviorConfig,
     },
     config::{general::LayoutConfig, yggdrasil::YggdrasilConfig},
     filter::{
@@ -35,6 +36,8 @@ pub struct Context<'a> {
     pub layout_config: &'a LayoutConfig,
     /// Config containing general information
     pub yggdrasil_config: &'a YggdrasilConfig,
+    /// Config containing parameters for various behaviors
+    pub behavior_config: &'a BehaviorConfig,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -199,6 +202,7 @@ pub fn step(
     contacts: &Contacts,
     layout_config: &LayoutConfig,
     yggdrasil_config: &YggdrasilConfig,
+    behavior_config: &BehaviorConfig,
 ) -> Result<()> {
     let context = Context {
         primary_state,
@@ -207,6 +211,7 @@ pub fn step(
         contacts,
         layout_config,
         yggdrasil_config,
+        behavior_config,
     };
 
     engine.step(context, nao_manager);

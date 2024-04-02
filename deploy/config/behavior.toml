@@ -1,0 +1,3 @@
+[initial_behaviour]
+head_rotation_speed = 2.0
+placed_duration_threshold = 15

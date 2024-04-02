@@ -3,5 +3,5 @@
 mod initial;
 mod passive;
 
-pub use initial::Initial;
+pub use initial::{Initial, InitialBehaviorConfig};
 pub use passive::Passive;
