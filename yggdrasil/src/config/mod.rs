@@ -1,3 +1,4 @@
+pub mod layout;
 pub mod tyr;
 pub mod yggdrasil;
 
@@ -10,6 +11,8 @@ use odal::{ConfigKind, Error, ErrorKind};
 
 use tyr::TyrConfig;
 use yggdrasil::YggdrasilConfig;
+
+use layout::LayoutConfig;
 
 /// This module adds functionality to load configuration structs from files.
 ///
@@ -47,6 +50,7 @@ pub struct ConfigModule;
 impl Module for ConfigModule {
     fn initialize(self, app: App) -> miette::Result<App> {
         app.add_startup_system(initialize_config_roots)?
+            .init_config::<LayoutConfig>()?
             .init_config::<TyrConfig>()?
             .init_config::<YggdrasilConfig>()?
             .add_startup_system(tyr::configure_tyr_hack)?
