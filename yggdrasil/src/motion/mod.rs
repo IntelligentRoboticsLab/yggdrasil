@@ -1,4 +1,4 @@
-use crate::{kinematics, nao, prelude::*};
+use crate::{kinematics, prelude::*};
 
 use self::odometry::Odometry;
 

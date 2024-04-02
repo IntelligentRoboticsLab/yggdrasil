@@ -44,6 +44,7 @@ impl Odometry {
             Side::Right => -left_sole_to_right_sole + self.last_left_sole_to_right_sole,
         } / 2.0;
 
+        self.last_left_sole_to_right_sole = left_sole_to_right_sole;
         let scaled_offset = offset.component_mul(&config.scale_factor);
 
         // TODO: Use the IMU to correct orientation
