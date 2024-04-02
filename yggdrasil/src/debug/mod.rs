@@ -295,6 +295,29 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Log a set of 3D points to the debug viewer, using the provided color and scale.
+    pub fn log_points_3d_with_color_and_scale(
+        &self,
+        path: impl AsRef<str>,
+        points: &[(f32, f32, f32)],
+        color: RgbU8,
+        scale: f32,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let color = rerun::Color::from_rgb(color.red, color.green, color.blue);
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Points3D::new(points)
+                        .with_radii(vec![scale; points.len()])
+                        .with_colors(vec![color; points.len()]),
+                )
+                .into_diagnostic()?;
+        }
+        Ok(())
+    }
+
     /// Log a set of 3D lines to the debug viewer, using the timestamp of the provided image.
     pub fn log_lines3d_for_image(
         &self,

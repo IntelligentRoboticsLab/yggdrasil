@@ -28,7 +28,20 @@ use self::engine::{FootOffsets, Side, Step, WalkState, WalkingEngine};
 
 #[derive(Debug, Default, Clone)]
 pub struct SwingFoot {
-    pub side: Side,
+    side: Side,
+}
+
+impl SwingFoot {
+    pub fn support(&self) -> Side {
+        match self.side {
+            Side::Left => Side::Right,
+            Side::Right => Side::Left,
+        }
+    }
+
+    pub fn swing(&self) -> Side {
+        self.side
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
