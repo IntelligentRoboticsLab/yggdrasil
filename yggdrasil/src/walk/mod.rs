@@ -8,9 +8,10 @@ use crate::{
         button::{ChestButton, HeadButtons},
         imu::IMUValues,
     },
-    motion::arbiter::{MotionArbiter, Priority},
-    nao::manager::{NaoManager, Priority},
-    nao::CycleTime,
+    nao::{
+        manager::{NaoManager, Priority},
+        CycleTime,
+    },
     prelude::*,
     primary_state::PrimaryState,
 };
