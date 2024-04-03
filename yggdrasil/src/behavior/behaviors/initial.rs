@@ -76,8 +76,9 @@ impl Behavior for Initial {
             if self.lifted {
                 self.placed_at = Some(Instant::now());
                 self.lifted = false;
-            } else if self.placed_at.is_some()
-                && self.placed_at.unwrap().elapsed() > placed_duration_threshold
+            } else if self
+                .placed_at
+                .is_some_and(|placed_at| placed_at.elapsed() > placed_duration_threshold)
             {
                 self.at_starting_position = true;
             }
