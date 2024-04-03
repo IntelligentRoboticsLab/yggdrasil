@@ -6021,6 +6021,7 @@ dependencies = [
  "tokio",
  "toml",
  "walkdir",
+ "yggdrasil",
 ]
 
 [[package]]

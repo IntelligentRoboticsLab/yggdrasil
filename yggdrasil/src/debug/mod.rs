@@ -12,6 +12,9 @@ use std::net::IpAddr;
 
 use crate::{camera::Image, nao::Cycle, prelude::*};
 
+#[cfg(not(feature = "local"))]
+use crate::{config::pregame::PregameConfig, nao::RobotInfo};
+
 /// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
 ///
 /// This module provides the following resources to the application:

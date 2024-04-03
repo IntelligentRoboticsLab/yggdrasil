@@ -23,8 +23,6 @@ pub struct GameControllerConfig {
     pub game_controller_timeout: Duration,
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub game_controller_return_delay: Duration,
-    pub player_number: u8,
-    pub team_number: u8,
 }
 
 struct GameControllerData {

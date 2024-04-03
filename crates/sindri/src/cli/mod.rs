@@ -2,13 +2,10 @@ use clap::Parser;
 
 pub mod config;
 pub mod deploy;
+pub mod pregame;
 pub mod run;
 pub mod scan;
-<<<<<<< HEAD
 pub mod update;
-=======
-pub mod pregame;
->>>>>>> 9ac9f49 (Start of pregame command in sindri)
 
 /// `sindri` - The build tool for yggdrasil
 ///
