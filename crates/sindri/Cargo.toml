@@ -1,14 +1,17 @@
 [package]
-name = "sindri"
-version = "0.1.0"
 edition = "2021"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+name = "sindri"
+version = "0.2.0"
 
 [dependencies]
 cargo_toml = { workspace = true }
-clap = { workspace = true, features = ["derive"] }
+clap = { workspace = true, features = ["derive", "string"] }
 colored = { workspace = true }
+dialoguer = { workspace = true }
+glob = { workspace = true }
+home = { workspace = true }
 indicatif = { workspace = true }
+local-ip-address = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 regex = { workspace = true }
 serde = { workspace = true }

@@ -1,4 +1,5 @@
 pub mod pregame;
+pub mod layout;
 pub mod tyr;
 pub mod yggdrasil;
 
@@ -12,6 +13,8 @@ use odal::{ConfigKind, Error, ErrorKind};
 use pregame::PregameConfig;
 use tyr::TyrConfig;
 use yggdrasil::YggdrasilConfig;
+
+use layout::LayoutConfig;
 
 /// This module adds functionality to load configuration structs from files.
 ///
@@ -50,6 +53,7 @@ impl Module for ConfigModule {
     fn initialize(self, app: App) -> miette::Result<App> {
         app.add_startup_system(initialize_config_roots)?
             .init_config::<PregameConfig>()?
+            .init_config::<LayoutConfig>()?
             .init_config::<TyrConfig>()?
             .init_config::<YggdrasilConfig>()?
             .add_startup_system(pregame::configure_pregame)?
@@ -60,12 +64,13 @@ impl Module for ConfigModule {
 }
 
 #[startup_system]
-fn init_subconfigs(storage: &mut Storage, yggdrasil_config: &mut YggdrasilConfig) -> Result<()> {
-    storage.add_resource(Resource::new(yggdrasil_config.camera.clone()))?;
-    storage.add_resource(Resource::new(yggdrasil_config.filter.clone()))?;
-    storage.add_resource(Resource::new(yggdrasil_config.game_controller.clone()))?;
-    storage.add_resource(Resource::new(yggdrasil_config.primary_state.clone()))?;
-    storage.add_resource(Resource::new(yggdrasil_config.vision.clone()))?;
+fn init_subconfigs(storage: &mut Storage, config: &mut YggdrasilConfig) -> Result<()> {
+    storage.add_resource(Resource::new(config.camera.clone()))?;
+    storage.add_resource(Resource::new(config.filter.clone()))?;
+    storage.add_resource(Resource::new(config.game_controller.clone()))?;
+    storage.add_resource(Resource::new(config.primary_state.clone()))?;
+    storage.add_resource(Resource::new(config.vision.clone()))?;
+    storage.add_resource(Resource::new(config.odometry.clone()))?;
 
     Ok(())
 }

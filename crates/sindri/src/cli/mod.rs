@@ -1,9 +1,11 @@
 use clap::Parser;
 
+pub mod config;
 pub mod deploy;
 pub mod run;
 pub mod scan;
 pub mod pregame;
+pub mod update;
 
 /// `sindri` - The build tool for yggdrasil
 ///
@@ -38,18 +40,10 @@ pub mod pregame;
 /// For more advanced options use `sindri --help`.
 
 #[derive(Parser)]
-#[clap(name = "sindri", version)]
+#[clap(name = "sindri", version = crate::version::VersionInfo::current())]
 pub struct Cli {
     #[clap(subcommand)]
     pub action: Commands,
-
-    /// Enable verbose logging
-    #[clap(short, long)]
-    pub verbose: bool,
-
-    /// Specify bin target
-    #[clap(global = true, long, default_value = "yggdrasil")]
-    pub bin: String,
 }
 
 /// All possible commands for the cli, used for clap derive macros.
@@ -59,4 +53,7 @@ pub enum Commands {
     Run(run::Run),
     Scan(scan::Scan),
     Pregame(pregame::Pregame),
+    #[command(subcommand)]
+    Config(config::ConfigCommand),
+    Update(update::Update),
 }

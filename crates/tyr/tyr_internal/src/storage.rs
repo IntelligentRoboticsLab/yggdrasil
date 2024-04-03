@@ -55,21 +55,21 @@ impl ErasedResource {
 
 impl<T: Debug + Send + Sync + 'static> From<Resource<T>> for DebuggableResource {
     fn from(resource: Resource<T>) -> Self {
-        Self(std::any::type_name::<T>(), resource.value)
+        Self(resource.value)
     }
 }
 
 /// A type-erased resource that is debuggable.
 #[derive(Debug, Clone)]
-pub struct DebuggableResource(&'static str, Arc<RwLock<dyn Debug + Send + Sync + 'static>>);
+pub struct DebuggableResource(Arc<RwLock<dyn Debug + Send + Sync + 'static>>);
 
 impl DebuggableResource {
     pub fn read(&self) -> LockResult<RwLockReadGuard<dyn Debug + Send + Sync + 'static>> {
-        self.1.read()
+        self.0.read()
     }
 
     pub fn write(&self) -> LockResult<RwLockWriteGuard<dyn Debug + Send + Sync + 'static>> {
-        self.1.write()
+        self.0.write()
     }
 }
 

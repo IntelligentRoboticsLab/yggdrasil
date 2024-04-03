@@ -124,9 +124,7 @@ impl<T: Send, D: Dispatcher> Pollable for Task<T, D> {
     }
 
     fn poll(&mut self) -> Self::Output {
-        let Some(task) = &mut self.raw else {
-            return None;
-        };
+        let task = &mut self.raw.as_mut()?;
 
         match task.poll(self.dispatcher.handle()) {
             Some(output) => {

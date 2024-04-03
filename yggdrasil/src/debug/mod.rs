@@ -1,17 +1,18 @@
 #[cfg(feature = "rerun")]
-use std::convert::Into;
+use std::{convert::Into, net::SocketAddr};
 
+use heimdall::CameraMatrix;
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 
+use nalgebra::Isometry3;
 use nidhogg::types::RgbU8;
-use std::net::Ipv4Addr;
+use std::net::IpAddr;
 
 use crate::{camera::Image, nao::Cycle, prelude::*};
 
 #[cfg(not(feature = "local"))]
 use crate::{config::pregame::PregameConfig, nao::RobotInfo};
-
 /// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
 ///
 /// This module provides the following resources to the application:
@@ -41,25 +42,13 @@ impl DebugContext {
     ///
     /// If yggdrasil is not compiled with the `rerun` feature, this will return a [`DebugContext`] that
     /// does nothing.
-    fn init(
-        recording_name: impl AsRef<str>,
-        server_address: Ipv4Addr,
-        memory_limit: f32,
-        ad: &AsyncDispatcher,
-    ) -> Result<Self> {
+    fn init(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
         #[cfg(feature = "rerun")]
         {
-            // To spawn a recording stream in serve mode, the tokio runtime needs to be in scope.
-            let handle = ad.handle().clone();
-            let _guard = handle.enter();
-
             let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
-                .serve(
-                    &server_address.to_string(),
-                    Default::default(),
-                    Default::default(),
-                    rerun::MemoryLimit::from_fraction_of_total(memory_limit),
-                    false,
+                .connect_opts(
+                    SocketAddr::new(rerun_host, rerun::default_server_addr().port()),
+                    rerun::default_flush_timeout(),
                 )
                 .into_diagnostic()?;
 
@@ -82,17 +71,55 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Disable the "cycle" timeline for the current thread.
+    fn clear_cycle(&self) {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec.disable_timeline("cycle");
+        }
+    }
+
     /// Log a Yuyv encoded image to the debug viewer.
     ///
     /// The image is first converted to a jpeg encoded image.
     pub fn log_image(&self, path: impl AsRef<str>, img: Image, jpeg_quality: i32) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
+            self.set_cycle(&img.cycle());
             let jpeg = img.yuyv_image().to_jpeg(jpeg_quality)?;
             let tensor_data =
                 rerun::TensorData::from_jpeg_bytes(jpeg.to_owned()).into_diagnostic()?;
             let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
+
             self.rec.log(path.as_ref(), &img).into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a camera matrix to the debug viewer.
+    ///
+    /// The camera matrix is logged as a pinhole camera, without any transforms applied.
+    pub fn log_camera_matrix(
+        &self,
+        path: impl AsRef<str>,
+        matrix: &CameraMatrix,
+        image: Image,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&image.cycle());
+            let pinhole = rerun::Pinhole::from_focal_length_and_resolution(
+                [matrix.focal_lengths.x, matrix.focal_lengths.y],
+                [
+                    image.yuyv_image().width() as f32,
+                    image.yuyv_image().height() as f32,
+                ],
+            )
+            .with_camera_xyz(rerun::components::ViewCoordinates::FLU);
+            self.rec.log(path.as_ref(), &pinhole).into_diagnostic()?;
+            self.clear_cycle();
         }
 
         Ok(())
@@ -146,6 +173,7 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Log a text message to the debug viewer.
     pub fn log_text(&self, path: impl AsRef<str>, text: String) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
@@ -156,29 +184,194 @@ impl DebugContext {
 
         Ok(())
     }
+
+    /// Log a set of 2D points to the debug viewer.
+    pub fn log_points_2d(
+        &self,
+        path: impl AsRef<str>,
+        points: impl IntoIterator<Item = (f32, f32)>,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(path.as_ref(), &rerun::Points2D::new(points))
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
+
+    /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
+    pub fn log_points2d_for_image(
+        &self,
+        path: impl AsRef<str>,
+        points: &[(f32, f32)],
+        img: Image,
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&img.cycle());
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Points2D::new(points).with_colors(vec![
+                        rerun::Color::from_rgb(
+                            color.red,
+                            color.green,
+                            color.blue,
+                        );
+                        points.len()
+                    ]),
+                )
+                .into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a set of 2D lines to the debug viewer, using the timestamp of the provided image.
+    pub fn log_lines2d_for_image(
+        &self,
+        path: impl AsRef<str>,
+        lines: &[[(f32, f32); 2]],
+        img: Image,
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&img.cycle());
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::LineStrips2D::new(lines).with_colors(vec![
+                        rerun::Color::from_rgb(
+                            color.red,
+                            color.green,
+                            color.blue,
+                        );
+                        lines.len()
+                    ]),
+                )
+                .into_diagnostic()?;
+
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a set of 3D points to the debug viewer.
+    pub fn log_points_3d(
+        &self,
+        path: impl AsRef<str>,
+        points: impl IntoIterator<Item = (f32, f32, f32)>,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(path.as_ref(), &rerun::Points3D::new(points))
+                .into_diagnostic()?;
+        }
+        Ok(())
+    }
+
+    /// Log a set of 3D points to the debug viewer, using the provided color and radius.
+    pub fn log_points_3d_with_color_and_radius(
+        &self,
+        path: impl AsRef<str>,
+        points: &[(f32, f32, f32)],
+        color: RgbU8,
+        radius: f32,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let color = rerun::Color::from_rgb(color.red, color.green, color.blue);
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Points3D::new(points)
+                        .with_radii(vec![radius; points.len()])
+                        .with_colors(vec![color; points.len()]),
+                )
+                .into_diagnostic()?;
+        }
+        Ok(())
+    }
+
+    /// Log a set of 3D lines to the debug viewer, using the timestamp of the provided image.
+    pub fn log_lines3d_for_image(
+        &self,
+        path: impl AsRef<str>,
+        lines: &[[(f32, f32, f32); 2]],
+        img: Image,
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&img.cycle());
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::LineStrips3D::new(lines).with_colors(vec![
+                        rerun::Color::from_rgb(
+                            color.red,
+                            color.green,
+                            color.blue,
+                        );
+                        lines.len()
+                    ]),
+                )
+                .into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a transformation to the entities at the provided path.
+    pub fn log_transformation(
+        &self,
+        path: impl AsRef<str>,
+        transform: &Isometry3<f32>,
+        img: Image,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&img.cycle());
+
+            let translation = transform.translation;
+            let rotation = transform.rotation.coords;
+
+            self.rec.log(
+                path.as_ref(),
+                &rerun::Transform3D::from_translation_rotation(
+                    (translation.x, translation.y, translation.z),
+                    rerun::Quaternion([rotation.x, rotation.y, rotation.z, rotation.w]),
+                ),
+            );
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
 }
 
 #[startup_system]
-fn init_rerun(
-    storage: &mut Storage,
-    ad: &AsyncDispatcher,
-    #[cfg(not(feature = "local"))] robot_info: &RobotInfo,
-    #[cfg(not(feature = "local"))] player_config: &PregameConfig,
-) -> Result<()> {
-    #[cfg(feature = "local")]
-    let server_address = Ipv4Addr::LOCALHOST;
+fn init_rerun(storage: &mut Storage) -> Result<()> {
+    #[cfg(any(feature = "local", not(feature = "rerun")))]
+    let server_address = IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
     // Manually set the server address to the robot's IP address, instead of 0.0.0.0
     // to ensure the rerun server prints the correct connection URL on startup
-    #[cfg(not(feature = "local"))]
-    let server_address = Ipv4Addr::new(
-        10,
-        0,
-        player_config.player.team_number,
-        robot_info.robot_id as u8,
-    );
+    #[cfg(all(not(feature = "local"), feature = "rerun"))]
+    let server_address = {
+        let host = std::env::var("RERUN_HOST").into_diagnostic()?;
 
-    // init debug context with 5% of the total memory, as cache size limit.
-    let ctx = DebugContext::init("yggdrasil", server_address, 0.05, ad)?;
+        std::str::FromStr::from_str(host.as_str()).into_diagnostic()?
+    };
+
+    let ctx = DebugContext::init("yggdrasil", server_address)?;
 
     storage.add_resource(Resource::new(ctx))
 }

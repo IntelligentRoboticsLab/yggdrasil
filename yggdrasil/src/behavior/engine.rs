@@ -1,7 +1,6 @@
 //! The engine managing behavior execution and role state.
 
 use enum_dispatch::enum_dispatch;
-use nidhogg::NaoControlMessage;
 
 use crate::{
     behavior::{
@@ -9,8 +8,9 @@ use crate::{
         roles::{Keeper, Striker},
     },
     config::pregame::PregameConfig,
+    config::layout::LayoutConfig,
     filter::button::HeadButtons,
-    nao,
+    nao::{self, manager::NaoManager},
     prelude::*,
     primary_state::PrimaryState,
 };
@@ -26,6 +26,8 @@ pub struct Context<'a> {
     /// State of the headbuttons of a robot
     pub head_buttons: &'a HeadButtons,
     pub pregame_config: &'a PregameConfig,
+    /// Config containing information about the layout of the field.
+    pub layout_config: &'a LayoutConfig,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -36,7 +38,7 @@ pub struct Context<'a> {
 /// # Examples
 /// ```
 /// use yggdrasil::behavior::engine::{Behavior, Context};
-/// use nidhogg::NaoControlMessage;
+/// use yggdrasil::nao::manager::NaoManager;
 ///
 /// struct Dance;
 ///
@@ -44,7 +46,7 @@ pub struct Context<'a> {
 ///     fn execute(
 ///         &mut self,
 ///         context: Context,
-///         control_message: &mut NaoControlMessage,
+///         nao_manager: &mut NaoManager,
 ///     ) {
 ///         // Dance like nobody's watching 🕺!
 ///     }
@@ -54,7 +56,7 @@ pub struct Context<'a> {
 #[enum_dispatch]
 pub trait Behavior {
     /// Defines what the robot does when the corresponding behavior is executed.
-    fn execute(&mut self, context: Context, control_message: &mut NaoControlMessage);
+    fn execute(&mut self, context: Context, nao_manager: &mut NaoManager);
 }
 
 /// An enum containing the possible behaviors for a robot.
@@ -171,10 +173,10 @@ impl Engine {
     }
 
     /// Executes one step of the behavior engine
-    pub fn step(&mut self, context: Context, control_message: &mut NaoControlMessage) {
+    pub fn step(&mut self, context: Context, nao_manager: &mut NaoManager) {
         self.role = self.assign_role(context);
         self.behavior = self.role.transition_behavior(context, &mut self.behavior);
-        self.behavior.execute(context, control_message);
+        self.behavior.execute(context, nao_manager);
     }
 }
 
@@ -182,18 +184,20 @@ impl Engine {
 #[system]
 pub fn step(
     engine: &mut Engine,
-    control_message: &mut NaoControlMessage,
+    nao_manager: &mut NaoManager,
     primary_state: &PrimaryState,
     head_buttons: &HeadButtons,
     pregame_config: &PregameConfig,
+    layout_config: &LayoutConfig,
 ) -> Result<()> {
     let context = Context {
         primary_state,
         head_buttons,
         pregame_config,
+        layout_config,
     };
 
-    engine.step(context, control_message);
+    engine.step(context, nao_manager);
 
     Ok(())
 }
