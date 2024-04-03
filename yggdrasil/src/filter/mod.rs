@@ -9,6 +9,7 @@ use std::time::Duration;
 pub mod button;
 pub mod fsr;
 pub mod imu;
+/// A simple low pass smoothing filter.
 pub mod low_pass_filter;
 pub mod sonar;
 
