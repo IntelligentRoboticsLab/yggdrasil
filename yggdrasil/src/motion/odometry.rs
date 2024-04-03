@@ -71,7 +71,7 @@ pub fn update_odometry(
 pub fn log_odometry(odometry: &Odometry, dbg: &DebugContext) -> Result<()> {
     let accumulated = odometry.accumulated.translation;
     let accumulated = (accumulated.x, accumulated.y, 0.0);
-    dbg.log_points_3d_with_color_and_scale(
+    dbg.log_points_3d_with_color_and_radius(
         "/odometry/accumulated",
         &[accumulated],
         color::u8::RED,

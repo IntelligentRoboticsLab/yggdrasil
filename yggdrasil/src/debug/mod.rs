@@ -275,13 +275,13 @@ impl DebugContext {
         Ok(())
     }
 
-    /// Log a set of 3D points to the debug viewer, using the provided color and scale.
-    pub fn log_points_3d_with_color_and_scale(
+    /// Log a set of 3D points to the debug viewer, using the provided color and radius.
+    pub fn log_points_3d_with_color_and_radius(
         &self,
         path: impl AsRef<str>,
         points: &[(f32, f32, f32)],
         color: RgbU8,
-        scale: f32,
+        radius: f32,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
@@ -290,7 +290,7 @@ impl DebugContext {
                 .log(
                     path.as_ref(),
                     &rerun::Points3D::new(points)
-                        .with_radii(vec![scale; points.len()])
+                        .with_radii(vec![radius; points.len()])
                         .with_colors(vec![color; points.len()]),
                 )
                 .into_diagnostic()?;
