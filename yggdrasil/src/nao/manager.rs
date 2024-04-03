@@ -1,20 +1,25 @@
+use std::{
+    ops::Not,
+    time::{Duration, Instant},
+};
+
 use nidhogg::{
     types::{
-        ArmJoints, FillExt, HeadJoints, JointArray, LeftEar, LeftEye, LegJoints, RgbF32, RightEar,
-        RightEye, Skull,
+        color, ArmJoints, FillExt, HeadJoints, JointArray, LeftEar, LeftEye, LegJoints, RgbF32,
+        RightEar, RightEye, Skull,
     },
     NaoControlMessage,
 };
 
 use crate::prelude::*;
 
-const STIFFNESS_UNSTIFF: f32 = -1.;
+const STIFFNESS_UNSTIFF: f32 = -1.0;
 
 type JointValue = f32;
 
 /// A module providing the nao manager.
 ///
-/// All systems that want to set joint values using the nao-manager, should be executed before
+/// All systems that want to set joint- or LED values using the nao manager, should be executed before
 /// [`finalize`].
 ///
 /// This module provides the following resources to the application:
@@ -34,7 +39,7 @@ pub fn finalize(control_message: &mut NaoControlMessage, manager: &mut NaoManage
 
     control_message.left_ear = manager.led_left_ear.value.clone();
     control_message.right_ear = manager.led_right_ear.value.clone();
-    control_message.chest = manager.led_chest.value;
+    control_message.chest = manager.led_chest.value.color();
     control_message.left_eye = manager.led_left_eye.value.clone();
     control_message.right_eye = manager.led_right_eye.value.clone();
     control_message.left_foot = manager.led_left_foot.value;
@@ -53,13 +58,58 @@ struct JointSettings<T> {
     priority: Option<Priority>,
 }
 
+enum ChestBlink {
+    Static {
+        color: RgbF32,
+    },
+    Blinking {
+        color: RgbF32,
+        interval: Duration,
+        on: bool,
+        start: Instant,
+    },
+}
+
+impl ChestBlink {
+    pub fn color(&mut self) -> RgbF32 {
+        match self {
+            ChestBlink::Static { color } => *color,
+            ChestBlink::Blinking {
+                color,
+                interval,
+                on,
+                start,
+            } => {
+                if start.elapsed() > *interval {
+                    *on = on.not();
+                    *start = Instant::now();
+                }
+
+                if *on {
+                    *color
+                } else {
+                    color::f32::EMPTY
+                }
+            }
+        }
+    }
+}
+
+impl Default for ChestBlink {
+    fn default() -> Self {
+        ChestBlink::Static {
+            color: color::f32::EMPTY,
+        }
+    }
+}
+
 #[derive(Default)]
 struct LedSettings<T> {
     value: T,
     priority: Option<Priority>,
 }
 
-/// Manager the requests of multiple modules changing the nao state at the same time.
+/// Manager that handles the requests of multiple systems changing the desired nao state at the same time.
 ///
 /// Modules can request through the nao manager with a given priority.
 /// Each cycle, the nao manager will update the [`NaoControlMessage`] with the requests that have the highest
@@ -73,7 +123,7 @@ pub struct NaoManager {
 
     led_left_ear: LedSettings<LeftEar>,
     led_right_ear: LedSettings<RightEar>,
-    led_chest: LedSettings<RgbF32>,
+    led_chest: LedSettings<ChestBlink>,
     led_left_eye: LedSettings<LeftEye>,
     led_right_eye: LedSettings<RightEye>,
     led_left_foot: LedSettings<RgbF32>,
@@ -124,11 +174,11 @@ impl NaoManager {
         self.head_settings.priority = None;
     }
 
-    /// Sets the joint position and stifnes of the leg joints.
+    /// Sets the joint position and stiffness of the leg joints.
     ///
     /// The joint positions are degrees in radians.
     ///
-    /// The joint stifness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
     /// stiffness. A value of `-1` will disable the stiffness altogether.
     pub fn set_legs(
         &mut self,
@@ -146,11 +196,11 @@ impl NaoManager {
         self
     }
 
-    /// Sets the joint position and stifnes of the arm joints.
+    /// Sets the joint position and stiffness of the arm joints.
     ///
     /// The joint positions are degrees in radians.
     ///
-    /// The joint stifness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
     /// stiffness. A value of `-1` will disable the stiffness altogether.
     pub fn set_arms(
         &mut self,
@@ -168,11 +218,11 @@ impl NaoManager {
         self
     }
 
-    /// Sets the joint position and stifnes of the head joints.
+    /// Sets the joint position and stiffness of the head joints.
     ///
     /// The joint positions are degrees in radians.
     ///
-    /// The joint stifness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
     /// stiffness. A value of `-1` will disable the stiffness altogether.
     pub fn set_head(
         &mut self,
@@ -190,7 +240,7 @@ impl NaoManager {
         self
     }
 
-    /// Disable the stiffness of the legs.
+    /// Disable all motors in the legs.
     pub fn unstiff_legs(&mut self, priority: Priority) -> &mut Self {
         self.set_legs(
             self.leg_settings.joints_position.clone(),
@@ -199,7 +249,7 @@ impl NaoManager {
         )
     }
 
-    /// Disable the stiffness of the legs.
+    /// Disable all motors in the arms.
     pub fn unstiff_arms(&mut self, priority: Priority) -> &mut Self {
         self.set_arms(
             self.arm_settings.joints_position.clone(),
@@ -208,7 +258,7 @@ impl NaoManager {
         )
     }
 
-    /// Disable the stiffness of the legs.
+    /// Disable all motors in the head.
     pub fn unstiff_head(&mut self, priority: Priority) -> &mut Self {
         self.set_head(
             self.head_settings.joints_position.clone(),
@@ -230,7 +280,47 @@ impl NaoManager {
     }
 
     pub fn set_chest_led(&mut self, chest: RgbF32, priority: Priority) -> &mut Self {
-        Self::set_led_settings(&mut self.led_chest, chest, priority);
+        Self::set_led_settings(
+            &mut self.led_chest,
+            ChestBlink::Static { color: chest },
+            priority,
+        );
+
+        self
+    }
+
+    pub fn set_chest_blink_led(
+        &mut self,
+        chest: RgbF32,
+        interval: Duration,
+        priority: Priority,
+    ) -> &mut Self {
+        match self.led_chest.value {
+            ChestBlink::Static { .. } => {
+                Self::set_led_settings(
+                    &mut self.led_chest,
+                    ChestBlink::Blinking {
+                        color: chest,
+                        interval,
+                        on: false,
+                        start: Instant::now(),
+                    },
+                    priority,
+                );
+            }
+            ChestBlink::Blinking { on, start, .. } => {
+                Self::set_led_settings(
+                    &mut self.led_chest,
+                    ChestBlink::Blinking {
+                        color: chest,
+                        interval,
+                        on,
+                        start,
+                    },
+                    priority,
+                );
+            }
+        }
 
         self
     }
@@ -288,9 +378,9 @@ impl NaoManager {
 #[derive(Default)]
 pub enum Priority {
     /// Has priority `10`.
+    #[default]
     Low,
     /// Has priority `30`.
-    #[default]
     Medium,
     /// Has priority `60`.
     High,

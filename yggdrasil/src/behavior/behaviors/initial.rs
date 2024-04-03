@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use crate::{
     behavior::engine::{Behavior, Context},
-    config::general::layout::RobotPosition,
+    config::layout::RobotPosition,
     nao::manager::{NaoManager, Priority},
 };
 use nidhogg::types::{FillExt, HeadJoints};

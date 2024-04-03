@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::motion::odometry::OdometryConfig;
 use crate::prelude::*;
 use crate::{
     camera::CameraConfig, filter::FilterConfig, game_controller::GameControllerConfig,
@@ -14,6 +15,7 @@ pub struct YggdrasilConfig {
     pub game_controller: GameControllerConfig,
     pub primary_state: PrimaryStateConfig,
     pub vision: VisionConfig,
+    pub odometry: OdometryConfig,
 }
 
 impl Config for YggdrasilConfig {

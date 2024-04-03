@@ -1,9 +1,13 @@
+use nidhogg::types::{FillExt, Vector3};
 use serde::{Deserialize, Serialize};
 
-use crate::kinematics::FootOffset;
+use crate::{filter::low_pass_filter::LowPassFilter, kinematics::FootOffset};
 use std::{ops::Neg, time::Duration};
 
 use super::{smoothing, WalkingEngineConfig};
+
+const FILTERED_GYRO_HIGH_PASS: f32 = 0.8;
+const FILTERED_GYRO_LOW_PASS: f32 = 0.2;
 
 #[derive(Debug, Clone)]
 pub enum WalkState {
@@ -62,6 +66,8 @@ pub struct WalkingEngine {
     pub request: WalkRequest,
     /// The step that the engine is currently performing.
     pub current_step: Step,
+    /// The filtered gyroscope values used for balancing.
+    pub filtered_gyroscope: LowPassFilter<Vector3<f32>>,
     /// The time into the current phase.
     pub t: Duration,
     /// The duration of the current step, e.g. the time until the next foot switch.
@@ -97,6 +103,11 @@ impl WalkingEngine {
             state: WalkState::from_config(config),
             request: WalkRequest::Idle,
             current_step: Step::default(),
+            filtered_gyroscope: LowPassFilter::new(
+                Vector3::default(),
+                Vector3::fill(FILTERED_GYRO_HIGH_PASS),
+                Vector3::fill(FILTERED_GYRO_LOW_PASS),
+            ),
             t: Duration::ZERO,
             next_foot_switch: Duration::ZERO,
             swing_foot: Default::default(),
@@ -111,6 +122,11 @@ impl WalkingEngine {
     /// Resets the properties of the walking engine, such that it results in a stationary upright position.
     pub(super) fn reset(&mut self) {
         self.current_step = Step::default();
+        self.filtered_gyroscope = LowPassFilter::new(
+            Vector3::default(),
+            Vector3::fill(FILTERED_GYRO_HIGH_PASS),
+            Vector3::fill(FILTERED_GYRO_LOW_PASS),
+        );
         self.t = Duration::ZERO;
         self.foot_offsets = FootOffsets::zero(self.hip_height);
         self.foot_offsets_t0 = FootOffsets::zero(self.hip_height);

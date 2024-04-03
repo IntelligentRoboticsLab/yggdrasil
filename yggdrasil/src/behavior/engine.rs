@@ -8,7 +8,7 @@ use crate::{
         roles::Base,
         BehaviorConfig,
     },
-    config::{general::LayoutConfig, yggdrasil::YggdrasilConfig},
+    config::{layout::LayoutConfig, yggdrasil::YggdrasilConfig},
     filter::{
         button::{ChestButton, HeadButtons},
         fsr::Contacts,

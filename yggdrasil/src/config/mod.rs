@@ -1,4 +1,4 @@
-pub mod general;
+pub mod layout;
 pub mod tyr;
 pub mod yggdrasil;
 
@@ -9,7 +9,7 @@ use crate::{behavior::BehaviorConfig, nao::RobotInfo, prelude::*};
 use ::tyr::tasks::TaskModule;
 use odal::{ConfigKind, Error, ErrorKind};
 
-use general::LayoutConfig;
+use layout::LayoutConfig;
 use tyr::TyrConfig;
 use yggdrasil::YggdrasilConfig;
 
@@ -60,12 +60,13 @@ impl Module for ConfigModule {
 }
 
 #[startup_system]
-fn init_subconfigs(storage: &mut Storage, yggdrasil_config: &mut YggdrasilConfig) -> Result<()> {
-    storage.add_resource(Resource::new(yggdrasil_config.camera.clone()))?;
-    storage.add_resource(Resource::new(yggdrasil_config.filter.clone()))?;
-    storage.add_resource(Resource::new(yggdrasil_config.game_controller.clone()))?;
-    storage.add_resource(Resource::new(yggdrasil_config.primary_state.clone()))?;
-    storage.add_resource(Resource::new(yggdrasil_config.vision.clone()))?;
+fn init_subconfigs(storage: &mut Storage, config: &mut YggdrasilConfig) -> Result<()> {
+    storage.add_resource(Resource::new(config.camera.clone()))?;
+    storage.add_resource(Resource::new(config.filter.clone()))?;
+    storage.add_resource(Resource::new(config.game_controller.clone()))?;
+    storage.add_resource(Resource::new(config.primary_state.clone()))?;
+    storage.add_resource(Resource::new(config.vision.clone()))?;
+    storage.add_resource(Resource::new(config.odometry.clone()))?;
 
     Ok(())
 }
