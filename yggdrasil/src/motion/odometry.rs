@@ -75,7 +75,7 @@ pub fn log_odometry(odometry: &Odometry, dbg: &DebugContext) -> Result<()> {
         "/odometry/accumulated",
         &[accumulated],
         color::u8::RED,
-        0.5,
+        0.05,
     )?;
     Ok(())
 }

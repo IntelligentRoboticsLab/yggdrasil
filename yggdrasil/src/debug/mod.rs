@@ -1,5 +1,5 @@
 #[cfg(feature = "rerun")]
-use std::{convert::Into, net::SocketAddr, time::Instant};
+use std::{convert::Into, net::SocketAddr};
 
 use heimdall::CameraMatrix;
 #[cfg(feature = "rerun")]
@@ -32,8 +32,6 @@ impl Module for DebugModule {
 pub struct DebugContext {
     #[cfg(feature = "rerun")]
     rec: rerun::RecordingStream,
-    #[cfg(feature = "rerun")]
-    start_time: std::time::Instant,
 }
 
 #[allow(unused)]
@@ -52,10 +50,7 @@ impl DebugContext {
                 )
                 .into_diagnostic()?;
 
-            Ok(DebugContext {
-                rec,
-                start_time: Instant::now(),
-            })
+            Ok(DebugContext { rec })
         }
 
         #[cfg(not(feature = "rerun"))]
@@ -74,25 +69,28 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Disable the "cycle" timeline for the current thread.
+    fn clear_cycle(&self) {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec.disable_timeline("cycle");
+        }
+    }
+
     /// Log a Yuyv encoded image to the debug viewer.
     ///
     /// The image is first converted to a jpeg encoded image.
     pub fn log_image(&self, path: impl AsRef<str>, img: Image, jpeg_quality: i32) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.rec.set_time_seconds(
-                "image",
-                img.timestamp()
-                    .duration_since(self.start_time)
-                    .as_secs_f64(),
-            );
+            self.set_cycle(&img.cycle());
             let jpeg = img.yuyv_image().to_jpeg(jpeg_quality)?;
             let tensor_data =
                 rerun::TensorData::from_jpeg_bytes(jpeg.to_owned()).into_diagnostic()?;
             let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
 
             self.rec.log(path.as_ref(), &img).into_diagnostic()?;
-            self.rec.disable_timeline("image");
+            self.clear_cycle();
         }
 
         Ok(())
@@ -109,13 +107,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            let image_timestamp = image.timestamp();
-            self.rec.set_time_seconds(
-                "image",
-                image_timestamp
-                    .duration_since(self.start_time)
-                    .as_secs_f64(),
-            );
+            self.set_cycle(&image.cycle());
             let pinhole = rerun::Pinhole::from_focal_length_and_resolution(
                 [matrix.focal_lengths.x, matrix.focal_lengths.y],
                 [
@@ -125,7 +117,7 @@ impl DebugContext {
             )
             .with_camera_xyz(rerun::components::ViewCoordinates::FLU);
             self.rec.log(path.as_ref(), &pinhole).into_diagnostic()?;
-            self.rec.disable_timeline("image");
+            self.clear_cycle();
         }
 
         Ok(())
@@ -217,13 +209,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            let image_timestamp = img.timestamp();
-            self.rec.set_time_seconds(
-                "image",
-                image_timestamp
-                    .duration_since(self.start_time)
-                    .as_secs_f64(),
-            );
+            self.set_cycle(&img.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -237,7 +223,7 @@ impl DebugContext {
                     ]),
                 )
                 .into_diagnostic()?;
-            self.rec.disable_timeline("image");
+            self.clear_cycle();
         }
 
         Ok(())
@@ -253,13 +239,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            let image_timestamp = img.timestamp();
-            self.rec.set_time_seconds(
-                "image",
-                image_timestamp
-                    .duration_since(self.start_time)
-                    .as_secs_f64(),
-            );
+            self.set_cycle(&img.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -274,7 +254,7 @@ impl DebugContext {
                 )
                 .into_diagnostic()?;
 
-            self.rec.disable_timeline("image");
+            self.clear_cycle();
         }
 
         Ok(())
@@ -328,13 +308,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            let image_timestamp = img.timestamp();
-            self.rec.set_time_seconds(
-                "image",
-                image_timestamp
-                    .duration_since(self.start_time)
-                    .as_secs_f64(),
-            );
+            self.set_cycle(&img.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -348,7 +322,7 @@ impl DebugContext {
                     ]),
                 )
                 .into_diagnostic()?;
-            self.rec.disable_timeline("image");
+            self.clear_cycle();
         }
 
         Ok(())
@@ -359,17 +333,11 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         transform: &Isometry3<f32>,
-        image: Image,
+        img: Image,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            let image_timestamp = image.timestamp();
-            self.rec.set_time_seconds(
-                "image",
-                image_timestamp
-                    .duration_since(self.start_time)
-                    .as_secs_f64(),
-            );
+            self.set_cycle(&img.cycle());
 
             let translation = transform.translation;
             let rotation = transform.rotation.coords;
@@ -381,7 +349,7 @@ impl DebugContext {
                     rerun::Quaternion([rotation.x, rotation.y, rotation.z, rotation.w]),
                 ),
             );
-            self.rec.disable_timeline("image");
+            self.clear_cycle();
         }
 
         Ok(())
