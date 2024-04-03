@@ -104,7 +104,7 @@ fn robot_to_ground(
         * Isometry3::rotation(Vector3::x() * roll)
         * Isometry3::from(right_sole_to_robot.translation.inverse());
 
-    match swing_foot.side {
+    match swing_foot.support() {
         Side::Left => imu_adjusted_robot_to_left_sole,
         Side::Right => imu_adjusted_robot_to_right_sole,
     }

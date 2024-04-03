@@ -1,6 +1,6 @@
 pub mod matrix;
 
-use crate::{debug::DebugContext, prelude::*};
+use crate::{debug::DebugContext, nao::Cycle, prelude::*};
 
 use derive_more::{Deref, DerefMut};
 use miette::IntoDiagnostic;
@@ -87,12 +87,15 @@ impl YggdrasilCamera {
         Self(Arc::new(Mutex::new(camera)))
     }
 
-    fn try_fetch_image(&mut self) -> Option<Image> {
+    fn try_fetch_image(&mut self, cycle: Cycle) -> Option<Image> {
         let Ok(mut camera) = self.0.try_lock() else {
             return None;
         };
 
-        camera.try_get_yuyv_image().ok().map(Image::new)
+        camera
+            .try_get_yuyv_image()
+            .ok()
+            .map(|img| Image::new(img, cycle))
     }
 
     fn loop_fetch_image(&self) -> Result<Image> {
@@ -101,7 +104,7 @@ impl YggdrasilCamera {
         camera
             .loop_try_get_yuyv_image()
             .into_diagnostic()
-            .map(Image::new)
+            .map(|img| Image::new(img, Cycle::default()))
     }
 }
 
@@ -130,11 +133,11 @@ impl BottomCamera {
 }
 
 #[derive(Clone)]
-pub struct Image(Arc<(YuyvImage, Instant)>);
+pub struct Image(Arc<(YuyvImage, Instant, Cycle)>);
 
 impl Image {
-    fn new(yuyv_image: YuyvImage) -> Self {
-        Self(Arc::new((yuyv_image, Instant::now())))
+    fn new(yuyv_image: YuyvImage, cycle: Cycle) -> Self {
+        Self(Arc::new((yuyv_image, Instant::now(), cycle)))
     }
 
     /// Return the captured image in yuyv format.
@@ -145,6 +148,11 @@ impl Image {
     /// Return the instant at which the image was captured.
     pub fn timestamp(&self) -> &Instant {
         &self.0 .1
+    }
+
+    /// Return the cycle at which the image was captured.
+    pub fn cycle(&self) -> Cycle {
+        self.0 .2
     }
 }
 
@@ -172,12 +180,13 @@ fn camera_system(
     bottom_camera: &mut BottomCamera,
     top_image: &mut TopImage,
     bottom_image: &mut BottomImage,
+    cycle: &Cycle,
 ) -> Result<()> {
-    if let Some(new_top_image) = top_camera.try_fetch_image() {
+    if let Some(new_top_image) = top_camera.try_fetch_image(*cycle) {
         *top_image = TopImage::new(new_top_image);
     }
 
-    if let Some(new_bottom_image) = bottom_camera.try_fetch_image() {
+    if let Some(new_bottom_image) = bottom_camera.try_fetch_image(*cycle) {
         *bottom_image = BottomImage::new(new_bottom_image);
     }
 

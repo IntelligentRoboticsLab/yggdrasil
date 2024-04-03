@@ -4,15 +4,20 @@ use std::time::Duration;
 
 use crate::{
     debug::DebugContext,
-    filter::button::{ChestButton, HeadButtons},
-    nao::manager::{NaoManager, Priority},
-    nao::CycleTime,
+    filter::{
+        button::{ChestButton, HeadButtons},
+        imu::IMUValues,
+    },
+    nao::{
+        manager::{NaoManager, Priority},
+        CycleTime,
+    },
     prelude::*,
     primary_state::PrimaryState,
 };
 use nidhogg::types::{
     ArmJoints, FillExt, ForceSensitiveResistors, LeftArmJoints, LeftLegJoints, LegJoints,
-    RightArmJoints, RightLegJoints, Vector2, Vector3,
+    RightArmJoints, RightLegJoints, Vector3,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
@@ -23,29 +28,19 @@ use self::engine::{FootOffsets, Side, Step, WalkState, WalkingEngine};
 
 #[derive(Debug, Default, Clone)]
 pub struct SwingFoot {
-    pub side: Side,
+    side: Side,
 }
 
-/// Filtered gyroscope values.
-#[derive(Default, Debug, Clone)]
-pub struct FilteredGyroscope(Vector2<f32>);
-
-impl FilteredGyroscope {
-    pub fn update(&mut self, gyroscope: &Vector3<f32>) {
-        self.0.x = 0.8 * self.0.x + 0.2 * gyroscope.x;
-        self.0.y = 0.8 * self.0.y + 0.2 * gyroscope.y;
+impl SwingFoot {
+    pub fn support(&self) -> Side {
+        match self.side {
+            Side::Left => Side::Right,
+            Side::Right => Side::Left,
+        }
     }
 
-    pub fn reset(&mut self) {
-        self.0 = Vector2::default();
-    }
-
-    pub fn x(&self) -> f32 {
-        self.0.x
-    }
-
-    pub fn y(&self) -> f32 {
-        self.0.y
+    pub fn swing(&self) -> Side {
+        self.side
     }
 }
 
@@ -79,7 +74,6 @@ impl Config for WalkingEngineConfig {
 ///
 /// This module provides the following resources to the application:
 /// - [`WalkingEngine`]
-/// - [`FilteredGyroscope`]
 /// - [`SwingFoot`]
 pub struct WalkingEngineModule;
 
@@ -87,18 +81,17 @@ impl Module for WalkingEngineModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .init_config::<WalkingEngineConfig>()?
-            .init_resource::<FilteredGyroscope>()?
             .init_resource::<SwingFoot>()?
             .add_startup_system(init_walking_engine)?
             .add_system_chain((
-                filter_gyro_values
-                    .after(nao::write_hardware_info)
-                    .after(nao::update_cycle_stats)
-                    .after(filter::imu::imu_filter),
                 toggle_walking_engine
                     .after(filter::button::button_filter)
                     .before(primary_state::update_primary_state),
-                run_walking_engine.after(filter::fsr::force_sensitive_resistor_filter),
+                run_walking_engine
+                    .after(filter::fsr::force_sensitive_resistor_filter)
+                    .after(filter::imu::imu_filter)
+                    .after(nao::write_hardware_info)
+                    .after(nao::update_cycle_stats),
                 update_swing_side,
             )))
     }
@@ -110,22 +103,11 @@ fn init_walking_engine(storage: &mut Storage, config: &WalkingEngineConfig) -> R
 }
 
 #[system]
-fn filter_gyro_values(
-    imu_values: &filter::imu::IMUValues,
-    filtered_gyro: &mut FilteredGyroscope,
-) -> Result<()> {
-    filtered_gyro.update(&imu_values.gyroscope);
-
-    Ok(())
-}
-
-#[system]
 pub fn toggle_walking_engine(
     primary_state: &PrimaryState,
     head_button: &HeadButtons,
     chest_button: &ChestButton,
     walking_engine: &mut WalkingEngine,
-    filtered_gyro: &mut FilteredGyroscope,
 ) -> Result<()> {
     // If we're in a state where we shouldn't walk, we don't.
     if !primary_state.should_walk() {
@@ -134,7 +116,7 @@ pub fn toggle_walking_engine(
 
     // Start walking
     if chest_button.state.is_tapped() {
-        filtered_gyro.reset();
+        walking_engine.filtered_gyroscope.state = Vector3::default();
         walking_engine.request_walk(Step {
             forward: 0.04,
             left: 0.0,
@@ -158,7 +140,7 @@ pub fn run_walking_engine(
     primary_state: &PrimaryState,
     cycle_time: &CycleTime,
     fsr: &ForceSensitiveResistors,
-    filtered_gyro: &FilteredGyroscope,
+    imu: &IMUValues,
     nao_manager: &mut NaoManager,
     dbg: &DebugContext,
 ) -> Result<()> {
@@ -230,7 +212,9 @@ pub fn run_walking_engine(
     let mut right_shoulder_pitch = -right_foot.forward * balancing_config.arm_swing_multiplier;
 
     // Balance adjustment
-    let balance_adjustment = filtered_gyro.y() * balancing_config.filtered_gyro_y_multiplier;
+    walking_engine.filtered_gyroscope.update(imu.gyroscope);
+    let balance_adjustment =
+        walking_engine.filtered_gyroscope.state.y * balancing_config.filtered_gyro_y_multiplier;
     match walking_engine.swing_foot {
         Side::Left => {
             right_leg_joints.ankle_pitch += balance_adjustment;
