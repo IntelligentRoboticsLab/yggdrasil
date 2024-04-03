@@ -1,5 +1,14 @@
 use std::ops::{Add, Mul};
 
+/// A low-pass smoothing filter.
+///
+/// This filter is used to smooth out a signal by computing a weighted average using
+/// the current value and the previous value.
+///
+/// The filter is defined by the following formula:
+/// ```ignore
+/// new_state = high * old + low * new
+/// ```
 #[derive(Default, Clone, Copy, Debug)]
 pub struct LowPassFilter<T: Default + Clone + Copy + Add<Output = T> + Mul<Output = T>> {
     pub state: T,

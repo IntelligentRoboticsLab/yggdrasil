@@ -80,7 +80,7 @@ horizontal_scan_line_interval = 8
 vertical_scan_line_interval = 16
 
 [odometry]
-# The scale factor for the odometry values along the x and y axis.
+# The scale factor for the odometry values along the x and y axis respectively.
 # This is used to calibrate the odometry values to the actual distance the robot has moved.
 # Values taken from rUNSWift 2014 walk
 scale_factor = [1.19, 1.2]

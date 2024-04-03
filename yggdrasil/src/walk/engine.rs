@@ -6,6 +6,9 @@ use std::{ops::Neg, time::Duration};
 
 use super::{smoothing, WalkingEngineConfig};
 
+const FILTERED_GYRO_HIGH_PASS: f32 = 0.8;
+const FILTERED_GYRO_LOW_PASS: f32 = 0.2;
+
 #[derive(Debug, Clone)]
 pub enum WalkState {
     /// Represents the robot in a standing position.
@@ -102,8 +105,8 @@ impl WalkingEngine {
             current_step: Step::default(),
             filtered_gyroscope: LowPassFilter::new(
                 Vector3::default(),
-                Vector3::fill(0.8),
-                Vector3::fill(0.2),
+                Vector3::fill(FILTERED_GYRO_HIGH_PASS),
+                Vector3::fill(FILTERED_GYRO_LOW_PASS),
             ),
             t: Duration::ZERO,
             next_foot_switch: Duration::ZERO,
@@ -119,8 +122,11 @@ impl WalkingEngine {
     /// Resets the properties of the walking engine, such that it results in a stationary upright position.
     pub(super) fn reset(&mut self) {
         self.current_step = Step::default();
-        self.filtered_gyroscope =
-            LowPassFilter::new(Vector3::default(), Vector3::fill(0.8), Vector3::fill(0.2));
+        self.filtered_gyroscope = LowPassFilter::new(
+            Vector3::default(),
+            Vector3::fill(FILTERED_GYRO_HIGH_PASS),
+            Vector3::fill(FILTERED_GYRO_LOW_PASS),
+        );
         self.t = Duration::ZERO;
         self.foot_offsets = FootOffsets::zero(self.hip_height);
         self.foot_offsets_t0 = FootOffsets::zero(self.hip_height);
