@@ -1,3 +1,9 @@
 [initial_behaviour]
-head_rotation_speed = 2.0
-placed_duration_threshold = 15
+# Controls how long after being placed the robot starts looking around
+placed_duration_threshold = 5
+# Controls how fast the robot moves its head back and forth while looking around
+head_rotation_speed = 1.0
+# Controls how far to the left and right the robot looks while looking around
+head_yaw_multiplier = 1.2
+# Controls how far to the bottom the robot looks while looking around
+head_pitch_multiplier = 0.2

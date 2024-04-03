@@ -33,10 +33,13 @@ pub struct Initial {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct InitialBehaviorConfig {
-    // Controls the head rotation speed. Increasing this value
-    // will increase the rotation speed of the head while looking around.
+    // Controls how fast the robot moves its head back and forth while looking around
     pub head_rotation_speed: f32,
-    // Duration after which the robot start observing after being picked up and placed.
+    // Controls how far to the left and right the robot looks while looking around
+    pub head_pitch_multiplier: f32,
+    // Controls how far to the bottom the robot looks while looking around
+    pub head_yaw_multiplier: f32,
+    // Duration after which the robot start observing after being picked up and placed
     #[serde_as(as = "DurationSeconds<u64>")]
     pub placed_duration_threshold: Duration,
 }
@@ -46,11 +49,15 @@ fn look_around(
     placed_time: Instant,
     placed_time_offsett: Duration,
     rotation_speed: f32,
+    yaw_multiplier: f32,
+    pitch_multiplier: f32,
 ) {
     let time = (placed_time.elapsed() - placed_time_offsett).as_millis() as f32 / 1000_f32;
-    let yaw = (time * rotation_speed).sin();
+    let x = time * rotation_speed;
+    let yaw = (x).sin() * yaw_multiplier;
+    let pitch = (x * 2.0 + std::f32::consts::FRAC_PI_2).sin().max(0.0) * pitch_multiplier;
 
-    let position = HeadJoints { yaw, pitch: 0.0 };
+    let position = HeadJoints { yaw, pitch };
     let stiffness = HeadJoints::fill(0.3);
 
     nao_manager.set_head(position, stiffness, Priority::default());
@@ -60,6 +67,8 @@ impl Behavior for Initial {
     fn execute(&mut self, context: Context, nao_manager: &mut NaoManager) {
         let InitialBehaviorConfig {
             head_rotation_speed,
+            head_pitch_multiplier,
+            head_yaw_multiplier,
             placed_duration_threshold,
         } = context.behavior_config.initial_behaviour;
 
@@ -105,6 +114,8 @@ impl Behavior for Initial {
                 self.placed_at.unwrap(),
                 placed_duration_threshold,
                 head_rotation_speed,
+                head_yaw_multiplier,
+                head_pitch_multiplier,
             );
         }
     }
