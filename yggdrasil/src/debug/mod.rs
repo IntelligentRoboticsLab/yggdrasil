@@ -10,7 +10,7 @@ use std::net::Ipv4Addr;
 use crate::{camera::Image, nao::Cycle, prelude::*};
 
 #[cfg(not(feature = "local"))]
-use crate::{config::yggdrasil::YggdrasilConfig, nao::RobotInfo};
+use crate::{config::pregame::PregameConfig, nao::RobotInfo};
 
 /// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
 ///
@@ -163,7 +163,7 @@ fn init_rerun(
     storage: &mut Storage,
     ad: &AsyncDispatcher,
     #[cfg(not(feature = "local"))] robot_info: &RobotInfo,
-    #[cfg(not(feature = "local"))] yggdrasil_config: &YggdrasilConfig,
+    #[cfg(not(feature = "local"))] player_config: &PregameConfig,
 ) -> Result<()> {
     #[cfg(feature = "local")]
     let server_address = Ipv4Addr::LOCALHOST;
@@ -173,7 +173,7 @@ fn init_rerun(
     let server_address = Ipv4Addr::new(
         10,
         0,
-        yggdrasil_config.game_controller.team_number,
+        player_config.player.team_number,
         robot_info.robot_id as u8,
     );
 

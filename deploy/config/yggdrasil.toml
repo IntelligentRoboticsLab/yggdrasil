@@ -53,10 +53,6 @@ game_controller_return_delay = 500
 # If the robot doesn't receive a game-controller message for this amount of time,
 # it will consider the connection to the game-controller as "lost".
 game_controller_timeout = 5000
-# TODO: Make this an environment variable.
-player_number = 2
-# TODO: Make this an environment variable.
-team_number = 8
 
 [vision.scan_lines]
 horizontal_scan_line_interval = 16

@@ -8,6 +8,7 @@ use crate::{
         behaviors::{Example, Initial},
         roles::{Keeper, Striker},
     },
+    config::pregame::PregameConfig,
     filter::button::HeadButtons,
     nao,
     prelude::*,
@@ -24,6 +25,7 @@ pub struct Context<'a> {
     pub primary_state: &'a PrimaryState,
     /// State of the headbuttons of a robot
     pub head_buttons: &'a HeadButtons,
+    pub pregame_config: &'a PregameConfig,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -183,10 +185,12 @@ pub fn step(
     control_message: &mut NaoControlMessage,
     primary_state: &PrimaryState,
     head_buttons: &HeadButtons,
+    pregame_config: &PregameConfig,
 ) -> Result<()> {
     let context = Context {
         primary_state,
         head_buttons,
+        pregame_config,
     };
 
     engine.step(context, control_message);

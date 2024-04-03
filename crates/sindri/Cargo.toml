@@ -26,3 +26,4 @@ tokio = { workspace = true, features = [
 ] }
 toml = { workspace = true }
 walkdir = { workspace = true }
+yggdrasil = { path = "../../yggdrasil"}

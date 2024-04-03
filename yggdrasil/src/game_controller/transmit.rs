@@ -15,6 +15,7 @@ use std::time::{Duration, Instant};
 
 use miette::IntoDiagnostic;
 
+use crate::config::pregame::PlayerConfig;
 use crate::prelude::*;
 
 pub(super) struct GameControllerTransmitModule;
@@ -76,7 +77,8 @@ fn transmit_system(
     transmit_game_controller_return_message_task: &mut AsyncTask<
         Result<(GameControllerReturnMessage, Instant)>,
     >,
-    config: &GameControllerConfig,
+    game_controller_config: &GameControllerConfig,
+    player_config: &PlayerConfig,
 ) -> Result<()> {
     let Some((game_controller_address, mut last_transmitted_update_timestamp)) =
         game_controller_data.game_controller_address
@@ -85,8 +87,8 @@ fn transmit_system(
     };
 
     let transmit_game_controller_data = TransmitGameControllerData {
-        player_num: config.player_number,
-        team_num: config.team_number,
+        player_num: player_config.player_number,
+        team_num: player_config.team_number,
         fallen: 0,
         pose: [0f32; 3],
         ball_age: 0.0,
@@ -108,7 +110,7 @@ fn transmit_system(
             game_controller_data.socket.clone(),
             last_transmitted_update_timestamp,
             game_controller_address,
-            config.game_controller_return_delay,
+            game_controller_config.game_controller_return_delay,
             transmit_game_controller_data,
         ),
     );
