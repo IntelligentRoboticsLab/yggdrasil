@@ -72,22 +72,19 @@ impl Behavior for Initial {
             placed_duration_threshold,
         } = context.behavior_config.initial_behaviour;
 
-        match context.contacts.ground {
-            true => {
-                if self.lifted {
-                    self.placed_at = Some(Instant::now());
-                    self.lifted = false;
-                } else if self.placed_at.is_some()
-                    && self.placed_at.unwrap().elapsed() > placed_duration_threshold
-                {
-                    self.at_starting_position = true;
-                }
+        if context.contacts.ground {
+            if self.lifted {
+                self.placed_at = Some(Instant::now());
+                self.lifted = false;
+            } else if self.placed_at.is_some()
+                && self.placed_at.unwrap().elapsed() > placed_duration_threshold
+            {
+                self.at_starting_position = true;
             }
-            false => {
-                self.placed_at = None;
-                self.at_starting_position = false;
-                self.lifted = true;
-            }
+        } else {
+            self.placed_at = None;
+            self.at_starting_position = false;
+            self.lifted = true;
         }
 
         if !self.at_starting_position {
