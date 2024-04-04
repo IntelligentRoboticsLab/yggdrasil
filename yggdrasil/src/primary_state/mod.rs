@@ -107,7 +107,7 @@ pub fn update_primary_state(
         None => *primary_state,
     };
 
-    // Only set color if the primary state is changed, with the exception of `Initial`.
+    // Only set color if the primary state has changed.
     if next_primary_state != *primary_state {
         match next_primary_state {
             PS::Unstiff => nao_manager.set_chest_blink_led(
@@ -123,12 +123,6 @@ pub fn update_primary_state(
             PS::Finished => nao_manager.set_chest_led(color::f32::EMPTY, Priority::Critical),
             PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Critical),
         };
-    } else if next_primary_state == PS::Unstiff {
-        nao_manager.set_chest_blink_led(
-            color::f32::BLUE,
-            config.chest_blink_interval,
-            Priority::Critical,
-        );
     }
 
     *primary_state = next_primary_state;
