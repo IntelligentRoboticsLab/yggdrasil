@@ -107,23 +107,20 @@ pub fn update_primary_state(
         None => *primary_state,
     };
 
-    // Only set color if the primary state has changed.
-    if next_primary_state != *primary_state {
-        match next_primary_state {
-            PS::Unstiff => nao_manager.set_chest_blink_led(
-                color::f32::BLUE,
-                config.chest_blink_interval,
-                Priority::Critical,
-            ),
-            PS::Initial => nao_manager.set_chest_led(color::f32::EMPTY, Priority::Critical),
-            PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Critical),
-            PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Critical),
-            PS::Playing => nao_manager.set_chest_led(color::f32::GREEN, Priority::Critical),
-            PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Critical),
-            PS::Finished => nao_manager.set_chest_led(color::f32::EMPTY, Priority::Critical),
-            PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Critical),
-        };
-    }
+    match next_primary_state {
+        PS::Unstiff => nao_manager.set_chest_blink_led(
+            color::f32::BLUE,
+            config.chest_blink_interval,
+            Priority::Critical,
+        ),
+        PS::Initial => nao_manager.set_chest_led(color::f32::EMPTY, Priority::Critical),
+        PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Critical),
+        PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Critical),
+        PS::Playing => nao_manager.set_chest_led(color::f32::GREEN, Priority::Critical),
+        PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Critical),
+        PS::Finished => nao_manager.set_chest_led(color::f32::EMPTY, Priority::Critical),
+        PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Critical),
+    };
 
     *primary_state = next_primary_state;
 
