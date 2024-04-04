@@ -113,21 +113,21 @@ pub fn update_primary_state(
             PS::Unstiff => nao_manager.set_chest_blink_led(
                 color::f32::BLUE,
                 config.chest_blink_interval,
-                Priority::Medium,
+                Priority::Critical,
             ),
-            PS::Initial => nao_manager.set_chest_led(color::f32::EMPTY, Priority::Medium),
-            PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Medium),
-            PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Medium),
-            PS::Playing => nao_manager.set_chest_led(color::f32::GREEN, Priority::Medium),
-            PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Medium),
-            PS::Finished => nao_manager.set_chest_led(color::f32::EMPTY, Priority::Medium),
-            PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Medium),
+            PS::Initial => nao_manager.set_chest_led(color::f32::EMPTY, Priority::Critical),
+            PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Critical),
+            PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Critical),
+            PS::Playing => nao_manager.set_chest_led(color::f32::GREEN, Priority::Critical),
+            PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Critical),
+            PS::Finished => nao_manager.set_chest_led(color::f32::EMPTY, Priority::Critical),
+            PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Critical),
         };
     } else if next_primary_state == PS::Unstiff {
         nao_manager.set_chest_blink_led(
             color::f32::BLUE,
             config.chest_blink_interval,
-            Priority::Medium,
+            Priority::Critical,
         );
     }
 
