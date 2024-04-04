@@ -115,12 +115,12 @@ pub fn update_primary_state(
                 config.chest_blink_interval,
                 Priority::Medium,
             ),
-            PS::Initial => nao_manager.set_chest_led(color::f32::GRAY, Priority::Medium),
+            PS::Initial => nao_manager.set_chest_led(color::f32::EMPTY, Priority::Medium),
             PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Medium),
             PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Medium),
             PS::Playing => nao_manager.set_chest_led(color::f32::GREEN, Priority::Medium),
             PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Medium),
-            PS::Finished => nao_manager.set_chest_led(color::f32::GRAY, Priority::Medium),
+            PS::Finished => nao_manager.set_chest_led(color::f32::EMPTY, Priority::Medium),
             PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Medium),
         };
     } else if next_primary_state == PS::Unstiff {
