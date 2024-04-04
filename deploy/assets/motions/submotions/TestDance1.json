@@ -2,7 +2,8 @@
     "joint_stifness": 1.0,
     "chest_angle_bound_upper": -0.4,
     "chest_angle_bound_lower": 0.4,
-    "fail_routine":"Abort",
+    "fail_routine":"Retry",
+    "exit_waittime": 0.0,
     "conditions": [],
     "keyframes": [
         {

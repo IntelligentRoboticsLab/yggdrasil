@@ -66,6 +66,7 @@ pub struct SubMotion {
     pub joint_stifness: f32,
     pub chest_angle_bound_upper: f32,
     pub chest_angle_bound_lower: f32,
+    pub exit_waittime: f32,
     pub fail_routine: FailRoutine,
     pub conditions: Vec<MotionCondition>,
     pub keyframes: Vec<Movement>,
@@ -168,6 +169,14 @@ impl Motion {
             active_motion.movement_start = Instant::now();
         }
 
+        // println!(
+        //     "Linear Scalar: {}",
+        //     (active_motion.movement_start.elapsed()).as_secs_f32()
+        //         / keyframes[active_motion.prev_keyframe_index as usize + 1]
+        //             .duration
+        //             .as_secs_f32(),
+        // );
+
         return Some(lerp(
             &keyframes[active_motion.prev_keyframe_index as usize].target_position,
             &keyframes[active_motion.prev_keyframe_index as usize + 1].target_position,
@@ -193,5 +202,7 @@ pub enum MotionType {
     FallLeftways,
     FallRightways,
     Neutral,
+    StandupFaceDown,
+    StandupFaceDownV2,
     Test,
 }

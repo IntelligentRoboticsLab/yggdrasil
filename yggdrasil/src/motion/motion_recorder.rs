@@ -34,13 +34,11 @@ fn register_button_press(
 ) -> Result<()> {
     if head_button.middle.is_tapped() {
         println!("MOTION ACTIVATED");
-        // println!("-----------------\n{:?}\n\n", naostate.position);
-        mmng.start_new_motion(MotionType::Test)
+        mmng.start_new_motion(MotionType::StandupFaceDownV2)
     } else if head_button.rear.is_tapped() {
         println!("MOTION SLOPPY");
         mmng.stop_motion();
-        nao_control_message.stiffness = JointArray::<f32>::fill(0.0);
-        // println!("-----------------\n{:?}\n\n", naostate.position);
+        nao_control_message.stiffness = JointArray::<f32>::fill(-1.0);
     }
     Ok(())
 }

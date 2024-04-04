@@ -58,6 +58,7 @@ impl ActiveMotion {
             }
         }
 
+        println!("\n\nTransition");
         self.cur_sub_motion = (submotion_name, self.cur_sub_motion.1 + 1);
         self.prev_keyframe_index = 0;
         self.movement_start = Instant::now();
@@ -75,6 +76,8 @@ pub struct MotionManager {
     pub motion_execution_starting_time: Option<Instant>,
     // Keeps track of when the execution of the current submotion started.
     pub submotion_execution_starting_time: Option<Instant>,
+    // TODO
+    pub submotion_finishing_time: Option<Instant>,
     /// Contains the mapping from `MotionTypes` to `Motion`.
     pub motions: HashMap<MotionType, Motion>,
 }
@@ -97,6 +100,7 @@ impl MotionManager {
             active_motion: None,
             motion_execution_starting_time: None,
             submotion_execution_starting_time: None,
+            submotion_finishing_time: None,
             motions: HashMap::new(),
         }
     }
@@ -161,6 +165,14 @@ pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
     let mut motion_manager = MotionManager::new();
     // Add new motions here!
     motion_manager.add_motion(MotionType::Test, "./assets/motions/complex_test.toml")?;
+    motion_manager.add_motion(
+        MotionType::StandupFaceDown,
+        "./assets/motions/StandupTest.toml",
+    )?;
+    motion_manager.add_motion(
+        MotionType::StandupFaceDownV2,
+        "./assets/motions/StandupTest_V2.toml",
+    )?;
     // motion_manager.add_motion(
     //     MotionType::FallForwards,
     //     "./assets/motions/fallforwards.json",

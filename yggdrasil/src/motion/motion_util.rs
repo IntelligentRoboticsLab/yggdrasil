@@ -120,3 +120,5 @@ pub fn reached_position(
     t.right_hand = true;
     t.all(|elem| elem)
 }
+
+// TODO implement keyframe speed check
