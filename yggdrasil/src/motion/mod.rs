@@ -4,11 +4,11 @@ use tyr::prelude::*;
 
 pub mod motion_executer;
 pub mod motion_manager;
-pub mod motion_recorder;
+pub mod motion_tester;
 pub mod motion_types;
 pub mod motion_util;
 
-use self::motion_recorder::MotionRecorder;
+use self::motion_tester::MotionRecorder;
 use motion_executer::motion_executer;
 use motion_manager::motion_manager_initializer;
 
