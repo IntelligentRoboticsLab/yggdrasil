@@ -1,6 +1,4 @@
-use std::{
-    ffi::OsStr, fmt::Debug, path::Path, process::Stdio, result::Result, string::FromUtf8Error,
-};
+use std::{ffi::OsStr, fmt::Debug, path::Path, result::Result, string::FromUtf8Error};
 
 use miette::Diagnostic;
 
@@ -62,10 +60,7 @@ where
         .args(args)
         .args(["--color", "always"]) // always pass color, cargo doesn't pass color when it detects it's piped
         .envs(envs)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?
-        .wait_with_output()
+        .output()
         .await?;
 
     if !output.status.success() {
