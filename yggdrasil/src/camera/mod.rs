@@ -54,7 +54,6 @@ impl Module for CameraModule {
             .add_system(camera_system)
             .add_system(debug_camera_system.after(camera_system))
             .add_system(set_exposure_weights)
-            .add_system(update_exposure_weights)
             .add_task::<ComputeTask<JpegTopImage>>()?
             .add_task::<ComputeTask<JpegBottomImage>>()?
             .add_module(matrix::CameraMatrixModule)
@@ -62,13 +61,16 @@ impl Module for CameraModule {
 }
 
 fn setup_camera_device(settings: &CameraSettings) -> Result<CameraDevice> {
-    let camera_device = CameraDevice::new(&settings.path)?;
+    let mut camera_device = CameraDevice::new(&settings.path)?;
     if settings.flip_horizontally {
         camera_device.horizontal_flip()?;
     }
     if settings.flip_vertically {
         camera_device.vertical_flip()?;
     }
+
+    camera_device.set_focus_auto(false)?;
+    camera_device.set_exposure_auto(true)?;
 
     Ok(camera_device)
 }
@@ -206,7 +208,8 @@ fn initialize_cameras(storage: &mut Storage, config: &CameraConfig) -> Result<()
     let bottom_image_resource = Resource::new(BottomImage::new(bottom_camera.loop_fetch_image()?));
     let bottom_camera_resource = Resource::new(bottom_camera);
 
-    let exposure_weights = Resource::new(ExposureWeights::new((config.top.width, config.top.height)));
+    let exposure_weights =
+        Resource::new(ExposureWeights::new((config.top.width, config.top.height)));
 
     storage.add_resource(top_image_resource)?;
     storage.add_resource(top_camera_resource)?;
@@ -302,40 +305,27 @@ fn set_exposure_weights(
     top_camera: &TopCamera,
     bottom_camera: &BottomCamera,
 ) -> Result<()> {
-    let top_camera = top_camera.0.0.try_lock().expect("Failed to lock top camera");
-    let bottom_camera = bottom_camera.0.0.try_lock().expect("Failed to lock bottom camera");
+    let top_camera = top_camera
+        .0
+         .0
+        .try_lock()
+        .expect("Failed to lock top camera");
+    let bottom_camera = bottom_camera
+        .0
+         .0
+        .try_lock()
+        .expect("Failed to lock bottom camera");
 
     let top_table = &exposure_weights.top_weights;
     let bottom_table = &exposure_weights.bottom_weights;
 
-    // top_camera
-    //     .get_camera_device()
-    //     .set_auto_exposure_weights(top_table.encode())?;
+    top_camera
+        .get_camera_device()
+        .set_auto_exposure_weights(top_table.encode())?;
 
-    // bottom_camera
-    //     .get_camera_device()
-    //     .set_auto_exposure_weights(bottom_table.encode())?;
-
-    Ok(())
-}
-
-#[system]
-fn update_exposure_weights(
-    exposure_weights: &mut ExposureWeights,
-    top_image: &TopImage,
-    bottom_image: &BottomImage,
-) -> Result<()> {
-    // time
-    let timer = Instant::now();
-
-    exposure_weights.top_weights.update(top_image.yuyv_image());
-    exposure_weights.bottom_weights.update(bottom_image.yuyv_image());
-
-
-
-
-    let elapsed = timer.elapsed();
-    println!("update_exposure_weights: {:?}", elapsed);
+    bottom_camera
+        .get_camera_device()
+        .set_auto_exposure_weights(bottom_table.encode())?;
 
     Ok(())
 }

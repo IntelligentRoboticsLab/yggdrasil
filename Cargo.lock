@@ -3164,9 +3164,10 @@ checksum = "01cda141df6706de531b6c46c3a33ecca755538219bd484262fa09410c13539c"
 [[package]]
 name = "linuxvideo"
 version = "0.3.2"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git?branch=fyor/exposure-weights#43e36d0ebe7b5664decb816971c238e3e4f32671"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git?branch=fyor/exposure-weights#79b88a26e672f7cab6fc7eb3fa3e6fd835fd8160"
 dependencies = [
  "bitflags 1.3.2",
+ "libc",
  "log",
  "nix",
 ]
