@@ -90,6 +90,9 @@ impl Pregame {
                         self.wired,
                         Some(config.team_number),
                         false,
+                        false,
+                        true,
+                        "yggdrasil"
                     ),
                 }
                 .deploy(temp_config.clone())
