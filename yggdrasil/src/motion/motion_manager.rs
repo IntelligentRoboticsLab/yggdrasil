@@ -2,6 +2,7 @@ use crate::motion::motion_types::{
     ConditionalVariable, FailRoutine, Motion, MotionCondition, MotionType,
 };
 use miette::Result;
+use nidhogg::types::JointArray;
 use nidhogg::NaoState;
 use std::collections::HashMap;
 use std::path::Path;
@@ -14,8 +15,8 @@ pub struct ActiveMotion {
     pub motion: Motion,
     /// name and index of current submotion being executed
     pub cur_sub_motion: (String, i32),
-    /// Previous Keyframe index
-    pub prev_keyframe_index: i32,
+    /// Current Keyframe index
+    pub cur_keyframe_index: i32,
     /// Current movement starting time
     pub movement_start: Instant,
 }
@@ -60,7 +61,7 @@ impl ActiveMotion {
 
         println!("\n\nTransition");
         self.cur_sub_motion = (submotion_name, self.cur_sub_motion.1 + 1);
-        self.prev_keyframe_index = 0;
+        self.cur_keyframe_index = 0;
         self.movement_start = Instant::now();
 
         Some(self.clone())
@@ -78,6 +79,8 @@ pub struct MotionManager {
     pub submotion_execution_starting_time: Option<Instant>,
     // TODO
     pub submotion_finishing_time: Option<Instant>,
+    // TODO
+    pub source_position: Option<JointArray<f32>>,
     /// Contains the mapping from `MotionTypes` to `Motion`.
     pub motions: HashMap<MotionType, Motion>,
 }
@@ -101,6 +104,7 @@ impl MotionManager {
             motion_execution_starting_time: None,
             submotion_execution_starting_time: None,
             submotion_finishing_time: None,
+            source_position: None,
             motions: HashMap::new(),
         }
     }
@@ -120,6 +124,9 @@ impl MotionManager {
     pub fn stop_motion(&mut self) {
         self.active_motion = None;
         self.motion_execution_starting_time = None;
+        self.submotion_execution_starting_time = None;
+        self.submotion_finishing_time = None;
+        self.source_position = None;
     }
 
     /// Starts a new motion.
@@ -142,7 +149,7 @@ impl MotionManager {
 
         self.active_motion = Some(ActiveMotion {
             cur_sub_motion: (chosen_motion.motion_settings.motion_order[0].clone(), 0),
-            prev_keyframe_index: 0,
+            cur_keyframe_index: 0,
             motion: chosen_motion,
             movement_start: Instant::now(),
         });
@@ -164,14 +171,11 @@ impl MotionManager {
 pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
     let mut motion_manager = MotionManager::new();
     // Add new motions here!
-    motion_manager.add_motion(MotionType::Test, "./assets/motions/complex_test.toml")?;
+    motion_manager.add_motion(MotionType::Test, "./assets/motions/TestDance.toml")?;
+    motion_manager.add_motion(MotionType::StandupBack, "./assets/motions/StandupBack.toml")?;
     motion_manager.add_motion(
-        MotionType::StandupFaceDown,
-        "./assets/motions/StandupTest.toml",
-    )?;
-    motion_manager.add_motion(
-        MotionType::StandupFaceDownV2,
-        "./assets/motions/StandupTest_V2.toml",
+        MotionType::StandupStomach,
+        "./assets/motions/StandupStomach.toml",
     )?;
     // motion_manager.add_motion(
     //     MotionType::FallForwards,
@@ -233,7 +237,7 @@ fn select_routine(mut active_motion: ActiveMotion, routine: FailRoutine) -> Opti
         FailRoutine::Catch => None,
         // retry the previous submotion
         FailRoutine::Retry => {
-            active_motion.prev_keyframe_index = 0;
+            active_motion.cur_keyframe_index = 0;
             active_motion.movement_start = Instant::now();
             Some(active_motion)
         }

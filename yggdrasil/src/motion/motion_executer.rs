@@ -1,5 +1,6 @@
 use crate::motion::motion_manager::{ActiveMotion, MotionManager};
-use crate::motion::motion_util::{lerp, reached_position};
+use crate::motion::motion_types::Movement;
+use crate::motion::motion_util::lerp;
 use miette::Result;
 use nidhogg::{
     types::{FillExt, JointArray},
@@ -7,8 +8,6 @@ use nidhogg::{
 };
 use std::time::Instant;
 use tyr::prelude::*;
-
-const STARTING_POSITION_ERROR_MARGIN: f32 = 0.1;
 
 /// Executes the current motion.
 ///
@@ -36,14 +35,16 @@ pub fn motion_executer(
     let ActiveMotion {
         motion,
         cur_sub_motion,
-        prev_keyframe_index,
+        cur_keyframe_index,
         movement_start,
     } = motion_manager.get_active_motion().unwrap();
 
     println!(
-        "Executing: {}  Index: {}   Movement Duration: {}",
-        cur_sub_motion.0,
-        prev_keyframe_index,
+        "Executing: {}  Index: {}",
+        cur_sub_motion.0, cur_keyframe_index
+    );
+    println!(
+        "Movement Duration: {}\n",
         movement_start.elapsed().as_secs_f32()
     );
 
@@ -54,35 +55,44 @@ pub fn motion_executer(
 
     // at the start of a new submotion, we need to lerp to the starting position
     if motion_manager.submotion_execution_starting_time.is_none() {
-        if !reached_position(
-            &nao_state.position,
-            &motion.initial_movement(sub_motion_name).target_position,
-            STARTING_POSITION_ERROR_MARGIN,
-        ) {
-            // Starting position has not yet been reached, so lerp to start
-            // position, until position has been reached.
-            let elapsed_time_since_start_of_motion: f32 = movement_start.elapsed().as_secs_f32();
+        // record the last position before motion initialization, or before transition
+        if motion_manager.source_position.is_none() {
+            motion_manager.source_position = Some(nao_state.position.clone());
+        }
+        let Movement {
+            target_position,
+            duration,
+        } = &motion.initial_movement(sub_motion_name);
 
-            nao_control_message.position = lerp(
-                &nao_state.position,
-                &motion.initial_movement(sub_motion_name).target_position,
-                elapsed_time_since_start_of_motion
-                    / &motion
-                        .initial_movement(sub_motion_name)
-                        .duration
-                        .as_secs_f32(),
-            );
-            nao_control_message.stiffness = JointArray::<f32>::fill(submotion_stiffness);
+        // Starting position has not yet been reached, so lerp to start
+        // position, until position has been reached.
+        let elapsed_time_since_start_of_motion: f32 = movement_start.elapsed().as_secs_f32();
 
-            return Ok(());
-        } else {
+        // if the current movement has been completed:
+        if elapsed_time_since_start_of_motion > duration.as_secs_f32() {
+            // update the time of the start of the movement
             println!("First Position Reached");
+
             motion_manager.submotion_execution_starting_time = Some(Instant::now());
             motion_manager
                 .active_motion
                 .as_mut()
                 .unwrap()
                 .movement_start = Instant::now();
+            motion_manager
+                .active_motion
+                .as_mut()
+                .unwrap()
+                .cur_keyframe_index += 1;
+        } else {
+            nao_control_message.position = lerp(
+                motion_manager.source_position.as_ref().unwrap(),
+                target_position,
+                elapsed_time_since_start_of_motion / duration.as_secs_f32(),
+            );
+            nao_control_message.stiffness = JointArray::<f32>::fill(submotion_stiffness);
+
+            return Ok(());
         }
     }
 
@@ -96,24 +106,26 @@ pub fn motion_executer(
             nao_control_message.stiffness = JointArray::<f32>::fill(submotion_stiffness);
         }
         None => {
-            // firstly, we record the current timestamp and check whether the motion needs to wait
-            match motion_manager.submotion_finishing_time {
-                None => {
-                    motion_manager.submotion_finishing_time = Some(Instant::now());
-                    return Ok(());
-                }
-
-                // checking whether the required waittime has elapsed
-                Some(finishing_time) => {
-                    println!(
-                        "Waiting: {} -> {}",
-                        finishing_time.elapsed().as_secs_f32(),
-                        motion.submotions[sub_motion_name].exit_waittime
-                    );
-                    if finishing_time.elapsed().as_secs_f32()
-                        < motion.submotions[sub_motion_name].exit_waittime
-                    {
+            if motion.submotions[sub_motion_name].exit_waittime > 0.05 {
+                // firstly, we record the current timestamp and check whether the motion needs to wait
+                match motion_manager.submotion_finishing_time {
+                    None => {
+                        motion_manager.submotion_finishing_time = Some(Instant::now());
                         return Ok(());
+                    }
+
+                    // checking whether the required waittime has elapsed
+                    Some(finishing_time) => {
+                        println!(
+                            "Waiting: {} -> {}",
+                            finishing_time.elapsed().as_secs_f32(),
+                            motion.submotions[sub_motion_name].exit_waittime
+                        );
+                        if finishing_time.elapsed().as_secs_f32()
+                            < motion.submotions[sub_motion_name].exit_waittime
+                        {
+                            return Ok(());
+                        }
                     }
                 }
             }
@@ -124,12 +136,18 @@ pub fn motion_executer(
 
             motion_manager.submotion_execution_starting_time = None;
             motion_manager.submotion_finishing_time = None;
+            motion_manager.source_position = None;
 
             match active_motion.get_next_submotion() {
                 // If there is a next submotion, we attempt a transition
                 Some(submotion_name) => {
                     motion_manager.active_motion =
-                        active_motion.transition(nao_state, submotion_name)
+                        active_motion.transition(nao_state, submotion_name);
+
+                    // if the motion was aborted or an error occured with transitioning, we reset the execution time
+                    if motion_manager.active_motion.is_none() {
+                        motion_manager.motion_execution_starting_time = None;
+                    }
                 }
                 None => {
                     // if no submotion is found, the motion has finished

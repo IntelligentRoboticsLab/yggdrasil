@@ -1,0 +1,9 @@
+interpolation_type = "Linear"
+wait_time = 1
+motion_order = [
+    "Standup/OnStomach/LyingToYoga",
+    "Standup/OnStomach/YogaToSitting",
+    "Standup/OnStomach/SittingToHalfCrouch",
+    "Standup/HalfCrouchToSit",
+    "Standup/ExtendLegs",
+]

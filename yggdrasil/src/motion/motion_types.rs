@@ -152,36 +152,33 @@ impl Motion {
         let keyframes = &self.submotions[current_sub_motion].keyframes;
 
         // Check if we have reached the end of the current submotion
-        if keyframes.len() <= active_motion.prev_keyframe_index as usize + 2 {
+        if keyframes.len() < active_motion.cur_keyframe_index as usize + 1 {
             return None;
         }
 
         // if the current movement has been completed:
         if active_motion.movement_start.elapsed().as_secs_f32()
-            > keyframes[active_motion.prev_keyframe_index as usize + 1]
+            > keyframes[active_motion.cur_keyframe_index as usize]
                 .duration
                 .as_secs_f32()
         {
             // update the index
-            active_motion.prev_keyframe_index += 1;
+            active_motion.cur_keyframe_index += 1;
+
+            // Check if there exists a next keyframe
+            if keyframes.len() < active_motion.cur_keyframe_index as usize + 1 {
+                return None;
+            }
 
             // update the time of the start of the movement
             active_motion.movement_start = Instant::now();
         }
 
-        // println!(
-        //     "Linear Scalar: {}",
-        //     (active_motion.movement_start.elapsed()).as_secs_f32()
-        //         / keyframes[active_motion.prev_keyframe_index as usize + 1]
-        //             .duration
-        //             .as_secs_f32(),
-        // );
-
         return Some(lerp(
-            &keyframes[active_motion.prev_keyframe_index as usize].target_position,
-            &keyframes[active_motion.prev_keyframe_index as usize + 1].target_position,
+            &keyframes[active_motion.cur_keyframe_index as usize - 1].target_position,
+            &keyframes[active_motion.cur_keyframe_index as usize].target_position,
             (active_motion.movement_start.elapsed()).as_secs_f32()
-                / keyframes[active_motion.prev_keyframe_index as usize + 1]
+                / keyframes[active_motion.cur_keyframe_index as usize]
                     .duration
                     .as_secs_f32(),
         ));
@@ -202,7 +199,7 @@ pub enum MotionType {
     FallLeftways,
     FallRightways,
     Neutral,
-    StandupFaceDown,
-    StandupFaceDownV2,
+    StandupBack,
+    StandupStomach,
     Test,
 }

@@ -1,7 +1,0 @@
-interpolation_type = "Linear"
-wait_time = 1
-motion_order = [
-    "Standup1",
-    "Standup2",
-    "Standup3"
-]
