@@ -10,17 +10,11 @@ use tyr::prelude::*;
 use crate::motion::motion_manager::MotionManager;
 use crate::motion::motion_types::MotionType;
 
-pub struct MotionRecorder;
+pub struct MotionTester;
 
-impl Module for MotionRecorder {
+impl Module for MotionTester {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app.add_system(debug_testmotion))
-        // .add_system(joint_locking_recorder)
-        // .add_resource(Resource::new(RecordingResources {
-        //     locked: false,
-        //     total_keyframes: 0,
-        //     keyframes: Vec::new(),
-        // }))
     }
 }
 
@@ -32,7 +26,6 @@ fn debug_testmotion(
 ) -> Result<()> {
     if head_button.middle.is_tapped() {
         println!("MOTION ACTIVATED");
-        // println!("NaoState:\n {:?}", naostate.position);
         mmng.start_new_motion(MotionType::StandupStomach)
     } else if head_button.rear.is_tapped() {
         println!("MOTION SLOPPY");

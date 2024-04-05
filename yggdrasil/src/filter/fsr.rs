@@ -20,7 +20,7 @@ impl Module for FSRFilter {
     }
 }
 
-/// Structuct containing the various contact points of the Nao.
+/// Struct containing the various contact points of the Nao.
 #[derive(Default)]
 pub struct Contacts {
     /// Whether the Nao is on the ground.
@@ -38,7 +38,7 @@ pub fn force_sensitive_resistor_filter(
     force_sensitive_resistors.right_foot = nao_state.force_sensitive_resistors.right_foot.clone();
 
     contacts.ground =
-        nao_state.force_sensitive_resistors.avg() < config.fsr.ground_contact_threshold;
+        nao_state.force_sensitive_resistors.avg() > config.fsr.ground_contact_threshold;
 
     Ok(())
 }

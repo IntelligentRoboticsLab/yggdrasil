@@ -1,12 +1,15 @@
 use std::mem;
 
-use crate::camera::Image;
+use crate::camera::{matrix::CameraMatrices, Image};
 use crate::debug::DebugContext;
+
 use crate::prelude::*;
 
 use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
 use derive_more::Deref;
+use heimdall::CameraMatrix;
+use nalgebra::point;
 use nidhogg::types::color;
 
 // TODO: Replace with proper field-boundary detection.
@@ -342,7 +345,12 @@ fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> Line {
     )
 }
 
-fn draw_lines(dbg: &DebugContext, lines: &[Line], scan_grid: ScanGrid) -> Result<()> {
+fn draw_lines(
+    dbg: &DebugContext,
+    lines: &[Line],
+    scan_grid: ScanGrid,
+    matrix: &CameraMatrix,
+) -> Result<()> {
     let all_lines = lines
         .iter()
         .map(
@@ -360,10 +368,35 @@ fn draw_lines(dbg: &DebugContext, lines: &[Line], scan_grid: ScanGrid) -> Result
         .collect::<Vec<_>>();
 
     dbg.log_lines2d_for_image(
-        "top_camera/lines",
+        "top_camera/image/lines",
         &all_lines,
         scan_grid.image().clone(),
         color::u8::RED,
+    )?;
+
+    let points_to_ground = all_lines
+        .iter()
+        .filter_map(|line| {
+            let (x1, y1) = line[0];
+            let (x2, y2) = line[1];
+
+            matrix
+                .pixel_to_ground(point![x1, y1], 0.0)
+                .ok()
+                .and_then(|p1| {
+                    matrix
+                        .pixel_to_ground(point![x2, y2], 0.0)
+                        .ok()
+                        .map(|p2| [(p1[0], p1[1], p1[2]), (p2[0], p2[1], p2[2])])
+                })
+        })
+        .collect::<Vec<_>>();
+
+    dbg.log_lines3d_for_image(
+        "top_camera/lines_3d",
+        &points_to_ground,
+        scan_grid.image().clone(),
+        color::u8::BLUE,
     )?;
 
     Ok(())
@@ -390,12 +423,13 @@ fn line_detection_system(
     dbg: &DebugContext,
     detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
     top_lines: &mut TopLines,
+    camera_matrices: &CameraMatrices,
 ) -> Result<()> {
     if let Some(detect_lines_result) = detect_top_lines_task.poll() {
         let mut detect_lines_result = detect_lines_result?;
         std::mem::swap(&mut top_lines.0, &mut detect_lines_result.0.lines);
 
-        draw_lines(dbg, top_lines, top_scan_grid.clone())?;
+        draw_lines(dbg, top_lines, top_scan_grid.clone(), &camera_matrices.top)?;
 
         let top_scan_grid = top_scan_grid.clone();
         detect_top_lines_task

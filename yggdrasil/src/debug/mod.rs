@@ -1,9 +1,11 @@
 #[cfg(feature = "rerun")]
-use std::{convert::Into, net::SocketAddr, time::Instant};
+use std::{convert::Into, net::SocketAddr};
 
+use heimdall::CameraMatrix;
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 
+use nalgebra::Isometry3;
 use nidhogg::types::RgbU8;
 use std::net::IpAddr;
 
@@ -30,8 +32,6 @@ impl Module for DebugModule {
 pub struct DebugContext {
     #[cfg(feature = "rerun")]
     rec: rerun::RecordingStream,
-    #[cfg(feature = "rerun")]
-    start_time: std::time::Instant,
 }
 
 #[allow(unused)]
@@ -50,10 +50,7 @@ impl DebugContext {
                 )
                 .into_diagnostic()?;
 
-            Ok(DebugContext {
-                rec,
-                start_time: Instant::now(),
-            })
+            Ok(DebugContext { rec })
         }
 
         #[cfg(not(feature = "rerun"))]
@@ -72,25 +69,55 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Disable the "cycle" timeline for the current thread.
+    fn clear_cycle(&self) {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec.disable_timeline("cycle");
+        }
+    }
+
     /// Log a Yuyv encoded image to the debug viewer.
     ///
     /// The image is first converted to a jpeg encoded image.
     pub fn log_image(&self, path: impl AsRef<str>, img: Image, jpeg_quality: i32) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.rec.set_time_seconds(
-                "image",
-                img.timestamp()
-                    .duration_since(self.start_time)
-                    .as_secs_f64(),
-            );
+            self.set_cycle(&img.cycle());
             let jpeg = img.yuyv_image().to_jpeg(jpeg_quality)?;
             let tensor_data =
                 rerun::TensorData::from_jpeg_bytes(jpeg.to_owned()).into_diagnostic()?;
             let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
 
             self.rec.log(path.as_ref(), &img).into_diagnostic()?;
-            self.rec.disable_timeline("image");
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a camera matrix to the debug viewer.
+    ///
+    /// The camera matrix is logged as a pinhole camera, without any transforms applied.
+    pub fn log_camera_matrix(
+        &self,
+        path: impl AsRef<str>,
+        matrix: &CameraMatrix,
+        image: Image,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&image.cycle());
+            let pinhole = rerun::Pinhole::from_focal_length_and_resolution(
+                [matrix.focal_lengths.x, matrix.focal_lengths.y],
+                [
+                    image.yuyv_image().width() as f32,
+                    image.yuyv_image().height() as f32,
+                ],
+            )
+            .with_camera_xyz(rerun::components::ViewCoordinates::FLU);
+            self.rec.log(path.as_ref(), &pinhole).into_diagnostic()?;
+            self.clear_cycle();
         }
 
         Ok(())
@@ -144,6 +171,7 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Log a text message to the debug viewer.
     pub fn log_text(&self, path: impl AsRef<str>, text: String) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
@@ -155,17 +183,23 @@ impl DebugContext {
         Ok(())
     }
 
-    pub fn log_point2d(&self, path: impl AsRef<str>, x: f32, y: f32) -> Result<()> {
+    /// Log a set of 2D points to the debug viewer.
+    pub fn log_points_2d(
+        &self,
+        path: impl AsRef<str>,
+        points: impl IntoIterator<Item = (f32, f32)>,
+    ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
             self.rec
-                .log(path.as_ref(), &rerun::Points2D::new([(x, y)]))
+                .log(path.as_ref(), &rerun::Points2D::new(points))
                 .into_diagnostic()?;
         }
 
         Ok(())
     }
 
+    /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
     pub fn log_points2d_for_image(
         &self,
         path: impl AsRef<str>,
@@ -175,13 +209,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            let image_timestamp = img.timestamp();
-            self.rec.set_time_seconds(
-                "image",
-                image_timestamp
-                    .duration_since(self.start_time)
-                    .as_secs_f64(),
-            );
+            self.set_cycle(&img.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -195,11 +223,13 @@ impl DebugContext {
                     ]),
                 )
                 .into_diagnostic()?;
+            self.clear_cycle();
         }
 
         Ok(())
     }
 
+    /// Log a set of 2D lines to the debug viewer, using the timestamp of the provided image.
     pub fn log_lines2d_for_image(
         &self,
         path: impl AsRef<str>,
@@ -209,13 +239,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            let image_timestamp = img.timestamp();
-            self.rec.set_time_seconds(
-                "image",
-                image_timestamp
-                    .duration_since(self.start_time)
-                    .as_secs_f64(),
-            );
+            self.set_cycle(&img.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -229,6 +253,103 @@ impl DebugContext {
                     ]),
                 )
                 .into_diagnostic()?;
+
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a set of 3D points to the debug viewer.
+    pub fn log_points_3d(
+        &self,
+        path: impl AsRef<str>,
+        points: impl IntoIterator<Item = (f32, f32, f32)>,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(path.as_ref(), &rerun::Points3D::new(points))
+                .into_diagnostic()?;
+        }
+        Ok(())
+    }
+
+    /// Log a set of 3D points to the debug viewer, using the provided color and radius.
+    pub fn log_points_3d_with_color_and_radius(
+        &self,
+        path: impl AsRef<str>,
+        points: &[(f32, f32, f32)],
+        color: RgbU8,
+        radius: f32,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let color = rerun::Color::from_rgb(color.red, color.green, color.blue);
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Points3D::new(points)
+                        .with_radii(vec![radius; points.len()])
+                        .with_colors(vec![color; points.len()]),
+                )
+                .into_diagnostic()?;
+        }
+        Ok(())
+    }
+
+    /// Log a set of 3D lines to the debug viewer, using the timestamp of the provided image.
+    pub fn log_lines3d_for_image(
+        &self,
+        path: impl AsRef<str>,
+        lines: &[[(f32, f32, f32); 2]],
+        img: Image,
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&img.cycle());
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::LineStrips3D::new(lines).with_colors(vec![
+                        rerun::Color::from_rgb(
+                            color.red,
+                            color.green,
+                            color.blue,
+                        );
+                        lines.len()
+                    ]),
+                )
+                .into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a transformation to the entities at the provided path.
+    pub fn log_transformation(
+        &self,
+        path: impl AsRef<str>,
+        transform: &Isometry3<f32>,
+        img: Image,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&img.cycle());
+
+            let translation = transform.translation;
+            let rotation = transform.rotation.coords;
+
+            self.rec.log(
+                path.as_ref(),
+                &rerun::Transform3D::from_translation_rotation(
+                    (translation.x, translation.y, translation.z),
+                    rerun::Quaternion([rotation.x, rotation.y, rotation.z, rotation.w]),
+                ),
+            );
+            self.clear_cycle();
         }
 
         Ok(())
@@ -238,7 +359,7 @@ impl DebugContext {
 #[startup_system]
 fn init_rerun(storage: &mut Storage) -> Result<()> {
     #[cfg(any(feature = "local", not(feature = "rerun")))]
-    let server_address = IpAddr::V4(std::net::Ipv4Addr::LOCALHOST);
+    let server_address = IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
     // Manually set the server address to the robot's IP address, instead of 0.0.0.0
     // to ensure the rerun server prints the correct connection URL on startup
     #[cfg(all(not(feature = "local"), feature = "rerun"))]

@@ -13,6 +13,8 @@ pub mod button;
 pub mod falling;
 pub mod fsr;
 pub mod imu;
+/// A simple low pass smoothing filter.
+pub mod low_pass_filter;
 pub mod sonar;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -45,8 +47,8 @@ impl Module for FilterModule {
             .add_module(ButtonFilter)?
             .add_module(FSRFilter)?
             .add_module(IMUFilter)?
-            .add_module(SonarFilter)?
-            .add_module(FallingFilter)?;
+            .add_module(FallingFilter)?
+            .add_module(SonarFilter)?;
         Ok(app)
     }
 }

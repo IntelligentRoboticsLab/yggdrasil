@@ -7,5 +7,6 @@ edition = "2021"
 image = { workspace = true }
 linuxvideo = { workspace = true }
 miette = { workspace = true }
+nalgebra = { workspace = true }
 thiserror = { workspace = true }
 turbojpeg = { workspace = true }
