@@ -35,7 +35,7 @@ pub struct RobotInfo {
     /// Hardware version of the body
     pub body_version: String,
     /// Initial joint positions
-    pub initial_joint_position: JointArray<f32>,
+    pub initial_joint_positions: JointArray<f32>,
 }
 
 impl RobotInfo {
@@ -68,7 +68,7 @@ impl RobotInfo {
             body_id,
             head_version,
             body_version,
-            initial_joint_position: state.position,
+            initial_joint_positions: state.position,
         })
     }
 }
@@ -105,7 +105,7 @@ fn initialize_nao(storage: &mut Storage) -> Result<()> {
     // Read state and reply with a msg
     let state = nao.read_nao_state()?;
     let msg = NaoControlMessage {
-        position: info.initial_joint_position.clone(),
+        position: info.initial_joint_positions.clone(),
         stiffness: JointArray::fill(0.8),
         ..Default::default()
     };

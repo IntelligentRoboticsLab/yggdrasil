@@ -21,7 +21,7 @@ impl Role for Base {
                 } else if context.head_buttons.middle.is_pressed() {
                     BehaviorKind::Observe(Observe::default())
                 } else {
-                    BehaviorKind::Passive(Passive)
+                    BehaviorKind::Passive(Passive::default())
                 }
             }
             BehaviorKind::Initial(state) => BehaviorKind::Initial(*state),
