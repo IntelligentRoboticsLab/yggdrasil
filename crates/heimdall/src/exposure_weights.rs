@@ -1,19 +1,40 @@
+/// Holds the exposure weights for both camera's.
 pub struct ExposureWeights {
+    /// The exposure weights for the top part of the image.
     pub top_weights: ExposureWeightTable,
+    /// The exposure weights for the bottom part of the image.
     pub bottom_weights: ExposureWeightTable,
 }
 
 impl ExposureWeights {
+    /// Initialise `ExposureWeights` constant values.
+    ///
+    /// # Arguments
+    ///
+    /// * `image_dims` - The dimensions of the image (width, height).
+    ///
+    /// # Returns
+    ///
+    /// A new instance of `ExposureWeights`.
     pub fn new(image_dims: (u32, u32)) -> Self {
         Self {
-            top_weights: ExposureWeightTable::new(image_dims),
-            bottom_weights: ExposureWeightTable::new(image_dims),
+            top_weights: ExposureWeightTable::new(
+                image_dims,
+                [0, 0, 0, 0, 3, 3, 3, 3, 11, 11, 11, 11, 15, 15, 15, 15],
+            ),
+            bottom_weights: ExposureWeightTable::new(
+                image_dims,
+                [ExposureWeightTable::MAX_VALUE; 16],
+            ),
         }
     }
 }
 
+/// Represents a table of exposure weights.
 pub struct ExposureWeightTable {
-    /// Although referenced in the docs, this field does not appear to affect anything...
+    /// Indicates whether the exposure weight table is enabled.
+    ///
+    /// Although present in the documentation, this field does not appear to have any effect.
     enabled: bool,
 
     /// The top-left corner of the exposure weight window.
@@ -27,22 +48,39 @@ pub struct ExposureWeightTable {
 }
 
 impl ExposureWeightTable {
-    pub fn new(image_dims: (u32, u32)) -> Self {
+    /// Creates a new instance of `ExposureWeightTable` with the given image dimensions and initial weights.
+    ///
+    /// # Arguments
+    ///
+    /// * `image_dims` - The dimensions of the image (width, height).
+    /// * `initial_weights` - The initial exposure weights for the table.
+    ///
+    /// # Returns
+    ///
+    /// A new instance of `ExposureWeightTable`.
+    pub fn new(image_dims: (u32, u32), initial_weights: [u8; 16]) -> Self {
         let (image_width, image_height) = image_dims;
         Self {
             enabled: true,
             window_start: [0; 2],
             window_end: [image_width, image_height],
-            weights: [0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 15, 15, 15, 15, 15, 15],
+            weights: initial_weights,
         }
     }
 
+    /// The maximum value for an exposure weight.
     pub const MAX_VALUE: u8 = 15;
 
-    /// Updates the exposure weights.
+    /// Updates the exposure weights with the given weights.
     ///
-    /// Returns `true` if the weights were changed, `false` otherwise.
-    /// Resetting the weights will be required if `true` is returned.
+    /// # Arguments
+    ///
+    /// * `weights` - The new exposure weights.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the weights were changed, `false` otherwise.
+    /// Resetting the weights in the driver will be required if `true` is returned.
     pub fn update(&mut self, weights: [u8; 16]) -> bool {
         let mut weights = weights;
         for weight in weights.iter_mut() {
@@ -59,6 +97,13 @@ impl ExposureWeightTable {
         true
     }
 
+    /// Converts the exposure weight table to the expected byte array format.
+    ///
+    /// Format: https://spl.robocup.org/wp-content/uploads/downloads/nao-v6-hints.pdf
+    ///
+    /// # Returns
+    ///
+    /// The exposure weight table encoded as a byte array.
     pub fn encode(&self) -> [u8; 17] {
         let mut bytes = [0; 17];
 
