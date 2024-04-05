@@ -24,8 +24,8 @@ fn parse_map(robot_numbers: &Vec<String>) -> HashMap<u8, Option<u8>> {
     let mut robot_player_map: HashMap<u8, Option<u8>> = HashMap::new();
 
     for robot_number in robot_numbers {
-        if let Some(_) = robot_number.find(":") {
-            let pair: Vec<&str> = robot_number.split(":").collect();
+        if robot_number.find(':').is_some() {
+            let pair: Vec<&str> = robot_number.split(':').collect();
             robot_player_map.insert(pair[0].parse().unwrap(), Some(pair[1].parse().unwrap()));
         } else {
             robot_player_map.insert(robot_number.parse().unwrap(), None);
@@ -92,7 +92,7 @@ impl Pregame {
                         false,
                         false,
                         true,
-                        String::from("yggdrasil")
+                        String::from("yggdrasil"),
                     ),
                 }
                 .deploy(temp_config.clone())
