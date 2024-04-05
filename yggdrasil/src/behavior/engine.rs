@@ -18,6 +18,8 @@ use crate::{
     primary_state::PrimaryState,
 };
 
+use super::behaviors::Observe;
+
 /// Context that is passed into the behavior engine.
 ///
 /// It contains all necessary information for executing behaviors and
@@ -83,6 +85,7 @@ pub trait Behavior {
 pub enum BehaviorKind {
     Passive(Passive),
     Initial(Initial),
+    Observe(Observe),
     // Add new behaviors here!
 }
 
