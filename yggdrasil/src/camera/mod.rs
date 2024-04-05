@@ -310,6 +310,7 @@ fn set_exposure_weights(
          .0
         .try_lock()
         .expect("Failed to lock top camera");
+
     let bottom_camera = bottom_camera
         .0
          .0

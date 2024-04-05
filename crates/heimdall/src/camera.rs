@@ -62,7 +62,6 @@ impl CameraDevice {
             .map_err(Error::SetAutoExposureWeights)
     }
 
-
     /// Enable or disable the autofocus.
     ///
     /// Default=false.
@@ -288,9 +287,8 @@ impl Camera {
             ))?;
         }
 
-        let camera_device_clone = camera_device.clone();
-
         let capture_device = camera_device
+            .clone()
             .device
             .video_capture(PixFormat::new(width, height, PixelFormat::YUYV))
             .map_err(Error::VideoCapture)?;
@@ -309,7 +307,7 @@ impl Camera {
 
         let mut camera = Self {
             camera,
-            camera_device: camera_device_clone,
+            camera_device,
             width,
             height,
         };
