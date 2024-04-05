@@ -13,7 +13,7 @@ use crate::{
         button::{ChestButton, HeadButtons},
         fsr::Contacts,
     },
-    nao::{self, manager::NaoManager},
+    nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
     primary_state::PrimaryState,
 };
@@ -26,6 +26,8 @@ use super::behaviors::Observe;
 /// transitioning between different behaviors.
 #[derive(Clone, Copy)]
 pub struct Context<'a> {
+    /// Robot info
+    pub robot_info: &'a RobotInfo,
     /// Primary state of the robot
     pub primary_state: &'a PrimaryState,
     /// State of the headbuttons of a robot
@@ -199,6 +201,7 @@ impl Engine {
 pub fn step(
     engine: &mut Engine,
     nao_manager: &mut NaoManager,
+    robot_info: &RobotInfo,
     primary_state: &PrimaryState,
     head_buttons: &HeadButtons,
     chest_button: &ChestButton,
@@ -208,6 +211,7 @@ pub fn step(
     behavior_config: &BehaviorConfig,
 ) -> Result<()> {
     let context = Context {
+        robot_info,
         primary_state,
         head_buttons,
         chest_button,

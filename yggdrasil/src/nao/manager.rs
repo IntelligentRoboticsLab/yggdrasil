@@ -174,6 +174,22 @@ impl NaoManager {
         self.head_settings.priority = None;
     }
 
+    pub fn set_all_joints(
+        &mut self,
+        joint_positions: LegJoints<JointValue>,
+        joint_stiffness: LegJoints<JointValue>,
+        priority: Priority,
+    ) -> &mut Self {
+        Self::set_joint_settings(
+            &mut self.leg_settings,
+            joint_positions,
+            joint_stiffness,
+            priority,
+        );
+
+        self
+    }
+
     /// Sets the joint position and stiffness of the leg joints.
     ///
     /// The joint positions are degrees in radians.

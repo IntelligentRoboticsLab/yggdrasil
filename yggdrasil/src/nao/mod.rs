@@ -9,6 +9,7 @@ use std::{env, time::Duration};
 use miette::IntoDiagnostic;
 use nidhogg::{
     backend::{LolaBackend, ReadHardwareInfo},
+    types::{FillExt, JointArray},
     HardwareInfo, NaoBackend, NaoControlMessage, NaoState,
 };
 
@@ -33,17 +34,25 @@ pub struct RobotInfo {
     pub body_id: String,
     /// Hardware version of the body
     pub body_version: String,
+    /// Initial joint positions
+    pub initial_joint_position: JointArray<f32>,
 }
 
 impl RobotInfo {
     fn new<T: ReadHardwareInfo>(backend: &mut T) -> Result<Self> {
+        let state = backend.read_nao_state()?;
+        let mut msg = NaoControlMessage::default();
+        msg.position = state.position.clone();
+        msg.stiffness = JointArray::fill(0.8);
+        backend.send_control_msg(msg.clone())?;
+
         let HardwareInfo {
             body_id,
             head_id,
             body_version,
             head_version,
         } = backend.read_hardware_info()?;
-        backend.send_control_msg(NaoControlMessage::default())?;
+        backend.send_control_msg(msg)?;
 
         let robot_name = env::var("ROBOT_NAME").into_diagnostic()?;
         let robot_id = str::parse(&env::var("ROBOT_ID").into_diagnostic()?).into_diagnostic()?;
@@ -55,6 +64,7 @@ impl RobotInfo {
             body_id,
             head_version,
             body_version,
+            initial_joint_position: state.position,
         })
     }
 }
@@ -89,7 +99,10 @@ fn initialize_nao(storage: &mut Storage) -> Result<()> {
     let info = RobotInfo::new(&mut nao)?;
 
     let state = nao.read_nao_state()?;
-    nao.send_control_msg(NaoControlMessage::default())?;
+    let mut msg = NaoControlMessage::default();
+    msg.position = info.initial_joint_position.clone();
+    msg.stiffness = JointArray::fill(0.8);
+    nao.send_control_msg(msg)?;
 
     tracing::info!(
         "Launched yggdrasil on {} with head_id: {}, body_id: {}",
