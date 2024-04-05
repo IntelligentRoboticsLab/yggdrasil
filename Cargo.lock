@@ -7822,6 +7822,7 @@ dependencies = [
  "nalgebra",
  "ndarray",
  "nidhogg",
+ "num",
  "odal",
  "openvino",
  "rerun",
