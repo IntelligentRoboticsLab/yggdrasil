@@ -40,12 +40,16 @@ pub struct RobotInfo {
 
 impl RobotInfo {
     fn new<T: ReadHardwareInfo>(backend: &mut T) -> Result<Self> {
+        // Read state and reply with a msg
         let state = backend.read_nao_state()?;
-        let mut msg = NaoControlMessage::default();
-        msg.position = state.position.clone();
-        msg.stiffness = JointArray::fill(0.8);
+        let msg = NaoControlMessage {
+            position: state.position.clone(),
+            stiffness: JointArray::fill(0.8),
+            ..Default::default()
+        };
         backend.send_control_msg(msg.clone())?;
 
+        // Read hardware info and reply with a msg
         let HardwareInfo {
             body_id,
             head_id,
@@ -98,10 +102,13 @@ fn initialize_nao(storage: &mut Storage) -> Result<()> {
     )?;
     let info = RobotInfo::new(&mut nao)?;
 
+    // Read state and reply with a msg
     let state = nao.read_nao_state()?;
-    let mut msg = NaoControlMessage::default();
-    msg.position = info.initial_joint_position.clone();
-    msg.stiffness = JointArray::fill(0.8);
+    let msg = NaoControlMessage {
+        position: info.initial_joint_position.clone(),
+        stiffness: JointArray::fill(0.8),
+        ..Default::default()
+    };
     nao.send_control_msg(msg)?;
 
     tracing::info!(
