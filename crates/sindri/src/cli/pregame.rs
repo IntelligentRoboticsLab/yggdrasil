@@ -92,7 +92,7 @@ impl Pregame {
                         false,
                         false,
                         true,
-                        "yggdrasil"
+                        String::from("yggdrasil")
                     ),
                 }
                 .deploy(temp_config.clone())
