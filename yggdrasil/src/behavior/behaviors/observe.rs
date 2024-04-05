@@ -10,10 +10,17 @@ use nidhogg::types::{FillExt, HeadJoints};
 
 const ROTATION_STIFFNESS: f32 = 0.3;
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 pub struct Observe {
-    // Starting time
-    pub starting_time: Option<Instant>,
+    pub starting_time: Instant,
+}
+
+impl Default for Observe {
+    fn default() -> Self {
+        Observe {
+            starting_time: Instant::now(),
+        }
+    }
 }
 
 /// Config struct containing parameters for the initial behavior.
@@ -61,16 +68,12 @@ impl Behavior for Observe {
             head_yaw_max: head_yaw_multiplier,
         } = context.behavior_config.observe;
 
-        if let Some(starting_time) = self.starting_time {
-            look_around(
-                nao_manager,
-                starting_time,
-                head_rotation_speed,
-                head_yaw_multiplier,
-                head_pitch_multiplier,
-            );
-        } else {
-            self.starting_time = Some(Instant::now());
-        }
+        look_around(
+            nao_manager,
+            self.starting_time,
+            head_rotation_speed,
+            head_yaw_multiplier,
+            head_pitch_multiplier,
+        );
     }
 }
