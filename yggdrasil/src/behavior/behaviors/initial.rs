@@ -5,6 +5,8 @@ use crate::{
 };
 use nidhogg::types::{FillExt, HeadJoints};
 
+const ROTATION_STIFFNESS: f32 = 0.3;
+
 /// During a match the chest button is pressed before starting a match.
 /// Once this is done, the robots are placed at the edge of the field from
 /// which they will walk to their `Ready` positions.
@@ -27,7 +29,7 @@ fn look_at_middle_circle(robot_position: &RobotPosition, nao_manager: &mut NaoMa
     let yaw = (std::f32::consts::FRAC_PI_2 + angle * sign) * sign;
 
     let position = HeadJoints { yaw, pitch: 0.0 };
-    let stiffness = HeadJoints::fill(0.3);
+    let stiffness = HeadJoints::fill(ROTATION_STIFFNESS);
 
     nao_manager.set_head(position, stiffness, Priority::default());
 }

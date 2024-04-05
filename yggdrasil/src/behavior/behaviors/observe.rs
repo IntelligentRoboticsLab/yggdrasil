@@ -40,9 +40,12 @@ fn look_around(
 ) {
     // Used to parameterize the yaw and pitch angles, multiplying with a large
     // rotation speed will make the rotation go faster.
-    let x = starting_time.elapsed().as_secs_f32() * rotation_speed;
-    let yaw = (x).sin() * yaw_multiplier;
-    let pitch = (x * 2.0 + std::f32::consts::FRAC_PI_2).sin().max(0.0) * pitch_multiplier;
+    let movement_progress = starting_time.elapsed().as_secs_f32() * rotation_speed;
+    let yaw = (movement_progress).sin() * yaw_multiplier;
+    let pitch = (movement_progress * 2.0 + std::f32::consts::FRAC_PI_2)
+        .sin()
+        .max(0.0)
+        * pitch_multiplier;
 
     let position = HeadJoints { yaw, pitch };
     let stiffness = HeadJoints::fill(ROTATION_STIFFNESS);
