@@ -43,31 +43,20 @@ fn set_initial_joint_values(
     initial_joint_positions: JointArray<f32>,
     nao_manager: &mut NaoManager,
 ) {
-    let head_joints = initial_joint_positions.head_joints();
     nao_manager.set_head(
-        head_joints,
+        initial_joint_positions.head_joints(),
         HeadJoints::fill(DEFAULT_PASSIVE_STIFFNESS),
         DEFAULT_PASSIVE_PRIORITY,
     );
 
-    let left_arm_joints = initial_joint_positions.left_arm_joints();
-    let right_arm_joints = initial_joint_positions.right_arm_joints();
     nao_manager.set_arms(
-        ArmJoints::builder()
-            .left_arm(left_arm_joints)
-            .right_arm(right_arm_joints)
-            .build(),
+        initial_joint_positions.arm_joints(),
         ArmJoints::fill(DEFAULT_PASSIVE_STIFFNESS),
         DEFAULT_PASSIVE_PRIORITY,
     );
 
-    let left_leg_joints = initial_joint_positions.left_leg_joints();
-    let right_leg_joints = initial_joint_positions.right_leg_joints();
     nao_manager.set_legs(
-        LegJoints::builder()
-            .left_leg(left_leg_joints)
-            .right_leg(right_leg_joints)
-            .build(),
+        initial_joint_positions.leg_joints(),
         LegJoints::fill(DEFAULT_PASSIVE_STIFFNESS),
         DEFAULT_PASSIVE_PRIORITY,
     );
