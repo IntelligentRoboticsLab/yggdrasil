@@ -8,7 +8,7 @@ use crate::{
         roles::{Keeper, Striker},
     },
     config::layout::LayoutConfig,
-    config::pregame::PregameConfig,
+    config::pregame::PlayerConfig,
     filter::button::HeadButtons,
     nao::{self, manager::NaoManager},
     prelude::*,
@@ -25,7 +25,8 @@ pub struct Context<'a> {
     pub primary_state: &'a PrimaryState,
     /// State of the headbuttons of a robot
     pub head_buttons: &'a HeadButtons,
-    pub pregame_config: &'a PregameConfig,
+    /// Config containing information by which the player can be identified
+    pub player_config: &'a PlayerConfig,
     /// Config containing information about the layout of the field.
     pub layout_config: &'a LayoutConfig,
 }
@@ -187,13 +188,13 @@ pub fn step(
     nao_manager: &mut NaoManager,
     primary_state: &PrimaryState,
     head_buttons: &HeadButtons,
-    pregame_config: &PregameConfig,
+    player_config: &PlayerConfig,
     layout_config: &LayoutConfig,
 ) -> Result<()> {
     let context = Context {
         primary_state,
         head_buttons,
-        pregame_config,
+        player_config,
         layout_config,
     };
 

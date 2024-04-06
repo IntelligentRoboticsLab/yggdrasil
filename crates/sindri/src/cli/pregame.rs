@@ -1,14 +1,11 @@
 use clap::Parser;
 use miette::{miette, ErrReport, IntoDiagnostic, Report, Result};
-use std::fs::File;
-use std::io::Read;
-use std::{collections::HashMap, io::Write};
+use std::collections::HashMap;
 use tokio::{self, task::JoinHandle};
 
 use crate::{cli::deploy::ConfigOptsDeploy, cli::deploy::Deploy, config::Config};
 use yggdrasil::config::pregame::PregameConfig;
-
-const PREGAME_CONFIG_PATH: &str = "./deploy/config/pregame.toml";
+use yggdrasil::prelude::Config as OdalConfigTrait;
 
 /// Compile, deploy and run the specified binary to the robot.
 #[derive(Parser, Debug)]
@@ -38,13 +35,7 @@ impl Pregame {
     pub async fn pregame(self, config: Config) -> Result<()> {
         let robot_numbers = parse_map(&self.robot_numbers);
 
-        // Read the Pregame config file
-        let mut file = File::open(PREGAME_CONFIG_PATH).expect("Failed to open toml file");
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)
-            .expect("Failed to toml file");
-
-        let mut pregame_config: PregameConfig = toml::from_str(&contents).into_diagnostic()?;
+        let mut pregame_config = PregameConfig::load("./deploy/config/")?;
 
         // Alter the map if needed
         for (robot_id, player_number) in robot_numbers.clone().into_iter() {
@@ -59,10 +50,7 @@ impl Pregame {
             }
         }
 
-        // Write the new robot to player map to the toml
-        let mut new_pregame_config = File::create(PREGAME_CONFIG_PATH).into_diagnostic()?;
-        let pregame_data = toml::to_string(&pregame_config).into_diagnostic()?;
-        let _ = new_pregame_config.write_all(pregame_data.as_bytes());
+        pregame_config.store("./deploy/config/pregame.toml")?;
 
         // Pregame the selected robots simultaneously
         let mut threads: Vec<JoinHandle<Result<(), Report>>> = vec![];
@@ -77,12 +65,6 @@ impl Pregame {
                     )))?;
 
                 let envs: Vec<(&str, &str)> = Vec::new();
-
-                robot
-                    .ssh("systemctl stop yggdrasil", envs.clone())?
-                    .wait()
-                    .await
-                    .into_diagnostic()?;
 
                 Deploy {
                     deploy: ConfigOptsDeploy::new(
@@ -100,7 +82,7 @@ impl Pregame {
                 println!("Deployed on robot: {}", robot_number);
 
                 robot
-                    .ssh("systemctl start yggdrasil", envs)?
+                    .ssh("systemctl restart yggdrasil", envs)?
                     .wait()
                     .await
                     .into_diagnostic()?;
