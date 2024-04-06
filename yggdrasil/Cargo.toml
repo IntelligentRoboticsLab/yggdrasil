@@ -19,7 +19,8 @@ linreg = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true, features = ["serde-serialize"] }
 ndarray = { workspace = true }
-nidhogg = { workspace = true }
+nidhogg = { workspace = true, features = ["lola"] }
+num = { workspace = true }
 odal = { path = "../crates/odal" }
 openvino = { workspace = true }
 rerun = { workspace = true, optional = true }

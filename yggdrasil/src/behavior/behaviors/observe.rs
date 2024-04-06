@@ -10,10 +10,17 @@ use nidhogg::types::{FillExt, HeadJoints};
 
 const ROTATION_STIFFNESS: f32 = 0.3;
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 pub struct Observe {
-    // Starting time
-    pub starting_time: Option<Instant>,
+    pub starting_time: Instant,
+}
+
+impl Default for Observe {
+    fn default() -> Self {
+        Observe {
+            starting_time: Instant::now(),
+        }
+    }
 }
 
 /// Config struct containing parameters for the initial behavior.
@@ -40,9 +47,12 @@ fn look_around(
 ) {
     // Used to parameterize the yaw and pitch angles, multiplying with a large
     // rotation speed will make the rotation go faster.
-    let x = starting_time.elapsed().as_secs_f32() * rotation_speed;
-    let yaw = (x).sin() * yaw_multiplier;
-    let pitch = (x * 2.0 + std::f32::consts::FRAC_PI_2).sin().max(0.0) * pitch_multiplier;
+    let movement_progress = starting_time.elapsed().as_secs_f32() * rotation_speed;
+    let yaw = (movement_progress).sin() * yaw_multiplier;
+    let pitch = (movement_progress * 2.0 + std::f32::consts::FRAC_PI_2)
+        .sin()
+        .max(0.0)
+        * pitch_multiplier;
 
     let position = HeadJoints { yaw, pitch };
     let stiffness = HeadJoints::fill(ROTATION_STIFFNESS);
@@ -58,16 +68,12 @@ impl Behavior for Observe {
             head_yaw_max: head_yaw_multiplier,
         } = context.behavior_config.observe;
 
-        if let Some(starting_time) = self.starting_time {
-            look_around(
-                nao_manager,
-                starting_time,
-                head_rotation_speed,
-                head_yaw_multiplier,
-                head_pitch_multiplier,
-            );
-        } else {
-            self.starting_time = Some(Instant::now());
-        }
+        look_around(
+            nao_manager,
+            self.starting_time,
+            head_rotation_speed,
+            head_yaw_multiplier,
+            head_pitch_multiplier,
+        );
     }
 }
