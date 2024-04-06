@@ -1,7 +1,9 @@
 //! All the behaviors that the robot can execute.
 
-mod example;
 mod initial;
+mod observe;
+mod passive;
 
-pub use example::Example;
 pub use initial::Initial;
+pub use observe::{Observe, ObserveBehaviorConfig};
+pub use passive::Passive;

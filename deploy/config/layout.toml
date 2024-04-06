@@ -70,43 +70,34 @@ border_strip_width = 700
 
 # The fields below indicate the starting position of each robot based on its
 # player number. This configuration assumes the center has coordinates (0, 0).
+# This configuration also assumes the robots always start on the left side.
 
 # Initial position of player one.
 [[initial_positions]]
 player_number = 1
-# Left
-x = -1500
-# Back
+x = -3000
 y = -3000
 
 # Initial position of player two.
 [[initial_positions]]
 player_number = 2
-# Right
-x = 1500
-# Middle
-y = -2000
+x = -2000
+y = 3000
 
 # Initial position of player three.
 [[initial_positions]]
 player_number = 3
-# Left
-x = -1500
-# Middle
-y = -2000
+x = -2000
+y = -3000
 
 # Initial position of player four.
 [[initial_positions]]
 player_number = 4
-# Right
-x = 1500
-# Front
-y = -1000
+x = -1000
+y = 3000
 
 # Initial position of player five.
 [[initial_positions]]
 player_number = 5
-# Left
-x = -1500
-# Front
-y = -1000
+x = -1000
+y = -3000
