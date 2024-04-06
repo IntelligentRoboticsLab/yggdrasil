@@ -35,7 +35,9 @@ pub struct Context<'a> {
     pub chest_button: &'a ChestButton,
     /// Contains information on whether the nao is touching the ground
     pub contacts: &'a Contacts,
-    /// Config containing information about the layout of the field
+    /// Config containing information by which the player can be identified
+    pub player_config: &'a PlayerConfig,
+    /// Config containing information about the layout of the field.
     pub layout_config: &'a LayoutConfig,
     /// Config containing general information
     pub yggdrasil_config: &'a YggdrasilConfig,
@@ -242,6 +244,7 @@ pub fn step(
     head_buttons: &HeadButtons,
     chest_button: &ChestButton,
     contacts: &Contacts,
+    player_config: &PlayerConfig,
     layout_config: &LayoutConfig,
     yggdrasil_config: &YggdrasilConfig,
     behavior_config: &BehaviorConfig,
@@ -255,6 +258,7 @@ pub fn step(
         head_buttons,
         chest_button,
         contacts,
+        player_config,
         layout_config,
         yggdrasil_config,
         behavior_config,
