@@ -240,8 +240,8 @@ pub struct FieldBoundaryModel;
 impl MlModel for FieldBoundaryModel {
     type InputType = f32;
     type OutputType = f32;
-    const ONNX_PATH: &'static str = "models/field_boundary_GELU.onnx";
-    // const ONNX_PATH: &'static str = "models/field_boundary.onnx";
+    // const ONNX_PATH: &'static str = "models/field_boundary_GELU.onnx";
+    const ONNX_PATH: &'static str = "models/field_boundary.onnx";
 }
 
 /// A 2d line with a slope and intercept
