@@ -10,7 +10,7 @@ pub const SAMPLE_RATE: usize = 44100;
 /// How many audio samples to record per channel.
 pub const NUMBER_OF_SAMPLES: usize = 2048;
 /// The NAO has 4 microphones but alsa records audio in stereo so you get two channels.
-pub const NUMBER_OF_CHANNELS: usize = 2;
+pub const NUMBER_OF_CHANNELS: usize = 4;
 /// The audio samples are in 32 bit float with a little endian layout.
 pub const FORMAT: Format = Format::FloatLE;
 /// Alternate samples for the left and right channel (LRLRLR).
@@ -54,7 +54,7 @@ impl AudioInput {
 
     /// Initialize PCM and add the necesarry hardware parameters.
     fn new() -> Result<Self> {
-        let device = PCM::new("default", Direction::Capture, false).into_diagnostic()?;
+        let device = PCM::new("PCH_input", Direction::Capture, false).into_diagnostic()?;
         Self::set_hardware_params(&device)?;
         device.prepare().into_diagnostic()?;
         let device = Arc::new(Mutex::new(device));
