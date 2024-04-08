@@ -1,14 +1,17 @@
-use std::{collections::HashMap, ops::Deref};
+use std::collections::HashMap;
 
 // use nalgebra::Point2;
 
-use nidhogg::types::{color, Rgb};
+use nidhogg::types::color;
 
 use crate::{
     // camera::Image,
     debug::DebugContext,
     prelude::*,
-    vision::scan_lines::{scan_lines_system, PixelColor, ScanGrid, TopScanGrid},
+    vision::{
+        field_boundary::FieldBoundary,
+        scan_lines::{scan_lines_system, PixelColor, ScanGrid, TopScanGrid},
+    },
 };
 
 pub struct BallProposalModule;
@@ -42,18 +45,19 @@ impl Segment {
     }
 }
 
-fn find_black_segments(grid: &ScanGrid) -> HashMap<usize, Vec<Segment>> {
+fn find_black_segments(grid: &ScanGrid, boundary: &FieldBoundary) -> HashMap<usize, Vec<Segment>> {
     let mut black_segments = HashMap::new();
 
     let vertical_scan_lines = grid.vertical();
     for (vertical_line_id, &column_id) in vertical_scan_lines.line_ids().iter().enumerate() {
         let column = vertical_scan_lines.line(vertical_line_id);
+        let boundary_top = boundary.height_at_pixel(column_id as f32);
 
         // reset every column
         let mut segments = Vec::new();
         let mut prev_is_black = false;
 
-        for (row_id, pixel) in column.iter().enumerate() {
+        for (row_id, pixel) in column.iter().enumerate().skip(boundary_top as usize) {
             // non-black pixel
             if !matches!(pixel, PixelColor::Black) {
                 prev_is_black = false;
@@ -145,40 +149,73 @@ fn group_segments(
 }
 
 #[system]
-fn get_proposals(grid: &TopScanGrid, dbg: &DebugContext) -> Result<()> {
-    let segments = find_black_segments(grid);
+fn get_proposals(grid: &TopScanGrid, boundary: &FieldBoundary, dbg: &DebugContext) -> Result<()> {
+    let now = std::time::Instant::now();
+
+    let segments = find_black_segments(grid, boundary);
 
     let grouped_segments = group_segments(grid, segments);
 
-    // for (i, group) in grouped_segments.clone().into_iter().enumerate() {
-    //     print!("{i}: ({} [", group[0].column_id);
-    //     for segment in group {
-    //         print!("[{}, {}], ", segment.start, segment.end);
-    //     }
+    println!("Took: {:?}", now.elapsed());
 
-    //     print!("]), ");
-    // }
+    for (i, group) in grouped_segments.clone().iter().enumerate() {
+        print!("({i} [");
+        for segment in group {
+            print!(
+                "[{}: {}, {}], ",
+                segment.column_id, segment.start, segment.end
+            );
+        }
+
+        print!("]), ");
+    }
+
+    println!("\n\n");
+
+    println!("Len groups {:?}", grouped_segments.len());
 
     let lines = grouped_segments
         .iter()
         .flat_map(|g| {
-            g.iter().map(|s| {
-                [
-                    (s.column_id as f32, s.start as f32),
-                    (s.column_id as f32, s.end as f32),
-                ]
+            g.iter().flat_map(|s| {
+                if s.start == s.end {
+                    None
+                } else {
+                    Some([
+                        (s.column_id as f32, s.start as f32),
+                        (s.column_id as f32, s.end as f32),
+                    ])
+                }
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let points = grouped_segments
+        .iter()
+        .flat_map(|g| {
+            g.iter().flat_map(|s| {
+                if s.start == s.end {
+                    Some((s.column_id as f32, s.start as f32))
+                } else {
+                    None
+                }
             })
         })
         .collect::<Vec<_>>();
 
     dbg.log_lines2d_for_image(
-        "top_camera/image/ball_groups",
+        "top_camera/image/ball_groups_lines",
         &lines,
-        grid.image().deref().clone(),
-        color::u8::ORANGE,
-    );
+        grid.image().clone(),
+        color::u8::TEAL,
+    )?;
 
-    // println!("{:?}\n\n\n\n", grouped_segments);
+    dbg.log_points2d_for_image(
+        "top_camera/image/ball_groups_points",
+        &points,
+        grid.image().clone(),
+        color::u8::GREEN,
+    )?;
 
     Ok(())
 }
