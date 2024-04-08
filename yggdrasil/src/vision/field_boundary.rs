@@ -134,7 +134,7 @@ fn log_boundary_points(
         .collect::<Vec<_>>();
 
     dbg.log_points2d_for_image(
-        "top_camera/boundary_points",
+        "top_camera/image/boundary_points",
         &points,
         image.deref().clone(),
         color::u8::MAGENTA,
@@ -143,7 +143,7 @@ fn log_boundary_points(
     let line_segments = boundary.line_segments();
 
     dbg.log_lines2d_for_image(
-        "top_camera/boundary_line_segments",
+        "top_camera/image/boundary_line_segments",
         &line_segments,
         image.deref().clone(),
         color::u8::PURPLE,
@@ -240,8 +240,8 @@ pub struct FieldBoundaryModel;
 impl MlModel for FieldBoundaryModel {
     type InputType = f32;
     type OutputType = f32;
-    const ONNX_PATH: &'static str = "models/field_boundary_GELU.onnx";
-    // const ONNX_PATH: &'static str = "models/field_boundary.onnx";
+    // const ONNX_PATH: &'static str = "models/field_boundary_GELU.onnx";
+    const ONNX_PATH: &'static str = "models/field_boundary.onnx";
 }
 
 /// A 2d line with a slope and intercept
@@ -328,11 +328,6 @@ fn fit_model(points: Vec<FieldBoundaryPoint>, step: usize, image: Image) -> Resu
 
             // make sure intersection is within the image
             if intersection.x < 0.0 || intersection.x > width {
-                continue;
-            }
-
-            // make sure intersection is concave
-            if left_line.slope > 0. || right_line.slope < 0. {
                 continue;
             }
 
