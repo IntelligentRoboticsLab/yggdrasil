@@ -1,9 +1,12 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 
 // use nalgebra::Point2;
 
+use nidhogg::types::{color, Rgb};
+
 use crate::{
     // camera::Image,
+    debug::DebugContext,
     prelude::*,
     vision::scan_lines::{scan_lines_system, PixelColor, ScanGrid, TopScanGrid},
 };
@@ -142,21 +145,38 @@ fn group_segments(
 }
 
 #[system]
-fn get_proposals(grid: &TopScanGrid) -> Result<()> {
+fn get_proposals(grid: &TopScanGrid, dbg: &DebugContext) -> Result<()> {
     let segments = find_black_segments(grid);
 
     let grouped_segments = group_segments(grid, segments);
 
-    for (i, group) in grouped_segments.into_iter().enumerate() {
-        print!("{i}: ({} [", group[0].column_id);
-        for segment in group {
-            print!("[{}, {}], ", segment.start, segment.end);
-        }
+    // for (i, group) in grouped_segments.clone().into_iter().enumerate() {
+    //     print!("{i}: ({} [", group[0].column_id);
+    //     for segment in group {
+    //         print!("[{}, {}], ", segment.start, segment.end);
+    //     }
 
-        print!("]), ");
-    }
+    //     print!("]), ");
+    // }
 
-    println!("\n\n");
+    let lines = grouped_segments
+        .iter()
+        .flat_map(|g| {
+            g.iter().map(|s| {
+                [
+                    (s.column_id as f32, s.start as f32),
+                    (s.column_id as f32, s.end as f32),
+                ]
+            })
+        })
+        .collect::<Vec<_>>();
+
+    dbg.log_lines2d_for_image(
+        "top_camera/image/ball_groups",
+        &lines,
+        grid.image().deref().clone(),
+        color::u8::ORANGE,
+    );
 
     // println!("{:?}\n\n\n\n", grouped_segments);
 
