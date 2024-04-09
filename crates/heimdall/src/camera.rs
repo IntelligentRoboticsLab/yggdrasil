@@ -361,7 +361,7 @@ impl Camera {
         })
     }
 
-    pub fn get_camera_device(&self) -> &CameraDevice {
+    pub fn camera_device(&self) -> &CameraDevice {
         &self.device
     }
 }

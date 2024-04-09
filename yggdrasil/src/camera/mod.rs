@@ -307,13 +307,13 @@ fn set_exposure_weights(
 ) -> Result<()> {
     if let Ok(top_camera) = top_camera.0 .0.try_lock() {
         top_camera
-            .get_camera_device()
+            .camera_device()
             .set_auto_exposure_weights(exposure_weights.top.encode())?;
     }
 
     if let Ok(bottom_camera) = bottom_camera.0 .0.try_lock() {
         bottom_camera
-            .get_camera_device()
+            .camera_device()
             .set_auto_exposure_weights(exposure_weights.bottom.encode())?;
     }
 
