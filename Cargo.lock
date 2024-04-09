@@ -3579,26 +3579,11 @@ checksum = "c96aba5aa877601bb3f6dd6a63a969e1f82e60646e81e71b14496995e9853c91"
 [[package]]
 name = "nidhogg"
 version = "0.1.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=ec691b6edc1585a969807c8f3383d1c7d5ccea8d#ec691b6edc1585a969807c8f3383d1c7d5ccea8d"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=c1528c70787fe88e2e75dff276c42fbbebf8ff96#c1528c70787fe88e2e75dff276c42fbbebf8ff96"
 dependencies = [
  "forward_ref_generic",
  "miette",
- "nidhogg_derive 0.1.0 (git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=ec691b6edc1585a969807c8f3383d1c7d5ccea8d)",
- "num",
- "rmp-serde",
- "serde",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "nidhogg"
-version = "0.1.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#ec691b6edc1585a969807c8f3383d1c7d5ccea8d"
-dependencies = [
- "forward_ref_generic",
- "miette",
- "nidhogg_derive 0.1.0 (git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git)",
+ "nidhogg_derive",
  "num",
  "rmp-serde",
  "serde",
@@ -3609,18 +3594,7 @@ dependencies = [
 [[package]]
 name = "nidhogg_derive"
 version = "0.1.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=ec691b6edc1585a969807c8f3383d1c7d5ccea8d#ec691b6edc1585a969807c8f3383d1c7d5ccea8d"
-dependencies = [
- "itertools 0.11.0",
- "proc-macro2",
- "quote",
- "syn 2.0.53",
-]
-
-[[package]]
-name = "nidhogg_derive"
-version = "0.1.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git#ec691b6edc1585a969807c8f3383d1c7d5ccea8d"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=c1528c70787fe88e2e75dff276c42fbbebf8ff96#c1528c70787fe88e2e75dff276c42fbbebf8ff96"
 dependencies = [
  "itertools 0.11.0",
  "proc-macro2",
@@ -6124,7 +6098,7 @@ version = "0.1.0"
 dependencies = [
  "clearscreen",
  "miette",
- "nidhogg 0.1.0 (git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git)",
+ "nidhogg",
  "serde",
  "serde_json",
  "serde_with",
@@ -6952,7 +6926,7 @@ name = "tyr"
 version = "0.1.0"
 dependencies = [
  "miette",
- "nidhogg 0.1.0 (git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=ec691b6edc1585a969807c8f3383d1c7d5ccea8d)",
+ "nidhogg",
  "tokio",
  "tyr_internal",
  "tyr_macros",
@@ -8151,7 +8125,7 @@ dependencies = [
  "miette",
  "nalgebra",
  "ndarray",
- "nidhogg 0.1.0 (git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=ec691b6edc1585a969807c8f3383d1c7d5ccea8d)",
+ "nidhogg",
  "odal",
  "openvino",
  "rerun",
