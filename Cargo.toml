@@ -13,6 +13,7 @@ derive_more = "0.99.17"
 dialoguer = "0.11.0"
 dyn-clone = "1.0.17"
 enum_dispatch = "0.3.13"
+fast_image_resize = "3.0.4"
 fast-math = "0.1.1"
 futures = "0.3.28"
 glob = "0.3.1"
@@ -31,6 +32,7 @@ num = "0.4.0"
 openvino = { git = "https://github.com/YukumoHunter/openvino-rs.git", branch = "evil-hack", features = [
     "runtime-linking",
 ] }
+lstsq = "0.5.0"
 petgraph = "0.6.3"
 proc-macro2 = "1.0.79"
 quote = "1.0.35"

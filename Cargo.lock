@@ -2070,6 +2070,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fast_image_resize"
+version = "3.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9d450fac8a334ad72825596173f0f7767ff04dd6e3d59c49c894c4bc2957e8b"
+dependencies = [
+ "cfg-if",
+ "num-traits",
+ "thiserror",
+]
+
+[[package]]
 name = "fastrand"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3214,6 +3225,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d8a05e3879b317b1b6dbf353e5bba7062bedcc59815267bb23eaa0c576cebf0"
 dependencies = [
  "log",
+]
+
+[[package]]
+name = "lstsq"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b2591c55069b74283fbdd97167b402b69c534ba6b2c037847cbcae7e14471d8"
+dependencies = [
+ "nalgebra",
 ]
 
 [[package]]
@@ -7814,10 +7834,12 @@ dependencies = [
  "derive_more",
  "enum_dispatch",
  "fast-math",
+ "fast_image_resize",
  "heimdall",
  "image",
  "kira",
  "linreg",
+ "lstsq",
  "miette",
  "nalgebra",
  "ndarray",

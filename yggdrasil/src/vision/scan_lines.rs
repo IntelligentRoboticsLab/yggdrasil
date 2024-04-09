@@ -1,11 +1,9 @@
 use crate::{
-    camera::{BottomImage, Image, TopImage},
+    camera::{BottomImage, Image},
     prelude::*,
 };
 
-use super::VisionConfig;
-
-use heimdall::YuyvImage;
+use super::{field_boundary::FieldBoundary, VisionConfig};
 
 use derive_more::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
@@ -157,6 +155,8 @@ pub struct ScanGrid {
     image: Image,
     horizontal: ScanLines,
     vertical: ScanLines,
+
+    boundary: Option<FieldBoundary>,
 }
 
 impl ScanGrid {
@@ -192,17 +192,30 @@ impl ScanGrid {
             horizontal: ScanLines::build_horizontal(image, config.horizontal_scan_line_interval),
             vertical: ScanLines::build_vertical(image, config.vertical_scan_line_interval),
             image: image.clone(),
+            boundary: None,
         }
     }
 
-    fn update_scan_lines(&mut self, image: &Image) {
-        self.update_horizontal(image.yuyv_image());
-        self.update_vertical(image.yuyv_image());
-
-        self.image = image.clone();
+    pub fn boundary(&self) -> &FieldBoundary {
+        self.boundary
+            .as_ref()
+            .expect("Field boundary has not been run for these scan lines")
     }
 
-    fn update_horizontal(&mut self, yuyv_image: &YuyvImage) {
+    fn update_scan_lines_from_image(&mut self, image: &Image) {
+        self.image = image.clone();
+
+        self.update_horizontal();
+        self.update_vertical();
+    }
+    fn update_scan_lines_from_boundary(&mut self, boundary: &FieldBoundary) {
+        self.boundary = Some(boundary.clone());
+        self.update_scan_lines_from_image(&boundary.image);
+    }
+
+    fn update_horizontal(&mut self) {
+        let yuyv_image = self.image.yuyv_image();
+
         for line_id in 0..self.horizontal().line_ids().len() {
             let row_id = *unsafe { self.horizontal().line_ids().get_unchecked(line_id) };
 
@@ -229,7 +242,9 @@ impl ScanGrid {
         }
     }
 
-    fn update_vertical(&mut self, yuyv_image: &YuyvImage) {
+    fn update_vertical(&mut self) {
+        let yuyv_image = self.image.yuyv_image();
+
         for row_id in 0..yuyv_image.height() {
             for line_id in 0..self.vertical().line_ids().len() {
                 let col_id = *unsafe { self.vertical().line_ids().get_unchecked(line_id) };
@@ -380,20 +395,20 @@ impl ScanLines {
 #[startup_system]
 fn init_buffers(
     storage: &mut Storage,
-    top_image: &TopImage,
     bottom_image: &BottomImage,
     config: &VisionConfig,
+    top_boundary: &mut FieldBoundary,
 ) -> Result<()> {
     let mut top_scan_lines = TopScanGrid {
-        scan_grid: ScanGrid::build(top_image, &config.scan_lines),
+        scan_grid: ScanGrid::build(&top_boundary.image, &config.scan_lines),
     };
 
     let mut bottom_scan_lines = BottomScanGrid {
         scan_grid: ScanGrid::build(bottom_image, &config.scan_lines),
     };
 
-    top_scan_lines.update_scan_lines(top_image);
-    bottom_scan_lines.update_scan_lines(bottom_image);
+    top_scan_lines.update_scan_lines_from_boundary(top_boundary);
+    bottom_scan_lines.update_scan_lines_from_image(bottom_image);
 
     storage.add_resource(Resource::new(top_scan_lines))?;
     storage.add_resource(Resource::new(bottom_scan_lines))?;
@@ -405,15 +420,15 @@ fn init_buffers(
 pub fn scan_lines_system(
     top_scan_grid: &mut TopScanGrid,
     bottom_scan_grid: &mut BottomScanGrid,
-    top_image: &TopImage,
+    top_boundary: &FieldBoundary,
     bottom_image: &BottomImage,
 ) -> Result<()> {
-    if top_scan_grid.image().timestamp() != top_image.timestamp() {
-        top_scan_grid.update_scan_lines(top_image);
+    if top_scan_grid.image().timestamp() != top_boundary.image.timestamp() {
+        top_scan_grid.update_scan_lines_from_boundary(top_boundary);
     }
 
     if bottom_scan_grid.image().timestamp() != bottom_image.timestamp() {
-        bottom_scan_grid.update_scan_lines(bottom_image);
+        bottom_scan_grid.update_scan_lines_from_image(&top_scan_grid.image);
     }
 
     Ok(())
