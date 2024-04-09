@@ -8,30 +8,27 @@ const DEFAULT_PASSIVE_STIFFNESS: f32 = 0.8;
 const DEFAULT_PASSIVE_PRIORITY: Priority = Priority::Medium;
 
 /// This is the default behavior of the robot.
-/// In this state the robot does nothing and all motors are turned off.
+/// In this state the robot does nothing and retains its previous position.
 /// In this state the robot has a blue right eye.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Passive {
-    pub floppy: bool,
+    pub unstiff: bool,
 }
 
 impl Behavior for Passive {
     fn execute(&mut self, context: Context, nao_manager: &mut NaoManager) {
         if context.head_buttons.middle.is_pressed() {
-            self.floppy = true;
+            self.unstiff = true;
         }
 
-        if self.floppy {
+        if self.unstiff {
             // TODO: sit down
             nao_manager
                 .unstiff_legs(DEFAULT_PASSIVE_PRIORITY)
                 .unstiff_arms(DEFAULT_PASSIVE_PRIORITY)
                 .unstiff_head(DEFAULT_PASSIVE_PRIORITY);
         } else {
-            set_initial_joint_values(
-                context.robot_info.initial_joint_positions.clone(),
-                nao_manager,
-            )
+            set_initial_joint_values(&context.robot_info.initial_joint_positions, nao_manager)
         }
 
         // Makes right eye blue.
@@ -40,7 +37,7 @@ impl Behavior for Passive {
 }
 
 fn set_initial_joint_values(
-    initial_joint_positions: JointArray<f32>,
+    initial_joint_positions: &JointArray<f32>,
     nao_manager: &mut NaoManager,
 ) {
     nao_manager.set_head(

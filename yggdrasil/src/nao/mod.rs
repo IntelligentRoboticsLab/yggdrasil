@@ -13,6 +13,8 @@ use nidhogg::{
     HardwareInfo, NaoBackend, NaoControlMessage, NaoState,
 };
 
+const DEFAULT_STIFFNESS: f32 = 0.8;
+
 #[cfg(not(feature = "local"))]
 const LOLA_SOCKET_PATH: &str = "/tmp/yggdrasil";
 
@@ -40,16 +42,16 @@ pub struct RobotInfo {
 
 impl RobotInfo {
     fn new<T: ReadHardwareInfo>(backend: &mut T) -> Result<Self> {
-        // Read state and reply with a msg
+        // Read state and reply with a message
         let state = backend.read_nao_state()?;
         let msg = NaoControlMessage {
             position: state.position.clone(),
-            stiffness: JointArray::fill(0.8),
+            stiffness: JointArray::fill(DEFAULT_STIFFNESS),
             ..Default::default()
         };
         backend.send_control_msg(msg.clone())?;
 
-        // Read hardware info and reply with a msg
+        // Read hardware info and reply with a message
         let HardwareInfo {
             body_id,
             head_id,
@@ -102,11 +104,11 @@ fn initialize_nao(storage: &mut Storage) -> Result<()> {
     )?;
     let info = RobotInfo::new(&mut nao)?;
 
-    // Read state and reply with a msg
+    // Read state and reply with a message
     let state = nao.read_nao_state()?;
     let msg = NaoControlMessage {
         position: info.initial_joint_positions.clone(),
-        stiffness: JointArray::fill(0.8),
+        stiffness: JointArray::fill(DEFAULT_STIFFNESS),
         ..Default::default()
     };
     nao.send_control_msg(msg)?;
