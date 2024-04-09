@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
         Commands::Deploy(opts) => opts.deploy(config).await?,
         Commands::Run(opts) => opts.run(config).await?,
         Commands::Scan(opts) => opts.scan(config).await?,
-        Commands::Pregame(opts) => opts.pregame(config).await?,
+        Commands::Showtime(opts) => opts.showtime(config).await?,
         Commands::Config(opts) => opts.config()?,
         Commands::Update(opts) => opts.update().await?,
     }

@@ -8,7 +8,7 @@ use crate::{
         roles::{Keeper, Striker},
     },
     config::layout::LayoutConfig,
-    config::pregame::PlayerConfig,
+    config::showtime::PlayerConfig,
     filter::button::HeadButtons,
     nao::{self, manager::NaoManager},
     prelude::*,

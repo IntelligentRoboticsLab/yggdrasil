@@ -6,14 +6,14 @@ use crate::{nao::RobotInfo, prelude::*};
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct PregameConfig {
+pub struct ShowtimeConfig {
     // pub player: PlayerConfig,
     pub team_number: u8,
     pub robot_numbers_map: HashMap<String, u8>,
 }
 
-impl Config for PregameConfig {
-    const PATH: &'static str = "pregame.toml";
+impl Config for ShowtimeConfig {
+    const PATH: &'static str = "showtime.toml";
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -24,14 +24,14 @@ pub struct PlayerConfig {
 }
 
 #[startup_system]
-pub(super) fn configure_pregame(
+pub(super) fn configure_showtime(
     storage: &mut Storage,
-    pregame_config: &PregameConfig,
+    showtime_config: &ShowtimeConfig,
     robot_info: &RobotInfo,
 ) -> Result<()> {
     let robot_id = &robot_info.robot_id.to_string();
-    let player_number = *pregame_config.robot_numbers_map.get(robot_id).unwrap();
-    let team_number = pregame_config.team_number;
+    let player_number = *showtime_config.robot_numbers_map.get(robot_id).unwrap();
+    let team_number = showtime_config.team_number;
 
     let player_config = PlayerConfig {
         player_number,
