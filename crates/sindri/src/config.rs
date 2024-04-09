@@ -148,6 +148,7 @@ impl Robot {
         command: impl Into<String>,
         // Environment variables to run the command with
         remote_envs: impl IntoIterator<Item = (K, V)>,
+        quiet: bool,
     ) -> Result<Child>
     where
         K: AsRef<OsStr>,
@@ -162,12 +163,18 @@ impl Robot {
             mapping
         });
 
+        let mut quiet_arg = "";
+        if quiet {
+            quiet_arg = "-q"
+        }
+
         Command::new("ssh")
             .arg(format!("nao@{}", self.ip()))
             .arg("-t")
+            .arg(quiet_arg)
             .args(remote_envs)
             .arg("bash -ilc")
-            .args(command.into().split(' ').collect::<Vec<&str>>())
+            .arg(format!("\"{}\"", command.into()))
             .kill_on_drop(true)
             .spawn()
             .into_diagnostic()

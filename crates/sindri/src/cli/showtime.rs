@@ -66,6 +66,12 @@ impl Showtime {
 
                 let envs: Vec<(&str, &str)> = Vec::new();
 
+                robot
+                    .ssh("sudo systemctl stop yggdrasil", envs.clone(), true)?
+                    .wait()
+                    .await
+                    .into_diagnostic()?;
+
                 Deploy {
                     deploy: ConfigOptsDeploy::new(
                         robot_number,
@@ -75,14 +81,14 @@ impl Showtime {
                         false,
                         true,
                         String::from("yggdrasil"),
+                        true,
                     ),
                 }
                 .deploy(temp_config.clone())
                 .await?;
-                println!("Deployed on robot: {}", robot_number);
 
                 robot
-                    .ssh("systemctl restart yggdrasil", envs)?
+                    .ssh("sudo systemctl restart yggdrasil", envs, true)?
                     .wait()
                     .await
                     .into_diagnostic()?;
