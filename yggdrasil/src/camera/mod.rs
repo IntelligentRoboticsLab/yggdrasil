@@ -212,14 +212,16 @@ fn initialize_cameras(storage: &mut Storage, config: &CameraConfig) -> Result<()
     let top_camera = TopCamera::new(config)?;
     let bottom_camera = BottomCamera::new(config)?;
 
+    let width = top_camera.0 .0.lock().unwrap().width() as u32;
+    let height = top_camera.0 .0.lock().unwrap().height() as u32;
+
     let top_image_resource = Resource::new(TopImage::new(top_camera.loop_fetch_image()?));
     let top_camera_resource = Resource::new(top_camera);
 
     let bottom_image_resource = Resource::new(BottomImage::new(bottom_camera.loop_fetch_image()?));
     let bottom_camera_resource = Resource::new(bottom_camera);
 
-    let exposure_weights =
-        Resource::new(ExposureWeights::new((config.top.width, config.top.height)));
+    let exposure_weights = Resource::new(ExposureWeights::new((width, height)));
 
     storage.add_resource(top_image_resource)?;
     storage.add_resource(top_camera_resource)?;

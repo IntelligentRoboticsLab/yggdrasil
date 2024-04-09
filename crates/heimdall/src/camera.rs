@@ -364,4 +364,12 @@ impl Camera {
     pub fn camera_device(&self) -> &CameraDevice {
         &self.device
     }
+
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    pub fn height(&self) -> usize {
+        self.height
+    }
 }
