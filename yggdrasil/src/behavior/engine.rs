@@ -9,7 +9,7 @@ use crate::{
         roles::Base,
         BehaviorConfig,
     },
-    config::{layout::LayoutConfig, pregame::PregameConfig, yggdrasil::YggdrasilConfig},
+    config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
     filter::{
         button::{ChestButton, HeadButtons},
         fsr::Contacts,

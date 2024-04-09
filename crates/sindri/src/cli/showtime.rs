@@ -4,13 +4,13 @@ use std::collections::HashMap;
 use tokio::{self, task::JoinHandle};
 
 use crate::{cli::deploy::ConfigOptsDeploy, cli::deploy::Deploy, config::Config};
-use yggdrasil::config::pregame::PregameConfig;
+use yggdrasil::config::showtime::ShowtimeConfig;
 use yggdrasil::prelude::Config as OdalConfigTrait;
 
 /// Compile, deploy and run the specified binary to the robot.
 #[derive(Parser, Debug)]
-pub struct Pregame {
-    /// The robot-numbers of the robots to pregame
+pub struct Showtime {
+    /// The robot numbers of the robots to set in showtime
     #[clap(required = true)]
     pub robot_numbers: Vec<String>,
     #[clap(long, short)]
@@ -31,17 +31,17 @@ fn parse_map(robot_numbers: &Vec<String>) -> HashMap<u8, Option<u8>> {
     robot_player_map
 }
 
-impl Pregame {
-    pub async fn pregame(self, config: Config) -> Result<()> {
+impl Showtime {
+    pub async fn showtime(self, config: Config) -> Result<()> {
         let robot_numbers = parse_map(&self.robot_numbers);
 
-        let mut pregame_config = PregameConfig::load("./deploy/config/")?;
+        let mut showtime_config = ShowtimeConfig::load("./deploy/config/")?;
 
-        // Alter the map if needed
+        // Alter the robot id to player number map if needed
         for (robot_id, player_number) in robot_numbers.clone().into_iter() {
             // If player number is Some update map
             if let Some(player_number) = player_number {
-                if let Some(old_player_number) = pregame_config
+                if let Some(old_player_number) = showtime_config
                     .robot_numbers_map
                     .get_mut(&robot_id.to_string())
                 {
@@ -50,9 +50,9 @@ impl Pregame {
             }
         }
 
-        pregame_config.store("./deploy/config/pregame.toml")?;
+        showtime_config.store("./deploy/config/showtime.toml")?;
 
-        // Pregame the selected robots simultaneously
+        // Deploy and start yggdrasil on all chosen robots simultaneously
         let mut threads: Vec<JoinHandle<Result<(), Report>>> = vec![];
         for (robot_number, _) in robot_numbers.clone().into_iter() {
             let temp_config = config.clone();

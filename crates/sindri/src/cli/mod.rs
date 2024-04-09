@@ -2,9 +2,9 @@ use clap::Parser;
 
 pub mod config;
 pub mod deploy;
-pub mod pregame;
 pub mod run;
 pub mod scan;
+pub mod showtime;
 pub mod update;
 
 /// `sindri` - The build tool for yggdrasil
@@ -52,8 +52,8 @@ pub enum Commands {
     Deploy(deploy::Deploy),
     Run(run::Run),
     Scan(scan::Scan),
+    Showtime(showtime::Showtime),
     #[command(subcommand)]
     Config(config::ConfigCommand),
     Update(update::Update),
-    Pregame(pregame::Pregame),
 }

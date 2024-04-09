@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 
 use miette::IntoDiagnostic;
 
-use crate::config::pregame::PlayerConfig;
+use crate::config::showtime::PlayerConfig;
 use crate::filter::falling::FallState;
 use crate::prelude::*;
 
