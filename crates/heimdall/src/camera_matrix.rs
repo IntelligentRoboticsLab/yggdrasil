@@ -53,6 +53,17 @@ impl CameraMatrix {
         ]
     }
 
+    fn camera_to_pixel(&self, camera_ray: Vector3<f32>) -> Result<Point2<f32>> {
+        if camera_ray.x <= 0.0 {
+            bail!("Point is behind the camera");
+        }
+
+        Ok(point![
+            self.cc_optical_center.x - self.focal_lengths.x * camera_ray.y / camera_ray.x,
+            self.cc_optical_center.y - self.focal_lengths.y * camera_ray.z / camera_ray.x,
+        ])
+    }
+
     /// Project a pixel to the ground coordinate frame at a given height.
     ///
     /// We assume the ground is at z = 0.0
@@ -77,6 +88,10 @@ impl CameraMatrix {
             self.camera_to_ground.translation.vector + camera_ray_over_ground * slope;
 
         Ok(point![intersection.x, intersection.y, z])
+    }
+
+    pub fn ground_to_pixel(&self, ground_coordinates: Point3<f32>) -> Result<Point2<f32>> {
+        self.camera_to_pixel((self.camera_to_ground.inverse() * ground_coordinates).coords)
     }
 
     fn compute_field_of_view(focal_lengths: Vector2<f32>, image_dim: Vector2<f32>) -> Vector2<f32> {

@@ -117,6 +117,23 @@ impl DebugContext {
         Ok(())
     }
 
+    pub fn log_ndarray_image(
+        &self,
+        path: impl AsRef<str>,
+        image: Image,
+        img: ndarray::Array3<u8>,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&image.cycle());
+            let img = rerun::Image::try_from(img).into_diagnostic()?;
+            self.rec.log(path.as_ref(), &img).into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
     /// Log a camera matrix to the debug viewer.
     ///
     /// The camera matrix is logged as a pinhole camera, without any transforms applied.

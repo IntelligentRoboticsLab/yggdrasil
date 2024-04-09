@@ -5,6 +5,7 @@ use crate::debug::DebugContext;
 
 use crate::prelude::*;
 
+use super::line::LineSegment;
 use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
 use derive_more::Deref;
@@ -45,24 +46,15 @@ impl Module for LineDetectionModule {
 struct LineDetectionData {
     line_points: Vec<(f32, f32)>,
     line_points_next: Vec<(f32, f32)>,
-    lines: Vec<Line>,
+    lines: Vec<LineSegment>,
     lines_points: Vec<LinePoints>,
 }
 
 #[derive(Default)]
-struct TopLineDetectionData(Option<LineDetectionData>);
+pub(super) struct TopLineDetectionData(Option<LineDetectionData>, Option<Image>);
 
 #[derive(Deref)]
-pub struct TopLines(#[deref] pub Vec<Line>, Image);
-
-#[derive(Default)]
-pub struct LinePoint {
-    pub row: f32,
-    pub column: f32,
-}
-
-#[derive(Default)]
-pub struct Line(pub LinePoint, pub LinePoint);
+pub struct TopLines(#[deref] pub Vec<LineSegment>, pub Image);
 
 struct LinePoints {
     points: Vec<(f32, f32)>,
@@ -176,10 +168,11 @@ fn detect_top_lines(
     line_detection_data: LineDetectionData,
     scan_grid: ScanGrid,
 ) -> Result<TopLineDetectionData> {
-    Ok(TopLineDetectionData(Some(detect_lines(
-        line_detection_data,
-        scan_grid,
-    )?)))
+    let image = scan_grid.image().clone();
+    Ok(TopLineDetectionData(
+        Some(detect_lines(line_detection_data, scan_grid)?),
+        Some(image.clone()),
+    ))
 }
 
 fn detect_lines(
@@ -292,7 +285,7 @@ fn detect_lines(
     })
 }
 
-fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> Line {
+fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> LineSegment {
     let mut start_column = line_points.start_column;
     let mut end_column = line_points.end_column;
     assert!(start_column <= end_column);
@@ -332,39 +325,16 @@ fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> Line {
     assert!(start_column < scan_grid.width() as f32);
     assert!(end_column < scan_grid.width() as f32);
 
-    Line(
-        LinePoint {
-            row: start_row,
-            column: start_column,
-        },
-        LinePoint {
-            row: end_row,
-            column: end_column,
-        },
-    )
+    LineSegment::from_xy(start_column, start_row, end_column, end_row)
 }
 
 fn draw_lines(
     dbg: &DebugContext,
-    lines: &[Line],
+    lines: &[LineSegment],
     scan_grid: ScanGrid,
     matrix: &CameraMatrix,
 ) -> Result<()> {
-    let all_lines = lines
-        .iter()
-        .map(
-            |Line(
-                LinePoint {
-                    row: first_row,
-                    column: first_column,
-                },
-                LinePoint {
-                    row: second_row,
-                    column: second_column,
-                },
-            )| [(*first_column, *first_row), (*second_column, *second_row)],
-        )
-        .collect::<Vec<_>>();
+    let all_lines = lines.iter().map(|line| line.into()).collect::<Vec<_>>();
 
     dbg.log_lines2d_for_image(
         "top_camera/image/lines",
@@ -421,7 +391,7 @@ fn start_line_detection_task(
 }
 
 #[system]
-fn line_detection_system(
+pub fn line_detection_system(
     top_scan_grid: &mut TopScanGrid,
     dbg: &DebugContext,
     detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
@@ -436,7 +406,13 @@ fn line_detection_system(
             &mut top_line_detection_data.0.as_mut().unwrap().lines,
         );
 
-        draw_lines(dbg, top_lines, top_scan_grid.clone(), &camera_matrices.top)?;
+        top_lines.1 = top_line_detection_data.1.clone().unwrap();
+        draw_lines(
+            dbg,
+            &top_lines.0,
+            top_scan_grid.clone(),
+            &camera_matrices.top,
+        )?;
     }
 
     if !detect_top_lines_task.active()
