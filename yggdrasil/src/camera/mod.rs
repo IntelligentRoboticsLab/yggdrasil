@@ -10,7 +10,7 @@ use std::{
     time::Instant,
 };
 
-use heimdall::{Camera, CameraDevice, CameraMatrix, YuyvImage};
+use heimdall::{Camera, CameraDevice, CameraMatrix, ExposureWeights, YuyvImage};
 use matrix::{CalibrationConfig, CameraMatrices};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -30,6 +30,8 @@ pub struct CameraSettings {
     pub flip_horizontally: bool,
     pub flip_vertically: bool,
     pub calibration: CalibrationConfig,
+    pub focus_auto: bool,
+    pub exposure_auto: bool,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -50,23 +52,39 @@ pub struct CameraModule;
 
 impl Module for CameraModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_startup_system(initialize_cameras)?
+        let app = app
+            .add_startup_system(initialize_cameras)?
             .add_system(camera_system)
             .add_system(debug_camera_system.after(camera_system))
             .add_task::<ComputeTask<JpegTopImage>>()?
             .add_task::<ComputeTask<JpegBottomImage>>()?
-            .add_module(matrix::CameraMatrixModule)
+            .add_module(matrix::CameraMatrixModule)?;
+
+        #[cfg(not(feature = "local"))]
+        let app = app.add_system(set_exposure_weights);
+
+        Ok(app)
     }
 }
 
 fn setup_camera_device(settings: &CameraSettings) -> Result<CameraDevice> {
+    #[cfg(feature = "local")]
     let camera_device = CameraDevice::new(&settings.path)?;
+    #[cfg(not(feature = "local"))]
+    let mut camera_device = CameraDevice::new(&settings.path)?;
+
     if settings.flip_horizontally {
         camera_device.horizontal_flip()?;
     }
     if settings.flip_vertically {
         camera_device.vertical_flip()?;
     }
+
+    #[cfg(not(feature = "local"))]
+    camera_device.set_focus_auto(settings.focus_auto)?;
+
+    #[cfg(not(feature = "local"))]
+    camera_device.set_exposure_auto(settings.exposure_auto)?;
 
     Ok(camera_device)
 }
@@ -198,16 +216,22 @@ fn initialize_cameras(storage: &mut Storage, config: &CameraConfig) -> Result<()
     let top_camera = TopCamera::new(config)?;
     let bottom_camera = BottomCamera::new(config)?;
 
+    let width = top_camera.0 .0.lock().unwrap().width() as u32;
+    let height = top_camera.0 .0.lock().unwrap().height() as u32;
+
     let top_image_resource = Resource::new(TopImage::new(top_camera.loop_fetch_image()?));
     let top_camera_resource = Resource::new(top_camera);
 
     let bottom_image_resource = Resource::new(BottomImage::new(bottom_camera.loop_fetch_image()?));
     let bottom_camera_resource = Resource::new(bottom_camera);
 
+    let exposure_weights = Resource::new(ExposureWeights::new((width, height)));
+
     storage.add_resource(top_image_resource)?;
     storage.add_resource(top_camera_resource)?;
     storage.add_resource(bottom_image_resource)?;
     storage.add_resource(bottom_camera_resource)?;
+    storage.add_resource(exposure_weights)?;
 
     Ok(())
 }
@@ -289,4 +313,26 @@ fn log_top_image(
         top_image.clone().0,
     )?;
     Ok(JpegTopImage(timestamp))
+}
+
+#[cfg(not(feature = "local"))]
+#[system]
+fn set_exposure_weights(
+    exposure_weights: &mut ExposureWeights,
+    top_camera: &TopCamera,
+    bottom_camera: &BottomCamera,
+) -> Result<()> {
+    if let Ok(top_camera) = top_camera.0 .0.try_lock() {
+        top_camera
+            .camera_device()
+            .set_auto_exposure_weights(&exposure_weights.top)?;
+    }
+
+    if let Ok(bottom_camera) = bottom_camera.0 .0.try_lock() {
+        bottom_camera
+            .camera_device()
+            .set_auto_exposure_weights(&exposure_weights.bottom)?;
+    }
+
+    Ok(())
 }
