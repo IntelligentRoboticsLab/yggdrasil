@@ -1,7 +1,5 @@
 //! All the roles that the robot can take.
 
-mod keeper;
-mod striker;
+mod base;
 
-pub use keeper::Keeper;
-pub use striker::Striker;
+pub use base::Base;

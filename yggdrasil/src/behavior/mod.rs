@@ -1,3 +1,4 @@
+pub mod behavior_config;
 pub mod behaviors;
 pub mod engine;
 pub mod roles;
@@ -6,6 +7,7 @@ use crate::prelude::*;
 
 use engine::BehaviorEngineModule;
 
+pub use behavior_config::BehaviorConfig;
 #[doc(inline)]
 pub use engine::Engine;
 

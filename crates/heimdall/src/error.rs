@@ -42,6 +42,9 @@ pub enum Error {
     #[error("Failed to flip camera vertically")]
     VerticalFlip(#[source] io::Error),
 
+    #[error("Failed to set exposure weights")]
+    SetAutoExposureWeights(io::Error),
+
     #[error(transparent)]
     Jpeg(turbojpeg::Error),
 }

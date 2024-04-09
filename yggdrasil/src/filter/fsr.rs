@@ -20,7 +20,7 @@ impl Module for FSRFilter {
     }
 }
 
-/// Structuct containing the various contact points of the Nao.
+/// Struct containing the various contact points of the Nao.
 #[derive(Default)]
 pub struct Contacts {
     /// Whether the Nao is on the ground.

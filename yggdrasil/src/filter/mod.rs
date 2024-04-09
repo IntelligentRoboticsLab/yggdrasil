@@ -1,12 +1,16 @@
 use crate::prelude::*;
 
-use self::{button::ButtonFilter, fsr::FSRFilter, imu::IMUFilter, sonar::SonarFilter};
+use self::{
+    button::ButtonFilter, falling::FallingFilter, fsr::FSRFilter, imu::IMUFilter,
+    sonar::SonarFilter,
+};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 use std::time::Duration;
 
 pub mod button;
+pub mod falling;
 pub mod fsr;
 pub mod imu;
 /// A simple low pass smoothing filter.
@@ -43,8 +47,8 @@ impl Module for FilterModule {
             .add_module(ButtonFilter)?
             .add_module(FSRFilter)?
             .add_module(IMUFilter)?
+            .add_module(FallingFilter)?
             .add_module(SonarFilter)?;
-
         Ok(app)
     }
 }

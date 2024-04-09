@@ -11,15 +11,18 @@ alsa = { workspace = true, optional = true }
 bifrost = { path = "../crates/bifrost/" }
 derive_more = { workspace = true }
 enum_dispatch = { workspace = true }
+fast_image_resize = { workspace = true }
 fast-math = { workspace = true }
 heimdall = { path = "../crates/heimdall" }
 image = { workspace = true }
 kira = { workspace = true, optional = true }
 linreg = { workspace = true }
+lstsq = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true, features = ["serde-serialize"] }
 ndarray = { workspace = true }
-nidhogg = { workspace = true }
+nidhogg = { workspace = true, features = ["lola"] }
+num = { workspace = true }
 odal = { path = "../crates/odal" }
 openvino = { workspace = true }
 rerun = { workspace = true, optional = true }
