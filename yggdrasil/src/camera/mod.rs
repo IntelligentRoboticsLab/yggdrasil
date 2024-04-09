@@ -68,7 +68,11 @@ impl Module for CameraModule {
 }
 
 fn setup_camera_device(settings: &CameraSettings) -> Result<CameraDevice> {
+    #[cfg(feature = "local")]
+    let camera_device = CameraDevice::new(&settings.path)?;
+    #[cfg(not(feature = "local"))]
     let mut camera_device = CameraDevice::new(&settings.path)?;
+
     if settings.flip_horizontally {
         camera_device.horizontal_flip()?;
     }
@@ -311,6 +315,7 @@ fn log_top_image(
     Ok(JpegTopImage(timestamp))
 }
 
+#[cfg(not(feature = "local"))]
 #[system]
 fn set_exposure_weights(
     exposure_weights: &mut ExposureWeights,
@@ -320,13 +325,13 @@ fn set_exposure_weights(
     if let Ok(top_camera) = top_camera.0 .0.try_lock() {
         top_camera
             .camera_device()
-            .set_auto_exposure_weights(exposure_weights.top.encode())?;
+            .set_auto_exposure_weights(&exposure_weights.top)?;
     }
 
     if let Ok(bottom_camera) = bottom_camera.0 .0.try_lock() {
         bottom_camera
             .camera_device()
-            .set_auto_exposure_weights(exposure_weights.bottom.encode())?;
+            .set_auto_exposure_weights(&exposure_weights.bottom)?;
     }
 
     Ok(())

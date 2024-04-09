@@ -8,6 +8,8 @@ use linuxvideo::{
     Device,
 };
 
+use crate::exposure_weights::ExposureWeightTable;
+
 use super::{Error, Result, YuyvImage};
 
 /// A wrapper around a [`Device`] that contains utilities to flip the image.
@@ -52,13 +54,11 @@ impl CameraDevice {
     }
 
     /// Set the exposure weights of the camera device.
-    pub fn set_auto_exposure_weights(&self, bytes: [u8; 17]) -> Result<()> {
+    pub fn set_auto_exposure_weights(&self, table: &ExposureWeightTable) -> Result<()> {
         let mut uvc_extension = UvcExt::new(&self.device);
 
-        let mut bytes = bytes;
-
         uvc_extension
-            .set_auto_exposure_weights(&mut bytes)
+            .set_auto_exposure_weights(&mut table.encode())
             .map_err(Error::SetAutoExposureWeights)
     }
 
