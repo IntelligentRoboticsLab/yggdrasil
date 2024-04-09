@@ -9,7 +9,11 @@ use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
 use miette::{miette, Context, IntoDiagnostic};
 use ssh2::{ErrorCode, OpenFlags, OpenType, Session, Sftp};
 use std::{
-    fs, io::BufWriter, net::Ipv4Addr, path::{Component, Path, PathBuf}, time::Duration
+    fs,
+    io::BufWriter,
+    net::Ipv4Addr,
+    path::{Component, Path, PathBuf},
+    time::Duration,
 };
 use tokio::net::TcpStream;
 use walkdir::WalkDir;
@@ -71,7 +75,7 @@ pub struct ConfigOptsDeploy {
 
     /// Whether the command prints all progress
     #[clap(long, short)]
-    pub silent: bool
+    pub silent: bool,
 }
 
 impl ConfigOptsDeploy {
@@ -215,13 +219,12 @@ impl Deploy {
                 ProgressStyle::with_template("   {prefix:.blue.bold} {msg} {spinner:.blue.bold}")
                     .unwrap()
                     .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
-                );
+            );
 
             pb.set_prefix("Deploying");
 
             pb.set_message(format!("{}", "Preparing deployment...".dimmed()));
         }
-
 
         deploy_to_robot(pb.as_ref(), robot.ip())
             .await
@@ -266,7 +269,6 @@ async fn deploy_to_robot(pb: Option<&ProgressBar>, addr: Ipv4Addr) -> Result<()>
         );
     }
 
-
     for entry in WalkDir::new("./deploy") {
         let entry = entry.unwrap();
         let remote_path = get_remote_path(entry.path());
@@ -302,7 +304,8 @@ async fn deploy_to_robot(pb: Option<&ProgressBar>, addr: Ipv4Addr) -> Result<()>
 
         let mut buf_writer = BufWriter::with_capacity(UPLOAD_BUFFER_SIZE, file_remote);
         if let Some(pb) = pb {
-            std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer)).map_err(Error::IoError)?;
+            std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer))
+                .map_err(Error::IoError)?;
 
             pb.println(format!(
                 "{} {}",
