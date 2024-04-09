@@ -1,5 +1,4 @@
 use crate::{
-    config::yggdrasil::{self, YggdrasilConfig},
     filter::button::ChestButton,
     game_controller::GameControllerConfig,
     nao::manager::{NaoManager, Priority},
