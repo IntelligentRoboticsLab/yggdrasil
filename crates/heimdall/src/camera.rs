@@ -263,7 +263,7 @@ impl CameraDevice {
 /// Struct for retrieving images from the NAO camera.
 pub struct Camera {
     camera: FrameProvider,
-    camera_device: CameraDevice,
+    device: CameraDevice,
     width: usize,
     height: usize,
 }
@@ -308,8 +308,8 @@ impl Camera {
             .into_frame_provider();
 
         let mut camera = Self {
+            device: camera_device,
             camera,
-            camera_device,
             width,
             height,
         };
@@ -364,6 +364,6 @@ impl Camera {
     }
 
     pub fn get_camera_device(&self) -> &CameraDevice {
-        &self.camera_device
+        &self.device
     }
 }

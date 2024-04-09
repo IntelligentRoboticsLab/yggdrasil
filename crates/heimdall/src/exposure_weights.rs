@@ -1,9 +1,9 @@
-/// Holds the exposure weights for both camera's.
+/// Holds the exposure weights for both cameras.
 pub struct ExposureWeights {
     /// The exposure weights for the top part of the image.
-    pub top_weights: ExposureWeightTable,
+    pub top: ExposureWeightTable,
     /// The exposure weights for the bottom part of the image.
-    pub bottom_weights: ExposureWeightTable,
+    pub bottom: ExposureWeightTable,
 }
 
 impl ExposureWeights {
@@ -18,25 +18,21 @@ impl ExposureWeights {
     /// A new instance of `ExposureWeights`.
     pub fn new(image_dims: (u32, u32)) -> Self {
         Self {
-            top_weights: ExposureWeightTable::new(
+            // Top camera is likely to suffer from overexposure when standing near a window,
+            // by setting the weights to be higher in the lower part of the image, we can reduce this.
+            top: ExposureWeightTable::new(
                 image_dims,
                 [0, 0, 0, 0, 3, 3, 3, 3, 11, 11, 11, 11, 15, 15, 15, 15],
             ),
-            bottom_weights: ExposureWeightTable::new(
-                image_dims,
-                [ExposureWeightTable::MAX_VALUE; 16],
-            ),
+
+            // Bottom camera rarely suffers from overexposure, so we can set a constant weight.
+            bottom: ExposureWeightTable::new(image_dims, [ExposureWeightTable::MAX_VALUE; 16]),
         }
     }
 }
 
 /// Represents a table of exposure weights.
 pub struct ExposureWeightTable {
-    /// Indicates whether the exposure weight table is enabled.
-    ///
-    /// Although present in the documentation, this field does not appear to have any effect.
-    enabled: bool,
-
     /// The top-left corner of the exposure weight window.
     window_start: [u32; 2],
 
@@ -61,7 +57,6 @@ impl ExposureWeightTable {
     pub fn new(image_dims: (u32, u32), initial_weights: [u8; 16]) -> Self {
         let (image_width, image_height) = image_dims;
         Self {
-            enabled: true,
             window_start: [0; 2],
             window_end: [image_width, image_height],
             weights: initial_weights,
@@ -107,7 +102,9 @@ impl ExposureWeightTable {
     pub fn encode(&self) -> [u8; 17] {
         let mut bytes = [0; 17];
 
-        bytes[0] = self.enabled as u8;
+        // In the documentation, the first byte controls if is enabled or not.
+        // However, the driver does not seem to care about this value.
+        bytes[0] = 1u8;
         bytes[1] = (self.window_start[0] >> 8) as u8;
         bytes[2] = (self.window_start[0] & 0xFF) as u8;
         bytes[3] = (self.window_start[1] >> 8) as u8;

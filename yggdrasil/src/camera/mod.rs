@@ -317,8 +317,8 @@ fn set_exposure_weights(
         .try_lock()
         .expect("Failed to lock bottom camera");
 
-    let top_table = &exposure_weights.top_weights;
-    let bottom_table = &exposure_weights.bottom_weights;
+    let top_table = &exposure_weights.top;
+    let bottom_table = &exposure_weights.bottom;
 
     top_camera
         .get_camera_device()
