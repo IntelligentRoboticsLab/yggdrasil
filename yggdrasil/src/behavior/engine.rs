@@ -188,6 +188,17 @@ impl Default for Engine {
     }
 }
 
+fn should_unstiff(context: &Context) -> bool {
+    context.head_buttons.rear.is_pressed()
+        && context.head_buttons.middle.is_pressed()
+        && context.head_buttons.front.is_pressed()
+}
+
+fn is_penalized(context: &Context, current_behavior: &BehaviorKind) -> bool {
+    *context.primary_state == PrimaryState::Penalized
+        && !matches!(current_behavior, BehaviorKind::Passive(_))
+}
+
 impl Engine {
     /// Assigns roles based on player number and other information like what
     /// robot is closest to the ball, missing robots, etc.
@@ -204,7 +215,15 @@ impl Engine {
         walking_engine: &mut WalkingEngine,
     ) {
         self.role = self.assign_role(context);
-        self.behavior = self.role.transition_behavior(context, &mut self.behavior);
+
+        self.behavior = if should_unstiff(&context) {
+            BehaviorKind::Passive(Passive)
+        } else if is_penalized(&context, &self.behavior) {
+            BehaviorKind::Penalized(Penalized)
+        } else {
+            self.role.transition_behavior(context, &mut self.behavior)
+        };
+
         self.behavior.execute(context, nao_manager, walking_engine);
     }
 }
