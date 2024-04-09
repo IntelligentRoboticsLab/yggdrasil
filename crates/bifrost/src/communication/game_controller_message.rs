@@ -177,6 +177,12 @@ pub struct RobotInfo {
     pub secs_till_unpenalised: u8,
 }
 
+impl RobotInfo {
+    fn is_penalized(&self) -> bool {
+        self.penalty != Penalty::None
+    }
+}
+
 /// A struct representing the `TeamInfo` of the two teams currently playing.
 #[derive(Encode, Decode, Clone, Copy, Debug, PartialEq)]
 pub struct TeamInfo {
@@ -206,6 +212,15 @@ pub struct TeamInfo {
 
     /// The team's players
     pub players: [RobotInfo; MAX_NUM_PLAYERS as usize],
+}
+
+impl TeamInfo {
+    pub fn is_penalized(&self, player_number: u8) -> bool {
+        self.players
+            .get(player_number as usize - 1)
+            .map(|robot: &RobotInfo| robot.is_penalized())
+            .unwrap_or(false)
+    }
 }
 
 /// A struct representing the `RoboCupGameControlData` received by the Robots.
@@ -252,6 +267,14 @@ pub struct GameControllerMessage {
 
     /// Info about the teams
     pub teams: [TeamInfo; 2],
+}
+
+impl GameControllerMessage {
+    pub fn team(&self, team_number: u8) -> Option<&TeamInfo> {
+        self.teams
+            .iter()
+            .find(|team| team.team_number == team_number)
+    }
 }
 
 /// A struct representing the `RoboCupGameControlReturnMessage` send by the Robots.
