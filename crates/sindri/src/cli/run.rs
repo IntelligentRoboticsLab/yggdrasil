@@ -73,7 +73,7 @@ impl Run {
                 .into_diagnostic()?;
         } else {
             robot
-                .ssh("./yggdrasil", envs)?
+                .ssh("./yggdrasil", envs, false)?
                 .wait()
                 .await
                 .into_diagnostic()?;
