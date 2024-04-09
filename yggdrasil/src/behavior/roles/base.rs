@@ -1,6 +1,9 @@
-use crate::behavior::{
-    behaviors::{Initial, Observe, Passive},
-    engine::{BehaviorKind, Context, Role},
+use crate::{
+    behavior::{
+        behaviors::{Initial, Observe, Passive, Penalized},
+        engine::{BehaviorKind, Context, Role},
+    },
+    primary_state::PrimaryState,
 };
 
 // This role is a placeholder that implements general behaviors until we implement
@@ -13,6 +16,12 @@ impl Role for Base {
         context: Context,
         current_behavior: &mut BehaviorKind,
     ) -> BehaviorKind {
+        if *context.primary_state == PrimaryState::Penalized
+            && !matches!(current_behavior, BehaviorKind::Passive(_))
+        {
+            return BehaviorKind::Penalized(Penalized);
+        }
+
         match current_behavior {
             BehaviorKind::Passive(_) => {
                 // If chest button is pressed transition to initial behavior.
@@ -26,6 +35,7 @@ impl Role for Base {
             }
             BehaviorKind::Initial(state) => BehaviorKind::Initial(*state),
             BehaviorKind::Observe(state) => BehaviorKind::Observe(*state),
+            BehaviorKind::Penalized(_) => BehaviorKind::Initial(Initial),
         }
     }
 }

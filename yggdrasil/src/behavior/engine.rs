@@ -1,10 +1,11 @@
 //! The engine managing behavior execution and role state.
 
+use bifrost::communication::GameControllerMessage;
 use enum_dispatch::enum_dispatch;
 
 use crate::{
     behavior::{
-        behaviors::{Initial, Passive},
+        behaviors::{Initial, Observe, Passive, Penalized},
         roles::Base,
         BehaviorConfig,
     },
@@ -13,12 +14,12 @@ use crate::{
         button::{ChestButton, HeadButtons},
         fsr::Contacts,
     },
+    game_controller::GameControllerConfig,
     nao::{self, manager::NaoManager},
     prelude::*,
     primary_state::PrimaryState,
+    walk::engine::WalkingEngine,
 };
-
-use super::behaviors::Observe;
 
 /// Context that is passed into the behavior engine.
 ///
@@ -40,6 +41,10 @@ pub struct Context<'a> {
     pub yggdrasil_config: &'a YggdrasilConfig,
     /// Config containing parameters for various behaviors
     pub behavior_config: &'a BehaviorConfig,
+    /// Contains the message received from the game-controller.
+    pub game_controller_message: Option<&'a GameControllerMessage>,
+    /// Contains the game-controller config.
+    pub game_controller_config: &'a GameControllerConfig,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -68,7 +73,12 @@ pub struct Context<'a> {
 #[enum_dispatch]
 pub trait Behavior {
     /// Defines what the robot does when the corresponding behavior is executed.
-    fn execute(&mut self, context: Context, nao_manager: &mut NaoManager);
+    fn execute(
+        &mut self,
+        context: Context,
+        nao_manager: &mut NaoManager,
+        walking_engine: &mut WalkingEngine,
+    );
 }
 
 /// An enum containing the possible behaviors for a robot.
@@ -86,6 +96,7 @@ pub enum BehaviorKind {
     Passive(Passive),
     Initial(Initial),
     Observe(Observe),
+    Penalized(Penalized),
     // Add new behaviors here!
 }
 
@@ -186,10 +197,15 @@ impl Engine {
     }
 
     /// Executes one step of the behavior engine
-    pub fn step(&mut self, context: Context, nao_manager: &mut NaoManager) {
+    pub fn step(
+        &mut self,
+        context: Context,
+        nao_manager: &mut NaoManager,
+        walking_engine: &mut WalkingEngine,
+    ) {
         self.role = self.assign_role(context);
         self.behavior = self.role.transition_behavior(context, &mut self.behavior);
-        self.behavior.execute(context, nao_manager);
+        self.behavior.execute(context, nao_manager, walking_engine);
     }
 }
 
@@ -206,6 +222,9 @@ pub fn step(
     layout_config: &LayoutConfig,
     yggdrasil_config: &YggdrasilConfig,
     behavior_config: &BehaviorConfig,
+    walking_engine: &mut WalkingEngine,
+    game_controller_message: &Option<GameControllerMessage>,
+    game_controller_config: &GameControllerConfig,
 ) -> Result<()> {
     let context = Context {
         primary_state,
@@ -215,9 +234,11 @@ pub fn step(
         layout_config,
         yggdrasil_config,
         behavior_config,
+        game_controller_message: game_controller_message.as_ref(),
+        game_controller_config,
     };
 
-    engine.step(context, nao_manager);
+    engine.step(context, nao_manager, walking_engine);
 
     Ok(())
 }

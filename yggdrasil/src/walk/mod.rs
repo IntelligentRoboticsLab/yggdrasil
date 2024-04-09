@@ -137,24 +137,12 @@ pub fn toggle_walking_engine(
 #[system]
 pub fn run_walking_engine(
     walking_engine: &mut WalkingEngine,
-    primary_state: &PrimaryState,
     cycle_time: &CycleTime,
     fsr: &ForceSensitiveResistors,
     imu: &IMUValues,
     nao_manager: &mut NaoManager,
     dbg: &DebugContext,
 ) -> Result<()> {
-    // We don't run the walking engine whenever we're in a state where we shouldn't.
-    // This is a semi hacky way to prevent the robot from jumping up and
-    // unstiffing itself when it's not supposed to.
-    // TODO: We should definitely fix this in the future.deploy/assets deploy/config
-    if !primary_state.should_walk() {
-        // This sets the robot to be completely unstiff, completely disabling the joint motors.
-        nao_manager.unstiff_legs(Priority::Low);
-
-        return Ok(());
-    }
-
     // If this is start of a new step phase, we'll need to initialise the new phase.
     if walking_engine.t.is_zero() {
         walking_engine.init_step_phase();

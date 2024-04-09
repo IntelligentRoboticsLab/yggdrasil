@@ -1,5 +1,7 @@
 use crate::{
+    config::yggdrasil::{self, YggdrasilConfig},
     filter::button::ChestButton,
+    game_controller::GameControllerConfig,
     nao::manager::{NaoManager, Priority},
     prelude::*,
 };
@@ -66,6 +68,22 @@ impl PrimaryState {
     }
 }
 
+// TODO: Replace with player number from pregame config.
+const PLAYER_NUM: u8 = 3;
+
+fn is_penalized(
+    game_controller_message: Option<&GameControllerMessage>,
+    team_number: u8,
+    player_number: u8,
+) -> bool {
+    game_controller_message.is_some_and(|game_controller_message| {
+        game_controller_message
+            .team(team_number)
+            .map(|team| team.is_penalized(player_number))
+            .unwrap_or(false)
+    })
+}
+
 #[system]
 pub fn update_primary_state(
     primary_state: &mut PrimaryState,
@@ -73,6 +91,7 @@ pub fn update_primary_state(
     nao_manager: &mut NaoManager,
     chest_button: &ChestButton,
     config: &PrimaryStateConfig,
+    game_controller_config: &GameControllerConfig,
 ) -> Result<()> {
     use PrimaryState as PS;
 
@@ -80,31 +99,39 @@ pub fn update_primary_state(
     // We need the robot's id and check the `RobotInfo` array in the game-controller message, to
     // see if this robot has received a penalty.
 
-    let next_primary_state = match game_controller_message {
-        Some(message) => match message {
-            GameControllerMessage {
-                state: GameState::Initial,
-                ..
-            } => PrimaryState::Initial,
-            GameControllerMessage {
-                state: GameState::Ready,
-                ..
-            } => PrimaryState::Ready,
-            GameControllerMessage {
-                state: GameState::Set,
-                ..
-            } => PrimaryState::Set,
-            GameControllerMessage {
-                state: GameState::Playing,
-                ..
-            } => PrimaryState::Playing,
-            GameControllerMessage {
-                state: GameState::Finished,
-                ..
-            } => PrimaryState::Finished,
-        },
-        None if chest_button.state.is_tapped() => PrimaryState::Initial,
-        None => *primary_state,
+    let next_primary_state = if is_penalized(
+        game_controller_message.as_ref(),
+        game_controller_config.team_number,
+        PLAYER_NUM,
+    ) {
+        PrimaryState::Penalized
+    } else {
+        match game_controller_message {
+            Some(message) => match message {
+                GameControllerMessage {
+                    state: GameState::Initial,
+                    ..
+                } => PrimaryState::Initial,
+                GameControllerMessage {
+                    state: GameState::Ready,
+                    ..
+                } => PrimaryState::Ready,
+                GameControllerMessage {
+                    state: GameState::Set,
+                    ..
+                } => PrimaryState::Set,
+                GameControllerMessage {
+                    state: GameState::Playing,
+                    ..
+                } => PrimaryState::Playing,
+                GameControllerMessage {
+                    state: GameState::Finished,
+                    ..
+                } => PrimaryState::Finished,
+            },
+            None if chest_button.state.is_tapped() => PrimaryState::Initial,
+            None => *primary_state,
+        }
     };
 
     match next_primary_state {
