@@ -15,14 +15,6 @@ pub struct CameraDevice {
     device: Device,
 }
 
-impl Clone for CameraDevice {
-    fn clone(&self) -> Self {
-        Self {
-            device: self.device.clone(),
-        }
-    }
-}
-
 impl CameraDevice {
     pub fn new<A>(device_path: A) -> Result<Self>
     where
@@ -37,6 +29,12 @@ impl CameraDevice {
             .map_err(|source| Error::DeviceOpen { path, source })?;
 
         Ok(Self { device })
+    }
+
+    fn try_clone(&self) -> Result<Self> {
+        Ok(Self {
+            device: self.device.try_clone()?,
+        })
     }
 
     /// Flip the image horizontally.
@@ -290,7 +288,7 @@ impl Camera {
         }
 
         let capture_device = camera_device
-            .clone()
+            .try_clone()?
             .device
             .video_capture(PixFormat::new(width, height, PixelFormat::YUYV))
             .map_err(Error::VideoCapture)?;

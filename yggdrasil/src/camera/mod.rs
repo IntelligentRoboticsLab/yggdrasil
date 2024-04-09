@@ -305,28 +305,17 @@ fn set_exposure_weights(
     top_camera: &TopCamera,
     bottom_camera: &BottomCamera,
 ) -> Result<()> {
-    let top_camera = top_camera
-        .0
-         .0
-        .try_lock()
-        .expect("Failed to lock top camera");
+    if let Ok(top_camera) = top_camera.0 .0.try_lock() {
+        top_camera
+            .get_camera_device()
+            .set_auto_exposure_weights(exposure_weights.top.encode())?;
+    }
 
-    let bottom_camera = bottom_camera
-        .0
-         .0
-        .try_lock()
-        .expect("Failed to lock bottom camera");
-
-    let top_table = &exposure_weights.top;
-    let bottom_table = &exposure_weights.bottom;
-
-    top_camera
-        .get_camera_device()
-        .set_auto_exposure_weights(top_table.encode())?;
-
-    bottom_camera
-        .get_camera_device()
-        .set_auto_exposure_weights(bottom_table.encode())?;
+    if let Ok(bottom_camera) = bottom_camera.0 .0.try_lock() {
+        bottom_camera
+            .get_camera_device()
+            .set_auto_exposure_weights(exposure_weights.bottom.encode())?;
+    }
 
     Ok(())
 }
