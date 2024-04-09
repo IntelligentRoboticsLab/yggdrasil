@@ -1,5 +1,5 @@
 use crate::behavior::{
-    behaviors::{Initial, Observe, Passive},
+    behaviors::{Initial, Passive},
     engine::{BehaviorKind, Context, Role},
 };
 
@@ -18,14 +18,13 @@ impl Role for Base {
                 // If chest button is pressed transition to initial behavior.
                 if context.chest_button.state.is_pressed() {
                     BehaviorKind::Initial(Initial)
-                } else if context.head_buttons.middle.is_pressed() {
-                    BehaviorKind::Observe(Observe::default())
                 } else {
                     BehaviorKind::Passive(Passive)
                 }
             }
             BehaviorKind::Initial(state) => BehaviorKind::Initial(*state),
             BehaviorKind::Observe(state) => BehaviorKind::Observe(*state),
+            BehaviorKind::Penalized(_) => BehaviorKind::Initial(Initial),
         }
     }
 }

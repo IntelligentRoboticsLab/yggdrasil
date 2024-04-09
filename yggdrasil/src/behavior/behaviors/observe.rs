@@ -5,6 +5,7 @@ use std::time::Instant;
 use crate::{
     behavior::engine::{Behavior, Context},
     nao::manager::{NaoManager, Priority},
+    walk::engine::WalkingEngine,
 };
 use nidhogg::types::{FillExt, HeadJoints};
 
@@ -61,7 +62,12 @@ fn look_around(
 }
 
 impl Behavior for Observe {
-    fn execute(&mut self, context: Context, nao_manager: &mut NaoManager) {
+    fn execute(
+        &mut self,
+        context: Context,
+        nao_manager: &mut NaoManager,
+        walking_engine: &mut WalkingEngine,
+    ) {
         let ObserveBehaviorConfig {
             head_rotation_speed,
             head_pitch_max: head_pitch_multiplier,
@@ -75,5 +81,7 @@ impl Behavior for Observe {
             head_yaw_multiplier,
             head_pitch_multiplier,
         );
+
+        walking_engine.request_idle();
     }
 }
