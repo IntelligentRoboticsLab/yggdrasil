@@ -30,6 +30,8 @@ pub struct CameraSettings {
     pub flip_horizontally: bool,
     pub flip_vertically: bool,
     pub calibration: CalibrationConfig,
+    pub focus_auto: bool,
+    pub exposure_auto: bool,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -50,13 +52,18 @@ pub struct CameraModule;
 
 impl Module for CameraModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_startup_system(initialize_cameras)?
+        let app = app
+            .add_startup_system(initialize_cameras)?
             .add_system(camera_system)
             .add_system(debug_camera_system.after(camera_system))
-            .add_system(set_exposure_weights)
             .add_task::<ComputeTask<JpegTopImage>>()?
             .add_task::<ComputeTask<JpegBottomImage>>()?
-            .add_module(matrix::CameraMatrixModule)
+            .add_module(matrix::CameraMatrixModule)?;
+
+        #[cfg(not(feature = "local"))]
+        let app = app.add_system(set_exposure_weights);
+
+        Ok(app)
     }
 }
 
@@ -69,8 +76,11 @@ fn setup_camera_device(settings: &CameraSettings) -> Result<CameraDevice> {
         camera_device.vertical_flip()?;
     }
 
-    camera_device.set_focus_auto(false)?;
-    camera_device.set_exposure_auto(true)?;
+    #[cfg(not(feature = "local"))]
+    camera_device.set_focus_auto(settings.focus_auto)?;
+
+    #[cfg(not(feature = "local"))]
+    camera_device.set_exposure_auto(settings.exposure_auto)?;
 
     Ok(camera_device)
 }
