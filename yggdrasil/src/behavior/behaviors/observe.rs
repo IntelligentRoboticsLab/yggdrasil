@@ -5,24 +5,11 @@ use std::time::Instant;
 use crate::{
     behavior::engine::{Behavior, Context},
     nao::manager::{NaoManager, Priority},
-    walk::engine::WalkingEngine,
+    walk::engine::{Step, WalkingEngine},
 };
 use nidhogg::types::{FillExt, HeadJoints};
 
 const ROTATION_STIFFNESS: f32 = 0.3;
-
-#[derive(Copy, Clone, Debug)]
-pub struct Observe {
-    pub starting_time: Instant,
-}
-
-impl Default for Observe {
-    fn default() -> Self {
-        Observe {
-            starting_time: Instant::now(),
-        }
-    }
-}
 
 /// Config struct containing parameters for the initial behavior.
 #[serde_as]
@@ -39,26 +26,17 @@ pub struct ObserveBehaviorConfig {
     pub head_yaw_max: f32,
 }
 
-fn look_around(
-    nao_manager: &mut NaoManager,
-    starting_time: Instant,
-    rotation_speed: f32,
-    yaw_multiplier: f32,
-    pitch_multiplier: f32,
-) {
-    // Used to parameterize the yaw and pitch angles, multiplying with a large
-    // rotation speed will make the rotation go faster.
-    let movement_progress = starting_time.elapsed().as_secs_f32() * rotation_speed;
-    let yaw = (movement_progress).sin() * yaw_multiplier;
-    let pitch = (movement_progress * 2.0 + std::f32::consts::FRAC_PI_2)
-        .sin()
-        .max(0.0)
-        * pitch_multiplier;
+#[derive(Copy, Clone, Debug)]
+pub struct Observe {
+    pub starting_time: Instant,
+}
 
-    let position = HeadJoints { yaw, pitch };
-    let stiffness = HeadJoints::fill(ROTATION_STIFFNESS);
-
-    nao_manager.set_head(position, stiffness, Priority::default());
+impl Default for Observe {
+    fn default() -> Self {
+        Observe {
+            starting_time: Instant::now(),
+        }
+    }
 }
 
 impl Behavior for Observe {
@@ -82,6 +60,32 @@ impl Behavior for Observe {
             head_pitch_multiplier,
         );
 
-        walking_engine.request_idle();
+        walking_engine.request_walk(Step {
+            forward: 0.04,
+            left: 0.0,
+            turn: 0.0,
+        });
     }
+}
+
+fn look_around(
+    nao_manager: &mut NaoManager,
+    starting_time: Instant,
+    rotation_speed: f32,
+    yaw_multiplier: f32,
+    pitch_multiplier: f32,
+) {
+    // Used to parameterize the yaw and pitch angles, multiplying with a large
+    // rotation speed will make the rotation go faster.
+    let movement_progress = starting_time.elapsed().as_secs_f32() * rotation_speed;
+    let yaw = (movement_progress).sin() * yaw_multiplier;
+    let pitch = (movement_progress * 2.0 + std::f32::consts::FRAC_PI_2)
+        .sin()
+        .max(0.0)
+        * pitch_multiplier;
+
+    let position = HeadJoints { yaw, pitch };
+    let stiffness = HeadJoints::fill(ROTATION_STIFFNESS);
+
+    nao_manager.set_head(position, stiffness, Priority::default());
 }

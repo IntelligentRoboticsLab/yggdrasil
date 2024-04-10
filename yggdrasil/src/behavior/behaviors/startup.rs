@@ -1,8 +1,9 @@
 use crate::{
     behavior::engine::{Behavior, Context},
-    nao::manager::{NaoManager, Priority}, walk::engine::WalkingEngine,
+    nao::manager::{NaoManager, Priority},
+    walk::{self, engine::WalkingEngine},
 };
-use nidhogg::types::{color, ArmJoints, FillExt, HeadJoints, JointArray, LegJoints, RightEye};
+use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 
 const DEFAULT_PASSIVE_STIFFNESS: f32 = 0.8;
 const DEFAULT_PASSIVE_PRIORITY: Priority = Priority::Medium;
@@ -11,28 +12,16 @@ const DEFAULT_PASSIVE_PRIORITY: Priority = Priority::Medium;
 /// In this state the robot does nothing and retains its previous position.
 /// In this state the robot has a blue right eye.
 #[derive(Copy, Clone, Debug, Default)]
-pub struct Passive {
-    pub unstiff: bool,
-}
+pub struct StartUp;
 
-impl Behavior for Passive {
-    fn execute(&mut self, context: Context, nao_manager: &mut NaoManager, _walking_engine: &mut WalkingEngine) {
-        if context.head_buttons.middle.is_pressed() {
-            self.unstiff = true;
-        }
-
-        if self.unstiff {
-            // TODO: sit down
-            nao_manager
-                .unstiff_legs(DEFAULT_PASSIVE_PRIORITY)
-                .unstiff_arms(DEFAULT_PASSIVE_PRIORITY)
-                .unstiff_head(DEFAULT_PASSIVE_PRIORITY);
-        } else {
-            set_initial_joint_values(&context.robot_info.initial_joint_positions, nao_manager)
-        }
-
-        // Makes right eye blue.
-        nao_manager.set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());
+impl Behavior for StartUp {
+    fn execute(
+        &mut self,
+        context: Context,
+        nao_manager: &mut NaoManager,
+        _walking_engine: &mut WalkingEngine,
+    ) {
+        set_initial_joint_values(&context.robot_info.initial_joint_positions, nao_manager);
     }
 }
 
@@ -51,6 +40,7 @@ fn set_initial_joint_values(
         ArmJoints::fill(DEFAULT_PASSIVE_STIFFNESS),
         DEFAULT_PASSIVE_PRIORITY,
     );
+    println!("We Startuping");
 
     nao_manager.set_legs(
         initial_joint_positions.leg_joints(),

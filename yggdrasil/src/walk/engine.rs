@@ -1,7 +1,10 @@
 use nidhogg::types::{FillExt, Vector3};
 use serde::{Deserialize, Serialize};
 
-use crate::{filter::low_pass_filter::LowPassFilter, kinematics::FootOffset};
+use crate::{
+    filter::low_pass_filter::LowPassFilter,
+    kinematics::{self, FootOffset, RobotKinematics},
+};
 use std::{ops::Neg, time::Duration};
 
 use super::{smoothing, WalkingEngineConfig};
@@ -38,19 +41,19 @@ impl WalkState {
     ///
     /// This returns a new [`WalkState::Idle`] using the configured `sitting_hip_height` as initial
     /// hip height.
-    pub fn from_config(config: &WalkingEngineConfig) -> Self {
-        WalkState::Idle(config.sitting_hip_height)
+    pub fn from_hip_height(hip_height: f32) -> Self {
+        WalkState::Idle(hip_height)
     }
 
     /// Transitions the [`WalkState`] to the next walk state based on the provided [`WalkingEngineConfig`].
-    pub fn next(&self, config: &WalkingEngineConfig) -> Self {
+    pub fn next(&self, engine: &WalkingEngine) -> Self {
         match self {
             WalkState::Idle(hip_height) => {
-                WalkState::Idle((*hip_height + 0.002).min(config.hip_height))
+                WalkState::Idle((*engine.requested_hip_height + 0.002).min(engine.hip_height))
             }
             WalkState::Starting(step) => WalkState::Walking(*step),
             WalkState::Walking(_) => self.clone(),
-            WalkState::Stopping => WalkState::Idle(config.hip_height),
+            WalkState::Stopping => WalkState::Idle(engine.hip_height),
         }
     }
 }
@@ -80,6 +83,8 @@ pub struct WalkingEngine {
     pub foot_offsets_t0: FootOffsets,
     /// The current hip height, relative to the ground in meters.
     pub hip_height: f32,
+    /// The requested hip height, relative to the ground in meters.
+    pub requested_hip_height: f32,
     /// The maximum distance the swing foot can be lifted off the ground in meters.
     pub max_swing_foot_lift: f32,
     /// The configuration of the walking engine.
@@ -88,8 +93,13 @@ pub struct WalkingEngine {
 
 impl WalkingEngine {
     /// Requests the [`WalkingEngine`] to halt to an idle standing position.
-    pub fn request_idle(&mut self) {
-        self.request = WalkRequest::Idle;
+    pub fn request_sit(&mut self) {
+        self.request = WalkRequest::Stand;
+    }
+
+    /// Requests the [`WalkingEngine`] to go to an idle sitting position.
+    pub fn request_stand(&mut self) {
+        self.request = WalkRequest::Sit;
     }
 
     /// Requests the [`WalkingEngine`] to perform the provided [`Step`].
@@ -97,11 +107,38 @@ impl WalkingEngine {
         self.request = WalkRequest::Walk(step);
     }
 
-    pub(super) fn from_config(config: &WalkingEngineConfig) -> Self {
-        tracing::info!("Using hip height: {}", config.hip_height);
+    pub(super) fn from_config(config: &WalkingEngineConfig, kinematics: &RobotKinematics) -> Self {
+        let current_hip_height = kinematics
+            .left_ankle_to_robot
+            .inverse()
+            .translation
+            .vector
+            .z;
+        // println!("current_hip_height: {:?}", current_hip_height);
+        // // println!(
+        // //     "boo: {:?}",
+        // //     current_hip_height
+        // //         .rotation
+        // //         .transform_vector(&current_hip_height.translation.vector)
+        // // );
+        // let current_hip_height = current_hip_height.;
+
+        // // println!(
+        // //     "kinematics.left_sole_to_robot * kinematics.left_pelvis_to_robot: {:?}",
+        // //     kinematics.left_sole_to_robot * kinematics.left_pelvis_to_robot
+        // // );
+        // // println!(
+        // //     "kinematics.left_hip_to_robot: {:?}",
+        // //     kinematics.left_hip_to_robot
+        // // );
+        // println!("current_hip_height: {:?}", current_hip_height);
+
+        // panic!("LAAS");
+
+        tracing::info!("Using hip height: {}", current_hip_height);
         WalkingEngine {
-            state: WalkState::from_config(config),
-            request: WalkRequest::Idle,
+            state: WalkState::from_hip_height(current_hip_height),
+            request: WalkRequest::Sit,
             current_step: Step::default(),
             filtered_gyroscope: LowPassFilter::new(
                 Vector3::default(),
@@ -113,7 +150,8 @@ impl WalkingEngine {
             swing_foot: Default::default(),
             foot_offsets: FootOffsets::zero(config.sitting_hip_height),
             foot_offsets_t0: FootOffsets::zero(config.sitting_hip_height),
-            hip_height: config.sitting_hip_height,
+            hip_height: current_hip_height,
+            requested_hip_height: current_hip_height,
             max_swing_foot_lift: config.base_foot_lift,
             config: config.clone(),
         }
@@ -140,7 +178,7 @@ impl WalkingEngine {
     pub(super) fn init_step_phase(&mut self) {
         let config = &self.config;
         self.foot_offsets_t0 = self.foot_offsets.clone();
-        self.state = self.state.next(config);
+        self.state = self.state.next(self);
 
         match self.state {
             WalkState::Idle(hip_height) => {
@@ -182,10 +220,13 @@ impl WalkingEngine {
 
     fn new_state_from_request(&self) -> Option<WalkState> {
         match (&self.request, &self.state) {
-            (WalkRequest::Idle, WalkState::Idle(_) | WalkState::Stopping) => None,
-            (WalkRequest::Idle, WalkState::Starting(_) | WalkState::Walking(_)) => {
-                Some(WalkState::Stopping)
+            (WalkRequest::Stand | WalkRequest::Sit, WalkState::Idle(_) | WalkState::Stopping) => {
+                None
             }
+            (
+                WalkRequest::Stand | WalkRequest::Sit,
+                WalkState::Starting(_) | WalkState::Walking(_),
+            ) => Some(WalkState::Stopping),
             (WalkRequest::Walk(requested_step), WalkState::Idle(_) | WalkState::Stopping) => {
                 Some(WalkState::Starting(*requested_step))
             }
@@ -306,7 +347,8 @@ impl Neg for Step {
 #[derive(Debug, Default, Clone)]
 pub enum WalkRequest {
     #[default]
-    Idle,
+    Sit,
+    Stand,
     Walk(Step),
 }
 

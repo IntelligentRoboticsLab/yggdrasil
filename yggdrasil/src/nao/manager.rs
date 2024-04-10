@@ -195,6 +195,11 @@ impl NaoManager {
         joint_stiffness: LegJoints<JointValue>,
         priority: Priority,
     ) -> &mut Self {
+        println!(
+            "Setting leg joints with priority: {}",
+            priority.priority_value()
+        );
+
         Self::set_joint_settings(
             &mut self.leg_settings,
             joint_positions,

@@ -5,7 +5,7 @@ use enum_dispatch::enum_dispatch;
 
 use crate::{
     behavior::{
-        behaviors::{Initial, Observe, Passive, Penalized},
+        behaviors::{Initial, Observe, Penalized, StartUp},
         roles::Base,
         BehaviorConfig,
     },
@@ -20,6 +20,8 @@ use crate::{
     primary_state::PrimaryState,
     walk::engine::WalkingEngine,
 };
+
+use super::behaviors::Unstiff;
 
 /// Context that is passed into the behavior engine.
 ///
@@ -93,11 +95,12 @@ pub trait Behavior {
 ///
 /// # Notes
 /// - New behavior implementations should be added as new variants to this enum.
-/// - The specific struct for each behavior (e.g., [`Initial`], [`Passive`]) should implement the [`Behavior`] trait.
+/// - The specific struct for each behavior (e.g., [`Initial`], [`StartUp`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
 #[derive(Debug)]
 pub enum BehaviorKind {
-    Passive(Passive),
+    StartUp(StartUp),
+    Unstiff(Unstiff),
     Initial(Initial),
     Observe(Observe),
     Penalized(Penalized),
@@ -106,7 +109,7 @@ pub enum BehaviorKind {
 
 impl Default for BehaviorKind {
     fn default() -> Self {
-        BehaviorKind::Passive(Passive::default())
+        BehaviorKind::StartUp(StartUp)
     }
 }
 
@@ -148,6 +151,7 @@ pub trait Role {
         &mut self,
         context: Context,
         current_behavior: &mut BehaviorKind,
+        walking_engine: &mut WalkingEngine,
     ) -> BehaviorKind;
 }
 
@@ -200,7 +204,7 @@ fn should_unstiff(context: &Context) -> bool {
 
 fn is_penalized(context: &Context, current_behavior: &BehaviorKind) -> bool {
     *context.primary_state == PrimaryState::Penalized
-        && !matches!(current_behavior, BehaviorKind::Passive(_))
+        && !matches!(current_behavior, BehaviorKind::StartUp(_))
 }
 
 impl Engine {
@@ -218,17 +222,19 @@ impl Engine {
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
     ) {
+        println!("Current behavior: {:?}", self.behavior);
+        self.behavior.execute(context, nao_manager, walking_engine);
+
         self.role = self.assign_role(context);
 
         self.behavior = if should_unstiff(&context) {
-            BehaviorKind::Passive(Passive { unstiff: true })
+            BehaviorKind::Unstiff(Unstiff)
         } else if is_penalized(&context, &self.behavior) {
             BehaviorKind::Penalized(Penalized)
         } else {
-            self.role.transition_behavior(context, &mut self.behavior)
+            self.role
+                .transition_behavior(context, &mut self.behavior, walking_engine)
         };
-
-        self.behavior.execute(context, nao_manager, walking_engine);
     }
 }
 
