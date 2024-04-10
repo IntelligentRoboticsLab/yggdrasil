@@ -1,9 +1,12 @@
 use alsa::pcm::*;
 use alsa::{Direction, ValueOr};
 use miette::{miette, IntoDiagnostic, Result};
+use nidhogg::types::color::u8::RED;
 use std::array;
 use std::sync::{Arc, Mutex};
 use tyr::prelude::*;
+
+use crate::debug::DebugContext;
 
 /// The amount of samples in a second, typically 44100.
 pub const SAMPLE_RATE: usize = 44100;
@@ -24,6 +27,7 @@ impl Module for AudioInputModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_task::<ComputeTask<Result<AudioSample>>>()?
             .add_system(dispatch_buffer)
+            .add_system(log_audio)
             .add_resource(Resource::new(AudioInput::new()?))
     }
 }
@@ -114,6 +118,24 @@ fn dispatch_buffer(
     let device = audio_input.device.clone();
     task.try_spawn(move || microphone_input(device))
         .into_diagnostic()?;
+
+    Ok(())
+}
+
+#[system]
+fn log_audio(
+    dbg: &DebugContext,
+    audio_input: &AudioInput,
+) -> Result<()> {
+    for (channel, buffer) in audio_input.buffer.iter().enumerate() {
+        let path = format!("/audio/buffer{}", channel);
+        let name = format!("Channel {}", channel);
+        dbg.set_scalar_series_style(&path, &name, RED, 0.2)?;
+
+        dbg.log_bar_chart(&path, &buffer.iter().map(
+            |x| *x as f64
+        ).collect::<Vec<f64>>())?;
+    }
 
     Ok(())
 }

@@ -171,6 +171,18 @@ impl DebugContext {
         Ok(())
     }
 
+    pub fn log_bar_chart(&self, path: impl AsRef<str>, series: &[f64]) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec.log(
+                path.as_ref(),
+                &rerun::BarChart::new(series)
+            ).into_diagnostic()?;
+        }
+
+        Ok(())
+    }
+
     /// Log a text message to the debug viewer.
     pub fn log_text(&self, path: impl AsRef<str>, text: String) -> Result<()> {
         #[cfg(feature = "rerun")]
