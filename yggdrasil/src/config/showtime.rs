@@ -1,6 +1,6 @@
 use odal::Config;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Write};
 
 use crate::{nao::RobotInfo, prelude::*};
 
@@ -32,6 +32,10 @@ pub(super) fn configure_showtime(
     let robot_id = &robot_info.robot_id.to_string();
     let player_number = *showtime_config.robot_numbers_map.get(robot_id).unwrap();
     let team_number = showtime_config.team_number;
+
+    let mut f = std::fs::File::create("log.txt").unwrap();
+    f.write_all(format!("{} {}\n", team_number, player_number).as_bytes())
+        .unwrap();
 
     let player_config = PlayerConfig {
         player_number,

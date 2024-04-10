@@ -1,6 +1,6 @@
 use crate::{
     cargo::{self, find_bin_manifest, Profile},
-    config::Config,
+    config::SindriConfig,
     error::{Error, Result},
 };
 use clap::Parser;
@@ -31,8 +31,8 @@ const LOCAL_ROBOT_ID_STR: &str = "0";
 /// is rather slow due to the locking mechanism.
 const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
 
-#[derive(Clone, Debug, Parser)]
-pub struct ConfigOptsDeploy {
+#[derive(Clone, Debug)]
+pub struct ConfigOptsUpload {
     /// Number of the robot to deploy to.
     #[clap(
         index = 1,
@@ -78,7 +78,7 @@ pub struct ConfigOptsDeploy {
     pub silent: bool,
 }
 
-impl ConfigOptsDeploy {
+impl ConfigOptsUpload {
     #[must_use]
     pub fn new(
         number: u8,
@@ -104,15 +104,13 @@ impl ConfigOptsDeploy {
 }
 
 /// Compile and deploy the specified binary to the robot.
-#[derive(Parser)]
-pub struct Deploy {
-    #[clap(flatten)]
+pub struct Upload {
     pub deploy: ConfigOptsDeploy,
 }
 
 impl Deploy {
     /// Constructs IP and deploys to the robot
-    pub async fn deploy(self, config: Config) -> miette::Result<()> {
+    pub async fn deploy(self, config: SindriConfig) -> miette::Result<()> {
         find_bin_manifest(&self.deploy.bin)
             .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
 

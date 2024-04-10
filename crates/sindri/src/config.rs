@@ -15,7 +15,7 @@ pub fn config_file() -> PathBuf {
         .join(CONFIG_FILE)
 }
 
-pub fn load_config() -> Result<Config> {
+pub fn load_config() -> Result<SindriConfig> {
     let config_file = config_file();
 
     let config_data = std::fs::read_to_string(config_file)
@@ -49,7 +49,7 @@ impl ConfigRobot {
 /// Configuration structure for sindri (.toml), containing team number and robot information
 #[serde_as]
 #[derive(Debug, Deserialize, Clone)]
-pub struct Config {
+pub struct SindriConfig {
     /// The configured team number, used to construct IPs.
     pub team_number: u8,
 
@@ -57,7 +57,7 @@ pub struct Config {
     pub robots: Vec<ConfigRobot>,
 }
 
-impl<'a> Config {
+impl<'a> SindriConfig {
     /// Get a [`Robot`] instance using the provided number.
     ///
     /// If there's no [`Robot`] configured with the provided number, this will return an [`Option::None`].

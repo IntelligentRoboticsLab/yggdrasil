@@ -21,10 +21,10 @@ async fn main() -> Result<()> {
     sindri::version::check_current_version();
 
     match args.action {
-        Commands::Deploy(opts) => opts.deploy(config).await?,
         Commands::Run(opts) => opts.run(config).await?,
         Commands::Scan(opts) => opts.scan(config).await?,
         Commands::Showtime(opts) => opts.showtime(config).await?,
+        Commands::ChangeNetwork(opts) => opts.change_network().await?,
         Commands::Config(opts) => opts.config()?,
         Commands::Update(opts) => opts.update().await?,
     }

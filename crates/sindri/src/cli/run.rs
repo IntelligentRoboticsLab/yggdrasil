@@ -2,36 +2,31 @@ use std::{os::unix::process::CommandExt, process::Stdio};
 
 use clap::Parser;
 use colored::Colorize;
-use miette::{miette, IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Result};
 use tokio::process::Command;
 
 use crate::{
-    cli::deploy::{ConfigOptsDeploy, Deploy},
-    config::Config,
+    cli::robot_ops::{ConfigOptsRobotOps, Output, RobotOps},
+    config::SindriConfig,
 };
 
+// TODO: refactor config for run
 #[derive(Parser, Debug)]
 /// Compile, deploy and run the specified binary to the robot.
 pub struct Run {
     #[clap(flatten)]
-    pub deploy: ConfigOptsDeploy,
+    pub deploy: ConfigOptsRobotOps,
     /// Also print debug logs to stdout [default: false]
     #[clap(long, short)]
     pub debug: bool,
 }
 
 impl Run {
-    pub async fn run(self, config: Config) -> Result<()> {
-        let robot = config
-            .robot(self.deploy.number, self.deploy.wired)
-            .ok_or(miette!(format!(
-                "Invalid robot specified, number {} is not configured!",
-                self.deploy.number
-            )))?;
-
+    /// Compiles, upload and then runs yggdrasil on one robot.
+    /// This is done interactively so logs can be seen in the terminal.
+    pub async fn run(self, config: SindriConfig) -> Result<()> {
         let local = self.deploy.local;
         let rerun = self.deploy.rerun;
-
         let has_rerun = has_rerun().await;
 
         if rerun && !has_rerun {
@@ -42,11 +37,17 @@ impl Run {
             );
         }
 
-        Deploy {
-            deploy: self.deploy,
+        let ops = RobotOps {
+            sindri_config: config,
+            config: self.deploy.clone(),
+        };
+
+        ops.compile(Output::Verbose).await?;
+
+        if !self.deploy.local {
+            ops.stop_yggdrasil_services().await?;
+            ops.upload(Output::Verbose).await?;
         }
-        .deploy(config)
-        .await?;
 
         let mut envs = Vec::new();
         if self.debug {
@@ -65,6 +66,7 @@ impl Run {
             }
         }
 
+        let robot = ops.get_first_robot()?;
         if local {
             robot
                 .local("./yggdrasil", envs)?

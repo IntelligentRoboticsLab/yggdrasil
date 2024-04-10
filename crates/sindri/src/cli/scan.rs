@@ -5,7 +5,7 @@ use colored::Colorize;
 use miette::{miette, IntoDiagnostic, Result};
 use tokio::{process::Command, task::JoinSet};
 
-use crate::config::{Config, Robot};
+use crate::config::{Robot, SindriConfig};
 
 /// Scan the current network for online robots.
 #[derive(Clone, Debug, Default, Parser)]
@@ -32,7 +32,7 @@ pub struct Scan {
 
 impl Scan {
     /// Scan a range of ips to check if the robots are online
-    pub async fn scan(self, config: Config) -> Result<()> {
+    pub async fn scan(self, config: SindriConfig) -> Result<()> {
         let range = self
             .scan
             .range
