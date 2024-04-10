@@ -110,26 +110,6 @@ impl Deploy {
         find_bin_manifest(&self.deploy.bin)
             .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
 
-        // let pb = ProgressBar::new_spinner();
-        // pb.enable_steady_tick(Duration::from_millis(80));
-        // pb.set_style(
-        //     ProgressStyle::with_template(
-        //         "   {prefix:.green.bold} yggdrasil {msg} {spinner:.green.bold}",
-        //     )
-        //     .unwrap()
-        //     .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
-        // );
-        //
-        // pb.set_message(format!(
-        //     "{}{}, {}{}{}",
-        //     "(release: ".dimmed(),
-        //     "true".red(),
-        //     "target: ".dimmed(),
-        //     ROBOT_TARGET.bold(),
-        //     ")".dimmed()
-        // ));
-        // pb.set_prefix("Compiling");
-
         let mut features = vec![];
         if self.deploy.alsa {
             features.push("alsa");
@@ -147,7 +127,6 @@ impl Deploy {
             Some(ROBOT_TARGET)
         };
 
-        println!("test");
         // Build yggdrasil with cargo
         cargo::build(
             "yggdrasil",
@@ -158,66 +137,49 @@ impl Deploy {
         )
         .await?;
 
-        // pb.println(format!(
-        //     "{} {} {}{}, {}{}{}",
-        //     "   Compiling".green().bold(),
-        //     "yggdrasil".bold(),
-        //     "(release: ".dimmed(),
-        //     "true".red(),
-        //     "target: ".dimmed(),
-        //     ROBOT_TARGET.bold(),
-        //     ")".dimmed()
-        // ));
-        //
-        // pb.println(format!(
-        //     "{} in {}",
-        //     "    Finished".green().bold(),
-        //     HumanDuration(pb.elapsed()),
-        // ));
-        // pb.reset_elapsed();
-        //
-        // let release_path = if self.deploy.local {
-        //     RELEASE_PATH_LOCAL
-        // } else {
-        //     RELEASE_PATH_REMOTE
-        // };
-        //
-        // // Copy over the files that need to be deployed
-        // fs::copy(release_path, DEPLOY_PATH)
-        //     .into_diagnostic()
-        //     .wrap_err("Failed to copy binary to deploy directory!")?;
-        //
-        // if self.deploy.local {
-        //     return Ok(());
-        // }
-        //
-        // // Check if the robot exists
-        // let robot = config
-        //     .robot(self.deploy.number, self.deploy.wired)
-        //     .ok_or(miette!(format!(
-        //         "Invalid robot specified, number {} is not configured!",
-        //         self.deploy.number
-        //     )))?;
-        //
-        // pb.set_style(
-        //     ProgressStyle::with_template("   {prefix:.blue.bold} {msg} {spinner:.blue.bold}")
-        //         .unwrap()
-        //         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
-        // );
-        //
-        // pb.set_prefix("Deploying");
-        // pb.set_message(format!("{}", "Preparing deployment...".dimmed()));
-        //
-        // deploy_to_robot(&pb, robot.ip())
-        //     .await
-        //     .wrap_err("Failed to deploy yggdrasil files to robot")?;
-        //
-        // pb.println(format!(
-        //     "{} in {}",
-        //     "  Deployed to robot".bold(),
-        //     HumanDuration(pb.elapsed()),
-        // ));
-        // pb.finish_and_clear();
+        let release_path = if self.deploy.local {
+            RELEASE_PATH_LOCAL
+        } else {
+            RELEASE_PATH_REMOTE
+        };
+
+        // Copy over the files that need to be deployed
+        fs::copy(release_path, DEPLOY_PATH)
+            .into_diagnostic()
+            .wrap_err("Failed to copy binary to deploy directory!")?;
+
+        if self.deploy.local {
+            return Ok(());
+        }
+
+        // Check if the robot exists
+        let robot = config
+            .robot(self.deploy.number, self.deploy.wired)
+            .ok_or(miette!(format!(
+                "Invalid robot specified, number {} is not configured!",
+                self.deploy.number
+            )))?;
+
+        let pb = ProgressBar::new_spinner();
+        pb.set_style(
+            ProgressStyle::with_template("   {prefix:.blue.bold} {msg} {spinner:.blue.bold}")
+                .unwrap()
+                .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
+        );
+
+        pb.set_prefix("Deploying");
+        pb.set_message(format!("{}", "Preparing deployment...".dimmed()));
+
+        deploy_to_robot(&pb, robot.ip())
+            .await
+            .wrap_err("Failed to deploy yggdrasil files to robot")?;
+
+        pb.println(format!(
+            "{} in {}",
+            "  Deployed to robot".bold(),
+            HumanDuration(pb.elapsed()),
+        ));
+        pb.finish_and_clear();
 
         Ok(())
     }

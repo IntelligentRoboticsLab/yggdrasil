@@ -57,25 +57,19 @@ where
     E: IntoIterator<Item = (S, S)> + Debug + Clone,
     S: AsRef<OsStr>,
 {
-    let mut cmd = Command::new("cargo");
-    cmd.args(args);
-    cmd.envs(envs);
-    cmd.stdout(Stdio::inherit());
-    cmd.stderr(Stdio::inherit());
-    let child = cmd.spawn();
-    child.expect("Could not spawn").wait().await?;
-    // child.
-    // child.
-    // .stderr(Stdio::piped())
-    // .args(["--color", "always"]) // always pass color, cargo doesn't pass color when it detects it's piped
-    // .spawn_as
-    // .await?;
+    let output = Command::new("cargo")
+        .args(args)
+        .envs(envs)
+        .stderr(Stdio::inherit())
+        .args(["--color", "always"]) // always pass color, cargo doesn't pass color when it detects it's piped
+        .spawn()
+        .map_err(|e| CargoError::Execution(e.to_string()))?
+        .wait()
+        .await?;
 
-    // if !output.status.success() {
-    //     // build failed for whatever reason, print to stdout
-    //     let stderr = String::from_utf8(output.stderr)?;
-    //     return Err(CargoError::Execution(stderr));
-    // }
+    if !output.success() {
+        return Err(CargoError::Execution("Failed compilation".to_string()));
+    }
 
     Ok(())
 }
@@ -109,9 +103,7 @@ pub async fn build(
         cargo_args.push(feature_string.as_str());
     }
 
-    cargo(cargo_args, envs.unwrap_or_default()).await;
-    println!("building done?");
-    Ok(())
+    cargo(cargo_args, envs.unwrap_or_default()).await
 }
 
 pub fn find_bin_manifest(bin: &str) -> Result<cargo_toml::Manifest, CargoError> {
