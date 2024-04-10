@@ -25,13 +25,26 @@ pub struct Movement {
     pub duration: Duration,
 }
 
+/// An enum containing the possible interpolation types for a motion.
+///
+/// # Notes
+/// - New interpolation type implementations should be added as new variants to this enum.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum InterpolationType {
     Linear,
+    // TODO
     SmoothIn,
+    // TODO
     SmoothOut,
 }
 
+/// An enum containing the possible variables that can be used as conditions
+/// for entering a submotion for a robot.
+///
+/// # Notes
+/// - New conditional variables should be added as new variants to this enum.
+///   Furthermore, the implementation for checking this variable should be added
+///   to the 'check_condition' function in 'motion_manager'.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ConditionalVariable {
     GyroscopeX,
@@ -40,6 +53,13 @@ pub enum ConditionalVariable {
     AngleY,
 }
 
+/// An enum containing the failroutines that the robot can execute when it fails
+/// to satisfy a condition for entering a submotion.
+///
+/// # Notes
+/// - New failroutines should be added as new variants to this enum.
+///   Furthermore, the implementation for executing this failroutine should be added
+///   to the 'select_routine' function in 'motion_manager'.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum FailRoutine {
     Retry,
@@ -47,6 +67,8 @@ pub enum FailRoutine {
     Catch,
 }
 
+/// Stores information about a single conditional variable, keeping track
+/// of the minimum and maximum value the variable is allowed to take.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MotionCondition {
     pub variable: ConditionalVariable,
@@ -54,32 +76,54 @@ pub struct MotionCondition {
     pub max: f32,
 }
 
+/// Stores information about the different chosen motion settings.
+///
+/// # Notes
+/// - Currently this struct only contains information about the
+///   regular order of the submotions and the interpolation type used.
+/// - New motion settings should be added here as a new property.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MotionSettings {
     pub interpolation_type: InterpolationType,
-    pub wait_time: f32,
     pub motion_order: Vec<String>,
 }
 
+/// Stores information about a submotion.
+///
+/// # Notes
+/// - Currently does not use the chest angle bound variables,
+///   but this will be implemented soon(tm).
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SubMotion {
+    /// Joint stiffness of the submotion.
     pub joint_stifness: f32,
+    /// TODO, upper limit for angle variable.
     pub chest_angle_bound_upper: f32,
+    /// TODO, lower limit for angle variable.
     pub chest_angle_bound_lower: f32,
+    /// Amount of time in seconds that the submotion will wait after finishing.
     pub exit_waittime: f32,
+    /// Routine that the robot will execute if the current submotion fails.
     pub fail_routine: FailRoutine,
+    /// Conditions the robot must fulfill to be able to enter the submotion.
     pub conditions: Vec<MotionCondition>,
+    /// The keyframes which comprise the submotion.
     pub keyframes: Vec<Movement>,
 }
 
+/// Stores information about a motion.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Motion {
+    /// Motion settings connected to the current motion.
     pub motion_settings: MotionSettings,
+    /// The different submotions contained in the motion.
     pub submotions: HashMap<String, SubMotion>,
 }
 
 impl Motion {
-    /// Initializes a motion from a motion file. Uses serde for deserialization.
+    /// Initializes a motion from a motion config file. Uses serde for deserialization.
+    /// Generates the appropriate motion file from a motion config file if this file
+    /// is not present. Otherwise, uses the existing motion file.
     ///
     /// # Arguments
     ///
@@ -88,8 +132,7 @@ impl Motion {
         let motion_path = path.with_extension("json");
 
         // checking whether the specified complex motion file has been generated
-        // if !motion_path.exists() {
-        if true {
+        if !motion_path.exists() {
             // if not, we generate it based on the existing config file
             let motion_config_data = std::fs::read_to_string(path).into_diagnostic()?;
             let config: MotionSettings =
@@ -138,7 +181,7 @@ impl Motion {
         }
     }
 
-    /// Returns the next position the robot should be in by interpolating between the previous and next keyframe.
+    /// Returns the next position the robot should be in next by interpolating between the previous and next keyframe.
     ///
     /// # Arguments
     ///
@@ -184,8 +227,29 @@ impl Motion {
         ));
     }
 
+    /// Returns the first movement the robot would make for the current submotion.
+    ///
+    /// # Arguments
+    ///
+    /// * `submotion_name` - name of the current submotion.
     pub fn initial_movement(&self, submotion_name: &String) -> &Movement {
         return &self.submotions[submotion_name].keyframes[0];
+    }
+
+    /// Helper function for editing the duration variable for the first movement.
+    /// This can be helpfull when preventing the robot from moving to the initial
+    /// position with a dangerous speed.
+    ///
+    /// # Arguments
+    ///
+    /// * `submotion_name` - name of the current submotion.
+    /// * `duration` - new duration for the initial movement.
+    pub fn set_initial_duration(&mut self, submotion_name: &String, duration: Duration) {
+        self.submotions
+            .get_mut(submotion_name)
+            .expect("Submotion not present")
+            .keyframes[0]
+            .duration = duration;
     }
 }
 

@@ -80,20 +80,8 @@ pub struct WalkingEngineModule;
 impl Module for WalkingEngineModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
-            .init_config::<WalkingEngineConfig>()?
-            .init_resource::<SwingFoot>()?
-            .add_startup_system(init_walking_engine)?
-            .add_system_chain((
-                toggle_walking_engine
-                    .after(filter::button::button_filter)
-                    .before(primary_state::update_primary_state),
-                run_walking_engine
-                    .after(filter::fsr::force_sensitive_resistor_filter)
-                    .after(filter::imu::imu_filter)
-                    .after(nao::write_hardware_info)
-                    .after(nao::update_cycle_stats),
-                update_swing_side,
-            )))
+            // .init_config::<WalkingEngineConfig>()?
+            .init_resource::<SwingFoot>()?)
     }
 }
 

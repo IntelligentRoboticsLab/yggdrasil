@@ -9,6 +9,7 @@ use std::path::Path;
 use std::time::Instant;
 use tyr::prelude::*;
 
+/// Stores information about the currently active motion.
 #[derive(Clone)]
 pub struct ActiveMotion {
     /// Current motion.
@@ -35,7 +36,9 @@ impl ActiveMotion {
         None
     }
 
-    /// Returns the next submotion to be executed.
+    /// Returns the next submotion to be executed, based on whether
+    /// or not the different conditions for the next submotion are
+    /// satisfied.
     ///
     /// # Arguments
     ///
@@ -59,7 +62,7 @@ impl ActiveMotion {
             }
         }
 
-        println!("\n\nTransition");
+        // if all conditions are satisfied, we simply move to the next submotion
         self.cur_sub_motion = (submotion_name, self.cur_sub_motion.1 + 1);
         self.cur_keyframe_index = 0;
         self.movement_start = Instant::now();
@@ -71,15 +74,15 @@ impl ActiveMotion {
 /// Manages motions, stores all possible motions and keeps track of information
 /// about the motion that is currently being executed.
 pub struct MotionManager {
-    /// Keeps track of information about the active motion.
+    /// Stores the currently active motion.
     pub active_motion: Option<ActiveMotion>,
     /// Keeps track of when the execution of a motion started.
     pub motion_execution_starting_time: Option<Instant>,
     // Keeps track of when the execution of the current submotion started.
     pub submotion_execution_starting_time: Option<Instant>,
-    // TODO
+    /// Keeps track of when the current submotion has finished
     pub submotion_finishing_time: Option<Instant>,
-    // TODO
+    // Keeps track of the source position from which the robot began executing a motion.
     pub source_position: Option<JointArray<f32>>,
     /// Contains the mapping from `MotionTypes` to `Motion`.
     pub motions: HashMap<MotionType, Motion>,
@@ -93,11 +96,6 @@ impl Default for MotionManager {
 
 impl MotionManager {
     /// Initializes a `MotionManger`.
-    ///
-    /// # Arguments
-    ///
-    /// * `motions` - A mapping from motion types to the files where the
-    ///               motions are stored.
     pub fn new() -> Self {
         MotionManager {
             active_motion: None,
@@ -121,6 +119,7 @@ impl MotionManager {
         Ok(())
     }
 
+    /// Helper function for easily stopping the currently active motion.
     pub fn stop_motion(&mut self) {
         self.active_motion = None;
         self.motion_execution_starting_time = None;

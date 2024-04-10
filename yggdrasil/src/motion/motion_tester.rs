@@ -1,8 +1,15 @@
-use crate::filter::button::HeadButtons;
+use crate::{
+    filter::{
+        button::HeadButtons,
+        falling::{Fall, FallState, LyingDirection},
+    },
+    nao::manager::{NaoManager, Priority},
+    primary_state::PrimaryState,
+};
 use miette::Result;
 use nidhogg::{
     types::{FillExt, JointArray},
-    NaoControlMessage,
+    NaoState,
 };
 // use tokio::io::AsyncBufReadExt;
 use tyr::prelude::*;
@@ -22,15 +29,34 @@ impl Module for MotionTester {
 fn debug_testmotion(
     head_button: &mut HeadButtons,
     mmng: &mut MotionManager,
-    nao_control_message: &mut NaoControlMessage,
+    nao_state: &NaoState,
+    nao_manager: &mut NaoManager,
+    state: &PrimaryState,
+    fall: &Fall,
 ) -> Result<()> {
     if head_button.middle.is_tapped() {
-        println!("MOTION ACTIVATED");
-        mmng.start_new_motion(MotionType::StandupStomach)
+        println!("{:?}", state);
+        match fall.state {
+            FallState::Lying(LyingDirection::FacingDown) => {
+                println!("MOTION ACTIVATED: StandupStomach");
+                mmng.start_new_motion(MotionType::StandupStomach)
+            }
+            FallState::Lying(LyingDirection::FacingUp) => {
+                println!("MOTION ACTIVATED: StandupBack");
+                mmng.start_new_motion(MotionType::StandupBack)
+            }
+            _ => {
+                print!("Not lying down\n");
+            }
+        }
     } else if head_button.rear.is_tapped() {
         println!("MOTION SLOPPY");
         mmng.stop_motion();
-        nao_control_message.stiffness = JointArray::<f32>::fill(-1.0);
+        nao_manager.set_all(
+            nao_state.position.clone(),
+            JointArray::<f32>::fill(-1.0),
+            Priority::Critical,
+        );
     }
     Ok(())
 }

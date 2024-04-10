@@ -1,6 +1,6 @@
 use self::odometry::Odometry;
+use crate::kinematics;
 use crate::nao::write_hardware_info;
-use crate::{kinematics, prelude::*};
 use miette::Result;
 use tyr::prelude::*;
 
@@ -28,7 +28,7 @@ impl Module for MotionModule {
             .add_system_chain((
                 odometry::update_odometry.after(kinematics::update_kinematics),
                 odometry::log_odometry,
-            ))?
+            ))
             .add_module(MotionTester)?
             .add_startup_system(motion_manager_initializer)?
             .add_system(motion_executer.after(write_hardware_info)))

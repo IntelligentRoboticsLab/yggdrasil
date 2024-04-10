@@ -174,6 +174,33 @@ impl NaoManager {
         self.head_settings.priority = None;
     }
 
+    pub fn set_all(
+        &mut self,
+        joint_positions: JointArray<JointValue>,
+        joint_stiffness: JointArray<JointValue>,
+        priority: Priority,
+    ) -> &mut Self {
+        self.set_head(
+            joint_positions.head_joints(),
+            joint_stiffness.head_joints(),
+            priority.clone(),
+        );
+
+        self.set_arms(
+            joint_positions.arm_joints(),
+            joint_stiffness.arm_joints(),
+            priority.clone(),
+        );
+
+        self.set_legs(
+            joint_positions.leg_joints(),
+            joint_stiffness.leg_joints(),
+            priority,
+        );
+
+        self
+    }
+
     /// Sets the joint position and stiffness of the leg joints.
     ///
     /// The joint positions are degrees in radians.
@@ -375,7 +402,7 @@ impl NaoManager {
 /// Priority order for the nao manager commands.
 ///
 /// Priories are in the range [0, 100].
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub enum Priority {
     /// Has priority `10`.
     #[default]
