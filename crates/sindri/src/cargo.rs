@@ -2,6 +2,7 @@ use std::{ffi::OsStr, fmt::Debug, result::Result, string::FromUtf8Error};
 
 use miette::Diagnostic;
 
+use std::process::Stdio;
 use thiserror::Error;
 use tokio::process::Command;
 
@@ -56,18 +57,25 @@ where
     E: IntoIterator<Item = (S, S)> + Debug + Clone,
     S: AsRef<OsStr>,
 {
-    let output = Command::new("cargo")
-        .args(args)
-        .args(["--color", "always"]) // always pass color, cargo doesn't pass color when it detects it's piped
-        .envs(envs)
-        .output()
-        .await?;
+    let mut cmd = Command::new("cargo");
+    cmd.args(args);
+    cmd.envs(envs);
+    cmd.stdout(Stdio::inherit());
+    cmd.stderr(Stdio::inherit());
+    let child = cmd.spawn();
+    child.expect("Could not spawn").wait().await?;
+    // child.
+    // child.
+    // .stderr(Stdio::piped())
+    // .args(["--color", "always"]) // always pass color, cargo doesn't pass color when it detects it's piped
+    // .spawn_as
+    // .await?;
 
-    if !output.status.success() {
-        // build failed for whatever reason, print to stdout
-        let stderr = String::from_utf8(output.stderr)?;
-        return Err(CargoError::Execution(stderr));
-    }
+    // if !output.status.success() {
+    //     // build failed for whatever reason, print to stdout
+    //     let stderr = String::from_utf8(output.stderr)?;
+    //     return Err(CargoError::Execution(stderr));
+    // }
 
     Ok(())
 }
@@ -101,7 +109,9 @@ pub async fn build(
         cargo_args.push(feature_string.as_str());
     }
 
-    cargo(cargo_args, envs.unwrap_or_default()).await
+    cargo(cargo_args, envs.unwrap_or_default()).await;
+    println!("building done?");
+    Ok(())
 }
 
 pub fn find_bin_manifest(bin: &str) -> Result<cargo_toml::Manifest, CargoError> {
