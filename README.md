@@ -50,7 +50,7 @@ sudo apt-get install cmake libasound2-dev libv4l-dev nasm
 **Arch**
 
 ```bash
-sudo pacman -S alsa-lib v4l-utils nasm
+sudo pacman -S cmake alsa-lib v4l-utils nasm
 ```
 
 ### macOS
