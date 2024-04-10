@@ -65,6 +65,8 @@ pub fn motion_executer(
             );
             if duration > &min_duration {
                 println!("MOTION TOO QUICK!");
+
+                // editing the movement duration to prevent dangerously quick movements
                 motion_manager
                     .active_motion
                     .as_mut()
