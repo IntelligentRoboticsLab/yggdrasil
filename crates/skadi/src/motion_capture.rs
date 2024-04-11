@@ -2,7 +2,7 @@ use std::ops::{Index, IndexMut};
 use std::{path::PathBuf, time::Duration};
 
 use miette::{IntoDiagnostic, Result};
-use nidhogg::types::{ArmJoints, ArmJointsBuilder, LeftArmJoints, LeftLegJoints, RightLegJoints, LegJoints, RightArmJoints, HeadJoints, SingleArmJoints};
+use nidhogg::types::{ArmJoints, LeftArmJoints, LeftLegJoints, RightLegJoints, LegJoints, RightArmJoints, HeadJoints};
 use nidhogg::{
     types::{FillExt, JointArray},
     NaoControlMessage, NaoState,
@@ -12,7 +12,7 @@ use serde_json;
 use std::fs::File;
 use std::path::Path;
 use yggdrasil::filter::button::{HeadButtons, LeftFootButtons, RightFootButtons};
-use yggdrasil::{motion, prelude::*};
+use yggdrasil::prelude::*;
 
 pub struct Sk;
 
@@ -72,14 +72,13 @@ pub struct MotionCapResources {
     pub motion_counter: u32,
     pub currentmotion: SubMotion,
     pub submotion_path: PathBuf,
-    // pub jointstatus: Vec<JointSelection>,
     pub selected_group: usize,
     pub joint_groups: JointGroups,
 }
 
 
 #[derive(Default, Debug)]
-struct JointGroups {
+pub struct JointGroups {
     fullbody: bool,
     botharms: bool,
     bothlegs: bool,
