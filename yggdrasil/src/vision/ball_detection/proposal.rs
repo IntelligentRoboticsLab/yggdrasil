@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 
 use nalgebra::Point2;
 use nidhogg::types::color;
 
 use crate::{
-    camera::{matrix::CameraMatrices, Image},
+    camera::{matrix::CameraMatrices, Image, TopImage},
     debug::DebugContext,
     prelude::*,
     vision::{
@@ -350,9 +350,9 @@ fn log_proposals(
 }
 
 #[startup_system]
-fn init_ball_proposals(storage: &mut Storage, grid: &ScanGrid) -> Result<()> {
+fn init_ball_proposals(storage: &mut Storage, image: &TopImage) -> Result<()> {
     let proposals = BallProposals {
-        image: grid.image().clone(),
+        image: image.deref().clone(),
         proposals: Vec::new(),
     };
 
