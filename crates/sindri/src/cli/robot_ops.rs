@@ -173,6 +173,25 @@ mod cross {
 }
 
 impl RobotOps {
+    pub async fn change_network(&self, network: String) -> miette::Result<()> {
+        let mut threads: Vec<_> = Vec::new();
+
+        for robot in self.config.robots.robot_numbers() {
+            let robot = self.get_robot(robot)?;
+            let n = network.clone();
+            let thread = tokio::spawn(async move {
+                change_single_network(robot, n).await.unwrap();
+            });
+            threads.push(thread);
+        }
+
+        for temp_thread in threads {
+            temp_thread.await.into_diagnostic()?;
+        }
+
+        Ok(())
+    }
+
     /// Compile yggdrasil
     pub async fn compile(&self, verbose: Output) -> miette::Result<()> {
         find_bin_manifest(&self.config.bin)
@@ -370,6 +389,31 @@ async fn single_upload(robot: Robot, verbose: Output) -> miette::Result<()> {
         ));
         pb.finish_and_clear();
     }
+
+    Ok(())
+}
+
+/// Modify the default network for a specific robot
+pub async fn change_single_network(robot: Robot, network: String) -> miette::Result<()> {
+    robot
+        .ssh(
+            format!("echo {} > /etc/network_config", network),
+            Vec::<(&str, &str)>::new(),
+            true,
+        )?
+        .wait()
+        .await
+        .into_diagnostic()?;
+
+    robot
+        .ssh(
+            "sudo systemctl restart network_config.service & > /dev/null",
+            Vec::<(&str, &str)>::new(),
+            true,
+        )?
+        .wait()
+        .await
+        .into_diagnostic()?;
 
     Ok(())
 }
