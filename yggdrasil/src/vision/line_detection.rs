@@ -421,7 +421,20 @@ pub fn line_detection_system(
         let top_scan_grid = top_scan_grid.clone();
         let line_detection_data = top_line_detection_data.0.take().unwrap();
         detect_top_lines_task
-            .try_spawn(move || detect_top_lines(line_detection_data, top_scan_grid))
+            .try_spawn(move || {
+                let start = std::time::Instant::now();
+                tracing::info!(
+                    "starting line detection on rayon thread: {}",
+                    rayon::current_thread_index().unwrap_or(0) + 1
+                );
+                let r = detect_top_lines(line_detection_data, top_scan_grid);
+                tracing::info!(
+                    "finished line detection on rayon thread: {}, took {:?}",
+                    rayon::current_thread_index().unwrap_or(0) + 1,
+                    start.elapsed()
+                );
+                r
+            })
             .unwrap();
     }
 

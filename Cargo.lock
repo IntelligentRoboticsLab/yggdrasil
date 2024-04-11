@@ -7877,6 +7877,7 @@ dependencies = [
  "num",
  "odal",
  "openvino",
+ "rayon",
  "rerun",
  "serde",
  "serde_with",

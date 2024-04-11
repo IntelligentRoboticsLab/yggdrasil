@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use crate::prelude::*;
 
 /// A resource that keeps track of the number of cycles since yggdrasil has been running.
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Cycle(pub usize);
 
 /// A resource that keeps track of the time it takes to complete a full cycle of the yggdrasil framework.

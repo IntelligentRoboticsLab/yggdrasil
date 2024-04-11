@@ -98,7 +98,7 @@ fn setup_camera(camera_device: CameraDevice, settings: &CameraSettings) -> Resul
     )?)
 }
 
-struct YggdrasilCamera(Arc<Mutex<Camera>>);
+pub struct YggdrasilCamera(Arc<Mutex<Camera>>);
 
 impl YggdrasilCamera {
     fn new(camera: Camera) -> Self {
@@ -127,7 +127,7 @@ impl YggdrasilCamera {
 }
 
 #[derive(Deref, DerefMut)]
-struct TopCamera(YggdrasilCamera);
+pub struct TopCamera(YggdrasilCamera);
 
 impl TopCamera {
     fn new(config: &CameraConfig) -> Result<Self> {
@@ -139,7 +139,7 @@ impl TopCamera {
 }
 
 #[derive(Deref, DerefMut)]
-struct BottomCamera(YggdrasilCamera);
+pub struct BottomCamera(YggdrasilCamera);
 
 impl BottomCamera {
     fn new(config: &CameraConfig) -> Result<Self> {
@@ -193,7 +193,7 @@ impl BottomImage {
 }
 
 #[system]
-fn camera_system(
+pub fn camera_system(
     top_camera: &mut TopCamera,
     bottom_camera: &mut BottomCamera,
     top_image: &mut TopImage,

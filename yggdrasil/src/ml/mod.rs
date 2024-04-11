@@ -84,6 +84,7 @@ impl<M: MlModel> MlTask<M> {
     /// * The task was not yet finished from a previous call.
     /// * Inference could not be started for some internal reason.
     pub fn try_start_infer(&mut self, input: &[M::InputType]) -> Result<()> {
+        // let size = input.len();
         let infer_req = self.model.request_infer(input)?;
 
         self.task.try_spawn_blocking(|| infer_req.run())?;

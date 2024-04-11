@@ -120,14 +120,62 @@ impl DebugContext {
     pub fn log_ndarray_image(
         &self,
         path: impl AsRef<str>,
+        image: Cycle,
+        img: ndarray::Array3<f32>,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&image);
+            let img = rerun::Image::try_from(img).into_diagnostic()?;
+            self.rec.log(path.as_ref(), &img).into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    pub fn log_boxes_2d(
+        &self,
+        path: impl AsRef<str>,
+        centers: impl IntoIterator<Item = (f32, f32)>,
+        sizes: impl IntoIterator<Item = (f32, f32)>,
         image: Image,
-        img: ndarray::Array3<u8>,
+        color: RgbU8,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
             self.set_cycle(&image.cycle());
-            let img = rerun::Image::try_from(img).into_diagnostic()?;
-            self.rec.log(path.as_ref(), &img).into_diagnostic()?;
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Boxes2D::from_centers_and_sizes(centers, sizes),
+                )
+                .into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    pub fn log_box2d_class(
+        &self,
+        path: impl AsRef<str>,
+        center: (f32, f32),
+        half_size: (f32, f32),
+        label: impl AsRef<str>,
+        image: Cycle,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&image);
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Boxes2D::from_centers_and_half_sizes([center], [half_size])
+                        .with_labels([label.as_ref()]),
+                )
+                .into_diagnostic()?;
+
             self.clear_cycle();
         }
 
@@ -306,13 +354,13 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         points: &[(f32, f32)],
-        img: Image,
+        img: Cycle,
         color: RgbU8,
         radius: f32,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&img.cycle());
+            self.set_cycle(&img);
             self.rec
                 .log(
                     path.as_ref(),

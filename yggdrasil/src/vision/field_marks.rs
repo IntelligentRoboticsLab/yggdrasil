@@ -1,4 +1,4 @@
-use std::{num::NonZeroU32, ops::Deref};
+use std::{num::NonZeroU32, ops::Deref, time::Instant};
 
 use fast_image_resize as fr;
 use fr::CropBox;
@@ -71,7 +71,9 @@ fn field_marks_system(
     field_marks_image: &mut FieldMarkImage,
     ctx: &DebugContext,
 ) -> Result<()> {
-    if field_marks.image.timestamp() != lines.1.timestamp() && !model.active() {
+    if field_marks_image.0.cycle() != lines.1.cycle() && !model.active() {
+        // tracing::info!("got new lines, finding field marks!");
+        *field_marks_image = FieldMarkImage(lines.1.clone());
         let top_matrix = matrix.top.clone();
 
         let extended_lines = lines
@@ -113,21 +115,21 @@ fn field_marks_system(
         extended_lines.iter().for_each(|line| {
             extended_lines.iter().for_each(|other_line| {
                 if let Some(intersection) = line.intersection_point(&other_line) {
-                    if line.angle_between(other_line) <= std::f32::consts::FRAC_PI_4 {
+                    if line.angle_between(other_line) >= std::f32::consts::FRAC_PI_4 {
                         possible_intersections.push(intersection);
                     }
                 }
             });
         });
 
-        println!("Possible intersections: {:?}", possible_intersections.len());
+        // println!("Possible intersections: {:?}", possible_intersections.len());
         ctx.log_points2d_for_image_with_radius(
             "top_camera/image/intersections",
             &possible_intersections
                 .iter()
                 .map(|p| (p.x, p.y))
                 .collect::<Vec<_>>(),
-            lines.1.clone(),
+            lines.1.clone().cycle(),
             color::u8::CYAN,
             5.0,
         )?;
@@ -138,19 +140,77 @@ fn field_marks_system(
 
         let intersection = possible_intersections[0];
         let patch = get_patch(intersection, field_marks_image.0.clone());
+        ctx.log_ndarray_image(
+            "top_camera/patch",
+            lines.1.clone().cycle(),
+            Array3::from_shape_vec((32, 32, 1), patch.clone()).unwrap(),
+        )?;
+        // tracing::info!("starting field marks!");
         if let Ok(()) = model.try_start_infer(&patch) {
             // We need to keep track of the image we started the inference with
             //
             // TODO: We should find a better way to do this bundling of mltask + metadata
-            *field_marks_image = FieldMarkImage(lines.1.clone());
+            let now = Instant::now();
+            // tracing::info!("Started field marks inference");
+            loop {
+                if let Ok(Some(result)) = model.poll::<Vec<f32>>().transpose() {
+                    tracing::info!("inference took: {:?}", now.elapsed(),);
+                    let res = softmax(&result);
+                    let max_idx = argmax(&res);
+                    // tracing::info!("got result: {:?}, argmax: {}", res, max_idx);
+
+                    let class = match (max_idx, res[max_idx] >= 0.8) {
+                        (0, true) => "L",
+                        (1, true) => "T",
+                        (2, true) => "X",
+                        _ => "UNK",
+                    };
+
+                    ctx.log_box2d_class(
+                        "top_camera/image/patch",
+                        (intersection[0], intersection[1]),
+                        (16.0, 16.0),
+                        class,
+                        field_marks_image.0.cycle(),
+                    )?;
+                    break;
+                }
+            }
         };
     }
 
-    if let Some(result) = model.poll::<Vec<f32>>().transpose()? {
-        tracing::info!("Field marks result: {:?}", result);
+    Ok(())
+}
+
+fn argmax(v: &Vec<f32>) -> usize {
+    let mut max_idx = 0;
+    let mut max_val = v[0];
+
+    for (i, &val) in v.iter().enumerate() {
+        if val > max_val {
+            max_val = val;
+            max_idx = i;
+        }
     }
 
-    Ok(())
+    max_idx
+}
+
+fn softmax(v: &Vec<f32>) -> Vec<f32> {
+    let mut sum = 0.0;
+    let mut result = Vec::new();
+
+    for &x in v {
+        let e = x.exp();
+        sum += e;
+        result.push(e);
+    }
+
+    for x in result.iter_mut() {
+        *x /= sum;
+    }
+
+    result
 }
 
 fn get_patch(point: Point2<f32>, image: Image) -> Vec<f32> {

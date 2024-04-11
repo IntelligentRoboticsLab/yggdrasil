@@ -19,7 +19,7 @@ pub struct ScanLinesModule;
 
 impl Module for ScanLinesModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(scan_lines_system)
+        app.add_system(scan_lines_system.after(crate::camera::camera_system))
             .add_startup_system(init_buffers)
     }
 }

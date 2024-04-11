@@ -23,7 +23,7 @@ pub struct AudioInputModule;
 impl Module for AudioInputModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_task::<ComputeTask<Result<AudioSample>>>()?
-            .add_system(dispatch_buffer)
+            // .add_system(dispatch_buffer)
             .add_resource(Resource::new(AudioInput::new()?))
     }
 }
