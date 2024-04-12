@@ -83,7 +83,7 @@ pub fn log_odometry(odometry: &Odometry, dbg: &DebugContext) -> Result<()> {
         odometry.accumulated.translation.y,
         0.0,
     );
-    dbg.log_arrow3d("/odometry/pose", &[(rotated.x, rotated.y, 0.0)], &[origin])?;
+    dbg.log_arrows3d("/odometry/pose", &[(rotated.x, rotated.y, 0.0)], &[origin])?;
 
     Ok(())
 }

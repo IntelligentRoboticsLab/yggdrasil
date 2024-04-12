@@ -386,7 +386,8 @@ impl DebugContext {
         Ok(())
     }
 
-    pub fn log_arrow3d(
+    /// Log a set of 3D arrows to the debug viewer.
+    pub fn log_arrows3d(
         &self,
         path: impl AsRef<str>,
         vectors: &[(f32, f32, f32)],
@@ -460,33 +461,6 @@ impl DebugContext {
 
         Ok(())
     }
-
-    /// Log a transformation to the entities at the provided path.
-    pub fn log_transformation2(
-        &self,
-        path: impl AsRef<str>,
-        transform: &Isometry3<f32>,
-        // img: Image,
-    ) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            // self.set_cycle(&img.cycle());
-
-            let translation = transform.translation;
-            let rotation = transform.rotation.coords;
-
-            self.rec.log(
-                path.as_ref(),
-                &rerun::Transform3D::from_translation_rotation(
-                    (translation.x, translation.y, translation.z),
-                    rerun::Quaternion([rotation.x, rotation.y, rotation.z, rotation.w]),
-                ),
-            );
-            // self.clear_cycle();
-        }
-
-        Ok(())
-    }
 }
 
 #[startup_system]
@@ -506,15 +480,15 @@ fn init_rerun(storage: &mut Storage) -> Result<()> {
 
     #[cfg(feature = "rerun")]
     {
-        let rec = ctx.rec.clone();
+        ctx.rec
+            .log_timeless(
+                "field/mesh",
+                &rerun::Asset3D::from_file("./assets/rerun/spl_field.glb").unwrap(),
+            )
+            .into_diagnostic()?;
 
-        rec.log_timeless(
-            "field/mesh",
-            &rerun::Asset3D::from_file("./assets/rerun/spl_field.glb").unwrap(),
-        )
-        .into_diagnostic()?;
-
-        rec.log_timeless("field/mesh", &rerun::ViewCoordinates::FLU)
+        ctx.rec
+            .log_timeless("field/mesh", &rerun::ViewCoordinates::FLU)
             .into_diagnostic()?;
     }
 
