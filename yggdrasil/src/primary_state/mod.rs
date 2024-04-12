@@ -60,10 +60,11 @@ pub enum PrimaryState {
 impl PrimaryState {
     /// Tell whether the robot should walk in this state.
     pub fn should_walk(&self) -> bool {
-        !matches!(
-            self,
-            Self::Unstiff | Self::Penalized | Self::Finished | Self::Calibration
-        )
+        // !matches!(
+        //     self,
+        //     Self::Unstiff | Self::Penalized | Self::Finished | Self::Calibration
+        // )
+        true
     }
 }
 
@@ -97,7 +98,6 @@ pub fn update_primary_state(
     // TODO: add penalized state
     // We need the robot's id and check the `RobotInfo` array in the game-controller message, to
     // see if this robot has received a penalty.
-
     let next_primary_state = if is_penalized(
         game_controller_message.as_ref(),
         game_controller_config.team_number,

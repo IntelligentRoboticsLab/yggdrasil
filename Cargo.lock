@@ -2694,7 +2694,7 @@ version = "0.1.0"
 dependencies = [
  "image 0.25.1",
  "linuxvideo",
- "miette 7.2.0",
+ "miette",
  "nalgebra",
  "thiserror",
  "turbojpeg",
@@ -3490,22 +3490,11 @@ version = "5.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59bb584eaeeab6bd0226ccf3509a69d7936d148cf3d036ad350abe35e8c6856e"
 dependencies = [
- "miette-derive 5.10.0",
- "once_cell",
- "thiserror",
- "unicode-width",
-]
-
-[[package]]
-name = "miette"
-version = "7.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4edc8853320c2a0dab800fbda86253c8938f6ea88510dc92c5f1ed20e794afc1"
-dependencies = [
  "backtrace",
  "backtrace-ext",
- "cfg-if",
- "miette-derive 7.2.0",
+ "is-terminal",
+ "miette-derive",
+ "once_cell",
  "owo-colors",
  "supports-color",
  "supports-hyperlinks",
@@ -3521,17 +3510,6 @@ name = "miette-derive"
 version = "5.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49e7bc1560b95a3c4a25d03de42fe76ca718ab92d1a22a55b9b4cf67b3ae635c"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.58",
-]
-
-[[package]]
-name = "miette-derive"
-version = "7.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcf09caffaac8068c346b6df2a7fc27a177fd20b39421a39ce0a211bde679a6c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3728,7 +3706,7 @@ version = "0.1.0"
 source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=ec691b6edc1585a969807c8f3383d1c7d5ccea8d#ec691b6edc1585a969807c8f3383d1c7d5ccea8d"
 dependencies = [
  "forward_ref_generic",
- "miette 5.10.0",
+ "miette",
  "nidhogg_derive",
  "num",
  "rmp-serde",
@@ -4084,7 +4062,7 @@ dependencies = [
 name = "odal"
 version = "0.1.0"
 dependencies = [
- "miette 7.2.0",
+ "miette",
  "serde",
  "thiserror",
  "toml",
@@ -4184,9 +4162,9 @@ dependencies = [
 
 [[package]]
 name = "owo-colors"
-version = "4.0.0"
+version = "3.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "caff54706df99d2a78a5a4e3455ff45448d81ef1bb63c22cd14052ca0e993a3f"
+checksum = "c1b04fb49957986fdce4d6ee7a65027d55d4b6d2265e5848bbb507b58ccfdb6f"
 
 [[package]]
 name = "parking"
@@ -6261,7 +6239,7 @@ dependencies = [
  "home",
  "indicatif",
  "local-ip-address",
- "miette 7.2.0",
+ "miette",
  "regex",
  "serde",
  "serde_json",
@@ -6471,24 +6449,31 @@ checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 
 [[package]]
 name = "supports-color"
-version = "3.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9829b314621dfc575df4e409e79f9d6a66a3bd707ab73f23cb4aa3a854ac854f"
+checksum = "d6398cde53adc3c4557306a96ce67b302968513830a77a95b2b17305d9719a89"
 dependencies = [
+ "is-terminal",
  "is_ci",
 ]
 
 [[package]]
 name = "supports-hyperlinks"
-version = "3.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c0a1e5168041f5f3ff68ff7d95dcb9c8749df29f6e7e89ada40dd4c9de404ee"
+checksum = "f84231692eb0d4d41e4cdd0cabfdd2e6cd9e255e65f80c9aa7c98dd502b4233d"
+dependencies = [
+ "is-terminal",
+]
 
 [[package]]
 name = "supports-unicode"
-version = "3.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7401a30af6cb5818bb64852270bb722533397edcfc7344954a38f420819ece2"
+checksum = "f850c19edd184a205e883199a261ed44471c81e39bd95b1357f5febbef00e77a"
+dependencies = [
+ "is-terminal",
+]
 
 [[package]]
 name = "symphonia"
@@ -6689,19 +6674,19 @@ dependencies = [
 
 [[package]]
 name = "terminal_size"
-version = "0.3.0"
+version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21bebf2b7c9e0a515f6e0f8c51dc0f8e4696391e6f1ff30379559f8365fb0df7"
+checksum = "633c1a546cee861a1a6d0dc69ebeca693bf4296661ba7852b9d21d159e0506df"
 dependencies = [
- "rustix 0.38.32",
- "windows-sys 0.48.0",
+ "libc",
+ "winapi",
 ]
 
 [[package]]
 name = "textwrap"
-version = "0.16.1"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23d434d3f8967a09480fb04132ebe0a3e088c173e6d0ee7897abbdf4eab0f8b9"
+checksum = "b7b3e525a49ec206798b40326a44121291b530c963cfb01018f63e135bac543d"
 dependencies = [
  "smawk",
  "unicode-linebreak",
@@ -7063,7 +7048,7 @@ checksum = "42ff0bf0c66b8238c6f3b578df37d0b7848e55df8577b3f74f92a69acceeb825"
 name = "tyr"
 version = "0.1.0"
 dependencies = [
- "miette 7.2.0",
+ "miette",
  "nidhogg",
  "tokio",
  "tyr_internal",
@@ -7076,7 +7061,7 @@ name = "tyr_internal"
 version = "0.1.0"
 dependencies = [
  "dyn-clone",
- "miette 7.2.0",
+ "miette",
  "petgraph",
 ]
 
@@ -7095,7 +7080,7 @@ name = "tyr_tasks"
 version = "0.1.0"
 dependencies = [
  "futures",
- "miette 7.2.0",
+ "miette",
  "odal",
  "rayon",
  "serde",
@@ -8149,7 +8134,7 @@ dependencies = [
  "kira",
  "linreg",
  "lstsq",
- "miette 7.2.0",
+ "miette",
  "nalgebra",
  "ndarray",
  "nidhogg",

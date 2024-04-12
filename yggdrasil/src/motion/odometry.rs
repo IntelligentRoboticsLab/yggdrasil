@@ -1,9 +1,9 @@
-use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
-use nidhogg::types::color;
+use nalgebra::{Isometry2, Point2, Translation2, UnitComplex, Vector2};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     debug::DebugContext,
+    filter::orientation::RobotOrientation,
     kinematics::RobotKinematics,
     prelude::*,
     walk::{engine::Side, SwingFoot},
@@ -18,6 +18,7 @@ pub struct OdometryConfig {
 pub struct Odometry {
     pub accumulated: Isometry2<f32>,
     last_left_sole_to_right_sole: Vector2<f32>,
+    last_orientation: UnitComplex<f32>,
 }
 
 impl Odometry {
@@ -31,6 +32,7 @@ impl Odometry {
         config: &OdometryConfig,
         swing_foot: &SwingFoot,
         kinematics: &RobotKinematics,
+        orientation: &RobotOrientation,
     ) {
         let left_sole_to_robot = kinematics.left_sole_to_robot;
         let right_sole_to_robot = kinematics.right_sole_to_robot;
@@ -47,9 +49,11 @@ impl Odometry {
         self.last_left_sole_to_right_sole = left_sole_to_right_sole;
         let scaled_offset = offset.component_mul(&config.scale_factor);
 
-        // TODO: Use the IMU to correct orientation
+        let orientation_offset = self.last_orientation.rotation_to(&orientation.yaw());
+        self.last_orientation = orientation.yaw();
+
         let odometry_offset =
-            Isometry2::from_parts(Translation2::from(scaled_offset), UnitComplex::identity());
+            Isometry2::from_parts(Translation2::from(scaled_offset), orientation_offset);
 
         // update the accumulated odometry
         self.accumulated *= odometry_offset;
@@ -62,20 +66,24 @@ pub fn update_odometry(
     odometry_config: &OdometryConfig,
     swing_foot: &SwingFoot,
     kinematics: &RobotKinematics,
+    orientation: &RobotOrientation,
 ) -> Result<()> {
-    odometry.update(odometry_config, swing_foot, kinematics);
+    odometry.update(odometry_config, swing_foot, kinematics, orientation);
     Ok(())
 }
 
 #[system]
 pub fn log_odometry(odometry: &Odometry, dbg: &DebugContext) -> Result<()> {
-    let accumulated = odometry.accumulated.translation;
-    let accumulated = (accumulated.x, accumulated.y, 0.0);
-    dbg.log_points_3d_with_color_and_radius(
-        "/odometry/accumulated",
-        &[accumulated],
-        color::u8::RED,
-        0.05,
-    )?;
+    let rotated = odometry
+        .accumulated
+        .rotation
+        .transform_point(&Point2::new(0.1, 0.0));
+    let origin = (
+        odometry.accumulated.translation.x,
+        odometry.accumulated.translation.y,
+        0.0,
+    );
+    dbg.log_arrow3d("/odometry/pose", &[(rotated.x, rotated.y, 0.0)], &[origin])?;
+
     Ok(())
 }

@@ -24,7 +24,7 @@ kira = "0.8.7"
 linreg = "0.2.0"
 linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git", rev = "a66c7c23dbdafcd9b129744d7716820a979af48d" }
 local-ip-address = "0.6.1"
-miette = "7.2.0"
+miette = "5.10.0"
 nalgebra = "0.32.5"
 ndarray = "0.15.6"
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "ec691b6edc1585a969807c8f3383d1c7d5ccea8d" }

@@ -187,7 +187,7 @@ impl WalkingEngine {
                 Some(WalkState::Stopping)
             }
             (WalkRequest::Walk(requested_step), WalkState::Idle(_) | WalkState::Stopping) => {
-                Some(WalkState::Walking(*requested_step))
+                Some(WalkState::Starting(*requested_step))
             }
             (WalkRequest::Walk(requested_step), state) => match state {
                 WalkState::Starting(current_step) if current_step != requested_step => {

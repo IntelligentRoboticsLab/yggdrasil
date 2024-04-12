@@ -65,7 +65,7 @@ pub struct Context<'a> {
 ///         &mut self,
 ///         context: Context,
 ///         nao_manager: &mut NaoManager,
-///         walking_engine: &mut WalkingEngine
+///         walking_engine: &mut WalkingEngine,
 ///     ) {
 ///         // Dance like nobody's watching 🕺!
 ///     }

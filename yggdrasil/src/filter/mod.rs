@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 use self::{
     button::ButtonFilter, falling::FallingFilter, fsr::FSRFilter, imu::IMUFilter,
-    sonar::SonarFilter,
+    orientation::OrientationFilter, sonar::SonarFilter,
 };
 
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,7 @@ pub mod fsr;
 pub mod imu;
 /// A simple low pass smoothing filter.
 pub mod low_pass_filter;
+pub mod orientation;
 pub mod sonar;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -47,6 +48,7 @@ impl Module for FilterModule {
             .add_module(ButtonFilter)?
             .add_module(FSRFilter)?
             .add_module(IMUFilter)?
+            .add_module(OrientationFilter)?
             .add_module(FallingFilter)?
             .add_module(SonarFilter)?;
         Ok(app)
