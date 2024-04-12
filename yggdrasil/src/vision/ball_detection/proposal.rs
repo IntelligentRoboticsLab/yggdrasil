@@ -25,6 +25,10 @@ pub struct BallProposalConfig {
     pub cluster_max_distance: f32,
     /// Ratio of white pixels in the local area around a point to be considered a ball
     pub black_segment_max_gap: usize,
+    /// The proposals are often too low on the ball (possibly caused by shadows?),
+    /// this causes the white ratio in the local area to too low.
+    /// To fix this we offset the center of the proposal to be a bit higher
+    pub center_offset: f32,
 }
 
 /// Module for finding possible ball locations in the top camera image
@@ -200,43 +204,40 @@ fn cluster_centers(clusters: Vec<Vec<Segment>>) -> Vec<Point2<f32>> {
 }
 
 /// Find the ratio of ball colored (white/black) pixels in a local area around a point
-fn local_white_ratio(range_h: usize, range_v: usize, point: Point2<usize>, grid: &ScanGrid) -> f32 {
+fn local_white_ratio(range: usize, point: Point2<usize>, grid: &ScanGrid) -> f32 {
     let mut ball_colored = 0;
     let mut total = 0;
 
     let vertical_scan_lines = grid.vertical();
+    let horizontal_scan_lines = grid.horizontal();
 
     // gap between horizontal pixels
     // TODO: This assumes the gap between vertical scan-lines is constant,
     // but that might not be the case in the future.
-    let gap = grid.width() / vertical_scan_lines.line_ids().len();
+    let h_gap = grid.width() / vertical_scan_lines.line_ids().len();
+    let v_gap = grid.height() / horizontal_scan_lines.line_ids().len();
 
     // TODO: this could be cleaner but I don't care #savage
-    if range_h == 0 {
-        for pixel in &vertical_scan_lines.line(point.x / gap)
-            [point.y.saturating_sub(range_v)..(point.y + range_v).min(grid.height())]
-        {
-            // count the ball colored pixels
-            if matches!(pixel, PixelColor::White) {
-                ball_colored += 1;
-            }
-
-            total += 1;
+    for pixel in &vertical_scan_lines.line(point.x / h_gap)
+        [point.y.saturating_sub(range)..(point.y + range).min(grid.height())]
+    {
+        // count the ball colored pixels
+        if matches!(pixel, PixelColor::White) {
+            ball_colored += 1;
         }
-    } else {
-        // look locally around the point
-        for y in point.y.saturating_sub(range_v)..(point.y + range_v).min(grid.height()) {
-            for x in point.x.saturating_sub(range_h)..(point.x + range_h).min(grid.width()) {
-                let pixel = vertical_scan_lines.line(x / gap)[y];
 
-                // count the ball colored pixels
-                if matches!(pixel, PixelColor::White) {
-                    ball_colored += 1;
-                }
+        total += 1;
+    }
 
-                total += 1;
-            }
+    for pixel in &horizontal_scan_lines.line(point.y / v_gap)
+        [point.y.saturating_sub(range)..(point.y + range).min(grid.width())]
+    {
+        // count the ball colored pixels
+        if matches!(pixel, PixelColor::White) {
+            ball_colored += 1;
         }
+
+        total += 1;
     }
 
     ball_colored as f32 / total as f32
@@ -299,15 +300,16 @@ fn test_proposals(
             // get the distance from the robot to the point in order to scale the area we look around the point
             let magnitude = coord.coords.magnitude();
 
-            Some((center, scale / magnitude))
+            Some((center, scale / magnitude, magnitude))
         })
-        .filter(|&(center, magnitude)| {
-            let range_h = ((magnitude / gap as f32) as usize).min(1);
-            let range_v = magnitude as usize;
+        .filter(|&(center, range, magnitude)| {
+            // TODO: find a better solution for this
+            let offset = (config.center_offset / magnitude) as usize;
+            let adjusted_center = Point2::new(center.x, center.y - offset);
 
-            local_white_ratio(range_h, range_v, center, grid) > config.white_ratio
+            local_white_ratio(range as usize, adjusted_center, grid) > config.white_ratio
         })
-        .map(|(c, _)| c)
+        .map(|(center, _, _)| center)
         .collect::<Vec<_>>()
 }
 

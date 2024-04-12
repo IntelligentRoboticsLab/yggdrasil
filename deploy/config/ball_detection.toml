@@ -7,3 +7,7 @@ bounding_box_scale = 64.0
 cluster_max_distance = 64.0
 # Ratio of white pixels in the local area around a point to be considered a ball
 black_segment_max_gap = 3
+# The proposals are often too low on the ball (possibly caused by shadows?),
+# this causes the white ratio in the local area to be too low.
+# To fix this we offset the center of the proposal to be a bit higher.
+center_offset = 16.0
