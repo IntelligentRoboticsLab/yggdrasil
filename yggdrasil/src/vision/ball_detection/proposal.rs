@@ -2,6 +2,7 @@ use std::{collections::HashMap, ops::Deref};
 
 use nalgebra::Point2;
 use nidhogg::types::color;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     camera::{matrix::CameraMatrices, Image, TopImage},
@@ -13,15 +14,23 @@ use crate::{
     },
 };
 
-/// Maximum gap between black pixels to be considered a new segment
-const BLACK_SEGMENT_MAX_GAP: usize = 3;
-/// Maximum distance between two clusters to be considered the same cluster
-const CLUSTER_MAX_DISTANCE: f32 = 64.0;
-/// Height/width of the bounding box around the ball
-const BOUNDING_BOX_SCALE: f32 = 64.0;
-/// Ratio of white pixels in the local area around a point to be considered a ball
-const WHITE_RATIO: f32 = 0.2;
+/// Configurable values for getting ball proposals during the ball detection pipeline
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BallProposalConfig {
+    /// Maximum gap between black pixels to be considered a new segment
+    pub white_ratio: f32,
+    /// Maximum distance between two clusters to be considered the same cluster
+    pub bounding_box_scale: f32,
+    /// Height/width of the bounding box around the ball
+    pub cluster_max_distance: f32,
+    /// Ratio of white pixels in the local area around a point to be considered a ball
+    pub black_segment_max_gap: usize,
+}
 
+/// Module for finding possible ball locations in the top camera image
+///
+/// It adds the following resources to the app:
+/// - [`BallProposals`]
 pub struct BallProposalModule;
 
 impl Module for BallProposalModule {
@@ -31,12 +40,14 @@ impl Module for BallProposalModule {
     }
 }
 
+/// Points at which a ball may possibly be located
 #[derive(Clone)]
 pub struct BallProposals {
     pub image: Image,
     proposals: Vec<Point2<usize>>,
 }
 
+/// A segment of black pixels in a vertical scanline
 #[derive(Clone, Hash, PartialEq, Eq)]
 struct Segment {
     column_id: usize,
@@ -45,13 +56,20 @@ struct Segment {
 }
 
 impl Segment {
+    /// Check if the segment overlaps with another segment
+    ///
+    /// Overlapping is defined as the segments having at least one pixel in common
     fn overlaps(&self, other: &Segment) -> bool {
         self.start <= other.end && other.start <= self.end
     }
 }
 
 /// Find all black segments in the vertical grid
-fn find_black_segments(grid: &ScanGrid, boundary: &FieldBoundary) -> HashMap<usize, Vec<Segment>> {
+fn find_black_segments(
+    grid: &ScanGrid,
+    boundary: &FieldBoundary,
+    max_gap: usize,
+) -> HashMap<usize, Vec<Segment>> {
     let mut black_segments = HashMap::new();
 
     // For every vertical scanline
@@ -62,7 +80,7 @@ fn find_black_segments(grid: &ScanGrid, boundary: &FieldBoundary) -> HashMap<usi
 
         // Reset found segments in column
         let mut segments = Vec::new();
-        let mut black_dist = BLACK_SEGMENT_MAX_GAP;
+        let mut black_dist = max_gap;
 
         // For every pixel in the column that is below the boundary
         for (row_id, pixel) in column.iter().enumerate().skip(boundary_top as usize) {
@@ -72,8 +90,8 @@ fn find_black_segments(grid: &ScanGrid, boundary: &FieldBoundary) -> HashMap<usi
                 continue;
             }
 
-            // Add to a previous segment
-            if black_dist >= BLACK_SEGMENT_MAX_GAP {
+            // Add to a previous segment if it is close enough to the last black pixel
+            if black_dist >= max_gap {
                 segments.push(Segment {
                     start: row_id,
                     end: row_id,
@@ -94,15 +112,15 @@ fn find_black_segments(grid: &ScanGrid, boundary: &FieldBoundary) -> HashMap<usi
     black_segments
 }
 
-/// Group all segments that overlap if the columns are adjacent into a vec
-fn group_segments(
+/// Cluster all segments of adjacent columns that overlap into a vec
+fn cluster_segments(
     grid: &ScanGrid,
     black_segments: HashMap<usize, Vec<Segment>>,
 ) -> Vec<Vec<Segment>> {
     let column_ids = grid.vertical().line_ids();
 
-    let mut curr_group = 0;
-    let mut group_map = HashMap::new();
+    let mut curr_cluster = 0;
+    let mut cluster_map = HashMap::new();
 
     for i in 0..column_ids.len() {
         let column_id = column_ids[i];
@@ -110,7 +128,7 @@ fn group_segments(
         for segment in black_segments[&column_id].iter() {
             let mut overlapping = false;
 
-            // keep track if we already added this segment to a group
+            // keep track if we already added this segment to a cluster
             // in case of C shaped segments
             let mut already_added = false;
 
@@ -122,60 +140,60 @@ fn group_segments(
                         overlapping = true;
 
                         if already_added {
-                            let group = group_map[segment];
-                            group_map.insert(prev_segment, group);
+                            let cluster = cluster_map[segment];
+                            cluster_map.insert(prev_segment, cluster);
                         } else {
-                            let group = group_map[prev_segment];
-                            group_map.insert(segment, group);
+                            let cluster = cluster_map[prev_segment];
+                            cluster_map.insert(segment, cluster);
                             already_added = true;
                         }
                     }
                 }
             }
 
-            // create a new group if the segment does not overlap with the previous column
+            // create a new cluster if the segment does not overlap with the previous column
             if !overlapping {
-                group_map.insert(segment, curr_group);
-                curr_group += 1;
+                cluster_map.insert(segment, curr_cluster);
+                curr_cluster += 1;
             }
         }
     }
 
-    // turn into vector of groups
-    let mut groups = Vec::new();
+    // turn into vector of clusters
+    let mut clusters = Vec::new();
 
-    for i in 0..curr_group {
-        let group = group_map
+    for i in 0..curr_cluster {
+        let cluster = cluster_map
             .iter()
-            .filter(|(_, &group)| group == i)
+            .filter(|(_, &cluster)| cluster == i)
             .map(|(&segment, _)| segment)
             .cloned()
             .collect::<Vec<_>>();
 
-        if !group.is_empty() {
-            groups.push(group);
+        if !cluster.is_empty() {
+            clusters.push(cluster);
         }
     }
 
-    groups
+    clusters
 }
 
-/// Finds the center of a group of segments
-fn group_centers(groups: Vec<Vec<Segment>>) -> Vec<Point2<f32>> {
-    groups
+/// Finds the center of a cluster of segments
+fn cluster_centers(clusters: Vec<Vec<Segment>>) -> Vec<Point2<f32>> {
+    clusters
         .iter()
-        .map(|group| {
+        .map(|cluster| {
             let mut x = 0.0;
             let mut y = 0.0;
 
-            for segment in group {
+            for segment in cluster {
                 x += segment.column_id as f32;
                 y += (segment.start + segment.end) as f32 / 2.0;
             }
 
             Point2::new(
-                (x / group.len() as f32).round(),
-                (y / group.len() as f32).round(),
+                (x / cluster.len() as f32).round(),
+                (y / cluster.len() as f32).round(),
             )
         })
         .collect()
@@ -224,21 +242,22 @@ fn local_white_ratio(range_h: usize, range_v: usize, point: Point2<usize>, grid:
     ball_colored as f32 / total as f32
 }
 
-// merge cluster centers if they are close to each other
-fn merge_groups(mut centers: Vec<Point2<f32>>) -> Vec<Point2<usize>> {
+/// Merge cluster centers if they are close to each other
+fn merge_clusters(mut centers: Vec<Point2<f32>>, max_distance: f32) -> Vec<Point2<usize>> {
     let mut clusters: Vec<Vec<Point2<f32>>> = Vec::new();
 
     'outer: while let Some(new_center) = centers.pop() {
         for cluster in &mut clusters {
             if cluster
                 .iter()
-                .any(|center| nalgebra::distance(center, &new_center) < CLUSTER_MAX_DISTANCE)
+                .any(|center| nalgebra::distance(center, &new_center) < max_distance)
             {
                 cluster.push(new_center);
                 continue 'outer;
             }
         }
 
+        // new cluster
         clusters.push(vec![new_center]);
     }
 
@@ -257,23 +276,16 @@ fn merge_groups(mut centers: Vec<Point2<f32>>) -> Vec<Point2<usize>> {
         .collect()
 }
 
-#[system]
-fn get_proposals(
-    grid: &TopScanGrid,
-    boundary: &FieldBoundary,
+fn test_proposals(
+    proposals: Vec<Point2<usize>>,
+    grid: &ScanGrid,
     matrices: &CameraMatrices,
-    ball_proposals: &mut BallProposals,
-) -> Result<()> {
+    config: &BallProposalConfig,
+) -> Vec<Point2<usize>> {
     // gap between horizontal pixels
     let gap = grid.width() / grid.vertical().line_ids().len();
 
-    let segments = find_black_segments(grid, boundary);
-    let groups = group_segments(grid, segments);
-    let centers = group_centers(groups);
-
-    let clusters = merge_groups(centers);
-
-    let proposals = clusters
+    proposals
         .into_iter()
         .flat_map(|center| {
             // project point to ground to get distance
@@ -283,20 +295,45 @@ fn get_proposals(
             };
 
             // area to look around the point (half the bounding box size)
-            let scale = BOUNDING_BOX_SCALE * 0.5;
-
+            let scale = config.bounding_box_scale * 0.5;
+            // get the distance from the robot to the point in order to scale the area we look around the point
             let magnitude = coord.coords.magnitude();
 
             Some((center, scale / magnitude))
         })
         .filter(|&(center, magnitude)| {
-            let hrange = ((magnitude / gap as f32) as usize).min(1);
-            let vrange = magnitude as usize;
+            let range_h = ((magnitude / gap as f32) as usize).min(1);
+            let range_v = magnitude as usize;
 
-            local_white_ratio(hrange, vrange, center, grid) > WHITE_RATIO
+            local_white_ratio(range_h, range_v, center, grid) > config.white_ratio
         })
         .map(|(c, _)| c)
-        .collect::<Vec<_>>();
+        .collect::<Vec<_>>()
+}
+
+#[system]
+fn get_proposals(
+    grid: &TopScanGrid,
+    boundary: &FieldBoundary,
+    matrices: &CameraMatrices,
+    ball_proposals: &mut BallProposals,
+    config: &BallProposalConfig,
+) -> Result<()> {
+    // TODO: find better way to do this
+    if ball_proposals.image.timestamp() == grid.image().timestamp() {
+        return Ok(());
+    }
+
+    // find black segments in each of the vertical scanlines
+    let segments = find_black_segments(grid, boundary, config.black_segment_max_gap);
+    // cluster the adjacent segments that overlap
+    let clusters = cluster_segments(grid, segments);
+    // find the center of the clusters
+    let centers = cluster_centers(clusters);
+    // merge the centers that are close to each other
+    let potential_proposals = merge_clusters(centers, config.cluster_max_distance);
+    // test the proposals for their white pixel ratio
+    let proposals = test_proposals(potential_proposals, grid, matrices, config);
 
     *ball_proposals = BallProposals {
         image: grid.image().clone(),
@@ -311,6 +348,7 @@ fn log_proposals(
     dbg: &DebugContext,
     ball_proposals: &BallProposals,
     matrices: &CameraMatrices,
+    config: &BallProposalConfig,
 ) -> Result<()> {
     let mut points = Vec::new();
     let mut sizes = Vec::new();
@@ -323,7 +361,7 @@ fn log_proposals(
 
         let magnitude = coord.coords.magnitude();
 
-        let size = BOUNDING_BOX_SCALE / magnitude;
+        let size = config.bounding_box_scale / magnitude;
 
         points.push((proposal.x as f32, proposal.y as f32));
         sizes.push((size, size));
