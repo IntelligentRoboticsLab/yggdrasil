@@ -131,15 +131,15 @@ impl Motion {
     pub fn from_path(path: &Path) -> Result<Motion> {
         let motion_path = path.with_extension("json");
 
-        // checking whether the specified complex motion file has been generated
+        // checking whether the specified motion json file has been generated
         if !motion_path.exists() {
             // if not, we generate it based on the existing config file
             let motion_config_data = std::fs::read_to_string(path).into_diagnostic()?;
             let config: MotionSettings =
                 toml::de::from_str(&motion_config_data).into_diagnostic()?;
 
-            // based on the gathered config file, we not generate a new Motion
-            let mut complexmotion: Motion = Motion {
+            // based on the gathered config file, we now generate a new Motion
+            let mut motion: Motion = Motion {
                 motion_settings: config.clone(),
                 submotions: HashMap::new(),
             };
@@ -157,27 +157,21 @@ impl Motion {
                 let submotion: SubMotion =
                     serde_json::from_reader(File::open(submotion_path).into_diagnostic()?)
                         .expect("Reading Submotion file during Motion construction");
-                complexmotion
-                    .submotions
-                    .insert(submotion_name.clone(), submotion);
+                motion.submotions.insert(submotion_name.clone(), submotion);
             }
 
             // when the Motion has been created, we save it to the assets/motions folder
-            serde_json::to_writer(
-                &File::create(motion_path).into_diagnostic()?,
-                &complexmotion,
-            )
-            .into_diagnostic()?;
+            serde_json::to_writer(&File::create(motion_path).into_diagnostic()?, &motion)
+                .into_diagnostic()?;
 
-            return Ok(complexmotion);
+            return Ok(motion);
         } else {
             // if the json file for the Motion does exist, simply deserialize and return it
-            match serde_json::from_reader(File::open(motion_path).into_diagnostic()?) {
-                Ok(val) => Ok(val),
-                Err(err) => Err(miette! {
-                   "Could not deserialize json {}: {}", path.display(), err
-                }),
-            }
+            serde_json::from_reader(File::open(motion_path).into_diagnostic()?).map_err(|error| {
+                miette! {
+                   "Could not deserialize json {}: {}", path.display(), error
+                }
+            })
         }
     }
 

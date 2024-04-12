@@ -39,11 +39,11 @@ fn debug_testmotion(
         match fall.state {
             FallState::Lying(LyingDirection::FacingDown) => {
                 println!("MOTION ACTIVATED: StandupStomach");
-                mmng.start_new_motion(MotionType::StandupStomach)
+                mmng.start_new_motion(MotionType::StandupStomach, Priority::High)
             }
             FallState::Lying(LyingDirection::FacingUp) => {
                 println!("MOTION ACTIVATED: StandupBack");
-                mmng.start_new_motion(MotionType::StandupBack)
+                mmng.start_new_motion(MotionType::StandupBack, Priority::High)
             }
             _ => {
                 print!("Not lying down\n");

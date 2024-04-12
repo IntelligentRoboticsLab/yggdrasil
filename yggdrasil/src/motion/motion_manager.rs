@@ -1,6 +1,7 @@
 use crate::motion::motion_types::{
     ConditionalVariable, FailRoutine, Motion, MotionCondition, MotionType,
 };
+use crate::nao::manager::Priority;
 use miette::Result;
 use nidhogg::types::JointArray;
 use nidhogg::NaoState;
@@ -15,25 +16,20 @@ pub struct ActiveMotion {
     /// Current motion.
     pub motion: Motion,
     /// name and index of current submotion being executed
-    pub cur_sub_motion: (String, i32),
+    pub cur_sub_motion: (String, usize),
     /// Current Keyframe index
-    pub cur_keyframe_index: i32,
+    pub cur_keyframe_index: usize,
     /// Current movement starting time
     pub movement_start: Instant,
+    /// Priority of the current motion
+    pub priority: Priority,
 }
 
 impl ActiveMotion {
     /// Fetches the next submotion name to be executed.
-    pub fn get_next_submotion(&self) -> Option<String> {
+    pub fn get_next_submotion(&self) -> Option<&String> {
         let next_index = self.cur_sub_motion.1 as usize + 1;
-
-        // check whether a next submotion exists
-        if self.motion.motion_settings.motion_order.len() >= next_index + 1 {
-            return Some(self.motion.motion_settings.motion_order[next_index].clone());
-        }
-
-        // if no submotion exists, the motion has ended
-        None
+        self.motion.motion_settings.motion_order.get(next_index)
     }
 
     /// Returns the next submotion to be executed, based on whether
@@ -49,13 +45,21 @@ impl ActiveMotion {
         nao_state: &mut NaoState,
         submotion_name: String,
     ) -> Option<ActiveMotion> {
-        let next_submotion = self.motion.submotions[&submotion_name].clone();
+        let next_submotion = self
+            .motion
+            .submotions
+            .get(&submotion_name)
+            .cloned()
+            .expect("Submotion to be transitioned to does not exist.");
 
         for condition in next_submotion.conditions {
             if !check_condition(nao_state, condition) {
                 return select_routine(
                     self.clone(),
-                    self.motion.submotions[&self.cur_sub_motion.0]
+                    self.motion
+                        .submotions
+                        .get(&self.cur_sub_motion.0)
+                        .expect("Current Submotion not present in Activemotion anymore")
                         .fail_routine
                         .clone(),
                 );
@@ -73,6 +77,7 @@ impl ActiveMotion {
 
 /// Manages motions, stores all possible motions and keeps track of information
 /// about the motion that is currently being executed.
+#[derive(Default)]
 pub struct MotionManager {
     /// Stores the currently active motion.
     pub active_motion: Option<ActiveMotion>,
@@ -86,12 +91,6 @@ pub struct MotionManager {
     pub source_position: Option<JointArray<f32>>,
     /// Contains the mapping from `MotionTypes` to `Motion`.
     pub motions: HashMap<MotionType, Motion>,
-}
-
-impl Default for MotionManager {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl MotionManager {
@@ -128,14 +127,21 @@ impl MotionManager {
         self.source_position = None;
     }
 
-    /// Starts a new motion.
+    /// Starts a new motion if currently no motion is being executed.
+    /// Otherwise, it will check whether the new motion has a higher priority.
     ///
     /// # Arguments
     ///
     /// * `motion_type` - The type of motion to start.
-    pub fn start_new_motion(&mut self, motion_type: MotionType) {
+    /// * `priority` - The priority that the motion has.
+    pub fn start_new_motion(&mut self, motion_type: MotionType, priority: Priority) {
         if self.active_motion.is_some() {
-            return;
+            // motions with a higher priority value take priority
+            if priority > self.active_motion.as_ref().unwrap().priority {
+                self.stop_motion();
+            } else {
+                return;
+            }
         }
 
         self.motion_execution_starting_time = None;
@@ -151,12 +157,8 @@ impl MotionManager {
             cur_keyframe_index: 0,
             motion: chosen_motion,
             movement_start: Instant::now(),
+            priority: priority,
         });
-    }
-
-    /// Returns the current motion.
-    pub fn get_active_motion(&mut self) -> Option<ActiveMotion> {
-        self.active_motion.clone()
     }
 }
 

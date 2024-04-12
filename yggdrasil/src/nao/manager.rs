@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     ops::Not,
     time::{Duration, Instant},
 };
@@ -141,9 +142,7 @@ impl NaoManager {
         if current_settings
             .priority
             .as_ref()
-            .is_some_and(|current_priority| {
-                current_priority.priority_value() >= priority.priority_value()
-            })
+            .is_some_and(|current_priority| current_priority >= &priority)
         {
             return;
         }
@@ -157,9 +156,7 @@ impl NaoManager {
         if current_settings
             .priority
             .as_ref()
-            .is_some_and(|current_priority| {
-                current_priority.priority_value() >= priority.priority_value()
-            })
+            .is_some_and(|current_priority| current_priority >= &priority)
         {
             return;
         }
@@ -429,5 +426,17 @@ impl Priority {
                 *value
             }
         }
+    }
+}
+
+impl PartialEq for Priority {
+    fn eq(&self, other: &Self) -> bool {
+        self.priority_value() == other.priority_value()
+    }
+}
+
+impl PartialOrd for Priority {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.priority_value().partial_cmp(&other.priority_value())
     }
 }
