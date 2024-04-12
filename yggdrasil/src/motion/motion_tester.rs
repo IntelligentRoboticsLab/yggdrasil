@@ -4,14 +4,13 @@ use crate::{
         falling::{Fall, FallState, LyingDirection},
     },
     nao::manager::{NaoManager, Priority},
-    primary_state::PrimaryState,
 };
 use miette::Result;
 use nidhogg::{
     types::{FillExt, JointArray},
     NaoState,
 };
-// use tokio::io::AsyncBufReadExt;
+
 use tyr::prelude::*;
 
 use crate::motion::motion_manager::MotionManager;
@@ -31,26 +30,19 @@ fn debug_testmotion(
     mmng: &mut MotionManager,
     nao_state: &NaoState,
     nao_manager: &mut NaoManager,
-    state: &PrimaryState,
     fall: &Fall,
 ) -> Result<()> {
     if head_button.middle.is_tapped() {
-        println!("{:?}", state);
         match fall.state {
             FallState::Lying(LyingDirection::FacingDown) => {
-                println!("MOTION ACTIVATED: StandupStomach");
                 mmng.start_new_motion(MotionType::StandupStomach, Priority::High)
             }
             FallState::Lying(LyingDirection::FacingUp) => {
-                println!("MOTION ACTIVATED: StandupBack");
                 mmng.start_new_motion(MotionType::StandupBack, Priority::High)
             }
-            _ => {
-                print!("Not lying down\n");
-            }
+            _ => {}
         }
     } else if head_button.rear.is_tapped() {
-        println!("MOTION SLOPPY");
         mmng.stop_motion();
         nao_manager.set_all(
             nao_state.position.clone(),

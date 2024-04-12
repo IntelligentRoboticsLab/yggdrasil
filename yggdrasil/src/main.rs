@@ -14,7 +14,7 @@ fn main() -> Result<()> {
     let app = App::new()
         .add_module(NaoModule)?
         .add_module(ConfigModule)?
-        // .add_module(MlModule)?
+        .add_module(MlModule)?
         .add_module(FilterModule)?
         .add_module(KinematicsModule)?
         .add_module(CameraModule)?
@@ -23,7 +23,7 @@ fn main() -> Result<()> {
         .add_module(GameControllerModule)?
         .add_module(WalkingEngineModule)?
         .add_module(DebugModule)?
-        // .add_module(VisionModule)?
+        .add_module(VisionModule)?
         .add_module(MotionModule)?;
 
     #[cfg(feature = "alsa")]

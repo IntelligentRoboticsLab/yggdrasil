@@ -62,7 +62,7 @@ pub fn motion_executer(
 
         // getting the next position for the robot
         if let Some(next_position) = move_to_starting_position(
-            &motion_manager,
+            motion_manager,
             target_position,
             duration,
             &movement_start.elapsed(),
@@ -82,7 +82,7 @@ pub fn motion_executer(
     // set next joint positions
     if let Some(position) = motion.get_position(
         &sub_motion_name,
-        &mut motion_manager.active_motion.as_mut().unwrap(),
+        motion_manager.active_motion.as_mut().unwrap(),
     ) {
         nao_manager.set_all(
             position,
@@ -212,10 +212,10 @@ fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_waittime: f32)
             return false;
         }
 
-        return true;
+        true
     } else {
         motion_manager.submotion_finishing_time = Some(Instant::now());
-        return false;
+        false
     }
 }
 

@@ -164,7 +164,7 @@ impl Motion {
             serde_json::to_writer(&File::create(motion_path).into_diagnostic()?, &motion)
                 .into_diagnostic()?;
 
-            return Ok(motion);
+            Ok(motion)
         } else {
             // if the json file for the Motion does exist, simply deserialize and return it
             serde_json::from_reader(File::open(motion_path).into_diagnostic()?).map_err(|error| {
@@ -189,13 +189,13 @@ impl Motion {
         let keyframes = &self.submotions[current_sub_motion].keyframes;
 
         // Check if we have reached the end of the current submotion
-        if keyframes.len() < active_motion.cur_keyframe_index as usize + 1 {
+        if keyframes.len() < active_motion.cur_keyframe_index + 1 {
             return None;
         }
 
         // if the current movement has been completed:
         if active_motion.movement_start.elapsed().as_secs_f32()
-            > keyframes[active_motion.cur_keyframe_index as usize]
+            > keyframes[active_motion.cur_keyframe_index]
                 .duration
                 .as_secs_f32()
         {
@@ -203,7 +203,7 @@ impl Motion {
             active_motion.cur_keyframe_index += 1;
 
             // Check if there exists a next keyframe
-            if keyframes.len() < active_motion.cur_keyframe_index as usize + 1 {
+            if keyframes.len() < active_motion.cur_keyframe_index + 1 {
                 return None;
             }
 
@@ -211,14 +211,14 @@ impl Motion {
             active_motion.movement_start = Instant::now();
         }
 
-        return Some(lerp(
-            &keyframes[active_motion.cur_keyframe_index as usize - 1].target_position,
-            &keyframes[active_motion.cur_keyframe_index as usize].target_position,
+        Some(lerp(
+            &keyframes[active_motion.cur_keyframe_index - 1].target_position,
+            &keyframes[active_motion.cur_keyframe_index].target_position,
             (active_motion.movement_start.elapsed()).as_secs_f32()
-                / keyframes[active_motion.cur_keyframe_index as usize]
+                / keyframes[active_motion.cur_keyframe_index]
                     .duration
                     .as_secs_f32(),
-        ));
+        ))
     }
 
     /// Returns the first movement the robot would make for the current submotion.
@@ -227,7 +227,7 @@ impl Motion {
     ///
     /// * `submotion_name` - name of the current submotion.
     pub fn initial_movement(&self, submotion_name: &String) -> &Movement {
-        return &self.submotions[submotion_name].keyframes[0];
+        &self.submotions[submotion_name].keyframes[0]
     }
 
     /// Helper function for editing the duration variable for the first movement.

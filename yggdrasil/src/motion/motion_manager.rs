@@ -28,7 +28,7 @@ pub struct ActiveMotion {
 impl ActiveMotion {
     /// Fetches the next submotion name to be executed.
     pub fn get_next_submotion(&self) -> Option<&String> {
-        let next_index = self.cur_sub_motion.1 as usize + 1;
+        let next_index = self.cur_sub_motion.1 + 1;
         self.motion.motion_settings.motion_order.get(next_index)
     }
 
@@ -157,7 +157,7 @@ impl MotionManager {
             cur_keyframe_index: 0,
             motion: chosen_motion,
             movement_start: Instant::now(),
-            priority: priority,
+            priority,
         });
     }
 }
@@ -178,24 +178,6 @@ pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
         MotionType::StandupStomach,
         "./assets/motions/StandupStomach.toml",
     )?;
-    // motion_manager.add_motion(
-    //     MotionType::FallForwards,
-    //     "./assets/motions/fallforwards.json",
-    // )?;
-    // motion_manager.add_motion(
-    //     MotionType::FallBackwards,
-    //     "./assets/motions/fallbackwards.json",
-    // )?;
-    // motion_manager.add_motion(
-    //     MotionType::FallLeftways,
-    //     "./assets/motions/fallleftways.json",
-    // )?;
-    // motion_manager.add_motion(
-    //     MotionType::FallRightways,
-    //     "./assets/motions/fallrightways.json",
-    // )?;
-    // motion_manager.add_motion(MotionType::Neutral, "./assets/motions/neutral.json")?;
-    // motion_manager.add_motion(MotionType::Example, "./assets/motions/example.json")?;
     storage.add_resource(Resource::new(motion_manager))?;
 
     Ok(())
