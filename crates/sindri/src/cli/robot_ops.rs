@@ -1,10 +1,10 @@
 use clap::Parser;
 use colored::Colorize;
-use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
+use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressStyle};
 use miette::{miette, Context, IntoDiagnostic};
 use ssh2::{ErrorCode, OpenFlags, OpenType, Session, Sftp};
 use std::{
-    fs,
+    fs::{self},
     io::BufWriter,
     net::Ipv4Addr,
     path::{Component, Path, PathBuf},
@@ -12,7 +12,7 @@ use std::{
     time::Duration,
 };
 use tokio::{self, net::TcpStream};
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
 use crate::{
     cargo::{self, find_bin_manifest, Profile},
@@ -67,7 +67,7 @@ impl FromStr for RobotEntry {
 
     // Parses robot:player_number pairs. Player numbers are optional, if they are not passed, defaults are used. Valid arguments pairs could be: "23:1" or "24".
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let mut m = s.split(":");
+        let mut m = s.split(':');
         let robot: u8 = m.next().unwrap().parse().into_diagnostic()?;
         let player_number: Option<u8> = m
             .next()
@@ -139,6 +139,13 @@ pub struct RobotOps {
 }
 
 /// Used to indicate whether actions should be verbose or not
+#[derive(Clone)]
+pub enum SindriProgressBar {
+    None,
+    Single(ProgressBar),
+    Multi(MultiProgress, ProgressBar),
+}
+
 #[derive(Clone, Copy)]
 pub enum Output {
     Silent,
@@ -173,7 +180,7 @@ mod cross {
 }
 
 impl RobotOps {
-    pub async fn change_network(&self, network: String) -> miette::Result<()> {
+    pub async fn change_networks(&self, network: String) -> miette::Result<()> {
         let mut threads: Vec<_> = Vec::new();
 
         for robot in self.config.robots.robot_numbers() {
@@ -214,9 +221,7 @@ impl RobotOps {
             Some(ROBOT_TARGET)
         };
 
-        let pb = if matches!(verbose, Output::Silent) {
-            None
-        } else {
+        let pb = if matches!(verbose, Output::Verbose) {
             let pb = ProgressBar::new_spinner();
             pb.enable_steady_tick(Duration::from_millis(80));
             pb.set_style(
@@ -236,6 +241,8 @@ impl RobotOps {
             ));
             pb.set_prefix("Compiling");
             Some(pb)
+        } else {
+            None
         };
 
         cargo::build(
@@ -282,12 +289,24 @@ impl RobotOps {
 
     /// Upload the binary, and other assets to each robot
     pub async fn upload(&self, verbose: Output) -> miette::Result<()> {
-        let mut threads: Vec<_> = Vec::new();
+        let robot_numbers = self.config.robots.robot_numbers();
+        if robot_numbers.len() == 1 {
+            let robot = self.get_robot(robot_numbers[0])?;
+            single_upload(robot, verbose, None).await.unwrap();
+            return Ok(());
+        }
 
-        for robot in self.config.robots.robot_numbers() {
+        let mpb = MultiProgress::new();
+        mpb.println(format!("   {}", "Deploying".green().bold()))
+            .into_diagnostic()?;
+
+        let mut threads: Vec<_> = Vec::new();
+        for robot in robot_numbers {
             let robot = self.get_robot(robot)?;
+            let pb = mpb.clone();
+
             let thread = tokio::spawn(async move {
-                single_upload(robot, verbose).await.unwrap();
+                single_upload(robot, verbose, Some(pb)).await.unwrap();
             });
             threads.push(thread);
         }
@@ -311,11 +330,11 @@ impl RobotOps {
 
     /// Get robot information for a single robot, when there is just a single robot
     pub fn get_first_robot(&self) -> miette::Result<Robot> {
-        self.get_robot(
-            self.config.robots[0]
-                .player_number
-                .ok_or(miette!("Pass at least one robot number as argument"))?,
-        )
+        if self.config.robots.is_empty() {
+            return Err(miette!("Pass at least one robot number as argument"));
+        }
+
+        self.get_robot(self.config.robots[0].robot_number)
     }
 
     /// Start the yggdrasil service on each robot
@@ -358,36 +377,54 @@ impl RobotOps {
 }
 
 /// Upload the binary, and other assets to a specific robot
-async fn single_upload(robot: Robot, verbose: Output) -> miette::Result<()> {
+async fn single_upload(
+    robot: Robot,
+    verbose: Output,
+    mpb: Option<MultiProgress>,
+) -> miette::Result<()> {
     find_bin_manifest(BINARY_NAME)
         .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
 
-    let pb = if matches!(verbose, Output::Verbose) {
-        let pb = ProgressBar::new_spinner();
-        pb.enable_steady_tick(Duration::from_millis(80));
-        pb.set_style(
-            ProgressStyle::with_template("   {prefix:.blue.bold} {msg} {spinner:.blue.bold}")
-                .unwrap()
-                .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
-        );
-        pb.set_prefix("Deploying");
-        pb.set_message(format!("{}", "Preparing deployment...".dimmed()));
-        Some(pb)
-    } else {
-        None
-    };
+    match (verbose, mpb) {
+        (Output::Silent, _) => {
+            upload_to_robot(SindriProgressBar::None, robot.ip())
+                .await
+                .wrap_err("Failed to deploy yggdrasil files to robot")?;
+        }
+        (Output::Verbose, None) => {
+            let pb = ProgressBar::new_spinner();
+            pb.enable_steady_tick(Duration::from_millis(80));
+            pb.set_style(
+                ProgressStyle::with_template("   {prefix:.blue.bold} {msg} {spinner:.blue.bold}")
+                    .unwrap()
+                    .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
+            );
+            pb.set_prefix("Deploying");
+            pb.set_message(format!("{}", "Preparing deployment...".dimmed()));
 
-    upload_to_robot(pb.as_ref(), robot.ip())
-        .await
-        .wrap_err("Failed to deploy yggdrasil files to robot")?;
+            upload_to_robot(SindriProgressBar::Single(pb.clone()), robot.ip())
+                .await
+                .wrap_err("Failed to deploy yggdrasil files to robot")?;
 
-    if let Some(pb) = &pb {
-        pb.println(format!(
-            "{} in {}",
-            "  Uploaded to robot".bold(),
-            HumanDuration(pb.elapsed()),
-        ));
-        pb.finish_and_clear();
+            pb.println(format!(
+                "{} in {}",
+                "  Uploaded to robot".bold(),
+                HumanDuration(pb.elapsed()),
+            ));
+
+            pb.finish_and_clear();
+        }
+        (Output::Verbose, Some(mpb)) => {
+            let pb = mpb.add(ProgressBar::new(10_u64));
+            upload_to_robot(
+                SindriProgressBar::Multi(mpb.clone(), pb.clone()),
+                robot.ip(),
+            )
+            .await
+            .wrap_err("Failed to deploy yggdrasil files to robot")?;
+
+            pb.finish_and_clear();
+        }
     }
 
     Ok(())
@@ -407,7 +444,7 @@ pub async fn change_single_network(robot: Robot, network: String) -> miette::Res
 
     robot
         .ssh(
-            "sudo systemctl restart network_config.service & > /dev/null",
+            "sudo nohup systemctl restart network_config.service &> /dev/null",
             Vec::<(&str, &str)>::new(),
             true,
         )?
@@ -449,33 +486,62 @@ async fn stop_single_yggdrasil_service(robot: Robot) -> miette::Result<()> {
 }
 
 /// Copy the contents of the 'deploy' folder to the robot.
-async fn upload_to_robot(pb: Option<&ProgressBar>, addr: Ipv4Addr) -> Result<()> {
-    if let Some(pb) = pb {
-        pb.println(format!(
-            "{} {} {}",
-            "  Connecting".bright_blue().bold(),
-            "to".dimmed(),
-            addr.to_string().clone().bold(),
-        ));
+async fn upload_to_robot(pb: SindriProgressBar, addr: Ipv4Addr) -> Result<()> {
+    match &pb {
+        SindriProgressBar::None => {}
+        SindriProgressBar::Multi(_, pb) => {
+            pb.set_message(format!(
+                "{} {} {}",
+                "  Connecting".bright_blue().bold(),
+                "to".dimmed(),
+                addr.to_string().clone().bold(),
+            ));
+        }
+        SindriProgressBar::Single(pb) => {
+            pb.println(format!(
+                "{} {} {}",
+                "  Connecting".bright_blue().bold(),
+                "to".dimmed(),
+                addr.to_string().clone().bold(),
+            ));
+        }
     }
 
     let sftp = create_sftp_connection(addr).await?;
 
-    if let Some(pb) = pb {
-        pb.set_message(format!("{}", "Ensuring host directories exist".dimmed()));
+    let entries: Vec<DirEntry> = WalkDir::new("./deploy")
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.metadata().unwrap().is_file())
+        .collect();
+    let num_files = entries.len();
 
-        pb.set_style(
-            ProgressStyle::with_template(
-                "   {prefix:.blue.bold} {msg} [{bar:.blue/cyan}] {spinner:.blue.bold}",
-            )
-            .unwrap()
-            .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
-            .progress_chars("=>-"),
-        );
+    match &pb {
+        SindriProgressBar::None => {}
+        SindriProgressBar::Multi(_, pb) => {
+            pb.set_length(num_files as u64);
+            pb.set_style(
+                ProgressStyle::with_template("   {prefix:.blue.bold} [{bar:.blue/cyan}]: {msg}")
+                    .unwrap()
+                    .progress_chars("=>-"),
+            );
+            pb.set_message(format!("{}", "Deploying".dimmed()));
+        }
+        SindriProgressBar::Single(pb) => {
+            pb.set_message(format!("{}", "Ensuring host directories exist".dimmed()));
+
+            pb.set_style(
+                ProgressStyle::with_template(
+                    "   {prefix:.blue.bold} {msg} [{bar:.blue/cyan}] {spinner:.blue.bold}",
+                )
+                .unwrap()
+                .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
+                .progress_chars("=>-"),
+            );
+        }
     }
 
-    for entry in WalkDir::new("./deploy") {
-        let entry = entry.unwrap();
+    for entry in entries.iter() {
         let remote_path = get_remote_path(entry.path());
 
         if entry.path().is_dir() {
@@ -498,28 +564,53 @@ async fn upload_to_robot(pb: Option<&ProgressBar>, addr: Ipv4Addr) -> Result<()>
 
         let mut file_local = std::fs::File::open(entry.path())?;
 
+        match &pb {
+            SindriProgressBar::None => {}
+            SindriProgressBar::Multi(_, pb) => {
+                pb.set_message(format!(
+                    "{} {}",
+                    addr.to_string().red(),
+                    entry.path().to_string_lossy().dimmed()
+                ));
+                pb.inc(1);
+            }
+            SindriProgressBar::Single(pb) => {
+                pb.set_length(file_local.metadata()?.len());
+                pb.set_message(format!("{}", entry.path().to_string_lossy()));
+            }
+        }
+
         // Since `file_remote` impl's Write, we can just copy directly using a BufWriter!
         // The Write impl is rather slow, so we set a large buffer size of 1 mb.
-        let file_length = file_local.metadata()?.len();
-
-        if let Some(pb) = pb {
-            pb.set_length(file_length);
-            pb.set_message(format!("{}", entry.path().to_string_lossy()));
-        }
-
         let mut buf_writer = BufWriter::with_capacity(UPLOAD_BUFFER_SIZE, file_remote);
-        if let Some(pb) = pb {
-            std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer))
-                .map_err(Error::IoError)?;
 
-            pb.println(format!(
-                "{} {}",
-                "    Uploaded".bright_blue().bold(),
-                entry.path().to_string_lossy().dimmed()
-            ));
-        } else {
-            std::io::copy(&mut file_local, &mut buf_writer)?;
+        match &pb {
+            SindriProgressBar::None => {
+                std::io::copy(&mut file_local, &mut buf_writer)?;
+            }
+            SindriProgressBar::Multi(_, pb) => {
+                std::io::copy(&mut file_local, &mut buf_writer)?;
+                pb.inc(1);
+            }
+            SindriProgressBar::Single(pb) => {
+                std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer))
+                    .map_err(Error::IoError)?;
+
+                pb.println(format!(
+                    "{} {}",
+                    "    Uploaded".bright_blue().bold(),
+                    entry.path().to_string_lossy().dimmed()
+                ));
+            }
         }
+    }
+
+    if let SindriProgressBar::Multi(mpb, _) = &pb {
+        mpb.println(format!(
+            "    {} {}",
+            "Uploaded".green().bold(),
+            addr.to_string().red()
+        ))?;
     }
 
     Ok(())

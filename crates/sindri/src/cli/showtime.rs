@@ -1,21 +1,18 @@
-// TODO
-// - Add nice visuals
 use clap::Parser;
 use miette::{miette, Result};
 
 use crate::{
-    cli::robot_ops::{ConfigOptsRobotOps, Output, RobotOps},
+    cli::robot_ops::{ConfigOptsRobotOps, Output, RobotEntry, RobotOps},
     config::SindriConfig,
 };
-use yggdrasil::config::showtime::ShowtimeConfig;
-use yggdrasil::prelude::Config as OdalConfigTrait;
-
-use super::robot_ops::RobotEntry;
+use yggdrasil::{config::showtime::ShowtimeConfig, prelude::Config as OdalConfigTrait};
 
 /// Compile, deploy and run the specified binary on multiple robots, with the option of setting
 /// player numbers.
 #[derive(Parser, Debug)]
 pub struct Showtime {
+    #[clap()]
+    pub network: String,
     #[clap(flatten)]
     pub config: ConfigOptsRobotOps,
 }
@@ -56,8 +53,9 @@ impl Showtime {
 
         ops.compile(Output::Verbose).await?;
         ops.stop_yggdrasil_services().await?;
-        ops.upload(Output::Silent).await?;
+        ops.upload(Output::Verbose).await?;
         ops.start_yggdrasil_services().await?;
+        ops.change_networks(self.config.network).await?;
 
         Ok(())
     }

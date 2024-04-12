@@ -6,9 +6,11 @@ use miette::{IntoDiagnostic, Result};
 use tokio::process::Command;
 
 use crate::{
-    cli::robot_ops::{ConfigOptsRobotOps, Output, RobotOps},
+    cli::robot_ops::{ConfigOptsRobotOps, RobotOps},
     config::SindriConfig,
 };
+
+use super::robot_ops::Output;
 
 // TODO: refactor config for run
 #[derive(Parser, Debug)]
@@ -36,6 +38,8 @@ impl Run {
                 "rerun is not installed, install it using `cargo install rerun-cli`".white()
             );
         }
+
+        println!("{:?}", self.deploy.robots);
 
         let ops = RobotOps {
             sindri_config: config,
