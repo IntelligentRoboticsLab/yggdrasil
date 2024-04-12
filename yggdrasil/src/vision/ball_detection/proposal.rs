@@ -322,6 +322,7 @@ fn get_proposals(
     config: &BallProposalConfig,
 ) -> Result<()> {
     // TODO: find better way to do this
+    // if the image has not changed, we don't need to recalculate the proposals
     if ball_proposals.image.timestamp() == grid.image().timestamp() {
         return Ok(());
     }
