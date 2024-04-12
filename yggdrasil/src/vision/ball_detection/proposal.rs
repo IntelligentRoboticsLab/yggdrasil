@@ -283,9 +283,6 @@ fn test_proposals(
     matrices: &CameraMatrices,
     config: &BallProposalConfig,
 ) -> Vec<Point2<usize>> {
-    // gap between horizontal pixels
-    let gap = grid.width() / grid.vertical().line_ids().len();
-
     proposals
         .into_iter()
         .flat_map(|center| {
