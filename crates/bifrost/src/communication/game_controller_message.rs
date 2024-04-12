@@ -20,7 +20,7 @@ pub const GAME_CONTROLLER_RETURN_PORT: u16 = 3939;
 const GAME_CONTROLLER_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'm', b'e'];
 
 /// The version of the data sent by the `GameController`.
-const GAME_CONTROLLER_STRUCT_VERSION: u8 = 15;
+const GAME_CONTROLLER_STRUCT_VERSION: u8 = 16;
 
 /// The header of the data sent by the robots.
 const GAME_CONTROLLER_RETURN_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'r', b't'];
@@ -84,7 +84,7 @@ pub enum CompetitionType {
     /// Normal game mode.
     Normal = 0,
     /// Dynamic ball handling game mode (challenge).
-    DynamicBallHandling = 1,
+    SharedAutonomy = 1,
 }
 
 /// Enum for the different game phases.
@@ -161,6 +161,8 @@ pub enum Penalty {
     IllegalPositionInSet = 9,
     /// Illegal stance.
     PlayerStance = 10,
+    /// Illegal motion in initial.
+    IllegalMotionInInitial = 11,
     /// Penalty for a substitute.
     Substitute = 14,
     /// Penalty for manual override.
