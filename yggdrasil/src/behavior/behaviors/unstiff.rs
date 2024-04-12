@@ -1,7 +1,7 @@
 use crate::{
     behavior::engine::{Behavior, Context},
     nao::manager::{NaoManager, Priority},
-    walk::engine::WalkingEngine,
+    walk::{self, engine::WalkingEngine},
 };
 use nidhogg::types::{color, FillExt, RightEye};
 
@@ -18,15 +18,17 @@ impl Behavior for Unstiff {
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
     ) {
-        // TODO: sit down
-        println!("We unstiffin");
-
-        nao_manager
-            .unstiff_legs(Priority::Critical)
-            .unstiff_arms(Priority::Critical)
-            .unstiff_head(Priority::Critical);
-
         // Makes right eye blue.
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());
+
+        if !walking_engine.is_sitting() {
+            walking_engine.request_sit();
+        } else {
+            nao_manager.unstiff_legs(Priority::Critical);
+        }
+
+        nao_manager
+            .unstiff_arms(Priority::Critical)
+            .unstiff_head(Priority::Critical);
     }
 }

@@ -4,29 +4,25 @@ use std::time::Duration;
 
 use crate::{
     debug::DebugContext,
-    filter::{
-        button::{ChestButton, HeadButtons},
-        imu::IMUValues,
-    },
+    filter::imu::IMUValues,
     kinematics::RobotKinematics,
     nao::{
         manager::{NaoManager, Priority},
         CycleTime,
     },
     prelude::*,
-    primary_state::PrimaryState,
 };
 use nidhogg::{
     types::{
         ArmJoints, FillExt, ForceSensitiveResistors, LeftArmJoints, LeftLegJoints, LegJoints,
-        RightArmJoints, RightLegJoints, Vector3,
+        RightArmJoints, RightLegJoints,
     },
     NaoState,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 
-use crate::{filter, nao, primary_state};
+use crate::{filter, nao};
 
 use self::engine::{FootOffsets, Side, Step, WalkState, WalkingEngine};
 
@@ -261,7 +257,6 @@ pub fn run_walking_engine(
         )
         .build();
 
-    println!("We walking");
     nao_manager
         .set_legs(leg_positions, leg_stiffness, Priority::High)
         .set_arms(arm_positions, arm_stiffness, Priority::High);

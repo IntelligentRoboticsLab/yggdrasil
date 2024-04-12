@@ -40,7 +40,6 @@ fn set_initial_joint_values(
         ArmJoints::fill(DEFAULT_PASSIVE_STIFFNESS),
         DEFAULT_PASSIVE_PRIORITY,
     );
-    println!("We Startuping");
 
     nao_manager.set_legs(
         initial_joint_positions.leg_joints(),

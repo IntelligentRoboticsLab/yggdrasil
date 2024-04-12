@@ -25,7 +25,7 @@ impl Behavior for Penalized {
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
     ) {
-        walking_engine.request_idle();
+        walking_engine.request_stand();
 
         let head_joints = HeadJoints::fill(0.0);
         let head_stiffness = HeadJoints::fill(PENALIZED_HEAD_STIFFNESS);

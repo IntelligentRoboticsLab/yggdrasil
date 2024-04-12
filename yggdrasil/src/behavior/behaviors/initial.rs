@@ -46,7 +46,6 @@ impl Behavior for Initial {
         let robot_position = &context.layout_config.initial_positions[player_num as usize];
         look_at_middle_circle(robot_position, nao_manager);
 
-        walking_engine.hip_height = walking_engine.config.hip_height;
-        walking_engine.request_idle();
+        walking_engine.request_stand();
     }
 }

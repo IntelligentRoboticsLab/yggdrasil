@@ -19,7 +19,8 @@ impl Role for Base {
     ) -> BehaviorKind {
         match current_behavior {
             BehaviorKind::StartUp(_) => {
-                if walking_engine.hip_height < 0.1 {
+                println!("hip height at: {}", walking_engine.hip_height);
+                if walking_engine.is_sitting() {
                     return BehaviorKind::Unstiff(Unstiff);
                 }
                 BehaviorKind::StartUp(StartUp)

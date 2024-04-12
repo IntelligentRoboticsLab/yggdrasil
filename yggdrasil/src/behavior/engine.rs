@@ -222,9 +222,6 @@ impl Engine {
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
     ) {
-        println!("Current behavior: {:?}", self.behavior);
-        self.behavior.execute(context, nao_manager, walking_engine);
-
         self.role = self.assign_role(context);
 
         self.behavior = if should_unstiff(&context) {
@@ -235,6 +232,9 @@ impl Engine {
             self.role
                 .transition_behavior(context, &mut self.behavior, walking_engine)
         };
+
+        println!("Current behavior: {:?}", self.behavior);
+        self.behavior.execute(context, nao_manager, walking_engine);
     }
 }
 
