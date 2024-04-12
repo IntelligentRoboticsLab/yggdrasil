@@ -96,10 +96,8 @@ impl DebugContext {
         Ok(())
     }
 
-    /// Log a Yuyv encoded image to the debug viewer.
-    ///
-    /// The image is first converted to a jpeg encoded image.
-    pub fn log_png(
+    /// Log an RGB image to the debug viewer.
+    pub fn log_image_rgb(
         &self,
         path: impl AsRef<str>,
         img: image::RgbImage,

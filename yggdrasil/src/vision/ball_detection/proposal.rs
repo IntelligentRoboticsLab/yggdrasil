@@ -321,12 +321,9 @@ fn log_proposals(
             continue;
         };
 
-        // scale the ball to what the size it should be at this magnitude
-        const BIG_SCALE: f32 = 64.0;
-
         let magnitude = coord.coords.magnitude();
 
-        let size = BIG_SCALE / magnitude;
+        let size = BOUNDING_BOX_SCALE / magnitude;
 
         points.push((proposal.x as f32, proposal.y as f32));
         sizes.push((size, size));
@@ -335,7 +332,7 @@ fn log_proposals(
     dbg.log_boxes_2d(
         "top_camera/image/ball_boxes",
         points.clone(),
-        sizes.clone(),
+        sizes,
         ball_proposals.image.clone(),
         color::u8::SILVER,
     )?;

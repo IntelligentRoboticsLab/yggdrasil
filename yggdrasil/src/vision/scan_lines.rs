@@ -7,6 +7,7 @@ use crate::{
 use super::{field_boundary::FieldBoundary, VisionConfig};
 
 use derive_more::{Deref, DerefMut};
+use miette::miette;
 use serde::{Deserialize, Serialize};
 
 /// Module that generates scan-lines from taken NAO images.
@@ -464,9 +465,9 @@ fn log_vertical_scan_lines(top_scan_grid: &TopScanGrid, dbg: &DebugContext) -> R
     }
 
     let image = image::RgbImage::from_vec(width as u32, height as u32, image_buf)
-        .expect("Failed to make image");
+        .ok_or_else(|| miette!("Failed to make image"))?;
 
-    dbg.log_png(
+    dbg.log_image_rgb(
         "image/top_camera/vertical_scan_lines",
         image,
         &top_scan_grid.image().cycle(),
