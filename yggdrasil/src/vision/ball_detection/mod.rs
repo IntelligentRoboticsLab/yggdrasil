@@ -1,3 +1,5 @@
+//! Module for detecting the location of the ball in the field
+
 pub mod proposal;
 
 use proposal::BallProposalConfig;

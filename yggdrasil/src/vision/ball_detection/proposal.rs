@@ -1,3 +1,5 @@
+//! Module for finding possible ball locations from the top camera image
+
 use std::{collections::HashMap, ops::Deref};
 
 use nalgebra::Point2;
