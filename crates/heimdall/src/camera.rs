@@ -8,6 +8,8 @@ use linuxvideo::{
     Device,
 };
 
+use crate::exposure_weights::ExposureWeightTable;
+
 use super::{Error, Result, YuyvImage};
 
 /// A wrapper around a [`Device`] that contains utilities to flip the image.
@@ -31,6 +33,12 @@ impl CameraDevice {
         Ok(Self { device })
     }
 
+    fn try_clone(&self) -> Result<Self> {
+        Ok(Self {
+            device: self.device.try_clone()?,
+        })
+    }
+
     /// Flip the image horizontally.
     pub fn horizontal_flip(&self) -> Result<()> {
         let mut uvc_extension = UvcExt::new(&self.device);
@@ -43,6 +51,15 @@ impl CameraDevice {
     pub fn vertical_flip(&self) -> Result<()> {
         let mut uvc_extension = UvcExt::new(&self.device);
         uvc_extension.vertical_flip().map_err(Error::VerticalFlip)
+    }
+
+    /// Set the exposure weights of the camera device.
+    pub fn set_auto_exposure_weights(&self, table: &ExposureWeightTable) -> Result<()> {
+        let mut uvc_extension = UvcExt::new(&self.device);
+
+        uvc_extension
+            .set_auto_exposure_weights(&mut table.encode())
+            .map_err(Error::SetAutoExposureWeights)
     }
 
     /// Enable or disable the autofocus.
@@ -244,6 +261,7 @@ impl CameraDevice {
 /// Struct for retrieving images from the NAO camera.
 pub struct Camera {
     camera: FrameProvider,
+    device: CameraDevice,
     width: usize,
     height: usize,
 }
@@ -270,6 +288,7 @@ impl Camera {
         }
 
         let capture_device = camera_device
+            .try_clone()?
             .device
             .video_capture(PixFormat::new(width, height, PixelFormat::YUYV))
             .map_err(Error::VideoCapture)?;
@@ -287,6 +306,7 @@ impl Camera {
             .into_frame_provider();
 
         let mut camera = Self {
+            device: camera_device,
             camera,
             width,
             height,
@@ -339,5 +359,17 @@ impl Camera {
             width: self.width,
             height: self.height,
         })
+    }
+
+    pub fn camera_device(&self) -> &CameraDevice {
+        &self.device
+    }
+
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    pub fn height(&self) -> usize {
+        self.height
     }
 }

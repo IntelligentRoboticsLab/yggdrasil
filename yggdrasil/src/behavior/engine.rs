@@ -1,17 +1,24 @@
 //! The engine managing behavior execution and role state.
 
+use bifrost::communication::GameControllerMessage;
 use enum_dispatch::enum_dispatch;
 
 use crate::{
     behavior::{
-        behaviors::{Example, Initial},
-        roles::{Keeper, Striker},
+        behaviors::{Initial, Observe, Passive, Penalized},
+        roles::Base,
+        BehaviorConfig,
     },
-    config::layout::LayoutConfig,
-    filter::button::HeadButtons,
+    config::{layout::LayoutConfig, yggdrasil::YggdrasilConfig},
+    filter::{
+        button::{ChestButton, HeadButtons},
+        fsr::Contacts,
+    },
+    game_controller::GameControllerConfig,
     nao::{self, manager::NaoManager},
     prelude::*,
     primary_state::PrimaryState,
+    walk::engine::WalkingEngine,
 };
 
 /// Context that is passed into the behavior engine.
@@ -24,8 +31,20 @@ pub struct Context<'a> {
     pub primary_state: &'a PrimaryState,
     /// State of the headbuttons of a robot
     pub head_buttons: &'a HeadButtons,
-    /// Config containing information about the layout of the field.
+    /// State of the chest button of a robot
+    pub chest_button: &'a ChestButton,
+    /// Contains information on whether the nao is touching the ground
+    pub contacts: &'a Contacts,
+    /// Config containing information about the layout of the field
     pub layout_config: &'a LayoutConfig,
+    /// Config containing general information
+    pub yggdrasil_config: &'a YggdrasilConfig,
+    /// Config containing parameters for various behaviors
+    pub behavior_config: &'a BehaviorConfig,
+    /// Contains the message received from the game-controller.
+    pub game_controller_message: Option<&'a GameControllerMessage>,
+    /// Contains the game-controller config.
+    pub game_controller_config: &'a GameControllerConfig,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -54,7 +73,12 @@ pub struct Context<'a> {
 #[enum_dispatch]
 pub trait Behavior {
     /// Defines what the robot does when the corresponding behavior is executed.
-    fn execute(&mut self, context: Context, nao_manager: &mut NaoManager);
+    fn execute(
+        &mut self,
+        context: Context,
+        nao_manager: &mut NaoManager,
+        walking_engine: &mut WalkingEngine,
+    );
 }
 
 /// An enum containing the possible behaviors for a robot.
@@ -65,17 +89,20 @@ pub trait Behavior {
 ///
 /// # Notes
 /// - New behavior implementations should be added as new variants to this enum.
-/// - The specific struct for each behavior (e.g., [`Initial`], [`Example`]) should implement the [`Behavior`] trait.
+/// - The specific struct for each behavior (e.g., [`Initial`], [`Passive`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
+#[derive(Debug)]
 pub enum BehaviorKind {
+    Passive(Passive),
     Initial(Initial),
-    Example(Example),
+    Observe(Observe),
+    Penalized(Penalized),
     // Add new behaviors here!
 }
 
 impl Default for BehaviorKind {
     fn default() -> Self {
-        BehaviorKind::Initial(Initial)
+        BehaviorKind::Passive(Passive)
     }
 }
 
@@ -129,11 +156,10 @@ pub trait Role {
 ///
 /// # Notes
 /// - New role implementations should be added as new variants to this enum
-/// - The specific struct for each role (e.g., [`Keeper`], [`Striker`]) should implement the [`Role`] trait.
+/// - The specific struct for each role (e.g., [`Base`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
 pub enum RoleKind {
-    Keeper(Keeper),
-    Striker(Striker),
+    Base(Base),
     // Add new roles here!
 }
 
@@ -141,7 +167,7 @@ impl RoleKind {
     /// Get the default role for each robot based on that robots player number
     fn by_player_number() -> Self {
         // TODO: get the default role for each robot by player number
-        RoleKind::Keeper(Keeper)
+        RoleKind::Base(Base)
     }
 }
 
@@ -162,6 +188,17 @@ impl Default for Engine {
     }
 }
 
+fn should_unstiff(context: &Context) -> bool {
+    context.head_buttons.rear.is_pressed()
+        && context.head_buttons.middle.is_pressed()
+        && context.head_buttons.front.is_pressed()
+}
+
+fn is_penalized(context: &Context, current_behavior: &BehaviorKind) -> bool {
+    *context.primary_state == PrimaryState::Penalized
+        && !matches!(current_behavior, BehaviorKind::Passive(_))
+}
+
 impl Engine {
     /// Assigns roles based on player number and other information like what
     /// robot is closest to the ball, missing robots, etc.
@@ -171,29 +208,56 @@ impl Engine {
     }
 
     /// Executes one step of the behavior engine
-    pub fn step(&mut self, context: Context, nao_manager: &mut NaoManager) {
+    pub fn step(
+        &mut self,
+        context: Context,
+        nao_manager: &mut NaoManager,
+        walking_engine: &mut WalkingEngine,
+    ) {
         self.role = self.assign_role(context);
-        self.behavior = self.role.transition_behavior(context, &mut self.behavior);
-        self.behavior.execute(context, nao_manager);
+
+        self.behavior = if should_unstiff(&context) {
+            BehaviorKind::Passive(Passive)
+        } else if is_penalized(&context, &self.behavior) {
+            BehaviorKind::Penalized(Penalized)
+        } else {
+            self.role.transition_behavior(context, &mut self.behavior)
+        };
+
+        self.behavior.execute(context, nao_manager, walking_engine);
     }
 }
 
 /// System that is called to execute one step of the behavior engine each cycle
 #[system]
+#[allow(clippy::too_many_arguments)]
 pub fn step(
     engine: &mut Engine,
     nao_manager: &mut NaoManager,
     primary_state: &PrimaryState,
     head_buttons: &HeadButtons,
+    chest_button: &ChestButton,
+    contacts: &Contacts,
     layout_config: &LayoutConfig,
+    yggdrasil_config: &YggdrasilConfig,
+    behavior_config: &BehaviorConfig,
+    walking_engine: &mut WalkingEngine,
+    game_controller_message: &Option<GameControllerMessage>,
+    game_controller_config: &GameControllerConfig,
 ) -> Result<()> {
     let context = Context {
         primary_state,
         head_buttons,
+        chest_button,
+        contacts,
         layout_config,
+        yggdrasil_config,
+        behavior_config,
+        game_controller_message: game_controller_message.as_ref(),
+        game_controller_config,
     };
 
-    engine.step(context, nao_manager);
+    engine.step(context, nao_manager, walking_engine);
 
     Ok(())
 }

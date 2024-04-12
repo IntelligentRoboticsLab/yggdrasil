@@ -1,0 +1,9 @@
+[observe]
+# Controls how fast the robot moves its head back and forth while looking around
+head_rotation_speed = 1.0
+# Controls how far to the left and right the robot looks while looking around, in radians.
+# If this value is one, the robot will look a maximum of one radian to the left and one
+# radian to the right, etc.
+head_yaw_max = 1.2
+# Controls how far to the bottom the robot looks while looking around, in radians
+head_pitch_max = 0.2

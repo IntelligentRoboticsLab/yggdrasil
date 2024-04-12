@@ -4,15 +4,14 @@ pub mod yggdrasil;
 
 use std::path::{Path, PathBuf};
 
-use crate::{nao::RobotInfo, prelude::*};
+use crate::{behavior::BehaviorConfig, nao::RobotInfo, prelude::*};
 
 use ::tyr::tasks::TaskModule;
 use odal::{ConfigKind, Error, ErrorKind};
 
+use layout::LayoutConfig;
 use tyr::TyrConfig;
 use yggdrasil::YggdrasilConfig;
-
-use layout::LayoutConfig;
 
 /// This module adds functionality to load configuration structs from files.
 ///
@@ -51,6 +50,7 @@ impl Module for ConfigModule {
     fn initialize(self, app: App) -> miette::Result<App> {
         app.add_startup_system(initialize_config_roots)?
             .init_config::<LayoutConfig>()?
+            .init_config::<BehaviorConfig>()?
             .init_config::<TyrConfig>()?
             .init_config::<YggdrasilConfig>()?
             .add_startup_system(tyr::configure_tyr_hack)?

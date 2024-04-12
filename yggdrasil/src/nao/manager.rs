@@ -169,6 +169,15 @@ impl NaoManager {
         self.leg_settings.priority = None;
         self.arm_settings.priority = None;
         self.head_settings.priority = None;
+
+        self.led_left_ear.priority = None;
+        self.led_right_ear.priority = None;
+        self.led_chest.priority = None;
+        self.led_left_eye.priority = None;
+        self.led_right_eye.priority = None;
+        self.led_left_foot.priority = None;
+        self.led_right_foot.priority = None;
+        self.led_skull.priority = None;
     }
 
     pub fn set_all(

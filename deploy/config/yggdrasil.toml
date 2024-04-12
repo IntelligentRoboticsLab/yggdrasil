@@ -20,7 +20,7 @@ game_controller_return_delay = 500
 # it will consider the connection to the game-controller as "lost".
 game_controller_timeout = 5000
 # TODO: Make this an environment variable.
-player_number = 2
+player_number = 3
 # TODO: Make this an environment variable.
 team_number = 8
 
@@ -40,6 +40,10 @@ num_buffers = 3
 flip_horizontally = true
 # Whether the image should be flipped vertically.
 flip_vertically = true
+# Whether the image focus automatically
+focus_auto = false
+# Whether to turn on auto exposure
+exposure_auto = true
 
 [camera.top.calibration]
 # The extrinsic rotation for the camera in degrees, xyz euler angles.
@@ -65,6 +69,10 @@ num_buffers = 3
 flip_horizontally = false
 # Whether the image should be flipped vertically.
 flip_vertically = false
+# Whether the image focus automatically
+focus_auto = false
+# Whether to turn on auto exposure
+exposure_auto = true
 
 [camera.bottom.calibration]
 # The extrinsic rotation for the camera in degrees, euler angles.
