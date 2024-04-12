@@ -60,11 +60,10 @@ pub enum PrimaryState {
 impl PrimaryState {
     /// Tell whether the robot should walk in this state.
     pub fn should_walk(&self) -> bool {
-        // !matches!(
-        //     self,
-        //     Self::Unstiff | Self::Penalized | Self::Finished | Self::Calibration
-        // )
-        true
+        !matches!(
+            self,
+            Self::Unstiff | Self::Penalized | Self::Finished | Self::Calibration
+        )
     }
 }
 
