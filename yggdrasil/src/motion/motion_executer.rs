@@ -63,9 +63,9 @@ pub fn motion_executer(
         // getting the next position for the robot
         if let Some(next_position) = move_to_starting_position(
             &motion_manager,
-            &movement_start.elapsed(),
-            duration,
             target_position,
+            duration,
+            &movement_start.elapsed(),
         ) {
             nao_manager.set_all(
                 next_position,
@@ -103,6 +103,19 @@ pub fn motion_executer(
     Ok(())
 }
 
+/// Prepares the initial movement of a submotion.
+///
+///
+///  # Notes
+/// Currently only checks and possibly edits the movement duration to prevent dangerously
+/// quick movements, but will be expanded upon.
+///
+/// # Arguments
+///
+/// * `motion_manager` - Keeps track of state needed for playing motions.
+/// * `target_position` - The target position of the initial movement.
+/// * `duration` - Intended duration of the initial movement.
+/// * `sub_motion_name` - Current submotion to be executed.
 fn prepare_initial_movement(
     motion_manager: &mut MotionManager,
     target_position: &JointArray<f32>,
@@ -116,7 +129,7 @@ fn prepare_initial_movement(
         MAX_SPEED,
     );
     if duration > &min_duration {
-        // editing the movement duration to prevent dangerously quick movements                                            TODO SIMPLIFY WITH FUNC
+        // editing the movement duration to prevent dangerously quick movements
         motion_manager
             .active_motion
             .as_mut()
@@ -126,6 +139,11 @@ fn prepare_initial_movement(
     }
 }
 
+/// Updates the active motion to begin executing the current submotion.
+///
+/// # Arguments
+///
+/// * `motion_manager` - Keeps track of state needed for playing motions.
 fn update_active_motion(motion_manager: &mut MotionManager) {
     // update the time of the start of the movement
     motion_manager.submotion_execution_starting_time = Some(Instant::now());
@@ -141,11 +159,24 @@ fn update_active_motion(motion_manager: &mut MotionManager) {
         .cur_keyframe_index += 1;
 }
 
+/// Calculates the next position of the robot to approach the starting position.
+/// If the robot has reached the starting position, it will return None.
+///
+/// # Notes
+/// Currently the function is still quite barren, but this will be expanded upon later.
+/// For example, different interpolation types will be available.
+///
+/// # Arguments
+///
+/// * `motion_manager` - Keeps track of state needed for playing motions.
+/// * `target_position` - The target position of the initial movement.
+/// * `duration` - Intended duration of the initial movement.
+/// * `elapsed_time` - Currently elapsed time since start of movement to initial position.
 fn move_to_starting_position(
     motion_manager: &MotionManager,
-    elapsed_time_since_start_of_motion: &Duration,
-    duration: &Duration,
     target_position: &JointArray<f32>,
+    duration: &Duration,
+    elapsed_time_since_start_of_motion: &Duration,
 ) -> Option<JointArray<f32>> {
     if elapsed_time_since_start_of_motion <= duration {
         return Some(lerp(
@@ -158,6 +189,17 @@ fn move_to_starting_position(
     None
 }
 
+/// Assesses whether the required waiting time has elapsed.
+///
+/// # Notes
+/// Currently, the waiting time is static, with the robot always waiting
+/// the full duration of the waiting time. But in the future this waiting time
+/// might be shortened due to the robot being in a stable position.
+///
+/// # Arguments
+///
+/// * `motion_manager` - Keeps track of state needed for playing motions.
+/// * `duration` - Intended duration of the waiting time.
 fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_waittime: f32) -> bool {
     if exit_waittime <= 0.05 {
         return true;
@@ -177,6 +219,19 @@ fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_waittime: f32)
     }
 }
 
+/// Handles the logic for transitioning to the next submotion.
+/// If a submotion is present, will transition to this submotion.
+/// If not, will reset the active motion and saved time values.
+///
+/// # Notes
+/// More complex transitioning behaviour will be implemented, like
+/// having multiple movement paths the robot can decide to go in.
+/// But this will be implemented far later.
+///
+/// # Arguments
+///
+/// * `motion_manager` - Keeps track of state needed for playing motions.
+/// * `nao_state` - Current state of the robot.
 fn transition_to_next_submotion(motion_manager: &mut MotionManager, nao_state: &mut NaoState) {
     // current submotion is finished, transition to next submotion.
     let active_motion: &mut ActiveMotion = motion_manager.active_motion.as_mut().unwrap();
