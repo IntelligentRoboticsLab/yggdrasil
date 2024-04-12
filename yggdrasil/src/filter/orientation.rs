@@ -19,12 +19,13 @@ pub struct OrientationFilter;
 
 impl Module for OrientationFilter {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app.add_system(update_orientation.after(super::imu::imu_filter)))
+        app.add_system(update_orientation.after(super::imu::imu_filter))
+            .add_startup_system(init_orientation_filter)
     }
 }
 
 #[startup_system]
-pub fn init_orientation_filter_config(
+pub fn init_orientation_filter(
     storage: &mut Storage,
     config: &OrientationFilterConfig,
 ) -> Result<()> {
@@ -181,6 +182,8 @@ impl RobotOrientation {
         let delta = UnitQuaternion::from_quaternion(Quaternion::new(
             ((projected_gravity.z + 1.0) / 2.0).sqrt(),
             -(projected_gravity.y / (2.0 * (projected_gravity.z + 1.0)).sqrt()),
+            // TODO: I realised this should be the line I commented out, according to the paper but this seemed to work fine so gotta test on robot.
+            // projected_gravity.x / (2.0 * (projected_gravity.z + 1.0)).sqrt()
             projected_gravity.z / (2.0 * (projected_gravity.z + 1.0)).sqrt(),
             0.0,
         ));
