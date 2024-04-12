@@ -2,7 +2,7 @@ use crate::{
     behavior::engine::{Behavior, Context},
     config::layout::RobotPosition,
     nao::manager::{NaoManager, Priority},
-    walk::engine::WalkingEngine,
+    walk::engine::{Step, WalkingEngine},
 };
 use nidhogg::types::{FillExt, HeadJoints};
 
@@ -40,10 +40,17 @@ impl Behavior for Initial {
         &mut self,
         context: Context,
         nao_manager: &mut NaoManager,
-        _walking_engine: &mut WalkingEngine,
+        walking_engine: &mut WalkingEngine,
     ) {
         let player_num = context.yggdrasil_config.game_controller.player_number;
         let robot_position = &context.layout_config.initial_positions[player_num as usize];
         look_at_middle_circle(robot_position, nao_manager);
+
+        // TODO: Using this to test, probably shouldn't be here.
+        walking_engine.request_walk(Step {
+            forward: 0.04,
+            left: 0.0,
+            turn: 0.0,
+        });
     }
 }
