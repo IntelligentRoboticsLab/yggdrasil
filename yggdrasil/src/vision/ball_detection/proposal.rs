@@ -189,6 +189,8 @@ fn local_white_ratio(range_h: usize, range_v: usize, point: Point2<usize>, grid:
     let vertical_scan_lines = grid.vertical();
 
     // gap between horizontal pixels
+    // TODO: This assumes the gap between vertical scan-lines is constant,
+    // but that might not be the case in the future.
     let gap = grid.width() / vertical_scan_lines.line_ids().len();
 
     // TODO: this could be cleaner but I don't care #savage
