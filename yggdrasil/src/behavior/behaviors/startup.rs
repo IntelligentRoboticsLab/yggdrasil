@@ -1,7 +1,7 @@
 use crate::{
     behavior::engine::{Behavior, Context},
     nao::manager::{NaoManager, Priority},
-    walk::{self, engine::WalkingEngine},
+    walk::engine::WalkingEngine,
 };
 use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 

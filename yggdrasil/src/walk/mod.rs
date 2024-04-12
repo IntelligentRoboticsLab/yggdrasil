@@ -111,38 +111,6 @@ fn init_walking_engine(
     )))
 }
 
-// #[system]
-// pub fn toggle_walking_engine(
-//     primary_state: &PrimaryState,
-//     head_button: &HeadButtons,
-//     chest_button: &ChestButton,
-//     walking_engine: &mut WalkingEngine,
-// ) -> Result<()> {
-//     // If we're in a state where we shouldn't walk, we don't.
-//     if !primary_state.should_walk() {
-//         return Ok(());
-//     }
-
-//     // Start walking
-//     if chest_button.state.is_tapped() {
-//         walking_engine.filtered_gyroscope.state = Vector3::default();
-//         walking_engine.request_walk(Step {
-//             forward: 0.04,
-//             left: 0.0,
-//             turn: 0.0,
-//         });
-//         return Ok(());
-//     }
-
-//     // Stop walking
-//     if head_button.front.is_tapped() {
-//         walking_engine.request_idle();
-//         return Ok(());
-//     }
-
-//     Ok(())
-// }
-
 #[system]
 pub fn run_walking_engine(
     walking_engine: &mut WalkingEngine,
