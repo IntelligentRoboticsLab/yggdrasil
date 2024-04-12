@@ -1,6 +1,6 @@
 use crate::{
+    config::showtime::PlayerConfig,
     filter::button::ChestButton,
-    game_controller::GameControllerConfig,
     nao::manager::{NaoManager, Priority},
     prelude::*,
 };
@@ -90,7 +90,7 @@ pub fn update_primary_state(
     nao_manager: &mut NaoManager,
     chest_button: &ChestButton,
     config: &PrimaryStateConfig,
-    game_controller_config: &GameControllerConfig,
+    player_config: &PlayerConfig,
 ) -> Result<()> {
     use PrimaryState as PS;
 
@@ -99,7 +99,7 @@ pub fn update_primary_state(
     // see if this robot has received a penalty.
     let next_primary_state = if is_penalized(
         game_controller_message.as_ref(),
-        game_controller_config.team_number,
+        player_config.team_number,
         PLAYER_NUM,
     ) {
         PrimaryState::Penalized
