@@ -1,6 +1,6 @@
 use crate::{
     behavior::{
-        behaviors::{Initial, Observe, StartUp, Unstiff},
+        behaviors::{Initial, Observe, Penalized, StartUp, Unstiff},
         engine::{BehaviorKind, Context, Role},
     },
     walk::engine::WalkingEngine,
@@ -23,6 +23,9 @@ impl Role for Base {
                 if walking_engine.is_sitting() {
                     return BehaviorKind::Unstiff(Unstiff);
                 }
+                if context.chest_button.state.is_tapped() {
+                    return BehaviorKind::Initial(Initial);
+                }
                 BehaviorKind::StartUp(StartUp)
             }
             BehaviorKind::Unstiff(_) => {
@@ -40,8 +43,18 @@ impl Role for Base {
 
                 BehaviorKind::Initial(*state)
             }
-            BehaviorKind::Observe(state) => BehaviorKind::Observe(*state),
-            BehaviorKind::Penalized(state) => BehaviorKind::Penalized(*state),
+            BehaviorKind::Observe(state) => {
+                if context.chest_button.state.is_tapped() {
+                    return BehaviorKind::Penalized(Penalized);
+                }
+                BehaviorKind::Observe(*state)
+            }
+            BehaviorKind::Penalized(state) => {
+                if context.chest_button.state.is_tapped() {
+                    return BehaviorKind::Observe(Observe::default());
+                }
+                BehaviorKind::Penalized(*state)
+            }
         }
     }
 }
