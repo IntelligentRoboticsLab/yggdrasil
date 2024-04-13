@@ -100,10 +100,7 @@ fn init_walking_engine(
     config: &WalkingEngineConfig,
     nao_state: &NaoState,
 ) -> Result<()> {
-    println!("Naostate: {:?}", nao_state.position);
-
     let kinematics = RobotKinematics::from(&nao_state.position);
-    println!("Kinematics: {:?}", kinematics);
 
     storage.add_resource(Resource::new(WalkingEngine::from_config(
         config,
