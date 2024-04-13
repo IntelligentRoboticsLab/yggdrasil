@@ -12,11 +12,9 @@ use crate::ml::backend::MlCore;
 use miette::Diagnostic;
 use thiserror::Error;
 use tyr::{
-    tasks::{
-        compute::{ComputeDispatcher, ComputeTask},
-        task::Pollable,
-    },
-    App, Module, Res, ResMut, Resource, Storage,
+    prelude::{startup_system, AsyncDispatcher, AsyncTask},
+    tasks::task::Pollable,
+    App, Module, Resource, Storage,
 };
 
 /// A machine learning model.
@@ -66,14 +64,14 @@ pub trait MlModel: 'static {
 /// ```
 pub struct MlTask<M: MlModel> {
     model: ModelExecutor<M>,
-    task: ComputeTask<Result<InferRequest<M>>>,
+    task: AsyncTask<Result<InferRequest<M>>>,
 }
 
 impl<M: MlModel> MlTask<M> {
-    pub fn new(core: &mut MlCore, dispatcher: ComputeDispatcher) -> Result<Self> {
+    pub fn new(core: &mut MlCore, dispatcher: AsyncDispatcher) -> Result<Self> {
         Ok(Self {
             model: ModelExecutor::new(core)?,
-            task: ComputeTask::new(dispatcher),
+            task: AsyncTask::new(dispatcher),
         })
     }
 
@@ -88,7 +86,7 @@ impl<M: MlModel> MlTask<M> {
     pub fn try_start_infer(&mut self, input: &[M::InputType]) -> Result<()> {
         let infer_req = self.model.request_infer(input)?;
 
-        self.task.try_spawn(move || infer_req.run())?;
+        self.task.try_spawn_blocking(|| infer_req.run())?;
         Ok(())
     }
 
@@ -160,15 +158,15 @@ impl MlTaskResource for App {
         Self: Sized,
         M: MlModel + Send + Sync,
     {
+        #[startup_system]
         fn add_ml_task<M: MlModel + Send + Sync>(
             storage: &mut Storage,
-            mut core: ResMut<MlCore>,
-            dispatcher: Res<ComputeDispatcher>,
-        ) -> miette::Result<()> {
-            storage.add_resource(Resource::new(MlTask::<M>::new(
-                &mut core,
-                dispatcher.clone(),
-            )?))
+            core: &mut MlCore,
+            dispatcher: &AsyncDispatcher,
+        ) -> crate::Result<()> {
+            let task = MlTask::<M>::new(core, dispatcher.clone())?;
+
+            storage.add_resource(Resource::new(task))
         }
 
         self.add_startup_system(add_ml_task::<M>)

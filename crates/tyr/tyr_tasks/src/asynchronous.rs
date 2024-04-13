@@ -45,6 +45,13 @@ impl AsyncDispatcher {
     ) -> JoinHandle<T> {
         self.runtime_handle.spawn(future)
     }
+
+    pub(super) fn spawn_blocking<T: Send + 'static, F: FnOnce() -> T + Send + 'static>(
+        &self,
+        func: F,
+    ) -> JoinHandle<T> {
+        self.runtime_handle.spawn_blocking(func)
+    }
 }
 
 impl Dispatcher for AsyncDispatcher {
@@ -75,6 +82,26 @@ impl<T: Send + 'static> AsyncTask<T> {
         }
 
         let join_handle = self.dispatcher.spawn(future);
+
+        self.raw = Some(RawTask { join_handle });
+
+        Ok(())
+    }
+
+    /// Tries to spawn the *BLOCKING* future on the async runtime and sets the task to be active by tracking
+    /// its progress.
+    ///
+    /// # Errors
+    /// Returns an [`Error::AlreadyActive`] if the task is active already.
+    pub fn try_spawn_blocking<F: FnOnce() -> T + Send + 'static>(
+        &mut self,
+        func: F,
+    ) -> crate::Result<()> {
+        if self.active() {
+            return Err(Error::AlreadyActive);
+        }
+
+        let join_handle = self.dispatcher.spawn_blocking(func);
 
         self.raw = Some(RawTask { join_handle });
 
