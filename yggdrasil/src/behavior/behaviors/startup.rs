@@ -29,20 +29,10 @@ fn set_initial_joint_values(
     initial_joint_positions: &JointArray<f32>,
     nao_manager: &mut NaoManager,
 ) {
-    nao_manager.set_head(
-        initial_joint_positions.head_joints(),
+    nao_manager.set_all(
+        initial_joint_positions.clone(),
         HeadJoints::fill(DEFAULT_PASSIVE_STIFFNESS),
-        DEFAULT_PASSIVE_PRIORITY,
-    );
-
-    nao_manager.set_arms(
-        initial_joint_positions.arm_joints(),
         ArmJoints::fill(DEFAULT_PASSIVE_STIFFNESS),
-        DEFAULT_PASSIVE_PRIORITY,
-    );
-
-    nao_manager.set_legs(
-        initial_joint_positions.leg_joints(),
         LegJoints::fill(DEFAULT_PASSIVE_STIFFNESS),
         DEFAULT_PASSIVE_PRIORITY,
     );
