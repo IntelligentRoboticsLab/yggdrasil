@@ -23,6 +23,7 @@ impl ExposureWeights {
             top: ExposureWeightTable::new(
                 image_dims,
                 [0, 0, 0, 0, 3, 3, 3, 3, 11, 11, 11, 11, 15, 15, 15, 15],
+                // [12, 12, 12, 12, 11, 11, 11, 11, 3, 3, 3, 3, 3, 3, 3, 3],
             ),
 
             // Bottom camera rarely suffers from overexposure, so we can set a constant weight.

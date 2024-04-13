@@ -183,7 +183,7 @@ impl Image {
         center: (usize, usize),
         width: usize,
         height: usize,
-    ) -> Vec<f32> {
+    ) -> Vec<u8> {
         let (cx, cy) = center;
 
         let yuyv_image = self.yuyv_image();
@@ -195,12 +195,12 @@ impl Image {
                 let y = cy + i - height / 2;
 
                 if x >= self.yuyv_image().width() || y >= self.yuyv_image().height() {
-                    result.push(0.0);
+                    result.push(0);
                     continue;
                 }
 
                 let index = y * yuyv_image.width() + x;
-                result.push(yuyv_image[index * 2] as f32 / 255.0);
+                result.push(yuyv_image[index * 2]);
             }
         }
 

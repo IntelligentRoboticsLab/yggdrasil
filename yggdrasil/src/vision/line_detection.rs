@@ -5,7 +5,7 @@ use crate::debug::DebugContext;
 
 use crate::prelude::*;
 
-use super::line::LineSegment;
+use super::line::{LineSegment, LineSegment2};
 use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
 use derive_more::Deref;
@@ -46,7 +46,7 @@ impl Module for LineDetectionModule {
 struct LineDetectionData {
     line_points: Vec<(f32, f32)>,
     line_points_next: Vec<(f32, f32)>,
-    lines: Vec<LineSegment>,
+    lines: Vec<LineSegment2>,
     lines_points: Vec<LinePoints>,
 }
 
@@ -54,7 +54,7 @@ struct LineDetectionData {
 pub(super) struct TopLineDetectionData(Option<LineDetectionData>, Option<Image>);
 
 #[derive(Deref)]
-pub struct TopLines(#[deref] pub Vec<LineSegment>, pub Image);
+pub struct TopLines(#[deref] pub Vec<LineSegment2>, pub Image);
 
 struct LinePoints {
     points: Vec<(f32, f32)>,
@@ -285,7 +285,7 @@ fn detect_lines(
     })
 }
 
-fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> LineSegment {
+fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> LineSegment2 {
     let mut start_column = line_points.start_column;
     let mut end_column = line_points.end_column;
     assert!(start_column <= end_column);
@@ -325,12 +325,12 @@ fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> LineSe
     assert!(start_column < scan_grid.width() as f32);
     assert!(end_column < scan_grid.width() as f32);
 
-    LineSegment::from_xy(start_column, start_row, end_column, end_row)
+    LineSegment2::from_xy(start_column, start_row, end_column, end_row)
 }
 
 fn draw_lines(
     dbg: &DebugContext,
-    lines: &[LineSegment],
+    lines: &[LineSegment2],
     scan_grid: ScanGrid,
     matrix: &CameraMatrix,
 ) -> Result<()> {

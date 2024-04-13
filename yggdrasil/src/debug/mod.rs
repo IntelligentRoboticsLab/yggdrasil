@@ -117,7 +117,7 @@ impl DebugContext {
         Ok(())
     }
 
-    pub fn log_ndarray_image(
+    pub fn log_patch(
         &self,
         path: impl AsRef<str>,
         image: Cycle,
