@@ -1,11 +1,13 @@
 use crate::{
     camera::{BottomImage, Image},
+    debug::DebugContext,
     prelude::*,
 };
 
 use super::{field_boundary::FieldBoundary, VisionConfig};
 
 use derive_more::{Deref, DerefMut};
+use miette::miette;
 use serde::{Deserialize, Serialize};
 
 /// Module that generates scan-lines from taken NAO images.
@@ -93,10 +95,10 @@ impl PixelColor {
     pub fn classify_yuv_pixel(y1: u8, u: u8, v: u8) -> Self {
         let (y, h, s) = Self::yuv_to_yhs(y1, u, v);
 
-        if Self::ys_is_white(y, s) {
-            Self::White
-        } else if Self::ys_is_black(y, s) {
+        if Self::ys_is_black(y, s) {
             Self::Black
+        } else if Self::ys_is_white(y, s) {
+            Self::White
         } else if Self::yhs_is_green(y, h, s) {
             Self::Green
         } else {
@@ -109,11 +111,11 @@ impl PixelColor {
     }
 
     fn ys_is_black(y: f32, s: f32) -> bool {
-        y < 80. && s < 40.
+        y < 80. && s < 80.
     }
 
-    fn yhs_is_green(y: f32, h: f32, s: f32) -> bool {
-        y < 120. && !(20.0..=250.0).contains(&h) && s > 45.
+    fn yhs_is_green(_y: f32, h: f32, s: f32) -> bool {
+        !(20.0..=250.0).contains(&h) && s > 45.
     }
 
     pub fn classify_yuyv_pixel(y1: u8, u: u8, y2: u8, v: u8) -> (Self, Self) {
@@ -422,9 +424,11 @@ pub fn scan_lines_system(
     bottom_scan_grid: &mut BottomScanGrid,
     top_boundary: &FieldBoundary,
     bottom_image: &BottomImage,
+    dbg: &DebugContext,
 ) -> Result<()> {
     if top_scan_grid.image().timestamp() != top_boundary.image.timestamp() {
         top_scan_grid.update_scan_lines_from_boundary(top_boundary);
+        log_vertical_scan_lines(top_scan_grid, dbg)?;
     }
 
     if bottom_scan_grid.image().timestamp() != bottom_image.timestamp() {
@@ -432,4 +436,40 @@ pub fn scan_lines_system(
     }
 
     Ok(())
+}
+
+fn log_vertical_scan_lines(top_scan_grid: &TopScanGrid, dbg: &DebugContext) -> Result<()> {
+    let vertical_scan_lines = top_scan_grid.vertical();
+
+    let raw = vertical_scan_lines.raw();
+
+    let width = vertical_scan_lines.line_ids().len();
+    let height = top_scan_grid.height();
+
+    let mut image_buf = Vec::with_capacity(raw.len() * 3);
+
+    for y in 0..height {
+        for x in 0..width {
+            // index the raw image as column-major and store the pixel color in the image buffer as row-major
+            let pixel = raw[x * height + y];
+
+            let pixel = match pixel {
+                PixelColor::White => [255, 255, 255],
+                PixelColor::Black => [0, 0, 0],
+                PixelColor::Green => [0, 255, 0],
+                PixelColor::Unknown => [255, 0, 0],
+            };
+
+            image_buf.extend_from_slice(&pixel);
+        }
+    }
+
+    let image = image::RgbImage::from_vec(width as u32, height as u32, image_buf)
+        .ok_or_else(|| miette!("Failed to make image"))?;
+
+    dbg.log_image_rgb(
+        "image/top_camera/vertical_scan_lines",
+        image,
+        &top_scan_grid.image().cycle(),
+    )
 }
