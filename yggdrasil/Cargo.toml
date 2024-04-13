@@ -25,7 +25,6 @@ nidhogg = { workspace = true, features = ["lola"] }
 num = { workspace = true }
 odal = { path = "../crates/odal" }
 openvino = { workspace = true }
-rayon = { workspace = true }
 rerun = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_with = { workspace = true }

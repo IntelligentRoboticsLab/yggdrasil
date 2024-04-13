@@ -157,12 +157,12 @@ impl DebugContext {
         Ok(())
     }
 
-    pub fn log_box2d_class(
+    pub fn log_boxes2d_with_class(
         &self,
         path: impl AsRef<str>,
-        center: (f32, f32),
-        half_size: (f32, f32),
-        label: impl AsRef<str>,
+        centers: &[(f32, f32)],
+        half_sizes: &[(f32, f32)],
+        labels: Vec<String>,
         image: Cycle,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
@@ -171,8 +171,8 @@ impl DebugContext {
             self.rec
                 .log(
                     path.as_ref(),
-                    &rerun::Boxes2D::from_centers_and_half_sizes([center], [half_size])
-                        .with_labels([label.as_ref()]),
+                    &rerun::Boxes2D::from_centers_and_half_sizes(centers, half_sizes)
+                        .with_labels(labels),
                 )
                 .into_diagnostic()?;
 

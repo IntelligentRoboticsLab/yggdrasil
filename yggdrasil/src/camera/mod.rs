@@ -4,6 +4,7 @@ use crate::{debug::DebugContext, nao::Cycle, prelude::*};
 
 use derive_more::{Deref, DerefMut};
 use miette::IntoDiagnostic;
+use ndarray::s;
 use serde::{Deserialize, Serialize};
 use std::{
     sync::{Arc, Mutex},
@@ -171,6 +172,39 @@ impl Image {
     /// Return the cycle at which the image was captured.
     pub fn cycle(&self) -> Cycle {
         self.0 .2
+    }
+
+    /// Get a grayscale patch from the image centered at the given point.
+    /// The patch is of size `width` x `height`, and padded with zeros if the patch goes out of bounds.
+    ///
+    /// The grayscale values are normalized to the range [0, 1].
+    pub fn get_grayscale_patch(
+        &self,
+        center: (usize, usize),
+        width: usize,
+        height: usize,
+    ) -> Vec<f32> {
+        let (cx, cy) = center;
+
+        let yuyv_image = self.yuyv_image();
+        let mut result = Vec::with_capacity(width * height);
+
+        for i in 0..height {
+            for j in 0..width {
+                let x = cx + j - width / 2;
+                let y = cy + i - height / 2;
+
+                if x >= self.yuyv_image().width() || y >= self.yuyv_image().height() {
+                    result.push(0.0);
+                    continue;
+                }
+
+                let index = y * yuyv_image.width() + x;
+                result.push(yuyv_image[index * 2] as f32 / 255.0);
+            }
+        }
+
+        result
     }
 }
 
