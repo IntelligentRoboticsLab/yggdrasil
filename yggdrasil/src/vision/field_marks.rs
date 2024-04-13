@@ -122,9 +122,9 @@ fn field_marks_system(
                     let intersection_to_v2 = intersection - other_line.start;
                     let angle = intersection_to_v1.angle(&intersection_to_v2);
 
-                    if angle <= 30.0f32.to_radians() {
-                        continue;
-                    }
+                    // if angle <= 30.0f32.to_radians() {
+                    // continue;
+                    // }
                     possible_intersections.push((intersection.x, intersection.y));
                     angles.push(angle);
                 }
@@ -190,7 +190,7 @@ fn field_marks_system(
                             (2, true) => "X",
                             _ => "UNK",
                         };
-                        intersections.push(format!("{}: {:.2}", class, res[max_idx]));
+                        intersections.push(format!("{}: {:.2}", class, angles[i].to_degrees()));
                         break;
                     }
                 }

@@ -315,40 +315,6 @@ impl DebugContext {
         Ok(())
     }
 
-    /// Log a set of 2D boxes to the debug viewer.
-    pub fn log_boxes_2d(
-        &self,
-        path: impl AsRef<str>,
-        centers: impl IntoIterator<Item = (f32, f32)>,
-        sizes: impl IntoIterator<Item = (f32, f32)>,
-        image: Image,
-        color: RgbU8,
-    ) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            let centers = centers.into_iter().collect::<Vec<_>>();
-            let center_len = centers.len();
-
-            self.set_cycle(&image.cycle());
-            self.rec
-                .log(
-                    path.as_ref(),
-                    &rerun::Boxes2D::from_centers_and_sizes(centers, sizes).with_colors(vec![
-                        rerun::Color::from_rgb(
-                            color.red,
-                            color.green,
-                            color.blue,
-                        );
-                        center_len
-                    ]),
-                )
-                .into_diagnostic()?;
-            self.clear_cycle();
-        }
-
-        Ok(())
-    }
-
     /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
     pub fn log_points2d_for_image_with_radius(
         &self,

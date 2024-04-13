@@ -23,7 +23,7 @@ impl Module for VisionModule {
         app.add_module(FieldBoundaryModule)?
             .add_module(ScanLinesModule)?
             .add_module(LineDetectionModule)?
-            .add_module(BallDetectionModule)
+            .add_module(BallDetectionModule)?
             .add_module(FieldMarksModule)
     }
 }
