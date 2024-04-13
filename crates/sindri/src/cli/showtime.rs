@@ -11,8 +11,6 @@ use yggdrasil::{config::showtime::ShowtimeConfig, prelude::Config as OdalConfigT
 /// player numbers.
 #[derive(Parser, Debug)]
 pub struct Showtime {
-    #[clap()]
-    pub network: String,
     #[clap(flatten)]
     pub config: ConfigOptsRobotOps,
 }
