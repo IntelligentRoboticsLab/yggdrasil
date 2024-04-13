@@ -1,4 +1,4 @@
-use nidhogg::types::{color::f32::RED, FillExt, HeadJoints};
+use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, Context},
@@ -31,6 +31,5 @@ impl Behavior for Penalized {
         let head_stiffness = HeadJoints::fill(PENALIZED_HEAD_STIFFNESS);
 
         nao_manager.set_head(head_joints, head_stiffness, Priority::High);
-        nao_manager.set_chest_led(RED, Priority::High);
     }
 }

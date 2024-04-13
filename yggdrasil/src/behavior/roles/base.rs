@@ -19,7 +19,6 @@ impl Role for Base {
     ) -> BehaviorKind {
         match current_behavior {
             BehaviorKind::StartUp(_) => {
-                println!("hip height at: {}", walking_engine.hip_height);
                 if walking_engine.is_sitting() {
                     return BehaviorKind::Unstiff(Unstiff);
                 }
@@ -29,7 +28,6 @@ impl Role for Base {
                 BehaviorKind::StartUp(StartUp)
             }
             BehaviorKind::Unstiff(_) => {
-                // If chest button is pressed transition to initial behavior.
                 if context.chest_button.state.is_tapped() {
                     return BehaviorKind::Initial(Initial);
                 }

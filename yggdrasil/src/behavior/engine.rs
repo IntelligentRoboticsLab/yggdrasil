@@ -233,7 +233,6 @@ impl Engine {
                 .transition_behavior(context, &mut self.behavior, walking_engine)
         };
 
-        println!("Current behavior: {:?}", self.behavior);
         self.behavior.execute(context, nao_manager, walking_engine);
     }
 }
