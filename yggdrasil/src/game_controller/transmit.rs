@@ -91,7 +91,7 @@ fn transmit_system(
         team_num: config.team_number,
         fallen: matches!(fall_state, FallState::Lying(_)) as u8,
         pose: [0f32; 3],
-        ball_age: 0.0,
+        ball_age: -1.0,
         ball: [0f32; 2],
     };
 
