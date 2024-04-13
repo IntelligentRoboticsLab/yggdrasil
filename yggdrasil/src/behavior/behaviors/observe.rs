@@ -7,7 +7,7 @@ use crate::{
     nao::manager::{NaoManager, Priority},
     walk::engine::{Step, WalkingEngine},
 };
-use nidhogg::types::{FillExt, HeadJoints};
+use nidhogg::types::{color::f32::GREEN, FillExt, HeadJoints};
 
 const ROTATION_STIFFNESS: f32 = 0.3;
 
@@ -59,6 +59,8 @@ impl Behavior for Observe {
             head_yaw_multiplier,
             head_pitch_multiplier,
         );
+
+        nao_manager.set_chest_led(GREEN, Priority::High);
 
         walking_engine.request_walk(Step {
             forward: 0.04,
