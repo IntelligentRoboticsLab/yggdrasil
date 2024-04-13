@@ -15,6 +15,8 @@ use std::time::{Duration, Instant};
 
 use miette::IntoDiagnostic;
 
+use crate::filter::falling::Fall;
+use crate::filter::falling::FallState;
 use crate::prelude::*;
 
 pub(super) struct GameControllerTransmitModule;
@@ -77,6 +79,7 @@ fn transmit_system(
         Result<(GameControllerReturnMessage, Instant)>,
     >,
     config: &GameControllerConfig,
+    fall: &Fall,
 ) -> Result<()> {
     let Some((game_controller_address, mut last_transmitted_update_timestamp)) =
         game_controller_data.game_controller_address
@@ -87,7 +90,7 @@ fn transmit_system(
     let transmit_game_controller_data = TransmitGameControllerData {
         player_num: config.player_number,
         team_num: config.team_number,
-        fallen: 0,
+        fallen: matches!(fall.state, FallState::Lying(_)) as u8,
         pose: [0f32; 3],
         ball_age: 0.0,
         ball: [0f32; 2],
