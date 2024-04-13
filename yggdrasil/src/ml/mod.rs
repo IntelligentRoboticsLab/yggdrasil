@@ -47,7 +47,7 @@ pub trait MlModel: 'static {
     const ONNX_PATH: &'static str;
 }
 
-/// Machine learning (ML) task that runs a [`MlModel`] in a [`ComputeTask`].
+/// Machine learning (ML) task that runs a [`MlModel`] in an [`AsyncTask`].
 ///
 /// ## Example Usage
 /// Add a ML task to the app as follows:
