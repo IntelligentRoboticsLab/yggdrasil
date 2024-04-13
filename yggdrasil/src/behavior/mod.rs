@@ -1,3 +1,4 @@
+pub mod base;
 pub mod behavior_config;
 pub mod behaviors;
 pub mod engine;

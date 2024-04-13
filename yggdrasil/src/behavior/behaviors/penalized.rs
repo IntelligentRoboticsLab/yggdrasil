@@ -15,7 +15,7 @@ const PENALIZED_HEAD_STIFFNESS: f32 = 0.3;
 /// This is the behaviour of the robot once the chest button is pressed.
 /// In this state the robot will stand up straight and look at the middle
 /// circle to make it easier to place the robot in the correct position.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct Penalized;
 
 impl Behavior for Penalized {

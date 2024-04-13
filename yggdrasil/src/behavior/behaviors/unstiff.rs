@@ -8,7 +8,7 @@ use nidhogg::types::{color, FillExt, RightEye};
 /// This is the default behavior of the robot.
 /// In this state the robot does nothing and retains its previous position.
 /// In this state the robot has a blue right eye.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct Unstiff;
 
 impl Behavior for Unstiff {

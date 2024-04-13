@@ -6,7 +6,7 @@ use enum_dispatch::enum_dispatch;
 use crate::{
     behavior::{
         behaviors::{Initial, Observe, Penalized, StartUp},
-        roles::Base,
+        roles::Attacker,
         BehaviorConfig,
     },
     config::{layout::LayoutConfig, yggdrasil::YggdrasilConfig},
@@ -21,7 +21,7 @@ use crate::{
     walk::engine::WalkingEngine,
 };
 
-use super::behaviors::Unstiff;
+use super::{base::transition_base, behaviors::Unstiff};
 
 /// Context that is passed into the behavior engine.
 ///
@@ -97,7 +97,7 @@ pub trait Behavior {
 /// - New behavior implementations should be added as new variants to this enum.
 /// - The specific struct for each behavior (e.g., [`Initial`], [`StartUp`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum BehaviorKind {
     StartUp(StartUp),
     Unstiff(Unstiff),
@@ -167,7 +167,7 @@ pub trait Role {
 /// - The specific struct for each role (e.g., [`Base`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
 pub enum RoleKind {
-    Base(Base),
+    Attacker(Attacker),
     // Add new roles here!
 }
 
@@ -175,7 +175,7 @@ impl RoleKind {
     /// Get the default role for each robot based on that robots player number
     fn by_player_number() -> Self {
         // TODO: get the default role for each robot by player number
-        RoleKind::Base(Base)
+        RoleKind::Attacker(Attacker)
     }
 }
 
@@ -184,7 +184,7 @@ pub struct Engine {
     /// Current robot role
     role: RoleKind,
     /// Current robot behavior
-    behavior: BehaviorKind,
+    pub behavior: BehaviorKind,
 }
 
 impl Default for Engine {
@@ -194,17 +194,6 @@ impl Default for Engine {
             behavior: BehaviorKind::default(),
         }
     }
-}
-
-fn should_unstiff(context: &Context) -> bool {
-    context.head_buttons.rear.is_pressed()
-        && context.head_buttons.middle.is_pressed()
-        && context.head_buttons.front.is_pressed()
-}
-
-fn is_penalized(context: &Context, current_behavior: &BehaviorKind) -> bool {
-    *context.primary_state == PrimaryState::Penalized
-        && !matches!(current_behavior, BehaviorKind::StartUp(_))
 }
 
 impl Engine {
@@ -221,17 +210,19 @@ impl Engine {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        primary_state: &PrimaryState,
     ) {
         self.role = self.assign_role(context);
 
-        self.behavior = if should_unstiff(&context) {
-            BehaviorKind::Unstiff(Unstiff)
-        } else if is_penalized(&context, &self.behavior) {
-            BehaviorKind::Penalized(Penalized)
+        let permitted_behavior = transition_base(&self.behavior, walking_engine, primary_state);
+        if let Some(permitted_behavior) = permitted_behavior {
+            self.behavior = permitted_behavior;
         } else {
-            self.role
-                .transition_behavior(context, &mut self.behavior, walking_engine)
-        };
+            // self.role
+            //     .transition_behavior(context, &mut self.behavior, walking_engine);
+        }
+
+        println!("Current behavior: {:?}", self.behavior);
 
         self.behavior.execute(context, nao_manager, walking_engine);
     }
@@ -268,7 +259,7 @@ pub fn step(
         game_controller_config,
     };
 
-    engine.step(context, nao_manager, walking_engine);
+    engine.step(context, nao_manager, walking_engine, primary_state);
 
     Ok(())
 }

@@ -26,7 +26,7 @@ pub struct ObserveBehaviorConfig {
     pub head_yaw_max: f32,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Observe {
     pub starting_time: Instant,
 }
@@ -59,7 +59,7 @@ impl Behavior for Observe {
             head_yaw_multiplier,
             head_pitch_multiplier,
         );
-
+        walking_engine.request_stand();
         walking_engine.request_walk(Step {
             forward: 0.04,
             left: 0.0,

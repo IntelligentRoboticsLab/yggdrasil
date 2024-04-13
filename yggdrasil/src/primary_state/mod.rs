@@ -1,8 +1,9 @@
 use crate::{
-    filter::button::ChestButton,
+    filter::button::{ChestButton, HeadButtons},
     game_controller::GameControllerConfig,
     nao::manager::{NaoManager, Priority},
     prelude::*,
+    primary_state::PrimaryState as PS,
 };
 
 use serde::{Deserialize, Serialize};
@@ -57,16 +58,6 @@ pub enum PrimaryState {
     Calibration,
 }
 
-impl PrimaryState {
-    /// Tell whether the robot should walk in this state.
-    pub fn should_walk(&self) -> bool {
-        !matches!(
-            self,
-            Self::Unstiff | Self::Penalized | Self::Finished | Self::Calibration
-        )
-    }
-}
-
 // TODO: Replace with player number from pregame config.
 const PLAYER_NUM: u8 = 3;
 
@@ -83,21 +74,87 @@ fn is_penalized(
     })
 }
 
+fn should_unstiff(head_buttons: &HeadButtons) -> bool {
+    head_buttons.rear.is_pressed()
+        && head_buttons.middle.is_pressed()
+        && head_buttons.front.is_pressed()
+}
+
 #[system]
 pub fn update_primary_state(
     primary_state: &mut PrimaryState,
     game_controller_message: &Option<GameControllerMessage>,
     nao_manager: &mut NaoManager,
     chest_button: &ChestButton,
+    head_buttons: &HeadButtons,
     config: &PrimaryStateConfig,
     game_controller_config: &GameControllerConfig,
 ) -> Result<()> {
     use PrimaryState as PS;
 
-    // TODO: add penalized state
-    // We need the robot's id and check the `RobotInfo` array in the game-controller message, to
-    // see if this robot has received a penalty.
-    let next_primary_state = if is_penalized(
+    let next_state = next_primary_state(
+        primary_state,
+        game_controller_message,
+        chest_button,
+        head_buttons,
+        game_controller_config,
+    );
+
+    // Only set color if the primary state is changed, with the exception of `Initial`.
+    if next_state != *primary_state {
+        match next_state {
+            PS::Unstiff => nao_manager.set_chest_blink_led(
+                color::f32::BLUE,
+                config.chest_blink_interval,
+                Priority::Medium,
+            ),
+            PS::Initial => nao_manager.set_chest_led(color::f32::GRAY, Priority::Medium),
+            PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Medium),
+            PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Medium),
+            PS::Playing => nao_manager.set_chest_led(color::f32::GREEN, Priority::Medium),
+            PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Medium),
+            PS::Finished => nao_manager.set_chest_led(color::f32::GRAY, Priority::Medium),
+            PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Medium),
+        };
+    } else if next_state == PS::Unstiff {
+        nao_manager.set_chest_blink_led(
+            color::f32::BLUE,
+            config.chest_blink_interval,
+            Priority::Medium,
+        );
+    }
+
+    println!("Primary state: {:?}", next_state);
+    *primary_state = next_state;
+
+    Ok(())
+}
+
+fn next_primary_state(
+    primary_state: &PrimaryState,
+    game_controller_message: &Option<GameControllerMessage>,
+    chest_button: &ChestButton,
+    head_buttons: &HeadButtons,
+    game_controller_config: &GameControllerConfig,
+) -> PrimaryState {
+    if should_unstiff(head_buttons) {
+        return PS::Unstiff;
+    }
+
+    let primary_state = match primary_state {
+        PS::Unstiff if chest_button.state.is_tapped() => PS::Initial,
+        PS::Initial if chest_button.state.is_tapped() => PS::Playing,
+        PS::Playing if chest_button.state.is_tapped() => PS::Penalized,
+        PS::Penalized if chest_button.state.is_tapped() => PS::Playing,
+
+        _ => *primary_state,
+    };
+
+    if primary_state == PS::Unstiff {
+        return primary_state;
+    }
+
+    if is_penalized(
         game_controller_message.as_ref(),
         game_controller_config.team_number,
         PLAYER_NUM,
@@ -127,36 +184,7 @@ pub fn update_primary_state(
                     ..
                 } => PrimaryState::Finished,
             },
-            None if chest_button.state.is_tapped() => PrimaryState::Initial,
-            None => *primary_state,
+            None => primary_state,
         }
-    };
-
-    // Only set color if the primary state is changed, with the exception of `Initial`.
-    if next_primary_state != *primary_state {
-        match next_primary_state {
-            PS::Unstiff => nao_manager.set_chest_blink_led(
-                color::f32::BLUE,
-                config.chest_blink_interval,
-                Priority::Medium,
-            ),
-            PS::Initial => nao_manager.set_chest_led(color::f32::GRAY, Priority::Medium),
-            PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Medium),
-            PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Medium),
-            PS::Playing => nao_manager.set_chest_led(color::f32::GREEN, Priority::Medium),
-            PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Medium),
-            PS::Finished => nao_manager.set_chest_led(color::f32::GRAY, Priority::Medium),
-            PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Medium),
-        };
-    } else if next_primary_state == PS::Unstiff {
-        nao_manager.set_chest_blink_led(
-            color::f32::BLUE,
-            config.chest_blink_interval,
-            Priority::Medium,
-        );
     }
-
-    *primary_state = next_primary_state;
-
-    Ok(())
 }
