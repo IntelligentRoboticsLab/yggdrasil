@@ -10,9 +10,10 @@ colored = { workspace = true }
 dialoguer = { workspace = true }
 glob = { workspace = true }
 home = { workspace = true }
-indicatif = { workspace = true }
+indicatif = { workspace = true, features = ["tokio"] }
 local-ip-address = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
+rand = "0.8.5"
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -29,4 +30,4 @@ tokio = { workspace = true, features = [
 ] }
 toml = { workspace = true }
 walkdir = { workspace = true }
-yggdrasil = { path = "../../yggdrasil"}
+yggdrasil = { path = "../../yggdrasil" }
