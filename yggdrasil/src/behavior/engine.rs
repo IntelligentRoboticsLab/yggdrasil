@@ -190,6 +190,7 @@ pub struct Engine {
     /// Current robot role
     role: RoleKind,
     /// Current robot behavior
+    // TODO: Make private.
     pub behavior: BehaviorKind,
 }
 
