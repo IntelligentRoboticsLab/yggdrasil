@@ -56,6 +56,7 @@ pub struct Context<'a> {
 /// ```
 /// use yggdrasil::behavior::engine::{Behavior, Context};
 /// use yggdrasil::nao::manager::NaoManager;
+/// use yggdrasil::walk::engine::WalkingEngine;
 ///
 /// struct Dance;
 ///
@@ -64,6 +65,7 @@ pub struct Context<'a> {
 ///         &mut self,
 ///         context: Context,
 ///         nao_manager: &mut NaoManager,
+///         walking_engine: &mut WalkingEngine
 ///     ) {
 ///         // Dance like nobody's watching 🕺!
 ///     }
