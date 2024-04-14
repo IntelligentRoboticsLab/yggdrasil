@@ -53,7 +53,7 @@ impl Showtime {
         ops.stop_yggdrasil_services().await?;
         ops.upload(Output::Verbose).await?;
         ops.start_yggdrasil_services().await?;
-        ops.change_networks(self.config.network).await?;
+        // ops.change_networks(self.config.network).await?;
 
         Ok(())
     }
