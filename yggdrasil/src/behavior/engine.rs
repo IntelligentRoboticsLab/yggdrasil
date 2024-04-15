@@ -5,7 +5,7 @@ use enum_dispatch::enum_dispatch;
 
 use crate::{
     behavior::{
-        behaviors::{Initial, Observe, Penalized, StartUp},
+        behaviors::{Initial, Observe, Penalized, StartUp, Unstiff},
         roles::Attacker,
         BehaviorConfig,
     },
@@ -20,8 +20,6 @@ use crate::{
     primary_state::PrimaryState,
     walk::engine::WalkingEngine,
 };
-
-use super::{base::transition_base, behaviors::Unstiff};
 
 /// Context that is passed into the behavior engine.
 ///
@@ -214,17 +212,35 @@ impl Engine {
     ) {
         self.role = self.assign_role(context);
 
-        let permitted_behavior = transition_base(&self.behavior, walking_engine, primary_state);
-        if let Some(permitted_behavior) = permitted_behavior {
-            self.behavior = permitted_behavior;
-        } else {
-            // self.role
-            //     .transition_behavior(context, &mut self.behavior, walking_engine);
-        }
-
-        println!("Current behavior: {:?}", self.behavior);
+        self.transition(context, *primary_state, walking_engine);
 
         self.behavior.execute(context, nao_manager, walking_engine);
+    }
+
+    pub fn transition(
+        &mut self,
+        context: Context,
+        primary_state: PrimaryState,
+        walking_engine: &mut WalkingEngine,
+    ) {
+        if let BehaviorKind::StartUp(_) = self.behavior {
+            if walking_engine.is_sitting() {
+                self.behavior = BehaviorKind::Unstiff(Unstiff);
+            }
+        }
+        self.behavior = match primary_state {
+            PrimaryState::Unstiff => BehaviorKind::Unstiff(Unstiff),
+            PrimaryState::Penalized => BehaviorKind::Penalized(Penalized),
+            PrimaryState::Initial => BehaviorKind::Initial(Initial),
+            PrimaryState::Ready => BehaviorKind::Initial(Initial),
+            PrimaryState::Set => BehaviorKind::Initial(Initial),
+            PrimaryState::Finished => BehaviorKind::Initial(Initial),
+            PrimaryState::Calibration => BehaviorKind::Initial(Initial),
+            PrimaryState::Playing => {
+                self.role
+                    .transition_behavior(context, &mut self.behavior, walking_engine)
+            }
+        };
     }
 }
 

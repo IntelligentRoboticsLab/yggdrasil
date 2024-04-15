@@ -102,10 +102,7 @@ fn init_walking_engine(
 ) -> Result<()> {
     let kinematics = RobotKinematics::from(&nao_state.position);
 
-    storage.add_resource(Resource::new(WalkingEngine::from_config(
-        config,
-        &kinematics,
-    )))
+    storage.add_resource(Resource::new(WalkingEngine::new(config, &kinematics)))
 }
 
 #[system]
@@ -123,7 +120,7 @@ pub fn run_walking_engine(
     }
 
     match walking_engine.state {
-        WalkState::Idle(_) => walking_engine.reset(),
+        WalkState::Sitting(_) | WalkState::Standing(_) => walking_engine.reset(),
         WalkState::Starting(_) | WalkState::Walking(_) | WalkState::Stopping => {
             walking_engine.step_phase(cycle_time.duration);
         }

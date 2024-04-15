@@ -225,7 +225,7 @@ pub fn left_foot_to_left_ankle(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::x() * joints.ankle_roll)
 }
 
-pub fn left_ankle_hip_height(kinematics: &RobotKinematics) -> f32 {
+pub fn left_hip_to_ground(kinematics: &RobotKinematics) -> f32 {
     kinematics
         .left_ankle_to_robot
         .inverse()

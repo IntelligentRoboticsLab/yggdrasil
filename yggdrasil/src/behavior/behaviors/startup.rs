@@ -8,9 +8,8 @@ use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 const DEFAULT_PASSIVE_STIFFNESS: f32 = 0.8;
 const DEFAULT_PASSIVE_PRIORITY: Priority = Priority::Medium;
 
-/// This is the default behavior of the robot.
+/// This is the startup behavior of the robot.
 /// In this state the robot does nothing and retains its previous position.
-/// In this state the robot has a blue right eye.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct StartUp;
 

@@ -26,6 +26,7 @@ impl Behavior for Penalized {
         walking_engine: &mut WalkingEngine,
     ) {
         walking_engine.request_stand();
+        walking_engine.end_step_phase();
 
         let head_joints = HeadJoints::fill(0.0);
         let head_stiffness = HeadJoints::fill(PENALIZED_HEAD_STIFFNESS);

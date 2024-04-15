@@ -124,7 +124,6 @@ pub fn update_primary_state(
         );
     }
 
-    println!("Primary state: {:?}", next_state);
     *primary_state = next_state;
 
     Ok(())
@@ -137,11 +136,7 @@ fn next_primary_state(
     head_buttons: &HeadButtons,
     game_controller_config: &GameControllerConfig,
 ) -> PrimaryState {
-    if should_unstiff(head_buttons) {
-        return PS::Unstiff;
-    }
-
-    let primary_state = match primary_state {
+    let mut primary_state = match primary_state {
         PS::Unstiff if chest_button.state.is_tapped() => PS::Initial,
         PS::Initial if chest_button.state.is_tapped() => PS::Playing,
         PS::Playing if chest_button.state.is_tapped() => PS::Penalized,
@@ -150,41 +145,48 @@ fn next_primary_state(
         _ => *primary_state,
     };
 
+    // We are only able to leave the `Unstiff` state if the chest button is pressed.
     if primary_state == PS::Unstiff {
         return primary_state;
     }
+
+    primary_state = match game_controller_message {
+        Some(message) => match message {
+            GameControllerMessage {
+                state: GameState::Initial,
+                ..
+            } => PS::Initial,
+            GameControllerMessage {
+                state: GameState::Ready,
+                ..
+            } => PS::Ready,
+            GameControllerMessage {
+                state: GameState::Set,
+                ..
+            } => PS::Set,
+            GameControllerMessage {
+                state: GameState::Playing,
+                ..
+            } => PS::Playing,
+            GameControllerMessage {
+                state: GameState::Finished,
+                ..
+            } => PS::Finished,
+        },
+        None => primary_state,
+    };
 
     if is_penalized(
         game_controller_message.as_ref(),
         game_controller_config.team_number,
         PLAYER_NUM,
     ) {
-        PrimaryState::Penalized
-    } else {
-        match game_controller_message {
-            Some(message) => match message {
-                GameControllerMessage {
-                    state: GameState::Initial,
-                    ..
-                } => PrimaryState::Initial,
-                GameControllerMessage {
-                    state: GameState::Ready,
-                    ..
-                } => PrimaryState::Ready,
-                GameControllerMessage {
-                    state: GameState::Set,
-                    ..
-                } => PrimaryState::Set,
-                GameControllerMessage {
-                    state: GameState::Playing,
-                    ..
-                } => PrimaryState::Playing,
-                GameControllerMessage {
-                    state: GameState::Finished,
-                    ..
-                } => PrimaryState::Finished,
-            },
-            None => primary_state,
-        }
+        primary_state = PS::Penalized;
     }
+
+    if should_unstiff(head_buttons) {
+        primary_state = PS::Unstiff;
+    }
+
+    primary_state
 }
