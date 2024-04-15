@@ -116,18 +116,12 @@ impl WalkingEngine {
     ///
     /// TODO: Implement a better way to check if the robot is sitting, preferably by extracting sitting to a motion.
     pub fn is_sitting(&self) -> bool {
-        match self.state {
-            WalkState::Sitting(hip_height) if hip_height <= self.config.sitting_hip_height => true,
-            _ => false,
-        }
+        matches!(self.state, WalkState::Sitting(hip_height) if hip_height <= self.config.sitting_hip_height)
     }
 
     /// Returns whether the robot is currently standing.
     pub fn is_standing(&self) -> bool {
-        match self.state {
-            WalkState::Standing(hip_height) if hip_height >= self.config.hip_height => true,
-            _ => false,
-        }
+        matches!(self.state, WalkState::Standing(hip_height) if hip_height >= self.config.hip_height)
     }
 
     pub(super) fn new(config: &WalkingEngineConfig, kinematics: &RobotKinematics) -> Self {
