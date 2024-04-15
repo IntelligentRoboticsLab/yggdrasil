@@ -1,10 +1,12 @@
 use crate::{
     behavior::{engine::BehaviorKind, Engine},
+    debug::DebugContext,
     prelude::*,
     walk::engine::{Step, WalkingEngine},
 };
 
 use nalgebra::{Isometry, Point2, Unit, Vector2};
+use nidhogg::types::color;
 use num::Complex;
 
 use super::odometry::Odometry;
@@ -77,22 +79,28 @@ fn walk_planner_system(
     walk_planner_target: &WalkPlannerTarget,
     walking_engine: &mut WalkingEngine,
     behavior_engine: &Engine,
+    dbg: &DebugContext,
 ) -> Result<()> {
     if !matches!(behavior_engine.behavior, BehaviorKind::Test(_)) {
         return Ok(());
     }
+
+    dbg.log_points_3d_with_color_and_radius(
+        "/odometry/target",
+        &[(
+            walk_planner_target.target_position.x,
+            walk_planner_target.target_position.y,
+            0.,
+        )],
+        color::u8::ORANGE,
+        0.04,
+    )?;
 
     let turn = calc_turn(&odometry.accumulated, &walk_planner_target.target_position);
     eprintln!("TURN:  {turn}");
 
     let angle = calc_angle(&odometry.accumulated, &walk_planner_target.target_position);
     eprintln!("ANGLE: {}", angle.to_degrees());
-
-    // let robot_point = odometry
-    //     .accumulated
-    //     .translation
-    //     .transform_point(&Point2::new(0., 0.));
-    // let distance = distance(&walk_planner_target.target_position, &robot_point);
 
     let distance = calc_distance(&odometry.accumulated, &walk_planner_target.target_position);
     eprintln!("DISTANCE: {distance}");
