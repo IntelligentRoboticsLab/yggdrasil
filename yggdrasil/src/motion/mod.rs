@@ -20,6 +20,7 @@ impl Module for MotionModule {
                     .after(filter::orientation::update_orientation),
                 odometry::log_odometry,
             ))
-            .add_startup_system(odometry::setup_viewcoordinates)
+            .add_startup_system(odometry::setup_viewcoordinates)?
+            .add_module(step_planning::WalkPlannerModule)
     }
 }

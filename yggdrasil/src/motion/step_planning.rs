@@ -1,13 +1,11 @@
-use std::{f32::NAN, process::exit};
-
 use crate::{
     behavior::{engine::BehaviorKind, Engine},
-    filter::orientation::RobotOrientation,
     prelude::*,
     walk::engine::{Step, WalkingEngine},
 };
 
-use nalgebra::{Point2, Rotation2, Translation, Vector2};
+use nalgebra::{Isometry, Point2, Unit, Vector2};
+use num::Complex;
 
 use super::odometry::Odometry;
 
@@ -28,33 +26,49 @@ pub struct WalkPlannerTarget {
     target_position: Point2<f32>,
 }
 
-fn distance(point1: &Point2<f32>, point2: &Point2<f32>) -> f32 {
-    ((point1.x - point2.x).powi(2) + (point1.y - point2.y).powi(2)).sqrt()
-}
-
 fn calc_turn(
-    robot_translation: &Translation<f32, 2>,
-    robot_angle: f32,
-    target_point: &Point2<f32>,
+    robot_odometry: &Isometry<f32, Unit<Complex<f32>>, 2>,
+    target_position: &Point2<f32>,
 ) -> f32 {
-    let translated_target = robot_translation.transform_point(target_point);
+    let translated_target_position = robot_odometry
+        .translation
+        .inverse_transform_point(target_position);
+    let transformed_target_position = robot_odometry
+        .rotation
+        .inverse_transform_point(&translated_target_position);
 
-    let rotation = Rotation2::new(-robot_angle);
-    let rotated_translated_target = rotation * translated_target;
-
-    eprintln!("rotated_translated_target: {rotated_translated_target}");
-
-    if rotated_translated_target.y < 0. {
+    if transformed_target_position.y < 0. {
         -0.2
     } else {
         0.2
     }
 }
 
+fn calc_angle(
+    robot_odometry: &Isometry<f32, Unit<Complex<f32>>, 2>,
+    target_position: &Point2<f32>,
+) -> f32 {
+    let target_vector = Vector2::new(target_position.x, target_position.y);
+    let transformed_target_vector = robot_odometry.transform_vector(&target_vector);
+
+    transformed_target_vector.angle(&Vector2::new(100., 0.))
+}
+
+fn calc_distance(
+    robot_odometry: &Isometry<f32, Unit<Complex<f32>>, 2>,
+    target_point: &Point2<f32>,
+) -> f32 {
+    fn distance(point1: &Point2<f32>, point2: &Point2<f32>) -> f32 {
+        ((point1.x - point2.x).powi(2) + (point1.y - point2.y).powi(2)).sqrt()
+    }
+    let robot_point = robot_odometry.transform_point(&Point2::new(0., 0.));
+
+    distance(&robot_point, target_point)
+}
+
 #[system]
 fn walk_planner_system(
     odometry: &mut Odometry,
-    robot_rotation: &RobotOrientation,
     walk_planner_target: &WalkPlannerTarget,
     walking_engine: &mut WalkingEngine,
     behavior_engine: &Engine,
@@ -63,41 +77,24 @@ fn walk_planner_system(
         return Ok(());
     }
 
-    let target_vector = Vector2::new(
-        walk_planner_target.target_position.x,
-        walk_planner_target.target_position.y,
-    );
-    let target_vector = odometry.accumulated.transform_vector(&target_vector);
+    let turn = calc_turn(&odometry.accumulated, &walk_planner_target.target_position);
+    eprintln!("TURN:  {turn}");
 
-    let robot_target_angle = odometry
-        .accumulated
-        .inverse()
-        .transform_vector(&Vector2::new(0.1, 0.0))
-        .angle(&target_vector);
-    if robot_target_angle == NAN {
-        exit(0);
-    }
-    let turn = calc_turn(
-        &odometry.accumulated.translation,
-        robot_rotation.yaw().angle(),
-        &walk_planner_target.target_position,
-    );
+    let angle = calc_angle(&odometry.accumulated, &walk_planner_target.target_position);
+    eprintln!("ANGLE: {}", angle.to_degrees());
 
-    let robot_point: Point2<f32> = Point2::new(
-        odometry.accumulated.translation.x,
-        odometry.accumulated.translation.y,
-    );
+    // let robot_point = odometry
+    //     .accumulated
+    //     .translation
+    //     .transform_point(&Point2::new(0., 0.));
+    // let distance = distance(&walk_planner_target.target_position, &robot_point);
 
-    let target_point = Point2::new(
-        walk_planner_target.target_position.x,
-        walk_planner_target.target_position.y,
-    );
-
-    let distance = distance(&target_point, &robot_point);
+    let distance = calc_distance(&odometry.accumulated, &walk_planner_target.target_position);
+    eprintln!("DISTANCE: {distance}");
 
     if distance < 0.1 {
         walking_engine.request_idle();
-    } else if robot_target_angle > 0.1 {
+    } else if angle > 0.3 {
         walking_engine.request_walk(Step {
             forward: 0.,
             left: 0.,
