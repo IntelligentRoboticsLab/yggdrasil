@@ -7,6 +7,7 @@ use miette::IntoDiagnostic;
 
 use nalgebra::Isometry3;
 use nidhogg::types::RgbU8;
+
 use std::net::IpAddr;
 
 use crate::{camera::Image, nao::Cycle, prelude::*};
@@ -385,6 +386,35 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Log a set of 3D arrows to the debug viewer.
+    pub fn log_arrows3d_with_color(
+        &self,
+        path: impl AsRef<str>,
+        vectors: &[(f32, f32, f32)],
+        origins: &[(f32, f32, f32)],
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Arrows3D::from_vectors(vectors)
+                        .with_origins(origins)
+                        .with_colors(vec![
+                            rerun::Color::from_rgb(
+                                color.red,
+                                color.green,
+                                color.blue
+                            );
+                            vectors.len()
+                        ]),
+                )
+                .into_diagnostic()?;
+        }
+        Ok(())
+    }
+
     /// Log a set of 3D lines to the debug viewer, using the timestamp of the provided image.
     pub fn log_lines3d_for_image(
         &self,
@@ -441,6 +471,19 @@ impl DebugContext {
 
         Ok(())
     }
+
+    /// Log a timeless robot view coordinate system to the debug viewer.
+    /// This sets the x-axis to the front of the robot, the y-axis to the left, and the z-axis up.
+    pub fn log_robot_viewcoordinates(&self, path: impl AsRef<str>) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log_timeless(path.as_ref(), &rerun::ViewCoordinates::FLU)
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
 }
 
 #[startup_system]
@@ -457,6 +500,24 @@ fn init_rerun(storage: &mut Storage) -> Result<()> {
     };
 
     let ctx = DebugContext::init("yggdrasil", server_address)?;
+
+    #[cfg(feature = "rerun")]
+    {
+        ctx.rec
+            .log_timeless(
+                "field/mesh",
+                &rerun::Asset3D::from_file("./assets/rerun/spl_field.glb")
+                    .expect("Failed to load field model")
+                    .with_transform(
+                        rerun::Transform3D::from_translation([0.0, 0.0, -0.05])
+                            .transform
+                            .0,
+                    ),
+            )
+            .into_diagnostic()?;
+
+        ctx.log_robot_viewcoordinates("/field/mesh")?;
+    }
 
     storage.add_resource(Resource::new(ctx))
 }

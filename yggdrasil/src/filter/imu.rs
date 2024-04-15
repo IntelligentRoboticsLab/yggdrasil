@@ -38,8 +38,10 @@ pub struct IMUValues {
     /// These angles represent the orientation of the robot and are measured in radians.
     pub angles: Vector2<f32>,
 
+    /// The variance of the accelerometer measurements, over a window of `ACCELEROMETER_DEVIATION_WINDOW` samples.
     pub accelerometer_variance: Vector3<f32>,
 
+    /// The last `ACCELEROMETER_DEVIATION_WINDOW` accelerometer measurements.
     accelerometer_measurements: VecDeque<Vector3<f32>>,
 }
 
