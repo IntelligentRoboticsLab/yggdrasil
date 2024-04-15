@@ -162,7 +162,7 @@ pub trait Role {
 ///
 /// # Notes
 /// - New role implementations should be added as new variants to this enum
-/// - The specific struct for each role (e.g., [`Base`]) should implement the [`Role`] trait.
+/// - The specific struct for each role (e.g., [`Attacker`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
 pub enum RoleKind {
     Attacker(Attacker),
