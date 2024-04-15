@@ -47,8 +47,6 @@ pub struct Context<'a> {
     pub game_controller_message: Option<&'a GameControllerMessage>,
     /// Contains the game-controller config.
     pub game_controller_config: &'a GameControllerConfig,
-    /// Contains the pregame config.
-    pub pregame_config: &'a PregameConfig,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -251,7 +249,6 @@ pub fn step(
     walking_engine: &mut WalkingEngine,
     game_controller_message: &Option<GameControllerMessage>,
     game_controller_config: &GameControllerConfig,
-    pregame_config: &PregameConfig,
 ) -> Result<()> {
     let context = Context {
         primary_state,
@@ -264,7 +261,6 @@ pub fn step(
         behavior_config,
         game_controller_message: game_controller_message.as_ref(),
         game_controller_config,
-        pregame_config,
     };
 
     engine.step(context, nao_manager, walking_engine);
