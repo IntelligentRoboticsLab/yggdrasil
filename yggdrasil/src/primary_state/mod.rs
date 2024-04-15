@@ -67,9 +67,6 @@ impl PrimaryState {
     }
 }
 
-// TODO: Replace with player number from pregame config.
-const PLAYER_NUM: u8 = 3;
-
 fn is_penalized(
     game_controller_message: Option<&GameControllerMessage>,
     team_number: u8,
@@ -100,7 +97,7 @@ pub fn update_primary_state(
     let next_primary_state = if is_penalized(
         game_controller_message.as_ref(),
         player_config.team_number,
-        PLAYER_NUM,
+        player_config.player_number,
     ) {
         PrimaryState::Penalized
     } else {

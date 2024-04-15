@@ -1,10 +1,11 @@
 use clap::Parser;
 use colored::Colorize;
-use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressStyle};
+use indicatif::{HumanDuration, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use miette::{miette, Context, IntoDiagnostic};
 use ssh2::{ErrorCode, OpenFlags, OpenType, Session, Sftp};
 use std::{
-    fs::{self},
+    borrow::Cow,
+    fs,
     io::BufWriter,
     net::Ipv4Addr,
     path::{Component, Path, PathBuf},
@@ -20,7 +21,7 @@ use crate::{
     error::{Error, Result},
 };
 
-const BINARY_NAME: &str = "yggdrasil";
+// const BINARY_NAME: &str = "yggdrasil";
 const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
 const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
 const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
@@ -132,10 +133,27 @@ pub struct ConfigOptsRobotOps {
     pub robots: Vec<RobotEntry>,
 }
 
-/// Abstraction containing functionality useful for deploying code
-pub struct RobotOps {
-    pub sindri_config: SindriConfig,
-    pub config: ConfigOptsRobotOps,
+impl ConfigOptsRobotOps {
+    pub fn robots(&self) -> Vec<RobotEntry> {
+        self.robots.clone()
+    }
+
+    /// Get a specific robot
+    pub fn get_robot(&self, robot: u8, config: &SindriConfig) -> miette::Result<Robot> {
+        config.robot(robot, self.wired).ok_or(miette!(format!(
+            "Invalid robot specified, number {} is not configured!",
+            robot
+        )))
+    }
+
+    /// Get robot information for a single robot, when there is just a single robot
+    pub fn get_first_robot(&self, config: &SindriConfig) -> miette::Result<Robot> {
+        if self.robots.is_empty() {
+            return Err(miette!("Pass at least one robot number as argument"));
+        }
+
+        self.get_robot(self.robots[0].robot_number, config)
+    }
 }
 
 /// Enum used to determine the type of progress bar to use
@@ -144,6 +162,110 @@ pub enum Output {
     Silent,
     Single(ProgressBar),
     Multi(ProgressBar),
+}
+
+impl Output {
+    pub fn should_print(&self) -> bool {
+        matches!(self, Output::Single(_) | Output::Multi(_))
+    }
+
+    pub fn set_message(&self, msg: impl Into<Cow<'static, str>>) {
+        match self {
+            Output::Silent => {}
+            Output::Single(pb) | Output::Multi(pb) => {
+                pb.set_message(msg.into());
+            }
+        }
+    }
+
+    pub fn compile_phase(&self) {
+        match self {
+            Output::Silent => {}
+            Output::Single(pb) | Output::Multi(pb) => {
+                pb.set_message(format!(
+                    "{} {} {}",
+                    "Compiling".bright_blue().bold(),
+                    "yggdrasil".bold(),
+                    "(release: ".dimmed(),
+                ));
+            }
+        }
+    }
+
+    pub fn connecting_phase(&self, addr: &Ipv4Addr) {
+        match self {
+            Output::Silent => {}
+            Output::Single(pb) | Output::Multi(pb) => {
+                pb.set_message(format!(
+                    "{} {} {}",
+                    "Connecting".bright_blue().bold(),
+                    "to".dimmed(),
+                    addr.to_string().clone().bold(),
+                ));
+            }
+        }
+    }
+
+    pub fn upload_phase(&self, num_files: u64) {
+        match self {
+            Output::Silent => {}
+            Output::Single(pb) => {
+                pb.set_message(format!("{}", "Ensuring host directories exist".dimmed()));
+                pb.set_prefix(format!("{}", "Uploading".blue().bold()));
+                pb.set_style(
+                    ProgressStyle::with_template(
+                        "   {prefix:.blue.bold} {msg} [{bar:.blue/cyan}] {spinner:.blue.bold}",
+                    )
+                    .unwrap()
+                    .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
+                    .progress_chars("=>-"),
+                );
+            }
+            Output::Multi(pb) => {
+                pb.set_length(num_files);
+                pb.set_style(
+                    ProgressStyle::with_template(
+                        "   {prefix:.blue.bold} [{bar:.blue/cyan}]: {msg}",
+                    )
+                    .unwrap()
+                    .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
+                    .progress_chars("=>-"),
+                );
+                pb.set_prefix(format!("{}", "Uploading".blue().bold()));
+            }
+        }
+    }
+
+    pub fn finished_deploying(&self, ip: &Ipv4Addr) {
+        match self {
+            Output::Silent => {}
+            Output::Single(pb) | Output::Multi(pb) => {
+                pb.set_style(
+                    ProgressStyle::with_template("    {prefix:.blue.bold} to {msg}").unwrap(),
+                );
+                pb.set_prefix(format!("{}", "Deployed".blue().bold()));
+                pb.set_message(format!("{}", ip.to_string().red()));
+                pb.finish();
+            }
+        }
+    }
+
+    pub fn spinner(&self) {
+        match self {
+            Output::Silent => {}
+            Output::Single(pb) | Output::Multi(pb) => {
+                pb.set_style(
+                    ProgressStyle::with_template(
+                        "   {prefix:.blue.bold} {msg} {spinner:.blue.bold}",
+                    )
+                    .unwrap()
+                    .progress_chars("=>-")
+                    .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
+                );
+                pb.set_prefix("")
+            }
+        }
+    }
 }
 
 /// Environment variables that are required to cross compile for the robot, depending
@@ -173,370 +295,222 @@ mod cross {
     ];
 }
 
-impl RobotOps {
-    /// Compile yggdrasil
-    pub async fn compile(&self, verbose: Output) -> miette::Result<()> {
-        find_bin_manifest(&self.config.bin)
-            .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
-
-        let mut features = vec![];
-        if self.config.alsa {
-            features.push("alsa");
-        }
-        if self.config.rerun {
-            features.push("rerun");
-        }
-        if self.config.local {
-            features.push("local");
-        }
-
-        let target = if self.config.local {
-            None
-        } else {
-            Some(ROBOT_TARGET)
-        };
-
-        let pb = if matches!(verbose, Output::Verbose) {
-            let pb = ProgressBar::new_spinner();
-            pb.enable_steady_tick(Duration::from_millis(80));
-            pb.set_style(
-                ProgressStyle::with_template(
-                    "   {prefix:.green.bold} yggdrasil {msg} {spinner:.green.bold}",
-                )
-                .unwrap()
-                .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
-            );
-            pb.set_message(format!(
-                "{}{}, {}{}{}",
-                "(release: ".dimmed(),
-                "true".red(),
-                "target: ".dimmed(),
-                ROBOT_TARGET.bold(),
-                ")".dimmed()
-            ));
-            pb.set_prefix("Compiling");
-            Some(pb)
-        } else {
-            None
-        };
-
-        cargo::build(
-            &self.config.bin,
-            Profile::Release,
-            target,
-            &features,
-            Some(cross::ENV_VARS.to_vec()),
-        )
+/// Modify the default network for a specific robot
+pub async fn change_single_network(robot: &Robot, network: String) -> Result<()> {
+    robot
+        .ssh::<&str, &str>(format!("echo {} > /etc/network_config", network), [], true)?
+        .wait()
         .await?;
 
-        if let Some(pb) = pb {
-            pb.println(format!(
-                "{} {} {}{}, {}{}{}",
-                "   Compiling".green().bold(),
-                "yggdrasil".bold(),
-                "(release: ".dimmed(),
-                "true".red(),
-                "target: ".dimmed(),
-                ROBOT_TARGET.bold(),
-                ")".dimmed()
-            ));
-            pb.println(format!(
-                "{} in {}",
-                "    Finished".green().bold(),
-                HumanDuration(pb.elapsed()),
-            ));
-            pb.reset_elapsed();
-            pb.finish();
-        }
-
-        let release_path = if self.config.local {
-            RELEASE_PATH_LOCAL
-        } else {
-            RELEASE_PATH_REMOTE
-        };
-
-        // Copy over the files that need to be deployed
-        fs::copy(release_path, DEPLOY_PATH)
-            .into_diagnostic()
-            .wrap_err("Failed to copy binary to deploy directory!")?;
-
-        Ok(())
-    }
-
-    /// Upload the binary, and other assets to each robot
-    pub async fn upload(&self, verbose: Output) -> miette::Result<()> {
-        let robot_numbers = self.config.robots.robot_numbers();
-        if robot_numbers.len() == 1 {
-            let robot = self.get_robot(robot_numbers[0])?;
-            // single_upload(robot, verbose, None).await.unwrap();
-            return Ok(());
-        }
-
-        let mpb = MultiProgress::new();
-        mpb.println(format!("   {}", "Deploying".green().bold()))
-            .into_diagnostic()?;
-
-        let mut set = tokio::task::JoinSet::new();
-        for robot in robot_numbers {
-            let robot = self.get_robot(robot)?;
-            let pb = mpb.clone();
-
-            let npb = pb.add(ProgressBar::new(13));
-            npb.set_style(ProgressStyle::with_template("   {prefix:.blue.bold} {msg}").unwrap());
-
-            pb.println("added new pb");
-            npb.tick();
-            let cnpb = npb.clone();
-            // set.spawn(async move {
-            //     single_upload(robot, verbose.clone(), Some(cnpb))
-            //         .await
-            //         .unwrap()
-            // });
-        }
-
-        mpb.println("blocking..");
-
-        while let Some(res) = set.join_next().await {
-            mpb.println("done with task").into_diagnostic()?;
-            res.into_diagnostic()?;
-        }
-        mpb.clear().into_diagnostic()?;
-        Ok(())
-    }
-
-    /// Get a specific robot
-    pub fn get_robot(&self, robot: u8) -> miette::Result<Robot> {
-        self.sindri_config
-            .robot(robot, self.config.wired)
-            .ok_or(miette!(format!(
-                "Invalid robot specified, number {} is not configured!",
-                robot
-            )))
-    }
-
-    /// Get robot information for a single robot, when there is just a single robot
-    pub fn get_first_robot(&self) -> miette::Result<Robot> {
-        if self.config.robots.is_empty() {
-            return Err(miette!("Pass at least one robot number as argument"));
-        }
-
-        self.get_robot(self.config.robots[0].robot_number)
-    }
-
-    /// Start the yggdrasil service on each robot
-    pub async fn start_yggdrasil_services(&self) -> miette::Result<()> {
-        let mut threads: Vec<_> = Vec::new();
-
-        for robot in self.config.robots.robot_numbers() {
-            let robot = self.get_robot(robot)?;
-            let thread = tokio::spawn(async move {
-                start_single_yggdrasil_service(robot).await.unwrap();
-            });
-            threads.push(thread);
-        }
-
-        for temp_thread in threads {
-            temp_thread.await.into_diagnostic()?;
-        }
-
-        Ok(())
-    }
-
-    /// Stop the yggdrasil service on each robot
-    pub async fn stop_yggdrasil_services(&self) -> miette::Result<()> {
-        let mut threads: Vec<_> = vec![];
-
-        for robot in self.config.robots.robot_numbers() {
-            let robot = self.get_robot(robot)?;
-            let thread = tokio::spawn(async move {
-                stop_single_yggdrasil_service(robot).await.unwrap();
-            });
-            threads.push(thread);
-        }
-
-        for temp_thread in threads {
-            temp_thread.await.into_diagnostic()?;
-        }
-
-        Ok(())
-    }
-}
-
-/// Upload the binary, and other assets to a specific robot
-async fn single_upload(robot: Robot, output: Output) -> miette::Result<()> {
-    find_bin_manifest(BINARY_NAME)
-        .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
-
-    match output {
-        Output::Silent => {}
-        Output::Single(_) => {
-            let pb = ProgressBar::new(1);
-            pb.enable_steady_tick(Duration::from_millis(80));
-            pb.set_style(
-                ProgressStyle::with_template("   {prefix:.blue.bold} {msg} {spinner:.blue.bold}")
-                    .unwrap()
-                    .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
-            );
-            pb.set_prefix("Deploying");
-            pb.set_message(format!("{}", "Preparing deployment...".dimmed()));
-
-            upload_to_robot(Output::Single(pb.clone()), robot.ip())
-                .await
-                .wrap_err("Failed to deploy yggdrasil files to robot")?;
-
-            pb.println(format!(
-                "{} in {}",
-                "  Uploaded to robot".bold(),
-                HumanDuration(pb.elapsed()),
-            ));
-
-            pb.finish_and_clear();
-        }
-        Output::Multi(pb) => {
-            upload_to_robot(Output::Multi(pb.clone()), robot.ip())
-                .await
-                .wrap_err("Failed to deploy yggdrasil files to robot")?;
-
-            pb.finish_and_clear();
-        }
-    }
-
-    Ok(())
-}
-
-/// Modify the default network for a specific robot
-pub async fn change_single_network(robot: Robot, network: String) -> miette::Result<()> {
     robot
-        .ssh(format!("echo {} > /etc/network_config", network), [], true)?
-        .wait()
-        .await
-        .into_diagnostic()?;
-
-    robot
-        .ssh(
+        .ssh::<&str, &str>(
             "sudo nohup systemctl restart network_config.service &> /dev/null",
             [],
             true,
         )?
         .wait()
-        .await
-        .into_diagnostic()?;
+        .await?;
+    Ok(())
+}
+
+/// Compile yggdrasil
+pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miette::Result<()> {
+    find_bin_manifest(&config.bin)
+        .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
+
+    let mut features = vec![];
+    if config.alsa {
+        features.push("alsa");
+    }
+    if config.rerun {
+        features.push("rerun");
+    }
+    if config.local {
+        features.push("local");
+    }
+
+    let target = if config.local {
+        None
+    } else {
+        Some(ROBOT_TARGET)
+    };
+
+    let pb = match output.clone() {
+        Output::Silent => {
+            let pb = ProgressBar::new_spinner();
+            pb.set_draw_target(ProgressDrawTarget::hidden());
+            pb
+        }
+        Output::Single(pb) | Output::Multi(pb) => pb,
+    };
+
+    pb.enable_steady_tick(Duration::from_millis(80));
+    pb.set_style(
+        ProgressStyle::with_template(
+            "   {prefix:.green.bold} yggdrasil {msg} {spinner:.green.bold}",
+        )
+        .unwrap()
+        .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
+    );
+    pb.set_message(format!(
+        "{}{}, {}{}{}",
+        "(release: ".dimmed(),
+        "true".red(),
+        "target: ".dimmed(),
+        ROBOT_TARGET.bold(),
+        ")".dimmed()
+    ));
+    pb.set_prefix("Compiling");
+
+    cargo::build(
+        &config.bin,
+        Profile::Release,
+        target,
+        &features,
+        Some(cross::ENV_VARS.to_vec()),
+    )
+    .await?;
+
+    if output.should_print() {
+        pb.println(format!(
+            "{} {} {}{}, {}{}{}",
+            "   Compiling".green().bold(),
+            "yggdrasil".bold(),
+            "(release: ".dimmed(),
+            "true".red(),
+            "target: ".dimmed(),
+            ROBOT_TARGET.bold(),
+            ")".dimmed()
+        ));
+        pb.println(format!(
+            "{} in {}",
+            "    Finished".green().bold(),
+            HumanDuration(pb.elapsed()),
+        ));
+        pb.reset_elapsed();
+    }
+
+    let release_path = if config.local {
+        RELEASE_PATH_LOCAL
+    } else {
+        RELEASE_PATH_REMOTE
+    };
+
+    // Copy over the files that need to be deployed
+    fs::copy(release_path, DEPLOY_PATH)
+        .into_diagnostic()
+        .wrap_err("Failed to copy binary to deploy directory!")?;
 
     Ok(())
 }
 
 /// Start the yggdrasil service on a specific robot
-pub(crate) async fn start_single_yggdrasil_service(robot: Robot) -> miette::Result<()> {
+pub(crate) async fn start_single_yggdrasil_service(robot: &Robot, output: Output) -> Result<()> {
+    match output {
+        Output::Silent => {}
+        Output::Multi(pb) => {
+            pb.set_message(format!(
+                "{} {}",
+                "Starting".bright_green().bold(),
+                "yggdrasil service...".dimmed(),
+            ));
+        }
+        Output::Single(pb) => {
+            pb.set_message(format!(
+                "  {} {}",
+                "  Starting".bright_blue().bold(),
+                "yggdrasil service...".dimmed(),
+            ));
+        }
+    }
     robot
-        .ssh("sudo systemctl restart yggdrasil", [], true)?
+        .ssh::<&str, &str>("sudo systemctl restart yggdrasil", [], true)?
         .wait()
-        .await
-        .into_diagnostic()?;
+        .await?;
 
     Ok(())
 }
 
 /// Stop the yggdrasil service on a specific robot
-pub(crate) async fn stop_single_yggdrasil_service(robot: Robot) -> miette::Result<()> {
-    robot
-        .ssh("sudo systemctl stop yggdrasil", [], true)?
-        .wait()
-        .await
-        .into_diagnostic()?;
-
-    Ok(())
-}
-
-/// Copy the contents of the 'deploy' folder to the robot.
-pub(crate) async fn upload_to_robot(addr: Ipv4Addr, output: Output) -> Result<()> {
-    match &output {
-        Output::None => {}
+pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output) -> Result<()> {
+    match output {
+        Output::Silent => {}
         Output::Multi(pb) => {
             pb.set_message(format!(
-                "{} {} {}",
-                "Connecting".bright_blue().bold(),
-                "to".dimmed(),
-                addr.to_string().clone().bold(),
+                "{} {}",
+                "Stopping".bright_red().bold(),
+                "yggdrasil service...".dimmed()
             ));
         }
         Output::Single(pb) => {
-            pb.println(format!(
-                "{} {} {}",
-                "  Connecting".bright_blue().bold(),
-                "to".dimmed(),
-                addr.to_string().clone().bold(),
+            pb.set_message(format!(
+                "{} {}",
+                "  Stopping".bright_red().bold(),
+                "yggdrasil service...".dimmed()
             ));
         }
     }
 
-    // let sftp = create_sftp_connection(addr).await?;
+    robot
+        .ssh::<&str, &str>("sudo systemctl stop yggdrasil", [], true)?
+        .wait()
+        .await?;
+    Ok(())
+}
+
+/// Copy the contents of the 'deploy' folder to the robot.
+pub(crate) async fn upload_to_robot(addr: &Ipv4Addr, output: Output) -> Result<()> {
+    output.connecting_phase(addr);
+    let sftp = create_sftp_connection(addr).await?;
+    match output.clone() {
+        Output::Silent => {}
+        Output::Multi(pb) => {
+            pb.set_message(format!("{}", "Connected".bright_blue().bold()));
+        }
+        Output::Single(pb) => {
+            pb.set_message(format!("{}", "  Connected".bright_blue().bold()));
+        }
+    }
 
     let entries: Vec<DirEntry> = WalkDir::new("./deploy")
         .into_iter()
         .filter_map(|e| e.ok())
+        .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
         .collect();
     let num_files = entries
         .iter()
         .filter(|e| e.metadata().unwrap().is_file())
         .count();
 
-    match &output {
-        Output::None => {}
-        Output::Multi(pb) => {
-            pb.set_length(num_files as u64);
-            pb.set_style(
-                ProgressStyle::with_template("{prefix:.blue.bold} [{bar:.blue/cyan}]: {msg}")
-                    .unwrap()
-                    .progress_chars("=>-"),
-            );
-            pb.set_message(format!("{}", "Deploying".dimmed()));
-            pb.tick();
-        }
-        Output::Single(pb) => {
-            pb.set_message(format!("{}", "Ensuring host directories exist".dimmed()));
-
-            pb.set_style(
-                ProgressStyle::with_template(
-                    "   {prefix:.blue.bold} {msg} [{bar:.blue/cyan}] {spinner:.blue.bold}",
-                )
-                .unwrap()
-                // .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
-                .progress_chars("=>-"),
-            );
-        }
-    }
+    output.upload_phase(num_files as u64);
 
     for entry in entries.iter() {
         let remote_path = get_remote_path(entry.path());
 
         if entry.path().is_dir() {
             // Ensure all directories exist on remote
-            // ensure_directory_exists(&sftp, remote_path)?;
+            ensure_directory_exists(&sftp, remote_path)?;
             continue;
         }
 
-        // let file_remote = sftp
-        //     .open_mode(
-        //         &remote_path,
-        //         OpenFlags::WRITE | OpenFlags::TRUNCATE,
-        //         0o777,
-        //         OpenType::File,
-        //     )
-        //     .map_err(|e| Error::SftpError {
-        //         source: e,
-        //         msg: format!("Failed to open remote file {:?}!", entry.path()),
-        //     })?;
+        let file_remote = sftp
+            .open_mode(
+                &remote_path,
+                OpenFlags::WRITE | OpenFlags::TRUNCATE,
+                0o777,
+                OpenType::File,
+            )
+            .map_err(|e| Error::Sftp {
+                source: e,
+                msg: format!("Failed to open remote file {:?}!", entry.path()),
+            })?;
 
         let mut file_local = std::fs::File::open(entry.path())?;
 
-        match &output {
-            Output::None => {}
+        match output.clone() {
+            Output::Silent => {}
             Output::Multi(pb) => {
-                pb.set_message(format!(
-                    "{} {}",
-                    addr.to_string().red(),
-                    entry.path().to_string_lossy().dimmed()
-                ));
+                pb.set_message(format!("{}", entry.path().to_string_lossy().dimmed()));
             }
             Output::Single(pb) => {
                 pb.set_length(file_local.metadata()?.len());
@@ -546,22 +520,19 @@ pub(crate) async fn upload_to_robot(addr: Ipv4Addr, output: Output) -> Result<()
 
         // Since `file_remote` impl's Write, we can just copy directly using a BufWriter!
         // The Write impl is rather slow, so we set a large buffer size of 1 mb.
-        // let mut buf_writer = BufWriter::with_capacity(UPLOAD_BUFFER_SIZE, file_remote);
+        let mut buf_writer = BufWriter::with_capacity(UPLOAD_BUFFER_SIZE, file_remote);
 
-        match &output {
-            Output::None => {
-                // std::io::copy(&mut file_local, &mut buf_writer)?;
+        match output.clone() {
+            Output::Silent => {
+                std::io::copy(&mut file_local, &mut buf_writer)?;
             }
             Output::Multi(pb) => {
-                // std::io::copy(&mut file_local, &mut buf_writer)?;
-                // sleep for 200 ms to simulate file transfer
-                let n = rand::random::<u8>() + 100;
-                tokio::time::sleep(Duration::from_millis(n as u64)).await;
+                std::io::copy(&mut file_local, &mut buf_writer)?;
                 pb.inc(1);
             }
             Output::Single(pb) => {
-                // std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer))
-                // .map_err(Error::IoError)?;
+                std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer))
+                    .map_err(Error::Io)?;
 
                 pb.println(format!(
                     "{} {}",
@@ -572,7 +543,9 @@ pub(crate) async fn upload_to_robot(addr: Ipv4Addr, output: Output) -> Result<()
         }
     }
 
-    if let Output::Multi(pb) = &pb {
+    output.spinner();
+
+    if let Output::Multi(pb) = &output {
         pb.set_message(format!(
             "    {} {}",
             "Uploaded".green().bold(),
@@ -583,31 +556,31 @@ pub(crate) async fn upload_to_robot(addr: Ipv4Addr, output: Output) -> Result<()
     Ok(())
 }
 
-async fn create_sftp_connection(ip: Ipv4Addr) -> Result<Sftp> {
+async fn create_sftp_connection(ip: &Ipv4Addr) -> Result<Sftp> {
     let tcp = tokio::time::timeout(
         Duration::from_secs(CONNECTION_TIMEOUT),
         TcpStream::connect(format!("{ip}:22")),
     )
     .await
-    .map_err(Error::ElapsedError)??;
-    let mut session = Session::new().map_err(|e| Error::SftpError {
+    .map_err(Error::Elapsed)??;
+    let mut session = Session::new().map_err(|e| Error::Sftp {
         source: e,
         msg: "Failed to create ssh session!".to_owned(),
     })?;
 
     session.set_tcp_stream(tcp);
-    session.handshake().map_err(|e| Error::SftpError {
+    session.handshake().map_err(|e| Error::Sftp {
         source: e,
         msg: "Failed to perform ssh handshake!".to_owned(),
     })?;
     session
         .userauth_password("nao", "")
-        .map_err(|e| Error::SftpError {
+        .map_err(|e| Error::Sftp {
             source: e,
             msg: "Failed to authenticate using ssh!".to_owned(),
         })?;
 
-    session.sftp().map_err(|e| Error::SftpError {
+    session.sftp().map_err(|e| Error::Sftp {
         source: e,
         msg: "Failed to create sftp session!".to_owned(),
     })
@@ -618,7 +591,7 @@ fn ensure_directory_exists(sftp: &Sftp, remote_path: impl AsRef<Path>) -> Result
         Ok(()) => Ok(()),
         // Error code 4, means the directory already exists, so we can ignore it
         Err(error) if error.code() == ErrorCode::SFTP(4) => Ok(()),
-        Err(error) => Err(Error::SftpError {
+        Err(error) => Err(Error::Sftp {
             source: error,
             msg: "Failed to ensure directory exists".to_owned(),
         }),

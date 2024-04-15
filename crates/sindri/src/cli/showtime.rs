@@ -1,10 +1,13 @@
+use std::time::Duration;
+
 use clap::Parser;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use colored::Colorize;
+use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressStyle};
 use miette::{miette, IntoDiagnostic, Result};
-use tokio::task::JoinSet;
+use tokio::runtime::Handle;
 
 use crate::{
-    cli::robot_ops::{ConfigOptsRobotOps, Output, RobotEntry, RobotOps},
+    cli::robot_ops::{ConfigOptsRobotOps, RobotEntry},
     config::SindriConfig,
 };
 use yggdrasil::{config::showtime::ShowtimeConfig, prelude::Config as OdalConfigTrait};
@@ -47,62 +50,84 @@ impl Showtime {
         // Update the config
         showtime_config.store("./deploy/config/showtime.toml")?;
 
-        // Initialize robot ops
-        let ops = RobotOps {
-            sindri_config: config.clone(),
-            config: self.config.clone(),
-        };
-
-        ops.compile(Output::Single(ProgressBar::new_spinner()))
-            .await?;
+        let compile_bar = ProgressBar::new(1);
+        let output = robot_ops::Output::Single(compile_bar.clone());
+        robot_ops::compile(self.config.clone(), output.clone()).await?;
 
         if self.config.robots.len() == 1 {
+            let output = robot_ops::Output::Single(compile_bar.clone());
             let robot = config
                 .robot(self.config.robots.first().unwrap().robot_number, false)
                 .unwrap();
-            robot_ops::stop_single_yggdrasil_service(robot.clone()).await?;
-            robot_ops::upload_to_robot(
-                robot.ip(),
-                robot_ops::SindriProgressBar::Single(ProgressBar::new(1)),
-            )
-            .await?;
-            robot_ops::stop_single_yggdrasil_service(robot).await?;
+
+            output.spinner();
+            robot_ops::stop_single_yggdrasil_service(&robot, output.clone()).await?;
+            robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
+            output.spinner();
+            robot_ops::start_single_yggdrasil_service(&robot, output.clone()).await?;
+            output.finished_deploying(&robot.ip());
             return Ok(());
         }
+
+        compile_bar.finish_and_clear();
 
         let mut join_set = tokio::task::JoinSet::new();
 
         let multi = MultiProgress::new();
-
-        for robot in self.config.robots.iter() {
-            let pb = multi.add(ProgressBar::new(1));
-            pb.set_style(
+        multi.set_alignment(indicatif::MultiProgressAlignment::Bottom);
+        let deploy_bar = multi.add(
+            ProgressBar::new_spinner().with_style(
                 ProgressStyle::with_template(
-                    "{prefix:.blue.bold} [{bar:.green/cyan}]: {msg} {spinner:.cyan}",
+                    "   {prefix:.blue.bold} to robots {msg} {spinner:.blue.bold}",
                 )
                 .unwrap(),
-            );
-            pb.set_message(format!["Uploading to robot {}", robot.robot_number]);
-            pb.tick();
-            // multi.println("added pb").into_diagnostic()?;
+            ),
+        );
+        deploy_bar.enable_steady_tick(Duration::from_millis(80));
+        deploy_bar.set_prefix("Deploying");
+        deploy_bar.set_message(format!(
+            "{}{}, {}{}{}",
+            "(network: ".dimmed(),
+            self.config.network.bright_yellow(),
+            "robots: ".dimmed(),
+            self.config.robots.len().to_string().bold(),
+            ")".dimmed()
+        ));
+
+        for robot in self.config.robots.iter() {
             let robot = config.robot(robot.robot_number, false).unwrap();
-            join_set.spawn(async move {
-                // robot_ops::stop_single_yggdrasil_service(robot.clone()).await.unwrap();
-                robot_ops::upload_to_robot(robot.ip(), robot_ops::Output::Multi(pb))
-                    .await
-                    .unwrap();
-                // robot_ops::start_single_yggdrasil_service(robot).await;
+            let multi = multi.clone();
+            join_set.spawn_blocking(move || {
+                let multi = multi.clone();
+                let handle = Handle::current();
+                let pb = ProgressBar::new(1);
+                let pb = multi.add(pb);
+                let output = robot_ops::Output::Multi(pb);
+
+                handle
+                    .block_on(async move {
+                        output.spinner();
+                        robot_ops::stop_single_yggdrasil_service(&robot, output.clone()).await?;
+                        robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
+                        output.spinner();
+                        robot_ops::start_single_yggdrasil_service(&robot, output.clone()).await?;
+
+                        output.finished_deploying(&robot.ip());
+                        Ok::<(), crate::error::Error>(())
+                    })
+                    .into_diagnostic()
             });
         }
 
         while let Some(result) = join_set.join_next().await {
-            result.into_diagnostic()?;
+            result.into_diagnostic()??;
         }
-
-        // // ops.stop_yggdrasil_services().await?;
-        // ops.upload(Output::Verbose).await?;
-        // ops.start_yggdrasil_services().await?;
-        // // ops.change_networks(self.config.network).await?;
+        deploy_bar.finish();
+        println!(
+            "{} in {}",
+            "    Finished".cyan().bold(),
+            HumanDuration(deploy_bar.elapsed()),
+        );
 
         Ok(())
     }

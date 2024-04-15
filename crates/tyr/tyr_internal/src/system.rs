@@ -489,3 +489,8 @@ impl_system_chain!(
     S1, T1, S2, T2, S3, T3, S4, T4, S5, T5, S6, T6, S7, T7, S8, T8, S9, T9, S10, T10, S11, T11,
     S12, T12, S13, T13, S14, T14, S15, T15
 );
+
+impl_system_chain!(
+    S1, T1, S2, T2, S3, T3, S4, T4, S5, T5, S6, T6, S7, T7, S8, T8, S9, T9, S10, T10, S11, T11,
+    S12, T12, S13, T13, S14, T14, S15, T15, S16, T16
+);

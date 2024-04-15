@@ -20,7 +20,7 @@ impl ChangeNetwork {
             self.robot
         )))?;
 
-        change_single_network(robot, self.network).await?;
+        change_single_network(&robot, self.network).await?;
         Ok(())
     }
 }

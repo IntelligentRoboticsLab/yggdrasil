@@ -2,15 +2,14 @@ use std::{os::unix::process::CommandExt, process::Stdio};
 
 use clap::Parser;
 use colored::Colorize;
+use indicatif::ProgressBar;
 use miette::{IntoDiagnostic, Result};
 use tokio::process::Command;
 
 use crate::{
-    cli::robot_ops::{ConfigOptsRobotOps, RobotOps},
+    cli::robot_ops::{self, ConfigOptsRobotOps},
     config::SindriConfig,
 };
-
-use super::robot_ops::Output;
 
 // TODO: refactor config for run
 #[derive(Parser, Debug)]
@@ -31,6 +30,12 @@ impl Run {
         let rerun = self.deploy.rerun;
         let has_rerun = has_rerun().await;
 
+        if self.deploy.robots.len() != 1 {
+            return Err(miette::miette!(
+                "Only one robot can be specified for the run command"
+            ));
+        }
+
         if rerun && !has_rerun {
             println!(
                 "{}: {}",
@@ -39,18 +44,17 @@ impl Run {
             );
         }
 
-        println!("{:?}", self.deploy.robots);
+        let compile_bar = ProgressBar::new(1);
+        let output = robot_ops::Output::Single(compile_bar.clone());
+        robot_ops::compile(self.deploy.clone(), output.clone()).await?;
 
-        let ops = RobotOps {
-            sindri_config: config,
-            config: self.deploy.clone(),
-        };
-
-        ops.compile(Output::Verbose).await?;
+        let robot = self.deploy.get_first_robot(&config)?;
 
         if !self.deploy.local {
-            ops.stop_yggdrasil_services().await?;
-            ops.upload(Output::Verbose).await?;
+            output.spinner();
+            robot_ops::stop_single_yggdrasil_service(&robot, output.clone()).await?;
+            robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
+            output.finished_deploying(&robot.ip());
         }
 
         let mut envs = Vec::new();
@@ -70,7 +74,6 @@ impl Run {
             }
         }
 
-        let robot = ops.get_first_robot()?;
         if local {
             robot
                 .local("./yggdrasil", envs)?
