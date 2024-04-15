@@ -1,5 +1,11 @@
+use std::time::Duration;
+
 use crate::{cli::robot_ops::change_single_network, config::SindriConfig};
 use clap::Parser;
+use colored::Colorize;
+use indicatif::HumanDuration;
+use indicatif::ProgressBar;
+use indicatif::ProgressStyle;
 use miette::miette;
 use miette::Result;
 /// Changes the default network the robot connects to.
@@ -20,7 +26,25 @@ impl ChangeNetwork {
             self.robot
         )))?;
 
+        let pb = ProgressBar::new_spinner().with_style(
+            ProgressStyle::with_template("   {prefix:.magenta.bold} {msg} {spinner:.magenta}")
+                .unwrap(),
+        );
+        pb.enable_steady_tick(Duration::from_millis(80));
+        pb.set_prefix("Updating");
+        pb.set_message(format!(
+            "{} {}",
+            "network to".bold(),
+            self.network.bright_yellow()
+        ));
         change_single_network(&robot, self.network).await?;
+        pb.finish();
+        println!(
+            "    {} in {}",
+            "Updated".magenta().bold(),
+            HumanDuration(pb.elapsed()),
+        );
+
         Ok(())
     }
 }
