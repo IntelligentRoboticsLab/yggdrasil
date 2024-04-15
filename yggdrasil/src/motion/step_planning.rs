@@ -59,6 +59,7 @@ fn calc_angle(
     );
 
     relative_transformed_target_vector.angle(&Vector2::new(100., 0.))
+        - robot_odometry.rotation.angle()
 }
 
 fn calc_distance(
