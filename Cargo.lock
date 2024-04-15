@@ -6013,7 +6013,6 @@ dependencies = [
  "indicatif",
  "local-ip-address",
  "miette",
- "rand",
  "regex",
  "serde",
  "serde_json",
