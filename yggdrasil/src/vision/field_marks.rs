@@ -167,7 +167,7 @@ fn field_marks_system(
 
         let mut intersections = Vec::new();
         let now = Instant::now();
-        for i in 0..proposal.len() {
+        'outer: for i in 0..proposal.len() {
             let possible_intersection = proposal[i].clone();
             let size = (96.0 / possible_intersection.distance) as usize;
             let patch = lines.1.get_grayscale_patch(
@@ -179,23 +179,13 @@ fn field_marks_system(
                 size,
             );
 
-            tracing::info!(
-                "patch {i} size: {size}, distance: {}",
-                possible_intersection.distance
-            );
             let patch = resize_patch(size, size, patch);
-            ctx.log_patch(
-                format!("top_camera/patch/{i}"),
-                lines.1.cycle(),
-                ndarray::Array::from_shape_vec((32, 32, 1), patch.clone()).unwrap(),
-            )?;
-
             if let Ok(()) = model.try_start_infer(&patch) {
-                // We need to keep track of the image we started the inference with
-                //
-                // TODO: We should find a better way to do this bundling of mltask + metadata
-
                 loop {
+                    if now.elapsed().as_millis() >= 2 {
+                        model.cancel();
+                        break 'outer;
+                    }
                     if let Ok(Some(result)) = model.poll::<Vec<f32>>().transpose() {
                         let res = softmax(&result);
                         let max_idx = argmax(&res);
@@ -212,11 +202,6 @@ fn field_marks_system(
                 }
             }
         }
-        tracing::info!(
-            "total inference for {} field-marks took: {:?}",
-            intersections.len(),
-            now.elapsed()
-        );
 
         ctx.log_boxes2d_with_class(
             "top_camera/image/field_marks",

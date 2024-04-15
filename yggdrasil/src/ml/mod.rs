@@ -91,6 +91,10 @@ impl<M: MlModel> MlTask<M> {
         Ok(())
     }
 
+    pub fn cancel(&mut self) {
+        self.task.try_cancel();
+    }
+
     /// Returns the output if available, or else [`None`].
     /// Once returned the same output cannot be polled again,
     /// so make sure to store the result or run inference again.

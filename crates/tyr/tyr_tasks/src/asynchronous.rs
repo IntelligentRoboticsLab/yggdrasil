@@ -107,6 +107,14 @@ impl<T: Send + 'static> AsyncTask<T> {
 
         Ok(())
     }
+
+    pub fn try_cancel(&mut self) -> crate::Result<()> {
+        if let Some(raw) = self.raw.take() {
+            raw.join_handle.abort();
+        }
+
+        Ok(())
+    }
 }
 
 /// A [`TaskMap`] variant specialized for asynchronous tasks.

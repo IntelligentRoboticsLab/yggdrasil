@@ -10,7 +10,11 @@ use nidhogg::types::RgbU8;
 
 use std::net::IpAddr;
 
-use crate::{camera::Image, nao::Cycle, prelude::*};
+use crate::{
+    camera::Image,
+    nao::{Cycle, CycleTime},
+    prelude::*,
+};
 
 /// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
 ///
@@ -554,6 +558,8 @@ fn init_rerun(storage: &mut Storage) -> Result<()> {
 }
 
 #[system]
-fn set_debug_cycle(ctx: &DebugContext, cycle: &Cycle) -> Result<()> {
-    ctx.set_cycle(cycle)
+fn set_debug_cycle(ctx: &DebugContext, cycle: &Cycle, cycle_time: &CycleTime) -> Result<()> {
+    ctx.set_cycle(cycle)?;
+    ctx.log_scalar_f32("cycle_time", cycle_time.duration.as_millis() as f32)?;
+    Ok(())
 }

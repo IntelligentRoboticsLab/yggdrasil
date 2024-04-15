@@ -4,7 +4,6 @@ use crate::{debug::DebugContext, nao::Cycle, prelude::*};
 
 use derive_more::{Deref, DerefMut};
 use miette::IntoDiagnostic;
-use ndarray::s;
 use serde::{Deserialize, Serialize};
 use std::{
     sync::{Arc, Mutex},
