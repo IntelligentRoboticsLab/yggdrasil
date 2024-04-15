@@ -128,9 +128,6 @@ impl Deploy {
                 .unwrap()
                 .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
             );
-        }
-
-        if let Some(pb) = &pb {
             pb.set_message(format!(
                 "{}{}, {}{}{}",
                 "(release: ".dimmed(),
