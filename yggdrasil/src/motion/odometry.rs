@@ -1,4 +1,5 @@
 use nalgebra::{Isometry2, Point2, Translation2, UnitComplex, Vector2};
+use nidhogg::types::color;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -49,7 +50,10 @@ impl Odometry {
         self.last_left_sole_to_right_sole = left_sole_to_right_sole;
         let scaled_offset = offset.component_mul(&config.scale_factor);
 
-        let orientation_offset = self.last_orientation.rotation_to(&orientation.yaw());
+        let orientation_offset = self
+            .last_orientation
+            .rotation_to(&orientation.yaw())
+            .inverse();
         self.last_orientation = orientation.yaw();
 
         let odometry_offset =
@@ -78,12 +82,22 @@ pub fn log_odometry(odometry: &Odometry, dbg: &DebugContext) -> Result<()> {
         .accumulated
         .rotation
         .transform_point(&Point2::new(0.1, 0.0));
-    let origin = (
-        odometry.accumulated.translation.x,
-        odometry.accumulated.translation.y,
-        0.0,
-    );
-    dbg.log_arrows3d("/odometry/pose", &[(rotated.x, rotated.y, 0.0)], &[origin])?;
+    let origin = odometry
+        .accumulated
+        .translation
+        .transform_point(&Point2::origin());
+    dbg.log_arrows3d_with_color(
+        "/odometry/pose",
+        &[(rotated.x, rotated.y, 0.0)],
+        &[(origin.x, origin.y, 0.0)],
+        color::u8::RED,
+    )?;
 
+    Ok(())
+}
+
+#[startup_system]
+pub(super) fn setup_viewcoordinates(_storage: &mut Storage, dbg: &DebugContext) -> Result<()> {
+    dbg.log_robot_viewcoordinates("/odometry/pose")?;
     Ok(())
 }

@@ -387,18 +387,28 @@ impl DebugContext {
     }
 
     /// Log a set of 3D arrows to the debug viewer.
-    pub fn log_arrows3d(
+    pub fn log_arrows3d_with_color(
         &self,
         path: impl AsRef<str>,
         vectors: &[(f32, f32, f32)],
         origins: &[(f32, f32, f32)],
+        color: RgbU8,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
             self.rec
                 .log(
                     path.as_ref(),
-                    &rerun::Arrows3D::from_vectors(vectors).with_origins(origins),
+                    &rerun::Arrows3D::from_vectors(vectors)
+                        .with_origins(origins)
+                        .with_colors(vec![
+                            rerun::Color::from_rgb(
+                                color.red,
+                                color.green,
+                                color.blue
+                            );
+                            vectors.len()
+                        ]),
                 )
                 .into_diagnostic()?;
         }
@@ -461,6 +471,19 @@ impl DebugContext {
 
         Ok(())
     }
+
+    /// Log a timeless robot view coordinate system to the debug viewer.
+    /// This sets the x-axis to the front of the robot, the y-axis to the left, and the z-axis up.
+    pub fn log_robot_viewcoordinates(&self, path: impl AsRef<str>) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log_timeless(path.as_ref(), &rerun::ViewCoordinates::FLU)
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
 }
 
 #[startup_system]
@@ -483,13 +506,17 @@ fn init_rerun(storage: &mut Storage) -> Result<()> {
         ctx.rec
             .log_timeless(
                 "field/mesh",
-                &rerun::Asset3D::from_file("./assets/rerun/spl_field.glb").unwrap(),
+                &rerun::Asset3D::from_file("./assets/rerun/spl_field.glb")
+                    .expect("Failed to load field model")
+                    .with_transform(
+                        rerun::Transform3D::from_translation([0.0, 0.0, -0.05])
+                            .transform
+                            .0,
+                    ),
             )
             .into_diagnostic()?;
 
-        ctx.rec
-            .log_timeless("field/mesh", &rerun::ViewCoordinates::FLU)
-            .into_diagnostic()?;
+        ctx.log_robot_viewcoordinates("/field/mesh")?;
     }
 
     storage.add_resource(Resource::new(ctx))

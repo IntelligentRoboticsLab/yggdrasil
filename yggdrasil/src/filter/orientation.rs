@@ -182,9 +182,7 @@ impl RobotOrientation {
         let delta = UnitQuaternion::from_quaternion(Quaternion::new(
             ((projected_gravity.z + 1.0) / 2.0).sqrt(),
             -(projected_gravity.y / (2.0 * (projected_gravity.z + 1.0)).sqrt()),
-            // TODO: I realised this should be the line I commented out, according to the paper but this seemed to work fine so gotta test on robot.
-            // projected_gravity.x / (2.0 * (projected_gravity.z + 1.0)).sqrt()
-            projected_gravity.z / (2.0 * (projected_gravity.z + 1.0)).sqrt(),
+            projected_gravity.x / (2.0 * (projected_gravity.z + 1.0)).sqrt(),
             0.0,
         ));
 
