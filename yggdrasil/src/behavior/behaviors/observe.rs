@@ -5,7 +5,7 @@ use std::time::Instant;
 use crate::{
     behavior::engine::{Behavior, Context},
     nao::manager::{NaoManager, Priority},
-    walk::engine::{Step, WalkingEngine},
+    walk::engine::WalkingEngine,
 };
 use nidhogg::types::{FillExt, HeadJoints};
 
@@ -26,7 +26,7 @@ pub struct ObserveBehaviorConfig {
     pub head_yaw_max: f32,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Observe {
     pub starting_time: Instant,
 }
@@ -60,11 +60,6 @@ impl Behavior for Observe {
             head_pitch_multiplier,
         );
         walking_engine.request_stand();
-        walking_engine.request_walk(Step {
-            forward: 0.04,
-            left: 0.0,
-            turn: 0.0,
-        });
     }
 }
 

@@ -5,7 +5,7 @@ use enum_dispatch::enum_dispatch;
 
 use crate::{
     behavior::{
-        behaviors::{Initial, Observe, Penalized, StartUp, Unstiff},
+        behaviors::{Initial, Observe, Penalized, StartUp, Unstiff, Walk},
         roles::Attacker,
         BehaviorConfig,
     },
@@ -95,13 +95,14 @@ pub trait Behavior {
 /// - New behavior implementations should be added as new variants to this enum.
 /// - The specific struct for each behavior (e.g., [`Initial`], [`StartUp`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum BehaviorKind {
     StartUp(StartUp),
     Unstiff(Unstiff),
     Initial(Initial),
     Observe(Observe),
     Penalized(Penalized),
+    Walk(Walk),
     // Add new behaviors here!
 }
 
@@ -232,7 +233,7 @@ impl Engine {
             PrimaryState::Unstiff => BehaviorKind::Unstiff(Unstiff),
             PrimaryState::Penalized => BehaviorKind::Penalized(Penalized),
             PrimaryState::Initial => BehaviorKind::Initial(Initial),
-            PrimaryState::Ready => BehaviorKind::Initial(Initial),
+            PrimaryState::Ready => BehaviorKind::Observe(Observe::default()),
             PrimaryState::Set => BehaviorKind::Initial(Initial),
             PrimaryState::Finished => BehaviorKind::Initial(Initial),
             PrimaryState::Calibration => BehaviorKind::Initial(Initial),

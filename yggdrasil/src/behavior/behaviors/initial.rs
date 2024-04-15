@@ -15,7 +15,7 @@ const ROTATION_STIFFNESS: f32 = 0.3;
 /// This is the behaviour of the robot once the chest button is pressed.
 /// In this state the robot will stand up straight and look at the middle
 /// circle to make it easier to place the robot in the correct position.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Initial;
 
 fn look_at_middle_circle(robot_position: &RobotPosition, nao_manager: &mut NaoManager) {

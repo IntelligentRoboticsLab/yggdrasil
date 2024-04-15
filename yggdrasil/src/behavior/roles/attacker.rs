@@ -1,9 +1,9 @@
 use crate::{
     behavior::{
-        behaviors::Observe,
+        behaviors::Walk,
         engine::{BehaviorKind, Context, Role},
     },
-    walk::engine::WalkingEngine,
+    walk::engine::{Step, WalkingEngine},
 };
 
 pub struct Attacker;
@@ -15,6 +15,12 @@ impl Role for Attacker {
         _current_behavior: &mut BehaviorKind,
         _walking_engine: &mut WalkingEngine,
     ) -> BehaviorKind {
-        BehaviorKind::Observe(Observe::default())
+        BehaviorKind::Walk(Walk {
+            step: Step {
+                forward: 0.04,
+                left: 0.0,
+                turn: 0.0,
+            },
+        })
     }
 }

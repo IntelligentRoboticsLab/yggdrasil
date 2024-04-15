@@ -10,7 +10,7 @@ const DEFAULT_PASSIVE_PRIORITY: Priority = Priority::Medium;
 
 /// This is the startup behavior of the robot.
 /// In this state the robot does nothing and retains its previous position.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct StartUp;
 
 impl Behavior for StartUp {

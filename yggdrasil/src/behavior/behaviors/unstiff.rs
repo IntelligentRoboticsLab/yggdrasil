@@ -7,7 +7,7 @@ use nidhogg::types::{color, FillExt, RightEye};
 
 /// This is often the starting behavior of the robot.
 /// In this state the robot sits down, after which it unstiffens its legs, arms and head.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Unstiff;
 
 impl Behavior for Unstiff {
