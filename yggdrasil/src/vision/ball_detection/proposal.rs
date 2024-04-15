@@ -304,7 +304,7 @@ fn test_proposals(
         .filter(|&(center, range, magnitude)| {
             // TODO: find a better solution for this
             let offset = (config.center_offset / magnitude) as usize;
-            let adjusted_center = Point2::new(center.x, center.y - offset);
+            let adjusted_center = Point2::new(center.x, center.y.saturating_sub(offset));
 
             local_white_ratio(range as usize, adjusted_center, grid) > config.white_ratio
         })
