@@ -40,10 +40,12 @@ impl Behavior for Initial {
         &mut self,
         context: Context,
         nao_manager: &mut NaoManager,
-        _walking_engine: &mut WalkingEngine,
+        walking_engine: &mut WalkingEngine,
     ) {
         let player_num = context.yggdrasil_config.game_controller.player_number;
         let robot_position = &context.layout_config.initial_positions[player_num as usize];
         look_at_middle_circle(robot_position, nao_manager);
+
+        walking_engine.request_idle();
     }
 }
