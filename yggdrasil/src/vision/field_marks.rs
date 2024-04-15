@@ -1,19 +1,18 @@
 use std::{num::NonZeroU32, ops::Deref, time::Instant};
 
 use fast_image_resize as fr;
-use fr::CropBox;
-use heimdall::YuyvImage;
-use nalgebra::{iter, point, ComplexField, Point2};
-use ndarray::{Array3, ArrayBase, ArrayView3, Dimension, IntoDimension, Ix3, OwnedRepr};
+use nalgebra::Point2;
 use nidhogg::types::color;
-use tracing::field;
 
 use crate::{
     camera::{matrix::CameraMatrices, Image, TopImage},
     debug::DebugContext,
-    ml::{data_type::Output, MlModel, MlTask, MlTaskResource},
+    ml::{
+        util::{argmax, softmax},
+        MlModel, MlTask, MlTaskResource,
+    },
     prelude::*,
-    vision::line::{LineSegment, LineSegment3},
+    vision::line::LineSegment3,
 };
 
 use super::line_detection::TopLines;
@@ -63,11 +62,10 @@ pub struct FieldMarks {
     pub image: Image,
 }
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone)]
 struct ProposedIntersection {
     point: Point2<f32>,
     distance: f32,
-    angle: f32,
 }
 
 #[system]
@@ -144,7 +142,6 @@ fn field_marks_system(
                         proposal.push(ProposedIntersection {
                             point: intersection,
                             distance,
-                            angle,
                         });
                     }
                     _ => {}
@@ -171,7 +168,7 @@ fn field_marks_system(
         let mut intersections = Vec::new();
         let now = Instant::now();
         for i in 0..proposal.len() {
-            let possible_intersection = proposal[i];
+            let possible_intersection = proposal[i].clone();
             let size = (96.0 / possible_intersection.distance) as usize;
             let patch = lines.1.get_grayscale_patch(
                 (
@@ -186,7 +183,7 @@ fn field_marks_system(
                 "patch {i} size: {size}, distance: {}",
                 possible_intersection.distance
             );
-            let patch = resize_patch(possible_intersection.point, size, size, patch);
+            let patch = resize_patch(size, size, patch);
             ctx.log_patch(
                 format!("top_camera/patch/{i}"),
                 lines.1.cycle(),
@@ -237,7 +234,7 @@ fn field_marks_system(
 }
 
 // Resize yuyv image to correct input shape
-fn resize_patch(point: Point2<f32>, width: usize, height: usize, patch: Vec<u8>) -> Vec<f32> {
+fn resize_patch(width: usize, height: usize, patch: Vec<u8>) -> Vec<f32> {
     let src_image = fr::Image::from_vec_u8(
         NonZeroU32::new(width as u32).unwrap(),
         NonZeroU32::new(height as u32).unwrap(),
@@ -264,37 +261,6 @@ fn resize_patch(point: Point2<f32>, width: usize, height: usize, patch: Vec<u8>)
         .iter()
         .map(|p| *p as f32 / 255.0)
         .collect()
-}
-
-fn argmax(v: &Vec<f32>) -> usize {
-    let mut max_idx = 0;
-    let mut max_val = v[0];
-
-    for (i, &val) in v.iter().enumerate() {
-        if val > max_val {
-            max_val = val;
-            max_idx = i;
-        }
-    }
-
-    max_idx
-}
-
-fn softmax(v: &Vec<f32>) -> Vec<f32> {
-    let mut sum = 0.0;
-    let mut result = Vec::new();
-
-    for &x in v {
-        let e = x.exp();
-        sum += e;
-        result.push(e);
-    }
-
-    for x in result.iter_mut() {
-        *x /= sum;
-    }
-
-    result
 }
 
 struct FieldMarkImage(Image);

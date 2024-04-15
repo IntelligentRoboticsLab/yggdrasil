@@ -3,6 +3,7 @@
 
 pub mod backend;
 pub mod data_type;
+pub mod util;
 
 use self::{
     backend::{InferRequest, ModelExecutor},

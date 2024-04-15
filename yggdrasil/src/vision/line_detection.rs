@@ -5,7 +5,7 @@ use crate::debug::DebugContext;
 
 use crate::prelude::*;
 
-use super::line::{LineSegment, LineSegment2};
+use super::line::LineSegment2;
 use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
 
 use derive_more::Deref;
@@ -51,7 +51,7 @@ struct LineDetectionData {
 }
 
 #[derive(Default)]
-pub(super) struct TopLineDetectionData(Option<LineDetectionData>, Option<Image>);
+pub struct TopLineDetectionData(Option<LineDetectionData>, Option<Image>);
 
 #[derive(Deref)]
 pub struct TopLines(#[deref] pub Vec<LineSegment2>, pub Image);
