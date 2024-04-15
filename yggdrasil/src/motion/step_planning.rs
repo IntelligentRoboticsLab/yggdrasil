@@ -46,12 +46,17 @@ fn calc_turn(
 
 fn calc_angle(
     robot_odometry: &Isometry<f32, Unit<Complex<f32>>, 2>,
-    target_position: &Point2<f32>,
+    target_point: &Point2<f32>,
 ) -> f32 {
-    let target_vector = Vector2::new(target_position.x, target_position.y);
-    let transformed_target_vector = robot_odometry.transform_vector(&target_vector);
+    let relative_transformed_target_point = robot_odometry
+        .translation
+        .inverse_transform_point(target_point);
+    let relative_transformed_target_vector = Vector2::new(
+        relative_transformed_target_point.x,
+        relative_transformed_target_point.y,
+    );
 
-    transformed_target_vector.angle(&Vector2::new(100., 0.))
+    relative_transformed_target_vector.angle(&Vector2::new(100., 0.))
 }
 
 fn calc_distance(
