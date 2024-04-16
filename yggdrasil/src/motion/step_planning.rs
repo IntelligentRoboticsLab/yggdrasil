@@ -13,6 +13,9 @@ use super::odometry::Odometry;
 
 pub struct WalkPlannerModule;
 
+const TURN_SPEED: f32 = 0.2;
+const WALK_SPEED: f32 = 0.03;
+
 impl Module for WalkPlannerModule {
     fn initialize(self, app: App) -> Result<App> {
         let target = WalkPlannerTarget {
@@ -39,11 +42,7 @@ fn calc_turn(
         .rotation
         .inverse_transform_point(&translated_target_position);
 
-    if transformed_target_position.y < 0. {
-        -0.2
-    } else {
-        0.2
-    }
+    transformed_target_position.y.signum() * TURN_SPEED
 }
 
 fn calc_angle(
@@ -118,7 +117,7 @@ fn walk_planner_system(
         });
     } else {
         walking_engine.request_walk(Step {
-            forward: 0.03,
+            forward: WALK_SPEED,
             left: 0.,
             turn,
         });
