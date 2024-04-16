@@ -5,17 +5,24 @@ use std::collections::HashMap;
 
 use crate::{nao::RobotInfo, prelude::*};
 
+/// This config store general information for matches, for example things like
+/// team number and player numbers.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ShowtimeConfig {
+    /// Team number to use during a match
     pub team_number: u8,
-    pub robot_numbers_map: HashMap<u8, u8>,
+    /// This field contains mappings from robot ids to player numbers, the
+    /// key is a String to make sure default serialization works
+    pub robot_numbers_map: HashMap<String, u8>,
 }
 
 impl Config for ShowtimeConfig {
-    const PATH: &'static str = "showtime.toml";
+    const PATH: &'static str = "generated/showtime.toml";
 }
 
+/// This config store robot specificinformation for matches, for example
+/// things like the robot team and player number.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct PlayerConfig {
@@ -31,7 +38,7 @@ pub(super) fn configure_showtime(
 ) -> Result<()> {
     let player_number = *showtime_config
         .robot_numbers_map
-        .get(&(robot_info.robot_id as u8))
+        .get(&robot_info.robot_id.to_string())
         .ok_or(miette!(format!(
             "Could not find robot {} in showtime config",
             robot_info.robot_id

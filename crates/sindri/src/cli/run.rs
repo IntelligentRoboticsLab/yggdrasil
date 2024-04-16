@@ -1,4 +1,6 @@
+use std::collections::HashMap;
 use std::{os::unix::process::CommandExt, process::Stdio};
+use yggdrasil::{config::showtime::ShowtimeConfig, prelude::Config as OdalConfigTrait};
 
 use clap::Parser;
 use colored::Colorize;
@@ -7,16 +9,19 @@ use miette::{bail, IntoDiagnostic, Result};
 use tokio::process::Command;
 
 use crate::{
-    cli::robot_ops::{self, ConfigOptsRobotOps},
+    cli::robot_ops::{self, ConfigOptsRobotOps, RobotEntry},
     config::SindriConfig,
 };
+
+const LOCAL_ROBOT_ID: u8 = 0;
+const DEFAULT_PLAYER_NUMBER: u8 = 3;
 
 // TODO: refactor config for run
 #[derive(Parser, Debug)]
 /// Compile, deploy and run the specified binary to the robot.
 pub struct Run {
     #[clap(flatten)]
-    pub deploy: ConfigOptsRobotOps,
+    pub robot_ops: ConfigOptsRobotOps,
     /// Also print debug logs to stdout [default: false]
     #[clap(long, short)]
     pub debug: bool,
@@ -26,13 +31,32 @@ impl Run {
     /// Compiles, upload and then runs yggdrasil on one robot.
     /// This is done interactively so logs can be seen in the terminal.
     pub async fn run(self, config: SindriConfig) -> Result<()> {
-        let local = self.deploy.local;
-        let rerun = self.deploy.rerun;
-        let has_rerun = has_rerun().await;
-
-        if self.deploy.robots.len() != 1 {
-            bail!("Only one robot can be specified for the run command")
+        if self.robot_ops.robots.len() != 1 {
+            bail!("Exactly one robot should be specified for the run command")
         }
+
+        // Generate showtime config
+        let mut robot_assignments = HashMap::new();
+        let RobotEntry {
+            robot_number,
+            player_number,
+        } = self.robot_ops.robots[0];
+        if self.robot_ops.local {
+            robot_assignments.insert(LOCAL_ROBOT_ID.to_string(), DEFAULT_PLAYER_NUMBER);
+        } else if let Some(player_number) = player_number {
+            robot_assignments.insert(robot_number.to_string(), player_number);
+        } else {
+            robot_assignments.insert(robot_number.to_string(), DEFAULT_PLAYER_NUMBER);
+        }
+        let showtime_config = ShowtimeConfig {
+            team_number: config.team_number,
+            robot_numbers_map: robot_assignments,
+        };
+        showtime_config.store("./deploy/config/generated/showtime.toml")?;
+
+        let local = self.robot_ops.local;
+        let rerun = self.robot_ops.rerun;
+        let has_rerun = has_rerun().await;
 
         if rerun && !has_rerun {
             println!(
@@ -44,11 +68,12 @@ impl Run {
 
         let compile_bar = ProgressBar::new(1);
         let output = robot_ops::Output::Single(compile_bar.clone());
-        robot_ops::compile(self.deploy.clone(), output.clone()).await?;
+        robot_ops::compile(self.robot_ops.clone(), output.clone()).await?;
+        compile_bar.finish_and_clear();
 
-        let robot = self.deploy.get_first_robot(&config)?;
+        let robot = self.robot_ops.get_first_robot(&config)?;
 
-        if !self.deploy.local {
+        if !self.robot_ops.local {
             output.spinner();
             robot_ops::stop_single_yggdrasil_service(&robot, output.clone()).await?;
             robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;

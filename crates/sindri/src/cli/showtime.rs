@@ -1,9 +1,10 @@
+use std::collections::HashMap;
 use std::time::Duration;
 
 use clap::Parser;
 use colored::Colorize;
 use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressStyle};
-use miette::{miette, IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Result};
 use tokio::runtime::Handle;
 
 use crate::{
@@ -19,7 +20,7 @@ use super::robot_ops;
 #[derive(Parser, Debug)]
 pub struct Showtime {
     #[clap(flatten)]
-    pub config: ConfigOptsRobotOps,
+    pub robot_ops: ConfigOptsRobotOps,
 }
 
 impl Showtime {
@@ -27,36 +28,32 @@ impl Showtime {
     /// uploads binaries and other assets and the restarts the yggdrasil service
     /// on each robot.
     pub async fn showtime(self, config: SindriConfig) -> Result<()> {
-        let mut showtime_config = ShowtimeConfig::load("./deploy/config/")
-            .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
-
-        // Alter the robot id to player number map if needed
+        let mut robot_assignments = HashMap::new();
         for RobotEntry {
             robot_number,
             player_number,
-        } in self.config.robots.iter()
+        } in self.robot_ops.robots.iter()
         {
-            // If player number is Some update map
             if let Some(player_number) = player_number {
-                if let Some(old_player_number) =
-                    showtime_config.robot_numbers_map.get_mut(robot_number)
-                {
-                    *old_player_number = *player_number;
-                }
+                robot_assignments.insert((*robot_number).to_string(), *player_number);
             }
         }
+        let showtime_config = ShowtimeConfig {
+            team_number: config.team_number,
+            robot_numbers_map: robot_assignments,
+        };
 
-        // Update the config
-        showtime_config.store("./deploy/config/showtime.toml")?;
+        // Store the config
+        showtime_config.store("./deploy/config/generated/showtime.toml")?;
 
         let compile_bar = ProgressBar::new(1);
         let output = robot_ops::Output::Single(compile_bar.clone());
-        robot_ops::compile(self.config.clone(), output.clone()).await?;
+        robot_ops::compile(self.robot_ops.clone(), output.clone()).await?;
 
-        if self.config.robots.len() == 1 {
+        if self.robot_ops.robots.len() == 1 {
             let output = robot_ops::Output::Single(compile_bar.clone());
             let robot = config
-                .robot(self.config.robots.first().unwrap().robot_number, false)
+                .robot(self.robot_ops.robots.first().unwrap().robot_number, false)
                 .unwrap();
 
             output.spinner();
@@ -87,13 +84,13 @@ impl Showtime {
         deploy_bar.set_message(format!(
             "{}{}, {}{}{}",
             "(network: ".dimmed(),
-            self.config.network.bright_yellow(),
+            self.robot_ops.network.bright_yellow(),
             "robots: ".dimmed(),
-            self.config.robots.len().to_string().bold(),
+            self.robot_ops.robots.len().to_string().bold(),
             ")".dimmed()
         ));
 
-        for robot in self.config.robots.iter() {
+        for robot in self.robot_ops.robots.iter() {
             let robot = config.robot(robot.robot_number, false).unwrap();
             let multi = multi.clone();
             join_set.spawn_blocking(move || {
