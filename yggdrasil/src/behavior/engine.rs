@@ -209,27 +209,22 @@ impl Engine {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
-        primary_state: &PrimaryState,
     ) {
         self.role = self.assign_role(context);
 
-        self.transition(context, *primary_state, walking_engine);
+        self.transition(context, walking_engine);
 
         self.behavior.execute(context, nao_manager, walking_engine);
     }
 
-    pub fn transition(
-        &mut self,
-        context: Context,
-        primary_state: PrimaryState,
-        walking_engine: &mut WalkingEngine,
-    ) {
+    pub fn transition(&mut self, context: Context, walking_engine: &mut WalkingEngine) {
         if let BehaviorKind::StartUp(_) = self.behavior {
             if walking_engine.is_sitting() {
                 self.behavior = BehaviorKind::Unstiff(Unstiff);
             }
         }
-        self.behavior = match primary_state {
+
+        self.behavior = match context.primary_state {
             PrimaryState::Unstiff => BehaviorKind::Unstiff(Unstiff),
             PrimaryState::Penalized => BehaviorKind::Penalized(Penalized),
             PrimaryState::Initial => BehaviorKind::Initial(Initial),
@@ -276,7 +271,7 @@ pub fn step(
         game_controller_config,
     };
 
-    engine.step(context, nao_manager, walking_engine, primary_state);
+    engine.step(context, nao_manager, walking_engine);
 
     Ok(())
 }

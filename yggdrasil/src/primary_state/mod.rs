@@ -3,7 +3,6 @@ use crate::{
     game_controller::GameControllerConfig,
     nao::manager::{NaoManager, Priority},
     prelude::*,
-    primary_state::PrimaryState as PS,
 };
 
 use serde::{Deserialize, Serialize};
@@ -91,7 +90,6 @@ pub fn update_primary_state(
     game_controller_config: &GameControllerConfig,
 ) -> Result<()> {
     use PrimaryState as PS;
-
     let next_state = next_primary_state(
         primary_state,
         game_controller_message,
@@ -108,13 +106,13 @@ pub fn update_primary_state(
                 config.chest_blink_interval,
                 Priority::Medium,
             ),
-            PS::Initial => nao_manager.set_chest_led(color::f32::GRAY, Priority::Medium),
-            PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Medium),
-            PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Medium),
-            PS::Playing => nao_manager.set_chest_led(color::f32::GREEN, Priority::Medium),
-            PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Medium),
-            PS::Finished => nao_manager.set_chest_led(color::f32::GRAY, Priority::Medium),
-            PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Medium),
+            PS::Initial => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
+            PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Critical),
+            PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Critical),
+            PS::Playing => nao_manager.set_chest_led(color::f32::GREEN, Priority::Critical),
+            PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Critical),
+            PS::Finished => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
+            PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Critical),
         };
     } else if next_state == PS::Unstiff {
         nao_manager.set_chest_blink_led(
@@ -136,6 +134,8 @@ fn next_primary_state(
     head_buttons: &HeadButtons,
     game_controller_config: &GameControllerConfig,
 ) -> PrimaryState {
+    use PrimaryState as PS;
+
     let mut primary_state = match primary_state {
         PS::Unstiff if chest_button.state.is_tapped() => PS::Initial,
         PS::Initial if chest_button.state.is_tapped() => PS::Playing,

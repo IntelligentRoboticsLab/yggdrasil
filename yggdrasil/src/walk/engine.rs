@@ -210,6 +210,8 @@ impl WalkingEngine {
 
     fn new_state_from_request(&self) -> Option<WalkState> {
         match (&self.request, &self.state) {
+            (WalkRequest::Sit, WalkState::Sitting(_) | WalkState::Stopping) => None,
+            (WalkRequest::Stand, WalkState::Standing(_) | WalkState::Stopping) => None,
             // Stop walking
             (
                 WalkRequest::Sit | WalkRequest::Stand,
@@ -239,7 +241,6 @@ impl WalkingEngine {
                 }
                 _ => None,
             },
-            _ => None,
         }
     }
 

@@ -4,21 +4,9 @@ use crate::{
     walk::engine::{Step, WalkingEngine},
 };
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Walk {
     pub step: Step,
-}
-
-impl Default for Walk {
-    fn default() -> Self {
-        Walk {
-            step: Step {
-                forward: 0.00,
-                left: 0.0,
-                turn: 0.0,
-            },
-        }
-    }
 }
 
 impl Behavior for Walk {
