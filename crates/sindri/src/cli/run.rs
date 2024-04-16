@@ -3,7 +3,7 @@ use std::{os::unix::process::CommandExt, process::Stdio};
 use clap::Parser;
 use colored::Colorize;
 use indicatif::ProgressBar;
-use miette::{IntoDiagnostic, Result};
+use miette::{bail, IntoDiagnostic, Result};
 use tokio::process::Command;
 
 use crate::{
@@ -31,9 +31,7 @@ impl Run {
         let has_rerun = has_rerun().await;
 
         if self.deploy.robots.len() != 1 {
-            return Err(miette::miette!(
-                "Only one robot can be specified for the run command"
-            ));
+            bail!("Only one robot can be specified for the run command")
         }
 
         if rerun && !has_rerun {

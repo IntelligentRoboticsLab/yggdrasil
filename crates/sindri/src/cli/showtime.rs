@@ -38,9 +38,8 @@ impl Showtime {
         {
             // If player number is Some update map
             if let Some(player_number) = player_number {
-                if let Some(old_player_number) = showtime_config
-                    .robot_numbers_map
-                    .get_mut(&robot_number.to_string())
+                if let Some(old_player_number) =
+                    showtime_config.robot_numbers_map.get_mut(robot_number)
                 {
                     *old_player_number = *player_number;
                 }

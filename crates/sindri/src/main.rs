@@ -5,7 +5,7 @@ use sindri::{
     config::load_config,
 };
 
-#[tokio::main(worker_threads = 10)]
+#[tokio::main]
 async fn main() -> Result<()> {
     let config = match load_config() {
         Ok(config) => config,
