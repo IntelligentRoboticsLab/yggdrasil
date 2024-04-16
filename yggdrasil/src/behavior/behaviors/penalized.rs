@@ -2,6 +2,7 @@ use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, Context},
+    motion::motion_manager::MotionManager,
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
 };
@@ -24,6 +25,7 @@ impl Behavior for Penalized {
         _context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        _: &mut MotionManager,
     ) {
         walking_engine.request_idle();
 

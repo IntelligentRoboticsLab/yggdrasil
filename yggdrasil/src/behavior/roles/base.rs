@@ -1,6 +1,10 @@
-use crate::behavior::{
-    behaviors::{Initial, Passive},
-    engine::{BehaviorKind, Context, Role},
+use crate::{
+    behavior::{
+        behaviors::{Initial, Observe, Passive, Standup},
+        engine::{BehaviorKind, Context, Role},
+        BehaviorModule,
+    },
+    filter::falling::{Fall, FallState},
 };
 
 // This role is a placeholder that implements general behaviors until we implement
@@ -13,6 +17,12 @@ impl Role for Base {
         context: Context,
         current_behavior: &mut BehaviorKind,
     ) -> BehaviorKind {
+        match context.fall_filter.state {
+            FallState::Falling(_) => {} // DmgPrev here
+            FallState::Lying(_) => return BehaviorKind::Standup(Standup::default()),
+            _ => {}
+        }
+
         match current_behavior {
             BehaviorKind::Passive(_) => {
                 // If chest button is pressed transition to initial behavior.
@@ -25,6 +35,10 @@ impl Role for Base {
             BehaviorKind::Initial(state) => BehaviorKind::Initial(*state),
             BehaviorKind::Observe(state) => BehaviorKind::Observe(*state),
             BehaviorKind::Penalized(_) => BehaviorKind::Initial(Initial),
+            BehaviorKind::Standup(state) => match context.fall_filter.state {
+                FallState::Upright => BehaviorKind::Observe(Observe::default()),
+                _ => BehaviorKind::Standup(*state),
+            },
         }
     }
 }

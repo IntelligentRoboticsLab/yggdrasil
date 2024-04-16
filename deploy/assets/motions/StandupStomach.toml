@@ -1,5 +1,5 @@
 interpolation_type = "Linear"
-wait_time = 1
+exit_message = Standing
 motion_order = [
     "Standup/OnStomach/LyingToYoga",
     "Standup/OnStomach/YogaToSitting",

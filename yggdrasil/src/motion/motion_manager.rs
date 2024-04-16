@@ -1,5 +1,6 @@
+use crate::filter::falling::{Fall, FallState};
 use crate::motion::motion_types::{
-    ConditionalVariable, FailRoutine, Motion, MotionCondition, MotionType,
+    ConditionalVariable, ExitRoutine, FailRoutine, Motion, MotionCondition, MotionType,
 };
 use crate::nao::manager::Priority;
 use miette::Result;
@@ -29,7 +30,7 @@ impl ActiveMotion {
     /// Fetches the next submotion name to be executed.
     pub fn get_next_submotion(&self) -> Option<&String> {
         let next_index = self.cur_sub_motion.1 + 1;
-        self.motion.motion_settings.motion_order.get(next_index)
+        self.motion.settings.motion_order.get(next_index)
     }
 
     /// Returns the next submotion to be executed, based on whether
@@ -73,6 +74,13 @@ impl ActiveMotion {
 
         Some(self.clone())
     }
+
+    pub fn execute_exit_routine(&self, fall_filter: &mut Fall) {
+        match self.motion.settings.exit_routine {
+            Some(ExitRoutine::Standing) => fall_filter.state = FallState::Upright,
+            _ => {}
+        }
+    }
 }
 
 /// Manages motions, stores all possible motions and keeps track of information
@@ -104,6 +112,15 @@ impl MotionManager {
             source_position: None,
             motions: HashMap::new(),
         }
+    }
+
+    /// Function for checking whether a motion is currently active
+    pub fn is_motion_active(&self) -> bool {
+        if self.active_motion.is_some() {
+            return true;
+        }
+
+        false
     }
 
     /// Adds a motion to the `MotionManger`.
@@ -153,7 +170,7 @@ impl MotionManager {
             .expect("Motion type not added to the motion manager");
 
         self.active_motion = Some(ActiveMotion {
-            cur_sub_motion: (chosen_motion.motion_settings.motion_order[0].clone(), 0),
+            cur_sub_motion: (chosen_motion.settings.motion_order[0].clone(), 0),
             cur_keyframe_index: 0,
             motion: chosen_motion,
             movement_start: Instant::now(),

@@ -5,16 +5,18 @@ use enum_dispatch::enum_dispatch;
 
 use crate::{
     behavior::{
-        behaviors::{Initial, Observe, Passive, Penalized},
+        behaviors::{Initial, Observe, Passive, Penalized, Standup},
         roles::Base,
         BehaviorConfig,
     },
     config::{layout::LayoutConfig, yggdrasil::YggdrasilConfig},
     filter::{
         button::{ChestButton, HeadButtons},
+        falling::Fall,
         fsr::Contacts,
     },
     game_controller::GameControllerConfig,
+    motion::motion_manager::MotionManager,
     nao::{self, manager::NaoManager},
     prelude::*,
     primary_state::PrimaryState,
@@ -45,6 +47,8 @@ pub struct Context<'a> {
     pub game_controller_message: Option<&'a GameControllerMessage>,
     /// Contains the game-controller config.
     pub game_controller_config: &'a GameControllerConfig,
+    /// Contains information of the current Falling state of the robot
+    pub fall_filter: &'a Fall,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -78,6 +82,7 @@ pub trait Behavior {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        motion_manger: &mut MotionManager,
     );
 }
 
@@ -97,6 +102,7 @@ pub enum BehaviorKind {
     Initial(Initial),
     Observe(Observe),
     Penalized(Penalized),
+    Standup(Standup),
     // Add new behaviors here!
 }
 
@@ -213,6 +219,7 @@ impl Engine {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        motion_manager: &mut MotionManager,
     ) {
         self.role = self.assign_role(context);
 
@@ -224,7 +231,8 @@ impl Engine {
             self.role.transition_behavior(context, &mut self.behavior)
         };
 
-        self.behavior.execute(context, nao_manager, walking_engine);
+        self.behavior
+            .execute(context, nao_manager, walking_engine, motion_manager);
     }
 }
 
@@ -244,6 +252,8 @@ pub fn step(
     walking_engine: &mut WalkingEngine,
     game_controller_message: &Option<GameControllerMessage>,
     game_controller_config: &GameControllerConfig,
+    motion_manager: &mut MotionManager,
+    fall_filter: &Fall,
 ) -> Result<()> {
     let context = Context {
         primary_state,
@@ -255,9 +265,10 @@ pub fn step(
         behavior_config,
         game_controller_message: game_controller_message.as_ref(),
         game_controller_config,
+        fall_filter,
     };
 
-    engine.step(context, nao_manager, walking_engine);
+    engine.step(context, nao_manager, walking_engine, motion_manager);
 
     Ok(())
 }

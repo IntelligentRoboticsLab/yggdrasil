@@ -67,6 +67,12 @@ pub enum FailRoutine {
     Catch,
 }
 
+/// TODO
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum ExitRoutine {
+    Standing,
+}
+
 /// Stores information about a single conditional variable, keeping track
 /// of the minimum and maximum value the variable is allowed to take.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -85,6 +91,7 @@ pub struct MotionCondition {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MotionSettings {
     pub interpolation_type: InterpolationType,
+    pub exit_routine: Option<ExitRoutine>,
     pub motion_order: Vec<String>,
 }
 
@@ -115,7 +122,7 @@ pub struct SubMotion {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Motion {
     /// Motion settings connected to the current motion.
-    pub motion_settings: MotionSettings,
+    pub settings: MotionSettings,
     /// The different submotions contained in the motion.
     pub submotions: HashMap<String, SubMotion>,
 }
@@ -140,7 +147,7 @@ impl Motion {
 
             // based on the gathered config file, we now generate a new Motion
             let mut motion: Motion = Motion {
-                motion_settings: config.clone(),
+                settings: config.clone(),
                 submotions: HashMap::new(),
             };
 

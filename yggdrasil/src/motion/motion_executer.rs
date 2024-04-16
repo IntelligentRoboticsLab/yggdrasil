@@ -1,3 +1,4 @@
+use crate::filter::falling::Fall;
 use crate::motion::motion_manager::{ActiveMotion, MotionManager};
 use crate::motion::motion_types::Movement;
 use crate::motion::motion_util::{get_min_duration, lerp};
@@ -25,6 +26,7 @@ pub fn motion_executer(
     nao_state: &mut NaoState,
     motion_manager: &mut MotionManager,
     nao_manager: &mut NaoManager,
+    fall_filter: &mut Fall,
 ) -> Result<()> {
     if motion_manager.active_motion.is_none() {
         return Ok(());
@@ -90,6 +92,7 @@ pub fn motion_executer(
             Priority::High,
         );
     } else {
+        // Possibly check here if the robot is steady using the "is_steady" function from filter/orientation.rs file                                        TODO
         if !exit_waittime_elapsed(
             motion_manager,
             motion.submotions[&sub_motion_name].exit_waittime,
@@ -97,7 +100,7 @@ pub fn motion_executer(
             return Ok(());
         }
 
-        transition_to_next_submotion(motion_manager, nao_state);
+        transition_to_next_submotion(motion_manager, nao_state, fall_filter);
     }
 
     Ok(())
@@ -232,7 +235,11 @@ fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_waittime: f32)
 ///
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 /// * `nao_state` - Current state of the robot.
-fn transition_to_next_submotion(motion_manager: &mut MotionManager, nao_state: &mut NaoState) {
+fn transition_to_next_submotion(
+    motion_manager: &mut MotionManager,
+    nao_state: &mut NaoState,
+    fall_filter: &mut Fall,
+) {
     // current submotion is finished, transition to next submotion.
     let active_motion: &mut ActiveMotion = motion_manager.active_motion.as_mut().unwrap();
 
@@ -249,8 +256,17 @@ fn transition_to_next_submotion(motion_manager: &mut MotionManager, nao_state: &
         if motion_manager.active_motion.is_none() {
             motion_manager.motion_execution_starting_time = None;
         }
-    } else {
-        // if no submotion is found, the motion has finished
+    }
+    // if no submotion is found, the motion has finished
+    else {
+        // we send the appropriate exit message (if present)
+        motion_manager
+            .active_motion
+            .as_ref()
+            .unwrap()
+            .execute_exit_routine(fall_filter);
+
+        // and we reset the Motionmanager
         motion_manager.active_motion = None;
         motion_manager.motion_execution_starting_time = None;
     }
