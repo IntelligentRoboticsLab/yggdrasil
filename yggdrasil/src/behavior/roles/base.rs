@@ -2,9 +2,8 @@ use crate::{
     behavior::{
         behaviors::{Initial, Observe, Passive, Standup},
         engine::{BehaviorKind, Context, Role},
-        BehaviorModule,
     },
-    filter::falling::{Fall, FallState},
+    filter::falling::FallState,
 };
 
 // This role is a placeholder that implements general behaviors until we implement
