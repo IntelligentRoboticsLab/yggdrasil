@@ -1,7 +1,7 @@
 use crate::{
     filter::{
         button::HeadButtons,
-        falling::{Fall, FallState, LyingDirection},
+        falling::{FallState, LyingDirection},
     },
     nao::manager::{NaoManager, Priority},
 };
@@ -30,10 +30,10 @@ fn debug_testmotion(
     mmng: &mut MotionManager,
     nao_state: &NaoState,
     nao_manager: &mut NaoManager,
-    fall: &Fall,
+    fall_state: &FallState,
 ) -> Result<()> {
     if head_button.middle.is_tapped() {
-        match fall.state {
+        match fall_state {
             FallState::Lying(LyingDirection::FacingDown) => {
                 mmng.start_new_motion(MotionType::StandupStomach, Priority::High)
             }

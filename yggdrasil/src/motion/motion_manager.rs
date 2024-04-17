@@ -1,4 +1,4 @@
-use crate::filter::falling::{Fall, FallState};
+use crate::filter::falling::FallState;
 use crate::motion::motion_types::{
     ConditionalVariable, ExitRoutine, FailRoutine, Motion, MotionCondition, MotionType,
 };
@@ -75,9 +75,9 @@ impl ActiveMotion {
         Some(self.clone())
     }
 
-    pub fn execute_exit_routine(&self, fall_filter: &mut Fall) {
+    pub fn execute_exit_routine(&self, fall_state: &mut FallState) {
         match self.motion.settings.exit_routine {
-            Some(ExitRoutine::Standing) => fall_filter.state = FallState::Upright,
+            Some(ExitRoutine::Standing) => *fall_state = FallState::Upright,
             _ => {}
         }
     }

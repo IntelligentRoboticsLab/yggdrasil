@@ -92,3 +92,23 @@ vertical_scan_line_interval = 16
 # This is used to calibrate the odometry values to the actual distance the robot has moved.
 # Values taken from rUNSWift 2014 walk
 scale_factor = [1.19, 1.2]
+
+# The configuration for the odometry filter.
+# The filter is an implementation of this paper https://www.mdpi.com/1424-8220/15/8/19302/pdf
+[orientation]
+# The weight of the orientation correction computed from the accelerometer.
+# This weight is further scaled based on the acceleration relative to the gravity.
+acceleration_weight = 0.01
+
+# The following values are used to determine if the robot is moving or not.
+# If the robot is not moving, the estimated orientation is updated.
+
+# The threshold for the acceleration values from the IMU. 
+# If the acceleration is below this threshold,  the robot is considered to be moving
+acceleration_threshold = 0.2
+# The threshold for the gyro values from the IMU. 
+# If any of the gyro valeus is below this threshold, the robot is considered to be moving.
+gyro_threshold = 0.1
+# The threshold for the sum of each FSR foot. 
+# If the FSR value is below this threshold, the robot is considered to be moving.
+fsr_threshold = 5

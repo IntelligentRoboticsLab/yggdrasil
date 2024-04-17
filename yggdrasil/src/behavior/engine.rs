@@ -12,7 +12,7 @@ use crate::{
     config::{layout::LayoutConfig, yggdrasil::YggdrasilConfig},
     filter::{
         button::{ChestButton, HeadButtons},
-        falling::Fall,
+        falling::FallState,
         fsr::Contacts,
     },
     game_controller::GameControllerConfig,
@@ -48,7 +48,7 @@ pub struct Context<'a> {
     /// Contains the game-controller config.
     pub game_controller_config: &'a GameControllerConfig,
     /// Contains information of the current Falling state of the robot
-    pub fall_filter: &'a Fall,
+    pub fall_state: &'a FallState,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -60,6 +60,7 @@ pub struct Context<'a> {
 /// ```
 /// use yggdrasil::behavior::engine::{Behavior, Context};
 /// use yggdrasil::nao::manager::NaoManager;
+/// use yggdrasil::walk::engine::WalkingEngine;
 ///
 /// struct Dance;
 ///
@@ -68,6 +69,7 @@ pub struct Context<'a> {
 ///         &mut self,
 ///         context: Context,
 ///         nao_manager: &mut NaoManager,
+///         walking_engine: &mut WalkingEngine,
 ///     ) {
 ///         // Dance like nobody's watching 🕺!
 ///     }
@@ -253,7 +255,7 @@ pub fn step(
     game_controller_message: &Option<GameControllerMessage>,
     game_controller_config: &GameControllerConfig,
     motion_manager: &mut MotionManager,
-    fall_filter: &Fall,
+    fall_state: &FallState,
 ) -> Result<()> {
     let context = Context {
         primary_state,
@@ -265,7 +267,7 @@ pub fn step(
         behavior_config,
         game_controller_message: game_controller_message.as_ref(),
         game_controller_config,
-        fall_filter,
+        fall_state,
     };
 
     engine.step(context, nao_manager, walking_engine, motion_manager);

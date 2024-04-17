@@ -1,4 +1,4 @@
-use crate::filter::falling::Fall;
+use crate::filter::falling::FallState;
 use crate::motion::motion_manager::{ActiveMotion, MotionManager};
 use crate::motion::motion_types::Movement;
 use crate::motion::motion_util::{get_min_duration, lerp};
@@ -26,7 +26,7 @@ pub fn motion_executer(
     nao_state: &mut NaoState,
     motion_manager: &mut MotionManager,
     nao_manager: &mut NaoManager,
-    fall_filter: &mut Fall,
+    fall_state: &mut FallState,
 ) -> Result<()> {
     if motion_manager.active_motion.is_none() {
         return Ok(());
@@ -100,7 +100,7 @@ pub fn motion_executer(
             return Ok(());
         }
 
-        transition_to_next_submotion(motion_manager, nao_state, fall_filter);
+        transition_to_next_submotion(motion_manager, nao_state, fall_state);
     }
 
     Ok(())
@@ -238,7 +238,7 @@ fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_waittime: f32)
 fn transition_to_next_submotion(
     motion_manager: &mut MotionManager,
     nao_state: &mut NaoState,
-    fall_filter: &mut Fall,
+    fall_state: &mut FallState,
 ) {
     // current submotion is finished, transition to next submotion.
     let active_motion: &mut ActiveMotion = motion_manager.active_motion.as_mut().unwrap();
@@ -264,7 +264,7 @@ fn transition_to_next_submotion(
             .active_motion
             .as_ref()
             .unwrap()
-            .execute_exit_routine(fall_filter);
+            .execute_exit_routine(fall_state);
 
         // and we reset the Motionmanager
         motion_manager.active_motion = None;

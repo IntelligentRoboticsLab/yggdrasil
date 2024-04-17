@@ -97,7 +97,6 @@ pub fn update_primary_state(
     // TODO: add penalized state
     // We need the robot's id and check the `RobotInfo` array in the game-controller message, to
     // see if this robot has received a penalty.
-
     let next_primary_state = if is_penalized(
         game_controller_message.as_ref(),
         game_controller_config.team_number,

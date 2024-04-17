@@ -67,6 +67,7 @@ fn init_subconfigs(storage: &mut Storage, config: &mut YggdrasilConfig) -> Resul
     storage.add_resource(Resource::new(config.primary_state.clone()))?;
     storage.add_resource(Resource::new(config.vision.clone()))?;
     storage.add_resource(Resource::new(config.odometry.clone()))?;
+    storage.add_resource(Resource::new(config.orientation.clone()))?;
 
     Ok(())
 }

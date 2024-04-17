@@ -7,6 +7,7 @@ use miette::IntoDiagnostic;
 
 use nalgebra::Isometry3;
 use nidhogg::types::RgbU8;
+
 use std::net::IpAddr;
 
 use crate::{camera::Image, nao::Cycle, prelude::*};
@@ -87,6 +88,26 @@ impl DebugContext {
             let jpeg = img.yuyv_image().to_jpeg(jpeg_quality)?;
             let tensor_data =
                 rerun::TensorData::from_jpeg_bytes(jpeg.to_owned()).into_diagnostic()?;
+            let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
+
+            self.rec.log(path.as_ref(), &img).into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log an RGB image to the debug viewer.
+    pub fn log_image_rgb(
+        &self,
+        path: impl AsRef<str>,
+        img: image::RgbImage,
+        cycle: &Cycle,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(cycle);
+            let tensor_data = rerun::TensorData::from_image(img).into_diagnostic()?;
             let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
 
             self.rec.log(path.as_ref(), &img).into_diagnostic()?;
@@ -229,6 +250,73 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Log a set of 2D boxes to the debug viewer.
+    pub fn log_boxes_2d(
+        &self,
+        path: impl AsRef<str>,
+        centers: impl IntoIterator<Item = (f32, f32)>,
+        sizes: impl IntoIterator<Item = (f32, f32)>,
+        image: Image,
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let centers = centers.into_iter().collect::<Vec<_>>();
+            let center_len = centers.len();
+
+            self.set_cycle(&image.cycle());
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Boxes2D::from_centers_and_sizes(centers, sizes).with_colors(vec![
+                        rerun::Color::from_rgb(
+                            color.red,
+                            color.green,
+                            color.blue,
+                        );
+                        center_len
+                    ]),
+                )
+                .into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
+    pub fn log_points2d_for_image_with_radius(
+        &self,
+        path: impl AsRef<str>,
+        points: &[(f32, f32)],
+        img: Image,
+        color: RgbU8,
+        radius: f32,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&img.cycle());
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Points2D::new(points)
+                        .with_colors(vec![
+                            rerun::Color::from_rgb(
+                                color.red,
+                                color.green,
+                                color.blue,
+                            );
+                            points.len()
+                        ])
+                        .with_radii(vec![radius; points.len()]),
+                )
+                .into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
     /// Log a set of 2D lines to the debug viewer, using the timestamp of the provided image.
     pub fn log_lines2d_for_image(
         &self,
@@ -298,6 +386,35 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Log a set of 3D arrows to the debug viewer.
+    pub fn log_arrows3d_with_color(
+        &self,
+        path: impl AsRef<str>,
+        vectors: &[(f32, f32, f32)],
+        origins: &[(f32, f32, f32)],
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Arrows3D::from_vectors(vectors)
+                        .with_origins(origins)
+                        .with_colors(vec![
+                            rerun::Color::from_rgb(
+                                color.red,
+                                color.green,
+                                color.blue
+                            );
+                            vectors.len()
+                        ]),
+                )
+                .into_diagnostic()?;
+        }
+        Ok(())
+    }
+
     /// Log a set of 3D lines to the debug viewer, using the timestamp of the provided image.
     pub fn log_lines3d_for_image(
         &self,
@@ -354,6 +471,19 @@ impl DebugContext {
 
         Ok(())
     }
+
+    /// Log a timeless robot view coordinate system to the debug viewer.
+    /// This sets the x-axis to the front of the robot, the y-axis to the left, and the z-axis up.
+    pub fn log_robot_viewcoordinates(&self, path: impl AsRef<str>) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log_timeless(path.as_ref(), &rerun::ViewCoordinates::FLU)
+                .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
 }
 
 #[startup_system]
@@ -370,6 +500,24 @@ fn init_rerun(storage: &mut Storage) -> Result<()> {
     };
 
     let ctx = DebugContext::init("yggdrasil", server_address)?;
+
+    #[cfg(feature = "rerun")]
+    {
+        ctx.rec
+            .log_timeless(
+                "field/mesh",
+                &rerun::Asset3D::from_file("./assets/rerun/spl_field.glb")
+                    .expect("Failed to load field model")
+                    .with_transform(
+                        rerun::Transform3D::from_translation([0.0, 0.0, -0.05])
+                            .transform
+                            .0,
+                    ),
+            )
+            .into_diagnostic()?;
+
+        ctx.log_robot_viewcoordinates("/field/mesh")?;
+    }
 
     storage.add_resource(Resource::new(ctx))
 }

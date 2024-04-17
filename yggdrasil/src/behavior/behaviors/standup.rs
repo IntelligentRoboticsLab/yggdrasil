@@ -33,7 +33,7 @@ impl Behavior for Standup {
         walking_engine.request_idle();
 
         // check the direction the robot is lying and execute the appropriate motion
-        match context.fall_filter.state {
+        match context.fall_state {
             FallState::Lying(LyingDirection::FacingDown) => {
                 motion_manager.start_new_motion(MotionType::StandupStomach, Priority::High)
             }

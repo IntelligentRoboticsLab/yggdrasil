@@ -16,7 +16,7 @@ impl Role for Base {
         context: Context,
         current_behavior: &mut BehaviorKind,
     ) -> BehaviorKind {
-        match context.fall_filter.state {
+        match context.fall_state {
             FallState::Falling(_) => {} // DmgPrev here
             FallState::Lying(_) => return BehaviorKind::Standup(Standup::default()),
             _ => {}
@@ -34,7 +34,7 @@ impl Role for Base {
             BehaviorKind::Initial(state) => BehaviorKind::Initial(*state),
             BehaviorKind::Observe(state) => BehaviorKind::Observe(*state),
             BehaviorKind::Penalized(_) => BehaviorKind::Initial(Initial),
-            BehaviorKind::Standup(state) => match context.fall_filter.state {
+            BehaviorKind::Standup(state) => match context.fall_state {
                 FallState::Upright => BehaviorKind::Observe(Observe::default()),
                 _ => BehaviorKind::Standup(*state),
             },

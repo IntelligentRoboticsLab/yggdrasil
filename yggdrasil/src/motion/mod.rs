@@ -1,5 +1,6 @@
+use crate::{filter, kinematics};
+
 use self::odometry::Odometry;
-use crate::kinematics;
 use crate::nao::write_hardware_info;
 use miette::Result;
 use tyr::prelude::*;
@@ -25,9 +26,12 @@ impl Module for MotionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.init_resource::<Odometry>()?
             .add_system_chain((
-                odometry::update_odometry.after(kinematics::update_kinematics),
+                odometry::update_odometry
+                    .after(kinematics::update_kinematics)
+                    .after(filter::orientation::update_orientation),
                 odometry::log_odometry,
             ))
+            .add_startup_system(odometry::setup_viewcoordinates)?
             .add_startup_system(motion_manager_initializer)?
             .add_system(motion_executer.after(write_hardware_info))
             .add_module(MotionTester)

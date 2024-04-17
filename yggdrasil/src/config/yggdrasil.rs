@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::filter::orientation::OrientationFilterConfig;
 use crate::motion::odometry::OdometryConfig;
 use crate::prelude::*;
 use crate::{
@@ -16,6 +17,7 @@ pub struct YggdrasilConfig {
     pub primary_state: PrimaryStateConfig,
     pub vision: VisionConfig,
     pub odometry: OdometryConfig,
+    pub orientation: OrientationFilterConfig,
 }
 
 impl Config for YggdrasilConfig {
