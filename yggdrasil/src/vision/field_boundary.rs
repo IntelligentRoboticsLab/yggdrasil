@@ -136,7 +136,7 @@ fn log_boundary_points(
     dbg.log_points2d_for_image(
         "top_camera/image/boundary_points",
         &points,
-        image.deref().clone(),
+        image,
         color::u8::MAGENTA,
     )?;
 
@@ -145,7 +145,7 @@ fn log_boundary_points(
     dbg.log_lines2d_for_image(
         "top_camera/image/boundary_line_segments",
         &line_segments,
-        image.deref().clone(),
+        image,
         color::u8::PURPLE,
     )?;
 

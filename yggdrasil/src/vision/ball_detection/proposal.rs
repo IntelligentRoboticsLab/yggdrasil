@@ -373,7 +373,7 @@ fn log_proposals(
         "top_camera/image/ball_boxes",
         points.clone(),
         sizes,
-        ball_proposals.image.clone(),
+        &ball_proposals.image,
         color::u8::SILVER,
     )?;
 

@@ -124,7 +124,7 @@ fn field_marks_system(
     ctx.log_lines2d_for_image(
         "top_camera/image/extended_lines",
         &extended_lines.iter().map(Into::into).collect::<Vec<_>>(),
-        lines.1.clone(),
+        &lines.1,
         color::u8::YELLOW,
     )?;
 

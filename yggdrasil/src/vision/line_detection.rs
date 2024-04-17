@@ -339,7 +339,7 @@ fn draw_lines(
     dbg.log_lines2d_for_image(
         "top_camera/image/lines",
         &all_lines,
-        scan_grid.image().clone(),
+        scan_grid.image(),
         color::u8::RED,
     )?;
 
@@ -364,7 +364,7 @@ fn draw_lines(
     dbg.log_lines3d_for_image(
         "top_camera/lines_3d",
         &points_to_ground,
-        scan_grid.image().clone(),
+        scan_grid.image(),
         color::u8::BLUE,
     )?;
 

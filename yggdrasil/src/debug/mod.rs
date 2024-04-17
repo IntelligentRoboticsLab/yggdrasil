@@ -143,7 +143,7 @@ impl DebugContext {
         path: impl AsRef<str>,
         centers: impl IntoIterator<Item = (f32, f32)>,
         sizes: impl IntoIterator<Item = (f32, f32)>,
-        image: Image,
+        image: &Image,
         color: RgbU8,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
@@ -167,11 +167,11 @@ impl DebugContext {
         centers: &[(f32, f32)],
         half_sizes: &[(f32, f32)],
         labels: Vec<String>,
-        image: Cycle,
+        cycle: Cycle,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image);
+            self.set_cycle(&cycle);
             self.rec
                 .log(
                     path.as_ref(),
@@ -193,7 +193,7 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         matrix: &CameraMatrix,
-        image: Image,
+        image: &Image,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
@@ -294,12 +294,12 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         points: &[(f32, f32)],
-        img: Image,
+        image: &Image,
         color: RgbU8,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&img.cycle());
+            self.set_cycle(&image.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -324,13 +324,13 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         points: &[(f32, f32)],
-        img: Cycle,
+        cycle: Cycle,
         color: RgbU8,
         radius: f32,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&img);
+            self.set_cycle(&cycle);
             self.rec
                 .log(
                     path.as_ref(),
@@ -357,12 +357,12 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         lines: &[[(f32, f32); 2]],
-        img: Image,
+        image: &Image,
         color: RgbU8,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&img.cycle());
+            self.set_cycle(&image.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -455,12 +455,12 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         lines: &[[(f32, f32, f32); 2]],
-        img: Image,
+        image: &Image,
         color: RgbU8,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&img.cycle());
+            self.set_cycle(&image.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -485,11 +485,11 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         transform: &Isometry3<f32>,
-        img: Image,
+        image: &Image,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&img.cycle());
+            self.set_cycle(&image.cycle());
 
             let translation = transform.translation;
             let rotation = transform.rotation.coords;

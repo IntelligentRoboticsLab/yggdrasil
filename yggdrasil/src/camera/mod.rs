@@ -319,13 +319,13 @@ fn log_bottom_image(
 ) -> Result<JpegBottomImage> {
     let timestamp = bottom_image.0 .0 .1;
     ctx.log_image("bottom_camera/image", bottom_image.clone().0, 20)?;
-    ctx.log_camera_matrix("bottom_camera/image", camera_matrix, bottom_image.clone().0)?;
+    ctx.log_camera_matrix("bottom_camera/image", camera_matrix, &bottom_image.0)?;
 
     // For now, let's also transform the pinhole camera to the ground frame.
     ctx.log_transformation(
         "bottom_camera/image",
         &camera_matrix.camera_to_ground,
-        bottom_image.clone().0,
+        &bottom_image.0,
     )?;
     Ok(JpegBottomImage(timestamp))
 }
@@ -337,13 +337,13 @@ fn log_top_image(
 ) -> Result<JpegTopImage> {
     let timestamp = top_image.0 .0 .1;
     ctx.log_image("top_camera/image", top_image.clone().0, 20)?;
-    ctx.log_camera_matrix("top_camera/image", camera_matrix, top_image.clone().0)?;
+    ctx.log_camera_matrix("top_camera/image", camera_matrix, &top_image.0)?;
 
     // For now, let's also transform the pinhole camera to the ground frame.
     ctx.log_transformation(
         "top_camera/image",
         &camera_matrix.camera_to_ground,
-        top_image.clone().0,
+        &top_image.0,
     )?;
     Ok(JpegTopImage(timestamp))
 }
