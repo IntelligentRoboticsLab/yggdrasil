@@ -1,10 +1,13 @@
-use crate::filter::falling::FallState;
+use crate::filter::imu::IMUValues;
+use crate::filter::{falling::FallState, orientation::RobotOrientation};
 use crate::motion::motion_manager::{ActiveMotion, MotionManager};
 use crate::motion::motion_types::Movement;
 use crate::motion::motion_util::{get_min_duration, lerp};
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority;
 use miette::Result;
+use nalgebra::Vector3;
+use nidhogg::types::ForceSensitiveResistors;
 use nidhogg::{
     types::{FillExt, JointArray},
     NaoState,
@@ -27,6 +30,9 @@ pub fn motion_executer(
     motion_manager: &mut MotionManager,
     nao_manager: &mut NaoManager,
     fall_state: &mut FallState,
+    orientation: &RobotOrientation,
+    fsr: &ForceSensitiveResistors,
+    imu: &IMUValues,
 ) -> Result<()> {
     if motion_manager.active_motion.is_none() {
         return Ok(());
@@ -92,7 +98,23 @@ pub fn motion_executer(
             Priority::High,
         );
     } else {
-        // Possibly check here if the robot is steady using the "is_steady" function from filter/orientation.rs file                                        TODO
+        // let gyro = Vector3::new(imu.gyroscope.x, imu.gyroscope.y, imu.gyroscope.z);
+        // let linear_acceleration = Vector3::new(
+        //     imu.accelerometer.x,
+        //     imu.accelerometer.y,
+        //     imu.accelerometer.z,
+        // );
+        // // we check whether the robot is in a steady position
+        // if !orientation.is_steady(gyro, linear_acceleration, fsr) {
+        //     // if not, we wait until it is either steady or the maximum wait time has elapsed
+        //     if !exit_waittime_elapsed(
+        //         motion_manager,
+        //         motion.submotions[&sub_motion_name].exit_waittime,
+        //     ) {
+        //         return Ok(());
+        //     }
+        // }
+
         if !exit_waittime_elapsed(
             motion_manager,
             motion.submotions[&sub_motion_name].exit_waittime,

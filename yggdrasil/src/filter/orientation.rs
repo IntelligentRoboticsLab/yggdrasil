@@ -123,7 +123,7 @@ impl RobotOrientation {
         );
     }
 
-    fn is_steady(
+    pub fn is_steady(
         &self,
         gyro: Vector3<f32>,
         linear_acceleration: Vector3<f32>,
