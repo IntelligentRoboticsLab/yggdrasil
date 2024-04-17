@@ -108,11 +108,16 @@ impl<T: Send + 'static> AsyncTask<T> {
         Ok(())
     }
 
+    /// Tries to the cancel the *RUNNING* task.
+    ///
+    /// # Errors
+    /// Returns an [`Error::NotActive`] if the task is not active.
     pub fn try_cancel(&mut self) -> crate::Result<()> {
-        if let Some(raw) = self.raw.take() {
-            raw.join_handle.abort();
-        }
-
+        self.raw
+            .as_ref()
+            .ok_or(Error::NotActive)?
+            .join_handle
+            .abort();
         Ok(())
     }
 }

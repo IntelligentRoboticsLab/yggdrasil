@@ -14,7 +14,7 @@ use line_detection::LineDetectionModule;
 use scan_lines::{ScanLinesConfig, ScanLinesModule};
 
 use self::ball_detection::BallDetectionModule;
-use self::field_marks::FieldMarksModule;
+use self::field_marks::{FieldMarksConfig, FieldMarksModule};
 
 pub struct VisionModule;
 
@@ -32,4 +32,5 @@ impl Module for VisionModule {
 #[serde(deny_unknown_fields)]
 pub struct VisionConfig {
     pub scan_lines: ScanLinesConfig,
+    pub field_marks: FieldMarksConfig,
 }

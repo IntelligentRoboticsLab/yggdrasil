@@ -93,6 +93,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     #[error("Task is already dispatched")]
     AlreadyActive,
+    #[error("Task is not dispatched")]
+    NotActive,
 }
 
 /// The prelude contains commonly used items.

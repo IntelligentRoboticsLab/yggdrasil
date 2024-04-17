@@ -73,16 +73,14 @@ impl LineSegment<2> {
     }
 
     pub fn project_to_3d(&self, matrix: &CameraMatrix) -> Result<LineSegment<3>> {
-        let start = matrix
-            .pixel_to_ground(self.start.into(), 0.0)
-            .with_context(|| {
-                format!(
-                    "Failed to project start point to 3D space: {:?}",
-                    self.start
-                )
-            })?;
+        let start = matrix.pixel_to_ground(self.start, 0.0).with_context(|| {
+            format!(
+                "Failed to project start point to 3D space: {:?}",
+                self.start
+            )
+        })?;
         let end = matrix
-            .pixel_to_ground(self.end.into(), 0.0)
+            .pixel_to_ground(self.end, 0.0)
             .with_context(|| format!("Failed to project end point to 3D space: {:?}", self.end))?;
 
         Ok(LineSegment3::new(start, end))
@@ -118,16 +116,14 @@ impl LineSegment<3> {
     }
 
     pub fn from_projected_xy(line: &LineSegment<2>, matrix: &CameraMatrix) -> Result<Self> {
-        let start = matrix
-            .pixel_to_ground(line.start.into(), 0.0)
-            .with_context(|| {
-                format!(
-                    "Failed to project start point to 3D space: {:?}",
-                    line.start
-                )
-            })?;
+        let start = matrix.pixel_to_ground(line.start, 0.0).with_context(|| {
+            format!(
+                "Failed to project start point to 3D space: {:?}",
+                line.start
+            )
+        })?;
         let end = matrix
-            .pixel_to_ground(line.end.into(), 0.0)
+            .pixel_to_ground(line.end, 0.0)
             .with_context(|| format!("Failed to project end point to 3D space: {:?}", line.end))?;
 
         Ok(Self { start, end })

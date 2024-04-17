@@ -91,8 +91,13 @@ impl<M: MlModel> MlTask<M> {
         Ok(())
     }
 
-    pub fn cancel(&mut self) {
-        self.task.try_cancel();
+    /// Attempts to cancel the running inference task.
+    ///
+    /// ## Errors
+    /// Fails if the task is not active.
+    pub fn cancel(&mut self) -> Result<()> {
+        self.task.try_cancel()?;
+        Ok(())
     }
 
     /// Returns the output if available, or else [`None`].
