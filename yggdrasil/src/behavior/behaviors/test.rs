@@ -6,7 +6,7 @@ use crate::{
     walk::engine::WalkingEngine,
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Test;
 
 impl Behavior for Test {
