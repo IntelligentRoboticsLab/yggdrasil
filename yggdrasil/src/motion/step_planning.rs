@@ -17,12 +17,14 @@ use super::{
 const TURN_SPEED: f32 = 0.2;
 const WALK_SPEED: f32 = 0.03;
 
-pub struct WalkPlannerModule;
+pub struct StepPlannerModule;
 
-impl Module for WalkPlannerModule {
+impl Module for StepPlannerModule {
     fn initialize(self, app: App) -> Result<App> {
-        let target = WalkPlannerTarget {
+        let target = StepPlanner {
             target_position: Some(Point2::new(3., 0.0)),
+            static_obstacles: vec![],
+            dynamic_obstacles: vec![],
         };
 
         app.add_system(walk_planner_system)
@@ -30,16 +32,19 @@ impl Module for WalkPlannerModule {
     }
 }
 
-pub struct WalkPlannerTarget {
+pub struct StepPlanner {
     target_position: Option<Point2<f32>>,
+
+    static_obstacles: Vec<Obstacle>,
+    dynamic_obstacles: Vec<Obstacle>,
 }
 
-impl WalkPlannerTarget {
-    pub fn set(&mut self, target: Point2<f32>) {
+impl StepPlanner {
+    pub fn set_target(&mut self, target: Point2<f32>) {
         self.target_position = Some(target);
     }
 
-    pub fn set_if_unset(&mut self, target: Point2<f32>) {
+    pub fn set_target_if_unset(&mut self, target: Point2<f32>) {
         if self.target_position.is_none() {
             self.target_position = Some(target);
         }
@@ -47,6 +52,17 @@ impl WalkPlannerTarget {
 
     pub fn current_target(&self) -> Option<&Point2<f32>> {
         self.target_position.as_ref()
+    }
+
+    pub fn set_dynamic_obstacles(&mut self, obstacles: Vec<Obstacle>) {
+        self.dynamic_obstacles = obstacles;
+    }
+
+    fn get_all_obstacles(&self) -> Vec<Obstacle> {
+        let mut all_obstacles = self.static_obstacles.clone();
+        all_obstacles.copy_from_slice(&self.dynamic_obstacles);
+
+        all_obstacles
     }
 }
 
@@ -97,19 +113,20 @@ fn calc_distance(
 #[system]
 fn walk_planner_system(
     odometry: &mut Odometry,
-    walk_planner_target: &WalkPlannerTarget,
+    step_planner: &StepPlanner,
     walking_engine: &mut WalkingEngine,
     behavior_engine: &Engine,
     dbg: &DebugContext,
 ) -> Result<()> {
-    let Some(target_position) = walk_planner_target.target_position else {
+    let Some(target_position) = step_planner.target_position else {
         return Ok(());
     };
+    let all_obstacles = step_planner.get_all_obstacles();
 
     let Some((path, _total_walking_distance)) = path_finding::find_path(
         odometry.accumulated.transform_point(&Point2::new(0., 0.)),
         target_position,
-        &[Obstacle::new(1., 0., 0.2)],
+        &all_obstacles,
     ) else {
         return Ok(());
     };
