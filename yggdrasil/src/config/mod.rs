@@ -69,7 +69,8 @@ fn init_subconfigs(storage: &mut Storage, config: &mut YggdrasilConfig) -> Resul
     storage.add_resource(Resource::new(config.filter.clone()))?;
     storage.add_resource(Resource::new(config.game_controller.clone()))?;
     storage.add_resource(Resource::new(config.primary_state.clone()))?;
-    storage.add_resource(Resource::new(config.vision.clone()))?;
+    storage.add_resource(Resource::new(config.vision.scan_lines.clone()))?;
+    storage.add_resource(Resource::new(config.vision.field_marks.clone()))?;
     storage.add_resource(Resource::new(config.odometry.clone()))?;
     storage.add_resource(Resource::new(config.orientation.clone()))?;
 

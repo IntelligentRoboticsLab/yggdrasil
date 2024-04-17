@@ -83,6 +83,21 @@ cc_optical_center = [320, 240]
 horizontal_scan_line_interval = 8
 vertical_scan_line_interval = 16
 
+[vision.field_marks]
+# The distance after which field marks are considered to be too far away to be detected, in meters.
+distance_threshold = 15.0
+# The tolerance for the angle between two lines being close to 90 degrees, in degrees.
+angle_tolerance = 10
+# The confidence threshold for the softmax score predicted by the classification model
+confidence_threshold = 0.7
+# The size of a patch at 1.0 meters distance in pixels. 
+# This value is divided by the distance to get the size of the patch at that distance, and the patch is then
+# resized to 32x32 pixels before being fed into the neural network.
+patch_scale = 140
+# The maximum amount of time (in micro seconds) we can spend on classifying field mark proposals.
+# If this time is exceeded, we will skip the classification of the remaining proposals.
+time_budget = 3000
+
 [odometry]
 # The scale factor for the odometry values along the x and y axis respectively.
 # This is used to calibrate the odometry values to the actual distance the robot has moved.

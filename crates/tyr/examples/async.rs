@@ -22,7 +22,7 @@ fn dispatch_name(task: &mut AsyncTask<Name>) -> Result<()> {
     // Also marks the task as active, so we can't accidentally dispatch it twice.
     match task.try_spawn(receive_name(Duration::from_secs(1))) {
         // Dispatched!
-        Ok(_) => Ok(()),
+        Ok(_) | Err(Error::NotActive) => Ok(()),
         // This is also fine here, we were already running the task from another cycle
         // and can return without dispatching it again
         Err(Error::AlreadyActive) => Ok(()),

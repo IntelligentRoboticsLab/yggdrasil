@@ -98,7 +98,7 @@ fn setup_camera(camera_device: CameraDevice, settings: &CameraSettings) -> Resul
     )?)
 }
 
-struct YggdrasilCamera(Arc<Mutex<Camera>>);
+pub struct YggdrasilCamera(Arc<Mutex<Camera>>);
 
 impl YggdrasilCamera {
     fn new(camera: Camera) -> Self {
@@ -127,7 +127,7 @@ impl YggdrasilCamera {
 }
 
 #[derive(Deref, DerefMut)]
-struct TopCamera(YggdrasilCamera);
+pub struct TopCamera(YggdrasilCamera);
 
 impl TopCamera {
     fn new(config: &CameraConfig) -> Result<Self> {
@@ -139,7 +139,7 @@ impl TopCamera {
 }
 
 #[derive(Deref, DerefMut)]
-struct BottomCamera(YggdrasilCamera);
+pub struct BottomCamera(YggdrasilCamera);
 
 impl BottomCamera {
     fn new(config: &CameraConfig) -> Result<Self> {
@@ -172,6 +172,39 @@ impl Image {
     pub fn cycle(&self) -> Cycle {
         self.0 .2
     }
+
+    /// Get a grayscale patch from the image centered at the given point.
+    /// The patch is of size `width` x `height`, and padded with zeros if the patch goes out of bounds.
+    ///
+    /// The grayscale values are normalized to the range [0, 1].
+    pub fn get_grayscale_patch(
+        &self,
+        center: (usize, usize),
+        width: usize,
+        height: usize,
+    ) -> Vec<u8> {
+        let (cx, cy) = center;
+
+        let yuyv_image = self.yuyv_image();
+        let mut result = Vec::with_capacity(width * height);
+
+        for i in 0..height {
+            for j in 0..width {
+                let x = cx + j - width / 2;
+                let y = cy + i - height / 2;
+
+                if x >= self.yuyv_image().width() || y >= self.yuyv_image().height() {
+                    result.push(0);
+                    continue;
+                }
+
+                let index = y * yuyv_image.width() + x;
+                result.push(yuyv_image[index * 2]);
+            }
+        }
+
+        result
+    }
 }
 
 #[derive(Clone, Deref)]
@@ -193,7 +226,7 @@ impl BottomImage {
 }
 
 #[system]
-fn camera_system(
+pub fn camera_system(
     top_camera: &mut TopCamera,
     bottom_camera: &mut BottomCamera,
     top_image: &mut TopImage,
@@ -286,13 +319,13 @@ fn log_bottom_image(
 ) -> Result<JpegBottomImage> {
     let timestamp = bottom_image.0 .0 .1;
     ctx.log_image("bottom_camera/image", bottom_image.clone().0, 20)?;
-    ctx.log_camera_matrix("bottom_camera/image", camera_matrix, bottom_image.clone().0)?;
+    ctx.log_camera_matrix("bottom_camera/image", camera_matrix, &bottom_image.0)?;
 
     // For now, let's also transform the pinhole camera to the ground frame.
     ctx.log_transformation(
         "bottom_camera/image",
         &camera_matrix.camera_to_ground,
-        bottom_image.clone().0,
+        &bottom_image.0,
     )?;
     Ok(JpegBottomImage(timestamp))
 }
@@ -304,13 +337,13 @@ fn log_top_image(
 ) -> Result<JpegTopImage> {
     let timestamp = top_image.0 .0 .1;
     ctx.log_image("top_camera/image", top_image.clone().0, 20)?;
-    ctx.log_camera_matrix("top_camera/image", camera_matrix, top_image.clone().0)?;
+    ctx.log_camera_matrix("top_camera/image", camera_matrix, &top_image.0)?;
 
     // For now, let's also transform the pinhole camera to the ground frame.
     ctx.log_transformation(
         "top_camera/image",
         &camera_matrix.camera_to_ground,
-        top_image.clone().0,
+        &top_image.0,
     )?;
     Ok(JpegTopImage(timestamp))
 }

@@ -225,6 +225,18 @@ pub fn left_foot_to_left_ankle(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::x() * joints.ankle_roll)
 }
 
+/// Get the height of the left hip to the ground.
+///
+/// This values is computed by taking the translation from the left ankle to the robot frame.
+pub fn left_hip_to_ground(kinematics: &RobotKinematics) -> f32 {
+    kinematics
+        .left_ankle_to_robot
+        .inverse()
+        .translation
+        .vector
+        .z
+}
+
 // Right leg
 
 /// We use the left leg joints to calculate the right leg kinematics, because the right leg is

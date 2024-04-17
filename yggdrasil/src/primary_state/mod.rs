@@ -1,6 +1,6 @@
 use crate::{
-    config::showtime::PlayerConfig,
-    filter::button::ChestButton,
+    filter::button::{ChestButton, HeadButtons},
+    game_controller::GameControllerConfig,
     nao::manager::{NaoManager, Priority},
     prelude::*,
 };
@@ -57,17 +57,10 @@ pub enum PrimaryState {
     Calibration,
 }
 
-impl PrimaryState {
-    /// Tell whether the robot should walk in this state.
-    pub fn should_walk(&self) -> bool {
-        !matches!(
-            self,
-            Self::Unstiff | Self::Penalized | Self::Finished | Self::Calibration
-        )
-    }
-}
+// TODO: Replace with player number from pregame config.
+const PLAYER_NUM: u8 = 3;
 
-fn is_penalized(
+fn is_penalized_by_game_controller(
     game_controller_message: Option<&GameControllerMessage>,
     team_number: u8,
     player_number: u8,
@@ -80,71 +73,111 @@ fn is_penalized(
     })
 }
 
+fn should_unstiff(head_buttons: &HeadButtons) -> bool {
+    head_buttons.rear.is_pressed()
+        && head_buttons.middle.is_pressed()
+        && head_buttons.front.is_pressed()
+}
+
 #[system]
 pub fn update_primary_state(
     primary_state: &mut PrimaryState,
     game_controller_message: &Option<GameControllerMessage>,
     nao_manager: &mut NaoManager,
     chest_button: &ChestButton,
+    head_buttons: &HeadButtons,
     config: &PrimaryStateConfig,
     player_config: &PlayerConfig,
 ) -> Result<()> {
     use PrimaryState as PS;
+    let next_state = next_primary_state(
+        primary_state,
+        game_controller_message,
+        chest_button,
+        head_buttons,
+        game_controller_config,
+    );
 
-    // TODO: add penalized state
-    // We need the robot's id and check the `RobotInfo` array in the game-controller message, to
-    // see if this robot has received a penalty.
-    let next_primary_state = if is_penalized(
-        game_controller_message.as_ref(),
-        player_config.team_number,
-        player_config.player_number,
-    ) {
-        PrimaryState::Penalized
-    } else {
-        match game_controller_message {
-            Some(message) => match message {
-                GameControllerMessage {
-                    state: GameState::Initial,
-                    ..
-                } => PrimaryState::Initial,
-                GameControllerMessage {
-                    state: GameState::Ready,
-                    ..
-                } => PrimaryState::Ready,
-                GameControllerMessage {
-                    state: GameState::Set,
-                    ..
-                } => PrimaryState::Set,
-                GameControllerMessage {
-                    state: GameState::Playing,
-                    ..
-                } => PrimaryState::Playing,
-                GameControllerMessage {
-                    state: GameState::Finished,
-                    ..
-                } => PrimaryState::Finished,
-            },
-            None if chest_button.state.is_tapped() => PrimaryState::Initial,
-            None => *primary_state,
-        }
-    };
-
-    match next_primary_state {
+    match next_state {
         PS::Unstiff => nao_manager.set_chest_blink_led(
             color::f32::BLUE,
             config.chest_blink_interval,
-            Priority::Critical,
+            Priority::Medium,
         ),
-        PS::Initial => nao_manager.set_chest_led(color::f32::EMPTY, Priority::Critical),
+        PS::Initial => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
         PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Critical),
         PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Critical),
         PS::Playing => nao_manager.set_chest_led(color::f32::GREEN, Priority::Critical),
         PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Critical),
-        PS::Finished => nao_manager.set_chest_led(color::f32::EMPTY, Priority::Critical),
+        PS::Finished => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
         PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Critical),
     };
 
-    *primary_state = next_primary_state;
+    *primary_state = next_state;
 
     Ok(())
+}
+
+fn next_primary_state(
+    primary_state: &PrimaryState,
+    game_controller_message: &Option<GameControllerMessage>,
+    chest_button: &ChestButton,
+    head_buttons: &HeadButtons,
+    game_controller_config: &GameControllerConfig,
+) -> PrimaryState {
+    use PrimaryState as PS;
+
+    let mut primary_state = match primary_state {
+        PS::Unstiff if chest_button.state.is_tapped() => PS::Initial,
+        PS::Initial if chest_button.state.is_tapped() => PS::Playing,
+        PS::Playing if chest_button.state.is_tapped() => PS::Penalized,
+        PS::Penalized if chest_button.state.is_tapped() => PS::Playing,
+
+        _ => *primary_state,
+    };
+
+    // We are only able to leave the `Unstiff` state if the chest button is pressed.
+    if primary_state == PS::Unstiff {
+        return primary_state;
+    }
+
+    primary_state = match game_controller_message {
+        Some(message) => match message {
+            GameControllerMessage {
+                state: GameState::Initial,
+                ..
+            } => PS::Initial,
+            GameControllerMessage {
+                state: GameState::Ready,
+                ..
+            } => PS::Ready,
+            GameControllerMessage {
+                state: GameState::Set,
+                ..
+            } => PS::Set,
+            GameControllerMessage {
+                state: GameState::Playing,
+                ..
+            } => PS::Playing,
+            GameControllerMessage {
+                state: GameState::Finished,
+                ..
+            } => PS::Finished,
+        },
+        None => primary_state,
+    };
+
+    if is_penalized_by_game_controller(
+        game_controller_message.as_ref(),
+        game_controller_config.team_number,
+        PLAYER_NUM,
+    ) {
+        primary_state = PS::Penalized;
+    }
+
+    if should_unstiff(head_buttons) {
+        primary_state = PS::Unstiff;
+    }
+
+    primary_state
 }
