@@ -119,8 +119,8 @@ fn pose_filter(imu_values: &IMUValues, fallingstate: &mut Fall, contacts: &Conta
         fallingstate.state = FallState::Falling(FallDirection::Leftways);
     } else if is_falling_right(imu_values) {
         fallingstate.state = FallState::Falling(FallDirection::Rightways);
-    } else if is_standing_upright(imu_values, contacts) {
-        fallingstate.state = FallState::Upright;
+    // } else if is_standing_upright(imu_values, contacts) {
+    //     fallingstate.state = FallState::Upright;
     } else if is_lying_on_stomach(imu_values) {
         fallingstate.state = FallState::Lying(LyingDirection::FacingDown);
     } else if is_lying_on_back(imu_values) {
