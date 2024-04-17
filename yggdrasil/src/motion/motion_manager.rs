@@ -78,6 +78,7 @@ impl ActiveMotion {
     pub fn execute_exit_routine(&self, fall_state: &mut FallState) {
         match self.motion.settings.exit_routine {
             Some(ExitRoutine::Standing) => *fall_state = FallState::Upright,
+            // Add more exit routines here (along adding an appropriate enum value)
             _ => {}
         }
     }

@@ -95,7 +95,6 @@ impl RobotOrientation {
             self.config.gyro_threshold,
             self.config.acceleration_threshold,
             self.config.fsr_threshold,
-            false,
         ) {
             // We cannot use a LowPassFilter here sadly, because it's implemented for nidhogg:Vector2,
             // and we want to use it for nalgebra::Vector3, making the type more complex.
@@ -139,26 +138,13 @@ impl RobotOrientation {
         gyro_threshold: f32,
         acceleration_threshold: f32,
         fsr_threshold: f32,
-        print: bool,
     ) -> bool {
-        if print {
-            println!(
-                "ACC: {:?}",
-                (linear_acceleration.norm() - GRAVITY_CONSTANT).abs()
-            );
-        }
         if (linear_acceleration.norm() - GRAVITY_CONSTANT).abs() > acceleration_threshold {
             return false;
         }
 
         let gyro_delta = (gyro - self.gyro_t0).abs();
 
-        if print {
-            println!(
-                "GYRO: x: {:?}, y: {:?}, z: {:?}",
-                gyro_delta.x, gyro_delta.y, gyro_delta.z
-            );
-        }
         if gyro_delta.x > gyro_threshold
             || gyro_delta.y > gyro_threshold
             || gyro_delta.z > gyro_threshold
@@ -169,6 +155,7 @@ impl RobotOrientation {
         if fsr.left_foot.sum() < fsr_threshold || fsr.right_foot.sum() < fsr_threshold {
             return false;
         }
+
         true
     }
 

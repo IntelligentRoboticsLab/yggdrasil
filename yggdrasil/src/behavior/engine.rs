@@ -63,6 +63,7 @@ pub struct Context<'a> {
 /// use yggdrasil::behavior::engine::{Behavior, Context};
 /// use yggdrasil::nao::manager::NaoManager;
 /// use yggdrasil::walk::engine::WalkingEngine;
+/// use yggdrasil::motion::motion_manager::MotionManager;
 ///
 /// struct Dance;
 ///
@@ -72,6 +73,7 @@ pub struct Context<'a> {
 ///         context: Context,
 ///         nao_manager: &mut NaoManager,
 ///         walking_engine: &mut WalkingEngine,
+///         motion_manager: &mut MotionManager,
 ///     ) {
 ///         // Dance like nobody's watching 🕺!
 ///     }
@@ -132,6 +134,7 @@ impl Default for BehaviorKind {
 ///     engine::{BehaviorKind, Context, Role},
 /// };
 /// use yggdrasil::walk::engine::WalkingEngine;
+/// use yggdrasil::motion::motion_manager::MotionManager;
 ///
 /// struct SecretAgent;
 ///
@@ -141,6 +144,7 @@ impl Default for BehaviorKind {
 ///         context: Context,
 ///         current_behavior: &mut BehaviorKind,
 ///         walking_engine: &mut WalkingEngine,
+///         motion_manager: &mut MotionManager,
 ///     ) -> BehaviorKind {
 ///         // Implement behavior transitions for secret agent 🕵️
 ///         // E.g. Disguise -> Assassinate

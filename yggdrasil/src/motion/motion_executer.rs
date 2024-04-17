@@ -15,7 +15,22 @@ use nidhogg::{
 use std::time::{Duration, Instant};
 use tyr::prelude::*;
 
+// maximum speed the robot is allowed to move to the starting position at
 const MAX_SPEED: f32 = 1.0;
+
+// maximum gyroscopic value the robot can take for it to be considered steady
+const MAX_GYRO_VALUE: f32 = 0.4;
+
+// maximum accelerometer value the robot can take for it to be considered steady
+const MAX_ACC_VALUE: f32 = 0.6;
+
+// minimum fsr value the robot can take to be considered steady
+const MIN_FSR_VALUE: f32 = 0.0;
+
+// minimum waittime duration, anything less will not be considered
+// (if we were to consider this waiting time, the amount of time to
+// process it would take longer than the actual waittime)
+const MINIMUM_WAITTIME: f32 = 0.05;
 
 /// Executes the current motion.
 ///
@@ -110,7 +125,14 @@ pub fn motion_executer(
             imu.accelerometer.z,
         );
         // we check whether the robot is in a steady position
-        if !orientation.is_steady(gyro, linear_acceleration, fsr, 0.4, 0.6, 0.0, true) {
+        if !orientation.is_steady(
+            gyro,
+            linear_acceleration,
+            fsr,
+            MAX_GYRO_VALUE,
+            MAX_ACC_VALUE,
+            MIN_FSR_VALUE,
+        ) {
             // if not, we wait until it is either steady or the maximum wait time has elapsed
             if !exit_waittime_elapsed(
                 motion_manager,
@@ -130,7 +152,6 @@ pub fn motion_executer(
 
         transition_to_next_submotion(motion_manager, nao_state, fall_state);
 
-        // CHECK IF THIS IS NECESSARY
         nao_manager.set_all(
             nao_state.position.clone(),
             HeadJoints::<f32>::fill(submotion_stiffness),
@@ -241,7 +262,7 @@ fn move_to_starting_position(
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 /// * `duration` - Intended duration of the waiting time.
 fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_waittime: f32) -> bool {
-    if exit_waittime <= 0.05 {
+    if exit_waittime <= MINIMUM_WAITTIME {
         return true;
     }
 

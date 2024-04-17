@@ -7,12 +7,10 @@ use tyr::prelude::*;
 
 pub mod motion_executer;
 pub mod motion_manager;
-pub mod motion_tester;
 pub mod motion_types;
 pub mod motion_util;
 pub mod odometry;
 
-use self::motion_tester::MotionTester;
 use motion_executer::motion_executer;
 use motion_manager::motion_manager_initializer;
 
@@ -24,7 +22,8 @@ pub struct MotionModule;
 
 impl Module for MotionModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.init_resource::<Odometry>()?
+        Ok(app
+            .init_resource::<Odometry>()?
             .add_system_chain((
                 odometry::update_odometry
                     .after(kinematics::update_kinematics)
@@ -33,7 +32,6 @@ impl Module for MotionModule {
             ))
             .add_startup_system(odometry::setup_viewcoordinates)?
             .add_startup_system(motion_manager_initializer)?
-            .add_system(motion_executer.after(write_hardware_info))
-            .add_module(MotionTester)
+            .add_system(motion_executer.after(write_hardware_info)))
     }
 }
