@@ -246,7 +246,7 @@ impl Output {
                     ProgressStyle::with_template("    {prefix:.blue.bold} to {msg}").unwrap(),
                 );
                 pb.set_prefix(format!("{}", "Deployed".blue().bold()));
-                pb.set_message(format!("{}", ip.to_string()));
+                pb.set_message(ip.to_string());
                 pb.finish();
             }
         }
@@ -452,7 +452,7 @@ pub(crate) async fn start_single_yggdrasil_service(robot: &Robot, output: Output
                 "    {} {} {}",
                 "Starting".bright_green().bold(),
                 "yggdrasil service on".dimmed(),
-                robot.ip().to_string()
+                robot.ip()
             ));
         }
         Output::Single(pb) => {
@@ -460,7 +460,7 @@ pub(crate) async fn start_single_yggdrasil_service(robot: &Robot, output: Output
                 "    {} {} {}",
                 "Starting".bright_green().bold(),
                 "yggdrasil service on".dimmed(),
-                robot.ip().to_string()
+                robot.ip()
             ));
         }
     }
@@ -477,7 +477,7 @@ pub(crate) async fn start_single_yggdrasil_service(robot: &Robot, output: Output
                 "     {} {} {}",
                 "Started".bright_green().bold(),
                 "yggdrasil service on".dimmed(),
-                robot.ip().to_string()
+                robot.ip()
             ));
         }
         Output::Single(pb) => {
@@ -485,7 +485,7 @@ pub(crate) async fn start_single_yggdrasil_service(robot: &Robot, output: Output
                 "     {} {} {}",
                 "Started".bright_green().bold(),
                 "yggdrasil service on".dimmed(),
-                robot.ip().to_string()
+                robot.ip()
             ));
         }
     }
@@ -502,7 +502,7 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
                 "   {} {} {}",
                 "Stopping".bright_red().bold(),
                 "yggdrasil service on".dimmed(),
-                robot.ip().to_string()
+                robot.ip()
             ));
         }
         Output::Single(pb) => {
@@ -510,7 +510,7 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
                 "   {} {} {}",
                 "Stopping".bright_red().bold(),
                 "yggdrasil service on".dimmed(),
-                robot.ip().to_string()
+                robot.ip()
             ));
         }
     }
@@ -527,7 +527,7 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
                 "     {} {} {}",
                 "Stopped".bright_red().bold(),
                 "yggdrasil service on".dimmed(),
-                robot.ip().to_string()
+                robot.ip()
             ));
         }
         Output::Single(pb) => {
@@ -535,7 +535,7 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
                 "     {} {} {}",
                 "Stopped".bright_red().bold(),
                 "yggdrasil service on",
-                robot.ip().to_string()
+                robot.ip()
             ));
         }
     }
