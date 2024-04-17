@@ -92,7 +92,7 @@ pub struct ConfigOptsRobotOps {
 
     /// Team number [default: Set in `sindri.toml`]
     #[clap(short, long)]
-    pub team_number: Option<u8>,
+    pub team: Option<u8>,
 
     /// Whether to embed the rerun viewer for debugging [default: false]
     #[clap(long, short)]
@@ -245,7 +245,7 @@ impl Output {
                     ProgressStyle::with_template("    {prefix:.blue.bold} to {msg}").unwrap(),
                 );
                 pb.set_prefix(format!("{}", "Deployed".blue().bold()));
-                pb.set_message(format!("{}", ip.to_string().red()));
+                pb.set_message(format!("{}", ip.to_string()));
                 pb.finish();
             }
         }
@@ -255,13 +255,13 @@ impl Output {
         match self {
             Output::Silent => {}
             Output::Single(pb) | Output::Multi(pb) => {
+                pb.reset();
+                pb.enable_steady_tick(Duration::from_millis(80));
                 pb.set_style(
-                    ProgressStyle::with_template(
-                        "   {prefix:.blue.bold} {msg} {spinner:.blue.bold}",
-                    )
-                    .unwrap()
-                    .progress_chars("=>-")
-                    .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
+                    ProgressStyle::with_template("{prefix:.blue.bold} {msg} {spinner:.blue.bold}")
+                        .unwrap()
+                        .progress_chars("=>-")
+                        .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
                 );
                 pb.set_prefix("")
             }
@@ -302,58 +302,52 @@ pub(crate) async fn change_single_network(
     network: String,
     output: Output,
 ) -> Result<()> {
-    eprintln!("ip: {:?}", robot.ip());
     match &output {
         Output::Silent => {}
-        Output::Multi(_pb) => {
-            // pb.set_message(format!(
-            //     "{} {}",
-            //     "Starting".bright_green().bold(),
-            //     "yggdrasil service...".dimmed(),
-            // ));
+        Output::Multi(pb) => {
+            pb.set_prefix("    Changing");
+            pb.set_message(format!(
+                "{} {}",
+                "network to".bold(),
+                network.bright_yellow()
+            ));
         }
         Output::Single(pb) => {
+            pb.set_prefix("    Changing");
             pb.set_message(format!(
-                "  {} {}",
-                "  Changing network".bright_blue().bold(),
-                network.dimmed(),
+                "{} {}",
+                "network to".bold(),
+                network.bright_yellow()
             ));
         }
     }
 
     robot
-        .ssh::<&str, &str>(format!("echo {} > /etc/network_config", network), [], false)?
+        .ssh::<&str, &str>(format!("echo {} > /etc/network_config", network), [], true)?
         .wait()
         .await?;
-
-    println!("test\ntest\ntest\ntest\n");
-
-    // match &output {
-    //     Output::Silent => {}
-    //     Output::Multi(_pb) => {
-    //         // pb.set_message(format!(
-    //         //     "{} {}",
-    //         //     "Starting".bright_green().bold(),
-    //         //     "yggdrasil service...".dimmed(),
-    //         // ));
-    //     }
-    //     Output::Single(pb) => {
-    //         pb.set_message(format!(
-    //             "  {} {}",
-    //             "  Testing".bright_blue().bold(),
-    //             network.dimmed(),
-    //         ));
-    //     }
-    // }
 
     robot
-        .ssh::<&str, &str>(
-            "sudo nohup systemctl restart network_config.service",
-            [],
-            false,
-        )?
+        .ssh::<&str, &str>("sudo systemctl restart network_config.service", [], true)?
         .wait()
         .await?;
+
+    match output {
+        Output::Silent => {}
+        Output::Multi(pb) => pb.println(format!(
+            "     {} {} {}",
+            "Changed".bold().blue(),
+            "network to".bold(),
+            network.bright_yellow()
+        )),
+        Output::Single(pb) => pb.println(format!(
+            "     {} {} {}",
+            "Changed".bold().blue(),
+            "network to".bold(),
+            network.bright_yellow()
+        )),
+    }
+
     Ok(())
 }
 
@@ -450,47 +444,72 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
 
 /// Start the yggdrasil service on a specific robot
 pub(crate) async fn start_single_yggdrasil_service(robot: &Robot, output: Output) -> Result<()> {
-    match output {
+    match &output {
         Output::Silent => {}
         Output::Multi(pb) => {
             pb.set_message(format!(
-                "{} {}",
+                "    {} {} {}",
                 "Starting".bright_green().bold(),
-                "yggdrasil service...".dimmed(),
+                "yggdrasil service on".dimmed(),
+                robot.ip().to_string()
             ));
         }
         Output::Single(pb) => {
             pb.set_message(format!(
-                "  {} {}",
-                "  Starting".bright_blue().bold(),
-                "yggdrasil service...".dimmed(),
+                "    {} {} {}",
+                "Starting".bright_green().bold(),
+                "yggdrasil service on".dimmed(),
+                robot.ip().to_string()
             ));
         }
     }
+
     robot
         .ssh::<&str, &str>("sudo systemctl restart yggdrasil", [], true)?
         .wait()
         .await?;
+
+    match output {
+        Output::Silent => {}
+        Output::Multi(pb) => {
+            pb.println(format!(
+                "     {} {} {}",
+                "Started".bright_green().bold(),
+                "yggdrasil service on".dimmed(),
+                robot.ip().to_string()
+            ));
+        }
+        Output::Single(pb) => {
+            pb.println(format!(
+                "     {} {} {}",
+                "Started".bright_green().bold(),
+                "yggdrasil service on".dimmed(),
+                robot.ip().to_string()
+            ));
+        }
+    }
 
     Ok(())
 }
 
 /// Stop the yggdrasil service on a specific robot
 pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output) -> Result<()> {
-    match output {
+    match &output {
         Output::Silent => {}
         Output::Multi(pb) => {
             pb.set_message(format!(
-                "{} {}",
+                "   {} {} {}",
                 "Stopping".bright_red().bold(),
-                "yggdrasil service...".dimmed()
+                "yggdrasil service on".dimmed(),
+                robot.ip().to_string()
             ));
         }
         Output::Single(pb) => {
             pb.set_message(format!(
-                "{} {}",
-                "  Stopping".bright_red().bold(),
-                "yggdrasil service...".dimmed()
+                "   {} {} {}",
+                "Stopping".bright_red().bold(),
+                "yggdrasil service on".dimmed(),
+                robot.ip().to_string()
             ));
         }
     }
@@ -499,6 +518,27 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
         .ssh::<&str, &str>("sudo systemctl stop yggdrasil", [], true)?
         .wait()
         .await?;
+
+    match output {
+        Output::Silent => {}
+        Output::Multi(pb) => {
+            pb.println(format!(
+                "     {} {} {}",
+                "Stopped".bright_red().bold(),
+                "yggdrasil service on".dimmed(),
+                robot.ip().to_string()
+            ));
+        }
+        Output::Single(pb) => {
+            pb.println(format!(
+                "     {} {} {}",
+                "Stopped".bright_red().bold(),
+                "yggdrasil service on",
+                robot.ip().to_string()
+            ));
+        }
+    }
+
     Ok(())
 }
 

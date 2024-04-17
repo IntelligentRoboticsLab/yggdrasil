@@ -44,7 +44,7 @@ impl Showtime {
             }
         }
         let showtime_config = ShowtimeConfig {
-            team_number: self.robot_ops.team_number.unwrap_or(DEFAULT_TEAM_NUMBER),
+            team_number: self.robot_ops.team.unwrap_or(DEFAULT_TEAM_NUMBER),
             robot_numbers_map: robot_assignments,
         };
 
@@ -76,9 +76,10 @@ impl Showtime {
             output.spinner();
             robot_ops::start_single_yggdrasil_service(&robot, output.clone()).await?;
 
-            // if let Some(network) = self.robot_ops.network {
-            //     robot_ops::change_single_network(&robot, network).await?;
-            // }
+            if let Some(network) = self.robot_ops.network {
+                output.spinner();
+                robot_ops::change_single_network(&robot, network, output.clone()).await?;
+            }
 
             output.finished_deploying(&robot.ip());
             return Ok(());
@@ -118,7 +119,7 @@ impl Showtime {
                 .robot(robot.robot_number, self.robot_ops.wired)
                 .unwrap();
             let multi = multi.clone();
-            // let network = self.robot_ops.network.clone();
+            let network = self.robot_ops.network.clone();
 
             join_set.spawn_blocking(move || {
                 let multi = multi.clone();
@@ -135,9 +136,11 @@ impl Showtime {
                         output.spinner();
                         robot_ops::start_single_yggdrasil_service(&robot, output.clone()).await?;
 
-                        // if let Some(network) = network {
-                        //     robot_ops::change_single_network(&robot, network).await?;
-                        // }
+                        if let Some(network) = network {
+                            output.spinner();
+                            robot_ops::change_single_network(&robot, network, output.clone())
+                                .await?;
+                        }
 
                         output.finished_deploying(&robot.ip());
                         Ok::<(), crate::error::Error>(())

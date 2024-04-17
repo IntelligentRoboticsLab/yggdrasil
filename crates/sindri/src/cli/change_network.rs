@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::{
     cli::robot_ops::{self, change_single_network},
     config::SindriConfig,
@@ -8,18 +6,18 @@ use clap::Parser;
 use colored::Colorize;
 use indicatif::HumanDuration;
 use indicatif::ProgressBar;
-use indicatif::ProgressStyle;
 use miette::miette;
 use miette::Result;
-/// Changes the default network the robot connects to.
+
+/// Changes the default network a specified robot connects to.
 #[derive(Parser, Debug)]
 pub struct ChangeNetwork {
     #[clap(long, short)]
-    pub network: String,
-    #[clap(long, short)]
-    pub robot: u8,
-    #[clap(long, short)]
     pub wired: bool,
+    #[clap(long, short)]
+    pub network: String,
+    #[clap()]
+    pub robot: u8,
 }
 
 impl ChangeNetwork {
@@ -29,22 +27,13 @@ impl ChangeNetwork {
             self.robot
         )))?;
 
-        let pb = ProgressBar::new_spinner().with_style(
-            ProgressStyle::with_template("   {prefix:.magenta.bold} {msg} {spinner:.magenta}")
-                .unwrap(),
-        );
-        pb.enable_steady_tick(Duration::from_millis(80));
-        pb.set_prefix("Updating");
-        pb.set_message(format!(
-            "{} {}",
-            "network to".bold(),
-            self.network.bright_yellow()
-        ));
+        let pb = ProgressBar::new_spinner();
         let output = robot_ops::Output::Single(pb.clone());
+        output.spinner();
         change_single_network(&robot, self.network, output).await?;
         pb.finish();
         println!(
-            "    {} in {}",
+            "     {} in {}",
             "Updated".magenta().bold(),
             HumanDuration(pb.elapsed()),
         );

@@ -50,7 +50,7 @@ impl Run {
             robot_assignments.insert(robot_number.to_string(), DEFAULT_PLAYER_NUMBER);
         }
         let showtime_config = ShowtimeConfig {
-            team_number: self.robot_ops.team_number.unwrap_or(DEFAULT_TEAM_NUMBER),
+            team_number: self.robot_ops.team.unwrap_or(DEFAULT_TEAM_NUMBER),
             robot_numbers_map: robot_assignments,
         };
         showtime_config
@@ -86,6 +86,7 @@ impl Run {
             robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
 
             if let Some(network) = self.robot_ops.network {
+                output.spinner();
                 robot_ops::change_single_network(&robot, network, output.clone()).await?;
             }
 
