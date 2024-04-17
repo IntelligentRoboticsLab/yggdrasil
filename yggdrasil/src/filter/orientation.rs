@@ -88,7 +88,15 @@ impl RobotOrientation {
             return;
         }
 
-        if self.is_steady(gyro, linear_acceleration, fsr) {
+        if self.is_steady(
+            gyro,
+            linear_acceleration,
+            fsr,
+            self.config.gyro_threshold,
+            self.config.acceleration_threshold,
+            self.config.fsr_threshold,
+            false,
+        ) {
             // We cannot use a LowPassFilter here sadly, because it's implemented for nidhogg:Vector2,
             // and we want to use it for nalgebra::Vector3, making the type more complex.
             // https://github.com/IntelligentRoboticsLab/yggdrasil/issues/215
@@ -128,24 +136,37 @@ impl RobotOrientation {
         gyro: Vector3<f32>,
         linear_acceleration: Vector3<f32>,
         fsr: &ForceSensitiveResistors,
+        gyro_threshold: f32,
+        acceleration_threshold: f32,
+        fsr_threshold: f32,
+        print: bool,
     ) -> bool {
-        if (linear_acceleration.norm() - GRAVITY_CONSTANT).abs()
-            > self.config.acceleration_threshold
-        {
+        if print {
+            println!(
+                "ACC: {:?}",
+                (linear_acceleration.norm() - GRAVITY_CONSTANT).abs()
+            );
+        }
+        if (linear_acceleration.norm() - GRAVITY_CONSTANT).abs() > acceleration_threshold {
             return false;
         }
 
         let gyro_delta = (gyro - self.gyro_t0).abs();
-        if gyro_delta.x > self.config.gyro_threshold
-            || gyro_delta.y > self.config.gyro_threshold
-            || gyro_delta.z > self.config.gyro_threshold
+
+        if print {
+            println!(
+                "GYRO: x: {:?}, y: {:?}, z: {:?}",
+                gyro_delta.x, gyro_delta.y, gyro_delta.z
+            );
+        }
+        if gyro_delta.x > gyro_threshold
+            || gyro_delta.y > gyro_threshold
+            || gyro_delta.z > gyro_threshold
         {
             return false;
         }
 
-        if fsr.left_foot.sum() < self.config.fsr_threshold
-            || fsr.right_foot.sum() < self.config.fsr_threshold
-        {
+        if fsr.left_foot.sum() < fsr_threshold || fsr.right_foot.sum() < fsr_threshold {
             return false;
         }
         true

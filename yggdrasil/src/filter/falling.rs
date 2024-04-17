@@ -1,9 +1,7 @@
-use crate::filter::{fsr::Contacts, imu::IMUValues};
+use crate::filter::imu::IMUValues;
 use miette::Result;
 use tyr::prelude::*;
 
-/// Maximum angle for standing upright.
-const MAX_UPRIGHT_ANGLE: f32 = 0.1;
 /// Minimum angle for falling detection.
 const MIN_FALL_ANGLE_FORWARDS: f32 = 0.45;
 const MIN_FALL_ANGLE_BACKWARDS: f32 = -0.45;
@@ -15,7 +13,7 @@ const MIN_FALL_VELOCITY_BACKWARDS: f32 = 0.15;
 const MIN_FALL_VELOCITY_LEFT: f32 = 0.15;
 const MIN_FALL_VELOCITY_RIGHT: f32 = 0.15;
 // Minimum angle for lying confirmation.
-const MIN_LYING_ANGLE: f32 = 1.5;
+const MIN_LYING_ANGLE: f32 = 1.3;
 /// Minimum accelerometer deviation for lying confirmation.
 const MAX_ACC_DEVIATION: f32 = 0.175;
 
@@ -82,13 +80,6 @@ fn is_falling_right(imu_values: &IMUValues) -> bool {
         && imu_values.gyroscope.x.abs() > MIN_FALL_VELOCITY_RIGHT
 }
 
-/// Is the robot standing upright based on its angles and ground contact.
-fn is_standing_upright(imu_values: &IMUValues, contacts: &Contacts) -> bool {
-    imu_values.angles.x < MAX_UPRIGHT_ANGLE
-        && imu_values.angles.y < MAX_UPRIGHT_ANGLE
-        && contacts.ground
-}
-
 /// Is the robot lying on its stomach based on the accelerometer and angle.
 fn is_lying_on_stomach(imu_values: &IMUValues) -> bool {
     imu_values.accelerometer_variance.y < MAX_ACC_DEVIATION
@@ -104,11 +95,7 @@ fn is_lying_on_back(imu_values: &IMUValues) -> bool {
 /// Checks position of the robot and sets [`FallState`], [`FallDirection`] and [`LyingDirection`]
 /// accordingly.
 #[system]
-fn pose_filter(
-    imu_values: &IMUValues,
-    fall_state: &mut FallState,
-    contacts: &Contacts,
-) -> Result<()> {
+fn pose_filter(imu_values: &IMUValues, fall_state: &mut FallState) -> Result<()> {
     if is_falling_forward(imu_values) {
         *fall_state = FallState::Falling(FallDirection::Forwards);
     } else if is_falling_backward(imu_values) {
@@ -117,8 +104,6 @@ fn pose_filter(
         *fall_state = FallState::Falling(FallDirection::Left);
     } else if is_falling_right(imu_values) {
         *fall_state = FallState::Falling(FallDirection::Right);
-    // } else if is_standing_upright(imu_values, contacts) {
-    //     fallingstate.state = FallState::Upright;
     } else if is_lying_on_stomach(imu_values) {
         *fall_state = FallState::Lying(LyingDirection::FacingDown);
     } else if is_lying_on_back(imu_values) {

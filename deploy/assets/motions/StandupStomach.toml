@@ -1,5 +1,5 @@
 interpolation_type = "Linear"
-exit_message = Standing
+exit_routine = "Standing"
 motion_order = [
     "Standup/OnStomach/LyingToYoga",
     "Standup/OnStomach/YogaToSitting",

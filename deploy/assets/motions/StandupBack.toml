@@ -1,5 +1,5 @@
 interpolation_type = "Linear"
-exit_routine = Standing
+exit_routine = "Standing"
 motion_order = [
     "Standup/OnBack/ReadyToKick",
     "Standup/OnBack/KickUp",

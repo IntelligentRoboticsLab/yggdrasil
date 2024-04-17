@@ -7,7 +7,7 @@
     "conditions": [],
     "keyframes": [
         {
-            "duration": 1.109090909,
+            "duration": 0.5,
             "target_position": {
                 "head_yaw": 0.0,
                 "head_pitch": 0.5,

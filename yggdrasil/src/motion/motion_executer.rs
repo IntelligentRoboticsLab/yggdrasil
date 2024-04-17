@@ -80,6 +80,7 @@ pub fn motion_executer(
                 JointArray::<f32>::fill(submotion_stiffness),
                 Priority::High,
             );
+            return Ok(());
         } else {
             // if the starting position has been reached,
             // we update the active motion for executing the submotion
@@ -98,28 +99,21 @@ pub fn motion_executer(
             Priority::High,
         );
     } else {
-        // let gyro = Vector3::new(imu.gyroscope.x, imu.gyroscope.y, imu.gyroscope.z);
-        // let linear_acceleration = Vector3::new(
-        //     imu.accelerometer.x,
-        //     imu.accelerometer.y,
-        //     imu.accelerometer.z,
-        // );
-        // // we check whether the robot is in a steady position
-        // if !orientation.is_steady(gyro, linear_acceleration, fsr) {
-        //     // if not, we wait until it is either steady or the maximum wait time has elapsed
-        //     if !exit_waittime_elapsed(
-        //         motion_manager,
-        //         motion.submotions[&sub_motion_name].exit_waittime,
-        //     ) {
-        //         return Ok(());
-        //     }
-        // }
-
-        if !exit_waittime_elapsed(
-            motion_manager,
-            motion.submotions[&sub_motion_name].exit_waittime,
-        ) {
-            return Ok(());
+        let gyro = Vector3::new(imu.gyroscope.x, imu.gyroscope.y, imu.gyroscope.z);
+        let linear_acceleration = Vector3::new(
+            imu.accelerometer.x,
+            imu.accelerometer.y,
+            imu.accelerometer.z,
+        );
+        // we check whether the robot is in a steady position
+        if !orientation.is_steady(gyro, linear_acceleration, fsr, 0.3, 0.5, 0.0, true) {
+            // if not, we wait until it is either steady or the maximum wait time has elapsed
+            if !exit_waittime_elapsed(
+                motion_manager,
+                motion.submotions[&sub_motion_name].exit_waittime,
+            ) {
+                return Ok(());
+            }
         }
 
         transition_to_next_submotion(motion_manager, nao_state, fall_state);
