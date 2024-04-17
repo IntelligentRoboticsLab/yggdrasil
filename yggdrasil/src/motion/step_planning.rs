@@ -9,7 +9,10 @@ use nalgebra::{Isometry, Point2, Unit, Vector2};
 use nidhogg::types::color;
 use num::Complex;
 
-use super::{odometry::Odometry, path_finding};
+use super::{
+    odometry::Odometry,
+    path_finding::{self, Obstacle},
+};
 
 const TURN_SPEED: f32 = 0.2;
 const WALK_SPEED: f32 = 0.03;
@@ -19,7 +22,7 @@ pub struct WalkPlannerModule;
 impl Module for WalkPlannerModule {
     fn initialize(self, app: App) -> Result<App> {
         let target = WalkPlannerTarget {
-            target_position: Some(Point2::new(-1., 0.01)),
+            target_position: Some(Point2::new(3., 0.0)),
         };
 
         app.add_system(walk_planner_system)
@@ -106,7 +109,7 @@ fn walk_planner_system(
     let Some((path, _total_walking_distance)) = path_finding::find_path(
         odometry.accumulated.transform_point(&Point2::new(0., 0.)),
         target_position,
-        &[],
+        &[Obstacle::new(1., 0., 0.2)],
     ) else {
         return Ok(());
     };
