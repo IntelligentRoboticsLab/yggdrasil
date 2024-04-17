@@ -82,7 +82,7 @@ fn obstructs(obstacle: &Obstacle, line: geo::Line) -> bool {
         geo::Closest::Intersection(_) => true,
         geo::Closest::SinglePoint(point2) => {
             obstacle.radius.0 as f64
-                > 1.0
+                > 1.01
                     * nalgebra::distance(
                         &nalgebra::Point2::new(point.x(), point.y()),
                         &nalgebra::Point2::new(point2.x(), point2.y()),
