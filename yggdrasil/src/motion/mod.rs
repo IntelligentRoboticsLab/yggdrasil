@@ -3,6 +3,7 @@ use crate::{filter, kinematics, prelude::*};
 use self::odometry::Odometry;
 
 pub mod odometry;
+pub mod path_finding;
 pub mod step_planning;
 
 /// The motion module provides motion related functionalities.
