@@ -122,8 +122,9 @@ impl Default for BehaviorKind {
 /// ```
 /// use yggdrasil::behavior::{
 ///     behaviors::Initial,
-///     engine::{BehaviorKind, Context, Role}
+///     engine::{BehaviorKind, Context, Role},
 /// };
+/// use yggdrasil::walk::engine::WalkingEngine;
 ///
 /// struct SecretAgent;
 ///
@@ -132,6 +133,7 @@ impl Default for BehaviorKind {
 ///         &mut self,
 ///         context: Context,
 ///         current_behavior: &mut BehaviorKind,
+///         walking_engine: &mut WalkingEngine,
 ///     ) -> BehaviorKind {
 ///         // Implement behavior transitions for secret agent 🕵️
 ///         // E.g. Disguise -> Assassinate
