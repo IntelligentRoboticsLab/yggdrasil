@@ -5,8 +5,8 @@ use enum_dispatch::enum_dispatch;
 
 use crate::{
     behavior::{
-        behaviors::{Initial, Observe, Passive, Penalized, Standup},
-        roles::Base,
+        behaviors::{Initial, Observe, Penalized, StartUp, Unstiff, Walk},
+        roles::Attacker,
         BehaviorConfig,
     },
     config::{layout::LayoutConfig, yggdrasil::YggdrasilConfig},
@@ -16,8 +16,7 @@ use crate::{
         fsr::Contacts,
     },
     game_controller::GameControllerConfig,
-    motion::motion_manager::MotionManager,
-    nao::{self, manager::NaoManager},
+    nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
     primary_state::PrimaryState,
     walk::engine::WalkingEngine,
@@ -29,6 +28,8 @@ use crate::{
 /// transitioning between different behaviors.
 #[derive(Clone, Copy)]
 pub struct Context<'a> {
+    /// Robot info
+    pub robot_info: &'a RobotInfo,
     /// Primary state of the robot
     pub primary_state: &'a PrimaryState,
     /// State of the headbuttons of a robot
@@ -84,7 +85,6 @@ pub trait Behavior {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
-        motion_manger: &mut MotionManager,
     );
 }
 
@@ -96,21 +96,22 @@ pub trait Behavior {
 ///
 /// # Notes
 /// - New behavior implementations should be added as new variants to this enum.
-/// - The specific struct for each behavior (e.g., [`Initial`], [`Passive`]) should implement the [`Behavior`] trait.
+/// - The specific struct for each behavior (e.g., [`Initial`], [`StartUp`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum BehaviorKind {
-    Passive(Passive),
+    StartUp(StartUp),
+    Unstiff(Unstiff),
     Initial(Initial),
     Observe(Observe),
     Penalized(Penalized),
-    Standup(Standup),
+    Walk(Walk),
     // Add new behaviors here!
 }
 
 impl Default for BehaviorKind {
     fn default() -> Self {
-        BehaviorKind::Passive(Passive)
+        BehaviorKind::StartUp(StartUp)
     }
 }
 
@@ -124,8 +125,9 @@ impl Default for BehaviorKind {
 /// ```
 /// use yggdrasil::behavior::{
 ///     behaviors::Initial,
-///     engine::{BehaviorKind, Context, Role}
+///     engine::{BehaviorKind, Context, Role},
 /// };
+/// use yggdrasil::walk::engine::WalkingEngine;
 ///
 /// struct SecretAgent;
 ///
@@ -134,6 +136,7 @@ impl Default for BehaviorKind {
 ///         &mut self,
 ///         context: Context,
 ///         current_behavior: &mut BehaviorKind,
+///         walking_engine: &mut WalkingEngine,
 ///     ) -> BehaviorKind {
 ///         // Implement behavior transitions for secret agent 🕵️
 ///         // E.g. Disguise -> Assassinate
@@ -152,6 +155,7 @@ pub trait Role {
         &mut self,
         context: Context,
         current_behavior: &mut BehaviorKind,
+        walking_engine: &mut WalkingEngine,
     ) -> BehaviorKind;
 }
 
@@ -164,10 +168,10 @@ pub trait Role {
 ///
 /// # Notes
 /// - New role implementations should be added as new variants to this enum
-/// - The specific struct for each role (e.g., [`Base`]) should implement the [`Role`] trait.
+/// - The specific struct for each role (e.g., [`Attacker`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
 pub enum RoleKind {
-    Base(Base),
+    Attacker(Attacker),
     // Add new roles here!
 }
 
@@ -175,7 +179,7 @@ impl RoleKind {
     /// Get the default role for each robot based on that robots player number
     fn by_player_number() -> Self {
         // TODO: get the default role for each robot by player number
-        RoleKind::Base(Base)
+        RoleKind::Attacker(Attacker)
     }
 }
 
@@ -184,7 +188,7 @@ pub struct Engine {
     /// Current robot role
     role: RoleKind,
     /// Current robot behavior
-    behavior: BehaviorKind,
+    pub behavior: BehaviorKind,
 }
 
 impl Default for Engine {
@@ -194,17 +198,6 @@ impl Default for Engine {
             behavior: BehaviorKind::default(),
         }
     }
-}
-
-fn should_unstiff(context: &Context) -> bool {
-    context.head_buttons.rear.is_pressed()
-        && context.head_buttons.middle.is_pressed()
-        && context.head_buttons.front.is_pressed()
-}
-
-fn is_penalized(context: &Context, current_behavior: &BehaviorKind) -> bool {
-    *context.primary_state == PrimaryState::Penalized
-        && !matches!(current_behavior, BehaviorKind::Passive(_))
 }
 
 impl Engine {
@@ -221,20 +214,34 @@ impl Engine {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
-        motion_manager: &mut MotionManager,
     ) {
         self.role = self.assign_role(context);
 
-        self.behavior = if should_unstiff(&context) {
-            BehaviorKind::Passive(Passive)
-        } else if is_penalized(&context, &self.behavior) {
-            BehaviorKind::Penalized(Penalized)
-        } else {
-            self.role.transition_behavior(context, &mut self.behavior)
-        };
+        self.transition(context, walking_engine);
 
-        self.behavior
-            .execute(context, nao_manager, walking_engine, motion_manager);
+        self.behavior.execute(context, nao_manager, walking_engine);
+    }
+
+    pub fn transition(&mut self, context: Context, walking_engine: &mut WalkingEngine) {
+        if let BehaviorKind::StartUp(_) = self.behavior {
+            if walking_engine.is_sitting() {
+                self.behavior = BehaviorKind::Unstiff(Unstiff);
+            }
+        }
+
+        self.behavior = match context.primary_state {
+            PrimaryState::Unstiff => BehaviorKind::Unstiff(Unstiff),
+            PrimaryState::Penalized => BehaviorKind::Penalized(Penalized),
+            PrimaryState::Initial => BehaviorKind::Initial(Initial),
+            PrimaryState::Ready => BehaviorKind::Observe(Observe::default()),
+            PrimaryState::Set => BehaviorKind::Initial(Initial),
+            PrimaryState::Finished => BehaviorKind::Initial(Initial),
+            PrimaryState::Calibration => BehaviorKind::Initial(Initial),
+            PrimaryState::Playing => {
+                self.role
+                    .transition_behavior(context, &mut self.behavior, walking_engine)
+            }
+        };
     }
 }
 
@@ -244,6 +251,7 @@ impl Engine {
 pub fn step(
     engine: &mut Engine,
     nao_manager: &mut NaoManager,
+    robot_info: &RobotInfo,
     primary_state: &PrimaryState,
     head_buttons: &HeadButtons,
     chest_button: &ChestButton,
@@ -254,10 +262,10 @@ pub fn step(
     walking_engine: &mut WalkingEngine,
     game_controller_message: &Option<GameControllerMessage>,
     game_controller_config: &GameControllerConfig,
-    motion_manager: &mut MotionManager,
     fall_state: &FallState,
 ) -> Result<()> {
     let context = Context {
+        robot_info,
         primary_state,
         head_buttons,
         chest_button,
@@ -270,7 +278,7 @@ pub fn step(
         fall_state,
     };
 
-    engine.step(context, nao_manager, walking_engine, motion_manager);
+    engine.step(context, nao_manager, walking_engine);
 
     Ok(())
 }

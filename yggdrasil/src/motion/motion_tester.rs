@@ -7,7 +7,7 @@ use crate::{
 };
 use miette::Result;
 use nidhogg::{
-    types::{FillExt, JointArray},
+    types::{ArmJoints, FillExt, HeadJoints, LegJoints},
     NaoState,
 };
 
@@ -46,7 +46,9 @@ fn debug_testmotion(
         mmng.stop_motion();
         nao_manager.set_all(
             nao_state.position.clone(),
-            JointArray::<f32>::fill(-1.0),
+            HeadJoints::<f32>::fill(-1.0),
+            ArmJoints::<f32>::fill(-1.0),
+            LegJoints::<f32>::fill(-1.0),
             Priority::Critical,
         );
     }

@@ -7,7 +7,7 @@ use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority;
 use miette::Result;
 use nalgebra::Vector3;
-use nidhogg::types::ForceSensitiveResistors;
+use nidhogg::types::{ArmJoints, ForceSensitiveResistors, HeadJoints, LegJoints};
 use nidhogg::{
     types::{FillExt, JointArray},
     NaoState,
@@ -77,7 +77,9 @@ pub fn motion_executer(
         ) {
             nao_manager.set_all(
                 next_position,
-                JointArray::<f32>::fill(submotion_stiffness),
+                HeadJoints::<f32>::fill(submotion_stiffness),
+                ArmJoints::<f32>::fill(submotion_stiffness),
+                LegJoints::<f32>::fill(submotion_stiffness),
                 Priority::High,
             );
             return Ok(());
@@ -95,7 +97,9 @@ pub fn motion_executer(
     ) {
         nao_manager.set_all(
             position,
-            JointArray::<f32>::fill(submotion_stiffness),
+            HeadJoints::<f32>::fill(submotion_stiffness),
+            ArmJoints::<f32>::fill(submotion_stiffness),
+            LegJoints::<f32>::fill(submotion_stiffness),
             Priority::High,
         );
     } else {

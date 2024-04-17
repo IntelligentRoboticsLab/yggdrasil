@@ -1,7 +1,10 @@
 use nidhogg::types::{FillExt, Vector3};
 use serde::{Deserialize, Serialize};
 
-use crate::{filter::low_pass_filter::LowPassFilter, kinematics::FootOffset};
+use crate::{
+    filter::low_pass_filter::LowPassFilter,
+    kinematics::{forward::left_hip_to_ground, FootOffset, RobotKinematics},
+};
 use std::{ops::Neg, time::Duration};
 
 use super::{smoothing, WalkingEngineConfig};
@@ -13,8 +16,13 @@ const FILTERED_GYRO_LOW_PASS: f32 = 0.2;
 pub enum WalkState {
     /// Represents the robot in a standing position.
     ///
-    /// The [`f32`] parameter specifies the hip height to smoothly transition the robot to an upright stance.
-    Idle(f32),
+    /// The [`f32`] parameter specifies the desired hip height to smoothly transition the robot to an upright stance.
+    Standing(f32),
+
+    /// Represents the robot in a sitting position.
+    ///
+    /// The [`f32`] parameter specifies the desired hip height to smoothly transition the robot to an upright stance.
+    Sitting(f32),
 
     /// Initiates the walking phase.
     ///
@@ -34,23 +42,25 @@ pub enum WalkState {
 }
 
 impl WalkState {
-    /// Constructs an initial [`WalkState`] from the provided [`WalkingEngineConfig`].
+    /// Constructs an initial [`WalkState`] from a `hip_height`.
     ///
-    /// This returns a new [`WalkState::Idle`] using the configured `sitting_hip_height` as initial
-    /// hip height.
-    pub fn from_config(config: &WalkingEngineConfig) -> Self {
-        WalkState::Idle(config.sitting_hip_height)
+    /// This returns a new [`WalkState::Sitting`] using an estimated current `hip_height`.
+    pub fn from_hip_height(hip_height: f32) -> Self {
+        WalkState::Sitting(hip_height)
     }
 
     /// Transitions the [`WalkState`] to the next walk state based on the provided [`WalkingEngineConfig`].
     pub fn next(&self, config: &WalkingEngineConfig) -> Self {
         match self {
-            WalkState::Idle(hip_height) => {
-                WalkState::Idle((*hip_height + 0.002).min(config.hip_height))
+            WalkState::Standing(hip_height) => {
+                WalkState::Standing((hip_height + 0.002).min(config.hip_height))
+            }
+            WalkState::Sitting(hip_height) => {
+                WalkState::Sitting((hip_height - 0.002).max(config.sitting_hip_height))
             }
             WalkState::Starting(step) => WalkState::Walking(*step),
             WalkState::Walking(_) => self.clone(),
-            WalkState::Stopping => WalkState::Idle(config.hip_height),
+            WalkState::Stopping => WalkState::Standing(config.hip_height),
         }
     }
 }
@@ -87,9 +97,14 @@ pub struct WalkingEngine {
 }
 
 impl WalkingEngine {
-    /// Requests the [`WalkingEngine`] to halt to an idle standing position.
-    pub fn request_idle(&mut self) {
-        self.request = WalkRequest::Idle;
+    /// Requests the [`WalkingEngine`] to halt to an idle sitting position.
+    pub fn request_sit(&mut self) {
+        self.request = WalkRequest::Sit;
+    }
+
+    /// Requests the [`WalkingEngine`] to go to an idle standing position.
+    pub fn request_stand(&mut self) {
+        self.request = WalkRequest::Stand;
     }
 
     /// Requests the [`WalkingEngine`] to perform the provided [`Step`].
@@ -97,11 +112,24 @@ impl WalkingEngine {
         self.request = WalkRequest::Walk(step);
     }
 
-    pub(super) fn from_config(config: &WalkingEngineConfig) -> Self {
-        tracing::info!("Using hip height: {}", config.hip_height);
+    /// Returns whether the robot is currently sitting.
+    ///
+    /// TODO: Implement a better way to check if the robot is sitting, preferably by extracting sitting to a motion.
+    pub fn is_sitting(&self) -> bool {
+        matches!(self.state, WalkState::Sitting(hip_height) if hip_height <= self.config.sitting_hip_height)
+    }
+
+    /// Returns whether the robot is currently standing.
+    pub fn is_standing(&self) -> bool {
+        matches!(self.state, WalkState::Standing(hip_height) if hip_height >= self.config.hip_height)
+    }
+
+    pub(super) fn new(config: &WalkingEngineConfig, kinematics: &RobotKinematics) -> Self {
+        let current_hip_height = left_hip_to_ground(kinematics);
+
         WalkingEngine {
-            state: WalkState::from_config(config),
-            request: WalkRequest::Idle,
+            state: WalkState::from_hip_height(current_hip_height),
+            request: WalkRequest::Sit,
             current_step: Step::default(),
             filtered_gyroscope: LowPassFilter::new(
                 Vector3::default(),
@@ -113,7 +141,7 @@ impl WalkingEngine {
             swing_foot: Default::default(),
             foot_offsets: FootOffsets::zero(config.sitting_hip_height),
             foot_offsets_t0: FootOffsets::zero(config.sitting_hip_height),
-            hip_height: config.sitting_hip_height,
+            hip_height: current_hip_height,
             max_swing_foot_lift: config.base_foot_lift,
             config: config.clone(),
         }
@@ -138,12 +166,12 @@ impl WalkingEngine {
     /// This will set the t0 foot offsets, and transition to the next [`WalkState`].
     /// It will then update the properties of the walking engine based on this new state.
     pub(super) fn init_step_phase(&mut self) {
-        let config = &self.config;
         self.foot_offsets_t0 = self.foot_offsets.clone();
+        let config = &self.config;
         self.state = self.state.next(config);
 
         match self.state {
-            WalkState::Idle(hip_height) => {
+            WalkState::Standing(hip_height) | WalkState::Sitting(hip_height) => {
                 self.current_step = Step::default();
                 self.next_foot_switch = Duration::ZERO;
                 self.swing_foot = Side::Left;
@@ -182,13 +210,28 @@ impl WalkingEngine {
 
     fn new_state_from_request(&self) -> Option<WalkState> {
         match (&self.request, &self.state) {
-            (WalkRequest::Idle, WalkState::Idle(_) | WalkState::Stopping) => None,
-            (WalkRequest::Idle, WalkState::Starting(_) | WalkState::Walking(_)) => {
-                Some(WalkState::Stopping)
+            (WalkRequest::Sit, WalkState::Sitting(_) | WalkState::Stopping) => None,
+            (WalkRequest::Stand, WalkState::Standing(_) | WalkState::Stopping) => None,
+            // Stop walking
+            (
+                WalkRequest::Sit | WalkRequest::Stand,
+                WalkState::Starting(_) | WalkState::Walking(_),
+            ) => Some(WalkState::Stopping),
+            // Start walking
+            (WalkRequest::Walk(requested_step), WalkState::Standing(_) | WalkState::Stopping) => {
+                if self.is_standing() {
+                    Some(WalkState::Starting(*requested_step))
+                } else {
+                    None
+                }
             }
-            (WalkRequest::Walk(requested_step), WalkState::Idle(_) | WalkState::Stopping) => {
-                Some(WalkState::Starting(*requested_step))
+            // Sit down
+            (WalkRequest::Sit, WalkState::Standing(_)) => Some(WalkState::Sitting(self.hip_height)),
+            // Stand up
+            (WalkRequest::Stand | WalkRequest::Walk(_), WalkState::Sitting(_)) => {
+                Some(WalkState::Standing(self.hip_height))
             }
+            // Walking step change
             (WalkRequest::Walk(requested_step), state) => match state {
                 WalkState::Starting(current_step) if current_step != requested_step => {
                     Some(WalkState::Starting(*requested_step))
@@ -212,7 +255,7 @@ impl WalkingEngine {
     /// End the current step phase.
     ///
     /// This will reset the current phase time to 0.
-    pub(super) fn end_step_phase(&mut self) {
+    pub fn end_step_phase(&mut self) {
         self.t = Duration::ZERO;
     }
 
@@ -303,10 +346,10 @@ impl Neg for Step {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum WalkRequest {
-    #[default]
-    Idle,
+    Sit,
+    Stand,
     Walk(Step),
 }
 

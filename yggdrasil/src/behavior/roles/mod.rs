@@ -1,5 +1,5 @@
 //! All the roles that the robot can take.
 
-mod base;
+mod attacker;
 
-pub use base::Base;
+pub use attacker::Attacker;

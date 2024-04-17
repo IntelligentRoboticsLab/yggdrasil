@@ -3,6 +3,7 @@
 
 pub mod backend;
 pub mod data_type;
+pub mod util;
 
 use self::{
     backend::{InferRequest, ModelExecutor},
@@ -87,6 +88,15 @@ impl<M: MlModel> MlTask<M> {
         let infer_req = self.model.request_infer(input)?;
 
         self.task.try_spawn_blocking(|| infer_req.run())?;
+        Ok(())
+    }
+
+    /// Attempts to cancel the running inference task.
+    ///
+    /// ## Errors
+    /// Fails if the task is not active.
+    pub fn try_cancel(&mut self) -> Result<()> {
+        self.task.try_cancel()?;
         Ok(())
     }
 

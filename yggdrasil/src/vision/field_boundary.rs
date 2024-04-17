@@ -136,7 +136,7 @@ fn log_boundary_points(
     dbg.log_points2d_for_image(
         "top_camera/image/boundary_points",
         &points,
-        image.deref().clone(),
+        image,
         color::u8::MAGENTA,
     )?;
 
@@ -145,7 +145,7 @@ fn log_boundary_points(
     dbg.log_lines2d_for_image(
         "top_camera/image/boundary_line_segments",
         &line_segments,
-        image.deref().clone(),
+        image,
         color::u8::PURPLE,
     )?;
 
@@ -164,7 +164,7 @@ fn detect_field_boundary(
 ) -> Result<()> {
     // Start a new inference if the image has changed
     // TODO: Some kind of callback/event system would be nice to avoid doing the timestamp comparison everywhere
-    if boundary.image.timestamp() != top_image.timestamp() && !model.active() {
+    if field_boundary_image.0.timestamp() != top_image.timestamp() && !model.active() {
         let resized_image = resize_yuyv(top_image.yuyv_image());
         if let Ok(()) = model.try_start_infer(&resized_image) {
             // We need to keep track of the image we started the inference with

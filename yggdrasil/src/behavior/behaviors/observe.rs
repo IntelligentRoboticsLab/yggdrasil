@@ -4,26 +4,12 @@ use std::time::Instant;
 
 use crate::{
     behavior::engine::{Behavior, Context},
-    motion::motion_manager::MotionManager,
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
 };
 use nidhogg::types::{FillExt, HeadJoints};
 
 const ROTATION_STIFFNESS: f32 = 0.3;
-
-#[derive(Copy, Clone, Debug)]
-pub struct Observe {
-    pub starting_time: Instant,
-}
-
-impl Default for Observe {
-    fn default() -> Self {
-        Observe {
-            starting_time: Instant::now(),
-        }
-    }
-}
 
 /// Config struct containing parameters for the initial behavior.
 #[serde_as]
@@ -38,6 +24,43 @@ pub struct ObserveBehaviorConfig {
     pub head_pitch_max: f32,
     // Controls how far to the bottom the robot looks while looking around, in radians
     pub head_yaw_max: f32,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Observe {
+    pub starting_time: Instant,
+}
+
+impl Default for Observe {
+    fn default() -> Self {
+        Observe {
+            starting_time: Instant::now(),
+        }
+    }
+}
+
+impl Behavior for Observe {
+    fn execute(
+        &mut self,
+        context: Context,
+        nao_manager: &mut NaoManager,
+        walking_engine: &mut WalkingEngine,
+    ) {
+        let ObserveBehaviorConfig {
+            head_rotation_speed,
+            head_pitch_max: head_pitch_multiplier,
+            head_yaw_max: head_yaw_multiplier,
+        } = context.behavior_config.observe;
+
+        look_around(
+            nao_manager,
+            self.starting_time,
+            head_rotation_speed,
+            head_yaw_multiplier,
+            head_pitch_multiplier,
+        );
+        walking_engine.request_stand();
+    }
 }
 
 fn look_around(
@@ -60,30 +83,4 @@ fn look_around(
     let stiffness = HeadJoints::fill(ROTATION_STIFFNESS);
 
     nao_manager.set_head(position, stiffness, Priority::default());
-}
-
-impl Behavior for Observe {
-    fn execute(
-        &mut self,
-        context: Context,
-        nao_manager: &mut NaoManager,
-        walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
-    ) {
-        let ObserveBehaviorConfig {
-            head_rotation_speed,
-            head_pitch_max: head_pitch_multiplier,
-            head_yaw_max: head_yaw_multiplier,
-        } = context.behavior_config.observe;
-
-        look_around(
-            nao_manager,
-            self.starting_time,
-            head_rotation_speed,
-            head_yaw_multiplier,
-            head_pitch_multiplier,
-        );
-
-        walking_engine.request_idle();
-    }
 }

@@ -10,7 +10,11 @@ use nidhogg::types::RgbU8;
 
 use std::net::IpAddr;
 
-use crate::{camera::Image, nao::Cycle, prelude::*};
+use crate::{
+    camera::Image,
+    nao::{Cycle, CycleTime},
+    prelude::*,
+};
 
 /// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
 ///
@@ -117,6 +121,71 @@ impl DebugContext {
         Ok(())
     }
 
+    pub fn log_patch(
+        &self,
+        path: impl AsRef<str>,
+        image: Cycle,
+        img: ndarray::Array3<f32>,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&image);
+            let img = rerun::Image::try_from(img).into_diagnostic()?;
+            self.rec.log(path.as_ref(), &img).into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    pub fn log_boxes_2d(
+        &self,
+        path: impl AsRef<str>,
+        centers: impl IntoIterator<Item = (f32, f32)>,
+        sizes: impl IntoIterator<Item = (f32, f32)>,
+        image: &Image,
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&image.cycle());
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Boxes2D::from_centers_and_sizes(centers, sizes),
+                )
+                .into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    pub fn log_boxes2d_with_class(
+        &self,
+        path: impl AsRef<str>,
+        centers: &[(f32, f32)],
+        half_sizes: &[(f32, f32)],
+        labels: Vec<String>,
+        cycle: Cycle,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&cycle);
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Boxes2D::from_centers_and_half_sizes(centers, half_sizes)
+                        .with_labels(labels),
+                )
+                .into_diagnostic()?;
+
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
     /// Log a camera matrix to the debug viewer.
     ///
     /// The camera matrix is logged as a pinhole camera, without any transforms applied.
@@ -124,7 +193,7 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         matrix: &CameraMatrix,
-        image: Image,
+        image: &Image,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
@@ -225,12 +294,12 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         points: &[(f32, f32)],
-        img: Image,
+        image: &Image,
         color: RgbU8,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&img.cycle());
+            self.set_cycle(&image.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -250,52 +319,18 @@ impl DebugContext {
         Ok(())
     }
 
-    /// Log a set of 2D boxes to the debug viewer.
-    pub fn log_boxes_2d(
-        &self,
-        path: impl AsRef<str>,
-        centers: impl IntoIterator<Item = (f32, f32)>,
-        sizes: impl IntoIterator<Item = (f32, f32)>,
-        image: Image,
-        color: RgbU8,
-    ) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            let centers = centers.into_iter().collect::<Vec<_>>();
-            let center_len = centers.len();
-
-            self.set_cycle(&image.cycle());
-            self.rec
-                .log(
-                    path.as_ref(),
-                    &rerun::Boxes2D::from_centers_and_sizes(centers, sizes).with_colors(vec![
-                        rerun::Color::from_rgb(
-                            color.red,
-                            color.green,
-                            color.blue,
-                        );
-                        center_len
-                    ]),
-                )
-                .into_diagnostic()?;
-            self.clear_cycle();
-        }
-
-        Ok(())
-    }
-
     /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
     pub fn log_points2d_for_image_with_radius(
         &self,
         path: impl AsRef<str>,
         points: &[(f32, f32)],
-        img: Image,
+        cycle: Cycle,
         color: RgbU8,
         radius: f32,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&img.cycle());
+            self.set_cycle(&cycle);
             self.rec
                 .log(
                     path.as_ref(),
@@ -322,12 +357,12 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         lines: &[[(f32, f32); 2]],
-        img: Image,
+        image: &Image,
         color: RgbU8,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&img.cycle());
+            self.set_cycle(&image.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -420,12 +455,12 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         lines: &[[(f32, f32, f32); 2]],
-        img: Image,
+        image: &Image,
         color: RgbU8,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&img.cycle());
+            self.set_cycle(&image.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -450,11 +485,11 @@ impl DebugContext {
         &self,
         path: impl AsRef<str>,
         transform: &Isometry3<f32>,
-        img: Image,
+        image: &Image,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&img.cycle());
+            self.set_cycle(&image.cycle());
 
             let translation = transform.translation;
             let rotation = transform.rotation.coords;
@@ -523,6 +558,8 @@ fn init_rerun(storage: &mut Storage) -> Result<()> {
 }
 
 #[system]
-fn set_debug_cycle(ctx: &DebugContext, cycle: &Cycle) -> Result<()> {
-    ctx.set_cycle(cycle)
+fn set_debug_cycle(ctx: &DebugContext, cycle: &Cycle, cycle_time: &CycleTime) -> Result<()> {
+    ctx.set_cycle(cycle)?;
+    ctx.log_scalar_f32("cycle_time", cycle_time.duration.as_millis() as f32)?;
+    Ok(())
 }

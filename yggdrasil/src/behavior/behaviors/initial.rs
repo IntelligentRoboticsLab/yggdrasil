@@ -1,7 +1,6 @@
 use crate::{
     behavior::engine::{Behavior, Context},
     config::layout::RobotPosition,
-    motion::motion_manager::MotionManager,
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
 };
@@ -16,7 +15,7 @@ const ROTATION_STIFFNESS: f32 = 0.3;
 /// This is the behaviour of the robot once the chest button is pressed.
 /// In this state the robot will stand up straight and look at the middle
 /// circle to make it easier to place the robot in the correct position.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Initial;
 
 fn look_at_middle_circle(robot_position: &RobotPosition, nao_manager: &mut NaoManager) {
@@ -42,12 +41,11 @@ impl Behavior for Initial {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
     ) {
         let player_num = context.yggdrasil_config.game_controller.player_number;
         let robot_position = &context.layout_config.initial_positions[player_num as usize];
         look_at_middle_circle(robot_position, nao_manager);
 
-        walking_engine.request_idle();
+        walking_engine.request_stand();
     }
 }
