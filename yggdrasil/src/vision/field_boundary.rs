@@ -166,7 +166,6 @@ fn detect_field_boundary(
     // TODO: Some kind of callback/event system would be nice to avoid doing the timestamp comparison everywhere
     if field_boundary_image.0.timestamp() != top_image.timestamp() && !model.active() {
         let resized_image = resize_yuyv(top_image.yuyv_image());
-        // tracing::info!("Starting inference for field boundary");
         if let Ok(()) = model.try_start_infer(&resized_image) {
             // We need to keep track of the image we started the inference with
             //
@@ -177,7 +176,6 @@ fn detect_field_boundary(
 
     // Otherwise, poll the model for the result
     if let Some(result) = model.poll::<Vec<f32>>().transpose()? {
-        // tracing::info!("inference finished for field boundary");
         // horizontal gap between predicted points relative to the original image
         let gap = top_image.yuyv_image().width() / MODEL_INPUT_WIDTH as usize;
         let height = top_image.yuyv_image().height();

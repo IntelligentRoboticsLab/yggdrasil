@@ -66,7 +66,7 @@ fn init_field_marks(storage: &mut Storage, top_image: &TopImage) -> Result<()> {
 pub struct IntersectionPoint {
     pub kind: IntersectionKind,
     pub point: Point2<f32>,
-    pub distance: f32,
+    pub distance_to_point: f32,
     pub confidence: f32,
 }
 
@@ -99,7 +99,7 @@ struct FieldMarkImage(Image);
 #[derive(Default, Debug, Clone)]
 struct ProposedIntersection {
     point: Point2<f32>,
-    distance: f32,
+    distance_to_point: f32,
 }
 
 #[system]
@@ -112,7 +112,7 @@ fn field_marks_system(
     config: &FieldMarksConfig,
     ctx: &DebugContext,
 ) -> Result<()> {
-    if field_marks_image.0.cycle() == lines.1.cycle() || model.active() {
+    if field_marks_image.0.timestamp() == lines.1.timestamp() || model.active() {
         return Ok(());
     }
 
@@ -129,8 +129,6 @@ fn field_marks_system(
     )?;
 
     let proposals = make_proposals(&extended_lines, &top_matrix, config);
-
-    // println!("Possible intersections: {:?}", possible_intersections.len());
     ctx.log_points2d_for_image_with_radius(
         "top_camera/image/intersections",
         &proposals
@@ -149,7 +147,7 @@ fn field_marks_system(
     let mut intersections = Vec::new();
     let start_time = Instant::now();
     'outer: for possible_intersection in proposals.iter() {
-        let size = (config.patch_scale / possible_intersection.distance) as usize;
+        let size = (config.patch_scale / possible_intersection.distance_to_point) as usize;
         let patch = lines.1.get_grayscale_patch(
             (
                 possible_intersection.point.x as usize,
@@ -164,7 +162,7 @@ fn field_marks_system(
         if let Ok(()) = model.try_start_infer(&patch) {
             loop {
                 if start_time.elapsed().as_micros() >= config.time_budget as u128 {
-                    if let Err(e) = model.cancel() {
+                    if let Err(e) = model.try_cancel() {
                         tracing::warn!("Failed to cancel field mark inference: {:?}", e);
                     }
                     break 'outer;
@@ -184,7 +182,7 @@ fn field_marks_system(
                     intersections.push(IntersectionPoint {
                         kind: class,
                         point: possible_intersection.point,
-                        distance: possible_intersection.distance,
+                        distance_to_point: possible_intersection.distance_to_point,
                         confidence: res[max_idx],
                     });
                     break;
@@ -269,7 +267,7 @@ fn make_proposals(
 
                 proposals.push(ProposedIntersection {
                     point: intersection,
-                    distance,
+                    distance_to_point: distance,
                 });
             }
         }
@@ -278,7 +276,7 @@ fn make_proposals(
     proposals
 }
 
-// Resize yuyv image to correct input shape
+/// Resize yuyv image to correct input shape
 fn resize_patch(width: usize, height: usize, patch: Vec<u8>) -> Vec<f32> {
     let src_image = fr::Image::from_vec_u8(
         NonZeroU32::new(width as u32).unwrap(),

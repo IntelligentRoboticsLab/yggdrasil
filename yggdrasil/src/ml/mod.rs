@@ -95,7 +95,7 @@ impl<M: MlModel> MlTask<M> {
     ///
     /// ## Errors
     /// Fails if the task is not active.
-    pub fn cancel(&mut self) -> Result<()> {
+    pub fn try_cancel(&mut self) -> Result<()> {
         self.task.try_cancel()?;
         Ok(())
     }
