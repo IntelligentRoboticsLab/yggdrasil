@@ -15,6 +15,7 @@ use crate::{
 
 const LOCAL_ROBOT_ID: u8 = 0;
 const DEFAULT_PLAYER_NUMBER: u8 = 3;
+const DEFAULT_TEAM_NUMBER: u8 = 8;
 
 // TODO: refactor config for run
 #[derive(Parser, Debug)]
@@ -49,7 +50,7 @@ impl Run {
             robot_assignments.insert(robot_number.to_string(), DEFAULT_PLAYER_NUMBER);
         }
         let showtime_config = ShowtimeConfig {
-            team_number: config.team_number,
+            team_number: self.robot_ops.team_number.unwrap_or(DEFAULT_TEAM_NUMBER),
             robot_numbers_map: robot_assignments,
         };
         showtime_config
@@ -83,7 +84,11 @@ impl Run {
             output.spinner();
             robot_ops::stop_single_yggdrasil_service(&robot, output.clone()).await?;
             robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
-            robot_ops::change_single_network(&robot, self.robot_ops.network).await?;
+
+            if let Some(network) = self.robot_ops.network {
+                robot_ops::change_single_network(&robot, network, output.clone()).await?;
+            }
+
             output.finished_deploying(&robot.ip());
         }
 

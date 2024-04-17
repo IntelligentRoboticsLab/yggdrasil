@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use crate::{cli::robot_ops::change_single_network, config::SindriConfig};
+use crate::{
+    cli::robot_ops::{self, change_single_network},
+    config::SindriConfig,
+};
 use clap::Parser;
 use colored::Colorize;
 use indicatif::HumanDuration;
@@ -37,7 +40,8 @@ impl ChangeNetwork {
             "network to".bold(),
             self.network.bright_yellow()
         ));
-        change_single_network(&robot, self.network).await?;
+        let output = robot_ops::Output::Single(pb.clone());
+        change_single_network(&robot, self.network, output).await?;
         pb.finish();
         println!(
             "    {} in {}",

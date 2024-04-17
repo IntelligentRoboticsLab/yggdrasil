@@ -15,6 +15,9 @@ use yggdrasil::{config::showtime::ShowtimeConfig, prelude::Config as OdalConfigT
 
 use super::robot_ops;
 
+const DEFAULT_PLAYER_NUMBER: u8 = 3;
+const DEFAULT_TEAM_NUMBER: u8 = 8;
+
 /// Compile, deploy and run the specified binary on multiple robots, with the option of setting
 /// player numbers.
 #[derive(Parser, Debug)]
@@ -36,10 +39,12 @@ impl Showtime {
         {
             if let Some(player_number) = player_number {
                 robot_assignments.insert((*robot_number).to_string(), *player_number);
+            } else {
+                robot_assignments.insert((*robot_number).to_string(), DEFAULT_PLAYER_NUMBER);
             }
         }
         let showtime_config = ShowtimeConfig {
-            team_number: config.team_number,
+            team_number: self.robot_ops.team_number.unwrap_or(DEFAULT_TEAM_NUMBER),
             robot_numbers_map: robot_assignments,
         };
 
@@ -71,7 +76,10 @@ impl Showtime {
             output.spinner();
             robot_ops::start_single_yggdrasil_service(&robot, output.clone()).await?;
 
-            // robot_ops::change_single_network(&robot, self.robot_ops.network).await?;
+            // if let Some(network) = self.robot_ops.network {
+            //     robot_ops::change_single_network(&robot, network).await?;
+            // }
+
             output.finished_deploying(&robot.ip());
             return Ok(());
         }
@@ -95,7 +103,11 @@ impl Showtime {
         deploy_bar.set_message(format!(
             "{}{}, {}{}{}",
             "(network: ".dimmed(),
-            self.robot_ops.network.bright_yellow(),
+            self.robot_ops
+                .network
+                .clone()
+                .unwrap_or("None".to_string())
+                .bright_yellow(),
             "robots: ".dimmed(),
             self.robot_ops.robots.len().to_string().bold(),
             ")".dimmed()
@@ -106,7 +118,7 @@ impl Showtime {
                 .robot(robot.robot_number, self.robot_ops.wired)
                 .unwrap();
             let multi = multi.clone();
-            let network = self.robot_ops.network.clone();
+            // let network = self.robot_ops.network.clone();
 
             join_set.spawn_blocking(move || {
                 let multi = multi.clone();
@@ -122,7 +134,10 @@ impl Showtime {
                         robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
                         output.spinner();
                         robot_ops::start_single_yggdrasil_service(&robot, output.clone()).await?;
-                        // robot_ops::change_single_network(&robot, network).await?;
+
+                        // if let Some(network) = network {
+                        //     robot_ops::change_single_network(&robot, network).await?;
+                        // }
 
                         output.finished_deploying(&robot.ip());
                         Ok::<(), crate::error::Error>(())

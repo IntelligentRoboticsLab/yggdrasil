@@ -27,7 +27,7 @@ const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
 const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 const CONNECTION_TIMEOUT: u64 = 5;
 const LOCAL_ROBOT_ID_STR: &str = "0";
-const DEFAULT_NETWORK: &str = "DNT_5G";
+// const DEFAULT_NETWORK: &str = "DNT_5G";
 
 /// The size of the `BufWriter`'s buffer.
 ///
@@ -65,7 +65,9 @@ impl RobExt for Vec<RobotEntry> {
 impl FromStr for RobotEntry {
     type Err = miette::Report;
 
-    // Parses robot:player_number pairs. Player numbers are optional, if they are not passed, defaults are used. Valid arguments pairs could be: "23:1" or "24".
+    // Parses robot:player_number pairs. Player numbers are optional, if they
+    // are not passed, defaults are used. Valid arguments pairs could be: "23:1"
+    // or "24".
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         let mut m = s.split(':');
         let robot: u8 = m.next().unwrap().parse().into_diagnostic()?;
@@ -118,8 +120,8 @@ pub struct ConfigOptsRobotOps {
     #[clap(long, short)]
     pub silent: bool,
 
-    #[clap(long, short, required=false, default_value=DEFAULT_NETWORK)]
-    pub network: String,
+    #[clap(long, short, required = false)]
+    pub network: Option<String>,
 
     /// Number of the robot to deploy to.
     #[clap(
@@ -295,14 +297,61 @@ mod cross {
 }
 
 /// Modify the default network for a specific robot
-pub(crate) async fn change_single_network(robot: &Robot, network: String) -> Result<()> {
+pub(crate) async fn change_single_network(
+    robot: &Robot,
+    network: String,
+    output: Output,
+) -> Result<()> {
+    eprintln!("ip: {:?}", robot.ip());
+    match &output {
+        Output::Silent => {}
+        Output::Multi(_pb) => {
+            // pb.set_message(format!(
+            //     "{} {}",
+            //     "Starting".bright_green().bold(),
+            //     "yggdrasil service...".dimmed(),
+            // ));
+        }
+        Output::Single(pb) => {
+            pb.set_message(format!(
+                "  {} {}",
+                "  Changing network".bright_blue().bold(),
+                network.dimmed(),
+            ));
+        }
+    }
+
     robot
-        .ssh::<&str, &str>(format!("echo {} > /etc/network_config", network), [], true)?
+        .ssh::<&str, &str>(format!("echo {} > /etc/network_config", network), [], false)?
         .wait()
         .await?;
 
+    println!("test\ntest\ntest\ntest\n");
+
+    // match &output {
+    //     Output::Silent => {}
+    //     Output::Multi(_pb) => {
+    //         // pb.set_message(format!(
+    //         //     "{} {}",
+    //         //     "Starting".bright_green().bold(),
+    //         //     "yggdrasil service...".dimmed(),
+    //         // ));
+    //     }
+    //     Output::Single(pb) => {
+    //         pb.set_message(format!(
+    //             "  {} {}",
+    //             "  Testing".bright_blue().bold(),
+    //             network.dimmed(),
+    //         ));
+    //     }
+    // }
+
     robot
-        .ssh::<&str, &str>("sudo systemctl restart network_config.service &", [], true)?
+        .ssh::<&str, &str>(
+            "sudo nohup systemctl restart network_config.service",
+            [],
+            false,
+        )?
         .wait()
         .await?;
     Ok(())
