@@ -4,25 +4,25 @@ use std::time::Duration;
 
 use crate::{
     debug::DebugContext,
-    filter::{
-        button::{ChestButton, HeadButtons},
-        imu::IMUValues,
-    },
+    filter::imu::IMUValues,
+    kinematics::RobotKinematics,
     nao::{
         manager::{NaoManager, Priority},
         CycleTime,
     },
     prelude::*,
-    primary_state::PrimaryState,
 };
-use nidhogg::types::{
-    ArmJoints, FillExt, ForceSensitiveResistors, LeftArmJoints, LeftLegJoints, LegJoints,
-    RightArmJoints, RightLegJoints, Vector3,
+use nidhogg::{
+    types::{
+        ArmJoints, FillExt, ForceSensitiveResistors, LeftArmJoints, LeftLegJoints, LegJoints,
+        RightArmJoints, RightLegJoints,
+    },
+    NaoState,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 
-use crate::{filter, nao, primary_state};
+use crate::{filter, nao};
 
 use self::engine::{FootOffsets, Side, Step, WalkState, WalkingEngine};
 
@@ -84,9 +84,6 @@ impl Module for WalkingEngineModule {
             .init_resource::<SwingFoot>()?
             .add_startup_system(init_walking_engine)?
             .add_system_chain((
-                toggle_walking_engine
-                    .after(filter::button::button_filter)
-                    .before(primary_state::update_primary_state),
                 run_walking_engine
                     .after(filter::fsr::force_sensitive_resistor_filter)
                     .after(filter::imu::imu_filter)
@@ -98,40 +95,14 @@ impl Module for WalkingEngineModule {
 }
 
 #[startup_system]
-fn init_walking_engine(storage: &mut Storage, config: &WalkingEngineConfig) -> Result<()> {
-    storage.add_resource(Resource::new(WalkingEngine::from_config(config)))
-}
-
-#[system]
-pub fn toggle_walking_engine(
-    primary_state: &PrimaryState,
-    head_button: &HeadButtons,
-    chest_button: &ChestButton,
-    walking_engine: &mut WalkingEngine,
+fn init_walking_engine(
+    storage: &mut Storage,
+    config: &WalkingEngineConfig,
+    nao_state: &NaoState,
 ) -> Result<()> {
-    // If we're in a state where we shouldn't walk, we don't.
-    if !primary_state.should_walk() {
-        return Ok(());
-    }
+    let kinematics = RobotKinematics::from(&nao_state.position);
 
-    // Start walking
-    if chest_button.state.is_tapped() {
-        walking_engine.filtered_gyroscope.state = Vector3::default();
-        walking_engine.request_walk(Step {
-            forward: 0.04,
-            left: 0.0,
-            turn: 0.0,
-        });
-        return Ok(());
-    }
-
-    // Stop walking
-    if head_button.front.is_tapped() {
-        walking_engine.request_idle();
-        return Ok(());
-    }
-
-    Ok(())
+    storage.add_resource(Resource::new(WalkingEngine::new(config, &kinematics)))
 }
 
 #[system]
@@ -149,7 +120,7 @@ pub fn run_walking_engine(
     }
 
     match walking_engine.state {
-        WalkState::Idle(_) => walking_engine.reset(),
+        WalkState::Sitting(_) | WalkState::Standing(_) => walking_engine.reset(),
         WalkState::Starting(_) | WalkState::Walking(_) | WalkState::Stopping => {
             walking_engine.step_phase(cycle_time.duration);
         }
