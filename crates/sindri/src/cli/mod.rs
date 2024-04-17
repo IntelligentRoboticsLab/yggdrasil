@@ -4,6 +4,7 @@ pub mod config;
 pub mod deploy;
 pub mod run;
 pub mod scan;
+pub mod record;
 pub mod update;
 
 /// `sindri` - The build tool for yggdrasil
@@ -51,6 +52,7 @@ pub enum Commands {
     Deploy(deploy::Deploy),
     Run(run::Run),
     Scan(scan::Scan),
+    Record(record::Record),
     #[command(subcommand)]
     Config(config::ConfigCommand),
     Update(update::Update),
