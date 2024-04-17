@@ -60,7 +60,7 @@ pub enum PrimaryState {
 // TODO: Replace with player number from pregame config.
 const PLAYER_NUM: u8 = 3;
 
-fn is_penalized(
+fn is_penalized_by_game_controller(
     game_controller_message: Option<&GameControllerMessage>,
     team_number: u8,
     player_number: u8,
@@ -176,7 +176,7 @@ fn next_primary_state(
         None => primary_state,
     };
 
-    if is_penalized(
+    if is_penalized_by_game_controller(
         game_controller_message.as_ref(),
         game_controller_config.team_number,
         PLAYER_NUM,
