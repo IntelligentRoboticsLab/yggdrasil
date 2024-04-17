@@ -4,7 +4,7 @@ use crate::{
     prelude::*,
 };
 
-use super::{field_boundary::FieldBoundary, VisionConfig};
+use super::field_boundary::FieldBoundary;
 
 use derive_more::{Deref, DerefMut};
 use miette::miette;
@@ -19,7 +19,7 @@ pub struct ScanLinesModule;
 
 impl Module for ScanLinesModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(scan_lines_system)
+        app.add_system(scan_lines_system.after(crate::camera::camera_system))
             .add_startup_system(init_buffers)
     }
 }
@@ -115,7 +115,7 @@ impl PixelColor {
     }
 
     fn yhs_is_green(_y: f32, h: f32, s: f32) -> bool {
-        !(20.0..=250.0).contains(&h) && s > 45.
+        !(10.0..=250.0).contains(&h) && s > 25.
     }
 
     pub fn classify_yuyv_pixel(y1: u8, u: u8, y2: u8, v: u8) -> (Self, Self) {
@@ -398,15 +398,15 @@ impl ScanLines {
 fn init_buffers(
     storage: &mut Storage,
     bottom_image: &BottomImage,
-    config: &VisionConfig,
+    config: &ScanLinesConfig,
     top_boundary: &mut FieldBoundary,
 ) -> Result<()> {
     let mut top_scan_lines = TopScanGrid {
-        scan_grid: ScanGrid::build(&top_boundary.image, &config.scan_lines),
+        scan_grid: ScanGrid::build(&top_boundary.image, config),
     };
 
     let mut bottom_scan_lines = BottomScanGrid {
-        scan_grid: ScanGrid::build(bottom_image, &config.scan_lines),
+        scan_grid: ScanGrid::build(bottom_image, config),
     };
 
     top_scan_lines.update_scan_lines_from_boundary(top_boundary);
