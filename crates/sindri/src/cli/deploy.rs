@@ -223,7 +223,7 @@ impl Deploy {
 }
 
 /// Copy the contents of the 'deploy' folder to the robot.
-async fn deploy_to_robot(pb: &ProgressBar, addr: Ipv4Addr) -> Result<()> {
+pub async fn deploy_to_robot(pb: &ProgressBar, addr: Ipv4Addr) -> Result<()> {
     pb.println(format!(
         "{} {} {}",
         "  Connecting".bright_blue().bold(),

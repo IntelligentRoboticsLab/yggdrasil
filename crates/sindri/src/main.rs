@@ -25,6 +25,7 @@ async fn main() -> Result<()> {
         Commands::Run(opts) => opts.run(config).await?,
         Commands::Scan(opts) => opts.scan(config).await?,
         Commands::Record(opts) => opts.record(config).await?,
+        Commands::Download(opts) => opts.download(config).await?,
         Commands::Config(opts) => opts.config()?,
         Commands::Update(opts) => opts.update().await?,
     }

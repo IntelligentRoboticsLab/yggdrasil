@@ -5,12 +5,11 @@ use crate::{
 };
 use clap::Parser;
 use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
-use std::{net::Ipv4Addr, time::Duration};
+use std::time::Duration;
 use std::fs;
 use colored::Colorize;
 use miette::{miette, Context, IntoDiagnostic};
-use tokio::{net::unix::pipe::pipe, process::Command};
-use std::io::Stdin;
+
 
 const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
 const RELEASE_PATH: &str = "./target/x86_64-unknown-linux-gnu/release/skadi";
