@@ -1,6 +1,7 @@
 use std::{num::NonZeroU32, ops::Deref, time::Instant};
 
 use fast_image_resize as fr;
+use heimdall::CameraMatrix;
 use nalgebra::Point2;
 use nidhogg::types::color;
 use serde::{Deserialize, Serialize};
@@ -16,7 +17,7 @@ use crate::{
     vision::line::LineSegment3,
 };
 
-use super::line_detection::TopLines;
+use super::{line::LineSegment2, line_detection::TopLines};
 
 pub struct FieldMarksModel;
 
@@ -93,6 +94,8 @@ pub struct FieldMarks {
     pub image: Image,
 }
 
+struct FieldMarkImage(Image);
+
 #[derive(Default, Debug, Clone)]
 struct ProposedIntersection {
     point: Point2<f32>,
@@ -116,23 +119,7 @@ fn field_marks_system(
     *field_marks_image = FieldMarkImage(lines.1.clone());
     let top_matrix = matrix.top.clone();
 
-    let extended_lines = lines
-        .iter()
-        .filter_map(|line| line.project_to_3d(&top_matrix).ok())
-        .filter_map(|line| {
-            let start_len = line.start.coords.magnitude();
-            let end_len = line.end.coords.magnitude();
-
-            let direction = (line.end - line.start).normalize();
-
-            let start = line.start - direction / start_len;
-            let end = line.end + direction / end_len;
-
-            LineSegment3::new(start, end)
-                .project_to_2d(&top_matrix)
-                .ok()
-        })
-        .collect::<Vec<_>>();
+    let extended_lines = extend_lines(lines, &top_matrix);
 
     ctx.log_lines2d_for_image(
         "top_camera/image/extended_lines",
@@ -141,45 +128,7 @@ fn field_marks_system(
         color::u8::YELLOW,
     )?;
 
-    let mut proposals = Vec::new();
-
-    for i in 0..extended_lines.len() {
-        let line = &extended_lines[i];
-        for other_line in extended_lines.iter().skip(i + 1) {
-            let Some(intersection) = line.intersection_point(other_line) else {
-                continue;
-            };
-
-            let line_start = top_matrix.pixel_to_ground(line.start, 0.0);
-            let line_end = top_matrix.pixel_to_ground(line.end, 0.0);
-
-            let other_line_start = top_matrix.pixel_to_ground(other_line.start, 0.0);
-            let other_line_end = top_matrix.pixel_to_ground(other_line.end, 0.0);
-
-            if let (Ok(start), Ok(end), Ok(other_start), Ok(other_end)) =
-                (line_start, line_end, other_line_start, other_line_end)
-            {
-                let line_direction = (end - start).normalize();
-                let other_line_direction = (other_end - other_start).normalize();
-
-                let distance = top_matrix
-                    .pixel_to_ground(intersection, 0.0)
-                    .unwrap()
-                    .coords
-                    .magnitude();
-                let angle = line_direction.xy().angle(&other_line_direction.xy());
-                let angle = (angle - std::f32::consts::FRAC_PI_2).abs().to_degrees();
-                if angle > config.angle_tolerance || distance > config.distance_threshold {
-                    continue;
-                }
-
-                proposals.push(ProposedIntersection {
-                    point: intersection,
-                    distance,
-                });
-            }
-        }
-    }
+    let proposals = make_proposals(&extended_lines, &top_matrix, config);
 
     // println!("Possible intersections: {:?}", possible_intersections.len());
     ctx.log_points2d_for_image_with_radius(
@@ -198,7 +147,7 @@ fn field_marks_system(
     }
 
     let mut intersections = Vec::new();
-    let now = Instant::now();
+    let start_time = Instant::now();
     'outer: for possible_intersection in proposals.iter() {
         let size = (config.patch_scale / possible_intersection.distance) as usize;
         let patch = lines.1.get_grayscale_patch(
@@ -214,12 +163,13 @@ fn field_marks_system(
 
         if let Ok(()) = model.try_start_infer(&patch) {
             loop {
-                if now.elapsed().as_millis() >= 2 {
+                if start_time.elapsed().as_micros() >= config.time_budget as u128 {
                     if let Err(e) = model.cancel() {
                         tracing::warn!("Failed to cancel field mark inference: {:?}", e);
                     }
                     break 'outer;
                 }
+
                 if let Ok(Some(result)) = model.poll::<Vec<f32>>().transpose() {
                     let res = softmax(&result);
                     let max_idx = argmax(&res);
@@ -263,6 +213,71 @@ fn field_marks_system(
     Ok(())
 }
 
+fn extend_lines(lines: &TopLines, matrix: &CameraMatrix) -> Vec<LineSegment2> {
+    lines
+        .iter()
+        .filter_map(|line| line.project_to_3d(matrix).ok())
+        .filter_map(|line| {
+            let start_len = line.start.coords.magnitude();
+            let end_len = line.end.coords.magnitude();
+
+            let direction = (line.end - line.start).normalize();
+
+            let start = line.start - direction / start_len;
+            let end = line.end + direction / end_len;
+
+            LineSegment3::new(start, end).project_to_2d(matrix).ok()
+        })
+        .collect::<Vec<_>>()
+}
+
+fn make_proposals(
+    extended_lines: &[LineSegment2],
+    matrix: &CameraMatrix,
+    config: &FieldMarksConfig,
+) -> Vec<ProposedIntersection> {
+    let mut proposals = Vec::new();
+    for i in 0..extended_lines.len() {
+        let line = &extended_lines[i];
+        for other_line in extended_lines.iter().skip(i + 1) {
+            let Some(intersection) = line.intersection_point(other_line) else {
+                continue;
+            };
+
+            let line_start = matrix.pixel_to_ground(line.start, 0.0);
+            let line_end = matrix.pixel_to_ground(line.end, 0.0);
+
+            let other_line_start = matrix.pixel_to_ground(other_line.start, 0.0);
+            let other_line_end = matrix.pixel_to_ground(other_line.end, 0.0);
+
+            if let (Ok(start), Ok(end), Ok(other_start), Ok(other_end)) =
+                (line_start, line_end, other_line_start, other_line_end)
+            {
+                let line_direction = (end - start).normalize();
+                let other_line_direction = (other_end - other_start).normalize();
+
+                let distance = matrix
+                    .pixel_to_ground(intersection, 0.0)
+                    .unwrap()
+                    .coords
+                    .magnitude();
+                let angle = line_direction.xy().angle(&other_line_direction.xy());
+                let angle = (angle - std::f32::consts::FRAC_PI_2).abs().to_degrees();
+                if angle > config.angle_tolerance || distance > config.distance_threshold {
+                    continue;
+                }
+
+                proposals.push(ProposedIntersection {
+                    point: intersection,
+                    distance,
+                });
+            }
+        }
+    }
+
+    proposals
+}
+
 // Resize yuyv image to correct input shape
 fn resize_patch(width: usize, height: usize, patch: Vec<u8>) -> Vec<f32> {
     let src_image = fr::Image::from_vec_u8(
@@ -292,5 +307,3 @@ fn resize_patch(width: usize, height: usize, patch: Vec<u8>) -> Vec<f32> {
         .map(|p| *p as f32 / 255.0)
         .collect()
 }
-
-struct FieldMarkImage(Image);
