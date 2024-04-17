@@ -50,7 +50,13 @@ impl Module for BallProposalModule {
 #[derive(Clone)]
 pub struct BallProposals {
     pub image: Image,
-    proposals: Vec<Point2<usize>>,
+    pub proposals: Vec<BallProposal>,
+}
+
+#[derive(Default, Clone)]
+pub struct BallProposal {
+    pub position: Point2<usize>,
+    pub distance_to_ball: f32,
 }
 
 /// A segment of black pixels in a vertical scanline
@@ -284,7 +290,7 @@ fn test_proposals(
     grid: &ScanGrid,
     matrices: &CameraMatrices,
     config: &BallProposalConfig,
-) -> Vec<Point2<usize>> {
+) -> Vec<BallProposal> {
     proposals
         .into_iter()
         .flat_map(|center| {
@@ -308,12 +314,15 @@ fn test_proposals(
 
             local_white_ratio(range as usize, adjusted_center, grid) > config.white_ratio
         })
-        .map(|(center, _, _)| center)
+        .map(|(center, _, magnitude)| BallProposal {
+            position: center,
+            distance_to_ball: magnitude,
+        })
         .collect::<Vec<_>>()
 }
 
 #[system]
-fn get_proposals(
+pub(super) fn get_proposals(
     grid: &TopScanGrid,
     boundary: &FieldBoundary,
     matrices: &CameraMatrices,
@@ -357,7 +366,7 @@ fn log_proposals(
     for proposal in &ball_proposals.proposals {
         // project point to ground to get distance
         // distance is used for the amount of surrounding pixels to sample
-        let Ok(coord) = matrices.top.pixel_to_ground(proposal.cast(), 0.0) else {
+        let Ok(coord) = matrices.top.pixel_to_ground(proposal.position.cast(), 0.0) else {
             continue;
         };
 
@@ -365,7 +374,7 @@ fn log_proposals(
 
         let size = config.bounding_box_scale / magnitude;
 
-        points.push((proposal.x as f32, proposal.y as f32));
+        points.push((proposal.position.x as f32, proposal.position.y as f32));
         sizes.push((size, size));
     }
 

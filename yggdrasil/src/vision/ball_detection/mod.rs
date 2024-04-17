@@ -1,5 +1,6 @@
 //! Module for detecting the location of the ball in the field
 
+pub mod classifier;
 pub mod proposal;
 
 use proposal::BallProposalConfig;
@@ -13,6 +14,7 @@ pub struct BallDetectionModule;
 impl Module for BallDetectionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_module(proposal::BallProposalModule)?
+            .add_module(classifier::BallClassifierModule)?
             .init_config::<BallDetectionConfig>()?
             .add_startup_system(init_subconfigs)
     }
