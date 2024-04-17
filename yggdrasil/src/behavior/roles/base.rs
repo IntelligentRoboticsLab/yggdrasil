@@ -16,12 +16,6 @@ impl Role for Base {
         context: Context,
         current_behavior: &mut BehaviorKind,
     ) -> BehaviorKind {
-        match context.fall_state {
-            FallState::Falling(_) => {} // DmgPrev here
-            FallState::Lying(_) => return BehaviorKind::Standup(Standup::default()),
-            _ => {}
-        }
-
         match current_behavior {
             BehaviorKind::Passive(_) => {
                 // If chest button is pressed transition to initial behavior.

@@ -3,6 +3,7 @@ use crate::{
         behaviors::Walk,
         engine::{BehaviorKind, Context, Role},
     },
+    motion::motion_manager::MotionManager,
     walk::engine::{Step, WalkingEngine},
 };
 
@@ -13,7 +14,8 @@ impl Role for Attacker {
         &mut self,
         _context: Context,
         _current_behavior: &mut BehaviorKind,
-        _walking_engine: &mut WalkingEngine,
+        _: &mut WalkingEngine,
+        _: &mut MotionManager,
     ) -> BehaviorKind {
         BehaviorKind::Walk(Walk {
             step: Step {

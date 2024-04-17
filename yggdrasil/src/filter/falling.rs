@@ -1,12 +1,30 @@
-use crate::filter::imu::IMUValues;
+use crate::{
+    behavior::{engine::BehaviorKind, Engine},
+    filter::imu::IMUValues,
+};
 use miette::Result;
 use tyr::prelude::*;
 
+// /// Minimum angle for falling detection.
+// const MIN_FALL_ANGLE_FORWARDS: f32 = 0.45;
+// const MIN_FALL_ANGLE_BACKWARDS: f32 = -0.45;
+// const MIN_FALL_ANGLE_LEFT: f32 = -0.52;
+// const MIN_FALL_ANGLE_RIGHT: f32 = 0.52;
+// /// Minimum velocity for falling detection.
+// const MIN_FALL_VELOCITY_FORWARDS: f32 = 0.15;
+// const MIN_FALL_VELOCITY_BACKWARDS: f32 = 0.15;
+// const MIN_FALL_VELOCITY_LEFT: f32 = 0.15;
+// const MIN_FALL_VELOCITY_RIGHT: f32 = 0.15;
+// // Minimum angle for lying confirmation.
+// const MIN_LYING_ANGLE: f32 = 1.3;
+// /// Minimum accelerometer deviation for lying confirmation.
+// const MAX_ACC_DEVIATION: f32 = 0.175;
+
 /// Minimum angle for falling detection.
-const MIN_FALL_ANGLE_FORWARDS: f32 = 0.45;
-const MIN_FALL_ANGLE_BACKWARDS: f32 = -0.45;
-const MIN_FALL_ANGLE_LEFT: f32 = -0.52;
-const MIN_FALL_ANGLE_RIGHT: f32 = 0.52;
+const MIN_FALL_ANGLE_FORWARDS: f32 = 1.0;
+const MIN_FALL_ANGLE_BACKWARDS: f32 = -1.0;
+const MIN_FALL_ANGLE_LEFT: f32 = -0.8;
+const MIN_FALL_ANGLE_RIGHT: f32 = 0.8;
 /// Minimum velocity for falling detection.
 const MIN_FALL_VELOCITY_FORWARDS: f32 = 0.15;
 const MIN_FALL_VELOCITY_BACKWARDS: f32 = 0.15;
@@ -32,11 +50,13 @@ impl Module for FallingFilter {
 /// FallState contains the variants: Falling, Upright and Lying. Both Falling and Lying have their
 /// associated values which are again, enum types containing the directions the robot can fall or
 /// lie in.
+
 #[derive(Default, Clone, Debug)]
 pub enum FallState {
     Falling(FallDirection),
     #[default]
     Upright,
+    InStandup,
     Lying(LyingDirection),
 }
 
@@ -95,7 +115,19 @@ fn is_lying_on_back(imu_values: &IMUValues) -> bool {
 /// Checks position of the robot and sets [`FallState`], [`FallDirection`] and [`LyingDirection`]
 /// accordingly.
 #[system]
-fn pose_filter(imu_values: &IMUValues, fall_state: &mut FallState) -> Result<()> {
+fn pose_filter(
+    imu_values: &IMUValues,
+    fall_state: &mut FallState,
+    behaviour_engine: &Engine,
+) -> Result<()> {
+    if let BehaviorKind::Standup(_) = behaviour_engine.behavior {
+        if let FallState::Upright = fall_state {
+            return Ok(());
+        }
+        *fall_state = FallState::InStandup;
+        return Ok(());
+    }
+
     if is_falling_forward(imu_values) {
         *fall_state = FallState::Falling(FallDirection::Forwards);
     } else if is_falling_backward(imu_values) {

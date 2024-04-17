@@ -1,6 +1,7 @@
 use crate::{
     behavior::engine::{Behavior, Context},
     config::layout::RobotPosition,
+    motion::motion_manager::MotionManager,
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
 };
@@ -41,6 +42,7 @@ impl Behavior for Initial {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        _: &mut MotionManager,
     ) {
         let player_num = context.yggdrasil_config.game_controller.player_number;
         let robot_position = &context.layout_config.initial_positions[player_num as usize];

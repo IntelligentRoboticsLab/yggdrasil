@@ -1,5 +1,6 @@
 use crate::{
     behavior::engine::{Behavior, Context},
+    motion::motion_manager::MotionManager,
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
 };
@@ -19,6 +20,7 @@ impl Behavior for StartUp {
         context: Context,
         nao_manager: &mut NaoManager,
         _walking_engine: &mut WalkingEngine,
+        _: &mut MotionManager,
     ) {
         set_initial_joint_values(&context.robot_info.initial_joint_positions, nao_manager);
     }

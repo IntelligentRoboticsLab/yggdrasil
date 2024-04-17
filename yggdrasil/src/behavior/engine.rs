@@ -5,7 +5,7 @@ use enum_dispatch::enum_dispatch;
 
 use crate::{
     behavior::{
-        behaviors::{Initial, Observe, Penalized, StartUp, Unstiff, Walk},
+        behaviors::{FallCatch, Initial, Observe, Penalized, Standup, StartUp, Unstiff, Walk},
         roles::Attacker,
         BehaviorConfig,
     },
@@ -16,6 +16,7 @@ use crate::{
         fsr::Contacts,
     },
     game_controller::GameControllerConfig,
+    motion::motion_manager::MotionManager,
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
     primary_state::PrimaryState,
@@ -85,6 +86,7 @@ pub trait Behavior {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        motion_manager: &mut MotionManager,
     );
 }
 
@@ -106,6 +108,8 @@ pub enum BehaviorKind {
     Observe(Observe),
     Penalized(Penalized),
     Walk(Walk),
+    Standup(Standup),
+    Fallcatch(FallCatch),
     // Add new behaviors here!
 }
 
@@ -156,6 +160,7 @@ pub trait Role {
         context: Context,
         current_behavior: &mut BehaviorKind,
         walking_engine: &mut WalkingEngine,
+        motion_manager: &mut MotionManager,
     ) -> BehaviorKind;
 }
 
@@ -214,19 +219,51 @@ impl Engine {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        motion_manager: &mut MotionManager,
     ) {
         self.role = self.assign_role(context);
 
-        self.transition(context, walking_engine);
+        self.transition(context, walking_engine, motion_manager);
 
-        self.behavior.execute(context, nao_manager, walking_engine);
+        self.behavior
+            .execute(context, nao_manager, walking_engine, motion_manager);
     }
 
-    pub fn transition(&mut self, context: Context, walking_engine: &mut WalkingEngine) {
+    pub fn transition(
+        &mut self,
+        context: Context,
+        walking_engine: &mut WalkingEngine,
+        motion_manager: &mut MotionManager,
+    ) {
         if let BehaviorKind::StartUp(_) = self.behavior {
             if walking_engine.is_sitting() {
                 self.behavior = BehaviorKind::Unstiff(Unstiff);
             }
+        }
+
+        // unstiff has the number 1 precedence
+        if let PrimaryState::Unstiff = context.primary_state {
+            self.behavior = BehaviorKind::Unstiff(Unstiff);
+            return;
+        }
+
+        println!("Choosing: {:?}", context.fall_state);
+        println!("Behaviour: {:?}", self.behavior);
+
+        // next up, damage prevention and standup motion take precedence
+        match context.fall_state {
+            FallState::Lying(_) => {
+                self.behavior = BehaviorKind::Standup(Standup::default());
+                return;
+            }
+            FallState::Falling(_) => {
+                self.behavior = BehaviorKind::Fallcatch(FallCatch);
+                return;
+            }
+            FallState::InStandup => {
+                return;
+            }
+            _ => {}
         }
 
         self.behavior = match context.primary_state {
@@ -237,10 +274,12 @@ impl Engine {
             PrimaryState::Set => BehaviorKind::Initial(Initial),
             PrimaryState::Finished => BehaviorKind::Initial(Initial),
             PrimaryState::Calibration => BehaviorKind::Initial(Initial),
-            PrimaryState::Playing => {
-                self.role
-                    .transition_behavior(context, &mut self.behavior, walking_engine)
-            }
+            PrimaryState::Playing => self.role.transition_behavior(
+                context,
+                &mut self.behavior,
+                walking_engine,
+                motion_manager,
+            ),
         };
     }
 }
@@ -263,6 +302,7 @@ pub fn step(
     game_controller_message: &Option<GameControllerMessage>,
     game_controller_config: &GameControllerConfig,
     fall_state: &FallState,
+    motion_manager: &mut MotionManager,
 ) -> Result<()> {
     let context = Context {
         robot_info,
@@ -278,7 +318,7 @@ pub fn step(
         fall_state,
     };
 
-    engine.step(context, nao_manager, walking_engine);
+    engine.step(context, nao_manager, walking_engine, motion_manager);
 
     Ok(())
 }

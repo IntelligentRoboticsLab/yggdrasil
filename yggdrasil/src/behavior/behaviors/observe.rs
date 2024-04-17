@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use crate::{
     behavior::engine::{Behavior, Context},
+    motion::motion_manager::MotionManager,
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
 };
@@ -45,6 +46,7 @@ impl Behavior for Observe {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        _: &mut MotionManager,
     ) {
         let ObserveBehaviorConfig {
             head_rotation_speed,

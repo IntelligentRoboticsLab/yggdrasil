@@ -33,15 +33,15 @@ fn debug_testmotion(
     fall_state: &FallState,
 ) -> Result<()> {
     if head_button.middle.is_tapped() {
-        match fall_state {
-            FallState::Lying(LyingDirection::FacingDown) => {
-                mmng.start_new_motion(MotionType::StandupStomach, Priority::High)
-            }
-            FallState::Lying(LyingDirection::FacingUp) => {
-                mmng.start_new_motion(MotionType::StandupBack, Priority::High)
-            }
-            _ => {}
-        }
+        // match fall_state {
+        //     FallState::Lying(LyingDirection::FacingDown) => {
+        //         mmng.start_new_motion(MotionType::StandupStomach, Priority::High)
+        //     }
+        //     FallState::Lying(LyingDirection::FacingUp) => {
+        //         mmng.start_new_motion(MotionType::StandupBack, Priority::High)
+        //     }
+        //     _ => {}
+        // }
     } else if head_button.rear.is_tapped() {
         mmng.stop_motion();
         nao_manager.set_all(

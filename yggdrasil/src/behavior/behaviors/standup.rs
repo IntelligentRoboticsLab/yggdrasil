@@ -8,7 +8,7 @@ use crate::{
     walk::engine::WalkingEngine,
 };
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Standup {
     pub standup_starting_time: Instant,
 }
@@ -26,14 +26,16 @@ impl Behavior for Standup {
         &mut self,
         context: Context,
         _: &mut NaoManager,
-        walking_engine: &mut WalkingEngine,
+        _: &mut WalkingEngine,
         motion_manager: &mut MotionManager,
     ) {
-        // stop the walking engine
-        walking_engine.request_idle();
-
+        println!("Standup Behavior");
         // check the direction the robot is lying and execute the appropriate motion
         match context.fall_state {
+            FallState::InStandup => {
+                // if we are still in standup, we simply exit out of the execution
+                return;
+            }
             FallState::Lying(LyingDirection::FacingDown) => {
                 motion_manager.start_new_motion(MotionType::StandupStomach, Priority::High)
             }

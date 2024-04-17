@@ -110,17 +110,34 @@ pub fn motion_executer(
             imu.accelerometer.z,
         );
         // we check whether the robot is in a steady position
-        if !orientation.is_steady(gyro, linear_acceleration, fsr, 0.3, 0.5, 0.0, true) {
+        if !orientation.is_steady(gyro, linear_acceleration, fsr, 0.4, 0.6, 0.0, true) {
             // if not, we wait until it is either steady or the maximum wait time has elapsed
             if !exit_waittime_elapsed(
                 motion_manager,
                 motion.submotions[&sub_motion_name].exit_waittime,
             ) {
+                // returning the current nao position to prohibit any other position requests from taking over
+                nao_manager.set_all(
+                    nao_state.position.clone(),
+                    HeadJoints::<f32>::fill(submotion_stiffness),
+                    ArmJoints::<f32>::fill(submotion_stiffness),
+                    LegJoints::<f32>::fill(submotion_stiffness),
+                    Priority::High,
+                );
                 return Ok(());
             }
         }
 
         transition_to_next_submotion(motion_manager, nao_state, fall_state);
+
+        // CHECK IF THIS IS NECESSARY
+        nao_manager.set_all(
+            nao_state.position.clone(),
+            HeadJoints::<f32>::fill(submotion_stiffness),
+            ArmJoints::<f32>::fill(submotion_stiffness),
+            LegJoints::<f32>::fill(submotion_stiffness),
+            Priority::High,
+        );
     }
 
     Ok(())

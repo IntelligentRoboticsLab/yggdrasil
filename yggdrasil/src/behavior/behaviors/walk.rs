@@ -1,5 +1,6 @@
 use crate::{
     behavior::engine::{Behavior, Context},
+    motion::motion_manager::MotionManager,
     nao::manager::NaoManager,
     walk::engine::{Step, WalkingEngine},
 };
@@ -15,6 +16,7 @@ impl Behavior for Walk {
         _context: Context,
         _nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        _: &mut MotionManager,
     ) {
         walking_engine.request_walk(self.step);
     }
