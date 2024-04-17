@@ -50,6 +50,9 @@ pub struct Record {
     pub record: ConfigOptsRecord,
 }
 
+/* This procedure is a very similar procedure to sindri deploy, only instead of yggdrasil getting pushed skadi gets compiled and pushed to the robot.
+*/
+
 impl Record {
     pub async fn record(self, config: Config) -> miette::Result<()> {
         let pb = ProgressBar::new_spinner();

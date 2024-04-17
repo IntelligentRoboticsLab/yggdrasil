@@ -66,6 +66,16 @@ impl Module for Sk {
     }
 }
 
+/* Resource saving the following data:
+    - locked: the locked/unlocked status of every joint
+    - new_motion_init: if a motion capture is active, of if we can initialize a new motion
+    - motion_counter: the n'th motion that we are on (for labelling them correctly, and building a nice path to save them)
+    - currentmotion: the current motion that we are filling with keyframes, opened with motion init (middle head button) and closed and saved once motion init button is pressed again
+    - submotion_path: the path to our current motion we are capturing
+    - selected_group: the joint group we currently are focused on by pressing the feet buttons to rotate through them, using this to lock/unlock specific joints
+    - joint_groups: if the joint(s) and/or jointgroups are currently locked or unlocked
+*/ 
+
 pub struct MotionCapResources {
     pub locked: bool,
     pub new_motion_init: bool,
@@ -176,6 +186,19 @@ impl MotionCapResources {
     }
 }
 
+/* How to use: Skadi
+
+    Initialize motion: To initialize a motion, we can press the middle head button to create the first motion. WARNING! This action does not create the first key-
+    frame, you will have to do this step manually.
+
+    Locking robot in position: To lock the robot in its position, or lock specific joints in position for easier 'moulding', press the front head button. To unlock 
+    the joint(s), press the front head button again.
+
+    Rotating joint selection: To scroll through the selected joints, use the feet buttons to scroll forwards with the right foot, and backwards with the left foot.
+    
+    Add keyframe: You can add a keyframe to the motion by pressing the rear head button, which will save the joint positions. This is only possible if a motion is
+    initialized, this will also be shown in the terminal.
+*/
 #[system]
 fn register_button_press(
     head_button: &mut HeadButtons,
