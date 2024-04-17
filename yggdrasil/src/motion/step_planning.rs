@@ -9,7 +9,7 @@ use nalgebra::{Isometry, Point2, Unit, Vector2};
 use nidhogg::types::color;
 use num::Complex;
 
-use super::odometry::Odometry;
+use super::{odometry::Odometry, path_finding};
 
 const TURN_SPEED: f32 = 0.2;
 const WALK_SPEED: f32 = 0.03;
@@ -103,9 +103,18 @@ fn walk_planner_system(
         return Ok(());
     };
 
+    let Some((path, _total_walking_distance)) = path_finding::find_path(
+        odometry.accumulated.transform_point(&Point2::new(0., 0.)),
+        target_position,
+        &[],
+    ) else {
+        return Ok(());
+    };
+
+    let log_path_points: Vec<_> = path.iter().map(|point| (point.x, point.y, 0.)).collect();
     dbg.log_points_3d_with_color_and_radius(
         "/odometry/target",
-        &[(target_position.x, target_position.y, 0.)],
+        &log_path_points,
         color::u8::ORANGE,
         0.04,
     )?;
@@ -114,11 +123,10 @@ fn walk_planner_system(
         return Ok(());
     }
 
-    let turn = calc_turn(&odometry.accumulated, &target_position);
-
-    let angle = calc_angle(&odometry.accumulated, &target_position);
-
-    let distance = calc_distance(&odometry.accumulated, &target_position);
+    let first_target_position = path[0];
+    let turn = calc_turn(&odometry.accumulated, &first_target_position);
+    let angle = calc_angle(&odometry.accumulated, &first_target_position);
+    let distance = calc_distance(&odometry.accumulated, &first_target_position);
 
     if distance < 0.1 {
         walking_engine.request_idle();
