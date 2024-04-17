@@ -19,7 +19,7 @@ const WALK_SPEED: f32 = 0.03;
 impl Module for WalkPlannerModule {
     fn initialize(self, app: App) -> Result<App> {
         let target = WalkPlannerTarget {
-            target_position: Point2::new(-1., -1.),
+            target_position: Some(Point2::new(-1., 0.01)),
         };
 
         app.add_system(walk_planner_system)
@@ -28,7 +28,23 @@ impl Module for WalkPlannerModule {
 }
 
 pub struct WalkPlannerTarget {
-    target_position: Point2<f32>,
+    target_position: Option<Point2<f32>>,
+}
+
+impl WalkPlannerTarget {
+    pub fn set(&mut self, target: Point2<f32>) {
+        self.target_position = Some(target);
+    }
+
+    pub fn set_if_unset(&mut self, target: Point2<f32>) {
+        if self.target_position.is_none() {
+            self.target_position = Some(target);
+        }
+    }
+
+    pub fn current_target(&self) -> Option<&Point2<f32>> {
+        self.target_position.as_ref()
+    }
 }
 
 fn calc_turn(
@@ -83,29 +99,26 @@ fn walk_planner_system(
     behavior_engine: &Engine,
     dbg: &DebugContext,
 ) -> Result<()> {
-    if !matches!(behavior_engine.behavior, BehaviorKind::Test(_)) {
+    let Some(target_position) = walk_planner_target.target_position else {
         return Ok(());
-    }
+    };
 
     dbg.log_points_3d_with_color_and_radius(
         "/odometry/target",
-        &[(
-            walk_planner_target.target_position.x,
-            walk_planner_target.target_position.y,
-            0.,
-        )],
+        &[(target_position.x, target_position.y, 0.)],
         color::u8::ORANGE,
         0.04,
     )?;
 
-    let turn = calc_turn(&odometry.accumulated, &walk_planner_target.target_position);
-    eprintln!("TURN:  {turn}");
+    if !matches!(behavior_engine.behavior, BehaviorKind::Test(_)) {
+        return Ok(());
+    }
 
-    let angle = calc_angle(&odometry.accumulated, &walk_planner_target.target_position);
-    eprintln!("ANGLE: {}", angle.to_degrees());
+    let turn = calc_turn(&odometry.accumulated, &target_position);
 
-    let distance = calc_distance(&odometry.accumulated, &walk_planner_target.target_position);
-    eprintln!("DISTANCE: {distance}");
+    let angle = calc_angle(&odometry.accumulated, &target_position);
+
+    let distance = calc_distance(&odometry.accumulated, &target_position);
 
     if distance < 0.1 {
         walking_engine.request_idle();
