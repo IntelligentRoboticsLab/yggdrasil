@@ -5,7 +5,10 @@ use std::time::Instant;
 use fast_image_resize as fr;
 
 use nalgebra::{Point2, Point3};
+use nidhogg::types::color;
+use serde::{Deserialize, Serialize};
 
+use crate::camera::matrix::CameraMatrices;
 use crate::camera::{Image, TopImage};
 use crate::debug::DebugContext;
 use crate::prelude::*;
@@ -13,6 +16,14 @@ use crate::prelude::*;
 use crate::ml::{MlModel, MlTask, MlTaskResource};
 
 use super::proposal::BallProposals;
+use super::BallDetectionConfig;
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BallClassifierConfig {
+    pub confidence_threshold: f32,
+    pub patch_scale: f32,
+    pub time_budget: usize,
+}
 
 pub(crate) struct BallClassifierModule;
 
@@ -40,7 +51,7 @@ fn init_ball_classifier(storage: &mut Storage, top_image: &TopImage) -> Result<(
 struct BallClassifierModel;
 
 impl MlModel for BallClassifierModel {
-    const ONNX_PATH: &'static str = "models/ball_classifier_non_quant.onnx";
+    const ONNX_PATH: &'static str = "models/ball_classifier.onnx";
     type InputType = f32;
     type OutputType = f32;
 }
@@ -48,7 +59,7 @@ impl MlModel for BallClassifierModel {
 #[derive(Debug, Clone, Default)]
 pub struct Ball {
     pub position_image: Point2<f32>,
-    pub position_world: Point3<f32>,
+    pub robot_to_ball: Point3<f32>,
     pub distance: f32,
 }
 
@@ -63,38 +74,50 @@ fn detect_balls(
     proposals: &BallProposals,
     model: &mut MlTask<BallClassifierModel>,
     balls: &mut Balls,
+    camera_matrices: &CameraMatrices,
     ctx: &DebugContext,
+    config: &BallDetectionConfig,
 ) -> Result<()> {
     if balls.image.timestamp() == proposals.image.timestamp() {
         return Ok(());
     }
 
-    for proposal in proposals.proposals.iter() {
-        // get patch
+    let config = &config.classifier;
+    let start = Instant::now();
 
-        let size = 140 / proposal.distance_to_ball as usize;
+    let mut classified_balls = Vec::new();
+    'outer: for proposal in proposals.proposals.iter() {
+        let patch_size = (config.patch_scale / proposal.distance_to_ball) as usize;
         let patch = proposals.image.get_grayscale_patch(
             (proposal.position.x, proposal.position.y),
-            size,
-            size,
+            patch_size,
+            patch_size,
         );
 
-        let patch = resize_patch(size, size, patch);
-
-        let start = Instant::now();
+        let patch = resize_patch(patch_size, patch_size, patch);
         if let Ok(()) = model.try_start_infer(&patch) {
             loop {
+                if start.elapsed().as_micros() > config.time_budget as u128 {
+                    if let Err(e) = model.try_cancel() {
+                        tracing::error!("Failed to ball classifier cancel inference: {:?}", e);
+                    }
+
+                    break 'outer;
+                }
+
                 if let Ok(Some(result)) = model.poll::<Vec<f32>>().transpose() {
-                    tracing::info!("inference took: {:?}", start.elapsed());
                     let confidence = result[0];
-                    if confidence > 0.5 {
-                        ctx.log_boxes2d_with_class(
-                            "/top_camera/image/real_balls",
-                            &[(proposal.position.x as f32, proposal.position.y as f32)],
-                            &[(16.0, 16.0)],
-                            vec!["ball".to_string()],
-                            proposals.image.cycle(),
-                        )?;
+                    if confidence > config.confidence_threshold {
+                        if let Ok(robot_to_ball) = camera_matrices
+                            .top
+                            .pixel_to_ground(proposal.position.cast(), 0.0)
+                        {
+                            classified_balls.push(Ball {
+                                position_image: proposal.position.cast(),
+                                robot_to_ball,
+                                distance: proposal.distance_to_ball,
+                            });
+                        }
                     }
 
                     break;
@@ -104,6 +127,22 @@ fn detect_balls(
     }
 
     balls.image = proposals.image.clone();
+    balls.balls = classified_balls;
+
+    let ball_positions = balls
+        .balls
+        .iter()
+        .map(|ball| (ball.position_image.x, ball.position_image.y))
+        .collect::<Vec<_>>();
+    let amount = ball_positions.len();
+
+    ctx.log_boxes_2d(
+        "/top_camera/image/detected_balls",
+        ball_positions,
+        vec![(32.0, 32.0); amount],
+        &balls.image,
+        color::u8::RED,
+    )?;
 
     Ok(())
 }

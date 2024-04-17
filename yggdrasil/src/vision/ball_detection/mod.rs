@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
+use self::classifier::BallClassifierConfig;
+
 pub struct BallDetectionModule;
 
 impl Module for BallDetectionModule {
@@ -23,6 +25,7 @@ impl Module for BallDetectionModule {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BallDetectionConfig {
     pub proposal: BallProposalConfig,
+    pub classifier: BallClassifierConfig,
 }
 
 impl Config for BallDetectionConfig {

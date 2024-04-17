@@ -11,3 +11,13 @@ black_segment_max_gap = 3
 # this causes the white ratio in the local area to be too low.
 # To fix this we offset the center of the proposal to be a bit higher.
 center_offset = 16.0
+
+[classifier]
+# The threshold for the classifier to consider a proposal a ball
+confidence_threshold = 0.8
+# The size of a patch at 1.0 meters distance in pixels. 
+# This value is divided by the distance to get the size of the patch at that distance, and the patch is then
+# resized to 32x32 pixels before being fed into the neural network.
+patch_scale = 140
+# The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
+time_budget = 3000
