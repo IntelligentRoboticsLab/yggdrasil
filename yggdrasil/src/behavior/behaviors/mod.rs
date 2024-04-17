@@ -2,10 +2,14 @@
 
 mod initial;
 mod observe;
-mod passive;
 mod penalized;
+mod startup;
+mod unstiff;
+mod walk;
 
 pub use initial::Initial;
 pub use observe::{Observe, ObserveBehaviorConfig};
-pub use passive::Passive;
 pub use penalized::Penalized;
+pub use startup::StartUp;
+pub use unstiff::Unstiff;
+pub use walk::Walk;

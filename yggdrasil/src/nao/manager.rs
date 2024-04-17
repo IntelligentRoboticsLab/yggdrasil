@@ -249,6 +249,37 @@ impl NaoManager {
         self
     }
 
+    /// Sets all the joint position and stiffness of the legs, arms and head.
+    ///
+    /// The joint positions are degrees in radians.
+    ///
+    /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// stiffness. A value of `-1` will disable the stiffness altogether.
+    pub fn set_all(
+        &mut self,
+        initial_joint_positions: JointArray<JointValue>,
+        head_stiffness: HeadJoints<JointValue>,
+        arm_stiffness: ArmJoints<JointValue>,
+        leg_stiffness: LegJoints<JointValue>,
+        priority: Priority,
+    ) -> &mut Self {
+        self.set_legs(
+            initial_joint_positions.leg_joints(),
+            leg_stiffness,
+            priority,
+        )
+        .set_arms(
+            initial_joint_positions.arm_joints(),
+            arm_stiffness,
+            priority,
+        )
+        .set_head(
+            initial_joint_positions.head_joints(),
+            head_stiffness,
+            priority,
+        )
+    }
+
     /// Disable all motors in the legs.
     pub fn unstiff_legs(&mut self, priority: Priority) -> &mut Self {
         self.set_legs(
@@ -384,7 +415,7 @@ impl NaoManager {
 /// Priority order for the nao manager commands.
 ///
 /// Priories are in the range [0, 100].
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub enum Priority {
     /// Has priority `10`.
     #[default]
