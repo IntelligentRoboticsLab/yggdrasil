@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{builder::ArgPredicate, Parser};
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use miette::{miette, Context, IntoDiagnostic};
@@ -27,7 +27,6 @@ const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
 const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 const CONNECTION_TIMEOUT: u64 = 5;
 const LOCAL_ROBOT_ID_STR: &str = "0";
-// const DEFAULT_NETWORK: &str = "DNT_5G";
 
 /// The size of the `BufWriter`'s buffer.
 ///
@@ -86,10 +85,6 @@ impl FromStr for RobotEntry {
 
 #[derive(Clone, Debug, Parser)]
 pub struct ConfigOptsRobotOps {
-    /// Scan for wired (true) or wireless (false) robots [default: false]
-    #[clap(short, long)]
-    pub wired: bool,
-
     /// Team number [default: Set in `sindri.toml`]
     #[clap(short, long)]
     pub team: Option<u8>,
@@ -98,8 +93,17 @@ pub struct ConfigOptsRobotOps {
     #[clap(long, short)]
     pub rerun: bool,
 
+    /// For running Yggdrasil locally with fake-lola
     #[clap(long, short)]
     pub local: bool,
+
+    /// Optional argument that can be passed to make robots switch networks
+    #[clap(long, short, required = false)]
+    pub network: Option<String>,
+
+    /// Scan for wired (true) or wireless (false) robots [default: false]
+    #[clap(short, long, default_value_ifs([("network", ArgPredicate::IsPresent, "true")]))]
+    pub wired: bool,
 
     /// Specify bin target
     #[clap(global = true, long, default_value = "yggdrasil")]
@@ -119,9 +123,6 @@ pub struct ConfigOptsRobotOps {
     /// Whether the command prints all progress
     #[clap(long, short)]
     pub silent: bool,
-
-    #[clap(long, short, required = false)]
-    pub network: Option<String>,
 
     /// Number of the robot to deploy to.
     #[clap(
