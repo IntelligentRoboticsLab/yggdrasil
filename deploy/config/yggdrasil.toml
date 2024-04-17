@@ -100,7 +100,7 @@ confidence_threshold = 0.7
 patch_scale = 140
 # The maximum amount of time (in micro seconds) we can spend on classifying field mark proposals.
 # If this time is exceeded, we will skip the classification of the remaining proposals.
-time_budget = 2000
+time_budget = 3000
 
 [odometry]
 # The scale factor for the odometry values along the x and y axis respectively.
