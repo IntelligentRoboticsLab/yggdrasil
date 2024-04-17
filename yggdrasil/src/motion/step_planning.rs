@@ -11,10 +11,10 @@ use num::Complex;
 
 use super::odometry::Odometry;
 
-pub struct WalkPlannerModule;
-
 const TURN_SPEED: f32 = 0.2;
 const WALK_SPEED: f32 = 0.03;
+
+pub struct WalkPlannerModule;
 
 impl Module for WalkPlannerModule {
     fn initialize(self, app: App) -> Result<App> {
