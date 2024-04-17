@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 use self::{
+    angle_prediction::AnglePredictionModule,
     button::ButtonFilter, falling::FallingFilter, fsr::FSRFilter, imu::IMUFilter,
     orientation::OrientationFilter, sonar::SonarFilter,
 };
@@ -46,6 +47,7 @@ pub struct FilterModule;
 impl Module for FilterModule {
     fn initialize(self, app: App) -> Result<App> {
         let app = app
+            .add_module(AnglePredictionModule)?
             .add_module(ButtonFilter)?
             .add_module(FSRFilter)?
             .add_module(IMUFilter)?
