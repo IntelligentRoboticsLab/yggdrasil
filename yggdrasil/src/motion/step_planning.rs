@@ -1,5 +1,4 @@
 use crate::{
-    behavior::{engine::BehaviorKind, Engine},
     debug::DebugContext,
     prelude::*,
     walk::engine::{Step, WalkingEngine},
@@ -22,8 +21,13 @@ pub struct StepPlannerModule;
 impl Module for StepPlannerModule {
     fn initialize(self, app: App) -> Result<App> {
         let target = StepPlanner {
-            target_position: Some(Point2::new(3., 0.0)),
-            static_obstacles: vec![],
+            target_position: None,
+            static_obstacles: vec![
+                Obstacle::new(4.500, 1.1, 0.2),
+                Obstacle::new(4.500, -1.1, 0.2),
+                Obstacle::new(-4.500, 1.1, 0.2),
+                Obstacle::new(-4.500, -1.1, 0.2),
+            ],
             dynamic_obstacles: vec![],
         };
 
@@ -115,7 +119,6 @@ fn walk_planner_system(
     odometry: &mut Odometry,
     step_planner: &StepPlanner,
     walking_engine: &mut WalkingEngine,
-    behavior_engine: &Engine,
     dbg: &DebugContext,
 ) -> Result<()> {
     let Some(target_position) = step_planner.target_position else {
@@ -139,17 +142,13 @@ fn walk_planner_system(
         0.04,
     )?;
 
-    if !matches!(behavior_engine.behavior, BehaviorKind::Test(_)) {
-        return Ok(());
-    }
-
     let first_target_position = path[0];
     let turn = calc_turn(&odometry.accumulated, &first_target_position);
     let angle = calc_angle(&odometry.accumulated, &first_target_position);
     let distance = calc_distance(&odometry.accumulated, &first_target_position);
 
     if distance < 0.1 {
-        walking_engine.request_idle();
+        walking_engine.request_stand();
     } else if angle > 0.3 {
         walking_engine.request_walk(Step {
             forward: 0.,
