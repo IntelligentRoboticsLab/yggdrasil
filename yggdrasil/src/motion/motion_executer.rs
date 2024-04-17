@@ -65,7 +65,10 @@ pub fn motion_executer(
         cur_keyframe_index: _,
         movement_start,
         priority: _,
-    } = motion_manager.active_motion.clone().unwrap();
+    } = motion_manager
+        .active_motion
+        .clone()
+        .expect("Active motion could not be cloned; is it still present?");
 
     let submotion_stiffness: f32 = motion.submotions[&sub_motion_name].joint_stifness;
 
@@ -299,7 +302,10 @@ fn transition_to_next_submotion(
     fall_state: &mut FallState,
 ) {
     // current submotion is finished, transition to next submotion.
-    let active_motion: &mut ActiveMotion = motion_manager.active_motion.as_mut().unwrap();
+    let active_motion: &mut ActiveMotion = motion_manager
+        .active_motion
+        .as_mut()
+        .expect("No active motion present, have you started a motion?");
 
     motion_manager.submotion_execution_starting_time = None;
     motion_manager.submotion_finishing_time = None;

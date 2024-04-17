@@ -75,12 +75,12 @@ impl ActiveMotion {
         Some(self.clone())
     }
 
+    // executes the appropriate exit routine, connected to the chosen motion
     pub fn execute_exit_routine(&self, fall_state: &mut FallState) {
-        match self.motion.settings.exit_routine {
-            Some(ExitRoutine::Standing) => *fall_state = FallState::Upright,
-            // Add more exit routines here (along adding an appropriate enum value)
-            _ => {}
+        if let Some(ExitRoutine::Standing) = self.motion.settings.exit_routine {
+            *fall_state = FallState::Upright
         }
+        // Add more exit routines here! (along with adding an appropriate enum value)
     }
 }
 
@@ -153,9 +153,9 @@ impl MotionManager {
     /// * `motion_type` - The type of motion to start.
     /// * `priority` - The priority that the motion has.
     pub fn start_new_motion(&mut self, motion_type: MotionType, priority: Priority) {
-        if self.active_motion.is_some() {
+        if let Some(active_motion) = self.active_motion.as_ref() {
             // motions with a higher priority value take priority
-            if priority > self.active_motion.as_ref().unwrap().priority {
+            if priority > active_motion.priority {
                 self.stop_motion();
             } else {
                 return;
