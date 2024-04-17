@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 use std::time::Duration;
 
+pub mod angle_prediction;
 pub mod button;
 pub mod falling;
 pub mod fsr;
