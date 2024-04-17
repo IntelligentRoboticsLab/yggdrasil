@@ -5,7 +5,7 @@ use yggdrasil::{config::showtime::ShowtimeConfig, prelude::Config as OdalConfigT
 use clap::Parser;
 use colored::Colorize;
 use indicatif::ProgressBar;
-use miette::{bail, IntoDiagnostic, Result};
+use miette::{bail, miette, IntoDiagnostic, Result};
 use tokio::process::Command;
 
 use crate::{
@@ -52,7 +52,13 @@ impl Run {
             team_number: config.team_number,
             robot_numbers_map: robot_assignments,
         };
-        showtime_config.store("./deploy/config/generated/showtime.toml")?;
+        showtime_config
+            .store("./deploy/config/generated/showtime.toml")
+            .map_err(|e| {
+                miette!(format!(
+                    "{e} Make sure you run Yggdrasil from the root of the project"
+                ))
+            })?;
 
         let local = self.robot_ops.local;
         let rerun = self.robot_ops.rerun;
@@ -77,6 +83,7 @@ impl Run {
             output.spinner();
             robot_ops::stop_single_yggdrasil_service(&robot, output.clone()).await?;
             robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
+            robot_ops::change_single_network(&robot, self.robot_ops.network).await?;
             output.finished_deploying(&robot.ip());
         }
 

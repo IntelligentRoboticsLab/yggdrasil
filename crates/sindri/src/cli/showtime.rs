@@ -4,7 +4,7 @@ use std::time::Duration;
 use clap::Parser;
 use colored::Colorize;
 use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressStyle};
-use miette::{IntoDiagnostic, Result};
+use miette::{miette, IntoDiagnostic, Result};
 use tokio::runtime::Handle;
 
 use crate::{
@@ -44,7 +44,13 @@ impl Showtime {
         };
 
         // Store the config
-        showtime_config.store("./deploy/config/generated/showtime.toml")?;
+        showtime_config
+            .store("./deploy/config/generated/showtime.toml")
+            .map_err(|e| {
+                miette!(format!(
+                    "{e} Make sure you run Yggdrasil from the root of the project"
+                ))
+            })?;
 
         let compile_bar = ProgressBar::new(1);
         let output = robot_ops::Output::Single(compile_bar.clone());
@@ -53,7 +59,10 @@ impl Showtime {
         if self.robot_ops.robots.len() == 1 {
             let output = robot_ops::Output::Single(compile_bar.clone());
             let robot = config
-                .robot(self.robot_ops.robots.first().unwrap().robot_number, false)
+                .robot(
+                    self.robot_ops.robots.first().unwrap().robot_number,
+                    self.robot_ops.wired,
+                )
                 .unwrap();
 
             output.spinner();
@@ -61,6 +70,8 @@ impl Showtime {
             robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
             output.spinner();
             robot_ops::start_single_yggdrasil_service(&robot, output.clone()).await?;
+
+            // robot_ops::change_single_network(&robot, self.robot_ops.network).await?;
             output.finished_deploying(&robot.ip());
             return Ok(());
         }
@@ -91,8 +102,12 @@ impl Showtime {
         ));
 
         for robot in self.robot_ops.robots.iter() {
-            let robot = config.robot(robot.robot_number, false).unwrap();
+            let robot = config
+                .robot(robot.robot_number, self.robot_ops.wired)
+                .unwrap();
             let multi = multi.clone();
+            let network = self.robot_ops.network.clone();
+
             join_set.spawn_blocking(move || {
                 let multi = multi.clone();
                 let handle = Handle::current();
@@ -107,6 +122,7 @@ impl Showtime {
                         robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
                         output.spinner();
                         robot_ops::start_single_yggdrasil_service(&robot, output.clone()).await?;
+                        // robot_ops::change_single_network(&robot, network).await?;
 
                         output.finished_deploying(&robot.ip());
                         Ok::<(), crate::error::Error>(())

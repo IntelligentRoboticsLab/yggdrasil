@@ -21,7 +21,6 @@ use crate::{
     error::{Error, Result},
 };
 
-// const BINARY_NAME: &str = "yggdrasil";
 const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
 const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
 const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
@@ -109,11 +108,11 @@ pub struct ConfigOptsRobotOps {
         long,
         short,
         default_value_ifs([
-            ("local", "true", Some("false")),
-            ("bin", "yggdrasil", Some("true")),
+            ("local", "true", Some("true")),
+            ("bin", "yggdrasil", Some("false")),
         ]),
     )]
-    pub alsa: bool,
+    pub no_alsa: bool,
 
     /// Whether the command prints all progress
     #[clap(long, short)]
@@ -296,18 +295,14 @@ mod cross {
 }
 
 /// Modify the default network for a specific robot
-pub async fn change_single_network(robot: &Robot, network: String) -> Result<()> {
+pub(crate) async fn change_single_network(robot: &Robot, network: String) -> Result<()> {
     robot
         .ssh::<&str, &str>(format!("echo {} > /etc/network_config", network), [], true)?
         .wait()
         .await?;
 
     robot
-        .ssh::<&str, &str>(
-            "sudo nohup systemctl restart network_config.service &> /dev/null",
-            [],
-            true,
-        )?
+        .ssh::<&str, &str>("sudo systemctl restart network_config.service &", [], true)?
         .wait()
         .await?;
     Ok(())
@@ -319,7 +314,7 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
         .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
 
     let mut features = vec![];
-    if config.alsa {
+    if !config.no_alsa {
         features.push("alsa");
     }
     if config.rerun {
