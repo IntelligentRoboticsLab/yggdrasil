@@ -93,6 +93,15 @@ impl Index<usize> for InitialPositionsConfig {
     }
 }
 
+impl InitialPositionsConfig {
+    pub fn player(&self, player_num: u8) -> &RobotPosition {
+        self.0
+            .iter()
+            .find(|elem| elem.player_number == player_num as usize)
+            .expect("Player number not in layout configuration!")
+    }
+}
+
 /// Contains the coordinates for one robot position.
 /// Here it is assumed the centre point as coordinates (0, 0).
 /// The x axis points towards the opponents' goal.
@@ -106,6 +115,8 @@ pub struct RobotPosition {
     pub x: i32,
     /// Robot y-coordinate
     pub y: i32,
+
+    pub rotation: f32,
 }
 
 impl Config for LayoutConfig {

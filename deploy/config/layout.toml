@@ -77,27 +77,32 @@ border_strip_width = 700
 player_number = 1
 x = -3000
 y = -3000
+rotation = 90.0
 
 # Initial position of player two.
 [[initial_positions]]
 player_number = 2
 x = -2000
 y = 3000
+rotation = -90.0
 
 # Initial position of player three.
 [[initial_positions]]
 player_number = 3
 x = -2000
 y = -3000
+rotation = 90.0
 
 # Initial position of player four.
 [[initial_positions]]
 player_number = 4
 x = -1000
 y = 3000
+rotation = -90.0
 
 # Initial position of player five.
 [[initial_positions]]
 player_number = 5
 x = -1000
 y = -3000
+rotation = 90.0
