@@ -5,26 +5,11 @@ use crate::{
 use miette::Result;
 use tyr::prelude::*;
 
-// /// Minimum angle for falling detection.
-// const MIN_FALL_ANGLE_FORWARDS: f32 = 0.45;
-// const MIN_FALL_ANGLE_BACKWARDS: f32 = -0.45;
-// const MIN_FALL_ANGLE_LEFT: f32 = -0.52;
-// const MIN_FALL_ANGLE_RIGHT: f32 = 0.52;
-// /// Minimum velocity for falling detection.
-// const MIN_FALL_VELOCITY_FORWARDS: f32 = 0.15;
-// const MIN_FALL_VELOCITY_BACKWARDS: f32 = 0.15;
-// const MIN_FALL_VELOCITY_LEFT: f32 = 0.15;
-// const MIN_FALL_VELOCITY_RIGHT: f32 = 0.15;
-// // Minimum angle for lying confirmation.
-// const MIN_LYING_ANGLE: f32 = 1.3;
-// /// Minimum accelerometer deviation for lying confirmation.
-// const MAX_ACC_DEVIATION: f32 = 0.175;
-
 /// Minimum angle for falling detection.
-const MIN_FALL_ANGLE_FORWARDS: f32 = 1.0;
-const MIN_FALL_ANGLE_BACKWARDS: f32 = -1.0;
-const MIN_FALL_ANGLE_LEFT: f32 = -0.8;
-const MIN_FALL_ANGLE_RIGHT: f32 = 0.8;
+const MIN_FALL_ANGLE_FORWARDS: f32 = 0.45;
+const MIN_FALL_ANGLE_BACKWARDS: f32 = -0.45;
+const MIN_FALL_ANGLE_LEFT: f32 = -0.52;
+const MIN_FALL_ANGLE_RIGHT: f32 = 0.52;
 /// Minimum velocity for falling detection.
 const MIN_FALL_VELOCITY_FORWARDS: f32 = 0.15;
 const MIN_FALL_VELOCITY_BACKWARDS: f32 = 0.15;
@@ -79,25 +64,23 @@ pub enum LyingDirection {
 /// Is the robot falling forward based on its angle and gyroscope.
 fn is_falling_forward(imu_values: &IMUValues) -> bool {
     (imu_values.angles.y > MIN_FALL_ANGLE_FORWARDS)
-        && imu_values.gyroscope.y.abs() > MIN_FALL_VELOCITY_FORWARDS
+        && imu_values.gyroscope.y > MIN_FALL_VELOCITY_FORWARDS
 }
 
 /// Is the robot falling backwards based on its angle and gyroscope.
 fn is_falling_backward(imu_values: &IMUValues) -> bool {
     (imu_values.angles.y < MIN_FALL_ANGLE_BACKWARDS)
-        && imu_values.gyroscope.y.abs() > MIN_FALL_VELOCITY_BACKWARDS
+        && imu_values.gyroscope.y < MIN_FALL_VELOCITY_BACKWARDS
 }
 
 /// Is the robot falling left based on its angle and gyroscope.
 fn is_falling_left(imu_values: &IMUValues) -> bool {
-    (imu_values.angles.x < MIN_FALL_ANGLE_LEFT)
-        && imu_values.gyroscope.x.abs() > MIN_FALL_VELOCITY_LEFT
+    (imu_values.angles.x < MIN_FALL_ANGLE_LEFT) && imu_values.gyroscope.x < MIN_FALL_VELOCITY_LEFT
 }
 
 /// Is the robot falling right based on its angle and gyroscope.
 fn is_falling_right(imu_values: &IMUValues) -> bool {
-    (imu_values.angles.x > MIN_FALL_ANGLE_RIGHT)
-        && imu_values.gyroscope.x.abs() > MIN_FALL_VELOCITY_RIGHT
+    (imu_values.angles.x > MIN_FALL_ANGLE_RIGHT) && imu_values.gyroscope.x > MIN_FALL_VELOCITY_RIGHT
 }
 
 /// Is the robot lying on its stomach based on the accelerometer and angle.
@@ -120,6 +103,9 @@ fn pose_filter(
     fall_state: &mut FallState,
     behaviour_engine: &Engine,
 ) -> Result<()> {
+    // current method to keep the falling behavior from interuppting the
+    // standupn behavior, will be changed once motion module integration
+    // for behaviors has advanced
     if let BehaviorKind::Standup(_) = behaviour_engine.behavior {
         if let FallState::Upright = fall_state {
             return Ok(());

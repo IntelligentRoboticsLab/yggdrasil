@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use crate::{
     behavior::engine::{Behavior, Context},
     filter::falling::{FallState, LyingDirection},
@@ -8,35 +6,28 @@ use crate::{
     walk::engine::WalkingEngine,
 };
 
+/// Behavior dedicated to handling the getup sequence of the robot.
+/// The behavior will be entered once the robot is confirmed to be lying down,
+/// this will execute the appropriate standup motion after which the robot will return
+/// to the appropriate next behavior.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Standup {
-    pub standup_starting_time: Instant,
-}
-
-impl Default for Standup {
-    fn default() -> Self {
-        Standup {
-            standup_starting_time: Instant::now(),
-        }
-    }
-}
+pub struct Standup;
 
 impl Behavior for Standup {
     fn execute(
         &mut self,
         context: Context,
-        _: &mut NaoManager,
-        _: &mut WalkingEngine,
+        _nao_manager: &mut NaoManager,
+        _walking_engine: &mut WalkingEngine,
         motion_manager: &mut MotionManager,
     ) {
-        println!("Standup Behavior");
         // check the direction the robot is lying and execute the appropriate motion
         match context.fall_state {
             FallState::Lying(LyingDirection::FacingDown) => {
-                motion_manager.start_new_motion(MotionType::StandupStomach, Priority::High)
+                motion_manager.start_new_motion(MotionType::StandupStomach, Priority::High);
             }
             FallState::Lying(LyingDirection::FacingUp) => {
-                motion_manager.start_new_motion(MotionType::StandupBack, Priority::High)
+                motion_manager.start_new_motion(MotionType::StandupBack, Priority::High);
             }
             // if we are not lying down anymore, either standing up or falling, we do not execute any motion
             _ => {}

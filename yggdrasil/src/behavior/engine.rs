@@ -266,13 +266,10 @@ impl Engine {
             return;
         }
 
-        println!("Choosing: {:?}", context.fall_state);
-        println!("Behaviour: {:?}", self.behavior);
-
         // next up, damage prevention and standup motion take precedence
         match context.fall_state {
             FallState::Lying(_) => {
-                self.behavior = BehaviorKind::Standup(Standup::default());
+                self.behavior = BehaviorKind::Standup(Standup);
                 return;
             }
             FallState::Falling(_) => {

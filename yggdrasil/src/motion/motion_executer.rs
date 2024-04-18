@@ -5,7 +5,7 @@ use crate::motion::motion_types::Movement;
 use crate::motion::motion_util::{get_min_duration, lerp};
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority;
-use miette::Result;
+use miette::{miette, Result};
 use nalgebra::Vector3;
 use nidhogg::types::{ArmJoints, ForceSensitiveResistors, HeadJoints, LegJoints};
 use nidhogg::{
@@ -35,7 +35,6 @@ const MINIMUM_WAITTIME: f32 = 0.05;
 /// Executes the current motion.
 ///
 /// # Arguments
-///
 /// * `nao_state` - State of the robot.
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 /// * `nao_manager` - Used to set the new joint positions.
@@ -65,10 +64,10 @@ pub fn motion_executer(
         cur_keyframe_index: _,
         movement_start,
         priority: _,
-    } = motion_manager
-        .active_motion
-        .clone()
-        .expect("Active motion could not be cloned; is it still present?");
+    } = motion_manager.active_motion.clone().ok_or_else(|| {
+        motion_manager.stop_motion();
+        miette!("Motionmanager.ActiveMotion could not be cloned, likely contained None")
+    })?;
 
     let submotion_stiffness: f32 = motion.submotions[&sub_motion_name].joint_stifness;
 
@@ -153,7 +152,10 @@ pub fn motion_executer(
             }
         }
 
-        transition_to_next_submotion(motion_manager, nao_state, fall_state);
+        transition_to_next_submotion(motion_manager, nao_state, fall_state).map_err(|err| {
+            motion_manager.stop_motion();
+            err
+        })?;
 
         nao_manager.set_all(
             nao_state.position.clone(),
@@ -170,12 +172,11 @@ pub fn motion_executer(
 /// Prepares the initial movement of a submotion.
 ///
 ///
-///  # Notes
+/// # Notes
 /// Currently only checks and possibly edits the movement duration to prevent dangerously
 /// quick movements, but will be expanded upon.
 ///
 /// # Arguments
-///
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 /// * `target_position` - The target position of the initial movement.
 /// * `duration` - Intended duration of the initial movement.
@@ -206,7 +207,6 @@ fn prepare_initial_movement(
 /// Updates the active motion to begin executing the current submotion.
 ///
 /// # Arguments
-///
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 fn update_active_motion(motion_manager: &mut MotionManager) {
     // update the time of the start of the movement
@@ -231,7 +231,6 @@ fn update_active_motion(motion_manager: &mut MotionManager) {
 /// For example, different interpolation types will be available.
 ///
 /// # Arguments
-///
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 /// * `target_position` - The target position of the initial movement.
 /// * `duration` - Intended duration of the initial movement.
@@ -261,7 +260,6 @@ fn move_to_starting_position(
 /// might be shortened due to the robot being in a stable position.
 ///
 /// # Arguments
-///
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 /// * `duration` - Intended duration of the waiting time.
 fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_waittime: f32) -> bool {
@@ -293,19 +291,18 @@ fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_waittime: f32)
 /// But this will be implemented far later.
 ///
 /// # Arguments
-///
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 /// * `nao_state` - Current state of the robot.
 fn transition_to_next_submotion(
     motion_manager: &mut MotionManager,
     nao_state: &mut NaoState,
     fall_state: &mut FallState,
-) {
+) -> Result<()> {
     // current submotion is finished, transition to next submotion.
-    let active_motion: &mut ActiveMotion = motion_manager
-        .active_motion
-        .as_mut()
-        .expect("No active motion present, have you started a motion?");
+    let active_motion: &mut ActiveMotion =
+        motion_manager.active_motion.as_mut().ok_or_else(|| {
+            miette!("No active motion present during transition, have you started a motion?")
+        })?;
 
     motion_manager.submotion_execution_starting_time = None;
     motion_manager.submotion_finishing_time = None;
@@ -313,13 +310,15 @@ fn transition_to_next_submotion(
 
     if let Some(submotion_name) = active_motion.get_next_submotion() {
         // If there is a next submotion, we attempt a transition
-        let next_submotion = active_motion.transition(nao_state, submotion_name.clone());
+        let next_submotion = active_motion.transition(nao_state, submotion_name.clone())?;
         motion_manager.active_motion = next_submotion;
 
         // if the motion was aborted or an error occured with transitioning, we reset the execution time
         if motion_manager.active_motion.is_none() {
             motion_manager.motion_execution_starting_time = None;
         }
+
+        Ok(())
     }
     // if no submotion is found, the motion has finished
     else {
@@ -333,5 +332,7 @@ fn transition_to_next_submotion(
         // and we reset the Motionmanager
         motion_manager.active_motion = None;
         motion_manager.motion_execution_starting_time = None;
+
+        Ok(())
     }
 }

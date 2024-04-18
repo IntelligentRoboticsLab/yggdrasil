@@ -4,7 +4,6 @@ use std::time::Duration;
 /// Performs linear interpolation between two `JointArray<f32>`.
 ///
 /// # Arguments
-///
 /// * `current_position` - Starting position.
 /// * `target_position` - Final position.
 /// * `scalar` - Scalar from 0-1 that indicates what weight to assign to each position.
@@ -23,7 +22,6 @@ pub fn lerp(
 /// margin of error.
 ///
 /// # Arguments
-///
 /// * `current_position` - Position of which you want to check if it has reached a certain
 ///                        position.
 /// * `target_position` - Position of which you want to check if it has been reached.
@@ -48,7 +46,6 @@ pub fn reached_position(
 /// based on a given maximum speed.
 ///
 /// # Arguments
-///
 /// * `current_position` - Current position of the robot.
 /// * `target_position` - Position the robot will move to in the following movement.
 /// * `max_speed` - The maximum speed the joints can move at, in joint unit per second.

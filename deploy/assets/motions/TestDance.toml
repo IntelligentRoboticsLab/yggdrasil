@@ -1,5 +1,0 @@
-interpolation_type = "Linear"
-motion_order = [
-    "TestDance1",
-    "TestDance2"
-]

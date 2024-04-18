@@ -65,12 +65,20 @@ pub enum FailRoutine {
     Retry,
     Abort,
     Catch,
+    // Add new fail routines here
 }
 
-/// TODO
+/// Enum containing the different exit routines the robot can execute
+/// upon completion of a motion.
+///
+/// # Notes
+/// - Currently only the "Standing" routine is present, which is used
+///   to signify to the behaviour engine that the standup motion has
+///   executed succesfully.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ExitRoutine {
     Standing,
+    // Add new exit routines here
 }
 
 /// Stores information about a single conditional variable, keeping track
@@ -90,9 +98,13 @@ pub struct MotionCondition {
 /// - New motion settings should be added here as a new property.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MotionSettings {
+    // interpolation type used during the motion
     pub interpolation_type: InterpolationType,
+    // exit routine to be executed when the motion has finished succesfully
     pub exit_routine: Option<ExitRoutine>,
+    // the standard order the submotions will be executed in
     pub motion_order: Vec<String>,
+    // New motion settings can be added here
 }
 
 /// Stores information about a submotion.
@@ -133,59 +145,53 @@ impl Motion {
     /// is not present. Otherwise, uses the existing motion file.
     ///
     /// # Arguments
-    ///
     /// * `path` - the `Path` to the file from which to read the motion.
     pub fn from_path(path: &Path) -> Result<Motion> {
-        let motion_path = path.with_extension("json");
+        // generating the motion based on the corresponding config file
+        let motion_config_data = std::fs::read_to_string(path).into_diagnostic()?;
+        let config: MotionSettings = toml::de::from_str(&motion_config_data).into_diagnostic()?;
 
-        // checking whether the specified motion json file has been generated
-        if !motion_path.exists() {
-            // if not, we generate it based on the existing config file
-            let motion_config_data = std::fs::read_to_string(path).into_diagnostic()?;
-            let config: MotionSettings =
-                toml::de::from_str(&motion_config_data).into_diagnostic()?;
+        // based on the gathered config file, we now generate a new Motion
+        let mut motion: Motion = Motion {
+            settings: config.clone(),
+            submotions: HashMap::new(),
+        };
 
-            // based on the gathered config file, we now generate a new Motion
-            let mut motion: Motion = Motion {
-                settings: config.clone(),
-                submotions: HashMap::new(),
-            };
-
-            // populating the submotions property of Motion with the correct SubMotions
-            for submotion_name in config.motion_order.iter() {
-                let submotion_path = Path::new("./assets/motions/submotions")
-                    .join(submotion_name)
-                    .with_extension("json");
-                if !submotion_path.exists() {
-                    return Err(miette! {
-                       "Submotion {:?} does not exist, no file: {:?} could be found", submotion_name, submotion_path
-                    });
-                }
-                let submotion: SubMotion =
-                    serde_json::from_reader(File::open(submotion_path).into_diagnostic()?)
-                        .expect("Reading Submotion file during Motion construction");
-                motion.submotions.insert(submotion_name.clone(), submotion);
+        // populating the submotions property of Motion with the correct SubMotions
+        for submotion_name in config.motion_order.iter() {
+            let submotion_path = Path::new("./assets/motions/submotions")
+                .join(submotion_name)
+                .with_extension("json");
+            if !submotion_path.exists() {
+                return Err(miette! {
+                    "Submotion {:?} does not exist, no file: {:?} could be found", submotion_name, submotion_path
+                });
             }
-
-            // when the Motion has been created, we save it to the assets/motions folder
-            serde_json::to_writer(&File::create(motion_path).into_diagnostic()?, &motion)
-                .into_diagnostic()?;
-
-            Ok(motion)
-        } else {
-            // if the json file for the Motion does exist, simply deserialize and return it
-            serde_json::from_reader(File::open(motion_path).into_diagnostic()?).map_err(|error| {
-                miette! {
-                   "Could not deserialize json {}: {}", path.display(), error
-                }
-            })
+            let submotion: SubMotion = serde_json::from_reader(
+                File::open(submotion_path).into_diagnostic()?,
+            )
+            .map_err(|err| {
+                miette!(format!(
+                    "Could not load submotion file during construction of motion, {}",
+                    err
+                ))
+            })?;
+            motion.submotions.insert(submotion_name.clone(), submotion);
         }
+
+        // when the Motion has been created, we save it to the assets/motions folder
+        serde_json::to_writer(
+            &File::create(path.with_extension("json")).into_diagnostic()?,
+            &motion,
+        )
+        .into_diagnostic()?;
+
+        Ok(motion)
     }
 
     /// Returns the next position the robot should be in next by interpolating between the previous and next keyframe.
     ///
     /// # Arguments
-    ///
     /// * `current_sub_motion` - the current sub motion the robot is executing.
     /// * `active_motion` - the currently active motion
     pub fn get_position(
@@ -231,18 +237,16 @@ impl Motion {
     /// Returns the first movement the robot would make for the current submotion.
     ///
     /// # Arguments
-    ///
     /// * `submotion_name` - name of the current submotion.
     pub fn initial_movement(&self, submotion_name: &String) -> &Movement {
         &self.submotions[submotion_name].keyframes[0]
     }
 
-    /// Helper function for editing the duration variable for the first movement.
-    /// This can be helpfull when preventing the robot from moving to the initial
+    /// Helper function for editing the duration of the first movement of a motion.
+    /// This can be helpful when preventing the robot from moving to the initial
     /// position with a dangerous speed.
     ///
     /// # Arguments
-    ///
     /// * `submotion_name` - name of the current submotion.
     /// * `duration` - new duration for the initial movement.
     pub fn set_initial_duration(&mut self, submotion_name: &String, duration: Duration) {
