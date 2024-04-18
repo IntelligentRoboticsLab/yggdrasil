@@ -63,7 +63,7 @@ pub enum FailRoutine {
 impl Module for SkadiModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
-            .add_resource(Resource::new(MotionCapResources::new()))?
+            .init_resource::<MotionCapResources>()?
             .add_system(register_button_press.after(yggdrasil::filter::button::button_filter)))
     }
 }
@@ -78,6 +78,7 @@ impl Module for SkadiModule {
     - joint_groups: if the joint(s) and/or jointgroups are currently locked or unlocked
 */
 
+#[derive(Default)]
 pub struct MotionCapResources {
     pub locked: bool,
     pub new_motion_init: bool,
@@ -148,18 +149,6 @@ impl IndexMut<usize> for JointGroups {
 }
 
 impl MotionCapResources {
-    fn new() -> MotionCapResources {
-        MotionCapResources {
-            locked: false,
-            new_motion_init: false,
-            motion_counter: 0,
-            currentmotion: SubMotion::default(),
-            submotion_path: PathBuf::default(),
-            selected_group: 0,
-            joint_groups: JointGroups::default(),
-        }
-    }
-
     pub fn printname(&self) {
         if self.selected_group == 0 {
             println!("Full body joints selected.")

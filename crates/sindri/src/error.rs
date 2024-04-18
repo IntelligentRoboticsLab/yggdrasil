@@ -9,18 +9,23 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Error, Diagnostic, Debug)]
 pub enum Error {
     #[error(transparent)]
-    IoError(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
 
     #[error(transparent)]
-    CargoError(crate::cargo::CargoError),
+    Cargo(crate::cargo::CargoError),
 
     #[error("Sftp error: {msg}")]
-    SftpError {
+    Sftp {
         #[source]
         source: ssh2::Error,
         msg: String,
     },
-
+    #[error("Ssh error: {command}")]
+    Ssh {
+        #[source]
+        source: std::io::Error,
+        command: String,
+    },
     #[error("Failed to connect to robot in time: {0}")]
     #[diagnostic(
         code(connection::timeout),
@@ -29,5 +34,5 @@ pub enum Error {
 - Are you on the same network as the robot?"
         )
     )]
-    ElapsedError(Elapsed),
+    Elapsed(Elapsed),
 }

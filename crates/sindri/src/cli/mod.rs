@@ -1,11 +1,13 @@
 use clap::Parser;
 
+pub mod change_network;
 pub mod config;
-pub mod deploy;
 pub mod download;
 pub mod record;
+pub mod robot_ops;
 pub mod run;
 pub mod scan;
+pub mod showtime;
 pub mod update;
 
 /// `sindri` - The build tool for yggdrasil
@@ -50,11 +52,12 @@ pub struct Cli {
 /// All possible commands for the cli, used for clap derive macros.
 #[derive(Parser)]
 pub enum Commands {
-    Deploy(deploy::Deploy),
     Run(run::Run),
     Scan(scan::Scan),
     Record(record::Record),
     Download(download::Download),
+    Showtime(showtime::Showtime),
+    ChangeNetwork(change_network::ChangeNetwork),
     #[command(subcommand)]
     Config(config::ConfigCommand),
     Update(update::Update),

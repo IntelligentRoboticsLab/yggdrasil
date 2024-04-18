@@ -1,6 +1,6 @@
+use crate::config::SindriConfig;
 use clap::Parser;
 
-use crate::config::Config;
 #[derive(Clone, Debug, Parser)]
 pub struct ConfigOptsDownload {
     /// Number of the robot to deploy to.
@@ -35,7 +35,7 @@ pub struct Download {
 }
 
 impl Download {
-    pub async fn download(self, _config: Config) -> miette::Result<()> {
+    pub async fn download(self, _config: SindriConfig) -> miette::Result<()> {
         Ok(())
     }
 }

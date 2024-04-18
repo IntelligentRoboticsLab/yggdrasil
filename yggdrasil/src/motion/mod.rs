@@ -15,7 +15,7 @@ impl Module for MotionModule {
         app.init_resource::<Odometry>()?
             .add_system_chain((
                 odometry::update_odometry
-                    .after(kinematics::update_kinematics)
+                    // .after(kinematics::update_kinematics)
                     .after(filter::orientation::update_orientation),
                 odometry::log_odometry,
             ))

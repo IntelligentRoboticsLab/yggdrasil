@@ -1,6 +1,6 @@
 use crate::{
+    config::showtime::PlayerConfig,
     filter::button::{ChestButton, HeadButtons},
-    game_controller::GameControllerConfig,
     nao::manager::{NaoManager, Priority},
     prelude::*,
 };
@@ -57,9 +57,6 @@ pub enum PrimaryState {
     Calibration,
 }
 
-// TODO: Replace with player number from pregame config.
-const PLAYER_NUM: u8 = 3;
-
 fn is_penalized_by_game_controller(
     game_controller_message: Option<&GameControllerMessage>,
     team_number: u8,
@@ -87,7 +84,7 @@ pub fn update_primary_state(
     chest_button: &ChestButton,
     head_buttons: &HeadButtons,
     config: &PrimaryStateConfig,
-    game_controller_config: &GameControllerConfig,
+    player_config: &PlayerConfig,
 ) -> Result<()> {
     use PrimaryState as PS;
     let next_state = next_primary_state(
@@ -95,7 +92,7 @@ pub fn update_primary_state(
         game_controller_message,
         chest_button,
         head_buttons,
-        game_controller_config,
+        player_config,
     );
 
     match next_state {
@@ -123,7 +120,7 @@ fn next_primary_state(
     game_controller_message: &Option<GameControllerMessage>,
     chest_button: &ChestButton,
     head_buttons: &HeadButtons,
-    game_controller_config: &GameControllerConfig,
+    player_config: &PlayerConfig,
 ) -> PrimaryState {
     use PrimaryState as PS;
 
@@ -169,8 +166,8 @@ fn next_primary_state(
 
     if is_penalized_by_game_controller(
         game_controller_message.as_ref(),
-        game_controller_config.team_number,
-        PLAYER_NUM,
+        player_config.team_number,
+        player_config.player_number,
     ) {
         primary_state = PS::Penalized;
     }

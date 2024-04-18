@@ -2878,6 +2878,7 @@ dependencies = [
  "instant",
  "number_prefix",
  "portable-atomic",
+ "tokio",
  "unicode-width",
 ]
 
@@ -6070,7 +6071,7 @@ dependencies = [
 
 [[package]]
 name = "sindri"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "cargo_toml",
  "clap",
@@ -6090,6 +6091,7 @@ dependencies = [
  "tokio",
  "toml",
  "walkdir",
+ "yggdrasil",
 ]
 
 [[package]]
@@ -6108,6 +6110,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "tracing-subscriber",
  "tyr",
  "yggdrasil",
 ]
