@@ -3,10 +3,14 @@ use nidhogg::types::color;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    config::layout::{LayoutConfig, RobotPosition},
+    config::{
+        layout::{LayoutConfig, RobotPosition},
+        showtime::ShowtimeConfig,
+    },
     debug::DebugContext,
     filter::orientation::RobotOrientation,
     kinematics::RobotKinematics,
+    nao::RobotInfo,
     prelude::*,
     walk::{engine::Side, SwingFoot},
 };
@@ -98,9 +102,10 @@ pub fn log_odometry(
     odometry: &Odometry,
     layout_config: &LayoutConfig,
     dbg: &DebugContext,
+    showtime_config: &ShowtimeConfig,
+    robot_info: &RobotInfo,
 ) -> Result<()> {
-    // TODO:
-    let player_num = 5;
+    let player_num = showtime_config.robot_numbers_map[&robot_info.robot_id.to_string()];
     let isometry = isometry_to_absolute(
         odometry.accumulated,
         layout_config.initial_positions.player(player_num),
