@@ -3,9 +3,13 @@ use crate::{
         layout::{LayoutConfig, RobotPosition},
         showtime::ShowtimeConfig,
     },
+    debug::DebugContext,
     nao::RobotInfo,
     prelude::*,
-    walk::engine::{Step, WalkingEngine},
+    walk::{
+        self,
+        engine::{Step, WalkingEngine},
+    },
 };
 
 use crate::motion::odometry;
@@ -13,6 +17,7 @@ use crate::motion::odometry;
 use nalgebra::{
     AbstractRotation, Isometry, Isometry2, Point2, Translation2, Unit, UnitComplex, Vector2,
 };
+use nidhogg::types::color;
 use num::Complex;
 
 use super::{
@@ -20,7 +25,7 @@ use super::{
     path_finding::{self, Obstacle},
 };
 
-const TURN_SPEED: f32 = 0.2;
+const TURN_SPEED: f32 = 0.3;
 const WALK_SPEED: f32 = 0.05;
 
 pub struct StepPlannerModule;
@@ -125,25 +130,21 @@ fn isometry_to_absolute(
     isometry: Isometry2<f32>,
     robot_position: &RobotPosition,
 ) -> Isometry2<f32> {
-    let transformed_vec = isometry.rotation.transform_vector(&Vector2::new(
-        robot_position.x as f32 / 1000.,
-        robot_position.y as f32 / 1000.,
-    ));
+    let transformed_vec = isometry
+        .rotation
+        .transform_vector(&Vector2::new(robot_position.x, robot_position.y));
     // isometry.append_rotation_wrt_center_mut(&UnitComplex::from_angle(
     //     robot_position.rotation.to_radians(),
     // ));
     //
     // isometry.append_translation_mut(&Translation2::new(
-    //     robot_position.x as f32 / 1000.,
-    //     robot_position.y as f32 / 1000.,
+    //     robot_position.x,
+    //     robot_position.y,
     // ));
     //
     // isometry
     Isometry2::new(
-        Vector2::new(
-            robot_position.x as f32 / 1000.,
-            robot_position.y as f32 / 1000.,
-        ),
+        Vector2::new(robot_position.x, robot_position.y),
         robot_position.rotation,
     ) * isometry
 }
@@ -156,14 +157,19 @@ fn walk_planner_system(
     layout_config: &LayoutConfig,
     showtime_config: &ShowtimeConfig,
     robot_info: &RobotInfo,
+    ctx: &DebugContext,
 ) -> Result<()> {
+    if walking_engine.is_sitting() {
+        return Ok(());
+    }
+
     let Some(target_position) = step_planner.target_position else {
         return Ok(());
     };
     let all_obstacles = step_planner.get_all_obstacles();
 
     let Some((path, _total_walking_distance)) = path_finding::find_path(
-        odometry.accumulated.transform_point(&Point2::new(0., 0.)),
+        odometry.accumulated.translation.vector.into(),
         target_position,
         &all_obstacles,
     ) else {
@@ -176,17 +182,17 @@ fn walk_planner_system(
         layout_config.initial_positions.player(player_num),
     );
 
-    let first_target_position = path[0];
+    let first_target_position = path[1];
     let turn = calc_turn(&isometry, &first_target_position);
     let angle = calc_angle(&isometry, &first_target_position);
     let distance = calc_distance(&isometry, &first_target_position);
 
-    eprintln!("target:    {first_target_position:?}");
-    eprintln!(
-        "robot_pos: {:?}",
-        isometry.translation.transform_point(&Point2::new(0., 0.))
-    );
-    eprintln!("distance:  {distance}");
+    ctx.log_arrows3d_with_color(
+        "/odometry/target_position",
+        &[(0.2, 0.0, 0.0)],
+        &[(first_target_position.x, first_target_position.y, 0.0)],
+        color::u8::BLUE,
+    )?;
 
     if distance < 0.1 {
         walking_engine.request_stand();

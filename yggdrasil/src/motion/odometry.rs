@@ -97,10 +97,7 @@ pub fn isometry_to_absolute(
     // isometry
 
     Isometry2::new(
-        Vector2::new(
-            robot_position.x as f32 / 1000.,
-            robot_position.y as f32 / 1000.,
-        ),
+        Vector2::new(robot_position.x, robot_position.y),
         robot_position.rotation,
     ) * isometry
 

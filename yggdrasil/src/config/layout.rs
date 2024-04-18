@@ -51,28 +51,28 @@ pub struct LayoutConfig {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct FieldConfig {
-    /// Field length in millimeters (A)
-    pub length: u32,
-    /// Field width in millimeters (B)
-    pub width: u32,
+    /// Field length in metres (A)
+    pub length: f32,
+    /// Field width in metres (B)
+    pub width: f32,
     /// Width of lines on the field (|)
-    pub line_width: u32,
+    pub line_width: f32,
     /// Size of the penalty mark (0)
-    pub penalty_mark_size: u32,
+    pub penalty_mark_size: f32,
     /// Length of the goal area (E)
-    pub goal_area_length: u32,
+    pub goal_area_length: f32,
     /// Width of the goal area (F)
-    pub goal_area_width: u32,
+    pub goal_area_width: f32,
     /// Length of the penalty area (G)
-    pub penalty_area_length: u32,
+    pub penalty_area_length: f32,
     /// Width of the penalty area (H)
-    pub penalty_area_width: u32,
+    pub penalty_area_width: f32,
     /// Distance to the penalty mark from the side of the field (I)
-    pub penalty_mark_distance: u32,
+    pub penalty_mark_distance: f32,
     /// Diameter of the centre circle (J)
-    pub centre_circle_diameter: u32,
+    pub centre_circle_diameter: f32,
     /// Width of the border strip (K)
-    pub border_strip_width: u32,
+    pub border_strip_width: f32,
 }
 
 /// Contains the coordinates for the starting positions for each robot.
@@ -111,10 +111,10 @@ impl InitialPositionsConfig {
 pub struct RobotPosition {
     /// Player number
     pub player_number: usize,
-    /// Robot x-coordinate
-    pub x: i32,
-    /// Robot y-coordinate
-    pub y: i32,
+    /// Robot x-coordinate in metres.
+    pub x: f32,
+    /// Robot y-coordinate in metres.
+    pub y: f32,
 
     pub rotation: f32,
 }

@@ -8,7 +8,7 @@ use miette::IntoDiagnostic;
 use nalgebra::Isometry3;
 use nidhogg::types::RgbU8;
 
-use std::net::IpAddr;
+use std::{net::IpAddr, time::Instant};
 
 use crate::{
     camera::Image,

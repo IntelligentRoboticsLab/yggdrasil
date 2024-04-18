@@ -102,7 +102,7 @@ time_budget = 3000
 # The scale factor for the odometry values along the x and y axis respectively.
 # This is used to calibrate the odometry values to the actual distance the robot has moved.
 # Values taken from rUNSWift 2014 walk
-scale_factor = [1.19, 1.2]
+scale_factor = [0.81, 0.5]
 
 # The configuration for the odometry filter.
 # The filter is an implementation of this paper https://www.mdpi.com/1424-8220/15/8/19302/pdf

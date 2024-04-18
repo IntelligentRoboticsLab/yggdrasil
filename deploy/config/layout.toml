@@ -35,37 +35,37 @@
 # The y axis points towards the top and runs parallel with B.
 
 # Field length in millimeters (A).
-length = 9000
+length = 9.0
 
 # Field width in millimeters (B).
-width = 6000
+width = 6.0
 
 # Width of lines on the field (|).
-line_width = 50
+line_width = 0.05
 
 # Size of the penalty mark (0).
-penalty_mark_size = 100
+penalty_mark_size = 0.1
 
 # Length of the goal area (E).
-goal_area_length = 600
+goal_area_length = 0.6
 
 # Width of the goal area (F).
-goal_area_width = 2200
+goal_area_width = 2.2
 
 # Length of the penalty area (G).
-penalty_area_length = 1650
+penalty_area_length = 1.65
 
 # Width of the penalty area (H).
-penalty_area_width = 4000
+penalty_area_width = 4
 
 # Distance to the penalty mark from the side of the field (I).
-penalty_mark_distance = 1300
+penalty_mark_distance = 1.3
 
 # Diameter of the centre circle (J).
-centre_circle_diameter = 1500
+centre_circle_diameter = 1.500
 
 # Width of the border strip (K).
-border_strip_width = 700
+border_strip_width = 0.7
 
 
 # The fields below indicate the starting position of each robot based on its
@@ -75,34 +75,34 @@ border_strip_width = 700
 # Initial position of player one.
 [[initial_positions]]
 player_number = 1
-x = -3000
-y = -3000
+x = -3
+y = -3
 rotation = 90.0
 
 # Initial position of player two.
 [[initial_positions]]
 player_number = 2
-x = -2000
-y = 3000
+x = -2
+y = 3
 rotation = -90.0
 
 # Initial position of player three.
 [[initial_positions]]
 player_number = 3
-x = -2000
-y = -3000
+x = -2
+y = -3
 rotation = 90.0
 
 # Initial position of player four.
 [[initial_positions]]
 player_number = 4
-x = -1000
-y = 3000
+x = -1
+y = 3
 rotation = -90.0
 
 # Initial position of player five.
 [[initial_positions]]
 player_number = 5
-x = -1000
-y = -3000
+x = -1
+y = -3
 rotation = 90.0
