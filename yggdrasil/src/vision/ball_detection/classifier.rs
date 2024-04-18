@@ -3,6 +3,7 @@ use std::time::Instant;
 
 use nalgebra::{Point2, Vector2};
 
+use ndarray::Array;
 use nidhogg::types::{color, FillExt, LeftEye};
 use serde::{Deserialize, Serialize};
 
@@ -51,7 +52,7 @@ fn init_ball_classifier(storage: &mut Storage, top_image: &TopImage) -> Result<(
 pub(super) struct BallClassifierModel;
 
 impl MlModel for BallClassifierModel {
-    const ONNX_PATH: &'static str = "models/ball_classifier.onnx";
+    const ONNX_PATH: &'static str = "models/new_ball.onnx";
     type InputType = f32;
     type OutputType = f32;
 }
@@ -110,6 +111,13 @@ pub(super) fn detect_balls(
             (IMAGE_INPUT_SIZE, IMAGE_INPUT_SIZE),
             patch,
         );
+
+        ctx.log_patch(
+            "/top_camera/patch",
+            balls.image.cycle(),
+            Array::from_shape_vec((32, 32, 1), patch.clone()).unwrap(),
+        )?;
+
         if let Ok(()) = model.try_start_infer(&patch) {
             loop {
                 if start.elapsed().as_micros() > classifier.time_budget as u128 {
@@ -122,6 +130,7 @@ pub(super) fn detect_balls(
 
                 if let Ok(Some(result)) = model.poll::<Vec<f32>>().transpose() {
                     let confidence = result[0];
+                    tracing::info!("confidence: {}", confidence);
                     if confidence < classifier.confidence_threshold {
                         break;
                     }

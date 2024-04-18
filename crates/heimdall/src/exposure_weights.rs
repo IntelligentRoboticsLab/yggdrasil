@@ -22,7 +22,8 @@ impl ExposureWeights {
             // by setting the weights to be higher in the lower part of the image, we can reduce this.
             top: ExposureWeightTable::new(
                 image_dims,
-                [0, 0, 0, 0, 3, 3, 3, 3, 11, 11, 11, 11, 15, 15, 15, 15],
+                // [0, 0, 0, 0, 3, 3, 3, 3, 11, 11, 11, 11, 15, 15, 15, 15],
+                [ExposureWeightTable::MAX_VALUE; 16],
             ),
 
             // Bottom camera rarely suffers from overexposure, so we can set a constant weight.
