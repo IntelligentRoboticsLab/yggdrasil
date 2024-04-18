@@ -1,6 +1,7 @@
 use crate::{
     behavior::engine::{Behavior, Context},
     config::layout::RobotPosition,
+    motion::step_planning::StepPlanner,
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
 };
@@ -41,6 +42,7 @@ impl Behavior for Initial {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        step_planner: &mut StepPlanner,
     ) {
         let player_num = context.player_config.player_number;
         let robot_position = &context.layout_config.initial_positions[player_num as usize];

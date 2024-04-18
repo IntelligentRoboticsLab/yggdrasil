@@ -15,6 +15,7 @@ use crate::{
         fsr::Contacts,
     },
     game_controller::GameControllerConfig,
+    motion::step_planning::StepPlanner,
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
     primary_state::PrimaryState,
@@ -63,6 +64,7 @@ pub struct Context<'a> {
 /// use yggdrasil::behavior::engine::{Behavior, Context};
 /// use yggdrasil::nao::manager::NaoManager;
 /// use yggdrasil::walk::engine::WalkingEngine;
+/// use yggdrasil::motion::step_planner::StepPlanner;
 ///
 /// struct Dance;
 ///
@@ -72,6 +74,7 @@ pub struct Context<'a> {
 ///         context: Context,
 ///         nao_manager: &mut NaoManager,
 ///         walking_engine: &mut WalkingEngine,
+///         step_planner: &mut StepPlanner,
 ///     ) {
 ///         // Dance like nobody's watching 🕺!
 ///     }
@@ -86,6 +89,7 @@ pub trait Behavior {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        step_planner: &mut StepPlanner,
     );
 }
 
@@ -158,6 +162,7 @@ pub trait Role {
         context: Context,
         current_behavior: &mut BehaviorKind,
         walking_engine: &mut WalkingEngine,
+        step_planner: &mut StepPlanner,
     ) -> BehaviorKind;
 }
 
@@ -217,15 +222,22 @@ impl Engine {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        step_planner: &mut StepPlanner,
     ) {
         self.role = self.assign_role(context);
 
-        self.transition(context, walking_engine);
+        self.transition(context, walking_engine, step_planner);
 
-        self.behavior.execute(context, nao_manager, walking_engine);
+        self.behavior
+            .execute(context, nao_manager, walking_engine, step_planner);
     }
 
-    pub fn transition(&mut self, context: Context, walking_engine: &mut WalkingEngine) {
+    pub fn transition(
+        &mut self,
+        context: Context,
+        walking_engine: &mut WalkingEngine,
+        step_planner: &mut StepPlanner,
+    ) {
         if let BehaviorKind::StartUp(_) = self.behavior {
             if walking_engine.is_sitting() {
                 self.behavior = BehaviorKind::Unstiff(Unstiff);
@@ -240,10 +252,12 @@ impl Engine {
             PrimaryState::Set => BehaviorKind::Initial(Initial),
             PrimaryState::Finished => BehaviorKind::Initial(Initial),
             PrimaryState::Calibration => BehaviorKind::Initial(Initial),
-            PrimaryState::Playing => {
-                self.role
-                    .transition_behavior(context, &mut self.behavior, walking_engine)
-            }
+            PrimaryState::Playing => self.role.transition_behavior(
+                context,
+                &mut self.behavior,
+                walking_engine,
+                step_planner,
+            ),
         };
     }
 }
@@ -266,6 +280,7 @@ pub fn step(
     walking_engine: &mut WalkingEngine,
     game_controller_message: &Option<GameControllerMessage>,
     game_controller_config: &GameControllerConfig,
+    step_planner: &mut StepPlanner,
 ) -> Result<()> {
     let context = Context {
         robot_info,
@@ -281,7 +296,7 @@ pub fn step(
         game_controller_config,
     };
 
-    engine.step(context, nao_manager, walking_engine);
+    engine.step(context, nao_manager, walking_engine, step_planner);
 
     Ok(())
 }
