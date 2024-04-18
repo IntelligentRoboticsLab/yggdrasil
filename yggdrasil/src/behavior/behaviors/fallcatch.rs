@@ -5,6 +5,19 @@ use crate::{
     walk::engine::WalkingEngine,
 };
 
+/// Behavior used for preventing damage when the robot is in a falling state.
+/// This behavior can only be exited from once the robot is lying down.
+///
+/// # Notes
+/// - Currently, the damage prevention is still quite rudimentary, only
+///   unstiffing the joints of the robot and making the head stiff.
+///   In future this will be accompanied by an appropriate safe falling
+///   position.
+/// - If the robot incorrectly assumes it is in a falling state yet
+///   will not be lying down, the robot will kinda get "soft-locked".
+///   Only by unstiffing the robot will it return to normal.
+///   This should not be the case often however, once the falling filter
+///   is more advanced.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct FallCatch;
 
@@ -13,8 +26,8 @@ impl Behavior for FallCatch {
         &mut self,
         _: Context,
         nao_manager: &mut NaoManager,
-        _: &mut WalkingEngine,
-        _: &mut MotionManager,
+        _walking_engine: &mut WalkingEngine,
+        _motion_manager: &mut MotionManager,
     ) {
         nao_manager.unstiff_legs(Priority::Critical);
         nao_manager.unstiff_arms(Priority::Critical);

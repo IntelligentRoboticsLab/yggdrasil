@@ -16,7 +16,7 @@ impl Behavior for Walk {
         _context: Context,
         _nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
+        _motion_manager: &mut MotionManager,
     ) {
         walking_engine.request_walk(self.step);
     }

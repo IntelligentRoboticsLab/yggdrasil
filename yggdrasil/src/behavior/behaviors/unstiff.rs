@@ -17,7 +17,7 @@ impl Behavior for Unstiff {
         _context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
+        _motion_manager: &mut MotionManager,
     ) {
         // Makes right eye blue.
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());

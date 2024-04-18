@@ -3,7 +3,7 @@ use crate::motion::motion_types::{
     ConditionalVariable, ExitRoutine, FailRoutine, Motion, MotionCondition, MotionType,
 };
 use crate::nao::manager::Priority;
-use miette::Result;
+use miette::{miette, Result};
 use nidhogg::types::JointArray;
 use nidhogg::NaoState;
 use std::collections::HashMap;
@@ -38,32 +38,38 @@ impl ActiveMotion {
     /// satisfied.
     ///
     /// # Arguments
-    ///
     /// * `nao_state` - Current state of the Nao.
     /// * `submotion_name` - Name of the next submotion.
     pub fn transition(
         &mut self,
         nao_state: &mut NaoState,
         submotion_name: String,
-    ) -> Option<ActiveMotion> {
+    ) -> Result<Option<ActiveMotion>> {
         let next_submotion = self
             .motion
             .submotions
             .get(&submotion_name)
             .cloned()
-            .expect("Submotion to be transitioned to does not exist.");
+            .ok_or_else(|| {
+                miette!(format!(
+                    "Submotion to be transitioned to does not exist: {}",
+                    &submotion_name
+                ))
+            })?;
 
         for condition in next_submotion.conditions {
             if !check_condition(nao_state, condition) {
-                return select_routine(
+                return Ok(select_routine(
                     self.clone(),
                     self.motion
                         .submotions
                         .get(&self.cur_sub_motion.0)
-                        .expect("Current Submotion not present in Activemotion anymore")
+                        .ok_or_else(|| miette!(format!(
+                            "Could not find current motion during checking of submotion condition: {}", &self.cur_sub_motion.0
+                        )))?
                         .fail_routine
                         .clone(),
-                );
+                ));
             }
         }
 
@@ -72,7 +78,7 @@ impl ActiveMotion {
         self.cur_keyframe_index = 0;
         self.movement_start = Instant::now();
 
-        Some(self.clone())
+        Ok(Some(self.clone()))
     }
 
     // executes the appropriate exit routine, connected to the chosen motion
@@ -115,19 +121,14 @@ impl MotionManager {
         }
     }
 
-    /// Function for checking whether a motion is currently active
+    /// Simple abstraction function for checking whether a motion is currently active
     pub fn is_motion_active(&self) -> bool {
-        if self.active_motion.is_some() {
-            return true;
-        }
-
-        false
+        self.active_motion.is_some()
     }
 
     /// Adds a motion to the `MotionManger`.
     ///
     /// # Arguments
-    ///
     /// * `motion_type` - Type of the motion.
     /// * `motion_file` - Path to the file where the motion movements can be found.
     pub fn add_motion(&mut self, motion_type: MotionType, motion_file: &'static str) -> Result<()> {
@@ -149,17 +150,15 @@ impl MotionManager {
     /// Otherwise, it will check whether the new motion has a higher priority.
     ///
     /// # Arguments
-    ///
     /// * `motion_type` - The type of motion to start.
     /// * `priority` - The priority that the motion has.
     pub fn start_new_motion(&mut self, motion_type: MotionType, priority: Priority) {
         if let Some(active_motion) = self.active_motion.as_ref() {
             // motions with a higher priority value take priority
-            if priority > active_motion.priority {
-                self.stop_motion();
-            } else {
+            if priority <= active_motion.priority {
                 return;
             }
+            self.stop_motion();
         }
 
         self.motion_execution_starting_time = None;
@@ -185,7 +184,6 @@ impl MotionManager {
 /// as resource. If you want to add new motions, add the motions here.
 ///
 /// # Arguments
-///
 /// * `storage` - System storage.
 pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
     let mut motion_manager = MotionManager::new();
@@ -204,7 +202,6 @@ pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
 /// Checks whether the current NaoState fulfills a specified condition.
 ///
 /// # Arguments
-///
 /// * `nao_state` - Current state of the Nao.
 /// * `condition` - The condition which needs to be checked.
 fn check_condition(nao_state: &mut NaoState, condition: MotionCondition) -> bool {
@@ -227,7 +224,6 @@ fn check_condition(nao_state: &mut NaoState, condition: MotionCondition) -> bool
 /// Matches a specified motion fail routine with the correct next motion.
 ///
 /// # Arguments
-///
 /// * `active_motion` - The current active motion of the Nao.
 /// * `routine` - The routine that will be matched with an according motion.
 fn select_routine(mut active_motion: ActiveMotion, routine: FailRoutine) -> Option<ActiveMotion> {
