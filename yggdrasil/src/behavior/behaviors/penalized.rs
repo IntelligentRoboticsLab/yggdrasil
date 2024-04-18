@@ -25,7 +25,7 @@ impl Behavior for Penalized {
         _context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
-        step_planner: &mut StepPlanner,
+        _step_planner: &mut StepPlanner,
     ) {
         walking_engine.request_stand();
         walking_engine.end_step_phase();

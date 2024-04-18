@@ -21,9 +21,9 @@ pub struct Initial;
 
 fn look_at_middle_circle(robot_position: &RobotPosition, nao_manager: &mut NaoManager) {
     // Transform center point from world space to robot space.
-    let sign = robot_position.y.signum() as f32;
-    let transformed_center_x = robot_position.x as f32 * sign;
-    let transformed_center_y = robot_position.y as f32 * sign;
+    let sign = robot_position.y.signum();
+    let transformed_center_x = robot_position.x * sign;
+    let transformed_center_y = robot_position.y * sign;
 
     // Compute angle and then convert to the nek yaw, this angle is dependent on
     // which side of the field the robot is located.
@@ -42,7 +42,7 @@ impl Behavior for Initial {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
-        step_planner: &mut StepPlanner,
+        _step_planner: &mut StepPlanner,
     ) {
         let player_num = context.player_config.player_number;
         let robot_position = &context.layout_config.initial_positions[player_num as usize];

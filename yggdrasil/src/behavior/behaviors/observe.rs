@@ -46,7 +46,7 @@ impl Behavior for Observe {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
-        step_planner: &mut StepPlanner,
+        _step_planner: &mut StepPlanner,
     ) {
         let ObserveBehaviorConfig {
             head_rotation_speed,
