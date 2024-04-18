@@ -1,8 +1,5 @@
-use std::num::NonZeroU32;
 use std::ops::Deref;
 use std::time::Instant;
-
-use fast_image_resize as fr;
 
 use nalgebra::{Point2, Point3};
 use nidhogg::types::color;
@@ -17,6 +14,8 @@ use crate::ml::{MlModel, MlTask, MlTaskResource};
 
 use super::proposal::BallProposals;
 use super::BallDetectionConfig;
+
+const IMAGE_INPUT_SIZE: usize = 32;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BallClassifierConfig {
@@ -37,7 +36,6 @@ impl Module for BallClassifierModule {
 
 #[startup_system]
 fn init_ball_classifier(storage: &mut Storage, top_image: &TopImage) -> Result<()> {
-    // Initialize the field boundary with a single line at the top of the image
     let balls = Balls {
         balls: Vec::new(),
         image: top_image.deref().clone(),
@@ -94,7 +92,11 @@ fn detect_balls(
             patch_size,
         );
 
-        let patch = resize_patch(patch_size, patch_size, patch);
+        let patch = crate::ml::util::resize_patch(
+            (patch_size, patch_size),
+            (IMAGE_INPUT_SIZE, IMAGE_INPUT_SIZE),
+            patch,
+        );
         if let Ok(()) = model.try_start_infer(&patch) {
             loop {
                 if start.elapsed().as_micros() > config.time_budget as u128 {
@@ -145,34 +147,4 @@ fn detect_balls(
     )?;
 
     Ok(())
-}
-
-/// Resize yuyv image to correct input shape
-fn resize_patch(width: usize, height: usize, patch: Vec<u8>) -> Vec<f32> {
-    let src_image = fr::Image::from_vec_u8(
-        NonZeroU32::new(width as u32).unwrap(),
-        NonZeroU32::new(height as u32).unwrap(),
-        patch,
-        fr::PixelType::U8,
-    )
-    .expect("Failed to create image for resizing");
-
-    // Resize the image to the correct input shape for the model
-    let mut dst_image = fr::Image::new(
-        NonZeroU32::new(32).unwrap(),
-        NonZeroU32::new(32).unwrap(),
-        src_image.pixel_type(),
-    );
-
-    let mut resizer = fr::Resizer::new(fr::ResizeAlg::Nearest);
-    resizer
-        .resize(&src_image.view(), &mut dst_image.view_mut())
-        .expect("Failed to resize image");
-
-    // Remove every second y value from the yuyv image
-    dst_image
-        .buffer()
-        .iter()
-        .map(|p| *p as f32 / 255.0)
-        .collect()
 }
