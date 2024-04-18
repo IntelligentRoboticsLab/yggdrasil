@@ -11,7 +11,7 @@ use crate::camera::{Image, TopImage};
 use crate::debug::DebugContext;
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority::Medium;
-use crate::prelude::*;
+use crate::{config, prelude::*};
 
 use crate::ml::{MlModel, MlTask, MlTaskResource};
 
@@ -88,7 +88,17 @@ fn detect_balls(
 
     let mut classified_balls = Vec::new();
     'outer: for proposal in proposals.proposals.iter() {
-        let patch_size = proposal.scale as usize;
+        if proposal.distance_to_ball > 20.0 {
+            continue;
+        }
+
+        let patch_size = (config.proposal.bounding_box_scale / proposal.scale) as usize;
+        tracing::info!(
+            "scale: {}, distance: {}, patch_size: {}",
+            proposal.scale,
+            proposal.distance_to_ball,
+            patch_size
+        );
         let patch = proposals.image.get_grayscale_patch(
             (proposal.position.x, proposal.position.y),
             patch_size,
@@ -103,7 +113,6 @@ fn detect_balls(
         if let Ok(()) = model.try_start_infer(&patch) {
             loop {
                 if start.elapsed().as_micros() > classifier.time_budget as u128 {
-                    tracing::info!("time's up! ringding ding ding!!! 🚨🚨🚨🚨");
                     if let Err(e) = model.try_cancel() {
                         tracing::error!("Failed to cancel  ball classifier inference: {:?}", e);
                     }
@@ -113,12 +122,6 @@ fn detect_balls(
 
                 if let Ok(Some(result)) = model.poll::<Vec<f32>>().transpose() {
                     let confidence = result[0];
-                    tracing::info!(
-                        "confidence for ball @ {:?}: {:.2}",
-                        proposal.position,
-                        confidence
-                    );
-
                     if confidence > 0.4 {
                         ctx.log_patch(
                             "/patch/",
