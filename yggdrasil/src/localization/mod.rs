@@ -34,7 +34,7 @@ impl RobotPose {
 
     /// Transform a point from robot coordinates to world coordinates.
     pub fn robot_to_world(&self, point: &Point2<f32>) -> Point2<f32> {
-        self.inner.transform_point(point)
+        self.inner * point
     }
 
     /// Transform a point from world coordinates to robot coordinates.

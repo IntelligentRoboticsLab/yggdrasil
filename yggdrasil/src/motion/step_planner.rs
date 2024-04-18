@@ -1,6 +1,7 @@
 use crate::{
     config::{layout::LayoutConfig, showtime::ShowtimeConfig},
     debug::DebugContext,
+    localization::RobotPose,
     nao::RobotInfo,
     prelude::*,
     walk::engine::{Step, WalkingEngine},
@@ -8,9 +9,10 @@ use crate::{
 
 use crate::motion::odometry;
 
-use nalgebra::{Isometry, Point2, Unit, Vector2};
+use nalgebra::{point, Isometry, Point2, Unit, Vector2};
 use nidhogg::types::color;
 use num::Complex;
+use tracing_subscriber::fmt::init;
 
 use super::{
     odometry::Odometry,
@@ -121,6 +123,7 @@ fn calc_distance(
 #[system]
 fn walk_planner_system(
     odometry: &mut Odometry,
+    pose: &RobotPose,
     step_planner: &StepPlanner,
     walking_engine: &mut WalkingEngine,
     layout_config: &LayoutConfig,
@@ -137,11 +140,9 @@ fn walk_planner_system(
     };
     let all_obstacles = step_planner.get_all_obstacles();
 
-    let Some((path, _total_walking_distance)) = path_finding::find_path(
-        odometry.accumulated.translation.vector.into(),
-        target_position,
-        &all_obstacles,
-    ) else {
+    let Some((path, _total_walking_distance)) =
+        path_finding::find_path(pose.world_position(), target_position, &all_obstacles)
+    else {
         return Ok(());
     };
     // Not sure if this is possible, needs more testing, but it will prevent a panic later on.
@@ -150,10 +151,8 @@ fn walk_planner_system(
     }
 
     let player_num = showtime_config.robot_numbers_map[&robot_info.robot_id.to_string()];
-    let isometry = odometry::isometry_to_absolute(
-        odometry.accumulated,
-        layout_config.initial_positions.player(player_num),
-    );
+    let initial_position = layout_config.initial_positions.player(player_num);
+    let isometry = odometry::isometry_to_absolute(odometry.accumulated, initial_position);
 
     let first_target_position = path[1];
     let turn = calc_turn(&isometry, &first_target_position);
@@ -165,6 +164,18 @@ fn walk_planner_system(
         &[(target_position.x, target_position.y, 0.0)],
         color::u8::BLUE,
         0.04,
+    )?;
+
+    let one_meter_ahead = pose.robot_to_world(&Point2::new(1.0, 0.0));
+    let one_meter_ahead = Point2::new(
+        one_meter_ahead.x + initial_position.x,
+        one_meter_ahead.y + initial_position.y,
+    );
+    ctx.log_points_3d_with_color_and_radius(
+        "/odometry/one_meter_ahead",
+        &[(one_meter_ahead.x, one_meter_ahead.y, 0.0)],
+        color::u8::PURPLE,
+        0.05,
     )?;
 
     if distance < 0.1 && path.len() == 2 {
