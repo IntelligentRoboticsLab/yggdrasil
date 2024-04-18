@@ -1,6 +1,6 @@
 use crate::{
     behavior::engine::{Behavior, Context},
-    motion::step_planning::StepPlanner,
+    motion::step_planner::StepPlanner,
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
 };

@@ -15,7 +15,7 @@ use crate::{
         fsr::Contacts,
     },
     game_controller::GameControllerConfig,
-    motion::step_planning::StepPlanner,
+    motion::step_planner::StepPlanner,
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
     primary_state::PrimaryState,
@@ -134,6 +134,7 @@ impl Default for BehaviorKind {
 ///     engine::{BehaviorKind, Context, Role},
 /// };
 /// use yggdrasil::walk::engine::WalkingEngine;
+/// use yggdrasil::motion::step_planner::StepPlanner;
 ///
 /// struct SecretAgent;
 ///
@@ -143,6 +144,7 @@ impl Default for BehaviorKind {
 ///         context: Context,
 ///         current_behavior: &mut BehaviorKind,
 ///         walking_engine: &mut WalkingEngine,
+///         step_planner: &mut StepPlanner,
 ///     ) -> BehaviorKind {
 ///         // Implement behavior transitions for secret agent 🕵️
 ///         // E.g. Disguise -> Assassinate

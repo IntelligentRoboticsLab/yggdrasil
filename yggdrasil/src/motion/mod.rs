@@ -4,7 +4,7 @@ use self::odometry::Odometry;
 
 pub mod odometry;
 pub mod path_finding;
-pub mod step_planning;
+pub mod step_planner;
 
 /// The motion module provides motion related functionalities.
 ///
@@ -22,6 +22,6 @@ impl Module for MotionModule {
                 odometry::log_odometry,
             ))
             .add_startup_system(odometry::setup_viewcoordinates)?
-            .add_module(step_planning::StepPlannerModule)
+            .add_module(step_planner::StepPlannerModule)
     }
 }
