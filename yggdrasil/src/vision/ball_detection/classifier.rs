@@ -2,7 +2,7 @@ use std::ops::Deref;
 use std::time::Instant;
 
 use nalgebra::{Point2, Point3};
-use nidhogg::types::{color, FillExt, RightEye};
+use nidhogg::types::{color, FillExt, LeftEye};
 use serde::{Deserialize, Serialize};
 
 use crate::camera::matrix::CameraMatrices;
@@ -150,7 +150,9 @@ fn detect_balls(
     )?;
 
     if !balls.balls.is_empty() {
-        nao.set_right_eye_led(RightEye::fill(color::f32::PURPLE), Medium);
+        nao.set_left_eye_led(LeftEye::fill(color::f32::PURPLE), Medium);
+    } else {
+        nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Medium);
     }
 
     Ok(())
