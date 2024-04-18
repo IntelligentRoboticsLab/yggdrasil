@@ -61,6 +61,7 @@ pub struct WalkingEngineConfig {
     pub cop_pressure_threshold: f32,
     pub base_foot_lift: f32,
     pub foot_lift_modifier: Step,
+    pub max_step_size: Step,
     pub hip_height: f32,
     pub sitting_hip_height: f32,
     pub balancing: BalancingConfig,

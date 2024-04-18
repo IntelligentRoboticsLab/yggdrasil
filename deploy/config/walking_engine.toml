@@ -21,7 +21,10 @@ base_foot_lift = 0.01
 # and added to the base foot lift.
 foot_lift_modifier = { forward = 0.01, left = 0.02, turn = 0.0 }
 
-# The height of the robot's hips relative to the ankle joint, in metres.
+# The step size is clipped to this value; in both directions (e.g. range for forward is -max_step_size to max_step_size).
+max_step_size = { forward = 0.08, left = 0.05, turn = 0.5 }
+
+# The height of the robot's hips relative to the ankle joint, in metres.# The maximum step size the robot can take.
 hip_height = 0.18
 
 # The hip height when the robot is sitting, in metres
