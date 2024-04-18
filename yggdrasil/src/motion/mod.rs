@@ -19,7 +19,7 @@ use motion_manager::motion_manager_initializer;
 /// The motion module provides motion related functionalities.
 ///
 /// This module provides the following resources to the application:
-/// - [`MotionManager`]
+/// - [`MotionManager`](`motion_manager::MotionManager`)
 /// - [`Odometry`]
 pub struct MotionModule;
 
