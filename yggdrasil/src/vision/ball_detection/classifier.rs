@@ -2,12 +2,14 @@ use std::ops::Deref;
 use std::time::Instant;
 
 use nalgebra::{Point2, Point3};
-use nidhogg::types::color;
+use nidhogg::types::{color, FillExt, RightEye};
 use serde::{Deserialize, Serialize};
 
 use crate::camera::matrix::CameraMatrices;
 use crate::camera::{Image, TopImage};
 use crate::debug::DebugContext;
+use crate::nao::manager::NaoManager;
+use crate::nao::manager::Priority::Medium;
 use crate::prelude::*;
 
 use crate::ml::{MlModel, MlTask, MlTaskResource};
@@ -75,6 +77,7 @@ fn detect_balls(
     camera_matrices: &CameraMatrices,
     ctx: &DebugContext,
     config: &BallDetectionConfig,
+    nao: &mut NaoManager,
 ) -> Result<()> {
     if balls.image.timestamp() == proposals.image.timestamp() {
         return Ok(());
@@ -145,6 +148,10 @@ fn detect_balls(
         &balls.image,
         color::u8::RED,
     )?;
+
+    if !balls.balls.is_empty() {
+        nao.set_right_eye_led(RightEye::fill(color::f32::PURPLE), Medium);
+    }
 
     Ok(())
 }
