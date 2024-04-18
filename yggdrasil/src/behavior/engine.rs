@@ -266,8 +266,8 @@ impl Engine {
             PrimaryState::Ready => {
                 let player_number = context.player_config.player_number;
                 let start_position = &context.layout_config.set_positions[player_number as usize];
-                let x = start_position.x as f32 / 1000.;
-                let y = start_position.y as f32 / 1000.;
+                let x = start_position.x;
+                let y = start_position.y;
                 BehaviorKind::WalkTo(WalkTo {
                     target: Point2::new(x, y),
                 })

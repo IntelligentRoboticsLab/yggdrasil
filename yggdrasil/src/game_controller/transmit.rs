@@ -4,6 +4,7 @@ use super::GameControllerData;
 use bifrost::communication::{GameControllerReturnMessage, GAME_CONTROLLER_RETURN_PORT};
 use bifrost::serialization::Encode;
 
+use nalgebra::Point2;
 use tokio::net::UdpSocket;
 use tokio::time::sleep;
 
@@ -15,8 +16,13 @@ use std::time::{Duration, Instant};
 
 use miette::IntoDiagnostic;
 
+use crate::config::layout::LayoutConfig;
 use crate::config::showtime::PlayerConfig;
+use crate::config::showtime::ShowtimeConfig;
 use crate::filter::falling::FallState;
+use crate::motion::odometry::isometry_to_absolute;
+use crate::motion::odometry::Odometry;
+use crate::nao::RobotInfo;
 use crate::prelude::*;
 
 pub(super) struct GameControllerTransmitModule;
@@ -81,6 +87,10 @@ fn transmit_system(
     fall_state: &FallState,
     game_controller_config: &GameControllerConfig,
     player_config: &PlayerConfig,
+    layout_config: &LayoutConfig,
+    showtime_config: &ShowtimeConfig,
+    robot_info: &RobotInfo,
+    odometry: &Odometry,
 ) -> Result<()> {
     let Some((game_controller_address, mut last_transmitted_update_timestamp)) =
         game_controller_data.game_controller_address
@@ -88,11 +98,23 @@ fn transmit_system(
         return Ok(());
     };
 
+    let player_num = showtime_config.robot_numbers_map[&robot_info.robot_id.to_string()];
+    let isometry = isometry_to_absolute(
+        odometry.accumulated,
+        layout_config.initial_positions.player(player_num),
+    );
+
+    let origin = isometry.translation.transform_point(&Point2::origin());
+
     let transmit_game_controller_data = TransmitGameControllerData {
         player_num: player_config.player_number,
         team_num: player_config.team_number,
         fallen: matches!(fall_state, FallState::Lying(_)) as u8,
-        pose: [0f32; 3],
+        pose: [
+            origin.x * 1000.0,
+            origin.y * 1000.0,
+            odometry.accumulated.rotation.angle(),
+        ],
         ball_age: -1.0,
         ball: [0f32; 2],
     };
