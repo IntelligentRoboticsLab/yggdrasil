@@ -2,7 +2,7 @@ use std::ops::Deref;
 use std::time::Instant;
 
 use nalgebra::{Point2, Vector2};
-use ndarray::Array;
+
 use nidhogg::types::{color, FillExt, LeftEye};
 use serde::{Deserialize, Serialize};
 
@@ -48,7 +48,7 @@ fn init_ball_classifier(storage: &mut Storage, top_image: &TopImage) -> Result<(
     Ok(())
 }
 
-struct BallClassifierModel;
+pub(super) struct BallClassifierModel;
 
 impl MlModel for BallClassifierModel {
     const ONNX_PATH: &'static str = "models/ball_classifier.onnx";
@@ -70,7 +70,7 @@ pub struct Balls {
 }
 
 #[system]
-fn detect_balls(
+pub(super) fn detect_balls(
     proposals: &BallProposals,
     model: &mut MlTask<BallClassifierModel>,
     balls: &mut Balls,
@@ -122,35 +122,20 @@ fn detect_balls(
 
                 if let Ok(Some(result)) = model.poll::<Vec<f32>>().transpose() {
                     let confidence = result[0];
-                    if confidence > 0.4 {
-                        ctx.log_patch(
-                            "/patch/",
-                            balls.image.cycle(),
-                            Array::from_shape_vec((32, 32, 1), patch).unwrap(),
-                        )?;
+                    if confidence < classifier.confidence_threshold {
+                        break;
                     }
 
-                    tracing::info!(
-                        "confidence: {} >= {}",
-                        confidence,
-                        classifier.confidence_threshold
-                    );
-                    if confidence >= classifier.confidence_threshold {
-                        tracing::info!("ball with conf");
-                        if let Ok(robot_to_ball) = camera_matrices
-                            .top
-                            .pixel_to_ground(proposal.position.cast(), 0.0)
-                        {
-                            tracing::info!("BALL! with pos");
-                            classified_balls.push(Ball {
-                                position_image: proposal.position.cast(),
-                                robot_to_ball: robot_to_ball.xy().coords,
-                                distance: proposal.distance_to_ball,
-                            });
-                        }
+                    if let Ok(robot_to_ball) = camera_matrices
+                        .top
+                        .pixel_to_ground(proposal.position.cast(), 0.0)
+                    {
+                        classified_balls.push(Ball {
+                            position_image: proposal.position.cast(),
+                            robot_to_ball: robot_to_ball.xy().coords,
+                            distance: proposal.distance_to_ball,
+                        });
                     }
-
-                    break;
                 }
             }
         }
