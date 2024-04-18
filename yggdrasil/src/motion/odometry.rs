@@ -3,7 +3,7 @@ use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    config::layout::RobotPosition,
+    config::layout::{LayoutConfig, RobotPosition},
     debug::DebugContext,
     filter::orientation::RobotOrientation,
     kinematics::RobotKinematics,
@@ -88,6 +88,7 @@ pub fn isometry_to_absolute(
         robot_position.rotation,
     ) * isometry
 }
+
 #[startup_system]
 pub(super) fn setup_viewcoordinates(_storage: &mut Storage, dbg: &DebugContext) -> Result<()> {
     dbg.log_robot_viewcoordinates("/odometry/pose")?;
