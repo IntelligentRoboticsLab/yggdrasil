@@ -1,10 +1,11 @@
 use crate::{
+    config::layout::{LayoutConfig, RobotPosition},
     debug::DebugContext,
     prelude::*,
     walk::engine::{Step, WalkingEngine},
 };
 
-use nalgebra::{Isometry, Point2, Unit, Vector2};
+use nalgebra::{Isometry, Isometry2, Point2, Translation2, Unit, UnitComplex, Vector2};
 use nidhogg::types::color;
 use num::Complex;
 
@@ -114,12 +115,29 @@ fn calc_distance(
     distance(&robot_point, target_point)
 }
 
+fn isometry_to_absolute(
+    mut isometry: Isometry2<f32>,
+    robot_position: &RobotPosition,
+) -> Isometry2<f32> {
+    isometry.append_translation_mut(&Translation2::new(
+        robot_position.x as f32 / 1000.,
+        robot_position.y as f32 / 1000.,
+    ));
+
+    isometry.append_rotation_wrt_center_mut(&UnitComplex::from_angle(
+        robot_position.rotation.to_radians(),
+    ));
+
+    isometry
+}
+
 #[system]
 fn walk_planner_system(
     odometry: &mut Odometry,
     step_planner: &StepPlanner,
     walking_engine: &mut WalkingEngine,
     dbg: &DebugContext,
+    layout_config: &LayoutConfig,
 ) -> Result<()> {
     let Some(target_position) = step_planner.target_position else {
         return Ok(());
@@ -142,10 +160,17 @@ fn walk_planner_system(
         0.04,
     )?;
 
+    // TODO:
+    let player_num = 5;
+    let isometry = isometry_to_absolute(
+        odometry.accumulated,
+        layout_config.initial_positions.player(player_num),
+    );
+
     let first_target_position = path[0];
-    let turn = calc_turn(&odometry.accumulated, &first_target_position);
-    let angle = calc_angle(&odometry.accumulated, &first_target_position);
-    let distance = calc_distance(&odometry.accumulated, &first_target_position);
+    let turn = calc_turn(&isometry, &first_target_position);
+    let angle = calc_angle(&isometry, &first_target_position);
+    let distance = calc_distance(&isometry, &first_target_position);
 
     if distance < 0.1 {
         walking_engine.request_stand();
