@@ -1,15 +1,15 @@
 //! The engine managing behavior execution and role state.
-
-use bifrost::communication::GameControllerMessage;
-use enum_dispatch::enum_dispatch;
-
 use crate::{
     behavior::{
-        behaviors::{Initial, Observe, Penalized, StartUp, Unstiff, Walk},
-        roles::Attacker,
+        behaviors::{AlignWith, Observe, Stand, StandingLookAt, StartUp, Unstiff, Walk, WalkTo},
+        roles::{Attacker, Set},
         BehaviorConfig,
     },
-    config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
+    config::{
+        layout::{LayoutConfig, WorldPosition},
+        showtime::PlayerConfig,
+        yggdrasil::YggdrasilConfig,
+    },
     filter::{
         button::{ChestButton, HeadButtons},
         fsr::Contacts,
@@ -17,13 +17,15 @@ use crate::{
     game_controller::GameControllerConfig,
     localization::RobotPose,
     motion::step_planner::StepPlanner,
+    motion::odometry::Odometry,
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
     primary_state::PrimaryState,
     walk::engine::WalkingEngine,
 };
-
-use super::behaviors::Test;
+use bifrost::communication::GameControllerMessage;
+use enum_dispatch::enum_dispatch;
+use nalgebra::Point2;
 
 /// Context that is passed into the behavior engine.
 ///
@@ -35,6 +37,10 @@ pub struct Context<'a> {
     pub robot_info: &'a RobotInfo,
     /// Primary state of the robot
     pub primary_state: &'a PrimaryState,
+    /// Ball position
+    pub ball_position: &'a Point2<f32>,
+    /// Robot position
+    pub robot_position: &'a Point2<f32>,
     /// State of the headbuttons of a robot
     pub head_buttons: &'a HeadButtons,
     /// State of the chest button of a robot
@@ -110,11 +116,12 @@ pub trait Behavior {
 pub enum BehaviorKind {
     StartUp(StartUp),
     Unstiff(Unstiff),
-    Initial(Initial),
+    StandingLookAt(StandingLookAt),
     Observe(Observe),
-    Penalized(Penalized),
+    Stand(Stand),
     Walk(Walk),
-    Test(Test),
+    WalkTo(WalkTo),
+    AlignWith(AlignWith),
     // Add new behaviors here!
 }
 
@@ -183,6 +190,7 @@ pub trait Role {
 /// - The specific struct for each role (e.g., [`Attacker`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
 pub enum RoleKind {
+    Set(Set),
     Attacker(Attacker),
     // Add new roles here!
 }
@@ -251,18 +259,27 @@ impl Engine {
 
         self.behavior = match context.primary_state {
             PrimaryState::Unstiff => BehaviorKind::Unstiff(Unstiff),
-            PrimaryState::Penalized => BehaviorKind::Penalized(Penalized),
-            PrimaryState::Initial => BehaviorKind::Initial(Initial),
-            PrimaryState::Ready => BehaviorKind::Observe(Observe::default()),
-            PrimaryState::Set => BehaviorKind::Initial(Initial),
-            PrimaryState::Finished => BehaviorKind::Initial(Initial),
-            PrimaryState::Calibration => BehaviorKind::Initial(Initial),
-            PrimaryState::Playing => self.role.transition_behavior(
-                context,
-                &mut self.behavior,
-                walking_engine,
-                step_planner,
-            ),
+            PrimaryState::Penalized => BehaviorKind::Stand(Stand),
+            PrimaryState::Initial => BehaviorKind::StandingLookAt(StandingLookAt {
+                target: WorldPosition::new(0.0, 0.0),
+            }),
+            PrimaryState::Ready => {
+                // TODO: Get the robots player number
+                let player_position = &context.layout_config.initial_positions[0];
+                BehaviorKind::WalkTo(WalkTo {
+                    // TODO: Get the SET Positions
+                    target: Point2::new(20.0, 10.0),
+                })
+            }
+            PrimaryState::Set => {
+                RoleKind::Set(Set).transition_behavior(context, &mut self.behavior, walking_engine)
+            }
+            PrimaryState::Finished => BehaviorKind::Stand(Stand),
+            PrimaryState::Calibration => BehaviorKind::Stand(Stand),
+            PrimaryState::Playing => {
+                self.role
+                    .transition_behavior(context, &mut self.behavior, walking_engine)
+            }
         };
     }
 }
@@ -275,6 +292,7 @@ pub fn step(
     nao_manager: &mut NaoManager,
     robot_info: &RobotInfo,
     primary_state: &PrimaryState,
+    odometry: &Odometry,
     head_buttons: &HeadButtons,
     chest_button: &ChestButton,
     contacts: &Contacts,
@@ -291,6 +309,8 @@ pub fn step(
     let context = Context {
         robot_info,
         primary_state,
+        ball_position: &Point2::new(10.0, 0.0),
+        robot_position: &odometry.accumulated.translation.vector.xy().into(),
         head_buttons,
         chest_button,
         contacts,

@@ -1,5 +1,6 @@
 use std::ops::Index;
 
+use nalgebra::Point2;
 use odal::Config;
 use serde::{Deserialize, Serialize};
 
@@ -121,4 +122,29 @@ pub struct RobotPosition {
 
 impl Config for LayoutConfig {
     const PATH: &'static str = "layout.toml";
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub struct WorldPosition(Point2<f32>);
+
+impl WorldPosition {
+    pub fn new(x: f32, y: f32) -> Self {
+        Self(Point2::new(x, y))
+    }
+
+    pub fn x(&self) -> f32 {
+        self.0.x
+    }
+
+    pub fn y(&self) -> f32 {
+        self.0.y
+    }
+
+    pub fn point(&self) -> Point2<f32> {
+        self.0
+    }
+
+    pub fn deref(&self) -> &Point2<f32> {
+        &self.0
+    }
 }
