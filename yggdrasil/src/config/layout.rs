@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 pub struct LayoutConfig {
     pub field: FieldConfig,
     pub initial_positions: InitialPositionsConfig,
+    pub set_positions: SetPositionsConfig,
 }
 
 /// Config that contains information about the field dimensions.
@@ -95,6 +96,33 @@ impl Index<usize> for InitialPositionsConfig {
 }
 
 impl InitialPositionsConfig {
+    pub fn player(&self, player_num: u8) -> &RobotPosition {
+        self.0
+            .iter()
+            .find(|elem| elem.player_number == player_num as usize)
+            .expect("Player number not in layout configuration!")
+    }
+}
+
+/// Contains the coordinates for the starting positions for each robot.
+/// This configuration assumes the center has coordinates (0, 0).
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct SetPositionsConfig(Vec<RobotPosition>);
+
+impl Index<usize> for SetPositionsConfig {
+    type Output = RobotPosition;
+
+    // Required method
+    fn index(&self, index: usize) -> &Self::Output {
+        self.0
+            .iter()
+            .find(|elem| elem.player_number == index)
+            .expect("Player number not in layout configuration!")
+    }
+}
+
+impl SetPositionsConfig {
     pub fn player(&self, player_num: u8) -> &RobotPosition {
         self.0
             .iter()

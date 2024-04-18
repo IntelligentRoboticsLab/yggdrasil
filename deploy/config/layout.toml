@@ -106,3 +106,37 @@ player_number = 5
 x = -1
 y = -3
 rotation = 90.0
+
+[[set_positions]]
+player_number = 1
+x = -3000
+y = -2000
+rotation = 90.0
+
+# Initial position of player two.
+[[set_positions]]
+player_number = 2
+x = -2000
+y = 2000
+rotation = -90.0
+
+# Initial position of player three.
+[[set_positions]]
+player_number = 3
+x = -2000
+y = -2000
+rotation = 90.0
+
+# Initial position of player four.
+[[set_positions]]
+player_number = 4
+x = -1000
+y = 2000
+rotation = -90.0
+
+# Initial position of player five.
+[[set_positions]]
+player_number = 5
+x = -1000
+y = -2000
+rotation = 90.0

@@ -265,22 +265,28 @@ impl Engine {
                 target: WorldPosition::new(0.0, 0.0),
             }),
             PrimaryState::Ready => {
-                // TODO: Get the robots player number
-                let player_position = &context.layout_config.initial_positions[0];
+                let player_number = context.player_config.player_number;
+                let start_position = &context.layout_config.set_positions[player_number as usize];
+                let x = start_position.x as f32 / 1000.;
+                let y = start_position.y as f32 / 1000.;
                 BehaviorKind::WalkTo(WalkTo {
-                    // TODO: Get the SET Positions
-                    target: Point2::new(20.0, 10.0),
+                    target: Point2::new(x, y),
                 })
             }
-            PrimaryState::Set => {
-                RoleKind::Set(Set).transition_behavior(context, &mut self.behavior, walking_engine)
-            }
+            PrimaryState::Set => RoleKind::Set(Set).transition_behavior(
+                context,
+                &mut self.behavior,
+                walking_engine,
+                step_planner,
+            ),
             PrimaryState::Finished => BehaviorKind::Stand(Stand),
             PrimaryState::Calibration => BehaviorKind::Stand(Stand),
-            PrimaryState::Playing => {
-                self.role
-                    .transition_behavior(context, &mut self.behavior, walking_engine)
-            }
+            PrimaryState::Playing => self.role.transition_behavior(
+                context,
+                &mut self.behavior,
+                walking_engine,
+                step_planner,
+            ),
         };
     }
 }
