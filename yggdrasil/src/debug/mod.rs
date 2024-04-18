@@ -58,7 +58,7 @@ impl DebugContext {
 
             Ok(DebugContext {
                 rec,
-                current_cycle: Cycle(0),
+                current_cycle: Cycle::default(),
             })
         }
 
@@ -82,8 +82,7 @@ impl DebugContext {
     fn clear_cycle(&self) {
         #[cfg(feature = "rerun")]
         {
-            self.rec
-                .set_time_sequence("cycle", self.current_cycle.0 as i64);
+            self.set_cycle(&self.current_cycle);
         }
     }
 
