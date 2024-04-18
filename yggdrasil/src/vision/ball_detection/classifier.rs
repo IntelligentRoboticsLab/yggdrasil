@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::time::Instant;
 
-use nalgebra::{Point2, Point3, Vector2};
+use nalgebra::{Point2, Vector2};
 use ndarray::Array;
 use nidhogg::types::{color, FillExt, LeftEye};
 use serde::{Deserialize, Serialize};
