@@ -60,7 +60,7 @@ pub enum FailRoutine {
     Catch,
 }
 
-impl Module for Sk {
+impl Module for SkadiModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_resource(Resource::new(MotionCapResources::new()))?
@@ -112,7 +112,6 @@ impl JointGroups {
             && self.head
     }
 }
-
 
 impl Index<usize> for JointGroups {
     type Output = bool;

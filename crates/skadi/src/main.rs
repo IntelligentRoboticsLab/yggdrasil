@@ -1,6 +1,6 @@
 pub mod motion_capture;
 
-use crate::motion_capture::Sk;
+use crate::motion_capture::SkadiModule;
 use yggdrasil::{
     config::ConfigModule,
     filter::FilterModule,
