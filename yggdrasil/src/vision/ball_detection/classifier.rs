@@ -92,7 +92,7 @@ fn detect_balls(
             continue;
         }
 
-        let patch_size = (config.proposal.bounding_box_scale / proposal.scale) as usize;
+        let patch_size = proposal.scale as usize;
         tracing::info!(
             "scale: {}, distance: {}, patch_size: {}",
             proposal.scale,
