@@ -64,7 +64,7 @@ impl DebugContext {
 
         #[cfg(not(feature = "rerun"))]
         Ok(DebugContext {
-            current_cycle: Cycle(0),
+            current_cycle: Cycle::default(),
         })
     }
 

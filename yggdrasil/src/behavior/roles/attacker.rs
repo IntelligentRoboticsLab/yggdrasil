@@ -2,7 +2,7 @@ use nalgebra::{ComplexField, Point2};
 
 use crate::{
     behavior::{
-        behaviors::{AlignWith, Walk, WalkTo},
+        behaviors::{Walk, WalkTo},
         engine::{BehaviorKind, Context, Role},
     },
     motion::step_planner::StepPlanner,
@@ -27,16 +27,8 @@ impl Role for Attacker {
 
         // if distance to ball is less than 1.0, kick the ball
 
-        if goal_position.y().abs() > 0.1 {
-            // We are alligned with the goal, kick the ball by walking forward
-            BehaviorKind::AlignWith(AlignWith {
-                target: goal_position,
-                center: WorldPosition::new(ball_position.x, ball_position.y),
-            })
-        } else {
-            BehaviorKind::WalkTo(WalkTo {
-                target: ball_position,
-            })
-        }
+        BehaviorKind::WalkTo(WalkTo {
+            target: ball_position,
+        })
     }
 }

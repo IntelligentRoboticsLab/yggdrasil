@@ -1,7 +1,7 @@
 //! The engine managing behavior execution and role state.
 use crate::{
     behavior::{
-        behaviors::{AlignWith, Observe, Stand, StandingLookAt, StartUp, Unstiff, Walk, WalkTo},
+        behaviors::{Observe, Stand, StandingLookAt, StartUp, Unstiff, Walk, WalkTo},
         roles::{Attacker, Set},
         BehaviorConfig,
     },
@@ -122,7 +122,6 @@ pub enum BehaviorKind {
     Stand(Stand),
     Walk(Walk),
     WalkTo(WalkTo),
-    AlignWith(AlignWith),
     // Add new behaviors here!
 }
 

@@ -4,6 +4,7 @@ use crate::{
         engine::{BehaviorKind, Context, Role},
     },
     config::layout::WorldPosition,
+    motion::step_planning::StepPlanner,
     walk::engine::WalkingEngine,
 };
 
@@ -15,6 +16,7 @@ impl Role for Set {
         _context: Context,
         _current_behavior: &mut BehaviorKind,
         _walking_engine: &mut WalkingEngine,
+        step_planner: &mut StepPlanner,
     ) -> BehaviorKind {
         let mut target = WorldPosition::new(0.0, 0.0);
         if false {
