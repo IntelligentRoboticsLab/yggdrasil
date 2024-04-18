@@ -1,6 +1,9 @@
+use nalgebra::Point2;
+
 use crate::{
     behavior::engine::{Behavior, Context},
     motion::motion_manager::MotionManager,
+    motion::step_planner::StepPlanner,
     nao::manager::NaoManager,
     walk::engine::{Step, WalkingEngine},
 };
@@ -15,9 +18,10 @@ impl Behavior for Walk {
         &mut self,
         _context: Context,
         _nao_manager: &mut NaoManager,
-        walking_engine: &mut WalkingEngine,
+        _walking_engine: &mut WalkingEngine,
         _: &mut MotionManager,
+        step_planner: &mut StepPlanner,
     ) {
-        walking_engine.request_walk(self.step);
+        step_planner.set_absolute_target(Point2::new(0., 0.));
     }
 }

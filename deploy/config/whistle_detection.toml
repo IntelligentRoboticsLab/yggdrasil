@@ -1,0 +1,3 @@
+gain = 1.0
+threshold = 0.001
+consecutive = 3

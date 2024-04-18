@@ -8,7 +8,7 @@ use clap::Subcommand;
 use dialoguer::{console::Style, theme::ColorfulTheme, Confirm};
 use miette::{IntoDiagnostic, Result};
 
-use crate::config::{load_config, Config};
+use crate::config::{load_config, SindriConfig};
 
 const INIT_DIR: &str = "init/";
 
@@ -90,7 +90,7 @@ fn install_sindri_config(init_dir: &Path, home_dir: &Path) -> io::Result<()> {
     )
 }
 
-fn install_ssh_keys(home_dir: &Path, config: Config) -> io::Result<()> {
+fn install_ssh_keys(home_dir: &Path, config: SindriConfig) -> io::Result<()> {
     fs::create_dir_all(home_dir.join(".ssh/nao"))?;
 
     // create ssh config using config toml

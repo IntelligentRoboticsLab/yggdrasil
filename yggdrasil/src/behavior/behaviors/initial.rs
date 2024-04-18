@@ -2,12 +2,14 @@ use crate::{
     behavior::engine::{Behavior, Context},
     config::layout::RobotPosition,
     motion::motion_manager::MotionManager,
+    motion::step_planner::StepPlanner,
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
 };
+use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};
 
-const ROTATION_STIFFNESS: f32 = 0.3;
+const HEAD_STIFFNESS: f32 = 0.4;
 
 /// During a match the chest button is pressed before starting a match.
 /// Once this is done, the robots are placed at the edge of the field from
@@ -19,23 +21,6 @@ const ROTATION_STIFFNESS: f32 = 0.3;
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Initial;
 
-fn look_at_middle_circle(robot_position: &RobotPosition, nao_manager: &mut NaoManager) {
-    // Transform center point from world space to robot space.
-    let sign = robot_position.y.signum() as f32;
-    let transformed_center_x = robot_position.x as f32 * sign;
-    let transformed_center_y = robot_position.y as f32 * sign;
-
-    // Compute angle and then convert to the nek yaw, this angle is dependent on
-    // which side of the field the robot is located.
-    let angle = (transformed_center_y / transformed_center_x).atan();
-    let yaw = (std::f32::consts::FRAC_PI_2 + angle * sign) * sign;
-
-    let position = HeadJoints { yaw, pitch: 0.0 };
-    let stiffness = HeadJoints::fill(ROTATION_STIFFNESS);
-
-    nao_manager.set_head(position, stiffness, Priority::default());
-}
-
 impl Behavior for Initial {
     fn execute(
         &mut self,
@@ -43,10 +28,13 @@ impl Behavior for Initial {
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
         _: &mut MotionManager,
+        _step_planner: &mut StepPlanner,
     ) {
-        let player_num = context.yggdrasil_config.game_controller.player_number;
-        let robot_position = &context.layout_config.initial_positions[player_num as usize];
-        look_at_middle_circle(robot_position, nao_manager);
+        nao_manager.set_head(
+            context.pose.get_look_at_absolute(&Point2::origin()),
+            HeadJoints::fill(HEAD_STIFFNESS),
+            Priority::High,
+        );
 
         walking_engine.request_stand();
     }

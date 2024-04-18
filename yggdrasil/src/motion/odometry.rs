@@ -1,8 +1,9 @@
-use nalgebra::{Isometry2, Point2, Translation2, UnitComplex, Vector2};
-use nidhogg::types::color;
+use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    config::layout::RobotPosition,
     debug::DebugContext,
     filter::orientation::RobotOrientation,
     kinematics::RobotKinematics,
@@ -18,6 +19,7 @@ pub struct OdometryConfig {
 #[derive(Debug, Default, Clone)]
 pub struct Odometry {
     pub accumulated: Isometry2<f32>,
+    pub offset_to_last: Isometry2<f32>,
     last_left_sole_to_right_sole: Vector2<f32>,
     last_orientation: UnitComplex<f32>,
 }
@@ -60,6 +62,7 @@ impl Odometry {
             Isometry2::from_parts(Translation2::from(scaled_offset), orientation_offset);
 
         // update the accumulated odometry
+        self.offset_to_last = odometry_offset;
         self.accumulated *= odometry_offset;
     }
 }
@@ -76,26 +79,15 @@ pub fn update_odometry(
     Ok(())
 }
 
-#[system]
-pub fn log_odometry(odometry: &Odometry, dbg: &DebugContext) -> Result<()> {
-    let rotated = odometry
-        .accumulated
-        .rotation
-        .transform_point(&Point2::new(0.1, 0.0));
-    let origin = odometry
-        .accumulated
-        .translation
-        .transform_point(&Point2::origin());
-    dbg.log_arrows3d_with_color(
-        "/odometry/pose",
-        &[(rotated.x, rotated.y, 0.0)],
-        &[(origin.x, origin.y, 0.0)],
-        color::u8::RED,
-    )?;
-
-    Ok(())
+pub fn isometry_to_absolute(
+    isometry: Isometry2<f32>,
+    robot_position: &RobotPosition,
+) -> Isometry2<f32> {
+    Isometry2::new(
+        Vector2::new(robot_position.x, robot_position.y),
+        robot_position.rotation,
+    ) * isometry
 }
-
 #[startup_system]
 pub(super) fn setup_viewcoordinates(_storage: &mut Storage, dbg: &DebugContext) -> Result<()> {
     dbg.log_robot_viewcoordinates("/odometry/pose")?;

@@ -10,6 +10,8 @@ pub mod motion_manager;
 pub mod motion_types;
 pub mod motion_util;
 pub mod odometry;
+pub mod path_finding;
+pub mod step_planner;
 
 use motion_executer::motion_executer;
 use motion_manager::motion_manager_initializer;
@@ -33,5 +35,6 @@ impl Module for MotionModule {
             .add_startup_system(odometry::setup_viewcoordinates)?
             .add_startup_system(motion_manager_initializer)?
             .add_system(motion_executer.after(write_hardware_info)))
+            .add_module(step_planner::StepPlannerModule))
     }
 }

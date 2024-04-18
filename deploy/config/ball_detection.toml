@@ -1,9 +1,9 @@
 [proposal]
 # Maximum gap between black pixels to be considered a new segment
 white_ratio = 0.2
-# Maximum distance between two clusters to be considered the same cluster
-bounding_box_scale = 64.0
 # Height/width of the bounding box around the ball
+bounding_box_scale = 100.0
+# Maximum distance between two clusters to be considered the same cluster
 cluster_max_distance = 64.0
 # Ratio of white pixels in the local area around a point to be considered a ball
 black_segment_max_gap = 3
@@ -11,3 +11,9 @@ black_segment_max_gap = 3
 # this causes the white ratio in the local area to be too low.
 # To fix this we offset the center of the proposal to be a bit higher.
 center_offset = 16.0
+
+[classifier]
+# The threshold for the classifier to consider a proposal a ball
+confidence_threshold = 0.8
+# The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
+time_budget = 3000

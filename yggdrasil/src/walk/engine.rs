@@ -187,7 +187,7 @@ impl WalkingEngine {
                 let next_swing_foot = self.swing_foot.next();
 
                 // TODO: step duration increase?
-                self.current_step = step;
+                self.current_step = step.clamped(self.config.max_step_size);
                 self.next_foot_switch = config.base_step_period;
 
                 self.swing_foot = next_swing_foot;
@@ -332,6 +332,19 @@ pub struct Step {
     pub left: f32,
     /// turn in radians per second
     pub turn: f32,
+}
+
+impl Step {
+    /// Clamps the step to the provided `max_step_size`.
+    pub fn clamped(&self, max_step_size: Step) -> Step {
+        Step {
+            forward: self
+                .forward
+                .clamp(-max_step_size.forward, max_step_size.forward),
+            left: self.left.clamp(-max_step_size.left, max_step_size.left),
+            turn: self.turn.clamp(-max_step_size.turn, max_step_size.turn),
+        }
+    }
 }
 
 impl Neg for Step {
