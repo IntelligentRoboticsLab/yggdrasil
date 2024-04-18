@@ -61,7 +61,6 @@ impl Behavior for Observe {
             head_yaw_multiplier,
             head_pitch_multiplier,
         );
-        walking_engine.request_stand();
     }
 }
 

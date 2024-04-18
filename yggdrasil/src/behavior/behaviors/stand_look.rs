@@ -2,6 +2,7 @@ use crate::{
     behavior::engine::{Behavior, Context},
     motion::step_planner::StepPlanner,
     config::layout::{RobotPosition, WorldPosition},
+    motion::step_planning::StepPlanner,
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
 };

@@ -18,6 +18,7 @@ use crate::{
     localization::RobotPose,
     motion::step_planner::StepPlanner,
     motion::odometry::Odometry,
+    motion::step_planning::StepPlanner,
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
     primary_state::PrimaryState,

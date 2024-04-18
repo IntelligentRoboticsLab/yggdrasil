@@ -8,7 +8,11 @@ use crate::{
     walk::engine::{Step, WalkingEngine},
 };
 
-use nalgebra::{Isometry, Isometry2, Point2, Translation2, Unit, UnitComplex, Vector2};
+use crate::motion::odometry;
+
+use nalgebra::{
+    AbstractRotation, Isometry, Isometry2, Point2, Translation2, Unit, UnitComplex, Vector2,
+};
 use num::Complex;
 
 use super::{
@@ -17,7 +21,7 @@ use super::{
 };
 
 const TURN_SPEED: f32 = 0.2;
-const WALK_SPEED: f32 = 0.03;
+const WALK_SPEED: f32 = 0.05;
 
 pub struct StepPlannerModule;
 
@@ -67,7 +71,7 @@ impl StepPlanner {
 
     fn get_all_obstacles(&self) -> Vec<Obstacle> {
         let mut all_obstacles = self.static_obstacles.clone();
-        all_obstacles.copy_from_slice(&self.dynamic_obstacles);
+        all_obstacles.extend_from_slice(&self.dynamic_obstacles);
 
         all_obstacles
     }
@@ -118,19 +122,30 @@ fn calc_distance(
 }
 
 fn isometry_to_absolute(
-    mut isometry: Isometry2<f32>,
+    isometry: Isometry2<f32>,
     robot_position: &RobotPosition,
 ) -> Isometry2<f32> {
-    isometry.append_translation_mut(&Translation2::new(
+    let transformed_vec = isometry.rotation.transform_vector(&Vector2::new(
         robot_position.x as f32 / 1000.,
         robot_position.y as f32 / 1000.,
     ));
-
-    isometry.append_rotation_wrt_center_mut(&UnitComplex::from_angle(
-        robot_position.rotation.to_radians(),
-    ));
-
-    isometry
+    // isometry.append_rotation_wrt_center_mut(&UnitComplex::from_angle(
+    //     robot_position.rotation.to_radians(),
+    // ));
+    //
+    // isometry.append_translation_mut(&Translation2::new(
+    //     robot_position.x as f32 / 1000.,
+    //     robot_position.y as f32 / 1000.,
+    // ));
+    //
+    // isometry
+    Isometry2::new(
+        Vector2::new(
+            robot_position.x as f32 / 1000.,
+            robot_position.y as f32 / 1000.,
+        ),
+        robot_position.rotation,
+    ) * isometry
 }
 
 #[system]
@@ -156,7 +171,7 @@ fn walk_planner_system(
     };
 
     let player_num = showtime_config.robot_numbers_map[&robot_info.robot_id.to_string()];
-    let isometry = isometry_to_absolute(
+    let isometry = odometry::isometry_to_absolute(
         odometry.accumulated,
         layout_config.initial_positions.player(player_num),
     );
@@ -165,6 +180,13 @@ fn walk_planner_system(
     let turn = calc_turn(&isometry, &first_target_position);
     let angle = calc_angle(&isometry, &first_target_position);
     let distance = calc_distance(&isometry, &first_target_position);
+
+    eprintln!("target:    {first_target_position:?}");
+    eprintln!(
+        "robot_pos: {:?}",
+        isometry.translation.transform_point(&Point2::new(0., 0.))
+    );
+    eprintln!("distance:  {distance}");
 
     if distance < 0.1 {
         walking_engine.request_stand();

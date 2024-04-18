@@ -7,6 +7,7 @@ use crate::{
     },
     motion::step_planner::StepPlanner,
     config::layout::WorldPosition,
+    motion::step_planning::StepPlanner,
     walk::engine::{Step, WalkingEngine},
 };
 
