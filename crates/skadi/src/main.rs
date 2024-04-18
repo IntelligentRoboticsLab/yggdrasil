@@ -19,7 +19,7 @@ fn main() -> Result<()> {
         .add_module(FilterModule)?
         .add_module(MotionModule)?
         // .add_module(LedsModule)?;
-        .add_module(Sk)?;
+        .add_module(SkadiModule)?;
 
     app.run()
 }

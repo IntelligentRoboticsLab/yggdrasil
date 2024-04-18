@@ -16,7 +16,7 @@ use std::path::Path;
 use yggdrasil::filter::button::{HeadButtons, LeftFootButtons, RightFootButtons};
 use yggdrasil::prelude::*;
 
-pub struct Sk;
+pub struct SkadiModule;
 
 // Below some structs that are compatible with Stephan's motion manager
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -101,14 +101,6 @@ pub struct JointGroups {
 }
 
 impl JointGroups {
-    pub fn is_empty(&self) -> bool {
-        unimplemented!()
-    }
-
-    pub fn len(&self) -> usize {
-        7
-    }
-
     pub fn all_true(&self) -> bool {
         self.fullbody
             && self.botharms
@@ -120,6 +112,7 @@ impl JointGroups {
             && self.head
     }
 }
+
 
 impl Index<usize> for JointGroups {
     type Output = bool;
@@ -213,7 +206,7 @@ fn register_button_press(
 ) -> Result<()> {
     if left_button.left.is_tapped() {
         motion_cap_resources.selected_group += 1;
-        motion_cap_resources.selected_group %= motion_cap_resources.joint_groups.len() + 1;
+        motion_cap_resources.selected_group %= 8;
         motion_cap_resources.printname();
     }
     if right_button.left.is_tapped() {
@@ -282,7 +275,7 @@ fn register_button_press(
                     right_arm: right_arm_stiffness,
                 };
 
-                let stiffnessarray = JointArray::builder()
+                let stiffnessarray = JointArray::builder() //NOT TESTED YET, CHECK FIRST
                     .joints(naostate.stiffness.clone())
                     .arm_joints(arms_set)
                     .build();
