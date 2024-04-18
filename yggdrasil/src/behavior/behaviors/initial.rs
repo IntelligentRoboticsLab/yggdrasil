@@ -44,7 +44,7 @@ impl Behavior for Initial {
         walking_engine: &mut WalkingEngine,
         _: &mut MotionManager,
     ) {
-        let player_num = context.yggdrasil_config.game_controller.player_number;
+        let player_num = context.player_config.player_number;
         let robot_position = &context.layout_config.initial_positions[player_num as usize];
         look_at_middle_circle(robot_position, nao_manager);
 
