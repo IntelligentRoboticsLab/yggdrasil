@@ -2,6 +2,7 @@ use std::ops::Deref;
 use std::time::Instant;
 
 use nalgebra::{Point2, Point3};
+use ndarray::Array;
 use nidhogg::types::{color, FillExt, LeftEye};
 use serde::{Deserialize, Serialize};
 
@@ -22,7 +23,6 @@ const IMAGE_INPUT_SIZE: usize = 32;
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BallClassifierConfig {
     pub confidence_threshold: f32,
-    pub patch_scale: f32,
     pub time_budget: usize,
 }
 
@@ -83,12 +83,12 @@ fn detect_balls(
         return Ok(());
     }
 
-    let config = &config.classifier;
+    let classifier = &config.classifier;
     let start = Instant::now();
 
     let mut classified_balls = Vec::new();
     'outer: for proposal in proposals.proposals.iter() {
-        let patch_size = (config.patch_scale / proposal.distance_to_ball) as usize;
+        let patch_size = proposal.scale as usize;
         let patch = proposals.image.get_grayscale_patch(
             (proposal.position.x, proposal.position.y),
             patch_size,
@@ -102,7 +102,8 @@ fn detect_balls(
         );
         if let Ok(()) = model.try_start_infer(&patch) {
             loop {
-                if start.elapsed().as_micros() > config.time_budget as u128 {
+                if start.elapsed().as_micros() > classifier.time_budget as u128 {
+                    tracing::info!("time's up! ringding ding ding!!! 🚨🚨🚨🚨");
                     if let Err(e) = model.try_cancel() {
                         tracing::error!("Failed to cancel  ball classifier inference: {:?}", e);
                     }
@@ -112,11 +113,32 @@ fn detect_balls(
 
                 if let Ok(Some(result)) = model.poll::<Vec<f32>>().transpose() {
                     let confidence = result[0];
-                    if confidence > config.confidence_threshold {
+                    tracing::info!(
+                        "confidence for ball @ {:?}: {:.2}",
+                        proposal.position,
+                        confidence
+                    );
+
+                    if confidence > 0.4 {
+                        ctx.log_patch(
+                            "/patch/",
+                            balls.image.cycle(),
+                            Array::from_shape_vec((32, 32, 1), patch).unwrap(),
+                        )?;
+                    }
+
+                    tracing::info!(
+                        "confidence: {} >= {}",
+                        confidence,
+                        classifier.confidence_threshold
+                    );
+                    if confidence >= classifier.confidence_threshold {
+                        tracing::info!("ball with conf");
                         if let Ok(robot_to_ball) = camera_matrices
                             .top
                             .pixel_to_ground(proposal.position.cast(), 0.0)
                         {
+                            tracing::info!("BALL! with pos");
                             classified_balls.push(Ball {
                                 position_image: proposal.position.cast(),
                                 robot_to_ball,
@@ -143,8 +165,8 @@ fn detect_balls(
 
     ctx.log_boxes_2d(
         "/top_camera/image/detected_balls",
-        ball_positions,
-        vec![(32.0, 32.0); amount],
+        &ball_positions,
+        &vec![(32.0, 32.0); amount],
         &balls.image,
         color::u8::RED,
     )?;

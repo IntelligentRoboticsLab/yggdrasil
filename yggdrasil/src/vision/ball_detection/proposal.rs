@@ -56,6 +56,7 @@ pub struct BallProposals {
 #[derive(Default, Clone)]
 pub struct BallProposal {
     pub position: Point2<usize>,
+    pub scale: f32,
     pub distance_to_ball: f32,
 }
 
@@ -316,6 +317,7 @@ fn test_proposals(
         })
         .map(|(center, _, magnitude)| BallProposal {
             position: center,
+            scale: config.bounding_box_scale / magnitude,
             distance_to_ball: magnitude,
         })
         .collect::<Vec<_>>()
@@ -380,8 +382,8 @@ fn log_proposals(
 
     dbg.log_boxes_2d(
         "top_camera/image/ball_boxes",
-        points.clone(),
-        sizes,
+        &points.clone(),
+        &sizes,
         &ball_proposals.image,
         color::u8::SILVER,
     )?;

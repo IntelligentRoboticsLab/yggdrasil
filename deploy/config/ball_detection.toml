@@ -1,9 +1,9 @@
 [proposal]
 # Maximum gap between black pixels to be considered a new segment
 white_ratio = 0.2
-# Maximum distance between two clusters to be considered the same cluster
-bounding_box_scale = 64.0
 # Height/width of the bounding box around the ball
+bounding_box_scale = 64.0
+# Maximum distance between two clusters to be considered the same cluster
 cluster_max_distance = 64.0
 # Ratio of white pixels in the local area around a point to be considered a ball
 black_segment_max_gap = 3
@@ -14,10 +14,6 @@ center_offset = 16.0
 
 [classifier]
 # The threshold for the classifier to consider a proposal a ball
-confidence_threshold = 0.8
-# The size of a patch at 1.0 meters distance in pixels. 
-# This value is divided by the distance to get the size of the patch at that distance, and the patch is then
-# resized to 32x32 pixels before being fed into the neural network.
-patch_scale = 140
+confidence_threshold = 0.7
 # The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
 time_budget = 3000

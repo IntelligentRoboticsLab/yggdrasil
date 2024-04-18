@@ -141,18 +141,20 @@ impl DebugContext {
     pub fn log_boxes_2d(
         &self,
         path: impl AsRef<str>,
-        centers: impl IntoIterator<Item = (f32, f32)>,
-        sizes: impl IntoIterator<Item = (f32, f32)>,
+        centers: &[(f32, f32)],
+        sizes: &[(f32, f32)],
         image: &Image,
         color: RgbU8,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
             self.set_cycle(&image.cycle());
+
             self.rec
                 .log(
                     path.as_ref(),
-                    &rerun::Boxes2D::from_centers_and_sizes(centers, sizes),
+                    &rerun::Boxes2D::from_centers_and_sizes(centers, sizes)
+                        .with_colors(vec![(Into::<[u8; 3]>::into(color)); centers.len()]),
                 )
                 .into_diagnostic()?;
             self.clear_cycle();
