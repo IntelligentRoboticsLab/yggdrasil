@@ -1,12 +1,10 @@
 use crate::{
     config::layout::{LayoutConfig, RobotPosition},
-    debug::DebugContext,
     prelude::*,
     walk::engine::{Step, WalkingEngine},
 };
 
 use nalgebra::{Isometry, Isometry2, Point2, Translation2, Unit, UnitComplex, Vector2};
-use nidhogg::types::color;
 use num::Complex;
 
 use super::{
@@ -136,7 +134,6 @@ fn walk_planner_system(
     odometry: &mut Odometry,
     step_planner: &StepPlanner,
     walking_engine: &mut WalkingEngine,
-    dbg: &DebugContext,
     layout_config: &LayoutConfig,
 ) -> Result<()> {
     let Some(target_position) = step_planner.target_position else {
@@ -151,14 +148,6 @@ fn walk_planner_system(
     ) else {
         return Ok(());
     };
-
-    // let log_path_points: Vec<_> = path.iter().map(|point| (point.x, point.y, 0.)).collect();
-    // dbg.log_points_3d_with_color_and_radius(
-    //     "/odometry/target",
-    //     &log_path_points,
-    //     color::u8::ORANGE,
-    //     0.04,
-    // )?;
 
     // TODO: get player number from `match.toml`.
     let player_num = 5;
