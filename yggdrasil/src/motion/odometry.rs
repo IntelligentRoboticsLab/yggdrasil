@@ -3,6 +3,7 @@ use nidhogg::types::color;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    config::layout::{LayoutConfig, RobotPosition},
     debug::DebugContext,
     filter::orientation::RobotOrientation,
     kinematics::RobotKinematics,
@@ -76,16 +77,38 @@ pub fn update_odometry(
     Ok(())
 }
 
+fn isometry_to_absolute(
+    mut isometry: Isometry2<f32>,
+    robot_position: &RobotPosition,
+) -> Isometry2<f32> {
+    isometry.append_translation_mut(&Translation2::new(
+        robot_position.x as f32 / 1000.,
+        robot_position.y as f32 / 1000.,
+    ));
+
+    isometry.append_rotation_wrt_center_mut(&UnitComplex::from_angle(
+        robot_position.rotation.to_radians(),
+    ));
+
+    isometry
+}
+
 #[system]
-pub fn log_odometry(odometry: &Odometry, dbg: &DebugContext) -> Result<()> {
-    let rotated = odometry
-        .accumulated
-        .rotation
-        .transform_point(&Point2::new(0.1, 0.0));
-    let origin = odometry
-        .accumulated
-        .translation
-        .transform_point(&Point2::origin());
+pub fn log_odometry(
+    odometry: &Odometry,
+    layout_config: &LayoutConfig,
+    dbg: &DebugContext,
+) -> Result<()> {
+    // TODO:
+    let player_num = 5;
+    let isometry = isometry_to_absolute(
+        odometry.accumulated,
+        layout_config.initial_positions.player(player_num),
+    );
+
+    let rotated = isometry.rotation.transform_point(&Point2::new(0.1, 0.0));
+    let origin = isometry.translation.transform_point(&Point2::origin());
+
     dbg.log_arrows3d_with_color(
         "/odometry/pose",
         &[(rotated.x, rotated.y, 0.0)],
