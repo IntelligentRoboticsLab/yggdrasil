@@ -3,10 +3,14 @@ use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    config::layout::{LayoutConfig, RobotPosition},
+    config::{
+        layout::{LayoutConfig, RobotPosition},
+        showtime::ShowtimeConfig,
+    },
     debug::DebugContext,
     filter::orientation::RobotOrientation,
     kinematics::RobotKinematics,
+    nao::RobotInfo,
     prelude::*,
     walk::{engine::Side, SwingFoot},
 };

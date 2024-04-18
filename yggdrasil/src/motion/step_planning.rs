@@ -1,5 +1,9 @@
 use crate::{
-    config::layout::{LayoutConfig, RobotPosition},
+    config::{
+        layout::{LayoutConfig, RobotPosition},
+        showtime::ShowtimeConfig,
+    },
+    nao::RobotInfo,
     prelude::*,
     walk::engine::{Step, WalkingEngine},
 };
@@ -135,6 +139,8 @@ fn walk_planner_system(
     step_planner: &StepPlanner,
     walking_engine: &mut WalkingEngine,
     layout_config: &LayoutConfig,
+    showtime_config: &ShowtimeConfig,
+    robot_info: &RobotInfo,
 ) -> Result<()> {
     let Some(target_position) = step_planner.target_position else {
         return Ok(());
@@ -149,8 +155,7 @@ fn walk_planner_system(
         return Ok(());
     };
 
-    // TODO: get player number from `match.toml`.
-    let player_num = 5;
+    let player_num = showtime_config.robot_numbers_map[&robot_info.robot_id.to_string()];
     let isometry = isometry_to_absolute(
         odometry.accumulated,
         layout_config.initial_positions.player(player_num),
