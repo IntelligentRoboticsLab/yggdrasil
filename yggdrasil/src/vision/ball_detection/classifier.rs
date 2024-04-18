@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::time::Instant;
 
-use nalgebra::{Point2, Point3};
+use nalgebra::{Point2, Point3, Vector2};
 use ndarray::Array;
 use nidhogg::types::{color, FillExt, LeftEye};
 use serde::{Deserialize, Serialize};
@@ -59,7 +59,7 @@ impl MlModel for BallClassifierModel {
 #[derive(Debug, Clone, Default)]
 pub struct Ball {
     pub position_image: Point2<f32>,
-    pub robot_to_ball: Point3<f32>,
+    pub robot_to_ball: Vector2<f32>,
     pub distance: f32,
 }
 
@@ -144,7 +144,7 @@ fn detect_balls(
                             tracing::info!("BALL! with pos");
                             classified_balls.push(Ball {
                                 position_image: proposal.position.cast(),
-                                robot_to_ball,
+                                robot_to_ball: robot_to_ball.xy().coords,
                                 distance: proposal.distance_to_ball,
                             });
                         }
