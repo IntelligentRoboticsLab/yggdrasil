@@ -152,15 +152,15 @@ fn walk_planner_system(
         return Ok(());
     };
 
-    let log_path_points: Vec<_> = path.iter().map(|point| (point.x, point.y, 0.)).collect();
-    dbg.log_points_3d_with_color_and_radius(
-        "/odometry/target",
-        &log_path_points,
-        color::u8::ORANGE,
-        0.04,
-    )?;
+    // let log_path_points: Vec<_> = path.iter().map(|point| (point.x, point.y, 0.)).collect();
+    // dbg.log_points_3d_with_color_and_radius(
+    //     "/odometry/target",
+    //     &log_path_points,
+    //     color::u8::ORANGE,
+    //     0.04,
+    // )?;
 
-    // TODO:
+    // TODO: get player number from `match.toml`.
     let player_num = 5;
     let isometry = isometry_to_absolute(
         odometry.accumulated,
