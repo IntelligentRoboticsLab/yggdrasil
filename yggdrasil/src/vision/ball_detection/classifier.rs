@@ -11,7 +11,7 @@ use crate::camera::{Image, TopImage};
 use crate::debug::DebugContext;
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority::Medium;
-use crate::{config, prelude::*};
+use crate::prelude::*;
 
 use crate::ml::{MlModel, MlTask, MlTaskResource};
 
