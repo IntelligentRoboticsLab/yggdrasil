@@ -2,10 +2,10 @@ use clap::Parser;
 
 pub mod config;
 pub mod deploy;
+pub mod download;
+pub mod record;
 pub mod run;
 pub mod scan;
-pub mod record;
-pub mod download;
 pub mod update;
 
 /// `sindri` - The build tool for yggdrasil

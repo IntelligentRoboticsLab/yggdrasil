@@ -1,20 +1,18 @@
 use crate::{
     cargo::{self, Profile},
+    cli::deploy::deploy_to_robot,
     config::Config,
-    cli::deploy::deploy_to_robot
 };
 use clap::Parser;
-use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
-use std::time::Duration;
-use std::fs;
 use colored::Colorize;
+use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
 use miette::{miette, Context, IntoDiagnostic};
-
+use std::fs;
+use std::time::Duration;
 
 const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
 const RELEASE_PATH: &str = "./target/x86_64-unknown-linux-gnu/release/skadi";
 const DEPLOY_PATH: &str = "./deploy/skadi";
-
 
 #[derive(Clone, Debug, Parser)]
 pub struct ConfigOptsRecord {
@@ -41,7 +39,6 @@ impl ConfigOptsRecord {
         }
     }
 }
-
 
 /// Utility for recording motions
 #[derive(Parser)]
@@ -76,7 +73,14 @@ impl Record {
         pb.set_prefix("Compiling");
 
         // Build yggdrasil with cargo
-        cargo::build("skadi", Profile::Release, Some(ROBOT_TARGET), &Vec::new(), None).await?;
+        cargo::build(
+            "skadi",
+            Profile::Release,
+            Some(ROBOT_TARGET),
+            &Vec::new(),
+            None,
+        )
+        .await?;
 
         pb.println(format!(
             "{} {} {}{}, {}{}{}",

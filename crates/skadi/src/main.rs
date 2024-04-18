@@ -1,11 +1,14 @@
 pub mod motion_capture;
 
-use yggdrasil::{
-    config::ConfigModule, filter::FilterModule, 
-    // leds::LedsModule,
-    motion::MotionModule, nao::NaoModule, prelude::*
-};
 use crate::motion_capture::Sk;
+use yggdrasil::{
+    config::ConfigModule,
+    filter::FilterModule,
+    // leds::LedsModule,
+    motion::MotionModule,
+    nao::NaoModule,
+    prelude::*,
+};
 
 fn main() -> Result<()> {
     miette::set_panic_hook();
