@@ -566,7 +566,7 @@ fn init_rerun(storage: &mut Storage) -> Result<()> {
 #[system]
 fn set_debug_cycle(ctx: &mut DebugContext, cycle: &Cycle, cycle_time: &CycleTime) -> Result<()> {
     ctx.set_cycle(cycle);
-    ctx.log_scalar_f32("cycle_time", cycle_time.duration.as_millis() as f32)?;
     ctx.current_cycle = *cycle;
+    ctx.log_scalar_f32("cycle_time", cycle_time.duration.as_millis() as f32)?;
     Ok(())
 }
