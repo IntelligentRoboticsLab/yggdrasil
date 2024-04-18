@@ -114,7 +114,7 @@ fn detect_balls(
             loop {
                 if start.elapsed().as_micros() > classifier.time_budget as u128 {
                     if let Err(e) = model.try_cancel() {
-                        tracing::error!("Failed to cancel  ball classifier inference: {:?}", e);
+                        tracing::error!("Failed to cancel ball classifier inference: {:?}", e);
                     }
 
                     break 'outer;
