@@ -85,28 +85,10 @@ pub fn isometry_to_absolute(
     isometry: Isometry2<f32>,
     robot_position: &RobotPosition,
 ) -> Isometry2<f32> {
-    // isometry.append_rotation_wrt_center_mut(&UnitComplex::from_angle(
-    //     robot_position.rotation.to_radians(),
-    // ));
-
-    // isometry.append_translation_mut(&Translation2::new(
-    //     robot_position.x as f32 / 1000.,
-    //     robot_position.y as f32 / 1000.,
-    // ));
-    //
-    // isometry
-
     Isometry2::new(
         Vector2::new(robot_position.x, robot_position.y),
         robot_position.rotation,
     ) * isometry
-
-    // let transformed_vec = isometry.rotation.transform_vector(&Vector2::new(
-    //     robot_position.x as f32 / 1000.,
-    //     robot_position.y as f32 / 1000.,
-    // ));
-    //
-    // Isometry2::new(transformed_vec, isometry.rotation);
 }
 
 #[system]

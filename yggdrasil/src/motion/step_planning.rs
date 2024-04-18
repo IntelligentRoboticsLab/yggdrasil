@@ -1,22 +1,14 @@
 use crate::{
-    config::{
-        layout::{LayoutConfig, RobotPosition},
-        showtime::ShowtimeConfig,
-    },
+    config::{layout::LayoutConfig, showtime::ShowtimeConfig},
     debug::DebugContext,
     nao::RobotInfo,
     prelude::*,
-    walk::{
-        self,
-        engine::{Step, WalkingEngine},
-    },
+    walk::engine::{Step, WalkingEngine},
 };
 
 use crate::motion::odometry;
 
-use nalgebra::{
-    AbstractRotation, Isometry, Isometry2, Point2, Translation2, Unit, UnitComplex, Vector2,
-};
+use nalgebra::{Isometry, Point2, Unit, Vector2};
 use nidhogg::types::color;
 use num::Complex;
 
@@ -126,29 +118,6 @@ fn calc_distance(
     distance(&robot_point, target_point)
 }
 
-fn isometry_to_absolute(
-    isometry: Isometry2<f32>,
-    robot_position: &RobotPosition,
-) -> Isometry2<f32> {
-    let transformed_vec = isometry
-        .rotation
-        .transform_vector(&Vector2::new(robot_position.x, robot_position.y));
-    // isometry.append_rotation_wrt_center_mut(&UnitComplex::from_angle(
-    //     robot_position.rotation.to_radians(),
-    // ));
-    //
-    // isometry.append_translation_mut(&Translation2::new(
-    //     robot_position.x,
-    //     robot_position.y,
-    // ));
-    //
-    // isometry
-    Isometry2::new(
-        Vector2::new(robot_position.x, robot_position.y),
-        robot_position.rotation,
-    ) * isometry
-}
-
 #[system]
 fn walk_planner_system(
     odometry: &mut Odometry,
@@ -175,6 +144,10 @@ fn walk_planner_system(
     ) else {
         return Ok(());
     };
+    // Not sure if this is possible, needs more testing, but it will prevent a panic later on.
+    if path.len() == 1 {
+        return Ok(());
+    }
 
     let player_num = showtime_config.robot_numbers_map[&robot_info.robot_id.to_string()];
     let isometry = odometry::isometry_to_absolute(
@@ -187,14 +160,14 @@ fn walk_planner_system(
     let angle = calc_angle(&isometry, &first_target_position);
     let distance = calc_distance(&isometry, &first_target_position);
 
-    ctx.log_arrows3d_with_color(
+    ctx.log_points_3d_with_color_and_radius(
         "/odometry/target_position",
-        &[(0.2, 0.0, 0.0)],
-        &[(first_target_position.x, first_target_position.y, 0.0)],
+        &[(target_position.x, target_position.y, 0.0)],
         color::u8::BLUE,
+        0.04,
     )?;
 
-    if distance < 0.1 {
+    if distance < 0.1 && path.len() == 2 {
         walking_engine.request_stand();
     } else if angle > 0.3 {
         walking_engine.request_walk(Step {
