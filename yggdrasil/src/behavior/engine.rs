@@ -1,7 +1,7 @@
 //! The engine managing behavior execution and role state.
 use crate::{
     behavior::{
-        behaviors::{Observe, Stand, StandingLookAt, StartUp, Unstiff, Walk, WalkTo},
+        behaviors::{Observe, Stand, StandingLookAt, StartUp, Unstiff, WalkTo},
         roles::{Attacker, Set},
         BehaviorConfig,
     },
@@ -16,7 +16,7 @@ use crate::{
     },
     game_controller::GameControllerConfig,
     localization::RobotPose,
-    motion::{odometry::Odometry, step_planning::StepPlanner},
+    motion::{odometry::Odometry, step_planner::StepPlanner},
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
     primary_state::PrimaryState,
@@ -120,7 +120,6 @@ pub enum BehaviorKind {
     StandingLookAt(StandingLookAt),
     Observe(Observe),
     Stand(Stand),
-    Walk(Walk),
     WalkTo(WalkTo),
     // Add new behaviors here!
 }

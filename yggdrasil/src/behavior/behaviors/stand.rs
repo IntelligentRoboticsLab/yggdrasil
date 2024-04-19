@@ -3,7 +3,6 @@ use nidhogg::types::{FillExt, HeadJoints};
 use crate::{
     behavior::engine::{Behavior, Context},
     motion::step_planner::StepPlanner,
-    motion::step_planning::StepPlanner,
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
 };

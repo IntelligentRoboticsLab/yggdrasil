@@ -1,14 +1,13 @@
-use nalgebra::{ComplexField, Isometry2, Point2, Translation2, UnitComplex};
+use nalgebra::{Isometry2, Point2, Translation2, UnitComplex};
 
 use crate::{
     behavior::{
-        behaviors::{Observe, Walk, WalkTo},
+        behaviors::{Observe, WalkTo},
         engine::{BehaviorKind, Context, Role},
     },
+    motion::odometry::isometry_to_absolute,
     motion::step_planner::StepPlanner,
-    config::layout::WorldPosition,
-    motion::{odometry::isometry_to_absolute, step_planning::StepPlanner},
-    walk::engine::{Step, WalkingEngine},
+    walk::engine::WalkingEngine,
 };
 
 pub struct Attacker;

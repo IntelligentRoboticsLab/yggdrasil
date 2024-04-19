@@ -2,7 +2,7 @@ use nalgebra::Point2;
 
 use crate::{
     behavior::engine::{Behavior, Context},
-    motion::step_planning::StepPlanner,
+    motion::step_planner::StepPlanner,
     nao::manager::NaoManager,
     walk::engine::WalkingEngine,
 };
@@ -22,6 +22,6 @@ impl Behavior for WalkTo {
     ) {
         // x is infront, y is to the left
 
-        step_planner.set_target(self.target)
+        step_planner.set_absolute_target(self.target)
     }
 }
