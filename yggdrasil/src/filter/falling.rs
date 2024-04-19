@@ -70,7 +70,7 @@ fn is_falling_forward(imu_values: &IMUValues) -> bool {
 /// Is the robot falling backwards based on its angle and gyroscope.
 fn is_falling_backward(imu_values: &IMUValues) -> bool {
     (imu_values.angles.y < MIN_FALL_ANGLE_BACKWARDS)
-        && imu_values.gyroscope.y < MIN_FALL_VELOCITY_BACKWARDS
+        && imu_values.gyroscope.y < -MIN_FALL_VELOCITY_BACKWARDS
 }
 
 /// Is the robot falling left based on its angle and gyroscope.

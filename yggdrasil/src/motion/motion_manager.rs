@@ -181,7 +181,6 @@ impl MotionManager {
 pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
     let mut motion_manager = MotionManager::new();
     // Add new motions here!
-    motion_manager.add_motion(MotionType::Test, "./assets/motions/TestDance.toml")?;
     motion_manager.add_motion(MotionType::StandupBack, "./assets/motions/StandupBack.toml")?;
     motion_manager.add_motion(
         MotionType::StandupStomach,
