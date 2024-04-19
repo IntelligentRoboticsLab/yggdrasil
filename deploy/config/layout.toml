@@ -89,9 +89,9 @@ rotation = -90.0
 # Initial position of player three.
 [[initial_positions]]
 player_number = 3
-x = -2
-y = -3
-rotation = 90.0
+x = 2
+y = 3
+rotation = -90.0
 
 # Initial position of player four.
 [[initial_positions]]
