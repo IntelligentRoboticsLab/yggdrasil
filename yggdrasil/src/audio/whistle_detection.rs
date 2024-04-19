@@ -76,30 +76,32 @@ fn detect_whistle(
         // Break up the buffer into windows and average them.
         for i in 0..WINDOWS {
             // Load window into FFT buffer.
-            for j in 0..FFT_SIZE {
+            for (j, complex_sample) in complex_buffer.iter_mut().enumerate() {
                 let mut sample = 0.0;
 
                 // Average over all the channels.
                 for k in BUFFER_INDICES {
-                    sample += audio_input.buffer[k][HOP_SIZE*i+j];
+                    sample += audio_input.buffer[k][HOP_SIZE * i + j];
                 }
 
                 sample /= BUFFER_INDICES.len() as f32;
-                complex_buffer[j] = Complex::new(sample, 0.0);
+                *complex_sample = Complex::new(sample, 0.0);
             }
 
             // Compute FFT.
             state.fft.process(&mut complex_buffer);
 
             // Take the amplitude and ignore frequencies above the Nyquist limit.
-            for j in 0..FFT_NYQUIST_SIZE {
-                real_buffer[j] += complex_buffer[j].norm();
+            for (real_sample, complex_sample) in
+                real_buffer.iter_mut().zip(complex_buffer.iter_mut())
+            {
+                *real_sample += complex_sample.norm();
             }
         }
 
         // Compute the average over all windows from the sum.
-        for i in 0..FFT_NYQUIST_SIZE {
-            real_buffer[i] /= WINDOWS as f32;
+        for real_sample in real_buffer.iter_mut() {
+            *real_sample /= WINDOWS as f32;
         }
 
         // Run the model.
