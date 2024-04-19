@@ -113,7 +113,7 @@ fn transmit_system(
         pose: [
             origin.x * 1000.0,
             origin.y * 1000.0,
-            odometry.accumulated.rotation.angle(),
+            odometry.accumulated.rotation.angle() - std::f32::consts::FRAC_PI_2,
         ],
         ball_age: -1.0,
         ball: [0f32; 2],

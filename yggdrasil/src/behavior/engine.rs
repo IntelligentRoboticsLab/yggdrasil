@@ -16,12 +16,11 @@ use crate::{
     },
     game_controller::GameControllerConfig,
     localization::RobotPose,
-    motion::step_planner::StepPlanner,
-    motion::odometry::Odometry,
-    motion::step_planning::StepPlanner,
+    motion::{odometry::Odometry, step_planning::StepPlanner},
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
     primary_state::PrimaryState,
+    vision::ball_detection::classifier::Balls,
     walk::engine::WalkingEngine,
 };
 use bifrost::communication::GameControllerMessage;
@@ -39,7 +38,7 @@ pub struct Context<'a> {
     /// Primary state of the robot
     pub primary_state: &'a PrimaryState,
     /// Ball position
-    pub ball_position: &'a Point2<f32>,
+    pub ball_position: &'a Balls,
     /// Robot position
     pub robot_position: &'a Point2<f32>,
     /// State of the headbuttons of a robot
@@ -62,6 +61,7 @@ pub struct Context<'a> {
     pub game_controller_config: &'a GameControllerConfig,
     /// Contains the pose of the robot.
     pub pose: &'a RobotPose,
+    pub odometry: &'a Odometry,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -311,11 +311,12 @@ pub fn step(
     game_controller_config: &GameControllerConfig,
     step_planner: &mut StepPlanner,
     robot_pose: &RobotPose,
+    balls: &Balls,
 ) -> Result<()> {
     let context = Context {
         robot_info,
         primary_state,
-        ball_position: &Point2::new(10.0, 0.0),
+        ball_position: balls,
         robot_position: &odometry.accumulated.translation.vector.xy().into(),
         head_buttons,
         chest_button,
@@ -327,6 +328,7 @@ pub fn step(
         game_controller_message: game_controller_message.as_ref(),
         game_controller_config,
         pose: robot_pose,
+        odometry,
     };
 
     engine.step(context, nao_manager, walking_engine, step_planner);

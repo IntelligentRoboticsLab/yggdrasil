@@ -1,13 +1,13 @@
-use nalgebra::{ComplexField, Point2};
+use nalgebra::{ComplexField, Isometry2, Point2, Translation2, UnitComplex};
 
 use crate::{
     behavior::{
-        behaviors::{Walk, WalkTo},
+        behaviors::{Observe, Walk, WalkTo},
         engine::{BehaviorKind, Context, Role},
     },
     motion::step_planner::StepPlanner,
     config::layout::WorldPosition,
-    motion::step_planning::StepPlanner,
+    motion::{odometry::isometry_to_absolute, step_planning::StepPlanner},
     walk::engine::{Step, WalkingEngine},
 };
 
@@ -17,18 +17,35 @@ impl Role for Attacker {
     fn transition_behavior(
         &mut self,
         context: Context,
-        _current_behavior: &mut BehaviorKind,
+        current_behavior: &mut BehaviorKind,
         _walking_engine: &mut WalkingEngine,
-        _step_planner: &mut StepPlanner,
+        step_planner: &mut StepPlanner,
     ) -> BehaviorKind {
-        let ball_position = *context.ball_position;
-        let robot_position = context.robot_position;
-        let goal_position = WorldPosition::new(40.0, 0.0);
+        if context.ball_position.balls.len() >= 1 {
+            let ball_position = context.ball_position.balls[0].clone();
+            let robot_position = context.robot_position;
 
-        // if distance to ball is less than 1.0, kick the ball
+            let pos = context
+                .layout_config
+                .initial_positions
+                .player(context.player_config.player_number);
+            let target = isometry_to_absolute(
+                Isometry2::from_parts(
+                    Translation2::from(ball_position.robot_to_ball),
+                    UnitComplex::identity(),
+                ),
+                pos,
+            );
 
-        BehaviorKind::WalkTo(WalkTo {
-            target: ball_position,
-        })
+            return BehaviorKind::WalkTo(WalkTo {
+                target: target.translation.vector.into(),
+            });
+        }
+
+        if let BehaviorKind::Observe(obs) = current_behavior {
+            BehaviorKind::Observe(obs.clone())
+        } else {
+            BehaviorKind::Observe(Observe::default())
+        }
     }
 }
