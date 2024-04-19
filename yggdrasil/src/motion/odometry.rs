@@ -8,6 +8,7 @@ use crate::{
     filter::orientation::RobotOrientation,
     kinematics::RobotKinematics,
     prelude::*,
+    primary_state::PrimaryState,
     walk::{engine::Side, SwingFoot},
 };
 
@@ -74,8 +75,17 @@ pub fn update_odometry(
     swing_foot: &SwingFoot,
     kinematics: &RobotKinematics,
     orientation: &RobotOrientation,
+    primary_state: &PrimaryState,
 ) -> Result<()> {
-    odometry.update(odometry_config, swing_foot, kinematics, orientation);
+    match primary_state {
+        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Unstiff => {
+            odometry.accumulated = Default::default();
+        }
+        _ => {
+            odometry.update(odometry_config, swing_foot, kinematics, orientation);
+        }
+    }
+
     Ok(())
 }
 
