@@ -94,12 +94,6 @@ pub(super) fn detect_balls(
         }
 
         let patch_size = proposal.scale as usize;
-        tracing::info!(
-            "scale: {}, distance: {}, patch_size: {}",
-            proposal.scale,
-            proposal.distance_to_ball,
-            patch_size
-        );
         let patch = proposals.image.get_grayscale_patch(
             (proposal.position.x, proposal.position.y),
             patch_size,
@@ -111,13 +105,6 @@ pub(super) fn detect_balls(
             (IMAGE_INPUT_SIZE, IMAGE_INPUT_SIZE),
             patch,
         );
-
-        ctx.log_patch(
-            "/top_camera/patch",
-            balls.image.cycle(),
-            Array::from_shape_vec((32, 32, 1), patch.clone()).unwrap(),
-        )?;
-
         if let Ok(()) = model.try_start_infer(&patch) {
             loop {
                 if start.elapsed().as_micros() > classifier.time_budget as u128 {
@@ -130,7 +117,6 @@ pub(super) fn detect_balls(
 
                 if let Ok(Some(result)) = model.poll::<Vec<f32>>().transpose() {
                     let confidence = result[0];
-                    tracing::info!("confidence: {}", confidence);
                     if confidence < classifier.confidence_threshold {
                         break;
                     }
