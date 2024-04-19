@@ -38,6 +38,7 @@ impl MlModel for WhistleDetectionModel {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WhistleDetectionConfig {
+    pub gain: f32,
     pub threshold: f32,
     pub consecutive: usize,
 }
@@ -85,6 +86,7 @@ fn detect_whistle(
                 }
 
                 sample /= BUFFER_INDICES.len() as f32;
+                sample *= config.gain;
                 *complex_sample = Complex::new(sample, 0.0);
             }
 
@@ -111,12 +113,12 @@ fn detect_whistle(
     if let Some(Ok(result)) = model.poll::<Vec<f32>>() {
         if result[0] >= config.threshold {
             state.detections += 1;
+
+            if state.detections == config.consecutive {
+                tracing::info!("Whistle detected");
+            }
         } else {
             state.detections = 0;
-        }
-
-        if state.detections == config.consecutive {
-            tracing::info!("Whistle detected");
         }
     }
 
