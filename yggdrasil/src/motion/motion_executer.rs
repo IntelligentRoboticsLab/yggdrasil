@@ -258,11 +258,6 @@ fn move_to_starting_position(
 
 /// Assesses whether the required waiting time has elapsed.
 ///
-/// # Notes
-/// Currently, the waiting time is static, with the robot always waiting
-/// the full duration of the waiting time. But in the future this waiting time
-/// might be shortened due to the robot being in a stable position.
-///
 /// # Arguments
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 /// * `duration` - Intended duration of the waiting time.
