@@ -37,6 +37,7 @@ impl Module for DebugModule {
 pub struct DebugContext {
     #[cfg(feature = "rerun")]
     rec: rerun::RecordingStream,
+    current_cycle: Cycle,
 }
 
 #[allow(unused)]
@@ -55,30 +56,34 @@ impl DebugContext {
                 )
                 .into_diagnostic()?;
 
-            Ok(DebugContext { rec })
+            Ok(DebugContext {
+                rec,
+                current_cycle: Cycle(0),
+            })
         }
 
         #[cfg(not(feature = "rerun"))]
-        Ok(DebugContext {})
+        Ok(DebugContext {
+            current_cycle: Cycle(0),
+        })
     }
 
     /// Set the current cycle index for the debug viewer.
     ///
     /// This will be used to align logs with the cycle index in the debug viewer.
-    fn set_cycle(&self, cycle: &Cycle) -> Result<()> {
+    fn set_cycle(&self, cycle: &Cycle) {
         #[cfg(feature = "rerun")]
         {
             self.rec.set_time_sequence("cycle", cycle.0 as i64);
         }
-
-        Ok(())
     }
 
     /// Disable the "cycle" timeline for the current thread.
     fn clear_cycle(&self) {
         #[cfg(feature = "rerun")]
         {
-            self.rec.disable_timeline("cycle");
+            self.rec
+                .set_time_sequence("cycle", self.current_cycle.0 as i64);
         }
     }
 
@@ -141,18 +146,20 @@ impl DebugContext {
     pub fn log_boxes_2d(
         &self,
         path: impl AsRef<str>,
-        centers: impl IntoIterator<Item = (f32, f32)>,
-        sizes: impl IntoIterator<Item = (f32, f32)>,
+        centers: &[(f32, f32)],
+        sizes: &[(f32, f32)],
         image: &Image,
         color: RgbU8,
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
             self.set_cycle(&image.cycle());
+
             self.rec
                 .log(
                     path.as_ref(),
-                    &rerun::Boxes2D::from_centers_and_sizes(centers, sizes),
+                    &rerun::Boxes2D::from_centers_and_sizes(centers, sizes)
+                        .with_colors(vec![(Into::<[u8; 3]>::into(color)); centers.len()]),
                 )
                 .into_diagnostic()?;
             self.clear_cycle();
@@ -558,8 +565,9 @@ fn init_rerun(storage: &mut Storage) -> Result<()> {
 }
 
 #[system]
-fn set_debug_cycle(ctx: &DebugContext, cycle: &Cycle, cycle_time: &CycleTime) -> Result<()> {
-    ctx.set_cycle(cycle)?;
+fn set_debug_cycle(ctx: &mut DebugContext, cycle: &Cycle, cycle_time: &CycleTime) -> Result<()> {
+    ctx.set_cycle(cycle);
     ctx.log_scalar_f32("cycle_time", cycle_time.duration.as_millis() as f32)?;
+    ctx.current_cycle = *cycle;
     Ok(())
 }
