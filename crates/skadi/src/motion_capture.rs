@@ -7,7 +7,7 @@ use nidhogg::types::{
 };
 use nidhogg::{
     types::{FillExt, JointArray},
-    NaoControlMessage, NaoState,
+    NaoState,
 };
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -333,8 +333,8 @@ fn register_button_press(
                     let right_arm = RightArmJoints::fill(0.5);
 
                     let arms_set = ArmJoints {
-                        left_arm: left_arm,
-                        right_arm: right_arm,
+                        left_arm,
+                        right_arm,
                     };
 
                     nao_manager.set_arms(
@@ -347,8 +347,8 @@ fn register_button_press(
                     let right_arm = RightArmJoints::fill(0.0);
 
                     let arms_set = ArmJoints {
-                        left_arm: left_arm,
-                        right_arm: right_arm,
+                        left_arm,
+                        right_arm,
                     };
 
                     nao_manager.set_arms(
@@ -366,8 +366,8 @@ fn register_button_press(
                     let right_arm = RightArmJoints::fill(0.5);
 
                     let arms_set = ArmJoints {
-                        left_arm: left_arm,
-                        right_arm: right_arm,
+                        left_arm,
+                        right_arm,
                     };
 
                     nao_manager.set_arms(
@@ -380,8 +380,8 @@ fn register_button_press(
                     let right_arm = RightArmJoints::fill(0.0);
 
                     let arms_set = ArmJoints {
-                        left_arm: left_arm,
-                        right_arm: right_arm,
+                        left_arm,
+                        right_arm,
                     };
 
                     nao_manager.set_arms(
@@ -401,8 +401,8 @@ fn register_button_press(
                     let right_arm = RightArmJoints::fill(0.5);
 
                     let arms_set = ArmJoints {
-                        left_arm: left_arm,
-                        right_arm: right_arm,
+                        left_arm,
+                        right_arm,
                     };
 
                     nao_manager.set_arms(
@@ -415,8 +415,8 @@ fn register_button_press(
                     let right_arm = RightArmJoints::fill(0.5);
 
                     let arms_set = ArmJoints {
-                        left_arm: left_arm,
-                        right_arm: right_arm,
+                        left_arm,
+                        right_arm,
                     };
 
                     nao_manager.set_arms(
@@ -433,8 +433,8 @@ fn register_button_press(
                     let right_arm = RightArmJoints::fill(0.0);
 
                     let arms_set = ArmJoints {
-                        left_arm: left_arm,
-                        right_arm: right_arm,
+                        left_arm,
+                        right_arm,
                     };
 
                     nao_manager.set_arms(
@@ -447,8 +447,8 @@ fn register_button_press(
                     let right_arm = RightArmJoints::fill(0.0);
 
                     let arms_set = ArmJoints {
-                        left_arm: left_arm,
-                        right_arm: right_arm,
+                        left_arm,
+                        right_arm,
                     };
 
                     nao_manager.set_arms(
@@ -468,8 +468,8 @@ fn register_button_press(
                     let right_leg = RightLegJoints::fill(0.5);
 
                     let legs_set = LegJoints {
-                        left_leg: left_leg,
-                        right_leg: right_leg,
+                        left_leg,
+                        right_leg,
                     };
 
                     nao_manager.set_legs(
@@ -482,8 +482,8 @@ fn register_button_press(
                     let right_leg = RightLegJoints::fill(0.0);
 
                     let legs_set = LegJoints {
-                        left_leg: left_leg,
-                        right_leg: right_leg,
+                        left_leg,
+                        right_leg,
                     };
 
                     nao_manager.set_legs(
@@ -501,8 +501,8 @@ fn register_button_press(
                     let right_leg = RightLegJoints::fill(0.5);
 
                     let legs_set = LegJoints {
-                        left_leg: left_leg,
-                        right_leg: right_leg,
+                        left_leg,
+                        right_leg,
                     };
 
                     nao_manager.set_legs(
@@ -515,8 +515,8 @@ fn register_button_press(
                     let right_leg = RightLegJoints::fill(0.0);
 
                     let legs_set = LegJoints {
-                        left_leg: left_leg,
-                        right_leg: right_leg,
+                        left_leg,
+                        right_leg,
                     };
 
                     nao_manager.set_legs(
@@ -525,7 +525,7 @@ fn register_button_press(
                         Priority::Critical,
                     );
                 }
-                
+
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = false;
             }
         } else if motion_cap_resources.selected_group == 6 {
@@ -536,8 +536,8 @@ fn register_button_press(
                     let right_leg = RightLegJoints::fill(0.5);
 
                     let legs_set = LegJoints {
-                        left_leg: left_leg,
-                        right_leg: right_leg,
+                        left_leg,
+                        right_leg,
                     };
 
                     nao_manager.set_legs(
@@ -550,8 +550,8 @@ fn register_button_press(
                     let right_leg = RightLegJoints::fill(0.5);
 
                     let legs_set = LegJoints {
-                        left_leg: left_leg,
-                        right_leg: right_leg,
+                        left_leg,
+                        right_leg,
                     };
 
                     nao_manager.set_legs(
@@ -569,8 +569,8 @@ fn register_button_press(
                     let right_leg = RightLegJoints::fill(0.0);
 
                     let legs_set = LegJoints {
-                        left_leg: left_leg,
-                        right_leg: right_leg,
+                        left_leg,
+                        right_leg,
                     };
 
                     nao_manager.set_legs(
@@ -583,8 +583,8 @@ fn register_button_press(
                     let right_leg = RightLegJoints::fill(0.0);
 
                     let legs_set = LegJoints {
-                        left_leg: left_leg,
-                        right_leg: right_leg,
+                        left_leg,
+                        right_leg,
                     };
 
                     nao_manager.set_legs(
@@ -601,14 +601,22 @@ fn register_button_press(
                 println!("Head joints locked");
                 let head = HeadJoints::fill(0.5);
 
-                nao_manager.set_head(naostate.position.head_joints().clone(), head, Priority::Critical);
+                nao_manager.set_head(
+                    naostate.position.head_joints().clone(),
+                    head,
+                    Priority::Critical,
+                );
 
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = true;
             } else {
                 println!("Head joints unlocked");
                 let head = HeadJoints::fill(0.0);
 
-                nao_manager.set_head(naostate.position.head_joints().clone(), head, Priority::Critical);
+                nao_manager.set_head(
+                    naostate.position.head_joints().clone(),
+                    head,
+                    Priority::Critical,
+                );
 
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = false;
             }

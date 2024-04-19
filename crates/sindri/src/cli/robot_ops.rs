@@ -22,9 +22,7 @@ use crate::{
 };
 
 const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
-const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
 const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
-const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 const CONNECTION_TIMEOUT: u64 = 5;
 const LOCAL_ROBOT_ID_STR: &str = "0";
 
