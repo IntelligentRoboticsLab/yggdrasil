@@ -66,10 +66,6 @@ fn side_points(point: &Point, obstacle: &Obstacle) -> [Point; 2] {
     let point1 = to_point + point_to_obstacle + obstacle_to_side;
     let point2 = to_point + point_to_obstacle - obstacle_to_side;
 
-    // eprintln!("start:  {to_point}");
-    // eprintln!("point1: {point1}");
-    // eprintln!("point2: {point2}");
-
     [
         Point::from_obstacle(point1.x, point1.y, *obstacle),
         Point::from_obstacle(point2.x, point2.y, *obstacle),
@@ -185,15 +181,12 @@ pub fn find_path(
     let start = Point::new(start.x, start.y);
     let goal = Point::new(goal.x, goal.y);
 
-    // let time_start = std::time::Instant::now();
     let result = astar::astar(
         &start,
         |point| point.successors(obstacles, goal),
         |point| point.distance(&goal),
         |obstacle| obstacle.eq(&goal),
     );
-    // eprintln!("elapsed: {:?}", time_start.elapsed());
-    // eprintln!("result: {result:?}");
 
     result.map(|(path, cost)| {
         (
