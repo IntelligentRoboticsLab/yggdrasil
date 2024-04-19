@@ -23,6 +23,7 @@ pub struct OdometryConfig {
 #[derive(Debug, Default, Clone)]
 pub struct Odometry {
     pub accumulated: Isometry2<f32>,
+    pub offset_to_last: Isometry2<f32>,
     last_left_sole_to_right_sole: Vector2<f32>,
     last_orientation: UnitComplex<f32>,
 }
@@ -65,6 +66,7 @@ impl Odometry {
             Isometry2::from_parts(Translation2::from(scaled_offset), orientation_offset);
 
         // update the accumulated odometry
+        self.offset_to_last = odometry_offset;
         self.accumulated *= odometry_offset;
     }
 }

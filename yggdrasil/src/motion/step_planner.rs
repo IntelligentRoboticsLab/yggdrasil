@@ -122,7 +122,6 @@ fn calc_distance(
 
 #[system]
 fn walk_planner_system(
-    odometry: &mut Odometry,
     pose: &RobotPose,
     step_planner: &StepPlanner,
     walking_engine: &mut WalkingEngine,
@@ -152,7 +151,7 @@ fn walk_planner_system(
 
     let player_num = showtime_config.robot_numbers_map[&robot_info.robot_id.to_string()];
     let initial_position = layout_config.initial_positions.player(player_num);
-    let isometry = odometry::isometry_to_absolute(odometry.accumulated, initial_position);
+    let isometry = pose.inner.clone();
 
     let first_target_position = path[1];
     let turn = calc_turn(&isometry, &first_target_position);
@@ -167,10 +166,6 @@ fn walk_planner_system(
     )?;
 
     let one_meter_ahead = pose.robot_to_world(&Point2::new(1.0, 0.0));
-    let one_meter_ahead = Point2::new(
-        one_meter_ahead.x + initial_position.x,
-        one_meter_ahead.y + initial_position.y,
-    );
     ctx.log_points_3d_with_color_and_radius(
         "/odometry/one_meter_ahead",
         &[(one_meter_ahead.x, one_meter_ahead.y, 0.0)],
