@@ -42,6 +42,6 @@ impl Role for Attacker {
             });
         }
 
-        current_behavior.clone()
+        BehaviorKind::Observe(Observe::default())
     }
 }
