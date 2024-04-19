@@ -1,9 +1,0 @@
-interpolation_type = "Linear"
-exit_routine = "Standing"
-motion_order = [
-    "Standup/OnBack/ReadyToKick",
-    "Standup/OnBack/KickUp",
-    "Standup/OnBack/HalfSitToHalfCrouch",
-    "Standup/HalfCrouchToSit",
-    "Standup/ExtendLegs",
-]

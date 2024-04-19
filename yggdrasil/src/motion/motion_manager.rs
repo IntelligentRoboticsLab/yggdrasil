@@ -181,10 +181,13 @@ impl MotionManager {
 pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
     let mut motion_manager = MotionManager::new();
     // Add new motions here!
-    motion_manager.add_motion(MotionType::StandupBack, "./assets/motions/StandupBack.toml")?;
+    motion_manager.add_motion(
+        MotionType::StandupBack,
+        "./assets/motions/standup_back.toml",
+    )?;
     motion_manager.add_motion(
         MotionType::StandupStomach,
-        "./assets/motions/StandupStomach.toml",
+        "./assets/motions/standup_stomach.toml",
     )?;
     storage.add_resource(Resource::new(motion_manager))?;
 

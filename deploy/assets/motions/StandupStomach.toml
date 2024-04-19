@@ -1,9 +1,0 @@
-interpolation_type = "Linear"
-exit_routine = "Standing"
-motion_order = [
-    "Standup/OnStomach/LyingToYoga",
-    "Standup/OnStomach/YogaToSitting",
-    "Standup/OnStomach/SittingToHalfCrouch",
-    "Standup/HalfCrouchToSit",
-    "Standup/ExtendLegs",
-]
