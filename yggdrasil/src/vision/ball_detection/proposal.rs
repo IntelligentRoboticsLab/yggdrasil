@@ -3,12 +3,11 @@
 use std::{collections::HashMap, ops::Deref};
 
 use nalgebra::Point2;
-use nidhogg::types::color;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
     camera::{matrix::CameraMatrices, Image, TopImage},
-    debug::DebugContext,
     prelude::*,
     vision::{
         field_boundary::FieldBoundary,
@@ -41,7 +40,7 @@ pub struct BallProposalModule;
 
 impl Module for BallProposalModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system_chain((get_proposals.after(scan_lines_system), log_proposals))
+        app.add_system(get_proposals.after(scan_lines_system))
             .add_startup_system(init_ball_proposals)
     }
 }
@@ -50,7 +49,14 @@ impl Module for BallProposalModule {
 #[derive(Clone)]
 pub struct BallProposals {
     pub image: Image,
-    proposals: Vec<Point2<usize>>,
+    pub proposals: Vec<BallProposal>,
+}
+
+#[derive(Default, Clone)]
+pub struct BallProposal {
+    pub position: Point2<usize>,
+    pub scale: f32,
+    pub distance_to_ball: f32,
 }
 
 /// A segment of black pixels in a vertical scanline
@@ -284,7 +290,7 @@ fn test_proposals(
     grid: &ScanGrid,
     matrices: &CameraMatrices,
     config: &BallProposalConfig,
-) -> Vec<Point2<usize>> {
+) -> Vec<BallProposal> {
     proposals
         .into_iter()
         .flat_map(|center| {
@@ -308,12 +314,16 @@ fn test_proposals(
 
             local_white_ratio(range as usize, adjusted_center, grid) > config.white_ratio
         })
-        .map(|(center, _, _)| center)
+        .map(|(center, _, magnitude)| BallProposal {
+            position: center,
+            scale: config.bounding_box_scale / magnitude,
+            distance_to_ball: magnitude,
+        })
         .collect::<Vec<_>>()
 }
 
 #[system]
-fn get_proposals(
+pub(super) fn get_proposals(
     grid: &TopScanGrid,
     boundary: &FieldBoundary,
     matrices: &CameraMatrices,
@@ -341,49 +351,6 @@ fn get_proposals(
         image: grid.image().clone(),
         proposals,
     };
-
-    Ok(())
-}
-
-#[system]
-fn log_proposals(
-    dbg: &DebugContext,
-    ball_proposals: &BallProposals,
-    matrices: &CameraMatrices,
-    config: &BallProposalConfig,
-) -> Result<()> {
-    let mut points = Vec::new();
-    let mut sizes = Vec::new();
-    for proposal in &ball_proposals.proposals {
-        // project point to ground to get distance
-        // distance is used for the amount of surrounding pixels to sample
-        let Ok(coord) = matrices.top.pixel_to_ground(proposal.cast(), 0.0) else {
-            continue;
-        };
-
-        let magnitude = coord.coords.magnitude();
-
-        let size = config.bounding_box_scale / magnitude;
-
-        points.push((proposal.x as f32, proposal.y as f32));
-        sizes.push((size, size));
-    }
-
-    dbg.log_boxes_2d(
-        "top_camera/image/ball_boxes",
-        points.clone(),
-        sizes,
-        &ball_proposals.image,
-        color::u8::SILVER,
-    )?;
-
-    dbg.log_points2d_for_image_with_radius(
-        "top_camera/image/ball_spots",
-        &points,
-        ball_proposals.image.cycle(),
-        color::u8::GREEN,
-        4.0,
-    )?;
 
     Ok(())
 }
