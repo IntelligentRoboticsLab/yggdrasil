@@ -29,7 +29,7 @@ local-ip-address = "0.6.1"
 miette = "5.10.0"
 nalgebra = "0.32.5"
 ndarray = "0.15.6"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "c1528c70787fe88e2e75dff276c42fbbebf8ff96" }
+nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git"}
 num = "0.4.2"
 openvino = { git = "https://github.com/YukumoHunter/openvino-rs.git", branch = "evil-hack", features = [
     "runtime-linking",

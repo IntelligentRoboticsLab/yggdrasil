@@ -2,10 +2,11 @@
 
 use bifrost::communication::GameControllerMessage;
 use enum_dispatch::enum_dispatch;
+use nidhogg::{NaoState, NaoControlMessage};
 
 use crate::{
     behavior::{
-        behaviors::{Initial, Observe, Penalized, StartUp, Unstiff, Walk},
+        behaviors::{Initial, Observe, Penalized, StartUp, Unstiff, Walk, EnergyEfficientStand},
         roles::Attacker,
         BehaviorConfig,
     },
@@ -47,6 +48,10 @@ pub struct Context<'a> {
     pub game_controller_message: Option<&'a GameControllerMessage>,
     /// Contains the game-controller config.
     pub game_controller_config: &'a GameControllerConfig,
+    // contains the nao-state.
+    pub nao_state: &'a NaoState,
+    // contains the nao-control-message.
+    pub noa_control_message: &'a NaoControlMessage,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -103,6 +108,7 @@ pub enum BehaviorKind {
     Observe(Observe),
     Penalized(Penalized),
     Walk(Walk),
+    EnergyEfficientStand(EnergyEfficientStand),
     // Add new behaviors here!
 }
 
@@ -224,11 +230,14 @@ impl Engine {
             if walking_engine.is_sitting() {
                 self.behavior = BehaviorKind::Unstiff(Unstiff);
             }
+            if walking_engine.is_standing() {
+                self.behavior = BehaviorKind::EnergyEfficientStand(EnergyEfficientStand);
+            }
         }
 
         self.behavior = match context.primary_state {
             PrimaryState::Unstiff => BehaviorKind::Unstiff(Unstiff),
-            PrimaryState::Penalized => BehaviorKind::Penalized(Penalized),
+            PrimaryState::Penalized => BehaviorKind::EnergyEfficientStand(EnergyEfficientStand),
             PrimaryState::Initial => BehaviorKind::Initial(Initial),
             PrimaryState::Ready => BehaviorKind::Observe(Observe::default()),
             PrimaryState::Set => BehaviorKind::Initial(Initial),
@@ -259,6 +268,8 @@ pub fn step(
     walking_engine: &mut WalkingEngine,
     game_controller_message: &Option<GameControllerMessage>,
     game_controller_config: &GameControllerConfig,
+    nao_state: &NaoState,
+    noa_control_message: &NaoControlMessage,
 ) -> Result<()> {
     let context = Context {
         robot_info,
@@ -271,6 +282,8 @@ pub fn step(
         behavior_config,
         game_controller_message: game_controller_message.as_ref(),
         game_controller_config,
+        nao_state,
+        noa_control_message,
     };
 
     engine.step(context, nao_manager, walking_engine);

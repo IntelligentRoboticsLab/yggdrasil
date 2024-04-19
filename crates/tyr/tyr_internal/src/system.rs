@@ -160,6 +160,8 @@ impl_system!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
 impl_system!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
 impl_system!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
 impl_system!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
+impl_system!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
+impl_system!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
 
 pub struct FunctionSystemTypes<Input: 'static>(PhantomData<fn() -> Input>);
 
@@ -254,6 +256,8 @@ impl_into_system!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
 impl_into_system!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
 impl_into_system!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
 impl_into_system!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
+impl_into_system!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
+impl_into_system!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
 
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct TypeInfo {
