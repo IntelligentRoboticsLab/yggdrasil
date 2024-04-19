@@ -76,13 +76,9 @@ pub fn update_odometry(
     kinematics: &RobotKinematics,
     orientation: &RobotOrientation,
     primary_state: &PrimaryState,
-    behavior_engine: &Engine,
 ) -> Result<()> {
-    match (primary_state, &behavior_engine.behavior) {
-        (PrimaryState::Penalized | PrimaryState::Initial, _) => {
-            odometry.accumulated = Default::default();
-        }
-        (_, BehaviorKind::Unstiff(_)) => {
+    match primary_state {
+        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Unstiff => {
             odometry.accumulated = Default::default();
         }
         _ => {
