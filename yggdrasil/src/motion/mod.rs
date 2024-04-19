@@ -1,4 +1,4 @@
-use crate::{filter, kinematics, nao::manager::finalize, prelude::*};
+use crate::{filter, nao::manager::finalize, prelude::*};
 
 use self::odometry::Odometry;
 use miette::Result;
