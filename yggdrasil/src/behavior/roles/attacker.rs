@@ -31,7 +31,7 @@ impl Role for Attacker {
                 .player(context.player_config.player_number);
             let target = isometry_to_absolute(
                 Isometry2::from_parts(
-                    Translation2::from(-ball_position.robot_to_ball),
+                    Translation2::from(ball_position.robot_to_ball),
                     UnitComplex::identity(),
                 ),
                 pos,

@@ -204,11 +204,11 @@ fn walk_planner_system(
         });
     }
 
-    nao.set_head(
-        look_at_target(&isometry.translation.vector.into(), &first_target_position),
-        HeadJoints::fill(0.4),
-        Priority::High,
-    );
+    // nao.set_head(
+    //     look_at_target(&isometry.translation.vector.into(), &first_target_position),
+    //     HeadJoints::fill(0.4),
+    //     Priority::High,
+    // );
 
     Ok(())
 }
