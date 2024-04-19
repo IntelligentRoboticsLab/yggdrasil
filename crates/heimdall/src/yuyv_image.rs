@@ -71,6 +71,28 @@ impl YuyvImage {
         self.height
     }
 
+    #[must_use]
+    pub fn row(&self, index: usize) -> ImageView<'_> {
+        // every 4 bytes stores 2 pixels, so (width / 2) * 4 bytes in a row
+        let row_width = self.width() * 2;
+
+        let start = index * row_width;
+        let end = start + row_width;
+
+        ImageView {
+            start,
+            end,
+            image: &self,
+        }
+    }
+
+    pub fn row_iter(&self) -> RowIter<'_> {
+        RowIter {
+            image: &self,
+            current_row: 0,
+        }
+    }
+
     /// Convert this [`YuyvImage`] to an [`RgbImage`].
     ///
     /// # Errors
@@ -84,24 +106,6 @@ impl YuyvImage {
             width: self.width,
             height: self.height,
         })
-    }
-
-    /// Return a row-iterator over the image.
-    ///
-    /// This iterator iterates over the image, row by row, from left to right column, starting at the
-    /// top row.
-    #[must_use]
-    pub fn yuv_row_iter(&self) -> YuvRowIter {
-        YuvRowIter::new(self)
-    }
-
-    /// Return a column-iterator over the image.
-    ///
-    /// This iterator iterates over the image, column by column, from the top row to the bottom row, starting at the
-    /// most left column.
-    #[must_use]
-    pub fn yuv_col_iter(&self) -> YuvColIter {
-        YuvColIter::new(self)
     }
 }
 
@@ -119,298 +123,72 @@ pub struct YuvPixel {
     pub v: u8,
 }
 
-pub struct YuvRowIter<'a> {
-    yuyv_image: &'a YuyvImage,
-    current_pos: usize,
-    current_rev_pos: usize,
-}
+impl YuvPixel {
+    pub fn to_yhs2(self) -> (f32, f32, f32) {
+        let y = self.y as i32;
+        let u = self.u as i32;
+        let v = self.v as i32;
 
-/// A row-iterator over a [`YuyvImage`].
-///
-/// This iterator iterates over the image, row by row, from left to right column, starting at the
-/// top row.
-impl<'a> YuvRowIter<'a> {
-    pub(crate) fn new(yuyv_image: &'a YuyvImage) -> Self {
-        Self {
-            yuyv_image,
-            current_pos: 0,
-            current_rev_pos: yuyv_image.width * yuyv_image.height,
-        }
+        let v_normed = v - 128;
+        let u_normed = u - 128;
+
+        let h =
+            fast_math::atan2(v_normed as f32, u_normed as f32) * std::f32::consts::FRAC_1_PI * 127.
+                + 127.;
+        let s = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y as f32;
+
+        (y as f32, h, s)
     }
 }
 
-impl<'a> Iterator for YuvRowIter<'a> {
+pub struct ImageView<'a> {
+    start: usize,
+    end: usize,
+    image: &'a YuyvImage,
+}
+
+impl Iterator for ImageView<'_> {
     type Item = YuvPixel;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_pos == self.current_rev_pos {
+        if self.start >= self.end {
             return None;
         }
 
-        let offset = (self.current_pos / 2) * 4;
-        self.current_pos += 1;
+        let offset = self.start * 2;
+        self.start += 1;
 
-        let y = if self.current_pos % 2 == 1 {
-            self.yuyv_image[offset]
-        } else {
-            self.yuyv_image[offset + 2]
+        let (y, u, v) = unsafe {
+            let y = if self.start % 2 == 1 {
+                self.image.get_unchecked(offset)
+            } else {
+                self.image.get_unchecked(offset + 2)
+            };
+            let u = self.image.get_unchecked(offset + 1);
+            let v = self.image.get_unchecked(offset + 3);
+
+            (*y, *u, *v)
         };
-        let u = self.yuyv_image[offset + 1];
-        let v = self.yuyv_image[offset + 3];
 
         Some(YuvPixel { y, u, v })
     }
 }
 
-impl<'a> DoubleEndedIterator for YuvRowIter<'a> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        if self.current_pos == self.current_rev_pos {
-            return None;
-        }
-
-        self.current_rev_pos -= 1;
-        let offset = (self.current_rev_pos / 2) * 4;
-
-        let y = if self.current_rev_pos % 2 == 0 {
-            self.yuyv_image[offset]
-        } else {
-            self.yuyv_image[offset + 2]
-        };
-        let u = self.yuyv_image[offset + 1];
-        let v = self.yuyv_image[offset + 3];
-
-        Some(YuvPixel { y, u, v })
-    }
+pub struct RowIter<'a> {
+    image: &'a YuyvImage,
+    current_row: usize,
 }
 
-/// A column-iterator over a [`YuyvImage`].
-///
-/// This iterator iterates over the image, column by column, from the top row to the bottom row, starting at the
-/// most left column.
-pub struct YuvColIter<'a> {
-    yuyv_image: &'a YuyvImage,
-
-    current_pos: usize,
-    current_rev_pos: usize,
-}
-
-impl<'a> YuvColIter<'a> {
-    pub(crate) fn new(yuyv_image: &'a YuyvImage) -> Self {
-        Self {
-            yuyv_image,
-            current_pos: 0,
-            current_rev_pos: yuyv_image.width * yuyv_image.height,
-        }
-    }
-}
-
-impl<'a> Iterator for YuvColIter<'a> {
-    type Item = YuvPixel;
+impl<'a> Iterator for RowIter<'a> {
+    type Item = ImageView<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_pos == self.current_rev_pos {
-            return None;
+        if self.current_row < self.image.height() {
+            let row = self.image.row(self.current_row);
+            self.current_row += 1;
+            return Some(row);
         }
 
-        let col = self.current_pos / self.yuyv_image.height;
-        let row = self.current_pos % self.yuyv_image.height;
-
-        let offset = (row * self.yuyv_image.width + col) / 2 * 4;
-
-        self.current_pos += 1;
-
-        let y = if col % 2 == 0 {
-            self.yuyv_image[offset]
-        } else {
-            self.yuyv_image[offset + 2]
-        };
-        let u = self.yuyv_image[offset + 1];
-        let v = self.yuyv_image[offset + 3];
-
-        Some(YuvPixel { y, u, v })
-    }
-}
-
-impl<'a> DoubleEndedIterator for YuvColIter<'a> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        if self.current_pos == self.current_rev_pos {
-            return None;
-        }
-
-        self.current_rev_pos -= 1;
-
-        let col = self.current_rev_pos / self.yuyv_image.height;
-        let row = self.current_rev_pos % self.yuyv_image.height;
-
-        let offset = (row * self.yuyv_image.width + col) / 2 * 4;
-
-        let y = if col % 2 == 0 {
-            self.yuyv_image[offset]
-        } else {
-            self.yuyv_image[offset + 2]
-        };
-        let u = self.yuyv_image[offset + 1];
-        let v = self.yuyv_image[offset + 3];
-
-        Some(YuvPixel { y, u, v })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::CameraDevice;
-
-    use super::super::{Camera, Result};
-
-    const CAMERA_PATH: &str = "/dev/video0";
-    const CAMERA_WIDTH: u32 = 1280;
-    const CAMERA_HEIGHT: u32 = 960;
-    const NUM_BUFFERS: u32 = 1;
-
-    #[test]
-    #[ignore]
-    fn yuv_row_iter_test() -> Result<()> {
-        let camera_device = CameraDevice::new(CAMERA_PATH)?;
-        let mut camera = Camera::new(camera_device, CAMERA_WIDTH, CAMERA_HEIGHT, NUM_BUFFERS)?;
-        let image = camera.loop_try_get_yuyv_image()?;
-
-        let mut num: usize = 0;
-        let mut image_iter = image.yuv_row_iter();
-
-        image.iter().as_slice().chunks_exact(4).for_each(|yuyv| {
-            num += 1;
-
-            let y1: u8 = yuyv[0];
-            let u: u8 = yuyv[1];
-            let y2: u8 = yuyv[2];
-            let v: u8 = yuyv[3];
-
-            let yuv_pixel = image_iter.next().unwrap();
-            assert_eq!(y1, yuv_pixel.y);
-            assert_eq!(u, yuv_pixel.u);
-            assert_eq!(v, yuv_pixel.v);
-
-            let yuv_pixel = image_iter.next().unwrap();
-            assert_eq!(y2, yuv_pixel.y);
-            assert_eq!(u, yuv_pixel.u);
-            assert_eq!(v, yuv_pixel.v);
-        });
-        assert!(image_iter.next().is_none());
-
-        Ok(())
-    }
-
-    #[test]
-    #[ignore]
-    fn yuv_rev_row_iter_test() -> Result<()> {
-        let camera_device = CameraDevice::new(CAMERA_PATH)?;
-        let mut camera = Camera::new(camera_device, CAMERA_WIDTH, CAMERA_HEIGHT, NUM_BUFFERS)?;
-        let image = camera.loop_try_get_yuyv_image()?;
-
-        let mut image_iter = image.yuv_row_iter().rev();
-        for row in (0..image.height()).rev() {
-            for col in (0..image.width()).rev() {
-                let offset = ((row * image.width() + col) / 2) * 4;
-
-                let (y, u, v) = if col % 2 == 0 {
-                    (
-                        (&*image)[offset],
-                        (&*image)[offset + 1],
-                        (&*image)[offset + 3],
-                    )
-                } else {
-                    (
-                        (&*image)[offset + 2],
-                        (&*image)[offset + 1],
-                        (&*image)[offset + 3],
-                    )
-                };
-
-                let yuv_pixel = image_iter.next().unwrap();
-
-                assert_eq!(y, yuv_pixel.y);
-                assert_eq!(u, yuv_pixel.u);
-                assert_eq!(v, yuv_pixel.v);
-            }
-        }
-        assert!(image_iter.next().is_none());
-
-        Ok(())
-    }
-
-    #[test]
-    #[ignore]
-    fn yuv_col_iter_test() -> Result<()> {
-        let camera_device = CameraDevice::new(CAMERA_PATH)?;
-        let mut camera = Camera::new(camera_device, CAMERA_WIDTH, CAMERA_HEIGHT, NUM_BUFFERS)?;
-        let image = camera.loop_try_get_yuyv_image()?;
-
-        let mut image_iter = image.yuv_col_iter();
-        for col in 0..image.width() {
-            for row in 0..image.height() {
-                let offset = ((row * image.width() + col) / 2) * 4;
-
-                let (y, u, v) = if col % 2 == 0 {
-                    (
-                        (&*image)[offset],
-                        (&*image)[offset + 1],
-                        (&*image)[offset + 3],
-                    )
-                } else {
-                    (
-                        (&*image)[offset + 2],
-                        (&*image)[offset + 1],
-                        (&*image)[offset + 3],
-                    )
-                };
-
-                let yuv_pixel = image_iter.next().unwrap();
-
-                assert_eq!(y, yuv_pixel.y);
-                assert_eq!(u, yuv_pixel.u);
-                assert_eq!(v, yuv_pixel.v);
-            }
-        }
-        assert!(image_iter.next().is_none());
-
-        Ok(())
-    }
-
-    #[test]
-    #[ignore]
-    fn yuv_rev_col_iter_test() -> Result<()> {
-        let camera_device = CameraDevice::new(CAMERA_PATH)?;
-        let mut camera = Camera::new(camera_device, CAMERA_WIDTH, CAMERA_HEIGHT, NUM_BUFFERS)?;
-        let image = camera.loop_try_get_yuyv_image()?;
-
-        let mut image_iter = image.yuv_col_iter().rev();
-        for col in (0..image.width()).rev() {
-            for row in (0..image.height()).rev() {
-                let offset = ((row * image.width() + col) / 2) * 4;
-
-                let (y, u, v) = if col % 2 == 0 {
-                    (
-                        (&*image)[offset],
-                        (&*image)[offset + 1],
-                        (&*image)[offset + 3],
-                    )
-                } else {
-                    (
-                        (&*image)[offset + 2],
-                        (&*image)[offset + 1],
-                        (&*image)[offset + 3],
-                    )
-                };
-
-                let yuv_pixel = image_iter.next().unwrap();
-
-                assert_eq!(y, yuv_pixel.y);
-                assert_eq!(u, yuv_pixel.u);
-                assert_eq!(v, yuv_pixel.v);
-            }
-        }
-        assert!(image_iter.next().is_none());
-
-        Ok(())
+        None
     }
 }

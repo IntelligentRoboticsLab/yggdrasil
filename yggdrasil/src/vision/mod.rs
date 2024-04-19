@@ -9,6 +9,7 @@ pub mod field_marks;
 pub mod line;
 pub mod line_detection;
 pub mod scan_lines;
+pub mod scan_lines2;
 
 use field_boundary::FieldBoundaryModule;
 
