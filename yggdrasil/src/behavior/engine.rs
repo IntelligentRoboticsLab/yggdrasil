@@ -16,8 +16,8 @@ use crate::{
         fsr::Contacts,
     },
     game_controller::GameControllerConfig,
-    motion::motion_manager::MotionManager,
     localization::RobotPose,
+    motion::motion_manager::MotionManager,
     motion::step_planner::StepPlanner,
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
@@ -241,10 +241,15 @@ impl Engine {
     ) {
         self.role = self.assign_role(context);
 
-        self.transition(context, walking_engine, motion_manager);
+        self.transition(context, walking_engine, motion_manager, step_planner);
 
-        self.behavior
-            .execute(context, nao_manager, walking_engine, motion_manager, step_planner);
+        self.behavior.execute(
+            context,
+            nao_manager,
+            walking_engine,
+            motion_manager,
+            step_planner,
+        );
     }
 
     pub fn transition(
@@ -340,7 +345,13 @@ pub fn step(
         pose: robot_pose,
     };
 
-    engine.step(context, nao_manager, walking_engine, motion_manager, step_planner);
+    engine.step(
+        context,
+        nao_manager,
+        walking_engine,
+        motion_manager,
+        step_planner,
+    );
 
     Ok(())
 }

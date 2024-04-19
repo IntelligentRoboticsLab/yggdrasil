@@ -1,7 +1,7 @@
 use crate::{
     behavior::engine::{Behavior, Context},
     filter::falling::{FallState, LyingDirection},
-    motion::{motion_manager::MotionManager, motion_types::MotionType},
+    motion::{motion_manager::MotionManager, motion_types::MotionType, step_planner::StepPlanner},
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
 };
@@ -20,6 +20,7 @@ impl Behavior for Standup {
         _nao_manager: &mut NaoManager,
         _walking_engine: &mut WalkingEngine,
         motion_manager: &mut MotionManager,
+        _step_planner: &mut StepPlanner,
     ) {
         // check the direction the robot is lying and execute the appropriate motion
         match context.fall_state {

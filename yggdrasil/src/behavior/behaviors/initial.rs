@@ -1,6 +1,5 @@
 use crate::{
     behavior::engine::{Behavior, Context},
-    config::layout::RobotPosition,
     motion::motion_manager::MotionManager,
     motion::step_planner::StepPlanner,
     nao::manager::{NaoManager, Priority},

@@ -23,17 +23,15 @@ pub struct MotionModule;
 
 impl Module for MotionModule {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .init_resource::<Odometry>()?
-            .add_system_chain((
+        app.init_resource::<Odometry>()?
+            .add_system(
                 odometry::update_odometry
                     .after(kinematics::update_kinematics)
                     .after(filter::orientation::update_orientation),
-                odometry::log_odometry,
-            ))
+            )
             .add_startup_system(odometry::setup_viewcoordinates)?
             .add_startup_system(motion_manager_initializer)?
             .add_system(motion_executer.after(finalize))
-            .add_module(step_planner::StepPlannerModule))
+            .add_module(step_planner::StepPlannerModule)
     }
 }

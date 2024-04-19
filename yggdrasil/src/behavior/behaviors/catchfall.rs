@@ -1,6 +1,6 @@
 use crate::{
     behavior::engine::{Behavior, Context},
-    motion::motion_manager::MotionManager,
+    motion::{motion_manager::MotionManager, step_planner::StepPlanner},
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
 };
@@ -28,6 +28,7 @@ impl Behavior for CatchFall {
         nao_manager: &mut NaoManager,
         _walking_engine: &mut WalkingEngine,
         _motion_manager: &mut MotionManager,
+        _step_planner: &mut StepPlanner,
     ) {
         nao_manager.unstiff_legs(Priority::Critical);
         nao_manager.unstiff_arms(Priority::Critical);
