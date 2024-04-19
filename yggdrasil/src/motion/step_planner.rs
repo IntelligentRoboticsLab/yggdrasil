@@ -48,17 +48,17 @@ pub struct StepPlanner {
 }
 
 impl StepPlanner {
-    pub fn set_target(&mut self, target: Point2<f32>) {
+    pub fn set_absolute_target(&mut self, target: Point2<f32>) {
         self.target_position = Some(target);
     }
 
-    pub fn set_target_if_unset(&mut self, target: Point2<f32>) {
+    pub fn set_absolute_target_if_unset(&mut self, target: Point2<f32>) {
         if self.target_position.is_none() {
             self.target_position = Some(target);
         }
     }
 
-    pub fn current_target(&self) -> Option<&Point2<f32>> {
+    pub fn current_absolute_target(&self) -> Option<&Point2<f32>> {
         self.target_position.as_ref()
     }
 

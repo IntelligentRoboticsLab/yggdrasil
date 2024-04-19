@@ -20,6 +20,6 @@ impl Behavior for Walk {
         _walking_engine: &mut WalkingEngine,
         step_planner: &mut StepPlanner,
     ) {
-        step_planner.set_target(Point2::new(0., 0.));
+        step_planner.set_absolute_target(Point2::new(0., 0.));
     }
 }
