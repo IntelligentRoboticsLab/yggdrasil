@@ -14,6 +14,8 @@ use serde_json;
 use std::fs::File;
 use std::path::Path;
 use yggdrasil::filter::button::{HeadButtons, LeftFootButtons, RightFootButtons};
+use yggdrasil::nao::manager::NaoManager;
+use yggdrasil::nao::manager::Priority;
 use yggdrasil::prelude::*;
 
 pub struct SkadiModule;
@@ -189,7 +191,7 @@ fn register_button_press(
     left_button: &mut LeftFootButtons,
     right_button: &mut RightFootButtons,
     motion_cap_resources: &mut MotionCapResources,
-    nao_control_message: &mut NaoControlMessage,
+    nao_manager: &mut NaoManager,
     naostate: &mut NaoState,
 ) -> Result<()> {
     if left_button.left.is_tapped() {
@@ -210,8 +212,17 @@ fn register_button_press(
         if motion_cap_resources.selected_group == 0 {
             if !motion_cap_resources.joint_groups[motion_cap_resources.selected_group] {
                 println!("Full body joints locked");
-                nao_control_message.position = naostate.position.clone();
-                nao_control_message.stiffness = JointArray::<f32>::fill(0.5);
+                let head_stiffness = HeadJoints::fill(0.5);
+                let arm_stiffness = ArmJoints::fill(0.5);
+                let leg_stiffness = LegJoints::fill(0.5);
+                nao_manager.set_all(
+                    naostate.position.clone(),
+                    head_stiffness,
+                    arm_stiffness,
+                    leg_stiffness,
+                    Priority::Critical,
+                );
+                println!("{:?}", naostate.stiffness.clone());
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = true;
                 motion_cap_resources.joint_groups.botharms = true;
                 motion_cap_resources.joint_groups.bothlegs = true;
@@ -220,9 +231,19 @@ fn register_button_press(
                 motion_cap_resources.joint_groups.rightleg = true;
                 motion_cap_resources.joint_groups.leftleg = true;
                 motion_cap_resources.joint_groups.head = true;
+                println!("{:?}", naostate.stiffness.clone())
             } else {
                 println!("Full body joints unlocked");
-                nao_control_message.stiffness = JointArray::<f32>::fill(0.0);
+                let head_stiffness = HeadJoints::fill(0.0);
+                let arm_stiffness = ArmJoints::fill(0.0);
+                let leg_stiffness = LegJoints::fill(0.0);
+                nao_manager.set_all(
+                    naostate.position.clone(),
+                    head_stiffness,
+                    arm_stiffness,
+                    leg_stiffness,
+                    Priority::Critical,
+                );
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = false;
                 motion_cap_resources.joint_groups.botharms = false;
                 motion_cap_resources.joint_groups.bothlegs = false;
@@ -231,6 +252,7 @@ fn register_button_press(
                 motion_cap_resources.joint_groups.rightleg = false;
                 motion_cap_resources.joint_groups.leftleg = false;
                 motion_cap_resources.joint_groups.head = false;
+                println!("{:?}", naostate.stiffness.clone())
             }
         } else if motion_cap_resources.selected_group == 1 {
             if !motion_cap_resources.joint_groups[motion_cap_resources.selected_group] {
@@ -244,12 +266,12 @@ fn register_button_press(
                     right_arm: right_arm_stiffness,
                 };
 
-                let stiffnessarray = JointArray::builder()
-                    .joints(naostate.stiffness.clone())
-                    .arm_joints(arms_set)
-                    .build();
-                nao_control_message.position = naostate.position.clone();
-                nao_control_message.stiffness = stiffnessarray;
+                nao_manager.set_arms(
+                    naostate.position.arm_joints().clone(),
+                    arms_set,
+                    Priority::Critical,
+                );
+
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = true;
                 motion_cap_resources.joint_groups.rightarm = true;
                 motion_cap_resources.joint_groups.leftarm = true;
@@ -263,11 +285,12 @@ fn register_button_press(
                     right_arm: right_arm_stiffness,
                 };
 
-                let stiffnessarray = JointArray::builder() //NOT TESTED YET, CHECK FIRST
-                    .joints(naostate.stiffness.clone())
-                    .arm_joints(arms_set)
-                    .build();
-                nao_control_message.stiffness = stiffnessarray;
+                nao_manager.set_arms(
+                    naostate.position.arm_joints().clone(),
+                    arms_set,
+                    Priority::Critical,
+                );
+
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = false;
                 motion_cap_resources.joint_groups.rightarm = false;
                 motion_cap_resources.joint_groups.leftarm = false;
@@ -278,12 +301,12 @@ fn register_button_press(
 
                 let legs_set = LegJoints::fill(0.5);
 
-                let stiffnessarray = JointArray::builder()
-                    .joints(naostate.stiffness.clone())
-                    .leg_joints(legs_set)
-                    .build();
-                nao_control_message.position = naostate.position.clone();
-                nao_control_message.stiffness = stiffnessarray;
+                nao_manager.set_legs(
+                    naostate.position.leg_joints().clone(),
+                    legs_set,
+                    Priority::Critical,
+                );
+
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = true;
                 motion_cap_resources.joint_groups.rightleg = true;
                 motion_cap_resources.joint_groups.leftleg = true;
@@ -291,11 +314,12 @@ fn register_button_press(
                 println!("Both leg joints unlocked");
                 let legs_set = LegJoints::fill(0.0);
 
-                let stiffnessarray = JointArray::builder()
-                    .joints(naostate.stiffness.clone())
-                    .leg_joints(legs_set)
-                    .build();
-                nao_control_message.stiffness = stiffnessarray;
+                nao_manager.set_legs(
+                    naostate.position.leg_joints().clone(),
+                    legs_set,
+                    Priority::Critical,
+                );
+
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = false;
                 motion_cap_resources.joint_groups.rightleg = false;
                 motion_cap_resources.joint_groups.leftleg = false;
@@ -304,93 +328,272 @@ fn register_button_press(
             if !motion_cap_resources.joint_groups[motion_cap_resources.selected_group] {
                 println!("Left arm joints locked");
 
-                let left_arm = LeftArmJoints::fill(0.5);
+                if motion_cap_resources.joint_groups.rightarm {
+                    let left_arm = LeftArmJoints::fill(0.5);
+                    let right_arm = RightArmJoints::fill(0.5);
 
-                let stiffnessarray = JointArray::builder()
-                    .joints(naostate.stiffness.clone())
-                    .left_arm_joints(left_arm)
-                    .build();
-                nao_control_message.position = naostate.position.clone();
-                nao_control_message.stiffness = stiffnessarray;
+                    let arms_set = ArmJoints {
+                        left_arm: left_arm,
+                        right_arm: right_arm,
+                    };
+
+                    nao_manager.set_arms(
+                        naostate.position.arm_joints().clone(),
+                        arms_set,
+                        Priority::Critical,
+                    );
+                } else if !motion_cap_resources.joint_groups.rightarm {
+                    let left_arm = LeftArmJoints::fill(0.5);
+                    let right_arm = RightArmJoints::fill(0.0);
+
+                    let arms_set = ArmJoints {
+                        left_arm: left_arm,
+                        right_arm: right_arm,
+                    };
+
+                    nao_manager.set_arms(
+                        naostate.position.arm_joints().clone(),
+                        arms_set,
+                        Priority::Critical,
+                    );
+                }
+
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = true;
             } else {
                 println!("Left arm joints unlocked");
-                let left_arm = LeftArmJoints::fill(0.0);
+                if motion_cap_resources.joint_groups.rightarm {
+                    let left_arm = LeftArmJoints::fill(0.0);
+                    let right_arm = RightArmJoints::fill(0.5);
 
-                let stiffnessarray = JointArray::builder()
-                    .joints(naostate.stiffness.clone())
-                    .left_arm_joints(left_arm)
-                    .build();
-                nao_control_message.stiffness = stiffnessarray;
+                    let arms_set = ArmJoints {
+                        left_arm: left_arm,
+                        right_arm: right_arm,
+                    };
+
+                    nao_manager.set_arms(
+                        naostate.position.arm_joints().clone(),
+                        arms_set,
+                        Priority::Critical,
+                    );
+                } else if !motion_cap_resources.joint_groups.rightarm {
+                    let left_arm = LeftArmJoints::fill(0.0);
+                    let right_arm = RightArmJoints::fill(0.0);
+
+                    let arms_set = ArmJoints {
+                        left_arm: left_arm,
+                        right_arm: right_arm,
+                    };
+
+                    nao_manager.set_arms(
+                        naostate.position.arm_joints().clone(),
+                        arms_set,
+                        Priority::Critical,
+                    );
+                }
+
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = false;
             }
         } else if motion_cap_resources.selected_group == 4 {
             if !motion_cap_resources.joint_groups[motion_cap_resources.selected_group] {
                 println!("Right arm joints locked");
-                let right_arm = RightArmJoints::fill(0.5);
+                if motion_cap_resources.joint_groups.leftarm {
+                    let left_arm = LeftArmJoints::fill(0.5);
+                    let right_arm = RightArmJoints::fill(0.5);
 
-                let stiffnessarray = JointArray::builder()
-                    .joints(naostate.stiffness.clone())
-                    .right_arm_joints(right_arm)
-                    .build();
-                nao_control_message.position = naostate.position.clone();
-                nao_control_message.stiffness = stiffnessarray;
+                    let arms_set = ArmJoints {
+                        left_arm: left_arm,
+                        right_arm: right_arm,
+                    };
+
+                    nao_manager.set_arms(
+                        naostate.position.arm_joints().clone(),
+                        arms_set,
+                        Priority::Critical,
+                    );
+                } else if !motion_cap_resources.joint_groups.leftarm {
+                    let left_arm = LeftArmJoints::fill(0.0);
+                    let right_arm = RightArmJoints::fill(0.5);
+
+                    let arms_set = ArmJoints {
+                        left_arm: left_arm,
+                        right_arm: right_arm,
+                    };
+
+                    nao_manager.set_arms(
+                        naostate.position.arm_joints().clone(),
+                        arms_set,
+                        Priority::Critical,
+                    );
+                }
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = true;
             } else {
                 println!("Right arm joints unlocked");
-                let right_arm = RightArmJoints::fill(0.0);
+                if motion_cap_resources.joint_groups.leftarm {
+                    let left_arm = LeftArmJoints::fill(0.5);
+                    let right_arm = RightArmJoints::fill(0.0);
 
-                let stiffnessarray = JointArray::builder()
-                    .joints(naostate.stiffness.clone())
-                    .right_arm_joints(right_arm)
-                    .build();
-                nao_control_message.stiffness = stiffnessarray;
+                    let arms_set = ArmJoints {
+                        left_arm: left_arm,
+                        right_arm: right_arm,
+                    };
+
+                    nao_manager.set_arms(
+                        naostate.position.arm_joints().clone(),
+                        arms_set,
+                        Priority::Critical,
+                    );
+                } else if !motion_cap_resources.joint_groups.rightarm {
+                    let left_arm = LeftArmJoints::fill(0.0);
+                    let right_arm = RightArmJoints::fill(0.0);
+
+                    let arms_set = ArmJoints {
+                        left_arm: left_arm,
+                        right_arm: right_arm,
+                    };
+
+                    nao_manager.set_arms(
+                        naostate.position.arm_joints().clone(),
+                        arms_set,
+                        Priority::Critical,
+                    );
+                }
+
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = false;
             }
         } else if motion_cap_resources.selected_group == 5 {
             if !motion_cap_resources.joint_groups[motion_cap_resources.selected_group] {
                 println!("Left leg joints locked");
-                let left_leg = LeftLegJoints::fill(0.5);
+                if motion_cap_resources.joint_groups.rightleg {
+                    let left_leg = LeftLegJoints::fill(0.5);
+                    let right_leg = RightLegJoints::fill(0.5);
 
-                let stiffnessarray = JointArray::builder()
-                    .joints(naostate.stiffness.clone())
-                    .left_leg_joints(left_leg)
-                    .build();
-                nao_control_message.position = naostate.position.clone();
-                nao_control_message.stiffness = stiffnessarray;
+                    let legs_set = LegJoints {
+                        left_leg: left_leg,
+                        right_leg: right_leg,
+                    };
+
+                    nao_manager.set_legs(
+                        naostate.position.leg_joints().clone(),
+                        legs_set,
+                        Priority::Critical,
+                    );
+                } else if !motion_cap_resources.joint_groups.rightleg {
+                    let left_leg = LeftLegJoints::fill(0.5);
+                    let right_leg = RightLegJoints::fill(0.0);
+
+                    let legs_set = LegJoints {
+                        left_leg: left_leg,
+                        right_leg: right_leg,
+                    };
+
+                    nao_manager.set_legs(
+                        naostate.position.leg_joints().clone(),
+                        legs_set,
+                        Priority::Critical,
+                    );
+                }
+
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = true;
             } else {
                 println!("Left leg joints unlocked");
-                let left_leg = LeftLegJoints::fill(0.0);
+                if motion_cap_resources.joint_groups.rightleg {
+                    let left_leg = LeftLegJoints::fill(0.0);
+                    let right_leg = RightLegJoints::fill(0.5);
 
-                let stiffnessarray = JointArray::builder()
-                    .joints(naostate.stiffness.clone())
-                    .left_leg_joints(left_leg)
-                    .build();
-                nao_control_message.stiffness = stiffnessarray;
+                    let legs_set = LegJoints {
+                        left_leg: left_leg,
+                        right_leg: right_leg,
+                    };
+
+                    nao_manager.set_legs(
+                        naostate.position.leg_joints().clone(),
+                        legs_set,
+                        Priority::Critical,
+                    );
+                } else if !motion_cap_resources.joint_groups.rightleg {
+                    let left_leg = LeftLegJoints::fill(0.0);
+                    let right_leg = RightLegJoints::fill(0.0);
+
+                    let legs_set = LegJoints {
+                        left_leg: left_leg,
+                        right_leg: right_leg,
+                    };
+
+                    nao_manager.set_legs(
+                        naostate.position.leg_joints().clone(),
+                        legs_set,
+                        Priority::Critical,
+                    );
+                }
+                
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = false;
             }
         } else if motion_cap_resources.selected_group == 6 {
             if !motion_cap_resources.joint_groups[motion_cap_resources.selected_group] {
                 println!("Right leg joints locked");
-                let right_leg = RightLegJoints::fill(0.5);
+                if motion_cap_resources.joint_groups.leftleg {
+                    let left_leg = LeftLegJoints::fill(0.5);
+                    let right_leg = RightLegJoints::fill(0.5);
 
-                let stiffnessarray = JointArray::builder()
-                    .joints(naostate.stiffness.clone())
-                    .right_leg_joints(right_leg)
-                    .build();
-                nao_control_message.position = naostate.position.clone();
-                nao_control_message.stiffness = stiffnessarray;
+                    let legs_set = LegJoints {
+                        left_leg: left_leg,
+                        right_leg: right_leg,
+                    };
+
+                    nao_manager.set_legs(
+                        naostate.position.leg_joints().clone(),
+                        legs_set,
+                        Priority::Critical,
+                    );
+                } else if !motion_cap_resources.joint_groups.leftleg {
+                    let left_leg = LeftLegJoints::fill(0.0);
+                    let right_leg = RightLegJoints::fill(0.5);
+
+                    let legs_set = LegJoints {
+                        left_leg: left_leg,
+                        right_leg: right_leg,
+                    };
+
+                    nao_manager.set_legs(
+                        naostate.position.leg_joints().clone(),
+                        legs_set,
+                        Priority::Critical,
+                    );
+                }
+
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = true;
             } else {
                 println!("Right leg joints unlocked");
-                let right_leg = RightLegJoints::fill(0.0);
+                if motion_cap_resources.joint_groups.leftleg {
+                    let left_leg = LeftLegJoints::fill(0.5);
+                    let right_leg = RightLegJoints::fill(0.0);
 
-                let stiffnessarray = JointArray::builder()
-                    .joints(naostate.stiffness.clone())
-                    .right_leg_joints(right_leg)
-                    .build();
-                nao_control_message.stiffness = stiffnessarray;
+                    let legs_set = LegJoints {
+                        left_leg: left_leg,
+                        right_leg: right_leg,
+                    };
+
+                    nao_manager.set_legs(
+                        naostate.position.leg_joints().clone(),
+                        legs_set,
+                        Priority::Critical,
+                    );
+                } else if !motion_cap_resources.joint_groups.leftleg {
+                    let left_leg = LeftLegJoints::fill(0.0);
+                    let right_leg = RightLegJoints::fill(0.0);
+
+                    let legs_set = LegJoints {
+                        left_leg: left_leg,
+                        right_leg: right_leg,
+                    };
+
+                    nao_manager.set_legs(
+                        naostate.position.leg_joints().clone(),
+                        legs_set,
+                        Priority::Critical,
+                    );
+                }
+
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = false;
             }
         } else if motion_cap_resources.selected_group == 7 {
@@ -398,22 +601,15 @@ fn register_button_press(
                 println!("Head joints locked");
                 let head = HeadJoints::fill(0.5);
 
-                let stiffnessarray = JointArray::builder()
-                    .joints(naostate.stiffness.clone())
-                    .head_joints(head)
-                    .build();
-                nao_control_message.position = naostate.position.clone();
-                nao_control_message.stiffness = stiffnessarray;
+                nao_manager.set_head(naostate.position.head_joints().clone(), head, Priority::Critical);
+
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = true;
             } else {
                 println!("Head joints unlocked");
                 let head = HeadJoints::fill(0.0);
 
-                let stiffnessarray = JointArray::builder()
-                    .joints(naostate.stiffness.clone())
-                    .head_joints(head)
-                    .build();
-                nao_control_message.stiffness = stiffnessarray;
+                nao_manager.set_head(naostate.position.head_joints().clone(), head, Priority::Critical);
+
                 motion_cap_resources.joint_groups[motion_cap_resources.selected_group] = false;
             }
         }
@@ -463,5 +659,6 @@ fn register_button_press(
             )
         }
     }
+
     Ok(())
 }
