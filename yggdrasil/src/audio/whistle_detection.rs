@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
+use nidhogg::types::{FillExt, LeftEar, RightEar};
 use rustfft::{num_complex::Complex, Fft, FftPlanner};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     audio::audio_input::{AudioInput, NUMBER_OF_SAMPLES},
     ml::{MlModel, MlTask, MlTaskResource},
+    nao::manager::{NaoManager, Priority},
     prelude::*,
 };
 
@@ -69,6 +71,7 @@ fn detect_whistle(
     model: &mut MlTask<WhistleDetectionModel>,
     audio_input: &AudioInput,
     config: &WhistleDetectionConfig,
+    nao_manager: &mut NaoManager,
 ) -> Result<()> {
     if !model.active() {
         let mut complex_buffer = [Complex::new(0.0, 0.0); FFT_SIZE];
@@ -116,9 +119,13 @@ fn detect_whistle(
 
             if state.detections == config.consecutive {
                 tracing::info!("Whistle detected");
+                nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
+                nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
             }
         } else {
             state.detections = 0;
+            nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
+            nao_manager.set_right_ear_led(RightEar::fill(0.0), Priority::High);
         }
     }
 
