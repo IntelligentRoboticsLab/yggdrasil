@@ -10,7 +10,12 @@ pub struct Example {
 }
 
 impl Behavior for Example {
-    fn execute(&mut self, _context: Context, nao_manager: &mut NaoManager) {
+    fn execute(
+        &mut self,
+        _context: Context,
+        nao_manager: &mut NaoManager,
+        step_planner: &mut StepPlanner,
+    ) {
         self.iter += 1;
 
         let right_eye = if self.iter < 100 {

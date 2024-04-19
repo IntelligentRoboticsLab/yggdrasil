@@ -13,6 +13,7 @@ derive_more = { workspace = true }
 enum_dispatch = { workspace = true }
 fast_image_resize = { workspace = true }
 fast-math = { workspace = true }
+geo = { workspace = true }
 heimdall = { path = "../crates/heimdall" }
 image = { workspace = true }
 kira = { workspace = true, optional = true }
@@ -25,6 +26,8 @@ nidhogg = { workspace = true, features = ["lola"] }
 num = { workspace = true }
 odal = { path = "../crates/odal" }
 openvino = { workspace = true }
+ordered-float = { workspace = true }
+pathfinding = { workspace = true }
 rerun = { workspace = true, optional = true }
 rustfft = { workspace = true, optional = true }
 serde = { workspace = true }
