@@ -22,8 +22,6 @@ use crate::{
     walk::engine::WalkingEngine,
 };
 
-use super::behaviors::Test;
-
 /// Context that is passed into the behavior engine.
 ///
 /// It contains all necessary information for executing behaviors and
@@ -111,7 +109,6 @@ pub enum BehaviorKind {
     Observe(Observe),
     Penalized(Penalized),
     Walk(Walk),
-    Test(Test),
     // Add new behaviors here!
 }
 
