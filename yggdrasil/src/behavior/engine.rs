@@ -5,7 +5,9 @@ use enum_dispatch::enum_dispatch;
 
 use crate::{
     behavior::{
-        behaviors::{FallCatch, Initial, Observe, Penalized, Standup, StartUp, Unstiff, Walk},
+        behaviors::{
+            FallCatch, Floss, Initial, Observe, Penalized, Standup, StartUp, Unstiff, Walk,
+        },
         roles::Attacker,
         BehaviorConfig,
     },
@@ -114,6 +116,7 @@ pub enum BehaviorKind {
     Walk(Walk),
     Standup(Standup),
     Fallcatch(FallCatch),
+    Floss(Floss),
     // Add new behaviors here!
 }
 

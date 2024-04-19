@@ -16,7 +16,7 @@ const MIN_FALL_VELOCITY_BACKWARDS: f32 = 0.15;
 const MIN_FALL_VELOCITY_LEFT: f32 = 0.15;
 const MIN_FALL_VELOCITY_RIGHT: f32 = 0.15;
 // Minimum angle for lying confirmation.
-const MIN_LYING_ANGLE: f32 = 1.3;
+const MIN_LYING_ANGLE: f32 = 1.2;
 /// Minimum accelerometer deviation for lying confirmation.
 const MAX_ACC_DEVIATION: f32 = 0.175;
 

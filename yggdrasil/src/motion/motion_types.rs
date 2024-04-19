@@ -1,18 +1,16 @@
-use crate::motion::motion_util::lerp;
+use crate::motion::{motion_manager::ActiveMotion, motion_util::interpolate_jointarrays};
 use miette::{miette, IntoDiagnostic, Result};
 use nidhogg::types::JointArray;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use serde_with::{serde_as, DurationSecondsWithFrac};
-use std::collections::HashMap;
-use std::fs::File;
-use std::{path::Path, time::Duration};
-
-use std::time::Instant;
-
+use std::{
+    collections::HashMap,
+    fs::File,
+    path::Path,
+    time::{Duration, Instant},
+};
 use toml;
-
-use super::motion_manager::ActiveMotion;
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -31,11 +29,10 @@ pub struct Movement {
 /// - New interpolation type implementations should be added as new variants to this enum.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum InterpolationType {
+    // Simple linear interpolation between jointarrays
     Linear,
-    // TODO
-    SmoothIn,
-    // TODO
-    SmoothOut,
+    // Using a cubic bezier curve to interpolate smoothly
+    SmoothInOut,
 }
 
 /// An enum containing the possible variables that can be used as conditions
@@ -224,14 +221,24 @@ impl Motion {
             active_motion.movement_start = Instant::now();
         }
 
-        Some(lerp(
+        Some(interpolate_jointarrays(
             &keyframes[active_motion.cur_keyframe_index - 1].target_position,
             &keyframes[active_motion.cur_keyframe_index].target_position,
             (active_motion.movement_start.elapsed()).as_secs_f32()
                 / keyframes[active_motion.cur_keyframe_index]
                     .duration
                     .as_secs_f32(),
+            &active_motion.motion.settings.interpolation_type,
         ))
+
+        // Some(lerp(
+        //     &keyframes[active_motion.cur_keyframe_index - 1].target_position,
+        //     &keyframes[active_motion.cur_keyframe_index].target_position,
+        //     (active_motion.movement_start.elapsed()).as_secs_f32()
+        //         / keyframes[active_motion.cur_keyframe_index]
+        //             .duration
+        //             .as_secs_f32(),
+        // ))
     }
 
     /// Returns the first movement the robot would make for the current submotion.
@@ -262,13 +269,7 @@ impl Motion {
 #[derive(PartialEq, Eq, Hash, Debug)]
 #[non_exhaustive]
 pub enum MotionType {
-    Example,
-    FallForwards,
-    FallBackwards,
-    FallLeftways,
-    FallRightways,
-    Neutral,
     StandupBack,
     StandupStomach,
-    Test,
+    Floss,
 }

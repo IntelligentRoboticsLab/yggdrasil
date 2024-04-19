@@ -4,11 +4,8 @@ use crate::motion::motion_types::{
 };
 use crate::nao::manager::Priority;
 use miette::{miette, Result};
-use nidhogg::types::JointArray;
-use nidhogg::NaoState;
-use std::collections::HashMap;
-use std::path::Path;
-use std::time::Instant;
+use nidhogg::{types::JointArray, NaoState};
+use std::{collections::HashMap, path::Path, time::Instant};
 use tyr::prelude::*;
 
 /// Stores information about the currently active motion.
@@ -181,12 +178,12 @@ impl MotionManager {
 pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
     let mut motion_manager = MotionManager::new();
     // Add new motions here!
-    motion_manager.add_motion(MotionType::Test, "./assets/motions/TestDance.toml")?;
     motion_manager.add_motion(MotionType::StandupBack, "./assets/motions/StandupBack.toml")?;
     motion_manager.add_motion(
         MotionType::StandupStomach,
         "./assets/motions/StandupStomach.toml",
     )?;
+    motion_manager.add_motion(MotionType::Floss, "./assets/motions/Floss.toml")?;
     storage.add_resource(Resource::new(motion_manager))?;
 
     Ok(())

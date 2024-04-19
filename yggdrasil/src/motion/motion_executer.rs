@@ -1,15 +1,14 @@
-use crate::filter::imu::IMUValues;
-use crate::filter::{falling::FallState, orientation::RobotOrientation};
-use crate::motion::motion_manager::{ActiveMotion, MotionManager};
-use crate::motion::motion_types::Movement;
-use crate::motion::motion_util::{get_min_duration, lerp};
-use crate::nao::manager::NaoManager;
-use crate::nao::manager::Priority;
+use crate::filter::{falling::FallState, imu::IMUValues, orientation::RobotOrientation};
+use crate::motion::{
+    motion_manager::{ActiveMotion, MotionManager},
+    motion_types::{InterpolationType, Movement},
+    motion_util::{get_min_duration, interpolate_jointarrays},
+};
+use crate::nao::manager::{NaoManager, Priority};
 use miette::{miette, Result};
 use nalgebra::Vector3;
-use nidhogg::types::{ArmJoints, ForceSensitiveResistors, HeadJoints, LegJoints};
 use nidhogg::{
-    types::{FillExt, JointArray},
+    types::{ArmJoints, FillExt, ForceSensitiveResistors, HeadJoints, JointArray, LegJoints},
     NaoState,
 };
 use std::time::{Duration, Instant};
@@ -90,6 +89,7 @@ pub fn motion_executer(
             target_position,
             duration,
             &movement_start.elapsed(),
+            &motion.settings.interpolation_type,
         ) {
             nao_manager.set_all(
                 next_position,
@@ -239,12 +239,14 @@ fn move_to_starting_position(
     target_position: &JointArray<f32>,
     duration: &Duration,
     elapsed_time_since_start_of_motion: &Duration,
+    interpolation_type: &InterpolationType,
 ) -> Option<JointArray<f32>> {
     if elapsed_time_since_start_of_motion <= duration {
-        return Some(lerp(
+        return Some(interpolate_jointarrays(
             motion_manager.source_position.as_ref().unwrap(),
             target_position,
             elapsed_time_since_start_of_motion.as_secs_f32() / duration.as_secs_f32(),
+            interpolation_type,
         ));
     }
 
