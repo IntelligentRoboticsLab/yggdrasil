@@ -52,7 +52,7 @@ fn init_ball_classifier(storage: &mut Storage, top_image: &TopImage) -> Result<(
 pub(super) struct BallClassifierModel;
 
 impl MlModel for BallClassifierModel {
-    const ONNX_PATH: &'static str = "models/new_ball.onnx";
+    const ONNX_PATH: &'static str = "models/ball_classifier.onnx";
     type InputType = f32;
     type OutputType = f32;
 }
