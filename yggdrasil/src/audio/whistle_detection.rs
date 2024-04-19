@@ -24,7 +24,7 @@ impl Module for WhistleDetectionModule {
         app.add_ml_task::<WhistleDetectionModel>()?
             .init_config::<WhistleDetectionConfig>()?
             .add_system(detect_whistle)
-            .add_resource(Resource::new(WhistleState::new()))
+            .init_resource::<WhistleState>()
     }
 }
 
@@ -52,8 +52,8 @@ pub struct WhistleState {
     fft: Arc<dyn Fft<f32>>,
 }
 
-impl WhistleState {
-    fn new() -> Self {
+impl Default for WhistleState {
+    fn default() -> Self {
         let mut planner = FftPlanner::new();
 
         Self {
