@@ -42,6 +42,10 @@ impl Role for Attacker {
             });
         }
 
-        BehaviorKind::Observe(Observe::default())
+        if let BehaviorKind::Observe(observe) = current_behavior {
+            BehaviorKind::Observe(*observe)
+        } else {
+            BehaviorKind::Observe(Observe::default())
+        }
     }
 }
