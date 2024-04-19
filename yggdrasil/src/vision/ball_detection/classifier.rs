@@ -143,7 +143,7 @@ pub(super) fn detect_balls(
     }
 
     balls.image = proposals.image.clone();
-    if classified_balls.len() == 0 {
+    if classified_balls.is_empty() {
         for ball in balls.balls.iter() {
             if ball.timestamp.elapsed() < classifier.ball_life {
                 classified_balls.push(ball.clone());
