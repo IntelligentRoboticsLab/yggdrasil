@@ -61,9 +61,8 @@ pub fn motion_executer(
     let ActiveMotion {
         motion,
         cur_sub_motion: (sub_motion_name, _),
-        cur_keyframe_index: _,
         movement_start,
-        priority: _,
+        ..
     } = motion_manager.active_motion.clone().ok_or_else(|| {
         motion_manager.stop_motion();
         miette!("Motionmanager.ActiveMotion could not be cloned, likely contained None")
@@ -312,11 +311,6 @@ fn transition_to_next_submotion(
         // If there is a next submotion, we attempt a transition
         let next_submotion = active_motion.transition(nao_state, submotion_name.clone())?;
         motion_manager.active_motion = next_submotion;
-
-        // if the motion was aborted or an error occured with transitioning, we reset the execution time
-        if motion_manager.active_motion.is_none() {
-            motion_manager.motion_execution_starting_time = None;
-        }
 
         Ok(())
     }

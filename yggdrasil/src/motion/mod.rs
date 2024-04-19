@@ -1,9 +1,8 @@
-use crate::{filter, kinematics};
+use crate::{filter, kinematics, prelude::*};
 
 use self::odometry::Odometry;
 use crate::nao::write_hardware_info;
 use miette::Result;
-use tyr::prelude::*;
 
 pub mod motion_executer;
 pub mod motion_manager;

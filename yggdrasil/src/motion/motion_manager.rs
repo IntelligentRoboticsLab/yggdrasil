@@ -111,14 +111,7 @@ pub struct MotionManager {
 impl MotionManager {
     /// Initializes a `MotionManger`.
     pub fn new() -> Self {
-        MotionManager {
-            active_motion: None,
-            motion_execution_starting_time: None,
-            submotion_execution_starting_time: None,
-            submotion_finishing_time: None,
-            source_position: None,
-            motions: HashMap::new(),
-        }
+        MotionManager::default()
     }
 
     /// Simple abstraction function for checking whether a motion is currently active

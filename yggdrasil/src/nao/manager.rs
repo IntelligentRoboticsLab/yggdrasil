@@ -180,12 +180,14 @@ impl NaoManager {
         self.led_skull.priority = None;
     }
 
-    /// Sets all the joint position and stiffness of the legs, arms and head.
+    /// Try to set all the joint position and stiffness of the legs, arms and head.
+    /// The joint positions are angles in radians.
     ///
-    /// The joint positions are degrees in radians.
-    ///
-    /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
-    /// stiffness. A value of `-1` will disable the stiffness altogether.
+    /// # Notes
+    /// - It is possible that one or all of the groups are not set, if another request
+    ///   has a higher priority.
+    /// - The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    ///   stiffness. A value of `-1` will disable the stiffness altogether.
     pub fn set_all(
         &mut self,
         initial_joint_positions: JointArray<JointValue>,
