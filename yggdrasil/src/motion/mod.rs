@@ -1,7 +1,6 @@
-use crate::{filter, kinematics, prelude::*};
+use crate::{filter, kinematics, nao::manager::finalize, prelude::*};
 
 use self::odometry::Odometry;
-use crate::nao::write_hardware_info;
 use miette::Result;
 
 pub mod motion_executer;
@@ -34,7 +33,7 @@ impl Module for MotionModule {
             ))
             .add_startup_system(odometry::setup_viewcoordinates)?
             .add_startup_system(motion_manager_initializer)?
-            .add_system(motion_executer.after(write_hardware_info)))
+            .add_system(motion_executer.after(finalize))
             .add_module(step_planner::StepPlannerModule))
     }
 }

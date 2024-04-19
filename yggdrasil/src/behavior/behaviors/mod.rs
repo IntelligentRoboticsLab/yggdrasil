@@ -1,6 +1,6 @@
 //! All the behaviors that the robot can execute.
 
-mod fallcatch;
+mod catchfall;
 mod initial;
 mod observe;
 mod penalized;
@@ -9,7 +9,7 @@ mod startup;
 mod unstiff;
 mod walk;
 
-pub use fallcatch::FallCatch;
+pub use catchfall::CatchFall;
 pub use initial::Initial;
 pub use observe::{Observe, ObserveBehaviorConfig};
 pub use penalized::Penalized;

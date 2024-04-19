@@ -19,9 +19,9 @@ use crate::{
 ///   This should not be the case often however, once the falling filter
 ///   is more advanced.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct FallCatch;
+pub struct CatchFall;
 
-impl Behavior for FallCatch {
+impl Behavior for CatchFall {
     fn execute(
         &mut self,
         _: Context,

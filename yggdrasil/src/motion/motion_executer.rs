@@ -30,7 +30,7 @@ const MIN_FSR_VALUE: f32 = 0.0;
 // minimum waittime duration, anything less will not be considered
 // (if we were to consider this waiting time, the amount of time to
 // process it would take longer than the actual waittime)
-const MINIMUM_WAITTIME: f32 = 0.05;
+const MINIMUM_WAIT_TIME: f32 = 0.05;
 
 /// Executes the current motion.
 ///
@@ -81,7 +81,7 @@ pub fn motion_executer(
         if motion_manager.source_position.is_none() {
             // record the last position before motion initialization, or before transition
             motion_manager.source_position = Some(nao_state.position.clone());
-            prepare_initial_movement(motion_manager, target_position, duration, &sub_motion_name);
+            prepare_initial_movement(motion_manager, target_position, duration, &sub_motion_name)?;
         }
 
         // getting the next position for the robot
@@ -185,10 +185,13 @@ fn prepare_initial_movement(
     target_position: &JointArray<f32>,
     duration: &Duration,
     sub_motion_name: &String,
-) {
+) -> Result<()> {
     // checking whether the given duration will exceed our maximum speed limit
     let min_duration = get_min_duration(
-        motion_manager.source_position.as_ref().unwrap(),
+        motion_manager
+            .source_position
+            .as_ref()
+            .ok_or_else(|| miette!("Getting the source position failed during initial movement"))?,
         target_position,
         MAX_SPEED,
     );
@@ -201,6 +204,8 @@ fn prepare_initial_movement(
             .motion
             .set_initial_duration(sub_motion_name, min_duration);
     }
+
+    Ok(())
 }
 
 /// Updates the active motion to begin executing the current submotion.
@@ -261,15 +266,15 @@ fn move_to_starting_position(
 /// # Arguments
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 /// * `duration` - Intended duration of the waiting time.
-fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_waittime: f32) -> bool {
-    if exit_waittime <= MINIMUM_WAITTIME {
+fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_wait_time: f32) -> bool {
+    if exit_wait_time <= MINIMUM_WAIT_TIME {
         return true;
     }
 
     // firstly, we record the current timestamp and check whether the motion needs to wait
     if let Some(finishing_time) = motion_manager.submotion_finishing_time {
         // checking whether the required waittime has elapsed
-        if finishing_time.elapsed().as_secs_f32() < exit_waittime {
+        if finishing_time.elapsed().as_secs_f32() < exit_wait_time {
             return false;
         }
 

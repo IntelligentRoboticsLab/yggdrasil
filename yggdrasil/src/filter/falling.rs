@@ -70,7 +70,7 @@ fn is_falling_forward(imu_values: &IMUValues) -> bool {
 /// Is the robot falling backwards based on its angle and gyroscope.
 fn is_falling_backward(imu_values: &IMUValues) -> bool {
     (imu_values.angles.y < MIN_FALL_ANGLE_BACKWARDS)
-        && imu_values.gyroscope.y < -MIN_FALL_VELOCITY_BACKWARDS
+        && imu_values.gyroscope.y < MIN_FALL_VELOCITY_BACKWARDS
 }
 
 /// Is the robot falling left based on its angle and gyroscope.
@@ -103,8 +103,8 @@ fn pose_filter(
     fall_state: &mut FallState,
     behaviour_engine: &Engine,
 ) -> Result<()> {
-    // current method to keep the falling behavior from interuppting the
-    // standupn behavior, will be changed once motion module integration
+    // current method to keep the falling behavior from interrupting the
+    // stand up behavior, will be changed once motion module integration
     // for behaviors has advanced
     if let BehaviorKind::Standup(_) = behaviour_engine.behavior {
         if let FallState::Upright = fall_state {

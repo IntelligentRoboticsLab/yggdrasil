@@ -5,7 +5,7 @@ use enum_dispatch::enum_dispatch;
 
 use crate::{
     behavior::{
-        behaviors::{FallCatch, Initial, Observe, Penalized, Standup, StartUp, Unstiff, Walk},
+        behaviors::{CatchFall, Initial, Observe, Penalized, Standup, StartUp, Unstiff, Walk},
         roles::Attacker,
         BehaviorConfig,
     },
@@ -120,7 +120,7 @@ pub enum BehaviorKind {
     Penalized(Penalized),
     Walk(Walk),
     Standup(Standup),
-    Fallcatch(FallCatch),
+    CatchFall(CatchFall),
     // Add new behaviors here!
 }
 
@@ -273,7 +273,7 @@ impl Engine {
                 return;
             }
             FallState::Falling(_) => {
-                self.behavior = BehaviorKind::Fallcatch(FallCatch);
+                self.behavior = BehaviorKind::CatchFall(CatchFall);
                 return;
             }
             FallState::InStandup => {

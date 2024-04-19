@@ -8,7 +8,7 @@ use yggdrasil::{
 };
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::fmt().init();
+    tracing_subscriber::fmt::init();
 
     miette::set_panic_hook();
 
