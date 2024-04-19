@@ -1,23 +1,15 @@
 use crate::{
-    config::{layout::LayoutConfig, showtime::ShowtimeConfig},
     debug::DebugContext,
     localization::RobotPose,
-    nao::RobotInfo,
     prelude::*,
     walk::engine::{Step, WalkingEngine},
 };
 
-use crate::motion::odometry;
-
-use nalgebra::{point, Isometry, Point2, Unit, Vector2};
+use nalgebra::{Isometry, Point2, Unit, Vector2};
 use nidhogg::types::color;
 use num::Complex;
-use tracing_subscriber::fmt::init;
 
-use super::{
-    odometry::Odometry,
-    path_finding::{self, Obstacle},
-};
+use super::path_finding::{self, Obstacle};
 
 const TURN_SPEED: f32 = 0.3;
 const WALK_SPEED: f32 = 0.05;
@@ -76,29 +68,19 @@ impl StepPlanner {
     }
 }
 
-fn calc_turn(
-    robot_odometry: &Isometry<f32, Unit<Complex<f32>>, 2>,
-    target_position: &Point2<f32>,
-) -> f32 {
-    let translated_target_position = robot_odometry
-        .translation
-        .inverse_transform_point(target_position);
-    let transformed_target_position = robot_odometry
+fn calc_turn(pose: &Isometry<f32, Unit<Complex<f32>>, 2>, target_position: &Point2<f32>) -> f32 {
+    let translated_target_position = pose.translation.inverse_transform_point(target_position);
+    let transformed_target_position = pose
         .rotation
         .inverse_transform_point(&translated_target_position);
 
     transformed_target_position.y.signum() * TURN_SPEED
 }
 
-fn calc_angle(
-    robot_odometry: &Isometry<f32, Unit<Complex<f32>>, 2>,
-    target_point: &Point2<f32>,
-) -> f32 {
-    let relative_transformed_target_point = robot_odometry.rotation.inverse_transform_point(
-        &robot_odometry
-            .translation
-            .inverse_transform_point(target_point),
-    );
+fn calc_angle(pose: &Isometry<f32, Unit<Complex<f32>>, 2>, target_point: &Point2<f32>) -> f32 {
+    let relative_transformed_target_point = pose
+        .rotation
+        .inverse_transform_point(&pose.translation.inverse_transform_point(target_point));
 
     let relative_transformed_target_vector = Vector2::new(
         relative_transformed_target_point.x,
@@ -108,14 +90,11 @@ fn calc_angle(
     relative_transformed_target_vector.angle(&Vector2::new(100., 0.))
 }
 
-fn calc_distance(
-    robot_odometry: &Isometry<f32, Unit<Complex<f32>>, 2>,
-    target_point: &Point2<f32>,
-) -> f32 {
+fn calc_distance(pose: &Isometry<f32, Unit<Complex<f32>>, 2>, target_point: &Point2<f32>) -> f32 {
     fn distance(point1: &Point2<f32>, point2: &Point2<f32>) -> f32 {
         ((point1.x - point2.x).powi(2) + (point1.y - point2.y).powi(2)).sqrt()
     }
-    let robot_point = robot_odometry.transform_point(&Point2::new(0., 0.));
+    let robot_point = pose.transform_point(&Point2::new(0., 0.));
 
     distance(&robot_point, target_point)
 }
@@ -125,9 +104,6 @@ fn walk_planner_system(
     pose: &RobotPose,
     step_planner: &StepPlanner,
     walking_engine: &mut WalkingEngine,
-    layout_config: &LayoutConfig,
-    showtime_config: &ShowtimeConfig,
-    robot_info: &RobotInfo,
     ctx: &DebugContext,
 ) -> Result<()> {
     if walking_engine.is_sitting() {
@@ -149,14 +125,10 @@ fn walk_planner_system(
         return Ok(());
     }
 
-    let player_num = showtime_config.robot_numbers_map[&robot_info.robot_id.to_string()];
-    let initial_position = layout_config.initial_positions.player(player_num);
-    let isometry = pose.inner.clone();
-
     let first_target_position = path[1];
-    let turn = calc_turn(&isometry, &first_target_position);
-    let angle = calc_angle(&isometry, &first_target_position);
-    let distance = calc_distance(&isometry, &first_target_position);
+    let turn = calc_turn(&pose.inner, &first_target_position);
+    let angle = calc_angle(&pose.inner, &first_target_position);
+    let distance = calc_distance(&pose.inner, &first_target_position);
 
     ctx.log_points_3d_with_color_and_radius(
         "/odometry/target_position",

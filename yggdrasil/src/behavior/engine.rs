@@ -15,6 +15,7 @@ use crate::{
         fsr::Contacts,
     },
     game_controller::GameControllerConfig,
+    localization::RobotPose,
     motion::step_planner::StepPlanner,
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
@@ -50,6 +51,8 @@ pub struct Context<'a> {
     pub game_controller_message: Option<&'a GameControllerMessage>,
     /// Contains the game-controller config.
     pub game_controller_config: &'a GameControllerConfig,
+    /// Contains the pose of the robot.
+    pub pose: &'a RobotPose,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -280,6 +283,7 @@ pub fn step(
     game_controller_message: &Option<GameControllerMessage>,
     game_controller_config: &GameControllerConfig,
     step_planner: &mut StepPlanner,
+    robot_pose: &RobotPose,
 ) -> Result<()> {
     let context = Context {
         robot_info,
@@ -293,6 +297,7 @@ pub fn step(
         behavior_config,
         game_controller_message: game_controller_message.as_ref(),
         game_controller_config,
+        pose: robot_pose,
     };
 
     engine.step(context, nao_manager, walking_engine, step_planner);

@@ -1,13 +1,9 @@
 use crate::{
-    config::{
-        layout::{self, LayoutConfig},
-        showtime::PlayerConfig,
-    },
+    config::{layout::LayoutConfig, showtime::PlayerConfig},
     debug::DebugContext,
     motion::odometry::{self, Odometry},
     prelude::*,
 };
-use geo::point;
 use nalgebra::{Isometry2, Point2, Translation2, UnitComplex};
 use nidhogg::types::{
     color::{self, RgbU8},
@@ -80,8 +76,16 @@ impl RobotPose {
 
     pub fn get_look_at_absolute(&self, point_in_world: &Point2<f32>) -> HeadJoints<f32> {
         let robot_to_point = self.world_to_robot(point_in_world).xy();
+        self.get_look_at(&robot_to_point)
+    }
 
-        HeadJoints::default()
+    pub fn get_look_at(&self, robot_to_point: &Point2<f32>) -> HeadJoints<f32> {
+        let yaw = (robot_to_point.y / robot_to_point.x).atan();
+        // This cannot be computed without properly turning it into a 3d point by e.g. projecting it, but
+        // that's for later
+        // let pitch = (robot_to_point.z / robot_to_point.magnitude).acos();
+
+        HeadJoints { yaw, pitch: 0.0 }
     }
 }
 
