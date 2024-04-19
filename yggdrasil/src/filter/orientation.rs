@@ -41,10 +41,13 @@ pub fn update_orientation(
     cycle: &CycleTime,
     primary_state: &PrimaryState,
 ) -> Result<()> {
-    if let PrimaryState::Penalized = primary_state {
-        orientation.initialized = false;
-    } else {
-        orientation.update(imu, fsr, cycle);
+    match primary_state {
+        PrimaryState::Penalized | PrimaryState::Initial => {
+            orientation.initialized = false;
+        }
+        _ => {
+            orientation.update(imu, fsr, cycle);
+        }
     }
 
     Ok(())
