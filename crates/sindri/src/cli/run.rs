@@ -103,7 +103,7 @@ impl Run {
             // even if the host doesn't have rerun viewer installed, there could be
             // some case where the viewer is launched through a different method than the cli.
             let local_ip = local_ip_address::local_ip().into_diagnostic()?;
-            envs.push(("RERUN_HOST", "10.1.8.144"));
+            envs.push(("RERUN_HOST", local_ip.to_string().leak()));
 
             if has_rerun {
                 spawn_rerun_viewer()?;
