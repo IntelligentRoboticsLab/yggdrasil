@@ -1,10 +1,12 @@
 use std::ops::Deref;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use nalgebra::{Point2, Vector2};
 
 use nidhogg::types::{color, FillExt, LeftEye};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
+use serde_with::DurationMilliSeconds;
 
 use crate::camera::matrix::CameraMatrices;
 use crate::camera::{Image, TopImage};
@@ -20,10 +22,13 @@ use super::BallDetectionConfig;
 
 const IMAGE_INPUT_SIZE: usize = 32;
 
+#[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BallClassifierConfig {
     pub confidence_threshold: f32,
     pub time_budget: usize,
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub ball_life: Duration,
 }
 
 pub(crate) struct BallClassifierModule;
@@ -56,11 +61,12 @@ impl MlModel for BallClassifierModel {
     type OutputType = f32;
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Ball {
     pub position_image: Point2<f32>,
     pub robot_to_ball: Vector2<f32>,
     pub distance: f32,
+    pub timestamp: Instant,
 }
 
 #[derive(Clone)]
@@ -128,6 +134,7 @@ pub(super) fn detect_balls(
                             position_image: proposal.position.cast(),
                             robot_to_ball: robot_to_ball.xy().coords,
                             distance: proposal.distance_to_ball,
+                            timestamp: Instant::now(),
                         });
                     }
                 }
@@ -136,6 +143,14 @@ pub(super) fn detect_balls(
     }
 
     balls.image = proposals.image.clone();
+    if classified_balls.len() == 0 {
+        for ball in balls.balls.iter() {
+            if ball.timestamp.elapsed() < classifier.ball_life {
+                classified_balls.push(ball.clone());
+            }
+        }
+    }
+
     balls.balls = classified_balls;
 
     let ball_positions = balls
