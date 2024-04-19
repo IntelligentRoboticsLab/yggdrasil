@@ -1,7 +1,13 @@
 use crate::{
-    config::{layout::LayoutConfig, showtime::ShowtimeConfig},
+    config::{
+        layout::{LayoutConfig, RobotPosition},
+        showtime::ShowtimeConfig,
+    },
     debug::DebugContext,
-    nao::RobotInfo,
+    nao::{
+        manager::{NaoManager, Priority},
+        RobotInfo,
+    },
     prelude::*,
     walk::engine::{Step, WalkingEngine},
 };
@@ -9,7 +15,7 @@ use crate::{
 use crate::motion::odometry;
 
 use nalgebra::{Isometry, Point2, Unit, Vector2};
-use nidhogg::types::color;
+use nidhogg::types::{color, FillExt, HeadJoints};
 use num::Complex;
 
 use super::{
@@ -118,6 +124,20 @@ fn calc_distance(
     distance(&robot_point, target_point)
 }
 
+fn look_at_target(robot_position: &Point2<f32>, target_point: &Point2<f32>) -> HeadJoints<f32> {
+    // Transform center point from world space to robot space.
+    let sign = robot_position.y.signum() as f32;
+    let transformed_center_x = robot_position.x - target_point.x * sign;
+    let transformed_center_y = robot_position.y - target_point.y * sign;
+
+    // Compute angle and then convert to the nek yaw, this angle is dependent on
+    // which side of the field the robot is located.
+    let angle = (transformed_center_y / transformed_center_x).atan();
+    let yaw = (std::f32::consts::FRAC_PI_2 + angle * sign) * sign;
+
+    HeadJoints { yaw, pitch: 0.0 }
+}
+
 #[system]
 fn walk_planner_system(
     odometry: &mut Odometry,
@@ -127,6 +147,7 @@ fn walk_planner_system(
     showtime_config: &ShowtimeConfig,
     robot_info: &RobotInfo,
     ctx: &DebugContext,
+    nao: &mut NaoManager,
 ) -> Result<()> {
     if walking_engine.is_sitting() {
         return Ok(());
@@ -182,6 +203,12 @@ fn walk_planner_system(
             turn,
         });
     }
+
+    nao.set_head(
+        look_at_target(&isometry.translation.vector.into(), &first_target_position),
+        HeadJoints::fill(0.4),
+        Priority::High,
+    );
 
     Ok(())
 }

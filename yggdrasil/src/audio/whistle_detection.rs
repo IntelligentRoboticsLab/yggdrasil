@@ -11,7 +11,7 @@ use crate::{
     prelude::*,
 };
 
-const BUFFER_INDICES: [usize; 2] = [0, 1];
+const BUFFER_INDICES: [usize; 1] = [1];
 
 const FFT_SIZE: usize = 512;
 const HOP_SIZE: usize = 256;

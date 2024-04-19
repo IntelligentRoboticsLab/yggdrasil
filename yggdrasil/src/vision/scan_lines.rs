@@ -107,7 +107,7 @@ impl PixelColor {
     }
 
     fn ys_is_white(y: f32, s: f32) -> bool {
-        y > 60. && s < 110.
+        y > 60. && s < 100.
     }
 
     fn ys_is_black(y: f32, s: f32) -> bool {

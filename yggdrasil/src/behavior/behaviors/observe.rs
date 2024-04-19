@@ -1,3 +1,5 @@
+use geo::Point;
+use nalgebra::Point2;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::time::Instant;
@@ -6,7 +8,7 @@ use crate::{
     behavior::engine::{Behavior, Context},
     motion::step_planner::StepPlanner,
     nao::manager::{NaoManager, Priority},
-    walk::engine::WalkingEngine,
+    walk::engine::{Step, WalkingEngine},
 };
 use nidhogg::types::{FillExt, HeadJoints};
 

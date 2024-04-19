@@ -31,7 +31,7 @@ impl Role for Attacker {
                 .player(context.player_config.player_number);
             let target = isometry_to_absolute(
                 Isometry2::from_parts(
-                    Translation2::from(ball_position.robot_to_ball),
+                    Translation2::from(-ball_position.robot_to_ball),
                     UnitComplex::identity(),
                 ),
                 pos,
@@ -42,10 +42,6 @@ impl Role for Attacker {
             });
         }
 
-        if let BehaviorKind::Observe(obs) = current_behavior {
-            BehaviorKind::Observe(obs.clone())
-        } else {
-            BehaviorKind::Observe(Observe::default())
-        }
+        current_behavior.clone()
     }
 }
