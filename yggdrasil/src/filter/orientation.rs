@@ -2,7 +2,12 @@ use nalgebra::{Quaternion, UnitComplex, UnitQuaternion, Vector3};
 use nidhogg::types::ForceSensitiveResistors;
 use serde::{Deserialize, Serialize};
 
-use crate::{nao::CycleTime, prelude::*, primary_state::PrimaryState};
+use crate::{
+    behavior::{engine::BehaviorKind, Engine},
+    nao::CycleTime,
+    prelude::*,
+    primary_state::PrimaryState,
+};
 
 use super::imu::IMUValues;
 
@@ -40,9 +45,13 @@ pub fn update_orientation(
     fsr: &ForceSensitiveResistors,
     cycle: &CycleTime,
     primary_state: &PrimaryState,
+    behavior_engine: &Engine,
 ) -> Result<()> {
-    match primary_state {
-        PrimaryState::Penalized | PrimaryState::Initial => {
+    match (primary_state, &behavior_engine.behavior) {
+        (PrimaryState::Penalized | PrimaryState::Initial, _) => {
+            orientation.initialized = false;
+        }
+        (_, BehaviorKind::Unstiff(_)) => {
             orientation.initialized = false;
         }
         _ => {
