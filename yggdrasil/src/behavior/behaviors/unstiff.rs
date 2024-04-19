@@ -1,5 +1,6 @@
 use crate::{
     behavior::engine::{Behavior, Context},
+    motion::motion_manager::MotionManager,
     motion::step_planner::StepPlanner,
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
@@ -17,6 +18,7 @@ impl Behavior for Unstiff {
         _context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        _: &mut MotionManager,
         _step_planner: &mut StepPlanner,
     ) {
         // Makes right eye blue.
