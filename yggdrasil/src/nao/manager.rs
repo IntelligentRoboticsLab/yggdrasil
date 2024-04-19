@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     ops::Not,
     time::{Duration, Instant},
 };
@@ -141,9 +142,7 @@ impl NaoManager {
         if current_settings
             .priority
             .as_ref()
-            .is_some_and(|current_priority| {
-                current_priority.priority_value() >= priority.priority_value()
-            })
+            .is_some_and(|current_priority| current_priority >= &priority)
         {
             return;
         }
@@ -157,9 +156,7 @@ impl NaoManager {
         if current_settings
             .priority
             .as_ref()
-            .is_some_and(|current_priority| {
-                current_priority.priority_value() >= priority.priority_value()
-            })
+            .is_some_and(|current_priority| current_priority >= &priority)
         {
             return;
         }
@@ -181,6 +178,39 @@ impl NaoManager {
         self.led_left_foot.priority = None;
         self.led_right_foot.priority = None;
         self.led_skull.priority = None;
+    }
+
+    /// Try to set all the joint position and stiffness of the legs, arms and head.
+    /// The joint positions are angles in radians.
+    ///
+    /// # Notes
+    /// - It is possible that one or all of the groups are not set, if another request
+    ///   has a higher priority.
+    /// - The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    ///   stiffness. A value of `-1` will disable the stiffness altogether.
+    pub fn set_all(
+        &mut self,
+        initial_joint_positions: JointArray<JointValue>,
+        head_stiffness: HeadJoints<JointValue>,
+        arm_stiffness: ArmJoints<JointValue>,
+        leg_stiffness: LegJoints<JointValue>,
+        priority: Priority,
+    ) -> &mut Self {
+        self.set_legs(
+            initial_joint_positions.leg_joints(),
+            leg_stiffness,
+            priority,
+        )
+        .set_arms(
+            initial_joint_positions.arm_joints(),
+            arm_stiffness,
+            priority,
+        )
+        .set_head(
+            initial_joint_positions.head_joints(),
+            head_stiffness,
+            priority,
+        )
     }
 
     /// Sets the joint position and stiffness of the leg joints.
@@ -247,37 +277,6 @@ impl NaoManager {
         );
 
         self
-    }
-
-    /// Sets all the joint position and stiffness of the legs, arms and head.
-    ///
-    /// The joint positions are degrees in radians.
-    ///
-    /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
-    /// stiffness. A value of `-1` will disable the stiffness altogether.
-    pub fn set_all(
-        &mut self,
-        initial_joint_positions: JointArray<JointValue>,
-        head_stiffness: HeadJoints<JointValue>,
-        arm_stiffness: ArmJoints<JointValue>,
-        leg_stiffness: LegJoints<JointValue>,
-        priority: Priority,
-    ) -> &mut Self {
-        self.set_legs(
-            initial_joint_positions.leg_joints(),
-            leg_stiffness,
-            priority,
-        )
-        .set_arms(
-            initial_joint_positions.arm_joints(),
-            arm_stiffness,
-            priority,
-        )
-        .set_head(
-            initial_joint_positions.head_joints(),
-            head_stiffness,
-            priority,
-        )
     }
 
     /// Disable all motors in the legs.
@@ -442,5 +441,17 @@ impl Priority {
                 *value
             }
         }
+    }
+}
+
+impl PartialEq for Priority {
+    fn eq(&self, other: &Self) -> bool {
+        self.priority_value() == other.priority_value()
+    }
+}
+
+impl PartialOrd for Priority {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.priority_value().partial_cmp(&other.priority_value())
     }
 }

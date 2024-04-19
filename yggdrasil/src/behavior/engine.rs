@@ -5,16 +5,20 @@ use enum_dispatch::enum_dispatch;
 
 use crate::{
     behavior::{
-        behaviors::{Initial, Observe, Penalized, StartUp, Unstiff, Walk},
+        behaviors::{CatchFall, Initial, Observe, Penalized, Standup, StartUp, Unstiff, Walk},
         roles::Attacker,
         BehaviorConfig,
     },
     config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
     filter::{
         button::{ChestButton, HeadButtons},
+        falling::FallState,
         fsr::Contacts,
     },
     game_controller::GameControllerConfig,
+    localization::RobotPose,
+    motion::motion_manager::MotionManager,
+    motion::step_planner::StepPlanner,
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
     primary_state::PrimaryState,
@@ -49,6 +53,10 @@ pub struct Context<'a> {
     pub game_controller_message: Option<&'a GameControllerMessage>,
     /// Contains the game-controller config.
     pub game_controller_config: &'a GameControllerConfig,
+    /// Contains information of the current Falling state of the robot
+    pub fall_state: &'a FallState,
+    /// Contains the pose of the robot.
+    pub pose: &'a RobotPose,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -61,6 +69,8 @@ pub struct Context<'a> {
 /// use yggdrasil::behavior::engine::{Behavior, Context};
 /// use yggdrasil::nao::manager::NaoManager;
 /// use yggdrasil::walk::engine::WalkingEngine;
+/// use yggdrasil::motion::motion_manager::MotionManager;
+/// use yggdrasil::motion::step_planner::StepPlanner;
 ///
 /// struct Dance;
 ///
@@ -70,6 +80,8 @@ pub struct Context<'a> {
 ///         context: Context,
 ///         nao_manager: &mut NaoManager,
 ///         walking_engine: &mut WalkingEngine,
+///         motion_manager: &mut MotionManager,
+///         step_planner: &mut StepPlanner,
 ///     ) {
 ///         // Dance like nobody's watching 🕺!
 ///     }
@@ -84,6 +96,8 @@ pub trait Behavior {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        motion_manager: &mut MotionManager,
+        step_planner: &mut StepPlanner,
     );
 }
 
@@ -105,6 +119,8 @@ pub enum BehaviorKind {
     Observe(Observe),
     Penalized(Penalized),
     Walk(Walk),
+    Standup(Standup),
+    CatchFall(CatchFall),
     // Add new behaviors here!
 }
 
@@ -127,6 +143,8 @@ impl Default for BehaviorKind {
 ///     engine::{BehaviorKind, Context, Role},
 /// };
 /// use yggdrasil::walk::engine::WalkingEngine;
+/// use yggdrasil::motion::motion_manager::MotionManager;
+/// use yggdrasil::motion::step_planner::StepPlanner;
 ///
 /// struct SecretAgent;
 ///
@@ -136,6 +154,8 @@ impl Default for BehaviorKind {
 ///         context: Context,
 ///         current_behavior: &mut BehaviorKind,
 ///         walking_engine: &mut WalkingEngine,
+///         motion_manager: &mut MotionManager,
+///         step_planner: &mut StepPlanner,
 ///     ) -> BehaviorKind {
 ///         // Implement behavior transitions for secret agent 🕵️
 ///         // E.g. Disguise -> Assassinate
@@ -155,6 +175,8 @@ pub trait Role {
         context: Context,
         current_behavior: &mut BehaviorKind,
         walking_engine: &mut WalkingEngine,
+        motion_manager: &mut MotionManager,
+        step_planner: &mut StepPlanner,
     ) -> BehaviorKind;
 }
 
@@ -187,6 +209,7 @@ pub struct Engine {
     /// Current robot role
     role: RoleKind,
     /// Current robot behavior
+    // TODO: Make private.
     pub behavior: BehaviorKind,
 }
 
@@ -213,19 +236,55 @@ impl Engine {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
+        motion_manager: &mut MotionManager,
+        step_planner: &mut StepPlanner,
     ) {
         self.role = self.assign_role(context);
 
-        self.transition(context, walking_engine);
+        self.transition(context, walking_engine, motion_manager, step_planner);
 
-        self.behavior.execute(context, nao_manager, walking_engine);
+        self.behavior.execute(
+            context,
+            nao_manager,
+            walking_engine,
+            motion_manager,
+            step_planner,
+        );
     }
 
-    pub fn transition(&mut self, context: Context, walking_engine: &mut WalkingEngine) {
+    pub fn transition(
+        &mut self,
+        context: Context,
+        walking_engine: &mut WalkingEngine,
+        motion_manager: &mut MotionManager,
+        step_planner: &mut StepPlanner,
+    ) {
         if let BehaviorKind::StartUp(_) = self.behavior {
             if walking_engine.is_sitting() {
                 self.behavior = BehaviorKind::Unstiff(Unstiff);
             }
+        }
+
+        // unstiff has the number 1 precedence
+        if let PrimaryState::Unstiff = context.primary_state {
+            self.behavior = BehaviorKind::Unstiff(Unstiff);
+            return;
+        }
+
+        // next up, damage prevention and standup motion take precedence
+        match context.fall_state {
+            FallState::Lying(_) => {
+                self.behavior = BehaviorKind::Standup(Standup);
+                return;
+            }
+            FallState::Falling(_) => {
+                self.behavior = BehaviorKind::CatchFall(CatchFall);
+                return;
+            }
+            FallState::InStandup => {
+                return;
+            }
+            _ => {}
         }
 
         self.behavior = match context.primary_state {
@@ -236,10 +295,13 @@ impl Engine {
             PrimaryState::Set => BehaviorKind::Initial(Initial),
             PrimaryState::Finished => BehaviorKind::Initial(Initial),
             PrimaryState::Calibration => BehaviorKind::Initial(Initial),
-            PrimaryState::Playing => {
-                self.role
-                    .transition_behavior(context, &mut self.behavior, walking_engine)
-            }
+            PrimaryState::Playing => self.role.transition_behavior(
+                context,
+                &mut self.behavior,
+                walking_engine,
+                motion_manager,
+                step_planner,
+            ),
         };
     }
 }
@@ -262,6 +324,10 @@ pub fn step(
     walking_engine: &mut WalkingEngine,
     game_controller_message: &Option<GameControllerMessage>,
     game_controller_config: &GameControllerConfig,
+    fall_state: &FallState,
+    motion_manager: &mut MotionManager,
+    step_planner: &mut StepPlanner,
+    robot_pose: &RobotPose,
 ) -> Result<()> {
     let context = Context {
         robot_info,
@@ -275,9 +341,17 @@ pub fn step(
         behavior_config,
         game_controller_message: game_controller_message.as_ref(),
         game_controller_config,
+        fall_state,
+        pose: robot_pose,
     };
 
-    engine.step(context, nao_manager, walking_engine);
+    engine.step(
+        context,
+        nao_manager,
+        walking_engine,
+        motion_manager,
+        step_planner,
+    );
 
     Ok(())
 }

@@ -10,11 +10,11 @@ pub mod line_detection;
 pub mod scan_lines;
 
 use field_boundary::FieldBoundaryModule;
-use line_detection::LineDetectionModule;
+
 use scan_lines::{ScanLinesConfig, ScanLinesModule};
 
 use self::ball_detection::BallDetectionModule;
-use self::field_marks::{FieldMarksConfig, FieldMarksModule};
+use self::field_marks::FieldMarksConfig;
 
 pub struct VisionModule;
 
@@ -22,9 +22,9 @@ impl Module for VisionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_module(FieldBoundaryModule)?
             .add_module(ScanLinesModule)?
-            .add_module(LineDetectionModule)?
-            .add_module(BallDetectionModule)?
-            .add_module(FieldMarksModule)
+            // .add_module(LineDetectionModule)?
+            .add_module(BallDetectionModule)
+        // .add_module(FieldMarksModule)
     }
 }
 

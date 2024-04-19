@@ -1,9 +1,10 @@
-use crate::filter::{fsr::Contacts, imu::IMUValues};
+use crate::{
+    behavior::{engine::BehaviorKind, Engine},
+    filter::imu::IMUValues,
+};
 use miette::Result;
 use tyr::prelude::*;
 
-/// Maximum angle for standing upright.
-const MAX_UPRIGHT_ANGLE: f32 = 0.1;
 /// Minimum angle for falling detection.
 const MIN_FALL_ANGLE_FORWARDS: f32 = 0.45;
 const MIN_FALL_ANGLE_BACKWARDS: f32 = -0.45;
@@ -11,11 +12,11 @@ const MIN_FALL_ANGLE_LEFT: f32 = -0.52;
 const MIN_FALL_ANGLE_RIGHT: f32 = 0.52;
 /// Minimum velocity for falling detection.
 const MIN_FALL_VELOCITY_FORWARDS: f32 = 0.15;
-const MIN_FALL_VELOCITY_BACKWARDS: f32 = 0.15;
+const MIN_FALL_VELOCITY_BACKWARDS: f32 = -0.15;
 const MIN_FALL_VELOCITY_LEFT: f32 = 0.15;
 const MIN_FALL_VELOCITY_RIGHT: f32 = 0.15;
 // Minimum angle for lying confirmation.
-const MIN_LYING_ANGLE: f32 = 1.5;
+const MIN_LYING_ANGLE: f32 = 1.3;
 /// Minimum accelerometer deviation for lying confirmation.
 const MAX_ACC_DEVIATION: f32 = 0.175;
 
@@ -34,11 +35,13 @@ impl Module for FallingFilter {
 /// FallState contains the variants: Falling, Upright and Lying. Both Falling and Lying have their
 /// associated values which are again, enum types containing the directions the robot can fall or
 /// lie in.
+
 #[derive(Default, Clone, Debug)]
 pub enum FallState {
     Falling(FallDirection),
     #[default]
     Upright,
+    InStandup,
     Lying(LyingDirection),
 }
 
@@ -61,32 +64,23 @@ pub enum LyingDirection {
 /// Is the robot falling forward based on its angle and gyroscope.
 fn is_falling_forward(imu_values: &IMUValues) -> bool {
     (imu_values.angles.y > MIN_FALL_ANGLE_FORWARDS)
-        && imu_values.gyroscope.y.abs() > MIN_FALL_VELOCITY_FORWARDS
+        && imu_values.gyroscope.y > MIN_FALL_VELOCITY_FORWARDS
 }
 
 /// Is the robot falling backwards based on its angle and gyroscope.
 fn is_falling_backward(imu_values: &IMUValues) -> bool {
     (imu_values.angles.y < MIN_FALL_ANGLE_BACKWARDS)
-        && imu_values.gyroscope.y.abs() > MIN_FALL_VELOCITY_BACKWARDS
+        && imu_values.gyroscope.y < MIN_FALL_VELOCITY_BACKWARDS
 }
 
 /// Is the robot falling left based on its angle and gyroscope.
 fn is_falling_left(imu_values: &IMUValues) -> bool {
-    (imu_values.angles.x < MIN_FALL_ANGLE_LEFT)
-        && imu_values.gyroscope.x.abs() > MIN_FALL_VELOCITY_LEFT
+    (imu_values.angles.x < MIN_FALL_ANGLE_LEFT) && imu_values.gyroscope.x < MIN_FALL_VELOCITY_LEFT
 }
 
 /// Is the robot falling right based on its angle and gyroscope.
 fn is_falling_right(imu_values: &IMUValues) -> bool {
-    (imu_values.angles.x > MIN_FALL_ANGLE_RIGHT)
-        && imu_values.gyroscope.x.abs() > MIN_FALL_VELOCITY_RIGHT
-}
-
-/// Is the robot standing upright based on its angles and ground contact.
-fn is_standing_upright(imu_values: &IMUValues, contacts: &Contacts) -> bool {
-    imu_values.angles.x < MAX_UPRIGHT_ANGLE
-        && imu_values.angles.y < MAX_UPRIGHT_ANGLE
-        && contacts.ground
+    (imu_values.angles.x > MIN_FALL_ANGLE_RIGHT) && imu_values.gyroscope.x > MIN_FALL_VELOCITY_RIGHT
 }
 
 /// Is the robot lying on its stomach based on the accelerometer and angle.
@@ -107,8 +101,19 @@ fn is_lying_on_back(imu_values: &IMUValues) -> bool {
 fn pose_filter(
     imu_values: &IMUValues,
     fall_state: &mut FallState,
-    contacts: &Contacts,
+    behaviour_engine: &Engine,
 ) -> Result<()> {
+    // current method to keep the falling behavior from interrupting the
+    // stand up behavior, will be changed once motion module integration
+    // for behaviors has advanced
+    if let BehaviorKind::Standup(_) = behaviour_engine.behavior {
+        if let FallState::Upright = fall_state {
+            return Ok(());
+        }
+        *fall_state = FallState::InStandup;
+        return Ok(());
+    }
+
     if is_falling_forward(imu_values) {
         *fall_state = FallState::Falling(FallDirection::Forwards);
     } else if is_falling_backward(imu_values) {
@@ -117,8 +122,6 @@ fn pose_filter(
         *fall_state = FallState::Falling(FallDirection::Left);
     } else if is_falling_right(imu_values) {
         *fall_state = FallState::Falling(FallDirection::Right);
-    } else if is_standing_upright(imu_values, contacts) {
-        *fall_state = FallState::Upright;
     } else if is_lying_on_stomach(imu_values) {
         *fall_state = FallState::Lying(LyingDirection::FacingDown);
     } else if is_lying_on_back(imu_values) {

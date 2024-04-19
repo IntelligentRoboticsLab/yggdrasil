@@ -17,3 +17,6 @@ center_offset = 16.0
 confidence_threshold = 0.8
 # The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
 time_budget = 3000
+# Lifetime of the ball in milliseconds, this is the time the robot will remember a classified balls' location.
+# If a new ball is detected it will restart the timer.  
+ball_life = 10000
