@@ -32,8 +32,8 @@ impl Module for AudioInputModule {
 /// with [`Access::RWInterleaved`], which means alternating between the left and right
 /// channel, e.g. 'LRLRLR'.
 pub struct AudioInput {
-    /// Buffer containing audio samples with access [`Access::RWInterleaved`], which means
-    /// alternating samples between the left and right channel, e.g. 'LRLRLR'.
+    /// Buffer containing audio samples with access [`Access::RWNonInterleaved`], which means
+    /// that the samples are stored seperately for each channel.
     pub buffer: Arc<[Vec<f32>; NUMBER_OF_CHANNELS]>,
     device: Arc<Mutex<PCM>>,
 }
