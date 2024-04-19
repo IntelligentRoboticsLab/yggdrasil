@@ -67,12 +67,27 @@ pub struct Ball {
     pub robot_to_ball: Vector2<f32>,
     pub distance: f32,
     pub timestamp: Instant,
+    pub confidence: f32,
 }
 
 #[derive(Clone)]
 pub struct Balls {
     pub balls: Vec<Ball>,
     pub image: Image,
+}
+
+impl Balls {
+    pub fn get_best_ball(&self) -> Ball {
+        let mut best_ball = &self.balls[0];
+
+        for ball in self.balls[1..].iter() {
+            if ball.confidence > best_ball.confidence {
+                best_ball = ball;
+            }
+        }
+
+        best_ball.clone()
+    }
 }
 
 #[system]
@@ -135,6 +150,7 @@ pub(super) fn detect_balls(
                             robot_to_ball: robot_to_ball.xy().coords,
                             distance: proposal.distance_to_ball,
                             timestamp: Instant::now(),
+                            confidence,
                         });
                     }
                 }
