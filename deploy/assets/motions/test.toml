@@ -1,0 +1,5 @@
+interpolation_type = "Linear"
+exit_routine = "Standing"
+motion_order = [
+    "test"
+]
