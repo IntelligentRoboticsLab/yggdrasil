@@ -1,3 +1,4 @@
+use yggdrasil::localization::LocalizationModule;
 #[allow(unused_imports)]
 use yggdrasil::{
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, debug::DebugModule,
@@ -8,6 +9,7 @@ use yggdrasil::{
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
+
     miette::set_panic_hook();
 
     let app = App::new()
@@ -23,7 +25,8 @@ fn main() -> Result<()> {
         .add_module(WalkingEngineModule)?
         .add_module(DebugModule)?
         .add_module(VisionModule)?
-        .add_module(MotionModule)?;
+        .add_module(MotionModule)?
+        .add_module(LocalizationModule)?;
 
     #[cfg(feature = "alsa")]
     let app = app.add_module(yggdrasil::audio::AudioModule)?;

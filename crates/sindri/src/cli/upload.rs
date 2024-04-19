@@ -1,6 +1,6 @@
 use crate::{
     cargo::{self, find_bin_manifest, Profile},
-    config::Config,
+    config::SindriConfig,
     error::{Error, Result},
 };
 use clap::Parser;
@@ -31,8 +31,8 @@ const LOCAL_ROBOT_ID_STR: &str = "0";
 /// is rather slow due to the locking mechanism.
 const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
 
-#[derive(Clone, Debug, Parser)]
-pub struct ConfigOptsDeploy {
+#[derive(Clone, Debug)]
+pub struct ConfigOptsUpload {
     /// Number of the robot to deploy to.
     #[clap(
         index = 1,
@@ -72,9 +72,13 @@ pub struct ConfigOptsDeploy {
         ]),
     )]
     pub alsa: bool,
+
+    /// Whether the command prints all progress
+    #[clap(long, short)]
+    pub silent: bool,
 }
 
-impl ConfigOptsDeploy {
+impl ConfigOptsUpload {
     #[must_use]
     pub fn new(
         number: u8,
@@ -84,6 +88,7 @@ impl ConfigOptsDeploy {
         local: bool,
         alsa: bool,
         bin: String,
+        silent: bool,
     ) -> Self {
         Self {
             number,
@@ -93,42 +98,46 @@ impl ConfigOptsDeploy {
             local,
             bin,
             alsa,
+            silent,
         }
     }
 }
 
 /// Compile and deploy the specified binary to the robot.
-#[derive(Parser)]
-pub struct Deploy {
-    #[clap(flatten)]
+pub struct Upload {
     pub deploy: ConfigOptsDeploy,
 }
 
 impl Deploy {
     /// Constructs IP and deploys to the robot
-    pub async fn deploy(self, config: Config) -> miette::Result<()> {
+    pub async fn deploy(self, config: SindriConfig) -> miette::Result<()> {
         find_bin_manifest(&self.deploy.bin)
             .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
 
-        let pb = ProgressBar::new_spinner();
-        pb.enable_steady_tick(Duration::from_millis(80));
-        pb.set_style(
-            ProgressStyle::with_template(
-                "   {prefix:.green.bold} yggdrasil {msg} {spinner:.green.bold}",
-            )
-            .unwrap()
-            .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
-        );
+        let mut pb: Option<ProgressBar> = None;
+        if !self.deploy.silent {
+            pb = Some(ProgressBar::new_spinner());
+        }
 
-        pb.set_message(format!(
-            "{}{}, {}{}{}",
-            "(release: ".dimmed(),
-            "true".red(),
-            "target: ".dimmed(),
-            ROBOT_TARGET.bold(),
-            ")".dimmed()
-        ));
-        pb.set_prefix("Compiling");
+        if let Some(pb) = &pb {
+            pb.enable_steady_tick(Duration::from_millis(80));
+            pb.set_style(
+                ProgressStyle::with_template(
+                    "   {prefix:.green.bold} yggdrasil {msg} {spinner:.green.bold}",
+                )
+                .unwrap()
+                .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
+            );
+            pb.set_message(format!(
+                "{}{}, {}{}{}",
+                "(release: ".dimmed(),
+                "true".red(),
+                "target: ".dimmed(),
+                ROBOT_TARGET.bold(),
+                ")".dimmed()
+            ));
+            pb.set_prefix("Compiling");
+        }
 
         let mut features = vec![];
         if self.deploy.alsa {
@@ -157,23 +166,25 @@ impl Deploy {
         )
         .await?;
 
-        pb.println(format!(
-            "{} {} {}{}, {}{}{}",
-            "   Compiling".green().bold(),
-            "yggdrasil".bold(),
-            "(release: ".dimmed(),
-            "true".red(),
-            "target: ".dimmed(),
-            ROBOT_TARGET.bold(),
-            ")".dimmed()
-        ));
+        if let Some(pb) = &pb {
+            pb.println(format!(
+                "{} {} {}{}, {}{}{}",
+                "   Compiling".green().bold(),
+                "yggdrasil".bold(),
+                "(release: ".dimmed(),
+                "true".red(),
+                "target: ".dimmed(),
+                ROBOT_TARGET.bold(),
+                ")".dimmed()
+            ));
 
-        pb.println(format!(
-            "{} in {}",
-            "    Finished".green().bold(),
-            HumanDuration(pb.elapsed()),
-        ));
-        pb.reset_elapsed();
+            pb.println(format!(
+                "{} in {}",
+                "    Finished".green().bold(),
+                HumanDuration(pb.elapsed()),
+            ));
+            pb.reset_elapsed();
+        }
 
         let release_path = if self.deploy.local {
             RELEASE_PATH_LOCAL
@@ -198,51 +209,60 @@ impl Deploy {
                 self.deploy.number
             )))?;
 
-        pb.set_style(
-            ProgressStyle::with_template("   {prefix:.blue.bold} {msg} {spinner:.blue.bold}")
-                .unwrap()
-                .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
-        );
+        if let Some(pb) = &pb {
+            pb.set_style(
+                ProgressStyle::with_template("   {prefix:.blue.bold} {msg} {spinner:.blue.bold}")
+                    .unwrap()
+                    .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
+            );
 
-        pb.set_prefix("Deploying");
-        pb.set_message(format!("{}", "Preparing deployment...".dimmed()));
+            pb.set_prefix("Deploying");
 
-        deploy_to_robot(&pb, robot.ip())
+            pb.set_message(format!("{}", "Preparing deployment...".dimmed()));
+        }
+
+        deploy_to_robot(pb.as_ref(), robot.ip())
             .await
             .wrap_err("Failed to deploy yggdrasil files to robot")?;
 
-        pb.println(format!(
-            "{} in {}",
-            "  Deployed to robot".bold(),
-            HumanDuration(pb.elapsed()),
-        ));
-        pb.finish_and_clear();
+        if let Some(pb) = &pb {
+            pb.println(format!(
+                "{} in {}",
+                "  Deployed to robot".bold(),
+                HumanDuration(pb.elapsed()),
+            ));
+            pb.finish_and_clear();
+        }
 
         Ok(())
     }
 }
 
 /// Copy the contents of the 'deploy' folder to the robot.
-async fn deploy_to_robot(pb: &ProgressBar, addr: Ipv4Addr) -> Result<()> {
-    pb.println(format!(
-        "{} {} {}",
-        "  Connecting".bright_blue().bold(),
-        "to".dimmed(),
-        addr.to_string().clone().bold(),
-    ));
+async fn deploy_to_robot(pb: Option<&ProgressBar>, addr: Ipv4Addr) -> Result<()> {
+    if let Some(pb) = pb {
+        pb.println(format!(
+            "{} {} {}",
+            "  Connecting".bright_blue().bold(),
+            "to".dimmed(),
+            addr.to_string().clone().bold(),
+        ));
+    }
 
     let sftp = create_sftp_connection(addr).await?;
 
-    pb.set_message(format!("{}", "Ensuring host directories exist".dimmed()));
+    if let Some(pb) = pb {
+        pb.set_message(format!("{}", "Ensuring host directories exist".dimmed()));
 
-    pb.set_style(
-        ProgressStyle::with_template(
-            "   {prefix:.blue.bold} {msg} [{bar:.blue/cyan}] {spinner:.blue.bold}",
-        )
-        .unwrap()
-        .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
-        .progress_chars("=>-"),
-    );
+        pb.set_style(
+            ProgressStyle::with_template(
+                "   {prefix:.blue.bold} {msg} [{bar:.blue/cyan}] {spinner:.blue.bold}",
+            )
+            .unwrap()
+            .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
+            .progress_chars("=>-"),
+        );
+    }
 
     for entry in WalkDir::new("./deploy") {
         let entry = entry.unwrap();
@@ -271,17 +291,25 @@ async fn deploy_to_robot(pb: &ProgressBar, addr: Ipv4Addr) -> Result<()> {
         // Since `file_remote` impl's Write, we can just copy directly using a BufWriter!
         // The Write impl is rather slow, so we set a large buffer size of 1 mb.
         let file_length = file_local.metadata()?.len();
-        pb.set_length(file_length);
-        pb.set_message(format!("{}", entry.path().to_string_lossy()));
 
-        let buf_writer = BufWriter::with_capacity(UPLOAD_BUFFER_SIZE, file_remote);
-        std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer)).map_err(Error::IoError)?;
+        if let Some(pb) = pb {
+            pb.set_length(file_length);
+            pb.set_message(format!("{}", entry.path().to_string_lossy()));
+        }
 
-        pb.println(format!(
-            "{} {}",
-            "    Uploaded".bright_blue().bold(),
-            entry.path().to_string_lossy().dimmed()
-        ));
+        let mut buf_writer = BufWriter::with_capacity(UPLOAD_BUFFER_SIZE, file_remote);
+        if let Some(pb) = pb {
+            std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer))
+                .map_err(Error::IoError)?;
+
+            pb.println(format!(
+                "{} {}",
+                "    Uploaded".bright_blue().bold(),
+                entry.path().to_string_lossy().dimmed()
+            ));
+        } else {
+            std::io::copy(&mut file_local, &mut buf_writer)?;
+        }
     }
 
     Ok(())

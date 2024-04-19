@@ -1,0 +1,9 @@
+interpolation_type = "Linear"
+exit_routine = "Standing"
+motion_order = [
+    "standup/on_stomach/lying_to_yoga",
+    "standup/on_stomach/yoga_to_sitting",
+    "standup/on_stomach/sitting_to_half_crouch",
+    "standup/half_crouch_to_sit",
+    "standup/extend_legs",
+]

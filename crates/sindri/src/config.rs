@@ -3,8 +3,11 @@ use serde::Deserialize;
 use serde_with::serde_as;
 use std::ops::RangeInclusive;
 use std::path::PathBuf;
+use std::process::Stdio;
 use std::{ffi::OsStr, net::Ipv4Addr};
 use tokio::process::{Child, Command};
+
+use crate::error::Error;
 
 // Config location relative to home directory
 const CONFIG_FILE: &str = ".config/sindri/sindri.toml";
@@ -15,7 +18,7 @@ pub fn config_file() -> PathBuf {
         .join(CONFIG_FILE)
 }
 
-pub fn load_config() -> Result<Config> {
+pub fn load_config() -> Result<SindriConfig> {
     let config_file = config_file();
 
     let config_data = std::fs::read_to_string(config_file)
@@ -49,7 +52,7 @@ impl ConfigRobot {
 /// Configuration structure for sindri (.toml), containing team number and robot information
 #[serde_as]
 #[derive(Debug, Deserialize, Clone)]
-pub struct Config {
+pub struct SindriConfig {
     /// The configured team number, used to construct IPs.
     pub team_number: u8,
 
@@ -57,7 +60,7 @@ pub struct Config {
     pub robots: Vec<ConfigRobot>,
 }
 
-impl<'a> Config {
+impl<'a> SindriConfig {
     /// Get a [`Robot`] instance using the provided number.
     ///
     /// If there's no [`Robot`] configured with the provided number, this will return an [`Option::None`].
@@ -148,7 +151,8 @@ impl Robot {
         command: impl Into<String>,
         // Environment variables to run the command with
         remote_envs: impl IntoIterator<Item = (K, V)>,
-    ) -> Result<Child>
+        quiet: bool,
+    ) -> crate::error::Result<Child>
     where
         K: AsRef<OsStr>,
         V: AsRef<OsStr>,
@@ -162,14 +166,30 @@ impl Robot {
             mapping
         });
 
+        let mut quiet_arg = "";
+        if !quiet {
+            quiet_arg = "-t"
+        }
+
+        let command = command.into();
         Command::new("ssh")
             .arg(format!("nao@{}", self.ip()))
-            .arg("-t")
+            .arg(quiet_arg)
             .args(remote_envs)
             .arg("bash -ilc")
-            .args(command.into().split(' ').collect::<Vec<&str>>())
+            .arg(format!("\"{}\"", command.clone()))
             .kill_on_drop(true)
+            .stderr(pick_stream(quiet))
+            .stdout(pick_stream(quiet))
             .spawn()
-            .into_diagnostic()
+            .map_err(|e| Error::Ssh { source: e, command })
+    }
+}
+
+fn pick_stream(quiet: bool) -> Stdio {
+    if quiet {
+        Stdio::null()
+    } else {
+        Stdio::inherit()
     }
 }

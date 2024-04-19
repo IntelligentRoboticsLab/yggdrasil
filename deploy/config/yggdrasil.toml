@@ -19,10 +19,6 @@ game_controller_return_delay = 500
 # If the robot doesn't receive a game-controller message for this amount of time,
 # it will consider the connection to the game-controller as "lost".
 game_controller_timeout = 5000
-# TODO: Make this an environment variable.
-player_number = 3
-# TODO: Make this an environment variable.
-team_number = 8
 
 [camera.top]
 # The path to the camera device.
@@ -106,7 +102,7 @@ time_budget = 3000
 # The scale factor for the odometry values along the x and y axis respectively.
 # This is used to calibrate the odometry values to the actual distance the robot has moved.
 # Values taken from rUNSWift 2014 walk
-scale_factor = [1.19, 1.2]
+scale_factor = [0.81, 1.19]
 
 # The configuration for the odometry filter.
 # The filter is an implementation of this paper https://www.mdpi.com/1424-8220/15/8/19302/pdf

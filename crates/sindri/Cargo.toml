@@ -1,7 +1,7 @@
 [package]
 edition = "2021"
 name = "sindri"
-version = "0.2.0"
+version = "0.3.0"
 
 [dependencies]
 cargo_toml = { workspace = true }
@@ -10,7 +10,7 @@ colored = { workspace = true }
 dialoguer = { workspace = true }
 glob = { workspace = true }
 home = { workspace = true }
-indicatif = { workspace = true }
+indicatif = { workspace = true, features = ["tokio"] }
 local-ip-address = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 regex = { workspace = true }
@@ -29,3 +29,4 @@ tokio = { workspace = true, features = [
 ] }
 toml = { workspace = true }
 walkdir = { workspace = true }
+yggdrasil = { path = "../../yggdrasil" }

@@ -1,37 +1,68 @@
+use std::collections::HashMap;
 use std::{os::unix::process::CommandExt, process::Stdio};
+use yggdrasil::{config::showtime::ShowtimeConfig, prelude::Config as OdalConfigTrait};
 
 use clap::Parser;
 use colored::Colorize;
-use miette::{miette, IntoDiagnostic, Result};
+use indicatif::ProgressBar;
+use miette::{bail, miette, IntoDiagnostic, Result};
 use tokio::process::Command;
 
 use crate::{
-    cli::deploy::{ConfigOptsDeploy, Deploy},
-    config::Config,
+    cli::robot_ops::{self, ConfigOptsRobotOps, RobotEntry},
+    config::SindriConfig,
 };
 
+const LOCAL_ROBOT_ID: u8 = 0;
+const DEFAULT_PLAYER_NUMBER: u8 = 3;
+const DEFAULT_TEAM_NUMBER: u8 = 8;
+
+// TODO: refactor config for run
 #[derive(Parser, Debug)]
 /// Compile, deploy and run the specified binary to the robot.
 pub struct Run {
     #[clap(flatten)]
-    pub deploy: ConfigOptsDeploy,
+    pub robot_ops: ConfigOptsRobotOps,
     /// Also print debug logs to stdout [default: false]
     #[clap(long, short)]
     pub debug: bool,
 }
 
 impl Run {
-    pub async fn run(self, config: Config) -> Result<()> {
-        let robot = config
-            .robot(self.deploy.number, self.deploy.wired)
-            .ok_or(miette!(format!(
-                "Invalid robot specified, number {} is not configured!",
-                self.deploy.number
-            )))?;
+    /// Compiles, upload and then runs yggdrasil on one robot.
+    /// This is done interactively so logs can be seen in the terminal.
+    pub async fn run(self, config: SindriConfig) -> Result<()> {
+        if self.robot_ops.robots.len() != 1 {
+            bail!("Exactly one robot should be specified for the run command")
+        }
 
-        let local = self.deploy.local;
-        let rerun = self.deploy.rerun;
+        // Generate showtime config
+        let mut robot_assignments = HashMap::new();
+        let RobotEntry {
+            robot_number,
+            player_number,
+        } = self.robot_ops.robots[0];
+        if self.robot_ops.local {
+            robot_assignments.insert(LOCAL_ROBOT_ID.to_string(), DEFAULT_PLAYER_NUMBER);
+        } else if let Some(player_number) = player_number {
+            robot_assignments.insert(robot_number.to_string(), player_number);
+        } else {
+            robot_assignments.insert(robot_number.to_string(), DEFAULT_PLAYER_NUMBER);
+        }
+        let showtime_config = ShowtimeConfig {
+            team_number: self.robot_ops.team.unwrap_or(DEFAULT_TEAM_NUMBER),
+            robot_numbers_map: robot_assignments,
+        };
+        showtime_config
+            .store("./deploy/config/generated/showtime.toml")
+            .map_err(|e| {
+                miette!(format!(
+                    "{e} Make sure you run Yggdrasil from the root of the project"
+                ))
+            })?;
 
+        let local = self.robot_ops.local;
+        let rerun = self.robot_ops.rerun;
         let has_rerun = has_rerun().await;
 
         if rerun && !has_rerun {
@@ -42,11 +73,25 @@ impl Run {
             );
         }
 
-        Deploy {
-            deploy: self.deploy,
+        let compile_bar = ProgressBar::new(1);
+        let output = robot_ops::Output::Single(compile_bar.clone());
+        robot_ops::compile(self.robot_ops.clone(), output.clone()).await?;
+        compile_bar.finish_and_clear();
+
+        let robot = self.robot_ops.get_first_robot(&config)?;
+
+        if !self.robot_ops.local {
+            output.spinner();
+            robot_ops::stop_single_yggdrasil_service(&robot, output.clone()).await?;
+            robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
+
+            if let Some(network) = self.robot_ops.network {
+                output.spinner();
+                robot_ops::change_single_network(&robot, network, output.clone()).await?;
+            }
+
+            output.finished_deploying(&robot.ip());
         }
-        .deploy(config)
-        .await?;
 
         let mut envs = Vec::new();
         if self.debug {
@@ -73,7 +118,7 @@ impl Run {
                 .into_diagnostic()?;
         } else {
             robot
-                .ssh("./yggdrasil", envs)?
+                .ssh("./yggdrasil", envs, false)?
                 .wait()
                 .await
                 .into_diagnostic()?;
