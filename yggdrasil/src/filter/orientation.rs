@@ -50,9 +50,11 @@ pub fn update_orientation(
     match (primary_state, &behavior_engine.behavior) {
         (PrimaryState::Penalized | PrimaryState::Initial, _) => {
             orientation.initialized = false;
+            orientation.orientation = UnitQuaternion::identity();
         }
         (_, BehaviorKind::Unstiff(_)) => {
             orientation.initialized = false;
+            orientation.orientation = UnitQuaternion::identity();
         }
         _ => {
             orientation.update(imu, fsr, cycle);
