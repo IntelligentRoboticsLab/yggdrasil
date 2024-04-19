@@ -67,7 +67,10 @@ pub struct Ball {
     pub robot_to_ball: Vector2<f32>,
     pub distance: f32,
     pub timestamp: Instant,
+<<<<<<< HEAD
     pub confidence: f32,
+=======
+>>>>>>> 5f9dc18 (Ball life extension)
 }
 
 #[derive(Clone)]
@@ -150,7 +153,10 @@ pub(super) fn detect_balls(
                             robot_to_ball: robot_to_ball.xy().coords,
                             distance: proposal.distance_to_ball,
                             timestamp: Instant::now(),
+<<<<<<< HEAD
                             confidence,
+=======
+>>>>>>> 5f9dc18 (Ball life extension)
                         });
                     }
                 }
