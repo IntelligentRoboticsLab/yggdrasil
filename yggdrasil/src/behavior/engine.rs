@@ -2,11 +2,14 @@
 
 use bifrost::communication::GameControllerMessage;
 use enum_dispatch::enum_dispatch;
-use nidhogg::{NaoState, NaoControlMessage};
+use nidhogg::{NaoControlMessage, NaoState};
 
 use crate::{
     behavior::{
-        behaviors::{CatchFall, Initial, Observe, Penalized, Standup, StartUp, Unstiff, Walk, EnergyEfficientStand},
+        behaviors::{
+            CatchFall, EnergyEfficientStand, Initial, Observe, Penalized, Standup, StartUp,
+            Unstiff, Walk,
+        },
         roles::Attacker,
         BehaviorConfig,
     },

@@ -1,14 +1,14 @@
 use crate::{
     behavior::engine::{Behavior, Context},
+    motion::{motion_manager::MotionManager, step_planner::StepPlanner},
     nao::manager::{NaoManager, Priority},
     walk::engine::WalkingEngine,
-    motion::{motion_manager::MotionManager, step_planner::StepPlanner},
 };
 
 use nidhogg::types::{color, FillExt, RightEye};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
-pub struct EnergyEfficientStand{
+pub struct EnergyEfficientStand {
     pub standing: bool,
 }
 
@@ -27,9 +27,7 @@ impl Behavior for EnergyEfficientStand {
             walking_engine.request_stand();
             walking_engine.end_step_phase();
             println!("Not standing");
-
-        } 
-        else {
+        } else {
             self.standing = true;
             let request = &context.noa_control_message.position;
             let currents = &context.nao_state.current;
@@ -45,11 +43,28 @@ impl Behavior for EnergyEfficientStand {
             println!("{:?}", tempuratur);
             let threshold: f32 = 0.1;
             let offset: f32 = 0.0001;
-            let new_request = currents.clone()
+            let new_request = currents
+                .clone()
                 .zip(request.clone())
                 .zip(position.clone())
-                .map(move |((x, y), z)| if x > threshold {if y > z {y-offset} else {y + offset}} else {y});
-            nao_manager.set_all(new_request, head_stiffness, arm_stiffness, leg_stiffness, Priority::Critical);
+                .map(move |((x, y), z)| {
+                    if x > threshold {
+                        if y > z {
+                            y - offset
+                        } else {
+                            y + offset
+                        }
+                    } else {
+                        y
+                    }
+                });
+            nao_manager.set_all(
+                new_request,
+                head_stiffness,
+                arm_stiffness,
+                leg_stiffness,
+                Priority::Critical,
+            );
         }
         // else {
         // //     self.standing = true;
@@ -75,5 +90,3 @@ impl Behavior for EnergyEfficientStand {
         // }
     }
 }
-
-

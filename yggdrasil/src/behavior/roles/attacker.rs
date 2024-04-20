@@ -27,7 +27,7 @@ impl Role for Attacker {
         // })
         match _current_behavior {
             BehaviorKind::EnergyEfficientStand(state) => BehaviorKind::EnergyEfficientStand(*state),
-            _ => BehaviorKind::EnergyEfficientStand(EnergyEfficientStand::default())
+            _ => BehaviorKind::EnergyEfficientStand(EnergyEfficientStand::default()),
         }
     }
 }
