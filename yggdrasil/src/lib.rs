@@ -12,6 +12,7 @@ pub mod ml;
 pub mod motion;
 pub mod nao;
 pub mod primary_state;
+pub mod robot_to_robot;
 pub mod vision;
 pub mod walk;
 

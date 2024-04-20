@@ -4,7 +4,8 @@ use yggdrasil::{
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, debug::DebugModule,
     filter::FilterModule, game_controller::GameControllerModule, kinematics::KinematicsModule,
     ml::MlModule, motion::MotionModule, nao::NaoModule, prelude::*,
-    primary_state::PrimaryStateModule, vision::VisionModule, walk::WalkingEngineModule,
+    primary_state::PrimaryStateModule, robot_to_robot::RobotToRobotModule, vision::VisionModule,
+    walk::WalkingEngineModule,
 };
 
 fn main() -> Result<()> {
@@ -22,6 +23,7 @@ fn main() -> Result<()> {
         .add_module(BehaviorModule)?
         .add_module(PrimaryStateModule)?
         .add_module(GameControllerModule)?
+        .add_module(RobotToRobotModule)?
         .add_module(WalkingEngineModule)?
         .add_module(DebugModule)?
         .add_module(VisionModule)?

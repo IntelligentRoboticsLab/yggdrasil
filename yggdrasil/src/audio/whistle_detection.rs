@@ -1,5 +1,7 @@
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
+use miette::IntoDiagnostic;
 use nidhogg::types::{FillExt, LeftEar, RightEar};
 use rustfft::{num_complex::Complex, Fft, FftPlanner};
 use serde::{Deserialize, Serialize};
@@ -9,6 +11,7 @@ use crate::{
     ml::{MlModel, MlTask, MlTaskResource},
     nao::manager::{NaoManager, Priority},
     prelude::*,
+    robot_to_robot::RobotToRobot,
 };
 
 const BUFFER_INDICES: [usize; 2] = [0, 1];
@@ -72,6 +75,7 @@ fn detect_whistle(
     audio_input: &AudioInput,
     config: &WhistleDetectionConfig,
     nao_manager: &mut NaoManager,
+    rtr: &mut RobotToRobot,
 ) -> Result<()> {
     if !model.active() {
         let mut complex_buffer = [Complex::new(0.0, 0.0); FFT_SIZE];
@@ -119,8 +123,14 @@ fn detect_whistle(
 
             if state.detections == config.consecutive {
                 tracing::info!("Whistle detected");
+
                 nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
                 nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
+
+                rtr.state_mut().last_whistle = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .into_diagnostic()?
+                    .as_millis() as u64;
             }
         } else {
             state.detections = 0;
