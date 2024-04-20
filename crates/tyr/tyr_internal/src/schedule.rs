@@ -3,7 +3,7 @@ use std::{
     collections::{HashMap, HashSet},
     fs::File,
     hash::{Hash, Hasher},
-    io::{BufWriter, Write},
+    io::Write,
     marker::PhantomData,
     path::Path,
 };
@@ -19,6 +19,12 @@ use miette::{miette, IntoDiagnostic, Report, Result};
 use petgraph::{algo::toposort, prelude::NodeIndex, stable_graph::StableDiGraph, Direction};
 
 const DEFAULT_ORDER_INDEX: u8 = (256u32 / 2u32) as u8;
+use graphviz_rust::{
+    cmd::Format,
+    printer::{DotPrinter, PrinterContext},
+};
+
+use dot_structures::{Attribute, Edge, EdgeTy, Graph, Id, Node, NodeId, Stmt, Vertex};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SystemIndex(usize);
@@ -413,43 +419,67 @@ impl Schedule {
         Ok(())
     }
 
-    pub fn generate_dot_file<P>(&self, path: P) -> Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        let dot_file = File::create(path).into_diagnostic()?;
-        let mut buf_writer = BufWriter::new(dot_file);
+    pub fn generate_dot_file(&self) -> Result<String> {
+        fn node(node_index: usize, node_name: String) -> Stmt {
+            let attributes = vec![Attribute(
+                Id::Plain("label".to_owned()),
+                Id::Plain(format!("\"{}\"", node_name)),
+            )];
+            Stmt::Node(Node {
+                id: NodeId(Id::Plain(node_index.to_string()), None),
+                attributes,
+            })
+        }
 
-        buf_writer
-            .write_all("digraph G {".as_bytes())
-            .into_diagnostic()?;
-        for node_index in self.dag.graph.node_indices() {
+        fn edge(node1: usize, node2: usize) -> Stmt {
+            Stmt::Edge(Edge {
+                ty: EdgeTy::Pair(
+                    Vertex::N(NodeId(Id::Plain(node1.to_string()), None)),
+                    Vertex::N(NodeId(Id::Plain(node2.to_string()), None)),
+                ),
+                attributes: vec![],
+            })
+        }
+
+        let mut statements: Vec<Stmt> = Vec::new();
+
+        for (boxed_system, node_index) in self.node_indices.iter() {
+            {
+                statements.push(node(
+                    node_index.index(),
+                    boxed_system.system_name().to_owned(),
+                ));
+            }
+
             for neighbor in self
                 .dag
                 .graph
-                .neighbors_directed(node_index, Direction::Outgoing)
+                .neighbors_directed(*node_index, Direction::Outgoing)
             {
-                buf_writer
-                    .write_all(
-                        format!("\t{} -> {}\n", node_index.index(), neighbor.index()).as_bytes(),
-                    )
-                    .into_diagnostic()?;
+                statements.push(edge(node_index.index(), neighbor.index()));
             }
         }
 
-        for (boxed_system, node_index) in self.node_indices.iter() {
-            buf_writer
-                .write_all(
-                    format!(
-                        "\t{} [label=\"{}\"];\n",
-                        node_index.index(),
-                        boxed_system.system_name()
-                    )
-                    .as_bytes(),
-                )
-                .into_diagnostic()?;
-        }
-        buf_writer.write_all("}\n".as_bytes()).into_diagnostic()?;
+        let graph = Graph::DiGraph {
+            id: Id::Plain("0".to_owned()),
+            strict: true,
+            stmts: statements,
+        };
+
+        Ok(graph.print(&mut PrinterContext::default()))
+    }
+
+    pub fn generate_graph<P>(&self, path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let dot = self.generate_dot_file()?;
+
+        let png =
+            graphviz_rust::exec_dot(dot.clone(), vec![Format::Png.into()]).into_diagnostic()?;
+
+        let mut file = File::create(path).into_diagnostic()?;
+        file.write_all(&png).into_diagnostic()?;
 
         Ok(())
     }
