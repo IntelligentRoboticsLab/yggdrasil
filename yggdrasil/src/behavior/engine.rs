@@ -269,9 +269,6 @@ impl Engine {
             if walking_engine.is_sitting() {
                 self.behavior = BehaviorKind::Unstiff(Unstiff);
             }
-            if walking_engine.is_standing() {
-                self.behavior = BehaviorKind::EnergyEfficientStand(EnergyEfficientStand);
-            }
         }
 
         // unstiff has the number 1 precedence
@@ -298,7 +295,7 @@ impl Engine {
 
         self.behavior = match context.primary_state {
             PrimaryState::Unstiff => BehaviorKind::Unstiff(Unstiff),
-            PrimaryState::Penalized => BehaviorKind::EnergyEfficientStand(EnergyEfficientStand),
+            PrimaryState::Penalized => BehaviorKind::Penalized(Penalized),
             PrimaryState::Initial => BehaviorKind::Initial(Initial),
             PrimaryState::Ready => BehaviorKind::Observe(Observe::default()),
             PrimaryState::Set => BehaviorKind::Initial(Initial),

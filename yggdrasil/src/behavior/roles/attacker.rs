@@ -1,10 +1,9 @@
 use crate::{
     behavior::{
-        behaviors::Walk,
+        behaviors::{EnergyEfficientStand, Walk},
         engine::{BehaviorKind, Context, Role},
     },
-    motion::motion_manager::MotionManager,
-    motion::step_planner::StepPlanner,
+    motion::{motion_manager::MotionManager, step_planner::StepPlanner},
     walk::engine::{Step, WalkingEngine},
 };
 
@@ -19,12 +18,16 @@ impl Role for Attacker {
         _: &mut MotionManager,
         _step_planner: &mut StepPlanner,
     ) -> BehaviorKind {
-        BehaviorKind::Walk(Walk {
-            step: Step {
-                forward: 0.04,
-                left: 0.0,
-                turn: 0.0,
-            },
-        })
+        // BehaviorKind::Walk(Walk {
+        //     step: Step {
+        //         forward: 0.04,
+        //         left: 0.0,
+        //         turn: 0.0,
+        //     },
+        // })
+        match _current_behavior {
+            BehaviorKind::EnergyEfficientStand(state) => BehaviorKind::EnergyEfficientStand(*state),
+            _ => BehaviorKind::EnergyEfficientStand(EnergyEfficientStand::default())
+        }
     }
 }
