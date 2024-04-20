@@ -312,7 +312,7 @@ impl App {
         app.run()
     }
 
-    pub fn store_dependency_graph<P>(&self, path: P) -> Result<()>
+    pub fn store_system_dependency_graph<P>(&self, path: P) -> Result<()>
     where
         P: AsRef<Path>,
     {
