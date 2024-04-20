@@ -8,7 +8,7 @@ use std::time::Duration;
 /// time.
 ///
 /// # Notes
-/// - The value ```t``` is contained in the set (0, 1). This represents the ratio
+/// - The value `t` is contained in the set (0, 1). This represents the ratio
 /// of the movement duration that has elapsed. For example: 0 is equivalent to the start of the movement,
 /// 1 is equivalent to the end of the movement and 0.5 is equivalent to the halfway point of the movement.
 /// - Currently the function only applies a standard bezier interpolation within the "SmoothInOut"
