@@ -48,6 +48,7 @@ pub enum ConditionalVariable {
     GyroscopeY,
     AngleX,
     AngleY,
+    FSR,
 }
 
 /// An enum containing the failroutines that the robot can execute when it fails

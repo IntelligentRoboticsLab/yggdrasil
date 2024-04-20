@@ -4,7 +4,10 @@ use crate::motion::motion_types::{
 };
 use crate::nao::manager::Priority;
 use miette::{miette, Result};
-use nidhogg::{types::JointArray, NaoState};
+use nidhogg::{
+    types::{ForceSensitiveResistors, JointArray},
+    NaoState,
+};
 use std::{collections::HashMap, path::Path, time::Instant};
 use tyr::prelude::*;
 
@@ -40,6 +43,7 @@ impl ActiveMotion {
     pub fn transition(
         &mut self,
         nao_state: &mut NaoState,
+        fsr: &ForceSensitiveResistors,
         submotion_name: String,
     ) -> Result<Option<ActiveMotion>> {
         let next_submotion = self
@@ -55,7 +59,7 @@ impl ActiveMotion {
             })?;
 
         for condition in next_submotion.conditions {
-            if !check_condition(nao_state, condition) {
+            if !check_condition(nao_state, fsr, condition) {
                 return Ok(select_routine(
                     self.clone(),
                     self.motion
@@ -194,7 +198,11 @@ pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
 /// # Arguments
 /// * `nao_state` - Current state of the Nao.
 /// * `condition` - The condition which needs to be checked.
-fn check_condition(nao_state: &mut NaoState, condition: MotionCondition) -> bool {
+fn check_condition(
+    nao_state: &mut NaoState,
+    fsr: &ForceSensitiveResistors,
+    condition: MotionCondition,
+) -> bool {
     match condition.variable {
         ConditionalVariable::GyroscopeX => {
             nao_state.gyroscope.x > condition.min && nao_state.gyroscope.x < condition.max
@@ -207,6 +215,9 @@ fn check_condition(nao_state: &mut NaoState, condition: MotionCondition) -> bool
         }
         ConditionalVariable::AngleY => {
             nao_state.angles.y > condition.min && nao_state.angles.y < condition.max
+        }
+        ConditionalVariable::FSR => {
+            fsr.left_foot.avg() > condition.min && fsr.right_foot.avg() > condition.min
         }
     }
 }

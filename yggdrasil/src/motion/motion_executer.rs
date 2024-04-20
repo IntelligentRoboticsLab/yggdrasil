@@ -143,10 +143,12 @@ pub fn motion_executer(
             }
         }
 
-        transition_to_next_submotion(motion_manager, nao_state, fall_state).map_err(|err| {
-            motion_manager.stop_motion();
-            err
-        })?;
+        transition_to_next_submotion(motion_manager, nao_state, fsr, fall_state).map_err(
+            |err| {
+                motion_manager.stop_motion();
+                err
+            },
+        )?;
 
         nao_manager.set_all(
             nao_state.position.clone(),
@@ -294,6 +296,7 @@ fn exit_waittime_elapsed(
 fn transition_to_next_submotion(
     motion_manager: &mut MotionManager,
     nao_state: &mut NaoState,
+    fsr: &ForceSensitiveResistors,
     fall_state: &mut FallState,
 ) -> Result<()> {
     // current submotion is finished, transition to next submotion.
@@ -308,7 +311,7 @@ fn transition_to_next_submotion(
 
     if let Some(submotion_name) = active_motion.get_next_submotion() {
         // If there is a next submotion, we attempt a transition
-        let next_submotion = active_motion.transition(nao_state, submotion_name.clone())?;
+        let next_submotion = active_motion.transition(nao_state, fsr, submotion_name.clone())?;
         motion_manager.active_motion = next_submotion;
 
         Ok(())
