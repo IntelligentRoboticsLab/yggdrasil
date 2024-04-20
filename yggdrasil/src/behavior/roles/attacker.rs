@@ -1,10 +1,10 @@
 use crate::{
     behavior::{
-        behaviors::{EnergyEfficientStand, Walk},
+        behaviors::EnergyEfficientStand,
         engine::{BehaviorKind, Context, Role},
     },
     motion::{motion_manager::MotionManager, step_planner::StepPlanner},
-    walk::engine::{Step, WalkingEngine},
+    walk::engine::WalkingEngine,
 };
 
 pub struct Attacker;

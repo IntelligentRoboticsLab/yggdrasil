@@ -48,7 +48,7 @@ impl Behavior for EnergyEfficientStand {
             let new_request = currents.clone()
                 .zip(request.clone())
                 .zip(position.clone())
-                .map(move |((x, y), z)| if x > threshold {if y > z {return y-offset} else {return y + offset}} else {return y});
+                .map(move |((x, y), z)| if x > threshold {if y > z {y-offset} else {y + offset}} else {y});
             nao_manager.set_all(new_request, head_stiffness, arm_stiffness, leg_stiffness, Priority::Critical);
         }
         // else {
