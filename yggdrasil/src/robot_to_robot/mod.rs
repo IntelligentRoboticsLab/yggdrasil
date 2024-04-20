@@ -10,7 +10,6 @@ use crate::prelude::*;
 use bifrost::serialization::{Decode, Encode};
 
 // TODO: put broadcast ip in a config
-const BROADCAST_IP: &str = "10.1.255.255";
 const PORT_RANGE_START: u16 = 10000;
 const INTERVAL: Duration = Duration::from_secs(1);
 
@@ -27,7 +26,7 @@ impl Module for RobotToRobotModule {
 #[startup_system]
 fn init_robot_to_robot(storage: &mut Storage, config: &ShowtimeConfig) -> Result<()> {
     let rtr = RobotToRobot::new(config.team_number);
-    storage.add_resource(Resource::new(rtr))
+    storage.add_resource(Resource::new(rtr?))
 }
 
 #[system]
@@ -38,7 +37,7 @@ fn sync_shared_state(rtr: &mut RobotToRobot) -> Result<()> {
     if rtr.last.elapsed() >= INTERVAL && rtr.out_of_sync {
         rtr.state.encode(&mut buf[..]).into_diagnostic()?;
 
-        match rtr.socket.send_to(&buf, (BROADCAST_IP, rtr.port)) {
+        match rtr.socket.send_to(&buf, (Ipv4Addr::BROADCAST, rtr.port)) {
             Ok(_) => {
                 rtr.last = Instant::now();
                 rtr.out_of_sync = false;
