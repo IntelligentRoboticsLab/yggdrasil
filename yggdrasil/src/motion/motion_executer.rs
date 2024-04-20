@@ -123,7 +123,7 @@ pub fn motion_executer(
             fsr,
             config.max_stable_gyro_value,
             config.max_stable_acc_value,
-            config.mix_stable_fsr_value,
+            config.min_stable_fsr_value,
         ) {
             // if not, we wait until it is either steady or the maximum wait time has elapsed
             if !exit_waittime_elapsed(

@@ -37,9 +37,10 @@ impl Dag {
         for dependency in dependencies {
             match dependency {
                 Dependency::Before(other) => {
-                    let other_node = *node_indices
-                        .get(other)
-                        .expect("Failed to find dependency node index"); // TODO: nice error handling
+                    let other_node = *node_indices.get(other).expect(&format!(
+                        "Failed to find dependency node index: {}",
+                        other.system_name()
+                    )); // TODO: nice error handling
                     self.graph.add_edge(node, other_node, ());
                 }
                 Dependency::After(other) => {

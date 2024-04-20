@@ -28,7 +28,7 @@ pub struct MotionConfig {
     pub maximum_joint_speed: f32,
     pub max_stable_gyro_value: f32,
     pub max_stable_acc_value: f32,
-    pub mix_stable_fsr_value: f32,
+    pub min_stable_fsr_value: f32,
     pub minimum_wait_time: f32,
 }
 

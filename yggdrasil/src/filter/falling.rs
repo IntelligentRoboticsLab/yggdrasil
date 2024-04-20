@@ -11,8 +11,8 @@ const MIN_FALL_ANGLE_BACKWARDS: f32 = -0.45;
 const MIN_FALL_ANGLE_LEFT: f32 = -0.52;
 const MIN_FALL_ANGLE_RIGHT: f32 = 0.52;
 /// Minimum velocity for falling detection.
-const MIN_FALL_VELOCITY_FORWARDS: f32 = 0.15;
-const MIN_FALL_VELOCITY_BACKWARDS: f32 = 0.15;
+const MIN_FALL_VELOCITY_FORWARDS: f32 = 0.35;
+const MIN_FALL_VELOCITY_BACKWARDS: f32 = -0.35;
 const MIN_FALL_VELOCITY_LEFT: f32 = 0.15;
 const MIN_FALL_VELOCITY_RIGHT: f32 = 0.15;
 // Minimum angle for lying confirmation.
