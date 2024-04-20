@@ -112,7 +112,6 @@ pub struct ConfigOptsRobotOps {
     /// Whether to use alsa
     #[clap(
         long,
-        short,
         default_value_ifs([
             ("local", "true", Some("true")),
             ("bin", "yggdrasil", Some("false")),
