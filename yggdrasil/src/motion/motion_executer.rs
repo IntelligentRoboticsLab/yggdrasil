@@ -3,6 +3,7 @@ use crate::motion::{
     motion_manager::{ActiveMotion, MotionManager},
     motion_types::{InterpolationType, Movement},
     motion_util::{get_min_duration, interpolate_jointarrays},
+    MotionConfig,
 };
 use crate::nao::manager::{NaoManager, Priority};
 use miette::{miette, Result};
@@ -13,23 +14,6 @@ use nidhogg::{
 };
 use std::time::{Duration, Instant};
 use tyr::prelude::*;
-
-// maximum speed the robot is allowed to move to the starting position at
-const MAX_SPEED: f32 = 1.0;
-
-// maximum gyroscopic value the robot can take for it to be considered steady
-const MAX_GYRO_VALUE: f32 = 0.4;
-
-// maximum accelerometer value the robot can take for it to be considered steady
-const MAX_ACC_VALUE: f32 = 0.6;
-
-// minimum fsr value the robot can take to be considered steady
-const MIN_FSR_VALUE: f32 = 0.0;
-
-// minimum waittime duration, anything less will not be considered
-// (if we were to consider this waiting time, the amount of time to
-// process it would take longer than the actual waittime)
-const MINIMUM_WAITTIME: f32 = 0.05;
 
 /// Executes the current motion.
 ///
@@ -43,6 +27,7 @@ pub fn motion_executer(
     motion_manager: &mut MotionManager,
     nao_manager: &mut NaoManager,
     fall_state: &mut FallState,
+    config: &MotionConfig,
     orientation: &RobotOrientation,
     fsr: &ForceSensitiveResistors,
     imu: &IMUValues,
@@ -80,7 +65,13 @@ pub fn motion_executer(
         if motion_manager.source_position.is_none() {
             // record the last position before motion initialization, or before transition
             motion_manager.source_position = Some(nao_state.position.clone());
-            prepare_initial_movement(motion_manager, target_position, duration, &sub_motion_name);
+            prepare_initial_movement(
+                motion_manager,
+                target_position,
+                duration,
+                &sub_motion_name,
+                config,
+            );
         }
 
         // getting the next position for the robot
@@ -130,14 +121,15 @@ pub fn motion_executer(
             gyro,
             linear_acceleration,
             fsr,
-            MAX_GYRO_VALUE,
-            MAX_ACC_VALUE,
-            MIN_FSR_VALUE,
+            config.max_stable_gyro_value,
+            config.max_stable_acc_value,
+            config.mix_stable_fsr_value,
         ) {
             // if not, we wait until it is either steady or the maximum wait time has elapsed
             if !exit_waittime_elapsed(
                 motion_manager,
                 motion.submotions[&sub_motion_name].exit_waittime,
+                config,
             ) {
                 // returning the current nao position to prohibit any other position requests from taking over
                 nao_manager.set_all(
@@ -185,12 +177,13 @@ fn prepare_initial_movement(
     target_position: &JointArray<f32>,
     duration: &Duration,
     sub_motion_name: &String,
+    config: &MotionConfig,
 ) {
     // checking whether the given duration will exceed our maximum speed limit
     let min_duration = get_min_duration(
         motion_manager.source_position.as_ref().unwrap(),
         target_position,
-        MAX_SPEED,
+        config.maximum_joint_speed,
     );
     if duration > &min_duration {
         // editing the movement duration to prevent dangerously quick movements
@@ -263,8 +256,12 @@ fn move_to_starting_position(
 /// # Arguments
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 /// * `duration` - Intended duration of the waiting time.
-fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_waittime: f32) -> bool {
-    if exit_waittime <= MINIMUM_WAITTIME {
+fn exit_waittime_elapsed(
+    motion_manager: &mut MotionManager,
+    exit_waittime: f32,
+    config: &MotionConfig,
+) -> bool {
+    if exit_waittime <= config.minimum_wait_time {
         return true;
     }
 
