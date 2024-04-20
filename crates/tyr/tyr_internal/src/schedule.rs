@@ -1,8 +1,11 @@
 use std::{
     any::TypeId,
     collections::{HashMap, HashSet},
+    fs::File,
     hash::{Hash, Hasher},
+    io::{BufWriter, Write},
     marker::PhantomData,
+    path::Path,
 };
 
 use itertools::Itertools;
@@ -12,7 +15,7 @@ use crate::{
     system::{IntoSystem, NormalSystem},
 };
 
-use miette::{miette, Report, Result};
+use miette::{miette, IntoDiagnostic, Report, Result};
 use petgraph::{algo::toposort, prelude::NodeIndex, stable_graph::StableDiGraph, Direction};
 
 const DEFAULT_ORDER_INDEX: u8 = (256u32 / 2u32) as u8;
@@ -95,6 +98,7 @@ pub trait IntoDependencySystem<Input>: Sized {
     }
 }
 
+#[derive(Clone)]
 pub enum Dependency {
     Before(BoxedSystem),
     After(BoxedSystem),
@@ -109,6 +113,7 @@ impl Dependency {
     }
 }
 
+#[derive(Clone)]
 pub struct DependencySystem<I> {
     system: BoxedSystem,
     dependencies: Vec<Dependency>,
@@ -404,6 +409,47 @@ impl Schedule {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    pub fn generate_dot_file<P>(&self, path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let dot_file = File::create(path).into_diagnostic()?;
+        let mut buf_writer = BufWriter::new(dot_file);
+
+        buf_writer
+            .write_all("digraph G {".as_bytes())
+            .into_diagnostic()?;
+        for node_index in self.dag.graph.node_indices() {
+            for neighbor in self
+                .dag
+                .graph
+                .neighbors_directed(node_index, Direction::Outgoing)
+            {
+                buf_writer
+                    .write_all(
+                        format!("\t{} -> {}\n", node_index.index(), neighbor.index()).as_bytes(),
+                    )
+                    .into_diagnostic()?;
+            }
+        }
+
+        for (boxed_system, node_index) in self.node_indices.iter() {
+            buf_writer
+                .write_all(
+                    format!(
+                        "\t{} [label=\"{}\"];\n",
+                        node_index.index(),
+                        boxed_system.system_name()
+                    )
+                    .as_bytes(),
+                )
+                .into_diagnostic()?;
+        }
+        buf_writer.write_all("}\n".as_bytes()).into_diagnostic()?;
 
         Ok(())
     }

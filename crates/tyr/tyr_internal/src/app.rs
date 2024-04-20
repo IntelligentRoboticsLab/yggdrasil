@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::schedule::{Dependency, DependencySystem, Schedule};
 use crate::storage::{Resource, Storage};
 use crate::system::{IntoSystem, IntoSystemChain, StartupSystem, System};
@@ -308,6 +310,16 @@ impl App {
         };
 
         app.run()
+    }
+
+    pub fn generate_dot_file<P>(&self, path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let schedule = Schedule::with_dependency_systems(self.systems.clone())?;
+        schedule.generate_dot_file(path)?;
+
+        Ok(())
     }
 }
 
