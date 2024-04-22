@@ -35,10 +35,12 @@ impl ArgTransformerVisitor {
             (
                 Pat::Tuple(PatTuple { ref mut elems, .. }),
                 Type::Tuple(TypeTuple {
-                    elems: ref mut tys, ..
+                    elems: ref mut types,
+                    ..
                 }),
             ) => {
-                for (pat, ty) in elems.iter_mut().zip(tys.iter_mut()) {
+                // recursively visit each tuple element, transforming it in place
+                for (pat, ty) in elems.iter_mut().zip(types.iter_mut()) {
                     self.visit_pat_ty_mut(attrs, pat, ty);
                 }
             }
@@ -53,10 +55,6 @@ impl ArgTransformerVisitor {
                 }),
             ) => {
                 let mutable = mutability.is_some();
-                // let elem = elem.clone();
-
-                // substitute function argument
-                let id = ident.clone();
 
                 // save argument information
                 self.args.push(SystemArg {
@@ -65,11 +63,13 @@ impl ArgTransformerVisitor {
                     ident: ident.clone(),
                 });
 
+                // transform argument name to contain the `mut` keyword, if it's mutable
                 **pat = match mutable {
-                    true => parse_quote! { mut #id },
-                    false => parse_quote! { #id },
+                    true => parse_quote! { mut #ident },
+                    false => parse_quote! { #ident },
                 };
 
+                // transform argument type to be a `Res` or `ResMut` type
                 **ty = match mutable {
                     true => parse_quote! { ::tyr::ResMut<#elem> },
                     false => parse_quote! { ::tyr::Res<#elem> },
