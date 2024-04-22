@@ -137,9 +137,9 @@ pub fn system(input: proc_macro::TokenStream, is_startup_system: bool) -> proc_m
     // automatically deref to a reference at the beginning of a system
     visitor.args.iter().rev().for_each(
         |SystemArg {
-             attrs,
              mutable,
              ident,
+             attrs,
          }| {
             // adds one of two statements to the beginning of the function block,
             // depending on the mutability of the system argument
