@@ -308,24 +308,30 @@ impl Engine {
 
 /// System that is called to execute one step of the behavior engine each cycle
 #[system]
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 pub fn step(
-    engine: &mut Engine,
-    nao_manager: &mut NaoManager,
-    (robot_info, (primary_state, contacts)): (&RobotInfo, (&mut PrimaryState, &Contacts)),
-    head_buttons: &HeadButtons,
-    chest_button: &ChestButton,
-    // contacts: &Contacts,
-    player_config: &PlayerConfig,
-    layout_config: &LayoutConfig,
-    yggdrasil_config: &YggdrasilConfig,
-    behavior_config: &BehaviorConfig,
-    walking_engine: &mut WalkingEngine,
+    (engine, primary_state): (&mut Engine, &mut PrimaryState),
+    robot_info: &RobotInfo,
+    (head_buttons, chest_button, contacts, fall_state): (
+        &HeadButtons,
+        &ChestButton,
+        &Contacts,
+        &FallState,
+    ),
+    (player_config, layout_config, yggdrasil_config, behavior_config, game_controller_config): (
+        &PlayerConfig,
+        &LayoutConfig,
+        &YggdrasilConfig,
+        &BehaviorConfig,
+        &GameControllerConfig,
+    ),
+    (nao_manager, walking_engine, motion_manager, step_planner): (
+        &mut NaoManager,
+        &mut WalkingEngine,
+        &mut MotionManager,
+        &mut StepPlanner,
+    ),
     game_controller_message: &Option<GameControllerMessage>,
-    game_controller_config: &GameControllerConfig,
-    fall_state: &FallState,
-    motion_manager: &mut MotionManager,
-    step_planner: &mut StepPlanner,
     robot_pose: &RobotPose,
 ) -> Result<()> {
     let context = Context {
