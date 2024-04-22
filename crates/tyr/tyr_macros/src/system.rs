@@ -5,7 +5,7 @@ use proc_macro2::Ident;
 use quote::{quote, ToTokens};
 use syn::{
     parse_macro_input, parse_quote, visit_mut::VisitMut, Attribute, FnArg, ItemFn, Pat, PatIdent,
-    PatType, Type, TypeReference,
+    PatTuple, PatType, Type, TypeReference, TypeTuple,
 };
 
 #[cfg(nightly)]
@@ -26,6 +26,65 @@ struct ArgTransformerVisitor {
     args: Vec<SystemArg>,
 }
 
+impl ArgTransformerVisitor {
+    fn visit_pat_ty_mut(&mut self, attrs: &Vec<Attribute>, pat: &mut Pat, ty: &mut Type) {
+        let mut pat = Box::new(pat);
+        let mut ty = Box::new(ty);
+
+        match (pat.as_mut(), ty.as_mut()) {
+            (
+                Pat::Tuple(PatTuple { ref mut elems, .. }),
+                Type::Tuple(TypeTuple {
+                    elems: ref mut tys, ..
+                }),
+            ) => {
+                for (pat, ty) in elems.iter_mut().zip(tys.iter_mut()) {
+                    self.visit_pat_ty_mut(attrs, pat, ty);
+                }
+            }
+            (
+                Pat::Ident(PatIdent {
+                    ident,
+                    subpat: None,
+                    ..
+                }),
+                Type::Reference(TypeReference {
+                    mutability, elem, ..
+                }),
+            ) => {
+                let mutable = mutability.is_some();
+                // let elem = elem.clone();
+
+                // substitute function argument
+                let id = ident.clone();
+
+                // save argument information
+                self.args.push(SystemArg {
+                    attrs: attrs.clone(),
+                    mutable,
+                    ident: ident.clone(),
+                });
+
+                **pat = match mutable {
+                    true => parse_quote! { mut #id },
+                    false => parse_quote! { #id },
+                };
+
+                **ty = match mutable {
+                    true => parse_quote! { ::tyr::ResMut<#elem> },
+                    false => parse_quote! { ::tyr::Res<#elem> },
+                };
+            }
+            _ => {
+                self.errors.push(syn::Error::new_spanned(
+                    ty,
+                    "Systems can only take references as arguments!",
+                ));
+            }
+        }
+    }
+}
+
 impl VisitMut for ArgTransformerVisitor {
     fn visit_fn_arg_mut(&mut self, arg: &mut FnArg) {
         if self.skip_first {
@@ -34,41 +93,9 @@ impl VisitMut for ArgTransformerVisitor {
         }
 
         match arg {
-            FnArg::Typed(PatType { attrs, pat, ty, .. }) => match (pat.as_ref(), ty.as_ref()) {
-                (
-                    Pat::Ident(PatIdent {
-                        ident,
-                        subpat: None,
-                        ..
-                    }),
-                    Type::Reference(TypeReference {
-                        mutability, elem, ..
-                    }),
-                ) => {
-                    let ident = ident.clone();
-                    let mutable = mutability.is_some();
-                    let attrs = attrs.clone();
-
-                    // substitute function argument
-                    *arg = match mutable {
-                        true => parse_quote! { #(#attrs)* mut #ident: ::tyr::ResMut<#elem> },
-                        false => parse_quote! { #(#attrs)* #ident: ::tyr::Res<#elem> },
-                    };
-
-                    // save argument information
-                    self.args.push(SystemArg {
-                        attrs,
-                        mutable,
-                        ident,
-                    });
-                }
-                (_, ty) => {
-                    self.errors.push(syn::Error::new_spanned(
-                        ty,
-                        "Systems can only take references as arguments!",
-                    ));
-                }
-            },
+            FnArg::Typed(PatType { attrs, pat, ty, .. }) => {
+                self.visit_pat_ty_mut(attrs, pat, ty);
+            }
             FnArg::Receiver(_) => {
                 self.errors.push(syn::Error::new_spanned(
                     arg,
@@ -110,9 +137,9 @@ pub fn system(input: proc_macro::TokenStream, is_startup_system: bool) -> proc_m
     // automatically deref to a reference at the beginning of a system
     visitor.args.iter().rev().for_each(
         |SystemArg {
+             attrs,
              mutable,
              ident,
-             attrs,
          }| {
             // adds one of two statements to the beginning of the function block,
             // depending on the mutability of the system argument

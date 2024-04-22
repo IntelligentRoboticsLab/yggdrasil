@@ -312,11 +312,10 @@ impl Engine {
 pub fn step(
     engine: &mut Engine,
     nao_manager: &mut NaoManager,
-    robot_info: &RobotInfo,
-    primary_state: &PrimaryState,
+    (robot_info, (primary_state, contacts)): (&RobotInfo, (&mut PrimaryState, &Contacts)),
     head_buttons: &HeadButtons,
     chest_button: &ChestButton,
-    contacts: &Contacts,
+    // contacts: &Contacts,
     player_config: &PlayerConfig,
     layout_config: &LayoutConfig,
     yggdrasil_config: &YggdrasilConfig,
