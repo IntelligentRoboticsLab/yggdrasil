@@ -32,11 +32,19 @@ pub enum PixelColor {
     Unknown,
 }
 
+pub struct FieldColorApproximate {
+    pub luminance: f32,
+    pub saturation: f32,
+}
+
 pub struct ScanGrid;
 
 const FIELD_APPROXIMATION_STEP_SIZE: usize = 8;
 
-pub fn approximate_field_color(image: &YuyvImage) -> (f32, f32) {
+// eth yellow box
+// chargers with robot
+
+pub fn approximate_field_color(image: &YuyvImage) -> FieldColorApproximate {
     let height = image.height();
 
     let rows_to_check = [
@@ -57,10 +65,13 @@ pub fn approximate_field_color(image: &YuyvImage) -> (f32, f32) {
         }
     }
 
-    (
-        luminances.iter().sum::<f32>() / luminances.len() as f32,
-        saturations.iter().sum::<f32>() / saturations.len() as f32,
-    )
+    let luminance = luminances.iter().sum::<f32>() / luminances.len() as f32;
+    let saturation = saturations.iter().sum::<f32>() / saturations.len() as f32;
+
+    FieldColorApproximate {
+        luminance,
+        saturation,
+    }
 }
 
 #[system]
