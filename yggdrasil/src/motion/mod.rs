@@ -2,6 +2,8 @@ use crate::{filter, kinematics, nao::manager::finalize, prelude::*};
 
 use self::odometry::Odometry;
 use miette::Result;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 pub mod motion_executer;
 pub mod motion_manager;
@@ -13,6 +15,20 @@ pub mod step_planner;
 
 use motion_executer::motion_executer;
 use motion_manager::motion_manager_initializer;
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct MotionConfig {
+    pub maximum_joint_speed: f32,
+    pub max_stable_gyro_value: f32,
+    pub max_stable_acc_value: f32,
+    pub min_stable_fsr_value: f32,
+    pub minimum_wait_time: f32,
+}
+
+impl Config for MotionConfig {
+    const PATH: &'static str = "motion.toml";
+}
 
 /// The motion module provides motion related functionalities.
 ///
@@ -30,6 +46,7 @@ impl Module for MotionModule {
                     .after(filter::orientation::update_orientation),
             )
             .add_startup_system(odometry::setup_viewcoordinates)?
+            .init_config::<MotionConfig>()?
             .add_startup_system(motion_manager_initializer)?
             .add_system(motion_executer.after(finalize))
             .add_module(step_planner::StepPlannerModule)

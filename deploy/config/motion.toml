@@ -1,0 +1,16 @@
+# maximum speed the robot is allowed to move to the starting position at (radians per second)
+maximum_joint_speed = 1.0
+
+# Maximum gyroscopic value the robot can take for it to be considered steady
+max_stable_gyro_value = 0.4
+
+# Maximum accelerometer value the robot can take for it to be considered steady
+max_stable_acc_value = 0.6
+
+# Minimum fsr value the robot can take to be considered steady
+min_stable_fsr_value = 0.0
+
+# Minimum waittime duration, anything less will not be considered
+# (if we were to consider this waiting time, the amount of time to
+# process it would take longer than the actual waittime)
+minimum_wait_time = 0.05

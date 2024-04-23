@@ -1,0 +1,11 @@
+global_interpolation_type = "EaseInOut"
+motion_order = [
+    "FlossDance/ReadyToFloss",
+    "FlossDance/FlossLeft1",
+    "FlossDance/FlossLeft2",
+    "FlossDance/FlossLeft1",
+    "FlossDance/FlossRight1",
+    "FlossDance/FlossRight2",
+    "FlossDance/FlossRight1",
+    "FlossDance/FlossFinish",
+]

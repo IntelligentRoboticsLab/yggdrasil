@@ -1,21 +1,52 @@
+use crate::motion::motion_types::InterpolationType;
 use nidhogg::types::JointArray;
+use num::pow;
 use std::time::Duration;
 
-/// Performs linear interpolation between two `JointArray<f32>`.
+/// Selects and executes the chosen interpolation method between two `JointArray<f32>`.
+/// Returns a jointarray containing the appropriate joint values at the given
+/// time.
+///
+/// # Notes
+/// - The value `t` is contained in the set (0, 1). This represents the ratio
+/// of the movement duration that has elapsed. For example: 0 is equivalent to the start of the movement,
+/// 1 is equivalent to the end of the movement and 0.5 is equivalent to the halfway point of the movement.
+/// - Currently the function only applies a standard bezier interpolation within the "SmoothInOut"
+///   interpolation type. However, there will be an option to request a custom bezier interpolation method.
 ///
 /// # Arguments
-/// * `current_position` - Starting position.
-/// * `target_position` - Final position.
-/// * `scalar` - Scalar from 0-1 that indicates what weight to assign to each position.
-pub fn lerp(
-    current_position: &JointArray<f32>,
+/// * `previous_position` - Previous keyframe position of the robot.
+/// * `target_position` - Target keyframe position the robot wants to move to.
+/// * `t` - The ratio of the movement duration that has elapsed. Within (0, 1).
+/// * `interpolation_type` - Interpolation type to be applied.
+pub fn interpolate_jointarrays(
+    previous_position: &JointArray<f32>,
     target_position: &JointArray<f32>,
-    scalar: f32,
+    t: f32,
+    interpolation_type: &InterpolationType,
 ) -> JointArray<f32> {
-    current_position
+    let ratio = match interpolation_type {
+        InterpolationType::Linear => t,
+        InterpolationType::EaseInOut => jointarray_cubic_bezier(0.0, 1.0, t),
+        InterpolationType::EaseIn => jointarray_cubic_bezier(0.5, 1.0, t),
+        InterpolationType::EaseOut => jointarray_cubic_bezier(0.0, 0.5, t),
+    };
+
+    previous_position
         .clone()
         .zip(target_position.clone())
-        .map(|(curr, target)| curr * (1.0 - scalar) + target * scalar)
+        .map(|(curr, target)| curr * (1.0 - ratio) + target * ratio)
+}
+
+/// Function for applying cubic bezier interpolation on a scalar.
+/// This means that this bezier curve is considered to be 1-dimensional.
+///
+/// # Arguments
+/// * `p1` - First control point between the values of 0 and 1.
+/// * `p2` - Second control point between the values of 0 and 1.
+/// * `t` - Variable value t.
+pub fn jointarray_cubic_bezier(p1: f32, p2: f32, t: f32) -> f32 {
+    pow(3.0 * (1.0 - t), 2) * t * p1 + (3.0 * (1.0 - t) * pow(t, 2)) * p2 + pow(t, 3)
 }
 
 // Checks if the current position has reached the target position with a certain

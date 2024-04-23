@@ -24,7 +24,7 @@ pub struct CatchFall;
 impl Behavior for CatchFall {
     fn execute(
         &mut self,
-        _: Context,
+        _context: Context,
         nao_manager: &mut NaoManager,
         _walking_engine: &mut WalkingEngine,
         _motion_manager: &mut MotionManager,

@@ -26,7 +26,7 @@ impl Behavior for Initial {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
+        _motion_manager: &mut MotionManager,
         _step_planner: &mut StepPlanner,
     ) {
         nao_manager.set_head(

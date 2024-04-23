@@ -47,7 +47,7 @@ impl Behavior for Observe {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
+        _motion_manager: &mut MotionManager,
         _step_planner: &mut StepPlanner,
     ) {
         let ObserveBehaviorConfig {

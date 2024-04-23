@@ -21,7 +21,7 @@ impl Behavior for StartUp {
         context: Context,
         nao_manager: &mut NaoManager,
         _walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
+        _motion_manager: &mut MotionManager,
         _step_planner: &mut StepPlanner,
     ) {
         set_initial_joint_values(&context.robot_info.initial_joint_positions, nao_manager);

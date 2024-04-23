@@ -19,7 +19,7 @@ impl Behavior for Walk {
         _context: Context,
         _nao_manager: &mut NaoManager,
         _walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
+        _motion_manager: &mut MotionManager,
         step_planner: &mut StepPlanner,
     ) {
         step_planner.set_absolute_target(Point2::new(0., 0.));

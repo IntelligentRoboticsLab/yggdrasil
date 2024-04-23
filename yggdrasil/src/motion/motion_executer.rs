@@ -1,36 +1,19 @@
-use crate::filter::imu::IMUValues;
-use crate::filter::{falling::FallState, orientation::RobotOrientation};
-use crate::motion::motion_manager::{ActiveMotion, MotionManager};
-use crate::motion::motion_types::Movement;
-use crate::motion::motion_util::{get_min_duration, lerp};
-use crate::nao::manager::NaoManager;
-use crate::nao::manager::Priority;
+use crate::filter::{falling::FallState, imu::IMUValues, orientation::RobotOrientation};
+use crate::motion::{
+    motion_manager::{ActiveMotion, MotionManager},
+    motion_types::{InterpolationType, Movement},
+    motion_util::{get_min_duration, interpolate_jointarrays},
+    MotionConfig,
+};
+use crate::nao::manager::{NaoManager, Priority};
 use miette::{miette, Result};
 use nalgebra::Vector3;
-use nidhogg::types::{ArmJoints, ForceSensitiveResistors, HeadJoints, LegJoints};
 use nidhogg::{
-    types::{FillExt, JointArray},
+    types::{ArmJoints, FillExt, ForceSensitiveResistors, HeadJoints, JointArray, LegJoints},
     NaoState,
 };
 use std::time::{Duration, Instant};
 use tyr::prelude::*;
-
-// maximum speed the robot is allowed to move to the starting position at
-const MAX_SPEED: f32 = 1.0;
-
-// maximum gyroscopic value the robot can take for it to be considered steady
-const MAX_GYRO_VALUE: f32 = 0.4;
-
-// maximum accelerometer value the robot can take for it to be considered steady
-const MAX_ACC_VALUE: f32 = 0.6;
-
-// minimum fsr value the robot can take to be considered steady
-const MIN_FSR_VALUE: f32 = 0.0;
-
-// minimum waittime duration, anything less will not be considered
-// (if we were to consider this waiting time, the amount of time to
-// process it would take longer than the actual waittime)
-const MINIMUM_WAIT_TIME: f32 = 0.05;
 
 /// Executes the current motion.
 ///
@@ -44,6 +27,7 @@ pub fn motion_executer(
     motion_manager: &mut MotionManager,
     nao_manager: &mut NaoManager,
     fall_state: &mut FallState,
+    config: &MotionConfig,
     orientation: &RobotOrientation,
     fsr: &ForceSensitiveResistors,
     imu: &IMUValues,
@@ -75,21 +59,36 @@ pub fn motion_executer(
         let Movement {
             target_position,
             duration,
+            movement_interpolation_type,
         } = &motion.initial_movement(&sub_motion_name);
 
         // before beginning the first movement, we have to prepare the movement to avoid damage
         if motion_manager.source_position.is_none() {
             // record the last position before motion initialization, or before transition
             motion_manager.source_position = Some(nao_state.position.clone());
-            prepare_initial_movement(motion_manager, target_position, duration, &sub_motion_name)?;
+            prepare_initial_movement(
+                motion_manager,
+                target_position,
+                duration,
+                &sub_motion_name,
+                config,
+            );
         }
 
+        // using the global interpolation type, unless the movement is assigned one already
+        let initial_interpolation_type = movement_interpolation_type
+            .as_ref()
+            .or(Some(&motion.settings.global_interpolation_type))
+            .ok_or_else(|| miette!("Problem with getting the global interpolation type"))?;
+
+        println!("{:?}", initial_interpolation_type);
         // getting the next position for the robot
         if let Some(next_position) = move_to_starting_position(
             motion_manager,
             target_position,
             duration,
             &movement_start.elapsed(),
+            initial_interpolation_type,
         ) {
             nao_manager.set_all(
                 next_position,
@@ -110,7 +109,7 @@ pub fn motion_executer(
     if let Some(position) = motion.get_position(
         &sub_motion_name,
         motion_manager.active_motion.as_mut().unwrap(),
-    ) {
+    )? {
         nao_manager.set_all(
             position,
             HeadJoints::<f32>::fill(submotion_stiffness),
@@ -130,14 +129,15 @@ pub fn motion_executer(
             gyro,
             linear_acceleration,
             fsr,
-            MAX_GYRO_VALUE,
-            MAX_ACC_VALUE,
-            MIN_FSR_VALUE,
+            config.max_stable_gyro_value,
+            config.max_stable_acc_value,
+            config.min_stable_fsr_value,
         ) {
             // if not, we wait until it is either steady or the maximum wait time has elapsed
             if !exit_waittime_elapsed(
                 motion_manager,
                 motion.submotions[&sub_motion_name].exit_waittime,
+                config,
             ) {
                 // returning the current nao position to prohibit any other position requests from taking over
                 nao_manager.set_all(
@@ -151,10 +151,12 @@ pub fn motion_executer(
             }
         }
 
-        transition_to_next_submotion(motion_manager, nao_state, fall_state).map_err(|err| {
-            motion_manager.stop_motion();
-            err
-        })?;
+        transition_to_next_submotion(motion_manager, nao_state, fsr, fall_state).map_err(
+            |err| {
+                motion_manager.stop_motion();
+                err
+            },
+        )?;
 
         nao_manager.set_all(
             nao_state.position.clone(),
@@ -185,15 +187,13 @@ fn prepare_initial_movement(
     target_position: &JointArray<f32>,
     duration: &Duration,
     sub_motion_name: &String,
-) -> Result<()> {
+    config: &MotionConfig,
+) {
     // checking whether the given duration will exceed our maximum speed limit
     let min_duration = get_min_duration(
-        motion_manager
-            .source_position
-            .as_ref()
-            .ok_or_else(|| miette!("Getting the source position failed during initial movement"))?,
+        motion_manager.source_position.as_ref().unwrap(),
         target_position,
-        MAX_SPEED,
+        config.maximum_joint_speed,
     );
     if duration > &min_duration {
         // editing the movement duration to prevent dangerously quick movements
@@ -204,8 +204,6 @@ fn prepare_initial_movement(
             .motion
             .set_initial_duration(sub_motion_name, min_duration);
     }
-
-    Ok(())
 }
 
 /// Updates the active motion to begin executing the current submotion.
@@ -244,12 +242,14 @@ fn move_to_starting_position(
     target_position: &JointArray<f32>,
     duration: &Duration,
     elapsed_time_since_start_of_motion: &Duration,
+    interpolation_type: &InterpolationType,
 ) -> Option<JointArray<f32>> {
     if elapsed_time_since_start_of_motion <= duration {
-        return Some(lerp(
+        return Some(interpolate_jointarrays(
             motion_manager.source_position.as_ref().unwrap(),
             target_position,
             elapsed_time_since_start_of_motion.as_secs_f32() / duration.as_secs_f32(),
+            interpolation_type,
         ));
     }
 
@@ -258,18 +258,27 @@ fn move_to_starting_position(
 
 /// Assesses whether the required waiting time has elapsed.
 ///
+/// # Notes
+/// Currently, the waiting time is static, with the robot always waiting
+/// the full duration of the waiting time. But in the future this waiting time
+/// might be shortened due to the robot being in a stable position.
+///
 /// # Arguments
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 /// * `duration` - Intended duration of the waiting time.
-fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_wait_time: f32) -> bool {
-    if exit_wait_time <= MINIMUM_WAIT_TIME {
+fn exit_waittime_elapsed(
+    motion_manager: &mut MotionManager,
+    exit_waittime: f32,
+    config: &MotionConfig,
+) -> bool {
+    if exit_waittime <= config.minimum_wait_time {
         return true;
     }
 
     // firstly, we record the current timestamp and check whether the motion needs to wait
     if let Some(finishing_time) = motion_manager.submotion_finishing_time {
         // checking whether the required waittime has elapsed
-        if finishing_time.elapsed().as_secs_f32() < exit_wait_time {
+        if finishing_time.elapsed().as_secs_f32() < exit_waittime {
             return false;
         }
 
@@ -295,6 +304,7 @@ fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_wait_time: f32
 fn transition_to_next_submotion(
     motion_manager: &mut MotionManager,
     nao_state: &mut NaoState,
+    fsr: &ForceSensitiveResistors,
     fall_state: &mut FallState,
 ) -> Result<()> {
     // current submotion is finished, transition to next submotion.
@@ -309,7 +319,7 @@ fn transition_to_next_submotion(
 
     if let Some(submotion_name) = active_motion.get_next_submotion() {
         // If there is a next submotion, we attempt a transition
-        let next_submotion = active_motion.transition(nao_state, submotion_name.clone())?;
+        let next_submotion = active_motion.transition(nao_state, fsr, submotion_name.clone())?;
         motion_manager.active_motion = next_submotion;
 
         Ok(())
