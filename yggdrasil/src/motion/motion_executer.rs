@@ -22,6 +22,7 @@ use tyr::prelude::*;
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 /// * `nao_manager` - Used to set the new joint positions.
 #[system]
+#[allow(clippy::too_many_arguments)]
 pub fn motion_executer(
     nao_state: &mut NaoState,
     motion_manager: &mut MotionManager,
