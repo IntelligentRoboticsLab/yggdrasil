@@ -82,7 +82,6 @@ pub fn motion_executer(
             .or(Some(&motion.settings.global_interpolation_type))
             .ok_or_else(|| miette!("Problem with getting the global interpolation type"))?;
 
-        println!("{:?}", initial_interpolation_type);
         // getting the next position for the robot
         if let Some(next_position) = move_to_starting_position(
             motion_manager,
@@ -135,9 +134,9 @@ pub fn motion_executer(
             config.min_stable_fsr_value,
         ) {
             // if not, we wait until it is either steady or the maximum wait time has elapsed
-            if !exit_waittime_elapsed(
+            if !exit_wait_time_elapsed(
                 motion_manager,
-                motion.submotions[&sub_motion_name].exit_waittime,
+                motion.submotions[&sub_motion_name].exit_wait_time,
                 config,
             ) {
                 // returning the current nao position to prohibit any other position requests from taking over
@@ -267,19 +266,19 @@ fn move_to_starting_position(
 /// # Arguments
 /// * `motion_manager` - Keeps track of state needed for playing motions.
 /// * `duration` - Intended duration of the waiting time.
-fn exit_waittime_elapsed(
+fn exit_wait_time_elapsed(
     motion_manager: &mut MotionManager,
-    exit_waittime: f32,
+    exit_wait_time: f32,
     config: &MotionConfig,
 ) -> bool {
-    if exit_waittime <= config.minimum_wait_time {
+    if exit_wait_time <= config.minimum_wait_time {
         return true;
     }
 
     // firstly, we record the current timestamp and check whether the motion needs to wait
     if let Some(finishing_time) = motion_manager.submotion_finishing_time {
-        // checking whether the required waittime has elapsed
-        if finishing_time.elapsed().as_secs_f32() < exit_waittime {
+        // checking whether the required wait time has elapsed
+        if finishing_time.elapsed().as_secs_f32() < exit_wait_time {
             return false;
         }
 

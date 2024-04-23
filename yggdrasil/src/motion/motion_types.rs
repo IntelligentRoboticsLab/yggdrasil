@@ -123,7 +123,7 @@ pub struct SubMotion {
     /// TODO, lower limit for angle variable.
     pub chest_angle_bound_lower: f32,
     /// Amount of time in seconds that the submotion will wait after finishing.
-    pub exit_waittime: f32,
+    pub exit_wait_time: f32,
     /// Routine that the robot will execute if the current submotion fails.
     pub fail_routine: FailRoutine,
     /// Conditions the robot must fulfill to be able to enter the submotion.

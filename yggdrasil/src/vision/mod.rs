@@ -10,7 +10,6 @@ pub mod line_detection;
 pub mod scan_lines;
 
 use field_boundary::FieldBoundaryModule;
-
 use scan_lines::{ScanLinesConfig, ScanLinesModule};
 
 use self::ball_detection::BallDetectionModule;
