@@ -1,4 +1,4 @@
-interpolation_type = "Linear"
+global_interpolation_type = "EaseInOut"
 motion_order = [
     "FlossDance/ReadyToFloss",
     "FlossDance/FlossLeft1",

@@ -59,6 +59,7 @@ pub fn motion_executer(
         let Movement {
             target_position,
             duration,
+            movement_interpolation_type,
         } = &motion.initial_movement(&sub_motion_name);
 
         // before beginning the first movement, we have to prepare the movement to avoid damage
@@ -74,13 +75,20 @@ pub fn motion_executer(
             );
         }
 
+        // using the global interpolation type, unless the movement is assigned one already
+        let initial_interpolation_type = movement_interpolation_type
+            .as_ref()
+            .or(Some(&motion.settings.global_interpolation_type))
+            .ok_or_else(|| miette!("Problem with getting the global interpolation type"))?;
+
+        println!("{:?}", initial_interpolation_type);
         // getting the next position for the robot
         if let Some(next_position) = move_to_starting_position(
             motion_manager,
             target_position,
             duration,
             &movement_start.elapsed(),
-            &motion.settings.interpolation_type,
+            initial_interpolation_type,
         ) {
             nao_manager.set_all(
                 next_position,
@@ -101,7 +109,7 @@ pub fn motion_executer(
     if let Some(position) = motion.get_position(
         &sub_motion_name,
         motion_manager.active_motion.as_mut().unwrap(),
-    ) {
+    )? {
         nao_manager.set_all(
             position,
             HeadJoints::<f32>::fill(submotion_stiffness),

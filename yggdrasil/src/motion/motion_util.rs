@@ -27,7 +27,9 @@ pub fn interpolate_jointarrays(
 ) -> JointArray<f32> {
     let ratio = match interpolation_type {
         InterpolationType::Linear => t,
-        InterpolationType::SmoothInOut => jointarray_cubic_bezier(0.0, 1.0, t),
+        InterpolationType::EaseInOut => jointarray_cubic_bezier(0.0, 1.0, t),
+        InterpolationType::EaseIn => jointarray_cubic_bezier(0.5, 1.0, t),
+        InterpolationType::EaseOut => jointarray_cubic_bezier(0.0, 0.5, t),
     };
 
     previous_position

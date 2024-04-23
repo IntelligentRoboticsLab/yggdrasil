@@ -1,4 +1,4 @@
-interpolation_type = "Linear"
+global_interpolation_type = "Linear"
 exit_routine = "Standing"
 motion_order = [
     "Standup/OnBack/ReadyToKick",

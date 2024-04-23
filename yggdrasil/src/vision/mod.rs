@@ -21,10 +21,10 @@ pub struct VisionModule;
 impl Module for VisionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_module(FieldBoundaryModule)?
-            .add_module(ScanLinesModule)?
-            .add_module(LineDetectionModule)?
-            .add_module(BallDetectionModule)?
-            .add_module(FieldMarksModule)
+            .add_module(ScanLinesModule)
+        // .add_module(LineDetectionModule)?
+        // .add_module(BallDetectionModule)?
+        // .add_module(FieldMarksModule)
     }
 }
 

@@ -12,17 +12,6 @@ use std::{
 };
 use toml;
 
-#[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
-/// Represents a single robot movement.
-pub struct Movement {
-    /// Movement target joint positions.
-    pub target_position: JointArray<f32>,
-    /// Movement duration.
-    #[serde_as(as = "DurationSecondsWithFrac<f64>")]
-    pub duration: Duration,
-}
-
 /// An enum containing the possible interpolation types for a motion.
 ///
 /// # Notes
@@ -32,7 +21,9 @@ pub enum InterpolationType {
     // Simple linear interpolation between jointarrays
     Linear,
     // Using a cubic bezier curve to interpolate smoothly
-    SmoothInOut,
+    EaseInOut,
+    EaseIn,
+    EaseOut,
 }
 
 /// An enum containing the possible variables that can be used as conditions
@@ -96,13 +87,26 @@ pub struct MotionCondition {
 /// - New motion settings should be added here as a new property.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MotionSettings {
-    // interpolation type used during the motion
-    pub interpolation_type: InterpolationType,
+    // standard interpolation type used during the motion unless explicitly specified for movement
+    pub global_interpolation_type: InterpolationType,
     // exit routine to be executed when the motion has finished succesfully
     pub exit_routine: Option<ExitRoutine>,
     // the standard order the submotions will be executed in
     pub motion_order: Vec<String>,
     // New motion settings can be added here
+}
+
+/// Represents a single robot movement.
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Movement {
+    /// Movement target joint positions.
+    pub target_position: JointArray<f32>,
+    /// Movement duration.
+    #[serde_as(as = "DurationSecondsWithFrac<f64>")]
+    pub duration: Duration,
+    /// interpolation type used for the movement, if None, inherits from motion
+    pub movement_interpolation_type: Option<InterpolationType>,
 }
 
 /// Stores information about a submotion.
@@ -196,50 +200,49 @@ impl Motion {
         &self,
         current_sub_motion: &String,
         active_motion: &mut ActiveMotion,
-    ) -> Option<JointArray<f32>> {
+    ) -> Result<Option<JointArray<f32>>> {
         let keyframes = &self.submotions[current_sub_motion].keyframes;
 
         // Check if we have reached the end of the current submotion
         if keyframes.len() < active_motion.cur_keyframe_index + 1 {
-            return None;
+            return Ok(None);
         }
+
+        let previous_position = &keyframes[active_motion.cur_keyframe_index - 1].target_position;
+        let current_movement = &keyframes[active_motion.cur_keyframe_index];
 
         // if the current movement has been completed:
         if active_motion.movement_start.elapsed().as_secs_f32()
-            > keyframes[active_motion.cur_keyframe_index]
-                .duration
-                .as_secs_f32()
+            > current_movement.duration.as_secs_f32()
         {
             // update the index
             active_motion.cur_keyframe_index += 1;
 
             // Check if there exists a next keyframe
             if keyframes.len() < active_motion.cur_keyframe_index + 1 {
-                return None;
+                return Ok(None);
             }
 
             // update the time of the start of the movement
             active_motion.movement_start = Instant::now();
         }
 
-        Some(interpolate_jointarrays(
-            &keyframes[active_motion.cur_keyframe_index - 1].target_position,
-            &keyframes[active_motion.cur_keyframe_index].target_position,
-            (active_motion.movement_start.elapsed()).as_secs_f32()
-                / keyframes[active_motion.cur_keyframe_index]
-                    .duration
-                    .as_secs_f32(),
-            &active_motion.motion.settings.interpolation_type,
-        ))
+        // using the global interpolation type, unless the movement is assigned one already
+        let interpolation_type = current_movement
+            .movement_interpolation_type
+            .as_ref()
+            .or(Some(
+                &active_motion.motion.settings.global_interpolation_type,
+            ))
+            .ok_or_else(|| miette!("Problem with getting the global interpolation type"))?;
 
-        // Some(lerp(
-        //     &keyframes[active_motion.cur_keyframe_index - 1].target_position,
-        //     &keyframes[active_motion.cur_keyframe_index].target_position,
-        //     (active_motion.movement_start.elapsed()).as_secs_f32()
-        //         / keyframes[active_motion.cur_keyframe_index]
-        //             .duration
-        //             .as_secs_f32(),
-        // ))
+        Ok(Some(interpolate_jointarrays(
+            previous_position,
+            &current_movement.target_position,
+            (active_motion.movement_start.elapsed()).as_secs_f32()
+                / current_movement.duration.as_secs_f32(),
+            interpolation_type,
+        )))
     }
 
     /// Returns the first movement the robot would make for the current submotion.
