@@ -72,6 +72,12 @@ impl ArgTransformerVisitor {
                     false => parse_quote! { ::tyr::Res<#elem> },
                 };
             }
+            (_, Type::Tuple(TypeTuple { .. })) => {
+                self.errors.push(syn::Error::new_spanned(
+                    pat,
+                    "Tuple arguments must destructure the tuple!",
+                ));
+            }
             _ => {
                 self.errors.push(syn::Error::new_spanned(
                     ty,
