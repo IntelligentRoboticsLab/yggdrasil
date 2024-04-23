@@ -27,11 +27,8 @@ struct ArgTransformerVisitor {
 }
 
 impl ArgTransformerVisitor {
-    fn visit_pat_ty_mut(&mut self, attrs: &Vec<Attribute>, pat: &mut Pat, ty: &mut Type) {
-        let mut pat = Box::new(pat);
-        let mut ty = Box::new(ty);
-
-        match (pat.as_mut(), ty.as_mut()) {
+    fn visit_pat_ty_mut(&mut self, attrs: &Vec<Attribute>, mut pat: &mut Pat, mut ty: &mut Type) {
+        match (&mut pat, &mut ty) {
             (
                 Pat::Tuple(PatTuple { ref mut elems, .. }),
                 Type::Tuple(TypeTuple {
@@ -64,13 +61,13 @@ impl ArgTransformerVisitor {
                 });
 
                 // transform argument name to contain the `mut` keyword, if it's mutable
-                **pat = match mutable {
+                *pat = match mutable {
                     true => parse_quote! { mut #ident },
                     false => parse_quote! { #ident },
                 };
 
                 // transform argument type to be a `Res` or `ResMut` type
-                **ty = match mutable {
+                *ty = match mutable {
                     true => parse_quote! { ::tyr::ResMut<#elem> },
                     false => parse_quote! { ::tyr::Res<#elem> },
                 };
