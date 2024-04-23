@@ -29,13 +29,7 @@ struct ArgTransformerVisitor {
 impl ArgTransformerVisitor {
     fn visit_pat_ty_mut(&mut self, attrs: &Vec<Attribute>, mut pat: &mut Pat, mut ty: &mut Type) {
         match (&mut pat, &mut ty) {
-            (
-                Pat::Tuple(PatTuple { ref mut elems, .. }),
-                Type::Tuple(TypeTuple {
-                    elems: ref mut types,
-                    ..
-                }),
-            ) => {
+            (Pat::Tuple(PatTuple { elems, .. }), Type::Tuple(TypeTuple { elems: types, .. })) => {
                 // recursively visit each tuple element, transforming it in place
                 for (pat, ty) in elems.iter_mut().zip(types.iter_mut()) {
                     self.visit_pat_ty_mut(attrs, pat, ty);
