@@ -7,11 +7,12 @@ use miette::IntoDiagnostic;
 
 use crate::config::showtime::ShowtimeConfig;
 use crate::prelude::*;
+use bifrost::communication::GameControllerMessage;
 use bifrost::serialization::{Decode, Encode};
 
-// TODO: put broadcast ip in a config
 const PORT_RANGE_START: u16 = 10000;
 const INTERVAL: Duration = Duration::from_secs(1);
+const SAVINGS: u16 = 8;
 
 pub struct RobotToRobotModule;
 
@@ -30,11 +31,20 @@ fn init_robot_to_robot(storage: &mut Storage, config: &ShowtimeConfig) -> Result
 }
 
 #[system]
-fn sync_shared_state(rtr: &mut RobotToRobot) -> Result<()> {
+fn sync_shared_state(rtr: &mut RobotToRobot, message: &Option<GameControllerMessage>) -> Result<()> {
     let mut buf = [0; 128];
 
+    // Retrieve the remaining packet budget.
+    let budget = match message {
+        Some(message) => match message.teams.iter().find(|t| t.team_number == rtr.team_number) {
+            Some(team) => team.message_budget,
+            None => 0, // TODO: This shouldn't happen, so we should throw an error.
+        },
+        None => 0,
+    };
+
     // Time to send the next update?
-    if rtr.last.elapsed() >= INTERVAL && rtr.out_of_sync {
+    if rtr.should_sync(budget) {
         rtr.state.encode(&mut buf[..]).into_diagnostic()?;
 
         match rtr.socket.send_to(&buf, (Ipv4Addr::BROADCAST, rtr.port)) {
@@ -64,6 +74,7 @@ fn sync_shared_state(rtr: &mut RobotToRobot) -> Result<()> {
 
 pub struct RobotToRobot {
     port: u16,
+    team_number: u8,
     socket: UdpSocket,
     last: Instant,
     state: SharedState,
@@ -81,12 +92,17 @@ impl RobotToRobot {
 
         Ok(Self {
             port,
+            team_number,
             socket,
             last: Instant::now(),
             state: Default::default(),
             peers: HashMap::new(),
             out_of_sync: false,
         })
+    }
+
+    pub fn should_sync(&self, budget: u16) -> bool {
+        self.last.elapsed() >= INTERVAL && budget > SAVINGS && self.out_of_sync
     }
 
     pub fn state(&self) -> &SharedState {
