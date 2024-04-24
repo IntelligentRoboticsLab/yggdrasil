@@ -5,7 +5,7 @@ use proc_macro2::Ident;
 use quote::{quote, ToTokens};
 use syn::{
     parse_macro_input, parse_quote, visit_mut::VisitMut, Attribute, FnArg, ItemFn, Pat, PatIdent,
-    PatType, Type, TypeReference,
+    PatTuple, PatType, Type, TypeReference, TypeTuple,
 };
 
 #[cfg(nightly)]
@@ -26,6 +26,62 @@ struct ArgTransformerVisitor {
     args: Vec<SystemArg>,
 }
 
+impl ArgTransformerVisitor {
+    fn visit_pat_ty_mut(&mut self, attrs: &Vec<Attribute>, mut pat: &mut Pat, mut ty: &mut Type) {
+        match (&mut pat, &mut ty) {
+            (Pat::Tuple(PatTuple { elems, .. }), Type::Tuple(TypeTuple { elems: types, .. })) => {
+                // recursively visit each tuple element, transforming it in place
+                for (pat, ty) in elems.iter_mut().zip(types.iter_mut()) {
+                    self.visit_pat_ty_mut(attrs, pat, ty);
+                }
+            }
+            (
+                Pat::Ident(PatIdent {
+                    ident,
+                    subpat: None,
+                    ..
+                }),
+                Type::Reference(TypeReference {
+                    mutability, elem, ..
+                }),
+            ) => {
+                let mutable = mutability.is_some();
+
+                // save argument information
+                self.args.push(SystemArg {
+                    attrs: attrs.clone(),
+                    mutable,
+                    ident: ident.clone(),
+                });
+
+                // transform argument name to contain the `mut` keyword, if it's mutable
+                *pat = match mutable {
+                    true => parse_quote! { mut #ident },
+                    false => parse_quote! { #ident },
+                };
+
+                // transform argument type to be a `Res` or `ResMut` type
+                *ty = match mutable {
+                    true => parse_quote! { ::tyr::ResMut<#elem> },
+                    false => parse_quote! { ::tyr::Res<#elem> },
+                };
+            }
+            (_, Type::Tuple(TypeTuple { .. })) => {
+                self.errors.push(syn::Error::new_spanned(
+                    pat,
+                    "Tuple arguments must destructure the tuple!",
+                ));
+            }
+            _ => {
+                self.errors.push(syn::Error::new_spanned(
+                    ty,
+                    "Systems can only take references as arguments!",
+                ));
+            }
+        }
+    }
+}
+
 impl VisitMut for ArgTransformerVisitor {
     fn visit_fn_arg_mut(&mut self, arg: &mut FnArg) {
         if self.skip_first {
@@ -34,41 +90,9 @@ impl VisitMut for ArgTransformerVisitor {
         }
 
         match arg {
-            FnArg::Typed(PatType { attrs, pat, ty, .. }) => match (pat.as_ref(), ty.as_ref()) {
-                (
-                    Pat::Ident(PatIdent {
-                        ident,
-                        subpat: None,
-                        ..
-                    }),
-                    Type::Reference(TypeReference {
-                        mutability, elem, ..
-                    }),
-                ) => {
-                    let ident = ident.clone();
-                    let mutable = mutability.is_some();
-                    let attrs = attrs.clone();
-
-                    // substitute function argument
-                    *arg = match mutable {
-                        true => parse_quote! { #(#attrs)* mut #ident: ::tyr::ResMut<#elem> },
-                        false => parse_quote! { #(#attrs)* #ident: ::tyr::Res<#elem> },
-                    };
-
-                    // save argument information
-                    self.args.push(SystemArg {
-                        attrs,
-                        mutable,
-                        ident,
-                    });
-                }
-                (_, ty) => {
-                    self.errors.push(syn::Error::new_spanned(
-                        ty,
-                        "Systems can only take references as arguments!",
-                    ));
-                }
-            },
+            FnArg::Typed(PatType { attrs, pat, ty, .. }) => {
+                self.visit_pat_ty_mut(attrs, pat, ty);
+            }
             FnArg::Receiver(_) => {
                 self.errors.push(syn::Error::new_spanned(
                     arg,
