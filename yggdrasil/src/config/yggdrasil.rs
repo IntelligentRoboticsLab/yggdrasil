@@ -4,8 +4,8 @@ use crate::filter::orientation::OrientationFilterConfig;
 use crate::motion::odometry::OdometryConfig;
 use crate::prelude::*;
 use crate::{
-    camera::CameraConfig, filter::FilterConfig, game_controller::GameControllerConfig,
-    primary_state::PrimaryStateConfig, vision::VisionConfig,
+    filter::FilterConfig, game_controller::GameControllerConfig, primary_state::PrimaryStateConfig,
+    vision::camera::CameraConfig, vision::VisionConfig,
 };
 
 #[derive(Debug, Deserialize, Serialize)]

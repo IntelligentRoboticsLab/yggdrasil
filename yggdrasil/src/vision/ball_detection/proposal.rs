@@ -7,8 +7,8 @@ use nalgebra::Point2;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    camera::{matrix::CameraMatrices, Image, TopImage},
     prelude::*,
+    vision::camera::{matrix::CameraMatrices, Image, TopImage},
     vision::{
         field_boundary::FieldBoundary,
         scan_lines::{scan_lines_system, PixelColor, ScanGrid, TopScanGrid},
