@@ -19,10 +19,10 @@ use crate::{
     localization::RobotPose,
     motion::motion_manager::MotionManager,
     motion::step_planner::StepPlanner,
+    motion::walk::engine::WalkingEngine,
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
     primary_state::PrimaryState,
-    walk::engine::WalkingEngine,
 };
 
 /// Context that is passed into the behavior engine.

@@ -1,8 +1,8 @@
 use crate::{
     debug::DebugContext,
     localization::RobotPose,
+    motion::walk::engine::{Step, WalkingEngine},
     prelude::*,
-    walk::engine::{Step, WalkingEngine},
 };
 
 use nalgebra::{Isometry, Point2, Unit, Vector2};

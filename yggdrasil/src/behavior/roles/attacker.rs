@@ -5,7 +5,7 @@ use crate::{
     },
     motion::motion_manager::MotionManager,
     motion::step_planner::StepPlanner,
-    walk::engine::{Step, WalkingEngine},
+    motion::walk::engine::{Step, WalkingEngine},
 };
 
 pub struct Attacker;

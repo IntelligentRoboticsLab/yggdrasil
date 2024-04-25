@@ -1,8 +1,8 @@
 use crate::{
     behavior::engine::{Behavior, Context},
+    motion::walk::engine::WalkingEngine,
     motion::{motion_manager::MotionManager, step_planner::StepPlanner},
     nao::manager::{NaoManager, Priority},
-    walk::engine::WalkingEngine,
 };
 
 /// Behavior used for preventing damage when the robot is in a falling state.
