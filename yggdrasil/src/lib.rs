@@ -1,7 +1,6 @@
 #[cfg(feature = "alsa")]
 pub mod audio;
 pub mod behavior;
-pub mod camera;
 pub mod config;
 pub mod debug;
 pub mod filter;

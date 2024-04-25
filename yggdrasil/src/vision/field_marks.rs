@@ -6,13 +6,13 @@ use nidhogg::types::color;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    camera::{matrix::CameraMatrices, Image, TopImage},
     debug::DebugContext,
     ml::{
         util::{argmax, softmax},
         MlModel, MlTask, MlTaskResource,
     },
     prelude::*,
+    vision::camera::{matrix::CameraMatrices, Image, TopImage},
     vision::line::LineSegment3,
 };
 
