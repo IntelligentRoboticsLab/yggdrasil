@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     filter::{self, imu::IMUValues},
     kinematics::{self, robot_dimensions, RobotKinematics},
+    motion::walk::{engine::Side, SwingFoot},
     prelude::*,
-    walk::{engine::Side, SwingFoot},
 };
 
 use super::{CameraConfig, CameraPosition, CameraSettings};

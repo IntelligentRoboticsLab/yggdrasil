@@ -4,8 +4,8 @@ use crate::{
     behavior::engine::{Behavior, Context},
     motion::motion_manager::MotionManager,
     motion::step_planner::StepPlanner,
+    motion::walk::engine::WalkingEngine,
     nao::manager::{NaoManager, Priority},
-    walk::engine::WalkingEngine,
 };
 
 const PENALIZED_HEAD_STIFFNESS: f32 = 0.3;

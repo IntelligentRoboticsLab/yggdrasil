@@ -4,8 +4,8 @@ use crate::{
     behavior::engine::{Behavior, Context},
     motion::motion_manager::MotionManager,
     motion::step_planner::StepPlanner,
+    motion::walk::engine::{Step, WalkingEngine},
     nao::manager::NaoManager,
-    walk::engine::{Step, WalkingEngine},
 };
 
 #[derive(Copy, Clone, Debug, Default, PartialEq)]

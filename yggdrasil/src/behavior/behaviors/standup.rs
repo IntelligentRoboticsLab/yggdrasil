@@ -1,9 +1,9 @@
 use crate::{
     behavior::engine::{Behavior, Context},
     filter::falling::{FallState, LyingDirection},
+    motion::walk::engine::WalkingEngine,
     motion::{motion_manager::MotionManager, motion_types::MotionType, step_planner::StepPlanner},
     nao::manager::{NaoManager, Priority},
-    walk::engine::WalkingEngine,
 };
 
 /// Behavior dedicated to handling the getup sequence of the robot.

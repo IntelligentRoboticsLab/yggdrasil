@@ -3,8 +3,8 @@ use yggdrasil::localization::LocalizationModule;
 use yggdrasil::{
     behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, debug::DebugModule,
     filter::FilterModule, game_controller::GameControllerModule, kinematics::KinematicsModule,
-    ml::MlModule, motion::MotionModule, nao::NaoModule, prelude::*,
-    primary_state::PrimaryStateModule, vision::VisionModule, walk::WalkingEngineModule,
+    ml::MlModule, motion::walk::WalkingEngineModule, motion::MotionModule, nao::NaoModule,
+    prelude::*, primary_state::PrimaryStateModule, vision::VisionModule,
 };
 
 fn main() -> Result<()> {

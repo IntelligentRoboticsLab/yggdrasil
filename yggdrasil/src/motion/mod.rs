@@ -10,6 +10,7 @@ pub mod motion_util;
 pub mod odometry;
 pub mod path_finding;
 pub mod step_planner;
+pub mod walk;
 
 use motion_executer::motion_executer;
 use motion_manager::motion_manager_initializer;

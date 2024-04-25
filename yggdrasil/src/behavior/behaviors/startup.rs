@@ -2,8 +2,8 @@ use crate::{
     behavior::engine::{Behavior, Context},
     motion::motion_manager::MotionManager,
     motion::step_planner::StepPlanner,
+    motion::walk::engine::WalkingEngine,
     nao::manager::{NaoManager, Priority},
-    walk::engine::WalkingEngine,
 };
 use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 

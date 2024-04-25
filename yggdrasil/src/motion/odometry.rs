@@ -7,9 +7,9 @@ use crate::{
     debug::DebugContext,
     filter::orientation::RobotOrientation,
     kinematics::RobotKinematics,
+    motion::walk::{engine::Side, SwingFoot},
     prelude::*,
     primary_state::PrimaryState,
-    walk::{engine::Side, SwingFoot},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

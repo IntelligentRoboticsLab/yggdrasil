@@ -13,7 +13,6 @@ pub mod motion;
 pub mod nao;
 pub mod primary_state;
 pub mod vision;
-pub mod walk;
 
 pub use miette::Result;
 
