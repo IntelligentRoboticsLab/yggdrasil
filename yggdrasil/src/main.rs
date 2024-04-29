@@ -1,5 +1,6 @@
 #[allow(unused_imports)]
 use yggdrasil::behavior::BehaviorModule;
+use yggdrasil::communication::CommunicationModule;
 use yggdrasil::core::{config::ConfigModule, debug::DebugModule, ml::MlModule};
 use yggdrasil::game_controller::GameControllerModule;
 use yggdrasil::kinematics::KinematicsModule;
@@ -25,6 +26,7 @@ fn main() -> Result<()> {
         .add_module(KinematicsModule)?
         .add_module(CameraModule)?
         .add_module(BehaviorModule)?
+        .add_module(CommunicationModule)?
         .add_module(GameControllerModule)?
         .add_module(WalkingEngineModule)?
         .add_module(DebugModule)?
