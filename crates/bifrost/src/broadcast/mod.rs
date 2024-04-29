@@ -1,7 +1,7 @@
 //! Implementation of primitives to build low-volume broadcasting networks.
 
 pub mod buffer;
-pub use buffer::Buffer;
+pub use buffer::{Buffer, Rate};
 
 use std::time::{Duration, Instant};
 
@@ -28,9 +28,11 @@ pub trait Message: Encode + Decode {
 ///
 /// Note that `Deadline::Within` is relative to when the message is pushed into the buffer, whereas
 /// `Deadline::Before` has to have an `Instant` constructed beforehand. Typically, you should use
-/// `Deadline::default` so the buffer has a chance to fill up.
-#[derive(Debug, Clone, Copy)]
+/// `Deadline::default` unless you have a good reason not to.
+#[derive(Debug, Default, Clone, Copy)]
 pub enum Deadline {
+    #[default]
+    Automatic,
     Within(Duration),
     Before(Instant),
 }
@@ -41,25 +43,12 @@ impl Deadline {
     pub const ASAP: Self = Self::Within(Duration::ZERO);
     /// Literally tomorrow, but can be used to pad out packets with unimportant data.
     pub const WHENEVER: Self = Self::Within(Duration::from_secs(86400));
-}
 
-impl Default for Deadline {
-    fn default() -> Self {
-        Self::Within(Duration::from_secs(5))
+    pub fn anchor(self, when: Instant) -> Option<Instant> {
+        match self {
+            Deadline::Automatic => None,
+            Deadline::Within(relative) => Some(when + relative),
+            Deadline::Before(absolute) => Some(absolute),
+        }
     }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// Broadcaster implementation
-////////////////////////////////////////////////////////////////////////////////
-
-pub struct Broadcaster<S: Socket, M: Message> {
-    socket: S,
-    inbound: Vec<M>,
-    outbound: Buffer<M>,
-}
-
-pub trait Socket {
-
-}
-
