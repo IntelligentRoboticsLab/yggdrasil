@@ -5,6 +5,16 @@ use crate::{
     walk::engine::WalkingEngine,
 };
 
+/// Behavior used for making the robot do a lil' floss dance.
+///
+/// The floss motion uses the robots torso as a counterweight
+/// to stabilize itself, but this stabilization can fail when
+/// the motion continues for a long time.
+///
+/// # Notes
+/// - Currently this behavior is very dangerous to use against
+///   other teams since the mental damage doing a floss dance
+///   after scoring will do, is tremendous.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Floss;
 
@@ -17,9 +27,6 @@ impl Behavior for Floss {
         motion_manager: &mut MotionManager,
         _step_planner: &mut StepPlanner,
     ) {
-        if motion_manager.is_motion_active() {
-            return;
-        }
-        motion_manager.start_new_motion(MotionType::Floss, Priority::High);
+        motion_manager.start_new_motion(MotionType::Floss, Priority::Medium);
     }
 }

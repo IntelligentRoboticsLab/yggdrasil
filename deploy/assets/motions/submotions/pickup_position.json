@@ -1,13 +1,12 @@
 {
     "joint_stifness": 0.8,
-    "chest_angle_bound_upper": -0.4,
-    "chest_angle_bound_lower": 0.4,
     "fail_routine":"Abort",
     "exit_wait_time": 0.0,
+    "block_pickup": true,
     "entry_conditions": [],
     "keyframes": [
         {
-            "duration": 0.5,
+            "duration": 1.0,
             "target_position": {
                 "head_yaw": -0.004643917, 
                 "head_pitch": 0.03984213, 

@@ -1,11 +1,11 @@
 global_interpolation_type = "EaseInOut"
 motion_order = [
-    "flossdance/floss_start",
-    "flossdance/floss_left_1",
-    "flossdance/floss_left_2",
-    "flossdance/floss_left_1",
-    "flossdance/floss_right_1",
-    "flossdance/floss_right_2",
-    "flossdance/floss_right_1",
-    "flossdance/floss_finish",
+    "floss_dance/floss_start",
+    "floss_dance/floss_left_1",
+    "floss_dance/floss_left_2",
+    "floss_dance/floss_left_1",
+    "floss_dance/floss_right_1",
+    "floss_dance/floss_right_2",
+    "floss_dance/floss_right_1",
+    "floss_dance/floss_finish",
 ]

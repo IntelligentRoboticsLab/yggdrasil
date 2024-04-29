@@ -103,15 +103,22 @@ fn pose_filter(
     fall_state: &mut FallState,
     behaviour_engine: &Engine,
 ) -> Result<()> {
-    // current method to keep the falling behavior from interrupting the
-    // stand up behavior, will be changed once motion module integration
-    // for behaviors has advanced
-    if let BehaviorKind::Standup(_) = behaviour_engine.behavior {
-        if let FallState::Upright = fall_state {
+    match behaviour_engine.behavior {
+        // current method to keep any other behavior from interupting the
+        // stand up behavior, will be changed once motion module integration
+        // for behaviors has advanced
+        BehaviorKind::Standup(_) => {
+            if let FallState::Lying(_) = fall_state {
+                *fall_state = FallState::InStandup;
+            };
             return Ok(());
         }
-        *fall_state = FallState::InStandup;
-        return Ok(());
+        // making it so that unstiffing the robot resets it's fallstate
+        BehaviorKind::Unstiff(_) => {
+            *fall_state = FallState::Upright;
+            return Ok(());
+        }
+        _ => {}
     }
 
     if is_falling_forward(imu_values) {

@@ -1,10 +1,16 @@
 {
     "joint_stifness": 0.8,
-    "chest_angle_bound_upper": -0.4,
-    "chest_angle_bound_lower": 0.4,
+    "torso_angle_bounds": [
+        {
+            "variable": "AngleY",
+            "min": -0.4, 
+            "max": 0.4
+        }
+    ],
     "fail_routine":"Abort",
-    "exit_wait_time": 0.7,
-    "conditions": [],
+    "exit_wait_time": 2.5,
+    "block_pickup": true,
+    "entry_conditions": [],
     "keyframes": [
         {
             "duration": 0.693181818,

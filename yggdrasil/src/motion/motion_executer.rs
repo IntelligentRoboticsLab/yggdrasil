@@ -1,7 +1,7 @@
 use crate::filter::{falling::FallState, imu::IMUValues, orientation::RobotOrientation};
 use crate::motion::{
-    motion_manager::{ActiveMotion, MotionManager},
-    motion_types::{InterpolationType, Movement},
+    motion_manager::{check_condition, ActiveMotion, MotionManager},
+    motion_types::{InterpolationType, MotionType, Movement},
     motion_util::{get_min_duration, interpolate_jointarrays},
     MotionConfig,
 };
@@ -53,7 +53,30 @@ pub fn motion_executer(
         miette!("Motionmanager.ActiveMotion could not be cloned, likely contained None")
     })?;
 
-    let submotion_stiffness: f32 = motion.submotions[&sub_motion_name].joint_stifness;
+    let current_submotion = &motion.submotions[&sub_motion_name];
+
+    // checking the conditions set for catching a fall during the motion early
+    // Note: Currently it only supports making the robot catch itself when falling,
+    // it's possible to support more routines here but it does not seem logical to me.
+    // Only real addition I would like to make is to support multiple catch types.
+    if let Some(conditions) = &current_submotion.torso_angle_bounds {
+        for condition in conditions {
+            if !check_condition(nao_state, fsr, condition) {
+                println!("{:?}", sub_motion_name);
+                println!("Falling Again");
+                // execute the appropriate catchfall motion depending on the direction of the fall
+                if nao_state.angles.y > 0.0 {
+                    motion_manager
+                        .start_new_motion(MotionType::CatchFallForwards, Priority::Critical);
+                } else {
+                    motion_manager
+                        .start_new_motion(MotionType::CatchFallBackwards, Priority::Critical);
+                }
+
+                return Ok(());
+            }
+        }
+    }
 
     // at the start of a new submotion, we need to lerp to the starting position
     if motion_manager.submotion_execution_starting_time.is_none() {
@@ -64,9 +87,9 @@ pub fn motion_executer(
         } = &motion.initial_movement(&sub_motion_name);
 
         // before beginning the first movement, we have to prepare the movement to avoid damage
-        if motion_manager.source_position.is_none() {
+        if motion_manager.position_buffer.is_none() {
             // record the last position before motion initialization, or before transition
-            motion_manager.source_position = Some(nao_state.position.clone());
+            motion_manager.position_buffer = Some(nao_state.position.clone());
             prepare_initial_movement(
                 motion_manager,
                 target_position,
@@ -92,9 +115,9 @@ pub fn motion_executer(
         ) {
             nao_manager.set_all(
                 next_position,
-                HeadJoints::<f32>::fill(submotion_stiffness),
-                ArmJoints::<f32>::fill(submotion_stiffness),
-                LegJoints::<f32>::fill(submotion_stiffness),
+                HeadJoints::<f32>::fill(current_submotion.joint_stifness),
+                ArmJoints::<f32>::fill(current_submotion.joint_stifness),
+                LegJoints::<f32>::fill(current_submotion.joint_stifness),
                 Priority::High,
             );
             return Ok(());
@@ -102,6 +125,9 @@ pub fn motion_executer(
             // if the starting position has been reached,
             // we update the active motion for executing the submotion
             update_active_motion(motion_manager);
+
+            // emptying the position buffer
+            motion_manager.position_buffer = None;
         }
     }
 
@@ -112,9 +138,9 @@ pub fn motion_executer(
     )? {
         nao_manager.set_all(
             position,
-            HeadJoints::<f32>::fill(submotion_stiffness),
-            ArmJoints::<f32>::fill(submotion_stiffness),
-            LegJoints::<f32>::fill(submotion_stiffness),
+            HeadJoints::<f32>::fill(current_submotion.joint_stifness),
+            ArmJoints::<f32>::fill(current_submotion.joint_stifness),
+            LegJoints::<f32>::fill(current_submotion.joint_stifness),
             Priority::High,
         );
     } else {
@@ -134,19 +160,22 @@ pub fn motion_executer(
             config.min_stable_fsr_value,
         ) {
             // if not, we wait until it is either steady or the maximum wait time has elapsed
-            if !exit_wait_time_elapsed(
-                motion_manager,
-                motion.submotions[&sub_motion_name].exit_wait_time,
-                config,
-            ) {
+            if !exit_wait_time_elapsed(motion_manager, current_submotion.exit_wait_time, config) {
+                // since the current nao_state.position can vary during a standstill,
+                // we simply put the first position in a buffer to reference to
+                if motion_manager.position_buffer.is_none() {
+                    motion_manager.position_buffer = Some(nao_state.position.clone());
+                }
+
                 // returning the current nao position to prohibit any other position requests from taking over
                 nao_manager.set_all(
-                    nao_state.position.clone(),
-                    HeadJoints::<f32>::fill(submotion_stiffness),
-                    ArmJoints::<f32>::fill(submotion_stiffness),
-                    LegJoints::<f32>::fill(submotion_stiffness),
+                    motion_manager.position_buffer.as_ref().unwrap().clone(),
+                    HeadJoints::<f32>::fill(current_submotion.joint_stifness),
+                    ArmJoints::<f32>::fill(current_submotion.joint_stifness),
+                    LegJoints::<f32>::fill(current_submotion.joint_stifness),
                     Priority::High,
                 );
+
                 return Ok(());
             }
         }
@@ -160,9 +189,9 @@ pub fn motion_executer(
 
         nao_manager.set_all(
             nao_state.position.clone(),
-            HeadJoints::<f32>::fill(submotion_stiffness),
-            ArmJoints::<f32>::fill(submotion_stiffness),
-            LegJoints::<f32>::fill(submotion_stiffness),
+            HeadJoints::<f32>::fill(current_submotion.joint_stifness),
+            ArmJoints::<f32>::fill(current_submotion.joint_stifness),
+            LegJoints::<f32>::fill(current_submotion.joint_stifness),
             Priority::High,
         );
     }
@@ -191,7 +220,7 @@ fn prepare_initial_movement(
 ) {
     // checking whether the given duration will exceed our maximum speed limit
     let min_duration = get_min_duration(
-        motion_manager.source_position.as_ref().unwrap(),
+        motion_manager.position_buffer.as_ref().unwrap(),
         target_position,
         config.maximum_joint_speed,
     );
@@ -246,7 +275,7 @@ fn move_to_starting_position(
 ) -> Option<JointArray<f32>> {
     if elapsed_time_since_start_of_motion <= duration {
         return Some(interpolate_jointarrays(
-            motion_manager.source_position.as_ref().unwrap(),
+            motion_manager.position_buffer.as_ref().unwrap(),
             target_position,
             elapsed_time_since_start_of_motion.as_secs_f32() / duration.as_secs_f32(),
             interpolation_type,
@@ -315,28 +344,37 @@ fn transition_to_next_submotion(
 
     motion_manager.submotion_execution_starting_time = None;
     motion_manager.submotion_finishing_time = None;
-    motion_manager.source_position = None;
+    motion_manager.position_buffer = None;
+
+    let next_submotion: Option<ActiveMotion>;
 
     if let Some(submotion_name) = active_motion.get_next_submotion() {
         // If there is a next submotion, we attempt a transition
-        let next_submotion = active_motion.transition(nao_state, fsr, submotion_name.clone())?;
-        motion_manager.active_motion = next_submotion;
-
-        Ok(())
-    }
-    // if no submotion is found, the motion has finished
-    else {
-        // we send the appropriate exit message (if present)
+        next_submotion = active_motion.transition(nao_state, fsr, submotion_name.clone())?;
+    } else {
+        // if no submotion is found, the motion has finished
+        // we execute the appropriate exit routine (if present)
         motion_manager
             .active_motion
             .as_ref()
             .unwrap()
             .execute_exit_routine(fall_state);
 
-        // and we reset the Motionmanager
+        // and we reset the MotionManager
         motion_manager.active_motion = None;
         motion_manager.motion_execution_starting_time = None;
 
-        Ok(())
+        // we exit out of the transition, having finished the motion succesfully
+        return Ok(());
     }
+
+    // if a next submotion was found but the transition resulted in an abort,
+    // we stop the motion without executing it's assigned succes routine
+    if next_submotion.is_none() {
+        // we simply stop the current Motion
+        motion_manager.motion_execution_starting_time = None;
+    }
+
+    motion_manager.active_motion = next_submotion;
+    Ok(())
 }

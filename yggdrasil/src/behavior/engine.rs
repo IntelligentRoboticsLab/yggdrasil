@@ -19,8 +19,7 @@ use crate::{
     },
     game_controller::GameControllerConfig,
     localization::RobotPose,
-    motion::motion_manager::MotionManager,
-    motion::step_planner::StepPlanner,
+    motion::{motion_manager::MotionManager, step_planner::StepPlanner},
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
     primary_state::PrimaryState,
@@ -272,6 +271,19 @@ impl Engine {
         if let PrimaryState::Unstiff = context.primary_state {
             self.behavior = BehaviorKind::Unstiff(Unstiff);
             return;
+        }
+
+        println!("{:?} {:?}", self.behavior, context.fall_state);
+        if motion_manager.active_motion.is_some() {
+            println!(
+                "{:?}",
+                motion_manager
+                    .active_motion
+                    .clone()
+                    .unwrap()
+                    .cur_sub_motion
+                    .0
+            );
         }
 
         // next up, damage prevention and standup motion take precedence

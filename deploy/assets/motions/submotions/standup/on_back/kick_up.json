@@ -3,8 +3,9 @@
     "chest_angle_bound_upper": -0.4,
     "chest_angle_bound_lower": 0.4,
     "fail_routine":"Retry",
-    "exit_wait_time": 0.3,
-    "conditions": [],
+    "exit_wait_time": 4.0,
+    "block_pickup": true,
+    "entry_conditions": [],
     "keyframes": [
         {
             "duration": 0.8,

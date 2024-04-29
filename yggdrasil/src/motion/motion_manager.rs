@@ -1,4 +1,4 @@
-use crate::filter::falling::FallState;
+use crate::filter::falling::{FallDirection, FallState};
 use crate::motion::motion_types::{
     ConditionalVariable, ExitRoutine, FailRoutine, Motion, MotionCondition, MotionType,
 };
@@ -46,19 +46,14 @@ impl ActiveMotion {
         fsr: &ForceSensitiveResistors,
         submotion_name: String,
     ) -> Result<Option<ActiveMotion>> {
-        let next_submotion = self
-            .motion
-            .submotions
-            .get(&submotion_name)
-            .cloned()
-            .ok_or_else(|| {
-                miette!(format!(
-                    "Submotion to be transitioned to does not exist: {}",
-                    &submotion_name
-                ))
-            })?;
+        let next_submotion = self.motion.submotions.get(&submotion_name).ok_or_else(|| {
+            miette!(format!(
+                "Submotion to be transitioned to does not exist: {}",
+                &submotion_name
+            ))
+        })?;
 
-        for condition in next_submotion.conditions {
+        for condition in &next_submotion.entry_conditions {
             if !check_condition(nao_state, fsr, condition) {
                 return Ok(select_routine(
                     self.clone(),
@@ -84,9 +79,18 @@ impl ActiveMotion {
 
     // executes the appropriate exit routine, connected to the chosen motion
     pub fn execute_exit_routine(&self, fall_state: &mut FallState) {
-        if let Some(ExitRoutine::Standing) = self.motion.settings.exit_routine {
-            *fall_state = FallState::Upright
+        println!("BEFORE: {:?}", fall_state);
+        match self.motion.settings.exit_routine {
+            Some(ExitRoutine::Standing) => *fall_state = FallState::Upright,
+            Some(ExitRoutine::FallingForwards) => {
+                *fall_state = FallState::Falling(FallDirection::Forwards)
+            }
+            Some(ExitRoutine::FallingBackwards) => {
+                *fall_state = FallState::Falling(FallDirection::Backwards)
+            }
+            None => {}
         }
+        println!("AFTER: {:?}", fall_state);
         // Add more exit routines here! (along with adding an appropriate enum value)
     }
 }
@@ -103,8 +107,9 @@ pub struct MotionManager {
     pub submotion_execution_starting_time: Option<Instant>,
     /// Keeps track of when the current submotion has finished
     pub submotion_finishing_time: Option<Instant>,
-    // Keeps track of the source position from which the robot began executing a motion.
-    pub source_position: Option<JointArray<f32>>,
+    /// Buffer to store joint positions, either from where the robot began executing a motion
+    /// or the position the robot should wait in after finishing a submotion.
+    pub position_buffer: Option<JointArray<f32>>,
     /// Contains the mapping from `MotionTypes` to `Motion`.
     pub motions: HashMap<MotionType, Motion>,
 }
@@ -137,7 +142,7 @@ impl MotionManager {
         self.motion_execution_starting_time = None;
         self.submotion_execution_starting_time = None;
         self.submotion_finishing_time = None;
-        self.source_position = None;
+        self.position_buffer = None;
     }
 
     /// Starts a new motion if currently no motion is being executed.
@@ -147,6 +152,7 @@ impl MotionManager {
     /// * `motion_type` - The type of motion to start.
     /// * `priority` - The priority that the motion has.
     pub fn start_new_motion(&mut self, motion_type: MotionType, priority: Priority) {
+        println!("{:?}", motion_type);
         if let Some(active_motion) = self.active_motion.as_ref() {
             // motions with a higher priority value take priority
             if priority <= active_motion.priority {
@@ -190,6 +196,15 @@ pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
         MotionType::StandupStomach,
         "./assets/motions/standup_stomach.toml",
     )?;
+    motion_manager.add_motion(
+        MotionType::CatchFallForwards,
+        "./assets/motions/catch_fall_forwards.toml",
+    )?;
+    motion_manager.add_motion(
+        MotionType::CatchFallBackwards,
+        "./assets/motions/catch_fall_backwards.toml",
+    )?;
+    motion_manager.add_motion(MotionType::Pickup, "./assets/motions/pickup.toml")?;
     motion_manager.add_motion(MotionType::Floss, "./assets/motions/floss.toml")?;
     storage.add_resource(Resource::new(motion_manager))?;
 
@@ -201,10 +216,10 @@ pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
 /// # Arguments
 /// * `nao_state` - Current state of the Nao.
 /// * `condition` - The condition which needs to be checked.
-fn check_condition(
-    nao_state: &mut NaoState,
+pub fn check_condition(
+    nao_state: &NaoState,
     fsr: &ForceSensitiveResistors,
-    condition: MotionCondition,
+    condition: &MotionCondition,
 ) -> bool {
     match condition.variable {
         ConditionalVariable::GyroscopeX => {
@@ -230,12 +245,15 @@ fn check_condition(
 /// # Arguments
 /// * `active_motion` - The current active motion of the Nao.
 /// * `routine` - The routine that will be matched with an according motion.
-fn select_routine(mut active_motion: ActiveMotion, routine: FailRoutine) -> Option<ActiveMotion> {
+pub fn select_routine(
+    mut active_motion: ActiveMotion,
+    routine: FailRoutine,
+) -> Option<ActiveMotion> {
     match routine {
         // aborts the current motion
         FailRoutine::Abort => None,
         // TODO implement catch routine
-        FailRoutine::Catch => None,
+        FailRoutine::CatchFall => None,
         // retry the previous submotion
         FailRoutine::Retry => {
             active_motion.cur_keyframe_index = 0;

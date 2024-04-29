@@ -4,7 +4,8 @@
     "chest_angle_bound_lower": 0.4,
     "fail_routine":"Retry",
     "exit_wait_time": 0.0,
-    "conditions": [],
+    "block_pickup": true,
+    "entry_conditions": [],
     "keyframes": [
         {
             "duration": 0.6,

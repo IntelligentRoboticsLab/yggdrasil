@@ -1,0 +1,5 @@
+global_interpolation_type = "EaseInOut"
+exit_routine = "FallingBackwards"
+motion_order = [
+    "catch_fall/backwards_alpha"
+]

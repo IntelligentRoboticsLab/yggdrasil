@@ -1,13 +1,18 @@
 {
     "joint_stifness": 0.8,
-    "chest_angle_bound_upper": -0.4,
-    "chest_angle_bound_lower": 0.4,
+    "torso_angle_bounds": [
+        {
+            "variable": "AngleY",
+            "min": -0.3, 
+            "max": 0.3
+        }
+    ],
     "fail_routine":"Retry",
     "exit_wait_time": 0.0,
-    "conditions": [],
+    "entry_conditions": [],
     "keyframes": [
         {
-            "duration": 0.6,
+            "duration": 0.5,
             "target_position": {
                 "head_yaw": 0.007627964, 
                 "head_pitch": 0.044444084, 
@@ -16,7 +21,7 @@
                 "left_elbow_yaw": -0.058333874, 
                 "left_elbow_roll": -0.013764143, 
                 "left_wrist_yaw": -1.7273259, 
-                "left_hip_yaw_pitch": -0.0014920235, 
+                "left_hip_yaw_pitch": 0.1014920235, 
                 "left_hip_roll": -0.0014920235, 
                 "left_hip_pitch": -0.33283615, 
                 "left_knee_pitch": 0.92342615, 

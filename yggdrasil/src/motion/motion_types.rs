@@ -53,7 +53,7 @@ pub enum ConditionalVariable {
 pub enum FailRoutine {
     Retry,
     Abort,
-    Catch,
+    CatchFall,
     // Add new fail routines here
 }
 
@@ -67,6 +67,8 @@ pub enum FailRoutine {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ExitRoutine {
     Standing,
+    FallingForwards,
+    FallingBackwards,
     // Add new exit routines here
 }
 
@@ -111,23 +113,34 @@ pub struct Movement {
 
 /// Stores information about a submotion.
 ///
-/// # Notes
-/// - Currently does not use the chest angle bound variables,
-///   but this will be implemented soon(tm).
+/// ```
+/// struct SubMotion {
+///    pub joint_stifness: f32,
+///    pub torso_angle_bounds: Option<Vec<MotionCondition>>,
+///    pub exit_wait_time: f32,
+///    pub fail_routine: FailRoutine,
+///    pub entry_conditions: Vec<MotionCondition>,
+///    pub block_pickup: bool
+///    pub keyframes: Vec<Movement>,
+/// }
+/// ```
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SubMotion {
     /// Joint stiffness of the submotion.
     pub joint_stifness: f32,
-    /// TODO, upper limit for angle variable.
-    pub chest_angle_bound_upper: f32,
-    /// TODO, lower limit for angle variable.
-    pub chest_angle_bound_lower: f32,
+    /// Conditions concerning chest angles which will immediately transition into fallcatch once exceeded.
+    pub torso_angle_bounds: Option<Vec<MotionCondition>>,
     /// Amount of time in seconds that the submotion will wait after finishing.
     pub exit_wait_time: f32,
     /// Routine that the robot will execute if the current submotion fails.
     pub fail_routine: FailRoutine,
     /// Conditions the robot must fulfill to be able to enter the submotion.
-    pub conditions: Vec<MotionCondition>,
+    pub entry_conditions: Vec<MotionCondition>,
+    /// Boolean to signify whether the motion will abort when the robot is picked up
+    /// (Reason this needs to be enabled/disabled is because the robot cannot detect whether it's picked up
+    ///  if the submotion has the robots feet not touching the ground)
+    #[serde(default)]
+    pub block_pickup: bool,
     /// The keyframes which comprise the submotion.
     pub keyframes: Vec<Movement>,
 }
@@ -276,4 +289,7 @@ pub enum MotionType {
     StandupBack,
     StandupStomach,
     Floss,
+    CatchFallForwards,
+    CatchFallBackwards,
+    Pickup,
 }

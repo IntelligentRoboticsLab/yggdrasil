@@ -15,8 +15,8 @@ impl Role for Attacker {
         &mut self,
         _context: Context,
         _current_behavior: &mut BehaviorKind,
-        _: &mut WalkingEngine,
-        _: &mut MotionManager,
+        _walking_engine: &mut WalkingEngine,
+        _motion_manager: &mut MotionManager,
         _step_planner: &mut StepPlanner,
     ) -> BehaviorKind {
         BehaviorKind::Walk(Walk {

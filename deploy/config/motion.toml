@@ -2,13 +2,16 @@
 maximum_joint_speed = 1.0
 
 # Maximum gyroscopic value the robot can take for it to be considered steady
-max_stable_gyro_value = 0.4
+max_stable_gyro_value = 0.2
 
 # Maximum accelerometer value the robot can take for it to be considered steady
-max_stable_acc_value = 0.6
+max_stable_acc_value = 0.4
 
 # Minimum fsr value the robot can take to be considered steady
 min_stable_fsr_value = 0.0
+
+# minimum fsr value the robot can take before it is considered to be picked up
+min_pickup_fsr_value = 0.01
 
 # Minimum waittime duration, anything less will not be considered
 # (if we were to consider this waiting time, the amount of time to

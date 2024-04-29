@@ -1,0 +1,4 @@
+global_interpolation_type = "EaseInOut"
+motion_order = [
+    "pickup_position"
+]
