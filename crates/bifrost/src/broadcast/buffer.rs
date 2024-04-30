@@ -14,6 +14,7 @@ use crate::Error;
 /// with a deadline.
 pub struct Buffer<M: Message> {
     fragments: Vec<Fragment<M>>,
+    last: Instant,
     /// The rate configuration for the buffer, controlling timing thresholds.
     pub rate: Rate,
 }
@@ -26,6 +27,8 @@ pub struct Rate {
     pub automatic_deadline: Duration,
     /// The minimum interval before the next early packet may be sent out.
     pub early_threshold: Duration,
+    /// Number of bytes allowed to remain before a packet is considered full enough.
+    pub dead_space: usize,
 }
 
 /// Error type returned when adding messages to the buffer.
@@ -40,7 +43,11 @@ pub enum BufferError {
 impl<M: Message> Buffer<M> {
     /// Creates an empty buffer with the given rate configuration.
     pub fn new(rate: Rate) -> Self {
-        Self { fragments: Vec::new(), rate }
+        Self {
+            fragments: Vec::new(),
+            last: Instant::now(),
+            rate,
+        }
     }
 
     /// Pushes a message into the buffer with the current time as anchor.
@@ -70,7 +77,11 @@ impl<M: Message> Buffer<M> {
 
         let fragment = Fragment::new(message, deadline)?;
 
-        let index = match self.fragments.iter().rposition(|f| fragment.deadline >= f.deadline) {
+        let index = match self
+            .fragments
+            .iter()
+            .rposition(|f| fragment.deadline >= f.deadline)
+        {
             Some(pos) => pos + 1,
             None => 0,
         };
@@ -133,7 +144,67 @@ impl<M: Message> Buffer<M> {
 
     /// Packs the fragments in the buffer into a single packet at the given time.
     pub fn pack_at(&mut self, when: Instant) -> Option<Vec<u8>> {
-        unimplemented!() // TODO: Implement packing logic
+        // If we are late or we should send early packets, pack a new packet.
+        if self.late(when) || self.early(when) {
+            Some(self.do_pack())
+        } else {
+            None
+        }
+    }
+
+    /// Packs the fragments in the buffer into a packet without rate control.
+    fn do_pack(&mut self) -> Vec<u8> {
+        // We know the upper limit on packet size, no need for multiple allocations.
+        let mut remaining = M::MAX_PACKET_SIZE;
+        let mut packet = Vec::with_capacity(remaining);
+
+        // We shouldn't have to step through the rest of the buffer if the packet is already full,
+        // but `Vec::retain` allows for some clean code.
+        self.fragments.retain(|f| {
+            if f.size() <= remaining {
+                remaining -= f.size();
+                packet.extend_from_slice(&f.data);
+                false
+            } else {
+                true
+            }
+        });
+
+        packet
+    }
+
+    /// Counts the the remaining number of bytes if we were to pack a single packet.
+    fn underfullness(&self) -> usize {
+        let mut remaining = M::MAX_PACKET_SIZE;
+
+        for f in &self.fragments {
+            if f.size() <= remaining {
+                remaining -= f.size();
+            }
+        }
+
+        remaining
+    }
+
+    /// Checks if we need to send out a late packet.
+    fn late(&self, when: Instant) -> bool {
+        if when.duration_since(self.last) < self.rate.late_threshold {
+            return false;
+        }
+
+        match self.fragments.first() {
+            Some(first) => when >= first.deadline,
+            None => false,
+        }
+    }
+
+    /// Checks if we need to send out an early packet.
+    fn early(&self, when: Instant) -> bool {
+        if when.duration_since(self.last) < self.rate.early_threshold {
+            return false;
+        }
+
+        self.underfullness() <= self.rate.dead_space
     }
 }
 
@@ -153,7 +224,11 @@ impl<M: Message> Fragment<M> {
     fn new(message: M, deadline: Instant) -> Result<Self, BufferError> {
         let data = Self::encode(&message)?;
 
-        Ok(Self { message, data, deadline })
+        Ok(Self {
+            message,
+            data,
+            deadline,
+        })
     }
 
     /// Updates the fragment with a new message.
@@ -181,4 +256,3 @@ impl<M: Message> Fragment<M> {
         self.data.len()
     }
 }
-
