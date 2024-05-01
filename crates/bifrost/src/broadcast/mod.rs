@@ -6,7 +6,6 @@ pub mod outbound;
 pub use inbound::Inbound;
 pub use outbound::{Outbound, Rate};
 
-
 use std::time::{Duration, Instant};
 
 use crate::serialization::{Decode, Encode};
@@ -119,7 +118,7 @@ mod tests {
 
     #[test]
     fn test_inbound() {
-        let packet = vec![3,3,3,2,2,4,4,4,4];
+        let packet = vec![3, 3, 3, 2, 2, 4, 4, 4, 4];
         let mut buffer = Inbound::new();
 
         let t = Instant::now();

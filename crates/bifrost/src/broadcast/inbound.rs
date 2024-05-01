@@ -9,6 +9,7 @@ use crate::Result;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// An inbound buffer for receiving messages bundled together in packets.
+#[derive(Default)]
 pub struct Inbound<M: Message> {
     buffer: VecDeque<(Instant, M)>,
 }
@@ -28,7 +29,7 @@ impl<M: Message> Inbound<M> {
     // Whatever, it's a temporary API until we get events implemented in tyr.
     pub fn take<P, T>(&mut self, mut selector: P) -> Option<(Instant, T)>
     where
-        P: FnMut(Instant, &M) -> Option<T>
+        P: FnMut(Instant, &M) -> Option<T>,
     {
         for i in 0..self.buffer.len() {
             let timestamp = self.buffer[i].0;
