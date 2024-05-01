@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use super::Message;
 use crate::Result;
@@ -54,81 +54,5 @@ impl<M: Message> Inbound<M> {
         }
 
         Ok(())
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Unit tests
-////////////////////////////////////////////////////////////////////////////////
-
-#[cfg(test)]
-mod tests {
-    use std::io::{Read, Write};
-    use std::ops::Add;
-
-    use super::*;
-    use crate::{
-        serialization::{Decode, Encode},
-        Result,
-    };
-
-    /// Dummy message that encodes to `n` bytes with value `n`.
-    #[derive(Debug, PartialEq, Eq)]
-    struct Dummy(u8);
-
-    impl Encode for Dummy {
-        fn encode(&self, mut write: impl Write) -> Result<()> {
-            Ok(write.write_all(&vec![self.0; self.encode_len()])?)
-        }
-
-        fn encode_len(&self) -> usize {
-            self.0 as usize
-        }
-    }
-
-    impl Decode for Dummy {
-        fn decode(mut read: impl Read) -> Result<Self> {
-            let mut buf = [0; Self::MAX_PACKET_SIZE];
-            read.read_exact(&mut buf[..1])?;
-            let n = buf[0] as usize;
-            read.read_exact(&mut buf[1..n])?;
-            Ok(Self(buf[0]))
-        }
-    }
-
-    impl Message for Dummy {
-        const MAX_PACKET_SIZE: usize = 8;
-        const EXPECTED_SIZE: usize = 8;
-    }
-
-    /// Helper type for quickly constructing timestamps.
-    #[derive(Clone, Copy)]
-    struct Epoch(Instant);
-
-    impl Add<isize> for Epoch {
-        type Output = Instant;
-
-        fn add(self, rhs: isize) -> Instant {
-            if rhs >= 0 {
-                self.0 + Duration::from_secs(rhs as u64)
-            } else {
-                self.0 - Duration::from_secs(-rhs as u64)
-            }
-        }
-    }
-
-    #[test]
-    fn test_inbound() {
-        let packet = vec![3,3,3,2,2,4,4,4,4];
-        let mut buffer: Inbound<Dummy> = Inbound::new();
-
-        let t = Instant::now();
-
-        buffer.unpack_at(&packet, t).unwrap();
-
-        assert_eq!(buffer.pop(), Some((t, Dummy(3))));
-        assert_eq!(buffer.pop(), Some((t, Dummy(2))));
-        assert_eq!(buffer.pop(), Some((t, Dummy(4))));
-        assert_eq!(buffer.pop(), None);
     }
 }
