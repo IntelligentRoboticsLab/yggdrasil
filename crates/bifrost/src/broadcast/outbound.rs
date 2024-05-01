@@ -4,22 +4,24 @@ use super::{Deadline, Message};
 use crate::Error;
 
 ////////////////////////////////////////////////////////////////////////////////
-// Buffer implementation
+// Outbound buffer implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-/// A buffer for sending out messages bundled together in packets.
+/// An outbound buffer for sending out messages bundled together in packets.
 ///
-/// A buffer contains a number of fragments and waits until a packet can be adequately filled or a
+/// An outbound buffer contains a number of fragments and waits until a packet can be adequately filled or a
 /// fragment is considered late before sending it out. A fragment is an encoded message together
 /// with a deadline.
-pub struct Buffer<M: Message> {
+pub struct Outbound<M: Message> {
+    /// Fragments waiting to be sent out.
     fragments: Vec<Fragment<M>>,
+    /// Last time a packet has been packed.
     last: Instant,
     /// The rate configuration for the buffer, controlling timing thresholds.
     pub rate: Rate,
 }
 
-/// A struct for specifying the rate at which a `Buffer` releases new packets.
+/// A struct for specifying the rate at which a `Outbound` releases new packets.
 pub struct Rate {
     /// The minimum interval before the next late packet may be sent out.
     pub late_threshold: Duration,
@@ -33,14 +35,14 @@ pub struct Rate {
 
 /// Error type returned when adding messages to the buffer.
 #[derive(Debug)]
-pub enum BufferError {
+pub enum OutboundError {
     /// The message is too long to fit inside a packet.
     TooLong(usize),
     /// Error encountered during message encoding.
     Encoding(Error),
 }
 
-impl<M: Message> Buffer<M> {
+impl<M: Message> Outbound<M> {
     /// Creates an empty buffer with the given rate configuration.
     pub fn new(rate: Rate) -> Self {
         Self {
@@ -51,26 +53,26 @@ impl<M: Message> Buffer<M> {
     }
 
     /// Pushes a message into the buffer with the current time as anchor.
-    pub fn push(&mut self, message: M) -> Result<(), BufferError> {
+    ///
+    /// If it can be expected that an older update still lingers in the buffer, then
+    /// [`Outbound::update_or_push`] may be used to reduce traffic volume. However, this does require an extra
+    /// pass over the entire buffer.
+    pub fn push(&mut self, message: M) -> Result<(), OutboundError> {
         self.push_at(message, Deadline::default(), Instant::now())
     }
 
     /// Pushes a message into the buffer with the current time as anchor, to be delivered by the given deadline.
-    pub fn push_by(&mut self, message: M, deadline: Deadline) -> Result<(), BufferError> {
+    pub fn push_by(&mut self, message: M, deadline: Deadline) -> Result<(), OutboundError> {
         self.push_at(message, deadline, Instant::now())
     }
 
     /// Pushes a message into the buffer with the given time as anchor, to be delivered by the given deadline.
-    ///
-    /// If it can be expected that an older update still lingers in the buffer, then
-    /// `update_or_push` may be used to reduce traffic volume. However, this does require an extra
-    /// pass over the entire buffer.
     pub fn push_at(
         &mut self,
         message: M,
         deadline: Deadline,
         when: Instant,
-    ) -> Result<(), BufferError> {
+    ) -> Result<(), OutboundError> {
         let deadline = deadline
             .anchor(when)
             .unwrap_or_else(|| when + self.rate.automatic_deadline);
@@ -91,7 +93,11 @@ impl<M: Message> Buffer<M> {
     }
 
     /// Updates a message in the buffer according to the given predicate or pushes it if not found.
-    pub fn update_or_push<P>(&mut self, message: M, predicate: P) -> Result<(), BufferError>
+    ///
+    /// This function can be used to prevent sending an older update if a new one arrives before it
+    /// had been sent out. Since a fragment may be sent out at any time, it cannot be guaranteed
+    /// that such an update still exists.
+    pub fn update_or_push<P>(&mut self, message: M, predicate: P) -> Result<(), OutboundError>
     where
         P: FnMut(&M) -> bool,
     {
@@ -105,7 +111,7 @@ impl<M: Message> Buffer<M> {
         message: M,
         deadline: Deadline,
         predicate: P,
-    ) -> Result<(), BufferError>
+    ) -> Result<(), OutboundError>
     where
         P: FnMut(&M) -> bool,
     {
@@ -114,17 +120,13 @@ impl<M: Message> Buffer<M> {
 
     /// Updates a message in the buffer according to the given predicate or pushes it if not found,
     /// at the given time.
-    ///
-    /// This function can be used to prevent sending an older update if a new one arrives before it
-    /// had been sent out. Since a fragment may be sent out at any time, it cannot be guaranteed
-    /// that such an update still exists.
     pub fn update_or_push_at<P>(
         &mut self,
         message: M,
         deadline: Deadline,
         when: Instant,
         mut predicate: P,
-    ) -> Result<(), BufferError>
+    ) -> Result<(), OutboundError>
     where
         P: FnMut(&M) -> bool,
     {
@@ -221,7 +223,7 @@ struct Fragment<M: Message> {
 
 impl<M: Message> Fragment<M> {
     /// Creates a new fragment with the given message and deadline.
-    fn new(message: M, deadline: Instant) -> Result<Self, BufferError> {
+    fn new(message: M, deadline: Instant) -> Result<Self, OutboundError> {
         let data = Self::encode(&message)?;
 
         Ok(Self {
@@ -232,7 +234,7 @@ impl<M: Message> Fragment<M> {
     }
 
     /// Updates the fragment with a new message.
-    fn update(&mut self, message: M) -> Result<(), BufferError> {
+    fn update(&mut self, message: M) -> Result<(), OutboundError> {
         self.data = Self::encode(&message)?;
         self.message = message;
 
@@ -240,12 +242,12 @@ impl<M: Message> Fragment<M> {
     }
 
     /// Encodes the message into bytes.
-    fn encode(message: &M) -> Result<Vec<u8>, BufferError> {
+    fn encode(message: &M) -> Result<Vec<u8>, OutboundError> {
         let mut data = Vec::with_capacity(M::EXPECTED_SIZE);
-        message.encode(&mut data).map_err(BufferError::Encoding)?;
+        message.encode(&mut data).map_err(OutboundError::Encoding)?;
 
         if data.len() > M::MAX_PACKET_SIZE {
-            return Err(BufferError::TooLong(data.len()));
+            return Err(OutboundError::TooLong(data.len()));
         }
 
         Ok(data)
@@ -266,8 +268,11 @@ mod tests {
     use std::io::{Read, Write};
     use std::ops::Add;
 
-    use crate::{Result, serialization::{Encode, Decode}};
     use super::*;
+    use crate::{
+        serialization::{Decode, Encode},
+        Result,
+    };
 
     /// Dummy message that encodes to `n` bytes with value `n`.
     struct Dummy(u8);
@@ -314,7 +319,7 @@ mod tests {
     }
 
     #[test]
-    fn test_buffer() {
+    fn test_outbound() {
         let rate = Rate {
             late_threshold: Duration::ZERO,
             automatic_deadline: Duration::from_secs(5),
@@ -322,22 +327,30 @@ mod tests {
             dead_space: 2,
         };
 
-        let mut buffer = Buffer::new(rate);
+        let mut buffer = Outbound::new(rate);
         let t = Epoch(Instant::now());
 
-        buffer.push_at(Dummy(7), Deadline::Automatic, t+0).unwrap();
-        buffer.push_at(Dummy(4), Deadline::Automatic, t+1).unwrap();
-        buffer.push_at(Dummy(6), Deadline::Automatic, t+2).unwrap();
-        buffer.push_at(Dummy(3), Deadline::Automatic, t+3).unwrap();
-        buffer.push_at(Dummy(1), Deadline::ASAP, t+4).unwrap();
+        buffer
+            .push_at(Dummy(7), Deadline::Automatic, t + 0)
+            .unwrap();
+        buffer
+            .push_at(Dummy(4), Deadline::Automatic, t + 1)
+            .unwrap();
+        buffer
+            .push_at(Dummy(6), Deadline::Automatic, t + 2)
+            .unwrap();
+        buffer
+            .push_at(Dummy(3), Deadline::Automatic, t + 3)
+            .unwrap();
+        buffer.push_at(Dummy(1), Deadline::ASAP, t + 4).unwrap();
 
-        assert_eq!(buffer.pack_at(t+5), Some(vec![1,7,7,7,7,7,7,7]));
-        assert_eq!(buffer.pack_at(t+6), Some(vec![4,4,4,4,3,3,3]));
-        assert_eq!(buffer.pack_at(t+7), Some(vec![6,6,6,6,6,6]));
+        assert_eq!(buffer.pack_at(t + 5), Some(vec![1, 7, 7, 7, 7, 7, 7, 7]));
+        assert_eq!(buffer.pack_at(t + 6), Some(vec![4, 4, 4, 4, 3, 3, 3]));
+        assert_eq!(buffer.pack_at(t + 7), Some(vec![6, 6, 6, 6, 6, 6]));
     }
 
     #[test]
-    fn test_buffer_early() {
+    fn test_outbound_early() {
         let rate = Rate {
             late_threshold: Duration::ZERO,
             automatic_deadline: Duration::ZERO,
@@ -345,14 +358,14 @@ mod tests {
             dead_space: 2,
         };
 
-        let mut buffer = Buffer::new(rate);
+        let mut buffer = Outbound::new(rate);
         let t = Epoch(Instant::now());
 
-        buffer.push_at(Dummy(3), Deadline::WHENEVER, t+0).unwrap();
-        assert_eq!(buffer.pack_at(t+0), None);
-        buffer.push_at(Dummy(2), Deadline::WHENEVER, t+1).unwrap();
-        assert_eq!(buffer.pack_at(t+1), None);
-        buffer.push_at(Dummy(1), Deadline::WHENEVER, t+2).unwrap();
-        assert_eq!(buffer.pack_at(t+2), Some(vec![3,3,3,2,2,1]));
+        buffer.push_at(Dummy(3), Deadline::WHENEVER, t + 0).unwrap();
+        assert_eq!(buffer.pack_at(t + 0), None);
+        buffer.push_at(Dummy(2), Deadline::WHENEVER, t + 1).unwrap();
+        assert_eq!(buffer.pack_at(t + 1), None);
+        buffer.push_at(Dummy(1), Deadline::WHENEVER, t + 2).unwrap();
+        assert_eq!(buffer.pack_at(t + 2), Some(vec![3, 3, 3, 2, 2, 1]));
     }
 }

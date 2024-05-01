@@ -1,7 +1,10 @@
 //! Implementation of primitives to build low-volume broadcasting networks.
 
-pub mod buffer;
-pub use buffer::{Buffer, Rate};
+pub mod outbound;
+pub use outbound::{Outbound, Rate};
+
+pub mod inbound;
+pub use inbound::Inbound;
 
 use std::time::{Duration, Instant};
 
