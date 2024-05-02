@@ -444,12 +444,10 @@ impl Schedule {
         let mut statements: Vec<Stmt> = Vec::new();
 
         for (boxed_system, node_index) in self.node_indices.iter() {
-            {
-                statements.push(node(
-                    node_index.index(),
-                    boxed_system.system_name().to_owned(),
-                ));
-            }
+            statements.push(node(
+                node_index.index(),
+                boxed_system.system_name().to_owned(),
+            ));
 
             for neighbor in self
                 .dag
