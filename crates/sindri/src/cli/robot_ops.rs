@@ -42,25 +42,6 @@ pub struct RobotEntry {
     pub player_number: Option<u8>,
 }
 
-/// Trait used to implement fuctionality on `[Vec<RobotEntry>]`
-trait RobExt {
-    /// Function that retrieves all robot numbers
-    fn robot_numbers(&self) -> Vec<u8>;
-}
-
-impl RobExt for Vec<RobotEntry> {
-    fn robot_numbers(&self) -> Vec<u8> {
-        self.iter()
-            .map(
-                |RobotEntry {
-                     robot_number: robot,
-                     ..
-                 }| *robot,
-            )
-            .collect()
-    }
-}
-
 impl FromStr for RobotEntry {
     type Err = miette::Report;
 
