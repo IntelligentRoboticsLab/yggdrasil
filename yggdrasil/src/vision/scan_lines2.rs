@@ -74,6 +74,15 @@ pub fn approximate_field_color(image: &YuyvImage) -> FieldColorApproximate {
     }
 }
 
+#[allow(dead_code)]
+fn vertical_scan_lines(image: &YuyvImage) {
+    for row in image.row_iter() {
+        for pixel in row {
+            let (_y, _h, _s) = pixel.to_yhs2();
+        }
+    }
+}
+
 #[system]
 pub fn make_scan_grid(camera_matrix: &CameraMatrices) -> ScanGrid {
     // camera_matrix.top.
