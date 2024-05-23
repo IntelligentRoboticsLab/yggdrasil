@@ -10,7 +10,6 @@ pub mod localization;
 pub mod ml;
 pub mod motion;
 pub mod nao;
-pub mod primary_state;
 pub mod vision;
 
 pub use miette::Result;

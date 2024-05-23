@@ -4,7 +4,7 @@ use yggdrasil::{
     behavior::BehaviorModule, config::ConfigModule, debug::DebugModule, filter::FilterModule,
     game_controller::GameControllerModule, kinematics::KinematicsModule, ml::MlModule,
     motion::walk::WalkingEngineModule, motion::MotionModule, nao::NaoModule, prelude::*,
-    primary_state::PrimaryStateModule, vision::camera::CameraModule, vision::VisionModule,
+    vision::camera::CameraModule, vision::VisionModule,
 };
 
 fn main() -> Result<()> {
@@ -20,7 +20,6 @@ fn main() -> Result<()> {
         .add_module(KinematicsModule)?
         .add_module(CameraModule)?
         .add_module(BehaviorModule)?
-        .add_module(PrimaryStateModule)?
         .add_module(GameControllerModule)?
         .add_module(WalkingEngineModule)?
         .add_module(DebugModule)?
