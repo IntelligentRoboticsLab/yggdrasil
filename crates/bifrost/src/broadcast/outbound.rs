@@ -5,10 +5,6 @@ use std::time::{Duration, Instant};
 use super::{Deadline, Message};
 use crate::Error;
 
-////////////////////////////////////////////////////////////////////////////////
-// Outbound buffer implementation
-////////////////////////////////////////////////////////////////////////////////
-
 /// An outbound buffer for sending out messages bundled together in packets.
 ///
 /// An outbound buffer contains a number of fragments and waits until a packet can be adequately filled or a

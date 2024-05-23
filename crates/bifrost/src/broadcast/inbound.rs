@@ -6,10 +6,6 @@ use std::time::Instant;
 use super::Message;
 use crate::Result;
 
-////////////////////////////////////////////////////////////////////////////////
-// Inbound buffer implementation
-////////////////////////////////////////////////////////////////////////////////
-
 /// An inbound buffer for receiving messages bundled together in packets.
 #[derive(Default)]
 pub struct Inbound<M: Message> {
