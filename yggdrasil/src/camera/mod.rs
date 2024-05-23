@@ -60,8 +60,8 @@ impl Module for CameraModule {
             .add_task::<ComputeTask<JpegBottomImage>>()?
             .add_module(matrix::CameraMatrixModule)?;
 
-        #[cfg(not(feature = "local"))]
-        let app = app.add_system(set_exposure_weights);
+        // #[cfg(not(feature = "local"))]
+        // let app = app.add_system(set_exposure_weights);
 
         Ok(app)
     }
