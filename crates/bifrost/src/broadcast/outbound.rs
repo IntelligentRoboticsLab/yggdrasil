@@ -1,3 +1,5 @@
+//! Outbound buffer for pending broadcast messages
+
 use std::time::{Duration, Instant};
 
 use super::{Deadline, Message};
