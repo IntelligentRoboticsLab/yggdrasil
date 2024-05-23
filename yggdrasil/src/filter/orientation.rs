@@ -2,7 +2,7 @@ use nalgebra::{Quaternion, UnitComplex, UnitQuaternion, Vector3};
 use nidhogg::types::ForceSensitiveResistors;
 use serde::{Deserialize, Serialize};
 
-use crate::{nao::CycleTime, prelude::*, primary_state::PrimaryState};
+use crate::{behavior::primary_state::PrimaryState, nao::CycleTime, prelude::*};
 
 use super::imu::IMUValues;
 

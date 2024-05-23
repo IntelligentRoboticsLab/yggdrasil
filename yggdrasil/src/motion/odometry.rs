@@ -3,13 +3,13 @@ use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    behavior::primary_state::PrimaryState,
     config::layout::RobotPosition,
     debug::DebugContext,
     filter::orientation::RobotOrientation,
     kinematics::RobotKinematics,
     motion::walk::{engine::Side, SwingFoot},
     prelude::*,
-    primary_state::PrimaryState,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

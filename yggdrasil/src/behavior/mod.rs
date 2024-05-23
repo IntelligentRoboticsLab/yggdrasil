@@ -1,6 +1,7 @@
 pub mod behavior_config;
 pub mod behaviors;
 pub mod engine;
+pub mod primary_state;
 pub mod roles;
 
 use crate::prelude::*;
@@ -19,6 +20,7 @@ pub struct BehaviorModule;
 
 impl Module for BehaviorModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_module(BehaviorEngineModule)
+        app.add_module(BehaviorEngineModule)?
+            .add_module(primary_state::PrimaryStateModule)
     }
 }

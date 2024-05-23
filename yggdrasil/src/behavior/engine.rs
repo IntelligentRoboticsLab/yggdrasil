@@ -6,6 +6,7 @@ use enum_dispatch::enum_dispatch;
 use crate::{
     behavior::{
         behaviors::{CatchFall, Initial, Observe, Penalized, Standup, StartUp, Unstiff, Walk},
+        primary_state::PrimaryState,
         roles::Attacker,
         BehaviorConfig,
     },
@@ -22,7 +23,6 @@ use crate::{
     motion::walk::engine::WalkingEngine,
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
-    primary_state::PrimaryState,
 };
 
 /// Context that is passed into the behavior engine.
