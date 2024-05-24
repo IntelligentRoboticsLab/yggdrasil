@@ -234,7 +234,7 @@ impl DebugContext {
         {
             // Use timeless logging to set the style for the entire series
             self.rec
-                .log_timeless(
+                .log_static(
                     path.as_ref(),
                     &rerun::SeriesLine::new()
                         .with_color(Into::<[u8; 3]>::into(color))
@@ -520,7 +520,7 @@ impl DebugContext {
         #[cfg(feature = "rerun")]
         {
             self.rec
-                .log_timeless(path.as_ref(), &rerun::ViewCoordinates::FLU)
+                .log_static(path.as_ref(), &rerun::ViewCoordinates::FLU)
                 .into_diagnostic()?;
         }
 
@@ -546,7 +546,7 @@ fn init_rerun(storage: &mut Storage) -> Result<()> {
     #[cfg(feature = "rerun")]
     {
         ctx.rec
-            .log_timeless(
+            .log_static(
                 "field/mesh",
                 &rerun::Asset3D::from_file("./assets/rerun/spl_field.glb")
                     .expect("Failed to load field model")
