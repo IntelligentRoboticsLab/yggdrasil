@@ -1,6 +1,6 @@
 use crate::{camera::matrix::CameraMatrices, prelude::*};
 
-use heimdall::YuyvImage;
+use heimdall::{CameraMatrix, YuyvImage};
 use serde::{Deserialize, Serialize};
 
 /// Module that generates scan-lines from taken NAO images.
@@ -34,15 +34,17 @@ pub enum PixelColor {
 
 pub struct FieldColorApproximate {
     pub luminance: f32,
+    pub hue: f32,
     pub saturation: f32,
 }
 
-pub struct ScanGrid;
+pub struct ScanGrid {
+    pub vertical_samples: usize,
+    pub horizontal_samples: usize,
+    pub camera_matrix: CameraMatrix,
+}
 
 const FIELD_APPROXIMATION_STEP_SIZE: usize = 8;
-
-// eth yellow box
-// chargers with robot
 
 pub fn approximate_field_color(image: &YuyvImage) -> FieldColorApproximate {
     let height = image.height();
@@ -54,22 +56,26 @@ pub fn approximate_field_color(image: &YuyvImage) -> FieldColorApproximate {
     ];
 
     let mut luminances = Vec::new();
+    let mut hues = Vec::new();
     let mut saturations = Vec::new();
 
     for row in rows_to_check {
         for pixel in row.step_by(FIELD_APPROXIMATION_STEP_SIZE) {
-            let (y, _h, s2) = pixel.to_yhs2();
+            let (y, h, s2) = pixel.to_yhs2();
 
             luminances.push(y);
+            hues.push(h);
             saturations.push(s2);
         }
     }
 
     let luminance = luminances.iter().sum::<f32>() / luminances.len() as f32;
+    let hue = hues.iter().sum::<f32>() / hues.len() as f32;
     let saturation = saturations.iter().sum::<f32>() / saturations.len() as f32;
 
     FieldColorApproximate {
         luminance,
+        hue,
         saturation,
     }
 }
@@ -85,6 +91,6 @@ fn vertical_scan_lines(image: &YuyvImage) {
 
 #[system]
 pub fn make_scan_grid(camera_matrix: &CameraMatrices) -> ScanGrid {
-    // camera_matrix.top.
-    ScanGrid
+    // ScanGrid
+    todo!()
 }
