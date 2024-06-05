@@ -3,7 +3,7 @@ pub mod smoothing;
 use std::time::Duration;
 
 use crate::{
-    debug::DebugContext,
+    core::debug::DebugContext,
     kinematics::RobotKinematics,
     nao::{
         manager::{NaoManager, Priority},

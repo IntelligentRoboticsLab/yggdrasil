@@ -1,5 +1,5 @@
 use crate::{
-    debug::DebugContext,
+    core::debug::DebugContext,
     prelude::*,
     vision::camera::{BottomImage, Image},
 };

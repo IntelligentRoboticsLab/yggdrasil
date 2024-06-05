@@ -1,6 +1,6 @@
 pub mod matrix;
 
-use crate::{debug::DebugContext, nao::Cycle, prelude::*};
+use crate::{core::debug::DebugContext, nao::Cycle, prelude::*};
 
 use derive_more::{Deref, DerefMut};
 use miette::IntoDiagnostic;

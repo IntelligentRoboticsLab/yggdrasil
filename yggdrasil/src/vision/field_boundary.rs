@@ -4,8 +4,8 @@
 use std::{num::NonZeroU32, ops::Deref};
 
 use crate::{
-    debug::DebugContext,
-    ml::{MlModel, MlTask, MlTaskResource},
+    core::debug::DebugContext,
+    core::ml::{MlModel, MlTask, MlTaskResource},
     prelude::*,
     vision::camera::{Image, TopImage},
 };

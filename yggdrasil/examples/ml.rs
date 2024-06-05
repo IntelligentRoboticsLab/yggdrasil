@@ -10,7 +10,7 @@ use tyr::{
     tasks::{TaskConfig, TaskModule},
     App, Resource,
 };
-use yggdrasil::ml::{self, MlModel, MlModule, MlTask, MlTaskResource};
+use yggdrasil::core::ml::{self, MlModel, MlModule, MlTask, MlTaskResource};
 
 /// Link here to your favorite 224x224 image.
 const IMAGE_PATH: &str = "animalos-folder/cat.jpg";

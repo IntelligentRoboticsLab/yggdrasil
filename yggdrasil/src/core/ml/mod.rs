@@ -9,7 +9,7 @@ use self::{
     backend::{InferRequest, ModelExecutor},
     data_type::{Elem, InputElem, Output},
 };
-use crate::ml::backend::MlCore;
+use crate::core::ml::backend::MlCore;
 use miette::Diagnostic;
 use thiserror::Error;
 use tyr::{
@@ -25,7 +25,7 @@ use tyr::{
 ///
 /// ## Example
 /// ```
-/// use yggdrasil::ml::MlModel;
+/// use yggdrasil::core::ml::MlModel;
 ///
 /// /// The Mixtral8x7b MoE model.
 /// struct Mixtral8x7b;
@@ -54,7 +54,7 @@ pub trait MlModel: 'static {
 /// Add a ML task to the app as follows:
 /// ```
 /// use tyr::App;
-/// use yggdrasil::ml::{MlModel, MlTaskResource, MlModule};
+/// use yggdrasil::core::ml::{MlModel, MlTaskResource, MlModule};
 ///
 /// fn build_app<Model: MlModel + Send + Sync>() -> miette::Result<()> {
 ///     let app = App::new()
@@ -114,7 +114,7 @@ impl<M: MlModel> MlTask<M> {
     ///
     /// ## Example Usage
     /// ```
-    /// use yggdrasil::ml::{MlTask, MlModel, data_type::MlArray, Result};
+    /// use yggdrasil::core::ml::{MlTask, MlModel, data_type::MlArray, Result};
     ///
     /// struct ResNet18;
     ///

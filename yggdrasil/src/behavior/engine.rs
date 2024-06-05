@@ -10,7 +10,7 @@ use crate::{
         roles::Attacker,
         BehaviorConfig,
     },
-    config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
+    core::config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
     game_controller::GameControllerConfig,
     localization::RobotPose,
     motion::motion_manager::MotionManager,
@@ -68,7 +68,7 @@ pub struct Context<'a> {
 /// ```
 /// use yggdrasil::behavior::engine::{Behavior, Context};
 /// use yggdrasil::nao::manager::NaoManager;
-/// use yggdrasil::walk::engine::WalkingEngine;
+/// use yggdrasil::motion::walk::engine::WalkingEngine;
 /// use yggdrasil::motion::motion_manager::MotionManager;
 /// use yggdrasil::motion::step_planner::StepPlanner;
 ///
@@ -142,7 +142,7 @@ impl Default for BehaviorKind {
 ///     behaviors::Initial,
 ///     engine::{BehaviorKind, Context, Role},
 /// };
-/// use yggdrasil::walk::engine::WalkingEngine;
+/// use yggdrasil::motion::walk::engine::WalkingEngine;
 /// use yggdrasil::motion::motion_manager::MotionManager;
 /// use yggdrasil::motion::step_planner::StepPlanner;
 ///
