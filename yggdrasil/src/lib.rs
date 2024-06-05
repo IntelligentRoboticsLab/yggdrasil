@@ -1,12 +1,8 @@
-#[cfg(feature = "alsa")]
-pub mod audio;
 pub mod behavior;
-pub mod config;
-pub mod debug;
+pub mod core;
 pub mod game_controller;
 pub mod kinematics;
 pub mod localization;
-pub mod ml;
 pub mod motion;
 pub mod nao;
 pub mod sensor;
@@ -17,7 +13,7 @@ pub use miette::Result;
 /// The yggdrasil prelude conveniently includes commonly needed types and traits for writing code
 /// in the framework.
 pub mod prelude {
-    pub use crate::{config::ConfigResource, Result};
+    pub use crate::{core::config::ConfigResource, Result};
     pub use odal::Config;
     pub use tyr::prelude::*;
 }

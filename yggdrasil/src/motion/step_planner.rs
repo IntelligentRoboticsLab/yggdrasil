@@ -1,5 +1,5 @@
 use crate::{
-    debug::DebugContext,
+    core::debug::DebugContext,
     localization::RobotPose,
     motion::walk::engine::{Step, WalkingEngine},
     prelude::*,

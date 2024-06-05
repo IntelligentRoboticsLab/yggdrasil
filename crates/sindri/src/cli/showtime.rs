@@ -11,7 +11,7 @@ use crate::{
     cli::robot_ops::{ConfigOptsRobotOps, RobotEntry},
     config::SindriConfig,
 };
-use yggdrasil::{config::showtime::ShowtimeConfig, prelude::Config as OdalConfigTrait};
+use yggdrasil::{core::config::showtime::ShowtimeConfig, prelude::Config as OdalConfigTrait};
 
 use super::robot_ops;
 

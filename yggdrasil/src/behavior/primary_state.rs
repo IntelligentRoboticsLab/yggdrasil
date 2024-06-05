@@ -1,5 +1,5 @@
 use crate::{
-    config::showtime::PlayerConfig,
+    core::config::showtime::PlayerConfig,
     nao::manager::{NaoManager, Priority},
     prelude::*,
     sensor::button::{ChestButton, HeadButtons},

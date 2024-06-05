@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     behavior::primary_state::PrimaryState,
-    config::layout::RobotPosition,
-    debug::DebugContext,
+    core::config::layout::RobotPosition,
+    core::debug::DebugContext,
     kinematics::RobotKinematics,
     motion::walk::{engine::Side, SwingFoot},
     prelude::*,

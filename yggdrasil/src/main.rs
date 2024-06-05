@@ -1,8 +1,8 @@
 use yggdrasil::localization::LocalizationModule;
 #[allow(unused_imports)]
 use yggdrasil::{
-    behavior::BehaviorModule, config::ConfigModule, debug::DebugModule,
-    game_controller::GameControllerModule, kinematics::KinematicsModule, ml::MlModule,
+    behavior::BehaviorModule, core::config::ConfigModule, core::debug::DebugModule,
+    core::ml::MlModule, game_controller::GameControllerModule, kinematics::KinematicsModule,
     motion::walk::WalkingEngineModule, motion::MotionModule, nao::NaoModule, prelude::*,
     sensor::FilterModule, vision::camera::CameraModule, vision::VisionModule,
 };
@@ -28,7 +28,7 @@ fn main() -> Result<()> {
         .add_module(LocalizationModule)?;
 
     #[cfg(feature = "alsa")]
-    let app = app.add_module(yggdrasil::audio::AudioModule)?;
+    let app = app.add_module(yggdrasil::core::core::audio::AudioModule)?;
 
     app.run()
 }

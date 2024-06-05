@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::{os::unix::process::CommandExt, process::Stdio};
-use yggdrasil::{config::showtime::ShowtimeConfig, prelude::Config as OdalConfigTrait};
+use yggdrasil::{core::config::showtime::ShowtimeConfig, prelude::Config as OdalConfigTrait};
 
 use clap::Parser;
 use colored::Colorize;
