@@ -212,7 +212,7 @@ pub fn button_filter(
 
 #[cfg(test)]
 mod tests {
-    use crate::filter::ButtonConfig;
+    use crate::sensor::ButtonConfig;
 
     use super::*;
 

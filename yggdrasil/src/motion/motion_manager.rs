@@ -1,8 +1,8 @@
-use crate::filter::falling::FallState;
 use crate::motion::motion_types::{
     ConditionalVariable, ExitRoutine, FailRoutine, Motion, MotionCondition, MotionType,
 };
 use crate::nao::manager::Priority;
+use crate::sensor::falling::FallState;
 use miette::{miette, Result};
 use nidhogg::types::JointArray;
 use nidhogg::NaoState;

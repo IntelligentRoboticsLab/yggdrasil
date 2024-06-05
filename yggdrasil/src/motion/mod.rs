@@ -1,4 +1,4 @@
-use crate::{filter, kinematics, nao::manager::finalize, prelude::*};
+use crate::{kinematics, nao::manager::finalize, prelude::*, sensor};
 
 use self::odometry::Odometry;
 use miette::Result;
@@ -28,7 +28,7 @@ impl Module for MotionModule {
             .add_system(
                 odometry::update_odometry
                     .after(kinematics::update_kinematics)
-                    .after(filter::orientation::update_orientation),
+                    .after(sensor::orientation::update_orientation),
             )
             .add_startup_system(odometry::setup_viewcoordinates)?
             .add_startup_system(motion_manager_initializer)?

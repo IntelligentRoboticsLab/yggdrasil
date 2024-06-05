@@ -11,11 +11,6 @@ use crate::{
         BehaviorConfig,
     },
     config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
-    filter::{
-        button::{ChestButton, HeadButtons},
-        falling::FallState,
-        fsr::Contacts,
-    },
     game_controller::GameControllerConfig,
     localization::RobotPose,
     motion::motion_manager::MotionManager,
@@ -23,6 +18,11 @@ use crate::{
     motion::walk::engine::WalkingEngine,
     nao::{self, manager::NaoManager, RobotInfo},
     prelude::*,
+    sensor::{
+        button::{ChestButton, HeadButtons},
+        falling::FallState,
+        fsr::Contacts,
+    },
 };
 
 /// Context that is passed into the behavior engine.

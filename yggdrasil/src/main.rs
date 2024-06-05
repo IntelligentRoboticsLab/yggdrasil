@@ -1,10 +1,10 @@
 use yggdrasil::localization::LocalizationModule;
 #[allow(unused_imports)]
 use yggdrasil::{
-    behavior::BehaviorModule, config::ConfigModule, debug::DebugModule, filter::FilterModule,
+    behavior::BehaviorModule, config::ConfigModule, debug::DebugModule,
     game_controller::GameControllerModule, kinematics::KinematicsModule, ml::MlModule,
     motion::walk::WalkingEngineModule, motion::MotionModule, nao::NaoModule, prelude::*,
-    vision::camera::CameraModule, vision::VisionModule,
+    sensor::FilterModule, vision::camera::CameraModule, vision::VisionModule,
 };
 
 fn main() -> Result<()> {
