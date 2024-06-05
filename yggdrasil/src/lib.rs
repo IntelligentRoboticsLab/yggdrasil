@@ -3,13 +3,13 @@ pub mod audio;
 pub mod behavior;
 pub mod config;
 pub mod debug;
-pub mod filter;
 pub mod game_controller;
 pub mod kinematics;
 pub mod localization;
 pub mod ml;
 pub mod motion;
 pub mod nao;
+pub mod sensor;
 pub mod vision;
 
 pub use miette::Result;

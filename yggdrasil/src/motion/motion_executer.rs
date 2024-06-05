@@ -1,10 +1,10 @@
-use crate::filter::imu::IMUValues;
-use crate::filter::{falling::FallState, orientation::RobotOrientation};
 use crate::motion::motion_manager::{ActiveMotion, MotionManager};
 use crate::motion::motion_types::Movement;
 use crate::motion::motion_util::{get_min_duration, lerp};
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority;
+use crate::sensor::imu::IMUValues;
+use crate::sensor::{falling::FallState, orientation::RobotOrientation};
 use miette::{miette, Result};
 use nalgebra::Vector3;
 use nidhogg::types::{ArmJoints, ForceSensitiveResistors, HeadJoints, LegJoints};

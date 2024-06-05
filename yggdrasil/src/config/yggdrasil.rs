@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-use crate::filter::orientation::OrientationFilterConfig;
 use crate::motion::odometry::OdometryConfig;
 use crate::prelude::*;
+use crate::sensor::orientation::OrientationFilterConfig;
 use crate::{
-    behavior::primary_state::PrimaryStateConfig, filter::FilterConfig,
-    game_controller::GameControllerConfig, vision::camera::CameraConfig, vision::VisionConfig,
+    behavior::primary_state::PrimaryStateConfig, game_controller::GameControllerConfig,
+    sensor::FilterConfig, vision::camera::CameraConfig, vision::VisionConfig,
 };
 
 #[derive(Debug, Deserialize, Serialize)]

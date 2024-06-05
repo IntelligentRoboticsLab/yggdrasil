@@ -4,13 +4,13 @@ use std::time::Duration;
 
 use crate::{
     debug::DebugContext,
-    filter::imu::IMUValues,
     kinematics::RobotKinematics,
     nao::{
         manager::{NaoManager, Priority},
         CycleTime,
     },
     prelude::*,
+    sensor::imu::IMUValues,
 };
 use nidhogg::{
     types::{
@@ -22,7 +22,7 @@ use nidhogg::{
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 
-use crate::{filter, nao};
+use crate::{nao, sensor};
 
 use self::engine::{FootOffsets, Side, Step, WalkState, WalkingEngine};
 
@@ -86,8 +86,8 @@ impl Module for WalkingEngineModule {
             .add_startup_system(init_walking_engine)?
             .add_system_chain((
                 run_walking_engine
-                    .after(filter::fsr::force_sensitive_resistor_filter)
-                    .after(filter::imu::imu_filter)
+                    .after(sensor::fsr::force_sensitive_resistor_filter)
+                    .after(sensor::imu::imu_filter)
                     .after(nao::write_hardware_info)
                     .after(nao::update_cycle_stats),
                 update_swing_side,

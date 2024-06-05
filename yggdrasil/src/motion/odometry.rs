@@ -6,10 +6,10 @@ use crate::{
     behavior::primary_state::PrimaryState,
     config::layout::RobotPosition,
     debug::DebugContext,
-    filter::orientation::RobotOrientation,
     kinematics::RobotKinematics,
     motion::walk::{engine::Side, SwingFoot},
     prelude::*,
+    sensor::orientation::RobotOrientation,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

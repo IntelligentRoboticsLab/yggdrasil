@@ -1,6 +1,6 @@
 use crate::{
     behavior::{engine::BehaviorKind, Engine},
-    filter::imu::IMUValues,
+    sensor::imu::IMUValues,
 };
 use miette::Result;
 use tyr::prelude::*;
