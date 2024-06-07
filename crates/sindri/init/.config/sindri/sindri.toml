@@ -37,3 +37,11 @@ number = 26
 [[robots]]
 name = "perry"
 number = 27
+
+[[robots]]
+name = "barbie"
+number = 29
+
+[[robots]]
+name = "ken"
+number = 30
