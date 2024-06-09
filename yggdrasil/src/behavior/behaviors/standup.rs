@@ -2,7 +2,7 @@ use crate::{
     behavior::engine::{Behavior, Context},
     motion::walk::engine::WalkingEngine,
     motion::{
-        keyframe::{MotionManager, MotionType},
+        keyframe::{KeyframeExecutor, MotionType},
         step_planner::StepPlanner,
     },
     nao::manager::{NaoManager, Priority},
@@ -22,16 +22,16 @@ impl Behavior for Standup {
         context: Context,
         _nao_manager: &mut NaoManager,
         _walking_engine: &mut WalkingEngine,
-        motion_manager: &mut MotionManager,
+        keyframe_executor: &mut KeyframeExecutor,
         _step_planner: &mut StepPlanner,
     ) {
         // check the direction the robot is lying and execute the appropriate motion
         match context.fall_state {
             FallState::Lying(LyingDirection::FacingDown) => {
-                motion_manager.start_new_motion(MotionType::StandupStomach, Priority::High);
+                keyframe_executor.start_new_motion(MotionType::StandupStomach, Priority::High);
             }
             FallState::Lying(LyingDirection::FacingUp) => {
-                motion_manager.start_new_motion(MotionType::StandupBack, Priority::High);
+                keyframe_executor.start_new_motion(MotionType::StandupBack, Priority::High);
             }
             // if we are not lying down anymore, either standing up or falling, we do not execute any motion
             _ => {}

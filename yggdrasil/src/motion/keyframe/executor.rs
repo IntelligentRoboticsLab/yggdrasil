@@ -1,4 +1,4 @@
-use super::{get_min_duration, lerp, types::Movement, ActiveMotion, MotionManager};
+use super::{get_min_duration, lerp, types::Movement, ActiveMotion, KeyframeExecutor};
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority;
 use crate::sensor::imu::IMUValues;
@@ -34,25 +34,25 @@ const MINIMUM_WAIT_TIME: f32 = 0.05;
 ///
 /// # Arguments
 /// * `nao_state` - State of the robot.
-/// * `motion_manager` - Keeps track of state needed for playing motions.
+/// * `keyframe_executor` - Keeps track of state needed for playing motions.
 /// * `nao_manager` - Used to set the new joint positions.
 #[system]
-pub fn motion_executer(
+pub fn keyframe_executor(
     nao_state: &mut NaoState,
-    motion_manager: &mut MotionManager,
+    keyframe_executor: &mut KeyframeExecutor,
     nao_manager: &mut NaoManager,
     fall_state: &mut FallState,
     orientation: &RobotOrientation,
     fsr: &ForceSensitiveResistors,
     imu: &IMUValues,
 ) -> Result<()> {
-    if motion_manager.active_motion.is_none() {
+    if keyframe_executor.active_motion.is_none() {
         return Ok(());
     }
 
     // keeping track of the moment that the current motion has started
-    if motion_manager.motion_execution_starting_time.is_none() {
-        motion_manager.motion_execution_starting_time = Some(Instant::now());
+    if keyframe_executor.motion_execution_starting_time.is_none() {
+        keyframe_executor.motion_execution_starting_time = Some(Instant::now());
     }
 
     // setting up some variables that are used frequently
@@ -61,30 +61,38 @@ pub fn motion_executer(
         cur_sub_motion: (sub_motion_name, _),
         movement_start,
         ..
-    } = motion_manager.active_motion.clone().ok_or_else(|| {
-        motion_manager.stop_motion();
-        miette!("Motionmanager.ActiveMotion could not be cloned, likely contained None")
+    } = keyframe_executor.active_motion.clone().ok_or_else(|| {
+        keyframe_executor.stop_motion();
+        miette!("KeyframeExecutor.ActiveMotion could not be cloned, likely contained None")
     })?;
 
     let submotion_stiffness: f32 = motion.submotions[&sub_motion_name].joint_stifness;
 
     // at the start of a new submotion, we need to lerp to the starting position
-    if motion_manager.submotion_execution_starting_time.is_none() {
+    if keyframe_executor
+        .submotion_execution_starting_time
+        .is_none()
+    {
         let Movement {
             target_position,
             duration,
         } = &motion.initial_movement(&sub_motion_name);
 
         // before beginning the first movement, we have to prepare the movement to avoid damage
-        if motion_manager.source_position.is_none() {
+        if keyframe_executor.source_position.is_none() {
             // record the last position before motion initialization, or before transition
-            motion_manager.source_position = Some(nao_state.position.clone());
-            prepare_initial_movement(motion_manager, target_position, duration, &sub_motion_name)?;
+            keyframe_executor.source_position = Some(nao_state.position.clone());
+            prepare_initial_movement(
+                keyframe_executor,
+                target_position,
+                duration,
+                &sub_motion_name,
+            )?;
         }
 
         // getting the next position for the robot
         if let Some(next_position) = move_to_starting_position(
-            motion_manager,
+            keyframe_executor,
             target_position,
             duration,
             &movement_start.elapsed(),
@@ -100,14 +108,14 @@ pub fn motion_executer(
         } else {
             // if the starting position has been reached,
             // we update the active motion for executing the submotion
-            update_active_motion(motion_manager);
+            update_active_motion(keyframe_executor);
         }
     }
 
     // set next joint positions
     if let Some(position) = motion.get_position(
         &sub_motion_name,
-        motion_manager.active_motion.as_mut().unwrap(),
+        keyframe_executor.active_motion.as_mut().unwrap(),
     ) {
         nao_manager.set_all(
             position,
@@ -134,7 +142,7 @@ pub fn motion_executer(
         ) {
             // if not, we wait until it is either steady or the maximum wait time has elapsed
             if !exit_waittime_elapsed(
-                motion_manager,
+                keyframe_executor,
                 motion.submotions[&sub_motion_name].exit_waittime,
             ) {
                 // returning the current nao position to prohibit any other position requests from taking over
@@ -149,8 +157,8 @@ pub fn motion_executer(
             }
         }
 
-        transition_to_next_submotion(motion_manager, nao_state, fall_state).map_err(|err| {
-            motion_manager.stop_motion();
+        transition_to_next_submotion(keyframe_executor, nao_state, fall_state).map_err(|err| {
+            keyframe_executor.stop_motion();
             err
         })?;
 
@@ -174,19 +182,19 @@ pub fn motion_executer(
 /// quick movements, but will be expanded upon.
 ///
 /// # Arguments
-/// * `motion_manager` - Keeps track of state needed for playing motions.
+/// * `keyframe_executor` - Keeps track of state needed for playing motions.
 /// * `target_position` - The target position of the initial movement.
 /// * `duration` - Intended duration of the initial movement.
 /// * `sub_motion_name` - Current submotion to be executed.
 fn prepare_initial_movement(
-    motion_manager: &mut MotionManager,
+    keyframe_executor: &mut KeyframeExecutor,
     target_position: &JointArray<f32>,
     duration: &Duration,
     sub_motion_name: &String,
 ) -> Result<()> {
     // checking whether the given duration will exceed our maximum speed limit
     let min_duration = get_min_duration(
-        motion_manager
+        keyframe_executor
             .source_position
             .as_ref()
             .ok_or_else(|| miette!("Getting the source position failed during initial movement"))?,
@@ -195,7 +203,7 @@ fn prepare_initial_movement(
     );
     if duration > &min_duration {
         // editing the movement duration to prevent dangerously quick movements
-        motion_manager
+        keyframe_executor
             .active_motion
             .as_mut()
             .unwrap()
@@ -209,16 +217,16 @@ fn prepare_initial_movement(
 /// Updates the active motion to begin executing the current submotion.
 ///
 /// # Arguments
-/// * `motion_manager` - Keeps track of state needed for playing motions.
-fn update_active_motion(motion_manager: &mut MotionManager) {
+/// * `keyframe_executor` - Keeps track of state needed for playing motions.
+fn update_active_motion(keyframe_executor: &mut KeyframeExecutor) {
     // update the time of the start of the movement
-    motion_manager.submotion_execution_starting_time = Some(Instant::now());
-    motion_manager
+    keyframe_executor.submotion_execution_starting_time = Some(Instant::now());
+    keyframe_executor
         .active_motion
         .as_mut()
         .unwrap()
         .movement_start = Instant::now();
-    motion_manager
+    keyframe_executor
         .active_motion
         .as_mut()
         .unwrap()
@@ -233,19 +241,19 @@ fn update_active_motion(motion_manager: &mut MotionManager) {
 /// For example, different interpolation types will be available.
 ///
 /// # Arguments
-/// * `motion_manager` - Keeps track of state needed for playing motions.
+/// * `keyframe_executor` - Keeps track of state needed for playing motions.
 /// * `target_position` - The target position of the initial movement.
 /// * `duration` - Intended duration of the initial movement.
 /// * `elapsed_time` - Currently elapsed time since start of movement to initial position.
 fn move_to_starting_position(
-    motion_manager: &MotionManager,
+    keyframe_executor: &KeyframeExecutor,
     target_position: &JointArray<f32>,
     duration: &Duration,
     elapsed_time_since_start_of_motion: &Duration,
 ) -> Option<JointArray<f32>> {
     if elapsed_time_since_start_of_motion <= duration {
         return Some(lerp(
-            motion_manager.source_position.as_ref().unwrap(),
+            keyframe_executor.source_position.as_ref().unwrap(),
             target_position,
             elapsed_time_since_start_of_motion.as_secs_f32() / duration.as_secs_f32(),
         ));
@@ -257,15 +265,15 @@ fn move_to_starting_position(
 /// Assesses whether the required waiting time has elapsed.
 ///
 /// # Arguments
-/// * `motion_manager` - Keeps track of state needed for playing motions.
+/// * `keyframe_executor` - Keeps track of state needed for playing motions.
 /// * `duration` - Intended duration of the waiting time.
-fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_wait_time: f32) -> bool {
+fn exit_waittime_elapsed(keyframe_executor: &mut KeyframeExecutor, exit_wait_time: f32) -> bool {
     if exit_wait_time <= MINIMUM_WAIT_TIME {
         return true;
     }
 
     // firstly, we record the current timestamp and check whether the motion needs to wait
-    if let Some(finishing_time) = motion_manager.submotion_finishing_time {
+    if let Some(finishing_time) = keyframe_executor.submotion_finishing_time {
         // checking whether the required waittime has elapsed
         if finishing_time.elapsed().as_secs_f32() < exit_wait_time {
             return false;
@@ -273,7 +281,7 @@ fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_wait_time: f32
 
         true
     } else {
-        motion_manager.submotion_finishing_time = Some(Instant::now());
+        keyframe_executor.submotion_finishing_time = Some(Instant::now());
         false
     }
 }
@@ -288,42 +296,42 @@ fn exit_waittime_elapsed(motion_manager: &mut MotionManager, exit_wait_time: f32
 /// But this will be implemented far later.
 ///
 /// # Arguments
-/// * `motion_manager` - Keeps track of state needed for playing motions.
+/// * `keyframe_executor` - Keeps track of state needed for playing motions.
 /// * `nao_state` - Current state of the robot.
 fn transition_to_next_submotion(
-    motion_manager: &mut MotionManager,
+    keyframe_executor: &mut KeyframeExecutor,
     nao_state: &mut NaoState,
     fall_state: &mut FallState,
 ) -> Result<()> {
     // current submotion is finished, transition to next submotion.
     let active_motion: &mut ActiveMotion =
-        motion_manager.active_motion.as_mut().ok_or_else(|| {
+        keyframe_executor.active_motion.as_mut().ok_or_else(|| {
             miette!("No active motion present during transition, have you started a motion?")
         })?;
 
-    motion_manager.submotion_execution_starting_time = None;
-    motion_manager.submotion_finishing_time = None;
-    motion_manager.source_position = None;
+    keyframe_executor.submotion_execution_starting_time = None;
+    keyframe_executor.submotion_finishing_time = None;
+    keyframe_executor.source_position = None;
 
     if let Some(submotion_name) = active_motion.get_next_submotion() {
         // If there is a next submotion, we attempt a transition
         let next_submotion = active_motion.transition(nao_state, submotion_name.clone())?;
-        motion_manager.active_motion = next_submotion;
+        keyframe_executor.active_motion = next_submotion;
 
         Ok(())
     }
     // if no submotion is found, the motion has finished
     else {
         // we send the appropriate exit message (if present)
-        motion_manager
+        keyframe_executor
             .active_motion
             .as_ref()
             .unwrap()
             .execute_exit_routine(fall_state);
 
-        // and we reset the Motionmanager
-        motion_manager.active_motion = None;
-        motion_manager.motion_execution_starting_time = None;
+        // and we reset the KeyframeExecutor
+        keyframe_executor.active_motion = None;
+        keyframe_executor.motion_execution_starting_time = None;
 
         Ok(())
     }

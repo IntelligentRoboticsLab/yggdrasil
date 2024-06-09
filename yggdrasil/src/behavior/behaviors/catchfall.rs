@@ -1,7 +1,7 @@
 use crate::{
     behavior::engine::{Behavior, Context},
     motion::walk::engine::WalkingEngine,
-    motion::{keyframe::MotionManager, step_planner::StepPlanner},
+    motion::{keyframe::KeyframeExecutor, step_planner::StepPlanner},
     nao::manager::{NaoManager, Priority},
 };
 
@@ -27,7 +27,7 @@ impl Behavior for CatchFall {
         _: Context,
         nao_manager: &mut NaoManager,
         _walking_engine: &mut WalkingEngine,
-        _motion_manager: &mut MotionManager,
+        _motion_manager: &mut KeyframeExecutor,
         _step_planner: &mut StepPlanner,
     ) {
         nao_manager.unstiff_legs(Priority::Critical);

@@ -13,7 +13,7 @@ use crate::{
     core::config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
     game_controller::GameControllerConfig,
     localization::RobotPose,
-    motion::keyframe::MotionManager,
+    motion::keyframe::KeyframeExecutor,
     motion::step_planner::StepPlanner,
     motion::walk::engine::WalkingEngine,
     nao::{self, manager::NaoManager, RobotInfo},
@@ -69,7 +69,7 @@ pub struct Context<'a> {
 /// use yggdrasil::behavior::engine::{Behavior, Context};
 /// use yggdrasil::nao::manager::NaoManager;
 /// use yggdrasil::motion::walk::engine::WalkingEngine;
-/// use yggdrasil::motion::keyframe::MotionManager;
+/// use yggdrasil::motion::keyframe::KeyframeExecutor;
 /// use yggdrasil::motion::step_planner::StepPlanner;
 ///
 /// struct Dance;
@@ -80,7 +80,7 @@ pub struct Context<'a> {
 ///         context: Context,
 ///         nao_manager: &mut NaoManager,
 ///         walking_engine: &mut WalkingEngine,
-///         motion_manager: &mut MotionManager,
+///         keyframe_executor: &mut KeyframeExecutor,
 ///         step_planner: &mut StepPlanner,
 ///     ) {
 ///         // Dance like nobody's watching 🕺!
@@ -96,7 +96,7 @@ pub trait Behavior {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
-        motion_manager: &mut MotionManager,
+        keyframe_executor: &mut KeyframeExecutor,
         step_planner: &mut StepPlanner,
     );
 }
@@ -143,7 +143,7 @@ impl Default for BehaviorKind {
 ///     engine::{BehaviorKind, Context, Role},
 /// };
 /// use yggdrasil::motion::walk::engine::WalkingEngine;
-/// use yggdrasil::motion::keyframe::MotionManager;
+/// use yggdrasil::motion::keyframe::KeyframeExecutor;
 /// use yggdrasil::motion::step_planner::StepPlanner;
 ///
 /// struct SecretAgent;
@@ -154,7 +154,7 @@ impl Default for BehaviorKind {
 ///         context: Context,
 ///         current_behavior: &mut BehaviorKind,
 ///         walking_engine: &mut WalkingEngine,
-///         motion_manager: &mut MotionManager,
+///         keyframe_executor: &mut KeyframeExecutor,
 ///         step_planner: &mut StepPlanner,
 ///     ) -> BehaviorKind {
 ///         // Implement behavior transitions for secret agent 🕵️
@@ -175,7 +175,7 @@ pub trait Role {
         context: Context,
         current_behavior: &mut BehaviorKind,
         walking_engine: &mut WalkingEngine,
-        motion_manager: &mut MotionManager,
+        keyframe_executor: &mut KeyframeExecutor,
         step_planner: &mut StepPlanner,
     ) -> BehaviorKind;
 }
@@ -236,18 +236,18 @@ impl Engine {
         context: Context,
         nao_manager: &mut NaoManager,
         walking_engine: &mut WalkingEngine,
-        motion_manager: &mut MotionManager,
+        keyframe_executor: &mut KeyframeExecutor,
         step_planner: &mut StepPlanner,
     ) {
         self.role = self.assign_role(context);
 
-        self.transition(context, walking_engine, motion_manager, step_planner);
+        self.transition(context, walking_engine, keyframe_executor, step_planner);
 
         self.behavior.execute(
             context,
             nao_manager,
             walking_engine,
-            motion_manager,
+            keyframe_executor,
             step_planner,
         );
     }
@@ -256,7 +256,7 @@ impl Engine {
         &mut self,
         context: Context,
         walking_engine: &mut WalkingEngine,
-        motion_manager: &mut MotionManager,
+        keyframe_executor: &mut KeyframeExecutor,
         step_planner: &mut StepPlanner,
     ) {
         if let BehaviorKind::StartUp(_) = self.behavior {
@@ -299,7 +299,7 @@ impl Engine {
                 context,
                 &mut self.behavior,
                 walking_engine,
-                motion_manager,
+                keyframe_executor,
                 step_planner,
             ),
         };
@@ -325,10 +325,10 @@ pub fn step(
         &BehaviorConfig,
         &GameControllerConfig,
     ),
-    (nao_manager, walking_engine, motion_manager, step_planner): (
+    (nao_manager, walking_engine, keyframe_executor, step_planner): (
         &mut NaoManager,
         &mut WalkingEngine,
-        &mut MotionManager,
+        &mut KeyframeExecutor,
         &mut StepPlanner,
     ),
     game_controller_message: &Option<GameControllerMessage>,
@@ -354,7 +354,7 @@ pub fn step(
         context,
         nao_manager,
         walking_engine,
-        motion_manager,
+        keyframe_executor,
         step_planner,
     );
 
