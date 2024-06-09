@@ -19,7 +19,7 @@ pub struct OrientationFilter;
 
 impl Module for OrientationFilter {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(update_orientation.after(super::imu::imu_filter))
+        app.add_system(update_orientation.after(super::imu::imu_sensor))
             .add_startup_system(init_orientation_filter)
     }
 }
