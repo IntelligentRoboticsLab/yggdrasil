@@ -348,24 +348,25 @@ fn log_top_image(
     Ok(JpegTopImage(timestamp))
 }
 
-// #[cfg(not(feature = "local"))]
-// #[system]
-// fn set_exposure_weights(
-//     exposure_weights: &mut ExposureWeights,
-//     top_camera: &TopCamera,
-//     bottom_camera: &BottomCamera,
-// ) -> Result<()> {
-//     if let Ok(top_camera) = top_camera.0 .0.try_lock() {
-//         top_camera
-//             .camera_device()
-//             .set_auto_exposure_weights(&exposure_weights.top)?;
-//     }
-//
-//     if let Ok(bottom_camera) = bottom_camera.0 .0.try_lock() {
-//         bottom_camera
-//             .camera_device()
-//             .set_auto_exposure_weights(&exposure_weights.bottom)?;
-//     }
-//
-//     Ok(())
-// }
+#[allow(dead_code)]
+#[cfg(not(feature = "local"))]
+#[system]
+fn set_exposure_weights(
+    exposure_weights: &mut ExposureWeights,
+    top_camera: &TopCamera,
+    bottom_camera: &BottomCamera,
+) -> Result<()> {
+    if let Ok(top_camera) = top_camera.0 .0.try_lock() {
+        top_camera
+            .camera_device()
+            .set_auto_exposure_weights(&exposure_weights.top)?;
+    }
+
+    if let Ok(bottom_camera) = bottom_camera.0 .0.try_lock() {
+        bottom_camera
+            .camera_device()
+            .set_auto_exposure_weights(&exposure_weights.bottom)?;
+    }
+
+    Ok(())
+}
