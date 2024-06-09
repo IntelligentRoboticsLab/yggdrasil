@@ -40,9 +40,9 @@ pub struct FsrConfig {
     pub ground_contact_threshold: f32,
 }
 
-pub struct FilterModule;
+pub struct SensorModule;
 
-impl Module for FilterModule {
+impl Module for SensorModule {
     fn initialize(self, app: App) -> Result<App> {
         let app = app
             .add_module(ButtonFilter)?
