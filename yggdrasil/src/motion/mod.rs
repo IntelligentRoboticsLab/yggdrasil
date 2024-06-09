@@ -9,13 +9,13 @@ pub mod path_finding;
 pub mod step_planner;
 pub mod walk;
 
-use keyframe::executor::motion_executer;
-use keyframe::manager::motion_manager_initializer;
+use keyframe::executor::keyframe_executor;
+use keyframe::manager::keyframe_executor_initializer;
 
 /// The motion module provides motion related functionalities.
 ///
 /// This module provides the following resources to the application:
-/// - [`MotionManager`](`motion_manager::MotionManager`)
+/// - [`KeyframeExecutor`](`keyframe_executor::KeyframeExecutor`)
 /// - [`Odometry`]
 pub struct MotionModule;
 
@@ -28,8 +28,8 @@ impl Module for MotionModule {
                     .after(sensor::orientation::update_orientation),
             )
             .add_startup_system(odometry::setup_viewcoordinates)?
-            .add_startup_system(motion_manager_initializer)?
-            .add_system(motion_executer.after(finalize))
+            .add_startup_system(keyframe_executor_initializer)?
+            .add_system(keyframe_executor.after(finalize))
             .add_module(step_planner::StepPlannerModule)
     }
 }

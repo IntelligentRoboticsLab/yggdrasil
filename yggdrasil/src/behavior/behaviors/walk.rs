@@ -2,7 +2,7 @@ use nalgebra::Point2;
 
 use crate::{
     behavior::engine::{Behavior, Context},
-    motion::keyframe::MotionManager,
+    motion::keyframe::KeyframeExecutor,
     motion::step_planner::StepPlanner,
     motion::walk::engine::{Step, WalkingEngine},
     nao::manager::NaoManager,
@@ -19,7 +19,7 @@ impl Behavior for Walk {
         _context: Context,
         _nao_manager: &mut NaoManager,
         _walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
+        _: &mut KeyframeExecutor,
         step_planner: &mut StepPlanner,
     ) {
         step_planner.set_absolute_target(Point2::new(0., 0.));

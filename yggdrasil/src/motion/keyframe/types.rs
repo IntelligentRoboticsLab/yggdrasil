@@ -43,7 +43,7 @@ pub enum InterpolationType {
 /// # Notes
 /// - New conditional variables should be added as new variants to this enum.
 ///   Furthermore, the implementation for checking this variable should be added
-///   to the 'check_condition' function in 'motion_manager'.
+///   to the 'check_condition' function in 'keyframe_executor'.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ConditionalVariable {
     GyroscopeX,
@@ -58,7 +58,7 @@ pub enum ConditionalVariable {
 /// # Notes
 /// - New failroutines should be added as new variants to this enum.
 ///   Furthermore, the implementation for executing this failroutine should be added
-///   to the 'select_routine' function in 'motion_manager'.
+///   to the 'select_routine' function in 'keyframe_executor'.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum FailRoutine {
     Retry,
