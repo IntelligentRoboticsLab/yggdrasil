@@ -15,7 +15,7 @@ use keyframe::manager::keyframe_executor_initializer;
 /// The motion module provides motion related functionalities.
 ///
 /// This module provides the following resources to the application:
-/// - [`KeyframeExecutor`](`keyframe_executor::KeyframeExecutor`)
+/// - [`KeyframeExecutor`](`keyframe::KeyframeExecutor`)
 /// - [`Odometry`]
 pub struct MotionModule;
 
