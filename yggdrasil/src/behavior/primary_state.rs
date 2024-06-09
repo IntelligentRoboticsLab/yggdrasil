@@ -143,31 +143,13 @@ fn next_primary_state(
     }
 
     primary_state = match game_controller_message {
-        Some(message) => match message {
-            GameControllerMessage {
-                state: GameState::Initial,
-                ..
-            } => PS::Initial,
-            GameControllerMessage {
-                state: GameState::Ready,
-                ..
-            } => PS::Ready,
-            GameControllerMessage {
-                state: GameState::Set,
-                ..
-            } => PS::Set,
-            GameControllerMessage {
-                state: GameState::Playing,
-                ..
-            } => PS::Playing,
-            GameControllerMessage {
-                state: GameState::Finished,
-                ..
-            } => PS::Finished,
-            GameControllerMessage {
-                state: GameState::SETUP,
-                ..
-            } => PS::Setup,
+        Some(message) => match message.state {
+            GameState::Initial => PS::Initial,
+            GameState::Ready => PS::Ready,
+            GameState::Set => PS::Set,
+            GameState::Playing => PS::Playing,
+            GameState::Finished => PS::Finished,
+            GameState::SETUP => PS::Setup,
         },
         None => primary_state,
     };
