@@ -348,6 +348,7 @@ fn log_top_image(
     Ok(JpegTopImage(timestamp))
 }
 
+#[allow(dead_code)]
 #[cfg(not(feature = "local"))]
 #[system]
 fn set_exposure_weights(
