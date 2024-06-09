@@ -76,11 +76,7 @@ pub struct Control<'a> {
 ///
 /// # Examples
 /// ```
-/// use yggdrasil::behavior::engine::{Behavior, Context};
-/// use yggdrasil::nao::manager::NaoManager;
-/// use yggdrasil::motion::walk::engine::WalkingEngine;
-/// use yggdrasil::motion::keyframe::KeyframeExecutor;
-/// use yggdrasil::motion::step_planner::StepPlanner;
+/// use yggdrasil::behavior::engine::{Behavior, Context, Control};
 ///
 /// struct Dance;
 ///
@@ -88,10 +84,7 @@ pub struct Control<'a> {
 ///     fn execute(
 ///         &mut self,
 ///         context: Context,
-///         nao_manager: &mut NaoManager,
-///         walking_engine: &mut WalkingEngine,
-///         keyframe_executor: &mut KeyframeExecutor,
-///         step_planner: &mut StepPlanner,
+///         control: &mut Control,
 ///     ) {
 ///         // Dance like nobody's watching 🕺!
 ///     }
@@ -143,11 +136,8 @@ impl Default for BehaviorKind {
 /// ```
 /// use yggdrasil::behavior::{
 ///     behaviors::Initial,
-///     engine::{BehaviorKind, Context, Role},
+///     engine::{BehaviorKind, Context, Control, Role},
 /// };
-/// use yggdrasil::motion::walk::engine::WalkingEngine;
-/// use yggdrasil::motion::keyframe::KeyframeExecutor;
-/// use yggdrasil::motion::step_planner::StepPlanner;
 ///
 /// struct SecretAgent;
 ///
@@ -155,10 +145,7 @@ impl Default for BehaviorKind {
 ///     fn transition_behavior(
 ///         &mut self,
 ///         context: Context,
-///         current_behavior: &mut BehaviorKind,
-///         walking_engine: &mut WalkingEngine,
-///         keyframe_executor: &mut KeyframeExecutor,
-///         step_planner: &mut StepPlanner,
+///         control: &mut Control,
 ///     ) -> BehaviorKind {
 ///         // Implement behavior transitions for secret agent 🕵️
 ///         // E.g. Disguise -> Assassinate
