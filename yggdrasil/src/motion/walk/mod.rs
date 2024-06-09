@@ -86,8 +86,8 @@ impl Module for WalkingEngineModule {
             .add_startup_system(init_walking_engine)?
             .add_system_chain((
                 run_walking_engine
-                    .after(sensor::fsr::force_sensitive_resistor_filter)
-                    .after(sensor::imu::imu_filter)
+                    .after(sensor::fsr::force_sensitive_resistor_sensor)
+                    .after(sensor::imu::imu_sensor)
                     .after(nao::write_hardware_info)
                     .after(nao::update_cycle_stats),
                 update_swing_side,
