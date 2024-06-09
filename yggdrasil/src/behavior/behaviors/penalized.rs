@@ -1,11 +1,8 @@
 use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
-    behavior::engine::{Behavior, Context},
-    motion::keyframe::KeyframeExecutor,
-    motion::step_planner::StepPlanner,
-    motion::walk::engine::WalkingEngine,
-    nao::manager::{NaoManager, Priority},
+    behavior::engine::{Behavior, Context, Control},
+    nao::manager::Priority,
 };
 
 const PENALIZED_HEAD_STIFFNESS: f32 = 0.3;
@@ -21,20 +18,15 @@ const PENALIZED_HEAD_STIFFNESS: f32 = 0.3;
 pub struct Penalized;
 
 impl Behavior for Penalized {
-    fn execute(
-        &mut self,
-        _context: Context,
-        nao_manager: &mut NaoManager,
-        walking_engine: &mut WalkingEngine,
-        _: &mut KeyframeExecutor,
-        _step_planner: &mut StepPlanner,
-    ) {
-        walking_engine.request_stand();
-        walking_engine.end_step_phase();
+    fn execute(&mut self, _context: Context, control: &mut Control) {
+        control.walking_engine.request_stand();
+        control.walking_engine.end_step_phase();
 
         let head_joints = HeadJoints::fill(0.0);
         let head_stiffness = HeadJoints::fill(PENALIZED_HEAD_STIFFNESS);
 
-        nao_manager.set_head(head_joints, head_stiffness, Priority::High);
+        control
+            .nao_manager
+            .set_head(head_joints, head_stiffness, Priority::High);
     }
 }

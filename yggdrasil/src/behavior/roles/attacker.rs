@@ -1,24 +1,15 @@
 use crate::{
     behavior::{
         behaviors::Walk,
-        engine::{BehaviorKind, Context, Role},
+        engine::{BehaviorKind, Context, Control, Role},
     },
-    motion::keyframe::KeyframeExecutor,
-    motion::step_planner::StepPlanner,
-    motion::walk::engine::{Step, WalkingEngine},
+    motion::walk::engine::Step,
 };
 
 pub struct Attacker;
 
 impl Role for Attacker {
-    fn transition_behavior(
-        &mut self,
-        _context: Context,
-        _current_behavior: &mut BehaviorKind,
-        _: &mut WalkingEngine,
-        _: &mut KeyframeExecutor,
-        _step_planner: &mut StepPlanner,
-    ) -> BehaviorKind {
+    fn transition_behavior(&mut self, _context: Context, _control: &mut Control) -> BehaviorKind {
         BehaviorKind::Walk(Walk {
             step: Step {
                 forward: 0.04,
