@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     core::audio::audio_input::{AudioInput, NUMBER_OF_SAMPLES},
-    ml::{MlModel, MlTask, MlTaskResource},
+    core::ml::{MlModel, MlTask, MlTaskResource},
     nao::manager::{NaoManager, Priority},
     prelude::*,
 };
