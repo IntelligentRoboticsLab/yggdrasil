@@ -1,4 +1,3 @@
-use crate::motion::motion_util::lerp;
 use miette::{miette, IntoDiagnostic, Result};
 use nidhogg::types::JointArray;
 use serde::{Deserialize, Serialize};
@@ -12,7 +11,7 @@ use std::time::Instant;
 
 use toml;
 
-use super::motion_manager::ActiveMotion;
+use super::{manager::ActiveMotion, util::lerp};
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]

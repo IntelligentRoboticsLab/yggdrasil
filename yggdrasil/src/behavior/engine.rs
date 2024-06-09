@@ -13,7 +13,7 @@ use crate::{
     core::config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
     game_controller::GameControllerConfig,
     localization::RobotPose,
-    motion::motion_manager::MotionManager,
+    motion::keyframe::MotionManager,
     motion::step_planner::StepPlanner,
     motion::walk::engine::WalkingEngine,
     nao::{self, manager::NaoManager, RobotInfo},
@@ -69,7 +69,7 @@ pub struct Context<'a> {
 /// use yggdrasil::behavior::engine::{Behavior, Context};
 /// use yggdrasil::nao::manager::NaoManager;
 /// use yggdrasil::motion::walk::engine::WalkingEngine;
-/// use yggdrasil::motion::motion_manager::MotionManager;
+/// use yggdrasil::motion::keyframe::MotionManager;
 /// use yggdrasil::motion::step_planner::StepPlanner;
 ///
 /// struct Dance;
@@ -143,7 +143,7 @@ impl Default for BehaviorKind {
 ///     engine::{BehaviorKind, Context, Role},
 /// };
 /// use yggdrasil::motion::walk::engine::WalkingEngine;
-/// use yggdrasil::motion::motion_manager::MotionManager;
+/// use yggdrasil::motion::keyframe::MotionManager;
 /// use yggdrasil::motion::step_planner::StepPlanner;
 ///
 /// struct SecretAgent;

@@ -3,17 +3,14 @@ use crate::{kinematics, nao::manager::finalize, prelude::*, sensor};
 use self::odometry::Odometry;
 use miette::Result;
 
-pub mod motion_executer;
-pub mod motion_manager;
-pub mod motion_types;
-pub mod motion_util;
+pub mod keyframe;
 pub mod odometry;
 pub mod path_finding;
 pub mod step_planner;
 pub mod walk;
 
-use motion_executer::motion_executer;
-use motion_manager::motion_manager_initializer;
+use keyframe::executor::motion_executer;
+use keyframe::manager::motion_manager_initializer;
 
 /// The motion module provides motion related functionalities.
 ///

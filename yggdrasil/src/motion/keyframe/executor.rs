@@ -1,6 +1,4 @@
-use crate::motion::motion_manager::{ActiveMotion, MotionManager};
-use crate::motion::motion_types::Movement;
-use crate::motion::motion_util::{get_min_duration, lerp};
+use super::{get_min_duration, lerp, types::Movement, ActiveMotion, MotionManager};
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority;
 use crate::sensor::imu::IMUValues;

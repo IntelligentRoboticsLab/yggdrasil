@@ -1,7 +1,7 @@
 use crate::{
     behavior::engine::{Behavior, Context},
     motion::walk::engine::WalkingEngine,
-    motion::{motion_manager::MotionManager, step_planner::StepPlanner},
+    motion::{keyframe::MotionManager, step_planner::StepPlanner},
     nao::manager::{NaoManager, Priority},
 };
 

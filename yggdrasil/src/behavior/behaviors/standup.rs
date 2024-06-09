@@ -1,7 +1,10 @@
 use crate::{
     behavior::engine::{Behavior, Context},
     motion::walk::engine::WalkingEngine,
-    motion::{motion_manager::MotionManager, motion_types::MotionType, step_planner::StepPlanner},
+    motion::{
+        keyframe::{MotionManager, MotionType},
+        step_planner::StepPlanner,
+    },
     nao::manager::{NaoManager, Priority},
     sensor::falling::{FallState, LyingDirection},
 };

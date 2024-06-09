@@ -1,4 +1,4 @@
-use crate::motion::motion_types::{
+use super::types::{
     ConditionalVariable, ExitRoutine, FailRoutine, Motion, MotionCondition, MotionType,
 };
 use crate::nao::manager::Priority;

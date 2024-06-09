@@ -2,7 +2,7 @@ use nalgebra::Point2;
 
 use crate::{
     behavior::engine::{Behavior, Context},
-    motion::motion_manager::MotionManager,
+    motion::keyframe::MotionManager,
     motion::step_planner::StepPlanner,
     motion::walk::engine::{Step, WalkingEngine},
     nao::manager::NaoManager,
