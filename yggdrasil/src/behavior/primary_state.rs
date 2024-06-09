@@ -40,6 +40,9 @@ impl Module for PrimaryStateModule {
 pub enum PrimaryState {
     /// State in which all joints are unstiffened and the robot does not move
     Unstiff,
+    /// State at the start of the match where the robots stand up.
+    /// It's the same state as initial, but robots will not be penalized for a motion in set.
+    Setup,
     /// State at the start of the match where the robots stand up
     Initial,
     /// State in which robots walk to their legal positions
@@ -101,6 +104,7 @@ pub fn update_primary_state(
             config.chest_blink_interval,
             Priority::Medium,
         ),
+        PS::Setup => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
         PS::Initial => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
         PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Critical),
         PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Critical),
@@ -160,6 +164,10 @@ fn next_primary_state(
                 state: GameState::Finished,
                 ..
             } => PS::Finished,
+            GameControllerMessage {
+                state: GameState::SETUP,
+                ..
+            } => PS::Setup,
         },
         None => primary_state,
     };
