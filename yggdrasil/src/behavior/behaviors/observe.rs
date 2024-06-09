@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use crate::{
     behavior::engine::{Behavior, Context},
-    motion::motion_manager::MotionManager,
+    motion::keyframe::MotionManager,
     motion::step_planner::StepPlanner,
     motion::walk::engine::WalkingEngine,
     nao::manager::{NaoManager, Priority},

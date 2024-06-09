@@ -3,7 +3,7 @@ use crate::{
         behaviors::Walk,
         engine::{BehaviorKind, Context, Role},
     },
-    motion::motion_manager::MotionManager,
+    motion::keyframe::MotionManager,
     motion::step_planner::StepPlanner,
     motion::walk::engine::{Step, WalkingEngine},
 };
