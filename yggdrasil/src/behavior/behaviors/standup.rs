@@ -1,11 +1,7 @@
 use crate::{
-    behavior::engine::{Behavior, Context},
-    motion::walk::engine::WalkingEngine,
-    motion::{
-        keyframe::{KeyframeExecutor, MotionType},
-        step_planner::StepPlanner,
-    },
-    nao::manager::{NaoManager, Priority},
+    behavior::engine::{Behavior, Context, Control},
+    motion::keyframe::MotionType,
+    nao::manager::Priority,
     sensor::falling::{FallState, LyingDirection},
 };
 
@@ -17,21 +13,18 @@ use crate::{
 pub struct Standup;
 
 impl Behavior for Standup {
-    fn execute(
-        &mut self,
-        context: Context,
-        _nao_manager: &mut NaoManager,
-        _walking_engine: &mut WalkingEngine,
-        keyframe_executor: &mut KeyframeExecutor,
-        _step_planner: &mut StepPlanner,
-    ) {
+    fn execute(&mut self, context: Context, control: &mut Control) {
         // check the direction the robot is lying and execute the appropriate motion
         match context.fall_state {
             FallState::Lying(LyingDirection::FacingDown) => {
-                keyframe_executor.start_new_motion(MotionType::StandupStomach, Priority::High);
+                control
+                    .keyframe_executor
+                    .start_new_motion(MotionType::StandupStomach, Priority::High);
             }
             FallState::Lying(LyingDirection::FacingUp) => {
-                keyframe_executor.start_new_motion(MotionType::StandupBack, Priority::High);
+                control
+                    .keyframe_executor
+                    .start_new_motion(MotionType::StandupBack, Priority::High);
             }
             // if we are not lying down anymore, either standing up or falling, we do not execute any motion
             _ => {}

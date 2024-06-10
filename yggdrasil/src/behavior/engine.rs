@@ -59,6 +59,16 @@ pub struct Context<'a> {
     pub pose: &'a RobotPose,
 }
 
+/// Control that is passed into the behavior engine.
+///
+/// It contains all necessary robot control for executing behaviors.
+pub struct Control<'a> {
+    pub nao_manager: &'a mut NaoManager,
+    pub walking_engine: &'a mut WalkingEngine,
+    pub keyframe_executor: &'a mut KeyframeExecutor,
+    pub step_planner: &'a mut StepPlanner,
+}
+
 /// A trait representing a behavior that can be performed.
 ///
 /// It is used to define the actions the robot will take when the corresponding behavior is executed.
@@ -66,11 +76,7 @@ pub struct Context<'a> {
 ///
 /// # Examples
 /// ```
-/// use yggdrasil::behavior::engine::{Behavior, Context};
-/// use yggdrasil::nao::manager::NaoManager;
-/// use yggdrasil::motion::walk::engine::WalkingEngine;
-/// use yggdrasil::motion::keyframe::KeyframeExecutor;
-/// use yggdrasil::motion::step_planner::StepPlanner;
+/// use yggdrasil::behavior::engine::{Behavior, Context, Control};
 ///
 /// struct Dance;
 ///
@@ -78,10 +84,7 @@ pub struct Context<'a> {
 ///     fn execute(
 ///         &mut self,
 ///         context: Context,
-///         nao_manager: &mut NaoManager,
-///         walking_engine: &mut WalkingEngine,
-///         keyframe_executor: &mut KeyframeExecutor,
-///         step_planner: &mut StepPlanner,
+///         control: &mut Control,
 ///     ) {
 ///         // Dance like nobody's watching 🕺!
 ///     }
@@ -91,14 +94,7 @@ pub struct Context<'a> {
 #[enum_dispatch]
 pub trait Behavior {
     /// Defines what the robot does when the corresponding behavior is executed.
-    fn execute(
-        &mut self,
-        context: Context,
-        nao_manager: &mut NaoManager,
-        walking_engine: &mut WalkingEngine,
-        keyframe_executor: &mut KeyframeExecutor,
-        step_planner: &mut StepPlanner,
-    );
+    fn execute(&mut self, context: Context, control: &mut Control);
 }
 
 /// An enum containing the possible behaviors for a robot.
@@ -140,11 +136,8 @@ impl Default for BehaviorKind {
 /// ```
 /// use yggdrasil::behavior::{
 ///     behaviors::Initial,
-///     engine::{BehaviorKind, Context, Role},
+///     engine::{BehaviorKind, Context, Control, Role},
 /// };
-/// use yggdrasil::motion::walk::engine::WalkingEngine;
-/// use yggdrasil::motion::keyframe::KeyframeExecutor;
-/// use yggdrasil::motion::step_planner::StepPlanner;
 ///
 /// struct SecretAgent;
 ///
@@ -152,10 +145,7 @@ impl Default for BehaviorKind {
 ///     fn transition_behavior(
 ///         &mut self,
 ///         context: Context,
-///         current_behavior: &mut BehaviorKind,
-///         walking_engine: &mut WalkingEngine,
-///         keyframe_executor: &mut KeyframeExecutor,
-///         step_planner: &mut StepPlanner,
+///         control: &mut Control,
 ///     ) -> BehaviorKind {
 ///         // Implement behavior transitions for secret agent 🕵️
 ///         // E.g. Disguise -> Assassinate
@@ -170,14 +160,7 @@ pub trait Role {
     ///
     /// # Returns
     /// - Returns the [`BehaviorKind`] the robot should transition to.
-    fn transition_behavior(
-        &mut self,
-        context: Context,
-        current_behavior: &mut BehaviorKind,
-        walking_engine: &mut WalkingEngine,
-        keyframe_executor: &mut KeyframeExecutor,
-        step_planner: &mut StepPlanner,
-    ) -> BehaviorKind;
+    fn transition_behavior(&mut self, context: Context, control: &mut Control) -> BehaviorKind;
 }
 
 /// An enum containing the possible roles for a robot.
@@ -231,36 +214,17 @@ impl Engine {
     }
 
     /// Executes one step of the behavior engine
-    pub fn step(
-        &mut self,
-        context: Context,
-        nao_manager: &mut NaoManager,
-        walking_engine: &mut WalkingEngine,
-        keyframe_executor: &mut KeyframeExecutor,
-        step_planner: &mut StepPlanner,
-    ) {
+    pub fn step(&mut self, context: Context, control: &mut Control) {
         self.role = self.assign_role(context);
 
-        self.transition(context, walking_engine, keyframe_executor, step_planner);
+        self.transition(context, control);
 
-        self.behavior.execute(
-            context,
-            nao_manager,
-            walking_engine,
-            keyframe_executor,
-            step_planner,
-        );
+        self.behavior.execute(context, control);
     }
 
-    pub fn transition(
-        &mut self,
-        context: Context,
-        walking_engine: &mut WalkingEngine,
-        keyframe_executor: &mut KeyframeExecutor,
-        step_planner: &mut StepPlanner,
-    ) {
+    pub fn transition(&mut self, context: Context, control: &mut Control) {
         if let BehaviorKind::StartUp(_) = self.behavior {
-            if walking_engine.is_sitting() {
+            if control.walking_engine.is_sitting() {
                 self.behavior = BehaviorKind::Unstiff(Unstiff);
             }
         }
@@ -295,13 +259,7 @@ impl Engine {
             PrimaryState::Set => BehaviorKind::Initial(Initial),
             PrimaryState::Finished => BehaviorKind::Initial(Initial),
             PrimaryState::Calibration => BehaviorKind::Initial(Initial),
-            PrimaryState::Playing => self.role.transition_behavior(
-                context,
-                &mut self.behavior,
-                walking_engine,
-                keyframe_executor,
-                step_planner,
-            ),
+            PrimaryState::Playing => self.role.transition_behavior(context, control),
         };
     }
 }
@@ -350,13 +308,14 @@ pub fn step(
         pose: robot_pose,
     };
 
-    engine.step(
-        context,
+    let mut control = Control {
         nao_manager,
         walking_engine,
         keyframe_executor,
         step_planner,
-    );
+    };
+
+    engine.step(context, &mut control);
 
     Ok(())
 }
