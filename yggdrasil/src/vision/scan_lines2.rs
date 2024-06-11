@@ -1,4 +1,9 @@
-use crate::{camera::matrix::CameraMatrices, prelude::*};
+use std::iter::Scan;
+
+use crate::{
+    camera::{self, matrix::CameraMatrices},
+    prelude::*,
+};
 
 use heimdall::{CameraMatrix, YuyvImage};
 use serde::{Deserialize, Serialize};
@@ -39,10 +44,12 @@ pub struct FieldColorApproximate {
 }
 
 pub struct ScanGrid {
-    pub vertical_samples: usize,
-    pub horizontal_samples: usize,
+    vertical_samples: usize,
+    horizontal_samples: usize,
     pub camera_matrix: CameraMatrix,
 }
+
+impl ScanGrid {}
 
 const FIELD_APPROXIMATION_STEP_SIZE: usize = 8;
 
@@ -81,7 +88,7 @@ pub fn approximate_field_color(image: &YuyvImage) -> FieldColorApproximate {
 }
 
 #[allow(dead_code)]
-fn vertical_scan_lines(image: &YuyvImage) {
+fn vertical_scan_lines(image: &YuyvImage, field_color: FieldColorApproximate) {
     for row in image.row_iter() {
         for pixel in row {
             let (_y, _h, _s) = pixel.to_yhs2();
