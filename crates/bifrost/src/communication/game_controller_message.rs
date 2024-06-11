@@ -20,7 +20,7 @@ pub const GAME_CONTROLLER_RETURN_PORT: u16 = 3939;
 const GAME_CONTROLLER_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'm', b'e'];
 
 /// The version of the data sent by the `GameController`.
-const GAME_CONTROLLER_STRUCT_VERSION: u8 = 16;
+const GAME_CONTROLLER_STRUCT_VERSION: u8 = 17;
 
 /// The header of the data sent by the robots.
 const GAME_CONTROLLER_RETURN_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'r', b't'];
@@ -115,6 +115,8 @@ pub enum GameState {
     Playing = 3,
     /// Finished game state.
     Finished = 4,
+    /// Setup game state.
+    SETUP = 5,
 }
 
 /// Enum for the different set plays.
