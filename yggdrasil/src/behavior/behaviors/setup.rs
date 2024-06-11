@@ -1,9 +1,6 @@
 use crate::{
-    behavior::engine::{Behavior, Context},
-    motion::motion_manager::MotionManager,
-    motion::step_planner::StepPlanner,
-    nao::manager::{NaoManager, Priority},
-    walk::engine::WalkingEngine,
+    behavior::engine::{Behavior, Context, Control},
+    nao::manager::Priority,
 };
 use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};
@@ -21,20 +18,13 @@ const HEAD_STIFFNESS: f32 = 0.4;
 pub struct Setup;
 
 impl Behavior for Setup {
-    fn execute(
-        &mut self,
-        context: Context,
-        nao_manager: &mut NaoManager,
-        walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
-        _step_planner: &mut StepPlanner,
-    ) {
-        nao_manager.set_head(
+    fn execute(&mut self, context: Context, control: &mut Control) {
+        control.nao_manager.set_head(
             context.pose.get_look_at_absolute(&Point2::origin()),
             HeadJoints::fill(HEAD_STIFFNESS),
             Priority::High,
         );
 
-        walking_engine.request_stand();
+        control.walking_engine.request_stand();
     }
 }

@@ -116,7 +116,7 @@ pub enum GameState {
     /// Finished game state.
     Finished = 4,
     /// Setup game state.
-    SETUP = 5,
+    Setup = 5,
 }
 
 /// Enum for the different set plays.

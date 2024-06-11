@@ -149,7 +149,7 @@ fn next_primary_state(
             GameState::Set => PS::Set,
             GameState::Playing => PS::Playing,
             GameState::Finished => PS::Finished,
-            GameState::SETUP => PS::Setup,
+            GameState::Setup => PS::Setup,
         },
         None => primary_state,
     };
