@@ -11,9 +11,9 @@ use nidhogg::types::RgbU8;
 use std::net::IpAddr;
 
 use crate::{
-    camera::Image,
     nao::{Cycle, CycleTime},
     prelude::*,
+    vision::camera::Image,
 };
 
 /// A module for debugging the robot using the [rerun](https://rerun.io) viewer.

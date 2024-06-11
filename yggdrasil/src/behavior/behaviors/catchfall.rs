@@ -1,8 +1,6 @@
 use crate::{
-    behavior::engine::{Behavior, Context},
-    motion::{motion_manager::MotionManager, step_planner::StepPlanner},
-    nao::manager::{NaoManager, Priority},
-    walk::engine::WalkingEngine,
+    behavior::engine::{Behavior, Context, Control},
+    nao::manager::Priority,
 };
 
 /// Behavior used for preventing damage when the robot is in a falling state.
@@ -22,16 +20,9 @@ use crate::{
 pub struct CatchFall;
 
 impl Behavior for CatchFall {
-    fn execute(
-        &mut self,
-        _: Context,
-        nao_manager: &mut NaoManager,
-        _walking_engine: &mut WalkingEngine,
-        _motion_manager: &mut MotionManager,
-        _step_planner: &mut StepPlanner,
-    ) {
-        nao_manager.unstiff_legs(Priority::Critical);
-        nao_manager.unstiff_arms(Priority::Critical);
-        nao_manager.unstiff_head(Priority::Critical);
+    fn execute(&mut self, _: Context, control: &mut Control) {
+        control.nao_manager.unstiff_legs(Priority::Critical);
+        control.nao_manager.unstiff_arms(Priority::Critical);
+        control.nao_manager.unstiff_head(Priority::Critical);
     }
 }

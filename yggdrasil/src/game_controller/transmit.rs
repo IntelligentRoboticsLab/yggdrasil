@@ -15,9 +15,9 @@ use std::time::{Duration, Instant};
 
 use miette::IntoDiagnostic;
 
-use crate::config::showtime::PlayerConfig;
-use crate::filter::falling::FallState;
+use crate::core::config::showtime::PlayerConfig;
 use crate::prelude::*;
+use crate::sensor::falling::FallState;
 
 pub(super) struct GameControllerTransmitModule;
 

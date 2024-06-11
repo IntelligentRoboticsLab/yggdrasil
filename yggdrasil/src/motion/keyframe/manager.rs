@@ -1,8 +1,8 @@
-use crate::filter::falling::FallState;
-use crate::motion::motion_types::{
+use super::types::{
     ConditionalVariable, ExitRoutine, FailRoutine, Motion, MotionCondition, MotionType,
 };
 use crate::nao::manager::Priority;
+use crate::sensor::falling::FallState;
 use miette::{miette, Result};
 use nidhogg::types::JointArray;
 use nidhogg::NaoState;
@@ -93,7 +93,7 @@ impl ActiveMotion {
 /// Manages motions, stores all possible motions and keeps track of information
 /// about the motion that is currently being executed.
 #[derive(Default)]
-pub struct MotionManager {
+pub struct KeyframeExecutor {
     /// Stores the currently active motion.
     pub active_motion: Option<ActiveMotion>,
     /// Keeps track of when the execution of a motion started.
@@ -108,10 +108,10 @@ pub struct MotionManager {
     pub motions: HashMap<MotionType, Motion>,
 }
 
-impl MotionManager {
+impl KeyframeExecutor {
     /// Initializes a `MotionManger`.
     pub fn new() -> Self {
-        MotionManager::default()
+        KeyframeExecutor::default()
     }
 
     /// Simple abstraction function for checking whether a motion is currently active
@@ -160,7 +160,7 @@ impl MotionManager {
             .motions
             .get(&motion_type)
             .cloned()
-            .expect("Motion type not added to the motion manager");
+            .expect("Motion type not added to the keyframe executor");
 
         self.active_motion = Some(ActiveMotion {
             cur_sub_motion: (chosen_motion.settings.motion_order[0].clone(), 0),
@@ -172,24 +172,24 @@ impl MotionManager {
     }
 }
 
-/// Initializes the `MotionManager`. Adds motions to the `MotionManger` by reading
-/// and deserializing the motions from motion files. Then adds the `MotionManager`
+/// Initializes the `KeyframeExecutor`. Adds motions to the `KeyframeExecutor` by reading
+/// and deserializing the motions from motion files. Then adds the `KeyframeExecutor`
 /// as resource. If you want to add new motions, add the motions here.
 ///
 /// # Arguments
 /// * `storage` - System storage.
-pub fn motion_manager_initializer(storage: &mut Storage) -> Result<()> {
-    let mut motion_manager = MotionManager::new();
+pub fn keyframe_executor_initializer(storage: &mut Storage) -> Result<()> {
+    let mut keyframe_executor = KeyframeExecutor::new();
     // Add new motions here!
-    motion_manager.add_motion(
+    keyframe_executor.add_motion(
         MotionType::StandupBack,
         "./assets/motions/standup_back.toml",
     )?;
-    motion_manager.add_motion(
+    keyframe_executor.add_motion(
         MotionType::StandupStomach,
         "./assets/motions/standup_stomach.toml",
     )?;
-    storage.add_resource(Resource::new(motion_manager))?;
+    storage.add_resource(Resource::new(keyframe_executor))?;
 
     Ok(())
 }

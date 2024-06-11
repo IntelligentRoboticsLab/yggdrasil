@@ -6,13 +6,13 @@ use nidhogg::types::color;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    camera::{matrix::CameraMatrices, Image, TopImage},
-    debug::DebugContext,
-    ml::{
+    core::debug::DebugContext,
+    core::ml::{
         util::{argmax, softmax},
         MlModel, MlTask, MlTaskResource,
     },
     prelude::*,
+    vision::camera::{matrix::CameraMatrices, Image, TopImage},
     vision::line::LineSegment3,
 };
 
@@ -158,7 +158,7 @@ fn field_marks_system(
             size,
         );
 
-        let patch = crate::ml::util::resize_patch(
+        let patch = crate::core::ml::util::resize_patch(
             (size, size),
             (IMAGE_INPUT_SIZE, IMAGE_INPUT_SIZE),
             patch,

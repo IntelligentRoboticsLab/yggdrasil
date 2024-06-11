@@ -10,11 +10,11 @@ use super::FilterConfig;
 ///
 /// This module provides the following resources to the application:
 /// - [`ForceSensitiveResistors`]
-pub struct FSRFilter;
+pub struct FSRSensor;
 
-impl Module for FSRFilter {
+impl Module for FSRSensor {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(force_sensitive_resistor_filter)
+        app.add_system(force_sensitive_resistor_sensor)
             .init_resource::<ForceSensitiveResistors>()?
             .init_resource::<Contacts>()
     }
@@ -28,7 +28,7 @@ pub struct Contacts {
 }
 
 #[system]
-pub fn force_sensitive_resistor_filter(
+pub fn force_sensitive_resistor_sensor(
     nao_state: &NaoState,
     force_sensitive_resistors: &mut ForceSensitiveResistors,
     contacts: &mut Contacts,

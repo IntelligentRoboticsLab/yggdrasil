@@ -2,8 +2,8 @@ use nidhogg::types::{FillExt, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    filter::low_pass_filter::LowPassFilter,
     kinematics::{forward::left_hip_to_ground, FootOffset, RobotKinematics},
+    sensor::low_pass_filter::LowPassFilter,
 };
 use std::{ops::Neg, time::Duration};
 

@@ -5,8 +5,8 @@ use rustfft::{num_complex::Complex, Fft, FftPlanner};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    audio::audio_input::{AudioInput, NUMBER_OF_SAMPLES},
-    ml::{MlModel, MlTask, MlTaskResource},
+    core::audio::audio_input::{AudioInput, NUMBER_OF_SAMPLES},
+    core::ml::{MlModel, MlTask, MlTaskResource},
     nao::manager::{NaoManager, Priority},
     prelude::*,
 };

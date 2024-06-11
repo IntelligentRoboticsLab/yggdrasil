@@ -13,11 +13,11 @@ const ACCELEROMETER_DEVIATION_WINDOW: usize = 50;
 ///
 /// This module provides the following resources to the application:
 /// - [`IMUValues`]
-pub struct IMUFilter;
+pub struct IMUSensor;
 
-impl Module for IMUFilter {
+impl Module for IMUSensor {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(imu_filter).init_resource::<IMUValues>()
+        app.add_system(imu_sensor).init_resource::<IMUValues>()
     }
 }
 
@@ -77,7 +77,7 @@ fn variance(measurements: &VecDeque<Vector3<f32>>) -> Vector3<f32> {
 }
 
 #[system]
-pub fn imu_filter(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()> {
+pub fn imu_sensor(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()> {
     imu_values.gyroscope = nao_state.gyroscope;
     imu_values.accelerometer = nao_state.accelerometer;
     imu_values.angles = nao_state.angles;

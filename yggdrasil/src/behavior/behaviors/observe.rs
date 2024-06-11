@@ -3,11 +3,8 @@ use serde_with::serde_as;
 use std::time::Instant;
 
 use crate::{
-    behavior::engine::{Behavior, Context},
-    motion::motion_manager::MotionManager,
-    motion::step_planner::StepPlanner,
+    behavior::engine::{Behavior, Context, Control},
     nao::manager::{NaoManager, Priority},
-    walk::engine::WalkingEngine,
 };
 use nidhogg::types::{FillExt, HeadJoints};
 
@@ -42,14 +39,7 @@ impl Default for Observe {
 }
 
 impl Behavior for Observe {
-    fn execute(
-        &mut self,
-        context: Context,
-        nao_manager: &mut NaoManager,
-        walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
-        _step_planner: &mut StepPlanner,
-    ) {
+    fn execute(&mut self, context: Context, control: &mut Control) {
         let ObserveBehaviorConfig {
             head_rotation_speed,
             head_pitch_max: head_pitch_multiplier,
@@ -57,13 +47,13 @@ impl Behavior for Observe {
         } = context.behavior_config.observe;
 
         look_around(
-            nao_manager,
+            control.nao_manager,
             self.starting_time,
             head_rotation_speed,
             head_yaw_multiplier,
             head_pitch_multiplier,
         );
-        walking_engine.request_stand();
+        control.walking_engine.request_stand();
     }
 }
 

@@ -1,8 +1,8 @@
 use crate::prelude::*;
 
 use self::{
-    button::ButtonFilter, falling::FallingFilter, fsr::FSRFilter, imu::IMUFilter,
-    orientation::OrientationFilter, sonar::SonarFilter,
+    button::ButtonFilter, falling::FallingFilter, fsr::FSRSensor, imu::IMUSensor,
+    orientation::OrientationFilter, sonar::SonarSensor,
 };
 
 use serde::{Deserialize, Serialize};
@@ -40,17 +40,17 @@ pub struct FsrConfig {
     pub ground_contact_threshold: f32,
 }
 
-pub struct FilterModule;
+pub struct SensorModule;
 
-impl Module for FilterModule {
+impl Module for SensorModule {
     fn initialize(self, app: App) -> Result<App> {
         let app = app
             .add_module(ButtonFilter)?
-            .add_module(FSRFilter)?
-            .add_module(IMUFilter)?
+            .add_module(FSRSensor)?
+            .add_module(IMUSensor)?
             .add_module(OrientationFilter)?
             .add_module(FallingFilter)?
-            .add_module(SonarFilter)?;
+            .add_module(SonarSensor)?;
         Ok(app)
     }
 }

@@ -1,11 +1,16 @@
-use yggdrasil::localization::LocalizationModule;
 #[allow(unused_imports)]
-use yggdrasil::{
-    behavior::BehaviorModule, camera::CameraModule, config::ConfigModule, debug::DebugModule,
-    filter::FilterModule, game_controller::GameControllerModule, kinematics::KinematicsModule,
-    ml::MlModule, motion::MotionModule, nao::NaoModule, prelude::*,
-    primary_state::PrimaryStateModule, vision::VisionModule, walk::WalkingEngineModule,
-};
+use yggdrasil::behavior::BehaviorModule;
+use yggdrasil::core::{config::ConfigModule, debug::DebugModule, ml::MlModule};
+use yggdrasil::game_controller::GameControllerModule;
+use yggdrasil::kinematics::KinematicsModule;
+use yggdrasil::localization::LocalizationModule;
+use yggdrasil::motion::walk::WalkingEngineModule;
+use yggdrasil::motion::MotionModule;
+use yggdrasil::nao::NaoModule;
+use yggdrasil::prelude::*;
+use yggdrasil::sensor::SensorModule;
+use yggdrasil::vision::camera::CameraModule;
+use yggdrasil::vision::VisionModule;
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
@@ -16,11 +21,10 @@ fn main() -> Result<()> {
         .add_module(NaoModule)?
         .add_module(ConfigModule)?
         .add_module(MlModule)?
-        .add_module(FilterModule)?
+        .add_module(SensorModule)?
         .add_module(KinematicsModule)?
         .add_module(CameraModule)?
         .add_module(BehaviorModule)?
-        .add_module(PrimaryStateModule)?
         .add_module(GameControllerModule)?
         .add_module(WalkingEngineModule)?
         .add_module(DebugModule)?
@@ -29,7 +33,7 @@ fn main() -> Result<()> {
         .add_module(LocalizationModule)?;
 
     #[cfg(feature = "alsa")]
-    let app = app.add_module(yggdrasil::audio::AudioModule)?;
+    let app = app.add_module(yggdrasil::core::audio::AudioModule)?;
 
     app.run()
 }

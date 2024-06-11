@@ -9,7 +9,7 @@ use std::f32::consts::{FRAC_PI_2, PI};
 ///
 /// # Examples
 /// ```no_run
-/// use yggdrasil::walk::smoothing::parabolic_return;
+/// use yggdrasil::motion::walk::smoothing::parabolic_return;
 ///
 /// assert_eq!(parabolic_return(0.0), 0.0);
 /// assert_eq!(parabolic_return(0.5), 1.0);
@@ -26,7 +26,7 @@ pub fn parabolic_return(t: f32) -> f32 {
 ///
 /// # Examples
 /// ```no_run
-/// use yggdrasil::walk::smoothing::parabolic_step;
+/// use yggdrasil::motion::walk::smoothing::parabolic_step;
 ///
 /// assert_eq!(parabolic_step(0.0), 0.0);
 /// assert_eq!(parabolic_step(0.5), 0.5);

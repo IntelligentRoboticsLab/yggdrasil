@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-use crate::filter::fsr::Contacts;
+use crate::sensor::fsr::Contacts;
 
 use super::sound_manager::{Sound, SoundManager};
 use super::AudioConfig;

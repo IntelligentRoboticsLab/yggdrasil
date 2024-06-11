@@ -1,23 +1,21 @@
-use crate::{filter, kinematics, nao::manager::finalize, prelude::*};
+use crate::{kinematics, nao::manager::finalize, prelude::*, sensor};
 
 use self::odometry::Odometry;
 use miette::Result;
 
-pub mod motion_executer;
-pub mod motion_manager;
-pub mod motion_types;
-pub mod motion_util;
+pub mod keyframe;
 pub mod odometry;
 pub mod path_finding;
 pub mod step_planner;
+pub mod walk;
 
-use motion_executer::motion_executer;
-use motion_manager::motion_manager_initializer;
+use keyframe::executor::keyframe_executor;
+use keyframe::manager::keyframe_executor_initializer;
 
 /// The motion module provides motion related functionalities.
 ///
 /// This module provides the following resources to the application:
-/// - [`MotionManager`](`motion_manager::MotionManager`)
+/// - [`KeyframeExecutor`](`keyframe::KeyframeExecutor`)
 /// - [`Odometry`]
 pub struct MotionModule;
 
@@ -27,11 +25,11 @@ impl Module for MotionModule {
             .add_system(
                 odometry::update_odometry
                     .after(kinematics::update_kinematics)
-                    .after(filter::orientation::update_orientation),
+                    .after(sensor::orientation::update_orientation),
             )
             .add_startup_system(odometry::setup_viewcoordinates)?
-            .add_startup_system(motion_manager_initializer)?
-            .add_system(motion_executer.after(finalize))
+            .add_startup_system(keyframe_executor_initializer)?
+            .add_system(keyframe_executor.after(finalize))
             .add_module(step_planner::StepPlannerModule)
     }
 }

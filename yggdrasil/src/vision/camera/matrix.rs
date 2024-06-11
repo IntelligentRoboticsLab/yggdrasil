@@ -3,10 +3,10 @@ use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    filter::{self, imu::IMUValues},
     kinematics::{self, robot_dimensions, RobotKinematics},
+    motion::walk::{engine::Side, SwingFoot},
     prelude::*,
-    walk::{engine::Side, SwingFoot},
+    sensor::{self, imu::IMUValues},
 };
 
 use super::{CameraConfig, CameraPosition, CameraSettings};
@@ -34,7 +34,7 @@ impl Module for CameraMatrixModule {
         Ok(app.init_resource::<CameraMatrices>()?.add_system(
             update_camera_matrix
                 .before(super::camera_system)
-                .after(filter::imu::imu_filter)
+                .after(sensor::imu::imu_sensor)
                 .after(kinematics::update_kinematics),
         ))
     }

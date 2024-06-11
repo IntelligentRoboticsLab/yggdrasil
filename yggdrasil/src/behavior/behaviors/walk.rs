@@ -1,11 +1,8 @@
 use nalgebra::Point2;
 
 use crate::{
-    behavior::engine::{Behavior, Context},
-    motion::motion_manager::MotionManager,
-    motion::step_planner::StepPlanner,
-    nao::manager::NaoManager,
-    walk::engine::{Step, WalkingEngine},
+    behavior::engine::{Behavior, Context, Control},
+    motion::walk::engine::Step,
 };
 
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
@@ -14,14 +11,9 @@ pub struct Walk {
 }
 
 impl Behavior for Walk {
-    fn execute(
-        &mut self,
-        _context: Context,
-        _nao_manager: &mut NaoManager,
-        _walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
-        step_planner: &mut StepPlanner,
-    ) {
-        step_planner.set_absolute_target(Point2::new(0., 0.));
+    fn execute(&mut self, _context: Context, control: &mut Control) {
+        control
+            .step_planner
+            .set_absolute_target(Point2::new(0., 0.));
     }
 }

@@ -1,8 +1,8 @@
 use crate::{
-    config::showtime::PlayerConfig,
-    filter::button::{ChestButton, HeadButtons},
+    core::config::showtime::PlayerConfig,
     nao::manager::{NaoManager, Priority},
     prelude::*,
+    sensor::button::{ChestButton, HeadButtons},
 };
 
 use serde::{Deserialize, Serialize};
@@ -32,7 +32,7 @@ impl Module for PrimaryStateModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_resource(Resource::new(PrimaryState::Unstiff))?
-            .add_system(update_primary_state.after(crate::filter::button::button_filter)))
+            .add_system(update_primary_state.after(crate::sensor::button::button_filter)))
     }
 }
 

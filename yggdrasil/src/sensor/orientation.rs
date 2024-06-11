@@ -2,7 +2,7 @@ use nalgebra::{Quaternion, UnitComplex, UnitQuaternion, Vector3};
 use nidhogg::types::ForceSensitiveResistors;
 use serde::{Deserialize, Serialize};
 
-use crate::{nao::CycleTime, prelude::*, primary_state::PrimaryState};
+use crate::{behavior::primary_state::PrimaryState, nao::CycleTime, prelude::*};
 
 use super::imu::IMUValues;
 
@@ -19,7 +19,7 @@ pub struct OrientationFilter;
 
 impl Module for OrientationFilter {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(update_orientation.after(super::imu::imu_filter))
+        app.add_system(update_orientation.after(super::imu::imu_sensor))
             .add_startup_system(init_orientation_filter)
     }
 }

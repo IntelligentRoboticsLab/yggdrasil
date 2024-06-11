@@ -1,7 +1,7 @@
 use std::mem;
 
-use crate::camera::{matrix::CameraMatrices, Image};
-use crate::debug::DebugContext;
+use crate::core::debug::DebugContext;
+use crate::vision::camera::{matrix::CameraMatrices, Image};
 
 use crate::prelude::*;
 

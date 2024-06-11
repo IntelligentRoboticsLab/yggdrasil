@@ -5,16 +5,16 @@ use nidhogg::{types::SonarValues, NaoState};
 ///
 /// This module provides the following resources to the application:
 /// - [`SonarValues`]
-pub struct SonarFilter;
+pub struct SonarSensor;
 
-impl Module for SonarFilter {
+impl Module for SonarSensor {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(sonar_filter).init_resource::<SonarValues>()
+        app.add_system(sonar_sensor).init_resource::<SonarValues>()
     }
 }
 
 #[system]
-fn sonar_filter(nao_state: &NaoState, sonar: &mut SonarValues) -> Result<()> {
+fn sonar_sensor(nao_state: &NaoState, sonar: &mut SonarValues) -> Result<()> {
     sonar.left = nao_state.sonar.left;
     sonar.right = nao_state.sonar.right;
 

@@ -1,6 +1,6 @@
 use crate::{
-    config::{layout::LayoutConfig, showtime::PlayerConfig},
-    debug::DebugContext,
+    core::config::{layout::LayoutConfig, showtime::PlayerConfig},
+    core::debug::DebugContext,
     motion::odometry::{self, Odometry},
     prelude::*,
 };

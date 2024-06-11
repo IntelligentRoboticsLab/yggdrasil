@@ -1,9 +1,6 @@
 use crate::{
-    behavior::engine::{Behavior, Context},
-    motion::motion_manager::MotionManager,
-    motion::step_planner::StepPlanner,
+    behavior::engine::{Behavior, Context, Control},
     nao::manager::{NaoManager, Priority},
-    walk::engine::WalkingEngine,
 };
 use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 
@@ -16,15 +13,11 @@ const DEFAULT_PASSIVE_PRIORITY: Priority = Priority::Medium;
 pub struct StartUp;
 
 impl Behavior for StartUp {
-    fn execute(
-        &mut self,
-        context: Context,
-        nao_manager: &mut NaoManager,
-        _walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
-        _step_planner: &mut StepPlanner,
-    ) {
-        set_initial_joint_values(&context.robot_info.initial_joint_positions, nao_manager);
+    fn execute(&mut self, context: Context, control: &mut Control) {
+        set_initial_joint_values(
+            &context.robot_info.initial_joint_positions,
+            control.nao_manager,
+        );
     }
 }
 

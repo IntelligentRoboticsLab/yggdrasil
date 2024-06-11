@@ -8,14 +8,13 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
 
-use crate::camera::matrix::CameraMatrices;
-use crate::camera::{Image, TopImage};
-use crate::debug::DebugContext;
+use crate::core::debug::DebugContext;
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority::Medium;
 use crate::prelude::*;
+use crate::vision::camera::{matrix::CameraMatrices, Image, TopImage};
 
-use crate::ml::{MlModel, MlTask, MlTaskResource};
+use crate::core::ml::{MlModel, MlTask, MlTaskResource};
 
 use super::proposal::BallProposals;
 use super::BallDetectionConfig;
@@ -120,7 +119,7 @@ pub(super) fn detect_balls(
             patch_size,
         );
 
-        let patch = crate::ml::util::resize_patch(
+        let patch = crate::core::ml::util::resize_patch(
             (patch_size, patch_size),
             (IMAGE_INPUT_SIZE, IMAGE_INPUT_SIZE),
             patch,

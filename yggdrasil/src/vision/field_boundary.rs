@@ -4,10 +4,10 @@
 use std::{num::NonZeroU32, ops::Deref};
 
 use crate::{
-    camera::{Image, TopImage},
-    debug::DebugContext,
-    ml::{MlModel, MlTask, MlTaskResource},
+    core::debug::DebugContext,
+    core::ml::{MlModel, MlTask, MlTaskResource},
     prelude::*,
+    vision::camera::{Image, TopImage},
 };
 use fast_image_resize as fr;
 use heimdall::YuyvImage;

@@ -8,7 +8,7 @@ use proposal::BallProposalConfig;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{camera::matrix::CameraMatrices, debug::DebugContext, prelude::*};
+use crate::{core::debug::DebugContext, prelude::*, vision::camera::matrix::CameraMatrices};
 
 use self::{
     classifier::{BallClassifierConfig, Balls},

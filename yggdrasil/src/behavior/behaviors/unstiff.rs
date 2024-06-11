@@ -1,9 +1,6 @@
 use crate::{
-    behavior::engine::{Behavior, Context},
-    motion::motion_manager::MotionManager,
-    motion::step_planner::StepPlanner,
-    nao::manager::{NaoManager, Priority},
-    walk::engine::WalkingEngine,
+    behavior::engine::{Behavior, Context, Control},
+    nao::manager::Priority,
 };
 use nidhogg::types::{color, FillExt, RightEye};
 
@@ -13,24 +10,20 @@ use nidhogg::types::{color, FillExt, RightEye};
 pub struct Unstiff;
 
 impl Behavior for Unstiff {
-    fn execute(
-        &mut self,
-        _context: Context,
-        nao_manager: &mut NaoManager,
-        walking_engine: &mut WalkingEngine,
-        _: &mut MotionManager,
-        _step_planner: &mut StepPlanner,
-    ) {
+    fn execute(&mut self, _context: Context, control: &mut Control) {
         // Makes right eye blue.
-        nao_manager.set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());
+        control
+            .nao_manager
+            .set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());
 
-        if !walking_engine.is_sitting() {
-            walking_engine.request_sit();
+        if !control.walking_engine.is_sitting() {
+            control.walking_engine.request_sit();
         } else {
-            nao_manager.unstiff_legs(Priority::Critical);
+            control.nao_manager.unstiff_legs(Priority::Critical);
         }
 
-        nao_manager
+        control
+            .nao_manager
             .unstiff_arms(Priority::Critical)
             .unstiff_head(Priority::Critical);
     }
