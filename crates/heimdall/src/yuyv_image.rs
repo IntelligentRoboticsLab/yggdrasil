@@ -81,6 +81,27 @@ impl YuyvImage {
         Ok(())
     }
 
+    fn to_planar_yuv(&self) -> Vec<u8> {
+        let num_pixels = self.height * self.width;
+        let mut buf = vec![0u8; num_pixels * 2];
+
+        for pixel_duo_id in 0..num_pixels / 2 {
+            let offset_image = pixel_duo_id * 4;
+
+            let offset_y = pixel_duo_id * 2;
+            let offset_u = num_pixels + pixel_duo_id;
+            let offset_v = num_pixels + num_pixels / 2 + pixel_duo_id;
+
+            buf[offset_y] = self.frame[offset_image];
+            buf[offset_y + 1] = self.frame[offset_image + 2];
+
+            buf[offset_u] = self.frame[offset_image + 1];
+            buf[offset_v] = self.frame[offset_image + 3];
+        }
+
+        buf
+    }
+
     /// Convert this [`YuyvImage`] to a JPEG image.
     ///
     /// The quality of the JPEG image is determined by the `quality` parameter. The value should be
@@ -89,17 +110,34 @@ impl YuyvImage {
     /// # Errors
     /// This function fails if it cannot convert the taken image.
     pub fn to_jpeg(&self, quality: i32) -> Result<OwnedBuf> {
-        let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
-        Self::yuyv_to_rgb(self, &mut rgb_buffer)?;
-        let img = turbojpeg::Image {
-            pixels: rgb_buffer.as_slice(),
-            width: self.width(),
-            pitch: self.width() * 3,
-            height: self.height(),
-            format: turbojpeg::PixelFormat::RGB,
-        };
+        // let start = std::time::Instant::now();
+        // let mut rgb_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
+        // Self::yuyv_to_rgb(self, &mut rgb_buffer)?;
+        // let img = turbojpeg::Image {
+        //     pixels: rgb_buffer.as_slice(),
+        //     width: self.width(),
+        //     pitch: self.width() * 3,
+        //     height: self.height(),
+        //     format: turbojpeg::PixelFormat::RGB,
+        // };
+        // let result =
+        //     turbojpeg::compress(img, quality, turbojpeg::Subsamp::Sub2x2).map_err(Error::Jpeg);
+        // eprintln!("elapsed: {:?}", start.elapsed());
+        // result
 
-        turbojpeg::compress(img, quality, turbojpeg::Subsamp::Sub2x2).map_err(Error::Jpeg)
+        let start = std::time::Instant::now();
+        let yuv_planar = self.to_planar_yuv();
+        let img = turbojpeg::YuvImage {
+            pixels: yuv_planar.as_slice(),
+            width: self.width(),
+            align: 2,
+            height: self.height(),
+            // subsamp: turbojpeg::Subsamp::Sub2x2,
+            subsamp: turbojpeg::Subsamp::Sub2x1,
+        };
+        let result = turbojpeg::compress_yuv(img, quality).map_err(Error::Jpeg);
+        eprintln!("elapsed: {:?}", start.elapsed());
+        result
     }
 
     #[must_use]
