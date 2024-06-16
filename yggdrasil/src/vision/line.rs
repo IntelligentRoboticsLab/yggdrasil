@@ -52,7 +52,7 @@ impl LineSegment<2> {
         let delta_y = vector![self.start.y - self.end.y, other.start.y - other.end.y];
 
         let determinant = delta_x.perp(&delta_y);
-        if determinant.abs() < std::f32::EPSILON {
+        if determinant.abs() < f32::EPSILON {
             return None;
         }
 
