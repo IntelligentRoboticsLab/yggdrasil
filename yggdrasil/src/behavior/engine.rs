@@ -25,7 +25,7 @@ use crate::{
     },
 };
 
-use super::behaviors::Setup;
+use super::behaviors::Standby;
 
 /// Context that is passed into the behavior engine.
 ///
@@ -113,7 +113,7 @@ pub trait Behavior {
 pub enum BehaviorKind {
     StartUp(StartUp),
     Unstiff(Unstiff),
-    Setup(Setup),
+    Standby(Standby),
     Initial(Initial),
     Observe(Observe),
     Penalized(Penalized),
@@ -257,7 +257,7 @@ impl Engine {
         self.behavior = match context.primary_state {
             PrimaryState::Unstiff => BehaviorKind::Unstiff(Unstiff),
             PrimaryState::Penalized => BehaviorKind::Penalized(Penalized),
-            PrimaryState::Setup => BehaviorKind::Setup(Setup),
+            PrimaryState::Standby => BehaviorKind::Standby(Standby),
             PrimaryState::Initial => BehaviorKind::Initial(Initial),
             PrimaryState::Ready => BehaviorKind::Observe(Observe::default()),
             PrimaryState::Set => BehaviorKind::Initial(Initial),
