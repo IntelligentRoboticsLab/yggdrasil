@@ -228,6 +228,9 @@ impl App {
 
 impl ScheduledApp {
     fn run(&mut self) -> Result<()> {
+        self.schedule.check_ordered_dependencies()?;
+        self.schedule.build_graph()?;
+
         loop {
             self.schedule.execute(&mut self.storage)?;
         }

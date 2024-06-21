@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 dyn-clone = { workspace = true }
+itertools = { workspace = true }
 miette = { workspace = true }
 petgraph = { workspace = true }
