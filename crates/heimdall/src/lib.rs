@@ -7,6 +7,9 @@ pub use camera_matrix::CameraMatrix;
 mod yuyv_image;
 pub use yuyv_image::{YuvColIter, YuvPixel, YuvRowIter, YuyvImage};
 
+mod yuv_planar_image;
+pub use yuv_planar_image::YuvPlanarImage;
+
 mod rgb_image;
 pub use rgb_image::RgbImage;
 

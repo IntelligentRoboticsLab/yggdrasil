@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use heimdall::{Camera, CameraDevice, Result};
+use heimdall::{Camera, CameraDevice, Result, YuvPlanarImage};
 
 fn main() -> Result<()> {
     let camera_device = CameraDevice::new("/dev/video-top")?;
@@ -16,7 +16,8 @@ fn main() -> Result<()> {
 
     let _rgb_image = image.to_rgb()?;
 
-    image.store_jpeg("image.jpeg")?;
+    let yuv_planar_image = YuvPlanarImage::from_yuyv(&image);
+    yuv_planar_image.store_jpeg("image.jpeg")?;
 
     Ok(())
 }

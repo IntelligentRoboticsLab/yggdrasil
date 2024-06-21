@@ -10,6 +10,8 @@ use nidhogg::types::RgbU8;
 
 use std::net::IpAddr;
 
+use heimdall::YuvPlanarImage;
+
 use crate::{
     nao::{Cycle, CycleTime},
     prelude::*,
@@ -94,7 +96,8 @@ impl DebugContext {
         #[cfg(feature = "rerun")]
         {
             self.set_cycle(&img.cycle());
-            let jpeg = img.yuyv_image().to_jpeg(jpeg_quality)?;
+            let yuv_planar_image = YuvPlanarImage::from_yuyv(img.yuyv_image());
+            let jpeg = yuv_planar_image.to_jpeg(jpeg_quality)?;
             let tensor_data =
                 rerun::TensorData::from_jpeg_bytes(jpeg.to_owned()).into_diagnostic()?;
             let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
