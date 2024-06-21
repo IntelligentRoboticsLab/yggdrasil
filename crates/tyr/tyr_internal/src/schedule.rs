@@ -19,6 +19,8 @@ use petgraph::{
     algo::toposort, csr::IndexType, prelude::NodeIndex, stable_graph::StableDiGraph, Direction,
 };
 
+const DEFAULT_ORDER_INDEX: u8 = (256u32 / 2u32) as u8;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SystemIndex(usize);
 
@@ -100,7 +102,7 @@ pub struct Schedule {
 /// Trait that allows systems to specify explicit system ordering.
 pub trait IntoDependencySystem<Input>: Sized {
     fn into_dependency_system(self) -> DependencySystem<Input> {
-        self.into_dependency_system_with_order_index(50)
+        self.into_dependency_system_with_order_index(DEFAULT_ORDER_INDEX)
     }
 
     fn into_dependency_system_with_order_index(self, order_index: u8) -> DependencySystem<Input>;
@@ -155,7 +157,7 @@ impl<S: IntoSystem<NormalSystem, I>, I> IntoDependencySystem<I> for S {
         DependencySystem {
             system: Box::new(self.into_system()),
             dependencies: Vec::new(),
-            system_order_index: 50,
+            system_order_index: DEFAULT_ORDER_INDEX,
             _input: PhantomData,
         }
     }
