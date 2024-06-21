@@ -229,15 +229,16 @@ impl Schedule {
 
         for dependency_system in &self.dependency_systems {
             for dependency in &dependency_system.dependencies {
-                match dependency {
-                    Dependency::Before(other) => {
-                        let other_boxed_dependency = dependency_system_lookup
-                            .get(&other.deref().system_type())
-                            .unwrap();
+                let other_boxed_dependency = dependency_system_lookup
+                    .get(&dependency.boxed_system().deref().system_type())
+                    .unwrap();
 
+                match dependency {
+                    Dependency::Before(_) => {
                         if dependency_system.system_order_index()
                             > other_boxed_dependency.system_order_index()
                         {
+                            // TODO: Better error handling.
                             eprintln!(
                                 "{} should be before {}",
                                 dependency_system.system.system_name(),
@@ -246,14 +247,11 @@ impl Schedule {
                             exit(1);
                         }
                     }
-                    Dependency::After(other) => {
-                        let other_boxed_dependency = dependency_system_lookup
-                            .get(&other.deref().system_type())
-                            .unwrap();
-
+                    Dependency::After(_) => {
                         if dependency_system.system_order_index()
                             < other_boxed_dependency.system_order_index()
                         {
+                            // TODO: Better error handling.
                             eprintln!(
                                 "{} should be after {}",
                                 dependency_system.system.system_name(),
@@ -300,14 +298,9 @@ impl Schedule {
             let dag_index = system_order_to_dag_lookup[&dependency_system.system_order_index];
             let dag = &mut self.dags[dag_index];
             let node_indices = &mut node_indices_per_dag[dag_index];
-            eprintln!(
-                "system_name: {:?}",
-                dependency_system.system.deref().system_name()
-            );
 
             let node_index = dag.add_system(SystemIndex(system_index));
             node_indices.insert(dependency_system.system.deref().system_type(), node_index);
-            eprintln!("node_id: {}", node_index.index());
 
             for dependency in &dependency_system.dependencies {
                 let dependency_dependency_system =
@@ -325,7 +318,6 @@ impl Schedule {
 
     pub fn execute(&mut self, storage: &mut Storage) -> Result<()> {
         for dag in &self.dags {
-            // let mut execution_graph = self.dag.graph.clone();
             let mut execution_graph = dag.graph.clone();
 
             while execution_graph.node_count() > 0 {
