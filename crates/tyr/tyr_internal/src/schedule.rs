@@ -64,7 +64,11 @@ pub struct Schedule {
 
 /// Trait that allows systems to specify explicit system ordering.
 pub trait IntoDependencySystem<Input>: Sized {
-    fn into_dependency_system(self) -> DependencySystem<Input>;
+    fn into_dependency_system(self) -> DependencySystem<Input> {
+        self.into_dependency_system_with_order_index(50)
+    }
+
+    fn into_dependency_system_with_order_index(self, order_index: u8) -> DependencySystem<Input>;
 
     /// Schedule the system before the system supplied as argument.
     fn before<OtherInput>(
@@ -91,6 +95,7 @@ pub enum Dependency {
 pub struct DependencySystem<I> {
     system: BoxedSystem,
     dependencies: Vec<Dependency>,
+    system_order_index: u8,
     _input: PhantomData<I>,
 }
 
@@ -102,6 +107,10 @@ impl DependencySystem<()> {
     pub(crate) fn add_dependency(&mut self, dependency: Dependency) {
         self.dependencies.push(dependency)
     }
+
+    pub(crate) fn system_order_index(&self) -> u8 {
+        self.system_order_index
+    }
 }
 
 // Get systems with all possible inputs
@@ -111,16 +120,27 @@ impl<S: IntoSystem<NormalSystem, I>, I> IntoDependencySystem<I> for S {
         DependencySystem {
             system: Box::new(self.into_system()),
             dependencies: Vec::new(),
+            system_order_index: 50,
+            _input: PhantomData,
+        }
+    }
+
+    fn into_dependency_system_with_order_index(self, order_index: u8) -> DependencySystem<I> {
+        DependencySystem {
+            system: Box::new(self.into_system()),
+            dependencies: Vec::new(),
+            system_order_index: order_index,
             _input: PhantomData,
         }
     }
 }
 
 impl<I> IntoDependencySystem<()> for DependencySystem<I> {
-    fn into_dependency_system(self) -> DependencySystem<()> {
+    fn into_dependency_system_with_order_index(self, order_index: u8) -> DependencySystem<()> {
         DependencySystem {
             system: self.system,
             dependencies: self.dependencies,
+            system_order_index: order_index,
             _input: PhantomData,
         }
     }

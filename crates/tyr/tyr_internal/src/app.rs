@@ -78,6 +78,22 @@ impl App {
     }
 
     #[must_use]
+    pub fn add_system_with_index<I>(
+        mut self,
+        system: impl IntoDependencySystem<I>,
+        order_index: u8,
+    ) -> Self {
+        self.systems
+            // Turns system into `DependencySystem<I>` then transforms it to `DependencySystem<()>`
+            .push(
+                system
+                    .into_dependency_system_with_order_index(order_index)
+                    .into_dependency_system_with_order_index(order_index),
+            );
+        self
+    }
+
+    #[must_use]
     /// Adds a chain of systems to the app
     ///
     /// The systems added run sequentially, i.e.:
