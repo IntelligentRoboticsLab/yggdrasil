@@ -1,9 +1,9 @@
 use std::{
-    any::{Any, TypeId},
+    any::TypeId,
     collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
     marker::PhantomData,
-    ops::{Deref, DerefMut},
+    ops::Deref,
     process::exit,
 };
 
@@ -15,9 +15,7 @@ use crate::{
 };
 
 use miette::{miette, Result};
-use petgraph::{
-    algo::toposort, csr::IndexType, prelude::NodeIndex, stable_graph::StableDiGraph, Direction,
-};
+use petgraph::{algo::toposort, prelude::NodeIndex, stable_graph::StableDiGraph, Direction};
 
 const DEFAULT_ORDER_INDEX: u8 = (256u32 / 2u32) as u8;
 
@@ -36,66 +34,38 @@ impl Dag {
             .expect("Could not get system index from node index!")
     }
 
-    // pub fn add_system(
-    //     &mut self,
-    //     node_indices: &HashMap<BoxedSystem, NodeIndex<usize>>,
-    //     system: SystemIndex,
-    //     dependencies: &[Dependency],
-    // ) -> Result<NodeIndex<usize>> {
-    //     let node = self.graph.add_node(system);
-    //     for dependency in dependencies {
-    //         match dependency {
-    //             Dependency::Before(other) => {
-    //                 let other_node = *node_indices
-    //                     .get(other)
-    //                     .expect("Failed to find dependency node index"); // TODO: nice error handling
-    //                 self.graph.add_edge(node, other_node, ());
-    //             }
-    //             Dependency::After(other) => {
-    //                 let other_node = *node_indices
-    //                     .get(other)
-    //                     .expect("Failed to find dependency node index"); // TODO: nice error handling
-    //                 self.graph.add_edge(other_node, node, ());
-    //             }
-    //         }
-    //     }
-    //
-    //     Ok(node)
-    // }
-    pub fn add_system(
+    pub fn add_system(&mut self, system: SystemIndex) -> NodeIndex<usize> {
+        self.graph.add_node(system)
+    }
+
+    pub fn add_system_dependency(
         &mut self,
+        node: NodeIndex<usize>,
         node_indices: &HashMap<TypeId, NodeIndex<usize>>,
-        system: SystemIndex,
-        dependencies: &[Dependency],
-    ) -> Result<NodeIndex<usize>> {
-        let node = self.graph.add_node(system);
-        for dependency in dependencies {
-            match dependency {
-                Dependency::Before(other) => {
-                    let other_node = *node_indices
-                        .get(&other.deref().system_type())
-                        .expect("Failed to find dependency node index"); // TODO: nice error handling
-                    self.graph.add_edge(node, other_node, ());
-                }
-                Dependency::After(other) => {
-                    let other_node = *node_indices
-                        .get(&other.deref().system_type())
-                        .expect("Failed to find dependency node index"); // TODO: nice error handling
-                    self.graph.add_edge(other_node, node, ());
-                }
+        dependency: &Dependency,
+    ) -> Result<()> {
+        match dependency {
+            Dependency::Before(other) => {
+                let other_node = *node_indices
+                    .get(&other.deref().system_type())
+                    .expect("Failed to find dependency node index"); // TODO: nice error handling
+                self.graph.add_edge(node, other_node, ());
+            }
+            Dependency::After(other) => {
+                let other_node = *node_indices
+                    .get(&other.deref().system_type())
+                    .expect("Failed to find dependency node index"); // TODO: nice error handling
+                self.graph.add_edge(other_node, node, ());
             }
         }
 
-        Ok(node)
+        Ok(())
     }
 }
 
 #[derive(Default)]
 pub struct Schedule {
-    // systems: Vec<BoxedSystem>,
     dependency_systems: Vec<DependencySystem<()>>,
-    // node_indices: HashMap<BoxedSystem, NodeIndex<usize>>,
-    dag: Dag,
     dags: Vec<Dag>,
 }
 
@@ -127,6 +97,15 @@ pub trait IntoDependencySystem<Input>: Sized {
 pub enum Dependency {
     Before(BoxedSystem),
     After(BoxedSystem),
+}
+
+impl Dependency {
+    fn boxed_system(&self) -> &BoxedSystem {
+        match self {
+            Dependency::Before(boxed_system) => boxed_system,
+            Dependency::After(boxed_system) => boxed_system,
+        }
+    }
 }
 
 pub struct DependencySystem<I> {
@@ -239,7 +218,7 @@ impl Schedule {
     }
 
     pub fn check_ordered_dependencies(&mut self) -> Result<()> {
-        let boxed_system_lookup = HashMap::<TypeId, &DependencySystem<()>>::from_iter(
+        let dependency_system_lookup = HashMap::<TypeId, &DependencySystem<()>>::from_iter(
             self.dependency_systems.iter().map(|dependency_system| {
                 (
                     dependency_system.system.deref().system_type(),
@@ -252,7 +231,7 @@ impl Schedule {
             for dependency in &dependency_system.dependencies {
                 match dependency {
                     Dependency::Before(other) => {
-                        let other_boxed_dependency = boxed_system_lookup
+                        let other_boxed_dependency = dependency_system_lookup
                             .get(&other.deref().system_type())
                             .unwrap();
 
@@ -268,7 +247,7 @@ impl Schedule {
                         }
                     }
                     Dependency::After(other) => {
-                        let other_boxed_dependency = boxed_system_lookup
+                        let other_boxed_dependency = dependency_system_lookup
                             .get(&other.deref().system_type())
                             .unwrap();
 
@@ -291,6 +270,15 @@ impl Schedule {
     }
 
     pub fn build_graph(&mut self) -> Result<()> {
+        let dependency_system_lookup = HashMap::<TypeId, &DependencySystem<()>>::from_iter(
+            self.dependency_systems.iter().map(|dependency_system| {
+                (
+                    dependency_system.system.deref().system_type(),
+                    dependency_system,
+                )
+            }),
+        );
+
         let mut unique_system_order_indeces = self
             .dependency_systems
             .iter()
@@ -298,6 +286,8 @@ impl Schedule {
             .unique()
             .collect::<Vec<_>>();
         unique_system_order_indeces.sort_unstable();
+        let mut node_indices_per_dag =
+            vec![HashMap::<TypeId, NodeIndex<usize>>::new(); unique_system_order_indeces.len()];
 
         let mut system_order_to_dag_lookup = HashMap::new();
 
@@ -306,59 +296,32 @@ impl Schedule {
             system_order_to_dag_lookup.insert(*order_index, dag_id);
         }
 
-        let mut node_indices = HashMap::new();
         for (system_index, dependency_system) in self.dependency_systems.iter().enumerate() {
-            let dag =
-                &mut self.dags[system_order_to_dag_lookup[&dependency_system.system_order_index]];
+            let dag_index = system_order_to_dag_lookup[&dependency_system.system_order_index];
+            let dag = &mut self.dags[dag_index];
+            let node_indices = &mut node_indices_per_dag[dag_index];
             eprintln!(
                 "system_name: {:?}",
                 dependency_system.system.deref().system_name()
             );
-            let node_index = dag.add_system(
-                &node_indices,
-                SystemIndex(system_index),
-                &dependency_system.dependencies,
-            )?;
-            eprintln!("node_id: {}", node_index.index());
+
+            let node_index = dag.add_system(SystemIndex(system_index));
             node_indices.insert(dependency_system.system.deref().system_type(), node_index);
+            eprintln!("node_id: {}", node_index.index());
+
+            for dependency in &dependency_system.dependencies {
+                let dependency_dependency_system =
+                    dependency_system_lookup[&dependency.boxed_system().system_type()];
+                if dependency_system.system_order_index()
+                    == dependency_dependency_system.system_order_index()
+                {
+                    dag.add_system_dependency(node_index, node_indices, dependency)?;
+                }
+            }
         }
 
         Ok(())
     }
-
-    // fn system(&self, node_id: NodeIndex<usize>) -> &BoxedSystem {
-    //     // &self.systems[self.dag.system_index(node_id).0]
-    //     &self.dependency_systems[self.dag.system_index(node_id).0].system
-    // }
-    //
-    // fn system_name(&self, node_id: NodeIndex<usize>) -> &str {
-    //     self.system(node_id).system_name()
-    // }
-
-    // #[allow(dead_code)]
-    // fn print_graph(&mut self) {
-    //     let nodes = self.dag.graph.node_indices();
-    //     for idx in nodes {
-    //         let name = self.dependency_systems[self.dag.graph.node_weight(idx).unwrap().0]
-    //             .system
-    //             .system_name();
-    //         let incoming = self
-    //             .dag
-    //             .graph
-    //             .neighbors_directed(idx, Direction::Incoming)
-    //             .map(|neighbor| self.system_name(neighbor))
-    //             .collect::<Vec<_>>();
-    //
-    //         let outgoing = self
-    //             .dag
-    //             .graph
-    //             .neighbors_directed(idx, Direction::Outgoing)
-    //             .map(|neighbor| self.system_name(neighbor))
-    //             .collect::<Vec<_>>();
-    //
-    //         println!("System `{name}`\nIncoming: `{incoming:?}`\nOutgoing: `{outgoing:?}`\n");
-    //     }
-    // }
 
     pub fn execute(&mut self, storage: &mut Storage) -> Result<()> {
         for dag in &self.dags {
