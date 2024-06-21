@@ -57,7 +57,6 @@ impl YuvPlanarImage {
     /// # Errors
     /// This function fails if it cannot convert the taken image.
     pub fn to_jpeg(&self, quality: i32) -> Result<OwnedBuf> {
-        let start = std::time::Instant::now();
         let img = turbojpeg::YuvImage {
             pixels: self.deref(),
             width: self.width(),
@@ -65,9 +64,8 @@ impl YuvPlanarImage {
             height: self.height(),
             subsamp: turbojpeg::Subsamp::Sub2x1,
         };
-        let result = turbojpeg::compress_yuv(img, quality).map_err(Error::Jpeg);
-        eprintln!("elapsed: {:?}", start.elapsed());
-        result
+
+        turbojpeg::compress_yuv(img, quality).map_err(Error::Jpeg)
     }
 
     /// Store the image as a jpeg to a file.
