@@ -17,7 +17,7 @@ fn main() -> Result<()> {
     let _rgb_image = image.to_rgb()?;
 
     let yuv_planar_image = YuvPlanarImage::from_yuyv(&image);
-    yuv_planar_image.store_jpeg("image.jpeg")?;
+    yuv_planar_image.store_jpeg("image.jpeg", 20)?;
 
     Ok(())
 }

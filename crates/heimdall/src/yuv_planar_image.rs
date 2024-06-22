@@ -76,9 +76,9 @@ impl YuvPlanarImage {
     ///
     /// # Panics
     /// This function pannics if it cannot convert a `u32` value to `usize`.
-    pub fn store_jpeg(&self, file_path: impl AsRef<Path>) -> Result<()> {
+    pub fn store_jpeg(&self, file_path: impl AsRef<Path>, quality: i32) -> Result<()> {
         let mut output_file = File::create(file_path)?;
-        let jpeg = self.to_jpeg(20)?;
+        let jpeg = self.to_jpeg(quality)?;
         output_file.write_all(&jpeg)?;
 
         Ok(())
