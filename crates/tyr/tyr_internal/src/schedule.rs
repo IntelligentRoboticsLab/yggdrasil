@@ -44,29 +44,21 @@ impl Dag {
         node_indices: &HashMap<TypeId, NodeIndex<usize>>,
         dependency: &Dependency,
     ) -> Result<()> {
+        let other_node = *node_indices
+            .get(&dependency.boxed_system().system_type())
+            .expect("Failed to find dependency node index"); // TODO: nice error handling
+
         match dependency {
-            Dependency::Before(other) => {
-                let other_node = *node_indices
-                    .get(&other.deref().system_type())
-                    .expect("Failed to find dependency node index"); // TODO: nice error handling
+            Dependency::Before(_) => {
                 self.graph.add_edge(node, other_node, ());
             }
-            Dependency::After(other) => {
-                let other_node = *node_indices
-                    .get(&other.deref().system_type())
-                    .expect("Failed to find dependency node index"); // TODO: nice error handling
+            Dependency::After(_) => {
                 self.graph.add_edge(other_node, node, ());
             }
         }
 
         Ok(())
     }
-}
-
-#[derive(Default)]
-pub struct Schedule {
-    dependency_systems: Vec<DependencySystem<()>>,
-    dags: Vec<Dag>,
 }
 
 /// Trait that allows systems to specify explicit system ordering.
@@ -132,15 +124,6 @@ impl DependencySystem<()> {
 // Get systems with all possible inputs
 // This `I` gets replaced later as we do not need it
 impl<S: IntoSystem<NormalSystem, I>, I> IntoDependencySystem<I> for S {
-    fn into_dependency_system(self) -> DependencySystem<I> {
-        DependencySystem {
-            system: Box::new(self.into_system()),
-            dependencies: Vec::new(),
-            system_order_index: DEFAULT_ORDER_INDEX,
-            _input: PhantomData,
-        }
-    }
-
     fn into_dependency_system_with_order_index(self, order_index: u8) -> DependencySystem<I> {
         DependencySystem {
             system: Box::new(self.into_system()),
@@ -182,18 +165,6 @@ impl<I> IntoDependencySystem<()> for DependencySystem<I> {
     }
 }
 
-impl Schedule {
-    pub fn with_dependency_systems(dependency_systems: Vec<DependencySystem<()>>) -> Result<Self> {
-        let mut schedule = Self::default();
-
-        for ordering in dependency_systems {
-            schedule.add_dependency_system(ordering)?;
-        }
-
-        Ok(schedule)
-    }
-}
-
 impl Hash for BoxedSystem {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // TODO: maybe should add dependency info???
@@ -210,9 +181,26 @@ impl PartialEq for BoxedSystem {
 
 impl Eq for BoxedSystem {}
 
+#[derive(Default)]
+pub struct Schedule {
+    dependency_systems: Vec<DependencySystem<()>>,
+    dags: Vec<Dag>,
+    node_index_lookup: Vec<HashMap<NodeIndex<usize>, usize>>,
+}
+
 impl Schedule {
-    pub fn add_dependency_system(&mut self, ordering: DependencySystem<()>) -> Result<()> {
-        self.dependency_systems.push(ordering);
+    pub fn with_dependency_systems(dependency_systems: Vec<DependencySystem<()>>) -> Result<Self> {
+        let mut schedule = Self::default();
+
+        for ordering in dependency_systems {
+            schedule.add_dependency_system(ordering)?;
+        }
+
+        Ok(schedule)
+    }
+
+    pub fn add_dependency_system(&mut self, dependency_system: DependencySystem<()>) -> Result<()> {
+        self.dependency_systems.push(dependency_system);
 
         Ok(())
     }
@@ -230,7 +218,7 @@ impl Schedule {
         for dependency_system in &self.dependency_systems {
             for dependency in &dependency_system.dependencies {
                 let other_boxed_dependency = dependency_system_lookup
-                    .get(&dependency.boxed_system().deref().system_type())
+                    .get(&dependency.boxed_system().system_type())
                     .unwrap();
 
                 match dependency {
@@ -270,10 +258,7 @@ impl Schedule {
     pub fn build_graph(&mut self) -> Result<()> {
         let dependency_system_lookup = HashMap::<TypeId, &DependencySystem<()>>::from_iter(
             self.dependency_systems.iter().map(|dependency_system| {
-                (
-                    dependency_system.system.deref().system_type(),
-                    dependency_system,
-                )
+                (dependency_system.system.system_type(), dependency_system)
             }),
         );
 
@@ -291,6 +276,7 @@ impl Schedule {
 
         for (dag_id, order_index) in unique_system_order_indeces.iter().enumerate() {
             self.dags.push(Dag::default());
+            self.node_index_lookup.push(Default::default());
             system_order_to_dag_lookup.insert(*order_index, dag_id);
         }
 
@@ -300,7 +286,8 @@ impl Schedule {
             let node_indices = &mut node_indices_per_dag[dag_index];
 
             let node_index = dag.add_system(SystemIndex(system_index));
-            node_indices.insert(dependency_system.system.deref().system_type(), node_index);
+            node_indices.insert(dependency_system.system.system_type(), node_index);
+            self.node_index_lookup[dag_index].insert(node_index, system_index);
 
             for dependency in &dependency_system.dependencies {
                 let dependency_dependency_system =
@@ -317,7 +304,7 @@ impl Schedule {
     }
 
     pub fn execute(&mut self, storage: &mut Storage) -> Result<()> {
-        for dag in &self.dags {
+        for (dag_index, dag) in self.dags.iter().enumerate() {
             let mut execution_graph = dag.graph.clone();
 
             while execution_graph.node_count() > 0 {
@@ -333,8 +320,14 @@ impl Schedule {
                         })
                         .collect::<HashSet<_>>(),
                     // Cycle: fix yo code
-                    Err(_cycle) => {
-                        return Err(miette! { "Cycle found"});
+                    Err(cycle) => {
+                        let dependency_system_index = *self.node_index_lookup[dag_index]
+                            .get(&cycle.node_id())
+                            .unwrap();
+                        let dependency_system = &self.dependency_systems[dependency_system_index];
+                        return Err(
+                            miette! { "Cycle found in system {}", dependency_system.system.system_name()},
+                        );
                     }
                 };
 
