@@ -3,8 +3,6 @@ use std::{
     collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
     marker::PhantomData,
-    ops::Deref,
-    process::exit,
 };
 
 use itertools::Itertools;
@@ -46,7 +44,13 @@ impl Dag {
     ) -> Result<()> {
         let other_node = *node_indices
             .get(&dependency.boxed_system().system_type())
-            .expect("Failed to find dependency node index"); // TODO: nice error handling
+            .ok_or_else(|| {
+                miette!(
+                    "Failed to find dependency node index for {}",
+                    dependency.boxed_system().system_name()
+                )
+            })?;
+        dependency.boxed_system().system_name();
 
         match dependency {
             Dependency::Before(_) => {
@@ -208,44 +212,51 @@ impl Schedule {
     pub fn check_ordered_dependencies(&mut self) -> Result<()> {
         let dependency_system_lookup = HashMap::<TypeId, &DependencySystem<()>>::from_iter(
             self.dependency_systems.iter().map(|dependency_system| {
-                (
-                    dependency_system.system.deref().system_type(),
-                    dependency_system,
-                )
+                (dependency_system.system.system_type(), dependency_system)
             }),
         );
 
         for dependency_system in &self.dependency_systems {
             for dependency in &dependency_system.dependencies {
-                let other_boxed_dependency = dependency_system_lookup
+                let other_dependency_system = dependency_system_lookup
                     .get(&dependency.boxed_system().system_type())
-                    .unwrap();
+                    .ok_or_else(|| {
+                        miette!(
+                            "Unable to find dependency \"{}\" for \"{}\"",
+                            dependency.boxed_system().system_name(),
+                            dependency.boxed_system().system_name()
+                        )
+                    })?;
 
                 match dependency {
                     Dependency::Before(_) => {
                         if dependency_system.system_order_index()
-                            > other_boxed_dependency.system_order_index()
+                            > other_dependency_system.system_order_index()
                         {
-                            // TODO: Better error handling.
-                            eprintln!(
-                                "{} should be before {}",
+                            return Err(miette!(
+                                "{}.before({}) but {} has a higher order than {}, {} vs {}",
                                 dependency_system.system.system_name(),
-                                other_boxed_dependency.system.system_name()
-                            );
-                            exit(1);
+                                other_dependency_system.system.system_name(),
+                                dependency_system.system.system_name(),
+                                other_dependency_system.system.system_name(),
+                                dependency_system.system_order_index(),
+                                other_dependency_system.system_order_index(),
+                            ));
                         }
                     }
                     Dependency::After(_) => {
                         if dependency_system.system_order_index()
-                            < other_boxed_dependency.system_order_index()
+                            < other_dependency_system.system_order_index()
                         {
-                            // TODO: Better error handling.
-                            eprintln!(
-                                "{} should be after {}",
+                            return Err(miette!(
+                                "{}.after({}) but {} has a lower order than {}, {} vs {}",
                                 dependency_system.system.system_name(),
-                                other_boxed_dependency.system.system_name()
-                            );
-                            exit(1);
+                                other_dependency_system.system.system_name(),
+                                dependency_system.system.system_name(),
+                                other_dependency_system.system.system_name(),
+                                dependency_system.system_order_index(),
+                                other_dependency_system.system_order_index(),
+                            ));
                         }
                     }
                 }
@@ -325,6 +336,7 @@ impl Schedule {
                             .get(&cycle.node_id())
                             .unwrap();
                         let dependency_system = &self.dependency_systems[dependency_system_index];
+
                         return Err(
                             miette! { "Cycle found in system {}", dependency_system.system.system_name()},
                         );
