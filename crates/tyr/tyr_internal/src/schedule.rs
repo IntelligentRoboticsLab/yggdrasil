@@ -299,6 +299,13 @@ impl Schedule {
             let node_index = dag.add_system(SystemIndex(system_index));
             node_indices.insert(dependency_system.system.system_type(), node_index);
             self.node_index_lookup[dag_index].insert(node_index, system_index);
+        }
+
+        for dependency_system in &self.dependency_systems {
+            let dag_index = system_order_to_dag_lookup[&dependency_system.system_order_index];
+            let dag = &mut self.dags[dag_index];
+            let node_indices = &mut node_indices_per_dag[dag_index];
+            let node_index = node_indices[&dependency_system.system.system_type()];
 
             for dependency in &dependency_system.dependencies {
                 let dependency_dependency_system =
