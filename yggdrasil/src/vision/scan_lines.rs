@@ -432,7 +432,7 @@ pub fn scan_lines_system(
     }
 
     if bottom_scan_grid.image().timestamp() != bottom_image.timestamp() {
-        bottom_scan_grid.update_scan_lines_from_image(&top_scan_grid.image);
+        bottom_scan_grid.update_scan_lines_from_image(bottom_image);
     }
 
     Ok(())
