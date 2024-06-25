@@ -210,11 +210,11 @@ impl Schedule {
     }
 
     pub fn check_ordered_dependencies(&mut self) -> Result<()> {
-        let dependency_system_lookup = HashMap::<TypeId, &DependencySystem<()>>::from_iter(
-            self.dependency_systems.iter().map(|dependency_system| {
-                (dependency_system.system.system_type(), dependency_system)
-            }),
-        );
+        let dependency_system_lookup: HashMap<TypeId, &DependencySystem<()>> = self
+            .dependency_systems
+            .iter()
+            .map(|dependency_system| (dependency_system.system.system_type(), dependency_system))
+            .collect();
 
         for dependency_system in &self.dependency_systems {
             for dependency in &dependency_system.dependencies {
@@ -267,11 +267,11 @@ impl Schedule {
     }
 
     pub fn build_graph(&mut self) -> Result<()> {
-        let dependency_system_lookup = HashMap::<TypeId, &DependencySystem<()>>::from_iter(
-            self.dependency_systems.iter().map(|dependency_system| {
-                (dependency_system.system.system_type(), dependency_system)
-            }),
-        );
+        let dependency_system_lookup: HashMap<TypeId, &DependencySystem<()>> = self
+            .dependency_systems
+            .iter()
+            .map(|dependency_system| (dependency_system.system.system_type(), dependency_system))
+            .collect();
 
         let mut unique_system_order_indeces = self
             .dependency_systems
