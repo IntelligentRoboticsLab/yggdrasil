@@ -12,7 +12,7 @@ use crate::{
     system::{IntoSystem, NormalSystem},
 };
 
-use miette::{miette, Result};
+use miette::{miette, Report, Result};
 use petgraph::{algo::toposort, prelude::NodeIndex, stable_graph::StableDiGraph, Direction};
 
 const DEFAULT_ORDER_INDEX: u8 = (256u32 / 2u32) as u8;
@@ -210,13 +210,40 @@ impl Schedule {
     }
 
     pub fn check_ordered_dependencies(&mut self) -> Result<()> {
-        let dependency_system_lookup: HashMap<TypeId, &DependencySystem<()>> = self
-            .dependency_systems
-            .iter()
-            .map(|dependency_system| (dependency_system.system.system_type(), dependency_system))
-            .collect();
+        fn dependency_before_error(
+            dependency_system: &DependencySystem<()>,
+            other_dependency_system: &DependencySystem<()>,
+        ) -> Report {
+            miette!(
+                "{}.before({}) but {} has a higher order than {}, {} vs {}",
+                dependency_system.system.system_name(),
+                other_dependency_system.system.system_name(),
+                dependency_system.system.system_name(),
+                other_dependency_system.system.system_name(),
+                dependency_system.system_order_index(),
+                other_dependency_system.system_order_index(),
+            )
+        }
 
-        for dependency_system in &self.dependency_systems {
+        fn dependency_after_error(
+            dependency_system: &DependencySystem<()>,
+            other_dependency_system: &DependencySystem<()>,
+        ) -> Report {
+            miette!(
+                "{}.after({}) but {} has a lower order than {}, {} vs {}",
+                dependency_system.system.system_name(),
+                other_dependency_system.system.system_name(),
+                dependency_system.system.system_name(),
+                other_dependency_system.system.system_name(),
+                dependency_system.system_order_index(),
+                other_dependency_system.system_order_index(),
+            )
+        }
+
+        fn assert_all_dependencies_valid(
+            dependency_system: &DependencySystem<()>,
+            dependency_system_lookup: &HashMap<TypeId, &DependencySystem<()>>,
+        ) -> Result<()> {
             for dependency in &dependency_system.dependencies {
                 let other_dependency_system = dependency_system_lookup
                     .get(&dependency.boxed_system().system_type())
@@ -233,14 +260,9 @@ impl Schedule {
                         if dependency_system.system_order_index()
                             > other_dependency_system.system_order_index()
                         {
-                            return Err(miette!(
-                                "{}.before({}) but {} has a higher order than {}, {} vs {}",
-                                dependency_system.system.system_name(),
-                                other_dependency_system.system.system_name(),
-                                dependency_system.system.system_name(),
-                                other_dependency_system.system.system_name(),
-                                dependency_system.system_order_index(),
-                                other_dependency_system.system_order_index(),
+                            return Err(dependency_before_error(
+                                dependency_system,
+                                other_dependency_system,
                             ));
                         }
                     }
@@ -248,19 +270,26 @@ impl Schedule {
                         if dependency_system.system_order_index()
                             < other_dependency_system.system_order_index()
                         {
-                            return Err(miette!(
-                                "{}.after({}) but {} has a lower order than {}, {} vs {}",
-                                dependency_system.system.system_name(),
-                                other_dependency_system.system.system_name(),
-                                dependency_system.system.system_name(),
-                                other_dependency_system.system.system_name(),
-                                dependency_system.system_order_index(),
-                                other_dependency_system.system_order_index(),
+                            return Err(dependency_after_error(
+                                dependency_system,
+                                other_dependency_system,
                             ));
                         }
                     }
                 }
             }
+
+            Ok(())
+        }
+
+        let dependency_system_lookup: HashMap<TypeId, &DependencySystem<()>> = self
+            .dependency_systems
+            .iter()
+            .map(|dependency_system| (dependency_system.system.system_type(), dependency_system))
+            .collect();
+
+        for dependency_system in &self.dependency_systems {
+            assert_all_dependencies_valid(dependency_system, &dependency_system_lookup)?;
         }
 
         Ok(())
@@ -284,13 +313,15 @@ impl Schedule {
             vec![HashMap::<TypeId, NodeIndex<usize>>::new(); unique_system_order_indeces.len()];
 
         let mut system_order_to_dag_lookup = HashMap::new();
-
         for (dag_id, order_index) in unique_system_order_indeces.iter().enumerate() {
             self.dags.push(Dag::default());
             self.node_index_lookup.push(Default::default());
             system_order_to_dag_lookup.insert(*order_index, dag_id);
         }
 
+        // First store all the systems before checking all the dependencies.
+        // We do not check the dependencies while storing the systems, because we could depend on a
+        // system that hasn't been stored yet.
         for (system_index, dependency_system) in self.dependency_systems.iter().enumerate() {
             let dag_index = system_order_to_dag_lookup[&dependency_system.system_order_index];
             let dag = &mut self.dags[dag_index];
@@ -301,6 +332,7 @@ impl Schedule {
             self.node_index_lookup[dag_index].insert(node_index, system_index);
         }
 
+        // Now check all the dependencies.
         for dependency_system in &self.dependency_systems {
             let dag_index = system_order_to_dag_lookup[&dependency_system.system_order_index];
             let dag = &mut self.dags[dag_index];
