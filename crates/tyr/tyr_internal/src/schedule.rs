@@ -68,10 +68,10 @@ impl Dag {
 /// Trait that allows systems to specify explicit system ordering.
 pub trait IntoDependencySystem<Input>: Sized {
     fn into_dependency_system(self) -> DependencySystem<Input> {
-        self.into_dependency_system_with_order_index(DEFAULT_ORDER_INDEX)
+        self.into_dependency_system_with_index(DEFAULT_ORDER_INDEX)
     }
 
-    fn into_dependency_system_with_order_index(self, order_index: u8) -> DependencySystem<Input>;
+    fn into_dependency_system_with_index(self, order_index: u8) -> DependencySystem<Input>;
 
     /// Schedule the system before the system supplied as argument.
     fn before<OtherInput>(
@@ -128,7 +128,7 @@ impl DependencySystem<()> {
 // Get systems with all possible inputs
 // This `I` gets replaced later as we do not need it
 impl<S: IntoSystem<NormalSystem, I>, I> IntoDependencySystem<I> for S {
-    fn into_dependency_system_with_order_index(self, order_index: u8) -> DependencySystem<I> {
+    fn into_dependency_system_with_index(self, order_index: u8) -> DependencySystem<I> {
         DependencySystem {
             system: Box::new(self.into_system()),
             dependencies: Vec::new(),
@@ -139,7 +139,7 @@ impl<S: IntoSystem<NormalSystem, I>, I> IntoDependencySystem<I> for S {
 }
 
 impl<I> IntoDependencySystem<()> for DependencySystem<I> {
-    fn into_dependency_system_with_order_index(self, order_index: u8) -> DependencySystem<()> {
+    fn into_dependency_system_with_index(self, order_index: u8) -> DependencySystem<()> {
         DependencySystem {
             system: self.system,
             dependencies: self.dependencies,

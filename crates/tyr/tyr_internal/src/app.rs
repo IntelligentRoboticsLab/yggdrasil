@@ -87,8 +87,8 @@ impl App {
             // Turns system into `DependencySystem<I>` then transforms it to `DependencySystem<()>`
             .push(
                 system
-                    .into_dependency_system_with_order_index(order_index)
-                    .into_dependency_system_with_order_index(order_index),
+                    .into_dependency_system_with_index(order_index)
+                    .into_dependency_system_with_index(order_index),
             );
         self
     }
