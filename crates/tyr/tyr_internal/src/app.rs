@@ -5,15 +5,30 @@ use crate::{IntoDependencySystem, Module};
 
 use miette::Result;
 
+#[derive(Default)]
+pub enum SystemStage {
+    Init,
+    #[default]
+    Execute,
+    Finalize,
+    Custom(u8),
+}
+
+impl SystemStage {
+    fn index(&self) -> u8 {
+        match self {
+            SystemStage::Init => 20,
+            SystemStage::Execute => (256u32 / 2u32) as u8,
+            SystemStage::Finalize => 130,
+            SystemStage::Custom(value) => *value,
+        }
+    }
+}
+
 /// The glue that binds systems and resources together, and allows them to be executed.
 #[derive(Default)]
 pub struct App {
     systems: Vec<DependencySystem<()>>,
-    storage: Storage,
-}
-
-struct ScheduledApp {
-    schedule: Schedule,
     storage: Storage,
 }
 
@@ -78,17 +93,17 @@ impl App {
     }
 
     #[must_use]
-    pub fn add_system_with_index<I>(
+    pub fn add_staged_system<I>(
         mut self,
+        stage: SystemStage,
         system: impl IntoDependencySystem<I>,
-        order_index: u8,
     ) -> Self {
         self.systems
             // Turns system into `DependencySystem<I>` then transforms it to `DependencySystem<()>`
             .push(
                 system
-                    .into_dependency_system_with_index(order_index)
-                    .into_dependency_system_with_index(order_index),
+                    .into_dependency_system_with_index(stage.index())
+                    .into_dependency_system_with_index(stage.index()),
             );
         self
     }
@@ -224,6 +239,11 @@ impl App {
 
         app.run()
     }
+}
+
+struct ScheduledApp {
+    schedule: Schedule,
+    storage: Storage,
 }
 
 impl ScheduledApp {
