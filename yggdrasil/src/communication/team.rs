@@ -33,8 +33,12 @@ fn startup(storage: &mut Storage, config: &ShowtimeConfig) -> Result<()> {
 
 #[system]
 fn sync(tc: &mut TeamCommunication, message: &Option<GameControllerMessage>) -> Result<()> {
-    // If we can't calibrate the budget, we aren't in a game.
-    if let Some(threshold) = tc.calibrate_budget(message) {
+    // We can't calibrate the budget if we aren't in a game.
+    let Some(game_controller_message) = message else {
+        return Ok(());
+    };
+
+    if let Some(threshold) = tc.calibrate_budget(game_controller_message) {
         // For now, make sure to never send messages faster than can be maintained.
         tc.rate_mut().late_threshold = threshold;
         tc.rate_mut().automatic_deadline = threshold;
@@ -150,8 +154,8 @@ impl TeamCommunication {
         Ok(received)
     }
 
-    fn calibrate_budget(&self, message: &Option<GameControllerMessage>) -> Option<Duration> {
-        match message.as_ref()? {
+    fn calibrate_budget(&self, message: &GameControllerMessage) -> Option<Duration> {
+        match message {
             GameControllerMessage {
                 state: GameState::Playing,
                 players_per_team,
