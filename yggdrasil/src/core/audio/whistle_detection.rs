@@ -12,7 +12,6 @@ use crate::{
     prelude::*,
 };
 
-// TODO: prolly add to config
 /// The size of each window in samples.
 const WINDOW_SIZE: usize = 512;
 /// The interval between each window in samples.
@@ -171,9 +170,6 @@ fn detect_whistle(
     config: &WhistleDetectionConfig,
     nao_manager: &mut NaoManager,
 ) -> Result<()> {
-    // TODO: 'scrub' empty bits from input
-    // TODO: average channels, take random or run separate? (HULKS choose arbitrary ear I believe)
-
     if !model.active() {
         // take audio of arbitrary ear
         let spectrogram = state
