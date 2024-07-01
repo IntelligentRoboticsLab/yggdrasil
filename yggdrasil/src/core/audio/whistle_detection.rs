@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
+use nidhogg::types::{FillExt, LeftEar, RightEar};
 use num::Zero;
 use rustfft::{num_complex::Complex, FftPlanner};
-<<<<<<<< HEAD:yggdrasil/src/core/audio/whistle_detection.rs
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -50,13 +50,9 @@ pub struct WhistleDetectionConfig {
 impl Config for WhistleDetectionConfig {
     const PATH: &'static str = "whistle_detection.toml";
 }
-========
-use serde::Serialize;
->>>>>>>> 74c568b2 (fourier stuff in separate file + formatting):yggdrasil/src/audio/whistle_detection/fourier.rs
 
 /// Short time fourier transform, which decomposes a signal into the energy levels for each frequency
 /// for each timestep.
-///
 /// Manages internal state to avoid repeat allocations over multiple calls.
 pub struct Stft {
     fft: Arc<dyn rustfft::Fft<f32>>,
@@ -149,4 +145,63 @@ impl Spectrogram {
             freq_bins: self.freq_bins,
         };
     }
+}
+
+pub struct WhistleState {
+    detections: Vec<bool>,
+    stft: Stft,
+}
+
+impl Default for WhistleState {
+    fn default() -> Self {
+        Self {
+            detections: Vec::new(),
+            stft: Stft::new(WINDOW_SIZE, HOP_SIZE),
+        }
+    }
+}
+
+#[system]
+fn detect_whistle(
+    state: &mut WhistleState,
+    model: &mut MlTask<WhistleDetectionModel>,
+    audio_input: &AudioInput,
+    config: &WhistleDetectionConfig,
+    nao_manager: &mut NaoManager,
+) -> Result<()> {
+    // TODO: 'scrub' empty bits from input
+    // TODO: average channels, take random or run separate? (HULKS choose arbitrary ear I believe)
+
+    if !model.active() {
+        // take audio of arbitrary ear
+        let spectrogram = state
+            .stft
+            .compute(&audio_input.buffer[0], 0, MEAN_WINDOWS)
+            .windows_mean();
+
+        // run detection model
+        model.try_start_infer(&spectrogram.powers)?;
+    }
+
+    // check if detection cycle has been completed
+    if let Some(Ok(result)) = model.poll::<Vec<f32>>() {
+        // resize state.detections if necessary
+        state.detections.resize(config.detection_tries, false);
+
+        state.detections.rotate_right(1);
+        state.detections[0] = result[0] >= config.threshold;
+
+        let detections = state.detections.iter().fold(0, |acc, e| acc + *e as usize);
+
+        if detections >= config.detections_needed {
+            tracing::info!("Whistle detected");
+            nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
+            nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
+        } else {
+            nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
+            nao_manager.set_right_ear_led(RightEar::fill(0.0), Priority::High);
+        }
+    }
+
+    Ok(())
 }
