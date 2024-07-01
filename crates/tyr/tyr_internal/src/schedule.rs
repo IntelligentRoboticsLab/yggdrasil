@@ -301,18 +301,18 @@ impl Schedule {
             .map(|dependency_system| (dependency_system.system.system_type(), dependency_system))
             .collect();
 
-        let mut unique_system_order_indeces = self
+        let mut unique_system_order_indices = self
             .dependency_systems
             .iter()
             .map(|dependency_system| dependency_system.system_order_index)
             .unique()
             .collect::<Vec<_>>();
-        unique_system_order_indeces.sort_unstable();
+        unique_system_order_indices.sort_unstable();
         let mut node_indices_per_dag =
-            vec![HashMap::<TypeId, NodeIndex<usize>>::new(); unique_system_order_indeces.len()];
+            vec![HashMap::<TypeId, NodeIndex<usize>>::new(); unique_system_order_indices.len()];
 
         let mut system_order_to_dag_lookup = HashMap::new();
-        for (dag_id, order_index) in unique_system_order_indeces.iter().enumerate() {
+        for (dag_id, order_index) in unique_system_order_indices.iter().enumerate() {
             self.dags.push(Dag::default());
             self.node_index_lookup.push(Default::default());
             system_order_to_dag_lookup.insert(*order_index, dag_id);
