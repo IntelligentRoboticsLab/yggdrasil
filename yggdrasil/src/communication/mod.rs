@@ -7,7 +7,7 @@ use team::TeamCommunicationModule;
 /// A collection of modules related to behaviors.
 ///
 /// This module adds the following modules to the application:
-/// - [`BehaviorEngineModule`]
+/// - [`CommunicationModule`]
 pub struct CommunicationModule;
 
 impl Module for CommunicationModule {
