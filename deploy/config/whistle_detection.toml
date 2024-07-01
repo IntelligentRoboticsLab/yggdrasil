@@ -1,3 +1,3 @@
-gain = 1.0
-threshold = 0.001
-consecutive = 3
+threshold = 0.1
+detection_tries = 4
+detections_needed = 3

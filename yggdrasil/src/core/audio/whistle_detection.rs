@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use nidhogg::types::{FillExt, LeftEar, RightEar};
-use rustfft::{num_complex::Complex, Fft, FftPlanner};
+use num::Zero;
+use rustfft::{num_complex::Complex, FftPlanner};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -11,13 +12,13 @@ use crate::{
     prelude::*,
 };
 
-const BUFFER_INDICES: [usize; 2] = [0, 1];
-
-const FFT_SIZE: usize = 512;
+// TODO: prolly add to config
+/// The size of each window in samples.
+const WINDOW_SIZE: usize = 512;
+/// The interval between each window in samples.
 const HOP_SIZE: usize = 256;
-
-const FFT_NYQUIST_SIZE: usize = FFT_SIZE / 2 + 1;
-const WINDOWS: usize = (NUMBER_OF_SAMPLES - FFT_SIZE) / HOP_SIZE + 1;
+/// The number of windows to take the mean of before sending the average to the model.
+const MEAN_WINDOWS: usize = (NUMBER_OF_SAMPLES - WINDOW_SIZE) / HOP_SIZE + 1;
 
 pub struct WhistleDetectionModule;
 
@@ -40,27 +41,124 @@ impl MlModel for WhistleDetectionModel {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WhistleDetectionConfig {
-    pub gain: f32,
     pub threshold: f32,
-    pub consecutive: usize,
+    /// For how many detection cycles to listen for a whistle.
+    pub detection_tries: usize,
+    /// How many detections within `detection_tries` detection cycles are required to flag a whistle.
+    pub detections_needed: usize,
 }
 
 impl Config for WhistleDetectionConfig {
     const PATH: &'static str = "whistle_detection.toml";
 }
 
+/// Short time fourier transform, which decomposes a signal into the energy levels for each frequency
+/// for each timestep.
+///
+/// Manages internal state to avoid repeat allocations over multiple calls.
+pub struct Stft {
+    fft: Arc<dyn rustfft::Fft<f32>>,
+    window_size: usize,
+    hop_size: usize,
+
+    /// Reusable internal complex fft output buffer.
+    window_buff: Vec<Complex<f32>>,
+    /// Reusable internal fft scratch buffer.
+    window_scratch: Vec<Complex<f32>>,
+}
+
+impl Stft {
+    pub fn new(window_size: usize, hop_size: usize) -> Self {
+        let fft = FftPlanner::<f32>::new().plan_fft_forward(window_size);
+        let scratch_len = fft.get_inplace_scratch_len();
+
+        Self {
+            fft,
+            window_size,
+            hop_size,
+
+            window_buff: vec![Complex::zero(); window_size],
+            window_scratch: vec![Complex::zero(); scratch_len],
+        }
+    }
+
+    /// Computes the short time fourier transform with hann window smoothing
+    /// for `windows` windows starting from `offset`.
+    pub fn compute(&mut self, audio_pwr: &[f32], offset: usize, windows: usize) -> Spectrogram {
+        let mut fft_outputs = Vec::with_capacity(windows * self.fft.len());
+        let unique_freqs = self.window_size / 2 + 1;
+
+        // compute windowed fft for every window
+        for i in 0..windows {
+            fft_outputs.extend(self.windowed_fft(audio_pwr, offset + i * self.hop_size));
+        }
+        return Spectrogram {
+            powers: fft_outputs,
+            freq_bins: unique_freqs,
+        };
+    }
+
+    /// Computes a single window of the fast fourier transform with hann window smoothing.
+    /// Starts from `offset` within the audio array.
+    fn windowed_fft(&mut self, audio_pwr: &[f32], offset: usize) -> impl Iterator<Item = f32> + '_ {
+        // apply window smoothing
+        for (i, w) in apodize::hanning_iter(self.window_size).enumerate() {
+            self.window_buff[i] = Complex::new(audio_pwr[offset + i] * w as f32, 0.0);
+        }
+
+        // compute fft
+        self.fft
+            .process_with_scratch(&mut self.window_buff, &mut self.window_scratch);
+
+        return self
+            .window_buff
+            .iter()
+            .cloned()
+            // ft result is symmetric, only first window_size / 2 + 1 samples are unique
+            .take(self.window_size / 2 + 1)
+            // square norm of complex fft output
+            .map(|c| c.norm_sqr());
+    }
+}
+
+/// Output of a [`Stft`]. That is, the energy level for each frequency for each timestep.
+#[derive(Debug, Serialize)]
+pub struct Spectrogram {
+    /// The energy levels.
+    pub powers: Vec<f32>,
+    /// The number of frequencies per timestep.
+    pub freq_bins: usize,
+}
+
+impl Spectrogram {
+    /// Returns the mean of all windows.
+    pub fn windows_mean(self) -> Self {
+        let mut powers = self.powers[0..self.freq_bins].to_vec();
+        for (i, p) in self.powers.iter().skip(self.freq_bins).enumerate() {
+            powers[i % self.freq_bins] += p;
+        }
+
+        let windows = (self.powers.len() / self.freq_bins) as f32;
+        for i in 0..powers.len() {
+            powers[i] /= windows;
+        }
+        return Self {
+            powers,
+            freq_bins: self.freq_bins,
+        };
+    }
+}
+
 pub struct WhistleState {
-    detections: usize,
-    fft: Arc<dyn Fft<f32>>,
+    detections: Vec<bool>,
+    stft: Stft,
 }
 
 impl Default for WhistleState {
     fn default() -> Self {
-        let mut planner = FftPlanner::new();
-
         Self {
-            detections: 0,
-            fft: planner.plan_fft_forward(FFT_SIZE),
+            detections: Vec::new(),
+            stft: Stft::new(WINDOW_SIZE, HOP_SIZE),
         }
     }
 }
@@ -73,57 +171,35 @@ fn detect_whistle(
     config: &WhistleDetectionConfig,
     nao_manager: &mut NaoManager,
 ) -> Result<()> {
+    // TODO: 'scrub' empty bits from input
+    // TODO: average channels, take random or run separate? (HULKS choose arbitrary ear I believe)
+
     if !model.active() {
-        let mut complex_buffer = [Complex::new(0.0, 0.0); FFT_SIZE];
-        let mut real_buffer = [0.0; FFT_NYQUIST_SIZE];
+        // take audio of arbitrary ear
+        let spectrogram = state
+            .stft
+            .compute(&audio_input.buffer[0], 0, MEAN_WINDOWS)
+            .windows_mean();
 
-        // Break up the buffer into windows and average them.
-        for i in 0..WINDOWS {
-            // Load window into FFT buffer.
-            for (j, complex_sample) in complex_buffer.iter_mut().enumerate() {
-                let mut sample = 0.0;
-
-                // Average over all the channels.
-                for k in BUFFER_INDICES {
-                    sample += audio_input.buffer[k][HOP_SIZE * i + j];
-                }
-
-                sample /= BUFFER_INDICES.len() as f32;
-                sample *= config.gain;
-                *complex_sample = Complex::new(sample, 0.0);
-            }
-
-            // Compute FFT.
-            state.fft.process(&mut complex_buffer);
-
-            // Take the amplitude and ignore frequencies above the Nyquist limit.
-            for (real_sample, complex_sample) in
-                real_buffer.iter_mut().zip(complex_buffer.iter_mut())
-            {
-                *real_sample += complex_sample.norm();
-            }
-        }
-
-        // Compute the average over all windows from the sum.
-        for real_sample in real_buffer.iter_mut() {
-            *real_sample /= WINDOWS as f32;
-        }
-
-        // Run the model.
-        model.try_start_infer(&real_buffer)?;
+        // run detection model
+        model.try_start_infer(&spectrogram.powers)?;
     }
 
+    // check if detection cycle has been completed
     if let Some(Ok(result)) = model.poll::<Vec<f32>>() {
-        if result[0] >= config.threshold {
-            state.detections += 1;
+        // resize state.detections if necessary
+        state.detections.resize(config.detection_tries, false);
 
-            if state.detections == config.consecutive {
-                tracing::info!("Whistle detected");
-                nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
-                nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
-            }
+        state.detections.rotate_right(1);
+        state.detections[0] = result[0] >= config.threshold;
+
+        let detections = state.detections.iter().fold(0, |acc, e| acc + *e as usize);
+
+        if detections >= config.detections_needed {
+            tracing::info!("Whistle detected");
+            nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
+            nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
         } else {
-            state.detections = 0;
             nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
             nao_manager.set_right_ear_led(RightEar::fill(0.0), Priority::High);
         }

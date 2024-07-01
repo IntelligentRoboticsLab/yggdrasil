@@ -8,6 +8,7 @@ default-run = "yggdrasil"
 
 [dependencies]
 alsa = { workspace = true, optional = true }
+apodize = { workspace = true }
 bifrost = { path = "../crates/bifrost/" }
 derive_more = { workspace = true }
 enum_dispatch = { workspace = true }
