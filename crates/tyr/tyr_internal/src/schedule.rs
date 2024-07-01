@@ -50,7 +50,6 @@ impl Dag {
                     dependency.boxed_system().system_name()
                 )
             })?;
-        dependency.boxed_system().system_name();
 
         match dependency {
             Dependency::Before(_) => {
