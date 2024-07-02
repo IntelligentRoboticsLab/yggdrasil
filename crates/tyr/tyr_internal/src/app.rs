@@ -15,7 +15,7 @@ pub enum SystemStage {
 }
 
 impl SystemStage {
-    fn index(&self) -> u8 {
+    pub fn index(&self) -> u8 {
         match self {
             SystemStage::Init => 20,
             SystemStage::Execute => (256u32 / 2u32) as u8,
@@ -41,9 +41,18 @@ impl App {
         }
     }
 
-    /// Adds a system to the app.
+    #[must_use]
+    /// Add a system to the app.
     ///
-    /// The system will be automatically sorted by the scheduler based on the dependencies.
+    /// Same as [`add_staged_system`](App::add_staged_system) with [`SystemStage::Execute`].
+    pub fn add_system<I>(self, system: impl IntoDependencySystem<I>) -> Self {
+        self.add_staged_system(SystemStage::Execute, system)
+    }
+
+    /// Add a system to the app with the specified stage.
+    ///
+    /// Stages are executed in ascending order of their [`index`](SystemStage::index).
+    /// The systems in the same stage will be automatically sorted by the scheduler based on the dependencies.
     ///
     /// # Explicit ordering
     /// Explicit ordering of systems can be achieved using the [`IntoDependencySystem`] trait.
@@ -84,14 +93,6 @@ impl App {
     ///     Ok(())
     /// }
     /// ```
-    #[must_use]
-    pub fn add_system<I>(mut self, system: impl IntoDependencySystem<I>) -> Self {
-        self.systems
-            // Turns system into `DependencySystem<I>` then transforms it to `DependencySystem<()>`
-            .push(system.into_dependency_system().into_dependency_system());
-        self
-    }
-
     #[must_use]
     pub fn add_staged_system<I>(
         mut self,
