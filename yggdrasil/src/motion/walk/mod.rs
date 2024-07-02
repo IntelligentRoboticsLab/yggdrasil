@@ -22,8 +22,6 @@ use nidhogg::{
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 
-use crate::{nao, sensor};
-
 use self::engine::{FootOffsets, Side, Step, WalkState, WalkingEngine};
 
 #[derive(Debug, Default, Clone)]

@@ -1,5 +1,6 @@
 use crate::nao;
-use crate::{kinematics, nao::manager::finalize, prelude::*, sensor};
+use crate::nao::manager::finalize;
+use crate::{kinematics, prelude::*, sensor};
 
 use self::odometry::Odometry;
 use miette::Result;

@@ -16,7 +16,7 @@ use crate::{
     motion::keyframe::KeyframeExecutor,
     motion::step_planner::StepPlanner,
     motion::walk::engine::WalkingEngine,
-    nao::{self, manager::NaoManager, RobotInfo},
+    nao::{manager::NaoManager, RobotInfo},
     prelude::*,
     sensor::{
         button::{ChestButton, HeadButtons},
@@ -274,12 +274,7 @@ impl Engine {
 pub fn step(
     (engine, primary_state): (&mut Engine, &mut PrimaryState),
     robot_info: &RobotInfo,
-    (head_buttons, chest_button, contacts, fall_state): (
-        &HeadButtons,
-        &ChestButton,
-        &Contacts,
-        &FallState,
-    ),
+    (head_buttons, chest_button, contacts): (&HeadButtons, &ChestButton, &Contacts),
     (player_config, layout_config, yggdrasil_config, behavior_config, game_controller_config): (
         &PlayerConfig,
         &LayoutConfig,
