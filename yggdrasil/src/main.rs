@@ -35,7 +35,9 @@ fn main() -> Result<()> {
     #[cfg(feature = "alsa")]
     let app = app.add_module(yggdrasil::core::audio::AudioModule)?;
 
-    app.store_system_dependency_graph("../dependency_graph.png")?;
+    #[cfg(feature = "dependency_graph")]
+    return app.store_system_dependency_graph("../dependency_graph.png");
 
-    app.run()
+    #[cfg(not(feature = "dependency_graph"))]
+    return app.run();
 }
