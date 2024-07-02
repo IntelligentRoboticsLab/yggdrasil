@@ -5,12 +5,33 @@ use crate::{IntoDependencySystem, Module};
 
 use miette::Result;
 
-#[derive(Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum SystemStage {
+    /// This stage runs directly after the previous data has been sent to the LoLA socket.
+    ///
+    /// This stage is run first, before the main execution loop.
     Init,
+    /// This stage is used to update resources that depend on sensor data.
+    ///
+    /// This stage runs: *After* [`SystemStage::Init`], and *before* [`SystemStage::Execute`].
+    Sensor,
+    /// This stage is used for the main execution loop, and is where most systems will run.
+    ///
+    /// This stage runs: *After* [`SystemStage::Sensor`], and *before* [`SystemStage::Finalize`].
     #[default]
     Execute,
+    /// This stage runs at the end of the main execution, finalizing resources before
+    /// they are written to the LoLA socket.
+    ///
+    /// This stage runs: *After* [`SystemStage::Execute`], and *before* [`SystemStage::Write`].
     Finalize,
+    /// This stage runs while the data is being written to the LoLA socket.
+    ///
+    /// This stage is used for systems that interact with the LoLA socket, or depend on the write order.
+    Write,
+    /// A custom stage that can be used for any purpose.
+    ///
+    /// **This should be used sparingly, as it can make the execution order less clear.**
     Custom(u8),
 }
 
@@ -18,8 +39,10 @@ impl SystemStage {
     pub fn index(&self) -> u8 {
         match self {
             SystemStage::Init => 20,
+            SystemStage::Sensor => 50,
             SystemStage::Execute => (256u32 / 2u32) as u8,
-            SystemStage::Finalize => 130,
+            SystemStage::Finalize => 140,
+            SystemStage::Write => 240,
             SystemStage::Custom(value) => *value,
         }
     }
@@ -109,7 +132,6 @@ impl App {
         self
     }
 
-    #[must_use]
     /// Adds a chain of systems to the app
     ///
     /// The systems added run sequentially, i.e.:
@@ -122,6 +144,7 @@ impl App {
     ///    .add_system(second.after(first))
     ///    .add_system(third.after(second))
     /// ```
+    #[must_use]
     pub fn add_system_chain<I>(self, systems: impl IntoSystemChain<I>) -> Self {
         let mut system_chain = systems.chain();
 
@@ -136,6 +159,39 @@ impl App {
         system_chain
             .into_iter()
             .fold(self, |app, system| app.add_system(system))
+    }
+
+    /// Adds a chain of systems to the app, with the specified stage.
+    ///
+    /// The systems added run sequentially, i.e.:
+    /// ```ignore
+    /// app.add_staged_system_chain(SystemStage::Sensor, (first, second, third))
+    /// ```
+    /// is equivalent to
+    /// ```ignore
+    /// app.add_staged_system(SystemStage::Sensor, first)
+    ///    .add_staged_system(SystemStage::Sensor, second.after(first))
+    ///    .add_staged_system(SystemStage::Sensor, third.after(second))
+    /// ```
+    #[must_use]
+    pub fn add_staged_system_chain<I>(
+        self,
+        stage: SystemStage,
+        systems: impl IntoSystemChain<I>,
+    ) -> Self {
+        let mut system_chain = systems.chain();
+
+        for i in 1..system_chain.len() {
+            // create a dependency on the previous system
+            let prev_system = system_chain[i - 1].boxed_system();
+            let dependency = Dependency::After(prev_system.clone());
+
+            system_chain[i].add_dependency(dependency);
+        }
+
+        system_chain
+            .into_iter()
+            .fold(self, |app, system| app.add_staged_system(stage, system))
     }
 
     /// Adds a startup system to the app.

@@ -1,4 +1,5 @@
-use crate::{kinematics, nao::manager::finalize, prelude::*, sensor};
+use crate::nao;
+use crate::{kinematics, prelude::*, sensor};
 
 use self::odometry::Odometry;
 use miette::Result;
@@ -22,14 +23,18 @@ pub struct MotionModule;
 impl Module for MotionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.init_resource::<Odometry>()?
-            .add_system(
+            .add_staged_system(
+                SystemStage::Sensor,
                 odometry::update_odometry
                     .after(kinematics::update_kinematics)
                     .after(sensor::orientation::update_orientation),
             )
             .add_startup_system(odometry::setup_viewcoordinates)?
             .add_startup_system(keyframe_executor_initializer)?
-            .add_system(keyframe_executor.after(finalize))
+            .add_staged_system(
+                SystemStage::Finalize,
+                keyframe_executor.after(nao::manager::finalize),
+            )
             .add_module(step_planner::StepPlannerModule)
     }
 }

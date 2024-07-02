@@ -22,8 +22,6 @@ use nidhogg::{
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 
-use crate::{nao, sensor};
-
 use self::engine::{FootOffsets, Side, Step, WalkState, WalkingEngine};
 
 #[derive(Debug, Default, Clone)]
@@ -84,14 +82,10 @@ impl Module for WalkingEngineModule {
             .init_config::<WalkingEngineConfig>()?
             .init_resource::<SwingFoot>()?
             .add_startup_system(init_walking_engine)?
-            .add_system_chain((
-                run_walking_engine
-                    .after(sensor::fsr::force_sensitive_resistor_sensor)
-                    .after(sensor::imu::imu_sensor)
-                    .after(nao::write_hardware_info)
-                    .after(nao::update_cycle_stats),
-                update_swing_side,
-            )))
+            .add_staged_system_chain(
+                SystemStage::Finalize,
+                (run_walking_engine, update_swing_side),
+            ))
     }
 }
 

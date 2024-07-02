@@ -28,7 +28,8 @@ pub struct FallingFilter;
 
 impl Module for FallingFilter {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(pose_filter).init_resource::<FallState>()
+        app.add_staged_system(SystemStage::Sensor, pose_filter)
+            .init_resource::<FallState>()
     }
 }
 

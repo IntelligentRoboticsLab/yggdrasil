@@ -29,7 +29,8 @@ pub struct NaoManagerModule;
 
 impl Module for NaoManagerModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(finalize).init_resource::<NaoManager>()
+        app.add_staged_system(SystemStage::Finalize, finalize)
+            .init_resource::<NaoManager>()
     }
 }
 

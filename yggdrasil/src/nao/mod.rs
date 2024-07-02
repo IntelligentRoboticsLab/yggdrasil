@@ -89,9 +89,12 @@ impl Module for NaoModule {
             .add_startup_system(initialize_nao)?
             .init_resource::<NaoControlMessage>()?
             .add_module(manager::NaoManagerModule)?
-            .add_system(write_hardware_info.after(manager::finalize))
+            .add_staged_system(SystemStage::Write, write_hardware_info)
             .add_startup_system(cycle::initialize_cycle_counter)?
-            .add_system(cycle::update_cycle_stats.after(write_hardware_info)))
+            .add_staged_system(
+                SystemStage::Write,
+                cycle::update_cycle_stats.after(write_hardware_info),
+            ))
     }
 }
 

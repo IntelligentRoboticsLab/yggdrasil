@@ -14,7 +14,7 @@ pub struct FSRSensor;
 
 impl Module for FSRSensor {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(force_sensitive_resistor_sensor)
+        app.add_staged_system(SystemStage::Sensor, force_sensitive_resistor_sensor)
             .init_resource::<ForceSensitiveResistors>()?
             .init_resource::<Contacts>()
     }
