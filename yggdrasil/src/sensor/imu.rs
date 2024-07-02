@@ -17,7 +17,8 @@ pub struct IMUSensor;
 
 impl Module for IMUSensor {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(imu_sensor).init_resource::<IMUValues>()
+        app.add_staged_system(SystemStage::Sensor, imu_sensor)
+            .init_resource::<IMUValues>()
     }
 }
 

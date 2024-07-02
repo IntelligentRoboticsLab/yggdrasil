@@ -85,15 +85,14 @@ pub struct NaoModule;
 
 impl Module for NaoModule {
     fn initialize(self, app: App) -> Result<App> {
-        let write_stage = SystemStage::Custom(240);
         Ok(app
             .add_startup_system(initialize_nao)?
             .init_resource::<NaoControlMessage>()?
             .add_module(manager::NaoManagerModule)?
-            .add_staged_system(SystemStage::Custom(240), write_hardware_info)
+            .add_staged_system(SystemStage::Write, write_hardware_info)
             .add_startup_system(cycle::initialize_cycle_counter)?
             .add_staged_system(
-                write_stage,
+                SystemStage::Write,
                 cycle::update_cycle_stats.after(write_hardware_info),
             ))
     }

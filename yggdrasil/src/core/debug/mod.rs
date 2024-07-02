@@ -28,7 +28,7 @@ impl Module for DebugModule {
     fn initialize(self, app: App) -> miette::Result<tyr::prelude::App> {
         Ok(app
             .add_startup_system(init_rerun)?
-            .add_staged_system(SystemStage::Custom(250), set_debug_cycle))
+            .add_staged_system(SystemStage::Init, set_debug_cycle))
     }
 }
 

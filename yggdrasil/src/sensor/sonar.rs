@@ -9,7 +9,8 @@ pub struct SonarSensor;
 
 impl Module for SonarSensor {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(sonar_sensor).init_resource::<SonarValues>()
+        app.add_staged_system(SystemStage::Sensor, sonar_sensor)
+            .init_resource::<SonarValues>()
     }
 }
 

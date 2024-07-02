@@ -21,7 +21,7 @@ pub struct ButtonFilter;
 
 impl Module for ButtonFilter {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(button_filter)
+        app.add_staged_system(SystemStage::Sensor, button_filter)
             .init_resource::<HeadButtons>()?
             .init_resource::<ChestButton>()?
             .init_resource::<LeftHandButtons>()?
