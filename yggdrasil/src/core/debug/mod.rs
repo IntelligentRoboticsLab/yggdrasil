@@ -10,6 +10,7 @@ use nidhogg::types::RgbU8;
 
 use std::net::IpAddr;
 
+#[cfg(feature = "rerun")]
 use heimdall::YuvPlanarImage;
 
 use crate::{
