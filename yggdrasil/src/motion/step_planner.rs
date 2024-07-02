@@ -147,7 +147,6 @@ fn walk_planner_system(
 
     if distance < 0.1 && path.len() == 2 {
         walking_engine.request_stand();
-        tracing::info!("Not moving");
     } else if angle > 0.3 {
         walking_engine.request_walk(Step {
             forward: 0.,
