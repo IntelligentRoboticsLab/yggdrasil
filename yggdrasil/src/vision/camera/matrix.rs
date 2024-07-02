@@ -3,10 +3,10 @@ use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    kinematics::{self, robot_dimensions, RobotKinematics},
+    kinematics::{robot_dimensions, RobotKinematics},
     motion::walk::{engine::Side, SwingFoot},
     prelude::*,
-    sensor::{self, imu::IMUValues},
+    sensor::imu::IMUValues,
 };
 
 use super::{CameraConfig, CameraPosition, CameraSettings};

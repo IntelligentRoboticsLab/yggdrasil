@@ -23,7 +23,8 @@ pub struct MotionModule;
 impl Module for MotionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.init_resource::<Odometry>()?
-            .add_system(
+            .add_staged_system(
+                SystemStage::Sensor,
                 odometry::update_odometry
                     .after(kinematics::update_kinematics)
                     .after(sensor::orientation::update_orientation),
