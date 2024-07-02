@@ -31,12 +31,9 @@ pub struct CameraMatrixModule;
 
 impl Module for CameraMatrixModule {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app.init_resource::<CameraMatrices>()?.add_system(
-            update_camera_matrix
-                .before(super::camera_system)
-                .after(sensor::imu::imu_sensor)
-                .after(kinematics::update_kinematics),
-        ))
+        Ok(app
+            .init_resource::<CameraMatrices>()?
+            .add_system(update_camera_matrix.before(super::camera_system)))
     }
 }
 
