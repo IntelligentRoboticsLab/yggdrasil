@@ -308,7 +308,7 @@ pub fn step(
         behavior_config,
         game_controller_message: game_controller_message.as_ref(),
         game_controller_config,
-        fall_state,
+        fall_state: &FallState::Upright,
         pose: robot_pose,
     };
 
@@ -342,6 +342,6 @@ impl Module for BehaviorEngineModule {
     fn initialize(self, app: App) -> miette::Result<App> {
         Ok(app
             .init_resource::<Engine>()?
-            .add_system(step.after(nao::write_hardware_info)))
+            .add_staged_system(SystemStage::Init, step))
     }
 }

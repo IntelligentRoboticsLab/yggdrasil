@@ -5,7 +5,7 @@ use crate::{IntoDependencySystem, Module};
 
 use miette::Result;
 
-#[derive(Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum SystemStage {
     Init,
     #[default]
@@ -136,6 +136,26 @@ impl App {
         system_chain
             .into_iter()
             .fold(self, |app, system| app.add_system(system))
+    }
+
+    pub fn add_staged_system_chain<I>(
+        self,
+        stage: SystemStage,
+        systems: impl IntoSystemChain<I>,
+    ) -> Self {
+        let mut system_chain = systems.chain();
+
+        for i in 1..system_chain.len() {
+            // create a dependency on the previous system
+            let prev_system = system_chain[i - 1].boxed_system();
+            let dependency = Dependency::After(prev_system.clone());
+
+            system_chain[i].add_dependency(dependency);
+        }
+
+        system_chain
+            .into_iter()
+            .fold(self, |app, system| app.add_staged_system(stage, system))
     }
 
     /// Adds a startup system to the app.
