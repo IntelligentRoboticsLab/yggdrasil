@@ -420,22 +420,30 @@ impl Schedule {
     }
 
     pub fn generate_dot_file(&self) -> Result<String> {
-        fn node(node_index: usize, node_name: String) -> Stmt {
+        fn node(boxed_system: &BoxedSystem) -> Stmt {
+            let mut hasher = std::hash::DefaultHasher::new();
+            boxed_system.system_type().hash(&mut hasher);
+
             let attributes = vec![Attribute(
                 Id::Plain("label".to_owned()),
-                Id::Plain(format!("\"{}\"", node_name)),
+                Id::Plain(format!("\"{}\"", boxed_system.system_name())),
             )];
             Stmt::Node(Node {
-                id: NodeId(Id::Plain(node_index.to_string()), None),
+                id: NodeId(Id::Escaped(hasher.finish().to_string()), None),
                 attributes,
             })
         }
 
-        fn edge(node1: usize, node2: usize) -> Stmt {
+        fn edge(boxed_system1: &BoxedSystem, boxed_system2: &BoxedSystem) -> Stmt {
+            let mut hasher1 = std::hash::DefaultHasher::new();
+            boxed_system1.system_type().hash(&mut hasher1);
+            let mut hasher2 = std::hash::DefaultHasher::new();
+            boxed_system2.system_type().hash(&mut hasher2);
+
             Stmt::Edge(Edge {
                 ty: EdgeTy::Pair(
-                    Vertex::N(NodeId(Id::Plain(node1.to_string()), None)),
-                    Vertex::N(NodeId(Id::Plain(node2.to_string()), None)),
+                    Vertex::N(NodeId(Id::Plain(hasher1.finish().to_string()), None)),
+                    Vertex::N(NodeId(Id::Plain(hasher2.finish().to_string()), None)),
                 ),
                 attributes: vec![],
             })
@@ -443,18 +451,13 @@ impl Schedule {
 
         let mut statements: Vec<Stmt> = Vec::new();
 
-        for (boxed_system, node_index) in self.node_indices.iter() {
-            statements.push(node(
-                node_index.index(),
-                boxed_system.system_name().to_owned(),
-            ));
+        for dependency_system in &self.dependency_systems {
+            statements.push(node(&dependency_system.system))
+        }
 
-            for neighbor in self
-                .dag
-                .graph
-                .neighbors_directed(*node_index, Direction::Outgoing)
-            {
-                statements.push(edge(node_index.index(), neighbor.index()));
+        for dependency_system in &self.dependency_systems {
+            for dependency in &dependency_system.dependencies {
+                statements.push(edge(&dependency_system.system, dependency.boxed_system()));
             }
         }
 

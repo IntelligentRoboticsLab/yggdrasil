@@ -316,7 +316,9 @@ impl App {
     where
         P: AsRef<Path>,
     {
-        let schedule = Schedule::with_dependency_systems(self.systems.clone())?;
+        let mut schedule = Schedule::with_dependency_systems(self.systems.clone())?;
+        schedule.check_ordered_dependencies()?;
+        schedule.build_graph()?;
         schedule.generate_graph(path)
     }
 }
