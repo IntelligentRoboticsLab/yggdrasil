@@ -72,12 +72,16 @@ pub trait IntoDependencySystem<Input>: Sized {
 
     fn into_dependency_system_with_index(self, order_index: u8) -> DependencySystem<Input>;
 
+    fn current_index(&self) -> u8;
+
     /// Schedule the system before the system supplied as argument.
     fn before<OtherInput>(
         self,
         system: impl IntoSystem<NormalSystem, OtherInput>,
     ) -> DependencySystem<()> {
-        self.into_dependency_system().before(system)
+        let current_index = self.current_index();
+        self.into_dependency_system_with_index(current_index)
+            .before(system)
     }
 
     /// Schedule the system after the system supplied as argument.
@@ -85,7 +89,9 @@ pub trait IntoDependencySystem<Input>: Sized {
         self,
         system: impl IntoSystem<NormalSystem, OtherInput>,
     ) -> DependencySystem<()> {
-        self.into_dependency_system().after(system)
+        let current_index = self.current_index();
+        self.into_dependency_system_with_index(current_index)
+            .after(system)
     }
 }
 
@@ -135,6 +141,10 @@ impl<S: IntoSystem<NormalSystem, I>, I> IntoDependencySystem<I> for S {
             _input: PhantomData,
         }
     }
+
+    fn current_index(&self) -> u8 {
+        DEFAULT_ORDER_INDEX
+    }
 }
 
 impl<I> IntoDependencySystem<()> for DependencySystem<I> {
@@ -165,6 +175,10 @@ impl<I> IntoDependencySystem<()> for DependencySystem<I> {
         out.dependencies
             .push(Dependency::After(Box::new(system.into_system())));
         out
+    }
+
+    fn current_index(&self) -> u8 {
+        self.system_order_index
     }
 }
 
