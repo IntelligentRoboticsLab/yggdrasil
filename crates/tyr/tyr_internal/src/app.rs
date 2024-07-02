@@ -52,6 +52,7 @@ impl SystemStage {
 #[derive(Default)]
 pub struct App {
     systems: Vec<DependencySystem<()>>,
+    startup_systems: Vec<Box<dyn System<StartupSystem>>>,
     storage: Storage,
 }
 
@@ -60,6 +61,7 @@ impl App {
     pub fn new() -> Self {
         Self {
             systems: Vec::new(),
+            startup_systems: Vec::new(),
             storage: Storage::new(),
         }
     }
@@ -227,7 +229,8 @@ impl App {
         mut self,
         system: impl IntoSystem<StartupSystem, Input>,
     ) -> Result<Self> {
-        system.into_system().run(&mut self.storage)?;
+        self.startup_systems.push(Box::new(system.into_system()));
+
         Ok(self)
     }
 
@@ -286,9 +289,19 @@ impl App {
         module.initialize(self)
     }
 
+    fn run_startup_systems(&mut self) -> Result<()> {
+        for startup_system in &mut self.startup_systems {
+            startup_system.run(&mut self.storage)?;
+        }
+
+        Ok(())
+    }
+
     /// Creates a schedule from the specified app structure and executes it.
     #[must_use = "Scheduled app should be used!"]
-    pub fn run(self) -> Result<()> {
+    pub fn run(mut self) -> Result<()> {
+        self.run_startup_systems()?;
+
         let mut app = ScheduledApp {
             schedule: Schedule::with_dependency_systems(self.systems)?,
             storage: self.storage,
