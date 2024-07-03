@@ -1,8 +1,11 @@
 use std::{
     any::TypeId,
     collections::{HashMap, HashSet},
+    fs::File,
     hash::{Hash, Hasher},
+    io::Write,
     marker::PhantomData,
+    path::Path,
 };
 
 use itertools::Itertools;
@@ -12,10 +15,16 @@ use crate::{
     system::{IntoSystem, NormalSystem},
 };
 
-use miette::{miette, Report, Result};
+use miette::{miette, IntoDiagnostic, Report, Result};
 use petgraph::{algo::toposort, prelude::NodeIndex, stable_graph::StableDiGraph, Direction};
 
 const DEFAULT_ORDER_INDEX: u8 = (256u32 / 2u32) as u8;
+use graphviz_rust::{
+    cmd::Format,
+    printer::{DotPrinter, PrinterContext},
+};
+
+use dot_structures::{Attribute, Edge, EdgeTy, Graph, Id, Node, NodeId, Stmt, Vertex};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SystemIndex(usize);
@@ -95,6 +104,7 @@ pub trait IntoDependencySystem<Input>: Sized {
     }
 }
 
+#[derive(Clone)]
 pub enum Dependency {
     Before(BoxedSystem),
     After(BoxedSystem),
@@ -109,6 +119,7 @@ impl Dependency {
     }
 }
 
+#[derive(Clone)]
 pub struct DependencySystem<I> {
     system: BoxedSystem,
     dependencies: Vec<Dependency>,
@@ -404,6 +415,72 @@ impl Schedule {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    pub fn generate_dot_file(&self) -> Result<String> {
+        fn node(boxed_system: &BoxedSystem) -> Stmt {
+            let mut hasher = std::hash::DefaultHasher::new();
+            boxed_system.system_type().hash(&mut hasher);
+
+            let attributes = vec![Attribute(
+                Id::Plain("label".to_owned()),
+                Id::Plain(format!("\"{}\"", boxed_system.system_name())),
+            )];
+            Stmt::Node(Node {
+                id: NodeId(Id::Escaped(hasher.finish().to_string()), None),
+                attributes,
+            })
+        }
+
+        fn edge(boxed_system1: &BoxedSystem, boxed_system2: &BoxedSystem) -> Stmt {
+            let mut hasher1 = std::hash::DefaultHasher::new();
+            boxed_system1.system_type().hash(&mut hasher1);
+            let mut hasher2 = std::hash::DefaultHasher::new();
+            boxed_system2.system_type().hash(&mut hasher2);
+
+            Stmt::Edge(Edge {
+                ty: EdgeTy::Pair(
+                    Vertex::N(NodeId(Id::Plain(hasher1.finish().to_string()), None)),
+                    Vertex::N(NodeId(Id::Plain(hasher2.finish().to_string()), None)),
+                ),
+                attributes: vec![],
+            })
+        }
+
+        let mut statements: Vec<Stmt> = Vec::new();
+
+        for dependency_system in &self.dependency_systems {
+            statements.push(node(&dependency_system.system))
+        }
+
+        for dependency_system in &self.dependency_systems {
+            for dependency in &dependency_system.dependencies {
+                statements.push(edge(&dependency_system.system, dependency.boxed_system()));
+            }
+        }
+
+        let graph = Graph::DiGraph {
+            id: Id::Plain("0".to_owned()),
+            strict: true,
+            stmts: statements,
+        };
+
+        Ok(graph.print(&mut PrinterContext::default()))
+    }
+
+    pub fn generate_graph<P>(&self, path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let dot = self.generate_dot_file()?;
+
+        let png =
+            graphviz_rust::exec_dot(dot.clone(), vec![Format::Png.into()]).into_diagnostic()?;
+
+        let mut file = File::create(path).into_diagnostic()?;
+        file.write_all(&png).into_diagnostic()?;
 
         Ok(())
     }

@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::schedule::{Dependency, DependencySystem, Schedule};
 use crate::storage::{Resource, Storage};
 use crate::system::{IntoSystem, IntoSystemChain, StartupSystem, System};
@@ -308,6 +310,26 @@ impl App {
         };
 
         app.run()
+    }
+
+    /// Store a dependency graph of all systems as a png.
+    ///
+    /// The dependency graph shows which systems depend on other systems.
+    /// Dependencies are created using [`before`](IntoDependencySystem::before) and
+    /// [`after`](IntoDependencySystem::after).
+    ///
+    /// ## Example
+    /// ```
+    /// app.store_system_dependency_graph("../dependency_graph.png");
+    /// ```
+    pub fn store_system_dependency_graph<P>(&self, path: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let mut schedule = Schedule::with_dependency_systems(self.systems.clone())?;
+        schedule.check_ordered_dependencies()?;
+        schedule.build_graph()?;
+        schedule.generate_graph(path)
     }
 }
 
