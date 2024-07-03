@@ -27,6 +27,7 @@ async fn main() -> Result<()> {
         Commands::ChangeNetwork(opts) => opts.change_network(config).await?,
         Commands::Config(opts) => opts.config()?,
         Commands::Update(opts) => opts.update().await?,
+        Commands::DependencyGraph(opts) => opts.generate().await?,
     }
 
     Ok(())

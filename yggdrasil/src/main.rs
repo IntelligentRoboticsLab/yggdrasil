@@ -7,6 +7,7 @@ use yggdrasil::localization::LocalizationModule;
 use yggdrasil::motion::walk::WalkingEngineModule;
 use yggdrasil::motion::MotionModule;
 use yggdrasil::nao::NaoModule;
+use yggdrasil::photo::PhotoModule;
 use yggdrasil::prelude::*;
 use yggdrasil::sensor::SensorModule;
 use yggdrasil::vision::camera::CameraModule;
@@ -30,10 +31,15 @@ fn main() -> Result<()> {
         .add_module(DebugModule)?
         .add_module(VisionModule)?
         .add_module(MotionModule)?
+        .add_module(PhotoModule)?
         .add_module(LocalizationModule)?;
 
     #[cfg(feature = "alsa")]
     let app = app.add_module(yggdrasil::core::audio::AudioModule)?;
 
-    app.run()
+    #[cfg(feature = "dependency_graph")]
+    return app.store_system_dependency_graph("../dependency_graph.png");
+
+    #[cfg(not(feature = "dependency_graph"))]
+    return app.run();
 }

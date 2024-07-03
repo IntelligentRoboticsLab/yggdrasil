@@ -5,6 +5,7 @@ pub mod kinematics;
 pub mod localization;
 pub mod motion;
 pub mod nao;
+pub mod photo;
 pub mod sensor;
 pub mod vision;
 

@@ -6,7 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dot-structures = { workspace = true }
 dyn-clone = { workspace = true }
 itertools = { workspace = true }
+graphviz-rust = { workspace = true }
 miette = { workspace = true }
 petgraph = { workspace = true }

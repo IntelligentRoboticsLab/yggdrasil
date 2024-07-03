@@ -16,6 +16,7 @@ use super::wee_sound::WeeSoundModule;
 pub enum Sound {
     Weee,
     Ghast,
+    Shutter,
 }
 
 impl Sound {
@@ -23,6 +24,7 @@ impl Sound {
         match self {
             Self::Weee => "./assets/sounds/weeeee.wav",
             Self::Ghast => "./assets/sounds/ghast.wav",
+            Self::Shutter => "./assets/sounds/shutter.wav",
         }
     }
 }
