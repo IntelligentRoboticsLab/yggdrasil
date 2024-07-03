@@ -312,6 +312,16 @@ impl App {
         app.run()
     }
 
+    /// Store a dependency graph of all systems as a png.
+    ///
+    /// The dependency graph shows which systems depend on other systems.
+    /// Dependencies are created using [`before`](IntoDependencySystem::before) and
+    /// [`after`](IntoDependencySystem::after).
+    ///
+    /// ## Example
+    /// ```
+    /// app.store_system_dependency_graph("../dependency_graph.png");
+    /// ```
     pub fn store_system_dependency_graph<P>(&self, path: P) -> Result<()>
     where
         P: AsRef<Path>,
