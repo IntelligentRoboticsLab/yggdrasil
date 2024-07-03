@@ -7,6 +7,8 @@ use nalgebra::point;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
+use super::camera::TopImage;
+
 const BALL_RADIUS: f32 = 2.0;
 
 /// The minimum pixel distance between two neighboring scan lines.
@@ -58,13 +60,14 @@ pub struct FieldColorApproximate {
     pub saturation: f32,
 }
 
+#[derive(Debug)]
 pub struct Line {
     pub x: i32,
     pub y_max: i32,
     pub max_index: usize,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ScanGrid {
     /// All possible y coordinates of pixels to be scanned.
     pub y: Vec<usize>,
@@ -132,12 +135,14 @@ pub fn update_scan_grid(
     scan_grid: &mut ScanGrid,
     camera_matrix: &CameraMatrices,
     layout: &LayoutConfig,
-    image: &YuyvImage,
+    image: &TopImage,
+    // image: &YuyvImage,
 ) -> Result<()> {
-    if let Some(new_scan_grid) = get_scan_grid(&camera_matrix.top, layout, image) {
+    if let Some(new_scan_grid) = get_scan_grid(&camera_matrix.top, layout, image.yuyv_image()) {
+        // println!("Updated scan grid: {:#?}", new_scan_grid);
         *scan_grid = new_scan_grid;
     } else {
-        warn!("Failed to create new scan grid");
+        warn!("Failed to update scan grid")
     };
 
     Ok(())
@@ -148,11 +153,11 @@ fn get_scan_grid(
     layout: &LayoutConfig,
     image: &YuyvImage,
 ) -> Option<ScanGrid> {
-    let field_diagonal = layout.field.diagonal().normalize();
+    let field_diagonal = layout.field.diagonal().norm();
 
     // Pixel coordinates of the field diagonal
     let point_in_image = camera_matrix
-        .ground_to_pixel(point![field_diagonal.x, field_diagonal.y, 0.0])
+        .ground_to_pixel(point![field_diagonal, 0.0, 0.0])
         .ok()?;
 
     let field_limit = point_in_image.y.max(-1.0) as i32;
@@ -161,12 +166,18 @@ fn get_scan_grid(
     }
 
     // Field coordinates of bottom left pixel (robot frame)
-    let bottom_left = camera_matrix.pixel_to_ground(point![0.0, 0.0], 0.0).ok()?;
+    let bottom_left = camera_matrix
+        .pixel_to_ground(point![0.0, image.height() as f32], 0.0)
+        .ok()?;
 
     // Field coordinates of bottom right pixel (robot frame)
     let bottom_right = camera_matrix
-        .pixel_to_ground(point![0.0, image.width() as f32], 0.0)
+        .pixel_to_ground(point![0.0, image.width() as f32], image.height() as f32)
         .ok()?;
+
+    println!("Field diagonal: {:#?}", field_diagonal);
+    println!("Bottom left: {:#?}", bottom_left);
+    println!("Bottom right: {:#?}", bottom_right);
 
     let x_step_upper_bound = image.width() as i32 / MIN_NUM_OF_LOW_RES_SCAN_LINES;
     let max_x_step = {
@@ -205,10 +216,9 @@ fn get_scan_grid(
         scangrid_ys.push(0);
     }
 
-    let top_left = camera_matrix.pixel_to_ground(point![0.0, image.height() as f32], 0.0);
+    let top_left = camera_matrix.pixel_to_ground(point![0.0, 0.0], 0.0);
 
-    let top_right =
-        camera_matrix.pixel_to_ground(point![image.width() as f32, image.height() as f32], 0.0);
+    let top_right = camera_matrix.pixel_to_ground(point![image.width() as f32, 0.0], 0.0);
 
     let mut min_x_step = MIN_STEP_SIZE;
 
@@ -219,7 +229,7 @@ fn get_scan_grid(
         );
     }
 
-    let min_x_step = min_x_step.min(x_step_upper_bound);
+    min_x_step = min_x_step.min(x_step_upper_bound);
 
     // Determine a max step size that fulfills maxXStep2 = minXStep * 2^n, maxXStep2 <= maxXStep.
     // Also compute lower y coordinates for the different lengths of scan lines.
@@ -245,12 +255,12 @@ fn get_scan_grid(
 
     // Determine a pattern with the different lengths of scan lines, in which the longest appears once,
     // the second longest twice, etc. The pattern starts with the longest.
-    let mut y_starts2 = Vec::with_capacity(max_x_step2 as usize / min_x_step as usize);
+    let mut y_starts2 = vec![0; max_x_step2 as usize / min_x_step as usize];
 
     let mut step = 1;
-    for y1 in y_starts {
+    for y1 in y_starts.iter() {
         for y2 in y_starts2.iter_mut().step_by(step) {
-            *y2 = y1;
+            *y2 = *y1;
         }
         step *= 2;
     }
@@ -258,10 +268,14 @@ fn get_scan_grid(
     // Initialize the scan states and the regions.
     let (width, height) = (image.width() as i32, image.height() as i32);
     let x_start = width % (width / min_x_step - 1) / 2;
+    let mut i = y_starts2.len() / 2;
+
     let mut lines = Vec::with_capacity((width - x_start) as usize / min_x_step as usize);
 
     for x in (x_start..width).step_by(min_x_step as usize) {
-        let y_max = y_starts2.pop().unwrap().min(height).max(0);
+        let y_max = y_starts2[i].min(height).max(0);
+
+        i = (i + 1) % y_starts2.len();
 
         let max_index = scangrid_ys
             .iter()
