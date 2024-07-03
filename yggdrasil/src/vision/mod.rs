@@ -24,6 +24,8 @@ pub struct VisionModule;
 impl Module for VisionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_module(FieldBoundaryModule)?
+            // TODO
+            .add_module(scan_lines2::ScanLinesModule)?
             .add_module(ScanLinesModule)?
             .add_module(LineDetectionModule)?
             .add_module(BallDetectionModule)?

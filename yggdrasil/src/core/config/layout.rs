@@ -1,6 +1,7 @@
 use std::ops::Index;
 
 use nalgebra::Isometry2;
+use nalgebra::Vector2;
 use odal::Config;
 use serde::{Deserialize, Serialize};
 
@@ -112,6 +113,12 @@ pub struct FieldConfig {
     pub centre_circle_diameter: f32,
     /// Width of the border strip (K)
     pub border_strip_width: f32,
+}
+
+impl FieldConfig {
+    pub fn diagonal(&self) -> Vector2<f32> {
+        Vector2::new(self.length, self.width)
+    }
 }
 
 /// Contains the coordinates for the starting positions for each robot.

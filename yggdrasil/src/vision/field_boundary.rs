@@ -7,7 +7,7 @@ use crate::{
     core::debug::DebugContext,
     core::ml::{MlModel, MlTask, MlTaskResource},
     prelude::*,
-    vision::camera::{Image, TopImage},
+    vision::camera::{self, Image, TopImage},
 };
 use fast_image_resize as fr;
 use heimdall::YuyvImage;
