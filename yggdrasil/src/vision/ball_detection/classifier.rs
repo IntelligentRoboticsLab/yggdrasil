@@ -9,6 +9,7 @@ use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
 
 use crate::core::debug::DebugContext;
+use crate::localization::RobotPose;
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority::Medium;
 use crate::prelude::*;
@@ -64,6 +65,7 @@ impl MlModel for BallClassifierModel {
 pub struct Ball {
     pub position_image: Point2<f32>,
     pub robot_to_ball: Vector2<f32>,
+    pub position: Point2<f32>,
     pub distance: f32,
     pub timestamp: Instant,
     pub confidence: f32,
@@ -98,6 +100,7 @@ pub(super) fn detect_balls(
     ctx: &DebugContext,
     config: &BallDetectionConfig,
     nao: &mut NaoManager,
+    robot_pose: &RobotPose,
 ) -> Result<()> {
     if balls.image.timestamp() == proposals.image.timestamp() {
         return Ok(());
@@ -147,6 +150,7 @@ pub(super) fn detect_balls(
                         classified_balls.push(Ball {
                             position_image: proposal.position.cast(),
                             robot_to_ball: robot_to_ball.xy().coords,
+                            position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
                             distance: proposal.distance_to_ball,
                             timestamp: Instant::now(),
                             confidence,

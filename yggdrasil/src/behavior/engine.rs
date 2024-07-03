@@ -2,6 +2,7 @@
 
 use bifrost::communication::GameControllerMessage;
 use enum_dispatch::enum_dispatch;
+use nalgebra::Point2;
 
 use crate::{
     behavior::{
@@ -13,9 +14,7 @@ use crate::{
     core::config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
     game_controller::GameControllerConfig,
     localization::RobotPose,
-    motion::keyframe::KeyframeExecutor,
-    motion::step_planner::StepPlanner,
-    motion::walk::engine::WalkingEngine,
+    motion::{keyframe::KeyframeExecutor, step_planner::StepPlanner, walk::engine::WalkingEngine},
     nao::{manager::NaoManager, RobotInfo},
     prelude::*,
     sensor::{
@@ -23,6 +22,7 @@ use crate::{
         falling::FallState,
         fsr::Contacts,
     },
+    vision,
 };
 
 use super::behaviors::Standby;
@@ -59,6 +59,8 @@ pub struct Context<'a> {
     pub fall_state: &'a FallState,
     /// Contains the pose of the robot.
     pub pose: &'a RobotPose,
+    /// Contains the ball position.
+    pub ball_position: &'a Option<Point2<f32>>,
 }
 
 /// Control that is passed into the behavior engine.
@@ -290,6 +292,7 @@ pub fn step(
     ),
     game_controller_message: &Option<GameControllerMessage>,
     robot_pose: &RobotPose,
+    balls: &vision::ball_detection::classifier::Balls,
 ) -> Result<()> {
     let context = Context {
         robot_info,
@@ -305,6 +308,7 @@ pub fn step(
         game_controller_config,
         fall_state: &FallState::Upright,
         pose: robot_pose,
+        ball_position: &balls.balls.iter().next().map(|ball| ball.position),
     };
 
     let mut control = Control {
