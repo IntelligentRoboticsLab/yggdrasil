@@ -99,8 +99,7 @@ pub(super) fn detect_balls(
     camera_matrices: &CameraMatrices,
     ctx: &DebugContext,
     config: &BallDetectionConfig,
-    nao: &mut NaoManager,
-    robot_pose: &RobotPose,
+    (nao, robot_pose): (&mut NaoManager, &RobotPose),
 ) -> Result<()> {
     if balls.image.timestamp() == proposals.image.timestamp() {
         return Ok(());

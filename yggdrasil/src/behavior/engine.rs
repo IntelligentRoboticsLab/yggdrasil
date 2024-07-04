@@ -22,7 +22,7 @@ use crate::{
         falling::FallState,
         fsr::Contacts,
     },
-    vision,
+    vision::ball_detection::classifier::Balls,
 };
 
 use super::behaviors::Standby;
@@ -291,8 +291,7 @@ pub fn step(
         &mut StepPlanner,
     ),
     game_controller_message: &Option<GameControllerMessage>,
-    robot_pose: &RobotPose,
-    balls: &vision::ball_detection::classifier::Balls,
+    (robot_pose, balls): (&RobotPose, &Balls),
 ) -> Result<()> {
     let context = Context {
         robot_info,
@@ -308,7 +307,7 @@ pub fn step(
         game_controller_config,
         fall_state: &FallState::Upright,
         pose: robot_pose,
-        ball_position: &balls.balls.iter().next().map(|ball| ball.position),
+        ball_position: &balls.balls.first().map(|ball| ball.position),
     };
 
     let mut control = Control {
