@@ -25,7 +25,7 @@ use crate::{
     vision::ball_detection::classifier::Balls,
 };
 
-use super::behaviors::Standby;
+use super::{behaviors::Standby, roles::Keeper};
 
 /// Context that is passed into the behavior engine.
 ///
@@ -182,13 +182,15 @@ pub trait Role {
 pub enum RoleKind {
     Attacker(Attacker),
     // Add new roles here!
+    Keeper(Keeper),
 }
 
 impl RoleKind {
     /// Get the default role for each robot based on that robots player number
     fn by_player_number() -> Self {
         // TODO: get the default role for each robot by player number
-        RoleKind::Attacker(Attacker)
+        // RoleKind::Attacker(Attacker)
+        RoleKind::Keeper(Keeper)
     }
 }
 

@@ -66,6 +66,10 @@ impl StepPlanner {
 
         all_obstacles
     }
+
+    fn clear_target(&mut self) {
+        self.target_position = None;
+    }
 }
 
 fn calc_turn(pose: &Isometry<f32, Unit<Complex<f32>>, 2>, target_position: &Point2<f32>) -> f32 {
@@ -102,7 +106,7 @@ fn calc_distance(pose: &Isometry<f32, Unit<Complex<f32>>, 2>, target_point: &Poi
 #[system]
 fn walk_planner_system(
     pose: &RobotPose,
-    step_planner: &StepPlanner,
+    step_planner: &mut StepPlanner,
     walking_engine: &mut WalkingEngine,
     ctx: &DebugContext,
 ) -> Result<()> {
@@ -160,6 +164,8 @@ fn walk_planner_system(
             turn,
         });
     }
+
+    step_planner.clear_target();
 
     Ok(())
 }
