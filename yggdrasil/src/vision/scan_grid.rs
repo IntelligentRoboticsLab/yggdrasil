@@ -9,10 +9,12 @@ use crate::{
 
 use heimdall::{CameraMatrix, YuyvImage};
 use nalgebra::point;
+use nidhogg::types::color;
+use rerun::Color;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
-use super::camera::TopImage;
+use super::camera::{Image, TopImage};
 
 const BALL_RADIUS: f32 = 2.0;
 
@@ -141,7 +143,6 @@ pub fn update_scan_grid(
     camera_matrix: &CameraMatrices,
     layout: &LayoutConfig,
     image: &TopImage,
-    cycle: &Cycle,
     dbg: &DebugContext,
     // image: &YuyvImage,
 ) -> Result<()> {
@@ -149,7 +150,9 @@ pub fn update_scan_grid(
         // println!("Updated scan grid: {:#?}", new_scan_grid);
         *scan_grid = new_scan_grid;
 
-        scan_lines(scan_grid, image.yuyv_image(), cycle, dbg)?;
+        let now = std::time::Instant::now();
+        debug_scan_grid(scan_grid, image, dbg)?;
+        println!("scan_lines took: {:#?}", now.elapsed());
     } else {
         warn!("Failed to update scan grid")
     };
@@ -157,33 +160,16 @@ pub fn update_scan_grid(
     Ok(())
 }
 
-fn scan_lines(
-    scan_grid: &ScanGrid,
-    yuyv_image: &YuyvImage,
-    cycle: &Cycle,
-    dbg: &DebugContext,
-) -> Result<()> {
-    let mut image = image::RgbImage::new(yuyv_image.width() as u32, yuyv_image.height() as u32);
-
-    let rgb_image = yuyv_image.to_rgb()?;
-
-    for y in 0..rgb_image.height() {
-        for x in 0..rgb_image.width() {
-            let start = (y * rgb_image.width() + x) * 3;
-            let [r, g, b] = &rgb_image[start..start + 3] else {
-                panic!();
-            };
-            image.put_pixel(x as u32, y as u32, image::Rgb([*r, *g, *b]));
-        }
-    }
+fn debug_scan_grid(scan_grid: &ScanGrid, image: &Image, dbg: &DebugContext) -> Result<()> {
+    let mut points = Vec::new();
 
     for line in &scan_grid.lines {
         for y in scan_grid.y.iter().take_while(|y| **y < line.y_max as usize) {
-            image.put_pixel(line.x as u32, *y as u32, image::Rgb([255, 0, 0]));
+            points.push((line.x as f32, *y as f32));
         }
     }
 
-    dbg.log_image_rgb("top_camera/scan_grid", image, cycle)?;
+    dbg.log_points2d_for_image("top_camera/image/scan_grid", &points, image, color::u8::RED)?;
 
     Ok(())
 }
@@ -204,18 +190,25 @@ fn get_scan_grid(
 
     let field_limit = point_in_image.y.max(-1.0) as i32;
     if field_limit >= image.height() as i32 {
+        warn!("Field limit is out of bounds");
         return None;
     }
 
     // Field coordinates of bottom left pixel (robot frame)
     let bottom_left = camera_matrix
         .pixel_to_ground(point![0.0, image.height() as f32], 0.0)
+        .inspect_err(|_| {
+            warn!("No bottom left");
+        })
         .ok()?
         .xy();
 
     // Field coordinates of bottom right pixel (robot frame)
     let bottom_right = camera_matrix
         .pixel_to_ground(point![image.width() as f32, image.height() as f32], 0.0)
+        .inspect_err(|_| {
+            warn!("No bottom right");
+        })
         .ok()?
         .xy();
 
@@ -299,6 +292,9 @@ fn get_scan_grid(
 
         let point_in_image = camera_matrix
             .ground_to_pixel(point![distance, 0.0, 0.0])
+            .inspect_err(|_| {
+                warn!("No point in image: distance: {:#?}", distance);
+            })
             .ok()?;
 
         y_starts.push((point_in_image.y + 0.5) as i32);
@@ -361,6 +357,10 @@ fn get_distance_by_size(
     size_in_reality: f32,
     size_in_pixels: f32,
 ) -> f32 {
+    // println!("camera_info mean: {:#?}", camera_info.focal_lengths.mean());
+    // println!("size_in_reality: {:#?}", size_in_reality);
+    // println!("size_in_pixels: {:#?}", size_in_pixels);
+
     let x_factor = camera_info.focal_lengths.mean();
-    size_in_reality * x_factor / (size_in_pixels + f32::MIN)
+    size_in_reality * x_factor / (size_in_pixels + f32::MIN_POSITIVE)
 }
