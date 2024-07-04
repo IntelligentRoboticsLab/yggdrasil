@@ -1,5 +1,10 @@
+use core::panic;
+
 use crate::{
-    core::config::layout::LayoutConfig, prelude::*, vision::camera::matrix::CameraMatrices,
+    core::{config::layout::LayoutConfig, debug::DebugContext},
+    nao::Cycle,
+    prelude::*,
+    vision::camera::matrix::CameraMatrices,
 };
 
 use heimdall::{CameraMatrix, YuyvImage};
@@ -136,14 +141,49 @@ pub fn update_scan_grid(
     camera_matrix: &CameraMatrices,
     layout: &LayoutConfig,
     image: &TopImage,
+    cycle: &Cycle,
+    dbg: &DebugContext,
     // image: &YuyvImage,
 ) -> Result<()> {
     if let Some(new_scan_grid) = get_scan_grid(&camera_matrix.top, layout, image.yuyv_image()) {
         // println!("Updated scan grid: {:#?}", new_scan_grid);
         *scan_grid = new_scan_grid;
+
+        scan_lines(scan_grid, image.yuyv_image(), cycle, dbg)?;
     } else {
         warn!("Failed to update scan grid")
     };
+
+    Ok(())
+}
+
+fn scan_lines(
+    scan_grid: &ScanGrid,
+    yuyv_image: &YuyvImage,
+    cycle: &Cycle,
+    dbg: &DebugContext,
+) -> Result<()> {
+    let mut image = image::RgbImage::new(yuyv_image.width() as u32, yuyv_image.height() as u32);
+
+    let rgb_image = yuyv_image.to_rgb()?;
+
+    for y in 0..rgb_image.height() {
+        for x in 0..rgb_image.width() {
+            let start = (y * rgb_image.width() + x) * 3;
+            let [r, g, b] = &rgb_image[start..start + 3] else {
+                panic!();
+            };
+            image.put_pixel(x as u32, y as u32, image::Rgb([*r, *g, *b]));
+        }
+    }
+
+    for line in &scan_grid.lines {
+        for y in scan_grid.y.iter().take_while(|y| **y < line.y_max as usize) {
+            image.put_pixel(line.x as u32, *y as u32, image::Rgb([255, 0, 0]));
+        }
+    }
+
+    dbg.log_image_rgb("top_camera/scan_grid", image, cycle)?;
 
     Ok(())
 }
@@ -153,6 +193,8 @@ fn get_scan_grid(
     layout: &LayoutConfig,
     image: &YuyvImage,
 ) -> Option<ScanGrid> {
+    // println!();
+
     let field_diagonal = layout.field.diagonal().norm();
 
     // Pixel coordinates of the field diagonal
@@ -168,22 +210,26 @@ fn get_scan_grid(
     // Field coordinates of bottom left pixel (robot frame)
     let bottom_left = camera_matrix
         .pixel_to_ground(point![0.0, image.height() as f32], 0.0)
-        .ok()?;
+        .ok()?
+        .xy();
 
     // Field coordinates of bottom right pixel (robot frame)
     let bottom_right = camera_matrix
-        .pixel_to_ground(point![0.0, image.width() as f32], image.height() as f32)
-        .ok()?;
+        .pixel_to_ground(point![image.width() as f32, image.height() as f32], 0.0)
+        .ok()?
+        .xy();
 
-    println!("Field diagonal: {:#?}", field_diagonal);
-    println!("Bottom left: {:#?}", bottom_left);
-    println!("Bottom right: {:#?}", bottom_right);
+    // println!("Field diagonal: {:#?}", field_diagonal);
+    // println!("Field limit: {:#?}", field_limit);
+    // println!("Bottom left: {:#?}", bottom_left);
+    // println!("Bottom right: {:#?}", bottom_right);
+    // println!("norm {:#?}", (bottom_left - bottom_right).norm());
 
     let x_step_upper_bound = image.width() as i32 / MIN_NUM_OF_LOW_RES_SCAN_LINES;
     let max_x_step = {
         x_step_upper_bound.min(
-            (image.width() as f32 * BALL_RADIUS * 2.0 * BALL_WIDTH_RATIO) as i32
-                / (bottom_left - bottom_right).norm() as i32,
+            ((image.width() as f32 * BALL_RADIUS * 2.0 * BALL_WIDTH_RATIO)
+                / (bottom_left - bottom_right).norm()) as i32,
         )
     };
 
@@ -202,7 +248,9 @@ fn get_scan_grid(
         } else {
             point_on_field.x += field_step;
 
-            let Ok(point_in_image) = camera_matrix.ground_to_pixel(point_on_field.into()) else {
+            let Ok(point_in_image) =
+                camera_matrix.ground_to_pixel(point![point_on_field.x, point_on_field.y, 0.0])
+            else {
                 break;
             };
 
@@ -216,16 +264,22 @@ fn get_scan_grid(
         scangrid_ys.push(0);
     }
 
+    // println!("Scangrid ys: {:#?}", scangrid_ys);
+
     let top_left = camera_matrix.pixel_to_ground(point![0.0, 0.0], 0.0);
 
+    // println!("Top left ok: {:#?}", top_left.is_ok());
+
     let top_right = camera_matrix.pixel_to_ground(point![image.width() as f32, 0.0], 0.0);
+
+    // println!("Top right ok: {:#?}", top_right.is_ok());
 
     let mut min_x_step = MIN_STEP_SIZE;
 
     if let (Ok(top_left), Ok(top_right)) = (top_left, top_right) {
         min_x_step = min_x_step.max(
-            (image.width() as f32 * BALL_RADIUS * 2.0 * BALL_WIDTH_RATIO) as i32
-                / (top_left - top_right).norm() as i32,
+            (image.width() as f32 * BALL_RADIUS * 2.0 * BALL_WIDTH_RATIO
+                / (top_left - top_right).norm()) as i32,
         );
     }
 
