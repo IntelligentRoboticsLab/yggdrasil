@@ -53,9 +53,9 @@ cc_optical_center = [320, 240]
 # The path to the camera device.
 path = "/dev/video-bottom"
 # The requested width of the image.
-width = 640
+width = 320
 # The requested height of the image.
-height = 480
+height = 240
 # This variable specifies how many images from the bottom camera can be alive at the same time.
 # It is recommended to have at least one more buffer than is required. This way, the next frame
 # from the camera can already be stored in a buffer, reducing the latency between destructing a
@@ -90,7 +90,7 @@ distance_threshold = 15.0
 angle_tolerance = 10
 # The confidence threshold for the softmax score predicted by the classification model
 confidence_threshold = 0.7
-# The size of a patch at 1.0 meters distance in pixels. 
+# The size of a patch at 1.0 meters distance in pixels.
 # This value is divided by the distance to get the size of the patch at that distance, and the patch is then
 # resized to 32x32 pixels before being fed into the neural network.
 patch_scale = 140
@@ -114,12 +114,12 @@ acceleration_weight = 0.01
 # The following values are used to determine if the robot is moving or not.
 # If the robot is not moving, the estimated orientation is updated.
 
-# The threshold for the acceleration values from the IMU. 
+# The threshold for the acceleration values from the IMU.
 # If the acceleration is below this threshold,  the robot is considered to be moving
 acceleration_threshold = 0.2
-# The threshold for the gyro values from the IMU. 
+# The threshold for the gyro values from the IMU.
 # If any of the gyro valeus is below this threshold, the robot is considered to be moving.
 gyro_threshold = 0.1
-# The threshold for the sum of each FSR foot. 
+# The threshold for the sum of each FSR foot.
 # If the FSR value is below this threshold, the robot is considered to be moving.
 fsr_threshold = 5

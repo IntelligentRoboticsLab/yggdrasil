@@ -11,7 +11,7 @@ use num::Complex;
 
 use super::path_finding::{self, Obstacle};
 
-const TURN_SPEED: f32 = 0.3;
+const TURN_SPEED: f32 = 0.8;
 const WALK_SPEED: f32 = 0.05;
 
 pub struct StepPlannerModule;
