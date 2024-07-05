@@ -70,6 +70,42 @@ impl StepPlanner {
     fn clear_target(&mut self) {
         self.target_position = None;
     }
+
+    pub fn plan(&mut self, current_pose: &RobotPose) -> Option<Step> {
+        let target_position = self.target_position?;
+        let all_obstacles = self.get_all_obstacles();
+
+        let (path, _total_walking_distance) = path_finding::find_path(
+            current_pose.world_position(),
+            target_position,
+            &all_obstacles,
+        )?;
+        // Not sure if this is possible, needs more testing, but it will prevent a panic later on.
+        if path.len() == 1 {
+            return None;
+        }
+
+        let first_target_position = path[1];
+        let turn = calc_turn(&current_pose.inner, &first_target_position);
+        let angle = calc_angle(&current_pose.inner, &first_target_position);
+        let distance = calc_distance(&current_pose.inner, &first_target_position);
+
+        if distance < 0.1 && path.len() == 2 {
+            None
+        } else if angle > 0.3 {
+            Some(Step {
+                forward: 0.,
+                left: 0.,
+                turn,
+            })
+        } else {
+            Some(Step {
+                forward: WALK_SPEED,
+                left: 0.,
+                turn,
+            })
+        }
+    }
 }
 
 fn calc_turn(pose: &Isometry<f32, Unit<Complex<f32>>, 2>, target_position: &Point2<f32>) -> f32 {
