@@ -83,8 +83,6 @@ impl StepPlanner {
         let angle = calc_angle(&current_pose.inner, &first_target_position);
         let distance = calc_distance(&current_pose.inner, &first_target_position);
 
-        eprintln!("distance: {distance}",);
-
         if distance < 0.2 && path.len() == 2 {
             None
         } else if angle > 0.3 {
