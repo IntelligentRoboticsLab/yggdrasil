@@ -60,10 +60,6 @@ impl StepPlanner {
         all_obstacles
     }
 
-    fn clear_target(&mut self) {
-        self.target_position = None;
-    }
-
     pub fn plan(&mut self, current_pose: &RobotPose) -> Option<Step> {
         let target_position = self.target_position?;
         let all_obstacles = self.get_all_obstacles();
