@@ -189,8 +189,8 @@ impl RoleKind {
     /// Get the default role for each robot based on that robots player number
     fn by_player_number() -> Self {
         // TODO: get the default role for each robot by player number
-        // RoleKind::Attacker(Attacker)
-        RoleKind::Keeper(Keeper)
+        RoleKind::Attacker(Attacker)
+        // RoleKind::Keeper(Keeper)
     }
 }
 
