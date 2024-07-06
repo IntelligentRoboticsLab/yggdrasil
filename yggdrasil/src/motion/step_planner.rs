@@ -1,12 +1,6 @@
-use crate::{
-    core::debug::DebugContext,
-    localization::RobotPose,
-    motion::walk::engine::{Step, WalkingEngine},
-    prelude::*,
-};
+use crate::{localization::RobotPose, motion::walk::engine::Step, prelude::*};
 
 use nalgebra::{Isometry, Point2, Unit, Vector2};
-use nidhogg::types::color;
 use num::Complex;
 
 use super::path_finding::{self, Obstacle};
@@ -29,8 +23,7 @@ impl Module for StepPlannerModule {
             dynamic_obstacles: vec![],
         };
 
-        app.add_system(walk_planner_system)
-            .add_resource(Resource::new(target))
+        app.add_resource(Resource::new(target))
     }
 }
 
@@ -66,6 +59,42 @@ impl StepPlanner {
 
         all_obstacles
     }
+
+    pub fn plan(&mut self, current_pose: &RobotPose) -> Option<Step> {
+        let target_position = self.target_position?;
+        let all_obstacles = self.get_all_obstacles();
+
+        let (path, _total_walking_distance) = path_finding::find_path(
+            current_pose.world_position(),
+            target_position,
+            &all_obstacles,
+        )?;
+        // Not sure if this is possible, needs more testing, but it will prevent a panic later on.
+        if path.len() == 1 {
+            return None;
+        }
+
+        let first_target_position = path[1];
+        let turn = calc_turn(&current_pose.inner, &first_target_position);
+        let angle = calc_angle(&current_pose.inner, &first_target_position);
+        let distance = calc_distance(&current_pose.inner, &first_target_position);
+
+        if distance < 0.2 && path.len() == 2 {
+            None
+        } else if angle > 0.3 {
+            Some(Step {
+                forward: 0.,
+                left: 0.,
+                turn,
+            })
+        } else {
+            Some(Step {
+                forward: WALK_SPEED,
+                left: 0.,
+                turn,
+            })
+        }
+    }
 }
 
 fn calc_turn(pose: &Isometry<f32, Unit<Complex<f32>>, 2>, target_position: &Point2<f32>) -> f32 {
@@ -97,69 +126,4 @@ fn calc_distance(pose: &Isometry<f32, Unit<Complex<f32>>, 2>, target_point: &Poi
     let robot_point = pose.transform_point(&Point2::new(0., 0.));
 
     distance(&robot_point, target_point)
-}
-
-#[system]
-fn walk_planner_system(
-    pose: &RobotPose,
-    step_planner: &StepPlanner,
-    walking_engine: &mut WalkingEngine,
-    ctx: &DebugContext,
-) -> Result<()> {
-    if walking_engine.is_sitting() {
-        return Ok(());
-    }
-
-    let Some(target_position) = step_planner.target_position else {
-        return Ok(());
-    };
-    let all_obstacles = step_planner.get_all_obstacles();
-
-    let Some((path, _total_walking_distance)) =
-        path_finding::find_path(pose.world_position(), target_position, &all_obstacles)
-    else {
-        return Ok(());
-    };
-    // Not sure if this is possible, needs more testing, but it will prevent a panic later on.
-    if path.len() == 1 {
-        return Ok(());
-    }
-
-    let first_target_position = path[1];
-    let turn = calc_turn(&pose.inner, &first_target_position);
-    let angle = calc_angle(&pose.inner, &first_target_position);
-    let distance = calc_distance(&pose.inner, &first_target_position);
-
-    ctx.log_points_3d_with_color_and_radius(
-        "/odometry/target_position",
-        &[(target_position.x, target_position.y, 0.0)],
-        color::u8::BLUE,
-        0.04,
-    )?;
-
-    let one_meter_ahead = pose.robot_to_world(&Point2::new(1.0, 0.0));
-    ctx.log_points_3d_with_color_and_radius(
-        "/odometry/one_meter_ahead",
-        &[(one_meter_ahead.x, one_meter_ahead.y, 0.0)],
-        color::u8::PURPLE,
-        0.05,
-    )?;
-
-    if distance < 0.1 && path.len() == 2 {
-        walking_engine.request_stand();
-    } else if angle > 0.3 {
-        walking_engine.request_walk(Step {
-            forward: 0.,
-            left: 0.,
-            turn,
-        });
-    } else {
-        walking_engine.request_walk(Step {
-            forward: WALK_SPEED,
-            left: 0.,
-            turn,
-        });
-    }
-
-    Ok(())
 }
