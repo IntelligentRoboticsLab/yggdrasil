@@ -97,7 +97,6 @@ fn detect_whistle(
         let detections = state.detections.iter().fold(0, |acc, e| acc + *e as usize);
 
         if detections >= config.detections_needed {
-            tracing::info!("Whistle detected");
             nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
             nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
         } else {
