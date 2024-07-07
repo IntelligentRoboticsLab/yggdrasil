@@ -37,9 +37,8 @@ impl<A: Clone, M: Message> Inbound<A, M> {
             let (when, who, message) = &self.buffer[i];
 
             if let Some(data) = selector(when, who, message) {
-                let data = (*when, who.clone(), data);
-                self.buffer.remove(i);
-                return Some(data);
+                let (when, who, _message) = self.buffer.remove(i).unwrap();
+                return Some((when, who, data));
             }
         }
 

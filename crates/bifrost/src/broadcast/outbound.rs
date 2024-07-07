@@ -22,7 +22,7 @@ pub struct Outbound<M: Message> {
     pub rate: Rate,
 }
 
-/// A struct for specifying the rate at which a `Outbound` releases new packets.
+/// A struct for specifying the rate at which an `Outbound` releases new packets.
 pub struct Rate {
     /// The minimum interval before the next late packet may be sent out.
     pub late_threshold: Duration,
@@ -152,12 +152,12 @@ impl<M: Message> Outbound<M> {
     }
 
     /// Packs the fragments in the buffer into a single packet at the current time.
-    pub fn pack(&mut self) -> Option<Vec<u8>> {
-        self.pack_at(Instant::now())
+    pub fn try_pack(&mut self) -> Option<Vec<u8>> {
+        self.try_pack_at(Instant::now())
     }
 
     /// Packs the fragments in the buffer into a single packet at the given time.
-    pub fn pack_at(&mut self, when: Instant) -> Option<Vec<u8>> {
+    pub fn try_pack_at(&mut self, when: Instant) -> Option<Vec<u8>> {
         // If we are late or we should send early packets, pack a new packet.
         if self.late(when) || self.early(when) {
             self.last = when;
@@ -214,6 +214,9 @@ impl<M: Message> Outbound<M> {
     }
 
     /// Checks if we need to send out an early packet.
+    ///
+    /// An early packet gets send out if the buffer is (almost) full but no deadlines have yet
+    /// finished.
     fn early(&self, when: Instant) -> bool {
         if when.duration_since(self.last) < self.rate.early_threshold {
             return false;

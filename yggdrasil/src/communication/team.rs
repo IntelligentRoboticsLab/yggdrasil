@@ -43,11 +43,11 @@ fn sync(tc: &mut TeamCommunication, message: &Option<GameControllerMessage>) -> 
         tc.rate_mut().late_threshold = threshold;
         tc.rate_mut().automatic_deadline = threshold;
 
-        if tc.send()? {
+        if tc.try_send()? {
             tracing::info!("successfully sent out a new packet.");
         }
 
-        let received = tc.receive()?;
+        let received = tc.try_receive()?;
         if received > 0 {
             tracing::info!("received packet(s) from {} peer(s).", received);
         }
@@ -121,8 +121,8 @@ impl TeamCommunication {
         &mut self.outbound.rate
     }
 
-    fn send(&mut self) -> Result<bool> {
-        if let Some(packet) = self.outbound.pack() {
+    fn try_send(&mut self) -> Result<bool> {
+        if let Some(packet) = self.outbound.try_pack() {
             match self
                 .socket
                 .send_to(&packet, (Ipv4Addr::BROADCAST, self.port))
@@ -136,7 +136,7 @@ impl TeamCommunication {
         }
     }
 
-    fn receive(&mut self) -> Result<usize> {
+    fn try_receive(&mut self) -> Result<usize> {
         let mut received = 0;
         let mut buf = [0; 128];
 
@@ -155,30 +155,27 @@ impl TeamCommunication {
     }
 
     fn calibrate_budget(&self, message: &GameControllerMessage) -> Option<Duration> {
-        match message {
-            GameControllerMessage {
-                state: GameState::Playing,
-                players_per_team,
-                secs_remaining,
-                first_half,
-                teams,
-                ..
-            } => {
-                let team = teams.iter().find(|t| t.team_number == self.team_number)?;
-                let mut remaining = *secs_remaining;
+        let GameControllerMessage {
+            state: GameState::Playing,
+            players_per_team,
+            mut secs_remaining,
+            first_half,
+            ..
+        } = message
+        else {
+            return None;
+        };
 
-                if *first_half == Half::First {
-                    remaining += SECS_PER_HALF;
-                }
-
-                let messages = team.message_budget.saturating_sub(MINIMAL_BUDGET) as f32;
-                let messages_per_player = messages / *players_per_team as f32;
-                let secs_per_message = remaining as f32 / messages_per_player;
-
-                Some(Duration::from_secs_f32(secs_per_message))
-            }
-            _ => None,
+        if *first_half == Half::First {
+            secs_remaining += SECS_PER_HALF;
         }
+
+        let team_info = message.team(self.team_number)?;
+        let messages = team_info.message_budget.saturating_sub(MINIMAL_BUDGET) as f32;
+        let messages_per_player = messages / *players_per_team as f32;
+        let secs_per_message = secs_remaining as f32 / messages_per_player;
+
+        Some(Duration::from_secs_f32(secs_per_message))
     }
 }
 

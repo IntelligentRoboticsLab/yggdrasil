@@ -149,9 +149,12 @@ mod tests {
             .unwrap();
         buffer.push_at(Dummy(1), Deadline::ASAP, t + 4).unwrap();
 
-        assert_eq!(buffer.pack_at(t + 5), Some(vec![1, 7, 7, 7, 7, 7, 7, 7]));
-        assert_eq!(buffer.pack_at(t + 6), Some(vec![4, 4, 4, 4, 3, 3, 3]));
-        assert_eq!(buffer.pack_at(t + 7), Some(vec![6, 6, 6, 6, 6, 6]));
+        assert_eq!(
+            buffer.try_pack_at(t + 5),
+            Some(vec![1, 7, 7, 7, 7, 7, 7, 7])
+        );
+        assert_eq!(buffer.try_pack_at(t + 6), Some(vec![4, 4, 4, 4, 3, 3, 3]));
+        assert_eq!(buffer.try_pack_at(t + 7), Some(vec![6, 6, 6, 6, 6, 6]));
     }
 
     #[test]
@@ -167,10 +170,10 @@ mod tests {
         let t = Epoch(Instant::now());
 
         buffer.push_at(Dummy(3), Deadline::WHENEVER, t + 0).unwrap();
-        assert_eq!(buffer.pack_at(t + 0), None);
+        assert_eq!(buffer.try_pack_at(t + 0), None);
         buffer.push_at(Dummy(2), Deadline::WHENEVER, t + 1).unwrap();
-        assert_eq!(buffer.pack_at(t + 1), None);
+        assert_eq!(buffer.try_pack_at(t + 1), None);
         buffer.push_at(Dummy(1), Deadline::WHENEVER, t + 2).unwrap();
-        assert_eq!(buffer.pack_at(t + 2), Some(vec![3, 3, 3, 2, 2, 1]));
+        assert_eq!(buffer.try_pack_at(t + 2), Some(vec![3, 3, 3, 2, 2, 1]));
     }
 }
