@@ -109,41 +109,30 @@ impl<M: Message> Outbound<M> {
     /// This function can be used to prevent sending an older update if a new one arrives before it
     /// had been sent out. Since a fragment may be sent out at any time, it cannot be guaranteed
     /// that such an update still exists.
-    pub fn update_or_push<P>(&mut self, message: M, predicate: P) -> Result<(), OutboundError>
-    where
-        P: FnMut(&M) -> bool,
-    {
-        self.update_or_push_at(message, Deadline::default(), Instant::now(), predicate)
+    pub fn update_or_push(&mut self, message: M) -> Result<(), OutboundError> {
+        self.update_or_push_at(message, Deadline::default(), Instant::now())
     }
 
     /// Updates a message in the buffer according to the given predicate or pushes it if not found,
     /// using the provided deadline.
-    pub fn update_or_push_by<P>(
+    pub fn update_or_push_by(
         &mut self,
         message: M,
         deadline: Deadline,
-        predicate: P,
-    ) -> Result<(), OutboundError>
-    where
-        P: FnMut(&M) -> bool,
-    {
-        self.update_or_push_at(message, deadline, Instant::now(), predicate)
+    ) -> Result<(), OutboundError> {
+        self.update_or_push_at(message, deadline, Instant::now())
     }
 
     /// Updates a message in the buffer according to the given predicate or pushes it if not found,
     /// at the given time.
-    pub fn update_or_push_at<P>(
+    pub fn update_or_push_at(
         &mut self,
-        message: M,
+        mut message: M,
         deadline: Deadline,
         when: Instant,
-        mut predicate: P,
-    ) -> Result<(), OutboundError>
-    where
-        P: FnMut(&M) -> bool,
-    {
+    ) -> Result<(), OutboundError> {
         for fragment in &mut self.fragments {
-            if predicate(&fragment.message) {
+            if message.is_update_of(&fragment.message) {
                 return fragment.update(message);
             }
         }

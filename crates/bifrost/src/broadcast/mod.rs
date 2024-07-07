@@ -21,6 +21,13 @@ pub trait Message: Encode + Decode {
     const MAX_PACKET_SIZE: usize;
     /// Number of bytes expected to fit one message, used for allocating the encoding buffer.
     const EXPECTED_SIZE: usize;
+
+    /// Returns true if `self` is an update of `old`. `self` is mutable to allow for merging the
+    /// old message into the new one.
+    fn is_update_of(&mut self, old: &Self) -> bool {
+        let _ = old;
+        false
+    }
 }
 
 /// Deadline for when a message is to be considered late.
