@@ -44,10 +44,11 @@ impl Stft {
         for i in 0..windows {
             fft_outputs.extend(self.windowed_fft(audio_pwr, offset + i * self.hop_size));
         }
-        return Spectrogram {
+
+        Spectrogram {
             powers: fft_outputs,
             freq_bins: unique_freqs,
-        };
+        }
     }
 
     /// Computes a single window of the fast fourier transform with hann window smoothing.
@@ -91,12 +92,11 @@ impl Spectrogram {
         }
 
         let windows = (self.powers.len() / self.freq_bins) as f32;
-        for i in 0..powers.len() {
-            powers[i] /= windows;
-        }
-        return Self {
+        powers.iter_mut().for_each(|power| *power /= windows);
+
+        Self {
             powers,
             freq_bins: self.freq_bins,
-        };
+        }
     }
 }
