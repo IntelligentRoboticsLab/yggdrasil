@@ -29,14 +29,14 @@ impl<A: Clone, M: Message> Inbound<A, M> {
     ///
     /// Yes you have to copy the fields out of an element that is going to get removed anyway.
     /// Whatever, it's a temporary API until we get events implemented in tyr.
-    pub fn take<P, T>(&mut self, mut selector: P) -> Option<(Instant, A, T)>
+    pub fn take_map<F, T>(&mut self, mut f: F) -> Option<(Instant, A, T)>
     where
-        P: FnMut(&Instant, &A, &M) -> Option<T>,
+        F: FnMut(&Instant, &A, &M) -> Option<T>,
     {
         for i in 0..self.buffer.len() {
             let (when, who, message) = &self.buffer[i];
 
-            if let Some(data) = selector(when, who, message) {
+            if let Some(data) = f(when, who, message) {
                 let (when, who, _message) = self.buffer.remove(i).unwrap();
                 return Some((when, who, data));
             }

@@ -59,7 +59,7 @@ fn sync(tc: &mut TeamCommunication, message: &Option<GameControllerMessage>) -> 
 #[system]
 fn ping_response(tc: &mut TeamCommunication) -> Result<()> {
     // If we have received a ping...
-    let msg = tc.inbound_mut().take(|_, _, msg| match msg {
+    let msg = tc.inbound_mut().take_map(|_, _, msg| match msg {
         TeamMessage::Ping => Some(TeamMessage::Pong),
         _ => None,
     });
