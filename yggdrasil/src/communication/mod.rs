@@ -4,7 +4,7 @@ use crate::prelude::*;
 
 use team::TeamCommunicationModule;
 
-/// A collection of modules related to behaviors.
+/// A collection of modules related to communication.
 ///
 /// This module adds the following modules to the application:
 /// - [`CommunicationModule`]
