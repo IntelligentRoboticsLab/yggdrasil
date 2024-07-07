@@ -2,57 +2,7 @@ use std::sync::Arc;
 
 use num::Zero;
 use rustfft::{num_complex::Complex, FftPlanner};
-<<<<<<<< HEAD:yggdrasil/src/core/audio/whistle_detection.rs
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    core::audio::audio_input::{AudioInput, NUMBER_OF_SAMPLES},
-    core::ml::{MlModel, MlTask, MlTaskResource},
-    nao::manager::{NaoManager, Priority},
-    prelude::*,
-};
-
-/// The size of each window in samples.
-const WINDOW_SIZE: usize = 512;
-/// The interval between each window in samples.
-const HOP_SIZE: usize = 256;
-/// The number of windows to take the mean of before sending the average to the model.
-const MEAN_WINDOWS: usize = (NUMBER_OF_SAMPLES - WINDOW_SIZE) / HOP_SIZE + 1;
-
-pub struct WhistleDetectionModule;
-
-impl Module for WhistleDetectionModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_ml_task::<WhistleDetectionModel>()?
-            .init_config::<WhistleDetectionConfig>()?
-            .add_system(detect_whistle)
-            .init_resource::<WhistleState>()
-    }
-}
-
-pub struct WhistleDetectionModel;
-
-impl MlModel for WhistleDetectionModel {
-    type InputType = f32;
-    type OutputType = f32;
-    const ONNX_PATH: &'static str = "models/whistle_detection.onnx";
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WhistleDetectionConfig {
-    pub threshold: f32,
-    /// For how many detection cycles to listen for a whistle.
-    pub detection_tries: usize,
-    /// How many detections within `detection_tries` detection cycles are required to flag a whistle.
-    pub detections_needed: usize,
-}
-
-impl Config for WhistleDetectionConfig {
-    const PATH: &'static str = "whistle_detection.toml";
-}
-========
 use serde::Serialize;
->>>>>>>> 74c568b2 (fourier stuff in separate file + formatting):yggdrasil/src/audio/whistle_detection/fourier.rs
 
 /// Short time fourier transform, which decomposes a signal into the energy levels for each frequency
 /// for each timestep.

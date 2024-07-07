@@ -73,16 +73,6 @@ pub struct Control<'a> {
     pub step_planner: &'a mut StepPlanner,
 }
 
-/// Control that is passed into the behavior engine.
-///
-/// It contains all necessary robot control for executing behaviors.
-pub struct Control<'a> {
-    pub nao_manager: &'a mut NaoManager,
-    pub walking_engine: &'a mut WalkingEngine,
-    pub keyframe_executor: &'a mut KeyframeExecutor,
-    pub step_planner: &'a mut StepPlanner,
-}
-
 /// A trait representing a behavior that can be performed.
 ///
 /// It is used to define the actions the robot will take when the corresponding behavior is executed.

@@ -1,3 +1,5 @@
+mod fourier;
+
 use fourier::Stft;
 use nidhogg::types::{FillExt, LeftEar, RightEar};
 use serde::{Deserialize, Serialize};
@@ -10,8 +12,6 @@ use crate::{
 };
 
 use super::audio_input::AudioInput;
-
-mod fourier;
 
 // the constants below need to match the parameters used for training
 /// The size of each window in samples.
