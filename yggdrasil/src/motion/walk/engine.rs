@@ -48,8 +48,6 @@ impl WalkState {
     pub fn from_hip_height(hip_height: f32, config: &WalkingEngineConfig) -> Self {
         if hip_height <= config.sitting_hip_height {
             WalkState::Sitting(hip_height)
-        // } else if hip_height >= config.hip_height {
-        //     WalkState::Standing(hip_height)
         } else {
             WalkState::Standing(hip_height)
         }

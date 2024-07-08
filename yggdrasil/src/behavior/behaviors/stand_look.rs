@@ -5,7 +5,7 @@ use crate::{
 use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};
 
-const ROTATION_STIFFNESS: f32 = 0.3;
+const HEAD_STIFFNESS: f32 = 0.4;
 
 /// During a match the chest button is pressed before starting a match.
 /// Once this is done, the robots are placed at the edge of the field from
@@ -23,7 +23,7 @@ impl Behavior for StandingLookAt {
     fn execute(&mut self, context: Context, control: &mut Control) {
         control.nao_manager.set_head(
             context.pose.get_look_at_absolute(&self.target),
-            HeadJoints::fill(ROTATION_STIFFNESS),
+            HeadJoints::fill(HEAD_STIFFNESS),
             Priority::High,
         );
 
