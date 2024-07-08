@@ -92,6 +92,20 @@ pub struct HeadButtons {
     pub rear: ButtonState,
 }
 
+impl HeadButtons {
+    pub fn all_tapped(&self) -> bool {
+        self.front.is_tapped() && self.middle.is_tapped() && self.rear.is_tapped()
+    }
+
+    pub fn all_pressed(&self) -> bool {
+        self.front.is_pressed() && self.middle.is_pressed() && self.rear.is_pressed()
+    }
+
+    pub fn all_held(&self) -> bool {
+        self.front.is_held() && self.middle.is_held() && self.rear.is_held()
+    }
+}
+
 /// Struct containing [`state`](`ButtonState`) of the buttons in the Nao's chest.
 #[derive(Default, Debug)]
 pub struct ChestButton {

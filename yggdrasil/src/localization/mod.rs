@@ -1,6 +1,9 @@
 use crate::{
-    core::config::{layout::LayoutConfig, showtime::PlayerConfig},
-    core::debug::DebugContext,
+    behavior::primary_state::PrimaryState,
+    core::{
+        config::{layout::LayoutConfig, showtime::PlayerConfig},
+        debug::DebugContext,
+    },
     motion::odometry::{self, Odometry},
     prelude::*,
 };
@@ -94,7 +97,14 @@ pub fn update_robot_pose(
     robot_pose: &mut RobotPose,
     odometry: &Odometry,
     ctx: &DebugContext,
+    primary_state: &PrimaryState,
+    layout_config: &LayoutConfig,
 ) -> Result<()> {
+    if *primary_state == PrimaryState::Penalized {
+        if let Some(closest_penalty_pose) = find_closest_penalty_pose(robot_pose, layout_config) {
+            robot_pose.inner = closest_penalty_pose;
+        }
+    }
     robot_pose.inner *= odometry.offset_to_last;
     log_pose(
         "/localisation/pose",
@@ -103,6 +113,27 @@ pub fn update_robot_pose(
         color::u8::BLUE,
     )?;
     Ok(())
+}
+
+fn find_closest_penalty_pose(
+    robot_pose: &RobotPose,
+    layout_config: &LayoutConfig,
+) -> Option<Isometry2<f32>> {
+    let penalty_poses = layout_config
+        .penalty_positions
+        .iter()
+        .map(|penalty_position| {
+            Isometry2::from_parts(
+                Translation2::new(penalty_position.x, penalty_position.y),
+                UnitComplex::from_angle(penalty_position.rotation.to_radians()),
+            )
+        });
+
+    penalty_poses.min_by_key(|penalty_pose| {
+        let distance =
+            (robot_pose.inner.translation.vector - penalty_pose.translation.vector).norm_squared();
+        distance as i32
+    })
 }
 
 fn log_pose(

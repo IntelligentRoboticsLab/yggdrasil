@@ -45,8 +45,14 @@ impl WalkState {
     /// Constructs an initial [`WalkState`] from a `hip_height`.
     ///
     /// This returns a new [`WalkState::Sitting`] using an estimated current `hip_height`.
-    pub fn from_hip_height(hip_height: f32) -> Self {
-        WalkState::Sitting(hip_height)
+    pub fn from_hip_height(hip_height: f32, config: &WalkingEngineConfig) -> Self {
+        if hip_height <= config.sitting_hip_height {
+            WalkState::Sitting(hip_height)
+        // } else if hip_height >= config.hip_height {
+        //     WalkState::Standing(hip_height)
+        } else {
+            WalkState::Standing(hip_height)
+        }
     }
 
     /// Transitions the [`WalkState`] to the next walk state based on the provided [`WalkingEngineConfig`].
@@ -128,7 +134,7 @@ impl WalkingEngine {
         let current_hip_height = left_hip_to_ground(kinematics);
 
         WalkingEngine {
-            state: WalkState::from_hip_height(current_hip_height),
+            state: WalkState::from_hip_height(current_hip_height, config),
             request: WalkRequest::Sit,
             current_step: Step::default(),
             filtered_gyroscope: LowPassFilter::new(

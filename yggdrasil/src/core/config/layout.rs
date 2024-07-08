@@ -11,6 +11,7 @@ pub struct LayoutConfig {
     pub field: FieldConfig,
     pub initial_positions: PositionsConfig,
     pub set_positions: PositionsConfig,
+    pub penalty_positions: Vec<Position>,
 }
 
 /// Config that contains information about the field dimensions.
@@ -112,6 +113,17 @@ impl PositionsConfig {
 pub struct RobotPosition {
     /// Player number
     pub player_number: usize,
+    /// Robot x-coordinate in metres.
+    pub x: f32,
+    /// Robot y-coordinate in metres.
+    pub y: f32,
+
+    pub rotation: f32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct Position {
     /// Robot x-coordinate in metres.
     pub x: f32,
     /// Robot y-coordinate in metres.

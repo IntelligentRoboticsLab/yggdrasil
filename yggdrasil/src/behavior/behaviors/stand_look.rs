@@ -27,6 +27,11 @@ impl Behavior for StandingLookAt {
             Priority::High,
         );
 
+        println!(
+            "StandingLookAt, absolute target: {:?}",
+            context.pose.get_look_at_absolute(&self.target),
+        );
+
         control.walking_engine.request_stand();
     }
 }

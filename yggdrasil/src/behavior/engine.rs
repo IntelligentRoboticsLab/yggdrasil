@@ -234,9 +234,13 @@ impl Engine {
 
     pub fn transition(&mut self, context: Context, control: &mut Control) {
         if let BehaviorKind::StartUp(_) = self.behavior {
-            if control.walking_engine.is_sitting() {
+            if control.walking_engine.is_sitting() || context.head_buttons.all_pressed() {
                 self.behavior = BehaviorKind::Unstiff(Unstiff);
             }
+            if *context.primary_state == PrimaryState::Initial {
+                self.behavior = BehaviorKind::Stand(Stand);
+            }
+            return;
         }
 
         // unstiff has the number 1 precedence
