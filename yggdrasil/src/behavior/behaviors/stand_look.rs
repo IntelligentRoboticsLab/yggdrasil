@@ -5,7 +5,7 @@ use crate::{
 use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};
 
-const HEAD_STIFFNESS: f32 = 0.4;
+const ROTATION_STIFFNESS: f32 = 0.3;
 
 /// During a match the chest button is pressed before starting a match.
 /// Once this is done, the robots are placed at the edge of the field from
@@ -15,13 +15,15 @@ const HEAD_STIFFNESS: f32 = 0.4;
 /// In this state the robot will stand up straight and look at the middle
 /// circle to make it easier to place the robot in the correct position.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
-pub struct Standby;
+pub struct StandingLookAt {
+    pub target: Point2<f32>,
+}
 
-impl Behavior for Standby {
+impl Behavior for StandingLookAt {
     fn execute(&mut self, context: Context, control: &mut Control) {
         control.nao_manager.set_head(
-            context.pose.get_look_at_absolute(&Point2::origin()),
-            HeadJoints::fill(HEAD_STIFFNESS),
+            context.pose.get_look_at_absolute(&self.target),
+            HeadJoints::fill(ROTATION_STIFFNESS),
             Priority::High,
         );
 

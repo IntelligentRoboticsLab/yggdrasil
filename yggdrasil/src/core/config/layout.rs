@@ -9,7 +9,8 @@ use serde::{Deserialize, Serialize};
 #[serde(deny_unknown_fields)]
 pub struct LayoutConfig {
     pub field: FieldConfig,
-    pub initial_positions: InitialPositionsConfig,
+    pub initial_positions: PositionsConfig,
+    pub set_positions: PositionsConfig,
 }
 
 /// Config that contains information about the field dimensions.
@@ -79,9 +80,9 @@ pub struct FieldConfig {
 /// This configuration assumes the center has coordinates (0, 0).
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-pub struct InitialPositionsConfig(Vec<RobotPosition>);
+pub struct PositionsConfig(Vec<RobotPosition>);
 
-impl Index<usize> for InitialPositionsConfig {
+impl Index<usize> for PositionsConfig {
     type Output = RobotPosition;
 
     // Required method
@@ -93,7 +94,7 @@ impl Index<usize> for InitialPositionsConfig {
     }
 }
 
-impl InitialPositionsConfig {
+impl PositionsConfig {
     pub fn player(&self, player_num: u8) -> &RobotPosition {
         self.0
             .iter()

@@ -106,3 +106,41 @@ player_number = 5
 x = -1
 y = -3
 rotation = 90.0
+
+# Set Positions
+# In Set the robots will walk to this position
+
+# Set position of player one.
+[[set_positions]]
+player_number = 1
+x = -3
+y = 2
+rotation = 90.0
+
+# Set position of player two.
+[[set_positions]]
+player_number = 2
+x = -2
+y = 2
+rotation = -90.0
+
+# Set position of player three.
+[[set_positions]]
+player_number = 3
+x = -2
+y = 2
+rotation = 90.0
+
+# Set position of player four.
+[[set_positions]]
+player_number = 4
+x = -1
+y = 2
+rotation = -90.0
+
+# Set position of player five.
+[[set_positions]]
+player_number = 5
+x = -1
+y = 2
+rotation = 90.0

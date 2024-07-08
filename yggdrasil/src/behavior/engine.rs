@@ -6,7 +6,7 @@ use nalgebra::Point2;
 
 use crate::{
     behavior::{
-        behaviors::{CatchFall, Initial, Observe, Penalized, Standup, StartUp, Unstiff, Walk},
+        behaviors::{CatchFall, Observe, Standup, StartUp, Unstiff, Walk},
         primary_state::PrimaryState,
         roles::Attacker,
         BehaviorConfig,
@@ -25,7 +25,10 @@ use crate::{
     vision::ball_detection::classifier::Balls,
 };
 
-use super::{behaviors::Standby, roles::Keeper};
+use super::{
+    behaviors::{Stand, StandingLookAt, WalkToSet},
+    roles::Keeper,
+};
 
 /// Context that is passed into the behavior engine.
 ///
@@ -115,11 +118,11 @@ pub trait Behavior {
 pub enum BehaviorKind {
     StartUp(StartUp),
     Unstiff(Unstiff),
-    Standby(Standby),
-    Initial(Initial),
+    StandingLookAt(StandingLookAt),
     Observe(Observe),
-    Penalized(Penalized),
+    Stand(Stand),
     Walk(Walk),
+    WalkToSet(WalkToSet),
     Standup(Standup),
     CatchFall(CatchFall),
     // Add new behaviors here!
@@ -258,15 +261,21 @@ impl Engine {
             _ => {}
         }
 
+        let ball_or_origin = context.ball_position.unwrap_or(Point2::origin());
+
         self.behavior = match context.primary_state {
             PrimaryState::Unstiff => BehaviorKind::Unstiff(Unstiff),
-            PrimaryState::Penalized => BehaviorKind::Penalized(Penalized),
-            PrimaryState::Standby => BehaviorKind::Standby(Standby),
-            PrimaryState::Initial => BehaviorKind::Initial(Initial),
-            PrimaryState::Ready => BehaviorKind::Observe(Observe::default()),
-            PrimaryState::Set => BehaviorKind::Initial(Initial),
-            PrimaryState::Finished => BehaviorKind::Initial(Initial),
-            PrimaryState::Calibration => BehaviorKind::Initial(Initial),
+            PrimaryState::Standby
+            | PrimaryState::Penalized
+            | PrimaryState::Finished
+            | PrimaryState::Calibration => BehaviorKind::Stand(Stand),
+            PrimaryState::Initial => BehaviorKind::StandingLookAt(StandingLookAt {
+                target: Point2::origin(),
+            }),
+            PrimaryState::Ready => BehaviorKind::WalkToSet(WalkToSet),
+            PrimaryState::Set => BehaviorKind::StandingLookAt(StandingLookAt {
+                target: ball_or_origin,
+            }),
             PrimaryState::Playing => self.role.transition_behavior(context, control),
         };
     }
