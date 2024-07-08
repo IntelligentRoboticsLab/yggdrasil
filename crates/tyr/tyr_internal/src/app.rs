@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::schedule::{Dependency, DependencySystem, Schedule};
 use crate::storage::{Resource, Storage};
 use crate::system::{IntoSystem, IntoSystemChain, StartupSystem, System};
-use crate::{IntoDependencySystem, Module};
+use crate::{Inspect, IntoDependencySystem, Module};
 
 use miette::Result;
 
@@ -256,31 +256,31 @@ impl App {
 
     /// Creates a [`Resource<T>`] on `T`s that implement [`Default`] and adds it to the app storage.
     ///
-    /// This method is used to mark [`Resource<T>`] as a debuggable resource, making it
+    /// This method is used to mark [`Resource<T>`] as a inspectable resource, making it
     /// show up in the debug panel.
     ///
     /// # Errors
     /// This function fails if there is already a resource of type `T` in the storage.
-    pub fn init_debuggable_resource<T: std::fmt::Debug + Default + Send + Sync + 'static>(
+    pub fn init_inspectable_resource<T: Inspect + Default + Send + Sync + 'static>(
         mut self,
     ) -> Result<Self> {
         self.storage
-            .add_debuggable_resource(Resource::<T>::default())?;
+            .add_inspectable_resource(Resource::<T>::default())?;
         Ok(self)
     }
 
     /// Consumes the [`Resource<T>`] and adds it to the app storage.
     ///
-    /// This method is used to mark [`Resource<T>`] as a debuggable resource, making it
+    /// This method is used to mark [`Resource<T>`] as a inspectable resource, making it
     /// show up in the debug panel.
     ///
     /// # Errors
     /// This functions fails if there is already a resource of type `T` in the storage.
-    pub fn add_debuggable_resource<T: std::fmt::Debug + Send + Sync + 'static>(
+    pub fn add_inspectable_resource<T: Inspect + Send + Sync + 'static>(
         mut self,
         res: Resource<T>,
     ) -> Result<Self> {
-        self.storage.add_debuggable_resource(res)?;
+        self.storage.add_inspectable_resource(res)?;
         Ok(self)
     }
 

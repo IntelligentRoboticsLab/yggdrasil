@@ -7,6 +7,10 @@ pub fn inspect(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     quote! {
         impl ::tyr::Inspect for #ident {
+            fn name(&self) -> &'static str {
+                ::core::any::type_name::<#ident>()
+            }
+
             fn to_json(&self) -> String {
                 ::serde_json::to_string(self)
                     .expect(concat!("Unable to serialize `", stringify!(#ident), "` to JSON."))

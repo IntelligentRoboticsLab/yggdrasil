@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, LockResult, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use crate::system::{NormalSystem, System};
+use crate::{system::{NormalSystem, System}, Inspect};
 
 use miette::{miette, Result};
 
@@ -53,22 +53,22 @@ impl ErasedResource {
     }
 }
 
-impl<T: Debug + Send + Sync + 'static> From<Resource<T>> for DebuggableResource {
+/// A type-erased resource that is inspectable.
+#[derive(Clone)]
+pub struct InspectableResource(Arc<RwLock<dyn Inspect + Send + Sync + 'static>>);
+
+impl<T: Inspect + Send + Sync + 'static> From<Resource<T>> for InspectableResource {
     fn from(resource: Resource<T>) -> Self {
         Self(resource.value)
     }
 }
 
-/// A type-erased resource that is debuggable.
-#[derive(Debug, Clone)]
-pub struct DebuggableResource(Arc<RwLock<dyn Debug + Send + Sync + 'static>>);
-
-impl DebuggableResource {
-    pub fn read(&self) -> LockResult<RwLockReadGuard<dyn Debug + Send + Sync + 'static>> {
+impl InspectableResource {
+    pub fn read(&self) -> LockResult<RwLockReadGuard<dyn Inspect + Send + Sync + 'static>> {
         self.0.read()
     }
 
-    pub fn write(&self) -> LockResult<RwLockWriteGuard<dyn Debug + Send + Sync + 'static>> {
+    pub fn write(&self) -> LockResult<RwLockWriteGuard<dyn Inspect + Send + Sync + 'static>> {
         self.0.write()
     }
 }
@@ -112,7 +112,7 @@ impl Storage {
     ///
     /// # Errors
     /// This function fails if there is already a resource of type `T` in the storage.
-    pub fn add_debuggable_resource<T: Debug + Send + Sync + 'static>(
+    pub fn add_inspectable_resource<T: Inspect + Send + Sync + 'static>(
         &mut self,
         res: Resource<T>,
     ) -> Result<()> {
@@ -170,18 +170,18 @@ impl Storage {
 }
 
 #[derive(Default)]
-pub struct DebugView(Vec<DebuggableResource>);
+pub struct DebugView(Vec<InspectableResource>);
 
 impl DebugView {
     pub fn new() -> Self {
         Self(Vec::new())
     }
 
-    pub fn resources(&self) -> impl Iterator<Item = &DebuggableResource> {
+    pub fn resources(&self) -> impl Iterator<Item = &InspectableResource> {
         self.0.iter()
     }
 
-    fn push(&mut self, res: DebuggableResource) {
+    fn push(&mut self, res: InspectableResource) {
         self.0.push(res)
     }
 }

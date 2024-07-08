@@ -12,6 +12,8 @@ tyr_tasks = { path = "tyr_tasks" }
 itertools = { workspace = true }
 miette = { workspace = true }
 nidhogg = { workspace = true, features = ["lola"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
 tokio = { workspace = true }
 
 [features]

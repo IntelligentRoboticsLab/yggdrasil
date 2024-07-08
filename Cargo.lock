@@ -7201,6 +7201,8 @@ dependencies = [
  "itertools 0.13.0",
  "miette",
  "nidhogg",
+ "serde",
+ "serde_json",
  "tokio",
  "tyr_internal",
  "tyr_macros",
