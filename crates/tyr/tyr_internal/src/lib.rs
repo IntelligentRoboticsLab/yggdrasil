@@ -1,6 +1,9 @@
 mod app;
 pub use app::{App, SystemStage};
 
+mod inspect;
+pub use inspect::Inspect;
+
 mod schedule;
 pub use schedule::IntoDependencySystem;
 
