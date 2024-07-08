@@ -11,8 +11,11 @@ use bifrost::broadcast::*;
 use bifrost::communication::{GameControllerMessage, GameState, Half};
 use bifrost::serialization::{Decode, Encode};
 
+/// Port range for broadcasting, the actual port is `PORT_RANGE_START + team_number`.
 const PORT_RANGE_START: u16 = 10000;
+/// Amount of messages remaining after the game, so we don't overshoot due to lag.
 const MINIMAL_BUDGET: u16 = 5;
+/// Number of seconds in a half match.
 const SECS_PER_HALF: i16 = 10 * 60;
 
 pub struct TeamCommunicationModule;
@@ -97,7 +100,6 @@ impl TeamCommunication {
             late_threshold: Duration::from_millis(2500),
             automatic_deadline: Duration::from_millis(5000),
             early_threshold: Duration::from_millis(7500),
-            dead_space: 16,
         };
 
         Ok(Self {
@@ -189,4 +191,5 @@ pub enum TeamMessage {
 impl Message for TeamMessage {
     const MAX_PACKET_SIZE: usize = 128;
     const EXPECTED_SIZE: usize = 1;
+    const DEAD_SPACE: usize = 16;
 }

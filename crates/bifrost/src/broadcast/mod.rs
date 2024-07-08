@@ -21,10 +21,12 @@ pub trait Message: Encode + Decode {
     const MAX_PACKET_SIZE: usize;
     /// Number of bytes expected to fit one message, used for allocating the encoding buffer.
     const EXPECTED_SIZE: usize;
+    /// Number of bytes allowed to remain before a packet is considered full enough.
+    const DEAD_SPACE: usize;
 
     /// Returns true if `self` is an update of `old`. `self` is mutable to allow for merging the
     /// old message into the new one.
-    fn is_update_of(&mut self, old: &Self) -> bool {
+    fn try_merge(&mut self, old: &Self) -> bool {
         let _ = old;
         false
     }
@@ -97,6 +99,7 @@ mod tests {
     impl Message for Dummy {
         const MAX_PACKET_SIZE: usize = 8;
         const EXPECTED_SIZE: usize = 8;
+        const DEAD_SPACE: usize = 2;
     }
 
     /// Helper type for quickly constructing timestamps.
@@ -136,7 +139,6 @@ mod tests {
             late_threshold: Duration::ZERO,
             automatic_deadline: Duration::from_secs(5),
             early_threshold: Duration::from_secs(10),
-            dead_space: 2,
         };
 
         let mut buffer = Outbound::new(rate);
@@ -170,7 +172,6 @@ mod tests {
             late_threshold: Duration::ZERO,
             automatic_deadline: Duration::ZERO,
             early_threshold: Duration::ZERO,
-            dead_space: 2,
         };
 
         let mut buffer = Outbound::new(rate);

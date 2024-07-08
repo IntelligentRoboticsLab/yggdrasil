@@ -30,8 +30,6 @@ pub struct Rate {
     pub automatic_deadline: Duration,
     /// The minimum interval before the next early packet may be sent out.
     pub early_threshold: Duration,
-    /// Number of bytes allowed to remain before a packet is considered full enough.
-    pub dead_space: usize,
 }
 
 /// Error type returned when adding messages to the buffer.
@@ -132,7 +130,7 @@ impl<M: Message> Outbound<M> {
         when: Instant,
     ) -> Result<(), OutboundError> {
         for fragment in &mut self.fragments {
-            if message.is_update_of(&fragment.message) {
+            if message.try_merge(&fragment.message) {
                 return fragment.update(message);
             }
         }
@@ -211,7 +209,7 @@ impl<M: Message> Outbound<M> {
             return false;
         }
 
-        self.underfullness() <= self.rate.dead_space
+        self.underfullness() <= M::DEAD_SPACE
     }
 }
 
