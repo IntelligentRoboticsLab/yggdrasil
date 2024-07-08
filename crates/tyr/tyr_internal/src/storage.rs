@@ -5,7 +5,10 @@ use std::{
     sync::{Arc, LockResult, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use crate::{system::{NormalSystem, System}, Inspect};
+use crate::{
+    system::{NormalSystem, System},
+    Inspect,
+};
 
 use miette::{miette, Result};
 
