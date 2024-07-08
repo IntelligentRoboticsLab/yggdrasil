@@ -152,10 +152,10 @@ rotation = 90.0
 [[penalty_positions]]
 x = 2.85
 y = 3
-rotation = 90.0
+rotation = -90.0
 
 # Position for returning after penalty.
 [[penalty_positions]]
 x = 2.85
 y = -3
-rotation = -90.0
+rotation = 90.0
