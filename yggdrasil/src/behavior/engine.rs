@@ -112,7 +112,7 @@ pub trait Behavior {
 ///
 /// # Notes
 /// - New behavior implementations should be added as new variants to this enum.
-/// - The specific struct for each behavior (e.g., [`Initial`], [`StartUp`]) should implement the [`Behavior`] trait.
+/// - The specific struct for each behavior (e.g., [`Stand`], [`StartUp`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
 #[derive(Debug, PartialEq)]
 pub enum BehaviorKind {
