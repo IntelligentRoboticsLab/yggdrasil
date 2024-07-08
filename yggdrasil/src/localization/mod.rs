@@ -104,8 +104,9 @@ pub fn update_robot_pose(
         if let Some(closest_penalty_pose) = find_closest_penalty_pose(robot_pose, layout_config) {
             robot_pose.inner = closest_penalty_pose;
         }
+    } else {
+        robot_pose.inner *= odometry.offset_to_last;
     }
-    robot_pose.inner *= odometry.offset_to_last;
     log_pose(
         "/localisation/pose",
         ctx,

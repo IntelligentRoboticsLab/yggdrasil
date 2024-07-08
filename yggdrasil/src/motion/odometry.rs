@@ -78,7 +78,7 @@ pub fn update_odometry(
 ) -> Result<()> {
     match primary_state {
         PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Unstiff => {
-            odometry.offset_to_last = Default::default();
+            *odometry = Odometry::default();
         }
         _ => {
             odometry.update(odometry_config, swing_foot, kinematics, orientation);
