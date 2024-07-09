@@ -7220,6 +7220,7 @@ dependencies = [
  "miette",
  "petgraph",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

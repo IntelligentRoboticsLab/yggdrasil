@@ -23,11 +23,10 @@ struct Sausage(String);
 #[system]
 fn dump_debug_info(view: &tyr::DebugView) -> Result<()> {
     for res in view.resources() {
-        let mut res = res.write().unwrap();
+        let res = res.read().unwrap();
 
         let (name, json) = (res.name(), res.to_json());
         println!("{}: {}", name, json);
-        res.update_from_json(&json);
     }
 
     Ok(())

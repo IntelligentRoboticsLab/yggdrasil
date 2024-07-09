@@ -11,14 +11,15 @@ pub fn inspect(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 ::core::any::type_name::<#ident>()
             }
 
-            fn to_json(&self) -> String {
-                ::serde_json::to_string(self)
+            fn to_json(&self) -> ::serde_json::Value {
+                ::serde_json::to_value(self)
                     .expect(concat!("Unable to serialize `", stringify!(#ident), "` to JSON."))
             }
 
-            fn update_from_json(&mut self, json: &str) {
-                *self = ::serde_json::from_str(json)
-                    .expect(concat!("Unable to deserialize `", stringify!(#ident), "` from JSON."))
+            fn update_from_json(&mut self, json: ::serde_json::Value) {
+                if let Ok(data) = ::serde_json::from_value(json) {
+                    *self = data;
+                }
             }
         }
     }
