@@ -92,10 +92,7 @@ pub fn isometry_to_absolute(
     isometry: Isometry2<f32>,
     robot_position: &RobotPosition,
 ) -> Isometry2<f32> {
-    Isometry2::new(
-        Vector2::new(robot_position.x, robot_position.y),
-        robot_position.rotation,
-    ) * isometry
+    robot_position.isometry * isometry
 }
 #[startup_system]
 pub(super) fn setup_viewcoordinates(_storage: &mut Storage, dbg: &DebugContext) -> Result<()> {

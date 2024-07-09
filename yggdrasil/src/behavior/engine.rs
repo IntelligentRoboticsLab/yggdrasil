@@ -26,7 +26,7 @@ use crate::{
 };
 
 use super::{
-    behaviors::{Stand, StandingLookAt, WalkToSet},
+    behaviors::{Stand, StandLookAt, WalkToSet},
     roles::Keeper,
 };
 
@@ -118,7 +118,7 @@ pub trait Behavior {
 pub enum BehaviorKind {
     StartUp(StartUp),
     Unstiff(Unstiff),
-    StandingLookAt(StandingLookAt),
+    StandLookAt(StandLookAt),
     Observe(Observe),
     Stand(Stand),
     Walk(Walk),
@@ -273,11 +273,11 @@ impl Engine {
             | PrimaryState::Penalized
             | PrimaryState::Finished
             | PrimaryState::Calibration => BehaviorKind::Stand(Stand),
-            PrimaryState::Initial => BehaviorKind::StandingLookAt(StandingLookAt {
+            PrimaryState::Initial => BehaviorKind::StandLookAt(StandLookAt {
                 target: Point2::origin(),
             }),
             PrimaryState::Ready => BehaviorKind::WalkToSet(WalkToSet),
-            PrimaryState::Set => BehaviorKind::StandingLookAt(StandingLookAt {
+            PrimaryState::Set => BehaviorKind::StandLookAt(StandLookAt {
                 target: ball_or_origin,
             }),
             PrimaryState::Playing => self.role.transition_behavior(context, control),

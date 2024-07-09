@@ -5,7 +5,7 @@ use crate::{
 use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 
 const DEFAULT_PASSIVE_STIFFNESS: f32 = 0.8;
-const DEFAULT_PASSIVE_PRIORITY: Priority = Priority::Critical;
+const DEFAULT_PASSIVE_PRIORITY: Priority = Priority::High;
 
 /// This is the startup behavior of the robot.
 /// In this state the robot does nothing and retains its previous position.

@@ -1,4 +1,3 @@
-use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
@@ -16,7 +15,7 @@ impl Behavior for WalkToSet {
             .set_positions
             .player(context.player_config.player_number);
 
-        let set_position = Point2::new(set_robot_position.x, set_robot_position.y);
+        let set_position = set_robot_position.isometry.translation.vector.into();
 
         let look_at = context.pose.get_look_at_absolute(&set_position);
         control

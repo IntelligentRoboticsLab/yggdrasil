@@ -13,7 +13,7 @@ mod walk_to_set;
 pub use catchfall::CatchFall;
 pub use observe::{Observe, ObserveBehaviorConfig};
 pub use stand::Stand;
-pub use stand_look::StandingLookAt;
+pub use stand_look::StandLookAt;
 pub use standup::Standup;
 pub use startup::StartUp;
 pub use unstiff::Unstiff;

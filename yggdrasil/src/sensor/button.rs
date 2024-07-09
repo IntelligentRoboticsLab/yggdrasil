@@ -93,14 +93,17 @@ pub struct HeadButtons {
 }
 
 impl HeadButtons {
+    /// Tell whether all buttons are tapped, meaning they were just released.
     pub fn all_tapped(&self) -> bool {
         self.front.is_tapped() && self.middle.is_tapped() && self.rear.is_tapped()
     }
 
+    /// Tell whether all buttons are pressed.
     pub fn all_pressed(&self) -> bool {
         self.front.is_pressed() && self.middle.is_pressed() && self.rear.is_pressed()
     }
 
+    /// Tell whether all buttons are held down.
     pub fn all_held(&self) -> bool {
         self.front.is_held() && self.middle.is_held() && self.rear.is_held()
     }

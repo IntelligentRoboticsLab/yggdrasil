@@ -7,7 +7,7 @@ use crate::{
     motion::odometry::{self, Odometry},
     prelude::*,
 };
-use nalgebra::{Isometry2, Point2, Translation2, UnitComplex};
+use nalgebra::{Isometry2, Point2};
 use nidhogg::types::{
     color::{self, RgbU8},
     HeadJoints,
@@ -31,15 +31,8 @@ fn init_pose(
     let initial_position = layout_config
         .initial_positions
         .player(player_config.player_number);
-    let position = Point2::new(initial_position.x, initial_position.y);
-    let orientation = initial_position.rotation.to_radians();
 
-    let initial_pose = Isometry2::from_parts(
-        Translation2::from(position),
-        UnitComplex::from_angle(orientation),
-    );
-
-    storage.add_resource(Resource::new(RobotPose::new(initial_pose)))?;
+    storage.add_resource(Resource::new(RobotPose::new(initial_position.isometry)))?;
 
     Ok(())
 }
@@ -101,9 +94,7 @@ pub fn update_robot_pose(
     layout_config: &LayoutConfig,
 ) -> Result<()> {
     if *primary_state == PrimaryState::Penalized {
-        if let Some(closest_penalty_pose) = find_closest_penalty_pose(robot_pose, layout_config) {
-            robot_pose.inner = closest_penalty_pose;
-        }
+        robot_pose.inner = find_closest_penalty_pose(robot_pose, layout_config);
     } else {
         robot_pose.inner *= odometry.offset_to_last;
     }
@@ -119,22 +110,20 @@ pub fn update_robot_pose(
 fn find_closest_penalty_pose(
     robot_pose: &RobotPose,
     layout_config: &LayoutConfig,
-) -> Option<Isometry2<f32>> {
-    let penalty_poses = layout_config
+) -> Isometry2<f32> {
+    layout_config
         .penalty_positions
         .iter()
-        .map(|penalty_position| {
-            Isometry2::from_parts(
-                Translation2::new(penalty_position.x, penalty_position.y),
-                UnitComplex::from_angle(penalty_position.rotation.to_radians()),
-            )
-        });
-
-    penalty_poses.min_by_key(|penalty_pose| {
-        let distance =
-            (robot_pose.inner.translation.vector - penalty_pose.translation.vector).norm_squared();
-        distance as i32
-    })
+        .min_by_key(|penalty_pose| {
+            let distance = (robot_pose.inner.translation.vector - penalty_pose.translation.vector)
+                .norm_squared();
+            distance as i32
+        })
+        .unwrap_or_else(|| {
+            tracing::warn!("Failed to find closest penalty pose for");
+            &robot_pose.inner
+        })
+        .clone()
 }
 
 fn log_pose(

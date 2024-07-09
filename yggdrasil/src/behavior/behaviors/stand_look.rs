@@ -15,11 +15,11 @@ const HEAD_STIFFNESS: f32 = 0.4;
 /// In this state the robot will stand up straight and look at the middle
 /// circle to make it easier to place the robot in the correct position.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
-pub struct StandingLookAt {
+pub struct StandLookAt {
     pub target: Point2<f32>,
 }
 
-impl Behavior for StandingLookAt {
+impl Behavior for StandLookAt {
     fn execute(&mut self, context: Context, control: &mut Control) {
         control.nao_manager.set_head(
             context.pose.get_look_at_absolute(&self.target),

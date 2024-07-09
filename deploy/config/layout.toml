@@ -75,37 +75,32 @@ border_strip_width = 0.7
 # Initial position of player one.
 [[initial_positions]]
 player_number = 1
-x = -3
-y = -3
-rotation = 90.0
+translation = [ -3, -3 ]
+rotation = 90
 
 # Initial position of player two.
 [[initial_positions]]
 player_number = 2
-x = -2
-y = 3
-rotation = -90.0
+translation = [ -2, 3 ]
+rotation = -90
 
 # Initial position of player three.
 [[initial_positions]]
 player_number = 3
-x = 2
-y = -3
-rotation = 90.0
+translation = [ 2, -3 ]
+rotation = 90
 
 # Initial position of player four.
 [[initial_positions]]
 player_number = 4
-x = -1
-y = 3
-rotation = -90.0
+translation = [ -1, 3 ]
+rotation = -90
 
 # Initial position of player five.
 [[initial_positions]]
 player_number = 5
-x = -1
-y = -3
-rotation = 90.0
+translation = [ -1, -3 ]
+rotation = 90
 
 # Set Positions
 # In Set the robots will walk to this position
@@ -113,49 +108,42 @@ rotation = 90.0
 # Set position of player one.
 [[set_positions]]
 player_number = 1
-x = -3
-y = -2
-rotation = 90.0
+translation = [ -3, -2 ]
+rotation = 90
 
 # Set position of player two.
 [[set_positions]]
 player_number = 2
-x = -2
-y = 2
-rotation = -90.0
+translation = [ -2, 2 ]
+rotation = -90
 
 # Set position of player three.
 [[set_positions]]
 player_number = 3
-x = 2
-y = -2
-rotation = 90.0
+translation = [ 2, -2 ]
+rotation = 90
 
 # Set position of player four.
 [[set_positions]]
 player_number = 4
-x = -1
-y = 2
-rotation = -90.0
+translation = [ -1, 2 ]
+rotation = -90
 
 # Set position of player five.
 [[set_positions]]
 player_number = 5
-x = -1
-y = -2
-rotation = 90.0
+translation = [ -1, -2 ]
+rotation = 90
 
 # Penalty Positions
 # When returning from penalized to playing the robots position will be reset to a penalty position.
  
 # Position for returning after penalty.
 [[penalty_positions]]
-x = 2.85
-y = 3
-rotation = -90.0
+translation = [ 2.85, 3 ]
+rotation = -90
 
 # Position for returning after penalty.
 [[penalty_positions]]
-x = 2.85
-y = -3
-rotation = 90.0
+translation = [ 2.85, -3 ]
+rotation = 90
