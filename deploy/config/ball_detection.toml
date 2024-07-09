@@ -22,4 +22,4 @@ confidence_threshold = 0.85
 time_budget = 1000
 # Lifetime of the ball in milliseconds, this is the time the robot will remember a classified balls' location.
 # If a new ball is detected it will restart the timer.
-ball_life = 2000
+ball_life = 4500
