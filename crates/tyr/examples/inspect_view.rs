@@ -21,7 +21,7 @@ struct Cheese(String);
 struct Sausage(String);
 
 #[system]
-fn dump_debug_info(view: &tyr::DebugView) -> Result<()> {
+fn dump_debug_info(view: &tyr::InspectView) -> Result<()> {
     for res in view.resources() {
         let res = res.read().unwrap();
 

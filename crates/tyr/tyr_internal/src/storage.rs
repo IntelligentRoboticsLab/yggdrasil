@@ -84,8 +84,8 @@ impl Storage {
     /// Create a new resource storage.
     pub fn new() -> Self {
         let map = HashMap::from([(
-            TypeId::of::<DebugView>(),
-            Resource::new(DebugView::new()).into(),
+            TypeId::of::<InspectView>(),
+            Resource::new(InspectView::new()).into(),
         )]);
 
         Storage(map)
@@ -125,7 +125,7 @@ impl Storage {
                 std::any::type_name::<T>()
             )),
             None => {
-                self.map_resource_mut(|view: &mut DebugView| view.push(res.into()))
+                self.map_resource_mut(|view: &mut InspectView| view.push(res.into()))
                     .unwrap();
                 Ok(())
             }
@@ -173,9 +173,9 @@ impl Storage {
 }
 
 #[derive(Default)]
-pub struct DebugView(Vec<InspectableResource>);
+pub struct InspectView(Vec<InspectableResource>);
 
-impl DebugView {
+impl InspectView {
     pub fn new() -> Self {
         Self(Vec::new())
     }

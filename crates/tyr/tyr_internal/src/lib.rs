@@ -8,7 +8,7 @@ mod schedule;
 pub use schedule::IntoDependencySystem;
 
 mod storage;
-pub use storage::{DebugView, Resource, Storage};
+pub use storage::{InspectView, Resource, Storage};
 
 mod system;
 pub use system::{Res, ResMut};
