@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::{
     core::{config::layout::LayoutConfig, debug::DebugContext},
     prelude::*,
@@ -34,9 +36,8 @@ pub struct ScanLinesModule;
 
 impl Module for ScanLinesModule {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .init_resource::<ScanGrid>()?
-            .add_system(update_scan_grid))
+        app.add_system(update_scan_grid.after(super::camera::camera_system))
+            .add_startup_system(init_scan_grid)
     }
 }
 
@@ -57,10 +58,70 @@ pub enum PixelColor {
     Unknown,
 }
 
+#[derive(Debug, Clone)]
 pub struct FieldColorApproximate {
-    pub luminance: f32,
-    pub hue: f32,
-    pub saturation: f32,
+    pub luminance: (f32, f32),
+    pub hue: (f32, f32),
+    pub saturation: (f32, f32),
+}
+
+impl FieldColorApproximate {
+    pub fn new(image: &YuyvImage) -> Self {
+        let height = image.height();
+
+        let rows_to_check = [
+            image.row(height - height * 3 / 8),
+            image.row(height - height / 4),
+            image.row(height - height / 8),
+        ];
+
+        let mut luminances = Vec::new();
+        let mut hues = Vec::new();
+        let mut saturations = Vec::new();
+
+        for row in rows_to_check {
+            for pixel in row.step_by(FIELD_APPROXIMATION_STEP_SIZE) {
+                let (y, h, s2) = pixel.to_yhs2();
+
+                luminances.push(y);
+                hues.push(h);
+                saturations.push(s2);
+            }
+        }
+
+        let luminance = mean_and_std(&luminances);
+        let hue = mean_and_std(&hues);
+        let saturation = mean_and_std(&saturations);
+
+        Self {
+            luminance,
+            hue,
+            saturation,
+        }
+    }
+}
+
+fn mean(data: &[f32]) -> f32 {
+    let sum = data.iter().sum::<f32>();
+    let count = data.len();
+
+    sum / count as f32
+}
+
+fn mean_and_std(data: &[f32]) -> (f32, f32) {
+    let (mean, count) = (mean(data), data.len());
+
+    let variance = data
+        .iter()
+        .map(|value| {
+            let diff = mean - (*value as f32);
+
+            diff * diff
+        })
+        .sum::<f32>()
+        / count as f32;
+
+    (mean, variance.sqrt())
 }
 
 #[derive(Debug)]
@@ -70,8 +131,8 @@ pub struct Line {
     pub max_index: usize,
 }
 
-#[derive(Default, Debug)]
 pub struct ScanGrid {
+    pub image: Image,
     /// All possible y coordinates of pixels to be scanned.
     pub y: Vec<usize>,
     /// Description of all scan lines
@@ -84,41 +145,21 @@ pub struct ScanGrid {
     pub low_res_step: usize,
 }
 
-const FIELD_APPROXIMATION_STEP_SIZE: usize = 8;
+#[startup_system]
+pub fn init_scan_grid(storage: &mut Storage, image: &TopImage) -> Result<()> {
+    let image = image.deref().clone();
 
-pub fn approximate_field_color(image: &YuyvImage) -> FieldColorApproximate {
-    let height = image.height();
-
-    let rows_to_check = [
-        image.row(height * 3 / 8),
-        image.row(height / 4),
-        image.row(height / 8),
-    ];
-
-    let mut luminances = Vec::new();
-    let mut hues = Vec::new();
-    let mut saturations = Vec::new();
-
-    for row in rows_to_check {
-        for pixel in row.step_by(FIELD_APPROXIMATION_STEP_SIZE) {
-            let (y, h, s2) = pixel.to_yhs2();
-
-            luminances.push(y);
-            hues.push(h);
-            saturations.push(s2);
-        }
-    }
-
-    let luminance = luminances.iter().sum::<f32>() / luminances.len() as f32;
-    let hue = hues.iter().sum::<f32>() / hues.len() as f32;
-    let saturation = saturations.iter().sum::<f32>() / saturations.len() as f32;
-
-    FieldColorApproximate {
-        luminance,
-        hue,
-        saturation,
-    }
+    storage.add_resource(Resource::new(ScanGrid {
+        image,
+        y: Vec::new(),
+        lines: Vec::new(),
+        field_limit: 0,
+        low_res_start: 0,
+        low_res_step: 0,
+    }))
 }
+
+const FIELD_APPROXIMATION_STEP_SIZE: usize = 8;
 
 #[allow(dead_code)]
 fn vertical_scan_lines(
@@ -140,15 +181,15 @@ pub fn update_scan_grid(
     layout: &LayoutConfig,
     image: &TopImage,
     dbg: &DebugContext,
-    // image: &YuyvImage,
 ) -> Result<()> {
-    if let Some(new_scan_grid) = get_scan_grid(&camera_matrix.top, layout, image.yuyv_image()) {
-        // println!("Updated scan grid: {:#?}", new_scan_grid);
+    if scan_grid.image.is_from_cycle(&image.cycle) {
+        return Ok(());
+    }
+
+    if let Some(new_scan_grid) = get_scan_grid(&camera_matrix.top, layout, image) {
         *scan_grid = new_scan_grid;
 
-        let now = std::time::Instant::now();
         debug_scan_grid(scan_grid, image, dbg)?;
-        println!("scan_lines took: {:#?}", now.elapsed());
     } else {
         warn!("Failed to update scan grid")
     };
@@ -160,7 +201,7 @@ fn debug_scan_grid(scan_grid: &ScanGrid, image: &Image, dbg: &DebugContext) -> R
     let mut points = Vec::new();
 
     for line in &scan_grid.lines {
-        for y in scan_grid.y.iter().take_while(|y| **y < line.y_max as usize) {
+        for y in scan_grid.y.iter().filter(|y| **y < line.y_max as usize) {
             points.push((line.x as f32, *y as f32));
         }
     }
@@ -173,9 +214,10 @@ fn debug_scan_grid(scan_grid: &ScanGrid, image: &Image, dbg: &DebugContext) -> R
 fn get_scan_grid(
     camera_matrix: &CameraMatrix,
     layout: &LayoutConfig,
-    image: &YuyvImage,
+    image: &Image,
 ) -> Option<ScanGrid> {
-    // println!();
+    let image = image.clone();
+    let yuyv = image.yuyv_image();
 
     let field_diagonal = layout.field.diagonal().norm();
 
@@ -185,14 +227,14 @@ fn get_scan_grid(
         .ok()?;
 
     let field_limit = point_in_image.y.max(-1.0) as i32;
-    if field_limit >= image.height() as i32 {
+    if field_limit >= yuyv.height() as i32 {
         warn!("Field limit is out of bounds");
         return None;
     }
 
     // Field coordinates of bottom left pixel (robot frame)
     let bottom_left = camera_matrix
-        .pixel_to_ground(point![0.0, image.height() as f32], 0.0)
+        .pixel_to_ground(point![0.0, yuyv.height() as f32], 0.0)
         .inspect_err(|_| {
             warn!("No bottom left");
         })
@@ -201,7 +243,7 @@ fn get_scan_grid(
 
     // Field coordinates of bottom right pixel (robot frame)
     let bottom_right = camera_matrix
-        .pixel_to_ground(point![image.width() as f32, image.height() as f32], 0.0)
+        .pixel_to_ground(point![yuyv.width() as f32, yuyv.height() as f32], 0.0)
         .inspect_err(|_| {
             warn!("No bottom right");
         })
@@ -214,19 +256,19 @@ fn get_scan_grid(
     // println!("Bottom right: {:#?}", bottom_right);
     // println!("norm {:#?}", (bottom_left - bottom_right).norm());
 
-    let x_step_upper_bound = image.width() as i32 / MIN_NUM_OF_LOW_RES_SCAN_LINES;
+    let x_step_upper_bound = yuyv.width() as i32 / MIN_NUM_OF_LOW_RES_SCAN_LINES;
     let max_x_step = {
         x_step_upper_bound.min(
-            ((image.width() as f32 * BALL_RADIUS * 2.0 * BALL_WIDTH_RATIO)
+            ((yuyv.width() as f32 * BALL_RADIUS * 2.0 * BALL_WIDTH_RATIO)
                 / (bottom_left - bottom_right).norm()) as i32,
         )
     };
 
     let mut point_on_field = (bottom_left.coords + bottom_right.coords) / 2.0;
 
-    let mut scangrid_ys = Vec::with_capacity(image.height());
+    let mut scangrid_ys = Vec::with_capacity(yuyv.height());
     let field_step = layout.field.line_width * LINE_WIDTH_RATIO;
-    let mut y = image.height() as i32 - 1;
+    let mut y = yuyv.height() as i32 - 1;
     let mut single_steps = false;
 
     while y > field_limit {
@@ -259,7 +301,7 @@ fn get_scan_grid(
 
     // println!("Top left ok: {:#?}", top_left.is_ok());
 
-    let top_right = camera_matrix.pixel_to_ground(point![image.width() as f32, 0.0], 0.0);
+    let top_right = camera_matrix.pixel_to_ground(point![yuyv.width() as f32, 0.0], 0.0);
 
     // println!("Top right ok: {:#?}", top_right.is_ok());
 
@@ -267,7 +309,7 @@ fn get_scan_grid(
 
     if let (Ok(top_left), Ok(top_right)) = (top_left, top_right) {
         min_x_step = min_x_step.max(
-            (image.width() as f32 * BALL_RADIUS * 2.0 * BALL_WIDTH_RATIO
+            (yuyv.width() as f32 * BALL_RADIUS * 2.0 * BALL_WIDTH_RATIO
                 / (top_left - top_right).norm()) as i32,
         );
     }
@@ -297,7 +339,7 @@ fn get_scan_grid(
         max_x_step2 *= 2;
     }
 
-    y_starts.push(image.height() as i32);
+    y_starts.push(yuyv.height() as i32);
 
     // Determine a pattern with the different lengths of scan lines, in which the longest appears once,
     // the second longest twice, etc. The pattern starts with the longest.
@@ -312,7 +354,7 @@ fn get_scan_grid(
     }
 
     // Initialize the scan states and the regions.
-    let (width, height) = (image.width() as i32, image.height() as i32);
+    let (width, height) = (yuyv.width() as i32, yuyv.height() as i32);
     let x_start = width % (width / min_x_step - 1) / 2;
     let mut i = y_starts2.len() / 2;
 
@@ -339,6 +381,7 @@ fn get_scan_grid(
     let low_res_start = low_res_step / 2;
 
     Some(ScanGrid {
+        image,
         y: scangrid_ys,
         lines,
         field_limit,

@@ -106,7 +106,7 @@ pub(super) fn detect_balls(
     nao: &mut NaoManager,
     robot_pose: &RobotPose,
 ) -> Result<()> {
-    if balls.image.timestamp() == proposals.image.timestamp() {
+    if balls.image.timestamp == proposals.image.timestamp {
         return Ok(());
     }
 

@@ -10,6 +10,7 @@ pub mod line;
 pub mod line_detection;
 pub mod scan_grid;
 pub mod scan_lines;
+pub mod scan_lines2;
 
 use field_boundary::FieldBoundaryModule;
 
@@ -27,6 +28,7 @@ impl Module for VisionModule {
             // TODO
             .add_module(scan_grid::ScanLinesModule)?
             .add_module(ScanLinesModule)?
+            .add_module(scan_lines2::ScanLinesModule)?
             .add_module(LineDetectionModule)?
             .add_module(BallDetectionModule)?
             .add_module(FieldMarksModule)

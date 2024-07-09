@@ -166,7 +166,7 @@ fn detect_field_boundary(
 ) -> Result<()> {
     // Start a new inference if the image has changed
     // TODO: Some kind of callback/event system would be nice to avoid doing the timestamp comparison everywhere
-    if field_boundary_image.0.timestamp() != top_image.timestamp() && !model.active() {
+    if field_boundary_image.0.timestamp != top_image.timestamp && !model.active() {
         let resized_image = resize_yuyv(top_image.yuyv_image());
         if let Ok(()) = model.try_start_infer(&resized_image) {
             // We need to keep track of the image we started the inference with
