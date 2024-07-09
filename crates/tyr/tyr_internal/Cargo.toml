@@ -12,3 +12,5 @@ itertools = { workspace = true }
 graphviz-rust = { workspace = true }
 miette = { workspace = true }
 petgraph = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

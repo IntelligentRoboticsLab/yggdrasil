@@ -1,6 +1,12 @@
 use proc_macro::TokenStream;
 
+mod inspect;
 mod system;
+
+#[proc_macro_derive(Inspect)]
+pub fn inspect(item: TokenStream) -> proc_macro::TokenStream {
+    inspect::inspect(item)
+}
 
 /// Macro that performs substitution of parameter types, making the writing of systems more ergonomic.
 ///

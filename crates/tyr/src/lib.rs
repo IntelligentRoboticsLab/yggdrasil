@@ -10,7 +10,7 @@ pub mod tasks {
 pub mod prelude {
     pub use super::tasks::prelude::*;
     pub use super::{
-        startup_system, system, App, IntoDependencySystem, Module, Res, ResMut, Resource, Storage,
-        SystemStage,
+        startup_system, system, App, Inspect, IntoDependencySystem, Module, Res, ResMut, Resource,
+        Storage, SystemStage,
     };
 }

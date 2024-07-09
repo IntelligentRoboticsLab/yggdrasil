@@ -1,10 +1,11 @@
 use miette::Result;
+use serde::{Deserialize, Serialize};
 use tyr::prelude::*;
 
 fn main() -> Result<()> {
     App::new()
-        .init_debuggable_resource::<Cheese>()?
-        .add_debuggable_resource(Resource::new(Sausage("Salami".to_string())))?
+        .init_inspectable_resource::<Cheese>()?
+        .add_inspectable_resource(Resource::new(Sausage("Salami".to_string())))?
         .add_system(dump_debug_info)
         .add_system(say_hi)
         .add_system(update_cheese)
@@ -13,16 +14,19 @@ fn main() -> Result<()> {
         .run()
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug, Default, Serialize, Deserialize, Inspect)]
 struct Cheese(String);
 
-#[derive(Default, Debug)]
+#[derive(Debug, Default, Serialize, Deserialize, Inspect)]
 struct Sausage(String);
 
 #[system]
-fn dump_debug_info(view: &tyr::DebugView) -> Result<()> {
+fn dump_debug_info(view: &tyr::InspectView) -> Result<()> {
     for res in view.resources() {
-        println!("{:?}", res);
+        let res = res.read().unwrap();
+
+        let (name, json) = (res.name(), res.to_json());
+        println!("{}: {}", name, json);
     }
 
     Ok(())
