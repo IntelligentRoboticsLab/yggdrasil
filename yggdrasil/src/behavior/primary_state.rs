@@ -73,12 +73,6 @@ fn is_penalized_by_game_controller(
     })
 }
 
-fn should_unstiff(head_buttons: &HeadButtons) -> bool {
-    head_buttons.rear.is_pressed()
-        && head_buttons.middle.is_pressed()
-        && head_buttons.front.is_pressed()
-}
-
 #[system]
 pub fn update_primary_state(
     primary_state: &mut PrimaryState,
@@ -162,7 +156,7 @@ fn next_primary_state(
         primary_state = PS::Penalized;
     }
 
-    if should_unstiff(head_buttons) {
+    if head_buttons.all_pressed() {
         primary_state = PS::Unstiff;
     }
 

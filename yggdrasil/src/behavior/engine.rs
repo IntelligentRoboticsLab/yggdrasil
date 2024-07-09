@@ -6,7 +6,7 @@ use nalgebra::Point2;
 
 use crate::{
     behavior::{
-        behaviors::{CatchFall, Initial, Observe, Penalized, Standup, StartUp, Unstiff, Walk},
+        behaviors::{CatchFall, Observe, Standup, StartUp, Unstiff, Walk},
         primary_state::PrimaryState,
         roles::Attacker,
         BehaviorConfig,
@@ -25,7 +25,10 @@ use crate::{
     vision::ball_detection::classifier::Balls,
 };
 
-use super::{behaviors::Standby, roles::Keeper};
+use super::{
+    behaviors::{Stand, StandLookAt, WalkToSet},
+    roles::Keeper,
+};
 
 /// Context that is passed into the behavior engine.
 ///
@@ -109,17 +112,17 @@ pub trait Behavior {
 ///
 /// # Notes
 /// - New behavior implementations should be added as new variants to this enum.
-/// - The specific struct for each behavior (e.g., [`Initial`], [`StartUp`]) should implement the [`Behavior`] trait.
+/// - The specific struct for each behavior (e.g., [`Stand`], [`StartUp`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
 #[derive(Debug, PartialEq)]
 pub enum BehaviorKind {
     StartUp(StartUp),
     Unstiff(Unstiff),
-    Standby(Standby),
-    Initial(Initial),
+    StandLookAt(StandLookAt),
     Observe(Observe),
-    Penalized(Penalized),
+    Stand(Stand),
     Walk(Walk),
+    WalkToSet(WalkToSet),
     Standup(Standup),
     CatchFall(CatchFall),
     // Add new behaviors here!
@@ -231,9 +234,13 @@ impl Engine {
 
     pub fn transition(&mut self, context: Context, control: &mut Control) {
         if let BehaviorKind::StartUp(_) = self.behavior {
-            if control.walking_engine.is_sitting() {
+            if control.walking_engine.is_sitting() || context.head_buttons.all_pressed() {
                 self.behavior = BehaviorKind::Unstiff(Unstiff);
             }
+            if *context.primary_state == PrimaryState::Initial {
+                self.behavior = BehaviorKind::Stand(Stand);
+            }
+            return;
         }
 
         // unstiff has the number 1 precedence
@@ -258,15 +265,21 @@ impl Engine {
             _ => {}
         }
 
+        let ball_or_origin = context.ball_position.unwrap_or(Point2::origin());
+
         self.behavior = match context.primary_state {
             PrimaryState::Unstiff => BehaviorKind::Unstiff(Unstiff),
-            PrimaryState::Penalized => BehaviorKind::Penalized(Penalized),
-            PrimaryState::Standby => BehaviorKind::Standby(Standby),
-            PrimaryState::Initial => BehaviorKind::Initial(Initial),
-            PrimaryState::Ready => BehaviorKind::Observe(Observe::default()),
-            PrimaryState::Set => BehaviorKind::Initial(Initial),
-            PrimaryState::Finished => BehaviorKind::Initial(Initial),
-            PrimaryState::Calibration => BehaviorKind::Initial(Initial),
+            PrimaryState::Standby
+            | PrimaryState::Penalized
+            | PrimaryState::Finished
+            | PrimaryState::Calibration => BehaviorKind::Stand(Stand),
+            PrimaryState::Initial => BehaviorKind::StandLookAt(StandLookAt {
+                target: Point2::origin(),
+            }),
+            PrimaryState::Ready => BehaviorKind::WalkToSet(WalkToSet),
+            PrimaryState::Set => BehaviorKind::StandLookAt(StandLookAt {
+                target: ball_or_origin,
+            }),
             PrimaryState::Playing => self.role.transition_behavior(context, control),
         };
     }
