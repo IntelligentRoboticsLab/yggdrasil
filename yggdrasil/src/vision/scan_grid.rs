@@ -1,8 +1,5 @@
-use core::panic;
-
 use crate::{
     core::{config::layout::LayoutConfig, debug::DebugContext},
-    nao::Cycle,
     prelude::*,
     vision::camera::matrix::CameraMatrices,
 };
@@ -10,7 +7,6 @@ use crate::{
 use heimdall::{CameraMatrix, YuyvImage};
 use nalgebra::point;
 use nidhogg::types::color;
-use rerun::Color;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
