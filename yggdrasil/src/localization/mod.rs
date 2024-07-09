@@ -114,10 +114,16 @@ fn find_closest_penalty_pose(
     *layout_config
         .penalty_positions
         .iter()
-        .min_by_key(|penalty_pose| {
-            let distance = (robot_pose.inner.translation.vector - penalty_pose.translation.vector)
-                .norm_squared();
-            distance as i32
+        .reduce(|a, b| {
+            let distance_a =
+                (robot_pose.inner.translation.vector - a.translation.vector).norm_squared();
+            let distance_b =
+                (robot_pose.inner.translation.vector - b.translation.vector).norm_squared();
+
+            match distance_b > distance_a {
+                true => b,
+                false => a,
+            }
         })
         .unwrap_or_else(|| {
             tracing::warn!("Failed to find closest penalty pose for");
