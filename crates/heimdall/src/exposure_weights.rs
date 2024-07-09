@@ -1,4 +1,5 @@
 /// Holds the exposure weights for both cameras.
+#[derive(Clone)]
 pub struct ExposureWeights {
     /// The exposure weights for the top part of the image.
     pub top: ExposureWeightTable,
@@ -32,6 +33,7 @@ impl ExposureWeights {
 }
 
 /// Represents a table of exposure weights.
+#[derive(Clone)]
 pub struct ExposureWeightTable {
     /// The top-left corner of the exposure weight window.
     window_start: [u32; 2],

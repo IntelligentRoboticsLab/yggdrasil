@@ -58,10 +58,11 @@ impl Module for CameraModule {
             .add_system(debug_camera_system.after(camera_system))
             .add_task::<ComputeTask<JpegTopImage>>()?
             .add_task::<ComputeTask<JpegBottomImage>>()?
+            .add_task::<ComputeTask<Result<ExposureWeightsCompleted>>>()?
             .add_module(matrix::CameraMatrixModule)?;
 
-        // #[cfg(not(feature = "local"))]
-        // let app = app.add_system(set_exposure_weights);
+        #[cfg(not(feature = "local"))]
+        let app = app.add_system(set_exposure_weights);
 
         Ok(app)
     }
@@ -348,25 +349,34 @@ fn log_top_image(
     Ok(JpegTopImage(timestamp))
 }
 
-#[allow(dead_code)]
+struct ExposureWeightsCompleted;
+
 #[cfg(not(feature = "local"))]
 #[system]
 fn set_exposure_weights(
-    exposure_weights: &mut ExposureWeights,
+    exposure_weights: &ExposureWeights,
     top_camera: &TopCamera,
     bottom_camera: &BottomCamera,
+    task: &mut ComputeTask<Result<ExposureWeightsCompleted>>,
 ) -> Result<()> {
-    if let Ok(top_camera) = top_camera.0 .0.try_lock() {
-        top_camera
-            .camera_device()
-            .set_auto_exposure_weights(&exposure_weights.top)?;
-    }
 
-    if let Ok(bottom_camera) = bottom_camera.0 .0.try_lock() {
-        bottom_camera
-            .camera_device()
-            .set_auto_exposure_weights(&exposure_weights.bottom)?;
-    }
+    let exposure_weights = exposure_weights.clone();
+    let top_camera = top_camera.0.0.clone();
+    let bottom_camera = bottom_camera.0.0.clone();
 
-    Ok(())
+    task.try_spawn(move || {
+        if let Ok(top_camera) = top_camera.lock() {
+            top_camera
+                .camera_device()
+                .set_auto_exposure_weights(&exposure_weights.top)?;
+        }
+
+        if let Ok(bottom_camera) = bottom_camera.lock() {
+            bottom_camera
+                .camera_device()
+                .set_auto_exposure_weights(&exposure_weights.bottom)?;
+        }
+
+        Ok(ExposureWeightsCompleted)
+    }).into_diagnostic()
 }
