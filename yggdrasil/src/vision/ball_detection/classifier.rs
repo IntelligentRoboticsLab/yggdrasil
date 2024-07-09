@@ -77,6 +77,8 @@ pub struct Balls {
 }
 
 impl Balls {
+    /// Returns the ball detected with the highest confidence.
+    /// If no balls are detected, returns None.
     pub fn most_confident_ball(&self) -> Option<Ball> {
         let mut best_ball = None;
 
@@ -94,6 +96,8 @@ impl Balls {
         best_ball
     }
 
+    /// Returns the most recent ball detected.
+    /// If no balls are detected, returns None.
     pub fn most_recent_ball(&self) -> Option<Ball> {
         let mut most_recent_ball = None;
 
