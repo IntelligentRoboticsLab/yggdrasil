@@ -7,6 +7,6 @@ pub trait Inspect {
     fn name(&self) -> &'static str;
     /// Serialize the resource to JSON.
     fn to_json(&self) -> serde_json::Value;
-    /// Deserialize the resource from JSON and update it in place.
-    fn update_from_json(&mut self, json: serde_json::Value);
+    /// Deserialize the resource from JSON and update it in place if it succeeds.
+    fn try_update_from_json(&mut self, json: serde_json::Value);
 }

@@ -16,7 +16,7 @@ pub fn inspect(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     .expect(concat!("Unable to serialize `", stringify!(#ident), "` to JSON."))
             }
 
-            fn update_from_json(&mut self, json: ::serde_json::Value) {
+            fn try_update_from_json(&mut self, json: ::serde_json::Value) {
                 if let Ok(data) = ::serde_json::from_value(json) {
                     *self = data;
                 }
