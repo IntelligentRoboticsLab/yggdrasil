@@ -77,42 +77,22 @@ pub struct Balls {
 }
 
 impl Balls {
-    /// Returns the ball detected with the highest confidence.
-    /// If no balls are detected, returns None.
-    pub fn most_confident_ball(&self) -> Option<Ball> {
-        let mut best_ball = None;
-
-        for ball in self.balls.iter() {
-            let Some(best) = best_ball.clone() else {
-                best_ball = Some(ball.clone());
-                continue;
-            };
-
-            if ball.confidence > best.confidence {
-                best_ball = Some(ball.clone());
-            }
-        }
-
-        best_ball
+    pub fn most_confident_ball(&self) -> Option<&Ball> {
+        self.balls
+            .iter()
+            .reduce(|a, b| match a.confidence > b.confidence {
+                true => a,
+                false => b,
+            })
     }
 
-    /// Returns the most recent ball detected.
-    /// If no balls are detected, returns None.
-    pub fn most_recent_ball(&self) -> Option<Ball> {
-        let mut most_recent_ball = None;
-
-        for ball in self.balls.iter() {
-            let Some(most_recent) = most_recent_ball.clone() else {
-                most_recent_ball = Some(ball.clone());
-                continue;
-            };
-
-            if ball.timestamp > most_recent.timestamp {
-                most_recent_ball = Some(ball.clone());
-            }
-        }
-
-        most_recent_ball
+    pub fn most_recent_ball(&self) -> Option<&Ball> {
+        self.balls
+            .iter()
+            .reduce(|a, b| match a.timestamp > b.timestamp {
+                true => a,
+                false => b,
+            })
     }
 }
 
