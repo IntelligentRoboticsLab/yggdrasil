@@ -111,7 +111,7 @@ fn find_closest_penalty_pose(
     robot_pose: &RobotPose,
     layout_config: &LayoutConfig,
 ) -> Isometry2<f32> {
-    layout_config
+    *layout_config
         .penalty_positions
         .iter()
         .min_by_key(|penalty_pose| {
@@ -123,7 +123,6 @@ fn find_closest_penalty_pose(
             tracing::warn!("Failed to find closest penalty pose for");
             &robot_pose.inner
         })
-        .clone()
 }
 
 fn log_pose(
