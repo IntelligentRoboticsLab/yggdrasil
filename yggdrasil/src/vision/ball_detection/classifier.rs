@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
 
-use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority::Medium;
@@ -78,16 +77,22 @@ pub struct Balls {
 }
 
 impl Balls {
-    pub fn get_best_ball(&self) -> Ball {
-        let mut best_ball = &self.balls[0];
+    pub fn most_confident_ball(&self) -> Option<&Ball> {
+        self.balls
+            .iter()
+            .reduce(|a, b| match a.confidence > b.confidence {
+                true => a,
+                false => b,
+            })
+    }
 
-        for ball in self.balls[1..].iter() {
-            if ball.confidence > best_ball.confidence {
-                best_ball = ball;
-            }
-        }
-
-        best_ball.clone()
+    pub fn most_recent_ball(&self) -> Option<&Ball> {
+        self.balls
+            .iter()
+            .reduce(|a, b| match a.timestamp > b.timestamp {
+                true => a,
+                false => b,
+            })
     }
 }
 
@@ -97,9 +102,9 @@ pub(super) fn detect_balls(
     model: &mut MlTask<BallClassifierModel>,
     balls: &mut Balls,
     camera_matrices: &CameraMatrices,
-    ctx: &DebugContext,
     config: &BallDetectionConfig,
-    (nao, robot_pose): (&mut NaoManager, &RobotPose),
+    nao: &mut NaoManager,
+    robot_pose: &RobotPose,
 ) -> Result<()> {
     if balls.image.timestamp() == proposals.image.timestamp() {
         return Ok(());
@@ -129,8 +134,12 @@ pub(super) fn detect_balls(
         if let Ok(()) = model.try_start_infer(&patch) {
             loop {
                 if start.elapsed().as_micros() > classifier.time_budget as u128 {
-                    if let Err(e) = model.try_cancel() {
-                        tracing::error!("Failed to cancel ball classifier inference: {:?}", e);
+                    match model.try_cancel() {
+                        Ok(()) => (),
+                        Err(crate::core::ml::Error::Tyr(tyr::tasks::Error::NotActive)) => (),
+                        Err(e) => {
+                            tracing::error!("Failed to cancel ball classifier inference: {:?}", e);
+                        }
                     }
 
                     break 'outer;
@@ -160,6 +169,12 @@ pub(super) fn detect_balls(
         }
     }
 
+    if !classified_balls.is_empty() {
+        nao.set_left_eye_led(LeftEye::fill(color::f32::PURPLE), Medium);
+    } else {
+        nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Medium);
+    }
+
     balls.image = proposals.image.clone();
     if classified_balls.is_empty() {
         for ball in balls.balls.iter() {
@@ -170,27 +185,6 @@ pub(super) fn detect_balls(
     }
 
     balls.balls = classified_balls;
-
-    let ball_positions = balls
-        .balls
-        .iter()
-        .map(|ball| (ball.position_image.x, ball.position_image.y))
-        .collect::<Vec<_>>();
-    let amount = ball_positions.len();
-
-    ctx.log_boxes_2d(
-        "/top_camera/image/detected_balls",
-        &ball_positions,
-        &vec![(32.0, 32.0); amount],
-        &balls.image,
-        color::u8::RED,
-    )?;
-
-    if !balls.balls.is_empty() {
-        nao.set_left_eye_led(LeftEye::fill(color::f32::PURPLE), Medium);
-    } else {
-        nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Medium);
-    }
 
     Ok(())
 }
