@@ -364,7 +364,7 @@ fn set_exposure_weights(
     let top_camera = top_camera.0.0.clone();
     let bottom_camera = bottom_camera.0.0.clone();
 
-    task.try_spawn(move || {
+    let _ = task.try_spawn(move || {
         if let Ok(top_camera) = top_camera.lock() {
             top_camera
                 .camera_device()
@@ -378,5 +378,7 @@ fn set_exposure_weights(
         }
 
         Ok(ExposureWeightsCompleted)
-    }).into_diagnostic()
+    });
+
+    Ok(())
 }
