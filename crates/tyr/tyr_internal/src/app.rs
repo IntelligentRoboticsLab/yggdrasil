@@ -320,7 +320,10 @@ impl App {
     ///
     /// ## Example
     /// ```
+    /// # use tyr_internal::App;
+    /// # fn example(app: &App) {
     /// app.store_system_dependency_graph("../dependency_graph.png");
+    /// # }
     /// ```
     pub fn store_system_dependency_graph<P>(&self, path: P) -> Result<()>
     where
