@@ -3,9 +3,9 @@ use std::path::Path;
 use crate::schedule::{Dependency, DependencySystem, Schedule};
 use crate::storage::{Resource, Storage};
 use crate::system::{IntoSystem, IntoSystemChain, StartupSystem, System};
-use crate::{Inspect, IntoDependencySystem, Module};
+use crate::{ControlSocket, Inspect, IntoDependencySystem, Module};
 
-use miette::Result;
+use miette::{IntoDiagnostic, Result};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub enum SystemStage {
@@ -307,6 +307,7 @@ impl App {
         let mut app = ScheduledApp {
             schedule: Schedule::with_dependency_systems(self.systems)?,
             storage: self.storage,
+            socket: ControlSocket::new().into_diagnostic()?,
         };
 
         app.run()
@@ -339,6 +340,7 @@ impl App {
 struct ScheduledApp {
     schedule: Schedule,
     storage: Storage,
+    socket: ControlSocket,
 }
 
 impl ScheduledApp {
@@ -348,6 +350,9 @@ impl ScheduledApp {
 
         loop {
             self.schedule.execute(&mut self.storage)?;
+            self.storage
+                .map_resource_mut(|view| self.socket.tick(view))?
+                .into_diagnostic()?;
         }
     }
 }
