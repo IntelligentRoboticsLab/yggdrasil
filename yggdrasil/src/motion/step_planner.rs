@@ -87,7 +87,7 @@ impl StepPlanner {
         if distance < 0.2 && path.len() == 2 {
             None
         } else if angle > 0.5 {
-            let left = if turn > 0. { LEFT_SPEED } else { -LEFT_SPEED };
+            let left = if turn > 0. { -LEFT_SPEED } else { LEFT_SPEED };
 
             Some(Step {
                 forward: 0.,
