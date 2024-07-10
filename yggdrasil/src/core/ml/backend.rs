@@ -149,7 +149,7 @@ impl<M: MlModel> InferRequest<M> {
             let cfg = &description.cfg;
 
             // check if input is of correct size
-            if input.len() != cfg.dims()[0] {
+            if input.len() != cfg.len() {
                 return Err(Error::InferenceInputSize {
                     expected: cfg.dims()[0],
                     actual: input.len(),
