@@ -102,9 +102,8 @@ impl Run {
             // Always set the host, so that rerun can connect to the correct host.
             // even if the host doesn't have rerun viewer installed, there could be
             // some case where the viewer is launched through a different method than the cli.
-            let rerun_host: Result<_> = std::env::var("RERUN_HOST").or_else(|_| {
-                Ok(local_ip_address::local_ip().into_diagnostic()?.to_string())
-            });
+            let rerun_host: Result<_> = std::env::var("RERUN_HOST")
+                .or_else(|_| Ok(local_ip_address::local_ip().into_diagnostic()?.to_string()));
 
             envs.push(("RERUN_HOST", rerun_host?.leak()));
 
