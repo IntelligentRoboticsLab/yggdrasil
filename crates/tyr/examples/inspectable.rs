@@ -21,6 +21,7 @@ fn main() -> Result<()> {
 
 #[system]
 fn display(data: &Data) -> Result<()> {
+    #[rustfmt::skip] // death to our ai overlords
     let repr = std::iter::repeat('-').take(data.single)
         .chain(std::iter::repeat('=').take(data.double))
         .collect::<String>();
