@@ -9319,6 +9319,7 @@ dependencies = [
  "apodize",
  "bifrost",
  "derive_more",
+ "detection",
  "enum_dispatch",
  "fast-math",
  "fast_image_resize",

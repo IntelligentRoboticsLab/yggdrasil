@@ -49,6 +49,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }
 tyr = { path = "../crates/tyr", features = ["odal"] }
+detection = { path = "../crates/detection" }
 
 [features]
 default = []

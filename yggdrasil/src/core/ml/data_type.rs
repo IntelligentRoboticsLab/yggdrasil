@@ -1,7 +1,7 @@
 //! Trait implementations for data types that are used in a ML model as
 //! in- and output. This involves the type system in defining and utilizing models.
 
-/// Conveniency type representing an n-dimensional array.  
+/// Conveniency type representing an n-dimensional array.
 pub type MlArray<E> = ndarray::Array<E, ndarray::Dim<ndarray::IxDynImpl>>;
 
 /// Implements [`Elem`] on a data type and maps it to an OpenVINO data type.
@@ -78,6 +78,23 @@ impl_elem!(unsafe { u32 => openvino::Precision::U32 });
 impl_elem!(unsafe { i32 => openvino::Precision::I32 });
 // NOTE: implement for more types if necessary
 
+/// Input container of a ML model, where `E` is the element type that is contained.
+pub trait Input<E: Elem>: Sized {
+    fn view_slice_bytes(&self) -> &[u8];
+}
+
+impl<E: InputElem> Input<E> for Vec<E> {
+    fn view_slice_bytes(&self) -> &[u8] {
+        InputElem::view_slice_bytes(self)
+    }
+}
+
+impl<E: InputElem> Input<E> for MlArray<E> {
+    fn view_slice_bytes(&self) -> &[u8] {
+        InputElem::view_slice_bytes(self.as_slice().unwrap())
+    }
+}
+
 /// Output container of a ML model, where `E` is the element type that is contained.
 pub trait Output<E: Elem>: Sized {
     /// Instantiate `Self` from a slice and the dimensions of the data.
@@ -97,5 +114,24 @@ impl<E: Elem + Clone> Output<E> for MlArray<E> {
             "Given shape does not match the number of elements in the slice (shape: {shape:?}, size: {})",
             slice.len()
         ))
+    }
+}
+
+impl<E: Elem + Clone> Output<E> for (MlArray<E>, MlArray<E>, MlArray<E>) {
+    fn from_slice(slice: &[E], shape: &[usize]) -> Self {
+        (
+            MlArray::from_shape_vec(shape, slice.to_vec()).unwrap_or_else(|_| panic!(
+                "Given shape does not match the number of elements in the slice (shape: {shape:?}, size: {})",
+                slice.len()
+            )),
+            MlArray::from_shape_vec(shape, slice.to_vec()).unwrap_or_else(|_| panic!(
+                "Given shape does not match the number of elements in the slice (shape: {shape:?}, size: {})",
+                slice.len()
+            )),
+            MlArray::from_shape_vec(shape, slice.to_vec()).unwrap_or_else(|_| panic!(
+                "Given shape does not match the number of elements in the slice (shape: {shape:?}, size: {})",
+                slice.len()
+            )),
+        )
     }
 }

@@ -1,7 +1,7 @@
-use ndarray::{concatenate, s, stack, Array, Array2, Array3, ArrayView, Axis};
+use ndarray::{concatenate, Array, Array2, Array3, ArrayView, Axis};
 
 use crate::meshgrid::{meshgrid, Indexing};
-use itertools::{repeat_n, Itertools};
+use itertools::repeat_n;
 
 #[derive(Debug, Clone)]
 pub struct DefaultBoxGenerator {
@@ -54,7 +54,7 @@ impl DefaultBoxGenerator {
     /// - the scale divided by the square root of the aspect ratio
     fn create_width_height_pairs(
         num_outputs: usize,
-        aspect_ratios: &Vec<Vec<f32>>,
+        aspect_ratios: &[Vec<f32>],
         scales: &[f32],
     ) -> Vec<Array2<f32>> {
         let mut pairs = Vec::with_capacity(num_outputs);
@@ -86,7 +86,7 @@ impl DefaultBoxGenerator {
         pairs
     }
 
-    pub fn create_boxes(&self, image_size: (usize, usize), features: Array3<f32>) -> Array2<f32> {
+    pub fn create_boxes(&self, image_size: (usize, usize), _features: Array3<f32>) -> Array2<f32> {
         // create default boxes for each feature map, in cx, cy, w, h format
         let mut default_boxes = self.grid_default_boxes((12, 12));
 

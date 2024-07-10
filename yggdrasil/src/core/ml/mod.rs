@@ -79,16 +79,34 @@ impl<M: MlModel> MlTask<M> {
     /// Attempts to run the model as a compute task on
     /// a separate thread.
     ///
+    /// This function is used to pass multiple inputs to the model.
+    /// For models that only have a single input, use [`try_start_infer`](Self::try_start_infer).
+    ///
+    /// ## Errors
+    /// Fails if:
+    /// * The input size is incorrect.
+    /// * The task was not yet finished from a previous call.
+    /// * Inference could not be started for some internal reason.
+    pub fn try_start_infer_multi(&mut self, input: &[&[M::InputType]]) -> Result<()> {
+        let infer_req = self.model.request_infer(input)?;
+
+        self.task.try_spawn_blocking(|| infer_req.run())?;
+        Ok(())
+    }
+
+    /// Attempts to run the model as a compute task on
+    /// a separate thread.
+    ///
+    /// This function is used to pass a single input to the model.
+    /// For models that require multiple inputs, use [`try_start_infer_multi`](Self::try_start_infer_multi).
+    ///
     /// ## Errors
     /// Fails if:
     /// * The input size is incorrect.
     /// * The task was not yet finished from a previous call.
     /// * Inference could not be started for some internal reason.
     pub fn try_start_infer(&mut self, input: &[M::InputType]) -> Result<()> {
-        let infer_req = self.model.request_infer(input)?;
-
-        self.task.try_spawn_blocking(|| infer_req.run())?;
-        Ok(())
+        self.try_start_infer_multi(&[input])
     }
 
     /// Attempts to cancel the running inference task.
@@ -112,6 +130,55 @@ impl<M: MlModel> MlTask<M> {
     /// The output is stored in the collection type provided by the user through
     /// the generic `O`, which can be anything that implements [`Output`].
     ///
+    /// It returns a [`Vec`] containing the outputs for each output layer of the model.
+    /// For models that only have a single output, use [`poll`](Self::poll) instead.
+    ///
+    ///
+    /// ## Example Usage
+    /// ```
+    /// use yggdrasil::core::ml::{MlTask, MlModel, data_type::MlArray, Result};
+    ///
+    /// struct ResNet18;
+    ///
+    /// impl MlModel for ResNet18 {
+    ///     type InputType = f32;
+    ///     type OutputType = f32;
+    ///     const ONNX_PATH: &'static str = "secret-folder/resnet18.onnx";
+    /// }
+    ///
+    /// fn poll_the_things(task: &mut MlTask<ResNet18>) -> Option<Result<Vec<MlArray<f32>>>> {
+    ///     // store the model outputs in an n-dimensional array
+    ///     task.poll_multi::<MlArray<f32>>()
+    /// }
+    /// ```
+    pub fn poll_multi<O>(&mut self) -> Option<Result<Vec<O>>>
+    where
+        O: Output<M::OutputType>,
+    {
+        let infer_result = self.task.poll()?;
+
+        match infer_result {
+            Ok(infer_req) => Some(infer_req.fetch_output()),
+            Err(e) => Some(Err(e)),
+        }
+    }
+
+    /// Returns the output if available, or else [`None`].
+    /// Once returned the same output cannot be polled again,
+    /// so make sure to store the result or run inference again.
+    ///
+    /// ## Errors
+    /// Returns `Some(`[`Error::RunInference`]`)` if an error occurred during
+    /// inference.
+    ///
+    /// ## Returns
+    /// The output is stored in the collection type provided by the user through
+    /// the generic `O`, which can be anything that implements [`Output`].
+    ///
+    /// It returns a [`Vec`] containing the outputs for each output layer of the model.
+    /// For models that only have multiple outputs, use [`poll_multi`](Self::poll_multi) instead.
+    ///
+    ///
     /// ## Example Usage
     /// ```
     /// use yggdrasil::core::ml::{MlTask, MlModel, data_type::MlArray, Result};
@@ -133,12 +200,7 @@ impl<M: MlModel> MlTask<M> {
     where
         O: Output<M::OutputType>,
     {
-        let infer_result = self.task.poll()?;
-
-        match infer_result {
-            Ok(infer_req) => Some(infer_req.fetch_output()),
-            Err(e) => Some(Err(e)),
-        }
+        self.poll_multi().map(|res| res.map(|mut v| v.remove(0)))
     }
 
     /// Returns whether the task is currently active.
@@ -231,6 +293,12 @@ pub enum Error {
         imported: openvino::Precision,
     },
 
+    #[error("`MlModel` does not contain an input layer with index {0}!")]
+    MissingInputLayer(usize),
+
+    #[error("`MlModel` does not contain an output layer with index {0}!")]
+    MissingOutputLayer(usize),
+
     #[error("Failed to start inference")]
     StartInference(#[source] openvino::InferenceError),
 
@@ -243,7 +311,7 @@ pub enum Error {
     RunInference(#[source] openvino::InferenceError),
 
     #[error("OpenVINO threw an unexpected error")]
-    UnexpectedOpenVino(#[source] openvino::InferenceError),
+    UnexpectedOpenVino(#[from] openvino::InferenceError),
 
     #[error(transparent)]
     Tyr(#[from] tyr::tasks::Error),

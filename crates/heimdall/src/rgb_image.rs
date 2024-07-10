@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 /// An object that holds an RGB NAO camera image.
 pub struct RgbImage {
-    pub(super) frame: Vec<u8>,
+    pub frame: Vec<u8>,
     pub(super) width: usize,
     pub(super) height: usize,
 }
