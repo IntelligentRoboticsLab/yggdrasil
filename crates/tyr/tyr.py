@@ -61,8 +61,12 @@ class Tyr:
         self.sock.close()
         self.sock = None
 
-    def list(self):
-        self.sock.send(b'"list"')
+    def resources(self):
+        self.sock.send(b'"resources"')
+        return self.load()
+
+    def systems(self):
+        self.sock.send(b'"systems"')
         return self.load()
 
     def get(self, name):
@@ -77,10 +81,19 @@ class Tyr:
             }
             }, default=lambda x: x.__dict__).encode())
 
+    def enable(self, name):
+        self.sock.send(json.dumps({"enable":name}).encode())
 
-def list():
+    def disable(self, name):
+        self.sock.send(json.dumps({"disable":name}).encode())
+
+def resources():
     with Tyr() as tyr:
-        return tyr.list()
+        return tyr.resources()
+
+def systems():
+    with Tyr() as tyr:
+        return tyr.systems()
 
 def get(name):
     with Tyr() as tyr:
@@ -89,6 +102,14 @@ def get(name):
 def set(resource):
     with Tyr() as tyr:
         return tyr.set(resource)
+
+def enable(resource):
+    with Tyr() as tyr:
+        return tyr.enable(resource)
+
+def disable(resource):
+    with Tyr() as tyr:
+        return tyr.disable(resource)
 
 def modify(name):
     class Modify:

@@ -303,14 +303,7 @@ impl App {
     #[must_use = "Scheduled app should be used!"]
     pub fn run(mut self) -> Result<()> {
         self.run_startup_systems()?;
-
-        let mut app = ScheduledApp {
-            schedule: Schedule::with_dependency_systems(self.systems)?,
-            storage: self.storage,
-            socket: ControlSocket::new().into_diagnostic()?,
-        };
-
-        app.run()
+        ScheduledApp::new(self)?.run()
     }
 
     /// Store a dependency graph of all systems as a png.
@@ -344,6 +337,14 @@ struct ScheduledApp {
 }
 
 impl ScheduledApp {
+    fn new(app: App) -> Result<Self> {
+        Ok(Self {
+            schedule: Schedule::with_dependency_systems(app.systems)?,
+            storage: app.storage,
+            socket: ControlSocket::new().into_diagnostic()?,
+        })
+    }
+
     fn run(&mut self) -> Result<()> {
         self.schedule.check_ordered_dependencies()?;
         self.schedule.build_graph()?;
@@ -351,7 +352,7 @@ impl ScheduledApp {
         loop {
             self.schedule.execute(&mut self.storage)?;
             self.storage
-                .map_resource_mut(|view| self.socket.tick(view))?
+                .map_resource_mut(|view| self.socket.tick(&mut self.schedule, view))?
                 .into_diagnostic()?;
         }
     }
