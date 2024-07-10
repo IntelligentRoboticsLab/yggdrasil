@@ -173,6 +173,8 @@ impl Robot {
 
         let command = command.into();
         Command::new("ssh")
+            .arg("-o")
+            .arg("StrictHostKeyChecking no")
             .arg(format!("nao@{}", self.ip()))
             .arg(quiet_arg)
             .args(remote_envs)
