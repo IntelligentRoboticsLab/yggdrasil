@@ -23,6 +23,7 @@ impl Behavior for Walk {
             control.walking_engine.request_walk(step);
         } else {
             control.walking_engine.request_stand();
+            control.step_planner.clear_target();
         }
     }
 }
