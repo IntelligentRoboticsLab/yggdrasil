@@ -45,6 +45,10 @@ impl StepPlanner {
         }
     }
 
+    pub fn clear_target(&mut self) {
+        self.target_position = None;
+    }
+
     pub fn current_absolute_target(&self) -> Option<&Point2<f32>> {
         self.target_position.as_ref()
     }
@@ -81,10 +85,12 @@ impl StepPlanner {
 
         if distance < 0.2 && path.len() == 2 {
             None
-        } else if angle > 0.3 {
+        } else if angle > 0.5 {
+            let left = if angle > 0. { 0.03 } else { -0.03 };
+
             Some(Step {
                 forward: 0.,
-                left: 0.,
+                left,
                 turn,
             })
         } else {
