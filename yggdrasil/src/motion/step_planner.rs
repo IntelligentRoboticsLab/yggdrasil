@@ -7,6 +7,7 @@ use super::path_finding::{self, Obstacle};
 
 const TURN_SPEED: f32 = 0.8;
 const WALK_SPEED: f32 = 0.05;
+const LEFT_SPEED: f32 = 0.03;
 
 pub struct StepPlannerModule;
 
@@ -86,7 +87,7 @@ impl StepPlanner {
         if distance < 0.2 && path.len() == 2 {
             None
         } else if angle > 0.5 {
-            let left = if angle > 0. { 0.03 } else { -0.03 };
+            let left = if angle > 0. { LEFT_SPEED } else { -LEFT_SPEED };
 
             Some(Step {
                 forward: 0.,
