@@ -427,8 +427,7 @@ impl Schedule {
 
                 // TODO: parallel implementation
                 for node in &current_nodes {
-                    self.dependency_systems[dag.system_index(*node).0]
-                        .run(storage)?;
+                    self.dependency_systems[dag.system_index(*node).0].run(storage)?;
                     execution_graph.remove_node(*node);
                 }
             }
@@ -504,17 +503,18 @@ impl Schedule {
     }
 
     pub fn get_system_by_name(&mut self, name: &str) -> Option<&mut DependencySystem<()>> {
-        self.dependency_systems.iter_mut().find(|sys| sys.system_name() == name)
-
+        self.dependency_systems
+            .iter_mut()
+            .find(|sys| sys.system_name() == name)
     }
 
     pub fn get_system_by_index(&mut self, index: usize) -> Option<&mut DependencySystem<()>> {
         self.dependency_systems.get_mut(index)
-
     }
 
     pub fn list_systems(&self) -> HashMap<String, bool> {
-        self.dependency_systems.iter()
+        self.dependency_systems
+            .iter()
             .map(|sys| (sys.system_name().to_string(), sys.enabled))
             .collect()
     }

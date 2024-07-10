@@ -105,7 +105,10 @@ impl Name {
         }
     }
 
-    fn lookup_system<'a>(&self, schedule: &'a mut Schedule) -> Option<&'a mut DependencySystem<()>> {
+    fn lookup_system<'a>(
+        &self,
+        schedule: &'a mut Schedule,
+    ) -> Option<&'a mut DependencySystem<()>> {
         match self {
             Self::Ident(name) => schedule.get_system_by_name(name),
             Self::Index(index) => schedule.get_system_by_index(*index),
