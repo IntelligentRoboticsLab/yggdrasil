@@ -80,8 +80,8 @@ impl StepPlanner {
         }
 
         let first_target_position = path[1];
-        let turn = calc_turn(&current_pose.inner, &first_target_position);
         let angle = calc_angle(&current_pose.inner, &first_target_position);
+        let turn = calc_turn(&current_pose.inner, &first_target_position, angle);
         let distance = calc_distance(&current_pose.inner, &first_target_position);
 
         if distance < 0.2 && path.len() == 2 {
@@ -104,13 +104,17 @@ impl StepPlanner {
     }
 }
 
-fn calc_turn(pose: &Isometry<f32, Unit<Complex<f32>>, 2>, target_position: &Point2<f32>) -> f32 {
+fn calc_turn(
+    pose: &Isometry<f32, Unit<Complex<f32>>, 2>,
+    target_position: &Point2<f32>,
+    angle: f32,
+) -> f32 {
     let translated_target_position = pose.translation.inverse_transform_point(target_position);
     let transformed_target_position = pose
         .rotation
         .inverse_transform_point(&translated_target_position);
 
-    transformed_target_position.y.signum() * TURN_SPEED
+    transformed_target_position.y.signum() * TURN_SPEED * (angle / std::f32::consts::FRAC_PI_2)
 }
 
 fn calc_angle(pose: &Isometry<f32, Unit<Complex<f32>>, 2>, target_point: &Point2<f32>) -> f32 {
