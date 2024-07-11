@@ -1,5 +1,5 @@
 use nalgebra::Point2;
-use nidhogg::types::{FillExt, HeadJoints};
+use nidhogg::types::{color, FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
@@ -17,6 +17,15 @@ impl Behavior for Walk {
         control
             .nao_manager
             .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
+        control
+            .debug_context
+            .log_points_3d_with_color_and_radius(
+                "/odometry/target",
+                &[(self.target.x, self.target.y, 0.)],
+                color::u8::RED,
+                0.05,
+            )
+            .unwrap();
 
         control.step_planner.set_absolute_target(self.target);
         if let Some(step) = control.step_planner.plan(context.pose) {
