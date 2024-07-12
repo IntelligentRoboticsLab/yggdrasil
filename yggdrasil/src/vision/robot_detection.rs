@@ -62,12 +62,7 @@ fn detect_robots(
     if robot_detection_image.0.timestamp() != top_image.timestamp() && !model.active() {
         let img = top_image.yuyv_image();
         let resized_image = resize_yuyv(img);
-        // let img = image::ImageBuffer::from_raw(
-        //     MODEL_INPUT_WIDTH,
-        //     MODEL_INPUT_HEIGHT,
-        //     resized_image.clone(),
-        // )
-        // .unwrap();
+        // let img = image::ImageBuffer::from_raw(640, 480, resized_image.clone()).unwrap();
 
         // img.save("image.jpg").unwrap();
 
@@ -145,17 +140,19 @@ fn detect_robots(
                 None
             })
             .map(|(bbox, score)| {
-                // convert bbox to cxcywh
+                // clamp boxes to 0-100, as the model was trained on 100x100 images
                 let x1 = bbox[0].clamp(0.0, 100.0);
                 let y1 = bbox[1].clamp(0.0, 100.0);
                 let x2 = bbox[2].clamp(0.0, 100.0);
                 let y2 = bbox[3].clamp(0.0, 100.0);
 
+                // resize boxes to original image size
                 let x1 = (x1 / 100.0) * 640.0;
                 let y1 = (y1 / 100.0) * 480.0;
                 let x2 = (x2 / 100.0) * 640.0;
                 let y2 = (y2 / 100.0) * 480.0;
 
+                // calculate center and size
                 let cx = (x1 + x2) / 2.0;
                 let cy = (y1 + y2) / 2.0;
                 let w = (x2 - x1) / 2.0;
