@@ -4,7 +4,15 @@ version = "0.1.0"
 edition = "2021"
 default-run = "yggdrasil"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "yggdrasil"
+edition = "2021"
+crate-type = ["lib"]
+
+[[bin]]
+name = "yggdrasil"
+path = "src/main.rs"
+crate-type = ["bin"]
 
 [dependencies]
 alsa = { workspace = true, optional = true }
