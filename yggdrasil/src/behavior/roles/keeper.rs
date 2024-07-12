@@ -1,4 +1,4 @@
-use nalgebra::Point2;
+use nalgebra::{vector, Isometry2, Point2};
 
 use crate::{
     behavior::{
@@ -26,7 +26,8 @@ impl Role for Keeper {
             return BehaviorKind::Observe(Observe::default());
         }
 
-        let target = Point2::new(-context.layout_config.field.length / 2., 0.);
-        BehaviorKind::Walk(Walk { target })
+        BehaviorKind::Walk(Walk {
+            target: Isometry2::new(vector!(-context.layout_config.field.length / 2., 0.), 0.0),
+        })
     }
 }

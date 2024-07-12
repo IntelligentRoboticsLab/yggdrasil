@@ -22,7 +22,9 @@ impl Behavior for WalkToSet {
             .nao_manager
             .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
 
-        control.step_planner.set_absolute_target(set_position);
+        control
+            .step_planner
+            .set_absolute_target_if_unset(set_robot_position.isometry);
         if let Some(step) = control.step_planner.plan(context.pose) {
             control.walking_engine.request_walk(step);
         } else {
