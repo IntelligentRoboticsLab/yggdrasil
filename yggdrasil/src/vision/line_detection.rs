@@ -1,6 +1,7 @@
 use std::mem;
 
 use crate::core::debug::DebugContext;
+use crate::localization::RobotPose;
 use crate::vision::camera::{matrix::CameraMatrices, Image};
 
 use crate::prelude::*;
@@ -333,6 +334,7 @@ fn draw_lines(
     lines: &[LineSegment2],
     scan_grid: ScanGrid,
     matrix: &CameraMatrix,
+    robot_pose: &RobotPose,
 ) -> Result<()> {
     let all_lines = lines.iter().map(|line| line.into()).collect::<Vec<_>>();
 
@@ -367,6 +369,11 @@ fn draw_lines(
         scan_grid.image(),
         color::u8::BLUE,
     )?;
+    dbg.log_transformation(
+        "top_camera/lines_3d",
+        &robot_pose.as_3d(),
+        scan_grid.image(),
+    )?;
 
     Ok(())
 }
@@ -398,6 +405,7 @@ pub fn line_detection_system(
     top_line_detection_data: &mut TopLineDetectionData,
     top_lines: &mut TopLines,
     camera_matrices: &CameraMatrices,
+    robot_pose: &RobotPose,
 ) -> Result<()> {
     if let Some(detect_lines_result) = detect_top_lines_task.poll() {
         *top_line_detection_data = detect_lines_result?;
@@ -412,6 +420,7 @@ pub fn line_detection_system(
             &top_lines.0,
             top_scan_grid.clone(),
             &camera_matrices.top,
+            robot_pose,
         )?;
     }
 

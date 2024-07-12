@@ -216,7 +216,8 @@ impl DebugContext {
                     image.yuyv_image().height() as f32,
                 ],
             )
-            .with_camera_xyz(rerun::components::ViewCoordinates::FLU);
+            .with_camera_xyz(rerun::components::ViewCoordinates::FLU)
+            .with_image_plane_distance(1.0);
             self.rec.log(path.as_ref(), &pinhole).into_diagnostic()?;
             self.clear_cycle();
         }
