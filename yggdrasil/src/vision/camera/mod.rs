@@ -404,8 +404,8 @@ fn set_exposure_weights(
     task: &mut ComputeTask<Result<ExposureWeightsCompleted>>,
 ) -> Result<()> {
     let exposure_weights = exposure_weights.clone();
-    let top_camera = top_camera.0.0.clone();
-    let bottom_camera = bottom_camera.0.0.clone();
+    let top_camera = top_camera.0 .0.clone();
+    let bottom_camera = bottom_camera.0 .0.clone();
 
     task.poll();
     let _ = task.try_spawn(move || {

@@ -67,7 +67,7 @@ impl ExposureWeightTable {
 
     /// Gets the size of the window.
     ///
-    /// Since we currently use the whole screen for exposure, this is the camera width and height. 
+    /// Since we currently use the whole screen for exposure, this is the camera width and height.
     pub fn window_size(&self) -> (u32, u32) {
         (self.window_end[0], self.window_end[1])
     }
