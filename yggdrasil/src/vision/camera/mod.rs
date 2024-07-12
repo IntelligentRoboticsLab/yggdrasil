@@ -13,6 +13,8 @@ use std::{
 use heimdall::{Camera, CameraDevice, CameraMatrix, ExposureWeights, YuyvImage};
 use matrix::{CalibrationConfig, CameraMatrices};
 
+use super::field_boundary::{self, FieldBoundary};
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct CameraConfig {
@@ -62,7 +64,7 @@ impl Module for CameraModule {
             .add_module(matrix::CameraMatrixModule)?;
 
         #[cfg(not(feature = "local"))]
-        let app = app.add_system(set_exposure_weights);
+        let app = app.add_system_chain((update_exposure_weights, set_exposure_weights));
 
         Ok(app)
     }
@@ -349,6 +351,48 @@ fn log_top_image(
     Ok(JpegTopImage(timestamp))
 }
 
+#[cfg(not(feature = "local"))]
+#[system]
+fn update_exposure_weights(
+    exposure_weights: &mut ExposureWeights,
+    field_boundary: &FieldBoundary,
+) -> Result<()> {
+    let (w, h) = exposure_weights.top.window_size();
+    let (cw, ch) = (w / 4, h / 4);
+
+    let mut weights = [0; 16];
+
+    for cx in 0..4 {
+        let x0 = cx * cw;
+
+        let samples = (x0..(x0 + cw))
+            .step_by(cw as usize / 4)
+            .map(|x| field_boundary.height_at_pixel(x as f32));
+
+        let n = samples.len() as f32;
+        let h = (samples.sum::<f32>() / n) as u32;
+
+        for cy in 0..4 {
+            let y0 = cy * ch;
+            let y1 = y0 + ch;
+
+            let i = cy * 4 + cx;
+
+            weights[i as usize] = if y0 > h {
+                15
+            } else if y1 < h {
+                0
+            } else {
+                let fract = (h - y0) as f32 / ch as f32;
+                15 - ((fract * 15.) as u8).clamp(0, 15)
+            }
+        }
+    }
+
+    exposure_weights.top.update(weights);
+    Ok(())
+}
+
 struct ExposureWeightsCompleted;
 
 #[cfg(not(feature = "local"))]
@@ -359,7 +403,6 @@ fn set_exposure_weights(
     bottom_camera: &BottomCamera,
     task: &mut ComputeTask<Result<ExposureWeightsCompleted>>,
 ) -> Result<()> {
-
     let exposure_weights = exposure_weights.clone();
     let top_camera = top_camera.0.0.clone();
     let bottom_camera = bottom_camera.0.0.clone();
