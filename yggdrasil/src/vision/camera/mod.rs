@@ -13,7 +13,8 @@ use std::{
 use heimdall::{Camera, CameraDevice, CameraMatrix, ExposureWeights, YuyvImage};
 use matrix::{CalibrationConfig, CameraMatrices};
 
-use super::field_boundary::{FieldBoundary};
+#[cfg(not(feature = "local"))]
+use super::field_boundary::FieldBoundary;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
