@@ -12,7 +12,6 @@ crate-type = ["lib"]
 [[bin]]
 name = "yggdrasil"
 path = "src/main.rs"
-crate-type = ["bin"]
 
 [dependencies]
 alsa = { workspace = true, optional = true }
