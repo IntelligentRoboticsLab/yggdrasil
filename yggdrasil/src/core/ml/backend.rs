@@ -194,14 +194,13 @@ impl<M: MlModel> InferRequest<M> {
                 let blob = self.request.get_blob(&x.name).unwrap();
 
                 // we know the output tensor data type is compatible with `M::OutputType`
-                //  due to the check in `ModelExecutor::new`, meaning it's safe
-                //  to cast to this type
+                // due to the check in `ModelExecutor::new`, meaning it's safe
+                // to cast to this type
                 let data = unsafe { blob.buffer_as_type::<M::OutputType>() }.unwrap();
 
                 O::from_slice(data, x.cfg.dims())
             })
             .collect();
-
         Ok(blobs)
     }
 }

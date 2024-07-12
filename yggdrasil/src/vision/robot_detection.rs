@@ -6,14 +6,14 @@ use std::{num::NonZeroU32, ops::Deref};
 use crate::{
     core::{
         debug::DebugContext,
-        ml::{MlModel, MlTask, MlTaskResource},
+        ml::{self, MlModel, MlTask, MlTaskResource},
     },
     prelude::*,
     vision::camera::{Image, TopImage},
 };
-use fast_image_resize as fr;
-use heimdall::RgbImage;
-use ndarray::Array3;
+use fast_image_resize::{self as fr, FilterType};
+use heimdall::YuyvImage;
+use ndarray::Axis;
 
 const MODEL_INPUT_WIDTH: u32 = 100;
 const MODEL_INPUT_HEIGHT: u32 = 100;
@@ -60,24 +60,41 @@ fn detect_robots(
     // Start a new inference if the image has changed
     // TODO: Some kind of callback/event system would be nice to avoid doing the timestamp comparison everywhere
     if robot_detection_image.0.timestamp() != top_image.timestamp() && !model.active() {
-        let rgb = top_image.yuyv_image().to_rgb().unwrap();
-        let resized_image = resize_yuyv(&rgb);
+        let img = top_image.yuyv_image();
+        let resized_image = resize_yuyv(img);
+        // let img = image::ImageBuffer::from_raw(
+        //     MODEL_INPUT_WIDTH,
+        //     MODEL_INPUT_HEIGHT,
+        //     resized_image.clone(),
+        // )
+        // .unwrap();
 
-        ctx.log_image_rgb(
-            "/robot_detect_input",
-            image::ImageBuffer::from_raw(
-                MODEL_INPUT_WIDTH,
-                MODEL_INPUT_HEIGHT,
-                resized_image.clone(),
-            )
-            .unwrap(),
-            &top_image.cycle(),
-        )?;
+        // img.save("image.jpg").unwrap();
+
+        // ctx.log_image_rgb("/robot_detect_input", img, &top_image.cycle())?;
+
+        let mean_y = 0.3335;
+        let mean_u = 0.4788;
+        let mean_v = 0.3146;
+
+        let std_y = 0.189_980_34;
+        let std_u = 0.163_526_65;
+        let std_v = 0.174_245_5;
 
         if let Ok(()) = model.try_start_infer(
             &resized_image
                 .iter()
                 .map(|x| *x as f32 / 255.0)
+                .enumerate()
+                .map(|(i, x)| {
+                    if i % 3 == 0 {
+                        (x - mean_y) / std_y
+                    } else if (i % 3) == 1 {
+                        (x - mean_u) / std_u
+                    } else {
+                        (x - mean_v) / std_v
+                    }
+                })
                 .collect::<Vec<f32>>(),
         ) {
             // We need to keep track of the image we started the inference with
@@ -88,29 +105,78 @@ fn detect_robots(
     }
 
     // Otherwise, poll the model for the result
-    if let Some(result) = model.poll::<Vec<f32>>().transpose()? {
-        println!("num results: {}", result.len());
-        let box_regression = ndarray::Array2::from_shape_vec((1152, 4), result).unwrap();
+    if let Some(result) = model.poll_multi::<Vec<f32>>().transpose()? {
+        // println!("num results: {}", result.len());
+        let box_regression = ndarray::Array2::from_shape_vec((864, 4), result[0].clone()).unwrap();
+        let scores = ndarray::Array2::from_shape_vec((864, 2), result[1].clone()).unwrap();
+        let features = ndarray::Array3::from_shape_vec((64, 12, 12), result[2].clone()).unwrap();
+
+        // println!("box_regression: {box_regression:?}");
+        // println!("scores: {scores:?}");
+        // println!("features: {features:?}");
 
         let anchor_generator = detection::anchor::DefaultBoxGenerator::new(
-            vec![vec![0.4, 0.5, 0.6], vec![0.6, 0.85, 1.11]],
+            vec![vec![0.4, 0.5], vec![0.85]],
             0.15,
             0.9,
         );
         let box_coder = detection::box_coder::BoxCoder::new((10.0, 10.0, 5.0, 5.0));
 
-        let _decoded_boxes = box_coder.decode_single(
+        let decoded_boxes = box_coder.decode_single(
             box_regression,
             anchor_generator.create_boxes(
                 (MODEL_INPUT_WIDTH as usize, MODEL_INPUT_HEIGHT as usize),
-                Array3::zeros((1, 1152, 4)),
+                features,
             ),
         );
 
+        // println!("checking scores");
+        let valid_boxes = scores
+            .axis_iter(Axis(0))
+            .enumerate()
+            .filter_map(|(i, s)| {
+                let scores = ml::util::softmax(&[s[0], s[1]]);
+                if scores[1] >= 0.27 {
+                    println!("score: {}, index: {}", scores[1], i);
+                    println!("bbox: {}", decoded_boxes.row(i));
+                    return Some((decoded_boxes.row(i), scores[1]));
+                }
+
+                None
+            })
+            .map(|(bbox, score)| {
+                // convert bbox to cxcywh
+                let x1 = bbox[0].clamp(0.0, 100.0);
+                let y1 = bbox[1].clamp(0.0, 100.0);
+                let x2 = bbox[2].clamp(0.0, 100.0);
+                let y2 = bbox[3].clamp(0.0, 100.0);
+
+                let x1 = (x1 / 100.0) * 640.0;
+                let y1 = (y1 / 100.0) * 480.0;
+                let x2 = (x2 / 100.0) * 640.0;
+                let y2 = (y2 / 100.0) * 480.0;
+
+                let cx = (x1 + x2) / 2.0;
+                let cy = (y1 + y2) / 2.0;
+                let w = (x2 - x1) / 2.0;
+                let h = (y2 - y1) / 2.0;
+
+                (((cx, cy), (w, h)), format!("robot: {score:.4}"))
+            });
+
+        let ((centers, sizes), scores): ((Vec<_>, Vec<_>), Vec<_>) = valid_boxes.unzip();
+
+        ctx.log_boxes2d_with_class(
+            "/top_camera/image/robots",
+            &centers,
+            &sizes,
+            scores,
+            robot_detection_image.0.cycle(),
+        )?;
         // println!("boxes: {decoded_boxes:?}");
 
         // Get the image we set when we started inference
-        let _image = robot_detection_image.0.clone();
+        // let _image = robot_detection_image.0.clone();
         // println!("inference took: {:?}", image.timestamp().elapsed());
 
         // println!("bbox_regression: {box_regression:?}");
@@ -120,12 +186,12 @@ fn detect_robots(
 }
 
 // Resize yuyv image to correct input shape
-fn resize_yuyv(rgb_image: &RgbImage) -> Vec<u8> {
+fn resize_yuyv(image: &YuyvImage) -> Vec<u8> {
     let src_image = fr::Image::from_vec_u8(
-        NonZeroU32::new(rgb_image.width() as u32).unwrap(),
-        NonZeroU32::new(rgb_image.height() as u32).unwrap(),
-        rgb_image.to_vec(),
-        fr::PixelType::U8x3,
+        NonZeroU32::new((image.width() / 2) as u32).unwrap(),
+        NonZeroU32::new(image.height() as u32).unwrap(),
+        image.to_vec(),
+        fr::PixelType::U8x4,
     )
     .expect("Failed to create image for resizing");
 
@@ -136,13 +202,20 @@ fn resize_yuyv(rgb_image: &RgbImage) -> Vec<u8> {
         src_image.pixel_type(),
     );
 
-    let mut resizer = fr::Resizer::new(fr::ResizeAlg::Nearest);
+    let mut resizer = fr::Resizer::new(fr::ResizeAlg::Convolution(FilterType::Bilinear));
     resizer
         .resize(&src_image.view(), &mut dst_image.view_mut())
         .expect("Failed to resize image");
 
     // Remove every second y value from the yuyv image
-    dst_image.buffer().to_vec()
+    dst_image
+        .buffer()
+        .iter()
+        .copied()
+        .enumerate()
+        .filter(|(i, _)| (i + 2) % 4 != 0)
+        .map(|(_, p)| p)
+        .collect()
 }
 
 /// A model implementing the network from B-Human their [Deep Field Boundary](https://b-human.de/downloads/publications/2022/DeepFieldBoundary.pdf) paper
