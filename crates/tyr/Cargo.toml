@@ -3,6 +3,9 @@ name = "tyr"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "tyr"
+
 [dependencies]
 tyr_internal = { path = "tyr_internal" }
 tyr_macros = { path = "tyr_macros" }

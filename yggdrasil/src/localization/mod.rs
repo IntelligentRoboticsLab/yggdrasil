@@ -7,7 +7,7 @@ use crate::{
     motion::odometry::{self, Odometry},
     prelude::*,
 };
-use nalgebra::{Isometry2, Point2};
+use nalgebra::{Isometry2, Isometry3, Point2, Translation3, UnitQuaternion};
 use nidhogg::types::{
     color::{self, RgbU8},
     HeadJoints,
@@ -45,6 +45,17 @@ pub struct RobotPose {
 impl RobotPose {
     fn new(pose: Isometry2<f32>) -> Self {
         Self { inner: pose }
+    }
+
+    /// The current pose of the robot in the world, in 3D space.
+    ///
+    /// The z-axis is always 0.
+    /// The rotation is around the z-axis.
+    pub fn as_3d(&self) -> Isometry3<f32> {
+        Isometry3::from_parts(
+            Translation3::new(self.inner.translation.x, self.inner.translation.y, 0.0),
+            UnitQuaternion::from_euler_angles(0.0, 0.0, self.inner.rotation.angle()),
+        )
     }
 
     /// The current position of the robot in the world, in absolute coordinates.

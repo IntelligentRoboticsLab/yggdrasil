@@ -23,7 +23,7 @@ graphviz-rust = "0.9.0"
 home = "0.5.9"
 # We're stuck on this version until rerun updates
 # https://github.com/rerun-io/rerun/pull/5280
-image = "0.24.0"
+image = "0.25.0"
 itertools = "0.13.0"
 indicatif = "0.17.8"
 kira = "0.8.7"
@@ -36,7 +36,7 @@ ndarray = "0.15.6"
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "b4a4ac455cb67986a5ea4ffaa88a91e2a8cd9feb" }
 num = "0.4.3"
 openvino = { git = "https://github.com/YukumoHunter/openvino-rs.git", branch = "evil-hack", features = [
-  "runtime-linking",
+    "runtime-linking",
 ] }
 ordered-float = "4.2.1"
 lstsq = "0.5.0"
@@ -46,7 +46,7 @@ proc-macro2 = "1.0.86"
 quote = "1.0.36"
 rayon = "1.10.0"
 regex = "1.10.5"
-rerun = { version = "0.16.1" }
+rerun = { version = "0.17.0", features = ["image"] }
 rustfft = "6.2.0"
 rustc_version = "0.4.0"
 serde = "1.0.204"
