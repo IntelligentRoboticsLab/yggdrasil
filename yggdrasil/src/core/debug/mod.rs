@@ -365,6 +365,34 @@ impl DebugContext {
     }
 
     /// Log a set of 2D lines to the debug viewer, using the timestamp of the provided image.
+    pub fn log_lines2d_for_image_with_colors(
+        &self,
+        path: impl AsRef<str>,
+        lines: &[[(f32, f32); 2]],
+        image: &Image,
+        colors: &[RgbU8],
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&image.cycle);
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::LineStrips2D::new(lines).with_colors(
+                        colors
+                            .into_iter()
+                            .map(|c| rerun::Color::from_rgb(c.red, c.green, c.blue)),
+                    ),
+                )
+                .into_diagnostic()?;
+
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a set of 2D lines to the debug viewer, using the timestamp of the provided image.
     pub fn log_lines2d_for_image(
         &self,
         path: impl AsRef<str>,

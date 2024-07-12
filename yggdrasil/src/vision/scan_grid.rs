@@ -63,6 +63,7 @@ pub struct FieldColorApproximate {
     pub luminance: (f32, f32),
     pub hue: (f32, f32),
     pub saturation: (f32, f32),
+    pub white: (f32, f32),
 }
 
 impl FieldColorApproximate {
@@ -93,10 +94,22 @@ impl FieldColorApproximate {
         let hue = mean_and_std(&hues);
         let saturation = mean_and_std(&saturations);
 
+        // let median_luminance = luminances[luminances.len() / 2];
+        // let median_hue = hues[hues.len() / 2];
+        // let median_saturation = saturations[saturations.len() / 2];
+
+        // let luminance = (median_luminance, luminance.1);
+        // let hue = (median_hue, hue.1);
+        // let saturation = (median_saturation, saturation.1);
+
+        luminances.sort_by(|a, b| a.total_cmp(b).reverse());
+        let white = mean_and_std(&luminances[..10]);
+
         Self {
             luminance,
             hue,
             saturation,
+            white,
         }
     }
 }
@@ -201,7 +214,8 @@ fn debug_scan_grid(scan_grid: &ScanGrid, image: &Image, dbg: &DebugContext) -> R
     let mut points = Vec::new();
 
     for line in &scan_grid.lines {
-        for y in scan_grid.y.iter().filter(|y| **y < line.y_max as usize) {
+        for y in scan_grid.y.iter() {
+            // for y in scan_grid.y.iter().filter(|y| **y < line.y_max as usize) {
             points.push((line.x as f32, *y as f32));
         }
     }

@@ -2,11 +2,13 @@ use crate::{core::debug::DebugContext, nao::Cycle, prelude::*};
 
 use super::{
     camera::TopImage,
-    field_boundary::FieldBoundary,
+    field_boundary::{self, FieldBoundary},
     scan_grid::{FieldColorApproximate, ScanGrid},
+    scan_lines,
 };
 
-use nidhogg::types::color;
+use heimdall::{YuvPixel, YuyvImage};
+use nidhogg::types::{color, RgbU8};
 
 /// Module that generates scan-lines from taken NAO images.
 ///
@@ -24,25 +26,38 @@ impl Module for ScanLinesModule {
 
 pub struct ScanLines;
 
-fn rgb_from_hsv((h, s, v): (f32, f32, f32)) -> [f32; 3] {
-    #![allow(clippy::many_single_char_names)]
-    let h = (h.fract() + 1.0).fract(); // wrap
-    let s = s.clamp(0.0, 1.0);
-
-    let f = h * 6.0 - (h * 6.0).floor();
-    let p = v * (1.0 - s);
-    let q = v * (1.0 - f * s);
-    let t = v * (1.0 - (1.0 - f) * s);
-
-    match (h * 6.0).floor() as i32 % 6 {
-        0 => [v, t, p],
-        1 => [q, v, p],
-        2 => [p, v, t],
-        3 => [p, q, v],
-        4 => [t, p, v],
-        5 => [v, p, q],
-        _ => unreachable!(),
+fn yuy2_to_rgb((y, u, v): (u8, u8, u8)) -> (u8, u8, u8) {
+    fn clamp(value: i32) -> u8 {
+        #[allow(clippy::cast_sign_loss)]
+        #[allow(clippy::cast_possible_truncation)]
+        return value.clamp(0, 255) as u8;
     }
+
+    let y = i32::from(y) - 16;
+    let u = i32::from(u) - 128;
+    let v = i32::from(v) - 128;
+
+    let red = (298 * y + 409 * v + 128) >> 8;
+    let green = (298 * y - 100 * u - 208 * v + 128) >> 8;
+    let blue = (298 * y + 516 * u + 128) >> 8;
+
+    (clamp(red), clamp(green), clamp(blue))
+}
+
+#[derive(Debug)]
+struct HorizontalRegion {
+    y: usize,
+    x_start: usize,
+    x_end: usize,
+    pixel: YuvPixel,
+}
+
+#[derive(Debug)]
+struct HorizontalColorRegion {
+    y: usize,
+    x_start: usize,
+    x_end: usize,
+    color: PixelColor,
 }
 
 #[system]
@@ -60,54 +75,175 @@ fn scan_lines_system(
 
     let yuyv = scan_grid.image.yuyv_image();
 
-    // let mut imaaaaa = image::ImageBuffer::new(640, 480);
-    // println!("yuyv y: {:?}", yuyv.row_iter().count());
-    // println!("yuyv x: {:?}", yuyv.row_iter().next().unwrap().count());
-    // for (y_, row) in yuyv.row_iter().enumerate() {
-    //     for (x, pixel) in row.enumerate() {
-    //         let (y, h, s) = pixel.to_yhs2();
-    //         // println!("yhs={}, {}, {} ", y, h, s);
-    //         let [r, g, b] = rgb_from_hsv((h, s, y));
-    //         // println!("{}, {}, {} ", r, g, b);
-    //         // let (r, g, b) = (r * 255.0, g * 255.0, b * 255.0);
-    //         // println!("{}, {}, {} ", r, g, b);
-    //         let (r, g, b) = (r as u8, g as u8, b as u8);
-    //         // println!("{}, {}, {} ", r, g, b);
-    //         // println!("===============");
-    //         imaaaaa.put_pixel(x as u32, y_ as u32, image::Rgb([r, g, b]));
-    //     }
-    // }
-
-    // dbg.log_image_rgb("image/yuv_converted", imaaaaa, &scan_grid.image.cycle)?;
-
     let field = FieldColorApproximate::new(yuyv);
 
-    // println!("field: {:?}, cycle: {}", field, curr_cycle.0);
+    let mut regions = Vec::new();
 
-    // TODO: i think this is always the same
-    // TODO: should probably simplify the whole scan grid algorithm
+    for y in &scan_grid.y {
+        let mut curr_region = None;
 
-    let mut scan_line_points = Vec::new();
-
-    for line in &scan_grid.lines {
-        for y in scan_grid.y.iter().filter(|y| **y < line.y_max as usize) {
+        for line in &scan_grid.lines {
             let boundary = field_boundary.height_at_pixel(line.x as f32) as usize;
-            // println!("y: {}, boundary: {}", y, boundary);
-
             if *y < boundary {
                 continue;
             }
 
-            let point = yuyv.row(*y).nth(line.x as usize).unwrap();
+            let pixels = unsafe {
+                [
+                    yuyv.pixel_unchecked(line.x as usize - 1, *y),
+                    yuyv.pixel_unchecked(line.x as usize, *y),
+                    yuyv.pixel_unchecked(line.x as usize + 1, *y),
+                ]
+            };
 
-            let color = PixelColor::classify_yuv_pixel(&field, point.y, point.u, point.v);
+            let pixel = YuvPixel::average(&pixels);
 
-            scan_line_points.push((line.x as usize, *y, color));
+            let Some(curr_region) = &mut curr_region else {
+                curr_region = Some(HorizontalRegion {
+                    y: *y,
+                    x_start: line.x as usize,
+                    x_end: line.x as usize,
+                    pixel: pixel,
+                });
+                continue;
+            };
+
+            let lum_diff = (pixel.y as f32 - curr_region.pixel.y as f32).abs();
+
+            if lum_diff > 13.0 {
+                let x_edge = find_edge(
+                    yuyv,
+                    curr_region.x_end,
+                    line.x as usize,
+                    *y,
+                    // EdgeType::Rising,
+                );
+
+                curr_region.x_end = x_edge;
+
+                let mut new_region = HorizontalRegion {
+                    y: *y,
+                    x_start: x_edge,
+                    x_end: line.x as usize,
+                    pixel: pixel,
+                };
+
+                // put new region in place of curr_region
+                std::mem::swap(curr_region, &mut new_region);
+                // and push the old region to the vec
+                regions.push(new_region);
+
+                continue;
+            } else {
+                curr_region.x_end = line.x as usize;
+                curr_region.pixel = YuvPixel::average(&[curr_region.pixel.clone(), pixel]);
+            }
+        }
+
+        if let Some(mut curr_region) = curr_region.take() {
+            curr_region.x_end = yuyv.width();
+            regions.push(curr_region);
         }
     }
 
-    // println!("scan_line_points: {:?}", scan_line_points.len());
+    let regions: Vec<_> = regions
+        .into_iter()
+        .map(|r| {
+            let region_color = PixelColor::classify_yuv_pixel_new(&field, r.pixel);
 
+            HorizontalColorRegion {
+                y: r.y,
+                x_start: r.x_start,
+                x_end: r.x_end,
+                color: region_color,
+            }
+        })
+        .collect();
+
+    debug_scan_line_regions(&regions, dbg, image)?;
+
+    Ok(())
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum EdgeType {
+    Rising,
+    Falling,
+}
+
+fn find_edge(
+    yuyv: &YuyvImage,
+    x_start: usize,
+    x_end: usize,
+    y: usize,
+    // edge_type: EdgeType,
+) -> usize {
+    let (x_edge, _value_edge) =
+        (x_start..=x_end).fold((x_start, 0.0), |(x_edge, diff_edge), x_next| {
+            let pixel = unsafe { yuyv.pixel_unchecked(x_next, y) };
+            let pixel_next = unsafe { yuyv.pixel_unchecked(x_next + 1, y) };
+
+            let lum = pixel.y as f32;
+            let lum_next = pixel_next.y as f32;
+
+            // let next_diff = lum_next - lum;
+            let next_diff = (lum_next - lum).abs();
+
+            // match (edge_type, next_diff > diff_edge) {
+            //     (EdgeType::Rising, true) => (x_next, next_diff),
+            //     (EdgeType::Rising, false) => (x_edge, diff_edge),
+            //     (EdgeType::Falling, true) => (x_edge, diff_edge),
+            //     (EdgeType::Falling, false) => (x_next, next_diff),
+            // }
+            match next_diff > diff_edge {
+                true => (x_next, next_diff),
+                false => (x_edge, diff_edge),
+            }
+        });
+
+    x_edge
+}
+
+fn debug_scan_line_regions(
+    regions: &[HorizontalColorRegion],
+    dbg: &DebugContext,
+    image: &TopImage,
+) -> Result<()> {
+    let mut lines = Vec::new();
+    let mut colors = Vec::new();
+    for line in regions {
+        // let (r, g, b) = yuy2_to_rgb((line.pixel.y, line.pixel.u, line.pixel.v));
+
+        let (r, g, b) = match line.color {
+            PixelColor::White => (255, 255, 255),
+            PixelColor::Black => (0, 0, 0),
+            PixelColor::Green => (0, 255, 0),
+            PixelColor::Unknown => (128, 128, 128),
+        };
+
+        lines.push([
+            (line.x_start as f32, line.y as f32),
+            (line.x_end as f32, line.y as f32),
+        ]);
+
+        colors.push(RgbU8::new(r, g, b));
+    }
+
+    dbg.log_lines2d_for_image_with_colors(
+        "top_camera/image/scan_line_region_lines",
+        &lines,
+        image,
+        &colors,
+    )?;
+
+    Ok(())
+}
+
+fn debug_scan_grid_color_thingy(
+    scan_line_points: &[(usize, usize, PixelColor)],
+    dbg: &DebugContext,
+    image: &TopImage,
+) -> Result<()> {
     let green_points = scan_line_points
         .iter()
         .filter(|(_, _, color)| *color == PixelColor::Green)
@@ -160,14 +296,12 @@ fn scan_lines_system(
         color::u8::GRAY,
     )?;
 
-    // *scan_lines = ScanLines;
-
     Ok(())
 }
 
 /// The classified color of a scan-line pixel.
 #[repr(u8)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PixelColor {
     White,
     Black,
@@ -176,6 +310,7 @@ pub enum PixelColor {
 }
 
 impl PixelColor {
+    #[deprecated]
     pub fn yuv_to_yhs(y1: u8, u: u8, v: u8) -> (f32, f32, f32) {
         let y1 = y1 as i32;
         let u = u as i32;
@@ -193,6 +328,23 @@ impl PixelColor {
         (y as f32, h, s)
     }
 
+    pub fn yuv_to_yhs_new(pixel: YuvPixel) -> (f32, f32, f32) {
+        let YuvPixel { y, u, v } = pixel;
+        let (y, u, v) = (y as i32, u as i32, v as i32);
+
+        let v_normed = v - 128;
+        let u_normed = u - 128;
+
+        let h = fast_math::atan2(v_normed as f32, u_normed as f32)
+            * std::f32::consts::FRAC_1_PI
+            * 127.0
+            + 127.0;
+        let s = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y as f32;
+
+        (y as f32, h, s)
+    }
+
+    #[deprecated]
     pub fn classify_yuv_pixel(field: &FieldColorApproximate, y: u8, u: u8, v: u8) -> Self {
         let (y, h, s) = Self::yuv_to_yhs(y, u, v);
 
@@ -202,26 +354,77 @@ impl PixelColor {
 
         // dbg!(lum_diff, y, lum_mean, lum_std);
 
-        if Self::is_green(field, y, h, s) {
+        if Self::is_green(field, y, h, s, 2.0) {
             return PixelColor::Green;
         }
 
-        if lum_diff > 3.0 * lum_std {
+        if lum_diff > 1.0 * lum_std {
             return PixelColor::White;
-        } else if y < 3.0 * lum_std {
+        } else if lum_diff < 2.0 * lum_std {
             return PixelColor::Black;
         }
 
         PixelColor::Unknown
     }
 
-    fn is_green(field: &FieldColorApproximate, y: f32, h: f32, s: f32) -> bool {
+    pub fn classify_yuv_pixel_new(_field: &FieldColorApproximate, pixel: YuvPixel) -> Self {
+        let yhs = Self::yuv_to_yhs_new(pixel);
+
+        if Self::is_green_new(yhs) {
+            return PixelColor::Green;
+        }
+
+        if Self::is_white_new(yhs) {
+            return PixelColor::White;
+        }
+
+        if Self::is_black_new(yhs) {
+            return PixelColor::Black;
+        }
+
+        // let (lum_mean, lum_std) = field.luminance;
+
+        PixelColor::Unknown
+    }
+
+    #[deprecated]
+    fn is_green(field: &FieldColorApproximate, y: f32, h: f32, s: f32, leniency: f32) -> bool {
         let lum_diff = (field.luminance.0 - y).abs();
         let hue_diff = (field.hue.0 - h).abs();
         let sat_diff = (field.saturation.0 - s).abs();
 
-        lum_diff < field.luminance.1 * 3.0
-            && hue_diff < field.hue.1 * 3.0
-            && sat_diff < field.saturation.1 * 3.0
+        lum_diff < field.luminance.1 * leniency
+            && hue_diff < field.hue.1 * leniency
+            && sat_diff < field.saturation.1 * leniency
+    }
+
+    fn is_green_new((y, h, s): (f32, f32, f32)) -> bool {
+        const MAX_FIELD_LUMINANCE: f32 = 200.0;
+        const MIN_FIELD_SATURATION: f32 = 30.0;
+        // TODO: our hues are broken methinks
+        // const MIN_FIELD_HUE: f32 = 120.0;
+        // const MAX_FIELD_HUE: f32 = 200.0;
+        const MIN_FIELD_HUE: f32 = 0.0;
+        const MAX_FIELD_HUE: f32 = 80.0;
+
+        y <= MAX_FIELD_LUMINANCE
+            && s >= MIN_FIELD_SATURATION
+            && (MIN_FIELD_HUE..MAX_FIELD_HUE).contains(&h)
+    }
+
+    fn is_white_new((y, _h, s): (f32, f32, f32)) -> bool {
+        // const MIN_WHITE_TO_FIELD_LUMINANCE_DIFFERENCE: f32 = 15.0;
+        // const MIN_WHITE_TO_FIELD_SATURATION_DIFFERENCE: f32 = 15.0;
+        const MAX_WHITE_SATURATION: f32 = 100.0;
+        const MIN_WHITE_LUMINANCE: f32 = 90.0;
+
+        y > MIN_WHITE_LUMINANCE && s < MAX_WHITE_SATURATION
+    }
+
+    fn is_black_new((y, _h, _s): (f32, f32, f32)) -> bool {
+        const MAX_BLACK_LUMINANCE: f32 = 50.0;
+        // const MAX_BLACK_SATURATION: f32 = 50.0;
+
+        y < MAX_BLACK_LUMINANCE
     }
 }

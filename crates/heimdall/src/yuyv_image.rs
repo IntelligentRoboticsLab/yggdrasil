@@ -86,6 +86,40 @@ impl YuyvImage {
         }
     }
 
+    pub fn pixel(&self, x: usize, y: usize) -> Option<YuvPixel> {
+        if x >= self.width || y >= self.height {
+            return None;
+        }
+
+        // every 4 bytes stores 2 pixels, so (width / 2) * 4 bytes in a row
+        let offset = (y * self.width + x) * 2;
+
+        let y = if y % 2 == 0 {
+            self.frame[offset]
+        } else {
+            self.frame[offset + 2]
+        };
+        let u = self.frame[offset + 1];
+        let v = self.frame[offset + 3];
+
+        Some(YuvPixel { y, u, v })
+    }
+
+    pub unsafe fn pixel_unchecked(&self, x: usize, y: usize) -> YuvPixel {
+        // every 4 bytes stores 2 pixels, so (width / 2) * 4 bytes in a row
+        let offset = (y * self.width + x) * 2;
+
+        let y = if y % 2 == 0 {
+            unsafe { *self.frame.get_unchecked(offset) }
+        } else {
+            unsafe { *self.frame.get_unchecked(offset + 2) }
+        };
+        let u = unsafe { *self.frame.get_unchecked(offset + 1) };
+        let v = unsafe { *self.frame.get_unchecked(offset + 3) };
+
+        YuvPixel { y, u, v }
+    }
+
     pub fn row_iter(&self) -> RowIter<'_> {
         RowIter {
             image: &self,
@@ -117,6 +151,7 @@ impl Deref for YuyvImage {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct YuvPixel {
     pub y: u8,
     pub u: u8,
@@ -124,6 +159,32 @@ pub struct YuvPixel {
 }
 
 impl YuvPixel {
+    pub const BLACK: Self = Self {
+        y: 0,
+        u: 128,
+        v: 128,
+    };
+
+    pub fn average(pixels: &[Self]) -> Self {
+        let mut y_sum = 0.0;
+        let mut u_sum = 0.0;
+        let mut v_sum = 0.0;
+
+        for pixel in pixels {
+            y_sum += pixel.y as f32;
+            u_sum += pixel.u as f32;
+            v_sum += pixel.v as f32;
+        }
+
+        let len = pixels.len() as f32;
+
+        YuvPixel {
+            y: (y_sum / len) as u8,
+            u: (u_sum / len) as u8,
+            v: (v_sum / len) as u8,
+        }
+    }
+
     pub fn to_yhs2(self) -> (f32, f32, f32) {
         let y = self.y as i32;
         let u = self.u as i32;
