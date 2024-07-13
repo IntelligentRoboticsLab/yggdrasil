@@ -159,10 +159,7 @@ pub fn keyframe_executor(
         }
 
         transition_to_next_submotion(keyframe_executor, nao_state, fall_state, walking_engine)
-            .map_err(|err| {
-                keyframe_executor.stop_motion();
-                err
-            })?;
+            .inspect_err(|_| keyframe_executor.stop_motion())?;
 
         nao_manager.set_all(
             nao_state.position.clone(),
