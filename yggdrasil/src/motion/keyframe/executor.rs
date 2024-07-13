@@ -1,4 +1,5 @@
 use super::{get_min_duration, lerp, types::Movement, ActiveMotion, KeyframeExecutor};
+use crate::motion::walk::engine::WalkingEngine;
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority;
 use crate::sensor::imu::IMUValues;
@@ -43,8 +44,8 @@ pub fn keyframe_executor(
     nao_manager: &mut NaoManager,
     fall_state: &mut FallState,
     orientation: &RobotOrientation,
-    fsr: &ForceSensitiveResistors,
-    imu: &IMUValues,
+    (fsr, imu): (&ForceSensitiveResistors, &IMUValues),
+    walking_engine: &mut WalkingEngine,
 ) -> Result<()> {
     if keyframe_executor.active_motion.is_none() {
         return Ok(());
@@ -157,10 +158,11 @@ pub fn keyframe_executor(
             }
         }
 
-        transition_to_next_submotion(keyframe_executor, nao_state, fall_state).map_err(|err| {
-            keyframe_executor.stop_motion();
-            err
-        })?;
+        transition_to_next_submotion(keyframe_executor, nao_state, fall_state, walking_engine)
+            .map_err(|err| {
+                keyframe_executor.stop_motion();
+                err
+            })?;
 
         nao_manager.set_all(
             nao_state.position.clone(),
@@ -302,6 +304,7 @@ fn transition_to_next_submotion(
     keyframe_executor: &mut KeyframeExecutor,
     nao_state: &mut NaoState,
     fall_state: &mut FallState,
+    walking_engine: &mut WalkingEngine,
 ) -> Result<()> {
     // current submotion is finished, transition to next submotion.
     let active_motion: &mut ActiveMotion =
@@ -327,7 +330,7 @@ fn transition_to_next_submotion(
             .active_motion
             .as_ref()
             .unwrap()
-            .execute_exit_routine(fall_state);
+            .execute_exit_routine(fall_state, walking_engine);
 
         // and we reset the KeyframeExecutor
         keyframe_executor.active_motion = None;

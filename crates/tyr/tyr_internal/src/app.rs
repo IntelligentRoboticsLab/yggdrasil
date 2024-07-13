@@ -35,7 +35,7 @@ pub enum SystemStage {
     /// that depend on the most up-to-date data.
     ///
     /// It differs from [`SystemStage::Init`] in the sense that, systems are still classified as
-    /// as running in the current cycle.
+    /// running in the current cycle.
     ///
     /// This stage runs *after* [`SystemStage::Write`].
     PostWrite,
