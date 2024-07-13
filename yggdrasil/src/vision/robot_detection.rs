@@ -68,28 +68,28 @@ fn detect_robots(
 
         // ctx.log_image_rgb("/robot_detect_input", img, &top_image.cycle())?;
 
-        let mean_y = 0.3335;
-        let mean_u = 0.4788;
-        let mean_v = 0.3146;
+        // let mean_y = 0.3335;
+        // let mean_u = 0.4788;
+        // let mean_v = 0.3146;
 
-        let std_y = 0.189_980_34;
-        let std_u = 0.163_526_65;
-        let std_v = 0.174_245_5;
+        // let std_y = 0.189_980_34;
+        // let std_u = 0.163_526_65;
+        // let std_v = 0.174_245_5;
 
         if let Ok(()) = model.try_start_infer(
             &resized_image
                 .iter()
                 .map(|x| *x as f32 / 255.0)
-                .enumerate()
-                .map(|(i, x)| {
-                    if i % 3 == 0 {
-                        (x - mean_y) / std_y
-                    } else if (i % 3) == 1 {
-                        (x - mean_u) / std_u
-                    } else {
-                        (x - mean_v) / std_v
-                    }
-                })
+                // .enumerate()
+                // .map(|(i, x)| {
+                //     if i % 3 == 0 {
+                //         (x - mean_y) / std_y
+                //     } else if (i % 3) == 1 {
+                //         (x - mean_u) / std_u
+                //     } else {
+                //         (x - mean_v) / std_v
+                //     }
+                // })
                 .collect::<Vec<f32>>(),
         ) {
             // We need to keep track of the image we started the inference with
@@ -131,7 +131,7 @@ fn detect_robots(
             .enumerate()
             .filter_map(|(i, s)| {
                 let scores = ml::util::softmax(&[s[0], s[1]]);
-                if scores[1] >= 0.27 {
+                if scores[1] >= 0.165 {
                     println!("score: {}, index: {}", scores[1], i);
                     println!("bbox: {}", decoded_boxes.row(i));
                     return Some((decoded_boxes.row(i), scores[1]));
@@ -199,7 +199,7 @@ fn resize_yuyv(image: &YuyvImage) -> Vec<u8> {
         src_image.pixel_type(),
     );
 
-    let mut resizer = fr::Resizer::new(fr::ResizeAlg::Convolution(FilterType::Bilinear));
+    let mut resizer = fr::Resizer::new(fr::ResizeAlg::Nearest);
     resizer
         .resize(&src_image.view(), &mut dst_image.view_mut())
         .expect("Failed to resize image");

@@ -83,7 +83,7 @@ fn detect_whistle(
             .windows_mean();
 
         // run detection model
-        // model.try_start_infer(&spectrogram.powers)?;
+        model.try_start_infer(&spectrogram.powers)?;
     }
 
     // check if detection cycle has been completed
