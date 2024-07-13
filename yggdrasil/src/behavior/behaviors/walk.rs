@@ -16,7 +16,7 @@ impl Behavior for Walk {
         let look_at = context.pose.get_look_at_absolute(&self.target);
         control
             .nao_manager
-            .set_head(look_at, HeadJoints::fill(0.5), Priority::High);
+            .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
 
         control.step_planner.set_absolute_target(self.target);
         if let Some(step) = control.step_planner.plan(context.pose) {

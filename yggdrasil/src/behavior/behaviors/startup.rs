@@ -5,6 +5,7 @@ use crate::{
 use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 
 const DEFAULT_PASSIVE_STIFFNESS: f32 = 0.8;
+// This should run with priority over the walking engine.
 const DEFAULT_PASSIVE_PRIORITY: Priority = Priority::High;
 
 /// This is the startup behavior of the robot.

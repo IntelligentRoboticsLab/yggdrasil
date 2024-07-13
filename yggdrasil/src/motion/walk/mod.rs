@@ -3,7 +3,6 @@ pub mod smoothing;
 use std::time::Duration;
 
 use crate::{
-    core::debug::DebugContext,
     kinematics::RobotKinematics,
     nao::{
         manager::{NaoManager, Priority},
@@ -107,7 +106,6 @@ pub fn run_walking_engine(
     fsr: &ForceSensitiveResistors,
     imu: &IMUValues,
     nao_manager: &mut NaoManager,
-    dbg: &DebugContext,
 ) -> Result<()> {
     // If this is start of a new step phase, we'll need to initialise the new phase.
     if walking_engine.t.is_zero() {
@@ -143,16 +141,6 @@ pub fn run_walking_engine(
         left: left_foot,
         right: right_foot,
     } = walking_engine.foot_offsets.clone();
-
-    dbg.log_scalar_f32("/foot/left/forward", left_foot.forward)?;
-    dbg.log_scalar_f32("/foot/left/left", left_foot.left)?;
-    dbg.log_scalar_f32("/foot/left/turn", left_foot.turn)?;
-    dbg.log_scalar_f32("/foot/left/lift", left_foot.lift)?;
-
-    dbg.log_scalar_f32("/foot/right/forward", right_foot.forward)?;
-    dbg.log_scalar_f32("/foot/right/left", right_foot.left)?;
-    dbg.log_scalar_f32("/foot/right/turn", right_foot.turn)?;
-    dbg.log_scalar_f32("/foot/right/lift", right_foot.lift)?;
 
     let (mut left_leg_joints, mut right_leg_joints) =
         crate::kinematics::inverse::leg_angles(&left_foot, &right_foot);
@@ -215,8 +203,8 @@ pub fn run_walking_engine(
         .build();
 
     nao_manager
-        .set_legs(leg_positions, leg_stiffness, Priority::High)
-        .set_arms(arm_positions, arm_stiffness, Priority::High);
+        .set_legs(leg_positions, leg_stiffness, Priority::Medium)
+        .set_arms(arm_positions, arm_stiffness, Priority::Medium);
 
     Ok(())
 }

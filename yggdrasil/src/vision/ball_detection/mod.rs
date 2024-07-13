@@ -126,10 +126,10 @@ fn reset_eye_color(
     let best_ball = balls.most_recent_ball();
     if let Some(ball) = best_ball {
         if ball.timestamp.elapsed() >= config.max_classification_age_eye_color {
-            nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::Medium);
+            nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
         }
     } else {
-        nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::Medium);
+        nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
     }
 
     Ok(())

@@ -4,6 +4,9 @@ use crate::{
 };
 use nidhogg::types::{color, FillExt, RightEye};
 
+// The robot shouldn't do anything while in unstiff state.
+const UNSTIFF_PRIORITY: Priority = Priority::Critical;
+
 /// This is often the starting behavior of the robot.
 /// In this state the robot sits down, after which it unstiffens its legs, arms and head.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
@@ -19,12 +22,12 @@ impl Behavior for Unstiff {
         if !control.walking_engine.is_sitting() {
             control.walking_engine.request_sit();
         } else {
-            control.nao_manager.unstiff_legs(Priority::Critical);
+            control.nao_manager.unstiff_legs(UNSTIFF_PRIORITY);
         }
 
         control
             .nao_manager
-            .unstiff_arms(Priority::Critical)
-            .unstiff_head(Priority::Critical);
+            .unstiff_arms(UNSTIFF_PRIORITY)
+            .unstiff_head(UNSTIFF_PRIORITY);
     }
 }

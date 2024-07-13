@@ -24,7 +24,7 @@ impl Behavior for StandLookAt {
         control.nao_manager.set_head(
             context.pose.get_look_at_absolute(&self.target),
             HeadJoints::fill(HEAD_STIFFNESS),
-            Priority::High,
+            Priority::default(),
         );
 
         control.walking_engine.request_stand();
