@@ -1,4 +1,4 @@
-use ndarray::{stack, Array2, Axis};
+use ndarray::{s, stack, Array2, Axis};
 
 pub struct BoxCoder {
     pub weights: (f32, f32, f32, f32),
@@ -25,25 +25,31 @@ impl BoxCoder {
     }
 
     pub fn decode_single(&self, rel_codes: Array2<f32>, boxes: Array2<f32>) -> Array2<f32> {
+        let num_features = boxes.dim().0;
         let widths = &boxes.column(2) - &boxes.column(0);
         let heights = &boxes.column(3) - &boxes.column(1);
 
-        let ctr_x = &boxes.column(0) + &widths / 2.0;
-        let ctr_y = &boxes.column(1) + &heights / 2.0;
+        let center_x = &boxes.column(0) + (0.5 * &widths);
+        let center_y = &boxes.column(1) + (0.5 * &heights);
 
         let (wx, wy, ww, wh) = self.weights;
 
-        let dx = &rel_codes.column(0) / wx;
-        let dy = &rel_codes.column(1) / wy;
-        let dw = &rel_codes.column(2) / ww;
-        let dh = &rel_codes.column(3) / wh;
+        let dx = &rel_codes.slice(s![.., 0..;4]) / wx;
+        let dy = &rel_codes.slice(s![.., 1..;4]) / wy;
+        let dw = &rel_codes.slice(s![.., 2..;4]) / ww;
+        let dh = &rel_codes.slice(s![.., 3..;4]) / wh;
+
+        let dx = dx.to_shape((num_features)).unwrap();
+        let dy = dy.to_shape((num_features)).unwrap();
+        let dw = dw.to_shape((num_features)).unwrap();
+        let dh = dh.to_shape((num_features)).unwrap();
 
         // clamp to avoid overflow in exp
         let dw = dw.mapv(|x| x.min(self.bbox_xform_clip));
         let dh = dh.mapv(|x| x.min(self.bbox_xform_clip));
 
-        let pred_ctr_x = dx * &widths + ctr_x;
-        let pred_ctr_y = dy * &heights + ctr_y;
+        let pred_center_x = &dx * &widths + center_x;
+        let pred_center_y = &dy * &heights + center_y;
 
         let pred_w = dw.mapv(|x| x.exp()) * widths;
         let pred_h = dh.mapv(|x| x.exp()) * heights;
@@ -51,11 +57,11 @@ impl BoxCoder {
         let c_to_c_h = pred_h / 2.0;
         let c_to_c_w = pred_w / 2.0;
 
-        let x1 = &pred_ctr_x - &c_to_c_w;
-        let y1 = &pred_ctr_y - &c_to_c_h;
-        let x2 = &pred_ctr_x + &c_to_c_w;
-        let y2 = &pred_ctr_y + &c_to_c_h;
+        let pred_boxes1 = &pred_center_x - &c_to_c_w;
+        let pred_boxes2 = &pred_center_y - &c_to_c_h;
+        let pred_boxes3 = &pred_center_x + &c_to_c_w;
+        let pred_boxes4 = &pred_center_y + &c_to_c_h;
 
-        stack![Axis(1), x1, y1, x2, y2]
+        stack![Axis(1), pred_boxes1, pred_boxes2, pred_boxes3, pred_boxes4]
     }
 }

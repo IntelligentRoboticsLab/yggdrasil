@@ -1,4 +1,4 @@
-use ndarray::{concatenate, Array, Array2, Array3, ArrayView, Axis};
+use ndarray::{concatenate, stack, Array, Array2, Array3, ArrayView, Axis, Order};
 
 use crate::meshgrid::{meshgrid, Indexing};
 use itertools::repeat_n;
@@ -86,9 +86,10 @@ impl DefaultBoxGenerator {
         pairs
     }
 
-    pub fn create_boxes(&self, image_size: (usize, usize), _features: Array3<f32>) -> Array2<f32> {
+    pub fn create_boxes(&self, image_size: (usize, usize), features: Array3<f32>) -> Array2<f32> {
+        let (_, x, y) = features.dim();
         // create default boxes for each feature map, in cx, cy, w, h format
-        let mut default_boxes = self.grid_default_boxes((12, 12));
+        let mut default_boxes = self.grid_default_boxes((x, y));
 
         let (image_width, image_height) = (image_size.1 as f32, image_size.0 as f32);
 
@@ -113,22 +114,27 @@ impl DefaultBoxGenerator {
     /// Generate default boxes for a grid of feature maps.
     fn grid_default_boxes(&self, feature_size: (usize, usize)) -> Array2<f32> {
         let (y_fk, x_fk) = feature_size;
+        let total_features = y_fk * x_fk;
 
         let shifts_x = (Array::range(0.0, x_fk as f32, 1.0) + 0.5) / x_fk as f32;
         let shifts_y = (Array::range(0.0, y_fk as f32, 1.0) + 0.5) / y_fk as f32;
 
         let grids = meshgrid(&[shifts_y, shifts_x], Indexing::Ij).unwrap();
 
-        let shift_y = grids[0].clone().into_shape((144, 1)).unwrap();
-        let shift_x = grids[1].clone().into_shape((144, 1)).unwrap();
+        // flatten into shape (total_features,)
+        let shift_x = grids[1].clone().into_shape(total_features).unwrap();
+        let shift_y = grids[0].clone().into_shape(total_features).unwrap();
 
         let num_pairs = self.wh_pairs[0].dim().0;
 
         // repeat the shifts for each pair of width and height
-        let shift = concatenate![Axis(1), shift_y, shift_x];
+        let shift = stack![Axis(1), shift_x, shift_y];
         let shifts = repeat_n(shift, num_pairs)
-            .reduce(|acc, x| concatenate!(Axis(0), acc, x))
+            .reduce(|acc, x| concatenate!(Axis(1), acc, x))
             .unwrap();
+
+        let (w, h) = shifts.dim();
+        let shifts = shifts.to_shape(((w * h / 2, 2), Order::RowMajor)).unwrap();
 
         // clip the default boxes, while they're encoded in cxcywh format
         let wh_pair = self.wh_pairs[0].map(|x| x.clamp(0.0, 1.0));

@@ -9,7 +9,7 @@ fn main() {
 
     let box_coder = box_coder::BoxCoder::new((10.0, 10.0, 5.0, 5.0));
 
-    let boxes = box_coder.decode_single(Array2::zeros((864, 4)), boxes);
+    let boxes = box_coder.decode_single(Array2::ones((864, 4)), boxes);
 
     println!("{:?}", boxes);
 }
