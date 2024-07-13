@@ -1,4 +1,3 @@
-use crate::nao;
 use crate::{kinematics, prelude::*, sensor};
 
 use self::odometry::Odometry;
@@ -31,10 +30,7 @@ impl Module for MotionModule {
             )
             .add_startup_system(odometry::setup_viewcoordinates)?
             .add_startup_system(keyframe_executor_initializer)?
-            .add_staged_system(
-                SystemStage::Finalize,
-                keyframe_executor.after(nao::manager::finalize),
-            )
+            .add_staged_system(SystemStage::PostWrite, keyframe_executor)
             .add_module(step_planner::StepPlannerModule)
     }
 }

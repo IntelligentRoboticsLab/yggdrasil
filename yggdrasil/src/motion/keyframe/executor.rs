@@ -102,7 +102,7 @@ pub fn keyframe_executor(
                 HeadJoints::<f32>::fill(submotion_stiffness),
                 ArmJoints::<f32>::fill(submotion_stiffness),
                 LegJoints::<f32>::fill(submotion_stiffness),
-                Priority::High,
+                Priority::Critical,
             );
             return Ok(());
         } else {
@@ -122,7 +122,7 @@ pub fn keyframe_executor(
             HeadJoints::<f32>::fill(submotion_stiffness),
             ArmJoints::<f32>::fill(submotion_stiffness),
             LegJoints::<f32>::fill(submotion_stiffness),
-            Priority::High,
+            Priority::Critical,
         );
     } else {
         let gyro = Vector3::new(imu.gyroscope.x, imu.gyroscope.y, imu.gyroscope.z);
@@ -151,7 +151,7 @@ pub fn keyframe_executor(
                     HeadJoints::<f32>::fill(submotion_stiffness),
                     ArmJoints::<f32>::fill(submotion_stiffness),
                     LegJoints::<f32>::fill(submotion_stiffness),
-                    Priority::High,
+                    Priority::Critical,
                 );
                 return Ok(());
             }
@@ -167,7 +167,7 @@ pub fn keyframe_executor(
             HeadJoints::<f32>::fill(submotion_stiffness),
             ArmJoints::<f32>::fill(submotion_stiffness),
             LegJoints::<f32>::fill(submotion_stiffness),
-            Priority::High,
+            Priority::Critical,
         );
     }
 

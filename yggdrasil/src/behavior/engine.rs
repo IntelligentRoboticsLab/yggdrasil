@@ -306,7 +306,7 @@ pub fn step(
         &mut StepPlanner,
     ),
     game_controller_message: &Option<GameControllerMessage>,
-    (robot_pose, balls): (&RobotPose, &Balls),
+    (robot_pose, balls, fall_state): (&RobotPose, &Balls, &FallState),
 ) -> Result<()> {
     let context = Context {
         robot_info,
@@ -320,7 +320,7 @@ pub fn step(
         behavior_config,
         game_controller_message: game_controller_message.as_ref(),
         game_controller_config,
-        fall_state: &FallState::Upright,
+        fall_state,
         pose: robot_pose,
         ball_position: &balls.balls.first().map(|ball| ball.position),
     };

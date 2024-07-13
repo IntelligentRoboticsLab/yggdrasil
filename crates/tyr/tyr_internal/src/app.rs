@@ -31,6 +31,14 @@ pub enum SystemStage {
     ///
     /// This stage is used for systems that interact with the LoLA socket, or depend on the write order.
     Write,
+    /// This stage runs after the data has been updated from the LoLA socket, and is used for systems
+    /// that depend on the most up-to-date data.
+    ///
+    /// It differs from [`SystemStage::Init`] in the sense that, systems are still classified as
+    /// as running in the current cycle.
+    ///
+    /// This stage runs *after* [`SystemStage::Write`].
+    PostWrite,
     /// A custom stage that can be used for any purpose.
     ///
     /// **This should be used sparingly, as it can make the execution order less clear.**
@@ -44,7 +52,8 @@ impl SystemStage {
             SystemStage::Sensor => 50,
             SystemStage::Execute => (256u32 / 2u32) as u8,
             SystemStage::Finalize => 140,
-            SystemStage::Write => 240,
+            SystemStage::Write => 200,
+            SystemStage::PostWrite => 240,
             SystemStage::Custom(value) => *value,
         }
     }
