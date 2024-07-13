@@ -20,7 +20,7 @@ impl Behavior for WalkToSet {
         let look_at = context.pose.get_look_at_absolute(&set_position);
         control
             .nao_manager
-            .set_head(look_at, HeadJoints::fill(0.5), Priority::High);
+            .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
 
         control.step_planner.set_absolute_target(set_position);
         if let Some(step) = control.step_planner.plan(context.pose) {

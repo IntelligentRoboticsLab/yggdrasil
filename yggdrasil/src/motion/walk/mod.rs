@@ -203,8 +203,8 @@ pub fn run_walking_engine(
         .build();
 
     nao_manager
-        .set_legs(leg_positions, leg_stiffness, Priority::High)
-        .set_arms(arm_positions, arm_stiffness, Priority::High);
+        .set_legs(leg_positions, leg_stiffness, Priority::Medium)
+        .set_arms(arm_positions, arm_stiffness, Priority::Medium);
 
     Ok(())
 }

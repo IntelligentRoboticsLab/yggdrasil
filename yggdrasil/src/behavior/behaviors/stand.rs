@@ -17,7 +17,7 @@ impl Behavior for Stand {
         control.nao_manager.set_head(
             HeadJoints::default(),
             HeadJoints::fill(HEAD_STIFFNESS),
-            Priority::High,
+            Priority::default(),
         );
     }
 }
