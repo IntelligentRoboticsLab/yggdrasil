@@ -82,7 +82,7 @@ impl YuyvImage {
         ImageView {
             start,
             end,
-            image: &self,
+            image: self,
         }
     }
 
@@ -105,6 +105,10 @@ impl YuyvImage {
         Some(YuvPixel { y, u, v })
     }
 
+    /// Get a pixel at the given coordinates without bounds checking.
+    ///
+    /// # Safety
+    /// Don't be dumb
     pub unsafe fn pixel_unchecked(&self, x: usize, y: usize) -> YuvPixel {
         // every 4 bytes stores 2 pixels, so (width / 2) * 4 bytes in a row
         let offset = (y * self.width + x) * 2;
@@ -122,7 +126,7 @@ impl YuyvImage {
 
     pub fn row_iter(&self) -> RowIter<'_> {
         RowIter {
-            image: &self,
+            image: self,
             current_row: 0,
         }
     }

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod ball_detection;
 pub mod camera;
+pub mod color;
 pub mod field_boundary;
 pub mod field_marks;
 pub mod line;

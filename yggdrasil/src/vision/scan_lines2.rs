@@ -1,14 +1,15 @@
 use crate::{core::debug::DebugContext, nao::Cycle, prelude::*};
 
 use super::{
-    camera::TopImage,
+    camera::{BottomImage, Image, TopImage},
+    color,
     field_boundary::FieldBoundary,
-    scan_grid::{FieldColorApproximate, ScanGrid},
+    scan_grid::{FieldColorApproximate, ScanGrid, ScanGrids},
 };
 
 use heimdall::{YuvPixel, YuyvImage};
 use nalgebra::Point2;
-use nidhogg::types::RgbU8;
+use nidhogg::types::{color::u8, RgbU8};
 
 const MIN_EDGE_LUMINANCE_DIFFERENCE: f32 = 13.0;
 
@@ -25,32 +26,11 @@ impl Module for ScanLinesModule {
     }
 }
 
-pub struct ScanLines;
-
-fn yuy2_to_rgb((y, u, v): (u8, u8, u8)) -> (u8, u8, u8) {
-    let (y, u, v) = (y as f32, u as f32, v as f32);
-
-    // rescale YUV values
-    let y = (y - 16.0) / 219.0;
-    let u = (u - 128.0) / 224.0;
-    let v = (v - 128.0) / 224.0;
-
-    // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
-    let r = y + 1.402 * v;
-    let g = y - 0.344 * u - 0.714 * v;
-    let b = y + 1.772 * u;
-
-    // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
-    // let r = y + 1.575 * v;
-    // let g = y - 0.187 * u - 0.468 * v;
-    // let b = y + 1.856 * u;
-
-    (
-        (255.0 * r).clamp(0.0, 255.0) as u8,
-        (255.0 * g).clamp(0.0, 255.0) as u8,
-        (255.0 * b).clamp(0.0, 255.0) as u8,
-    )
-}
+// #[derive(Debug, Default)]
+// pub struct ScanLines {
+//     top: Vec<ClassifiedScanLineRegion>,
+//     bottom: Vec<ClassifiedScanLineRegion>,
+// }
 
 #[derive(Debug)]
 struct ScanLineRegion {
@@ -59,6 +39,30 @@ struct ScanLineRegion {
 }
 
 impl ScanLineRegion {
+    pub fn add_sample(&mut self, sample: YuvPixel, weight: usize) {
+        let self_weight = self.region.length();
+
+        let (y, u, v) = (
+            self.approx_color.y as f32,
+            self.approx_color.u as f32,
+            self.approx_color.v as f32,
+        );
+
+        let (y_sample, u_sample, v_sample) = (sample.y as f32, sample.u as f32, sample.v as f32);
+
+        let y_sum = y * self_weight as f32 + y_sample * weight as f32;
+        let u_sum = u * self_weight as f32 + u_sample * weight as f32;
+        let v_sum = v * self_weight as f32 + v_sample * weight as f32;
+
+        let total = self_weight as f32 + weight as f32;
+
+        self.approx_color = YuvPixel {
+            y: (y_sum / total) as u8,
+            u: (u_sum / total) as u8,
+            v: (v_sum / total) as u8,
+        };
+    }
+
     pub fn classify(self, field: &FieldColorApproximate) -> ClassifiedScanLineRegion {
         let color = RegionColor::classify_yuv_pixel(field, self.approx_color.clone());
 
@@ -93,10 +97,11 @@ impl ClassifiedScanLineRegion {
                 curr.line
                     .region
                     .set_end_point(region.line.region.end_point());
-                curr.line.approx_color = YuvPixel::average(&[
-                    curr.line.approx_color.clone(),
-                    region.line.approx_color.clone(),
-                ]);
+
+                let weight = curr.line.region.length();
+                curr.line
+                    .add_sample(region.line.approx_color.clone(), weight);
+
                 current = Some(curr);
             } else {
                 new_regions.push(curr);
@@ -173,6 +178,10 @@ impl Region {
             Region::Horizontal { .. } => Direction::Horizontal,
         }
     }
+
+    pub fn length(&self) -> usize {
+        self.end_point() - self.start_point()
+    }
 }
 
 pub enum Direction {
@@ -185,20 +194,22 @@ fn get_horizontal_scan_lines(
     yuyv: &YuyvImage,
     scan_grid: &ScanGrid,
     field_boundary: &FieldBoundary,
+    camera: CameraType,
 ) -> Vec<ClassifiedScanLineRegion> {
     let mut regions = Vec::new();
 
     for y in &scan_grid.y {
         let mut curr_region = None;
-
         for line in &scan_grid.lines {
             let x = line.x as usize;
             let y = *y;
 
-            // skip lines above the field boundary
-            let boundary = field_boundary.height_at_pixel(x as f32) as usize;
-            if y < boundary {
-                continue;
+            if camera == CameraType::Top {
+                // skip lines below the field boundary
+                let boundary = field_boundary.height_at_pixel(x as f32) as usize;
+                if y < boundary {
+                    continue;
+                }
             }
 
             let pixels = unsafe {
@@ -255,9 +266,14 @@ fn get_horizontal_scan_lines(
 
                 continue;
             } else {
+                // get the length of the region inbetween
+                let weight = x - curr_region.region.end_point();
+
+                // set the end point to the current x
                 curr_region.region.set_end_point(x);
-                curr_region.approx_color =
-                    YuvPixel::average(&[curr_region.approx_color.clone(), pixel]);
+
+                // add the pixel color sample to the region with a weight of the added length
+                curr_region.add_sample(pixel, weight);
             }
         }
 
@@ -274,19 +290,23 @@ fn get_vertical_scan_lines(
     yuyv: &YuyvImage,
     scan_grid: &ScanGrid,
     field_boundary: &FieldBoundary,
+    camera: CameraType,
 ) -> Vec<ClassifiedScanLineRegion> {
     let mut regions = Vec::new();
 
     for line in &scan_grid.lines {
         let mut curr_region = None;
+
         for y in &scan_grid.y {
             let x = line.x as usize;
             let y = *y;
 
-            // skip lines above the field boundary
-            let boundary = field_boundary.height_at_pixel(line.x as f32) as usize;
-            if y < boundary {
-                continue;
+            if camera == CameraType::Top {
+                // skip lines above the field boundary
+                let boundary = field_boundary.height_at_pixel(x as f32) as usize;
+                if y < boundary {
+                    continue;
+                }
             }
 
             let pixels = unsafe {
@@ -343,9 +363,14 @@ fn get_vertical_scan_lines(
 
                 continue;
             } else {
+                // get the length of the region inbetween
+                let weight = y - curr_region.region.end_point();
+
+                // set the end point to the current y
                 curr_region.region.set_end_point(y);
-                curr_region.approx_color =
-                    YuvPixel::average(&[curr_region.approx_color.clone(), pixel]);
+
+                // add the pixel color sample to the region with a weight of the added length
+                curr_region.add_sample(pixel, weight);
             }
         }
 
@@ -359,12 +384,46 @@ fn get_vertical_scan_lines(
 
 #[system]
 fn scan_lines_system(
-    image: &TopImage,
+    top_image: &TopImage,
+    bottom_image: &BottomImage,
+    scan_grid: &ScanGrids,
+    field_boundary: &FieldBoundary,
+    // scan_lines: &mut ScanLines,
+    curr_cycle: &Cycle,
+    dbg: &DebugContext,
+) -> Result<()> {
+    let top_grid = &scan_grid.top;
+    let bottom_grid = &scan_grid.bottom;
+
+    update_scan_lines(
+        top_image,
+        top_grid,
+        field_boundary,
+        curr_cycle,
+        dbg,
+        CameraType::Top,
+    )?;
+
+    update_scan_lines(
+        bottom_image,
+        bottom_grid,
+        field_boundary,
+        curr_cycle,
+        dbg,
+        CameraType::Bottom,
+    )?;
+
+    Ok(())
+}
+
+fn update_scan_lines(
+    image: &Image,
     scan_grid: &ScanGrid,
     field_boundary: &FieldBoundary,
     // scan_lines: &mut ScanLines,
     curr_cycle: &Cycle,
     dbg: &DebugContext,
+    camera: CameraType,
 ) -> Result<()> {
     if !scan_grid.image.is_from_cycle(curr_cycle) || scan_grid.lines.is_empty() {
         return Ok(());
@@ -374,42 +433,14 @@ fn scan_lines_system(
 
     let field = FieldColorApproximate::new(yuyv);
 
-    let regions_h = get_horizontal_scan_lines(&field, yuyv, scan_grid, field_boundary);
-    let regions_v = get_vertical_scan_lines(&field, yuyv, scan_grid, field_boundary);
+    let regions_h = get_horizontal_scan_lines(&field, yuyv, scan_grid, field_boundary, camera);
+    let regions_v = get_vertical_scan_lines(&field, yuyv, scan_grid, field_boundary, camera);
 
-    debug_scan_lines(&regions_h, dbg, image)?;
-    debug_scan_lines(&regions_v, dbg, image)?;
+    debug_scan_lines(&regions_h, dbg, image, camera)?;
+    debug_scan_lines(&regions_v, dbg, image, camera)?;
 
-    let line_spots_h = regions_h
-        .iter()
-        .filter(|r| matches!(r.color, RegionColor::White))
-        .map(|r| r.line.region.line_spot())
-        .map(|s| (s.x, s.y))
-        .collect::<Vec<_>>();
-
-    let line_spots_v = regions_v
-        .iter()
-        .filter(|r| matches!(r.color, RegionColor::White))
-        .map(|r| r.line.region.line_spot())
-        .map(|s| (s.x, s.y))
-        .collect::<Vec<_>>();
-
-    let colors_h = vec![RgbU8::new(255, 0, 0); line_spots_h.len()];
-    let colors_v = vec![RgbU8::new(0, 0, 255); line_spots_v.len()];
-
-    dbg.log_points2d_for_image_with_colors(
-        "top_camera/image/horizontal_line_spots",
-        &line_spots_h,
-        image,
-        &colors_h,
-    )?;
-
-    dbg.log_points2d_for_image_with_colors(
-        "top_camera/image/vertical_line_spots",
-        &line_spots_v,
-        image,
-        &colors_v,
-    )?;
+    debug_scan_line_spots(&regions_h, dbg, image, u8::RED, camera)?;
+    debug_scan_line_spots(&regions_v, dbg, image, u8::BLUE, camera)?;
 
     Ok(())
 }
@@ -425,14 +456,18 @@ fn find_edge(
         (start..=end).fold((start, 0.0), |(pos_edge, diff_edge), pos_next| {
             // get the current pixel and next pixels
             let (pixel, pixel_next) = match direction {
-                Direction::Horizontal => {
-                    (unsafe { yuyv.pixel_unchecked(pos_next, fixed) }, unsafe {
-                        yuyv.pixel_unchecked(pos_next + 1, fixed)
-                    })
-                }
-                Direction::Vertical => (unsafe { yuyv.pixel_unchecked(fixed, pos_next) }, unsafe {
-                    yuyv.pixel_unchecked(fixed, pos_next + 1)
-                }),
+                Direction::Horizontal => unsafe {
+                    (
+                        yuyv.pixel_unchecked(pos_next, fixed),
+                        yuyv.pixel_unchecked(pos_next + 1, fixed),
+                    )
+                },
+                Direction::Vertical => unsafe {
+                    (
+                        yuyv.pixel_unchecked(fixed, pos_next),
+                        yuyv.pixel_unchecked(fixed, pos_next + 1),
+                    )
+                },
             };
 
             let lum = pixel.y as f32;
@@ -450,7 +485,6 @@ fn find_edge(
 }
 
 /// The classified color of a scan-line region.
-#[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RegionColor {
     White,
@@ -460,26 +494,9 @@ pub enum RegionColor {
 }
 
 impl RegionColor {
-    pub fn yuv_to_yhs(pixel: YuvPixel) -> (f32, f32, f32) {
-        let YuvPixel { y, u, v } = pixel;
-        let (y, u, v) = (y as i32, u as i32, v as i32);
-
-        let v_normed = v - 128;
-        let u_normed = u - 128;
-
-        let h = fast_math::atan2(v_normed as f32, u_normed as f32)
-            * std::f32::consts::FRAC_1_PI
-            * 127.0
-            + 127.0;
-        let s = (((v_normed.pow(2) + u_normed.pow(2)) * 2) as f32).sqrt() * 255.0 / y as f32;
-
-        (y as f32, h, s)
-    }
-
+    // TODO: use our field color approximate
     pub fn classify_yuv_pixel(_field: &FieldColorApproximate, pixel: YuvPixel) -> Self {
-        // TODO: use field color approximate somehow
-
-        let yhs = Self::yuv_to_yhs(pixel);
+        let yhs = pixel.to_yhs2();
 
         if Self::is_green(yhs) {
             return RegionColor::Green;
@@ -527,11 +544,22 @@ impl RegionColor {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum CameraType {
+    Top,
+    Bottom,
+}
+
 fn debug_scan_lines(
     regions: &[ClassifiedScanLineRegion],
     dbg: &DebugContext,
-    image: &TopImage,
+    image: &Image,
+    camera: CameraType,
 ) -> Result<()> {
+    if regions.is_empty() {
+        return Ok(());
+    }
+
     let direction = regions[0].line.region.direction();
 
     let region_len = regions.len();
@@ -541,7 +569,7 @@ fn debug_scan_lines(
     let mut classifications = Vec::with_capacity(region_len);
 
     for line in regions {
-        let (r, g, b) = yuy2_to_rgb((
+        let (r, g, b) = color::yuv_to_rgb_bt601((
             line.line.approx_color.y,
             line.line.approx_color.u,
             line.line.approx_color.v,
@@ -572,18 +600,65 @@ fn debug_scan_lines(
         Direction::Vertical => "vertical",
     };
 
+    let camera_str = match camera {
+        CameraType::Top => "top",
+        CameraType::Bottom => "bottom",
+    };
+
     dbg.log_lines2d_for_image_with_colors(
-        format!("top_camera/image/{direction_str}_scan_lines"),
+        format!("{camera_str}_camera/image/scan_lines/approximates/{direction_str}"),
         &lines,
         image,
         &colors,
     )?;
 
     dbg.log_lines2d_for_image_with_colors(
-        format!("top_camera/image/{direction_str}_scan_lines_classifications"),
+        format!("{camera_str}_camera/image/scan_lines/classifications/{direction_str}"),
         &lines,
         image,
         &classifications,
+    )?;
+
+    Ok(())
+}
+
+fn debug_scan_line_spots(
+    regions: &[ClassifiedScanLineRegion],
+    dbg: &DebugContext,
+    image: &Image,
+    color: RgbU8,
+    camera: CameraType,
+) -> Result<()> {
+    if regions.is_empty() {
+        return Ok(());
+    }
+
+    let direction = regions[0].line.region.direction();
+
+    let line_spots = regions
+        .iter()
+        .filter(|r| matches!(r.color, RegionColor::White))
+        .map(|r| r.line.region.line_spot())
+        .map(|s| (s.x, s.y))
+        .collect::<Vec<_>>();
+
+    let colors = vec![color; line_spots.len()];
+
+    let direction_str = match direction {
+        Direction::Horizontal => "horizontal",
+        Direction::Vertical => "vertical",
+    };
+
+    let camera_str = match camera {
+        CameraType::Top => "top",
+        CameraType::Bottom => "bottom",
+    };
+
+    dbg.log_points2d_for_image_with_colors(
+        format!("{camera_str}_camera/image/scan_lines/spots/{direction_str}"),
+        &line_spots,
+        image,
+        &colors,
     )?;
 
     Ok(())

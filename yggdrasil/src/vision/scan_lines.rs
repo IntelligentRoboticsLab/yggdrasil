@@ -427,12 +427,12 @@ pub fn scan_lines_system(
     dbg: &DebugContext,
 ) -> Result<()> {
     if top_scan_grid.image().timestamp != top_boundary.image.timestamp {
-        top_scan_grid.update_scan_lines_from_boundary(top_boundary);
+        // top_scan_grid.update_scan_lines_from_boundary(top_boundary);
         log_vertical_scan_lines(top_scan_grid, dbg)?;
     }
 
     if bottom_scan_grid.image().timestamp != bottom_image.timestamp {
-        bottom_scan_grid.update_scan_lines_from_image(bottom_image);
+        // bottom_scan_grid.update_scan_lines_from_image(bottom_image);
     }
 
     Ok(())
