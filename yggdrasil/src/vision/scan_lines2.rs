@@ -21,16 +21,59 @@ pub struct ScanLinesModule;
 
 impl Module for ScanLinesModule {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app.add_system(scan_lines_system.after(super::scan_grid::update_scan_grid)))
-        // .add_startup_system(init_buffers)
+        app.add_system(scan_lines_system.after(super::scan_grid::update_scan_grid))
+            .init_resource::<TopScanLines>()?
+            .init_resource::<BottomScanLines>()
     }
 }
 
-// #[derive(Debug, Default)]
-// pub struct ScanLines {
-//     top: Vec<ClassifiedScanLineRegion>,
-//     bottom: Vec<ClassifiedScanLineRegion>,
-// }
+#[derive(Debug, Default)]
+pub struct ScanLines {
+    pub horizontal: ScanLine,
+    pub vertical: ScanLine,
+}
+
+#[derive(Debug, Default)]
+pub struct ScanLine {
+    raw: Vec<ClassifiedScanLineRegion>,
+}
+
+impl ScanLine {
+    pub fn new(raw: Vec<ClassifiedScanLineRegion>) -> Self {
+        Self { raw }
+    }
+
+    pub fn line_spots(&self) -> impl Iterator<Item = Point2<f32>> + '_ {
+        self.raw
+            .iter()
+            .filter(|r| matches!(r.color, RegionColor::White))
+            .map(|r| r.line.region.line_spot())
+    }
+}
+
+#[derive(Debug, derive_more::Deref, derive_more::DerefMut, Default)]
+pub struct TopScanLines(ScanLines);
+
+impl TopScanLines {
+    pub fn new(horizontal: ScanLine, vertical: ScanLine) -> Self {
+        Self(ScanLines {
+            horizontal,
+            vertical,
+        })
+    }
+}
+
+#[derive(Debug, derive_more::Deref, derive_more::DerefMut, Default)]
+pub struct BottomScanLines(ScanLines);
+
+impl BottomScanLines {
+    pub fn new(horizontal: ScanLine, vertical: ScanLine) -> Self {
+        Self(ScanLines {
+            horizontal,
+            vertical,
+        })
+    }
+}
 
 #[derive(Debug)]
 struct ScanLineRegion {
@@ -71,7 +114,7 @@ impl ScanLineRegion {
 }
 
 #[derive(Debug)]
-struct ClassifiedScanLineRegion {
+pub struct ClassifiedScanLineRegion {
     line: ScanLineRegion,
     color: RegionColor,
 }
@@ -195,7 +238,7 @@ fn get_horizontal_scan_lines(
     scan_grid: &ScanGrid,
     field_boundary: &FieldBoundary,
     camera: CameraType,
-) -> Vec<ClassifiedScanLineRegion> {
+) -> ScanLine {
     let mut regions = Vec::new();
 
     for y in &scan_grid.y {
@@ -282,7 +325,7 @@ fn get_horizontal_scan_lines(
         }
     }
 
-    ClassifiedScanLineRegion::simplify(regions)
+    ScanLine::new(ClassifiedScanLineRegion::simplify(regions))
 }
 
 fn get_vertical_scan_lines(
@@ -291,7 +334,7 @@ fn get_vertical_scan_lines(
     scan_grid: &ScanGrid,
     field_boundary: &FieldBoundary,
     camera: CameraType,
-) -> Vec<ClassifiedScanLineRegion> {
+) -> ScanLine {
     let mut regions = Vec::new();
 
     for line in &scan_grid.lines {
@@ -379,7 +422,7 @@ fn get_vertical_scan_lines(
         }
     }
 
-    ClassifiedScanLineRegion::simplify(regions)
+    ScanLine::new(ClassifiedScanLineRegion::simplify(regions))
 }
 
 #[system]
@@ -388,7 +431,8 @@ fn scan_lines_system(
     bottom_image: &BottomImage,
     scan_grid: &ScanGrids,
     field_boundary: &FieldBoundary,
-    // scan_lines: &mut ScanLines,
+    top_scan_lines: &mut TopScanLines,
+    bottom_scan_lines: &mut BottomScanLines,
     curr_cycle: &Cycle,
     dbg: &DebugContext,
 ) -> Result<()> {
@@ -399,6 +443,7 @@ fn scan_lines_system(
         top_image,
         top_grid,
         field_boundary,
+        top_scan_lines,
         curr_cycle,
         dbg,
         CameraType::Top,
@@ -408,6 +453,7 @@ fn scan_lines_system(
         bottom_image,
         bottom_grid,
         field_boundary,
+        bottom_scan_lines,
         curr_cycle,
         dbg,
         CameraType::Bottom,
@@ -420,7 +466,7 @@ fn update_scan_lines(
     image: &Image,
     scan_grid: &ScanGrid,
     field_boundary: &FieldBoundary,
-    // scan_lines: &mut ScanLines,
+    scan_lines: &mut ScanLines,
     curr_cycle: &Cycle,
     dbg: &DebugContext,
     camera: CameraType,
@@ -433,14 +479,17 @@ fn update_scan_lines(
 
     let field = FieldColorApproximate::new(yuyv);
 
-    let regions_h = get_horizontal_scan_lines(&field, yuyv, scan_grid, field_boundary, camera);
-    let regions_v = get_vertical_scan_lines(&field, yuyv, scan_grid, field_boundary, camera);
+    let scan_lines_h = get_horizontal_scan_lines(&field, yuyv, scan_grid, field_boundary, camera);
+    let scan_lines_v = get_vertical_scan_lines(&field, yuyv, scan_grid, field_boundary, camera);
 
-    debug_scan_lines(&regions_h, dbg, image, camera)?;
-    debug_scan_lines(&regions_v, dbg, image, camera)?;
+    debug_scan_lines(&scan_lines_h, dbg, image, camera)?;
+    debug_scan_lines(&scan_lines_v, dbg, image, camera)?;
 
-    debug_scan_line_spots(&regions_h, dbg, image, u8::RED, camera)?;
-    debug_scan_line_spots(&regions_v, dbg, image, u8::BLUE, camera)?;
+    debug_scan_line_spots(&scan_lines_h, dbg, image, u8::RED, camera)?;
+    debug_scan_line_spots(&scan_lines_v, dbg, image, u8::BLUE, camera)?;
+
+    scan_lines.horizontal = scan_lines_h;
+    scan_lines.vertical = scan_lines_v;
 
     Ok(())
 }
@@ -551,24 +600,26 @@ pub(super) enum CameraType {
 }
 
 fn debug_scan_lines(
-    regions: &[ClassifiedScanLineRegion],
+    scan_line: &ScanLine,
     dbg: &DebugContext,
     image: &Image,
     camera: CameraType,
 ) -> Result<()> {
-    if regions.is_empty() {
+    let scan_line = &scan_line.raw;
+
+    if scan_line.is_empty() {
         return Ok(());
     }
 
-    let direction = regions[0].line.region.direction();
+    let direction = scan_line[0].line.region.direction();
 
-    let region_len = regions.len();
+    let region_len = scan_line.len();
 
     let mut lines = Vec::with_capacity(region_len);
     let mut colors = Vec::with_capacity(region_len);
     let mut classifications = Vec::with_capacity(region_len);
 
-    for line in regions {
+    for line in scan_line {
         let (r, g, b) = color::yuv_to_rgb_bt601((
             line.line.approx_color.y,
             line.line.approx_color.u,
@@ -623,22 +674,22 @@ fn debug_scan_lines(
 }
 
 fn debug_scan_line_spots(
-    regions: &[ClassifiedScanLineRegion],
+    scan_line: &ScanLine,
     dbg: &DebugContext,
     image: &Image,
     color: RgbU8,
     camera: CameraType,
 ) -> Result<()> {
+    let regions = &scan_line.raw;
+
     if regions.is_empty() {
         return Ok(());
     }
 
     let direction = regions[0].line.region.direction();
 
-    let line_spots = regions
-        .iter()
-        .filter(|r| matches!(r.color, RegionColor::White))
-        .map(|r| r.line.region.line_spot())
+    let line_spots = scan_line
+        .line_spots()
         .map(|s| (s.x, s.y))
         .collect::<Vec<_>>();
 
