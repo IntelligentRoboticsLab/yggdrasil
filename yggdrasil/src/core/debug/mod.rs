@@ -332,6 +332,33 @@ impl DebugContext {
     }
 
     /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
+    pub fn log_points2d_for_image_with_colors(
+        &self,
+        path: impl AsRef<str>,
+        points: &[(f32, f32)],
+        image: &Image,
+        color: &[RgbU8],
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&image.cycle);
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Points2D::new(points).with_colors(
+                        color
+                            .into_iter()
+                            .map(|c| rerun::Color::from_rgb(c.red, c.green, c.blue)),
+                    ),
+                )
+                .into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
     pub fn log_points2d_for_image_with_radius(
         &self,
         path: impl AsRef<str>,
