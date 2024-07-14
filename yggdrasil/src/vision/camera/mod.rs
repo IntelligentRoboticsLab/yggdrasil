@@ -353,41 +353,63 @@ fn log_top_image(
 }
 
 #[cfg(not(feature = "local"))]
+const SAMPLES_PER_COLUMN: usize = 4;
+
+#[cfg(not(feature = "local"))]
+const ABOVE_FIELD_WEIGHT: u8 = 0;
+
+#[cfg(not(feature = "local"))]
+const BELOW_FIELD_WEIGHT: u8 = 15;
+
+#[cfg(not(feature = "local"))]
+const MIN_BOTTOM_ROW_WEIGHT: u8 = 10;
+
+#[cfg(not(feature = "local"))]
+const WEIGHT_SLOPE: f32 = (BELOW_FIELD_WEIGHT - ABOVE_FIELD_WEIGHT) as f32;
+
+#[cfg(not(feature = "local"))]
 #[system]
 fn update_exposure_weights(
     exposure_weights: &mut ExposureWeights,
     field_boundary: &FieldBoundary,
 ) -> Result<()> {
-    let (w, h) = exposure_weights.top.window_size();
-    let (cw, ch) = (w / 4, h / 4);
+    let (width, height) = exposure_weights.top.window_size();
+    let (column_width, row_height) = (width / 4, height / 4);
 
     let mut weights = [0; 16];
 
-    for cx in 0..4 {
-        let x0 = cx * cw;
+    for column_index in 0..4 {
+        let column_start = column_index * column_width;
+        let column_end = column_start + column_width;
 
-        let samples = (x0..(x0 + cw))
-            .step_by(cw as usize / 4)
+        let samples = (column_start..column_end)
+            .step_by(column_width as usize / SAMPLES_PER_COLUMN)
             .map(|x| field_boundary.height_at_pixel(x as f32));
 
         let n = samples.len() as f32;
-        let h = (samples.sum::<f32>() / n) as u32;
+        let field_height = (samples.sum::<f32>() / n) as u32;
 
-        for cy in 0..4 {
-            let y0 = cy * ch;
-            let y1 = y0 + ch;
+        for row_index in 0..4 {
+            let row_start = row_index * row_height;
+            let row_end = row_start + row_height;
 
-            let i = cy * 4 + cx;
+            let weight_index = row_index * 4 + column_index;
 
-            weights[i as usize] = if y0 > h {
-                15
-            } else if y1 < h {
-                0
+            weights[weight_index as usize] = if row_end < field_height {
+                ABOVE_FIELD_WEIGHT
+            } else if row_start > field_height {
+                BELOW_FIELD_WEIGHT
             } else {
-                let fract = (h - y0) as f32 / ch as f32;
-                15 - ((fract * 15.) as u8).clamp(0, 15)
+                let fract = (field_height - row_start) as f32 / row_height as f32;
+
+                ((ABOVE_FIELD_WEIGHT as f32 + WEIGHT_SLOPE * fract) as u8)
+                    .clamp(ABOVE_FIELD_WEIGHT, BELOW_FIELD_WEIGHT)
             }
         }
+    }
+
+    for weight in weights.iter_mut().skip(12) {
+        *weight = (*weight).max(MIN_BOTTOM_ROW_WEIGHT);
     }
 
     exposure_weights.top.update(weights);
