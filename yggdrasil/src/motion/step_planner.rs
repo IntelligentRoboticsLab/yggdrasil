@@ -1,7 +1,6 @@
 use crate::{localization::RobotPose, motion::walk::engine::Step, prelude::*};
 
-use nalgebra::{Isometry, Isometry2, Point2, Unit, Vector2};
-use num::Complex;
+use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
 
 use super::path_finding::{self, Obstacle};
 
@@ -30,8 +29,14 @@ impl Module for StepPlannerModule {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Target {
+    pub position: Point2<f32>,
+    pub rotation: Option<UnitComplex<f32>>,
+}
+
 pub struct StepPlanner {
-    target: Option<Isometry2<f32>>,
+    target: Option<Target>,
     reached_translation_target: bool,
     reached_rotation_target: bool,
 
@@ -40,13 +45,13 @@ pub struct StepPlanner {
 }
 
 impl StepPlanner {
-    pub fn set_absolute_target(&mut self, target: Isometry2<f32>) {
+    pub fn set_absolute_target(&mut self, target: Target) {
         self.target = Some(target);
         self.reached_translation_target = false;
         self.reached_rotation_target = false;
     }
 
-    pub fn set_absolute_target_if_unset(&mut self, target: Isometry2<f32>) {
+    pub fn set_absolute_target_if_unset(&mut self, target: Target) {
         if self.target.is_none() {
             self.set_absolute_target(target);
         }
@@ -58,7 +63,7 @@ impl StepPlanner {
         self.reached_rotation_target = false;
     }
 
-    pub fn current_absolute_target(&self) -> Option<&Isometry2<f32>> {
+    pub fn current_absolute_target(&self) -> Option<&Target> {
         self.target.as_ref()
     }
 
@@ -74,9 +79,7 @@ impl StepPlanner {
     }
 
     fn calc_path(&self, robot_pose: &RobotPose) -> Option<(Vec<Point2<f32>>, f32)> {
-        let target_position = self
-            .target
-            .map(|isometry| isometry.translation.transform_point(&Point2::new(0.0, 0.0)))?;
+        let target_position = self.target?.position;
         let all_obstacles = self.get_all_obstacles();
 
         path_finding::find_path(robot_pose.world_position(), target_position, &all_obstacles)
@@ -85,6 +88,8 @@ impl StepPlanner {
     fn plan_translation(&mut self, robot_pose: &RobotPose, path: &[Point2<f32>]) -> Option<Step> {
         let first_target_position = path[1];
         let distance = calc_distance(&robot_pose.inner, &first_target_position);
+
+        // We've reached the target.
         if distance < 0.2 && path.len() == 2 {
             return None;
         }
@@ -113,7 +118,7 @@ impl StepPlanner {
     fn plan_rotation(
         &self,
         robot_pose: &RobotPose,
-        target_rotation: &Unit<Complex<f32>>,
+        target_rotation: &UnitComplex<f32>,
     ) -> Option<Step> {
         let angle = target_rotation.angle() - robot_pose.world_rotation();
         let turn = TURN_SPEED * angle.signum();
@@ -145,8 +150,10 @@ impl StepPlanner {
 
         self.reached_translation_target = true;
 
-        if let step @ Some(_) = self.plan_rotation(robot_pose, &target.rotation) {
-            return step;
+        if let Some(rotation) = target.rotation.as_ref() {
+            if let step @ Some(_) = self.plan_rotation(robot_pose, rotation) {
+                return step;
+            }
         }
 
         self.reached_rotation_target = true;
@@ -156,26 +163,21 @@ impl StepPlanner {
 }
 
 fn calc_turn(
-    pose: &Isometry<f32, Unit<Complex<f32>>, 2>,
-    target_position: &Point2<f32>,
+    pose: &Isometry<f32, UnitComplex<f32>, 2>,
+    target_point: &Point2<f32>,
     angle: f32,
 ) -> f32 {
-    let translated_target_position = pose.translation.inverse_transform_point(target_position);
-    let transformed_target_position = pose
-        .rotation
-        .inverse_transform_point(&translated_target_position);
+    let relative_transformed_target_point = pose.inverse_transform_point(target_point);
 
     // transformed_target_position.y.signum() * TURN_SPEED * (angle / std::f32::consts::FRAC_PI_2)
-    transformed_target_position.y.signum() * TURN_SPEED
+    relative_transformed_target_point.y.signum() * TURN_SPEED
 }
 
 fn calc_angle_to_point(
-    pose: &Isometry<f32, Unit<Complex<f32>>, 2>,
+    pose: &Isometry<f32, UnitComplex<f32>, 2>,
     target_point: &Point2<f32>,
 ) -> f32 {
-    let relative_transformed_target_point = pose
-        .rotation
-        .inverse_transform_point(&pose.translation.inverse_transform_point(target_point));
+    let relative_transformed_target_point = pose.inverse_transform_point(target_point);
 
     let relative_transformed_target_vector = Vector2::new(
         relative_transformed_target_point.x,
@@ -185,11 +187,12 @@ fn calc_angle_to_point(
     relative_transformed_target_vector.angle(&Vector2::new(100., 0.))
 }
 
-fn calc_distance(pose: &Isometry<f32, Unit<Complex<f32>>, 2>, target_point: &Point2<f32>) -> f32 {
+fn calc_distance(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: &Point2<f32>) -> f32 {
     fn distance(point1: &Point2<f32>, point2: &Point2<f32>) -> f32 {
         ((point1.x - point2.x).powi(2) + (point1.y - point2.y).powi(2)).sqrt()
     }
-    let robot_point = pose.transform_point(&Point2::new(0., 0.));
+
+    let robot_point = pose.translation.transform_point(&Point2::new(0., 0.));
 
     distance(&robot_point, target_point)
 }

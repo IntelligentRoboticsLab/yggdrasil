@@ -1,37 +1,45 @@
-use nalgebra::{Isometry2, Point2};
+use nalgebra::Point2;
 use nidhogg::types::{color, FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
     core::debug::DebugContext,
+    motion::step_planner::Target,
     nao::manager::Priority,
 };
 
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Walk {
-    pub target: Isometry2<f32>,
+    pub target: Target,
 }
 
-fn log_target(target: &Isometry2<f32>, debug_context: &mut DebugContext) {
-    let origin = target.translation.vector;
-    let direction = target.rotation.transform_point(&Point2::new(0.1, 0.0));
+fn log_target(target: &Target, debug_context: &mut DebugContext) {
+    if let Some(rotation) = target.rotation {
+        let direction = rotation.transform_point(&Point2::new(0.1, 0.0));
 
-    debug_context
-        .log_arrows3d_with_color(
-            "odometry/target",
-            &[(direction.x, direction.y, 0.0)],
-            &[(origin.x, origin.y, 0.0)],
-            color::u8::RED,
-        )
-        .unwrap();
+        debug_context
+            .log_arrows3d_with_color(
+                "odometry/target",
+                &[(direction.x, direction.y, 0.0)],
+                &[(target.position.x, target.position.y, 0.0)],
+                color::u8::RED,
+            )
+            .unwrap();
+    } else {
+        debug_context
+            .log_points_3d_with_color_and_radius(
+                "odometry/target",
+                &[(target.position.x, target.position.y, 0.0)],
+                color::u8::RED,
+                0.04,
+            )
+            .unwrap();
+    }
 }
 
 impl Behavior for Walk {
     fn execute(&mut self, context: Context, control: &mut Control) {
-        let target_point = self
-            .target
-            .translation
-            .transform_point(&Point2::new(0.0, 0.0));
+        let target_point = self.target.position;
 
         let look_at = context.pose.get_look_at_absolute(&target_point);
         control

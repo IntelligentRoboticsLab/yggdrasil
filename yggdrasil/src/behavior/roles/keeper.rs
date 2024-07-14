@@ -1,4 +1,4 @@
-use nalgebra::{vector, Isometry2, Point2};
+use nalgebra::{Point2, UnitComplex};
 
 use crate::{
     behavior::{
@@ -6,6 +6,7 @@ use crate::{
         engine::{BehaviorKind, Context, Control, Role},
     },
     core::config::layout::FieldConfig,
+    motion::step_planner::Target,
 };
 
 pub struct Keeper;
@@ -25,9 +26,13 @@ impl Role for Keeper {
         if is_close_to_own_goal(&context.pose.world_position(), &context.layout_config.field) {
             return BehaviorKind::Observe(Observe::default());
         }
+        // target: Isometry2::new(vector!(-context.layout_config.field.length / 2., 0.), 0.0),
 
         BehaviorKind::Walk(Walk {
-            target: Isometry2::new(vector!(-context.layout_config.field.length / 2., 0.), 0.0),
+            target: Target {
+                position: Point2::new(-context.layout_config.field.length / 2., 0.),
+                rotation: Some(UnitComplex::<f32>::from_angle(0.0)),
+            },
         })
     }
 }
