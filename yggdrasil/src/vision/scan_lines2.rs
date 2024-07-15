@@ -16,7 +16,8 @@ const MIN_EDGE_LUMINANCE_DIFFERENCE: f32 = 13.0;
 /// Module that generates scan-lines from taken NAO images.
 ///
 /// This module provides the following resources to the application:
-/// TODO: resources
+/// - [`TopScanLines`]
+/// - [`BottomScanLines`]
 pub struct ScanLinesModule;
 
 impl Module for ScanLinesModule {
