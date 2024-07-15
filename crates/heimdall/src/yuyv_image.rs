@@ -255,6 +255,6 @@ impl<'a> Iterator for RowIter<'a> {
         let row = self.image.row(self.current_row);
         self.current_row += 1;
 
-        return Some(row);
+        Some(row)
     }
 }
