@@ -316,12 +316,6 @@ fn get_scan_grid(
         .ok()?
         .xy();
 
-    // println!("Field diagonal: {:#?}", field_diagonal);
-    // println!("Field limit: {:#?}", field_limit);
-    // println!("Bottom left: {:#?}", bottom_left);
-    // println!("Bottom right: {:#?}", bottom_right);
-    // println!("norm {:#?}", (bottom_left - bottom_right).norm());
-
     let x_step_upper_bound = yuyv.width() as i32 / MIN_NUM_OF_LOW_RES_SCAN_LINES;
     let max_x_step = {
         x_step_upper_bound.min(
@@ -361,15 +355,11 @@ fn get_scan_grid(
         scangrid_ys.push(0);
     }
 
-    // println!("Scangrid ys: {:#?}", scangrid_ys);
-
     let top_left = camera_matrix.pixel_to_ground(point![0.0, 0.0], 0.0);
 
-    // println!("Top left ok: {:#?}", top_left.is_ok());
 
     let top_right = camera_matrix.pixel_to_ground(point![yuyv.width() as f32, 0.0], 0.0);
 
-    // println!("Top right ok: {:#?}", top_right.is_ok());
 
     let mut min_x_step = MIN_STEP_SIZE;
 

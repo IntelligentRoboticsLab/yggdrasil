@@ -580,7 +580,8 @@ impl RegionColor {
     fn is_green((y, h, s): (f32, f32, f32)) -> bool {
         const MAX_FIELD_LUMINANCE: f32 = 200.0;
         const MIN_FIELD_SATURATION: f32 = 40.0;
-        // TODO: our hues are broken methinks
+        // TODO: our hues are broken methinks, since green should be ~160
+        // need to look into this further
         // const MIN_FIELD_HUE: f32 = 120.0;
         // const MAX_FIELD_HUE: f32 = 200.0;
         const MIN_FIELD_HUE: f32 = 0.0;
@@ -592,8 +593,6 @@ impl RegionColor {
     }
 
     fn is_white((y, _h, s): (f32, f32, f32)) -> bool {
-        // const MIN_WHITE_TO_FIELD_LUMINANCE_DIFFERENCE: f32 = 15.0;
-        // const MIN_WHITE_TO_FIELD_SATURATION_DIFFERENCE: f32 = 15.0;
         const MAX_WHITE_SATURATION: f32 = 100.0;
         const MIN_WHITE_LUMINANCE: f32 = 90.0;
 
