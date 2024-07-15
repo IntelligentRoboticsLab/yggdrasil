@@ -125,10 +125,10 @@ impl ClassifiedScanLineRegion {
     pub fn simplify(regions: Vec<Self>) -> Vec<Self> {
         let mut new_regions = Vec::new();
 
-        let mut current = None;
+        let mut current_region = None;
         for region in regions {
-            let Some(mut curr) = current.take() else {
-                current = Some(region);
+            let Some(mut curr) = current_region.take() else {
+                current_region = Some(region);
                 continue;
             };
 
@@ -146,14 +146,14 @@ impl ClassifiedScanLineRegion {
                 curr.line
                     .add_sample(region.line.approx_color.clone(), weight);
 
-                current = Some(curr);
+                current_region = Some(curr);
             } else {
                 new_regions.push(curr);
-                current = Some(region);
+                current_region = Some(region);
             }
         }
 
-        if let Some(curr) = current.take() {
+        if let Some(curr) = current_region.take() {
             new_regions.push(curr);
         }
 
@@ -243,7 +243,7 @@ fn get_horizontal_scan_lines(
     let mut regions = Vec::new();
 
     for y in &scan_grid.y {
-        let mut curr_region = None;
+        let mut current_region = None;
         for line in &scan_grid.lines {
             let x = line.x as usize;
             let y = *y;
@@ -266,9 +266,9 @@ fn get_horizontal_scan_lines(
 
             let pixel = YuvPixel::average(&pixels);
 
-            let Some(curr_region) = &mut curr_region else {
+            let Some(curr_region) = &mut current_region else {
                 // first region of this y coordinate
-                curr_region = Some(ScanLineRegion {
+                current_region = Some(ScanLineRegion {
                     region: Region::Horizontal {
                         y,
                         x_start: x,
@@ -321,7 +321,7 @@ fn get_horizontal_scan_lines(
             }
         }
 
-        if let Some(curr_region) = curr_region.take() {
+        if let Some(curr_region) = current_region.take() {
             regions.push(curr_region.classify(field));
         }
     }
@@ -339,7 +339,7 @@ fn get_vertical_scan_lines(
     let mut regions = Vec::new();
 
     for line in &scan_grid.lines {
-        let mut curr_region = None;
+        let mut current_region = None;
 
         for y in &scan_grid.y {
             let x = line.x as usize;
@@ -363,9 +363,9 @@ fn get_vertical_scan_lines(
 
             let pixel = YuvPixel::average(&pixels);
 
-            let Some(curr_region) = &mut curr_region else {
+            let Some(curr_region) = &mut current_region else {
                 // first region of this y coordinate
-                curr_region = Some(ScanLineRegion {
+                current_region = Some(ScanLineRegion {
                     region: Region::Vertical {
                         x,
                         y_start: y,
@@ -418,7 +418,7 @@ fn get_vertical_scan_lines(
             }
         }
 
-        if let Some(curr_region) = curr_region.take() {
+        if let Some(curr_region) = current_region.take() {
             regions.push(curr_region.classify(field));
         }
     }
