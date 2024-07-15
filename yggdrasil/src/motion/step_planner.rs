@@ -189,7 +189,7 @@ fn calc_distance(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: &Point
         ((point1.x - point2.x).powi(2) + (point1.y - point2.y).powi(2)).sqrt()
     }
 
-    let robot_point = pose.translation.transform_point(&Point2::new(0., 0.));
+    let robot_point = pose.translation.vector.into();
 
     distance(&robot_point, target_point)
 }

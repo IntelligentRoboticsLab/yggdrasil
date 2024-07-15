@@ -28,7 +28,7 @@ impl Behavior for WalkToSet {
             position: set_robot_position
                 .isometry
                 .translation
-                .transform_point(&Point2::new(0.0, 0.0)),
+                .vector.into(),
             rotation: Some(set_robot_position.isometry.rotation),
         };
 
