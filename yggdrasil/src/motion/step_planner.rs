@@ -11,20 +11,9 @@ pub struct StepPlannerModule;
 
 impl Module for StepPlannerModule {
     fn initialize(self, app: App) -> Result<App> {
-        let target = StepPlanner {
-            target: None,
-            reached_translation_target: false,
-            reached_rotation_target: false,
-            static_obstacles: vec![
-                Obstacle::new(4.500, 1.1, 0.2),
-                Obstacle::new(4.500, -1.1, 0.2),
-                Obstacle::new(-4.500, 1.1, 0.2),
-                Obstacle::new(-4.500, -1.1, 0.2),
-            ],
-            dynamic_obstacles: vec![],
-        };
+        let step_planner = StepPlanner::default();
 
-        app.add_resource(Resource::new(target))
+        app.add_resource(Resource::new(step_planner))
     }
 }
 
@@ -41,6 +30,23 @@ pub struct StepPlanner {
 
     static_obstacles: Vec<Obstacle>,
     dynamic_obstacles: Vec<Obstacle>,
+}
+
+impl Default for StepPlanner {
+    fn default() -> Self {
+        StepPlanner {
+            target: None,
+            reached_translation_target: false,
+            reached_rotation_target: false,
+            static_obstacles: vec![
+                Obstacle::new(4.500, 1.1, 0.2),
+                Obstacle::new(4.500, -1.1, 0.2),
+                Obstacle::new(-4.500, 1.1, 0.2),
+                Obstacle::new(-4.500, -1.1, 0.2),
+            ],
+            dynamic_obstacles: vec![],
+        }
+    }
 }
 
 impl StepPlanner {
