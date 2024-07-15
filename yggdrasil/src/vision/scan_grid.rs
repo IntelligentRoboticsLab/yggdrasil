@@ -357,9 +357,7 @@ fn get_scan_grid(
 
     let top_left = camera_matrix.pixel_to_ground(point![0.0, 0.0], 0.0);
 
-
     let top_right = camera_matrix.pixel_to_ground(point![yuyv.width() as f32, 0.0], 0.0);
-
 
     let mut min_x_step = MIN_STEP_SIZE;
 
