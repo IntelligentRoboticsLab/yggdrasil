@@ -147,7 +147,7 @@ impl Default for BehaviorKind {
 /// # Examples
 /// ```
 /// use yggdrasil::behavior::{
-///     behaviors::Initial,
+///     behaviors::Unstiff,
 ///     engine::{BehaviorKind, Context, Control, Role},
 /// };
 ///
@@ -161,7 +161,7 @@ impl Default for BehaviorKind {
 ///     ) -> BehaviorKind {
 ///         // Implement behavior transitions for secret agent 🕵️
 ///         // E.g. Disguise -> Assassinate
-///         BehaviorKind::Initial(Initial::default())
+///         BehaviorKind::Unstiff(Unstiff::default())
 ///     }
 /// }
 /// ```
