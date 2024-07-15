@@ -347,7 +347,7 @@ impl DebugContext {
                     path.as_ref(),
                     &rerun::Points2D::new(points).with_colors(
                         color
-                            .into_iter()
+                            .iter()
                             .map(|c| rerun::Color::from_rgb(c.red, c.green, c.blue)),
                     ),
                 )
@@ -407,7 +407,7 @@ impl DebugContext {
                     path.as_ref(),
                     &rerun::LineStrips2D::new(lines).with_colors(
                         colors
-                            .into_iter()
+                            .iter()
                             .map(|c| rerun::Color::from_rgb(c.red, c.green, c.blue)),
                     ),
                 )
