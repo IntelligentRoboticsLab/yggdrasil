@@ -1,4 +1,5 @@
 use std::mem;
+use std::ops::Deref;
 
 use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
@@ -8,7 +9,7 @@ use crate::prelude::*;
 
 use super::line::LineSegment2;
 use super::scan_lines::PixelColor;
-use super::scan_lines2::TopScanLines;
+use super::scan_lines2::{ScanLines, TopScanLines};
 
 use derive_more::Deref;
 use heimdall::CameraMatrix;
@@ -86,7 +87,9 @@ impl LinePoints {
     }
 }
 
-fn is_white(column: usize, row: usize, image: &Image) -> bool {
+fn is_white(column: usize, row: usize, scan_lines: &ScanLines) -> bool {
+    let image = scan_lines.image();
+
     let column = (column >> 1) << 1;
     assert_eq!(column % 2, 0);
     let offset = row * image.yuyv_image().width() * 2 + column * 2;
@@ -102,18 +105,18 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
 fn detect_top_lines(
     line_detection_data: LineDetectionData,
     line_spots: Vec<Point2<f32>>,
-    image: Image,
+    scan_lines: ScanLines,
 ) -> Result<TopLineDetectionData> {
     Ok(TopLineDetectionData(
-        Some(detect_lines(line_detection_data, line_spots, &image)?),
-        Some(image),
+        Some(detect_lines(line_detection_data, line_spots, &scan_lines)?),
+        Some(scan_lines.image().clone()),
     ))
 }
 
 fn detect_lines(
     line_detection_data: LineDetectionData,
     line_spots: Vec<Point2<f32>>,
-    image: &Image,
+    scan_lines: &ScanLines,
 ) -> Result<LineDetectionData> {
     let mut points = line_detection_data.line_points;
     points.clear();
@@ -147,7 +150,7 @@ fn detect_lines(
 
             let (slope, intercept) =
                 linreg::linear_regression_of::<f32, f32, f32>(&line_points.points)
-                    .unwrap_or((image.yuyv_image().height() as f32, 0f32));
+                    .unwrap_or((scan_lines.image().yuyv_image().height() as f32, 0f32));
 
             let start_column = line_points.start_column.min(point.0);
             let end_column = line_points.end_column.max(point.0);
@@ -159,11 +162,11 @@ fn detect_lines(
             if end_row - start_row > end_column - start_column {
                 for row in start_row as usize..end_row as usize {
                     let column = (row as f32 - intercept) / slope;
-                    if column < 0f32 || column >= image.yuyv_image().width() as f32 {
+                    if column < 0f32 || column >= scan_lines.image().yuyv_image().width() as f32 {
                         continue;
                     }
 
-                    if !is_white(column as usize, row, image) {
+                    if !is_white(column as usize, row, scan_lines) {
                         if allowed_mistakes == 0 {
                             break;
                         }
@@ -173,11 +176,11 @@ fn detect_lines(
             } else {
                 for column in start_column as usize..end_column as usize {
                     let row: f32 = slope * column as f32 + intercept;
-                    if row < 0f32 || row >= image.yuyv_image().height() as f32 {
+                    if row < 0f32 || row >= scan_lines.image().yuyv_image().height() as f32 {
                         continue;
                     }
 
-                    if !is_white(column, row as usize, image) {
+                    if !is_white(column, row as usize, scan_lines) {
                         if allowed_mistakes == 0 {
                             break;
                         }
@@ -209,7 +212,7 @@ fn detect_lines(
     let mut lines = line_detection_data.lines;
     lines.clear();
     for line_points in lines_points.iter() {
-        lines.push(line_points_to_line(line_points, image));
+        lines.push(line_points_to_line(line_points, scan_lines.image()));
     }
 
     points.clear();
@@ -325,9 +328,9 @@ fn start_line_detection_task(
         .chain(top_scan_lines.vertical().line_spots())
         .collect();
 
-    let image = top_scan_lines.image().clone();
+    let top_scan_lines = top_scan_lines.deref().clone();
     detect_top_lines_task
-        .try_spawn(move || detect_top_lines(Default::default(), line_spots, image))
+        .try_spawn(move || detect_top_lines(Default::default(), line_spots, top_scan_lines))
         .unwrap();
 
     Ok(())
@@ -370,9 +373,9 @@ pub fn line_detection_system(
             .collect();
 
         let line_detection_data = top_line_detection_data.0.take().unwrap();
-        let image = top_scan_lines.image().clone();
+        let top_scan_lines = top_scan_lines.deref().clone();
         detect_top_lines_task
-            .try_spawn(move || detect_top_lines(line_detection_data, line_spots, image))
+            .try_spawn(move || detect_top_lines(line_detection_data, line_spots, top_scan_lines))
             .unwrap();
     }
 
