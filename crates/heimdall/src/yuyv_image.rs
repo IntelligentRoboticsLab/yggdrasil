@@ -248,12 +248,13 @@ impl<'a> Iterator for RowIter<'a> {
     type Item = ImageView<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_row < self.image.height() {
-            let row = self.image.row(self.current_row);
-            self.current_row += 1;
-            return Some(row);
+        if self.current_row >= self.image.height() {
+            return None;
         }
 
-        None
+        let row = self.image.row(self.current_row);
+        self.current_row += 1;
+
+        return Some(row);
     }
 }
