@@ -56,4 +56,3 @@ impl<T: PartialEq, S: SpaceOver<T>> PartialEq for InSpace<T, S> {
         self.inner == other.inner
     }
 }
-
