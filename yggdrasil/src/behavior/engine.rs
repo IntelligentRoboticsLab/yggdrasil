@@ -11,7 +11,10 @@ use crate::{
         roles::Attacker,
         BehaviorConfig,
     },
-    core::config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
+    core::{
+        config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
+        debug::DebugContext,
+    },
     game_controller::GameControllerConfig,
     localization::RobotPose,
     motion::{keyframe::KeyframeExecutor, step_planner::StepPlanner, walk::engine::WalkingEngine},
@@ -74,6 +77,7 @@ pub struct Control<'a> {
     pub walking_engine: &'a mut WalkingEngine,
     pub keyframe_executor: &'a mut KeyframeExecutor,
     pub step_planner: &'a mut StepPlanner,
+    pub debug_context: &'a mut DebugContext,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -192,8 +196,8 @@ impl RoleKind {
     /// Get the default role for each robot based on that robots player number
     fn by_player_number() -> Self {
         // TODO: get the default role for each robot by player number
-        RoleKind::Attacker(Attacker)
-        // RoleKind::Keeper(Keeper)
+        // RoleKind::Attacker(Attacker)
+        RoleKind::Keeper(Keeper)
     }
 }
 
@@ -299,11 +303,12 @@ pub fn step(
         &BehaviorConfig,
         &GameControllerConfig,
     ),
-    (nao_manager, walking_engine, keyframe_executor, step_planner): (
+    (nao_manager, walking_engine, keyframe_executor, step_planner, debug_context): (
         &mut NaoManager,
         &mut WalkingEngine,
         &mut KeyframeExecutor,
         &mut StepPlanner,
+        &mut DebugContext,
     ),
     game_controller_message: &Option<GameControllerMessage>,
     (robot_pose, balls, fall_state): (&RobotPose, &Balls, &FallState),
@@ -330,6 +335,7 @@ pub fn step(
         walking_engine,
         keyframe_executor,
         step_planner,
+        debug_context,
     };
 
     engine.step(context, &mut control);

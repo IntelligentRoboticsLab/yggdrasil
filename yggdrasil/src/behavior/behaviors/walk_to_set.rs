@@ -2,6 +2,7 @@ use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
+    motion::step_planner::Target,
     nao::manager::Priority,
 };
 
@@ -22,7 +23,12 @@ impl Behavior for WalkToSet {
             .nao_manager
             .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
 
-        control.step_planner.set_absolute_target(set_position);
+        let target = Target {
+            position: set_robot_position.isometry.translation.vector.into(),
+            rotation: Some(set_robot_position.isometry.rotation),
+        };
+
+        control.step_planner.set_absolute_target_if_unset(target);
         if let Some(step) = control.step_planner.plan(context.pose) {
             control.walking_engine.request_walk(step);
         } else {

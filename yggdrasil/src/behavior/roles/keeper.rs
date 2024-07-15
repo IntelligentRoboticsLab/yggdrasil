@@ -1,4 +1,4 @@
-use nalgebra::Point2;
+use nalgebra::{Point2, UnitComplex};
 
 use crate::{
     behavior::{
@@ -6,6 +6,7 @@ use crate::{
         engine::{BehaviorKind, Context, Control, Role},
     },
     core::config::layout::FieldConfig,
+    motion::step_planner::Target,
 };
 
 pub struct Keeper;
@@ -26,7 +27,11 @@ impl Role for Keeper {
             return BehaviorKind::Observe(Observe::default());
         }
 
-        let target = Point2::new(-context.layout_config.field.length / 2., 0.);
-        BehaviorKind::Walk(Walk { target })
+        BehaviorKind::Walk(Walk {
+            target: Target {
+                position: Point2::new(-context.layout_config.field.length / 2., 0.),
+                rotation: Some(UnitComplex::<f32>::from_angle(0.0)),
+            },
+        })
     }
 }
