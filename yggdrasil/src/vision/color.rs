@@ -1,27 +1,27 @@
 /// Converts YUV to RGB using the BT.601 conversion matrix.
 ///
-/// BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
+/// BT.601 (aka. SDTV, aka. Rec.601). wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion>
 pub fn yuv_to_rgb_bt601((y, u, v): (u8, u8, u8)) -> (u8, u8, u8) {
     yuv_to_rgb((y, u, v), partials_bt601)
 }
 
 /// Converts YUV to RGB using the BT.709 conversion matrix.
 ///
-/// BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
+/// BT.709 (aka. HDTV, aka. Rec.709). wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion>.
 pub fn yuv_to_rgb_bt709((y, u, v): (u8, u8, u8)) -> (u8, u8, u8) {
     yuv_to_rgb((y, u, v), partials_bt709)
 }
 
 /// Converts YUY2 to RGB using the BT.601 conversion matrix.
 ///     
-/// BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
+/// BT.601 (aka. SDTV, aka. Rec.601). wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion>
 pub fn yuy2_to_rgb_bt601((y1, u, y2, v): (u8, u8, u8, u8)) -> ((u8, u8, u8), (u8, u8, u8)) {
     yuy2_to_rgb((y1, u, y2, v), partials_bt601)
 }
 
 /// Converts YUY2 to RGB using the BT.709 conversion matrix.
 ///     
-/// BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
+/// BT.709 (aka. HDTV, aka. Rec.709). wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion>
 pub fn yuy2_to_rgb_bt709((y1, u, y2, v): (u8, u8, u8, u8)) -> ((u8, u8, u8), (u8, u8, u8)) {
     yuy2_to_rgb((y1, u, y2, v), partials_bt709)
 }
