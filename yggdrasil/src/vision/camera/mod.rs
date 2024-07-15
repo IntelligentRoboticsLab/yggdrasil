@@ -13,6 +13,9 @@ use std::{
 use heimdall::{Camera, CameraDevice, CameraMatrix, ExposureWeights, YuyvImage};
 use matrix::{CalibrationConfig, CameraMatrices};
 
+#[cfg(not(feature = "local"))]
+use super::field_boundary::FieldBoundary;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct CameraConfig {
@@ -58,10 +61,11 @@ impl Module for CameraModule {
             .add_system(debug_camera_system.after(camera_system))
             .add_task::<ComputeTask<JpegTopImage>>()?
             .add_task::<ComputeTask<JpegBottomImage>>()?
+            .add_task::<ComputeTask<Result<ExposureWeightsCompleted>>>()?
             .add_module(matrix::CameraMatrixModule)?;
 
-        // #[cfg(not(feature = "local"))]
-        // let app = app.add_system(set_exposure_weights);
+        #[cfg(not(feature = "local"))]
+        let app = app.add_system_chain((update_exposure_weights, set_exposure_weights));
 
         Ok(app)
     }
@@ -348,25 +352,103 @@ fn log_top_image(
     Ok(JpegTopImage(timestamp))
 }
 
-#[allow(dead_code)]
+#[cfg(not(feature = "local"))]
+const SAMPLES_PER_COLUMN: usize = 4;
+
+#[cfg(not(feature = "local"))]
+const ABOVE_FIELD_WEIGHT: u8 = 0;
+
+#[cfg(not(feature = "local"))]
+const BELOW_FIELD_WEIGHT: u8 = 15;
+
+#[cfg(not(feature = "local"))]
+const MIN_BOTTOM_ROW_WEIGHT: u8 = 10;
+
+#[cfg(not(feature = "local"))]
+const WEIGHT_SLOPE: f32 = (BELOW_FIELD_WEIGHT - ABOVE_FIELD_WEIGHT) as f32;
+
+#[cfg(not(feature = "local"))]
+#[system]
+fn update_exposure_weights(
+    exposure_weights: &mut ExposureWeights,
+    field_boundary: &FieldBoundary,
+) -> Result<()> {
+    let (width, height) = exposure_weights.top.window_size();
+    let (column_width, row_height) = (width / 4, height / 4);
+
+    let mut weights = [0; 16];
+
+    for column_index in 0..4 {
+        let column_start = column_index * column_width;
+        let column_end = column_start + column_width;
+
+        let samples = (column_start..column_end)
+            .step_by(column_width as usize / SAMPLES_PER_COLUMN)
+            .map(|x| field_boundary.height_at_pixel(x as f32));
+
+        let n = samples.len() as f32;
+        let field_height = (samples.sum::<f32>() / n) as u32;
+
+        for row_index in 0..4 {
+            let row_start = row_index * row_height;
+            let row_end = row_start + row_height;
+
+            let weight_index = row_index * 4 + column_index;
+
+            weights[weight_index as usize] = if row_end < field_height {
+                ABOVE_FIELD_WEIGHT
+            } else if row_start > field_height {
+                BELOW_FIELD_WEIGHT
+            } else {
+                let fract = (field_height - row_start) as f32 / row_height as f32;
+
+                ((ABOVE_FIELD_WEIGHT as f32 + WEIGHT_SLOPE * fract) as u8)
+                    .clamp(ABOVE_FIELD_WEIGHT, BELOW_FIELD_WEIGHT)
+            }
+        }
+    }
+
+    for weight in weights.iter_mut().skip(12) {
+        *weight = (*weight).max(MIN_BOTTOM_ROW_WEIGHT);
+    }
+
+    exposure_weights.top.update(weights);
+    Ok(())
+}
+
+struct ExposureWeightsCompleted;
+
 #[cfg(not(feature = "local"))]
 #[system]
 fn set_exposure_weights(
-    exposure_weights: &mut ExposureWeights,
+    exposure_weights: &ExposureWeights,
     top_camera: &TopCamera,
     bottom_camera: &BottomCamera,
+    task: &mut ComputeTask<Result<ExposureWeightsCompleted>>,
 ) -> Result<()> {
-    if let Ok(top_camera) = top_camera.0 .0.try_lock() {
-        top_camera
-            .camera_device()
-            .set_auto_exposure_weights(&exposure_weights.top)?;
+    let exposure_weights = exposure_weights.clone();
+    let top_camera = top_camera.0 .0.clone();
+    let bottom_camera = bottom_camera.0 .0.clone();
+
+    if let Some(result) = task.poll() {
+        result?;
     }
 
-    if let Ok(bottom_camera) = bottom_camera.0 .0.try_lock() {
-        bottom_camera
-            .camera_device()
-            .set_auto_exposure_weights(&exposure_weights.bottom)?;
-    }
+    let _ = task.try_spawn(move || {
+        if let Ok(top_camera) = top_camera.lock() {
+            top_camera
+                .camera_device()
+                .set_auto_exposure_weights(&exposure_weights.top)?;
+        }
+
+        if let Ok(bottom_camera) = bottom_camera.lock() {
+            bottom_camera
+                .camera_device()
+                .set_auto_exposure_weights(&exposure_weights.bottom)?;
+        }
+
+        Ok(ExposureWeightsCompleted)
+    });
 
     Ok(())
 }

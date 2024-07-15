@@ -1,4 +1,5 @@
 /// Holds the exposure weights for both cameras.
+#[derive(Clone)]
 pub struct ExposureWeights {
     /// The exposure weights for the top part of the image.
     pub top: ExposureWeightTable,
@@ -22,7 +23,7 @@ impl ExposureWeights {
             // by setting the weights to be higher in the lower part of the image, we can reduce this.
             top: ExposureWeightTable::new(
                 image_dims,
-                [0, 0, 0, 0, 3, 3, 3, 3, 11, 11, 11, 11, 15, 15, 15, 15],
+                [0, 0, 0, 0, 2, 2, 2, 2, 5, 5, 5, 5, 15, 15, 15, 15],
             ),
 
             // Bottom camera rarely suffers from overexposure, so we can set a constant weight.
@@ -32,6 +33,7 @@ impl ExposureWeights {
 }
 
 /// Represents a table of exposure weights.
+#[derive(Clone)]
 pub struct ExposureWeightTable {
     /// The top-left corner of the exposure weight window.
     window_start: [u32; 2],
@@ -57,10 +59,17 @@ impl ExposureWeightTable {
     pub fn new(image_dims: (u32, u32), initial_weights: [u8; 16]) -> Self {
         let (image_width, image_height) = image_dims;
         Self {
-            window_start: [0; 2],
+            window_start: [0; 2], // Change `.window_size()` if we ever change this.
             window_end: [image_width, image_height],
             weights: initial_weights,
         }
+    }
+
+    /// Gets the size of the window.
+    ///
+    /// Since we currently use the whole screen for exposure, this is the camera width and height.
+    pub fn window_size(&self) -> (u32, u32) {
+        (self.window_end[0], self.window_end[1])
     }
 
     /// The maximum value for an exposure weight.
