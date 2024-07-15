@@ -93,7 +93,7 @@ fn log_balls(
     dbg.log_points2d_for_image_with_radius(
         "top_camera/image/ball_spots",
         &points,
-        ball_proposals.image.cycle,
+        ball_proposals.image.cycle(),
         color::u8::GREEN,
         4.0,
     )?;

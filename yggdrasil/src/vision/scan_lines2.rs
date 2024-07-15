@@ -32,9 +32,9 @@ impl Module for ScanLinesModule {
 
 /// Horizontal and vertical scanlines for an image.
 pub struct ScanLines {
-    pub image: Image,
-    pub horizontal: ScanLine,
-    pub vertical: ScanLine,
+    image: Image,
+    horizontal: ScanLine,
+    vertical: ScanLine,
 }
 
 impl ScanLines {
@@ -44,6 +44,18 @@ impl ScanLines {
             horizontal,
             vertical,
         }
+    }
+
+    pub fn image(&self) -> &Image {
+        &self.image
+    }
+
+    pub fn horizontal(&self) -> &ScanLine {
+        &self.horizontal
+    }
+
+    pub fn vertical(&self) -> &ScanLine {
+        &self.vertical
     }
 }
 
@@ -489,7 +501,7 @@ fn update_scan_lines(
     dbg: &DebugContext,
     camera: CameraType,
 ) -> Result<()> {
-    if !scan_grid.image.is_from_cycle(curr_cycle) || scan_grid.lines.is_empty() {
+    if !scan_grid.image.is_from_cycle(*curr_cycle) || scan_grid.lines.is_empty() {
         return Ok(());
     }
 

@@ -219,7 +219,7 @@ pub fn update_top_scan_grid(
     image: &TopImage,
     dbg: &DebugContext,
 ) -> Result<()> {
-    if scan_grid.image.is_from_cycle(&image.cycle) {
+    if scan_grid.image.is_from_cycle(image.cycle()) {
         return Ok(());
     }
 
@@ -238,7 +238,7 @@ pub fn update_bottom_scan_grid(
     image: &BottomImage,
     dbg: &DebugContext,
 ) -> Result<()> {
-    if scan_grid.image.is_from_cycle(&image.cycle) {
+    if scan_grid.image.is_from_cycle(image.cycle()) {
         return Ok(());
     }
 

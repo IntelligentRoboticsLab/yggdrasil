@@ -159,9 +159,9 @@ pub struct Image {
     /// Captured image in yuyv format.
     buf: Arc<YuyvImage>,
     /// Instant at which the image was captured.
-    pub timestamp: Instant,
+    timestamp: Instant,
     /// Return the cycle at which the image was captured.
-    pub cycle: Cycle,
+    cycle: Cycle,
 }
 
 impl Image {
@@ -173,12 +173,20 @@ impl Image {
         }
     }
 
-    pub fn is_from_cycle(&self, cycle: &Cycle) -> bool {
-        self.cycle == *cycle
+    pub fn is_from_cycle(&self, cycle: Cycle) -> bool {
+        self.cycle == cycle
     }
 
     pub fn yuyv_image(&self) -> &YuyvImage {
         &self.buf
+    }
+
+    pub fn timestamp(&self) -> Instant {
+        self.timestamp
+    }
+
+    pub fn cycle(&self) -> Cycle {
+        self.cycle
     }
 
     /// Get a grayscale patch from the image centered at the given point.
