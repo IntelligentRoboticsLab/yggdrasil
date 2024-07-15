@@ -20,6 +20,9 @@ use super::{
 /// The step size for approximating the field color.
 const FIELD_APPROXIMATION_STEP_SIZE: usize = 8;
 
+/// The number of brightest pixels to approximate the white color.
+const FIELD_APPROXIMATION_WHITE_TOP_K: usize = 10;
+
 /// The radius of the ball in cm.
 const BALL_RADIUS: f32 = 2.0;
 
@@ -92,7 +95,7 @@ impl FieldColorApproximate {
         let mut hues = Vec::new();
         let mut saturations = Vec::new();
 
-        for row in rows_to_check {
+        for row in rows_to_check.into_iter().flatten() {
             for pixel in row.step_by(FIELD_APPROXIMATION_STEP_SIZE) {
                 let (y, h, s2) = pixel.to_yhs2();
 
@@ -107,7 +110,7 @@ impl FieldColorApproximate {
         let saturation = mean_and_std(&saturations);
 
         luminances.sort_by(|a, b| a.total_cmp(b).reverse());
-        let white = mean_and_std(&luminances[..10]);
+        let white = mean_and_std(&luminances[..FIELD_APPROXIMATION_WHITE_TOP_K]);
 
         Self {
             luminance,

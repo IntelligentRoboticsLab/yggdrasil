@@ -72,18 +72,22 @@ impl YuyvImage {
     }
 
     #[must_use]
-    pub fn row(&self, index: usize) -> ImageView<'_> {
+    pub fn row(&self, index: usize) -> Option<ImageView<'_>> {
+        if index >= self.height() {
+            panic!("index out of bounds");
+        }
+
         // every 4 bytes stores 2 pixels, so (width / 2) * 4 bytes in a row
         let row_width = self.width();
 
         let start = index * row_width;
         let end = start + row_width;
 
-        ImageView {
+        Some(ImageView {
             start,
             end,
             image: self,
-        }
+        })
     }
 
     pub fn pixel(&self, x: usize, y: usize) -> Option<YuvPixel> {
@@ -91,18 +95,7 @@ impl YuyvImage {
             return None;
         }
 
-        // every 4 bytes stores 2 pixels, so (width / 2) * 4 bytes in a row
-        let offset = (y * self.width + x) * 2;
-
-        let y = if y % 2 == 0 {
-            self.frame[offset]
-        } else {
-            self.frame[offset + 2]
-        };
-        let u = self.frame[offset + 1];
-        let v = self.frame[offset + 3];
-
-        Some(YuvPixel { y, u, v })
+        Some(unsafe { self.pixel_unchecked(x, y) })
     }
 
     /// Get a pixel at the given coordinates without bounds checking.
@@ -252,7 +245,7 @@ impl<'a> Iterator for RowIter<'a> {
             return None;
         }
 
-        let row = self.image.row(self.current_row);
+        let row = self.image.row(self.current_row)?;
         self.current_row += 1;
 
         Some(row)
