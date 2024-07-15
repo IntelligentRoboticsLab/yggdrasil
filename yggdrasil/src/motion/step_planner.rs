@@ -6,7 +6,6 @@ use super::path_finding::{self, Obstacle};
 
 const TURN_SPEED: f32 = 0.8;
 const WALK_SPEED: f32 = 0.05;
-const LEFT_SPEED: f32 = 0.03;
 
 pub struct StepPlannerModule;
 
@@ -95,15 +94,12 @@ impl StepPlanner {
         }
 
         let angle = calc_angle_to_point(&robot_pose.inner, &first_target_position);
-        let turn = calc_turn(&robot_pose.inner, &first_target_position, angle);
+        let turn = calc_turn(&robot_pose.inner, &first_target_position);
 
         if angle > 0.5 {
-            // let left = if turn > 0. { LEFT_SPEED } else { -LEFT_SPEED };
-            let left = 0.;
-
             Some(Step {
                 forward: 0.,
-                left,
+                left: 0.,
                 turn,
             })
         } else {
@@ -162,14 +158,9 @@ impl StepPlanner {
     }
 }
 
-fn calc_turn(
-    pose: &Isometry<f32, UnitComplex<f32>, 2>,
-    target_point: &Point2<f32>,
-    angle: f32,
-) -> f32 {
+fn calc_turn(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: &Point2<f32>) -> f32 {
     let relative_transformed_target_point = pose.inverse_transform_point(target_point);
 
-    // transformed_target_position.y.signum() * TURN_SPEED * (angle / std::f32::consts::FRAC_PI_2)
     relative_transformed_target_point.y.signum() * TURN_SPEED
 }
 
