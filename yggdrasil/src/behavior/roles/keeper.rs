@@ -26,7 +26,6 @@ impl Role for Keeper {
         if is_close_to_own_goal(&context.pose.world_position(), &context.layout_config.field) {
             return BehaviorKind::Observe(Observe::default());
         }
-        // target: Isometry2::new(vector!(-context.layout_config.field.length / 2., 0.), 0.0),
 
         BehaviorKind::Walk(Walk {
             target: Target {
