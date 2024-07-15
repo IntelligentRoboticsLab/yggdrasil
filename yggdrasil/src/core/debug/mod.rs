@@ -96,7 +96,7 @@ impl DebugContext {
     pub fn log_image(&self, path: impl AsRef<str>, img: Image, jpeg_quality: i32) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&img.cycle);
+            self.set_cycle(&img.cycle());
             let yuv_planar_image = YuvPlanarImage::from_yuyv(img.yuyv_image());
             let jpeg = yuv_planar_image.to_jpeg(jpeg_quality)?;
             let tensor_data =
@@ -157,7 +157,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle);
+            self.set_cycle(&image.cycle());
 
             self.rec
                 .log(
@@ -208,7 +208,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle);
+            self.set_cycle(&image.cycle());
             let pinhole = rerun::Pinhole::from_focal_length_and_resolution(
                 [matrix.focal_lengths.x, matrix.focal_lengths.y],
                 [
@@ -311,7 +311,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle);
+            self.set_cycle(&image.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -341,7 +341,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle);
+            self.set_cycle(&image.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -401,7 +401,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle);
+            self.set_cycle(&image.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -429,7 +429,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle);
+            self.set_cycle(&image.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -527,7 +527,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle);
+            self.set_cycle(&image.cycle());
             self.rec
                 .log(
                     path.as_ref(),
@@ -556,7 +556,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle);
+            self.set_cycle(&image.cycle());
 
             let translation = transform.translation;
             let rotation = transform.rotation.coords;
