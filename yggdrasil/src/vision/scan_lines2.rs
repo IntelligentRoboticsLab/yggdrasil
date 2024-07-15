@@ -1,16 +1,19 @@
+use std::ops::Deref;
+
 use crate::{core::debug::DebugContext, nao::Cycle, prelude::*};
 
 use super::{
     camera::{BottomImage, Image, TopImage},
     color,
     field_boundary::FieldBoundary,
-    scan_grid::{FieldColorApproximate, ScanGrid, ScanGrids},
+    scan_grid::{BottomScanGrid, FieldColorApproximate, ScanGrid, TopScanGrid},
 };
 
 use heimdall::{YuvPixel, YuyvImage};
 use nalgebra::Point2;
 use nidhogg::types::{color::u8, RgbU8};
 
+/// Minimum luminance delta for there to be considered an edge between pixels.
 const MIN_EDGE_LUMINANCE_DIFFERENCE: f32 = 13.0;
 
 /// Module that generates scan-lines from taken NAO images.
@@ -23,17 +26,28 @@ pub struct ScanLinesModule;
 impl Module for ScanLinesModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system(scan_lines_system.after(super::scan_grid::update_scan_grid))
-            .init_resource::<TopScanLines>()?
-            .init_resource::<BottomScanLines>()
+            .add_startup_system(init_scan_lines)
     }
 }
 
-#[derive(Debug, Default)]
+/// Horizontal and vertical scanlines for an image.
 pub struct ScanLines {
+    pub image: Image,
     pub horizontal: ScanLine,
     pub vertical: ScanLine,
 }
 
+impl ScanLines {
+    pub fn new(image: Image, horizontal: ScanLine, vertical: ScanLine) -> Self {
+        Self {
+            image,
+            horizontal,
+            vertical,
+        }
+    }
+}
+
+/// A set of classified scanline regions.
 #[derive(Debug, Default)]
 pub struct ScanLine {
     raw: Vec<ClassifiedScanLineRegion>,
@@ -44,6 +58,9 @@ impl ScanLine {
         Self { raw }
     }
 
+    /// Iterate over the line spots in these scanlines.
+    ///
+    /// A line spot is the point in the middle of a *white* scanline region.
     pub fn line_spots(&self) -> impl Iterator<Item = Point2<f32>> + '_ {
         self.raw
             .iter()
@@ -52,29 +69,13 @@ impl ScanLine {
     }
 }
 
-#[derive(Debug, derive_more::Deref, derive_more::DerefMut, Default)]
+/// Scanlines for the top camera.
+#[derive(derive_more::Deref, derive_more::DerefMut)]
 pub struct TopScanLines(ScanLines);
 
-impl TopScanLines {
-    pub fn new(horizontal: ScanLine, vertical: ScanLine) -> Self {
-        Self(ScanLines {
-            horizontal,
-            vertical,
-        })
-    }
-}
-
-#[derive(Debug, derive_more::Deref, derive_more::DerefMut, Default)]
+/// Scanlines for the bottom camera.
+#[derive(derive_more::Deref, derive_more::DerefMut)]
 pub struct BottomScanLines(ScanLines);
-
-impl BottomScanLines {
-    pub fn new(horizontal: ScanLine, vertical: ScanLine) -> Self {
-        Self(ScanLines {
-            horizontal,
-            vertical,
-        })
-    }
-}
 
 #[derive(Debug)]
 struct ScanLineRegion {
@@ -83,7 +84,8 @@ struct ScanLineRegion {
 }
 
 impl ScanLineRegion {
-    pub fn add_sample(&mut self, sample: YuvPixel, weight: usize) {
+    /// Using a color sample and a weight, update the approximated color of the region.
+    fn add_sample(&mut self, sample: YuvPixel, weight: usize) {
         let self_weight = self.region.length();
 
         let (y, u, v) = (
@@ -107,13 +109,15 @@ impl ScanLineRegion {
         };
     }
 
-    pub fn classify(self, field: &FieldColorApproximate) -> ClassifiedScanLineRegion {
+    /// Classify the region color based on the approximate color.
+    fn classify(self, field: &FieldColorApproximate) -> ClassifiedScanLineRegion {
         let color = RegionColor::classify_yuv_pixel(field, self.approx_color.clone());
 
         ClassifiedScanLineRegion { line: self, color }
     }
 }
 
+/// Scanline region with a classified color.
 #[derive(Debug)]
 pub struct ClassifiedScanLineRegion {
     line: ScanLineRegion,
@@ -190,7 +194,7 @@ impl Region {
         }
     }
 
-    pub fn set_end_point(&mut self, end_point: usize) {
+    fn set_end_point(&mut self, end_point: usize) {
         match self {
             Region::Vertical { y_end, .. } => *y_end = end_point,
             Region::Horizontal { x_end, .. } => *x_end = end_point,
@@ -205,6 +209,8 @@ impl Region {
     }
 
     /// Get the position of the corresponding line spot
+    ///
+    /// The line spot is the point in the middle of the region.
     pub fn line_spot(&self) -> Point2<f32> {
         match self {
             Region::Vertical { x, y_start, y_end } => {
@@ -426,21 +432,34 @@ fn get_vertical_scan_lines(
     ScanLine::new(ClassifiedScanLineRegion::simplify(regions))
 }
 
+fn get_scan_lines(
+    image: Image,
+    scan_grid: &ScanGrid,
+    field_boundary: &FieldBoundary,
+    camera: CameraType,
+) -> ScanLines {
+    let yuyv = image.yuyv_image();
+
+    let field = FieldColorApproximate::new(yuyv);
+
+    let horizontal = get_horizontal_scan_lines(&field, yuyv, scan_grid, field_boundary, camera);
+    let vertical = get_vertical_scan_lines(&field, yuyv, scan_grid, field_boundary, camera);
+
+    ScanLines::new(image, horizontal, vertical)
+}
+
 #[system]
 fn scan_lines_system(
     (top_image, bottom_image): (&TopImage, &BottomImage),
-    scan_grid: &ScanGrids,
+    (top_scan_grid, bottom_scan_grid): (&mut TopScanGrid, &mut BottomScanGrid),
     field_boundary: &FieldBoundary,
     (top_scan_lines, bottom_scan_lines): (&mut TopScanLines, &mut BottomScanLines),
     curr_cycle: &Cycle,
     dbg: &DebugContext,
 ) -> Result<()> {
-    let top_grid = &scan_grid.top;
-    let bottom_grid = &scan_grid.bottom;
-
     update_scan_lines(
         top_image,
-        top_grid,
+        top_scan_grid,
         field_boundary,
         top_scan_lines,
         curr_cycle,
@@ -450,7 +469,7 @@ fn scan_lines_system(
 
     update_scan_lines(
         bottom_image,
-        bottom_grid,
+        bottom_scan_grid,
         field_boundary,
         bottom_scan_lines,
         curr_cycle,
@@ -474,25 +493,22 @@ fn update_scan_lines(
         return Ok(());
     }
 
-    let yuyv = scan_grid.image.yuyv_image();
+    let new = get_scan_lines(image.clone(), scan_grid, field_boundary, camera);
 
-    let field = FieldColorApproximate::new(yuyv);
+    debug_scan_lines(&new.horizontal, dbg, image, camera)?;
+    debug_scan_lines(&new.vertical, dbg, image, camera)?;
 
-    let scan_lines_h = get_horizontal_scan_lines(&field, yuyv, scan_grid, field_boundary, camera);
-    let scan_lines_v = get_vertical_scan_lines(&field, yuyv, scan_grid, field_boundary, camera);
+    debug_scan_line_spots(&new.horizontal, dbg, image, u8::RED, camera)?;
+    debug_scan_line_spots(&new.vertical, dbg, image, u8::BLUE, camera)?;
 
-    debug_scan_lines(&scan_lines_h, dbg, image, camera)?;
-    debug_scan_lines(&scan_lines_v, dbg, image, camera)?;
-
-    debug_scan_line_spots(&scan_lines_h, dbg, image, u8::RED, camera)?;
-    debug_scan_line_spots(&scan_lines_v, dbg, image, u8::BLUE, camera)?;
-
-    scan_lines.horizontal = scan_lines_h;
-    scan_lines.vertical = scan_lines_v;
+    *scan_lines = new;
 
     Ok(())
 }
 
+/// Find the edge of a region in a scanline.
+///
+/// The edge is the pixel where the luminance difference between the current pixel and the next pixel is the largest.
 fn find_edge(
     yuyv: &YuyvImage,
     start: usize,
@@ -710,6 +726,33 @@ fn debug_scan_line_spots(
         image,
         &colors,
     )?;
+
+    Ok(())
+}
+
+#[startup_system]
+fn init_scan_lines(
+    storage: &mut Storage,
+    (top_image, bottom_image): (&TopImage, &BottomImage),
+    (top_scan_grid, bottom_scan_grid): (&mut TopScanGrid, &mut BottomScanGrid),
+    field_boundary: &FieldBoundary,
+) -> Result<()> {
+    let top = get_scan_lines(
+        top_image.deref().clone(),
+        top_scan_grid,
+        field_boundary,
+        CameraType::Top,
+    );
+
+    let bottom = get_scan_lines(
+        bottom_image.deref().clone(),
+        bottom_scan_grid,
+        field_boundary,
+        CameraType::Bottom,
+    );
+
+    storage.add_resource(Resource::new(TopScanLines(top)))?;
+    storage.add_resource(Resource::new(BottomScanLines(bottom)))?;
 
     Ok(())
 }

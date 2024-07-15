@@ -17,6 +17,10 @@ use super::{
     scan_lines2::CameraType,
 };
 
+/// The step size for approximating the field color.
+const FIELD_APPROXIMATION_STEP_SIZE: usize = 8;
+
+/// The radius of the ball in cm.
 const BALL_RADIUS: f32 = 2.0;
 
 /// The minimum pixel distance between two neighboring scan lines.
@@ -31,13 +35,14 @@ const LINE_WIDTH_RATIO: f32 = 0.9;
 /// The ratio of ball width that is sampled when scanning the image.
 const BALL_WIDTH_RATIO: f32 = 0.8;
 
-/// Module that generates scan-lines from taken NAO images.
+/// Module that generates a scan grid from taken NAO images.
 ///
 /// This module provides the following resources to the application:
-/// - [`ScanGrid`]
-pub struct ScanLinesModule;
+/// - [`TopScanGrid`]: The scan grid for the top camera.
+/// - [`BottomScanGrid`]: The scan grid for the bottom camera.
+pub struct ScanGridModule;
 
-impl Module for ScanLinesModule {
+impl Module for ScanGridModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system(update_scan_grid.after(super::camera::camera_system))
             .add_startup_system(init_scan_grid)
@@ -61,6 +66,10 @@ pub enum PixelColor {
     Unknown,
 }
 
+/// Approximate color values of the field.
+///
+/// The color is approximated by the mean and standard deviation of the luminance, hue, and saturation.
+/// The white color is also approximated by the mean and standard deviation of the luminance of the 10 brightest pixels.
 #[derive(Debug, Clone)]
 pub struct FieldColorApproximate {
     pub luminance: (f32, f32),
@@ -96,14 +105,6 @@ impl FieldColorApproximate {
         let luminance = mean_and_std(&luminances);
         let hue = mean_and_std(&hues);
         let saturation = mean_and_std(&saturations);
-
-        // let median_luminance = luminances[luminances.len() / 2];
-        // let median_hue = hues[hues.len() / 2];
-        // let median_saturation = saturations[saturations.len() / 2];
-
-        // let luminance = (median_luminance, luminance.1);
-        // let hue = (median_hue, hue.1);
-        // let saturation = (median_saturation, saturation.1);
 
         luminances.sort_by(|a, b| a.total_cmp(b).reverse());
         let white = mean_and_std(&luminances[..10]);
@@ -147,10 +148,11 @@ pub struct Line {
     pub max_index: usize,
 }
 
-pub struct ScanGrids {
-    pub top: ScanGrid,
-    pub bottom: ScanGrid,
-}
+#[derive(derive_more::Deref, derive_more::DerefMut)]
+pub struct TopScanGrid(ScanGrid);
+
+#[derive(derive_more::Deref, derive_more::DerefMut)]
+pub struct BottomScanGrid(ScanGrid);
 
 pub struct ScanGrid {
     pub image: Image,
@@ -186,35 +188,23 @@ pub fn init_scan_grid(
 
     let bottom = get_bottom_scan_grid(&bottom_image);
 
-    storage.add_resource(Resource::new(ScanGrids { top, bottom }))
-}
+    storage.add_resource(Resource::new(TopScanGrid(top)))?;
+    storage.add_resource(Resource::new(BottomScanGrid(bottom)))?;
 
-const FIELD_APPROXIMATION_STEP_SIZE: usize = 8;
-
-#[allow(dead_code)]
-fn vertical_scan_lines(
-    image: &YuyvImage,
-    _scan_grid: &ScanGrid,
-    _field_color: FieldColorApproximate,
-) {
-    for row in image.row_iter() {
-        for pixel in row {
-            let (_y, _h, _s) = pixel.to_yhs2();
-        }
-    }
+    Ok(())
 }
 
 #[system]
 pub fn update_scan_grid(
-    scan_grid: &mut ScanGrids,
+    (top_scan_grid, bottom_scan_grid): (&mut TopScanGrid, &mut BottomScanGrid),
     camera_matrix: &CameraMatrices,
     layout: &LayoutConfig,
     top_image: &TopImage,
     bottom_image: &BottomImage,
     dbg: &DebugContext,
 ) -> Result<()> {
-    update_top_scan_grid(&mut scan_grid.top, camera_matrix, layout, top_image, dbg)?;
-    update_bottom_scan_grid(&mut scan_grid.bottom, bottom_image, dbg)?;
+    update_top_scan_grid(top_scan_grid, camera_matrix, layout, top_image, dbg)?;
+    update_bottom_scan_grid(bottom_scan_grid, bottom_image, dbg)?;
 
     Ok(())
 }
