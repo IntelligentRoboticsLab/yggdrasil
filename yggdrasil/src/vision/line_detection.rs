@@ -7,16 +7,13 @@ use crate::vision::camera::{matrix::CameraMatrices, Image};
 use crate::prelude::*;
 
 use super::line::LineSegment2;
-use super::scan_lines::{PixelColor, ScanGrid, TopScanGrid};
+use super::scan_lines::PixelColor;
+use super::scan_lines2::TopScanLines;
 
 use derive_more::Deref;
 use heimdall::CameraMatrix;
-use nalgebra::point;
+use nalgebra::{point, Point2};
 use nidhogg::types::color;
-
-const MAX_VERTICAL_LINE_WIDTH: usize = 50;
-
-const MAX_HORIZONTAL_LINE_HEIGHT: usize = 30;
 
 const MAX_VERTICAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 50.;
 
@@ -102,85 +99,25 @@ fn is_white(column: usize, row: usize, image: &Image) -> bool {
     PixelColor::yuyv_is_white(y1, u, y2, v)
 }
 
-fn extract_line_points(
-    scan_grid: &ScanGrid,
-    mut points: Vec<(f32, f32)>,
-) -> Result<Vec<(f32, f32)>> {
-    let boundary = scan_grid.boundary();
-
-    for horizontal_line_id in 0..scan_grid.horizontal().line_ids().len() {
-        let row_id = *unsafe {
-            scan_grid
-                .horizontal()
-                .line_ids()
-                .get_unchecked(horizontal_line_id)
-        };
-        let row = scan_grid.horizontal().line(horizontal_line_id);
-
-        let mut start_opt = Option::<usize>::None;
-        #[allow(clippy::needless_range_loop)]
-        for column_id in 0..row.len() {
-            if row_id < boundary.height_at_pixel(column_id as f32) as usize {
-                continue;
-            }
-
-            if row[column_id] == PixelColor::White {
-                if start_opt.is_none() {
-                    start_opt = Some(column_id);
-                }
-            } else if let Some(start) = start_opt {
-                if column_id - start < MAX_VERTICAL_LINE_WIDTH {
-                    points.push((((column_id + start) / 2) as f32, row_id as f32));
-                }
-                start_opt = None;
-            }
-        }
-    }
-
-    for vertical_line_id in 0..scan_grid.vertical().line_ids().len() {
-        let column_id = *unsafe {
-            scan_grid
-                .vertical()
-                .line_ids()
-                .get_unchecked(vertical_line_id)
-        };
-        let column = scan_grid.vertical().line(vertical_line_id);
-
-        let mut start_opt = None;
-        #[allow(clippy::needless_range_loop)]
-        for row_id in boundary.height_at_pixel(column_id as f32) as usize..column.len() {
-            if column[row_id] == PixelColor::White {
-                if start_opt.is_none() {
-                    start_opt = Some(row_id);
-                }
-            } else if let Some(start) = start_opt {
-                if row_id - start < MAX_HORIZONTAL_LINE_HEIGHT {
-                    points.push((column_id as f32, ((row_id + start) / 2) as f32));
-                }
-                start_opt = None;
-            }
-        }
-    }
-
-    Ok(points)
-}
-
 fn detect_top_lines(
     line_detection_data: LineDetectionData,
-    scan_grid: ScanGrid,
+    line_spots: Vec<Point2<f32>>,
+    image: Image,
 ) -> Result<TopLineDetectionData> {
-    let image = scan_grid.image().clone();
     Ok(TopLineDetectionData(
-        Some(detect_lines(line_detection_data, scan_grid)?),
-        Some(image.clone()),
+        Some(detect_lines(line_detection_data, line_spots, &image)?),
+        Some(image),
     ))
 }
 
 fn detect_lines(
     line_detection_data: LineDetectionData,
-    scan_grid: ScanGrid,
+    line_spots: Vec<Point2<f32>>,
+    image: &Image,
 ) -> Result<LineDetectionData> {
-    let mut points = extract_line_points(&scan_grid, line_detection_data.line_points)?;
+    let mut points = line_detection_data.line_points;
+    points.clear();
+    points.extend(line_spots.iter().map(|point| (point.x, point.y)));
     points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
     let mut points_next = line_detection_data.line_points_next;
 
@@ -210,7 +147,7 @@ fn detect_lines(
 
             let (slope, intercept) =
                 linreg::linear_regression_of::<f32, f32, f32>(&line_points.points)
-                    .unwrap_or((scan_grid.height() as f32, 0f32));
+                    .unwrap_or((image.yuyv_image().height() as f32, 0f32));
 
             let start_column = line_points.start_column.min(point.0);
             let end_column = line_points.end_column.max(point.0);
@@ -222,11 +159,11 @@ fn detect_lines(
             if end_row - start_row > end_column - start_column {
                 for row in start_row as usize..end_row as usize {
                     let column = (row as f32 - intercept) / slope;
-                    if column < 0f32 || column >= scan_grid.width() as f32 {
+                    if column < 0f32 || column >= image.yuyv_image().width() as f32 {
                         continue;
                     }
 
-                    if !is_white(column as usize, row, scan_grid.image()) {
+                    if !is_white(column as usize, row, image) {
                         if allowed_mistakes == 0 {
                             break;
                         }
@@ -236,11 +173,11 @@ fn detect_lines(
             } else {
                 for column in start_column as usize..end_column as usize {
                     let row: f32 = slope * column as f32 + intercept;
-                    if row < 0f32 || row >= scan_grid.height() as f32 {
+                    if row < 0f32 || row >= image.yuyv_image().height() as f32 {
                         continue;
                     }
 
-                    if !is_white(column, row as usize, scan_grid.image()) {
+                    if !is_white(column, row as usize, image) {
                         if allowed_mistakes == 0 {
                             break;
                         }
@@ -272,7 +209,7 @@ fn detect_lines(
     let mut lines = line_detection_data.lines;
     lines.clear();
     for line_points in lines_points.iter() {
-        lines.push(line_points_to_line(line_points, &scan_grid));
+        lines.push(line_points_to_line(line_points, image));
     }
 
     points.clear();
@@ -286,7 +223,7 @@ fn detect_lines(
     })
 }
 
-fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> LineSegment2 {
+fn line_points_to_line(line_points: &LinePoints, image: &Image) -> LineSegment2 {
     let mut start_column = line_points.start_column;
     let mut end_column = line_points.end_column;
     assert!(start_column <= end_column);
@@ -296,35 +233,37 @@ fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> LineSe
     assert!(start_row <= end_row);
 
     let (slope, intercept) = linreg::linear_regression_of::<f32, f32, f32>(&line_points.points)
-        .unwrap_or((scan_grid.height() as f32, 0.));
+        .unwrap_or((image.yuyv_image().height() as f32, 0.));
 
     if end_column - start_column < end_row - start_row {
         if !(-MINIMUM_LINE_SLOPE..MINIMUM_LINE_SLOPE).contains(&slope) {
             start_column = ((start_row - intercept) / slope)
-                .min(scan_grid.width() as f32 - 1.)
+                .min(image.yuyv_image().width() as f32 - 1.)
                 .max(0.);
             end_column = ((end_row - intercept) / slope)
-                .min(scan_grid.width() as f32 - 1.)
+                .min(image.yuyv_image().width() as f32 - 1.)
                 .max(0.);
         }
     } else if (-(1. / MINIMUM_LINE_SLOPE)..(1. / MINIMUM_LINE_SLOPE)).contains(&slope) {
         start_row = (start_column * slope + intercept)
-            .min(scan_grid.height() as f32 - 1.)
+            .min(image.yuyv_image().height() as f32 - 1.)
             .max(0.);
         end_row = (end_column * slope + intercept)
-            .min(scan_grid.height() as f32 - 1.)
+            .min(image.yuyv_image().height() as f32 - 1.)
             .max(0.);
     }
 
+    // TODO: Remove these asserts.
     assert!(start_row >= 0.);
     assert!(end_row >= 0.);
     assert!(start_column >= 0.);
     assert!(end_column >= 0.);
 
-    assert!(start_row < scan_grid.height() as f32);
-    assert!(end_row < scan_grid.height() as f32);
-    assert!(start_column < scan_grid.width() as f32);
-    assert!(end_column < scan_grid.width() as f32);
+    // TODO: Remove these asserts.
+    assert!(start_row < image.yuyv_image().height() as f32);
+    assert!(end_row < image.yuyv_image().height() as f32);
+    assert!(start_column < image.yuyv_image().width() as f32);
+    assert!(end_column < image.yuyv_image().width() as f32);
 
     LineSegment2::from_xy(start_column, start_row, end_column, end_row)
 }
@@ -332,18 +271,13 @@ fn line_points_to_line(line_points: &LinePoints, scan_grid: &ScanGrid) -> LineSe
 fn draw_lines(
     dbg: &DebugContext,
     lines: &[LineSegment2],
-    scan_grid: ScanGrid,
+    image: &Image,
     matrix: &CameraMatrix,
     robot_pose: &RobotPose,
 ) -> Result<()> {
     let all_lines = lines.iter().map(|line| line.into()).collect::<Vec<_>>();
 
-    dbg.log_lines2d_for_image(
-        "top_camera/image/lines",
-        &all_lines,
-        scan_grid.image(),
-        color::u8::RED,
-    )?;
+    dbg.log_lines2d_for_image("top_camera/image/lines", &all_lines, image, color::u8::RED)?;
 
     let points_to_ground = all_lines
         .iter()
@@ -366,14 +300,10 @@ fn draw_lines(
     dbg.log_lines3d_for_image(
         "top_camera/lines_3d",
         &points_to_ground,
-        scan_grid.image(),
+        image,
         color::u8::BLUE,
     )?;
-    dbg.log_transformation(
-        "top_camera/lines_3d",
-        &robot_pose.as_3d(),
-        scan_grid.image(),
-    )?;
+    dbg.log_transformation("top_camera/lines_3d", &robot_pose.as_3d(), image)?;
 
     Ok(())
 }
@@ -381,17 +311,23 @@ fn draw_lines(
 #[startup_system]
 fn start_line_detection_task(
     storage: &mut Storage,
-    top_scan_grid: &mut TopScanGrid,
+    top_scan_lines: &TopScanLines,
     detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
 ) -> Result<()> {
     storage.add_resource(Resource::new(TopLines(
         Vec::new(),
-        top_scan_grid.image().clone(),
+        top_scan_lines.image().clone(),
     )))?;
 
-    let top_scan_grid = top_scan_grid.clone();
+    let line_spots = top_scan_lines
+        .horizontal()
+        .line_spots()
+        .chain(top_scan_lines.vertical().line_spots())
+        .collect();
+
+    let image = top_scan_lines.image().clone();
     detect_top_lines_task
-        .try_spawn(move || detect_top_lines(Default::default(), top_scan_grid))
+        .try_spawn(move || detect_top_lines(Default::default(), line_spots, image))
         .unwrap();
 
     Ok(())
@@ -399,7 +335,7 @@ fn start_line_detection_task(
 
 #[system]
 pub fn line_detection_system(
-    top_scan_grid: &mut TopScanGrid,
+    top_scan_lines: &TopScanLines,
     dbg: &DebugContext,
     detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
     top_line_detection_data: &mut TopLineDetectionData,
@@ -418,19 +354,25 @@ pub fn line_detection_system(
         draw_lines(
             dbg,
             &top_lines.0,
-            top_scan_grid.clone(),
+            top_scan_lines.image(),
             &camera_matrices.top,
             robot_pose,
         )?;
     }
 
     if !detect_top_lines_task.active()
-        && top_lines.1.timestamp() != top_scan_grid.image().timestamp()
+        && top_lines.1.timestamp() != top_scan_lines.image().timestamp()
     {
-        let top_scan_grid = top_scan_grid.clone();
+        let line_spots = top_scan_lines
+            .horizontal()
+            .line_spots()
+            .chain(top_scan_lines.vertical().line_spots())
+            .collect();
+
         let line_detection_data = top_line_detection_data.0.take().unwrap();
+        let image = top_scan_lines.image().clone();
         detect_top_lines_task
-            .try_spawn(move || detect_top_lines(line_detection_data, top_scan_grid))
+            .try_spawn(move || detect_top_lines(line_detection_data, line_spots, image))
             .unwrap();
     }
 
