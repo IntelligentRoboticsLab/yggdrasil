@@ -427,12 +427,10 @@ fn get_vertical_scan_lines(
 
 #[system]
 fn scan_lines_system(
-    top_image: &TopImage,
-    bottom_image: &BottomImage,
+    (top_image, bottom_image): (&TopImage, &BottomImage),
     scan_grid: &ScanGrids,
     field_boundary: &FieldBoundary,
-    top_scan_lines: &mut TopScanLines,
-    bottom_scan_lines: &mut BottomScanLines,
+    (top_scan_lines, bottom_scan_lines): (&mut TopScanLines, &mut BottomScanLines),
     curr_cycle: &Cycle,
     dbg: &DebugContext,
 ) -> Result<()> {
