@@ -1,4 +1,3 @@
-use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
@@ -25,10 +24,7 @@ impl Behavior for WalkToSet {
             .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
 
         let target = Target {
-            position: set_robot_position
-                .isometry
-                .translation
-                .vector.into(),
+            position: set_robot_position.isometry.translation.vector.into(),
             rotation: Some(set_robot_position.isometry.rotation),
         };
 
