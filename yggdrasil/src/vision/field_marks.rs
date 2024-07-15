@@ -113,7 +113,7 @@ fn field_marks_system(
     config: &FieldMarksConfig,
     ctx: &DebugContext,
 ) -> Result<()> {
-    if field_marks_image.0.timestamp == lines.1.timestamp || model.active() {
+    if field_marks_image.0.timestamp() == lines.1.timestamp() || model.active() {
         return Ok(());
     }
 
@@ -136,7 +136,7 @@ fn field_marks_system(
             .iter()
             .map(|p| (p.point.x, p.point.y))
             .collect::<Vec<_>>(),
-        lines.1.clone().cycle,
+        lines.1.clone().cycle(),
         color::u8::CYAN,
         5.0,
     )?;
@@ -207,7 +207,7 @@ fn field_marks_system(
             .iter()
             .map(|i| i.kind.as_str().to_string())
             .collect(),
-        field_marks_image.0.cycle,
+        field_marks_image.0.cycle(),
     )?;
 
     field_marks.image = lines.1.clone();
