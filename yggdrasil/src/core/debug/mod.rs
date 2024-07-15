@@ -96,7 +96,7 @@ impl DebugContext {
     pub fn log_image(&self, path: impl AsRef<str>, img: Image, jpeg_quality: i32) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&img.cycle());
+            self.set_cycle(&img.cycle);
             let yuv_planar_image = YuvPlanarImage::from_yuyv(img.yuyv_image());
             let jpeg = yuv_planar_image.to_jpeg(jpeg_quality)?;
             let tensor_data =
@@ -157,7 +157,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle());
+            self.set_cycle(&image.cycle);
 
             self.rec
                 .log(
@@ -208,7 +208,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle());
+            self.set_cycle(&image.cycle);
             let pinhole = rerun::Pinhole::from_focal_length_and_resolution(
                 [matrix.focal_lengths.x, matrix.focal_lengths.y],
                 [
@@ -311,7 +311,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle());
+            self.set_cycle(&image.cycle);
             self.rec
                 .log(
                     path.as_ref(),
@@ -323,6 +323,33 @@ impl DebugContext {
                         );
                         points.len()
                     ]),
+                )
+                .into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
+    pub fn log_points2d_for_image_with_colors(
+        &self,
+        path: impl AsRef<str>,
+        points: &[(f32, f32)],
+        image: &Image,
+        color: &[RgbU8],
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&image.cycle);
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Points2D::new(points).with_colors(
+                        color
+                            .iter()
+                            .map(|c| rerun::Color::from_rgb(c.red, c.green, c.blue)),
+                    ),
                 )
                 .into_diagnostic()?;
             self.clear_cycle();
@@ -365,6 +392,34 @@ impl DebugContext {
     }
 
     /// Log a set of 2D lines to the debug viewer, using the timestamp of the provided image.
+    pub fn log_lines2d_for_image_with_colors(
+        &self,
+        path: impl AsRef<str>,
+        lines: &[[(f32, f32); 2]],
+        image: &Image,
+        colors: &[RgbU8],
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&image.cycle);
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::LineStrips2D::new(lines).with_colors(
+                        colors
+                            .iter()
+                            .map(|c| rerun::Color::from_rgb(c.red, c.green, c.blue)),
+                    ),
+                )
+                .into_diagnostic()?;
+
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a set of 2D lines to the debug viewer, using the timestamp of the provided image.
     pub fn log_lines2d_for_image(
         &self,
         path: impl AsRef<str>,
@@ -374,7 +429,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle());
+            self.set_cycle(&image.cycle);
             self.rec
                 .log(
                     path.as_ref(),
@@ -472,7 +527,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle());
+            self.set_cycle(&image.cycle);
             self.rec
                 .log(
                     path.as_ref(),
@@ -501,7 +556,7 @@ impl DebugContext {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&image.cycle());
+            self.set_cycle(&image.cycle);
 
             let translation = transform.translation;
             let rotation = transform.rotation.coords;

@@ -155,26 +155,30 @@ impl BottomCamera {
 }
 
 #[derive(Clone)]
-pub struct Image(Arc<(YuyvImage, Instant, Cycle)>);
+pub struct Image {
+    /// Captured image in yuyv format.
+    buf: Arc<YuyvImage>,
+    /// Instant at which the image was captured.
+    pub timestamp: Instant,
+    /// Return the cycle at which the image was captured.
+    pub cycle: Cycle,
+}
 
 impl Image {
     fn new(yuyv_image: YuyvImage, cycle: Cycle) -> Self {
-        Self(Arc::new((yuyv_image, Instant::now(), cycle)))
+        Self {
+            buf: Arc::new(yuyv_image),
+            timestamp: Instant::now(),
+            cycle,
+        }
     }
 
-    /// Return the captured image in yuyv format.
+    pub fn is_from_cycle(&self, cycle: &Cycle) -> bool {
+        self.cycle == *cycle
+    }
+
     pub fn yuyv_image(&self) -> &YuyvImage {
-        &self.0 .0
-    }
-
-    /// Return the instant at which the image was captured.
-    pub fn timestamp(&self) -> &Instant {
-        &self.0 .1
-    }
-
-    /// Return the cycle at which the image was captured.
-    pub fn cycle(&self) -> Cycle {
-        self.0 .2
+        &self.buf
     }
 
     /// Get a grayscale patch from the image centered at the given point.
@@ -291,7 +295,7 @@ fn debug_camera_system(
         bottom_timestamp = bottom.0;
     }
 
-    if !bottom_task.active() && &bottom_timestamp != bottom_image.timestamp() {
+    if !bottom_task.active() && bottom_timestamp != bottom_image.timestamp {
         let cloned = bottom_image.clone();
         let matrix = camera_matrices.bottom.clone();
         let ctx = ctx.clone();
@@ -306,7 +310,7 @@ fn debug_camera_system(
         top_timestamp = top.0;
     }
 
-    if !top_task.active() && &top_timestamp != top_image.timestamp() {
+    if !top_task.active() && top_timestamp != top_image.timestamp {
         let cloned = top_image.clone();
         let matrix = camera_matrices.top.clone();
         let pose = robot_pose.clone();
@@ -325,7 +329,7 @@ fn log_bottom_image(
     camera_matrix: &CameraMatrix,
     robot_pose: &RobotPose,
 ) -> Result<JpegBottomImage> {
-    let timestamp = bottom_image.0 .0 .1;
+    let timestamp = bottom_image.0.timestamp;
     ctx.log_image("bottom_camera/image", bottom_image.clone().0, 20)?;
     ctx.log_camera_matrix("bottom_camera/image", camera_matrix, &bottom_image.0)?;
 
@@ -342,7 +346,7 @@ fn log_top_image(
     camera_matrix: &CameraMatrix,
     robot_pose: &RobotPose,
 ) -> Result<JpegTopImage> {
-    let timestamp = top_image.0 .0 .1;
+    let timestamp = top_image.0.timestamp;
     ctx.log_image("top_camera/image", top_image.clone().0, 20)?;
     ctx.log_camera_matrix("top_camera/image", camera_matrix, &top_image.0)?;
 

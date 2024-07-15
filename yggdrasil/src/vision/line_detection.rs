@@ -424,9 +424,7 @@ pub fn line_detection_system(
         )?;
     }
 
-    if !detect_top_lines_task.active()
-        && top_lines.1.timestamp() != top_scan_grid.image().timestamp()
-    {
+    if !detect_top_lines_task.active() && top_lines.1.timestamp != top_scan_grid.image().timestamp {
         let top_scan_grid = top_scan_grid.clone();
         let line_detection_data = top_line_detection_data.0.take().unwrap();
         detect_top_lines_task

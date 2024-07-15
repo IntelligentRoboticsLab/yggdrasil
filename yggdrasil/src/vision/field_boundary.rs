@@ -7,7 +7,7 @@ use crate::{
     core::debug::DebugContext,
     core::ml::{MlModel, MlTask, MlTaskResource},
     prelude::*,
-    vision::camera::{Image, TopImage},
+    vision::camera::{self, Image, TopImage},
 };
 use fast_image_resize as fr;
 use heimdall::YuyvImage;
@@ -29,8 +29,10 @@ impl Module for FieldBoundaryModule {
         Ok(app
             .add_ml_task::<FieldBoundaryModel>()?
             .add_startup_system(init_field_boundary)?
-            .add_system(detect_field_boundary)
-            .add_system(log_boundary_points))
+            .add_system_chain((
+                detect_field_boundary.after(camera::camera_system),
+                log_boundary_points,
+            )))
     }
 }
 
@@ -164,7 +166,7 @@ fn detect_field_boundary(
 ) -> Result<()> {
     // Start a new inference if the image has changed
     // TODO: Some kind of callback/event system would be nice to avoid doing the timestamp comparison everywhere
-    if field_boundary_image.0.timestamp() != top_image.timestamp() && !model.active() {
+    if field_boundary_image.0.timestamp != top_image.timestamp && !model.active() {
         let resized_image = resize_yuyv(top_image.yuyv_image());
         if let Ok(()) = model.try_start_infer(&resized_image) {
             // We need to keep track of the image we started the inference with
