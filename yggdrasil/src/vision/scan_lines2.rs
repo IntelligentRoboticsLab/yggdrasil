@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::{ops::Deref, sync::Arc};
 
 use crate::{core::debug::DebugContext, nao::Cycle, prelude::*};
 
@@ -31,18 +31,19 @@ impl Module for ScanLinesModule {
 }
 
 /// Horizontal and vertical scanlines for an image.
+#[derive(Clone)]
 pub struct ScanLines {
     image: Image,
-    horizontal: ScanLine,
-    vertical: ScanLine,
+    horizontal: Arc<ScanLine>,
+    vertical: Arc<ScanLine>,
 }
 
 impl ScanLines {
     pub fn new(image: Image, horizontal: ScanLine, vertical: ScanLine) -> Self {
         Self {
             image,
-            horizontal,
-            vertical,
+            horizontal: Arc::new(horizontal),
+            vertical: Arc::new(vertical),
         }
     }
 
