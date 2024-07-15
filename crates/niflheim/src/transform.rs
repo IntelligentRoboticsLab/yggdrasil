@@ -35,13 +35,13 @@ where
     phantom: PhantomData<(S1, S2)>,
 }
 
-impl<T, S1, S2> BetweenSpaces<T, S1, S2>
+impl<T, S1, S2> From<T> for BetweenSpaces<T, S1, S2>
 where
     S1: Space,
     S2: Space,
 {
     /// Wrap a `T` into a `BetweenSpaces<T, S1, S2>`.
-    pub fn new(inner: T) -> Self {
+    fn from(inner: T) -> Self {
         Self {
             inner,
             phantom: PhantomData,
@@ -110,16 +110,6 @@ where
     }
 }
 
-impl<T, S1, S2> From<T> for BetweenSpaces<T, S1, S2>
-where
-    S1: Space,
-    S2: Space,
-{
-    fn from(value: T) -> Self {
-        Self::new(value)
-    }
-}
-
 impl<S1, S2> Transform<na::Point2<f32>, S1, na::Point2<f32>, S2>
     for BetweenSpaces<na::Isometry2<f32>, S1, S2>
 where
@@ -127,7 +117,7 @@ where
     S2: SpaceOver<na::Point2<f32>>,
 {
     fn transform(&self, x: &InSpace<na::Point2<f32>, S1>) -> InSpace<na::Point2<f32>, S2> {
-        InSpace::new(self.inner.transform_point(&x.inner))
+        self.inner.transform_point(&x.inner).into()
     }
 }
 
@@ -138,7 +128,7 @@ where
     S2: SpaceOver<na::Point2<f32>>,
 {
     fn inverse_transform(&self, x: &InSpace<na::Point2<f32>, S2>) -> InSpace<na::Point2<f32>, S1> {
-        InSpace::new(self.inner.inverse_transform_point(&x.inner))
+        self.inner.inverse_transform_point(&x.inner).into()
     }
 }
 
@@ -149,7 +139,7 @@ where
     S2: SpaceOver<na::Vector2<f32>>,
 {
     fn transform(&self, x: &InSpace<na::Vector2<f32>, S1>) -> InSpace<na::Vector2<f32>, S2> {
-        InSpace::new(self.inner.transform_vector(&x.inner))
+        self.inner.transform_vector(&x.inner).into()
     }
 }
 
@@ -163,7 +153,7 @@ where
         &self,
         x: &InSpace<na::Vector2<f32>, S2>,
     ) -> InSpace<na::Vector2<f32>, S1> {
-        InSpace::new(self.inner.inverse_transform_vector(&x.inner))
+        self.inner.inverse_transform_vector(&x.inner).into()
     }
 }
 
@@ -174,7 +164,7 @@ where
     S2: SpaceOver<na::Point3<f32>>,
 {
     fn transform(&self, x: &InSpace<na::Point3<f32>, S1>) -> InSpace<na::Point3<f32>, S2> {
-        InSpace::new(self.inner.transform_point(&x.inner))
+        self.inner.transform_point(&x.inner).into()
     }
 }
 
@@ -185,7 +175,7 @@ where
     S2: SpaceOver<na::Point3<f32>>,
 {
     fn inverse_transform(&self, x: &InSpace<na::Point3<f32>, S2>) -> InSpace<na::Point3<f32>, S1> {
-        InSpace::new(self.inner.inverse_transform_point(&x.inner))
+        self.inner.inverse_transform_point(&x.inner).into()
     }
 }
 
@@ -196,7 +186,7 @@ where
     S2: SpaceOver<na::Vector3<f32>>,
 {
     fn transform(&self, x: &InSpace<na::Vector3<f32>, S1>) -> InSpace<na::Vector3<f32>, S2> {
-        InSpace::new(self.inner.transform_vector(&x.inner))
+        self.inner.transform_vector(&x.inner).into()
     }
 }
 
@@ -210,6 +200,6 @@ where
         &self,
         x: &InSpace<na::Vector3<f32>, S2>,
     ) -> InSpace<na::Vector3<f32>, S1> {
-        InSpace::new(self.inner.inverse_transform_vector(&x.inner))
+        self.inner.inverse_transform_vector(&x.inner).into()
     }
 }

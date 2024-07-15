@@ -37,7 +37,7 @@
 //!
 //! Niflheim introduces two wrapper types to keep track of which spaces a value is expressed in,
 //! [`InSpace<T, S>`] and [`BetweenSpaces<T, S1, S2>`]. These types can be constucted through
-//! either their `new()` or their [`From<T>`] implementation.
+//! either their [`From<T>`] implementation.
 //!
 //! ### Example
 //!

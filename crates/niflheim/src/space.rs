@@ -15,9 +15,9 @@ pub struct InSpace<T, S: SpaceOver<T>> {
     phantom: PhantomData<S>,
 }
 
-impl<T, S: SpaceOver<T>> InSpace<T, S> {
+impl<T, S: SpaceOver<T>> From<T> for InSpace<T, S> {
     /// Wrap a `T` into a `InSpace<T, S>`.
-    pub fn new(inner: T) -> Self {
+    fn from(inner: T) -> Self {
         Self {
             inner,
             phantom: PhantomData,
@@ -57,8 +57,3 @@ impl<T: PartialEq, S: SpaceOver<T>> PartialEq for InSpace<T, S> {
     }
 }
 
-impl<T, S: SpaceOver<T>> From<T> for InSpace<T, S> {
-    fn from(value: T) -> Self {
-        Self::new(value)
-    }
-}
