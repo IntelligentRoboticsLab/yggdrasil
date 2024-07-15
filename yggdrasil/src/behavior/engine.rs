@@ -271,6 +271,19 @@ impl Engine {
             return;
         }
 
+        // println!("{:?} {:?}", self.behavior, context.fall_state);
+        // if motion_manager.active_motion.is_some() {
+        //     println!(
+        //         "{:?}",
+        //         motion_manager
+        //             .active_motion
+        //             .clone()
+        //             .unwrap()
+        //             .cur_sub_motion
+        //             .0
+        //     );
+        // }
+
         // next up, damage prevention and standup motion take precedence
         match context.fall_state {
             FallState::Lying(_) => {
