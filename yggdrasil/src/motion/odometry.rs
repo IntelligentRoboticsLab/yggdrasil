@@ -13,7 +13,7 @@ use crate::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OdometryConfig {
-    scale_factor: Vector2<f32>,
+    pub scale_factor: Vector2<f32>,
 }
 
 #[derive(Debug, Default, Clone)]

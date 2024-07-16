@@ -27,8 +27,8 @@ impl Module for ScanLinesModule {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct ScanLinesConfig {
-    horizontal_scan_line_interval: usize,
-    vertical_scan_line_interval: usize,
+    pub horizontal_scan_line_interval: usize,
+    pub vertical_scan_line_interval: usize,
 }
 
 /// The classified color of a scan-line pixel.

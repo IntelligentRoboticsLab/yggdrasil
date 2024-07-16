@@ -49,7 +49,7 @@ impl DebugContext {
     ///
     /// If yggdrasil is not compiled with the `rerun` feature, this will return a [`DebugContext`] that
     /// does nothing.
-    fn init(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
+    pub fn init(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
         #[cfg(feature = "rerun")]
         {
             let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
