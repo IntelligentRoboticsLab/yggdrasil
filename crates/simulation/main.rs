@@ -411,7 +411,8 @@ impl Robot {
             keyframe_executor: &mut Default::default(),
             step_planner: &mut Default::default(),
             walking_engine: &mut self.walking_engine,
-            debug_context: todo!(),
+            debug_context: &mut DebugContext::init("kaas", std::net::IpAddr::from([0, 0, 0, 0]))
+                .unwrap(),
         };
         let (yggdrasil_config, behavior_config, game_controller_config) = create_default_configs();
         let context = Context {
