@@ -253,6 +253,10 @@ impl Engine {
             return;
         }
 
+        if let BehaviorKind::Standup(_) = self.behavior {
+            return;
+        }
+
         // next up, damage prevention and standup motion take precedence
         match context.fall_state {
             FallState::Lying(_) => {
@@ -261,9 +265,6 @@ impl Engine {
             }
             FallState::Falling(_) => {
                 self.behavior = BehaviorKind::CatchFall(CatchFall);
-                return;
-            }
-            FallState::InStandup => {
                 return;
             }
             _ => {}
