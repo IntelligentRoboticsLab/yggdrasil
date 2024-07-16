@@ -1,6 +1,9 @@
 mod app;
 pub use app::{App, SystemStage};
 
+mod control;
+pub use control::ControlSocket;
+
 mod inspect;
 pub use inspect::Inspect;
 
