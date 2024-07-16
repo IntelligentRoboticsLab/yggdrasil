@@ -144,7 +144,10 @@ impl ConfigResource for App {
     {
         let app = self.add_startup_system(_init_inspectable_config::<T>)?;
 
-        tracing::info!("Loaded inspectable config `{}`", <T as odal::Config>::name());
+        tracing::info!(
+            "Loaded inspectable config `{}`",
+            <T as odal::Config>::name()
+        );
 
         Ok(app)
     }
