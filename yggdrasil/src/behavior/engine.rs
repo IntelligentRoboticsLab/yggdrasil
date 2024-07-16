@@ -194,10 +194,13 @@ pub enum RoleKind {
 
 impl RoleKind {
     /// Get the default role for each robot based on that robots player number
-    fn by_player_number() -> Self {
+    fn by_player_number(player_number: u8) -> Self {
         // TODO: get the default role for each robot by player number
-        RoleKind::Attacker(Attacker)
-        // RoleKind::Keeper(Keeper)
+        match player_number {
+            1 => RoleKind::Keeper(Keeper),
+            5 => RoleKind::Attacker(Attacker),
+            _ => RoleKind::Attacker(Attacker),
+        }
     }
 }
 
@@ -213,7 +216,7 @@ pub struct Engine {
 impl Default for Engine {
     fn default() -> Self {
         Self {
-            role: RoleKind::by_player_number(),
+            role: RoleKind::Attacker(Attacker),
             behavior: BehaviorKind::default(),
         }
     }
@@ -222,9 +225,8 @@ impl Default for Engine {
 impl Engine {
     /// Assigns roles based on player number and other information like what
     /// robot is closest to the ball, missing robots, etc.
-    fn assign_role(&self, _context: Context) -> RoleKind {
-        // TODO: assign roles based on robot player numbers and missing robots, etc.
-        RoleKind::by_player_number()
+    fn assign_role(&self, context: Context) -> RoleKind {
+        RoleKind::by_player_number(context.player_config.player_number)
     }
 
     /// Executes one step of the behavior engine
