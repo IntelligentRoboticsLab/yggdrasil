@@ -1,6 +1,10 @@
 mod cycle;
 pub use cycle::*;
 
+
+pub mod battery_led;
+
+use battery_led::battery_display;
 pub mod manager;
 
 use crate::prelude::*;
@@ -94,7 +98,9 @@ impl Module for NaoModule {
             .add_staged_system(
                 SystemStage::Write,
                 cycle::update_cycle_stats.after(write_hardware_info),
-            ))
+            )
+            .add_system(battery_display)
+        )
     }
 }
 
