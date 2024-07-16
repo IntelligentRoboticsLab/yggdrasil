@@ -3,7 +3,7 @@ use miette::{IntoDiagnostic, Result};
 use tokio::process::Command;
 
 #[derive(Parser, Debug)]
-/// Compile, deploy and run the specified binary to the robot.
+/// Generate the dependency graph for Yggdrasil.
 pub struct DependencyGraph;
 
 impl DependencyGraph {
