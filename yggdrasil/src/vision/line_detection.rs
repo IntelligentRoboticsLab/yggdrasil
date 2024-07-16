@@ -9,7 +9,7 @@ use crate::prelude::*;
 use crate::vision::scan_lines2::RegionColor;
 
 use super::line::LineSegment2;
-use super::scan_lines2::{ScanLine, ScanLines, TopScanLines};
+use super::scan_lines2::{Region, ScanLines, TopScanLines};
 
 use derive_more::Deref;
 use heimdall::CameraMatrix;
@@ -22,7 +22,7 @@ const MAX_HORIZONTAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 15.;
 
 const MAX_ALLOWED_MISTAKES: u32 = 1;
 
-const MIN_POINTS_PER_LINE: usize = 3;
+const MIN_POINTS_PER_LINE: usize = 1;
 
 const MINIMUM_LINE_SLOPE: f32 = 0.05;
 
@@ -279,6 +279,8 @@ fn detect_lines(
 
     points.clear();
     points_next.clear();
+
+    eprintln!("elapsed: {:?}", start.elapsed());
 
     Ok(LineDetectionData {
         line_points: points,

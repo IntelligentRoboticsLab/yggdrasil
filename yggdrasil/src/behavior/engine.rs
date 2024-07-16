@@ -316,7 +316,8 @@ pub fn step(
         &mut DebugContext,
     ),
     game_controller_message: &Option<GameControllerMessage>,
-    (robot_pose, balls, fall_state): (&RobotPose, &Balls, &FallState),
+    // (robot_pose, balls, fall_state): (&RobotPose, &Balls, &FallState),
+    (robot_pose, fall_state): (&RobotPose, &FallState),
 ) -> Result<()> {
     let context = Context {
         robot_info,
@@ -332,7 +333,8 @@ pub fn step(
         game_controller_config,
         fall_state,
         pose: robot_pose,
-        ball_position: &balls.balls.first().map(|ball| ball.position),
+        // ball_position: &balls.balls.first().map(|ball| ball.position),
+        ball_position: &None,
     };
 
     let mut control = Control {
