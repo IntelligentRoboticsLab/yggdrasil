@@ -3,6 +3,7 @@ extern crate yggdrasil;
 #[allow(unused_imports)]
 use yggdrasil::behavior::BehaviorModule;
 use yggdrasil::core::config::ConfigModule;
+use yggdrasil::motion::walk::WalkingEngineModule;
 use yggdrasil::nao::NaoModule;
 use yggdrasil::photo::PhotoModule;
 use yggdrasil::prelude::*;
@@ -20,6 +21,8 @@ fn main() -> Result<()> {
         .add_module(NaoModule)?
         .add_module(ConfigModule)?
         .add_module(CameraModule)?
+        .add_module(SensorModule)?
+        .add_module(WalkingEngineModule)?
         .add_module(PhotoModule)?;
 
     #[cfg(feature = "alsa")]
