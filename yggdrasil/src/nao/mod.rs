@@ -1,7 +1,6 @@
 mod cycle;
 pub use cycle::*;
 
-
 pub mod battery_led;
 
 use battery_led::battery_display;
@@ -99,8 +98,7 @@ impl Module for NaoModule {
                 SystemStage::Write,
                 cycle::update_cycle_stats.after(write_hardware_info),
             )
-            .add_system(battery_display)
-        )
+            .add_system(battery_display))
     }
 }
 

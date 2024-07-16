@@ -1,12 +1,14 @@
-use crate::prelude::*;
-use nidhogg::{types::{FillExt, Skull} ,NaoState};
 use crate::nao::manager::Priority;
+use crate::prelude::*;
+use nidhogg::{
+    types::{FillExt, Skull},
+    NaoState,
+};
 
 use super::manager::NaoManager;
 
 #[system]
 pub fn battery_display(nao_state: &mut NaoState, manager: &mut NaoManager) -> Result<()> {
-    
     // retrieve battery level
     let battery_level = (nao_state.battery.charge * 100.0) as u32;
 
@@ -55,6 +57,6 @@ pub fn battery_display(nao_state: &mut NaoState, manager: &mut NaoManager) -> Re
     }
 
     manager.set_skull_led(skull, Priority::Medium);
-    
+
     Ok(())
 }
