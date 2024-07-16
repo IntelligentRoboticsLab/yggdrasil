@@ -157,8 +157,8 @@ impl ConvertBbox<Xywh> for Bbox<Xyxy> {
     }
 }
 
-impl ConvertBbox<Cxywh> for Bbox<Xyxy> {
-    fn convert(&self) -> Bbox<Cxywh> {
+impl ConvertBbox<Cxcywh> for Bbox<Xyxy> {
+    fn convert(&self) -> Bbox<Cxcywh> {
         let (x1, y1, x2, y2) = self.inner;
         Bbox::new(((x1 + x2) / 2.0, (y1 + y2) / 2.0, x2 - x1, y2 - y1))
     }
@@ -200,15 +200,15 @@ impl ConvertBbox<Xywh> for Bbox<Xywh> {
 
 /// Marker type for bounding boxes with coordinates of the center and the width and height.
 #[derive(Debug, Clone, Copy)]
-pub struct Cxywh;
+pub struct Cxcywh;
 
-impl Bbox<Cxywh> {
-    pub fn cxywh(cx: f32, cy: f32, w: f32, h: f32) -> Bbox<Cxywh> {
+impl Bbox<Cxcywh> {
+    pub fn cxywh(cx: f32, cy: f32, w: f32, h: f32) -> Bbox<Cxcywh> {
         Bbox::new((cx, cy, w, h))
     }
 
     /// Clamp the bounding box to the given width and height.
-    pub fn clamp(&self, width: f32, height: f32) -> Bbox<Cxywh> {
+    pub fn clamp(&self, width: f32, height: f32) -> Bbox<Cxcywh> {
         let (cx, cy, w, h) = self.inner;
         let x1 = (cx - w / 2.0).max(0.0).min(width);
         let y1 = (cy - h / 2.0).max(0.0).min(height);
@@ -218,14 +218,14 @@ impl Bbox<Cxywh> {
     }
 }
 
-impl ConvertBbox<Xyxy> for Bbox<Cxywh> {
+impl ConvertBbox<Xyxy> for Bbox<Cxcywh> {
     fn convert(&self) -> Bbox<Xyxy> {
         let (cx, cy, w, h) = self.inner;
         Bbox::new((cx - w / 2.0, cy - h / 2.0, cx + w / 2.0, cy + h / 2.0))
     }
 }
 
-impl ConvertBbox<Xywh> for Bbox<Cxywh> {
+impl ConvertBbox<Xywh> for Bbox<Cxcywh> {
     fn convert(&self) -> Bbox<Xywh> {
         let (cx, cy, w, h) = self.inner;
         Bbox::new((cx - w / 2.0, cy - h / 2.0, w, h))

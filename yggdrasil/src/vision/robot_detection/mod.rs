@@ -9,7 +9,7 @@ use crate::{
     },
     vision::camera::{Image, TopImage},
 };
-use bbox::{Bbox, ConvertBbox, Cxywh, Xyxy};
+use bbox::{Bbox, ConvertBbox, Cxcywh, Xyxy};
 use box_coder::BoxCoder;
 use fast_image_resize as fr;
 use itertools::Itertools;
@@ -240,7 +240,7 @@ fn log_detected_robots(robot_data: &RobotDetectionData, ctx: &DebugContext) -> R
         .detected
         .iter()
         .map(|DetectedRobot { bbox, confidence }| {
-            let cxcywh: Bbox<Cxywh> = bbox.convert();
+            let cxcywh: Bbox<Cxcywh> = bbox.convert();
             let (cx, cy, w, h) = cxcywh.into();
 
             // rerun expects half width and half height
