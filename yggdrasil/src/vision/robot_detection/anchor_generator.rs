@@ -5,8 +5,6 @@ use itertools::repeat_n;
 
 #[derive(Debug, Clone)]
 pub struct DefaultBoxGenerator {
-    pub aspect_ratios: Vec<Vec<f32>>,
-    pub scales: Vec<f32>,
     pub wh_pairs: Vec<Array2<f32>>,
 }
 
@@ -20,11 +18,7 @@ impl DefaultBoxGenerator {
         let scales = Self::create_scales(num_outputs, min_ratio, max_ratio);
         let wh_pairs = Self::create_width_height_pairs(num_outputs, &aspect_ratios, &scales);
 
-        DefaultBoxGenerator {
-            aspect_ratios,
-            scales,
-            wh_pairs,
-        }
+        DefaultBoxGenerator { wh_pairs }
     }
 
     /// Create a list of scales based on the number of outputs and the min and max ratios.

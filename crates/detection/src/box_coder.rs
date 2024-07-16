@@ -39,10 +39,10 @@ impl BoxCoder {
         let dw = &rel_codes.slice(s![.., 2..;4]) / ww;
         let dh = &rel_codes.slice(s![.., 3..;4]) / wh;
 
-        let dx = dx.to_shape((num_features)).unwrap();
-        let dy = dy.to_shape((num_features)).unwrap();
-        let dw = dw.to_shape((num_features)).unwrap();
-        let dh = dh.to_shape((num_features)).unwrap();
+        let dx = dx.to_shape(num_features).unwrap();
+        let dy = dy.to_shape(num_features).unwrap();
+        let dw = dw.to_shape(num_features).unwrap();
+        let dh = dh.to_shape(num_features).unwrap();
 
         // clamp to avoid overflow in exp
         let dw = dw.mapv(|x| x.min(self.bbox_xform_clip));

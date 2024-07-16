@@ -1,26 +1,26 @@
 #[derive(Debug, Clone, Copy)]
-pub struct BBox<T> {
+pub struct Bbox<T> {
     bbox: (f32, f32, f32, f32),
     _marker: std::marker::PhantomData<T>,
 }
 
-impl<T> BBox<T> {
+impl<T> Bbox<T> {
     /// Create a new bounding box from the given coordinates.
     fn new(bbox: (f32, f32, f32, f32)) -> Self {
-        BBox {
+        Bbox {
             bbox,
             _marker: std::marker::PhantomData,
         }
     }
 }
 
-impl<T> BBox<T>
+impl<T> Bbox<T>
 where
-    BBox<T>: IntoBbox<Xyxy>,
+    Bbox<T>: ConvertBbox<Xyxy>,
 {
     /// Compute the area of the bounding box.
     pub fn area(&self) -> f32 {
-        let (x1, y1, x2, y2) = IntoBbox::<Xyxy>::into_bbox(self).bbox;
+        let (x1, y1, x2, y2) = ConvertBbox::<Xyxy>::convert(self).bbox;
         (x2 - x1) * (y2 - y1)
     }
 
@@ -28,12 +28,12 @@ where
     ///
     /// The intersection area is computed as the area of the overlap between the two bounding boxes.
     /// If the bounding boxes do not overlap, the intersection area is `0.0`.
-    pub fn intersection<S: IntoBbox<Xyxy>>(&self, other: &S) -> f32
+    pub fn intersection<S>(&self, other: &S) -> f32
     where
-        S: IntoBbox<Xyxy>,
+        S: ConvertBbox<Xyxy>,
     {
-        let (x1, y1, x2, y2) = IntoBbox::<Xyxy>::into_bbox(self).bbox;
-        let (x3, y3, x4, y4) = IntoBbox::<Xyxy>::into_bbox(other).bbox;
+        let (x1, y1, x2, y2) = ConvertBbox::<Xyxy>::convert(self).bbox;
+        let (x3, y3, x4, y4) = ConvertBbox::<Xyxy>::convert(other).bbox;
 
         let x1 = x1.max(x3);
         let y1 = y1.max(y3);
@@ -51,59 +51,158 @@ where
     ///
     /// The union area is computed as the sum of the areas of the two bounding boxes minus the
     /// intersection area.
-    pub fn union<S: IntoBbox<Xyxy>>(&self, other: &S) -> f32
+    pub fn union<S>(&self, other: &S) -> f32
     where
-        S: IntoBbox<Xyxy>,
+        S: ConvertBbox<Xyxy>,
     {
-        let area1 = IntoBbox::<Xyxy>::into_bbox(self).area();
-        let area2 = IntoBbox::<Xyxy>::into_bbox(other).area();
+        let area1 = ConvertBbox::<Xyxy>::convert(self).area();
+        let area2 = ConvertBbox::<Xyxy>::convert(other).area();
         area1 + area2 - self.intersection(other)
+    }
+
+    /// Compute the intersection over union (IoU) between two bounding boxes.
+    pub fn iou<S>(&self, other: &S) -> f32
+    where
+        S: ConvertBbox<Xyxy>,
+    {
+        let intersect = self.intersection(other);
+        let union = self.union(other);
+        intersect / union
+    }
+}
+
+impl<T> From<Bbox<T>> for (f32, f32, f32, f32) {
+    fn from(bbox: Bbox<T>) -> Self {
+        bbox.bbox
     }
 }
 
 /// Trait for converting a bounding box to a different representation.
-pub trait IntoBbox<T> {
-    fn into_bbox(&self) -> BBox<T>;
+pub trait ConvertBbox<T> {
+    fn convert(&self) -> Bbox<T>;
 }
+
+// impl<T, S> ConvertBbox<T> for &S
+// where
+//     S: ConvertBbox<T>,
+// {
+//     fn convert(&self) -> Bbox<T> {
+//         self.convert()
+//     }
+// }
 
 /// Marker type for bounding boxes with coordinates of the top-left and bottom-right corners.
 #[derive(Debug, Clone, Copy)]
 pub struct Xyxy;
 
-impl BBox<Xyxy> {
+impl Bbox<Xyxy> {
     /// Create a bounding box from the coordinates of the top-left and bottom-right corners.
-    pub fn xyxy(bbox: (f32, f32, f32, f32)) -> BBox<Xyxy> {
-        BBox::new(bbox)
+    pub fn xyxy(x1: f32, y1: f32, x2: f32, y2: f32) -> Bbox<Xyxy> {
+        Bbox::new((x1, y1, x2, y2))
+    }
+
+    /// Clamp the bounding box to the given width and height.
+    pub fn clamp(&self, width: f32, height: f32) -> Bbox<Xyxy> {
+        let (x1, y1, x2, y2) = self.bbox;
+        let x1 = x1.max(0.0).min(width);
+        let y1 = y1.max(0.0).min(height);
+        let x2 = x2.max(0.0).min(width);
+        let y2 = y2.max(0.0).min(height);
+        Bbox::new((x1, y1, x2, y2))
+    }
+
+    /// Scale the bounding box to the given width and height.
+    pub fn scaled(&self, width: f32, height: f32) -> Bbox<Xyxy> {
+        let (x1, y1, x2, y2) = self.bbox;
+        Bbox::new((x1 * width, y1 * height, x2 * width, y2 * height))
     }
 }
 
-impl IntoBbox<Xyxy> for BBox<Xyxy> {
-    fn into_bbox(&self) -> BBox<Xyxy> {
+impl ConvertBbox<Xyxy> for Bbox<Xyxy> {
+    fn convert(&self) -> Bbox<Xyxy> {
         *self
     }
 }
 
-impl IntoBbox<Xywh> for BBox<Xyxy> {
-    fn into_bbox(&self) -> BBox<Xywh> {
+impl ConvertBbox<Xywh> for Bbox<Xyxy> {
+    fn convert(&self) -> Bbox<Xywh> {
         let (x1, y1, x2, y2) = self.bbox;
-        BBox::new((x1, y1, x2 - x1, y2 - y1))
+        Bbox::new((x1, y1, x2 - x1, y2 - y1))
     }
 }
 
-/// Marker type for bounding boxes with coordinates of the top-left corner and the width and height.
+impl ConvertBbox<Cxywh> for Bbox<Xyxy> {
+    fn convert(&self) -> Bbox<Cxywh> {
+        let (x1, y1, x2, y2) = self.bbox;
+        Bbox::new(((x1 + x2) / 2.0, (y1 + y2) / 2.0, x2 - x1, y2 - y1))
+    }
+}
+
+/// Marker type for bounding boxes with coordinates of the top-left corner and the width and height
+#[derive(Debug, Clone, Copy)]
 pub struct Xywh;
 
-impl BBox<Xywh> {
+impl Bbox<Xywh> {
     /// Create a bounding box from the coordinates of the top-left corner and the width and height.
-    pub fn xywh(bbox: (f32, f32, f32, f32)) -> BBox<Xywh> {
-        BBox::new(bbox)
+    pub fn xywh(x: f32, y: f32, w: f32, h: f32) -> Bbox<Xywh> {
+        Bbox::new((x, y, w, h))
+    }
+
+    /// Clamp the bounding box to the given width and height.
+    pub fn clamp(&self, width: f32, height: f32) -> Bbox<Xywh> {
+        let (x, y, w, h) = self.bbox;
+        let x = x.max(0.0).min(width);
+        let y = y.max(0.0).min(height);
+        let w = w.max(0.0).min(width - x);
+        let h = h.max(0.0).min(height - y);
+        Bbox::new((x, y, w, h))
     }
 }
 
-impl IntoBbox<Xyxy> for BBox<Xywh> {
-    fn into_bbox(&self) -> BBox<Xyxy> {
+impl ConvertBbox<Xyxy> for Bbox<Xywh> {
+    fn convert(&self) -> Bbox<Xyxy> {
         let (x, y, w, h) = self.bbox;
-        BBox::new((x, y, x + w, y + h))
+        Bbox::new((x, y, x + w, y + h))
+    }
+}
+
+impl ConvertBbox<Xywh> for Bbox<Xywh> {
+    fn convert(&self) -> Bbox<Xywh> {
+        *self
+    }
+}
+
+/// Marker type for bounding boxes with coordinates of the center and the width and height.
+#[derive(Debug, Clone, Copy)]
+pub struct Cxywh;
+
+impl Bbox<Cxywh> {
+    pub fn cxywh(cx: f32, cy: f32, w: f32, h: f32) -> Bbox<Cxywh> {
+        Bbox::new((cx, cy, w, h))
+    }
+
+    /// Clamp the bounding box to the given width and height.
+    pub fn clamp(&self, width: f32, height: f32) -> Bbox<Cxywh> {
+        let (cx, cy, w, h) = self.bbox;
+        let x1 = (cx - w / 2.0).max(0.0).min(width);
+        let y1 = (cy - h / 2.0).max(0.0).min(height);
+        let x2 = (cx + w / 2.0).max(0.0).min(width);
+        let y2 = (cy + h / 2.0).max(0.0).min(height);
+        Bbox::new((x1, y1, x2, y2))
+    }
+}
+
+impl ConvertBbox<Xyxy> for Bbox<Cxywh> {
+    fn convert(&self) -> Bbox<Xyxy> {
+        let (cx, cy, w, h) = self.bbox;
+        Bbox::new((cx - w / 2.0, cy - h / 2.0, cx + w / 2.0, cy + h / 2.0))
+    }
+}
+
+impl ConvertBbox<Xywh> for Bbox<Cxywh> {
+    fn convert(&self) -> Bbox<Xywh> {
+        let (cx, cy, w, h) = self.bbox;
+        Bbox::new((cx - w / 2.0, cy - h / 2.0, w, h))
     }
 }
 
@@ -112,11 +211,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_bbox() {
-        let bbox1 = BBox::xyxy((0.0, 0.0, 10.0, 10.0));
-        let bbox2 = BBox::xyxy((5.0, 5.0, 15.0, 15.0));
+    fn iou_xyxy() {
+        let bbox1 = Bbox::xyxy(0.0, 0.0, 10.0, 10.0);
+        let bbox2 = Bbox::xyxy(5.0, 5.0, 15.0, 15.0);
 
         assert_eq!(bbox1.intersection(&bbox2), 25.0);
         assert_eq!(bbox1.union(&bbox2), 175.0);
+        assert_eq!(bbox1.iou(&bbox2), 25.0 / 175.0);
+    }
+
+    #[test]
+    fn iou_xywh() {
+        let bbox1 = Bbox::xywh(0.0, 0.0, 10.0, 10.0);
+        let bbox2 = Bbox::xywh(5.0, 5.0, 10.0, 10.0);
+
+        assert_eq!(bbox1.intersection(&bbox2), 25.0);
+        assert_eq!(bbox1.union(&bbox2), 175.0);
+        assert_eq!(bbox1.iou(&bbox2), 25.0 / 175.0);
+    }
+
+    #[test]
+    fn iou_cxywh() {
+        let bbox1 = Bbox::cxywh(5.0, 5.0, 10.0, 10.0);
+        let bbox2 = Bbox::cxywh(10.0, 10.0, 10.0, 10.0);
+
+        assert_eq!(bbox1.intersection(&bbox2), 25.0);
+        assert_eq!(bbox1.union(&bbox2), 175.0);
+        assert_eq!(bbox1.iou(&bbox2), 25.0 / 175.0);
     }
 }
