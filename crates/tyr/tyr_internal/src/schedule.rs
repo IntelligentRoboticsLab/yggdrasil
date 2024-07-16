@@ -275,7 +275,7 @@ impl Schedule {
                         miette!(
                             "Unable to find dependency `{}` for `{}`",
                             dependency.boxed_system().system_name(),
-                            dependency.boxed_system().system_name()
+                            dependency_system.boxed_system().system_name()
                         )
                     })?;
 
