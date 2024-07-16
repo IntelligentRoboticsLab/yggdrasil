@@ -135,7 +135,7 @@ impl Index<usize> for FieldPositionsConfig {
         self.0
             .iter()
             .find(|elem| elem.player_number == index)
-            .expect("Player number not in layout configuration!")
+            .unwrap_or_else(|| panic!("Player index {:?} not in layout configuration!", index))
     }
 }
 
@@ -144,7 +144,12 @@ impl FieldPositionsConfig {
         self.0
             .iter()
             .find(|elem| elem.player_number == player_num as usize)
-            .expect("Player number not in layout configuration!")
+            .unwrap_or_else(|| {
+                panic!(
+                    "Player number {:?} not in layout configuration!",
+                    player_num
+                )
+            })
     }
 }
 

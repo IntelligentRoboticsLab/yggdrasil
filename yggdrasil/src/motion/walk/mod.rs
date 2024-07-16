@@ -41,14 +41,14 @@ impl SwingFoot {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct BalancingConfig {
     pub arm_swing_multiplier: f32,
     pub filtered_gyro_y_multiplier: f32,
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(deny_unknown_fields)]
 pub struct WalkingEngineConfig {
     #[serde_as(as = "DurationMilliSeconds")]

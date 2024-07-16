@@ -134,7 +134,7 @@ pub enum BehaviorKind {
 
 impl Default for BehaviorKind {
     fn default() -> Self {
-        BehaviorKind::StartUp(StartUp)
+        BehaviorKind::Stand(Stand)
     }
 }
 

@@ -69,6 +69,12 @@ impl WalkState {
     }
 }
 
+impl Default for WalkState {
+    fn default() -> Self {
+        WalkState::Standing(0.0)
+    }
+}
+
 /// An omni-directional humanoid gait generator based on Hengst, 2014
 ///
 /// <https://cgi.cse.unsw.edu.au/~robocup/2014ChampionTeamPaperReports/20140930-Bernhard.Hengst-Walk2014Report.pdf>
@@ -98,6 +104,12 @@ pub struct WalkingEngine {
     pub max_swing_foot_lift: f32,
     /// The configuration of the walking engine.
     pub config: WalkingEngineConfig,
+}
+
+impl Default for WalkingEngine {
+    fn default() -> Self {
+        WalkingEngine::new(&WalkingEngineConfig::default(), &RobotKinematics::default())
+    }
 }
 
 impl WalkingEngine {
@@ -363,9 +375,10 @@ impl Neg for Step {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum WalkRequest {
     Sit,
+    #[default]
     Stand,
     Walk(Step),
 }
