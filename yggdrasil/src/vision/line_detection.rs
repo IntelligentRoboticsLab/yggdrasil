@@ -6,23 +6,25 @@ use crate::localization::RobotPose;
 use crate::vision::camera::{matrix::CameraMatrices, Image};
 
 use crate::prelude::*;
+use crate::vision::scan_lines2::RegionColor;
 
 use super::line::LineSegment2;
-use super::scan_lines::PixelColor;
-use super::scan_lines2::{ScanLines, TopScanLines};
+use super::scan_lines2::{Region, ScanLines, TopScanLines};
 
 use derive_more::Deref;
 use heimdall::CameraMatrix;
 use nalgebra::{point, Point2};
 use nidhogg::types::color;
 
-const MAX_VERTICAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 50.;
+// const MAX_VERTICAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 50.;
+const MAX_VERTICAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 100.;
 
-const MAX_HORIZONTAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 50.;
+// const MAX_HORIZONTAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 50.;
+const MAX_HORIZONTAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 100.;
 
 const MAX_ALLOWED_MISTAKES: u32 = 3;
 
-const MIN_POINTS_PER_LINE: usize = 4;
+const MIN_POINTS_PER_LINE: usize = 1;
 
 const MINIMUM_LINE_SLOPE: f32 = 0.05;
 
@@ -34,7 +36,8 @@ pub struct LineDetectionModule;
 
 impl Module for LineDetectionModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(line_detection_system.after(super::scan_lines::scan_lines_system))
+        // app.add_system(line_detection_system.after(super::scan_lines::scan_lines_system))
+        app.add_system(line_detection_system.after(super::scan_lines2::scan_lines_system))
             .add_task::<ComputeTask<Result<TopLineDetectionData>>>()?
             .add_startup_system(start_line_detection_task)?
             .init_resource::<TopLineDetectionData>()
@@ -87,19 +90,134 @@ impl LinePoints {
     }
 }
 
-fn is_white(column: usize, row: usize, scan_lines: &ScanLines) -> bool {
-    let image = scan_lines.image();
+// fn is_white(column: usize, row: usize, scan_lines: &ScanLines) -> bool {
+//     let image = scan_lines.image();
+//
+//     let column = (column >> 1) << 1;
+//     assert_eq!(column % 2, 0);
+//     let offset = row * image.yuyv_image().width() * 2 + column * 2;
+//
+//     let y1 = unsafe { *image.yuyv_image().get_unchecked(offset) };
+//     let u = unsafe { *image.yuyv_image().get_unchecked(offset + 1) };
+//     let y2 = unsafe { *image.yuyv_image().get_unchecked(offset + 2) };
+//     let v = unsafe { *image.yuyv_image().get_unchecked(offset + 3) };
+//
+//     PixelColor::yuyv_is_white(y1, u, y2, v)
+// }
 
-    let column = (column >> 1) << 1;
-    assert_eq!(column % 2, 0);
-    let offset = row * image.yuyv_image().width() * 2 + column * 2;
+fn is_white(column: usize, row: usize, scan_lines: &ScanLines) -> Option<bool> {
+    use std::cmp::Ordering;
+    const MAX_PIXEL_DISTANCE: usize = 4;
 
-    let y1 = unsafe { *image.yuyv_image().get_unchecked(offset) };
-    let u = unsafe { *image.yuyv_image().get_unchecked(offset + 1) };
-    let y2 = unsafe { *image.yuyv_image().get_unchecked(offset + 2) };
-    let v = unsafe { *image.yuyv_image().get_unchecked(offset + 3) };
+    scan_lines
+        .horizontal()
+        .classified_scan_line_regions()
+        .binary_search_by(|classified_reagion| {
+            match classified_reagion.scan_line_region().region() {
+                super::scan_lines2::Region::Vertical {
+                    x,
+                    y_start: _,
+                    y_end: _,
+                } if *x - MAX_PIXEL_DISTANCE < column => Ordering::Less,
+                super::scan_lines2::Region::Vertical {
+                    x,
+                    y_start: _,
+                    y_end: _,
+                } if *x + MAX_PIXEL_DISTANCE > column => Ordering::Greater,
+                super::scan_lines2::Region::Vertical {
+                    x: _,
+                    y_start,
+                    y_end,
+                } => {
+                    if row < *y_start - MAX_PIXEL_DISTANCE {
+                        Ordering::Less
+                    } else if row > *y_end + MAX_PIXEL_DISTANCE {
+                        Ordering::Greater
+                    } else {
+                        Ordering::Equal
+                    }
+                }
+                super::scan_lines2::Region::Horizontal {
+                    y,
+                    x_start: _,
+                    x_end: _,
+                } if *y - 1 < row => Ordering::Less,
+                super::scan_lines2::Region::Horizontal {
+                    y,
+                    x_start: _,
+                    x_end: _,
+                } if *y + 1 > row => Ordering::Greater,
+                super::scan_lines2::Region::Horizontal {
+                    y: _,
+                    x_start,
+                    x_end,
+                } => {
+                    if column < *x_start - 1 {
+                        Ordering::Less
+                    } else if column > *x_end + 1 {
+                        Ordering::Greater
+                    } else {
+                        Ordering::Equal
+                    }
+                }
+            }
+        })
+        .ok()
+        .map(|index| {
+            matches!(
+                scan_lines.horizontal().classified_scan_line_regions()[index].color(),
+                RegionColor::White
+            )
+        })
+}
 
-    PixelColor::yuyv_is_white(y1, u, y2, v)
+fn is_white2(column: usize, row: usize, scan_lines: &ScanLines) -> bool {
+    let mut best_y_distance = 0;
+    let mut best_y_begin_index: usize = 0;
+    let mut best_y_end_index: usize = 0;
+
+    for (index, classified_scan_line_region) in scan_lines
+        .horizontal()
+        .classified_scan_line_regions()
+        .iter()
+        .enumerate()
+    {
+        match classified_scan_line_region.scan_line_region().region() {
+            Region::Horizontal { y, x_start, x_end } => {
+                let diff = (row as isize - *y as isize).unsigned_abs();
+
+                if diff == best_y_distance {
+                    best_y_end_index = index;
+                } else if diff < best_y_distance {
+                    best_y_distance = diff;
+                    best_y_begin_index = index;
+                } else {
+                    break;
+                }
+            }
+            _ => {
+                todo!()
+            }
+        }
+    }
+
+    for classified_scan_line_region in &scan_lines.horizontal().classified_scan_line_regions()
+        [best_y_begin_index..best_y_end_index]
+    {
+        match classified_scan_line_region.scan_line_region().region() {
+            Region::Horizontal { y, x_start, x_end } => {
+                if *x_end > column {
+                    eprintln!("searched for ({row}, {column}), found ({y}, {x_start}---{x_end})");
+                    return matches!(classified_scan_line_region.color(), RegionColor::White);
+                }
+            }
+            _ => {
+                todo!()
+            }
+        }
+    }
+
+    false
 }
 
 fn detect_top_lines(
@@ -118,7 +236,9 @@ fn detect_lines(
     line_spots: Vec<Point2<f32>>,
     scan_lines: &ScanLines,
 ) -> Result<LineDetectionData> {
+    let start = std::time::Instant::now();
     let mut points = line_detection_data.line_points;
+    // TODO: This clear should not be necessary.
     points.clear();
     points.extend(line_spots.iter().map(|point| (point.x, point.y)));
     points.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
@@ -166,7 +286,7 @@ fn detect_lines(
                         continue;
                     }
 
-                    if !is_white(column as usize, row, scan_lines) {
+                    if !is_white(column as usize, row, scan_lines).unwrap_or(true) {
                         if allowed_mistakes == 0 {
                             break;
                         }
@@ -180,7 +300,7 @@ fn detect_lines(
                         continue;
                     }
 
-                    if !is_white(column, row as usize, scan_lines) {
+                    if !is_white(column, row as usize, scan_lines).unwrap_or(true) {
                         if allowed_mistakes == 0 {
                             break;
                         }
@@ -217,6 +337,8 @@ fn detect_lines(
 
     points.clear();
     points_next.clear();
+
+    eprintln!("elapsed: {:?}", start.elapsed());
 
     Ok(LineDetectionData {
         line_points: points,
@@ -357,7 +479,7 @@ pub fn line_detection_system(
         draw_lines(
             dbg,
             &top_lines.0,
-            top_scan_lines.image(),
+            &top_lines.1,
             &camera_matrices.top,
             robot_pose,
         )?;
