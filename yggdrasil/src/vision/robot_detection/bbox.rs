@@ -1,6 +1,32 @@
+/// A type-safe bounding box.
+///
+/// It is a wrapper around a tuple of four `f32` values representing the coordinates of the bounding box.
+/// The type parameter `T` is used to specify the format of the bounding box, and is used to enforce type safety.
+///
+/// # Conversion
+///
+/// The bounding box can be converted between different formats using the [`ConvertBbox`] trait.
+/// This allows for easy conversion between different formats without having to manually convert the coordinates.
+///
+/// ```
+/// use yggdrasil::vision::robot_detection::bbox::*;
+///
+/// let xyxy = Bbox::xyxy(4.0, 4.0, 10.0, 10.0);
+/// let xywh: Bbox<Xywh> = xyxy.convert();
+///
+/// assert_eq!(xywh.inner, (4.0, 4.0, 6.0, 6.0));
+/// ```
+///
+/// # Formats
+///
+/// The following formats are supported:
+///
+/// - [`Xyxy`] (xmin, ymin, xmax, ymax)
+/// - [`Xywh`] (xmin, ymin, width, height)
+/// - [`Cxcywh`] (center_x, center_y, width, height)
 #[derive(Debug, Clone, Copy)]
 pub struct Bbox<T> {
-    bbox: (f32, f32, f32, f32),
+    pub inner: (f32, f32, f32, f32),
     _marker: std::marker::PhantomData<T>,
 }
 
@@ -8,7 +34,7 @@ impl<T> Bbox<T> {
     /// Create a new bounding box from the given coordinates.
     fn new(bbox: (f32, f32, f32, f32)) -> Self {
         Bbox {
-            bbox,
+            inner: bbox,
             _marker: std::marker::PhantomData,
         }
     }
@@ -20,7 +46,7 @@ where
 {
     /// Compute the area of the bounding box.
     pub fn area(&self) -> f32 {
-        let (x1, y1, x2, y2) = ConvertBbox::<Xyxy>::convert(self).bbox;
+        let (x1, y1, x2, y2) = ConvertBbox::<Xyxy>::convert(self).inner;
         (x2 - x1) * (y2 - y1)
     }
 
@@ -32,8 +58,8 @@ where
     where
         S: ConvertBbox<Xyxy>,
     {
-        let (x1, y1, x2, y2) = ConvertBbox::<Xyxy>::convert(self).bbox;
-        let (x3, y3, x4, y4) = ConvertBbox::<Xyxy>::convert(other).bbox;
+        let (x1, y1, x2, y2) = ConvertBbox::<Xyxy>::convert(self).inner;
+        let (x3, y3, x4, y4) = ConvertBbox::<Xyxy>::convert(other).inner;
 
         let x1 = x1.max(x3);
         let y1 = y1.max(y3);
@@ -73,7 +99,7 @@ where
 
 impl<T> From<Bbox<T>> for (f32, f32, f32, f32) {
     fn from(bbox: Bbox<T>) -> Self {
-        bbox.bbox
+        bbox.inner
     }
 }
 
@@ -103,7 +129,7 @@ impl Bbox<Xyxy> {
 
     /// Clamp the bounding box to the given width and height.
     pub fn clamp(&self, width: f32, height: f32) -> Bbox<Xyxy> {
-        let (x1, y1, x2, y2) = self.bbox;
+        let (x1, y1, x2, y2) = self.inner;
         let x1 = x1.max(0.0).min(width);
         let y1 = y1.max(0.0).min(height);
         let x2 = x2.max(0.0).min(width);
@@ -113,7 +139,7 @@ impl Bbox<Xyxy> {
 
     /// Scale the bounding box to the given width and height.
     pub fn scaled(&self, width: f32, height: f32) -> Bbox<Xyxy> {
-        let (x1, y1, x2, y2) = self.bbox;
+        let (x1, y1, x2, y2) = self.inner;
         Bbox::new((x1 * width, y1 * height, x2 * width, y2 * height))
     }
 }
@@ -126,14 +152,14 @@ impl ConvertBbox<Xyxy> for Bbox<Xyxy> {
 
 impl ConvertBbox<Xywh> for Bbox<Xyxy> {
     fn convert(&self) -> Bbox<Xywh> {
-        let (x1, y1, x2, y2) = self.bbox;
+        let (x1, y1, x2, y2) = self.inner;
         Bbox::new((x1, y1, x2 - x1, y2 - y1))
     }
 }
 
 impl ConvertBbox<Cxywh> for Bbox<Xyxy> {
     fn convert(&self) -> Bbox<Cxywh> {
-        let (x1, y1, x2, y2) = self.bbox;
+        let (x1, y1, x2, y2) = self.inner;
         Bbox::new(((x1 + x2) / 2.0, (y1 + y2) / 2.0, x2 - x1, y2 - y1))
     }
 }
@@ -150,7 +176,7 @@ impl Bbox<Xywh> {
 
     /// Clamp the bounding box to the given width and height.
     pub fn clamp(&self, width: f32, height: f32) -> Bbox<Xywh> {
-        let (x, y, w, h) = self.bbox;
+        let (x, y, w, h) = self.inner;
         let x = x.max(0.0).min(width);
         let y = y.max(0.0).min(height);
         let w = w.max(0.0).min(width - x);
@@ -161,7 +187,7 @@ impl Bbox<Xywh> {
 
 impl ConvertBbox<Xyxy> for Bbox<Xywh> {
     fn convert(&self) -> Bbox<Xyxy> {
-        let (x, y, w, h) = self.bbox;
+        let (x, y, w, h) = self.inner;
         Bbox::new((x, y, x + w, y + h))
     }
 }
@@ -183,7 +209,7 @@ impl Bbox<Cxywh> {
 
     /// Clamp the bounding box to the given width and height.
     pub fn clamp(&self, width: f32, height: f32) -> Bbox<Cxywh> {
-        let (cx, cy, w, h) = self.bbox;
+        let (cx, cy, w, h) = self.inner;
         let x1 = (cx - w / 2.0).max(0.0).min(width);
         let y1 = (cy - h / 2.0).max(0.0).min(height);
         let x2 = (cx + w / 2.0).max(0.0).min(width);
@@ -194,14 +220,14 @@ impl Bbox<Cxywh> {
 
 impl ConvertBbox<Xyxy> for Bbox<Cxywh> {
     fn convert(&self) -> Bbox<Xyxy> {
-        let (cx, cy, w, h) = self.bbox;
+        let (cx, cy, w, h) = self.inner;
         Bbox::new((cx - w / 2.0, cy - h / 2.0, cx + w / 2.0, cy + h / 2.0))
     }
 }
 
 impl ConvertBbox<Xywh> for Bbox<Cxywh> {
     fn convert(&self) -> Bbox<Xywh> {
-        let (cx, cy, w, h) = self.bbox;
+        let (cx, cy, w, h) = self.inner;
         Bbox::new((cx - w / 2.0, cy - h / 2.0, w, h))
     }
 }

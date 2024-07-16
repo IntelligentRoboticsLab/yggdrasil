@@ -17,7 +17,7 @@ use miette::IntoDiagnostic;
 use ndarray::{Array2, Array3, Axis};
 
 mod anchor_generator;
-mod bbox;
+pub mod bbox;
 mod box_coder;
 
 use anchor_generator::DefaultBoxGenerator;
