@@ -1,5 +1,5 @@
 use dyn_clone::DynClone;
-use miette::{miette, Result};
+use miette::{miette, Result, WrapErr};
 use std::hash::Hash;
 use std::{
     any::{type_name, Any, TypeId},
@@ -58,7 +58,7 @@ macro_rules! impl_system {
 
                 // I have NO idea why but these need to be separated
                 $(
-                    let $params = $params::get_resource(&resources)?;
+                    let $params = $params::get_resource(&resources).wrap_err_with(|| format!("Failed to get resources in system `{}`", self.system_name()))?;
                 )*
 
                 $(
@@ -312,10 +312,10 @@ impl<'res, T: Send + Sync + 'static> SystemParam for Res<'res, T> {
     }
 
     fn get_resource(storage: &Storage) -> Result<Self::ErasedResources> {
-        Ok(storage
+        storage
             .get::<T>()
-            .ok_or_else(|| miette!("Resource `&{}` missing in storage", type_name::<T>()))?
-            .clone())
+            .cloned()
+            .ok_or_else(|| miette!("Resource `&{}` missing in storage 🤓☝️", type_name::<T>()))
     }
 
     fn type_info() -> Vec<TypeInfo> {
@@ -364,10 +364,10 @@ impl<'res, T: Send + Sync + 'static> SystemParam for ResMut<'res, T> {
     }
 
     fn get_resource(storage: &Storage) -> Result<Self::ErasedResources> {
-        Ok(storage
+        storage
             .get::<T>()
-            .ok_or_else(|| miette!("Resource `&mut {}` missing in storage", type_name::<T>()))?
-            .clone())
+            .cloned()
+            .ok_or_else(|| miette!("Resource `&mut {}` missing in storage", type_name::<T>()))
     }
 
     fn type_info() -> Vec<TypeInfo> {
