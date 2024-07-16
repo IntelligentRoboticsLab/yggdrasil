@@ -56,7 +56,7 @@ pub fn update_orientation(
     Ok(())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Inspect)]
 pub struct OrientationFilterConfig {
     pub acceleration_weight: f32,
     pub acceleration_threshold: f32,

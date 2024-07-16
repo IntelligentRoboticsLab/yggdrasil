@@ -13,7 +13,7 @@ use bifrost::communication::{GameControllerMessage, GameState};
 use nidhogg::types::color;
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Inspect, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct PrimaryStateConfig {
     #[serde_as(as = "DurationMilliSeconds<u64>")]

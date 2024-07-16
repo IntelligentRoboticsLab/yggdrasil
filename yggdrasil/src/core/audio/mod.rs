@@ -14,7 +14,7 @@ pub mod wee_sound;
 pub mod whistle_detection;
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Inspect, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct AudioConfig {
     #[serde_as(as = "DurationMilliSeconds<u64>")]
@@ -32,7 +32,7 @@ pub struct AudioModule;
 
 impl Module for AudioModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.init_config::<AudioConfig>()?
+        app.init_inspectable_config::<AudioConfig>()?
             .add_module(SoundManagerModule)?
             .add_module(AudioInputModule)?
             .add_module(WhistleDetectionModule)

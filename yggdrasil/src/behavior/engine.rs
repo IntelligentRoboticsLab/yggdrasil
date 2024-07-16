@@ -12,7 +12,7 @@ use crate::{
         BehaviorConfig,
     },
     core::{
-        config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
+        config::{layout::LayoutConfig, showtime::PlayerConfig},
         debug::DebugContext,
     },
     game_controller::GameControllerConfig,
@@ -53,8 +53,6 @@ pub struct Context<'a> {
     pub player_config: &'a PlayerConfig,
     /// Config containing information about the layout of the field.
     pub layout_config: &'a LayoutConfig,
-    /// Config containing general information
-    pub yggdrasil_config: &'a YggdrasilConfig,
     /// Config containing parameters for various behaviors
     pub behavior_config: &'a BehaviorConfig,
     /// Contains the message received from the game-controller.
@@ -296,10 +294,9 @@ pub fn step(
     (engine, primary_state): (&mut Engine, &mut PrimaryState),
     robot_info: &RobotInfo,
     (head_buttons, chest_button, contacts): (&HeadButtons, &ChestButton, &Contacts),
-    (player_config, layout_config, yggdrasil_config, behavior_config, game_controller_config): (
+    (player_config, layout_config, behavior_config, game_controller_config): (
         &PlayerConfig,
         &LayoutConfig,
-        &YggdrasilConfig,
         &BehaviorConfig,
         &GameControllerConfig,
     ),
@@ -321,7 +318,6 @@ pub fn step(
         contacts,
         player_config,
         layout_config,
-        yggdrasil_config,
         behavior_config,
         game_controller_message: game_controller_message.as_ref(),
         game_controller_config,

@@ -26,7 +26,7 @@ pub struct WhistleDetectionModule;
 impl Module for WhistleDetectionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_ml_task::<WhistleDetectionModel>()?
-            .init_config::<WhistleDetectionConfig>()?
+            .init_inspectable_config::<WhistleDetectionConfig>()?
             .add_system(detect_whistle)
             .init_resource::<WhistleState>()
     }
@@ -40,7 +40,7 @@ impl MlModel for WhistleDetectionModel {
     const ONNX_PATH: &'static str = "models/whistle_detection.onnx";
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Inspect)]
 pub struct WhistleDetectionConfig {
     pub threshold: f32,
     /// For how many detection cycles to listen for a whistle.

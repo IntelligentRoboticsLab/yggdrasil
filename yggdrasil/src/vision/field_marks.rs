@@ -28,7 +28,7 @@ impl MlModel for FieldMarksModel {
     const ONNX_PATH: &'static str = "models/field_marks.onnx";
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Inspect)]
 pub struct FieldMarksConfig {
     pub distance_threshold: f32,
     pub angle_tolerance: f32,

@@ -16,7 +16,7 @@ use matrix::{CalibrationConfig, CameraMatrices};
 #[cfg(not(feature = "local"))]
 use super::field_boundary::FieldBoundary;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Inspect, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct CameraConfig {
     pub top: CameraSettings,

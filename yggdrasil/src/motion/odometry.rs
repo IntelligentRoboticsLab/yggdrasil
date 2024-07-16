@@ -11,7 +11,7 @@ use crate::{
     sensor::orientation::RobotOrientation,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Inspect)]
 pub struct OdometryConfig {
     scale_factor: Vector2<f32>,
 }

@@ -24,7 +24,7 @@ impl Module for ScanLinesModule {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Inspect, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct ScanLinesConfig {
     horizontal_scan_line_interval: usize,

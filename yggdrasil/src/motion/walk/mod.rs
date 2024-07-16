@@ -48,7 +48,7 @@ pub struct BalancingConfig {
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Inspect, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct WalkingEngineConfig {
     #[serde_as(as = "DurationMilliSeconds")]
@@ -78,7 +78,7 @@ pub struct WalkingEngineModule;
 impl Module for WalkingEngineModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
-            .init_config::<WalkingEngineConfig>()?
+            .init_inspectable_config::<WalkingEngineConfig>()?
             .init_resource::<SwingFoot>()?
             .add_startup_system(init_walking_engine)?
             .add_staged_system_chain(

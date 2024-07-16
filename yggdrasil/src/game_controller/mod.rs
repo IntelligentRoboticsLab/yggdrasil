@@ -16,7 +16,7 @@ mod receive;
 mod transmit;
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Inspect, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct GameControllerConfig {
     #[serde_as(as = "DurationMilliSeconds<u64>")]

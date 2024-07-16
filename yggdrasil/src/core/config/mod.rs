@@ -53,7 +53,7 @@ impl Module for ConfigModule {
         app.add_startup_system(initialize_config_roots)?
             .init_config::<ShowtimeConfig>()?
             .init_config::<LayoutConfig>()?
-            .init_config::<BehaviorConfig>()?
+            .init_inspectable_config::<BehaviorConfig>()?
             .init_config::<TyrConfig>()?
             .init_config::<YggdrasilConfig>()?
             .add_startup_system(showtime::configure_showtime)?
@@ -65,14 +65,14 @@ impl Module for ConfigModule {
 
 #[startup_system]
 fn init_subconfigs(storage: &mut Storage, config: &mut YggdrasilConfig) -> Result<()> {
-    storage.add_resource(Resource::new(config.camera.clone()))?;
-    storage.add_resource(Resource::new(config.filter.clone()))?;
-    storage.add_resource(Resource::new(config.game_controller.clone()))?;
-    storage.add_resource(Resource::new(config.primary_state.clone()))?;
-    storage.add_resource(Resource::new(config.vision.scan_lines.clone()))?;
-    storage.add_resource(Resource::new(config.vision.field_marks.clone()))?;
-    storage.add_resource(Resource::new(config.odometry.clone()))?;
-    storage.add_resource(Resource::new(config.orientation.clone()))?;
+    storage.add_inspectable_resource(Resource::new(config.camera.clone()))?;
+    storage.add_inspectable_resource(Resource::new(config.filter.clone()))?;
+    storage.add_inspectable_resource(Resource::new(config.game_controller.clone()))?;
+    storage.add_inspectable_resource(Resource::new(config.primary_state.clone()))?;
+    storage.add_inspectable_resource(Resource::new(config.vision.scan_lines.clone()))?;
+    storage.add_inspectable_resource(Resource::new(config.vision.field_marks.clone()))?;
+    storage.add_inspectable_resource(Resource::new(config.odometry.clone()))?;
+    storage.add_inspectable_resource(Resource::new(config.orientation.clone()))?;
 
     Ok(())
 }
@@ -120,6 +120,10 @@ pub trait ConfigResource {
     fn init_config<T: Config + Send + Sync + 'static>(self) -> Result<Self>
     where
         Self: Sized;
+
+    fn init_inspectable_config<T: Config + Inspect + Send + Sync + 'static>(self) -> Result<Self>
+    where
+        Self: Sized;
 }
 
 impl ConfigResource for App {
@@ -130,6 +134,17 @@ impl ConfigResource for App {
         let app = self.add_startup_system(_init_config::<T>)?;
 
         tracing::info!("Loaded config `{}`", T::name());
+
+        Ok(app)
+    }
+
+    fn init_inspectable_config<T: Config + Inspect + Send + Sync + 'static>(self) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        let app = self.add_startup_system(_init_inspectable_config::<T>)?;
+
+        tracing::info!("Loaded inspectable config `{}`", <T as odal::Config>::name());
 
         Ok(app)
     }
@@ -166,4 +181,37 @@ fn _init_config<T: Config + Send + Sync + 'static>(
     }?;
 
     storage.add_resource(Resource::new(config))
+}
+
+#[startup_system]
+fn _init_inspectable_config<T: Config + Inspect + Send + Sync + 'static>(
+    storage: &mut Storage,
+    main_dir: &MainConfigDir,
+    overlay_dir: &OverlayConfigDir,
+) -> Result<()> {
+    // add config file path to the config roots
+    let main_path: &Path = main_dir.0.as_ref();
+    let overlay_path: &Path = overlay_dir.0.as_ref();
+
+    let config = match T::load_with_overlay(main_path, overlay_path) {
+        Ok(t) => Ok(t),
+        // failed to load any overlay
+        Err(Error {
+            name,
+            kind:
+                ErrorKind::Load {
+                    path,
+                    config_kind: ConfigKind::Overlay,
+                    ..
+                },
+        }) => {
+            // log and use only main config
+            tracing::debug!("`{name}`: Failed to read overlay from `{path}`");
+            // use only root in that case
+            T::load(main_path)
+        }
+        Err(e) => Err(e),
+    }?;
+
+    storage.add_inspectable_resource(Resource::new(config))
 }

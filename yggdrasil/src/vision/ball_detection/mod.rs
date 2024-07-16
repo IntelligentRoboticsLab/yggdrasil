@@ -31,13 +31,13 @@ impl Module for BallDetectionModule {
             .add_module(classifier::BallClassifierModule)?
             .add_system(log_balls.after(classifier::detect_balls))
             .add_system(reset_eye_color.after(classifier::detect_balls))
-            .init_config::<BallDetectionConfig>()?
+            .init_inspectable_config::<BallDetectionConfig>()?
             .add_startup_system(init_subconfigs)
     }
 }
 
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Inspect)]
 pub struct BallDetectionConfig {
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub max_classification_age_eye_color: Duration,

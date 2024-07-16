@@ -18,7 +18,7 @@ pub mod low_pass_filter;
 pub mod orientation;
 pub mod sonar;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Inspect, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct FilterConfig {
     pub fsr: FsrConfig,
