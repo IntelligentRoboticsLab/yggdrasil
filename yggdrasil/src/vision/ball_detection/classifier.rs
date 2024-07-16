@@ -1,6 +1,7 @@
 use std::ops::Deref;
 use std::time::{Duration, Instant};
 
+use heimdall::CameraMatrix;
 use nalgebra::{Point2, Vector2};
 
 use nidhogg::types::{color, FillExt, LeftEye};
@@ -12,11 +13,13 @@ use crate::localization::RobotPose;
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority::Medium;
 use crate::prelude::*;
+use crate::vision::camera::BottomImage;
 use crate::vision::camera::{matrix::CameraMatrices, Image, TopImage};
 
 use crate::core::ml::{MlModel, MlTask, MlTaskResource};
+use crate::vision::scan_lines2::CameraType;
 
-use super::proposal::{self, TopBallProposals};
+use super::proposal::{self, BallProposals, BottomBallProposals, TopBallProposals};
 use super::BallDetectionConfig;
 
 const IMAGE_INPUT_SIZE: usize = 32;
@@ -34,20 +37,25 @@ pub(crate) struct BallClassifierModule;
 
 impl Module for BallClassifierModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(detect_balls.after(proposal::ball_proposals_system))
+        app.add_system(ball_detection_system.after(proposal::ball_proposals_system))
             .add_startup_system(init_ball_classifier)?
             .add_ml_task::<BallClassifierModel>()
     }
 }
 
 #[startup_system]
-fn init_ball_classifier(storage: &mut Storage, top_image: &TopImage) -> Result<()> {
-    let balls = Balls {
+fn init_ball_classifier(
+    storage: &mut Storage,
+    top_image: &TopImage,
+    bottom_image: &BottomImage,
+) -> Result<()> {
+    let top = Balls {
         balls: Vec::new(),
-        image: top_image.deref().clone(),
+        top_image: top_image.deref().clone(),
+        bottom_image: bottom_image.deref().clone(),
     };
 
-    storage.add_resource(Resource::new(balls))?;
+    storage.add_resource(Resource::new(top))?;
 
     Ok(())
 }
@@ -68,15 +76,21 @@ pub struct Ball {
     pub distance: f32,
     pub timestamp: Instant,
     pub confidence: f32,
+    pub camera: CameraType,
 }
 
 #[derive(Clone)]
 pub struct Balls {
     pub balls: Vec<Ball>,
-    pub image: Image,
+    pub top_image: Image,
+    pub bottom_image: Image,
 }
 
 impl Balls {
+    pub fn no_balls(&self) -> bool {
+        self.balls.is_empty()
+    }
+
     pub fn most_confident_ball(&self) -> Option<&Ball> {
         self.balls
             .iter()
@@ -97,16 +111,54 @@ impl Balls {
 }
 
 #[system]
-pub(super) fn detect_balls(
-    proposals: &TopBallProposals,
-    model: &mut MlTask<BallClassifierModel>,
+pub(super) fn ball_detection_system(
     balls: &mut Balls,
+    (top_proposals, bottom_proposals): (&TopBallProposals, &BottomBallProposals),
+    model: &mut MlTask<BallClassifierModel>,
     camera_matrices: &CameraMatrices,
     config: &BallDetectionConfig,
     nao: &mut NaoManager,
     robot_pose: &RobotPose,
 ) -> Result<()> {
-    if balls.image.timestamp() == proposals.image.timestamp() {
+    detect_balls(
+        top_proposals,
+        model,
+        balls,
+        &camera_matrices.top,
+        config,
+        robot_pose,
+        CameraType::Top,
+    )?;
+
+    detect_balls(
+        bottom_proposals,
+        model,
+        balls,
+        &camera_matrices.bottom,
+        config,
+        robot_pose,
+        CameraType::Bottom,
+    )?;
+
+    if balls.no_balls() {
+        nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Medium);
+    } else {
+        nao.set_left_eye_led(LeftEye::fill(color::f32::PURPLE), Medium);
+    }
+
+    Ok(())
+}
+
+fn detect_balls(
+    proposals: &BallProposals,
+    model: &mut MlTask<BallClassifierModel>,
+    balls: &mut Balls,
+    camera_matrix: &CameraMatrix,
+    config: &BallDetectionConfig,
+    robot_pose: &RobotPose,
+    camera: CameraType,
+) -> Result<()> {
+    if balls.top_image.is_from_cycle(proposals.image.cycle()) {
         return Ok(());
     }
 
@@ -151,9 +203,8 @@ pub(super) fn detect_balls(
                         break;
                     }
 
-                    if let Ok(robot_to_ball) = camera_matrices
-                        .top
-                        .pixel_to_ground(proposal.position.cast(), 0.0)
+                    if let Ok(robot_to_ball) =
+                        camera_matrix.pixel_to_ground(proposal.position.cast(), 0.0)
                     {
                         classified_balls.push(Ball {
                             position_image: proposal.position.cast(),
@@ -162,6 +213,7 @@ pub(super) fn detect_balls(
                             distance: proposal.distance_to_ball,
                             timestamp: Instant::now(),
                             confidence,
+                            camera,
                         });
                     }
                 }
@@ -169,13 +221,7 @@ pub(super) fn detect_balls(
         }
     }
 
-    if !classified_balls.is_empty() {
-        nao.set_left_eye_led(LeftEye::fill(color::f32::PURPLE), Medium);
-    } else {
-        nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Medium);
-    }
-
-    balls.image = proposals.image.clone();
+    balls.top_image = proposals.image.clone();
     if classified_balls.is_empty() {
         for ball in balls.balls.iter() {
             if ball.timestamp.elapsed() < classifier.ball_life {

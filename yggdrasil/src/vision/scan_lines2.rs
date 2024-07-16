@@ -492,10 +492,10 @@ fn get_scan_lines(
 
 #[system]
 pub fn scan_lines_system(
-    (top_image, bottom_image): (&TopImage, &BottomImage),
-    (top_scan_grid, bottom_scan_grid): (&mut TopScanGrid, &mut BottomScanGrid),
-    field_boundary: &FieldBoundary,
     (top_scan_lines, bottom_scan_lines): (&mut TopScanLines, &mut BottomScanLines),
+    (top_image, bottom_image): (&TopImage, &BottomImage),
+    (top_scan_grid, bottom_scan_grid): (&TopScanGrid, &BottomScanGrid),
+    field_boundary: &FieldBoundary,
     curr_cycle: &Cycle,
     dbg: &DebugContext,
 ) -> Result<()> {
@@ -649,8 +649,8 @@ impl RegionColor {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum CameraType {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CameraType {
     Top,
     Bottom,
 }

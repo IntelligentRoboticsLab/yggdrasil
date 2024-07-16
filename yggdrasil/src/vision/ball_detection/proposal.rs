@@ -10,12 +10,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     core::debug::DebugContext,
-    nao::Cycle,
     prelude::*,
     vision::{
         camera::{matrix::CameraMatrices, Image},
         scan_lines2::{
-            self, BottomScanLines, ClassifiedScanLineRegion, RegionColor, ScanLines, TopScanLines,
+            self, BottomScanLines, CameraType, ClassifiedScanLineRegion, RegionColor, ScanLines,
+            TopScanLines,
         },
     },
 };
@@ -35,8 +35,6 @@ pub struct BallProposalConfig {
     pub white_ratio: f32,
     /// Height/width of the bounding box around the ball
     pub bounding_box_scale: f32,
-    /// Maximum amount of proposals to search
-    pub max_proposals: usize,
 }
 
 /// Module for finding possible ball locations in the top camera image
@@ -90,11 +88,23 @@ pub(super) fn ball_proposals_system(
     (top_proposals, bottom_proposals): (&mut TopBallProposals, &mut BottomBallProposals),
     dbg: &DebugContext,
 ) -> Result<()> {
-    let top = get_ball_proposals(top_scan_lines, &matrices.top, &config.top, dbg)?;
-    let bottom = get_ball_proposals(bottom_scan_lines, &matrices.bottom, &config.bottom, dbg)?;
+    update_ball_proposals(
+        top_proposals,
+        top_scan_lines,
+        &matrices.top,
+        &config.top,
+        CameraType::Top,
+        dbg,
+    )?;
 
-    *top_proposals = TopBallProposals(top);
-    *bottom_proposals = BottomBallProposals(bottom);
+    update_ball_proposals(
+        bottom_proposals,
+        bottom_scan_lines,
+        &matrices.bottom,
+        &config.bottom,
+        CameraType::Bottom,
+        dbg,
+    )?;
 
     Ok(())
 }
@@ -104,15 +114,18 @@ pub fn update_ball_proposals(
     scan_lines: &ScanLines,
     matrix: &CameraMatrix,
     config: &BallProposalConfig,
-    cycle: &Cycle,
+    camera: CameraType,
     dbg: &DebugContext,
 ) -> Result<()> {
     // if the image has not changed, we don't need to recalculate the proposals
-    if !scan_lines.image().is_from_cycle(*cycle) {
+    if ball_proposals
+        .image
+        .is_from_cycle(scan_lines.image().cycle())
+    {
         return Ok(());
     }
 
-    let new = get_ball_proposals(scan_lines, matrix, config, dbg)?;
+    let new = get_ball_proposals(scan_lines, matrix, config, camera, dbg)?;
 
     *ball_proposals = new;
 
@@ -187,6 +200,7 @@ fn get_ball_proposals(
     scan_lines: &ScanLines,
     matrix: &CameraMatrix,
     config: &BallProposalConfig,
+    camera: CameraType,
     dbg: &DebugContext,
 ) -> Result<BallProposals> {
     let h_lines = scan_lines.horizontal();
@@ -271,15 +285,12 @@ fn get_ball_proposals(
             new_mid_point.y + range,
         ));
         scores.push((range, color_count.white_ratio()));
-
-        if proposals.len() >= config.max_proposals {
-            break;
-        }
     }
 
-    let (radii, white_ratios) = scores.into_iter().unzip();
+    let (radii, white_ratios): (Vec<_>, Vec<_>) = scores.into_iter().unzip();
 
-    let indices = nms(boxes, white_ratios, 0.25);
+    let indices = nms(boxes, white_ratios, 0.5);
+    // let indices = (0..boxes.len()).collect::<Vec<_>>();
 
     let proposals: Vec<_> = indices.iter().map(|&i| proposals[i].clone()).collect();
     let potential: Vec<_> = proposals
@@ -287,23 +298,19 @@ fn get_ball_proposals(
         .map(|p| (p.position.x as f32, p.position.y as f32))
         .collect();
 
-    if scan_lines.image().yuyv_image().height() == 480 {
-        dbg.log_points2d_for_image_with_radii(
-            "top_camera/image/bruh",
-            &potential,
-            scan_lines.image().cycle(),
-            nidhogg::types::color::u8::WHITE,
-            radii,
-        )?;
+    let camera_str = if matches!(camera, CameraType::Top) {
+        "top_camera"
     } else {
-        dbg.log_points2d_for_image_with_radii(
-            "bottom_camera/image/bruh",
-            &potential,
-            scan_lines.image().cycle(),
-            nidhogg::types::color::u8::WHITE,
-            radii,
-        )?;
-    }
+        "bottom_camera"
+    };
+
+    dbg.log_points2d_for_image_with_radii(
+        format!("{camera_str}/image/bruh"),
+        &potential,
+        scan_lines.image().cycle(),
+        nidhogg::types::color::u8::WHITE,
+        radii,
+    )?;
 
     let image = scan_lines.image().clone();
 
@@ -313,6 +320,8 @@ fn get_ball_proposals(
 fn nms(boxes: Vec<BBox>, scores: Vec<f32>, threshold: f32) -> Vec<usize> {
     let mut final_indices = Vec::new();
 
+    println!("Began with {}", boxes.len());
+
     for i in 0..boxes.len() {
         let mut discard = false;
         for j in 0..boxes.len() {
@@ -321,11 +330,11 @@ fn nms(boxes: Vec<BBox>, scores: Vec<f32>, threshold: f32) -> Vec<usize> {
             }
 
             let overlap = iou(&boxes[i], &boxes[j]);
+            println!("iou: {}", overlap);
             let score_i = scores[i];
             let score_j = scores[j];
 
             if overlap > threshold && score_j > score_i {
-                // eprintln!("Discarding proposal {} due to overlap with {}", i, j);
                 discard = true;
                 break;
             }
@@ -335,6 +344,8 @@ fn nms(boxes: Vec<BBox>, scores: Vec<f32>, threshold: f32) -> Vec<usize> {
             final_indices.push(i);
         }
     }
+
+    println!("Ended with {}", final_indices.len());
 
     final_indices
 }

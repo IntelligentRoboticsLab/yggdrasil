@@ -26,8 +26,8 @@ impl Module for BallDetectionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_module(proposal::BallProposalModule)?
             .add_module(classifier::BallClassifierModule)?
-            .add_system(log_balls.after(classifier::detect_balls))
-            .add_system(reset_eye_color.after(classifier::detect_balls))
+            .add_system(log_balls.after(classifier::ball_detection_system))
+            .add_system(reset_eye_color.after(classifier::ball_detection_system))
             .init_config::<BallDetectionConfig>()?
             .add_startup_system(init_subconfigs)
     }
@@ -107,7 +107,7 @@ fn log_balls(
         "top_camera/image/detected_balls",
         &positions,
         &sizes,
-        &balls.image,
+        &balls.top_image,
         color::u8::PURPLE,
     )?;
 

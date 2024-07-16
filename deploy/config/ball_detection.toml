@@ -3,23 +3,19 @@ max_classification_age_eye_color = 250
 
 [proposal.top]
 # The minimum ratio of white pixels in the range around the proposed ball
-white_ratio = 0.5
+white_ratio = 0.6
 # Height/width of the bounding box around the ball
 bounding_box_scale = 100.0
-# Maximum amount of proposals to search
-max_proposals = 20
 
 [proposal.bottom]
 # The minimum ratio of white pixels in the range around the proposed ball
-white_ratio = 0.5
+white_ratio = 0.75
 # Height/width of the bounding box around the ball
 bounding_box_scale = 70.0
-# Maximum amount of proposals to search
-max_proposals = 10
 
 [classifier]
 # The threshold for the classifier to consider a proposal a ball
-confidence_threshold = 0.75
+confidence_threshold = 0.6
 # The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
 time_budget = 1000
 # Lifetime of the ball in milliseconds, this is the time the robot will remember a classified balls' location.
