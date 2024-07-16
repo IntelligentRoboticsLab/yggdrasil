@@ -40,7 +40,7 @@ impl Module for DebugModule {
 pub struct DebugContext {
     #[cfg(feature = "rerun")]
     rec: rerun::RecordingStream,
-    pub current_cycle: Cycle,
+    current_cycle: Cycle,
 }
 
 #[allow(unused)]
