@@ -34,7 +34,7 @@ impl Module for AudioModule {
     fn initialize(self, app: App) -> Result<App> {
         app.init_config::<AudioConfig>()?
             .add_module(SoundManagerModule)?
-            .add_module(AudioInputModule)?
-            .add_module(WhistleDetectionModule)
+            .add_module(AudioInputModule)
+        // .add_module(WhistleDetectionModule)
     }
 }

@@ -3,6 +3,7 @@ use clap::Parser;
 pub mod change_network;
 pub mod config;
 pub mod dependency_graph;
+pub mod photo_shoot;
 pub mod robot_ops;
 pub mod run;
 pub mod scan;
@@ -59,4 +60,5 @@ pub enum Commands {
     Config(config::ConfigCommand),
     Update(update::Update),
     DependencyGraph(dependency_graph::DependencyGraph),
+    PhotoShoot(photo_shoot::PhotoShoot),
 }

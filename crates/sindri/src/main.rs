@@ -28,6 +28,7 @@ async fn main() -> Result<()> {
         Commands::Config(opts) => opts.config()?,
         Commands::Update(opts) => opts.update().await?,
         Commands::DependencyGraph(opts) => opts.generate().await?,
+        Commands::PhotoShoot(opts) => opts.shoot(config).await?,
     }
 
     Ok(())

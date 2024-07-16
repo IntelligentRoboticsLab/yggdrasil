@@ -1,3 +1,8 @@
+use crate::{
+    cargo::{self, find_bin_manifest, Profile},
+    config::{Robot, SindriConfig},
+    error::{Error, Result},
+};
 use clap::{builder::ArgPredicate, Parser};
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressDrawTarget, ProgressStyle};
@@ -15,15 +20,9 @@ use std::{
 use tokio::{self, net::TcpStream};
 use walkdir::{DirEntry, WalkDir};
 
-use crate::{
-    cargo::{self, find_bin_manifest, Profile},
-    config::{Robot, SindriConfig},
-    error::{Error, Result},
-};
-
 const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
-const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
-const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
+const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release";
+const RELEASE_PATH_LOCAL: &str = "./target/release";
 const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 const CONNECTION_TIMEOUT: u64 = 5;
 const LOCAL_ROBOT_ID_STR: &str = "0";
@@ -156,20 +155,6 @@ impl Output {
             Output::Silent => {}
             Output::Single(pb) | Output::Multi(pb) => {
                 pb.set_message(msg.into());
-            }
-        }
-    }
-
-    pub fn compile_phase(&self) {
-        match self {
-            Output::Silent => {}
-            Output::Single(pb) | Output::Multi(pb) => {
-                pb.set_message(format!(
-                    "{} {} {}",
-                    "Compiling".bright_blue().bold(),
-                    "yggdrasil".bold(),
-                    "(release: ".dimmed(),
-                ));
             }
         }
     }
@@ -365,9 +350,10 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
 
     pb.enable_steady_tick(Duration::from_millis(80));
     pb.set_style(
-        ProgressStyle::with_template(
-            "   {prefix:.green.bold} yggdrasil {msg} {spinner:.green.bold}",
-        )
+        ProgressStyle::with_template(&format!(
+            "   {{prefix:.green.bold}} {0} {{msg}} {{spinner:.green.bold}}",
+            config.bin
+        ))
         .unwrap()
         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
     );
@@ -394,7 +380,7 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
         pb.println(format!(
             "{} {} {}{}, {}{}{}",
             "   Compiling".green().bold(),
-            "yggdrasil".bold(),
+            config.bin.bold(),
             "(release: ".dimmed(),
             "true".red(),
             "target: ".dimmed(),
@@ -414,6 +400,8 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
     } else {
         RELEASE_PATH_REMOTE
     };
+
+    let release_path = format!("{release_path}/{0}", config.bin);
 
     // Copy over the files that need to be deployed
     fs::copy(release_path, DEPLOY_PATH)

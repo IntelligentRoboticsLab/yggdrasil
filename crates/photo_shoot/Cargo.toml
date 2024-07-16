@@ -1,0 +1,9 @@
+[package]
+name = "photo-shoot"
+version = "0.1.0"
+
+[dependencies]
+alsa = { workspace = true, optional = true }
+yggdrasil = { path = "../../yggdrasil", features = ["alsa"] }
+miette = { workspace = true }
+tracing-subscriber = { workspace = true }

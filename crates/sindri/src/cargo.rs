@@ -86,6 +86,8 @@ pub async fn build(
 ) -> Result<(), CargoError> {
     let mut cargo_args = vec!["build", "-p", binary];
 
+    println!("{cargo_args:?}");
+
     if matches!(profile, Profile::Release) {
         cargo_args.push("--release");
     }
