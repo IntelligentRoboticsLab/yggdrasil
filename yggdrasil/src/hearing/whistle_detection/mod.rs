@@ -5,13 +5,11 @@ use nidhogg::types::{FillExt, LeftEar, RightEar};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    core::audio::audio_input::NUMBER_OF_SAMPLES,
+    core::audio::audio_input::{AudioInput, NUMBER_OF_SAMPLES},
     core::ml::{MlModel, MlTask, MlTaskResource},
     nao::manager::{NaoManager, Priority},
     prelude::*,
 };
-
-use super::audio_input::AudioInput;
 
 // the constants below need to match the parameters used for training
 /// The size of each window in samples.

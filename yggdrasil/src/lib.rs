@@ -2,6 +2,7 @@ pub mod behavior;
 pub mod communication;
 pub mod core;
 pub mod game_controller;
+pub mod hearing;
 pub mod kinematics;
 pub mod localization;
 pub mod motion;
