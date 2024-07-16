@@ -16,9 +16,9 @@ use heimdall::CameraMatrix;
 use nalgebra::{point, Point2};
 use nidhogg::types::color;
 
-const MAX_VERTICAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 30.;
+const MAX_VERTICAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 15.;
 
-const MAX_HORIZONTAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 30.;
+const MAX_HORIZONTAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 15.;
 
 const MAX_ALLOWED_MISTAKES: u32 = 1;
 
@@ -155,7 +155,6 @@ fn is_white(column: usize, row: usize, scan_line: &ScanLine) -> Option<bool> {
         })
         .ok()
         .map(|index| {
-            // eprintln!("HREE");
             matches!(
                 scan_line.classified_scan_line_regions()[index].color(),
                 RegionColor::White
@@ -190,10 +189,6 @@ fn detect_lines(
     let mut lines_points_old = line_detection_data.lines_points;
     let mut lines_points = Vec::new();
 
-    let mut iter_count = 0;
-
-    const SHOW_ITER: usize = 33;
-
     loop {
         if points.is_empty() {
             break;
@@ -226,16 +221,8 @@ fn detect_lines(
 
             let mut allowed_mistakes = MAX_ALLOWED_MISTAKES;
 
-            eprintln!("start_row: {start_row}");
-            eprintln!("end_row: {end_row}");
-            eprintln!("start_column: {start_column}");
-            eprintln!("end_column: {end_column}");
-
             if end_row - start_row > end_column - start_column {
-                for row in (start_row as usize..end_row as usize) {
-                    if iter_count == SHOW_ITER {
-                        eprintln!("row: {row}");
-                    }
+                for row in start_row as usize..end_row as usize {
                     let column = (row as f32 - intercept) / slope;
                     if column < 0f32 || column >= scan_lines.image().yuyv_image().width() as f32 {
                         continue;
@@ -248,12 +235,8 @@ fn detect_lines(
                         allowed_mistakes -= 1;
                     }
                 }
-                eprint!("\n\n");
             } else {
-                for column in (start_column as usize..end_column as usize) {
-                    if iter_count == SHOW_ITER {
-                        eprintln!("column: {column}");
-                    }
+                for column in start_column as usize..end_column as usize {
                     let row: f32 = slope * column as f32 + intercept;
                     if row < 0f32 || row >= scan_lines.image().yuyv_image().height() as f32 {
                         continue;
@@ -266,7 +249,6 @@ fn detect_lines(
                         allowed_mistakes -= 1;
                     }
                 }
-                eprint!("\n\n");
             }
             if allowed_mistakes == 0 {
                 line_points.points.pop().unwrap();
@@ -276,16 +258,7 @@ fn detect_lines(
                 line_points.end_column = end_column;
                 line_points.start_row = start_row;
                 line_points.end_row = end_row;
-                eprintln!("start_row: {start_row}");
-                eprintln!("end_row: {end_row}");
-                eprintln!("start_column: {start_column}");
-                eprintln!("end_column: {end_column}");
             }
-
-            if iter_count == SHOW_ITER {
-                break;
-            }
-            iter_count += 1;
         }
         if line_points.points.len() >= MIN_POINTS_PER_LINE {
             lines_points.push(line_points);
