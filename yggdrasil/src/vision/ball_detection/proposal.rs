@@ -1,55 +1,78 @@
 //! Module for finding possible ball locations from the top camera image
 
-use std::{collections::HashMap, ops::Deref};
+use std::ops::Add;
 
+use heimdall::CameraMatrix;
+use itertools::Itertools;
 use nalgebra::Point2;
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    core::debug::DebugContext,
+    nao::Cycle,
     prelude::*,
-    vision::camera::{matrix::CameraMatrices, Image, TopImage},
     vision::{
-        field_boundary::FieldBoundary,
-        scan_lines::{scan_lines_system, PixelColor, ScanGrid, TopScanGrid},
+        camera::{matrix::CameraMatrices, Image},
+        scan_lines2::{
+            self, BottomScanLines, ClassifiedScanLineRegion, RegionColor, ScanLines, TopScanLines,
+        },
     },
 };
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BallProposalConfigs {
+    /// Top camera ball proposal configuration
+    pub top: BallProposalConfig,
+    /// Bottom camera ball proposal configuration
+    pub bottom: BallProposalConfig,
+}
 
 /// Configurable values for getting ball proposals during the ball detection pipeline
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BallProposalConfig {
-    /// Maximum gap between black pixels to be considered a new segment
+    /// The minimum ratio of white pixels in the range around the proposed ball
     pub white_ratio: f32,
-    /// Maximum distance between two clusters to be considered the same cluster
-    pub bounding_box_scale: f32,
     /// Height/width of the bounding box around the ball
-    pub cluster_max_distance: f32,
-    /// Ratio of white pixels in the local area around a point to be considered a ball
-    pub black_segment_max_gap: usize,
-    /// The proposals are often too low on the ball (possibly caused by shadows?),
-    /// this causes the white ratio in the local area to too low.
-    /// To fix this we offset the center of the proposal to be a bit higher
-    pub center_offset: f32,
+    pub bounding_box_scale: f32,
+    /// Maximum amount of proposals to search
+    pub max_proposals: usize,
 }
 
 /// Module for finding possible ball locations in the top camera image
 ///
 /// It adds the following resources to the app:
-/// - [`BallProposals`]
+/// - [`TopBallProposals`]
+/// - [`BottomBallProposals`]
 pub struct BallProposalModule;
 
 impl Module for BallProposalModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(get_proposals.after(scan_lines_system))
+        app.add_system(ball_proposals_system.after(scan_lines2::scan_lines_system))
             .add_startup_system(init_ball_proposals)
     }
 }
+
+#[derive(derive_more::Deref, derive_more::DerefMut)]
+pub struct TopBallProposals(BallProposals);
+
+#[derive(derive_more::Deref, derive_more::DerefMut)]
+pub struct BottomBallProposals(BallProposals);
 
 /// Points at which a ball may possibly be located
 #[derive(Clone)]
 pub struct BallProposals {
     pub image: Image,
     pub proposals: Vec<BallProposal>,
+}
+
+impl BallProposals {
+    fn empty(image: Image) -> Self {
+        Self {
+            image,
+            proposals: Vec::new(),
+        }
+    }
 }
 
 #[derive(Default, Clone)]
@@ -59,308 +82,301 @@ pub struct BallProposal {
     pub distance_to_ball: f32,
 }
 
-/// A segment of black pixels in a vertical scanline
-#[derive(Clone, Hash, PartialEq, Eq)]
-struct Segment {
-    column_id: usize,
-    start: usize,
-    end: usize,
-}
-
-impl Segment {
-    /// Check if the segment overlaps with another segment
-    ///
-    /// Overlapping is defined as the segments having at least one pixel in common
-    fn overlaps(&self, other: &Segment) -> bool {
-        self.start <= other.end && other.start <= self.end
-    }
-}
-
-/// Find all black segments in the vertical grid
-fn find_black_segments(
-    grid: &ScanGrid,
-    boundary: &FieldBoundary,
-    max_gap: usize,
-) -> HashMap<usize, Vec<Segment>> {
-    let mut black_segments = HashMap::new();
-
-    // For every vertical scanline
-    let vertical_scan_lines = grid.vertical();
-    for (vertical_line_id, &column_id) in vertical_scan_lines.line_ids().iter().enumerate() {
-        let column = vertical_scan_lines.line(vertical_line_id);
-        let boundary_top = boundary.height_at_pixel(column_id as f32);
-
-        // Reset found segments in column
-        let mut segments = Vec::new();
-        let mut black_dist = max_gap;
-
-        // For every pixel in the column that is below the boundary
-        for (row_id, pixel) in column.iter().enumerate().skip(boundary_top as usize) {
-            // Non-black pixel increases distance and continues
-            if !matches!(pixel, PixelColor::Black) {
-                black_dist += 1;
-                continue;
-            }
-
-            // Add to a previous segment if it is close enough to the last black pixel
-            if black_dist >= max_gap {
-                segments.push(Segment {
-                    start: row_id,
-                    end: row_id,
-                    column_id,
-                });
-            // or make new segment
-            } else {
-                segments.last_mut().unwrap().end = row_id;
-            }
-
-            black_dist = 0;
-        }
-
-        // Insert the segments for this column
-        black_segments.insert(column_id, segments);
-    }
-
-    black_segments
-}
-
-/// Cluster all segments of adjacent columns that overlap into a vec
-fn cluster_segments(
-    grid: &ScanGrid,
-    black_segments: HashMap<usize, Vec<Segment>>,
-) -> Vec<Vec<Segment>> {
-    let column_ids = grid.vertical().line_ids();
-
-    let mut curr_cluster = 0;
-    let mut cluster_map = HashMap::new();
-
-    for i in 0..column_ids.len() {
-        let column_id = column_ids[i];
-
-        for segment in black_segments[&column_id].iter() {
-            let mut overlapping = false;
-
-            // keep track if we already added this segment to a cluster
-            // in case of C shaped segments
-            let mut already_added = false;
-
-            // check if the segment overlaps with the previous column
-            if i != 0 {
-                let prev_segments = &black_segments[&column_ids[i - 1]];
-                for prev_segment in prev_segments {
-                    if segment.overlaps(prev_segment) {
-                        overlapping = true;
-
-                        if already_added {
-                            let cluster = cluster_map[segment];
-                            cluster_map.insert(prev_segment, cluster);
-                        } else {
-                            let cluster = cluster_map[prev_segment];
-                            cluster_map.insert(segment, cluster);
-                            already_added = true;
-                        }
-                    }
-                }
-            }
-
-            // create a new cluster if the segment does not overlap with the previous column
-            if !overlapping {
-                cluster_map.insert(segment, curr_cluster);
-                curr_cluster += 1;
-            }
-        }
-    }
-
-    // turn into vector of clusters
-    let mut clusters = Vec::new();
-
-    for i in 0..curr_cluster {
-        let cluster = cluster_map
-            .iter()
-            .filter(|(_, &cluster)| cluster == i)
-            .map(|(&segment, _)| segment)
-            .cloned()
-            .collect::<Vec<_>>();
-
-        if !cluster.is_empty() {
-            clusters.push(cluster);
-        }
-    }
-
-    clusters
-}
-
-/// Finds the center of a cluster of segments
-fn cluster_centers(clusters: Vec<Vec<Segment>>) -> Vec<Point2<f32>> {
-    clusters
-        .iter()
-        .map(|cluster| {
-            let mut x = 0.0;
-            let mut y = 0.0;
-
-            for segment in cluster {
-                x += segment.column_id as f32;
-                y += (segment.start + segment.end) as f32 / 2.0;
-            }
-
-            Point2::new(
-                (x / cluster.len() as f32).round(),
-                (y / cluster.len() as f32).round(),
-            )
-        })
-        .collect()
-}
-
-/// Find the ratio of ball colored (white/black) pixels in a local area around a point
-fn local_white_ratio(range: usize, point: Point2<usize>, grid: &ScanGrid) -> f32 {
-    let mut ball_colored = 0;
-    let mut total = 0;
-
-    let vertical_scan_lines = grid.vertical();
-    let horizontal_scan_lines = grid.horizontal();
-
-    // gap between horizontal pixels
-    // TODO: This assumes the gap between vertical scan-lines is constant,
-    // but that might not be the case in the future.
-    let h_gap = grid.width() / vertical_scan_lines.line_ids().len();
-    let v_gap = grid.height() / horizontal_scan_lines.line_ids().len();
-
-    // TODO: this could be cleaner but I don't care #savage
-    for pixel in &vertical_scan_lines.line(point.x / h_gap)
-        [point.y.saturating_sub(range)..(point.y + range).min(grid.height())]
-    {
-        // count the ball colored pixels
-        if matches!(pixel, PixelColor::White) {
-            ball_colored += 1;
-        }
-
-        total += 1;
-    }
-
-    for pixel in &horizontal_scan_lines.line(point.y / v_gap)
-        [point.y.saturating_sub(range)..(point.y + range).min(grid.width())]
-    {
-        // count the ball colored pixels
-        if matches!(pixel, PixelColor::White) {
-            ball_colored += 1;
-        }
-
-        total += 1;
-    }
-
-    ball_colored as f32 / total as f32
-}
-
-/// Merge cluster centers if they are close to each other
-fn merge_clusters(mut centers: Vec<Point2<f32>>, max_distance: f32) -> Vec<Point2<usize>> {
-    let mut clusters: Vec<Vec<Point2<f32>>> = Vec::new();
-
-    'outer: while let Some(new_center) = centers.pop() {
-        for cluster in &mut clusters {
-            if cluster
-                .iter()
-                .any(|center| nalgebra::distance(center, &new_center) < max_distance)
-            {
-                cluster.push(new_center);
-                continue 'outer;
-            }
-        }
-
-        // new cluster
-        clusters.push(vec![new_center]);
-    }
-
-    // average the centers in the clusters
-    clusters
-        .into_iter()
-        .map(|cluster| {
-            let summed_position = cluster.iter().fold(Point2::default(), |acc, center| {
-                Point2::new(acc.x + center.x, acc.y + center.y)
-            });
-
-            let mean_position = summed_position / cluster.len() as f32;
-
-            mean_position.map(|x| x as usize)
-        })
-        .collect()
-}
-
-fn test_proposals(
-    proposals: Vec<Point2<usize>>,
-    grid: &ScanGrid,
-    matrices: &CameraMatrices,
-    config: &BallProposalConfig,
-) -> Vec<BallProposal> {
-    proposals
-        .into_iter()
-        .flat_map(|center| {
-            // project point to ground to get distance
-            // distance is used for the amount of surrounding pixels to sample
-            let Ok(coord) = matrices.top.pixel_to_ground(center.cast(), 0.0) else {
-                return None;
-            };
-
-            // area to look around the point (half the bounding box size)
-            let scale = config.bounding_box_scale * 0.5;
-            // get the distance from the robot to the point in order to scale the area we look around the point
-            let magnitude = coord.coords.magnitude();
-
-            Some((center, scale / magnitude, magnitude))
-        })
-        .filter(|&(center, range, magnitude)| {
-            // TODO: find a better solution for this
-            let offset = (config.center_offset / magnitude) as usize;
-            let adjusted_center = Point2::new(center.x, center.y.saturating_sub(offset));
-
-            local_white_ratio(range as usize, adjusted_center, grid) > config.white_ratio
-        })
-        .map(|(center, _, magnitude)| BallProposal {
-            position: center,
-            scale: config.bounding_box_scale / magnitude,
-            distance_to_ball: magnitude,
-        })
-        .collect::<Vec<_>>()
-}
-
 #[system]
-pub(super) fn get_proposals(
-    grid: &TopScanGrid,
-    boundary: &FieldBoundary,
+pub(super) fn ball_proposals_system(
+    (top_scan_lines, bottom_scan_lines): (&TopScanLines, &BottomScanLines),
     matrices: &CameraMatrices,
-    ball_proposals: &mut BallProposals,
-    config: &BallProposalConfig,
+    config: &BallProposalConfigs,
+    (top_proposals, bottom_proposals): (&mut TopBallProposals, &mut BottomBallProposals),
+    dbg: &DebugContext,
 ) -> Result<()> {
-    // TODO: find better way to do this
-    // if the image has not changed, we don't need to recalculate the proposals
-    if ball_proposals.image.timestamp() == grid.image().timestamp() {
-        return Ok(());
-    }
+    let top = get_ball_proposals(top_scan_lines, &matrices.top, &config.top, dbg)?;
+    let bottom = get_ball_proposals(bottom_scan_lines, &matrices.bottom, &config.bottom, dbg)?;
 
-    // find black segments in each of the vertical scanlines
-    let segments = find_black_segments(grid, boundary, config.black_segment_max_gap);
-    // cluster the adjacent segments that overlap
-    let clusters = cluster_segments(grid, segments);
-    // find the center of the clusters
-    let centers = cluster_centers(clusters);
-    // merge the centers that are close to each other
-    let potential_proposals = merge_clusters(centers, config.cluster_max_distance);
-    // test the proposals for their white pixel ratio
-    let proposals = test_proposals(potential_proposals, grid, matrices, config);
-
-    *ball_proposals = BallProposals {
-        image: grid.image().clone(),
-        proposals,
-    };
+    *top_proposals = TopBallProposals(top);
+    *bottom_proposals = BottomBallProposals(bottom);
 
     Ok(())
 }
 
-#[startup_system]
-fn init_ball_proposals(storage: &mut Storage, image: &TopImage) -> Result<()> {
-    let proposals = BallProposals {
-        image: image.deref().clone(),
-        proposals: Vec::new(),
-    };
+pub fn update_ball_proposals(
+    ball_proposals: &mut BallProposals,
+    scan_lines: &ScanLines,
+    matrix: &CameraMatrix,
+    config: &BallProposalConfig,
+    cycle: &Cycle,
+    dbg: &DebugContext,
+) -> Result<()> {
+    // if the image has not changed, we don't need to recalculate the proposals
+    if !scan_lines.image().is_from_cycle(*cycle) {
+        return Ok(());
+    }
 
-    storage.add_resource(Resource::new(proposals))
+    let new = get_ball_proposals(scan_lines, matrix, config, dbg)?;
+
+    *ball_proposals = new;
+
+    Ok(())
+}
+
+#[derive(Debug, Default, Clone)]
+struct WhiteCounter {
+    white: f32,
+    other: f32,
+}
+
+impl WhiteCounter {
+    fn from_regions<'a>(
+        start: f32,
+        end: f32,
+        regions: impl Iterator<Item = &'a ClassifiedScanLineRegion>,
+    ) -> Self {
+        let overlap = |region_start: usize, region_end: usize| -> f32 {
+            range_overlap((start, end), (region_start as f32, region_end as f32))
+                .unwrap_or_default()
+        };
+
+        let (white, other) =
+            regions.fold((0.0, 0.0), |(white, other), region| match region.color() {
+                RegionColor::White => (
+                    white + overlap(region.start_point(), region.end_point()),
+                    other,
+                ),
+                _ => (
+                    white,
+                    other + overlap(region.start_point(), region.end_point()),
+                ),
+            });
+
+        Self { white, other }
+    }
+
+    fn white_ratio(&self) -> f32 {
+        if self.other == 0.0 && self.white == 0.0 {
+            return 0.0;
+        }
+
+        self.white / (self.other + self.white)
+    }
+}
+
+impl Add for WhiteCounter {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            other: self.other + rhs.other,
+            white: self.white + rhs.white,
+        }
+    }
+}
+
+fn range_overlap((start1, end1): (f32, f32), (start2, end2): (f32, f32)) -> Option<f32> {
+    let start_overlap = start1.max(start2);
+    let end_overlap = end1.min(end2);
+
+    // Check if there is an overlap
+    if start_overlap < end_overlap {
+        Some(end_overlap - start_overlap)
+    } else {
+        None
+    }
+}
+
+fn get_ball_proposals(
+    scan_lines: &ScanLines,
+    matrix: &CameraMatrix,
+    config: &BallProposalConfig,
+    dbg: &DebugContext,
+) -> Result<BallProposals> {
+    let h_lines = scan_lines.horizontal();
+
+    let mut proposals = Vec::new();
+    let mut boxes = Vec::new();
+    let mut scores = Vec::new();
+    for (left, middle, right) in h_lines.regions().tuple_windows() {
+        // Check if the three scanlines have the same height
+        if (left.fixed_point() != middle.fixed_point())
+            || (middle.fixed_point() != right.fixed_point())
+        {
+            continue;
+        }
+
+        // Check if the white region is surrounded by green regions
+        let (RegionColor::Green, RegionColor::White, RegionColor::Green) =
+            (left.color(), middle.color(), right.color())
+        else {
+            continue;
+        };
+
+        // Middle of the white region
+        let mid_point = middle.line_spot();
+
+        let Ok(distance) = matrix
+            .pixel_to_ground(mid_point, 0.0)
+            .map(|p| p.coords.magnitude())
+        else {
+            continue;
+        };
+
+        // Find radius to look around the point
+        let scaling = config.bounding_box_scale * 0.5;
+        let range = scaling / distance;
+
+        // Scan circularly around the ball to find:
+        // - The average y position of the ball
+        // - The ratio of white pixels in the region
+        let (y_locations, color_count) = (-range as usize..=range as usize).fold(
+            (Vec::new(), WhiteCounter::default()),
+            |(mut valid_locs, count), y| {
+                let x = (range * range - (y * y) as f32).sqrt();
+
+                let same_y_regions = h_lines
+                    .regions()
+                    .filter(|region| region.fixed_point() == mid_point.y as usize + y);
+
+                let new_count =
+                    WhiteCounter::from_regions(mid_point.x - x, mid_point.x + x, same_y_regions);
+
+                // only count the y location if there are actually white pixels in the region
+                if new_count.white > 0.0 {
+                    valid_locs.push(mid_point.y as usize + y);
+                }
+
+                (valid_locs, count + new_count)
+            },
+        );
+
+        // not white enough
+        if color_count.white_ratio() < config.white_ratio {
+            continue;
+        }
+
+        let y_len = y_locations.len();
+        let y_avg = y_locations.into_iter().sum::<usize>() as f32 / y_len as f32;
+
+        let new_mid_point = Point2::new(mid_point.x, y_avg);
+
+        let proposal = BallProposal {
+            position: new_mid_point.map(|x| x as usize),
+            scale: config.bounding_box_scale / distance,
+            distance_to_ball: distance,
+        };
+
+        proposals.push(proposal);
+        boxes.push((
+            new_mid_point.x - range,
+            new_mid_point.y - range,
+            new_mid_point.x + range,
+            new_mid_point.y + range,
+        ));
+        scores.push((range, color_count.white_ratio()));
+
+        if proposals.len() >= config.max_proposals {
+            break;
+        }
+    }
+
+    let (radii, white_ratios) = scores.into_iter().unzip();
+
+    let indices = nms(boxes, white_ratios, 0.25);
+
+    let proposals: Vec<_> = indices.iter().map(|&i| proposals[i].clone()).collect();
+    let potential: Vec<_> = proposals
+        .iter()
+        .map(|p| (p.position.x as f32, p.position.y as f32))
+        .collect();
+
+    if scan_lines.image().yuyv_image().height() == 480 {
+        dbg.log_points2d_for_image_with_radii(
+            "top_camera/image/bruh",
+            &potential,
+            scan_lines.image().cycle(),
+            nidhogg::types::color::u8::WHITE,
+            radii,
+        )?;
+    } else {
+        dbg.log_points2d_for_image_with_radii(
+            "bottom_camera/image/bruh",
+            &potential,
+            scan_lines.image().cycle(),
+            nidhogg::types::color::u8::WHITE,
+            radii,
+        )?;
+    }
+
+    let image = scan_lines.image().clone();
+
+    Ok(BallProposals { image, proposals })
+}
+
+fn nms(boxes: Vec<BBox>, scores: Vec<f32>, threshold: f32) -> Vec<usize> {
+    let mut final_indices = Vec::new();
+
+    for i in 0..boxes.len() {
+        let mut discard = false;
+        for j in 0..boxes.len() {
+            if i == j {
+                continue;
+            }
+
+            let overlap = iou(&boxes[i], &boxes[j]);
+            let score_i = scores[i];
+            let score_j = scores[j];
+
+            if overlap > threshold && score_j > score_i {
+                // eprintln!("Discarding proposal {} due to overlap with {}", i, j);
+                discard = true;
+                break;
+            }
+        }
+
+        if !discard {
+            final_indices.push(i);
+        }
+    }
+
+    final_indices
+}
+
+type BBox = (f32, f32, f32, f32);
+
+pub fn intersection(box1: &BBox, box2: &BBox) -> f32 {
+    let x1 = box1.0.max(box2.0);
+    let y1 = box1.1.max(box2.1);
+    let x2 = box1.2.min(box2.2);
+    let y2 = box1.3.min(box2.3);
+
+    if x2 < x1 || y2 < y1 {
+        0.0
+    } else {
+        (x2 - x1) * (y2 - y1)
+    }
+}
+
+fn union(box1: &BBox, box2: &BBox) -> f32 {
+    let area1 = (box1.2 - box1.0) * (box1.3 - box1.1);
+    let area2 = (box2.2 - box2.0) * (box2.3 - box2.1);
+    area1 + area2 - intersection(box1, box2)
+}
+
+pub fn iou(box1: &BBox, box2: &BBox) -> f32 {
+    let intersect = intersection(box1, box2);
+    let union = union(box1, box2);
+
+    intersect / union
+}
+
+#[startup_system]
+fn init_ball_proposals(
+    storage: &mut Storage,
+    (top_scan_lines, bottom_scan_lines): (&TopScanLines, &BottomScanLines),
+) -> Result<()> {
+    let top = BallProposals::empty(top_scan_lines.image().clone());
+    let bottom = BallProposals::empty(bottom_scan_lines.image().clone());
+
+    storage.add_resource(Resource::new(TopBallProposals(top)))?;
+    storage.add_resource(Resource::new(BottomBallProposals(bottom)))?;
+
+    Ok(())
 }

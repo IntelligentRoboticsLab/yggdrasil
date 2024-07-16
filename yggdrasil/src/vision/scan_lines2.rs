@@ -70,6 +70,10 @@ impl ScanLine {
         Self { raw }
     }
 
+    pub fn regions(&self) -> std::slice::Iter<ClassifiedScanLineRegion> {
+        self.raw.iter()
+    }
+
     /// Iterate over the line spots in these scanlines.
     ///
     /// A line spot is the point in the middle of a *white* scanline region.
@@ -90,12 +94,25 @@ pub struct TopScanLines(ScanLines);
 pub struct BottomScanLines(ScanLines);
 
 #[derive(Debug)]
-struct ScanLineRegion {
+pub struct ScanLineRegion {
     region: Region,
     approx_color: YuvPixel,
 }
 
+impl Deref for ScanLineRegion {
+    type Target = Region;
+
+    fn deref(&self) -> &Self::Target {
+        &self.region
+    }
+}
+
 impl ScanLineRegion {
+    /// Approximated color of the region.
+    pub fn approx_color(&self) -> &YuvPixel {
+        &self.approx_color
+    }
+
     /// Using a color sample and a weight, update the approximated color of the region.
     fn add_sample(&mut self, sample: YuvPixel, weight: usize) {
         let self_weight = self.region.length();
@@ -136,7 +153,20 @@ pub struct ClassifiedScanLineRegion {
     color: RegionColor,
 }
 
+impl Deref for ClassifiedScanLineRegion {
+    type Target = ScanLineRegion;
+
+    fn deref(&self) -> &Self::Target {
+        &self.line
+    }
+}
+
 impl ClassifiedScanLineRegion {
+    /// Classified color of the region.
+    pub fn color(&self) -> RegionColor {
+        self.color
+    }
+
     /// Merges adjacent regions with the same color.
     pub fn simplify(regions: Vec<Self>) -> Vec<Self> {
         let mut new_regions = Vec::new();
@@ -178,7 +208,7 @@ impl ClassifiedScanLineRegion {
 }
 
 #[derive(Debug)]
-enum Region {
+pub enum Region {
     Vertical {
         x: usize,
         y_start: usize,
@@ -359,7 +389,7 @@ fn get_vertical_scan_lines(
     for line in &scan_grid.lines {
         let mut current_region = None;
 
-        for y in &scan_grid.y {
+        for y in &scan_grid.y[1..scan_grid.y.len() - 1] {
             let x = line.x as usize;
             let y = *y;
 
@@ -461,7 +491,7 @@ fn get_scan_lines(
 }
 
 #[system]
-fn scan_lines_system(
+pub fn scan_lines_system(
     (top_image, bottom_image): (&TopImage, &BottomImage),
     (top_scan_grid, bottom_scan_grid): (&mut TopScanGrid, &mut BottomScanGrid),
     field_boundary: &FieldBoundary,
@@ -470,20 +500,20 @@ fn scan_lines_system(
     dbg: &DebugContext,
 ) -> Result<()> {
     update_scan_lines(
+        top_scan_lines,
         top_image,
         top_scan_grid,
         field_boundary,
-        top_scan_lines,
         curr_cycle,
         dbg,
         CameraType::Top,
     )?;
 
     update_scan_lines(
+        bottom_scan_lines,
         bottom_image,
         bottom_scan_grid,
         field_boundary,
-        bottom_scan_lines,
         curr_cycle,
         dbg,
         CameraType::Bottom,
@@ -493,10 +523,10 @@ fn scan_lines_system(
 }
 
 fn update_scan_lines(
+    scan_lines: &mut ScanLines,
     image: &Image,
     scan_grid: &ScanGrid,
     field_boundary: &FieldBoundary,
-    scan_lines: &mut ScanLines,
     curr_cycle: &Cycle,
     dbg: &DebugContext,
     camera: CameraType,

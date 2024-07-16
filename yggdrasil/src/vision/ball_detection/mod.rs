@@ -6,7 +6,7 @@ pub mod proposal;
 use std::time::Duration;
 
 use nidhogg::types::{color, FillExt, LeftEye};
-use proposal::BallProposalConfig;
+use proposal::{BallProposalConfigs, TopBallProposals};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
@@ -18,10 +18,7 @@ use crate::{
     vision::camera::matrix::CameraMatrices,
 };
 
-use self::{
-    classifier::{BallClassifierConfig, Balls},
-    proposal::BallProposals,
-};
+use self::classifier::{BallClassifierConfig, Balls};
 
 pub struct BallDetectionModule;
 
@@ -41,7 +38,7 @@ impl Module for BallDetectionModule {
 pub struct BallDetectionConfig {
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub max_classification_age_eye_color: Duration,
-    pub proposal: BallProposalConfig,
+    pub proposal: BallProposalConfigs,
     pub classifier: BallClassifierConfig,
 }
 
@@ -60,10 +57,10 @@ fn init_subconfigs(storage: &mut Storage, config: &mut BallDetectionConfig) -> R
 #[system]
 fn log_balls(
     dbg: &DebugContext,
-    ball_proposals: &BallProposals,
+    ball_proposals: &TopBallProposals,
     balls: &Balls,
     matrices: &CameraMatrices,
-    config: &BallProposalConfig,
+    config: &BallProposalConfigs,
 ) -> Result<()> {
     let mut points = Vec::new();
     let mut sizes = Vec::new();
@@ -76,7 +73,7 @@ fn log_balls(
 
         let magnitude = coord.coords.magnitude();
 
-        let size = config.bounding_box_scale / magnitude;
+        let size = config.top.bounding_box_scale / magnitude;
 
         points.push((proposal.position.x as f32, proposal.position.y as f32));
         sizes.push((size, size));
@@ -102,7 +99,7 @@ fn log_balls(
     let mut sizes = Vec::new();
     for ball in &balls.balls {
         positions.push((ball.position_image.x, ball.position_image.y));
-        let size = config.bounding_box_scale / ball.distance;
+        let size = config.top.bounding_box_scale / ball.distance;
         sizes.push((size, size));
     }
 

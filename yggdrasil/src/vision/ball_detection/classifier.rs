@@ -16,7 +16,7 @@ use crate::vision::camera::{matrix::CameraMatrices, Image, TopImage};
 
 use crate::core::ml::{MlModel, MlTask, MlTaskResource};
 
-use super::proposal::BallProposals;
+use super::proposal::{self, TopBallProposals};
 use super::BallDetectionConfig;
 
 const IMAGE_INPUT_SIZE: usize = 32;
@@ -34,7 +34,7 @@ pub(crate) struct BallClassifierModule;
 
 impl Module for BallClassifierModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(detect_balls.after(super::proposal::get_proposals))
+        app.add_system(detect_balls.after(proposal::ball_proposals_system))
             .add_startup_system(init_ball_classifier)?
             .add_ml_task::<BallClassifierModel>()
     }
@@ -98,7 +98,7 @@ impl Balls {
 
 #[system]
 pub(super) fn detect_balls(
-    proposals: &BallProposals,
+    proposals: &TopBallProposals,
     model: &mut MlTask<BallClassifierModel>,
     balls: &mut Balls,
     camera_matrices: &CameraMatrices,

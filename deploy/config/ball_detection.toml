@@ -1,23 +1,25 @@
 # The maximum age of a classified ball in milliseconds, before the eye color is reset.
 max_classification_age_eye_color = 250
 
-[proposal]
-# Maximum gap between black pixels to be considered a new segment
-white_ratio = 0.2
+[proposal.top]
+# The minimum ratio of white pixels in the range around the proposed ball
+white_ratio = 0.5
 # Height/width of the bounding box around the ball
 bounding_box_scale = 100.0
-# Maximum distance between two clusters to be considered the same cluster
-cluster_max_distance = 64.0
-# Ratio of white pixels in the local area around a point to be considered a ball
-black_segment_max_gap = 3
-# The proposals are often too low on the ball (possibly caused by shadows?),
-# this causes the white ratio in the local area to be too low.
-# To fix this we offset the center of the proposal to be a bit higher.
-center_offset = 16.0
+# Maximum amount of proposals to search
+max_proposals = 20
+
+[proposal.bottom]
+# The minimum ratio of white pixels in the range around the proposed ball
+white_ratio = 0.5
+# Height/width of the bounding box around the ball
+bounding_box_scale = 70.0
+# Maximum amount of proposals to search
+max_proposals = 10
 
 [classifier]
 # The threshold for the classifier to consider a proposal a ball
-confidence_threshold = 0.85
+confidence_threshold = 0.75
 # The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
 time_budget = 1000
 # Lifetime of the ball in milliseconds, this is the time the robot will remember a classified balls' location.
