@@ -1,8 +1,0 @@
-[package]
-name = "detection"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-ndarray = { workspace = true }
-itertools = { workspace = true }

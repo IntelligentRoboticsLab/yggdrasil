@@ -1,7 +1,8 @@
-use ndarray::{concatenate, stack, Array, Array2, Array3, ArrayView, Axis, Order};
-
-use detection::meshgrid::{meshgrid, Indexing};
-use itertools::repeat_n;
+use itertools::{repeat_n, Itertools};
+use miette::{Context, IntoDiagnostic, Result};
+use ndarray::{
+    concatenate, stack, Array, Array1, Array2, Array3, ArrayD, ArrayView, Axis, IxDyn, Order,
+};
 
 #[derive(Debug, Clone)]
 pub struct DefaultBoxGenerator {
@@ -113,7 +114,7 @@ impl DefaultBoxGenerator {
         let shifts_x = (Array::range(0.0, x_fk as f32, 1.0) + 0.5) / x_fk as f32;
         let shifts_y = (Array::range(0.0, y_fk as f32, 1.0) + 0.5) / y_fk as f32;
 
-        let grids = meshgrid(&[shifts_y, shifts_x], Indexing::Ij).unwrap();
+        let grids = meshgrid(&[shifts_y, shifts_x]).unwrap();
 
         // flatten into shape (total_features,)
         let shift_x = grids[1].clone().into_shape(total_features).unwrap();
@@ -138,4 +139,39 @@ impl DefaultBoxGenerator {
 
         concatenate![Axis(1), shifts, wh_pairs]
     }
+}
+
+/// Generate a meshgrid from a list of arrays.
+///
+/// This is like numpy's meshgrid function, but for ndarray and using ij-indexing.
+fn meshgrid<T>(xi: &[Array1<T>]) -> Result<Vec<ArrayD<T>>>
+where
+    T: Copy,
+{
+    let ndim = xi.len();
+    let product = xi.iter().map(|x| x.iter()).multi_cartesian_product();
+
+    let mut grids: Vec<ArrayD<T>> = Vec::with_capacity(ndim);
+
+    for (dim_index, _) in xi.iter().enumerate() {
+        // Generate a flat vector with the correct repeated pattern
+        let values: Vec<T> = product.clone().map(|p| *p[dim_index]).collect();
+
+        let mut grid_shape: Vec<usize> = vec![1; ndim];
+        grid_shape[dim_index] = xi[dim_index].len();
+
+        // Determine the correct repetition for each dimension
+        for (j, len) in xi.iter().map(|x| x.len()).enumerate() {
+            if j != dim_index {
+                grid_shape[j] = len;
+            }
+        }
+
+        let grid = Array::from_shape_vec(IxDyn(&grid_shape), values)
+            .into_diagnostic()
+            .wrap_err("Failed to create array from shape vec")?;
+        grids.push(grid);
+    }
+
+    Ok(grids)
 }
