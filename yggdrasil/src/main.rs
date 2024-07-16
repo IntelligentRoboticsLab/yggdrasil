@@ -1,4 +1,6 @@
-#[allow(unused_imports)]
+use miette::IntoDiagnostic;
+use tracing_subscriber::fmt::writer::MakeWriterExt;
+
 use yggdrasil::behavior::BehaviorModule;
 use yggdrasil::communication::CommunicationModule;
 use yggdrasil::core::{config::ConfigModule, debug::DebugModule, ml::MlModule};
@@ -14,7 +16,18 @@ use yggdrasil::vision::camera::CameraModule;
 use yggdrasil::vision::VisionModule;
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
+    let logfile = tracing_appender::rolling::hourly(
+        format!(
+            "{}/.local/state/yggdrasil",
+            std::env::var("HOME").into_diagnostic()?
+        ),
+        "yggdrasil.log",
+    );
+    let stdout = std::io::stdout.with_max_level(tracing::Level::INFO);
+
+    tracing_subscriber::fmt()
+        .with_writer(stdout.and(logfile))
+        .init();
 
     miette::set_panic_hook();
 
