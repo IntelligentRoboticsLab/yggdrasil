@@ -1,7 +1,44 @@
 use std::ops::Index;
 
+use nalgebra::Isometry2;
+use nalgebra::Vector2;
 use odal::Config;
 use serde::{Deserialize, Serialize};
+
+mod isometry_with_angle {
+    use nalgebra::{Isometry, Isometry2, UnitComplex};
+
+    use serde::{Deserialize, Deserializer};
+
+    pub fn deserialize_vec<'de, D>(deserializer: D) -> Result<Vec<Isometry2<f32>>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let isometries = Vec::<Isometry<f32, f32, 2>>::deserialize(deserializer)?;
+
+        Ok(isometries
+            .into_iter()
+            .map(|isometry| {
+                Isometry::from_parts(
+                    isometry.translation,
+                    UnitComplex::new(isometry.rotation.to_radians()),
+                )
+            })
+            .collect())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Isometry2<f32>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let isometry = Isometry::<f32, f32, 2>::deserialize(deserializer)?;
+
+        Ok(Isometry::from_parts(
+            isometry.translation,
+            UnitComplex::new(isometry.rotation.to_radians()),
+        ))
+    }
+}
 
 /// Config that contains information about the layout of the field and
 /// robot positions.
@@ -9,9 +46,12 @@ use serde::{Deserialize, Serialize};
 #[serde(deny_unknown_fields)]
 pub struct LayoutConfig {
     pub field: FieldConfig,
-    pub initial_positions: InitialPositionsConfig,
-}
+    pub initial_positions: FieldPositionsConfig,
+    pub set_positions: FieldPositionsConfig,
 
+    #[serde(deserialize_with = "isometry_with_angle::deserialize_vec")]
+    pub penalty_positions: Vec<Isometry2<f32>>,
+}
 /// Config that contains information about the field dimensions.
 /// A schematic overview is given below:
 ///
@@ -75,13 +115,19 @@ pub struct FieldConfig {
     pub border_strip_width: f32,
 }
 
+impl FieldConfig {
+    pub fn diagonal(&self) -> Vector2<f32> {
+        Vector2::new(self.length, self.width)
+    }
+}
+
 /// Contains the coordinates for the starting positions for each robot.
 /// This configuration assumes the center has coordinates (0, 0).
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-pub struct InitialPositionsConfig(Vec<RobotPosition>);
+pub struct FieldPositionsConfig(Vec<RobotPosition>);
 
-impl Index<usize> for InitialPositionsConfig {
+impl Index<usize> for FieldPositionsConfig {
     type Output = RobotPosition;
 
     // Required method
@@ -93,7 +139,7 @@ impl Index<usize> for InitialPositionsConfig {
     }
 }
 
-impl InitialPositionsConfig {
+impl FieldPositionsConfig {
     pub fn player(&self, player_num: u8) -> &RobotPosition {
         self.0
             .iter()
@@ -111,12 +157,10 @@ impl InitialPositionsConfig {
 pub struct RobotPosition {
     /// Player number
     pub player_number: usize,
-    /// Robot x-coordinate in metres.
-    pub x: f32,
-    /// Robot y-coordinate in metres.
-    pub y: f32,
 
-    pub rotation: f32,
+    // Position and orientation of the robot
+    #[serde(deserialize_with = "isometry_with_angle::deserialize", flatten)]
+    pub isometry: Isometry2<f32>,
 }
 
 impl Config for LayoutConfig {

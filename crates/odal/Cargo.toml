@@ -3,6 +3,9 @@ name = "odal"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "odal"
+
 [dependencies]
 miette = { workspace = true }
 thiserror = { workspace = true }

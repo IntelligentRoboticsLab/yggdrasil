@@ -4,11 +4,14 @@ use serde::{Deserialize, Serialize};
 
 pub mod ball_detection;
 pub mod camera;
+pub mod color;
 pub mod field_boundary;
 pub mod field_marks;
 pub mod line;
 pub mod line_detection;
+pub mod scan_grid;
 pub mod scan_lines;
+pub mod scan_lines2;
 
 use field_boundary::FieldBoundaryModule;
 
@@ -23,6 +26,9 @@ pub struct VisionModule;
 impl Module for VisionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_module(FieldBoundaryModule)?
+            // TODO: use the new one!
+            // .add_module(scan_grid::ScanGridModule)?
+            // .add_module(scan_lines2::ScanLinesModule)?
             .add_module(ScanLinesModule)?
             .add_module(LineDetectionModule)?
             .add_module(BallDetectionModule)?

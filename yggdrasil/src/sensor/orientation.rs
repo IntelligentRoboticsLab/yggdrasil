@@ -46,8 +46,7 @@ pub fn update_orientation(
 ) -> Result<()> {
     match primary_state {
         PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Unstiff => {
-            orientation.initialized = false;
-            orientation.orientation = UnitQuaternion::identity();
+            orientation.reset();
         }
         _ => {
             orientation.update(imu, fsr, cycle);
@@ -222,6 +221,11 @@ impl RobotOrientation {
         };
 
         self.orientation *= correction;
+    }
+
+    fn reset(&mut self) {
+        self.orientation = UnitQuaternion::identity();
+        self.initialized = false;
     }
 }
 

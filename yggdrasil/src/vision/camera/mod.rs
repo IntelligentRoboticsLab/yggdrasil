@@ -1,6 +1,6 @@
 pub mod matrix;
 
-use crate::{core::debug::DebugContext, nao::Cycle, prelude::*};
+use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle, prelude::*};
 
 use derive_more::{Deref, DerefMut};
 use miette::IntoDiagnostic;
@@ -12,6 +12,9 @@ use std::{
 
 use heimdall::{Camera, CameraDevice, CameraMatrix, ExposureWeights, YuyvImage};
 use matrix::{CalibrationConfig, CameraMatrices};
+
+#[cfg(not(feature = "local"))]
+use super::field_boundary::FieldBoundary;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
@@ -58,10 +61,11 @@ impl Module for CameraModule {
             .add_system(debug_camera_system.after(camera_system))
             .add_task::<ComputeTask<JpegTopImage>>()?
             .add_task::<ComputeTask<JpegBottomImage>>()?
+            .add_task::<ComputeTask<Result<ExposureWeightsCompleted>>>()?
             .add_module(matrix::CameraMatrixModule)?;
 
-        // #[cfg(not(feature = "local"))]
-        // let app = app.add_system(set_exposure_weights);
+        #[cfg(not(feature = "local"))]
+        let app = app.add_system_chain((update_exposure_weights, set_exposure_weights));
 
         Ok(app)
     }
@@ -151,26 +155,38 @@ impl BottomCamera {
 }
 
 #[derive(Clone)]
-pub struct Image(Arc<(YuyvImage, Instant, Cycle)>);
+pub struct Image {
+    /// Captured image in yuyv format.
+    buf: Arc<YuyvImage>,
+    /// Instant at which the image was captured.
+    timestamp: Instant,
+    /// Return the cycle at which the image was captured.
+    cycle: Cycle,
+}
 
 impl Image {
     fn new(yuyv_image: YuyvImage, cycle: Cycle) -> Self {
-        Self(Arc::new((yuyv_image, Instant::now(), cycle)))
+        Self {
+            buf: Arc::new(yuyv_image),
+            timestamp: Instant::now(),
+            cycle,
+        }
     }
 
-    /// Return the captured image in yuyv format.
+    pub fn is_from_cycle(&self, cycle: Cycle) -> bool {
+        self.cycle == cycle
+    }
+
     pub fn yuyv_image(&self) -> &YuyvImage {
-        &self.0 .0
+        &self.buf
     }
 
-    /// Return the instant at which the image was captured.
-    pub fn timestamp(&self) -> &Instant {
-        &self.0 .1
+    pub fn timestamp(&self) -> Instant {
+        self.timestamp
     }
 
-    /// Return the cycle at which the image was captured.
     pub fn cycle(&self) -> Cycle {
-        self.0 .2
+        self.cycle
     }
 
     /// Get a grayscale patch from the image centered at the given point.
@@ -280,18 +296,20 @@ fn debug_camera_system(
     bottom_task: &mut ComputeTask<JpegBottomImage>,
     top_image: &TopImage,
     top_task: &mut ComputeTask<JpegTopImage>,
+    robot_pose: &RobotPose,
 ) -> Result<()> {
     let mut bottom_timestamp = Instant::now();
     if let Some(bottom) = bottom_task.poll() {
         bottom_timestamp = bottom.0;
     }
 
-    if !bottom_task.active() && &bottom_timestamp != bottom_image.timestamp() {
+    if !bottom_task.active() && bottom_timestamp != bottom_image.timestamp {
         let cloned = bottom_image.clone();
         let matrix = camera_matrices.bottom.clone();
         let ctx = ctx.clone();
+        let pose = robot_pose.clone();
         bottom_task.try_spawn(move || {
-            log_bottom_image(ctx, cloned, &matrix).expect("Failed to log bottom image")
+            log_bottom_image(ctx, cloned, &matrix, &pose).expect("Failed to log bottom image")
         })?;
     }
 
@@ -300,12 +318,13 @@ fn debug_camera_system(
         top_timestamp = top.0;
     }
 
-    if !top_task.active() && &top_timestamp != top_image.timestamp() {
+    if !top_task.active() && top_timestamp != top_image.timestamp {
         let cloned = top_image.clone();
         let matrix = camera_matrices.top.clone();
+        let pose = robot_pose.clone();
         let ctx = ctx.clone();
         top_task.try_spawn(move || {
-            log_top_image(ctx, cloned, &matrix).expect("Failed to log top image")
+            log_top_image(ctx, cloned, &matrix, &pose).expect("Failed to log top image")
         })?;
     }
 
@@ -316,17 +335,16 @@ fn log_bottom_image(
     ctx: DebugContext,
     bottom_image: BottomImage,
     camera_matrix: &CameraMatrix,
+    robot_pose: &RobotPose,
 ) -> Result<JpegBottomImage> {
-    let timestamp = bottom_image.0 .0 .1;
+    let timestamp = bottom_image.0.timestamp;
     ctx.log_image("bottom_camera/image", bottom_image.clone().0, 20)?;
     ctx.log_camera_matrix("bottom_camera/image", camera_matrix, &bottom_image.0)?;
 
-    // For now, let's also transform the pinhole camera to the ground frame.
-    ctx.log_transformation(
-        "bottom_camera/image",
-        &camera_matrix.camera_to_ground,
-        &bottom_image.0,
-    )?;
+    // Transform the pinhole camera to the robot position.
+    let transform = robot_pose.as_3d() * camera_matrix.camera_to_ground;
+
+    ctx.log_transformation("bottom_camera/image", &transform, &bottom_image.0)?;
     Ok(JpegBottomImage(timestamp))
 }
 
@@ -334,39 +352,115 @@ fn log_top_image(
     ctx: DebugContext,
     top_image: TopImage,
     camera_matrix: &CameraMatrix,
+    robot_pose: &RobotPose,
 ) -> Result<JpegTopImage> {
-    let timestamp = top_image.0 .0 .1;
+    let timestamp = top_image.0.timestamp;
     ctx.log_image("top_camera/image", top_image.clone().0, 20)?;
     ctx.log_camera_matrix("top_camera/image", camera_matrix, &top_image.0)?;
 
-    // For now, let's also transform the pinhole camera to the ground frame.
-    ctx.log_transformation(
-        "top_camera/image",
-        &camera_matrix.camera_to_ground,
-        &top_image.0,
-    )?;
+    // Transform the pinhole camera to the robot position.
+    let transform = robot_pose.as_3d() * camera_matrix.camera_to_ground;
+    ctx.log_transformation("top_camera/image", &transform, &top_image.0)?;
     Ok(JpegTopImage(timestamp))
 }
 
-#[allow(dead_code)]
+#[cfg(not(feature = "local"))]
+const SAMPLES_PER_COLUMN: usize = 4;
+
+#[cfg(not(feature = "local"))]
+const ABOVE_FIELD_WEIGHT: u8 = 0;
+
+#[cfg(not(feature = "local"))]
+const BELOW_FIELD_WEIGHT: u8 = 15;
+
+#[cfg(not(feature = "local"))]
+const MIN_BOTTOM_ROW_WEIGHT: u8 = 10;
+
+#[cfg(not(feature = "local"))]
+const WEIGHT_SLOPE: f32 = (BELOW_FIELD_WEIGHT - ABOVE_FIELD_WEIGHT) as f32;
+
+#[cfg(not(feature = "local"))]
+#[system]
+fn update_exposure_weights(
+    exposure_weights: &mut ExposureWeights,
+    field_boundary: &FieldBoundary,
+) -> Result<()> {
+    let (width, height) = exposure_weights.top.window_size();
+    let (column_width, row_height) = (width / 4, height / 4);
+
+    let mut weights = [0; 16];
+
+    for column_index in 0..4 {
+        let column_start = column_index * column_width;
+        let column_end = column_start + column_width;
+
+        let samples = (column_start..column_end)
+            .step_by(column_width as usize / SAMPLES_PER_COLUMN)
+            .map(|x| field_boundary.height_at_pixel(x as f32));
+
+        let n = samples.len() as f32;
+        let field_height = (samples.sum::<f32>() / n) as u32;
+
+        for row_index in 0..4 {
+            let row_start = row_index * row_height;
+            let row_end = row_start + row_height;
+
+            let weight_index = row_index * 4 + column_index;
+
+            weights[weight_index as usize] = if row_end < field_height {
+                ABOVE_FIELD_WEIGHT
+            } else if row_start > field_height {
+                BELOW_FIELD_WEIGHT
+            } else {
+                let fract = (field_height - row_start) as f32 / row_height as f32;
+
+                ((ABOVE_FIELD_WEIGHT as f32 + WEIGHT_SLOPE * fract) as u8)
+                    .clamp(ABOVE_FIELD_WEIGHT, BELOW_FIELD_WEIGHT)
+            }
+        }
+    }
+
+    for weight in weights.iter_mut().skip(12) {
+        *weight = (*weight).max(MIN_BOTTOM_ROW_WEIGHT);
+    }
+
+    exposure_weights.top.update(weights);
+    Ok(())
+}
+
+struct ExposureWeightsCompleted;
+
 #[cfg(not(feature = "local"))]
 #[system]
 fn set_exposure_weights(
-    exposure_weights: &mut ExposureWeights,
+    exposure_weights: &ExposureWeights,
     top_camera: &TopCamera,
     bottom_camera: &BottomCamera,
+    task: &mut ComputeTask<Result<ExposureWeightsCompleted>>,
 ) -> Result<()> {
-    if let Ok(top_camera) = top_camera.0 .0.try_lock() {
-        top_camera
-            .camera_device()
-            .set_auto_exposure_weights(&exposure_weights.top)?;
+    let exposure_weights = exposure_weights.clone();
+    let top_camera = top_camera.0 .0.clone();
+    let bottom_camera = bottom_camera.0 .0.clone();
+
+    if let Some(result) = task.poll() {
+        result?;
     }
 
-    if let Ok(bottom_camera) = bottom_camera.0 .0.try_lock() {
-        bottom_camera
-            .camera_device()
-            .set_auto_exposure_weights(&exposure_weights.bottom)?;
-    }
+    let _ = task.try_spawn(move || {
+        if let Ok(top_camera) = top_camera.lock() {
+            top_camera
+                .camera_device()
+                .set_auto_exposure_weights(&exposure_weights.top)?;
+        }
+
+        if let Ok(bottom_camera) = bottom_camera.lock() {
+            bottom_camera
+                .camera_device()
+                .set_auto_exposure_weights(&exposure_weights.bottom)?;
+        }
+
+        Ok(ExposureWeightsCompleted)
+    });
 
     Ok(())
 }

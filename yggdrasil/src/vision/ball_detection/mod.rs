@@ -3,12 +3,20 @@
 pub mod classifier;
 pub mod proposal;
 
-use nidhogg::types::color;
+use std::time::Duration;
+
+use nidhogg::types::{color, FillExt, LeftEye};
 use proposal::BallProposalConfig;
 
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DurationMilliSeconds};
 
-use crate::{core::debug::DebugContext, prelude::*, vision::camera::matrix::CameraMatrices};
+use crate::{
+    core::debug::DebugContext,
+    nao::manager::{NaoManager, Priority},
+    prelude::*,
+    vision::camera::matrix::CameraMatrices,
+};
 
 use self::{
     classifier::{BallClassifierConfig, Balls},
@@ -22,13 +30,17 @@ impl Module for BallDetectionModule {
         app.add_module(proposal::BallProposalModule)?
             .add_module(classifier::BallClassifierModule)?
             .add_system(log_balls.after(classifier::detect_balls))
+            .add_system(reset_eye_color.after(classifier::detect_balls))
             .init_config::<BallDetectionConfig>()?
             .add_startup_system(init_subconfigs)
     }
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BallDetectionConfig {
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub max_classification_age_eye_color: Duration,
     pub proposal: BallProposalConfig,
     pub classifier: BallClassifierConfig,
 }
@@ -101,6 +113,24 @@ fn log_balls(
         &balls.image,
         color::u8::PURPLE,
     )?;
+
+    Ok(())
+}
+
+#[system]
+fn reset_eye_color(
+    balls: &Balls,
+    nao: &mut NaoManager,
+    config: &BallDetectionConfig,
+) -> Result<()> {
+    let best_ball = balls.most_recent_ball();
+    if let Some(ball) = best_ball {
+        if ball.timestamp.elapsed() >= config.max_classification_age_eye_color {
+            nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
+        }
+    } else {
+        nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
+    }
 
     Ok(())
 }

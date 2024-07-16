@@ -1,3 +1,6 @@
+# The maximum age of a classified ball in milliseconds, before the eye color is reset.
+max_classification_age_eye_color = 250
+
 [proposal]
 # Maximum gap between black pixels to be considered a new segment
 white_ratio = 0.2
@@ -14,9 +17,9 @@ center_offset = 16.0
 
 [classifier]
 # The threshold for the classifier to consider a proposal a ball
-confidence_threshold = 0.8
+confidence_threshold = 0.85
 # The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
-time_budget = 3000
+time_budget = 1000
 # Lifetime of the ball in milliseconds, this is the time the robot will remember a classified balls' location.
-# If a new ball is detected it will restart the timer.  
-ball_life = 10000
+# If a new ball is detected it will restart the timer.
+ball_life = 4500

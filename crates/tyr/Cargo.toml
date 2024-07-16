@@ -3,6 +3,9 @@ name = "tyr"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "tyr"
+
 [dependencies]
 tyr_internal = { path = "tyr_internal" }
 tyr_macros = { path = "tyr_macros" }
@@ -12,6 +15,8 @@ tyr_tasks = { path = "tyr_tasks" }
 itertools = { workspace = true }
 miette = { workspace = true }
 nidhogg = { workspace = true, features = ["lola"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
 tokio = { workspace = true }
 
 [features]

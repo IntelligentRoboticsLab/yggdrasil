@@ -1,7 +1,4 @@
-use crate::{
-    behavior::{engine::BehaviorKind, Engine},
-    sensor::imu::IMUValues,
-};
+use crate::sensor::imu::IMUValues;
 use miette::Result;
 use tyr::prelude::*;
 
@@ -42,7 +39,6 @@ pub enum FallState {
     Falling(FallDirection),
     #[default]
     Upright,
-    InStandup,
     Lying(LyingDirection),
 }
 
@@ -99,22 +95,7 @@ fn is_lying_on_back(imu_values: &IMUValues) -> bool {
 /// Checks position of the robot and sets [`FallState`], [`FallDirection`] and [`LyingDirection`]
 /// accordingly.
 #[system]
-fn pose_filter(
-    imu_values: &IMUValues,
-    fall_state: &mut FallState,
-    behaviour_engine: &Engine,
-) -> Result<()> {
-    // current method to keep the falling behavior from interrupting the
-    // stand up behavior, will be changed once motion module integration
-    // for behaviors has advanced
-    if let BehaviorKind::Standup(_) = behaviour_engine.behavior {
-        if let FallState::Upright = fall_state {
-            return Ok(());
-        }
-        *fall_state = FallState::InStandup;
-        return Ok(());
-    }
-
+fn pose_filter(imu_values: &IMUValues, fall_state: &mut FallState) -> Result<()> {
     if is_falling_forward(imu_values) {
         *fall_state = FallState::Falling(FallDirection::Forwards);
     } else if is_falling_backward(imu_values) {

@@ -5,7 +5,10 @@ use std::{
     sync::{Arc, LockResult, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
-use crate::system::{NormalSystem, System};
+use crate::{
+    system::{NormalSystem, System},
+    Inspect,
+};
 
 use miette::{miette, Result};
 
@@ -53,22 +56,22 @@ impl ErasedResource {
     }
 }
 
-impl<T: Debug + Send + Sync + 'static> From<Resource<T>> for DebuggableResource {
+/// A type-erased resource that is inspectable.
+#[derive(Clone)]
+pub struct InspectableResource(Arc<RwLock<dyn Inspect + Send + Sync + 'static>>);
+
+impl<T: Inspect + Send + Sync + 'static> From<Resource<T>> for InspectableResource {
     fn from(resource: Resource<T>) -> Self {
         Self(resource.value)
     }
 }
 
-/// A type-erased resource that is debuggable.
-#[derive(Debug, Clone)]
-pub struct DebuggableResource(Arc<RwLock<dyn Debug + Send + Sync + 'static>>);
-
-impl DebuggableResource {
-    pub fn read(&self) -> LockResult<RwLockReadGuard<dyn Debug + Send + Sync + 'static>> {
+impl InspectableResource {
+    pub fn read(&self) -> LockResult<RwLockReadGuard<dyn Inspect + Send + Sync + 'static>> {
         self.0.read()
     }
 
-    pub fn write(&self) -> LockResult<RwLockWriteGuard<dyn Debug + Send + Sync + 'static>> {
+    pub fn write(&self) -> LockResult<RwLockWriteGuard<dyn Inspect + Send + Sync + 'static>> {
         self.0.write()
     }
 }
@@ -81,8 +84,8 @@ impl Storage {
     /// Create a new resource storage.
     pub fn new() -> Self {
         let map = HashMap::from([(
-            TypeId::of::<DebugView>(),
-            Resource::new(DebugView::new()).into(),
+            TypeId::of::<InspectView>(),
+            Resource::new(InspectView::new()).into(),
         )]);
 
         Storage(map)
@@ -112,7 +115,7 @@ impl Storage {
     ///
     /// # Errors
     /// This function fails if there is already a resource of type `T` in the storage.
-    pub fn add_debuggable_resource<T: Debug + Send + Sync + 'static>(
+    pub fn add_inspectable_resource<T: Inspect + Send + Sync + 'static>(
         &mut self,
         res: Resource<T>,
     ) -> Result<()> {
@@ -122,7 +125,7 @@ impl Storage {
                 std::any::type_name::<T>()
             )),
             None => {
-                self.map_resource_mut(|view: &mut DebugView| view.push(res.into()))
+                self.map_resource_mut(|view: &mut InspectView| view.push(res.into()))
                     .unwrap();
                 Ok(())
             }
@@ -139,7 +142,7 @@ impl Storage {
 
     /// Try to get a resource from the storage by reference, and map it to something else
     #[allow(dead_code)]
-    fn map_resource_ref<T: 'static, F: FnOnce(&T) -> R, R>(&self, f: F) -> Result<R> {
+    pub(super) fn map_resource_ref<T: 'static, F: FnOnce(&T) -> R, R>(&self, f: F) -> Result<R> {
         let resource = self
             .get::<T>()
             .ok_or_else(|| miette!("Resource of type `{}` does not exist", type_name::<T>()))?;
@@ -153,7 +156,10 @@ impl Storage {
 
     /// Try to get a resource from the storage by mutable reference, and map it to something else
     #[allow(dead_code)]
-    fn map_resource_mut<T: 'static, F: FnOnce(&mut T) -> R, R>(&self, f: F) -> Result<R> {
+    pub(super) fn map_resource_mut<T: 'static, F: FnOnce(&mut T) -> R, R>(
+        &self,
+        f: F,
+    ) -> Result<R> {
         let resource = self
             .get::<T>()
             .ok_or_else(|| miette!("Resource of type `{}` does not exist", type_name::<T>()))?;
@@ -170,18 +176,26 @@ impl Storage {
 }
 
 #[derive(Default)]
-pub struct DebugView(Vec<DebuggableResource>);
+pub struct InspectView(Vec<InspectableResource>);
 
-impl DebugView {
+impl InspectView {
     pub fn new() -> Self {
         Self(Vec::new())
     }
 
-    pub fn resources(&self) -> impl Iterator<Item = &DebuggableResource> {
+    pub fn resources(&self) -> impl Iterator<Item = &InspectableResource> {
         self.0.iter()
     }
 
-    fn push(&mut self, res: DebuggableResource) {
+    pub fn by_index(&self, index: usize) -> Option<&InspectableResource> {
+        self.0.get(index)
+    }
+
+    pub fn by_name(&self, name: &str) -> Option<&InspectableResource> {
+        self.0.iter().find(|r| r.read().unwrap().name() == name)
+    }
+
+    fn push(&mut self, res: InspectableResource) {
         self.0.push(res)
     }
 }

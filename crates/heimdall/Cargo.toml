@@ -3,6 +3,9 @@ name = "heimdall"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "heimdall"
+
 [dependencies]
 image = { workspace = true }
 linuxvideo = { workspace = true }
@@ -10,3 +13,4 @@ miette = { workspace = true }
 nalgebra = { workspace = true }
 thiserror = { workspace = true }
 turbojpeg = { workspace = true }
+fast-math = { workspace = true }

@@ -216,7 +216,8 @@ impl DebugContext {
                     image.yuyv_image().height() as f32,
                 ],
             )
-            .with_camera_xyz(rerun::components::ViewCoordinates::FLU);
+            .with_camera_xyz(rerun::components::ViewCoordinates::FLU)
+            .with_image_plane_distance(1.0);
             self.rec.log(path.as_ref(), &pinhole).into_diagnostic()?;
             self.clear_cycle();
         }
@@ -331,6 +332,33 @@ impl DebugContext {
     }
 
     /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
+    pub fn log_points2d_for_image_with_colors(
+        &self,
+        path: impl AsRef<str>,
+        points: &[(f32, f32)],
+        image: &Image,
+        color: &[RgbU8],
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&image.cycle());
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Points2D::new(points).with_colors(
+                        color
+                            .iter()
+                            .map(|c| rerun::Color::from_rgb(c.red, c.green, c.blue)),
+                    ),
+                )
+                .into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
     pub fn log_points2d_for_image_with_radius(
         &self,
         path: impl AsRef<str>,
@@ -357,6 +385,34 @@ impl DebugContext {
                         .with_radii(vec![radius; points.len()]),
                 )
                 .into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    /// Log a set of 2D lines to the debug viewer, using the timestamp of the provided image.
+    pub fn log_lines2d_for_image_with_colors(
+        &self,
+        path: impl AsRef<str>,
+        lines: &[[(f32, f32); 2]],
+        image: &Image,
+        colors: &[RgbU8],
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&image.cycle());
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::LineStrips2D::new(lines).with_colors(
+                        colors
+                            .iter()
+                            .map(|c| rerun::Color::from_rgb(c.red, c.green, c.blue)),
+                    ),
+                )
+                .into_diagnostic()?;
+
             self.clear_cycle();
         }
 

@@ -3,9 +3,9 @@ use std::path::Path;
 use crate::schedule::{Dependency, DependencySystem, Schedule};
 use crate::storage::{Resource, Storage};
 use crate::system::{IntoSystem, IntoSystemChain, StartupSystem, System};
-use crate::{IntoDependencySystem, Module};
+use crate::{ControlSocket, Inspect, IntoDependencySystem, Module};
 
-use miette::Result;
+use miette::{IntoDiagnostic, Result};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub enum SystemStage {
@@ -31,6 +31,14 @@ pub enum SystemStage {
     ///
     /// This stage is used for systems that interact with the LoLA socket, or depend on the write order.
     Write,
+    /// This stage runs after the data has been updated from the LoLA socket, and is used for systems
+    /// that depend on the most up-to-date data.
+    ///
+    /// It differs from [`SystemStage::Init`] in the sense that, systems are still classified as
+    /// running in the current cycle.
+    ///
+    /// This stage runs *after* [`SystemStage::Write`].
+    PostWrite,
     /// A custom stage that can be used for any purpose.
     ///
     /// **This should be used sparingly, as it can make the execution order less clear.**
@@ -44,7 +52,8 @@ impl SystemStage {
             SystemStage::Sensor => 50,
             SystemStage::Execute => (256u32 / 2u32) as u8,
             SystemStage::Finalize => 140,
-            SystemStage::Write => 240,
+            SystemStage::Write => 200,
+            SystemStage::PostWrite => 240,
             SystemStage::Custom(value) => *value,
         }
     }
@@ -256,31 +265,31 @@ impl App {
 
     /// Creates a [`Resource<T>`] on `T`s that implement [`Default`] and adds it to the app storage.
     ///
-    /// This method is used to mark [`Resource<T>`] as a debuggable resource, making it
+    /// This method is used to mark [`Resource<T>`] as a inspectable resource, making it
     /// show up in the debug panel.
     ///
     /// # Errors
     /// This function fails if there is already a resource of type `T` in the storage.
-    pub fn init_debuggable_resource<T: std::fmt::Debug + Default + Send + Sync + 'static>(
+    pub fn init_inspectable_resource<T: Inspect + Default + Send + Sync + 'static>(
         mut self,
     ) -> Result<Self> {
         self.storage
-            .add_debuggable_resource(Resource::<T>::default())?;
+            .add_inspectable_resource(Resource::<T>::default())?;
         Ok(self)
     }
 
     /// Consumes the [`Resource<T>`] and adds it to the app storage.
     ///
-    /// This method is used to mark [`Resource<T>`] as a debuggable resource, making it
+    /// This method is used to mark [`Resource<T>`] as a inspectable resource, making it
     /// show up in the debug panel.
     ///
     /// # Errors
     /// This functions fails if there is already a resource of type `T` in the storage.
-    pub fn add_debuggable_resource<T: std::fmt::Debug + Send + Sync + 'static>(
+    pub fn add_inspectable_resource<T: Inspect + Send + Sync + 'static>(
         mut self,
         res: Resource<T>,
     ) -> Result<Self> {
-        self.storage.add_debuggable_resource(res)?;
+        self.storage.add_inspectable_resource(res)?;
         Ok(self)
     }
 
@@ -303,13 +312,7 @@ impl App {
     #[must_use = "Scheduled app should be used!"]
     pub fn run(mut self) -> Result<()> {
         self.run_startup_systems()?;
-
-        let mut app = ScheduledApp {
-            schedule: Schedule::with_dependency_systems(self.systems)?,
-            storage: self.storage,
-        };
-
-        app.run()
+        ScheduledApp::new(self)?.run()
     }
 
     /// Store a dependency graph of all systems as a png.
@@ -320,7 +323,10 @@ impl App {
     ///
     /// ## Example
     /// ```
+    /// # use tyr_internal::App;
+    /// # fn example(app: &App) {
     /// app.store_system_dependency_graph("../dependency_graph.png");
+    /// # }
     /// ```
     pub fn store_system_dependency_graph<P>(&self, path: P) -> Result<()>
     where
@@ -336,15 +342,27 @@ impl App {
 struct ScheduledApp {
     schedule: Schedule,
     storage: Storage,
+    socket: ControlSocket,
 }
 
 impl ScheduledApp {
+    fn new(app: App) -> Result<Self> {
+        Ok(Self {
+            schedule: Schedule::with_dependency_systems(app.systems)?,
+            storage: app.storage,
+            socket: ControlSocket::new().into_diagnostic()?,
+        })
+    }
+
     fn run(&mut self) -> Result<()> {
         self.schedule.check_ordered_dependencies()?;
         self.schedule.build_graph()?;
 
         loop {
             self.schedule.execute(&mut self.storage)?;
+            self.storage
+                .map_resource_mut(|view| self.socket.tick(&mut self.schedule, view))?
+                .into_diagnostic()?;
         }
     }
 }

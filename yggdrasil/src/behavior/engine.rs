@@ -2,20 +2,22 @@
 
 use bifrost::communication::GameControllerMessage;
 use enum_dispatch::enum_dispatch;
+use nalgebra::Point2;
 
 use crate::{
     behavior::{
-        behaviors::{CatchFall, Initial, Observe, Penalized, Standup, StartUp, Unstiff, Walk},
+        behaviors::{CatchFall, Observe, Standup, StartUp, Unstiff, Walk},
         primary_state::PrimaryState,
         roles::Attacker,
         BehaviorConfig,
     },
-    core::config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
+    core::{
+        config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
+        debug::DebugContext,
+    },
     game_controller::GameControllerConfig,
     localization::RobotPose,
-    motion::keyframe::KeyframeExecutor,
-    motion::step_planner::StepPlanner,
-    motion::walk::engine::WalkingEngine,
+    motion::{keyframe::KeyframeExecutor, step_planner::StepPlanner, walk::engine::WalkingEngine},
     nao::{manager::NaoManager, RobotInfo},
     prelude::*,
     sensor::{
@@ -23,9 +25,13 @@ use crate::{
         falling::FallState,
         fsr::Contacts,
     },
+    vision::ball_detection::classifier::Balls,
 };
 
-use super::behaviors::Standby;
+use super::{
+    behaviors::{Stand, StandLookAt, WalkToSet},
+    roles::Keeper,
+};
 
 /// Context that is passed into the behavior engine.
 ///
@@ -59,6 +65,8 @@ pub struct Context<'a> {
     pub fall_state: &'a FallState,
     /// Contains the pose of the robot.
     pub pose: &'a RobotPose,
+    /// Contains the ball position.
+    pub ball_position: &'a Option<Point2<f32>>,
 }
 
 /// Control that is passed into the behavior engine.
@@ -69,6 +77,7 @@ pub struct Control<'a> {
     pub walking_engine: &'a mut WalkingEngine,
     pub keyframe_executor: &'a mut KeyframeExecutor,
     pub step_planner: &'a mut StepPlanner,
+    pub debug_context: &'a mut DebugContext,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -107,17 +116,17 @@ pub trait Behavior {
 ///
 /// # Notes
 /// - New behavior implementations should be added as new variants to this enum.
-/// - The specific struct for each behavior (e.g., [`Initial`], [`StartUp`]) should implement the [`Behavior`] trait.
+/// - The specific struct for each behavior (e.g., [`Stand`], [`StartUp`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
 #[derive(Debug, PartialEq)]
 pub enum BehaviorKind {
     StartUp(StartUp),
     Unstiff(Unstiff),
-    Standby(Standby),
-    Initial(Initial),
+    StandLookAt(StandLookAt),
     Observe(Observe),
-    Penalized(Penalized),
+    Stand(Stand),
     Walk(Walk),
+    WalkToSet(WalkToSet),
     Standup(Standup),
     CatchFall(CatchFall),
     // Add new behaviors here!
@@ -138,7 +147,7 @@ impl Default for BehaviorKind {
 /// # Examples
 /// ```
 /// use yggdrasil::behavior::{
-///     behaviors::Initial,
+///     behaviors::Unstiff,
 ///     engine::{BehaviorKind, Context, Control, Role},
 /// };
 ///
@@ -152,7 +161,7 @@ impl Default for BehaviorKind {
 ///     ) -> BehaviorKind {
 ///         // Implement behavior transitions for secret agent 🕵️
 ///         // E.g. Disguise -> Assassinate
-///         BehaviorKind::Initial(Initial::default())
+///         BehaviorKind::Unstiff(Unstiff::default())
 ///     }
 /// }
 /// ```
@@ -180,13 +189,15 @@ pub trait Role {
 pub enum RoleKind {
     Attacker(Attacker),
     // Add new roles here!
+    Keeper(Keeper),
 }
 
 impl RoleKind {
     /// Get the default role for each robot based on that robots player number
     fn by_player_number() -> Self {
         // TODO: get the default role for each robot by player number
-        RoleKind::Attacker(Attacker)
+        // RoleKind::Attacker(Attacker)
+        RoleKind::Keeper(Keeper)
     }
 }
 
@@ -227,14 +238,22 @@ impl Engine {
 
     pub fn transition(&mut self, context: Context, control: &mut Control) {
         if let BehaviorKind::StartUp(_) = self.behavior {
-            if control.walking_engine.is_sitting() {
+            if control.walking_engine.is_sitting() || context.head_buttons.all_pressed() {
                 self.behavior = BehaviorKind::Unstiff(Unstiff);
             }
+            if *context.primary_state == PrimaryState::Initial {
+                self.behavior = BehaviorKind::Stand(Stand);
+            }
+            return;
         }
 
         // unstiff has the number 1 precedence
         if let PrimaryState::Unstiff = context.primary_state {
             self.behavior = BehaviorKind::Unstiff(Unstiff);
+            return;
+        }
+
+        if let BehaviorKind::Standup(_) = self.behavior {
             return;
         }
 
@@ -248,21 +267,24 @@ impl Engine {
                 self.behavior = BehaviorKind::CatchFall(CatchFall);
                 return;
             }
-            FallState::InStandup => {
-                return;
-            }
             _ => {}
         }
 
+        let ball_or_origin = context.ball_position.unwrap_or(Point2::origin());
+
         self.behavior = match context.primary_state {
             PrimaryState::Unstiff => BehaviorKind::Unstiff(Unstiff),
-            PrimaryState::Penalized => BehaviorKind::Penalized(Penalized),
-            PrimaryState::Standby => BehaviorKind::Standby(Standby),
-            PrimaryState::Initial => BehaviorKind::Initial(Initial),
-            PrimaryState::Ready => BehaviorKind::Observe(Observe::default()),
-            PrimaryState::Set => BehaviorKind::Initial(Initial),
-            PrimaryState::Finished => BehaviorKind::Initial(Initial),
-            PrimaryState::Calibration => BehaviorKind::Initial(Initial),
+            PrimaryState::Standby
+            | PrimaryState::Penalized
+            | PrimaryState::Finished
+            | PrimaryState::Calibration => BehaviorKind::Stand(Stand),
+            PrimaryState::Initial => BehaviorKind::StandLookAt(StandLookAt {
+                target: Point2::origin(),
+            }),
+            PrimaryState::Ready => BehaviorKind::WalkToSet(WalkToSet),
+            PrimaryState::Set => BehaviorKind::StandLookAt(StandLookAt {
+                target: ball_or_origin,
+            }),
             PrimaryState::Playing => self.role.transition_behavior(context, control),
         };
     }
@@ -282,14 +304,15 @@ pub fn step(
         &BehaviorConfig,
         &GameControllerConfig,
     ),
-    (nao_manager, walking_engine, keyframe_executor, step_planner): (
+    (nao_manager, walking_engine, keyframe_executor, step_planner, debug_context): (
         &mut NaoManager,
         &mut WalkingEngine,
         &mut KeyframeExecutor,
         &mut StepPlanner,
+        &mut DebugContext,
     ),
     game_controller_message: &Option<GameControllerMessage>,
-    robot_pose: &RobotPose,
+    (robot_pose, balls, fall_state): (&RobotPose, &Balls, &FallState),
 ) -> Result<()> {
     let context = Context {
         robot_info,
@@ -303,8 +326,9 @@ pub fn step(
         behavior_config,
         game_controller_message: game_controller_message.as_ref(),
         game_controller_config,
-        fall_state: &FallState::Upright,
+        fall_state,
         pose: robot_pose,
+        ball_position: &balls.balls.first().map(|ball| ball.position),
     };
 
     let mut control = Control {
@@ -312,6 +336,7 @@ pub fn step(
         walking_engine,
         keyframe_executor,
         step_planner,
+        debug_context,
     };
 
     engine.step(context, &mut control);

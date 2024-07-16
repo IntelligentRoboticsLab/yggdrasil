@@ -5,7 +5,7 @@ mod camera_matrix;
 pub use camera_matrix::CameraMatrix;
 
 mod yuyv_image;
-pub use yuyv_image::{YuvColIter, YuvPixel, YuvRowIter, YuyvImage};
+pub use yuyv_image::{YuvPixel, YuyvImage};
 
 mod yuv_planar_image;
 pub use yuv_planar_image::YuvPlanarImage;

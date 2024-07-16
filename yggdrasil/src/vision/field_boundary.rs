@@ -7,7 +7,7 @@ use crate::{
     core::debug::DebugContext,
     core::ml::{MlModel, MlTask, MlTaskResource},
     prelude::*,
-    vision::camera::{Image, TopImage},
+    vision::camera::{self, Image, TopImage},
 };
 use fast_image_resize as fr;
 use heimdall::YuyvImage;
@@ -29,8 +29,10 @@ impl Module for FieldBoundaryModule {
         Ok(app
             .add_ml_task::<FieldBoundaryModel>()?
             .add_startup_system(init_field_boundary)?
-            .add_system(detect_field_boundary)
-            .add_system(log_boundary_points))
+            .add_system_chain((
+                detect_field_boundary.after(camera::camera_system),
+                log_boundary_points,
+            )))
     }
 }
 
