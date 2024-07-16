@@ -207,7 +207,6 @@ impl Simulation {
             let ball_radius = 0.05; // Ball radius
 
             let distance = (robot_pos - ball).norm();
-            println!("Distance: {}", distance);
             if distance < robot_radius + ball_radius {
                 // Move the ball to the edge of the robot
                 let direction = (ball - robot_pos).normalize();
@@ -401,7 +400,7 @@ impl Robot {
     ) {
         self.primary_state = next_primary_state(
             &self.primary_state,
-            &Some(*gamecontrollermessage),
+            &Some(gamecontrollermessage.clone()),
             &Default::default(),
             &Default::default(),
             &self.player_config,
