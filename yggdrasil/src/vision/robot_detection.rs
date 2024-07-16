@@ -61,36 +61,36 @@ fn detect_robots(
     // TODO: Some kind of callback/event system would be nice to avoid doing the timestamp comparison everywhere
     if robot_detection_image.0.timestamp() != top_image.timestamp() && !model.active() {
         let img = top_image.yuyv_image();
-        let rgb_image = img.to_rgb().unwrap();
-        let resized_image = resize_yuyv(&rgb_image);
+        // let rgb_image = img.to_rgb().unwrap();
+        let resized_image = resize_yuyv(&img);
         let img = image::ImageBuffer::from_raw(100, 100, resized_image.clone()).unwrap();
 
         // img.save("image.jpg").unwrap();
 
         ctx.log_image_rgb("/robot_detect_input", img, &top_image.cycle())?;
 
-        // let mean_y = 0.3335;
-        // let mean_u = 0.4788;
-        // let mean_v = 0.3146;
+        let mean_y = 0.4355;
+        let mean_u = 0.5053;
+        let mean_v = 0.5421;
 
-        // let std_y = 0.189_980_34;
-        // let std_u = 0.163_526_65;
-        // let std_v = 0.174_245_5;
+        let std_y = 0.2713;
+        let std_u = 0.0399;
+        let std_v = 0.0262;
 
         if let Ok(()) = model.try_start_infer(
             &resized_image
                 .iter()
                 .map(|x| *x as f32 / 255.0)
-                // .enumerate()
-                // .map(|(i, x)| {
-                //     if i % 3 == 0 {
-                //         (x - mean_y) / std_y
-                //     } else if (i % 3) == 1 {
-                //         (x - mean_u) / std_u
-                //     } else {
-                //         (x - mean_v) / std_v
-                //     }
-                // })
+                .enumerate()
+                .map(|(i, x)| {
+                    if i % 3 == 0 {
+                        (x - mean_y) / std_y
+                    } else if (i % 3) == 1 {
+                        (x - mean_u) / std_u
+                    } else {
+                        (x - mean_v) / std_v
+                    }
+                })
                 .collect::<Vec<f32>>(),
         ) {
             // We need to keep track of the image we started the inference with
@@ -132,7 +132,7 @@ fn detect_robots(
             .enumerate()
             .filter_map(|(i, s)| {
                 let scores = ml::util::softmax(&[s[0], s[1]]);
-                if scores[1] >= 0.1 {
+                if scores[1] >= 0.3 {
                     println!("score: {}, index: {}", scores[1], i);
                     println!("bbox: {}", decoded_boxes.row(i));
                     return Some((decoded_boxes.row(i), scores[1]));
@@ -144,61 +144,66 @@ fn detect_robots(
 
         let k = 400.min(valid_scores.len());
 
-        // valid_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        // valid_scores.truncate(k);
-        // println!("sorted scores: {valid_scores:?}");
-        // let boxes = valid_scores
-        //     .iter()
-        //     .map(|(i, _)| {
-        //         let x1 = bbox[0].clamp(0.0, 100.0);
-        //         let y1 = bbox[1].clamp(0.0, 100.0);
-        //         let x2 = bbox[2].clamp(0.0, 100.0);
-        //         let y2 = bbox[3].clamp(0.0, 100.0);
+        valid_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        valid_scores.truncate(k);
+        println!("sorted scores: {valid_scores:?}");
+        let boxes = valid_scores
+            .iter()
+            .map(|(bbox, _)| {
+                let x1 = bbox[0].clamp(0.0, 100.0);
+                let y1 = bbox[1].clamp(0.0, 100.0);
+                let x2 = bbox[2].clamp(0.0, 100.0);
+                let y2 = bbox[3].clamp(0.0, 100.0);
 
-        //         // resize boxes to original image size
-        //         // let x1 = (x1 / 100.0) * 640.0;
-        //         // let y1 = (y1 / 100.0) * 480.0;
-        //         // let x2 = (x2 / 100.0) * 640.0;
-        //         // let y2 = (y2 / 100.0) * 480.0;
+                // resize boxes to original image size
+                let x1 = (x1 / 100.0) * 640.0;
+                let y1 = (y1 / 100.0) * 480.0;
+                let x2 = (x2 / 100.0) * 640.0;
+                let y2 = (y2 / 100.0) * 480.0;
 
-        //         (x1, y1, x2, y2)
-        //     })
-        //     .collect::<Vec<_>>();
+                (x1, y1, x2, y2)
+            })
+            .collect::<Vec<_>>();
 
         // perform nms
-        // let mut final_boxes = Vec::new();
-        // let nms_threshold = 0.35;
-        // for i in 0..boxes.len() {
-        //     let mut discard = false;
-        //     for j in 0..boxes.len() {
-        //         if i == j {
-        //             continue;
-        //         }
+        let mut final_boxes = Vec::new();
+        let nms_threshold = 0.35;
+        for i in 0..boxes.len() {
+            let mut discard = false;
+            for j in 0..boxes.len() {
+                if i == j {
+                    continue;
+                }
 
-        //         let overlap = detection::iou(&boxes[i], &boxes[j]);
-        //         let score_i = valid_scores[i].1;
-        //         let score_j = valid_scores[j].1;
+                let overlap = detection::iou(&boxes[i], &boxes[j]);
+                let score_i = valid_scores[i].1;
+                let score_j = valid_scores[j].1;
 
-        //         if overlap > nms_threshold {
-        //             if score_j > score_i {
-        //                 println!("dropped {i} due to nms with: {j}");
-        //                 discard = true;
-        //                 break;
-        //             }
-        //         }
-        //     }
+                if overlap > nms_threshold {
+                    if score_j > score_i {
+                        println!("dropped {i} due to nms with: {j}");
+                        discard = true;
+                        break;
+                    }
+                }
+            }
 
-        //     if !discard {
-        //         final_boxes.push((boxes[i], valid_scores[i].1));
-        //     }
-        // }
+            if !discard {
+                final_boxes.push((boxes[i], valid_scores[i].1));
+            }
+        }
 
-        let processed_boxes = valid_scores.iter().map(|(bbox, score)| {
-            // clamp boxes to 0-100, as the model was trained on 100x100 images
-            let x1 = bbox[0].clamp(0.0, 100.0);
-            let y1 = bbox[1].clamp(0.0, 100.0);
-            let x2 = bbox[2].clamp(0.0, 100.0);
-            let y2 = bbox[3].clamp(0.0, 100.0);
+        let processed_boxes = final_boxes.iter().map(|(bbox, score)| {
+            let x1 = bbox.0;
+            let y1 = bbox.1;
+            let x2 = bbox.2;
+            let y2 = bbox.3;
+
+            // rescale for 640x480
+            // let x1 = (x1 / 100.0) * 640.0;
+            // let y1 = (y1 / 100.0) * 480.0;
+            // let x2 = (x2 / 100.0) * 640.0;
+            // let y2 = (y2 / 100.0) * 480.0;
 
             // calculate center and size
             let cx = (x1 + x2) / 2.0;
@@ -212,8 +217,8 @@ fn detect_robots(
         let ((centers, sizes), scores): ((Vec<_>, Vec<_>), Vec<_>) = processed_boxes.unzip();
 
         ctx.log_boxes2d_with_class(
-            // "/top_camera/image/robots",
-            "robot_detect_input/boxes",
+            "/top_camera/image/robots",
+            // "robot_detect_input/boxes",
             &centers,
             &sizes,
             scores,
@@ -232,13 +237,13 @@ fn detect_robots(
 }
 
 // Resize yuyv image to correct input shape
-fn resize_yuyv(image: &RgbImage) -> Vec<u8> {
+fn resize_yuyv(image: &YuyvImage) -> Vec<u8> {
     let src_image = fr::Image::from_vec_u8(
-        NonZeroU32::new(image.width() as u32).unwrap(),
-        // NonZeroU32::new((image.width() / 2) as u32).unwrap(),
+        // NonZeroU32::new(image.width() as u32).unwrap(),
+        NonZeroU32::new((image.width() / 2) as u32).unwrap(),
         NonZeroU32::new(image.height() as u32).unwrap(),
         image.to_vec(),
-        fr::PixelType::U8x3,
+        fr::PixelType::U8x4,
     )
     .expect("Failed to create image for resizing");
 
@@ -249,8 +254,8 @@ fn resize_yuyv(image: &RgbImage) -> Vec<u8> {
         src_image.pixel_type(),
     );
 
-    // let mut resizer = fr::Resizer::new(fr::ResizeAlg::Nearest);
-    let mut resizer = fr::Resizer::new(fr::ResizeAlg::Convolution(FilterType::Bilinear));
+    let mut resizer = fr::Resizer::new(fr::ResizeAlg::Nearest);
+    // let mut resizer = fr::Resizer::new(fr::ResizeAlg::Convolution(FilterType::Bilinear));
     resizer
         .resize(&src_image.view(), &mut dst_image.view_mut())
         .expect("Failed to resize image");
@@ -260,9 +265,9 @@ fn resize_yuyv(image: &RgbImage) -> Vec<u8> {
         .buffer()
         .iter()
         .copied()
-        // .enumerate()
-        // .filter(|(i, _)| (i + 2) % 4 != 0)
-        // .map(|(_, p)| p)
+        .enumerate()
+        .filter(|(i, _)| (i + 2) % 4 != 0)
+        .map(|(_, p)| p)
         .collect()
 }
 
