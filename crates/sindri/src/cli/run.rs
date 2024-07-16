@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::net::{IpAddr, Ipv4Addr};
 use std::{os::unix::process::CommandExt, process::Stdio};
 use yggdrasil::{core::config::showtime::ShowtimeConfig, prelude::Config as OdalConfigTrait};
 
@@ -102,8 +103,18 @@ impl Run {
             // Always set the host, so that rerun can connect to the correct host.
             // even if the host doesn't have rerun viewer installed, there could be
             // some case where the viewer is launched through a different method than the cli.
-            let rerun_host: Result<_> = std::env::var("RERUN_HOST")
-                .or_else(|_| Ok(local_ip_address::local_ip().into_diagnostic()?.to_string()));
+            let rerun_host: Result<_> = std::env::var("RERUN_HOST").or_else(|_| {
+                let mut local_ip = local_ip_address::local_ip().into_diagnostic()?;
+
+                // Make sure the wired bit is set if we're running with `--wired`.
+                if self.robot_ops.wired {
+                    if let IpAddr::V4(ipv4) = &mut local_ip {
+                        *ipv4 |= Ipv4Addr::new(0, 1, 0, 0);
+                    }
+                }
+
+                Ok(local_ip.to_string())
+            });
 
             envs.push(("RERUN_HOST", rerun_host?.leak()));
 

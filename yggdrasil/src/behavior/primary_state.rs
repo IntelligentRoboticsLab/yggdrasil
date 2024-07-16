@@ -36,9 +36,10 @@ impl Module for PrimaryStateModule {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Copy, Default)]
 pub enum PrimaryState {
     /// State in which all joints are unstiffened and the robot does not move
+    #[default]
     Unstiff,
     /// State at the start of the match where the robots stand up.
     /// It's the same state as initial, but robots will not be penalized for a motion in set.
@@ -113,7 +114,7 @@ pub fn update_primary_state(
     Ok(())
 }
 
-fn next_primary_state(
+pub fn next_primary_state(
     primary_state: &PrimaryState,
     game_controller_message: &Option<GameControllerMessage>,
     chest_button: &ChestButton,

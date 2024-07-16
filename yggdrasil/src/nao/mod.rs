@@ -25,7 +25,7 @@ const LOLA_SOCKET_PATH: &str = "/tmp/yggdrasil";
 #[cfg(feature = "local")]
 const LOLA_SOCKET_PATH: &str = "/tmp/robocup";
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 /// Information that uniquely identifies a robot
 pub struct RobotInfo {
     /// Name of the robot

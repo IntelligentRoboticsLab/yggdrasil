@@ -228,7 +228,7 @@ impl TeamInfo {
 }
 
 /// A struct representing the `RoboCupGameControlData` received by the Robots.
-#[derive(Encode, Decode, Debug, PartialEq)]
+#[derive(Encode, Decode, Debug, Clone, PartialEq)]
 pub struct GameControllerMessage {
     /// Header to identify the structure
     pub header: [u8; 4],

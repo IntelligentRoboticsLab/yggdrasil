@@ -37,8 +37,9 @@ pub struct CameraSettings {
     pub exposure_auto: bool,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Default, Copy, Eq, PartialEq)]
 pub enum CameraPosition {
+    #[default]
     Top,
     Bottom,
 }

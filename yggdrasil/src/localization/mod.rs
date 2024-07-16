@@ -104,11 +104,7 @@ pub fn update_robot_pose(
     primary_state: &PrimaryState,
     layout_config: &LayoutConfig,
 ) -> Result<()> {
-    if *primary_state == PrimaryState::Penalized {
-        robot_pose.inner = find_closest_penalty_pose(robot_pose, layout_config);
-    } else {
-        robot_pose.inner *= odometry.offset_to_last;
-    }
+    *robot_pose = next_robot_pose(robot_pose, odometry, primary_state, layout_config);
     log_pose(
         "/localisation/pose",
         ctx,
@@ -116,6 +112,21 @@ pub fn update_robot_pose(
         color::u8::BLUE,
     )?;
     Ok(())
+}
+
+pub fn next_robot_pose(
+    robot_pose: &RobotPose,
+    odometry: &Odometry,
+    primary_state: &PrimaryState,
+    layout_config: &LayoutConfig,
+) -> RobotPose {
+    let isometry = if *primary_state == PrimaryState::Penalized {
+        find_closest_penalty_pose(robot_pose, layout_config)
+    } else {
+        robot_pose.inner * odometry.offset_to_last
+    };
+
+    RobotPose::new(isometry)
 }
 
 fn find_closest_penalty_pose(
@@ -132,8 +143,8 @@ fn find_closest_penalty_pose(
                 (robot_pose.inner.translation.vector - b.translation.vector).norm_squared();
 
             match distance_b > distance_a {
-                true => b,
-                false => a,
+                true => a,
+                false => b,
             }
         })
         .unwrap_or_else(|| {

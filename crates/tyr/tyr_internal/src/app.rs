@@ -3,9 +3,9 @@ use std::path::Path;
 use crate::schedule::{Dependency, DependencySystem, Schedule};
 use crate::storage::{Resource, Storage};
 use crate::system::{IntoSystem, IntoSystemChain, StartupSystem, System};
-use crate::{Inspect, IntoDependencySystem, Module};
+use crate::{ControlSocket, Inspect, IntoDependencySystem, Module};
 
-use miette::Result;
+use miette::{IntoDiagnostic, Result};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub enum SystemStage {
@@ -312,13 +312,7 @@ impl App {
     #[must_use = "Scheduled app should be used!"]
     pub fn run(mut self) -> Result<()> {
         self.run_startup_systems()?;
-
-        let mut app = ScheduledApp {
-            schedule: Schedule::with_dependency_systems(self.systems)?,
-            storage: self.storage,
-        };
-
-        app.run()
+        ScheduledApp::new(self)?.run()
     }
 
     /// Store a dependency graph of all systems as a png.
@@ -348,15 +342,27 @@ impl App {
 struct ScheduledApp {
     schedule: Schedule,
     storage: Storage,
+    socket: ControlSocket,
 }
 
 impl ScheduledApp {
+    fn new(app: App) -> Result<Self> {
+        Ok(Self {
+            schedule: Schedule::with_dependency_systems(app.systems)?,
+            storage: app.storage,
+            socket: ControlSocket::new().into_diagnostic()?,
+        })
+    }
+
     fn run(&mut self) -> Result<()> {
         self.schedule.check_ordered_dependencies()?;
         self.schedule.build_graph()?;
 
         loop {
             self.schedule.execute(&mut self.storage)?;
+            self.storage
+                .map_resource_mut(|view| self.socket.tick(&mut self.schedule, view))?
+                .into_diagnostic()?;
         }
     }
 }

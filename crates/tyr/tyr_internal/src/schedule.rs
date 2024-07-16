@@ -122,12 +122,29 @@ impl Dependency {
 #[derive(Clone)]
 pub struct DependencySystem<I> {
     system: BoxedSystem,
+    enabled: bool,
     dependencies: Vec<Dependency>,
     system_order_index: u8,
     _input: PhantomData<I>,
 }
 
 impl DependencySystem<()> {
+    pub(crate) fn system_name(&self) -> &str {
+        self.system.system_name()
+    }
+
+    pub(crate) fn run(&mut self, storage: &mut Storage) -> Result<()> {
+        if self.enabled {
+            self.system.run(storage)
+        } else {
+            Ok(())
+        }
+    }
+
+    pub(crate) fn enable(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
     pub(crate) fn boxed_system(&self) -> &BoxedSystem {
         &self.system
     }
@@ -147,6 +164,7 @@ impl<S: IntoSystem<NormalSystem, I>, I> IntoDependencySystem<I> for S {
     fn into_dependency_system_with_index(self, order_index: u8) -> DependencySystem<I> {
         DependencySystem {
             system: Box::new(self.into_system()),
+            enabled: true,
             dependencies: Vec::new(),
             system_order_index: order_index,
             _input: PhantomData,
@@ -162,6 +180,7 @@ impl<I> IntoDependencySystem<()> for DependencySystem<I> {
     fn into_dependency_system_with_index(self, order_index: u8) -> DependencySystem<()> {
         DependencySystem {
             system: self.system,
+            enabled: true,
             dependencies: self.dependencies,
             system_order_index: order_index,
             _input: PhantomData,
@@ -275,7 +294,7 @@ impl Schedule {
                         miette!(
                             "Unable to find dependency `{}` for `{}`",
                             dependency.boxed_system().system_name(),
-                            dependency.boxed_system().system_name()
+                            dependency_system.boxed_system().system_name()
                         )
                     })?;
 
@@ -408,9 +427,7 @@ impl Schedule {
 
                 // TODO: parallel implementation
                 for node in &current_nodes {
-                    self.dependency_systems[dag.system_index(*node).0]
-                        .system
-                        .run(storage)?;
+                    self.dependency_systems[dag.system_index(*node).0].run(storage)?;
                     execution_graph.remove_node(*node);
                 }
             }
@@ -483,5 +500,22 @@ impl Schedule {
         file.write_all(&png).into_diagnostic()?;
 
         Ok(())
+    }
+
+    pub fn get_system_by_name(&mut self, name: &str) -> Option<&mut DependencySystem<()>> {
+        self.dependency_systems
+            .iter_mut()
+            .find(|sys| sys.system_name() == name)
+    }
+
+    pub fn get_system_by_index(&mut self, index: usize) -> Option<&mut DependencySystem<()>> {
+        self.dependency_systems.get_mut(index)
+    }
+
+    pub fn list_systems(&self) -> HashMap<String, bool> {
+        self.dependency_systems
+            .iter()
+            .map(|sys| (sys.system_name().to_string(), sys.enabled))
+            .collect()
     }
 }
