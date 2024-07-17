@@ -280,8 +280,6 @@ fn detect_lines(
     points.clear();
     points_next.clear();
 
-    eprintln!("elapsed: {:?}", start.elapsed());
-
     Ok(LineDetectionData {
         line_points: points,
         line_points_next: points_next,

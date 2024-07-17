@@ -16,7 +16,7 @@ pub mod util;
 
 use field_boundary::FieldBoundaryModule;
 
-use scan_lines::{ScanLinesConfig, ScanLinesModule};
+use scan_lines::ScanLinesConfig;
 
 use self::ball_detection::BallDetectionModule;
 use self::field_marks::{FieldMarksConfig, FieldMarksModule};
@@ -30,9 +30,8 @@ impl Module for VisionModule {
             // TODO: use the new one!
             .add_module(scan_grid::ScanGridModule)?
             .add_module(scan_lines2::ScanLinesModule)?
-            .add_module(ScanLinesModule)?
             .add_module(LineDetectionModule)?
-            // .add_module(BallDetectionModule)?
+            .add_module(BallDetectionModule)?
             .add_module(FieldMarksModule)
     }
 }

@@ -431,8 +431,6 @@ fn get_vertical_scan_lines(
                     yuyv.pixel_unchecked(x, y + 1),
                 ]
             };
-            // eprintln!("HELLO THERE1\n");
-
             let pixel = YuvPixel::average(&pixels);
 
             let Some(curr_region) = &mut current_region else {
@@ -523,7 +521,6 @@ pub fn scan_lines_system(
     curr_cycle: &Cycle,
     dbg: &DebugContext,
 ) -> Result<()> {
-    // eprintln!("HERE0");
     update_scan_lines(
         top_scan_lines,
         top_image,
@@ -534,7 +531,6 @@ pub fn scan_lines_system(
         CameraType::Top,
     )?;
 
-    // eprintln!("HERE1");
     update_scan_lines(
         bottom_scan_lines,
         bottom_image,
@@ -545,7 +541,6 @@ pub fn scan_lines_system(
         CameraType::Bottom,
     )?;
 
-    // eprintln!("HERE2");
     Ok(())
 }
 
