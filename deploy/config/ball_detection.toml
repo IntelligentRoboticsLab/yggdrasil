@@ -1,19 +1,21 @@
 # The maximum age of a classified ball in milliseconds, before the eye color is reset.
 max_classification_age_eye_color = 250
 
-[proposal]
-# Maximum gap between black pixels to be considered a new segment
-white_ratio = 0.2
+[proposal.top]
+# The minimum ratio of white pixels in the range around the proposed ball
+ball_ratio = 0.6
 # Height/width of the bounding box around the ball
 bounding_box_scale = 100.0
-# Maximum distance between two clusters to be considered the same cluster
-cluster_max_distance = 64.0
-# Ratio of white pixels in the local area around a point to be considered a ball
-black_segment_max_gap = 3
-# The proposals are often too low on the ball (possibly caused by shadows?),
-# this causes the white ratio in the local area to be too low.
-# To fix this we offset the center of the proposal to be a bit higher.
-center_offset = 16.0
+# The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
+nms_threshold = 0.35
+
+[proposal.bottom]
+# The minimum ratio of white pixels in the range around the proposed ball
+ball_ratio = 0.7
+# Height/width of the bounding box around the ball
+bounding_box_scale = 40.0
+# The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
+nms_threshold = 0.35
 
 [classifier]
 # The threshold for the classifier to consider a proposal a ball

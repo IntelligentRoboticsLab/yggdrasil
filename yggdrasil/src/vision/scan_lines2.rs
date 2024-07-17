@@ -14,7 +14,7 @@ use nalgebra::Point2;
 use nidhogg::types::{color::u8, RgbU8};
 
 /// Minimum luminance delta for there to be considered an edge between pixels.
-const MIN_EDGE_LUMINANCE_DIFFERENCE: f32 = 13.0;
+const MIN_EDGE_LUMINANCE_DIFFERENCE: f32 = 10.0;
 
 /// Module that generates scan-lines from taken NAO images.
 ///
@@ -70,6 +70,10 @@ impl ScanLine {
         Self { raw }
     }
 
+    pub fn regions(&self) -> std::slice::Iter<ClassifiedScanLineRegion> {
+        self.raw.iter()
+    }
+
     /// Iterate over the line spots in these scanlines.
     ///
     /// A line spot is the point in the middle of a *white* scanline region.
@@ -90,12 +94,25 @@ pub struct TopScanLines(ScanLines);
 pub struct BottomScanLines(ScanLines);
 
 #[derive(Debug)]
-struct ScanLineRegion {
+pub struct ScanLineRegion {
     region: Region,
     approx_color: YuvPixel,
 }
 
+impl Deref for ScanLineRegion {
+    type Target = Region;
+
+    fn deref(&self) -> &Self::Target {
+        &self.region
+    }
+}
+
 impl ScanLineRegion {
+    /// Approximated color of the region.
+    pub fn approx_color(&self) -> &YuvPixel {
+        &self.approx_color
+    }
+
     /// Using a color sample and a weight, update the approximated color of the region.
     fn add_sample(&mut self, sample: YuvPixel, weight: usize) {
         let self_weight = self.region.length();
@@ -136,7 +153,20 @@ pub struct ClassifiedScanLineRegion {
     color: RegionColor,
 }
 
+impl Deref for ClassifiedScanLineRegion {
+    type Target = ScanLineRegion;
+
+    fn deref(&self) -> &Self::Target {
+        &self.line
+    }
+}
+
 impl ClassifiedScanLineRegion {
+    /// Classified color of the region.
+    pub fn color(&self) -> RegionColor {
+        self.color
+    }
+
     /// Merges adjacent regions with the same color.
     pub fn simplify(regions: Vec<Self>) -> Vec<Self> {
         let mut new_regions = Vec::new();
@@ -178,7 +208,7 @@ impl ClassifiedScanLineRegion {
 }
 
 #[derive(Debug)]
-enum Region {
+pub enum Region {
     Vertical {
         x: usize,
         y_start: usize,
@@ -359,7 +389,13 @@ fn get_vertical_scan_lines(
     for line in &scan_grid.lines {
         let mut current_region = None;
 
-        for y in &scan_grid.y {
+        // take the y coordinates of the scan grid, skipping the first and last line
+        for y in scan_grid
+            .y
+            .iter()
+            .skip(1)
+            .take(scan_grid.y.len().saturating_sub(2))
+        {
             let x = line.x as usize;
             let y = *y;
 
@@ -461,29 +497,29 @@ fn get_scan_lines(
 }
 
 #[system]
-fn scan_lines_system(
-    (top_image, bottom_image): (&TopImage, &BottomImage),
-    (top_scan_grid, bottom_scan_grid): (&mut TopScanGrid, &mut BottomScanGrid),
-    field_boundary: &FieldBoundary,
+pub fn scan_lines_system(
     (top_scan_lines, bottom_scan_lines): (&mut TopScanLines, &mut BottomScanLines),
+    (top_image, bottom_image): (&TopImage, &BottomImage),
+    (top_scan_grid, bottom_scan_grid): (&TopScanGrid, &BottomScanGrid),
+    field_boundary: &FieldBoundary,
     curr_cycle: &Cycle,
     dbg: &DebugContext,
 ) -> Result<()> {
     update_scan_lines(
+        top_scan_lines,
         top_image,
         top_scan_grid,
         field_boundary,
-        top_scan_lines,
         curr_cycle,
         dbg,
         CameraType::Top,
     )?;
 
     update_scan_lines(
+        bottom_scan_lines,
         bottom_image,
         bottom_scan_grid,
         field_boundary,
-        bottom_scan_lines,
         curr_cycle,
         dbg,
         CameraType::Bottom,
@@ -493,10 +529,10 @@ fn scan_lines_system(
 }
 
 fn update_scan_lines(
+    scan_lines: &mut ScanLines,
     image: &Image,
     scan_grid: &ScanGrid,
     field_boundary: &FieldBoundary,
-    scan_lines: &mut ScanLines,
     curr_cycle: &Cycle,
     dbg: &DebugContext,
     camera: CameraType,
@@ -583,7 +619,8 @@ impl RegionColor {
         }
 
         if Self::is_black(yhs) {
-            return RegionColor::Black;
+            return RegionColor::White;
+            // return RegionColor::Black;
         }
 
         RegionColor::Unknown
@@ -591,7 +628,8 @@ impl RegionColor {
 
     fn is_green((y, h, s): (f32, f32, f32)) -> bool {
         const MAX_FIELD_LUMINANCE: f32 = 200.0;
-        const MIN_FIELD_SATURATION: f32 = 40.0;
+        const MIN_FIELD_LUMINANCE: f32 = 50.0;
+        const MIN_FIELD_SATURATION: f32 = 50.0;
         // TODO: our hues are broken methinks, since green should be ~160
         // need to look into this further
         // const MIN_FIELD_HUE: f32 = 120.0;
@@ -599,7 +637,7 @@ impl RegionColor {
         const MIN_FIELD_HUE: f32 = 0.0;
         const MAX_FIELD_HUE: f32 = 80.0;
 
-        y <= MAX_FIELD_LUMINANCE
+        (MIN_FIELD_LUMINANCE..=MAX_FIELD_LUMINANCE).contains(&y)
             && s >= MIN_FIELD_SATURATION
             && (MIN_FIELD_HUE..MAX_FIELD_HUE).contains(&h)
     }
@@ -611,16 +649,16 @@ impl RegionColor {
         y > MIN_WHITE_LUMINANCE && s < MAX_WHITE_SATURATION
     }
 
-    fn is_black((y, _h, _s): (f32, f32, f32)) -> bool {
-        const MAX_BLACK_LUMINANCE: f32 = 50.0;
-        // const MAX_BLACK_SATURATION: f32 = 50.0;
+    fn is_black((y, _h, s): (f32, f32, f32)) -> bool {
+        const MAX_BLACK_LUMINANCE: f32 = 70.0;
+        const MAX_BLACK_SATURATION: f32 = 120.0;
 
-        y < MAX_BLACK_LUMINANCE // && s < MAX_BLACK_SATURATION
+        y < MAX_BLACK_LUMINANCE && s < MAX_BLACK_SATURATION
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum CameraType {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CameraType {
     Top,
     Bottom,
 }
