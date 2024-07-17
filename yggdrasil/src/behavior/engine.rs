@@ -266,7 +266,9 @@ impl Engine {
                 return;
             }
             FallState::Falling(_) => {
-                self.behavior = BehaviorKind::CatchFall(CatchFall);
+                if !matches!(context.primary_state, PrimaryState::Penalized) {
+                    self.behavior = BehaviorKind::CatchFall(CatchFall);
+                }
                 return;
             }
             _ => {}
