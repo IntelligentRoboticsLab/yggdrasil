@@ -5,11 +5,13 @@ use heimdall::CameraMatrix;
 use itertools::Itertools;
 use nalgebra::{Point2, Vector2};
 
+use ndarray::{Array2, Array3};
 use nidhogg::types::{color, FillExt, LeftEye};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
 
+use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority::Medium;
@@ -121,6 +123,7 @@ pub(super) fn ball_detection_system(
     config: &BallDetectionConfig,
     nao: &mut NaoManager,
     robot_pose: &RobotPose,
+    ctx: &DebugContext,
 ) -> Result<()> {
     detect_balls(
         top_proposals,
@@ -130,6 +133,7 @@ pub(super) fn ball_detection_system(
         config,
         robot_pose,
         CameraType::Top,
+        ctx,
     )?;
 
     detect_balls(
@@ -140,6 +144,7 @@ pub(super) fn ball_detection_system(
         config,
         robot_pose,
         CameraType::Bottom,
+        ctx,
     )?;
 
     if balls.no_balls() {
@@ -159,6 +164,7 @@ fn detect_balls(
     config: &BallDetectionConfig,
     robot_pose: &RobotPose,
     camera: CameraType,
+    ctx: &DebugContext,
 ) -> Result<()> {
     if balls.top_image.is_from_cycle(proposals.image.cycle()) {
         return Ok(());
@@ -189,6 +195,24 @@ fn detect_balls(
             (IMAGE_INPUT_SIZE, IMAGE_INPUT_SIZE),
             patch,
         );
+
+        let path = match camera {
+            CameraType::Top => "/top_patches/",
+            CameraType::Bottom => "/bottom_patches/",
+        };
+
+        let path = format!("{}/{}x{}", path, proposal.position.x, proposal.position.y);
+
+        ctx.log_patch(
+            path,
+            proposals.image.cycle(),
+            Array3::from_shape_vec(
+                (32, 32, 1),
+                patch.iter().cloned().map(|x| x as f32).collect_vec(),
+            )
+            .unwrap(),
+        )?;
+
         if let Ok(()) = model.try_start_infer(&patch) {
             loop {
                 if start.elapsed().as_micros() > classifier.time_budget as u128 {
