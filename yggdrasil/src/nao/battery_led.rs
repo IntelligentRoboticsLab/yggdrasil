@@ -46,7 +46,7 @@ pub fn battery_display(nao_state: &mut NaoState, manager: &mut NaoManager) -> Re
     }
 
     if battery_level >= 80 {
-        skull.right_middle_0 =LED_ENABLED;
+        skull.right_middle_0 = LED_ENABLED;
     }
 
     if battery_level >= 90 {
