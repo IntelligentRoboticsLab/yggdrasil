@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::{ops::Deref, sync::Arc};
 
 use crate::{core::debug::DebugContext, nao::Cycle, prelude::*};
 
@@ -31,18 +31,19 @@ impl Module for ScanLinesModule {
 }
 
 /// Horizontal and vertical scanlines for an image.
+#[derive(Clone)]
 pub struct ScanLines {
     image: Image,
-    horizontal: ScanLine,
-    vertical: ScanLine,
+    horizontal: Arc<ScanLine>,
+    vertical: Arc<ScanLine>,
 }
 
 impl ScanLines {
     pub fn new(image: Image, horizontal: ScanLine, vertical: ScanLine) -> Self {
         Self {
             image,
-            horizontal,
-            vertical,
+            horizontal: Arc::new(horizontal),
+            vertical: Arc::new(vertical),
         }
     }
 
@@ -82,6 +83,10 @@ impl ScanLine {
             .iter()
             .filter(|r| matches!(r.color, RegionColor::White))
             .map(|r| r.line.region.line_spot())
+    }
+
+    pub fn classified_scan_line_regions(&self) -> &[ClassifiedScanLineRegion] {
+        &self.raw
     }
 }
 
@@ -144,6 +149,10 @@ impl ScanLineRegion {
 
         ClassifiedScanLineRegion { line: self, color }
     }
+
+    pub fn region(&self) -> &Region {
+        &self.region
+    }
 }
 
 /// Scanline region with a classified color.
@@ -162,11 +171,6 @@ impl Deref for ClassifiedScanLineRegion {
 }
 
 impl ClassifiedScanLineRegion {
-    /// Classified color of the region.
-    pub fn color(&self) -> RegionColor {
-        self.color
-    }
-
     /// Merges adjacent regions with the same color.
     pub fn simplify(regions: Vec<Self>) -> Vec<Self> {
         let mut new_regions = Vec::new();
@@ -204,6 +208,14 @@ impl ClassifiedScanLineRegion {
         }
 
         new_regions
+    }
+
+    pub fn scan_line_region(&self) -> &ScanLineRegion {
+        &self.line
+    }
+
+    pub fn color(&self) -> &RegionColor {
+        &self.color
     }
 }
 
@@ -414,7 +426,6 @@ fn get_vertical_scan_lines(
                     yuyv.pixel_unchecked(x, y + 1),
                 ]
             };
-
             let pixel = YuvPixel::average(&pixels);
 
             let Some(curr_region) = &mut current_region else {
