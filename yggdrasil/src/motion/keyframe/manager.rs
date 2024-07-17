@@ -3,7 +3,6 @@ use super::types::{
 };
 use crate::motion::walk::engine::{WalkState, WalkingEngine};
 use crate::nao::manager::Priority;
-use crate::sensor::falling::FallState;
 use miette::{miette, Result};
 use nidhogg::types::JointArray;
 use nidhogg::NaoState;
@@ -83,14 +82,8 @@ impl ActiveMotion {
     }
 
     // executes the appropriate exit routine, connected to the chosen motion
-    pub fn execute_exit_routine(
-        &self,
-        fall_state: &mut FallState,
-        walking_engine: &mut WalkingEngine,
-    ) {
+    pub fn execute_exit_routine(&self, walking_engine: &mut WalkingEngine) {
         if let Some(ExitRoutine::Standing) = self.motion.settings.exit_routine {
-            *fall_state = FallState::Upright;
-
             // Since the robot is now standing, we can reset the hip height to the default value.
             walking_engine.hip_height = walking_engine.config.hip_height;
             walking_engine.state = WalkState::Standing(walking_engine.config.hip_height);

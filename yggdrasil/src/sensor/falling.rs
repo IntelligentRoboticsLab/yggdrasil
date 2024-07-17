@@ -38,7 +38,7 @@ impl Module for FallingFilter {
 pub enum FallState {
     Falling(FallDirection),
     #[default]
-    Upright,
+    None,
     Lying(LyingDirection),
 }
 
@@ -108,6 +108,8 @@ fn pose_filter(imu_values: &IMUValues, fall_state: &mut FallState) -> Result<()>
         *fall_state = FallState::Lying(LyingDirection::FacingDown);
     } else if is_lying_on_back(imu_values) {
         *fall_state = FallState::Lying(LyingDirection::FacingUp);
+    } else {
+        *fall_state = FallState::None;
     }
 
     Ok(())
