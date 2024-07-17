@@ -178,7 +178,6 @@ fn detect_lines(
     line_spots: Vec<Point2<f32>>,
     scan_lines: &ScanLines,
 ) -> Result<LineDetectionData> {
-    let start = std::time::Instant::now();
     let mut points = line_detection_data.line_points;
     // TODO: This clear should not be necessary.
     points.clear();
