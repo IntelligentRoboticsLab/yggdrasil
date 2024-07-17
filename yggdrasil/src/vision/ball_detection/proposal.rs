@@ -230,6 +230,7 @@ fn get_ball_proposals(
         };
 
         // Find radius to look around the point
+        // bbox scale is diameter, so divide by 2 to get radius
         let scaling = config.bounding_box_scale * 0.5;
         let radius = scaling / distance;
 

@@ -389,7 +389,7 @@ fn get_vertical_scan_lines(
     for line in &scan_grid.lines {
         let mut current_region = None;
 
-        for y in &scan_grid.y[1..scan_grid.y.len() - 1] {
+        for y in &scan_grid.y[1..(scan_grid.y.len() - 1).max(1)] {
             let x = line.x as usize;
             let y = *y;
 
