@@ -162,6 +162,10 @@ impl StepPlanner {
 
         None
     }
+
+    pub fn reached_target(&self) -> bool {
+        self.reached_translation_target && self.reached_rotation_target
+    }
 }
 
 fn calc_turn(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: &Point2<f32>) -> f32 {

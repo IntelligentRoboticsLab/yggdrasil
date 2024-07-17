@@ -37,7 +37,7 @@ use super::{
 ///
 /// It contains all necessary information for executing behaviors and
 /// transitioning between different behaviors.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Context<'a> {
     /// Robot info
     pub robot_info: &'a RobotInfo,
@@ -67,6 +67,8 @@ pub struct Context<'a> {
     pub pose: &'a RobotPose,
     /// Contains the ball position.
     pub ball_position: &'a Option<Point2<f32>>,
+    /// Contains the current behavior.
+    pub current_behavior: BehaviorKind,
 }
 
 /// Control that is passed into the behavior engine.
@@ -118,7 +120,7 @@ pub trait Behavior {
 /// - New behavior implementations should be added as new variants to this enum.
 /// - The specific struct for each behavior (e.g., [`Stand`], [`StartUp`]) should implement the [`Behavior`] trait.
 #[enum_dispatch(Behavior)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum BehaviorKind {
     StartUp(StartUp),
     Unstiff(Unstiff),
@@ -231,11 +233,11 @@ impl Engine {
 
     /// Executes one step of the behavior engine
     pub fn step(&mut self, context: Context, control: &mut Control) {
-        self.role = self.assign_role(context);
+        self.role = self.assign_role(context.clone());
 
-        self.transition(context, control);
+        self.transition(context.clone(), control);
 
-        self.behavior.execute(context, control);
+        self.behavior.execute(context.clone(), control);
     }
 
     pub fn transition(&mut self, context: Context, control: &mut Control) {
@@ -333,6 +335,7 @@ pub fn step(
         fall_state,
         pose: robot_pose,
         ball_position: &balls.balls.first().map(|ball| ball.position),
+        current_behavior: engine.behavior.clone(),
     };
 
     let mut control = Control {
