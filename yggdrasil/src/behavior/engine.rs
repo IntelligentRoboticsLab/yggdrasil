@@ -6,9 +6,12 @@ use nalgebra::Point2;
 
 use crate::{
     behavior::{
-        behaviors::{CatchFall, Observe, Standup, StartUp, Unstiff, Walk},
+        behaviors::{
+            CatchFall, Observe, Stand, StandLookAt, Standup, StartUp, Unstiff, Walk, WalkTo,
+            WalkToSet,
+        },
         primary_state::PrimaryState,
-        roles::Attacker,
+        roles::{Attacker, Defender, Keeper},
         BehaviorConfig,
     },
     core::{
@@ -26,11 +29,6 @@ use crate::{
         fsr::Contacts,
     },
     vision::ball_detection::classifier::Balls,
-};
-
-use super::{
-    behaviors::{Stand, StandLookAt, WalkToSet},
-    roles::Keeper,
 };
 
 /// Context that is passed into the behavior engine.
@@ -128,6 +126,7 @@ pub enum BehaviorKind {
     Observe(Observe),
     Stand(Stand),
     Walk(Walk),
+    WalkTo(WalkTo),
     WalkToSet(WalkToSet),
     Standup(Standup),
     CatchFall(CatchFall),
@@ -188,10 +187,12 @@ pub trait Role {
 /// - New role implementations should be added as new variants to this enum
 /// - The specific struct for each role (e.g., [`Attacker`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
+#[derive(Debug)]
 pub enum RoleKind {
     Attacker(Attacker),
-    // Add new roles here!
     Keeper(Keeper),
+    Defender(Defender),
+    // Add new roles here!
 }
 
 impl RoleKind {
@@ -201,7 +202,7 @@ impl RoleKind {
         match player_number {
             1 => RoleKind::Keeper(Keeper),
             5 => RoleKind::Attacker(Attacker),
-            _ => RoleKind::Attacker(Attacker),
+            _ => RoleKind::Defender(Defender),
         }
     }
 }
@@ -209,7 +210,7 @@ impl RoleKind {
 /// Resource that is exposed and keeps track of the current role and behavior.
 pub struct Engine {
     /// Current robot role
-    role: RoleKind,
+    pub role: RoleKind,
     /// Current robot behavior
     // TODO: Make private.
     pub behavior: BehaviorKind,
@@ -276,6 +277,10 @@ impl Engine {
             _ => {}
         }
 
+        if self.should_attack(&context, control) {
+            self.role = RoleKind::Attacker(Attacker);
+        }
+
         let ball_or_origin = context.ball_position.unwrap_or(Point2::origin());
 
         self.behavior = match context.primary_state {
@@ -293,6 +298,18 @@ impl Engine {
             }),
             PrimaryState::Playing => self.role.transition_behavior(context, control),
         };
+    }
+
+    pub fn should_attack(&mut self, context: &Context, _control: &mut Control) -> bool {
+        if let RoleKind::Attacker(_) = self.role {
+            return true;
+        }
+
+        if context.ball_position.is_some() {
+            return true;
+        }
+
+        false
     }
 }
 
@@ -334,7 +351,7 @@ pub fn step(
         game_controller_config,
         fall_state,
         pose: robot_pose,
-        ball_position: &balls.balls.first().map(|ball| ball.position),
+        ball_position: &balls.most_confident_ball().map(|b| b.position),
         current_behavior: engine.behavior.clone(),
     };
 
