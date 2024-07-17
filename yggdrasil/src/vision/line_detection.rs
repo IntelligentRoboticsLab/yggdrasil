@@ -9,7 +9,7 @@ use crate::prelude::*;
 use crate::vision::scan_lines2::RegionColor;
 
 use super::line::LineSegment2;
-use super::scan_lines2::{Region, ScanLines, TopScanLines};
+use super::scan_lines2::{ScanLine, ScanLines, TopScanLines};
 
 use derive_more::Deref;
 use heimdall::CameraMatrix;
