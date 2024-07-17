@@ -94,6 +94,15 @@ impl RobotPose {
 
         HeadJoints { yaw, pitch: 0.0 }
     }
+
+    pub fn distance_to(&self, point: &Point2<f32>) -> f32 {
+        (self.world_position() - point).norm()
+    }
+
+    pub fn angle_to(&self, point: &Point2<f32>) -> f32 {
+        let robot_to_point = self.world_to_robot(point).xy();
+        robot_to_point.y.atan2(robot_to_point.x)
+    }
 }
 
 #[system]

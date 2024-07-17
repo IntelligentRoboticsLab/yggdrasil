@@ -2,12 +2,13 @@ use nalgebra::{Point2, UnitComplex};
 
 use crate::{
     behavior::{
-        behaviors::{Observe, Walk},
+        behaviors::{Observe, WalkTo},
         engine::{BehaviorKind, Context, Control, Role},
     },
     motion::step_planner::Target,
 };
 
+#[derive(Debug)]
 pub struct Keeper;
 
 impl Role for Keeper {
@@ -30,7 +31,7 @@ impl Role for Keeper {
             };
         }
 
-        BehaviorKind::Walk(Walk {
+        BehaviorKind::WalkTo(WalkTo {
             target: keeper_target,
         })
     }
