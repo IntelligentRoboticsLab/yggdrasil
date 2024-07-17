@@ -9,11 +9,21 @@ use crate::{
 /// The behavior will be entered once the robot is confirmed to be lying down,
 /// this will execute the appropriate standup motion after which the robot will return
 /// to the appropriate next behavior.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Standup;
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
+pub struct Standup {
+    completed: bool,
+}
+
+impl Standup {
+    pub fn completed(&self) -> bool {
+        self.completed
+    }
+}
 
 impl Behavior for Standup {
     fn execute(&mut self, context: Context, control: &mut Control) {
+        self.completed = !control.keyframe_executor.is_motion_active();
+
         // check the direction the robot is lying and execute the appropriate motion
         match context.fall_state {
             FallState::Lying(LyingDirection::FacingDown) => {

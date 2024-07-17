@@ -3,7 +3,7 @@ use crate::motion::walk::engine::WalkingEngine;
 use crate::nao::manager::NaoManager;
 use crate::nao::manager::Priority;
 use crate::sensor::imu::IMUValues;
-use crate::sensor::{falling::FallState, orientation::RobotOrientation};
+use crate::sensor::orientation::RobotOrientation;
 use miette::{miette, Result};
 use nalgebra::Vector3;
 use nidhogg::types::{ArmJoints, ForceSensitiveResistors, HeadJoints, LegJoints};
@@ -42,7 +42,6 @@ pub fn keyframe_executor(
     nao_state: &mut NaoState,
     keyframe_executor: &mut KeyframeExecutor,
     nao_manager: &mut NaoManager,
-    fall_state: &mut FallState,
     orientation: &RobotOrientation,
     (fsr, imu): (&ForceSensitiveResistors, &IMUValues),
     walking_engine: &mut WalkingEngine,
@@ -158,7 +157,7 @@ pub fn keyframe_executor(
             }
         }
 
-        transition_to_next_submotion(keyframe_executor, nao_state, fall_state, walking_engine)
+        transition_to_next_submotion(keyframe_executor, nao_state, walking_engine)
             .inspect_err(|_| keyframe_executor.stop_motion())?;
 
         nao_manager.set_all(
@@ -300,7 +299,6 @@ fn exit_waittime_elapsed(keyframe_executor: &mut KeyframeExecutor, exit_wait_tim
 fn transition_to_next_submotion(
     keyframe_executor: &mut KeyframeExecutor,
     nao_state: &mut NaoState,
-    fall_state: &mut FallState,
     walking_engine: &mut WalkingEngine,
 ) -> Result<()> {
     // current submotion is finished, transition to next submotion.
@@ -327,7 +325,7 @@ fn transition_to_next_submotion(
             .active_motion
             .as_ref()
             .unwrap()
-            .execute_exit_routine(fall_state, walking_engine);
+            .execute_exit_routine(walking_engine);
 
         // and we reset the KeyframeExecutor
         keyframe_executor.active_motion = None;

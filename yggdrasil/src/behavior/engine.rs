@@ -213,6 +213,7 @@ pub struct Engine {
     /// Current robot behavior
     // TODO: Make private.
     pub behavior: BehaviorKind,
+    pub previous_behavior: BehaviorKind,
 }
 
 impl Default for Engine {
@@ -220,6 +221,7 @@ impl Default for Engine {
         Self {
             role: RoleKind::Attacker(Attacker),
             behavior: BehaviorKind::default(),
+            previous_behavior: BehaviorKind::default(),
         }
     }
 }
@@ -241,6 +243,11 @@ impl Engine {
     }
 
     pub fn transition(&mut self, context: Context, control: &mut Control) {
+        println!(
+            "Cycle {0:?}, falling: {1:?}, behavior: {2:?}",
+            context.primary_state, context.fall_state, self.behavior
+        );
+
         if let BehaviorKind::StartUp(_) = self.behavior {
             if control.walking_engine.is_sitting() || context.head_buttons.all_pressed() {
                 self.behavior = BehaviorKind::Unstiff(Unstiff);
@@ -257,14 +264,21 @@ impl Engine {
             return;
         }
 
-        if let BehaviorKind::Standup(_) = self.behavior {
+        if let BehaviorKind::Standup(standup) = self.behavior {
+            if standup.completed() {
+                //
+                // previous_behaviour;
+            }
             return;
         }
 
         // next up, damage prevention and standup motion take precedence
         match context.fall_state {
             FallState::Lying(_) => {
-                self.behavior = BehaviorKind::Standup(Standup);
+                println!("Starting standup!");
+
+                self.previous_behavior = self.behavior.clone();
+                self.behavior = BehaviorKind::Standup(Standup::default());
                 return;
             }
             FallState::Falling(_) => {
