@@ -171,11 +171,6 @@ impl Deref for ClassifiedScanLineRegion {
 }
 
 impl ClassifiedScanLineRegion {
-    /// Classified color of the region.
-    pub fn color(&self) -> RegionColor {
-        self.color
-    }
-
     /// Merges adjacent regions with the same color.
     pub fn simplify(regions: Vec<Self>) -> Vec<Self> {
         let mut new_regions = Vec::new();
