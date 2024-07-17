@@ -203,7 +203,7 @@ impl Simulation {
 
         for robot in self.robots.iter() {
             let robot_pos = robot.pose.world_position();
-            let robot_radius = 0.2; // Robot radius
+            let robot_radius = 0.1; // Robot radius
             let ball_radius = 0.05; // Ball radius
 
             let distance = (robot_pos - ball).norm();
@@ -285,6 +285,7 @@ impl Simulation {
                 );
                 columns[i].label(format!("{:?}", robot.primary_state));
                 columns[i].label(format!("{:?}", robot.engine.behavior));
+                columns[i].label(format!("{:?}", robot.engine.role));
             });
         });
     }
@@ -429,8 +430,8 @@ impl Robot {
             layout_config,
             game_controller_message: Some(gamecontrollermessage),
             pose: &self.pose,
-            ball_position: ball,
             current_behavior: BehaviorKind::Stand(Default::default()),
+            ball_position: if self.sees_ball { ball } else { &None },
         };
 
         self.engine.step(context, &mut control);
@@ -464,14 +465,10 @@ impl Robot {
         };
 
         let relative_ball = self.pose.world_to_robot(ball);
-        let angle = self.calc_angle(ball);
+        // let angle = self.calc_angle(ball);
 
-        self.sees_ball = relative_ball.coords.norm() < 3.0 && angle.abs() < 45.0f32.to_radians();
-    }
-
-    fn calc_angle(&self, target_point: &Point2<f32>) -> f32 {
-        let target = self.pose.world_to_robot(target_point);
-        target.y.atan2(target.x)
+        self.sees_ball = relative_ball.coords.norm() < 3.0;
+        // self.sees_ball = relative_ball.coords.norm() < 3.0 && angle.abs() < 45.0f32.to_radians();
     }
 
     fn draw(
