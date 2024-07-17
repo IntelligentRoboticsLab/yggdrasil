@@ -9,7 +9,6 @@ use super::manager::NaoManager;
 
 #[system]
 pub fn battery_display(nao_state: &mut NaoState, manager: &mut NaoManager) -> Result<()> {
-    // retrieve battery level
     let battery_level = (nao_state.battery.charge * 100.0) as u32;
 
     // turns on a certain amount of LED's based on the robots battery level
