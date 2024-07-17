@@ -1,7 +1,7 @@
 mod cycle;
 pub use cycle::*;
 
-pub mod battery_led;
+mod battery_led;
 
 use battery_led::battery_display;
 pub mod manager;
