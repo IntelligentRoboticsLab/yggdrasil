@@ -54,7 +54,9 @@ impl Config for WhistleDetectionConfig {
 }
 
 pub struct WhistleState {
-    pub detections: Vec<bool>,
+    detections: Vec<bool>,
+    pub detected: bool,
+    pub transition_on_detection: bool,
     stft: Stft,
 }
 
@@ -63,6 +65,8 @@ impl Default for WhistleState {
         Self {
             detections: Vec::new(),
             stft: Stft::new(WINDOW_SIZE, HOP_SIZE),
+            detected: false,
+            transition_on_detection: false,
         }
     }
 }
@@ -97,9 +101,11 @@ fn detect_whistle(
         let detections = state.detections.iter().fold(0, |acc, e| acc + *e as usize);
 
         if detections >= config.detections_needed {
+            state.detected = true;
             nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
             nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
         } else {
+            state.detected = false;
             nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
             nao_manager.set_right_ear_led(RightEar::fill(0.0), Priority::High);
         }
