@@ -213,7 +213,7 @@ pub struct Engine {
     /// Current robot behavior
     // TODO: Make private.
     pub behavior: BehaviorKind,
-    pub previous_behavior: BehaviorKind,
+    pub prev_behavior_for_standup: BehaviorKind,
 }
 
 impl Default for Engine {
@@ -221,7 +221,7 @@ impl Default for Engine {
         Self {
             role: RoleKind::Attacker(Attacker),
             behavior: BehaviorKind::default(),
-            previous_behavior: BehaviorKind::default(),
+            prev_behavior_for_standup: BehaviorKind::default(),
         }
     }
 }
@@ -266,8 +266,7 @@ impl Engine {
 
         if let BehaviorKind::Standup(standup) = self.behavior {
             if standup.completed() {
-                //
-                // previous_behaviour;
+                self.behavior = self.prev_behavior_for_standup.clone();
             }
             return;
         }
@@ -275,9 +274,7 @@ impl Engine {
         // next up, damage prevention and standup motion take precedence
         match context.fall_state {
             FallState::Lying(_) => {
-                println!("Starting standup!");
-
-                self.previous_behavior = self.behavior.clone();
+                self.prev_behavior_for_standup = self.behavior.clone();
                 self.behavior = BehaviorKind::Standup(Standup::default());
                 return;
             }
