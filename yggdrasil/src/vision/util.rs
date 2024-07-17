@@ -12,7 +12,7 @@ pub fn non_max_suppression(boxes: Vec<BBox>, scores: Vec<f32>, threshold: f32) -
             let score_i = scores[i];
             let score_j = scores[j];
 
-            if overlap > threshold && score_j > score_i {
+            if overlap >= threshold && score_j >= score_i {
                 discard = true;
                 break;
             }

@@ -36,6 +36,8 @@ pub struct BallProposalConfig {
     pub ball_ratio: f32,
     /// Height/width of the bounding box around the ball
     pub bounding_box_scale: f32,
+    /// The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
+    pub nms_threshold: f32,
 }
 
 /// Module for finding possible ball locations in the top camera image
@@ -283,7 +285,7 @@ fn get_ball_proposals(
         scores.push(color_count.ball_ratio());
     }
 
-    let indices = crate::vision::util::non_max_suppression(boxes, scores, 0.3);
+    let indices = crate::vision::util::non_max_suppression(boxes, scores, config.nms_threshold);
 
     let proposals: Vec<_> = indices.iter().map(|&i| proposals[i].clone()).collect();
     let image = scan_lines.image().clone();

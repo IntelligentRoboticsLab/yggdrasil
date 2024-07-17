@@ -6,12 +6,16 @@ max_classification_age_eye_color = 250
 ball_ratio = 0.6
 # Height/width of the bounding box around the ball
 bounding_box_scale = 100.0
+# The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
+nms_threshold = 0.35
 
 [proposal.bottom]
 # The minimum ratio of white pixels in the range around the proposed ball
 ball_ratio = 0.7
 # Height/width of the bounding box around the ball
 bounding_box_scale = 40.0
+# The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
+nms_threshold = 0.35
 
 [classifier]
 # The threshold for the classifier to consider a proposal a ball
