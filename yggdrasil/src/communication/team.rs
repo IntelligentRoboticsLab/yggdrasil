@@ -175,7 +175,7 @@ impl TeamCommunication {
         let team_info = message.team(self.team_number)?;
         let messages = team_info.message_budget.saturating_sub(MINIMAL_BUDGET) as f32;
         let messages_per_player = messages / *players_per_team as f32;
-        let secs_per_message = secs_remaining as f32 / messages_per_player;
+        let secs_per_message = secs_remaining.max(0) as f32 / messages_per_player;
 
         Some(Duration::from_secs_f32(secs_per_message))
     }
