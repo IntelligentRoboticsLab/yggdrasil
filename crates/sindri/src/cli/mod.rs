@@ -2,6 +2,8 @@ use clap::Parser;
 
 pub mod change_network;
 pub mod config;
+pub mod download;
+pub mod record;
 pub mod dependency_graph;
 pub mod robot_ops;
 pub mod run;
@@ -53,6 +55,8 @@ pub struct Cli {
 pub enum Commands {
     Run(run::Run),
     Scan(scan::Scan),
+    Record(record::Record),
+    Download(download::Download),
     Showtime(showtime::Showtime),
     ChangeNetwork(change_network::ChangeNetwork),
     #[command(subcommand)]

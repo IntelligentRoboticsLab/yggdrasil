@@ -22,9 +22,7 @@ use crate::{
 };
 
 const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
-const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
 const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
-const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 const CONNECTION_TIMEOUT: u64 = 5;
 const LOCAL_ROBOT_ID_STR: &str = "0";
 
@@ -409,14 +407,21 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
         pb.reset_elapsed();
     }
 
+    let remote_release_path = format!(
+        "{}/{}",
+        "./target/x86_64-unknown-linux-gnu/release", config.bin
+    );
+
     let release_path = if config.local {
         RELEASE_PATH_LOCAL
     } else {
-        RELEASE_PATH_REMOTE
+         &remote_release_path
     };
 
+    let deploy_path = format!("./deploy/{}", config.bin);
+
     // Copy over the files that need to be deployed
-    fs::copy(release_path, DEPLOY_PATH)
+    fs::copy(release_path, deploy_path)
         .into_diagnostic()
         .wrap_err("Failed to copy binary to deploy directory!")?;
 

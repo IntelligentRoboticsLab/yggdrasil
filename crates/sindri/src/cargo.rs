@@ -56,12 +56,14 @@ where
     E: IntoIterator<Item = (S, S)> + Debug + Clone,
     S: AsRef<OsStr>,
 {
-    let output = Command::new("cargo")
-        .args(args)
+    let mut tmp = Command::new("cargo");
+    tmp.args(args)
         .args(["--color", "always"]) // always pass color, cargo doesn't pass color when it detects it's piped
         .envs(envs)
         .output()
         .await?;
+
+    let output = tmp.output().await?;
 
     if !output.status.success() {
         // build failed for whatever reason, print to stdout
