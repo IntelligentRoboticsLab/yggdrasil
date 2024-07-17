@@ -31,8 +31,8 @@ impl Module for VisionModule {
             .add_module(scan_grid::ScanGridModule)?
             .add_module(scan_lines2::ScanLinesModule)?
             .add_module(LineDetectionModule)?
-            .add_module(BallDetectionModule)?
-            .add_module(FieldMarksModule)
+            .add_module(BallDetectionModule)
+        // .add_module(FieldMarksModule)
     }
 }
 

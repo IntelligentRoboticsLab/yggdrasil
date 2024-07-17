@@ -14,7 +14,7 @@ use nalgebra::Point2;
 use nidhogg::types::{color::u8, RgbU8};
 
 /// Minimum luminance delta for there to be considered an edge between pixels.
-const MIN_EDGE_LUMINANCE_DIFFERENCE: f32 = 10.0;
+const MIN_EDGE_LUMINANCE_DIFFERENCE: f32 = 8.0;
 
 /// Module that generates scan-lines from taken NAO images.
 ///
@@ -639,8 +639,8 @@ impl RegionColor {
 
     fn is_green((y, h, s): (f32, f32, f32)) -> bool {
         const MAX_FIELD_LUMINANCE: f32 = 200.0;
-        const MIN_FIELD_LUMINANCE: f32 = 50.0;
-        const MIN_FIELD_SATURATION: f32 = 50.0;
+        const MIN_FIELD_LUMINANCE: f32 = 10.0;
+        const MIN_FIELD_SATURATION: f32 = 35.0;
         // TODO: our hues are broken methinks, since green should be ~160
         // need to look into this further
         // const MIN_FIELD_HUE: f32 = 120.0;
@@ -648,7 +648,8 @@ impl RegionColor {
         const MIN_FIELD_HUE: f32 = 0.0;
         const MAX_FIELD_HUE: f32 = 80.0;
 
-        (MIN_FIELD_LUMINANCE..=MAX_FIELD_LUMINANCE).contains(&y)
+        // (MIN_FIELD_LUMINANCE..=MAX_FIELD_LUMINANCE).contains(&y)
+        y > MIN_FIELD_LUMINANCE
             && s >= MIN_FIELD_SATURATION
             && (MIN_FIELD_HUE..MAX_FIELD_HUE).contains(&h)
     }
