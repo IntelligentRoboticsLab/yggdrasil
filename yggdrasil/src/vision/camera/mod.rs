@@ -397,7 +397,8 @@ fn update_exposure_weights(
 
         let samples = (column_start..column_end)
             .step_by(column_width as usize / SAMPLES_PER_COLUMN)
-            .map(|x| field_boundary.height_at_pixel(x as f32));
+            // TODO: remove the + 50., used as extra padding to prevent oscillating weights
+            .map(|x| field_boundary.height_at_pixel(x as f32) + 50.);
 
         let n = samples.len() as f32;
         let field_height = (samples.sum::<f32>() / n) as u32;
