@@ -12,6 +12,7 @@ pub mod line_detection;
 pub mod scan_grid;
 pub mod scan_lines;
 pub mod scan_lines2;
+pub mod util;
 
 use field_boundary::FieldBoundaryModule;
 

@@ -2,6 +2,7 @@ use std::ops::Deref;
 use std::time::{Duration, Instant};
 
 use heimdall::CameraMatrix;
+use itertools::Itertools;
 use nalgebra::{Point2, Vector2};
 
 use nidhogg::types::{color, FillExt, LeftEye};
@@ -73,6 +74,7 @@ pub struct Ball {
     pub position_image: Point2<f32>,
     pub robot_to_ball: Vector2<f32>,
     pub position: Point2<f32>,
+    pub scale: f32,
     pub distance: f32,
     pub timestamp: Instant,
     pub confidence: f32,
@@ -166,7 +168,11 @@ fn detect_balls(
     let start = Instant::now();
 
     let mut classified_balls = Vec::new();
-    'outer: for proposal in proposals.proposals.iter() {
+    'outer: for proposal in proposals
+        .proposals
+        .iter()
+        .sorted_by(|a, b| a.distance_to_ball.total_cmp(&b.distance_to_ball))
+    {
         if proposal.distance_to_ball > 20.0 {
             continue;
         }
@@ -209,6 +215,7 @@ fn detect_balls(
                         classified_balls.push(Ball {
                             position_image: proposal.position.cast(),
                             robot_to_ball: robot_to_ball.xy().coords,
+                            scale: proposal.scale,
                             position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
                             distance: proposal.distance_to_ball,
                             timestamp: Instant::now(),
@@ -221,7 +228,6 @@ fn detect_balls(
         }
     }
 
-    balls.top_image = proposals.image.clone();
     if classified_balls.is_empty() {
         for ball in balls.balls.iter() {
             if ball.timestamp.elapsed() < classifier.ball_life {
@@ -231,6 +237,11 @@ fn detect_balls(
     }
 
     balls.balls = classified_balls;
+    let new_image = proposals.image.clone();
+    match camera {
+        CameraType::Top => balls.top_image = new_image,
+        CameraType::Bottom => balls.bottom_image = new_image,
+    };
 
     Ok(())
 }

@@ -6,6 +6,7 @@ use heimdall::CameraMatrix;
 use itertools::Itertools;
 use nalgebra::Point2;
 
+use nidhogg::types::color;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -31,8 +32,8 @@ pub struct BallProposalConfigs {
 /// Configurable values for getting ball proposals during the ball detection pipeline
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BallProposalConfig {
-    /// The minimum ratio of white pixels in the range around the proposed ball
-    pub white_ratio: f32,
+    /// The minimum ratio of white or black pixels in the range around the proposed ball
+    pub ball_ratio: f32,
     /// Height/width of the bounding box around the ball
     pub bounding_box_scale: f32,
 }
@@ -46,8 +47,12 @@ pub struct BallProposalModule;
 
 impl Module for BallProposalModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(ball_proposals_system.after(scan_lines2::scan_lines_system))
-            .add_startup_system(init_ball_proposals)
+        app.add_system_chain((
+            ball_proposals_system.after(scan_lines2::scan_lines_system),
+            log_proposals,
+        ))
+        // app.add_system(ball_proposals_system.after(scan_lines2::scan_lines_system))
+        .add_startup_system(init_ball_proposals)
     }
 }
 
@@ -86,24 +91,13 @@ pub(super) fn ball_proposals_system(
     matrices: &CameraMatrices,
     config: &BallProposalConfigs,
     (top_proposals, bottom_proposals): (&mut TopBallProposals, &mut BottomBallProposals),
-    dbg: &DebugContext,
 ) -> Result<()> {
-    update_ball_proposals(
-        top_proposals,
-        top_scan_lines,
-        &matrices.top,
-        &config.top,
-        CameraType::Top,
-        dbg,
-    )?;
-
+    update_ball_proposals(top_proposals, top_scan_lines, &matrices.top, &config.top)?;
     update_ball_proposals(
         bottom_proposals,
         bottom_scan_lines,
         &matrices.bottom,
         &config.bottom,
-        CameraType::Bottom,
-        dbg,
     )?;
 
     Ok(())
@@ -114,8 +108,6 @@ pub fn update_ball_proposals(
     scan_lines: &ScanLines,
     matrix: &CameraMatrix,
     config: &BallProposalConfig,
-    camera: CameraType,
-    dbg: &DebugContext,
 ) -> Result<()> {
     // if the image has not changed, we don't need to recalculate the proposals
     if ball_proposals
@@ -125,7 +117,7 @@ pub fn update_ball_proposals(
         return Ok(());
     }
 
-    let new = get_ball_proposals(scan_lines, matrix, config, camera, dbg)?;
+    let new = get_ball_proposals(scan_lines, matrix, config)?;
 
     *ball_proposals = new;
 
@@ -133,12 +125,12 @@ pub fn update_ball_proposals(
 }
 
 #[derive(Debug, Default, Clone)]
-struct WhiteCounter {
-    white: f32,
+struct BallColorCounter {
+    ball_color: f32,
     other: f32,
 }
 
-impl WhiteCounter {
+impl BallColorCounter {
     fn from_regions<'a>(
         start: f32,
         end: f32,
@@ -161,25 +153,28 @@ impl WhiteCounter {
                 ),
             });
 
-        Self { white, other }
+        Self {
+            ball_color: white,
+            other,
+        }
     }
 
-    fn white_ratio(&self) -> f32 {
-        if self.other == 0.0 && self.white == 0.0 {
+    fn ball_ratio(&self) -> f32 {
+        if self.other == 0.0 && self.ball_color == 0.0 {
             return 0.0;
         }
 
-        self.white / (self.other + self.white)
+        self.ball_color / (self.other + self.ball_color)
     }
 }
 
-impl Add for WhiteCounter {
+impl Add for BallColorCounter {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
         Self {
             other: self.other + rhs.other,
-            white: self.white + rhs.white,
+            ball_color: self.ball_color + rhs.ball_color,
         }
     }
 }
@@ -200,8 +195,6 @@ fn get_ball_proposals(
     scan_lines: &ScanLines,
     matrix: &CameraMatrix,
     config: &BallProposalConfig,
-    camera: CameraType,
-    dbg: &DebugContext,
 ) -> Result<BallProposals> {
     let h_lines = scan_lines.horizontal();
 
@@ -226,6 +219,7 @@ fn get_ball_proposals(
         // Middle of the white region
         let mid_point = middle.line_spot();
 
+        // Distance to the ball
         let Ok(distance) = matrix
             .pixel_to_ground(mid_point, 0.0)
             .map(|p| p.coords.magnitude())
@@ -235,25 +229,28 @@ fn get_ball_proposals(
 
         // Find radius to look around the point
         let scaling = config.bounding_box_scale * 0.5;
-        let range = scaling / distance;
+        let radius = scaling / distance;
 
-        // Scan circularly around the ball to find:
+        // Scan circularly around the ball to find in the scanlines:
         // - The average y position of the ball
         // - The ratio of white pixels in the region
-        let (y_locations, color_count) = (-range as usize..=range as usize).fold(
-            (Vec::new(), WhiteCounter::default()),
+        let (y_locations, color_count) = (-radius as usize..=radius as usize).fold(
+            (Vec::new(), BallColorCounter::default()),
             |(mut valid_locs, count), y| {
-                let x = (range * range - (y * y) as f32).sqrt();
+                let x = (radius * radius - (y * y) as f32).sqrt();
 
                 let same_y_regions = h_lines
                     .regions()
                     .filter(|region| region.fixed_point() == mid_point.y as usize + y);
 
-                let new_count =
-                    WhiteCounter::from_regions(mid_point.x - x, mid_point.x + x, same_y_regions);
+                let new_count = BallColorCounter::from_regions(
+                    mid_point.x - x,
+                    mid_point.x + x,
+                    same_y_regions,
+                );
 
                 // only count the y location if there are actually white pixels in the region
-                if new_count.white > 0.0 {
+                if new_count.ball_color > 0.0 {
                     valid_locs.push(mid_point.y as usize + y);
                 }
 
@@ -261,8 +258,7 @@ fn get_ball_proposals(
             },
         );
 
-        // not white enough
-        if color_count.white_ratio() < config.white_ratio {
+        if color_count.ball_ratio() < config.ball_ratio {
             continue;
         }
 
@@ -279,103 +275,20 @@ fn get_ball_proposals(
 
         proposals.push(proposal);
         boxes.push((
-            new_mid_point.x - range,
-            new_mid_point.y - range,
-            new_mid_point.x + range,
-            new_mid_point.y + range,
+            new_mid_point.x - radius,
+            new_mid_point.y - radius,
+            new_mid_point.x + radius,
+            new_mid_point.y + radius,
         ));
-        scores.push((range, color_count.white_ratio()));
+        scores.push(color_count.ball_ratio());
     }
 
-    let (radii, white_ratios): (Vec<_>, Vec<_>) = scores.into_iter().unzip();
-
-    let indices = nms(boxes, white_ratios, 0.5);
-    // let indices = (0..boxes.len()).collect::<Vec<_>>();
+    let indices = crate::vision::util::non_max_suppression(boxes, scores, 0.3);
 
     let proposals: Vec<_> = indices.iter().map(|&i| proposals[i].clone()).collect();
-    let potential: Vec<_> = proposals
-        .iter()
-        .map(|p| (p.position.x as f32, p.position.y as f32))
-        .collect();
-
-    let camera_str = if matches!(camera, CameraType::Top) {
-        "top_camera"
-    } else {
-        "bottom_camera"
-    };
-
-    dbg.log_points2d_for_image_with_radii(
-        format!("{camera_str}/image/bruh"),
-        &potential,
-        scan_lines.image().cycle(),
-        nidhogg::types::color::u8::WHITE,
-        radii,
-    )?;
-
     let image = scan_lines.image().clone();
 
     Ok(BallProposals { image, proposals })
-}
-
-fn nms(boxes: Vec<BBox>, scores: Vec<f32>, threshold: f32) -> Vec<usize> {
-    let mut final_indices = Vec::new();
-
-    println!("Began with {}", boxes.len());
-
-    for i in 0..boxes.len() {
-        let mut discard = false;
-        for j in 0..boxes.len() {
-            if i == j {
-                continue;
-            }
-
-            let overlap = iou(&boxes[i], &boxes[j]);
-            println!("iou: {}", overlap);
-            let score_i = scores[i];
-            let score_j = scores[j];
-
-            if overlap > threshold && score_j > score_i {
-                discard = true;
-                break;
-            }
-        }
-
-        if !discard {
-            final_indices.push(i);
-        }
-    }
-
-    println!("Ended with {}", final_indices.len());
-
-    final_indices
-}
-
-type BBox = (f32, f32, f32, f32);
-
-pub fn intersection(box1: &BBox, box2: &BBox) -> f32 {
-    let x1 = box1.0.max(box2.0);
-    let y1 = box1.1.max(box2.1);
-    let x2 = box1.2.min(box2.2);
-    let y2 = box1.3.min(box2.3);
-
-    if x2 < x1 || y2 < y1 {
-        0.0
-    } else {
-        (x2 - x1) * (y2 - y1)
-    }
-}
-
-fn union(box1: &BBox, box2: &BBox) -> f32 {
-    let area1 = (box1.2 - box1.0) * (box1.3 - box1.1);
-    let area2 = (box2.2 - box2.0) * (box2.3 - box2.1);
-    area1 + area2 - intersection(box1, box2)
-}
-
-pub fn iou(box1: &BBox, box2: &BBox) -> f32 {
-    let intersect = intersection(box1, box2);
-    let union = union(box1, box2);
-
-    intersect / union
 }
 
 #[startup_system]
@@ -388,6 +301,71 @@ fn init_ball_proposals(
 
     storage.add_resource(Resource::new(TopBallProposals(top)))?;
     storage.add_resource(Resource::new(BottomBallProposals(bottom)))?;
+
+    Ok(())
+}
+
+#[system]
+fn log_proposals(
+    (top_proposals, bottom_proposals): (&TopBallProposals, &BottomBallProposals),
+    matrices: &CameraMatrices,
+    config: &BallProposalConfigs,
+    dbg: &DebugContext,
+) -> Result<()> {
+    log_proposals_single_camera(
+        top_proposals,
+        &matrices.top,
+        &config.top,
+        CameraType::Top,
+        dbg,
+    )?;
+    log_proposals_single_camera(
+        bottom_proposals,
+        &matrices.bottom,
+        &config.bottom,
+        CameraType::Bottom,
+        dbg,
+    )?;
+
+    Ok(())
+}
+
+fn log_proposals_single_camera(
+    ball_proposals: &BallProposals,
+    matrix: &CameraMatrix,
+    config: &BallProposalConfig,
+    camera: CameraType,
+    dbg: &DebugContext,
+) -> Result<()> {
+    let camera_str = match camera {
+        CameraType::Top => "top_camera",
+        CameraType::Bottom => "bottom_camera",
+    };
+
+    let mut points = Vec::new();
+    let mut sizes = Vec::new();
+    for proposal in &ball_proposals.proposals {
+        // project point to ground to get distance
+        // distance is used for the amount of surrounding pixels to sample
+        let Ok(coord) = matrix.pixel_to_ground(proposal.position.cast(), 0.0) else {
+            continue;
+        };
+
+        let magnitude = coord.coords.magnitude();
+
+        let size = config.bounding_box_scale / magnitude;
+
+        points.push((proposal.position.x as f32, proposal.position.y as f32));
+        sizes.push((size, size));
+    }
+
+    dbg.log_boxes_2d(
+        format!("{camera_str}/image/ball_boxes"),
+        &points,
+        &sizes,
+        &ball_proposals.image,
+        color::u8::SILVER,
+    )?;
 
     Ok(())
 }

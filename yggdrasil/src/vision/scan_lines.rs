@@ -468,7 +468,7 @@ fn log_vertical_scan_lines(top_scan_grid: &TopScanGrid, dbg: &DebugContext) -> R
         .ok_or_else(|| miette!("Failed to make image"))?;
 
     dbg.log_image_rgb(
-        "image/top_camera/vertical_scan_lines",
+        "top_camera/image/vertical_scan_lines",
         image,
         &top_scan_grid.image().cycle(),
     )
