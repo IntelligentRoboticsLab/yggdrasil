@@ -1,5 +1,5 @@
 use crate::{
-    core::config::showtime::PlayerConfig,
+    core::{audio::whistle_detection::WhistleState, config::showtime::PlayerConfig},
     nao::manager::{NaoManager, Priority},
     prelude::*,
     sensor::button::{ChestButton, HeadButtons},
@@ -83,6 +83,7 @@ pub fn update_primary_state(
     head_buttons: &HeadButtons,
     config: &PrimaryStateConfig,
     player_config: &PlayerConfig,
+    #[cfg(feature = "alsa")] whistle_state: &mut WhistleState,
 ) -> Result<()> {
     use PrimaryState as PS;
     let next_state = next_primary_state(
@@ -91,6 +92,8 @@ pub fn update_primary_state(
         chest_button,
         head_buttons,
         player_config,
+        #[cfg(feature = "alsa")]
+        whistle_state,
     );
 
     match next_state {
@@ -120,6 +123,7 @@ pub fn next_primary_state(
     chest_button: &ChestButton,
     head_buttons: &HeadButtons,
     player_config: &PlayerConfig,
+    #[cfg(feature = "alsa")] whistle_state: &mut WhistleState,
 ) -> PrimaryState {
     use PrimaryState as PS;
 
@@ -141,13 +145,26 @@ pub fn next_primary_state(
         Some(message) => match message.state {
             GameState::Initial => PS::Initial,
             GameState::Ready => PS::Ready,
+            GameState::Set if whistle_state.transition_on_detection => PS::Playing,
             GameState::Set => PS::Set,
-            GameState::Playing => PS::Playing,
+            GameState::Playing => {
+                whistle_state.transition_on_detection = false;
+                PS::Playing
+            }
             GameState::Finished => PS::Finished,
             GameState::Standby => PS::Standby,
         },
         None => primary_state,
     };
+
+    #[cfg(feature = "alsa")]
+    {
+        if primary_state == PS::Set && whistle_state.detected {
+            primary_state = PS::Playing;
+            whistle_state.transition_on_detection = true;
+            println!("Whistle state switch");
+        }
+    }
 
     if is_penalized_by_game_controller(
         game_controller_message.as_ref(),
