@@ -521,7 +521,6 @@ pub fn scan_lines_system(
     curr_cycle: &Cycle,
     dbg: &DebugContext,
 ) -> Result<()> {
-    // eprintln!("HERE0");
     update_scan_lines(
         top_scan_lines,
         top_image,
@@ -532,7 +531,6 @@ pub fn scan_lines_system(
         CameraType::Top,
     )?;
 
-    // eprintln!("HERE1");
     update_scan_lines(
         bottom_scan_lines,
         bottom_image,
@@ -543,7 +541,6 @@ pub fn scan_lines_system(
         CameraType::Bottom,
     )?;
 
-    // eprintln!("HERE2");
     Ok(())
 }
 
