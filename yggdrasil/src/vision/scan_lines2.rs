@@ -389,7 +389,13 @@ fn get_vertical_scan_lines(
     for line in &scan_grid.lines {
         let mut current_region = None;
 
-        for y in &scan_grid.y[1..(scan_grid.y.len() - 1).max(1)] {
+        // take the y coordinates of the scan grid, skipping the first and last line
+        for y in scan_grid
+            .y
+            .iter()
+            .skip(1)
+            .take(scan_grid.y.len().saturating_sub(2))
+        {
             let x = line.x as usize;
             let y = *y;
 
