@@ -243,11 +243,6 @@ impl Engine {
     }
 
     pub fn transition(&mut self, context: Context, control: &mut Control) {
-        println!(
-            "Cycle {0:?}, falling: {1:?}, behavior: {2:?}",
-            context.primary_state, context.fall_state, self.behavior
-        );
-
         if let BehaviorKind::StartUp(_) = self.behavior {
             if control.walking_engine.is_sitting() || context.head_buttons.all_pressed() {
                 self.behavior = BehaviorKind::Unstiff(Unstiff);
