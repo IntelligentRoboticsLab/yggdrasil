@@ -1,13 +1,13 @@
     # The threshold for the confidence value of a detection.
     # Any detection with a confidence below this threshold, will not be considered.
-    confidence_threshold = 0.4
+    confidence_threshold = 0.30
 
     # The number of detections to consider.
     # We only consider the k detections with the highest confidence.
     top_k_detections = 40
 
     # The width of the input image
-    input_width = 10
+    input_width = 100
     # The height of th input image
     input_height = 100
 

@@ -46,7 +46,7 @@ impl RobotDetectionConfig {
 
     #[must_use]
     pub const fn score_shape(&self) -> (usize, usize) {
-        (self.num_anchor_boxes, 4)
+        (self.num_anchor_boxes, 2)
     }
 }
 
@@ -128,13 +128,12 @@ fn detect_robots(
             let features = Array3::from_shape_vec(config.feature_map_shape, result[2].clone())
                 .into_diagnostic()?;
 
-            let threshold = 0.4;
             let detected_robots = postprocess_detections(
                 config,
                 box_regression,
                 scores,
                 features,
-                threshold,
+                config.confidence_threshold,
                 config.top_k_detections,
             );
 
@@ -156,28 +155,28 @@ fn detect_robots(
         fr::ResizeAlg::Nearest,
     )?;
 
-    let mean_y = 0.4355;
-    let mean_u = 0.5053;
-    let mean_v = 0.5421;
+    // let mean_y = 0.4355;
+    // let mean_u = 0.5053;
+    // let mean_v = 0.5421;
 
-    let std_y = 0.2713;
-    let std_u = 0.0399;
-    let std_v = 0.0262;
+    // let std_y = 0.2713;
+    // let std_u = 0.0399;
+    // let std_v = 0.0262;
 
     if let Ok(()) = model.try_start_infer(
         &resized_image
             .iter()
             .map(|x| *x as f32 / 255.0)
-            .enumerate()
-            .map(|(i, x)| {
-                if i % 3 == 0 {
-                    (x - mean_y) / std_y
-                } else if (i % 3) == 1 {
-                    (x - mean_u) / std_u
-                } else {
-                    (x - mean_v) / std_v
-                }
-            })
+            // .enumerate()
+            // .map(|(i, x)| {
+            //     if i % 3 == 0 {
+            //         (x - mean_y) / std_y
+            //     } else if (i % 3) == 1 {
+            //         (x - mean_u) / std_u
+            //     } else {
+            //         (x - mean_v) / std_v
+            //     }
+            // })
             .collect::<Vec<f32>>(),
     ) {
         // We need to keep track of the image we started the inference with
@@ -206,7 +205,7 @@ fn postprocess_detections(
         ),
     );
 
-    scores
+    let filtered = scores
         .axis_iter(Axis(0))
         .enumerate()
         .filter_map(|(i, s)| {
@@ -232,7 +231,38 @@ fn postprocess_detections(
         .sorted_by(|a, b| b.1.total_cmp(&a.1))
         .take(k)
         .map(|(bbox, confidence)| DetectedRobot { bbox, confidence })
-        .collect::<Vec<_>>()
+        .collect::<Vec<_>>();
+
+    // perform nms
+    let mut final_boxes = Vec::new();
+    let nms_threshold = 0.45;
+    for i in 0..filtered.len() {
+        let mut discard = false;
+        for j in 0..filtered.len() {
+            if i == j {
+                continue;
+            }
+
+            let robot_i = filtered[i].clone();
+            let robot_j = filtered[j].clone();
+
+            let iou = robot_i.bbox.iou(&robot_j.bbox);
+
+            let score_i = robot_i.confidence;
+            let score_j = robot_j.confidence;
+
+            if iou > nms_threshold && score_j > score_i {
+                discard = true;
+                break;
+            }
+        }
+
+        if !discard {
+            final_boxes.push(filtered[i].clone());
+        }
+    }
+
+    final_boxes
 }
 
 fn log_detected_robots(robot_data: &RobotDetectionData, ctx: &DebugContext) -> Result<()> {
