@@ -82,10 +82,7 @@ impl ActiveMotion {
     }
 
     // executes the appropriate exit routine, connected to the chosen motion
-    pub fn execute_exit_routine(
-        &self,
-        walking_engine: &mut WalkingEngine,
-    ) {
+    pub fn execute_exit_routine(&self, walking_engine: &mut WalkingEngine) {
         if let Some(ExitRoutine::Standing) = self.motion.settings.exit_routine {
             // Since the robot is now standing, we can reset the hip height to the default value.
             walking_engine.hip_height = walking_engine.config.hip_height;
