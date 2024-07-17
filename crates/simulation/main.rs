@@ -41,7 +41,7 @@ use egui::{
 use nalgebra::{Isometry2, Point2, Vector2};
 use std::time::Duration;
 use yggdrasil::behavior::behaviors::ObserveBehaviorConfig;
-use yggdrasil::behavior::engine::Context;
+use yggdrasil::behavior::engine::{BehaviorKind, Context};
 use yggdrasil::behavior::primary_state::{next_primary_state, PrimaryStateConfig};
 use yggdrasil::behavior::BehaviorConfig;
 use yggdrasil::core::config::showtime::PlayerConfig;
@@ -430,6 +430,7 @@ impl Robot {
             game_controller_message: Some(gamecontrollermessage),
             pose: &self.pose,
             ball_position: ball,
+            current_behavior: BehaviorKind::Stand(Default::default()),
         };
 
         self.engine.step(context, &mut control);
