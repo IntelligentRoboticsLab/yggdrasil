@@ -54,7 +54,7 @@ impl Config for WhistleDetectionConfig {
 }
 
 pub struct WhistleState {
-    detections: Vec<bool>,
+    pub detections: Vec<bool>,
     stft: Stft,
 }
 

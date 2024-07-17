@@ -12,6 +12,9 @@ use std::time::Duration;
 use bifrost::communication::{GameControllerMessage, GameState};
 use nidhogg::types::color;
 
+#[cfg(feature = "alsa")]
+use crate::core::audio::whistle_detection::WhistleState;
+
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
@@ -83,6 +86,7 @@ pub fn update_primary_state(
     head_buttons: &HeadButtons,
     config: &PrimaryStateConfig,
     player_config: &PlayerConfig,
+    #[cfg(feature = "alsa")] whistles: &WhistleState,
 ) -> Result<()> {
     use PrimaryState as PS;
     let next_state = next_primary_state(
@@ -91,6 +95,8 @@ pub fn update_primary_state(
         chest_button,
         head_buttons,
         player_config,
+        #[cfg(feature = "alsa")]
+        whistles,
     );
 
     match next_state {
@@ -120,6 +126,7 @@ pub fn next_primary_state(
     chest_button: &ChestButton,
     head_buttons: &HeadButtons,
     player_config: &PlayerConfig,
+    #[cfg(feature = "alsa")] whistles: &WhistleState,
 ) -> PrimaryState {
     use PrimaryState as PS;
 
@@ -135,6 +142,20 @@ pub fn next_primary_state(
     // We are only able to leave the `Unstiff` state if the chest button is pressed.
     if primary_state == PS::Unstiff {
         return primary_state;
+    }
+
+    #[cfg(feature = "alsa")]
+    {
+        if primary_state == PS::Set {
+            let detections = whistles
+                .detections
+                .iter()
+                .fold(0, |acc, e| acc + *e as usize);
+
+            if detections >= 6 {
+                primary_state = PS::Playing;
+            }
+        }
     }
 
     primary_state = match game_controller_message {

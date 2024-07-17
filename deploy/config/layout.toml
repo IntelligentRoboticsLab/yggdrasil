@@ -75,31 +75,31 @@ border_strip_width = 0.7
 # Initial position of player one.
 [[initial_positions]]
 player_number = 1
-translation = [ -3, 3 ]
+translation = [-3, 3]
 rotation = -90
 
 # Initial position of player two.
 [[initial_positions]]
 player_number = 2
-translation = [ -2, -3 ]
+translation = [-2, -3]
 rotation = 90
 
 # Initial position of player three.
 [[initial_positions]]
 player_number = 3
-translation = [ -2, 3 ]
+translation = [-2, 3]
 rotation = -90
 
 # Initial position of player four.
 [[initial_positions]]
 player_number = 4
-translation = [ -1, -3 ]
+translation = [-1, -3]
 rotation = 90
 
 # Initial position of player five.
 [[initial_positions]]
 player_number = 5
-translation = [ -1, 3 ]
+translation = [-1, 3]
 rotation = -90
 
 # Set Positions
@@ -108,42 +108,42 @@ rotation = -90
 # Set position of player one.
 [[set_positions]]
 player_number = 1
-translation = [ -4.5, 0 ]
+translation = [-4.5, 0]
 rotation = 0
 
 # Set position of player two.
 [[set_positions]]
 player_number = 2
-translation = [ -3.15, -1.1 ]
+translation = [-3.15, -1.1]
 rotation = 0
 
 # Set position of player three.
 [[set_positions]]
 player_number = 3
-translation = [ -3.15, 1.1  ]
+translation = [-3.15, 1.1]
 rotation = 0
 
 # Set position of player four.
 [[set_positions]]
 player_number = 4
-translation = [ -0.8, -0.8 ]
+translation = [-0.8, -0.8]
 rotation = 45
 
 # Set position of player five.
 [[set_positions]]
 player_number = 5
-translation = [ -1, 0 ]
+translation = [-1, 0]
 rotation = 0
 
 # Penalty Positions
 # When returning from penalized to playing the robots position will be reset to a penalty position.
- 
+
 # Position for returning after penalty.
 [[penalty_positions]]
-translation = [ -2.85, 3 ]
+translation = [-2.85, 3]
 rotation = -90
 
 # Position for returning after penalty.
 [[penalty_positions]]
-translation = [ -2.85, -3 ]
+translation = [-2.85, -3]
 rotation = 90

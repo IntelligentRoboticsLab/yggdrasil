@@ -21,13 +21,17 @@ impl Role for Defender {
         let set_position = set_robot_position.isometry.translation.vector;
 
         if context.pose.distance_to(&set_position.into()) < 0.1 {
+            if let BehaviorKind::Observe(observe) = context.current_behavior {
+                return BehaviorKind::Observe(observe.clone());
+            }
+
             return BehaviorKind::Observe(Observe::default());
         }
 
         BehaviorKind::WalkTo(WalkTo {
             target: Target {
                 position: Point2::new(set_position.x, set_position.y),
-                rotation: Some(UnitComplex::<f32>::from_angle(0.0)),
+                rotation: Some(set_robot_position.isometry.rotation),
             },
         })
     }
