@@ -19,7 +19,7 @@ use crate::{
 
 use self::classifier::{BallClassifierConfig, Balls};
 
-use super::scan_lines2::CameraType;
+use super::scan_lines::CameraType;
 
 pub struct BallDetectionModule;
 

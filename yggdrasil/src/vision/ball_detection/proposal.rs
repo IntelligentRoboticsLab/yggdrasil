@@ -14,7 +14,7 @@ use crate::{
     prelude::*,
     vision::{
         camera::{matrix::CameraMatrices, Image},
-        scan_lines2::{
+        scan_lines::{
             self, BottomScanLines, CameraType, ClassifiedScanLineRegion, RegionColor, ScanLines,
             TopScanLines,
         },
@@ -50,7 +50,7 @@ pub struct BallProposalModule;
 impl Module for BallProposalModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_system_chain((
-            ball_proposals_system.after(scan_lines2::scan_lines_system),
+            ball_proposals_system.after(scan_lines::scan_lines_system),
             log_proposals,
         ))
         // app.add_system(ball_proposals_system.after(scan_lines2::scan_lines_system))
@@ -145,7 +145,7 @@ impl BallColorCounter {
 
         let (white, other) =
             regions.fold((0.0, 0.0), |(white, other), region| match region.color() {
-                RegionColor::White => (
+                RegionColor::WhiteOrBlack => (
                     white + overlap(region.start_point(), region.end_point()),
                     other,
                 ),
@@ -212,7 +212,7 @@ fn get_ball_proposals(
         }
 
         // Check if the white region is surrounded by green regions
-        let (RegionColor::Green, RegionColor::White, RegionColor::Green) =
+        let (RegionColor::Green, RegionColor::WhiteOrBlack, RegionColor::Green) =
             (left.color(), middle.color(), right.color())
         else {
             continue;

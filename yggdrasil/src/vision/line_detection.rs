@@ -6,10 +6,10 @@ use crate::localization::RobotPose;
 use crate::vision::camera::{matrix::CameraMatrices, Image};
 
 use crate::prelude::*;
-use crate::vision::scan_lines2::RegionColor;
+use crate::vision::scan_lines::RegionColor;
 
 use super::line::LineSegment2;
-use super::scan_lines2::{ScanLine, ScanLines, TopScanLines};
+use super::scan_lines::{ScanLine, ScanLines, TopScanLines};
 
 use derive_more::Deref;
 use heimdall::CameraMatrix;
@@ -37,7 +37,7 @@ pub struct LineDetectionModule;
 impl Module for LineDetectionModule {
     fn initialize(self, app: App) -> Result<App> {
         // app.add_system(line_detection_system.after(super::scan_lines::scan_lines_system))
-        app.add_system(line_detection_system.after(super::scan_lines2::scan_lines_system))
+        app.add_system(line_detection_system.after(super::scan_lines::scan_lines_system))
             .add_task::<ComputeTask<Result<TopLineDetectionData>>>()?
             .add_startup_system(start_line_detection_task)?
             .init_resource::<TopLineDetectionData>()
@@ -105,17 +105,17 @@ fn is_white(column: usize, row: usize, scan_line: &ScanLine) -> Option<bool> {
         .classified_scan_line_regions()
         .binary_search_by(|classified_reagion| {
             match classified_reagion.scan_line_region().region() {
-                super::scan_lines2::Region::Vertical {
+                super::scan_lines::Region::Vertical {
                     x,
                     y_start: _,
                     y_end: _,
                 } if *x < column && *x < column + MAX_PIXEL_DISTANCE => Ordering::Less,
-                super::scan_lines2::Region::Vertical {
+                super::scan_lines::Region::Vertical {
                     x,
                     y_start: _,
                     y_end: _,
                 } if *x > column && *x > column - MAX_PIXEL_DISTANCE => Ordering::Greater,
-                super::scan_lines2::Region::Vertical {
+                super::scan_lines::Region::Vertical {
                     x: _,
                     y_start,
                     y_end,
@@ -128,17 +128,17 @@ fn is_white(column: usize, row: usize, scan_line: &ScanLine) -> Option<bool> {
                         Ordering::Equal
                     }
                 }
-                super::scan_lines2::Region::Horizontal {
+                super::scan_lines::Region::Horizontal {
                     y,
                     x_start: _,
                     x_end: _,
                 } if *y < row && *y + MAX_PIXEL_DISTANCE < row => Ordering::Less,
-                super::scan_lines2::Region::Horizontal {
+                super::scan_lines::Region::Horizontal {
                     y,
                     x_start: _,
                     x_end: _,
                 } if *y > row && *y - MAX_PIXEL_DISTANCE > row => Ordering::Greater,
-                super::scan_lines2::Region::Horizontal {
+                super::scan_lines::Region::Horizontal {
                     y: _,
                     x_start,
                     x_end,
@@ -157,7 +157,7 @@ fn is_white(column: usize, row: usize, scan_line: &ScanLine) -> Option<bool> {
         .map(|index| {
             matches!(
                 scan_line.classified_scan_line_regions()[index].color(),
-                RegionColor::White
+                RegionColor::WhiteOrBlack
             )
         })
 }

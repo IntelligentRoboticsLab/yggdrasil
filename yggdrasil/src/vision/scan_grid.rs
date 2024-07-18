@@ -9,12 +9,11 @@ use crate::{
 use heimdall::{CameraMatrix, YuyvImage};
 use nalgebra::point;
 use nidhogg::types::color;
-use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use super::{
     camera::{BottomImage, Image, TopImage},
-    scan_lines2::CameraType,
+    scan_lines::CameraType,
 };
 
 /// The step size for approximating the field color.
@@ -50,13 +49,6 @@ impl Module for ScanGridModule {
         app.add_system(update_scan_grid.after(super::camera::camera_system))
             .add_startup_system(init_scan_grid)
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
-pub struct ScanLinesConfig {
-    horizontal_scan_line_interval: usize,
-    vertical_scan_line_interval: usize,
 }
 
 /// The classified color of a scan-line pixel.
@@ -226,8 +218,6 @@ pub fn update_top_scan_grid(
     if let Some(new_scan_grid) = get_scan_grid(&camera_matrix.top, layout, image) {
         *scan_grid = new_scan_grid;
         debug_scan_grid(scan_grid, image, dbg, CameraType::Top)?;
-    } else {
-        warn!("Failed to update scan grid")
     };
 
     Ok(())
@@ -294,25 +284,18 @@ fn get_scan_grid(
 
     let field_limit = point_in_image.y.max(-1.0) as i32;
     if field_limit >= yuyv.height() as i32 {
-        warn!("Field limit is out of bounds");
         return None;
     }
 
     // Field coordinates of bottom left pixel (robot frame)
     let bottom_left = camera_matrix
         .pixel_to_ground(point![0.0, yuyv.height() as f32], 0.0)
-        .inspect_err(|_| {
-            warn!("No bottom left");
-        })
         .ok()?
         .xy();
 
     // Field coordinates of bottom right pixel (robot frame)
     let bottom_right = camera_matrix
         .pixel_to_ground(point![yuyv.width() as f32, yuyv.height() as f32], 0.0)
-        .inspect_err(|_| {
-            warn!("No bottom right");
-        })
         .ok()?
         .xy();
 
@@ -384,9 +367,6 @@ fn get_scan_grid(
 
         let point_in_image = camera_matrix
             .ground_to_pixel(point![distance, 0.0, 0.0])
-            .inspect_err(|_| {
-                warn!("No point in image: distance: {:#?}", distance);
-            })
             .ok()?;
 
         y_starts.push((point_in_image.y + 0.5) as i32);
