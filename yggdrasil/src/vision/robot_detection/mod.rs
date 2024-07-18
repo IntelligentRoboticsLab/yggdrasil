@@ -125,14 +125,11 @@ fn detect_robots(
                 Array2::from_shape_vec(config.box_shape(), result[0].clone()).into_diagnostic()?;
             let scores = Array2::from_shape_vec(config.score_shape(), result[1].clone())
                 .into_diagnostic()?;
-            let features = Array3::from_shape_vec(config.feature_map_shape, result[2].clone())
-                .into_diagnostic()?;
 
             let detected_robots = postprocess_detections(
                 config,
                 box_regression,
                 scores,
-                features,
                 config.confidence_threshold,
                 config.top_k_detections,
             );
@@ -155,28 +152,10 @@ fn detect_robots(
         fr::ResizeAlg::Nearest,
     )?;
 
-    // let mean_y = 0.4355;
-    // let mean_u = 0.5053;
-    // let mean_v = 0.5421;
-
-    // let std_y = 0.2713;
-    // let std_u = 0.0399;
-    // let std_v = 0.0262;
-
     if let Ok(()) = model.try_start_infer(
         &resized_image
             .iter()
-            .map(|x| *x as f32 / 255.0)
-            // .enumerate()
-            // .map(|(i, x)| {
-            //     if i % 3 == 0 {
-            //         (x - mean_y) / std_y
-            //     } else if (i % 3) == 1 {
-            //         (x - mean_u) / std_u
-            //     } else {
-            //         (x - mean_v) / std_v
-            //     }
-            // })
+            .map(|x| *x as f32)
             .collect::<Vec<f32>>(),
     ) {
         // We need to keep track of the image we started the inference with
@@ -190,7 +169,6 @@ fn postprocess_detections(
     config: &RobotDetectionConfig,
     box_regression: Array2<f32>,
     scores: Array2<f32>,
-    features: Array3<f32>,
     threshold: f32,
     k: usize,
 ) -> Vec<DetectedRobot> {
@@ -201,7 +179,7 @@ fn postprocess_detections(
         box_regression,
         anchor_generator.create_boxes(
             (config.input_width as usize, config.input_height as usize),
-            features,
+            config.feature_map_shape,
         ),
     );
 

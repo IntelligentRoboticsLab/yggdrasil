@@ -81,8 +81,12 @@ impl DefaultBoxGenerator {
         pairs
     }
 
-    pub fn create_boxes(&self, image_size: (usize, usize), features: Array3<f32>) -> Array2<f32> {
-        let (_, x, y) = features.dim();
+    pub fn create_boxes(
+        &self,
+        image_size: (usize, usize),
+        feature_shape: (usize, usize, usize),
+    ) -> Array2<f32> {
+        let (_, x, y) = feature_shape;
         // create default boxes for each feature map, in cx, cy, w, h format
         let mut default_boxes = self.grid_default_boxes((x, y));
 
