@@ -25,10 +25,17 @@ pub struct WhistleDetectionModule;
 
 impl Module for WhistleDetectionModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_ml_task::<WhistleDetectionModel>()?
-            .init_config::<WhistleDetectionConfig>()?
-            .add_system(detect_whistle)
-            .init_resource::<WhistleState>()
+        let app = app.init_resource::<WhistleState>()?;
+        #[cfg(feature = "alsa")]
+        {
+            let app = app
+                .add_ml_task::<WhistleDetectionModel>()?
+                .init_config::<WhistleDetectionConfig>()?
+                .add_system(detect_whistle);
+            Ok(app)
+        }
+        #[cfg(not(feature = "alsa"))]
+        Ok(app)
     }
 }
 
@@ -56,7 +63,6 @@ impl Config for WhistleDetectionConfig {
 pub struct WhistleState {
     detections: Vec<bool>,
     pub detected: bool,
-    pub transition_on_detection: bool,
     stft: Stft,
 }
 
@@ -66,7 +72,6 @@ impl Default for WhistleState {
             detections: Vec::new(),
             stft: Stft::new(WINDOW_SIZE, HOP_SIZE),
             detected: false,
-            transition_on_detection: false,
         }
     }
 }

@@ -50,8 +50,8 @@ pub enum PrimaryState {
     Ready,
     /// State in which the robots wait for a kick-off or penalty
     Set,
-    /// State in which the robots are playing soccer
-    Playing,
+    /// State in which the robots are playing soccer, with a keep state variable
+    Playing { whistle_in_set: bool },
     /// State when the robot has been penalized. Robot may not move except for
     /// standing up
     Penalized,
@@ -83,7 +83,7 @@ pub fn update_primary_state(
     head_buttons: &HeadButtons,
     config: &PrimaryStateConfig,
     player_config: &PlayerConfig,
-    #[cfg(feature = "alsa")] whistle_state: &mut WhistleState,
+    whistle_state: &WhistleState,
 ) -> Result<()> {
     use PrimaryState as PS;
     let next_state = next_primary_state(
@@ -92,7 +92,6 @@ pub fn update_primary_state(
         chest_button,
         head_buttons,
         player_config,
-        #[cfg(feature = "alsa")]
         whistle_state,
     );
 
@@ -106,7 +105,7 @@ pub fn update_primary_state(
         PS::Initial => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
         PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Critical),
         PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Critical),
-        PS::Playing => nao_manager.set_chest_led(color::f32::GREEN, Priority::Critical),
+        PS::Playing { .. } => nao_manager.set_chest_led(color::f32::GREEN, Priority::Critical),
         PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Critical),
         PS::Finished => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
         PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Critical),
@@ -123,15 +122,19 @@ pub fn next_primary_state(
     chest_button: &ChestButton,
     head_buttons: &HeadButtons,
     player_config: &PlayerConfig,
-    #[cfg(feature = "alsa")] whistle_state: &mut WhistleState,
+    whistle_state: &WhistleState,
 ) -> PrimaryState {
     use PrimaryState as PS;
 
     let mut primary_state = match primary_state {
         PS::Unstiff if chest_button.state.is_tapped() => PS::Initial,
-        PS::Initial if chest_button.state.is_tapped() => PS::Playing,
-        PS::Playing if chest_button.state.is_tapped() => PS::Penalized,
-        PS::Penalized if chest_button.state.is_tapped() => PS::Playing,
+        PS::Initial if chest_button.state.is_tapped() => PS::Playing {
+            whistle_in_set: false,
+        },
+        PS::Playing { .. } if chest_button.state.is_tapped() => PS::Penalized,
+        PS::Penalized if chest_button.state.is_tapped() => PS::Playing {
+            whistle_in_set: false,
+        },
 
         _ => *primary_state,
     };
@@ -145,26 +148,19 @@ pub fn next_primary_state(
         Some(message) => match message.state {
             GameState::Initial => PS::Initial,
             GameState::Ready => PS::Ready,
-            GameState::Set if whistle_state.transition_on_detection => PS::Playing,
+
+            GameState::Set if whistle_state.detected => PS::Playing {
+                whistle_in_set: true,
+            },
             GameState::Set => PS::Set,
-            GameState::Playing => {
-                whistle_state.transition_on_detection = false;
-                PS::Playing
-            }
+            GameState::Playing => PS::Playing {
+                whistle_in_set: false,
+            },
             GameState::Finished => PS::Finished,
             GameState::Standby => PS::Standby,
         },
         None => primary_state,
     };
-
-    #[cfg(feature = "alsa")]
-    {
-        if primary_state == PS::Set && whistle_state.detected {
-            primary_state = PS::Playing;
-            whistle_state.transition_on_detection = true;
-            println!("Whistle state switch");
-        }
-    }
 
     if is_penalized_by_game_controller(
         game_controller_message.as_ref(),
