@@ -1,5 +1,5 @@
 use crate::{
-    core::{audio::whistle_detection::WhistleState, config::showtime::PlayerConfig},
+    core::{config::showtime::PlayerConfig, whistle::WhistleState},
     nao::manager::{NaoManager, Priority},
     prelude::*,
     sensor::button::{ChestButton, HeadButtons},
