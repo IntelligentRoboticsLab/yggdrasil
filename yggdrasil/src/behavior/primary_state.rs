@@ -50,7 +50,7 @@ pub enum PrimaryState {
     Ready,
     /// State in which the robots wait for a kick-off or penalty
     Set,
-    /// State in which the robots are playing soccer, with a keep state variable
+    /// State in which the robots are playing soccer, with a bool to keep state after a whistle
     Playing { whistle_in_set: bool },
     /// State when the robot has been penalized. Robot may not move except for
     /// standing up
@@ -79,8 +79,7 @@ pub fn update_primary_state(
     primary_state: &mut PrimaryState,
     game_controller_message: &Option<GameControllerMessage>,
     nao_manager: &mut NaoManager,
-    chest_button: &ChestButton,
-    head_buttons: &HeadButtons,
+    (head_buttons, chest_button): (&HeadButtons, &ChestButton),
     config: &PrimaryStateConfig,
     player_config: &PlayerConfig,
     whistle_state: &WhistleState,
