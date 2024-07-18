@@ -415,7 +415,7 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
     let release_path = if config.local {
         RELEASE_PATH_LOCAL
     } else {
-         &remote_release_path
+        &remote_release_path
     };
 
     let deploy_path = format!("./deploy/{}", config.bin);

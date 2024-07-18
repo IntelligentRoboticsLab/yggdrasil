@@ -1,7 +1,7 @@
 pub mod motion_capture;
 
 use crate::motion_capture::SkadiModule;
-use yggdrasil::{core::config::ConfigModule, sensor::imu::IMUSensor, nao::NaoModule, prelude::*};
+use yggdrasil::{core::config::ConfigModule, nao::NaoModule, prelude::*, sensor::imu::IMUSensor};
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();

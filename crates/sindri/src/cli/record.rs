@@ -52,11 +52,10 @@ pub struct Record {
 
 impl Record {
     pub async fn record(self, config: SindriConfig) -> miette::Result<()> {
-        let mut robots = Vec::new();
-        robots.push(RobotEntry {
+        let robots = vec![RobotEntry {
             robot_number: self.record.number,
             player_number: None,
-        });
+        }];
         let compile_bar = ProgressBar::new(1);
         let output = robot_ops::Output::Single(compile_bar.clone());
 

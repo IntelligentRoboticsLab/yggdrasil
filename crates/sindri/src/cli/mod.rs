@@ -2,9 +2,9 @@ use clap::Parser;
 
 pub mod change_network;
 pub mod config;
+pub mod dependency_graph;
 pub mod download;
 pub mod record;
-pub mod dependency_graph;
 pub mod robot_ops;
 pub mod run;
 pub mod scan;

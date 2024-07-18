@@ -13,10 +13,10 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
 use std::path::Path;
-use yggdrasil::sensor::button::{HeadButtons, LeftFootButtons, RightFootButtons};
 use yggdrasil::nao::manager::NaoManager;
 use yggdrasil::nao::manager::Priority;
 use yggdrasil::prelude::*;
+use yggdrasil::sensor::button::{HeadButtons, LeftFootButtons, RightFootButtons};
 
 pub struct SkadiModule;
 
@@ -43,6 +43,7 @@ pub struct SubMotion {
     pub chest_angle_bound_upper: f32,
     pub chest_angle_bound_lower: f32,
     pub fail_routine: FailRoutine,
+    pub exitwaittime: f32,
     pub conditions: Vec<MotionCondition>,
     pub keyframes: Vec<Movement>,
 }
@@ -634,6 +635,7 @@ fn register_button_press(
                 chest_angle_bound_upper: 0.4,
                 chest_angle_bound_lower: -0.4,
                 fail_routine: FailRoutine::Retry,
+                exitwaittime: 0.0,
                 conditions: Vec::new(),
                 keyframes: Vec::new(),
             };
