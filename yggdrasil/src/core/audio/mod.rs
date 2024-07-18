@@ -32,9 +32,19 @@ pub struct AudioModule;
 
 impl Module for AudioModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.init_config::<AudioConfig>()?
-            .add_module(SoundManagerModule)?
-            .add_module(AudioInputModule)?
-            .add_module(WhistleDetectionModule)
+        let app = app
+            .init_config::<AudioConfig>()?
+            .add_module(WhistleDetectionModule)?;
+
+        #[cfg(feature = "alsa")]
+        {
+            let app = app
+                .add_module(AudioInputModule)?
+                .add_module(SoundManagerModule)?;
+
+            Ok(app)
+        }
+        #[cfg(not(feature = "alsa"))]
+        Ok(app)
     }
 }

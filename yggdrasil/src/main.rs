@@ -3,6 +3,7 @@ use tracing_subscriber::fmt::writer::MakeWriterExt;
 
 use yggdrasil::behavior::BehaviorModule;
 use yggdrasil::communication::CommunicationModule;
+use yggdrasil::core::audio::AudioModule;
 use yggdrasil::core::{config::ConfigModule, debug::DebugModule, ml::MlModule};
 use yggdrasil::game_controller::GameControllerModule;
 use yggdrasil::kinematics::KinematicsModule;
@@ -45,10 +46,8 @@ fn main() -> Result<()> {
         .add_module(DebugModule)?
         .add_module(VisionModule)?
         .add_module(MotionModule)?
-        .add_module(LocalizationModule)?;
-
-    #[cfg(feature = "alsa")]
-    let app = app.add_module(yggdrasil::core::audio::AudioModule)?;
+        .add_module(LocalizationModule)?
+        .add_module(AudioModule)?;
 
     #[cfg(feature = "dependency_graph")]
     return app.store_system_dependency_graph("../dependency_graph.png");

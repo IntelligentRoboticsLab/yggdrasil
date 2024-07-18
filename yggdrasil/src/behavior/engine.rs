@@ -304,7 +304,7 @@ impl Engine {
             PrimaryState::Set => BehaviorKind::StandLookAt(StandLookAt {
                 target: ball_or_origin,
             }),
-            PrimaryState::Playing => self.role.transition_behavior(context, control),
+            PrimaryState::Playing { .. } => self.role.transition_behavior(context, control),
         };
     }
 }

@@ -44,6 +44,7 @@ use yggdrasil::behavior::behaviors::ObserveBehaviorConfig;
 use yggdrasil::behavior::engine::{BehaviorKind, Context};
 use yggdrasil::behavior::primary_state::{next_primary_state, PrimaryStateConfig};
 use yggdrasil::behavior::BehaviorConfig;
+use yggdrasil::core::audio::whistle_detection::WhistleState;
 use yggdrasil::core::config::showtime::PlayerConfig;
 use yggdrasil::core::config::yggdrasil::YggdrasilConfig;
 use yggdrasil::core::debug::DebugContext;
@@ -403,6 +404,7 @@ impl Robot {
             &Default::default(),
             &Default::default(),
             &self.player_config,
+            &WhistleState::default(),
         );
         let mut control = Control {
             nao_manager: &mut Default::default(),
