@@ -47,8 +47,6 @@ pub struct Record {
     pub record: ConfigOptsRecord,
 }
 
-
-
 impl Record {
     /// This procedure is a very similar procedure to sindri deploy, only instead of
     /// yggdrasil getting pushed skadi gets compiled and pushed to the robot.
