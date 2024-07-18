@@ -45,8 +45,7 @@ pub struct ScanGridModule;
 
 impl Module for ScanGridModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(update_scan_grid.after(super::camera::camera_system))
-            .add_startup_system(init_scan_grid)
+        app.add_startup_system(init_scan_grid)
     }
 }
 

@@ -38,8 +38,7 @@ pub(crate) struct BallClassifierModule;
 
 impl Module for BallClassifierModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_system(ball_detection_system.after(proposal::ball_proposals_system))
-            .add_startup_system(init_ball_classifier)?
+        app.add_startup_system(init_ball_classifier)?
             .add_ml_task::<BallClassifierModel>()
     }
 }

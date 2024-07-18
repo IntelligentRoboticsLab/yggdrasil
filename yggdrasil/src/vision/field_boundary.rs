@@ -26,13 +26,8 @@ pub struct FieldBoundaryModule;
 
 impl Module for FieldBoundaryModule {
     fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_ml_task::<FieldBoundaryModel>()?
+        app.add_ml_task::<FieldBoundaryModel>()?
             .add_startup_system(init_field_boundary)?
-            .add_system_chain((
-                detect_field_boundary.after(camera::camera_system),
-                log_boundary_points,
-            )))
     }
 }
 
@@ -155,10 +150,10 @@ fn log_boundary_points(
 }
 
 /// For keeping track of the image that a field boundary is detected from
-struct FieldBoundaryImage(Image);
+pub struct FieldBoundaryImage(Image);
 
 #[system]
-fn detect_field_boundary(
+pub fn detect_field_boundary(
     model: &mut MlTask<FieldBoundaryModel>,
     field_boundary_image: &mut FieldBoundaryImage,
     boundary: &mut FieldBoundary,

@@ -1,6 +1,9 @@
 use dyn_clone::DynClone;
 use miette::{miette, Result, WrapErr};
+use std::future::Future;
 use std::hash::Hash;
+use std::sync::atomic::AtomicBool;
+use std::sync::Mutex;
 use std::{
     any::{type_name, Any, TypeId},
     marker::PhantomData,
@@ -16,14 +19,16 @@ use self::private::SystemType;
 
 pub struct NormalSystem;
 pub struct StartupSystem;
+pub struct AsyncSystem;
 
 // Use a sealed trait so we limit the amount of system types
 mod private {
-    use super::{NormalSystem, StartupSystem};
+    use super::{AsyncSystem, NormalSystem, StartupSystem};
 
     pub trait SystemType {}
     impl SystemType for NormalSystem {}
     impl SystemType for StartupSystem {}
+    impl SystemType for AsyncSystem {}
 }
 
 pub trait System<T: SystemType>: DynClone + Send + Sync + 'static {
@@ -58,7 +63,7 @@ macro_rules! impl_system {
 
                 // I have NO idea why but these need to be separated
                 $(
-                    let $params = $params::get_resource(&resources).wrap_err_with(|| format!("Failed to get resources in system `{}`", self.system_name()))?;
+                    let $params = $params::get_resource(&resources).wrap_err_with(|| format!("Failed to get resources in system `{}`", System::<NormalSystem>::system_name(self)))?;
                 )*
 
                 $(
@@ -91,6 +96,66 @@ macro_rules! impl_system {
             }
 
         }
+
+        // #[allow(non_snake_case)]
+        // #[allow(unused)]
+        // impl<F: Clone + Send + Sync + 'static, $($params: AsyncSystemParam + 'static),*> System<AsyncSystem> for FunctionSystem<($($params,)*), F>
+        //     where
+        //         for<'a, 'b> &'a mut F:
+        //             FnMut( $($params),* ) -> Result<()> +
+        //             FnMut( $(<$params as SystemParam>::Item<'b>),* ) -> Result<()>
+        // {
+        //     fn run(&mut self, resources: &mut Storage) -> Result<()> {
+        //         #[allow(clippy::too_many_arguments)]
+        //         fn call_inner<$($params: SystemParam),*> (
+        //             resources: &mut Storage,
+        //             mut f: fn($($params),*) -> Result<()>,
+        //             $($params: $params),*
+        //      ) -> Result<()>  {
+
+        //             $(
+        //                 let $params = <$params as SystemParam>::retrieve(&$params);
+        //             )*
+
+
+        //             f($($params),*)
+        //         };
+
+
+        //         // I have NO idea why but these need to be separated
+        //         $(
+        //             let $params = <$params as SystemParam>::get_resource(&resources).wrap_err_with(|| format!("Failed to get resources in system `{}`", System::<AsyncSystem>::system_name(self)))?;
+        //         )*
+
+
+        //         let f = self.f;
+
+        //         call_inner(resources, f, $($params),*)
+        //     }
+
+        //     fn required_resources(&self) -> Vec<TypeInfo> {
+        //         let mut types = Vec::new();
+
+        //         $(
+        //             let mut param_types: Vec<TypeInfo> = <$params as SystemParam>::type_info()
+        //                 .into_iter()
+        //                 .collect();
+
+        //             types.append(&mut param_types);
+        //         )*
+
+        //         types
+        //     }
+
+        //     fn system_type(&self) -> TypeId {
+        //         TypeId::of::<($($params,)*)>()
+        //     }
+
+        //     fn system_name(&self) -> &str {
+        //         std::any::type_name::<F>()
+        //     }
+
+        // }
 
         #[allow(non_snake_case)]
         #[allow(unused)]
@@ -143,6 +208,62 @@ macro_rules! impl_system {
             }
 
         }
+    }
+}
+
+#[allow(non_snake_case)]
+#[allow(unused)]
+impl<
+        F: Clone + Send + Sync + 'static,
+        T1: AsyncSystemParam + 'static,
+        Fut: Future<Output = Result<()>>,
+    > System<AsyncSystem> for FunctionSystem<T1, F>
+where
+    for<'a, 'b> &'a mut F: FnMut(T1) -> Fut + FnMut(<T1 as SystemParam>::Item<'b>) -> Fut,
+{
+    fn run(&mut self, resources: &mut Storage) -> Result<()> {
+        #[allow(clippy::too_many_arguments)]
+        fn call_inner<T1: SystemParam, Fut: Future<Output = Result<()>>>(
+            resources: &mut Storage,
+            mut f: impl FnMut(<T1 as SystemParam>::Item<'_>) -> Fut,
+            is_running: std::sync::Arc<AtomicBool>,
+            T1: <T1 as SystemParam>::ErasedResources,
+        ) -> Result<()> {
+            let T1 = <T1 as SystemParam>::retrieve(&T1);
+
+            // f(T1)
+            Ok(())
+        };
+
+        // I have NO idea why but these need to be separated
+        let T1 = <T1 as SystemParam>::get_resource(&resources).wrap_err_with(|| {
+            format!(
+                "Failed to get resources in system `{}`",
+                System::<AsyncSystem>::system_name(self)
+            )
+        })?;
+
+        let call_again = std::sync::Arc::new(AtomicBool::new(false));
+
+        call_inner(resources, &mut self.f, call_again, T1)
+    }
+
+    fn required_resources(&self) -> Vec<TypeInfo> {
+        let mut types = Vec::new();
+
+        let mut param_types: Vec<TypeInfo> = <T1 as SystemParam>::type_info().into_iter().collect();
+
+        types.append(&mut param_types);
+
+        types
+    }
+
+    fn system_type(&self) -> TypeId {
+        TypeId::of::<T1>()
+    }
+
+    fn system_name(&self) -> &str {
+        std::any::type_name::<F>()
     }
 }
 
@@ -272,6 +393,10 @@ impl TypeInfo {
         Self { id, name }
     }
 }
+
+pub trait AsyncSystemParam: SystemParam {}
+
+impl<T: SystemParam> AsyncSystemParam for T {}
 
 pub trait SystemParam {
     type Item<'new>;

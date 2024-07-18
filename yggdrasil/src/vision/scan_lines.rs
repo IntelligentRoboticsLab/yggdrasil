@@ -45,7 +45,6 @@ pub struct ScanLinesModule;
 impl Module for ScanLinesModule {
     fn initialize(self, app: App) -> Result<App> {
         app.init_config::<ScanLinesConfig>()?
-            .add_system(scan_lines_system.after(super::scan_grid::update_scan_grid))
             .add_startup_system(init_scan_lines)
     }
 }

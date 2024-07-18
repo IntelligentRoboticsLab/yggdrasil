@@ -42,7 +42,6 @@ pub struct FieldMarksModule;
 impl Module for FieldMarksModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_startup_system(init_field_marks)?
-            .add_system(field_marks_system.after(super::line_detection::line_detection_system))
             .add_ml_task::<FieldMarksModel>()
     }
 }
