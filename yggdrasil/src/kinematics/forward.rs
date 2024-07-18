@@ -36,6 +36,7 @@ pub struct Kinematics {
     pub left_ankle_to_tibia: Isometry3<LeftAnkle, LeftTibia>,
     pub left_foot_to_ankle: Isometry3<LeftFoot, LeftAnkle>,
     pub left_sole_to_foot: Isometry3<LeftSole, LeftFoot>,
+    pub left_toe_to_left_sole: Isometry3<LeftToe, LeftSole>,
     pub right_pelvis_to_robot: Isometry3<RightPelvis, Robot>,
     pub right_hip_to_pelvis: Isometry3<RightHip, RightPelvis>,
     pub right_thigh_to_hip: Isometry3<RightThigh, RightHip>,
@@ -43,6 +44,7 @@ pub struct Kinematics {
     pub right_ankle_to_tibia: Isometry3<RightAnkle, RightTibia>,
     pub right_foot_to_ankle: Isometry3<RightFoot, RightAnkle>,
     pub right_sole_to_foot: Isometry3<RightSole, RightFoot>,
+    pub right_toe_to_right_sole: Isometry3<RightToe, RightSole>,
 }
 
 impl Kinematics {
@@ -305,6 +307,7 @@ impl From<&JointArray<f32>> for Kinematics {
             left_ankle_to_tibia: Self::left_ankle_to_tibia(joints.left_ankle_pitch),
             left_foot_to_ankle: Self::left_foot_to_ankle(joints.left_ankle_roll),
             left_sole_to_foot: Self::left_sole_to_foot(),
+            left_toe_to_left_sole: Self::left_toe_to_left_sole(),
             right_pelvis_to_robot: Self::right_pelvis_to_robot(joints.left_hip_yaw_pitch),
             right_hip_to_pelvis: Self::right_hip_to_pelvis(joints.right_hip_roll),
             right_thigh_to_hip: Self::right_thigh_to_hip(joints.right_hip_pitch),
@@ -312,6 +315,7 @@ impl From<&JointArray<f32>> for Kinematics {
             right_ankle_to_tibia: Self::right_ankle_to_tibia(joints.right_ankle_pitch),
             right_foot_to_ankle: Self::right_foot_to_ankle(joints.right_ankle_roll),
             right_sole_to_foot: Self::right_sole_to_foot(),
+            right_toe_to_right_sole: Self::right_toe_to_right_sole(),
         }
     }
 }

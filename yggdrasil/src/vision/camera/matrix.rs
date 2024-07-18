@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use bevy::prelude::*;
 use heimdall::{CameraLocation, CameraMatrix, CameraPosition};
-use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
+use nalgebra::{vector, Isometry3, Point2, Point3, UnitQuaternion, Vector2, Vector3};
 use rerun::external::glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
@@ -94,6 +94,30 @@ fn robot_to_ground(
         Side::Left => imu_adjusted_robot_to_left_sole,
         Side::Right => imu_adjusted_robot_to_right_sole,
     }
+}
+
+fn robot_to_toes(
+    imu: &IMUValues,
+    kinematics: &RobotKinematics,
+) -> (Isometry3<f32>, Isometry3<f32>) {
+    let roll_pitch = imu.angles;
+    let roll = roll_pitch.x;
+    let pitch = roll_pitch.y;
+
+    let left_toe_to_robot = kinematics.left_toe_to_robot;
+    let imu_adjusted_robot_to_left_toe = Isometry3::rotation(Vector3::y() * pitch)
+        * Isometry3::rotation(Vector3::x() * roll)
+        * Isometry3::from(left_toe_to_robot.translation.inverse());
+
+    let right_toe_to_robot = kinematics.right_toe_to_robot;
+    let imu_adjusted_robot_to_right_toe = Isometry3::rotation(Vector3::y() * pitch)
+        * Isometry3::rotation(Vector3::x() * roll)
+        * Isometry3::from(right_toe_to_robot.translation.inverse());
+
+    (
+        imu_adjusted_robot_to_left_toe,
+        imu_adjusted_robot_to_right_toe,
+    )
 }
 
 fn camera_to_head(position: CameraPosition, extrinsic_rotations: Vector3<f32>) -> Isometry3<f32> {
