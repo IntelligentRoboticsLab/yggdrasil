@@ -71,15 +71,6 @@ impl<M: MlModel> ModelExecutor<M> {
                     imported: tensor.cfg.precision(),
                 });
             }
-
-            println!(
-                "{} has input: {} {:?} {:?}",
-                M::ONNX_PATH,
-                i,
-                tensor.cfg.precision(),
-                tensor.cfg.dims()
-            );
-
             input_descrs.push(tensor);
         }
 
@@ -98,15 +89,6 @@ impl<M: MlModel> ModelExecutor<M> {
                     imported: tensor.cfg.precision(),
                 });
             }
-
-            println!(
-                "{} has output: {} {:?} {:?}",
-                M::ONNX_PATH,
-                i,
-                tensor.cfg.precision(),
-                tensor.cfg.dims()
-            );
-
             output_descrs.push(tensor);
         }
 

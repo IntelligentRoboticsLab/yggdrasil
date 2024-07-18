@@ -149,7 +149,6 @@ fn poll_model(
         result_cycle: *current_cycle,
     };
 
-    // log_detected_robots(robots, ctx)?;
     Ok(())
 }
 
@@ -167,7 +166,7 @@ fn detect_robots(
         return Ok(());
     }
 
-    if !robot_detection_image.0.is_from_cycle(*cycle) {
+    if robot_detection_image.0.is_from_cycle(*cycle) {
         return Ok(());
     }
 
