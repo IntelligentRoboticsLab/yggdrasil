@@ -1,5 +1,5 @@
 use crate::{
-    core::config::showtime::PlayerConfig,
+    core::{audio::whistle_detection::WhistleState, config::showtime::PlayerConfig},
     nao::manager::{NaoManager, Priority},
     prelude::*,
     sensor::button::{ChestButton, HeadButtons},
@@ -50,8 +50,8 @@ pub enum PrimaryState {
     Ready,
     /// State in which the robots wait for a kick-off or penalty
     Set,
-    /// State in which the robots are playing soccer
-    Playing,
+    /// State in which the robots are playing soccer, with a bool to keep state after a whistle
+    Playing { whistle_in_set: bool },
     /// State when the robot has been penalized. Robot may not move except for
     /// standing up
     Penalized,
@@ -79,10 +79,10 @@ pub fn update_primary_state(
     primary_state: &mut PrimaryState,
     game_controller_message: &Option<GameControllerMessage>,
     nao_manager: &mut NaoManager,
-    chest_button: &ChestButton,
-    head_buttons: &HeadButtons,
+    (head_buttons, chest_button): (&HeadButtons, &ChestButton),
     config: &PrimaryStateConfig,
     player_config: &PlayerConfig,
+    whistle_state: &WhistleState,
 ) -> Result<()> {
     use PrimaryState as PS;
     let next_state = next_primary_state(
@@ -91,6 +91,7 @@ pub fn update_primary_state(
         chest_button,
         head_buttons,
         player_config,
+        whistle_state,
     );
 
     match next_state {
@@ -103,7 +104,7 @@ pub fn update_primary_state(
         PS::Initial => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
         PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Critical),
         PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Critical),
-        PS::Playing => nao_manager.set_chest_led(color::f32::GREEN, Priority::Critical),
+        PS::Playing { .. } => nao_manager.set_chest_led(color::f32::GREEN, Priority::Critical),
         PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Critical),
         PS::Finished => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
         PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Critical),
@@ -120,14 +121,19 @@ pub fn next_primary_state(
     chest_button: &ChestButton,
     head_buttons: &HeadButtons,
     player_config: &PlayerConfig,
+    whistle_state: &WhistleState,
 ) -> PrimaryState {
     use PrimaryState as PS;
 
     let mut primary_state = match primary_state {
         PS::Unstiff if chest_button.state.is_tapped() => PS::Initial,
-        PS::Initial if chest_button.state.is_tapped() => PS::Playing,
-        PS::Playing if chest_button.state.is_tapped() => PS::Penalized,
-        PS::Penalized if chest_button.state.is_tapped() => PS::Playing,
+        PS::Initial if chest_button.state.is_tapped() => PS::Playing {
+            whistle_in_set: false,
+        },
+        PS::Playing { .. } if chest_button.state.is_tapped() => PS::Penalized,
+        PS::Penalized if chest_button.state.is_tapped() => PS::Playing {
+            whistle_in_set: false,
+        },
 
         _ => *primary_state,
     };
@@ -137,12 +143,25 @@ pub fn next_primary_state(
         return primary_state;
     }
 
+    let heard_whistle = matches!(
+        primary_state,
+        PS::Playing {
+            whistle_in_set: true
+        }
+    ) || whistle_state.detected;
+
     primary_state = match game_controller_message {
         Some(message) => match message.state {
             GameState::Initial => PS::Initial,
             GameState::Ready => PS::Ready,
+
+            GameState::Set if heard_whistle => PS::Playing {
+                whistle_in_set: true,
+            },
             GameState::Set => PS::Set,
-            GameState::Playing => PS::Playing,
+            GameState::Playing => PS::Playing {
+                whistle_in_set: false,
+            },
             GameState::Finished => PS::Finished,
             GameState::Standby => PS::Standby,
         },

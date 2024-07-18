@@ -25,10 +25,17 @@ pub struct WhistleDetectionModule;
 
 impl Module for WhistleDetectionModule {
     fn initialize(self, app: App) -> Result<App> {
-        app.add_ml_task::<WhistleDetectionModel>()?
-            .init_config::<WhistleDetectionConfig>()?
-            .add_system(detect_whistle)
-            .init_resource::<WhistleState>()
+        let app = app.init_resource::<WhistleState>()?;
+        #[cfg(feature = "alsa")]
+        {
+            let app = app
+                .add_ml_task::<WhistleDetectionModel>()?
+                .init_config::<WhistleDetectionConfig>()?
+                .add_system(detect_whistle);
+            Ok(app)
+        }
+        #[cfg(not(feature = "alsa"))]
+        Ok(app)
     }
 }
 
@@ -55,6 +62,7 @@ impl Config for WhistleDetectionConfig {
 
 pub struct WhistleState {
     detections: Vec<bool>,
+    pub detected: bool,
     stft: Stft,
 }
 
@@ -63,6 +71,7 @@ impl Default for WhistleState {
         Self {
             detections: Vec::new(),
             stft: Stft::new(WINDOW_SIZE, HOP_SIZE),
+            detected: false,
         }
     }
 }
@@ -97,9 +106,11 @@ fn detect_whistle(
         let detections = state.detections.iter().fold(0, |acc, e| acc + *e as usize);
 
         if detections >= config.detections_needed {
+            state.detected = true;
             nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
             nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
         } else {
+            state.detected = false;
             nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
             nao_manager.set_right_ear_led(RightEar::fill(0.0), Priority::High);
         }
