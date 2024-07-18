@@ -5,7 +5,7 @@ use heimdall::CameraMatrix;
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 
-use nalgebra::Isometry3;
+use nalgebra::{Isometry3, Point3};
 use nidhogg::types::RgbU8;
 
 use std::net::IpAddr;
@@ -615,6 +615,73 @@ impl DebugContext {
             self.rec
                 .log_static(path.as_ref(), &rerun::ViewCoordinates::FLU)
                 .into_diagnostic()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn log_lines3d(
+        &self,
+        path: impl AsRef<str>,
+        lines: &[(Point3<f32>, Point3<f32>)],
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let mut line_strips_3d = lines.iter().map(|line| {
+                rerun::LineStrip3D::from_iter([
+                    (line.0.z, line.0.y, line.0.z),
+                    (line.1.x, line.1.y, line.1.z),
+                ])
+            });
+
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::LineStrips3D::new(line_strips_3d).with_colors(vec![
+                        rerun::Color::from_rgb(
+                            color.red,
+                            color.green,
+                            color.blue,
+                        );
+                        lines.len()
+                    ]),
+                )
+                .into_diagnostic()?;
+
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
+    pub fn log_circle3d(
+        &self,
+        path: impl AsRef<str>,
+        center: (f32, f32),
+        radius: f32,
+        color: RgbU8,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            let num_points = 64;
+            let center_3d = (center.0, center.1, 0.0);
+            let inc = std::f32::consts::TAU / (num_points as f32);
+
+            let points = (0..(num_points + 1)).map(|i| {
+                let t = (i as f32) * inc;
+                (t.cos() * radius, t.sin() * radius, 0.0)
+            });
+
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::LineStrips3D::new([rerun::LineStrip3D::from_iter(points)]).with_colors(
+                        vec![rerun::Color::from_rgb(color.red, color.green, color.blue)],
+                    ),
+                )
+                .into_diagnostic()?;
+            self.clear_cycle();
         }
 
         Ok(())
