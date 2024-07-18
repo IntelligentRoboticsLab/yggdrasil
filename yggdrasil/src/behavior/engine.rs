@@ -283,7 +283,7 @@ impl Engine {
             }
             FallState::None => {
                 if matches!(context.current_behavior, BehaviorKind::CatchFall(_)) {
-                    self.behavior = BehaviorKind::CatchFall(CatchFall);
+                    self.behavior = context.current_behavior;
                     return;
                 }
             }
