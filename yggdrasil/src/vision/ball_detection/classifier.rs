@@ -50,13 +50,13 @@ fn init_ball_classifier(
     top_image: &TopImage,
     bottom_image: &BottomImage,
 ) -> Result<()> {
-    let top = Balls {
+    let balls = Balls {
         balls: Vec::new(),
         top_image: top_image.deref().clone(),
         bottom_image: bottom_image.deref().clone(),
     };
 
-    storage.add_resource(Resource::new(top))?;
+    storage.add_resource(Resource::new(balls))?;
 
     Ok(())
 }
