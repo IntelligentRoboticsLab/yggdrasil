@@ -61,7 +61,7 @@ impl Module for RobotDetectionModule {
             .add_ml_task::<RobotDetectionModel>()?
             .init_config::<RobotDetectionConfig>()?
             .add_startup_system(init_robot_detection)?
-            .add_system(detect_robots))
+            .add_system_chain((detect_robots, log_detected_robots)))
     }
 }
 
@@ -90,6 +90,8 @@ pub struct RobotDetectionData {
     pub detected: Vec<DetectedRobot>,
     /// The image the robots have been detected in.
     pub image: Image,
+    /// The cycle the detection was completed on.
+    pub result_cycle: Cycle,
 }
 
 /// For keeping track of the image that a robot inference is running for.
@@ -103,11 +105,51 @@ fn init_robot_detection(storage: &mut Storage, top_image: &TopImage) -> Result<(
     let detected_robots = RobotDetectionData {
         detected: Vec::new(),
         image: top_image.deref().clone(),
+        result_cycle: Cycle::default(),
     };
 
     storage.add_resource(Resource::new(robot_detection_image))?;
     storage.add_resource(Resource::new(detected_robots))?;
 
+    Ok(())
+}
+
+fn poll_model(
+    model: &mut MlTask<RobotDetectionModel>,
+    config: &RobotDetectionConfig,
+    robots: &mut RobotDetectionData,
+    robot_detection_image: &RobotDetectionImage,
+    current_cycle: &Cycle,
+) -> Result<()> {
+    // poll for result
+    let Some(result) = model.poll_multi::<Vec<f32>>().transpose()? else {
+        return Ok(());
+    };
+
+    let box_regression =
+        Array2::from_shape_vec(config.box_shape(), result[0].clone()).into_diagnostic()?;
+    let scores =
+        Array2::from_shape_vec(config.score_shape(), result[1].clone()).into_diagnostic()?;
+
+    let detected_robots = postprocess_detections(
+        (
+            robot_detection_image.0.width(),
+            robot_detection_image.0.height(),
+        ),
+        config,
+        box_regression,
+        scores,
+        config.confidence_threshold,
+        config.top_k_detections,
+    );
+
+    *robots = RobotDetectionData {
+        detected: detected_robots,
+        image: robot_detection_image.0.clone(),
+        result_cycle: *current_cycle,
+    };
+
+    // log_detected_robots(robots, ctx)?;
     Ok(())
 }
 
@@ -117,35 +159,15 @@ fn detect_robots(
     config: &RobotDetectionConfig,
     robots: &mut RobotDetectionData,
     robot_detection_image: &mut RobotDetectionImage,
-    ctx: &mut DebugContext,
     top_image: &TopImage,
     cycle: &Cycle,
 ) -> Result<()> {
-    if !robot_detection_image.0.is_from_cycle(*cycle) && model.active() {
-        // poll for result
-        if let Some(result) = model.poll_multi::<Vec<f32>>().transpose()? {
-            let box_regression =
-                Array2::from_shape_vec(config.box_shape(), result[0].clone()).into_diagnostic()?;
-            let scores = Array2::from_shape_vec(config.score_shape(), result[1].clone())
-                .into_diagnostic()?;
+    if model.active() {
+        poll_model(model, config, robots, robot_detection_image, cycle)?;
+        return Ok(());
+    }
 
-            let detected_robots = postprocess_detections(
-                (top_image.width(), top_image.height()),
-                config,
-                box_regression,
-                scores,
-                config.confidence_threshold,
-                config.top_k_detections,
-            );
-
-            *robots = RobotDetectionData {
-                detected: detected_robots,
-                image: robot_detection_image.0.clone(),
-            };
-
-            log_detected_robots(robots, ctx)?;
-        }
-
+    if !robot_detection_image.0.is_from_cycle(*cycle) {
         return Ok(());
     }
 
@@ -219,7 +241,16 @@ fn postprocess_detections(
         .collect()
 }
 
-fn log_detected_robots(robot_data: &RobotDetectionData, ctx: &DebugContext) -> Result<()> {
+#[system]
+fn log_detected_robots(
+    robot_data: &RobotDetectionData,
+    ctx: &DebugContext,
+    current_cycle: &Cycle,
+) -> Result<()> {
+    if robot_data.result_cycle != *current_cycle {
+        return Ok(());
+    }
+
     let processed_boxes = robot_data
         .detected
         .iter()

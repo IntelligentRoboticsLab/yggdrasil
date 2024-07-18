@@ -108,15 +108,6 @@ pub trait ConvertBbox<T> {
     fn convert(&self) -> Bbox<T>;
 }
 
-// impl<T, S> ConvertBbox<T> for &S
-// where
-//     S: ConvertBbox<T>,
-// {
-//     fn convert(&self) -> Bbox<T> {
-//         self.convert()
-//     }
-// }
-
 /// Marker type for bounding boxes with coordinates of the top-left and bottom-right corners.
 #[derive(Debug, Clone, Copy)]
 pub struct Xyxy;
