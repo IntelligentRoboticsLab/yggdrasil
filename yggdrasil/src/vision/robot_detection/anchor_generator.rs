@@ -1,8 +1,6 @@
 use itertools::{repeat_n, Itertools};
 use miette::{Context, IntoDiagnostic, Result};
-use ndarray::{
-    concatenate, stack, Array, Array1, Array2, Array3, ArrayD, ArrayView, Axis, IxDyn, Order,
-};
+use ndarray::{concatenate, stack, Array, Array1, Array2, ArrayD, ArrayView, Axis, IxDyn, Order};
 
 #[derive(Debug, Clone)]
 pub struct DefaultBoxGenerator {

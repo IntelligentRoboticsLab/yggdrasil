@@ -14,7 +14,7 @@ use box_coder::BoxCoder;
 use fast_image_resize as fr;
 use itertools::Itertools;
 use miette::IntoDiagnostic;
-use ndarray::{Array2, Array3, Axis};
+use ndarray::{Array2, Axis};
 
 mod anchor_generator;
 pub mod bbox;
@@ -66,7 +66,7 @@ impl Module for RobotDetectionModule {
 pub struct RobotDetectionModel;
 
 impl MlModel for RobotDetectionModel {
-    type InputType = f32;
+    type InputType = u8;
     type OutputType = f32;
     const ONNX_PATH: &'static str = "models/robot_detection.onnx";
 }
@@ -127,6 +127,7 @@ fn detect_robots(
                 .into_diagnostic()?;
 
             let detected_robots = postprocess_detections(
+                (top_image.width(), top_image.height()),
                 config,
                 box_regression,
                 scores,
@@ -152,12 +153,7 @@ fn detect_robots(
         fr::ResizeAlg::Nearest,
     )?;
 
-    if let Ok(()) = model.try_start_infer(
-        &resized_image
-            .iter()
-            .map(|x| *x as f32)
-            .collect::<Vec<f32>>(),
-    ) {
+    if let Ok(()) = model.try_start_infer(&resized_image) {
         // We need to keep track of the image we started the inference with
         *robot_detection_image = RobotDetectionImage(top_image.deref().clone());
     };
@@ -166,6 +162,7 @@ fn detect_robots(
 }
 
 fn postprocess_detections(
+    (image_width, image_height): (usize, usize),
     config: &RobotDetectionConfig,
     box_regression: Array2<f32>,
     scores: Array2<f32>,
@@ -183,6 +180,11 @@ fn postprocess_detections(
         ),
     );
 
+    let (scale_width, scale_height) = (
+        image_width as f32 / config.input_width as f32,
+        image_height as f32 / config.input_height as f32,
+    );
+
     let filtered = scores
         .axis_iter(Axis(0))
         .enumerate()
@@ -198,11 +200,8 @@ fn postprocess_detections(
             // clamp bbox to image size
             let bbox = bbox.clamp(config.input_width as f32, config.input_height as f32);
 
-            // rescale bboxes to 640x480
-            let bbox = bbox.scaled(
-                640.0 / config.input_width as f32,
-                480.0 / config.input_height as f32,
-            );
+            // rescale bboxes to image size
+            let bbox = bbox.scaled(scale_width, scale_height);
 
             Some((bbox, scores[1]))
         })

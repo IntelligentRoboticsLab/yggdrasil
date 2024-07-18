@@ -157,8 +157,9 @@ impl BottomCamera {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deref)]
 pub struct Image {
+    #[deref]
     /// Captured image in yuyv format.
     buf: Arc<YuyvImage>,
     /// Instant at which the image was captured.
