@@ -570,6 +570,7 @@ pub fn scan_lines_system(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn update_scan_lines(
     config: &ScanLinesConfig,
     scan_lines: &mut ScanLines,

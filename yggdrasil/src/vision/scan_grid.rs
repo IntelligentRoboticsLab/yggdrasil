@@ -9,7 +9,6 @@ use crate::{
 use heimdall::{CameraMatrix, YuyvImage};
 use nalgebra::point;
 use nidhogg::types::color;
-use tracing::warn;
 
 use super::{
     camera::{BottomImage, Image, TopImage},

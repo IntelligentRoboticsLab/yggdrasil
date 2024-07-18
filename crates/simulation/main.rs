@@ -56,7 +56,6 @@ use yggdrasil::sensor::orientation::OrientationFilterConfig;
 use yggdrasil::sensor::{ButtonConfig, FilterConfig, FsrConfig};
 use yggdrasil::vision::camera::{CameraConfig, CameraSettings};
 use yggdrasil::vision::field_marks::FieldMarksConfig;
-use yggdrasil::vision::scan_lines::ScanLinesConfig;
 use yggdrasil::vision::VisionConfig;
 use yggdrasil::{
     behavior::{engine::Control, primary_state::PrimaryState, Engine},
@@ -578,10 +577,6 @@ fn create_default_configs() -> (YggdrasilConfig, BehaviorConfig, GameControllerC
                     distance_threshold: 0.0,
                     patch_scale: 0.0,
                     time_budget: 0,
-                },
-                scan_lines: ScanLinesConfig {
-                    horizontal_scan_line_interval: 0,
-                    vertical_scan_line_interval: 0,
                 },
             },
         },

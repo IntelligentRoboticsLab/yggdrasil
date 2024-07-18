@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 use scan_grid::ScanGridModule;
-use scan_lines::{ScanLinesConfig, ScanLinesModule};
+use scan_lines::ScanLinesModule;
 use serde::{Deserialize, Serialize};
 
 pub mod ball_detection;
