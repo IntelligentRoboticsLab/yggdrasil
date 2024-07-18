@@ -18,8 +18,7 @@ use field_boundary::FieldBoundaryModule;
 use scan_lines::{ScanLinesConfig, ScanLinesModule};
 
 use self::ball_detection::BallDetectionModule;
-use self::field_marks::{FieldMarksConfig, FieldMarksModule};
-use self::line_detection::LineDetectionModule;
+use self::field_marks::FieldMarksConfig;
 
 pub struct VisionModule;
 
@@ -30,9 +29,9 @@ impl Module for VisionModule {
             // .add_module(scan_grid::ScanGridModule)?
             // .add_module(scan_lines2::ScanLinesModule)?
             .add_module(ScanLinesModule)?
-            .add_module(LineDetectionModule)?
-            .add_module(BallDetectionModule)?
-            .add_module(FieldMarksModule)
+            //.add_module(LineDetectionModule)
+            .add_module(BallDetectionModule)
+            //.add_module(FieldMarksModule)
     }
 }
 

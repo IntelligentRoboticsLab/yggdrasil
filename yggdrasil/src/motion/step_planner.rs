@@ -74,9 +74,11 @@ impl StepPlanner {
         self.target.as_ref()
     }
 
-    pub fn add_dynamic_obstacle(&mut self, obstacle: DynamicObstacle) {
-        tracing::info!("adding new obstacle: {:?}", obstacle);
-        self.dynamic_obstacles.push(obstacle);
+    pub fn add_dynamic_obstacle(&mut self, obstacle: DynamicObstacle, merge_distance: f32) {
+        match self.dynamic_obstacles.iter_mut().find(|o| o.obs.distance(&obstacle.obs) <= merge_distance) {
+            Some(o) => o.ttl = obstacle.ttl,
+            None => self.dynamic_obstacles.push(obstacle),
+        }
     }
 
     fn collect_and_gc_dynamic_obstacles(&mut self) -> Vec<Obstacle> {

@@ -171,6 +171,12 @@ impl Obstacle {
             radius: OrderedFloat(radius),
         }
     }
+
+    pub fn distance(&self, other: &Self) -> f32 {
+        let x = self.x.0 - other.x.0;
+        let y = self.y.0 - other.y.0;
+        (x * x + y * y).sqrt()
+    }
 }
 
 pub fn find_path(
@@ -180,6 +186,13 @@ pub fn find_path(
 ) -> Option<(Vec<Point2<f32>>, f32)> {
     let start = Point::new(start.x, start.y);
     let goal = Point::new(goal.x, goal.y);
+
+    for obstacle in obstacles {
+        let center = Point::new(obstacle.x.0, obstacle.y.0);
+        if goal.distance(&center) <= obstacle.radius {
+            return None;
+        }
+    }
 
     let result = astar::astar(
         &start,

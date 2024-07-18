@@ -37,13 +37,13 @@ fn sonar_sensor(
     sonar.update_from_values(&nao_state.sonar);
 
     if let Some(dist) = sonar.obstruction() {
-        if engine.is_walking() && sonar.positive_edge() {
-            let position = pose.robot_to_world(&Point2::new(dist.max(0.1) + 1., 0.));
+        if engine.is_walking() {
+            let position = pose.robot_to_world(&Point2::new(dist, 0.));
 
             planner.add_dynamic_obstacle(DynamicObstacle {
-                obs: Obstacle::new(position.x, position.y, 1.),
-                ttl: Instant::now() + Duration::from_secs_f32(7.5),
-            });
+                obs: Obstacle::new(position.x, position.y, 0.5),
+                ttl: Instant::now() + Duration::from_secs_f32(5.),
+            }, 0.25);
         }
 
         nao.set_right_eye_led(RightEye::fill(color::f32::RED), Priority::High);
@@ -59,13 +59,11 @@ pub struct Sonar {
     left: SonarSide,
     right: SonarSide,
     obstruction: Option<f32>,
-    positive_edge: bool,
 }
 
 #[derive(Debug, Default)]
 struct SonarSide {
-    accum: (usize, f32),
-    history: VecDeque<Option<f32>>,
+    history: VecDeque<f32>,
 }
 
 impl Sonar {
@@ -73,21 +71,25 @@ impl Sonar {
         self.obstruction
     }
 
-    pub fn positive_edge(&self) -> bool {
-        self.positive_edge
-    }
-
     fn detect_obstruction(&self) -> Option<f32> {
-        let left = self.left.ratio();
-        let right = self.right.ratio();
-        let both = left + right;
-
-        let dist = self.left.mean().min(self.right.mean());
-
-        if left > 0.3 && right > 0.3 {
-            (both > 0.6).then_some(dist)
+        let (a, b, c, d) = if self.obstruction.is_some() {
+            (0.60, 0.50, 0.75, 0.60)
         } else {
-            (both > 0.8 && dist < 0.8).then_some(dist)
+            (0.50, 0.80, 0.95, 0.50)
+        };
+
+        let left = self.left.ratio(a);
+        let right = self.right.ratio(a);
+
+        let dist = self.left.mean(d).min(self.right.mean(d));
+
+
+        if left >= b && right >= b {
+            Some(dist)
+        } else if left.max(right) >= c {
+            Some(dist)
+        } else {
+            None
         }
     }
 
@@ -97,44 +99,30 @@ impl Sonar {
 
         let obstruction = self.detect_obstruction();
 
-        self.positive_edge = obstruction.is_some() && self.obstruction.is_none();
         self.obstruction = obstruction;
     }
 }
 
 impl SonarSide {
-    const HISTORY_SIZE: usize = 128;
+    const HISTORY_SIZE: usize = 24;
 
-    fn ratio(&self) -> f32 {
-        self.accum.0 as f32 / Self::HISTORY_SIZE as f32
+    fn history(&self, threshold: f32) -> impl '_ + Iterator<Item = f32> + Clone {
+        self.history.iter().copied().filter(move |x| *x <= threshold)
     }
 
-    fn mean(&self) -> f32 {
-        if self.accum.0 == 0 {
-            f32::INFINITY
-        } else {
-            self.accum.1 / self.accum.0 as f32
-        }
+    fn ratio(&self, threshold: f32) -> f32 {
+        self.history(threshold).count() as f32 / Self::HISTORY_SIZE as f32
+    }
+
+    fn mean(&self, threshold: f32) -> f32 {
+        let history = self.history(threshold);
+        history.clone().sum::<f32>() / history.count() as f32
+        
     }
 
     fn update_from_value(&mut self, value: f32) {
-        let value = (value < 5.).then_some(value);
-
-        if let Some(value) = value {
-            self.accum.0 += 1;
-            self.accum.1 += value;
-        }
-
         if self.history.len() >= Self::HISTORY_SIZE {
-            if let Some(old) = self.history.pop_front().unwrap() {
-                self.accum.0 -= 1;
-
-                if self.accum.0 == 0 {
-                    self.accum.1 = 0.;
-                } else {
-                    self.accum.1 -= old;
-                }
-            }
+            self.history.pop_front();
         }
 
         self.history.push_back(value);
