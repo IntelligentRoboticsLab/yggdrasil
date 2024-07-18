@@ -196,23 +196,6 @@ fn detect_balls(
             patch,
         );
 
-        let path = match camera {
-            CameraType::Top => "/top_patches/",
-            CameraType::Bottom => "/bottom_patches/",
-        };
-
-        let path = format!("{}/{}x{}", path, proposal.position.x, proposal.position.y);
-
-        ctx.log_patch(
-            path,
-            proposals.image.cycle(),
-            Array3::from_shape_vec(
-                (32, 32, 1),
-                patch.iter().cloned().map(|x| x as f32).collect_vec(),
-            )
-            .unwrap(),
-        )?;
-
         if let Ok(()) = model.try_start_infer(&patch) {
             loop {
                 if start.elapsed().as_micros() > classifier.time_budget as u128 {

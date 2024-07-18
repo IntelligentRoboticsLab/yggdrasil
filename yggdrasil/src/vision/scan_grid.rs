@@ -227,7 +227,7 @@ pub fn update_top_scan_grid(
         *scan_grid = new_scan_grid;
         debug_scan_grid(scan_grid, image, dbg, CameraType::Top)?;
     } else {
-        warn!("Failed to update scan grid")
+        // warn!("Failed to update scan grid")
     };
 
     Ok(())
@@ -294,7 +294,7 @@ fn get_scan_grid(
 
     let field_limit = point_in_image.y.max(-1.0) as i32;
     if field_limit >= yuyv.height() as i32 {
-        warn!("Field limit is out of bounds");
+        // warn!("Field limit is out of bounds");
         return None;
     }
 
@@ -302,7 +302,7 @@ fn get_scan_grid(
     let bottom_left = camera_matrix
         .pixel_to_ground(point![0.0, yuyv.height() as f32], 0.0)
         .inspect_err(|_| {
-            warn!("No bottom left");
+            // warn!("No bottom left");
         })
         .ok()?
         .xy();
@@ -311,7 +311,7 @@ fn get_scan_grid(
     let bottom_right = camera_matrix
         .pixel_to_ground(point![yuyv.width() as f32, yuyv.height() as f32], 0.0)
         .inspect_err(|_| {
-            warn!("No bottom right");
+            // warn!("No bottom right");
         })
         .ok()?
         .xy();
@@ -385,7 +385,7 @@ fn get_scan_grid(
         let point_in_image = camera_matrix
             .ground_to_pixel(point![distance, 0.0, 0.0])
             .inspect_err(|_| {
-                warn!("No point in image: distance: {:#?}", distance);
+                // warn!("No point in image: distance: {:#?}", distance);
             })
             .ok()?;
 

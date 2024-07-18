@@ -1,5 +1,5 @@
 use crate::{
-    core::{audio::whistle_detection::WhistleState, config::showtime::PlayerConfig},
+    core::config::showtime::PlayerConfig,
     nao::manager::{NaoManager, Priority},
     prelude::*,
     sensor::button::{ChestButton, HeadButtons},
@@ -142,20 +142,6 @@ pub fn next_primary_state(
     // We are only able to leave the `Unstiff` state if the chest button is pressed.
     if primary_state == PS::Unstiff {
         return primary_state;
-    }
-
-    #[cfg(feature = "alsa")]
-    {
-        if primary_state == PS::Set {
-            let detections = whistles
-                .detections
-                .iter()
-                .fold(0, |acc, e| acc + *e as usize);
-
-            if detections >= 6 {
-                primary_state = PS::Playing;
-            }
-        }
     }
 
     primary_state = match game_controller_message {
