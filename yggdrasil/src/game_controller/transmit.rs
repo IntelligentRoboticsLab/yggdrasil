@@ -93,7 +93,10 @@ fn balls_to_game_controller_ball(balls: &Balls) -> (f32, [f32; 2]) {
 
     (
         ball.timestamp.elapsed().as_secs_f32(),
-        [ball.robot_to_ball.x, ball.robot_to_ball.y],
+        [
+            ball.robot_to_ball.x * MILIMETERS_PER_METER,
+            ball.robot_to_ball.y * MILIMETERS_PER_METER,
+        ],
     )
 }
 
