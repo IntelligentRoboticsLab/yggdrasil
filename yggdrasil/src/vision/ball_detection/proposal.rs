@@ -54,7 +54,6 @@ impl Module for BallProposalModule {
             ball_proposals_system.after(scan_lines::scan_lines_system),
             log_proposals,
         ))
-        // app.add_system(ball_proposals_system.after(scan_lines2::scan_lines_system))
         .add_startup_system(init_ball_proposals)
     }
 }
