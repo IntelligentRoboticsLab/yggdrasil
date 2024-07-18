@@ -247,7 +247,7 @@ pub fn right_pelvis_to_robot(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
     // And then we go back to the original orientation by applying a -45 degree roll.
     Translation::from(robot_dimensions::ROBOT_TO_LEFT_PELVIS)
         * Isometry3::rotation(Vector3::x() * -FRAC_PI_4)
-        * Isometry3::rotation(Vector3::z() * -joints.hip_yaw_pitch) // Then apply the hip yaw pitch rotation
+        * Isometry3::rotation(Vector3::z() * joints.hip_yaw_pitch) // Then apply the hip yaw pitch rotation
         * Isometry3::rotation(Vector3::x() * FRAC_PI_4)
 }
 
