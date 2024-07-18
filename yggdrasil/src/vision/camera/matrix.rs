@@ -61,6 +61,55 @@ fn update_camera_matrix<T: CameraLocation>(
         CameraPosition::Bottom => &config.bottom,
     };
 
+    camera_matrices.bottom = compute_camera_matrix(
+        swing_foot,
+        imu,
+        CameraPosition::Bottom,
+        &config.bottom,
+        kinematics,
+    );
+    Ok(())
+}
+
+#[system]
+fn print_toes(
+    imu: &IMUValues,
+    kinematics: &RobotKinematics,
+    debug_context: &DebugContext,
+    camera_matrices: &mut CameraMatrices,
+    current_cycle: &Cycle,
+    bottom_image: &BottomImage,
+) -> Result<()> {
+    if !bottom_image.is_from_cycle(*current_cycle) {
+        return Ok(());
+    }
+
+    let (left_toe, right_toe) = robot_to_toes(imu, kinematics);
+
+    let matrix = &camera_matrices.bottom;
+    let Ok(point) = matrix.ground_to_pixel(left_toe.transform_point(&Point3::new(0.0, 0.0, 0.0)))
+    else {
+        return Ok(());
+    };
+
+    debug_context.log_points2d_for_image_with_radius(
+        "bottom_camera/image/toes",
+        &[(point.x, point.y)],
+        *current_cycle,
+        color::u8::MAGENTA,
+        0.14,
+    )?;
+
+    Ok(())
+}
+
+fn compute_camera_matrix(
+    swing_foot: &SwingFoot,
+    imu: &IMUValues,
+    position: CameraPosition,
+    config: &CameraSettings,
+    kinematics: &RobotKinematics,
+) -> CameraMatrix {
     let image_size = vector![config.width as f32, config.height as f32];
     let camera_to_head = camera_to_head(T::POSITION, config.calibration.extrinsic_rotation);
     *matrix = CameraMatrix::new(
