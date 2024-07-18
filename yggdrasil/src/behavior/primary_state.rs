@@ -143,12 +143,19 @@ pub fn next_primary_state(
         return primary_state;
     }
 
+    let heard_whistle = matches!(
+        primary_state,
+        PS::Playing {
+            whistle_in_set: true
+        }
+    ) || whistle_state.detected;
+
     primary_state = match game_controller_message {
         Some(message) => match message.state {
             GameState::Initial => PS::Initial,
             GameState::Ready => PS::Ready,
 
-            GameState::Set if whistle_state.detected => PS::Playing {
+            GameState::Set if heard_whistle => PS::Playing {
                 whistle_in_set: true,
             },
             GameState::Set => PS::Set,
