@@ -47,6 +47,7 @@ use yggdrasil::behavior::BehaviorConfig;
 use yggdrasil::core::config::showtime::PlayerConfig;
 use yggdrasil::core::config::yggdrasil::YggdrasilConfig;
 use yggdrasil::core::debug::DebugContext;
+use yggdrasil::core::whistle::WhistleState;
 use yggdrasil::game_controller::GameControllerConfig;
 use yggdrasil::localization::{next_robot_pose, RobotPose};
 use yggdrasil::motion::odometry::{Odometry, OdometryConfig};
@@ -403,6 +404,7 @@ impl Robot {
             &Default::default(),
             &Default::default(),
             &self.player_config,
+            &WhistleState::default(),
         );
         let mut control = Control {
             nao_manager: &mut Default::default(),

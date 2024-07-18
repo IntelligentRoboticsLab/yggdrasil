@@ -5,8 +5,11 @@ use nidhogg::types::{FillExt, LeftEar, RightEar};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    core::audio::audio_input::NUMBER_OF_SAMPLES,
-    core::ml::{MlModel, MlTask, MlTaskResource},
+    core::{
+        audio::audio_input::NUMBER_OF_SAMPLES,
+        ml::{MlModel, MlTask, MlTaskResource},
+        whistle::WhistleState,
+    },
     nao::manager::{NaoManager, Priority},
     prelude::*,
 };
@@ -28,7 +31,7 @@ impl Module for WhistleDetectionModule {
         app.add_ml_task::<WhistleDetectionModel>()?
             .init_config::<WhistleDetectionConfig>()?
             .add_system(detect_whistle)
-            .init_resource::<WhistleState>()
+            .init_resource::<WhistleDetectionState>()
     }
 }
 
@@ -53,12 +56,12 @@ impl Config for WhistleDetectionConfig {
     const PATH: &'static str = "whistle_detection.toml";
 }
 
-pub struct WhistleState {
+pub struct WhistleDetectionState {
     detections: Vec<bool>,
     stft: Stft,
 }
 
-impl Default for WhistleState {
+impl Default for WhistleDetectionState {
     fn default() -> Self {
         Self {
             detections: Vec::new(),
@@ -69,6 +72,7 @@ impl Default for WhistleState {
 
 #[system]
 fn detect_whistle(
+    detection_state: &mut WhistleDetectionState,
     state: &mut WhistleState,
     model: &mut MlTask<WhistleDetectionModel>,
     audio_input: &AudioInput,
@@ -77,7 +81,7 @@ fn detect_whistle(
 ) -> Result<()> {
     if !model.active() {
         // take audio of arbitrary ear
-        let spectrogram = state
+        let spectrogram = detection_state
             .stft
             .compute(&audio_input.buffer[0], 0, MEAN_WINDOWS)
             .windows_mean();
@@ -89,17 +93,24 @@ fn detect_whistle(
     // check if detection cycle has been completed
     if let Some(Ok(result)) = model.poll::<Vec<f32>>() {
         // resize state.detections if necessary
-        state.detections.resize(config.detection_tries, false);
+        detection_state
+            .detections
+            .resize(config.detection_tries, false);
 
-        state.detections.rotate_right(1);
-        state.detections[0] = result[0] >= config.threshold;
+        detection_state.detections.rotate_right(1);
+        detection_state.detections[0] = result[0] >= config.threshold;
 
-        let detections = state.detections.iter().fold(0, |acc, e| acc + *e as usize);
+        let detections = detection_state
+            .detections
+            .iter()
+            .fold(0, |acc, e| acc + *e as usize);
 
         if detections >= config.detections_needed {
+            state.detected = true;
             nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
             nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
         } else {
+            state.detected = false;
             nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
             nao_manager.set_right_ear_led(RightEar::fill(0.0), Priority::High);
         }
