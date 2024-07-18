@@ -6,7 +6,7 @@ pub mod proposal;
 use std::time::Duration;
 
 use nidhogg::types::{color, FillExt, LeftEye};
-use proposal::BallProposalConfig;
+use proposal::BallProposalConfigs;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
@@ -15,13 +15,11 @@ use crate::{
     core::debug::DebugContext,
     nao::manager::{NaoManager, Priority},
     prelude::*,
-    vision::camera::matrix::CameraMatrices,
 };
 
-use self::{
-    classifier::{BallClassifierConfig, Balls},
-    proposal::BallProposals,
-};
+use self::classifier::{BallClassifierConfig, Balls};
+
+use super::scan_lines::CameraType;
 
 pub struct BallDetectionModule;
 
@@ -29,8 +27,8 @@ impl Module for BallDetectionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_module(proposal::BallProposalModule)?
             .add_module(classifier::BallClassifierModule)?
-            .add_system(log_balls.after(classifier::detect_balls))
-            .add_system(reset_eye_color.after(classifier::detect_balls))
+            .add_system(log_balls.after(classifier::ball_detection_system))
+            .add_system(reset_eye_color.after(classifier::ball_detection_system))
             .init_config::<BallDetectionConfig>()?
             .add_startup_system(init_subconfigs)
     }
@@ -41,7 +39,7 @@ impl Module for BallDetectionModule {
 pub struct BallDetectionConfig {
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub max_classification_age_eye_color: Duration,
-    pub proposal: BallProposalConfig,
+    pub proposal: BallProposalConfigs,
     pub classifier: BallClassifierConfig,
 }
 
@@ -58,59 +56,42 @@ fn init_subconfigs(storage: &mut Storage, config: &mut BallDetectionConfig) -> R
 }
 
 #[system]
-fn log_balls(
-    dbg: &DebugContext,
-    ball_proposals: &BallProposals,
-    balls: &Balls,
-    matrices: &CameraMatrices,
-    config: &BallProposalConfig,
-) -> Result<()> {
-    let mut points = Vec::new();
-    let mut sizes = Vec::new();
-    for proposal in &ball_proposals.proposals {
-        // project point to ground to get distance
-        // distance is used for the amount of surrounding pixels to sample
-        let Ok(coord) = matrices.top.pixel_to_ground(proposal.position.cast(), 0.0) else {
-            continue;
-        };
+fn log_balls(balls: &Balls, dbg: &DebugContext) -> Result<()> {
+    let mut positions_top = Vec::new();
+    let mut sizes_top = Vec::new();
 
-        let magnitude = coord.coords.magnitude();
+    let mut positions_bottom = Vec::new();
+    let mut sizes_bottom = Vec::new();
 
-        let size = config.bounding_box_scale / magnitude;
-
-        points.push((proposal.position.x as f32, proposal.position.y as f32));
-        sizes.push((size, size));
-    }
-
-    dbg.log_boxes_2d(
-        "top_camera/image/ball_boxes",
-        &points.clone(),
-        &sizes,
-        &ball_proposals.image,
-        color::u8::SILVER,
-    )?;
-
-    dbg.log_points2d_for_image_with_radius(
-        "top_camera/image/ball_spots",
-        &points,
-        ball_proposals.image.cycle(),
-        color::u8::GREEN,
-        4.0,
-    )?;
-
-    let mut positions = Vec::new();
-    let mut sizes = Vec::new();
     for ball in &balls.balls {
-        positions.push((ball.position_image.x, ball.position_image.y));
-        let size = config.bounding_box_scale / ball.distance;
-        sizes.push((size, size));
+        let pos = (ball.position_image.x, ball.position_image.y);
+        let size = (ball.scale, ball.scale);
+
+        match ball.camera {
+            CameraType::Top => {
+                positions_top.push(pos);
+                sizes_top.push(size);
+            }
+            CameraType::Bottom => {
+                positions_bottom.push(pos);
+                sizes_bottom.push(size);
+            }
+        };
     }
 
     dbg.log_boxes_2d(
         "top_camera/image/detected_balls",
-        &positions,
-        &sizes,
-        &balls.image,
+        &positions_top,
+        &sizes_top,
+        &balls.top_image,
+        color::u8::PURPLE,
+    )?;
+
+    dbg.log_boxes_2d(
+        "bottom_camera/image/detected_balls",
+        &positions_bottom,
+        &sizes_bottom,
+        &balls.bottom_image,
         color::u8::PURPLE,
     )?;
 

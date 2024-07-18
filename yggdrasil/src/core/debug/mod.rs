@@ -391,6 +391,39 @@ impl DebugContext {
         Ok(())
     }
 
+    /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
+    pub fn log_points2d_for_image_with_radii(
+        &self,
+        path: impl AsRef<str>,
+        points: &[(f32, f32)],
+        cycle: Cycle,
+        color: RgbU8,
+        radii: Vec<f32>,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.set_cycle(&cycle);
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Points2D::new(points)
+                        .with_colors(vec![
+                            rerun::Color::from_rgb(
+                                color.red,
+                                color.green,
+                                color.blue,
+                            );
+                            points.len()
+                        ])
+                        .with_radii(radii),
+                )
+                .into_diagnostic()?;
+            self.clear_cycle();
+        }
+
+        Ok(())
+    }
+
     /// Log a set of 2D lines to the debug viewer, using the timestamp of the provided image.
     pub fn log_lines2d_for_image_with_colors(
         &self,

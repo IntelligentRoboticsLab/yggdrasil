@@ -79,10 +79,6 @@ focal_lengths = [570, 570]
 cc_optical_center = [320, 240]
 
 
-[vision.scan_lines]
-horizontal_scan_line_interval = 8
-vertical_scan_line_interval = 16
-
 [vision.field_marks]
 # The distance after which field marks are considered to be too far away to be detected, in meters.
 distance_threshold = 15.0

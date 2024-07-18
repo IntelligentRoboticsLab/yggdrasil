@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+use scan_grid::ScanGridModule;
+use scan_lines::ScanLinesModule;
 use serde::{Deserialize, Serialize};
 
 pub mod ball_detection;
@@ -11,11 +13,9 @@ pub mod line;
 pub mod line_detection;
 pub mod scan_grid;
 pub mod scan_lines;
-pub mod scan_lines2;
+pub mod util;
 
 use field_boundary::FieldBoundaryModule;
-
-use scan_lines::{ScanLinesConfig, ScanLinesModule};
 
 use self::ball_detection::BallDetectionModule;
 use self::field_marks::{FieldMarksConfig, FieldMarksModule};
@@ -26,9 +26,7 @@ pub struct VisionModule;
 impl Module for VisionModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_module(FieldBoundaryModule)?
-            // TODO: use the new one!
-            // .add_module(scan_grid::ScanGridModule)?
-            // .add_module(scan_lines2::ScanLinesModule)?
+            .add_module(ScanGridModule)?
             .add_module(ScanLinesModule)?
             .add_module(LineDetectionModule)?
             .add_module(BallDetectionModule)?
@@ -39,6 +37,5 @@ impl Module for VisionModule {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct VisionConfig {
-    pub scan_lines: ScanLinesConfig,
     pub field_marks: FieldMarksConfig,
 }
