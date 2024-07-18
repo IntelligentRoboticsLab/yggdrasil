@@ -140,6 +140,11 @@ impl WalkingEngine {
         matches!(self.state, WalkState::Standing(hip_height) if hip_height >= self.config.hip_height)
     }
 
+    /// Returns whether the robot is currently walking.
+    pub fn is_walking(&self) -> bool {
+        matches!(self.state, WalkState::Starting(_) | WalkState::Walking(_) | WalkState::Stopping)
+    }
+
     pub(super) fn new(config: &WalkingEngineConfig, kinematics: &RobotKinematics) -> Self {
         let current_hip_height = left_hip_to_ground(kinematics);
 

@@ -1,7 +1,16 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, time::{Duration, Instant}};
 
-use crate::{nao::manager::{NaoManager, Priority}, prelude::*};
-use nidhogg::{types::{color, FillExt, RightEye, SonarValues}, NaoState};
+use crate::{
+    localization::RobotPose,
+    motion::{path_finding::Obstacle, step_planner::{DynamicObstacle, StepPlanner}, walk::engine::WalkingEngine},
+    nao::manager::{NaoManager, Priority},
+    prelude::*,
+};
+use nalgebra::Point2;
+use nidhogg::{
+    types::{color, FillExt, RightEye, SonarValues},
+    NaoState,
+};
 
 /// A module offering structured wrappers for sonar, derived from the raw [`NaoState`].
 ///
@@ -17,10 +26,26 @@ impl Module for SonarSensor {
 }
 
 #[system]
-fn sonar_sensor(nao_state: &NaoState, nao: &mut NaoManager, sonar: &mut Sonar) -> Result<()> {
+fn sonar_sensor(
+    nao_state: &NaoState,
+    engine: &WalkingEngine,
+    planner: &mut StepPlanner,
+    pose: &RobotPose,
+    nao: &mut NaoManager,
+    sonar: &mut Sonar,
+) -> Result<()> {
     sonar.update_from_values(&nao_state.sonar);
 
-    if sonar.obstructed() {
+    if let Some(dist) = sonar.obstruction() {
+        if engine.is_walking() && sonar.positive_edge() {
+            let position = pose.robot_to_world(&Point2::new(dist.max(0.1) + 1., 0.));
+
+            planner.add_dynamic_obstacle(DynamicObstacle {
+                obs: Obstacle::new(position.x, position.y, 1.),
+                ttl: Instant::now() + Duration::from_secs_f32(7.5),
+            });
+        }
+
         nao.set_right_eye_led(RightEye::fill(color::f32::RED), Priority::High);
     } else {
         nao.set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::High);
@@ -33,7 +58,8 @@ fn sonar_sensor(nao_state: &NaoState, nao: &mut NaoManager, sonar: &mut Sonar) -
 pub struct Sonar {
     left: SonarSide,
     right: SonarSide,
-    obstructed: bool,
+    obstruction: Option<f32>,
+    positive_edge: bool,
 }
 
 #[derive(Debug, Default)]
@@ -43,29 +69,37 @@ struct SonarSide {
 }
 
 impl Sonar {
-    pub fn obstructed(&self) -> bool {
-        self.obstructed
+    pub fn obstruction(&self) -> Option<f32> {
+        self.obstruction
     }
 
-    fn is_obstructed(&self) -> bool {
+    pub fn positive_edge(&self) -> bool {
+        self.positive_edge
+    }
+
+    fn detect_obstruction(&self) -> Option<f32> {
         let left = self.left.ratio();
         let right = self.right.ratio();
         let both = left + right;
 
-        if left > 0.3 && right > 0.3 {
-            both > 0.3 && self.left.mean().min(self.right.mean()) < 0.4
-        } else {
-            both > 0.8 && self.left.mean().min(self.right.mean()) < 0.2
-        }
+        let dist = self.left.mean().min(self.right.mean());
 
+        if left > 0.3 && right > 0.3 {
+            (both > 0.6).then_some(dist)
+        } else {
+            (both > 0.8 && dist < 0.8).then_some(dist)
+        }
     }
 
     fn update_from_values(&mut self, values: &SonarValues) {
         self.left.update_from_value(values.left);
         self.right.update_from_value(values.right);
-        self.obstructed = self.is_obstructed();
-    }
 
+        let obstruction = self.detect_obstruction();
+
+        self.positive_edge = obstruction.is_some() && self.obstruction.is_none();
+        self.obstruction = obstruction;
+    }
 }
 
 impl SonarSide {
@@ -76,11 +110,15 @@ impl SonarSide {
     }
 
     fn mean(&self) -> f32 {
-        self.accum.1 / self.accum.0 as f32
+        if self.accum.0 == 0 {
+            f32::INFINITY
+        } else {
+            self.accum.1 / self.accum.0 as f32
+        }
     }
 
     fn update_from_value(&mut self, value: f32) {
-        let value = (value < 5.).then_some(value); 
+        let value = (value < 5.).then_some(value);
 
         if let Some(value) = value {
             self.accum.0 += 1;
