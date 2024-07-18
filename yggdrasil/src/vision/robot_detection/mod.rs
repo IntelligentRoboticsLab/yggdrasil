@@ -2,14 +2,17 @@ use std::ops::Deref;
 
 use crate::nao::Cycle;
 use crate::prelude::*;
+use crate::vision::util::non_max_suppression;
 use crate::{
     core::{
         debug::DebugContext,
         ml::{self, MlModel, MlTask, MlTaskResource},
     },
-    vision::camera::{Image, TopImage},
+    vision::{
+        camera::{Image, TopImage},
+        util::bbox::{Bbox, ConvertBbox, Cxcywh, Xyxy},
+    },
 };
-use bbox::{Bbox, ConvertBbox, Cxcywh, Xyxy};
 use box_coder::BoxCoder;
 use fast_image_resize as fr;
 use itertools::Itertools;
@@ -17,7 +20,6 @@ use miette::IntoDiagnostic;
 use ndarray::{Array2, Axis};
 
 mod anchor_generator;
-pub mod bbox;
 mod box_coder;
 
 use anchor_generator::DefaultBoxGenerator;
@@ -27,6 +29,7 @@ use serde::{Deserialize, Serialize};
 #[serde(deny_unknown_fields)]
 pub struct RobotDetectionConfig {
     confidence_threshold: f32,
+    nms_threshold: f32,
     top_k_detections: usize,
     input_width: u32,
     input_height: u32,
@@ -185,7 +188,7 @@ fn postprocess_detections(
         image_height as f32 / config.input_height as f32,
     );
 
-    let filtered = scores
+    let filtered_boxes = scores
         .axis_iter(Axis(0))
         .enumerate()
         .filter_map(|(i, s)| {
@@ -207,39 +210,13 @@ fn postprocess_detections(
         })
         .sorted_by(|a, b| b.1.total_cmp(&a.1))
         .take(k)
-        .map(|(bbox, confidence)| DetectedRobot { bbox, confidence })
         .collect::<Vec<_>>();
 
-    // perform nms
-    let mut final_boxes = Vec::new();
-    let nms_threshold = 0.45;
-    for i in 0..filtered.len() {
-        let mut discard = false;
-        for j in 0..filtered.len() {
-            if i == j {
-                continue;
-            }
-
-            let robot_i = filtered[i].clone();
-            let robot_j = filtered[j].clone();
-
-            let iou = robot_i.bbox.iou(&robot_j.bbox);
-
-            let score_i = robot_i.confidence;
-            let score_j = robot_j.confidence;
-
-            if iou > nms_threshold && score_j > score_i {
-                discard = true;
-                break;
-            }
-        }
-
-        if !discard {
-            final_boxes.push(filtered[i].clone());
-        }
-    }
-
-    final_boxes
+    non_max_suppression(&filtered_boxes, config.nms_threshold)
+        .iter()
+        .map(|i| filtered_boxes[*i])
+        .map(|(bbox, confidence)| DetectedRobot { bbox, confidence })
+        .collect()
 }
 
 fn log_detected_robots(robot_data: &RobotDetectionData, ctx: &DebugContext) -> Result<()> {

@@ -18,6 +18,7 @@ use crate::{
             self, BottomScanLines, CameraType, ClassifiedScanLineRegion, RegionColor, ScanLines,
             TopScanLines,
         },
+        util::bbox::Bbox,
     },
 };
 
@@ -201,8 +202,7 @@ fn get_ball_proposals(
     let h_lines = scan_lines.horizontal();
 
     let mut proposals = Vec::new();
-    let mut boxes = Vec::new();
-    let mut scores = Vec::new();
+    let mut detections = Vec::new();
     for (left, middle, right) in h_lines.regions().tuple_windows() {
         // Check if the three scanlines have the same height
         if (left.fixed_point() != middle.fixed_point())
@@ -277,16 +277,17 @@ fn get_ball_proposals(
         };
 
         proposals.push(proposal);
-        boxes.push((
+        let proposal_box = Bbox::xyxy(
             new_mid_point.x - radius,
             new_mid_point.y - radius,
             new_mid_point.x + radius,
             new_mid_point.y + radius,
-        ));
-        scores.push(color_count.ball_ratio());
+        );
+
+        detections.push((proposal_box, color_count.ball_ratio()));
     }
 
-    let indices = crate::vision::util::non_max_suppression(boxes, scores, config.nms_threshold);
+    let indices = crate::vision::util::non_max_suppression(&detections, config.nms_threshold);
 
     let proposals: Vec<_> = indices.iter().map(|&i| proposals[i].clone()).collect();
     let image = scan_lines.image().clone();
