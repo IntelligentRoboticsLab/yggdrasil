@@ -213,7 +213,7 @@ pub struct Engine {
     /// Current robot behavior
     // TODO: Make private.
     pub behavior: BehaviorKind,
-    pub prev_behavior_for_standup: BehaviorKind,
+    pub prev_behavior_for_standup: Option<BehaviorKind>,
 }
 
 impl Default for Engine {
@@ -221,7 +221,7 @@ impl Default for Engine {
         Self {
             role: RoleKind::Attacker(Attacker),
             behavior: BehaviorKind::default(),
-            prev_behavior_for_standup: BehaviorKind::default(),
+            prev_behavior_for_standup: None,
         }
     }
 }
@@ -261,7 +261,7 @@ impl Engine {
 
         if let BehaviorKind::Standup(standup) = self.behavior {
             if standup.completed() {
-                self.behavior = self.prev_behavior_for_standup.clone();
+                self.behavior = self.prev_behavior_for_standup.take().unwrap();
             }
             return;
         }
@@ -269,17 +269,24 @@ impl Engine {
         // next up, damage prevention and standup motion take precedence
         match context.fall_state {
             FallState::Lying(_) => {
-                self.prev_behavior_for_standup = self.behavior.clone();
                 self.behavior = BehaviorKind::Standup(Standup::default());
                 return;
             }
             FallState::Falling(_) => {
                 if !matches!(context.primary_state, PrimaryState::Penalized) {
+                    if self.prev_behavior_for_standup.is_none() {
+                        self.prev_behavior_for_standup = Some(self.behavior.clone());
+                    }
                     self.behavior = BehaviorKind::CatchFall(CatchFall);
                 }
                 return;
             }
-            _ => {}
+            FallState::None => {
+                if matches!(context.current_behavior, BehaviorKind::CatchFall(_)) {
+                    self.behavior = BehaviorKind::CatchFall(CatchFall);
+                    return;
+                }
+            }
         }
 
         let ball_or_origin = context.ball_position.unwrap_or(Point2::origin());
