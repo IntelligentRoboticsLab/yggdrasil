@@ -49,7 +49,7 @@ fn main() -> Result<()> {
         .add_module(WhistleStateModule)?;
 
     #[cfg(feature = "alsa")]
-    app.add_module(yggdrasil::core::audio::AudioModule)?;
+    let = app.add_module(yggdrasil::core::audio::AudioModule)?;
 
     #[cfg(feature = "dependency_graph")]
     return app.store_system_dependency_graph("../dependency_graph.png");
