@@ -47,10 +47,11 @@ pub struct Record {
     pub record: ConfigOptsRecord,
 }
 
-/* This procedure is a very similar procedure to sindri deploy, only instead of yggdrasil getting pushed skadi gets compiled and pushed to the robot.
-*/
+
 
 impl Record {
+    /// This procedure is a very similar procedure to sindri deploy, only instead of
+    /// yggdrasil getting pushed skadi gets compiled and pushed to the robot.
     pub async fn record(self, config: SindriConfig) -> miette::Result<()> {
         let robots = vec![RobotEntry {
             robot_number: self.record.number,
