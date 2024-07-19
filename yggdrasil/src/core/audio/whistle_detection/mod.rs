@@ -24,6 +24,13 @@ const HOP_SIZE: usize = 256;
 /// The number of windows to take the mean of before sending the average to the model.
 const MEAN_WINDOWS: usize = (NUMBER_OF_SAMPLES - WINDOW_SIZE) / HOP_SIZE + 1;
 
+/// Nyquist assumed by the model.
+const NYQUIST: usize = 24001;
+
+/// Min and max Hz frequencies that the model uses.
+const MIN_FREQ: usize = 2000;
+const MAX_FREQ: usize = 4000;
+
 pub struct WhistleDetectionModule;
 
 impl Module for WhistleDetectionModule {
@@ -86,8 +93,11 @@ fn detect_whistle(
             .compute(&audio_input.buffer[0], 0, MEAN_WINDOWS)
             .windows_mean();
 
+        let min_i = MIN_FREQ * spectrogram.powers.len() / NYQUIST;
+        let max_i = MAX_FREQ * spectrogram.powers.len() / NYQUIST;
+
         // run detection model
-        model.try_start_infer(&spectrogram.powers)?;
+        model.try_start_infer(&spectrogram.powers[min_i..(max_i + 1)])?;
     }
 
     // check if detection cycle has been completed
