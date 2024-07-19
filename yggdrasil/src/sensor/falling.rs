@@ -1,17 +1,11 @@
+use crate::prelude::*;
 use crate::sensor::imu::IMUValues;
-use miette::Result;
-use tyr::prelude::*;
 
 /// Minimum angle for falling detection.
 const MIN_FALL_ANGLE_FORWARDS: f32 = 0.45;
 const MIN_FALL_ANGLE_BACKWARDS: f32 = -0.45;
 const MIN_FALL_ANGLE_LEFT: f32 = -0.52;
 const MIN_FALL_ANGLE_RIGHT: f32 = 0.52;
-/// Minimum velocity for falling detection.
-const MIN_FALL_VELOCITY_FORWARDS: f32 = 0.15;
-const MIN_FALL_VELOCITY_BACKWARDS: f32 = -0.15;
-const MIN_FALL_VELOCITY_LEFT: f32 = 0.15;
-const MIN_FALL_VELOCITY_RIGHT: f32 = 0.15;
 // Minimum angle for lying confirmation.
 const MIN_LYING_ANGLE: f32 = 1.3;
 /// Minimum accelerometer deviation for lying confirmation.
@@ -60,30 +54,22 @@ pub enum LyingDirection {
 
 /// Is the robot falling forward based on its angle and gyroscope.
 fn is_falling_forward(imu_values: &IMUValues) -> bool {
-    (imu_values.angles.y > MIN_FALL_ANGLE_FORWARDS) && !is_lying_on_stomach(imu_values)
-    // && imu_values.gyroscope.y > MIN_FALL_VELOCITY_FORWARDS
+    imu_values.angles.y > MIN_FALL_ANGLE_FORWARDS
 }
 
 /// Is the robot falling backwards based on its angle and gyroscope.
 fn is_falling_backward(imu_values: &IMUValues) -> bool {
-    (imu_values.angles.y < MIN_FALL_ANGLE_BACKWARDS) && !is_lying_on_back(imu_values)
-    // && imu_values.gyroscope.y < MIN_FALL_VELOCITY_BACKWARDS
+    imu_values.angles.y < MIN_FALL_ANGLE_BACKWARDS
 }
 
 /// Is the robot falling left based on its angle and gyroscope.
 fn is_falling_left(imu_values: &IMUValues) -> bool {
-    // (imu_values.angles.x < MIN_FALL_ANGLE_LEFT) && imu_values.gyroscope.x < MIN_FALL_VELOCITY_LEFT
-    (imu_values.angles.x < MIN_FALL_ANGLE_LEFT)
-        && !is_lying_on_stomach(imu_values)
-        && !is_lying_on_back(imu_values)
+    imu_values.angles.x < MIN_FALL_ANGLE_LEFT
 }
 
 /// Is the robot falling right based on its angle and gyroscope.
 fn is_falling_right(imu_values: &IMUValues) -> bool {
-    // (imu_values.angles.x > MIN_FALL_ANGLE_RIGHT) && imu_values.gyroscope.x > MIN_FALL_VELOCITY_RIGHT
-    (imu_values.angles.x < MIN_FALL_ANGLE_LEFT)
-        && !is_lying_on_stomach(imu_values)
-        && !is_lying_on_back(imu_values)
+    imu_values.angles.x < MIN_FALL_ANGLE_RIGHT
 }
 
 /// Is the robot lying on its stomach based on the accelerometer and angle.
@@ -102,17 +88,20 @@ fn is_lying_on_back(imu_values: &IMUValues) -> bool {
 /// accordingly.
 #[system]
 fn pose_filter(imu_values: &IMUValues, fall_state: &mut FallState) -> Result<()> {
-    if is_falling_forward(imu_values) {
+    let is_lying_on_stomach = is_lying_on_stomach(imu_values);
+    let is_lying_on_back = is_lying_on_back(imu_values);
+
+    if is_falling_forward(imu_values) && !is_lying_on_stomach {
         *fall_state = FallState::Falling(FallDirection::Forwards);
-    } else if is_falling_backward(imu_values) {
+    } else if is_falling_backward(imu_values) && !is_lying_on_back {
         *fall_state = FallState::Falling(FallDirection::Backwards);
-    } else if is_falling_left(imu_values) {
+    } else if is_falling_left(imu_values) && !is_lying_on_stomach && !is_lying_on_back {
         *fall_state = FallState::Falling(FallDirection::Left);
-    } else if is_falling_right(imu_values) {
+    } else if is_falling_right(imu_values) && !is_lying_on_stomach && !is_lying_on_back {
         *fall_state = FallState::Falling(FallDirection::Right);
-    } else if is_lying_on_stomach(imu_values) {
+    } else if is_lying_on_stomach {
         *fall_state = FallState::Lying(LyingDirection::FacingDown);
-    } else if is_lying_on_back(imu_values) {
+    } else if is_lying_on_back {
         *fall_state = FallState::Lying(LyingDirection::FacingUp);
     } else {
         *fall_state = FallState::None;
