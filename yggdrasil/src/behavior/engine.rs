@@ -20,7 +20,11 @@ use crate::{
     },
     game_controller::GameControllerConfig,
     localization::RobotPose,
-    motion::{keyframe::KeyframeExecutor, step_planner::StepPlanner, walk::engine::WalkingEngine},
+    motion::{
+        keyframe::KeyframeExecutor,
+        step_planner::StepPlanner,
+        walk::engine::{Step, WalkingEngine},
+    },
     nao::{manager::NaoManager, RobotInfo},
     prelude::*,
     sensor::{
