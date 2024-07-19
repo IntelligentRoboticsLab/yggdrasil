@@ -8,6 +8,7 @@ mod standup;
 mod startup;
 mod unstiff;
 mod walk;
+mod walk_to;
 mod walk_to_set;
 
 pub use catchfall::CatchFall;
@@ -18,4 +19,5 @@ pub use standup::Standup;
 pub use startup::StartUp;
 pub use unstiff::Unstiff;
 pub use walk::Walk;
+pub use walk_to::WalkTo;
 pub use walk_to_set::WalkToSet;

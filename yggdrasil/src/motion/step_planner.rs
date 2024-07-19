@@ -111,14 +111,14 @@ impl StepPlanner {
         let distance = calc_distance(&robot_pose.inner, &first_target_position);
 
         // We've reached the target.
-        if distance < 0.2 && path.len() == 2 {
+        if distance < 0.05 && path.len() == 2 {
             return None;
         }
 
         let angle = calc_angle_to_point(&robot_pose.inner, &first_target_position);
         let turn = calc_turn(&robot_pose.inner, &first_target_position);
 
-        if angle > 0.5 {
+        if angle > 0.1 {
             Some(Step {
                 forward: 0.,
                 left: 0.,
@@ -145,7 +145,7 @@ impl StepPlanner {
         // when it turns around its axis.
         // Once that is fixed (with localization using line detection), this early return should
         // probably be removed.
-        if angle.abs() <= 0.4 {
+        if angle.abs() <= 0.1 {
             return None;
         }
 
@@ -181,6 +181,10 @@ impl StepPlanner {
 
     pub fn reached_target(&self) -> bool {
         self.reached_translation_target && self.reached_rotation_target
+    }
+
+    pub fn has_target(&self) -> bool {
+        self.target.is_some()
     }
 }
 
