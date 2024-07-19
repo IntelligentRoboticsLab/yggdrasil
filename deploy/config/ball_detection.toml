@@ -5,7 +5,7 @@ max_classification_age_eye_color = 250
 # The minimum ratio of white pixels in the range around the proposed ball
 ball_ratio = 0.6
 # Height/width of the bounding box around the ball
-bounding_box_scale = 100.0
+bounding_box_scale = 70.0
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
 nms_threshold = 0.35
 
@@ -19,9 +19,9 @@ nms_threshold = 0.35
 
 [classifier]
 # The threshold for the classifier to consider a proposal a ball
-confidence_threshold = 0.85
+confidence_threshold = 0.92
 # The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
 time_budget = 1000
 # Lifetime of the ball in milliseconds, this is the time the robot will remember a classified balls' location.
 # If a new ball is detected it will restart the timer.
-ball_life = 4500
+ball_life = 3500

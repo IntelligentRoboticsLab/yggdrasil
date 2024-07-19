@@ -65,7 +65,7 @@ fn log_balls(balls: &Balls, dbg: &DebugContext) -> Result<()> {
 
     for ball in &balls.balls {
         let pos = (ball.position_image.x, ball.position_image.y);
-        let size = (ball.scale, ball.scale);
+        let size = (ball.scale / 2.0, ball.scale / 2.0);
 
         match ball.camera {
             CameraType::Top => {
@@ -79,20 +79,30 @@ fn log_balls(balls: &Balls, dbg: &DebugContext) -> Result<()> {
         };
     }
 
-    dbg.log_boxes_2d(
+    dbg.log_boxes2d_with_class(
         "top_camera/image/detected_balls",
         &positions_top,
         &sizes_top,
-        &balls.top_image,
-        color::u8::PURPLE,
+        balls
+            .balls
+            .iter()
+            .filter(|x| x.camera == CameraType::Top)
+            .map(|b| format!("{:.3}", b.confidence))
+            .collect(),
+        balls.top_image.cycle(),
     )?;
 
-    dbg.log_boxes_2d(
+    dbg.log_boxes2d_with_class(
         "bottom_camera/image/detected_balls",
         &positions_bottom,
         &sizes_bottom,
-        &balls.bottom_image,
-        color::u8::PURPLE,
+        balls
+            .balls
+            .iter()
+            .filter(|x| x.camera == CameraType::Bottom)
+            .map(|b| format!("{:.3}", b.confidence))
+            .collect(),
+        balls.bottom_image.cycle(),
     )?;
 
     Ok(())

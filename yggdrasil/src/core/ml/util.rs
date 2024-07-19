@@ -20,6 +20,11 @@ pub fn softmax(v: &[f32]) -> Vec<f32> {
     exps.iter().map(|x| x / sum).collect()
 }
 
+/// Computes the sigmoid score of the provided logit.
+pub fn sigmoid(logit: f32) -> f32 {
+    1.0 / (1.0 + (-logit).exp())
+}
+
 pub fn resize_patch(original: (usize, usize), target: (usize, usize), patch: Vec<u8>) -> Vec<f32> {
     let src_image = fr::Image::from_vec_u8(
         NonZeroU32::new(original.0 as u32).unwrap(),
