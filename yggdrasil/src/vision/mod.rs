@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+use robot_detection::RobotDetectionModule;
 use scan_grid::ScanGridModule;
 use scan_lines::ScanLinesModule;
 use serde::{Deserialize, Serialize};
@@ -11,6 +12,7 @@ pub mod field_boundary;
 pub mod field_marks;
 pub mod line;
 pub mod line_detection;
+pub mod robot_detection;
 pub mod scan_grid;
 pub mod scan_lines;
 pub mod util;
@@ -30,7 +32,8 @@ impl Module for VisionModule {
             .add_module(ScanLinesModule)?
             .add_module(LineDetectionModule)?
             .add_module(BallDetectionModule)?
-            .add_module(FieldMarksModule)
+            .add_module(FieldMarksModule)?
+            .add_module(RobotDetectionModule)
     }
 }
 

@@ -22,8 +22,8 @@ pub struct ModelExecutor<M: MlModel> {
     exec: Mutex<openvino::ExecutableNetwork>,
 
     // descriptions of in- and output layer tensors
-    input_descr: TensorDescr,
-    output_descr: TensorDescr,
+    input_descriptions: Vec<TensorDescr>,
+    output_descriptions: Vec<TensorDescr>,
     _marker: PhantomData<M>,
 }
 
@@ -48,87 +48,89 @@ impl<M: MlModel> ModelExecutor<M> {
                 .map_err(Error::LoadExecutableNetwork)?,
         );
 
-        // the model is guaranteed to have at least a single in- and output tensor
-        let input_name = model.get_input_name(0).map_err(Error::UnexpectedOpenVino)?;
-        let output_name = model
-            .get_output_name(0)
-            .map_err(Error::UnexpectedOpenVino)?;
-
-        // only through an inference request can we access
-        //  in- and output tensor descriptions
         let mut infer = exec
             .get_mut()
             .unwrap()
             .create_infer_request()
             .map_err(Error::StartInference)?;
 
-        let input_descr = TensorDescr {
-            cfg: infer
-                .get_blob(&input_name)
-                .map_err(Error::UnexpectedOpenVino)?
-                .tensor_desc()
-                .map_err(Error::UnexpectedOpenVino)?,
-            name: input_name,
-        };
-        let output_descr = TensorDescr {
-            cfg: infer
-                .get_blob(&output_name)
-                .map_err(Error::UnexpectedOpenVino)?
-                .tensor_desc()
-                .map_err(Error::UnexpectedOpenVino)?,
-            name: output_name,
-        };
+        // the model is guaranteed to have at least a single in- and output tensor
+        let num_inputs = model.get_inputs_len()?;
+        let mut input_descrs = Vec::with_capacity(num_inputs);
+        for i in 0..num_inputs {
+            let input_name = model.get_input_name(i)?;
+            let tensor = TensorDescr {
+                cfg: infer.get_blob(&input_name)?.tensor_desc()?,
+                name: input_name,
+            };
 
-        // check if `M: MlModel` and loaded model in- and output types are compatible
-        if !M::InputType::is_compatible(input_descr.cfg.precision()) {
-            Err(Error::InputType {
-                path: M::ONNX_PATH,
-                expected: std::any::type_name::<M::InputType>().into(),
-                imported: input_descr.cfg.precision(),
-            })
-        } else if !M::OutputType::is_compatible(output_descr.cfg.precision()) {
-            Err(Error::OutputType {
-                path: M::ONNX_PATH,
-                expected: std::any::type_name::<M::OutputType>().into(),
-                imported: input_descr.cfg.precision(),
-            })
-        } else {
-            Ok(Self {
-                exec,
-                input_descr,
-                output_descr,
-                _marker: PhantomData,
-            })
+            if !M::InputType::is_compatible(tensor.cfg.precision()) {
+                return Err(Error::InputType {
+                    path: M::ONNX_PATH,
+                    expected: std::any::type_name::<M::InputType>().into(),
+                    imported: tensor.cfg.precision(),
+                });
+            }
+            input_descrs.push(tensor);
         }
+
+        let num_outputs = model.get_outputs_len()?;
+        let mut output_descrs = Vec::with_capacity(num_outputs);
+        for i in 0..model.get_outputs_len()? {
+            let output_name = model.get_output_name(i)?;
+            let tensor = TensorDescr {
+                cfg: infer.get_blob(&output_name)?.tensor_desc()?,
+                name: output_name,
+            };
+            if !M::OutputType::is_compatible(tensor.cfg.precision()) {
+                return Err(Error::OutputType {
+                    path: M::ONNX_PATH,
+                    expected: std::any::type_name::<M::InputType>().into(),
+                    imported: tensor.cfg.precision(),
+                });
+            }
+            output_descrs.push(tensor);
+        }
+
+        Ok(Self {
+            exec,
+            input_descriptions: input_descrs,
+            output_descriptions: output_descrs,
+            _marker: PhantomData,
+        })
     }
 
     /// Requests to run inference.
-    pub fn request_infer(&mut self, input: &[M::InputType]) -> Result<InferRequest<M>> {
+    pub fn request_infer(&mut self, input: &[&[M::InputType]]) -> Result<InferRequest<M>> {
         let exec = self.exec.get_mut().unwrap();
 
         InferRequest::new(
             exec.create_infer_request().map_err(Error::StartInference)?,
             input,
-            &self.input_descr,
-            self.output_descr.clone(),
+            &self.input_descriptions,
+            &self.output_descriptions,
         )
     }
 
     /// Description of the input tensor.
-    pub fn input_descr(&self) -> &TensorDescr {
-        &self.input_descr
+    pub fn input_description(&self, index: usize) -> Result<&TensorDescr> {
+        self.input_descriptions
+            .get(index)
+            .ok_or(Error::MissingInputLayer(index))
     }
 
     /// Description of the output tensor.
-    pub fn output_descr(&self) -> &TensorDescr {
-        &self.output_descr
+    pub fn output_description(&self, index: usize) -> Result<&TensorDescr> {
+        self.output_descriptions
+            .get(index)
+            .ok_or(Error::MissingOutputLayer(index))
     }
 }
 
 pub struct InferRequest<M: MlModel> {
     request: openvino::InferRequest,
     /// Output layer tensor description.
-    output_descr: TensorDescr,
+    output_descrs: Vec<TensorDescr>,
     // note `fn() -> M` as opposed to just `M`, such that
     //  `Self` implements Send, even though `M` does not
     _marker: PhantomData<fn() -> M>,
@@ -137,37 +139,37 @@ pub struct InferRequest<M: MlModel> {
 impl<M: MlModel> InferRequest<M> {
     fn new(
         mut request: openvino::InferRequest,
-        input: &[M::InputType],
-        input_descr: &TensorDescr,
-        output_descr: TensorDescr,
+        inputs: &[&[M::InputType]],
+        input_descrs: &[TensorDescr],
+        output_descrs: &[TensorDescr],
     ) -> Result<Self> {
-        // check if input is of correct size
-        if input.len() != input_descr.cfg.len() {
-            return Err(Error::InferenceInputSize {
-                expected: input_descr.cfg.len(),
-                actual: input.len(),
-            });
-        }
+        for (description, input) in input_descrs.iter().zip(inputs) {
+            let cfg = &description.cfg;
 
-        // load input data
-        let blob = openvino::Blob::new(
-            &openvino::TensorDesc::new(
-                input_descr.cfg.layout(),
-                input_descr.cfg.dims(),
-                input_descr.cfg.precision(),
-            ),
-            M::InputType::view_slice_bytes(input),
-        )
-        .map_err(Error::UnexpectedOpenVino)?;
+            // check if input is of correct size
+            if input.len() != cfg.len() {
+                return Err(Error::InferenceInputSize {
+                    expected: cfg.dims()[0],
+                    actual: input.len(),
+                });
+            }
 
-        // set input data
-        request
-            .set_blob(&input_descr.name, &blob)
+            // load input data
+            let blob = openvino::Blob::new(
+                &openvino::TensorDesc::new(cfg.layout(), cfg.dims(), cfg.precision()),
+                M::InputType::view_slice_bytes(input),
+            )
             .map_err(Error::UnexpectedOpenVino)?;
+
+            // set input data
+            request
+                .set_blob(&description.name, &blob)
+                .map_err(Error::UnexpectedOpenVino)?;
+        }
 
         Ok(Self {
             request,
-            output_descr,
+            output_descrs: output_descrs.to_vec(),
             _marker: PhantomData,
         })
     }
@@ -178,25 +180,26 @@ impl<M: MlModel> InferRequest<M> {
         Ok(self)
     }
 
-    pub fn fetch_output<O>(mut self) -> Result<O>
+    pub fn fetch_output<O>(mut self) -> Result<Vec<O>>
     where
         O: Output<M::OutputType>,
     {
         // the tensor with the name `output_name` is guaranteed to exist
-        let blob = self
-            .request
-            .get_blob(&self.output_descr.name)
-            .map_err(Error::UnexpectedOpenVino)?;
+        let blobs = self
+            .output_descrs
+            .into_iter()
+            .map(|x| {
+                let blob = self.request.get_blob(&x.name).unwrap();
 
-        // we know the output tensor data type is compatible with `M::OutputType`
-        //  due to the check in `ModelExecutor::new`, meaning it's safe
-        //  to cast to this type
-        let data = unsafe {
-            blob.buffer_as_type::<M::OutputType>()
-                .map_err(Error::UnexpectedOpenVino)?
-        };
+                // we know the output tensor data type is compatible with `M::OutputType`
+                // due to the check in `ModelExecutor::new`, meaning it's safe
+                // to cast to this type
+                let data = unsafe { blob.buffer_as_type::<M::OutputType>() }.unwrap();
 
-        Ok(O::from_slice(data, self.output_descr.cfg.dims()))
+                O::from_slice(data, x.cfg.dims())
+            })
+            .collect();
+        Ok(blobs)
     }
 }
 

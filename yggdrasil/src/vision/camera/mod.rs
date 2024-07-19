@@ -3,9 +3,11 @@ pub mod matrix;
 use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle, prelude::*};
 
 use derive_more::{Deref, DerefMut};
-use miette::IntoDiagnostic;
+use fast_image_resize as fr;
+use miette::{Context, IntoDiagnostic};
 use serde::{Deserialize, Serialize};
 use std::{
+    num::NonZeroU32,
     sync::{Arc, Mutex},
     time::Instant,
 };
@@ -155,8 +157,9 @@ impl BottomCamera {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deref)]
 pub struct Image {
+    #[deref]
     /// Captured image in yuyv format.
     buf: Arc<YuyvImage>,
     /// Instant at which the image was captured.
@@ -188,6 +191,51 @@ impl Image {
 
     pub fn cycle(&self) -> Cycle {
         self.cycle
+    }
+
+    /// Resizes the image to the given width and height using the specified algorithm.
+    ///
+    /// The resized image is returned as a vector of bytes, in packed YUV format.
+    /// The image is converted to YUV by dropping the second y component of the YUYV format.
+    pub fn resized_yuv(
+        &self,
+        width: u32,
+        height: u32,
+        algorithm: fr::ResizeAlg,
+    ) -> Result<Vec<u8>> {
+        let image = self.yuyv_image();
+
+        let src_image = fr::Image::from_vec_u8(
+            NonZeroU32::new((image.width() / 2) as u32).unwrap(),
+            NonZeroU32::new(image.height() as u32).unwrap(),
+            image.to_vec(),
+            fr::PixelType::U8x4,
+        )
+        .into_diagnostic()
+        .context("Failed to create source image for resizing!")?;
+
+        let mut dst_image = fr::Image::new(
+            NonZeroU32::new(width).unwrap(),
+            NonZeroU32::new(height).unwrap(),
+            src_image.pixel_type(),
+        );
+
+        let mut resizer = fr::Resizer::new(algorithm);
+
+        resizer
+            .resize(&src_image.view(), &mut dst_image.view_mut())
+            .into_diagnostic()
+            .context("Failed to resize image")?;
+
+        // Remove every second y value from the yuyv image to turn it into a packed yuv image
+        Ok(dst_image
+            .buffer()
+            .iter()
+            .copied()
+            .enumerate()
+            .filter(|(i, _)| (i + 2) % 4 != 0)
+            .map(|(_, p)| p)
+            .collect())
     }
 
     /// Get a grayscale patch from the image centered at the given point.

@@ -1,0 +1,21 @@
+# The threshold for the confidence value of a detection.
+# Any detection with a confidence below this threshold, will not be considered.
+confidence_threshold = 0.30
+
+# The threshold for the IoU value for non-maximum suppression.
+# The higher this value, the less boxes will be dropped during non-maximum suppression.
+nms_threshold = 0.45
+
+# The number of detections to consider.
+# We only consider the k detections with the highest confidence.
+top_k_detections = 40
+
+# The width of the input image
+input_width = 100
+# The height of the input image
+input_height = 100
+
+# The total number of anchor boxes in the model's output.
+num_anchor_boxes = 864
+# The shape of the feature map in the model's output.
+feature_map_shape = [64, 12, 12]
