@@ -95,9 +95,9 @@ fn detect_whistle(
 
         let min_i = MIN_FREQ * spectrogram.powers.len() / NYQUIST;
         let max_i = MAX_FREQ * spectrogram.powers.len() / NYQUIST;
-        
+
         // run detection model
-        model.try_start_infer(&spectrogram.powers[min_i..(max_i+1)])?;
+        model.try_start_infer(&spectrogram.powers[min_i..(max_i + 1)])?;
     }
 
     // check if detection cycle has been completed
