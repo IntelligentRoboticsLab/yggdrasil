@@ -297,7 +297,10 @@ fn log_detected_robots(
 
             (
                 ((cx, cy), (half_w, half_h)),
-                format!("robot: {confidence:.3} ({:?})", timestamp.elapsed()),
+                format!(
+                    "robot: {confidence:.3} ({}ms)",
+                    timestamp.elapsed().as_millis()
+                ),
             )
         },
     );
