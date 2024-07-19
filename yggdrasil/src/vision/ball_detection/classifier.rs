@@ -164,6 +164,8 @@ fn detect_balls(
         return Ok(());
     }
 
+    let most_confident_position = balls.most_confident_ball().map(|b| b.position);
+
     let classifier = &config.classifier;
     let start = Instant::now();
 
@@ -212,14 +214,21 @@ fn detect_balls(
                     if let Ok(robot_to_ball) =
                         camera_matrix.pixel_to_ground(proposal.position.cast(), 0.0)
                     {
+                        let position = robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy()));
+                        let continuity = if let Some(most_confident_position) = most_confident_position {
+                            1. / (1. + 0.5 * nalgebra::distance(&position, &most_confident_position))
+                        } else {
+                            1.
+                        };
+
                         classified_balls.push(Ball {
                             position_image: proposal.position.cast(),
                             robot_to_ball: robot_to_ball.xy().coords,
                             scale: proposal.scale,
-                            position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
                             distance: proposal.distance_to_ball,
                             timestamp: Instant::now(),
-                            confidence: 1.0 - confidence,
+                            position,
+                            confidence: (1.0 - confidence) * continuity,
                             camera,
                         });
 
