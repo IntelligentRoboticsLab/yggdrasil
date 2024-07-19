@@ -6,9 +6,12 @@ use nalgebra::Point2;
 
 use crate::{
     behavior::{
-        behaviors::{CatchFall, Observe, Standup, StartUp, Unstiff, Walk},
+        behaviors::{
+            CatchFall, Observe, Stand, StandLookAt, Standup, StartUp, Unstiff, Walk, WalkTo,
+            WalkToSet,
+        },
         primary_state::PrimaryState,
-        roles::Attacker,
+        roles::{Attacker, Defender, Keeper},
         BehaviorConfig,
     },
     core::{
@@ -17,7 +20,11 @@ use crate::{
     },
     game_controller::GameControllerConfig,
     localization::RobotPose,
-    motion::{keyframe::KeyframeExecutor, step_planner::StepPlanner, walk::engine::WalkingEngine},
+    motion::{
+        keyframe::KeyframeExecutor,
+        step_planner::StepPlanner,
+        walk::engine::{Step, WalkingEngine},
+    },
     nao::{manager::NaoManager, RobotInfo},
     prelude::*,
     sensor::{
@@ -26,11 +33,6 @@ use crate::{
         fsr::Contacts,
     },
     vision::ball_detection::classifier::Balls,
-};
-
-use super::{
-    behaviors::{Stand, StandLookAt, WalkToSet},
-    roles::Keeper,
 };
 
 /// Context that is passed into the behavior engine.
@@ -128,6 +130,7 @@ pub enum BehaviorKind {
     Observe(Observe),
     Stand(Stand),
     Walk(Walk),
+    WalkTo(WalkTo),
     WalkToSet(WalkToSet),
     Standup(Standup),
     CatchFall(CatchFall),
@@ -188,10 +191,12 @@ pub trait Role {
 /// - New role implementations should be added as new variants to this enum
 /// - The specific struct for each role (e.g., [`Attacker`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
+#[derive(Debug)]
 pub enum RoleKind {
     Attacker(Attacker),
-    // Add new roles here!
     Keeper(Keeper),
+    Defender(Defender),
+    // Add new roles here!
 }
 
 impl RoleKind {
@@ -200,16 +205,22 @@ impl RoleKind {
         // TODO: get the default role for each robot by player number
         match player_number {
             1 => RoleKind::Keeper(Keeper),
-            5 => RoleKind::Attacker(Attacker),
-            _ => RoleKind::Attacker(Attacker),
+            5 => RoleKind::Attacker(Attacker::default()),
+            _ => RoleKind::Defender(Defender),
         }
     }
+
+    // fn by_game_state(
+    //     player_number: u8,
+    //     game_controller_message: &Option<GameControllerMessage>,
+    // ) -> Self {
+    // }
 }
 
 /// Resource that is exposed and keeps track of the current role and behavior.
 pub struct Engine {
     /// Current robot role
-    role: RoleKind,
+    pub role: RoleKind,
     /// Current robot behavior
     // TODO: Make private.
     pub behavior: BehaviorKind,
@@ -219,7 +230,7 @@ pub struct Engine {
 impl Default for Engine {
     fn default() -> Self {
         Self {
-            role: RoleKind::Attacker(Attacker),
+            role: RoleKind::Defender(Defender),
             behavior: BehaviorKind::default(),
             prev_behavior_for_standup: None,
         }
@@ -230,6 +241,13 @@ impl Engine {
     /// Assigns roles based on player number and other information like what
     /// robot is closest to the ball, missing robots, etc.
     fn assign_role(&self, context: Context) -> RoleKind {
+        if context.ball_position.is_some() {
+            if let RoleKind::Attacker(attacker) = &self.role {
+                return RoleKind::Attacker(*attacker);
+            }
+            return RoleKind::Attacker(Attacker::default());
+        }
+
         RoleKind::by_player_number(context.player_config.player_number)
     }
 
@@ -307,6 +325,10 @@ impl Engine {
             PrimaryState::Playing { .. } => self.role.transition_behavior(context, control),
         };
     }
+
+    // pub fn should_attack(&mut self, context: &Context, _control: &mut Control) -> bool {
+    //     return ;
+    // }
 }
 
 /// System that is called to execute one step of the behavior engine each cycle
@@ -347,7 +369,7 @@ pub fn step(
         game_controller_config,
         fall_state,
         pose: robot_pose,
-        ball_position: &balls.balls.first().map(|ball| ball.position),
+        ball_position: &balls.most_confident_ball().map(|b| b.position),
         current_behavior: engine.behavior.clone(),
     };
 
