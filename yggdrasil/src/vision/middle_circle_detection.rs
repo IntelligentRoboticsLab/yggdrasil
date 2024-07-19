@@ -4,10 +4,11 @@ use crate::vision::scan_lines::TopScanLines;
 use crate::{core::debug::DebugContext, prelude::*};
 
 use lstsq::Lstsq;
-use nalgebra::{distance, DVector, Matrix2, Point2, Point3, Vector2};
+use nalgebra::{distance, DVector, Matrix2, Point2, Point3, SymmetricEigen, Vector2};
 use nidhogg::types::color;
 
-const MAX_DISTANCE: f32 = 0.75;
+const MAX_CIRCLE_FITTING_ERROR: f32 = 100.0;
+const MIN_SPOTS_ON_CIRCLE: u32 = 10;
 
 pub struct MiddleCircleDetectionModule;
 
@@ -19,13 +20,8 @@ impl Module for MiddleCircleDetectionModule {
     }
 }
 
-#[derive(Default, Clone, Debug)]
-struct MiddleCircleCandidate {
-    center: Point2<f32>,
-    radius: f32,
-    line_spots: Vec<Point2<f32>>,
-}
-
+/// Converts a vector of 2d points to two seperate nalgbra vectors of
+/// coordinates
 fn points_to_vectors(points: &[Point2<f32>]) -> (DVector<f32>, DVector<f32>) {
     let n = points.len();
     let mut x_coords = Vec::with_capacity(n);
@@ -42,37 +38,104 @@ fn points_to_vectors(points: &[Point2<f32>]) -> (DVector<f32>, DVector<f32>) {
     (x_vector, y_vector)
 }
 
-impl MiddleCircleCandidate {
-    fn add_spot(&mut self, spot: Point2<f32>) {
-        self.line_spots.push(spot);
-        self.update_fit()
+/// Line representation that uses a normal to the line
+struct Line {
+    /// Normal to the line itself
+    normal: Vector2<f32>,
+    /// Distance to the origin
+    d: f32,
+}
+
+impl Line {
+    /// Computes the distance from a line to a point. This is done as follows:
+    /// first the vector to the point is projected onto the normalized normal
+    /// of the line. This is done by using the dot product between the
+    /// coordinates of the point and the normal of the line, which gives
+    /// us the length of the projection. We can then subtract that from the
+    /// total distance to the normal to get the remaining part, namely the
+    /// distance between the point and the line.
+    pub fn distance_to_point(&self, point: Point2<f32>) -> f32 {
+        self.d - self.normal.dot(&point.coords)
     }
 
-    fn update_fit(&mut self) {
-        let (new_center, new_radius) = self.fit();
-        self.center = new_center;
-        self.radius = new_radius;
-    }
-
-    /// This algorithm follows the following paper:
-    /// https://dtcenter.org/sites/default/files/community-code/met/docs/write-ups/circle_fit.pdf
-    fn fit(&self) -> (Point2<f32>, f32) {
-        let (x, y) = points_to_vectors(&self.line_spots);
+    /// Fits a line that uses a normal in its representation by taking the
+    /// eigenvector with smallest corresponding eigenvalue.
+    pub fn fit(points: &[Point2<f32>]) -> Line {
+        // Convert the points to nalgebra vectors to make operations easier
+        let (x, y) = points_to_vectors(points);
 
         let x_m = x.mean();
         let y_m = y.mean();
 
+        // Normalized x and y coordinates
         let u = x.map(|elem| elem - x_m);
         let v = y.map(|elem| elem - y_m);
 
-        let s_uu = u.map(|elem| elem * elem).sum();
-        let s_vv = v.map(|elem| elem * elem).sum();
+        let s_uu = u.map(|elem| elem.powi(2)).sum();
+        let s_vv = v.map(|elem| elem.powi(2)).sum();
+
+        let s_uv = u.component_mul(&v).sum();
+
+        let a = Matrix2::<f32>::new(s_vv, s_uv, s_uv, s_uu);
+        let eig = SymmetricEigen::new(a);
+
+        let smallest_eig_idx = if eig.eigenvalues[0] > eig.eigenvalues[1] {
+            0
+        } else {
+            1
+        };
+
+        // Select smallest eigenvector as the norm (smallest variance)
+        let norm = eig.eigenvectors.column(smallest_eig_idx);
+
+        // Distance to the origin
+        let d = norm.dot(&Vector2::new(x_m, y_m));
+
+        Line {
+            normal: norm.into(),
+            d,
+        }
+    }
+}
+
+/// Representation of a circle
+#[derive(Default, Clone, Debug)]
+struct Circle {
+    /// Circle center
+    center: Point2<f32>,
+    /// Circle radius
+    radius: f32,
+}
+
+impl Circle {
+    /// Computes the distance between the middle of a circle to a point
+    pub fn distance_to_point(&self, point: &Point2<f32>) -> f32 {
+        (self.center.coords - point.coords).norm()
+    }
+
+    /// This algorithm follows the following paper:
+    /// https://dtcenter.org/sites/default/files/community-code/met/docs/write-ups/circle_fit.pdf
+    /// It formulates the circle fitting problem as a least squares problem and
+    /// computes a center and radius
+    pub fn fit(points: &[Point2<f32>]) -> Circle {
+        // Convert the points to nalgebra vectors to make operations easier
+        let (x, y) = points_to_vectors(points);
+
+        let x_m = x.mean();
+        let y_m = y.mean();
+
+        // Normalized x and y coordinates
+        let u = x.map(|elem| elem - x_m);
+        let v = y.map(|elem| elem - y_m);
+
+        let s_uu = u.map(|elem| elem.powi(2)).sum();
+        let s_vv = v.map(|elem| elem.powi(2)).sum();
 
         let vs_uv = u.component_mul(&v);
         let s_uv = vs_uv.sum();
 
-        let s_uuu: f32 = u.map(|elem| elem * elem * elem).sum();
-        let s_vvv: f32 = v.map(|elem| elem * elem * elem).sum();
+        let s_uuu: f32 = u.map(|elem| elem.powi(3)).sum();
+        let s_vvv: f32 = v.map(|elem| elem.powi(3)).sum();
         let s_uvv: f32 = vs_uv.dot(&v);
         let s_vuu: f32 = vs_uv.dot(&u);
 
@@ -87,14 +150,40 @@ impl MiddleCircleCandidate {
         let u_c = solution[0];
         let v_c = solution[1];
 
+        // Compute center
         let x_c = u_c + x_m;
         let y_c = v_c + y_m;
+        let center = Point2::new(x_c, y_c);
 
-        let n = self.line_spots.len() as f32;
+        let n = points.len() as f32;
         let a = u_c.powi(2) + v_c.powi(2) + ((s_uu + s_vv) / n);
         let radius = a.sqrt();
 
-        (Point2::new(x_c, y_c), radius)
+        Circle { center, radius }
+    }
+}
+
+/// Middle circle candidate, this candidate contains a fitted circle and the
+/// spots on which the circle was fitted. Spots are added iteratively and each
+/// time a spot is added the fit is updated.
+#[derive(Default, Clone, Debug)]
+struct MiddleCircleCandidate {
+    /// The currently fitted circle
+    fitted_circle: Circle,
+    /// Line spots on which the current circle candidate is fitted
+    line_spots: Vec<Point2<f32>>,
+}
+
+impl MiddleCircleCandidate {
+    /// Adds a new spot the points used for fitting this circle candidate
+    fn add_spot(&mut self, spot: Point2<f32>) {
+        self.line_spots.push(spot);
+        self.update_fit()
+    }
+
+    /// Fits a new circle and uses this to update the current fit
+    fn update_fit(&mut self) {
+        self.fitted_circle = Circle::fit(&self.line_spots);
     }
 }
 
@@ -112,10 +201,18 @@ pub fn test(
     middle_circle_detector: &mut MiddleCircleDetector,
 ) -> Result<()> {
     for spot in top_scan_lines.horizontal().line_spots() {
+        let mut circle_fitted = false;
+
         for candidate in &mut middle_circle_detector.candidates {
-            if distance(&candidate.center, &spot) > MAX_DISTANCE {
+            if distance(&candidate.fitted_circle.center, &spot) <= MAX_CIRCLE_FITTING_ERROR {
                 candidate.add_spot(spot);
+                circle_fitted = true;
+                break;
             }
+        }
+
+        if !circle_fitted {
+            println!("asdf");
         }
     }
 
