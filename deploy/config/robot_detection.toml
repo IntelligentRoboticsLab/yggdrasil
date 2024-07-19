@@ -12,7 +12,7 @@ top_k_detections = 40
 
 # The width of the input image
 input_width = 100
-# The height of th input image
+# The height of the input image
 input_height = 100
 
 # The total number of anchor boxes in the model's output.
