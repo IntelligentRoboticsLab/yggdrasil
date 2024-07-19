@@ -2,6 +2,7 @@ use bevy::{app::PluginGroupBuilder, prelude::*};
 
 pub mod audio;
 pub mod config;
+pub mod control;
 pub mod debug;
 
 pub struct CorePlugins;
