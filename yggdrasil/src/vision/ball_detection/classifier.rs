@@ -205,7 +205,7 @@ fn detect_balls(
 
                 if let Ok(Some(result)) = model.poll::<Vec<f32>>().transpose() {
                     let confidence = result[0];
-                    if confidence < classifier.confidence_threshold {
+                    if (1.0 - confidence) < classifier.confidence_threshold {
                         break;
                     }
 
@@ -219,9 +219,13 @@ fn detect_balls(
                             position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
                             distance: proposal.distance_to_ball,
                             timestamp: Instant::now(),
-                            confidence,
+                            confidence: 1.0 - confidence,
                             camera,
                         });
+
+                        if 1.0 - confidence > classifier.confidence_threshold {
+                            break 'outer;
+                        }
                     }
                 }
             }
