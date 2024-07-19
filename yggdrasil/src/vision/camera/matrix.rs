@@ -71,6 +71,22 @@ fn update_camera_matrix<T: CameraLocation>(
     Ok(())
 }
 
+// fn print_hands(
+//     imu: &IMUValues,
+//     kinematics: &RobotKinematics,
+//     debug_context: &DebugContext,
+//     camera_matrices: &mut CameraMatrices,
+//     current_cycle: &Cycle,
+//     bottom_image: &BottomImage,
+//     robot_kinematics: &RobotKinematics,
+// ) -> Result<()> {
+//     if !bottom_image.is_from_cycle(*current_cycle) {
+//         return Ok(());
+//     }
+//
+//     Ok(())
+// }
+//
 #[system]
 fn print_toes(
     imu: &IMUValues,
@@ -84,20 +100,48 @@ fn print_toes(
         return Ok(());
     }
 
-    let (left_toe, right_toe) = robot_to_toes(imu, kinematics);
+    pub const ROBOT_TO_TORSO: Vector3<f32> = vector![-0.0413, 0.0, -0.12842];
 
     let matrix = &camera_matrices.bottom;
-    let Ok(point) = matrix.ground_to_pixel(left_toe.transform_point(&Point3::new(0.0, 0.0, 0.0)))
-    else {
+    let (robot_to_left_toe, robot_to_right_toe) = robot_to_toes(imu, kinematics);
+
+    eprintln!("ROBOT_TO_LEFT_TOE:  {robot_to_left_toe}");
+    eprintln!("ROBOT_TO_RIGHT_TOE: {robot_to_right_toe}");
+
+    let (Ok(left_toe_point), Ok(right_toe_point)) = (
+        matrix.ground_to_pixel(
+            std::convert::Into::<Point3<f32>>::into(
+                robot_to_left_toe.transform_vector(&-ROBOT_TO_TORSO),
+            )
+            .xzy(),
+        ),
+        matrix.ground_to_pixel(
+            std::convert::Into::<Point3<f32>>::into(
+                robot_to_right_toe.transform_vector(&-ROBOT_TO_TORSO),
+            )
+            .xzy(),
+        ),
+        // // matrix.ground_to_pixel((robot_to_right_toe.transform_vector(&-ROBOT_TO_TORSO)).into()),
+        // std::convert::Into::<Point3<f32>>::into(
+        //     robot_to_right_toe.transform_vector(&-ROBOT_TO_TORSO),
+        // ),
+    ) else {
+        // eprintln!("Couldn't find toe");
         return Ok(());
     };
 
+    eprintln!("LEFT_TOE_POINT:  {left_toe_point}");
+    eprintln!("RIGHT_TOE_POINT: {right_toe_point}");
+
     debug_context.log_points2d_for_image_with_radius(
         "bottom_camera/image/toes",
-        &[(point.x, point.y)],
+        &[
+            (left_toe_point.x, left_toe_point.y),
+            (right_toe_point.x, right_toe_point.y),
+        ],
         *current_cycle,
         color::u8::MAGENTA,
-        0.14,
+        14.,
     )?;
 
     Ok(())
@@ -162,6 +206,12 @@ fn robot_to_toes(
     let imu_adjusted_robot_to_right_toe = Isometry3::rotation(Vector3::y() * pitch)
         * Isometry3::rotation(Vector3::x() * roll)
         * Isometry3::from(right_toe_to_robot.translation.inverse());
+
+    eprintln!("left_toe_to_robot:  {left_toe_to_robot}");
+    eprintln!("right_toe_to_robot: {right_toe_to_robot}");
+
+    eprintln!("adjusted left:  {imu_adjusted_robot_to_left_toe}");
+    eprintln!("adjusted right: {imu_adjusted_robot_to_right_toe}");
 
     (
         imu_adjusted_robot_to_left_toe,

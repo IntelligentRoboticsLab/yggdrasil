@@ -33,4 +33,4 @@ pub const NECK_TO_TOP_CAMERA: Vector3<f32> = vector![0.05871, 0.0, 0.06364];
 /// Vector pointing from the neck to the bottom camera.
 pub const NECK_TO_BOTTOM_CAMERA: Vector3<f32> = vector![0.05071, 0.0, 0.01774];
 
-pub const SOLE_TO_TOE: Vector3<f32> = vector![0.03, 0.0, 0.0];
+pub const SOLE_TO_TOE: Vector3<f32> = vector![0.07, 0.0, 0.0];
