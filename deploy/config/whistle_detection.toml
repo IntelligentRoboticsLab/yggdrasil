@@ -1,6 +1,6 @@
 # should be in [0, 1]
-threshold = 0.15
+threshold = 0.88
 # for how many detection cycles to listen for a whistle
 detection_tries = 8
 # how many detections within `detection_tries` detection cycles are required to flag a whistle
-detections_needed = 6
+detections_needed = 3
