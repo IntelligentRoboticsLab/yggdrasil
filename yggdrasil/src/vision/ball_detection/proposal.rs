@@ -14,6 +14,7 @@ use crate::{
     prelude::*,
     vision::{
         camera::{matrix::CameraMatrices, Image},
+        robot_detection::RobotDetectionData,
         scan_lines::{
             self, BottomScanLines, CameraType, ClassifiedScanLineRegion, RegionColor, ScanLines,
             TopScanLines,
@@ -93,13 +94,21 @@ pub(super) fn ball_proposals_system(
     matrices: &CameraMatrices,
     config: &BallProposalConfigs,
     (top_proposals, bottom_proposals): (&mut TopBallProposals, &mut BottomBallProposals),
+    robots: &RobotDetectionData,
 ) -> Result<()> {
-    update_ball_proposals(top_proposals, top_scan_lines, &matrices.top, &config.top)?;
+    update_ball_proposals(
+        top_proposals,
+        top_scan_lines,
+        &matrices.top,
+        &config.top,
+        Some(robots),
+    )?;
     update_ball_proposals(
         bottom_proposals,
         bottom_scan_lines,
         &matrices.bottom,
         &config.bottom,
+        None,
     )?;
 
     Ok(())
@@ -110,6 +119,7 @@ pub fn update_ball_proposals(
     scan_lines: &ScanLines,
     matrix: &CameraMatrix,
     config: &BallProposalConfig,
+    robots: Option<&RobotDetectionData>,
 ) -> Result<()> {
     // if the image has not changed, we don't need to recalculate the proposals
     if ball_proposals
@@ -119,8 +129,25 @@ pub fn update_ball_proposals(
         return Ok(());
     }
 
-    let new = get_ball_proposals(scan_lines, matrix, config)?;
+    let mut new = get_ball_proposals(scan_lines, matrix, config)?;
 
+    if let Some(robots) = robots {
+        // remove proposals that are too close to robots
+        let robot_bboxes = robots.detected.iter().map(|robot| robot.bbox).collect_vec();
+
+        new.proposals.retain(|proposal| {
+            !robot_bboxes.iter().any(|bbox| {
+                let proposal_bbox = Bbox::cxcywh(
+                    proposal.position.x as f32,
+                    proposal.position.y as f32,
+                    proposal.scale,
+                    proposal.scale,
+                );
+
+                bbox.intersection(&proposal_bbox) > 0.0
+            })
+        });
+    }
     *ball_proposals = new;
 
     Ok(())

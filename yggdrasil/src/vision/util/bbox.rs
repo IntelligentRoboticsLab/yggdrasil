@@ -194,7 +194,7 @@ impl ConvertBbox<Xywh> for Bbox<Xywh> {
 pub struct Cxcywh;
 
 impl Bbox<Cxcywh> {
-    pub fn cxywh(cx: f32, cy: f32, w: f32, h: f32) -> Bbox<Cxcywh> {
+    pub fn cxcywh(cx: f32, cy: f32, w: f32, h: f32) -> Bbox<Cxcywh> {
         Bbox::new((cx, cy, w, h))
     }
 
@@ -248,9 +248,9 @@ mod tests {
     }
 
     #[test]
-    fn iou_cxywh() {
-        let bbox1 = Bbox::cxywh(5.0, 5.0, 10.0, 10.0);
-        let bbox2 = Bbox::cxywh(10.0, 10.0, 10.0, 10.0);
+    fn iou_cxcywh() {
+        let bbox1 = Bbox::cxcywh(5.0, 5.0, 10.0, 10.0);
+        let bbox2 = Bbox::cxcywh(10.0, 10.0, 10.0, 10.0);
 
         assert_eq!(bbox1.intersection(&bbox2), 25.0);
         assert_eq!(bbox1.union(&bbox2), 175.0);
