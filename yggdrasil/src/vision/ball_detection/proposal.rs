@@ -260,6 +260,10 @@ fn get_ball_proposals(
         let scaling = config.bounding_box_scale * 0.5;
         let radius = scaling / distance;
 
+        if radius < 12.0 {
+            continue;
+        }
+
         // Scan circularly around the ball to find in the scanlines:
         // - The average y position of the ball
         // - The ratio of white pixels in the region

@@ -1,6 +1,6 @@
 # The threshold for the confidence value of a detection.
 # Any detection with a confidence below this threshold, will not be considered.
-confidence_threshold = 0.30
+confidence_threshold = 0.37
 
 # The threshold for the IoU value for non-maximum suppression.
 # The higher this value, the less boxes will be dropped during non-maximum suppression.
@@ -12,7 +12,7 @@ top_k_detections = 40
 
 # The time a detection will be remembered for, in milliseconds.
 # Remembered detections will still be considered for NMS.
-detection_lifetime = 1000
+detection_lifetime = 800
 
 # The width of the input image
 input_width = 100
