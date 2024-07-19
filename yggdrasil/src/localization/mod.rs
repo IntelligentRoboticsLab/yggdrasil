@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use crate::{
     behavior::primary_state::PrimaryState,
     core::{
@@ -7,7 +9,10 @@ use crate::{
     motion::odometry::{self, Odometry},
     prelude::*,
 };
-use nalgebra::{Isometry2, Isometry3, Point2, Translation3, UnitQuaternion};
+use bifrost::communication::{GameControllerMessage, GamePhase};
+use nalgebra::{
+    Isometry2, Isometry3, Point2, Translation2, Translation3, UnitComplex, UnitQuaternion,
+};
 use nidhogg::types::{
     color::{self, RgbU8},
     HeadJoints,
@@ -112,8 +117,9 @@ pub fn update_robot_pose(
     ctx: &DebugContext,
     primary_state: &PrimaryState,
     layout_config: &LayoutConfig,
+    message: &Option<GameControllerMessage>,
 ) -> Result<()> {
-    *robot_pose = next_robot_pose(robot_pose, odometry, primary_state, layout_config);
+    *robot_pose = next_robot_pose(robot_pose, odometry, primary_state, layout_config, message);
     log_pose(
         "/localisation/pose",
         ctx,
@@ -128,12 +134,27 @@ pub fn next_robot_pose(
     odometry: &Odometry,
     primary_state: &PrimaryState,
     layout_config: &LayoutConfig,
+    message: &Option<GameControllerMessage>,
 ) -> RobotPose {
-    let isometry = if *primary_state == PrimaryState::Penalized {
+    let mut isometry = if *primary_state == PrimaryState::Penalized {
         find_closest_penalty_pose(robot_pose, layout_config)
     } else {
         robot_pose.inner * odometry.offset_to_last
     };
+
+    if let Some(message) = message {
+        if message.game_phase == GamePhase::PenaltyShoot {
+            if message.kicking_team == 8 {
+                isometry = Isometry2::from_parts(
+                    Translation2::new(3.2, 0.0),
+                    UnitComplex::from_angle(0.0),
+                );
+            } else {
+                isometry =
+                    Isometry2::from_parts(Translation2::new(4.5, 0.0), UnitComplex::from_angle(PI))
+            }
+        }
+    }
 
     RobotPose::new(isometry)
 }
