@@ -17,7 +17,7 @@ use crate::prelude::*;
 use crate::vision::camera::BottomImage;
 use crate::vision::camera::{matrix::CameraMatrices, Image, TopImage};
 
-use crate::core::ml::{self, MlModel, MlTask, MlTaskResource};
+use crate::core::ml::{MlModel, MlTask, MlTaskResource};
 use crate::vision::scan_lines::CameraType;
 
 use super::proposal::{self, BallProposals, BottomBallProposals, TopBallProposals};
