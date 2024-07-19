@@ -20,11 +20,7 @@ use crate::{
     },
     game_controller::GameControllerConfig,
     localization::RobotPose,
-    motion::{
-        keyframe::KeyframeExecutor,
-        step_planner::StepPlanner,
-        walk::engine::{Step, WalkingEngine},
-    },
+    motion::{keyframe::KeyframeExecutor, step_planner::StepPlanner, walk::engine::WalkingEngine},
     nao::{manager::NaoManager, RobotInfo},
     prelude::*,
     sensor::{
@@ -355,6 +351,15 @@ pub fn step(
     game_controller_message: &Option<GameControllerMessage>,
     (robot_pose, balls, fall_state): (&RobotPose, &Balls, &FallState),
 ) -> Result<()> {
+    let balls = &balls.most_confident_ball().map(|b| b.position);
+    balls.map(|ball| {
+        if ball.x > 10.0 || ball.x < -10.0 || ball.y > 4.0 || ball.y < -4.0 {
+            None
+        } else {
+            Some(ball)
+        }
+    });
+
     let context = Context {
         robot_info,
         primary_state,
@@ -369,7 +374,7 @@ pub fn step(
         game_controller_config,
         fall_state,
         pose: robot_pose,
-        ball_position: &balls.most_confident_ball().map(|b| b.position),
+        ball_position: balls,
         current_behavior: engine.behavior.clone(),
     };
 
