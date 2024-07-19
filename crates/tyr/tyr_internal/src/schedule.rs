@@ -136,20 +136,20 @@ impl DependencySystem<()> {
     pub(crate) fn run(
         &mut self,
         storage: &mut Storage,
-        #[cfg(feature = "logging")] (logger, cycle): (&mut super::app::BufferedLogger, usize),
+        #[cfg(feature = "timings")] (logger, cycle): (&mut super::app::BufferedLogger, usize),
     ) -> Result<()> {
         if self.enabled {
-            if cfg!(not(feature = "logging")) {
+            if cfg!(not(feature = "timings")) {
                 self.system.run(storage)
             } else {
-                #[cfg(feature = "logging")]
+                #[cfg(feature = "timings")]
                 let start_time = std::time::Instant::now();
                 let system_result = self.system.run(storage);
-                #[cfg(feature = "logging")]
+                #[cfg(feature = "timings")]
                 {
                     logger
                         .write_fmt(format_args!(
-                            "{},{},{}",
+                            "{},{},{}\n",
                             self.system.system_name(),
                             cycle,
                             start_time.elapsed().as_micros()
@@ -422,7 +422,7 @@ impl Schedule {
     pub fn execute(
         &mut self,
         storage: &mut Storage,
-        #[cfg(feature = "logging")] (logger, cycle): (&mut super::app::BufferedLogger, usize),
+        #[cfg(feature = "timings")] (logger, cycle): (&mut super::app::BufferedLogger, usize),
     ) -> Result<()> {
         for (dag_index, dag) in self.dags.iter().enumerate() {
             let mut execution_graph = dag.graph.clone();
@@ -456,7 +456,7 @@ impl Schedule {
                 for node in &current_nodes {
                     self.dependency_systems[dag.system_index(*node).0].run(
                         storage,
-                        #[cfg(feature = "logging")]
+                        #[cfg(feature = "timings")]
                         (logger, cycle),
                     )?;
                     execution_graph.remove_node(*node);

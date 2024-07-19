@@ -100,6 +100,13 @@ pub struct ConfigOptsRobotOps {
     )]
     pub no_alsa: bool,
 
+    /// Enable the timings feature [default: false]
+    ///
+    /// This will create a file with the timings of each system.
+    /// The file will be stored as `/home/nao/tyr_runtime.csv`.
+    #[clap(long, short, default_value = "false")]
+    pub timings: bool,
+
     /// Whether the command prints all progress
     #[clap(long, short)]
     pub silent: bool,
@@ -346,6 +353,10 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
     }
     if config.local {
         features.push("local");
+    }
+
+    if config.timings {
+        features.push("timings");
     }
 
     let target = if config.local {
