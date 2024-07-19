@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::{localization::RobotPose, motion::walk::engine::Step, prelude::*};
 
 use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
@@ -29,7 +31,7 @@ pub struct StepPlanner {
     reached_rotation_target: bool,
 
     static_obstacles: Vec<Obstacle>,
-    dynamic_obstacles: Vec<Obstacle>,
+    dynamic_obstacles: Vec<DynamicObstacle>,
 }
 
 impl Default for StepPlanner {
@@ -72,18 +74,32 @@ impl StepPlanner {
         self.target.as_ref()
     }
 
-    pub fn set_dynamic_obstacles(&mut self, obstacles: Vec<Obstacle>) {
-        self.dynamic_obstacles = obstacles;
+    pub fn add_dynamic_obstacle(&mut self, obstacle: DynamicObstacle, merge_distance: f32) {
+        match self
+            .dynamic_obstacles
+            .iter_mut()
+            .find(|o| o.obs.distance(&obstacle.obs) <= merge_distance)
+        {
+            Some(o) => o.ttl = obstacle.ttl,
+            None => self.dynamic_obstacles.push(obstacle),
+        }
     }
 
-    fn get_all_obstacles(&self) -> Vec<Obstacle> {
+    fn collect_and_gc_dynamic_obstacles(&mut self) -> Vec<Obstacle> {
+        let now = Instant::now();
+
+        self.dynamic_obstacles.retain(|obs| now < obs.ttl);
+        self.dynamic_obstacles.iter().map(|obs| obs.obs).collect()
+    }
+
+    fn get_all_obstacles(&mut self) -> Vec<Obstacle> {
         let mut all_obstacles = self.static_obstacles.clone();
-        all_obstacles.extend_from_slice(&self.dynamic_obstacles);
+        all_obstacles.extend_from_slice(&self.collect_and_gc_dynamic_obstacles());
 
         all_obstacles
     }
 
-    fn calc_path(&self, robot_pose: &RobotPose) -> Option<(Vec<Point2<f32>>, f32)> {
+    fn calc_path(&mut self, robot_pose: &RobotPose) -> Option<(Vec<Point2<f32>>, f32)> {
         let target_position = self.target?.position;
         let all_obstacles = self.get_all_obstacles();
 
@@ -166,6 +182,12 @@ impl StepPlanner {
     pub fn reached_target(&self) -> bool {
         self.reached_translation_target && self.reached_rotation_target
     }
+}
+
+#[derive(Debug)]
+pub struct DynamicObstacle {
+    pub obs: Obstacle,
+    pub ttl: Instant,
 }
 
 fn calc_turn(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: &Point2<f32>) -> f32 {
