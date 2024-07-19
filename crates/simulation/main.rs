@@ -452,7 +452,7 @@ impl Robot {
         let mut odometry = Odometry::default();
         odometry.offset_to_last = if let Some(step) = step {
             Isometry2::new(
-                Vector2::new(step.forward, -step.left) * walk_scalar,
+                Vector2::new(step.forward, step.left) * walk_scalar,
                 step.turn / FRAMES_PER_SECOND as f32,
             )
         } else {
@@ -469,10 +469,10 @@ impl Robot {
         };
 
         let relative_ball = self.pose.world_to_robot(ball);
-        // let angle = self.calc_angle(ball);
+        let angle = self.pose.angle_to(&ball);
 
-        self.sees_ball = relative_ball.coords.norm() < 3.0;
-        // self.sees_ball = relative_ball.coords.norm() < 3.0 && angle.abs() < 45.0f32.to_radians();
+        // self.sees_ball = relative_ball.coords.norm() < 3.0;
+        self.sees_ball = relative_ball.coords.norm() < 3.0 && angle.abs() < 45.0f32.to_radians();
     }
 
     fn draw(
