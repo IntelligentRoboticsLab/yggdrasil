@@ -133,9 +133,32 @@ impl DependencySystem<()> {
         self.system.system_name()
     }
 
-    pub(crate) fn run(&mut self, storage: &mut Storage) -> Result<()> {
+    pub(crate) fn run(
+        &mut self,
+        storage: &mut Storage,
+        #[cfg(feature = "logging")] (logger, cycle): (&mut super::app::BufferedLogger, usize),
+    ) -> Result<()> {
         if self.enabled {
-            self.system.run(storage)
+            if cfg!(not(feature = "logging")) {
+                self.system.run(storage)
+            } else {
+                #[cfg(feature = "logging")]
+                let start_time = std::time::Instant::now();
+                let system_result = self.system.run(storage);
+                #[cfg(feature = "logging")]
+                {
+                    logger
+                        .write_fmt(format_args!(
+                            "{},{},{}",
+                            self.system.system_name(),
+                            cycle,
+                            start_time.elapsed().as_micros()
+                        ))
+                        .into_diagnostic()?;
+                }
+
+                system_result
+            }
         } else {
             Ok(())
         }
@@ -396,7 +419,11 @@ impl Schedule {
         Ok(())
     }
 
-    pub fn execute(&mut self, storage: &mut Storage) -> Result<()> {
+    pub fn execute(
+        &mut self,
+        storage: &mut Storage,
+        #[cfg(feature = "logging")] (logger, cycle): (&mut super::app::BufferedLogger, usize),
+    ) -> Result<()> {
         for (dag_index, dag) in self.dags.iter().enumerate() {
             let mut execution_graph = dag.graph.clone();
 
@@ -427,7 +454,11 @@ impl Schedule {
 
                 // TODO: parallel implementation
                 for node in &current_nodes {
-                    self.dependency_systems[dag.system_index(*node).0].run(storage)?;
+                    self.dependency_systems[dag.system_index(*node).0].run(
+                        storage,
+                        #[cfg(feature = "logging")]
+                        (logger, cycle),
+                    )?;
                     execution_graph.remove_node(*node);
                 }
             }

@@ -339,6 +339,9 @@ impl App {
     }
 }
 
+#[cfg(feature = "logging")]
+pub type BufferedLogger = std::io::BufWriter<std::fs::File>;
+
 struct ScheduledApp {
     schedule: Schedule,
     storage: Storage,
@@ -354,6 +357,7 @@ impl ScheduledApp {
         })
     }
 
+    #[cfg(not(feature = "logging"))]
     fn run(&mut self) -> Result<()> {
         self.schedule.check_ordered_dependencies()?;
         self.schedule.build_graph()?;
@@ -364,5 +368,36 @@ impl ScheduledApp {
                 .map_resource_mut(|view| self.socket.tick(&mut self.schedule, view))?
                 .into_diagnostic()?;
         }
+    }
+
+    #[cfg(feature = "logging")]
+    fn run(&mut self) -> Result<()> {
+        self.schedule.check_ordered_dependencies()?;
+        self.schedule.build_graph()?;
+
+        let mut runtime_logger = self.setup_logging()?;
+
+        let mut cycle = 0usize;
+        loop {
+            self.schedule
+                .execute(&mut self.storage, (&mut runtime_logger, cycle))?;
+            cycle += 1;
+            self.storage
+                .map_resource_mut(|view| self.socket.tick(&mut self.schedule, view))?
+                .into_diagnostic()?;
+        }
+    }
+
+    #[cfg(feature = "logging")]
+    fn setup_logging(&self) -> Result<BufferedLogger> {
+        use std::io::{BufWriter, Write};
+
+        let file = std::fs::File::create("tyr_runtime.csv").into_diagnostic()?;
+        let mut runtime_writer = BufWriter::new(file);
+
+        runtime_writer
+            .write_all(b"system,cycle,time\n")
+            .into_diagnostic()?;
+        Ok(runtime_writer)
     }
 }

@@ -20,4 +20,5 @@ serde_json = { workspace = true }
 tokio = { workspace = true }
 
 [features]
+logging = ["tyr_internal/logging"]
 odal = ["tyr_tasks/odal"]
