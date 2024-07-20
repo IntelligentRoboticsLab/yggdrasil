@@ -1,3 +1,5 @@
+use nalgebra::Point2;
+
 use crate::{
     behavior::engine::{Behavior, Context, Control},
     motion::walk::engine::Step,
@@ -15,6 +17,7 @@ pub enum Direction {
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Walk {
     pub step: Step,
+    pub look_target: Option<Point2<f32>>,
 }
 
 impl Walk {
@@ -24,30 +27,7 @@ impl Walk {
                 forward: 0.05,
                 ..Default::default()
             },
-        }
-    }
-
-    /// Walk to the left whilst turing to the right
-    ///
-    /// This kind of walk is meant for walking around an object.
-    /// TODO: Make a formula that takes distance to calculate this step.
-    pub fn circumnavigate_counterclockwise() -> Self {
-        Self {
-            step: Step {
-                left: 0.03,
-                turn: -0.33,
-                ..Default::default()
-            },
-        }
-    }
-
-    pub fn circumnavigate_clockwise() -> Self {
-        Self {
-            step: Step {
-                left: -0.03,
-                turn: 0.33,
-                ..Default::default()
-            },
+            look_target: None,
         }
     }
 }

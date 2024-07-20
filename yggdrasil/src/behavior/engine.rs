@@ -314,7 +314,9 @@ impl Engine {
             PrimaryState::Initial => BehaviorKind::StandLookAt(StandLookAt {
                 target: Point2::origin(),
             }),
-            PrimaryState::Ready => BehaviorKind::WalkToSet(WalkToSet),
+            PrimaryState::Ready => BehaviorKind::WalkToSet(WalkToSet {
+                is_keeper: matches!(self.role, RoleKind::Keeper(_)),
+            }),
             PrimaryState::Set => BehaviorKind::StandLookAt(StandLookAt {
                 target: ball_or_origin,
             }),

@@ -1,4 +1,5 @@
 use nalgebra::Point2;
+use nidhogg::types::HeadJoints;
 
 use crate::{
     behavior::{
@@ -17,7 +18,7 @@ pub enum Attacker {
 }
 
 impl Role for Attacker {
-    fn transition_behavior(&mut self, context: Context, _control: &mut Control) -> BehaviorKind {
+    fn transition_behavior(&mut self, context: Context, control: &mut Control) -> BehaviorKind {
         if let Some(ball) = context.ball_position {
             let enemy_goal_center = Point2::new(context.layout_config.field.length / 2., 0.);
             let enemy_goal_left = Point2::new(context.layout_config.field.length / 2., 0.8);
@@ -58,10 +59,24 @@ impl Role for Attacker {
                 }
                 Attacker::WalkAlign => {
                     if absolute_ball_angle > absolute_goal_angle_left {
-                        return BehaviorKind::Walk(Walk::circumnavigate_counterclockwise());
+                        return BehaviorKind::Walk(Walk {
+                            step: Step {
+                                left: 0.03,
+                                turn: -0.3,
+                                ..Default::default()
+                            },
+                            look_target: Some(*ball),
+                        });
                     }
                     if absolute_ball_angle < absolute_goal_angle_right {
-                        return BehaviorKind::Walk(Walk::circumnavigate_clockwise());
+                        return BehaviorKind::Walk(Walk {
+                            step: Step {
+                                left: -0.03,
+                                turn: 0.3,
+                                ..Default::default()
+                            },
+                            look_target: Some(*ball),
+                        });
                     }
                 }
                 Attacker::WalkWithBall => {
@@ -96,7 +111,7 @@ impl Attacker {
     ) -> Attacker {
         match &self {
             _ if ball_distance > 0.5 => Attacker::WalkToBall,
-            Attacker::WalkToBall if ball_distance < 0.3 => Attacker::WalkAlign,
+            Attacker::WalkToBall if ball_distance < 0.4 => Attacker::WalkAlign,
             Attacker::WalkAlign if ball_goal_center_align && ball_aligned => Attacker::WalkWithBall,
             Attacker::WalkWithBall if !ball_goal_aligned => Attacker::WalkAlign,
 
