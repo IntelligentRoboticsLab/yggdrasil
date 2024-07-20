@@ -110,7 +110,7 @@ fn transmit_system(
     game_controller_config: &GameControllerConfig,
     player_config: &PlayerConfig,
     robot_pose: &RobotPose,
-    // balls: &Balls,
+    balls: &Balls,
 ) -> Result<()> {
     let Some((game_controller_address, mut last_transmitted_update_timestamp)) =
         game_controller_data.game_controller_address
@@ -118,8 +118,7 @@ fn transmit_system(
         return Ok(());
     };
 
-    // let game_controller_ball_data = balls_to_game_controller_ball(balls);
-    let game_controller_ball_data = NO_BALL_DETECTED_DATA;
+    let game_controller_ball_data = balls_to_game_controller_ball(balls);
 
     let transmit_game_controller_data = TransmitGameControllerData {
         player_num: player_config.player_number,

@@ -331,8 +331,7 @@ pub fn step(
         &mut DebugContext,
     ),
     game_controller_message: &Option<GameControllerMessage>,
-    // (robot_pose, balls, fall_state): (&RobotPose, &Balls, &FallState),
-    (robot_pose, fall_state): (&RobotPose, &FallState),
+    (robot_pose, balls, fall_state): (&RobotPose, &Balls, &FallState),
 ) -> Result<()> {
     let context = Context {
         robot_info,
@@ -346,7 +345,7 @@ pub fn step(
         behavior_config,
         game_controller_message: game_controller_message.as_ref(),
         game_controller_config,
-        fall_state: &FallState::None,
+        fall_state,
         pose: robot_pose,
         ball_position: &None,
         current_behavior: engine.behavior.clone(),
