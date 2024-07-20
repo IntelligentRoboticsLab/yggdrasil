@@ -140,7 +140,7 @@ pub fn update_ball_proposals(
         let robot_bboxes = robots.detected.iter().map(|robot| robot.bbox).collect_vec();
 
         new.proposals.retain(|proposal| {
-            robot_bboxes.iter().any(|bbox| {
+            robot_bboxes.iter().all(|bbox| {
                 let proposal_bbox = Bbox::cxcywh(
                     proposal.position.x as f32,
                     proposal.position.y as f32,

@@ -12,7 +12,7 @@ top_k_detections = 40
 
 # The time a detection will be remembered for, in milliseconds.
 # Remembered detections will still be considered for NMS.
-detection_lifetime = 800
+detection_lifetime = 1000
 
 # The width of the input image
 input_width = 100
