@@ -1,3 +1,9 @@
+//! Center of mass (CoM) module.
+//!
+//! This module calculates the center of mass of the robot, and stores it in the [`CenterOfMass`]
+//! resource. The CoM is calculated by taking the kinematic chain from the torso to each body part,
+//! multiplying the mass of the body part by the position of the CoM of the body part, and summing
+//! the results. The total mass of the robot is then divided out to get the CoM.
 mod robot_masses;
 
 use crate::{
@@ -6,11 +12,7 @@ use crate::{
 use nalgebra::Point3;
 pub use robot_masses::*;
 
-/// Adds the center of mass (CoM) of the robot to the storage, and updates it each cycle.
-///
-/// The CoM is calculated by taking the kinematic chain from the torso to each body part, multiplying
-/// the mass of the body part by the position of the CoM of the body part, and summing the results.
-/// The total mass of the robot is then divided out to get the CoM.
+/// Adds the CoM of the robot to the storage, and updates it each cycle.
 ///
 /// Adds the following resources:
 /// - [`CenterOfMass`] - The center of mass of the robot.
