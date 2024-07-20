@@ -17,7 +17,7 @@ use crate::prelude::*;
 use crate::vision::camera::BottomImage;
 use crate::vision::camera::{matrix::CameraMatrices, Image, TopImage};
 
-use crate::core::ml::{MlModel, MlTask, MlTaskResource};
+use crate::core::ml::{self, MlModel, MlTask, MlTaskResource};
 use crate::vision::scan_lines::CameraType;
 
 use super::proposal::{self, BallProposals, BottomBallProposals, TopBallProposals};
@@ -184,7 +184,7 @@ fn detect_balls(
             patch_size,
         );
 
-        let patch = crate::core::ml::util::resize_patch(
+        let patch = ml::util::resize_patch(
             (patch_size, patch_size),
             (IMAGE_INPUT_SIZE, IMAGE_INPUT_SIZE),
             patch,
@@ -194,7 +194,7 @@ fn detect_balls(
                 if start.elapsed().as_micros() > classifier.time_budget as u128 {
                     match model.try_cancel() {
                         Ok(()) => (),
-                        Err(crate::core::ml::Error::Tyr(tyr::tasks::Error::NotActive)) => (),
+                        Err(ml::Error::Tyr(tyr::tasks::Error::NotActive)) => (),
                         Err(e) => {
                             tracing::error!("Failed to cancel ball classifier inference: {:?}", e);
                         }
@@ -204,7 +204,7 @@ fn detect_balls(
                 }
 
                 if let Ok(Some(result)) = model.poll::<Vec<f32>>().transpose() {
-                    let confidence = result[0];
+                    let confidence = ml::util::sigmoid(result[0]);
                     if (1.0 - confidence) < classifier.confidence_threshold {
                         break;
                     }
