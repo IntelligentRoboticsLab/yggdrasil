@@ -1,5 +1,5 @@
 # The maximum age of a classified ball in milliseconds, before the eye color is reset.
-max_classification_age_eye_color = 250
+max_classification_age_eye_color = 100
 
 [proposal.top]
 # The minimum ratio of white pixels in the range around the proposed ball
@@ -8,18 +8,28 @@ ball_ratio = 0.6
 bounding_box_scale = 70.0
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
 nms_threshold = 0.35
+# The minimum radius of the ball in pixels.
+min_ball_radius = 10.0
+# The maximum area of intersection between a detected robot and a ball in pixels.
+# If the area of intersection is larger than this value, the proposal is discarded.
+max_robot_intersection = 0.0
 
 [proposal.bottom]
 # The minimum ratio of white pixels in the range around the proposed ball
 ball_ratio = 0.7
 # Height/width of the bounding box around the ball
-bounding_box_scale = 40.0
+bounding_box_scale = 35.0
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
 nms_threshold = 0.35
+# The minimum radius of the ball in pixels.
+min_ball_radius = 12.0
+# The maximum area of intersection between a detected robot and a ball in pixels.
+# If the area of intersection is larger than this value, the proposal is discarded.
+max_robot_intersection = 0.0
 
 [classifier]
 # The threshold for the classifier to consider a proposal a ball
-confidence_threshold = 0.92
+confidence_threshold = 0.90
 # The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
 time_budget = 1000
 # Lifetime of the ball in milliseconds, this is the time the robot will remember a classified balls' location.
