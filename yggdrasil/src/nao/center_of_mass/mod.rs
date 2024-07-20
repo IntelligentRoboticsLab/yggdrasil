@@ -90,7 +90,7 @@ fn log_com(com: &CenterOfMass, dbg: &DebugContext, pose: &RobotPose) -> Result<(
             com.position.z,
         )],
         nidhogg::types::color::u8::MAROON,
-        0.035,
+        0.005,
     )?;
 
     Ok(())
