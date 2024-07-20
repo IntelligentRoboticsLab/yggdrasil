@@ -4,6 +4,7 @@ pub use cycle::*;
 mod battery_led;
 
 use battery_led::battery_display;
+pub mod center_of_mass;
 pub mod manager;
 
 use crate::prelude::*;
@@ -92,6 +93,7 @@ impl Module for NaoModule {
             .add_startup_system(initialize_nao)?
             .init_resource::<NaoControlMessage>()?
             .add_module(manager::NaoManagerModule)?
+            .add_module(center_of_mass::CenterOfMassModule)?
             .add_staged_system(SystemStage::Write, write_hardware_info)
             .add_startup_system(cycle::initialize_cycle_counter)?
             .add_staged_system(
