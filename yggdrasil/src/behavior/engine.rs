@@ -347,7 +347,7 @@ pub fn step(
         game_controller_config,
         fall_state,
         pose: robot_pose,
-        ball_position: &None,
+        ball_position: &balls.most_confident_ball().map(|b| b.position),
         current_behavior: engine.behavior.clone(),
     };
 
