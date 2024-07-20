@@ -40,9 +40,9 @@ pub struct BallProposalConfig {
     pub bounding_box_scale: f32,
     /// The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
     pub nms_threshold: f32,
-    /// The minimum radius of the proposed ball.
+    /// The minimum radius of the proposed ball in pixels.
     pub min_ball_radius: f32,
-    /// The maximum area of the intersection between a detected robot and a proposed ball.
+    /// The maximum area of the intersection between a detected robot and a proposed ball in pixels.
     pub max_robot_intersection: f32,
 }
 
