@@ -26,6 +26,12 @@ To see all available commands, run:
 sindri -h
 ```
 
+When making changes to sindri, you need to run the following command for the changes to take effect:
+
+```
+sindri update
+```
+
 ## Dependencies
 
 yggdrasil is built using Rust, and as such requires the Rust toolchain to be installed.
