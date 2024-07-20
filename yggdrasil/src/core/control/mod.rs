@@ -6,6 +6,7 @@ use tokio::net::{TcpListener, TcpStream};
 
 pub mod connect;
 pub mod receive;
+pub mod transmit;
 
 const CONTROL_PORT: u16 = 40001;
 
@@ -43,7 +44,7 @@ impl Module for ControlModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_startup_system(Self::add_resources)?
             .add_module(connect::ControlConnectModule)?
-            .add_module(receive::ControlReceiveModule)
-        // .add_module(transmit::GameControllerTransmitModule)
+            .add_module(receive::ControlReceiveModule)?
+            .add_module(transmit::ControlTransmitModule)
     }
 }

@@ -10127,7 +10127,6 @@ dependencies = [
  "bevy",
  "bifrost",
  "cpal",
- "bincode",
  "derive_more",
  "enum_dispatch",
  "fast-math",
