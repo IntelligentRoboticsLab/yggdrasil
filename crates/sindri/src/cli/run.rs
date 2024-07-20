@@ -94,9 +94,7 @@ impl Run {
         }
 
         let str_volume = format!("{}", self.robot_ops.volume);
-        let mut envs = vec![
-            ("YGGDRASIL_VOLUME", str_volume.as_str())
-        ];
+        let mut envs = vec![("YGGDRASIL_VOLUME", str_volume.as_str())];
 
         if self.debug {
             envs.push(("RUST_LOG", "debug"));
