@@ -1,6 +1,6 @@
 //! The engine managing behavior execution and role state.
 
-use bifrost::communication::GameControllerMessage;
+use bifrost::communication::{GameControllerMessage, GamePhase};
 use enum_dispatch::enum_dispatch;
 use nalgebra::Point2;
 
@@ -299,6 +299,16 @@ impl Engine {
                 if matches!(context.current_behavior, BehaviorKind::CatchFall(_)) {
                     self.behavior = self.prev_behavior_for_standup.take().unwrap();
                     return;
+                }
+            }
+        }
+
+        if let Some(message) = context.game_controller_message {
+            if message.game_phase == GamePhase::PenaltyShoot {
+                if message.kicking_team == 8 {
+                    self.role = RoleKind::Attacker(Attacker::WalkWithBall);
+                } else {
+                    self.behavior = BehaviorKind::Stand(Stand);
                 }
             }
         }

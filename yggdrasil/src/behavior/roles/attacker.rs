@@ -111,7 +111,7 @@ impl Attacker {
     ) -> Attacker {
         match &self {
             _ if ball_distance > 0.5 => Attacker::WalkToBall,
-            Attacker::WalkToBall if ball_distance < 0.4 => Attacker::WalkAlign,
+            Attacker::WalkToBall if ball_distance < 0.3 => Attacker::WalkAlign,
             Attacker::WalkAlign if ball_goal_center_align && ball_aligned => Attacker::WalkWithBall,
             Attacker::WalkWithBall if !ball_goal_aligned => Attacker::WalkAlign,
 
