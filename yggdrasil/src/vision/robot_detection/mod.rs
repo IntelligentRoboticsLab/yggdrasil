@@ -1,4 +1,5 @@
 use std::ops::Deref;
+use std::time::{Duration, Instant};
 
 use crate::nao::Cycle;
 use crate::prelude::*;
@@ -18,6 +19,7 @@ use fast_image_resize as fr;
 use itertools::Itertools;
 use miette::IntoDiagnostic;
 use ndarray::{Array2, Axis};
+use serde_with::{serde_as, DurationMilliSeconds};
 
 mod anchor_generator;
 mod box_coder;
@@ -25,12 +27,15 @@ mod box_coder;
 use anchor_generator::DefaultBoxGenerator;
 use serde::{Deserialize, Serialize};
 
+#[serde_as]
 #[derive(Debug, Deserialize, Serialize, Inspect)]
 #[serde(deny_unknown_fields)]
 pub struct RobotDetectionConfig {
     confidence_threshold: f32,
     nms_threshold: f32,
     top_k_detections: usize,
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    detection_lifetime: Duration,
     input_width: u32,
     input_height: u32,
     num_anchor_boxes: usize,
@@ -81,6 +86,8 @@ pub struct DetectedRobot {
     pub bbox: Bbox<Xyxy>,
     /// The confidence of the detection.
     pub confidence: f32,
+    /// The time the robot was detected at.
+    pub timestamp: Instant,
 }
 
 /// A fitted field boundary from a given image
@@ -137,6 +144,7 @@ fn poll_model(
             robot_detection_image.0.height(),
         ),
         config,
+        &robots.detected,
         box_regression,
         scores,
         config.confidence_threshold,
@@ -188,6 +196,7 @@ fn detect_robots(
 fn postprocess_detections(
     (image_width, image_height): (usize, usize),
     config: &RobotDetectionConfig,
+    known_robots: &[DetectedRobot],
     box_regression: Array2<f32>,
     scores: Array2<f32>,
     threshold: f32,
@@ -209,6 +218,12 @@ fn postprocess_detections(
         image_height as f32 / config.input_height as f32,
     );
 
+    // take old boxes, and filter out ones that are too old
+    let persisted = known_robots
+        .iter()
+        .filter(|r| r.timestamp.elapsed() < config.detection_lifetime)
+        .cloned();
+
     let filtered_boxes = scores
         .axis_iter(Axis(0))
         .enumerate()
@@ -229,15 +244,26 @@ fn postprocess_detections(
 
             Some((bbox, scores[1]))
         })
-        .sorted_by(|a, b| b.1.total_cmp(&a.1))
+        .map(|(bbox, confidence)| DetectedRobot {
+            bbox,
+            confidence,
+            timestamp: Instant::now(),
+        })
+        .chain(persisted)
+        .sorted_by(|a, b| b.confidence.total_cmp(&a.confidence))
         .take(k)
         .collect::<Vec<_>>();
 
-    non_max_suppression(&filtered_boxes, config.nms_threshold)
-        .iter()
-        .map(|i| filtered_boxes[*i])
-        .map(|(bbox, confidence)| DetectedRobot { bbox, confidence })
-        .collect()
+    non_max_suppression(
+        &filtered_boxes
+            .iter()
+            .map(|r| (r.bbox, r.confidence))
+            .collect_vec(),
+        config.nms_threshold,
+    )
+    .iter()
+    .map(|i| filtered_boxes[*i].clone())
+    .collect()
 }
 
 #[system]
@@ -250,10 +276,12 @@ fn log_detected_robots(
         return Ok(());
     }
 
-    let processed_boxes = robot_data
-        .detected
-        .iter()
-        .map(|DetectedRobot { bbox, confidence }| {
+    let processed_boxes = robot_data.detected.iter().map(
+        |DetectedRobot {
+             bbox,
+             confidence,
+             timestamp,
+         }| {
             let cxcywh: Bbox<Cxcywh> = bbox.convert();
             let (cx, cy, w, h) = cxcywh.into();
 
@@ -263,9 +291,13 @@ fn log_detected_robots(
 
             (
                 ((cx, cy), (half_w, half_h)),
-                format!("robot: {confidence:.4}"),
+                format!(
+                    "robot: {confidence:.3} ({}ms)",
+                    timestamp.elapsed().as_millis()
+                ),
             )
-        });
+        },
+    );
 
     let ((centers, sizes), scores): ((Vec<_>, Vec<_>), Vec<_>) = processed_boxes.unzip();
 
