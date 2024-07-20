@@ -93,8 +93,8 @@ impl Run {
             output.finished_deploying(&robot.ip());
         }
 
-        let str_volume = format!("{}", self.robot_ops.volume);
-        let mut envs = vec![("YGGDRASIL_VOLUME", str_volume.as_str())];
+        let volume_string = self.robot_ops.volume.to_string();
+        let mut envs = vec![("YGGDRASIL_VOLUME", volume_string.as_str())];
 
         if self.debug {
             envs.push(("RUST_LOG", "debug"));
