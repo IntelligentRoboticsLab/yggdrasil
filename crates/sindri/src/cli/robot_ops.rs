@@ -113,6 +113,9 @@ pub struct ConfigOptsRobotOps {
         value_parser = clap::value_parser!(RobotEntry),
     )]
     pub robots: Vec<RobotEntry>,
+
+    #[clap(long, default_value = "0.1")]
+    pub volume: f64,
 }
 
 impl ConfigOptsRobotOps {
