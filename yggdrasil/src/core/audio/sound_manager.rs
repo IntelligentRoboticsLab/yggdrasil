@@ -53,10 +53,12 @@ impl SoundManager {
 
     /// Plays a sound using a name from enum Sound.
     pub fn play_sound(&self, sound: Sound) -> Result<()> {
+        let volume_string = std::env::var("DEFAULT_VOLUME").into_diagnostic()?;
+        let volume: f64 = volume_string.parse().into_diagnostic()?;
         let mut audio_manager = self.audio_manager.lock().unwrap();
         let streaming_sound = StreamingSoundData::from_file(
             sound.file_path(),
-            StreamingSoundSettings::new().volume(0.1),
+            StreamingSoundSettings::new().volume(volume),
         )
         .into_diagnostic()
         .with_context(|| format!("Failed to load sound file: {}", sound.file_path()))?;
