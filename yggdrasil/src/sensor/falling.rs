@@ -69,7 +69,7 @@ fn is_falling_left(imu_values: &IMUValues) -> bool {
 
 /// Is the robot falling right based on its angle and gyroscope.
 fn is_falling_right(imu_values: &IMUValues) -> bool {
-    imu_values.angles.x < MIN_FALL_ANGLE_RIGHT
+    imu_values.angles.x > MIN_FALL_ANGLE_RIGHT
 }
 
 /// Is the robot lying on its stomach based on the accelerometer and angle.
