@@ -441,10 +441,15 @@ impl Robot {
         self.engine.step(context, &mut control);
 
         self.update_ball(ball);
-        self.walk(0.1, layout_config);
+        self.walk(0.1, layout_config, gamecontrollermessage);
     }
 
-    fn walk(&mut self, walk_scalar: f32, layout_config: &LayoutConfig) {
+    fn walk(
+        &mut self,
+        walk_scalar: f32,
+        layout_config: &LayoutConfig,
+        gamecontrollermessage: &GameControllerMessage,
+    ) {
         let step = match self.walking_engine.request {
             WalkRequest::Walk(step) => Some(step),
             _ => None,
@@ -459,7 +464,13 @@ impl Robot {
             Isometry2::identity()
         };
 
-        self.pose = next_robot_pose(&self.pose, &odometry, &self.primary_state, layout_config);
+        self.pose = next_robot_pose(
+            &self.pose,
+            &odometry,
+            &self.primary_state,
+            layout_config,
+            &Some(gamecontrollermessage.clone()),
+        );
     }
 
     fn update_ball(&mut self, ball: &Option<Point2<f32>>) {

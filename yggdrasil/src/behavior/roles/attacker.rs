@@ -1,4 +1,4 @@
-use nalgebra::{ComplexField, Point2, UnitComplex};
+use nalgebra::Point2;
 
 use crate::{
     behavior::{
@@ -9,21 +9,15 @@ use crate::{
 };
 
 #[derive(Debug, Default, Clone, Copy)]
-pub enum ScoreGoalStates {
+pub enum Attacker {
     #[default]
     WalkToBall,
-    WalkToAlignPos(Target),
     WalkAlign,
     WalkWithBall,
 }
 
-#[derive(Debug, Default, Clone, Copy)]
-pub struct Attacker {
-    state: ScoreGoalStates,
-}
-
 impl Role for Attacker {
-    fn transition_behavior(&mut self, context: Context, control: &mut Control) -> BehaviorKind {
+    fn transition_behavior(&mut self, context: Context, _control: &mut Control) -> BehaviorKind {
         if let Some(ball) = context.ball_position {
             let enemy_goal_center = Point2::new(context.layout_config.field.length / 2., 0.);
             let enemy_goal_left = Point2::new(context.layout_config.field.length / 2., 0.8);
@@ -52,44 +46,25 @@ impl Role for Attacker {
                 rotation: None,
             };
 
-            self.state = match &self.state {
-                _ if ball_distance > 0.5 => ScoreGoalStates::WalkToBall,
-
-                ScoreGoalStates::WalkToBall if ball_distance < 0.3 => ScoreGoalStates::WalkAlign,
-                ScoreGoalStates::WalkAlign if ball_goal_center_align && ball_aligned => {
-                    ScoreGoalStates::WalkWithBall
-                }
-                ScoreGoalStates::WalkWithBall if !ball_goal_aligned => ScoreGoalStates::WalkAlign,
-                _ => self.state.clone(),
-            };
-            match self.state {
-                ScoreGoalStates::WalkToBall => {
+            *self = self.next_state(
+                ball_distance,
+                ball_goal_center_align,
+                ball_aligned,
+                ball_goal_aligned,
+            );
+            match self {
+                Attacker::WalkToBall => {
                     return BehaviorKind::WalkTo(WalkTo { target: ball_pos });
                 }
-                ScoreGoalStates::WalkToAlignPos(align_pos) => {
-                    return BehaviorKind::WalkTo(WalkTo { target: align_pos });
-                }
-                ScoreGoalStates::WalkAlign => {
+                Attacker::WalkAlign => {
                     if absolute_ball_angle > absolute_goal_angle_left {
-                        return BehaviorKind::Walk(Walk {
-                            step: Step {
-                                left: 0.03,
-                                turn: -0.33,
-                                ..Default::default()
-                            },
-                        });
+                        return BehaviorKind::Walk(Walk::circumnavigate_counterclockwise());
                     }
                     if absolute_ball_angle < absolute_goal_angle_right {
-                        return BehaviorKind::Walk(Walk {
-                            step: Step {
-                                left: -0.03,
-                                turn: 0.33,
-                                ..Default::default()
-                            },
-                        });
+                        return BehaviorKind::Walk(Walk::circumnavigate_clockwise());
                     }
                 }
-                ScoreGoalStates::WalkWithBall => {
+                Attacker::WalkWithBall => {
                     return BehaviorKind::WalkTo(WalkTo { target: ball_pos });
                 }
             }
@@ -108,5 +83,24 @@ impl Role for Attacker {
                 rotation: None,
             },
         })
+    }
+}
+
+impl Attacker {
+    fn next_state(
+        &self,
+        ball_distance: f32,
+        ball_goal_center_align: bool,
+        ball_aligned: bool,
+        ball_goal_aligned: bool,
+    ) -> Attacker {
+        match &self {
+            _ if ball_distance > 0.5 => Attacker::WalkToBall,
+            Attacker::WalkToBall if ball_distance < 0.3 => Attacker::WalkAlign,
+            Attacker::WalkAlign if ball_goal_center_align && ball_aligned => Attacker::WalkWithBall,
+            Attacker::WalkWithBall if !ball_goal_aligned => Attacker::WalkAlign,
+
+            _ => *self,
+        }
     }
 }

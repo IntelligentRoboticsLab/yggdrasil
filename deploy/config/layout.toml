@@ -75,31 +75,31 @@ border_strip_width = 0.7
 # Initial position of player one.
 [[initial_positions]]
 player_number = 1
-translation = [ -3, 3 ]
+translation = [ -2.85, 3 ]
 rotation = -90
 
 # Initial position of player two.
 [[initial_positions]]
 player_number = 2
-translation = [ -2, -3 ]
+translation = [ -2.85, -3 ]
 rotation = 90
 
 # Initial position of player three.
 [[initial_positions]]
 player_number = 3
-translation = [ -2, 3 ]
+translation = [ -1.8, 3 ]
 rotation = -90
 
 # Initial position of player four.
 [[initial_positions]]
 player_number = 4
-translation = [ -1, -3 ]
+translation = [ -0.75, -3 ]
 rotation = 90
 
 # Initial position of player five.
 [[initial_positions]]
 player_number = 5
-translation = [ -1, 3 ]
+translation = [ -0.75, 3 ]
 rotation = -90
 
 # Set Positions
