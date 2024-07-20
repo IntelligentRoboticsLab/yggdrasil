@@ -47,6 +47,8 @@ pub fn finalize(control_message: &mut NaoControlMessage, manager: &mut NaoManage
     control_message.left_foot = manager.led_left_foot.value;
     control_message.right_foot = manager.led_right_foot.value;
     control_message.skull = manager.led_skull.value.clone();
+    control_message.sonar.left = true;
+    control_message.sonar.right = true;
 
     manager.clear_priorities();
 
