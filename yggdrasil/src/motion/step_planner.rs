@@ -157,26 +157,32 @@ impl StepPlanner {
     }
 
     pub fn plan(&mut self, robot_pose: &RobotPose) -> Option<Step> {
-        let target = self.target?;
-        let (path, _total_walking_distance) = self.calc_path(robot_pose)?;
+        Some(Step {
+            forward: 0.05,
+            left: 0.0,
+            turn: 0.0,
+        })
 
-        if let step @ Some(_) = self.plan_translation(robot_pose, &path) {
-            if !self.reached_translation_target {
-                return step;
-            }
-        }
+        // let target = self.target?;
+        // let (path, _total_walking_distance) = self.calc_path(robot_pose)?;
 
-        self.reached_translation_target = true;
+        // if let step @ Some(_) = self.plan_translation(robot_pose, &path) {
+        //     if !self.reached_translation_target {
+        //         return step;
+        //     }
+        // }
 
-        if let Some(rotation) = target.rotation.as_ref() {
-            if let step @ Some(_) = self.plan_rotation(robot_pose, rotation) {
-                return step;
-            }
-        }
+        // self.reached_translation_target = true;
 
-        self.reached_rotation_target = true;
+        // if let Some(rotation) = target.rotation.as_ref() {
+        //     if let step @ Some(_) = self.plan_rotation(robot_pose, rotation) {
+        //         return step;
+        //     }
+        // }
 
-        None
+        // self.reached_rotation_target = true;
+
+        // None
     }
 
     pub fn reached_target(&self) -> bool {
