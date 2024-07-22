@@ -9,7 +9,7 @@
 /// This allows for easy conversion between different formats without having to manually convert the coordinates.
 ///
 /// ```
-/// use yggdrasil::vision::robot_detection::bbox::*;
+/// use yggdrasil::vision::util::bbox::*;
 ///
 /// let xyxy = Bbox::xyxy(4.0, 4.0, 10.0, 10.0);
 /// let xywh: Bbox<Xywh> = xyxy.convert();
