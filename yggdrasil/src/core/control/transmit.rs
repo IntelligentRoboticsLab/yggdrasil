@@ -1,4 +1,4 @@
-use super::receive::{listen_for_messages, ClientRequest};
+use super::receive::{listen_for_messages, StateUpdateRequest};
 use super::ControlData;
 use crate::nao::Cycle;
 use crate::prelude::*;
@@ -11,7 +11,7 @@ use tokio::net::TcpStream;
 use tyr::InspectView;
 
 // The number of cycles between each send state to rerun
-const SEND_STATE_PER_CYCLE: usize = 500;
+const SEND_STATE_PER_CYCLE: usize = 1000;
 
 pub struct ControlTransmitModule;
 
@@ -20,8 +20,7 @@ impl Module for ControlTransmitModule {
         Ok(app
             .add_task::<AsyncTask<Result<SendStateFinished>>>()?
             .init_resource::<SendStateCounter>()?
-            .add_system(send_state_periodically)
-            .add_system(send_responses.after(listen_for_messages)))
+            .add_system(send_state_current_state.after(listen_for_messages)))
     }
 }
 
@@ -55,10 +54,10 @@ async fn send_state(stream: Arc<TcpStream>, state: RobotStateMsg) -> Result<Send
     Ok(SendStateFinished)
 }
 
-async fn send_message(stream: Arc<TcpStream>, mut msg: Vec<u8>) -> Result<()> {
+async fn send_message(stream: Arc<TcpStream>, msg: Vec<u8>) -> Result<()> {
     stream.writable().await.into_diagnostic()?;
 
-    match stream.try_write(&mut msg) {
+    match stream.try_write(&msg) {
         Ok(num_bytes) => println!("Have written {num_bytes} bytes to client"),
         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
             return Err(miette!("Could not read"))
@@ -69,55 +68,33 @@ async fn send_message(stream: Arc<TcpStream>, mut msg: Vec<u8>) -> Result<()> {
 }
 
 #[system]
-fn send_responses(
+fn send_state_current_state(
     control_data: &mut ControlData,
     send_state_task: &mut AsyncTask<Result<SendStateFinished>>,
-    communicate_client_request_task: &mut AsyncTask<Result<ClientRequest>>,
+    communicate_manual_state_update_task: &mut AsyncTask<Result<StateUpdateRequest>>,
     inspect_view: &InspectView,
-) -> Result<()> {
-    // No need for the system if the stream does not exist
-    let Some(stream) = control_data.stream.clone() else {
-        return Ok(());
-    };
-
-    let Some(Ok(client_request)) = communicate_client_request_task.poll() else {
-        return Ok(());
-    };
-
-    println!("Client request: {client_request:?}");
-
-    match client_request {
-        // Manually Send the current robot state 
-        ClientRequest::RobotState => {
-            let msg = RobotStateMsg::from(inspect_view);
-            let Some(_) = send_state_task.poll() else {
-                return Ok(())
-            };
-            let _ = send_state_task.try_spawn(send_state(stream, msg));
-        },
-        ClientRequest::ResourceUpdate(_) => {}
-    };
-
-    Ok(())
-}
-
-#[system]
-fn send_state_periodically(
-    control_data: &mut ControlData,
-    send_state_task: &mut AsyncTask<Result<SendStateFinished>>,
-    inspect_view: &InspectView,
-    current_cycle: &Cycle
+    current_cycle: &Cycle,
 ) -> Result<()> {
     // No need for the system to execute further if the stream does not exist
     let Some(stream) = control_data.stream.clone() else {
         return Ok(());
     };
 
-    // Collect the robot state and create the message
-    let msg = RobotStateMsg::from(inspect_view);
+    // Send state immediately if needed
+    if let Some(Ok(_)) = communicate_manual_state_update_task.poll() {
+        let msg = RobotStateMsg::from(inspect_view);
+        let Some(_) = send_state_task.poll() else {
+            return Ok(());
+        };
+        let _ = send_state_task.try_spawn(send_state(stream, msg));
+        return Ok(());
+    };
 
     // Poll the send_state_task only every X cycles
     if current_cycle.0 % SEND_STATE_PER_CYCLE == 0 {
+        // Collect the robot state and create the message
+        let msg = RobotStateMsg::from(inspect_view);
+
         let Some(_) = send_state_task.poll() else {
             // When the task is not finished and not active (
             // this scenario is when there is a connection and the
@@ -125,7 +102,7 @@ fn send_state_periodically(
             if !send_state_task.active() {
                 let _ = send_state_task.try_spawn(send_state(stream, msg));
             }
-            return Ok(())
+            return Ok(());
         };
         // Spawn a new stask to send the current state because the old
         // task is finished

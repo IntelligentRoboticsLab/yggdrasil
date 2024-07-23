@@ -12,13 +12,13 @@ impl Module for ControlReceiveModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_task::<AsyncTask<Result<Option<ClientRequest>>>>()?
-            .add_task::<AsyncTask<Result<ClientRequest>>>()?
+            .add_task::<AsyncTask<Result<StateUpdateRequest>>>()?
             .add_system(listen_for_messages))
     }
 }
 
 // #[derive(Serialize, Deserialize, Debug)]
-// pub struct ClientRequest(ClientRequest);
+pub struct StateUpdateRequest;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientRequest {
@@ -44,15 +44,15 @@ async fn read_request(stream: Arc<TcpStream>) -> Result<Option<ClientRequest>> {
     }
 }
 
-async fn communicate_client_request(client_request: ClientRequest) -> Result<ClientRequest> {
-    Ok(client_request)
+async fn communicate_manual_state_update() -> Result<StateUpdateRequest> {
+    Ok(StateUpdateRequest)
 }
 
 #[system]
 pub fn listen_for_messages(
     control_data: &mut ControlData,
     read_request_task: &mut AsyncTask<Result<Option<ClientRequest>>>,
-    communicate_client_request_task: &mut AsyncTask<Result<ClientRequest>>,
+    communicate_manual_state_update_task: &mut AsyncTask<Result<StateUpdateRequest>>,
 ) -> Result<()> {
     let Some(stream) = control_data.stream.clone() else {
         return Ok(());
@@ -66,8 +66,7 @@ pub fn listen_for_messages(
         }
 
         println!("Recieved request: {client_request:?}");
-        let _ = communicate_client_request_task
-            .try_spawn(communicate_client_request(client_request.unwrap()));
+        let _ = communicate_manual_state_update_task.try_spawn(communicate_manual_state_update());
     }
     // Spawn the read_request task again because the current is finished
     let _ = read_request_task.try_spawn(read_request(stream));
