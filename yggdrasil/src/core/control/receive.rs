@@ -2,9 +2,11 @@ use super::ControlData;
 use crate::prelude::*;
 use miette::{miette, IntoDiagnostic};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::io;
 use std::sync::Arc;
 use tokio::net::TcpStream;
+use tyr::{InspectView, InspectableResource};
 
 pub struct ControlReceiveModule;
 
@@ -13,17 +15,18 @@ impl Module for ControlReceiveModule {
         Ok(app
             .add_task::<AsyncTask<Result<Option<ClientRequest>>>>()?
             .add_task::<AsyncTask<Result<StateUpdateRequest>>>()?
+            .add_task::<AsyncTask<Result<UpdateConfigFinished>>>()?
             .add_system(listen_for_messages))
     }
 }
 
-// #[derive(Serialize, Deserialize, Debug)]
 pub struct StateUpdateRequest;
+pub struct UpdateConfigFinished;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientRequest {
     RobotState,
-    ResourceUpdate(String),
+    ResourceUpdate(String, String),
 }
 
 async fn read_request(stream: Arc<TcpStream>) -> Result<Option<ClientRequest>> {
@@ -48,11 +51,23 @@ async fn communicate_manual_state_update() -> Result<StateUpdateRequest> {
     Ok(StateUpdateRequest)
 }
 
+async fn update_resource(
+    resource: InspectableResource,
+    new_resource: String,
+) -> Result<UpdateConfigFinished> {
+    let mut writable_resource = resource.write().unwrap();
+    let json: Value = serde_json::from_str(&new_resource).unwrap();
+    writable_resource.try_update_from_json(json);
+    Ok(UpdateConfigFinished)
+}
+
 #[system]
 pub fn listen_for_messages(
     control_data: &mut ControlData,
     read_request_task: &mut AsyncTask<Result<Option<ClientRequest>>>,
     communicate_manual_state_update_task: &mut AsyncTask<Result<StateUpdateRequest>>,
+    update_resource_task: &mut AsyncTask<Result<UpdateConfigFinished>>,
+    inspect_view: &InspectView,
 ) -> Result<()> {
     let Some(stream) = control_data.stream.clone() else {
         return Ok(());
@@ -65,8 +80,18 @@ pub fn listen_for_messages(
             return Ok(());
         }
 
-        println!("Recieved request: {client_request:?}");
-        let _ = communicate_manual_state_update_task.try_spawn(communicate_manual_state_update());
+        match client_request.unwrap() {
+            ClientRequest::RobotState => {
+                let _ = communicate_manual_state_update_task
+                    .try_spawn(communicate_manual_state_update());
+            }
+            ClientRequest::ResourceUpdate(resource_name, new_config) => {
+                if let Some(resource) = inspect_view.by_name(&resource_name) {
+                    let _ = update_resource_task
+                        .try_spawn(update_resource(resource.clone(), new_config));
+                }
+            }
+        }
     }
     // Spawn the read_request task again because the current is finished
     let _ = read_request_task.try_spawn(read_request(stream));

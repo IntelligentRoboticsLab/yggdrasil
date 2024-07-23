@@ -58,7 +58,7 @@ async fn send_message(stream: Arc<TcpStream>, msg: Vec<u8>) -> Result<()> {
     stream.writable().await.into_diagnostic()?;
 
     match stream.try_write(&msg) {
-        Ok(num_bytes) => println!("Have written {num_bytes} bytes to client"),
+        Ok(_num_bytes) => (),
         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
             return Err(miette!("Could not read"))
         }
@@ -80,7 +80,7 @@ fn send_state_current_state(
         return Ok(());
     };
 
-    // Send state immediately if needed
+    // Send current robot state immediately if requested
     if let Some(Ok(_)) = communicate_manual_state_update_task.poll() {
         let msg = RobotStateMsg::from(inspect_view);
         let Some(_) = send_state_task.poll() else {
