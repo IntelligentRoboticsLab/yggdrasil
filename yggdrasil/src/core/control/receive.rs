@@ -11,15 +11,22 @@ pub struct ControlReceiveModule;
 impl Module for ControlReceiveModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
-            .add_task::<AsyncTask<Result<Option<ClientMsg>>>>()?
+            .add_task::<AsyncTask<Result<Option<ClientRequest>>>>()?
+            .add_task::<AsyncTask<Result<ClientRequest>>>()?
             .add_system(listen_for_messages))
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ClientMsg(String);
+// #[derive(Serialize, Deserialize, Debug)]
+// pub struct ClientRequest(ClientRequest);
 
-async fn read_request(stream: Arc<TcpStream>) -> Result<Option<ClientMsg>> {
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ClientRequest {
+    RobotState,
+    ResourceUpdate(String),
+}
+
+async fn read_request(stream: Arc<TcpStream>) -> Result<Option<ClientRequest>> {
     // Store somewhere instead of instatiating
     let mut msg = [0; 1024];
 
@@ -28,7 +35,7 @@ async fn read_request(stream: Arc<TcpStream>) -> Result<Option<ClientMsg>> {
     match stream.try_read(&mut msg) {
         Ok(0) => Ok(None),
         Ok(num_bytes) => {
-            let client_request: ClientMsg =
+            let client_request: ClientRequest =
                 bincode::deserialize(&msg[..num_bytes]).into_diagnostic()?;
             Ok(Some(client_request))
         }
@@ -37,10 +44,15 @@ async fn read_request(stream: Arc<TcpStream>) -> Result<Option<ClientMsg>> {
     }
 }
 
+async fn communicate_client_request(client_request: ClientRequest) -> Result<ClientRequest> {
+    Ok(client_request)
+}
+
 #[system]
-fn listen_for_messages(
+pub fn listen_for_messages(
     control_data: &mut ControlData,
-    read_request_task: &mut AsyncTask<Result<Option<ClientMsg>>>,
+    read_request_task: &mut AsyncTask<Result<Option<ClientRequest>>>,
+    communicate_client_request_task: &mut AsyncTask<Result<ClientRequest>>,
 ) -> Result<()> {
     let Some(stream) = control_data.stream.clone() else {
         return Ok(());
@@ -54,8 +66,10 @@ fn listen_for_messages(
         }
 
         println!("Recieved request: {client_request:?}");
+        let _ = communicate_client_request_task
+            .try_spawn(communicate_client_request(client_request.unwrap()));
     }
-
+    // Spawn the read_request task again because the current is finished
     let _ = read_request_task.try_spawn(read_request(stream));
 
     Ok(())

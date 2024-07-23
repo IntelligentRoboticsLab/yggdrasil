@@ -31,6 +31,7 @@ fn listen_for_connection(
     if let Some(Ok((socket, _addr))) = accept_connections_task.poll() {
         control_data.stream = Some(Arc::new(socket));
         println!("Setup connection");
+        return Ok(());
     }
 
     let _ =

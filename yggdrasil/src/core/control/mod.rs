@@ -29,10 +29,10 @@ impl ControlModule {
 
     #[startup_system]
     fn add_resources(storage: &mut Storage, dispatcher: &AsyncDispatcher) -> Result<()> {
-        let game_controller_socket = dispatcher.handle().block_on(Self::new_control_socket())?;
+        let control_listen_socket = dispatcher.handle().block_on(Self::new_control_socket())?;
 
         storage.add_resource(Resource::new(ControlData {
-            listener_socket: Arc::new(game_controller_socket),
+            listener_socket: Arc::new(control_listen_socket),
             stream: None,
         }))?;
 
