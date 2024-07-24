@@ -5,9 +5,9 @@ edition = "2021"
 
 [dependencies]
 bifrost = { path = "../bifrost" }
-eframe = "0.27.2"
-egui = "0.27.2"
-egui_extras = {version = "0.27.2", features = ["default", "image"]}
+eframe = "0.28.1"
+egui = "0.28.1"
+egui_extras = {version = "0.28.1", features = ["default", "image"]}
 env_logger = "0.11.3"
 home = { workspace = true }
 miette = { workspace = true }

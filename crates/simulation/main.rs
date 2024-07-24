@@ -83,7 +83,7 @@ fn main() -> eframe::Result<()> {
             // Provide image support:
             egui_extras::install_image_loaders(&cc.egui_ctx);
 
-            Box::<Simulation>::default()
+            Ok(Box::<Simulation>::default())
         }),
     )
 }

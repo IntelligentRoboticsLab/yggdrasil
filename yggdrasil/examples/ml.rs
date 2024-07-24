@@ -35,7 +35,7 @@ fn generate_input(input_img: &mut Image) -> Result<()> {
         std::thread::sleep(Duration::from_secs(1));
 
         // load image
-        let img = image::io::Reader::open(IMAGE_PATH)
+        let img = image::ImageReader::open(IMAGE_PATH)
             .unwrap()
             .decode()
             .unwrap();
