@@ -14,6 +14,7 @@ use std::{
     sync::{Arc, Mutex, MutexGuard},
 };
 use tokio::io;
+use yggdrasil::core::control::receive::ClientRequest;
 
 use crate::connection::TcpConnection;
 
@@ -32,10 +33,6 @@ pub struct SeidrStates {
 pub struct RobotResources(HashMap<String, String>);
 
 impl RobotResources {
-    fn new() -> Self {
-        RobotResources::default()
-    }
-
     fn update_resources(
         &mut self,
         updated_state_msg: RobotStateMsg,
@@ -106,21 +103,7 @@ impl Seidr {
         });
         ui.separator();
 
-        // egui::ComboBox::from_label(format!(
-        //     "Config selected: {:?}",
-        //     self.states.selected_config
-        // ))
-        // .selected_text(format!("{:?}", self.states.selected_config))
-        // .show_ui(ui, |ui| {
-        //     ui.selectable_value(
-        //         &mut self.states.selected_config,
-        //         ConfigType::YggdrasilConfig,
-        //         "YggdrasilConfig",
-        //     );
-        // });
-
         // if ui.button("Load config").clicked() {
-        //     println!("Loading the config: {:?}", self.states.selected_config);
         //     let message = RerunRequest::RequestConfig(self.states.selected_config.clone());
         //     let message = serde_json::to_string(&message).unwrap();
         //     let tcp_stream = self.connection.get_stream().clone();
@@ -129,6 +112,15 @@ impl Seidr {
         //     });
         //     println!("Done")
         // }
+
+        if ui
+            .button(egui::RichText::new("Refresh").size(20.0))
+            .clicked()
+        {
+            let request = ClientRequest::RobotState;
+            let bytes = bincode::serialize(&request).into_diagnostic().unwrap();
+            self.connection.send_request(bytes).unwrap();
+        }
 
         let mut resource_names: Vec<String> = {
             let locked_robot_resources = self.states.robot_resources.lock().unwrap();

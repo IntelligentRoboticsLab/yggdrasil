@@ -1,8 +1,11 @@
 use miette::{IntoDiagnostic, Result};
 use std::sync::Arc;
-use tokio::net::{
-    tcp::{OwnedReadHalf, OwnedWriteHalf},
-    TcpStream, ToSocketAddrs,
+use tokio::{
+    net::{
+        tcp::{OwnedReadHalf, OwnedWriteHalf},
+        TcpStream, ToSocketAddrs,
+    },
+    task,
 };
 
 pub struct TcpConnection {
@@ -26,6 +29,15 @@ impl TcpConnection {
         let (rs, ws) = stream.into_split();
         let connection = TcpConnection::new(rs, ws);
         Ok(connection)
+    }
+
+    pub fn send_request(&self, bytes: Vec<u8>) -> Result<()> {
+        let ws = self.ws.clone();
+        task::spawn(async move {
+            ws.writable().await.into_diagnostic().unwrap();
+            ws.try_write(bytes.as_slice()).into_diagnostic().unwrap();
+        });
+        Ok(())
     }
 }
 
