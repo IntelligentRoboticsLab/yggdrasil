@@ -103,16 +103,6 @@ impl Seidr {
         });
         ui.separator();
 
-        // if ui.button("Load config").clicked() {
-        //     let message = RerunRequest::RequestConfig(self.states.selected_config.clone());
-        //     let message = serde_json::to_string(&message).unwrap();
-        //     let tcp_stream = self.connection.get_stream().clone();
-        //     task::spawn(async move {
-        //         send_message_to_stream(tcp_stream, message).await.unwrap();
-        //     });
-        //     println!("Done")
-        // }
-
         if ui
             .button(egui::RichText::new("Refresh").size(20.0))
             .clicked()
@@ -126,7 +116,7 @@ impl Seidr {
             let locked_robot_resources = self.states.robot_resources.lock().unwrap();
             locked_robot_resources.0.keys().cloned().collect()
         };
-        // Sort the names to keep the resources at a consitent sequence
+        // Sort the names to keep the resources at a fixed order
         resource_names.sort();
 
         let resources = self.states.robot_resources.clone();
@@ -138,24 +128,16 @@ impl Seidr {
 
             for name in resource_names.into_iter() {
                 if let Some(data) = locked_resource_map.0.get_mut(&name) {
-                    add_editable_text(ui, &name, data, &mut locked_focussed_resource);
+                    let followup_action =
+                        add_editable_resource(ui, &name, data, &mut locked_focussed_resource);
+                    if let Some(action) = followup_action {
+                        match action {
+                            EditableResourceAction::ResourceUpdate(bytes) => self.connection.send_request(bytes).unwrap(),
+                        };
+                    }
                 }
             }
         }
-
-        // if ui.button("Update config").clicked() {
-        //     println!("Updating the config: {:?}", self.states.selected_config);
-        //     let config_data: serde_json::Value =
-        //         serde_json::from_str(&self.states.config_data.lock().unwrap()).unwrap();
-        //     let message =
-        //         RerunRequest::UpdateConfig(self.states.selected_config.clone(), config_data);
-        //     let message = serde_json::to_string(&message).unwrap();
-        //     let tcp_stream = self.connection.get_stream().clone();
-        //     task::spawn(async move {
-        //         send_message_to_stream(tcp_stream, message).await.unwrap();
-        //     });
-        //     println!("Done")
-        // }
     }
 
     pub fn listen_for_robot_response(&mut self) {
@@ -197,12 +179,18 @@ impl Seidr {
     }
 }
 
-fn add_editable_text(
+enum EditableResourceAction {
+    ResourceUpdate(Vec<u8>),
+}
+
+fn add_editable_resource(
     ui: &mut egui::Ui,
     name: &String,
     data: &mut String,
     focussed_resource: &mut Option<String>,
-) {
+) -> Option<EditableResourceAction> {
+    let mut followup_action = None;
+
     ui.vertical(|ui| {
         ui.label(egui::RichText::new(name).heading()); // Use heading style for label
         ui.add_space(10.0); // Add space between the label and the text editor
@@ -214,7 +202,16 @@ fn add_editable_text(
                 .lock_focus(true)
                 .desired_width(f32::INFINITY),
         );
+        if ui
+            .button(egui::RichText::new("Override resource").size(10.0))
+            .clicked()
+        {
+            let request = ClientRequest::ResourceUpdate(name.to_owned(), data.to_owned());
+            let bytes = bincode::serialize(&request).into_diagnostic().unwrap();
+            followup_action = Some(EditableResourceAction::ResourceUpdate(bytes));
+        }
 
+        // Logic to remember which resource not to update when focussed
         if multiline_text.has_focus() {
             *focussed_resource = Some(name.to_owned());
         } else {
@@ -225,6 +222,8 @@ fn add_editable_text(
             }
         }
     });
+
+    followup_action
 }
 
 pub struct App {

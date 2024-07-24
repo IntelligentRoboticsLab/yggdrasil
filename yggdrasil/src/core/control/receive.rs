@@ -16,7 +16,8 @@ impl Module for ControlReceiveModule {
             .add_task::<AsyncTask<Result<Option<ClientRequest>>>>()?
             .add_task::<AsyncTask<Result<StateUpdateRequest>>>()?
             .add_task::<AsyncTask<Result<UpdateConfigFinished>>>()?
-            .add_system(listen_for_messages))
+            .add_system(listen_for_messages)
+            .add_system(poll_update_resource.after(listen_for_messages)))
     }
 }
 
@@ -56,8 +57,11 @@ async fn update_resource(
     new_resource: String,
 ) -> Result<UpdateConfigFinished> {
     let mut writable_resource = resource.write().unwrap();
-    let json: Value = serde_json::from_str(&new_resource).unwrap();
-    writable_resource.try_update_from_json(json);
+    let json: Result<Value> = serde_json::from_str(&new_resource).into_diagnostic();
+    if let Err(e) = json {
+        return Err(e);
+    }
+    writable_resource.try_update_from_json(json.unwrap());
     Ok(UpdateConfigFinished)
 }
 
@@ -86,6 +90,7 @@ pub fn listen_for_messages(
                     .try_spawn(communicate_manual_state_update());
             }
             ClientRequest::ResourceUpdate(resource_name, new_config) => {
+                println!("Got resource update request for: {resource_name}, with: {new_config}");
                 if let Some(resource) = inspect_view.by_name(&resource_name) {
                     let _ = update_resource_task
                         .try_spawn(update_resource(resource.clone(), new_config));
@@ -96,5 +101,22 @@ pub fn listen_for_messages(
     // Spawn the read_request task again because the current is finished
     let _ = read_request_task.try_spawn(read_request(stream));
 
+    Ok(())
+}
+
+#[system]
+fn poll_update_resource(
+    update_resource_task: &mut AsyncTask<Result<UpdateConfigFinished>>,
+) -> Result<()> {
+    let Some(task_finished) = update_resource_task.poll() else {
+        return Ok(());
+    };
+
+    if let Err(e) = task_finished {
+        tracing::error!("Resource failed to update: {e}");
+        return Ok(())
+    }
+
+    println!("Resource update done");
     Ok(())
 }
