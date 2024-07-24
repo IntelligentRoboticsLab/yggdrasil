@@ -11,7 +11,7 @@ use tokio::net::TcpStream;
 use tyr::InspectView;
 
 // The number of cycles between each send state to rerun
-const SEND_STATE_PER_CYCLE: usize = 1000;
+const SEND_STATE_PER_CYCLE: usize = 100;
 
 pub struct ControlTransmitModule;
 

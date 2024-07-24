@@ -1,0 +1,18 @@
+[package]
+name = "seidr"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bincode = { workspace = true }
+miette = { workspace = true }
+mimalloc = { workspace = true }
+re_crash_handler = { workspace = true }
+re_sdk_comms = { workspace = true, features = ["server"] }
+re_smart_channel= { workspace = true }
+re_viewer = { workspace = true }
+rerun = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"]}
+yggdrasil = { path = "../../yggdrasil" }

@@ -31,7 +31,7 @@ pub enum ClientRequest {
 
 async fn read_request(stream: Arc<TcpStream>) -> Result<Option<ClientRequest>> {
     // Store somewhere instead of instatiating
-    let mut msg = [0; 1024];
+    let mut msg = [0; 4096];
 
     stream.readable().await.into_diagnostic()?;
 
