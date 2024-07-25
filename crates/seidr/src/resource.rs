@@ -10,22 +10,22 @@ impl RobotResources {
     pub fn update_resources(
         &mut self,
         updated_state_msg: RobotStateMsg,
-        focused_resource: MutexGuard<Option<String>>,
+        mut changed_resources: MutexGuard<HashMap<String, bool>>,
     ) -> Result<()> {
         let updated_resource_map = updated_state_msg.0;
-        println!("Focussed on resource: {:?}", focused_resource);
 
-        for (name, updated_data) in updated_resource_map.into_iter() {
-            if let Some(data) = self.0.get_mut(&name) {
-                // Do not update a resource if user is focussed on it
-                if let Some(focused_resource) = focused_resource.as_ref() {
-                    if name == *focused_resource {
+        for (resource_name, updated_data) in updated_resource_map.into_iter() {
+            if let Some(data) = self.0.get_mut(&resource_name) {
+                // Do not update a resource if it is being changed by the user in seidr
+                if let Some(changed_resource) = changed_resources.get(&resource_name) {
+                    if *changed_resource {
                         continue;
                     }
                 }
                 *data = updated_data;
             } else {
-                self.0.insert(name, updated_data);
+                self.0.insert(resource_name.clone(), updated_data);
+                changed_resources.insert(resource_name, false);
             }
         }
         Ok(())

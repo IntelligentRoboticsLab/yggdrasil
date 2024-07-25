@@ -50,8 +50,6 @@ async fn main() -> Result<()> {
         ..Default::default()
     };
 
-    // Connect with robot 24
-    // println!("Trying to connect to robot...");
     // let socket_addr = SocketAddrV4::new(Ipv4Addr::new(10, 1, 8, 24), CONTROL_PORT);
     let socket_addr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), CONTROL_PORT);
 

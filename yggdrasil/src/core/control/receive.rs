@@ -114,6 +114,5 @@ fn poll_update_resource(
         return Ok(());
     }
 
-    println!("Resource update done");
     Ok(())
 }
