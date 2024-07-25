@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+use std::fs::File;
 use std::net::{IpAddr, Ipv4Addr, SocketAddrV4};
+use std::path::Path;
 use std::{os::unix::process::CommandExt, process::Stdio};
 
 use clap::Parser;
@@ -11,6 +14,13 @@ use crate::{
     cli::robot_ops::{self, ConfigOptsRobotOps},
     config::SindriConfig,
 };
+
+const SEIDR_BINARY_PATH: &str = "./target/release/seidr";
+const SEIDR_LOG_FILE_PATH: &str = "./crates/seidr/log/seidr_log.txt";
+
+const LOCAL_ROBOT_ID: u8 = 0;
+const DEFAULT_PLAYER_NUMBER: u8 = 3;
+const DEFAULT_TEAM_NUMBER: u8 = 8;
 
 const DEFAULT_TRACY_PORT: u16 = 8086;
 
@@ -165,10 +175,16 @@ async fn has_rerun() -> bool {
 
 /// Spawn a rerun viewer in the background.
 fn spawn_rerun_viewer() -> Result<()> {
-    let mut process = std::process::Command::new("rerun");
+    let mut process = std::process::Command::new(SEIDR_BINARY_PATH);
+
+    let seidr_log_file_path = Path::new(SEIDR_LOG_FILE_PATH);
+    let prefix = seidr_log_file_path.parent().unwrap();
+    std::fs::create_dir_all(prefix).into_diagnostic()?;
+    let seidr_log_file = File::create(SEIDR_LOG_FILE_PATH).into_diagnostic()?;
+
     process
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(Stdio::from(seidr_log_file.try_clone().into_diagnostic()?))
+        .stderr(Stdio::from(seidr_log_file))
         .process_group(0);
 
     Command::from(process)

@@ -8,7 +8,7 @@ pub mod connect;
 pub mod receive;
 pub mod transmit;
 
-const CONTROL_PORT: u16 = 40001;
+pub const CONTROL_PORT: u16 = 40001;
 
 pub struct ControlModule;
 

@@ -30,7 +30,7 @@ pub struct SendStateFinished;
 pub struct SendStateCounter(pub usize);
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct RobotStateMsg(HashMap<String, String>);
+pub struct RobotStateMsg(pub HashMap<String, String>);
 
 impl From<&InspectView> for RobotStateMsg {
     fn from(inspect_view: &InspectView) -> Self {

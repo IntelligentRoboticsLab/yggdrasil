@@ -3,10 +3,16 @@ use app::App;
 use connection::TcpConnection;
 use miette::{IntoDiagnostic, Result};
 use re_viewer::external::{eframe, egui, re_log, re_memory};
-use std::net::{Ipv4Addr, SocketAddrV4};
+use std::{
+    net::{Ipv4Addr, SocketAddrV4},
+    time::Duration,
+};
+use yggdrasil::core::control::CONTROL_PORT;
 
 mod app;
 mod connection;
+mod resource;
+mod seidr;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -38,31 +44,31 @@ async fn main() -> Result<()> {
         ..re_viewer::native::eframe_options(None)
     };
 
-    let mut startup_options = re_viewer::StartupOptions::default();
-    // Limit memory to 1.5 GB
-    startup_options.memory_limit = re_memory::MemoryLimit::from_bytes(1500000000);
+    let startup_options = re_viewer::StartupOptions {
+        // Limit memory to 1.5 GB
+        memory_limit: re_memory::MemoryLimit::from_bytes(1500000000),
+        ..Default::default()
+    };
 
     // Connect with robot 24
     // println!("Trying to connect to robot...");
-    // let socket_addr = SocketAddrV4::new(Ipv4Addr::new(10, 1, 8, 24), 40001);
-    let socket_addr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 40001);
-    let connection = TcpConnection::try_from_ip(socket_addr).await?;
+    // let socket_addr = SocketAddrV4::new(Ipv4Addr::new(10, 1, 8, 24), CONTROL_PORT);
+    let socket_addr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), CONTROL_PORT);
+
+    // Tries to make a connection to the robot address
+    let connection = loop {
+        match TcpConnection::try_from_ip(socket_addr).await {
+            Ok(conn) => break conn,
+            Err(err) => {
+                eprintln!("Failed to connect: {}. Retrying...", err);
+                // Optionally, wait before retrying
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        };
+    };
 
     let app = App::new(rx, startup_options, native_options, connection);
-
     app.run()?;
 
     Ok(())
 }
-
-// fn handle_serialized_rerun_message(serialized_msg: SerializedRerunMessage, config_data: Arc<Mutex<String>>) -> Result<()> {
-//     println!("Message: {:?}", serialized_msg.decode_response()?);
-//     match serialized_msg.decode_response()? {
-//         RerunResponse::RequestConfigResponse(data) => {
-//             *config_data.lock().unwrap() = data.to_string();
-//         },
-//         _ => {}
-//     }
-
-//     Ok(())
-// }

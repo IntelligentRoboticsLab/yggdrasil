@@ -6,3 +6,5 @@
 deploy/yggdrasil
 
 dependency_graph.png
+
+crates/seidr/log

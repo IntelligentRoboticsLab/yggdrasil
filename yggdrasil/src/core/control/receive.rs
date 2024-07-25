@@ -57,11 +57,8 @@ async fn update_resource(
     new_resource: String,
 ) -> Result<UpdateConfigFinished> {
     let mut writable_resource = resource.write().unwrap();
-    let json: Result<Value> = serde_json::from_str(&new_resource).into_diagnostic();
-    if let Err(e) = json {
-        return Err(e);
-    }
-    writable_resource.try_update_from_json(json.unwrap());
+    let json: Value = serde_json::from_str(&new_resource).into_diagnostic()?;
+    writable_resource.try_update_from_json(json);
     Ok(UpdateConfigFinished)
 }
 
@@ -114,7 +111,7 @@ fn poll_update_resource(
 
     if let Err(e) = task_finished {
         tracing::error!("Resource failed to update: {e}");
-        return Ok(())
+        return Ok(());
     }
 
     println!("Resource update done");
