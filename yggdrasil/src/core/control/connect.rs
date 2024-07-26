@@ -28,9 +28,9 @@ fn listen_for_connection(
         return Ok(());
     }
 
-    if let Some(Ok((socket, _addr))) = accept_connections_task.poll() {
+    if let Some(Ok((socket, addr))) = accept_connections_task.poll() {
         control_data.stream = Some(Arc::new(socket));
-        println!("Setup connection");
+        tracing::info!("Connection created with: {addr:?}");
         return Ok(());
     }
 

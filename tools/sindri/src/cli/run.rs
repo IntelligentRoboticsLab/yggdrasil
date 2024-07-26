@@ -10,12 +10,14 @@ use indicatif::ProgressBar;
 use miette::{bail, Context, IntoDiagnostic, Result};
 use tokio::process::Command;
 
+use crate::cargo;
 use crate::{
     cli::robot_ops::{self, ConfigOptsRobotOps},
     config::SindriConfig,
 };
 
 const SEIDR_BINARY_PATH: &str = "./target/release/seidr";
+const SEIDR_BINARY: &str = "seidr";
 const SEIDR_LOG_FILE_PATH: &str = "./crates/seidr/log/seidr_log.txt";
 
 const LOCAL_ROBOT_ID: u8 = 0;
@@ -115,7 +117,7 @@ impl Run {
             envs.push(("RERUN_HOST", rerun_host?.leak()));
 
             if has_rerun {
-                spawn_rerun_viewer()?;
+                spawn_rerun_viewer().await?;
             }
         }
 
@@ -173,8 +175,26 @@ async fn has_rerun() -> bool {
     get_rerun_version().await.is_ok_and(|success| success)
 }
 
+/// Compiles the seidr binary
+async fn build_seidr() -> Result<()> {
+    let features = vec![];
+    let envs = Vec::new();
+
+    cargo::build(
+        SEIDR_BINARY,
+        cargo::Profile::Release,
+        None,
+        &features,
+        Some(envs),
+    )
+    .await?;
+
+    Ok(())
+}
+
 /// Spawn a rerun viewer in the background.
-fn spawn_rerun_viewer() -> Result<()> {
+async fn spawn_rerun_viewer() -> Result<()> {
+    build_seidr().await?;
     let mut process = std::process::Command::new(SEIDR_BINARY_PATH);
 
     let seidr_log_file_path = Path::new(SEIDR_LOG_FILE_PATH);

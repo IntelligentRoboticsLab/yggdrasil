@@ -1,5 +1,8 @@
 use miette::{IntoDiagnostic, Result};
-use std::sync::Arc;
+use std::{
+    sync::{Arc, Mutex},
+    time::Instant,
+};
 use tokio::{
     io,
     net::{
@@ -45,8 +48,11 @@ impl TcpConnection {
     }
 }
 
-pub fn receiving_responses<F>(rs: Arc<OwnedReadHalf>, handle_message: F)
-where
+pub fn receiving_responses<F>(
+    rs: Arc<OwnedReadHalf>,
+    last_resource_update: Arc<Mutex<Option<Instant>>>,
+    handle_message: F,
+) where
     F: Fn(RobotStateMsg) + Send + Sync + 'static,
 {
     let mut msg = [0; BUFFER_SIZE];
@@ -63,6 +69,7 @@ where
                     {
                         Ok(robot_state_msg) => {
                             handle_message(robot_state_msg);
+                            *last_resource_update.lock().unwrap() = Some(Instant::now());
                         }
                         Err(e) => {
                             println!("Failed to deserialize server response; err = {:?}", e);
