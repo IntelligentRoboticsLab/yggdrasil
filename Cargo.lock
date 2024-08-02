@@ -9042,6 +9042,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "tracing-tracy",
  "tyr",
 ]
 
