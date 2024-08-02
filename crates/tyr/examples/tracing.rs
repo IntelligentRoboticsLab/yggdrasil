@@ -31,7 +31,6 @@ fn two_seconds() -> Result<()> {
 
 fn main() -> Result<()> {
     // Set up the tracy subscriber
-    //
     tracing::subscriber::set_global_default(
         tracing_subscriber::registry().with(tracing_tracy::TracyLayer::default()),
     )
