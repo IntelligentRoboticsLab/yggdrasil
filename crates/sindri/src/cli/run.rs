@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr, SocketAddrV4, TcpStream, ToSocketAddrs};
+use std::net::{IpAddr, Ipv4Addr, SocketAddrV4};
 use std::{os::unix::process::CommandExt, process::Stdio};
 use yggdrasil::{core::config::showtime::ShowtimeConfig, prelude::Config as OdalConfigTrait};
 
@@ -140,7 +140,7 @@ impl Run {
         if tracy && has_tracy {
             // Default to the robot's IP address, but allow the user to override it.
             let tracy_client_ip = std::env::var("TRACY_CLIENT")
-                .unwrap_or_else(|_| format!("{}:{DEFAULT_TRACY_PORT}", robot.ip().to_string()))
+                .unwrap_or_else(|_| format!("{}:{DEFAULT_TRACY_PORT}", robot.ip()))
                 .parse()
                 .into_diagnostic()
                 .wrap_err("Invalid tracy client ip address!")?;
