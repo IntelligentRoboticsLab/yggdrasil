@@ -6935,7 +6935,7 @@ dependencies = [
 
 [[package]]
 name = "sindri"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "cargo_toml",
  "clap",

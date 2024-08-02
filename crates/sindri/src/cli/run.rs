@@ -1,12 +1,12 @@
 use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddrV4, TcpStream, ToSocketAddrs};
 use std::{os::unix::process::CommandExt, process::Stdio};
 use yggdrasil::{core::config::showtime::ShowtimeConfig, prelude::Config as OdalConfigTrait};
 
 use clap::Parser;
 use colored::Colorize;
 use indicatif::ProgressBar;
-use miette::{bail, miette, IntoDiagnostic, Result};
+use miette::{bail, miette, Context, IntoDiagnostic, Result};
 use tokio::process::Command;
 
 use crate::{
@@ -17,6 +17,8 @@ use crate::{
 const LOCAL_ROBOT_ID: u8 = 0;
 const DEFAULT_PLAYER_NUMBER: u8 = 3;
 const DEFAULT_TEAM_NUMBER: u8 = 8;
+
+const DEFAULT_TRACY_PORT: u16 = 8086;
 
 // TODO: refactor config for run
 #[derive(Parser, Debug)]
@@ -74,6 +76,16 @@ impl Run {
             );
         }
 
+        let tracy = self.robot_ops.timings;
+        let has_tracy = has_tracy().await;
+        if tracy && !has_tracy {
+            println!(
+                "{}: {}",
+                "warning".bold().yellow(),
+                "tracy is not installed, install it using your package manager!".white()
+            );
+        }
+
         let compile_bar = ProgressBar::new(1);
         let output = robot_ops::Output::Single(compile_bar.clone());
         robot_ops::compile(self.robot_ops.clone(), output.clone()).await?;
@@ -125,6 +137,17 @@ impl Run {
             }
         }
 
+        if tracy && has_tracy {
+            // Default to the robot's IP address, but allow the user to override it.
+            let tracy_client_ip = std::env::var("TRACY_CLIENT")
+                .unwrap_or_else(|_| format!("{}:{DEFAULT_TRACY_PORT}", robot.ip().to_string()))
+                .parse()
+                .into_diagnostic()
+                .wrap_err("Invalid tracy client ip address!")?;
+
+            spawn_tracy_profiler(tracy_client_ip)?;
+        }
+
         if local {
             robot
                 .local("./yggdrasil", envs)?
@@ -171,6 +194,47 @@ fn spawn_rerun_viewer() -> Result<()> {
         .process_group(0);
 
     Command::from(process)
+        .kill_on_drop(false)
+        .spawn()
+        .into_diagnostic()?;
+
+    Ok(())
+}
+
+/// Check if the `tracy` binary is installed.
+///
+/// We check if the `tracy` binary is installed by running `tracy --help` and checking if the
+/// command was successful.
+async fn has_tracy() -> bool {
+    async fn get_tracy_version() -> Result<bool> {
+        // Tracy version is listed in the help output
+        Ok(Command::new("tracy")
+            .arg("--help")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .await
+            .into_diagnostic()?
+            .success())
+    }
+
+    get_tracy_version().await.is_ok_and(|success| success)
+}
+
+/// Spawn the Tracy profiler in the background, connecting to the given address.
+fn spawn_tracy_profiler(address: SocketAddrV4) -> Result<()> {
+    let mut process = std::process::Command::new("tracy");
+
+    process
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .process_group(0);
+
+    Command::from(process)
+        .arg("-a")
+        .arg(address.ip().to_string())
+        .arg("-p")
+        .arg(address.port().to_string())
         .kill_on_drop(false)
         .spawn()
         .into_diagnostic()?;
