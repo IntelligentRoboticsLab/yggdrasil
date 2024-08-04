@@ -291,6 +291,12 @@ mod cross {
             "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER",
             "x86_64-unknown-linux-gnu-gcc",
         ),
+        (
+            // This is required for the `tracy-client-sys` crate to cross-compile on mac
+            // https://github.com/wolfpld/tracy/issues/730
+            "TRACY_CLIENT_SYS_CXXFLAGS",
+            "-D__STDC_FORMAT_MACROS=1"
+        )
     ];
 }
 
