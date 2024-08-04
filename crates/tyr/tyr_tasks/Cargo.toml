@@ -15,6 +15,7 @@ serde = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tyr_internal = { path = "../tyr_internal" }
+tracing = { workspace = true }
 
 [features]
 odal = ["dep:odal", "dep:serde"]

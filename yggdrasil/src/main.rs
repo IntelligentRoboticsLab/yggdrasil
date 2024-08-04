@@ -1,8 +1,9 @@
 use miette::{Context, IntoDiagnostic};
-use tracing_subscriber::fmt;
+use tracing::Level;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{fmt, EnvFilter, Layer};
 use yggdrasil::behavior::BehaviorModule;
 use yggdrasil::communication::CommunicationModule;
 use yggdrasil::core::whistle::WhistleStateModule;
@@ -59,18 +60,28 @@ fn setup_tracing() -> Result<()> {
     );
     let stdout = std::io::stdout.with_max_level(tracing::Level::INFO);
 
-    let subscriber =
-        tracing_subscriber::registry().with(fmt::Layer::default().with_writer(stdout.and(logfile)));
-
-    #[cfg(not(feature = "timings"))]
-    subscriber
-        .try_init()
-        .into_diagnostic()
-        .wrap_err("Failed to initialize tracing subscriber")?;
+    let subscriber = tracing_subscriber::registry();
 
     #[cfg(feature = "timings")]
+    let subscriber = subscriber.with(tracing_tracy::TracyLayer::default());
+
+    // filter out the symphonia probe spam when playing audio
+    let symphonia_filter = EnvFilter::builder()
+        .with_default_directive(Level::INFO.into())
+        .from_env_lossy()
+        .add_directive(
+            "symphonia_core::probe=off"
+                .parse()
+                .into_diagnostic()
+                .wrap_err("Failed to parse symphonia probe filter")?,
+        );
+
     subscriber
-        .with(tracing_tracy::TracyLayer::default())
+        .with(
+            fmt::Layer::default()
+                .with_writer(stdout.and(logfile))
+                .with_filter(symphonia_filter),
+        )
         .try_init()
         .into_diagnostic()
         .wrap_err("Failed to initialize tracing subscriber")?;

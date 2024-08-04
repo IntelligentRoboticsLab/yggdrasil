@@ -17,6 +17,7 @@ use tokio::{
     runtime::Handle,
     sync::oneshot::{self, Receiver},
 };
+use tracing::trace_span;
 
 use crate::{
     asynchronous::AsyncDispatcher,
@@ -92,6 +93,8 @@ impl ComputeDispatcher {
     ) -> ComputeJoinHandle<T> {
         let (tx, rx) = oneshot::channel();
         self.thread_pool.spawn(move || {
+            let span = trace_span!("compute", name = std::any::type_name::<T>());
+            let _enter = span.enter();
             // send the result of invoking the function back through the oneshot channel,
             // capturing any panics that might occur
             let _result = tx.send(catch_unwind(AssertUnwindSafe(func)));

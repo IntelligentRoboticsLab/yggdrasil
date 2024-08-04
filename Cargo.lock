@@ -7961,6 +7961,7 @@ dependencies = [
  "serde",
  "thiserror",
  "tokio",
+ "tracing",
  "tyr_internal",
 ]
 
