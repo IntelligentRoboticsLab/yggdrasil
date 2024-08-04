@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 
 use super::wee_sound::WeeSoundModule;
 
-const VOLUME_ENVIRONMENT_VARIABLE_NAME: &str = "DEFAULT_VOLUME";
+const VOLUME_ENV_VARIABLE_NAME: &str = "YGGDRASIL_VOLUME";
 
 /// A sound which can be played by the [`SoundManager`].
 ///
@@ -49,10 +49,10 @@ impl SoundManager {
     /// Creates a new AudioManager with default settings.
     pub fn new() -> Result<Self> {
         let audio_manager = AudioManager::new(AudioManagerSettings::default()).into_diagnostic()?;
-        let volume_string = std::env::var(VOLUME_ENVIRONMENT_VARIABLE_NAME)
+        let volume_string = std::env::var(VOLUME_ENV_VARIABLE_NAME)
             .into_diagnostic()
             .wrap_err_with(|| {
-                format!("Vailed to load environment variable: {VOLUME_ENVIRONMENT_VARIABLE_NAME}")
+                format!("Failed to load environment variable: {VOLUME_ENV_VARIABLE_NAME}")
             })?;
         let volume: f64 = volume_string.parse().into_diagnostic()?;
 

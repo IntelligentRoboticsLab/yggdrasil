@@ -116,6 +116,20 @@ pub struct ConfigOptsRobotOps {
 
     #[clap(long, default_value = "0.1")]
     pub volume: f64,
+
+    /// Whether to use the `timings` feature in the `yggdrasil` binary [default: false]
+    ///
+    /// This feature is used to log spans to the [Tracy] profiler, which can be
+    /// used to visualize the execution time of systems in yggdrasil.
+    ///
+    /// Sindri will attempt to start the profiler, and expects `Tracy` to be installed.
+    ///
+    /// By default, the profiler will attempt to connect using the robot's ip address,
+    /// and port `8086`. This can be changed by setting the `TRACY_CLIENT` environment variable.
+    ///
+    /// [Tracy]: https://github.com/wolfpld/tracy
+    #[clap(long)]
+    pub timings: bool,
 }
 
 impl ConfigOptsRobotOps {
@@ -277,6 +291,12 @@ mod cross {
             "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER",
             "x86_64-unknown-linux-gnu-gcc",
         ),
+        (
+            // This is required for the `tracy-client-sys` crate to cross-compile on mac
+            // https://github.com/wolfpld/tracy/issues/730
+            "TRACY_CLIENT_SYS_CXXFLAGS",
+            "-D__STDC_FORMAT_MACROS=1"
+        )
     ];
 }
 
@@ -349,6 +369,9 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
     }
     if config.local {
         features.push("local");
+    }
+    if config.timings {
+        features.push("timings");
     }
 
     let target = if config.local {

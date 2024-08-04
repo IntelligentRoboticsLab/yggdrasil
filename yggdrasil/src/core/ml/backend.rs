@@ -32,7 +32,7 @@ impl<M: MlModel> ModelExecutor<M> {
     /// Fails if:
     /// * The model cannot be loaded.
     /// * An inference request cannot be created, which
-    /// is needed to load relevant model settings.
+    ///   is needed to load relevant model settings.
     pub fn new(core: &mut MlCore) -> Result<Self> {
         let core = core.0.get_mut().unwrap();
 

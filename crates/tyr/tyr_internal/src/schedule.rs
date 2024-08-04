@@ -9,6 +9,7 @@ use std::{
 };
 
 use itertools::Itertools;
+use tracing::{info_span, Level};
 
 use crate::{
     storage::{BoxedSystem, Storage},
@@ -397,6 +398,9 @@ impl Schedule {
     }
 
     pub fn execute(&mut self, storage: &mut Storage) -> Result<()> {
+        let span = tracing::span!(Level::TRACE, "execute");
+        let _enter = span.enter();
+
         for (dag_index, dag) in self.dags.iter().enumerate() {
             let mut execution_graph = dag.graph.clone();
 
@@ -427,6 +431,11 @@ impl Schedule {
 
                 // TODO: parallel implementation
                 for node in &current_nodes {
+                    let span = info_span!(
+                        "system",
+                        name = self.dependency_systems[dag.system_index(*node).0].system_name()
+                    );
+                    let _enter = span.enter();
                     self.dependency_systems[dag.system_index(*node).0].run(storage)?;
                     execution_graph.remove_node(*node);
                 }
