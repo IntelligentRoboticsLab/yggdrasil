@@ -139,8 +139,14 @@ impl Run {
 
         if tracy && has_tracy {
             // Default to the robot's IP address, but allow the user to override it.
+            let robot_ip = if local {
+                Ipv4Addr::LOCALHOST
+            } else {
+                robot.ip()
+            };
+
             let tracy_client_ip = std::env::var("TRACY_CLIENT")
-                .unwrap_or_else(|_| format!("{}:{DEFAULT_TRACY_PORT}", robot.ip()))
+                .unwrap_or_else(|_| format!("{robot_ip}:{DEFAULT_TRACY_PORT}",))
                 .parse()
                 .into_diagnostic()
                 .wrap_err("Invalid tracy client ip address!")?;

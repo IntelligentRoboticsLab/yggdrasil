@@ -123,10 +123,12 @@ pub struct ConfigOptsRobotOps {
     /// used to visualize the execution time of systems in yggdrasil.
     ///
     /// Sindri will attempt to start the profiler, and expects `Tracy` to be installed.
+    ///
     /// By default, the profiler will attempt to connect using the robot's ip address,
     /// and port `8086`. This can be changed by setting the `TRACY_CLIENT` environment variable.
     ///
     /// [Tracy]: https://github.com/wolfpld/tracy
+    #[clap(long)]
     pub timings: bool,
 }
 
