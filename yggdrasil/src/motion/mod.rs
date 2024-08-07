@@ -8,6 +8,7 @@ pub mod odometry;
 pub mod path_finding;
 pub mod step_planner;
 pub mod walk;
+pub mod walkv3;
 
 use keyframe::executor::keyframe_executor;
 use keyframe::manager::keyframe_executor_initializer;
