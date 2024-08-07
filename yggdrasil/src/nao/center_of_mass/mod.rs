@@ -80,18 +80,22 @@ fn update_com(kinematics: &RobotKinematics, com: &mut CenterOfMass) -> Result<()
 
 #[system]
 fn log_com(com: &CenterOfMass, dbg: &DebugContext, pose: &RobotPose) -> Result<()> {
-    let absolute_com_position = pose.robot_to_world(&com.position.xy());
+    // let absolute_com_position = pose.robot_to_world(&com.position.xy());
 
-    dbg.log_points_3d_with_color_and_radius(
-        "/localisation/pose/com",
-        &[(
-            absolute_com_position.x,
-            absolute_com_position.y,
-            com.position.z,
-        )],
-        nidhogg::types::color::u8::MAROON,
-        0.005,
-    )?;
+    dbg.log_scalar_f32("/com/x", com.position.x)?;
+    dbg.log_scalar_f32("/com/y", com.position.y)?;
+    dbg.log_scalar_f32("/com/z", com.position.z)?;
+
+    // dbg.log_points_3d_with_color_and_radius(
+    //     "/localisation/pose/com",
+    //     &[(
+    //         absolute_com_position.x,
+    //         absolute_com_position.y,
+    //         com.position.z,
+    //     )],
+    //     nidhogg::types::color::u8::MAROON,
+    //     0.005,
+    // )?;
 
     Ok(())
 }

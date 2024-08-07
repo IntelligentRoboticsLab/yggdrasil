@@ -6,7 +6,7 @@ use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
 
 use super::path_finding::{self, Obstacle};
 
-const TURN_SPEED: f32 = 0.8;
+const TURN_SPEED: f32 = 0.3;
 const WALK_SPEED: f32 = 0.05;
 
 pub struct StepPlannerModule;
@@ -141,13 +141,13 @@ impl StepPlanner {
         let angle = target_rotation.angle() - robot_pose.world_rotation();
         let turn = TURN_SPEED * angle.signum();
 
-        // TODO: This is currently necessary because, according to odometry, the robot walks around
-        // when it turns around its axis.
-        // Once that is fixed (with localization using line detection), this early return should
-        // probably be removed.
-        if angle.abs() <= 0.4 {
-            return None;
-        }
+        // // TODO: This is currently necessary because, according to odometry, the robot walks around
+        // // when it turns around its axis.
+        // // Once that is fixed (with localization using line detection), this early return should
+        // // probably be removed.
+        // if angle.abs() <= 0.4 {
+        //     return None;
+        // }
 
         Some(Step {
             forward: 0.,
@@ -157,6 +157,11 @@ impl StepPlanner {
     }
 
     pub fn plan(&mut self, robot_pose: &RobotPose) -> Option<Step> {
+        // return Some(Step {
+        //     forward: 0.0,
+        //     left: 0.00,
+        //     turn: 0.7,
+        // });
         let target = self.target?;
         let (path, _total_walking_distance) = self.calc_path(robot_pose)?;
 
