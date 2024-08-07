@@ -318,6 +318,38 @@ impl WalkingEngine {
             Side::Left => self.foot_offsets_t0.right,
             Side::Right => self.foot_offsets_t0.left,
         };
+
+        let sideways_dir = if step.left.is_sign_positive() {
+            Side::Left
+        } else {
+            Side::Right
+        };
+
+        let clamped_sideways = if sideways_dir == self.swing_foot {
+            step.left
+        } else {
+            0.0
+        };
+
+        let turn_direction = if step.turn.is_sign_positive() {
+            Side::Left
+        } else {
+            Side::Right
+        };
+
+        let clamped_turn = if turn_direction != self.swing_foot {
+            step.turn
+        } else {
+            let max_inside_turn = 0.1;
+            step.turn.clamp(-max_inside_turn, max_inside_turn)
+        };
+
+        let step = Step {
+            forward: step.forward,
+            left: clamped_sideways,
+            turn: clamped_turn,
+        };
+
         self.compute_foot_offset(-step, foot_t0, 0.0, false, smoothing)
     }
 

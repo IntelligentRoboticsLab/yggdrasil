@@ -160,11 +160,11 @@ pub fn run_walking_engine(
     match walking_engine.swing_foot {
         Side::Left => {
             right_leg_joints.ankle_pitch += balance_adjustment;
-            left_shoulder_pitch = 0.0;
+            // left_shoulder_pitch = 0.0;
         }
         Side::Right => {
             left_leg_joints.ankle_pitch += balance_adjustment;
-            right_shoulder_pitch = 0.0;
+            // right_shoulder_pitch = 0.0;
         }
     }
 
