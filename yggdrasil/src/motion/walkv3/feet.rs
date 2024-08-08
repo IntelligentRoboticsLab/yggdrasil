@@ -18,7 +18,7 @@ impl Feet {
     pub fn from_joints(kinematics: &RobotKinematics, swing_side: Side) -> Self {
         let robot_to_walk = Isometry3::from_parts(
             Translation::from(Vector3::new(0.0, 0.0, 0.225)),
-            UnitQuaternion::identity(),
+            UnitQuaternion::new(Vector3::new(0.0, 0.055, 0.0)),
         );
         let (swing, support) = match swing_side {
             Side::Left => (

@@ -97,13 +97,13 @@ impl PlannedStep {
     ) -> Self {
         let start = Feet::from_joints(kinematics, swing_side);
 
-        let max_step = StepRequest::new(0.08, 0.05, 0.9);
+        let max_step = StepRequest::new(0.08, 0.08, 2.0);
         let step = request
             .clamp(-max_step, max_step)
             .clamp_anatomic(swing_side, 0.1);
 
         let end = Feet::from_request(step, swing_side);
-        let duration = Duration::from_millis(350);
+        let duration = Duration::from_millis(250);
 
         Self {
             request: step,

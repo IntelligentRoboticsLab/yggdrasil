@@ -29,9 +29,9 @@ impl Walking {
             step_state: None,
             side: Side::Left,
             requested_step: StepRequest {
-                forward: 0.03,
-                left: 0.0,
-                turn: 0.0,
+                forward: 0.0,
+                left: 0.04,
+                turn: 1.5,
             },
         }
     }
@@ -86,7 +86,7 @@ impl WalkAction for Walking {
                 .left_leg(left_leg)
                 .right_leg(right_leg)
                 .build(),
-            LegJoints::fill(0.1),
+            LegJoints::fill(0.7),
             Priority::Critical,
         );
     }

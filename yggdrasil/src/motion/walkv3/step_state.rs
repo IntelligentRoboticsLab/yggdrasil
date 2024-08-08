@@ -34,8 +34,6 @@ impl StepState {
         let start = self.planned_step.start.swing;
         let end = self.planned_step.end.swing;
 
-        println!("start: {start}, end: {end}");
-
         let swing_position = start
             .translation
             .vector
