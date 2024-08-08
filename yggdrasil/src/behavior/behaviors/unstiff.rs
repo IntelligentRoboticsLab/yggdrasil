@@ -5,7 +5,7 @@ use crate::{
 use nidhogg::types::{color, FillExt, RightEye};
 
 // The robot shouldn't do anything while in unstiff state.
-const UNSTIFF_PRIORITY: Priority = Priority::Critical;
+const UNSTIFF_PRIORITY: Priority = Priority::High;
 
 /// This is often the starting behavior of the robot.
 /// In this state the robot sits down, after which it unstiffens its legs, arms and head.

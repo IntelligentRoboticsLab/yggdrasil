@@ -5,6 +5,7 @@ use std::time::Duration;
 use crate::{
     kinematics::RobotKinematics,
     nao::{
+        center_of_mass::CenterOfMass,
         manager::{NaoManager, Priority},
         CycleTime,
     },
@@ -146,6 +147,8 @@ pub fn run_walking_engine(
         crate::kinematics::inverse::leg_angles(&left_foot, &right_foot);
 
     // TODO: proper balancing
+    // Balance adjustment
+    walking_engine.filtered_gyroscope.update(imu.gyroscope);
 
     // the shoulder pitch is "approximated" by taking the opposite direction multiplied by a constant.
     // this results in a left motion that moves in the opposite direction as the foot.
@@ -153,8 +156,6 @@ pub fn run_walking_engine(
     let mut left_shoulder_pitch = -left_foot.forward * balancing_config.arm_swing_multiplier;
     let mut right_shoulder_pitch = -right_foot.forward * balancing_config.arm_swing_multiplier;
 
-    // Balance adjustment
-    walking_engine.filtered_gyroscope.update(imu.gyroscope);
     let balance_adjustment =
         walking_engine.filtered_gyroscope.state.y * balancing_config.filtered_gyro_y_multiplier;
     match walking_engine.swing_foot {
@@ -202,9 +203,9 @@ pub fn run_walking_engine(
         )
         .build();
 
-    nao_manager
-        .set_legs(leg_positions, leg_stiffness, Priority::Medium)
-        .set_arms(arm_positions, arm_stiffness, Priority::Medium);
+    // nao_manager
+    //     .set_legs(leg_positions, leg_stiffness, Priority::Medium)
+    //     .set_arms(arm_positions, arm_stiffness, Priority::Medium);
 
     Ok(())
 }

@@ -11,7 +11,7 @@ use nidhogg::types::{
 
 use super::robot_dimensions;
 
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct RobotKinematics {
     pub neck_to_robot: Isometry3<f32>,
     pub head_to_robot: Isometry3<f32>,

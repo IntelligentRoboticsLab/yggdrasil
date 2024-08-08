@@ -439,7 +439,7 @@ impl Side {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct FootOffsets {
     pub left: FootOffset,
     pub right: FootOffset,

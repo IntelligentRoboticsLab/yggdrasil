@@ -5,7 +5,7 @@
 use nalgebra::{vector, Vector3};
 
 /// Vector pointing from torso to robot frame.
-pub const ROBOT_TO_TORSO: Vector3<f32> = vector![-0.0413, 0.0, -0.12842];
+pub const ROBOT_TO_TORSO: Vector3<f32> = vector![-0.0413, 0.0, 0.12842];
 /// Vector pointing from robot frame to neck.
 pub const ROBOT_TO_NECK: Vector3<f32> = vector![0.0, 0.0, 0.2115];
 /// Vector pointing from robot frame to the left pelvis.

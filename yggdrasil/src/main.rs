@@ -12,6 +12,7 @@ use yggdrasil::game_controller::GameControllerModule;
 use yggdrasil::kinematics::KinematicsModule;
 use yggdrasil::localization::LocalizationModule;
 use yggdrasil::motion::walk::WalkingEngineModule;
+use yggdrasil::motion::walkv3::WalkingEngineV3Module;
 use yggdrasil::motion::MotionModule;
 use yggdrasil::nao::NaoModule;
 use yggdrasil::prelude::*;
@@ -34,6 +35,7 @@ fn main() -> Result<()> {
         .add_module(CommunicationModule)?
         .add_module(GameControllerModule)?
         .add_module(WalkingEngineModule)?
+        .add_module(WalkingEngineV3Module)?
         .add_module(DebugModule)?
         .add_module(VisionModule)?
         .add_module(MotionModule)?

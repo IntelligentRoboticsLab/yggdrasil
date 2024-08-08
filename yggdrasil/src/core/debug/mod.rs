@@ -619,6 +619,41 @@ impl DebugContext {
 
         Ok(())
     }
+
+    /// Log a set of 3D points to the debug viewer, with labels.
+    pub fn log_points_3d_with_label(
+        &self,
+        path: impl AsRef<str>,
+        points: impl IntoIterator<Item = (f32, f32, f32)>,
+        labels: impl IntoIterator<Item = impl ToString>,
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(
+                    path.as_ref(),
+                    &rerun::Points3D::new(points)
+                        .with_labels(labels.into_iter().map(|l| l.to_string())),
+                )
+                .into_diagnostic()?;
+        }
+        Ok(())
+    }
+
+    /// Log a set of 3D lines to the debug viewer.
+    pub fn log_lines_3d(
+        &self,
+        path: impl AsRef<str>,
+        lines: &[[(f32, f32, f32); 2]],
+    ) -> Result<()> {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log(path.as_ref(), &rerun::LineStrips3D::new(lines))
+                .into_diagnostic()?;
+        }
+        Ok(())
+    }
 }
 
 #[startup_system]

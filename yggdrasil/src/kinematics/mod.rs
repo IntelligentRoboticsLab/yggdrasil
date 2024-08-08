@@ -46,7 +46,7 @@ pub fn update_kinematics(robot_kinematics: &mut RobotKinematics, state: &NaoStat
 /// - `hip_height`: meters
 /// - `lift`: meters
 /// - `side`: `Left` or `Right`
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FootOffset {
     pub forward: f32,
     pub left: f32,
@@ -63,6 +63,22 @@ impl FootOffset {
             turn: 0.0,
             hip_height,
             lift: 0.0,
+        }
+    }
+
+    pub fn from_isometry(isometry: Isometry3<f32>, hip_height: f32) -> Self {
+        let translation = isometry.translation.vector;
+        let rotation = isometry.rotation;
+        let forward = translation.x;
+        let left = translation.y;
+        let turn = rotation.euler_angles().2;
+        let lift = translation.z;
+        Self {
+            forward,
+            left,
+            turn,
+            hip_height,
+            lift,
         }
     }
 
