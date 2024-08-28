@@ -1,6 +1,9 @@
 use nidhogg::types::{FillExt, LegJoints};
 
-use crate::nao::manager::{NaoManager, Priority};
+use crate::{
+    core::debug::DebugContext,
+    nao::manager::{NaoManager, Priority},
+};
 
 use super::{UpdateContext, WalkAction};
 
@@ -21,7 +24,7 @@ impl WalkAction for Sitting {
         self.current_hip_height = (self.current_hip_height - 0.002).max(SITTING_HIP_HEIGHT);
     }
 
-    fn apply(&self, nao: &mut NaoManager) {
+    fn apply(&self, nao: &mut NaoManager, _ctx: &DebugContext) {
         let foot = crate::kinematics::FootOffset::zero(self.current_hip_height);
         let (left_leg, right_leg) = crate::kinematics::inverse::leg_angles(&foot, &foot);
 

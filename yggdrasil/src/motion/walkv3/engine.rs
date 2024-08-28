@@ -4,6 +4,7 @@ use nidhogg::{
 };
 
 use crate::{
+    core::debug::DebugContext,
     kinematics::{self, forward::left_hip_to_ground, FootOffset, RobotKinematics},
     nao::{manager::NaoManager, CycleTime},
     prelude::*,
@@ -50,13 +51,14 @@ pub fn run_walking_enginev3(
     kinematics: &RobotKinematics,
     chest: &ChestButton,
     cycle_time: &CycleTime,
+    dbg: &DebugContext,
 ) -> Result<()> {
     let ctx = UpdateContext {
         kinematics: kinematics.clone(),
         delta_time: cycle_time.duration,
     };
     engine.action.update(&ctx);
-    engine.action.apply(nao);
+    engine.action.apply(nao, dbg);
 
     if chest.state.is_tapped() {
         match &engine.action {

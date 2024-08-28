@@ -73,6 +73,10 @@ impl FootOffset {
         let left = translation.y;
         let turn = rotation.euler_angles().2;
         let lift = translation.z;
+
+        println!("isometry: {isometry}");
+        println!("turn: {}", turn);
+
         Self {
             forward,
             left,

@@ -13,12 +13,16 @@ struct WorldSpace;
 impl Space for WorldSpace {}
 impl SpaceOver<na::Point3<f32>> for WorldSpace {}
 
+impl SpaceOver<na::Isometry3<f32>> for WorldSpace {}
+
 fn main() {
     let local_to_world: Isometry3<LocalSpace, WorldSpace> =
         na::Isometry3::new(na::vector![1., 2., 3.], na::vector![0., 0., 0.]).into();
 
     let x: Point3<LocalSpace> = na::point![1., 0., 0.].into();
     let y: Point3<WorldSpace> = local_to_world.transform(&x);
+
+    let foot: Isometry3<WorldSpace>
 
     println!("{:?} is {:?}", x, y);
 }

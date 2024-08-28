@@ -1,6 +1,7 @@
 use nidhogg::types::{FillExt, LegJoints};
 
 use crate::{
+    core::debug::DebugContext,
     kinematics::{self, FootOffset},
     nao::manager::{NaoManager, Priority},
 };
@@ -24,7 +25,7 @@ impl WalkAction for Standing {
         self.current_hip_height = (self.current_hip_height + 0.002).min(STANDING_HIP_HEIGHT);
     }
 
-    fn apply(&self, nao: &mut NaoManager) {
+    fn apply(&self, nao: &mut NaoManager, _ctx: &DebugContext) {
         let zero = FootOffset::zero(self.current_hip_height);
 
         let (left_leg, right_leg) = kinematics::inverse::leg_angles(&zero, &zero);

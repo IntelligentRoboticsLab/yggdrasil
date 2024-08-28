@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use enum_dispatch::enum_dispatch;
 
-use crate::{kinematics::RobotKinematics, nao::manager::NaoManager};
+use crate::{core::debug::DebugContext, kinematics::RobotKinematics, nao::manager::NaoManager};
 
 mod sit;
 mod stand;
@@ -21,7 +21,7 @@ pub struct UpdateContext {
 pub trait WalkAction {
     fn update(&mut self, context: &UpdateContext);
 
-    fn apply(&self, nao: &mut NaoManager);
+    fn apply(&self, nao: &mut NaoManager, ctx: &DebugContext);
 }
 
 #[enum_dispatch(WalkAction)]

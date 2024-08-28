@@ -1,9 +1,15 @@
 use std::time::Duration;
 
+use nalgebra::{Isometry3, Translation, UnitQuaternion, Vector3};
 use nidhogg::types::{FillExt, LegJoints};
 
 use crate::{
-    kinematics::{self, FootOffset},
+    core::debug::DebugContext,
+    kinematics::{
+        self,
+        robot_dimensions::{self, ANKLE_TO_SOLE},
+        FootOffset,
+    },
     motion::{
         walk::engine::Side,
         walkv3::{
@@ -30,8 +36,8 @@ impl Walking {
             side: Side::Left,
             requested_step: StepRequest {
                 forward: 0.0,
-                left: 0.04,
-                turn: 1.5,
+                left: 0.0,
+                turn: 0.7,
             },
         }
     }
@@ -62,7 +68,7 @@ impl WalkAction for Walking {
         }
     }
 
-    fn apply(&self, nao: &mut NaoManager) {
+    fn apply(&self, nao: &mut NaoManager, ctx: &DebugContext) {
         let Some(state) = &self.step_state else {
             return;
         };
@@ -77,7 +83,15 @@ impl WalkAction for Walking {
         let left = FootOffset::from_isometry(left, 0.180);
         let right = FootOffset::from_isometry(right, 0.180);
 
-        // tracing::info!("left: {:?}, right: {:?}", left, right);
+        ctx.log_scalar_f32("/foot/left/forward", left.forward)
+            .unwrap();
+        ctx.log_scalar_f32("/foot/left/left", left.left).unwrap();
+        ctx.log_scalar_f32("/foot/left/turn", left.turn).unwrap();
+
+        ctx.log_scalar_f32("/foot/right/forward", right.forward)
+            .unwrap();
+        ctx.log_scalar_f32("/foot/right/left", right.left).unwrap();
+        ctx.log_scalar_f32("/foot/right/turn", right.turn).unwrap();
 
         let (left_leg, right_leg) = kinematics::inverse::leg_angles(&left, &right);
 
@@ -86,7 +100,7 @@ impl WalkAction for Walking {
                 .left_leg(left_leg)
                 .right_leg(right_leg)
                 .build(),
-            LegJoints::fill(0.7),
+            LegJoints::fill(0.1),
             Priority::Critical,
         );
     }

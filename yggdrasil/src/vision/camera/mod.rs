@@ -61,9 +61,9 @@ impl Module for CameraModule {
         let app = app
             .add_startup_system(initialize_cameras)?
             .add_system(camera_system)
-            .add_system(debug_camera_system.after(camera_system))
-            .add_task::<ComputeTask<JpegTopImage>>()?
-            .add_task::<ComputeTask<JpegBottomImage>>()?
+            // .add_system(debug_camera_system.after(camera_system))
+            // .add_task::<ComputeTask<JpegTopImage>>()?
+            // .add_task::<ComputeTask<JpegBottomImage>>()?
             .add_task::<ComputeTask<Result<ExposureWeightsCompleted>>>()?
             .add_module(matrix::CameraMatrixModule)?;
 
