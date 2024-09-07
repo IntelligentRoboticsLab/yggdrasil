@@ -7,6 +7,7 @@ use miette::IntoDiagnostic;
 
 use nalgebra::Isometry3;
 use nidhogg::types::RgbU8;
+use rerun::{EncodedImage, MediaType};
 
 use std::net::IpAddr;
 
@@ -99,11 +100,12 @@ impl DebugContext {
             self.set_cycle(&img.cycle());
             let yuv_planar_image = YuvPlanarImage::from_yuyv(img.yuyv_image());
             let jpeg = yuv_planar_image.to_jpeg(jpeg_quality)?;
-            let tensor_data =
-                rerun::TensorData::from_jpeg_bytes(jpeg.to_owned()).into_diagnostic()?;
-            let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
+            let encoded_image =
+                EncodedImage::from_file_contents(jpeg.to_owned()).with_media_type(MediaType::JPEG);
 
-            self.rec.log(path.as_ref(), &img).into_diagnostic()?;
+            self.rec
+                .log(path.as_ref(), &encoded_image)
+                .into_diagnostic()?;
             self.clear_cycle();
         }
 
@@ -120,26 +122,8 @@ impl DebugContext {
         #[cfg(feature = "rerun")]
         {
             self.set_cycle(cycle);
-            let tensor_data = rerun::TensorData::from_image(img).into_diagnostic()?;
-            let img = rerun::Image::try_from(tensor_data).into_diagnostic()?;
+            let img = rerun::Image::from_image(img).into_diagnostic()?;
 
-            self.rec.log(path.as_ref(), &img).into_diagnostic()?;
-            self.clear_cycle();
-        }
-
-        Ok(())
-    }
-
-    pub fn log_patch(
-        &self,
-        path: impl AsRef<str>,
-        image: Cycle,
-        img: ndarray::Array3<f32>,
-    ) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            self.set_cycle(&image);
-            let img = rerun::Image::try_from(img).into_diagnostic()?;
             self.rec.log(path.as_ref(), &img).into_diagnostic()?;
             self.clear_cycle();
         }
@@ -643,11 +627,14 @@ fn init_rerun(storage: &mut Storage) -> Result<()> {
                 "field/mesh",
                 &rerun::Asset3D::from_file("./assets/rerun/spl_field.glb")
                     .expect("Failed to load field model")
-                    .with_transform(
-                        rerun::Transform3D::from_translation([0.0, 0.0, -0.05])
-                            .transform
-                            .0,
-                    ),
+                    .with_media_type(MediaType::glb()),
+            )
+            .into_diagnostic()?;
+
+        ctx.rec
+            .log_static(
+                "field/mesh",
+                &rerun::Transform3D::from_translation([0.0, 0.0, -0.05]),
             )
             .into_diagnostic()?;
 
