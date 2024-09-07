@@ -7,7 +7,6 @@ use miette::IntoDiagnostic;
 
 use nalgebra::Isometry3;
 use nidhogg::types::RgbU8;
-use rerun::{EncodedImage, MediaType};
 
 use std::net::IpAddr;
 
@@ -100,8 +99,8 @@ impl DebugContext {
             self.set_cycle(&img.cycle());
             let yuv_planar_image = YuvPlanarImage::from_yuyv(img.yuyv_image());
             let jpeg = yuv_planar_image.to_jpeg(jpeg_quality)?;
-            let encoded_image =
-                EncodedImage::from_file_contents(jpeg.to_owned()).with_media_type(MediaType::JPEG);
+            let encoded_image = rerun::EncodedImage::from_file_contents(jpeg.to_owned())
+                .with_media_type(rerun::MediaType::JPEG);
 
             self.rec
                 .log(path.as_ref(), &encoded_image)
@@ -627,7 +626,7 @@ fn init_rerun(storage: &mut Storage) -> Result<()> {
                 "field/mesh",
                 &rerun::Asset3D::from_file("./assets/rerun/spl_field.glb")
                     .expect("Failed to load field model")
-                    .with_media_type(MediaType::glb()),
+                    .with_media_type(rerun::MediaType::glb()),
             )
             .into_diagnostic()?;
 
