@@ -46,7 +46,7 @@ proc-macro2 = "1.0.86"
 quote = "1.0.37"
 rayon = "1.10.0"
 regex = "1.10.5"
-rerun = { version = "0.17.0", features = ["image"] }
+rerun = { version = "0.18.0", features = ["image"] }
 rustfft = "6.2.0"
 rustc_version = "0.4.1"
 serde = "1.0.209"
