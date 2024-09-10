@@ -58,6 +58,7 @@ fn main() -> Result<()> {
         .add_plugins((
             schedule::NaoSchedulePlugin,
             nao::NaoPlugins,
+            sensor::SensorPlugins,
             behavior::BehaviorPlugins,
             kinematics::KinematicsPlugin,
         ))

@@ -54,7 +54,7 @@ use yggdrasil::motion::odometry::{Odometry, OdometryConfig};
 use yggdrasil::motion::walk::engine::WalkRequest;
 use yggdrasil::prelude::Config;
 use yggdrasil::sensor::orientation::OrientationFilterConfig;
-use yggdrasil::sensor::{ButtonConfig, FilterConfig, FsrConfig};
+use yggdrasil::sensor::{ButtonConfig, FsrConfig, SensorConfig};
 use yggdrasil::vision::camera::{CameraConfig, CameraSettings};
 use yggdrasil::vision::field_marks::FieldMarksConfig;
 use yggdrasil::vision::VisionConfig;
@@ -548,7 +548,7 @@ fn create_default_configs() -> (YggdrasilConfig, BehaviorConfig, GameControllerC
                     num_buffers: 0,
                 },
             },
-            filter: FilterConfig {
+            filter: SensorConfig {
                 button: ButtonConfig {
                     activation_threshold: 0.0,
                     held_duration_threshold: Default::default(),

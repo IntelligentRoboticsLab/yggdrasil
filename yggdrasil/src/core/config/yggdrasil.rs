@@ -6,14 +6,14 @@ use crate::prelude::*;
 use crate::sensor::orientation::OrientationFilterConfig;
 use crate::{
     behavior::primary_state::PrimaryStateConfig, game_controller::GameControllerConfig,
-    sensor::FilterConfig, vision::camera::CameraConfig, vision::VisionConfig,
+    sensor::SensorConfig, vision::camera::CameraConfig, vision::VisionConfig,
 };
 
 #[derive(Resource, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct YggdrasilConfig {
     pub camera: CameraConfig,
-    pub filter: FilterConfig,
+    pub filter: SensorConfig,
     pub game_controller: GameControllerConfig,
     pub primary_state: PrimaryStateConfig,
     pub vision: VisionConfig,

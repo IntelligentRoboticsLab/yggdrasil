@@ -1,3 +1,7 @@
+//! A simple low pass smoothing filter.
+//!
+//! See [`LowPassFilter`] for more information.
+
 use std::ops::{Add, Mul};
 
 /// A low-pass smoothing filter.

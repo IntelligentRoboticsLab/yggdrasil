@@ -1,57 +1,35 @@
-use crate::prelude::*;
-use bevy::prelude::*;
-
-use self::{
-    button::ButtonPlugin, falling::FallingFilterPlugin, fsr::FSRSensor, imu::IMUSensor,
-    orientation::OrientationFilterPlugin, sonar::SonarSensor,
-};
-
+use bevy::{app::PluginGroupBuilder, prelude::*};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationMilliSeconds};
-use std::time::Duration;
 
 pub mod button;
 pub mod falling;
 pub mod fsr;
 pub mod imu;
-/// A simple low pass smoothing filter.
 pub mod low_pass_filter;
 pub mod orientation;
 pub mod sonar;
 
+/// Plugin group for all sensor related plugins.
+pub struct SensorPlugins;
+
+impl PluginGroup for SensorPlugins {
+    fn build(self) -> PluginGroupBuilder {
+        PluginGroupBuilder::start::<Self>()
+            .add(button::ButtonPlugin)
+            .add(fsr::FSRSensorPlugin)
+            .add(imu::IMUSensorPlugin)
+            .add(sonar::SonarSensorPlugin)
+            .add(orientation::OrientationFilterPlugin)
+            .add(falling::FallingFilterPlugin)
+    }
+}
+
+/// Configuration for all sensor related plugins.
 #[derive(Resource, Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-pub struct FilterConfig {
-    pub fsr: FsrConfig,
-    pub button: ButtonConfig,
-}
-
-#[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
-pub struct ButtonConfig {
-    pub activation_threshold: f32,
-    #[serde_as(as = "DurationMilliSeconds<u64>")]
-    pub held_duration_threshold: Duration,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
-pub struct FsrConfig {
-    pub ground_contact_threshold: f32,
-}
-
-pub struct SensorModule;
-
-impl Module for SensorModule {
-    fn initialize(self, app: App) -> Result<App> {
-        let app = app
-            .add_module(ButtonPlugin)?
-            .add_module(FSRSensor)?
-            .add_module(IMUSensor)?
-            .add_module(OrientationFilterPlugin)?
-            .add_module(FallingFilterPlugin)?
-            .add_module(SonarSensor)?;
-        Ok(app)
-    }
+pub struct SensorConfig {
+    /// Configuration for the FSR sensor.
+    pub fsr: fsr::FsrConfig,
+    /// Configuration for the button sensitivies.
+    pub button: button::ButtonConfig,
 }

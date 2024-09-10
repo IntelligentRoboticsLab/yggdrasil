@@ -1,9 +1,11 @@
 use crate::prelude::*;
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DurationMilliSeconds};
 
-use super::{ButtonConfig, FilterConfig};
+use super::SensorConfig;
 use nidhogg::NaoState;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 /// Plugin that adds resources for structured wrappers for each button on the nao,
 /// derived from the raw [`NaoState`].
@@ -21,6 +23,18 @@ impl Plugin for ButtonPlugin {
             .init_resource::<LeftFootButtons>()?
             .init_resource::<RightFootButtons>()
     }
+}
+
+/// Configuration for the button sensitivity.
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct ButtonConfig {
+    /// The threshold for a button to be considered pressed.
+    pub activation_threshold: f32,
+    /// The time (in ms) a button needs to be held down, in order to be considered held down.
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub held_duration_threshold: Duration,
 }
 
 /// The state of a button.
@@ -151,7 +165,7 @@ pub struct RightFootButtons {
 
 fn button_filter(
     nao_state: Res<NaoState>,
-    config: Res<FilterConfig>,
+    config: Res<SensorConfig>,
     (
         mut head_buttons,
         mut chest_button,
