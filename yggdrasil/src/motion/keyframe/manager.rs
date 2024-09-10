@@ -2,7 +2,7 @@ use super::types::{
     ConditionalVariable, ExitRoutine, FailRoutine, Motion, MotionCondition, MotionType,
 };
 use crate::motion::walk::engine::{WalkState, WalkingEngine};
-use crate::nao::manager::Priority;
+use crate::nao::Priority;
 use miette::{miette, Result};
 use nidhogg::types::JointArray;
 use nidhogg::NaoState;

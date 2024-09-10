@@ -5,7 +5,7 @@ use crate::{
     behavior::engine::{Behavior, Context, Control},
     core::debug::DebugContext,
     motion::step_planner::Target,
-    nao::manager::Priority,
+    nao::Priority,
 };
 
 #[derive(Copy, Clone, PartialEq, Debug)]

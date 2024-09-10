@@ -11,8 +11,8 @@ use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
 
 use crate::localization::RobotPose;
-use crate::nao::manager::NaoManager;
-use crate::nao::manager::Priority::Medium;
+use crate::nao::NaoManager;
+use crate::nao::Priority::Medium;
 use crate::prelude::*;
 use crate::vision::camera::BottomImage;
 use crate::vision::camera::{matrix::CameraMatrices, Image, TopImage};

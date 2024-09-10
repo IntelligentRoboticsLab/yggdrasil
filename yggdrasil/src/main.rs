@@ -54,7 +54,12 @@ fn main() -> Result<()> {
     // return app.run();
 
     App::new()
-        .add_plugins((MinimalPlugins, schedule::NaoSchedulePlugin, nao::NaoPlugins))
+        .add_plugins(MinimalPlugins)
+        .add_plugins((
+            schedule::NaoSchedulePlugin,
+            nao::NaoPlugins,
+            behavior::BehaviorPlugins,
+        ))
         .run();
     Ok(())
 }

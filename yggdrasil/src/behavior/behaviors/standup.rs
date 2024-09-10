@@ -1,7 +1,7 @@
 use crate::{
     behavior::engine::{Behavior, Context, Control},
     motion::keyframe::MotionType,
-    nao::manager::Priority,
+    nao::Priority,
     sensor::falling::{FallState, LyingDirection},
 };
 

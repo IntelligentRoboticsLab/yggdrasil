@@ -1,4 +1,4 @@
-use crate::nao::manager::Priority;
+use crate::nao::Priority;
 use crate::prelude::*;
 use bevy::prelude::*;
 use nidhogg::{

@@ -59,7 +59,7 @@ use yggdrasil::vision::camera::{CameraConfig, CameraSettings};
 use yggdrasil::vision::field_marks::FieldMarksConfig;
 use yggdrasil::vision::VisionConfig;
 use yggdrasil::{
-    behavior::{engine::Control, primary_state::PrimaryState, Engine},
+    behavior::{engine::Control, primary_state::PrimaryState, BehaviorEngine},
     core::config::layout::LayoutConfig,
     motion::walk::engine::WalkingEngine,
 };
@@ -375,7 +375,7 @@ struct Robot {
     player_config: PlayerConfig,
     primary_state: PrimaryState,
     pose: RobotPose,
-    engine: Engine,
+    engine: BehaviorEngine,
     walking_engine: WalkingEngine,
     sees_ball: bool,
 }
@@ -384,7 +384,7 @@ impl Robot {
     fn new(player_config: PlayerConfig, isometry: Isometry2<f32>) -> Self {
         Self {
             walking_engine: WalkingEngine::default(),
-            engine: Engine::default(),
+            engine: BehaviorEngine::default(),
             primary_state: PrimaryState::Initial,
             pose: RobotPose { inner: isometry },
             sees_ball: false,

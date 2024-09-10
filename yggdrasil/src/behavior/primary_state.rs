@@ -1,9 +1,10 @@
 use crate::{
     core::{config::showtime::PlayerConfig, whistle::WhistleState},
-    nao::manager::{NaoManager, Priority},
+    nao::{NaoManager, Priority},
     prelude::*,
     sensor::button::{ChestButton, HeadButtons},
 };
+use bevy::prelude::*;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
@@ -20,23 +21,23 @@ pub struct PrimaryStateConfig {
     pub chest_blink_interval: Duration,
 }
 
-/// A module providing information about the primary state of the robot. These
+/// Plugin providing information about the primary state of the robot. These
 /// states include: "Unstiff", "Initial", "Ready", "Set", "Playing",
 /// "Penalized", "Finished" and "Calibration".
 ///
 /// This module provides the following resources to the application:
 /// - [`PrimaryState`]
-pub struct PrimaryStateModule;
+pub struct PrimaryStatePlugin;
 
-impl Module for PrimaryStateModule {
-    fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_resource(Resource::new(PrimaryState::Sitting))?
-            .add_system(update_primary_state.after(crate::sensor::button::button_filter)))
+impl Plugin for PrimaryStatePlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(PrimaryState::Unstiff);
+
+        app.add_systems(Update, update_primary_state);
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Copy, Default)]
+#[derive(Resource, Debug, Clone, PartialEq, Copy, Default, Reflect)]
 pub enum PrimaryState {
     /// State in which all joints but the hips are unstiffened
     /// and the robot does not move, sitting down.
@@ -75,19 +76,18 @@ fn is_penalized_by_game_controller(
     })
 }
 
-#[system]
 pub fn update_primary_state(
-    primary_state: &mut PrimaryState,
-    game_controller_message: &Option<GameControllerMessage>,
-    nao_manager: &mut NaoManager,
-    (head_buttons, chest_button): (&HeadButtons, &ChestButton),
-    config: &PrimaryStateConfig,
-    player_config: &PlayerConfig,
-    whistle_state: &WhistleState,
+    mut primary_state: ResMut<PrimaryState>,
+    game_controller_message: Res<Option<GameControllerMessage>>,
+    mut nao_manager: ResMut<NaoManager>,
+    (head_buttons, chest_button): (Res<HeadButtons>, Res<ChestButton>),
+    config: Res<PrimaryStateConfig>,
+    player_config: Res<PlayerConfig>,
+    whistle_state: Res<WhistleState>,
 ) -> Result<()> {
     use PrimaryState as PS;
     let next_state = next_primary_state(
-        primary_state,
+        primary_state.as_deref_mut(),
         game_controller_message,
         chest_button,
         head_buttons,

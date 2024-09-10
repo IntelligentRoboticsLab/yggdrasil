@@ -1,12 +1,16 @@
 use bevy::app::{PluginGroup, PluginGroupBuilder};
-mod cycle;
-pub use cycle::*;
 
 mod battery_led;
-pub mod center_of_mass;
+mod center_of_mass;
+mod cycle;
 mod lola;
-pub mod manager;
+mod manager;
 mod robot_info;
+
+pub use center_of_mass::*;
+pub use cycle::*;
+pub use manager::*;
+pub use robot_info::*;
 
 const DEFAULT_STIFFNESS: f32 = 0.8;
 

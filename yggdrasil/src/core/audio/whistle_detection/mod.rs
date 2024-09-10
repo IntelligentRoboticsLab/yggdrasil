@@ -10,7 +10,7 @@ use crate::{
         ml::{MlModel, MlTask, MlTaskResource},
         whistle::WhistleState,
     },
-    nao::manager::{NaoManager, Priority},
+    nao::{NaoManager, Priority},
     prelude::*,
 };
 

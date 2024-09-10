@@ -4,23 +4,23 @@ pub mod engine;
 pub mod primary_state;
 pub mod roles;
 
-use crate::prelude::*;
-
-use engine::BehaviorEngineModule;
+use bevy::{app::PluginGroupBuilder, prelude::*};
+use engine::BehaviorEnginePlugin;
 
 pub use behavior_config::BehaviorConfig;
 #[doc(inline)]
-pub use engine::Engine;
+pub use engine::BehaviorEngine;
 
-/// A collection of modules related to behaviors.
+/// A collection of plugins related to behaviors.
 ///
 /// This module adds the following modules to the application:
 /// - [`BehaviorEngineModule`]
-pub struct BehaviorModule;
+pub struct BehaviorPlugins;
 
-impl Module for BehaviorModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_module(BehaviorEngineModule)?
-            .add_module(primary_state::PrimaryStateModule)
+impl PluginGroup for BehaviorPlugins {
+    fn build(self) -> PluginGroupBuilder {
+        PluginGroupBuilder::start::<Self>()
+            .add(BehaviorEnginePlugin)
+            .add(primary_state::PrimaryStatePlugin)
     }
 }

@@ -13,7 +13,7 @@ use serde_with::{serde_as, DurationMilliSeconds};
 
 use crate::{
     core::debug::DebugContext,
-    nao::manager::{NaoManager, Priority},
+    nao::{NaoManager, Priority},
     prelude::*,
 };
 

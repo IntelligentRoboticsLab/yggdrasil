@@ -1,6 +1,6 @@
 use crate::{
     behavior::engine::{Behavior, Context, Control},
-    nao::manager::Priority,
+    nao::Priority,
 };
 
 /// Behavior used for preventing damage when the robot is in a falling state.
