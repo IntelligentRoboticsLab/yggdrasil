@@ -1,3 +1,4 @@
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 #[cfg(feature = "rerun")]
@@ -10,7 +11,7 @@ use miette::IntoDiagnostic;
 use nalgebra::Isometry3;
 use nidhogg::types::RgbU8;
 
-use std::net::IpAddr;
+use std::{marker::PhantomData, net::IpAddr};
 
 #[cfg(feature = "rerun")]
 use heimdall::YuvPlanarImage;
@@ -36,41 +37,22 @@ impl Plugin for DebugPlugin {
 /// The central context used for logging debug data to [rerun](https://rerun.io).
 ///
 /// If yggdrasil is not compiled with the `rerun` feature, all calls will result in a no-op.
-#[derive(Clone)]
-pub struct DebugContext {
+#[derive(SystemParam, Clone)]
+pub struct DebugContext<'w> {
     #[cfg(feature = "rerun")]
-    rec: rerun::RecordingStream,
-    current_cycle: Cycle,
+    rec: ResMut<'w, RerunStream>,
+    _marker: PhantomData<&'w ()>,
+}
+
+#[cfg(feature = "rerun")]
+#[derive(Resource, Debug, Clone)]
+struct RerunStream {
+    stream: rerun::RecordingStream,
+    cycle: Cycle,
 }
 
 #[allow(unused)]
-impl DebugContext {
-    /// Initializes a new [`DebugContext`].
-    ///
-    /// If yggdrasil is not compiled with the `rerun` feature, this will return a [`DebugContext`] that
-    /// does nothing.
-    pub fn init(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
-        #[cfg(feature = "rerun")]
-        {
-            let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
-                .connect_opts(
-                    SocketAddr::new(rerun_host, rerun::default_server_addr().port()),
-                    rerun::default_flush_timeout(),
-                )
-                .into_diagnostic()?;
-
-            Ok(DebugContext {
-                rec,
-                current_cycle: Cycle(0),
-            })
-        }
-
-        #[cfg(not(feature = "rerun"))]
-        Ok(DebugContext {
-            current_cycle: Cycle(0),
-        })
-    }
-
+impl<'w> DebugContext<'w> {
     /// Set the current cycle index for the debug viewer.
     ///
     /// This will be used to align logs with the cycle index in the debug viewer.
