@@ -1,27 +1,19 @@
 use crate::prelude::*;
+use bevy::prelude::*;
 
 use super::{ButtonConfig, FilterConfig};
 use nidhogg::NaoState;
 use std::time::Instant;
 
-/// A module offering structured wrappers for each Nao button, derived from the raw [`NaoState`].
-///
-/// By allowing systems to depend only on necessary buttons, this design enhances the dependency graph's efficiency.
-///
-/// This module provides the following resources to the application:
-/// - [`HeadButtons`]
-/// - [`ChestButton`]
-/// - [`LeftHandButtons`]
-/// - [`RightHandButtons`]
-/// - [`LeftFootButtons`]
-/// - [`RightFootButtons`]
+/// Plugin that adds resources for structured wrappers for each button on the nao,
+/// derived from the raw [`NaoState`].
 ///
 /// These resources include a [`ButtonState`], representing the button's current status.
-pub struct ButtonFilter;
+pub struct ButtonPlugin;
 
-impl Module for ButtonFilter {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_staged_system(SystemStage::Sensor, button_filter)
+impl Plugin for ButtonPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Sensor, button_filter)
             .init_resource::<HeadButtons>()?
             .init_resource::<ChestButton>()?
             .init_resource::<LeftHandButtons>()?
@@ -31,7 +23,8 @@ impl Module for ButtonFilter {
     }
 }
 
-#[derive(Default, Debug)]
+/// The state of a button.
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum ButtonState {
     /// The button is not being pressed.
     #[default]
@@ -82,7 +75,7 @@ impl ButtonState {
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's head.
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct HeadButtons {
     /// Front button on the head of the Nao.
     pub front: ButtonState,
@@ -110,14 +103,14 @@ impl HeadButtons {
 }
 
 /// Struct containing [`state`](`ButtonState`) of the buttons in the Nao's chest.
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct ChestButton {
     /// The button in the chest of the Nao.
     pub state: ButtonState,
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's left hand.
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct LeftHandButtons {
     /// Left button on the left hand of the Nao.
     pub left: ButtonState,
@@ -128,7 +121,7 @@ pub struct LeftHandButtons {
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's right hand.
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct RightHandButtons {
     /// Left button on the right hand of the Nao.
     pub left: ButtonState,
@@ -139,7 +132,7 @@ pub struct RightHandButtons {
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's left foot.
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct LeftFootButtons {
     /// Left button on the left foot of the Nao.
     pub left: ButtonState,
@@ -148,7 +141,7 @@ pub struct LeftFootButtons {
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's right foot.
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct RightFootButtons {
     /// Left button on the right foot of the Nao.
     pub left: ButtonState,
@@ -156,17 +149,24 @@ pub struct RightFootButtons {
     pub right: ButtonState,
 }
 
-#[allow(clippy::too_many_arguments)]
-#[system]
-pub fn button_filter(
-    nao_state: &NaoState,
-    head_buttons: &mut HeadButtons,
-    chest_button: &mut ChestButton,
-    left_hand_buttons: &mut LeftHandButtons,
-    right_hand_buttons: &mut RightHandButtons,
-    left_foot_buttons: &mut LeftFootButtons,
-    right_foot_buttons: &mut RightFootButtons,
-    config: &FilterConfig,
+fn button_filter(
+    nao_state: Res<NaoState>,
+    config: Res<FilterConfig>,
+    (
+        mut head_buttons,
+        mut chest_button,
+        mut left_hand_buttons,
+        mut right_hand_buttons,
+        mut left_foot_buttons,
+        mut right_foot_buttons,
+    ): (
+        ResMut<HeadButtons>,
+        ResMut<ChestButton>,
+        ResMut<LeftHandButtons>,
+        ResMut<RightHandButtons>,
+        ResMut<LeftFootButtons>,
+        ResMut<RightFootButtons>,
+    ),
 ) -> Result<()> {
     let touch = nao_state.touch.clone();
     let config = &config.button;

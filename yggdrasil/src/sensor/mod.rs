@@ -1,7 +1,8 @@
 use crate::prelude::*;
+use bevy::prelude::*;
 
 use self::{
-    button::ButtonFilter, falling::FallingFilter, fsr::FSRSensor, imu::IMUSensor,
+    button::ButtonPlugin, falling::FallingFilter, fsr::FSRSensor, imu::IMUSensor,
     orientation::OrientationFilter, sonar::SonarSensor,
 };
 
@@ -18,7 +19,7 @@ pub mod low_pass_filter;
 pub mod orientation;
 pub mod sonar;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Resource, Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct FilterConfig {
     pub fsr: FsrConfig,
@@ -45,7 +46,7 @@ pub struct SensorModule;
 impl Module for SensorModule {
     fn initialize(self, app: App) -> Result<App> {
         let app = app
-            .add_module(ButtonFilter)?
+            .add_module(ButtonPlugin)?
             .add_module(FSRSensor)?
             .add_module(IMUSensor)?
             .add_module(OrientationFilter)?
