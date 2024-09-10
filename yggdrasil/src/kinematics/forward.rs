@@ -2,6 +2,7 @@
 //!
 //! This module is based on the implementation in the HULKs 2023 code release.
 
+use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_4;
 
 use nalgebra::{Isometry3, Translation, Vector3};
@@ -11,7 +12,7 @@ use nidhogg::types::{
 
 use super::robot_dimensions;
 
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct RobotKinematics {
     pub neck_to_robot: Isometry3<f32>,
     pub head_to_robot: Isometry3<f32>,
