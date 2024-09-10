@@ -9,10 +9,7 @@ pub(super) struct CycleTimePlugin;
 impl Plugin for CycleTimePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PostStartup, initialize_cycle_counter);
-        app.add_systems(
-            Last,
-            update_cycle_stats.after(super::lola::LolaCycle::Flush),
-        );
+        app.add_systems(PostWrite, update_cycle_stats);
     }
 }
 

@@ -23,7 +23,7 @@ impl Plugin for CenterOfMassPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CenterOfMass>();
         app.add_systems(
-            PreUpdate,
+            Sensor,
             (
                 update_com.after(crate::kinematics::update_kinematics),
                 log_com,

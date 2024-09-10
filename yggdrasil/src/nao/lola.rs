@@ -30,10 +30,10 @@ pub(super) struct LolaPlugin;
 impl Plugin for LolaPlugin {
     fn build(&self, app: &mut App) {
         app.configure_sets(Update, LolaCycle::Main)
-            .configure_sets(Last, LolaCycle::Flush);
+            .configure_sets(Write, LolaCycle::Flush);
 
         app.add_systems(Startup, (setup_lola, initialize_nao).chain());
-        app.add_systems(Last, write_hardware_info.in_set(LolaCycle::Flush));
+        app.add_systems(Write, write_hardware_info.in_set(LolaCycle::Flush));
     }
 }
 

@@ -7,7 +7,6 @@ pub mod center_of_mass;
 mod lola;
 pub mod manager;
 mod robot_info;
-mod schedule;
 
 const DEFAULT_STIFFNESS: f32 = 0.8;
 

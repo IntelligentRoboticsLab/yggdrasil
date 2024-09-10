@@ -4,6 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use crate::prelude::*;
 use bevy::prelude::*;
 use nidhogg::{
     types::{
@@ -34,7 +35,7 @@ pub(super) struct NaoManagerPlugin;
 impl Plugin for NaoManagerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<NaoManager>()
-            .add_systems(PostUpdate, finalize);
+            .add_systems(PreWrite, finalize);
     }
 }
 

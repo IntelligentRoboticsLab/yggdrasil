@@ -4,20 +4,22 @@ use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, EnvFilter, Layer};
-use yggdrasil::behavior::BehaviorModule;
-use yggdrasil::communication::CommunicationModule;
-use yggdrasil::core::whistle::WhistleStateModule;
-use yggdrasil::core::{config::ConfigModule, debug::DebugModule, ml::MlModule};
-use yggdrasil::game_controller::GameControllerModule;
-use yggdrasil::kinematics::KinematicsModule;
-use yggdrasil::localization::LocalizationModule;
-use yggdrasil::motion::walk::WalkingEngineModule;
-use yggdrasil::motion::MotionModule;
-use yggdrasil::nao::NaoModule;
+// use yggdrasil::behavior::BehaviorModule;
+// use yggdrasil::communication::CommunicationModule;
+// use yggdrasil::core::whistle::WhistleStateModule;
+// use yggdrasil::core::{config::ConfigModule, debug::DebugModule, ml::MlModule};
+// use yggdrasil::game_controller::GameControllerModule;
+// use yggdrasil::kinematics::KinematicsModule;
+// use yggdrasil::localization::LocalizationModule;
+// use yggdrasil::motion::walk::WalkingEngineModule;
+// use yggdrasil::motion::MotionModule;
+// use yggdrasil::nao::NaoModule;
 use yggdrasil::prelude::Result;
-use yggdrasil::sensor::SensorModule;
-use yggdrasil::vision::camera::CameraModule;
-use yggdrasil::vision::VisionModule;
+use yggdrasil::*;
+// use yggdrasil::schedule;
+// use yggdrasil::sensor::SensorModule;
+// use yggdrasil::vision::camera::CameraModule;
+// use yggdrasil::vision::VisionModule;
 
 use bevy::prelude::*;
 
@@ -52,7 +54,7 @@ fn main() -> Result<()> {
     // return app.run();
 
     App::new()
-        .add_plugins((MinimalPlugins, nao::NaoPlugins))
+        .add_plugins((MinimalPlugins, schedule::NaoSchedulePlugin, nao::NaoPlugins))
         .run();
     Ok(())
 }
