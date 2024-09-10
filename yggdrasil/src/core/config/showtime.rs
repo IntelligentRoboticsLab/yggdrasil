@@ -1,10 +1,9 @@
 use bevy::prelude::*;
-use miette::miette;
 use odal::Config;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::{nao::RobotInfo, prelude::*};
+use crate::nao::RobotInfo;
 
 /// This config store general information for matches, for example things like
 /// team number and player numbers.
@@ -24,7 +23,7 @@ impl Config for ShowtimeConfig {
 
 /// This config store robot specificinformation for matches, for example
 /// things like the robot team and player number.
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Resource, Debug, Deserialize, Serialize, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct PlayerConfig {
     pub player_number: u8,

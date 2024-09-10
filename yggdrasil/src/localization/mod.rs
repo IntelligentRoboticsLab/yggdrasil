@@ -7,37 +7,38 @@ use crate::{
     motion::odometry::{self, Odometry},
     prelude::*,
 };
+use bevy::prelude::*;
 use nalgebra::{Isometry2, Isometry3, Point2, Translation3, UnitQuaternion};
 use nidhogg::types::{
     color::{self, RgbU8},
     HeadJoints,
 };
 
-pub struct LocalizationModule;
+/// The localization plugin provides functionalities related to the localization of the robot.
+pub(super) struct LocalizationPlugin;
 
-impl Module for LocalizationModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_system(update_robot_pose.after(odometry::update_odometry))
-            .add_startup_system(init_pose)
+impl Plugin for LocalizationPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, update_robot_pose.after(odometry::update_odometry));
+        app.add_systems(PostStartup, init_pose);
     }
 }
 
-#[startup_system]
 fn init_pose(
-    storage: &mut Storage,
-    layout_config: &LayoutConfig,
-    player_config: &PlayerConfig,
+    mut commands: Commands,
+    layout_config: Res<LayoutConfig>,
+    player_config: Res<PlayerConfig>,
 ) -> Result<()> {
     let initial_position = layout_config
         .initial_positions
         .player(player_config.player_number);
 
-    storage.add_resource(Resource::new(RobotPose::new(initial_position.isometry)))?;
+    commands.insert_resource(RobotPose::new(initial_position.isometry));
 
     Ok(())
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Resource, Default, Debug, Clone)]
 pub struct RobotPose {
     pub inner: Isometry2<f32>,
 }
@@ -96,15 +97,19 @@ impl RobotPose {
     }
 }
 
-#[system]
-pub fn update_robot_pose(
-    robot_pose: &mut RobotPose,
-    odometry: &Odometry,
-    ctx: &DebugContext,
-    primary_state: &PrimaryState,
-    layout_config: &LayoutConfig,
+fn update_robot_pose(
+    mut robot_pose: ResMut<RobotPose>,
+    odometry: Res<Odometry>,
+    ctx: Res<DebugContext>,
+    primary_state: Res<PrimaryState>,
+    layout_config: Res<LayoutConfig>,
 ) -> Result<()> {
-    *robot_pose = next_robot_pose(robot_pose, odometry, primary_state, layout_config);
+    *robot_pose = next_robot_pose(
+        robot_pose.as_deref_mut(),
+        odometry.as_ref(),
+        primary_state.as_ref(),
+        layout_config.as_ref(),
+    );
     log_pose(
         "/localisation/pose",
         ctx,

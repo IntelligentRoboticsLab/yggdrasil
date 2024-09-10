@@ -1,3 +1,4 @@
+use bevy::prelude::*;
 use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
 
 use serde::{Deserialize, Serialize};
@@ -16,7 +17,7 @@ pub struct OdometryConfig {
     pub scale_factor: Vector2<f32>,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Resource, Debug, Default, Clone)]
 pub struct Odometry {
     pub accumulated: Isometry2<f32>,
     pub offset_to_last: Isometry2<f32>,
