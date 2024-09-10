@@ -14,40 +14,47 @@ use yggdrasil::localization::LocalizationModule;
 use yggdrasil::motion::walk::WalkingEngineModule;
 use yggdrasil::motion::MotionModule;
 use yggdrasil::nao::NaoModule;
-use yggdrasil::prelude::*;
+use yggdrasil::prelude::Result;
 use yggdrasil::sensor::SensorModule;
 use yggdrasil::vision::camera::CameraModule;
 use yggdrasil::vision::VisionModule;
+
+use bevy::prelude::*;
 
 fn main() -> Result<()> {
     setup_tracing()?;
     miette::set_panic_hook();
 
-    let app = App::new()
-        .add_module(NaoModule)?
-        .add_module(ConfigModule)?
-        .add_module(MlModule)?
-        .add_module(SensorModule)?
-        .add_module(KinematicsModule)?
-        .add_module(CameraModule)?
-        .add_module(BehaviorModule)?
-        .add_module(CommunicationModule)?
-        .add_module(GameControllerModule)?
-        .add_module(WalkingEngineModule)?
-        .add_module(DebugModule)?
-        .add_module(VisionModule)?
-        .add_module(MotionModule)?
-        .add_module(LocalizationModule)?
-        .add_module(WhistleStateModule)?;
+    // let app = App::new()
+    //     .add_module(NaoModule)?
+    //     .add_module(ConfigModule)?
+    //     .add_module(MlModule)?
+    //     .add_module(SensorModule)?
+    //     .add_module(KinematicsModule)?
+    //     .add_module(CameraModule)?
+    //     .add_module(BehaviorModule)?
+    //     .add_module(CommunicationModule)?
+    //     .add_module(GameControllerModule)?
+    //     .add_module(WalkingEngineModule)?
+    //     .add_module(DebugModule)?
+    //     .add_module(VisionModule)?
+    //     .add_module(MotionModule)?
+    //     .add_module(LocalizationModule)?
+    //     .add_module(WhistleStateModule)?;
 
-    #[cfg(feature = "alsa")]
-    let app = app.add_module(yggdrasil::core::audio::AudioModule)?;
+    // #[cfg(feature = "alsa")]
+    // let app = app.add_module(yggdrasil::core::audio::AudioModule)?;
 
-    #[cfg(feature = "dependency_graph")]
-    return app.store_system_dependency_graph("../dependency_graph.png");
+    // #[cfg(feature = "dependency_graph")]
+    // return app.store_system_dependency_graph("../dependency_graph.png");
 
-    #[cfg(not(feature = "dependency_graph"))]
-    return app.run();
+    // #[cfg(not(feature = "dependency_graph"))]
+    // return app.run();
+
+    App::new()
+        .add_plugins((MinimalPlugins, nao::NaoPlugins))
+        .run();
+    Ok(())
 }
 
 fn setup_tracing() -> Result<()> {

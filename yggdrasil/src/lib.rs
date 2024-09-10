@@ -16,5 +16,5 @@ pub use miette::Result;
 pub mod prelude {
     pub use crate::{core::config::ConfigResource, Result};
     pub use odal::Config;
-    pub use tyr::prelude::*;
+    // pub use tyr::prelude::*;
 }

@@ -17,6 +17,7 @@ path = "src/main.rs"
 alsa = { workspace = true, optional = true }
 apodize = { workspace = true }
 bifrost = { path = "../crates/bifrost/" }
+bevy = { workspace = true }
 derive_more = { workspace = true }
 enum_dispatch = { workspace = true }
 fast_image_resize = { workspace = true }
@@ -31,7 +32,7 @@ lstsq = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true, features = ["serde-serialize"] }
 ndarray = { workspace = true }
-nidhogg = { workspace = true, features = ["lola"] }
+nidhogg = { workspace = true, features = ["lola", "bevy"] }
 num = { workspace = true }
 odal = { path = "../crates/odal" }
 openvino = { workspace = true }

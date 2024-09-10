@@ -4,6 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use bevy::prelude::*;
 use nidhogg::{
     types::{
         color, ArmJoints, FillExt, HeadJoints, JointArray, LeftEar, LeftEye, LegJoints, RgbF32,
@@ -11,8 +12,6 @@ use nidhogg::{
     },
     NaoControlMessage,
 };
-
-use crate::prelude::*;
 
 /// The stiffness constant for the "unstiff"/"floppy" state for robot joints.
 const STIFFNESS_UNSTIFF: f32 = -1.0;
@@ -23,24 +22,23 @@ const HIP_POSITION: f32 = -0.9;
 
 type JointValue = f32;
 
-/// A module providing the nao manager.
+/// Plugin providing the [`NaoManager`].
 ///
 /// All systems that want to set joint- or LED values using the nao manager, should be executed before
 /// [`finalize`].
 ///
 /// This module provides the following resources to the application:
 /// - [`NaoManager`]
-pub struct NaoManagerModule;
+pub(super) struct NaoManagerPlugin;
 
-impl Module for NaoManagerModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_staged_system(SystemStage::Finalize, finalize)
-            .init_resource::<NaoManager>()
+impl Plugin for NaoManagerPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<NaoManager>()
+            .add_systems(PostUpdate, finalize);
     }
 }
 
-#[system]
-pub fn finalize(control_message: &mut NaoControlMessage, manager: &mut NaoManager) -> Result<()> {
+fn finalize(mut control_message: ResMut<NaoControlMessage>, mut manager: ResMut<NaoManager>) {
     control_message.position = manager.make_joint_positions();
     control_message.stiffness = manager.make_joint_stiffnesses();
 
@@ -54,11 +52,9 @@ pub fn finalize(control_message: &mut NaoControlMessage, manager: &mut NaoManage
     control_message.skull = manager.led_skull.value.clone();
 
     manager.clear_priorities();
-
-    Ok(())
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct JointSettings<T> {
     joints_position: T,
     joints_stiffness: T,
@@ -110,7 +106,7 @@ impl Default for ChestBlink {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct LedSettings<T> {
     value: T,
     priority: Option<Priority>,
@@ -122,7 +118,7 @@ struct LedSettings<T> {
 /// Each cycle, the nao manager will update the [`NaoControlMessage`] with the requests that have the highest
 /// priorties.
 /// If multiple requests with the same priority are made, the first request will be prioritized.
-#[derive(Default)]
+#[derive(Default, Debug, Resource)]
 pub struct NaoManager {
     leg_settings: JointSettings<LegJoints<JointValue>>,
     arm_settings: JointSettings<ArmJoints<JointValue>>,
@@ -435,7 +431,7 @@ impl NaoManager {
 /// Priority order for the nao manager commands.
 ///
 /// Priories are in the range [0, 100].
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug, Eq)]
 pub enum Priority {
     /// Has priority `10`.
     #[default]

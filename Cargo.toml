@@ -6,6 +6,7 @@ resolver = "2"
 alsa = "0.9.1"
 async-trait = "0.1.82"
 byteorder = "1.4.3"
+bevy = { version = "0.14.2", default-features = false }
 cargo_toml = "0.19.2"
 clap = "4.5.18"
 colored = "2.0.4"
@@ -33,10 +34,10 @@ local-ip-address = "0.6.3"
 miette = "5.10.0"
 nalgebra = { version = "0.32.6" }
 ndarray = "0.15.6"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "b4a4ac455cb67986a5ea4ffaa88a91e2a8cd9feb" }
+nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "3afa262460c809627d200c9e78a10939ddfff7e0" }
 num = "0.4.3"
 openvino = { git = "https://github.com/YukumoHunter/openvino-rs.git", branch = "evil-hack", features = [
-    "runtime-linking",
+  "runtime-linking",
 ] }
 ordered-float = "4.2.1"
 lstsq = "0.5.0"
