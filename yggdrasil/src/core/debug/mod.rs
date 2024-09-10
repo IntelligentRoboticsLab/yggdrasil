@@ -1,3 +1,5 @@
+use bevy::prelude::*;
+
 #[cfg(feature = "rerun")]
 use std::{convert::Into, net::SocketAddr};
 
@@ -23,13 +25,11 @@ use crate::{
 ///
 /// This module provides the following resources to the application:
 /// - [`DebugContext`]
-pub struct DebugModule;
+pub struct DebugPlugin;
 
-impl Module for DebugModule {
-    fn initialize(self, app: App) -> miette::Result<tyr::prelude::App> {
-        Ok(app
-            .add_startup_system(init_rerun)?
-            .add_staged_system(SystemStage::Init, set_debug_cycle))
+impl Plugin for DebugPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(First, set_debug_cycle);
     }
 }
 
