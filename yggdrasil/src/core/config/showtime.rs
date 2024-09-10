@@ -1,3 +1,4 @@
+use bevy::prelude::*;
 use miette::miette;
 use odal::Config;
 use serde::{Deserialize, Serialize};
@@ -7,7 +8,7 @@ use crate::{nao::RobotInfo, prelude::*};
 
 /// This config store general information for matches, for example things like
 /// team number and player numbers.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Resource, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ShowtimeConfig {
     /// Team number to use during a match
@@ -30,24 +31,24 @@ pub struct PlayerConfig {
     pub team_number: u8,
 }
 
-#[startup_system]
 pub(super) fn configure_showtime(
-    storage: &mut Storage,
-    showtime_config: &ShowtimeConfig,
-    robot_info: &RobotInfo,
-) -> Result<()> {
+    mut storage: Commands,
+    showtime_config: Res<ShowtimeConfig>,
+    robot_info: Res<RobotInfo>,
+) {
     let player_number = *showtime_config
         .robot_numbers_map
         .get(&robot_info.robot_id.to_string())
-        .ok_or(miette!(format!(
+        .expect(&format!(
             "Could not find robot {} in showtime config",
             robot_info.robot_id
-        )))?;
+        ));
     let team_number = showtime_config.team_number;
 
     let player_config = PlayerConfig {
         player_number,
         team_number,
     };
-    storage.add_resource(Resource::new(player_config))
+
+    commands.insert_resource(player_config);
 }

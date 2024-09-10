@@ -1,3 +1,4 @@
+use bevy::prelude::*;
 use std::ops::Index;
 
 use nalgebra::Isometry2;
@@ -42,7 +43,7 @@ mod isometry_with_angle {
 
 /// Config that contains information about the layout of the field and
 /// robot positions.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Resource, Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct LayoutConfig {
     pub field: FieldConfig,

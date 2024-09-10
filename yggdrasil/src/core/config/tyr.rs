@@ -1,7 +1,8 @@
 use crate::prelude::*;
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Resource, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct TyrConfig {
     tasks: tyr::tasks::TaskConfig,

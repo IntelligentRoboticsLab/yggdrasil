@@ -6,8 +6,7 @@ pub mod yggdrasil;
 use std::path::{Path, PathBuf};
 
 use crate::{behavior::BehaviorConfig, nao::RobotInfo, prelude::*};
-
-use ::tyr::tasks::TaskModule;
+use bevy::{ecs::system::RunSystemOnce, prelude::*};
 use odal::{ConfigKind, Error, ErrorKind};
 
 use layout::LayoutConfig;
@@ -15,7 +14,7 @@ use showtime::ShowtimeConfig;
 use tyr::TyrConfig;
 use yggdrasil::YggdrasilConfig;
 
-/// This module adds functionality to load configuration structs from files.
+/// Plugin that adds functionality to load configuration structs from files.
 ///
 /// It provides the following resources to the application:
 /// - [`MainConfigDir`]
@@ -24,77 +23,76 @@ use yggdrasil::YggdrasilConfig;
 /// # Example
 ///
 /// ```no_run
+/// use bevy::prelude::*;
 /// use yggdrasil::prelude::*;
 /// use serde::{Deserialize, Serialize};
 ///
-/// #[derive(Debug, Deserialize, Serialize)]
+/// #[derive(Resource, Debug, Deserialize, Serialize)]
 /// #[serde(deny_unknown_fields)]
 /// pub struct MeowConfig {
 ///     count: u32,
 /// }
 ///
-/// pub struct MeowModule;
+/// pub struct MeowPlugin;
 ///
 /// impl Config for MeowConfig {
 ///     const PATH: &'static str = "meow.toml";
 /// }
 ///
-/// impl Module for MeowModule {
-///     fn initialize(self, app: App) -> Result<App> {
-///         app.init_config::<MeowConfig>()
+/// impl Plugin for MeowPlugin {
+///     fn build(&self, app: &mut App){
+///         // This will load the configuration from `config/meow.toml`
+///         // and insert it into the world as a resource.
+///         app.init_config::<MeowConfig>();
 ///     }
 /// }
 /// ```
 ///
-pub struct ConfigModule;
+pub struct ConfigPlugin;
 
-impl Module for ConfigModule {
-    fn initialize(self, app: App) -> miette::Result<App> {
-        app.add_startup_system(initialize_config_roots)?
-            .init_config::<ShowtimeConfig>()?
-            .init_config::<LayoutConfig>()?
-            .init_config::<BehaviorConfig>()?
-            .init_config::<TyrConfig>()?
-            .init_config::<YggdrasilConfig>()?
-            .add_startup_system(showtime::configure_showtime)?
-            .add_startup_system(tyr::configure_tyr_hack)?
-            .add_startup_system(init_subconfigs)?
-            .add_module(TaskModule)
+impl Plugin for ConfigPlugin {
+    fn build(&self, app: &mut App) {
+        let robot_info = app.world().resource::<RobotInfo>();
+        let main_dir = PathBuf::from("./config/");
+        let overlay_dir = PathBuf::from(format!("./config/overlay/{}/", robot_info.robot_name));
+
+        assert!(main_dir.is_dir(), "main config directory does not exist");
+        assert!(
+            overlay_dir.is_dir(),
+            "overlay config directory for {} does not exist",
+            robot_info.robot_name
+        );
+
+        app.insert_resource(MainConfigDir(main_dir))
+            .insert_resource(OverlayConfigDir(overlay_dir));
+
+        app.init_config::<ShowtimeConfig>()
+            .init_config::<LayoutConfig>()
+            .init_config::<BehaviorConfig>()
+            .init_config::<TyrConfig>()
+            .init_config::<YggdrasilConfig>();
+
+        app.add_systems(
+            PostStartup,
+            (init_subconfigs, showtime::configure_showtime).chain(),
+        );
     }
 }
 
-#[startup_system]
-fn init_subconfigs(storage: &mut Storage, config: &mut YggdrasilConfig) -> Result<()> {
-    storage.add_resource(Resource::new(config.camera.clone()))?;
-    storage.add_resource(Resource::new(config.filter.clone()))?;
-    storage.add_resource(Resource::new(config.game_controller.clone()))?;
-    storage.add_resource(Resource::new(config.primary_state.clone()))?;
-    storage.add_resource(Resource::new(config.vision.field_marks.clone()))?;
-    storage.add_resource(Resource::new(config.odometry.clone()))?;
-    storage.add_resource(Resource::new(config.orientation.clone()))?;
-
-    Ok(())
-}
-
-#[startup_system]
-fn initialize_config_roots(storage: &mut Storage, info: &RobotInfo) -> Result<()> {
-    let main_dir = PathBuf::from("./config/");
-    let overlay_dir = PathBuf::from(format!("./config/overlay/{}/", info.robot_name));
-
-    assert!(main_dir.is_dir());
-    assert!(overlay_dir.is_dir());
-
-    let main = MainConfigDir(main_dir);
-    let overlay = OverlayConfigDir(overlay_dir);
-
-    storage.add_resource(Resource::new(main))?;
-    storage.add_resource(Resource::new(overlay))?;
+fn init_subconfigs(mut commands: Commands, config: Res<YggdrasilConfig>) -> Result<()> {
+    commands.insert_resource(config.camera.clone());
+    commands.insert_resource(config.filter.clone());
+    commands.insert_resource(config.game_controller.clone());
+    commands.insert_resource(config.primary_state.clone());
+    commands.insert_resource(config.vision.field_marks.clone());
+    commands.insert_resource(config.odometry.clone());
+    commands.insert_resource(config.orientation.clone());
 
     Ok(())
 }
 
 /// Directory where the main configs are stored
-#[derive(Debug)]
+#[derive(Resource, Debug)]
 pub struct MainConfigDir(PathBuf);
 
 impl<T: Into<PathBuf>> From<T> for MainConfigDir {
@@ -104,7 +102,7 @@ impl<T: Into<PathBuf>> From<T> for MainConfigDir {
 }
 
 /// Directory where the overlay configs are stored
-#[derive(Debug)]
+#[derive(Resource, Debug)]
 pub struct OverlayConfigDir(PathBuf);
 
 impl<T: Into<PathBuf>> From<T> for OverlayConfigDir {
@@ -114,32 +112,28 @@ impl<T: Into<PathBuf>> From<T> for OverlayConfigDir {
 }
 
 /// Trait for adding configs to an [`App`]
-pub trait ConfigResource {
+pub trait ConfigExt {
     /// Adds the configuration `T` to the app
-    fn init_config<T: Config + Send + Sync + 'static>(self) -> Result<Self>
+    fn init_config<T: Config + Send + Sync + 'static>(&mut self) -> &mut Self
     where
         Self: Sized;
 }
 
-impl ConfigResource for App {
-    fn init_config<T: Config + Send + Sync + 'static>(self) -> Result<Self>
+impl ConfigExt for App {
+    fn init_config<T: Config + Send + Sync + 'static>(&mut self) -> &mut Self
     where
         Self: Sized,
     {
-        let app = self.add_startup_system(_init_config::<T>)?;
-
-        tracing::info!("Loaded config `{}`", T::name());
-
-        Ok(app)
+        self.world_mut().run_system_once(init_config::<T>);
+        self
     }
 }
 
-#[startup_system]
-fn _init_config<T: Config + Send + Sync + 'static>(
-    storage: &mut Storage,
-    main_dir: &MainConfigDir,
-    overlay_dir: &OverlayConfigDir,
-) -> Result<()> {
+fn init_config<T: Resource + Config + Send + Sync + 'static>(
+    mut commands: Commands,
+    main_dir: Res<MainConfigDir>,
+    overlay_dir: Res<OverlayConfigDir>,
+) {
     // add config file path to the config roots
     let main_path: &Path = main_dir.0.as_ref();
     let overlay_path: &Path = overlay_dir.0.as_ref();
@@ -162,7 +156,8 @@ fn _init_config<T: Config + Send + Sync + 'static>(
             T::load(main_path)
         }
         Err(e) => Err(e),
-    }?;
+    }
+    .expect(&format!("failed to load config: {}", T::PATH));
 
-    storage.add_resource(Resource::new(config))
+    commands.insert_resource(config);
 }

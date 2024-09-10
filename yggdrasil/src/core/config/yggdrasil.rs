@@ -1,3 +1,4 @@
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::motion::odometry::OdometryConfig;
@@ -8,7 +9,7 @@ use crate::{
     sensor::FilterConfig, vision::camera::CameraConfig, vision::VisionConfig,
 };
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Resource, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct YggdrasilConfig {
     pub camera: CameraConfig,
