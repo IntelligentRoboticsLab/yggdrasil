@@ -100,7 +100,7 @@ impl RobotPose {
 fn update_robot_pose(
     mut robot_pose: ResMut<RobotPose>,
     odometry: Res<Odometry>,
-    ctx: Res<DebugContext>,
+    mut ctx: DebugContext,
     primary_state: Res<PrimaryState>,
     layout_config: Res<LayoutConfig>,
 ) -> Result<()> {

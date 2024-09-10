@@ -22,15 +22,100 @@ use crate::{
     vision::camera::Image,
 };
 
-/// A module for debugging the robot using the [rerun](https://rerun.io) viewer.
+/// Plugin that adds debugging tools for the robot using the [rerun](https://rerun.io) viewer.
 ///
-/// This module provides the following resources to the application:
-/// - [`DebugContext`]
+/// This introduces a [`DebugContext`] [`SystemParam`], which can be used
+/// for common debugging tasks.
 pub struct DebugPlugin;
 
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(First, set_debug_cycle);
+        app.add_systems(First, (init_rerun, set_debug_cycle).chain());
+    }
+}
+
+fn init_rerun(mut commands: Commands) {
+    #[cfg(any(feature = "local", not(feature = "rerun")))]
+    let server_address = IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
+
+    // Manually set the server address to the robot's IP address, instead of 0.0.0.0
+    // to ensure the rerun server prints the correct connection URL on startup
+    #[cfg(all(not(feature = "local"), feature = "rerun"))]
+    let server_address = {
+        let host =
+            std::env::var("RERUN_HOST").expect("environment variable `RERUN_HOST` is not set!");
+
+        std::str::FromStr::from_str(host.as_str())
+            .expect(&format!("invalid address specified in RERUN_HOST: {host}"))
+    };
+
+    let stream = RerunStream::init("yggdrasil", server_address).expect("failed to initialize ");
+
+    #[cfg(feature = "rerun")]
+    {
+        stream
+            .rec
+            .log_static(
+                "field/mesh",
+                &rerun::Asset3D::from_file("./assets/rerun/spl_field.glb")
+                    .expect("Failed to load field model")
+                    .with_media_type(rerun::MediaType::glb()),
+            )
+            .into_diagnostic()?;
+
+        stream
+            .rec
+            .log_static(
+                "field/mesh",
+                &rerun::Transform3D::from_translation([0.0, 0.0, -0.05]),
+            )
+            .into_diagnostic()?;
+
+        stream
+            .rec
+            .log_static("/field/mesh", &rerun::ViewCoordinates::FLU)
+            .into_diagnostic()?;
+    }
+
+    commands.insert_resource(stream);
+}
+
+fn set_debug_cycle(mut ctx: DebugContext, cycle: Res<Cycle>, cycle_time: Res<CycleTime>) {
+    ctx.set_cycle(&cycle);
+    ctx.log_scalar_f32("cycle_time", cycle_time.duration.as_millis() as f32)?;
+    ctx.current_cycle = *cycle;
+}
+
+#[cfg(feature = "rerun")]
+#[derive(Resource, Debug, Clone)]
+struct RerunStream {
+    stream: rerun::RecordingStream,
+    cycle: Cycle,
+}
+
+impl RerunStream {
+    /// Initializes a new [`RerunStream`].
+    ///
+    /// If yggdrasil is not compiled with the `rerun` feature, this will return a
+    /// [`RerunStream`] that does nothing.
+    pub fn init(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
+        #[cfg(feature = "rerun")]
+        {
+            let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
+                .connect_opts(
+                    SocketAddr::new(rerun_host, rerun::default_server_addr().port()),
+                    rerun::default_flush_timeout(),
+                )
+                .into_diagnostic()?;
+
+            Ok(RerunStream {
+                stream: rec,
+                cycle: Cycle(0),
+            })
+        }
+
+        #[cfg(not(feature = "rerun"))]
+        Ok(RerunStream { cycle: Cycle(0) })
     }
 }
 
@@ -44,13 +129,6 @@ pub struct DebugContext<'w> {
     _marker: PhantomData<&'w ()>,
 }
 
-#[cfg(feature = "rerun")]
-#[derive(Resource, Debug, Clone)]
-struct RerunStream {
-    stream: rerun::RecordingStream,
-    cycle: Cycle,
-}
-
 #[allow(unused)]
 impl<'w> DebugContext<'w> {
     /// Set the current cycle index for the debug viewer.
@@ -59,7 +137,7 @@ impl<'w> DebugContext<'w> {
     fn set_cycle(&self, cycle: &Cycle) {
         #[cfg(feature = "rerun")]
         {
-            self.rec.set_time_sequence("cycle", cycle.0 as i64);
+            self.rec.stream.set_time_sequence("cycle", cycle.0 as i64);
         }
     }
 
@@ -68,6 +146,7 @@ impl<'w> DebugContext<'w> {
         #[cfg(feature = "rerun")]
         {
             self.rec
+                .stream
                 .set_time_sequence("cycle", self.current_cycle.0 as i64);
         }
     }
@@ -85,6 +164,7 @@ impl<'w> DebugContext<'w> {
                 .with_media_type(rerun::MediaType::JPEG);
 
             self.rec
+                .stream
                 .log(path.as_ref(), &encoded_image)
                 .into_diagnostic()?;
             self.clear_cycle();
@@ -105,7 +185,7 @@ impl<'w> DebugContext<'w> {
             self.set_cycle(cycle);
             let img = rerun::Image::from_image(img).into_diagnostic()?;
 
-            self.rec.log(path.as_ref(), &img).into_diagnostic()?;
+            self.rec.stream.log(path.as_ref(), &img).into_diagnostic()?;
             self.clear_cycle();
         }
 
@@ -183,7 +263,10 @@ impl<'w> DebugContext<'w> {
             )
             .with_camera_xyz(rerun::components::ViewCoordinates::FLU)
             .with_image_plane_distance(1.0);
-            self.rec.log(path.as_ref(), &pinhole).into_diagnostic()?;
+            self.rec
+                .stream
+                .log(path.as_ref(), &pinhole)
+                .into_diagnostic()?;
             self.clear_cycle();
         }
 
@@ -559,7 +642,7 @@ impl<'w> DebugContext<'w> {
             let translation = transform.translation;
             let rotation = transform.rotation.coords;
 
-            self.rec.log(
+            self.rec.stream.log(
                 path.as_ref(),
                 &rerun::Transform3D::from_translation_rotation(
                     (translation.x, translation.y, translation.z),
@@ -571,64 +654,4 @@ impl<'w> DebugContext<'w> {
 
         Ok(())
     }
-
-    /// Log a timeless robot view coordinate system to the debug viewer.
-    /// This sets the x-axis to the front of the robot, the y-axis to the left, and the z-axis up.
-    pub fn log_robot_viewcoordinates(&self, path: impl AsRef<str>) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            self.rec
-                .log_static(path.as_ref(), &rerun::ViewCoordinates::FLU)
-                .into_diagnostic()?;
-        }
-
-        Ok(())
-    }
-}
-
-#[startup_system]
-fn init_rerun(storage: &mut Storage) -> Result<()> {
-    #[cfg(any(feature = "local", not(feature = "rerun")))]
-    let server_address = IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
-    // Manually set the server address to the robot's IP address, instead of 0.0.0.0
-    // to ensure the rerun server prints the correct connection URL on startup
-    #[cfg(all(not(feature = "local"), feature = "rerun"))]
-    let server_address = {
-        let host = std::env::var("RERUN_HOST").into_diagnostic()?;
-
-        std::str::FromStr::from_str(host.as_str()).into_diagnostic()?
-    };
-
-    let ctx = DebugContext::init("yggdrasil", server_address)?;
-
-    #[cfg(feature = "rerun")]
-    {
-        ctx.rec
-            .log_static(
-                "field/mesh",
-                &rerun::Asset3D::from_file("./assets/rerun/spl_field.glb")
-                    .expect("Failed to load field model")
-                    .with_media_type(rerun::MediaType::glb()),
-            )
-            .into_diagnostic()?;
-
-        ctx.rec
-            .log_static(
-                "field/mesh",
-                &rerun::Transform3D::from_translation([0.0, 0.0, -0.05]),
-            )
-            .into_diagnostic()?;
-
-        ctx.log_robot_viewcoordinates("/field/mesh")?;
-    }
-
-    storage.add_resource(Resource::new(ctx))
-}
-
-#[system]
-fn set_debug_cycle(ctx: &mut DebugContext, cycle: &Cycle, cycle_time: &CycleTime) -> Result<()> {
-    ctx.set_cycle(cycle);
-    ctx.log_scalar_f32("cycle_time", cycle_time.duration.as_millis() as f32)?;
-    ctx.current_cycle = *cycle;
-    Ok(())
 }

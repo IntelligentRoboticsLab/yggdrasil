@@ -78,7 +78,7 @@ fn update_com(kinematics: Res<RobotKinematics>, mut com: ResMut<CenterOfMass>) -
     Ok(())
 }
 
-fn log_com(com: Res<CenterOfMass>, dbg: Res<DebugContext>, pose: Res<RobotPose>) -> Result<()> {
+fn log_com(mut dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) -> Result<()> {
     let absolute_com_position = pose.robot_to_world(&com.position.xy());
 
     dbg.log_points_3d_with_color_and_radius(

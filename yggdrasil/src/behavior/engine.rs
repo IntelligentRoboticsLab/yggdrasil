@@ -335,7 +335,7 @@ pub fn step(
         ResMut<WalkingEngine>,
         ResMut<KeyframeExecutor>,
         ResMut<StepPlanner>,
-        ResMut<DebugContext>,
+        DebugContext,
     ),
     game_controller_message: Res<Option<GameControllerMessage>>,
     (robot_pose, balls, fall_state): (Res<RobotPose>, Res<Balls>, Res<FallState>),
