@@ -2,7 +2,7 @@ use crate::prelude::*;
 use bevy::prelude::*;
 
 use self::{
-    button::ButtonPlugin, falling::FallingFilter, fsr::FSRSensor, imu::IMUSensor,
+    button::ButtonPlugin, falling::FallingFilterPlugin, fsr::FSRSensor, imu::IMUSensor,
     orientation::OrientationFilter, sonar::SonarSensor,
 };
 
@@ -50,7 +50,7 @@ impl Module for SensorModule {
             .add_module(FSRSensor)?
             .add_module(IMUSensor)?
             .add_module(OrientationFilter)?
-            .add_module(FallingFilter)?
+            .add_module(FallingFilterPlugin)?
             .add_module(SonarSensor)?;
         Ok(app)
     }

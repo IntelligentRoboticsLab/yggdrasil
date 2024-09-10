@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use bevy::prelude::*;
 use miette::Result;
 use nidhogg::types::FillExt;
 use nidhogg::{types::Vector2, types::Vector3, NaoState};
@@ -23,6 +24,7 @@ impl Module for IMUSensor {
 }
 
 /// Struct containing gyroscope, accelerometer and angles.
+#[derive(Resource, Debug, Clone)]
 pub struct IMUValues {
     /// The Gyroscope provides direct measurements of the rotational speed along
     /// three axes (x, y and z) in radians per second (rad/s). The Z axis is facing up.

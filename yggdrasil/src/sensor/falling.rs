@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use crate::sensor::imu::IMUValues;
+use bevy::prelude::*;
 
 /// Minimum angle for falling detection.
 const MIN_FALL_ANGLE_FORWARDS: f32 = 0.45;
@@ -15,20 +15,20 @@ const MAX_ACC_DEVIATION: f32 = 0.175;
 ///
 /// This module provides the following resources to the application:
 /// - [`FallState`]
-pub struct FallingFilter;
+pub struct FallingFilterPlugin;
 
-impl Module for FallingFilter {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_staged_system(SystemStage::Sensor, pose_filter)
-            .init_resource::<FallState>()
+impl Plugin for FallingFilterPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(PreUpdate, pose_filter);
+        app.init_resource::<FallState>();
     }
 }
 
-/// FallState contains the variants: Falling, Upright and Lying. Both Falling and Lying have their
-/// associated values which are again, enum types containing the directions the robot can fall or
-/// lie in.
-
-#[derive(Default, Clone, Debug)]
+/// Enum that describes the falling state of the robot.
+///
+/// Both Falling and Lying have their associated values which are again,
+/// enum types containing the directions the robot can fall or lie in.
+#[derive(Resource, Default, Clone, Debug)]
 pub enum FallState {
     Falling(FallDirection),
     #[default]
@@ -86,18 +86,17 @@ fn is_lying_on_back(imu_values: &IMUValues) -> bool {
 
 /// Checks position of the robot and sets [`FallState`], [`FallDirection`] and [`LyingDirection`]
 /// accordingly.
-#[system]
-fn pose_filter(imu_values: &IMUValues, fall_state: &mut FallState) -> Result<()> {
-    let is_lying_on_stomach = is_lying_on_stomach(imu_values);
-    let is_lying_on_back = is_lying_on_back(imu_values);
+fn pose_filter(mut fall_state: ResMut<FallState>, imu_values: Res<IMUValues>) {
+    let is_lying_on_stomach = is_lying_on_stomach(&imu_values);
+    let is_lying_on_back = is_lying_on_back(&imu_values);
 
-    if is_falling_forward(imu_values) && !is_lying_on_stomach {
+    if is_falling_forward(&imu_values) && !is_lying_on_stomach {
         *fall_state = FallState::Falling(FallDirection::Forwards);
-    } else if is_falling_backward(imu_values) && !is_lying_on_back {
+    } else if is_falling_backward(&imu_values) && !is_lying_on_back {
         *fall_state = FallState::Falling(FallDirection::Backwards);
-    } else if is_falling_left(imu_values) && !is_lying_on_stomach && !is_lying_on_back {
+    } else if is_falling_left(&imu_values) && !is_lying_on_stomach && !is_lying_on_back {
         *fall_state = FallState::Falling(FallDirection::Left);
-    } else if is_falling_right(imu_values) && !is_lying_on_stomach && !is_lying_on_back {
+    } else if is_falling_right(&imu_values) && !is_lying_on_stomach && !is_lying_on_back {
         *fall_state = FallState::Falling(FallDirection::Right);
     } else if is_lying_on_stomach {
         *fall_state = FallState::Lying(LyingDirection::FacingDown);
