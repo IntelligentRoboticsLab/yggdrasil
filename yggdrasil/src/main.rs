@@ -59,7 +59,7 @@ fn main() -> Result<()> {
             schedule::NaoSchedulePlugin,
             nao::NaoPlugins,
             behavior::BehaviorPlugins,
-            kinematics::KinematicsPlugin
+            kinematics::KinematicsPlugin,
         ))
         .run();
     Ok(())
