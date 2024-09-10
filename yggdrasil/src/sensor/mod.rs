@@ -3,7 +3,7 @@ use bevy::prelude::*;
 
 use self::{
     button::ButtonPlugin, falling::FallingFilterPlugin, fsr::FSRSensor, imu::IMUSensor,
-    orientation::OrientationFilter, sonar::SonarSensor,
+    orientation::OrientationFilterPlugin, sonar::SonarSensor,
 };
 
 use serde::{Deserialize, Serialize};
@@ -49,7 +49,7 @@ impl Module for SensorModule {
             .add_module(ButtonPlugin)?
             .add_module(FSRSensor)?
             .add_module(IMUSensor)?
-            .add_module(OrientationFilter)?
+            .add_module(OrientationFilterPlugin)?
             .add_module(FallingFilterPlugin)?
             .add_module(SonarSensor)?;
         Ok(app)
