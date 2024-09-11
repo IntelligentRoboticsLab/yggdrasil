@@ -13,9 +13,9 @@ impl PluginGroup for CorePlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(config::ConfigPlugin)
-            .add(ml::MlPlugin)
-            .add(whistle::WhistleStatePlugin)
+            // .add(ml::MlPlugin)
+            // .add(whistle::WhistleStatePlugin)
             .add(debug::DebugPlugin)
-            .add(audio::AudioPlugin)
+        // .add(audio::AudioPlugin)
     }
 }

@@ -19,7 +19,7 @@ use heimdall::YuvPlanarImage;
 use crate::{
     nao::{Cycle, CycleTime},
     prelude::*,
-    vision::camera::Image,
+    // vision::camera::Image,
 };
 
 /// Plugin that adds debugging tools for the robot using the [rerun](https://rerun.io) viewer.
@@ -86,9 +86,9 @@ fn set_debug_cycle(mut ctx: DebugContext, cycle: Res<Cycle>, cycle_time: Res<Cyc
     ctx.current_cycle = *cycle;
 }
 
-#[cfg(feature = "rerun")]
 #[derive(Resource, Debug, Clone)]
 struct RerunStream {
+    #[cfg(feature = "rerun")]
     stream: rerun::RecordingStream,
     cycle: Cycle,
 }
@@ -154,24 +154,24 @@ impl<'w> DebugContext<'w> {
     /// Log a Yuyv encoded image to the debug viewer.
     ///
     /// The image is first converted to a jpeg encoded image.
-    pub fn log_image(&self, path: impl AsRef<str>, img: Image, jpeg_quality: i32) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            self.set_cycle(&img.cycle());
-            let yuv_planar_image = YuvPlanarImage::from_yuyv(img.yuyv_image());
-            let jpeg = yuv_planar_image.to_jpeg(jpeg_quality)?;
-            let encoded_image = rerun::EncodedImage::from_file_contents(jpeg.to_owned())
-                .with_media_type(rerun::MediaType::JPEG);
+    // pub fn log_image(&self, path: impl AsRef<str>, img: Image, jpeg_quality: i32) -> Result<()> {
+    //     #[cfg(feature = "rerun")]
+    //     {
+    //         self.set_cycle(&img.cycle());
+    //         let yuv_planar_image = YuvPlanarImage::from_yuyv(img.yuyv_image());
+    //         let jpeg = yuv_planar_image.to_jpeg(jpeg_quality)?;
+    //         let encoded_image = rerun::EncodedImage::from_file_contents(jpeg.to_owned())
+    //             .with_media_type(rerun::MediaType::JPEG);
 
-            self.rec
-                .stream
-                .log(path.as_ref(), &encoded_image)
-                .into_diagnostic()?;
-            self.clear_cycle();
-        }
+    //         self.rec
+    //             .stream
+    //             .log(path.as_ref(), &encoded_image)
+    //             .into_diagnostic()?;
+    //         self.clear_cycle();
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     /// Log an RGB image to the debug viewer.
     pub fn log_image_rgb(
@@ -192,30 +192,30 @@ impl<'w> DebugContext<'w> {
         Ok(())
     }
 
-    pub fn log_boxes_2d(
-        &self,
-        path: impl AsRef<str>,
-        centers: &[(f32, f32)],
-        sizes: &[(f32, f32)],
-        image: &Image,
-        color: RgbU8,
-    ) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            self.set_cycle(&image.cycle());
+    // pub fn log_boxes_2d(
+    //     &self,
+    //     path: impl AsRef<str>,
+    //     centers: &[(f32, f32)],
+    //     sizes: &[(f32, f32)],
+    //     image: &Image,
+    //     color: RgbU8,
+    // ) -> Result<()> {
+    //     #[cfg(feature = "rerun")]
+    //     {
+    //         self.set_cycle(&image.cycle());
 
-            self.rec
-                .log(
-                    path.as_ref(),
-                    &rerun::Boxes2D::from_centers_and_sizes(centers, sizes)
-                        .with_colors(vec![(Into::<[u8; 3]>::into(color)); centers.len()]),
-                )
-                .into_diagnostic()?;
-            self.clear_cycle();
-        }
+    //         self.rec
+    //             .log(
+    //                 path.as_ref(),
+    //                 &rerun::Boxes2D::from_centers_and_sizes(centers, sizes)
+    //                     .with_colors(vec![(Into::<[u8; 3]>::into(color)); centers.len()]),
+    //             )
+    //             .into_diagnostic()?;
+    //         self.clear_cycle();
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     pub fn log_boxes2d_with_class(
         &self,
@@ -245,33 +245,33 @@ impl<'w> DebugContext<'w> {
     /// Log a camera matrix to the debug viewer.
     ///
     /// The camera matrix is logged as a pinhole camera, without any transforms applied.
-    pub fn log_camera_matrix(
-        &self,
-        path: impl AsRef<str>,
-        matrix: &CameraMatrix,
-        image: &Image,
-    ) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            self.set_cycle(&image.cycle());
-            let pinhole = rerun::Pinhole::from_focal_length_and_resolution(
-                [matrix.focal_lengths.x, matrix.focal_lengths.y],
-                [
-                    image.yuyv_image().width() as f32,
-                    image.yuyv_image().height() as f32,
-                ],
-            )
-            .with_camera_xyz(rerun::components::ViewCoordinates::FLU)
-            .with_image_plane_distance(1.0);
-            self.rec
-                .stream
-                .log(path.as_ref(), &pinhole)
-                .into_diagnostic()?;
-            self.clear_cycle();
-        }
+    // pub fn log_camera_matrix(
+    //     &self,
+    //     path: impl AsRef<str>,
+    //     matrix: &CameraMatrix,
+    //     image: &Image,
+    // ) -> Result<()> {
+    //     #[cfg(feature = "rerun")]
+    //     {
+    //         self.set_cycle(&image.cycle());
+    //         let pinhole = rerun::Pinhole::from_focal_length_and_resolution(
+    //             [matrix.focal_lengths.x, matrix.focal_lengths.y],
+    //             [
+    //                 image.yuyv_image().width() as f32,
+    //                 image.yuyv_image().height() as f32,
+    //             ],
+    //         )
+    //         .with_camera_xyz(rerun::components::ViewCoordinates::FLU)
+    //         .with_image_plane_distance(1.0);
+    //         self.rec
+    //             .stream
+    //             .log(path.as_ref(), &pinhole)
+    //             .into_diagnostic()?;
+    //         self.clear_cycle();
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     /// Set the style for a scalar series.
     ///
@@ -350,61 +350,61 @@ impl<'w> DebugContext<'w> {
     }
 
     /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
-    pub fn log_points2d_for_image(
-        &self,
-        path: impl AsRef<str>,
-        points: &[(f32, f32)],
-        image: &Image,
-        color: RgbU8,
-    ) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            self.set_cycle(&image.cycle());
-            self.rec
-                .log(
-                    path.as_ref(),
-                    &rerun::Points2D::new(points).with_colors(vec![
-                        rerun::Color::from_rgb(
-                            color.red,
-                            color.green,
-                            color.blue,
-                        );
-                        points.len()
-                    ]),
-                )
-                .into_diagnostic()?;
-            self.clear_cycle();
-        }
+    // pub fn log_points2d_for_image(
+    //     &self,
+    //     path: impl AsRef<str>,
+    //     points: &[(f32, f32)],
+    //     image: &Image,
+    //     color: RgbU8,
+    // ) -> Result<()> {
+    //     #[cfg(feature = "rerun")]
+    //     {
+    //         self.set_cycle(&image.cycle());
+    //         self.rec
+    //             .log(
+    //                 path.as_ref(),
+    //                 &rerun::Points2D::new(points).with_colors(vec![
+    //                     rerun::Color::from_rgb(
+    //                         color.red,
+    //                         color.green,
+    //                         color.blue,
+    //                     );
+    //                     points.len()
+    //                 ]),
+    //             )
+    //             .into_diagnostic()?;
+    //         self.clear_cycle();
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
-    pub fn log_points2d_for_image_with_colors(
-        &self,
-        path: impl AsRef<str>,
-        points: &[(f32, f32)],
-        image: &Image,
-        color: &[RgbU8],
-    ) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            self.set_cycle(&image.cycle());
-            self.rec
-                .log(
-                    path.as_ref(),
-                    &rerun::Points2D::new(points).with_colors(
-                        color
-                            .iter()
-                            .map(|c| rerun::Color::from_rgb(c.red, c.green, c.blue)),
-                    ),
-                )
-                .into_diagnostic()?;
-            self.clear_cycle();
-        }
+    // pub fn log_points2d_for_image_with_colors(
+    //     &self,
+    //     path: impl AsRef<str>,
+    //     points: &[(f32, f32)],
+    //     image: &Image,
+    //     color: &[RgbU8],
+    // ) -> Result<()> {
+    //     #[cfg(feature = "rerun")]
+    //     {
+    //         self.set_cycle(&image.cycle());
+    //         self.rec
+    //             .log(
+    //                 path.as_ref(),
+    //                 &rerun::Points2D::new(points).with_colors(
+    //                     color
+    //                         .iter()
+    //                         .map(|c| rerun::Color::from_rgb(c.red, c.green, c.blue)),
+    //                 ),
+    //             )
+    //             .into_diagnostic()?;
+    //         self.clear_cycle();
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     /// Log a set of 2D points to the debug viewer, using the timestamp of the provided image.
     pub fn log_points2d_for_image_with_radius(
@@ -473,63 +473,63 @@ impl<'w> DebugContext<'w> {
     }
 
     /// Log a set of 2D lines to the debug viewer, using the timestamp of the provided image.
-    pub fn log_lines2d_for_image_with_colors(
-        &self,
-        path: impl AsRef<str>,
-        lines: &[[(f32, f32); 2]],
-        image: &Image,
-        colors: &[RgbU8],
-    ) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            self.set_cycle(&image.cycle());
-            self.rec
-                .log(
-                    path.as_ref(),
-                    &rerun::LineStrips2D::new(lines).with_colors(
-                        colors
-                            .iter()
-                            .map(|c| rerun::Color::from_rgb(c.red, c.green, c.blue)),
-                    ),
-                )
-                .into_diagnostic()?;
+    // pub fn log_lines2d_for_image_with_colors(
+    //     &self,
+    //     path: impl AsRef<str>,
+    //     lines: &[[(f32, f32); 2]],
+    //     image: &Image,
+    //     colors: &[RgbU8],
+    // ) -> Result<()> {
+    //     #[cfg(feature = "rerun")]
+    //     {
+    //         self.set_cycle(&image.cycle());
+    //         self.rec
+    //             .log(
+    //                 path.as_ref(),
+    //                 &rerun::LineStrips2D::new(lines).with_colors(
+    //                     colors
+    //                         .iter()
+    //                         .map(|c| rerun::Color::from_rgb(c.red, c.green, c.blue)),
+    //                 ),
+    //             )
+    //             .into_diagnostic()?;
 
-            self.clear_cycle();
-        }
+    //         self.clear_cycle();
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     /// Log a set of 2D lines to the debug viewer, using the timestamp of the provided image.
-    pub fn log_lines2d_for_image(
-        &self,
-        path: impl AsRef<str>,
-        lines: &[[(f32, f32); 2]],
-        image: &Image,
-        color: RgbU8,
-    ) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            self.set_cycle(&image.cycle());
-            self.rec
-                .log(
-                    path.as_ref(),
-                    &rerun::LineStrips2D::new(lines).with_colors(vec![
-                        rerun::Color::from_rgb(
-                            color.red,
-                            color.green,
-                            color.blue,
-                        );
-                        lines.len()
-                    ]),
-                )
-                .into_diagnostic()?;
+    // pub fn log_lines2d_for_image(
+    //     &self,
+    //     path: impl AsRef<str>,
+    //     lines: &[[(f32, f32); 2]],
+    //     image: &Image,
+    //     color: RgbU8,
+    // ) -> Result<()> {
+    //     #[cfg(feature = "rerun")]
+    //     {
+    //         self.set_cycle(&image.cycle());
+    //         self.rec
+    //             .log(
+    //                 path.as_ref(),
+    //                 &rerun::LineStrips2D::new(lines).with_colors(vec![
+    //                     rerun::Color::from_rgb(
+    //                         color.red,
+    //                         color.green,
+    //                         color.blue,
+    //                     );
+    //                     lines.len()
+    //                 ]),
+    //             )
+    //             .into_diagnostic()?;
 
-            self.clear_cycle();
-        }
+    //         self.clear_cycle();
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     /// Log a set of 3D points to the debug viewer.
     pub fn log_points_3d(
@@ -599,61 +599,61 @@ impl<'w> DebugContext<'w> {
     }
 
     /// Log a set of 3D lines to the debug viewer, using the timestamp of the provided image.
-    pub fn log_lines3d_for_image(
-        &self,
-        path: impl AsRef<str>,
-        lines: &[[(f32, f32, f32); 2]],
-        image: &Image,
-        color: RgbU8,
-    ) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            self.set_cycle(&image.cycle());
-            self.rec
-                .log(
-                    path.as_ref(),
-                    &rerun::LineStrips3D::new(lines).with_colors(vec![
-                        rerun::Color::from_rgb(
-                            color.red,
-                            color.green,
-                            color.blue,
-                        );
-                        lines.len()
-                    ]),
-                )
-                .into_diagnostic()?;
-            self.clear_cycle();
-        }
+    // pub fn log_lines3d_for_image(
+    //     &self,
+    //     path: impl AsRef<str>,
+    //     lines: &[[(f32, f32, f32); 2]],
+    //     image: &Image,
+    //     color: RgbU8,
+    // ) -> Result<()> {
+    //     #[cfg(feature = "rerun")]
+    //     {
+    //         self.set_cycle(&image.cycle());
+    //         self.rec
+    //             .log(
+    //                 path.as_ref(),
+    //                 &rerun::LineStrips3D::new(lines).with_colors(vec![
+    //                     rerun::Color::from_rgb(
+    //                         color.red,
+    //                         color.green,
+    //                         color.blue,
+    //                     );
+    //                     lines.len()
+    //                 ]),
+    //             )
+    //             .into_diagnostic()?;
+    //         self.clear_cycle();
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     /// Log a transformation to the entities at the provided path.
-    pub fn log_transformation(
-        &self,
-        path: impl AsRef<str>,
-        transform: &Isometry3<f32>,
-        image: &Image,
-    ) -> Result<()> {
-        #[cfg(feature = "rerun")]
-        {
-            self.set_cycle(&image.cycle());
+    // pub fn log_transformation(
+    //     &self,
+    //     path: impl AsRef<str>,
+    //     transform: &Isometry3<f32>,
+    //     image: &Image,
+    // ) -> Result<()> {
+    //     #[cfg(feature = "rerun")]
+    //     {
+    //         self.set_cycle(&image.cycle());
 
-            let translation = transform.translation;
-            let rotation = transform.rotation.coords;
+    //         let translation = transform.translation;
+    //         let rotation = transform.rotation.coords;
 
-            self.rec.stream.log(
-                path.as_ref(),
-                &rerun::Transform3D::from_translation_rotation(
-                    (translation.x, translation.y, translation.z),
-                    rerun::Quaternion([rotation.x, rotation.y, rotation.z, rotation.w]),
-                ),
-            );
-            self.clear_cycle();
-        }
+    //         self.rec.stream.log(
+    //             path.as_ref(),
+    //             &rerun::Transform3D::from_translation_rotation(
+    //                 (translation.x, translation.y, translation.z),
+    //                 rerun::Quaternion([rotation.x, rotation.y, rotation.z, rotation.w]),
+    //             ),
+    //         );
+    //         self.clear_cycle();
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     /// Logs a static view coordinates configuration to the debug viewer,
     /// such that the robot is oriented in the field's FLU coordinate system.
