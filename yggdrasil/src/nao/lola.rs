@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use bevy::prelude::*;
+use bevy::{ecs::system::RunSystemOnce, prelude::*};
 use nidhogg::{
     backend::LolaBackend,
     types::{FillExt, JointArray},
@@ -32,14 +32,16 @@ impl Plugin for LolaPlugin {
         app.configure_sets(Update, LolaCycle::Main)
             .configure_sets(Write, LolaCycle::Flush);
 
-        app.add_systems(Startup, (setup_lola, initialize_nao).chain());
+        app.world_mut().run_system_once(setup_lola);
+        app.world_mut().run_system_once(initialize_nao);
+
         app.add_systems(Write, write_hardware_info.in_set(LolaCycle::Flush));
     }
 }
 
 /// Resource containing the [`LolaBackend`].
-#[derive(Resource, Debug)]
-struct Lola(LolaBackend);
+#[derive(Resource, Debug, Deref, DerefMut)]
+pub struct Lola(LolaBackend);
 
 fn setup_lola(mut commands: Commands) {
     let nao =
@@ -49,17 +51,20 @@ fn setup_lola(mut commands: Commands) {
     commands.insert_resource(Lola(nao));
 }
 
-fn initialize_nao(mut commands: Commands, mut lola: ResMut<Lola>) -> Result<()> {
-    let info = RobotInfo::new(&mut lola.0)?;
+fn initialize_nao(mut commands: Commands, mut lola: ResMut<Lola>) {
+    let info = RobotInfo::new(&mut lola.0).expect("failed to read robot info from LoLA");
 
     // Read state and reply with a message.
-    let state = lola.read_nao_state()?;
+    let state = lola
+        .read_nao_state()
+        .expect("failed to read initial state from LoLA");
     let msg = NaoControlMessage {
         position: info.initial_joint_positions.clone(),
         stiffness: JointArray::fill(DEFAULT_STIFFNESS),
         ..Default::default()
     };
-    lola.send_control_msg(msg)?;
+    lola.send_control_msg(msg)
+        .expect("failed to send initial control message to LoLA");
 
     tracing::info!(
         "Launched yggdrasil on {} with head_id: {}, body_id: {}",
@@ -70,20 +75,19 @@ fn initialize_nao(mut commands: Commands, mut lola: ResMut<Lola>) -> Result<()> 
 
     tracing::info!("Battery level: {}", state.battery.charge);
 
-    commands.insert_resource(state)?;
-    commands.insert_resource(info)?;
-
-    Ok(())
+    commands.insert_resource(state);
+    commands.insert_resource(info);
 }
 
 pub fn write_hardware_info(
     mut nao: ResMut<Lola>,
     mut robot_state: ResMut<NaoState>,
     update: Res<NaoControlMessage>,
-) -> Result<()> {
-    *robot_state = nao.0.read_nao_state()?;
+) {
+    *robot_state = nao
+        .read_nao_state()
+        .expect("failed to read state from LoLA");
 
-    nao.0.send_control_msg(update.clone())?;
-
-    Ok(())
+    nao.send_control_msg(update.clone())
+        .expect("failed to send control message to LoLA");
 }

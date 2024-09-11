@@ -8,6 +8,7 @@ use crate::{
     motion::step_planner::Target,
 };
 
+#[derive(Debug)]
 pub struct Keeper;
 
 impl Role for Keeper {

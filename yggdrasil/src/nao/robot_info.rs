@@ -31,7 +31,7 @@ pub struct RobotInfo {
 }
 
 impl RobotInfo {
-    fn new<T: ReadHardwareInfo>(backend: &mut T) -> Result<Self> {
+    pub(super) fn new<T: ReadHardwareInfo>(backend: &mut T) -> Result<Self> {
         // Read state and reply with a message.
         let state = backend.read_nao_state()?;
         let msg = NaoControlMessage {

@@ -105,6 +105,4 @@ fn pose_filter(mut fall_state: ResMut<FallState>, imu_values: Res<IMUValues>) {
     } else {
         *fall_state = FallState::None;
     }
-
-    Ok(())
 }

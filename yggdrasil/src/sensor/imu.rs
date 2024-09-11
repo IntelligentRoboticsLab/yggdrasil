@@ -16,7 +16,7 @@ pub struct IMUSensorPlugin;
 impl Plugin for IMUSensorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Sensor, imu_sensor)
-            .init_resource::<IMUValues>()
+            .init_resource::<IMUValues>();
     }
 }
 

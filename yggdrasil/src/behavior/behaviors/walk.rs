@@ -45,7 +45,7 @@ impl Behavior for Walk {
         control
             .nao_manager
             .set_head(look_at, HeadJoints::fill(0.5), Priority::High);
-        log_target(&self.target, control.debug_context);
+        log_target(&self.target, &mut control.debug_context);
 
         if control
             .step_planner

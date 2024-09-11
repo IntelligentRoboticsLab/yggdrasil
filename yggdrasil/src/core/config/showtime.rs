@@ -31,7 +31,7 @@ pub struct PlayerConfig {
 }
 
 pub(super) fn configure_showtime(
-    mut storage: Commands,
+    mut commands: Commands,
     showtime_config: Res<ShowtimeConfig>,
     robot_info: Res<RobotInfo>,
 ) {

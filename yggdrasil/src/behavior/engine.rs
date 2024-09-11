@@ -16,7 +16,7 @@ use crate::{
         config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
         debug::DebugContext,
     },
-    game_controller::GameControllerConfig,
+    // game_controller::GameControllerConfig,
     localization::RobotPose,
     motion::{keyframe::KeyframeExecutor, step_planner::StepPlanner, walk::engine::WalkingEngine},
     nao::{NaoManager, RobotInfo},
@@ -26,7 +26,7 @@ use crate::{
         falling::FallState,
         fsr::Contacts,
     },
-    vision::ball_detection::classifier::Balls,
+    // vision::ball_detection::classifier::Balls,
 };
 
 use super::{
@@ -61,7 +61,7 @@ pub struct Context<'a> {
     /// Contains the message received from the game-controller.
     pub game_controller_message: Option<&'a GameControllerMessage>,
     /// Contains the game-controller config.
-    pub game_controller_config: &'a GameControllerConfig,
+    // pub game_controller_config: &'a GameControllerConfig,
     /// Contains information of the current Falling state of the robot
     pub fall_state: &'a FallState,
     /// Contains the pose of the robot.
@@ -80,7 +80,7 @@ pub struct Control<'a> {
     pub walking_engine: &'a mut WalkingEngine,
     pub keyframe_executor: &'a mut KeyframeExecutor,
     pub step_planner: &'a mut StepPlanner,
-    pub debug_context: &'a mut DebugContext,
+    pub debug_context: DebugContext<'a>,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -189,6 +189,7 @@ pub trait Role {
 /// - New role implementations should be added as new variants to this enum
 /// - The specific struct for each role (e.g., [`Attacker`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
+#[derive(Debug)]
 pub enum RoleKind {
     Attacker(Attacker),
     // Add new roles here!
@@ -317,58 +318,50 @@ pub fn step(
     (mut engine, mut primary_state): (ResMut<BehaviorEngine>, ResMut<PrimaryState>),
     robot_info: Res<RobotInfo>,
     (head_buttons, chest_button, contacts): (Res<HeadButtons>, Res<ChestButton>, Res<Contacts>),
-    (player_config, layout_config, yggdrasil_config, behavior_config, game_controller_config): (
+    (player_config, layout_config, yggdrasil_config, behavior_config): (
         Res<PlayerConfig>,
         Res<LayoutConfig>,
         Res<YggdrasilConfig>,
         Res<BehaviorConfig>,
-        Res<GameControllerConfig>,
+        // Res<GameControllerConfig>,
     ),
-    (
-        mut nao_manager,
-        mut walking_engine,
-        mut keyframe_executor,
-        mut step_planner,
-        mut debug_context,
-    ): (
+    (mut nao_manager, mut walking_engine, mut keyframe_executor, mut step_planner): (
         ResMut<NaoManager>,
         ResMut<WalkingEngine>,
         ResMut<KeyframeExecutor>,
         ResMut<StepPlanner>,
-        DebugContext,
     ),
+    debug_context: DebugContext<'_>,
     game_controller_message: Option<Res<GameControllerMessage>>,
-    (robot_pose, balls, fall_state): (Res<RobotPose>, Res<Balls>, Res<FallState>),
-) -> Result<()> {
+    (robot_pose, fall_state): (Res<RobotPose>, Res<FallState>),
+) {
     let context = Context {
         robot_info: robot_info.as_ref(),
         primary_state: primary_state.as_ref(),
-        head_buttons,
-        chest_button,
-        contacts,
-        player_config,
-        layout_config,
-        yggdrasil_config,
-        behavior_config,
-        game_controller_message: game_controller_message.as_ref(),
-        game_controller_config,
-        fall_state,
-        pose: robot_pose,
-        ball_position: &balls.most_confident_ball().map(|b| b.position),
+        head_buttons: &head_buttons,
+        chest_button: &chest_button,
+        contacts: &contacts,
+        player_config: &player_config,
+        layout_config: &layout_config,
+        yggdrasil_config: &yggdrasil_config,
+        behavior_config: &behavior_config,
+        game_controller_message: game_controller_message.as_deref(),
+        // game_controller_config: &game_controller_config,
+        fall_state: &fall_state,
+        pose: &robot_pose,
+        ball_position: &None,
         current_behavior: engine.behavior.clone(),
     };
 
     let mut control = Control {
-        nao_manager: nao_manager.as_deref_mut(),
-        walking_engine,
-        keyframe_executor,
-        step_planner,
+        nao_manager: nao_manager.as_mut(),
+        walking_engine: &mut walking_engine,
+        keyframe_executor: &mut keyframe_executor,
+        step_planner: &mut step_planner,
         debug_context,
     };
 
     engine.step(context, &mut control);
-
-    Ok(())
 }
 
 /// Plugin providing a state machine that keeps track of what behavior a

@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use std::{f32::consts::PI, marker::PhantomData};
 
-use crate::prelude::*;
 use nalgebra::{Isometry3, Rotation3, Translation3, Vector3};
 use nidhogg::NaoState;
 
@@ -16,7 +15,7 @@ pub use forward::RobotKinematics;
 /// Plugin for the kinematics of the robot.
 ///
 /// The kinematics are updated using the joint angles read from the robot.
-pub(super) struct KinematicsPlugin;
+pub struct KinematicsPlugin;
 
 impl Plugin for KinematicsPlugin {
     fn build(&self, app: &mut App) {
@@ -26,12 +25,8 @@ impl Plugin for KinematicsPlugin {
 }
 
 /// System that updates the [`RobotKinematics`] resource.
-pub fn update_kinematics(
-    mut robot_kinematics: ResMut<RobotKinematics>,
-    state: Res<NaoState>,
-) -> Result<()> {
+pub fn update_kinematics(mut robot_kinematics: ResMut<RobotKinematics>, state: Res<NaoState>) {
     *robot_kinematics = RobotKinematics::from(&state.position);
-    Ok(())
 }
 
 /// The position of a foot relative to the robot's torso.

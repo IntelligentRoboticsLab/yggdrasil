@@ -82,8 +82,12 @@ fn init_rerun(mut commands: Commands) {
 
 fn set_debug_cycle(mut ctx: DebugContext, cycle: Res<Cycle>, cycle_time: Res<CycleTime>) {
     ctx.set_cycle(&cycle);
-    ctx.log_scalar_f32("cycle_time", cycle_time.duration.as_millis() as f32)?;
-    ctx.current_cycle = *cycle;
+    ctx.log_scalar_f32("cycle_time", cycle_time.duration.as_millis() as f32)
+        .expect("failed to log cycle time to rerun");
+    #[cfg(feature = "rerun")]
+    {
+        ctx.rec.cycle = *cycle;
+    }
 }
 
 #[derive(Resource, Debug, Clone)]
@@ -657,7 +661,7 @@ impl<'w> DebugContext<'w> {
 
     /// Logs a static view coordinates configuration to the debug viewer,
     /// such that the robot is oriented in the field's FLU coordinate system.
-    pub fn log_robot_viewcoordinates(&self, path: impl AsRef<str>) {
+    pub fn log_robot_viewcoordinates(&self, path: impl AsRef<str>) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
             self.rec

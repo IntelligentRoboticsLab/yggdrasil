@@ -404,7 +404,7 @@ impl Robot {
             &Default::default(),
             &Default::default(),
             &self.player_config,
-            &WhistleState::default(),
+            // &WhistleState::default(),
         );
         let mut control = Control {
             nao_manager: &mut Default::default(),
@@ -421,7 +421,7 @@ impl Robot {
             chest_button: &Default::default(),
             contacts: &Default::default(),
             behavior_config: &behavior_config,
-            game_controller_config: &game_controller_config,
+            // game_controller_config: &game_controller_config,
             yggdrasil_config: &yggdrasil_config,
 
             fall_state: &Default::default(),
@@ -524,30 +524,30 @@ impl Robot {
 fn create_default_configs() -> (YggdrasilConfig, BehaviorConfig, GameControllerConfig) {
     (
         YggdrasilConfig {
-            camera: CameraConfig {
-                top: CameraSettings {
-                    path: Default::default(),
-                    width: 0,
-                    height: 0,
-                    calibration: Default::default(),
-                    exposure_auto: Default::default(),
-                    flip_horizontally: Default::default(),
-                    flip_vertically: Default::default(),
-                    focus_auto: Default::default(),
-                    num_buffers: 0,
-                },
-                bottom: CameraSettings {
-                    path: Default::default(),
-                    width: 0,
-                    height: 0,
-                    calibration: Default::default(),
-                    exposure_auto: Default::default(),
-                    flip_horizontally: Default::default(),
-                    flip_vertically: Default::default(),
-                    focus_auto: Default::default(),
-                    num_buffers: 0,
-                },
-            },
+            // camera: CameraConfig {
+            //     top: CameraSettings {
+            //         path: Default::default(),
+            //         width: 0,
+            //         height: 0,
+            //         calibration: Default::default(),
+            //         exposure_auto: Default::default(),
+            //         flip_horizontally: Default::default(),
+            //         flip_vertically: Default::default(),
+            //         focus_auto: Default::default(),
+            //         num_buffers: 0,
+            //     },
+            //     bottom: CameraSettings {
+            //         path: Default::default(),
+            //         width: 0,
+            //         height: 0,
+            //         calibration: Default::default(),
+            //         exposure_auto: Default::default(),
+            //         flip_horizontally: Default::default(),
+            //         flip_vertically: Default::default(),
+            //         focus_auto: Default::default(),
+            //         num_buffers: 0,
+            //     },
+            // },
             filter: SensorConfig {
                 button: ButtonConfig {
                     activation_threshold: 0.0,
@@ -557,10 +557,10 @@ fn create_default_configs() -> (YggdrasilConfig, BehaviorConfig, GameControllerC
                     ground_contact_threshold: 0.0,
                 },
             },
-            game_controller: GameControllerConfig {
-                game_controller_return_delay: Default::default(),
-                game_controller_timeout: Default::default(),
-            },
+            // game_controller: GameControllerConfig {
+            //     game_controller_return_delay: Default::default(),
+            //     game_controller_timeout: Default::default(),
+            // },
             odometry: OdometryConfig {
                 scale_factor: Default::default(),
             },
@@ -573,15 +573,15 @@ fn create_default_configs() -> (YggdrasilConfig, BehaviorConfig, GameControllerC
             primary_state: PrimaryStateConfig {
                 chest_blink_interval: Default::default(),
             },
-            vision: VisionConfig {
-                field_marks: FieldMarksConfig {
-                    angle_tolerance: 0.0,
-                    confidence_threshold: 0.0,
-                    distance_threshold: 0.0,
-                    patch_scale: 0.0,
-                    time_budget: 0,
-                },
-            },
+            // vision: VisionConfig {
+            //     field_marks: FieldMarksConfig {
+            //         angle_tolerance: 0.0,
+            //         confidence_threshold: 0.0,
+            //         distance_threshold: 0.0,
+            //         patch_scale: 0.0,
+            //         time_budget: 0,
+            //     },
+            // },
         },
         BehaviorConfig {
             observe: ObserveBehaviorConfig {

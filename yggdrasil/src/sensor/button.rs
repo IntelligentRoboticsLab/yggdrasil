@@ -16,12 +16,12 @@ pub struct ButtonPlugin;
 impl Plugin for ButtonPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Sensor, button_filter)
-            .init_resource::<HeadButtons>()?
-            .init_resource::<ChestButton>()?
-            .init_resource::<LeftHandButtons>()?
-            .init_resource::<RightHandButtons>()?
-            .init_resource::<LeftFootButtons>()?
-            .init_resource::<RightFootButtons>()
+            .init_resource::<HeadButtons>()
+            .init_resource::<ChestButton>()
+            .init_resource::<LeftHandButtons>()
+            .init_resource::<RightHandButtons>()
+            .init_resource::<LeftFootButtons>()
+            .init_resource::<RightFootButtons>();
     }
 }
 
@@ -181,7 +181,7 @@ fn button_filter(
         ResMut<LeftFootButtons>,
         ResMut<RightFootButtons>,
     ),
-) -> Result<()> {
+) {
     let touch = nao_state.touch.clone();
     let config = &config.button;
     let threshold = config.activation_threshold;
@@ -237,14 +237,10 @@ fn button_filter(
     right_foot_buttons.right = right_foot_buttons
         .right
         .next(config, touch.right_foot_right >= threshold);
-
-    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::sensor::ButtonConfig;
-
     use super::*;
 
     use std::time::Duration;

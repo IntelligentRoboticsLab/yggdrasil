@@ -182,7 +182,7 @@ impl StepPlanner {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DynamicObstacle {
     pub obs: Obstacle,
     pub ttl: Instant,

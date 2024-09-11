@@ -37,8 +37,8 @@ pub fn update_odometry(
     kinematics: Res<RobotKinematics>,
     orientation: Res<RobotOrientation>,
     primary_state: Res<PrimaryState>,
-) -> Result<()> {
-    match primary_state {
+) {
+    match *primary_state {
         PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Unstiff => {
             *odometry = Odometry::default();
         }
@@ -46,13 +46,11 @@ pub fn update_odometry(
             odometry.update(&odometry_config, &swing_foot, &kinematics, &orientation);
         }
     }
-
-    Ok(())
 }
 
-fn init_odometry_view_coordinates(dbg: DebugContext) -> Result<()> {
-    dbg.log_robot_viewcoordinates("/odometry/pose")?;
-    Ok(())
+fn init_odometry_view_coordinates(dbg: DebugContext) {
+    dbg.log_robot_viewcoordinates("/odometry/pose")
+        .expect("failed to log view coordinates for odometry");
 }
 
 /// Configuration for the odometry.

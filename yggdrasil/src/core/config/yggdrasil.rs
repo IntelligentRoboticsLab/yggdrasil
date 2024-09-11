@@ -5,8 +5,10 @@ use crate::motion::odometry::OdometryConfig;
 use crate::prelude::*;
 use crate::sensor::orientation::OrientationFilterConfig;
 use crate::{
-    behavior::primary_state::PrimaryStateConfig, game_controller::GameControllerConfig,
-    sensor::SensorConfig, vision::camera::CameraConfig, vision::VisionConfig,
+    behavior::primary_state::PrimaryStateConfig,
+    // game_controller::GameControllerConfig,
+    sensor::SensorConfig,
+    // vision::camera::CameraConfig, vision::VisionConfig,
 };
 
 #[derive(Resource, Debug, Deserialize, Serialize)]

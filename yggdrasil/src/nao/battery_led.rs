@@ -1,5 +1,4 @@
 use crate::nao::Priority;
-use crate::prelude::*;
 use bevy::prelude::*;
 use nidhogg::{
     types::{FillExt, Skull},
@@ -67,6 +66,4 @@ pub fn battery_display(nao_state: Res<NaoState>, mut manager: ResMut<NaoManager>
     }
 
     manager.set_skull_led(skull, Priority::Medium);
-
-    Ok(())
 }

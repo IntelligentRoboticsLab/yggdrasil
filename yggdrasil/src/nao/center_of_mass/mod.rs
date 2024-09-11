@@ -39,13 +39,13 @@ impl Plugin for CenterOfMassPlugin {
 /// multiplying the mass of the body part by the position of the center of mass of the body part,
 /// and summing the results. The total mass of the robot is then divided out to get the center of
 /// mass.
-#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq)]
 pub struct CenterOfMass {
     /// The center of mass of the robot in *robot* frame.
     pub position: Point3<f32>,
 }
 
-fn update_com(kinematics: Res<RobotKinematics>, mut com: ResMut<CenterOfMass>) -> Result<()> {
+fn update_com(kinematics: Res<RobotKinematics>, mut com: ResMut<CenterOfMass>) {
     let new_com = kinematics.torso_to_robot * TORSO.center * TORSO.mass
         + kinematics.neck_to_robot * NECK.center * NECK.mass
         + kinematics.head_to_robot * HEAD.center * HEAD.mass
@@ -74,11 +74,9 @@ fn update_com(kinematics: Res<RobotKinematics>, mut com: ResMut<CenterOfMass>) -
     *com = CenterOfMass {
         position: (new_com / TOTAL_MASS).into(),
     };
-
-    Ok(())
 }
 
-fn log_com(mut dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) -> Result<()> {
+fn log_com(dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) {
     let absolute_com_position = pose.robot_to_world(&com.position.xy());
 
     dbg.log_points_3d_with_color_and_radius(
@@ -90,7 +88,6 @@ fn log_com(mut dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) 
         )],
         nidhogg::types::color::u8::MAROON,
         0.005,
-    )?;
-
-    Ok(())
+    )
+    .expect("failed to log center of mass");
 }

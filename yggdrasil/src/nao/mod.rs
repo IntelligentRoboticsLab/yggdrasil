@@ -15,7 +15,7 @@ pub use robot_info::*;
 const DEFAULT_STIFFNESS: f32 = 0.8;
 
 /// Plugin group which contains convenience plugins for the robot.
-pub(super) struct NaoPlugins;
+pub struct NaoPlugins;
 
 impl PluginGroup for NaoPlugins {
     fn build(self) -> PluginGroupBuilder {

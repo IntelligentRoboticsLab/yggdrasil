@@ -28,14 +28,12 @@ fn init_pose(
     mut commands: Commands,
     layout_config: Res<LayoutConfig>,
     player_config: Res<PlayerConfig>,
-) -> Result<()> {
+) {
     let initial_position = layout_config
         .initial_positions
         .player(player_config.player_number);
 
     commands.insert_resource(RobotPose::new(initial_position.isometry));
-
-    Ok(())
 }
 
 #[derive(Resource, Default, Debug, Clone)]
@@ -100,23 +98,23 @@ impl RobotPose {
 fn update_robot_pose(
     mut robot_pose: ResMut<RobotPose>,
     odometry: Res<Odometry>,
-    mut ctx: DebugContext,
+    ctx: DebugContext,
     primary_state: Res<PrimaryState>,
     layout_config: Res<LayoutConfig>,
-) -> Result<()> {
+) {
     *robot_pose = next_robot_pose(
-        robot_pose.as_deref_mut(),
+        robot_pose.as_mut(),
         odometry.as_ref(),
         primary_state.as_ref(),
         layout_config.as_ref(),
     );
     log_pose(
         "/localisation/pose",
-        ctx,
+        &ctx,
         &robot_pose.inner,
         color::u8::BLUE,
-    )?;
-    Ok(())
+    )
+    .expect("failed to log the pose");
 }
 
 pub fn next_robot_pose(

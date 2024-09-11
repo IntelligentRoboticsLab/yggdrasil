@@ -31,10 +31,11 @@ impl Plugin for NaoSchedulePlugin {
     fn build(&self, app: &mut App) {
         // Add the custom schedules to the main schedule
         app.world_mut()
-            .resource_mut::<MainScheduleOrder>()
-            .insert_after(First, Sensor)
-            .insert_after(PostUpdate, PreWrite)
-            .insert_after(PreWrite, Write)
-            .insert_after(Write, PostWrite);
+            .resource_scope(|_, mut schedule: Mut<MainScheduleOrder>| {
+                schedule.insert_after(First, Sensor);
+                schedule.insert_after(PostUpdate, PreWrite);
+                schedule.insert_after(PreWrite, Write);
+                schedule.insert_after(Write, PostWrite);
+            });
     }
 }

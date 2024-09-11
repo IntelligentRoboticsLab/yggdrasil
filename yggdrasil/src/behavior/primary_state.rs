@@ -1,7 +1,6 @@
 use crate::{
-    core::{config::showtime::PlayerConfig, whistle::WhistleState},
+    core::config::showtime::PlayerConfig,
     nao::{NaoManager, Priority},
-    prelude::*,
     sensor::button::{ChestButton, HeadButtons},
 };
 use bevy::prelude::*;
@@ -84,15 +83,15 @@ pub fn update_primary_state(
     config: Res<PrimaryStateConfig>,
     player_config: Res<PlayerConfig>,
     // whistle_state: Res<WhistleState>,
-) -> Result<()> {
+) {
     use PrimaryState as PS;
     let next_state = next_primary_state(
-        primary_state.as_deref_mut(),
-        game_controller_message,
-        chest_button,
-        head_buttons,
-        player_config,
-        whistle_state,
+        primary_state.as_mut(),
+        game_controller_message.as_deref(),
+        &chest_button,
+        &head_buttons,
+        &player_config,
+        // WhistleState
     );
 
     match next_state {
@@ -112,17 +111,15 @@ pub fn update_primary_state(
     };
 
     *primary_state = next_state;
-
-    Ok(())
 }
 
 pub fn next_primary_state(
     primary_state: &PrimaryState,
-    game_controller_message: &Option<GameControllerMessage>,
+    game_controller_message: Option<&GameControllerMessage>,
     chest_button: &ChestButton,
     head_buttons: &HeadButtons,
     player_config: &PlayerConfig,
-    whistle_state: &WhistleState,
+    // whistle_state: &WhistleState,
 ) -> PrimaryState {
     use PrimaryState as PS;
 
@@ -149,7 +146,8 @@ pub fn next_primary_state(
         PS::Playing {
             whistle_in_set: true
         }
-    ) || whistle_state.detected;
+    );
+    // ) || whistle_state.detected;
 
     primary_state = match game_controller_message {
         Some(message) => match message.state {
@@ -170,7 +168,7 @@ pub fn next_primary_state(
     };
 
     if is_penalized_by_game_controller(
-        game_controller_message.as_ref(),
+        game_controller_message,
         player_config.team_number,
         player_config.player_number,
     ) {
