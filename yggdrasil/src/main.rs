@@ -1,4 +1,5 @@
 use miette::{Context, IntoDiagnostic};
+use motion::walk;
 use tracing::Level;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
@@ -61,6 +62,7 @@ fn main() -> Result<()> {
             sensor::SensorPlugins,
             behavior::BehaviorPlugins,
             kinematics::KinematicsPlugin,
+            motion::MotionPlugins,
         ))
         .run();
     Ok(())

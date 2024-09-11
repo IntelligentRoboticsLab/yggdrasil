@@ -3,14 +3,13 @@ pub mod smoothing;
 use std::time::Duration;
 
 use crate::{
+    core::config::ConfigExt,
     kinematics::RobotKinematics,
-    nao::{
-        manager::{NaoManager, Priority},
-        CycleTime,
-    },
+    nao::{CycleTime, NaoManager, Priority},
     prelude::*,
     sensor::imu::IMUValues,
 };
+use bevy::prelude::*;
 use nidhogg::{
     types::{
         ArmJoints, FillExt, ForceSensitiveResistors, LeftArmJoints, LeftLegJoints, LegJoints,
@@ -23,7 +22,7 @@ use serde_with::{serde_as, DurationMilliSeconds};
 
 use self::engine::{FootOffsets, Side, Step, WalkState, WalkingEngine};
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Resource)]
 pub struct SwingFoot {
     side: Side,
 }
@@ -41,14 +40,15 @@ impl SwingFoot {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Resource, Serialize, Deserialize, Debug, Clone, Default)]
 pub struct BalancingConfig {
     pub arm_swing_multiplier: f32,
     pub filtered_gyro_y_multiplier: f32,
 }
 
+/// Configuration for the walking engine.
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Resource, Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(deny_unknown_fields)]
 pub struct WalkingEngineConfig {
     #[serde_as(as = "DurationMilliSeconds")]
@@ -68,45 +68,37 @@ impl Config for WalkingEngineConfig {
     const PATH: &'static str = "walking_engine.toml";
 }
 
-/// A module providing the walking engine for the robot.
-///
-/// This module provides the following resources to the application:
-/// - [`WalkingEngine`]
-/// - [`SwingFoot`]
-pub struct WalkingEngineModule;
+/// Plugin providing systems the walking engine for the robot.
+pub struct WalkingEnginePlugin;
 
-impl Module for WalkingEngineModule {
-    fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .init_config::<WalkingEngineConfig>()?
-            .init_resource::<SwingFoot>()?
-            .add_startup_system(init_walking_engine)?
-            .add_staged_system_chain(
-                SystemStage::Finalize,
-                (run_walking_engine, update_swing_side),
-            ))
+impl Plugin for WalkingEnginePlugin {
+    fn build(&self, app: &mut App) {
+        app.init_config::<WalkingEngineConfig>()
+            .init_resource::<SwingFoot>();
+
+        app.add_systems(PostStartup, init_walking_engine);
+        app.add_systems(PostUpdate, (run_walking_engine, update_swing_side).chain());
     }
 }
 
-#[startup_system]
 fn init_walking_engine(
-    storage: &mut Storage,
-    config: &WalkingEngineConfig,
-    nao_state: &NaoState,
-) -> Result<()> {
+    mut commands: Commands,
+    config: Res<WalkingEngineConfig>,
+    nao_state: Res<NaoState>,
+) {
     let kinematics = RobotKinematics::from(&nao_state.position);
 
-    storage.add_resource(Resource::new(WalkingEngine::new(config, &kinematics)))
+    commands.insert_resource(WalkingEngine::new(&config, &kinematics));
 }
 
-#[system]
-pub fn run_walking_engine(
-    walking_engine: &mut WalkingEngine,
-    cycle_time: &CycleTime,
-    fsr: &ForceSensitiveResistors,
-    imu: &IMUValues,
-    nao_manager: &mut NaoManager,
-) -> Result<()> {
+/// System that executes the walking engine.
+fn run_walking_engine(
+    mut walking_engine: ResMut<WalkingEngine>,
+    cycle_time: Res<CycleTime>,
+    fsr: Res<ForceSensitiveResistors>,
+    imu: Res<IMUValues>,
+    mut nao_manager: ResMut<NaoManager>,
+) {
     // If this is start of a new step phase, we'll need to initialise the new phase.
     if walking_engine.t.is_zero() {
         walking_engine.init_step_phase();
@@ -205,12 +197,8 @@ pub fn run_walking_engine(
     nao_manager
         .set_legs(leg_positions, leg_stiffness, Priority::Medium)
         .set_arms(arm_positions, arm_stiffness, Priority::Medium);
-
-    Ok(())
 }
 
-#[system]
-fn update_swing_side(walking_engine: &WalkingEngine, swing_foot: &mut SwingFoot) -> Result<()> {
+fn update_swing_side(walking_engine: Res<WalkingEngine>, mut swing_foot: ResMut<SwingFoot>) {
     swing_foot.side = walking_engine.swing_foot;
-    Ok(())
 }

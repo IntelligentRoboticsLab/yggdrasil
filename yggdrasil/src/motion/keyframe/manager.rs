@@ -3,6 +3,7 @@ use super::types::{
 };
 use crate::motion::walk::engine::{WalkState, WalkingEngine};
 use crate::nao::Priority;
+use bevy::prelude::*;
 use miette::{miette, Result};
 use nidhogg::types::JointArray;
 use nidhogg::NaoState;
@@ -12,7 +13,7 @@ use std::time::Instant;
 use tyr::prelude::*;
 
 /// Stores information about the currently active motion.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ActiveMotion {
     /// Current motion.
     pub motion: Motion,
@@ -94,7 +95,7 @@ impl ActiveMotion {
 
 /// Manages motions, stores all possible motions and keeps track of information
 /// about the motion that is currently being executed.
-#[derive(Default)]
+#[derive(Default, Debug, Resource)]
 pub struct KeyframeExecutor {
     /// Stores the currently active motion.
     pub active_motion: Option<ActiveMotion>,
@@ -172,28 +173,6 @@ impl KeyframeExecutor {
             priority,
         });
     }
-}
-
-/// Initializes the `KeyframeExecutor`. Adds motions to the `KeyframeExecutor` by reading
-/// and deserializing the motions from motion files. Then adds the `KeyframeExecutor`
-/// as resource. If you want to add new motions, add the motions here.
-///
-/// # Arguments
-/// * `storage` - System storage.
-pub fn keyframe_executor_initializer(storage: &mut Storage) -> Result<()> {
-    let mut keyframe_executor = KeyframeExecutor::new();
-    // Add new motions here!
-    keyframe_executor.add_motion(
-        MotionType::StandupBack,
-        "./assets/motions/standup_back.toml",
-    )?;
-    keyframe_executor.add_motion(
-        MotionType::StandupStomach,
-        "./assets/motions/standup_stomach.toml",
-    )?;
-    storage.add_resource(Resource::new(keyframe_executor))?;
-
-    Ok(())
 }
 
 /// Checks whether the current NaoState fulfills a specified condition.

@@ -1,21 +1,18 @@
-use std::time::Instant;
-
-use crate::{localization::RobotPose, motion::walk::engine::Step, prelude::*};
-
-use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
-
 use super::path_finding::{self, Obstacle};
+use crate::{localization::RobotPose, motion::walk::engine::Step, prelude::*};
+use bevy::prelude::*;
+use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
+use std::time::Instant;
 
 const TURN_SPEED: f32 = 0.8;
 const WALK_SPEED: f32 = 0.05;
 
-pub struct StepPlannerModule;
+/// Plugin that adds systems and resources for planning robot steps.
+pub(super) struct StepPlannerPlugin;
 
-impl Module for StepPlannerModule {
-    fn initialize(self, app: App) -> Result<App> {
-        let step_planner = StepPlanner::default();
-
-        app.add_resource(Resource::new(step_planner))
+impl Plugin for StepPlannerPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<StepPlanner>();
     }
 }
 
@@ -25,6 +22,7 @@ pub struct Target {
     pub rotation: Option<UnitComplex<f32>>,
 }
 
+#[derive(Debug, Clone, Resource)]
 pub struct StepPlanner {
     target: Option<Target>,
     reached_translation_target: bool,

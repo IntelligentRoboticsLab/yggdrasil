@@ -654,4 +654,16 @@ impl<'w> DebugContext<'w> {
 
         Ok(())
     }
+
+    /// Logs a static view coordinates configuration to the debug viewer,
+    /// such that the robot is oriented in the field's FLU coordinate system.
+    pub fn log_robot_viewcoordinates(&self, path: impl AsRef<str>) {
+        #[cfg(feature = "rerun")]
+        {
+            self.rec
+                .log_static("/field/mesh", &rerun::ViewCoordinates::FLU)
+                .into_diagnostic()?;
+        }
+        Ok(())
+    }
 }
