@@ -70,8 +70,8 @@ fn initialize_nao(mut commands: Commands, mut lola: ResMut<Lola>) -> Result<()> 
 
     tracing::info!("Battery level: {}", state.battery.charge);
 
-    commands.insert_resource(Resource::new(state))?;
-    commands.insert_resource(Resource::new(info))?;
+    commands.insert_resource(state)?;
+    commands.insert_resource(info)?;
 
     Ok(())
 }
@@ -81,9 +81,9 @@ pub fn write_hardware_info(
     mut robot_state: ResMut<NaoState>,
     update: Res<NaoControlMessage>,
 ) -> Result<()> {
-    *robot_state = nao.read_nao_state()?;
+    *robot_state = nao.0.read_nao_state()?;
 
-    nao.send_control_msg(update.clone())?;
+    nao.0.send_control_msg(update.clone())?;
 
     Ok(())
 }

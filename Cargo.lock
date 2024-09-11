@@ -1060,6 +1060,7 @@ dependencies = [
 name = "bifrost"
 version = "0.1.0"
 dependencies = [
+ "bevy",
  "bifrost_derive",
  "byteorder",
  "num",

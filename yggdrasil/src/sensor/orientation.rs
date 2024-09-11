@@ -17,7 +17,7 @@ pub struct OrientationFilterPlugin;
 impl Plugin for OrientationFilterPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Sensor, update_orientation.after(super::imu::imu_sensor))
-            .add_systems(PostStartup, init_orientation_filter)
+            .add_systems(PostStartup, init_orientation_filter);
     }
 }
 
@@ -31,8 +31,8 @@ pub fn update_orientation(
     fsr: Res<ForceSensitiveResistors>,
     cycle: Res<CycleTime>,
     primary_state: Res<PrimaryState>,
-) -> Result<()> {
-    match primary_state {
+) {
+    match *primary_state {
         PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
             orientation.reset();
         }
@@ -40,8 +40,6 @@ pub fn update_orientation(
             orientation.update(&imu, &fsr, &cycle);
         }
     }
-
-    Ok(())
 }
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]

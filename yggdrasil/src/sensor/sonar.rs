@@ -9,7 +9,7 @@ pub struct SonarSensorPlugin;
 impl Plugin for SonarSensorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Sensor, sonar_sensor)
-            .init_resource::<SonarValues>()
+            .init_resource::<SonarValues>();
     }
 }
 

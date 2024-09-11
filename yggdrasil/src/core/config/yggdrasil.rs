@@ -10,13 +10,13 @@ use crate::{
 };
 
 #[derive(Resource, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
+// #[serde(deny_unknown_fields)]
 pub struct YggdrasilConfig {
-    pub camera: CameraConfig,
+    // pub camera: CameraConfig,
     pub filter: SensorConfig,
-    pub game_controller: GameControllerConfig,
+    // pub game_controller: GameControllerConfig,
     pub primary_state: PrimaryStateConfig,
-    pub vision: VisionConfig,
+    // pub vision: VisionConfig,
     pub odometry: OdometryConfig,
     pub orientation: OrientationFilterConfig,
 }

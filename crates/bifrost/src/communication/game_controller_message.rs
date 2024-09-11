@@ -7,7 +7,7 @@
 //! # Example
 //! For an example of how to use this module, see the documentation for the `SPLStandardMessage` struct.
 //!
-
+use bevy::prelude::*;
 use crate::serialization::{Decode, Encode};
 
 /// The port from which the `GameController` sends the [`GameControllerMessage`] to the robots.
@@ -228,7 +228,7 @@ impl TeamInfo {
 }
 
 /// A struct representing the `RoboCupGameControlData` received by the Robots.
-#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+#[derive(Resource, Encode, Decode, Debug, Clone, PartialEq)]
 pub struct GameControllerMessage {
     /// Header to identify the structure
     pub header: [u8; 4],

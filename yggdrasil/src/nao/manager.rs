@@ -62,6 +62,7 @@ struct JointSettings<T> {
     priority: Option<Priority>,
 }
 
+#[derive(Debug)]
 enum ChestBlink {
     Static {
         color: RgbF32,

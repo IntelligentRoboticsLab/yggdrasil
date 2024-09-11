@@ -337,7 +337,7 @@ pub fn step(
         ResMut<StepPlanner>,
         DebugContext,
     ),
-    game_controller_message: Res<Option<GameControllerMessage>>,
+    game_controller_message: Option<Res<GameControllerMessage>>,
     (robot_pose, balls, fall_state): (Res<RobotPose>, Res<Balls>, Res<FallState>),
 ) -> Result<()> {
     let context = Context {

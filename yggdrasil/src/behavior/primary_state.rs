@@ -14,7 +14,7 @@ use bifrost::communication::{GameControllerMessage, GameState};
 use nidhogg::types::color;
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Resource, Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct PrimaryStateConfig {
     #[serde_as(as = "DurationMilliSeconds<u64>")]
@@ -78,12 +78,12 @@ fn is_penalized_by_game_controller(
 
 pub fn update_primary_state(
     mut primary_state: ResMut<PrimaryState>,
-    game_controller_message: Res<Option<GameControllerMessage>>,
+    game_controller_message: Option<Res<GameControllerMessage>>,
     mut nao_manager: ResMut<NaoManager>,
     (head_buttons, chest_button): (Res<HeadButtons>, Res<ChestButton>),
     config: Res<PrimaryStateConfig>,
     player_config: Res<PlayerConfig>,
-    whistle_state: Res<WhistleState>,
+    // whistle_state: Res<WhistleState>,
 ) -> Result<()> {
     use PrimaryState as PS;
     let next_state = next_primary_state(
