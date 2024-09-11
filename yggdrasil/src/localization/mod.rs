@@ -15,7 +15,7 @@ use nidhogg::types::{
 };
 
 /// The localization plugin provides functionalities related to the localization of the robot.
-pub(super) struct LocalizationPlugin;
+pub struct LocalizationPlugin;
 
 impl Plugin for LocalizationPlugin {
     fn build(&self, app: &mut App) {

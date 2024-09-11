@@ -5,7 +5,11 @@ pub mod yggdrasil;
 
 use std::path::{Path, PathBuf};
 
-use crate::{behavior::BehaviorConfig, nao::RobotInfo, prelude::*};
+use crate::{
+    behavior::{behaviors::StartUp, BehaviorConfig},
+    nao::RobotInfo,
+    prelude::*,
+};
 use bevy::{ecs::system::RunSystemOnce, prelude::*};
 use odal::{ConfigKind, Error, ErrorKind};
 
@@ -73,7 +77,7 @@ impl Plugin for ConfigPlugin {
             .init_config::<YggdrasilConfig>();
 
         app.add_systems(
-            PostStartup,
+            PreStartup,
             (init_subconfigs, showtime::configure_showtime).chain(),
         );
     }

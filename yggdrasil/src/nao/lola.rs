@@ -32,10 +32,12 @@ impl Plugin for LolaPlugin {
         app.configure_sets(Update, LolaCycle::Main)
             .configure_sets(Write, LolaCycle::Flush);
 
+        app.init_resource::<NaoControlMessage>();
+
         app.world_mut().run_system_once(setup_lola);
         app.world_mut().run_system_once(initialize_nao);
 
-        app.add_systems(Write, write_hardware_info.in_set(LolaCycle::Flush));
+        app.add_systems(Write, sync_hardware.in_set(LolaCycle::Flush));
     }
 }
 
@@ -79,15 +81,15 @@ fn initialize_nao(mut commands: Commands, mut lola: ResMut<Lola>) {
     commands.insert_resource(info);
 }
 
-pub fn write_hardware_info(
+pub fn sync_hardware(
     mut nao: ResMut<Lola>,
     mut robot_state: ResMut<NaoState>,
     update: Res<NaoControlMessage>,
 ) {
+    nao.send_control_msg(update.clone())
+        .expect("failed to send control message to LoLA");
+
     *robot_state = nao
         .read_nao_state()
         .expect("failed to read state from LoLA");
-
-    nao.send_control_msg(update.clone())
-        .expect("failed to send control message to LoLA");
 }

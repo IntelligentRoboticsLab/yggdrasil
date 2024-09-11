@@ -17,7 +17,7 @@ path = "src/main.rs"
 alsa = { workspace = true, optional = true }
 apodize = { workspace = true }
 bifrost = { path = "../crates/bifrost/" }
-bevy = { workspace = true }
+bevy = { workspace = true, features = ["multi_threaded"] }
 derive_more = { workspace = true }
 enum_dispatch = { workspace = true }
 fast_image_resize = { workspace = true }
@@ -58,4 +58,4 @@ alsa = ["dep:alsa", "dep:kira", "dep:rustfft"]
 rerun = ["dep:rerun"]
 local = []
 dependency_graph = []
-timings = ["dep:tracing-tracy"]
+timings = ["dep:tracing-tracy", "bevy/trace"]

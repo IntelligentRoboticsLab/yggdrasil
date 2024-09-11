@@ -60,6 +60,7 @@ fn main() -> Result<()> {
             schedule::NaoSchedulePlugin,
             nao::NaoPlugins,
             core::CorePlugins,
+            localization::LocalizationPlugin,
             sensor::SensorPlugins,
             behavior::BehaviorPlugins,
             kinematics::KinematicsPlugin,
