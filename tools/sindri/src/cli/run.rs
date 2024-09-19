@@ -18,7 +18,6 @@ use crate::{
 
 const SEIDR_BINARY_PATH: &str = "./target/release/seidr";
 const SEIDR_BINARY: &str = "seidr";
-const SEIDR_LOG_FILE_PATH: &str = "./crates/seidr/log/seidr_log.txt";
 
 const LOCAL_ROBOT_ID: u8 = 0;
 const DEFAULT_PLAYER_NUMBER: u8 = 3;
@@ -117,7 +116,12 @@ impl Run {
             envs.push(("RERUN_HOST", rerun_host?.leak()));
 
             if has_rerun {
-                spawn_rerun_viewer().await?;
+                let robot_ip = if !self.robot_ops.local {
+                    robot.ip()
+                } else {
+                    Ipv4Addr::UNSPECIFIED
+                };
+                spawn_rerun_viewer(robot_ip).await?;
             }
         }
 
@@ -193,21 +197,13 @@ async fn build_seidr() -> Result<()> {
 }
 
 /// Spawn a rerun viewer in the background.
-async fn spawn_rerun_viewer() -> Result<()> {
+async fn spawn_rerun_viewer(robot_ip: Ipv4Addr) -> Result<()> {
     build_seidr().await?;
-    let mut process = std::process::Command::new(SEIDR_BINARY_PATH);
 
-    let seidr_log_file_path = Path::new(SEIDR_LOG_FILE_PATH);
-    let prefix = seidr_log_file_path.parent().unwrap();
-    std::fs::create_dir_all(prefix).into_diagnostic()?;
-    let seidr_log_file = File::create(SEIDR_LOG_FILE_PATH).into_diagnostic()?;
-
-    process
-        .stdout(Stdio::from(seidr_log_file.try_clone().into_diagnostic()?))
-        .stderr(Stdio::from(seidr_log_file))
-        .process_group(0);
-
-    Command::from(process)
+    Command::new(SEIDR_BINARY_PATH)
+        .arg(&robot_ip.to_string())
+        .stdin(Stdio::inherit())
+        .stderr(Stdio::inherit())
         .kill_on_drop(false)
         .spawn()
         .into_diagnostic()?;

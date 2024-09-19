@@ -10,10 +10,11 @@ use re_viewer::external::{
     egui::{self, Frame, ScrollArea},
 };
 use rerun::external::ecolor::Color32;
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use yggdrasil::core::control::receive::ClientRequest;
 
 use crate::{
-    connection::{self, TcpConnection},
+    connection::{self, send_request},
     resource::RobotResources,
     style::{FrameStyleMap, LAST_UPDATE_COLOR},
 };
@@ -27,7 +28,7 @@ pub struct SeidrStates {
 
 pub struct Seidr {
     app: re_viewer::App,
-    connection: TcpConnection,
+    ws: Arc<OwnedWriteHalf>,
     states: SeidrStates,
     frame_styles: FrameStyleMap,
 }
@@ -54,10 +55,10 @@ impl eframe::App for Seidr {
 }
 
 impl Seidr {
-    pub fn new(app: re_viewer::App, connection: TcpConnection) -> Self {
+    pub fn new(app: re_viewer::App, ws: Arc<OwnedWriteHalf>) -> Self {
         Seidr {
             app,
-            connection,
+            ws,
             states: SeidrStates::default(),
             frame_styles: FrameStyleMap::default(),
         }
@@ -84,7 +85,7 @@ impl Seidr {
                         {
                             let request = ClientRequest::RobotState;
                             let bytes = bincode::serialize(&request).into_diagnostic().unwrap();
-                            self.connection.send_request(bytes).unwrap();
+                            send_request(self.ws.clone(), bytes).unwrap();
                         }
                     });
             });
@@ -140,7 +141,7 @@ impl Seidr {
                 if let Some(action) = followup_action {
                     match action {
                         EditableResourceAction::ResourceUpdate(bytes) => {
-                            self.connection.send_request(bytes).unwrap()
+                            send_request(self.ws.clone(), bytes).unwrap()
                         }
                     };
                 }
@@ -148,8 +149,7 @@ impl Seidr {
         }
     }
 
-    pub fn listen_for_robot_responses(&mut self) {
-        let rs = self.connection.rs.clone();
+    pub fn listen_for_robot_responses(&mut self, rs: OwnedReadHalf) {
         let robot_resources = self.states.robot_resources.clone();
         let focused_resource = self.states.focused_resources.clone();
         let last_resource_update = self.states.last_resource_update.clone();

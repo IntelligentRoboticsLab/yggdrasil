@@ -49,6 +49,9 @@ impl From<&InspectView> for RobotStateMsg {
 async fn send_state(stream: Arc<TcpStream>, state: RobotStateMsg) -> Result<SendStateFinished> {
     let msg = bincode::serialize(&state).into_diagnostic()?;
 
+    let msg_size = msg.len();
+    let msg_size_bytes = bincode::serialize(&msg_size).into_diagnostic()?;
+    send_message(stream.clone(), msg_size_bytes).await?;
     send_message(stream, msg).await?;
 
     Ok(SendStateFinished)
@@ -97,8 +100,8 @@ fn send_state_current_state(
 
         let Some(_) = send_state_task.poll() else {
             // When the task is not finished and not active (
-            // this scenario is when there is a connection and the
-            // task was not spawned before
+            // this scenario happens when there is a connection and the
+            // task was not spawned before)
             if !send_state_task.active() {
                 let _ = send_state_task.try_spawn(send_state(stream, msg));
             }

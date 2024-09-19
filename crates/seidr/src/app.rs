@@ -51,8 +51,9 @@ impl App {
                 );
                 rerun_app.add_receiver(self.rx);
 
-                let mut seidr = Seidr::new(rerun_app, self.robot_connection);
-                seidr.listen_for_robot_responses();
+                let rs = self.robot_connection.rs;
+                let mut seidr = Seidr::new(rerun_app, self.robot_connection.ws);
+                seidr.listen_for_robot_responses(rs);
                 Ok(Box::new(seidr))
             }),
         )

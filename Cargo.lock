@@ -8896,6 +8896,7 @@ name = "seidr"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "clap",
  "miette",
  "mimalloc",
  "re_crash_handler 0.17.0",
@@ -8906,6 +8907,8 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
  "yggdrasil",
 ]
 
