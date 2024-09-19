@@ -1,7 +1,6 @@
 pub mod combinators;
 pub mod conditions;
-// TODO: open up strategy API (?)
-mod strategy;
+pub mod strategy;
 
 use std::{future::Future, marker::PhantomData, sync::atomic::AtomicU32};
 
@@ -102,7 +101,7 @@ pub trait TaskFuture<T>: Future<Output = Option<T>> + Send + 'static {}
 impl<F: Future<Output = Option<T>> + Send + 'static, T> TaskFuture<T> for F {}
 
 impl TaskBuilder<'_, '_, '_, ResourceTask> {
-    fn spawn_with_strategy<T: Resource, F: Future<Output = CommandQueue> + Send + 'static>(
+    pub fn spawn_with_strategy<T: Resource, F: Future<Output = CommandQueue> + Send + 'static>(
         &mut self,
         strategy: impl ResourceStrategy<T, F> + 'static,
         task: impl TaskFuture<T>,
@@ -124,7 +123,7 @@ impl TaskBuilder<'_, '_, '_, ResourceTask> {
 }
 
 impl TaskBuilder<'_, '_, '_, EntityTask> {
-    fn spawn_with_strategy<
+    pub fn spawn_with_strategy<
         T: Send + Sync + 'static,
         F: Future<Output = CommandQueue> + Send + 'static,
     >(

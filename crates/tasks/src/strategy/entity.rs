@@ -15,6 +15,29 @@ impl<
 {
 }
 
+pub use self::keep_all as just_add_the_shit;
+
+pub async fn keep_all<T: Component>(
+    generation: Generation,
+    entity: Entity,
+    value: Option<T>,
+) -> CommandQueue {
+    let mut queue = CommandQueue::default();
+
+    queue.push(move |world: &mut World| {
+        if let Some(value) = value {
+            world
+                .entity_mut(entity)
+                .insert((value, generation))
+                .remove::<(Tag<T>, TyrTask)>();
+        } else {
+            world.entity_mut(entity).despawn();
+        }
+    });
+
+    queue
+}
+
 pub async fn latest<T: Component>(
     generation: Generation,
     entity: Entity,
