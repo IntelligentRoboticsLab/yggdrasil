@@ -1,5 +1,6 @@
-use miette::Result;
+use miette::{IntoDiagnostic, Result};
 use std::{collections::HashMap, sync::MutexGuard};
+use serde_json::Value;
 
 use yggdrasil::core::control::transmit::RobotStateMsg;
 
@@ -22,7 +23,9 @@ impl RobotResources {
                         continue;
                     }
                 }
-                *data = updated_data;
+                let updated_data_json: Value = serde_json::from_str(&updated_data).into_diagnostic()?;
+                let pretty_updated_data = serde_json::to_string_pretty(&updated_data_json).into_diagnostic()?; 
+                *data = pretty_updated_data;
             } else {
                 self.0.insert(resource_name.clone(), updated_data);
                 changed_resources.insert(resource_name, false);

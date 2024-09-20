@@ -86,7 +86,8 @@ pub fn listen_for_messages(
                 let _ = communicate_manual_state_update_task
                     .try_spawn(communicate_manual_state_update());
             }
-            ClientRequest::ResourceUpdate(resource_name, new_config) => {
+            ClientRequest::ResourceUpdate(resource_name, mut new_config) => {
+                new_config.retain(|c| !c.is_whitespace());
                 tracing::info!("Request to update resource: {resource_name}, with: {new_config}");
                 if let Some(resource) = inspect_view.by_name(&resource_name) {
                     let _ = update_resource_task

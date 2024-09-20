@@ -79,7 +79,7 @@ impl Seidr {
                     .show(ui, |ui| {
                         if ui
                             .add(
-                                egui::Button::new(egui::RichText::new("Refresh").size(18.0)), // .rounding(Rounding::same(10.0)),
+                                egui::Button::new(egui::RichText::new("Refresh").size(18.0)),
                             )
                             .clicked()
                         {
@@ -115,7 +115,7 @@ impl Seidr {
 
         ui.add_space(10.0);
 
-        // Sort the names to keep the resources at a fixed order
+        // Sort the names to keep the resources in a fixed order
         let mut resource_names: Vec<String> = {
             let locked_robot_resources = self.states.robot_resources.lock().unwrap();
             locked_robot_resources.0.keys().cloned().collect()

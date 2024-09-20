@@ -50,8 +50,8 @@ async fn send_state(stream: Arc<TcpStream>, state: RobotStateMsg) -> Result<Send
     let msg = bincode::serialize(&state).into_diagnostic()?;
 
     let msg_size = msg.len();
-    let msg_size_bytes = bincode::serialize(&msg_size).into_diagnostic()?;
-    send_message(stream.clone(), msg_size_bytes).await?;
+    let msg_size_serialized = bincode::serialize(&msg_size).into_diagnostic()?;
+    send_message(stream.clone(), msg_size_serialized).await?;
     send_message(stream, msg).await?;
 
     Ok(SendStateFinished)
