@@ -1,4 +1,4 @@
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 use re_smart_channel::Receiver;
 use re_viewer::{
     external::{
@@ -59,7 +59,7 @@ impl App {
                 Ok(Box::new(seidr))
             }),
         )
-        .into_diagnostic()?;
+        .unwrap();
 
         Ok(())
     }

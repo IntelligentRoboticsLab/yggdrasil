@@ -78,9 +78,7 @@ impl Seidr {
                     .get_or_default("refresh_button".to_string())
                     .show(ui, |ui| {
                         if ui
-                            .add(
-                                egui::Button::new(egui::RichText::new("Refresh").size(18.0)),
-                            )
+                            .add(egui::Button::new(egui::RichText::new("Refresh").size(18.0)))
                             .clicked()
                         {
                             let request = ClientRequest::RobotState;
