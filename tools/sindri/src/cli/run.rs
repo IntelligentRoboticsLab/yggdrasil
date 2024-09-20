@@ -119,7 +119,7 @@ impl Run {
                 } else {
                     Ipv4Addr::UNSPECIFIED
                 };
-                spawn_rerun_viewer(robot_ip).await?;
+                spawn_rerun_viewer(robot_ip, self.robot_ops.rerun_mem_limit).await?;
             }
         }
 
@@ -195,11 +195,21 @@ async fn build_seidr() -> Result<()> {
 }
 
 /// Spawn a rerun viewer in the background.
-async fn spawn_rerun_viewer(robot_ip: Ipv4Addr) -> Result<()> {
+async fn spawn_rerun_viewer(robot_ip: Ipv4Addr, memory_limit: Option<u64>) -> Result<()> {
     build_seidr().await?;
 
+    let mut args = vec![];
+    // Set robot ip to connection the viewer with
+    args.push(robot_ip.to_string());
+
+    // Additionally set a memory limit for the viewer
+    if let Some(memory_limit) = memory_limit {
+        args.push("-m".to_string());
+        args.push(memory_limit.to_string());
+    }
+
     Command::new(SEIDR_BINARY_PATH)
-        .arg(&robot_ip.to_string())
+        .args(args)
         .stdin(Stdio::inherit())
         .stderr(Stdio::inherit())
         .kill_on_drop(false)

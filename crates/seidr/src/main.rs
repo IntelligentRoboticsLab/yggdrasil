@@ -6,7 +6,9 @@ use connection::TcpConnection;
 use miette::{IntoDiagnostic, Result};
 use re_viewer::external::{eframe, egui, re_log, re_memory};
 use std::{
-    net::{Ipv4Addr, SocketAddrV4}, process::exit, time::Duration
+    net::{Ipv4Addr, SocketAddrV4},
+    process::exit,
+    time::Duration,
 };
 use yggdrasil::core::control::CONTROL_PORT;
 
@@ -16,6 +18,8 @@ mod connection;
 mod resource;
 mod seidr;
 mod style;
+
+const MB_TO_BYTES_MULTIPLIER: u64 = 1_000_000;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -51,9 +55,15 @@ async fn main() -> Result<()> {
         ..re_viewer::native::eframe_options(None)
     };
 
+    let memory_limit = if let Some(max_memory) = args.max_mem {
+        tracing::info!("Memory limit set to: {} MB", max_memory);
+        re_memory::MemoryLimit::from_bytes(MB_TO_BYTES_MULTIPLIER * max_memory)
+    } else {
+        re_memory::MemoryLimit::from_fraction_of_total(0.75)
+    };
+
     let startup_options = re_viewer::StartupOptions {
-        // Limit memory to 1.0 GB
-        memory_limit: re_memory::MemoryLimit::from_bytes(1000000000),
+        memory_limit,
         ..Default::default()
     };
 

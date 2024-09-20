@@ -80,6 +80,10 @@ pub struct ConfigOptsRobotOps {
     #[clap(long, short)]
     pub rerun: bool,
 
+    /// Set a memory limit for the rerun viewer. --rerun required
+    #[clap(long, requires = "rerun")]
+    pub rerun_mem_limit: Option<u64>,
+
     /// For running Yggdrasil locally with fake-lola
     #[clap(long, short)]
     pub local: bool,

@@ -1,10 +1,12 @@
 use miette::{IntoDiagnostic, Result};
 use re_smart_channel::Receiver;
 use re_viewer::{
-    external::{eframe::{self, NativeOptions}, re_log_types::LogMsg},
+    external::{
+        eframe::{self, NativeOptions},
+        re_log_types::LogMsg,
+    },
     StartupOptions,
 };
-
 
 use crate::{connection::TcpConnection, seidr::Seidr};
 
