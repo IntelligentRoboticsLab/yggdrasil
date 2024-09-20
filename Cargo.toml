@@ -108,10 +108,10 @@ proc-macro2 = "1.0.86"
 quote = "1.0.37"
 rand = "0.8.5"
 rayon = "1.10.0"
-re_crash_handler = "0.17.0"
-re_sdk_comms = {version = "0.17.0", features = ["server"]}
-re_smart_channel = "0.17.0"
-re_viewer = "0.17.0"
+re_crash_handler = "0.18.2"
+re_sdk_comms = {version = "0.18.2", features = ["server"]}
+re_smart_channel = "0.18.2"
+re_viewer = "0.18.2"
 regex = "1.10.5"
 rerun = { version = "0.18.2", features = ["image"] }
 rustc_version = "0.4.1"

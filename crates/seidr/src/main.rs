@@ -6,8 +6,7 @@ use connection::TcpConnection;
 use miette::{IntoDiagnostic, Result};
 use re_viewer::external::{eframe, egui, re_log, re_memory};
 use std::{
-    net::{Ipv4Addr, SocketAddrV4},
-    time::Duration,
+    net::{Ipv4Addr, SocketAddrV4}, process::exit, time::Duration
 };
 use yggdrasil::core::control::CONTROL_PORT;
 
@@ -48,7 +47,7 @@ async fn main() -> Result<()> {
     .into_diagnostic()?;
 
     let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_app_id("rerun_extend_viewer_ui_example"),
+        viewport: egui::ViewportBuilder::default().with_app_id("seidr"),
         ..re_viewer::native::eframe_options(None)
     };
 
@@ -61,13 +60,28 @@ async fn main() -> Result<()> {
     let socket_addr = SocketAddrV4::new(args.robot_ip, CONTROL_PORT);
 
     // Tries to make a connection to the robot address
+    let mut connection_attempts = 0;
+    let max_connection_attempts = 10;
     let connection = loop {
         match TcpConnection::try_from_ip(socket_addr).await {
             Ok(conn) => break conn,
             Err(err) => {
-                eprintln!("Failed to connect: {}. Retrying...", err);
+                tracing::info!(
+                    "[{}/{}] Failed to connect: {}. Retrying...",
+                    connection_attempts,
+                    max_connection_attempts,
+                    err
+                );
+
+                if connection_attempts >= max_connection_attempts {
+                    tracing::error!("Max connections attempts reached");
+                    exit(1);
+                }
+
+                connection_attempts += 1;
+
                 // Wait before retrying
-                tokio::time::sleep(Duration::from_secs(1)).await;
+                tokio::time::sleep(Duration::from_secs(2)).await;
             }
         };
     };

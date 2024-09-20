@@ -1,7 +1,5 @@
 use std::collections::HashMap;
-use std::fs::File;
 use std::net::{IpAddr, Ipv4Addr, SocketAddrV4};
-use std::path::Path;
 use std::{os::unix::process::CommandExt, process::Stdio};
 
 use clap::Parser;
