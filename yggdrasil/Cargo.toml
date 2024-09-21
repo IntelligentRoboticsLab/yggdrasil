@@ -16,6 +16,7 @@ path = "src/main.rs"
 [dependencies]
 alsa = { workspace = true, optional = true }
 apodize = { workspace = true }
+tasks = { path = "../crates/tasks/" }
 bifrost = { path = "../crates/bifrost/" }
 bevy = { workspace = true, features = ["multi_threaded"] }
 derive_more = { workspace = true }
