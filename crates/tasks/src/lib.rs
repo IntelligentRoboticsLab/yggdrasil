@@ -38,6 +38,7 @@ pub trait PoolType {
 
 pub struct UnsetPool;
 
+#[non_exhaustive]
 pub enum TaskPool {
     Compute,
     AsyncCompute,
