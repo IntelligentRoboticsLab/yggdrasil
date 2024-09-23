@@ -6,8 +6,8 @@ use std::{
 
 use nidhogg::{
     types::{
-        color, ArmJoints, FillExt, HeadJoints, JointArray, LeftEar, LeftEye, LeftLegJoints,
-        LegJoints, RgbF32, RightEar, RightEye, RightLegJoints, Skull,
+        color, ArmJoints, FillExt, HeadJoints, JointArray, LeftEar, LeftEye, LegJoints, RgbF32,
+        RightEar, RightEye, Skull,
     },
     NaoControlMessage,
 };
@@ -294,19 +294,19 @@ impl NaoManager {
         )
     }
 
-    /// Set all joints to unstiff, then lock the hip joints in their seated position 
+    /// Set all joints to unstiff, then lock the hip joints in their seated position
     /// with constant stiffness to avoid falling over.
     pub fn unstiff_sit(&mut self, priority: Priority) -> &mut Self {
         let mut leg_stiffness = LegJoints::fill(STIFFNESS_UNSTIFF);
-        leg_joints.left_leg.hip_pitch = HIP_LOCK_STIFFNESS;
-        leg_joints.left_leg.hip_yaw_pitch = HIP_LOCK_STIFFNESS;
-        leg_joints.right_leg.hip_pitch = HIP_LOCK_STIFFNESS;
+        leg_stiffness.left_leg.hip_pitch = HIP_LOCK_STIFFNESS;
+        leg_stiffness.left_leg.hip_yaw_pitch = HIP_LOCK_STIFFNESS;
+        leg_stiffness.right_leg.hip_pitch = HIP_LOCK_STIFFNESS;
 
         let mut leg_positions = self.leg_settings.joints_position.clone();
         leg_positions.left_leg.hip_pitch = HIP_POSITION;
         leg_positions.right_leg.hip_pitch = HIP_POSITION;
 
-        self.set_legs(leg_positions, leg_joints, priority)
+        self.set_legs(leg_positions, leg_stiffness, priority)
     }
 
     /// Disable all motors in the arms.
