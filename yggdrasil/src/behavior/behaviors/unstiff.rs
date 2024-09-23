@@ -22,7 +22,8 @@ impl Behavior for Unstiff {
         if !control.walking_engine.is_sitting() {
             control.walking_engine.request_sit();
         } else {
-            control.nao_manager.unstiff_legs(UNSTIFF_PRIORITY);
+            // Makes robot floppy except for hip joints, locked in sitting position.
+            control.nao_manager.unstiff_sit(UNSTIFF_PRIORITY);
         }
 
         control
