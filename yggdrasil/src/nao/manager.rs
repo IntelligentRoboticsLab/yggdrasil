@@ -294,8 +294,8 @@ impl NaoManager {
         )
     }
 
-    /// Set all joints to unstiff, then lock the hip joints pitch and yaw with constant stiffness
-    /// Set hip position to specified constant value in sitting position
+    /// Set all joints to unstiff, then lock the hip joints in their seated position 
+    /// with constant stiffness to avoid falling over.
     pub fn unstiff_sit(&mut self, priority: Priority) -> &mut Self {
         let mut leg_stiffness = LegJoints::fill(STIFFNESS_UNSTIFF);
         leg_joints.left_leg.hip_pitch = HIP_LOCK_STIFFNESS;
