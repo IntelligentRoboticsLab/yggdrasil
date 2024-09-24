@@ -220,7 +220,7 @@ pub fn run_walking_engine(
     dbg.log_scalar_f32("/foot/right/lift", right_foot.lift)?;
 
     let (mut left_leg_joints, mut right_leg_joints) =
-        crate::kinematics::inverse::leg_angles(&left_foot, &right_foot);
+        crate::kinematics::inverse::leg_angles(&left_foot, &right_foot, 0.025);
 
     // TODO: proper balancing
 
