@@ -2,6 +2,7 @@
 //! models in the framework.
 
 pub mod backend;
+pub mod commands_ext;
 pub mod data_type;
 pub mod util;
 

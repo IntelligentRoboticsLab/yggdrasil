@@ -43,7 +43,7 @@ macro_rules! impl_elem {
 /// [`Elem::is_compatible`] is called. The rest of the implementation
 /// relies on the fact that this method functions correctly, or else
 /// we wind up with undefined behavior.
-pub unsafe trait Elem: Sized {
+pub unsafe trait Elem: Sized + Send + Sync {
     /// Returns `true` if `Self` is compatible with
     /// `precision`, i.e. instances of `precision` can be safely
     /// interpreted as instances of `Self`.
