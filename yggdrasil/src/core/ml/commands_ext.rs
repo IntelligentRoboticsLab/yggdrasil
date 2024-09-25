@@ -134,7 +134,11 @@ impl<'a, 'w, 's, M: MlModel + Send + Sync + 'static>
             .state
             .0
             .iter()
-            .map(|input| self.executor.request_infer(&[input]).expect("fuck yea"))
+            .map(|input| {
+                self.executor
+                    .request_infer(&[input])
+                    .expect("failed to create inference request")
+            })
             .collect::<Vec<InferRequest<M>>>();
 
         self.commands
