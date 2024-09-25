@@ -11,7 +11,10 @@ use self::{
     data_type::{Elem, InputElem, Output},
 };
 use crate::core::ml::backend::MlCore;
+use bevy::prelude::Commands;
+use commands_ext::MlTaskCommandsExt;
 use miette::Diagnostic;
+use ndarray::{Array, Array2};
 use thiserror::Error;
 use tyr::{
     prelude::{startup_system, AsyncDispatcher, AsyncTask},
@@ -39,7 +42,7 @@ use tyr::{
 ///     const ONNX_PATH: &'static str = "deploy/models/mixtral8x7b.onnx";
 /// }
 /// ```
-pub trait MlModel: 'static {
+pub trait MlModel: Send + Sync + 'static {
     /// Type of model input elements.
     type InputType: InputElem;
     /// Type of model output elements.
@@ -48,6 +51,9 @@ pub trait MlModel: 'static {
     /// Path to the model parameters.
     const ONNX_PATH: &'static str;
 }
+
+#[derive(bevy::prelude::Component)]
+struct Magic<M: MlModel>(Vec<M::OutputType>);
 
 /// Machine learning (ML) task that runs a [`MlModel`] in an [`AsyncTask`].
 ///
