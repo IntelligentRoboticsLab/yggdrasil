@@ -86,7 +86,7 @@ impl Plugin for ConfigPlugin {
 fn init_subconfigs(mut commands: Commands, config: Res<YggdrasilConfig>) {
     // commands.insert_resource(config.camera.clone());
     commands.insert_resource(config.filter.clone());
-    // commands.insert_resource(config.game_controller.clone());
+    commands.insert_resource(config.game_controller.clone());
     commands.insert_resource(config.primary_state.clone());
     // commands.insert_resource(config.vision.field_marks.clone());
     commands.insert_resource(config.odometry.clone());

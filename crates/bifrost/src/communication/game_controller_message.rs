@@ -7,8 +7,8 @@
 //! # Example
 //! For an example of how to use this module, see the documentation for the `SPLStandardMessage` struct.
 //!
-use bevy::prelude::*;
 use crate::serialization::{Decode, Encode};
+use bevy::prelude::*;
 
 /// The port from which the `GameController` sends the [`GameControllerMessage`] to the robots.
 pub const GAME_CONTROLLER_DATA_PORT: u16 = 3838;
