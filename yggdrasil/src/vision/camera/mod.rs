@@ -13,16 +13,13 @@ use std::{
     marker::PhantomData,
     sync::{Arc, Mutex},
 };
-use tasks::{conditions::task_finished, CommandsExt, TaskPool};
+use tasks::conditions::task_finished;
 
 use heimdall::{
     Camera as HardwareCamera, CameraDevice, CameraLocation, CameraPosition, ExposureWeights,
 };
 pub use image::Image;
 use matrix::CalibrationConfig;
-
-#[cfg(not(feature = "local"))]
-use super::field_boundary::FieldBoundary;
 
 pub const NUM_FRAMES_TO_RETAIN: usize = 3;
 
@@ -156,20 +153,13 @@ impl<T: CameraLocation + Send + Sync> Camera<T> {
 }
 
 fn fetch_latest_frame<T: CameraLocation>(
-    mut commands: Commands,
+    mut camera: ResMut<Camera<T>>,
+    mut image: ResMut<Image<T>>,
     cycle: Res<Cycle>,
-    camera: ResMut<Camera<T>>,
 ) {
-    let cycle = cycle.clone();
-    let mut camera = camera.clone();
-
-    commands
-        .prepare_task(TaskPool::Io)
-        .to_entities()
-        .spawn_with_strategy(
-            tasks::strategy::entity::latest_n(NUM_FRAMES_TO_RETAIN),
-            std::iter::once(async move { camera.try_fetch_image(cycle) }),
-        )
+    if let Some(new_image) = camera.try_fetch_image(cycle.clone()) {
+        *image = new_image;
+    }
 }
 
 fn init_camera<T: CameraLocation>(mut commands: Commands, config: Res<CameraConfig>) {

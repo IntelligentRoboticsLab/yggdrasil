@@ -6,7 +6,7 @@ use std::{marker::PhantomData, num::NonZeroU32, sync::Arc, time::Instant};
 
 use crate::nao::Cycle;
 
-#[derive(Component, Clone, Deref)]
+#[derive(Resource, Clone, Deref)]
 pub struct Image<T: CameraLocation> {
     #[deref]
     /// Captured image in yuyv format.

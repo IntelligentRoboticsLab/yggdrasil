@@ -1,19 +1,17 @@
 //! Module for detecting the field boundary lines from the top camera image
 //!
 
-use std::{num::NonZeroU32, ops::Deref, sync::Arc};
-
-use bevy::prelude::*;
-use ml::prelude::*;
-use tasks::conditions::task_finished;
-
 use crate::vision::camera::Image;
 use bevy::app::Plugin;
+use bevy::prelude::*;
 use fast_image_resize as fr;
 use heimdall::{Top, YuyvImage};
 use lstsq::Lstsq;
 use miette::Result;
+use ml::prelude::*;
 use nalgebra::Point2;
+use std::num::NonZeroU32;
+use tasks::conditions::task_finished;
 
 const MODEL_INPUT_WIDTH: u32 = 40;
 const MODEL_INPUT_HEIGHT: u32 = 30;
@@ -67,7 +65,7 @@ pub struct FieldBoundary {
     /// The predicted points used to fit the boundary
     points: Vec<FieldBoundaryPoint>,
     /// The image the boundary was predicted from
-    pub image: Arc<YuyvImage>,
+    pub image: Image<Top>,
 }
 
 impl FieldBoundary {
@@ -155,12 +153,10 @@ impl FieldBoundary {
 fn detect_field_boundary(
     mut commands: Commands,
     mut model: ResMut<ModelExecutor<FieldBoundaryModel>>,
-    query: Query<&Image<Top>>,
+    image: Res<Image<Top>>,
 ) {
     // horizontal gap between predicted points relative to the original image
-    let image = query.get_single().expect("no top camera image found");
-
-    let yuyv_image = image.deref().clone();
+    let yuyv_image = image.clone();
     let gap = image.yuyv_image().width() / MODEL_INPUT_WIDTH as usize;
     let height = image.yuyv_image().height();
     let resized_image = resize_yuyv(image.yuyv_image());
@@ -287,7 +283,7 @@ fn fit_line(spots: &[FieldBoundaryPoint]) -> Result<(Line, f32)> {
 fn fit_model(
     points: Vec<FieldBoundaryPoint>,
     step: usize,
-    image: Arc<YuyvImage>,
+    image: Image<Top>,
 ) -> Result<FieldBoundary> {
     let width = image.width() as f32;
 
