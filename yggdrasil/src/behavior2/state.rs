@@ -92,15 +92,13 @@ use std::fmt::Debug;
 
 use enum_dispatch::enum_dispatch;
 
-use crate::behavior2::behavior::{Context, Null, Ready, Starting, State};
-
 // // Define the FsmEnum trait, which is used to create new state objects
 // pub trait FsmEnum<S, CTX> {
 //     fn create(enum_value: &S) -> Box<dyn Stateful<S, CTX>>;
 // }
 
 // Define the Stateful trait, which contains the event handling methods for each state
-#[enum_dispatch]
+#[enum_dispatch(Stateful<S, CTX>)]
 pub trait Stateful<S: PartialEq + Eq + Clone, CTX> {
     fn on_enter(&mut self, context: &mut CTX) -> Response<S>;
     fn execute(&mut self, context: &mut CTX) -> Response<S>;

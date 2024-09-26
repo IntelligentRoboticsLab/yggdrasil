@@ -116,7 +116,7 @@ use enum_dispatch::enum_dispatch;
 use super::state::{Response, StateMachine, Stateful};
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-#[enum_dispatch(Stateful<S, CTX>)]
+#[enum_dispatch]
 pub enum State {
     Null(Null),
     Starting(Starting),
