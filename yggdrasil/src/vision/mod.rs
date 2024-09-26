@@ -13,7 +13,7 @@ pub mod field_boundary;
 // pub mod line;
 // pub mod line_detection;
 // pub mod robot_detection;
-// pub mod scan_grid;
+pub mod scan_grid;
 // pub mod scan_lines;
 // pub mod util;
 
@@ -30,6 +30,7 @@ impl PluginGroup for VisionPlugins {
         let builder = PluginGroupBuilder::start::<Self>()
             .add(camera::CameraPlugin::<Top>::default())
             .add(camera::CameraPlugin::<Bottom>::default())
+            .add(scan_grid::ScanGridPlugin)
             .add(field_boundary::FieldBoundaryPlugin);
 
         // we only update the exposure weights for the top camera, so it cannot be part of

@@ -113,7 +113,8 @@ pub struct Camera<T: CameraLocation> {
     _marker: PhantomData<T>,
 }
 
-// NOTE: This needs to be implemented manually because https://github.com/rust-lang/rust/issues/26925
+// NOTE: This needs to be implemented manually because of the `PhantomData`
+// https://github.com/rust-lang/rust/issues/26925
 impl<T: CameraLocation> Clone for Camera<T> {
     fn clone(&self) -> Self {
         Self {
@@ -152,7 +153,7 @@ impl<T: CameraLocation + Send + Sync> Camera<T> {
     }
 }
 
-fn fetch_latest_frame<T: CameraLocation>(
+pub fn fetch_latest_frame<T: CameraLocation>(
     mut camera: ResMut<Camera<T>>,
     mut image: ResMut<Image<T>>,
     cycle: Res<Cycle>,

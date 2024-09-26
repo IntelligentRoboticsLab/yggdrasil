@@ -6,7 +6,7 @@ use std::{marker::PhantomData, num::NonZeroU32, sync::Arc, time::Instant};
 
 use crate::nao::Cycle;
 
-#[derive(Resource, Clone, Deref)]
+#[derive(Resource, Deref)]
 pub struct Image<T: CameraLocation> {
     #[deref]
     /// Captured image in yuyv format.
@@ -16,6 +16,19 @@ pub struct Image<T: CameraLocation> {
     /// Return the cycle at which the image was captured.
     cycle: Cycle,
     _marker: PhantomData<T>,
+}
+
+// NOTE: This needs to be implemented manually because of the `PhantomData`
+// https://github.com/rust-lang/rust/issues/26925
+impl<T: CameraLocation> Clone for Image<T> {
+    fn clone(&self) -> Self {
+        Self {
+            buf: self.buf.clone(),
+            timestamp: self.timestamp,
+            cycle: self.cycle,
+            _marker: PhantomData,
+        }
+    }
 }
 
 impl<T: CameraLocation> Image<T> {
