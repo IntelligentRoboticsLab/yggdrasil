@@ -29,7 +29,7 @@ impl Plugin for FieldBoundaryPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_systems(
             Update,
-            detect_field_boundary.run_if(task_finished::<Image<Top>),
+            detect_field_boundary.run_if(task_finished::<Image<Top>>),
         )
     }
 }
