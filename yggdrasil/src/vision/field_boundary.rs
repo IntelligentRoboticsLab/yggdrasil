@@ -1,7 +1,7 @@
 //! Module for detecting the field boundary lines from the top camera image
 //!
 
-use std::{num::NonZeroU32, ops::Deref};
+use std::num::NonZeroU32;
 
 use bevy::prelude::*;
 use tasks::conditions::task_finished;
@@ -9,11 +9,7 @@ use tasks::conditions::task_finished;
 use crate::core::ml::backend::ModelExecutor;
 use crate::core::ml::commands_ext::MlTaskCommandsExt;
 use crate::vision::camera::Image;
-use crate::{
-    core::ml::MlModel,
-    prelude::*,
-    vision::camera::{self},
-};
+use crate::{core::ml::MlModel, prelude::*};
 use bevy::app::Plugin;
 use fast_image_resize as fr;
 use heimdall::{Top, YuyvImage};
@@ -161,19 +157,15 @@ fn detect_field_boundary(
     mut model: ResMut<ModelExecutor<FieldBoundaryModel>>,
     image: &Image<Top>,
 ) {
-    // Start a new inference if the image has changed
-    // TODO: Some kind of callback/event system would be nice to avoid doing the timestamp comparison everywhere
-    // let resized_image = resize_yuyv(image.yuyv_image());
+    // horizontal gap between predicted points relative to the original image
+    let gap = image.yuyv_image().width() / MODEL_INPUT_WIDTH as usize;
+    let height = image.yuyv_image().height();
     let resized_image = resize_yuyv(image.yuyv_image());
     commands
         .infer_model(&mut model)
         .with_input(&resized_image)
         .to_resource
         .spawn(|result| {
-            // horizontal gap between predicted points relative to the original image
-            let gap = image.yuyv_image().width() / MODEL_INPUT_WIDTH as usize;
-            let height = image.yuyv_image().height();
-
             // Get the predicted points from the model output
             let points = result
                 .chunks(2)
