@@ -14,10 +14,12 @@ name = "yggdrasil"
 path = "src/main.rs"
 
 [dependencies]
+ml = { workspace = true }
+tasks = { workspace = true }
+
 async-std = { workspace = true }
 alsa = { workspace = true, optional = true }
 apodize = { workspace = true }
-tasks = { path = "../crates/tasks/" }
 bifrost = { path = "../crates/bifrost/" }
 bevy = { workspace = true, features = ["multi_threaded"] }
 derive_more = { workspace = true }
@@ -38,7 +40,6 @@ ndarray = { workspace = true }
 nidhogg = { workspace = true, features = ["lola", "bevy"] }
 num = { workspace = true }
 odal = { path = "../crates/odal" }
-openvino = { workspace = true }
 ordered-float = { workspace = true }
 pathfinding = { workspace = true }
 rerun = { workspace = true, optional = true }

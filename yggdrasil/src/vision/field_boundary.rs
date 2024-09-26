@@ -4,16 +4,15 @@
 use std::num::NonZeroU32;
 
 use bevy::prelude::*;
+use ml::prelude::*;
 use tasks::conditions::task_finished;
 
-use crate::core::ml::backend::ModelExecutor;
-use crate::core::ml::commands_ext::MlTaskCommandsExt;
 use crate::vision::camera::Image;
-use crate::{core::ml::MlModel, prelude::*};
 use bevy::app::Plugin;
 use fast_image_resize as fr;
 use heimdall::{Top, YuyvImage};
 use lstsq::Lstsq;
+use miette::Result;
 use nalgebra::Point2;
 
 const MODEL_INPUT_WIDTH: u32 = 40;
@@ -27,6 +26,7 @@ pub struct FieldBoundaryPlugin;
 
 impl Plugin for FieldBoundaryPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
+        app.init_ml_model::<FieldBoundaryModel>();
         app.add_systems(
             Update,
             detect_field_boundary.run_if(task_finished::<Image<Top>>),
@@ -58,7 +58,7 @@ pub enum FieldBoundaryLines {
 }
 
 /// A fitted field boundary from a given image
-#[derive(Clone)]
+#[derive(Resource, Clone)]
 pub struct FieldBoundary {
     /// The fitted field boundary lines
     pub lines: FieldBoundaryLines,

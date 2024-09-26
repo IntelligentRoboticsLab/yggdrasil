@@ -1,9 +1,11 @@
+//! Defines extension methods for [`Commands`] to spawn inference tasks for machine learning models.
+
 use bevy::prelude::*;
 use tasks::*;
 
 use super::{
     backend::{InferRequest, ModelExecutor},
-    data_type::Output,
+    element_type::Output,
     MlModel,
 };
 

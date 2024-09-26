@@ -3,6 +3,10 @@ members = ["crates/*", "yggdrasil"]
 resolver = "2"
 
 [workspace.dependencies]
+# yggdrasil dependencies
+tasks = { path = "crates/tasks" }
+ml = { path = "crates/ml" }
+
 alsa = "0.9.1"
 async-std = "1.13.0"
 async-trait = "0.1.82"
@@ -38,7 +42,7 @@ ndarray = "0.15.6"
 nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "3afa262460c809627d200c9e78a10939ddfff7e0" }
 num = "0.4.3"
 openvino = { git = "https://github.com/YukumoHunter/openvino-rs.git", branch = "evil-hack", features = [
-    "runtime-linking",
+  "runtime-linking",
 ] }
 ordered-float = "4.2.1"
 lstsq = "0.5.0"

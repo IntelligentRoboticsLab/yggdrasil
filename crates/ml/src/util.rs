@@ -25,6 +25,7 @@ pub fn sigmoid(logit: f32) -> f32 {
     1.0 / (1.0 + (-logit).exp())
 }
 
+/// Resizes a grayscale patch to the target size.
 pub fn resize_patch(original: (usize, usize), target: (usize, usize), patch: Vec<u8>) -> Vec<f32> {
     let src_image = fr::Image::from_vec_u8(
         NonZeroU32::new(original.0 as u32).unwrap(),

@@ -1,18 +1,17 @@
 use std::marker::PhantomData;
 
 use bevy::prelude::*;
-use heimdall::{Bottom, CameraLocation, CameraMatrix, Top};
+use heimdall::{Bottom, CameraLocation, CameraMatrix, CameraPosition, Top};
 use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     kinematics::{robot_dimensions, RobotKinematics},
     motion::walk::{engine::Side, SwingFoot},
-    prelude::*,
     sensor::imu::IMUValues,
 };
 
-use super::{CameraConfig, CameraSettings};
+use super::CameraConfig;
 
 const CAMERA_TOP_PITCH_DEGREES: f32 = 1.2;
 const CAMERA_BOTTOM_PITCH_DEGREES: f32 = 39.7;
@@ -36,14 +35,6 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
     }
 }
 
-impl Module for CameraMatrixModule {
-    fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .init_resource::<CameraMatrices>()?
-            .add_system(update_camera_matrix.before(super::camera_system)))
-    }
-}
-
 fn update_camera_matrix<T: CameraLocation>(
     swing_foot: Res<SwingFoot>,
     imu: Res<IMUValues>,
@@ -57,7 +48,7 @@ fn update_camera_matrix<T: CameraLocation>(
     };
 
     let image_size = vector![config.width as f32, config.height as f32];
-    let camera_to_head = camera_to_head(position, config.calibration.extrinsic_rotation);
+    let camera_to_head = camera_to_head(T::CAMERA_LOCATION, config.calibration.extrinsic_rotation);
     *matrix = CameraMatrix::new(
         config.calibration.focal_lengths,
         config.calibration.cc_optical_center,

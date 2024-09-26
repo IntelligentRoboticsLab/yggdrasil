@@ -1,8 +1,8 @@
 use crate::vision::field_boundary::FieldBoundary;
 
-use super::{Camera, CameraLocation};
+use super::Camera;
 use bevy::{prelude::*, tasks::IoTaskPool};
-use heimdall::ExposureWeights;
+use heimdall::{ExposureWeights, Top};
 use tasks::conditions::task_finished;
 
 const SAMPLES_PER_COLUMN: usize = 4;
@@ -24,7 +24,7 @@ impl Plugin for ExposureWeightsPlugin {
     }
 }
 
-fn update_exposure_weights<T: CameraLocation>(
+fn update_exposure_weights(
     mut exposure_weights: ResMut<ExposureWeights>,
     field_boundary: Res<FieldBoundary>,
 ) {
@@ -68,32 +68,32 @@ fn update_exposure_weights<T: CameraLocation>(
     }
 
     exposure_weights.top.update(weights);
-    Ok(())
 }
 
 fn sync_exposure_weights(
-    mut commands: Commands,
     exposure_weights: Res<ExposureWeights>,
     top_camera: Res<Camera<Top>>,
     bottom_camera: Res<Camera<Top>>,
 ) {
     let exposure_weights = exposure_weights.clone();
-    let top_camera = top_camera.0 .0.clone();
-    let bottom_camera = bottom_camera.0 .0.clone();
+    let top_camera = top_camera.inner.clone();
+    let bottom_camera = bottom_camera.inner.clone();
 
     let pool = IoTaskPool::get();
 
-    pool.spawn({
+    pool.spawn(async move {
         if let Ok(top_camera) = top_camera.lock() {
             top_camera
                 .camera_device()
-                .set_auto_exposure_weights(&exposure_weights.top)?;
+                .set_auto_exposure_weights(&exposure_weights.top)
+                .expect("failed to set auto exposure weights for top camera");
         }
 
         if let Ok(bottom_camera) = bottom_camera.lock() {
             bottom_camera
                 .camera_device()
-                .set_auto_exposure_weights(&exposure_weights.bottom)?;
+                .set_auto_exposure_weights(&exposure_weights.bottom)
+                .expect("failed to set auto exposure weights for bottom camera");
         }
     });
 }

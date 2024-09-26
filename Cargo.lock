@@ -4739,6 +4739,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ml"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "fast_image_resize",
+ "miette",
+ "ndarray",
+ "openvino",
+ "tasks",
+ "thiserror",
+]
+
+[[package]]
 name = "naga"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10338,12 +10351,12 @@ dependencies = [
  "linreg",
  "lstsq",
  "miette",
+ "ml",
  "nalgebra",
  "ndarray",
  "nidhogg",
  "num",
  "odal",
- "openvino",
  "ordered-float",
  "pathfinding",
  "rerun",

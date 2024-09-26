@@ -1,0 +1,16 @@
+[package]
+name = "ml"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "ml"
+
+[dependencies]
+tasks = { workspace = true }
+bevy = { workspace = true }
+openvino = { workspace = true }
+thiserror = { workspace = true }
+ndarray = { workspace = true }
+miette = { workspace = true }
+fast_image_resize = { workspace = true }

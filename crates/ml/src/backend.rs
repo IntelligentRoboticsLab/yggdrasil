@@ -1,14 +1,16 @@
 //! Implementation of ML methods using an OpenVINO backend.
 
 use super::{
-    data_type::{Elem, InputElem, Output},
-    Error, MlModel, Result,
+    element_type::{Elem, InputElem, Output},
+    error::{Error, Result},
+    MlModel,
 };
 use bevy::prelude::*;
 use std::{marker::PhantomData, sync::Mutex};
 
 /// Wrapper around [`openvino::Core`], i.e. the OpenVINO engine.
 /// It's used for creating and using ML models.
+#[derive(Resource)]
 pub struct MlCore(Mutex<openvino::Core>);
 
 impl MlCore {
@@ -129,6 +131,10 @@ impl<M: MlModel> ModelExecutor<M> {
     }
 }
 
+/// Model inference request.
+///
+/// This contains the openvino inference request, as well as the
+/// descriptions of the output tensors.
 pub struct InferRequest<M: MlModel> {
     request: openvino::InferRequest,
     /// Output layer tensor description.
@@ -193,7 +199,7 @@ impl<M: MlModel> InferRequest<M> {
             .map(|x| {
                 let blob = self.request.get_blob(&x.name).unwrap();
 
-                // we know the output tensor data type is compatible with `M::OutputType`
+                // SAFETY: the output tensor data type is compatible with `M::OutputType`
                 // due to the check in `ModelExecutor::new`, meaning it's safe
                 // to cast to this type
                 let data = unsafe { blob.buffer_as_type::<M::OutputType>() }.unwrap();

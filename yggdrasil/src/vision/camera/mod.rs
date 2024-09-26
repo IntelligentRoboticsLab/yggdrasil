@@ -109,7 +109,7 @@ fn setup_camera_device(settings: &CameraSettings) -> Result<CameraDevice> {
     Ok(camera_device)
 }
 
-#[derive(Resource, Debug)]
+#[derive(Resource)]
 pub struct Camera<T: CameraLocation> {
     inner: Arc<Mutex<HardwareCamera>>,
     _marker: PhantomData<T>,
@@ -117,7 +117,10 @@ pub struct Camera<T: CameraLocation> {
 
 impl<T: CameraLocation + Send + Sync> Camera<T> {
     fn new(camera: HardwareCamera) -> Self {
-        Self(Arc::new(Mutex::new(camera)))
+        Self {
+            inner: Arc::new(Mutex::new(camera)),
+            _marker: PhantomData,
+        }
     }
 
     fn try_fetch_image(&mut self, cycle: Cycle) -> Option<Image<T>> {
@@ -153,8 +156,8 @@ fn fetch_latest_frame<T: CameraLocation>(mut commands: Commands, mut camera: Res
 
 fn init_camera<T: CameraLocation>(mut commands: Commands, config: Res<CameraConfig>) {
     let settings = match T::POSITION {
-        CameraPosition::Top => config.top,
-        CameraPosition::Bottom => config.bottom,
+        CameraPosition::Top => &config.top,
+        CameraPosition::Bottom => &config.bottom,
     };
 
     let camera_device = setup_camera_device(&settings).expect("failed to setup camera device");
@@ -171,8 +174,8 @@ fn init_camera<T: CameraLocation>(mut commands: Commands, config: Res<CameraConf
 
 fn setup_exposure_weights<T: CameraLocation>(mut commands: Commands, config: Res<CameraConfig>) {
     let settings = match T::POSITION {
-        CameraPosition::Top => config.top,
-        CameraPosition::Bottom => config.bottom,
+        CameraPosition::Top => &config.top,
+        CameraPosition::Bottom => &config.bottom,
     };
 
     commands.insert_resource(ExposureWeights::new((settings.width, settings.height)));

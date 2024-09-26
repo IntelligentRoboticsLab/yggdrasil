@@ -1,7 +1,5 @@
-use crate::prelude::*;
-
 use bevy::app::{PluginGroup, PluginGroupBuilder};
-use camera::CameraPlugin;
+use heimdall::{Bottom, Top};
 // use robot_detection::RobotDetectionModule;
 // use scan_grid::ScanGridModule;
 // use scan_lines::ScanLinesModule;
@@ -19,11 +17,11 @@ pub mod field_boundary;
 // pub mod scan_lines;
 // pub mod util;
 
-use field_boundary::FieldBoundaryModule;
+// use field_boundary::FieldBoundaryModule;
 
-use self::ball_detection::BallDetectionModule;
-use self::field_marks::{FieldMarksConfig, FieldMarksModule};
-use self::line_detection::LineDetectionModule;
+// use self::ball_detection::BallDetectionModule;
+// use self::field_marks::{FieldMarksConfig, FieldMarksModule};
+// use self::line_detection::LineDetectionModule;
 
 pub struct VisionPlugins;
 
@@ -43,17 +41,17 @@ impl PluginGroup for VisionPlugins {
     }
 }
 
-impl Module for VisionModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_module(FieldBoundaryModule)?
-            .add_module(ScanGridModule)?
-            .add_module(ScanLinesModule)?
-            .add_module(LineDetectionModule)?
-            .add_module(BallDetectionModule)?
-            .add_module(FieldMarksModule)?
-            .add_module(RobotDetectionModule)
-    }
-}
+// impl Module for VisionModule {
+//     fn initialize(self, app: App) -> Result<App> {
+//         app.add_module(FieldBoundaryModule)?
+//             .add_module(ScanGridModule)?
+//             .add_module(ScanLinesModule)?
+//             .add_module(LineDetectionModule)?
+//             .add_module(BallDetectionModule)?
+//             .add_module(FieldMarksModule)?
+//             .add_module(RobotDetectionModule)
+//     }
+// }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
