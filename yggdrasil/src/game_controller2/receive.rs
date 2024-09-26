@@ -78,10 +78,6 @@ pub fn handle_messages(
             }
             // If we have a connection, but the message is from a different address, ignore
             Some(con) => {
-                tracing::error!(
-                    "Received GameControllerMessage from unexpected address: {}",
-                    con.address
-                );
                 tracing::debug!(
                     "Received GameControllerMessage from unexpected address: {}",
                     con.address
