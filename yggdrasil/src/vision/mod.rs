@@ -7,14 +7,14 @@ use serde::{Deserialize, Serialize};
 
 // pub mod ball_detection;
 pub mod camera;
-// pub mod color;
+pub mod color;
 pub mod field_boundary;
 // pub mod field_marks;
 // pub mod line;
 // pub mod line_detection;
 // pub mod robot_detection;
 pub mod scan_grid;
-// pub mod scan_lines;
+pub mod scan_lines;
 // pub mod util;
 
 // use field_boundary::FieldBoundaryModule;
@@ -31,6 +31,7 @@ impl PluginGroup for VisionPlugins {
             .add(camera::CameraPlugin::<Top>::default())
             .add(camera::CameraPlugin::<Bottom>::default())
             .add(scan_grid::ScanGridPlugin)
+            .add(scan_lines::ScanLinesPlugin)
             .add(field_boundary::FieldBoundaryPlugin);
 
         // we only update the exposure weights for the top camera, so it cannot be part of
