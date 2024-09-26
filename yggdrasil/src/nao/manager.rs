@@ -16,7 +16,7 @@ use crate::prelude::*;
 
 /// The stiffness constant for the "unstiff"/"floppy" state for robot joints.
 const STIFFNESS_UNSTIFF: f32 = -1.0;
-/// Stiffness for the hip joints during unstiff mode to prevent robot falling over backwards.
+/// Stiffness for the hip joints during sitting mode to prevent robot falling over backwards.
 const HIP_LOCK_STIFFNESS: f32 = 0.1;
 /// The set hip position in sitting mode, where the robot sits and starts.
 const HIP_POSITION: f32 = -0.9;

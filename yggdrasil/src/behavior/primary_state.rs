@@ -31,7 +31,7 @@ pub struct PrimaryStateModule;
 impl Module for PrimaryStateModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
-            .add_resource(Resource::new(PrimaryState::Unstiff))?
+            .add_resource(Resource::new(PrimaryState::Sitting))?
             .add_system(update_primary_state.after(crate::sensor::button::button_filter)))
     }
 }
@@ -40,7 +40,7 @@ impl Module for PrimaryStateModule {
 pub enum PrimaryState {
     /// State in which all joints are unstiffened and the robot does not move
     #[default]
-    Unstiff,
+    Sitting,
     /// State at the start of the match where the robots stand up.
     /// It's the same state as initial, but robots will not be penalized for a motion in set.
     Standby,
@@ -95,7 +95,7 @@ pub fn update_primary_state(
     );
 
     match next_state {
-        PS::Unstiff => nao_manager.set_chest_blink_led(
+        PS::Sitting => nao_manager.set_chest_blink_led(
             color::f32::BLUE,
             config.chest_blink_interval,
             Priority::Medium,
@@ -126,7 +126,7 @@ pub fn next_primary_state(
     use PrimaryState as PS;
 
     let mut primary_state = match primary_state {
-        PS::Unstiff if chest_button.state.is_tapped() => PS::Initial,
+        PS::Sitting if chest_button.state.is_tapped() => PS::Initial,
         PS::Initial if chest_button.state.is_tapped() => PS::Playing {
             whistle_in_set: false,
         },
@@ -138,8 +138,8 @@ pub fn next_primary_state(
         _ => *primary_state,
     };
 
-    // We are only able to leave the `Unstiff` state if the chest button is pressed.
-    if primary_state == PS::Unstiff {
+    // We are only able to leave the `Sitting` state if the chest button is pressed.
+    if primary_state == PS::Sitting {
         return primary_state;
     }
 
@@ -177,7 +177,7 @@ pub fn next_primary_state(
     }
 
     if head_buttons.all_pressed() {
-        primary_state = PS::Unstiff;
+        primary_state = PS::Sitting;
     }
 
     primary_state

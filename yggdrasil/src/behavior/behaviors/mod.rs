@@ -6,7 +6,7 @@ mod stand;
 mod stand_look;
 mod standup;
 mod startup;
-mod unstiff;
+mod sitting;
 mod walk;
 mod walk_to_set;
 
@@ -16,6 +16,6 @@ pub use stand::Stand;
 pub use stand_look::StandLookAt;
 pub use standup::Standup;
 pub use startup::StartUp;
-pub use unstiff::Unstiff;
+pub use sitting::Sitting;
 pub use walk::Walk;
 pub use walk_to_set::WalkToSet;

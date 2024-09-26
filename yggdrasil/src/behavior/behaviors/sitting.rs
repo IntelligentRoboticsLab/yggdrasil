@@ -10,9 +10,9 @@ const UNSTIFF_PRIORITY: Priority = Priority::Critical;
 /// This is often the starting behavior of the robot.
 /// In this state the robot sits down, after which it unstiffens its legs, arms and head.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
-pub struct Unstiff;
+pub struct Sitting;
 
-impl Behavior for Unstiff {
+impl Behavior for Sitting {
     fn execute(&mut self, _context: Context, control: &mut Control) {
         // Makes right eye blue.
         control

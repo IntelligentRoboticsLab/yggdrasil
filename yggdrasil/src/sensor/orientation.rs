@@ -45,7 +45,7 @@ pub fn update_orientation(
     primary_state: &PrimaryState,
 ) -> Result<()> {
     match primary_state {
-        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Unstiff => {
+        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
             orientation.reset();
         }
         _ => {

@@ -77,7 +77,7 @@ pub fn update_odometry(
     primary_state: &PrimaryState,
 ) -> Result<()> {
     match primary_state {
-        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Unstiff => {
+        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
             *odometry = Odometry::default();
         }
         _ => {
