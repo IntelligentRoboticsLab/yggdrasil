@@ -60,6 +60,7 @@ pub fn handle_messages(
 
         // And remove if it timed out
         if conn.timed_out() {
+            tracing::info!("Lost gamecontroller connection with {}", conn.address);
             commands.remove_resource::<GameControllerConnection>();
         }
     }
@@ -76,13 +77,23 @@ pub fn handle_messages(
                 ev_message.send(GameControllerMessageEvent(message));
             }
             // If we have a connection, but the message is from a different address, ignore
-            Some(_) => (),
+            Some(con) => {
+                tracing::error!(
+                    "Received GameControllerMessage from unexpected address: {}",
+                    con.address
+                );
+                tracing::debug!(
+                    "Received GameControllerMessage from unexpected address: {}",
+                    con.address
+                );
+            }
             // If we don't have a connection, create one
             None => {
                 commands.insert_resource(GameControllerConnection::new(
                     address,
                     cfg.game_controller_timeout,
                 ));
+                tracing::info!("Established gamecontroller connection with {}", address);
                 ev_message.send(GameControllerMessageEvent(message));
             }
         }

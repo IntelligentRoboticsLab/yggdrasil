@@ -1,39 +1,41 @@
-use std::time::Duration;
+use std::{net::SocketAddr, time::Duration};
 
+use async_std::prelude::StreamExt;
 use bevy::prelude::*;
-use bifrost::{communication::GameControllerReturnMessage, serialization::Encode};
+use bifrost::{
+    communication::{GameControllerReturnMessage, GAME_CONTROLLER_RETURN_PORT},
+    serialization::Encode,
+};
 use futures::channel::mpsc::{self};
 
 use crate::{
     core::config::showtime::PlayerConfig, localization::RobotPose, sensor::falling::FallState,
 };
 
-use super::{GameControllerConfig, GameControllerSocket};
+use super::{GameControllerConfig, GameControllerConnection, GameControllerSocket};
 
 const NO_BALL_DETECTED_DATA: (f32, [f32; 2]) = (-1.0, [0.0, 0.0]);
 const MILIMETERS_PER_METER: f32 = 1_000.0;
 
 #[derive(Resource)]
 pub struct GameControllerSender {
-    pub tx: mpsc::UnboundedSender<GameControllerReturnMessage>,
+    pub tx: mpsc::UnboundedSender<(GameControllerReturnMessage, SocketAddr)>,
 }
 
 pub async fn send_loop(
     sock: GameControllerSocket,
-    mut rx: mpsc::UnboundedReceiver<GameControllerReturnMessage>,
+    mut rx: mpsc::UnboundedReceiver<(GameControllerReturnMessage, SocketAddr)>,
 ) {
     let mut buffer = Vec::new();
 
-    while let Ok(message) = rx
-        .try_next()
-        .transpose()
-        .expect("GameControllerReturnMessage channel closed")
-    {
+    while let Some((message, mut addr)) = rx.next().await {
         message.encode(&mut buffer).unwrap();
-
-        sock.send(&buffer).await.unwrap();
+        addr.set_port(GAME_CONTROLLER_RETURN_PORT);
+        sock.send_to(&buffer, addr).await.unwrap();
         buffer.clear();
     }
+
+    tracing::error!("Exiting game controller send loop");
 }
 
 #[derive(Deref, DerefMut)]
@@ -51,6 +53,7 @@ pub fn send_message(
     robot_pose: Res<RobotPose>,
     // balls: Res<Balls>,
     sender: Res<GameControllerSender>,
+    connection: Res<GameControllerConnection>,
     cfg: Res<GameControllerConfig>,
     time: Res<Time>,
     mut delay: Local<GameControllerReturnDelay>,
@@ -70,7 +73,10 @@ pub fn send_message(
             NO_BALL_DETECTED_DATA.1,
         );
 
-        sender.tx.unbounded_send(return_message).unwrap();
+        sender
+            .tx
+            .unbounded_send((return_message, connection.address))
+            .unwrap();
 
         delay.set_duration(cfg.game_controller_return_delay);
     }

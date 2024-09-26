@@ -1,3 +1,6 @@
+use std::ops::Deref;
+
+use game_controller2::GameControllerMessageEvent;
 use miette::{Context, IntoDiagnostic};
 use motion::walk;
 use tracing::Level;
@@ -58,6 +61,7 @@ fn main() -> Result<()> {
         .add_plugins(MinimalPlugins)
         .add_plugins((
             schedule::NaoSchedulePlugin,
+            game_controller2::GameControllerPlugin,
             nao::NaoPlugins,
             core::CorePlugins,
             localization::LocalizationPlugin,
@@ -66,8 +70,20 @@ fn main() -> Result<()> {
             kinematics::KinematicsPlugin,
             motion::MotionPlugins,
         ))
+        .add_systems(Update, log_event)
         .run();
     Ok(())
+}
+
+fn log_event(mut event: EventReader<GameControllerMessageEvent>) {
+    for ev in event.read() {
+        let a = ev.deref();
+        tracing::info!(
+            "Received GameControllerMessage: ({}, {})",
+            a.packet_number,
+            a.secs_remaining
+        );
+    }
 }
 
 fn setup_tracing() -> Result<()> {
@@ -97,14 +113,9 @@ fn setup_tracing() -> Result<()> {
         );
 
     subscriber
-        .with(
-            fmt::Layer::default()
-                .with_writer(stdout.and(logfile))
-                .with_filter(symphonia_filter),
-        )
-        .try_init()
-        .into_diagnostic()
-        .wrap_err("Failed to initialize tracing subscriber")?;
+        .with(fmt::Layer::default().with_writer(stdout.and(logfile)))
+        .with(EnvFilter::from_default_env())
+        .init();
 
     Ok(())
 }

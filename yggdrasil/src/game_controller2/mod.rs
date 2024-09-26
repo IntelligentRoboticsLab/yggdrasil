@@ -7,7 +7,10 @@ use std::{
     time::Duration,
 };
 
-use async_std::{io, net::UdpSocket};
+use async_std::{
+    io,
+    net::{ToSocketAddrs, UdpSocket},
+};
 use bevy::{
     prelude::*,
     tasks::{block_on, IoTaskPool},
@@ -46,7 +49,13 @@ impl Plugin for GameControllerPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<GameControllerMessageEvent>()
             .add_systems(Startup, setup)
-            .add_systems(Update, (handle_messages, send_message));
+            .add_systems(
+                Update,
+                (
+                    handle_messages,
+                    send_message.run_if(resource_exists::<GameControllerConnection>),
+                ),
+            );
     }
 }
 
@@ -113,14 +122,14 @@ impl GameControllerSocket {
         self.socket.recv_from(buffer).await
     }
 
-    pub async fn send(&self, buffer: &[u8]) -> io::Result<usize> {
-        self.socket.send(buffer).await
+    pub async fn send_to<A: ToSocketAddrs>(&self, buffer: &[u8], addr: A) -> io::Result<usize> {
+        self.socket.send_to(buffer, addr).await
     }
 }
 
 fn setup(mut commands: Commands) {
     let (tx_recv, rx_recv) = mpsc::unbounded::<(GameControllerMessage, SocketAddr)>();
-    let (tx_send, rx_send) = mpsc::unbounded::<GameControllerReturnMessage>();
+    let (tx_send, rx_send) = mpsc::unbounded::<(GameControllerReturnMessage, SocketAddr)>();
 
     let io = IoTaskPool::get();
     let socket = block_on(io.spawn(GameControllerSocket::bind()))
