@@ -14,7 +14,12 @@ use nidhogg::{
 
 use crate::prelude::*;
 
+/// The stiffness constant for the "unstiff"/"floppy" state for robot joints.
 const STIFFNESS_UNSTIFF: f32 = -1.0;
+/// Stiffness for the hip joints during sitting mode to prevent robot falling over backwards.
+const HIP_LOCK_STIFFNESS: f32 = 0.1;
+/// The set hip position in sitting mode, where the robot sits and starts.
+const HIP_POSITION: f32 = -0.9;
 
 type JointValue = f32;
 
@@ -287,6 +292,21 @@ impl NaoManager {
             LegJoints::fill(STIFFNESS_UNSTIFF),
             priority,
         )
+    }
+
+    /// Set all joints to unstiff, then lock the hip joints in their seated position
+    /// with constant stiffness to avoid falling over.
+    pub fn unstiff_sit(&mut self, priority: Priority) -> &mut Self {
+        let mut leg_stiffness = LegJoints::fill(STIFFNESS_UNSTIFF);
+        leg_stiffness.left_leg.hip_pitch = HIP_LOCK_STIFFNESS;
+        leg_stiffness.left_leg.hip_yaw_pitch = HIP_LOCK_STIFFNESS;
+        leg_stiffness.right_leg.hip_pitch = HIP_LOCK_STIFFNESS;
+
+        let mut leg_positions = self.leg_settings.joints_position.clone();
+        leg_positions.left_leg.hip_pitch = HIP_POSITION;
+        leg_positions.right_leg.hip_pitch = HIP_POSITION;
+
+        self.set_legs(leg_positions, leg_stiffness, priority)
     }
 
     /// Disable all motors in the arms.

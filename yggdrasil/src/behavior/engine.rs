@@ -6,7 +6,7 @@ use nalgebra::Point2;
 
 use crate::{
     behavior::{
-        behaviors::{CatchFall, Observe, Standup, StartUp, Unstiff, Walk},
+        behaviors::{CatchFall, Observe, Sitting, Standup, StartUp, Walk},
         primary_state::PrimaryState,
         roles::Attacker,
         BehaviorConfig,
@@ -123,7 +123,7 @@ pub trait Behavior {
 #[derive(Debug, PartialEq, Clone)]
 pub enum BehaviorKind {
     StartUp(StartUp),
-    Unstiff(Unstiff),
+    Sitting(Sitting),
     StandLookAt(StandLookAt),
     Observe(Observe),
     Stand(Stand),
@@ -245,7 +245,7 @@ impl Engine {
     pub fn transition(&mut self, context: Context, control: &mut Control) {
         if let BehaviorKind::StartUp(_) = self.behavior {
             if control.walking_engine.is_sitting() || context.head_buttons.all_pressed() {
-                self.behavior = BehaviorKind::Unstiff(Unstiff);
+                self.behavior = BehaviorKind::Sitting(Sitting);
             }
             if *context.primary_state == PrimaryState::Initial {
                 self.behavior = BehaviorKind::Stand(Stand);
@@ -254,8 +254,8 @@ impl Engine {
         }
 
         // unstiff has the number 1 precedence
-        if let PrimaryState::Unstiff = context.primary_state {
-            self.behavior = BehaviorKind::Unstiff(Unstiff);
+        if let PrimaryState::Sitting = context.primary_state {
+            self.behavior = BehaviorKind::Sitting(Sitting);
             return;
         }
 
@@ -292,7 +292,7 @@ impl Engine {
         let ball_or_origin = context.ball_position.unwrap_or(Point2::origin());
 
         self.behavior = match context.primary_state {
-            PrimaryState::Unstiff => BehaviorKind::Unstiff(Unstiff),
+            PrimaryState::Sitting => BehaviorKind::Sitting(Sitting),
             PrimaryState::Standby
             | PrimaryState::Penalized
             | PrimaryState::Finished
