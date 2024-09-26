@@ -42,13 +42,13 @@ fn update_camera_matrix<T: CameraLocation>(
     mut matrix: ResMut<CameraMatrix<T>>,
     config: Res<CameraConfig>,
 ) {
-    let config = match T::CAMERA_LOCATION {
-        Top => &config.top,
-        Bottom => &config.bottom,
+    let config = match T::POSITION {
+        CameraPosition::Top => &config.top,
+        CameraPosition::Bottom => &config.bottom,
     };
 
     let image_size = vector![config.width as f32, config.height as f32];
-    let camera_to_head = camera_to_head(T::CAMERA_LOCATION, config.calibration.extrinsic_rotation);
+    let camera_to_head = camera_to_head(T::POSITION, config.calibration.extrinsic_rotation);
     *matrix = CameraMatrix::new(
         config.calibration.focal_lengths,
         config.calibration.cc_optical_center,

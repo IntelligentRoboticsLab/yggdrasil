@@ -120,7 +120,7 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a
     pub fn spawn<O, F, R>(&mut self, f: F)
     where
         O: Output<M::OutputType>,
-        F: (FnOnce(Vec<O>) -> R) + Send + Sync + 'static,
+        F: (FnOnce(O) -> Option<R>) + Send + Sync + 'static,
         R: Resource,
     {
         let request = self
@@ -133,10 +133,14 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a
             .to_resource()
             .spawn({
                 async move {
-                    let output = request.run().ok()?;
-                    let output = output.fetch_output().ok()?;
+                    // TODO: Add back support for multiple outputs
+                    let output = request
+                        .run()
+                        .and_then(|request| request.fetch_output())
+                        .map(|mut out| out.remove(0))
+                        .ok()?;
 
-                    Some(f(output))
+                    f(output)
                 }
             });
     }
@@ -147,7 +151,7 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, EntityOutput<'a, 
     pub fn spawn<O, F, C>(&mut self, f: F)
     where
         O: Output<M::OutputType>,
-        F: (FnOnce(Vec<O>) -> C) + Send + Sync + 'static,
+        F: (FnOnce(Vec<O>) -> Option<C>) + Send + Sync + 'static,
         C: Component,
     {
         let request = self
@@ -163,7 +167,7 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, EntityOutput<'a, 
                     let output = request.run().ok()?;
                     let output = output.fetch_output().ok()?;
 
-                    Some(f(output))
+                    f(output)
                 }]
             });
     }
@@ -187,7 +191,7 @@ impl<'a, 'w, 's, M: MlModel + Send + Sync + 'static>
     pub fn spawn<O, F, C>(&mut self, f: F)
     where
         O: Output<M::OutputType>,
-        F: (FnOnce(Vec<O>) -> C) + Clone + Copy + Send + Sync + 'static,
+        F: (FnOnce(Vec<O>) -> Option<C>) + Clone + Copy + Send + Sync + 'static,
         C: Component,
     {
         let requests = self
@@ -210,7 +214,7 @@ impl<'a, 'w, 's, M: MlModel + Send + Sync + 'static>
                         let output = request.run().ok()?;
                         let output = output.fetch_output().ok()?;
 
-                        Some(f(output))
+                        f(output)
                     }
                     .await
                 })

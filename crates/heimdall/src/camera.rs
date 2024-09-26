@@ -20,18 +20,21 @@ pub enum CameraPosition {
 }
 
 /// Marker trait for a camera location marker type.
-pub trait CameraLocation: Send + Sync + 'static {
+pub trait CameraLocation: Default + Send + Sync + 'static {
     const POSITION: CameraPosition;
 }
 
 /// Marker type for the top camera.
+#[derive(Default, Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Top;
+/// Marker type for the bottom camera.
+#[derive(Default, Debug, Clone, Copy, Eq, PartialEq)]
+pub struct Bottom;
+
 impl CameraLocation for Top {
     const POSITION: CameraPosition = CameraPosition::Top;
 }
 
-/// Marker type for the bottom camera.
-pub struct Bottom;
 impl CameraLocation for Bottom {
     const POSITION: CameraPosition = CameraPosition::Bottom;
 }

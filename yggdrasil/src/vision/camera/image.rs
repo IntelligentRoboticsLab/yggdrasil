@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use fast_image_resize as fr;
 use heimdall::{CameraLocation, YuyvImage};
-use miette::Result;
+use miette::{Context, IntoDiagnostic, Result};
 use std::{marker::PhantomData, num::NonZeroU32, sync::Arc, time::Instant};
 
 use crate::nao::Cycle;

@@ -7,6 +7,7 @@ pub mod matrix;
 use crate::{nao::Cycle, prelude::*};
 
 use bevy::prelude::*;
+use miette::IntoDiagnostic;
 use serde::{Deserialize, Serialize};
 use std::{
     marker::PhantomData,
@@ -115,6 +116,16 @@ pub struct Camera<T: CameraLocation> {
     _marker: PhantomData<T>,
 }
 
+// NOTE: This needs to be implemented manually because https://github.com/rust-lang/rust/issues/26925
+impl<T: CameraLocation> Clone for Camera<T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            _marker: PhantomData,
+        }
+    }
+}
+
 impl<T: CameraLocation + Send + Sync> Camera<T> {
     fn new(camera: HardwareCamera) -> Self {
         Self {
@@ -124,7 +135,7 @@ impl<T: CameraLocation + Send + Sync> Camera<T> {
     }
 
     fn try_fetch_image(&mut self, cycle: Cycle) -> Option<Image<T>> {
-        let Ok(mut camera) = self.0.try_lock() else {
+        let Ok(mut camera) = self.inner.try_lock() else {
             return None;
         };
 
@@ -135,7 +146,7 @@ impl<T: CameraLocation + Send + Sync> Camera<T> {
     }
 
     fn loop_fetch_image(&self) -> Result<Image<T>> {
-        let mut camera = self.0.lock().unwrap();
+        let mut camera = self.inner.lock().unwrap();
 
         camera
             .loop_try_get_yuyv_image()
@@ -144,13 +155,20 @@ impl<T: CameraLocation + Send + Sync> Camera<T> {
     }
 }
 
-fn fetch_latest_frame<T: CameraLocation>(mut commands: Commands, mut camera: ResMut<Camera<T>>) {
+fn fetch_latest_frame<T: CameraLocation>(
+    mut commands: Commands,
+    cycle: Res<Cycle>,
+    camera: ResMut<Camera<T>>,
+) {
+    let cycle = cycle.clone();
+    let mut camera = camera.clone();
+
     commands
         .prepare_task(TaskPool::Io)
         .to_entities()
         .spawn_with_strategy(
             tasks::strategy::entity::latest_n(NUM_FRAMES_TO_RETAIN),
-            std::iter::once(camera.loop_fetch_image()),
+            std::iter::once(async move { camera.try_fetch_image(cycle) }),
         )
 }
 

@@ -1,7 +1,7 @@
 //! Module for detecting the field boundary lines from the top camera image
 //!
 
-use std::num::NonZeroU32;
+use std::{num::NonZeroU32, ops::Deref, sync::Arc};
 
 use bevy::prelude::*;
 use ml::prelude::*;
@@ -30,7 +30,7 @@ impl Plugin for FieldBoundaryPlugin {
         app.add_systems(
             Update,
             detect_field_boundary.run_if(task_finished::<Image<Top>>),
-        )
+        );
     }
 }
 
@@ -67,7 +67,7 @@ pub struct FieldBoundary {
     /// The predicted points used to fit the boundary
     points: Vec<FieldBoundaryPoint>,
     /// The image the boundary was predicted from
-    pub image: Image<Top>,
+    pub image: Arc<YuyvImage>,
 }
 
 impl FieldBoundary {
@@ -94,7 +94,7 @@ impl FieldBoundary {
         match &self.lines {
             // One line segment, from the left edge to the right edge
             FieldBoundaryLines::One { line } => {
-                let width = self.image.yuyv_image().width() as f32;
+                let width = self.image.width() as f32;
                 let y0 = line.y(0.0);
                 let y1 = line.y(width);
 
@@ -106,7 +106,7 @@ impl FieldBoundary {
                 right_line,
                 intersection,
             } => {
-                let width = self.image.yuyv_image().width() as f32;
+                let width = self.image.width() as f32;
                 let y0 = left_line.y(0.0);
                 // This y is shared by both line segments as it is where they intersect
                 let y1 = left_line.y(intersection.x);
@@ -155,17 +155,21 @@ impl FieldBoundary {
 fn detect_field_boundary(
     mut commands: Commands,
     mut model: ResMut<ModelExecutor<FieldBoundaryModel>>,
-    image: &Image<Top>,
+    query: Query<&Image<Top>>,
 ) {
     // horizontal gap between predicted points relative to the original image
+    let image = query.get_single().expect("no top camera image found");
+
+    let yuyv_image = image.deref().clone();
     let gap = image.yuyv_image().width() / MODEL_INPUT_WIDTH as usize;
     let height = image.yuyv_image().height();
     let resized_image = resize_yuyv(image.yuyv_image());
+
     commands
         .infer_model(&mut model)
         .with_input(&resized_image)
-        .to_resource
-        .spawn(|result| {
+        .to_resource()
+        .spawn(move |result: Vec<f32>| {
             // Get the predicted points from the model output
             let points = result
                 .chunks(2)
@@ -178,7 +182,7 @@ fn detect_field_boundary(
                 })
                 .collect::<Vec<_>>();
 
-            fit_model(points, 2, image).ok()
+            fit_model(points, 2, yuyv_image).ok()
         });
 }
 
@@ -283,9 +287,9 @@ fn fit_line(spots: &[FieldBoundaryPoint]) -> Result<(Line, f32)> {
 fn fit_model(
     points: Vec<FieldBoundaryPoint>,
     step: usize,
-    image: Image<Top>,
+    image: Arc<YuyvImage>,
 ) -> Result<FieldBoundary> {
-    let width = image.yuyv_image().width() as f32;
+    let width = image.width() as f32;
 
     // Get initial boundary fit based on single line
     let mut boundary = {

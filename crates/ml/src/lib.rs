@@ -18,7 +18,7 @@ use bevy::prelude::*;
 pub mod prelude {
     pub use crate::backend::{InferRequest, MlCore, ModelExecutor};
     pub use crate::commands_ext::MlTaskCommandsExt;
-    pub use crate::element_type::{Elem, InputElem};
+    pub use crate::element_type::{Elem, Input, InputElem, Output};
     pub use crate::error::Error;
 
     pub use crate::util as ml_util;
