@@ -71,22 +71,6 @@ fn update_camera_matrix<T: CameraLocation>(
     Ok(())
 }
 
-// fn print_hands(
-//     imu: &IMUValues,
-//     kinematics: &RobotKinematics,
-//     debug_context: &DebugContext,
-//     camera_matrices: &mut CameraMatrices,
-//     current_cycle: &Cycle,
-//     bottom_image: &BottomImage,
-//     robot_kinematics: &RobotKinematics,
-// ) -> Result<()> {
-//     if !bottom_image.is_from_cycle(*current_cycle) {
-//         return Ok(());
-//     }
-//
-//     Ok(())
-// }
-//
 #[system]
 fn print_toes(
     imu: &IMUValues,
@@ -103,27 +87,22 @@ fn print_toes(
     let matrix = &camera_matrices.bottom;
     let (robot_to_left_toe, robot_to_right_toe) = robot_to_toes(imu, kinematics);
 
-    eprintln!("ROBOT_TO_LEFT_TOE:  {robot_to_left_toe}");
-    eprintln!("ROBOT_TO_RIGHT_TOE: {robot_to_right_toe}");
-
-    eprintln!(
-        "TRANSFORMED LEFT VECTOR:  {}",
-        robot_to_left_toe.inverse_transform_vector(&-ROBOT_TO_TORSO)
-    );
-    eprintln!(
-        "TRANSFORMED RIGHT VECTOR: {}",
-        robot_to_right_toe.inverse_transform_vector(&-ROBOT_TO_TORSO)
-    );
-
     let (Ok(left_toe_point), Ok(right_toe_point)) = (
-        matrix.ground_to_pixel(robot_to_left_toe.transform_vector(&-ROBOT_TO_TORSO).into()),
-        matrix.ground_to_pixel(robot_to_right_toe.transform_vector(&-ROBOT_TO_TORSO).into()),
+        matrix.ground_to_pixel(
+            (robot_to_left_toe.inverse() * matrix.robot_to_ground)
+                .translation
+                .vector
+                .into(),
+        ),
+        matrix.ground_to_pixel(
+            (robot_to_right_toe.inverse() * matrix.robot_to_ground)
+                .translation
+                .vector
+                .into(),
+        ),
     ) else {
         return Ok(());
     };
-
-    eprintln!("LEFT_TOE_POINT:  {left_toe_point}");
-    eprintln!("RIGHT_TOE_POINT: {right_toe_point}");
 
     debug_context.log_points2d_for_image_with_radius(
         "bottom_camera/image/toes",
@@ -190,20 +169,14 @@ fn robot_to_toes(
     let pitch = roll_pitch.y;
 
     let left_toe_to_robot = kinematics.left_toe_to_robot;
-    let imu_adjusted_robot_to_left_toe = Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll)
-        * Isometry3::from(left_toe_to_robot.translation);
+    let imu_adjusted_robot_to_left_toe = Isometry3::from(left_toe_to_robot.translation.inverse())
+        * Isometry3::rotation(Vector3::y() * pitch)
+        * Isometry3::rotation(Vector3::x() * roll);
 
     let right_toe_to_robot = kinematics.right_toe_to_robot;
-    let imu_adjusted_robot_to_right_toe = Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll)
-        * Isometry3::from(right_toe_to_robot.translation);
-
-    eprintln!("left_toe_to_robot:  {left_toe_to_robot}");
-    eprintln!("right_toe_to_robot: {right_toe_to_robot}");
-
-    eprintln!("adjusted left:  {imu_adjusted_robot_to_left_toe}");
-    eprintln!("adjusted right: {imu_adjusted_robot_to_right_toe}");
+    let imu_adjusted_robot_to_right_toe = Isometry3::from(right_toe_to_robot.translation.inverse())
+        * Isometry3::rotation(Vector3::y() * pitch)
+        * Isometry3::rotation(Vector3::x() * roll);
 
     (
         imu_adjusted_robot_to_left_toe,

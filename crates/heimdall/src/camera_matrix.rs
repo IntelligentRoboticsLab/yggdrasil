@@ -22,6 +22,7 @@ pub struct CameraMatrix<T: CameraLocation> {
     /// The transformation from camera frame to the ground frame.
     pub camera_to_ground: Isometry3<f32>,
     _marker: PhantomData<T>,
+    pub robot_to_ground: Isometry3<f32>,
 }
 
 // NOTE: This needs to be implemented manually because of the `PhantomData`
@@ -63,6 +64,7 @@ impl<T: CameraLocation> CameraMatrix<T> {
             robot_to_camera: camera_to_robot.inverse(),
             camera_to_ground,
             _marker: PhantomData,
+            robot_to_ground,
         }
     }
 
