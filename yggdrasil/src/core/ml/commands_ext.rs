@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use itertools::Itertools;
 use tasks::*;
 
 use super::{
@@ -27,6 +26,9 @@ impl<'a, M: MlModel> MlInferenceBuilderState for DefineBatchedOutput<'a, M> {}
 
 pub struct ResourceOutput<'a, M: MlModel>(&'a [M::InputType]);
 impl<'a, M: MlModel> MlInferenceBuilderState for ResourceOutput<'a, M> {}
+
+pub struct EntityOutput<'a, M: MlModel>(&'a [M::InputType]);
+impl<'a, M: MlModel> MlInferenceBuilderState for EntityOutput<'a, M> {}
 
 pub struct EntitiesOutput<'a, M: MlModel>(&'a [&'a [M::InputType]]);
 impl<'a, M: MlModel> MlInferenceBuilderState for EntitiesOutput<'a, M> {}
@@ -83,6 +85,14 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineOutput<'a, 
             state: ResourceOutput(self.state.0),
         }
     }
+
+    pub fn to_entity(self) -> MlInferenceBuilder<'a, 'w, 's, M, EntityOutput<'a, M>> {
+        MlInferenceBuilder {
+            commands: self.commands,
+            executor: self.executor,
+            state: EntityOutput(self.state.0),
+        }
+    }
 }
 
 impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a, M>> {
@@ -107,6 +117,32 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a
 
                     Some(f(output))
                 }
+            });
+    }
+}
+
+impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, EntityOutput<'a, M>> {
+    pub fn spawn<O, F, C>(&mut self, f: F)
+    where
+        O: Output<M::OutputType>,
+        F: (FnOnce(Vec<O>) -> C) + Send + Sync + 'static,
+        C: Component,
+    {
+        let request = self
+            .executor
+            .request_infer(&[&self.state.0])
+            .expect("failed to request inference");
+
+        self.commands
+            .prepare_task(TaskPool::AsyncCompute)
+            .to_entities()
+            .spawn({
+                vec![async move {
+                    let output = request.run().ok()?;
+                    let output = output.fetch_output().ok()?;
+
+                    Some(f(output))
+                }]
             });
     }
 }
