@@ -7,33 +7,45 @@ use super::{
     MlModel,
 };
 
+/// Type state for the inference builder.
 pub trait MlInferenceBuilderState {}
 
+/// Builder for spawning an [`MlModel`] inference task.
 pub struct MlInferenceBuilder<'a, 'w, 's, M: MlModel, S: MlInferenceBuilderState> {
     commands: &'a mut Commands<'w, 's>,
     executor: &'a mut ModelExecutor<M>,
     state: S,
 }
 
+/// Type state for defining the input of the model.
 pub struct DefineInput;
 impl MlInferenceBuilderState for DefineInput {}
 
+/// Type state for defining the output of the model.
 pub struct DefineOutput<'a, M: MlModel>(&'a [M::InputType]);
 impl<'a, M: MlModel> MlInferenceBuilderState for DefineOutput<'a, M> {}
 
+/// Type state for defining the output of the model with multiple batches.
 pub struct DefineBatchedOutput<'a, M: MlModel>(&'a [&'a [M::InputType]]);
 impl<'a, M: MlModel> MlInferenceBuilderState for DefineBatchedOutput<'a, M> {}
 
+/// Type state for storing the output of the model in a resource.
 pub struct ResourceOutput<'a, M: MlModel>(&'a [M::InputType]);
 impl<'a, M: MlModel> MlInferenceBuilderState for ResourceOutput<'a, M> {}
 
+/// Type state for storing the output of the model in a single entity.
 pub struct EntityOutput<'a, M: MlModel>(&'a [M::InputType]);
 impl<'a, M: MlModel> MlInferenceBuilderState for EntityOutput<'a, M> {}
 
+/// Type state for storing the output of the model in multiple entities.
 pub struct EntitiesOutput<'a, M: MlModel>(&'a [&'a [M::InputType]]);
 impl<'a, M: MlModel> MlInferenceBuilderState for EntitiesOutput<'a, M> {}
 
+/// Extension trait for [`Commands`] to spawn an [`MlModel`] inference tasks.
 pub trait MlTaskCommandsExt<'a, 'w, 's> {
+    /// Begin building an inference task for an [`MlModel`].
+    ///
+    /// This allows you to define the input, output, and how the output should be stored.
     fn infer_model<M: MlModel>(
         &'a mut self,
         executor: &'a mut ModelExecutor<M>,
@@ -54,6 +66,7 @@ impl<'a, 'w, 's> MlTaskCommandsExt<'a, 'w, 's> for Commands<'w, 's> {
 }
 
 impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineInput> {
+    /// Define the input of the model with a single batch.
     pub fn with_input(
         &'a mut self,
         input: &'a [M::InputType],
@@ -65,6 +78,7 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineInput> {
         }
     }
 
+    /// Define the input of the model with multiple batches.
     pub fn with_batched_input(
         &'a mut self,
         input: &'a [&'a [M::InputType]],
@@ -78,6 +92,8 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineInput> {
 }
 
 impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineOutput<'a, M>> {
+    /// Send the output of the model to a [`Resource`] will be spawned as soon as the model
+    /// inference is complete.
     pub fn to_resource(self) -> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a, M>> {
         MlInferenceBuilder {
             commands: self.commands,
@@ -86,6 +102,8 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineOutput<'a, 
         }
     }
 
+    /// A new entity that will be spawned with the output attached
+    /// as components as soon as the model inference is complete.
     pub fn to_entity(self) -> MlInferenceBuilder<'a, 'w, 's, M, EntityOutput<'a, M>> {
         MlInferenceBuilder {
             commands: self.commands,
@@ -96,6 +114,7 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineOutput<'a, 
 }
 
 impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a, M>> {
+    /// Spawn the model inference task, providing a closure to convert the output to a [`Resource`].
     pub fn spawn<O, F, R>(&mut self, f: F)
     where
         O: Output<M::OutputType>,
@@ -122,6 +141,7 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a
 }
 
 impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, EntityOutput<'a, M>> {
+    /// Spawn the model inference task, providing a closure to convert the output to a [`Component`].
     pub fn spawn<O, F, C>(&mut self, f: F)
     where
         O: Output<M::OutputType>,
@@ -148,6 +168,7 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, EntityOutput<'a, 
 }
 
 impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineBatchedOutput<'a, M>> {
+    /// Spawn an entity with the output attached a component for each batch.
     pub fn to_entities(self) -> MlInferenceBuilder<'a, 'w, 's, M, EntitiesOutput<'a, M>> {
         MlInferenceBuilder {
             commands: self.commands,
@@ -160,6 +181,7 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineBatchedOutp
 impl<'a, 'w, 's, M: MlModel + Send + Sync + 'static>
     MlInferenceBuilder<'a, 'w, 's, M, EntitiesOutput<'a, M>>
 {
+    /// Spawn the model inference task, providing a closure to convert the output to a [`Component`].
     pub fn spawn<O, F, C>(&mut self, f: F)
     where
         O: Output<M::OutputType>,
