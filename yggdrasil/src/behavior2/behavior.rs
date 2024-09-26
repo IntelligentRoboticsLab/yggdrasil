@@ -111,29 +111,34 @@
 //     }
 // }
 
-use super::state::{FsmEnum, Response, StateMachine, Stateful};
+use enum_dispatch::enum_dispatch;
+
+use super::state::{Response, StateMachine, Stateful};
 
 #[derive(Eq, PartialEq, Clone, Debug)]
+#[enum_dispatch(Stateful<S, CTX>)]
 pub enum State {
-    Null,
-    Starting,
-    Ready,
+    Null(Null),
+    Starting(Starting),
+    Ready(Ready),
 }
 
-impl FsmEnum<State, Context> for State {
-    fn create(enum_value: &State) -> Box<dyn Stateful<State, Context>> {
-        match enum_value {
-            State::Null => Box::new(Null {}),
-            State::Starting => Box::new(Starting {}),
-            State::Ready => Box::new(Ready {}),
-        }
-    }
-}
+// impl FsmEnum<State, Context> for State {
+//     fn create(enum_value: &State) -> Box<dyn Stateful<State, Context>> {
+//         match enum_value {
+//             State::Null => Box::new(Null {}),
+//             State::Starting => Box::new(Starting {}),
+//             State::Ready => Box::new(Ready {}),
+//         }
+//     }
+// }
 
-pub struct Null {}
-pub struct Starting {}
-
-pub struct Ready {}
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct Null;
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct Starting;
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct Ready;
 
 impl ToString for State {
     fn to_string(&self) -> String {
@@ -149,7 +154,7 @@ impl Stateful<State, Context> for Null {
 
     fn execute(&mut self, context: &mut Context) -> Response<State> {
         println!("Null state on event ");
-        Response::Transition(State::Starting)
+        Response::Transition(State::Starting(Starting))
     }
 
     fn on_exit(&mut self, context: &mut Context) {
@@ -170,7 +175,7 @@ impl Stateful<State, Context> for Starting {
         if context.retries < 4 {
             Response::Handled
         } else {
-            Response::Transition(State::Ready)
+            Response::Transition(State::Ready(Ready))
         }
     }
 
@@ -187,7 +192,7 @@ impl Stateful<State, Context> for Ready {
 
     fn execute(&mut self, context: &mut Context) -> Response<State> {
         println!("Ready state on event :");
-        Response::Transition(State::Null)
+        Response::Transition(State::Null(Null))
     }
 
     fn on_exit(&mut self, context: &mut Context) {
@@ -206,7 +211,7 @@ mod tests {
 
     #[test]
     fn test_state_machine() {
-        let mut state_machine = StateMachine::<State, Context>::new(State::Null);
+        let mut state_machine = StateMachine::<State>::new(State::Null(Null));
 
         let mut context: Context = Context { retries: 0 };
 
