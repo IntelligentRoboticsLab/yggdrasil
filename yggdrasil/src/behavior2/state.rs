@@ -119,17 +119,15 @@ pub enum Error {
 pub struct StateMachine<S: PartialEq + Eq + Clone + FsmEnum<S, CTX>, CTX> {
     state_state: Box<dyn Stateful<S, CTX>>,
     current_state: S,
-    context: CTX,
 }
 
 // Implement methods for the StateMachine struct
 impl<S: PartialEq + Eq + Clone + FsmEnum<S, CTX>, CTX> StateMachine<S, CTX> {
     // Define a constructor for the StateMachine struct
-    pub fn new(cur_state: S, context: CTX) -> Self {
+    pub fn new(cur_state: S) -> Self {
         Self {
             current_state: cur_state.clone(),
             state_state: S::create(&cur_state),
-            context,
         }
     }
 
@@ -138,30 +136,13 @@ impl<S: PartialEq + Eq + Clone + FsmEnum<S, CTX>, CTX> StateMachine<S, CTX> {
         &self.current_state
     }
 
-    // Define a method to get a reference to the context
-    pub fn get_context(&self) -> &CTX {
-        &self.context
-    }
-
-    // Define a method to initialize the state machine with an initial state
-    // Note how the state objects are cached in a HashMap and not recreated every time we transition to this event.
-    pub fn init(&mut self) -> Result<(), Error> {
-        loop {
-            match self.state_state.on_enter(&mut self.context) {
-                Response::Handled => break,
-                Response::Transition(s) => self.current_state = s,
-            }
-        }
-        Ok(())
-    }
-
     // Define a method to process events and transition between states
-    pub fn step(&mut self) -> Result<(), Error> {
-        match self.state_state.execute(&mut self.context) {
+    pub fn step(&mut self, context: &mut CTX) -> Result<(), Error> {
+        match self.state_state.execute(context) {
             Response::Handled => {}
             Response::Transition(new_state) => {
                 if new_state != self.current_state {
-                    self.transition_to(new_state)?;
+                    self.transition_to(new_state, context)?;
                 }
             }
         }
@@ -170,13 +151,13 @@ impl<S: PartialEq + Eq + Clone + FsmEnum<S, CTX>, CTX> StateMachine<S, CTX> {
     }
 
     // Define a method to handle state transitions
-    fn transition_to(&mut self, new_state: S) -> Result<(), Error> {
-        self.state_state.on_exit(&mut self.context);
+    fn transition_to(&mut self, new_state: S, context: &mut CTX) -> Result<(), Error> {
+        self.state_state.on_exit(context);
 
         self.current_state = new_state.clone();
         self.state_state = S::create(&self.current_state);
         loop {
-            match self.state_state.on_enter(&mut self.context) {
+            match self.state_state.on_enter(context) {
                 Response::Handled => {
                     break;
                 }

@@ -160,13 +160,18 @@ impl Stateful<State, Context> for Null {
 impl Stateful<State, Context> for Starting {
     fn on_enter(&mut self, context: &mut Context) -> Response<State> {
         println!("Starting state on enter");
-        context.retries = context.retries + 1;
+        context.retries += 1;
         Response::Handled
     }
 
     fn execute(&mut self, context: &mut Context) -> Response<State> {
-        println!("Starting state on event :");
-        Response::Transition(State::Ready)
+        context.retries += 1;
+        println!("Starting entries: {:?}", context.retries);
+        if context.retries < 4 {
+            Response::Handled
+        } else {
+            Response::Transition(State::Ready)
+        }
     }
 
     fn on_exit(&mut self, context: &mut Context) {
@@ -201,13 +206,12 @@ mod tests {
 
     #[test]
     fn test_state_machine() {
-        let mut state_machine =
-            StateMachine::<State, Context>::new(State::Null, Context { retries: 0 });
+        let mut state_machine = StateMachine::<State, Context>::new(State::Null);
 
-        state_machine.init();
+        let mut context: Context = Context { retries: 0 };
 
         for i in 0..10 {
-            if let Err(e) = state_machine.step() {
+            if let Err(e) = state_machine.step(&mut context) {
                 println!("state machine error : {:?}", e);
             }
         }
