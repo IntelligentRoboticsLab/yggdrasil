@@ -38,7 +38,8 @@ impl Module for PrimaryStateModule {
 
 #[derive(Debug, Clone, PartialEq, Copy, Default)]
 pub enum PrimaryState {
-    /// State in which all joints are unstiffened and the robot does not move
+    /// State in which all joints but the hips are unstiffened
+    /// and the robot does not move, sitting down.
     #[default]
     Sitting,
     /// State at the start of the match where the robots stand up.

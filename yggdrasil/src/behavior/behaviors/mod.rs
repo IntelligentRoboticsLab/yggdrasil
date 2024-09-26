@@ -2,20 +2,20 @@
 
 mod catchfall;
 mod observe;
+mod sitting;
 mod stand;
 mod stand_look;
 mod standup;
 mod startup;
-mod sitting;
 mod walk;
 mod walk_to_set;
 
 pub use catchfall::CatchFall;
 pub use observe::{Observe, ObserveBehaviorConfig};
+pub use sitting::Sitting;
 pub use stand::Stand;
 pub use stand_look::StandLookAt;
 pub use standup::Standup;
 pub use startup::StartUp;
-pub use sitting::Sitting;
 pub use walk::Walk;
 pub use walk_to_set::WalkToSet;

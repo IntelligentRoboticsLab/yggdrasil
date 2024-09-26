@@ -6,7 +6,7 @@ use nalgebra::Point2;
 
 use crate::{
     behavior::{
-        behaviors::{CatchFall, Observe, Standup, StartUp, Sitting, Walk},
+        behaviors::{CatchFall, Observe, Sitting, Standup, StartUp, Walk},
         primary_state::PrimaryState,
         roles::Attacker,
         BehaviorConfig,
