@@ -1,4 +1,7 @@
-use heimdall::CameraMatrix;
+use std::marker::PhantomData;
+
+use bevy::prelude::*;
+use heimdall::{Bottom, CameraLocation, CameraMatrix, Top};
 use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +12,7 @@ use crate::{
     sensor::imu::IMUValues,
 };
 
-use super::{CameraConfig, CameraPosition, CameraSettings};
+use super::{CameraConfig, CameraSettings};
 
 const CAMERA_TOP_PITCH_DEGREES: f32 = 1.2;
 const CAMERA_BOTTOM_PITCH_DEGREES: f32 = 39.7;
@@ -21,13 +24,17 @@ pub struct CalibrationConfig {
     cc_optical_center: Point2<f32>,
 }
 
-#[derive(Default, Debug)]
-pub struct CameraMatrices {
-    pub top: CameraMatrix,
-    pub bottom: CameraMatrix,
-}
+#[derive(Default)]
+pub struct CameraMatrixPlugin<T: CameraLocation>(PhantomData<T>);
 
-pub struct CameraMatrixModule;
+impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<CameraMatrix<T>>().add_systems(
+            Update,
+            update_camera_matrix::<T>.before(super::fetch_latest_frame::<T>),
+        );
+    }
+}
 
 impl Module for CameraMatrixModule {
     fn initialize(self, app: App) -> Result<App> {
@@ -37,49 +44,28 @@ impl Module for CameraMatrixModule {
     }
 }
 
-#[system]
-fn update_camera_matrix(
-    swing_foot: &SwingFoot,
-    imu: &IMUValues,
-    kinematics: &RobotKinematics,
-    camera_matrices: &mut CameraMatrices,
-    config: &CameraConfig,
-) -> Result<()> {
-    camera_matrices.top = compute_camera_matrix(
-        swing_foot,
-        imu,
-        CameraPosition::Top,
-        &config.top,
-        kinematics,
-    );
+fn update_camera_matrix<T: CameraLocation>(
+    swing_foot: Res<SwingFoot>,
+    imu: Res<IMUValues>,
+    kinematics: Res<RobotKinematics>,
+    mut matrix: ResMut<CameraMatrix<T>>,
+    config: Res<CameraConfig>,
+) {
+    let config = match T::CAMERA_LOCATION {
+        Top => &config.top,
+        Bottom => &config.bottom,
+    };
 
-    camera_matrices.bottom = compute_camera_matrix(
-        swing_foot,
-        imu,
-        CameraPosition::Bottom,
-        &config.bottom,
-        kinematics,
-    );
-    Ok(())
-}
-
-fn compute_camera_matrix(
-    swing_foot: &SwingFoot,
-    imu: &IMUValues,
-    position: CameraPosition,
-    config: &CameraSettings,
-    kinematics: &RobotKinematics,
-) -> CameraMatrix {
     let image_size = vector![config.width as f32, config.height as f32];
     let camera_to_head = camera_to_head(position, config.calibration.extrinsic_rotation);
-    CameraMatrix::new(
+    *matrix = CameraMatrix::new(
         config.calibration.focal_lengths,
         config.calibration.cc_optical_center,
         image_size,
         camera_to_head,
         kinematics.head_to_robot,
-        robot_to_ground(swing_foot, imu, kinematics),
-    )
+        robot_to_ground(&swing_foot, &imu, &kinematics),
+    );
 }
 
 fn robot_to_ground(

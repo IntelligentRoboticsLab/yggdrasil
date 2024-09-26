@@ -1,5 +1,7 @@
+use bevy::prelude::*;
+
 /// Holds the exposure weights for both cameras.
-#[derive(Clone)]
+#[derive(Resource, Clone)]
 pub struct ExposureWeights {
     /// The exposure weights for the top part of the image.
     pub top: ExposureWeightTable,

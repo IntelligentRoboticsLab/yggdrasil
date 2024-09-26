@@ -4,6 +4,7 @@ use super::{
     data_type::{Elem, InputElem, Output},
     Error, MlModel, Result,
 };
+use bevy::prelude::*;
 use std::{marker::PhantomData, sync::Mutex};
 
 /// Wrapper around [`openvino::Core`], i.e. the OpenVINO engine.
@@ -17,6 +18,7 @@ impl MlCore {
 }
 
 /// A ML model.
+#[derive(Resource)]
 pub struct ModelExecutor<M: MlModel> {
     /// Model executor.
     exec: Mutex<openvino::ExecutableNetwork>,

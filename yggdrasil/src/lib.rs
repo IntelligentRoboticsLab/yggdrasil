@@ -9,7 +9,7 @@ pub mod motion;
 pub mod nao;
 pub mod schedule;
 pub mod sensor;
-// pub mod vision;
+pub mod vision;
 
 pub use miette::Result;
 

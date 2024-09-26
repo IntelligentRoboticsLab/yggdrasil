@@ -12,6 +12,30 @@ use crate::exposure_weights::ExposureWeightTable;
 
 use super::{Error, Result, YuyvImage};
 
+#[derive(Debug, Clone, Default, Copy, Eq, PartialEq)]
+pub enum CameraPosition {
+    #[default]
+    Top,
+    Bottom,
+}
+
+/// Marker trait for a camera location marker type.
+pub trait CameraLocation: Send + Sync + 'static {
+    const POSITION: CameraPosition;
+}
+
+/// Marker type for the top camera.
+pub struct Top;
+impl CameraLocation for Top {
+    const POSITION: CameraPosition = CameraPosition::Top;
+}
+
+/// Marker type for the bottom camera.
+pub struct Bottom;
+impl CameraLocation for Bottom {
+    const POSITION: CameraPosition = CameraPosition::Bottom;
+}
+
 /// A wrapper around a [`Device`] that contains utilities to flip the image.
 pub struct CameraDevice {
     device: Device,

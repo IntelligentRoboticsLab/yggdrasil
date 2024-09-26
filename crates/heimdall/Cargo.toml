@@ -14,3 +14,4 @@ nalgebra = { workspace = true }
 thiserror = { workspace = true }
 turbojpeg = { workspace = true }
 fast-math = { workspace = true }
+bevy = { workspace = true }

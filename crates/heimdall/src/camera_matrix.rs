@@ -1,9 +1,14 @@
+use std::marker::PhantomData;
+
+use bevy::prelude::Resource;
 use miette::{bail, Result};
 use nalgebra::{point, vector, Isometry3, Point2, Point3, Vector2, Vector3};
 
+use crate::camera::CameraLocation;
+
 /// A camera matrix that is able to project points.
-#[derive(Default, Debug, Clone)]
-pub struct CameraMatrix {
+#[derive(Resource, Default, Debug, Clone)]
+pub struct CameraMatrix<T: CameraLocation> {
     /// The optical center of the camera in the image plane, in pixels.
     pub cc_optical_center: Point2<f32>,
     /// The focal lengths of the camera in pixels.
@@ -16,9 +21,10 @@ pub struct CameraMatrix {
     pub robot_to_camera: Isometry3<f32>,
     /// The transformation from camera frame to the ground frame.
     pub camera_to_ground: Isometry3<f32>,
+    _marker: PhantomData<T>,
 }
 
-impl CameraMatrix {
+impl<T: CameraLocation> CameraMatrix<T> {
     pub fn new(
         focal_lengths: Vector2<f32>,
         cc_optical_center: Point2<f32>,
@@ -39,6 +45,7 @@ impl CameraMatrix {
             camera_to_head,
             robot_to_camera: camera_to_robot.inverse(),
             camera_to_ground,
+            _marker: PhantomData,
         }
     }
 
