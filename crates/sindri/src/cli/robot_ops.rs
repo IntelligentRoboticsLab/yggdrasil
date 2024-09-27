@@ -90,16 +90,6 @@ pub struct ConfigOptsRobotOps {
     #[clap(global = true, long, default_value = "yggdrasil")]
     pub bin: String,
 
-    /// Whether to use alsa
-    #[clap(
-        long,
-        default_value_ifs([
-            ("local", "true", Some("true")),
-            ("bin", "yggdrasil", Some("false")),
-        ]),
-    )]
-    pub no_alsa: bool,
-
     /// Whether the command prints all progress
     #[clap(long, short)]
     pub silent: bool,
@@ -361,9 +351,6 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
         .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
 
     let mut features = vec![];
-    if !config.no_alsa {
-        features.push("alsa");
-    }
     if config.rerun {
         features.push("rerun");
     }

@@ -557,10 +557,10 @@ fn create_default_configs() -> (YggdrasilConfig, BehaviorConfig, GameControllerC
                     ground_contact_threshold: 0.0,
                 },
             },
-            // game_controller: GameControllerConfig {
-            //     game_controller_return_delay: Default::default(),
-            //     game_controller_timeout: Default::default(),
-            // },
+            game_controller: GameControllerConfig {
+                game_controller_return_delay: Default::default(),
+                game_controller_timeout: Default::default(),
+            },
             odometry: OdometryConfig {
                 scale_factor: Default::default(),
             },

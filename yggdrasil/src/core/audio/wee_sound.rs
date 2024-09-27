@@ -1,5 +1,6 @@
+use bevy::prelude::*;
+
 use crate::motion::keyframe::KeyframeExecutor;
-use crate::prelude::*;
 
 use crate::sensor::fsr::Contacts;
 
@@ -9,17 +10,17 @@ use super::AudioConfig;
 use std::time::{Duration, Instant};
 
 /// Add the [`WeeSound`] as a resource, and [`wee_sound_system`] as a system to the framework.
-pub struct WeeSoundModule;
+pub struct WeeSoundPlugin;
 
-impl Module for WeeSoundModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_system(wee_sound_system)
-            .add_resource(Resource::new(WeeSound::default()))
+impl Plugin for WeeSoundPlugin {
+    fn build(&self, app: &mut bevy::prelude::App) {
+        app.init_resource::<WeeSound>()
+            .add_systems(Update, wee_sound_system);
     }
 }
 
 /// WeeSound componenet to play a sound with a timeout.
-#[derive(Default)]
+#[derive(Default, Resource)]
 pub struct WeeSound {
     sound_played: bool,
     last_played: Option<Instant>,
@@ -31,27 +32,27 @@ impl WeeSound {
     }
 }
 
-#[system]
 pub fn wee_sound_system(
-    wee_sound: &mut WeeSound,
-    sounds: &mut SoundManager,
-    contacts: &Contacts,
-    config: &AudioConfig,
-    keyframe_executor: &mut KeyframeExecutor,
-) -> Result<()> {
+    mut wee_sound: ResMut<WeeSound>,
+    sounds: Res<SoundManager>,
+    contacts: Res<Contacts>,
+    config: Res<AudioConfig>,
+    keyframe_executor: Res<KeyframeExecutor>,
+) {
     if wee_sound.timed_out(config.wee_sound_timeout) {
-        return Ok(());
+        return;
     }
 
     // Play the sound once upon losing ground contact
     if !contacts.ground && !wee_sound.sound_played && !keyframe_executor.is_motion_active() {
         wee_sound.sound_played = true;
         wee_sound.last_played = Some(Instant::now());
-        sounds.play_sound(Sound::Weee)?;
+        sounds
+            .play_sound(Sound::Weee)
+            .expect("Failed to play wee sound");
+
     // Reset played state upon regaining ground contact
     } else if contacts.ground {
         wee_sound.sound_played = false;
     }
-
-    Ok(())
 }

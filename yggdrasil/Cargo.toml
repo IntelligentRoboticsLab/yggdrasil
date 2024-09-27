@@ -18,7 +18,7 @@ ml = { workspace = true }
 tasks = { workspace = true }
 
 async-std = { workspace = true }
-alsa = { workspace = true, optional = true }
+cpal = { workspace = true }
 apodize = { workspace = true }
 bifrost = { path = "../crates/bifrost/" }
 bevy = { workspace = true, features = ["multi_threaded"] }
@@ -31,7 +31,7 @@ geo = { workspace = true }
 heimdall = { path = "../crates/heimdall" }
 image = { workspace = true }
 itertools = { workspace = true }
-kira = { workspace = true, optional = true }
+kira = { workspace = true }
 linreg = { workspace = true }
 lstsq = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
@@ -58,7 +58,6 @@ tyr = { path = "../crates/tyr", features = ["odal"] }
 
 [features]
 default = []
-alsa = ["dep:alsa", "dep:kira", "dep:rustfft"]
 rerun = ["dep:rerun"]
 local = []
 dependency_graph = []

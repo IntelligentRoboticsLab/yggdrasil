@@ -2,12 +2,11 @@ use std::ops::Deref;
 
 use game_controller2::GameControllerMessageEvent;
 use miette::{Context, IntoDiagnostic};
-use motion::walk;
 use tracing::Level;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{fmt, EnvFilter, Layer};
+use tracing_subscriber::{fmt, EnvFilter};
 // use yggdrasil::behavior::BehaviorModule;
 // use yggdrasil::communication::CommunicationModule;
 // use yggdrasil::core::whistle::WhistleStateModule;
@@ -114,6 +113,7 @@ fn setup_tracing() -> Result<()> {
 
     subscriber
         .with(fmt::Layer::default().with_writer(stdout.and(logfile)))
+        .with(symphonia_filter)
         .with(EnvFilter::from_default_env())
         .init();
 

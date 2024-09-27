@@ -1,7 +1,6 @@
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
-// #[cfg(feature = "alsa")]
-// pub mod audio;
+pub mod audio;
 pub mod config;
 pub mod debug;
 // pub mod whistle;
@@ -14,6 +13,6 @@ impl PluginGroup for CorePlugins {
             .add(config::ConfigPlugin)
             // .add(whistle::WhistleStatePlugin)
             .add(debug::DebugPlugin)
-        // .add(audio::AudioPlugin)
+            .add_group(audio::AudioPlugins)
     }
 }
