@@ -114,7 +114,6 @@ fn setup_tracing() -> Result<()> {
     subscriber
         .with(fmt::Layer::default().with_writer(stdout.and(logfile)))
         .with(symphonia_filter)
-        .with(EnvFilter::from_default_env())
         .init();
 
     Ok(())
