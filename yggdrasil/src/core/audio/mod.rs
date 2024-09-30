@@ -29,13 +29,11 @@ impl Config for AudioConfig {
     const PATH: &'static str = "audio.toml";
 }
 
-pub struct AudioPlugins;
+pub struct AudioPlugin;
 
-impl PluginGroup for AudioPlugins {
-    fn build(self) -> PluginGroupBuilder {
-        PluginGroupBuilder::start::<Self>()
-            .add(AudioInputPlugin)
-            .add(SoundManagerPlugin)
-        // .add(WhitleDetectionPlugin)
+impl Plugin for AudioPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_config::<AudioConfig>()
+            .add_plugins((AudioInputPlugin, SoundManagerPlugin));
     }
 }

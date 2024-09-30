@@ -1,8 +1,7 @@
 pub mod behavior;
 // pub mod communication;
 pub mod core;
-// pub mod game_controller;
-pub mod game_controller2;
+pub mod game_controller;
 pub mod kinematics;
 pub mod localization;
 pub mod motion;

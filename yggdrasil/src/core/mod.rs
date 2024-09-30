@@ -13,6 +13,6 @@ impl PluginGroup for CorePlugins {
             .add(config::ConfigPlugin)
             // .add(whistle::WhistleStatePlugin)
             .add(debug::DebugPlugin)
-            .add_group(audio::AudioPlugins)
+            .add(audio::AudioPlugin)
     }
 }

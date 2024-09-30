@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use game_controller2::GameControllerMessageEvent;
+use game_controller::GameControllerMessageEvent;
 use miette::{Context, IntoDiagnostic};
 use tracing::Level;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
@@ -60,7 +60,7 @@ fn main() -> Result<()> {
         .add_plugins(MinimalPlugins)
         .add_plugins((
             schedule::NaoSchedulePlugin,
-            game_controller2::GameControllerPlugin,
+            game_controller::GameControllerPlugin,
             nao::NaoPlugins,
             core::CorePlugins,
             localization::LocalizationPlugin,

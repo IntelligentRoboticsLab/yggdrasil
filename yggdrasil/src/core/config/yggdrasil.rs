@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::game_controller2::GameControllerConfig;
+use crate::game_controller::GameControllerConfig;
 use crate::motion::odometry::OdometryConfig;
 use crate::prelude::*;
 use crate::sensor::orientation::OrientationFilterConfig;
