@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 use self::audio_input::AudioInputPlugin;
 use self::sound_manager::SoundManagerPlugin;
-// use self::whistle_detection::WhistleDetectionModule;
+use self::whistle_detection::WhistleDetectionPlugin;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 use serde::{Deserialize, Serialize};
@@ -12,7 +12,7 @@ use std::time::Duration;
 pub mod audio_input;
 pub mod sound_manager;
 pub mod wee_sound;
-// pub mod whistle_detection;
+pub mod whistle_detection;
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Resource)]
@@ -33,7 +33,10 @@ pub struct AudioPlugin;
 
 impl Plugin for AudioPlugin {
     fn build(&self, app: &mut App) {
-        app.init_config::<AudioConfig>()
-            .add_plugins((AudioInputPlugin, SoundManagerPlugin));
+        app.init_config::<AudioConfig>().add_plugins((
+            audio_input::AudioInputPlugin,
+            sound_manager::SoundManagerPlugin,
+            whistle_detection::WhistleDetectionPlugin,
+        ));
     }
 }

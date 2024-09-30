@@ -139,8 +139,8 @@ impl AudioSamples {
     }
 }
 
-#[derive(Event)]
-struct AudioSamplesEvent {
+#[derive(Event, Debug)]
+pub struct AudioSamplesEvent {
     pub left: Vec<f32>,
     pub right: Vec<f32>,
 }

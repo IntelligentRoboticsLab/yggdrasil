@@ -43,7 +43,7 @@ odal = { path = "../crates/odal" }
 ordered-float = { workspace = true }
 pathfinding = { workspace = true }
 rerun = { workspace = true, optional = true }
-rustfft = { workspace = true, optional = true }
+rustfft = { workspace = true }
 serde = { workspace = true }
 serde_with = { workspace = true }
 thiserror = { workspace = true }
