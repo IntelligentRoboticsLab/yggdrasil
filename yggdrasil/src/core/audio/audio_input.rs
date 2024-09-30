@@ -29,8 +29,10 @@ impl Plugin for AudioInputPlugin {
 
 fn setup(mut commands: Commands) {
     // ALSA is the default host on linux
-    // let host = cpal::default_host();
+    #[cfg(feature = "local")]
+    let host = cpal::default_host();
     // Alternatively we can use JACK
+    #[cfg(not(feature = "local"))]
     let host = cpal::host_from_id(cpal::HostId::Jack).unwrap();
     tracing::info!("Using audio host `{}`", host.id().name());
 
