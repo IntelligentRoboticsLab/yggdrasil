@@ -15,16 +15,15 @@ pub const SAMPLES_PER_CHANNEL: u32 = 2048;
 pub const CHANNELS: u16 = 2;
 pub const TOTAL_SAMPLES: u32 = SAMPLES_PER_CHANNEL * CHANNELS as u32;
 
-/// This module provides the following resources to the application:
-/// - [`AudioSample`]
+/// This module provides the following events to the application:
+/// - [`AudioSamplesEvent`]
 pub struct AudioInputPlugin;
 
 impl Plugin for AudioInputPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<AudioSamplesEvent>()
             .add_systems(Startup, setup)
-            .add_systems(PreUpdate, emit_event)
-            .add_systems(Update, log);
+            .add_systems(PreUpdate, emit_event);
     }
 }
 
@@ -70,7 +69,6 @@ fn setup(mut commands: Commands) {
                     // pw-metadata -n settings 0 clock.force-quantum 2048
                     // ```
                     let n = data.len().min(buffer.len());
-                    println!("Received {} samples", data.len());
 
                     buffer[..n].copy_from_slice(&data[..n]);
                     buffer[n..].fill(0.0);
@@ -135,10 +133,7 @@ impl AudioSamples {
     }
 
     fn deinterleave(&self) -> (Vec<f32>, Vec<f32>) {
-        let now = std::time::Instant::now();
-        let a = self.buffer.lock().unwrap().buffer.iter().tuples().unzip();
-        eprintln!("Took {:?}", now.elapsed());
-        a
+        self.buffer.lock().unwrap().buffer.iter().tuples().unzip()
     }
 }
 
@@ -162,16 +157,4 @@ fn emit_event(
 
     let (left, right) = samples.deinterleave();
     ev.send(AudioSamplesEvent { left, right });
-}
-
-fn log(mut samples: EventReader<AudioSamplesEvent>) {
-    for AudioSamplesEvent { left, right } in samples.read() {
-        println!(
-            "Left: {:?}..{:?}, Right: {:?}..{:?}",
-            &left[..2],
-            &left[left.len() - 2..left.len()],
-            &right[..2],
-            &right[right.len() - 2..right.len()]
-        );
-    }
 }
