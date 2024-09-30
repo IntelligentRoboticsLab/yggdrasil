@@ -3,9 +3,10 @@
 use bevy::prelude::*;
 use tasks::*;
 
+use crate::prelude::ModelOutput;
+
 use super::{
     backend::{InferRequest, ModelExecutor},
-    element_type::Output,
     MlModel,
 };
 
@@ -13,7 +14,11 @@ use super::{
 pub trait MlInferenceBuilderState {}
 
 /// Builder for spawning an [`MlModel`] inference task.
-pub struct MlInferenceBuilder<'a, 'w, 's, M: MlModel, S: MlInferenceBuilderState> {
+pub struct MlInferenceBuilder<'a, 'w, 's, M, S>
+where
+    M: MlModel,
+    S: MlInferenceBuilderState,
+{
     commands: &'a mut Commands<'w, 's>,
     executor: &'a mut ModelExecutor<M>,
     state: S,
@@ -24,41 +29,57 @@ pub struct DefineInput;
 impl MlInferenceBuilderState for DefineInput {}
 
 /// Type state for defining the output of the model.
-pub struct DefineOutput<'a, M: MlModel>(&'a [M::InputType]);
-impl<'a, M: MlModel> MlInferenceBuilderState for DefineOutput<'a, M> {}
+pub struct DefineOutput<'a, M>(&'a M::InputShape)
+where
+    M: MlModel;
+
+impl<'a, M> MlInferenceBuilderState for DefineOutput<'a, M> where M: MlModel {}
 
 /// Type state for defining the output of the model with multiple batches.
-pub struct DefineBatchedOutput<'a, M: MlModel>(&'a [&'a [M::InputType]]);
-impl<'a, M: MlModel> MlInferenceBuilderState for DefineBatchedOutput<'a, M> {}
+pub struct DefineBatchedOutput<'a, M>(&'a [&'a M::InputShape])
+where
+    M: MlModel;
+impl<'a, M> MlInferenceBuilderState for DefineBatchedOutput<'a, M> where M: MlModel {}
 
 /// Type state for storing the output of the model in a resource.
-pub struct ResourceOutput<'a, M: MlModel>(&'a [M::InputType]);
-impl<'a, M: MlModel> MlInferenceBuilderState for ResourceOutput<'a, M> {}
+pub struct ResourceOutput<'a, M>(&'a M::InputShape)
+where
+    M: MlModel;
+impl<'a, M> MlInferenceBuilderState for ResourceOutput<'a, M> where M: MlModel {}
 
 /// Type state for storing the output of the model in a single entity.
-pub struct EntityOutput<'a, M: MlModel>(&'a [M::InputType]);
-impl<'a, M: MlModel> MlInferenceBuilderState for EntityOutput<'a, M> {}
+pub struct EntityOutput<'a, M>(&'a M::InputShape)
+where
+    M: MlModel;
+impl<'a, M> MlInferenceBuilderState for EntityOutput<'a, M> where M: MlModel {}
 
 /// Type state for storing the output of the model in multiple entities.
-pub struct EntitiesOutput<'a, M: MlModel>(&'a [&'a [M::InputType]]);
-impl<'a, M: MlModel> MlInferenceBuilderState for EntitiesOutput<'a, M> {}
+pub struct EntitiesOutput<'a, M>(&'a [&'a M::InputShape])
+where
+    M: MlModel;
+impl<'a, M> MlInferenceBuilderState for EntitiesOutput<'a, M> where M: MlModel {}
 
 /// Extension trait for [`Commands`] to spawn an [`MlModel`] inference tasks.
 pub trait MlTaskCommandsExt<'a, 'w, 's> {
     /// Begin building an inference task for an [`MlModel`].
     ///
     /// This allows you to define the input, output, and how the output should be stored.
-    fn infer_model<M: MlModel>(
+    fn infer_model<M>(
         &'a mut self,
         executor: &'a mut ModelExecutor<M>,
-    ) -> MlInferenceBuilder<'a, 'w, 's, M, DefineInput>;
+    ) -> MlInferenceBuilder<'a, 'w, 's, M, DefineInput>
+    where
+        M: MlModel;
 }
 
 impl<'a, 'w, 's> MlTaskCommandsExt<'a, 'w, 's> for Commands<'w, 's> {
-    fn infer_model<M: MlModel>(
+    fn infer_model<M>(
         &'a mut self,
         executor: &'a mut ModelExecutor<M>,
-    ) -> MlInferenceBuilder<'a, 'w, 's, M, DefineInput> {
+    ) -> MlInferenceBuilder<'a, 'w, 's, M, DefineInput>
+    where
+        M: MlModel,
+    {
         MlInferenceBuilder {
             commands: self,
             executor,
@@ -67,11 +88,14 @@ impl<'a, 'w, 's> MlTaskCommandsExt<'a, 'w, 's> for Commands<'w, 's> {
     }
 }
 
-impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineInput> {
+impl<'a, 'w, 's, M> MlInferenceBuilder<'a, 'w, 's, M, DefineInput>
+where
+    M: MlModel,
+{
     /// Define the input of the model with a single batch.
     pub fn with_input(
         &'a mut self,
-        input: &'a [M::InputType],
+        input: &'a M::InputShape,
     ) -> MlInferenceBuilder<'a, 'w, 's, M, DefineOutput<'a, M>> {
         MlInferenceBuilder {
             commands: self.commands,
@@ -83,7 +107,7 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineInput> {
     /// Define the input of the model with multiple batches.
     pub fn with_batched_input(
         &'a mut self,
-        input: &'a [&'a [M::InputType]],
+        input: &'a [&'a M::InputShape],
     ) -> MlInferenceBuilder<'a, 'w, 's, M, DefineBatchedOutput<'a, M>> {
         MlInferenceBuilder {
             commands: self.commands,
@@ -93,7 +117,10 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineInput> {
     }
 }
 
-impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineOutput<'a, M>> {
+impl<'a, 'w, 's, M> MlInferenceBuilder<'a, 'w, 's, M, DefineOutput<'a, M>>
+where
+    M: MlModel,
+{
     /// Send the output of the model to a [`Resource`] will be spawned as soon as the model
     /// inference is complete.
     pub fn to_resource(self) -> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a, M>> {
@@ -115,17 +142,22 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineOutput<'a, 
     }
 }
 
-impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a, M>> {
+impl<'a, 'w, 's, M> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a, M>>
+where
+    M: MlModel,
+{
     /// Spawn the model inference task, providing a closure to convert the output to a [`Resource`].
-    pub fn spawn<O, F, R>(&mut self, f: F)
+    pub fn spawn<F, R>(&mut self, f: F)
     where
-        O: Output<M::OutputType>,
-        F: (FnOnce(O) -> Option<R>) + Send + Sync + 'static,
+        F: (FnOnce(<M::OutputShape as ModelOutput<M::OutputElem>>::Shape) -> Option<R>)
+            + Send
+            + Sync
+            + 'static,
         R: Resource,
     {
         let request = self
             .executor
-            .request_infer(&[&self.state.0])
+            .request_infer(self.state.0)
             .expect("failed to request inference");
 
         self.commands
@@ -137,7 +169,6 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a
                     let output = request
                         .run()
                         .and_then(|request| request.fetch_output())
-                        .map(|mut out| out.remove(0))
                         .ok()?;
 
                     f(output)
@@ -146,17 +177,22 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a
     }
 }
 
-impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, EntityOutput<'a, M>> {
+impl<'a, 'w, 's, M> MlInferenceBuilder<'a, 'w, 's, M, EntityOutput<'a, M>>
+where
+    M: MlModel,
+{
     /// Spawn the model inference task, providing a closure to convert the output to a [`Component`].
-    pub fn spawn<O, F, C>(&mut self, f: F)
+    pub fn spawn<F, C>(&mut self, f: F)
     where
-        O: Output<M::OutputType>,
-        F: (FnOnce(Vec<O>) -> Option<C>) + Send + Sync + 'static,
+        F: (FnOnce(<M::OutputShape as ModelOutput<M::OutputElem>>::Shape) -> Option<C>)
+            + Send
+            + Sync
+            + 'static,
         C: Component,
     {
         let request = self
             .executor
-            .request_infer(&[&self.state.0])
+            .request_infer(&self.state.0)
             .expect("failed to request inference");
 
         self.commands
@@ -173,7 +209,10 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, EntityOutput<'a, 
     }
 }
 
-impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineBatchedOutput<'a, M>> {
+impl<'a, 'w, 's, M> MlInferenceBuilder<'a, 'w, 's, M, DefineBatchedOutput<'a, M>>
+where
+    M: MlModel,
+{
     /// Spawn an entity with the output attached a component for each batch.
     pub fn to_entities(self) -> MlInferenceBuilder<'a, 'w, 's, M, EntitiesOutput<'a, M>> {
         MlInferenceBuilder {
@@ -184,14 +223,19 @@ impl<'a, 'w, 's, M: MlModel> MlInferenceBuilder<'a, 'w, 's, M, DefineBatchedOutp
     }
 }
 
-impl<'a, 'w, 's, M: MlModel + Send + Sync + 'static>
-    MlInferenceBuilder<'a, 'w, 's, M, EntitiesOutput<'a, M>>
+impl<'a, 'w, 's, M> MlInferenceBuilder<'a, 'w, 's, M, EntitiesOutput<'a, M>>
+where
+    M: MlModel,
 {
     /// Spawn the model inference task, providing a closure to convert the output to a [`Component`].
-    pub fn spawn<O, F, C>(&mut self, f: F)
+    pub fn spawn<F, C>(&mut self, f: F)
     where
-        O: Output<M::OutputType>,
-        F: (FnOnce(Vec<O>) -> Option<C>) + Clone + Copy + Send + Sync + 'static,
+        F: (FnOnce(<M::OutputShape as ModelOutput<M::OutputElem>>::Shape) -> Option<C>)
+            + Clone
+            + Copy
+            + Send
+            + Sync
+            + 'static,
         C: Component,
     {
         let requests = self
@@ -200,7 +244,7 @@ impl<'a, 'w, 's, M: MlModel + Send + Sync + 'static>
             .iter()
             .map(|input| {
                 self.executor
-                    .request_infer(&[input])
+                    .request_infer(&input)
                     .expect("failed to create inference request")
             })
             .collect::<Vec<InferRequest<M>>>();
@@ -211,8 +255,9 @@ impl<'a, 'w, 's, M: MlModel + Send + Sync + 'static>
             .spawn({
                 requests.into_iter().map(move |request| async move {
                     async move {
-                        let output = request.run().ok()?;
-                        let output = output.fetch_output().ok()?;
+                        let output = InferRequest::run(request)
+                            .and_then(InferRequest::fetch_output)
+                            .ok()?;
 
                         f(output)
                     }

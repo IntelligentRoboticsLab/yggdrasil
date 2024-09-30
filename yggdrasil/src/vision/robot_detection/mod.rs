@@ -5,19 +5,19 @@ use crate::nao::Cycle;
 use crate::prelude::*;
 use crate::vision::util::non_max_suppression;
 use crate::{
-    core::{
-        debug::DebugContext,
-        ml::{self, MlModel, MlTask, MlTaskResource},
-    },
+    core::debug::DebugContext,
     vision::{
-        camera::{Image, TopImage},
+        camera::Image,
         util::bbox::{Bbox, ConvertBbox, Cxcywh, Xyxy},
     },
 };
+use bevy::prelude::*;
 use box_coder::BoxCoder;
 use fast_image_resize as fr;
+use heimdall::Top;
 use itertools::Itertools;
 use miette::IntoDiagnostic;
+use ml::prelude::*;
 use ndarray::{Array2, Axis};
 use serde_with::{serde_as, DurationMilliSeconds};
 
@@ -28,7 +28,7 @@ use anchor_generator::DefaultBoxGenerator;
 use serde::{Deserialize, Serialize};
 
 #[serde_as]
-#[derive(Debug, Deserialize, Serialize, Inspect)]
+#[derive(Resource, Debug, Deserialize, Serialize, Reflect)]
 #[serde(deny_unknown_fields)]
 pub struct RobotDetectionConfig {
     confidence_threshold: f32,
@@ -60,27 +60,27 @@ impl RobotDetectionConfig {
 
 pub struct RobotDetectionModule;
 
-impl Module for RobotDetectionModule {
-    fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_ml_task::<RobotDetectionModel>()?
-            .init_config::<RobotDetectionConfig>()?
-            .add_startup_system(init_robot_detection)?
-            .add_system_chain((detect_robots, log_detected_robots)))
-    }
-}
+// impl Module for RobotDetectionModule {
+//     fn initialize(self, app: App) -> Result<App> {
+//         Ok(app
+//             .add_ml_task::<RobotDetectionModel>()?
+//             .init_config::<RobotDetectionConfig>()?
+//             .add_startup_system(init_robot_detection)?
+//             .add_system_chain((detect_robots, log_detected_robots)))
+//     }
+// }
 
 /// The robot detection model, based on a VGG-like backbone using SSD detection heads.
 pub struct RobotDetectionModel;
 
-impl MlModel for RobotDetectionModel {
+impl MlModel<u8, f32> for RobotDetectionModel {
     type InputType = u8;
-    type OutputType = f32;
+    type OutputShape = (MlArray<f32>, MlArray<f32>, MlArray<f32>);
     const ONNX_PATH: &'static str = "models/robot_detection.onnx";
 }
 
 /// A detected robot, with a bounding box and confidence.
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone, Reflect)]
 pub struct DetectedRobot {
     /// The bounding box of the robot in image coordinates.
     pub bbox: Bbox<Xyxy>,
@@ -96,13 +96,13 @@ pub struct RobotDetectionData {
     /// The detected robots.
     pub detected: Vec<DetectedRobot>,
     /// The image the robots have been detected in.
-    pub image: Image,
+    pub image: Image<Top>,
     /// The cycle the detection was completed on.
     pub result_cycle: Cycle,
 }
 
 /// For keeping track of the image that a robot inference is running for.
-pub struct RobotDetectionImage(Image);
+pub struct RobotDetectionImage(Image<Top>);
 
 #[startup_system]
 fn init_robot_detection(storage: &mut Storage, top_image: &TopImage) -> Result<()> {
@@ -122,12 +122,27 @@ fn init_robot_detection(storage: &mut Storage, top_image: &TopImage) -> Result<(
 }
 
 fn poll_model(
-    model: &mut MlTask<RobotDetectionModel>,
-    config: &RobotDetectionConfig,
-    robots: &mut RobotDetectionData,
-    robot_detection_image: &RobotDetectionImage,
-    current_cycle: &Cycle,
+    mut commands: Commands,
+    mut model: ResMut<ModelExecutor<RobotDetectionModel>>,
+    config: Res<RobotDetectionConfig>,
+    image: Res<Image<Top>>,
+    // robots: &mut RobotDetectionData,
+    // robot_detection_image: &RobotDetectionImage,
+    current_cycle: &Res<Cycle>,
 ) -> Result<()> {
+    // start new inference
+    let resized_image = image.resized_yuv(
+        config.input_width,
+        config.input_height,
+        fr::ResizeAlg::Nearest,
+    )?;
+
+    commands
+        .infer_model(&mut model)
+        .with_input(&resized_image)
+        .to_resource()
+        .spawn();
+
     // poll for result
     let Some(result) = model.poll_multi::<Vec<f32>>().transpose()? else {
         return Ok(());
@@ -177,13 +192,6 @@ fn detect_robots(
     if robot_detection_image.0.is_from_cycle(*cycle) {
         return Ok(());
     }
-
-    // start new inference
-    let resized_image = top_image.resized_yuv(
-        config.input_width,
-        config.input_height,
-        fr::ResizeAlg::Nearest,
-    )?;
 
     if let Ok(()) = model.try_start_infer(&resized_image) {
         // We need to keep track of the image we started the inference with

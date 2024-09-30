@@ -4,11 +4,9 @@ use bevy::prelude::*;
 #[cfg(feature = "rerun")]
 use std::{convert::Into, net::SocketAddr};
 
-use heimdall::CameraMatrix;
 #[cfg(feature = "rerun")]
 use miette::IntoDiagnostic;
 
-use nalgebra::Isometry3;
 use nidhogg::types::RgbU8;
 
 use std::{marker::PhantomData, net::IpAddr};

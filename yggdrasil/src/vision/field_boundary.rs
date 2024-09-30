@@ -6,6 +6,7 @@ use bevy::app::Plugin;
 use bevy::prelude::*;
 use fast_image_resize as fr;
 use heimdall::{Top, YuyvImage};
+use itertools::Itertools;
 use lstsq::Lstsq;
 use miette::Result;
 use ml::prelude::*;
@@ -163,11 +164,12 @@ fn detect_field_boundary(
 
     commands
         .infer_model(&mut model)
-        .with_input(&resized_image)
+        .with_input(&(resized_image,))
         .to_resource()
-        .spawn(move |result: Vec<f32>| {
+        .spawn(move |result| {
             // Get the predicted points from the model output
             let points = result
+                .0
                 .chunks(2)
                 .enumerate()
                 // Map the x/y values back to their place in the original image
@@ -219,8 +221,12 @@ fn resize_yuyv(yuyv_image: &YuyvImage) -> Vec<f32> {
 pub struct FieldBoundaryModel;
 
 impl MlModel for FieldBoundaryModel {
-    type InputType = f32;
-    type OutputType = f32;
+    type InputElem = f32;
+    type OutputElem = f32;
+
+    type InputShape = (Vec<f32>,);
+    type OutputShape = (Vec<f32>,);
+
     const ONNX_PATH: &'static str = "models/field_boundary.onnx";
 }
 

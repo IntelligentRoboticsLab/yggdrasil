@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use bevy::prelude::*;
-use heimdall::{Bottom, CameraLocation, CameraMatrix, CameraPosition, Top};
+use heimdall::{CameraLocation, CameraMatrix, CameraPosition};
 use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
 use serde::{Deserialize, Serialize};
 

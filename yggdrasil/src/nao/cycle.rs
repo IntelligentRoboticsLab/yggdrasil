@@ -14,7 +14,7 @@ impl Plugin for CycleTimePlugin {
 }
 
 /// A resource that keeps track of the number of cycles since yggdrasil has been running.
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Resource)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Resource, Component)]
 pub struct Cycle(pub usize);
 
 /// A resource that keeps track of the time it takes to complete a full cycle of the yggdrasil framework.

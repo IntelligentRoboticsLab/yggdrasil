@@ -9,7 +9,7 @@ pub mod util;
 
 use self::{
     backend::ModelExecutor,
-    element_type::{Elem, InputElem},
+    element_type::{input::ModelInput, output::ModelOutput, Elem},
 };
 use backend::MlCore;
 use bevy::prelude::*;
@@ -18,7 +18,9 @@ use bevy::prelude::*;
 pub mod prelude {
     pub use crate::backend::{InferRequest, MlCore, ModelExecutor};
     pub use crate::commands_ext::MlTaskCommandsExt;
-    pub use crate::element_type::{Elem, Input, InputElem, Output};
+    pub use crate::element_type::input::{InputContainer, ModelInput};
+    pub use crate::element_type::output::{ModelOutput, OutputContainer};
+    pub use crate::element_type::{Elem, MlArray};
     pub use crate::error::Error;
 
     pub use crate::util as ml_util;
@@ -59,10 +61,16 @@ impl Plugin for MlPlugin {
 /// }
 /// ```
 pub trait MlModel: Send + Sync + 'static {
-    /// Type of model input elements.
-    type InputType: InputElem;
-    /// Type of model output elements.
-    type OutputType: Elem;
+    /// The input element type of the model.
+    type InputElem: Elem;
+    /// The output element type of the model.
+    type OutputElem: Elem;
+
+    /// The shape of the model input.
+    type InputShape: ModelInput<Self::InputElem>;
+
+    /// The shape of the model output.
+    type OutputShape: ModelOutput<Self::OutputElem>;
 
     /// Path to the model parameters.
     const ONNX_PATH: &'static str;
@@ -85,7 +93,7 @@ impl MlModelResourceExt for App {
     fn init_ml_model<M>(&mut self) -> &mut Self
     where
         Self: Sized,
-        M: MlModel + Send + Sync,
+        M: MlModel + Send + Sync + 'static,
     {
         let mut ml_core = self
             .world_mut()

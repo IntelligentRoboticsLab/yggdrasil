@@ -1,11 +1,11 @@
 //! Implementation of ML methods using an OpenVINO backend.
-
 use super::{
-    element_type::{Elem, InputElem, Output},
+    element_type::{input::ModelInput, output::ModelOutput, Elem},
     error::{Error, Result},
     MlModel,
 };
 use bevy::prelude::*;
+use openvino::Blob;
 use std::{marker::PhantomData, sync::Mutex};
 
 /// Wrapper around [`openvino::Core`], i.e. the OpenVINO engine.
@@ -68,10 +68,10 @@ impl<M: MlModel> ModelExecutor<M> {
                 name: input_name,
             };
 
-            if !M::InputType::is_compatible(tensor.cfg.precision()) {
+            if !M::InputElem::is_compatible(tensor.cfg.precision()) {
                 return Err(Error::InputType {
                     path: M::ONNX_PATH,
-                    expected: std::any::type_name::<M::InputType>().into(),
+                    expected: std::any::type_name::<M::InputElem>().into(),
                     imported: tensor.cfg.precision(),
                 });
             }
@@ -86,10 +86,10 @@ impl<M: MlModel> ModelExecutor<M> {
                 cfg: infer.get_blob(&output_name)?.tensor_desc()?,
                 name: output_name,
             };
-            if !M::OutputType::is_compatible(tensor.cfg.precision()) {
+            if !M::OutputElem::is_compatible(tensor.cfg.precision()) {
                 return Err(Error::OutputType {
                     path: M::ONNX_PATH,
-                    expected: std::any::type_name::<M::InputType>().into(),
+                    expected: std::any::type_name::<M::OutputElem>().into(),
                     imported: tensor.cfg.precision(),
                 });
             }
@@ -105,12 +105,12 @@ impl<M: MlModel> ModelExecutor<M> {
     }
 
     /// Requests to run inference.
-    pub fn request_infer(&mut self, input: &[&[M::InputType]]) -> Result<InferRequest<M>> {
+    pub fn request_infer(&mut self, input: &M::InputShape) -> Result<InferRequest<M>> {
         let exec = self.exec.get_mut().unwrap();
 
         InferRequest::new(
             exec.create_infer_request().map_err(Error::StartInference)?,
-            input,
+            input.view_byte_slices(),
             &self.input_descriptions,
             &self.output_descriptions,
         )
@@ -147,7 +147,7 @@ pub struct InferRequest<M: MlModel> {
 impl<M: MlModel> InferRequest<M> {
     fn new(
         mut request: openvino::InferRequest,
-        inputs: &[&[M::InputType]],
+        inputs: Vec<&[u8]>,
         input_descrs: &[TensorDescr],
         output_descrs: &[TensorDescr],
     ) -> Result<Self> {
@@ -165,7 +165,7 @@ impl<M: MlModel> InferRequest<M> {
             // load input data
             let blob = openvino::Blob::new(
                 &openvino::TensorDesc::new(cfg.layout(), cfg.dims(), cfg.precision()),
-                M::InputType::view_slice_bytes(input),
+                input,
             )
             .map_err(Error::UnexpectedOpenVino)?;
 
@@ -188,26 +188,18 @@ impl<M: MlModel> InferRequest<M> {
         Ok(self)
     }
 
-    pub fn fetch_output<O>(mut self) -> Result<Vec<O>>
-    where
-        O: Output<M::OutputType>,
-    {
-        // the tensor with the name `output_name` is guaranteed to exist
-        let blobs = self
+    pub fn fetch_output(mut self) -> Result<<M::OutputShape as ModelOutput<M::OutputElem>>::Shape> {
+        let (blobs, shapes): (Vec<Blob>, Vec<Vec<usize>>) = self
             .output_descrs
-            .into_iter()
+            .iter()
             .map(|x| {
+                // the tensor with the name `output_name` is guaranteed to exist
                 let blob = self.request.get_blob(&x.name).unwrap();
-
-                // SAFETY: the output tensor data type is compatible with `M::OutputType`
-                // due to the check in `ModelExecutor::new`, meaning it's safe
-                // to cast to this type
-                let data = unsafe { blob.buffer_as_type::<M::OutputType>() }.unwrap();
-
-                O::from_slice(data, x.cfg.dims())
+                (blob, x.dims().to_vec())
             })
-            .collect();
-        Ok(blobs)
+            .unzip();
+
+        Ok(M::OutputShape::from_blobs(&blobs, shapes.as_slice()))
     }
 }
 

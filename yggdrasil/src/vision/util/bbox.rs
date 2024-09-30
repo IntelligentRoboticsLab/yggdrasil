@@ -1,3 +1,5 @@
+use bevy::reflect::Reflect;
+
 /// A type-safe bounding box.
 ///
 /// It is a wrapper around a tuple of four `f32` values representing the coordinates of the bounding box.
@@ -24,9 +26,10 @@
 /// - [`Xyxy`] (xmin, ymin, xmax, ymax)
 /// - [`Xywh`] (xmin, ymin, width, height)
 /// - [`Cxcywh`] (center_x, center_y, width, height)
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Reflect)]
 pub struct Bbox<T> {
     pub inner: (f32, f32, f32, f32),
+    #[reflect(ignore)]
     _marker: std::marker::PhantomData<T>,
 }
 
@@ -109,7 +112,7 @@ pub trait ConvertBbox<T> {
 }
 
 /// Marker type for bounding boxes with coordinates of the top-left and bottom-right corners.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Reflect)]
 pub struct Xyxy;
 
 impl Bbox<Xyxy> {

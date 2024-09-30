@@ -8,7 +8,6 @@ use crate::{
     core::{config::layout::RobotPosition, debug::DebugContext},
     kinematics::RobotKinematics,
     motion::walk::{engine::Side, SwingFoot},
-    prelude::*,
     sensor::orientation::RobotOrientation,
 };
 

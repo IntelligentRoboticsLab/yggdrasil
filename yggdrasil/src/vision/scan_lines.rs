@@ -1,6 +1,6 @@
 use std::{ops::Deref, sync::Arc};
 
-use crate::{core::debug::DebugContext, nao::Cycle, prelude::*};
+use crate::{core::debug::DebugContext, prelude::*};
 
 use super::{
     camera::Image,

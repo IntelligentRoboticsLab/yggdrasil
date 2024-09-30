@@ -5,11 +5,7 @@ pub mod yggdrasil;
 
 use std::path::{Path, PathBuf};
 
-use crate::{
-    behavior::{behaviors::StartUp, BehaviorConfig},
-    nao::RobotInfo,
-    prelude::*,
-};
+use crate::{behavior::BehaviorConfig, nao::RobotInfo, prelude::*};
 use bevy::{ecs::system::RunSystemOnce, prelude::*};
 use odal::{ConfigKind, Error, ErrorKind};
 

@@ -15,7 +15,7 @@ pub mod field_boundary;
 // pub mod robot_detection;
 pub mod scan_grid;
 pub mod scan_lines;
-// pub mod util;
+pub mod util;
 
 // use field_boundary::FieldBoundaryModule;
 
@@ -58,5 +58,5 @@ impl PluginGroup for VisionPlugins {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct VisionConfig {
-    pub field_marks: FieldMarksConfig,
+    // pub field_marks: FieldMarksConfig,
 }

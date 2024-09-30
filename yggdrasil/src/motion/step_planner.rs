@@ -1,5 +1,5 @@
 use super::path_finding::{self, Obstacle};
-use crate::{localization::RobotPose, motion::walk::engine::Step, prelude::*};
+use crate::{localization::RobotPose, motion::walk::engine::Step};
 use bevy::prelude::*;
 use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
 use std::time::Instant;
