@@ -21,11 +21,20 @@ pub struct StandLookAt {
 
 impl Behavior for StandLookAt {
     fn execute(&mut self, context: Context, control: &mut Control) {
-        control.nao_manager.set_head(
-            context.pose.get_look_at_absolute(&self.target),
-            HeadJoints::fill(HEAD_STIFFNESS),
-            Priority::default(),
-        );
+        let point = Point2::new(-2.0,5.0);
+        let look_at = context.pose.get_look_at_absolute(&point);
+        control
+        .nao_manager
+        .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
+        // control.nao_manager.set_head(control.nao_manager.set_head(
+        //     context.pose.get_look_at_absolute(&self.target),
+        //     HeadJoints::fill(HEAD_STIFFNESS),
+        //     Priority::default(),
+        // );
+        //     context.pose.get_look_at_absolute(&self.target),
+        //     HeadJoints::fill(HEAD_STIFFNESS),
+        //     Priority::default(),
+        // );
 
         control.walking_engine.request_stand();
     }

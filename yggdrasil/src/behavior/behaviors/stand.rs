@@ -3,6 +3,7 @@ use crate::{
     nao::manager::Priority,
 };
 use nidhogg::types::{FillExt, HeadJoints};
+use nalgebra::Point2;
 
 const HEAD_STIFFNESS: f32 = 0.3;
 

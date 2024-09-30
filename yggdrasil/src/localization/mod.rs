@@ -88,11 +88,10 @@ impl RobotPose {
 
     pub fn get_look_at(&self, robot_to_point: &Point2<f32>) -> HeadJoints<f32> {
         let yaw = (robot_to_point.y / robot_to_point.x).atan();
-        // This cannot be computed without properly turning it into a 3d point by e.g. projecting it, but
-        // that's for later
-        // let pitch = (robot_to_point.z / robot_to_point.magnitude).acos();
+        let magnitude = (robot_to_point.x * robot_to_point.x + robot_to_point.y * robot_to_point.y).sqrt();
+        let pitch = std::f32::consts::PI/2.0 - (magnitude / 0.5).atan();
 
-        HeadJoints { yaw, pitch: 0.0 }
+        HeadJoints { yaw, pitch }
     }
 }
 
