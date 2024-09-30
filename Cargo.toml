@@ -3,6 +3,9 @@ members = ["crates/*", "yggdrasil"]
 resolver = "2"
 
 [workspace.dependencies]
+tasks = { path = "crates/tasks" }
+ml = { path = "crates/ml" }
+
 async-std = "1.13.0"
 async-trait = "0.1.82"
 byteorder = "1.4.3"
