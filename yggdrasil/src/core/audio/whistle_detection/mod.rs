@@ -34,6 +34,10 @@ pub struct WhistleDetectionPlugin;
 impl Plugin for WhistleDetectionPlugin {
     fn build(&self, app: &mut App) {
         app.init_ml_model::<WhistleDetectionModel>();
+        app.init_resource::<WhistleDetectionState>();
+        app.init_resource::<WhistleDetections>();
+        app.init_config::<WhistleDetectionConfig>();
+
         app.add_systems(
             Update,
             (detect_whistle, update_whistle_state)
@@ -83,7 +87,7 @@ impl Default for WhistleDetectionState {
     }
 }
 
-#[derive(Debug, Resource)]
+#[derive(Debug, Default, Resource)]
 pub struct WhistleDetections {
     pub detections: Vec<f32>,
 }
@@ -98,6 +102,10 @@ fn update_whistle_state(
     detection_state
         .detections
         .resize(config.detection_tries, false);
+
+    if detections.detections.len() == 0 {
+        return;
+    }
 
     detection_state.detections.rotate_right(1);
     detection_state.detections[0] = detections.detections[0] >= config.threshold;
@@ -123,10 +131,9 @@ fn detect_whistle(
     mut detection_state: ResMut<WhistleDetectionState>,
     mut model: ResMut<ModelExecutor<WhistleDetectionModel>>,
     mut audio_sample: EventReader<AudioSamplesEvent>,
-    config: Res<WhistleDetectionConfig>,
-    mut nao_manager: ResMut<NaoManager>,
 ) {
-    for AudioSamplesEvent { left, right } in audio_sample.read() {
+    for AudioSamplesEvent { left, .. } in audio_sample.read() {
+        info!(?left, "left ear buffer");
         let spectrogram = detection_state
             .stft
             .compute(&left, 0, MEAN_WINDOWS)

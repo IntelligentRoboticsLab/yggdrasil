@@ -62,6 +62,7 @@ fn main() -> Result<()> {
             schedule::NaoSchedulePlugin,
             game_controller::GameControllerPlugin,
             nao::NaoPlugins,
+            ml::MlPlugin,
             core::CorePlugins,
             localization::LocalizationPlugin,
             sensor::SensorPlugins,
