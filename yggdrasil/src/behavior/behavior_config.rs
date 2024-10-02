@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use odal::Config;
 use serde::{Deserialize, Serialize};
+use tyr::Inspect;
 
 use super::behaviors::ObserveBehaviorConfig;
 

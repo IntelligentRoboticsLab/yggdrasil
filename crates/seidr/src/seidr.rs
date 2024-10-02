@@ -208,26 +208,45 @@ fn add_editable_resource(
 
         ui.add_space(2.0);
 
-        // Button to override a resource on the robot from Seidr
-        button_frame_style.show(ui, |ui| {
-            if ui
-                .add(egui::Button::new(
-                    egui::RichText::new("Override resource").size(12.0),
-                ))
-                .clicked()
-            {
-                let request = ClientRequest::ResourceUpdate(
-                    resource_name.to_owned(),
-                    resource_data.to_owned(),
-                );
-                let bytes = bincode::serialize(&request).into_diagnostic().unwrap();
-                followup_action = Some(EditableResourceAction::ResourceUpdate(bytes));
+        ui.horizontal(|ui| {
+            // Button to override a resource on the robot from Seidr
+            button_frame_style.show(ui, |ui| {
+                if ui
+                    .add(egui::Button::new(
+                        egui::RichText::new("Override resource").size(12.0),
+                    ))
+                    .clicked()
+                {
+                    let request = ClientRequest::ResourceUpdate(
+                        resource_name.to_owned(),
+                        resource_data.to_owned(),
+                    );
+                    let bytes = bincode::serialize(&request).into_diagnostic().unwrap();
+                    followup_action = Some(EditableResourceAction::ResourceUpdate(bytes));
 
-                if let Some(changed_resource) = changed_resources.get_mut(resource_name) {
-                    *changed_resource = false;
+                    if let Some(changed_resource) = changed_resources.get_mut(resource_name) {
+                        *changed_resource = false;
+                    }
                 }
-            }
+            });
+
+            button_frame_style.show(ui, |ui| {
+                if ui
+                    .add(egui::Button::new(
+                        egui::RichText::new("Override config").size(12.0),
+                    ))
+                    .clicked()
+                {
+                    // let request = ClientRequest::ConfigUpdate(
+                    //     resource_name.to_owned(),
+                    //     resource_data.to_owned()
+                    // );
+                    // let bytes = bincode::serialize(&request).into_diagnostic().unwrap();
+                    // followup_action = Some(EditableResourceAction::ConfigUpdate(bytes));
+                }
+            })
         });
+
         ui.add_space(5.0);
     });
 

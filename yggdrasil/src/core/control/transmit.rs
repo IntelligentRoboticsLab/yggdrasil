@@ -19,15 +19,11 @@ impl Module for ControlTransmitModule {
     fn initialize(self, app: App) -> Result<App> {
         Ok(app
             .add_task::<AsyncTask<Result<SendStateFinished>>>()?
-            .init_resource::<SendStateCounter>()?
             .add_system(send_state_current_state.after(listen_for_messages)))
     }
 }
 
 pub struct SendStateFinished;
-
-#[derive(Default)]
-pub struct SendStateCounter(pub usize);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RobotStateMsg(pub HashMap<String, String>);
