@@ -28,11 +28,11 @@ impl Behavior for WalkToSet {
             rotation: Some(set_robot_position.isometry.rotation),
         };
 
-        control.step_planner.set_absolute_target_if_unset(target);
-        if let Some(step) = control.step_planner.plan(context.pose) {
-            control.walking_engine.request_walk(step);
-        } else {
-            control.walking_engine.request_stand();
-        }
+        // control.step_planner.set_absolute_target_if_unset(target);
+        // if let Some(step) = control.step_planner.plan(context.pose) {
+        //     control.walking_engine.request_walk(step);
+        // } else {
+        //     control.walking_engine.request_stand();
+        // }
     }
 }

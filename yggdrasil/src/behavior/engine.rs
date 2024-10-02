@@ -14,10 +14,15 @@ use crate::{
     core::{
         config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
         debug::DebugContext,
+        ml::{data_type::MlArray, MlTask, MlTaskResource},
     },
     game_controller::GameControllerConfig,
     localization::RobotPose,
-    motion::{keyframe::KeyframeExecutor, step_planner::StepPlanner, walk::engine::WalkingEngine},
+    motion::{
+        keyframe::KeyframeExecutor,
+        step_planner::StepPlanner,
+        walk::engine::{Step, WalkingEngine},
+    },
     nao::{manager::NaoManager, RobotInfo},
     prelude::*,
     sensor::{
@@ -29,7 +34,7 @@ use crate::{
 };
 
 use super::{
-    behaviors::{Stand, StandLookAt, WalkToSet},
+    behaviors::{PolicyModel, Stand, StandLookAt, WalkToSet},
     roles::Keeper,
 };
 
@@ -331,7 +336,12 @@ pub fn step(
         &mut DebugContext,
     ),
     game_controller_message: &Option<GameControllerMessage>,
-    (robot_pose, balls, fall_state): (&RobotPose, &Balls, &FallState),
+    (robot_pose, balls, fall_state, policy): (
+        &RobotPose,
+        &Balls,
+        &FallState,
+        &mut MlTask<PolicyModel>,
+    ),
 ) -> Result<()> {
     let context = Context {
         robot_info,
@@ -359,7 +369,89 @@ pub fn step(
         debug_context,
     };
 
+    let is_playing = matches!(&context.primary_state, PrimaryState::Playing { .. });
+
     engine.step(context, &mut control);
+
+    if is_playing && control.walking_engine.is_walking() && control.walking_engine.t.is_zero() {
+        let ball_pos = &balls
+            .most_confident_ball()
+            .map(|b| b.position)
+            .map(|b| {
+                (
+                    ((b.x - robot_pose.inner.translation.x) / layout_config.field.length) * 1000.0,
+                    ((b.y - robot_pose.inner.translation.y) / layout_config.field.width) * 1000.0,
+                )
+            })
+            .unwrap_or((0.0, 0.0));
+
+        let goal_pos_x = (layout_config.field.length / 2.0) * 1000.0;
+        let goal_pos = (
+            (goal_pos_x - ball_pos.0) / layout_config.field.length,
+            -ball_pos.1 / layout_config.field.width,
+        );
+
+        let relative_ball_angle = (ball_pos.1 * layout_config.field.width)
+            .atan2(ball_pos.0 * layout_config.field.length)
+            % std::f32::consts::TAU;
+
+        let relative_goal_angle = (goal_pos.1 * layout_config.field.width)
+            .atan2(goal_pos.0 * layout_config.field.length)
+            % std::f32::consts::TAU;
+
+        let robot_angle = robot_pose.inner.rotation.angle();
+        let ball_robot_angle_sine = (relative_ball_angle - robot_angle).sin();
+        let ball_robot_angle_cosine = (relative_ball_angle - robot_angle).cos();
+
+        let goal_robot_angle_sine = (relative_goal_angle - robot_angle).sin();
+        let goal_robot_angle_cosine = (relative_goal_angle - robot_angle).cos();
+
+        tracing::info!(
+            "obs: {:?}",
+            [
+                ball_pos.0,
+                ball_pos.1,
+                ball_robot_angle_sine,
+                ball_robot_angle_cosine,
+                goal_pos.0,
+                goal_pos.1,
+                goal_robot_angle_sine,
+                goal_robot_angle_cosine,
+            ]
+        );
+
+        if let Ok(()) = policy.try_start_infer(&[
+            ball_pos.0,
+            ball_pos.1,
+            ball_robot_angle_sine,
+            ball_robot_angle_cosine,
+            goal_pos.0,
+            goal_pos.1,
+            goal_robot_angle_sine,
+            goal_robot_angle_cosine,
+        ]) {
+            loop {
+                if let Ok(Some(result)) = policy.poll_multi::<Vec<f32>>().transpose() {
+                    // println!("output: {:?}", result);
+                    let output = result.get(2).expect("did not get output");
+                    let forward = output[0].clamp(-0.3, 1.) * 0.06;
+                    let left = output[1].clamp(-1., 1.) * 0.04;
+                    let turn =
+                        output[2].clamp(-0.1 * std::f32::consts::PI, 0.1 * std::f32::consts::PI);
+
+                    let step = Step {
+                        forward,
+                        left,
+                        turn,
+                    };
+
+                    tracing::info!("got step: {step:?}");
+                    control.walking_engine.request_walk(step);
+                    break;
+                }
+            }
+        }
+    }
 
     Ok(())
 }
@@ -382,6 +474,7 @@ impl Module for BehaviorEngineModule {
     fn initialize(self, app: App) -> miette::Result<App> {
         Ok(app
             .init_resource::<Engine>()?
+            .add_ml_task::<PolicyModel>()?
             .add_staged_system(SystemStage::Init, step))
     }
 }

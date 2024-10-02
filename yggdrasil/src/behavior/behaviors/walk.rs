@@ -52,7 +52,7 @@ impl Behavior for Walk {
             .current_absolute_target()
             .is_some_and(|target| target != &self.target)
         {
-            control.step_planner.clear_target();
+            // control.step_planner.clear_target();
         }
 
         control

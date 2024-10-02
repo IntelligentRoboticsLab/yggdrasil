@@ -2,6 +2,7 @@
 
 mod catchfall;
 mod observe;
+mod rl;
 mod sitting;
 mod stand;
 mod stand_look;
@@ -12,6 +13,7 @@ mod walk_to_set;
 
 pub use catchfall::CatchFall;
 pub use observe::{Observe, ObserveBehaviorConfig};
+pub use rl::PolicyModel;
 pub use sitting::Sitting;
 pub use stand::Stand;
 pub use stand_look::StandLookAt;
