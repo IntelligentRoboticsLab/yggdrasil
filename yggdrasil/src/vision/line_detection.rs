@@ -46,7 +46,7 @@ impl Plugin for LineDetectionPlugin {
         app.init_resource::<DetectedLines<Top>>();
         app.add_systems(
             Update,
-            detect_lines2::<Top>.run_if(task_finished::<Image<Top>>),
+            detect_lines::<Top>.run_if(task_finished::<Image<Top>>),
         );
     }
 }
@@ -187,17 +187,6 @@ fn is_white(column: usize, row: usize, scan_line: &ScanLine) -> Option<bool> {
             )
         })
 }
-
-// fn detect_top_lines(
-//     line_detection_data: LineDetectionData,
-//     line_spots: Vec<Point2<f32>>,
-//     scan_lines: ScanLines,
-// ) -> Result<TopLineDetectionData> {
-//     Ok(TopLineDetectionData(
-//         Some(?),
-//         Some(scan_lines.image().clone()),
-//     ))
-// }
 
 fn create_line_detection_data<T: CameraLocation>(
     line_detection_data: DetectedLines<T>,
@@ -403,7 +392,7 @@ fn line_points_to_line<T: CameraLocation>(
 //     Ok(())
 // }
 
-pub fn detect_lines2<T: CameraLocation>(
+pub fn detect_lines<T: CameraLocation>(
     mut commands: Commands,
     previous_lines: Option<Res<DetectedLines<T>>>,
     scan_lines: Res<ScanLines<T>>,
