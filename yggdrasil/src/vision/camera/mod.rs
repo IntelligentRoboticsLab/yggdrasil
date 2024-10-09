@@ -30,6 +30,7 @@ pub struct CameraConfig {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct CameraSettings {
     pub path: String,
     pub width: u32,

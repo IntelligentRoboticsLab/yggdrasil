@@ -44,7 +44,7 @@ fn init_rerun(mut commands: Commands) {
             std::env::var("RERUN_HOST").expect("environment variable `RERUN_HOST` is not set!");
 
         std::str::FromStr::from_str(host.as_str())
-            .expect(&format!("invalid address specified in RERUN_HOST: {host}"))
+            .unwrap_or_else(|_| panic!("invalid address specified in RERUN_HOST: {host}"))
     };
 
     let rr = RerunStream::init("yggdrasil", server_address).expect("failed to initialize ");
@@ -80,7 +80,7 @@ fn set_debug_cycle(
     cycle: Res<Cycle>,
     cycle_time: Res<CycleTime>,
 ) {
-    ctx.set_cycle(&cycle);
+    ctx.set_cycle(*cycle);
     ctx.log_scalar_f32("cycle_time", cycle_time.duration.as_millis() as f32)
         .expect("failed to log cycle time to rerun");
     #[cfg(feature = "rerun")]
@@ -144,7 +144,7 @@ impl<'w> DebugContext<'w> {
     /// Set the current cycle index for the debug viewer.
     ///
     /// This will be used to align logs with the cycle index in the debug viewer.
-    fn set_cycle(&self, cycle: &Cycle) {
+    fn set_cycle(&self, cycle: Cycle) {
         #[cfg(feature = "rerun")]
         {
             self.rec.stream.set_time_sequence("cycle", cycle.0 as i64);
@@ -167,7 +167,7 @@ impl<'w> DebugContext<'w> {
     // pub fn log_image(&self, path: impl AsRef<str>, img: Image, jpeg_quality: i32) -> Result<()> {
     //     #[cfg(feature = "rerun")]
     //     {
-    //         self.set_cycle(&img.cycle());
+    //         self.set_cycle(img.cycle());
     //         let yuv_planar_image = YuvPlanarImage::from_yuyv(img.yuyv_image());
     //         let jpeg = yuv_planar_image.to_jpeg(jpeg_quality)?;
     //         let encoded_image = rerun::EncodedImage::from_file_contents(jpeg.to_owned())
@@ -192,7 +192,7 @@ impl<'w> DebugContext<'w> {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(cycle);
+            self.set_cycle(*cycle);
             let img = rerun::Image::from_image(img).into_diagnostic()?;
 
             self.rec.stream.log(path.as_ref(), &img).into_diagnostic()?;
@@ -212,7 +212,7 @@ impl<'w> DebugContext<'w> {
     // ) -> Result<()> {
     //     #[cfg(feature = "rerun")]
     //     {
-    //         self.set_cycle(&image.cycle());
+    //         self.set_cycle(image.cycle());
 
     //         self.rec
     //             .log(
@@ -237,7 +237,7 @@ impl<'w> DebugContext<'w> {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&cycle);
+            self.set_cycle(cycle);
             self.rec
                 .stream
                 .log(
@@ -264,7 +264,7 @@ impl<'w> DebugContext<'w> {
     // ) -> Result<()> {
     //     #[cfg(feature = "rerun")]
     //     {
-    //         self.set_cycle(&image.cycle());
+    //         self.set_cycle(image.cycle());
     //         let pinhole = rerun::Pinhole::from_focal_length_and_resolution(
     //             [matrix.focal_lengths.x, matrix.focal_lengths.y],
     //             [
@@ -374,7 +374,7 @@ impl<'w> DebugContext<'w> {
     // ) -> Result<()> {
     //     #[cfg(feature = "rerun")]
     //     {
-    //         self.set_cycle(&image.cycle());
+    //         self.set_cycle(image.cycle());
     //         self.rec
     //             .log(
     //                 path.as_ref(),
@@ -404,7 +404,7 @@ impl<'w> DebugContext<'w> {
     // ) -> Result<()> {
     //     #[cfg(feature = "rerun")]
     //     {
-    //         self.set_cycle(&image.cycle());
+    //         self.set_cycle(image.cycle());
     //         self.rec
     //             .log(
     //                 path.as_ref(),
@@ -432,7 +432,7 @@ impl<'w> DebugContext<'w> {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&cycle);
+            self.set_cycle(cycle);
             self.rec
                 .stream
                 .log(
@@ -466,7 +466,7 @@ impl<'w> DebugContext<'w> {
     ) -> Result<()> {
         #[cfg(feature = "rerun")]
         {
-            self.set_cycle(&cycle);
+            self.set_cycle(cycle);
             self.rec
                 .stream
                 .log(
@@ -499,7 +499,7 @@ impl<'w> DebugContext<'w> {
     // ) -> Result<()> {
     //     #[cfg(feature = "rerun")]
     //     {
-    //         self.set_cycle(&image.cycle());
+    //         self.set_cycle(image.cycle());
     //         self.rec
     //             .log(
     //                 path.as_ref(),
@@ -527,7 +527,7 @@ impl<'w> DebugContext<'w> {
     // ) -> Result<()> {
     //     #[cfg(feature = "rerun")]
     //     {
-    //         self.set_cycle(&image.cycle());
+    //         self.set_cycle(image.cycle());
     //         self.rec
     //             .log(
     //                 path.as_ref(),
@@ -628,7 +628,7 @@ impl<'w> DebugContext<'w> {
     // ) -> Result<()> {
     //     #[cfg(feature = "rerun")]
     //     {
-    //         self.set_cycle(&image.cycle());
+    //         self.set_cycle(image.cycle());
     //         self.rec
     //             .log(
     //                 path.as_ref(),
@@ -657,7 +657,7 @@ impl<'w> DebugContext<'w> {
     // ) -> Result<()> {
     //     #[cfg(feature = "rerun")]
     //     {
-    //         self.set_cycle(&image.cycle());
+    //         self.set_cycle(image.cycle());
 
     //         let translation = transform.translation;
     //         let rotation = transform.rotation.coords;

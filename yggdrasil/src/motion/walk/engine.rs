@@ -168,7 +168,7 @@ impl WalkingEngine {
             ),
             t: Duration::ZERO,
             next_foot_switch: Duration::ZERO,
-            swing_foot: Default::default(),
+            swing_foot: Side::default(),
             foot_offsets: FootOffsets::zero(config.sitting_hip_height),
             foot_offsets_t0: FootOffsets::zero(config.sitting_hip_height),
             hip_height: current_hip_height,

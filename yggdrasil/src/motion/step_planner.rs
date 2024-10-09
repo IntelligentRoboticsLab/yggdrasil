@@ -105,17 +105,17 @@ impl StepPlanner {
         path_finding::find_path(robot_pose.world_position(), target_position, &all_obstacles)
     }
 
-    fn plan_translation(&mut self, robot_pose: &RobotPose, path: &[Point2<f32>]) -> Option<Step> {
+    fn plan_translation(robot_pose: &RobotPose, path: &[Point2<f32>]) -> Option<Step> {
         let first_target_position = path[1];
-        let distance = calc_distance(&robot_pose.inner, &first_target_position);
+        let distance = calc_distance(&robot_pose.inner, first_target_position);
 
         // We've reached the target.
         if distance < 0.2 && path.len() == 2 {
             return None;
         }
 
-        let angle = calc_angle_to_point(&robot_pose.inner, &first_target_position);
-        let turn = calc_turn(&robot_pose.inner, &first_target_position);
+        let angle = calc_angle_to_point(&robot_pose.inner, first_target_position);
+        let turn = calc_turn(&robot_pose.inner, first_target_position);
 
         if angle > 0.5 {
             Some(Step {
@@ -132,11 +132,7 @@ impl StepPlanner {
         }
     }
 
-    fn plan_rotation(
-        &self,
-        robot_pose: &RobotPose,
-        target_rotation: &UnitComplex<f32>,
-    ) -> Option<Step> {
+    fn plan_rotation(robot_pose: &RobotPose, target_rotation: UnitComplex<f32>) -> Option<Step> {
         let angle = target_rotation.angle() - robot_pose.world_rotation();
         let turn = TURN_SPEED * angle.signum();
 
@@ -159,7 +155,7 @@ impl StepPlanner {
         let target = self.target?;
         let (path, _total_walking_distance) = self.calc_path(robot_pose)?;
 
-        if let step @ Some(_) = self.plan_translation(robot_pose, &path) {
+        if let step @ Some(_) = Self::plan_translation(robot_pose, &path) {
             if !self.reached_translation_target {
                 return step;
             }
@@ -168,7 +164,7 @@ impl StepPlanner {
         self.reached_translation_target = true;
 
         if let Some(rotation) = target.rotation.as_ref() {
-            if let step @ Some(_) = self.plan_rotation(robot_pose, rotation) {
+            if let step @ Some(_) = Self::plan_rotation(robot_pose, *rotation) {
                 return step;
             }
         }
@@ -190,17 +186,17 @@ pub struct DynamicObstacle {
     pub ttl: Instant,
 }
 
-fn calc_turn(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: &Point2<f32>) -> f32 {
-    let relative_transformed_target_point = pose.inverse_transform_point(target_point);
+fn calc_turn(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: Point2<f32>) -> f32 {
+    let relative_transformed_target_point = pose.inverse_transform_point(&target_point);
 
     relative_transformed_target_point.y.signum() * TURN_SPEED
 }
 
 fn calc_angle_to_point(
     pose: &Isometry<f32, UnitComplex<f32>, 2>,
-    target_point: &Point2<f32>,
+    target_point: Point2<f32>,
 ) -> f32 {
-    let relative_transformed_target_point = pose.inverse_transform_point(target_point);
+    let relative_transformed_target_point = pose.inverse_transform_point(&target_point);
 
     let relative_transformed_target_vector = Vector2::new(
         relative_transformed_target_point.x,
@@ -210,12 +206,12 @@ fn calc_angle_to_point(
     relative_transformed_target_vector.angle(&Vector2::new(100., 0.))
 }
 
-fn calc_distance(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: &Point2<f32>) -> f32 {
-    fn distance(point1: &Point2<f32>, point2: &Point2<f32>) -> f32 {
+fn calc_distance(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: Point2<f32>) -> f32 {
+    fn distance(point1: Point2<f32>, point2: Point2<f32>) -> f32 {
         ((point1.x - point2.x).powi(2) + (point1.y - point2.y).powi(2)).sqrt()
     }
 
     let robot_point = pose.translation.vector.into();
 
-    distance(&robot_point, target_point)
+    distance(robot_point, target_point)
 }

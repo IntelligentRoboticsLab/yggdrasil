@@ -16,17 +16,15 @@ use crate::{
         config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
         debug::DebugContext,
     },
-    // game_controller::GameControllerConfig,
+    game_controller::GameControllerConfig,
     localization::RobotPose,
     motion::{keyframe::KeyframeExecutor, step_planner::StepPlanner, walk::engine::WalkingEngine},
     nao::{NaoManager, RobotInfo},
-
     sensor::{
         button::{ChestButton, HeadButtons},
         falling::FallState,
         fsr::Contacts,
     },
-    // vision::ball_detection::classifier::Balls,
 };
 
 use super::{
@@ -61,7 +59,7 @@ pub struct Context<'a> {
     /// Contains the message received from the game-controller.
     pub game_controller_message: Option<&'a GameControllerMessage>,
     /// Contains the game-controller config.
-    // pub game_controller_config: &'a GameControllerConfig,
+    pub game_controller_config: &'a GameControllerConfig,
     /// Contains information of the current Falling state of the robot
     pub fall_state: &'a FallState,
     /// Contains the pose of the robot.
@@ -232,13 +230,13 @@ impl Default for BehaviorEngine {
 impl BehaviorEngine {
     /// Assigns roles based on player number and other information like what
     /// robot is closest to the ball, missing robots, etc.
-    fn assign_role(&self, context: Context) -> RoleKind {
+    fn assign_role(context: Context) -> RoleKind {
         RoleKind::by_player_number(context.player_config.player_number)
     }
 
     /// Executes one step of the behavior engine
     pub fn step(&mut self, context: Context, control: &mut Control) {
-        self.role = self.assign_role(context.clone());
+        self.role = Self::assign_role(context.clone());
 
         self.transition(context.clone(), control);
 
@@ -318,12 +316,12 @@ pub fn step(
     (mut engine, primary_state): (ResMut<BehaviorEngine>, ResMut<PrimaryState>),
     robot_info: Res<RobotInfo>,
     (head_buttons, chest_button, contacts): (Res<HeadButtons>, Res<ChestButton>, Res<Contacts>),
-    (player_config, layout_config, yggdrasil_config, behavior_config): (
+    (player_config, layout_config, yggdrasil_config, behavior_config, game_controller_config): (
         Res<PlayerConfig>,
         Res<LayoutConfig>,
         Res<YggdrasilConfig>,
         Res<BehaviorConfig>,
-        // Res<GameControllerConfig>,
+        Res<GameControllerConfig>,
     ),
     (mut nao_manager, mut walking_engine, mut keyframe_executor, mut step_planner): (
         ResMut<NaoManager>,
@@ -332,8 +330,11 @@ pub fn step(
         ResMut<StepPlanner>,
     ),
     debug_context: DebugContext<'_>,
-    game_controller_message: Option<Res<GameControllerMessage>>,
-    (robot_pose, fall_state): (Res<RobotPose>, Res<FallState>),
+    (robot_pose, fall_state, game_controller_message): (
+        Res<RobotPose>,
+        Res<FallState>,
+        Option<Res<GameControllerMessage>>,
+    ),
 ) {
     let context = Context {
         robot_info: robot_info.as_ref(),
@@ -346,7 +347,7 @@ pub fn step(
         yggdrasil_config: &yggdrasil_config,
         behavior_config: &behavior_config,
         game_controller_message: game_controller_message.as_deref(),
-        // game_controller_config: &game_controller_config,
+        game_controller_config: &game_controller_config,
         fall_state: &fall_state,
         pose: &robot_pose,
         ball_position: &None,

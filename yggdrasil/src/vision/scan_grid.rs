@@ -196,6 +196,8 @@ pub fn update_bottom_scan_grid(mut scan_grid: ResMut<ScanGrid<Bottom>>, image: R
 //     Ok(())
 // }
 
+// TODO: Clean this up
+#[allow(clippy::too_many_lines)]
 fn get_scan_grid<T: CameraLocation>(
     camera_matrix: &CameraMatrix<T>,
     layout: &LayoutConfig,
@@ -356,10 +358,8 @@ fn get_scan_grid<T: CameraLocation>(
 }
 
 fn get_bottom_scan_grid(image: &Image<Bottom>) -> ScanGrid<Bottom> {
-    let image = image.clone();
-
     const GAP_SIZE_BOTTOM: usize = 8;
-
+    let image = image.clone();
     let height = image.yuyv_image().height();
     let width = image.yuyv_image().width();
 

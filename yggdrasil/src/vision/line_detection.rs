@@ -212,7 +212,7 @@ fn create_line_detection_data<T: CameraLocation>(
     let mut points_next = line_detection_data.line_points_next;
 
     let mut lines_points_old = line_detection_data.lines_points;
-    let mut lines_points = Vec::new();
+    let mut current_line_points = Vec::new();
 
     loop {
         if points.is_empty() {
@@ -286,7 +286,7 @@ fn create_line_detection_data<T: CameraLocation>(
             }
         }
         if line_points.points.len() >= MIN_POINTS_PER_LINE {
-            lines_points.push(line_points);
+            current_line_points.push(line_points);
         } else {
             points_next.extend(line_points.points.iter().skip(1));
             points_next.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
@@ -298,7 +298,7 @@ fn create_line_detection_data<T: CameraLocation>(
 
     let mut lines = line_detection_data.lines;
     lines.clear();
-    for line_points in &lines_points {
+    for line_points in &current_line_points {
         lines.push(line_points_to_line(line_points, scan_lines.image()));
     }
 
@@ -309,7 +309,7 @@ fn create_line_detection_data<T: CameraLocation>(
         line_points: points,
         line_points_next: points_next,
         lines,
-        lines_points,
+        lines_points: current_line_points,
         _marker: PhantomData,
     }
 }

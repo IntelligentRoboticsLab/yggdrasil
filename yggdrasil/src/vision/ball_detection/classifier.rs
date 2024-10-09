@@ -107,20 +107,14 @@ impl Balls {
     pub fn most_confident_ball(&self) -> Option<&Ball> {
         self.balls
             .iter()
-            .reduce(|a, b| match a.confidence > b.confidence {
-                true => a,
-                false => b,
-            })
+            .reduce(|a, b| if a.confidence > b.confidence { a } else { b })
     }
 
     #[must_use]
     pub fn most_recent_ball(&self) -> Option<&Ball> {
         self.balls
             .iter()
-            .reduce(|a, b| match a.timestamp > b.timestamp {
-                true => a,
-                false => b,
-            })
+            .reduce(|a, b| if a.timestamp > b.timestamp { a } else { b })
     }
 }
 

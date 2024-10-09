@@ -53,9 +53,11 @@ pub fn send_message(
     fall_state: Res<FallState>,
     robot_pose: Res<RobotPose>,
     balls: Res<Balls>,
-    sender: Res<GameControllerSender>,
-    connection: Res<GameControllerConnection>,
-    cfg: Res<GameControllerConfig>,
+    (sender, connection, config): (
+        Res<GameControllerSender>,
+        Res<GameControllerConnection>,
+        Res<GameControllerConfig>,
+    ),
     time: Res<Time>,
     mut delay: Local<GameControllerReturnDelay>,
 ) {
@@ -81,7 +83,7 @@ pub fn send_message(
         .unbounded_send((return_message, connection.address))
         .unwrap();
 
-    delay.set_duration(cfg.game_controller_return_delay);
+    delay.set_duration(config.game_controller_return_delay);
 }
 
 fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {

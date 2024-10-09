@@ -341,6 +341,7 @@ impl Region {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Direction {
     Horizontal,
     Vertical,
@@ -420,8 +421,6 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
                 std::mem::swap(curr_region, &mut new_region);
                 // and push the old region to the vec
                 regions.push(new_region.classify(config, field));
-
-                continue;
             } else {
                 // get the length of the region inbetween
                 let weight = x - curr_region.region.end_point();
@@ -522,8 +521,6 @@ fn get_vertical_scan_lines<T: CameraLocation>(
                 std::mem::swap(curr_region, &mut new_region);
                 // and push the old region to the vec
                 regions.push(new_region.classify(config, field));
-
-                continue;
             } else {
                 // get the length of the region inbetween
                 let weight = y - curr_region.region.end_point();
@@ -603,9 +600,10 @@ fn find_edge(
 
             let next_diff = (lum_next - lum).abs();
 
-            match next_diff > diff_edge {
-                true => (pos_next, next_diff),
-                false => (pos_edge, diff_edge),
+            if next_diff > diff_edge {
+                (pos_next, next_diff)
+            } else {
+                (pos_edge, diff_edge)
             }
         });
 

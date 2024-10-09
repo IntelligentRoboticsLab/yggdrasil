@@ -10,13 +10,10 @@ use nalgebra::Point2;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    prelude::*,
-    vision::{
-        camera::Image,
-        scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLines},
-        util::bbox::Bbox,
-    },
+use crate::vision::{
+    camera::Image,
+    scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLines},
+    util::bbox::Bbox,
 };
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]
@@ -103,18 +100,7 @@ pub fn update_ball_proposals<T: CameraLocation>(
     matrix: Res<CameraMatrix<T>>,
     config: Res<BallProposalConfig>,
 ) {
-    match get_ball_proposals(&scan_lines, &matrix, &config) {
-        Ok(new_proposals) => {
-            *ball_proposals = new_proposals;
-        }
-        Err(error) => {
-            error!(
-                ?error,
-                "failed to get ball proposals for {:?} camera",
-                T::POSITION
-            );
-        }
-    };
+    *ball_proposals = get_ball_proposals(&scan_lines, &matrix, &config);
 
     // TODO: Add this back
     // if let Some(robots) = robots {
@@ -207,7 +193,7 @@ fn get_ball_proposals<T: CameraLocation>(
     scan_lines: &ScanLines<T>,
     matrix: &CameraMatrix<T>,
     config: &BallProposalConfig,
-) -> Result<BallProposals<T>> {
+) -> BallProposals<T> {
     let h_lines = scan_lines.horizontal();
 
     let mut proposals = Vec::new();
@@ -305,7 +291,7 @@ fn get_ball_proposals<T: CameraLocation>(
     let proposals: Vec<_> = indices.iter().map(|&i| proposals[i].clone()).collect();
     let image = scan_lines.image().clone();
 
-    Ok(BallProposals { image, proposals })
+    BallProposals { image, proposals }
 }
 
 fn init_ball_proposals<T: CameraLocation>(mut commands: Commands, scan_lines: Res<ScanLines<T>>) {

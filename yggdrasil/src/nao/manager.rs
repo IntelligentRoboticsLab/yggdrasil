@@ -449,15 +449,15 @@ pub enum Priority {
 }
 
 impl Priority {
-    fn priority_value(&self) -> u32 {
+    const fn priority_value(self) -> u32 {
         match self {
             Priority::Low => 10,
             Priority::Medium => 30,
             Priority::High => 60,
             Priority::Critical => 90,
             Priority::Custom(value) => {
-                assert!(value <= &100u32);
-                *value
+                assert!(value <= 100u32);
+                value
             }
         }
     }

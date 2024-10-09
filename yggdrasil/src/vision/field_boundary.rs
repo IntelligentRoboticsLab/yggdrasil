@@ -7,7 +7,6 @@ use bevy::prelude::*;
 use fast_image_resize as fr;
 use heimdall::{Top, YuyvImage};
 use lstsq::Lstsq;
-use miette::Result;
 use ml::prelude::*;
 use nalgebra::Point2;
 use std::num::NonZeroU32;
@@ -181,7 +180,7 @@ fn detect_field_boundary(
                 })
                 .collect::<Vec<_>>();
 
-            fit_model(points, 2, yuyv_image).ok()
+            Some(fit_model(points, 2, yuyv_image))
         });
 }
 
@@ -255,7 +254,7 @@ impl Line {
 
 /// Line fiting algorithm as described in B-Human their paper
 /// See <https://b-human.de/downloads/publications/2022/DeepFieldBoundary.pdf>
-fn fit_line(spots: &[FieldBoundaryPoint]) -> Result<(Line, f32)> {
+fn fit_line(spots: &[FieldBoundaryPoint]) -> (Line, f32) {
     let n_spots = spots.len();
 
     let mut a = nalgebra::DMatrix::<f32>::zeros(n_spots, 2);
@@ -284,21 +283,17 @@ fn fit_line(spots: &[FieldBoundaryPoint]) -> Result<(Line, f32)> {
         intercept: solution[0],
     };
 
-    Ok((line, residuals))
+    (line, residuals)
 }
 
 /// Model fitting algorithm as described in B-Human their paper
 /// See <https://b-human.de/downloads/publications/2022/DeepFieldBoundary.pdf>
-fn fit_model(
-    points: Vec<FieldBoundaryPoint>,
-    step: usize,
-    image: Image<Top>,
-) -> Result<FieldBoundary> {
+fn fit_model(points: Vec<FieldBoundaryPoint>, step: usize, image: Image<Top>) -> FieldBoundary {
     let width = image.width() as f32;
 
     // Get initial boundary fit based on single line
     let mut boundary = {
-        let (line, error) = fit_line(&points)?;
+        let (line, error) = fit_line(&points);
 
         FieldBoundary {
             lines: FieldBoundaryLines::One { line },
@@ -311,8 +306,8 @@ fn fit_model(
     let n_points = boundary.points.len();
 
     for i in (2..n_points - 2).step_by(step) {
-        let (left_line, left_error) = fit_line(&boundary.points[..i])?;
-        let (right_line, right_error) = fit_line(&boundary.points[i..])?;
+        let (left_line, left_error) = fit_line(&boundary.points[..i]);
+        let (right_line, right_error) = fit_line(&boundary.points[i..]);
 
         let total_error = left_error + right_error;
 
@@ -338,5 +333,5 @@ fn fit_model(
         }
     }
 
-    Ok(boundary)
+    boundary
 }

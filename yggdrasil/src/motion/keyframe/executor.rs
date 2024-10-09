@@ -37,6 +37,8 @@ const MINIMUM_WAIT_TIME: f32 = 0.05;
 /// * `nao_state` - State of the robot.
 /// * `keyframe_executor` - Keeps track of state needed for playing motions.
 /// * `nao_manager` - Used to set the new joint positions.
+// TODO: Clean this up
+#[allow(clippy::too_many_lines)]
 pub fn keyframe_executor(
     mut nao_state: ResMut<NaoState>,
     mut keyframe_executor: ResMut<KeyframeExecutor>,
@@ -108,7 +110,6 @@ pub fn keyframe_executor(
                 LegJoints::<f32>::fill(submotion_stiffness),
                 Priority::High,
             );
-            return;
         } else {
             // if the starting position has been reached,
             // we update the active motion for executing the submotion

@@ -153,13 +153,14 @@ fn find_closest_penalty_pose(
             let distance_b =
                 (robot_pose.inner.translation.vector - b.translation.vector).norm_squared();
 
-            match distance_b > distance_a {
-                true => a,
-                false => b,
+            if distance_b > distance_a {
+                a
+            } else {
+                b
             }
         })
         .unwrap_or_else(|| {
-            tracing::warn!("Failed to find closest penalty pose for");
+            tracing::warn!("failed to find closest penalty pose for");
             &robot_pose.inner
         })
 }

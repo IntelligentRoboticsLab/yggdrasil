@@ -20,10 +20,28 @@ version = "0.1.0"
 # enable clippy lints with priority -1
 # so that we can override certain ones with "allow"
 all = { level = "warn", priority = -1 }
+inline_always = "allow"
 pedantic = { level = "warn", priority = -1 }
 
-inline_always = "allow"
+# these are anti-patterns in our codebase/bevy
 module_name_repetitions = "allow"
+needless_pass_by_value = "allow"
+
+# this one seems broken for the `whistle_in_set` enum property
+# https://github.com/rust-lang/rust-clippy/issues/13058
+used_underscore_binding = "allow"
+
+# these are not useful for our codebase, or are too noisy
+match_same_arms = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+type_complexity = "allow"
+
+# TODO: Look into enabling these
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
 
 [workspace.dependencies]
 # root crates
