@@ -9,17 +9,12 @@ pub mod color;
 pub mod field_boundary;
 pub mod line;
 pub mod line_detection;
-// pub mod robot_detection;
+pub mod robot_detection;
 pub mod scan_grid;
 pub mod scan_lines;
 pub mod util;
 
-// use field_boundary::FieldBoundaryModule;
-
-// use self::ball_detection::BallDetectionModule;
-// use self::field_marks::{FieldMarksConfig, FieldMarksModule};
-// use self::line_detection::LineDetectionModule;
-
+/// Group of all vision plugins.
 pub struct VisionPlugins;
 
 impl PluginGroup for VisionPlugins {
@@ -31,7 +26,8 @@ impl PluginGroup for VisionPlugins {
             .add(scan_lines::ScanLinesPlugin)
             .add(line_detection::LineDetectionPlugin)
             .add(field_boundary::FieldBoundaryPlugin)
-            .add(ball_detection::BallDetectionPlugin);
+            .add(ball_detection::BallDetectionPlugin)
+            .add(robot_detection::RobotDetectionPlugin);
 
         // we only update the exposure weights for the top camera, so it cannot be part of
         // the camera plugin.
