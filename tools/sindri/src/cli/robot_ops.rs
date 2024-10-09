@@ -5,6 +5,7 @@ use miette::{miette, Context, IntoDiagnostic};
 use ssh2::{ErrorCode, OpenFlags, OpenType, Session, Sftp};
 use std::{
     borrow::Cow,
+    collections::HashMap,
     fs,
     io::BufWriter,
     net::Ipv4Addr,
@@ -14,12 +15,16 @@ use std::{
 };
 use tokio::{self, net::TcpStream};
 use walkdir::{DirEntry, WalkDir};
+use yggdrasil::core::config::showtime::ShowtimeConfig;
+use yggdrasil::prelude::*;
 
 use crate::{
     cargo::{self, find_bin_manifest, Profile},
     config::{Robot, SindriConfig},
     error::{Error, Result},
 };
+
+use super::showtime::{DEFAULT_PLAYER_NUMBER, DEFAULT_TEAM_NUMBER};
 
 const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
 const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
@@ -34,7 +39,7 @@ const LOCAL_ROBOT_ID_STR: &str = "0";
 /// is rather slow due to the locking mechanism.
 const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
 
-/// Because clap does not support HashMaps, we have to implement a vector with
+/// Because clap does not support `HashMaps`, we have to implement a vector with
 /// a wrapper.
 #[derive(Clone, Debug)]
 pub struct RobotEntry {
@@ -53,7 +58,7 @@ impl FromStr for RobotEntry {
         let robot: u8 = m.next().unwrap().parse().into_diagnostic()?;
         let player_number: Option<u8> = m
             .next()
-            .map(|val| val.parse())
+            .map(FromStr::from_str)
             .transpose()
             .into_diagnostic()?;
 
@@ -65,6 +70,7 @@ impl FromStr for RobotEntry {
 }
 
 #[derive(Clone, Debug, Parser)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct ConfigOptsRobotOps {
     /// Team number [default: Set in `sindri.toml`]
     #[clap(short, long)]
@@ -123,6 +129,7 @@ pub struct ConfigOptsRobotOps {
 }
 
 impl ConfigOptsRobotOps {
+    #[must_use]
     pub fn robots(&self) -> Vec<RobotEntry> {
         self.robots.clone()
     }
@@ -143,6 +150,32 @@ impl ConfigOptsRobotOps {
 
         self.get_robot(self.robots[0].robot_number, config)
     }
+
+    pub(crate) fn prepare_showtime_config(&self) -> miette::Result<()> {
+        let mut robot_assignments = HashMap::new();
+        for RobotEntry {
+            robot_number,
+            player_number,
+        } in &self.robots
+        {
+            if let Some(player_number) = player_number {
+                robot_assignments.insert((*robot_number).to_string(), *player_number);
+            } else {
+                robot_assignments.insert((*robot_number).to_string(), DEFAULT_PLAYER_NUMBER);
+            }
+        }
+        let showtime_config = ShowtimeConfig {
+            team_number: self.team.unwrap_or(DEFAULT_TEAM_NUMBER),
+            robot_numbers_map: robot_assignments,
+        };
+
+        showtime_config
+            .store("./deploy/config/generated/showtime.toml")
+            .into_diagnostic()
+            .wrap_err("Make sure you run Yggdrasil from the root of the project")?;
+
+        Ok(())
+    }
 }
 
 /// Enum used to determine the type of progress bar to use
@@ -154,6 +187,7 @@ pub enum Output {
 }
 
 impl Output {
+    #[must_use]
     pub fn should_print(&self) -> bool {
         matches!(self, Output::Single(_) | Output::Multi(_))
     }
@@ -251,7 +285,7 @@ impl Output {
                         .progress_chars("=>-")
                         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
                 );
-                pb.set_prefix("")
+                pb.set_prefix("");
             }
         }
     }
@@ -317,7 +351,7 @@ pub(crate) async fn change_single_network(
     }
 
     robot
-        .ssh::<&str, &str>(format!("echo {} > /etc/network_config", network), [], true)?
+        .ssh::<&str, &str>(format!("echo {network} > /etc/network_config"), [], true)?
         .wait()
         .await?;
 
@@ -552,7 +586,7 @@ pub(crate) async fn upload_to_robot(addr: &Ipv4Addr, output: Output) -> Result<(
 
     let entries: Vec<DirEntry> = WalkDir::new("./deploy")
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
         .collect();
     let num_files = entries
@@ -562,7 +596,7 @@ pub(crate) async fn upload_to_robot(addr: &Ipv4Addr, output: Output) -> Result<(
 
     output.upload_phase(num_files as u64);
 
-    for entry in entries.iter() {
+    for entry in &entries {
         let remote_path = get_remote_path(entry.path());
 
         if entry.path().is_dir() {

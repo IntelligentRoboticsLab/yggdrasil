@@ -1,22 +1,17 @@
-use std::collections::HashMap;
 use std::time::Duration;
 
 use clap::Parser;
 use colored::Colorize;
 use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressStyle};
-use miette::{miette, IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Result};
 use tokio::runtime::Handle;
 
-use crate::{
-    cli::robot_ops::{ConfigOptsRobotOps, RobotEntry},
-    config::SindriConfig,
-};
-use yggdrasil::{core::config::showtime::ShowtimeConfig, prelude::Config as OdalConfigTrait};
+use crate::{cli::robot_ops::ConfigOptsRobotOps, config::SindriConfig};
 
 use super::robot_ops;
 
-const DEFAULT_PLAYER_NUMBER: u8 = 3;
-const DEFAULT_TEAM_NUMBER: u8 = 8;
+pub(crate) const DEFAULT_PLAYER_NUMBER: u8 = 3;
+pub(crate) const DEFAULT_TEAM_NUMBER: u8 = 8;
 
 /// Compile, deploy and run the specified binary on multiple robots, with the option of setting
 /// player numbers.
@@ -31,31 +26,7 @@ impl Showtime {
     /// uploads binaries and other assets and the restarts the yggdrasil service
     /// on each robot.
     pub async fn showtime(self, config: SindriConfig) -> Result<()> {
-        let mut robot_assignments = HashMap::new();
-        for RobotEntry {
-            robot_number,
-            player_number,
-        } in self.robot_ops.robots.iter()
-        {
-            if let Some(player_number) = player_number {
-                robot_assignments.insert((*robot_number).to_string(), *player_number);
-            } else {
-                robot_assignments.insert((*robot_number).to_string(), DEFAULT_PLAYER_NUMBER);
-            }
-        }
-        let showtime_config = ShowtimeConfig {
-            team_number: self.robot_ops.team.unwrap_or(DEFAULT_TEAM_NUMBER),
-            robot_numbers_map: robot_assignments,
-        };
-
-        // Store the config
-        showtime_config
-            .store("./deploy/config/generated/showtime.toml")
-            .map_err(|e| {
-                miette!(format!(
-                    "{e} Make sure you run Yggdrasil from the root of the project"
-                ))
-            })?;
+        self.robot_ops.prepare_showtime_config()?;
 
         let compile_bar = ProgressBar::new(1);
         let output = robot_ops::Output::Single(compile_bar.clone());
@@ -114,7 +85,7 @@ impl Showtime {
             ")".dimmed()
         ));
 
-        for robot in self.robot_ops.robots.iter() {
+        for robot in &self.robot_ops.robots {
             let robot = config
                 .robot(robot.robot_number, self.robot_ops.wired)
                 .unwrap();

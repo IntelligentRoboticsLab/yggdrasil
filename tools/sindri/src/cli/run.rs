@@ -1,22 +1,16 @@
-use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddrV4};
 use std::{os::unix::process::CommandExt, process::Stdio};
-use yggdrasil::{core::config::showtime::ShowtimeConfig, prelude::Config as OdalConfigTrait};
 
 use clap::Parser;
 use colored::Colorize;
 use indicatif::ProgressBar;
-use miette::{bail, miette, Context, IntoDiagnostic, Result};
+use miette::{bail, Context, IntoDiagnostic, Result};
 use tokio::process::Command;
 
 use crate::{
-    cli::robot_ops::{self, ConfigOptsRobotOps, RobotEntry},
+    cli::robot_ops::{self, ConfigOptsRobotOps},
     config::SindriConfig,
 };
-
-const LOCAL_ROBOT_ID: u8 = 0;
-const DEFAULT_PLAYER_NUMBER: u8 = 3;
-const DEFAULT_TEAM_NUMBER: u8 = 8;
 
 const DEFAULT_TRACY_PORT: u16 = 8086;
 
@@ -40,29 +34,7 @@ impl Run {
         }
 
         // Generate showtime config
-        let mut robot_assignments = HashMap::new();
-        let RobotEntry {
-            robot_number,
-            player_number,
-        } = self.robot_ops.robots[0];
-        if self.robot_ops.local {
-            robot_assignments.insert(LOCAL_ROBOT_ID.to_string(), DEFAULT_PLAYER_NUMBER);
-        } else if let Some(player_number) = player_number {
-            robot_assignments.insert(robot_number.to_string(), player_number);
-        } else {
-            robot_assignments.insert(robot_number.to_string(), DEFAULT_PLAYER_NUMBER);
-        }
-        let showtime_config = ShowtimeConfig {
-            team_number: self.robot_ops.team.unwrap_or(DEFAULT_TEAM_NUMBER),
-            robot_numbers_map: robot_assignments,
-        };
-        showtime_config
-            .store("./deploy/config/generated/showtime.toml")
-            .map_err(|e| {
-                miette!(format!(
-                    "{e} Make sure you run Yggdrasil from the root of the project"
-                ))
-            })?;
+        self.robot_ops.prepare_showtime_config()?;
 
         let local = self.robot_ops.local;
         let rerun = self.robot_ops.rerun;

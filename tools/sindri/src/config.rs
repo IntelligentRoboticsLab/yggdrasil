@@ -12,6 +12,7 @@ use crate::error::Error;
 // Config location relative to home directory
 const CONFIG_FILE: &str = ".config/sindri/sindri.toml";
 
+#[must_use]
 pub fn config_file() -> PathBuf {
     home::home_dir()
         .expect("Failed to get home directory")
@@ -64,6 +65,7 @@ impl<'a> SindriConfig {
     /// Get a [`Robot`] instance using the provided number.
     ///
     /// If there's no [`Robot`] configured with the provided number, this will return an [`Option::None`].
+    #[must_use]
     pub fn robot(&'a self, number: u8, wired: bool) -> Option<Robot> {
         self.robots
             .iter()

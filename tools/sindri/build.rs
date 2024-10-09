@@ -44,7 +44,7 @@ fn set_commit_info() {
             return;
         }
         Err(e) => {
-            println!("cargo:warning=Failed to spawn git process: {}", e);
+            println!("cargo:warning=Failed to spawn git process: {e}");
             return;
         }
     };
@@ -55,5 +55,5 @@ fn set_commit_info() {
 
     println!("cargo:rustc-env=SINDRI_COMMIT_HASH={}", next());
     println!("cargo:rustc-env=SINDRI_COMMIT_SHORT_HASH={}", next());
-    println!("cargo:rustc-env=SINDRI_COMMIT_DATE={}", next())
+    println!("cargo:rustc-env=SINDRI_COMMIT_DATE={}", next());
 }

@@ -86,9 +86,10 @@ async fn ping(robot: Robot) -> Result<()> {
         .await
         .into_diagnostic()?;
 
-    let online_status = match ping_status.success() {
-        true => "ONLINE ".green().bold(),
-        false => "OFFLINE".red().bold(),
+    let online_status = if ping_status.success() {
+        "ONLINE ".green().bold()
+    } else {
+        "OFFLINE".red().bold()
     };
 
     println!(

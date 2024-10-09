@@ -7,13 +7,12 @@ use sindri::{
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let config = match load_config() {
-        Ok(config) => config,
-        Err(_) => {
-            println!("Could not find sindri config, running first time setup");
-            ConfigCommand::init()?;
-            load_config().unwrap()
-        }
+    let config = if let Ok(config) = load_config() {
+        config
+    } else {
+        println!("Could not find sindri config, running first time setup");
+        ConfigCommand::init()?;
+        load_config().unwrap()
     };
 
     let args = Cli::parse();
