@@ -64,11 +64,12 @@ impl Display for VersionInfo {
 
 impl From<VersionInfo> for clap::builder::Str {
     fn from(value: VersionInfo) -> Self {
-        format!("{}", value).into()
+        format!("{value}").into()
     }
 }
 
 impl VersionInfo {
+    #[must_use]
     pub fn current() -> VersionInfo {
         let version = option_env!("CARGO_PKG_VERSION")
             .unwrap_or("0.0.0")

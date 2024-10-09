@@ -49,6 +49,7 @@ pub async fn latest<T: Component>(
 pub fn latest_n<T: Send + Component>(
     n: usize,
 ) -> impl Fn(Generation, Entity, Option<T>) -> BoxedFuture<'static, CommandQueue> + Clone {
+    #[allow(clippy::unused_async)]
     pub async fn to_entity_latest_n_inner<T: Send + Component>(
         n: usize,
         generation: Generation,

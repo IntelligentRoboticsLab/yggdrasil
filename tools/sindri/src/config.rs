@@ -168,7 +168,7 @@ impl Robot {
 
         let mut quiet_arg = "";
         if !quiet {
-            quiet_arg = "-t"
+            quiet_arg = "-t";
         }
 
         let command = command.into();

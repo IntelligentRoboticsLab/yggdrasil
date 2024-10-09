@@ -56,6 +56,7 @@ pub enum TaskPool {
 }
 
 impl TaskPool {
+    #[must_use]
     pub fn get(&self) -> &'static bevy::tasks::TaskPool {
         match self {
             TaskPool::Compute => ComputeTaskPool::get(),
@@ -83,6 +84,7 @@ impl<'a, 'w, 's> TaskBuilder<'a, 'w, 's, UnsetTask> {
 }
 
 impl<'a, 'w, 's> TaskBuilder<'a, 'w, 's, UnsetTask> {
+    #[must_use]
     pub fn to_resource(self) -> TaskBuilder<'a, 'w, 's, ResourceTask> {
         TaskBuilder::<'a, 'w, 's, _> {
             commands: self.commands,
@@ -91,6 +93,7 @@ impl<'a, 'w, 's> TaskBuilder<'a, 'w, 's, UnsetTask> {
         }
     }
 
+    #[must_use]
     pub fn to_entities(self) -> TaskBuilder<'a, 'w, 's, EntityTask> {
         TaskBuilder::<'a, 'w, 's, _> {
             commands: self.commands,
@@ -161,12 +164,12 @@ impl TaskBuilder<'_, '_, '_, EntityTask> {
             // need to collect in between due to `problem case #3`
             .collect::<Vec<_>>();
 
-        tasks.into_iter().for_each(|(entity, future)| {
+        for (entity, future) in tasks {
             let task = pool.spawn(future);
             self.commands
                 .entity(entity)
                 .insert((Tag(PhantomData::<T>), YggdrasilTask(task)));
-        });
+        }
     }
 
     pub fn spawn<T: Component>(
@@ -188,7 +191,7 @@ impl<'a, 'w, 's> CommandsExt<'a, 'w, 's> for Commands<'w, 's> {
 }
 
 fn handle_tasks(mut commands: Commands, mut query: Query<&mut YggdrasilTask>) {
-    for mut task in query.iter_mut() {
+    for mut task in &mut query {
         if let Some(mut command_queue) = check_ready(&mut task.0) {
             commands.append(&mut command_queue);
         }
