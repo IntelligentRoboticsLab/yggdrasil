@@ -26,7 +26,6 @@ heimdall = { workspace = true }
 ml = { workspace = true }
 odal = { workspace = true }
 tasks = { workspace = true }
-tyr = { workspace = true, features = ["odal"] }
 
 # external crates here
 apodize = { workspace = true }

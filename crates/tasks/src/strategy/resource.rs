@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use crate::{Tag, TyrTask};
+use crate::{Tag, YggdrasilTask};
 use bevy::{ecs::world::CommandQueue, prelude::*};
 
 pub trait ResourceStrategy<T, F: Future<Output = CommandQueue> + Send + 'static>:
@@ -23,7 +23,7 @@ pub async fn to_resource<T: Resource>(entity: Entity, value: Option<T>) -> Comma
             world.insert_resource(value);
         }
 
-        world.entity_mut(entity).remove::<(Tag<T>, TyrTask)>();
+        world.entity_mut(entity).remove::<(Tag<T>, YggdrasilTask)>();
     });
 
     queue

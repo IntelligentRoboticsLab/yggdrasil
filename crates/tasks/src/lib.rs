@@ -13,7 +13,7 @@ use bevy::{
 use strategy::{entity::EntityStrategy, resource::ResourceStrategy};
 
 #[derive(Component)]
-pub struct TyrTask(Task<CommandQueue>);
+pub struct YggdrasilTask(Task<CommandQueue>);
 
 #[derive(Component)]
 pub struct Tag<T>(PhantomData<T>);
@@ -115,7 +115,7 @@ impl TaskBuilder<'_, '_, '_, ResourceTask> {
 
         self.commands
             .entity(entity)
-            .insert((Tag(PhantomData::<T>), TyrTask(task)));
+            .insert((Tag(PhantomData::<T>), YggdrasilTask(task)));
     }
 
     pub fn spawn<T: Resource>(&mut self, task: impl TaskFuture<T>) {
@@ -154,7 +154,7 @@ impl TaskBuilder<'_, '_, '_, EntityTask> {
             let task = pool.spawn(future);
             self.commands
                 .entity(entity)
-                .insert((Tag(PhantomData::<T>), TyrTask(task)));
+                .insert((Tag(PhantomData::<T>), YggdrasilTask(task)));
         });
     }
 
@@ -176,7 +176,7 @@ impl<'a, 'w, 's> CommandsExt<'a, 'w, 's> for Commands<'w, 's> {
     }
 }
 
-fn handle_tasks(mut commands: Commands, mut query: Query<&mut TyrTask>) {
+fn handle_tasks(mut commands: Commands, mut query: Query<&mut YggdrasilTask>) {
     for mut task in query.iter_mut() {
         if let Some(mut command_queue) = check_ready(&mut task.0) {
             commands.append(&mut command_queue);

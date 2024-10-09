@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use crate::{Generation, Tag, TyrTask};
+use crate::{Generation, Tag, YggdrasilTask};
 use bevy::{ecs::world::CommandQueue, prelude::*, utils::BoxedFuture};
 
 pub trait EntityStrategy<T, F: Future<Output = CommandQueue> + Send + 'static>:
@@ -29,7 +29,7 @@ pub async fn keep_all<T: Component>(
             world
                 .entity_mut(entity)
                 .insert((value, generation))
-                .remove::<(Tag<T>, TyrTask)>();
+                .remove::<(Tag<T>, YggdrasilTask)>();
         } else {
             world.entity_mut(entity).despawn();
         }
@@ -88,7 +88,7 @@ pub fn latest_n<T: Send + Component>(
                 world
                     .entity_mut(entity)
                     .insert((value, generation))
-                    .remove::<(Tag<T>, TyrTask)>();
+                    .remove::<(Tag<T>, YggdrasilTask)>();
             } else {
                 world.entity_mut(entity).despawn();
             }
