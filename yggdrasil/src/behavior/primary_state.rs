@@ -30,7 +30,7 @@ pub struct PrimaryStatePlugin;
 
 impl Plugin for PrimaryStatePlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(PrimaryState::Unstiff);
+        app.insert_resource(PrimaryState::Sitting);
 
         app.add_systems(Update, update_primary_state);
     }

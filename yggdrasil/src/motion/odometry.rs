@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     behavior::primary_state::PrimaryState,
-    core::{config::layout::RobotPosition, debug::DebugContext},
+    core::debug::DebugContext,
     kinematics::RobotKinematics,
     motion::walk::{engine::Side, SwingFoot},
     sensor::orientation::RobotOrientation,
@@ -38,7 +38,7 @@ pub fn update_odometry(
     primary_state: Res<PrimaryState>,
 ) {
     match *primary_state {
-        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Unstiff => {
+        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
             *odometry = Odometry::default();
         }
         _ => {
