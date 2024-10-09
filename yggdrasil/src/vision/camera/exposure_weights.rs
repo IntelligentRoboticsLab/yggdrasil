@@ -95,5 +95,6 @@ fn sync_exposure_weights(
                 .set_auto_exposure_weights(&exposure_weights.bottom)
                 .expect("failed to set auto exposure weights for bottom camera");
         }
-    });
+    })
+    .detach();
 }
