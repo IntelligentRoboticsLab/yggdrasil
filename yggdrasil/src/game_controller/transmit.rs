@@ -99,8 +99,8 @@ fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {
 //     (
 //         ball.timestamp.elapsed().as_secs_f32(),
 //         [
-//             ball.robot_to_ball.x * MILIMETERS_PER_METER,
-//             ball.robot_to_ball.y * MILIMETERS_PER_METER,
+//             ball.robot_to_ball.x * MILLIMETERS_PER_METER,
+//             ball.robot_to_ball.y * MILLIMETERS_PER_METER,
 //         ],
 //     )
 // }
