@@ -1,6 +1,5 @@
 pub mod layout;
 pub mod showtime;
-pub mod tyr;
 pub mod yggdrasil;
 
 use std::path::{Path, PathBuf};
@@ -11,7 +10,6 @@ use odal::{ConfigKind, Error, ErrorKind};
 
 use layout::LayoutConfig;
 use showtime::ShowtimeConfig;
-use tyr::TyrConfig;
 use yggdrasil::YggdrasilConfig;
 
 /// Plugin that adds functionality to load configuration structs from files.
@@ -69,7 +67,6 @@ impl Plugin for ConfigPlugin {
         app.init_config::<ShowtimeConfig>()
             .init_config::<LayoutConfig>()
             .init_config::<BehaviorConfig>()
-            .init_config::<TyrConfig>()
             .init_config::<YggdrasilConfig>();
 
         app.add_systems(
