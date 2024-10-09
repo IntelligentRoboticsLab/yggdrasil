@@ -65,16 +65,15 @@ pub fn send_message(
         return;
     }
 
-    // TODO: return the balls
-    let game_controller_ball_data = balls_to_game_controller_ball(&balls);
+    let (ball_age, pall_pos) = balls_to_game_controller_ball(&balls);
 
     let return_message = GameControllerReturnMessage::new(
         player_config.player_number,
         player_config.team_number,
         matches!(*fall_state, FallState::Lying(_)) as u8,
         robot_pose_to_game_controller_pose(&robot_pose),
-        NO_BALL_DETECTED_DATA.0,
-        NO_BALL_DETECTED_DATA.1,
+        ball_age,
+        pall_pos,
     );
 
     sender
