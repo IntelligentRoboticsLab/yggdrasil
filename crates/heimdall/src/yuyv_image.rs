@@ -71,11 +71,14 @@ impl YuyvImage {
         self.height
     }
 
+    /// Get a row of pixels from the image.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the index is out of bounds.
     #[must_use]
     pub fn row(&self, index: usize) -> Option<ImageView<'_>> {
-        if index >= self.height() {
-            panic!("index out of bounds");
-        }
+        assert!(index >= self.height(), "index out of bounds");
 
         // every 4 bytes stores 2 pixels, so (width / 2) * 4 bytes in a row
         let row_width = self.width();
@@ -90,6 +93,7 @@ impl YuyvImage {
         })
     }
 
+    #[must_use]
     pub fn pixel(&self, x: usize, y: usize) -> Option<YuvPixel> {
         if x >= self.width || y >= self.height {
             return None;
@@ -101,7 +105,9 @@ impl YuyvImage {
     /// Get a pixel at the given coordinates without bounds checking.
     ///
     /// # Safety
+    ///
     /// Don't be dumb
+    #[must_use]
     pub unsafe fn pixel_unchecked(&self, x: usize, y: usize) -> YuvPixel {
         // every 4 bytes stores 2 pixels, so (width / 2) * 4 bytes in a row
         let offset = (y * self.width + x) * 2;
@@ -117,6 +123,7 @@ impl YuyvImage {
         YuvPixel { y, u, v }
     }
 
+    #[must_use]
     pub fn row_iter(&self) -> RowIter<'_> {
         RowIter {
             image: self,
@@ -162,6 +169,13 @@ impl YuvPixel {
         v: 128,
     };
 
+    #[allow(
+        clippy::cast_sign_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_lossless,
+        clippy::cast_precision_loss
+    )]
+    #[must_use]
     pub fn average(pixels: &[Self]) -> Self {
         let mut y_sum = 0.0;
         let mut u_sum = 0.0;
@@ -182,10 +196,12 @@ impl YuvPixel {
         }
     }
 
+    #[allow(clippy::cast_precision_loss, clippy::many_single_char_names)]
+    #[must_use]
     pub fn to_yhs2(self) -> (f32, f32, f32) {
-        let y = self.y as i32;
-        let u = self.u as i32;
-        let v = self.v as i32;
+        let y = i32::from(self.y);
+        let u = i32::from(self.u);
+        let v = i32::from(self.v);
 
         let v_normed = v - 128;
         let u_normed = u - 128;

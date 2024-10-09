@@ -25,6 +25,7 @@ pub struct CameraMatrix<T: CameraLocation> {
 }
 
 impl<T: CameraLocation> CameraMatrix<T> {
+    #[must_use]
     pub fn new(
         focal_lengths: Vector2<f32>,
         cc_optical_center: Point2<f32>,
@@ -52,6 +53,7 @@ impl<T: CameraLocation> CameraMatrix<T> {
     /// Get a vector pointing from the camera through the given pixel in the image plane.
     ///
     /// This is in the camera's coordinate frame where x is forward, y is left, and z is up.
+    #[must_use]
     pub fn pixel_to_camera(&self, pixel: Point2<f32>) -> Vector3<f32> {
         vector![
             1.0,

@@ -44,8 +44,8 @@ pub enum OutboundError {
 impl fmt::Display for OutboundError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::TooLong(size) => write!(f, "{} is too long to fit in a single packet.", size),
-            Self::Encoding(error) => write!(f, "{}", error),
+            Self::TooLong(size) => write!(f, "{size} is too long to fit in a single packet."),
+            Self::Encoding(error) => write!(f, "{error}"),
         }
     }
 }
@@ -54,6 +54,7 @@ impl std::error::Error for OutboundError {}
 
 impl<M: Message> Outbound<M> {
     /// Creates an empty buffer with the given rate configuration.
+    #[must_use]
     pub fn new(rate: Rate) -> Self {
         Self {
             fragments: Vec::new(),
@@ -67,16 +68,28 @@ impl<M: Message> Outbound<M> {
     /// If it can be expected that an older update still lingers in the buffer, then
     /// [`Outbound::update_or_push`] may be used to reduce traffic volume. However, this does require an extra
     /// pass over the entire buffer.
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::push_at`].
     pub fn push(&mut self, message: M) -> Result<(), OutboundError> {
         self.push_at(message, Deadline::default(), Instant::now())
     }
 
     /// Pushes a message into the buffer registered at the current time, to be delivered by the given deadline.
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::push_at`].
     pub fn push_by(&mut self, message: M, deadline: Deadline) -> Result<(), OutboundError> {
         self.push_at(message, deadline, Instant::now())
     }
 
     /// Pushes a message into the buffer registered at the specified time, to be delivered by the given deadline.
+    ///
+    /// # Errors
+    ///
+    /// See [`Fragment::new`].
     pub fn push_at(
         &mut self,
         message: M,
@@ -107,12 +120,20 @@ impl<M: Message> Outbound<M> {
     /// This function can be used to prevent sending an older update if a new one arrives before it
     /// had been sent out. Since a fragment may be sent out at any time, it cannot be guaranteed
     /// that such an update still exists.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the message is too long to fit in a single packet.
     pub fn update_or_push(&mut self, message: M) -> Result<(), OutboundError> {
         self.update_or_push_at(message, Deadline::default(), Instant::now())
     }
 
     /// Updates a message in the buffer according to the given predicate or pushes it if not found,
     /// using the provided deadline.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the message is too long to fit in a single packet.
     pub fn update_or_push_by(
         &mut self,
         message: M,
@@ -123,6 +144,10 @@ impl<M: Message> Outbound<M> {
 
     /// Updates a message in the buffer according to the given predicate or pushes it if not found,
     /// at the given time.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the message is too long to fit in a single packet.
     pub fn update_or_push_at(
         &mut self,
         mut message: M,
@@ -226,6 +251,10 @@ struct Fragment<M: Message> {
 
 impl<M: Message> Fragment<M> {
     /// Creates a new fragment with the given message and deadline.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the message is too long to fit in a single packet.
     fn new(message: M, deadline: Instant) -> Result<Self, OutboundError> {
         let data = Self::encode(&message)?;
 
@@ -237,6 +266,10 @@ impl<M: Message> Fragment<M> {
     }
 
     /// Updates the fragment with a new message.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the message is too long to fit in a single packet.
     fn update(&mut self, message: M) -> Result<(), OutboundError> {
         self.data = Self::encode(&message)?;
         self.message = message;
@@ -245,6 +278,10 @@ impl<M: Message> Fragment<M> {
     }
 
     /// Encodes the message into bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the message is too long to fit in a single packet.
     fn encode(message: &M) -> Result<Vec<u8>, OutboundError> {
         let mut data = Vec::with_capacity(M::EXPECTED_SIZE);
         message.encode(&mut data).map_err(OutboundError::Encoding)?;

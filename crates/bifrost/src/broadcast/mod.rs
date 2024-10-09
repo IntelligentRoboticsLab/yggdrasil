@@ -52,6 +52,7 @@ impl Deadline {
     /// Literally tomorrow, but can be used to pad out packets with unimportant data.
     pub const WHENEVER: Self = Self::Within(Duration::from_secs(86400));
 
+    #[must_use]
     pub fn absolute(self, when: Instant) -> Option<Instant> {
         match self {
             Deadline::Automatic => None,

@@ -56,6 +56,10 @@ pub trait Encode {
     /// # Returns
     ///
     /// * `Result<()>` - A Result type that returns an empty tuple on success or an error on failure.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the encoding fails.
     fn encode(&self, write: impl Write) -> Result<()>;
 
     /// # Returns
@@ -106,6 +110,10 @@ pub trait Decode {
     ///
     /// # Returns
     /// * `Result<Self>` - A Result type that returns the decoded data on success or an error on failure.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the decoding fails.
     fn decode(read: impl Read) -> Result<Self>
     where
         Self: Sized;
@@ -459,11 +467,13 @@ fn required_encoded_space_signed(v: i64) -> usize {
 /// Uses the zigzag encoding in order to encode negative integers.
 /// This is an alternative encoding to two's complement, proposed by Google.
 /// <https://protobuf.dev/programming-guides/encoding/>
-fn zigzag_encode(from: i64) -> u64 {
+#[allow(clippy::cast_sign_loss, clippy::cast_possible_wrap)]
+const fn zigzag_encode(from: i64) -> u64 {
     ((from << 1) ^ (from >> 63)) as u64
 }
 
-fn zigzag_decode(from: u64) -> i64 {
+#[allow(clippy::cast_sign_loss, clippy::cast_possible_wrap)]
+const fn zigzag_decode(from: u64) -> i64 {
     ((from >> 1) ^ (-((from & 1) as i64)) as u64) as i64
 }
 
@@ -479,13 +489,11 @@ pub struct VarInt<T> {
 impl<T> VarInt<T> {
     /// Calculates the max size of bytes an unsigned integer can take up.
     /// Takes the size of the type in bytes and divides it by 7.
-    pub const MAX_BYTES_UNSIGNED: usize =
-        ((std::mem::size_of::<T>() * 8 + 7 - 1) as f64 / 7_f64) as usize;
+    pub const MAX_BYTES_UNSIGNED: usize = ((std::mem::size_of::<T>() * 8 + 7 - 1) / 7);
 
     /// Calculates the max size of bytes an signed integer can take up.
     /// Takes the size of the type in bytes and divides it by 7.
-    pub const MAX_BYTES_SIGNED: usize =
-        ((std::mem::size_of::<T>() * 8 + 7 - 1 + 1) as f64 / 7_f64) as usize;
+    pub const MAX_BYTES_SIGNED: usize = ((std::mem::size_of::<T>() * 8 + 7 - 1 + 1) / 7);
 }
 
 /// This macro implements the [`VarInt`] for signed and unsigned types without having
@@ -493,6 +501,7 @@ impl<T> VarInt<T> {
 macro_rules! impl_varint {
     ($t:ty, unsigned) => {
         impl Decode for VarInt<$t> {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_lossless)]
             fn decode(mut read: impl Read) -> Result<Self>
             where
                 Self: Sized,
@@ -513,6 +522,7 @@ macro_rules! impl_varint {
         }
 
         impl Encode for VarInt<$t> {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_lossless)]
             fn encode(&self, mut write: impl Write) -> Result<()> {
                 let mut n = self.value as u64;
 
@@ -526,7 +536,9 @@ macro_rules! impl_varint {
             }
 
             fn encode_len(&self) -> usize {
-                required_encoded_size_unsigned(self.value as u64)
+                required_encoded_size_unsigned(
+                    u64::try_from(self.value).expect("Value is negative"),
+                )
             }
         }
 
@@ -544,6 +556,7 @@ macro_rules! impl_varint {
     };
     ($t:ty, signed) => {
         impl Decode for VarInt<$t> {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_lossless)]
             fn decode(mut read: impl Read) -> Result<Self>
             where
                 Self: Sized,
@@ -564,8 +577,10 @@ macro_rules! impl_varint {
         }
 
         impl Encode for VarInt<$t> {
+            #[allow(clippy::cast_possible_truncation)]
             fn encode(&self, mut write: impl Write) -> Result<()> {
-                let mut n: u64 = zigzag_encode(self.value as i64);
+                let mut n: u64 =
+                    zigzag_encode(i64::try_from(self.value).expect("failed to convert to i64"));
 
                 while n >= 0x80 {
                     write.write_u8(0b1000_0000 | (n as u8))?;
@@ -578,7 +593,9 @@ macro_rules! impl_varint {
             }
 
             fn encode_len(&self) -> usize {
-                required_encoded_space_signed(self.value as i64)
+                required_encoded_space_signed(
+                    i64::try_from(self.value).expect("failed to convert to i64"),
+                )
             }
         }
 

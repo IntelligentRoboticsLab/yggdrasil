@@ -19,6 +19,7 @@ impl ExposureWeights {
     /// # Returns
     ///
     /// A new instance of `ExposureWeights`.
+    #[must_use]
     pub fn new(image_dims: (u32, u32)) -> Self {
         Self {
             // Top camera is likely to suffer from overexposure when standing near a window,
@@ -89,7 +90,7 @@ impl ExposureWeightTable {
     /// Resetting the weights in the driver will be required if `true` is returned.
     pub fn update(&mut self, weights: [u8; 16]) -> bool {
         let mut weights = weights;
-        for weight in weights.iter_mut() {
+        for weight in &mut weights {
             if *weight > Self::MAX_VALUE {
                 *weight = Self::MAX_VALUE;
             }
@@ -105,11 +106,12 @@ impl ExposureWeightTable {
 
     /// Converts the exposure weight table to the expected byte array format.
     ///
-    /// Format: https://spl.robocup.org/wp-content/uploads/downloads/nao-v6-hints.pdf
+    /// Format: `<https://spl.robocup.org/wp-content/uploads/downloads/nao-v6-hints.pdf>`
     ///
     /// # Returns
     ///
     /// The exposure weight table encoded as a byte array.
+    #[allow(clippy::cast_possible_truncation)]
     pub fn encode(&self) -> [u8; 17] {
         let mut bytes = [0; 17];
 

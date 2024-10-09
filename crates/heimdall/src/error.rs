@@ -10,7 +10,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Camera error variants.
 #[derive(Error, Debug, Diagnostic)]
 pub enum Error {
-    /// IO error, this wraps a [std::io::Error]
+    /// IO error, this wraps a [`std::io::Error`]
     #[error(transparent)]
     IO(#[from] std::io::Error),
 
@@ -32,7 +32,7 @@ pub enum Error {
     #[error("Failed to set the device to video capture mode")]
     VideoCapture(#[source] io::Error),
 
-    /// Image error, this wraps a [image::ImageError]
+    /// Image error, this wraps an [`image::ImageError`]
     #[error(transparent)]
     Image(#[from] image::ImageError),
 
