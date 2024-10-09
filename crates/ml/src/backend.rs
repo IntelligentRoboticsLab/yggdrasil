@@ -1,4 +1,4 @@
-//! Implementation of ML methods using an OpenVINO backend.
+//! Implementation of ML methods using an `OpenVINO` backend.
 use super::{
     element_type::{input::ModelInput, output::ModelOutput, Elem},
     error::{Error, Result},
@@ -8,12 +8,17 @@ use bevy::prelude::*;
 use openvino::Blob;
 use std::{marker::PhantomData, sync::Mutex};
 
-/// Wrapper around [`openvino::Core`], i.e. the OpenVINO engine.
+/// Wrapper around [`openvino::Core`], i.e. the `OpenVINO` engine.
 /// It's used for creating and using ML models.
 #[derive(Resource)]
 pub struct MlCore(Mutex<openvino::Core>);
 
 impl MlCore {
+    /// Create a new `OpenVINO` core.
+    ///
+    /// # Errors
+    ///
+    /// Fails if the core cannot be created.
     pub fn new() -> Result<Self> {
         Ok(Self(Mutex::new(openvino::Core::new(None)?)))
     }
@@ -32,11 +37,16 @@ pub struct ModelExecutor<M: MlModel> {
 }
 
 impl<M: MlModel> ModelExecutor<M> {
-    /// ## Error
+    /// # Errors
+    ///
     /// Fails if:
-    /// * The model cannot be loaded.
-    /// * An inference request cannot be created, which
+    /// - The model cannot be loaded.
+    /// - An inference request cannot be created, which
     ///   is needed to load relevant model settings.
+    ///
+    /// # Panics
+    ///
+    /// If no mutable reference to the model executor can be obtained this function panics.
     pub fn new(core: &mut MlCore) -> Result<Self> {
         let core = core.0.get_mut().unwrap();
 
@@ -105,8 +115,16 @@ impl<M: MlModel> ModelExecutor<M> {
     }
 
     /// Requests to run inference.
+    ///
+    /// # Errors
+    ///
+    /// Fails if the inference request cannot be created.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a mutable reference to the model executor cannot be obtained.
     pub fn request_infer(&mut self, input: &M::InputShape) -> Result<InferRequest<M>> {
-        let exec = self.exec.get_mut().unwrap();
+        let exec = self.exec.get_mut().expect("Failed to lock model executor.");
 
         InferRequest::new(
             exec.create_infer_request().map_err(Error::StartInference)?,
@@ -117,6 +135,10 @@ impl<M: MlModel> ModelExecutor<M> {
     }
 
     /// Description of the input tensor.
+    ///
+    /// # Errors
+    ///
+    /// Fails if there is no input layer at the given index.
     pub fn input_description(&self, index: usize) -> Result<&TensorDescr> {
         self.input_descriptions
             .get(index)
@@ -124,6 +146,10 @@ impl<M: MlModel> ModelExecutor<M> {
     }
 
     /// Description of the output tensor.
+    ///
+    /// # Errors
+    ///
+    /// Fails if the output layer does not exist at the given index.
     pub fn output_description(&self, index: usize) -> Result<&TensorDescr> {
         self.output_descriptions
             .get(index)
@@ -183,23 +209,37 @@ impl<M: MlModel> InferRequest<M> {
     }
 
     /// Runs inference.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the inference fails for any reason.
+    /// See [`Error`] for more details.
     pub fn run(mut self) -> Result<Self> {
         self.request.infer().map_err(Error::RunInference)?;
         Ok(self)
     }
 
-    pub fn fetch_output(mut self) -> Result<<M::OutputShape as ModelOutput<M::OutputElem>>::Shape> {
+    /// Fetches the output tensor.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the output tensor is not found, which should never happen.
+    #[must_use]
+    pub fn fetch_output(mut self) -> <M::OutputShape as ModelOutput<M::OutputElem>>::Shape {
         let (blobs, shapes): (Vec<Blob>, Vec<Vec<usize>>) = self
             .output_descrs
             .iter()
             .map(|x| {
                 // the tensor with the name `output_name` is guaranteed to exist
-                let blob = self.request.get_blob(&x.name).unwrap();
+                let blob = self
+                    .request
+                    .get_blob(&x.name)
+                    .expect("output tensor not found");
                 (blob, x.dims().to_vec())
             })
             .unzip();
 
-        Ok(M::OutputShape::from_blobs(&blobs, shapes.as_slice()))
+        M::OutputShape::from_blobs(&blobs, shapes.as_slice())
     }
 }
 

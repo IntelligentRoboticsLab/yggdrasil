@@ -1,7 +1,7 @@
 //! Defines extension methods for [`Commands`] to spawn inference tasks for machine learning models.
 
 use bevy::prelude::*;
-use tasks::*;
+use tasks::{CommandsExt, TaskPool};
 
 use crate::prelude::ModelOutput;
 
@@ -160,11 +160,11 @@ where
                 s.spawn(async move {
                     let output = request
                         .run()
-                        .and_then(|request| request.fetch_output())
+                        .map(InferRequest::fetch_output)
                         .expect("failed to fetch output");
 
                     f(output)
-                })
+                });
             }
         })
     }
@@ -194,10 +194,7 @@ where
             .spawn({
                 async move {
                     // TODO: Add back support for multiple outputs
-                    let output = request
-                        .run()
-                        .and_then(|request| request.fetch_output())
-                        .ok()?;
+                    let output = request.run().map(InferRequest::fetch_output).ok()?;
 
                     f(output)
                 }
@@ -228,8 +225,7 @@ where
             .to_entities()
             .spawn({
                 vec![async move {
-                    let output = request.run().ok()?;
-                    let output = output.fetch_output().ok()?;
+                    let output = request.run().map(InferRequest::fetch_output).ok()?;
 
                     f(output)
                 }]
@@ -283,10 +279,10 @@ where
             .spawn({
                 requests.into_iter().map(move |request| async move {
                     let output = InferRequest::run(request)
-                        .and_then(InferRequest::fetch_output)
+                        .map(InferRequest::fetch_output)
                         .ok()?;
                     f(output)
                 })
-            })
+            });
     }
 }

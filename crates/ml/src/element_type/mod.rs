@@ -9,9 +9,9 @@ pub mod output;
 /// Conveniency type representing an n-dimensional array.
 pub type MlArray<E> = ndarray::Array<E, ndarray::Dim<ndarray::IxDynImpl>>;
 
-/// Implements [`Elem`] on a data type and maps it to an OpenVINO data type.
+/// Implements [`Elem`] on a data type and maps it to an `OpenVINO` data type.
 /// In other words, the data type can now be used as in- and output of a
-/// ML model, granted that model uses the mapped OpenVINO data type internally.
+/// ML model, granted that model uses the mapped `OpenVINO` data type internally.
 ///
 /// Note that this is unsafe, see [`Elem`].
 macro_rules! impl_elem {
@@ -31,12 +31,12 @@ macro_rules! impl_elem {
 ///
 /// # Safety
 ///
-/// OpenVINO internally stores data in tensors with some precision (aka data type),
+/// `OpenVINO` internally stores data in tensors with some precision (aka data type),
 /// but when this data is requested it's returned as a byte buffer.
 /// To judge if casting to a type that implements [`Elem`] is safe,
-/// [`Elem::is_compatible`] is called. The rest of the implementation
-/// relies on the fact that this method functions correctly, or else
-/// we wind up with undefined behavior.
+/// [`Elem::is_compatible`] is called.
+/// The rest of the implementation relies on the fact that this method functions
+/// correctly, or else we wind up with undefined behavior.
 pub unsafe trait Elem: Sized + Send + Sync + 'static {
     /// Returns `true` if `Self` is compatible with
     /// `precision`, i.e. instances of `precision` can be safely
@@ -45,7 +45,7 @@ pub unsafe trait Elem: Sized + Send + Sync + 'static {
 
     /// Returns a view to the bytes of a slice of `Self`s.
     fn view_bytes_slice(slice: &[Self]) -> &[u8] {
-        let ptr = slice.as_ptr() as *const u8;
+        let ptr = slice.as_ptr().cast::<u8>();
         let len = std::mem::size_of_val(slice) / std::mem::size_of::<u8>();
 
         // Safety: the pointer is valid and the length is correct.

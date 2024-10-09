@@ -4,6 +4,11 @@ use fast_image_resize as fr;
 use std::num::NonZeroU32;
 
 /// Returns the index of the maximum element in a [`Vec`].
+///
+/// # Panics
+///
+/// If the input vector is empty this function will panic.
+#[must_use]
 pub fn argmax(v: &[f32]) -> usize {
     v.iter()
         .enumerate()
@@ -13,6 +18,7 @@ pub fn argmax(v: &[f32]) -> usize {
 }
 
 /// Returns the softmax of [`Vec`].
+#[must_use]
 pub fn softmax(v: &[f32]) -> Vec<f32> {
     let exps = v.iter().map(|f| f.exp()).collect::<Vec<_>>();
 
@@ -21,11 +27,21 @@ pub fn softmax(v: &[f32]) -> Vec<f32> {
 }
 
 /// Computes the sigmoid score of the provided logit.
+#[must_use]
 pub fn sigmoid(logit: f32) -> f32 {
     1.0 / (1.0 + (-logit).exp())
 }
 
 /// Resizes a grayscale patch to the target size.
+///
+/// # Panics
+///
+/// This function panics if:
+/// - the original image dimensions are zero
+/// - the patch is empty
+/// - the target image dimensions are zero
+#[allow(clippy::cast_possible_truncation)]
+#[must_use]
 pub fn resize_patch(original: (usize, usize), target: (usize, usize), patch: Vec<u8>) -> Vec<f32> {
     let src_image = fr::Image::from_vec_u8(
         NonZeroU32::new(original.0 as u32).unwrap(),
@@ -33,7 +49,7 @@ pub fn resize_patch(original: (usize, usize), target: (usize, usize), patch: Vec
         patch,
         fr::PixelType::U8,
     )
-    .expect("Failed to create image for resizing");
+    .expect("failed to create image for resizing");
 
     // Resize the image to the correct input shape for the model
     let mut dst_image = fr::Image::new(
@@ -50,6 +66,6 @@ pub fn resize_patch(original: (usize, usize), target: (usize, usize), patch: Vec
     dst_image
         .buffer()
         .iter()
-        .map(|x| *x as f32 / 255.0)
+        .map(|x| f32::from(*x) / 255.0)
         .collect()
 }
