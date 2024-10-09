@@ -30,11 +30,7 @@ const LINE_WIDTH_RATIO: f32 = 0.9;
 /// The ratio of ball width that is sampled when scanning the image.
 const BALL_WIDTH_RATIO: f32 = 0.8;
 
-/// Module that generates a scan grid from taken NAO images.
-///
-/// This module provides the following resources to the application:
-/// - [`TopScanGrid`]: The scan grid for the top camera.
-/// - [`BottomScanGrid`]: The scan grid for the bottom camera.
+/// Plugin that generates a scan grid from taken NAO images.
 pub struct ScanGridPlugin;
 
 impl Plugin for ScanGridPlugin {
@@ -142,12 +138,6 @@ pub struct Line {
     pub y_max: i32,
     pub max_index: usize,
 }
-
-// #[derive(derive_more::Deref, derive_more::DerefMut)]
-// pub struct TopScanGrid(ScanGrid);
-
-// #[derive(derive_more::Deref, derive_more::DerefMut)]
-// pub struct BottomScanGrid(ScanGrid);
 
 #[derive(Resource)]
 pub struct ScanGrid<T: CameraLocation> {
