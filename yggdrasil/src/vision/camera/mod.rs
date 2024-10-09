@@ -43,14 +43,10 @@ pub struct CameraSettings {
     pub exposure_auto: bool,
 }
 
-/// This module captures images using the top- and bottom camera of the NAO.
+/// This plugins captures images using the top- and bottom camera of the NAO.
 ///
 /// The captured images are stored as image resources, which are updated whenever a newer image is
 /// available from the camera.
-///
-/// This module provides the following resources to the application:
-/// - [`TopImage`]
-/// - [`BottomImage`]
 #[derive(Default)]
 pub struct CameraPlugin<T: CameraLocation>(PhantomData<T>);
 
@@ -65,24 +61,6 @@ impl<T: CameraLocation> Plugin for CameraPlugin<T> {
         app.add_plugins(matrix::CameraMatrixPlugin::<T>::default());
     }
 }
-
-// impl Module for CameraPlugin {
-//     fn initialize(self, app: App) -> Result<App> {
-//         let app = app
-//             .add_startup_system(initialize_cameras)?
-//             .add_system(camera_system)
-//             .add_system(debug_camera_system.after(camera_system))
-//             .add_task::<ComputeTask<JpegTopImage>>()?
-//             .add_task::<ComputeTask<JpegBottomImage>>()?
-//             .add_task::<ComputeTask<Result<ExposureWeightsCompleted>>>()?
-//             .add_module(matrix::CameraMatrixModule)?;
-
-//         #[cfg(not(feature = "local"))]
-//         let app = app.add_system_chain((update_exposure_weights, set_exposure_weights));
-
-//         Ok(app)
-//     }
-// }
 
 fn setup_camera_device(settings: &CameraSettings) -> Result<CameraDevice> {
     #[cfg(feature = "local")]
