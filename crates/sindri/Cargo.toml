@@ -8,6 +8,8 @@ name = "sindri"
 path = "src/main.rs"
 
 [dependencies]
+yggdrasil = { workspace = true }
+
 cargo_toml = { workspace = true }
 clap = { workspace = true, features = ["derive", "string"] }
 colored = { workspace = true }
@@ -26,13 +28,12 @@ serde_with = { workspace = true }
 ssh2 = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = [
-    "macros",
-    "net",
-    "process",
-    "rt-multi-thread",
-    "signal",
-    "time",
+  "macros",
+  "net",
+  "process",
+  "rt-multi-thread",
+  "signal",
+  "time",
 ] }
 toml = { workspace = true }
 walkdir = { workspace = true }
-yggdrasil = { path = "../../yggdrasil" }

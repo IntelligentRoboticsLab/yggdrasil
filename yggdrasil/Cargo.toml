@@ -14,13 +14,18 @@ name = "yggdrasil"
 path = "src/main.rs"
 
 [dependencies]
+# our own crates here
+heimdall = { workspace = true }
+odal = { workspace = true }
 ml = { workspace = true }
 tasks = { workspace = true }
+bifrost = { workspace = true }
+tyr = { workspace = true, features = ["odal"] }
 
+# external crates here
 async-std = { workspace = true }
 cpal = { workspace = true }
 apodize = { workspace = true }
-bifrost = { path = "../crates/bifrost/" }
 bevy = { workspace = true, features = ["multi_threaded"] }
 derive_more = { workspace = true }
 enum_dispatch = { workspace = true }
@@ -28,7 +33,6 @@ fast_image_resize = { workspace = true }
 fast-math = { workspace = true }
 futures = { workspace = true }
 geo = { workspace = true }
-heimdall = { path = "../crates/heimdall" }
 image = { workspace = true }
 itertools = { workspace = true }
 kira = { workspace = true }
@@ -39,7 +43,6 @@ nalgebra = { workspace = true, features = ["serde-serialize"] }
 ndarray = { workspace = true }
 nidhogg = { workspace = true, features = ["lola", "bevy"] }
 num = { workspace = true }
-odal = { path = "../crates/odal" }
 ordered-float = { workspace = true }
 pathfinding = { workspace = true }
 rerun = { workspace = true, optional = true }
@@ -54,7 +57,6 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tracing-appender = { workspace = true }
 tracing-tracy = { workspace = true, optional = true }
-tyr = { path = "../crates/tyr", features = ["odal"] }
 
 [features]
 default = []
