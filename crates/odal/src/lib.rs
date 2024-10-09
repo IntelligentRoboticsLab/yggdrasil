@@ -43,6 +43,10 @@ pub trait Config: for<'de> Deserialize<'de> + Serialize {
     }
 
     /// Stores the configuration in a file at the specified path
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the configuration cannot be serialized or written to the file.
     fn store(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
 

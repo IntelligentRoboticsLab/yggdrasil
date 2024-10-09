@@ -2,6 +2,7 @@ use std::io::ErrorKind;
 use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 use std::time::Duration;
 
+use bevy::prelude::{App, *};
 use miette::IntoDiagnostic;
 
 use crate::core::config::showtime::ShowtimeConfig;
@@ -18,49 +19,47 @@ const MINIMAL_BUDGET: u16 = 5;
 /// Number of seconds in a half match.
 const SECS_PER_HALF: i16 = 10 * 60;
 
-pub struct TeamCommunicationModule;
+/// Plugin for communication between team members.
+pub struct TeamCommunicationPlugin;
 
-impl Module for TeamCommunicationModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_system(sync)
-            .add_system(ping_response)
-            .add_startup_system(startup)
+impl Plugin for TeamCommunicationPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(PostStartup, setup_team_communication);
+
+        app.add_systems(Update, (ping_response, sync_budget).chain());
     }
 }
 
-#[startup_system]
-fn startup(storage: &mut Storage, config: &ShowtimeConfig) -> Result<()> {
-    let tc = TeamCommunication::new(config.team_number);
-    storage.add_resource(Resource::new(tc?))
+fn setup_team_communication(mut commands: Commands, config: Res<ShowtimeConfig>) {
+    let team_communication =
+        TeamCommunication::new(config.team_number).expect("failed to create team communication.");
+
+    commands.insert_resource(team_communication);
 }
 
-#[system]
-fn sync(tc: &mut TeamCommunication, message: &Option<GameControllerMessage>) -> Result<()> {
+fn sync_budget(mut tc: ResMut<TeamCommunication>, message: Option<Res<GameControllerMessage>>) {
     // We can't calibrate the budget if we aren't in a game.
     let Some(game_controller_message) = message else {
-        return Ok(());
+        return;
     };
 
-    if let Some(threshold) = tc.calibrate_budget(game_controller_message) {
+    if let Some(threshold) = tc.calibrate_budget(&game_controller_message) {
         // For now, make sure to never send messages faster than can be maintained.
         tc.rate_mut().late_threshold = threshold;
         tc.rate_mut().automatic_deadline = threshold;
 
-        if tc.try_send()? {
-            tracing::info!("successfully sent out a new packet.");
+        if tc.try_send().expect("failed to send packets") {
+            debug!("successfully sent out a new packet.");
         }
 
-        let received = tc.try_receive()?;
+        let received = tc.try_receive().expect("failed to receive packets.");
         if received > 0 {
-            tracing::info!("received packet(s) from {} peer(s).", received);
+            debug!("received packet(s) from {} peer(s).", received);
         }
     }
-
-    Ok(())
 }
 
-#[system]
-fn ping_response(tc: &mut TeamCommunication) -> Result<()> {
+fn ping_response(mut tc: ResMut<TeamCommunication>) {
     // If we have received a ping...
     let msg = tc.inbound_mut().take_map(|_, _, msg| match msg {
         TeamMessage::Ping => Some(TeamMessage::Pong),
@@ -69,17 +68,17 @@ fn ping_response(tc: &mut TeamCommunication) -> Result<()> {
 
     // ...send out a pong about a second later.
     if let Some((when, who, msg)) = msg {
-        tracing::info!("{:?} said ping, i say pong", who);
+        debug!(?who, "received ping, sending back pong");
 
         let at = when + Duration::from_secs(1);
         tc.outbound_mut()
             .push_by(msg, Deadline::Before(at))
-            .into_diagnostic()?;
+            .into_diagnostic()
+            .expect("failed to respond with pong message")
     }
-
-    Ok(())
 }
 
+#[derive(Resource)]
 pub struct TeamCommunication {
     port: u16,
     team_number: u8,

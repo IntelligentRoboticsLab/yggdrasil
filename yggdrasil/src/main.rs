@@ -27,6 +27,7 @@ fn main() -> Result<()> {
             localization::LocalizationPlugin,
             sensor::SensorPlugins,
             behavior::BehaviorPlugins,
+            communication::CommunicationPlugins,
             kinematics::KinematicsPlugin,
             motion::MotionPlugins,
             vision::VisionPlugins,
