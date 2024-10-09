@@ -18,5 +18,4 @@ pub mod prelude {
     pub use crate::schedule::{PostWrite, PreWrite, Sensor, Write};
     pub use crate::{core::config::ConfigExt, Result};
     pub use odal::Config;
-    // pub use tyr::prelude::*;
 }

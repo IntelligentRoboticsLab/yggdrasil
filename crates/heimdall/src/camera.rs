@@ -12,9 +12,8 @@ use crate::exposure_weights::ExposureWeightTable;
 
 use super::{Error, Result, YuyvImage};
 
-#[derive(Debug, Clone, Default, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CameraPosition {
-    #[default]
     Top,
     Bottom,
 }
