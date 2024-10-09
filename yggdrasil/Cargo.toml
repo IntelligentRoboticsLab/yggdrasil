@@ -1,17 +1,23 @@
 [package]
 name = "yggdrasil"
-version = "0.1.0"
-edition = "2021"
+description = "The yggdrasil SPL framework"
 default-run = "yggdrasil"
 
-[lib]
-name = "yggdrasil"
-edition = "2021"
-crate-type = ["lib"]
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
-[[bin]]
-name = "yggdrasil"
-path = "src/main.rs"
+[lints]
+workspace = true
+
+[features]
+default = []
+rerun = ["dep:rerun"]
+local = []
+dependency_graph = []
+timings = ["dep:tracing-tracy", "bevy/trace"]
 
 [dependencies]
 # our own crates here
@@ -57,10 +63,3 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tracing-appender = { workspace = true }
 tracing-tracy = { workspace = true, optional = true }
-
-[features]
-default = []
-rerun = ["dep:rerun"]
-local = []
-dependency_graph = []
-timings = ["dep:tracing-tracy", "bevy/trace"]

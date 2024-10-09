@@ -1,11 +1,15 @@
 [package]
-edition = "2021"
 name = "sindri"
-version = "0.8.1"
+description = "tool that simplifies robot interaction by automating the process of building and deploying to the robots"
 
-[[bin]]
-name = "sindri"
-path = "src/main.rs"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
 
 [dependencies]
 yggdrasil = { workspace = true }

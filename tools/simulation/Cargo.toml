@@ -1,7 +1,14 @@
 [package]
 name = "simulation"
-version = "0.1.0"
-edition = "2021"
+
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
 
 [dependencies]
 bifrost = { workspace = true }
@@ -17,8 +24,3 @@ nalgebra = { workspace = true }
 nidhogg = { workspace = true }
 rand = "0.8.5"
 toml = { workspace = true }
-
-
-[[bin]]
-name = "simulation"
-path = "main.rs"

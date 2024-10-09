@@ -2,9 +2,33 @@
 members = ["crates/*", "tools/*", "yggdrasil"]
 resolver = "2"
 
+[workspace.package]
+authors = ["Dutch Nao Team"]
+categories = []
+edition = "2021"
+rust-version = "1.80.0"
+version = "0.1.0"
+
+[workspace.lints.rust]
+missing_docs = "warn"
+# TODO: replace this lint with cargo-machete, since it's broken
+# https://github.com/rust-lang/rust/issues/57274
+# unused_crate_dependencies = "warn"
+
+[workspace.lints.clippy]
+# enable clippy lints with priority -1
+# so that we can override certain ones with "allow"
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+inline_always = "allow"
+module_name_repetitions = "allow"
+
 [workspace.dependencies]
+# root crates
 yggdrasil = { path = "yggdrasil" }
 
+# yggdrasil libraries
 tasks = { path = "crates/tasks" }
 ml = { path = "crates/ml" }
 bifrost = { path = "crates/bifrost" }
@@ -13,9 +37,11 @@ tyr = { path = "crates/tyr" }
 heimdall = { path = "crates/heimdall" }
 nilfheim = { path = "crates/nilfheim" }
 
+# tools
 sindri = { path = "tools/sindri" }
 simulation = { path = "tools/simulation" }
 
+# external crates
 async-std = "1.13.0"
 async-trait = "0.1.82"
 byteorder = "1.4.3"

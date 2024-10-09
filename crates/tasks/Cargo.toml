@@ -1,15 +1,19 @@
 [package]
 name = "tasks"
-version = "0.1.0"
-edition = "2021"
 
-[lib]
-name = "tasks"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
 
 [dependencies]
 async-std = { workspace = true }
 bevy = { workspace = true, default-features = false, features = [
-    "multi_threaded",
+  "multi_threaded",
 ] }
 futures = { workspace = true }
 

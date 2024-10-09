@@ -1,10 +1,13 @@
 [package]
 name = "bifrost"
-version = "0.1.0"
-edition = "2021"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
-[lib]
-name = "bifrost"
+[lints]
+workspace = true
 
 [dependencies]
 bifrost_derive = { path = "bifrost_derive" }

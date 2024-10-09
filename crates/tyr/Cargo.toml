@@ -1,10 +1,17 @@
 [package]
 name = "tyr"
-version = "0.1.0"
-edition = "2021"
 
-[lib]
-name = "tyr"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+odal = ["tyr_tasks/odal"]
 
 [dependencies]
 tyr_internal = { path = "tyr_internal" }
@@ -21,6 +28,3 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-tracy = { workspace = true }
-
-[features]
-odal = ["tyr_tasks/odal"]

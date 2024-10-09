@@ -1,11 +1,13 @@
 [package]
 name = "odal"
-version = "0.1.0"
-edition = "2021"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
-[lib]
-name = "odal"
-
+[lints]
+workspace = true
 [dependencies]
 miette = { workspace = true }
 thiserror = { workspace = true }
