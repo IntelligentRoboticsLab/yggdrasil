@@ -1,17 +1,14 @@
 use bevy::app::{PluginGroup, PluginGroupBuilder};
 use heimdall::{Bottom, Top};
 // use robot_detection::RobotDetectionModule;
-// use scan_grid::ScanGridModule;
-// use scan_lines::ScanLinesModule;
 use serde::{Deserialize, Serialize};
 
 pub mod ball_detection;
 pub mod camera;
 pub mod color;
 pub mod field_boundary;
-// pub mod field_marks;
-// pub mod line;
-// pub mod line_detection;
+pub mod line;
+pub mod line_detection;
 // pub mod robot_detection;
 pub mod scan_grid;
 pub mod scan_lines;
@@ -32,6 +29,7 @@ impl PluginGroup for VisionPlugins {
             .add(camera::CameraPlugin::<Bottom>::default())
             .add(scan_grid::ScanGridPlugin)
             .add(scan_lines::ScanLinesPlugin)
+            .add(line_detection::LineDetectionPlugin)
             .add(field_boundary::FieldBoundaryPlugin)
             .add(ball_detection::BallDetectionPlugin);
 

@@ -1,20 +1,19 @@
+use std::marker::PhantomData;
 use std::mem;
 use std::ops::Deref;
 
-use crate::core::debug::DebugContext;
-use crate::localization::RobotPose;
-use crate::vision::camera::{matrix::CameraMatrices, Image};
+use crate::vision::camera::Image;
 
-use crate::prelude::*;
 use crate::vision::scan_lines::RegionColor;
 
 use super::line::LineSegment2;
-use super::scan_lines::{ScanLine, ScanLines, TopScanLines};
+use super::scan_lines::{ScanLine, ScanLines};
 
-use derive_more::Deref;
-use heimdall::CameraMatrix;
-use nalgebra::{point, Point2};
-use nidhogg::types::color;
+use bevy::prelude::*;
+use heimdall::{CameraLocation, Top};
+use nalgebra::Point2;
+use tasks::conditions::task_finished;
+use tasks::CommandsExt;
 
 const MAX_VERTICAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 15.;
 
@@ -32,32 +31,51 @@ const MAX_PIXEL_DISTANCE: usize = 1;
 ///
 /// This module provides the following resources to the application:
 /// - [`TopLines`]
-pub struct LineDetectionModule;
+pub struct LineDetectionPlugin;
 
-impl Module for LineDetectionModule {
-    fn initialize(self, app: App) -> Result<App> {
-        // app.add_system(line_detection_system.after(super::scan_lines::scan_lines_system))
-        app.add_system(line_detection_system.after(super::scan_lines::scan_lines_system))
-            .add_task::<ComputeTask<Result<TopLineDetectionData>>>()?
-            .add_startup_system(start_line_detection_task)?
-            .init_resource::<TopLineDetectionData>()
+impl Plugin for LineDetectionPlugin {
+    // fn initialize(self, app: App) -> Result<App> {
+    //     // app.add_system(line_detection_system.after(super::scan_lines::scan_lines_system))
+    //     app.add_system(line_detection_system.after(super::scan_lines::scan_lines_system))
+    //         .add_task::<ComputeTask<Result<TopLineDetectionData>>>()?
+    //         .add_startup_system(start_line_detection_task)?
+    //         .init_resource::<TopLineDetectionData>()
+    // }
+
+    fn build(&self, app: &mut bevy::prelude::App) {
+        app.init_resource::<DetectedLines<Top>>();
+        app.add_systems(
+            Update,
+            detect_lines2::<Top>.run_if(task_finished::<Image<Top>>),
+        );
     }
 }
 
-#[derive(Default)]
-struct LineDetectionData {
+/// Detected lines for the camera location `T`.
+#[derive(Default, Resource)]
+pub struct DetectedLines<T: CameraLocation> {
     line_points: Vec<(f32, f32)>,
     line_points_next: Vec<(f32, f32)>,
-    lines: Vec<LineSegment2>,
+    pub lines: Vec<LineSegment2>,
     lines_points: Vec<LinePoints>,
+    _marker: std::marker::PhantomData<T>,
 }
 
-#[derive(Default)]
-pub struct TopLineDetectionData(Option<LineDetectionData>, Option<Image>);
+// NOTE: This needs to be implemented manually because of the `PhantomData`
+// https://github.com/rust-lang/rust/issues/26925
+impl<T: CameraLocation> Clone for DetectedLines<T> {
+    fn clone(&self) -> Self {
+        DetectedLines {
+            line_points: self.line_points.clone(),
+            line_points_next: self.line_points_next.clone(),
+            lines: self.lines.clone(),
+            lines_points: self.lines_points.clone(),
+            _marker: PhantomData,
+        }
+    }
+}
 
-#[derive(Deref)]
-pub struct TopLines(#[deref] pub Vec<LineSegment2>, pub Image);
-
+#[derive(Debug, Clone, Default)]
 struct LinePoints {
     points: Vec<(f32, f32)>,
     start_column: f32,
@@ -90,11 +108,19 @@ impl LinePoints {
     }
 }
 
-fn is_white_horizontal(column: usize, row: usize, scan_lines: &ScanLines) -> Option<bool> {
+fn is_white_horizontal<T: CameraLocation>(
+    column: usize,
+    row: usize,
+    scan_lines: &ScanLines<T>,
+) -> Option<bool> {
     is_white(column, row, scan_lines.horizontal())
 }
 
-fn is_white_vertical(column: usize, row: usize, scan_lines: &ScanLines) -> Option<bool> {
+fn is_white_vertical<T: CameraLocation>(
+    column: usize,
+    row: usize,
+    scan_lines: &ScanLines<T>,
+) -> Option<bool> {
     is_white(column, row, scan_lines.vertical())
 }
 
@@ -162,22 +188,22 @@ fn is_white(column: usize, row: usize, scan_line: &ScanLine) -> Option<bool> {
         })
 }
 
-fn detect_top_lines(
-    line_detection_data: LineDetectionData,
-    line_spots: Vec<Point2<f32>>,
-    scan_lines: ScanLines,
-) -> Result<TopLineDetectionData> {
-    Ok(TopLineDetectionData(
-        Some(detect_lines(line_detection_data, line_spots, &scan_lines)?),
-        Some(scan_lines.image().clone()),
-    ))
-}
+// fn detect_top_lines(
+//     line_detection_data: LineDetectionData,
+//     line_spots: Vec<Point2<f32>>,
+//     scan_lines: ScanLines,
+// ) -> Result<TopLineDetectionData> {
+//     Ok(TopLineDetectionData(
+//         Some(?),
+//         Some(scan_lines.image().clone()),
+//     ))
+// }
 
-fn detect_lines(
-    line_detection_data: LineDetectionData,
+fn create_line_detection_data<T: CameraLocation>(
+    line_detection_data: DetectedLines<T>,
     line_spots: Vec<Point2<f32>>,
-    scan_lines: &ScanLines,
-) -> Result<LineDetectionData> {
+    scan_lines: ScanLines<T>,
+) -> DetectedLines<T> {
     let mut points = line_detection_data.line_points;
     // TODO: This clear should not be necessary.
     points.clear();
@@ -227,7 +253,7 @@ fn detect_lines(
                         continue;
                     }
 
-                    if !is_white_horizontal(column as usize, row, scan_lines).unwrap_or(true) {
+                    if !is_white_horizontal(column as usize, row, &scan_lines).unwrap_or(true) {
                         if allowed_mistakes == 0 {
                             break;
                         }
@@ -241,7 +267,7 @@ fn detect_lines(
                         continue;
                     }
 
-                    if !is_white_vertical(column, row as usize, scan_lines).unwrap_or(true) {
+                    if !is_white_vertical(column, row as usize, &scan_lines).unwrap_or(true) {
                         if allowed_mistakes == 0 {
                             break;
                         }
@@ -279,15 +305,19 @@ fn detect_lines(
     points.clear();
     points_next.clear();
 
-    Ok(LineDetectionData {
+    DetectedLines {
         line_points: points,
         line_points_next: points_next,
         lines,
         lines_points,
-    })
+        _marker: PhantomData,
+    }
 }
 
-fn line_points_to_line(line_points: &LinePoints, image: &Image) -> LineSegment2 {
+fn line_points_to_line<T: CameraLocation>(
+    line_points: &LinePoints,
+    image: &Image<T>,
+) -> LineSegment2 {
     let mut start_column = line_points.start_column;
     let mut end_column = line_points.end_column;
     assert!(start_column <= end_column);
@@ -332,113 +362,73 @@ fn line_points_to_line(line_points: &LinePoints, image: &Image) -> LineSegment2 
     LineSegment2::from_xy(start_column, start_row, end_column, end_row)
 }
 
-fn draw_lines(
-    dbg: &DebugContext,
-    lines: &[LineSegment2],
-    image: &Image,
-    matrix: &CameraMatrix,
-    robot_pose: &RobotPose,
-) -> Result<()> {
-    let all_lines = lines.iter().map(|line| line.into()).collect::<Vec<_>>();
+// TODO: Add this back
+// fn draw_lines(
+//     dbg: &DebugContext,
+//     lines: &[LineSegment2],
+//     image: &Image,
+//     matrix: &CameraMatrix,
+//     robot_pose: &RobotPose,
+// ) -> Result<()> {
+//     let all_lines = lines.iter().map(|line| line.into()).collect::<Vec<_>>();
 
-    dbg.log_lines2d_for_image("top_camera/image/lines", &all_lines, image, color::u8::RED)?;
+//     dbg.log_lines2d_for_image("top_camera/image/lines", &all_lines, image, color::u8::RED)?;
 
-    let points_to_ground = all_lines
-        .iter()
-        .filter_map(|line| {
-            let (x1, y1) = line[0];
-            let (x2, y2) = line[1];
+//     let points_to_ground = all_lines
+//         .iter()
+//         .filter_map(|line| {
+//             let (x1, y1) = line[0];
+//             let (x2, y2) = line[1];
 
-            matrix
-                .pixel_to_ground(point![x1, y1], 0.0)
-                .ok()
-                .and_then(|p1| {
-                    matrix
-                        .pixel_to_ground(point![x2, y2], 0.0)
-                        .ok()
-                        .map(|p2| [(p1[0], p1[1], p1[2]), (p2[0], p2[1], p2[2])])
-                })
-        })
-        .collect::<Vec<_>>();
+//             matrix
+//                 .pixel_to_ground(point![x1, y1], 0.0)
+//                 .ok()
+//                 .and_then(|p1| {
+//                     matrix
+//                         .pixel_to_ground(point![x2, y2], 0.0)
+//                         .ok()
+//                         .map(|p2| [(p1[0], p1[1], p1[2]), (p2[0], p2[1], p2[2])])
+//                 })
+//         })
+//         .collect::<Vec<_>>();
 
-    dbg.log_lines3d_for_image(
-        "top_camera/lines_3d",
-        &points_to_ground,
-        image,
-        color::u8::BLUE,
-    )?;
-    dbg.log_transformation("top_camera/lines_3d", &robot_pose.as_3d(), image)?;
+//     dbg.log_lines3d_for_image(
+//         "top_camera/lines_3d",
+//         &points_to_ground,
+//         image,
+//         color::u8::BLUE,
+//     )?;
+//     dbg.log_transformation("top_camera/lines_3d", &robot_pose.as_3d(), image)?;
 
-    Ok(())
-}
+//     Ok(())
+// }
 
-#[startup_system]
-fn start_line_detection_task(
-    storage: &mut Storage,
-    top_scan_lines: &TopScanLines,
-    detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
-) -> Result<()> {
-    storage.add_resource(Resource::new(TopLines(
-        Vec::new(),
-        top_scan_lines.image().clone(),
-    )))?;
-
-    let line_spots = top_scan_lines
+pub fn detect_lines2<T: CameraLocation>(
+    mut commands: Commands,
+    previous_lines: Option<Res<DetectedLines<T>>>,
+    scan_lines: Res<ScanLines<T>>,
+) {
+    let line_spots = scan_lines
         .horizontal()
         .line_spots()
-        .chain(top_scan_lines.vertical().line_spots())
+        .chain(scan_lines.vertical().line_spots())
         .collect();
 
-    let top_scan_lines = top_scan_lines.deref().clone();
-    detect_top_lines_task
-        .try_spawn(move || detect_top_lines(Default::default(), line_spots, top_scan_lines))
-        .unwrap();
+    commands
+        .prepare_task(tasks::TaskPool::AsyncCompute)
+        .to_resource()
+        .spawn({
+            let previous_lines = previous_lines
+                .map(|lines| lines.deref().clone())
+                .unwrap_or_default();
+            let scan_lines = scan_lines.deref().clone();
 
-    Ok(())
-}
-
-#[system]
-pub fn line_detection_system(
-    top_scan_lines: &TopScanLines,
-    dbg: &DebugContext,
-    detect_top_lines_task: &mut ComputeTask<Result<TopLineDetectionData>>,
-    top_line_detection_data: &mut TopLineDetectionData,
-    top_lines: &mut TopLines,
-    camera_matrices: &CameraMatrices,
-    robot_pose: &RobotPose,
-) -> Result<()> {
-    if let Some(detect_lines_result) = detect_top_lines_task.poll() {
-        *top_line_detection_data = detect_lines_result?;
-        std::mem::swap(
-            &mut top_lines.0,
-            &mut top_line_detection_data.0.as_mut().unwrap().lines,
-        );
-
-        top_lines.1 = top_line_detection_data.1.clone().unwrap();
-        draw_lines(
-            dbg,
-            &top_lines.0,
-            &top_lines.1,
-            &camera_matrices.top,
-            robot_pose,
-        )?;
-    }
-
-    if !detect_top_lines_task.active()
-        && top_lines.1.timestamp() != top_scan_lines.image().timestamp()
-    {
-        let line_spots = top_scan_lines
-            .horizontal()
-            .line_spots()
-            .chain(top_scan_lines.vertical().line_spots())
-            .collect();
-
-        let line_detection_data = top_line_detection_data.0.take().unwrap();
-        let top_scan_lines = top_scan_lines.deref().clone();
-        detect_top_lines_task
-            .try_spawn(move || detect_top_lines(line_detection_data, line_spots, top_scan_lines))
-            .unwrap();
-    }
-
-    Ok(())
+            async move {
+                Some(create_line_detection_data(
+                    previous_lines,
+                    line_spots,
+                    scan_lines,
+                ))
+            }
+        });
 }

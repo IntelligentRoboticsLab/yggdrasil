@@ -57,11 +57,23 @@ impl Plugin for ScanLinesPlugin {
 }
 
 /// Horizontal and vertical scanlines for an image.
-#[derive(Resource, Clone)]
+#[derive(Resource)]
 pub struct ScanLines<T: CameraLocation> {
     image: Image<T>,
     horizontal: Arc<ScanLine>,
     vertical: Arc<ScanLine>,
+}
+
+// NOTE: This needs to be implemented manually because the bounds cannot be inferred properly
+// https://github.com/rust-lang/rust/issues/26925
+impl<T: CameraLocation> Clone for ScanLines<T> {
+    fn clone(&self) -> Self {
+        Self {
+            image: self.image.clone(),
+            horizontal: self.horizontal.clone(),
+            vertical: self.vertical.clone(),
+        }
+    }
 }
 
 impl<T: CameraLocation> ScanLines<T> {

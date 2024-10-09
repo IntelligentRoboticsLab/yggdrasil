@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use heimdall::CameraMatrix;
+use heimdall::{CameraLocation, CameraMatrix};
 use miette::Context;
 use nalgebra::{point, vector, Point, Point2, Point3};
 
@@ -72,7 +72,10 @@ impl LineSegment<2> {
         }
     }
 
-    pub fn project_to_3d(&self, matrix: &CameraMatrix) -> Result<LineSegment<3>> {
+    pub fn project_to_3d<T: CameraLocation>(
+        &self,
+        matrix: &CameraMatrix<T>,
+    ) -> Result<LineSegment<3>> {
         let start = matrix.pixel_to_ground(self.start, 0.0).with_context(|| {
             format!(
                 "Failed to project start point to 3D space: {:?}",
@@ -86,7 +89,10 @@ impl LineSegment<2> {
         Ok(LineSegment3::new(start, end))
     }
 
-    pub fn from_projected_xyz(line: &LineSegment<3>, matrix: &CameraMatrix) -> Result<Self> {
+    pub fn from_projected_xyz<T: CameraLocation>(
+        line: &LineSegment<3>,
+        matrix: &CameraMatrix<T>,
+    ) -> Result<Self> {
         line.project_to_2d(matrix)
     }
 }
@@ -115,7 +121,10 @@ impl LineSegment<3> {
             && point.z <= max_z
     }
 
-    pub fn from_projected_xy(line: &LineSegment<2>, matrix: &CameraMatrix) -> Result<Self> {
+    pub fn from_projected_xy<T: CameraLocation>(
+        line: &LineSegment<2>,
+        matrix: &CameraMatrix<T>,
+    ) -> Result<Self> {
         let start = matrix.pixel_to_ground(line.start, 0.0).with_context(|| {
             format!(
                 "Failed to project start point to 3D space: {:?}",
@@ -129,7 +138,10 @@ impl LineSegment<3> {
         Ok(Self { start, end })
     }
 
-    pub fn project_to_2d(&self, matrix: &CameraMatrix) -> Result<LineSegment<2>> {
+    pub fn project_to_2d<T: CameraLocation>(
+        &self,
+        matrix: &CameraMatrix<T>,
+    ) -> Result<LineSegment<2>> {
         let start = matrix.ground_to_pixel(self.start).with_context(|| {
             format!(
                 "Failed to project start point to 2D space: {:?}",
