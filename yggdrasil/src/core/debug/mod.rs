@@ -316,7 +316,7 @@ impl<'w> DebugContext<'w> {
     ///
     /// The styling for the scalar series can be set using the [`DebugContext::set_scalar_series_style`] function.
     pub fn log_scalar_f32(&self, path: impl AsRef<str>, scalar: f32) -> Result<()> {
-        self.log_scalar(path, scalar as f64)
+        self.log_scalar(path, f64::from(scalar))
     }
 
     // Log an [`f64`] scalar value to the debug viewer.

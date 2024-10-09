@@ -136,64 +136,77 @@ impl From<&JointArray<f32>> for RobotKinematics {
     }
 }
 
+#[must_use]
 pub fn neck_to_robot(joints: &HeadJoints<f32>) -> Isometry3<f32> {
     Translation::from(robot_dimensions::ROBOT_TO_NECK)
         * Isometry3::rotation(Vector3::z() * joints.yaw)
 }
 
+#[must_use]
 pub fn head_to_neck(joints: &HeadJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::y() * joints.pitch)
 }
 
 // Left arm
 
+#[must_use]
 pub fn left_shoulder_to_robot(joints: &LeftArmJoints<f32>) -> Isometry3<f32> {
     Translation::from(robot_dimensions::ROBOT_TO_LEFT_SHOULDER)
         * Isometry3::rotation(Vector3::y() * joints.shoulder_pitch)
 }
 
+#[must_use]
 pub fn left_upper_arm_to_shoulder(joints: &LeftArmJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::z() * joints.shoulder_roll)
 }
 
+#[must_use]
 pub fn left_elbow_to_left_upper_arm(joints: &LeftArmJoints<f32>) -> Isometry3<f32> {
     Translation::from(robot_dimensions::LEFT_SHOULDER_TO_LEFT_ELBOW)
         * Isometry3::rotation(Vector3::x() * joints.elbow_yaw)
 }
 
+#[must_use]
 pub fn left_under_arm_to_elbow(joints: &LeftArmJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::z() * joints.elbow_roll)
 }
 
+#[must_use]
 pub fn left_wrist_to_under_arm(joints: &LeftArmJoints<f32>) -> Isometry3<f32> {
     Translation::from(robot_dimensions::ELBOW_TO_WRIST)
         * Isometry3::rotation(Vector3::x() * joints.wrist_yaw)
 }
 
+#[must_use]
 pub fn right_shoulder_to_robot(joints: &RightArmJoints<f32>) -> Isometry3<f32> {
     Translation::from(robot_dimensions::ROBOT_TO_RIGHT_SHOULDER)
         * Isometry3::rotation(Vector3::y() * joints.shoulder_pitch)
 }
 
+#[must_use]
 pub fn right_upper_arm_to_shoulder(joints: &RightArmJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::z() * joints.shoulder_roll)
 }
 
+#[must_use]
 pub fn right_elbow_to_right_upper_arm(joints: &RightArmJoints<f32>) -> Isometry3<f32> {
     Translation::from(robot_dimensions::RIGHT_SHOULDER_TO_RIGHT_ELBOW)
         * Isometry3::rotation(Vector3::x() * joints.elbow_yaw)
 }
 
+#[must_use]
 pub fn right_under_arm_to_elbow(joints: &RightArmJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::z() * joints.elbow_roll)
 }
 
+#[must_use]
 pub fn right_wrist_to_under_arm(joints: &RightArmJoints<f32>) -> Isometry3<f32> {
     Translation::from(robot_dimensions::ELBOW_TO_WRIST)
         * Isometry3::rotation(Vector3::x() * joints.wrist_yaw)
 }
 
 // Left leg
+#[must_use]
 pub fn left_pelvis_to_robot(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
     // The pelvis joint controls both the yaw and pitch of the pelvis, so we correct for this
     // by applying a 45 degree roll to the pelvis, then applying the yaw and pitch rotations.
@@ -204,24 +217,29 @@ pub fn left_pelvis_to_robot(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
         * Isometry3::rotation(Vector3::x() * -FRAC_PI_4)
 }
 
+#[must_use]
 pub fn left_hip_to_left_pelvis(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::x() * joints.hip_roll)
 }
 
+#[must_use]
 pub fn left_upper_leg_to_left_hip(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::y() * joints.hip_pitch)
 }
 
+#[must_use]
 pub fn left_knee_to_left_upper_leg(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
     Translation::from(robot_dimensions::HIP_TO_KNEE)
         * Isometry3::rotation(Vector3::y() * joints.knee_pitch)
 }
 
+#[must_use]
 pub fn left_ankle_to_left_knee(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
     Translation::from(robot_dimensions::KNEE_TO_ANKLE)
         * Isometry3::rotation(Vector3::y() * joints.ankle_pitch)
 }
 
+#[must_use]
 pub fn left_foot_to_left_ankle(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::x() * joints.ankle_roll)
 }
@@ -229,6 +247,7 @@ pub fn left_foot_to_left_ankle(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
 /// Get the height of the left hip to the ground.
 ///
 /// This values is computed by taking the translation from the left ankle to the robot frame.
+#[must_use]
 pub fn left_hip_to_ground(kinematics: &RobotKinematics) -> f32 {
     kinematics
         .left_ankle_to_robot
@@ -242,6 +261,7 @@ pub fn left_hip_to_ground(kinematics: &RobotKinematics) -> f32 {
 
 /// We use the left leg joints to calculate the right leg kinematics, because the right leg is
 /// is the only leg that contains the `hip_yaw_pitch` joint.
+#[must_use]
 pub fn right_pelvis_to_robot(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
     // The pelvis joint controls both the yaw and pitch of the pelvis, so we correct for this
     // by applying a 45 degree roll to the pelvis, then applying the yaw and pitch rotations.
@@ -252,24 +272,29 @@ pub fn right_pelvis_to_robot(joints: &LeftLegJoints<f32>) -> Isometry3<f32> {
         * Isometry3::rotation(Vector3::x() * FRAC_PI_4)
 }
 
+#[must_use]
 pub fn right_hip_to_right_pelvis(joints: &RightLegJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::x() * joints.hip_roll)
 }
 
+#[must_use]
 pub fn right_upper_leg_to_right_hip(joints: &RightLegJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::y() * joints.hip_pitch)
 }
 
+#[must_use]
 pub fn right_knee_to_right_upper_leg(joints: &RightLegJoints<f32>) -> Isometry3<f32> {
     Translation::from(robot_dimensions::HIP_TO_KNEE)
         * Isometry3::rotation(Vector3::y() * joints.knee_pitch)
 }
 
+#[must_use]
 pub fn right_ankle_to_right_knee(joints: &RightLegJoints<f32>) -> Isometry3<f32> {
     Translation::from(robot_dimensions::KNEE_TO_ANKLE)
         * Isometry3::rotation(Vector3::y() * joints.ankle_pitch)
 }
 
+#[must_use]
 pub fn right_foot_to_right_ankle(joints: &RightLegJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::x() * joints.ankle_roll)
 }

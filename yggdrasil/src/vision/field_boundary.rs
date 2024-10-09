@@ -70,6 +70,7 @@ pub struct FieldBoundary {
 
 impl FieldBoundary {
     /// Get the height of the boundary at a given horizontal pixel
+    #[must_use]
     pub fn height_at_pixel(&self, x: f32) -> f32 {
         match &self.lines {
             FieldBoundaryLines::One { line } => line.y(x),
@@ -88,6 +89,7 @@ impl FieldBoundary {
     }
 
     /// Get the line segments that span the width of the image they are predicted from
+    #[must_use]
     pub fn line_segments(&self) -> Vec<[(f32, f32); 2]> {
         match &self.lines {
             // One line segment, from the left edge to the right edge
@@ -212,7 +214,7 @@ fn resize_yuyv(yuyv_image: &YuyvImage) -> Vec<f32> {
         .copied()
         .enumerate()
         .filter(|(i, _)| (i + 2) % 4 != 0)
-        .map(|(_, p)| p as f32)
+        .map(|(_, p)| f32::from(p))
         .collect()
 }
 
@@ -237,10 +239,12 @@ pub struct Line {
 }
 
 impl Line {
+    #[must_use]
     pub fn y(&self, x: f32) -> f32 {
         self.slope * x + self.intercept
     }
 
+    #[must_use]
     pub fn intersection_point(&self, other: &Line) -> Point2<f32> {
         let x = (other.intercept - self.intercept) / (self.slope - other.slope);
         let y = self.slope * x + self.intercept;

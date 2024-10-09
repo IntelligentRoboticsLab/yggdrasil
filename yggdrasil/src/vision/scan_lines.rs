@@ -75,6 +75,7 @@ impl<T: CameraLocation> Clone for ScanLines<T> {
 }
 
 impl<T: CameraLocation> ScanLines<T> {
+    #[must_use]
     pub fn new(image: Image<T>, horizontal: ScanLine, vertical: ScanLine) -> Self {
         Self {
             image,
@@ -83,14 +84,17 @@ impl<T: CameraLocation> ScanLines<T> {
         }
     }
 
+    #[must_use]
     pub fn image(&self) -> &Image<T> {
         &self.image
     }
 
+    #[must_use]
     pub fn horizontal(&self) -> &ScanLine {
         &self.horizontal
     }
 
+    #[must_use]
     pub fn vertical(&self) -> &ScanLine {
         &self.vertical
     }
@@ -103,6 +107,7 @@ pub struct ScanLine {
 }
 
 impl ScanLine {
+    #[must_use]
     pub fn new(raw: Vec<ClassifiedScanLineRegion>) -> Self {
         Self { raw }
     }
@@ -121,6 +126,7 @@ impl ScanLine {
             .map(|r| r.line.region.line_spot())
     }
 
+    #[must_use]
     pub fn classified_scan_line_regions(&self) -> &[ClassifiedScanLineRegion] {
         &self.raw
     }
@@ -142,6 +148,7 @@ impl Deref for ScanLineRegion {
 
 impl ScanLineRegion {
     /// Approximated color of the region.
+    #[must_use]
     pub fn approx_color(&self) -> &YuvPixel {
         &self.approx_color
     }
@@ -151,12 +158,16 @@ impl ScanLineRegion {
         let self_weight = self.region.length();
 
         let (y, u, v) = (
-            self.approx_color.y as f32,
-            self.approx_color.u as f32,
-            self.approx_color.v as f32,
+            f32::from(self.approx_color.y),
+            f32::from(self.approx_color.u),
+            f32::from(self.approx_color.v),
         );
 
-        let (y_sample, u_sample, v_sample) = (sample.y as f32, sample.u as f32, sample.v as f32);
+        let (y_sample, u_sample, v_sample) = (
+            f32::from(sample.y),
+            f32::from(sample.u),
+            f32::from(sample.v),
+        );
 
         let y_sum = y * self_weight as f32 + y_sample * weight as f32;
         let u_sum = u * self_weight as f32 + u_sample * weight as f32;
@@ -182,6 +193,7 @@ impl ScanLineRegion {
         ClassifiedScanLineRegion { line: self, color }
     }
 
+    #[must_use]
     pub fn region(&self) -> &Region {
         &self.region
     }
@@ -204,6 +216,7 @@ impl Deref for ClassifiedScanLineRegion {
 
 impl ClassifiedScanLineRegion {
     /// Merges adjacent regions with the same color.
+    #[must_use]
     pub fn simplify(regions: Vec<Self>) -> Vec<Self> {
         let mut new_regions = Vec::new();
 
@@ -242,10 +255,12 @@ impl ClassifiedScanLineRegion {
         new_regions
     }
 
+    #[must_use]
     pub fn scan_line_region(&self) -> &ScanLineRegion {
         &self.line
     }
 
+    #[must_use]
     pub fn color(&self) -> &RegionColor {
         &self.color
     }
@@ -266,6 +281,7 @@ pub enum Region {
 }
 
 impl Region {
+    #[must_use]
     pub fn start_point(&self) -> usize {
         match self {
             Region::Vertical { y_start, .. } => *y_start,
@@ -273,6 +289,7 @@ impl Region {
         }
     }
 
+    #[must_use]
     pub fn end_point(&self) -> usize {
         match self {
             Region::Vertical { y_end, .. } => *y_end,
@@ -287,6 +304,7 @@ impl Region {
         }
     }
 
+    #[must_use]
     pub fn fixed_point(&self) -> usize {
         match self {
             Region::Vertical { x, .. } => *x,
@@ -297,6 +315,7 @@ impl Region {
     /// Get the position of the corresponding line spot
     ///
     /// The line spot is the point in the middle of the region.
+    #[must_use]
     pub fn line_spot(&self) -> Point2<f32> {
         match self {
             Region::Vertical { x, y_start, y_end } => {
@@ -308,6 +327,7 @@ impl Region {
         }
     }
 
+    #[must_use]
     pub fn direction(&self) -> Direction {
         match self {
             Region::Vertical { .. } => Direction::Vertical,
@@ -315,6 +335,7 @@ impl Region {
         }
     }
 
+    #[must_use]
     pub fn length(&self) -> usize {
         self.end_point() - self.start_point()
     }
@@ -371,7 +392,7 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
                 continue;
             };
 
-            let lum_diff = (pixel.y as f32 - curr_region.approx_color.y as f32).abs();
+            let lum_diff = (f32::from(pixel.y) - f32::from(curr_region.approx_color.y)).abs();
 
             if lum_diff >= config.min_edge_luminance_difference {
                 // find the exact pixel where the largest difference is
@@ -473,7 +494,7 @@ fn get_vertical_scan_lines<T: CameraLocation>(
                 continue;
             };
 
-            let lum_diff = (pixel.y as f32 - curr_region.approx_color.y as f32).abs();
+            let lum_diff = (f32::from(pixel.y) - f32::from(curr_region.approx_color.y)).abs();
 
             if lum_diff >= config.min_edge_luminance_difference {
                 // find the exact pixel where the largest difference is
@@ -577,8 +598,8 @@ fn find_edge(
                 },
             };
 
-            let lum = pixel.y as f32;
-            let lum_next = pixel_next.y as f32;
+            let lum = f32::from(pixel.y);
+            let lum_next = f32::from(pixel_next.y);
 
             let next_diff = (lum_next - lum).abs();
 
@@ -601,6 +622,7 @@ pub enum RegionColor {
 
 impl RegionColor {
     // TODO: use our field color approximate
+    #[must_use]
     pub fn classify_yuv_pixel(
         config: &ScanLinesConfig,
         _field: &FieldColorApproximate,

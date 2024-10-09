@@ -51,6 +51,7 @@ pub struct FootOffset {
 }
 
 impl FootOffset {
+    #[must_use]
     pub fn zero(hip_height: f32) -> Self {
         Self {
             forward: 0.0,

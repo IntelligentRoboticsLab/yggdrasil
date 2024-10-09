@@ -68,6 +68,7 @@ impl StepPlanner {
         self.reached_rotation_target = false;
     }
 
+    #[must_use]
     pub fn current_absolute_target(&self) -> Option<&Target> {
         self.target.as_ref()
     }
@@ -177,6 +178,7 @@ impl StepPlanner {
         None
     }
 
+    #[must_use]
     pub fn reached_target(&self) -> bool {
         self.reached_translation_target && self.reached_rotation_target
     }

@@ -15,6 +15,7 @@ pub struct Standup {
 }
 
 impl Standup {
+    #[must_use]
     pub fn completed(&self) -> bool {
         self.completed
     }

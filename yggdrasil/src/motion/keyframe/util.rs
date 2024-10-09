@@ -7,6 +7,7 @@ use std::time::Duration;
 /// * `current_position` - Starting position.
 /// * `target_position` - Final position.
 /// * `scalar` - Scalar from 0-1 that indicates what weight to assign to each position.
+#[must_use]
 pub fn lerp(
     current_position: &JointArray<f32>,
     target_position: &JointArray<f32>,
@@ -26,6 +27,7 @@ pub fn lerp(
 ///                        position.
 /// * `target_position` - Position of which you want to check if it has been reached.
 /// * `error_margin` - Range within which a target position has been reached.
+#[must_use]
 pub fn reached_position(
     current_position: &JointArray<f32>,
     target_position: &JointArray<f32>,
@@ -49,6 +51,7 @@ pub fn reached_position(
 /// * `current_position` - Current position of the robot.
 /// * `target_position` - Position the robot will move to in the following movement.
 /// * `max_speed` - The maximum speed the joints can move at, in joint unit per second.
+#[must_use]
 pub fn get_min_duration(
     current_position: &JointArray<f32>,
     target_position: &JointArray<f32>,

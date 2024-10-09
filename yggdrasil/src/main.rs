@@ -5,7 +5,10 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, EnvFilter};
 use yggdrasil::prelude::Result;
-use yggdrasil::*;
+use yggdrasil::{
+    behavior, communication, core, game_controller, kinematics, localization, motion, nao,
+    schedule, sensor, vision,
+};
 
 use bevy::prelude::*;
 

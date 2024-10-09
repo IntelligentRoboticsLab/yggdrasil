@@ -46,6 +46,7 @@ impl WalkState {
     /// Constructs an initial [`WalkState`] from a `hip_height`.
     ///
     /// This returns a new [`WalkState::Sitting`] using an estimated current `hip_height`.
+    #[must_use]
     pub fn from_hip_height(hip_height: f32, config: &WalkingEngineConfig) -> Self {
         if hip_height <= config.sitting_hip_height {
             WalkState::Sitting(hip_height)
@@ -55,6 +56,7 @@ impl WalkState {
     }
 
     /// Transitions the [`WalkState`] to the next walk state based on the provided [`WalkingEngineConfig`].
+    #[must_use]
     pub fn next(&self, config: &WalkingEngineConfig) -> Self {
         match self {
             WalkState::Standing(hip_height) => {
@@ -132,16 +134,19 @@ impl WalkingEngine {
     /// Returns whether the robot is currently sitting.
     ///
     /// TODO: Implement a better way to check if the robot is sitting, preferably by extracting sitting to a motion.
+    #[must_use]
     pub fn is_sitting(&self) -> bool {
         matches!(self.state, WalkState::Sitting(hip_height) if hip_height <= self.config.sitting_hip_height)
     }
 
     /// Returns whether the robot is currently standing.
+    #[must_use]
     pub fn is_standing(&self) -> bool {
         matches!(self.state, WalkState::Standing(hip_height) if hip_height >= self.config.hip_height)
     }
 
     /// Returns whether the robot is currently walking.
+    #[must_use]
     pub fn is_walking(&self) -> bool {
         matches!(
             self.state,
@@ -361,6 +366,7 @@ pub struct Step {
 
 impl Step {
     /// Clamps the step to the provided `max_step_size`.
+    #[must_use]
     pub fn clamped(&self, max_step_size: Step) -> Step {
         Step {
             forward: self
@@ -400,6 +406,7 @@ pub enum Side {
 }
 
 impl Side {
+    #[must_use]
     pub fn next(&self) -> Self {
         match self {
             Side::Left => Side::Right,
@@ -415,6 +422,7 @@ pub struct FootOffsets {
 }
 
 impl FootOffsets {
+    #[must_use]
     pub fn zero(hip_height: f32) -> Self {
         FootOffsets {
             left: FootOffset::zero(hip_height),

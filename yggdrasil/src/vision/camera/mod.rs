@@ -157,7 +157,7 @@ pub fn fetch_latest_frame<T: CameraLocation>(
     mut image: ResMut<Image<T>>,
     cycle: Res<Cycle>,
 ) {
-    if let Some(new_image) = camera.try_fetch_image(cycle.clone()) {
+    if let Some(new_image) = camera.try_fetch_image(*cycle) {
         *image = new_image;
     }
 }

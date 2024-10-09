@@ -41,18 +41,22 @@ impl<T: CameraLocation> Image<T> {
         }
     }
 
+    #[must_use]
     pub fn is_from_cycle(&self, cycle: Cycle) -> bool {
         self.cycle == cycle
     }
 
+    #[must_use]
     pub fn yuyv_image(&self) -> &YuyvImage {
         &self.buf
     }
 
+    #[must_use]
     pub fn timestamp(&self) -> Instant {
         self.timestamp
     }
 
+    #[must_use]
     pub fn cycle(&self) -> Cycle {
         self.cycle
     }
@@ -105,6 +109,7 @@ impl<T: CameraLocation> Image<T> {
     /// The patch is of size `width` x `height`, and padded with zeros if the patch goes out of bounds.
     ///
     /// The grayscale values are normalized to the range [0, 1].
+    #[must_use]
     pub fn get_grayscale_patch(
         &self,
         center: (usize, usize),

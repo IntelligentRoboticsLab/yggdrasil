@@ -112,7 +112,7 @@ fn update_whistle_state(
     let detections = detection_state
         .detections
         .iter()
-        .fold(0, |acc, e| acc + *e as usize);
+        .fold(0, |acc, e| acc + usize::from(*e));
 
     if detections >= config.detections_needed {
         // state.detected = true;
@@ -146,7 +146,7 @@ fn detect_whistle(
 
     commands
         .infer_model(&mut model)
-        .with_input(&(spectrogram.powers[min_i..(max_i + 1)].to_vec(),))
+        .with_input(&(spectrogram.powers[min_i..=max_i].to_vec(),))
         .create_resource()
         .spawn(|result| {
             Some(WhistleDetections {

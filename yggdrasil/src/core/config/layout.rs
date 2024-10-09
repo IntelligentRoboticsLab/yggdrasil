@@ -117,6 +117,7 @@ pub struct FieldConfig {
 }
 
 impl FieldConfig {
+    #[must_use]
     pub fn diagonal(&self) -> Vector2<f32> {
         Vector2::new(self.length, self.width)
     }
@@ -136,21 +137,17 @@ impl Index<usize> for FieldPositionsConfig {
         self.0
             .iter()
             .find(|elem| elem.player_number == index)
-            .unwrap_or_else(|| panic!("Player index {:?} not in layout configuration!", index))
+            .unwrap_or_else(|| panic!("Player index {index:?} not in layout configuration!"))
     }
 }
 
 impl FieldPositionsConfig {
+    #[must_use]
     pub fn player(&self, player_num: u8) -> &RobotPosition {
         self.0
             .iter()
             .find(|elem| elem.player_number == player_num as usize)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Player number {:?} not in layout configuration!",
-                    player_num
-                )
-            })
+            .unwrap_or_else(|| panic!("Player number {player_num:?} not in layout configuration!"))
     }
 }
 

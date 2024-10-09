@@ -63,6 +63,6 @@ mod tests {
         assert_eq!(filter.state, 2.23616);
 
         filter.update(-0.5);
-        assert_eq!(filter.state, 1.688928);
+        assert_eq!(filter.state, 1.688_928);
     }
 }

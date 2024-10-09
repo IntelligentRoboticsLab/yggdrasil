@@ -57,7 +57,7 @@ fn update_exposure_weights(
             } else {
                 let fract = (field_height - row_start) as f32 / row_height as f32;
 
-                ((ABOVE_FIELD_WEIGHT as f32 + WEIGHT_SLOPE * fract) as u8)
+                ((f32::from(ABOVE_FIELD_WEIGHT) + WEIGHT_SLOPE * fract) as u8)
                     .clamp(ABOVE_FIELD_WEIGHT, BELOW_FIELD_WEIGHT)
             }
         }

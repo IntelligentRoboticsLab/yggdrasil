@@ -14,14 +14,17 @@ pub type LineSegment2 = LineSegment<2>;
 pub type LineSegment3 = LineSegment<3>;
 
 impl<const DIM: usize> LineSegment<DIM> {
+    #[must_use]
     pub fn new(start: Point<f32, DIM>, end: Point<f32, DIM>) -> Self {
         Self { start, end }
     }
 
+    #[must_use]
     pub fn angle(&self) -> f32 {
         self.end.coords.angle(&self.start.coords)
     }
 
+    #[must_use]
     pub fn angle_between(&self, other: &LineSegment<DIM>) -> f32 {
         let angle1 = self.angle();
         let angle2 = other.angle();
@@ -31,6 +34,7 @@ impl<const DIM: usize> LineSegment<DIM> {
 }
 
 impl LineSegment<2> {
+    #[must_use]
     pub fn from_xy(x1: f32, y1: f32, x2: f32, y2: f32) -> Self {
         Self {
             start: point![x1, y1],
@@ -38,6 +42,7 @@ impl LineSegment<2> {
         }
     }
 
+    #[must_use]
     pub fn is_in_bounding_box(&self, point: Point2<f32>) -> bool {
         let min_x = self.start.x.min(self.end.x);
         let max_x = self.start.x.max(self.end.x);
@@ -47,6 +52,7 @@ impl LineSegment<2> {
         point.x >= min_x && point.x <= max_x && point.y >= min_y && point.y <= max_y
     }
 
+    #[must_use]
     pub fn intersection_point(&self, other: &LineSegment<2>) -> Option<Point2<f32>> {
         let delta_x = vector![self.start.x - self.end.x, other.start.x - other.end.x];
         let delta_y = vector![self.start.y - self.end.y, other.start.y - other.end.y];
@@ -98,6 +104,7 @@ impl LineSegment<2> {
 }
 
 impl LineSegment<3> {
+    #[must_use]
     pub fn from_xyz(x1: f32, y1: f32, z1: f32, x2: f32, y2: f32, z2: f32) -> Self {
         Self {
             start: point![x1, y1, z1],
@@ -105,6 +112,7 @@ impl LineSegment<3> {
         }
     }
 
+    #[must_use]
     pub fn is_in_bounding_box(&self, point: Point3<f32>) -> bool {
         let min_x = self.start.x.min(self.end.x);
         let max_x = self.start.x.max(self.end.x);

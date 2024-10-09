@@ -50,6 +50,7 @@ impl RobotPose {
     ///
     /// The z-axis is always 0.
     /// The rotation is around the z-axis.
+    #[must_use]
     pub fn as_3d(&self) -> Isometry3<f32> {
         Isometry3::from_parts(
             Translation3::new(self.inner.translation.x, self.inner.translation.y, 0.0),
@@ -61,30 +62,36 @@ impl RobotPose {
     ///
     /// The center of the world is at the center of the field, with the x-axis pointing towards the
     /// opponent's goal.
+    #[must_use]
     pub fn world_position(&self) -> Point2<f32> {
         self.inner.translation.vector.into()
     }
 
     /// The current rotation of the robot in the world, in radians.
+    #[must_use]
     pub fn world_rotation(&self) -> f32 {
         self.inner.rotation.angle()
     }
 
     /// Transform a point from robot coordinates to world coordinates.
+    #[must_use]
     pub fn robot_to_world(&self, point: &Point2<f32>) -> Point2<f32> {
         self.inner.transform_point(point)
     }
 
     /// Transform a point from world coordinates to robot coordinates.
+    #[must_use]
     pub fn world_to_robot(&self, point: &Point2<f32>) -> Point2<f32> {
         self.inner.inverse_transform_point(point)
     }
 
+    #[must_use]
     pub fn get_look_at_absolute(&self, point_in_world: &Point2<f32>) -> HeadJoints<f32> {
         let robot_to_point = self.world_to_robot(point_in_world).xy();
         self.get_look_at(&robot_to_point)
     }
 
+    #[must_use]
     pub fn get_look_at(&self, robot_to_point: &Point2<f32>) -> HeadJoints<f32> {
         let yaw = (robot_to_point.y / robot_to_point.x).atan();
         // This cannot be computed without properly turning it into a 3d point by e.g. projecting it, but
@@ -117,6 +124,7 @@ fn update_robot_pose(
     .expect("failed to log the pose");
 }
 
+#[must_use]
 pub fn next_robot_pose(
     robot_pose: &RobotPose,
     odometry: &Odometry,

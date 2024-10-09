@@ -61,6 +61,7 @@ pub struct RobotOrientation {
 
 impl RobotOrientation {
     /// Creates a new [`RobotOrientation`] with the provided configuration.
+    #[must_use]
     pub fn with_config(config: &OrientationFilterConfig) -> Self {
         Self {
             orientation: UnitQuaternion::identity(),
@@ -107,6 +108,7 @@ impl RobotOrientation {
     }
 
     /// Returns the current yaw of the robot, in 2D
+    #[must_use]
     pub fn yaw(&self) -> UnitComplex<f32> {
         UnitComplex::new(self.orientation.inverse().euler_angles().2)
     }
@@ -128,6 +130,7 @@ impl RobotOrientation {
         );
     }
 
+    #[must_use]
     pub fn is_steady(
         &self,
         gyro: Vector3<f32>,

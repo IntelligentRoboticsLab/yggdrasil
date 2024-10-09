@@ -98,10 +98,12 @@ pub struct Balls {
 }
 
 impl Balls {
+    #[must_use]
     pub fn no_balls(&self) -> bool {
         self.balls.is_empty()
     }
 
+    #[must_use]
     pub fn most_confident_ball(&self) -> Option<&Ball> {
         self.balls
             .iter()
@@ -111,6 +113,7 @@ impl Balls {
             })
     }
 
+    #[must_use]
     pub fn most_recent_ball(&self) -> Option<&Ball> {
         self.balls
             .iter()
@@ -187,7 +190,7 @@ fn detect_balls<T: CameraLocation>(
     }
 
     if classified_balls.is_empty() {
-        for ball in balls.balls.iter() {
+        for ball in &balls.balls {
             if ball.timestamp.elapsed() < classifier.ball_life {
                 classified_balls.push(ball.clone());
             }

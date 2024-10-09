@@ -24,7 +24,7 @@ pub enum LolaCycle {
     Flush,
 }
 
-/// Plugin that adds systems for reading and writing to the LoLA socket using [`nidhogg`].
+/// Plugin that adds systems for reading and writing to the `LoLA` socket using [`nidhogg`].
 pub(super) struct LolaPlugin;
 
 impl Plugin for LolaPlugin {

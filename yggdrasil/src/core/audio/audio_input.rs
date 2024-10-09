@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
@@ -54,7 +53,7 @@ fn setup(mut commands: Commands) {
                     let AudioBuffer {
                         ref mut last_update,
                         ref mut buffer,
-                    } = lock.deref_mut();
+                    } = &mut *lock;
 
                     *last_update = Some(info.timestamp());
 

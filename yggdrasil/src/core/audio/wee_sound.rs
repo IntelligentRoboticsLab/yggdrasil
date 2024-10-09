@@ -19,7 +19,7 @@ impl Plugin for WeeSoundPlugin {
     }
 }
 
-/// WeeSound component to play a sound with a timeout.
+/// `WeeSound` component to play a sound with a timeout.
 #[derive(Default, Resource)]
 pub struct WeeSound {
     sound_played: bool,

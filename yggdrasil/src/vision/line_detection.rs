@@ -219,10 +219,10 @@ fn create_line_detection_data<T: CameraLocation>(
             break;
         }
 
-        let mut line_points = lines_points_old
-            .pop()
-            .map(|line_points| line_points.reuse(points[0]))
-            .unwrap_or_else(|| LinePoints::new(points[0]));
+        let mut line_points = lines_points_old.pop().map_or_else(
+            || LinePoints::new(points[0]),
+            |line_points| line_points.reuse(points[0]),
+        );
 
         for point in points.iter().skip(1) {
             if (line_points.points.last().unwrap().0 - point.0).abs()
@@ -298,7 +298,7 @@ fn create_line_detection_data<T: CameraLocation>(
 
     let mut lines = line_detection_data.lines;
     lines.clear();
-    for line_points in lines_points.iter() {
+    for line_points in &lines_points {
         lines.push(line_points_to_line(line_points, scan_lines.image()));
     }
 

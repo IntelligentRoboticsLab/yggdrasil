@@ -31,7 +31,7 @@ fn yuv_to_rgb(
     (y, u, v): (u8, u8, u8),
     partial: impl Fn(f32, f32) -> (f32, f32, f32),
 ) -> (u8, u8, u8) {
-    let (y, u, v) = (y as f32, u as f32, v as f32);
+    let (y, u, v) = (f32::from(y), f32::from(u), f32::from(v));
 
     // rescale YUV values
     let y = (y - 16.0) / 219.0;
@@ -58,7 +58,7 @@ fn yuy2_to_rgb(
     (y1, u, y2, v): (u8, u8, u8, u8),
     partial: impl Fn(f32, f32) -> (f32, f32, f32),
 ) -> ((u8, u8, u8), (u8, u8, u8)) {
-    let (y1, u, y2, v) = (y1 as f32, u as f32, y2 as f32, v as f32);
+    let (y1, u, y2, v) = (f32::from(y1), f32::from(u), f32::from(y2), f32::from(v));
 
     // rescale YUV values
     let y1 = (y1 - 16.0) / 219.0;

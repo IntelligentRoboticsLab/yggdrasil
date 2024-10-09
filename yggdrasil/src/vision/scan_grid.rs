@@ -67,6 +67,7 @@ pub struct FieldColorApproximate {
 }
 
 impl FieldColorApproximate {
+    #[must_use]
     pub fn new(image: &YuyvImage) -> Self {
         let height = image.height();
 
@@ -308,7 +309,7 @@ fn get_scan_grid<T: CameraLocation>(
     let mut y_starts2 = vec![0; max_x_step2 as usize / min_x_step as usize];
 
     let mut step = 1;
-    for y1 in y_starts.iter() {
+    for y1 in &y_starts {
         for y2 in y_starts2.iter_mut().step_by(step) {
             *y2 = *y1;
         }

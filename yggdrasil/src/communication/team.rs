@@ -8,7 +8,7 @@ use miette::IntoDiagnostic;
 use crate::core::config::showtime::ShowtimeConfig;
 use crate::prelude::*;
 
-use bifrost::broadcast::*;
+use bifrost::broadcast::{Deadline, Inbound, Message, Outbound, Rate};
 use bifrost::communication::{GameControllerMessage, GameState, Half};
 use bifrost::serialization::{Decode, Encode};
 
@@ -74,7 +74,7 @@ fn ping_response(mut tc: ResMut<TeamCommunication>) {
         tc.outbound_mut()
             .push_by(msg, Deadline::Before(at))
             .into_diagnostic()
-            .expect("failed to respond with pong message")
+            .expect("failed to respond with pong message");
     }
 }
 
@@ -89,7 +89,7 @@ pub struct TeamCommunication {
 
 impl TeamCommunication {
     fn new(team_number: u8) -> Result<Self> {
-        let port = PORT_RANGE_START + team_number as u16;
+        let port = PORT_RANGE_START + u16::from(team_number);
 
         let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, port)).into_diagnostic()?;
         socket.set_nonblocking(true).into_diagnostic()?;
@@ -172,9 +172,9 @@ impl TeamCommunication {
         }
 
         let team_info = message.team(self.team_number)?;
-        let messages = team_info.message_budget.saturating_sub(MINIMAL_BUDGET) as f32;
-        let messages_per_player = messages / *players_per_team as f32;
-        let secs_per_message = secs_remaining.max(0) as f32 / messages_per_player;
+        let messages = f32::from(team_info.message_budget.saturating_sub(MINIMAL_BUDGET));
+        let messages_per_player = messages / f32::from(*players_per_team);
+        let secs_per_message = f32::from(secs_remaining.max(0)) / messages_per_player;
 
         Some(Duration::from_secs_f32(secs_per_message))
     }

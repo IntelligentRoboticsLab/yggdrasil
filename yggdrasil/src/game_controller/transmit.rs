@@ -70,7 +70,7 @@ pub fn send_message(
     let return_message = GameControllerReturnMessage::new(
         player_config.player_number,
         player_config.team_number,
-        matches!(*fall_state, FallState::Lying(_)) as u8,
+        u8::from(matches!(*fall_state, FallState::Lying(_))),
         robot_pose_to_game_controller_pose(&robot_pose),
         ball_age,
         pall_pos,

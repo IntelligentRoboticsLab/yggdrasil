@@ -71,6 +71,7 @@ pub struct Odometry {
 }
 
 impl Odometry {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }

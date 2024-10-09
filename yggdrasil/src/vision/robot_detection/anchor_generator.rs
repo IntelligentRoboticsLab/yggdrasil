@@ -163,7 +163,7 @@ where
         grid_shape[dim_index] = xi[dim_index].len();
 
         // Determine the correct repetition for each dimension
-        for (j, len) in xi.iter().map(|x| x.len()).enumerate() {
+        for (j, len) in xi.iter().map(ndarray::ArrayBase::len).enumerate() {
             if j != dim_index {
                 grid_shape[j] = len;
             }

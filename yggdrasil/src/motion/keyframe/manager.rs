@@ -28,6 +28,7 @@ pub struct ActiveMotion {
 
 impl ActiveMotion {
     /// Fetches the next submotion name to be executed.
+    #[must_use]
     pub fn get_next_submotion(&self) -> Option<&String> {
         let next_index = self.cur_sub_motion.1 + 1;
         self.motion.settings.motion_order.get(next_index)
@@ -112,11 +113,13 @@ pub struct KeyframeExecutor {
 
 impl KeyframeExecutor {
     /// Initializes a `MotionManger`.
+    #[must_use]
     pub fn new() -> Self {
         KeyframeExecutor::default()
     }
 
     /// Simple abstraction function for checking whether a motion is currently active
+    #[must_use]
     pub fn is_motion_active(&self) -> bool {
         self.active_motion.is_some()
     }
@@ -174,7 +177,7 @@ impl KeyframeExecutor {
     }
 }
 
-/// Checks whether the current NaoState fulfills a specified condition.
+/// Checks whether the current `NaoState` fulfills a specified condition.
 ///
 /// # Arguments
 /// * `nao_state` - Current state of the Nao.

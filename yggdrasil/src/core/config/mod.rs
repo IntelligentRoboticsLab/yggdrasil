@@ -152,7 +152,7 @@ fn init_config<T: Resource + Config + Send + Sync + 'static>(
         }
         Err(e) => Err(e),
     }
-    .expect(&format!("failed to load config: {}", T::PATH));
+    .unwrap_or_else(|_| panic!("failed to load config: {}", T::PATH));
 
     commands.insert_resource(config);
 }

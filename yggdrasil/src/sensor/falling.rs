@@ -36,7 +36,7 @@ pub enum FallState {
     Lying(LyingDirection),
 }
 
-/// FallDirection contains four variants which are associated with the direction of the fall.
+/// `FallDirection` contains four variants which are associated with the direction of the fall.
 #[derive(Clone, Debug)]
 pub enum FallDirection {
     Forwards,
@@ -45,7 +45,7 @@ pub enum FallDirection {
     Right,
 }
 
-/// LyingDirection contains two variants which are associated with the position of a fallen robot.
+/// `LyingDirection` contains two variants which are associated with the position of a fallen robot.
 #[derive(Clone, Debug)]
 pub enum LyingDirection {
     FacingUp,

@@ -28,6 +28,7 @@ pub struct SwingFoot {
 }
 
 impl SwingFoot {
+    #[must_use]
     pub fn support(&self) -> Side {
         match self.side {
             Side::Left => Side::Right,
@@ -35,6 +36,7 @@ impl SwingFoot {
         }
     }
 
+    #[must_use]
     pub fn swing(&self) -> Side {
         self.side
     }

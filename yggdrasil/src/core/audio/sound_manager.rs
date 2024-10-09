@@ -44,7 +44,7 @@ impl Plugin for SoundManagerPlugin {
 }
 
 #[derive(Resource)]
-/// A threadsafe SoundManager to handle loading and playing sounds.
+/// A threadsafe `SoundManager` to handle loading and playing sounds.
 pub struct SoundManager {
     audio_manager: Arc<Mutex<AudioManager<DefaultBackend>>>,
     volume: f64,
@@ -70,10 +70,7 @@ impl Default for SoundManager {
     fn default() -> Self {
         let audio_manager = AudioManager::new(AudioManagerSettings::default()).unwrap();
         let volume_string = std::env::var(VOLUME_ENV_VARIABLE_NAME).unwrap_or_else(|_| {
-            panic!(
-                "Failed to read environment variable `{}`",
-                VOLUME_ENV_VARIABLE_NAME
-            )
+            panic!("Failed to read environment variable `{VOLUME_ENV_VARIABLE_NAME}`")
         });
         let volume: f64 = volume_string.parse().unwrap();
 
