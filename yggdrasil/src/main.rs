@@ -7,54 +7,14 @@ use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, EnvFilter};
-// use yggdrasil::behavior::BehaviorModule;
-// use yggdrasil::communication::CommunicationModule;
-// use yggdrasil::core::whistle::WhistleStateModule;
-// use yggdrasil::core::{config::ConfigModule, debug::DebugModule, ml::MlModule};
-// use yggdrasil::game_controller::GameControllerModule;
-// use yggdrasil::kinematics::KinematicsModule;
-// use yggdrasil::localization::LocalizationModule;
-// use yggdrasil::motion::walk::WalkingEngineModule;
-// use yggdrasil::motion::MotionModule;
-// use yggdrasil::nao::NaoModule;
 use yggdrasil::prelude::Result;
 use yggdrasil::*;
-// use yggdrasil::schedule;
-// use yggdrasil::sensor::SensorModule;
-// use yggdrasil::vision::camera::CameraModule;
-// use yggdrasil::vision::VisionModule;
 
 use bevy::prelude::*;
 
 fn main() -> Result<()> {
     setup_tracing()?;
     miette::set_panic_hook();
-
-    // let app = App::new()
-    //     .add_module(NaoModule)?
-    //     .add_module(ConfigModule)?
-    //     .add_module(MlModule)?
-    //     .add_module(SensorModule)?
-    //     .add_module(KinematicsModule)?
-    //     .add_module(CameraModule)?
-    //     .add_module(BehaviorModule)?
-    //     .add_module(CommunicationModule)?
-    //     .add_module(GameControllerModule)?
-    //     .add_module(WalkingEngineModule)?
-    //     .add_module(DebugModule)?
-    //     .add_module(VisionModule)?
-    //     .add_module(MotionModule)?
-    //     .add_module(LocalizationModule)?
-    //     .add_module(WhistleStateModule)?;
-
-    // #[cfg(feature = "alsa")]
-    // let app = app.add_module(yggdrasil::core::audio::AudioModule)?;
-
-    // #[cfg(feature = "dependency_graph")]
-    // return app.store_system_dependency_graph("../dependency_graph.png");
-
-    // #[cfg(not(feature = "dependency_graph"))]
-    // return app.run();
 
     App::new()
         .add_plugins(MinimalPlugins)
@@ -69,6 +29,7 @@ fn main() -> Result<()> {
             behavior::BehaviorPlugins,
             kinematics::KinematicsPlugin,
             motion::MotionPlugins,
+            vision::VisionPlugins,
         ))
         .add_systems(Update, log_event)
         .run();
