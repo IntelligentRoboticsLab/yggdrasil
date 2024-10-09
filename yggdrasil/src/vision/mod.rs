@@ -1,7 +1,5 @@
 use bevy::app::{PluginGroup, PluginGroupBuilder};
 use heimdall::{Bottom, Top};
-// use robot_detection::RobotDetectionModule;
-use serde::{Deserialize, Serialize};
 
 pub mod ball_detection;
 pub mod camera;
@@ -36,22 +34,4 @@ impl PluginGroup for VisionPlugins {
 
         builder
     }
-}
-
-// impl Module for VisionModule {
-//     fn initialize(self, app: App) -> Result<App> {
-//         app.add_module(FieldBoundaryModule)?
-//             .add_module(ScanGridModule)?
-//             .add_module(ScanLinesModule)?
-//             .add_module(LineDetectionModule)?
-//             .add_module(BallDetectionModule)?
-//             .add_module(FieldMarksModule)?
-//             .add_module(RobotDetectionModule)
-//     }
-// }
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
-pub struct VisionConfig {
-    // pub field_marks: FieldMarksConfig,
 }
