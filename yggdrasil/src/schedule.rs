@@ -29,7 +29,7 @@ pub struct NaoSchedulePlugin;
 
 impl Plugin for NaoSchedulePlugin {
     fn build(&self, app: &mut App) {
-        // Add the custom schedules to the main schedule
+        // Add the custom schedules to the main schedule.
         app.world_mut()
             .resource_scope(|_, mut schedule: Mut<MainScheduleOrder>| {
                 schedule.insert_after(First, Sensor);

@@ -39,18 +39,10 @@ pub struct BallProposalConfig {
     pub max_robot_intersection: f32,
 }
 
-/// Plugin for finding possible ball locations in the top camera image
+/// Plugin for finding possible ball locations in the camera images.
 pub struct BallProposalPlugin;
 
 impl Plugin for BallProposalPlugin {
-    // fn initialize(self, app: App) -> Result<App> {
-    //     app.add_system_chain((
-    //         ball_proposals_system.after(scan_lines::scan_lines_system),
-    //         log_proposals,
-    //     ))
-    //     .add_startup_system(init_ball_proposals)
-    // }
-
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostStartup,
