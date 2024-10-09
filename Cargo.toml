@@ -36,7 +36,6 @@ ml = { path = "crates/ml" }
 nilfheim = { path = "crates/nilfheim" }
 odal = { path = "crates/odal" }
 tasks = { path = "crates/tasks" }
-tyr = { path = "crates/tyr" }
 
 # tools
 simulation = { path = "tools/simulation" }
