@@ -1,6 +1,3 @@
-use std::ops::Deref;
-
-use game_controller::GameControllerMessageEvent;
 use miette::{Context, IntoDiagnostic};
 use tracing::Level;
 use tracing_subscriber::fmt::writer::MakeWriterExt;

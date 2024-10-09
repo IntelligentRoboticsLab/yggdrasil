@@ -315,7 +315,7 @@ impl BehaviorEngine {
 /// System that is called to execute one step of the behavior engine each cycle
 #[allow(clippy::type_complexity)]
 pub fn step(
-    (mut engine, mut primary_state): (ResMut<BehaviorEngine>, ResMut<PrimaryState>),
+    (mut engine, primary_state): (ResMut<BehaviorEngine>, ResMut<PrimaryState>),
     robot_info: Res<RobotInfo>,
     (head_buttons, chest_button, contacts): (Res<HeadButtons>, Res<ChestButton>, Res<Contacts>),
     (player_config, layout_config, yggdrasil_config, behavior_config): (

@@ -42,7 +42,7 @@ fn setup(mut commands: Commands) {
         buffer_size: cpal::BufferSize::Default,
     };
 
-    let samples = AudioSamples::new(SAMPLE_RATE);
+    let samples = AudioSamples::new();
 
     let stream = device
         .build_input_stream(
@@ -104,22 +104,16 @@ impl AudioBuffer {
 }
 
 #[derive(Resource, Clone)]
-pub struct AudioSamples {
-    rate: SampleRate,
+struct AudioSamples {
     // interleaved buffer
     buffer: Arc<Mutex<AudioBuffer>>,
 }
 
 impl AudioSamples {
-    fn new(rate: SampleRate) -> Self {
+    fn new() -> Self {
         Self {
-            rate,
             buffer: Arc::new(Mutex::new(AudioBuffer::new())),
         }
-    }
-
-    fn rate(&self) -> SampleRate {
-        self.rate
     }
 
     fn last_update(&self) -> Option<Timestamp> {

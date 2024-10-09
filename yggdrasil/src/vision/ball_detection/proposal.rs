@@ -8,11 +8,9 @@ use heimdall::{Bottom, CameraLocation, CameraMatrix, Top};
 use itertools::Itertools;
 use nalgebra::Point2;
 
-use nidhogg::types::color;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    core::debug::DebugContext,
     prelude::*,
     vision::{
         camera::Image,

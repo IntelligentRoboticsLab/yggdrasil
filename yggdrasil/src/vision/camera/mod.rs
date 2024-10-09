@@ -15,9 +15,7 @@ use std::{
 };
 use tasks::conditions::task_finished;
 
-use heimdall::{
-    Camera as HardwareCamera, CameraDevice, CameraLocation, CameraPosition, ExposureWeights,
-};
+use heimdall::{Camera as HardwareCamera, CameraDevice, CameraLocation, CameraPosition};
 pub use image::Image;
 use matrix::CalibrationConfig;
 
@@ -143,6 +141,7 @@ impl<T: CameraLocation + Send + Sync> Camera<T> {
             .map(|img| Image::new(img, cycle))
     }
 
+    #[allow(dead_code)]
     fn loop_fetch_image(&self) -> Result<Image<T>> {
         let mut camera = self.inner.lock().unwrap();
 
@@ -180,91 +179,3 @@ fn init_camera<T: CameraLocation>(mut commands: Commands, config: Res<CameraConf
 
     commands.insert_resource(Camera::<T>::new(hardware_camera));
 }
-
-fn setup_exposure_weights<T: CameraLocation>(mut commands: Commands, config: Res<CameraConfig>) {
-    let settings = match T::POSITION {
-        CameraPosition::Top => &config.top,
-        CameraPosition::Bottom => &config.bottom,
-    };
-
-    commands.insert_resource(ExposureWeights::new((settings.width, settings.height)));
-}
-
-// struct JpegTopImage(Instant);
-// struct JpegBottomImage(Instant);
-
-// #[system]
-// fn debug_camera_system(
-//     ctx: &DebugContext,
-//     camera_matrices: &CameraMatrices,
-//     bottom_image: &BottomImage,
-//     bottom_task: &mut ComputeTask<JpegBottomImage>,
-//     top_image: &TopImage,
-//     top_task: &mut ComputeTask<JpegTopImage>,
-//     robot_pose: &RobotPose,
-// ) -> Result<()> {
-//     let mut bottom_timestamp = Instant::now();
-//     if let Some(bottom) = bottom_task.poll() {
-//         bottom_timestamp = bottom.0;
-//     }
-
-//     if !bottom_task.active() && bottom_timestamp != bottom_image.timestamp {
-//         let cloned = bottom_image.clone();
-//         let matrix = camera_matrices.bottom.clone();
-//         let ctx = ctx.clone();
-//         let pose = robot_pose.clone();
-//         bottom_task.try_spawn(move || {
-//             log_bottom_image(ctx, cloned, &matrix, &pose).expect("Failed to log bottom image")
-//         })?;
-//     }
-
-//     let mut top_timestamp = Instant::now();
-//     if let Some(top) = top_task.poll() {
-//         top_timestamp = top.0;
-//     }
-
-//     if !top_task.active() && top_timestamp != top_image.timestamp {
-//         let cloned = top_image.clone();
-//         let matrix = camera_matrices.top.clone();
-//         let pose = robot_pose.clone();
-//         let ctx = ctx.clone();
-//         top_task.try_spawn(move || {
-//             log_top_image(ctx, cloned, &matrix, &pose).expect("Failed to log top image")
-//         })?;
-//     }
-
-//     Ok(())
-// }
-
-// fn log_bottom_image(
-//     ctx: DebugContext,
-//     bottom_image: BottomImage,
-//     camera_matrix: &CameraMatrix,
-//     robot_pose: &RobotPose,
-// ) -> Result<JpegBottomImage> {
-//     let timestamp = bottom_image.0.timestamp;
-//     ctx.log_image("bottom_camera/image", bottom_image.clone().0, 20)?;
-//     ctx.log_camera_matrix("bottom_camera/image", camera_matrix, &bottom_image.0)?;
-
-//     // Transform the pinhole camera to the robot position.
-//     let transform = robot_pose.as_3d() * camera_matrix.camera_to_ground;
-
-//     ctx.log_transformation("bottom_camera/image", &transform, &bottom_image.0)?;
-//     Ok(JpegBottomImage(timestamp))
-// }
-
-// fn log_top_image(
-//     ctx: DebugContext,
-//     top_image: TopImage,
-//     camera_matrix: &CameraMatrix,
-//     robot_pose: &RobotPose,
-// ) -> Result<JpegTopImage> {
-//     let timestamp = top_image.0.timestamp;
-//     ctx.log_image("top_camera/image", top_image.clone().0, 20)?;
-//     ctx.log_camera_matrix("top_camera/image", camera_matrix, &top_image.0)?;
-
-//     // Transform the pinhole camera to the robot position.
-//     let transform = robot_pose.as_3d() * camera_matrix.camera_to_ground;
-//     ctx.log_transformation("top_camera/image", &transform, &top_image.0)?;
-//     Ok(JpegTopImage(timestamp))
-// }

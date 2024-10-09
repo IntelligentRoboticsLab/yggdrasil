@@ -1,10 +1,7 @@
-use crate::{
-    core::{config::layout::LayoutConfig, debug::DebugContext},
-    prelude::*,
-};
+use crate::core::config::layout::LayoutConfig;
 
 use bevy::prelude::*;
-use heimdall::{Bottom, CameraLocation, CameraMatrix, CameraPosition, Top, YuyvImage};
+use heimdall::{Bottom, CameraLocation, CameraMatrix, Top, YuyvImage};
 use nalgebra::point;
 
 use super::camera::Image;
@@ -169,34 +166,34 @@ pub fn update_bottom_scan_grid(mut scan_grid: ResMut<ScanGrid<Bottom>>, image: R
     *scan_grid = get_bottom_scan_grid(&image);
 }
 
-fn debug_scan_grid<T: CameraLocation>(
-    scan_grid: &ScanGrid<T>,
-    image: &Image<T>,
-    dbg: &DebugContext,
-) -> Result<()> {
-    let mut points = Vec::new();
+// fn debug_scan_grid<T: CameraLocation>(
+//     scan_grid: &ScanGrid<T>,
+//     image: &Image<T>,
+//     dbg: &DebugContext,
+// ) -> Result<()> {
+//     let mut points = Vec::new();
 
-    for line in &scan_grid.lines {
-        for y in scan_grid.y.iter() {
-            points.push((line.x as f32, *y as f32));
-        }
-    }
+//     for line in &scan_grid.lines {
+//         for y in scan_grid.y.iter() {
+//             points.push((line.x as f32, *y as f32));
+//         }
+//     }
 
-    let camera_str = match T::POSITION {
-        CameraPosition::Top => "top",
-        CameraPosition::Bottom => "bottom",
-    };
+//     let camera_str = match T::POSITION {
+//         CameraPosition::Top => "top",
+//         CameraPosition::Bottom => "bottom",
+//     };
 
-    // TODO: Fix this
-    // dbg.log_points2d_for_image(
-    //     format!("{camera_str}_camera/image/scan_lines/scan_grid"),
-    //     &points,
-    //     image,
-    //     color::u8::ORANGE,
-    // )?;
+//     // TODO: Fix this
+//     // dbg.log_points2d_for_image(
+//     //     format!("{camera_str}_camera/image/scan_lines/scan_grid"),
+//     //     &points,
+//     //     image,
+//     //     color::u8::ORANGE,
+//     // )?;
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 fn get_scan_grid<T: CameraLocation>(
     camera_matrix: &CameraMatrix<T>,

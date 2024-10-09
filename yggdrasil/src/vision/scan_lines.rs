@@ -1,10 +1,9 @@
 use std::{ops::Deref, sync::Arc};
 
-use crate::{core::debug::DebugContext, prelude::*};
+use crate::prelude::*;
 
 use super::{
     camera::Image,
-    color,
     field_boundary::FieldBoundary,
     scan_grid::{FieldColorApproximate, ScanGrid},
 };
@@ -12,7 +11,6 @@ use bevy::prelude::*;
 
 use heimdall::{Bottom, CameraLocation, CameraPosition, Top, YuvPixel, YuyvImage};
 use nalgebra::Point2;
-use nidhogg::types::RgbU8;
 use serde::{Deserialize, Serialize};
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]
@@ -647,117 +645,117 @@ pub enum CameraType {
     Bottom,
 }
 
-fn debug_scan_lines<T: CameraLocation>(
-    scan_line: &ScanLine,
-    dbg: &DebugContext,
-    image: &Image<T>,
-) -> Result<()> {
-    let scan_line = &scan_line.raw;
+// fn debug_scan_lines<T: CameraLocation>(
+//     scan_line: &ScanLine,
+//     dbg: &DebugContext,
+//     image: &Image<T>,
+// ) -> Result<()> {
+//     let scan_line = &scan_line.raw;
 
-    if scan_line.is_empty() {
-        return Ok(());
-    }
+//     if scan_line.is_empty() {
+//         return Ok(());
+//     }
 
-    let direction = scan_line[0].line.region.direction();
+//     let direction = scan_line[0].line.region.direction();
 
-    let region_len = scan_line.len();
+//     let region_len = scan_line.len();
 
-    let mut lines = Vec::with_capacity(region_len);
-    let mut colors = Vec::with_capacity(region_len);
-    let mut classifications = Vec::with_capacity(region_len);
+//     let mut lines = Vec::with_capacity(region_len);
+//     let mut colors = Vec::with_capacity(region_len);
+//     let mut classifications = Vec::with_capacity(region_len);
 
-    for line in scan_line {
-        let (r, g, b) = color::yuv_to_rgb_bt601((
-            line.line.approx_color.y,
-            line.line.approx_color.u,
-            line.line.approx_color.v,
-        ));
+//     for line in scan_line {
+//         let (r, g, b) = color::yuv_to_rgb_bt601((
+//             line.line.approx_color.y,
+//             line.line.approx_color.u,
+//             line.line.approx_color.v,
+//         ));
 
-        colors.push(RgbU8::new(r, g, b));
+//         colors.push(RgbU8::new(r, g, b));
 
-        let (r, g, b) = match line.color {
-            RegionColor::WhiteOrBlack => (255, 255, 255),
-            RegionColor::Green => (0, 255, 0),
-            RegionColor::Unknown => (128, 128, 128),
-        };
+//         let (r, g, b) = match line.color {
+//             RegionColor::WhiteOrBlack => (255, 255, 255),
+//             RegionColor::Green => (0, 255, 0),
+//             RegionColor::Unknown => (128, 128, 128),
+//         };
 
-        let start = line.line.region.start_point() as f32;
-        let end = line.line.region.end_point() as f32;
-        let fixed = line.line.region.fixed_point() as f32;
+//         let start = line.line.region.start_point() as f32;
+//         let end = line.line.region.end_point() as f32;
+//         let fixed = line.line.region.fixed_point() as f32;
 
-        match direction {
-            Direction::Horizontal => lines.push([(start, fixed), (end, fixed)]),
-            Direction::Vertical => lines.push([(fixed, start), (fixed, end)]),
-        }
-        classifications.push(RgbU8::new(r, g, b));
-    }
+//         match direction {
+//             Direction::Horizontal => lines.push([(start, fixed), (end, fixed)]),
+//             Direction::Vertical => lines.push([(fixed, start), (fixed, end)]),
+//         }
+//         classifications.push(RgbU8::new(r, g, b));
+//     }
 
-    let direction_str = match direction {
-        Direction::Horizontal => "horizontal",
-        Direction::Vertical => "vertical",
-    };
+//     let direction_str = match direction {
+//         Direction::Horizontal => "horizontal",
+//         Direction::Vertical => "vertical",
+//     };
 
-    let camera_str = match T::POSITION {
-        CameraPosition::Top => "top",
-        CameraPosition::Bottom => "bottom",
-    };
+//     let camera_str = match T::POSITION {
+//         CameraPosition::Top => "top",
+//         CameraPosition::Bottom => "bottom",
+//     };
 
-    // TODO: Fix debug output
-    // dbg.log_lines2d_for_image_with_colors(
-    //     format!("{camera_str}_camera/image/scan_lines/approximates/{direction_str}"),
-    //     &lines,
-    //     image,
-    //     &colors,
-    // )?;
+// TODO: Fix debug output
+// dbg.log_lines2d_for_image_with_colors(
+//     format!("{camera_str}_camera/image/scan_lines/approximates/{direction_str}"),
+//     &lines,
+//     image,
+//     &colors,
+// )?;
 
-    // dbg.log_lines2d_for_image_with_colors(
-    //     format!("{camera_str}_camera/image/scan_lines/classifications/{direction_str}"),
-    //     &lines,
-    //     image,
-    //     &classifications,
-    // )?;
+// dbg.log_lines2d_for_image_with_colors(
+//     format!("{camera_str}_camera/image/scan_lines/classifications/{direction_str}"),
+//     &lines,
+//     image,
+//     &classifications,
+// )?;
 
-    Ok(())
-}
+//     Ok(())
+// }
 
-fn debug_scan_line_spots<T: CameraLocation>(
-    scan_line: &ScanLine,
-    dbg: &DebugContext,
-    image: &Image<T>,
-    color: RgbU8,
-) -> Result<()> {
-    let regions = &scan_line.raw;
+// fn debug_scan_line_spots<T: CameraLocation>(
+//     scan_line: &ScanLine,
+//     dbg: &DebugContext,
+//     image: &Image<T>,
+//     color: RgbU8,
+// ) -> Result<()> {
+//     let regions = &scan_line.raw;
 
-    if regions.is_empty() {
-        return Ok(());
-    }
+//     if regions.is_empty() {
+//         return Ok(());
+//     }
 
-    let direction = regions[0].line.region.direction();
+//     let direction = regions[0].line.region.direction();
 
-    let line_spots = scan_line
-        .line_spots()
-        .map(|s| (s.x, s.y))
-        .collect::<Vec<_>>();
+//     let line_spots = scan_line
+//         .line_spots()
+//         .map(|s| (s.x, s.y))
+//         .collect::<Vec<_>>();
 
-    let colors = vec![color; line_spots.len()];
+//     let colors = vec![color; line_spots.len()];
 
-    let direction_str = match direction {
-        Direction::Horizontal => "horizontal",
-        Direction::Vertical => "vertical",
-    };
+//     let direction_str = match direction {
+//         Direction::Horizontal => "horizontal",
+//         Direction::Vertical => "vertical",
+//     };
 
-    // TODO: Fix debug output
-    //
-    // let camera_str = match T::POSITION {
-    //         CameraPosition::Top => "top",
-    //         CameraPosition::Bottom => "bottom",
-    //     };
-    // dbg.log_points2d_for_image_with_colors(
-    //     format!("{camera_str}_camera/image/scan_lines/spots/{direction_str}"),
-    //     &line_spots,
-    //     image,
-    //     &colors,
-    // )?;
+//     // TODO: Fix debug output
+//     //
+//     // let camera_str = match T::POSITION {
+//     //         CameraPosition::Top => "top",
+//     //         CameraPosition::Bottom => "bottom",
+//     //     };
+//     // dbg.log_points2d_for_image_with_colors(
+//     //     format!("{camera_str}_camera/image/scan_lines/spots/{direction_str}"),
+//     //     &line_spots,
+//     //     image,
+//     //     &colors,
+//     // )?;
 
-    Ok(())
-}
+//     Ok(())
+// }

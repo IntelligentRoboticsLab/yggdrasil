@@ -11,8 +11,8 @@ use nidhogg::types::RgbU8;
 
 use std::{marker::PhantomData, net::IpAddr};
 
-#[cfg(feature = "rerun")]
-use heimdall::YuvPlanarImage;
+// #[cfg(feature = "rerun")]
+// use heimdall::YuvPlanarImage;
 
 use crate::{
     nao::{Cycle, CycleTime},
@@ -47,38 +47,39 @@ fn init_rerun(mut commands: Commands) {
             .expect(&format!("invalid address specified in RERUN_HOST: {host}"))
     };
 
-    let stream = RerunStream::init("yggdrasil", server_address).expect("failed to initialize ");
+    let rr = RerunStream::init("yggdrasil", server_address).expect("failed to initialize ");
 
     #[cfg(feature = "rerun")]
     {
-        stream
-            .rec
+        rr.stream
             .log_static(
                 "field/mesh",
                 &rerun::Asset3D::from_file("./assets/rerun/spl_field.glb")
                     .expect("Failed to load field model")
                     .with_media_type(rerun::MediaType::glb()),
             )
-            .into_diagnostic()?;
+            .unwrap();
 
-        stream
-            .rec
+        rr.stream
             .log_static(
                 "field/mesh",
                 &rerun::Transform3D::from_translation([0.0, 0.0, -0.05]),
             )
-            .into_diagnostic()?;
+            .unwrap();
 
-        stream
-            .rec
+        rr.stream
             .log_static("/field/mesh", &rerun::ViewCoordinates::FLU)
-            .into_diagnostic()?;
+            .unwrap();
     }
 
-    commands.insert_resource(stream);
+    commands.insert_resource(rr);
 }
 
-fn set_debug_cycle(mut ctx: DebugContext, cycle: Res<Cycle>, cycle_time: Res<CycleTime>) {
+fn set_debug_cycle(
+    #[allow(unused_mut)] mut ctx: DebugContext,
+    cycle: Res<Cycle>,
+    cycle_time: Res<CycleTime>,
+) {
     ctx.set_cycle(&cycle);
     ctx.log_scalar_f32("cycle_time", cycle_time.duration.as_millis() as f32)
         .expect("failed to log cycle time to rerun");
@@ -92,6 +93,7 @@ fn set_debug_cycle(mut ctx: DebugContext, cycle: Res<Cycle>, cycle_time: Res<Cyc
 struct RerunStream {
     #[cfg(feature = "rerun")]
     stream: rerun::RecordingStream,
+    #[allow(dead_code)]
     cycle: Cycle,
 }
 
@@ -117,14 +119,20 @@ impl RerunStream {
         }
 
         #[cfg(not(feature = "rerun"))]
-        Ok(RerunStream { cycle: Cycle(0) })
+        {
+            // this variable is now used
+            let _ = recording_name;
+            let _ = rerun_host;
+
+            Ok(RerunStream { cycle: Cycle(0) })
+        }
     }
 }
 
 /// The central context used for logging debug data to [rerun](https://rerun.io).
 ///
 /// If yggdrasil is not compiled with the `rerun` feature, all calls will result in a no-op.
-#[derive(SystemParam, Clone)]
+#[derive(SystemParam)]
 pub struct DebugContext<'w> {
     #[cfg(feature = "rerun")]
     rec: ResMut<'w, RerunStream>,
@@ -149,7 +157,7 @@ impl<'w> DebugContext<'w> {
         {
             self.rec
                 .stream
-                .set_time_sequence("cycle", self.current_cycle.0 as i64);
+                .set_time_sequence("cycle", self.rec.cycle.0 as i64);
         }
     }
 
@@ -231,6 +239,7 @@ impl<'w> DebugContext<'w> {
         {
             self.set_cycle(&cycle);
             self.rec
+                .stream
                 .log(
                     path.as_ref(),
                     &rerun::Boxes2D::from_centers_and_half_sizes(centers, half_sizes)
@@ -289,6 +298,7 @@ impl<'w> DebugContext<'w> {
         {
             // Use timeless logging to set the style for the entire series
             self.rec
+                .stream
                 .log_static(
                     path.as_ref(),
                     &rerun::SeriesLine::new()
@@ -316,6 +326,7 @@ impl<'w> DebugContext<'w> {
         #[cfg(feature = "rerun")]
         {
             self.rec
+                .stream
                 .log(path.as_ref(), &rerun::Scalar::new(scalar))
                 .into_diagnostic()?;
         }
@@ -328,6 +339,7 @@ impl<'w> DebugContext<'w> {
         #[cfg(feature = "rerun")]
         {
             self.rec
+                .stream
                 .log(path.as_ref(), &rerun::TextLog::new(text))
                 .into_diagnostic()?;
         }
@@ -344,6 +356,7 @@ impl<'w> DebugContext<'w> {
         #[cfg(feature = "rerun")]
         {
             self.rec
+                .stream
                 .log(path.as_ref(), &rerun::Points2D::new(points))
                 .into_diagnostic()?;
         }
@@ -421,6 +434,7 @@ impl<'w> DebugContext<'w> {
         {
             self.set_cycle(&cycle);
             self.rec
+                .stream
                 .log(
                     path.as_ref(),
                     &rerun::Points2D::new(points)
@@ -454,6 +468,7 @@ impl<'w> DebugContext<'w> {
         {
             self.set_cycle(&cycle);
             self.rec
+                .stream
                 .log(
                     path.as_ref(),
                     &rerun::Points2D::new(points)
@@ -542,6 +557,7 @@ impl<'w> DebugContext<'w> {
         #[cfg(feature = "rerun")]
         {
             self.rec
+                .stream
                 .log(path.as_ref(), &rerun::Points3D::new(points))
                 .into_diagnostic()?;
         }
@@ -560,6 +576,7 @@ impl<'w> DebugContext<'w> {
         {
             let color = rerun::Color::from_rgb(color.red, color.green, color.blue);
             self.rec
+                .stream
                 .log(
                     path.as_ref(),
                     &rerun::Points3D::new(points)
@@ -582,6 +599,7 @@ impl<'w> DebugContext<'w> {
         #[cfg(feature = "rerun")]
         {
             self.rec
+                .stream
                 .log(
                     path.as_ref(),
                     &rerun::Arrows3D::from_vectors(vectors)
@@ -663,6 +681,7 @@ impl<'w> DebugContext<'w> {
         #[cfg(feature = "rerun")]
         {
             self.rec
+                .stream
                 .log_static("/field/mesh", &rerun::ViewCoordinates::FLU)
                 .into_diagnostic()?;
         }
