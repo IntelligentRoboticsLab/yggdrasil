@@ -93,9 +93,8 @@ impl<T: CameraLocation> Image<T> {
 
         // Remove every second y value from the yuyv image to turn it into a packed yuv image
         Ok(dst_image
-            .buffer()
-            .iter()
-            .copied()
+            .into_vec()
+            .into_iter()
             .enumerate()
             .filter(|(i, _)| (i + 2) % 4 != 0)
             .map(|(_, p)| p)

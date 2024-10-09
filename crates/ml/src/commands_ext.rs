@@ -254,14 +254,10 @@ where
             .to_entities()
             .spawn({
                 requests.into_iter().map(move |request| async move {
-                    async move {
-                        let output = InferRequest::run(request)
-                            .and_then(InferRequest::fetch_output)
-                            .ok()?;
-
-                        f(output)
-                    }
-                    .await
+                    let output = InferRequest::run(request)
+                        .and_then(InferRequest::fetch_output)
+                        .ok()?;
+                    f(output)
                 })
             })
     }
