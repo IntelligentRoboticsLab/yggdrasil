@@ -12,32 +12,42 @@ use bevy::{
 };
 use strategy::{entity::EntityStrategy, resource::ResourceStrategy};
 
+/// A tag that marks an entity as a running task.
 #[derive(Component)]
 pub struct YggdrasilTask(Task<CommandQueue>);
 
+/// A tag that provides the type annotation for a running task.
 #[derive(Component)]
 pub struct Tag<T>(PhantomData<T>);
 
+/// The generation of a task.
 #[derive(Component, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Generation(u32);
 
+/// The current generation of tasks.
+///
+/// The generation is incremented whenever a new set of tasks is spawned.
 static CURRENT_GEN: AtomicU32 = AtomicU32::new(0);
 
+/// Marker type for tasks that have no selected output method.
 pub struct UnsetTask;
+/// Marker type for tasks that output to resources.
 pub struct ResourceTask;
+/// Marker type for tasks that output to entities.
 pub struct EntityTask;
 
+/// Marker trait for task types.
 pub trait TaskType {}
 
 impl TaskType for ResourceTask {}
 impl TaskType for EntityTask {}
 
+/// Marker trait for pool types.
 pub trait PoolType {
     fn pool() -> &'static TaskPool;
 }
 
-pub struct UnsetPool;
-
+/// The pool on which a task is executed.
 #[non_exhaustive]
 pub enum TaskPool {
     Compute,
@@ -55,6 +65,7 @@ impl TaskPool {
     }
 }
 
+/// A builder for creating tasks. This is the entry point for new tasks.
 pub struct TaskBuilder<'a, 'w, 's, Type> {
     commands: &'a mut Commands<'w, 's>,
     pool: TaskPool,
@@ -184,6 +195,7 @@ fn handle_tasks(mut commands: Commands, mut query: Query<&mut YggdrasilTask>) {
     }
 }
 
+/// Plugin that provides the task system.
 pub struct TaskPlugin;
 
 impl Plugin for TaskPlugin {

@@ -10,6 +10,7 @@ use futures::channel::mpsc::{self};
 
 use crate::{
     core::config::showtime::PlayerConfig, localization::RobotPose, sensor::falling::FallState,
+    vision::ball_detection::classifier::Balls,
 };
 
 use super::{GameControllerConfig, GameControllerConnection, GameControllerSocket};
@@ -51,7 +52,7 @@ pub fn send_message(
     player_config: Res<PlayerConfig>,
     fall_state: Res<FallState>,
     robot_pose: Res<RobotPose>,
-    // balls: Res<Balls>,
+    balls: Res<Balls>,
     sender: Res<GameControllerSender>,
     connection: Res<GameControllerConnection>,
     cfg: Res<GameControllerConfig>,
@@ -60,26 +61,28 @@ pub fn send_message(
 ) {
     delay.tick(time.delta());
 
-    if delay.finished() {
-        // TODO: return the balls
-        // let game_controller_ball_data = balls_to_game_controller_ball(balls);
-
-        let return_message = GameControllerReturnMessage::new(
-            player_config.player_number,
-            player_config.team_number,
-            matches!(*fall_state, FallState::Lying(_)) as u8,
-            robot_pose_to_game_controller_pose(&robot_pose),
-            NO_BALL_DETECTED_DATA.0,
-            NO_BALL_DETECTED_DATA.1,
-        );
-
-        sender
-            .tx
-            .unbounded_send((return_message, connection.address))
-            .unwrap();
-
-        delay.set_duration(cfg.game_controller_return_delay);
+    if !delay.finished() {
+        return;
     }
+
+    // TODO: return the balls
+    let game_controller_ball_data = balls_to_game_controller_ball(&balls);
+
+    let return_message = GameControllerReturnMessage::new(
+        player_config.player_number,
+        player_config.team_number,
+        matches!(*fall_state, FallState::Lying(_)) as u8,
+        robot_pose_to_game_controller_pose(&robot_pose),
+        NO_BALL_DETECTED_DATA.0,
+        NO_BALL_DETECTED_DATA.1,
+    );
+
+    sender
+        .tx
+        .unbounded_send((return_message, connection.address))
+        .unwrap();
+
+    delay.set_duration(cfg.game_controller_return_delay);
 }
 
 fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {
@@ -91,16 +94,16 @@ fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {
     ]
 }
 
-// fn balls_to_game_controller_ball(balls: &Balls) -> (f32, [f32; 2]) {
-//     let Some(ball) = balls.most_confident_ball() else {
-//         return NO_BALL_DETECTED_DATA;
-//     };
+fn balls_to_game_controller_ball(balls: &Balls) -> (f32, [f32; 2]) {
+    let Some(ball) = balls.most_confident_ball() else {
+        return NO_BALL_DETECTED_DATA;
+    };
 
-//     (
-//         ball.timestamp.elapsed().as_secs_f32(),
-//         [
-//             ball.robot_to_ball.x * MILLIMETERS_PER_METER,
-//             ball.robot_to_ball.y * MILLIMETERS_PER_METER,
-//         ],
-//     )
-// }
+    (
+        ball.timestamp.elapsed().as_secs_f32(),
+        [
+            ball.robot_to_ball.x * MILLIMETERS_PER_METER,
+            ball.robot_to_ball.y * MILLIMETERS_PER_METER,
+        ],
+    )
+}

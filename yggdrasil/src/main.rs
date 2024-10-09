@@ -32,20 +32,8 @@ fn main() -> Result<()> {
             motion::MotionPlugins,
             vision::VisionPlugins,
         ))
-        .add_systems(Update, log_event)
         .run();
     Ok(())
-}
-
-fn log_event(mut event: EventReader<GameControllerMessageEvent>) {
-    for ev in event.read() {
-        let a = ev.deref();
-        tracing::info!(
-            "Received GameControllerMessage: ({}, {})",
-            a.packet_number,
-            a.secs_remaining
-        );
-    }
 }
 
 fn setup_tracing() -> Result<()> {

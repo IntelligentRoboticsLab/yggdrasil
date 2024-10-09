@@ -36,9 +36,15 @@ pub async fn receive_loop(
         // bit longer than a normal `GameControllerMessage`.
         let mut buffer = [0u8; 2 * size_of::<GameControllerMessage>()];
 
-        let (_size, address) = sock.recv_from(&mut buffer).await.unwrap();
+        let Ok((_size, address)) = sock.recv_from(&mut buffer).await else {
+            tracing::error!("Received invalid data from GameControllerSocket");
+            continue;
+        };
 
-        let message = GameControllerMessage::decode(&mut buffer.as_slice()).unwrap();
+        let Ok(message) = GameControllerMessage::decode(&mut buffer.as_slice()) else {
+            tracing::error!("Could not decode GameControllerMessage");
+            continue;
+        };
 
         if message.is_valid() {
             tx.unbounded_send((message, address)).unwrap();
@@ -66,9 +72,10 @@ pub fn handle_messages(
     }
 
     while let Some((message, address)) = receiver.try_recv() {
-        if !message.is_valid() {
-            tracing::warn!("Received invalid GameControllerMessage");
-        }
+        assert!(
+            message.is_valid(),
+            "Handled GameControllerMessage should always be valid"
+        );
 
         match connection.as_mut() {
             // If we already have a connection, reset the timeout
