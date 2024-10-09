@@ -132,23 +132,25 @@ fn detect_whistle(
     mut audio_sample: EventReader<AudioSamplesEvent>,
 ) {
     // Only take the last audio sample to reduce contention in case we are lagging behind
-    for AudioSamplesEvent { left, .. } in audio_sample.read().last() {
-        let spectrogram = detection_state
-            .stft
-            .compute(&left, 0, MEAN_WINDOWS)
-            .windows_mean();
+    let Some(AudioSamplesEvent { left, .. }) = audio_sample.read().last() else {
+        return;
+    };
 
-        let min_i = MIN_FREQ * spectrogram.powers.len() / NYQUIST;
-        let max_i = MAX_FREQ * spectrogram.powers.len() / NYQUIST;
+    let spectrogram = detection_state
+        .stft
+        .compute(&left, 0, MEAN_WINDOWS)
+        .windows_mean();
 
-        commands
-            .infer_model(&mut model)
-            .with_input(&(spectrogram.powers[min_i..(max_i + 1)].to_vec(),))
-            .to_resource()
-            .spawn(|result| {
-                Some(WhistleDetections {
-                    detections: result.0,
-                })
-            });
-    }
+    let min_i = MIN_FREQ * spectrogram.powers.len() / NYQUIST;
+    let max_i = MAX_FREQ * spectrogram.powers.len() / NYQUIST;
+
+    commands
+        .infer_model(&mut model)
+        .with_input(&(spectrogram.powers[min_i..(max_i + 1)].to_vec(),))
+        .to_resource()
+        .spawn(|result| {
+            Some(WhistleDetections {
+                detections: result.0,
+            })
+        });
 }
