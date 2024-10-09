@@ -56,7 +56,7 @@ fn setup(mut commands: Commands) {
                         ref mut buffer,
                     } = lock.deref_mut();
 
-                    last_update.insert(info.timestamp());
+                    *last_update = Some(info.timestamp());
 
                     // On local testing, the data buffer is not filled completely by default
                     // TODO: test this on the Nao!
