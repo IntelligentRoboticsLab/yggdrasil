@@ -11,7 +11,7 @@ use crate::{
     prelude::*,
 };
 
-use super::audio_input::{AudioSamplesEvent, TOTAL_SAMPLES};
+use super::audio_input::{AudioSamplesEvent, SAMPLES_PER_CHANNEL};
 use ml::prelude::*;
 
 // the constants below need to match the parameters used for training
@@ -20,7 +20,7 @@ const WINDOW_SIZE: usize = 512;
 /// The interval between each window in samples.
 const HOP_SIZE: usize = 256;
 /// The number of windows to take the mean of before sending the average to the model.
-const MEAN_WINDOWS: usize = (TOTAL_SAMPLES as usize - WINDOW_SIZE) / HOP_SIZE + 1;
+const MEAN_WINDOWS: usize = (SAMPLES_PER_CHANNEL as usize - WINDOW_SIZE) / HOP_SIZE + 1;
 
 /// Nyquist assumed by the model.
 const NYQUIST: usize = 24001;
@@ -33,17 +33,16 @@ pub struct WhistleDetectionPlugin;
 
 impl Plugin for WhistleDetectionPlugin {
     fn build(&self, app: &mut App) {
-        app.init_ml_model::<WhistleDetectionModel>();
-        app.init_resource::<WhistleDetectionState>();
-        app.init_resource::<WhistleDetections>();
-        app.init_config::<WhistleDetectionConfig>();
-
-        app.add_systems(
-            Update,
-            (detect_whistle, update_whistle_state)
-                .chain()
-                .run_if(task_finished::<WhistleDetections>),
-        );
+        app.init_ml_model::<WhistleDetectionModel>()
+            .init_resource::<WhistleDetectionState>()
+            .init_resource::<WhistleDetections>()
+            .init_config::<WhistleDetectionConfig>()
+            .add_systems(
+                Update,
+                (detect_whistle, update_whistle_state)
+                    .chain()
+                    .run_if(task_finished::<WhistleDetections>),
+            );
     }
 }
 
@@ -88,7 +87,7 @@ impl Default for WhistleDetectionState {
 }
 
 #[derive(Debug, Default, Resource)]
-pub struct WhistleDetections {
+struct WhistleDetections {
     pub detections: Vec<f32>,
 }
 
@@ -132,8 +131,8 @@ fn detect_whistle(
     mut model: ResMut<ModelExecutor<WhistleDetectionModel>>,
     mut audio_sample: EventReader<AudioSamplesEvent>,
 ) {
-    for AudioSamplesEvent { left, .. } in audio_sample.read() {
-        info!(?left, "left ear buffer");
+    // Only take the last audio sample to reduce contention in case we are lagging behind
+    for AudioSamplesEvent { left, .. } in audio_sample.read().last() {
         let spectrogram = detection_state
             .stft
             .compute(&left, 0, MEAN_WINDOWS)
@@ -152,46 +151,4 @@ fn detect_whistle(
                 })
             });
     }
-
-    // if !model.active() {
-    //     // take audio of arbitrary ear
-    //     let spectrogram = detection_state
-    //         .stft
-    //         .compute(&audio_input.buffer[0], 0, MEAN_WINDOWS)
-    //         .windows_mean();
-
-    //     let min_i = MIN_FREQ * spectrogram.powers.len() / NYQUIST;
-    //     let max_i = MAX_FREQ * spectrogram.powers.len() / NYQUIST;
-
-    //     // run detection model
-    //     model.try_start_infer(&spectrogram.powers[min_i..(max_i + 1)])?;
-    // }
-
-    // // check if detection cycle has been completed
-    // if let Some(Ok(result)) = model.poll::<Vec<f32>>() {
-    //     // resize state.detections if necessary
-    //     detection_state
-    //         .detections
-    //         .resize(config.detection_tries, false);
-
-    //     detection_state.detections.rotate_right(1);
-    //     detection_state.detections[0] = result[0] >= config.threshold;
-
-    //     let detections = detection_state
-    //         .detections
-    //         .iter()
-    //         .fold(0, |acc, e| acc + *e as usize);
-
-    //     if detections >= config.detections_needed {
-    //         state.detected = true;
-    //         nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
-    //         nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
-    //     } else {
-    //         state.detected = false;
-    //         nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
-    //         nao_manager.set_right_ear_led(RightEar::fill(0.0), Priority::High);
-    //     }
-    // }
-
-    // Ok(())
 }
