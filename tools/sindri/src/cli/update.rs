@@ -11,7 +11,7 @@ impl Update {
             .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
 
         tokio::process::Command::new("cargo")
-            .args(["install", "--locked", "--path", "crates/sindri"])
+            .args(["install", "--locked", "--path", "tools/sindri"])
             .status()
             .await
             .into_diagnostic()?;

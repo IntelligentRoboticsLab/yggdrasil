@@ -1,18 +1,20 @@
 [workspace]
-members = ["crates/*", "yggdrasil"]
+members = ["crates/*", "tools/*", "yggdrasil"]
 resolver = "2"
 
 [workspace.dependencies]
+yggdrasil = { path = "yggdrasil" }
+
 tasks = { path = "crates/tasks" }
 ml = { path = "crates/ml" }
 bifrost = { path = "crates/bifrost" }
-yggdrasil = { path = "yggdrasil" }
 odal = { path = "crates/odal" }
 tyr = { path = "crates/tyr" }
-sindri = { path = "crates/sindri" }
 heimdall = { path = "crates/heimdall" }
 nilfheim = { path = "crates/nilfheim" }
-simulation = { path = "crates/simulation" }
+
+sindri = { path = "tools/sindri" }
+simulation = { path = "tools/simulation" }
 
 async-std = "1.13.0"
 async-trait = "0.1.82"

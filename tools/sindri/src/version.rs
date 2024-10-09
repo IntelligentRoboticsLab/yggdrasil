@@ -95,7 +95,7 @@ impl VersionInfo {
 
     fn find_latest() -> Result<VersionInfo> {
         let version = crate::cargo::find_bin_version("sindri")?;
-        // This command is executed in "crates/sindri", and as such
+        // This command is executed in "tools/sindri", and as such
         // we need to pass "." as last argument, to tell git that we
         // only care about changes in that directory.
         let output = match Command::new("git")
@@ -103,7 +103,7 @@ impl VersionInfo {
             .arg("-1")
             .arg("--date=short")
             .arg("--format=%H %h %cd")
-            .arg("crates/sindri")
+            .arg("tools/sindri")
             .output()
         {
             Ok(output) if output.status.success() => output,

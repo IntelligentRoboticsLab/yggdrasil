@@ -56,7 +56,7 @@ Compilation of yggdrasil is handled by sindri, our tool that simplifies robot in
 After installing all of the dependencies, install sindri to your system once by running:
 
 ```bash
-cargo install --locked --path crates/sindri
+cargo install --locked --path tools/sindri
 ```
 
 After installing sindri, you can use it from the command line to build and deploy yggdrasil to the robot in one command:

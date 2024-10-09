@@ -27,7 +27,7 @@ fn set_rerun_opts() {
 }
 
 fn set_commit_info() {
-    // This command is executed in "crates/sindri"", and as such
+    // This command is executed in "tools/sindri"", and as such
     // we need to pass "." as last argument, to tell git that we
     // only care about changes in that directory.
     let output = match Command::new("git")
