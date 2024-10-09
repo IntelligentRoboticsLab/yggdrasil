@@ -140,6 +140,34 @@ where
             state: EntityOutput(self.state.0),
         }
     }
+
+    /// Run the model inference in the current scope, blocking it until the inference is complete.
+    pub fn spawn_blocking<F, T>(&mut self, f: F) -> Vec<T>
+    where
+        F: (FnOnce(<M::OutputShape as ModelOutput<M::OutputElem>>::Shape) -> T)
+            + Send
+            + Sync
+            + 'static,
+        T: Send + 'static,
+    {
+        let request = self
+            .executor
+            .request_infer(self.state.0)
+            .expect("failed to request inference");
+
+        self.commands.prepare_task(TaskPool::AsyncCompute).scope({
+            move |s| {
+                s.spawn(async move {
+                    let output = request
+                        .run()
+                        .and_then(|request| request.fetch_output())
+                        .expect("failed to fetch output");
+
+                    f(output)
+                })
+            }
+        })
+    }
 }
 
 impl<'a, 'w, 's, M> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a, M>>

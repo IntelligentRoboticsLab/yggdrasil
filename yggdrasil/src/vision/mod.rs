@@ -5,7 +5,7 @@ use heimdall::{Bottom, Top};
 // use scan_lines::ScanLinesModule;
 use serde::{Deserialize, Serialize};
 
-// pub mod ball_detection;
+pub mod ball_detection;
 pub mod camera;
 pub mod color;
 pub mod field_boundary;
@@ -32,7 +32,8 @@ impl PluginGroup for VisionPlugins {
             .add(camera::CameraPlugin::<Bottom>::default())
             .add(scan_grid::ScanGridPlugin)
             .add(scan_lines::ScanLinesPlugin)
-            .add(field_boundary::FieldBoundaryPlugin);
+            .add(field_boundary::FieldBoundaryPlugin)
+            .add(ball_detection::BallDetectionPlugin);
 
         // we only update the exposure weights for the top camera, so it cannot be part of
         // the camera plugin.
