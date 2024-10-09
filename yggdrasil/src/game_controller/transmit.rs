@@ -15,7 +15,7 @@ use crate::{
 use super::{GameControllerConfig, GameControllerConnection, GameControllerSocket};
 
 const NO_BALL_DETECTED_DATA: (f32, [f32; 2]) = (-1.0, [0.0, 0.0]);
-const MILIMETERS_PER_METER: f32 = 1_000.0;
+const MILLIMETERS_PER_METER: f32 = 1_000.0;
 
 #[derive(Resource)]
 pub struct GameControllerSender {
@@ -85,8 +85,8 @@ pub fn send_message(
 fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {
     let robot_world_position = robot_pose.world_position();
     [
-        robot_world_position.x * MILIMETERS_PER_METER,
-        robot_world_position.y * MILIMETERS_PER_METER,
+        robot_world_position.x * MILLIMETERS_PER_METER,
+        robot_world_position.y * MILLIMETERS_PER_METER,
         robot_pose.world_rotation(),
     ]
 }

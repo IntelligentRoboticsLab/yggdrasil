@@ -58,7 +58,7 @@ pub enum PrimaryState {
     Penalized,
     /// State of the robot when a half is finished
     Finished,
-    /// State the indicates the robot is performing automatic callibration
+    /// State the indicates the robot is performing automatic calibration
     Calibration,
 }
 

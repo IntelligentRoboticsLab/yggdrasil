@@ -74,7 +74,7 @@ impl<'a> SindriConfig {
 
     /// Retrieve a range from the minimum robot number to the maximum robot number defined in this config.
     ///
-    /// This range is fully inclusive for the minimum and maximum robot nubmer, e.g. [min, max]
+    /// This range is fully inclusive for the minimum and maximum robot number, e.g. [min, max]
     pub fn robot_range(&self) -> Result<RangeInclusive<u8>> {
         let min = self
             .robots

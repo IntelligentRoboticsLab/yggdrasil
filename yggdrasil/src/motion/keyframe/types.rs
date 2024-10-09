@@ -73,7 +73,7 @@ pub enum FailRoutine {
 /// # Notes
 /// - Currently only the "Standing" routine is present, which is used
 ///   to signify to the behaviour engine that the standup motion has
-///   executed succesfully.
+///   executed successfully.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ExitRoutine {
     Standing,
@@ -99,7 +99,7 @@ pub struct MotionCondition {
 pub struct MotionSettings {
     // interpolation type used during the motion
     pub interpolation_type: InterpolationType,
-    // exit routine to be executed when the motion has finished succesfully
+    // exit routine to be executed when the motion has finished successfully
     pub exit_routine: Option<ExitRoutine>,
     // the standard order the submotions will be executed in
     pub motion_order: Vec<String>,

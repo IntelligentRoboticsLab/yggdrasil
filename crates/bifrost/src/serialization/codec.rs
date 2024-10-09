@@ -488,7 +488,7 @@ impl<T> VarInt<T> {
         ((std::mem::size_of::<T>() * 8 + 7 - 1 + 1) as f64 / 7_f64) as usize;
 }
 
-/// This macro implements the [`VarInt`] for signed and unsiged types without having
+/// This macro implements the [`VarInt`] for signed and unsigned types without having
 /// to explicitly implement the [`VarInt`] for every number type.
 macro_rules! impl_varint {
     ($t:ty, unsigned) => {

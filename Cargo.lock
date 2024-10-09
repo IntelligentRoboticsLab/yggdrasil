@@ -8093,7 +8093,7 @@ dependencies = [
 
 [[package]]
 name = "sindri"
-version = "0.1.0"
+version = "0.8.3"
 dependencies = [
  "cargo_toml",
  "clap",

@@ -41,7 +41,7 @@ pub enum ErrorKind {
         path: String,
         source: std::io::Error,
     },
-    #[error("Failed to seralize toml")]
+    #[error("Failed to serialize toml")]
     Serialize(#[from] toml::ser::Error),
     #[error("Failed to deserialize toml:\n{message}\n")]
     Deserialize {

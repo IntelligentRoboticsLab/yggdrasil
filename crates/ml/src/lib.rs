@@ -1,4 +1,4 @@
-//! This module provides the functionality necessary to run machine learing (ML)
+//! This module provides the functionality necessary to run machine learning (ML)
 //! models in the framework.
 
 mod backend;

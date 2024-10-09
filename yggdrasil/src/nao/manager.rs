@@ -118,7 +118,7 @@ struct LedSettings<T> {
 ///
 /// Modules can request through the nao manager with a given priority.
 /// Each cycle, the nao manager will update the [`NaoControlMessage`] with the requests that have the highest
-/// priorties.
+/// priorities.
 /// If multiple requests with the same priority are made, the first request will be prioritized.
 #[derive(Default, Debug, Resource)]
 pub struct NaoManager {
