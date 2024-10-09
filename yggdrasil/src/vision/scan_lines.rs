@@ -34,11 +34,7 @@ impl Config for ScanLinesConfig {
     const PATH: &'static str = "scan_lines.toml";
 }
 
-/// Module that generates scan-lines from taken NAO images.
-///
-/// This module provides the following resources to the application:
-/// - [`TopScanLines`]
-/// - [`BottomScanLines`]
+/// Plugin that generates scan-lines from taken NAO images.
 pub struct ScanLinesPlugin;
 
 impl Plugin for ScanLinesPlugin {
@@ -665,6 +661,7 @@ pub enum CameraType {
     Bottom,
 }
 
+// TODO: Add thsi back
 // fn debug_scan_lines<T: CameraLocation>(
 //     scan_line: &ScanLine,
 //     dbg: &DebugContext,
@@ -738,6 +735,7 @@ pub enum CameraType {
 //     Ok(())
 // }
 
+// TODO: Add this back
 // fn debug_scan_line_spots<T: CameraLocation>(
 //     scan_line: &ScanLine,
 //     dbg: &DebugContext,
