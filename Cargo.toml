@@ -30,34 +30,34 @@ module_name_repetitions = "allow"
 yggdrasil = { path = "yggdrasil" }
 
 # yggdrasil libraries
-tasks = { path = "crates/tasks" }
-ml = { path = "crates/ml" }
 bifrost = { path = "crates/bifrost" }
-odal = { path = "crates/odal" }
-tyr = { path = "crates/tyr" }
 heimdall = { path = "crates/heimdall" }
+ml = { path = "crates/ml" }
 nilfheim = { path = "crates/nilfheim" }
+odal = { path = "crates/odal" }
+tasks = { path = "crates/tasks" }
+tyr = { path = "crates/tyr" }
 
 # tools
-sindri = { path = "tools/sindri" }
 simulation = { path = "tools/simulation" }
+sindri = { path = "tools/sindri" }
 
 # external crates
 async-std = "1.13.0"
 async-trait = "0.1.82"
-byteorder = "1.4.3"
 bevy = { version = "0.14.2", default-features = false }
+byteorder = "1.4.3"
 cargo_toml = "0.19.2"
 clap = "4.5.18"
-cpal = { version = "0.15.3" }
 colored = "2.0.4"
+cpal = { version = "0.15.3" }
 derive_more = "0.99.18"
 dialoguer = "0.11.0"
 dot-structures = "0.1.1"
 dyn-clone = "1.0.17"
 enum_dispatch = "0.3.13"
-fast_image_resize = "3.0.4"
 fast-math = "0.1.1"
+fast_image_resize = "3.0.4"
 futures = "0.3.30"
 geo = "0.28.0"
 glob = "0.3.1"
@@ -65,13 +65,15 @@ graphviz-rust = "0.9.0"
 home = "0.5.9"
 # We're stuck on this version until rerun updates
 # https://github.com/rerun-io/rerun/pull/5280
+apodize = "1.0.0"
 image = "0.25.2"
-itertools = "0.13.0"
 indicatif = "0.17.8"
+itertools = "0.13.0"
 kira = "0.8.7"
 linreg = "0.2.0"
 linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git", rev = "a66c7c23dbdafcd9b129744d7716820a979af48d" }
 local-ip-address = "0.6.3"
+lstsq = "0.5.0"
 miette = "5.10.0"
 nalgebra = { version = "0.32.6" }
 ndarray = "0.15.6"
@@ -81,7 +83,6 @@ openvino = { git = "https://github.com/YukumoHunter/openvino-rs.git", branch = "
   "runtime-linking",
 ] }
 ordered-float = "4.2.1"
-lstsq = "0.5.0"
 pathfinding = "4.11.0"
 petgraph = "0.6.5"
 proc-macro2 = "1.0.86"
@@ -90,8 +91,8 @@ rand = "0.8.5"
 rayon = "1.10.0"
 regex = "1.10.5"
 rerun = { version = "0.18.2", features = ["image"] }
-rustfft = "6.2.0"
 rustc_version = "0.4.1"
+rustfft = "6.2.0"
 serde = "1.0.210"
 serde_json = "1.0.128"
 serde_with = "3.9.0"
@@ -103,9 +104,8 @@ tokio-test = "0.4.2"
 tokio-tungstenite = "0.21.0"
 toml = "0.8.16"
 tracing = "0.1.37"
-tracing-subscriber = "0.3"
 tracing-appender = "0.2"
+tracing-subscriber = "0.3"
 tracing-tracy = "0.11.3"
 turbojpeg = "1.1.0"
 walkdir = "2.5.0"
-apodize = "1.0.0"

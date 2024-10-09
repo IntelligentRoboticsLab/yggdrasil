@@ -2,14 +2,14 @@
 min_edge_luminance_difference = 10.0
 
 # Field color
-max_field_luminance = 200.0
-min_field_saturation = 45.0
-min_field_hue = 0.0
 max_field_hue = 80.0
+max_field_luminance = 200.0
+min_field_hue = 0.0
+min_field_saturation = 45.0
 
 # White color
-min_white_luminance = 90.0
 max_white_saturation = 100.0
+min_white_luminance = 90.0
 
 # Black color
 max_black_luminance = 70.0

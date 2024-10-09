@@ -1,8 +1,8 @@
 [package]
-name = "heimdall"
 authors.workspace = true
 categories.workspace = true
 edition.workspace = true
+name = "heimdall"
 rust-version.workspace = true
 version.workspace = true
 
@@ -10,11 +10,11 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+bevy = { workspace = true }
+fast-math = { workspace = true }
 image = { workspace = true }
 linuxvideo = { workspace = true }
 miette = { workspace = true }
 nalgebra = { workspace = true }
 thiserror = { workspace = true }
 turbojpeg = { workspace = true }
-fast-math = { workspace = true }
-bevy = { workspace = true }

@@ -1,8 +1,8 @@
 [package]
-name = "niflheim"
 authors.workspace = true
 categories.workspace = true
 edition.workspace = true
+name = "niflheim"
 rust-version.workspace = true
 version.workspace = true
 

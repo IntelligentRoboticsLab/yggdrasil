@@ -1,7 +1,7 @@
 [package]
+edition = "2021"
 name = "tyr_tasks"
 version = "0.1.0"
-edition = "2021"
 
 [lib]
 name = "tyr_tasks"
@@ -14,8 +14,8 @@ rayon = { workspace = true }
 serde = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-tyr_internal = { path = "../tyr_internal" }
 tracing = { workspace = true }
+tyr_internal = { path = "../tyr_internal" }
 
 [features]
 odal = ["dep:odal", "dep:serde"]

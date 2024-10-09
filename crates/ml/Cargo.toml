@@ -1,6 +1,6 @@
 [package]
-name = "ml"
 description = "Type-safe accelerated machine learning inference in Rust"
+name = "ml"
 
 authors.workspace = true
 categories.workspace = true
@@ -12,10 +12,10 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-tasks = { workspace = true }
 bevy = { workspace = true }
-openvino = { workspace = true }
-thiserror = { workspace = true }
-ndarray = { workspace = true }
-miette = { workspace = true }
 fast_image_resize = { workspace = true }
+miette = { workspace = true }
+ndarray = { workspace = true }
+openvino = { workspace = true }
+tasks = { workspace = true }
+thiserror = { workspace = true }

@@ -1,6 +1,6 @@
 [package]
-name = "sindri"
 description = "tool that simplifies robot interaction by automating the process of building and deploying to the robots"
+name = "sindri"
 
 authors.workspace = true
 categories.workspace = true

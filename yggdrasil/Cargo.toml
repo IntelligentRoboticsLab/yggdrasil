@@ -1,7 +1,7 @@
 [package]
-name = "yggdrasil"
-description = "The yggdrasil SPL framework"
 default-run = "yggdrasil"
+description = "The yggdrasil SPL framework"
+name = "yggdrasil"
 
 authors.workspace = true
 categories.workspace = true
@@ -14,29 +14,29 @@ workspace = true
 
 [features]
 default = []
-rerun = ["dep:rerun"]
-local = []
 dependency_graph = []
+local = []
+rerun = ["dep:rerun"]
 timings = ["dep:tracing-tracy", "bevy/trace"]
 
 [dependencies]
 # our own crates here
-heimdall = { workspace = true }
-odal = { workspace = true }
-ml = { workspace = true }
-tasks = { workspace = true }
 bifrost = { workspace = true }
+heimdall = { workspace = true }
+ml = { workspace = true }
+odal = { workspace = true }
+tasks = { workspace = true }
 tyr = { workspace = true, features = ["odal"] }
 
 # external crates here
-async-std = { workspace = true }
-cpal = { workspace = true }
 apodize = { workspace = true }
+async-std = { workspace = true }
 bevy = { workspace = true, features = ["multi_threaded"] }
+cpal = { workspace = true }
 derive_more = { workspace = true }
 enum_dispatch = { workspace = true }
-fast_image_resize = { workspace = true }
 fast-math = { workspace = true }
+fast_image_resize = { workspace = true }
 futures = { workspace = true }
 geo = { workspace = true }
 image = { workspace = true }
@@ -54,12 +54,12 @@ pathfinding = { workspace = true }
 rerun = { workspace = true, optional = true }
 rustfft = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 serde_with = { workspace = true }
 thiserror = { workspace = true }
-serde_json = { workspace = true }
 tokio = { workspace = true }
 toml = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tracing-appender = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tracing-tracy = { workspace = true, optional = true }
