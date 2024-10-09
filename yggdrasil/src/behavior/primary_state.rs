@@ -70,7 +70,8 @@ fn is_penalized_by_game_controller(
     game_controller_message.is_some_and(|game_controller_message| {
         game_controller_message
             .team(team_number)
-            .is_some_and(|team| team.is_penalized(player_number))
+            .map(|team| team.is_penalized(player_number))
+            .unwrap_or(false)
     })
 }
 
@@ -112,7 +113,6 @@ pub fn update_primary_state(
     *primary_state = next_state;
 }
 
-#[must_use]
 pub fn next_primary_state(
     primary_state: &PrimaryState,
     game_controller_message: Option<&GameControllerMessage>,
