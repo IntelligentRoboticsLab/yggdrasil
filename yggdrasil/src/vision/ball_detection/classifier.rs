@@ -4,10 +4,9 @@ use std::time::{Duration, Instant};
 use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, CameraMatrix, CameraPosition, Top};
 use itertools::Itertools;
-use ml::prelude::{MlArray, ModelExecutor};
+use ml::prelude::ModelExecutor;
 use nalgebra::{Point2, Vector2};
 
-use nidhogg::types::{color, FillExt, LeftEye};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
@@ -15,7 +14,6 @@ use tasks::conditions::task_finished;
 
 use crate::localization::RobotPose;
 
-use crate::nao::{NaoManager, Priority};
 use crate::vision::camera::Image;
 use ml::prelude::*;
 

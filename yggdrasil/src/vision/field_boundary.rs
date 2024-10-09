@@ -6,7 +6,6 @@ use bevy::app::Plugin;
 use bevy::prelude::*;
 use fast_image_resize as fr;
 use heimdall::{Top, YuyvImage};
-use itertools::Itertools;
 use lstsq::Lstsq;
 use miette::Result;
 use ml::prelude::*;
@@ -165,7 +164,7 @@ fn detect_field_boundary(
     commands
         .infer_model(&mut model)
         .with_input(&(resized_image,))
-        .to_resource()
+        .create_resource()
         .spawn(move |result| {
             // Get the predicted points from the model output
             let points = result

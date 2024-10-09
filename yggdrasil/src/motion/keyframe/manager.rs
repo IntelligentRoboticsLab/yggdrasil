@@ -10,7 +10,6 @@ use nidhogg::NaoState;
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Instant;
-use tyr::prelude::*;
 
 /// Stores information about the currently active motion.
 #[derive(Debug, Clone)]

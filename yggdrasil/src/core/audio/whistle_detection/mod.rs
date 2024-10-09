@@ -102,7 +102,7 @@ fn update_whistle_state(
         .detections
         .resize(config.detection_tries, false);
 
-    if detections.detections.len() == 0 {
+    if detections.detections.is_empty() {
         return;
     }
 
@@ -138,7 +138,7 @@ fn detect_whistle(
 
     let spectrogram = detection_state
         .stft
-        .compute(&left, 0, MEAN_WINDOWS)
+        .compute(left, 0, MEAN_WINDOWS)
         .windows_mean();
 
     let min_i = MIN_FREQ * spectrogram.powers.len() / NYQUIST;
@@ -147,7 +147,7 @@ fn detect_whistle(
     commands
         .infer_model(&mut model)
         .with_input(&(spectrogram.powers[min_i..(max_i + 1)].to_vec(),))
-        .to_resource()
+        .create_resource()
         .spawn(|result| {
             Some(WhistleDetections {
                 detections: result.0,

@@ -1,10 +1,6 @@
 use crate::prelude::*;
 
-use self::audio_input::AudioInputPlugin;
-use self::sound_manager::SoundManagerPlugin;
-use self::whistle_detection::WhistleDetectionPlugin;
-
-use bevy::{app::PluginGroupBuilder, prelude::*};
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 use std::time::Duration;

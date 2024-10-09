@@ -746,12 +746,12 @@ fn debug_scan_line_spots<T: CameraLocation>(
         Direction::Vertical => "vertical",
     };
 
-    let camera_str = match T::POSITION {
-        CameraPosition::Top => "top",
-        CameraPosition::Bottom => "bottom",
-    };
-
     // TODO: Fix debug output
+    //
+    // let camera_str = match T::POSITION {
+    //         CameraPosition::Top => "top",
+    //         CameraPosition::Bottom => "bottom",
+    //     };
     // dbg.log_points2d_for_image_with_colors(
     //     format!("{camera_str}_camera/image/scan_lines/spots/{direction_str}"),
     //     &line_spots,

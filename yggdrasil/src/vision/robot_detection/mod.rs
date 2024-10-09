@@ -121,7 +121,7 @@ fn detect_robots(
     commands
         .infer_model(&mut model)
         .with_input(&(resized_image,))
-        .to_resource()
+        .create_resource()
         .spawn({
             let config = (*config).clone();
             let cycle = *cycle;

@@ -69,10 +69,12 @@ impl SoundManager {
 impl Default for SoundManager {
     fn default() -> Self {
         let audio_manager = AudioManager::new(AudioManagerSettings::default()).unwrap();
-        let volume_string = std::env::var(VOLUME_ENV_VARIABLE_NAME).expect(&format!(
-            "Failed to read environment variable `{}`",
-            VOLUME_ENV_VARIABLE_NAME
-        ));
+        let volume_string = std::env::var(VOLUME_ENV_VARIABLE_NAME).unwrap_or_else(|_| {
+            panic!(
+                "Failed to read environment variable `{}`",
+                VOLUME_ENV_VARIABLE_NAME
+            )
+        });
         let volume: f64 = volume_string.parse().unwrap();
 
         SoundManager {

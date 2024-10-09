@@ -6,13 +6,13 @@ pub trait InputContainer<E: Elem>: Sized {
 
 impl<E: Elem> InputContainer<E> for Vec<E> {
     fn view_byte_slice(&self) -> &[u8] {
-        Elem::view_bytes_slice(&self)
+        Elem::view_bytes_slice(self)
     }
 }
 
 impl<E: Elem> InputContainer<E> for MlArray<E> {
     fn view_byte_slice(&self) -> &[u8] {
-        Elem::view_bytes_slice(&self.as_slice().expect("failed to get slice from MlArray"))
+        Elem::view_bytes_slice(self.as_slice().expect("failed to get slice from MlArray"))
     }
 }
 

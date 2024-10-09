@@ -46,7 +46,7 @@ pub unsafe trait Elem: Sized + Send + Sync + 'static {
     /// Returns a view to the bytes of a slice of `Self`s.
     fn view_bytes_slice(slice: &[Self]) -> &[u8] {
         let ptr = slice.as_ptr() as *const u8;
-        let len = slice.len() * std::mem::size_of::<Self>() / std::mem::size_of::<u8>();
+        let len = std::mem::size_of_val(slice) / std::mem::size_of::<u8>();
 
         // Safety: the pointer is valid and the length is correct.
         unsafe { std::slice::from_raw_parts(ptr, len) }

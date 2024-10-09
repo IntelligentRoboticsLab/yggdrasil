@@ -169,7 +169,7 @@ fn init_camera<T: CameraLocation>(mut commands: Commands, config: Res<CameraConf
         CameraPosition::Bottom => &config.bottom,
     };
 
-    let camera_device = setup_camera_device(&settings).expect("failed to setup camera device");
+    let camera_device = setup_camera_device(settings).expect("failed to setup camera device");
     let hardware_camera = HardwareCamera::new(
         camera_device,
         settings.width,

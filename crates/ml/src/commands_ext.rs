@@ -123,7 +123,7 @@ where
 {
     /// Send the output of the model to a [`Resource`] will be spawned as soon as the model
     /// inference is complete.
-    pub fn to_resource(self) -> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a, M>> {
+    pub fn create_resource(self) -> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a, M>> {
         MlInferenceBuilder {
             commands: self.commands,
             executor: self.executor,
@@ -133,7 +133,7 @@ where
 
     /// A new entity that will be spawned with the output attached
     /// as components as soon as the model inference is complete.
-    pub fn to_entity(self) -> MlInferenceBuilder<'a, 'w, 's, M, EntityOutput<'a, M>> {
+    pub fn create_entity(self) -> MlInferenceBuilder<'a, 'w, 's, M, EntityOutput<'a, M>> {
         MlInferenceBuilder {
             commands: self.commands,
             executor: self.executor,
@@ -220,7 +220,7 @@ where
     {
         let request = self
             .executor
-            .request_infer(&self.state.0)
+            .request_infer(self.state.0)
             .expect("failed to request inference");
 
         self.commands
@@ -242,7 +242,7 @@ where
     M: MlModel,
 {
     /// Spawn an entity with the output attached a component for each batch.
-    pub fn to_entities(self) -> MlInferenceBuilder<'a, 'w, 's, M, EntitiesOutput<'a, M>> {
+    pub fn create_entities(self) -> MlInferenceBuilder<'a, 'w, 's, M, EntitiesOutput<'a, M>> {
         MlInferenceBuilder {
             commands: self.commands,
             executor: self.executor,
@@ -272,7 +272,7 @@ where
             .iter()
             .map(|input| {
                 self.executor
-                    .request_infer(&input)
+                    .request_infer(input)
                     .expect("failed to create inference request")
             })
             .collect::<Vec<InferRequest<M>>>();

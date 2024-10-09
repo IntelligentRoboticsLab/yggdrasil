@@ -96,7 +96,7 @@ pub fn keyframe_executor(
 
         // getting the next position for the robot
         if let Some(next_position) = move_to_starting_position(
-            &mut keyframe_executor,
+            &keyframe_executor,
             target_position,
             duration,
             &movement_start.elapsed(),

@@ -38,10 +38,12 @@ pub(super) fn configure_showtime(
     let player_number = *showtime_config
         .robot_numbers_map
         .get(&robot_info.robot_id.to_string())
-        .expect(&format!(
-            "Could not find robot {} in showtime config",
-            robot_info.robot_id
-        ));
+        .unwrap_or_else(|| {
+            panic!(
+                "Could not find robot {} in showtime config",
+                robot_info.robot_id
+            )
+        });
     let team_number = showtime_config.team_number;
 
     let player_config = PlayerConfig {
