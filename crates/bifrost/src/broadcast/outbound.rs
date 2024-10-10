@@ -89,7 +89,7 @@ impl<M: Message> Outbound<M> {
     ///
     /// # Errors
     ///
-    /// See [`Fragment::new`].
+    /// Returns an error if the message is too long to fit in a single packet.
     pub fn push_at(
         &mut self,
         message: M,

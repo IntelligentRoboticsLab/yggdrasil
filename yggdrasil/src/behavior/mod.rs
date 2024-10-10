@@ -12,9 +12,6 @@ pub use behavior_config::BehaviorConfig;
 pub use engine::BehaviorEngine;
 
 /// A collection of plugins related to behaviors.
-///
-/// This module adds the following modules to the application:
-/// - [`BehaviorEngineModule`]
 pub struct BehaviorPlugins;
 
 impl PluginGroup for BehaviorPlugins {

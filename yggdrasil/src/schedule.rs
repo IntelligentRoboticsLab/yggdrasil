@@ -2,13 +2,14 @@ use bevy::{app::MainScheduleOrder, ecs::schedule::ScheduleLabel, prelude::*};
 
 /// The schedule that contains logic that updates resources using sensor data.
 ///
-/// See the [`Nao`] schedule for some details about how schedules are run.
+/// This schedule runs directly after the [`First`] schedule, and is used to update resources
+/// that depend on sensor data.
 #[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Sensor;
 
 /// The schedule that runs before [`Write`].
 ///
-/// For example this is used to finalize any changes in the [`super::manager::NaoManager`]
+/// For example this is used to finalize any changes in the [`super::nao::NaoManager`]
 /// and update the control messages that will be sent to the `LoLA` socket.
 #[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PreWrite;

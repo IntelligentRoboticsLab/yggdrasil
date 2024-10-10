@@ -27,21 +27,10 @@ const MINIMUM_LINE_SLOPE: f32 = 0.05;
 
 const MAX_PIXEL_DISTANCE: usize = 1;
 
-/// Module that detect lines from scan-lines.
-///
-/// This module provides the following resources to the application:
-/// - [`TopLines`]
+/// Plugin that adds systems to detect lines from scan-lines.
 pub struct LineDetectionPlugin;
 
 impl Plugin for LineDetectionPlugin {
-    // fn initialize(self, app: App) -> Result<App> {
-    //     // app.add_system(line_detection_system.after(super::scan_lines::scan_lines_system))
-    //     app.add_system(line_detection_system.after(super::scan_lines::scan_lines_system))
-    //         .add_task::<ComputeTask<Result<TopLineDetectionData>>>()?
-    //         .add_startup_system(start_line_detection_task)?
-    //         .init_resource::<TopLineDetectionData>()
-    // }
-
     fn build(&self, app: &mut bevy::prelude::App) {
         app.init_resource::<DetectedLines<Top>>();
         app.add_systems(
