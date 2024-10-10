@@ -16,9 +16,8 @@ pub(super) struct OdometryPlugin;
 
 impl Plugin for OdometryPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Odometry>();
-
-        app.add_systems(PostStartup, init_odometry_view_coordinates)
+        app.init_resource::<Odometry>()
+            .add_systems(PostStartup, init_odometry_view_coordinates)
             .add_systems(
                 PreUpdate,
                 update_odometry
