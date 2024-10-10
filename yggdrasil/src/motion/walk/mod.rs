@@ -148,8 +148,8 @@ fn run_walking_engine(
     let mut right_shoulder_pitch = -right_foot.forward * balancing_config.arm_swing_multiplier;
 
     // Balance adjustment
-    let balance_adjustment =
-        walking_engine.filtered_gyroscope.update(imu.gyroscope).y * balancing_config.filtered_gyro_y_multiplier;
+    let balance_adjustment = walking_engine.filtered_gyroscope.update(imu.gyroscope).y
+        * balancing_config.filtered_gyro_y_multiplier;
     match walking_engine.swing_foot {
         Side::Left => {
             right_leg_joints.ankle_pitch += balance_adjustment;

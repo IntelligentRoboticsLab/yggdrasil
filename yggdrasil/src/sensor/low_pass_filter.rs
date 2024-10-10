@@ -1,5 +1,5 @@
-use std::f32::consts::PI;
 use nalgebra::SVector;
+use std::f32::consts::PI;
 
 /// First-order Butterworth low-pass filter
 #[derive(Copy, Clone, Debug)]
