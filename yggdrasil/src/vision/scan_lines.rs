@@ -4,8 +4,8 @@ use crate::prelude::*;
 
 use super::{
     camera::{init_camera, Image},
-    field_boundary::{init_field_boundary, FieldBoundary},
-    scan_grid::{init_bottom_scan_grid, init_top_scan_grid, FieldColorApproximate, ScanGrid},
+    field_boundary::FieldBoundary,
+    scan_grid::{FieldColorApproximate, ScanGrid},
 };
 use bevy::prelude::*;
 

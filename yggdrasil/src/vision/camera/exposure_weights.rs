@@ -3,7 +3,6 @@ use crate::vision::field_boundary::FieldBoundary;
 use super::{init_camera, Camera, Image};
 use bevy::{prelude::*, tasks::IoTaskPool};
 use heimdall::{ExposureWeights, Top};
-use tasks::conditions::task_finished;
 
 const SAMPLES_PER_COLUMN: usize = 4;
 const ABOVE_FIELD_WEIGHT: u8 = 0;

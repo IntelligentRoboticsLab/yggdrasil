@@ -10,7 +10,6 @@ use lstsq::Lstsq;
 use ml::prelude::*;
 use nalgebra::Point2;
 use std::num::NonZeroU32;
-use tasks::conditions::task_finished;
 
 use super::camera::init_camera;
 

@@ -10,7 +10,6 @@ use nalgebra::{Point2, Vector2};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
-use tasks::conditions::task_finished;
 
 use crate::localization::RobotPose;
 
