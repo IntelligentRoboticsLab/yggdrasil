@@ -177,13 +177,28 @@ impl<M: MlModel> InferRequest<M> {
         input_descrs: &[TensorDescr],
         output_descrs: &[TensorDescr],
     ) -> Result<Self> {
+        if inputs.len() != input_descrs.len() {
+            return Err(Error::InputCountMismatch {
+                expected: input_descrs.len(),
+                actual: inputs.len(),
+            });
+        }
+
         for (description, input) in input_descrs.iter().zip(inputs) {
             let cfg = &description.cfg;
 
+            let expected = cfg
+                .dims()
+                .iter()
+                .copied()
+                .reduce(|a, b| a * b)
+                .expect("failed to compute number of inputs!");
+
             // check if input is of correct size
-            if input.len() != cfg.len() {
+            let input_len = input.len() / std::mem::size_of::<M::InputElem>();
+            if input_len != expected {
                 return Err(Error::InferenceInputSize {
-                    expected: cfg.dims()[0],
+                    expected,
                     actual: input.len(),
                 });
             }

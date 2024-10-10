@@ -48,6 +48,9 @@ pub enum Error {
     #[error("Failed to start inference")]
     StartInference(#[source] openvino::InferenceError),
 
+    #[error("Number of inputs in the model ({expected}) does not match the number of inputs provided ({actual})")]
+    InputCountMismatch { expected: usize, actual: usize },
+
     #[error(
         "Inference input is of size {actual}, while the model expects an input of size {expected}"
     )]
