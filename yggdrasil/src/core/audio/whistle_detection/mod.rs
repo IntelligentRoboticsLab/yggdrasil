@@ -46,6 +46,9 @@ impl Plugin for WhistleDetectionPlugin {
     }
 }
 
+/// Whistle detection model.
+///
+/// A simple mlp that takes the STFT of the audio signal and outputs a single value.
 pub struct WhistleDetectionModel;
 
 impl MlModel for WhistleDetectionModel {

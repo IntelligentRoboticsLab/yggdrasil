@@ -61,11 +61,10 @@ pub fn latest_n<T: Send + Component>(
         queue.push(move |world: &mut World| {
             let mut old_entities = world.query::<(Entity, &Generation)>();
 
-            let old_generations: Vec<Generation> = {
+            let old_generations: Vec<&Generation> = {
                 let mut generations: Vec<_> = old_entities
                     .iter(world)
                     .map(|(_, generation)| generation)
-                    .cloned()
                     .collect();
 
                 generations.sort();
