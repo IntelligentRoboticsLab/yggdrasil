@@ -9,7 +9,7 @@ use crate::vision::camera::CameraConfig;
 use crate::{behavior::primary_state::PrimaryStateConfig, sensor::SensorConfig};
 
 #[derive(Resource, Debug, Deserialize, Serialize)]
-// #[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields)]
 pub struct YggdrasilConfig {
     pub camera: CameraConfig,
     pub filter: SensorConfig,
