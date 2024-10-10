@@ -11,6 +11,7 @@ use std::time::Duration;
 pub mod audio_input;
 pub mod sound_manager;
 pub mod wee_sound;
+pub mod battery_sound;
 pub mod whistle_detection;
 
 #[serde_as]

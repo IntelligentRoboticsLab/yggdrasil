@@ -7,6 +7,7 @@ use miette::{Context, IntoDiagnostic};
 use std::sync::{Arc, Mutex};
 
 use super::wee_sound::WeeSoundModule;
+use super::battery_sound::BatterySoundModule;
 
 const VOLUME_ENV_VARIABLE_NAME: &str = "YGGDRASIL_VOLUME";
 
@@ -18,6 +19,7 @@ const VOLUME_ENV_VARIABLE_NAME: &str = "YGGDRASIL_VOLUME";
 pub enum Sound {
     Weee,
     Ghast,
+    ChargeMe,
 }
 
 impl Sound {
@@ -25,6 +27,7 @@ impl Sound {
         match self {
             Self::Weee => "./assets/sounds/weeeee.wav",
             Self::Ghast => "./assets/sounds/ghast.wav",
+            Self::ChargeMe => "./assets/sounds/batterysound.wav",
         }
     }
 }
@@ -35,7 +38,8 @@ pub struct SoundManagerModule;
 impl Module for SoundManagerModule {
     fn initialize(self, app: App) -> Result<App> {
         app.add_resource(Resource::new(SoundManager::new()?))?
-            .add_module(WeeSoundModule)
+            .add_module(WeeSoundModule)?
+            .add_module(BatterySoundModule)
     }
 }
 
