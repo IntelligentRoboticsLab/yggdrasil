@@ -14,7 +14,7 @@ use tasks::conditions::task_finished;
 
 use crate::localization::RobotPose;
 
-use crate::vision::camera::Image;
+use crate::vision::camera::{init_camera, Image};
 use ml::prelude::*;
 
 use super::proposal::BallProposals;
@@ -36,17 +36,22 @@ pub(crate) struct BallClassifierPlugin;
 impl Plugin for BallClassifierPlugin {
     fn build(&self, app: &mut App) {
         app.init_ml_model::<BallClassifierModel>();
-        app.add_systems(PostStartup, init_ball_classifier);
+        app.add_systems(
+            PostStartup,
+            init_ball_classifier
+                .after(init_camera::<Top>)
+                .after(init_camera::<Bottom>),
+        );
 
         app.add_systems(
             Update,
             (
                 detect_balls::<Top>
                     .after(super::proposal::update_ball_proposals::<Top>)
-                    .run_if(task_finished::<Image<Top>>),
+                    .run_if(resource_exists_and_changed::<Image<Top>>),
                 detect_balls::<Bottom>
                     .after(super::proposal::update_ball_proposals::<Bottom>)
-                    .run_if(task_finished::<Image<Bottom>>),
+                    .run_if(resource_exists_and_changed::<Image<Bottom>>),
             ),
         );
     }

@@ -2,16 +2,15 @@
 
 use bevy::prelude::*;
 use std::ops::Add;
-use tasks::conditions::task_finished;
 
-use heimdall::{Bottom, CameraLocation, CameraMatrix, Top};
+use heimdall::{Bottom, CameraLocation, CameraMatrix, CameraPosition, Top};
 use itertools::Itertools;
 use nalgebra::Point2;
 
 use serde::{Deserialize, Serialize};
 
 use crate::vision::{
-    camera::Image,
+    camera::{init_camera, Image},
     scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLines},
     util::bbox::Bbox,
 };
@@ -45,19 +44,20 @@ pub struct BallProposalPlugin;
 impl Plugin for BallProposalPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            PostStartup,
-            (init_ball_proposals::<Top>, init_ball_proposals::<Bottom>),
-        );
-
-        app.add_systems(
+            Startup,
+            (init_ball_proposals::<Top>, init_ball_proposals::<Bottom>)
+                .after(init_camera::<Top>)
+                .after(init_camera::<Bottom>),
+        )
+        .add_systems(
             Update,
             (
                 update_ball_proposals::<Top>
                     .after(crate::vision::scan_lines::update_scan_lines::<Top>)
-                    .run_if(task_finished::<Image<Top>>),
+                    .run_if(resource_exists_and_changed::<ScanLines<Top>>),
                 update_ball_proposals::<Bottom>
                     .after(crate::vision::scan_lines::update_scan_lines::<Bottom>)
-                    .run_if(task_finished::<Image<Bottom>>),
+                    .run_if(resource_exists_and_changed::<ScanLines<Bottom>>),
             ),
         );
     }
@@ -90,9 +90,13 @@ pub fn update_ball_proposals<T: CameraLocation>(
     mut ball_proposals: ResMut<BallProposals<T>>,
     scan_lines: Res<ScanLines<T>>,
     matrix: Res<CameraMatrix<T>>,
-    config: Res<BallProposalConfig>,
+    configs: Res<BallProposalConfigs>,
 ) {
-    *ball_proposals = get_ball_proposals(&scan_lines, &matrix, &config);
+    let config = match T::POSITION {
+        CameraPosition::Top => &configs.top,
+        CameraPosition::Bottom => &configs.bottom,
+    };
+    *ball_proposals = get_ball_proposals(&scan_lines, &matrix, config);
 
     // TODO: Add this back
     // if let Some(robots) = robots {
@@ -286,8 +290,8 @@ fn get_ball_proposals<T: CameraLocation>(
     BallProposals { image, proposals }
 }
 
-fn init_ball_proposals<T: CameraLocation>(mut commands: Commands, scan_lines: Res<ScanLines<T>>) {
-    commands.insert_resource(BallProposals::empty(scan_lines.image().clone()));
+fn init_ball_proposals<T: CameraLocation>(mut commands: Commands, image: Res<Image<T>>) {
+    commands.insert_resource(BallProposals::empty(image.clone()));
 }
 
 // TODO: Fix

@@ -3,9 +3,9 @@ use std::{ops::Deref, sync::Arc};
 use crate::prelude::*;
 
 use super::{
-    camera::Image,
-    field_boundary::FieldBoundary,
-    scan_grid::{FieldColorApproximate, ScanGrid},
+    camera::{init_camera, Image},
+    field_boundary::{init_field_boundary, FieldBoundary},
+    scan_grid::{init_bottom_scan_grid, init_top_scan_grid, FieldColorApproximate, ScanGrid},
 };
 use bevy::prelude::*;
 
@@ -39,14 +39,20 @@ pub struct ScanLinesPlugin;
 
 impl Plugin for ScanLinesPlugin {
     fn build(&self, app: &mut App) {
-        app.init_config::<ScanLinesConfig>();
-        app.add_systems(
-            Update,
-            (
-                update_scan_lines::<Top>.after(super::scan_grid::update_top_scan_grid),
-                update_scan_lines::<Bottom>.after(super::scan_grid::update_bottom_scan_grid),
-            ),
-        );
+        app.init_config::<ScanLinesConfig>()
+            .add_systems(
+                Startup,
+                (init_scan_lines::<Top>, init_scan_lines::<Bottom>)
+                    .after(init_camera::<Top>)
+                    .after(init_camera::<Bottom>),
+            )
+            .add_systems(
+                Update,
+                (
+                    update_scan_lines::<Top>.after(super::scan_grid::update_top_scan_grid),
+                    update_scan_lines::<Bottom>.after(super::scan_grid::update_bottom_scan_grid),
+                ),
+            );
     }
 }
 
@@ -551,6 +557,16 @@ fn get_scan_lines<T: CameraLocation>(
     let vertical = get_vertical_scan_lines(config, &field, yuyv, scan_grid, field_boundary);
 
     ScanLines::new(image, horizontal, vertical)
+}
+
+pub fn init_scan_lines<T: CameraLocation>(mut commands: Commands, image: Res<Image<T>>) {
+    let scan_lines = ScanLines::new(
+        image.clone(),
+        ScanLine { raw: vec![] },
+        ScanLine { raw: vec![] },
+    );
+
+    commands.insert_resource(scan_lines);
 }
 
 pub fn update_scan_lines<T: CameraLocation>(

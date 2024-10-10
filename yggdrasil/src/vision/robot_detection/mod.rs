@@ -59,13 +59,14 @@ pub struct RobotDetectionPlugin;
 
 impl Plugin for RobotDetectionPlugin {
     fn build(&self, app: &mut App) {
-        app.init_config::<RobotDetectionConfig>();
-
-        app.add_systems(
-            Update,
-            detect_robots
-                .run_if(task_finished::<Image<Top>>.and_then(task_finished::<RobotDetectionData>)),
-        );
+        app.init_config::<RobotDetectionConfig>()
+            .init_ml_model::<RobotDetectionModel>()
+            .add_systems(
+                Update,
+                detect_robots.run_if(
+                    task_finished::<Image<Top>>.and_then(task_finished::<RobotDetectionData>),
+                ),
+            );
     }
 }
 

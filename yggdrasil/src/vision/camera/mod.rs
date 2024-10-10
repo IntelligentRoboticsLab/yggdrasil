@@ -52,7 +52,7 @@ pub struct CameraPlugin<T: CameraLocation>(PhantomData<T>);
 
 impl<T: CameraLocation> Plugin for CameraPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostStartup, init_camera::<T>);
+        app.add_systems(Startup, init_camera::<T>);
         app.add_systems(
             Update,
             fetch_latest_frame::<T>.run_if(task_finished::<Image<T>>),
@@ -120,7 +120,6 @@ impl<T: CameraLocation + Send + Sync> Camera<T> {
             .map(|img| Image::new(img, cycle))
     }
 
-    #[allow(dead_code)]
     fn loop_fetch_image(&self) -> Result<Image<T>> {
         let mut camera = self.inner.lock().unwrap();
 
@@ -141,7 +140,7 @@ pub fn fetch_latest_frame<T: CameraLocation>(
     }
 }
 
-fn init_camera<T: CameraLocation>(mut commands: Commands, config: Res<CameraConfig>) {
+pub fn init_camera<T: CameraLocation>(mut commands: Commands, config: Res<CameraConfig>) {
     let settings = match T::POSITION {
         CameraPosition::Top => &config.top,
         CameraPosition::Bottom => &config.bottom,
@@ -156,5 +155,10 @@ fn init_camera<T: CameraLocation>(mut commands: Commands, config: Res<CameraConf
     )
     .expect("failed to create camera hardware");
 
-    commands.insert_resource(Camera::<T>::new(hardware_camera));
+    let camera = Camera::<T>::new(hardware_camera);
+
+    let image = camera.loop_fetch_image().expect("failed to fetch image");
+
+    commands.insert_resource(camera);
+    commands.insert_resource(image);
 }

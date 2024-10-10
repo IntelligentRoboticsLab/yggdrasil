@@ -1,6 +1,6 @@
 use crate::vision::field_boundary::FieldBoundary;
 
-use super::Camera;
+use super::{init_camera, Camera, Image};
 use bevy::{prelude::*, tasks::IoTaskPool};
 use heimdall::{ExposureWeights, Top};
 use tasks::conditions::task_finished;
@@ -15,13 +15,21 @@ pub(crate) struct ExposureWeightsPlugin;
 
 impl Plugin for ExposureWeightsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (update_exposure_weights, sync_exposure_weights)
-                .chain()
-                .run_if(task_finished::<FieldBoundary>),
-        );
+        app.add_systems(PostStartup, init_exposure_weights.after(init_camera::<Top>))
+            .add_systems(
+                Update,
+                (update_exposure_weights, sync_exposure_weights)
+                    .chain()
+                    .run_if(resource_exists_and_changed::<FieldBoundary>),
+            );
     }
+}
+
+fn init_exposure_weights(mut commands: Commands, image: Res<Image<Top>>) {
+    commands.insert_resource(ExposureWeights::new((
+        image.height() as u32,
+        image.width() as u32,
+    )));
 }
 
 fn update_exposure_weights(

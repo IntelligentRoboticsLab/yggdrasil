@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, CameraMatrix, Top, YuyvImage};
 use nalgebra::point;
 
-use super::camera::Image;
+use super::camera::{init_camera, Image};
 
 /// The step size for approximating the field color.
 const FIELD_APPROXIMATION_STEP_SIZE: usize = 8;
@@ -33,6 +33,12 @@ pub struct ScanGridPlugin;
 impl Plugin for ScanGridPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
+            Startup,
+            (init_top_scan_grid, init_bottom_scan_grid)
+                .after(init_camera::<Top>)
+                .after(init_camera::<Bottom>),
+        )
+        .add_systems(
             Update,
             (
                 // TODO: Add run condition to ensure we only run this system when the camera has
@@ -150,6 +156,21 @@ pub struct ScanGrid<T: CameraLocation> {
     pub low_res_start: usize,
     /// Steps between low res grid lines
     pub low_res_step: usize,
+}
+
+pub fn init_top_scan_grid(mut commands: Commands, image: Res<Image<Top>>) {
+    commands.insert_resource(ScanGrid {
+        image: image.clone(),
+        y: Vec::new(),
+        lines: Vec::new(),
+        field_limit: 0,
+        low_res_start: 0,
+        low_res_step: 0,
+    });
+}
+
+pub fn init_bottom_scan_grid(mut commands: Commands, image: Res<Image<Bottom>>) {
+    commands.insert_resource(get_bottom_scan_grid(&image));
 }
 
 pub fn update_top_scan_grid(

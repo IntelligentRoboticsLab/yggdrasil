@@ -12,6 +12,8 @@ use nalgebra::Point2;
 use std::num::NonZeroU32;
 use tasks::conditions::task_finished;
 
+use super::camera::init_camera;
+
 const MODEL_INPUT_WIDTH: u32 = 40;
 const MODEL_INPUT_HEIGHT: u32 = 30;
 
@@ -23,11 +25,12 @@ pub struct FieldBoundaryPlugin;
 
 impl Plugin for FieldBoundaryPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.init_ml_model::<FieldBoundaryModel>();
-        app.add_systems(
-            Update,
-            detect_field_boundary.run_if(task_finished::<Image<Top>>),
-        );
+        app.init_ml_model::<FieldBoundaryModel>()
+            .add_systems(Startup, init_field_boundary.after(init_camera::<Top>))
+            .add_systems(
+                Update,
+                detect_field_boundary.run_if(resource_exists_and_changed::<Image<Top>>),
+            );
     }
 }
 
@@ -151,7 +154,21 @@ impl FieldBoundary {
 //     Ok(())
 // }
 
-fn detect_field_boundary(
+pub fn init_field_boundary(mut commands: Commands, image: Res<Image<Top>>) {
+    commands.insert_resource(FieldBoundary {
+        lines: FieldBoundaryLines::One {
+            line: Line {
+                slope: 0.0,
+                intercept: 0.0,
+            },
+        },
+        error: 0.0,
+        points: Vec::new(),
+        image: image.clone(),
+    });
+}
+
+pub fn detect_field_boundary(
     mut commands: Commands,
     mut model: ResMut<ModelExecutor<FieldBoundaryModel>>,
     image: Res<Image<Top>>,

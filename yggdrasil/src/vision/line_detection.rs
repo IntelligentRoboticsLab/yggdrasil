@@ -12,7 +12,6 @@ use super::scan_lines::{ScanLine, ScanLines};
 use bevy::prelude::*;
 use heimdall::{CameraLocation, Top};
 use nalgebra::Point2;
-use tasks::conditions::task_finished;
 use tasks::CommandsExt;
 
 const MAX_VERTICAL_DISTANCE_BETWEEN_LINE_POINTS: f32 = 15.;
@@ -32,10 +31,9 @@ pub struct LineDetectionPlugin;
 
 impl Plugin for LineDetectionPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.init_resource::<DetectedLines<Top>>();
-        app.add_systems(
+        app.init_resource::<DetectedLines<Top>>().add_systems(
             Update,
-            detect_lines::<Top>.run_if(task_finished::<Image<Top>>),
+            detect_lines::<Top>.run_if(resource_exists_and_changed::<ScanLines<Top>>),
         );
     }
 }
