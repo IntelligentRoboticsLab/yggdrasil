@@ -51,6 +51,7 @@ yggdrasil = { path = "yggdrasil" }
 bifrost = { path = "crates/bifrost" }
 heimdall = { path = "crates/heimdall" }
 ml = { path = "crates/ml" }
+nidhogg = { path = "crates/nidhogg" }
 nilfheim = { path = "crates/nilfheim" }
 odal = { path = "crates/odal" }
 tasks = { path = "crates/tasks" }
@@ -94,7 +95,6 @@ lstsq = "0.5.0"
 miette = "5.10.0"
 nalgebra = "0.32.6"
 ndarray = "0.15.6"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "83cfed56533ff34fae2b92c0964f1c9284b9f9c5" }
 num = "0.4.3"
 openvino = { git = "https://github.com/YukumoHunter/openvino-rs.git", branch = "evil-hack", features = [
   "runtime-linking",

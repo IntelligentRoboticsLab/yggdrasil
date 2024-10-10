@@ -24,6 +24,7 @@ timings = ["dep:tracing-tracy", "bevy/trace"]
 bifrost = { workspace = true }
 heimdall = { workspace = true }
 ml = { workspace = true }
+nidhogg = { workspace = true, features = ["lola", "bevy"] }
 odal = { workspace = true }
 tasks = { workspace = true }
 
@@ -46,7 +47,6 @@ lstsq = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true, features = ["serde-serialize"] }
 ndarray = { workspace = true }
-nidhogg = { workspace = true, features = ["lola", "bevy"] }
 num = { workspace = true }
 ordered-float = { workspace = true }
 pathfinding = { workspace = true }
