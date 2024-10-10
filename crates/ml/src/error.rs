@@ -56,6 +56,12 @@ pub enum Error {
     #[error("Failed to run inference")]
     RunInference(#[source] openvino::InferenceError),
 
+    #[error("Failed to create inference input tensor for model: {1}")]
+    CreateInputTensor(#[source] openvino::InferenceError, &'static str),
+
+    #[error("Failed to set blob for tensor `{1}` ({2})")]
+    SetBlob(#[source] openvino::InferenceError, String, &'static str),
+
     #[error("OpenVINO threw an unexpected error")]
     UnexpectedOpenVino(#[from] openvino::InferenceError),
 }

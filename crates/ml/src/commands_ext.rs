@@ -186,7 +186,12 @@ where
         let request = self
             .executor
             .request_infer(self.state.0)
-            .expect("failed to request inference");
+            .unwrap_or_else(|error| {
+                panic!(
+                    "failed to create inference request for {}: {error}",
+                    M::ONNX_PATH
+                )
+            });
 
         self.commands
             .prepare_task(TaskPool::AsyncCompute)

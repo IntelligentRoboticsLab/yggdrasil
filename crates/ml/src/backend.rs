@@ -193,12 +193,12 @@ impl<M: MlModel> InferRequest<M> {
                 &openvino::TensorDesc::new(cfg.layout(), cfg.dims(), cfg.precision()),
                 input,
             )
-            .map_err(Error::UnexpectedOpenVino)?;
+            .map_err(|e| Error::CreateInputTensor(e, M::ONNX_PATH))?;
 
             // set input data
             request
                 .set_blob(&description.name, &blob)
-                .map_err(Error::UnexpectedOpenVino)?;
+                .map_err(|e| Error::SetBlob(e, description.name.to_string(), M::ONNX_PATH))?;
         }
 
         Ok(Self {
