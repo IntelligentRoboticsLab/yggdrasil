@@ -78,7 +78,7 @@ impl YuyvImage {
     /// Panics if the index is out of bounds.
     #[must_use]
     pub fn row(&self, index: usize) -> Option<ImageView<'_>> {
-        assert!(index >= self.height(), "index out of bounds");
+        assert!(index <= self.height(), "index out of bounds");
 
         // every 4 bytes stores 2 pixels, so (width / 2) * 4 bytes in a row
         let row_width = self.width();
