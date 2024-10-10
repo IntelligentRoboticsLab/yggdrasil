@@ -28,7 +28,7 @@ pub struct DebugPlugin;
 
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(First, (init_rerun, set_debug_cycle).chain());
+        app.add_systems(Startup, init_rerun);
     }
 }
 
@@ -75,6 +75,7 @@ fn init_rerun(mut commands: Commands) {
     commands.insert_resource(rr);
 }
 
+#[allow(unused)]
 fn set_debug_cycle(
     #[allow(unused_mut)] mut ctx: DebugContext,
     cycle: Res<Cycle>,
