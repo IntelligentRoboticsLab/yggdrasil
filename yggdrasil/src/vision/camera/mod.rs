@@ -130,6 +130,11 @@ impl<T: CameraLocation + Send + Sync> Camera<T> {
     }
 }
 
+/// Attempt to fetch the latest frame from the camera and update the image resource.
+///
+/// # Note
+///
+/// This will only update the image resource if a new frame is available.
 pub fn fetch_latest_frame<T: CameraLocation>(
     mut camera: ResMut<Camera<T>>,
     mut image: ResMut<Image<T>>,
