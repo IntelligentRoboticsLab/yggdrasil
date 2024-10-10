@@ -114,7 +114,9 @@ mod tests {
             if rhs >= 0 {
                 self.0 + Duration::from_secs(rhs as u64)
             } else {
-                self.0 - Duration::from_secs(-rhs as u64)
+                self.0
+                    .checked_sub(Duration::from_secs(-rhs as u64))
+                    .expect("overflow in addition of Epoch and isize")
             }
         }
     }

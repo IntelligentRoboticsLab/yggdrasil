@@ -19,7 +19,7 @@ fn run_scoped_task(
 
     // Blocks on the task and return the result directly
     let output = commands.prepare_task(TaskPool::AsyncCompute).scope({
-        let counter = counter.clone();
+        let counter = *counter;
         move |s| s.spawn(async move { counter + 1 })
     });
 

@@ -1,3 +1,5 @@
+#![allow(clippy::disallowed_names)]
+
 use std::time::Duration;
 
 use bevy::{core::FrameCount, prelude::*};
@@ -18,7 +20,7 @@ fn run_task_resource(mut commands: Commands, frame: Res<FrameCount>) {
         .to_resource()
         // Spawn the given task on the pool
         .spawn({
-            let frame = frame.clone();
+            let frame = *frame;
             async move {
                 async_std::task::sleep(Duration::from_secs(3)).await;
                 Some(Foo(frame))

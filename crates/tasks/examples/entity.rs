@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_names)]
 use std::time::Duration;
 
 use async_std::task;
@@ -16,19 +17,16 @@ fn run_task_entity(mut commands: Commands, frame: Res<FrameCount>) {
         .prepare_task(TaskPool::AsyncCompute)
         .to_entities()
         .spawn({
-            let frame = frame.clone();
+            let frame = *frame;
 
-            (0..5).into_iter().map(move |number| async move {
-                async move {
-                    let duration = rand::thread_rng().gen_range(0..5);
+            (0..5).map(move |number| async move {
+                let duration = rand::thread_rng().gen_range(0..5);
 
-                    task::sleep(Duration::from_secs(duration)).await;
+                task::sleep(Duration::from_secs(duration)).await;
 
-                    Some(Foo { frame, number })
-                }
-                .await
+                Some(Foo { frame, number })
             })
-        })
+        });
 }
 
 fn query_foo_entity(foo: Query<&Foo, Added<Foo>>) {

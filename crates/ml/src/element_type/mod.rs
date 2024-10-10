@@ -27,7 +27,7 @@ macro_rules! impl_elem {
     };
 }
 
-/// A data type that can serve as input and output of an [MlModel](`super::MlModel`).
+/// A data type that can serve as input and output of an [`MlModel`](`super::MlModel`).
 ///
 /// # Safety
 ///

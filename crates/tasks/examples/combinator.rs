@@ -13,7 +13,7 @@ fn normal(mut commands: Commands, frame: Res<FrameCount>) {
         .prepare_task(TaskPool::AsyncCompute)
         .to_resource()
         .spawn({
-            let frame = frame.clone();
+            let frame = *frame;
             async move {
                 async_std::task::sleep(Duration::from_secs(3)).await;
 
@@ -28,7 +28,7 @@ fn timeout_combinator(mut commands: Commands, frame: Res<FrameCount>) {
         .prepare_task(TaskPool::AsyncCompute)
         .to_resource()
         .spawn({
-            let frame = frame.clone();
+            let frame = *frame;
             async move {
                 async_std::task::sleep(Duration::from_secs(3)).await;
 
