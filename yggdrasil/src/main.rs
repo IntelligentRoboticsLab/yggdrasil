@@ -22,6 +22,7 @@ fn main() -> Result<()> {
             schedule::NaoSchedulePlugin,
             game_controller::GameControllerPlugin,
             nao::NaoPlugins,
+            tasks::TaskPlugin,
             ml::MlPlugin,
             core::CorePlugins,
             localization::LocalizationPlugin,
