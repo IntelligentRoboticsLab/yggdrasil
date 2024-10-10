@@ -1,8 +1,7 @@
 use crate::prelude::*;
 use bevy::prelude::*;
-use nidhogg::types::FillExt;
-use nidhogg::{types::Vector2, types::Vector3, NaoState};
-use num::traits::pow::Pow;
+use nalgebra::{Vector2, Vector3};
+use nidhogg::NaoState;
 use std::collections::VecDeque;
 use std::ops::Div;
 
@@ -68,11 +67,11 @@ fn variance(measurements: &VecDeque<Vector3<f32>>) -> Vector3<f32> {
     let measurement_avg: Vector3<f32> = measurements
         .iter()
         .sum::<Vector3<f32>>()
-        .div(Vector3::fill(measurements.len() as f32));
+        .div(measurements.len() as f32);
 
     measurements.iter().fold(Vector3::default(), |acc, item| {
         let diff: Vector3<f32> = measurement_avg - item;
-        acc + diff.pow(2)
+        acc + diff.component_mul(&diff)
     })
 }
 

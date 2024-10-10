@@ -1,69 +1,38 @@
-//! A simple low pass smoothing filter.
-//!
-//! See [`LowPassFilter`] for more information.
+use std::f32::consts::PI;
+use nalgebra::SVector;
 
-use std::ops::{Add, Mul};
-
-/// A low-pass smoothing filter.
-///
-/// This filter is used to smooth out a signal by computing a weighted average using
-/// the current value and the previous value.
-///
-/// The filter is defined by the following formula:
-/// ```ignore
-/// new_state = high * old + low * new
-/// ```
-#[derive(Default, Clone, Copy, Debug)]
-pub struct LowPassFilter<T: Default + Clone + Copy + Add<Output = T> + Mul<Output = T>> {
-    pub state: T,
-    params: (T, T),
+/// First-order Butterworth low-pass filter
+#[derive(Copy, Clone, Debug)]
+pub struct LowPassFilter<const N: usize> {
+    alpha: f32,
+    beta: f32,
+    x: SVector<f32, N>,
+    y: SVector<f32, N>,
 }
 
-impl<T> LowPassFilter<T>
-where
-    T: Default + Clone + Copy + Add<Output = T> + Mul<Output = T>,
-{
-    /// Create a new [`LowPassFilter`].
-    ///
-    /// The state in this filter will be updated according to this formula:
-    /// ```ignore
-    /// new_state = high * old + low * new
-    /// ```
-    pub fn new(initial: T, high: T, low: T) -> Self {
-        LowPassFilter {
-            state: initial,
-            params: (high, low),
+impl<const N: usize> LowPassFilter<N> {
+    #[must_use]
+    pub fn new(omega: f32) -> Self {
+        let alpha = omega / (1. + omega);
+        let beta = (1. - omega) / (1. + omega);
+
+        Self {
+            alpha,
+            beta,
+            x: [0.; N].into(),
+            y: [0.; N].into(),
         }
     }
 
-    /// Update the current state of this [`LowPassFilter`] using the new value.
-    pub fn update(&mut self, value: T) {
-        self.state = self.params.0 * self.state + self.params.1 * value;
+    #[must_use]
+    pub fn with_cutoff_freq(freq: f32, dt: f32) -> Self {
+        Self::new((PI * freq * dt).tan())
     }
-}
 
-#[cfg(test)]
-#[allow(clippy::float_cmp)]
-mod tests {
-    use super::LowPassFilter;
-
-    #[test]
-    fn update() {
-        let mut filter = LowPassFilter::new(0.0, 0.8, 0.2);
-        assert_eq!(filter.state, 0.0);
-
-        filter.update(0.5);
-        assert_eq!(filter.state, 0.1);
-
-        filter.update(0.5);
-        filter.update(0.5);
-        filter.update(0.5);
-        assert_eq!(filter.state, 0.2952);
-
-        filter.update(10.0);
-        assert_eq!(filter.state, 2.23616);
-
-        filter.update(-0.5);
-        assert_eq!(filter.state, 1.688_928);
+    pub fn update(&mut self, x: SVector<f32, N>) -> SVector<f32, N> {
+        let y = self.alpha * (x + self.x) + self.beta * self.y;
+        self.x = x;
+        self.y = y;
+        y
     }
 }

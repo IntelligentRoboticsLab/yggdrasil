@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use nidhogg::types::{FillExt, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -10,8 +9,7 @@ use std::{ops::Neg, time::Duration};
 
 use super::{smoothing, WalkingEngineConfig};
 
-const FILTERED_GYRO_HIGH_PASS: f32 = 0.8;
-const FILTERED_GYRO_LOW_PASS: f32 = 0.2;
+const FILTERED_GYRO_OMEGA: f32 = 0.115;
 
 #[derive(Debug, Clone)]
 pub enum WalkState {
@@ -90,7 +88,7 @@ pub struct WalkingEngine {
     /// The step that the engine is currently performing.
     pub current_step: Step,
     /// The filtered gyroscope values used for balancing.
-    pub filtered_gyroscope: LowPassFilter<Vector3<f32>>,
+    pub filtered_gyroscope: LowPassFilter<3>,
     /// The time into the current phase.
     pub t: Duration,
     /// The duration of the current step, e.g. the time until the next foot switch.
@@ -161,11 +159,7 @@ impl WalkingEngine {
             state: WalkState::from_hip_height(current_hip_height, config),
             request: WalkRequest::Sit,
             current_step: Step::default(),
-            filtered_gyroscope: LowPassFilter::new(
-                Vector3::default(),
-                Vector3::fill(FILTERED_GYRO_HIGH_PASS),
-                Vector3::fill(FILTERED_GYRO_LOW_PASS),
-            ),
+            filtered_gyroscope: LowPassFilter::new(FILTERED_GYRO_OMEGA),
             t: Duration::ZERO,
             next_foot_switch: Duration::ZERO,
             swing_foot: Side::default(),
@@ -180,11 +174,7 @@ impl WalkingEngine {
     /// Resets the properties of the walking engine, such that it results in a stationary upright position.
     pub(super) fn reset(&mut self) {
         self.current_step = Step::default();
-        self.filtered_gyroscope = LowPassFilter::new(
-            Vector3::default(),
-            Vector3::fill(FILTERED_GYRO_HIGH_PASS),
-            Vector3::fill(FILTERED_GYRO_LOW_PASS),
-        );
+        self.filtered_gyroscope = LowPassFilter::new(FILTERED_GYRO_OMEGA);
         self.t = Duration::ZERO;
         self.foot_offsets = FootOffsets::zero(self.hip_height);
         self.foot_offsets_t0 = FootOffsets::zero(self.hip_height);
