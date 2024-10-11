@@ -224,7 +224,7 @@ impl Motion {
         }
 
         Some(lerp(
-            &keyframes[active_motion.cur_keyframe_index - 1].target_position,
+            &keyframes[active_motion.cur_keyframe_index.saturating_sub(1)].target_position,
             &keyframes[active_motion.cur_keyframe_index].target_position,
             (active_motion.movement_start.elapsed()).as_secs_f32()
                 / keyframes[active_motion.cur_keyframe_index]
