@@ -81,6 +81,7 @@ pub struct Whistle {
 }
 
 impl Whistle {
+    #[must_use]
     pub fn detected(&self) -> bool {
         self.detected
     }
