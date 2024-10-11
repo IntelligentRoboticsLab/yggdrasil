@@ -57,11 +57,16 @@ fn setup(mut commands: Commands) {
 
                     *last_update = Some(info.timestamp());
 
-                    // On local testing, the data buffer is not filled completely by default
-                    // TODO: test this on the Nao!
+                    // From testing, the data buffer is not always filled completely by default
+                    // (i.e. `n` is not always 4096)
                     //
-                    // To force correct sample rate and buffer size with pw-jack
+                    // We can easily create a JACK config or force correct sample rate and buffer
+                    // size with pw-jack when using the JACK backend, but we need a good fix for ALSA.
+                    //
+                    // Creating an `asound.conf` with the correct settings didn't seem to fix this 😢
+                    //
                     // ```sh
+                    // # To force correct sample rate and buffer size with pw-jack
                     // pw-metadata -n settings 0 clock.force-rate 44100
                     // pw-metadata -n settings 0 clock.force-quantum 2048
                     // ```
