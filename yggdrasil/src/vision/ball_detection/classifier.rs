@@ -158,13 +158,21 @@ fn detect_balls<T: CameraLocation>(
             patch,
         );
 
-        let confidence = commands
-            .infer_model(&mut model)
-            .with_input(&(patch,))
-            .spawn_blocking(|(result,)| ml::util::sigmoid(result[0]))[0];
+        let confidence = {
+            let output = commands
+                .infer_model(&mut model)
+                .with_input(&(patch,))
+                .spawn_blocking(|(result,)| ml::util::sigmoid(result[0]))[0];
+
+            1.0 - output
+        };
 
         if start.elapsed().as_micros() > classifier.time_budget as u128 {
             break;
+        }
+
+        if confidence < classifier.confidence_threshold {
+            continue;
         }
 
         let Ok(robot_to_ball) = camera_matrix.pixel_to_ground(proposal.position.cast(), 0.0) else {
@@ -178,13 +186,13 @@ fn detect_balls<T: CameraLocation>(
             position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
             distance: proposal.distance_to_ball,
             timestamp: Instant::now(),
-            confidence: 1.0 - confidence,
+            confidence,
             camera: T::POSITION,
         });
 
-        if 1.0 - confidence > classifier.confidence_threshold {
-            break;
-        }
+        // TODO: we only store the closest ball with high enough confidence
+        // Maybe we should store multiple candidates.
+        break;
     }
 
     if classified_balls.is_empty() {
