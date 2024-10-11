@@ -97,6 +97,8 @@
 //! assert_eq!(p2.inner, na::point![2., 2., 3.]);
 //! ```
 
+pub mod skeleton;
+
 pub mod space;
 pub use space::*;
 

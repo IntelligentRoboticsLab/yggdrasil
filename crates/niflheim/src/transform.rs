@@ -7,22 +7,22 @@ use nalgebra as na;
 
 use super::space::{InSpace, Space, SpaceOver};
 
-/// A transform between a `T1` in `S1` into a `T2` in `S2`.
-pub trait Transform<T1, S1, T2, S2>
+pub trait Transform<T, S1, S2>
 where
-    S1: SpaceOver<T1>,
-    S2: SpaceOver<T2>,
+    S1: SpaceOver<T>,
+    S2: SpaceOver<Self::Output>,
 {
-    fn transform(&self, x: &InSpace<T1, S1>) -> InSpace<T2, S2>;
+    type Output;
+
+    fn transform(&self, x: &InSpace<T, S1>) -> InSpace<Self::Output, S2>;
 }
 
-/// An inverse transform between a `T1` in `S1` into a `T2` in `S2`.
-pub trait InverseTransform<T1, S1, T2, S2>
+pub trait InverseTransform<T, S1, S2>: Transform<T, S1, S2>
 where
-    S1: SpaceOver<T1>,
-    S2: SpaceOver<T2>,
+    S1: SpaceOver<T>,
+    S2: SpaceOver<Self::Output>,
 {
-    fn inverse_transform(&self, x: &InSpace<T2, S2>) -> InSpace<T1, S1>;
+    fn inverse_transform(&self, x: &InSpace<Self::Output, S2>) -> InSpace<T, S1>;
 }
 
 /// Wrapper type for `T`s which can be used to transform between `S1` and `S2`.
@@ -110,18 +110,20 @@ where
     }
 }
 
-impl<S1, S2> Transform<na::Point2<f32>, S1, na::Point2<f32>, S2>
+impl<S1, S2> Transform<na::Point2<f32>, S1, S2>
     for BetweenSpaces<na::Isometry2<f32>, S1, S2>
 where
     S1: SpaceOver<na::Point2<f32>>,
     S2: SpaceOver<na::Point2<f32>>,
 {
+    type Output = na::Point2<f32>;
+
     fn transform(&self, x: &InSpace<na::Point2<f32>, S1>) -> InSpace<na::Point2<f32>, S2> {
         self.inner.transform_point(&x.inner).into()
     }
 }
 
-impl<S1, S2> InverseTransform<na::Point2<f32>, S1, na::Point2<f32>, S2>
+impl<S1, S2> InverseTransform<na::Point2<f32>, S1, S2>
     for BetweenSpaces<na::Isometry2<f32>, S1, S2>
 where
     S1: SpaceOver<na::Point2<f32>>,
@@ -132,18 +134,20 @@ where
     }
 }
 
-impl<S1, S2> Transform<na::Vector2<f32>, S1, na::Vector2<f32>, S2>
+impl<S1, S2> Transform<na::Vector2<f32>, S1, S2>
     for BetweenSpaces<na::Isometry2<f32>, S1, S2>
 where
     S1: SpaceOver<na::Vector2<f32>>,
     S2: SpaceOver<na::Vector2<f32>>,
 {
+    type Output = na::Vector2<f32>;
+
     fn transform(&self, x: &InSpace<na::Vector2<f32>, S1>) -> InSpace<na::Vector2<f32>, S2> {
         self.inner.transform_vector(&x.inner).into()
     }
 }
 
-impl<S1, S2> InverseTransform<na::Vector2<f32>, S1, na::Vector2<f32>, S2>
+impl<S1, S2> InverseTransform<na::Vector2<f32>, S1, S2>
     for BetweenSpaces<na::Isometry2<f32>, S1, S2>
 where
     S1: SpaceOver<na::Vector2<f32>>,
@@ -157,18 +161,20 @@ where
     }
 }
 
-impl<S1, S2> Transform<na::Point3<f32>, S1, na::Point3<f32>, S2>
+impl<S1, S2> Transform<na::Point3<f32>, S1, S2>
     for BetweenSpaces<na::Isometry3<f32>, S1, S2>
 where
     S1: SpaceOver<na::Point3<f32>>,
     S2: SpaceOver<na::Point3<f32>>,
 {
+    type Output = na::Point3<f32>;
+
     fn transform(&self, x: &InSpace<na::Point3<f32>, S1>) -> InSpace<na::Point3<f32>, S2> {
         self.inner.transform_point(&x.inner).into()
     }
 }
 
-impl<S1, S2> InverseTransform<na::Point3<f32>, S1, na::Point3<f32>, S2>
+impl<S1, S2> InverseTransform<na::Point3<f32>, S1, S2>
     for BetweenSpaces<na::Isometry3<f32>, S1, S2>
 where
     S1: SpaceOver<na::Point3<f32>>,
@@ -179,18 +185,20 @@ where
     }
 }
 
-impl<S1, S2> Transform<na::Vector3<f32>, S1, na::Vector3<f32>, S2>
+impl<S1, S2> Transform<na::Vector3<f32>, S1, S2>
     for BetweenSpaces<na::Isometry3<f32>, S1, S2>
 where
     S1: SpaceOver<na::Vector3<f32>>,
     S2: SpaceOver<na::Vector3<f32>>,
 {
+    type Output = na::Vector3<f32>;
+
     fn transform(&self, x: &InSpace<na::Vector3<f32>, S1>) -> InSpace<na::Vector3<f32>, S2> {
         self.inner.transform_vector(&x.inner).into()
     }
 }
 
-impl<S1, S2> InverseTransform<na::Vector3<f32>, S1, na::Vector3<f32>, S2>
+impl<S1, S2> InverseTransform<na::Vector3<f32>, S1, S2>
     for BetweenSpaces<na::Isometry3<f32>, S1, S2>
 where
     S1: SpaceOver<na::Vector3<f32>>,
