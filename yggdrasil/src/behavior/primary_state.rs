@@ -1,5 +1,5 @@
 use crate::{
-    core::config::showtime::PlayerConfig,
+    core::{audio::whistle_detection::Whistle, config::showtime::PlayerConfig},
     nao::{NaoManager, Priority},
     sensor::button::{ChestButton, HeadButtons},
 };
@@ -81,7 +81,7 @@ pub fn update_primary_state(
     (head_buttons, chest_button): (Res<HeadButtons>, Res<ChestButton>),
     config: Res<PrimaryStateConfig>,
     player_config: Res<PlayerConfig>,
-    // whistle_state: Res<WhistleState>,
+    whistle: Res<Whistle>,
 ) {
     use PrimaryState as PS;
     let next_state = next_primary_state(
@@ -90,7 +90,7 @@ pub fn update_primary_state(
         &chest_button,
         &head_buttons,
         &player_config,
-        // WhistleState
+        &whistle,
     );
 
     match next_state {
@@ -119,7 +119,7 @@ pub fn next_primary_state(
     chest_button: &ChestButton,
     head_buttons: &HeadButtons,
     player_config: &PlayerConfig,
-    // whistle_state: &WhistleState,
+    whistle: &Whistle,
 ) -> PrimaryState {
     use PrimaryState as PS;
 
@@ -146,8 +146,7 @@ pub fn next_primary_state(
         PS::Playing {
             whistle_in_set: true
         }
-    );
-    // ) || whistle_state.detected;
+    ) || whistle.detected();
 
     primary_state = match game_controller_message {
         Some(message) => match message.state {

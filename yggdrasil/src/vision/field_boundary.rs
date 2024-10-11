@@ -10,6 +10,7 @@ use lstsq::Lstsq;
 use ml::prelude::*;
 use nalgebra::Point2;
 use std::num::NonZeroU32;
+use tasks::conditions::task_finished;
 
 use super::camera::init_camera;
 
@@ -28,7 +29,9 @@ impl Plugin for FieldBoundaryPlugin {
             .add_systems(Startup, init_field_boundary.after(init_camera::<Top>))
             .add_systems(
                 Update,
-                detect_field_boundary.run_if(resource_exists_and_changed::<Image<Top>>),
+                detect_field_boundary
+                    .run_if(resource_exists_and_changed::<Image<Top>>)
+                    .run_if(task_finished::<FieldBoundary>),
             );
     }
 }

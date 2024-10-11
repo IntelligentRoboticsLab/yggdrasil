@@ -34,12 +34,13 @@ pub struct WhistleDetectionPlugin;
 impl Plugin for WhistleDetectionPlugin {
     fn build(&self, app: &mut App) {
         app.init_ml_model::<WhistleDetectionModel>()
+            .init_resource::<Whistle>()
             .init_resource::<WhistleDetectionState>()
             .init_resource::<WhistleDetections>()
             .init_config::<WhistleDetectionConfig>()
             .add_systems(
                 Update,
-                (detect_whistle, update_whistle_state)
+                (update_whistle_state, detect_whistle)
                     .chain()
                     .run_if(task_finished::<WhistleDetections>),
             );
@@ -74,8 +75,19 @@ impl Config for WhistleDetectionConfig {
     const PATH: &'static str = "whistle_detection.toml";
 }
 
+#[derive(Default, Resource)]
+pub struct Whistle {
+    detected: bool,
+}
+
+impl Whistle {
+    pub fn detected(&self) -> bool {
+        self.detected
+    }
+}
+
 #[derive(Resource)]
-pub struct WhistleDetectionState {
+struct WhistleDetectionState {
     detections: Vec<bool>,
     stft: Stft,
 }
@@ -96,6 +108,7 @@ struct WhistleDetections {
 
 fn update_whistle_state(
     detections: Res<WhistleDetections>,
+    mut whistle: ResMut<Whistle>,
     mut detection_state: ResMut<WhistleDetectionState>,
     config: Res<WhistleDetectionConfig>,
     mut nao_manager: ResMut<NaoManager>,
@@ -118,11 +131,11 @@ fn update_whistle_state(
         .fold(0, |acc, e| acc + usize::from(*e));
 
     if detections >= config.detections_needed {
-        // state.detected = true;
+        whistle.detected = true;
         nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
     } else {
-        // state.detected = false;
+        whistle.detected = false;
         nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(0.0), Priority::High);
     }
