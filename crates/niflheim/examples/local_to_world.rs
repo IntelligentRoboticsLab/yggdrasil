@@ -1,6 +1,6 @@
 use nalgebra as na;
 
-use niflheim::types::*;
+use niflheim::types::{Isometry3, Point3};
 use niflheim::{Space, SpaceOver, Transform};
 
 struct LocalSpace;
@@ -20,5 +20,5 @@ fn main() {
     let x: Point3<LocalSpace> = na::point![1., 0., 0.].into();
     let y: Point3<WorldSpace> = local_to_world.transform(&x);
 
-    println!("{:?} is {:?}", x, y);
+    println!("{x:?} is {y:?}");
 }

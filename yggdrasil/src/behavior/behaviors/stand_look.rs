@@ -1,6 +1,6 @@
 use crate::{
     behavior::engine::{Behavior, Context, Control},
-    nao::manager::Priority,
+    nao::Priority,
 };
 use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};

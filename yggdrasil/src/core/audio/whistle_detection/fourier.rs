@@ -66,7 +66,7 @@ impl Stft {
         return self
             .window_buff
             .iter()
-            .cloned()
+            .copied()
             // ft result is symmetric, only first window_size / 2 + 1 samples are unique
             .take(self.window_size / 2 + 1)
             // square norm of complex fft output

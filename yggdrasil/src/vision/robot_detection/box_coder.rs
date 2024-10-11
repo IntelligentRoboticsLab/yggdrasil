@@ -61,8 +61,8 @@ impl BoxCoder {
         let pred_center_x = &dx * &widths + center_x;
         let pred_center_y = &dy * &heights + center_y;
 
-        let pred_w = dw.mapv(|x| x.exp()) * widths;
-        let pred_h = dh.mapv(|x| x.exp()) * heights;
+        let pred_w = dw.mapv(f32::exp) * widths;
+        let pred_h = dh.mapv(f32::exp) * heights;
 
         let center_to_center_height = pred_h / 2.0;
         let center_to_center_width = pred_w / 2.0;

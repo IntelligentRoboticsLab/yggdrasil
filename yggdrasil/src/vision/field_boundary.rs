@@ -1,19 +1,18 @@
 //! Module for detecting the field boundary lines from the top camera image
 //!
 
-use std::{num::NonZeroU32, ops::Deref};
-
-use crate::{
-    core::debug::DebugContext,
-    core::ml::{MlModel, MlTask, MlTaskResource},
-    prelude::*,
-    vision::camera::{self, Image, TopImage},
-};
+use crate::vision::camera::Image;
+use bevy::app::Plugin;
+use bevy::prelude::*;
 use fast_image_resize as fr;
-use heimdall::YuyvImage;
+use heimdall::{Top, YuyvImage};
 use lstsq::Lstsq;
+use ml::prelude::*;
 use nalgebra::Point2;
-use nidhogg::types::color;
+use std::num::NonZeroU32;
+use tasks::conditions::task_finished;
+
+use super::camera::init_camera;
 
 const MODEL_INPUT_WIDTH: u32 = 40;
 const MODEL_INPUT_HEIGHT: u32 = 30;
@@ -22,17 +21,18 @@ const MODEL_INPUT_HEIGHT: u32 = 30;
 ///
 /// It adds the following resources to the app:
 /// - [`FieldBoundary`]
-pub struct FieldBoundaryModule;
+pub struct FieldBoundaryPlugin;
 
-impl Module for FieldBoundaryModule {
-    fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_ml_task::<FieldBoundaryModel>()?
-            .add_startup_system(init_field_boundary)?
-            .add_system_chain((
-                detect_field_boundary.after(camera::camera_system),
-                log_boundary_points,
-            )))
+impl Plugin for FieldBoundaryPlugin {
+    fn build(&self, app: &mut bevy::prelude::App) {
+        app.init_ml_model::<FieldBoundaryModel>()
+            .add_systems(Startup, init_field_boundary.after(init_camera::<Top>))
+            .add_systems(
+                Update,
+                detect_field_boundary
+                    .run_if(resource_exists_and_changed::<Image<Top>>)
+                    .run_if(task_finished::<FieldBoundary>),
+            );
     }
 }
 
@@ -60,7 +60,7 @@ pub enum FieldBoundaryLines {
 }
 
 /// A fitted field boundary from a given image
-#[derive(Clone)]
+#[derive(Resource, Clone)]
 pub struct FieldBoundary {
     /// The fitted field boundary lines
     pub lines: FieldBoundaryLines,
@@ -69,11 +69,12 @@ pub struct FieldBoundary {
     /// The predicted points used to fit the boundary
     points: Vec<FieldBoundaryPoint>,
     /// The image the boundary was predicted from
-    pub image: Image,
+    pub image: Image<Top>,
 }
 
 impl FieldBoundary {
     /// Get the height of the boundary at a given horizontal pixel
+    #[must_use]
     pub fn height_at_pixel(&self, x: f32) -> f32 {
         match &self.lines {
             FieldBoundaryLines::One { line } => line.y(x),
@@ -92,11 +93,12 @@ impl FieldBoundary {
     }
 
     /// Get the line segments that span the width of the image they are predicted from
+    #[must_use]
     pub fn line_segments(&self) -> Vec<[(f32, f32); 2]> {
         match &self.lines {
             // One line segment, from the left edge to the right edge
             FieldBoundaryLines::One { line } => {
-                let width = self.image.yuyv_image().width() as f32;
+                let width = self.image.width() as f32;
                 let y0 = line.y(0.0);
                 let y1 = line.y(width);
 
@@ -108,7 +110,7 @@ impl FieldBoundary {
                 right_line,
                 intersection,
             } => {
-                let width = self.image.yuyv_image().width() as f32;
+                let width = self.image.width() as f32;
                 let y0 = left_line.y(0.0);
                 // This y is shared by both line segments as it is where they intersect
                 let y1 = left_line.y(intersection.x);
@@ -123,84 +125,82 @@ impl FieldBoundary {
     }
 }
 
-#[system]
-fn log_boundary_points(
-    dbg: &DebugContext,
-    image: &TopImage,
-    boundary: &FieldBoundary,
-) -> Result<()> {
-    let points = boundary
-        .points
-        .iter()
-        .map(|point| (point.x, point.y))
-        .collect::<Vec<_>>();
+// #[system]
+// fn log_boundary_points(
+//     dbg: &DebugContext,
+//     image: &TopImage,
+//     boundary: &FieldBoundary,
+// ) -> Result<()> {
+//     let points = boundary
+//         .points
+//         .iter()
+//         .map(|point| (point.x, point.y))
+//         .collect::<Vec<_>>();
 
-    dbg.log_points2d_for_image(
-        "top_camera/image/boundary_points",
-        &points,
-        image,
-        color::u8::MAGENTA,
-    )?;
+//     dbg.log_points2d_for_image(
+//         "top_camera/image/boundary_points",
+//         &points,
+//         image,
+//         color::u8::MAGENTA,
+//     )?;
 
-    let line_segments = boundary.line_segments();
+//     let line_segments = boundary.line_segments();
 
-    dbg.log_lines2d_for_image(
-        "top_camera/image/boundary_line_segments",
-        &line_segments,
-        image,
-        color::u8::PURPLE,
-    )?;
+//     dbg.log_lines2d_for_image(
+//         "top_camera/image/boundary_line_segments",
+//         &line_segments,
+//         image,
+//         color::u8::PURPLE,
+//     )?;
 
-    Ok(())
+//     Ok(())
+// }
+
+pub fn init_field_boundary(mut commands: Commands, image: Res<Image<Top>>) {
+    commands.insert_resource(FieldBoundary {
+        lines: FieldBoundaryLines::One {
+            line: Line {
+                slope: 0.0,
+                intercept: 0.0,
+            },
+        },
+        error: 0.0,
+        points: Vec::new(),
+        image: image.clone(),
+    });
 }
 
-/// For keeping track of the image that a field boundary is detected from
-struct FieldBoundaryImage(Image);
+pub fn detect_field_boundary(
+    mut commands: Commands,
+    mut model: ResMut<ModelExecutor<FieldBoundaryModel>>,
+    image: Res<Image<Top>>,
+) {
+    // horizontal gap between predicted points relative to the original image
+    let yuyv_image = image.clone();
+    let gap = image.yuyv_image().width() / MODEL_INPUT_WIDTH as usize;
+    let height = image.yuyv_image().height();
+    let resized_image = resize_yuyv(image.yuyv_image());
 
-#[system]
-fn detect_field_boundary(
-    model: &mut MlTask<FieldBoundaryModel>,
-    field_boundary_image: &mut FieldBoundaryImage,
-    boundary: &mut FieldBoundary,
-    top_image: &TopImage,
-) -> Result<()> {
-    // Start a new inference if the image has changed
-    // TODO: Some kind of callback/event system would be nice to avoid doing the timestamp comparison everywhere
-    if field_boundary_image.0.timestamp() != top_image.timestamp() && !model.active() {
-        let resized_image = resize_yuyv(top_image.yuyv_image());
-        if let Ok(()) = model.try_start_infer(&resized_image) {
-            // We need to keep track of the image we started the inference with
-            //
-            // TODO: We should find a better way to do this bundling of mltask + metadata
-            *field_boundary_image = FieldBoundaryImage(top_image.deref().clone());
-        };
-    }
+    commands
+        .infer_model(&mut model)
+        .with_input(&(resized_image,))
+        .create_resource()
+        .spawn(move |result| {
+            // Get the predicted points from the model output
+            let points = result
+                .0
+                .chunks(2)
+                .enumerate()
+                // Map the x/y values back to their place in the original image
+                .map(|(i, chunk)| FieldBoundaryPoint {
+                    x: (i * gap) as f32,
+                    y: chunk[0] * height as f32,
+                    error: chunk[1],
+                })
+                .collect::<Vec<_>>();
 
-    // Otherwise, poll the model for the result
-    if let Some(result) = model.poll::<Vec<f32>>().transpose()? {
-        // horizontal gap between predicted points relative to the original image
-        let gap = top_image.yuyv_image().width() / MODEL_INPUT_WIDTH as usize;
-        let height = top_image.yuyv_image().height();
-
-        // Get the predicted points from the model output
-        let points = result
-            .chunks(2)
-            .enumerate()
-            // Map the x/y values back to their place in the original image
-            .map(|(i, chunk)| FieldBoundaryPoint {
-                x: (i * gap) as f32,
-                y: chunk[0] * height as f32,
-                error: chunk[1],
-            })
-            .collect::<Vec<_>>();
-
-        // Get the image we set when we started inference
-        let image = field_boundary_image.0.clone();
-
-        *boundary = fit_model(points, 2, image)?;
-    }
-
-    Ok(())
+            Some(fit_model(points, 2, yuyv_image))
+        });
 }
 
 // Resize yuyv image to correct input shape
@@ -232,7 +232,7 @@ fn resize_yuyv(yuyv_image: &YuyvImage) -> Vec<f32> {
         .copied()
         .enumerate()
         .filter(|(i, _)| (i + 2) % 4 != 0)
-        .map(|(_, p)| p as f32)
+        .map(|(_, p)| f32::from(p))
         .collect()
 }
 
@@ -240,8 +240,12 @@ fn resize_yuyv(yuyv_image: &YuyvImage) -> Vec<f32> {
 pub struct FieldBoundaryModel;
 
 impl MlModel for FieldBoundaryModel {
-    type InputType = f32;
-    type OutputType = f32;
+    type InputElem = f32;
+    type OutputElem = f32;
+
+    type InputShape = (Vec<f32>,);
+    type OutputShape = (Vec<f32>,);
+
     const ONNX_PATH: &'static str = "models/field_boundary.onnx";
 }
 
@@ -253,10 +257,12 @@ pub struct Line {
 }
 
 impl Line {
+    #[must_use]
     pub fn y(&self, x: f32) -> f32 {
         self.slope * x + self.intercept
     }
 
+    #[must_use]
     pub fn intersection_point(&self, other: &Line) -> Point2<f32> {
         let x = (other.intercept - self.intercept) / (self.slope - other.slope);
         let y = self.slope * x + self.intercept;
@@ -267,7 +273,7 @@ impl Line {
 
 /// Line fiting algorithm as described in B-Human their paper
 /// See <https://b-human.de/downloads/publications/2022/DeepFieldBoundary.pdf>
-fn fit_line(spots: &[FieldBoundaryPoint]) -> Result<(Line, f32)> {
+fn fit_line(spots: &[FieldBoundaryPoint]) -> (Line, f32) {
     let n_spots = spots.len();
 
     let mut a = nalgebra::DMatrix::<f32>::zeros(n_spots, 2);
@@ -296,17 +302,17 @@ fn fit_line(spots: &[FieldBoundaryPoint]) -> Result<(Line, f32)> {
         intercept: solution[0],
     };
 
-    Ok((line, residuals))
+    (line, residuals)
 }
 
 /// Model fitting algorithm as described in B-Human their paper
 /// See <https://b-human.de/downloads/publications/2022/DeepFieldBoundary.pdf>
-fn fit_model(points: Vec<FieldBoundaryPoint>, step: usize, image: Image) -> Result<FieldBoundary> {
-    let width = image.yuyv_image().width() as f32;
+fn fit_model(points: Vec<FieldBoundaryPoint>, step: usize, image: Image<Top>) -> FieldBoundary {
+    let width = image.width() as f32;
 
     // Get initial boundary fit based on single line
     let mut boundary = {
-        let (line, error) = fit_line(&points)?;
+        let (line, error) = fit_line(&points);
 
         FieldBoundary {
             lines: FieldBoundaryLines::One { line },
@@ -319,8 +325,8 @@ fn fit_model(points: Vec<FieldBoundaryPoint>, step: usize, image: Image) -> Resu
     let n_points = boundary.points.len();
 
     for i in (2..n_points - 2).step_by(step) {
-        let (left_line, left_error) = fit_line(&boundary.points[..i])?;
-        let (right_line, right_error) = fit_line(&boundary.points[i..])?;
+        let (left_line, left_error) = fit_line(&boundary.points[..i]);
+        let (right_line, right_error) = fit_line(&boundary.points[i..]);
 
         let total_error = left_error + right_error;
 
@@ -346,28 +352,5 @@ fn fit_model(points: Vec<FieldBoundaryPoint>, step: usize, image: Image) -> Resu
         }
     }
 
-    Ok(boundary)
-}
-
-#[startup_system]
-fn init_field_boundary(storage: &mut Storage, top_image: &TopImage) -> Result<()> {
-    let field_boundary_image = FieldBoundaryImage(top_image.deref().clone());
-
-    // Initialize the field boundary with a single line at the top of the image
-    let boundary = FieldBoundary {
-        lines: FieldBoundaryLines::One {
-            line: Line {
-                slope: 0.0,
-                intercept: 0.0,
-            },
-        },
-        error: 0.0,
-        points: Vec::new(),
-        image: top_image.deref().clone(),
-    };
-
-    storage.add_resource(Resource::new(field_boundary_image))?;
-    storage.add_resource(Resource::new(boundary))?;
-
-    Ok(())
+    boundary
 }

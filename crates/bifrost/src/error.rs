@@ -7,11 +7,11 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Communication error variants
 #[derive(Error, Debug)]
 pub enum Error {
-    /// IO error, this wraps a [std::io::Error]
+    /// IO error, this wraps a [`std::io::Error`]
     #[error(transparent)]
     IOError(#[from] std::io::Error),
 
-    /// VarInt too large, this occurs when the data being decoded
+    /// `VarInt` too large, this occurs when the data being decoded
     /// is too large to fit into a 32-bit integer.
     #[error("VarInt too large")]
     VarIntError,

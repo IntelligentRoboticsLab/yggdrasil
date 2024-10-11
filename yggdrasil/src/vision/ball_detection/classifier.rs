@@ -1,26 +1,22 @@
 use std::ops::Deref;
 use std::time::{Duration, Instant};
 
-use heimdall::CameraMatrix;
+use bevy::prelude::*;
+use heimdall::{Bottom, CameraLocation, CameraMatrix, CameraPosition, Top};
 use itertools::Itertools;
+use ml::prelude::ModelExecutor;
 use nalgebra::{Point2, Vector2};
 
-use nidhogg::types::{color, FillExt, LeftEye};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
 
 use crate::localization::RobotPose;
-use crate::nao::manager::NaoManager;
-use crate::nao::manager::Priority::Medium;
-use crate::prelude::*;
-use crate::vision::camera::BottomImage;
-use crate::vision::camera::{matrix::CameraMatrices, Image, TopImage};
 
-use crate::core::ml::{self, MlModel, MlTask, MlTaskResource};
-use crate::vision::scan_lines::CameraType;
+use crate::vision::camera::{init_camera, Image};
+use ml::prelude::*;
 
-use super::proposal::{self, BallProposals, BottomBallProposals, TopBallProposals};
+use super::proposal::BallProposals;
 use super::BallDetectionConfig;
 
 const IMAGE_INPUT_SIZE: usize = 32;
@@ -34,39 +30,56 @@ pub struct BallClassifierConfig {
     pub ball_life: Duration,
 }
 
-pub(crate) struct BallClassifierModule;
+pub(crate) struct BallClassifierPlugin;
 
-impl Module for BallClassifierModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_system(ball_detection_system.after(proposal::ball_proposals_system))
-            .add_startup_system(init_ball_classifier)?
-            .add_ml_task::<BallClassifierModel>()
+impl Plugin for BallClassifierPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_ml_model::<BallClassifierModel>();
+        app.add_systems(
+            PostStartup,
+            init_ball_classifier
+                .after(init_camera::<Top>)
+                .after(init_camera::<Bottom>),
+        );
+
+        app.add_systems(
+            Update,
+            (
+                detect_balls::<Top>
+                    .after(super::proposal::update_ball_proposals::<Top>)
+                    .run_if(resource_exists_and_changed::<Image<Top>>),
+                detect_balls::<Bottom>
+                    .after(super::proposal::update_ball_proposals::<Bottom>)
+                    .run_if(resource_exists_and_changed::<Image<Bottom>>),
+            ),
+        );
     }
 }
 
-#[startup_system]
 fn init_ball_classifier(
-    storage: &mut Storage,
-    top_image: &TopImage,
-    bottom_image: &BottomImage,
-) -> Result<()> {
+    mut commands: Commands,
+    top_image: Res<Image<Top>>,
+    bottom_image: Res<Image<Bottom>>,
+) {
     let balls = Balls {
         balls: Vec::new(),
         top_image: top_image.deref().clone(),
         bottom_image: bottom_image.deref().clone(),
     };
 
-    storage.add_resource(Resource::new(balls))?;
-
-    Ok(())
+    commands.insert_resource(balls);
 }
 
 pub(super) struct BallClassifierModel;
 
 impl MlModel for BallClassifierModel {
     const ONNX_PATH: &'static str = "models/ball_classifier.onnx";
-    type InputType = f32;
-    type OutputType = f32;
+
+    type InputElem = f32;
+    type OutputElem = f32;
+
+    type InputShape = (Vec<f32>,);
+    type OutputShape = (Vec<f32>,);
 }
 
 #[derive(Debug, Clone)]
@@ -78,99 +91,54 @@ pub struct Ball {
     pub distance: f32,
     pub timestamp: Instant,
     pub confidence: f32,
-    pub camera: CameraType,
+    pub camera: CameraPosition,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Resource)]
 pub struct Balls {
     pub balls: Vec<Ball>,
-    pub top_image: Image,
-    pub bottom_image: Image,
+    pub top_image: Image<Top>,
+    pub bottom_image: Image<Bottom>,
 }
 
 impl Balls {
+    #[must_use]
     pub fn no_balls(&self) -> bool {
         self.balls.is_empty()
     }
 
+    #[must_use]
     pub fn most_confident_ball(&self) -> Option<&Ball> {
         self.balls
             .iter()
-            .reduce(|a, b| match a.confidence > b.confidence {
-                true => a,
-                false => b,
-            })
+            .reduce(|a, b| if a.confidence > b.confidence { a } else { b })
     }
 
+    #[must_use]
     pub fn most_recent_ball(&self) -> Option<&Ball> {
         self.balls
             .iter()
-            .reduce(|a, b| match a.timestamp > b.timestamp {
-                true => a,
-                false => b,
-            })
+            .reduce(|a, b| if a.timestamp > b.timestamp { a } else { b })
     }
 }
 
-#[system]
-pub(super) fn ball_detection_system(
-    balls: &mut Balls,
-    (top_proposals, bottom_proposals): (&TopBallProposals, &BottomBallProposals),
-    model: &mut MlTask<BallClassifierModel>,
-    camera_matrices: &CameraMatrices,
-    config: &BallDetectionConfig,
-    nao: &mut NaoManager,
-    robot_pose: &RobotPose,
-) -> Result<()> {
-    detect_balls(
-        top_proposals,
-        model,
-        balls,
-        &camera_matrices.top,
-        config,
-        robot_pose,
-        CameraType::Top,
-    )?;
-
-    detect_balls(
-        bottom_proposals,
-        model,
-        balls,
-        &camera_matrices.bottom,
-        config,
-        robot_pose,
-        CameraType::Bottom,
-    )?;
-
-    if balls.no_balls() {
-        nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Medium);
-    } else {
-        nao.set_left_eye_led(LeftEye::fill(color::f32::PURPLE), Medium);
-    }
-
-    Ok(())
-}
-
-fn detect_balls(
-    proposals: &BallProposals,
-    model: &mut MlTask<BallClassifierModel>,
-    balls: &mut Balls,
-    camera_matrix: &CameraMatrix,
-    config: &BallDetectionConfig,
-    robot_pose: &RobotPose,
-    camera: CameraType,
-) -> Result<()> {
-    if balls.top_image.is_from_cycle(proposals.image.cycle()) {
-        return Ok(());
-    }
-
+fn detect_balls<T: CameraLocation>(
+    mut commands: Commands,
+    mut proposals: ResMut<BallProposals<T>>,
+    mut model: ResMut<ModelExecutor<BallClassifierModel>>,
+    mut balls: ResMut<Balls>,
+    camera_matrix: Res<CameraMatrix<T>>,
+    config: Res<BallDetectionConfig>,
+    robot_pose: Res<RobotPose>,
+) {
     let classifier = &config.classifier;
     let start = Instant::now();
 
     let mut classified_balls = Vec::new();
-    'outer: for proposal in proposals
+
+    for proposal in proposals
         .proposals
-        .iter()
+        .drain(..)
         .sorted_by(|a, b| a.distance_to_ball.total_cmp(&b.distance_to_ball))
     {
         if proposal.distance_to_ball > 20.0 {
@@ -189,51 +157,38 @@ fn detect_balls(
             (IMAGE_INPUT_SIZE, IMAGE_INPUT_SIZE),
             patch,
         );
-        if let Ok(()) = model.try_start_infer(&patch) {
-            loop {
-                if start.elapsed().as_micros() > classifier.time_budget as u128 {
-                    match model.try_cancel() {
-                        Ok(()) => (),
-                        Err(ml::Error::Tyr(tyr::tasks::Error::NotActive)) => (),
-                        Err(e) => {
-                            tracing::error!("Failed to cancel ball classifier inference: {:?}", e);
-                        }
-                    }
 
-                    break 'outer;
-                }
+        let confidence = commands
+            .infer_model(&mut model)
+            .with_input(&(patch,))
+            .spawn_blocking(|(result,)| ml::util::sigmoid(result[0]))[0];
 
-                if let Ok(Some(result)) = model.poll::<Vec<f32>>().transpose() {
-                    let confidence = ml::util::sigmoid(result[0]);
-                    if (1.0 - confidence) < classifier.confidence_threshold {
-                        break;
-                    }
+        if start.elapsed().as_micros() > classifier.time_budget as u128 {
+            break;
+        }
 
-                    if let Ok(robot_to_ball) =
-                        camera_matrix.pixel_to_ground(proposal.position.cast(), 0.0)
-                    {
-                        classified_balls.push(Ball {
-                            position_image: proposal.position.cast(),
-                            robot_to_ball: robot_to_ball.xy().coords,
-                            scale: proposal.scale,
-                            position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
-                            distance: proposal.distance_to_ball,
-                            timestamp: Instant::now(),
-                            confidence: 1.0 - confidence,
-                            camera,
-                        });
+        let Ok(robot_to_ball) = camera_matrix.pixel_to_ground(proposal.position.cast(), 0.0) else {
+            continue;
+        };
 
-                        if 1.0 - confidence > classifier.confidence_threshold {
-                            break 'outer;
-                        }
-                    }
-                }
-            }
+        classified_balls.push(Ball {
+            position_image: proposal.position.cast(),
+            robot_to_ball: robot_to_ball.xy().coords,
+            scale: proposal.scale,
+            position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
+            distance: proposal.distance_to_ball,
+            timestamp: Instant::now(),
+            confidence: 1.0 - confidence,
+            camera: T::POSITION,
+        });
+
+        if 1.0 - confidence > classifier.confidence_threshold {
+            break;
         }
     }
 
     if classified_balls.is_empty() {
-        for ball in balls.balls.iter() {
+        for ball in &balls.balls {
             if ball.timestamp.elapsed() < classifier.ball_life {
                 classified_balls.push(ball.clone());
             }
@@ -241,11 +196,4 @@ fn detect_balls(
     }
 
     balls.balls = classified_balls;
-    let new_image = proposals.image.clone();
-    match camera {
-        CameraType::Top => balls.top_image = new_image,
-        CameraType::Bottom => balls.bottom_image = new_image,
-    };
-
-    Ok(())
 }

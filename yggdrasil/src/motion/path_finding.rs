@@ -41,8 +41,8 @@ impl Ord for Point {
 impl From<Point> for Coord {
     fn from(value: Point) -> Self {
         Coord {
-            x: value.x.0 as f64,
-            y: value.y.0 as f64,
+            x: f64::from(value.x.0),
+            y: f64::from(value.y.0),
         }
     }
 }
@@ -50,8 +50,8 @@ impl From<Point> for Coord {
 impl From<&Point> for Coord {
     fn from(value: &Point) -> Self {
         Coord {
-            x: value.x.0 as f64,
-            y: value.y.0 as f64,
+            x: f64::from(value.x.0),
+            y: f64::from(value.y.0),
         }
     }
 }
@@ -73,11 +73,11 @@ fn side_points(point: &Point, obstacle: &Obstacle) -> [Point; 2] {
 }
 
 fn obstructs(obstacle: &Obstacle, line: geo::Line) -> bool {
-    let point = geo::geometry::Point::new(obstacle.x.0 as f64, obstacle.y.0 as f64);
+    let point = geo::geometry::Point::new(f64::from(obstacle.x.0), f64::from(obstacle.y.0));
     match line.closest_point(&point) {
         geo::Closest::Intersection(_) => true,
         geo::Closest::SinglePoint(point2) => {
-            obstacle.radius.0 as f64
+            f64::from(obstacle.radius.0)
                 > 1.01
                     * nalgebra::distance(
                         &nalgebra::Point2::new(point.x(), point.y()),
@@ -164,6 +164,7 @@ pub struct Obstacle {
 }
 
 impl Obstacle {
+    #[must_use]
     pub fn new(x: f32, y: f32, radius: f32) -> Self {
         Self {
             x: OrderedFloat(x),
@@ -172,6 +173,7 @@ impl Obstacle {
         }
     }
 
+    #[must_use]
     pub fn distance(&self, other: &Self) -> f32 {
         let x = self.x.0 - other.x.0;
         let y = self.y.0 - other.y.0;
@@ -179,6 +181,7 @@ impl Obstacle {
     }
 }
 
+#[must_use]
 pub fn find_path(
     start: Point2<f32>,
     goal: Point2<f32>,

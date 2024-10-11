@@ -7,37 +7,36 @@ use crate::{
     motion::odometry::{self, Odometry},
     prelude::*,
 };
+use bevy::prelude::*;
 use nalgebra::{Isometry2, Isometry3, Point2, Translation3, UnitQuaternion};
 use nidhogg::types::{
     color::{self, RgbU8},
     HeadJoints,
 };
 
-pub struct LocalizationModule;
+/// The localization plugin provides functionalities related to the localization of the robot.
+pub struct LocalizationPlugin;
 
-impl Module for LocalizationModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_system(update_robot_pose.after(odometry::update_odometry))
-            .add_startup_system(init_pose)
+impl Plugin for LocalizationPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, update_robot_pose.after(odometry::update_odometry));
+        app.add_systems(PostStartup, init_pose);
     }
 }
 
-#[startup_system]
 fn init_pose(
-    storage: &mut Storage,
-    layout_config: &LayoutConfig,
-    player_config: &PlayerConfig,
-) -> Result<()> {
+    mut commands: Commands,
+    layout_config: Res<LayoutConfig>,
+    player_config: Res<PlayerConfig>,
+) {
     let initial_position = layout_config
         .initial_positions
         .player(player_config.player_number);
 
-    storage.add_resource(Resource::new(RobotPose::new(initial_position.isometry)))?;
-
-    Ok(())
+    commands.insert_resource(RobotPose::new(initial_position.isometry));
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Resource, Default, Debug, Clone)]
 pub struct RobotPose {
     pub inner: Isometry2<f32>,
 }
@@ -51,6 +50,7 @@ impl RobotPose {
     ///
     /// The z-axis is always 0.
     /// The rotation is around the z-axis.
+    #[must_use]
     pub fn as_3d(&self) -> Isometry3<f32> {
         Isometry3::from_parts(
             Translation3::new(self.inner.translation.x, self.inner.translation.y, 0.0),
@@ -62,30 +62,36 @@ impl RobotPose {
     ///
     /// The center of the world is at the center of the field, with the x-axis pointing towards the
     /// opponent's goal.
+    #[must_use]
     pub fn world_position(&self) -> Point2<f32> {
         self.inner.translation.vector.into()
     }
 
     /// The current rotation of the robot in the world, in radians.
+    #[must_use]
     pub fn world_rotation(&self) -> f32 {
         self.inner.rotation.angle()
     }
 
     /// Transform a point from robot coordinates to world coordinates.
+    #[must_use]
     pub fn robot_to_world(&self, point: &Point2<f32>) -> Point2<f32> {
         self.inner.transform_point(point)
     }
 
     /// Transform a point from world coordinates to robot coordinates.
+    #[must_use]
     pub fn world_to_robot(&self, point: &Point2<f32>) -> Point2<f32> {
         self.inner.inverse_transform_point(point)
     }
 
+    #[must_use]
     pub fn get_look_at_absolute(&self, point_in_world: &Point2<f32>) -> HeadJoints<f32> {
         let robot_to_point = self.world_to_robot(point_in_world).xy();
         self.get_look_at(&robot_to_point)
     }
 
+    #[must_use]
     pub fn get_look_at(&self, robot_to_point: &Point2<f32>) -> HeadJoints<f32> {
         let yaw = (robot_to_point.y / robot_to_point.x).atan();
         // This cannot be computed without properly turning it into a 3d point by e.g. projecting it, but
@@ -96,24 +102,29 @@ impl RobotPose {
     }
 }
 
-#[system]
-pub fn update_robot_pose(
-    robot_pose: &mut RobotPose,
-    odometry: &Odometry,
-    ctx: &DebugContext,
-    primary_state: &PrimaryState,
-    layout_config: &LayoutConfig,
-) -> Result<()> {
-    *robot_pose = next_robot_pose(robot_pose, odometry, primary_state, layout_config);
+fn update_robot_pose(
+    mut robot_pose: ResMut<RobotPose>,
+    odometry: Res<Odometry>,
+    ctx: DebugContext,
+    primary_state: Res<PrimaryState>,
+    layout_config: Res<LayoutConfig>,
+) {
+    *robot_pose = next_robot_pose(
+        robot_pose.as_mut(),
+        odometry.as_ref(),
+        primary_state.as_ref(),
+        layout_config.as_ref(),
+    );
     log_pose(
         "/localisation/pose",
-        ctx,
+        &ctx,
         &robot_pose.inner,
         color::u8::BLUE,
-    )?;
-    Ok(())
+    )
+    .expect("failed to log the pose");
 }
 
+#[must_use]
 pub fn next_robot_pose(
     robot_pose: &RobotPose,
     odometry: &Odometry,
@@ -142,13 +153,14 @@ fn find_closest_penalty_pose(
             let distance_b =
                 (robot_pose.inner.translation.vector - b.translation.vector).norm_squared();
 
-            match distance_b > distance_a {
-                true => a,
-                false => b,
+            if distance_b > distance_a {
+                a
+            } else {
+                b
             }
         })
         .unwrap_or_else(|| {
-            tracing::warn!("Failed to find closest penalty pose for");
+            tracing::warn!("failed to find closest penalty pose for");
             &robot_pose.inner
         })
 }

@@ -1,5 +1,6 @@
 //! The engine managing behavior execution and role state.
 
+use bevy::prelude::*;
 use bifrost::communication::GameControllerMessage;
 use enum_dispatch::enum_dispatch;
 use nalgebra::Point2;
@@ -18,14 +19,12 @@ use crate::{
     game_controller::GameControllerConfig,
     localization::RobotPose,
     motion::{keyframe::KeyframeExecutor, step_planner::StepPlanner, walk::engine::WalkingEngine},
-    nao::{manager::NaoManager, RobotInfo},
-    prelude::*,
+    nao::{NaoManager, RobotInfo},
     sensor::{
         button::{ChestButton, HeadButtons},
         falling::FallState,
         fsr::Contacts,
     },
-    vision::ball_detection::classifier::Balls,
 };
 
 use super::{
@@ -79,7 +78,7 @@ pub struct Control<'a> {
     pub walking_engine: &'a mut WalkingEngine,
     pub keyframe_executor: &'a mut KeyframeExecutor,
     pub step_planner: &'a mut StepPlanner,
-    pub debug_context: &'a mut DebugContext,
+    pub debug_context: DebugContext<'a>,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -188,6 +187,7 @@ pub trait Role {
 /// - New role implementations should be added as new variants to this enum
 /// - The specific struct for each role (e.g., [`Attacker`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
+#[derive(Debug)]
 pub enum RoleKind {
     Attacker(Attacker),
     // Add new roles here!
@@ -207,7 +207,8 @@ impl RoleKind {
 }
 
 /// Resource that is exposed and keeps track of the current role and behavior.
-pub struct Engine {
+#[derive(Debug, Resource)]
+pub struct BehaviorEngine {
     /// Current robot role
     role: RoleKind,
     /// Current robot behavior
@@ -216,7 +217,7 @@ pub struct Engine {
     pub prev_behavior_for_standup: Option<BehaviorKind>,
 }
 
-impl Default for Engine {
+impl Default for BehaviorEngine {
     fn default() -> Self {
         Self {
             role: RoleKind::Attacker(Attacker),
@@ -226,16 +227,16 @@ impl Default for Engine {
     }
 }
 
-impl Engine {
+impl BehaviorEngine {
     /// Assigns roles based on player number and other information like what
     /// robot is closest to the ball, missing robots, etc.
-    fn assign_role(&self, context: Context) -> RoleKind {
+    fn assign_role(context: Context) -> RoleKind {
         RoleKind::by_player_number(context.player_config.player_number)
     }
 
     /// Executes one step of the behavior engine
     pub fn step(&mut self, context: Context, control: &mut Control) {
-        self.role = self.assign_role(context.clone());
+        self.role = Self::assign_role(context.clone());
 
         self.transition(context.clone(), control);
 
@@ -310,61 +311,61 @@ impl Engine {
 }
 
 /// System that is called to execute one step of the behavior engine each cycle
-#[system]
 #[allow(clippy::type_complexity)]
 pub fn step(
-    (engine, primary_state): (&mut Engine, &mut PrimaryState),
-    robot_info: &RobotInfo,
-    (head_buttons, chest_button, contacts): (&HeadButtons, &ChestButton, &Contacts),
+    (mut engine, primary_state): (ResMut<BehaviorEngine>, ResMut<PrimaryState>),
+    robot_info: Res<RobotInfo>,
+    (head_buttons, chest_button, contacts): (Res<HeadButtons>, Res<ChestButton>, Res<Contacts>),
     (player_config, layout_config, yggdrasil_config, behavior_config, game_controller_config): (
-        &PlayerConfig,
-        &LayoutConfig,
-        &YggdrasilConfig,
-        &BehaviorConfig,
-        &GameControllerConfig,
+        Res<PlayerConfig>,
+        Res<LayoutConfig>,
+        Res<YggdrasilConfig>,
+        Res<BehaviorConfig>,
+        Res<GameControllerConfig>,
     ),
-    (nao_manager, walking_engine, keyframe_executor, step_planner, debug_context): (
-        &mut NaoManager,
-        &mut WalkingEngine,
-        &mut KeyframeExecutor,
-        &mut StepPlanner,
-        &mut DebugContext,
+    (mut nao_manager, mut walking_engine, mut keyframe_executor, mut step_planner): (
+        ResMut<NaoManager>,
+        ResMut<WalkingEngine>,
+        ResMut<KeyframeExecutor>,
+        ResMut<StepPlanner>,
     ),
-    game_controller_message: &Option<GameControllerMessage>,
-    (robot_pose, balls, fall_state): (&RobotPose, &Balls, &FallState),
-) -> Result<()> {
+    debug_context: DebugContext<'_>,
+    (robot_pose, fall_state, game_controller_message): (
+        Res<RobotPose>,
+        Res<FallState>,
+        Option<Res<GameControllerMessage>>,
+    ),
+) {
     let context = Context {
-        robot_info,
-        primary_state,
-        head_buttons,
-        chest_button,
-        contacts,
-        player_config,
-        layout_config,
-        yggdrasil_config,
-        behavior_config,
-        game_controller_message: game_controller_message.as_ref(),
-        game_controller_config,
-        fall_state,
-        pose: robot_pose,
-        ball_position: &balls.most_confident_ball().map(|b| b.position),
+        robot_info: robot_info.as_ref(),
+        primary_state: primary_state.as_ref(),
+        head_buttons: &head_buttons,
+        chest_button: &chest_button,
+        contacts: &contacts,
+        player_config: &player_config,
+        layout_config: &layout_config,
+        yggdrasil_config: &yggdrasil_config,
+        behavior_config: &behavior_config,
+        game_controller_message: game_controller_message.as_deref(),
+        game_controller_config: &game_controller_config,
+        fall_state: &fall_state,
+        pose: &robot_pose,
+        ball_position: &None,
         current_behavior: engine.behavior.clone(),
     };
 
     let mut control = Control {
-        nao_manager,
-        walking_engine,
-        keyframe_executor,
-        step_planner,
+        nao_manager: nao_manager.as_mut(),
+        walking_engine: &mut walking_engine,
+        keyframe_executor: &mut keyframe_executor,
+        step_planner: &mut step_planner,
         debug_context,
     };
 
     engine.step(context, &mut control);
-
-    Ok(())
 }
 
-/// A module providing a state machine that keeps track of what behavior a
+/// Plugin providing a state machine that keeps track of what behavior a
 /// robot is doing.
 ///
 /// Each behavior has an execute function that is called to
@@ -373,15 +374,11 @@ pub fn step(
 ///
 /// Transitions between various behaviors are defined per role. New roles can
 /// be defined by implementing the [`Role`] trait.
-///
-/// This module provides the following resources to the application:
-/// - [`Engine`]
-pub struct BehaviorEngineModule;
+pub(super) struct BehaviorEnginePlugin;
 
-impl Module for BehaviorEngineModule {
-    fn initialize(self, app: App) -> miette::Result<App> {
-        Ok(app
-            .init_resource::<Engine>()?
-            .add_staged_system(SystemStage::Init, step))
+impl Plugin for BehaviorEnginePlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<BehaviorEngine>()
+            .add_systems(First, step);
     }
 }

@@ -1,62 +1,48 @@
+use super::imu::IMUValues;
+use crate::prelude::*;
+use crate::{behavior::primary_state::PrimaryState, nao::CycleTime};
+use bevy::prelude::*;
 use nalgebra::{Quaternion, UnitComplex, UnitQuaternion, Vector3};
 use nidhogg::types::ForceSensitiveResistors;
 use serde::{Deserialize, Serialize};
 
-use crate::{behavior::primary_state::PrimaryState, nao::CycleTime, prelude::*};
-
-use super::imu::IMUValues;
-
 const GRAVITY_CONSTANT: f32 = 9.81;
 
-/// A module that uses the IMU data to maintain the current orientation of the robot.
+/// Plugin which maintains the robot's orientation using the IMU data.
 ///
 /// This implementation is based on the paper <https://www.mdpi.com/1424-8220/15/8/19302/pdf>.
 /// And implementation by the HULKs team.
-///
-/// The module provides the following resources to the application:
-/// - [`RobotOrientation`]
-pub struct OrientationFilter;
+pub struct OrientationFilterPlugin;
 
-impl Module for OrientationFilter {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_staged_system(
-            SystemStage::Sensor,
-            update_orientation.after(super::imu::imu_sensor),
-        )
-        .add_startup_system(init_orientation_filter)
+impl Plugin for OrientationFilterPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Sensor, update_orientation.after(super::imu::imu_sensor))
+            .add_systems(PostStartup, init_orientation_filter);
     }
 }
 
-#[startup_system]
-pub fn init_orientation_filter(
-    storage: &mut Storage,
-    config: &OrientationFilterConfig,
-) -> Result<()> {
-    storage.add_resource(Resource::new(RobotOrientation::with_config(config)))?;
-    Ok(())
+fn init_orientation_filter(mut commands: Commands, config: Res<OrientationFilterConfig>) {
+    commands.insert_resource(RobotOrientation::with_config(&config));
 }
 
-#[system]
 pub fn update_orientation(
-    orientation: &mut RobotOrientation,
-    imu: &IMUValues,
-    fsr: &ForceSensitiveResistors,
-    cycle: &CycleTime,
-    primary_state: &PrimaryState,
-) -> Result<()> {
-    match primary_state {
+    mut orientation: ResMut<RobotOrientation>,
+    imu: Res<IMUValues>,
+    fsr: Res<ForceSensitiveResistors>,
+    cycle: Res<CycleTime>,
+    primary_state: Res<PrimaryState>,
+) {
+    match *primary_state {
         PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
             orientation.reset();
         }
         _ => {
-            orientation.update(imu, fsr, cycle);
+            orientation.update(&imu, &fsr, &cycle);
         }
     }
-
-    Ok(())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Resource, Debug, Clone, Serialize, Deserialize)]
 pub struct OrientationFilterConfig {
     pub acceleration_weight: f32,
     pub acceleration_threshold: f32,
@@ -64,7 +50,7 @@ pub struct OrientationFilterConfig {
     pub fsr_threshold: f32,
 }
 
-#[derive(Debug)]
+#[derive(Resource, Debug)]
 pub struct RobotOrientation {
     pub orientation: UnitQuaternion<f32>,
     config: OrientationFilterConfig,
@@ -75,6 +61,7 @@ pub struct RobotOrientation {
 
 impl RobotOrientation {
     /// Creates a new [`RobotOrientation`] with the provided configuration.
+    #[must_use]
     pub fn with_config(config: &OrientationFilterConfig) -> Self {
         Self {
             orientation: UnitQuaternion::identity(),
@@ -121,6 +108,7 @@ impl RobotOrientation {
     }
 
     /// Returns the current yaw of the robot, in 2D
+    #[must_use]
     pub fn yaw(&self) -> UnitComplex<f32> {
         UnitComplex::new(self.orientation.inverse().euler_angles().2)
     }
@@ -142,6 +130,7 @@ impl RobotOrientation {
         );
     }
 
+    #[must_use]
     pub fn is_steady(
         &self,
         gyro: Vector3<f32>,

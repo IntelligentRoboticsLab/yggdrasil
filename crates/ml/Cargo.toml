@@ -1,0 +1,21 @@
+[package]
+description = "Type-safe accelerated machine learning inference in Rust"
+name = "ml"
+
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bevy = { workspace = true }
+fast_image_resize = { workspace = true }
+miette = { workspace = true }
+ndarray = { workspace = true }
+openvino = { workspace = true }
+tasks = { workspace = true }
+thiserror = { workspace = true }

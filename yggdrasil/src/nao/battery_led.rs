@@ -1,5 +1,5 @@
-use crate::nao::manager::Priority;
-use crate::prelude::*;
+use crate::nao::Priority;
+use bevy::prelude::*;
 use nidhogg::{
     types::{FillExt, Skull},
     NaoState,
@@ -9,8 +9,16 @@ use super::manager::NaoManager;
 
 const LED_ENABLED: f32 = 1.0;
 
-#[system]
-pub fn battery_display(nao_state: &mut NaoState, manager: &mut NaoManager) -> Result<()> {
+/// Plugin that adds a battery level display to the robot's skull LEDs.
+pub(super) struct BatteryLedPlugin;
+
+impl Plugin for BatteryLedPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, battery_display);
+    }
+}
+
+pub fn battery_display(nao_state: Res<NaoState>, mut manager: ResMut<NaoManager>) {
     let battery_level = (nao_state.battery.charge * 100.0) as u32;
 
     // turns on a certain amount of LED's based on the robots battery level
@@ -58,6 +66,4 @@ pub fn battery_display(nao_state: &mut NaoState, manager: &mut NaoManager) -> Re
     }
 
     manager.set_skull_led(skull, Priority::Medium);
-
-    Ok(())
 }

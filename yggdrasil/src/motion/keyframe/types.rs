@@ -43,7 +43,7 @@ pub enum InterpolationType {
 /// # Notes
 /// - New conditional variables should be added as new variants to this enum.
 ///   Furthermore, the implementation for checking this variable should be added
-///   to the 'check_condition' function in 'keyframe_executor'.
+///   to the '`check_condition`' function in '`keyframe_executor`'.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ConditionalVariable {
     GyroscopeX,
@@ -58,7 +58,7 @@ pub enum ConditionalVariable {
 /// # Notes
 /// - New failroutines should be added as new variants to this enum.
 ///   Furthermore, the implementation for executing this failroutine should be added
-///   to the 'select_routine' function in 'keyframe_executor'.
+///   to the '`select_routine`' function in '`keyframe_executor`'.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum FailRoutine {
     Retry,
@@ -73,7 +73,7 @@ pub enum FailRoutine {
 /// # Notes
 /// - Currently only the "Standing" routine is present, which is used
 ///   to signify to the behaviour engine that the standup motion has
-///   executed succesfully.
+///   executed successfully.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ExitRoutine {
     Standing,
@@ -99,7 +99,7 @@ pub struct MotionCondition {
 pub struct MotionSettings {
     // interpolation type used during the motion
     pub interpolation_type: InterpolationType,
-    // exit routine to be executed when the motion has finished succesfully
+    // exit routine to be executed when the motion has finished successfully
     pub exit_routine: Option<ExitRoutine>,
     // the standard order the submotions will be executed in
     pub motion_order: Vec<String>,
@@ -157,7 +157,7 @@ impl Motion {
         };
 
         // populating the submotions property of Motion with the correct SubMotions
-        for submotion_name in config.motion_order.iter() {
+        for submotion_name in &config.motion_order {
             let submotion_path = Path::new("./assets/motions/submotions")
                 .join(submotion_name)
                 .with_extension("json");
@@ -237,6 +237,7 @@ impl Motion {
     ///
     /// # Arguments
     /// * `submotion_name` - name of the current submotion.
+    #[must_use]
     pub fn initial_movement(&self, submotion_name: &String) -> &Movement {
         &self.submotions[submotion_name].keyframes[0]
     }

@@ -1,3 +1,5 @@
+use bevy::reflect::Reflect;
+
 /// A type-safe bounding box.
 ///
 /// It is a wrapper around a tuple of four `f32` values representing the coordinates of the bounding box.
@@ -23,10 +25,11 @@
 ///
 /// - [`Xyxy`] (xmin, ymin, xmax, ymax)
 /// - [`Xywh`] (xmin, ymin, width, height)
-/// - [`Cxcywh`] (center_x, center_y, width, height)
-#[derive(Debug, Clone, Copy)]
+/// - [`Cxcywh`] (`center_x`, `center_y`, width, height)
+#[derive(Debug, Clone, Copy, Reflect)]
 pub struct Bbox<T> {
     pub inner: (f32, f32, f32, f32),
+    #[reflect(ignore)]
     _marker: std::marker::PhantomData<T>,
 }
 
@@ -45,6 +48,7 @@ where
     Bbox<T>: ConvertBbox<Xyxy>,
 {
     /// Compute the area of the bounding box.
+    #[must_use]
     pub fn area(&self) -> f32 {
         let (x1, y1, x2, y2) = ConvertBbox::<Xyxy>::convert(self).inner;
         (x2 - x1) * (y2 - y1)
@@ -86,7 +90,7 @@ where
         area1 + area2 - self.intersection(other)
     }
 
-    /// Compute the intersection over union (IoU) between two bounding boxes.
+    /// Compute the intersection over union (`IoU`) between two bounding boxes.
     pub fn iou<S>(&self, other: &S) -> f32
     where
         S: ConvertBbox<Xyxy>,
@@ -109,16 +113,18 @@ pub trait ConvertBbox<T> {
 }
 
 /// Marker type for bounding boxes with coordinates of the top-left and bottom-right corners.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Reflect)]
 pub struct Xyxy;
 
 impl Bbox<Xyxy> {
     /// Create a bounding box from the coordinates of the top-left and bottom-right corners.
+    #[must_use]
     pub fn xyxy(x1: f32, y1: f32, x2: f32, y2: f32) -> Bbox<Xyxy> {
         Bbox::new((x1, y1, x2, y2))
     }
 
     /// Clamp the bounding box to the given width and height.
+    #[must_use]
     pub fn clamp(&self, width: f32, height: f32) -> Bbox<Xyxy> {
         let (x1, y1, x2, y2) = self.inner;
         let x1 = x1.max(0.0).min(width);
@@ -129,6 +135,7 @@ impl Bbox<Xyxy> {
     }
 
     /// Scale the bounding box to the given width and height.
+    #[must_use]
     pub fn scaled(&self, width: f32, height: f32) -> Bbox<Xyxy> {
         let (x1, y1, x2, y2) = self.inner;
         Bbox::new((x1 * width, y1 * height, x2 * width, y2 * height))
@@ -161,11 +168,13 @@ pub struct Xywh;
 
 impl Bbox<Xywh> {
     /// Create a bounding box from the coordinates of the top-left corner and the width and height.
+    #[must_use]
     pub fn xywh(x: f32, y: f32, w: f32, h: f32) -> Bbox<Xywh> {
         Bbox::new((x, y, w, h))
     }
 
     /// Clamp the bounding box to the given width and height.
+    #[must_use]
     pub fn clamp(&self, width: f32, height: f32) -> Bbox<Xywh> {
         let (x, y, w, h) = self.inner;
         let x = x.max(0.0).min(width);
@@ -195,11 +204,13 @@ pub struct Cxcywh;
 
 impl Bbox<Cxcywh> {
     /// Create a bounding box from the coordinates of the center and the width and height.
+    #[must_use]
     pub fn cxcywh(cx: f32, cy: f32, w: f32, h: f32) -> Bbox<Cxcywh> {
         Bbox::new((cx, cy, w, h))
     }
 
     /// Clamp the bounding box to the given width and height.
+    #[must_use]
     pub fn clamp(&self, width: f32, height: f32) -> Bbox<Cxcywh> {
         let (cx, cy, w, h) = self.inner;
         let x1 = (cx - w / 2.0).max(0.0).min(width);
@@ -225,6 +236,7 @@ impl ConvertBbox<Xywh> for Bbox<Cxcywh> {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 

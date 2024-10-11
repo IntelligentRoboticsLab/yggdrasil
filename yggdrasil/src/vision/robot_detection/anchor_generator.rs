@@ -113,10 +113,10 @@ impl DefaultBoxGenerator {
         let (y_fk, x_fk) = feature_size;
         let total_features = y_fk * x_fk;
 
-        let shifts_x = (Array::range(0.0, x_fk as f32, 1.0) + 0.5) / x_fk as f32;
-        let shifts_y = (Array::range(0.0, y_fk as f32, 1.0) + 0.5) / y_fk as f32;
+        let all_shifts_x = (Array::range(0.0, x_fk as f32, 1.0) + 0.5) / x_fk as f32;
+        let all_shifts_y = (Array::range(0.0, y_fk as f32, 1.0) + 0.5) / y_fk as f32;
 
-        let grids = meshgrid(&[shifts_y, shifts_x]).unwrap();
+        let grids = meshgrid(&[all_shifts_y, all_shifts_x]).unwrap();
 
         // flatten into shape (total_features,)
         let shift_x = grids[1].clone().into_shape(total_features).unwrap();
@@ -163,7 +163,7 @@ where
         grid_shape[dim_index] = xi[dim_index].len();
 
         // Determine the correct repetition for each dimension
-        for (j, len) in xi.iter().map(|x| x.len()).enumerate() {
+        for (j, len) in xi.iter().map(ndarray::ArrayBase::len).enumerate() {
             if j != dim_index {
                 grid_shape[j] = len;
             }

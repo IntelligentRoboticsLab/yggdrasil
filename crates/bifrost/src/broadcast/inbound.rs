@@ -14,6 +14,7 @@ pub struct Inbound<A: Clone, M: Message> {
 
 impl<A: Clone, M: Message> Inbound<A, M> {
     /// Creates a new empty Inbound buffer.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             buffer: VecDeque::new(),
@@ -29,6 +30,10 @@ impl<A: Clone, M: Message> Inbound<A, M> {
     ///
     /// Yes you have to copy the fields out of an element that is going to get removed anyway.
     /// Whatever, it's a temporary API until we get events implemented in tyr.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the selector function returns `Some` for an index that does not exist.
     pub fn take_map<F, T>(&mut self, mut f: F) -> Option<(Instant, A, T)>
     where
         F: FnMut(&Instant, &A, &M) -> Option<T>,
@@ -37,7 +42,7 @@ impl<A: Clone, M: Message> Inbound<A, M> {
             let (when, who, message) = &self.buffer[i];
 
             if let Some(data) = f(when, who, message) {
-                let (when, who, _message) = self.buffer.remove(i).unwrap();
+                let (when, who, _message) = self.buffer.remove(i).expect("index exists");
                 return Some((when, who, data));
             }
         }
@@ -46,11 +51,19 @@ impl<A: Clone, M: Message> Inbound<A, M> {
     }
 
     /// Unpacks a packet of bytes into the buffer at the current time.
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::unpack_at`]
     pub fn unpack(&mut self, packet: &[u8], who: A) -> Result<()> {
         self.unpack_at(packet, who, Instant::now())
     }
 
     /// Unpacks a packet of bytes into the buffer at a specific time.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the packet is not a valid sequence of messages.
     pub fn unpack_at(&mut self, mut packet: &[u8], who: A, when: Instant) -> Result<()> {
         while !packet.is_empty() {
             let message = M::decode(&mut packet)?;

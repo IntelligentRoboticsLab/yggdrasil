@@ -1,54 +1,115 @@
 [workspace]
-members = ["crates/*", "yggdrasil"]
+members = ["crates/*", "tools/sindri", "yggdrasil"]
 resolver = "2"
 
+[workspace.package]
+authors = ["Dutch Nao Team"]
+categories = []
+edition = "2021"
+rust-version = "1.78.0"
+version = "0.1.0"
+
+[workspace.lints.rust]
+# TODO: re-enable this once we have docs for everything
+# missing_docs = "warn"
+# TODO: replace this lint with cargo-machete, since it's broken
+# https://github.com/rust-lang/rust/issues/57274
+# unused_crate_dependencies = "warn"
+
+[workspace.lints.clippy]
+# enable clippy lints with priority -1
+# so that we can override certain ones with "allow"
+all = { level = "warn", priority = -1 }
+inline_always = "allow"
+pedantic = { level = "warn", priority = -1 }
+
+# these are anti-patterns in our codebase/bevy
+module_name_repetitions = "allow"
+needless_pass_by_value = "allow"
+
+# this one seems broken for the `whistle_in_set` enum property
+# https://github.com/rust-lang/rust-clippy/issues/13058
+used_underscore_binding = "allow"
+
+# these are not useful for our codebase, or are too noisy
+match_same_arms = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+type_complexity = "allow"
+
+# TODO: Look into enabling these
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+
 [workspace.dependencies]
-alsa = "0.9.1"
+# root crates
+yggdrasil = { path = "yggdrasil" }
+
+# yggdrasil libraries
+bifrost = { path = "crates/bifrost" }
+heimdall = { path = "crates/heimdall" }
+ml = { path = "crates/ml" }
+nilfheim = { path = "crates/nilfheim" }
+odal = { path = "crates/odal" }
+tasks = { path = "crates/tasks" }
+
+# tools
+simulation = { path = "tools/simulation" }
+sindri = { path = "tools/sindri" }
+
+# external crates
+async-std = "1.13.0"
 async-trait = "0.1.82"
+bevy = { version = "0.14.2", default-features = false }
 byteorder = "1.4.3"
 cargo_toml = "0.19.2"
 clap = "4.5.18"
 colored = "2.0.4"
+cpal = { version = "0.15.3" }
 derive_more = "0.99.18"
 dialoguer = "0.11.0"
 dot-structures = "0.1.1"
 dyn-clone = "1.0.17"
 enum_dispatch = "0.3.13"
-fast_image_resize = "3.0.4"
 fast-math = "0.1.1"
-futures = "0.3.28"
+fast_image_resize = "3.0.4"
+futures = "0.3.30"
 geo = "0.28.0"
 glob = "0.3.1"
 graphviz-rust = "0.9.0"
 home = "0.5.9"
 # We're stuck on this version until rerun updates
 # https://github.com/rerun-io/rerun/pull/5280
+apodize = "1.0.0"
 image = "0.25.2"
-itertools = "0.13.0"
 indicatif = "0.17.8"
+itertools = "0.13.0"
 kira = "0.8.7"
 linreg = "0.2.0"
-linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo.git", rev = "a66c7c23dbdafcd9b129744d7716820a979af48d" }
+linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo", rev = "b8536cf4da325de79f398e70a74cee5bf426f64c" }
 local-ip-address = "0.6.3"
+lstsq = "0.5.0"
 miette = "5.10.0"
-nalgebra = { version = "0.32.6" }
+nalgebra = "0.32.6"
 ndarray = "0.15.6"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "b4a4ac455cb67986a5ea4ffaa88a91e2a8cd9feb" }
+nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "83cfed56533ff34fae2b92c0964f1c9284b9f9c5" }
 num = "0.4.3"
 openvino = { git = "https://github.com/YukumoHunter/openvino-rs.git", branch = "evil-hack", features = [
-    "runtime-linking",
+  "runtime-linking",
 ] }
 ordered-float = "4.2.1"
-lstsq = "0.5.0"
 pathfinding = "4.11.0"
 petgraph = "0.6.5"
 proc-macro2 = "1.0.86"
 quote = "1.0.37"
+rand = "0.8.5"
 rayon = "1.10.0"
 regex = "1.10.5"
 rerun = { version = "0.18.2", features = ["image"] }
-rustfft = "6.2.0"
 rustc_version = "0.4.1"
+rustfft = "6.2.0"
 serde = "1.0.210"
 serde_json = "1.0.128"
 serde_with = "3.9.0"
@@ -60,9 +121,8 @@ tokio-test = "0.4.2"
 tokio-tungstenite = "0.21.0"
 toml = "0.8.16"
 tracing = "0.1.37"
-tracing-subscriber = "0.3"
 tracing-appender = "0.2"
+tracing-subscriber = "0.3"
 tracing-tracy = "0.11.3"
 turbojpeg = "1.1.0"
 walkdir = "2.5.0"
-apodize = "1.0.0"

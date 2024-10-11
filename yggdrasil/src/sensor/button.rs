@@ -1,37 +1,44 @@
 use crate::prelude::*;
+use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DurationMilliSeconds};
 
-use super::{ButtonConfig, FilterConfig};
+use super::SensorConfig;
 use nidhogg::NaoState;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-/// A module offering structured wrappers for each Nao button, derived from the raw [`NaoState`].
-///
-/// By allowing systems to depend only on necessary buttons, this design enhances the dependency graph's efficiency.
-///
-/// This module provides the following resources to the application:
-/// - [`HeadButtons`]
-/// - [`ChestButton`]
-/// - [`LeftHandButtons`]
-/// - [`RightHandButtons`]
-/// - [`LeftFootButtons`]
-/// - [`RightFootButtons`]
+/// Plugin that adds resources for structured wrappers for each button on the nao,
+/// derived from the raw [`NaoState`].
 ///
 /// These resources include a [`ButtonState`], representing the button's current status.
-pub struct ButtonFilter;
+pub struct ButtonPlugin;
 
-impl Module for ButtonFilter {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_staged_system(SystemStage::Sensor, button_filter)
-            .init_resource::<HeadButtons>()?
-            .init_resource::<ChestButton>()?
-            .init_resource::<LeftHandButtons>()?
-            .init_resource::<RightHandButtons>()?
-            .init_resource::<LeftFootButtons>()?
-            .init_resource::<RightFootButtons>()
+impl Plugin for ButtonPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Sensor, button_filter)
+            .init_resource::<HeadButtons>()
+            .init_resource::<ChestButton>()
+            .init_resource::<LeftHandButtons>()
+            .init_resource::<RightHandButtons>()
+            .init_resource::<LeftFootButtons>()
+            .init_resource::<RightFootButtons>();
     }
 }
 
-#[derive(Default, Debug)]
+/// Configuration for the button sensitivity.
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct ButtonConfig {
+    /// The threshold for a button to be considered pressed.
+    pub activation_threshold: f32,
+    /// The time (in ms) a button needs to be held down, in order to be considered held down.
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub held_duration_threshold: Duration,
+}
+
+/// The state of a button.
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum ButtonState {
     /// The button is not being pressed.
     #[default]
@@ -46,21 +53,25 @@ pub enum ButtonState {
 
 impl ButtonState {
     /// Tell whether the button is currently pressed down.
+    #[must_use]
     pub fn is_pressed(&self) -> bool {
         !matches!(self, Self::Neutral | Self::Tapped)
     }
 
     /// Tell whether the button has been tapped, meaning it was just released.
+    #[must_use]
     pub fn is_tapped(&self) -> bool {
         matches!(self, Self::Tapped)
     }
 
     /// Tell whether the button is currently being held down.
+    #[must_use]
     pub fn is_held(&self) -> bool {
         matches!(self, Self::Held(_))
     }
 
     /// Get the next state based on whether the button is currently pressed down.
+    #[must_use]
     pub fn next(&self, config: &ButtonConfig, is_pressed: bool) -> Self {
         match (self, is_pressed) {
             (ButtonState::Pressed(start), true) => {
@@ -82,7 +93,7 @@ impl ButtonState {
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's head.
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct HeadButtons {
     /// Front button on the head of the Nao.
     pub front: ButtonState,
@@ -94,30 +105,33 @@ pub struct HeadButtons {
 
 impl HeadButtons {
     /// Tell whether all buttons are tapped, meaning they were just released.
+    #[must_use]
     pub fn all_tapped(&self) -> bool {
         self.front.is_tapped() && self.middle.is_tapped() && self.rear.is_tapped()
     }
 
     /// Tell whether all buttons are pressed.
+    #[must_use]
     pub fn all_pressed(&self) -> bool {
         self.front.is_pressed() && self.middle.is_pressed() && self.rear.is_pressed()
     }
 
     /// Tell whether all buttons are held down.
+    #[must_use]
     pub fn all_held(&self) -> bool {
         self.front.is_held() && self.middle.is_held() && self.rear.is_held()
     }
 }
 
 /// Struct containing [`state`](`ButtonState`) of the buttons in the Nao's chest.
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct ChestButton {
     /// The button in the chest of the Nao.
     pub state: ButtonState,
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's left hand.
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct LeftHandButtons {
     /// Left button on the left hand of the Nao.
     pub left: ButtonState,
@@ -128,7 +142,7 @@ pub struct LeftHandButtons {
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's right hand.
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct RightHandButtons {
     /// Left button on the right hand of the Nao.
     pub left: ButtonState,
@@ -139,7 +153,7 @@ pub struct RightHandButtons {
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's left foot.
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct LeftFootButtons {
     /// Left button on the left foot of the Nao.
     pub left: ButtonState,
@@ -148,7 +162,7 @@ pub struct LeftFootButtons {
 }
 
 /// Struct containing [`states`](`ButtonState`) of the buttons on the Nao's right foot.
-#[derive(Default, Debug)]
+#[derive(Resource, Default, Debug)]
 pub struct RightFootButtons {
     /// Left button on the right foot of the Nao.
     pub left: ButtonState,
@@ -156,18 +170,25 @@ pub struct RightFootButtons {
     pub right: ButtonState,
 }
 
-#[allow(clippy::too_many_arguments)]
-#[system]
-pub fn button_filter(
-    nao_state: &NaoState,
-    head_buttons: &mut HeadButtons,
-    chest_button: &mut ChestButton,
-    left_hand_buttons: &mut LeftHandButtons,
-    right_hand_buttons: &mut RightHandButtons,
-    left_foot_buttons: &mut LeftFootButtons,
-    right_foot_buttons: &mut RightFootButtons,
-    config: &FilterConfig,
-) -> Result<()> {
+fn button_filter(
+    nao_state: Res<NaoState>,
+    config: Res<SensorConfig>,
+    (
+        mut head_buttons,
+        mut chest_button,
+        mut left_hand_buttons,
+        mut right_hand_buttons,
+        mut left_foot_buttons,
+        mut right_foot_buttons,
+    ): (
+        ResMut<HeadButtons>,
+        ResMut<ChestButton>,
+        ResMut<LeftHandButtons>,
+        ResMut<RightHandButtons>,
+        ResMut<LeftFootButtons>,
+        ResMut<RightFootButtons>,
+    ),
+) {
     let touch = nao_state.touch.clone();
     let config = &config.button;
     let threshold = config.activation_threshold;
@@ -223,14 +244,10 @@ pub fn button_filter(
     right_foot_buttons.right = right_foot_buttons
         .right
         .next(config, touch.right_foot_right >= threshold);
-
-    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::sensor::ButtonConfig;
-
     use super::*;
 
     use std::time::Duration;

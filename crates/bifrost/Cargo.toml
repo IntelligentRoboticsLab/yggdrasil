@@ -1,12 +1,16 @@
 [package]
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
 name = "bifrost"
-version = "0.1.0"
-edition = "2021"
+rust-version.workspace = true
+version.workspace = true
 
-[lib]
-name = "bifrost"
+[lints]
+workspace = true
 
 [dependencies]
+bevy = { workspace = true, default-features = false }
 bifrost_derive = { path = "bifrost_derive" }
 byteorder = { workspace = true }
 num = { workspace = true }

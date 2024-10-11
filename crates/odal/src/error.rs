@@ -41,7 +41,7 @@ pub enum ErrorKind {
         path: String,
         source: std::io::Error,
     },
-    #[error("Failed to seralize toml")]
+    #[error("Failed to serialize toml")]
     Serialize(#[from] toml::ser::Error),
     #[error("Failed to deserialize toml:\n{message}\n")]
     Deserialize {
@@ -76,6 +76,7 @@ pub struct Error {
 
 impl Error {
     /// Create an error that automatically inserts the config name
+    #[must_use]
     pub fn from_kind<T: Config>(kind: ErrorKind) -> Self {
         Self {
             name: T::name().to_string(),
@@ -83,9 +84,15 @@ impl Error {
         }
     }
 
-    pub fn deserialize<T: Config>(path: impl AsRef<Path>, source: toml::de::Error) -> Self {
+    /// Deserialize a toml error into an odal config error
+    ///
+    /// # Panics
+    ///
+    /// If the file at the given path cannot be read or the toml string cannot be parsed
+    /// this function will panic.
+    pub fn deserialize<T: Config>(path: impl AsRef<Path>, source: &toml::de::Error) -> Self {
         let path = path.as_ref().join(T::PATH);
-        let toml_string = read_to_string(&path).unwrap();
+        let toml_string = read_to_string(&path).expect("failed to read file");
 
         Self::from_kind::<T>(ErrorKind::Deserialize {
             definition_source: NamedSource::new(path.to_string_lossy(), toml_string),

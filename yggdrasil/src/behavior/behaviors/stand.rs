@@ -1,6 +1,6 @@
 use crate::{
     behavior::engine::{Behavior, Context, Control},
-    nao::manager::Priority,
+    nao::Priority,
 };
 use nidhogg::types::{FillExt, HeadJoints};
 

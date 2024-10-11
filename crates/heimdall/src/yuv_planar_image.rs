@@ -14,6 +14,7 @@ pub struct YuvPlanarImage {
 }
 
 impl YuvPlanarImage {
+    #[must_use]
     pub fn from_yuyv(yuyv_image: &YuyvImage) -> Self {
         let num_pixels = yuyv_image.height() * yuyv_image.width();
         let mut data = vec![0u8; num_pixels * 2];
@@ -41,10 +42,12 @@ impl YuvPlanarImage {
         }
     }
 
+    #[must_use]
     pub fn width(&self) -> usize {
         self.width
     }
 
+    #[must_use]
     pub fn height(&self) -> usize {
         self.height
     }
@@ -58,7 +61,7 @@ impl YuvPlanarImage {
     /// This function fails if it cannot convert the taken image.
     pub fn to_jpeg(&self, quality: i32) -> Result<OwnedBuf> {
         let img = turbojpeg::YuvImage {
-            pixels: self.deref(),
+            pixels: &**self,
             width: self.width(),
             align: 2,
             height: self.height(),

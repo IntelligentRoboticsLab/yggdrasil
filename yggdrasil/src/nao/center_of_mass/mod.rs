@@ -1,34 +1,35 @@
-//! Center of mass (CoM) module.
+//! Center of mass (`CoM`) module.
 //!
 //! This module calculates the center of mass of the robot, and stores it in the [`CenterOfMass`]
-//! resource. The CoM is calculated by taking the kinematic chain from the torso to each body part,
-//! multiplying the mass of the body part by the position of the CoM of the body part, and summing
-//! the results. The total mass of the robot is then divided out to get the CoM.
+//! resource. The `CoM` is calculated by taking the kinematic chain from the torso to each body part,
+//! multiplying the mass of the body part by the position of the `CoM` of the body part, and summing
+//! the results. The total mass of the robot is then divided out to get the `CoM`.
 mod robot_masses;
 
 use crate::{
     core::debug::DebugContext, kinematics::RobotKinematics, localization::RobotPose, prelude::*,
 };
+use bevy::prelude::*;
 use nalgebra::Point3;
 pub use robot_masses::*;
 
-/// Adds the CoM of the robot to the storage, and updates it each cycle.
+/// Plugin which adds the `CoM` of the robot to the storage, and updates it each cycle.
 ///
 /// Adds the following resources:
 /// - [`CenterOfMass`] - The center of mass of the robot.
-pub struct CenterOfMassModule;
+pub struct CenterOfMassPlugin;
 
-impl Module for CenterOfMassModule {
-    fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .init_resource::<CenterOfMass>()?
-            .add_staged_system_chain(
-                SystemStage::Sensor,
-                (
-                    update_com.after(crate::kinematics::update_kinematics),
-                    log_com,
-                ),
-            ))
+impl Plugin for CenterOfMassPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<CenterOfMass>();
+        app.add_systems(
+            Sensor,
+            (
+                update_com.after(crate::kinematics::update_kinematics),
+                log_com,
+            )
+                .chain(),
+        );
     }
 }
 
@@ -38,14 +39,13 @@ impl Module for CenterOfMassModule {
 /// multiplying the mass of the body part by the position of the center of mass of the body part,
 /// and summing the results. The total mass of the robot is then divided out to get the center of
 /// mass.
-#[derive(Default)]
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq)]
 pub struct CenterOfMass {
     /// The center of mass of the robot in *robot* frame.
     pub position: Point3<f32>,
 }
 
-#[system]
-fn update_com(kinematics: &RobotKinematics, com: &mut CenterOfMass) -> Result<()> {
+fn update_com(kinematics: Res<RobotKinematics>, mut com: ResMut<CenterOfMass>) {
     let new_com = kinematics.torso_to_robot * TORSO.center * TORSO.mass
         + kinematics.neck_to_robot * NECK.center * NECK.mass
         + kinematics.head_to_robot * HEAD.center * HEAD.mass
@@ -74,12 +74,9 @@ fn update_com(kinematics: &RobotKinematics, com: &mut CenterOfMass) -> Result<()
     *com = CenterOfMass {
         position: (new_com / TOTAL_MASS).into(),
     };
-
-    Ok(())
 }
 
-#[system]
-fn log_com(com: &CenterOfMass, dbg: &DebugContext, pose: &RobotPose) -> Result<()> {
+fn log_com(dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) {
     let absolute_com_position = pose.robot_to_world(&com.position.xy());
 
     dbg.log_points_3d_with_color_and_radius(
@@ -91,7 +88,6 @@ fn log_com(com: &CenterOfMass, dbg: &DebugContext, pose: &RobotPose) -> Result<(
         )],
         nidhogg::types::color::u8::MAROON,
         0.005,
-    )?;
-
-    Ok(())
+    )
+    .expect("failed to log center of mass");
 }
