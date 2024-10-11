@@ -34,25 +34,24 @@ pub(crate) struct BallClassifierPlugin;
 
 impl Plugin for BallClassifierPlugin {
     fn build(&self, app: &mut App) {
-        app.init_ml_model::<BallClassifierModel>();
-        app.add_systems(
-            PostStartup,
-            init_ball_classifier
-                .after(init_camera::<Top>)
-                .after(init_camera::<Bottom>),
-        );
-
-        app.add_systems(
-            Update,
-            (
-                detect_balls::<Top>
-                    .after(super::proposal::update_ball_proposals::<Top>)
-                    .run_if(resource_exists_and_changed::<Image<Top>>),
-                detect_balls::<Bottom>
-                    .after(super::proposal::update_ball_proposals::<Bottom>)
-                    .run_if(resource_exists_and_changed::<Image<Bottom>>),
-            ),
-        );
+        app.init_ml_model::<BallClassifierModel>()
+            .add_systems(
+                PostStartup,
+                init_ball_classifier
+                    .after(init_camera::<Top>)
+                    .after(init_camera::<Bottom>),
+            )
+            .add_systems(
+                Update,
+                (
+                    detect_balls::<Top>
+                        .after(super::proposal::update_ball_proposals::<Top>)
+                        .run_if(resource_exists_and_changed::<Image<Top>>),
+                    detect_balls::<Bottom>
+                        .after(super::proposal::update_ball_proposals::<Bottom>)
+                        .run_if(resource_exists_and_changed::<Image<Bottom>>),
+                ),
+            );
     }
 }
 
@@ -158,13 +157,21 @@ fn detect_balls<T: CameraLocation>(
             patch,
         );
 
-        let confidence = commands
-            .infer_model(&mut model)
-            .with_input(&(patch,))
-            .spawn_blocking(|(result,)| ml::util::sigmoid(result[0]))[0];
+        let confidence = {
+            let output = commands
+                .infer_model(&mut model)
+                .with_input(&(patch,))
+                .spawn_blocking(|(result,)| ml::util::sigmoid(result[0]))[0];
+
+            1.0 - output
+        };
 
         if start.elapsed().as_micros() > classifier.time_budget as u128 {
             break;
+        }
+
+        if confidence < classifier.confidence_threshold {
+            continue;
         }
 
         let Ok(robot_to_ball) = camera_matrix.pixel_to_ground(proposal.position.cast(), 0.0) else {
@@ -178,13 +185,13 @@ fn detect_balls<T: CameraLocation>(
             position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
             distance: proposal.distance_to_ball,
             timestamp: Instant::now(),
-            confidence: 1.0 - confidence,
+            confidence,
             camera: T::POSITION,
         });
 
-        if 1.0 - confidence > classifier.confidence_threshold {
-            break;
-        }
+        // TODO: we only store the closest ball with high enough confidence
+        // Maybe we should store multiple candidates.
+        break;
     }
 
     if classified_balls.is_empty() {
