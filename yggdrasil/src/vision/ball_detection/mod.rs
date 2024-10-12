@@ -2,24 +2,30 @@
 
 pub mod classifier;
 pub mod proposal;
-mod visualizer;
 
 use std::time::Duration;
 
 use bevy::prelude::*;
-use heimdall::{Bottom, Top};
+use heimdall::{Bottom, CameraLocation, Top};
 use nidhogg::types::{color, FillExt, LeftEye};
 use proposal::BallProposalConfigs;
 
+use rerun::{AnnotationInfo, ComponentBatch};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 
 use crate::{
+    core::debug::DebugContext,
     nao::{NaoManager, Priority},
     prelude::*,
 };
 
 use self::classifier::{BallClassifierConfig, Balls};
+
+/// Class ID for ball proposals.
+pub(super) const PROPOSAL_CLASS_ID: u16 = 1;
+/// Class ID for classified balls.
+pub(super) const CLASSIFIED_CLASS_ID: u16 = 2;
 
 /// Plugin for detecting balls in the top and bottom images.
 pub struct BallDetectionPlugin;
@@ -27,17 +33,20 @@ pub struct BallDetectionPlugin;
 impl Plugin for BallDetectionPlugin {
     fn build(&self, app: &mut App) {
         app.init_config::<BallDetectionConfig>();
-        app.add_systems(PostStartup, init_subconfigs);
-
         app.add_plugins((
             proposal::BallProposalPlugin::<Top>::default(),
             proposal::BallProposalPlugin::<Bottom>::default(),
             classifier::BallClassifierPlugin,
-            visualizer::BallDetectionVisualizerPlugin::<Top>::default(),
-            visualizer::BallDetectionVisualizerPlugin::<Bottom>::default(),
-        ));
-
-        app.add_systems(Update, detected_ball_eye_color);
+        ))
+        .add_systems(
+            PostStartup,
+            (
+                init_subconfigs,
+                setup_ball_debug_logging::<Top>,
+                setup_ball_debug_logging::<Bottom>,
+            ),
+        )
+        .add_systems(Update, detected_ball_eye_color);
     }
 }
 
@@ -57,6 +66,26 @@ impl Config for BallDetectionConfig {
 // TODO: find a better way to do this (reflection :sob:)
 fn init_subconfigs(mut commands: Commands, config: Res<BallDetectionConfig>) {
     commands.insert_resource(config.proposal.clone());
+}
+
+/// System that sets up the entities paths in rerun.
+///
+/// # Note
+///
+/// By logging a static [`rerun::Color`] component, we can avoid loggging the color component
+/// for each ball proposal and classification.
+fn setup_ball_debug_logging<T: CameraLocation>(dbg: DebugContext) {
+    // TODO: Validate whether this is the correct way to log a default component value
+    dbg.log_component_batches(
+        T::make_entity_path("balls/proposals"),
+        true,
+        [&rerun::Color::from_rgb(0, 128, 0) as &dyn ComponentBatch],
+    );
+    dbg.log_component_batches(
+        T::make_entity_path("balls/classifications"),
+        true,
+        [&rerun::Color::from_rgb(128, 0, 128) as &dyn ComponentBatch],
+    );
 }
 
 fn detected_ball_eye_color(

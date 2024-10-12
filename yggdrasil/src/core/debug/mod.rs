@@ -2,7 +2,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use miette::IntoDiagnostic;
-use rerun::{AsComponents, EntityPath, RecordingStream};
+use rerun::{AsComponents, ComponentBatch, EntityPath, RecordingStream};
 use std::{convert::Into, net::SocketAddr};
 use std::{marker::PhantomData, net::IpAddr};
 
@@ -142,6 +142,28 @@ impl RerunStream {
         self.stream.set_time_sequence("cycle", cycle.0 as i64);
         self.log(ent_path, arch);
         self.stream.set_time_sequence("cycle", self.cycle.0 as i64);
+    }
+
+    /// Logs a set of [`ComponentBatch`]es into Rerun.
+    ///
+    /// If `static_` is set to `true`, all timestamp data associated with this message will be
+    /// dropped right before sending it to Rerun.
+    /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+    /// any temporal data of the same type.
+    ///
+    /// See [`RecordingStream::log_component_batches`] for more information.
+    pub fn log_component_batches<'a>(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        static_: bool,
+        comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
+    ) {
+        if let Err(error) = self
+            .stream
+            .log_component_batches(ent_path, static_, comp_batches)
+        {
+            error!("{error}");
+        }
     }
 }
 

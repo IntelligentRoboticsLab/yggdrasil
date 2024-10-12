@@ -9,10 +9,13 @@ use nalgebra::Point2;
 
 use serde::{Deserialize, Serialize};
 
-use crate::vision::{
-    camera::{init_camera, Image},
-    scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLines},
-    util::bbox::Bbox,
+use crate::{
+    core::debug::DebugContext,
+    vision::{
+        camera::{init_camera, Image},
+        scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLines},
+        util::bbox::Bbox,
+    },
 };
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]
@@ -52,7 +55,8 @@ impl<T: CameraLocation> Plugin for BallProposalPlugin<T> {
         app.add_systems(Startup, init_ball_proposals::<T>.after(init_camera::<T>))
             .add_systems(
                 Update,
-                update_ball_proposals::<T>
+                (update_ball_proposals::<T>, log_ball_proposals::<T>)
+                    .chain()
                     .after(crate::vision::scan_lines::update_scan_lines::<T>)
                     .run_if(resource_exists_and_changed::<ScanLines<T>>),
             );
@@ -288,4 +292,23 @@ fn get_ball_proposals<T: CameraLocation>(
 
 fn init_ball_proposals<T: CameraLocation>(mut commands: Commands, image: Res<Image<T>>) {
     commands.insert_resource(BallProposals::empty(image.clone()));
+}
+
+fn log_ball_proposals<T: CameraLocation>(dbg: DebugContext, proposals: Res<BallProposals<T>>) {
+    let (positions, half_sizes): (Vec<_>, Vec<_>) = proposals
+        .proposals
+        .iter()
+        .map(|proposal| {
+            (
+                (proposal.position.x as f32, proposal.position.y as f32),
+                (proposal.scale, proposal.scale),
+            )
+        })
+        .unzip();
+
+    dbg.log_with_cycle(
+        T::make_entity_path("balls/proposals"),
+        proposals.image.cycle(),
+        &rerun::Boxes2D::from_centers_and_half_sizes(&positions, &half_sizes),
+    );
 }

@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
 
+use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
 
 use crate::vision::camera::{init_camera, Image};
@@ -53,6 +54,17 @@ impl Plugin for BallClassifierPlugin {
                     detect_balls::<Bottom>
                         .run_if(resource_exists_and_changed::<BallProposals<Bottom>>),
                 ),
+            )
+            .add_systems(
+                PostUpdate,
+                (
+                    log_ball_classifications::<Top>
+                        .after(detect_balls::<Top>)
+                        .run_if(resource_exists_and_changed::<Balls>),
+                    log_ball_classifications::<Bottom>
+                        .after(detect_balls::<Bottom>)
+                        .run_if(resource_exists_and_changed::<Balls>),
+                ),
             );
     }
 }
@@ -69,6 +81,37 @@ fn init_ball_classifier(
     };
 
     commands.insert_resource(balls);
+}
+
+fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Balls>) {
+    let (positions, (half_sizes, confidences)): (Vec<_>, (Vec<_>, Vec<_>)) = balls
+        .balls
+        .iter()
+        // TODO: Once we have a better unified way to store the balls for different camera positions, we can
+        // drop the extra condition here.
+        .filter(|ball| ball.is_fresh && ball.camera == T::POSITION)
+        .map(|ball| {
+            (
+                (ball.position_image.x, ball.position_image.y),
+                (
+                    (ball.scale / 2.0, ball.scale / 2.0),
+                    format!("{:.2}", ball.confidence),
+                ),
+            )
+        })
+        .unzip();
+
+    let most_recent_cycle = match T::POSITION {
+        heimdall::CameraPosition::Top => balls.top_image.cycle(),
+        heimdall::CameraPosition::Bottom => balls.bottom_image.cycle(),
+    };
+
+    dbg.log_with_cycle(
+        T::make_entity_path("balls/classifications"),
+        most_recent_cycle,
+        &rerun::Boxes2D::from_centers_and_half_sizes(&positions, &half_sizes)
+            .with_labels(confidences),
+    );
 }
 
 pub(super) struct BallClassifierModel;
