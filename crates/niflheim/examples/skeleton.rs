@@ -39,7 +39,9 @@ impl<T: Clone> Ascend<T, S0, T, S0> for MySkeleton where S0: SpaceOver<T> {
     fn ascend(&self, x: &InSpace<T, S0>) -> InSpace<T, S0> {
         x.clone()
     }
+}
 
+impl<T: Clone> Descend<T, S0, T, S0> for MySkeleton where S0: SpaceOver<T> {
     fn descend(&self, x: &InSpace<T, S0>) -> InSpace<T, S0> {
         x.clone()
     }
@@ -49,7 +51,9 @@ impl<T: Clone> Ascend<T, S2, T, S2> for MySkeleton where S2: SpaceOver<T> {
     fn ascend(&self, x: &InSpace<T, S2>) -> InSpace<T, S2> {
         x.clone()
     }
+}
 
+impl<T: Clone> Descend<T, S2, T, S2> for MySkeleton where S2: SpaceOver<T> {
     fn descend(&self, x: &InSpace<T, S2>) -> InSpace<T, S2> {
         x.clone()
     }

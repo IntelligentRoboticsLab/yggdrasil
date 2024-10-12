@@ -7,7 +7,7 @@ pub trait Skeleton {
         S2: Space + SpaceOver<T2>,
         Self: Root<T1, S1, T2, S2>
             + Ascend<T1, S1, Self::T, Self::S>
-            + Ascend<T2, S2, Self::T, Self::S>,
+            + Descend<T2, S2, Self::T, Self::S>,
     {
         self.transform_via(x)
     }
@@ -17,7 +17,7 @@ pub trait Skeleton {
         S1: Space + SpaceOver<T1>,
         S2: Space + SpaceOver<T2>,
         S3: Space + SpaceOver<T3>,
-        Self: Ascend<T1, S1, T3, S3> + Ascend<T2, S2, T3, S3>,
+        Self: Ascend<T1, S1, T3, S3> + Descend<T2, S2, T3, S3>,
     {
         self.descend(&self.ascend(x))
     }
@@ -41,6 +41,13 @@ where
     S2: Space + SpaceOver<T2>,
 {
     fn ascend(&self, x: &InSpace<T1, S1>) -> InSpace<T2, S2>;
+}
+
+pub trait Descend<T1, S1, T2, S2>: Skeleton
+where
+    S1: Space + SpaceOver<T1>,
+    S2: Space + SpaceOver<T2>,
+{
     fn descend(&self, x: &InSpace<T2, S2>) -> InSpace<T1, S1>;
 }
 
@@ -53,12 +60,21 @@ where
     S2: Space + SpaceOver<T2>,
     T: Link<S1, S2> + Ascend<TransformOutput<T, T1, S1, S2>, T::Parent, T2, S2>,
     T::Parent: SpaceOver<TransformOutput<T, T1, S1, S2>>,
-    T::Transform: Transform<T1, S1, T::Parent> + InverseTransform<T1, S1, T::Parent>,
+    T::Transform: Transform<T1, S1, T::Parent>,
 {
     fn ascend(&self, x: &InSpace<T1, S1>) -> InSpace<T2, S2> {
         self.ascend(&self.link().transform(x))
     }
+}
 
+impl<T, T1, S1, T2, S2> Descend<T1, S1, T2, S2> for T
+where
+    S1: Space + SpaceOver<T1>,
+    S2: Space + SpaceOver<T2>,
+    T: Link<S1, S2> + Descend<TransformOutput<T, T1, S1, S2>, T::Parent, T2, S2>,
+    T::Parent: SpaceOver<TransformOutput<T, T1, S1, S2>>,
+    T::Transform: InverseTransform<T1, S1, T::Parent>,
+{
     fn descend(&self, x: &InSpace<T2, S2>) -> InSpace<T1, S1> {
         self.link().inverse_transform(&self.descend(x))
     }
