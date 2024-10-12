@@ -59,60 +59,6 @@ fn init_subconfigs(mut commands: Commands, config: Res<BallDetectionConfig>) {
     commands.insert_resource(config.proposal.clone());
 }
 
-// TODO: fix
-// #[system]
-// fn log_balls(balls: &Balls, dbg: &DebugContext) -> Result<()> {
-//     let mut positions_top = Vec::new();
-//     let mut sizes_top = Vec::new();
-
-//     let mut positions_bottom = Vec::new();
-//     let mut sizes_bottom = Vec::new();
-
-//     for ball in &balls.balls {
-//         let pos = (ball.position_image.x, ball.position_image.y);
-//         let size = (ball.scale / 2.0, ball.scale / 2.0);
-
-//         match ball.camera {
-//             CameraType::Top => {
-//                 positions_top.push(pos);
-//                 sizes_top.push(size);
-//             }
-//             CameraType::Bottom => {
-//                 positions_bottom.push(pos);
-//                 sizes_bottom.push(size);
-//             }
-//         };
-//     }
-
-//     dbg.log_boxes2d_with_class(
-//         "top_camera/image/detected_balls",
-//         &positions_top,
-//         &sizes_top,
-//         balls
-//             .balls
-//             .iter()
-//             .filter(|x| x.camera == CameraType::Top)
-//             .map(|b| format!("{:.3}", b.confidence))
-//             .collect(),
-//         balls.top_image.cycle(),
-//     )?;
-
-//     dbg.log_boxes2d_with_class(
-//         "bottom_camera/image/detected_balls",
-//         &positions_bottom,
-//         &sizes_bottom,
-//         balls
-//             .balls
-//             .iter()
-//             .filter(|x| x.camera == CameraType::Bottom)
-//             .map(|b| format!("{:.3}", b.confidence))
-//             .collect(),
-//         balls.bottom_image.cycle(),
-//     )?;
-
-//     Ok(())
-// }
-
 fn detected_ball_eye_color(
     mut nao: ResMut<NaoManager>,
     balls: Res<Balls>,
