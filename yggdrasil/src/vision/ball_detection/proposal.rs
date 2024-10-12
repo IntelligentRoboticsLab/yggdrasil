@@ -9,10 +9,13 @@ use nalgebra::Point2;
 
 use serde::{Deserialize, Serialize};
 
-use crate::vision::{
-    camera::{init_camera, Image},
-    scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLines},
-    util::bbox::Bbox,
+use crate::{
+    core::debug::DebugContext,
+    vision::{
+        camera::{init_camera, Image},
+        scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLines},
+        util::bbox::Bbox,
+    },
 };
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]
@@ -292,6 +295,26 @@ fn get_ball_proposals<T: CameraLocation>(
 
 fn init_ball_proposals<T: CameraLocation>(mut commands: Commands, image: Res<Image<T>>) {
     commands.insert_resource(BallProposals::empty(image.clone()));
+}
+
+fn log_proposals<T: CameraLocation>(dbg: DebugContext, proposals: Res<BallProposals<T>>) {
+    let (positions, half_sizes): (Vec<_>, Vec<_>) = proposals
+        .proposals
+        .iter()
+        .map(|proposal| {
+            (
+                (proposal.position.x as f32, proposal.position.y as f32),
+                (proposal.scale, proposal.scale),
+            )
+        })
+        .unzip();
+
+    dbg.log_with_cycle(
+        "ball/proposals",
+        proposals.image.cycle(),
+        &rerun::Boxes2D::from_centers_and_half_sizes(positions, half_sizes),
+    )
+    .expect("failed to log ball proposals");
 }
 
 // TODO: Fix
