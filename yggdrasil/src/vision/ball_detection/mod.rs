@@ -10,7 +10,7 @@ use heimdall::{Bottom, CameraLocation, Top};
 use nidhogg::types::{color, FillExt, LeftEye};
 use proposal::BallProposalConfigs;
 
-use rerun::{AnnotationInfo, ComponentBatch};
+use rerun::ComponentBatch;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 
@@ -21,11 +21,6 @@ use crate::{
 };
 
 use self::classifier::{BallClassifierConfig, Balls};
-
-/// Class ID for ball proposals.
-pub(super) const PROPOSAL_CLASS_ID: u16 = 1;
-/// Class ID for classified balls.
-pub(super) const CLASSIFIED_CLASS_ID: u16 = 2;
 
 /// Plugin for detecting balls in the top and bottom images.
 pub struct BallDetectionPlugin;
