@@ -1,16 +1,19 @@
 //! # Niflheim: A Library for Spatial Transformations
 //!
-//! Niflheim is a library designed to facilitate transformations between different spaces. It
-//! provides a set of traits and types to handle transformations of points and vectors between
-//! various spaces, leveraging the type system to track which space such types are expressed in.
+//! Niflheim is a library designed to facilitate transformations between
+//! different spaces. It provides a set of traits and types to handle
+//! transformations of points and vectors between various spaces, leveraging the
+//! type system to track which space such types are expressed in.
 //!
 //! ## [`Space`] and [`SpaceOver<T>`]
 //!
-//! At the core of Niflheim is the [`Space`] trait, which marks a type as representing a space.
-//! Typically, such types are Zero-Sized Types and are never constructed.
+//! At the core of Niflheim is the [`Space`] trait, which marks a type as
+//! representing a space. Typically, such types are Zero-Sized Types and are
+//! never constructed.
 //!
-//! On its own, [`Space`] isn't very useful, since Niflheim enforces which spaces can contain which
-//! types. To mark a space as containing a type, implement [`SpaceOver<T>`].
+//! On its own, [`Space`] isn't very useful, since Niflheim enforces which
+//! spaces can contain which types. To mark a space as containing a type,
+//! implement [`SpaceOver<T>`].
 //!
 //! ### Example
 //!
@@ -35,9 +38,9 @@
 //!
 //! ## [`InSpace<T, S>`] and [`BetweenSpaces<T, S1, S2>`]
 //!
-//! Niflheim introduces two wrapper types to keep track of which spaces a value is expressed in,
-//! [`InSpace<T, S>`] and [`BetweenSpaces<T, S1, S2>`]. These types can be constructed through
-//! either their [`From<T>`] implementation.
+//! Niflheim introduces two wrapper types to keep track of which spaces a value
+//! is expressed in, [`InSpace<T, S>`] and [`BetweenSpaces<T, S1, S2>`]. These
+//! types can be constructed through either their [`From<T>`] implementation.
 //!
 //! ### Example
 //!
@@ -68,9 +71,10 @@
 //!
 //! ## [`Transform`] and [`InverseTransform`]
 //!
-//! To facilitate transformations using the wrapper types, the traits [`Transform`] and
-//! [`InverseTransform`] are implemented for [`BetweenSpaces<T, S1, S2>`], where `T` are common
-//! [`nalgebra`] types such as [`nalgebra::Isometry3<T>`].
+//! To facilitate transformations using the wrapper types, the traits
+//! [`Transform`] and [`InverseTransform`] are implemented for
+//! [`BetweenSpaces<T, S1, S2>`], where `T` are common [`nalgebra`] types such
+//! as [`nalgebra::Isometry3<T>`].
 //!
 //! ### Example
 //!

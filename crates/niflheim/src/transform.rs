@@ -110,8 +110,7 @@ where
     }
 }
 
-impl<S1, S2> Transform<na::Point2<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry2<f32>, S1, S2>
+impl<S1, S2> Transform<na::Point2<f32>, S1, S2> for BetweenSpaces<na::Isometry2<f32>, S1, S2>
 where
     S1: SpaceOver<na::Point2<f32>>,
     S2: SpaceOver<na::Point2<f32>>,
@@ -123,8 +122,7 @@ where
     }
 }
 
-impl<S1, S2> InverseTransform<na::Point2<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry2<f32>, S1, S2>
+impl<S1, S2> InverseTransform<na::Point2<f32>, S1, S2> for BetweenSpaces<na::Isometry2<f32>, S1, S2>
 where
     S1: SpaceOver<na::Point2<f32>>,
     S2: SpaceOver<na::Point2<f32>>,
@@ -134,8 +132,7 @@ where
     }
 }
 
-impl<S1, S2> Transform<na::Vector2<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry2<f32>, S1, S2>
+impl<S1, S2> Transform<na::Vector2<f32>, S1, S2> for BetweenSpaces<na::Isometry2<f32>, S1, S2>
 where
     S1: SpaceOver<na::Vector2<f32>>,
     S2: SpaceOver<na::Vector2<f32>>,
@@ -161,8 +158,7 @@ where
     }
 }
 
-impl<S1, S2> Transform<na::Point3<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry3<f32>, S1, S2>
+impl<S1, S2> Transform<na::Point3<f32>, S1, S2> for BetweenSpaces<na::Isometry3<f32>, S1, S2>
 where
     S1: SpaceOver<na::Point3<f32>>,
     S2: SpaceOver<na::Point3<f32>>,
@@ -174,8 +170,7 @@ where
     }
 }
 
-impl<S1, S2> InverseTransform<na::Point3<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry3<f32>, S1, S2>
+impl<S1, S2> InverseTransform<na::Point3<f32>, S1, S2> for BetweenSpaces<na::Isometry3<f32>, S1, S2>
 where
     S1: SpaceOver<na::Point3<f32>>,
     S2: SpaceOver<na::Point3<f32>>,
@@ -185,8 +180,7 @@ where
     }
 }
 
-impl<S1, S2> Transform<na::Vector3<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry3<f32>, S1, S2>
+impl<S1, S2> Transform<na::Vector3<f32>, S1, S2> for BetweenSpaces<na::Isometry3<f32>, S1, S2>
 where
     S1: SpaceOver<na::Vector3<f32>>,
     S2: SpaceOver<na::Vector3<f32>>,
