@@ -2,15 +2,18 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::Deref;
 
+use crate::core::debug::DebugContext;
+use crate::localization::RobotPose;
 use crate::vision::camera::Image;
 
 use crate::vision::scan_lines::RegionColor;
 
-use super::line::LineSegment2;
+use super::camera::init_camera;
+use super::line::{LineSegment2, LineSegment3};
 use super::scan_lines::{ScanLine, ScanLines};
 
 use bevy::prelude::*;
-use heimdall::{CameraLocation, Top};
+use heimdall::{CameraLocation, CameraMatrix, Top};
 use nalgebra::Point2;
 use tasks::conditions::task_finished;
 use tasks::CommandsExt;
@@ -32,23 +35,49 @@ pub struct LineDetectionPlugin;
 
 impl Plugin for LineDetectionPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.init_resource::<DetectedLines<Top>>().add_systems(
+        app.add_systems(
+            Startup,
+            init_line_detection_data::<Top>.after(init_camera::<Top>),
+        )
+        .add_systems(
             Update,
             detect_lines::<Top>
                 .run_if(resource_exists_and_changed::<ScanLines<Top>>)
                 .run_if(task_finished::<DetectedLines<Top>>),
+        )
+        .add_systems(
+            PostUpdate,
+            visualize_lines::<Top>.run_if(resource_exists_and_changed::<DetectedLines<Top>>),
         );
     }
 }
 
 /// Detected lines for the camera location `T`.
-#[derive(Default, Resource)]
+#[derive(Resource)]
 pub struct DetectedLines<T: CameraLocation> {
     line_points: Vec<(f32, f32)>,
     line_points_next: Vec<(f32, f32)>,
     pub lines: Vec<LineSegment2>,
+    pub projected_lines: Vec<LineSegment3>,
     lines_points: Vec<LinePoints>,
+    image: Image<T>,
     _marker: std::marker::PhantomData<T>,
+}
+
+impl<T: CameraLocation> DetectedLines<T> {
+    /// Creates an empty [`DetectedLines`] instance with the given image.
+    #[must_use]
+    pub fn empty(image: Image<T>) -> Self {
+        DetectedLines {
+            line_points: Vec::new(),
+            line_points_next: Vec::new(),
+            lines: Vec::new(),
+            projected_lines: Vec::new(),
+            lines_points: Vec::new(),
+            image,
+            _marker: PhantomData,
+        }
+    }
 }
 
 // NOTE: This needs to be implemented manually because of the `PhantomData`
@@ -59,7 +88,9 @@ impl<T: CameraLocation> Clone for DetectedLines<T> {
             line_points: self.line_points.clone(),
             line_points_next: self.line_points_next.clone(),
             lines: self.lines.clone(),
+            projected_lines: self.projected_lines.clone(),
             lines_points: self.lines_points.clone(),
+            image: self.image.clone(),
             _marker: PhantomData,
         }
     }
@@ -178,10 +209,15 @@ fn is_white(column: usize, row: usize, scan_line: &ScanLine) -> Option<bool> {
         })
 }
 
+fn init_line_detection_data<T: CameraLocation>(mut commands: Commands, image: Res<Image<T>>) {
+    commands.insert_resource(DetectedLines::empty(image.clone()));
+}
+
 fn create_line_detection_data<T: CameraLocation>(
     line_detection_data: DetectedLines<T>,
     line_spots: Vec<Point2<f32>>,
     scan_lines: ScanLines<T>,
+    matrix: &CameraMatrix<T>,
 ) -> DetectedLines<T> {
     let mut points = line_detection_data.line_points;
     // TODO: This clear should not be necessary.
@@ -284,11 +320,18 @@ fn create_line_detection_data<T: CameraLocation>(
     points.clear();
     points_next.clear();
 
+    let projected_lines = lines
+        .iter()
+        .filter_map(|segment| segment.project_to_3d(matrix).ok())
+        .collect();
+
     DetectedLines {
         line_points: points,
         line_points_next: points_next,
         lines,
+        projected_lines,
         lines_points: current_line_points,
+        image: scan_lines.image().clone(),
         _marker: PhantomData,
     }
 }
@@ -341,51 +384,50 @@ fn line_points_to_line<T: CameraLocation>(
     LineSegment2::from_xy(start_column, start_row, end_column, end_row)
 }
 
-// TODO: Add this back
-// fn draw_lines(
-//     dbg: &DebugContext,
-//     lines: &[LineSegment2],
-//     image: &Image,
-//     matrix: &CameraMatrix,
-//     robot_pose: &RobotPose,
-// ) -> Result<()> {
-//     let all_lines = lines.iter().map(|line| line.into()).collect::<Vec<_>>();
+fn visualize_lines<T: CameraLocation>(
+    dbg: DebugContext,
+    lines: Res<DetectedLines<T>>,
+    robot_pose: Res<RobotPose>,
+) {
+    dbg.log_with_cycle(
+        T::make_entity_path("lines"),
+        lines.image.cycle(),
+        &rerun::LineStrips2D::new(
+            lines
+                .lines
+                .iter()
+                .map(|line| [(line.start.x, line.start.y), (line.end.x, line.end.y)]),
+        ),
+    );
 
-//     dbg.log_lines2d_for_image("top_camera/image/lines", &all_lines, image, color::u8::RED)?;
+    dbg.log_with_cycle(
+        T::make_entity_path("lines_3d"),
+        lines.image.cycle(),
+        &rerun::LineStrips3D::new(lines.projected_lines.iter().map(|line| {
+            [
+                (line.start.x, line.start.y, line.start.z),
+                (line.end.x, line.end.y, line.end.z),
+            ]
+        })),
+    );
 
-//     let points_to_ground = all_lines
-//         .iter()
-//         .filter_map(|line| {
-//             let (x1, y1) = line[0];
-//             let (x2, y2) = line[1];
+    let transform = robot_pose.as_3d();
+    let translation = transform.translation;
+    let rotation = transform.rotation.as_vector();
 
-//             matrix
-//                 .pixel_to_ground(point![x1, y1], 0.0)
-//                 .ok()
-//                 .and_then(|p1| {
-//                     matrix
-//                         .pixel_to_ground(point![x2, y2], 0.0)
-//                         .ok()
-//                         .map(|p2| [(p1[0], p1[1], p1[2]), (p2[0], p2[1], p2[2])])
-//                 })
-//         })
-//         .collect::<Vec<_>>();
-
-//     dbg.log_lines3d_for_image(
-//         "top_camera/lines_3d",
-//         &points_to_ground,
-//         image,
-//         color::u8::BLUE,
-//     )?;
-//     dbg.log_transformation("top_camera/lines_3d", &robot_pose.as_3d(), image)?;
-
-//     Ok(())
-// }
+    dbg.log_with_cycle(
+        T::make_entity_path("lines_3d"),
+        lines.image.cycle(),
+        &rerun::Transform3D::from_translation((translation.x, translation.y, translation.z))
+            .with_quaternion([rotation.x, rotation.y, rotation.z, rotation.w]),
+    );
+}
 
 pub fn detect_lines<T: CameraLocation>(
     mut commands: Commands,
     previous_lines: Option<Res<DetectedLines<T>>>,
     scan_lines: Res<ScanLines<T>>,
+    matrix: Res<CameraMatrix<T>>,
 ) {
     let line_spots = scan_lines
         .horizontal()
@@ -399,14 +441,16 @@ pub fn detect_lines<T: CameraLocation>(
         .spawn({
             let previous_lines = previous_lines
                 .map(|lines| lines.deref().clone())
-                .unwrap_or_default();
+                .unwrap_or(DetectedLines::empty(scan_lines.image().clone()));
             let scan_lines = scan_lines.deref().clone();
+            let matrix = matrix.deref().clone();
 
             async move {
                 Some(create_line_detection_data(
                     previous_lines,
                     line_spots,
                     scan_lines,
+                    &matrix,
                 ))
             }
         });
