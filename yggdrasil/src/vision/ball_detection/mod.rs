@@ -1,4 +1,4 @@
-//! Module for detecting the location of the ball in the field
+//! Module for detecting balls in the top and bottom images.
 
 pub mod classifier;
 pub mod proposal;

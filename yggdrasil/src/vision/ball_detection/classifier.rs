@@ -35,7 +35,7 @@ pub struct BallClassifierConfig {
 /// Plugin for classifying ball proposals produced by [`super::proposal::BallProposalPlugin`].
 ///
 /// This plugin uses a cnn model to classify whether the proposals are balls or not.
-pub(crate) struct BallClassifierPlugin;
+pub struct BallClassifierPlugin;
 
 impl Plugin for BallClassifierPlugin {
     fn build(&self, app: &mut App) {
