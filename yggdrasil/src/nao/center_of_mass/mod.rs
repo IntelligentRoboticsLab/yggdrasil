@@ -76,18 +76,18 @@ fn update_com(kinematics: Res<RobotKinematics>, mut com: ResMut<CenterOfMass>) {
     };
 }
 
-fn log_com(dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) {
-    let absolute_com_position = pose.robot_to_world(&com.position.xy());
-
-    dbg.log_points_3d_with_color_and_radius(
-        "/localisation/pose/com",
-        &[(
-            absolute_com_position.x,
-            absolute_com_position.y,
-            com.position.z,
-        )],
-        nidhogg::types::color::u8::MAROON,
-        0.005,
-    )
-    .expect("failed to log center of mass");
+fn log_com(_dbg: DebugContext, _com: Res<CenterOfMass>, _pose: Res<RobotPose>) {
+    // TODO: Visualize
+    // let absolute_com_position = pose.robot_to_world(&com.position.xy());
+    // dbg.log_points_3d_with_color_and_radius(
+    //     "/localisation/pose/com",
+    //     &[(
+    //         absolute_com_position.x,
+    //         absolute_com_position.y,
+    //         com.position.z,
+    //     )],
+    //     nidhogg::types::color::u8::MAROON,
+    //     0.005,
+    // )
+    // .expect("failed to log center of mass");
 }

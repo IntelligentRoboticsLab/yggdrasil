@@ -2,10 +2,12 @@
 
 pub mod classifier;
 pub mod proposal;
+mod visualizer;
 
 use std::time::Duration;
 
 use bevy::prelude::*;
+use heimdall::{Bottom, Top};
 use nidhogg::types::{color, FillExt, LeftEye};
 use proposal::BallProposalConfigs;
 
@@ -28,8 +30,11 @@ impl Plugin for BallDetectionPlugin {
         app.add_systems(PostStartup, init_subconfigs);
 
         app.add_plugins((
-            proposal::BallProposalPlugin,
+            proposal::BallProposalPlugin::<Top>::default(),
+            proposal::BallProposalPlugin::<Bottom>::default(),
             classifier::BallClassifierPlugin,
+            visualizer::BallDetectionVisualizerPlugin::<Top>::default(),
+            visualizer::BallDetectionVisualizerPlugin::<Bottom>::default(),
         ));
 
         app.add_systems(Update, detected_ball_eye_color);

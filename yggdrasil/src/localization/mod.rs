@@ -5,7 +5,6 @@ use crate::{
         debug::DebugContext,
     },
     motion::odometry::{self, Odometry},
-    prelude::*,
 };
 use bevy::prelude::*;
 use nalgebra::{Isometry2, Isometry3, Point2, Translation3, UnitQuaternion};
@@ -120,8 +119,7 @@ fn update_robot_pose(
         &ctx,
         &robot_pose.inner,
         color::u8::BLUE,
-    )
-    .expect("failed to log the pose");
+    );
 }
 
 #[must_use]
@@ -165,19 +163,15 @@ fn find_closest_penalty_pose(
         })
 }
 
-fn log_pose(
-    path: impl AsRef<str>,
-    ctx: &DebugContext,
-    pose: &Isometry2<f32>,
-    color: RgbU8,
-) -> Result<()> {
-    let origin = pose.translation.vector;
-    let direction = pose.rotation.transform_point(&Point2::new(0.1, 0.0));
+fn log_pose(_path: impl AsRef<str>, _ctx: &DebugContext, _pose: &Isometry2<f32>, _color: RgbU8) {
 
-    ctx.log_arrows3d_with_color(
-        path,
-        &[(direction.x, direction.y, 0.0)],
-        &[(origin.x, origin.y, 0.0)],
-        color,
-    )
+    // TODO: Visualize
+    // let origin = pose.translation.vector;
+    // let direction = pose.rotation.transform_point(&Point2::new(0.1, 0.0));
+    // ctx.log_arrows3d_with_color(
+    //     path,
+    //     &[(direction.x, direction.y, 0.0)],
+    //     &[(origin.x, origin.y, 0.0)],
+    //     color,
+    // )
 }

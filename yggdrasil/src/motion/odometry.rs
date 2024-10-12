@@ -46,9 +46,10 @@ pub fn update_odometry(
     }
 }
 
-fn init_odometry_view_coordinates(dbg: DebugContext) {
-    dbg.log_robot_viewcoordinates("/odometry/pose")
-        .expect("failed to log view coordinates for odometry");
+fn init_odometry_view_coordinates(_dbg: DebugContext) {
+    // TODO: Visualize
+    // dbg.log_robot_viewcoordinates("/odometry/pose")
+    //     .expect("failed to log view coordinates for odometry");
 }
 
 /// Configuration for the odometry.

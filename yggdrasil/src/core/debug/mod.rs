@@ -2,7 +2,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use miette::IntoDiagnostic;
-use rerun::{AsComponents, EntityPath};
+use rerun::{AsComponents, EntityPath, RecordingStream};
 use std::{convert::Into, net::SocketAddr};
 use std::{marker::PhantomData, net::IpAddr};
 
@@ -71,12 +71,12 @@ fn sync_cycle_number(mut ctx: ResMut<RerunStream>, cycle: Res<Cycle>, cycle_time
     ctx.cycle = *cycle;
 }
 
-/// A wrapper around the [`rerun::RecordingStream`] that provides an infallible interface for logging data to Rerun.
+/// A wrapper around [`rerun::RecordingStream`] that provides an infallible interface for logging data to Rerun.
 ///
 /// Any errors that occur while logging data are logged as errors using [`tracing::error`].
 #[derive(Resource, Debug, Clone)]
 pub struct RerunStream {
-    stream: rerun::RecordingStream,
+    stream: RecordingStream,
     cycle: Cycle,
 }
 
@@ -105,12 +105,12 @@ impl RerunStream {
     /// that implements the [`AsComponents`], such as any [archetype](https://docs.rs/rerun/latest/rerun/archetypes/index.html).
     ///
     /// The data will be timestamped automatically based on the current [`Cycle`], which is tracked internally.
-    /// Data that needs to be logged in a specific cycle should use [`RerunStream::log_in_cycle`] instead.
+    /// Data that needs to be logged in a specific cycle should use [`RerunStream::log_with_cycle`] instead.
     ///
     /// See [`RecordingStream::log`] for more information.
     pub fn log(&self, ent_path: impl Into<EntityPath>, arch: &impl AsComponents) {
         if let Err(error) = self.stream.log(ent_path, arch) {
-            error!("{error}")
+            error!("{error}");
         }
     }
 

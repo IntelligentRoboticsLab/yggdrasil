@@ -1,3 +1,5 @@
+//! See [`BallClassifierPlugin`].
+
 use std::ops::Deref;
 use std::time::{Duration, Instant};
 
@@ -30,6 +32,9 @@ pub struct BallClassifierConfig {
     pub ball_life: Duration,
 }
 
+/// Plugin for classifying ball proposals produced by [`super::proposal::BallProposalPlugin`].
+///
+/// This plugin uses a cnn model to classify whether the proposals are balls or not.
 pub(crate) struct BallClassifierPlugin;
 
 impl Plugin for BallClassifierPlugin {
@@ -44,12 +49,9 @@ impl Plugin for BallClassifierPlugin {
             .add_systems(
                 Update,
                 (
-                    detect_balls::<Top>
-                        .after(super::proposal::update_ball_proposals::<Top>)
-                        .run_if(resource_exists_and_changed::<Image<Top>>),
+                    detect_balls::<Top>.run_if(resource_exists_and_changed::<BallProposals<Top>>),
                     detect_balls::<Bottom>
-                        .after(super::proposal::update_ball_proposals::<Bottom>)
-                        .run_if(resource_exists_and_changed::<Image<Bottom>>),
+                        .run_if(resource_exists_and_changed::<BallProposals<Bottom>>),
                 ),
             );
     }
@@ -90,6 +92,8 @@ pub struct Ball {
     pub distance: f32,
     pub timestamp: Instant,
     pub confidence: f32,
+    /// Whether this detection is from the most recent frame.
+    pub is_fresh: bool,
     pub camera: CameraPosition,
 }
 
@@ -185,6 +189,7 @@ fn detect_balls<T: CameraLocation>(
             position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
             distance: proposal.distance_to_ball,
             timestamp: Instant::now(),
+            is_fresh: true,
             confidence,
             camera: T::POSITION,
         });
@@ -197,7 +202,11 @@ fn detect_balls<T: CameraLocation>(
     if classified_balls.is_empty() {
         for ball in &balls.balls {
             if ball.timestamp.elapsed() < classifier.ball_life {
-                classified_balls.push(ball.clone());
+                // keep the ball if it isn't too old, but mark it as not fresh
+                classified_balls.push(Ball {
+                    is_fresh: false,
+                    ..ball.clone()
+                });
             }
         }
     }

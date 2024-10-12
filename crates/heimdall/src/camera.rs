@@ -21,6 +21,19 @@ pub enum CameraPosition {
 /// Marker trait for a camera location marker type.
 pub trait CameraLocation: Default + Send + Sync + 'static {
     const POSITION: CameraPosition;
+
+    /// Get a rerun entity path under the camera image.
+    ///
+    /// Depending on the camera position, the path will be different:
+    /// - `top_camera/image/{ent_path}` for the top camera
+    /// - `bottom_camera/image/{ent_path}` for the bottom camera
+    #[must_use]
+    fn make_entity_path(ent_path: &'static str) -> String {
+        match Self::POSITION {
+            CameraPosition::Top => format!("top_camera/image/{ent_path}"),
+            CameraPosition::Bottom => format!("bottom_camera/image/{ent_path}"),
+        }
+    }
 }
 
 /// Marker type for the top camera.
