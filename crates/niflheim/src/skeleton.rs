@@ -1,5 +1,62 @@
 use crate::{InSpace, InverseTransform, Space, SpaceOver, Transform};
 
+#[macro_export]
+macro_rules! parent {
+    ($Skeleton:ty, $Space:ty) => {
+        impl<T: Clone> ::niflheim::skeleton::Ascend<T, $Space, T, $Space> for $Skeleton
+        where
+            $Space: SpaceOver<T>,
+        {
+            fn ascend(&self, x: &::niflheim::InSpace<T, $Space>) -> ::niflheim::InSpace<T, $Space> {
+                x.clone()
+            }
+        }
+
+        impl<T: Clone> ::niflheim::skeleton::Descend<T, $Space, T, $Space> for $Skeleton
+        where
+            $Space: SpaceOver<T>,
+        {
+            fn descend(
+                &self,
+                x: &::niflheim::InSpace<T, $Space>,
+            ) -> ::niflheim::InSpace<T, $Space> {
+                x.clone()
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! link {
+    ($Skeleton:ty, $Transform:ty, $Child:ty, $Parent:ty, $field:ident) => {
+        impl ::niflheim::skeleton::Link<$Child, $Parent> for $Skeleton {
+            type Parent = $Parent;
+            type Transform = ::niflheim::BetweenSpaces<$Transform, $Child, $Parent>;
+
+            fn link(&self) -> &Self::Transform {
+                &self.$field
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! propagate_link {
+    ($Skeleton:ty, $Child:ty, $Parent:ty) => {
+        impl<C: Space> ::niflheim::skeleton::Link<C, $Parent> for $Skeleton
+        where
+            Self: ::niflheim::skeleton::Link<C, $Child>,
+        {
+            type Parent = <Self as ::niflheim::skeleton::Link<C, $Child>>::Parent;
+            type Transform = <Self as ::niflheim::skeleton::Link<C, $Child>>::Transform;
+
+            fn link(&self) -> &Self::Transform {
+                self.link()
+            }
+        }
+    };
+}
+
 pub trait Skeleton {
     fn transform<T1, S1, T2, S2>(&self, x: &InSpace<T1, S1>) -> InSpace<T2, S2>
     where

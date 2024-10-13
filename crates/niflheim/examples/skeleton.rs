@@ -1,10 +1,6 @@
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(clippy::wildcard_imports)]
-
-use niflheim::*;
-use niflheim::types::*;
-use niflheim::skeleton::*;
+use niflheim::skeleton::{Root, Skeleton};
+use niflheim::types::{Isometry3, Point3};
+use niflheim::{link, parent, propagate_link, Space, SpaceOver};
 
 use nalgebra as na;
 
@@ -30,71 +26,19 @@ struct MySkeleton {
 
 impl Skeleton for MySkeleton {}
 
-impl<T1, S1, T2, S2> Root<T1, S1, T2, S2> for MySkeleton {
+impl<S1, S2> Root<na::Point3<f32>, S1, na::Point3<f32>, S2> for MySkeleton {
     type T = na::Point3<f32>;
     type S = S0;
 }
 
-impl<T: Clone> Ascend<T, S0, T, S0> for MySkeleton where S0: SpaceOver<T> {
-    fn ascend(&self, x: &InSpace<T, S0>) -> InSpace<T, S0> {
-        x.clone()
-    }
-}
+parent!(MySkeleton, S0);
+parent!(MySkeleton, S2);
 
-impl<T: Clone> Descend<T, S0, T, S0> for MySkeleton where S0: SpaceOver<T> {
-    fn descend(&self, x: &InSpace<T, S0>) -> InSpace<T, S0> {
-        x.clone()
-    }
-}
+link!(MySkeleton, na::Isometry3<f32>, S1, S0, s1_to_s0);
+link!(MySkeleton, na::Isometry3<f32>, S2, S0, s2_to_s0);
+link!(MySkeleton, na::Isometry3<f32>, S3, S2, s3_to_s2);
 
-impl<T: Clone> Ascend<T, S2, T, S2> for MySkeleton where S2: SpaceOver<T> {
-    fn ascend(&self, x: &InSpace<T, S2>) -> InSpace<T, S2> {
-        x.clone()
-    }
-}
-
-impl<T: Clone> Descend<T, S2, T, S2> for MySkeleton where S2: SpaceOver<T> {
-    fn descend(&self, x: &InSpace<T, S2>) -> InSpace<T, S2> {
-        x.clone()
-    }
-}
-
-
-impl Link<S1, S0> for MySkeleton {
-    type Parent = S0;
-    type Transform = Isometry3<S1, S0>;
-
-    fn link(&self) -> &Self::Transform {
-        &self.s1_to_s0
-    }
-}
-
-impl Link<S2, S0> for MySkeleton {
-    type Parent = S0;
-    type Transform = Isometry3<S2, S0>;
-
-    fn link(&self) -> &Self::Transform {
-        &self.s2_to_s0
-    }
-}
-
-impl<C: Space> Link<C, S0> for MySkeleton where Self: Link<C, S2> {
-    type Parent = <Self as Link<C, S2>>::Parent;
-    type Transform = <Self as Link<C, S2>>::Transform;
-
-    fn link(&self) -> &Self::Transform {
-        self.link()
-    }
-}
-
-impl Link<S3, S2> for MySkeleton {
-    type Parent = S2;
-    type Transform = Isometry3<S3, S2>;
-
-    fn link(&self) -> &Self::Transform {
-        &self.s3_to_s2
-    }
-}
+propagate_link!(MySkeleton, S2, S0);
 
 fn main() {
     let sk = MySkeleton {
@@ -103,10 +47,10 @@ fn main() {
         s3_to_s2: na::Isometry3::translation(0., 0., 1.).into(),
     };
 
-    let x: Point3<S2> = na::Point3::new(0., 0., 0.,).into();
+    let x: Point3<S2> = na::Point3::new(0., 0., 0.).into();
 
     let y: Point3<S1> = sk.transform(&x);
-    let z: Point3<S3> = sk.transform_via::<_,_,_,_,_,S2>(&x);
+    let z: Point3<S3> = sk.transform_via::<_, _, _, _, _, S2>(&x);
 
     println!("{x:?} -> {y:?} and {z:?}");
 }
