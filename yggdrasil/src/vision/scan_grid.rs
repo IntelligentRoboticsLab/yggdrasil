@@ -43,8 +43,12 @@ impl Plugin for ScanGridPlugin {
             (
                 // TODO: Add run condition to ensure we only run this system when the camera has
                 // finished capturing a NEW image.
-                update_top_scan_grid.after(super::camera::fetch_latest_frame::<Top>),
-                update_bottom_scan_grid.after(super::camera::fetch_latest_frame::<Bottom>),
+                update_top_scan_grid
+                    .after(super::camera::fetch_latest_frame::<Top>)
+                    .run_if(resource_exists_and_changed::<Image<Top>>),
+                update_bottom_scan_grid
+                    .after(super::camera::fetch_latest_frame::<Bottom>)
+                    .run_if(resource_exists_and_changed::<Image<Bottom>>),
             ),
         );
     }

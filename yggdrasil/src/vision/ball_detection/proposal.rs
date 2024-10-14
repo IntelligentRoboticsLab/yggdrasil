@@ -57,7 +57,6 @@ impl<T: CameraLocation> Plugin for BallProposalPlugin<T> {
                 Update,
                 (update_ball_proposals::<T>, log_ball_proposals::<T>)
                     .chain()
-                    .after(crate::vision::scan_lines::update_scan_lines::<T>)
                     .run_if(resource_exists_and_changed::<ScanLines<T>>),
             );
     }
@@ -295,6 +294,9 @@ fn init_ball_proposals<T: CameraLocation>(mut commands: Commands, image: Res<Ima
 }
 
 fn log_ball_proposals<T: CameraLocation>(dbg: DebugContext, proposals: Res<BallProposals<T>>) {
+    if proposals.proposals.is_empty() {
+        return;
+    }
     let (positions, half_sizes): (Vec<_>, Vec<_>) = proposals
         .proposals
         .iter()

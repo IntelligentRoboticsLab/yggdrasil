@@ -1,6 +1,5 @@
 //! See [`BallClassifierPlugin`].
 
-use std::ops::Deref;
 use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
@@ -16,7 +15,8 @@ use serde_with::DurationMilliSeconds;
 use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
 
-use crate::vision::camera::{init_camera, Image};
+use crate::nao::Cycle;
+use crate::vision::camera::init_camera;
 use ml::prelude::*;
 
 use super::proposal::BallProposals;
@@ -58,32 +58,27 @@ impl Plugin for BallClassifierPlugin {
             .add_systems(
                 PostUpdate,
                 (
-                    log_ball_classifications::<Top>
-                        .after(detect_balls::<Top>)
-                        .run_if(resource_exists_and_changed::<Balls>),
-                    log_ball_classifications::<Bottom>
-                        .after(detect_balls::<Bottom>)
-                        .run_if(resource_exists_and_changed::<Balls>),
+                    log_ball_classifications::<Top>.run_if(resource_exists_and_changed::<Balls>),
+                    log_ball_classifications::<Bottom>.run_if(resource_exists_and_changed::<Balls>),
                 ),
             );
     }
 }
 
-fn init_ball_classifier(
-    mut commands: Commands,
-    top_image: Res<Image<Top>>,
-    bottom_image: Res<Image<Bottom>>,
-) {
+fn init_ball_classifier(mut commands: Commands) {
     let balls = Balls {
         balls: Vec::new(),
-        top_image: top_image.deref().clone(),
-        bottom_image: bottom_image.deref().clone(),
+        cycle: Cycle::default(),
     };
 
     commands.insert_resource(balls);
 }
 
 fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Balls>) {
+    if balls.balls.is_empty() {
+        return;
+    }
+
     let (positions, (half_sizes, confidences)): (Vec<_>, (Vec<_>, Vec<_>)) = balls
         .balls
         .iter()
@@ -101,14 +96,9 @@ fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Bal
         })
         .unzip();
 
-    let most_recent_cycle = match T::POSITION {
-        heimdall::CameraPosition::Top => balls.top_image.cycle(),
-        heimdall::CameraPosition::Bottom => balls.bottom_image.cycle(),
-    };
-
     dbg.log_with_cycle(
         T::make_entity_path("balls/classifications"),
-        most_recent_cycle,
+        balls.cycle,
         &rerun::Boxes2D::from_centers_and_half_sizes(&positions, &half_sizes)
             .with_labels(confidences),
     );
@@ -143,8 +133,7 @@ pub struct Ball {
 #[derive(Clone, Resource)]
 pub struct Balls {
     pub balls: Vec<Ball>,
-    pub top_image: Image<Top>,
-    pub bottom_image: Image<Bottom>,
+    pub cycle: Cycle,
 }
 
 impl Balls {
@@ -255,4 +244,5 @@ fn detect_balls<T: CameraLocation>(
     }
 
     balls.balls = classified_balls;
+    balls.cycle = proposals.image.cycle();
 }

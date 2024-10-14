@@ -49,8 +49,12 @@ impl Plugin for ScanLinesPlugin {
             .add_systems(
                 Update,
                 (
-                    update_scan_lines::<Top>.after(super::scan_grid::update_top_scan_grid),
-                    update_scan_lines::<Bottom>.after(super::scan_grid::update_bottom_scan_grid),
+                    update_scan_lines::<Top>
+                        .after(super::scan_grid::update_top_scan_grid)
+                        .run_if(resource_exists_and_changed::<Image<Top>>),
+                    update_scan_lines::<Bottom>
+                        .after(super::scan_grid::update_bottom_scan_grid)
+                        .run_if(resource_exists_and_changed::<Image<Top>>),
                 ),
             );
     }

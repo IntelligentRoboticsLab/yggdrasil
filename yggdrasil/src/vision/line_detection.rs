@@ -4,6 +4,7 @@ use std::ops::Deref;
 
 use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
+use crate::nao::Cycle;
 use crate::vision::camera::Image;
 
 use crate::vision::scan_lines::RegionColor;
@@ -428,6 +429,7 @@ pub fn detect_lines<T: CameraLocation>(
     previous_lines: Option<Res<DetectedLines<T>>>,
     scan_lines: Res<ScanLines<T>>,
     matrix: Res<CameraMatrix<T>>,
+    cycle: Res<Cycle>,
 ) {
     let line_spots = scan_lines
         .horizontal()
