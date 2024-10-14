@@ -26,24 +26,27 @@ impl Plugin for DebugPlugin {
 
 fn init_rerun(mut commands: Commands) {
     #[cfg(feature = "local")]
-    let server_address = IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED);
+    let server_address = Some(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED));
 
     // Manually set the server address to the robot's IP address, instead of 0.0.0.0
     // to ensure the rerun server prints the correct connection URL on startup
     #[cfg(not(feature = "local"))]
     let server_address = {
-        let host = std::env::var("RERUN_HOST")
-            .into_diagnostic()
-            .expect("environment variable `RERUN_HOST` is not set!");
+        let host = std::env::var("RERUN_HOST").into_diagnostic();
 
-        std::str::FromStr::from_str(host.as_str())
-            .unwrap_or_else(|_| panic!("invalid address specified in RERUN_HOST: {host}"))
+        host.ok()
+            .and_then(|address| std::str::FromStr::from_str(address.as_str()).ok())
     };
 
-    let rec = RerunStream::init("yggdrasil", server_address)
-        .expect("failed to initialize rerun::RecordingStream");
+    if let Some(address) = server_address {
+        let rec = RerunStream::init("yggdrasil", address)
+            .expect("failed to initialize rerun::RecordingStream");
 
-    commands.insert_resource(rec);
+        commands.insert_resource(rec);
+    } else {
+        tracing::warn!("`RERUN_HOST` not set, rerun debugging is disabled");
+        commands.insert_resource(RerunStream::disabled());
+    }
 }
 
 fn setup_spl_field(dbg: DebugContext) {
@@ -97,6 +100,14 @@ impl RerunStream {
             stream: rec,
             cycle: Cycle(0),
         })
+    }
+
+    /// Initialize a disabled [`RerunStream`].
+    pub fn disabled() -> Self {
+        RerunStream {
+            stream: RecordingStream::disabled(),
+            cycle: Cycle(0),
+        }
     }
 
     /// Log data to Rerun.
