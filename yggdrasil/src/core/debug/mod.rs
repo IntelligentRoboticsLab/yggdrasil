@@ -19,7 +19,7 @@ pub struct DebugPlugin;
 
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, (init_rerun, setup_spl_field))
+        app.add_systems(Startup, (init_rerun, setup_spl_field).chain())
             .add_systems(First, sync_cycle_number);
     }
 }
