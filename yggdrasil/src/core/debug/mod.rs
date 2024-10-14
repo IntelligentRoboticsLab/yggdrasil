@@ -103,6 +103,7 @@ impl RerunStream {
     }
 
     /// Initialize a disabled [`RerunStream`].
+    #[must_use]
     pub fn disabled() -> Self {
         RerunStream {
             stream: RecordingStream::disabled(),
