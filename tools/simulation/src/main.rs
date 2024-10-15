@@ -30,24 +30,24 @@
 // 10.4x7.4
 // 270x270
 
+use bevy::ecs::system::SystemParam;
 use bifrost::communication::{
     CompetitionPhase, CompetitionType, GameControllerMessage, GamePhase, GameState, Half, Penalty,
     RobotInfo, SetPlay, TeamColor, TeamInfo,
 };
-use egui::{emath::RectTransform, Pos2, Rect};
-use egui::{
-    Color32, Direction, Image, Layout, Painter, Response, RichText, Sense, Stroke, Ui, Vec2,
-};
+
 use nalgebra::{Isometry2, Point2, Vector2};
+use std::marker::PhantomData;
 use std::time::Duration;
 use yggdrasil::behavior::behaviors::ObserveBehaviorConfig;
 use yggdrasil::behavior::engine::{BehaviorKind, Context};
 use yggdrasil::behavior::primary_state::{next_primary_state, PrimaryStateConfig};
 use yggdrasil::behavior::BehaviorConfig;
+use yggdrasil::core::audio::whistle_detection::Whistle;
 use yggdrasil::core::config::showtime::PlayerConfig;
 use yggdrasil::core::config::yggdrasil::YggdrasilConfig;
 use yggdrasil::core::debug::DebugContext;
-use yggdrasil::core::whistle::WhistleState;
+use yggdrasil::core::CorePlugins;
 use yggdrasil::game_controller::GameControllerConfig;
 use yggdrasil::localization::{next_robot_pose, RobotPose};
 use yggdrasil::motion::odometry::{Odometry, OdometryConfig};
@@ -55,43 +55,80 @@ use yggdrasil::motion::step_planner::StepPlanner;
 use yggdrasil::motion::walk::engine::WalkRequest;
 use yggdrasil::prelude::Config;
 use yggdrasil::sensor::orientation::OrientationFilterConfig;
-use yggdrasil::sensor::{ButtonConfig, FsrConfig, SensorConfig};
+use yggdrasil::sensor::{button::ButtonConfig, fsr::FsrConfig, SensorConfig};
 use yggdrasil::vision::camera::{CameraConfig, CameraSettings};
-use yggdrasil::vision::field_marks::FieldMarksConfig;
-use yggdrasil::vision::VisionConfig;
 use yggdrasil::{
     behavior::{engine::Control, primary_state::PrimaryState, BehaviorEngine},
     core::config::layout::LayoutConfig,
     motion::walk::engine::WalkingEngine,
 };
 
-#[derive(Default)]
+use bevy::{prelude::*, window::PrimaryWindow, winit::WinitSettings};
+use bevy_egui::{egui, EguiContexts, EguiPlugin};
+
+use crate::egui::{emath::RectTransform, Pos2, Rect};
+use crate::egui::{
+    Color32, Direction, Image, Layout, Painter, Response, RichText, Sense, Stroke, Ui, Vec2,
+};
+
+#[derive(Default, Resource)]
 struct OccupiedScreenSpace {
     right: f32,
     bottom: f32,
 }
 
-fn main() -> eframe::Result<()> {
-    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_fullscreen(true),
-        ..Default::default()
-    };
-    eframe::run_native(
-        "Behavior Simulation",
-        options,
-        Box::new(|cc| {
-            // Provide image support:
-            egui_extras::install_image_loaders(&cc.egui_ctx);
+// fn main() -> eframe::Result<()> {
+// env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
+// let options = eframe::NativeOptions {
+//     viewport: egui::ViewportBuilder::default().with_fullscreen(true),
+//     ..Default::default()
+// };
+// eframe::run_native(
+//     "Behavior Simulation",
+//     options,
+//     Box::new(|cc| {
+//         // Provide image support:
+//         egui_extras::install_image_loaders(&cc.egui_ctx);
 
-            Ok(Box::<Simulation>::default())
-        }),
-    )
+//         Ok(Box::<Simulation>::default())
+//     }),
+// )
+// }
+
+fn main() {
+    App::new()
+        .add_plugins((DefaultPlugins, EguiPlugin))
+        .insert_resource(WinitSettings::desktop_app())
+        // .init_resource::<BehaviorEngine>()
+        .init_resource::<Simulation>()
+        // .add_systems(First, init_resources)
+        .add_systems(Update, (update_ui))
+        .run();
+}
+
+// fn main() {
+//     App::new()
+//         .insert_resource(WinitSettings::desktop_app())
+//         .init_resource::<Simulation>()
+//         .add_plugins(DefaultPlugins)
+//         .add_plugins(EguiPlugin)
+//         .init_resource::<OccupiedScreenSpace>()
+//         .add_systems(Update, (update_ui))
+//         .run();
+// }
+
+fn update_test_system(
+    mut _commands: Commands,
+    engine: Res<BehaviorEngine>,
+    // debug_context: DebugContext<'_>,
+) {
+    println!("{:?}", engine.behavior);
 }
 
 const NUMBER_OF_PLAYERS: usize = 5;
 const FRAMES_PER_SECOND: u64 = 120;
 
+#[derive(Resource)]
 struct Simulation {
     occupied_screen_space: OccupiedScreenSpace,
     gamecontrollermessage: GameControllerMessage,
@@ -104,8 +141,6 @@ struct Simulation {
 
 impl Default for Simulation {
     fn default() -> Self {
-        let layout_config = LayoutConfig::load("../../deploy/config/").unwrap();
-
         let gamecontrollermessage = GameControllerMessage {
             competition_phase: CompetitionPhase::PlayOff,
 
@@ -141,6 +176,7 @@ impl Default for Simulation {
             secs_remaining: Default::default(),
             secondary_time: Default::default(),
         };
+        let layout_config = LayoutConfig::load("../../deploy/config/").unwrap();
 
         let robots = (0..NUMBER_OF_PLAYERS)
             .map(|i| {
@@ -323,56 +359,64 @@ impl Simulation {
             .rect
             .height();
     }
+}
 
-    fn update_panel_center(&mut self, ctx: &egui::Context) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let img_source = egui::include_image!("./assets/field_simple.png");
+fn update_ui(_commands: Commands, mut contexts: EguiContexts, mut simulation: ResMut<Simulation>) {
+    let mut ctx = contexts.ctx_mut();
+    ctx.request_repaint_after(Duration::from_millis(1000 / FRAMES_PER_SECOND));
+    simulation.update_panel_top(ctx);
+    simulation.update_panel_right(ctx);
+    simulation.update_panel_bottom(ctx);
+}
 
-            let image_response = ui.add(
-                Image::new(img_source)
-                    .sense(Sense::click_and_drag())
-                    .maintain_aspect_ratio(true)
-                    .max_width(ui.available_width() - self.occupied_screen_space.right)
-                    .max_height(ui.available_height() - self.occupied_screen_space.bottom)
-                    .rounding(10.0),
+fn update_panel_center(
+    commands: Commands,
+    mut contexts: EguiContexts,
+    simulation: Res<Simulation>,
+    mut mut_simulation: ResMut<Simulation>,
+    debug_context: DebugContext,
+) {
+    let ctx = contexts.ctx_mut();
+
+    egui::CentralPanel::default().show(ctx, |ui| {
+        let img_source = egui::include_image!(".././assets/field_simple.png");
+
+        let image_response = ui.add(
+            Image::new(img_source)
+                .sense(Sense::click_and_drag())
+                .maintain_aspect_ratio(true)
+                .max_width(ui.available_width() - simulation.occupied_screen_space.right)
+                .max_height(ui.available_height() - simulation.occupied_screen_space.bottom)
+                .rounding(10.0),
+        );
+
+        let painter = ui.painter_at(image_response.rect);
+
+        mut_simulation.gamecontrollermessage.state = simulation.game_state;
+
+        for (i, penalty) in simulation.penalties.iter().enumerate() {
+            if *penalty {
+                mut_simulation.gamecontrollermessage.teams[0].players[i].penalty = Penalty::Manual;
+            } else {
+                mut_simulation.gamecontrollermessage.teams[0].players[i].penalty = Penalty::None;
+            }
+        }
+
+        for robot in mut_simulation.robots.iter_mut() {
+            robot.update(
+                &simulation.gamecontrollermessage,
+                &simulation.global_ball,
+                &simulation.layout_config,
+                debug_context,
             );
-
-            let painter = ui.painter_at(image_response.rect);
-
-            self.gamecontrollermessage.state = self.game_state;
-
-            for (i, penalty) in self.penalties.iter().enumerate() {
-                if *penalty {
-                    self.gamecontrollermessage.teams[0].players[i].penalty = Penalty::Manual;
-                } else {
-                    self.gamecontrollermessage.teams[0].players[i].penalty = Penalty::None;
-                }
-            }
-
-            for robot in self.robots.iter_mut() {
-                robot.update(
-                    &self.gamecontrollermessage,
-                    &self.global_ball,
-                    &self.layout_config,
-                );
-                robot.draw(ui, &painter, &image_response, &self.global_ball);
-            }
-            self.update_global_ball(&image_response);
-            self.draw_ball(&painter, &image_response);
-        });
-    }
+            robot.draw(ui, &painter, &image_response, &simulation.global_ball);
+        }
+        mut_simulation.update_global_ball(&image_response);
+        simulation.draw_ball(&painter, &image_response);
+    });
 }
 
-impl eframe::App for Simulation {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ctx.request_repaint_after(Duration::from_millis(1000 / FRAMES_PER_SECOND));
-        self.update_panel_top(ctx);
-        self.update_panel_center(ctx);
-        self.update_panel_right(ctx);
-        self.update_panel_bottom(ctx);
-    }
-}
-
+#[derive(Resource)]
 struct Robot {
     player_config: PlayerConfig,
     primary_state: PrimaryState,
@@ -401,22 +445,22 @@ impl Robot {
         gamecontrollermessage: &GameControllerMessage,
         ball: &Option<Point2<f32>>,
         layout_config: &LayoutConfig,
+        debug_context: DebugContext,
     ) {
         self.primary_state = next_primary_state(
             &self.primary_state,
-            &Some(gamecontrollermessage.clone()),
+            Some(&gamecontrollermessage.clone()),
             &Default::default(),
             &Default::default(),
             &self.player_config,
-            // &WhistleState::default(),
+            &Whistle::default(),
         );
         let mut control = Control {
             nao_manager: &mut Default::default(),
             keyframe_executor: &mut Default::default(),
             step_planner: &mut self.step_planner,
             walking_engine: &mut self.walking_engine,
-            debug_context: &mut DebugContext::init("kaas", std::net::IpAddr::from([0, 0, 0, 0]))
-                .unwrap(),
+            debug_context: debug_context,
         };
         let (yggdrasil_config, behavior_config, game_controller_config) = create_default_configs();
         let context = Context {
@@ -425,7 +469,7 @@ impl Robot {
             chest_button: &Default::default(),
             contacts: &Default::default(),
             behavior_config: &behavior_config,
-            // game_controller_config: &game_controller_config,
+            game_controller_config: &game_controller_config,
             yggdrasil_config: &yggdrasil_config,
 
             fall_state: &Default::default(),
@@ -511,7 +555,7 @@ impl Robot {
 
         ui.put(
             Rect::from_center_size(robot_pos_screen, Vec2::splat(40.0)),
-            Image::new(egui::include_image!("./assets/nao.png"))
+            Image::new(egui::include_image!(".././assets/nao.png"))
                 .max_width(40.0)
                 .rotate(robot_rotation, Vec2::splat(0.5)),
         );
@@ -534,30 +578,30 @@ impl Robot {
 fn create_default_configs() -> (YggdrasilConfig, BehaviorConfig, GameControllerConfig) {
     (
         YggdrasilConfig {
-            // camera: CameraConfig {
-            //     top: CameraSettings {
-            //         path: Default::default(),
-            //         width: 0,
-            //         height: 0,
-            //         calibration: Default::default(),
-            //         exposure_auto: Default::default(),
-            //         flip_horizontally: Default::default(),
-            //         flip_vertically: Default::default(),
-            //         focus_auto: Default::default(),
-            //         num_buffers: 0,
-            //     },
-            //     bottom: CameraSettings {
-            //         path: Default::default(),
-            //         width: 0,
-            //         height: 0,
-            //         calibration: Default::default(),
-            //         exposure_auto: Default::default(),
-            //         flip_horizontally: Default::default(),
-            //         flip_vertically: Default::default(),
-            //         focus_auto: Default::default(),
-            //         num_buffers: 0,
-            //     },
-            // },
+            camera: CameraConfig {
+                top: CameraSettings {
+                    path: Default::default(),
+                    width: 0,
+                    height: 0,
+                    calibration: Default::default(),
+                    exposure_auto: Default::default(),
+                    flip_horizontally: Default::default(),
+                    flip_vertically: Default::default(),
+                    focus_auto: Default::default(),
+                    num_buffers: 0,
+                },
+                bottom: CameraSettings {
+                    path: Default::default(),
+                    width: 0,
+                    height: 0,
+                    calibration: Default::default(),
+                    exposure_auto: Default::default(),
+                    flip_horizontally: Default::default(),
+                    flip_vertically: Default::default(),
+                    focus_auto: Default::default(),
+                    num_buffers: 0,
+                },
+            },
             filter: SensorConfig {
                 button: ButtonConfig {
                     activation_threshold: 0.0,
