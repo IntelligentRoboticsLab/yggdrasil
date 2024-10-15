@@ -420,7 +420,7 @@ fn visualize_lines<T: CameraLocation>(
     );
 
     dbg.log_with_cycle(
-        T::make_entity_path("lines_3d"),
+        T::make_entity_path("projected_lines"),
         lines.image.cycle(),
         &rerun::LineStrips3D::new(lines.projected_lines.iter().map(|line| {
             [
