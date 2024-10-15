@@ -78,7 +78,6 @@ fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Bal
     if balls.balls.is_empty() {
         return;
     }
-
     let (positions, (half_sizes, confidences)): (Vec<_>, (Vec<_>, Vec<_>)) = balls
         .balls
         .iter()
@@ -95,6 +94,10 @@ fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Bal
             )
         })
         .unzip();
+
+    if positions.is_empty() {
+        return;
+    }
 
     dbg.log_with_cycle(
         T::make_entity_path("balls/classifications"),

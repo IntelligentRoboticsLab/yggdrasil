@@ -74,7 +74,7 @@ fn setup_ball_debug_logging<T: CameraLocation>(dbg: DebugContext) {
     dbg.log_component_batches(
         T::make_entity_path("balls/proposals"),
         true,
-        [&rerun::Color::from_rgb(0, 128, 0) as &dyn ComponentBatch],
+        [&rerun::Color::from_rgb(190, 190, 190) as &dyn ComponentBatch],
     );
     dbg.log_component_batches(
         T::make_entity_path("balls/classifications"),

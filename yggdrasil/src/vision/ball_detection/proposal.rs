@@ -303,7 +303,7 @@ fn log_ball_proposals<T: CameraLocation>(dbg: DebugContext, proposals: Res<BallP
         .map(|proposal| {
             (
                 (proposal.position.x as f32, proposal.position.y as f32),
-                (proposal.scale, proposal.scale),
+                (proposal.scale / 2.0, proposal.scale / 2.0),
             )
         })
         .unzip();
