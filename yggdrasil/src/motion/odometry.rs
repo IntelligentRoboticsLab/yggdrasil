@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     behavior::primary_state::PrimaryState,
-    core::debug::DebugContext,
     kinematics::RobotKinematics,
     motion::walk::{engine::Side, SwingFoot},
     sensor::orientation::RobotOrientation,
@@ -16,14 +15,12 @@ pub(super) struct OdometryPlugin;
 
 impl Plugin for OdometryPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Odometry>()
-            .add_systems(PostStartup, init_odometry_view_coordinates)
-            .add_systems(
-                PreUpdate,
-                update_odometry
-                    .after(crate::kinematics::update_kinematics)
-                    .after(crate::sensor::orientation::update_orientation),
-            );
+        app.init_resource::<Odometry>().add_systems(
+            PreUpdate,
+            update_odometry
+                .after(crate::kinematics::update_kinematics)
+                .after(crate::sensor::orientation::update_orientation),
+        );
     }
 }
 
