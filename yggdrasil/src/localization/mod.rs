@@ -160,6 +160,7 @@ fn setup_pose_visualization(dbg: DebugContext) {
         true,
         [&rerun::Color::from_rgb(0, 64, 255) as _],
     );
+    dbg.log_static("localization/pose", &rerun::ViewCoordinates::FLU);
 }
 
 fn visualize_pose(dbg: DebugContext, pose: Res<RobotPose>) {
