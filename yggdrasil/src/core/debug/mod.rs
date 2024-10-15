@@ -71,13 +71,13 @@ fn sync_cycle_number(
     mut ctx: ResMut<RerunStream>,
     cycle: Res<Cycle>,
     cycle_time: Res<CycleTime>,
-    mut cycle_time_buffer: Local<Vec<(i64, Duration)>>,
+    mut cycle_time_buffer: Local<Vec<(usize, Duration)>>,
 ) {
     if cycle_time_buffer.len() == 100 {
         let (cycles, durations): (Vec<_>, Vec<_>) = cycle_time_buffer
             .iter()
             .copied()
-            .map(|(cycle, duration)| (cycle, duration.as_millis() as f64))
+            .map(|(cycle, duration)| (cycle as i64, duration.as_millis() as f64))
             .unzip();
 
         let scalar_data: Vec<Scalar> = durations.into_iter().map(Into::into).collect();
@@ -86,7 +86,7 @@ fn sync_cycle_number(
         ctx.send_columns("stats/cycle_time", [timeline], [&scalar_data as _]);
         cycle_time_buffer.clear();
     } else {
-        cycle_time_buffer.push((cycle.0 as i64, cycle_time.duration));
+        cycle_time_buffer.push((cycle.0, cycle_time.duration));
     }
 
     ctx.cycle = *cycle;
