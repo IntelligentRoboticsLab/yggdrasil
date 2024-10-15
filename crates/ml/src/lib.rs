@@ -47,15 +47,22 @@ impl Plugin for MlPlugin {
 ///
 /// ## Example
 /// ```
-/// use yggdrasil::core::ml::MlModel;
+/// use ml::prelude::*;
 ///
 /// /// The Mixtral8x7b MoE model.
 /// struct Mixtral8x7b;
 ///
 /// impl MlModel for Mixtral8x7b {
 ///     // these are the in- and output data types
-///     type InputType = u8;
-///     type OutputType = u8;
+///     type InputElem = u8;
+///     type OutputElem = u8;
+///
+///     // this is the shape of the model's input
+///     type InputShape = (MlArray<u8>, MlArray<u8>);
+///
+///     // this is the shape of the model's output
+///     type OutputShape = (MlArray<u8>,);
+///
 ///     // this is the path to the model's ONNX file
 ///     const ONNX_PATH: &'static str = "deploy/models/mixtral8x7b.onnx";
 /// }
