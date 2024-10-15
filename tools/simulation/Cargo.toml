@@ -15,12 +15,15 @@ bifrost = { workspace = true }
 bevy = { workspace = true, features = [
     "bevy_core_pipeline",
     "bevy_asset",
+    "bevy_sprite",
     "bevy_winit",
     "bevy_pbr",
+    "png",
     "x11", 
     "wayland"
 ] }
 bevy_gizmos = "^0.14.2"
+bevy_sprite = { version = "0.14.0-rc.4" }
 bevy_egui = { workspace = true }
 yggdrasil = { workspace = true, features = ["local"]}
 home = { workspace = true }

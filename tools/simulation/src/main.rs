@@ -46,7 +46,7 @@ use yggdrasil::behavior::BehaviorConfig;
 use yggdrasil::core::audio::whistle_detection::Whistle;
 use yggdrasil::core::config::showtime::PlayerConfig;
 use yggdrasil::core::config::yggdrasil::YggdrasilConfig;
-use yggdrasil::core::debug::DebugContext;
+use yggdrasil::core::debug::{DebugContext, DebugPlugin};
 use yggdrasil::core::CorePlugins;
 use yggdrasil::game_controller::GameControllerConfig;
 use yggdrasil::localization::{next_robot_pose, RobotPose};
@@ -101,8 +101,8 @@ fn main() {
         .insert_resource(WinitSettings::desktop_app())
         // .init_resource::<BehaviorEngine>()
         .init_resource::<Simulation>()
-        // .add_systems(First, init_resources)
-        .add_systems(Update, (update_ui))
+        .add_systems(Startup, setup)
+        .add_systems(Update, (update_ui, update_panel_center))
         .run();
 }
 
@@ -369,50 +369,58 @@ fn update_ui(_commands: Commands, mut contexts: EguiContexts, mut simulation: Re
     simulation.update_panel_bottom(ctx);
 }
 
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn(Camera2dBundle::default());
+    commands.spawn(SpriteBundle {
+        texture: asset_server.load("../assets/field_simple.png"),
+        ..default()
+    });
+}
+
 fn update_panel_center(
     commands: Commands,
     mut contexts: EguiContexts,
-    simulation: Res<Simulation>,
-    mut mut_simulation: ResMut<Simulation>,
-    debug_context: DebugContext,
+    mut simulation: ResMut<Simulation>,
 ) {
     let ctx = contexts.ctx_mut();
 
     egui::CentralPanel::default().show(ctx, |ui| {
-        let img_source = egui::include_image!(".././assets/field_simple.png");
+        let img_source = egui::include_image!("../assets/field_simple.png");
 
         let image_response = ui.add(
             Image::new(img_source)
                 .sense(Sense::click_and_drag())
                 .maintain_aspect_ratio(true)
-                .max_width(ui.available_width() - simulation.occupied_screen_space.right)
-                .max_height(ui.available_height() - simulation.occupied_screen_space.bottom)
+                .max_width(ui.available_width() - simulation.occupied_screen_space.right.clone())
+                .max_height(ui.available_height() - simulation.occupied_screen_space.bottom.clone())
                 .rounding(10.0),
         );
 
         let painter = ui.painter_at(image_response.rect);
+        simulation.gamecontrollermessage.state = simulation.game_state;
+        let global_ball = simulation.global_ball.clone();
 
-        mut_simulation.gamecontrollermessage.state = simulation.game_state;
+        let ball = &simulation.global_ball.clone();
+        let layout_config = &simulation.layout_config.clone();
+        let gamecontrollermessage = &simulation.gamecontrollermessage.clone();
+
+        for robot in simulation.robots.iter_mut() {
+            robot.update(gamecontrollermessage, &ball, layout_config);
+
+            robot.draw(ui, &painter, &image_response, &global_ball);
+        }
+        simulation.update_global_ball(&image_response);
+        simulation.draw_ball(&painter, &image_response);
+
+        let mut players = simulation.gamecontrollermessage.teams[0].players;
 
         for (i, penalty) in simulation.penalties.iter().enumerate() {
             if *penalty {
-                mut_simulation.gamecontrollermessage.teams[0].players[i].penalty = Penalty::Manual;
+                players[i].penalty = Penalty::Manual;
             } else {
-                mut_simulation.gamecontrollermessage.teams[0].players[i].penalty = Penalty::None;
+                players[i].penalty = Penalty::None;
             }
         }
-
-        for robot in mut_simulation.robots.iter_mut() {
-            robot.update(
-                &simulation.gamecontrollermessage,
-                &simulation.global_ball,
-                &simulation.layout_config,
-                debug_context,
-            );
-            robot.draw(ui, &painter, &image_response, &simulation.global_ball);
-        }
-        mut_simulation.update_global_ball(&image_response);
-        simulation.draw_ball(&painter, &image_response);
     });
 }
 
@@ -445,7 +453,6 @@ impl Robot {
         gamecontrollermessage: &GameControllerMessage,
         ball: &Option<Point2<f32>>,
         layout_config: &LayoutConfig,
-        debug_context: DebugContext,
     ) {
         self.primary_state = next_primary_state(
             &self.primary_state,
@@ -460,7 +467,6 @@ impl Robot {
             keyframe_executor: &mut Default::default(),
             step_planner: &mut self.step_planner,
             walking_engine: &mut self.walking_engine,
-            debug_context: debug_context,
         };
         let (yggdrasil_config, behavior_config, game_controller_config) = create_default_configs();
         let context = Context {

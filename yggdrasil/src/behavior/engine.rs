@@ -82,7 +82,6 @@ pub struct Control<'a> {
     pub walking_engine: &'a mut WalkingEngine,
     pub keyframe_executor: &'a mut KeyframeExecutor,
     pub step_planner: &'a mut StepPlanner,
-    pub debug_context: DebugContext<'a>,
 }
 
 /// A trait representing a behavior that can be performed.
@@ -355,8 +354,7 @@ pub fn step(
         ResMut<KeyframeExecutor>,
         ResMut<StepPlanner>,
     ),
-    debug_context: DebugContext<'_>,
-    (robot_pose, fall_state, top_balls, bottom_balls, game_controller_message): (
+    (robot_pose, fall_state, game_controller_message): (
         Res<RobotPose>,
         Res<FallState>,
         Res<Balls<Top>>,
@@ -393,7 +391,6 @@ pub fn step(
         walking_engine: &mut walking_engine,
         keyframe_executor: &mut keyframe_executor,
         step_planner: &mut step_planner,
-        debug_context,
     };
 
     engine.step(context, &mut control);
