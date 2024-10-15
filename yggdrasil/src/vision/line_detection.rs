@@ -37,7 +37,12 @@ impl Plugin for LineDetectionPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_systems(
             Startup,
-            init_line_detection_data::<Top>.after(init_camera::<Top>),
+            (
+                init_line_detection_data::<Top>,
+                setup_line_visualization::<Top>,
+            )
+                .chain()
+                .after(init_camera::<Top>),
         )
         .add_systems(
             Update,
@@ -384,6 +389,20 @@ fn line_points_to_line<T: CameraLocation>(
     LineSegment2::from_xy(start_column, start_row, end_column, end_row)
 }
 
+fn setup_line_visualization<T: CameraLocation>(dbg: DebugContext) {
+    dbg.log_component_batches(
+        T::make_entity_path("lines"),
+        true,
+        [&rerun::Color::from_rgb(255, 0, 0) as _],
+    );
+
+    dbg.log_component_batches(
+        T::make_entity_path("projected_lines"),
+        true,
+        [&rerun::Color::from_rgb(255, 0, 0) as _],
+    );
+}
+
 fn visualize_lines<T: CameraLocation>(
     dbg: DebugContext,
     lines: Res<DetectedLines<T>>,
@@ -416,7 +435,7 @@ fn visualize_lines<T: CameraLocation>(
     let rotation = transform.rotation.as_vector();
 
     dbg.log_with_cycle(
-        T::make_entity_path("lines_3d"),
+        T::make_entity_path("projected_lines"),
         lines.image.cycle(),
         &rerun::Transform3D::from_translation((translation.x, translation.y, translation.z))
             .with_quaternion([rotation.x, rotation.y, rotation.z, rotation.w]),

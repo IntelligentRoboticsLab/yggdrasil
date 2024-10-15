@@ -10,7 +10,6 @@ use heimdall::{Bottom, CameraLocation, Top};
 use nidhogg::types::{color, FillExt, LeftEye};
 use proposal::BallProposalConfigs;
 
-use rerun::ComponentBatch;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 
@@ -73,12 +72,12 @@ fn setup_ball_debug_logging<T: CameraLocation>(dbg: DebugContext) {
     dbg.log_component_batches(
         T::make_entity_path("balls/proposals"),
         true,
-        [&rerun::Color::from_rgb(190, 190, 190) as &dyn ComponentBatch],
+        [&rerun::Color::from_rgb(190, 190, 190) as _],
     );
     dbg.log_component_batches(
         T::make_entity_path("balls/classifications"),
         true,
-        [&rerun::Color::from_rgb(128, 0, 128) as &dyn ComponentBatch],
+        [&rerun::Color::from_rgb(128, 0, 128) as _],
     );
 }
 
