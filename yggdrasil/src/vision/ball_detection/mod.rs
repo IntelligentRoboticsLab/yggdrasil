@@ -70,7 +70,6 @@ fn init_subconfigs(mut commands: Commands, config: Res<BallDetectionConfig>) {
 /// By logging a static [`rerun::Color`] component, we can avoid logging the color component
 /// for each ball proposal and classification.
 fn setup_ball_debug_logging<T: CameraLocation>(dbg: DebugContext) {
-    // TODO: Validate whether this is the correct way to log a default component value
     dbg.log_component_batches(
         T::make_entity_path("balls/proposals"),
         true,

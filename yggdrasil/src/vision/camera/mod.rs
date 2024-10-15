@@ -176,22 +176,20 @@ pub fn init_camera<T: CameraLocation>(mut commands: Commands, config: Res<Camera
 }
 
 fn log_image<T: CameraLocation>(dbg: DebugContext, image: Res<Image<T>>) {
+    const JPEG_QUALITY: i32 = 50;
+
     AsyncComputeTaskPool::get()
         .spawn({
             let image = image.clone();
             let dbg = dbg.clone();
             async move {
                 let yuv_planar_image = YuvPlanarImage::from_yuyv(image.yuyv_image());
-                let Some(jpeg) = yuv_planar_image.to_jpeg(20).ok_or_log_error() else {
+                let Some(jpeg) = yuv_planar_image.to_jpeg(JPEG_QUALITY).ok_or_log_error() else {
                     return;
                 };
                 let encoded_image = rerun::EncodedImage::from_file_contents(jpeg.to_owned())
                     .with_media_type(rerun::MediaType::JPEG);
-                dbg.log_with_cycle(
-                    T::make_entity_path("image/raw"),
-                    image.cycle(),
-                    &encoded_image,
-                );
+                dbg.log_with_cycle(T::make_entity_path(""), image.cycle(), &encoded_image);
             }
         })
         .detach();

@@ -2,7 +2,9 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use miette::IntoDiagnostic;
-use rerun::{AsComponents, ComponentBatch, EntityPath, RecordingStream};
+use rerun::components::Scalar;
+use rerun::{AsComponents, ComponentBatch, EntityPath, RecordingStream, TimeColumn};
+use std::time::Duration;
 use std::{convert::Into, net::SocketAddr};
 use std::{marker::PhantomData, net::IpAddr};
 
@@ -65,11 +67,27 @@ fn setup_spl_field(dbg: DebugContext) {
     dbg.log_static("field/mesh", &rerun::ViewCoordinates::FLU);
 }
 
-fn sync_cycle_number(mut ctx: ResMut<RerunStream>, cycle: Res<Cycle>, cycle_time: Res<CycleTime>) {
-    ctx.log(
-        "stats/cycle_time",
-        &rerun::Scalar::new(cycle_time.duration.as_millis() as f64),
-    );
+fn sync_cycle_number(
+    mut ctx: ResMut<RerunStream>,
+    cycle: Res<Cycle>,
+    cycle_time: Res<CycleTime>,
+    mut cycle_time_buffer: Local<Vec<(i64, Duration)>>,
+) {
+    if cycle_time_buffer.len() == 100 {
+        let (cycles, durations): (Vec<_>, Vec<_>) = cycle_time_buffer
+            .iter()
+            .copied()
+            .map(|(cycle, duration)| (cycle, duration.as_millis() as f64))
+            .unzip();
+
+        let scalar_data: Vec<Scalar> = durations.into_iter().map(Into::into).collect();
+
+        let timeline = TimeColumn::new_sequence("cycle", cycles);
+        ctx.send_columns("stats/cycle_time", [timeline], [&scalar_data as _]);
+        cycle_time_buffer.clear();
+    } else {
+        cycle_time_buffer.push((cycle.0 as i64, cycle_time.duration));
+    }
 
     ctx.cycle = *cycle;
 }
@@ -174,6 +192,26 @@ impl RerunStream {
             .stream
             .log_component_batches(ent_path, static_, comp_batches)
         {
+            error!("{error}");
+        }
+    }
+
+    /// Lower-level logging API to provide data spanning multiple timepoints.
+    ///
+    /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+    /// in a columnar form. The lengths of all of the [`TimeColumn`] and the component batches
+    /// must match. All data that occurs at the same index across the different time and components
+    /// arrays will act as a single logical row.
+    ///
+    /// See [`RecordingStream::send_columns`] for more information.
+    #[inline]
+    pub fn send_columns<'a>(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        timelines: impl IntoIterator<Item = TimeColumn>,
+        components: impl IntoIterator<Item = &'a dyn ComponentBatch>,
+    ) {
+        if let Err(error) = self.stream.send_columns(ent_path, timelines, components) {
             error!("{error}");
         }
     }
