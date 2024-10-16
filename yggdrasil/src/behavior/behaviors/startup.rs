@@ -1,6 +1,6 @@
 use crate::{
     behavior::engine::{Behavior, Context, Control},
-    nao::manager::{NaoManager, Priority},
+    nao::{NaoManager, Priority},
 };
 use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 

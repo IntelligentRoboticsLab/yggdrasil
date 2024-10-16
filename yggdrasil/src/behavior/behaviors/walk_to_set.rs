@@ -3,7 +3,7 @@ use nidhogg::types::{FillExt, HeadJoints};
 use crate::{
     behavior::engine::{Behavior, Context, Control},
     motion::step_planner::Target,
-    nao::manager::Priority,
+    nao::Priority,
 };
 
 #[derive(Copy, Clone, Debug, Default, PartialEq)]

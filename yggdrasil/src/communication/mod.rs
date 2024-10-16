@@ -1,17 +1,12 @@
-pub mod team;
+mod team;
 
-use crate::prelude::*;
+use bevy::{app::PluginGroupBuilder, prelude::*};
 
-use team::TeamCommunicationModule;
+/// A collection of plugins related to communication.
+pub struct CommunicationPlugins;
 
-/// A collection of modules related to communication.
-///
-/// This module adds the following modules to the application:
-/// - [`CommunicationModule`]
-pub struct CommunicationModule;
-
-impl Module for CommunicationModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_module(TeamCommunicationModule)
+impl PluginGroup for CommunicationPlugins {
+    fn build(self) -> PluginGroupBuilder {
+        PluginGroupBuilder::start::<Self>().add(team::TeamCommunicationPlugin)
     }
 }

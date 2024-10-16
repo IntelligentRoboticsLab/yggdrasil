@@ -1,87 +1,96 @@
-use super::GameControllerConfig;
-use super::GameControllerData;
+use std::{net::SocketAddr, time::Duration};
 
-use bifrost::communication::{GameControllerReturnMessage, GAME_CONTROLLER_RETURN_PORT};
-use bifrost::serialization::Encode;
+use async_std::prelude::StreamExt;
+use bevy::prelude::*;
+use bifrost::{
+    communication::{GameControllerReturnMessage, GAME_CONTROLLER_RETURN_PORT},
+    serialization::Encode,
+};
+use futures::channel::mpsc::{self};
 
-use tokio::net::UdpSocket;
-use tokio::time::sleep;
+use crate::{
+    core::config::showtime::PlayerConfig, localization::RobotPose, sensor::falling::FallState,
+    vision::ball_detection::classifier::Balls,
+};
 
-use std::mem::size_of;
-use std::net::SocketAddr;
-use std::ops::Add;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-
-use miette::IntoDiagnostic;
-
-use crate::core::config::showtime::PlayerConfig;
-use crate::localization::RobotPose;
-use crate::prelude::*;
-use crate::sensor::falling::FallState;
-use crate::vision::ball_detection::classifier::Balls;
+use super::{GameControllerConfig, GameControllerConnection, GameControllerSocket};
 
 const NO_BALL_DETECTED_DATA: (f32, [f32; 2]) = (-1.0, [0.0, 0.0]);
-const MILIMETERS_PER_METER: f32 = 1_000.;
+const MILLIMETERS_PER_METER: f32 = 1_000.0;
 
-pub(super) struct GameControllerTransmitModule;
+#[derive(Resource)]
+pub struct GameControllerSender {
+    pub tx: mpsc::UnboundedSender<(GameControllerReturnMessage, SocketAddr)>,
+}
 
-impl Module for GameControllerTransmitModule {
-    fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_task::<AsyncTask<Result<(GameControllerReturnMessage, Instant)>>>()?
-            .add_system(transmit_system))
+pub async fn send_loop(
+    sock: GameControllerSocket,
+    mut rx: mpsc::UnboundedReceiver<(GameControllerReturnMessage, SocketAddr)>,
+) {
+    let mut buffer = Vec::new();
+
+    while let Some((message, mut addr)) = rx.next().await {
+        message.encode(&mut buffer).unwrap();
+        addr.set_port(GAME_CONTROLLER_RETURN_PORT);
+        sock.send_to(&buffer, addr).await.unwrap();
+        buffer.clear();
+    }
+
+    tracing::error!("Exiting game controller send loop");
+}
+
+#[derive(Deref, DerefMut)]
+pub struct GameControllerReturnDelay(Timer);
+
+impl Default for GameControllerReturnDelay {
+    fn default() -> Self {
+        Self(Timer::new(Duration::ZERO, TimerMode::Repeating))
     }
 }
 
-struct TransmitGameControllerData {
-    player_num: u8,
-    team_num: u8,
-    fallen: u8,
-    pose: [f32; 3],
-    ball_age: f32,
-    ball: [f32; 2],
-}
+pub fn send_message(
+    player_config: Res<PlayerConfig>,
+    fall_state: Res<FallState>,
+    robot_pose: Res<RobotPose>,
+    balls: Res<Balls>,
+    (sender, connection, config): (
+        Res<GameControllerSender>,
+        Res<GameControllerConnection>,
+        Res<GameControllerConfig>,
+    ),
+    time: Res<Time>,
+    mut delay: Local<GameControllerReturnDelay>,
+) {
+    delay.tick(time.delta());
 
-async fn transmit_game_controller_return_message(
-    game_controller_socket: Arc<UdpSocket>,
-    last_transmitted_return_message: Instant,
-    mut game_controller_address: SocketAddr,
-    game_controller_return_delay: Duration,
-    transmit_game_controller_data: TransmitGameControllerData,
-) -> Result<(GameControllerReturnMessage, Instant)> {
-    let duration_to_wait = last_transmitted_return_message
-        .add(game_controller_return_delay)
-        .duration_since(Instant::now());
-    sleep(duration_to_wait).await;
+    if !delay.finished() {
+        return;
+    }
 
-    let mut message_buffer = [0u8; size_of::<GameControllerReturnMessage>()];
-    let game_controller_message = GameControllerReturnMessage::new(
-        transmit_game_controller_data.player_num,
-        transmit_game_controller_data.team_num,
-        transmit_game_controller_data.fallen,
-        transmit_game_controller_data.pose,
-        transmit_game_controller_data.ball_age,
-        transmit_game_controller_data.ball,
+    let (ball_age, pall_pos) = balls_to_game_controller_ball(&balls);
+
+    let return_message = GameControllerReturnMessage::new(
+        player_config.player_number,
+        player_config.team_number,
+        u8::from(matches!(*fall_state, FallState::Lying(_))),
+        robot_pose_to_game_controller_pose(&robot_pose),
+        ball_age,
+        pall_pos,
     );
-    game_controller_message
-        .encode(message_buffer.as_mut_slice())
-        .into_diagnostic()?;
 
-    game_controller_address.set_port(GAME_CONTROLLER_RETURN_PORT);
-    game_controller_socket
-        .send_to(message_buffer.as_slice(), game_controller_address)
-        .await
-        .into_diagnostic()?;
+    sender
+        .tx
+        .unbounded_send((return_message, connection.address))
+        .unwrap();
 
-    Ok((game_controller_message, Instant::now()))
+    delay.set_duration(config.game_controller_return_delay);
 }
 
 fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {
     let robot_world_position = robot_pose.world_position();
     [
-        robot_world_position.x * MILIMETERS_PER_METER,
-        robot_world_position.y * MILIMETERS_PER_METER,
+        robot_world_position.x * MILLIMETERS_PER_METER,
+        robot_world_position.y * MILLIMETERS_PER_METER,
         robot_pose.world_rotation(),
     ]
 }
@@ -94,60 +103,8 @@ fn balls_to_game_controller_ball(balls: &Balls) -> (f32, [f32; 2]) {
     (
         ball.timestamp.elapsed().as_secs_f32(),
         [
-            ball.robot_to_ball.x * MILIMETERS_PER_METER,
-            ball.robot_to_ball.y * MILIMETERS_PER_METER,
+            ball.robot_to_ball.x * MILLIMETERS_PER_METER,
+            ball.robot_to_ball.y * MILLIMETERS_PER_METER,
         ],
     )
-}
-
-#[system]
-fn transmit_system(
-    game_controller_data: &mut GameControllerData,
-    transmit_game_controller_return_message_task: &mut AsyncTask<
-        Result<(GameControllerReturnMessage, Instant)>,
-    >,
-    fall_state: &FallState,
-    game_controller_config: &GameControllerConfig,
-    player_config: &PlayerConfig,
-    robot_pose: &RobotPose,
-    balls: &Balls,
-) -> Result<()> {
-    let Some((game_controller_address, mut last_transmitted_update_timestamp)) =
-        game_controller_data.game_controller_address
-    else {
-        return Ok(());
-    };
-
-    let game_controller_ball_data = balls_to_game_controller_ball(balls);
-
-    let transmit_game_controller_data = TransmitGameControllerData {
-        player_num: player_config.player_number,
-        team_num: player_config.team_number,
-        fallen: matches!(fall_state, FallState::Lying(_)) as u8,
-        pose: robot_pose_to_game_controller_pose(robot_pose),
-        ball_age: game_controller_ball_data.0,
-        ball: game_controller_ball_data.1,
-    };
-
-    match transmit_game_controller_return_message_task.poll() {
-        Some(Ok((_game_controller_return_message, new_last_transmitted_timestamp))) => {
-            last_transmitted_update_timestamp = new_last_transmitted_timestamp;
-        }
-        Some(Err(error)) => {
-            tracing::warn!("Failed to transmit game controller return message: {error}");
-        }
-        None => (),
-    }
-
-    _ = transmit_game_controller_return_message_task.try_spawn(
-        transmit_game_controller_return_message(
-            game_controller_data.socket.clone(),
-            last_transmitted_update_timestamp,
-            game_controller_address,
-            game_controller_config.game_controller_return_delay,
-            transmit_game_controller_data,
-        ),
-    );
-
-    Ok(())
 }

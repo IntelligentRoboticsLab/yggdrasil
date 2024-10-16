@@ -1,19 +1,10 @@
-use std::ops::Deref;
+use crate::core::config::layout::LayoutConfig;
 
-use crate::{
-    core::{config::layout::LayoutConfig, debug::DebugContext},
-    prelude::*,
-    vision::camera::matrix::CameraMatrices,
-};
-
-use heimdall::{CameraMatrix, YuyvImage};
+use bevy::prelude::*;
+use heimdall::{Bottom, CameraLocation, CameraMatrix, Top, YuyvImage};
 use nalgebra::point;
-use nidhogg::types::color;
 
-use super::{
-    camera::{BottomImage, Image, TopImage},
-    scan_lines::CameraType,
-};
+use super::camera::{init_camera, Image};
 
 /// The step size for approximating the field color.
 const FIELD_APPROXIMATION_STEP_SIZE: usize = 8;
@@ -36,17 +27,28 @@ const LINE_WIDTH_RATIO: f32 = 0.9;
 /// The ratio of ball width that is sampled when scanning the image.
 const BALL_WIDTH_RATIO: f32 = 0.8;
 
-/// Module that generates a scan grid from taken NAO images.
-///
-/// This module provides the following resources to the application:
-/// - [`TopScanGrid`]: The scan grid for the top camera.
-/// - [`BottomScanGrid`]: The scan grid for the bottom camera.
-pub struct ScanGridModule;
+/// Plugin that generates a scan grid from taken NAO images.
+pub struct ScanGridPlugin;
 
-impl Module for ScanGridModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_system(update_scan_grid.after(super::camera::camera_system))
-            .add_startup_system(init_scan_grid)
+impl Plugin for ScanGridPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            Startup,
+            (init_top_scan_grid, init_bottom_scan_grid)
+                .after(init_camera::<Top>)
+                .after(init_camera::<Bottom>),
+        )
+        .add_systems(
+            Update,
+            (
+                update_top_scan_grid
+                    .after(super::camera::fetch_latest_frame::<Top>)
+                    .run_if(resource_exists_and_changed::<Image<Top>>),
+                update_bottom_scan_grid
+                    .after(super::camera::fetch_latest_frame::<Bottom>)
+                    .run_if(resource_exists_and_changed::<Image<Bottom>>),
+            ),
+        );
     }
 }
 
@@ -73,6 +75,7 @@ pub struct FieldColorApproximate {
 }
 
 impl FieldColorApproximate {
+    #[must_use]
     pub fn new(image: &YuyvImage) -> Self {
         let height = image.height();
 
@@ -142,14 +145,9 @@ pub struct Line {
     pub max_index: usize,
 }
 
-#[derive(derive_more::Deref, derive_more::DerefMut)]
-pub struct TopScanGrid(ScanGrid);
-
-#[derive(derive_more::Deref, derive_more::DerefMut)]
-pub struct BottomScanGrid(ScanGrid);
-
-pub struct ScanGrid {
-    pub image: Image,
+#[derive(Resource)]
+pub struct ScanGrid<T: CameraLocation> {
+    pub image: Image<T>,
     /// All possible y coordinates of pixels to be scanned.
     pub y: Vec<usize>,
     /// Description of all scan lines
@@ -162,115 +160,72 @@ pub struct ScanGrid {
     pub low_res_step: usize,
 }
 
-#[startup_system]
-pub fn init_scan_grid(
-    storage: &mut Storage,
-    top_image: &TopImage,
-    bottom_image: &BottomImage,
-) -> Result<()> {
-    let top_image = top_image.deref().clone();
-    let bottom_image = bottom_image.deref().clone();
-
-    let top = ScanGrid {
-        image: top_image,
+pub fn init_top_scan_grid(mut commands: Commands, image: Res<Image<Top>>) {
+    commands.insert_resource(ScanGrid {
+        image: image.clone(),
         y: Vec::new(),
         lines: Vec::new(),
         field_limit: 0,
         low_res_start: 0,
         low_res_step: 0,
-    };
-
-    let bottom = get_bottom_scan_grid(&bottom_image);
-
-    storage.add_resource(Resource::new(TopScanGrid(top)))?;
-    storage.add_resource(Resource::new(BottomScanGrid(bottom)))?;
-
-    Ok(())
+    });
 }
 
-#[system]
-pub fn update_scan_grid(
-    (top_scan_grid, bottom_scan_grid): (&mut TopScanGrid, &mut BottomScanGrid),
-    camera_matrix: &CameraMatrices,
-    layout: &LayoutConfig,
-    top_image: &TopImage,
-    bottom_image: &BottomImage,
-    dbg: &DebugContext,
-) -> Result<()> {
-    update_top_scan_grid(top_scan_grid, camera_matrix, layout, top_image, dbg)?;
-    update_bottom_scan_grid(bottom_scan_grid, bottom_image, dbg)?;
-
-    Ok(())
+pub fn init_bottom_scan_grid(mut commands: Commands, image: Res<Image<Bottom>>) {
+    commands.insert_resource(get_bottom_scan_grid(&image));
 }
 
 pub fn update_top_scan_grid(
-    scan_grid: &mut ScanGrid,
-    camera_matrix: &CameraMatrices,
-    layout: &LayoutConfig,
-    image: &TopImage,
-    dbg: &DebugContext,
-) -> Result<()> {
-    if scan_grid.image.is_from_cycle(image.cycle()) {
-        return Ok(());
-    }
-
-    if let Some(new_scan_grid) = get_scan_grid(&camera_matrix.top, layout, image) {
+    mut scan_grid: ResMut<ScanGrid<Top>>,
+    camera_matrix: Res<CameraMatrix<Top>>,
+    layout: Res<LayoutConfig>,
+    image: Res<Image<Top>>,
+) {
+    if let Some(new_scan_grid) = get_scan_grid(&camera_matrix, &layout, &image) {
         *scan_grid = new_scan_grid;
-        debug_scan_grid(scan_grid, image, dbg, CameraType::Top)?;
-    };
-
-    Ok(())
-}
-
-pub fn update_bottom_scan_grid(
-    scan_grid: &mut ScanGrid,
-    image: &BottomImage,
-    dbg: &DebugContext,
-) -> Result<()> {
-    if scan_grid.image.is_from_cycle(image.cycle()) {
-        return Ok(());
     }
-
-    *scan_grid = get_bottom_scan_grid(image);
-    debug_scan_grid(scan_grid, image, dbg, CameraType::Bottom)?;
-
-    Ok(())
 }
 
-fn debug_scan_grid(
-    scan_grid: &ScanGrid,
-    image: &Image,
-    dbg: &DebugContext,
-    camera: CameraType,
-) -> Result<()> {
-    let mut points = Vec::new();
-
-    for line in &scan_grid.lines {
-        for y in scan_grid.y.iter() {
-            points.push((line.x as f32, *y as f32));
-        }
-    }
-
-    let camera_str = match camera {
-        CameraType::Top => "top",
-        CameraType::Bottom => "bottom",
-    };
-
-    dbg.log_points2d_for_image(
-        format!("{camera_str}_camera/image/scan_lines/scan_grid"),
-        &points,
-        image,
-        color::u8::ORANGE,
-    )?;
-
-    Ok(())
+pub fn update_bottom_scan_grid(mut scan_grid: ResMut<ScanGrid<Bottom>>, image: Res<Image<Bottom>>) {
+    *scan_grid = get_bottom_scan_grid(&image);
 }
 
-fn get_scan_grid(
-    camera_matrix: &CameraMatrix,
+// fn debug_scan_grid<T: CameraLocation>(
+//     scan_grid: &ScanGrid<T>,
+//     image: &Image<T>,
+//     dbg: &DebugContext,
+// ) -> Result<()> {
+//     let mut points = Vec::new();
+
+//     for line in &scan_grid.lines {
+//         for y in scan_grid.y.iter() {
+//             points.push((line.x as f32, *y as f32));
+//         }
+//     }
+
+//     let camera_str = match T::POSITION {
+//         CameraPosition::Top => "top",
+//         CameraPosition::Bottom => "bottom",
+//     };
+
+//     // TODO: Fix this
+//     // dbg.log_points2d_for_image(
+//     //     format!("{camera_str}_camera/image/scan_lines/scan_grid"),
+//     //     &points,
+//     //     image,
+//     //     color::u8::ORANGE,
+//     // )?;
+
+//     Ok(())
+// }
+
+// TODO: Clean this up
+#[allow(clippy::too_many_lines)]
+fn get_scan_grid<T: CameraLocation>(
+    camera_matrix: &CameraMatrix<T>,
     layout: &LayoutConfig,
-    image: &Image,
-) -> Option<ScanGrid> {
+    image: &Image<T>,
+) -> Option<ScanGrid<T>> {
     let image = image.clone();
     let yuyv = image.yuyv_image();
 
@@ -379,7 +334,7 @@ fn get_scan_grid(
     let mut y_starts2 = vec![0; max_x_step2 as usize / min_x_step as usize];
 
     let mut step = 1;
-    for y1 in y_starts.iter() {
+    for y1 in &y_starts {
         for y2 in y_starts2.iter_mut().step_by(step) {
             *y2 = *y1;
         }
@@ -425,11 +380,9 @@ fn get_scan_grid(
     })
 }
 
-fn get_bottom_scan_grid(image: &Image) -> ScanGrid {
-    let image = image.clone();
-
+fn get_bottom_scan_grid(image: &Image<Bottom>) -> ScanGrid<Bottom> {
     const GAP_SIZE_BOTTOM: usize = 8;
-
+    let image = image.clone();
     let height = image.yuyv_image().height();
     let width = image.yuyv_image().width();
 
@@ -465,8 +418,8 @@ fn get_bottom_scan_grid(image: &Image) -> ScanGrid {
 }
 
 // TODO: need a better camera matrix/projection submodule
-fn get_distance_by_size(
-    camera_info: &CameraMatrix,
+fn get_distance_by_size<T: CameraLocation>(
+    camera_info: &CameraMatrix<T>,
     size_in_reality: f32,
     size_in_pixels: f32,
 ) -> f32 {

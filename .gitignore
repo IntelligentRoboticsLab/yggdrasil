@@ -1,6 +1,7 @@
 /target
 .DS_Store
 .vscode
+.zed
 
 deploy/yggdrasil
 

@@ -1,5 +1,5 @@
 mod camera;
-pub use camera::{Camera, CameraDevice};
+pub use camera::{Bottom, Camera, CameraDevice, CameraLocation, CameraPosition, Top};
 
 mod camera_matrix;
 pub use camera_matrix::CameraMatrix;

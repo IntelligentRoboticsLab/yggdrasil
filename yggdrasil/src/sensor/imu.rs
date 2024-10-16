@@ -1,28 +1,26 @@
 use crate::prelude::*;
-use miette::Result;
-use nidhogg::types::FillExt;
-use nidhogg::{types::Vector2, types::Vector3, NaoState};
-use num::traits::pow::Pow;
+use bevy::prelude::*;
+use nalgebra::{Vector2, Vector3};
+use nidhogg::NaoState;
 use std::collections::VecDeque;
 use std::ops::Div;
 
 /// Amount of accelerometer measurements to calculate standard deviation over
 const ACCELEROMETER_DEVIATION_WINDOW: usize = 50;
 
-/// A module offering a structured wrapper for the parts of the IMU, derived from the raw [`NaoState`].
-///
-/// This module provides the following resources to the application:
-/// - [`IMUValues`]
-pub struct IMUSensor;
+/// Plugin that offers a structured wrapper for the parts of the IMU,
+/// derived from the raw [`NaoState`].
+pub struct IMUSensorPlugin;
 
-impl Module for IMUSensor {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_staged_system(SystemStage::Sensor, imu_sensor)
-            .init_resource::<IMUValues>()
+impl Plugin for IMUSensorPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Sensor, imu_sensor)
+            .init_resource::<IMUValues>();
     }
 }
 
 /// Struct containing gyroscope, accelerometer and angles.
+#[derive(Resource, Debug, Clone)]
 pub struct IMUValues {
     /// The Gyroscope provides direct measurements of the rotational speed along
     /// three axes (x, y and z) in radians per second (rad/s). The Z axis is facing up.
@@ -69,16 +67,15 @@ fn variance(measurements: &VecDeque<Vector3<f32>>) -> Vector3<f32> {
     let measurement_avg: Vector3<f32> = measurements
         .iter()
         .sum::<Vector3<f32>>()
-        .div(Vector3::fill(measurements.len() as f32));
+        .div(measurements.len() as f32);
 
     measurements.iter().fold(Vector3::default(), |acc, item| {
         let diff: Vector3<f32> = measurement_avg - item;
-        acc + diff.pow(2)
+        acc + diff.component_mul(&diff)
     })
 }
 
-#[system]
-pub fn imu_sensor(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()> {
+pub(super) fn imu_sensor(nao_state: Res<NaoState>, mut imu_values: ResMut<IMUValues>) {
     imu_values.gyroscope = nao_state.gyroscope;
     imu_values.accelerometer = nao_state.accelerometer;
     imu_values.angles = nao_state.angles;
@@ -89,6 +86,4 @@ pub fn imu_sensor(nao_state: &NaoState, imu_values: &mut IMUValues) -> Result<()
         .push_back(nao_state.accelerometer);
 
     imu_values.accelerometer_variance = variance(&imu_values.accelerometer_measurements);
-
-    Ok(())
 }

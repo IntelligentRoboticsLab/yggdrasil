@@ -1,0 +1,21 @@
+[package]
+name = "tasks"
+
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+async-std = { workspace = true }
+bevy = { workspace = true, default-features = false, features = [
+  "multi_threaded",
+] }
+futures = { workspace = true }
+
+[dev-dependencies]
+rand = { workspace = true }

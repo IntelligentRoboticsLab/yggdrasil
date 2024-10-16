@@ -1,30 +1,68 @@
+use bevy::prelude::*;
 use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
     behavior::primary_state::PrimaryState,
-    core::{config::layout::RobotPosition, debug::DebugContext},
     kinematics::RobotKinematics,
     motion::walk::{engine::Side, SwingFoot},
-    prelude::*,
     sensor::orientation::RobotOrientation,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Plugin that keeps track of the odometry of the robot.
+pub(super) struct OdometryPlugin;
+
+impl Plugin for OdometryPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<Odometry>().add_systems(
+            PreUpdate,
+            update_odometry
+                .after(crate::kinematics::update_kinematics)
+                .after(crate::sensor::orientation::update_orientation),
+        );
+    }
+}
+
+/// System that updates the robot odometry, given the current state of the robot joints.
+pub fn update_odometry(
+    mut odometry: ResMut<Odometry>,
+    odometry_config: Res<OdometryConfig>,
+    swing_foot: Res<SwingFoot>,
+    kinematics: Res<RobotKinematics>,
+    orientation: Res<RobotOrientation>,
+    primary_state: Res<PrimaryState>,
+) {
+    match *primary_state {
+        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
+            *odometry = Odometry::default();
+        }
+        _ => {
+            odometry.update(&odometry_config, &swing_foot, &kinematics, &orientation);
+        }
+    }
+}
+
+/// Configuration for the odometry.
+#[derive(Resource, Debug, Clone, Serialize, Deserialize)]
 pub struct OdometryConfig {
+    /// The scale factor to apply to the odometry.
     pub scale_factor: Vector2<f32>,
 }
 
-#[derive(Debug, Default, Clone)]
+/// The odometry of the robot.
+#[derive(Resource, Debug, Default, Clone)]
 pub struct Odometry {
+    /// The accumulated odometry offset of the robot.
     pub accumulated: Isometry2<f32>,
+    /// The offset to the last position of the robot.
     pub offset_to_last: Isometry2<f32>,
     last_left_sole_to_right_sole: Vector2<f32>,
     last_orientation: UnitComplex<f32>,
 }
 
 impl Odometry {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -65,37 +103,4 @@ impl Odometry {
         self.offset_to_last = odometry_offset;
         self.accumulated *= odometry_offset;
     }
-}
-
-#[system]
-pub fn update_odometry(
-    odometry: &mut Odometry,
-    odometry_config: &OdometryConfig,
-    swing_foot: &SwingFoot,
-    kinematics: &RobotKinematics,
-    orientation: &RobotOrientation,
-    primary_state: &PrimaryState,
-) -> Result<()> {
-    match primary_state {
-        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
-            *odometry = Odometry::default();
-        }
-        _ => {
-            odometry.update(odometry_config, swing_foot, kinematics, orientation);
-        }
-    }
-
-    Ok(())
-}
-
-pub fn isometry_to_absolute(
-    isometry: Isometry2<f32>,
-    robot_position: &RobotPosition,
-) -> Isometry2<f32> {
-    robot_position.isometry * isometry
-}
-#[startup_system]
-pub(super) fn setup_viewcoordinates(_storage: &mut Storage, dbg: &DebugContext) -> Result<()> {
-    dbg.log_robot_viewcoordinates("/odometry/pose")?;
-    Ok(())
 }

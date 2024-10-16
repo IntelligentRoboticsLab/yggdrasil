@@ -1,9 +1,10 @@
 use super::{get_min_duration, lerp, types::Movement, ActiveMotion, KeyframeExecutor};
 use crate::motion::walk::engine::WalkingEngine;
-use crate::nao::manager::NaoManager;
-use crate::nao::manager::Priority;
+use crate::nao::NaoManager;
+use crate::nao::Priority;
 use crate::sensor::imu::IMUValues;
 use crate::sensor::orientation::RobotOrientation;
+use bevy::prelude::*;
 use miette::{miette, Result};
 use nalgebra::Vector3;
 use nidhogg::types::{ArmJoints, ForceSensitiveResistors, HeadJoints, LegJoints};
@@ -12,7 +13,6 @@ use nidhogg::{
     NaoState,
 };
 use std::time::{Duration, Instant};
-use tyr::prelude::*;
 
 // maximum speed the robot is allowed to move to the starting position at
 const MAX_SPEED: f32 = 1.0;
@@ -37,17 +37,18 @@ const MINIMUM_WAIT_TIME: f32 = 0.05;
 /// * `nao_state` - State of the robot.
 /// * `keyframe_executor` - Keeps track of state needed for playing motions.
 /// * `nao_manager` - Used to set the new joint positions.
-#[system]
+// TODO: Clean this up
+#[allow(clippy::too_many_lines)]
 pub fn keyframe_executor(
-    nao_state: &mut NaoState,
-    keyframe_executor: &mut KeyframeExecutor,
-    nao_manager: &mut NaoManager,
-    orientation: &RobotOrientation,
-    (fsr, imu): (&ForceSensitiveResistors, &IMUValues),
-    walking_engine: &mut WalkingEngine,
-) -> Result<()> {
+    mut nao_state: ResMut<NaoState>,
+    mut keyframe_executor: ResMut<KeyframeExecutor>,
+    mut nao_manager: ResMut<NaoManager>,
+    orientation: Res<RobotOrientation>,
+    (fsr, imu): (Res<ForceSensitiveResistors>, Res<IMUValues>),
+    mut walking_engine: ResMut<WalkingEngine>,
+) {
     if keyframe_executor.active_motion.is_none() {
-        return Ok(());
+        return;
     }
 
     // keeping track of the moment that the current motion has started
@@ -61,10 +62,14 @@ pub fn keyframe_executor(
         cur_sub_motion: (sub_motion_name, _),
         movement_start,
         ..
-    } = keyframe_executor.active_motion.clone().ok_or_else(|| {
-        keyframe_executor.stop_motion();
-        miette!("KeyframeExecutor.ActiveMotion could not be cloned, likely contained None")
-    })?;
+    } = keyframe_executor
+        .active_motion
+        .clone()
+        .ok_or_else(|| {
+            keyframe_executor.stop_motion();
+            miette!("KeyframeExecutor.ActiveMotion could not be cloned, likely contained None")
+        })
+        .expect("failed to clone active motion");
 
     let submotion_stiffness: f32 = motion.submotions[&sub_motion_name].joint_stifness;
 
@@ -83,16 +88,17 @@ pub fn keyframe_executor(
             // record the last position before motion initialization, or before transition
             keyframe_executor.source_position = Some(nao_state.position.clone());
             prepare_initial_movement(
-                keyframe_executor,
+                &mut keyframe_executor,
                 target_position,
                 duration,
                 &sub_motion_name,
-            )?;
+            )
+            .expect("failed to prepare initial movement");
         }
 
         // getting the next position for the robot
         if let Some(next_position) = move_to_starting_position(
-            keyframe_executor,
+            &keyframe_executor,
             target_position,
             duration,
             &movement_start.elapsed(),
@@ -104,11 +110,10 @@ pub fn keyframe_executor(
                 LegJoints::<f32>::fill(submotion_stiffness),
                 Priority::High,
             );
-            return Ok(());
         } else {
             // if the starting position has been reached,
             // we update the active motion for executing the submotion
-            update_active_motion(keyframe_executor);
+            update_active_motion(&mut keyframe_executor);
         }
     }
 
@@ -135,14 +140,14 @@ pub fn keyframe_executor(
         if !orientation.is_steady(
             gyro,
             linear_acceleration,
-            fsr,
+            &fsr,
             MAX_GYRO_VALUE,
             MAX_ACC_VALUE,
             MIN_FSR_VALUE,
         ) {
             // if not, we wait until it is either steady or the maximum wait time has elapsed
             if !exit_waittime_elapsed(
-                keyframe_executor,
+                &mut keyframe_executor,
                 motion.submotions[&sub_motion_name].exit_waittime,
             ) {
                 // returning the current nao position to prohibit any other position requests from taking over
@@ -153,12 +158,13 @@ pub fn keyframe_executor(
                     LegJoints::<f32>::fill(submotion_stiffness),
                     Priority::High,
                 );
-                return Ok(());
+                return;
             }
         }
 
-        transition_to_next_submotion(keyframe_executor, nao_state, walking_engine)
-            .inspect_err(|_| keyframe_executor.stop_motion())?;
+        transition_to_next_submotion(&mut keyframe_executor, &mut nao_state, &mut walking_engine)
+            .inspect_err(|_| keyframe_executor.stop_motion())
+            .expect("failed to transition to next submotion");
 
         nao_manager.set_all(
             nao_state.position.clone(),
@@ -168,8 +174,6 @@ pub fn keyframe_executor(
             Priority::High,
         );
     }
-
-    Ok(())
 }
 
 /// Prepares the initial movement of a submotion.

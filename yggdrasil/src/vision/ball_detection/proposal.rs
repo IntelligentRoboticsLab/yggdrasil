@@ -1,29 +1,24 @@
-//! Module for finding possible ball locations from the top camera image
+//! See [`BallProposalPlugin`].
 
+use bevy::prelude::*;
 use std::ops::Add;
 
-use heimdall::CameraMatrix;
+use heimdall::{CameraLocation, CameraMatrix, CameraPosition};
 use itertools::Itertools;
 use nalgebra::Point2;
 
-use nidhogg::types::color;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     core::debug::DebugContext,
-    prelude::*,
     vision::{
-        camera::{matrix::CameraMatrices, Image},
-        robot_detection::RobotDetectionData,
-        scan_lines::{
-            self, BottomScanLines, CameraType, ClassifiedScanLineRegion, RegionColor, ScanLines,
-            TopScanLines,
-        },
+        camera::{init_camera, Image},
+        scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLines},
         util::bbox::Bbox,
     },
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Resource, Debug, Clone, Serialize, Deserialize)]
 pub struct BallProposalConfigs {
     /// Top camera ball proposal configuration
     pub top: BallProposalConfig,
@@ -32,7 +27,7 @@ pub struct BallProposalConfigs {
 }
 
 /// Configurable values for getting ball proposals during the ball detection pipeline
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Resource, Serialize, Deserialize)]
 pub struct BallProposalConfig {
     /// The minimum ratio of white or black pixels in the range around the proposed ball
     pub ball_ratio: f32,
@@ -46,38 +41,36 @@ pub struct BallProposalConfig {
     pub max_robot_intersection: f32,
 }
 
-/// Module for finding possible ball locations in the top camera image
-///
-/// It adds the following resources to the app:
-/// - [`TopBallProposals`]
-/// - [`BottomBallProposals`]
-pub struct BallProposalModule;
+/// Plugin for finding possible ball locations in the camera images.
+pub struct BallProposalPlugin<T: CameraLocation>(std::marker::PhantomData<T>);
 
-impl Module for BallProposalModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_system_chain((
-            ball_proposals_system.after(scan_lines::scan_lines_system),
-            log_proposals,
-        ))
-        .add_startup_system(init_ball_proposals)
+impl<T: CameraLocation> Default for BallProposalPlugin<T> {
+    fn default() -> Self {
+        Self(std::marker::PhantomData)
     }
 }
 
-#[derive(derive_more::Deref, derive_more::DerefMut)]
-pub struct TopBallProposals(BallProposals);
-
-#[derive(derive_more::Deref, derive_more::DerefMut)]
-pub struct BottomBallProposals(BallProposals);
+impl<T: CameraLocation> Plugin for BallProposalPlugin<T> {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, init_ball_proposals::<T>.after(init_camera::<T>))
+            .add_systems(
+                Update,
+                (update_ball_proposals::<T>, log_ball_proposals::<T>)
+                    .chain()
+                    .run_if(resource_exists_and_changed::<ScanLines<T>>),
+            );
+    }
+}
 
 /// Points at which a ball may possibly be located
-#[derive(Clone)]
-pub struct BallProposals {
-    pub image: Image,
+#[derive(Clone, Resource)]
+pub struct BallProposals<T: CameraLocation> {
+    pub image: Image<T>,
     pub proposals: Vec<BallProposal>,
 }
 
-impl BallProposals {
-    fn empty(image: Image) -> Self {
+impl<T: CameraLocation> BallProposals<T> {
+    fn empty(image: Image<T>) -> Self {
         Self {
             image,
             proposals: Vec::new(),
@@ -92,69 +85,36 @@ pub struct BallProposal {
     pub distance_to_ball: f32,
 }
 
-#[system]
-pub(super) fn ball_proposals_system(
-    (top_scan_lines, bottom_scan_lines): (&TopScanLines, &BottomScanLines),
-    matrices: &CameraMatrices,
-    config: &BallProposalConfigs,
-    (top_proposals, bottom_proposals): (&mut TopBallProposals, &mut BottomBallProposals),
-    robots: &RobotDetectionData,
-) -> Result<()> {
-    update_ball_proposals(
-        top_proposals,
-        top_scan_lines,
-        &matrices.top,
-        &config.top,
-        Some(robots),
-    )?;
-    update_ball_proposals(
-        bottom_proposals,
-        bottom_scan_lines,
-        &matrices.bottom,
-        &config.bottom,
-        None,
-    )?;
+pub fn update_ball_proposals<T: CameraLocation>(
+    mut ball_proposals: ResMut<BallProposals<T>>,
+    scan_lines: Res<ScanLines<T>>,
+    matrix: Res<CameraMatrix<T>>,
+    configs: Res<BallProposalConfigs>,
+) {
+    let config = match T::POSITION {
+        CameraPosition::Top => &configs.top,
+        CameraPosition::Bottom => &configs.bottom,
+    };
+    *ball_proposals = get_ball_proposals(&scan_lines, &matrix, config);
 
-    Ok(())
-}
+    // TODO: Add this back
+    // if let Some(robots) = robots {
+    //     // remove proposals that are too close to robots
+    //     let robot_bboxes = robots.detected.iter().map(|robot| robot.bbox).collect_vec();
 
-pub fn update_ball_proposals(
-    ball_proposals: &mut BallProposals,
-    scan_lines: &ScanLines,
-    matrix: &CameraMatrix,
-    config: &BallProposalConfig,
-    robots: Option<&RobotDetectionData>,
-) -> Result<()> {
-    // if the image has not changed, we don't need to recalculate the proposals
-    if ball_proposals
-        .image
-        .is_from_cycle(scan_lines.image().cycle())
-    {
-        return Ok(());
-    }
+    //     new.proposals.retain(|proposal| {
+    //         robot_bboxes.iter().all(|bbox| {
+    //             let proposal_bbox = Bbox::cxcywh(
+    //                 proposal.position.x as f32,
+    //                 proposal.position.y as f32,
+    //                 proposal.scale,
+    //                 proposal.scale,
+    //             );
 
-    let mut new = get_ball_proposals(scan_lines, matrix, config)?;
-
-    if let Some(robots) = robots {
-        // remove proposals that are too close to robots
-        let robot_bboxes = robots.detected.iter().map(|robot| robot.bbox).collect_vec();
-
-        new.proposals.retain(|proposal| {
-            robot_bboxes.iter().all(|bbox| {
-                let proposal_bbox = Bbox::cxcywh(
-                    proposal.position.x as f32,
-                    proposal.position.y as f32,
-                    proposal.scale,
-                    proposal.scale,
-                );
-
-                bbox.intersection(&proposal_bbox) <= config.max_robot_intersection
-            })
-        });
-    }
-    *ball_proposals = new;
-
-    Ok(())
+    //             bbox.intersection(&proposal_bbox) <= config.max_robot_intersection
+    //         })
+    //     });
+    // }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -224,11 +184,11 @@ fn range_overlap((start1, end1): (f32, f32), (start2, end2): (f32, f32)) -> Opti
     }
 }
 
-fn get_ball_proposals(
-    scan_lines: &ScanLines,
-    matrix: &CameraMatrix,
+fn get_ball_proposals<T: CameraLocation>(
+    scan_lines: &ScanLines<T>,
+    matrix: &CameraMatrix<T>,
     config: &BallProposalConfig,
-) -> Result<BallProposals> {
+) -> BallProposals<T> {
     let h_lines = scan_lines.horizontal();
 
     let mut proposals = Vec::new();
@@ -326,84 +286,31 @@ fn get_ball_proposals(
     let proposals: Vec<_> = indices.iter().map(|&i| proposals[i].clone()).collect();
     let image = scan_lines.image().clone();
 
-    Ok(BallProposals { image, proposals })
+    BallProposals { image, proposals }
 }
 
-#[startup_system]
-fn init_ball_proposals(
-    storage: &mut Storage,
-    (top_scan_lines, bottom_scan_lines): (&TopScanLines, &BottomScanLines),
-) -> Result<()> {
-    let top = BallProposals::empty(top_scan_lines.image().clone());
-    let bottom = BallProposals::empty(bottom_scan_lines.image().clone());
-
-    storage.add_resource(Resource::new(TopBallProposals(top)))?;
-    storage.add_resource(Resource::new(BottomBallProposals(bottom)))?;
-
-    Ok(())
+fn init_ball_proposals<T: CameraLocation>(mut commands: Commands, image: Res<Image<T>>) {
+    commands.insert_resource(BallProposals::empty(image.clone()));
 }
 
-#[system]
-fn log_proposals(
-    (top_proposals, bottom_proposals): (&TopBallProposals, &BottomBallProposals),
-    matrices: &CameraMatrices,
-    config: &BallProposalConfigs,
-    dbg: &DebugContext,
-) -> Result<()> {
-    log_proposals_single_camera(
-        top_proposals,
-        &matrices.top,
-        &config.top,
-        CameraType::Top,
-        dbg,
-    )?;
-    log_proposals_single_camera(
-        bottom_proposals,
-        &matrices.bottom,
-        &config.bottom,
-        CameraType::Bottom,
-        dbg,
-    )?;
-
-    Ok(())
-}
-
-fn log_proposals_single_camera(
-    ball_proposals: &BallProposals,
-    matrix: &CameraMatrix,
-    config: &BallProposalConfig,
-    camera: CameraType,
-    dbg: &DebugContext,
-) -> Result<()> {
-    let camera_str = match camera {
-        CameraType::Top => "top_camera",
-        CameraType::Bottom => "bottom_camera",
-    };
-
-    let mut points = Vec::new();
-    let mut sizes = Vec::new();
-    for proposal in &ball_proposals.proposals {
-        // project point to ground to get distance
-        // distance is used for the amount of surrounding pixels to sample
-        let Ok(coord) = matrix.pixel_to_ground(proposal.position.cast(), 0.0) else {
-            continue;
-        };
-
-        let magnitude = coord.coords.magnitude();
-
-        let size = config.bounding_box_scale / magnitude;
-
-        points.push((proposal.position.x as f32, proposal.position.y as f32));
-        sizes.push((size, size));
+fn log_ball_proposals<T: CameraLocation>(dbg: DebugContext, proposals: Res<BallProposals<T>>) {
+    if proposals.proposals.is_empty() {
+        return;
     }
+    let (positions, half_sizes): (Vec<_>, Vec<_>) = proposals
+        .proposals
+        .iter()
+        .map(|proposal| {
+            (
+                (proposal.position.x as f32, proposal.position.y as f32),
+                (proposal.scale / 2.0, proposal.scale / 2.0),
+            )
+        })
+        .unzip();
 
-    dbg.log_boxes_2d(
-        format!("{camera_str}/image/ball_boxes"),
-        &points,
-        &sizes,
-        &ball_proposals.image,
-        color::u8::SILVER,
-    )?;
-
-    Ok(())
+    dbg.log_with_cycle(
+        T::make_entity_path("balls/proposals"),
+        proposals.image.cycle(),
+        &rerun::Boxes2D::from_centers_and_half_sizes(&positions, &half_sizes),
+    );
 }

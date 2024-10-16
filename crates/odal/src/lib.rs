@@ -18,19 +18,28 @@ pub trait Config: for<'de> Deserialize<'de> + Serialize {
     const PATH: &'static str;
 
     /// The name of the configuration
+    #[must_use]
     fn name() -> &'static str {
         type_name::<Self>()
     }
 
     /// Loads a configuration from a path
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the configuration cannot be loaded.
     fn load(path: impl AsRef<Path>) -> Result<Self> {
         let main = load_table::<Self>(path.as_ref(), ConfigKind::Main)?;
 
         main.try_into()
-            .map_err(|e| Error::deserialize::<Self>(path.as_ref(), e))
+            .map_err(|e| Error::deserialize::<Self>(path.as_ref(), &e))
     }
 
     /// Loads a configuration from two paths and overlays values from the second over the first
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the configuration cannot be loaded or merged.
     fn load_with_overlay(
         main_path: impl AsRef<Path>,
         overlay_path: impl AsRef<Path>,
@@ -43,6 +52,10 @@ pub trait Config: for<'de> Deserialize<'de> + Serialize {
     }
 
     /// Stores the configuration in a file at the specified path
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the configuration cannot be serialized or written to the file.
     fn store(&self, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
 
@@ -74,7 +87,7 @@ fn load_table<T: Config>(path: impl AsRef<Path>, config_kind: ConfigKind) -> Res
 
     toml_string
         .parse()
-        .map_err(|e| Error::deserialize::<T>(path.as_ref(), e))
+        .map_err(|e| Error::deserialize::<T>(path.as_ref(), &e))
 }
 
 /// Overlay values from the overlay into the main table.

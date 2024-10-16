@@ -1,4 +1,4 @@
-use nidhogg::types::{FillExt, Vector3};
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -9,8 +9,7 @@ use std::{ops::Neg, time::Duration};
 
 use super::{smoothing, WalkingEngineConfig};
 
-const FILTERED_GYRO_HIGH_PASS: f32 = 0.8;
-const FILTERED_GYRO_LOW_PASS: f32 = 0.2;
+const FILTERED_GYRO_OMEGA: f32 = 0.115;
 
 #[derive(Debug, Clone)]
 pub enum WalkState {
@@ -45,6 +44,7 @@ impl WalkState {
     /// Constructs an initial [`WalkState`] from a `hip_height`.
     ///
     /// This returns a new [`WalkState::Sitting`] using an estimated current `hip_height`.
+    #[must_use]
     pub fn from_hip_height(hip_height: f32, config: &WalkingEngineConfig) -> Self {
         if hip_height <= config.sitting_hip_height {
             WalkState::Sitting(hip_height)
@@ -54,6 +54,7 @@ impl WalkState {
     }
 
     /// Transitions the [`WalkState`] to the next walk state based on the provided [`WalkingEngineConfig`].
+    #[must_use]
     pub fn next(&self, config: &WalkingEngineConfig) -> Self {
         match self {
             WalkState::Standing(hip_height) => {
@@ -78,7 +79,7 @@ impl Default for WalkState {
 /// An omni-directional humanoid gait generator based on Hengst, 2014
 ///
 /// <https://cgi.cse.unsw.edu.au/~robocup/2014ChampionTeamPaperReports/20140930-Bernhard.Hengst-Walk2014Report.pdf>
-#[derive(Debug)]
+#[derive(Debug, Resource)]
 pub struct WalkingEngine {
     /// The current state of the walking engine
     pub state: WalkState,
@@ -87,7 +88,7 @@ pub struct WalkingEngine {
     /// The step that the engine is currently performing.
     pub current_step: Step,
     /// The filtered gyroscope values used for balancing.
-    pub filtered_gyroscope: LowPassFilter<Vector3<f32>>,
+    pub filtered_gyroscope: LowPassFilter<3>,
     /// The time into the current phase.
     pub t: Duration,
     /// The duration of the current step, e.g. the time until the next foot switch.
@@ -131,16 +132,19 @@ impl WalkingEngine {
     /// Returns whether the robot is currently sitting.
     ///
     /// TODO: Implement a better way to check if the robot is sitting, preferably by extracting sitting to a motion.
+    #[must_use]
     pub fn is_sitting(&self) -> bool {
         matches!(self.state, WalkState::Sitting(hip_height) if hip_height <= self.config.sitting_hip_height)
     }
 
     /// Returns whether the robot is currently standing.
+    #[must_use]
     pub fn is_standing(&self) -> bool {
         matches!(self.state, WalkState::Standing(hip_height) if hip_height >= self.config.hip_height)
     }
 
     /// Returns whether the robot is currently walking.
+    #[must_use]
     pub fn is_walking(&self) -> bool {
         matches!(
             self.state,
@@ -155,14 +159,10 @@ impl WalkingEngine {
             state: WalkState::from_hip_height(current_hip_height, config),
             request: WalkRequest::Sit,
             current_step: Step::default(),
-            filtered_gyroscope: LowPassFilter::new(
-                Vector3::default(),
-                Vector3::fill(FILTERED_GYRO_HIGH_PASS),
-                Vector3::fill(FILTERED_GYRO_LOW_PASS),
-            ),
+            filtered_gyroscope: LowPassFilter::new(FILTERED_GYRO_OMEGA),
             t: Duration::ZERO,
             next_foot_switch: Duration::ZERO,
-            swing_foot: Default::default(),
+            swing_foot: Side::default(),
             foot_offsets: FootOffsets::zero(config.sitting_hip_height),
             foot_offsets_t0: FootOffsets::zero(config.sitting_hip_height),
             hip_height: current_hip_height,
@@ -174,11 +174,7 @@ impl WalkingEngine {
     /// Resets the properties of the walking engine, such that it results in a stationary upright position.
     pub(super) fn reset(&mut self) {
         self.current_step = Step::default();
-        self.filtered_gyroscope = LowPassFilter::new(
-            Vector3::default(),
-            Vector3::fill(FILTERED_GYRO_HIGH_PASS),
-            Vector3::fill(FILTERED_GYRO_LOW_PASS),
-        );
+        self.filtered_gyroscope = LowPassFilter::new(FILTERED_GYRO_OMEGA);
         self.t = Duration::ZERO;
         self.foot_offsets = FootOffsets::zero(self.hip_height);
         self.foot_offsets_t0 = FootOffsets::zero(self.hip_height);
@@ -360,6 +356,7 @@ pub struct Step {
 
 impl Step {
     /// Clamps the step to the provided `max_step_size`.
+    #[must_use]
     pub fn clamped(&self, max_step_size: Step) -> Step {
         Step {
             forward: self
@@ -399,6 +396,7 @@ pub enum Side {
 }
 
 impl Side {
+    #[must_use]
     pub fn next(&self) -> Self {
         match self {
             Side::Left => Side::Right,
@@ -414,6 +412,7 @@ pub struct FootOffsets {
 }
 
 impl FootOffsets {
+    #[must_use]
     pub fn zero(hip_height: f32) -> Self {
         FootOffsets {
             left: FootOffset::zero(hip_height),

@@ -1,7 +1,7 @@
 use crate::{
     behavior::engine::{Behavior, Context, Control},
     motion::keyframe::MotionType,
-    nao::manager::Priority,
+    nao::Priority,
     sensor::falling::{FallState, LyingDirection},
 };
 
@@ -15,6 +15,7 @@ pub struct Standup {
 }
 
 impl Standup {
+    #[must_use]
     pub fn completed(&self) -> bool {
         self.completed
     }

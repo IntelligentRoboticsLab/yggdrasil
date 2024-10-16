@@ -7,8 +7,8 @@
 //! # Example
 //! For an example of how to use this module, see the documentation for the `SPLStandardMessage` struct.
 //!
-
 use crate::serialization::{Decode, Encode};
+use bevy::prelude::*;
 
 /// The port from which the `GameController` sends the [`GameControllerMessage`] to the robots.
 pub const GAME_CONTROLLER_DATA_PORT: u16 = 3838;
@@ -182,7 +182,8 @@ pub struct RobotInfo {
 }
 
 impl RobotInfo {
-    fn is_penalized(&self) -> bool {
+    #[must_use]
+    fn is_penalized(self) -> bool {
         self.penalty != Penalty::None
     }
 }
@@ -219,16 +220,16 @@ pub struct TeamInfo {
 }
 
 impl TeamInfo {
+    #[must_use]
     pub fn is_penalized(&self, player_number: u8) -> bool {
         self.players
             .get(player_number as usize - 1)
-            .map(|robot: &RobotInfo| robot.is_penalized())
-            .unwrap_or(false)
+            .is_some_and(|robot: &RobotInfo| robot.is_penalized())
     }
 }
 
 /// A struct representing the `RoboCupGameControlData` received by the Robots.
-#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+#[derive(Resource, Encode, Decode, Debug, Clone, PartialEq)]
 pub struct GameControllerMessage {
     /// Header to identify the structure
     pub header: [u8; 4],
@@ -274,6 +275,7 @@ pub struct GameControllerMessage {
 }
 
 impl GameControllerMessage {
+    #[must_use]
     pub fn team(&self, team_number: u8) -> Option<&TeamInfo> {
         self.teams
             .iter()
@@ -284,10 +286,10 @@ impl GameControllerMessage {
 /// A struct representing the `RoboCupGameControlReturnMessage` send by the Robots.
 #[derive(Encode, Decode, Debug, PartialEq)]
 pub struct GameControllerReturnMessage {
-    /// "RGrt"
+    /// "`RGrt`"
     pub header: [u8; 4],
 
-    /// Has to be set to GAME_CONTROLLER_RETURN_STRUCT_VERSION
+    /// Has to be set to `GAME_CONTROLLER_RETURN_STRUCT_VERSION`
     pub version: u8,
 
     /// Player number starts with 1

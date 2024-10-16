@@ -1,6 +1,6 @@
 use crate::{
     behavior::engine::{Behavior, Context, Control},
-    nao::manager::Priority,
+    nao::Priority,
 };
 use nidhogg::types::{color, FillExt, RightEye};
 
@@ -19,11 +19,11 @@ impl Behavior for Sitting {
             .nao_manager
             .set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());
 
-        if !control.walking_engine.is_sitting() {
-            control.walking_engine.request_sit();
-        } else {
+        if control.walking_engine.is_sitting() {
             // Makes robot floppy except for hip joints, locked in sitting position.
             control.nao_manager.unstiff_sit(UNSTIFF_PRIORITY);
+        } else {
+            control.walking_engine.request_sit();
         }
 
         control

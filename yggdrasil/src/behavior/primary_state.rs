@@ -1,9 +1,9 @@
 use crate::{
-    core::{config::showtime::PlayerConfig, whistle::WhistleState},
-    nao::manager::{NaoManager, Priority},
-    prelude::*,
+    core::{audio::whistle_detection::Whistle, config::showtime::PlayerConfig},
+    nao::{NaoManager, Priority},
     sensor::button::{ChestButton, HeadButtons},
 };
+use bevy::prelude::*;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
@@ -13,30 +13,30 @@ use bifrost::communication::{GameControllerMessage, GameState};
 use nidhogg::types::color;
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Resource, Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct PrimaryStateConfig {
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub chest_blink_interval: Duration,
 }
 
-/// A module providing information about the primary state of the robot. These
+/// Plugin providing information about the primary state of the robot. These
 /// states include: "Unstiff", "Initial", "Ready", "Set", "Playing",
 /// "Penalized", "Finished" and "Calibration".
 ///
 /// This module provides the following resources to the application:
 /// - [`PrimaryState`]
-pub struct PrimaryStateModule;
+pub struct PrimaryStatePlugin;
 
-impl Module for PrimaryStateModule {
-    fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_resource(Resource::new(PrimaryState::Sitting))?
-            .add_system(update_primary_state.after(crate::sensor::button::button_filter)))
+impl Plugin for PrimaryStatePlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(PrimaryState::Sitting);
+
+        app.add_systems(Update, update_primary_state);
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Copy, Default)]
+#[derive(Resource, Debug, Clone, PartialEq, Copy, Default, Reflect)]
 pub enum PrimaryState {
     /// State in which all joints but the hips are unstiffened
     /// and the robot does not move, sitting down.
@@ -58,7 +58,7 @@ pub enum PrimaryState {
     Penalized,
     /// State of the robot when a half is finished
     Finished,
-    /// State the indicates the robot is performing automatic callibration
+    /// State the indicates the robot is performing automatic calibration
     Calibration,
 }
 
@@ -70,29 +70,27 @@ fn is_penalized_by_game_controller(
     game_controller_message.is_some_and(|game_controller_message| {
         game_controller_message
             .team(team_number)
-            .map(|team| team.is_penalized(player_number))
-            .unwrap_or(false)
+            .is_some_and(|team| team.is_penalized(player_number))
     })
 }
 
-#[system]
 pub fn update_primary_state(
-    primary_state: &mut PrimaryState,
-    game_controller_message: &Option<GameControllerMessage>,
-    nao_manager: &mut NaoManager,
-    (head_buttons, chest_button): (&HeadButtons, &ChestButton),
-    config: &PrimaryStateConfig,
-    player_config: &PlayerConfig,
-    whistle_state: &WhistleState,
-) -> Result<()> {
+    mut primary_state: ResMut<PrimaryState>,
+    game_controller_message: Option<Res<GameControllerMessage>>,
+    mut nao_manager: ResMut<NaoManager>,
+    (head_buttons, chest_button): (Res<HeadButtons>, Res<ChestButton>),
+    config: Res<PrimaryStateConfig>,
+    player_config: Res<PlayerConfig>,
+    whistle: Res<Whistle>,
+) {
     use PrimaryState as PS;
     let next_state = next_primary_state(
-        primary_state,
-        game_controller_message,
-        chest_button,
-        head_buttons,
-        player_config,
-        whistle_state,
+        primary_state.as_mut(),
+        game_controller_message.as_deref(),
+        &chest_button,
+        &head_buttons,
+        &player_config,
+        &whistle,
     );
 
     match next_state {
@@ -112,17 +110,16 @@ pub fn update_primary_state(
     };
 
     *primary_state = next_state;
-
-    Ok(())
 }
 
+#[must_use]
 pub fn next_primary_state(
     primary_state: &PrimaryState,
-    game_controller_message: &Option<GameControllerMessage>,
+    game_controller_message: Option<&GameControllerMessage>,
     chest_button: &ChestButton,
     head_buttons: &HeadButtons,
     player_config: &PlayerConfig,
-    whistle_state: &WhistleState,
+    whistle: &Whistle,
 ) -> PrimaryState {
     use PrimaryState as PS;
 
@@ -149,7 +146,7 @@ pub fn next_primary_state(
         PS::Playing {
             whistle_in_set: true
         }
-    ) || whistle_state.detected;
+    ) || whistle.detected();
 
     primary_state = match game_controller_message {
         Some(message) => match message.state {
@@ -170,7 +167,7 @@ pub fn next_primary_state(
     };
 
     if is_penalized_by_game_controller(
-        game_controller_message.as_ref(),
+        game_controller_message,
         player_config.team_number,
         player_config.player_number,
     ) {

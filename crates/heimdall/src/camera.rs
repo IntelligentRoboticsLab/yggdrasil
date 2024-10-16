@@ -12,12 +12,56 @@ use crate::exposure_weights::ExposureWeightTable;
 
 use super::{Error, Result, YuyvImage};
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum CameraPosition {
+    Top,
+    Bottom,
+}
+
+/// Marker trait for a camera location marker type.
+pub trait CameraLocation: Default + Send + Sync + 'static {
+    const POSITION: CameraPosition;
+
+    /// Get a rerun entity path under the camera image.
+    ///
+    /// Depending on the camera position, the path will be different:
+    /// - `top_camera/image/{ent_path}` for the top camera
+    /// - `bottom_camera/image/{ent_path}` for the bottom camera
+    #[must_use]
+    fn make_entity_path(ent_path: impl ToString) -> String {
+        match Self::POSITION {
+            CameraPosition::Top => format!("top_camera/image/{}", ent_path.to_string()),
+            CameraPosition::Bottom => format!("bottom_camera/image/{}", ent_path.to_string()),
+        }
+    }
+}
+
+/// Marker type for the top camera.
+#[derive(Default, Debug, Clone, Copy, Eq, PartialEq)]
+pub struct Top;
+/// Marker type for the bottom camera.
+#[derive(Default, Debug, Clone, Copy, Eq, PartialEq)]
+pub struct Bottom;
+
+impl CameraLocation for Top {
+    const POSITION: CameraPosition = CameraPosition::Top;
+}
+
+impl CameraLocation for Bottom {
+    const POSITION: CameraPosition = CameraPosition::Bottom;
+}
+
 /// A wrapper around a [`Device`] that contains utilities to flip the image.
 pub struct CameraDevice {
     device: Device,
 }
 
 impl CameraDevice {
+    /// Open a camera device.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the device cannot be opened.
     pub fn new<A>(device_path: A) -> Result<Self>
     where
         A: AsRef<Path>,
@@ -40,6 +84,10 @@ impl CameraDevice {
     }
 
     /// Flip the image horizontally.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `horizontal_flip` property cannot be set.
     pub fn horizontal_flip(&self) -> Result<()> {
         let mut uvc_extension = UvcExt::new(&self.device);
         uvc_extension
@@ -48,12 +96,20 @@ impl CameraDevice {
     }
 
     /// Flip the image vertically.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `vertical_flip` property cannot be set.
     pub fn vertical_flip(&self) -> Result<()> {
         let mut uvc_extension = UvcExt::new(&self.device);
         uvc_extension.vertical_flip().map_err(Error::VerticalFlip)
     }
 
     /// Set the exposure weights of the camera device.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `auto_exposure_weight` property cannot be set.
     pub fn set_auto_exposure_weights(&self, table: &ExposureWeightTable) -> Result<()> {
         let mut uvc_extension = UvcExt::new(&self.device);
 
@@ -65,9 +121,13 @@ impl CameraDevice {
     /// Enable or disable the autofocus.
     ///
     /// Default=false.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `focus_auto` property cannot be set.
     pub fn set_focus_auto(&mut self, enabled: bool) -> Result<()> {
         self.device
-            .write_control_raw(Cid::FOCUS_AUTO, enabled as i32)
+            .write_control_raw(Cid::FOCUS_AUTO, i32::from(enabled))
             .map_err(|source| Error::DeviceProperty {
                 property: "focus_auto".to_string(),
                 value: enabled.to_string(),
@@ -80,6 +140,10 @@ impl CameraDevice {
     /// Set the focus of the camera device.
     ///
     /// `value` is in range [0, 250], default=0, step=25.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `focus` property cannot be set.
     pub fn set_focus_absolute(&mut self, value: i32) -> Result<()> {
         self.device
             .write_control_raw(Cid::FOCUS_ABSOLUTE, value)
@@ -95,6 +159,10 @@ impl CameraDevice {
     /// Set the brightness of the camera device.
     ///
     /// `value` is in range [-255, 255], default=0, step=1.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `brightness` property cannot be set.
     pub fn set_brightness(&mut self, value: i32) -> Result<()> {
         self.device
             .write_control_raw(Cid::BRIGHTNESS, value)
@@ -110,6 +178,10 @@ impl CameraDevice {
     /// Set the contrast of the camera device.
     ///
     /// `value` is in range [0, 255], default=32, step=1.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `contrast` property cannot be set.
     pub fn set_contrast(&mut self, value: i32) -> Result<()> {
         self.device
             .write_control_raw(Cid::CONTRAST, value)
@@ -125,6 +197,10 @@ impl CameraDevice {
     /// Set the saturation of the camera device.
     ///
     /// `value` is in range [0, 255], default=64, step=1.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `saturation` property cannot be set.
     pub fn set_saturation(&mut self, value: i32) -> Result<()> {
         self.device
             .write_control_raw(Cid::SATURATION, value)
@@ -140,6 +216,10 @@ impl CameraDevice {
     /// Set the hue of the camera device.
     ///
     /// `value` is in range [-180, 180], default=0, step=1.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `hue` property cannot be set.
     pub fn set_hue(&mut self, value: i32) -> Result<()> {
         self.device
             .write_control_raw(Cid::HUE, value)
@@ -155,9 +235,13 @@ impl CameraDevice {
     // Enable or disable the auto hue of the camera device.
     ///
     /// Default=true.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `hue_auto` property cannot be set.
     pub fn set_hue_auto(&mut self, enabled: bool) -> Result<()> {
         self.device
-            .write_control_raw(Cid::HUE_AUTO, enabled as i32)
+            .write_control_raw(Cid::HUE_AUTO, i32::from(enabled))
             .map_err(|source| Error::DeviceProperty {
                 property: "hue_auto".to_string(),
                 value: enabled.to_string(),
@@ -170,9 +254,13 @@ impl CameraDevice {
     /// Enable or disable to auto white balance temperature.
     ///
     /// Default=true.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `white_balance_temperature_auto` property cannot be set.
     pub fn set_white_balance_temperature_auto(&mut self, enabled: bool) -> Result<()> {
         self.device
-            .write_control_raw(Cid::AUTO_WHITE_BALANCE, enabled as i32)
+            .write_control_raw(Cid::AUTO_WHITE_BALANCE, i32::from(enabled))
             .map_err(|source| Error::DeviceProperty {
                 property: "white_balance_temperature_auto".to_string(),
                 value: enabled.to_string(),
@@ -185,6 +273,10 @@ impl CameraDevice {
     /// Set the white balance as a color temperature in Kelvin.
     ///
     /// `value` is in range [2500, 6500], default=2500, step=500.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `white_balance_temperature` property cannot be set.
     pub fn set_white_balance_temperature(&mut self, value: i32) -> Result<()> {
         self.device
             .write_control_raw(Cid::WHITE_BALANCE_TEMPERATURE, value)
@@ -200,6 +292,10 @@ impl CameraDevice {
     /// Set the gain of the camera device.
     ///
     /// `value` is in range [0, 1023], default=16, step=1.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `gain` property cannot be set.
     pub fn set_gain(&mut self, value: i32) -> Result<()> {
         self.device
             .write_control_raw(Cid::GAIN, value)
@@ -215,6 +311,10 @@ impl CameraDevice {
     /// Set the sharpness of the camera device.
     ///
     /// `value` is in range [0, 9], default=4, step=1.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `sharpness` property cannot be set.
     pub fn set_sharpness(&mut self, value: i32) -> Result<()> {
         self.device
             .write_control_raw(Cid::SHARPNESS, value)
@@ -230,9 +330,13 @@ impl CameraDevice {
     /// Enable or disable the auto exposure.
     ///
     /// Default=true.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the `exposure_auto` property cannot be set.
     pub fn set_exposure_auto(&mut self, enabled: bool) -> Result<()> {
         self.device
-            .write_control_raw(Cid::EXPOSURE_AUTO, !enabled as i32)
+            .write_control_raw(Cid::EXPOSURE_AUTO, i32::from(!enabled))
             .map_err(|source| Error::DeviceProperty {
                 property: "exposure_auto".to_string(),
                 value: enabled.to_string(),
@@ -245,6 +349,10 @@ impl CameraDevice {
     /// Set the exposure of the camera device.
     ///
     /// `value` is in range [0, 1048575], default=512, step=1.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if the exposure cannot be set.
     pub fn set_exposure_absolute(&mut self, value: i32) -> Result<()> {
         self.device
             .write_control_raw(Cid::EXPOSURE_ABSOLUTE, value)
@@ -361,14 +469,17 @@ impl Camera {
         })
     }
 
+    #[must_use]
     pub fn camera_device(&self) -> &CameraDevice {
         &self.device
     }
 
+    #[must_use]
     pub fn width(&self) -> usize {
         self.width
     }
 
+    #[must_use]
     pub fn height(&self) -> usize {
         self.height
     }

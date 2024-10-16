@@ -1,60 +1,63 @@
 [package]
-name = "yggdrasil"
-version = "0.1.0"
-edition = "2021"
 default-run = "yggdrasil"
-
-[lib]
+description = "The yggdrasil SPL framework"
 name = "yggdrasil"
-edition = "2021"
-crate-type = ["lib"]
 
-[[bin]]
-name = "yggdrasil"
-path = "src/main.rs"
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []
+dependency_graph = []
+local = []
+timings = ["dep:tracing-tracy", "bevy/trace"]
 
 [dependencies]
-alsa = { workspace = true, optional = true }
+# our own crates here
+bifrost = { workspace = true }
+heimdall = { workspace = true }
+ml = { workspace = true }
+odal = { workspace = true }
+tasks = { workspace = true }
+
+# external crates here
 apodize = { workspace = true }
-bifrost = { path = "../crates/bifrost/" }
+async-std = { workspace = true }
+bevy = { workspace = true, features = ["multi_threaded"] }
+cpal = { workspace = true }
 derive_more = { workspace = true }
 enum_dispatch = { workspace = true }
-fast_image_resize = { workspace = true }
 fast-math = { workspace = true }
+fast_image_resize = { workspace = true }
+futures = { workspace = true }
 geo = { workspace = true }
-heimdall = { path = "../crates/heimdall" }
 image = { workspace = true }
 itertools = { workspace = true }
-kira = { workspace = true, optional = true }
+kira = { workspace = true }
 linreg = { workspace = true }
 lstsq = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true, features = ["serde-serialize"] }
 ndarray = { workspace = true }
-nidhogg = { workspace = true, features = ["lola"] }
+nidhogg = { workspace = true, features = ["lola", "bevy"] }
 num = { workspace = true }
-odal = { path = "../crates/odal" }
-openvino = { workspace = true }
 ordered-float = { workspace = true }
 pathfinding = { workspace = true }
-rerun = { workspace = true, optional = true }
-rustfft = { workspace = true, optional = true }
+rerun = { workspace = true }
+rustfft = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 serde_with = { workspace = true }
 thiserror = { workspace = true }
-serde_json = { workspace = true }
 tokio = { workspace = true }
 toml = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tracing-appender = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tracing-tracy = { workspace = true, optional = true }
-tyr = { path = "../crates/tyr", features = ["odal"] }
-
-[features]
-default = []
-alsa = ["dep:alsa", "dep:kira", "dep:rustfft"]
-rerun = ["dep:rerun"]
-local = []
-dependency_graph = []
-timings = ["dep:tracing-tracy"]

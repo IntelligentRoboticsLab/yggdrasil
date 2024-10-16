@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 
 use nalgebra as na;
 
-use super::space::*;
+use super::space::{InSpace, Space, SpaceOver};
 
 /// A transform between a `T1` in `S1` into a `T2` in `S2`.
 pub trait Transform<T1, S1, T2, S2>

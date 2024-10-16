@@ -8,6 +8,7 @@ use crate::{
     motion::step_planner::Target,
 };
 
+#[derive(Debug)]
 pub struct Keeper;
 
 impl Role for Keeper {
@@ -23,10 +24,10 @@ impl Role for Keeper {
             .is_some_and(|target| target == &keeper_target)
             || control.step_planner.reached_target()
         {
-            if let BehaviorKind::Observe(observe) = context.current_behavior {
-                return BehaviorKind::Observe(observe);
+            return if let BehaviorKind::Observe(observe) = context.current_behavior {
+                BehaviorKind::Observe(observe)
             } else {
-                return BehaviorKind::Observe(Observe::default());
+                BehaviorKind::Observe(Observe::default())
             };
         }
 

@@ -8,6 +8,7 @@ use super::{robot_dimensions, Left, Right};
 ///
 /// The foot positions are relative to the robot's torso, and the angles are relative to the robot's
 /// pelvis.
+#[must_use]
 pub fn leg_angles(
     left_foot: &super::FootOffset,
     right_foot: &super::FootOffset,

@@ -1,0 +1,43 @@
+[package]
+description = "tool that simplifies robot interaction by automating the process of building and deploying to the robots"
+name = "sindri"
+version = "0.9.0"
+
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+yggdrasil = { workspace = true }
+
+cargo_toml = { workspace = true }
+clap = { workspace = true, features = ["derive", "string"] }
+colored = { workspace = true }
+dialoguer = { workspace = true }
+dot-structures = { workspace = true }
+glob = { workspace = true }
+graphviz-rust = { workspace = true }
+home = { workspace = true }
+indicatif = { workspace = true, features = ["tokio"] }
+local-ip-address = { workspace = true }
+miette = { workspace = true, features = ["fancy"] }
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
+ssh2 = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = [
+  "macros",
+  "net",
+  "process",
+  "rt-multi-thread",
+  "signal",
+  "time",
+] }
+toml = { workspace = true }
+walkdir = { workspace = true }

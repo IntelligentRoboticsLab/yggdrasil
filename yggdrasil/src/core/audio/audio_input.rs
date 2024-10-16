@@ -1,119 +1,156 @@
-use alsa::pcm::*;
-use alsa::{Direction, ValueOr};
-use miette::{miette, IntoDiagnostic, Result};
-use std::array;
+use bevy::prelude::*;
 use std::sync::{Arc, Mutex};
-use tyr::prelude::*;
+
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use cpal::{InputStreamTimestamp as Timestamp, SampleRate, StreamConfig};
+
+use itertools::Itertools;
 
 /// The amount of samples in a second, typically 44100.
-pub const SAMPLE_RATE: usize = 44100;
+pub const SAMPLE_RATE: SampleRate = SampleRate(44100);
 /// How many audio samples to record per channel.
-pub const NUMBER_OF_SAMPLES: usize = 2048;
-/// The NAO has 4 microphones but alsa records audio in stereo so you get two channels.
-pub const NUMBER_OF_CHANNELS: usize = 2;
-/// The audio samples are in 32 bit float with a little endian layout.
-pub const FORMAT: Format = Format::FloatLE;
-/// Alternate samples for the left and right channel (LRLRLR).
-pub const ACCESS: Access = Access::RWInterleaved;
+pub const SAMPLES_PER_CHANNEL: u32 = 2048;
+/// Record two channels (left/right ear)
+pub const CHANNELS: u16 = 2;
+pub const TOTAL_SAMPLES: u32 = SAMPLES_PER_CHANNEL * CHANNELS as u32;
 
-/// This module provides the following resources to the application:
-/// - [`AudioInput`]
-pub struct AudioInputModule;
+/// This module provides the following events to the application:
+/// - [`AudioSamplesEvent`]
+pub struct AudioInputPlugin;
 
-impl Module for AudioInputModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_task::<ComputeTask<Result<AudioSample>>>()?
-            .add_system(dispatch_buffer)
-            .add_resource(Resource::new(AudioInput::new()?))
+impl Plugin for AudioInputPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_event::<AudioSamplesEvent>()
+            .add_systems(Startup, setup)
+            .add_systems(PreUpdate, emit_event);
     }
 }
 
-/// Contains a vector that stores the captured PCM audio data. The audio samples are stored
-/// with [`Access::RWInterleaved`], which means alternating between the left and right
-/// channel, e.g. 'LRLRLR'.
-pub struct AudioInput {
-    /// Buffer containing audio samples with access [`Access::RWNonInterleaved`], which means
-    /// that the samples are stored seperately for each channel.
-    pub buffer: Arc<[Vec<f32>; NUMBER_OF_CHANNELS]>,
-    device: Arc<Mutex<PCM>>,
+fn setup(mut commands: Commands) {
+    // ALSA is the default host on linux
+    let host = cpal::default_host();
+    tracing::info!("Using audio host `{}`", host.id().name());
+
+    let device = host
+        .default_input_device()
+        .expect("No input device available.");
+
+    let config = StreamConfig {
+        channels: CHANNELS,
+        sample_rate: SAMPLE_RATE,
+        buffer_size: cpal::BufferSize::Default,
+    };
+
+    let samples = AudioSamples::new();
+
+    let stream = device
+        .build_input_stream(
+            &config,
+            {
+                let buffer = samples.buffer().clone();
+                move |data: &[f32], info| {
+                    let mut lock = buffer.lock().unwrap();
+                    let AudioBuffer {
+                        ref mut last_update,
+                        ref mut buffer,
+                    } = &mut *lock;
+
+                    *last_update = Some(info.timestamp());
+
+                    // From testing, the data buffer is not always filled completely by default
+                    // (i.e. `n` is not always 4096)
+                    //
+                    // We can easily create a JACK config or force correct sample rate and buffer
+                    // size with pw-jack when using the JACK backend, but we need a good fix for ALSA.
+                    //
+                    // Creating an `asound.conf` with the correct settings didn't seem to fix this 😢
+                    //
+                    // ```sh
+                    // # To force correct sample rate and buffer size with pw-jack
+                    // pw-metadata -n settings 0 clock.force-rate 44100
+                    // pw-metadata -n settings 0 clock.force-quantum 2048
+                    // ```
+                    let n = data.len().min(buffer.len());
+
+                    buffer[..n].copy_from_slice(&data[..n]);
+                    buffer[n..].fill(0.0);
+                }
+            },
+            |e| {
+                tracing::warn!("Audio input stream error: {e}");
+            },
+            None,
+        )
+        .expect("Failed to build input stream");
+
+    stream.play().expect("Failed to play stream");
+
+    // we need to keep the stream around for it to stay alive
+    let _ = Box::leak(Box::new(stream));
+
+    commands.insert_resource(samples);
 }
 
-impl AudioInput {
-    fn set_hardware_params(device: &PCM) -> Result<()> {
-        let hwp = HwParams::any(device).into_diagnostic()?;
-        hwp.set_channels(NUMBER_OF_CHANNELS as u32)
-            .into_diagnostic()?;
-        hwp.set_rate_near(SAMPLE_RATE as u32, ValueOr::Nearest)
-            .into_diagnostic()?;
-        hwp.set_format(FORMAT).into_diagnostic()?;
-        hwp.set_access(ACCESS).into_diagnostic()?;
-        device.hw_params(&hwp).into_diagnostic()?;
+type Buffer = [f32; TOTAL_SAMPLES as usize];
 
-        Ok(())
-    }
+pub struct AudioBuffer {
+    pub last_update: Option<Timestamp>,
+    pub buffer: Buffer,
+}
 
-    /// Initialize PCM and add the necesarry hardware parameters.
-    fn new() -> Result<Self> {
-        let device = PCM::new("default", Direction::Capture, false).into_diagnostic()?;
-        Self::set_hardware_params(&device)?;
-        device.prepare().into_diagnostic()?;
-        let device = Arc::new(Mutex::new(device));
-
-        let buffer = Arc::new(array::from_fn(|_| vec![0.0; NUMBER_OF_SAMPLES]));
-
-        Ok(Self { buffer, device })
+impl AudioBuffer {
+    fn new() -> Self {
+        Self {
+            last_update: None,
+            buffer: [0.0; TOTAL_SAMPLES as usize],
+        }
     }
 }
 
-struct AudioSample(Arc<[Vec<f32>; NUMBER_OF_CHANNELS]>);
-
-/// Reads audio samples into a temp buffer and returns that buffer.
-fn microphone_input(device: Arc<Mutex<PCM>>) -> Result<AudioSample> {
-    let io_device = device.lock().expect("Failed to lock device.");
-    let io = io_device.io_f32().into_diagnostic()?;
-
-    let mut interleaved_buffer = [0.0_f32; NUMBER_OF_SAMPLES * NUMBER_OF_CHANNELS];
-    let number_of_frames = io.readi(&mut interleaved_buffer).into_diagnostic()?;
-
-    if number_of_frames != NUMBER_OF_SAMPLES {
-        return Err(miette!(
-            "Number of frames read is not equal to the number of samples!"
-        ));
-    }
-
-    let mut non_interleaved_buffer = array::from_fn(|_| Vec::with_capacity(NUMBER_OF_SAMPLES));
-
-    for (channel_idx, non_interleaved_buffer) in non_interleaved_buffer.iter_mut().enumerate() {
-        non_interleaved_buffer.extend(
-            interleaved_buffer
-                .iter()
-                .skip(channel_idx)
-                .step_by(NUMBER_OF_CHANNELS),
-        );
-    }
-
-    Ok(AudioSample(Arc::new(non_interleaved_buffer)))
+#[derive(Resource, Clone)]
+struct AudioSamples {
+    // interleaved buffer
+    buffer: Arc<Mutex<AudioBuffer>>,
 }
 
-/// Checks wether the [`microphone_input`] function can be dispatched. This is the case when the
-/// function is done reading the microphone input and stored it as a resource. It also copies
-/// the buffer that is returned from the task to [`input_audio`] so it can be used as a resource.
-#[system]
-fn dispatch_buffer(
-    task: &mut ComputeTask<Result<AudioSample>>,
-    audio_input: &mut AudioInput,
-) -> Result<()> {
-    if task.active() {
-        let Some(task_result) = task.poll() else {
-            return Ok(());
-        };
-        audio_input.buffer = task_result?.0;
+impl AudioSamples {
+    fn new() -> Self {
+        Self {
+            buffer: Arc::new(Mutex::new(AudioBuffer::new())),
+        }
     }
 
-    // Immediately spawn task again, to prevent it from blocking main thread.
-    let device = audio_input.device.clone();
-    task.try_spawn(move || microphone_input(device))
-        .into_diagnostic()?;
+    fn last_update(&self) -> Option<Timestamp> {
+        self.buffer.lock().unwrap().last_update
+    }
 
-    Ok(())
+    fn buffer(&self) -> &Arc<Mutex<AudioBuffer>> {
+        &self.buffer
+    }
+
+    fn deinterleave(&self) -> (Vec<f32>, Vec<f32>) {
+        self.buffer.lock().unwrap().buffer.iter().tuples().unzip()
+    }
+}
+
+#[derive(Event, Debug)]
+pub struct AudioSamplesEvent {
+    pub left: Vec<f32>,
+    pub right: Vec<f32>,
+}
+
+fn emit_event(
+    samples: Res<AudioSamples>,
+    mut last_timestamp: Local<Option<Timestamp>>,
+    mut ev: EventWriter<AudioSamplesEvent>,
+) {
+    let last_update = samples.last_update();
+    if *last_timestamp == last_update {
+        return;
+    }
+
+    *last_timestamp = last_update;
+
+    let (left, right) = samples.deinterleave();
+    ev.send(AudioSamplesEvent { left, right });
 }

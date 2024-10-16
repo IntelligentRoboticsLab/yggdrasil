@@ -1,16 +1,20 @@
 [package]
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
 name = "heimdall"
-version = "0.1.0"
-edition = "2021"
+rust-version.workspace = true
+version.workspace = true
 
-[lib]
-name = "heimdall"
+[lints]
+workspace = true
 
 [dependencies]
+bevy = { workspace = true }
+fast-math = { workspace = true }
 image = { workspace = true }
 linuxvideo = { workspace = true }
 miette = { workspace = true }
 nalgebra = { workspace = true }
 thiserror = { workspace = true }
 turbojpeg = { workspace = true }
-fast-math = { workspace = true }

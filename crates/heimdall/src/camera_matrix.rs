@@ -1,9 +1,14 @@
+use std::marker::PhantomData;
+
+use bevy::prelude::Resource;
 use miette::{bail, Result};
 use nalgebra::{point, vector, Isometry3, Point2, Point3, Vector2, Vector3};
 
+use crate::camera::CameraLocation;
+
 /// A camera matrix that is able to project points.
-#[derive(Default, Debug, Clone)]
-pub struct CameraMatrix {
+#[derive(Resource, Default, Debug)]
+pub struct CameraMatrix<T: CameraLocation> {
     /// The optical center of the camera in the image plane, in pixels.
     pub cc_optical_center: Point2<f32>,
     /// The focal lengths of the camera in pixels.
@@ -16,9 +21,27 @@ pub struct CameraMatrix {
     pub robot_to_camera: Isometry3<f32>,
     /// The transformation from camera frame to the ground frame.
     pub camera_to_ground: Isometry3<f32>,
+    _marker: PhantomData<T>,
 }
 
-impl CameraMatrix {
+// NOTE: This needs to be implemented manually because of the `PhantomData`
+// https://github.com/rust-lang/rust/issues/26925
+impl<T: CameraLocation> Clone for CameraMatrix<T> {
+    fn clone(&self) -> Self {
+        Self {
+            cc_optical_center: self.cc_optical_center,
+            focal_lengths: self.focal_lengths,
+            field_of_view: self.field_of_view,
+            camera_to_head: self.camera_to_head,
+            robot_to_camera: self.robot_to_camera,
+            camera_to_ground: self.camera_to_ground,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<T: CameraLocation> CameraMatrix<T> {
+    #[must_use]
     pub fn new(
         focal_lengths: Vector2<f32>,
         cc_optical_center: Point2<f32>,
@@ -39,12 +62,14 @@ impl CameraMatrix {
             camera_to_head,
             robot_to_camera: camera_to_robot.inverse(),
             camera_to_ground,
+            _marker: PhantomData,
         }
     }
 
     /// Get a vector pointing from the camera through the given pixel in the image plane.
     ///
     /// This is in the camera's coordinate frame where x is forward, y is left, and z is up.
+    #[must_use]
     pub fn pixel_to_camera(&self, pixel: Point2<f32>) -> Vector3<f32> {
         vector![
             1.0,

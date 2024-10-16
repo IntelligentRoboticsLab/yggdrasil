@@ -1,6 +1,6 @@
+use bevy::prelude::*;
 use std::{f32::consts::PI, marker::PhantomData};
 
-use crate::prelude::*;
 use nalgebra::{Isometry3, Rotation3, Translation3, Vector3};
 use nidhogg::NaoState;
 
@@ -12,26 +12,21 @@ pub mod robot_dimensions;
 
 pub use forward::RobotKinematics;
 
-/// The kinematics module contains the kinematics of the robot.
+/// Plugin for the kinematics of the robot.
 ///
 /// The kinematics are updated using the joint angles read from the robot.
-///
-/// This module adds the following resources:
-/// - [`RobotKinematics`]
-pub struct KinematicsModule;
+pub struct KinematicsPlugin;
 
-impl Module for KinematicsModule {
-    fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .init_resource::<RobotKinematics>()?
-            .add_staged_system(SystemStage::Init, update_kinematics))
+impl Plugin for KinematicsPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<RobotKinematics>()
+            .add_systems(PreUpdate, update_kinematics);
     }
 }
 
-#[system]
-pub fn update_kinematics(robot_kinematics: &mut RobotKinematics, state: &NaoState) -> Result<()> {
+/// System that updates the [`RobotKinematics`] resource.
+pub fn update_kinematics(mut robot_kinematics: ResMut<RobotKinematics>, state: Res<NaoState>) {
     *robot_kinematics = RobotKinematics::from(&state.position);
-    Ok(())
 }
 
 /// The position of a foot relative to the robot's torso.
@@ -56,6 +51,7 @@ pub struct FootOffset {
 }
 
 impl FootOffset {
+    #[must_use]
     pub fn zero(hip_height: f32) -> Self {
         Self {
             forward: 0.0,

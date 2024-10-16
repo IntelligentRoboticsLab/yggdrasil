@@ -15,6 +15,7 @@ use std::f32::consts::{FRAC_PI_2, PI};
 /// assert_eq!(parabolic_return(0.5), 1.0);
 /// assert_eq!(parabolic_return(1.0), 0.0);
 /// ```
+#[must_use]
 pub fn parabolic_return(t: f32) -> f32 {
     0.5 * (2.0 * PI * t - FRAC_PI_2).sin() + 0.5
 }
@@ -32,6 +33,7 @@ pub fn parabolic_return(t: f32) -> f32 {
 /// assert_eq!(parabolic_step(0.5), 0.5);
 /// assert_eq!(parabolic_step(1.0), 1.0);
 /// ```
+#[must_use]
 pub fn parabolic_step(t: f32) -> f32 {
     if t < 0.5 {
         2.0 * t.powi(2)

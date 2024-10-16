@@ -1,23 +1,19 @@
-use std::ops::Deref;
 use std::time::{Duration, Instant};
 
-use crate::nao::Cycle;
 use crate::prelude::*;
 use crate::vision::util::non_max_suppression;
-use crate::{
-    core::{
-        debug::DebugContext,
-        ml::{self, MlModel, MlTask, MlTaskResource},
-    },
-    vision::{
-        camera::{Image, TopImage},
-        util::bbox::{Bbox, ConvertBbox, Cxcywh, Xyxy},
-    },
+use crate::vision::{
+    camera::Image,
+    util::bbox::{Bbox, Xyxy},
 };
+use bevy::core::FrameCount;
+use bevy::prelude::*;
 use box_coder::BoxCoder;
 use fast_image_resize as fr;
+use heimdall::Top;
 use itertools::Itertools;
 use miette::IntoDiagnostic;
+use ml::prelude::*;
 use ndarray::{Array2, Axis};
 use serde_with::{serde_as, DurationMilliSeconds};
 
@@ -26,9 +22,10 @@ mod box_coder;
 
 use anchor_generator::DefaultBoxGenerator;
 use serde::{Deserialize, Serialize};
+use tasks::conditions::task_finished;
 
 #[serde_as]
-#[derive(Debug, Deserialize, Serialize, Inspect)]
+#[derive(Resource, Debug, Clone, Deserialize, Serialize, Reflect)]
 #[serde(deny_unknown_fields)]
 pub struct RobotDetectionConfig {
     confidence_threshold: f32,
@@ -58,15 +55,18 @@ impl RobotDetectionConfig {
     }
 }
 
-pub struct RobotDetectionModule;
+pub struct RobotDetectionPlugin;
 
-impl Module for RobotDetectionModule {
-    fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_ml_task::<RobotDetectionModel>()?
-            .init_config::<RobotDetectionConfig>()?
-            .add_startup_system(init_robot_detection)?
-            .add_system_chain((detect_robots, log_detected_robots)))
+impl Plugin for RobotDetectionPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_config::<RobotDetectionConfig>()
+            .init_ml_model::<RobotDetectionModel>()
+            .add_systems(
+                Update,
+                detect_robots.run_if(
+                    task_finished::<Image<Top>>.and_then(task_finished::<RobotDetectionData>),
+                ),
+            );
     }
 }
 
@@ -74,13 +74,16 @@ impl Module for RobotDetectionModule {
 pub struct RobotDetectionModel;
 
 impl MlModel for RobotDetectionModel {
-    type InputType = u8;
-    type OutputType = f32;
+    type InputElem = u8;
+    type OutputElem = f32;
+
+    type InputShape = (Vec<u8>,);
+    type OutputShape = (MlArray<f32>, MlArray<f32>);
     const ONNX_PATH: &'static str = "models/robot_detection.onnx";
 }
 
 /// A detected robot, with a bounding box and confidence.
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone, Reflect)]
 pub struct DetectedRobot {
     /// The bounding box of the robot in image coordinates.
     pub bbox: Bbox<Xyxy>,
@@ -91,106 +94,67 @@ pub struct DetectedRobot {
 }
 
 /// A fitted field boundary from a given image
-#[derive(Clone)]
+#[derive(Clone, Resource)]
 pub struct RobotDetectionData {
     /// The detected robots.
     pub detected: Vec<DetectedRobot>,
     /// The image the robots have been detected in.
-    pub image: Image,
+    pub image: Image<Top>,
     /// The cycle the detection was completed on.
-    pub result_cycle: Cycle,
+    pub result_cycle: FrameCount,
 }
 
-/// For keeping track of the image that a robot inference is running for.
-pub struct RobotDetectionImage(Image);
-
-#[startup_system]
-fn init_robot_detection(storage: &mut Storage, top_image: &TopImage) -> Result<()> {
-    let robot_detection_image = RobotDetectionImage(top_image.deref().clone());
-
-    // Initialize the field boundary with a single line at the top of the image
-    let detected_robots = RobotDetectionData {
-        detected: Vec::new(),
-        image: top_image.deref().clone(),
-        result_cycle: Cycle::default(),
-    };
-
-    storage.add_resource(Resource::new(robot_detection_image))?;
-    storage.add_resource(Resource::new(detected_robots))?;
-
-    Ok(())
-}
-
-fn poll_model(
-    model: &mut MlTask<RobotDetectionModel>,
-    config: &RobotDetectionConfig,
-    robots: &mut RobotDetectionData,
-    robot_detection_image: &RobotDetectionImage,
-    current_cycle: &Cycle,
-) -> Result<()> {
-    // poll for result
-    let Some(result) = model.poll_multi::<Vec<f32>>().transpose()? else {
-        return Ok(());
-    };
-
-    let box_regression =
-        Array2::from_shape_vec(config.box_shape(), result[0].clone()).into_diagnostic()?;
-    let scores =
-        Array2::from_shape_vec(config.score_shape(), result[1].clone()).into_diagnostic()?;
-
-    let detected_robots = postprocess_detections(
-        (
-            robot_detection_image.0.width(),
-            robot_detection_image.0.height(),
-        ),
-        config,
-        &robots.detected,
-        box_regression,
-        scores,
-        config.confidence_threshold,
-        config.top_k_detections,
-    );
-
-    *robots = RobotDetectionData {
-        detected: detected_robots,
-        image: robot_detection_image.0.clone(),
-        result_cycle: *current_cycle,
-    };
-
-    Ok(())
-}
-
-#[system]
 fn detect_robots(
-    model: &mut MlTask<RobotDetectionModel>,
-    config: &RobotDetectionConfig,
-    robots: &mut RobotDetectionData,
-    robot_detection_image: &mut RobotDetectionImage,
-    top_image: &TopImage,
-    cycle: &Cycle,
-) -> Result<()> {
-    if model.active() {
-        poll_model(model, config, robots, robot_detection_image, cycle)?;
-        return Ok(());
-    }
+    mut commands: Commands,
+    mut model: ResMut<ModelExecutor<RobotDetectionModel>>,
+    config: Res<RobotDetectionConfig>,
+    image: Res<Image<Top>>,
+    cycle: Res<FrameCount>,
+) {
+    let resized_image = image
+        .resized_yuv(
+            config.input_width,
+            config.input_height,
+            fr::ResizeAlg::Nearest,
+        )
+        .expect("failed to resize image for robot detection");
 
-    if robot_detection_image.0.is_from_cycle(*cycle) {
-        return Ok(());
-    }
+    commands
+        .infer_model(&mut model)
+        .with_input(&(resized_image,))
+        .create_resource()
+        .spawn({
+            let config = (*config).clone();
+            let cycle = *cycle;
+            let image = image.clone();
 
-    // start new inference
-    let resized_image = top_image.resized_yuv(
-        config.input_width,
-        config.input_height,
-        fr::ResizeAlg::Nearest,
-    )?;
+            move |(box_regression, scores)| {
+                let box_regression = box_regression
+                    .into_shape(config.box_shape())
+                    .into_diagnostic()
+                    .expect("received box regression with incorrect shape");
+                let scores = scores
+                    .into_shape(config.score_shape())
+                    .into_diagnostic()
+                    .expect("received scores with incorrect shape");
 
-    if let Ok(()) = model.try_start_infer(&resized_image) {
-        // We need to keep track of the image we started the inference with
-        *robot_detection_image = RobotDetectionImage(top_image.deref().clone());
-    };
+                let detected_robots = postprocess_detections(
+                    (image.width(), image.height()),
+                    &config,
+                    &Vec::new(),
+                    box_regression,
+                    scores,
+                    config.confidence_threshold,
+                    config.top_k_detections,
+                );
 
-    Ok(())
+                Some(RobotDetectionData {
+                    detected: detected_robots,
+                    image: image.clone(),
+                    result_cycle: cycle,
+                })
+            }
+        });
 }
 
 fn postprocess_detections(
@@ -266,48 +230,49 @@ fn postprocess_detections(
     .collect()
 }
 
-#[system]
-fn log_detected_robots(
-    robot_data: &RobotDetectionData,
-    ctx: &DebugContext,
-    current_cycle: &Cycle,
-) -> Result<()> {
-    if robot_data.result_cycle != *current_cycle {
-        return Ok(());
-    }
+// TODO: Fix this
+// #[system]
+// fn log_detected_robots(
+//     robot_data: &RobotDetectionData,
+//     ctx: &DebugContext,
+//     current_cycle: &Cycle,
+// ) -> Result<()> {
+//     if robot_data.result_cycle != *current_cycle {
+//         return Ok(());
+//     }
 
-    let processed_boxes = robot_data.detected.iter().map(
-        |DetectedRobot {
-             bbox,
-             confidence,
-             timestamp,
-         }| {
-            let cxcywh: Bbox<Cxcywh> = bbox.convert();
-            let (cx, cy, w, h) = cxcywh.into();
+//     let processed_boxes = robot_data.detected.iter().map(
+//         |DetectedRobot {
+//              bbox,
+//              confidence,
+//              timestamp,
+//          }| {
+//             let cxcywh: Bbox<Cxcywh> = bbox.convert();
+//             let (cx, cy, w, h) = cxcywh.into();
 
-            // rerun expects half width and half height
-            let half_w = w / 2.0;
-            let half_h = h / 2.0;
+//             // rerun expects half width and half height
+//             let half_w = w / 2.0;
+//             let half_h = h / 2.0;
 
-            (
-                ((cx, cy), (half_w, half_h)),
-                format!(
-                    "robot: {confidence:.3} ({}ms)",
-                    timestamp.elapsed().as_millis()
-                ),
-            )
-        },
-    );
+//             (
+//                 ((cx, cy), (half_w, half_h)),
+//                 format!(
+//                     "robot: {confidence:.3} ({}ms)",
+//                     timestamp.elapsed().as_millis()
+//                 ),
+//             )
+//         },
+//     );
 
-    let ((centers, sizes), scores): ((Vec<_>, Vec<_>), Vec<_>) = processed_boxes.unzip();
+//     let ((centers, sizes), scores): ((Vec<_>, Vec<_>), Vec<_>) = processed_boxes.unzip();
 
-    ctx.log_boxes2d_with_class(
-        "/top_camera/image/robots",
-        &centers,
-        &sizes,
-        scores,
-        robot_data.image.cycle(),
-    )?;
+//     ctx.log_boxes2d_with_class(
+//         "/top_camera/image/robots",
+//         &centers,
+//         &sizes,
+//         scores,
+//         robot_data.image.cycle(),
+//     )?;
 
-    Ok(())
-}
+//     Ok(())
+// }
