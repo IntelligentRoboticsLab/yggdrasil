@@ -1,9 +1,10 @@
 use std::{ops::Deref, sync::Arc};
 
-use crate::prelude::*;
+use crate::{core::debug::DebugContext, nao::Cycle, prelude::*};
 
 use super::{
     camera::{init_camera, Image},
+    color,
     field_boundary::FieldBoundary,
     scan_grid::{FieldColorApproximate, ScanGrid},
 };
@@ -49,10 +50,22 @@ impl Plugin for ScanLinesPlugin {
             .add_systems(
                 Update,
                 (
-                    update_scan_lines::<Top>.after(super::scan_grid::update_top_scan_grid),
-                    update_scan_lines::<Bottom>.after(super::scan_grid::update_bottom_scan_grid),
+                    update_scan_lines::<Top>
+                        .after(super::scan_grid::update_top_scan_grid)
+                        .run_if(resource_exists_and_changed::<Image<Top>>),
+                    update_scan_lines::<Bottom>
+                        .after(super::scan_grid::update_bottom_scan_grid)
+                        .run_if(resource_exists_and_changed::<Image<Top>>),
                 ),
             );
+        // These are really obnoxious to visualize, so they are disabled for now.
+        // .add_systems(
+        //     PostUpdate,
+        //     (
+        //         visualize_scan_lines::<Top>.run_if(resource_exists::<ScanLines<Top>>),
+        //         visualize_scan_lines::<Bottom>.run_if(resource_exists::<ScanLines<Bottom>>),
+        //     ),
+        // );
     }
 }
 
@@ -677,119 +690,115 @@ pub enum CameraType {
     Bottom,
 }
 
-// TODO: Add this back
-// fn debug_scan_lines<T: CameraLocation>(
-//     scan_line: &ScanLine,
-//     dbg: &DebugContext,
-//     image: &Image<T>,
-// ) -> Result<()> {
-//     let scan_line = &scan_line.raw;
+#[allow(unused)]
+fn visualize_scan_lines<T: CameraLocation>(dbg: DebugContext, scan_lines: Res<ScanLines<T>>) {
+    visualize_single_scan_line::<T>(&dbg, scan_lines.horizontal(), scan_lines.image().cycle());
+    visualize_single_scan_line::<T>(&dbg, scan_lines.vertical(), scan_lines.image().cycle());
 
-//     if scan_line.is_empty() {
-//         return Ok(());
-//     }
+    visualize_scan_line_spots::<T>(
+        &dbg,
+        scan_lines.horizontal(),
+        scan_lines.image().cycle(),
+        rerun::Color::from_rgb(255, 0, 0),
+    );
+    visualize_scan_line_spots::<T>(
+        &dbg,
+        scan_lines.vertical(),
+        scan_lines.image().cycle(),
+        rerun::Color::from_rgb(0, 0, 255),
+    );
+}
 
-//     let direction = scan_line[0].line.region.direction();
+#[allow(unused)]
+fn visualize_single_scan_line<T: CameraLocation>(
+    dbg: &DebugContext,
+    scan_line: &ScanLine,
+    cycle: Cycle,
+) {
+    let scan_line = &scan_line.raw;
+    if scan_line.is_empty() {
+        return;
+    }
 
-//     let region_len = scan_line.len();
+    let direction = scan_line[0].line.region.direction();
+    let direction_str = match direction {
+        Direction::Horizontal => "horizontal",
+        Direction::Vertical => "vertical",
+    };
 
-//     let mut lines = Vec::with_capacity(region_len);
-//     let mut colors = Vec::with_capacity(region_len);
-//     let mut classifications = Vec::with_capacity(region_len);
+    let region_len = scan_line.len();
 
-//     for line in scan_line {
-//         let (r, g, b) = color::yuv_to_rgb_bt601((
-//             line.line.approx_color.y,
-//             line.line.approx_color.u,
-//             line.line.approx_color.v,
-//         ));
+    let mut lines = Vec::with_capacity(region_len);
+    let mut colors = Vec::with_capacity(region_len);
+    let mut classifications = Vec::with_capacity(region_len);
 
-//         colors.push(RgbU8::new(r, g, b));
+    for line in scan_line {
+        let (r, g, b) = color::yuv_to_rgb_bt601((
+            line.line.approx_color.y,
+            line.line.approx_color.u,
+            line.line.approx_color.v,
+        ));
 
-//         let (r, g, b) = match line.color {
-//             RegionColor::WhiteOrBlack => (255, 255, 255),
-//             RegionColor::Green => (0, 255, 0),
-//             RegionColor::Unknown => (128, 128, 128),
-//         };
+        colors.push(rerun::Color::from_rgb(r, g, b));
 
-//         let start = line.line.region.start_point() as f32;
-//         let end = line.line.region.end_point() as f32;
-//         let fixed = line.line.region.fixed_point() as f32;
+        let (r, g, b) = match line.color {
+            RegionColor::WhiteOrBlack => (255, 255, 255),
+            RegionColor::Green => (0, 255, 0),
+            RegionColor::Unknown => (128, 128, 128),
+        };
 
-//         match direction {
-//             Direction::Horizontal => lines.push([(start, fixed), (end, fixed)]),
-//             Direction::Vertical => lines.push([(fixed, start), (fixed, end)]),
-//         }
-//         classifications.push(RgbU8::new(r, g, b));
-//     }
+        let start = line.line.region.start_point() as f32;
+        let end = line.line.region.end_point() as f32;
+        let fixed = line.line.region.fixed_point() as f32;
 
-//     let direction_str = match direction {
-//         Direction::Horizontal => "horizontal",
-//         Direction::Vertical => "vertical",
-//     };
+        match direction {
+            Direction::Horizontal => lines.push([(start, fixed), (end, fixed)]),
+            Direction::Vertical => lines.push([(fixed, start), (fixed, end)]),
+        }
+        classifications.push(rerun::Color::from_rgb(r, g, b));
+    }
 
-//     let camera_str = match T::POSITION {
-//         CameraPosition::Top => "top",
-//         CameraPosition::Bottom => "bottom",
-//     };
+    dbg.log_with_cycle(
+        T::make_entity_path(format!("scan_lines/approximates/{direction_str}")),
+        cycle,
+        &rerun::LineStrips2D::new(lines.clone()).with_colors(colors),
+    );
 
-// TODO: Fix debug output
-// dbg.log_lines2d_for_image_with_colors(
-//     format!("{camera_str}_camera/image/scan_lines/approximates/{direction_str}"),
-//     &lines,
-//     image,
-//     &colors,
-// )?;
+    dbg.log_with_cycle(
+        T::make_entity_path(format!("scan_lines/classifications/{direction_str}")),
+        cycle,
+        &rerun::LineStrips2D::new(lines).with_colors(classifications),
+    );
+}
 
-// dbg.log_lines2d_for_image_with_colors(
-//     format!("{camera_str}_camera/image/scan_lines/classifications/{direction_str}"),
-//     &lines,
-//     image,
-//     &classifications,
-// )?;
+fn visualize_scan_line_spots<T: CameraLocation>(
+    dbg: &DebugContext,
+    scan_line: &ScanLine,
+    cycle: Cycle,
+    color: rerun::Color,
+) {
+    let regions = &scan_line.raw;
 
-//     Ok(())
-// }
+    if regions.is_empty() {
+        return;
+    }
 
-// TODO: Add this back
-// fn debug_scan_line_spots<T: CameraLocation>(
-//     scan_line: &ScanLine,
-//     dbg: &DebugContext,
-//     image: &Image<T>,
-//     color: RgbU8,
-// ) -> Result<()> {
-//     let regions = &scan_line.raw;
+    let direction = regions[0].line.region.direction();
+    let direction_str = match direction {
+        Direction::Horizontal => "horizontal",
+        Direction::Vertical => "vertical",
+    };
 
-//     if regions.is_empty() {
-//         return Ok(());
-//     }
+    let line_spots = scan_line
+        .line_spots()
+        .map(|s| (s.x, s.y))
+        .collect::<Vec<_>>();
 
-//     let direction = regions[0].line.region.direction();
+    let colors = vec![color; line_spots.len()];
 
-//     let line_spots = scan_line
-//         .line_spots()
-//         .map(|s| (s.x, s.y))
-//         .collect::<Vec<_>>();
-
-//     let colors = vec![color; line_spots.len()];
-
-//     let direction_str = match direction {
-//         Direction::Horizontal => "horizontal",
-//         Direction::Vertical => "vertical",
-//     };
-
-//     // TODO: Fix debug output
-//     //
-//     // let camera_str = match T::POSITION {
-//     //         CameraPosition::Top => "top",
-//     //         CameraPosition::Bottom => "bottom",
-//     //     };
-//     // dbg.log_points2d_for_image_with_colors(
-//     //     format!("{camera_str}_camera/image/scan_lines/spots/{direction_str}"),
-//     //     &line_spots,
-//     //     image,
-//     //     &colors,
-//     // )?;
-
-//     Ok(())
-// }
+    dbg.log_with_cycle(
+        T::make_entity_path(format!("scan_lines/spots/{direction_str}")),
+        cycle,
+        &rerun::Points2D::new(line_spots).with_colors(colors),
+    );
+}

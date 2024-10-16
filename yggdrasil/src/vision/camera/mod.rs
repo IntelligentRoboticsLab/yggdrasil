@@ -4,10 +4,11 @@ pub mod exposure_weights;
 pub mod image;
 pub mod matrix;
 
-use crate::{nao::Cycle, prelude::*};
+use crate::{core::debug::DebugContext, nao::Cycle, prelude::*};
 
-use bevy::prelude::*;
+use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
 use miette::IntoDiagnostic;
+use rerun::external::re_log::ResultExt;
 use serde::{Deserialize, Serialize};
 use std::{
     marker::PhantomData,
@@ -15,11 +16,14 @@ use std::{
 };
 use tasks::conditions::task_finished;
 
-use heimdall::{Camera as HardwareCamera, CameraDevice, CameraLocation, CameraPosition};
+use heimdall::{
+    Camera as HardwareCamera, CameraDevice, CameraLocation, CameraPosition, YuvPlanarImage,
+};
 pub use image::Image;
 use matrix::CalibrationConfig;
 
 pub const NUM_FRAMES_TO_RETAIN: usize = 3;
+const JPEG_QUALITY: i32 = 50;
 
 #[derive(Resource, Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
@@ -56,6 +60,10 @@ impl<T: CameraLocation> Plugin for CameraPlugin<T> {
         app.add_systems(
             Update,
             fetch_latest_frame::<T>.run_if(task_finished::<Image<T>>),
+        )
+        .add_systems(
+            PostUpdate,
+            log_image::<T>.run_if(resource_exists_and_changed::<Image<T>>),
         );
 
         app.add_plugins(matrix::CameraMatrixPlugin::<T>::default());
@@ -166,4 +174,22 @@ pub fn init_camera<T: CameraLocation>(mut commands: Commands, config: Res<Camera
 
     commands.insert_resource(camera);
     commands.insert_resource(image);
+}
+
+fn log_image<T: CameraLocation>(dbg: DebugContext, image: Res<Image<T>>) {
+    AsyncComputeTaskPool::get()
+        .spawn({
+            let image = image.clone();
+            let dbg = dbg.clone();
+            async move {
+                let yuv_planar_image = YuvPlanarImage::from_yuyv(image.yuyv_image());
+                let Some(jpeg) = yuv_planar_image.to_jpeg(JPEG_QUALITY).ok_or_log_error() else {
+                    return;
+                };
+                let encoded_image = rerun::EncodedImage::from_file_contents(jpeg.to_owned())
+                    .with_media_type(rerun::MediaType::JPEG);
+                dbg.log_with_cycle(T::make_entity_path(""), image.cycle(), &encoded_image);
+            }
+        })
+        .detach();
 }

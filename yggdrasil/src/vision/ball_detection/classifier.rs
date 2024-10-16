@@ -1,4 +1,5 @@
-use std::ops::Deref;
+//! See [`BallClassifierPlugin`].
+
 use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
@@ -11,9 +12,11 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
 
+use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
 
-use crate::vision::camera::{init_camera, Image};
+use crate::nao::Cycle;
+use crate::vision::camera::init_camera;
 use ml::prelude::*;
 
 use super::proposal::BallProposals;
@@ -30,7 +33,10 @@ pub struct BallClassifierConfig {
     pub ball_life: Duration,
 }
 
-pub(crate) struct BallClassifierPlugin;
+/// Plugin for classifying ball proposals produced by [`super::proposal::BallProposalPlugin`].
+///
+/// This plugin uses a cnn model to classify whether the proposals are balls or not.
+pub struct BallClassifierPlugin;
 
 impl Plugin for BallClassifierPlugin {
     fn build(&self, app: &mut App) {
@@ -44,29 +50,61 @@ impl Plugin for BallClassifierPlugin {
             .add_systems(
                 Update,
                 (
-                    detect_balls::<Top>
-                        .after(super::proposal::update_ball_proposals::<Top>)
-                        .run_if(resource_exists_and_changed::<Image<Top>>),
+                    detect_balls::<Top>.run_if(resource_exists_and_changed::<BallProposals<Top>>),
                     detect_balls::<Bottom>
-                        .after(super::proposal::update_ball_proposals::<Bottom>)
-                        .run_if(resource_exists_and_changed::<Image<Bottom>>),
+                        .run_if(resource_exists_and_changed::<BallProposals<Bottom>>),
+                ),
+            )
+            .add_systems(
+                PostUpdate,
+                (
+                    log_ball_classifications::<Top>.run_if(resource_exists_and_changed::<Balls>),
+                    log_ball_classifications::<Bottom>.run_if(resource_exists_and_changed::<Balls>),
                 ),
             );
     }
 }
 
-fn init_ball_classifier(
-    mut commands: Commands,
-    top_image: Res<Image<Top>>,
-    bottom_image: Res<Image<Bottom>>,
-) {
+fn init_ball_classifier(mut commands: Commands) {
     let balls = Balls {
         balls: Vec::new(),
-        top_image: top_image.deref().clone(),
-        bottom_image: bottom_image.deref().clone(),
+        cycle: Cycle::default(),
     };
 
     commands.insert_resource(balls);
+}
+
+fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Balls>) {
+    if balls.balls.is_empty() {
+        return;
+    }
+    let (positions, (half_sizes, confidences)): (Vec<_>, (Vec<_>, Vec<_>)) = balls
+        .balls
+        .iter()
+        // TODO: Once we have a better unified way to store the balls for different camera positions, we can
+        // drop the extra condition here.
+        .filter(|ball| ball.is_fresh && ball.camera == T::POSITION)
+        .map(|ball| {
+            (
+                (ball.position_image.x, ball.position_image.y),
+                (
+                    (ball.scale / 2.0, ball.scale / 2.0),
+                    format!("{:.2}", ball.confidence),
+                ),
+            )
+        })
+        .unzip();
+
+    if positions.is_empty() {
+        return;
+    }
+
+    dbg.log_with_cycle(
+        T::make_entity_path("balls/classifications"),
+        balls.cycle,
+        &rerun::Boxes2D::from_centers_and_half_sizes(&positions, &half_sizes)
+            .with_labels(confidences),
+    );
 }
 
 pub(super) struct BallClassifierModel;
@@ -90,14 +128,15 @@ pub struct Ball {
     pub distance: f32,
     pub timestamp: Instant,
     pub confidence: f32,
+    /// Whether this detection is from the most recent frame.
+    pub is_fresh: bool,
     pub camera: CameraPosition,
 }
 
 #[derive(Clone, Resource)]
 pub struct Balls {
     pub balls: Vec<Ball>,
-    pub top_image: Image<Top>,
-    pub bottom_image: Image<Bottom>,
+    pub cycle: Cycle,
 }
 
 impl Balls {
@@ -185,6 +224,7 @@ fn detect_balls<T: CameraLocation>(
             position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
             distance: proposal.distance_to_ball,
             timestamp: Instant::now(),
+            is_fresh: true,
             confidence,
             camera: T::POSITION,
         });
@@ -197,10 +237,15 @@ fn detect_balls<T: CameraLocation>(
     if classified_balls.is_empty() {
         for ball in &balls.balls {
             if ball.timestamp.elapsed() < classifier.ball_life {
-                classified_balls.push(ball.clone());
+                // keep the ball if it isn't too old, but mark it as not fresh
+                classified_balls.push(Ball {
+                    is_fresh: false,
+                    ..ball.clone()
+                });
             }
         }
     }
 
     balls.balls = classified_balls;
+    balls.cycle = proposals.image.cycle();
 }

@@ -7,7 +7,7 @@ use nalgebra::{point, vector, Isometry3, Point2, Point3, Vector2, Vector3};
 use crate::camera::CameraLocation;
 
 /// A camera matrix that is able to project points.
-#[derive(Resource, Default, Debug, Clone)]
+#[derive(Resource, Default, Debug)]
 pub struct CameraMatrix<T: CameraLocation> {
     /// The optical center of the camera in the image plane, in pixels.
     pub cc_optical_center: Point2<f32>,
@@ -22,6 +22,22 @@ pub struct CameraMatrix<T: CameraLocation> {
     /// The transformation from camera frame to the ground frame.
     pub camera_to_ground: Isometry3<f32>,
     _marker: PhantomData<T>,
+}
+
+// NOTE: This needs to be implemented manually because of the `PhantomData`
+// https://github.com/rust-lang/rust/issues/26925
+impl<T: CameraLocation> Clone for CameraMatrix<T> {
+    fn clone(&self) -> Self {
+        Self {
+            cc_optical_center: self.cc_optical_center,
+            focal_lengths: self.focal_lengths,
+            field_of_view: self.field_of_view,
+            camera_to_head: self.camera_to_head,
+            robot_to_camera: self.robot_to_camera,
+            camera_to_ground: self.camera_to_ground,
+            _marker: PhantomData,
+        }
+    }
 }
 
 impl<T: CameraLocation> CameraMatrix<T> {

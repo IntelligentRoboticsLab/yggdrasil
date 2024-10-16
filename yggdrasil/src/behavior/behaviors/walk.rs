@@ -1,5 +1,5 @@
 use nalgebra::Point2;
-use nidhogg::types::{color, FillExt, HeadJoints};
+use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
@@ -13,27 +13,22 @@ pub struct Walk {
     pub target: Target,
 }
 
-fn log_target(target: &Target, debug_context: &mut DebugContext) {
+fn log_target(target: &Target, dbg: &mut DebugContext) {
     if let Some(rotation) = target.rotation {
         let direction = rotation.transform_point(&Point2::new(0.1, 0.0));
 
-        debug_context
-            .log_arrows3d_with_color(
-                "odometry/target",
-                &[(direction.x, direction.y, 0.0)],
-                &[(target.position.x, target.position.y, 0.0)],
-                color::u8::RED,
-            )
-            .unwrap();
+        dbg.log(
+            "odometry/target",
+            &rerun::Arrows3D::from_vectors([(direction.x, direction.y, 0.0)])
+                .with_origins([(target.position.x, target.position.y, 0.0)])
+                .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
+        );
     } else {
-        debug_context
-            .log_points_3d_with_color_and_radius(
-                "odometry/target",
-                &[(target.position.x, target.position.y, 0.0)],
-                color::u8::RED,
-                0.04,
-            )
-            .unwrap();
+        dbg.log(
+            "odometry/target",
+            &rerun::Points3D::new([(target.position.x, target.position.y, 0.0)])
+                .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
+        );
     }
 }
 
