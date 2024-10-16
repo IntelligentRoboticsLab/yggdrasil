@@ -802,7 +802,7 @@ fn visualize_scan_line_spots<T: CameraLocation>(
     let colors = vec![color; line_spots.len()];
 
     dbg.log_with_cycle(
-        T::make_entity_path(format!("scan_lines/classifications/{direction_str}")),
+        T::make_entity_path(format!("scan_lines/spots/{direction_str}")),
         cycle,
         &rerun::Points2D::new(line_spots).with_colors(colors),
     );
