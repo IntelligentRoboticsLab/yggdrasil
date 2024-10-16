@@ -690,32 +690,26 @@ pub enum CameraType {
     Bottom,
 }
 
+#[allow(unused)]
 fn visualize_scan_lines<T: CameraLocation>(dbg: DebugContext, scan_lines: Res<ScanLines<T>>) {
-    visualize_single_scan_line::<T>(
-        &dbg,
-        scan_lines.horizontal(),
-        scan_lines.image().cycle().clone(),
-    );
-    visualize_single_scan_line::<T>(
-        &dbg,
-        scan_lines.vertical(),
-        scan_lines.image().cycle().clone(),
-    );
+    visualize_single_scan_line::<T>(&dbg, scan_lines.horizontal(), scan_lines.image().cycle());
+    visualize_single_scan_line::<T>(&dbg, scan_lines.vertical(), scan_lines.image().cycle());
 
     visualize_scan_line_spots::<T>(
         &dbg,
         scan_lines.horizontal(),
-        scan_lines.image().cycle().clone(),
+        scan_lines.image().cycle(),
         rerun::Color::from_rgb(255, 0, 0),
     );
     visualize_scan_line_spots::<T>(
         &dbg,
         scan_lines.vertical(),
-        scan_lines.image().cycle().clone(),
+        scan_lines.image().cycle(),
         rerun::Color::from_rgb(0, 0, 255),
     );
 }
 
+#[allow(unused)]
 fn visualize_single_scan_line<T: CameraLocation>(
     dbg: &DebugContext,
     scan_line: &ScanLine,
