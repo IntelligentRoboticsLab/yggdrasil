@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use crate::core::debug::DebugContext;
 use crate::prelude::*;
 use crate::vision::util::non_max_suppression;
 use crate::vision::{
@@ -10,7 +11,7 @@ use bevy::core::FrameCount;
 use bevy::prelude::*;
 use box_coder::BoxCoder;
 use fast_image_resize as fr;
-use heimdall::Top;
+use heimdall::{CameraLocation, Top};
 use itertools::Itertools;
 use miette::IntoDiagnostic;
 use ml::prelude::*;
@@ -23,6 +24,8 @@ mod box_coder;
 use anchor_generator::DefaultBoxGenerator;
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
+
+use super::util::bbox::{ConvertBbox, Cxcywh};
 
 #[serde_as]
 #[derive(Resource, Debug, Clone, Deserialize, Serialize, Reflect)]
@@ -66,6 +69,10 @@ impl Plugin for RobotDetectionPlugin {
                 detect_robots.run_if(
                     task_finished::<Image<Top>>.and_then(task_finished::<RobotDetectionData>),
                 ),
+            )
+            .add_systems(
+                PostUpdate,
+                visualize_detected_robots.run_if(resource_exists_and_changed::<RobotDetectionData>),
             );
     }
 }
@@ -230,49 +237,34 @@ fn postprocess_detections(
     .collect()
 }
 
-// TODO: Fix this
-// #[system]
-// fn log_detected_robots(
-//     robot_data: &RobotDetectionData,
-//     ctx: &DebugContext,
-//     current_cycle: &Cycle,
-// ) -> Result<()> {
-//     if robot_data.result_cycle != *current_cycle {
-//         return Ok(());
-//     }
+fn visualize_detected_robots(dbg: DebugContext, robot_data: Res<RobotDetectionData>) {
+    let processed_boxes = robot_data.detected.iter().map(
+        |DetectedRobot {
+             bbox,
+             confidence,
+             timestamp,
+         }| {
+            let cxcywh: Bbox<Cxcywh> = bbox.convert();
+            let (cx, cy, w, h) = cxcywh.into();
 
-//     let processed_boxes = robot_data.detected.iter().map(
-//         |DetectedRobot {
-//              bbox,
-//              confidence,
-//              timestamp,
-//          }| {
-//             let cxcywh: Bbox<Cxcywh> = bbox.convert();
-//             let (cx, cy, w, h) = cxcywh.into();
+            // rerun expects half width and half height
+            let half_w = w / 2.0;
+            let half_h = h / 2.0;
 
-//             // rerun expects half width and half height
-//             let half_w = w / 2.0;
-//             let half_h = h / 2.0;
+            (
+                ((cx, cy), (half_w, half_h)),
+                format!(
+                    "robot: {confidence:.3} ({}ms)",
+                    timestamp.elapsed().as_millis()
+                ),
+            )
+        },
+    );
 
-//             (
-//                 ((cx, cy), (half_w, half_h)),
-//                 format!(
-//                     "robot: {confidence:.3} ({}ms)",
-//                     timestamp.elapsed().as_millis()
-//                 ),
-//             )
-//         },
-//     );
+    let ((centers, sizes), scores): ((Vec<_>, Vec<_>), Vec<_>) = processed_boxes.unzip();
 
-//     let ((centers, sizes), scores): ((Vec<_>, Vec<_>), Vec<_>) = processed_boxes.unzip();
-
-//     ctx.log_boxes2d_with_class(
-//         "/top_camera/image/robots",
-//         &centers,
-//         &sizes,
-//         scores,
-//         robot_data.image.cycle(),
-//     )?;
-
-//     Ok(())
-// }
+    dbg.log(
+        Top::make_entity_path("detected_robots"),
+        &rerun::Boxes2D::from_centers_and_half_sizes(centers, sizes).with_labels(scores),
+    );
+}
