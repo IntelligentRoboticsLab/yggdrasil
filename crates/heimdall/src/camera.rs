@@ -28,10 +28,10 @@ pub trait CameraLocation: Default + Send + Sync + 'static {
     /// - `top_camera/image/{ent_path}` for the top camera
     /// - `bottom_camera/image/{ent_path}` for the bottom camera
     #[must_use]
-    fn make_entity_path(ent_path: &'static str) -> String {
+    fn make_entity_path(ent_path: impl ToString) -> String {
         match Self::POSITION {
-            CameraPosition::Top => format!("top_camera/image/{ent_path}"),
-            CameraPosition::Bottom => format!("bottom_camera/image/{ent_path}"),
+            CameraPosition::Top => format!("top_camera/image/{}", ent_path.to_string()),
+            CameraPosition::Bottom => format!("bottom_camera/image/{}", ent_path.to_string()),
         }
     }
 }
