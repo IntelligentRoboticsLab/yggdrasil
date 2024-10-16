@@ -1,7 +1,7 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, ops::Deref};
 
 use bevy::prelude::*;
-use heimdall::{CameraLocation, CameraMatrix, CameraPosition};
+use heimdall::{Bottom, CameraLocation, CameraMatrix, CameraPosition};
 use nalgebra::{vector, Isometry3, Point2, Point3, UnitQuaternion, Vector2, Vector3};
 use rerun::external::glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use crate::{
     core::debug::DebugContext,
     kinematics::{
         dimensions,
-        spaces::{Head, Left, Right, Robot, Sole},
+        spaces::{Head, LeftToe, RightToe, Robot},
         Kinematics,
     },
     localization::RobotPose,
@@ -19,7 +19,7 @@ use crate::{
     sensor::orientation::RobotOrientation,
 };
 
-use super::CameraConfig;
+use super::{CameraConfig, Image};
 
 const CAMERA_TOP_PITCH_DEGREES: f32 = 1.2;
 const CAMERA_BOTTOM_PITCH_DEGREES: f32 = 39.7;
@@ -38,6 +38,7 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
     fn build(&self, app: &mut App) {
         app.init_resource::<CameraMatrix<T>>()
             .add_systems(PostStartup, setup_camera_matrix_visualization::<T>)
+            .add_systems(PostStartup, setup_body_contour_visualization::<Bottom>)
             .add_systems(
                 Update,
                 (
@@ -45,8 +46,20 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
                     visualize_camera_matrix::<T>,
                 )
                     .chain(),
-            );
+            )
+            .add_systems(Update, print_toes::<Bottom>);
     }
+}
+
+fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
+    dbg.log_component_batches(
+        T::make_entity_path("body_contour/toes"),
+        true,
+        [
+            &rerun::Color::from_rgb(219, 62, 177) as _,
+            &rerun::Radius::new_ui_points(14.0) as _,
+        ],
+    );
 }
 
 fn update_camera_matrix<T: CameraLocation>(
@@ -61,31 +74,26 @@ fn update_camera_matrix<T: CameraLocation>(
         CameraPosition::Bottom => &config.bottom,
     };
 
-    camera_matrices.bottom = compute_camera_matrix(
-        swing_foot,
-        imu,
-        CameraPosition::Bottom,
-        &config.bottom,
-        kinematics,
+    let image_size = vector![config.width as f32, config.height as f32];
+    let camera_to_head = camera_to_head(T::POSITION, config.calibration.extrinsic_rotation);
+    *matrix = CameraMatrix::new(
+        config.calibration.focal_lengths,
+        config.calibration.cc_optical_center,
+        image_size,
+        camera_to_head,
+        kinematics.isometry::<Head, Robot>().inner,
+        robot_to_ground(&swing_foot, &orientation, &kinematics),
     );
-    Ok(())
 }
 
-#[system]
-fn print_toes(
-    imu: &IMUValues,
-    kinematics: &RobotKinematics,
-    debug_context: &DebugContext,
-    camera_matrices: &mut CameraMatrices,
-    current_cycle: &Cycle,
-    bottom_image: &BottomImage,
-) -> Result<()> {
-    if !bottom_image.is_from_cycle(*current_cycle) {
-        return Ok(());
-    }
-
-    let matrix = &camera_matrices.bottom;
-    let (robot_to_left_toe, robot_to_right_toe) = robot_to_toes(imu, kinematics);
+fn print_toes<T: CameraLocation>(
+    orientation: Res<RobotOrientation>,
+    kinematics: Res<Kinematics>,
+    debug_context: DebugContext,
+    matrix: Res<CameraMatrix<T>>,
+    bottom_image: Res<Image<T>>,
+) {
+    let (robot_to_left_toe, robot_to_right_toe) = robot_to_toes(&orientation, &kinematics);
 
     let (Ok(left_toe_point), Ok(right_toe_point)) = (
         matrix.ground_to_pixel(
@@ -101,39 +109,16 @@ fn print_toes(
                 .into(),
         ),
     ) else {
-        return Ok(());
+        return;
     };
 
-    debug_context.log_points2d_for_image_with_radius(
-        "bottom_camera/image/toes",
-        &[
+    debug_context.log_with_cycle(
+        T::make_entity_path("body_contour/toes"),
+        bottom_image.deref().cycle(),
+        &rerun::Points2D::new([
             (left_toe_point.x, left_toe_point.y),
             (right_toe_point.x, right_toe_point.y),
-        ],
-        *current_cycle,
-        color::u8::MAGENTA,
-        14.,
-    )?;
-
-    Ok(())
-}
-
-fn compute_camera_matrix(
-    swing_foot: &SwingFoot,
-    imu: &IMUValues,
-    position: CameraPosition,
-    config: &CameraSettings,
-    kinematics: &RobotKinematics,
-) -> CameraMatrix {
-    let image_size = vector![config.width as f32, config.height as f32];
-    let camera_to_head = camera_to_head(T::POSITION, config.calibration.extrinsic_rotation);
-    *matrix = CameraMatrix::new(
-        config.calibration.focal_lengths,
-        config.calibration.cc_optical_center,
-        image_size,
-        camera_to_head,
-        kinematics.isometry::<Head, Robot>().inner,
-        robot_to_ground(&swing_foot, &orientation, &kinematics),
+        ]),
     );
 }
 
@@ -144,12 +129,12 @@ fn robot_to_ground(
 ) -> Isometry3<f32> {
     let (roll, pitch, _) = orientation.euler_angles();
 
-    let left_sole_to_robot = kinematics.isometry::<Sole<Left>, Robot>().inner;
+    let left_sole_to_robot = kinematics.isometry::<LeftToe, Robot>().inner;
     let imu_adjusted_robot_to_left_sole = Isometry3::rotation(Vector3::y() * pitch)
         * Isometry3::rotation(Vector3::x() * roll)
         * Isometry3::from(vector![0., 0., -left_sole_to_robot.translation.z]);
 
-    let right_sole_to_robot = kinematics.isometry::<Sole<Right>, Robot>().inner;
+    let right_sole_to_robot = kinematics.isometry::<RightToe, Robot>().inner;
     let imu_adjusted_robot_to_right_sole = Isometry3::rotation(Vector3::y() * pitch)
         * Isometry3::rotation(Vector3::x() * roll)
         * Isometry3::from(vector![0., 0., -right_sole_to_robot.translation.z]);
@@ -161,19 +146,17 @@ fn robot_to_ground(
 }
 
 fn robot_to_toes(
-    imu: &IMUValues,
-    kinematics: &RobotKinematics,
+    orientation: &RobotOrientation,
+    kinematics: &Kinematics,
 ) -> (Isometry3<f32>, Isometry3<f32>) {
-    let roll_pitch = imu.angles;
-    let roll = roll_pitch.x;
-    let pitch = roll_pitch.y;
+    let (roll, pitch, _) = orientation.euler_angles();
 
-    let left_toe_to_robot = kinematics.left_toe_to_robot;
+    let left_toe_to_robot = kinematics.isometry::<LeftToe, Robot>().inner;
     let imu_adjusted_robot_to_left_toe = Isometry3::from(left_toe_to_robot.translation.inverse())
         * Isometry3::rotation(Vector3::y() * pitch)
         * Isometry3::rotation(Vector3::x() * roll);
 
-    let right_toe_to_robot = kinematics.right_toe_to_robot;
+    let right_toe_to_robot = kinematics.isometry::<RightToe, Robot>().inner;
     let imu_adjusted_robot_to_right_toe = Isometry3::from(right_toe_to_robot.translation.inverse())
         * Isometry3::rotation(Vector3::y() * pitch)
         * Isometry3::rotation(Vector3::x() * roll);
