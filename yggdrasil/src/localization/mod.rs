@@ -83,27 +83,13 @@ impl RobotPose {
     }
 
     #[must_use]
-    pub fn get_look_at_absolute(&self, point_in_world: &Point2<f32>) -> HeadJoints<f32> {
-        let robot_to_point = self.world_to_robot(point_in_world).xy();
-        self.get_look_at(&robot_to_point)
-    }
-
-    #[must_use]
-    pub fn get_look_at(&self, robot_to_point: &Point2<f32>) -> HeadJoints<f32> {
-        // let yaw = (robot_to_point.y / robot_to_point.x).atan();
-        // let magnitude =
-        //     (robot_to_point.x * robot_to_point.x + robot_to_point.y * robot_to_point.y).sqrt();
-        // let pitch = std::f32::consts::PI / 2.0 - (magnitude / 0.5).atan();
-
-        let point_3: Point3<f32> = Point3::new(robot_to_point.x, robot_to_point.y, 1.0);
-        self.get_look_at_3(&point_3)
-    }
-
-    pub fn get_look_at_3(&self, robot_to_point: &Point3<f32>) -> HeadJoints<f32> {
+    pub fn get_look_at_absolute(&self, point_in_world: &Point3<f32>) -> HeadJoints<f32> {
+        let robot_to_point = self.world_to_robot(&point_in_world.xy());
         let x = robot_to_point.x;
         let y = robot_to_point.y;
-        let z = robot_to_point.z;
+        let z = point_in_world.z;
         let yaw = x.atan2(y);
+        // 0.5 is the height of the robot's primary camera while standing
         let pitch = (0.5 - z).atan2((x * x + y * y).sqrt());
 
         HeadJoints { yaw, pitch }

@@ -1,5 +1,7 @@
 use nidhogg::types::{FillExt, HeadJoints};
 
+use nalgebra::{Point3, Point2};
+
 use crate::{
     behavior::engine::{Behavior, Context, Control},
     motion::step_planner::Target,
@@ -16,9 +18,9 @@ impl Behavior for WalkToSet {
             .set_positions
             .player(context.player_config.player_number);
 
-        let set_position = set_robot_position.isometry.translation.vector.into();
+        let set_position: Point2<f32> = set_robot_position.isometry.translation.vector.into();
 
-        let look_at = context.pose.get_look_at_absolute(&set_position);
+        let look_at = context.pose.get_look_at_absolute(&Point3::new(set_position.x, set_position.y, 0.5));
         control
             .nao_manager
             .set_head(look_at, HeadJoints::fill(0.5), Priority::default());

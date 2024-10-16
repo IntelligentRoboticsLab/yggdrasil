@@ -2,7 +2,7 @@ use crate::{
     behavior::engine::{Behavior, Context, Control},
     nao::Priority,
 };
-use nalgebra::Point2;
+use nalgebra::{Point2,Point3};
 use nidhogg::types::{FillExt, HeadJoints};
 
 const HEAD_STIFFNESS: f32 = 0.4;
@@ -21,8 +21,8 @@ pub struct StandLookAt {
 
 impl Behavior for StandLookAt {
     fn execute(&mut self, context: Context, control: &mut Control) {
-        let point = Point2::new(-1.0,4.0);
-        let look_at = context.pose.get_look_at_absolute(&point);
+        let point3 = Point3::new(self.target.x, self.target.y, 0.5);
+        let look_at = context.pose.get_look_at_absolute(&point3);
         control
         .nao_manager
         .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
@@ -33,7 +33,7 @@ impl Behavior for StandLookAt {
         // );
         //     context.pose.get_look_at_absolute(&self.target),
         //     HeadJoints::fill(HEAD_STIFFNESS),
-        //     Priority::default(),
+        //     Prioritygit p::default(),
         // );
 
         control.walking_engine.request_stand();
