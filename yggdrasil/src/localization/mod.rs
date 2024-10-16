@@ -7,7 +7,7 @@ use crate::{
     motion::odometry::{self, Odometry},
 };
 use bevy::prelude::*;
-use nalgebra::{Isometry2, Isometry3, Point2, Translation3, UnitQuaternion};
+use nalgebra::{Isometry2, Isometry3, Point2, Point3, Translation3, UnitQuaternion};
 use nidhogg::types::HeadJoints;
 
 /// The localization plugin provides functionalities related to the localization of the robot.
@@ -95,16 +95,16 @@ impl RobotPose {
         //     (robot_to_point.x * robot_to_point.x + robot_to_point.y * robot_to_point.y).sqrt();
         // let pitch = std::f32::consts::PI / 2.0 - (magnitude / 0.5).atan();
 
-        let point_3:Point3<f32> = Point3::new(robot_to_point.x, robot_to_point.y, 10.0);
-        self.get_look_at_3D(&point_3)
+        let point_3: Point3<f32> = Point3::new(robot_to_point.x, robot_to_point.y, 1.0);
+        self.get_look_at_3(&point_3)
     }
 
-    pub fn get_look_at_3D(&self, robot_to_point: &Point3<f32>) -> HeadJoints<f32> {
+    pub fn get_look_at_3(&self, robot_to_point: &Point3<f32>) -> HeadJoints<f32> {
         let x = robot_to_point.x;
         let y = robot_to_point.y;
         let z = robot_to_point.z;
-        let yaw = y.atan2(x);
-        let pitch = ((x * x + y * y).sqrt()).atan2(z - 0.5);
+        let yaw = x.atan2(y);
+        let pitch = (0.5 - z).atan2((x * x + y * y).sqrt());
 
         HeadJoints { yaw, pitch }
     }
