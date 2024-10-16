@@ -34,7 +34,7 @@ fn log_target(target: &Target, dbg: &mut DebugContext) {
 
 impl Behavior for Walk {
     fn execute(&mut self, context: Context, control: &mut Control) {
-        let target_point = Point3::new(self.target.position.x, self.target.position.y, 0.5);
+        let target_point = Point3::new(self.target.position.x, self.target.position.y, 0.0);
 
         let look_at = context.pose.get_look_at_absolute(&target_point);
         control

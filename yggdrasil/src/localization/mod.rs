@@ -88,7 +88,8 @@ impl RobotPose {
         let x = robot_to_point.x;
         let y = robot_to_point.y;
         let z = point_in_world.z;
-        let yaw = x.atan2(y);
+        let yaw = (robot_to_point.y / robot_to_point.x).atan();
+        // let yaw = x.atan2(y);
         // 0.5 is the height of the robot's primary camera while standing
         let pitch = (0.5 - z).atan2((x * x + y * y).sqrt());
 

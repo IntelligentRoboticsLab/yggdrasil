@@ -2,8 +2,8 @@ use crate::{
     behavior::engine::{Behavior, Context, Control},
     nao::Priority,
 };
-use nidhogg::types::{FillExt, HeadJoints};
 use nalgebra::Point2;
+use nidhogg::types::{FillExt, HeadJoints};
 
 const HEAD_STIFFNESS: f32 = 0.3;
 
