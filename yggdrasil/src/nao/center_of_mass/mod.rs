@@ -22,14 +22,12 @@ pub struct CenterOfMassPlugin;
 impl Plugin for CenterOfMassPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CenterOfMass>();
-        app.add_systems(
-            Sensor,
-            (
+        app.add_systems(PostStartup, setup_com_visualization)
+            .add_systems(
+                Sensor,
                 update_com.after(crate::kinematics::update_kinematics),
-                log_com,
             )
-                .chain(),
-        );
+            .add_systems(PostUpdate, visualize_com);
     }
 }
 
@@ -76,18 +74,23 @@ fn update_com(kinematics: Res<RobotKinematics>, mut com: ResMut<CenterOfMass>) {
     };
 }
 
-fn log_com(dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) {
-    let absolute_com_position = pose.robot_to_world(&com.position.xy());
+fn setup_com_visualization(dbg: DebugContext) {
+    dbg.log_component_batches(
+        "localization/pose/com",
+        true,
+        [&rerun::Color::from_rgb(255, 64, 0) as _],
+    );
+}
 
-    dbg.log_points_3d_with_color_and_radius(
-        "/localisation/pose/com",
-        &[(
+fn visualize_com(dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) {
+    let absolute_com_position = pose.robot_to_world(&com.position.xy());
+    dbg.log(
+        "localization/pose/com",
+        &rerun::Points3D::new([(
             absolute_com_position.x,
             absolute_com_position.y,
             com.position.z,
-        )],
-        nidhogg::types::color::u8::MAROON,
-        0.005,
-    )
-    .expect("failed to log center of mass");
+        )])
+        .with_radii([0.005]),
+    );
 }

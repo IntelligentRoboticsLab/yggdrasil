@@ -389,9 +389,6 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
         .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
 
     let mut features = vec![];
-    if config.rerun {
-        features.push("rerun");
-    }
     if config.local {
         features.push("local");
     }

@@ -1,14 +1,15 @@
 //! Module for detecting the field boundary lines from the top camera image
 //!
 
-use crate::vision::camera::Image;
+use crate::{core::debug::DebugContext, vision::camera::Image};
 use bevy::app::Plugin;
 use bevy::prelude::*;
 use fast_image_resize as fr;
-use heimdall::{Top, YuyvImage};
+use heimdall::{CameraLocation, Top, YuyvImage};
 use lstsq::Lstsq;
 use ml::prelude::*;
 use nalgebra::Point2;
+use rerun::ComponentBatch;
 use std::num::NonZeroU32;
 use tasks::conditions::task_finished;
 
@@ -26,12 +27,19 @@ pub struct FieldBoundaryPlugin;
 impl Plugin for FieldBoundaryPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.init_ml_model::<FieldBoundaryModel>()
-            .add_systems(Startup, init_field_boundary.after(init_camera::<Top>))
+            .add_systems(
+                PostStartup,
+                (init_field_boundary, setup_boundary_debug_logging).after(init_camera::<Top>),
+            )
             .add_systems(
                 Update,
                 detect_field_boundary
                     .run_if(resource_exists_and_changed::<Image<Top>>)
                     .run_if(task_finished::<FieldBoundary>),
+            )
+            .add_systems(
+                PostUpdate,
+                log_boundary_points.run_if(resource_exists_and_changed::<FieldBoundary>),
             );
     }
 }
@@ -125,36 +133,45 @@ impl FieldBoundary {
     }
 }
 
-// #[system]
-// fn log_boundary_points(
-//     dbg: &DebugContext,
-//     image: &TopImage,
-//     boundary: &FieldBoundary,
-// ) -> Result<()> {
-//     let points = boundary
-//         .points
-//         .iter()
-//         .map(|point| (point.x, point.y))
-//         .collect::<Vec<_>>();
+/// System that sets up the entities paths in rerun.
+///
+/// # Note
+///
+/// By logging a static [`rerun::Color`] component, we can avoid logging the color component
+/// for each ball proposal and classification.
+fn setup_boundary_debug_logging(dbg: DebugContext) {
+    dbg.log_component_batches(
+        Top::make_entity_path("boundary/points"),
+        true,
+        [&rerun::Color::from_rgb(255, 0, 255) as &dyn ComponentBatch],
+    );
+    dbg.log_component_batches(
+        Top::make_entity_path("boundary/segments"),
+        true,
+        [&rerun::Color::from_rgb(128, 0, 128) as &dyn ComponentBatch],
+    );
+}
 
-//     dbg.log_points2d_for_image(
-//         "top_camera/image/boundary_points",
-//         &points,
-//         image,
-//         color::u8::MAGENTA,
-//     )?;
+fn log_boundary_points(dbg: DebugContext, image: Res<Image<Top>>, boundary: Res<FieldBoundary>) {
+    let points = boundary
+        .points
+        .iter()
+        .map(|point| (point.x, point.y))
+        .collect::<Vec<_>>();
 
-//     let line_segments = boundary.line_segments();
+    dbg.log_with_cycle(
+        Top::make_entity_path("boundary/points"),
+        image.cycle(),
+        &rerun::Points2D::new(&points),
+    );
 
-//     dbg.log_lines2d_for_image(
-//         "top_camera/image/boundary_line_segments",
-//         &line_segments,
-//         image,
-//         color::u8::PURPLE,
-//     )?;
-
-//     Ok(())
-// }
+    let line_segments = boundary.line_segments();
+    dbg.log_with_cycle(
+        Top::make_entity_path("boundary/segments"),
+        image.cycle(),
+        &rerun::LineStrips2D::new(&line_segments),
+    );
+}
 
 pub fn init_field_boundary(mut commands: Commands, image: Res<Image<Top>>) {
     commands.insert_resource(FieldBoundary {

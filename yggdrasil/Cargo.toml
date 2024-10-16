@@ -16,7 +16,6 @@ workspace = true
 default = []
 dependency_graph = []
 local = []
-rerun = ["dep:rerun"]
 timings = ["dep:tracing-tracy", "bevy/trace"]
 
 [dependencies]
@@ -50,7 +49,7 @@ nidhogg = { workspace = true, features = ["lola", "bevy"] }
 num = { workspace = true }
 ordered-float = { workspace = true }
 pathfinding = { workspace = true }
-rerun = { workspace = true, optional = true }
+rerun = { workspace = true }
 rustfft = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

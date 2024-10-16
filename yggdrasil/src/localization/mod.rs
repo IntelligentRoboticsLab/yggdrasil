@@ -5,22 +5,19 @@ use crate::{
         debug::DebugContext,
     },
     motion::odometry::{self, Odometry},
-    prelude::*,
 };
 use bevy::prelude::*;
 use nalgebra::{Isometry2, Isometry3, Point2, Translation3, UnitQuaternion};
-use nidhogg::types::{
-    color::{self, RgbU8},
-    HeadJoints,
-};
+use nidhogg::types::HeadJoints;
 
 /// The localization plugin provides functionalities related to the localization of the robot.
 pub struct LocalizationPlugin;
 
 impl Plugin for LocalizationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, update_robot_pose.after(odometry::update_odometry));
-        app.add_systems(PostStartup, init_pose);
+        app.add_systems(PostStartup, (init_pose, setup_pose_visualization))
+            .add_systems(Update, update_robot_pose.after(odometry::update_odometry))
+            .add_systems(PostUpdate, visualize_pose);
     }
 }
 
@@ -105,7 +102,6 @@ impl RobotPose {
 fn update_robot_pose(
     mut robot_pose: ResMut<RobotPose>,
     odometry: Res<Odometry>,
-    ctx: DebugContext,
     primary_state: Res<PrimaryState>,
     layout_config: Res<LayoutConfig>,
 ) {
@@ -115,13 +111,6 @@ fn update_robot_pose(
         primary_state.as_ref(),
         layout_config.as_ref(),
     );
-    log_pose(
-        "/localisation/pose",
-        &ctx,
-        &robot_pose.inner,
-        color::u8::BLUE,
-    )
-    .expect("failed to log the pose");
 }
 
 #[must_use]
@@ -165,19 +154,21 @@ fn find_closest_penalty_pose(
         })
 }
 
-fn log_pose(
-    path: impl AsRef<str>,
-    ctx: &DebugContext,
-    pose: &Isometry2<f32>,
-    color: RgbU8,
-) -> Result<()> {
-    let origin = pose.translation.vector;
-    let direction = pose.rotation.transform_point(&Point2::new(0.1, 0.0));
+fn setup_pose_visualization(dbg: DebugContext) {
+    dbg.log_component_batches(
+        "localization/pose",
+        true,
+        [&rerun::Color::from_rgb(0, 64, 255) as _],
+    );
+    dbg.log_static("localization/pose", &rerun::ViewCoordinates::FLU);
+}
 
-    ctx.log_arrows3d_with_color(
-        path,
-        &[(direction.x, direction.y, 0.0)],
-        &[(origin.x, origin.y, 0.0)],
-        color,
-    )
+fn visualize_pose(dbg: DebugContext, pose: Res<RobotPose>) {
+    let origin = pose.inner.translation.vector;
+    let direction = pose.inner.rotation.transform_point(&Point2::new(0.1, 0.0));
+    dbg.log(
+        "localization/pose",
+        &rerun::Arrows3D::from_vectors([(direction.x, direction.y, 0.0)])
+            .with_origins([(origin.x, origin.y, 0.0)]),
+    );
 }
