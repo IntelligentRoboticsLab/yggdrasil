@@ -7,11 +7,12 @@ use crate::{
     motion::odometry::{self, Odometry},
     prelude::*,
 };
-use nalgebra::{Isometry2, Isometry3, Point2, Translation3, UnitQuaternion};
+use nalgebra::{Isometry2, Isometry3, Point2, Point3, Translation3, UnitQuaternion};
 use nidhogg::types::{
     color::{self, RgbU8},
     HeadJoints,
 };
+use ordered_float::Pow;
 
 pub struct LocalizationModule;
 
@@ -87,9 +88,21 @@ impl RobotPose {
     }
 
     pub fn get_look_at(&self, robot_to_point: &Point2<f32>) -> HeadJoints<f32> {
-        let yaw = (robot_to_point.y / robot_to_point.x).atan();
-        let magnitude = (robot_to_point.x * robot_to_point.x + robot_to_point.y * robot_to_point.y).sqrt();
-        let pitch = std::f32::consts::PI/2.0 - (magnitude / 0.5).atan();
+        // let yaw = (robot_to_point.y / robot_to_point.x).atan();
+        // let magnitude =
+        //     (robot_to_point.x * robot_to_point.x + robot_to_point.y * robot_to_point.y).sqrt();
+        // let pitch = std::f32::consts::PI / 2.0 - (magnitude / 0.5).atan();
+
+        let point_3:Point3<f32> = Point3::new(robot_to_point.x, robot_to_point.y, 10.0);
+        self.get_look_at_3D(&point_3)
+    }
+
+    pub fn get_look_at_3D(&self, robot_to_point: &Point3<f32>) -> HeadJoints<f32> {
+        let x = robot_to_point.x;
+        let y = robot_to_point.y;
+        let z = robot_to_point.z;
+        let yaw = y.atan2(x);
+        let pitch = ((x * x + y * y).sqrt()).atan2(z - 0.5);
 
         HeadJoints { yaw, pitch }
     }
