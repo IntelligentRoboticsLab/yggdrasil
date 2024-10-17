@@ -214,6 +214,7 @@ impl WalkingEngine {
                 self.next_foot_switch = config.base_step_period;
 
                 self.swing_foot = next_swing_foot;
+                self.current_step = step.clamp_anatomic(self.swing_foot, 0.1);
                 self.max_swing_foot_lift = config.base_foot_lift
                     + (step.forward.abs() * config.foot_lift_modifier.forward)
                     + (step.left.abs() * config.foot_lift_modifier.left);
@@ -317,6 +318,38 @@ impl WalkingEngine {
             Side::Left => self.foot_offsets_t0.right,
             Side::Right => self.foot_offsets_t0.left,
         };
+
+        let sideways_dir = if step.left.is_sign_positive() {
+            Side::Left
+        } else {
+            Side::Right
+        };
+
+        let clamped_sideways = if sideways_dir == self.swing_foot {
+            step.left
+        } else {
+            0.0
+        };
+
+        let turn_direction = if step.turn.is_sign_positive() {
+            Side::Left
+        } else {
+            Side::Right
+        };
+
+        let clamped_turn = if turn_direction != self.swing_foot {
+            step.turn
+        } else {
+            let max_inside_turn = 0.1;
+            step.turn.clamp(-max_inside_turn, max_inside_turn)
+        };
+
+        let step = Step {
+            forward: step.forward,
+            left: clamped_sideways,
+            turn: clamped_turn,
+        };
+
         self.compute_foot_offset(-step, foot_t0, 0.0, false, smoothing)
     }
 
@@ -367,6 +400,39 @@ impl Step {
                 .clamp(-max_step_size.forward, max_step_size.forward),
             left: self.left.clamp(-max_step_size.left, max_step_size.left),
             turn: self.turn.clamp(-max_step_size.turn, max_step_size.turn),
+        }
+    }
+
+    /// Clamp the step to the anatomic limits of the robot.
+    pub fn clamp_anatomic(self, swing_side: Side, max_inside_turn: f32) -> Self {
+        let sideways_dir = if self.left.is_sign_positive() {
+            Side::Left
+        } else {
+            Side::Right
+        };
+
+        let clamped_sideways = if sideways_dir == swing_side {
+            self.left
+        } else {
+            0.0
+        };
+
+        let turn_direction = if self.turn.is_sign_positive() {
+            Side::Left
+        } else {
+            Side::Right
+        };
+
+        let clamped_turn = if turn_direction != swing_side {
+            self.turn
+        } else {
+            self.turn.clamp(-max_inside_turn, max_inside_turn)
+        };
+
+        Self {
+            forward: self.forward,
+            left: clamped_sideways,
+            turn: clamped_turn,
         }
     }
 }
