@@ -64,6 +64,7 @@ impl Plugin for RobotDetectionPlugin {
     fn build(&self, app: &mut App) {
         app.init_config::<RobotDetectionConfig>()
             .init_ml_model::<RobotDetectionModel>()
+            .add_systems(PostStartup, setup_robot_detection)
             .add_systems(
                 Update,
                 detect_robots.run_if(
@@ -235,6 +236,14 @@ fn postprocess_detections(
     .iter()
     .map(|i| filtered_boxes[*i].clone())
     .collect()
+}
+
+fn setup_robot_detection(dbg: DebugContext) {
+    dbg.log_component_batches(
+        Top::make_entity_path("detected_robots"),
+        true,
+        [&rerun::Color::from_rgb(0, 255, 175) as _],
+    );
 }
 
 fn visualize_detected_robots(dbg: DebugContext, robot_data: Res<RobotDetectionData>) {
