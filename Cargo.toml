@@ -60,6 +60,7 @@ simulation = { path = "tools/simulation" }
 sindri = { path = "tools/sindri" }
 
 # external crates
+apodize = "1.0.0"
 async-std = "1.13.0"
 async-trait = "0.1.82"
 bevy = { version = "0.14.2", default-features = false }
@@ -80,10 +81,7 @@ geo = "0.28.0"
 glob = "0.3.1"
 graphviz-rust = "0.9.0"
 home = "0.5.9"
-# We're stuck on this version until rerun updates
-# https://github.com/rerun-io/rerun/pull/5280
-apodize = "1.0.0"
-image = "0.25.2"
+image = "0.25.4"
 indicatif = "0.17.8"
 itertools = "0.13.0"
 kira = "0.8.7"
@@ -107,7 +105,7 @@ quote = "1.0.37"
 rand = "0.8.5"
 rayon = "1.10.0"
 regex = "1.10.5"
-rerun = { version = "0.18.2", features = ["image"] }
+rerun = { version = "0.19.0", features = ["image"] }
 rustc_version = "0.4.1"
 rustfft = "6.2.0"
 serde = "1.0.210"
