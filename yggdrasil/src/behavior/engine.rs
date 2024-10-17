@@ -219,6 +219,7 @@ pub struct Engine {
     // TODO: Make private.
     pub behavior: BehaviorKind,
     pub prev_behavior_for_standup: Option<BehaviorKind>,
+    pub prev_action: Option<(f32, f32, f32)>,
 }
 
 impl Default for Engine {
@@ -227,6 +228,7 @@ impl Default for Engine {
             role: RoleKind::Attacker(Attacker),
             behavior: BehaviorKind::default(),
             prev_behavior_for_standup: None,
+            prev_action: None,
         }
     }
 }
@@ -369,7 +371,9 @@ pub fn step(
         debug_context,
     };
 
-    let is_playing = matches!(&context.primary_state, PrimaryState::Playing { .. });
+    let mut is_playing = matches!(&context.primary_state, PrimaryState::Playing { .. });
+
+    let prev_action = engine.prev_action.unwrap_or_default();
 
     engine.step(context, &mut control);
 
@@ -385,12 +389,37 @@ pub fn step(
             })
             .unwrap_or((0.0, 0.0));
 
-        let goal_pos_x = (layout_config.field.length / 2.0) * 1000.0;
-        let goal_pos = (
-            (goal_pos_x - ball_pos.0) / layout_config.field.length,
-            -ball_pos.1 / layout_config.field.width,
-        );
+        // check if the ball position is equal to 0.0, 0.0
+        let goal_pos_x;
+        let goal_pos;
+        if ball_pos.0 == 0.0 && ball_pos.1 == 0.0 {
+            goal_pos_x = layout_config.field.length / 2.0;
+            goal_pos = (
+                (goal_pos_x - (robot_pose.inner.translation.x)) / layout_config.field.length,
+                -(robot_pose.inner.translation.y) / layout_config.field.width,
+            );
+        }
+        else {
+            goal_pos_x = (layout_config.field.length / 2.0) * 1000.0;
+            goal_pos = (
+                (goal_pos_x - ball_pos.0) / layout_config.field.length,
+                -ball_pos.1 / layout_config.field.width,
+            );
+        }
 
+
+        // let goal_pos_x = (layout_config.field.length / 2.0) * 1000.0;
+        // let goal_pos = (
+        //     (goal_pos_x - ball_pos.0) / layout_config.field.length,
+        //     -ball_pos.1 / layout_config.field.width,
+        // );
+        // let goal_pos_x = layout_config.field.length / 2.0;
+        // let goal_pos = (
+        //     (goal_pos_x - (robot_pose.inner.translation.x)) / layout_config.field.length,
+        //     -(robot_pose.inner.translation.y) / layout_config.field.width,
+        // );
+
+        
         let relative_ball_angle = (ball_pos.1 * layout_config.field.width)
             .atan2(ball_pos.0 * layout_config.field.length)
             % std::f32::consts::TAU;
@@ -399,12 +428,65 @@ pub fn step(
             .atan2(goal_pos.0 * layout_config.field.length)
             % std::f32::consts::TAU;
 
+
         let robot_angle = robot_pose.inner.rotation.angle();
-        let ball_robot_angle_sine = (relative_ball_angle - robot_angle).sin();
-        let ball_robot_angle_cosine = (relative_ball_angle - robot_angle).cos();
+        let ball_robot_angle_sine;
+        let ball_robot_angle_cosine;
+        if !(ball_pos.0 == 0.0 && ball_pos.1 == 0.0) {
+            ball_robot_angle_sine = (relative_ball_angle - robot_angle).sin();
+            ball_robot_angle_cosine = (relative_ball_angle - robot_angle).cos();
+        }
+        else {
+            ball_robot_angle_sine = 0.0;
+            ball_robot_angle_cosine = 0.0;
+        }
+        // let ball_robot_angle_sine = (relative_ball_angle - robot_angle).sin();
+        // let ball_robot_angle_cosine = (relative_ball_angle - robot_angle).cos();
 
         let goal_robot_angle_sine = (relative_goal_angle - robot_angle).sin();
         let goal_robot_angle_cosine = (relative_goal_angle - robot_angle).cos();
+
+        let robot_loc = robot_pose.inner.translation;
+        // tracing::info!(
+        //     "robot: {:?}",
+        //     [
+        //         robot_loc.x,
+        //         robot_loc.y,
+        //         robot_pose.inner.rotation.angle(),
+        //         relative_ball_angle,
+        //         relative_goal_angle,
+        //     ]
+        // );
+
+        // If the goal pos is close to zero, stop
+        // if goal_pos.0.abs() < 0.1 && goal_pos.1.abs() < 0.1 {
+            
+        // }
+
+        // tracing::info!(
+        //     "obs: {:?}",
+        //     [
+        //         0.0,
+        //         0.0,
+        //         0.0,
+        //         0.0,
+        //         goal_pos.0,
+        //         goal_pos.1,
+        //         goal_robot_angle_sine,
+        //         goal_robot_angle_cosine,
+        //     ]
+        // );
+
+        // if let Ok(()) = policy.try_start_infer(&[
+        //     0.0,
+        //     0.0,
+        //     0.0,
+        //     0.0,
+        //     goal_pos.0,
+        //     goal_pos.1,
+        //     goal_robot_angle_sine,
+        //     goal_robot_angle_cosine,
+        //     ]){
 
         tracing::info!(
             "obs: {:?}",
@@ -417,6 +499,9 @@ pub fn step(
                 goal_pos.1,
                 goal_robot_angle_sine,
                 goal_robot_angle_cosine,
+                prev_action.0,
+                prev_action.1,
+                prev_action.2,
             ]
         );
 
@@ -429,20 +514,26 @@ pub fn step(
             goal_pos.1,
             goal_robot_angle_sine,
             goal_robot_angle_cosine,
+            prev_action.0,
+            prev_action.1,
+            prev_action.2,
         ]) {
             loop {
+                // If the goal pos is close to zero, stop
+        if !(goal_pos.0.abs() < 0.1 && goal_pos.1.abs() < 0.1) {
                 if let Ok(Some(result)) = policy.poll_multi::<Vec<f32>>().transpose() {
                     // println!("output: {:?}", result);
-                    let output = result.get(2).expect("did not get output");
-                    let forward = output[0].clamp(-0.3, 1.) * 0.06;
-                    let left = output[1].clamp(-1., 1.) * 0.04;
-                    let turn =
+                    let output: &Vec<f32> = result.get(0).expect("did not get output");
+                    let forward: f32 = output[0].clamp(0.0, 0.06);
+                    let left: f32 = output[1].clamp(-0.04, 0.04);
+                    let turn: f32 =
                         output[2].clamp(-0.1 * std::f32::consts::PI, 0.1 * std::f32::consts::PI);
+                    engine.prev_action = Some((forward, left, turn));
 
-                    let step = Step {
-                        forward,
-                        left,
-                        turn,
+                    let step: Step = Step {
+                        forward: forward / 1.5,
+                        left: left / 1.5,
+                        turn: turn
                     };
 
                     tracing::info!("got step: {step:?}");
@@ -450,6 +541,11 @@ pub fn step(
                     break;
                 }
             }
+        else {
+            control.walking_engine.request_stand();
+            break;
+        }
+        }
         }
     }
 
