@@ -47,7 +47,8 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
                 )
                     .chain(),
             )
-            .add_systems(Update, print_toes::<Bottom>);
+            .add_systems(Update, print_toes::<Bottom>)
+            .add_systems(Update, print_chest::<Bottom>);
     }
 }
 
@@ -57,6 +58,15 @@ fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
         true,
         [
             &rerun::Color::from_rgb(219, 62, 177) as _,
+            &rerun::Radius::new_ui_points(14.0) as _,
+        ],
+    );
+
+    dbg.log_component_batches(
+        T::make_entity_path("body_contour/chest"),
+        true,
+        [
+            &rerun::Color::from_rgb(255, 255, 0) as _,
             &rerun::Radius::new_ui_points(14.0) as _,
         ],
     );
@@ -127,6 +137,67 @@ fn print_toes<T: CameraLocation>(
     );
 }
 
+fn print_chest<T: CameraLocation>(
+    imu: Res<IMUValues>,
+    kinematics: Res<RobotKinematics>,
+    debug_context: DebugContext,
+    matrix: Res<CameraMatrix<T>>,
+    current_cycle: Res<Cycle>,
+) {
+    let (
+        robot_to_chest_left,
+        robot_to_chest_centre_left,
+        robot_to_chest_centre_right,
+        robot_to_chest_right,
+    ) = robot_to_chests(&imu, &kinematics);
+
+    let (
+        Ok(chest_left_point),
+        Ok(chest_centre_left_point),
+        Ok(chest_centre_right_point),
+        Ok(chest_right_point),
+    ) = (
+        matrix.ground_to_pixel(
+            (robot_to_chest_left.inverse() * matrix.robot_to_ground)
+                .translation
+                .vector
+                .into(),
+        ),
+        matrix.ground_to_pixel(
+            (robot_to_chest_centre_left.inverse() * matrix.robot_to_ground)
+                .translation
+                .vector
+                .into(),
+        ),
+        matrix.ground_to_pixel(
+            (robot_to_chest_centre_right.inverse() * matrix.robot_to_ground)
+                .translation
+                .vector
+                .into(),
+        ),
+        matrix.ground_to_pixel(
+            (robot_to_chest_right.inverse() * matrix.robot_to_ground)
+                .translation
+                .vector
+                .into(),
+        ),
+    )
+    else {
+        return;
+    };
+
+    debug_context.log_with_cycle(
+        T::make_entity_path("body_contour/chest"),
+        *current_cycle,
+        &rerun::Points2D::new([
+            (chest_left_point.x, chest_left_point.y),
+            (chest_centre_left_point.x, chest_centre_left_point.y),
+            (chest_centre_right_point.x, chest_centre_right_point.y),
+            (chest_right_point.x, chest_right_point.y),
+        ]),
+    );
+}
+
 fn robot_to_ground(
     swing_foot: &SwingFoot,
     orientation: &RobotOrientation,
@@ -169,6 +240,51 @@ fn robot_to_toes(
     (
         imu_adjusted_robot_to_left_toe,
         imu_adjusted_robot_to_right_toe,
+    )
+}
+
+fn robot_to_chests(
+    imu: &IMUValues,
+    kinematics: &RobotKinematics,
+) -> (
+    Isometry3<f32>,
+    Isometry3<f32>,
+    Isometry3<f32>,
+    Isometry3<f32>,
+) {
+    let roll_pitch = imu.angles;
+    let roll = roll_pitch.x;
+    let pitch = roll_pitch.y;
+
+    let chest_left_to_robot = kinematics.chest_left_to_robot;
+    let imu_adjusted_chest_left_to_robot =
+        Isometry3::from(chest_left_to_robot.translation.inverse())
+            * Isometry3::rotation(Vector3::y() * pitch)
+            * Isometry3::rotation(Vector3::x() * roll);
+
+    let chest_centre_left_to_robot = kinematics.chest_centre_left_to_robot;
+    let imu_adjusted_chest_centre_left_to_robot =
+        Isometry3::from(chest_centre_left_to_robot.translation.inverse())
+            * Isometry3::rotation(Vector3::y() * pitch)
+            * Isometry3::rotation(Vector3::x() * roll);
+
+    let chest_centre_right_to_robot = kinematics.chest_centre_right_to_robot;
+    let imu_adjusted_chest_centre_right_to_robot =
+        Isometry3::from(chest_centre_right_to_robot.translation.inverse())
+            * Isometry3::rotation(Vector3::y() * pitch)
+            * Isometry3::rotation(Vector3::x() * roll);
+
+    let chest_right_to_robot = kinematics.chest_right_to_robot;
+    let imu_adjusted_chest_right_to_robot =
+        Isometry3::from(chest_right_to_robot.translation.inverse())
+            * Isometry3::rotation(Vector3::y() * pitch)
+            * Isometry3::rotation(Vector3::x() * roll);
+
+    (
+        imu_adjusted_chest_left_to_robot,
+        imu_adjusted_chest_centre_left_to_robot,
+        imu_adjusted_chest_centre_right_to_robot,
+        imu_adjusted_chest_right_to_robot,
     )
 }
 
