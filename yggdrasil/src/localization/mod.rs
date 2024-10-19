@@ -50,7 +50,7 @@ impl RobotPose {
     #[must_use]
     pub fn as_3d(&self) -> Isometry3<f32> {
         Isometry3::from_parts(
-            Translation3::new(self.inner.translation.x, self.inner.translation.y, 0.5),
+            Translation3::new(self.inner.translation.x, self.inner.translation.y, 0.0),
             UnitQuaternion::from_euler_angles(0.0, 0.0, self.inner.rotation.angle()),
         )
     }
