@@ -3,9 +3,7 @@ use nidhogg::types::{FillExt, HeadJoints};
 use nalgebra::{Point2, Point3};
 
 use crate::{
-    behavior::engine::{Behavior, Context, Control},
-    motion::step_planner::Target,
-    nao::Priority,
+    behavior::engine::{Behavior, Context, Control}, localization::RobotPose, motion::step_planner::Target, nao::Priority
 };
 
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
@@ -24,7 +22,7 @@ impl Behavior for WalkToSet {
             // Setting z to default 0.5 (looking straight ahead)
             context
                 .pose
-                .get_look_at_absolute(&Point3::new(set_position.x, set_position.y, 0.5));
+                .get_look_at_absolute(&Point3::new(set_position.x, set_position.y, RobotPose::CAMERA_HEIGHT));
         control
             .nao_manager
             .set_head(look_at, HeadJoints::fill(0.5), Priority::default());

@@ -2,10 +2,7 @@ use nalgebra::{Point2, Point3};
 use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
-    behavior::engine::{Behavior, Context, Control},
-    core::debug::DebugContext,
-    motion::step_planner::Target,
-    nao::Priority,
+    behavior::engine::{Behavior, Context, Control}, core::debug::DebugContext, localization::RobotPose, motion::step_planner::Target, nao::Priority
 };
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -34,8 +31,11 @@ fn log_target(target: &Target, dbg: &mut DebugContext) {
 
 impl Behavior for Walk {
     fn execute(&mut self, context: Context, control: &mut Control) {
-        // Setting z to default 0.5 (looking straight ahead)
-        let target_point = Point3::new(self.target.position.x, self.target.position.y, 0.5);
+        let target_point = Point3::new(
+            self.target.position.x,
+            self.target.position.y,
+            RobotPose::CAMERA_HEIGHT,
+        );
 
         let look_at = context.pose.get_look_at_absolute(&target_point);
         control

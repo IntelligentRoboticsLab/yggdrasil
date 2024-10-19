@@ -39,6 +39,8 @@ pub struct RobotPose {
 }
 
 impl RobotPose {
+    pub const CAMERA_HEIGHT: f32 = 0.5;
+
     fn new(pose: Isometry2<f32>) -> Self {
         Self { inner: pose }
     }
