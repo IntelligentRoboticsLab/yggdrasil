@@ -39,6 +39,8 @@ pub struct RobotPose {
 }
 
 impl RobotPose {
+    // Constant for camera height that we set anywhere get_lookat_absolute is called.
+    // Set to zero if we are only looking at the ground, for example.
     pub const CAMERA_HEIGHT: f32 = 0.5;
 
     fn new(pose: Isometry2<f32>) -> Self {
