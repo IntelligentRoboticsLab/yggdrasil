@@ -3,7 +3,10 @@ use nidhogg::types::{FillExt, HeadJoints};
 use nalgebra::{Point2, Point3};
 
 use crate::{
-    behavior::engine::{Behavior, Context, Control}, localization::RobotPose, motion::step_planner::Target, nao::Priority
+    behavior::engine::{Behavior, Context, Control},
+    localization::RobotPose,
+    motion::step_planner::Target,
+    nao::Priority,
 };
 
 #[derive(Copy, Clone, Debug, Default, PartialEq)]

@@ -1,5 +1,7 @@
 use crate::{
-    behavior::engine::{Behavior, Context, Control}, localization::RobotPose, nao::Priority
+    behavior::engine::{Behavior, Context, Control},
+    localization::RobotPose,
+    nao::Priority,
 };
 use nalgebra::{Point2, Point3};
 use nidhogg::types::{FillExt, HeadJoints};
@@ -20,7 +22,6 @@ pub struct StandLookAt {
 
 impl Behavior for StandLookAt {
     fn execute(&mut self, context: Context, control: &mut Control) {
-        // Setting z to default 0.5 (looking straight ahead)
         let point3 = Point3::new(self.target.x, self.target.y, RobotPose::CAMERA_HEIGHT);
         let look_at = context.pose.get_look_at_absolute(&point3);
         control.nao_manager.set_head(
