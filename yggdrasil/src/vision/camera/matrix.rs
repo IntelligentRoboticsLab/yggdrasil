@@ -92,7 +92,12 @@ fn print_toes<T: CameraLocation>(
     debug_context: DebugContext,
     matrix: Res<CameraMatrix<T>>,
     bottom_image: Res<Image<T>>,
+    current_cycle: Res<Cycle>,
 ) {
+    if !bottom_image.is_from_cycle(*current_cycle) {
+        return;
+    }
+
     let (robot_to_left_toe, robot_to_right_toe) = robot_to_toes(&orientation, &kinematics);
 
     let (Ok(left_toe_point), Ok(right_toe_point)) = (
