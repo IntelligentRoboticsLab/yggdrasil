@@ -1,8 +1,9 @@
 use crate::{
     behavior::engine::{Behavior, Context, Control},
+    localization::RobotPose,
     nao::Priority,
 };
-use nalgebra::Point2;
+use nalgebra::{Point2, Point3};
 use nidhogg::types::{FillExt, HeadJoints};
 
 const HEAD_STIFFNESS: f32 = 0.4;
@@ -21,8 +22,10 @@ pub struct StandLookAt {
 
 impl Behavior for StandLookAt {
     fn execute(&mut self, context: Context, control: &mut Control) {
+        let point3 = Point3::new(self.target.x, self.target.y, RobotPose::CAMERA_HEIGHT);
+        let look_at = context.pose.get_look_at_absolute(&point3);
         control.nao_manager.set_head(
-            context.pose.get_look_at_absolute(&self.target),
+            look_at,
             HeadJoints::fill(HEAD_STIFFNESS),
             Priority::default(),
         );

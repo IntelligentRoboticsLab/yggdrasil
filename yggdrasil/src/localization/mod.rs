@@ -7,7 +7,7 @@ use crate::{
     motion::odometry::{self, Odometry},
 };
 use bevy::prelude::*;
-use nalgebra::{Isometry2, Isometry3, Point2, Translation3, UnitQuaternion};
+use nalgebra::{Isometry2, Isometry3, Point2, Point3, Translation3, UnitQuaternion};
 use nidhogg::types::HeadJoints;
 
 /// The localization plugin provides functionalities related to the localization of the robot.
@@ -39,6 +39,10 @@ pub struct RobotPose {
 }
 
 impl RobotPose {
+    // Constant for camera height that we set anywhere get_lookat_absolute is called.
+    // Set to zero if we are only looking at the ground, for example.
+    pub const CAMERA_HEIGHT: f32 = 0.5;
+
     fn new(pose: Isometry2<f32>) -> Self {
         Self { inner: pose }
     }
@@ -83,19 +87,16 @@ impl RobotPose {
     }
 
     #[must_use]
-    pub fn get_look_at_absolute(&self, point_in_world: &Point2<f32>) -> HeadJoints<f32> {
-        let robot_to_point = self.world_to_robot(point_in_world).xy();
-        self.get_look_at(&robot_to_point)
-    }
-
-    #[must_use]
-    pub fn get_look_at(&self, robot_to_point: &Point2<f32>) -> HeadJoints<f32> {
+    pub fn get_look_at_absolute(&self, point_in_world: &Point3<f32>) -> HeadJoints<f32> {
+        let robot_to_point = self.world_to_robot(&point_in_world.xy());
+        let x = robot_to_point.x;
+        let y = robot_to_point.y;
+        let z = point_in_world.z;
         let yaw = (robot_to_point.y / robot_to_point.x).atan();
-        // This cannot be computed without properly turning it into a 3d point by e.g. projecting it, but
-        // that's for later
-        // let pitch = (robot_to_point.z / robot_to_point.magnitude).acos();
+        // 0.5 is the height of the robot's primary camera while standing
+        let pitch = (0.5 - z).atan2((x * x + y * y).sqrt());
 
-        HeadJoints { yaw, pitch: 0.0 }
+        HeadJoints { yaw, pitch }
     }
 }
 
