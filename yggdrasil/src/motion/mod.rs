@@ -4,8 +4,10 @@ use bevy::prelude::*;
 pub mod keyframe;
 pub mod odometry;
 pub mod path_finding;
+mod sensor_data;
 pub mod step_planner;
 pub mod walk;
+pub mod walkv4;
 
 /// Plugin group containing all plugins related to robot motion.
 pub struct MotionPlugins;
@@ -17,5 +19,7 @@ impl PluginGroup for MotionPlugins {
             .add(keyframe::KeyframePlugin)
             .add(step_planner::StepPlannerPlugin)
             .add(walk::WalkingEnginePlugin)
+            .add(sensor_data::VisualizeSensorDataPlugin)
+            .add(walkv4::Walkv4EnginePlugin)
     }
 }

@@ -60,11 +60,11 @@ impl<T: CameraLocation> Plugin for CameraPlugin<T> {
         app.add_systems(
             Update,
             fetch_latest_frame::<T>.run_if(task_finished::<Image<T>>),
-        )
-        .add_systems(
-            PostUpdate,
-            log_image::<T>.run_if(resource_exists_and_changed::<Image<T>>),
         );
+        // .add_systems(
+        //     PostUpdate,
+        //     log_image::<T>.run_if(resource_exists_and_changed::<Image<T>>),
+        // );
 
         app.add_plugins(matrix::CameraMatrixPlugin::<T>::default());
     }

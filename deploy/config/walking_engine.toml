@@ -7,10 +7,10 @@ leg_stiffness = 0.8
 
 # The stiffness value used for the arm joints, higher means the robot's joints will
 # wear out faster, but the robot will be more stable.
-arm_stiffness = 0.4
+arm_stiffness = 0.6
 
 # The center of pressure threshold for switching support foot
-cop_pressure_threshold = 0.2
+cop_pressure_threshold = 0.6
 
 # The base amount to lift the feet in swing phase, in metres.
 # The foot lift is increased slightly, based on the forward and left in the command.
@@ -22,7 +22,7 @@ base_foot_lift = 0.01
 foot_lift_modifier = { forward = 0.01, left = 0.02, turn = 0.02 }
 
 # The step size is clipped to this value; in both directions (e.g. range for forward is -max_step_size to max_step_size).
-max_step_size = { forward = 0.08, left = 0.05, turn = 0.8 }
+max_step_size = { forward = 0.08, left = 0.08, turn = 3.14 }
 
 # The height of the robot's hips relative to the ankle joint, in metres.# The maximum step size the robot can take.
 hip_height = 0.18
@@ -42,4 +42,4 @@ arm_swing_multiplier = 0.6
 # The multiplier for the filtered gyro y value
 # Increasing this value will use a larger portion of the filtered gyro value
 # to adjust the pitch of the robot's ankles
-filtered_gyro_y_multiplier = 0.15
+filtered_gyro_y_multiplier = 0.2

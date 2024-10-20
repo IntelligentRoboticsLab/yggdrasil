@@ -39,3 +39,9 @@ a step is defined by the following properties:
 
 using these properties, the engine uses the parameters to create trajectories for
 the feet.
+
+### balancing
+
+
+
+### graceful start and stop

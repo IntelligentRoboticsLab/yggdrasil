@@ -156,9 +156,9 @@ impl StepPlanner {
         let (path, _total_walking_distance) = self.calc_path(robot_pose)?;
 
         return Some(Step {
-            forward: 0.,
-            left: 0.,
-            turn: 0.7,
+            forward: 0.0,
+            left: 0.05,
+            turn: -1.5,
         });
 
         // if let step @ Some(_) = Self::plan_translation(robot_pose, &path) {
