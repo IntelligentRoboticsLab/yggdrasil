@@ -48,7 +48,8 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
                     .chain(),
             )
             .add_systems(Update, print_toes::<Bottom>)
-            .add_systems(Update, print_chest::<Bottom>);
+            .add_systems(Update, print_chest::<Bottom>)
+            .add_systems(Update, print_shoulders::<Bottom>);
     }
 }
 
@@ -67,6 +68,15 @@ fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
         true,
         [
             &rerun::Color::from_rgb(255, 255, 0) as _,
+            &rerun::Radius::new_ui_points(14.0) as _,
+        ],
+    );
+
+    dbg.log_component_batches(
+        T::make_entity_path("body_contour/shoulders"),
+        true,
+        [
+            &rerun::Color::from_rgb(0, 238, 255) as _,
             &rerun::Radius::new_ui_points(14.0) as _,
         ],
     );
@@ -198,6 +208,82 @@ fn print_chest<T: CameraLocation>(
     );
 }
 
+fn print_shoulders<T: CameraLocation>(
+    imu: Res<IMUValues>,
+    kinematics: Res<RobotKinematics>,
+    debug_context: DebugContext,
+    matrix: Res<CameraMatrix<T>>,
+    current_cycle: Res<Cycle>,
+) {
+    let (
+        robot_to_left_shoulder_cap_back,
+        robot_to_left_shoulder_cap_front,
+        robot_to_right_shoulder_cap_front,
+        robot_to_right_shoulder_cap_back,
+    ) = robot_to_shoulders(&imu, &kinematics);
+
+    eprintln!("robot_to_left_shoulder_cap_back: {robot_to_left_shoulder_cap_back}");
+    eprintln!("robot_to_left_shoulder_cap_front: {robot_to_left_shoulder_cap_front}");
+
+    let (
+        Ok(left_shoulder_cap_back_point),
+        Ok(left_shoulder_cap_front_point),
+        // Ok(right_shoulder_cap_front_point),
+        // Ok(right_shoulder_cap_back_point),
+    ) = (
+        matrix.ground_to_pixel(
+            (robot_to_left_shoulder_cap_back.inverse() * matrix.robot_to_ground)
+                .translation
+                .vector
+                .into(),
+        ),
+        matrix.ground_to_pixel(
+            (robot_to_left_shoulder_cap_front.inverse() * matrix.robot_to_ground)
+                .translation
+                .vector
+                .into(),
+        ),
+        // matrix.ground_to_pixel(
+        //     (robot_to_right_shoulder_cap_front.inverse() * matrix.robot_to_ground)
+        //         .translation
+        //         .vector
+        //         .into(),
+        // ),
+        // matrix.ground_to_pixel(
+        //     (robot_to_right_shoulder_cap_back.inverse() * matrix.robot_to_ground)
+        //         .translation
+        //         .vector
+        //         .into(),
+        // ),
+    )
+    else {
+        return;
+    };
+
+    debug_context.log_with_cycle(
+        T::make_entity_path("body_contour/shoulders"),
+        *current_cycle,
+        &rerun::Points2D::new([
+            (
+                left_shoulder_cap_back_point.x,
+                left_shoulder_cap_back_point.y,
+            ),
+            (
+                left_shoulder_cap_front_point.x,
+                left_shoulder_cap_front_point.y,
+            ),
+            // (
+            //     right_shoulder_cap_front_point.x,
+            //     right_shoulder_cap_front_point.y,
+            // ),
+            // (
+            //     right_shoulder_cap_back_point.x,
+            //     right_shoulder_cap_back_point.y,
+            // ),
+        ]),
+    );
+}
+
 fn robot_to_ground(
     swing_foot: &SwingFoot,
     orientation: &RobotOrientation,
@@ -285,6 +371,63 @@ fn robot_to_chests(
         imu_adjusted_chest_centre_left_to_robot,
         imu_adjusted_chest_centre_right_to_robot,
         imu_adjusted_chest_right_to_robot,
+    )
+}
+
+fn robot_to_shoulders(
+    imu: &IMUValues,
+    kinematics: &RobotKinematics,
+) -> (
+    Isometry3<f32>,
+    Isometry3<f32>,
+    Isometry3<f32>,
+    Isometry3<f32>,
+) {
+    let roll_pitch = imu.angles;
+    let roll = roll_pitch.x;
+    let pitch = roll_pitch.y;
+
+    let imu_adjusted_left_shoulder_cap_back_to_robot = Isometry3::from(
+        kinematics
+            .left_shoulder_cap_back_to_robot
+            .translation
+            .inverse(),
+    ) * Isometry3::rotation(
+        Vector3::y() * pitch,
+    ) * Isometry3::rotation(Vector3::x() * roll);
+
+    let imu_adjusted_left_shoulder_cap_front_to_robot =
+        Isometry3::from(
+            kinematics
+                .left_shoulder_cap_front_to_robot
+                .translation
+                .inverse(),
+        ) * Isometry3::rotation(Vector3::y() * pitch)
+            * Isometry3::rotation(Vector3::x() * roll);
+
+    let imu_adjusted_right_shoulder_cap_front_to_robot =
+        Isometry3::from(
+            kinematics
+                .right_shoulder_cap_front_to_robot
+                .translation
+                .inverse(),
+        ) * Isometry3::rotation(Vector3::y() * pitch)
+            * Isometry3::rotation(Vector3::x() * roll);
+
+    let imu_adjusted_right_shoulder_cap_back_to_robot =
+        Isometry3::from(
+            kinematics
+                .right_shoulder_cap_back_to_robot
+                .translation
+                .inverse(),
+        ) * Isometry3::rotation(Vector3::y() * pitch)
+            * Isometry3::rotation(Vector3::x() * roll);
+
+    (
+        imu_adjusted_left_shoulder_cap_back_to_robot,
+        imu_adjusted_left_shoulder_cap_front_to_robot,
+        imu_adjusted_right_shoulder_cap_front_to_robot,
+        imu_adjusted_right_shoulder_cap_back_to_robot,
     )
 }
 

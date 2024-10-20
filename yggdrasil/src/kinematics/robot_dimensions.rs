@@ -40,3 +40,10 @@ pub const TORSO_TO_CHEST_LEFT: Vector3<f32> = vector![0.08, 0.15, 0.1];
 pub const TORSO_TO_CHEST_RIGHT: Vector3<f32> = vector![0.08, -0.15, 0.1];
 pub const TORSO_TO_CHEST_CENTRE_LEFT: Vector3<f32> = vector![0.11, 0.05, 0.1];
 pub const TORSO_TO_CHEST_CENTRE_RIGHT: Vector3<f32> = vector![0.11, -0.05, 0.1];
+
+// TODO: Check these values.
+pub const SHOULDER_TO_SHOULDER_CAP: Vector3<f32> = vector![0.0, 0.0, 0.02];
+pub const LEFT_SHOULDER_CAP_TO_BACK: Vector3<f32> = vector![-0.05, 0.0, 0.0];
+pub const LEFT_SHOULDER_CAP_TO_FRONT: Vector3<f32> = vector![0.05, 0.0, 0.0];
+pub const RIGHT_SHOULDER_CAP_TO_FRONT: Vector3<f32> = vector![0.05, 0.0, 0.0];
+pub const RIGHT_SHOULDER_CAP_TO_BACK: Vector3<f32> = vector![-0.05, 0.0, 0.0];
