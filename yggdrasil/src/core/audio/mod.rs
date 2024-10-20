@@ -6,6 +6,7 @@ use serde_with::{serde_as, DurationMilliSeconds};
 use std::time::Duration;
 
 pub mod audio_input;
+pub mod battery_sound;
 pub mod sound_manager;
 pub mod wee_sound;
 pub mod whistle_detection;
