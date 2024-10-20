@@ -5,11 +5,12 @@ use std::time::Duration;
 use crate::{
     core::config::ConfigExt,
     kinematics::Kinematics,
-    nao::{CycleTime, NaoManager, Priority},
+    nao::{CenterOfPressure, CycleTime, NaoManager, Priority},
     prelude::*,
     sensor::imu::IMUValues,
 };
 use bevy::prelude::*;
+use nalgebra::Point2;
 use nidhogg::{
     types::{
         ArmJoints, FillExt, Fsr, LeftArmJoints, LeftLegJoints, LegJoints, RightArmJoints,
@@ -83,7 +84,7 @@ impl Plugin for WalkingEnginePlugin {
             .add_event::<SwingFootSwitchedEvent>();
 
         app.add_systems(PostStartup, init_walking_engine);
-        app.add_systems(PostUpdate, (run_walking_engine, update_swing_side).chain());
+        // app.add_systems(PostUpdate, (run_walking_engine, update_swing_side).chain());
     }
 }
 

@@ -1,11 +1,10 @@
-use std::time::Duration;
-
 use super::imu::IMUValues;
 use crate::{motion::odometry::Odometry, prelude::*};
 use bevy::prelude::*;
 use nalgebra::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds, DurationSeconds};
+use std::time::Duration;
 use vqf::Vqf;
 
 /// The NAO's IMU update rate.

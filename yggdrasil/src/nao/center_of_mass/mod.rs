@@ -46,7 +46,7 @@ pub struct CenterOfMass {
     pub position: Point3<Robot>,
 }
 
-fn update_com(kinematics: Res<Kinematics>, mut com: ResMut<CenterOfMass>) {
+pub(super) fn update_com(kinematics: Res<Kinematics>, mut com: ResMut<CenterOfMass>) {
     let new_com = kinematics.transform(&TORSO.center) * TORSO.mass
         + kinematics.transform(&NECK.center) * NECK.mass
         + kinematics.transform(&HEAD.center) * HEAD.mass
