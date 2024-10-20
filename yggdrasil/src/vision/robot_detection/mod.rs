@@ -14,7 +14,7 @@ use fast_image_resize as fr;
 use heimdall::{CameraLocation, Top};
 use itertools::Itertools;
 use miette::IntoDiagnostic;
-use ml::prelude::*;
+use ml::{prelude::*, MlArray};
 use ndarray::{Array2, Axis};
 use serde_with::{serde_as, DurationMilliSeconds};
 
@@ -82,11 +82,8 @@ impl Plugin for RobotDetectionPlugin {
 pub struct RobotDetectionModel;
 
 impl MlModel for RobotDetectionModel {
-    type InputElem = u8;
-    type OutputElem = f32;
-
-    type InputShape = (Vec<u8>,);
-    type OutputShape = (MlArray<f32>, MlArray<f32>);
+    type Inputs = Vec<u8>;
+    type Outputs = (MlArray<f32>, MlArray<f32>);
     const ONNX_PATH: &'static str = "models/robot_detection.onnx";
 }
 
@@ -129,7 +126,7 @@ fn detect_robots(
 
     commands
         .infer_model(&mut model)
-        .with_input(&(resized_image,))
+        .with_input(&resized_image)
         .create_resource()
         .spawn({
             let config = (*config).clone();
