@@ -193,14 +193,10 @@ fn detect_balls<T: CameraLocation>(
             patch,
         );
 
-        let confidence = {
-            let output = commands
-                .infer_model(&mut model)
-                .with_input(&patch)
-                .spawn_blocking(ml::util::sigmoid)[0];
-
-            1.0 - output
-        };
+        let confidence = commands
+            .infer_model(&mut model)
+            .with_input(&patch)
+            .spawn_blocking(|output| 1.0 - ml::util::sigmoid(output));
 
         if start.elapsed().as_micros() > classifier.time_budget as u128 {
             break;

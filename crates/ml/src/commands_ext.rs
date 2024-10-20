@@ -139,8 +139,9 @@ where
         }
     }
 
-    /// Run the model inference in the current scope, blocking it until the inference is complete.
-    pub fn spawn_blocking<F, T>(&mut self, f: F) -> Vec<T>
+    /// Run the model inference in the current scope, blocking it until the inference is complete
+    /// and performing any post processing step.
+    pub fn spawn_blocking<F, T>(&mut self, f: F) -> T
     where
         F: (FnOnce(M::Outputs) -> T) + Send + Sync + 'static,
         T: Send + 'static,
@@ -150,18 +151,16 @@ where
             .request_infer(self.state.0)
             .expect("failed to request inference");
 
-        self.commands.prepare_task(TaskPool::Compute).scope({
-            move |s| {
-                s.spawn(async move {
-                    let output = request
-                        .run()
-                        .map(InferRequest::fetch_output)
-                        .expect("failed to fetch output");
+        self.commands
+            .prepare_task(TaskPool::Compute)
+            .spawn_blocking(async move {
+                let output = request
+                    .run()
+                    .map(InferRequest::fetch_output)
+                    .expect("failed to fetch output");
 
-                    f(output)
-                });
-            }
-        })
+                f(output)
+            })
     }
 }
 
