@@ -1,22 +1,22 @@
-//! # Niflheim: A Library for Spatial Transformations
+//! # Spatial: A Library for Spatial Transformations
 //!
-//! Niflheim is a library designed to facilitate transformations between different spaces. It
+//! Spatial is a library designed to facilitate transformations between different spaces. It
 //! provides a set of traits and types to handle transformations of points and vectors between
 //! various spaces, leveraging the type system to track which space such types are expressed in.
 //!
 //! ## [`Space`] and [`SpaceOver<T>`]
 //!
-//! At the core of Niflheim is the [`Space`] trait, which marks a type as representing a space.
+//! At the core of Spatial is the [`Space`] trait, which marks a type as representing a space.
 //! Typically, such types are Zero-Sized Types and are never constructed.
 //!
-//! On its own, [`Space`] isn't very useful, since Niflheim enforces which spaces can contain which
+//! On its own, [`Space`] isn't very useful, since Spatial enforces which spaces can contain which
 //! types. To mark a space as containing a type, implement [`SpaceOver<T>`].
 //!
 //! ### Example
 //!
 //! ```rust
 //! use nalgebra as na;
-//! use niflheim::{Space, SpaceOver};
+//! use spatial::{Space, SpaceOver};
 //!
 //! struct LocalSpace;
 //!
@@ -35,7 +35,7 @@
 //!
 //! ## [`InSpace<T, S>`] and [`BetweenSpaces<T, S1, S2>`]
 //!
-//! Niflheim introduces two wrapper types to keep track of which spaces a value is expressed in,
+//! Spatial introduces two wrapper types to keep track of which spaces a value is expressed in,
 //! [`InSpace<T, S>`] and [`BetweenSpaces<T, S1, S2>`]. These types can be constructed through
 //! either their [`From<T>`] implementation.
 //!
@@ -43,14 +43,14 @@
 //!
 //! ```rust
 //! # use nalgebra as na;
-//! # use niflheim::{Space, SpaceOver};
+//! # use spatial::{Space, SpaceOver};
 //! # struct LocalSpace;
 //! # impl Space for LocalSpace {}
 //! # impl SpaceOver<na::Point3<f32>> for LocalSpace {}
 //! # struct WorldSpace;
 //! # impl Space for WorldSpace {}
 //! # impl SpaceOver<na::Point3<f32>> for WorldSpace {}
-//! use niflheim::types::*;
+//! use spatial::types::*;
 //!
 //! // `Isometry3<S1, S2>` is an alias for `BetweenSpaces<na::Isometry3<f32>, S1, S2>`.
 //! let tf: Isometry3<LocalSpace, WorldSpace> =
@@ -76,20 +76,20 @@
 //!
 //! ```rust
 //! # use nalgebra as na;
-//! # use niflheim::{Space, SpaceOver};
+//! # use spatial::{Space, SpaceOver};
 //! # struct LocalSpace;
 //! # impl Space for LocalSpace {}
 //! # impl SpaceOver<na::Point3<f32>> for LocalSpace {}
 //! # struct WorldSpace;
 //! # impl Space for WorldSpace {}
 //! # impl SpaceOver<na::Point3<f32>> for WorldSpace {}
-//! # use niflheim::types::*;
+//! # use spatial::types::*;
 //! # let tf: Isometry3<LocalSpace, WorldSpace> = na::Isometry3::new(
 //! #     na::vector![1., 2., 3.],
 //! #     na::vector![0., 0., 0.],
 //! # ).into();
 //! # let p1: Point3<LocalSpace> = na::point![1., 0., 0.].into();
-//! use niflheim::Transform;
+//! use spatial::Transform;
 //!
 //! // Using `tf` we can transform between these two spaces.
 //! let p2: Point3<WorldSpace> = tf.transform(&p1);

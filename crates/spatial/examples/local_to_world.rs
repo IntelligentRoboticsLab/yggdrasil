@@ -1,7 +1,7 @@
 use nalgebra as na;
 
-use niflheim::types::{Isometry3, Point3};
-use niflheim::{Space, SpaceOver, Transform};
+use spatial::types::{Isometry3, Point3};
+use spatial::{Space, SpaceOver, Transform};
 
 struct LocalSpace;
 
