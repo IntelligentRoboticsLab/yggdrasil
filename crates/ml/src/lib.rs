@@ -75,7 +75,7 @@ pub trait MlModelResourceExt {
     ///
     /// # Panics
     ///
-    /// - If the [`MlCore`] resource does not exist, this function will panic.
+    /// - If the MlCore does not exist, this function will panic.
     /// - If the model executor cannot be created, this function will panic.
     fn init_ml_model<M>(&mut self) -> &mut Self
     where
