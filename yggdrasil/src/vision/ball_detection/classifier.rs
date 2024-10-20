@@ -197,7 +197,7 @@ fn detect_balls<T: CameraLocation>(
             let output = commands
                 .infer_model(&mut model)
                 .with_input(&patch)
-                .spawn_blocking(|result| ml::util::sigmoid(result))[0];
+                .spawn_blocking(ml::util::sigmoid)[0];
 
             1.0 - output
         };
