@@ -256,7 +256,7 @@ impl<M: MlModel> InferRequest<M> {
 
             assert_eq!(
                 blob.len().unwrap(),
-                descr.elements(),
+                descr.num_elements(),
                 "Blob does not have the expected size!"
             );
 
@@ -283,7 +283,7 @@ impl TensorDescr {
     }
 
     /// The total number of elements in the tensor.
-    pub fn elements(&self) -> usize {
+    pub fn num_elements(&self) -> usize {
         self.cfg
             .dims()
             .iter()

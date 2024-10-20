@@ -89,7 +89,7 @@ pub trait Parameters: Sized {
     fn blobs(&self) -> impl Iterator<Item = &[u8]>;
 
     /// Returns the total amount of elements across all model parameters.
-    fn elements(&self) -> usize;
+    fn num_elements(&self) -> usize;
 
     /// The data type of each model parameter.
     fn data_types() -> impl Iterator<Item = openvino::Precision>;
@@ -119,7 +119,7 @@ where
         std::iter::once(DataType::as_blob(std::slice::from_ref(self)))
     }
 
-    fn elements(&self) -> usize {
+    fn num_elements(&self) -> usize {
         1
     }
 
@@ -150,7 +150,7 @@ where
         std::iter::once(DataType::as_blob(self.as_slice()))
     }
 
-    fn elements(&self) -> usize {
+    fn num_elements(&self) -> usize {
         self.len()
     }
 
@@ -181,7 +181,7 @@ where
         std::iter::once(DataType::as_blob(self.as_slice().unwrap()))
     }
 
-    fn elements(&self) -> usize {
+    fn num_elements(&self) -> usize {
         self.len()
     }
 
@@ -218,9 +218,9 @@ macro_rules! impl_parameters {
                     )*
             }
 
-            fn elements(&self) -> usize {
+            fn num_elements(&self) -> usize {
                 let ($($T,)*) = self;
-                0 $(+ $T.elements())*
+                0 $(+ $T.num_elements())*
             }
 
             fn data_types() -> impl Iterator<Item = openvino::Precision> {
