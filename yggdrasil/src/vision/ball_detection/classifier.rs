@@ -74,16 +74,17 @@ fn init_ball_classifier(mut commands: Commands) {
     commands.insert_resource(balls);
 }
 
-fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Balls>) {
-    if balls.balls.is_empty() {
-        return;
-    }
+fn log_ball_classifications<T: CameraLocation>(
+    dbg: DebugContext,
+    balls: Res<Balls>,
+    cycle: Res<Cycle>,
+) {
     let (positions, (half_sizes, confidences)): (Vec<_>, (Vec<_>, Vec<_>)) = balls
         .balls
         .iter()
         // TODO: Once we have a better unified way to store the balls for different camera positions, we can
         // drop the extra condition here.
-        .filter(|ball| ball.is_fresh && ball.camera == T::POSITION)
+        .filter(|ball| ball.camera == T::POSITION)
         .map(|ball| {
             (
                 (ball.position_image.x, ball.position_image.y),
@@ -96,6 +97,11 @@ fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Bal
         .unzip();
 
     if positions.is_empty() {
+        dbg.log_with_cycle(
+            T::make_entity_path("balls/classifications"),
+            *cycle,
+            &rerun::Clear::flat(),
+        );
         return;
     }
 
@@ -180,6 +186,10 @@ fn detect_balls<T: CameraLocation>(
             continue;
         }
 
+        if start.elapsed().as_micros() > classifier.time_budget as u128 {
+            break;
+        }
+
         let patch_size = proposal.scale as usize;
         let patch = proposals.image.get_grayscale_patch(
             (proposal.position.x, proposal.position.y),
@@ -193,20 +203,18 @@ fn detect_balls<T: CameraLocation>(
             patch,
         );
 
+        // sigmoid is applied in model onnx
         let confidence = commands
             .infer_model(&mut model)
             .with_input(&patch)
-            .spawn_blocking(|output| 1.0 - ml::util::sigmoid(output));
-
-        if start.elapsed().as_micros() > classifier.time_budget as u128 {
-            break;
-        }
+            .spawn_blocking(|score| 1.0 - score)[0];
 
         if confidence < classifier.confidence_threshold {
             continue;
         }
 
         let Ok(robot_to_ball) = camera_matrix.pixel_to_ground(proposal.position.cast(), 0.0) else {
+            tracing::warn!(?proposal.position, "failed to project ball position to ground");
             continue;
         };
 

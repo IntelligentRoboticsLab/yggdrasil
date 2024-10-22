@@ -150,6 +150,10 @@ where
             .executor
             .request_infer(self.state.0)
             .expect("failed to request inference");
+        let output = request
+            .run()
+            .map(InferRequest::fetch_output)
+            .expect("failed to fetch output");
 
         // TODO: This should really be:
         // - On the AsyncCompute pool
