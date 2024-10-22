@@ -150,6 +150,7 @@ where
             .executor
             .request_infer(self.state.0)
             .expect("failed to request inference");
+
         self.commands.prepare_task(TaskPool::Compute).scope({
             move |s| {
                 s.spawn(async move {
