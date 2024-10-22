@@ -217,11 +217,11 @@ where
             .prepare_task(TaskPool::AsyncCompute)
             .to_entities()
             .spawn({
-                vec![async move {
+                std::iter::once(async move {
                     let output = request.run().map(InferRequest::fetch_output).ok()?;
 
                     f(output)
-                }]
+                })
             });
     }
 }
