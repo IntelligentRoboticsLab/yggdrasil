@@ -151,6 +151,10 @@ where
             .request_infer(self.state.0)
             .expect("failed to request inference");
 
+        // TODO: This should really be:
+        // - On the AsyncCompute pool
+        // - Be on it's own thread that blocks (?) (e.g. `blocking` crate)
+        // But currently that wrecks performance
         self.commands
             .prepare_task(TaskPool::Compute)
             .spawn_blocking(async move {
