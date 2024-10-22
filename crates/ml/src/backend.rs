@@ -1,11 +1,10 @@
 //! Implementation of ML methods using an `OpenVINO` backend.
 use super::{
-    element_type::{input::ModelInput, output::ModelOutput, Elem},
+    element::Parameters,
     error::{Error, Result},
     MlModel,
 };
 use bevy::prelude::*;
-use openvino::Blob;
 use std::{marker::PhantomData, sync::Mutex};
 
 /// Wrapper around [`openvino::Core`], i.e. the `OpenVINO` engine.
@@ -71,38 +70,44 @@ impl<M: MlModel> ModelExecutor<M> {
         // the model is guaranteed to have at least a single in- and output tensor
         let num_inputs = model.get_inputs_len()?;
         let mut input_descrs = Vec::with_capacity(num_inputs);
-        for i in 0..num_inputs {
+
+        for (i, dtype) in M::Inputs::data_types().enumerate() {
             let input_name = model.get_input_name(i)?;
             let tensor = TensorDescr {
                 cfg: infer.get_blob(&input_name)?.tensor_desc()?,
-                name: input_name,
+                name: input_name.clone(),
             };
 
-            if !M::InputElem::is_compatible(tensor.cfg.precision()) {
+            let onnx_dtype = tensor.cfg.precision();
+            if dtype != onnx_dtype {
                 return Err(Error::InputType {
                     path: M::ONNX_PATH,
-                    expected: std::any::type_name::<M::InputElem>().into(),
-                    imported: tensor.cfg.precision(),
+                    expected: dtype,
+                    imported: onnx_dtype,
                 });
             }
+
             input_descrs.push(tensor);
         }
 
         let num_outputs = model.get_outputs_len()?;
         let mut output_descrs = Vec::with_capacity(num_outputs);
-        for i in 0..model.get_outputs_len()? {
+        for (i, dtype) in M::Outputs::data_types().enumerate() {
             let output_name = model.get_output_name(i)?;
             let tensor = TensorDescr {
                 cfg: infer.get_blob(&output_name)?.tensor_desc()?,
-                name: output_name,
+                name: output_name.clone(),
             };
-            if !M::OutputElem::is_compatible(tensor.cfg.precision()) {
+
+            let onnx_dtype = tensor.cfg.precision();
+            if dtype != onnx_dtype {
                 return Err(Error::OutputType {
                     path: M::ONNX_PATH,
-                    expected: std::any::type_name::<M::OutputElem>().into(),
-                    imported: tensor.cfg.precision(),
+                    expected: dtype,
+                    imported: onnx_dtype,
                 });
             }
+
             output_descrs.push(tensor);
         }
 
@@ -123,12 +128,12 @@ impl<M: MlModel> ModelExecutor<M> {
     /// # Panics
     ///
     /// Panics if a mutable reference to the model executor cannot be obtained.
-    pub fn request_infer(&mut self, input: &M::InputShape) -> Result<InferRequest<M>> {
+    pub fn request_infer(&mut self, input: &M::Inputs) -> Result<InferRequest<M>> {
         let exec = self.exec.get_mut().expect("Failed to lock model executor.");
 
         InferRequest::new(
             exec.create_infer_request().map_err(Error::StartInference)?,
-            input.view_byte_slices(),
+            input.blobs(),
             &self.input_descriptions,
             &self.output_descriptions,
         )
@@ -166,25 +171,29 @@ pub struct InferRequest<M: MlModel> {
     /// Output layer tensor description.
     output_descrs: Vec<TensorDescr>,
     // note `fn() -> M` as opposed to just `M`, such that
-    //  `Self` implements Send, even though `M` does not
+    // `Self` implements Send, even though `M` does not
+    //
+    // Also see [the relevant Nomicon chapter.](https://doc.rust-lang.org/nomicon/subtyping.html)
     _marker: PhantomData<fn() -> M>,
 }
 
 impl<M: MlModel> InferRequest<M> {
-    fn new(
+    fn new<'a>(
         mut request: openvino::InferRequest,
-        inputs: Vec<&[u8]>,
+        inputs: impl Iterator<Item = &'a [u8]>,
         input_descrs: &[TensorDescr],
         output_descrs: &[TensorDescr],
     ) -> Result<Self> {
-        if inputs.len() != input_descrs.len() {
+        if M::Inputs::len() != input_descrs.len() {
             return Err(Error::InputCountMismatch {
                 expected: input_descrs.len(),
-                actual: inputs.len(),
+                actual: M::Inputs::len(),
             });
         }
 
-        for (description, input) in input_descrs.iter().zip(inputs) {
+        for (description, input, dtype_size) in
+            itertools::izip!(input_descrs, inputs, M::Inputs::sizes_of())
+        {
             let cfg = &description.cfg;
 
             let expected = cfg
@@ -192,10 +201,10 @@ impl<M: MlModel> InferRequest<M> {
                 .iter()
                 .copied()
                 .reduce(|a, b| a * b)
-                .expect("failed to compute number of inputs!");
+                .expect("Failed to compute number of inputs!");
 
             // check if input is of correct size
-            let input_len = input.len() / std::mem::size_of::<M::InputElem>();
+            let input_len = input.len() / dtype_size;
             if input_len != expected {
                 return Err(Error::InferenceInputSize {
                     expected,
@@ -240,21 +249,24 @@ impl<M: MlModel> InferRequest<M> {
     ///
     /// Panics if the output tensor is not found, which should never happen.
     #[must_use]
-    pub fn fetch_output(mut self) -> <M::OutputShape as ModelOutput<M::OutputElem>>::Shape {
-        let (blobs, shapes): (Vec<Blob>, Vec<Vec<usize>>) = self
-            .output_descrs
-            .iter()
-            .map(|x| {
-                // the tensor with the name `output_name` is guaranteed to exist
-                let blob = self
-                    .request
-                    .get_blob(&x.name)
-                    .expect("output tensor not found");
-                (blob, x.dims().to_vec())
-            })
-            .unzip();
+    pub fn fetch_output(mut self) -> M::Outputs {
+        let iter = self.output_descrs.iter().map(|descr| {
+            let blob = self.request.get_blob(&descr.name).unwrap();
+            let dims = descr.dims();
 
-        M::OutputShape::from_blobs(&blobs, shapes.as_slice())
+            assert_eq!(
+                blob.len().unwrap(),
+                descr.num_elements(),
+                "Blob does not have the expected size!"
+            );
+
+            (dims, blob)
+        });
+
+        // # Safety:
+        //
+        // If this fails I blame the openvino-rs developers
+        unsafe { M::Outputs::from_dims_and_blobs(iter) }
     }
 }
 
@@ -268,6 +280,16 @@ impl TensorDescr {
     /// Dimensions of the tensor.
     pub fn dims(&self) -> &[usize] {
         self.cfg.dims()
+    }
+
+    /// The total number of elements in the tensor.
+    pub fn num_elements(&self) -> usize {
+        self.cfg
+            .dims()
+            .iter()
+            .copied()
+            .reduce(|a, b| a * b)
+            .unwrap_or_default()
     }
 }
 

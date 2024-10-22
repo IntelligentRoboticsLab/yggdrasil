@@ -3,30 +3,26 @@
 
 mod backend;
 mod commands_ext;
-mod element_type;
+mod element;
 mod error;
 pub mod util;
 
-use self::{
-    backend::ModelExecutor,
-    element_type::{input::ModelInput, output::ModelOutput, Elem},
-};
-use backend::MlCore;
 use bevy::prelude::*;
+
+use backend::{MlCore, ModelExecutor};
+use element::Parameters;
 
 #[allow(missing_docs)]
 pub mod prelude {
-    pub use crate::backend::{InferRequest, MlCore, ModelExecutor};
+    pub use crate::backend::ModelExecutor;
     pub use crate::commands_ext::MlTaskCommandsExt;
-    pub use crate::element_type::input::{InputContainer, ModelInput};
-    pub use crate::element_type::output::{ModelOutput, OutputContainer};
-    pub use crate::element_type::{Elem, MlArray};
     pub use crate::error::Error;
-
-    pub use crate::util as ml_util;
-
+    pub use crate::util;
     pub use crate::{MlModel, MlModelResourceExt, MlPlugin};
 }
+
+/// Conveniency type representing an n-dimensional array.
+pub type MlArray<E> = ndarray::ArrayD<E>;
 
 /// Plugin offering a high level API for ML inference,
 /// using the [OpenVINO](https://docs.openvino.ai/2023.3/home.html) runtime.
@@ -53,33 +49,24 @@ impl Plugin for MlPlugin {
 /// struct Mixtral8x7b;
 ///
 /// impl MlModel for Mixtral8x7b {
-///     // these are the in- and output data types
-///     type InputElem = u8;
-///     type OutputElem = u8;
-///
-///     // this is the shape of the model's input
+///     // In this case, the model takes two inputs
 ///     type InputShape = (MlArray<u8>, MlArray<u8>);
 ///
-///     // this is the shape of the model's output
-///     type OutputShape = (MlArray<u8>,);
+///     // And produces a single output
+///     type OutputShape = MlArray<u8>;
 ///
-///     // this is the path to the model's ONNX file
+///     // This is the path to the model's ONNX file
 ///     const ONNX_PATH: &'static str = "deploy/models/mixtral8x7b.onnx";
 /// }
 /// ```
 pub trait MlModel: Send + Sync + 'static {
-    /// The input element type of the model.
-    type InputElem: Elem;
-    /// The output element type of the model.
-    type OutputElem: Elem;
+    /// The model input shape.
+    type Inputs: Parameters;
 
-    /// The shape of the model input.
-    type InputShape: ModelInput<Self::InputElem>;
+    /// The model output shape.
+    type Outputs: Parameters;
 
-    /// The shape of the model output.
-    type OutputShape: ModelOutput<Self::OutputElem>;
-
-    /// Path to the model parameters.
+    /// Path to the model's ONNX file.
     const ONNX_PATH: &'static str;
 }
 
@@ -88,7 +75,7 @@ pub trait MlModelResourceExt {
     ///
     /// # Panics
     ///
-    /// - If the [`MlCore`] resource does not exist, this function will panic.
+    /// - If the plugin is not initialized, this function will panic.
     /// - If the model executor cannot be created, this function will panic.
     fn init_ml_model<M>(&mut self) -> &mut Self
     where

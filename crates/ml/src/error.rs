@@ -20,22 +20,22 @@ pub enum Error {
     LoadExecutableNetwork(#[source] openvino::InferenceError),
 
     #[error(
-        "`MlModel` input type ({expected}) is incompatible with imported model input type\
+        "`MlModel` input type ({expected:?}) is incompatible with imported model input type\
             ({imported:?}) from `{path}`"
     )]
     InputType {
         path: &'static str,
-        expected: String,
+        expected: openvino::Precision,
         imported: openvino::Precision,
     },
 
     #[error(
-        "`MlModel` output type ({expected}) is incompatible with imported model output type\
+        "`MlModel` output type ({expected:?}) is incompatible with imported model output type\
             ({imported:?}) from `{path}`"
     )]
     OutputType {
         path: &'static str,
-        expected: String,
+        expected: openvino::Precision,
         imported: openvino::Precision,
     },
 

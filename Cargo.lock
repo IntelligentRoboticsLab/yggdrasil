@@ -4747,6 +4747,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "fast_image_resize",
+ "itertools 0.13.0",
  "miette",
  "ndarray 0.15.6",
  "openvino",
