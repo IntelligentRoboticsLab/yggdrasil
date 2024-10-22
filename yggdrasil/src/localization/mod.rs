@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use crate::{
     behavior::primary_state::PrimaryState,
     core::{
@@ -7,7 +9,10 @@ use crate::{
     motion::odometry::{self, Odometry},
 };
 use bevy::prelude::*;
-use nalgebra::{Isometry2, Isometry3, Point2, Point3, Translation3, UnitQuaternion};
+use bifrost::communication::{GameControllerMessage, GamePhase};
+use nalgebra::{
+    Isometry2, Isometry3, Point2, Point3, Translation2, Translation3, UnitComplex, UnitQuaternion,
+};
 use nidhogg::types::HeadJoints;
 
 /// The localization plugin provides functionalities related to the localization of the robot.
@@ -98,6 +103,15 @@ impl RobotPose {
 
         HeadJoints { yaw, pitch }
     }
+
+    pub fn distance_to(&self, point: &Point2<f32>) -> f32 {
+        (self.world_position() - point).norm()
+    }
+
+    pub fn angle_to(&self, point: &Point2<f32>) -> f32 {
+        let robot_to_point = self.world_to_robot(point).xy();
+        robot_to_point.y.atan2(robot_to_point.x)
+    }
 }
 
 fn update_robot_pose(
@@ -105,12 +119,14 @@ fn update_robot_pose(
     odometry: Res<Odometry>,
     primary_state: Res<PrimaryState>,
     layout_config: Res<LayoutConfig>,
+    game_controller_message: Option<Res<GameControllerMessage>>,
 ) {
     *robot_pose = next_robot_pose(
         robot_pose.as_mut(),
         odometry.as_ref(),
         primary_state.as_ref(),
         layout_config.as_ref(),
+        game_controller_message.as_deref(),
     );
 }
 
@@ -120,12 +136,27 @@ pub fn next_robot_pose(
     odometry: &Odometry,
     primary_state: &PrimaryState,
     layout_config: &LayoutConfig,
+    message: Option<&GameControllerMessage>,
 ) -> RobotPose {
-    let isometry = if *primary_state == PrimaryState::Penalized {
+    let mut isometry = if *primary_state == PrimaryState::Penalized {
         find_closest_penalty_pose(robot_pose, layout_config)
     } else {
         robot_pose.inner * odometry.offset_to_last
     };
+
+    if let Some(message) = message {
+        if message.game_phase == GamePhase::PenaltyShoot {
+            if message.kicking_team == 8 {
+                isometry = Isometry2::from_parts(
+                    Translation2::new(3.2, 0.0),
+                    UnitComplex::from_angle(0.0),
+                );
+            } else {
+                isometry =
+                    Isometry2::from_parts(Translation2::new(4.5, 0.0), UnitComplex::from_angle(PI))
+            }
+        }
+    }
 
     RobotPose::new(isometry)
 }

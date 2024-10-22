@@ -1,16 +1,19 @@
 //! The engine managing behavior execution and role state.
 
 use bevy::prelude::*;
-use bifrost::communication::GameControllerMessage;
+use bifrost::communication::{GameControllerMessage, GamePhase};
 use enum_dispatch::enum_dispatch;
 use heimdall::{Bottom, Top};
 use nalgebra::Point2;
 
 use crate::{
     behavior::{
-        behaviors::{CatchFall, Observe, Sitting, Standup, StartUp, Walk},
+        behaviors::{
+            CatchFall, Observe, Sitting, Stand, StandLookAt, Standup, StartUp, Walk, WalkTo,
+            WalkToSet,
+        },
         primary_state::PrimaryState,
-        roles::Attacker,
+        roles::{Attacker, Defender, Keeper},
         BehaviorConfig,
     },
     core::{
@@ -27,11 +30,6 @@ use crate::{
         fsr::Contacts,
     },
     vision::ball_detection::classifier::Balls,
-};
-
-use super::{
-    behaviors::{Stand, StandLookAt, WalkToSet},
-    roles::Keeper,
 };
 
 /// Context that is passed into the behavior engine.
@@ -129,6 +127,7 @@ pub enum BehaviorKind {
     Observe(Observe),
     Stand(Stand),
     Walk(Walk),
+    WalkTo(WalkTo),
     WalkToSet(WalkToSet),
     Standup(Standup),
     CatchFall(CatchFall),
@@ -192,8 +191,9 @@ pub trait Role {
 #[derive(Debug)]
 pub enum RoleKind {
     Attacker(Attacker),
-    // Add new roles here!
     Keeper(Keeper),
+    Defender(Defender),
+    // Add new roles here!
 }
 
 impl RoleKind {
@@ -202,17 +202,23 @@ impl RoleKind {
         // TODO: get the default role for each robot by player number
         match player_number {
             1 => RoleKind::Keeper(Keeper),
-            5 => RoleKind::Attacker(Attacker),
-            _ => RoleKind::Attacker(Attacker),
+            5 => RoleKind::Attacker(Attacker::default()),
+            _ => RoleKind::Defender(Defender),
         }
     }
+
+    // fn by_game_state(
+    //     player_number: u8,
+    //     game_controller_message: &Option<GameControllerMessage>,
+    // ) -> Self {
+    // }
 }
 
 /// Resource that is exposed and keeps track of the current role and behavior.
 #[derive(Debug, Resource)]
 pub struct BehaviorEngine {
     /// Current robot role
-    role: RoleKind,
+    pub role: RoleKind,
     /// Current robot behavior
     // TODO: Make private.
     pub behavior: BehaviorKind,
@@ -222,7 +228,7 @@ pub struct BehaviorEngine {
 impl Default for BehaviorEngine {
     fn default() -> Self {
         Self {
-            role: RoleKind::Attacker(Attacker),
+            role: RoleKind::Defender(Defender),
             behavior: BehaviorKind::default(),
             prev_behavior_for_standup: None,
         }
@@ -232,13 +238,20 @@ impl Default for BehaviorEngine {
 impl BehaviorEngine {
     /// Assigns roles based on player number and other information like what
     /// robot is closest to the ball, missing robots, etc.
-    fn assign_role(context: Context) -> RoleKind {
+    fn assign_role(&self, context: Context) -> RoleKind {
+        if context.ball_position.is_some() {
+            if let RoleKind::Attacker(attacker) = &self.role {
+                return RoleKind::Attacker(*attacker);
+            }
+            return RoleKind::Attacker(Attacker::default());
+        }
+
         RoleKind::by_player_number(context.player_config.player_number)
     }
 
     /// Executes one step of the behavior engine
     pub fn step(&mut self, context: Context, control: &mut Control) {
-        self.role = Self::assign_role(context.clone());
+        self.role = self.assign_role(context.clone());
 
         self.transition(context.clone(), control);
 
@@ -292,6 +305,16 @@ impl BehaviorEngine {
             }
         }
 
+        if let Some(message) = context.game_controller_message {
+            if message.game_phase == GamePhase::PenaltyShoot {
+                if message.kicking_team == 8 {
+                    self.role = RoleKind::Attacker(Attacker::WalkWithBall);
+                } else {
+                    self.behavior = BehaviorKind::Stand(Stand);
+                }
+            }
+        }
+
         let ball_or_origin = context.ball_position.unwrap_or(Point2::origin());
 
         self.behavior = match context.primary_state {
@@ -303,13 +326,19 @@ impl BehaviorEngine {
             PrimaryState::Initial => BehaviorKind::StandLookAt(StandLookAt {
                 target: Point2::origin(),
             }),
-            PrimaryState::Ready => BehaviorKind::WalkToSet(WalkToSet),
+            PrimaryState::Ready => BehaviorKind::WalkToSet(WalkToSet {
+                is_keeper: matches!(self.role, RoleKind::Keeper(_)),
+            }),
             PrimaryState::Set => BehaviorKind::StandLookAt(StandLookAt {
                 target: ball_or_origin,
             }),
             PrimaryState::Playing { .. } => self.role.transition_behavior(context, control),
         };
     }
+
+    // pub fn should_attack(&mut self, context: &Context, _control: &mut Control) -> bool {
+    //     return ;
+    // }
 }
 
 /// System that is called to execute one step of the behavior engine each cycle

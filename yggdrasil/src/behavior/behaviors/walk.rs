@@ -3,65 +3,41 @@ use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
-    core::debug::DebugContext,
     localization::RobotPose,
-    motion::step_planner::Target,
+    motion::walk::engine::Step,
     nao::Priority,
 };
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Walk {
-    pub target: Target,
+    pub step: Step,
+    pub look_target: Option<Point2<f32>>,
 }
 
-fn log_target(target: &Target, dbg: &mut DebugContext) {
-    if let Some(rotation) = target.rotation {
-        let direction = rotation.transform_point(&Point2::new(0.1, 0.0));
-
-        dbg.log(
-            "odometry/target",
-            &rerun::Arrows3D::from_vectors([(direction.x, direction.y, 0.0)])
-                .with_origins([(target.position.x, target.position.y, 0.0)])
-                .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
-        );
-    } else {
-        dbg.log(
-            "odometry/target",
-            &rerun::Points3D::new([(target.position.x, target.position.y, 0.0)])
-                .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
-        );
+impl Walk {
+    pub fn from_direction() -> Self {
+        Self {
+            step: Step {
+                forward: 0.05,
+                ..Default::default()
+            },
+            look_target: None,
+        }
     }
 }
 
 impl Behavior for Walk {
     fn execute(&mut self, context: Context, control: &mut Control) {
-        let target_point = Point3::new(
-            self.target.position.x,
-            self.target.position.y,
-            RobotPose::CAMERA_HEIGHT,
-        );
+        if let Some(point) = self.look_target {
+            let target_point = Point3::new(point.x, point.y, RobotPose::CAMERA_HEIGHT);
 
-        let look_at = context.pose.get_look_at_absolute(&target_point);
-        control
-            .nao_manager
-            .set_head(look_at, HeadJoints::fill(0.5), Priority::High);
-        log_target(&self.target, &mut control.debug_context);
-
-        if control
-            .step_planner
-            .current_absolute_target()
-            .is_some_and(|target| target != &self.target)
-        {
-            control.step_planner.clear_target();
+            let look_at = context.pose.get_look_at_absolute(&target_point);
+            control
+                .nao_manager
+                .set_head(look_at, HeadJoints::fill(0.5), Priority::High);
         }
 
-        control
-            .step_planner
-            .set_absolute_target_if_unset(self.target);
-        if let Some(step) = control.step_planner.plan(context.pose) {
-            control.walking_engine.request_walk(step);
-        } else {
-            control.walking_engine.request_stand();
-        }
+        control.step_planner.clear_target();
+        control.walking_engine.request_walk(self.step);
     }
 }

@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
+    motion::walk::engine::Step,
     nao::{NaoManager, Priority},
 };
 use nidhogg::types::{FillExt, HeadJoints};
@@ -28,12 +29,26 @@ pub struct ObserveBehaviorConfig {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Observe {
     pub starting_time: Instant,
+    pub target: Option<Step>,
 }
 
 impl Default for Observe {
     fn default() -> Self {
         Observe {
             starting_time: Instant::now(),
+            target: None,
+        }
+    }
+}
+
+impl Observe {
+    pub fn with_turning(turn: f32) -> Self {
+        Observe {
+            starting_time: Instant::now(),
+            target: Some(Step {
+                turn: turn,
+                ..Default::default()
+            }),
         }
     }
 }
@@ -53,7 +68,13 @@ impl Behavior for Observe {
             head_yaw_multiplier,
             head_pitch_multiplier,
         );
-        control.walking_engine.request_stand();
+
+        if let Some(target) = self.target {
+            control.step_planner.clear_target();
+            control.walking_engine.request_walk(target);
+        } else {
+            control.walking_engine.request_stand();
+        }
     }
 }
 

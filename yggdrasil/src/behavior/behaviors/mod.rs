@@ -8,6 +8,7 @@ mod stand_look;
 mod standup;
 mod startup;
 mod walk;
+mod walk_to;
 mod walk_to_set;
 
 pub use catchfall::CatchFall;
@@ -18,4 +19,5 @@ pub use stand_look::StandLookAt;
 pub use standup::Standup;
 pub use startup::StartUp;
 pub use walk::Walk;
+pub use walk_to::WalkTo;
 pub use walk_to_set::WalkToSet;

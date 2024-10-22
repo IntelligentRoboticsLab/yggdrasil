@@ -51,6 +51,7 @@ use yggdrasil::core::whistle::WhistleState;
 use yggdrasil::game_controller::GameControllerConfig;
 use yggdrasil::localization::{next_robot_pose, RobotPose};
 use yggdrasil::motion::odometry::{Odometry, OdometryConfig};
+use yggdrasil::motion::step_planner::StepPlanner;
 use yggdrasil::motion::walk::engine::WalkRequest;
 use yggdrasil::prelude::Config;
 use yggdrasil::sensor::orientation::OrientationFilterConfig;
@@ -89,7 +90,7 @@ fn main() -> eframe::Result<()> {
 }
 
 const NUMBER_OF_PLAYERS: usize = 5;
-const FRAMES_PER_SECOND: u64 = 60;
+const FRAMES_PER_SECOND: u64 = 120;
 
 struct Simulation {
     occupied_screen_space: OccupiedScreenSpace,
@@ -203,7 +204,7 @@ impl Simulation {
 
         for robot in self.robots.iter() {
             let robot_pos = robot.pose.world_position();
-            let robot_radius = 0.2; // Robot radius
+            let robot_radius = 0.1; // Robot radius
             let ball_radius = 0.05; // Ball radius
 
             let distance = (robot_pos - ball).norm();
@@ -285,6 +286,7 @@ impl Simulation {
                 );
                 columns[i].label(format!("{:?}", robot.primary_state));
                 columns[i].label(format!("{:?}", robot.engine.behavior));
+                columns[i].label(format!("{:?}", robot.engine.role));
             });
         });
     }
@@ -377,6 +379,7 @@ struct Robot {
     pose: RobotPose,
     engine: BehaviorEngine,
     walking_engine: WalkingEngine,
+    step_planner: StepPlanner,
     sees_ball: bool,
 }
 
@@ -384,6 +387,7 @@ impl Robot {
     fn new(player_config: PlayerConfig, isometry: Isometry2<f32>) -> Self {
         Self {
             walking_engine: WalkingEngine::default(),
+            step_planner: StepPlanner::default(),
             engine: BehaviorEngine::default(),
             primary_state: PrimaryState::Initial,
             pose: RobotPose { inner: isometry },
@@ -409,7 +413,7 @@ impl Robot {
         let mut control = Control {
             nao_manager: &mut Default::default(),
             keyframe_executor: &mut Default::default(),
-            step_planner: &mut Default::default(),
+            step_planner: &mut self.step_planner,
             walking_engine: &mut self.walking_engine,
             debug_context: &mut DebugContext::init("kaas", std::net::IpAddr::from([0, 0, 0, 0]))
                 .unwrap(),
@@ -430,17 +434,22 @@ impl Robot {
             layout_config,
             game_controller_message: Some(gamecontrollermessage),
             pose: &self.pose,
-            ball_position: ball,
             current_behavior: BehaviorKind::Stand(Default::default()),
+            ball_position: if self.sees_ball { ball } else { &None },
         };
 
         self.engine.step(context, &mut control);
 
         self.update_ball(ball);
-        self.walk(0.1, layout_config);
+        self.walk(0.1, layout_config, gamecontrollermessage);
     }
 
-    fn walk(&mut self, walk_scalar: f32, layout_config: &LayoutConfig) {
+    fn walk(
+        &mut self,
+        walk_scalar: f32,
+        layout_config: &LayoutConfig,
+        gamecontrollermessage: &GameControllerMessage,
+    ) {
         let step = match self.walking_engine.request {
             WalkRequest::Walk(step) => Some(step),
             _ => None,
@@ -448,14 +457,20 @@ impl Robot {
         let mut odometry = Odometry::default();
         odometry.offset_to_last = if let Some(step) = step {
             Isometry2::new(
-                Vector2::new(step.forward, -step.left) * walk_scalar,
+                Vector2::new(step.forward, step.left) * walk_scalar,
                 step.turn / FRAMES_PER_SECOND as f32,
             )
         } else {
             Isometry2::identity()
         };
 
-        self.pose = next_robot_pose(&self.pose, &odometry, &self.primary_state, layout_config);
+        self.pose = next_robot_pose(
+            &self.pose,
+            &odometry,
+            &self.primary_state,
+            layout_config,
+            &Some(gamecontrollermessage.clone()),
+        );
     }
 
     fn update_ball(&mut self, ball: &Option<Point2<f32>>) {
@@ -465,14 +480,10 @@ impl Robot {
         };
 
         let relative_ball = self.pose.world_to_robot(ball);
-        let angle = self.calc_angle(ball);
+        let angle = self.pose.angle_to(&ball);
 
+        // self.sees_ball = relative_ball.coords.norm() < 3.0;
         self.sees_ball = relative_ball.coords.norm() < 3.0 && angle.abs() < 45.0f32.to_radians();
-    }
-
-    fn calc_angle(&self, target_point: &Point2<f32>) -> f32 {
-        let target = self.pose.world_to_robot(target_point);
-        target.y.atan2(target.x)
     }
 
     fn draw(
