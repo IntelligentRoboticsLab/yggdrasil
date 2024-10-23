@@ -25,6 +25,7 @@ use crate::{
         falling::FallState,
         fsr::Contacts,
     },
+    vision::ball_detection::classifier::Balls,
 };
 
 use super::{
@@ -330,9 +331,10 @@ pub fn step(
         ResMut<StepPlanner>,
     ),
     debug_context: DebugContext<'_>,
-    (robot_pose, fall_state, game_controller_message): (
+    (robot_pose, fall_state, balls, game_controller_message): (
         Res<RobotPose>,
         Res<FallState>,
+        Res<Balls>,
         Option<Res<GameControllerMessage>>,
     ),
 ) {
@@ -350,7 +352,7 @@ pub fn step(
         game_controller_config: &game_controller_config,
         fall_state: &fall_state,
         pose: &robot_pose,
-        ball_position: &None,
+        ball_position: &balls.most_confident_ball().map(|b| b.position),
         current_behavior: engine.behavior.clone(),
     };
 
