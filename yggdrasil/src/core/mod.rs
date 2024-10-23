@@ -13,5 +13,6 @@ impl PluginGroup for CorePlugins {
             .add(config::ConfigPlugin)
             .add(debug::DebugPlugin)
             .add(audio::AudioPlugin)
+            .add(control::ControlPlugin)
     }
 }

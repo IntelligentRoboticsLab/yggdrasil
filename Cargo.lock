@@ -10166,6 +10166,7 @@ dependencies = [
  "async-std",
  "bevy",
  "bifrost",
+ "bincode",
  "cpal",
  "derive_more",
  "enum_dispatch",

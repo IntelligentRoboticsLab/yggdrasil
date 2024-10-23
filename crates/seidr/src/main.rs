@@ -1,23 +1,24 @@
-//! This example shows how to wrap the Rerun Viewer in your own GUI.
-use app::App;
-use clap::Parser;
-use cli::Cli;
-use connection::TcpConnection;
-use miette::{IntoDiagnostic, Result};
-use re_viewer::external::{eframe, egui, re_log, re_memory};
-use std::{
-    net::{Ipv4Addr, SocketAddrV4},
-    process::exit,
-    time::Duration,
-};
-use yggdrasil::core::control::CONTROL_PORT;
-
 mod app;
 mod cli;
 mod connection;
 mod resource;
 mod seidr;
 mod style;
+
+use std::{
+    net::{Ipv4Addr, SocketAddrV4},
+    process::exit,
+    time::Duration,
+};
+
+use clap::Parser;
+use cli::Cli;
+use connection::TcpConnection;
+use miette::{IntoDiagnostic, Result};
+use re_viewer::external::{eframe, egui, re_log, re_memory};
+
+use app::App;
+use yggdrasil::core::control::CONTROL_PORT;
 
 const MB_TO_BYTES_MULTIPLIER: u64 = 1_000_000;
 

@@ -111,11 +111,6 @@ pub trait ConfigExt {
     fn init_config<T: Resource + Config + Send + Sync + 'static>(&mut self) -> &mut Self
     where
         Self: Sized;
-
-    /// Adds the configuration `T` to the app and mark the resources as inspectable
-    fn init_inspectable_config<T: Config + Send + Sync + Inspect + 'static>(self) -> Result<Self>
-    where
-        Self: Sized;
 }
 
 impl ConfigExt for App {
@@ -125,17 +120,6 @@ impl ConfigExt for App {
     {
         self.world_mut().run_system_once(init_config::<T>);
         self
-    }
-
-    fn init_inspectable_config<T: Config + Send + Sync + Inspect + 'static>(self) -> Result<Self>
-    where
-        Self: Sized,
-    {
-        let app = self.add_startup_system(_init_inspectable_config::<T>)?;
-
-        tracing::info!("Loaded config `{}`", <T as odal::Config>::name());
-
-        Ok(app)
     }
 }
 
@@ -170,37 +154,4 @@ fn init_config<T: Resource + Config + Send + Sync + 'static>(
     .unwrap_or_else(|_| panic!("failed to load config: {}", T::PATH));
 
     commands.insert_resource(config);
-}
-
-#[startup_system]
-fn _init_inspectable_config<T: Config + Send + Sync + Inspect + 'static>(
-    storage: &mut Storage,
-    main_dir: &MainConfigDir,
-    overlay_dir: &OverlayConfigDir,
-) -> Result<()> {
-    // add config file path to the config roots
-    let main_path: &Path = main_dir.0.as_ref();
-    let overlay_path: &Path = overlay_dir.0.as_ref();
-
-    let config = match T::load_with_overlay(main_path, overlay_path) {
-        Ok(t) => Ok(t),
-        // failed to load any overlay
-        Err(Error {
-            name,
-            kind:
-                ErrorKind::Load {
-                    path,
-                    config_kind: ConfigKind::Overlay,
-                    ..
-                },
-        }) => {
-            // log and use only main config
-            tracing::debug!("`{name}`: Failed to read overlay from `{path}`");
-            // use only root in that case
-            T::load(main_path)
-        }
-        Err(e) => Err(e),
-    }?;
-
-    storage.add_inspectable_resource(Resource::new(config))
 }

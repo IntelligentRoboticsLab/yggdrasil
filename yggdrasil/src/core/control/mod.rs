@@ -1,50 +1,69 @@
-use crate::prelude::*;
-use miette::{IntoDiagnostic, Result};
-use std::net::{Ipv4Addr, SocketAddrV4};
-use std::sync::Arc;
-use tokio::net::{TcpListener, TcpStream};
-
 pub mod connect;
 pub mod receive;
 pub mod transmit;
 
+use std::{
+    net::{Ipv4Addr, SocketAddrV4},
+    sync::Arc,
+};
+
+use async_std::net::TcpListener;
+use bevy::{
+    prelude::*,
+    tasks::{block_on, IoTaskPool},
+};
+use miette::{IntoDiagnostic, Result};
+
+use connect::{listen_for_connection, setup_new_connection, ControlDataStream};
+use receive::{handle_message, ControlReceiver};
+use tasks::conditions::task_finished;
+use transmit::{send_current_state, ControlSender};
+
 pub const CONTROL_PORT: u16 = 40001;
 
-pub struct ControlModule;
+pub struct ControlPlugin;
 
-pub struct ControlData {
-    listener_socket: Arc<TcpListener>,
-    stream: Option<Arc<TcpStream>>,
-}
-
-impl ControlModule {
-    async fn new_control_socket() -> Result<TcpListener> {
-        let listener_socket =
-            TcpListener::bind(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, CONTROL_PORT))
-                .await
-                .into_diagnostic()?;
-
-        Ok(listener_socket)
-    }
-
-    #[startup_system]
-    fn add_resources(storage: &mut Storage, dispatcher: &AsyncDispatcher) -> Result<()> {
-        let control_listen_socket = dispatcher.handle().block_on(Self::new_control_socket())?;
-
-        storage.add_resource(Resource::new(ControlData {
-            listener_socket: Arc::new(control_listen_socket),
-            stream: None,
-        }))?;
-
-        Ok(())
+impl Plugin for ControlPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, setup)
+            .add_systems(
+                Update,
+                (listen_for_connection, setup_new_connection)
+                    .chain()
+                    .run_if(not(resource_exists::<ControlDataStream>
+                        .and_then(task_finished::<ControlDataStream>))),
+            )
+            .add_systems(
+                Update,
+                handle_message.run_if(resource_exists::<ControlReceiver>),
+            )
+            .add_systems(
+                Update,
+                send_current_state.run_if(resource_exists::<ControlSender>),
+            );
     }
 }
 
-impl Module for ControlModule {
-    fn initialize(self, app: App) -> Result<App> {
-        app.add_startup_system(Self::add_resources)?
-            .add_module(connect::ControlConnectModule)?
-            .add_module(receive::ControlReceiveModule)?
-            .add_module(transmit::ControlTransmitModule)
+#[derive(Resource, Clone)]
+pub struct ControlListenSocket {
+    socket: Arc<TcpListener>,
+}
+
+impl ControlListenSocket {
+    async fn bind() -> Result<Self> {
+        let socket_addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, CONTROL_PORT);
+        let socket = TcpListener::bind(socket_addr).await.into_diagnostic()?;
+
+        let socket = Arc::new(socket);
+
+        Ok(Self { socket })
     }
+}
+
+fn setup(mut commands: Commands) {
+    let io = IoTaskPool::get();
+    let control_listen_socket = block_on(io.spawn(ControlListenSocket::bind()))
+        .expect("Failed to bind control listen socket");
+    info!("Binded the control listen socket");
+    commands.insert_resource(control_listen_socket);
 }

@@ -1,112 +1,75 @@
-use super::receive::{listen_for_messages, StateUpdateRequest};
-use super::ControlData;
-use crate::nao::Cycle;
-use crate::prelude::*;
-use miette::{miette, IntoDiagnostic};
+use std::{collections::HashMap, time::Duration};
+
+use async_std::{io::WriteExt, net::TcpStream};
+use bevy::prelude::*;
+use futures::{
+    channel::mpsc::{self, UnboundedReceiver},
+    io::WriteHalf,
+    StreamExt,
+};
+use miette::IntoDiagnostic;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::io;
-use std::sync::Arc;
-use tokio::net::TcpStream;
-use tyr::InspectView;
 
-// The number of cycles between each send state to rerun
-const SEND_STATE_PER_CYCLE: usize = 100;
+const SEND_STATE_DELAY: Duration = Duration::from_millis(2_000);
 
-pub struct ControlTransmitModule;
+#[derive(Deref, DerefMut)]
+pub struct ControlHostMessageDelay(Timer);
 
-impl Module for ControlTransmitModule {
-    fn initialize(self, app: App) -> Result<App> {
-        Ok(app
-            .add_task::<AsyncTask<Result<SendStateFinished>>>()?
-            .add_system(send_state_current_state.after(listen_for_messages)))
+impl Default for ControlHostMessageDelay {
+    fn default() -> Self {
+        Self(Timer::new(Duration::ZERO, TimerMode::Repeating))
     }
 }
 
-pub struct SendStateFinished;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RobotStateMsg(pub HashMap<String, String>);
-
-impl From<&InspectView> for RobotStateMsg {
-    fn from(inspect_view: &InspectView) -> Self {
-        let mut resource_map = HashMap::new();
-        let resources = inspect_view.resources();
-        for resource in resources {
-            let locked_resource = resource.read().unwrap();
-            let resource_name = locked_resource.name().to_string();
-            let resource_json = locked_resource.to_json().to_string();
-            resource_map.insert(resource_name, resource_json);
-        }
-        RobotStateMsg(resource_map)
-    }
+#[derive(Resource, Serialize, Deserialize, Debug)]
+pub struct ControlHostMessage {
+    pub resources: HashMap<String, String>,
 }
 
-async fn send_state(stream: Arc<TcpStream>, state: RobotStateMsg) -> Result<SendStateFinished> {
-    let msg = bincode::serialize(&state).into_diagnostic()?;
-
-    let msg_size = msg.len();
-    let msg_size_serialized = bincode::serialize(&msg_size).into_diagnostic()?;
-    send_message(stream.clone(), msg_size_serialized).await?;
-    send_message(stream, msg).await?;
-
-    Ok(SendStateFinished)
+#[derive(Resource)]
+pub struct ControlSender {
+    pub tx: mpsc::UnboundedSender<ControlHostMessage>,
 }
 
-async fn send_message(stream: Arc<TcpStream>, msg: Vec<u8>) -> Result<()> {
-    stream.writable().await.into_diagnostic()?;
-
-    match stream.try_write(&msg) {
-        Ok(_num_bytes) => (),
-        Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-            return Err(miette!("Could not read"))
-        }
-        Err(_) => return Err(miette!("Something went wrong with reading")),
+pub async fn send_messages(
+    mut stream: WriteHalf<TcpStream>,
+    mut receiver: UnboundedReceiver<ControlHostMessage>,
+) {
+    while let Some(message) = receiver.next().await {
+        info!("Send message: {:#?}", message);
+        let serialized_msg = bincode::serialize(&message)
+            .into_diagnostic()
+            .expect("Was not able to serialize a ControlHostMessage");
+        stream
+            .write_all(&serialized_msg)
+            .await
+            .expect("Failed writing the control message to the stream");
     }
-    Ok(())
+
+    info!("Stopping send messages loop")
 }
 
-#[system]
-fn send_state_current_state(
-    control_data: &mut ControlData,
-    send_state_task: &mut AsyncTask<Result<SendStateFinished>>,
-    communicate_manual_state_update_task: &mut AsyncTask<Result<StateUpdateRequest>>,
-    inspect_view: &InspectView,
-    current_cycle: &Cycle,
-) -> Result<()> {
-    // No need for the system to execute further if the stream does not exist
-    let Some(stream) = control_data.stream.clone() else {
-        return Ok(());
-    };
+pub fn send_current_state(
+    sender: Res<ControlSender>,
+    time: Res<Time>,
+    mut delay: Local<ControlHostMessageDelay>,
+) {
+    delay.tick(time.delta());
 
-    // Send current robot state immediately if requested
-    if let Some(Ok(_)) = communicate_manual_state_update_task.poll() {
-        let msg = RobotStateMsg::from(inspect_view);
-        let Some(_) = send_state_task.poll() else {
-            return Ok(());
-        };
-        let _ = send_state_task.try_spawn(send_state(stream, msg));
-        return Ok(());
-    };
-
-    // Poll the send_state_task only every X cycles
-    if current_cycle.0 % SEND_STATE_PER_CYCLE == 0 {
-        // Collect the robot state and create the message
-        let msg = RobotStateMsg::from(inspect_view);
-
-        let Some(_) = send_state_task.poll() else {
-            // When the task is not finished and not active (
-            // this scenario happens when there is a connection and the
-            // task was not spawned before)
-            if !send_state_task.active() {
-                let _ = send_state_task.try_spawn(send_state(stream, msg));
-            }
-            return Ok(());
-        };
-        // Spawn a new stask to send the current state because the old
-        // task is finished
-        let _ = send_state_task.try_spawn(send_state(stream, msg));
+    if !delay.finished() {
+        return;
     }
 
-    Ok(())
+    info!("Send current state");
+
+    let state = collect_resource_states(time.elapsed().as_secs().to_string());
+    sender.tx.unbounded_send(state).unwrap();
+
+    delay.set_duration(SEND_STATE_DELAY);
+}
+
+fn collect_resource_states(val: String) -> ControlHostMessage {
+    let mut resources = HashMap::new();
+    resources.insert("Resource1".to_string(), val);
+    ControlHostMessage { resources }
 }

@@ -2,7 +2,7 @@ use miette::{IntoDiagnostic, Result};
 use serde_json::Value;
 use std::{collections::HashMap, sync::MutexGuard};
 
-use yggdrasil::core::control::transmit::RobotStateMsg;
+use yggdrasil::core::control::transmit::ControlHostMessage;
 
 #[derive(Default, Debug)]
 pub struct RobotResources(pub HashMap<String, String>);
@@ -10,10 +10,10 @@ pub struct RobotResources(pub HashMap<String, String>);
 impl RobotResources {
     pub fn update_resources(
         &mut self,
-        updated_state_msg: RobotStateMsg,
+        updated_state_msg: ControlHostMessage,
         mut changed_resources: MutexGuard<HashMap<String, bool>>,
     ) -> Result<()> {
-        let updated_resource_map = updated_state_msg.0;
+        let updated_resource_map = updated_state_msg.resources;
 
         for (resource_name, updated_data) in updated_resource_map.into_iter() {
             if let Some(data) = self.0.get_mut(&resource_name) {

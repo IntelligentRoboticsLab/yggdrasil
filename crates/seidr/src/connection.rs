@@ -1,6 +1,6 @@
 use miette::{IntoDiagnostic, Result};
+use tracing::info;
 use std::{
-    mem,
     sync::{Arc, Mutex},
     time::Instant,
 };
@@ -12,7 +12,7 @@ use tokio::{
     },
     task,
 };
-use yggdrasil::core::control::transmit::RobotStateMsg;
+use yggdrasil::core::control::transmit::ControlHostMessage;
 
 pub struct TcpConnection {
     pub rs: OwnedReadHalf,
@@ -61,50 +61,35 @@ pub fn receiving_responses<F>(
     last_resource_update: Arc<Mutex<Option<Instant>>>,
     handle_message: F,
 ) where
-    F: Fn(RobotStateMsg) + Send + Sync + 'static,
+    F: Fn(ControlHostMessage) + Send + Sync + 'static,
 {
-    let mut size_buffer = [0; mem::size_of::<usize>()];
-    let mut size: Option<usize> = None;
+    // let mut size_buffer = [0; mem::size_of::<usize>()];
+    // let mut size: Option<usize> = None;
 
     tokio::spawn(async move {
         loop {
+            info!("Try to receive");
             rs.readable().await.into_diagnostic().unwrap();
+            info!("Got a message");
+            let mut buffer = Vec::new();
+            let num_bytes = rs.read_buf(&mut buffer).await.unwrap();
 
-            if let Some(msg_bytes) = size {
-                let mut msg = vec![0; msg_bytes];
-                rs.read_exact(&mut msg).await.unwrap();
-                size = None;
-
-                match bincode::deserialize::<RobotStateMsg>(&msg).into_diagnostic() {
-                    Ok(robot_state_msg) => {
-                        handle_message(robot_state_msg);
-                        *last_resource_update.lock().unwrap() = Some(Instant::now());
-                    }
-                    Err(e) => {
-                        println!("Failed to deserialize server response; err = {:?}", e);
-                        break;
-                    }
-                }
-                continue;
-            }
-
-            let num_bytes = rs.read(&mut size_buffer).await.unwrap();
+            info!("Received a message of {} bytes", num_bytes);
 
             // If the message is zero bytes the connection is closing
             if num_bytes == 0 {
                 break;
             }
 
-            if num_bytes == mem::size_of::<usize>() {
-                match bincode::deserialize::<usize>(&size_buffer).into_diagnostic() {
-                    Ok(size_) => size = Some(size_),
-                    Err(e) => {
-                        println!(
-                            "Failed to deserialize server response, size message; err = {:?}",
-                            e
-                        );
-                        break;
-                    }
+            match bincode::deserialize::<ControlHostMessage>(&buffer).into_diagnostic() {
+                Ok(robot_state_msg) => {
+                    info!("Robot state received: {:#?}", robot_state_msg);
+                    handle_message(robot_state_msg);
+                    *last_resource_update.lock().unwrap() = Some(Instant::now());
+                }
+                Err(e) => {
+                    tracing::error!("Failed to deserialize server response; err = {:?}", e);
+                    break;
                 }
             }
 
