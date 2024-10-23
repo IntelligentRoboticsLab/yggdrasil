@@ -10,7 +10,7 @@ use crate::config::{Robot, SindriConfig};
 /// Scan the current network for online robots.
 #[derive(Clone, Debug, Default, Parser)]
 pub struct ConfigOptsScan {
-    /// The range of robot numbers to be pinged [default: 20 29]
+    /// The range of robot numbers to be pinged [defaults to [min, max] robot numbers in the sindri config]
     #[clap(short, long, num_args = 2)]
     range: Option<Vec<u8>>,
 
