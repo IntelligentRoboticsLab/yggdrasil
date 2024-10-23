@@ -82,6 +82,8 @@ impl<'a> SindriConfig {
             .robots
             .iter()
             .map(|r| r.number)
+            // Filter out `local` robot
+            .filter(|r| *r != 0)
             .min()
             .ok_or(miette!("Failed to get minimum robot number!"))?;
 

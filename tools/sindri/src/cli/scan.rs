@@ -10,7 +10,7 @@ use crate::config::{Robot, SindriConfig};
 /// Scan the current network for online robots.
 #[derive(Clone, Debug, Default, Parser)]
 pub struct ConfigOptsScan {
-    /// The range of robot numbers to be pinged [default: 20 26]
+    /// The range of robot numbers to be pinged [default: 20 29]
     #[clap(short, long, num_args = 2)]
     range: Option<Vec<u8>>,
 
@@ -48,14 +48,19 @@ impl Scan {
 
         let mut scan_set = JoinSet::new();
         for robot_number in range {
-            let robot = config
-                .robot(robot_number, self.scan.wired)
-                .unwrap_or(Robot::new(
-                    "unknown",
-                    robot_number,
-                    config.team_number,
-                    self.scan.wired,
-                ));
+            let robot = match self.scan.team_number {
+                Some(team_number) => {
+                    Robot::new("unknown", robot_number, team_number, self.scan.wired)
+                }
+                None => config
+                    .robot(robot_number, self.scan.wired)
+                    .unwrap_or(Robot::new(
+                        "unknown",
+                        robot_number,
+                        config.team_number,
+                        self.scan.wired,
+                    )),
+            };
 
             scan_set.spawn(ping(robot));
         }
