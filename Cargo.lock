@@ -8211,6 +8211,7 @@ dependencies = [
  "colored",
  "dialoguer",
  "dot-structures",
+ "futures",
  "glob",
  "graphviz-rust",
  "home",

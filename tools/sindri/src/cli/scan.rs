@@ -1,9 +1,13 @@
-use std::process::Stdio;
+use std::{
+    net::Ipv4Addr,
+    process::{ExitStatus, Stdio},
+};
 
 use clap::Parser;
 use colored::Colorize;
+use futures::{stream::FuturesUnordered, TryStreamExt};
 use miette::{miette, IntoDiagnostic, Result};
-use tokio::{process::Command, task::JoinSet};
+use tokio::process::Command;
 
 use crate::config::{Robot, SindriConfig};
 
@@ -46,9 +50,8 @@ impl Scan {
 
         println!("Looking for robots...");
 
-        let mut scan_set = JoinSet::new();
-        for robot_number in range {
-            let robot = match self.scan.team_number {
+        let robots = range
+            .map(|robot_number| match self.scan.team_number {
                 Some(team_number) => {
                     Robot::new("unknown", robot_number, team_number, self.scan.wired)
                 }
@@ -60,38 +63,42 @@ impl Scan {
                         config.team_number,
                         self.scan.wired,
                     )),
-            };
+            })
+            .collect::<Vec<_>>();
 
-            scan_set.spawn(ping(robot));
+        let scans = robots
+            .iter()
+            .map(|robot| ping(robot.ip()))
+            .collect::<FuturesUnordered<_>>()
+            .try_collect::<Vec<_>>()
+            .await?;
+
+        for (robot, status) in robots.into_iter().zip(scans) {
+            print_ping_status(robot, status.success());
         }
 
-        // wait until all ping commands have been completed
-        while let Some(res) = scan_set.join_next().await.transpose().into_diagnostic()? {
-            // if something went wrong, we'll want to print the diagnostic!
-            if let Err(diagnostic) = res {
-                eprintln!("{diagnostic}");
-            }
-        }
         Ok(())
     }
 }
 
-async fn ping(robot: Robot) -> Result<()> {
-    let addr = robot.ip();
-
+async fn ping(ip: Ipv4Addr) -> Result<ExitStatus> {
     let ping_status = Command::new("ping")
         .arg("-W1") // 1 second time out
         .arg("-q") // quiet output
         .arg("-c2") // require only 2 replies
         .arg("-s0") // number of data bytes to be sent
-        .arg(addr.to_string())
+        .arg(ip.to_string())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
         .await
         .into_diagnostic()?;
 
-    let online_status = if ping_status.success() {
+    Ok(ping_status)
+}
+
+fn print_ping_status(robot: Robot, online: bool) {
+    let online_status = if online {
         "ONLINE ".green().bold()
     } else {
         "OFFLINE".red().bold()
@@ -99,10 +106,8 @@ async fn ping(robot: Robot) -> Result<()> {
 
     println!(
         "[+] {} | {} | {}",
-        addr,
+        robot.ip(),
         online_status,
         robot.name.white().bold(),
     );
-
-    Ok(())
 }

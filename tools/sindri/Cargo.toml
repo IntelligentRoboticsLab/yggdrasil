@@ -19,6 +19,7 @@ clap = { workspace = true, features = ["derive", "string"] }
 colored = { workspace = true }
 dialoguer = { workspace = true }
 dot-structures = { workspace = true }
+futures = { workspace = true }
 glob = { workspace = true }
 graphviz-rust = { workspace = true }
 home = { workspace = true }
