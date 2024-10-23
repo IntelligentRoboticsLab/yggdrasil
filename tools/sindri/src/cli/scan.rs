@@ -5,7 +5,7 @@ use std::{
 
 use clap::Parser;
 use colored::Colorize;
-use futures::{stream::FuturesUnordered, TryStreamExt};
+use futures::{stream::FuturesOrdered, TryStreamExt};
 use miette::{miette, IntoDiagnostic, Result};
 use tokio::process::Command;
 
@@ -57,19 +57,16 @@ impl Scan {
                 }
                 None => config
                     .robot(robot_number, self.scan.wired)
-                    .unwrap_or(Robot::new(
-                        "unknown",
-                        robot_number,
-                        config.team_number,
-                        self.scan.wired,
-                    )),
+                    .unwrap_or_else(|| {
+                        Robot::new("unknown", robot_number, config.team_number, self.scan.wired)
+                    }),
             })
             .collect::<Vec<_>>();
 
         let scans = robots
             .iter()
             .map(|robot| ping(robot.ip()))
-            .collect::<FuturesUnordered<_>>()
+            .collect::<FuturesOrdered<_>>()
             .try_collect::<Vec<_>>()
             .await?;
 
