@@ -3,7 +3,6 @@ use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
-    localization::RobotPose,
     motion::walk::engine::Step,
     nao::Priority,
 };
@@ -17,7 +16,7 @@ pub struct Walk {
 impl Behavior for Walk {
     fn execute(&mut self, context: Context, control: &mut Control) {
         if let Some(point) = self.look_target {
-            let target_point = Point3::new(point.x, point.y, RobotPose::CAMERA_HEIGHT);
+            let target_point = Point3::new(point.x, point.y, 0.0);
 
             let look_at = context.pose.get_look_at_absolute(&target_point);
             control
