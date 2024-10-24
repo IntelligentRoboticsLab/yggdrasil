@@ -19,9 +19,6 @@ pub enum Error {
     #[error("Failed to compile model")]
     CompileError(#[source] openvino::InferenceError),
 
-    #[error("Failed to create executable network")]
-    LoadExecutableNetwork(#[source] openvino::InferenceError),
-
     #[error(
         "`MlModel` input type ({expected:?}) is incompatible with imported model input type\
             ({imported:?}) from `{path}`"
@@ -42,28 +39,11 @@ pub enum Error {
         imported: openvino::ElementType,
     },
 
-    #[error("`MlModel` does not contain an input layer with index {0}!")]
-    MissingInputLayer(usize),
-
-    #[error("`MlModel` does not contain an output layer with index {0}!")]
-    MissingOutputLayer(usize),
-
     #[error("Failed to start inference")]
     StartInference(#[source] openvino::InferenceError),
 
-    #[error(
-        "Inference input is of size {actual}, while the model expects an input of size {expected}"
-    )]
-    InferenceInputSize { expected: usize, actual: usize },
-
     #[error("Failed to run inference")]
     RunInference(#[source] openvino::InferenceError),
-
-    #[error("Failed to create inference input tensor for model: {1}")]
-    CreateInputTensor(#[source] openvino::InferenceError, &'static str),
-
-    #[error("Failed to set blob for tensor `{1}` ({2})")]
-    SetBlob(#[source] openvino::InferenceError, String, &'static str),
 
     #[error("OpenVINO threw an unexpected error")]
     UnexpectedOpenvino(#[from] openvino::InferenceError),

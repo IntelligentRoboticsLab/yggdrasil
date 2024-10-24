@@ -103,11 +103,11 @@ pub trait Parameters: Sized {
         1
     }
 
-    /// Creates a new instance of `Self` from an openvino Tensor.
+    /// Creates a new instance of `Self` from the openvino input tensors.
     ///
     /// # Safety
     ///
-    /// The blob must be a valid representation of `Self`.
+    /// The tensor must be a valid representation of `Self`.
     unsafe fn from_tensors(iter: impl Iterator<Item = Tensor>) -> Self;
 }
 

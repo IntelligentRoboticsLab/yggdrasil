@@ -38,6 +38,7 @@ impl Core {
     }
 }
 
+/// Wrapper around a compiled ML model that implements Send + Sync.
 #[derive(Deref, DerefMut)]
 pub struct CompiledModel(openvino::CompiledModel);
 
@@ -46,7 +47,9 @@ pub struct CompiledModel(openvino::CompiledModel);
 /// This struct is Sync because there is no internal mutability.
 unsafe impl Sync for CompiledModel {}
 
-/// A ML model.
+/// A compiled ML model with the descriptions for its in-/outputs.
+///
+/// Used to run inference on the model.
 #[derive(Resource)]
 pub struct ModelExecutor<M: MlModel> {
     compiled_model: CompiledModel,
@@ -63,10 +66,6 @@ impl<M: MlModel> ModelExecutor<M> {
     /// - The model cannot be loaded.
     /// - An inference request cannot be created, which
     ///   is needed to load relevant model settings.
-    ///
-    /// # Panics
-    ///
-    /// If no mutable reference to the model executor can be obtained this function panics.
     pub fn new(core: &mut Core) -> Result<Self> {
         let compiled_model = {
             // weights_path parameter is unused for ONNX
@@ -173,7 +172,7 @@ impl<M: MlModel> ModelExecutor<M> {
             let actual = input.len() / dtype_size;
             assert_eq!(expected, actual, "Input has the wrong amount of elements!");
 
-            let mut tensor = description.to_tensor();
+            let mut tensor = description.to_empty_tensor();
             {
                 let data = tensor.get_raw_data_mut()?;
                 data.copy_from_slice(input);
@@ -232,7 +231,8 @@ impl<M: MlModel> InferRequest<M> {
     ///
     /// # Panics
     ///
-    /// Panics if the output tensor is not found, which should never happen.
+    /// - If the output tensor does not have the expected number of elements.
+    /// - If the output tensor is not found, which should never happen.
     #[must_use]
     pub fn fetch_output(self) -> M::Outputs {
         let iter = self.output_descriptions.iter().map(|description| {
@@ -257,13 +257,7 @@ impl<M: MlModel> InferRequest<M> {
     }
 }
 
-/// Description of a tensor parameter.
-pub struct TensorDescription {
-    name: String,
-    shape: Shape,
-    dtype: openvino::ElementType,
-}
-
+/// Wrapper around [`openvino::Shape`] that implements Send + Sync.
 #[derive(Deref)]
 struct Shape(openvino::Shape);
 
@@ -272,6 +266,13 @@ struct Shape(openvino::Shape);
 /// This struct is Send + Sync because there is no internal mutability.
 unsafe impl Send for Shape {}
 unsafe impl Sync for Shape {}
+
+/// Description of a tensor parameter.
+pub struct TensorDescription {
+    name: String,
+    shape: Shape,
+    dtype: openvino::ElementType,
+}
 
 impl TensorDescription {
     fn new(node: Node) -> Result<Self> {
@@ -292,6 +293,7 @@ impl TensorDescription {
         self.shape.get_dimensions()
     }
 
+    /// Number of elements in the tensor.
     pub fn num_elements(&self) -> usize {
         self.shape.get_dimensions().iter().product::<i64>() as usize
     }
@@ -301,7 +303,8 @@ impl TensorDescription {
         self.dtype
     }
 
-    pub fn to_tensor(&self) -> Tensor {
+    /// Creates an empty tensor following the description.
+    pub fn to_empty_tensor(&self) -> Tensor {
         Tensor::new(self.dtype, &self.shape).expect("Failed to create tensor from description")
     }
 }
