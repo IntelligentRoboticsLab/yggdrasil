@@ -3,6 +3,9 @@ use std::{io::Write, ops::Deref};
 use crate::rgb_image::RgbImage;
 use crate::Result;
 
+use fast_image_resize::{self as fir, ResizeOptions};
+use itertools::Itertools;
+
 /// An object that holds a YUYV NAO camera image.
 pub struct YuyvImage {
     pub(super) frame: linuxvideo::Frame,
@@ -144,6 +147,43 @@ impl YuyvImage {
             width: self.width,
             height: self.height,
         })
+    }
+
+    /// Resizes the image to the given width and height.
+    ///
+    /// Returns a *YUV444* vec of bytes.
+    pub fn resize(&self, width: u32, height: u32) -> Result<Vec<u8>> {
+        assert!(width % 2 == 0, "width must be a multiple of 2");
+
+        let src_image = fir::images::Image::from_vec_u8(
+            self.width() as u32 / 2,
+            self.height() as u32,
+            self.to_vec(),
+            fir::PixelType::U8x4,
+        )?;
+
+        let mut dst_image = fir::images::Image::new(width, height, src_image.pixel_type());
+
+        let mut resizer = fir::Resizer::new();
+        resizer.resize(
+            &src_image,
+            &mut dst_image,
+            &ResizeOptions::new().resize_alg(fir::ResizeAlg::Nearest),
+        )?;
+
+        // Luma subsampling to make the ratio 4:4:4 again
+        let mut out = Vec::with_capacity(width as usize * height as usize * 3);
+        dst_image
+            .into_vec()
+            .into_iter()
+            .tuples::<(_, _, _, _)>()
+            // PERF: We use extend here because calling map and then flattening is somehow *extremely* slow
+            // Seems to be because of: https://github.com/rust-lang/rust/issues/79992#issuecomment-743937191
+            .for_each(|(y1, u, y2, v)| {
+                out.extend([((u16::from(y1) + u16::from(y2)) / 2) as u8, u, v]);
+            });
+
+        Ok(out)
     }
 }
 

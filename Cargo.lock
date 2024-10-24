@@ -3116,11 +3116,12 @@ dependencies = [
 
 [[package]]
 name = "fast_image_resize"
-version = "3.0.4"
+version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9d450fac8a334ad72825596173f0f7767ff04dd6e3d59c49c894c4bc2957e8b"
+checksum = "a66a61fbfc84ef99a839499cf9e5a7c2951d2da874ea00f29ee938bc50d1b396"
 dependencies = [
  "cfg-if",
+ "document-features",
  "num-traits",
  "thiserror",
 ]
@@ -3808,7 +3809,9 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "fast-math",
+ "fast_image_resize",
  "image",
+ "itertools 0.13.0",
  "linuxvideo",
  "miette",
  "nalgebra",

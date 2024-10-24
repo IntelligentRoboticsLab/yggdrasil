@@ -10,7 +10,6 @@ use crate::vision::{
 use bevy::core::FrameCount;
 use bevy::prelude::*;
 use box_coder::BoxCoder;
-use fast_image_resize as fr;
 use heimdall::{CameraLocation, Top};
 use itertools::Itertools;
 use miette::IntoDiagnostic;
@@ -117,11 +116,7 @@ fn detect_robots(
     cycle: Res<FrameCount>,
 ) {
     let resized_image = image
-        .resized_yuv(
-            config.input_width,
-            config.input_height,
-            fr::ResizeAlg::Nearest,
-        )
+        .resize(config.input_width, config.input_height)
         .expect("failed to resize image for robot detection");
 
     commands
