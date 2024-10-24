@@ -33,9 +33,9 @@ impl Role for Defender {
         {
             if let BehaviorKind::Observe(observe) = context.current_behavior {
                 return BehaviorKind::Observe(observe);
-            } else {
-                return BehaviorKind::Observe(Observe::with_turning(-0.4));
-            };
+            }
+
+            return BehaviorKind::Observe(Observe::with_turning(-0.4));
         }
 
         BehaviorKind::WalkTo(WalkTo {

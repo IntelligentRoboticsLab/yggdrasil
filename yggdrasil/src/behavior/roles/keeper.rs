@@ -25,9 +25,9 @@ impl Role for Keeper {
         if control.step_planner.reached_target() {
             if let BehaviorKind::Observe(observe) = context.current_behavior {
                 return BehaviorKind::Observe(observe);
-            } else {
-                BehaviorKind::Observe(Observe::default())
-            };
+            }
+
+            return BehaviorKind::Observe(Observe::default());
         }
 
         BehaviorKind::WalkTo(WalkTo {

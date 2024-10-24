@@ -42,11 +42,12 @@ impl Default for Observe {
 }
 
 impl Observe {
+    #[must_use]
     pub fn with_turning(turn: f32) -> Self {
         Observe {
             starting_time: Instant::now(),
             target: Some(Step {
-                turn: turn,
+                turn,
                 ..Default::default()
             }),
         }

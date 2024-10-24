@@ -87,9 +87,9 @@ impl Role for Attacker {
         if context.pose.distance_to(&Point2::origin()) < 0.2 {
             if let BehaviorKind::Observe(observe) = context.current_behavior {
                 return BehaviorKind::Observe(observe);
-            } else {
-                return BehaviorKind::Observe(Observe::with_turning(0.4));
-            };
+            }
+
+            return BehaviorKind::Observe(Observe::with_turning(0.4));
         }
         BehaviorKind::WalkTo(WalkTo {
             target: Target {
@@ -102,19 +102,19 @@ impl Role for Attacker {
 
 impl Attacker {
     fn next_state(
-        &self,
+        self,
         ball_distance: f32,
         ball_goal_center_align: bool,
         ball_aligned: bool,
         ball_goal_aligned: bool,
     ) -> Attacker {
-        match &self {
+        match self {
             _ if ball_distance > 0.5 => Attacker::WalkToBall,
             Attacker::WalkToBall if ball_distance < 0.3 => Attacker::WalkAlign,
             Attacker::WalkAlign if ball_goal_center_align && ball_aligned => Attacker::WalkWithBall,
             Attacker::WalkWithBall if !ball_goal_aligned => Attacker::WalkAlign,
 
-            _ => *self,
+            _ => self,
         }
     }
 }

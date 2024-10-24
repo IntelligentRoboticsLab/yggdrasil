@@ -104,10 +104,12 @@ impl RobotPose {
         HeadJoints { yaw, pitch }
     }
 
+    #[must_use]
     pub fn distance_to(&self, point: &Point2<f32>) -> f32 {
         (self.world_position() - point).norm()
     }
 
+    #[must_use]
     pub fn angle_to(&self, point: &Point2<f32>) -> f32 {
         let robot_to_point = self.world_to_robot(point).xy();
         robot_to_point.y.atan2(robot_to_point.x)
@@ -153,7 +155,7 @@ pub fn next_robot_pose(
                 );
             } else {
                 isometry =
-                    Isometry2::from_parts(Translation2::new(4.5, 0.0), UnitComplex::from_angle(PI))
+                    Isometry2::from_parts(Translation2::new(4.5, 0.0), UnitComplex::from_angle(PI));
             }
         }
     }

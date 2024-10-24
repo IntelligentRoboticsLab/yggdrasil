@@ -179,6 +179,7 @@ impl StepPlanner {
         self.reached_translation_target && self.reached_rotation_target
     }
 
+    #[must_use]
     pub fn has_target(&self) -> bool {
         self.target.is_some()
     }
