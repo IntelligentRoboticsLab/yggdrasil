@@ -363,7 +363,8 @@ pub fn step(
     let most_confident_ball = bottom_balls
         .most_confident_ball()
         .map(|b| b.position)
-        .or(top_balls.most_confident_ball().map(|b| b.position));
+        .or(top_balls.most_confident_ball().map(|b| b.position))
+        .filter(|ball| ball.x > 10.0 || ball.x < -10.0 || ball.y > 4.0 || ball.y < -4.0);
 
     let context = Context {
         robot_info: robot_info.as_ref(),

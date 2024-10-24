@@ -37,18 +37,19 @@ impl Behavior for WalkToSet {
             .nao_manager
             .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
 
-        let target: Target = Target {
+        let target = Target {
             position: set_robot_position.isometry.translation.vector.into(),
             rotation: Some(set_robot_position.isometry.rotation),
         };
-        if self.is_keeper
-            && (!control.step_planner.has_target()
-                || (control
-                    .step_planner
-                    .current_absolute_target()
-                    .is_some_and(|target| target == &KEEPER_PRE_SET_POS)
-                    && !control.step_planner.reached_target()))
-        {
+
+        let reached_pre_set = !control.step_planner.has_target()
+            || (control
+                .step_planner
+                .current_absolute_target()
+                .is_some_and(|target| target == &KEEPER_PRE_SET_POS)
+                && !control.step_planner.reached_target());
+
+        if self.is_keeper && reached_pre_set {
             control.step_planner.set_absolute_target(KEEPER_PRE_SET_POS);
         } else {
             control.step_planner.set_absolute_target(target);

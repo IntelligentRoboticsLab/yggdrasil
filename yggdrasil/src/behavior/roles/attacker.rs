@@ -1,10 +1,11 @@
-use nalgebra::Point2;
+use nalgebra::{Point2, Point3};
 
 use crate::{
     behavior::{
         behaviors::{Observe, Walk, WalkTo},
         engine::{BehaviorKind, Context, Control, Role},
     },
+    localization::RobotPose,
     motion::{step_planner::Target, walk::engine::Step},
 };
 
@@ -53,10 +54,12 @@ impl Role for Attacker {
                 ball_goal_aligned,
             );
             match self {
-                Attacker::WalkToBall => {
+                Attacker::WalkToBall | Attacker::WalkWithBall => {
                     return BehaviorKind::WalkTo(WalkTo { target: ball_pos });
                 }
                 Attacker::WalkAlign => {
+                    let ball_target = Point3::new(ball.x, ball.y, RobotPose::CAMERA_HEIGHT);
+
                     if absolute_ball_angle > absolute_goal_angle_left {
                         return BehaviorKind::Walk(Walk {
                             step: Step {
@@ -64,7 +67,7 @@ impl Role for Attacker {
                                 turn: -0.3,
                                 ..Default::default()
                             },
-                            look_target: Some(*ball),
+                            look_target: Some(ball_target),
                         });
                     }
                     if absolute_ball_angle < absolute_goal_angle_right {
@@ -74,12 +77,9 @@ impl Role for Attacker {
                                 turn: 0.3,
                                 ..Default::default()
                             },
-                            look_target: Some(*ball),
+                            look_target: Some(ball_target),
                         });
                     }
-                }
-                Attacker::WalkWithBall => {
-                    return BehaviorKind::WalkTo(WalkTo { target: ball_pos });
                 }
             }
         }
@@ -91,6 +91,7 @@ impl Role for Attacker {
 
             return BehaviorKind::Observe(Observe::with_turning(0.4));
         }
+
         BehaviorKind::WalkTo(WalkTo {
             target: Target {
                 position: context.ball_position.unwrap_or(Point2::new(0.0, 0.0)),
