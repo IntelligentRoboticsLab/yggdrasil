@@ -2942,6 +2942,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_filter"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f2c92ceda6ceec50f43169f9ee8424fe2db276791afde7b2cd8bc084cb376ab"
+dependencies = [
+ "log",
+ "regex",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2950,8 +2960,20 @@ dependencies = [
  "humantime",
  "is-terminal",
  "log",
- "regex",
  "termcolor",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.11.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e13fa619b91fb2381732789fc5de83b45675e882f66623b7d8cb4f643017018d"
+dependencies = [
+ "anstream",
+ "anstyle",
+ "env_filter",
+ "humantime",
+ "log",
 ]
 
 [[package]]
@@ -5518,18 +5540,19 @@ dependencies = [
 
 [[package]]
 name = "openvino"
-version = "0.6.0"
-source = "git+https://github.com/YukumoHunter/openvino-rs.git?branch=evil-hack#151b481b5d7c6449f2f41685ca861978309ead52"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f03a664ab0b6917131f5c1a787795fa4d19ad6a334caf9c96284453abdf23fd"
 dependencies = [
  "openvino-finder",
  "openvino-sys",
- "thiserror",
 ]
 
 [[package]]
 name = "openvino-finder"
-version = "0.6.0"
-source = "git+https://github.com/YukumoHunter/openvino-rs.git?branch=evil-hack#151b481b5d7c6449f2f41685ca861978309ead52"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34d6bbb3e00d9ad3cd60bca1341665a9cfb2b6764df37c58d921627368ae32fc"
 dependencies = [
  "cfg-if",
  "log",
@@ -5537,10 +5560,11 @@ dependencies = [
 
 [[package]]
 name = "openvino-sys"
-version = "0.6.0"
-source = "git+https://github.com/YukumoHunter/openvino-rs.git?branch=evil-hack#151b481b5d7c6449f2f41685ca861978309ead52"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04315994236727c3573f7e8d8bf857e93ff373ee2e063f08aa78aceac58e3bc5"
 dependencies = [
- "env_logger",
+ "env_logger 0.11.5",
  "libloading 0.8.5",
  "once_cell",
  "openvino-finder",
@@ -6643,7 +6667,7 @@ version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5e03c0ac294163f0baedf6880f08def725a0080bfd97d3529245f84e5f9e408"
 dependencies = [
- "env_logger",
+ "env_logger 0.10.2",
  "js-sys",
  "log",
  "log-once",
@@ -7678,7 +7702,7 @@ checksum = "47b28eb1c06d5f4f1b18f6b9c543e9c90fedf91211cc89b5a4a6c4cff105ff46"
 dependencies = [
  "anyhow",
  "document-features",
- "env_logger",
+ "env_logger 0.10.2",
  "itertools 0.13.0",
  "log",
  "puffin",
