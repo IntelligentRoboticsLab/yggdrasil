@@ -14,18 +14,6 @@ pub struct Walk {
     pub look_target: Option<Point2<f32>>,
 }
 
-impl Walk {
-    pub fn from_direction() -> Self {
-        Self {
-            step: Step {
-                forward: 0.05,
-                ..Default::default()
-            },
-            look_target: None,
-        }
-    }
-}
-
 impl Behavior for Walk {
     fn execute(&mut self, context: Context, control: &mut Control) {
         if let Some(point) = self.look_target {

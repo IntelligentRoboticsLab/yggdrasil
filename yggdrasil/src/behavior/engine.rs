@@ -206,12 +206,6 @@ impl RoleKind {
             _ => RoleKind::Defender(Defender),
         }
     }
-
-    // fn by_game_state(
-    //     player_number: u8,
-    //     game_controller_message: &Option<GameControllerMessage>,
-    // ) -> Self {
-    // }
 }
 
 /// Resource that is exposed and keeps track of the current role and behavior.
@@ -335,10 +329,6 @@ impl BehaviorEngine {
             PrimaryState::Playing { .. } => self.role.transition_behavior(context, control),
         };
     }
-
-    // pub fn should_attack(&mut self, context: &Context, _control: &mut Control) -> bool {
-    //     return ;
-    // }
 }
 
 /// System that is called to execute one step of the behavior engine each cycle
