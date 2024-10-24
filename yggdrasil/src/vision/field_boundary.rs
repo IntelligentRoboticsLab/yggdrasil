@@ -2,15 +2,12 @@
 //!
 
 use crate::{core::debug::DebugContext, vision::camera::Image};
-use bevy::app::Plugin;
-use bevy::prelude::*;
-use fast_image_resize as fr;
-use heimdall::{CameraLocation, Top, YuyvImage};
+use bevy::{app::Plugin, prelude::*};
+use heimdall::{CameraLocation, Top};
 use lstsq::Lstsq;
 use ml::prelude::*;
 use nalgebra::Point2;
 use rerun::ComponentBatch;
-use std::num::NonZeroU32;
 use tasks::conditions::task_finished;
 
 use super::camera::init_camera;
@@ -196,7 +193,12 @@ pub fn detect_field_boundary(
     let yuyv_image = image.clone();
     let gap = image.yuyv_image().width() / MODEL_INPUT_WIDTH as usize;
     let height = image.yuyv_image().height();
-    let resized_image = resize_yuyv(image.yuyv_image());
+    let resized_image = image
+        .resize(MODEL_INPUT_WIDTH, MODEL_INPUT_HEIGHT)
+        .expect("Failed to resize image")
+        .into_iter()
+        .map(f32::from)
+        .collect::<Vec<_>>();
 
     commands
         .infer_model(&mut model)
@@ -217,39 +219,6 @@ pub fn detect_field_boundary(
 
             Some(fit_model(points, 2, yuyv_image))
         });
-}
-
-// Resize yuyv image to correct input shape
-fn resize_yuyv(yuyv_image: &YuyvImage) -> Vec<f32> {
-    let src_image = fr::Image::from_vec_u8(
-        NonZeroU32::new((yuyv_image.width() / 2) as u32).unwrap(),
-        NonZeroU32::new(yuyv_image.height() as u32).unwrap(),
-        yuyv_image.to_vec(),
-        fr::PixelType::U8x4,
-    )
-    .expect("Failed to create image for resizing");
-
-    // Resize the image to the correct input shape for the model
-    let mut dst_image = fr::Image::new(
-        NonZeroU32::new(MODEL_INPUT_WIDTH).unwrap(),
-        NonZeroU32::new(MODEL_INPUT_HEIGHT).unwrap(),
-        src_image.pixel_type(),
-    );
-
-    let mut resizer = fr::Resizer::new(fr::ResizeAlg::Nearest);
-    resizer
-        .resize(&src_image.view(), &mut dst_image.view_mut())
-        .expect("Failed to resize image");
-
-    // Remove every second y value from the yuyv image
-    dst_image
-        .buffer()
-        .iter()
-        .copied()
-        .enumerate()
-        .filter(|(i, _)| (i + 2) % 4 != 0)
-        .map(|(_, p)| f32::from(p))
-        .collect()
 }
 
 /// A model implementing the network from B-Human their [Deep Field Boundary](https://b-human.de/downloads/publications/2022/DeepFieldBoundary.pdf) paper
