@@ -54,12 +54,10 @@ impl SoundManager {
     /// Plays a sound using a name from enum Sound.
     pub fn play_sound(&self, sound: Sound) -> Result<()> {
         let mut audio_manager = self.audio_manager.lock().unwrap();
-        let streaming_sound = StreamingSoundData::from_file(
-            sound.file_path(),
-            StreamingSoundSettings::new().volume(self.volume),
-        )
-        .into_diagnostic()
-        .with_context(|| format!("Failed to load sound file: {}", sound.file_path()))?;
+        let streaming_sound = StreamingSoundData::from_file(sound.file_path())
+            .into_diagnostic()
+            .with_context(|| format!("Failed to load sound file: {}", sound.file_path()))?
+            .with_settings(StreamingSoundSettings::new().volume(self.volume));
 
         audio_manager.play(streaming_sound).into_diagnostic()?;
         Ok(())
