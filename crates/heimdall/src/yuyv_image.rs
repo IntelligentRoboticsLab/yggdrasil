@@ -149,33 +149,6 @@ impl YuyvImage {
         })
     }
 
-    pub fn resize_old(&self, width: u32, height: u32) -> Result<Vec<u8>> {
-        let src_image = fir::images::Image::from_vec_u8(
-            self.width() as u32 / 2,
-            self.height() as u32,
-            self.to_vec(),
-            fir::PixelType::U8x4,
-        )?;
-
-        let mut dst_image = fir::images::Image::new(width, height, src_image.pixel_type());
-
-        let mut resizer = fir::Resizer::new();
-        resizer.resize(
-            &src_image,
-            &mut dst_image,
-            &ResizeOptions::new().resize_alg(fir::ResizeAlg::Nearest),
-        )?;
-
-        // Remove every second y value from the yuyv image to turn it into a packed yuv image
-        Ok(dst_image
-            .into_vec()
-            .into_iter()
-            .enumerate()
-            .filter(|(i, _)| (i + 2) % 4 != 0)
-            .map(|(_, p)| p)
-            .collect())
-    }
-
     /// Resizes the image to the given width and height.
     ///
     /// Returns a *YUV444* vec of bytes.
