@@ -7,7 +7,7 @@ use crate::{
     motion::walk::engine::Step,
     nao::{NaoManager, Priority},
 };
-use nidhogg::types::{color, FillExt, HeadJoints, RightEye};
+use nidhogg::types::{FillExt, HeadJoints};
 
 const ROTATION_STIFFNESS: f32 = 0.3;
 
@@ -63,10 +63,6 @@ impl Behavior for Observe {
             head_pitch_max: head_pitch_multiplier,
             head_yaw_max: head_yaw_multiplier,
         } = context.behavior_config.observe;
-
-        control
-            .nao_manager
-            .set_right_eye_led(RightEye::fill(color::f32::WHITE), Priority::default());
 
         look_around(
             control.nao_manager,

@@ -36,6 +36,7 @@ impl Behavior for WalkToSet {
             context
                 .pose
                 .get_look_at_absolute(&Point3::new(set_position.x, set_position.y, RobotPose::CAMERA_HEIGHT));
+
         control
             .nao_manager
             .set_head(look_at, HeadJoints::fill(0.5), Priority::default());

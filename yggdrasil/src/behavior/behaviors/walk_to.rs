@@ -1,5 +1,5 @@
 use nalgebra::{Point2, Point3};
-use nidhogg::types::{FillExt, HeadJoints, RightEye};
+use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
@@ -36,11 +36,6 @@ fn log_target(target: &Target, dbg: &mut DebugContext) {
 impl Behavior for WalkTo {
     fn execute(&mut self, context: Context, control: &mut Control) {
         let target_point = Point3::new(self.target.position.x, self.target.position.y, 0.0);
-
-        control.nao_manager.set_right_eye_led(
-            RightEye::fill(nidhogg::types::color::f32::RED),
-            Priority::default(),
-        );
 
         let look_at = context.pose.get_look_at_absolute(&target_point);
         control
