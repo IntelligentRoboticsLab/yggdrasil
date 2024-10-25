@@ -7,6 +7,7 @@ use crate::{
     nao::Priority,
 };
 
+/// Perform a specific walk step, whilst looking at a target point.
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Walk {
     pub step: Step,

@@ -8,6 +8,8 @@ use crate::{
     motion::step_planner::Target,
 };
 
+/// The Keeper role is held by a single robot at a time, usually player number 1.
+/// It's job is to prevent the ball from entering the goal, which it does by staying in the goal area.
 #[derive(Debug)]
 pub struct Keeper;
 

@@ -15,6 +15,8 @@ const KEEPER_PRE_SET_POS: Target = Target {
     rotation: None,
 };
 
+/// Walk to the set position of the robot.
+/// Only the keeper will first walk to the pre-set position before walking to the set position.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct WalkToSet {
     pub is_keeper: bool,

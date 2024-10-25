@@ -26,17 +26,19 @@ pub struct ObserveBehaviorConfig {
     pub head_yaw_max: f32,
 }
 
+/// This behavior makes the robot look around with a sinusoidal head movement with an optional step.
+/// With this behavior, the robot can observe its surroundings while standing still or turning.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Observe {
     pub starting_time: Instant,
-    pub target: Option<Step>,
+    pub step: Option<Step>,
 }
 
 impl Default for Observe {
     fn default() -> Self {
         Observe {
             starting_time: Instant::now(),
-            target: None,
+            step: None,
         }
     }
 }
@@ -46,7 +48,7 @@ impl Observe {
     pub fn with_turning(turn: f32) -> Self {
         Observe {
             starting_time: Instant::now(),
-            target: Some(Step {
+            step: Some(Step {
                 turn,
                 ..Default::default()
             }),
@@ -74,9 +76,9 @@ impl Behavior for Observe {
             head_pitch_multiplier,
         );
 
-        if let Some(target) = self.target {
+        if let Some(step) = self.step {
             control.step_planner.clear_target();
-            control.walking_engine.request_walk(target);
+            control.walking_engine.request_walk(step);
         } else {
             control.walking_engine.request_stand();
         }

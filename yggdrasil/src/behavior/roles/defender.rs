@@ -8,6 +8,8 @@ use crate::{
     motion::step_planner::Target,
 };
 
+/// The Defender role is held by any robot that does not see the ball.
+/// It's job is to observe it's set position depending on player number.
 #[derive(Debug)]
 pub struct Defender;
 

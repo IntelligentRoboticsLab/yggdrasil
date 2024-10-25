@@ -6,9 +6,9 @@ use crate::{
     core::debug::DebugContext,
     motion::step_planner::Target,
     nao::Priority,
-    vision::color,
 };
 
+/// Walk to a target position using the step planner, whilst looking at the target.
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct WalkTo {
     pub target: Target,

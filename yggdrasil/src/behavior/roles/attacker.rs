@@ -9,6 +9,8 @@ use crate::{
     motion::{step_planner::Target, walk::engine::Step},
 };
 
+/// The Attacker role is held by a robot when it is can see the ball.
+/// It contains three substates for walking to the ball, aligning with the ball and the goal, and walking with the ball whilst aligned.
 #[derive(Debug, Default, Clone, Copy)]
 pub enum Attacker {
     #[default]
