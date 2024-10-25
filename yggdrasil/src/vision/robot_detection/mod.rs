@@ -130,13 +130,15 @@ fn detect_robots(
 
             move |(box_regression, scores)| {
                 let box_regression = box_regression
-                    .into_shape(config.box_shape())
+                    .to_shape(config.box_shape())
                     .into_diagnostic()
-                    .expect("received box regression with incorrect shape");
+                    .expect("received box regression with incorrect shape")
+                    .to_owned();
                 let scores = scores
-                    .into_shape(config.score_shape())
+                    .to_shape(config.score_shape())
                     .into_diagnostic()
-                    .expect("received scores with incorrect shape");
+                    .expect("received scores with incorrect shape")
+                    .to_owned();
 
                 let detected_robots = postprocess_detections(
                     (image.width(), image.height()),
