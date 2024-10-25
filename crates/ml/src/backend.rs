@@ -25,15 +25,7 @@ impl Core {
     ///
     /// Fails if the core cannot be created.
     pub fn new() -> Result<Self> {
-        let mut core = openvino::Core::new()?;
-
-        // TODO: we should test cycle time without this limit
-        core.set_property(
-            &openvino::DeviceType::CPU,
-            &RwPropertyKey::InferenceNumThreads,
-            "1",
-        )?;
-
+        let core = openvino::Core::new()?;
         Ok(Self(core))
     }
 }
