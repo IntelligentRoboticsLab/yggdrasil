@@ -17,7 +17,11 @@ use crate::{
         BehaviorConfig,
     },
     core::{
-        config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
+        config::{
+            layout::{FieldConfig, LayoutConfig},
+            showtime::PlayerConfig,
+            yggdrasil::YggdrasilConfig,
+        },
         debug::DebugContext,
     },
     game_controller::GameControllerConfig,
@@ -363,8 +367,8 @@ pub fn step(
     let most_confident_ball = bottom_balls
         .most_confident_ball()
         .map(|b| b.position)
-        .or(top_balls.most_confident_ball().map(|b| b.position))
-        .filter(|ball| ball.x > 10.0 || ball.x < -10.0 || ball.y > 4.0 || ball.y < -4.0);
+        .or(top_balls.most_confident_ball().map(|b| b.position));
+    let filtered_ball = filter_ball_position(&most_confident_ball, &layout_config.field);
 
     let context = Context {
         robot_info: robot_info.as_ref(),
@@ -380,7 +384,7 @@ pub fn step(
         game_controller_config: &game_controller_config,
         fall_state: &fall_state,
         pose: &robot_pose,
-        ball_position: &most_confident_ball,
+        ball_position: &filtered_ball,
         current_behavior: engine.behavior.clone(),
     };
 
@@ -393,6 +397,21 @@ pub fn step(
     };
 
     engine.step(context, &mut control);
+}
+
+/// Filter out the balls that are outside the field.
+fn filter_ball_position(
+    ball_position: &Option<Point2<f32>>,
+    field_config: &FieldConfig,
+) -> Option<Point2<f32>> {
+    let half_field_size_x = field_config.length / 2.0 + field_config.border_strip_width;
+    let half_field_size_y = field_config.width / 2.0 + field_config.border_strip_width;
+    ball_position.filter(|position| {
+        position.x > half_field_size_x
+            || position.x < -half_field_size_x
+            || position.y > half_field_size_y
+            || position.y < -half_field_size_y
+    })
 }
 
 /// Plugin providing a state machine that keeps track of what behavior a
