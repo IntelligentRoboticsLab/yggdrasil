@@ -9,6 +9,7 @@ use crate::{
     nao::Priority,
 };
 
+/// To prevent the keeper from walking into the goalpost, we use this position for a better approach.
 const KEEPER_PRE_SET_POS: Target = Target {
     position: Point2::new(-2.85, 0.0),
     rotation: None,
