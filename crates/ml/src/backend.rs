@@ -5,7 +5,7 @@ use super::{
     MlModel,
 };
 use bevy::prelude::*;
-use openvino::{Node, RwPropertyKey, Tensor};
+use openvino::{Node, Tensor};
 use std::{marker::PhantomData, sync::Arc};
 
 /// Wrapper around [`openvino::Core`], i.e. the `OpenVINO` engine.
