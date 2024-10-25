@@ -79,7 +79,7 @@ impl Role for Attacker {
                                 turn: 0.3,
                                 ..Default::default()
                             },
-                            look_target: Some(ball_target),
+                            look_target: None,
                         });
                     }
                 }

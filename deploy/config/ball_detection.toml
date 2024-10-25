@@ -29,7 +29,7 @@ max_robot_intersection = 0.0
 
 [classifier]
 # The threshold for the classifier to consider a proposal a ball
-confidence_threshold = 0.96
+confidence_threshold = 0.97
 # The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
 time_budget = 1500
 # Lifetime of the ball in milliseconds, this is the time the robot will remember a classified balls' location.

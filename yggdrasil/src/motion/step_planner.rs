@@ -117,7 +117,7 @@ impl StepPlanner {
         let angle = calc_angle_to_point(&robot_pose.inner, first_target_position);
         let turn = calc_turn(&robot_pose.inner, first_target_position);
 
-        if angle > 0.1 {
+        if angle > 0.5 {
             Some(Step {
                 forward: 0.,
                 left: 0.,
@@ -140,7 +140,7 @@ impl StepPlanner {
         // when it turns around its axis.
         // Once that is fixed (with localization using line detection), this early return should
         // probably be removed.
-        if angle.abs() <= 0.1 {
+        if angle.abs() <= 0.4 {
             return None;
         }
 
