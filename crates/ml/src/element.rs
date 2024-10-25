@@ -4,7 +4,7 @@
 //! This involves the type system in defining and utilizing models.
 
 use bevy::utils::all_tuples;
-use openvino::Blob;
+use openvino::Tensor;
 
 use crate::MlArray;
 
@@ -14,17 +14,17 @@ use crate::MlArray;
 ///
 /// Note that this is unsafe, see [`DataType`].
 macro_rules! impl_datatype {
-    (unsafe { $elem:ty => $precision:path }) => {
+    (unsafe { $elem:ty => $element_type:path }) => {
         unsafe impl DataType for $elem {
-            fn is_compatible(precision: openvino::Precision) -> bool {
-                match precision {
-                    $precision => true,
+            fn is_compatible(element_type: openvino::ElementType) -> bool {
+                match element_type {
+                    $element_type => true,
                     _ => false,
                 }
             }
 
-            fn precision() -> openvino::Precision {
-                $precision
+            fn element_type() -> openvino::ElementType {
+                $element_type
             }
         }
     };
@@ -45,10 +45,10 @@ pub unsafe trait DataType: Clone + Sized + Send + Sync + 'static {
     /// `precision`, i.e. instances of `precision` can be safely
     /// interpreted as instances of `Self`.
     #[allow(dead_code)]
-    fn is_compatible(precision: openvino::Precision) -> bool;
+    fn is_compatible(element_type: openvino::ElementType) -> bool;
 
     /// Returns the `OpenVINO` data type that corresponds to `Self`.
-    fn precision() -> openvino::Precision;
+    fn element_type() -> openvino::ElementType;
 
     /// Returns a view to the bytes of a slice of `Self`s.
     fn as_blob(slice: &[Self]) -> &[u8] {
@@ -61,27 +61,27 @@ pub unsafe trait DataType: Clone + Sized + Send + Sync + 'static {
 }
 
 unsafe impl DataType for u8 {
-    fn is_compatible(_: openvino::Precision) -> bool {
+    fn is_compatible(_: openvino::ElementType) -> bool {
         // we can interpret any data type as bytes.
         true
     }
 
-    fn precision() -> openvino::Precision {
-        openvino::Precision::U8
+    fn element_type() -> openvino::ElementType {
+        openvino::ElementType::U8
     }
 }
 
-impl_datatype!(unsafe { f32 => openvino::Precision::FP32 });
-impl_datatype!(unsafe { f64 => openvino::Precision::FP64 });
+impl_datatype!(unsafe { f32 => openvino::ElementType::F32 });
+impl_datatype!(unsafe { f64 => openvino::ElementType::F64 });
 
-impl_datatype!(unsafe { u16 => openvino::Precision::U16 });
-impl_datatype!(unsafe { u32 => openvino::Precision::U32 });
-impl_datatype!(unsafe { u64 => openvino::Precision::U64 });
+impl_datatype!(unsafe { u16 => openvino::ElementType::U16 });
+impl_datatype!(unsafe { u32 => openvino::ElementType::U32 });
+impl_datatype!(unsafe { u64 => openvino::ElementType::U64 });
 
-impl_datatype!(unsafe { i8 => openvino::Precision::I8 });
-impl_datatype!(unsafe { i16 => openvino::Precision::I16 });
-impl_datatype!(unsafe { i32 => openvino::Precision::I32 });
-impl_datatype!(unsafe { i64 => openvino::Precision::I64 });
+impl_datatype!(unsafe { i8 => openvino::ElementType::I8 });
+impl_datatype!(unsafe { i16 => openvino::ElementType::I16 });
+impl_datatype!(unsafe { i32 => openvino::ElementType::I32 });
+impl_datatype!(unsafe { i64 => openvino::ElementType::I64 });
 // NOTE: implement for more types if necessary
 
 pub trait Parameters: Sized {
@@ -92,9 +92,9 @@ pub trait Parameters: Sized {
     fn num_elements(&self) -> usize;
 
     /// The data type of each model parameter.
-    fn data_types() -> impl Iterator<Item = openvino::Precision>;
+    fn data_types() -> impl Iterator<Item = openvino::ElementType>;
 
-    /// The size of each model parameter.
+    /// The byte size of the dtype of each model parameter.
     fn sizes_of() -> impl Iterator<Item = usize>;
 
     /// The amount of model parameters.
@@ -103,12 +103,12 @@ pub trait Parameters: Sized {
         1
     }
 
-    /// Creates a new instance of `Self` from a byte blob.
+    /// Creates a new instance of `Self` from the openvino input tensors.
     ///
     /// # Safety
     ///
-    /// The blob must be a valid representation of `Self`.
-    unsafe fn from_dims_and_blobs<'a>(iter: impl Iterator<Item = (&'a [usize], Blob)>) -> Self;
+    /// The tensor must be a valid representation of `Self`.
+    unsafe fn from_tensors(iter: impl Iterator<Item = Tensor>) -> Self;
 }
 
 impl<E> Parameters for E
@@ -123,22 +123,18 @@ where
         1
     }
 
-    fn data_types() -> impl Iterator<Item = openvino::Precision> {
-        std::iter::once(E::precision())
+    fn data_types() -> impl Iterator<Item = openvino::ElementType> {
+        std::iter::once(E::element_type())
     }
 
     fn sizes_of() -> impl Iterator<Item = usize> {
         std::iter::once(size_of::<E>())
     }
 
-    unsafe fn from_dims_and_blobs<'a>(mut iter: impl Iterator<Item = (&'a [usize], Blob)>) -> Self {
-        let (_, blob) = iter.next().unwrap();
-
-        let values = blob
-            .buffer_as_type::<E>()
-            .expect("Failed to cast blob to output type");
-
-        values[0].clone()
+    unsafe fn from_tensors(mut iter: impl Iterator<Item = Tensor>) -> Self {
+        let tensor = iter.next().unwrap();
+        let slice: &[E] = tensor.get_data().unwrap();
+        slice[0].clone()
     }
 }
 
@@ -154,22 +150,18 @@ where
         self.len()
     }
 
-    fn data_types() -> impl Iterator<Item = openvino::Precision> {
-        std::iter::once(E::precision())
+    fn data_types() -> impl Iterator<Item = openvino::ElementType> {
+        std::iter::once(E::element_type())
     }
 
     fn sizes_of() -> impl Iterator<Item = usize> {
         std::iter::once(size_of::<E>())
     }
 
-    unsafe fn from_dims_and_blobs<'a>(mut iter: impl Iterator<Item = (&'a [usize], Blob)>) -> Self {
-        let (_, blob) = iter.next().unwrap();
-
-        let values = blob
-            .buffer_as_type::<E>()
-            .expect("Failed to cast blob to output type");
-
-        values.to_vec()
+    unsafe fn from_tensors<'a>(mut iter: impl Iterator<Item = Tensor>) -> Self {
+        let tensor = iter.next().unwrap();
+        let slice: &[E] = tensor.get_data().unwrap();
+        slice.to_vec()
     }
 }
 
@@ -185,22 +177,26 @@ where
         self.len()
     }
 
-    fn data_types() -> impl Iterator<Item = openvino::Precision> {
-        std::iter::once(E::precision())
+    fn data_types() -> impl Iterator<Item = openvino::ElementType> {
+        std::iter::once(E::element_type())
     }
 
     fn sizes_of() -> impl Iterator<Item = usize> {
         std::iter::once(size_of::<E>())
     }
 
-    unsafe fn from_dims_and_blobs<'a>(mut iter: impl Iterator<Item = (&'a [usize], Blob)>) -> Self {
-        let (dims, blob) = iter.next().unwrap();
+    unsafe fn from_tensors<'a>(mut iter: impl Iterator<Item = Tensor>) -> Self {
+        let tensor = iter.next().unwrap();
+        let slice: &[E] = tensor.get_data().unwrap();
 
-        let values = blob
-            .buffer_as_type::<E>()
-            .expect("Failed to cast blob to output type");
+        let shape = tensor.get_shape().unwrap();
+        let dims = shape
+            .get_dimensions()
+            .iter()
+            .map(|&dim| dim as usize)
+            .collect::<Vec<_>>();
 
-        MlArray::from_shape_vec(dims, values.to_vec()).unwrap()
+        MlArray::from_shape_vec(dims, slice.to_vec()).unwrap()
     }
 }
 
@@ -223,7 +219,7 @@ macro_rules! impl_parameters {
                 0 $(+ $T.num_elements())*
             }
 
-            fn data_types() -> impl Iterator<Item = openvino::Precision> {
+            fn data_types() -> impl Iterator<Item = openvino::ElementType> {
                 std::iter::empty()
                     $(
                         .chain($T::data_types())
@@ -242,10 +238,10 @@ macro_rules! impl_parameters {
             }
 
 
-            unsafe fn from_dims_and_blobs<'a>(mut iter: impl Iterator<Item = (&'a [usize], Blob)>) -> Self {
+            unsafe fn from_tensors<'a>(mut iter: impl Iterator<Item = Tensor>) -> Self {
                 (
                     $(
-                        $T::from_dims_and_blobs(iter.by_ref())
+                        $T::from_tensors(iter.by_ref())
                     ,)*
                 )
             }

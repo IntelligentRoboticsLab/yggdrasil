@@ -193,7 +193,6 @@ where
             .to_resource()
             .spawn({
                 async move {
-                    // TODO: Add back support for multiple outputs
                     let output = request.run().map(InferRequest::fetch_output).ok()?;
 
                     f(output)

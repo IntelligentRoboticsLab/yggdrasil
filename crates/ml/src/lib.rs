@@ -9,7 +9,7 @@ pub mod util;
 
 use bevy::prelude::*;
 
-use backend::{MlCore, ModelExecutor};
+use backend::{Core, ModelExecutor};
 use element::Parameters;
 
 #[allow(missing_docs)]
@@ -31,7 +31,7 @@ pub struct MlPlugin;
 impl Plugin for MlPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.insert_resource(
-            MlCore::new().expect("failed to initialize `MlCore` using the provided configuration!"),
+            Core::new().expect("failed to initialize `MlCore` using the provided configuration!"),
         );
     }
 }
@@ -91,7 +91,7 @@ impl MlModelResourceExt for App {
     {
         let mut ml_core = self
             .world_mut()
-            .get_resource_mut::<MlCore>()
+            .get_resource_mut::<Core>()
             .expect("the `MlCore` resource does not exist. Did you forget to add the `MlPlugin`?");
 
         let model_executor = ModelExecutor::<M>::new(&mut ml_core)
