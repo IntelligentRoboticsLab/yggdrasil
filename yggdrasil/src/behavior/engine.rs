@@ -309,6 +309,7 @@ impl BehaviorEngine {
                     self.role = RoleKind::Attacker(Attacker::WalkWithBall);
                 } else {
                     self.behavior = BehaviorKind::Stand(Stand);
+                    return;
                 }
             }
         }
