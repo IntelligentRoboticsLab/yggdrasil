@@ -482,7 +482,6 @@ impl Robot {
         let relative_ball = self.pose.world_to_robot(ball);
         let angle = self.pose.angle_to(&ball);
 
-        // self.sees_ball = relative_ball.coords.norm() < 3.0;
         self.sees_ball = relative_ball.coords.norm() < 3.0 && angle.abs() < 45.0f32.to_radians();
     }
 
