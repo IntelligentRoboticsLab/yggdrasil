@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// To prevent the keeper from walking into the goalpost, we use this position for a better approach.
-const KEEPER_PRE_SET_POS: Target = Target {
+const GOAL_KEEPER_PRE_SET_POS: Target = Target {
     position: Point2::new(-2.85, 0.0),
     rotation: None,
 };
@@ -50,11 +50,11 @@ impl Behavior for WalkToSet {
             || (control
                 .step_planner
                 .current_absolute_target()
-                .is_some_and(|target| target == &KEEPER_PRE_SET_POS)
+                .is_some_and(|target| target == &GOAL_KEEPER_PRE_SET_POS)
                 && !control.step_planner.reached_target());
 
         if self.is_keeper && reached_pre_set {
-            control.step_planner.set_absolute_target(KEEPER_PRE_SET_POS);
+            control.step_planner.set_absolute_target(GOAL_KEEPER_PRE_SET_POS);
         } else {
             control.step_planner.set_absolute_target(target);
         }
