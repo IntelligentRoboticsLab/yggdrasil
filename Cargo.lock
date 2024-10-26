@@ -11372,6 +11372,7 @@ dependencies = [
  "odal",
  "ordered-float",
  "pathfinding",
+ "rand",
  "re_control_comms",
  "rerun",
  "rustfft",

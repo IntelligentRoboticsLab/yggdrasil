@@ -52,6 +52,7 @@ nidhogg = { workspace = true, features = ["lola", "bevy"] }
 num = { workspace = true }
 ordered-float = { workspace = true }
 pathfinding = { workspace = true }
+rand = { workspace = true }
 rerun = { workspace = true }
 rustfft = { workspace = true }
 serde = { workspace = true }
