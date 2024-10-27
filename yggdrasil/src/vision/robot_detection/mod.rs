@@ -10,11 +10,10 @@ use crate::vision::{
 use bevy::core::FrameCount;
 use bevy::prelude::*;
 use box_coder::BoxCoder;
-use fast_image_resize as fr;
 use heimdall::{CameraLocation, Top};
 use itertools::Itertools;
 use miette::IntoDiagnostic;
-use ml::prelude::*;
+use ml::{prelude::*, MlArray};
 use ndarray::{Array2, Axis};
 use serde_with::{serde_as, DurationMilliSeconds};
 
@@ -82,11 +81,8 @@ impl Plugin for RobotDetectionPlugin {
 pub struct RobotDetectionModel;
 
 impl MlModel for RobotDetectionModel {
-    type InputElem = u8;
-    type OutputElem = f32;
-
-    type InputShape = (Vec<u8>,);
-    type OutputShape = (MlArray<f32>, MlArray<f32>);
+    type Inputs = Vec<u8>;
+    type Outputs = (MlArray<f32>, MlArray<f32>);
     const ONNX_PATH: &'static str = "models/robot_detection.onnx";
 }
 
@@ -120,16 +116,12 @@ fn detect_robots(
     cycle: Res<FrameCount>,
 ) {
     let resized_image = image
-        .resized_yuv(
-            config.input_width,
-            config.input_height,
-            fr::ResizeAlg::Nearest,
-        )
+        .resize(config.input_width, config.input_height)
         .expect("failed to resize image for robot detection");
 
     commands
         .infer_model(&mut model)
-        .with_input(&(resized_image,))
+        .with_input(&resized_image)
         .create_resource()
         .spawn({
             let config = (*config).clone();
@@ -138,13 +130,15 @@ fn detect_robots(
 
             move |(box_regression, scores)| {
                 let box_regression = box_regression
-                    .into_shape(config.box_shape())
+                    .to_shape(config.box_shape())
                     .into_diagnostic()
-                    .expect("received box regression with incorrect shape");
+                    .expect("received box regression with incorrect shape")
+                    .to_owned();
                 let scores = scores
-                    .into_shape(config.score_shape())
+                    .to_shape(config.score_shape())
                     .into_diagnostic()
-                    .expect("received scores with incorrect shape");
+                    .expect("received scores with incorrect shape")
+                    .to_owned();
 
                 let detected_robots = postprocess_detections(
                     (image.width(), image.height()),

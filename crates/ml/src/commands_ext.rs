@@ -3,8 +3,6 @@
 use bevy::prelude::*;
 use tasks::{CommandsExt, TaskPool};
 
-use crate::prelude::ModelOutput;
-
 use super::{
     backend::{InferRequest, ModelExecutor},
     MlModel,
@@ -29,32 +27,32 @@ pub struct DefineInput;
 impl MlInferenceBuilderState for DefineInput {}
 
 /// Type state for defining the output of the model.
-pub struct DefineOutput<'a, M>(&'a M::InputShape)
+pub struct DefineOutput<'a, M>(&'a M::Inputs)
 where
     M: MlModel;
 
 impl<'a, M> MlInferenceBuilderState for DefineOutput<'a, M> where M: MlModel {}
 
 /// Type state for defining the output of the model with multiple batches.
-pub struct DefineBatchedOutput<'a, M>(&'a [&'a M::InputShape])
+pub struct DefineBatchedOutput<'a, M>(&'a [&'a M::Inputs])
 where
     M: MlModel;
 impl<'a, M> MlInferenceBuilderState for DefineBatchedOutput<'a, M> where M: MlModel {}
 
 /// Type state for storing the output of the model in a resource.
-pub struct ResourceOutput<'a, M>(&'a M::InputShape)
+pub struct ResourceOutput<'a, M>(&'a M::Inputs)
 where
     M: MlModel;
 impl<'a, M> MlInferenceBuilderState for ResourceOutput<'a, M> where M: MlModel {}
 
 /// Type state for storing the output of the model in a single entity.
-pub struct EntityOutput<'a, M>(&'a M::InputShape)
+pub struct EntityOutput<'a, M>(&'a M::Inputs)
 where
     M: MlModel;
 impl<'a, M> MlInferenceBuilderState for EntityOutput<'a, M> where M: MlModel {}
 
 /// Type state for storing the output of the model in multiple entities.
-pub struct EntitiesOutput<'a, M>(&'a [&'a M::InputShape])
+pub struct EntitiesOutput<'a, M>(&'a [&'a M::Inputs])
 where
     M: MlModel;
 impl<'a, M> MlInferenceBuilderState for EntitiesOutput<'a, M> where M: MlModel {}
@@ -95,7 +93,7 @@ where
     /// Define the input of the model with a single batch.
     pub fn with_input(
         &'a mut self,
-        input: &'a M::InputShape,
+        input: &'a M::Inputs,
     ) -> MlInferenceBuilder<'a, 'w, 's, M, DefineOutput<'a, M>> {
         MlInferenceBuilder {
             commands: self.commands,
@@ -107,7 +105,7 @@ where
     /// Define the input of the model with multiple batches.
     pub fn with_batched_input(
         &'a mut self,
-        input: &'a [&'a M::InputShape],
+        input: &'a [&'a M::Inputs],
     ) -> MlInferenceBuilder<'a, 'w, 's, M, DefineBatchedOutput<'a, M>> {
         MlInferenceBuilder {
             commands: self.commands,
@@ -141,13 +139,11 @@ where
         }
     }
 
-    /// Run the model inference in the current scope, blocking it until the inference is complete.
-    pub fn spawn_blocking<F, T>(&mut self, f: F) -> Vec<T>
+    /// Run the model inference in the current scope, blocking it until the inference is complete
+    /// and performing any post processing step.
+    pub fn spawn_blocking<F, T>(&mut self, f: F) -> T
     where
-        F: (FnOnce(<M::OutputShape as ModelOutput<M::OutputElem>>::Shape) -> T)
-            + Send
-            + Sync
-            + 'static,
+        F: (FnOnce(M::Outputs) -> T) + Send + Sync + 'static,
         T: Send + 'static,
     {
         let request = self
@@ -155,18 +151,20 @@ where
             .request_infer(self.state.0)
             .expect("failed to request inference");
 
-        self.commands.prepare_task(TaskPool::Compute).scope({
-            move |s| {
-                s.spawn(async move {
-                    let output = request
-                        .run()
-                        .map(InferRequest::fetch_output)
-                        .expect("failed to fetch output");
+        // TODO: This should really be:
+        // - On the AsyncCompute pool
+        // - Be on it's own thread that blocks (?) (e.g. `blocking` crate)
+        // But currently that wrecks performance
+        self.commands
+            .prepare_task(TaskPool::Compute)
+            .spawn_blocking(async move {
+                let output = request
+                    .run()
+                    .map(InferRequest::fetch_output)
+                    .expect("failed to fetch output");
 
-                    f(output)
-                });
-            }
-        })
+                f(output)
+            })
     }
 }
 
@@ -177,10 +175,7 @@ where
     /// Spawn the model inference task, providing a closure to convert the output to a [`Resource`].
     pub fn spawn<F, R>(&mut self, f: F)
     where
-        F: (FnOnce(<M::OutputShape as ModelOutput<M::OutputElem>>::Shape) -> Option<R>)
-            + Send
-            + Sync
-            + 'static,
+        F: (FnOnce(M::Outputs) -> Option<R>) + Send + Sync + 'static,
         R: Resource,
     {
         let request = self
@@ -198,7 +193,6 @@ where
             .to_resource()
             .spawn({
                 async move {
-                    // TODO: Add back support for multiple outputs
                     let output = request.run().map(InferRequest::fetch_output).ok()?;
 
                     f(output)
@@ -214,10 +208,7 @@ where
     /// Spawn the model inference task, providing a closure to convert the output to a [`Component`].
     pub fn spawn<F, C>(&mut self, f: F)
     where
-        F: (FnOnce(<M::OutputShape as ModelOutput<M::OutputElem>>::Shape) -> Option<C>)
-            + Send
-            + Sync
-            + 'static,
+        F: (FnOnce(M::Outputs) -> Option<C>) + Send + Sync + 'static,
         C: Component,
     {
         let request = self
@@ -229,11 +220,11 @@ where
             .prepare_task(TaskPool::AsyncCompute)
             .to_entities()
             .spawn({
-                vec![async move {
+                std::iter::once(async move {
                     let output = request.run().map(InferRequest::fetch_output).ok()?;
 
                     f(output)
-                }]
+                })
             });
     }
 }
@@ -259,12 +250,7 @@ where
     /// Spawn the model inference task, providing a closure to convert the output to a [`Component`].
     pub fn spawn<F, C>(&mut self, f: F)
     where
-        F: (FnOnce(<M::OutputShape as ModelOutput<M::OutputElem>>::Shape) -> Option<C>)
-            + Clone
-            + Copy
-            + Send
-            + Sync
-            + 'static,
+        F: (FnOnce(M::Outputs) -> Option<C>) + Clone + Copy + Send + Sync + 'static,
         C: Component,
     {
         let requests = self

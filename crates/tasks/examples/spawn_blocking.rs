@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::{prelude::*, time::Stopwatch};
 use tasks::{CommandsExt, TaskPlugin, TaskPool};
 
-fn run_scoped_task(
+fn run_blocking_task(
     mut commands: Commands,
     mut counter: Local<usize>,
     time: Res<Time>,
@@ -18,12 +18,14 @@ fn run_scoped_task(
     stopwatch.reset();
 
     // Blocks on the task and return the result directly
-    let output = commands.prepare_task(TaskPool::AsyncCompute).scope({
-        let counter = *counter;
-        move |s| s.spawn(async move { counter + 1 })
-    });
+    let output = commands
+        .prepare_task(TaskPool::AsyncCompute)
+        .spawn_blocking({
+            let counter = *counter;
+            async move { counter + 1 }
+        });
 
-    *counter = output[0];
+    *counter = output;
 
     println!("Counter: {}", *counter);
 }
@@ -31,6 +33,6 @@ fn run_scoped_task(
 fn main() {
     App::new()
         .add_plugins((MinimalPlugins, TaskPlugin))
-        .add_systems(Update, run_scoped_task)
+        .add_systems(Update, run_blocking_task)
         .run();
 }

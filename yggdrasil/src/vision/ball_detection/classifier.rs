@@ -110,13 +110,10 @@ fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Bal
 pub(super) struct BallClassifierModel;
 
 impl MlModel for BallClassifierModel {
+    type Inputs = Vec<f32>;
+    type Outputs = f32;
+
     const ONNX_PATH: &'static str = "models/ball_classifier.onnx";
-
-    type InputElem = f32;
-    type OutputElem = f32;
-
-    type InputShape = (Vec<f32>,);
-    type OutputShape = (Vec<f32>,);
 }
 
 #[derive(Debug, Clone)]
@@ -196,14 +193,10 @@ fn detect_balls<T: CameraLocation>(
             patch,
         );
 
-        let confidence = {
-            let output = commands
-                .infer_model(&mut model)
-                .with_input(&(patch,))
-                .spawn_blocking(|(result,)| ml::util::sigmoid(result[0]))[0];
-
-            1.0 - output
-        };
+        let confidence = commands
+            .infer_model(&mut model)
+            .with_input(&patch)
+            .spawn_blocking(|output| 1.0 - ml::util::sigmoid(output));
 
         if start.elapsed().as_micros() > classifier.time_budget as u128 {
             break;
