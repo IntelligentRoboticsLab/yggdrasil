@@ -31,6 +31,7 @@ tasks = { workspace = true }
 
 # external crates here
 apodize = { workspace = true }
+arrsac = { workspace = true }
 async-std = { workspace = true }
 bevy = { workspace = true, features = ["multi_threaded"] }
 chrono = { workspace = true }
@@ -55,6 +56,7 @@ pathfinding = { workspace = true }
 rand = { workspace = true }
 rerun = { workspace = true }
 rustfft = { workspace = true }
+sample-consensus = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }

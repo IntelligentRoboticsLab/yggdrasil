@@ -7,7 +7,7 @@ use nalgebra::{point, vector, Isometry3, Point2, Point3, Vector2, Vector3};
 use crate::camera::CameraLocation;
 
 /// A camera matrix that is able to project points.
-#[derive(Resource, Default, Debug)]
+#[derive(Resource, Default, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CameraMatrix<T: CameraLocation> {
     /// The optical center of the camera in the image plane, in pixels.
     pub cc_optical_center: Point2<f32>,
