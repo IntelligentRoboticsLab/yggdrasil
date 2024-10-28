@@ -324,3 +324,9 @@ pub struct DebugContext<'w> {
     rec: Res<'w, RerunStream>,
     _marker: PhantomData<&'w ()>,
 }
+
+impl<'w> DebugContext<'w> {
+    pub fn stream(&self) -> &RerunStream {
+        &self.rec
+    }
+}

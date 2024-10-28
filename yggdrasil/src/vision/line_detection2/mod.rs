@@ -8,24 +8,31 @@ use arrsac::Arrsac;
 use bevy::prelude::*;
 use heimdall::{CameraLocation, CameraMatrix, Top, YuyvImage};
 use itertools::Itertools;
+use kira::command;
 use line::{LineCandidate, LineSegment2};
 use nalgebra::{point, DVector, Matrix2, Point2, SymmetricEigen, Vector2};
 use nidhogg::types::color;
+use rand::seq::SliceRandom;
 use rand::{Rng, RngCore};
 use rerun::Color;
+use tasks::CommandsExt;
 
 use super::{camera::Image, scan_lines::ScanLines};
+use crate::core::debug::RerunStream;
 use crate::{core::debug::DebugContext, localization::RobotPose};
 
 const ARRSAC_INLIER_THRESHOLD: f32 = 0.08;
-const LINE_SEGMENT_MIN_POINTS: usize = 6;
-const LINE_SEGMENT_MIN_LENGTH: f32 = 0.2;
+const LINE_SEGMENT_MIN_POINTS: usize = 4;
+const LINE_SEGMENT_MIN_LENGTH_SPLIT: f32 = 0.2;
 const LINE_SEGMENT_MAX_DISTANCE: f32 = 8.0;
-const MAX_LINE_GAP_DISTANCE: f32 = 0.15;
+const MAX_LINE_GAP_DISTANCE: f32 = 0.2;
 const WHITE_TEST_SAMPLES: usize = 10;
 const WHITE_TEST_SAMPLE_DISTANCE: f32 = 0.10;
-const WHITE_TEST_MERGE_RATIO: f32 = 0.85;
-const WHITE_TEST_MAX_ANGLE: f32 = f32::consts::FRAC_PI_8;
+const WHITE_TEST_MERGE_RATIO: f32 = 0.75;
+// rad
+const WHITE_TEST_MAX_ANGLE: f32 = 0.15;
+const LINE_SEGMENT_MIN_LENGTH_MERGE: f32 = 0.3;
+const FINAL_WHITE_TEST_MERGE_RATIO: f32 = 0.25;
 
 /// Plugin that adds systems to detect lines from scan-lines.
 pub struct LineDetectionPlugin;
@@ -34,17 +41,48 @@ impl Plugin for LineDetectionPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            detect_lines::<Top>.run_if(resource_exists_and_changed::<ScanLines<Top>>),
+            detect_lines_system::<Top>.run_if(resource_exists_and_changed::<ScanLines<Top>>),
         );
     }
 }
 
-fn detect_lines<T: CameraLocation>(
-    dbg: DebugContext,
+#[derive(Debug, Clone, Resource)]
+pub struct DetectedLines {
+    lines: Vec<LineCandidate>,
+}
+
+impl DetectedLines {
+    fn new(lines: Vec<LineCandidate>) -> Self {
+        Self { lines }
+    }
+}
+
+fn detect_lines_system<T: CameraLocation>(
+    mut commands: Commands,
     scan_lines: Res<ScanLines<T>>,
     camera_matrix: Res<CameraMatrix<T>>,
     pose: Res<RobotPose>,
+    dbg: DebugContext,
 ) {
+    commands
+        .prepare_task(tasks::TaskPool::AsyncCompute)
+        .to_resource()
+        .spawn({
+            let rerun_stream = dbg.stream().clone();
+            let scan_lines = scan_lines.clone();
+            let camera_matrix = camera_matrix.clone();
+            let pose = pose.clone();
+
+            async move { detect_lines(rerun_stream, scan_lines, camera_matrix, pose) }
+        });
+}
+
+fn detect_lines<T: CameraLocation>(
+    dbg: RerunStream,
+    scan_lines: ScanLines<T>,
+    camera_matrix: CameraMatrix<T>,
+    pose: RobotPose,
+) -> Option<DetectedLines> {
     let mut rng = rand::thread_rng();
 
     // let mut all_groups = scan_lines.vertical().line_spot_groups();
@@ -58,7 +96,7 @@ fn detect_lines<T: CameraLocation>(
 
     // we need at least two points to fit a line
     if spots.len() < 2 {
-        return;
+        return None;
     }
 
     let projected_spots = spots
@@ -77,6 +115,7 @@ fn detect_lines<T: CameraLocation>(
 
     const MAX_ITERS: usize = 10;
     for _ in 0..MAX_ITERS {
+        unused_spots.shuffle(&mut rng);
         let Some((line, mut inlier_idx)) = arrsac.fit(unused_spots.iter().copied()) else {
             // probably no more good lines!
             break;
@@ -102,11 +141,12 @@ fn detect_lines<T: CameraLocation>(
                 let is_close_enough =
                     nalgebra::distance(&c.segment.center(), &pose.world_position())
                         < LINE_SEGMENT_MAX_DISTANCE;
-                let is_long_enough = c.segment.length() > LINE_SEGMENT_MIN_LENGTH;
+                let is_long_enough = c.segment.length() > LINE_SEGMENT_MIN_LENGTH_SPLIT;
 
                 if has_enough_inliers && is_close_enough && is_long_enough {
                     Some(c)
                 } else {
+                    // put the spots back :)
                     unused_spots.extend(c.inliers.into_iter());
                     None
                 }
@@ -145,11 +185,10 @@ fn detect_lines<T: CameraLocation>(
             // do a white test
             let mut tests = vec![];
 
-            /// DEBUG
             let mut samplesaaa = vec![];
             let mut samplesbbb = vec![];
             let mut samplesccc = vec![];
-            /// DEBUG
+
             // TODO: sample based on the length of the segment too not just a fixed sample count
             for sample in connected.sample_uniform(WHITE_TEST_SAMPLES) {
                 let normal = connected.normal();
@@ -207,6 +246,17 @@ fn detect_lines<T: CameraLocation>(
             }
         }
     }
+
+    line_candidates.retain(|c| {
+        c.segment.length() > LINE_SEGMENT_MIN_LENGTH_MERGE
+        // && c.segment.white_test(
+        //     scan_lines.image(),
+        //     &camera_matrix,
+        //     WHITE_TEST_SAMPLES,
+        //     WHITE_TEST_SAMPLE_DISTANCE,
+        //     FINAL_WHITE_TEST_MERGE_RATIO,
+        // )
+    });
 
     dbg.log_with_cycle(
         T::make_entity_path("white_test"),
@@ -341,9 +391,11 @@ fn detect_lines<T: CameraLocation>(
             .with_colors(colors)
             .with_radii(radii),
     );
+
+    return Some(DetectedLines::new(line_candidates));
 }
 
-fn is_less_bright_and_more_saturated<T: CameraLocation>(
+pub fn is_less_bright_and_more_saturated<T: CameraLocation>(
     p1: Point2<f32>,
     p2: Point2<f32>,
     image: &Image<T>,
@@ -409,7 +461,7 @@ fn points_to_vectors(points: impl Iterator<Item = Point2<f32>>) -> (DVector<f32>
     (DVector::<f32>::from_vec(x), DVector::<f32>::from_vec(y))
 }
 
-fn pixel_to_ground<T: CameraLocation>(
+pub fn pixel_to_ground<T: CameraLocation>(
     camera_matrix: &CameraMatrix<T>,
     point: Point2<f32>,
 ) -> Option<Point2<f32>> {
@@ -417,7 +469,7 @@ fn pixel_to_ground<T: CameraLocation>(
     Some(ground.xy())
 }
 
-fn ground_to_pixel<T: CameraLocation>(
+pub fn ground_to_pixel<T: CameraLocation>(
     camera_matrix: &CameraMatrix<T>,
     point: Point2<f32>,
 ) -> Option<Point2<f32>> {

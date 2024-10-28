@@ -1,5 +1,10 @@
+use heimdall::{CameraLocation, CameraMatrix};
 use itertools::Itertools;
 use nalgebra::{Point2, Vector2};
+
+use crate::vision::camera::Image;
+
+use super::{ground_to_pixel, is_less_bright_and_more_saturated};
 
 #[derive(Debug, Clone)]
 pub struct Line2 {
@@ -58,6 +63,41 @@ impl LineSegment2 {
             (self.end.x, self.end.y, 0.0),
         ]
     }
+
+    pub fn white_test<T: CameraLocation>(
+        &self,
+        image: &Image<T>,
+        camera_matrix: &CameraMatrix<T>,
+        n: usize,
+        sample_distance: f32,
+        ratio: f32,
+    ) -> bool {
+        let mut tests = vec![];
+
+        for sample in self.sample_uniform(n) {
+            let normal = self.normal();
+
+            let tester1 = sample + normal * sample_distance;
+            let tester2 = sample - normal * sample_distance;
+
+            // project the points back to the image
+            let (point_pixel, tester1_pixel, tester2_pixel) = (
+                ground_to_pixel(&camera_matrix, sample).unwrap(),
+                ground_to_pixel(&camera_matrix, tester1).unwrap(),
+                ground_to_pixel(&camera_matrix, tester2).unwrap(),
+            );
+
+            let test1 = is_less_bright_and_more_saturated(tester1_pixel, point_pixel, image);
+            let test2 = is_less_bright_and_more_saturated(tester2_pixel, point_pixel, image);
+
+            tests.extend([test1, test2]);
+        }
+
+        let n_tests = tests.len() as f32;
+        let n_true = tests.iter().filter(|&&x| x).count() as f32;
+
+        n_true / n_tests > ratio
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -90,15 +130,6 @@ impl LineCandidate {
             inliers,
             segment,
         }
-    }
-
-    fn push(&mut self, inlier: Point2<f32>) {
-        self.inliers.push(inlier);
-        Self::sort_inliers(&mut self.inliers);
-        self.segment = LineSegment2::new(
-            *self.inliers.first().unwrap(),
-            *self.inliers.last().unwrap(),
-        );
     }
 
     pub fn merge(&mut self, other: LineCandidate) {
@@ -150,6 +181,6 @@ impl LineCandidate {
     }
 
     fn sort_inliers(inliers: &mut Vec<Point2<f32>>) {
-        inliers.sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap());
+        inliers.sort_unstable_by(|a, b| a.x.partial_cmp(&b.x).unwrap());
     }
 }

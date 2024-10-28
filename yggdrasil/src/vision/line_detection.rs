@@ -448,29 +448,29 @@ pub fn detect_lines<T: CameraLocation>(
     scan_lines: Res<ScanLines<T>>,
     matrix: Res<CameraMatrix<T>>,
 ) {
-    let line_spots = scan_lines
-        .horizontal()
-        .line_spots()
-        .chain(scan_lines.vertical().line_spots())
-        .collect();
+    // let line_spots = scan_lines
+    //     .horizontal()
+    //     .line_spots()
+    //     .chain(scan_lines.vertical().line_spots())
+    //     .collect();
 
-    commands
-        .prepare_task(tasks::TaskPool::AsyncCompute)
-        .to_resource()
-        .spawn({
-            let previous_lines = previous_lines
-                .map(|lines| lines.deref().clone())
-                .unwrap_or(DetectedLines::empty(scan_lines.image().clone()));
-            let scan_lines = scan_lines.deref().clone();
-            let matrix = matrix.deref().clone();
+    // commands
+    //     .prepare_task(tasks::TaskPool::AsyncCompute)
+    //     .to_resource()
+    //     .spawn({
+    //         let previous_lines = previous_lines
+    //             .map(|lines| lines.deref().clone())
+    //             .unwrap_or(DetectedLines::empty(scan_lines.image().clone()));
+    //         let scan_lines = scan_lines.deref().clone();
+    //         let matrix = matrix.deref().clone();
 
-            async move {
-                Some(create_line_detection_data(
-                    previous_lines,
-                    line_spots,
-                    scan_lines,
-                    &matrix,
-                ))
-            }
-        });
+    //         async move {
+    //             Some(create_line_detection_data(
+    //                 previous_lines,
+    //                 line_spots,
+    //                 scan_lines,
+    //                 &matrix,
+    //             ))
+    //         }
+    //     });
 }
