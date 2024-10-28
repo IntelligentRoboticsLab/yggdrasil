@@ -15,9 +15,9 @@ use bevy::{
 use miette::{IntoDiagnostic, Result};
 
 use connect::{listen_for_connection, setup_new_connection, ControlDataStream};
-use receive::{handle_message, ControlReceiver};
+use receive::{handle_message, ControlClientMessage, ControlReceiver};
 use tasks::conditions::task_finished;
-use transmit::{send_current_state, ControlSender};
+use transmit::{send_current_state, ControlHostMessage, ControlSender};
 
 pub const CONTROL_PORT: u16 = 40001;
 
@@ -35,11 +35,11 @@ impl Plugin for ControlPlugin {
             )
             .add_systems(
                 Update,
-                handle_message.run_if(resource_exists::<ControlReceiver>),
+                handle_message.run_if(resource_exists::<ControlReceiver<ControlClientMessage>>),
             )
             .add_systems(
                 Update,
-                send_current_state.run_if(resource_exists::<ControlSender>),
+                send_current_state.run_if(resource_exists::<ControlSender<ControlHostMessage>>),
             );
     }
 }

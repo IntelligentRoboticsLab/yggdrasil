@@ -4,32 +4,42 @@ use std::{
     time::Instant,
 };
 
+use async_std::net::TcpStream;
+use futures::{
+    channel::mpsc::{self, UnboundedReceiver, UnboundedSender},
+    io::{ReadHalf, WriteHalf},
+};
 use miette::IntoDiagnostic;
 use re_viewer::external::{
     eframe,
     egui::{self, Frame, ScrollArea},
 };
 use rerun::external::ecolor::Color32;
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use yggdrasil::core::control::receive::ClientRequest;
+
+use tokio::task::JoinHandle;
+use yggdrasil::core::control::{
+    receive::{ClientRequest, ControlClientMessage, ControlReceiver},
+    transmit::{ControlHostMessage, ControlSender},
+};
 
 use crate::{
-    connection::{self, send_request},
+    connection::{handle_message, receive_messages, send_messages, RobotConnection},
     resource::RobotResources,
     style::{FrameStyleMap, LAST_UPDATE_COLOR},
 };
 
 #[derive(Default)]
 pub struct SeidrStates {
-    pub robot_resources: Arc<Mutex<RobotResources>>,
-    pub focused_resources: Arc<Mutex<HashMap<String, bool>>>,
-    pub last_resource_update: Arc<Mutex<Option<Instant>>>,
+    pub robot_resources: RobotResources,
+    pub focused_resources: HashMap<String, bool>,
+    pub last_resource_update: Option<Instant>,
 }
 
 pub struct Seidr {
     app: re_viewer::App,
-    ws: Arc<OwnedWriteHalf>,
     states: SeidrStates,
+    message_receiver: Option<ControlReceiver<ControlHostMessage>>,
+    message_sender: ControlSender<ControlClientMessage>,
     frame_styles: FrameStyleMap,
 }
 
@@ -41,6 +51,10 @@ impl eframe::App for Seidr {
 
     /// Called whenever we need repainting, which could be 60 Hz.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        // Feels weird to put the `handle_message` in a function
+        // that is executed when ui needs repainting
+        handle_message(&mut self.message_receiver, &mut self.states);
+
         // First add our panel(s):
         egui::SidePanel::right("Resource manipulation")
             .default_width(400.0)
@@ -55,11 +69,15 @@ impl eframe::App for Seidr {
 }
 
 impl Seidr {
-    pub fn new(app: re_viewer::App, ws: Arc<OwnedWriteHalf>) -> Self {
+    pub fn new(app: re_viewer::App, robot_connection: RobotConnection) -> Self {
+        let receiver = Seidr::listen_for_robot_messages(robot_connection.reader);
+        let sender = Seidr::setup_send_messages_to_robot(robot_connection.writer);
+
         Seidr {
             app,
-            ws,
             states: SeidrStates::default(),
+            message_receiver: Some(receiver),
+            message_sender: sender,
             frame_styles: FrameStyleMap::default(),
         }
     }
@@ -73,28 +91,27 @@ impl Seidr {
 
         ui.horizontal(|ui| {
             // Manual resource refresh button
-            ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-                self.frame_styles
-                    .get_or_default("refresh_button".to_string())
-                    .show(ui, |ui| {
-                        if ui
-                            .add(egui::Button::new(egui::RichText::new("Refresh").size(18.0)))
-                            .clicked()
-                        {
-                            let request = ClientRequest::RobotState;
-                            let bytes = bincode::serialize(&request).into_diagnostic().unwrap();
-                            send_request(self.ws.clone(), bytes).unwrap();
-                        }
-                    });
-            });
+            // ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+            //     self.frame_styles
+            //         .get_or_default("refresh_button".to_string())
+            //         .show(ui, |ui| {
+            //             if ui
+            //                 .add(egui::Button::new(egui::RichText::new("Refresh").size(18.0)))
+            //                 .clicked()
+            //             {
+            //                 let request = ClientRequest::RobotState;
+            //                 let bytes = bincode::serialize(&request).into_diagnostic().unwrap();
+            //                 send_request(self.ws.clone(), bytes).unwrap();
+            //             }
+            //         });
+            // });
 
             ui.add_space(ui.available_width());
 
             // Shows the last resource update in miliseconds
             ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
                 let last_resource_update = {
-                    let lock = self.states.last_resource_update.lock().unwrap();
-                    match *lock {
+                    match self.states.last_resource_update {
                         Some(time) => time.elapsed().as_millis(),
                         None => 0,
                     }
@@ -114,57 +131,56 @@ impl Seidr {
         ui.add_space(10.0);
 
         // Sort the names to keep the resources in a fixed order
-        let mut resource_names: Vec<String> = {
-            let locked_robot_resources = self.states.robot_resources.lock().unwrap();
-            locked_robot_resources.0.keys().cloned().collect()
-        };
+        // let mut resource_names: Vec<String> = {
+        //     let robot_resources = self.states.robot_resources;
+        //     robot_resources.0.keys().cloned().collect()
+        // };
+        // resource_names.sort();
+        let mut resource_names: Vec<_> = self.states.robot_resources.0.keys().cloned().collect();
         resource_names.sort();
 
-        let resources = self.states.robot_resources.clone();
-        let focused_resources = self.states.focused_resources.clone();
-        let mut locked_focused_resources = focused_resources.lock().unwrap();
-
-        let mut locked_resource_map = resources.lock().unwrap();
+        let mut resources = &mut self.states.robot_resources;
 
         for name in resource_names.into_iter() {
-            if let Some(data) = locked_resource_map.0.get_mut(&name) {
+            if let Some(data) = resources.0.get_mut(&name) {
                 let followup_action = add_editable_resource(
                     ui,
                     &name,
                     data,
-                    &mut locked_focused_resources,
+                    &mut self.states.focused_resources,
                     self.frame_styles
                         .get_or_default("override_button".to_string()),
                 );
                 if let Some(action) = followup_action {
-                    match action {
-                        EditableResourceAction::ResourceUpdate(bytes) => {
-                            send_request(self.ws.clone(), bytes).unwrap()
-                        }
-                    };
+                    self.message_sender.tx.unbounded_send(action);
                 }
             }
         }
     }
 
-    pub fn listen_for_robot_responses(&mut self, rs: OwnedReadHalf) {
-        let robot_resources = self.states.robot_resources.clone();
-        let focused_resource = self.states.focused_resources.clone();
-        let last_resource_update = self.states.last_resource_update.clone();
+    fn listen_for_robot_messages(
+        reader: ReadHalf<TcpStream>,
+    ) -> ControlReceiver<ControlHostMessage> {
+        let (reader_tx, reader_rx) = mpsc::unbounded::<ControlHostMessage>();
+        let receive_messages_task = tokio::spawn(async move {
+            receive_messages(reader, reader_tx).await;
+        });
 
-        let handle_robot_message = move |robot_state_msg| {
-            let mut locked_robot_resources = robot_resources.lock().unwrap();
-            let locked_focused_resource = focused_resource.lock().unwrap();
-            let _ =
-                locked_robot_resources.update_resources(robot_state_msg, locked_focused_resource);
-        };
-
-        connection::receiving_responses(rs, last_resource_update, handle_robot_message);
+        ControlReceiver { rx: reader_rx }
+        // let handle_message_task = tokio::spawn(async move {
+        //     handle_message(&mut receiver);
+        // });
     }
-}
 
-enum EditableResourceAction {
-    ResourceUpdate(Vec<u8>),
+    fn setup_send_messages_to_robot(
+        writer: WriteHalf<TcpStream>,
+    ) -> ControlSender<ControlClientMessage> {
+        let (writer_tx, writer_rx) = mpsc::unbounded::<ControlClientMessage>();
+        tokio::spawn(async move {
+            send_messages(writer, writer_rx).await;
+        });
+        ControlSender { tx: writer_tx }
+    }
 }
 
 fn add_editable_resource(
@@ -173,7 +189,7 @@ fn add_editable_resource(
     resource_data: &mut String,
     changed_resources: &mut HashMap<String, bool>,
     button_frame_style: Frame,
-) -> Option<EditableResourceAction> {
+) -> Option<ControlClientMessage> {
     let mut followup_action = None;
 
     ui.vertical(|ui| {
@@ -209,7 +225,7 @@ fn add_editable_resource(
         ui.add_space(2.0);
 
         ui.horizontal(|ui| {
-            // Button to override a resource on the robot from Seidr
+            // Button to override a resource on the robot from rerun
             button_frame_style.show(ui, |ui| {
                 if ui
                     .add(egui::Button::new(
@@ -217,12 +233,10 @@ fn add_editable_resource(
                     ))
                     .clicked()
                 {
-                    let request = ClientRequest::ResourceUpdate(
-                        resource_name.to_owned(),
-                        resource_data.to_owned(),
-                    );
-                    let bytes = bincode::serialize(&request).into_diagnostic().unwrap();
-                    followup_action = Some(EditableResourceAction::ResourceUpdate(bytes));
+                    followup_action = Some(ControlClientMessage::UpdateResource(
+                        resource_name.to_string(),
+                        resource_data.to_string(),
+                    ));
 
                     if let Some(changed_resource) = changed_resources.get_mut(resource_name) {
                         *changed_resource = false;
@@ -236,14 +250,7 @@ fn add_editable_resource(
                         egui::RichText::new("Override config").size(12.0),
                     ))
                     .clicked()
-                {
-                    // let request = ClientRequest::ConfigUpdate(
-                    //     resource_name.to_owned(),
-                    //     resource_data.to_owned()
-                    // );
-                    // let bytes = bincode::serialize(&request).into_diagnostic().unwrap();
-                    // followup_action = Some(EditableResourceAction::ConfigUpdate(bytes));
-                }
+                {}
             })
         });
 

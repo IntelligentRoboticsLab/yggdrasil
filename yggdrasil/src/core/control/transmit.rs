@@ -22,13 +22,15 @@ impl Default for ControlHostMessageDelay {
 }
 
 #[derive(Resource, Serialize, Deserialize, Debug)]
-pub struct ControlHostMessage {
-    pub resources: HashMap<String, String>,
+pub enum ControlHostMessage {
+    CloseStream,
+    Resources(HashMap<String, String>),
+    PlaceHolder,
 }
 
 #[derive(Resource)]
-pub struct ControlSender {
-    pub tx: mpsc::UnboundedSender<ControlHostMessage>,
+pub struct ControlSender<T> {
+    pub tx: mpsc::UnboundedSender<T>,
 }
 
 pub async fn send_messages(
@@ -40,6 +42,15 @@ pub async fn send_messages(
         let serialized_msg = bincode::serialize(&message)
             .into_diagnostic()
             .expect("Was not able to serialize a ControlHostMessage");
+
+        let msg_size = serialized_msg.len();
+        let serialized_msg_size = bincode::serialize(&msg_size).into_diagnostic().unwrap();
+        // Send the size of the message first
+        stream
+            .write(&serialized_msg_size)
+            .await
+            .expect("Failed writing the control message size to the stream");
+        // Send the actual robot message
         stream
             .write_all(&serialized_msg)
             .await
@@ -50,7 +61,7 @@ pub async fn send_messages(
 }
 
 pub fn send_current_state(
-    sender: Res<ControlSender>,
+    sender: Res<ControlSender<ControlHostMessage>>,
     time: Res<Time>,
     mut delay: Local<ControlHostMessageDelay>,
 ) {
@@ -71,5 +82,6 @@ pub fn send_current_state(
 fn collect_resource_states(val: String) -> ControlHostMessage {
     let mut resources = HashMap::new();
     resources.insert("Resource1".to_string(), val);
-    ControlHostMessage { resources }
+    resources.insert("Resource2".to_string(), "A value".to_string());
+    ControlHostMessage::Resources(resources)
 }

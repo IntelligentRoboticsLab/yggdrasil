@@ -8,7 +8,7 @@ use re_viewer::{
     StartupOptions,
 };
 
-use crate::{connection::TcpConnection, seidr::Seidr};
+use crate::{connection::RobotConnection, seidr::Seidr};
 
 // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
 const APP_ENV: &str = "My Wrapper";
@@ -19,7 +19,7 @@ pub struct App {
     rx: Receiver<LogMsg>,
     startup_options: StartupOptions,
     native_options: NativeOptions,
-    robot_connection: TcpConnection,
+    robot_connection: RobotConnection,
 }
 
 impl App {
@@ -27,7 +27,7 @@ impl App {
         rx: Receiver<LogMsg>,
         startup_options: StartupOptions,
         native_options: NativeOptions,
-        robot_connection: TcpConnection,
+        robot_connection: RobotConnection,
     ) -> Self {
         App {
             rx,
@@ -53,9 +53,7 @@ impl App {
                 );
                 rerun_app.add_receiver(self.rx);
 
-                let rs = self.robot_connection.rs;
-                let mut seidr = Seidr::new(rerun_app, self.robot_connection.ws);
-                seidr.listen_for_robot_responses(rs);
+                let seidr = Seidr::new(rerun_app, self.robot_connection);
                 Ok(Box::new(seidr))
             }),
         )

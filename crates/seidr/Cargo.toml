@@ -4,8 +4,10 @@ name = "seidr"
 version = "0.1.0"
 
 [dependencies]
+async-std = { workspace = true }
 bincode = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
+futures = { workspace = true }
 miette = { workspace = true }
 mimalloc = { workspace = true }
 re_crash_handler = { workspace = true }

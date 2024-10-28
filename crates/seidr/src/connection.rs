@@ -1,136 +1,158 @@
-use miette::{IntoDiagnostic, Result};
-use tracing::info;
-use std::{
-    sync::{Arc, Mutex},
-    time::Instant,
-};
-use tokio::{
-    io::AsyncReadExt,
-    net::{
-        tcp::{OwnedReadHalf, OwnedWriteHalf},
-        TcpStream, ToSocketAddrs,
-    },
-    task,
-};
-use yggdrasil::core::control::transmit::ControlHostMessage;
+use std::sync::{Arc, Mutex};
 
-pub struct TcpConnection {
-    pub rs: OwnedReadHalf,
-    pub ws: Arc<OwnedWriteHalf>,
+use async_std::{
+    io::{ReadExt, WriteExt},
+    net::{TcpStream, ToSocketAddrs},
+};
+use futures::{
+    channel::mpsc::{UnboundedReceiver, UnboundedSender}, io::{ReadHalf, WriteHalf}, stream::FusedStream, AsyncReadExt, StreamExt
+};
+use miette::{IntoDiagnostic, Result};
+use tokio::time::Duration;
+
+use yggdrasil::core::control::{
+    receive::{ControlClientMessage, ControlReceiver},
+    transmit::ControlHostMessage,
+};
+
+use crate::seidr::SeidrStates;
+
+pub struct RobotConnection {
+    pub reader: ReadHalf<TcpStream>,
+    pub writer: WriteHalf<TcpStream>,
 }
 
-impl TcpConnection {
-    pub fn new(reader: OwnedReadHalf, writer: OwnedWriteHalf) -> Self {
-        TcpConnection {
-            rs: reader,
-            ws: Arc::new(writer),
-        }
-    }
-
-    pub async fn try_from_ip<A>(addr: A) -> Result<Self>
+impl RobotConnection {
+    async fn try_from_ip<A>(addr: A) -> Result<Self>
     where
         A: ToSocketAddrs,
     {
         let stream = TcpStream::connect(addr).await.into_diagnostic()?;
-        let (rs, ws) = stream.into_split();
-        let connection = TcpConnection::new(rs, ws);
+        let (reader, writer) = stream.split();
+        let connection = RobotConnection { reader, writer };
         Ok(connection)
     }
 
-    // pub fn send_request(&self, bytes: Vec<u8>) -> Result<()> {
-    //     let ws = self.ws.clone();
-    //     task::spawn(async move {
-    //         ws.writable().await.into_diagnostic().unwrap();
-    //         ws.try_write(bytes.as_slice()).into_diagnostic().unwrap();
-    //     });
-    //     Ok(())
-    // }
+    pub async fn try_connect<A>(addr: A, connection_attempts: i32) -> Result<Self>
+    where
+        A: ToSocketAddrs + Clone,
+    {
+        let mut attempt = 0;
+        let connection = loop {
+            match RobotConnection::try_from_ip(addr.clone()).await {
+                Ok(conn) => break conn,
+                Err(err) => {
+                    tracing::info!(
+                        "[{}/{}] Failed to connect: {}. Retrying...",
+                        attempt,
+                        connection_attempts,
+                        err
+                    );
+
+                    if attempt >= connection_attempts {
+                        tracing::error!("Max connections attempts reached");
+                        std::process::exit(1);
+                    }
+
+                    attempt += 1;
+
+                    // Wait before retrying
+                    tokio::time::sleep(Duration::from_secs(3)).await;
+                }
+            };
+        };
+        Ok(connection)
+    }
 }
 
-pub fn send_request(ws: Arc<OwnedWriteHalf>, bytes: Vec<u8>) -> Result<()> {
-    // let ws = ws.clone();
-    task::spawn(async move {
-        ws.writable().await.into_diagnostic().unwrap();
-        ws.try_write(bytes.as_slice()).into_diagnostic().unwrap();
-    });
-    Ok(())
+pub async fn send_messages(
+    mut stream: WriteHalf<TcpStream>,
+    mut receiver: UnboundedReceiver<ControlClientMessage>,
+) {
+    while let Some(message) = receiver.next().await {
+        let serialized_msg = bincode::serialize(&message)
+            .into_diagnostic()
+            .expect("Was not able to serialize a ControlHostMessage");
+
+        let msg_size = serialized_msg.len();
+        let serialized_msg_size = bincode::serialize(&msg_size).into_diagnostic().unwrap();
+        stream.write(&serialized_msg_size).await.expect("Failed writing to the robot stream");
+
+        stream
+            .write_all(&serialized_msg)
+            .await
+            .expect("Failed writing the control message to the stream");
+
+        tracing::info!("Send message: {:#?}", message);
+    }
+
+    tracing::info!("Stopping send messages loop")
 }
 
-pub fn receiving_responses<F>(
-    mut rs: OwnedReadHalf,
-    last_resource_update: Arc<Mutex<Option<Instant>>>,
-    handle_message: F,
-) where
-    F: Fn(ControlHostMessage) + Send + Sync + 'static,
-{
-    // let mut size_buffer = [0; mem::size_of::<usize>()];
-    // let mut size: Option<usize> = None;
-
-    tokio::spawn(async move {
-        loop {
-            info!("Try to receive");
-            rs.readable().await.into_diagnostic().unwrap();
-            info!("Got a message");
-            let mut buffer = Vec::new();
-            let num_bytes = rs.read_buf(&mut buffer).await.unwrap();
-
-            info!("Received a message of {} bytes", num_bytes);
-
-            // If the message is zero bytes the connection is closing
-            if num_bytes == 0 {
-                break;
-            }
-
-            match bincode::deserialize::<ControlHostMessage>(&buffer).into_diagnostic() {
-                Ok(robot_state_msg) => {
-                    info!("Robot state received: {:#?}", robot_state_msg);
-                    handle_message(robot_state_msg);
-                    *last_resource_update.lock().unwrap() = Some(Instant::now());
-                }
-                Err(e) => {
-                    tracing::error!("Failed to deserialize server response; err = {:?}", e);
-                    break;
-                }
-            }
-
-            // match rs_locked.read(&mut msg_chunk).await.unwrap() {
-            //     Ok(0) => break, // Connection closed
-            //     Ok(num_bytes) => {
-            //         // println!("Bytes received: {}", num_bytes);
-            //         // println!("Text received: {}\n", String::from_utf8_lossy(&msg[..num_bytes]));
-            //         buffer.extend_from_slice(&msg_chunk[..num_bytes]);
-
-            //         if size.is_none() && buffer.len() >= 4{
-            //             let data_size: [u8; 4] = buffer[..4].try_into().expect("Failed to extract size");
-            //             size = Some(u32::from_be_bytes(data_size) as usize);
-            //             buffer.drain(..4);
-            //         }
-
-            //         if let Some(expected_size) = size {
-            //             if buffer.len() >= expected_size {
-
-            //             }
-            //         }
-            //         match bincode::deserialize::<RobotStateMsg>(&msg_chunk[..num_bytes]).into_diagnostic()
-            //         {
-            //             Ok(robot_state_msg) => {
-            //                 handle_message(robot_state_msg);
-            //                 *last_resource_update.lock().unwrap() = Some(Instant::now());
-            //             }
-            //             Err(e) => {
-            //                 println!("Failed to deserialize server response; err = {:?}", e);
-            //                 println!("Help: {:?}\n", e.downcast::<io::Error>());
-            //                 exit(1);
-            //                 break;
-            //             }
-            //         }
-            //     }
-            //     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
-            //     Err(e) => {
-            //         println!("Failed to read from socket; err = {:?}", e);
-            //         break;
-            //     }
-            // }
+pub async fn receive_messages(
+    mut stream: ReadHalf<TcpStream>,
+    sender: UnboundedSender<ControlHostMessage>,
+) {
+    let mut size_buffer = [0; std::mem::size_of::<usize>()];
+    loop {
+        if sender.is_closed() {
+            tracing::warn!("Receiving message channel is closed");
+            break;
         }
-    });
+
+        // The first message that will be read should be the size of the
+        // next incoming message
+        let num_bytes = ReadExt::read(&mut stream, &mut size_buffer).await.unwrap();
+
+        if num_bytes == 0 {
+            sender.unbounded_send(ControlHostMessage::CloseStream);
+            break;
+        }
+
+        let msg_size = bincode::deserialize::<usize>(&size_buffer).unwrap();
+
+        // Read the actual robot message from the stream
+        let mut buffer = vec![0; msg_size];
+        ReadExt::read_exact(&mut stream, &mut buffer).await.unwrap();
+        // Decode message
+        let message: ControlHostMessage = bincode::deserialize(&buffer).unwrap();
+
+        // transmit decoded message to the channel
+        sender.unbounded_send(message);
+    }
+}
+
+pub fn handle_message(
+    control_receiver: &mut Option<ControlReceiver<ControlHostMessage>>,
+    states: &mut SeidrStates,
+) -> Option {
+    let Some(receiver) = control_receiver else {
+        return;
+    };
+
+    while let Some(message) = receiver.try_recv() {
+        match message {
+            ControlHostMessage::CloseStream => {
+                tracing::warn!("Connection is closed");
+                *control_receiver = None;
+                return Some(ControlHostMessage::CloseStream);
+            }
+            ControlHostMessage::Resources(new_resources) => {
+                tracing::info!("Resource message: {:#?}", new_resources);
+                let last_update = &states.last_resource_update;
+
+                // if let Err(err) = states
+                //     .robot_resources
+                //     .update_resources(new_resources, &mut states.focused_resources)
+                // {
+                //     tracing::error!("Failed to update resources: {}", err);
+                // }
+                states
+                    .robot_resources
+                    .update_resources(new_resources, &mut states.focused_resources)
+                    .unwrap();
+            }
+            _ => tracing::info!("Got a message to handle"),
+        }
+    }
 }

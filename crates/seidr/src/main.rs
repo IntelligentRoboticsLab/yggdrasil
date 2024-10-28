@@ -5,15 +5,11 @@ mod resource;
 mod seidr;
 mod style;
 
-use std::{
-    net::{Ipv4Addr, SocketAddrV4},
-    process::exit,
-    time::Duration,
-};
+use std::net::{Ipv4Addr, SocketAddrV4};
 
 use clap::Parser;
 use cli::Cli;
-use connection::TcpConnection;
+use connection::RobotConnection;
 use miette::{IntoDiagnostic, Result};
 use re_viewer::external::{eframe, egui, re_log, re_memory};
 
@@ -71,31 +67,10 @@ async fn main() -> Result<()> {
     let socket_addr = SocketAddrV4::new(args.robot_ip, CONTROL_PORT);
 
     // Tries to make a connection to the robot address
-    let mut connection_attempts = 0;
-    let max_connection_attempts = 10;
-    let connection = loop {
-        match TcpConnection::try_from_ip(socket_addr).await {
-            Ok(conn) => break conn,
-            Err(err) => {
-                tracing::info!(
-                    "[{}/{}] Failed to connect: {}. Retrying...",
-                    connection_attempts,
-                    max_connection_attempts,
-                    err
-                );
-
-                if connection_attempts >= max_connection_attempts {
-                    tracing::error!("Max connections attempts reached");
-                    exit(1);
-                }
-
-                connection_attempts += 1;
-
-                // Wait before retrying
-                tokio::time::sleep(Duration::from_secs(2)).await;
-            }
-        };
-    };
+    let connection_attempts = 10;
+    let connection = RobotConnection::try_connect(socket_addr, connection_attempts)
+        .await
+        .unwrap();
 
     let app = App::new(rx, startup_options, native_options, connection);
     app.run()?;

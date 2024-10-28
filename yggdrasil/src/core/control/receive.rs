@@ -8,15 +8,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::control::connect::ControlDataStream;
 
-use super::transmit::ControlSender;
+use super::transmit::{ControlHostMessage, ControlSender};
 
 #[derive(Resource)]
-pub struct ControlReceiver {
-    pub rx: mpsc::UnboundedReceiver<ControlClientMessage>,
+pub struct ControlReceiver<T> {
+    pub rx: mpsc::UnboundedReceiver<T>,
 }
 
-impl ControlReceiver {
-    pub fn try_recv(&mut self) -> Option<ControlClientMessage> {
+impl<T> ControlReceiver<T> {
+    pub fn try_recv(&mut self) -> Option<T> {
         self.rx
             .try_next()
             .transpose()
@@ -25,7 +25,7 @@ impl ControlReceiver {
     }
 }
 
-#[derive(Resource, Serialize, Deserialize)]
+#[derive(Resource, Serialize, Deserialize, Debug)]
 pub enum ControlClientMessage {
     CloseStream,
     UpdateResource(String, String),
@@ -36,35 +36,40 @@ pub async fn receive_messages(
     mut stream: ReadHalf<TcpStream>,
     sender: UnboundedSender<ControlClientMessage>,
 ) {
+    let mut size_buffer = [0; std::mem::size_of::<usize>()];
     loop {
         if sender.is_closed() {
-            info!("Breaking up receive message loop");
+            warn!("Breaking up receive message loop");
             break;
         }
-        let mut buffer = Vec::new();
-        let Ok(num_bytes) = stream.read_to_end(&mut buffer).await else {
-            todo!("Do something if reading of stream goes wrong")
-        };
+
+        let num_bytes = stream.read(&mut size_buffer).await.unwrap();
 
         if num_bytes == 0 {
             sender.unbounded_send(ControlClientMessage::CloseStream);
             continue;
         }
 
-        sender.unbounded_send(ControlClientMessage::SendResourcesNow);
+        let msg_size = bincode::deserialize::<usize>(&size_buffer).unwrap();
+        let mut buffer = vec![0; msg_size];
+        let _num_bytes = stream.read_exact(&mut buffer).await.unwrap();
+
+        let msg = bincode::deserialize::<ControlClientMessage>(&buffer).unwrap();
+
+        sender.unbounded_send(msg);
     }
 }
 
-pub fn handle_message(mut commands: Commands, mut receiver: ResMut<ControlReceiver>) {
+pub fn handle_message(mut commands: Commands, mut receiver: ResMut<ControlReceiver<ControlClientMessage>>) {
     while let Some(message) = receiver.try_recv() {
         match message {
             ControlClientMessage::CloseStream => {
-                commands.remove_resource::<ControlReceiver>();
-                commands.remove_resource::<ControlSender>();
+                commands.remove_resource::<ControlReceiver<ControlClientMessage>>();
+                commands.remove_resource::<ControlSender<ControlHostMessage>>();
                 commands.remove_resource::<ControlDataStream>();
             }
             _ => {
-                info!("Got a message to handle");
+                info!("Got a message to handle: {:?}", message);
             }
         }
     }

@@ -20,25 +20,6 @@ pub struct ControlWriteStream {
     pub stream: WriteHalf<TcpStream>,
 }
 
-// impl ControlDataStream {
-//     pub async fn recv(&mut self, buffer: &mut Vec<u8>) -> Result<usize> {
-//         let mut reader = self.reader.lock().await;
-
-//         let num_bytes = reader.read_to_end(buffer).await.into_diagnostic()?;
-//         Ok(num_bytes)
-//     }
-
-//     pub async fn send(&mut self, buffer: &[u8]) -> io::Result<()> {
-//         info!("In function send()");
-//         let mut writer = self.writer.lock().await;
-//         info!("Locked stream");
-//         writer.write_all(buffer).await;
-//         info!("Sending robot state");
-
-//         Ok(())
-//     }
-// }
-
 pub fn listen_for_connection(mut commands: Commands, listener_socket: Res<ControlListenSocket>) {
     let socket = listener_socket.socket.clone();
 
