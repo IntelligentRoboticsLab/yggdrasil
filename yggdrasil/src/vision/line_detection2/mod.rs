@@ -1,16 +1,31 @@
 pub mod arrsac;
+pub mod line;
 
+use core::f32;
+use std::collections::HashSet;
+
+use arrsac::Arrsac;
 use bevy::prelude::*;
 use heimdall::{CameraLocation, CameraMatrix, Top, YuyvImage};
+use itertools::Itertools;
+use line::{LineCandidate, LineSegment2};
 use nalgebra::{point, DVector, Matrix2, Point2, SymmetricEigen, Vector2};
-use rand::Rng;
+use nidhogg::types::color;
+use rand::{Rng, RngCore};
+use rerun::Color;
 
 use super::{camera::Image, scan_lines::ScanLines};
-use crate::core::debug::DebugContext;
+use crate::{core::debug::DebugContext, localization::RobotPose};
 
-const LINE_SEGMENT_MIN_POINTS: usize = 4;
-const MAX_LINE_FIT_DISTANCE: f32 = 0.1;
-const WHITE_TEST_SAMPLE_DISTANCE: f32 = 0.08;
+const ARRSAC_INLIER_THRESHOLD: f32 = 0.08;
+const LINE_SEGMENT_MIN_POINTS: usize = 6;
+const LINE_SEGMENT_MIN_LENGTH: f32 = 0.2;
+const LINE_SEGMENT_MAX_DISTANCE: f32 = 8.0;
+const MAX_LINE_GAP_DISTANCE: f32 = 0.15;
+const WHITE_TEST_SAMPLES: usize = 10;
+const WHITE_TEST_SAMPLE_DISTANCE: f32 = 0.10;
+const WHITE_TEST_MERGE_RATIO: f32 = 0.85;
+const WHITE_TEST_MAX_ANGLE: f32 = f32::consts::FRAC_PI_8;
 
 /// Plugin that adds systems to detect lines from scan-lines.
 pub struct LineDetectionPlugin;
@@ -24,116 +39,311 @@ impl Plugin for LineDetectionPlugin {
     }
 }
 
-/// Line representation that uses a normal to the line
-struct Line {
-    /// Normal to the line itself
-    normal: Vector2<f32>,
-    /// Distance to the origin
-    d: f32,
-}
+fn detect_lines<T: CameraLocation>(
+    dbg: DebugContext,
+    scan_lines: Res<ScanLines<T>>,
+    camera_matrix: Res<CameraMatrix<T>>,
+    pose: Res<RobotPose>,
+) {
+    let mut rng = rand::thread_rng();
 
-// samples n points uniformly *in between* p1 and p2.
-fn uniform_between(
-    p1: Point2<f32>,
-    p2: Point2<f32>,
-    n: usize,
-) -> impl Iterator<Item = Point2<f32>> {
-    (1..=n).map(move |i| {
-        let t = i as f32 / (n + 1) as f32;
-        p1 + (p2 - p1) * t
-    })
-}
+    // let mut all_groups = scan_lines.vertical().line_spot_groups();
+    // all_groups.extend(scan_lines.horizontal().line_spot_groups());
 
-impl Line {
-    /// Computes the distance from a line to a point. This is done as follows:
-    /// first the vector to the point is projected onto the normalized normal
-    /// of the line. This is done by using the dot product between the
-    /// coordinates of the point and the normal of the line, which gives
-    /// us the length of the projection. We can then subtract that from the
-    /// total distance to the normal to get the remaining part, namely the
-    /// distance between the point and the line.
-    pub fn distance_to_point(&self, point: Point2<f32>) -> f32 {
-        self.d - self.normal.dot(&point.coords)
+    let spots = scan_lines
+        .vertical()
+        .line_spots()
+        .chain(scan_lines.horizontal().line_spots())
+        .collect::<Vec<_>>();
+
+    // we need at least two points to fit a line
+    if spots.len() < 2 {
+        return;
     }
 
-    /// Fits a line that uses a normal in its representation by taking the
-    /// eigenvector with smallest corresponding eigenvalue.
-    pub fn fit(points: impl Iterator<Item = Point2<f32>>) -> Line {
-        // Convert the points to nalgebra vectors to make operations easier
-        let (x, y) = points_to_vectors(points);
+    let projected_spots = spots
+        .iter()
+        .filter_map(|p| pixel_to_ground(&camera_matrix, *p))
+        .collect::<Vec<_>>();
 
-        let x_m = x.mean();
-        let y_m = y.mean();
+    let mut arrsac = Arrsac::new(ARRSAC_INLIER_THRESHOLD as f64, rng.clone());
 
-        // Normalized x and y coordinates
-        let u = x.map(|elem| elem - x_m);
-        let v = y.map(|elem| elem - y_m);
+    let mut unused_spots = spots
+        .iter()
+        .filter_map(|p| pixel_to_ground(&camera_matrix, *p))
+        .collect::<Vec<_>>();
 
-        let s_uu = u.map(|elem| elem.powi(2)).sum();
-        let s_vv = v.map(|elem| elem.powi(2)).sum();
+    let mut line_candidates = vec![];
 
-        let s_uv = u.component_mul(&v).sum();
-
-        let a = Matrix2::<f32>::new(s_vv, s_uv, s_uv, s_uu);
-        let eig = SymmetricEigen::new(a);
-
-        let smallest_eig_idx = if eig.eigenvalues[0] < eig.eigenvalues[1] {
-            0
-        } else {
-            1
+    const MAX_ITERS: usize = 10;
+    for _ in 0..MAX_ITERS {
+        let Some((line, mut inlier_idx)) = arrsac.fit(unused_spots.iter().copied()) else {
+            // probably no more good lines!
+            break;
         };
 
-        // Select smallest eigenvector as the norm (smallest variance)
-        let normal: Vector2<f32> = eig.eigenvectors.column(smallest_eig_idx).into();
-
-        // Distance to the origin
-        let d = normal.dot(&Vector2::new(x_m, y_m));
-
-        Line { normal, d }
-    }
-
-    // /// Mean error of the line to a set of points
-    // pub fn mean_error(&self, points: &[Point2<f32>]) -> f32 {
-    //     points
-    //         .iter()
-    //         .map(|p| self.distance_to_point(*p).abs())
-    //         .sum::<f32>()
-    //         / points.len() as f32
-    // }
-
-    pub fn remove_outliers(
-        &self,
-        points: Vec<Point2<f32>>,
-    ) -> (Vec<Point2<f32>>, Vec<Point2<f32>>) {
-        // calculates both in one function to avoid recalculating the distance
-        let distances_abs = points
-            .iter()
-            .map(|p| self.distance_to_point(*p).abs())
-            .collect::<Vec<f32>>();
-
-        let mean = distances_abs.iter().sum::<f32>() / distances_abs.len() as f32;
-
-        let std_dev = distances_abs
-            .iter()
-            .map(|d| (d - mean).powi(2))
-            .sum::<f32>()
-            .sqrt()
-            / distances_abs.len() as f32;
-
-        let (good, bad): (Vec<_>, Vec<_>) = points
+        inlier_idx.sort_unstable();
+        inlier_idx.reverse();
+        let inliers = inlier_idx
             .into_iter()
-            .zip(distances_abs)
-            // outliers are those that are more than 2 standard deviations away from the mean
-            .partition(|(_, d)| *d < mean + 1.0 * std_dev);
+            .map(|i| unused_spots.remove(i))
+            .collect::<Vec<_>>();
 
-        (
-            good.into_iter().map(|(p, _)| p).collect(),
-            bad.into_iter().map(|(p, _)| p).collect(),
-        )
+        let candidate = LineCandidate::new(line, inliers);
+
+        // split the line into segments if neighboring points are further apart than 0.15m
+        let (candidates, remainder) = candidate.split_at_gap(MAX_LINE_GAP_DISTANCE);
+        unused_spots.extend(remainder);
+
+        let candidates = candidates
+            .into_iter()
+            .filter_map(|c| {
+                let has_enough_inliers = c.n_inliers() >= LINE_SEGMENT_MIN_POINTS;
+                let is_close_enough =
+                    nalgebra::distance(&c.segment.center(), &pose.world_position())
+                        < LINE_SEGMENT_MAX_DISTANCE;
+                let is_long_enough = c.segment.length() > LINE_SEGMENT_MIN_LENGTH;
+
+                if has_enough_inliers && is_close_enough && is_long_enough {
+                    Some(c)
+                } else {
+                    unused_spots.extend(c.inliers.into_iter());
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        line_candidates.extend(candidates);
+
+        // if we don't have enough points to fit any more lines
+        if unused_spots.len() < 2 {
+            break;
+        }
     }
+
+    /// DEBUG
+    let mut allsamplesaaa = vec![];
+    let mut allsamplesbbb = vec![];
+    let mut allsamplesccc = vec![];
+    /// DEBUG
+    // check if we can merge two line candidates
+    for i in (0..line_candidates.len()).rev() {
+        for j in 0..i {
+            let c1 = &line_candidates[i];
+            let c2 = &line_candidates[j];
+
+            if c1.line.normal.angle(&c2.line.normal) > WHITE_TEST_MAX_ANGLE {
+                continue;
+            }
+
+            let center1 = c1.segment.center();
+            let center2 = c2.segment.center();
+
+            // the segment connecting the two centers
+            let connected = LineSegment2::new(center1, center2);
+
+            // do a white test
+            let mut tests = vec![];
+
+            /// DEBUG
+            let mut samplesaaa = vec![];
+            let mut samplesbbb = vec![];
+            let mut samplesccc = vec![];
+            /// DEBUG
+            // TODO: sample based on the length of the segment too not just a fixed sample count
+            for sample in connected.sample_uniform(WHITE_TEST_SAMPLES) {
+                let normal = connected.normal();
+
+                let tester1 = sample + normal * WHITE_TEST_SAMPLE_DISTANCE;
+                let tester2 = sample - normal * WHITE_TEST_SAMPLE_DISTANCE;
+
+                // project the points back to the image
+                let (point_pixel, tester1_pixel, tester2_pixel) = (
+                    ground_to_pixel(&camera_matrix, sample).unwrap(),
+                    ground_to_pixel(&camera_matrix, tester1).unwrap(),
+                    ground_to_pixel(&camera_matrix, tester2).unwrap(),
+                );
+
+                let test1 = is_less_bright_and_more_saturated(
+                    tester1_pixel,
+                    point_pixel,
+                    scan_lines.image(),
+                );
+                let test2 = is_less_bright_and_more_saturated(
+                    tester2_pixel,
+                    point_pixel,
+                    scan_lines.image(),
+                );
+
+                tests.extend([test1, test2]);
+
+                samplesaaa.extend([point_pixel, tester1_pixel, tester2_pixel]);
+                samplesbbb.extend([
+                    rerun::Color::from_rgb(0, 0, 255),
+                    if test1 {
+                        rerun::Color::from_rgb(0, 255, 0)
+                    } else {
+                        rerun::Color::from_rgb(255, 0, 0)
+                    },
+                    if test2 {
+                        rerun::Color::from_rgb(0, 255, 0)
+                    } else {
+                        rerun::Color::from_rgb(255, 0, 0)
+                    },
+                ]);
+                samplesccc.extend([rerun::Radius::from(1.0); 3]);
+            }
+
+            allsamplesaaa.extend(samplesaaa);
+            allsamplesbbb.extend(samplesbbb);
+            allsamplesccc.extend(samplesccc);
+
+            let ratio = tests.iter().filter(|&&t| t).count() as f32 / tests.len() as f32;
+
+            if ratio > WHITE_TEST_MERGE_RATIO {
+                let c = line_candidates.remove(i);
+                line_candidates[j].merge(c);
+                break;
+            }
+        }
+    }
+
+    dbg.log_with_cycle(
+        T::make_entity_path("white_test"),
+        scan_lines.image().cycle(),
+        &rerun::Points2D::new(allsamplesaaa.into_iter().map(|p| p.to_tuple()))
+            .with_colors(allsamplesbbb)
+            .with_radii(allsamplesccc),
+    );
+
+    let line_segments = line_candidates
+        .iter()
+        .cloned()
+        .filter_map(|c| {
+            let seg = c.segment;
+
+            let Some(start) = ground_to_pixel(&camera_matrix, seg.start) else {
+                return None;
+            };
+
+            let Some(end) = ground_to_pixel(&camera_matrix, seg.end) else {
+                return None;
+            };
+
+            Some(LineSegment2::new(start, end))
+        })
+        .collect::<Vec<_>>();
+
+    let colors = line_segments
+        .iter()
+        .map(|_| Color::from_rgb(rng.gen(), rng.gen(), rng.gen()));
+
+    dbg.log_with_cycle(
+        T::make_entity_path("line_segments_camera"),
+        scan_lines.image().cycle(),
+        &rerun::LineStrips2D::new(
+            line_segments
+                .iter()
+                .map(|segment| segment.to_rerun_2d())
+                .collect::<Vec<_>>(),
+        )
+        .with_colors(colors),
+    );
+
+    let line_segments = line_candidates
+        .iter()
+        .cloned()
+        .map(|c| c.segment)
+        .collect::<Vec<_>>();
+
+    let line_segments_points = line_candidates
+        .iter()
+        .cloned()
+        .map(|c| c.inliers)
+        .collect::<Vec<_>>();
+
+    let colors = line_segments
+        .iter()
+        .map(|_| Color::from_rgb(rng.gen(), rng.gen(), rng.gen()));
+
+    dbg.log_with_cycle(
+        T::make_entity_path("line_segments_cool"),
+        scan_lines.image().cycle(),
+        &rerun::LineStrips3D::new(
+            line_segments
+                .iter()
+                .map(|segment| segment.to_rerun_3d())
+                .collect::<Vec<_>>(),
+        )
+        .with_colors(colors),
+    );
+
+    let (colors, radii) = colors_and_radii_groups(&line_segments_points, 0.1, rng.clone());
+
+    dbg.log_with_cycle(
+        T::make_entity_path("line_segments_points_projected"),
+        scan_lines.image().cycle(),
+        &rerun::Points3D::new(
+            line_segments_points
+                .iter()
+                .flat_map(|segment| segment.iter().map(|p| (p.x, p.y, 0.0)).collect::<Vec<_>>()),
+        )
+        .with_colors(colors)
+        .with_radii(radii),
+    );
+
+    let line_segments_image = line_segments_points
+        .iter()
+        .map(|segment| {
+            segment
+                .iter()
+                .flat_map(|p| ground_to_pixel(&camera_matrix, *p))
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+
+    let (colors, radii) = colors_and_radii_groups(&line_segments_image, 2.0, rng.clone());
+
+    dbg.log_with_cycle(
+        T::make_entity_path(format!("line_segments_points")),
+        scan_lines.image().cycle(),
+        &rerun::Points2D::new(
+            line_segments_image
+                .iter()
+                .flat_map(|segment| segment.iter().map(|p| p.to_tuple()))
+                .collect::<Vec<_>>(),
+        )
+        .with_colors(colors)
+        .with_radii(radii),
+    );
+
+    // dbg.log_with_cycle(
+    //     T::make_entity_path(format!("found_line")),
+    //     scan_lines.image().cycle(),
+    //     &rerun::LineStrips3D::new([[(x_min, y_min, 0.0), (x_max, y_max, 0.0)]])
+    //         .with_colors([Color::from_rgb(0, 0, 255)]),
+    // );
+
+    let (colors, radii) = colors_and_radii(&spots, Color::from_rgb(0, 255, 255), 2.0);
+    dbg.log_with_cycle(
+        T::make_entity_path(format!("spots")),
+        scan_lines.image().cycle(),
+        &rerun::Points2D::new(spots.into_iter().map(|p| p.to_tuple()))
+            .with_colors(colors)
+            .with_radii(radii),
+    );
+
+    let (colors, radii) = colors_and_radii(&projected_spots, Color::from_rgb(0, 255, 255), 0.1);
+    dbg.log_with_cycle(
+        T::make_entity_path(format!("projected_spots")),
+        scan_lines.image().cycle(),
+        &rerun::Points3D::new(projected_spots.into_iter().map(|p| (p.x, p.y, 0.0)))
+            .with_colors(colors)
+            .with_radii(radii),
+    );
 }
 
-pub fn is_less_light_and_more_saturated<T: CameraLocation>(
+fn is_less_bright_and_more_saturated<T: CameraLocation>(
     p1: Point2<f32>,
     p2: Point2<f32>,
     image: &Image<T>,
@@ -153,244 +363,43 @@ pub fn is_less_light_and_more_saturated<T: CameraLocation>(
         return false;
     };
 
-    y1 > y2 && s1 < s2
+    y1 < y2 && s1 > s2
 }
 
-fn remove_bad_fitting_points(
-    points: Vec<Point2<f32>>,
-    max_fit_distance: f32,
-) -> (Vec<Point2<f32>>, Vec<Point2<f32>>) {
-    let line = Line::fit(points.iter().copied());
-    let mut good = vec![];
-    let mut bad = vec![];
-
-    for point in points {
-        if line.distance_to_point(point).abs() < max_fit_distance {
-            good.push(point);
-        } else {
-            bad.push(point);
-        }
-    }
-
-    (good, bad)
-}
-
-fn detect_lines<T: CameraLocation>(
-    dbg: DebugContext,
-    scan_lines: Res<ScanLines<T>>,
-    camera_matrix: Res<CameraMatrix<T>>,
-) {
-    let mut all_groups = scan_lines.vertical().line_spot_groups();
-    all_groups.extend(scan_lines.horizontal().line_spot_groups());
-
-    let mut discards = vec![];
-    let mut filtered_groups = vec![];
-    for group in all_groups {
-        // // TODO: this needs to be after projection
-        let projected = group
-            .iter()
-            .cloned()
-            .flat_map(|p| pixel_to_ground(&camera_matrix, p))
-            .collect::<Vec<_>>();
-        // let (good, bad) = remove_bad_fitting_points(projected, MAX_LINE_FIT_DISTANCE);
-        // discards.extend(bad);
-
-        // if good.len() >= LINE_SEGMENT_MIN_POINTS {
-        //     filtered_groups.push(good);
-        // } else {
-        //     discards.extend(good);
-        // }
-
-        let (good, bad) = Line::fit(projected.iter().copied()).remove_outliers(projected);
-        discards.extend(bad);
-        if good.len() >= LINE_SEGMENT_MIN_POINTS {
-            filtered_groups.push(good);
-        } else {
-            discards.extend(good);
-        };
-    }
-
-    let n_groups = filtered_groups.len();
-    let mut dbg_all_pts = vec![];
-    let mut dbg_all_colors = vec![];
-    let mut dbg_all_radii = vec![];
-    for i in (0..n_groups).rev() {
-        for j in 0..i {
-            let g1 = &filtered_groups[i];
-            let g2 = &filtered_groups[j];
-
-            let line = Line::fit(g1.iter().chain(g2.iter()).copied());
-
-            // TODO: take sample n based on projected distance
-            let samples = uniform_between(g1[0], g2[0], 10).collect::<Vec<_>>();
-
-            // let mean_error = line.mean_error(&samples);
-
-            let mut pts = vec![];
-            let mut colors = vec![];
-            let mut tests = vec![];
-            let mut radii = vec![];
-
-            for sample in samples {
-                // TODO: use config and projections
-
-                let p1 = sample + Vector2::new(0.0, WHITE_TEST_SAMPLE_DISTANCE);
-                let p2 = sample + Vector2::new(0.0, -WHITE_TEST_SAMPLE_DISTANCE);
-
-                let (test1, test2) = if let Some(sample) = ground_to_pixel(&camera_matrix, sample) {
-                    let test1 = if let Some(p1) = ground_to_pixel(&camera_matrix, p1) {
-                        is_less_light_and_more_saturated(sample, p1, scan_lines.image())
-                    } else {
-                        false
-                    };
-                    let test2 = if let Some(p2) = ground_to_pixel(&camera_matrix, p2) {
-                        is_less_light_and_more_saturated(sample, p2, scan_lines.image())
-                    } else {
-                        false
-                    };
-
-                    (test1, test2)
-                } else {
-                    (false, false)
-                };
-
-                pts.extend([sample, p1, p2]);
-                colors.extend([
-                    rerun::Color::from_rgb(0, 0, 255),
-                    if test1 {
-                        rerun::Color::from_rgb(0, 255, 0)
-                    } else {
-                        rerun::Color::from_rgb(255, 0, 0)
-                    },
-                    if test2 {
-                        rerun::Color::from_rgb(0, 255, 0)
-                    } else {
-                        rerun::Color::from_rgb(255, 0, 0)
-                    },
-                ]);
-                tests.extend([test1, test2]);
-                radii.extend([rerun::Radius(2.0.into()); 3]);
-            }
-
-            let ratio = tests.iter().filter(|&&t| t).count() as f32 / tests.len() as f32;
-
-            // DEBUG REMOVE
-            if ratio > 0.85 {
-                dbg_all_pts.extend(pts.clone());
-                dbg_all_colors.extend(colors.clone());
-                dbg_all_radii.extend(radii.clone());
-            }
-
-            // if ratio > 0.85 && mean_error < MAX_LINE_FIT_DISTANCE {
-            if ratio > 0.85 {
-                // println!("Ratio: {}, Mean error: {}", ratio, mean_error);
-                let to_add = filtered_groups.remove(i);
-                filtered_groups[j].extend(to_add);
-
-                break;
-            }
-
-            // dbg.log_with_cycle(
-            //     T::make_entity_path(format!("spot_groups/extended")),
-            //     scan_lines.image().cycle(),
-            //     &rerun::Points2D::new(pts.iter().map(|p| (p.x, p.y)).collect::<Vec<_>>())
-            //         .with_colors(colors)
-            //         .with_radii(radii),
-            // );
-        }
-    }
-    dbg.log_with_cycle(
-        T::make_entity_path(format!("spot_groups/extended")),
-        scan_lines.image().cycle(),
-        &rerun::Points2D::new(
-            dbg_all_pts
-                .iter()
-                .flat_map(|p| ground_to_pixel(&camera_matrix, *p))
-                .map(|p| p.to_tuple())
-                .collect::<Vec<_>>(),
-        )
-        .with_colors(dbg_all_colors)
-        .with_radii(dbg_all_radii),
-    );
-
-    // logging the groups
-    let mut rng = rand::thread_rng();
-
-    let mut groups = vec![];
+fn colors_and_radii_groups<R: RngCore>(
+    data: &[Vec<Point2<f32>>],
+    radius: f32,
+    mut rng: R,
+) -> (Vec<rerun::Color>, Vec<rerun::Radius>) {
     let mut colors = vec![];
     let mut radii = vec![];
-    let mut lines = vec![];
-    for group in filtered_groups {
-        let mut group = group
-            .into_iter()
-            .flat_map(|p| ground_to_pixel(&camera_matrix, p))
-            .map(|p| p.to_tuple())
-            .collect::<Vec<_>>();
-        let (r, g, b) = (rng.gen(), rng.gen(), rng.gen());
-        let mut color = vec![rerun::Color::from_rgb(r, g, b); group.len()];
-        let mut radius = vec![rerun::Radius(2.0.into()); group.len()];
 
-        // get line segment from group and fitted line
-        let (x1, y1) = group.first().unwrap().clone();
-        let (x2, y2) = group.last().unwrap().clone();
+    for group in data {
+        // random color for each group
+        let color = rerun::Color::from_rgb(rng.gen(), rng.gen(), rng.gen());
+        let (c, r) = colors_and_radii(group, color, radius);
 
-        let mut line = vec![[(x1, y1), (x2, y2)]];
-
-        groups.append(&mut group);
-        colors.append(&mut color);
-        radii.append(&mut radius);
-        lines.append(&mut line);
+        colors.extend(c);
+        radii.extend(r);
     }
 
-    dbg.log_with_cycle(
-        T::make_entity_path(format!("spot_groups/vertical")),
-        scan_lines.image().cycle(),
-        &rerun::Points2D::new(groups)
-            .with_colors(colors)
-            .with_radii(radii),
-    );
+    (colors, radii)
+}
 
-    dbg.log_with_cycle(
-        T::make_entity_path(format!("spot_groups/lines")),
-        scan_lines.image().cycle(),
-        &rerun::LineStrips2D::new(lines.clone())
-            .with_colors(vec![rerun::Color::from_rgb(255, 0, 0); lines.len()]),
-    );
+fn colors_and_radii(
+    data: &[Point2<f32>],
+    color: rerun::Color,
+    radius: f32,
+) -> (
+    impl Iterator<Item = rerun::Color>,
+    impl Iterator<Item = rerun::Radius>,
+) {
+    let radius = rerun::Radius::from(radius);
 
-    let discards_proj = discards
-        .clone()
-        .into_iter()
-        .map(|p| {
-            let (x, y) = p.to_tuple();
-            (x, y, 0.0)
-        })
-        .collect::<Vec<_>>();
-
-    let discards = discards
-        .into_iter()
-        .flat_map(|p| ground_to_pixel(&camera_matrix, p))
-        .map(|p| p.to_tuple())
-        .collect::<Vec<_>>();
-    let colors1 = vec![rerun::Color::from_rgb(255, 0, 255); discards.len()];
-    let colors = vec![rerun::Color::from_rgb(255, 0, 0); discards.len()];
-    let radius1 = vec![rerun::Radius(0.10.into()); discards.len()];
-    let radius = vec![rerun::Radius(2.0.into()); discards.len()];
-
-    dbg.log_with_cycle(
-        T::make_entity_path("/projected_discards"),
-        scan_lines.image().cycle(),
-        &rerun::Points3D::new(discards_proj)
-            .with_colors(colors1)
-            .with_radii(radius1),
-    );
-
-    dbg.log_with_cycle(
-        T::make_entity_path(format!("spot_groups/discards")),
-        scan_lines.image().cycle(),
-        &rerun::Points2D::new(discards)
-            .with_colors(colors)
-            .with_radii(radius),
-    );
+    (
+        std::iter::repeat(color).take(data.len()),
+        std::iter::repeat(radius).take(data.len()),
+    )
 }
 
 /// Converts a vector of 2d points to two seperate nalgbra vectors of
