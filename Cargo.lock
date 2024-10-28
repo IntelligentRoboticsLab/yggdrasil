@@ -8358,6 +8358,16 @@ name = "spatial"
 version = "0.1.0"
 dependencies = [
  "nalgebra",
+ "spatial_derive",
+]
+
+[[package]]
+name = "spatial_derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.81",
 ]
 
 [[package]]
