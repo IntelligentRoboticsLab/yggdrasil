@@ -18,7 +18,7 @@ pub fn leg_angles(
 
     // TODO: Properly use this value.
     // The torso offset is the offset of the torso w.r.t. the pelvis.
-    // Currently it's set to a constant 2.5 cm (forward), but it should perhaps be a parameter.
+    // Currently it's set to a constant 1.5 cm (forward), but it should perhaps be a parameter.
     // Or something that can be set dynamically to balance the robot.
     let torso_offset = 0.015;
     let left_foot_to_left_pelvis = left_foot.to_pelvis(torso_offset);
