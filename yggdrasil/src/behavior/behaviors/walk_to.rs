@@ -13,7 +13,6 @@ pub struct WalkTo {
     pub target: Target,
 }
 
-
 impl Behavior for WalkTo {
     fn execute(&mut self, context: Context, control: &mut Control) {
         let target_point = Point3::new(self.target.position.x, self.target.position.y, 0.0);

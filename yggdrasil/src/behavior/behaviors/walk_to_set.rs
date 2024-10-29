@@ -54,7 +54,9 @@ impl Behavior for WalkToSet {
                 && !control.step_planner.reached_target());
 
         if self.is_keeper && reached_pre_set {
-            control.step_planner.set_absolute_target(GOAL_KEEPER_PRE_SET_POS);
+            control
+                .step_planner
+                .set_absolute_target(GOAL_KEEPER_PRE_SET_POS);
         } else {
             control.step_planner.set_absolute_target(target);
         }
