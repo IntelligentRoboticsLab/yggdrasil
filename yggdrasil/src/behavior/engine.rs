@@ -13,7 +13,7 @@ use crate::{
             WalkToSet,
         },
         primary_state::PrimaryState,
-        roles::{Attacker, Defender, Keeper},
+        roles::{Defender, Goalkeeper, Striker},
         BehaviorConfig,
     },
     core::{
@@ -194,8 +194,8 @@ pub trait Role {
 #[enum_dispatch(Role)]
 #[derive(Debug)]
 pub enum RoleKind {
-    Attacker(Attacker),
-    Keeper(Keeper),
+    Striker(Striker),
+    Goalkeeper(Goalkeeper),
     Defender(Defender),
     // Add new roles here!
 }
@@ -205,8 +205,8 @@ impl RoleKind {
     fn by_player_number(player_number: u8) -> Self {
         // TODO: get the default role for each robot by player number
         match player_number {
-            1 => RoleKind::Keeper(Keeper),
-            5 => RoleKind::Attacker(Attacker::default()),
+            1 => RoleKind::Goalkeeper(Goalkeeper),
+            5 => RoleKind::Striker(Striker::default()),
             _ => RoleKind::Defender(Defender),
         }
     }
@@ -238,10 +238,10 @@ impl BehaviorEngine {
     /// robot is closest to the ball, missing robots, etc.
     fn assign_role(&self, context: Context) -> RoleKind {
         if context.ball_position.is_some() {
-            if let RoleKind::Attacker(attacker) = &self.role {
-                return RoleKind::Attacker(*attacker);
+            if let RoleKind::Striker(attacker) = &self.role {
+                return RoleKind::Striker(*attacker);
             }
-            return RoleKind::Attacker(Attacker::default());
+            return RoleKind::Striker(Striker::default());
         }
 
         RoleKind::by_player_number(context.player_config.player_number)
@@ -306,7 +306,7 @@ impl BehaviorEngine {
         if let Some(message) = context.game_controller_message {
             if message.game_phase == GamePhase::PenaltyShoot {
                 if message.kicking_team == 8 {
-                    self.role = RoleKind::Attacker(Attacker::WalkWithBall);
+                    self.role = RoleKind::Striker(Striker::WalkWithBall);
                 } else {
                     self.behavior = BehaviorKind::Stand(Stand);
                     return;
@@ -326,7 +326,7 @@ impl BehaviorEngine {
                 target: Point2::origin(),
             }),
             PrimaryState::Ready => BehaviorKind::WalkToSet(WalkToSet {
-                is_keeper: matches!(self.role, RoleKind::Keeper(_)),
+                is_goalkeeper: matches!(self.role, RoleKind::Goalkeeper(_)),
             }),
             PrimaryState::Set => BehaviorKind::StandLookAt(StandLookAt {
                 target: ball_or_origin,

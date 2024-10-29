@@ -9,17 +9,17 @@ use crate::{
     motion::{step_planner::Target, walk::engine::Step},
 };
 
-/// The Attacker role is held by a robot when it is can see the ball.
+/// The Striker role is held by a robot when it is can see the ball.
 /// It contains three substates for walking to the ball, aligning with the ball and the goal, and walking with the ball whilst aligned.
 #[derive(Debug, Default, Clone, Copy)]
-pub enum Attacker {
+pub enum Striker {
     #[default]
     WalkToBall,
     WalkAlign,
     WalkWithBall,
 }
 
-impl Role for Attacker {
+impl Role for Striker {
     fn transition_behavior(&mut self, context: Context, _control: &mut Control) -> BehaviorKind {
         if let Some(ball) = context.ball_position {
             let enemy_goal_center = Point2::new(context.layout_config.field.length / 2., 0.);
@@ -56,10 +56,10 @@ impl Role for Attacker {
                 ball_goal_aligned,
             );
             match self {
-                Attacker::WalkToBall | Attacker::WalkWithBall => {
+                Striker::WalkToBall | Striker::WalkWithBall => {
                     return BehaviorKind::WalkTo(WalkTo { target: ball_pos });
                 }
-                Attacker::WalkAlign => {
+                Striker::WalkAlign => {
                     let ball_target = Point3::new(ball.x, ball.y, RobotPose::CAMERA_HEIGHT);
 
                     if absolute_ball_angle > absolute_goal_angle_left {
@@ -103,19 +103,19 @@ impl Role for Attacker {
     }
 }
 
-impl Attacker {
+impl Striker {
     fn next_state(
         self,
         ball_distance: f32,
         ball_goal_center_align: bool,
         ball_aligned: bool,
         ball_goal_aligned: bool,
-    ) -> Attacker {
+    ) -> Striker {
         match self {
-            _ if ball_distance > 0.5 => Attacker::WalkToBall,
-            Attacker::WalkToBall if ball_distance < 0.3 => Attacker::WalkAlign,
-            Attacker::WalkAlign if ball_goal_center_align && ball_aligned => Attacker::WalkWithBall,
-            Attacker::WalkWithBall if !ball_goal_aligned => Attacker::WalkAlign,
+            _ if ball_distance > 0.5 => Striker::WalkToBall,
+            Striker::WalkToBall if ball_distance < 0.3 => Striker::WalkAlign,
+            Striker::WalkAlign if ball_goal_center_align && ball_aligned => Striker::WalkWithBall,
+            Striker::WalkWithBall if !ball_goal_aligned => Striker::WalkAlign,
 
             _ => self,
         }

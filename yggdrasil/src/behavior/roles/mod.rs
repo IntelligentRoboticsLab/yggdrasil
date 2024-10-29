@@ -4,6 +4,6 @@ mod attacker;
 mod defender;
 mod keeper;
 
-pub use attacker::Attacker;
+pub use attacker::Striker;
 pub use defender::Defender;
-pub use keeper::Keeper;
+pub use keeper::Goalkeeper;
