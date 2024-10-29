@@ -9,14 +9,14 @@ use crate::{
     nao::Priority,
 };
 
-/// To prevent the Goalkeeper from walking into the goalpost, we use this position for a better approach.
+/// To prevent the [`Goalkeeper`] from walking into the goalpost, we use this position for a better approach.
 const GOAL_KEEPER_PRE_SET_POS: Target = Target {
     position: Point2::new(-2.85, 0.0),
     rotation: None,
 };
 
 /// Walk to the set position of the robot.
-/// Only the Goalkeeper will first walk to the pre-set position before walking to the set position.
+/// Only the [`Goalkeeper`] will first walk to the pre-set position before walking to the set position.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct WalkToSet {
     pub is_goalkeeper: bool,

@@ -1,9 +1,9 @@
 //! All the roles that the robot can take.
 
-mod attacker;
 mod defender;
-mod keeper;
+mod goalkeeper;
+mod striker;
 
-pub use attacker::Striker;
 pub use defender::Defender;
-pub use keeper::Goalkeeper;
+pub use goalkeeper::Goalkeeper;
+pub use striker::Striker;

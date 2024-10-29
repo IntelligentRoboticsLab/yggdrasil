@@ -190,7 +190,7 @@ pub trait Role {
 ///
 /// # Notes
 /// - New role implementations should be added as new variants to this enum
-/// - The specific struct for each role (e.g., [`Attacker`]) should implement the [`Role`] trait.
+/// - The specific struct for each role (e.g., [`Striker`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
 #[derive(Debug)]
 pub enum RoleKind {
@@ -238,8 +238,8 @@ impl BehaviorEngine {
     /// robot is closest to the ball, missing robots, etc.
     fn assign_role(&self, context: Context) -> RoleKind {
         if context.ball_position.is_some() {
-            if let RoleKind::Striker(attacker) = &self.role {
-                return RoleKind::Striker(*attacker);
+            if let RoleKind::Striker(striker) = &self.role {
+                return RoleKind::Striker(*striker);
             }
             return RoleKind::Striker(Striker::default());
         }
