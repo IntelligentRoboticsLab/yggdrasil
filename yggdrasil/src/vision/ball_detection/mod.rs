@@ -72,27 +72,40 @@ fn setup_ball_debug_logging<T: CameraLocation>(dbg: DebugContext) {
     dbg.log_component_batches(
         T::make_entity_path("balls/proposals"),
         true,
-        [&rerun::Color::from_rgb(190, 190, 190) as _],
+        [
+            &rerun::Color::from_rgb(190, 190, 190) as _,
+            &rerun::components::DrawOrder::from(10.0) as _,
+        ],
     );
     dbg.log_component_batches(
         T::make_entity_path("balls/classifications"),
         true,
-        [&rerun::Color::from_rgb(128, 0, 128) as _],
+        [
+            &rerun::Color::from_rgb(228, 153, 255) as _,
+            &rerun::components::DrawOrder::from(11.0) as _,
+        ],
     );
 }
 
 fn detected_ball_eye_color(
     mut nao: ResMut<NaoManager>,
-    balls: Res<Balls>,
+    bottom_balls: Res<Balls<Bottom>>,
+    top_balls: Res<Balls<Top>>,
     config: Res<BallDetectionConfig>,
 ) {
-    let best_ball = balls.most_recent_ball();
+    let best_ball = bottom_balls
+        .most_recent_ball()
+        .map(|b| b.timestamp)
+        .or(top_balls.most_recent_ball().map(|b| b.timestamp));
 
-    if let Some(ball) = best_ball {
-        if ball.timestamp.elapsed() >= config.max_classification_age_eye_color {
+    if let Some(timestamp) = best_ball {
+        if timestamp.elapsed() >= config.max_classification_age_eye_color {
             nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
         } else {
-            nao.set_left_eye_led(LeftEye::fill(color::f32::PURPLE), Priority::default());
+            nao.set_left_eye_led(
+                LeftEye::fill(color::Rgb::new(0.9, 0.6, 1.0)),
+                Priority::default(),
+            );
         }
     } else {
         nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
