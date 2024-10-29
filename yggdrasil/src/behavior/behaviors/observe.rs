@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
+    motion::walk::engine::Step,
     nao::{NaoManager, Priority},
 };
 use nidhogg::types::{FillExt, HeadJoints};
@@ -25,15 +26,32 @@ pub struct ObserveBehaviorConfig {
     pub head_yaw_max: f32,
 }
 
+/// This behavior makes the robot look around with a sinusoidal head movement with an optional step.
+/// With this behavior, the robot can observe its surroundings while standing still or turning.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Observe {
     pub starting_time: Instant,
+    pub step: Option<Step>,
 }
 
 impl Default for Observe {
     fn default() -> Self {
         Observe {
             starting_time: Instant::now(),
+            step: None,
+        }
+    }
+}
+
+impl Observe {
+    #[must_use]
+    pub fn with_turning(turn: f32) -> Self {
+        Observe {
+            starting_time: Instant::now(),
+            step: Some(Step {
+                turn,
+                ..Default::default()
+            }),
         }
     }
 }
@@ -53,7 +71,13 @@ impl Behavior for Observe {
             head_yaw_multiplier,
             head_pitch_multiplier,
         );
-        control.walking_engine.request_stand();
+
+        if let Some(step) = self.step {
+            control.step_planner.clear_target();
+            control.walking_engine.request_walk(step);
+        } else {
+            control.walking_engine.request_stand();
+        }
     }
 }
 

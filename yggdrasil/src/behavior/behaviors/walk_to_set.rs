@@ -9,8 +9,18 @@ use crate::{
     nao::Priority,
 };
 
+/// To prevent the Goalkeeper from walking into the goalpost, we use this position for a better approach.
+const GOAL_KEEPER_PRE_SET_POS: Target = Target {
+    position: Point2::new(-2.85, 0.0),
+    rotation: None,
+};
+
+/// Walk to the set position of the robot.
+/// Only the Goalkeeper will first walk to the pre-set position before walking to the set position.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
-pub struct WalkToSet;
+pub struct WalkToSet {
+    pub is_goalkeeper: bool,
+}
 
 impl Behavior for WalkToSet {
     fn execute(&mut self, context: Context, control: &mut Control) {
@@ -26,6 +36,7 @@ impl Behavior for WalkToSet {
             context
                 .pose
                 .get_look_at_absolute(&Point3::new(set_position.x, set_position.y, RobotPose::CAMERA_HEIGHT));
+
         control
             .nao_manager
             .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
@@ -35,10 +46,29 @@ impl Behavior for WalkToSet {
             rotation: Some(set_robot_position.isometry.rotation),
         };
 
-        control.step_planner.set_absolute_target_if_unset(target);
+        let reached_pre_set = !control.step_planner.has_target()
+            || (control
+                .step_planner
+                .current_absolute_target()
+                .is_some_and(|target| target == &GOAL_KEEPER_PRE_SET_POS)
+                && !control.step_planner.reached_target());
+
+        if self.is_goalkeeper && reached_pre_set {
+            control
+                .step_planner
+                .set_absolute_target(GOAL_KEEPER_PRE_SET_POS);
+        } else {
+            control.step_planner.set_absolute_target(target);
+        }
+
         if let Some(step) = control.step_planner.plan(context.pose) {
             control.walking_engine.request_walk(step);
         } else {
+            let look_at = context.pose.get_look_at_absolute(&Point3::origin());
+            control
+                .nao_manager
+                .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
+
             control.walking_engine.request_stand();
         }
     }

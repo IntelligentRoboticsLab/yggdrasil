@@ -1,0 +1,42 @@
+use nalgebra::Point3;
+use nidhogg::types::{FillExt, HeadJoints};
+
+use crate::{
+    behavior::engine::{Behavior, Context, Control},
+    motion::step_planner::Target,
+    nao::Priority,
+};
+
+/// Walk to a target position using the step planner, whilst looking at the target.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct WalkTo {
+    pub target: Target,
+}
+
+impl Behavior for WalkTo {
+    fn execute(&mut self, context: Context, control: &mut Control) {
+        let target_point = Point3::new(self.target.position.x, self.target.position.y, 0.0);
+
+        let look_at = context.pose.get_look_at_absolute(&target_point);
+        control
+            .nao_manager
+            .set_head(look_at, HeadJoints::fill(0.5), Priority::High);
+
+        if control
+            .step_planner
+            .current_absolute_target()
+            .is_some_and(|target| target != &self.target)
+        {
+            control.step_planner.clear_target();
+        }
+
+        control
+            .step_planner
+            .set_absolute_target_if_unset(self.target);
+        if let Some(step) = control.step_planner.plan(context.pose) {
+            control.walking_engine.request_walk(step);
+        } else {
+            control.walking_engine.request_stand();
+        }
+    }
+}
