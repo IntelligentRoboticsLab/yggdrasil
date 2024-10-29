@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 use bifrost::communication::GameControllerMessage;
 use enum_dispatch::enum_dispatch;
+use heimdall::{Bottom, Top};
 use nalgebra::Point2;
 
 use crate::{
@@ -25,6 +26,7 @@ use crate::{
         falling::FallState,
         fsr::Contacts,
     },
+    vision::ball_detection::classifier::Balls,
 };
 
 use super::{
@@ -330,12 +332,20 @@ pub fn step(
         ResMut<StepPlanner>,
     ),
     debug_context: DebugContext<'_>,
-    (robot_pose, fall_state, game_controller_message): (
+    (robot_pose, fall_state, top_balls, bottom_balls, game_controller_message): (
         Res<RobotPose>,
         Res<FallState>,
+        Res<Balls<Top>>,
+        Res<Balls<Bottom>>,
         Option<Res<GameControllerMessage>>,
     ),
 ) {
+    // we prefer balls in the bottom camera, as they are likely closer.
+    let most_confident_ball = bottom_balls
+        .most_confident_ball()
+        .map(|b| b.position)
+        .or(top_balls.most_confident_ball().map(|b| b.position));
+
     let context = Context {
         robot_info: robot_info.as_ref(),
         primary_state: primary_state.as_ref(),
@@ -350,7 +360,7 @@ pub fn step(
         game_controller_config: &game_controller_config,
         fall_state: &fall_state,
         pose: &robot_pose,
-        ball_position: &None,
+        ball_position: &most_confident_ball,
         current_behavior: engine.behavior.clone(),
     };
 
