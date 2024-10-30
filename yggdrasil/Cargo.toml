@@ -30,6 +30,7 @@ tasks = { workspace = true }
 apodize = { workspace = true }
 async-std = { workspace = true }
 bevy = { workspace = true, features = ["multi_threaded"] }
+chrono = { workspace = true }
 cpal = { workspace = true }
 derive_more = { workspace = true }
 enum_dispatch = { workspace = true }

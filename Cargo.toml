@@ -66,6 +66,7 @@ async-trait = "0.1.83"
 bevy = { version = "0.14.2", default-features = false }
 byteorder = "1.5.0"
 cargo_toml = "0.20.5"
+chrono = "0.4.38"
 clap = "4.5.20"
 colored = "2.1.0"
 cpal = "0.15.3"

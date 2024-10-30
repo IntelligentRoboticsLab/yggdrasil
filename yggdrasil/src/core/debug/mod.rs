@@ -4,6 +4,8 @@ use bevy::prelude::*;
 use miette::IntoDiagnostic;
 use rerun::components::Scalar;
 use rerun::{AsComponents, ComponentBatch, EntityPath, RecordingStream, TimeColumn};
+use std::env;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{convert::Into, net::SocketAddr};
 use std::{marker::PhantomData, net::IpAddr};
@@ -12,6 +14,9 @@ use crate::{
     nao::{Cycle, CycleTime},
     prelude::*,
 };
+
+const STORAGE_PATH_ENV_NAME: &str = "RERUN_STORAGE_PATH";
+const DATE_TIME_FORMAT: &str = "%Y-%m-%d:%H-%M-%S";
 
 /// Plugin that adds debugging tools for the robot using the [rerun](https://rerun.io) viewer.
 ///
@@ -24,6 +29,32 @@ impl Plugin for DebugPlugin {
         app.add_systems(Startup, (init_rerun, setup_spl_field).chain())
             .add_systems(First, sync_cycle_number);
     }
+}
+
+fn get_storage_path() -> PathBuf {
+    env::var_os(STORAGE_PATH_ENV_NAME).map_or_else(
+        || {
+            panic!(
+                "{}",
+                format!("missing environment variable {STORAGE_PATH_ENV_NAME}")
+            )
+        },
+        PathBuf::from,
+    )
+}
+
+fn make_rrd_file_path(storage_path: &Path) -> PathBuf {
+    let mut path = PathBuf::new();
+
+    path.push(
+        storage_path
+            .to_str()
+            .expect("rerun rrd file path contains invalid unicode"),
+    );
+    path.push(chrono::Local::now().format(DATE_TIME_FORMAT).to_string());
+    path.set_extension("rrd");
+
+    path
 }
 
 fn init_rerun(mut commands: Commands) {
@@ -40,7 +71,18 @@ fn init_rerun(mut commands: Commands) {
             .and_then(|address| std::str::FromStr::from_str(address.as_str()).ok())
     };
 
-    if let Some(address) = server_address {
+    let storage_path = get_storage_path();
+    if storage_path.exists() {
+        let output_rrd_file_path = make_rrd_file_path(&storage_path);
+        tracing::info!(
+            "Rerun logging to {}",
+            output_rrd_file_path.as_path().display()
+        );
+        let rec = RerunStream::init_file_store("yggdrasil", output_rrd_file_path)
+            .expect("failed to initialize rerun::RecordingStream");
+
+        commands.insert_resource(rec);
+    } else if let Some(address) = server_address {
         let rec = RerunStream::init("yggdrasil", address)
             .expect("failed to initialize rerun::RecordingStream");
 
@@ -116,6 +158,23 @@ impl RerunStream {
 
         Ok(RerunStream {
             stream: rec,
+            cycle: Cycle(0),
+        })
+    }
+
+    /// Initialze a new [`RerunStream`].
+    ///
+    /// The stream is stored as an rrd file at the `path` location.
+    pub fn init_file_store(
+        recording_name: impl AsRef<str>,
+        path: impl Into<PathBuf>,
+    ) -> Result<Self> {
+        let stream = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
+            .save(path)
+            .into_diagnostic()?;
+
+        Ok(RerunStream {
+            stream,
             cycle: Cycle(0),
         })
     }
