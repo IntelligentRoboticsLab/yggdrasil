@@ -77,12 +77,7 @@ pub struct ConfigOptsRobotOps {
     pub team: Option<u8>,
 
     /// Whether to embed the rerun viewer for debugging [default: false]
-    #[clap(
-        long,
-        short,
-        default_value(None),
-        default_missing_value(Some("/mnt/usb"))
-    )]
+    #[clap(long, short, default_value(None))]
     pub rerun: Option<Option<String>>,
 
     /// For running Yggdrasil locally with fake-lola

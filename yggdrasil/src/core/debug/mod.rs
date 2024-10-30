@@ -15,6 +15,7 @@ use crate::{
     prelude::*,
 };
 
+const DEFAULT_STORAGE_PATH: &str = "/mnt/usb";
 const STORAGE_PATH_ENV_NAME: &str = "RERUN_STORAGE_PATH";
 const DATE_TIME_FORMAT: &str = "%Y-%m-%d:%H-%M-%S";
 
@@ -31,19 +32,24 @@ impl Plugin for DebugPlugin {
     }
 }
 
-fn get_storage_path() -> PathBuf {
+fn get_storage_path() -> Option<PathBuf> {
     env::var_os(STORAGE_PATH_ENV_NAME).map_or_else(
         || {
-            panic!(
-                "{}",
-                format!("missing environment variable {STORAGE_PATH_ENV_NAME}")
-            )
+            let usb_path = PathBuf::from(DEFAULT_STORAGE_PATH);
+            if usb_path.exists() {
+                Some(usb_path)
+            } else {
+                None
+            }
         },
-        PathBuf::from,
+        |path| Some(PathBuf::from(path)),
     )
 }
 
 fn make_rrd_file_path(storage_path: &Path) -> PathBuf {
+    if !storage_path.is_dir() {
+        return storage_path.into();
+    }
     let mut path = PathBuf::new();
 
     path.push(
@@ -71,26 +77,23 @@ fn init_rerun(mut commands: Commands) {
             .and_then(|address| std::str::FromStr::from_str(address.as_str()).ok())
     };
 
-    let storage_path = get_storage_path();
-    if storage_path.exists() {
+    let rec = if let Some(storage_path) = get_storage_path() {
         let output_rrd_file_path = make_rrd_file_path(&storage_path);
         tracing::info!(
             "Rerun logging to {}",
             output_rrd_file_path.as_path().display()
         );
-        let rec = RerunStream::init_file_store("yggdrasil", output_rrd_file_path)
-            .expect("failed to initialize rerun::RecordingStream");
-
-        commands.insert_resource(rec);
+        RerunStream::init_file_store("yggdrasil", output_rrd_file_path)
+            .expect("failed to initialize rerun::RecordingStream")
     } else if let Some(address) = server_address {
-        let rec = RerunStream::init("yggdrasil", address)
-            .expect("failed to initialize rerun::RecordingStream");
-
-        commands.insert_resource(rec);
+        RerunStream::init("yggdrasil", address)
+            .expect("failed to initialize rerun::RecordingStream")
     } else {
         tracing::warn!("`RERUN_HOST` not set, rerun debugging is disabled");
-        commands.insert_resource(RerunStream::disabled());
-    }
+        RerunStream::disabled()
+    };
+
+    commands.insert_resource(rec);
 }
 
 fn setup_spl_field(dbg: DebugContext) {
