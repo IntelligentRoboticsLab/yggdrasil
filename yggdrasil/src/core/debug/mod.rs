@@ -162,7 +162,7 @@ impl RerunStream {
         })
     }
 
-    /// Initialze a new [`RerunStream`].
+    /// Initialize a new [`RerunStream`].
     ///
     /// The stream is stored as an rrd file at the `path` location.
     pub fn init_file_store(
