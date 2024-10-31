@@ -401,6 +401,9 @@ pub fn step(
 }
 
 /// Filter out the balls that are outside the field.
+/// TODO: Properly filter this, and then use it
+/// https://github.com/IntelligentRoboticsLab/yggdrasil/issues/392
+#[allow(unused)]
 fn filter_ball_position(
     ball_position: &Option<Point2<f32>>,
     field_config: &FieldConfig,
