@@ -44,12 +44,8 @@ pub fn battery_sound_system(
     nao_state: Res<NaoState>,
     config: Res<AudioConfig>,
 ) {
-    if battery_info.timed_out(config.battery_sound_timeout) {
-        return;
-    }
-
-    // Already charging
-    if nao_state.battery.status > 0.0 {
+    // Timeout or already charging
+    if battery_info.timed_out(config.battery_sound_timeout) || nao_state.battery.status > 0.0 {
         return;
     }
 
