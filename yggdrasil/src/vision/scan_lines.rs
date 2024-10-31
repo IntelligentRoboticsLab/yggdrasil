@@ -759,13 +759,13 @@ fn visualize_single_scan_line<T: CameraLocation>(
     }
 
     dbg.log_with_cycle(
-        T::make_entity_path(format!("scan_lines/approximates/{direction_str}")),
+        T::make_image_entity_path(format!("scan_lines/approximates/{direction_str}")),
         cycle,
         &rerun::LineStrips2D::new(lines.clone()).with_colors(colors),
     );
 
     dbg.log_with_cycle(
-        T::make_entity_path(format!("scan_lines/classifications/{direction_str}")),
+        T::make_image_entity_path(format!("scan_lines/classifications/{direction_str}")),
         cycle,
         &rerun::LineStrips2D::new(lines).with_colors(classifications),
     );
@@ -797,7 +797,7 @@ fn visualize_scan_line_spots<T: CameraLocation>(
     let colors = vec![color; line_spots.len()];
 
     dbg.log_with_cycle(
-        T::make_entity_path(format!("scan_lines/spots/{direction_str}")),
+        T::make_image_entity_path(format!("scan_lines/spots/{direction_str}")),
         cycle,
         &rerun::Points2D::new(line_spots).with_colors(colors),
     );

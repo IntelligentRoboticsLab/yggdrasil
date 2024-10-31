@@ -70,7 +70,7 @@ fn init_subconfigs(mut commands: Commands, config: Res<BallDetectionConfig>) {
 /// for each ball proposal and classification.
 fn setup_ball_debug_logging<T: CameraLocation>(dbg: DebugContext) {
     dbg.log_component_batches(
-        T::make_entity_path("balls/proposals"),
+        T::make_image_entity_path("balls/proposals"),
         true,
         [
             &rerun::Color::from_rgb(190, 190, 190) as _,
@@ -78,7 +78,7 @@ fn setup_ball_debug_logging<T: CameraLocation>(dbg: DebugContext) {
         ],
     );
     dbg.log_component_batches(
-        T::make_entity_path("balls/classifications"),
+        T::make_image_entity_path("balls/classifications"),
         true,
         [
             &rerun::Color::from_rgb(228, 153, 255) as _,

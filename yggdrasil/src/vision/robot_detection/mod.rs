@@ -234,7 +234,7 @@ fn postprocess_detections(
 
 fn setup_robot_detection(dbg: DebugContext) {
     dbg.log_component_batches(
-        Top::make_entity_path("detected_robots"),
+        Top::make_image_entity_path("detected_robots"),
         true,
         [&rerun::Color::from_rgb(0, 255, 175) as _],
     );
@@ -267,7 +267,7 @@ fn visualize_detected_robots(dbg: DebugContext, robot_data: Res<RobotDetectionDa
     let ((centers, sizes), scores): ((Vec<_>, Vec<_>), Vec<_>) = processed_boxes.unzip();
 
     dbg.log(
-        Top::make_entity_path("detected_robots"),
+        Top::make_image_entity_path("detected_robots"),
         &rerun::Boxes2D::from_centers_and_half_sizes(centers, sizes).with_labels(scores),
     );
 }

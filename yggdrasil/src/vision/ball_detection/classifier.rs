@@ -96,7 +96,7 @@ fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Bal
 
     if positions.is_empty() {
         dbg.log_with_cycle(
-            T::make_entity_path("balls/classifications"),
+            T::make_image_entity_path("balls/classifications"),
             balls.cycle,
             &rerun::Clear::flat(),
         );
@@ -104,7 +104,7 @@ fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Bal
     }
 
     dbg.log_with_cycle(
-        T::make_entity_path("balls/classifications"),
+        T::make_image_entity_path("balls/classifications"),
         balls.cycle,
         &rerun::Boxes2D::from_centers_and_half_sizes(&positions, &half_sizes)
             .with_labels(confidences),

@@ -98,20 +98,20 @@ impl<T: CameraLocation> CameraMatrix<T> {
     /// This fails if the point is above the horizon and cannot be projected to the ground.
     pub fn pixel_to_ground(&self, pixel: Point2<f32>, z: f32) -> Result<Point3<f32>> {
         let camera_ray = self.pixel_to_camera(pixel);
-        let camera_ray_over_ground = self.camera_to_ground.rotation * camera_ray;
 
-        if camera_ray_over_ground.z >= 0.0
-            || camera_ray_over_ground.x.is_nan()
-            || camera_ray_over_ground.y.is_nan()
-            || camera_ray_over_ground.z.is_nan()
+        let camera_position = self.camera_to_ground.translation.vector;
+        let camera_ray_direction = self.camera_to_ground.rotation * camera_ray;
+
+        if camera_ray_direction.z >= 0.0
+            || camera_ray_direction.x.is_nan()
+            || camera_ray_direction.y.is_nan()
+            || camera_ray_direction.z.is_nan()
         {
             bail!("Point is above the horizon and cannot be projected to the ground");
         }
 
-        let distance_to_plane = z - self.camera_to_ground.translation.z;
-        let slope = distance_to_plane / camera_ray_over_ground.z;
-        let intersection =
-            self.camera_to_ground.translation.vector + camera_ray_over_ground * slope;
+        let distance_to_plane = (z - camera_position.z) / camera_ray_direction.z;
+        let intersection = camera_position + camera_ray_direction * distance_to_plane;
 
         Ok(point![intersection.x, intersection.y, z])
     }

@@ -327,7 +327,14 @@ fn create_line_detection_data<T: CameraLocation>(
 
     let projected_lines = lines
         .iter()
-        .filter_map(|segment| segment.project_to_3d(matrix).ok())
+        .filter_map(|segment| {
+            if let Ok(segment) = segment.project_to_3d(matrix) {
+                Some(segment)
+            } else {
+                warn!(?segment, "failed to project line to 3d space");
+                None
+            }
+        })
         .collect();
 
     DetectedLines {
@@ -391,7 +398,7 @@ fn line_points_to_line<T: CameraLocation>(
 
 fn setup_line_visualization<T: CameraLocation>(dbg: DebugContext) {
     dbg.log_component_batches(
-        T::make_entity_path("lines"),
+        T::make_image_entity_path("lines"),
         true,
         [&rerun::Color::from_rgb(255, 0, 0) as _],
     );
@@ -409,7 +416,7 @@ fn visualize_lines<T: CameraLocation>(
     robot_pose: Res<RobotPose>,
 ) {
     dbg.log_with_cycle(
-        T::make_entity_path("lines"),
+        T::make_image_entity_path("lines"),
         lines.image.cycle(),
         &rerun::LineStrips2D::new(
             lines

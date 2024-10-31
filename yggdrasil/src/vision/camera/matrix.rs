@@ -6,12 +6,14 @@ use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    core::debug::DebugContext,
     kinematics::{robot_dimensions, RobotKinematics},
+    localization::RobotPose,
     motion::walk::{engine::Side, SwingFoot},
     sensor::imu::IMUValues,
 };
 
-use super::CameraConfig;
+use super::{init_camera, CameraConfig, Image};
 
 const CAMERA_TOP_PITCH_DEGREES: f32 = 1.2;
 const CAMERA_BOTTOM_PITCH_DEGREES: f32 = 39.7;
@@ -28,10 +30,18 @@ pub struct CameraMatrixPlugin<T: CameraLocation>(PhantomData<T>);
 
 impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CameraMatrix<T>>().add_systems(
-            Update,
-            update_camera_matrix::<T>.before(super::fetch_latest_frame::<T>),
-        );
+        app.init_resource::<CameraMatrix<T>>()
+            .add_systems(
+                PostStartup,
+                setup_camera_matrix_visualization::<T>.after(init_camera::<T>),
+            )
+            .add_systems(
+                Update,
+                (update_camera_matrix::<T>, visualize_camera_matrix::<T>)
+                    .chain()
+                    .after(super::fetch_latest_frame::<T>)
+                    .run_if(resource_exists_and_changed::<Image<T>>),
+            );
     }
 }
 
@@ -68,19 +78,20 @@ fn robot_to_ground(
     let roll = roll_pitch.x;
     let pitch = roll_pitch.y;
 
-    let left_sole_to_robot = kinematics.left_sole_to_robot;
-    let imu_adjusted_robot_to_left_sole = Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll)
-        * Isometry3::from(left_sole_to_robot.translation.inverse());
-
-    let right_sole_to_robot = kinematics.right_sole_to_robot;
-    let imu_adjusted_robot_to_right_sole = Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll)
-        * Isometry3::from(right_sole_to_robot.translation.inverse());
+    let imu_rotation =
+        Isometry3::rotation(Vector3::y() * pitch) * Isometry3::rotation(Vector3::x() * roll);
 
     match swing_foot.support() {
-        Side::Left => imu_adjusted_robot_to_left_sole,
-        Side::Right => imu_adjusted_robot_to_right_sole,
+        Side::Left => {
+            let left_sole_to_robot = kinematics.left_sole_to_robot;
+
+            imu_rotation * left_sole_to_robot.inverse()
+        }
+        Side::Right => {
+            let right_sole_to_robot = kinematics.right_sole_to_robot;
+
+            imu_rotation * right_sole_to_robot.inverse()
+        }
     }
 }
 
@@ -105,4 +116,48 @@ fn camera_to_head(position: CameraPosition, extrinsic_rotations: Vector3<f32>) -
     Isometry3::from(neck_to_camera)
         * Isometry3::rotation(Vector3::y() * camera_pitch)
         * extrinsic_rotation
+}
+
+fn setup_camera_matrix_visualization<T: CameraLocation>(
+    dbg: DebugContext,
+    config: Res<CameraConfig>,
+) {
+    let config = match T::POSITION {
+        CameraPosition::Top => &config.top,
+        CameraPosition::Bottom => &config.bottom,
+    };
+
+    let focal_lengths = (
+        config.calibration.focal_lengths.x,
+        config.calibration.focal_lengths.y,
+    );
+    let image_size = (config.width as f32, config.height as f32);
+
+    dbg.log_static(
+        T::make_image_entity_path(""),
+        &rerun::Pinhole::from_focal_length_and_resolution(focal_lengths, image_size)
+            .with_camera_xyz(rerun::components::ViewCoordinates::FLU),
+    );
+}
+
+fn visualize_camera_matrix<T: CameraLocation>(
+    dbg: DebugContext,
+    robot_pose: Res<RobotPose>,
+    image: Res<Image<T>>,
+    matrix: Res<CameraMatrix<T>>,
+) {
+    let transform = robot_pose.as_3d() * matrix.camera_to_ground;
+    let translation = (
+        transform.translation.x,
+        transform.translation.y,
+        transform.translation.z,
+    );
+    let rotation = &transform.rotation.coords;
+    let quaternion = [rotation.x, rotation.y, rotation.z, rotation.w];
+
+    dbg.log_with_cycle(
+        T::make_image_entity_path(""),
+        image.cycle(),
+        &rerun::Transform3D::from_translation(translation).with_quaternion(quaternion),
+    );
 }

@@ -188,7 +188,7 @@ fn log_image<T: CameraLocation>(dbg: DebugContext, image: Res<Image<T>>) {
                 };
                 let encoded_image = rerun::EncodedImage::from_file_contents(jpeg.to_owned())
                     .with_media_type(rerun::MediaType::JPEG);
-                dbg.log_with_cycle(T::make_entity_path(""), image.cycle(), &encoded_image);
+                dbg.log_with_cycle(T::make_image_entity_path(""), image.cycle(), &encoded_image);
             }
         })
         .detach();
