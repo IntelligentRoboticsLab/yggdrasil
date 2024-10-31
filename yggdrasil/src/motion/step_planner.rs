@@ -110,7 +110,7 @@ impl StepPlanner {
         let distance = calc_distance(&robot_pose.inner, first_target_position);
 
         // We've reached the target.
-        if distance < 0.2 && path.len() == 2 {
+        if distance < 0.05 && path.len() == 2 {
             return None;
         }
 
@@ -177,6 +177,11 @@ impl StepPlanner {
     #[must_use]
     pub fn reached_target(&self) -> bool {
         self.reached_translation_target && self.reached_rotation_target
+    }
+
+    #[must_use]
+    pub fn has_target(&self) -> bool {
+        self.target.is_some()
     }
 }
 

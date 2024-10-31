@@ -6,6 +6,8 @@ use nidhogg::types::{FillExt, HeadJoints};
 
 const HEAD_STIFFNESS: f32 = 0.3;
 
+/// Stand up and stop walking, while looking straight ahead.
+/// This is used for when the robot is penalized and not allowed to perform any actions.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Stand;
 
