@@ -39,6 +39,8 @@ impl Plugin for NaoManagerPlugin {
     }
 }
 
+/// Do the interpolation here (states that need to be stored are in manager, we change 
+/// position and stiffness in control_message.
 fn finalize(mut control_message: ResMut<NaoControlMessage>, mut manager: ResMut<NaoManager>) {
     control_message.position = manager.make_joint_positions();
     control_message.stiffness = manager.make_joint_stiffnesses();
@@ -120,6 +122,8 @@ struct LedSettings<T> {
 /// Each cycle, the nao manager will update the [`NaoControlMessage`] with the requests that have the highest
 /// priorities.
 /// If multiple requests with the same priority are made, the first request will be prioritized.
+
+// Store the stuff needed for interpolation here in the NaoManager
 #[derive(Default, Debug, Resource)]
 pub struct NaoManager {
     leg_settings: JointSettings<LegJoints<JointValue>>,
@@ -267,6 +271,9 @@ impl NaoManager {
     ///
     /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
     /// stiffness. A value of `-1` will disable the stiffness altogether.
+    /// 
+    /// Replace this function by a function that sets a target, and then 
+    /// interpolate to that target.
     pub fn set_head(
         &mut self,
         joint_positions: HeadJoints<JointValue>,
