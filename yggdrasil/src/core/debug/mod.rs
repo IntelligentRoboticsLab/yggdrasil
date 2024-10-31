@@ -144,6 +144,7 @@ fn sync_cycle_number(
 pub struct RerunStream {
     stream: RecordingStream,
     cycle: Cycle,
+    logging_to_rrd_file: bool,
 }
 
 impl RerunStream {
@@ -162,6 +163,7 @@ impl RerunStream {
         Ok(RerunStream {
             stream: rec,
             cycle: Cycle(0),
+            logging_to_rrd_file: false,
         })
     }
 
@@ -179,6 +181,7 @@ impl RerunStream {
         Ok(RerunStream {
             stream,
             cycle: Cycle(0),
+            logging_to_rrd_file: true,
         })
     }
 
@@ -188,6 +191,7 @@ impl RerunStream {
         RerunStream {
             stream: RecordingStream::disabled(),
             cycle: Cycle(0),
+            logging_to_rrd_file: false,
         }
     }
 
@@ -276,6 +280,12 @@ impl RerunStream {
         if let Err(error) = self.stream.send_columns(ent_path, timelines, components) {
             error!("{error}");
         }
+    }
+
+    /// Return whether the [`RerunStream`] is logging to an rrd file.
+    #[must_use]
+    pub fn logging_to_rrd_file(&self) -> bool {
+        self.logging_to_rrd_file
     }
 }
 
