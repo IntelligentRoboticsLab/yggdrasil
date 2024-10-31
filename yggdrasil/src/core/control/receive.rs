@@ -8,7 +8,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::control::connect::ControlDataStream;
 
-use super::transmit::{ControlHostMessage, ControlSender};
+use super::{
+    transmit::{ControlHostMessage, ControlSender},
+    DebugEnabledResources,
+};
 
 #[derive(Resource)]
 pub struct ControlReceiver<T> {
@@ -30,6 +33,7 @@ pub enum ControlClientMessage {
     CloseStream,
     UpdateResource(String, String),
     SendResourcesNow,
+    UpdateEnabledDebugResource(String, bool),
 }
 
 pub async fn receive_messages(
@@ -60,13 +64,21 @@ pub async fn receive_messages(
     }
 }
 
-pub fn handle_message(mut commands: Commands, mut receiver: ResMut<ControlReceiver<ControlClientMessage>>) {
+pub fn handle_message(
+    mut commands: Commands,
+    mut receiver: ResMut<ControlReceiver<ControlClientMessage>>,
+    mut debug_enabled_resources: ResMut<DebugEnabledResources>,
+) {
     while let Some(message) = receiver.try_recv() {
         match message {
             ControlClientMessage::CloseStream => {
                 commands.remove_resource::<ControlReceiver<ControlClientMessage>>();
                 commands.remove_resource::<ControlSender<ControlHostMessage>>();
                 commands.remove_resource::<ControlDataStream>();
+            }
+            ControlClientMessage::UpdateEnabledDebugResource(system_name, enabled) => {
+                debug_enabled_resources.set_resource(system_name.clone(), enabled);
+                tracing::info!("Set resource `{}` to `{}`", system_name, enabled)
             }
             _ => {
                 info!("Got a message to handle: {:?}", message);

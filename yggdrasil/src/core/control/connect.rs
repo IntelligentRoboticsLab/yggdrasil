@@ -4,7 +4,7 @@ use futures::{channel::mpsc, io::WriteHalf, AsyncReadExt};
 use miette::IntoDiagnostic;
 use tasks::{CommandsExt, TaskPool};
 
-use super::{receive::ControlClientMessage, ControlListenSocket};
+use super::{receive::ControlClientMessage, transmit::TransmitDebugEnabledResources, CollectResourcesSystem, ControlListenSocket};
 use crate::core::control::{
     receive::{receive_messages, ControlReceiver},
     transmit::{send_messages, ControlHostMessage, ControlSender},
@@ -39,6 +39,8 @@ pub fn listen_for_connection(mut commands: Commands, listener_socket: Res<Contro
 pub fn setup_new_connection(
     mut commands: Commands,
     control_stream: Option<Res<ControlDataStream>>,
+    // list_resources_system: Res<CollectResourcesSystem>,
+    transmit_debug_enabled_resources_system: Res<TransmitDebugEnabledResources>,
 ) {
     if let Some(control_stream) = control_stream {
         if control_stream.is_added() {
@@ -61,6 +63,9 @@ pub fn setup_new_connection(
 
             commands.insert_resource(ControlReceiver { rx: reader_rx });
             commands.insert_resource(ControlSender { tx: writer_tx });
+
+            // commands.run_system(list_resources_system.0);
+            commands.run_system(transmit_debug_enabled_resources_system.system_id());
         }
     }
 }

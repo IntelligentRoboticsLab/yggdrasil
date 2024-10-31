@@ -1,7 +1,7 @@
-use std::{collections::HashMap, time::Duration};
+use std::{any::TypeId, collections::HashMap, time::Duration};
 
 use async_std::{io::WriteExt, net::TcpStream};
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemId, prelude::*};
 use futures::{
     channel::mpsc::{self, UnboundedReceiver},
     io::WriteHalf,
@@ -9,6 +9,8 @@ use futures::{
 };
 use miette::IntoDiagnostic;
 use serde::{Deserialize, Serialize};
+
+use super::DebugEnabledResources;
 
 const SEND_STATE_DELAY: Duration = Duration::from_millis(2_000);
 
@@ -25,7 +27,7 @@ impl Default for ControlHostMessageDelay {
 pub enum ControlHostMessage {
     CloseStream,
     Resources(HashMap<String, String>),
-    PlaceHolder,
+    DebugEnabledResources(DebugEnabledResources),
 }
 
 #[derive(Resource)]
@@ -71,8 +73,6 @@ pub fn send_current_state(
         return;
     }
 
-    info!("Send current state");
-
     let state = collect_resource_states(time.elapsed().as_secs().to_string());
     sender.tx.unbounded_send(state).unwrap();
 
@@ -81,7 +81,44 @@ pub fn send_current_state(
 
 fn collect_resource_states(val: String) -> ControlHostMessage {
     let mut resources = HashMap::new();
-    resources.insert("Resource1".to_string(), val);
-    resources.insert("Resource2".to_string(), "A value".to_string());
+    resources.insert("Time".to_string(), val);
     ControlHostMessage::Resources(resources)
+}
+
+#[derive(Resource)]
+pub struct TransmitDebugEnabledResources {
+    system_id: SystemId,
+}
+
+impl TransmitDebugEnabledResources {
+    pub fn system_id(&self) -> SystemId {
+        self.system_id
+    }
+}
+
+impl FromWorld for TransmitDebugEnabledResources {
+    fn from_world(world: &mut World) -> Self {
+        let system_id = world.register_system(transmit_debug_enabled_resources);
+        TransmitDebugEnabledResources { system_id }
+    }
+}
+
+fn transmit_debug_enabled_resources(
+    debug_enabled_resources: Res<DebugEnabledResources>,
+    sender: Res<ControlSender<ControlHostMessage>>,
+) {
+    let message = ControlHostMessage::DebugEnabledResources(debug_enabled_resources.clone());
+    sender.tx.unbounded_send(message).unwrap();
+}
+
+pub fn temp_system(type_registry: Res<AppTypeRegistry>) {
+    let registry = type_registry.read();
+
+    let resources: Vec<_> = registry
+        .iter()
+        .filter(|registration| registration.data::<ReflectResource>().is_some())
+        .map(|registration| registration.type_info().type_path())
+        .collect();
+
+    info!("Registry: {:#?}", resources);
 }

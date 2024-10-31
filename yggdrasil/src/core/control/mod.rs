@@ -3,12 +3,12 @@ pub mod receive;
 pub mod transmit;
 
 use std::{
-    net::{Ipv4Addr, SocketAddrV4},
-    sync::Arc,
+    collections::HashMap, net::{Ipv4Addr, SocketAddrV4}, sync::Arc
 };
 
 use async_std::net::TcpListener;
 use bevy::{
+    ecs::system::SystemId,
     prelude::*,
     tasks::{block_on, IoTaskPool},
 };
@@ -16,8 +16,9 @@ use miette::{IntoDiagnostic, Result};
 
 use connect::{listen_for_connection, setup_new_connection, ControlDataStream};
 use receive::{handle_message, ControlClientMessage, ControlReceiver};
+use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
-use transmit::{send_current_state, ControlHostMessage, ControlSender};
+use transmit::{send_current_state, temp_system, ControlHostMessage, ControlSender, TransmitDebugEnabledResources};
 
 pub const CONTROL_PORT: u16 = 40001;
 
@@ -25,7 +26,10 @@ pub struct ControlPlugin;
 
 impl Plugin for ControlPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup)
+        app.init_resource::<CollectResourcesSystem>()
+            .init_resource::<TransmitDebugEnabledResources>()
+            .init_resource::<DebugEnabledResources>()
+            .add_systems(Startup, setup)
             .add_systems(
                 Update,
                 (listen_for_connection, setup_new_connection)
@@ -41,6 +45,7 @@ impl Plugin for ControlPlugin {
                 Update,
                 send_current_state.run_if(resource_exists::<ControlSender<ControlHostMessage>>),
             );
+            // .add_systems(Update, temp_system);
     }
 }
 
@@ -66,4 +71,59 @@ fn setup(mut commands: Commands) {
         .expect("Failed to bind control listen socket");
     info!("Binded the control listen socket");
     commands.insert_resource(control_listen_socket);
+}
+
+#[derive(Resource, Serialize, Deserialize, Debug, Clone)]
+pub struct DebugEnabledResources {
+    pub resources: HashMap<String, bool>
+}
+
+impl Default for DebugEnabledResources {
+    fn default() -> Self {
+        let mut map = Self { resources: Default::default() };
+        map.resources.insert("system_2".to_string(), true);
+        map.resources.insert("system_1".to_string(), false);
+        map
+    }
+}
+
+impl DebugEnabledResources {
+    pub fn set_resource(&mut self, name: String, enabled: bool) {
+        if let Some(current_enabled) = self.resources.get_mut(&name) {
+            *current_enabled = enabled;
+        } else {
+            tracing::error!("System `{}` does not exist", name);
+        }
+    }
+}
+
+#[derive(Resource)]
+struct CollectResourcesSystem(SystemId);
+
+impl FromWorld for CollectResourcesSystem {
+    fn from_world(world: &mut World) -> Self {
+        CollectResourcesSystem(world.register_system(print_resources))
+    }
+}
+
+fn print_resources(world: &World) {
+    let mut resources = collect_resources(world);
+
+    // sort list alphebetically
+    resources.sort();
+    resources.iter().for_each(|name| println!("{}", name));
+}
+
+fn collect_resources(world: &World) -> Vec<&str> {
+    let components = world.components();
+
+    let resources: Vec<_> = world
+        .storages()
+        .resources
+        .iter()
+        .map(|(id, _)| components.get_info(id).unwrap())
+        .map(|info| info.name())
+        .collect();
+
+    resources
 }

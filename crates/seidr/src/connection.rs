@@ -96,7 +96,7 @@ pub async fn receive_messages(
     let mut size_buffer = [0; std::mem::size_of::<usize>()];
     loop {
         if sender.is_closed() {
-            tracing::warn!("Receiving message channel is closed");
+            tracing::warn!("Receiving message channel is closed");  
             break;
         }
 
@@ -122,20 +122,20 @@ pub async fn receive_messages(
     }
 }
 
-pub fn handle_message(
-    control_receiver: &mut Option<ControlReceiver<ControlHostMessage>>,
-    states: &mut SeidrStates,
-) -> Option {
-    let Some(receiver) = control_receiver else {
-        return;
-    };
+pub enum HandleMessageStatus {
+    Stopped,
+    Continue,
+}
 
+pub fn handle_message(
+    receiver: &mut ControlReceiver<ControlHostMessage>,
+    states: &mut SeidrStates,
+) -> HandleMessageStatus {
     while let Some(message) = receiver.try_recv() {
         match message {
             ControlHostMessage::CloseStream => {
                 tracing::warn!("Connection is closed");
-                *control_receiver = None;
-                return Some(ControlHostMessage::CloseStream);
+                return HandleMessageStatus::Stopped;
             }
             ControlHostMessage::Resources(new_resources) => {
                 tracing::info!("Resource message: {:#?}", new_resources);
@@ -152,7 +152,13 @@ pub fn handle_message(
                     .update_resources(new_resources, &mut states.focused_resources)
                     .unwrap();
             }
+            ControlHostMessage::DebugEnabledResources(debug_enabled_resources) => {
+                tracing::info!("Debug enabled resources init:\n{:#?}", debug_enabled_resources.resources);
+                states.debug_enabled_resources_view = debug_enabled_resources.into();
+            }
             _ => tracing::info!("Got a message to handle"),
         }
     }
+
+    HandleMessageStatus::Continue
 }

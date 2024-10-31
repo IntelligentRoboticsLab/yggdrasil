@@ -13,7 +13,8 @@ use bifrost::communication::{GameControllerMessage, GameState};
 use nidhogg::types::color;
 
 #[serde_as]
-#[derive(Resource, Serialize, Deserialize, Debug, Clone)]
+#[derive(Resource, Serialize, Deserialize, Debug, Clone, Reflect)]
+#[reflect(Resource, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PrimaryStateConfig {
     #[serde_as(as = "DurationMilliSeconds<u64>")]
@@ -31,12 +32,13 @@ pub struct PrimaryStatePlugin;
 impl Plugin for PrimaryStatePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PrimaryState::Sitting);
-
+        app.register_type::<PrimaryState>();
         app.add_systems(Update, update_primary_state);
     }
 }
 
-#[derive(Resource, Debug, Clone, PartialEq, Copy, Default, Reflect)]
+#[derive(Resource, Debug, Clone, PartialEq, Copy, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Resource, Serialize, Deserialize)]
 pub enum PrimaryState {
     /// State in which all joints but the hips are unstiffened
     /// and the robot does not move, sitting down.

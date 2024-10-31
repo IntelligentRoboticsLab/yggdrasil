@@ -13,6 +13,7 @@ use miette::IntoDiagnostic;
 use re_viewer::external::{
     eframe,
     egui::{self, Frame, ScrollArea},
+    re_ui::UiExt,
 };
 use rerun::external::ecolor::Color32;
 
@@ -20,10 +21,13 @@ use tokio::task::JoinHandle;
 use yggdrasil::core::control::{
     receive::{ClientRequest, ControlClientMessage, ControlReceiver},
     transmit::{ControlHostMessage, ControlSender},
+    DebugEnabledResources,
 };
 
 use crate::{
-    connection::{handle_message, receive_messages, send_messages, RobotConnection},
+    connection::{
+        handle_message, receive_messages, send_messages, HandleMessageStatus, RobotConnection,
+    },
     resource::RobotResources,
     style::{FrameStyleMap, LAST_UPDATE_COLOR},
 };
@@ -33,6 +37,21 @@ pub struct SeidrStates {
     pub robot_resources: RobotResources,
     pub focused_resources: HashMap<String, bool>,
     pub last_resource_update: Option<Instant>,
+    pub debug_enabled_resources_view: DebugEnabledResourcesView,
+}
+
+#[derive(Default)]
+pub struct DebugEnabledResourcesView {
+    debug_enabled_resources: DebugEnabledResources,
+    key_sequence: Vec<String>,
+}
+
+impl From<DebugEnabledResources> for DebugEnabledResourcesView {
+    fn from(debug_enabled_resources: DebugEnabledResources) -> Self {
+        let mut key_sequence: Vec<_> = debug_enabled_resources.resources.keys().cloned().collect();
+        key_sequence.sort();
+        Self { debug_enabled_resources, key_sequence }
+    }
 }
 
 pub struct Seidr {
@@ -53,7 +72,12 @@ impl eframe::App for Seidr {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         // Feels weird to put the `handle_message` in a function
         // that is executed when ui needs repainting
-        handle_message(&mut self.message_receiver, &mut self.states);
+        if let Some(mut message_receiver) = self.message_receiver.take() {
+            self.message_receiver = match handle_message(&mut message_receiver, &mut self.states) {
+                HandleMessageStatus::Stopped => None,
+                HandleMessageStatus::Continue => Some(message_receiver),
+            }
+        }
 
         // First add our panel(s):
         egui::SidePanel::right("Resource manipulation")
@@ -156,20 +180,26 @@ impl Seidr {
                 }
             }
         }
+
+        ui.separator();
+        ui.horizontal(|ui| {
+            debug_resources_ui(
+                ui,
+                &mut self.states.debug_enabled_resources_view,
+                &self.message_sender,
+            )
+        });
     }
 
     fn listen_for_robot_messages(
         reader: ReadHalf<TcpStream>,
     ) -> ControlReceiver<ControlHostMessage> {
         let (reader_tx, reader_rx) = mpsc::unbounded::<ControlHostMessage>();
-        let receive_messages_task = tokio::spawn(async move {
+        tokio::spawn(async move {
             receive_messages(reader, reader_tx).await;
         });
 
         ControlReceiver { rx: reader_rx }
-        // let handle_message_task = tokio::spawn(async move {
-        //     handle_message(&mut receiver);
-        // });
     }
 
     fn setup_send_messages_to_robot(
@@ -258,4 +288,30 @@ fn add_editable_resource(
     });
 
     followup_action
+}
+
+fn debug_resources_ui(
+    ui: &mut egui::Ui,
+    debug_enabled_resources_view: &mut DebugEnabledResourcesView,
+    message_sender: &ControlSender<ControlClientMessage>,
+) {
+    ui.vertical(|ui| {
+        for resource_name in &debug_enabled_resources_view.key_sequence {
+            ui.horizontal(|ui| {
+                let enabled = debug_enabled_resources_view
+                    .debug_enabled_resources
+                    .resources
+                    .get_mut(resource_name)
+                    .unwrap();
+                ui.label(resource_name);
+                if ui.toggle_switch(14.0, enabled).changed() {
+                    let message = ControlClientMessage::UpdateEnabledDebugResource(
+                        resource_name.clone(),
+                        enabled.clone(),
+                    );
+                    message_sender.tx.unbounded_send(message);
+                };
+            });
+        }
+    });
 }
