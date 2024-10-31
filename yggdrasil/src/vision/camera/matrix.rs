@@ -216,45 +216,49 @@ fn print_shoulders<T: CameraLocation>(
     current_cycle: Res<Cycle>,
 ) {
     let (
-        robot_to_left_shoulder_cap_back,
-        robot_to_left_shoulder_cap_front,
-        robot_to_right_shoulder_cap_front,
-        robot_to_right_shoulder_cap_back,
+        left_shoulder_cap_back_to_robot,
+        left_shoulder_cap_front_to_robot,
+        right_shoulder_cap_front_to_robot,
+        right_shoulder_cap_back_to_robot,
     ) = robot_to_shoulders(&imu, &kinematics);
 
-    eprintln!("robot_to_left_shoulder_cap_back: {robot_to_left_shoulder_cap_back}");
-    eprintln!("robot_to_left_shoulder_cap_front: {robot_to_left_shoulder_cap_front}");
+    eprintln!("robot_to_left_shoulder_cap_back: {left_shoulder_cap_back_to_robot}");
+    eprintln!("robot_to_left_shoulder_cap_front: {left_shoulder_cap_front_to_robot}");
 
     let (
         Ok(left_shoulder_cap_back_point),
         Ok(left_shoulder_cap_front_point),
-        // Ok(right_shoulder_cap_front_point),
-        // Ok(right_shoulder_cap_back_point),
+        Ok(right_shoulder_cap_front_point),
+        Ok(right_shoulder_cap_back_point),
     ) = (
         matrix.ground_to_pixel(
-            (robot_to_left_shoulder_cap_back.inverse() * matrix.robot_to_ground)
+            (left_shoulder_cap_back_to_robot * matrix.robot_to_ground)
+                .inverse()
                 .translation
                 .vector
                 .into(),
         ),
         matrix.ground_to_pixel(
-            (robot_to_left_shoulder_cap_front.inverse() * matrix.robot_to_ground)
+            (left_shoulder_cap_front_to_robot * matrix.robot_to_ground)
+                .inverse()
                 .translation
                 .vector
                 .into(),
         ),
-        // matrix.ground_to_pixel(
-        //     (robot_to_right_shoulder_cap_front.inverse() * matrix.robot_to_ground)
-        //         .translation
-        //         .vector
-        //         .into(),
-        // ),
-        // matrix.ground_to_pixel(
-        //     (robot_to_right_shoulder_cap_back.inverse() * matrix.robot_to_ground)
-        //         .translation
-        //         .vector
-        //         .into(),
-        // ),
+        matrix.ground_to_pixel(
+            (right_shoulder_cap_front_to_robot * matrix.robot_to_ground)
+                .inverse()
+                .translation
+                .vector
+                .into(),
+        ),
+        matrix.ground_to_pixel(
+            (right_shoulder_cap_back_to_robot * matrix.robot_to_ground)
+                .inverse()
+                .translation
+                .vector
+                .into(),
+        ),
     )
     else {
         return;
@@ -272,14 +276,14 @@ fn print_shoulders<T: CameraLocation>(
                 left_shoulder_cap_front_point.x,
                 left_shoulder_cap_front_point.y,
             ),
-            // (
-            //     right_shoulder_cap_front_point.x,
-            //     right_shoulder_cap_front_point.y,
-            // ),
-            // (
-            //     right_shoulder_cap_back_point.x,
-            //     right_shoulder_cap_back_point.y,
-            // ),
+            (
+                right_shoulder_cap_front_point.x,
+                right_shoulder_cap_front_point.y,
+            ),
+            (
+                right_shoulder_cap_back_point.x,
+                right_shoulder_cap_back_point.y,
+            ),
         ]),
     );
 }
