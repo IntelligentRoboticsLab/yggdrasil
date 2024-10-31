@@ -19,6 +19,9 @@ pub struct AudioConfig {
     pub wee_sound_timeout: Duration,
 
     #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub battery_sound_timeout: Duration,
+
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub whistle_timeout: Duration,
 }
 

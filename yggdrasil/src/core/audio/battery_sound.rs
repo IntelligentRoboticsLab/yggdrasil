@@ -1,43 +1,63 @@
 use super::sound_manager::{Sound, SoundManager};
+use super::AudioConfig;
 use bevy::prelude::*;
 use nidhogg::NaoState;
+use std::time::{Duration, Instant};
+
+const THRESHOLD_LOW: u32 = 70;
+const THRESHOLD_CRITICAL: u32 = 5;
 
 pub struct BatterySoundPlugin;
 
 impl Plugin for BatterySoundPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.init_resource::<BatteryInfo>()
-            .add_systems(Update, battery_sound_system);
+        app.add_systems(Update, battery_sound_system);
     }
 }
 
-#[derive(Default, Resource)]
+#[derive(Default)]
 pub struct BatteryInfo {
-    prev_level: Option<u32>,
+    last_played: Option<Instant>,
+    prev_level: u32,
+}
+
+impl BatteryInfo {
+    fn timed_out(&self, timeout: Duration) -> bool {
+        matches!(self.last_played, Some(instant) if instant.elapsed() < timeout)
+    }
+
+    fn check_level(&mut self, nao_state: &NaoState) -> bool {
+        let battery_level = (nao_state.battery.charge * 100.0) as u32;
+
+        let low_or_critical = battery_level == THRESHOLD_LOW || battery_level == THRESHOLD_CRITICAL;
+        let should_play_sound = (battery_level < self.prev_level && low_or_critical)
+            || (self.prev_level == 0 && battery_level <= THRESHOLD_LOW);
+
+        self.prev_level = battery_level;
+        should_play_sound
+    }
 }
 
 pub fn battery_sound_system(
-    mut battery_info: ResMut<BatteryInfo>,
+    mut battery_info: Local<BatteryInfo>,
     sounds: Res<SoundManager>,
     nao_state: Res<NaoState>,
+    config: Res<AudioConfig>,
 ) {
-    let mut should_play_sound = false;
-    // Integer comparison (prevents warning)
-    let battery_level = (nao_state.battery.charge * 100.0) as u32;
-
-    // Check whether previous battery level is initialized
-    if let Some(prev_level) = battery_info.prev_level {
-        if (prev_level == 10 && battery_level <= 9) || (prev_level == 6 && battery_level <= 5) {
-            should_play_sound = true;
-        }
-    } else if battery_level <= 10 {
-        should_play_sound = true;
+    if battery_info.timed_out(config.battery_sound_timeout) {
+        return;
     }
 
-    if should_play_sound {
+    // Already charging
+    if nao_state.battery.status > 0.0 {
+        return;
+    }
+
+    if battery_info.check_level(&nao_state) {
         sounds
             .play_sound(Sound::ChargeMe)
             .expect("Failed to play battery sound");
+
+        battery_info.last_played = Some(Instant::now());
     }
-    battery_info.prev_level = Some(battery_level);
 }
