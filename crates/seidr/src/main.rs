@@ -1,22 +1,13 @@
-mod app;
-mod cli;
-mod connection;
-mod resource;
-mod seidr;
-mod style;
-
 use std::net::{Ipv4Addr, SocketAddrV4};
 
 use clap::Parser;
-use cli::Cli;
-use connection::RobotConnection;
 use miette::{IntoDiagnostic, Result};
 use re_viewer::external::{eframe, egui, re_log, re_memory};
 
-use app::App;
+use seidr::{app::App, cli::Cli, connection::connect::RobotConnection};
 use yggdrasil::core::control::CONTROL_PORT;
 
-const MB_TO_BYTES_MULTIPLIER: u64 = 1_000_000;
+const BYTES_IN_MB: i64 = 1_000_000;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -52,12 +43,17 @@ async fn main() -> Result<()> {
         ..re_viewer::native::eframe_options(None)
     };
 
+    // Setting a memory limit of 75% or a limit defined via the cli arguments
     let memory_limit = if let Some(max_memory) = args.max_mem {
-        tracing::info!("Memory limit set to: {} MB", max_memory);
-        re_memory::MemoryLimit::from_bytes(MB_TO_BYTES_MULTIPLIER * max_memory)
+        re_memory::MemoryLimit::parse(&max_memory).expect(&format!(
+            "Failed to parse `{}` to a `MemoryLimit`",
+            max_memory
+        ))
     } else {
         re_memory::MemoryLimit::from_fraction_of_total(0.75)
     };
+
+    tracing::info!("Memory limit set to: {} MB", memory_limit.max_bytes.unwrap() / BYTES_IN_MB);
 
     let startup_options = re_viewer::StartupOptions {
         memory_limit,

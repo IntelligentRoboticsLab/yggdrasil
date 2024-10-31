@@ -195,7 +195,7 @@ async fn build_seidr() -> Result<()> {
 }
 
 /// Spawn a rerun viewer in the background.
-async fn spawn_rerun_viewer(robot_ip: Ipv4Addr, memory_limit: Option<u64>) -> Result<()> {
+async fn spawn_rerun_viewer(robot_ip: Ipv4Addr, memory_limit: Option<String>) -> Result<()> {
     build_seidr().await?;
 
     let mut args = vec![];
@@ -204,7 +204,7 @@ async fn spawn_rerun_viewer(robot_ip: Ipv4Addr, memory_limit: Option<u64>) -> Re
 
     // Additionally set a memory limit for the viewer
     if let Some(memory_limit) = memory_limit {
-        args.push("-m".to_string());
+        args.push("--max-mem".to_string());
         args.push(memory_limit.to_string());
     }
 

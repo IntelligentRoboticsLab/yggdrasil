@@ -1,35 +1,32 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-    time::Instant,
-};
+use std::{collections::HashMap, time::Instant};
 
 use async_std::net::TcpStream;
 use futures::{
-    channel::mpsc::{self, UnboundedReceiver, UnboundedSender},
+    channel::mpsc,
     io::{ReadHalf, WriteHalf},
 };
-use miette::IntoDiagnostic;
 use re_viewer::external::{
     eframe,
-    egui::{self, Frame, ScrollArea},
-    re_ui::UiExt,
+    egui::{self, ScrollArea},
 };
-use rerun::external::ecolor::Color32;
 
-use tokio::task::JoinHandle;
 use yggdrasil::core::control::{
-    receive::{ClientRequest, ControlClientMessage, ControlReceiver},
+    receive::{ControlClientMessage, ControlReceiver},
     transmit::{ControlHostMessage, ControlSender},
     DebugEnabledResources,
 };
 
 use crate::{
     connection::{
-        handle_message, receive_messages, send_messages, HandleMessageStatus, RobotConnection,
+        connect::RobotConnection,
+        receive::{handle_message, receive_messages, HandleMessageStatus},
+        transmit::send_messages,
     },
     resource::RobotResources,
-    style::{FrameStyleMap, LAST_UPDATE_COLOR},
+    ui::{
+        add_editable_resource, debug_resources_ui,
+        style::{FrameStyleMap, LAST_UPDATE_COLOR},
+    },
 };
 
 #[derive(Default)]
@@ -42,15 +39,18 @@ pub struct SeidrStates {
 
 #[derive(Default)]
 pub struct DebugEnabledResourcesView {
-    debug_enabled_resources: DebugEnabledResources,
-    key_sequence: Vec<String>,
+    pub debug_enabled_resources: DebugEnabledResources,
+    pub key_sequence: Vec<String>,
 }
 
 impl From<DebugEnabledResources> for DebugEnabledResourcesView {
     fn from(debug_enabled_resources: DebugEnabledResources) -> Self {
         let mut key_sequence: Vec<_> = debug_enabled_resources.resources.keys().cloned().collect();
         key_sequence.sort();
-        Self { debug_enabled_resources, key_sequence }
+        Self {
+            debug_enabled_resources,
+            key_sequence,
+        }
     }
 }
 
@@ -211,107 +211,4 @@ impl Seidr {
         });
         ControlSender { tx: writer_tx }
     }
-}
-
-fn add_editable_resource(
-    ui: &mut egui::Ui,
-    resource_name: &String,
-    resource_data: &mut String,
-    changed_resources: &mut HashMap<String, bool>,
-    button_frame_style: Frame,
-) -> Option<ControlClientMessage> {
-    let mut followup_action = None;
-
-    ui.vertical(|ui| {
-        let mut resource_name_color = Color32::GRAY;
-        if let Some(changed_resource) = changed_resources.get(resource_name) {
-            if *changed_resource {
-                resource_name_color = Color32::LIGHT_RED;
-            }
-        }
-        ui.label(
-            egui::RichText::new(resource_name)
-                .heading()
-                .color(resource_name_color),
-        );
-        ui.add_space(2.0);
-
-        // Editable text block for the resource data
-        let multiline_text = ui.add(
-            egui::TextEdit::multiline(resource_data)
-                .font(egui::TextStyle::Monospace)
-                .code_editor()
-                .desired_rows(1)
-                .lock_focus(true)
-                .desired_width(f32::INFINITY),
-        );
-
-        if multiline_text.changed() {
-            if let Some(changed_resource) = changed_resources.get_mut(resource_name) {
-                *changed_resource = true;
-            }
-        }
-
-        ui.add_space(2.0);
-
-        ui.horizontal(|ui| {
-            // Button to override a resource on the robot from rerun
-            button_frame_style.show(ui, |ui| {
-                if ui
-                    .add(egui::Button::new(
-                        egui::RichText::new("Override resource").size(12.0),
-                    ))
-                    .clicked()
-                {
-                    followup_action = Some(ControlClientMessage::UpdateResource(
-                        resource_name.to_string(),
-                        resource_data.to_string(),
-                    ));
-
-                    if let Some(changed_resource) = changed_resources.get_mut(resource_name) {
-                        *changed_resource = false;
-                    }
-                }
-            });
-
-            button_frame_style.show(ui, |ui| {
-                if ui
-                    .add(egui::Button::new(
-                        egui::RichText::new("Override config").size(12.0),
-                    ))
-                    .clicked()
-                {}
-            })
-        });
-
-        ui.add_space(5.0);
-    });
-
-    followup_action
-}
-
-fn debug_resources_ui(
-    ui: &mut egui::Ui,
-    debug_enabled_resources_view: &mut DebugEnabledResourcesView,
-    message_sender: &ControlSender<ControlClientMessage>,
-) {
-    ui.vertical(|ui| {
-        for resource_name in &debug_enabled_resources_view.key_sequence {
-            ui.horizontal(|ui| {
-                let enabled = debug_enabled_resources_view
-                    .debug_enabled_resources
-                    .resources
-                    .get_mut(resource_name)
-                    .unwrap();
-                ui.label(resource_name);
-                if ui.toggle_switch(14.0, enabled).changed() {
-                    let message = ControlClientMessage::UpdateEnabledDebugResource(
-                        resource_name.clone(),
-                        enabled.clone(),
-                    );
-                    message_sender.tx.unbounded_send(message);
-                };
-            });
-        }
-    });
 }

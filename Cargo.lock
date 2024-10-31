@@ -7472,6 +7472,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8e6473101c2440d9dcad8d96aef558e38f0b8bb65b3f64f050d3b37b8316ccf"
 dependencies = [
  "anyhow",
+ "clap",
  "document-features",
  "env_logger",
  "itertools 0.13.0",

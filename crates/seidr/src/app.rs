@@ -8,7 +8,7 @@ use re_viewer::{
     StartupOptions,
 };
 
-use crate::{connection::RobotConnection, seidr::Seidr};
+use crate::{connection::connect::RobotConnection, seidr::Seidr};
 
 // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
 const APP_ENV: &str = "My Wrapper";
