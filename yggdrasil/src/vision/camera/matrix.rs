@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use bevy::prelude::*;
 use heimdall::{CameraLocation, CameraMatrix, CameraPosition};
-use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
+use nalgebra::{vector, Isometry3, Point2, Point3, UnitQuaternion, Vector2, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -46,10 +46,13 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
 }
 
 fn update_camera_matrix<T: CameraLocation>(
+    dbg: DebugContext,
+    pose: Res<RobotPose>,
     swing_foot: Res<SwingFoot>,
     imu: Res<IMUValues>,
     kinematics: Res<RobotKinematics>,
     mut matrix: ResMut<CameraMatrix<T>>,
+    image: Res<Image<T>>,
     config: Res<CameraConfig>,
 ) {
     let config = match T::POSITION {
@@ -58,15 +61,45 @@ fn update_camera_matrix<T: CameraLocation>(
     };
 
     let image_size = vector![config.width as f32, config.height as f32];
-    let camera_to_head = camera_to_head(T::POSITION, config.calibration.extrinsic_rotation);
+    let camera_to_neck = camera_to_neck(T::POSITION, config.calibration.extrinsic_rotation);
+    let robot_to_ground = robot_to_ground(&swing_foot, &imu, &kinematics);
+    info!("== {:?} ==", T::POSITION);
+    info!("camera_to_neck: {:?}", camera_to_neck);
+    info!("neck_to_robot: {:?}", kinematics.neck_to_robot);
+    info!("head_to_robot: {:?}", kinematics.head_to_robot);
+    info!("robot_to_ground: {:?}", robot_to_ground);
+
     *matrix = CameraMatrix::new(
         config.calibration.focal_lengths,
         config.calibration.cc_optical_center,
         image_size,
-        camera_to_head,
+        camera_to_neck,
         kinematics.head_to_robot,
-        robot_to_ground(&swing_foot, &imu, &kinematics),
+        robot_to_ground,
     );
+
+    let test_point = Point3::new(1.0, 0.0, 0.0); // 1 meter
+    match matrix.ground_to_pixel(test_point) {
+        Ok(pixel) => dbg.log_with_cycle(
+            T::make_image_entity_path("test_point"),
+            image.cycle(),
+            &rerun::Points2D::new(&[(pixel.x, pixel.y)]),
+        ),
+        Err(e) => error!(?e, "Failed to project test point"),
+    }
+
+    let test_pixel = Point2::new((image.width() as f32 / 2.0), (image.height() as f32 / 2.0));
+    match matrix.pixel_to_ground(test_pixel, 0.0) {
+        Ok(point) => {
+            let transformed = pose.as_3d().transform_point(&point);
+            dbg.log_with_cycle(
+                T::make_entity_path("test_pixel"),
+                image.cycle(),
+                &rerun::Points3D::new(&[(transformed.x, transformed.y, transformed.z)]),
+            )
+        }
+        Err(e) => error!(?e, "Failed to project test pixel"),
+    }
 }
 
 fn robot_to_ground(
@@ -95,7 +128,7 @@ fn robot_to_ground(
     }
 }
 
-fn camera_to_head(position: CameraPosition, extrinsic_rotations: Vector3<f32>) -> Isometry3<f32> {
+fn camera_to_neck(position: CameraPosition, extrinsic_rotations: Vector3<f32>) -> Isometry3<f32> {
     // create quaternion, using the extrinsic rotations from config (in degrees!)
     let extrinsic_rotation = UnitQuaternion::from_euler_angles(
         extrinsic_rotations.x.to_radians(),

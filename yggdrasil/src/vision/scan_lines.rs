@@ -1,6 +1,6 @@
 use std::{ops::Deref, sync::Arc};
 
-use crate::{core::debug::DebugContext, nao::Cycle, prelude::*};
+use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle, prelude::*};
 
 use super::{
     camera::{init_camera, Image},
@@ -10,7 +10,7 @@ use super::{
 };
 use bevy::prelude::*;
 
-use heimdall::{Bottom, CameraLocation, CameraPosition, Top, YuvPixel, YuyvImage};
+use heimdall::{Bottom, CameraLocation, CameraMatrix, CameraPosition, Top, YuvPixel, YuyvImage};
 use nalgebra::Point2;
 use serde::{Deserialize, Serialize};
 
@@ -57,15 +57,15 @@ impl Plugin for ScanLinesPlugin {
                         .after(super::scan_grid::update_bottom_scan_grid)
                         .run_if(resource_exists_and_changed::<Image<Top>>),
                 ),
+            )
+            // These are really obnoxious to visualize, so they are disabled for now.
+            .add_systems(
+                PostUpdate,
+                (
+                    visualize_scan_lines::<Top>.run_if(resource_exists::<ScanLines<Top>>)
+                    // visualize_scan_lines::<Bottom>.run_if(resource_exists::<ScanLines<Bottom>>),
+                ),
             );
-        // These are really obnoxious to visualize, so they are disabled for now.
-        // .add_systems(
-        //     PostUpdate,
-        //     (
-        //         visualize_scan_lines::<Top>.run_if(resource_exists::<ScanLines<Top>>),
-        //         visualize_scan_lines::<Bottom>.run_if(resource_exists::<ScanLines<Bottom>>),
-        //     ),
-        // );
     }
 }
 
@@ -691,21 +691,30 @@ pub enum CameraType {
 }
 
 #[allow(unused)]
-fn visualize_scan_lines<T: CameraLocation>(dbg: DebugContext, scan_lines: Res<ScanLines<T>>) {
-    visualize_single_scan_line::<T>(&dbg, scan_lines.horizontal(), scan_lines.image().cycle());
-    visualize_single_scan_line::<T>(&dbg, scan_lines.vertical(), scan_lines.image().cycle());
+fn visualize_scan_lines<T: CameraLocation>(
+    dbg: DebugContext,
+    scan_lines: Res<ScanLines<T>>,
+    matrix: Res<CameraMatrix<T>>,
+    pose: Res<RobotPose>,
+) {
+    // visualize_single_scan_line::<T>(&dbg, scan_lines.horizontal(), scan_lines.image().cycle());
+    // visualize_single_scan_line::<T>(&dbg, scan_lines.vertical(), scan_lines.image().cycle());
 
     visualize_scan_line_spots::<T>(
         &dbg,
         scan_lines.horizontal(),
         scan_lines.image().cycle(),
         rerun::Color::from_rgb(255, 0, 0),
+        &matrix,
+        &pose,
     );
     visualize_scan_line_spots::<T>(
         &dbg,
         scan_lines.vertical(),
         scan_lines.image().cycle(),
         rerun::Color::from_rgb(0, 0, 255),
+        &matrix,
+        &pose,
     );
 }
 
@@ -776,6 +785,8 @@ fn visualize_scan_line_spots<T: CameraLocation>(
     scan_line: &ScanLine,
     cycle: Cycle,
     color: rerun::Color,
+    matrix: &CameraMatrix<T>,
+    pose: &RobotPose,
 ) {
     let regions = &scan_line.raw;
 
@@ -799,6 +810,24 @@ fn visualize_scan_line_spots<T: CameraLocation>(
     dbg.log_with_cycle(
         T::make_image_entity_path(format!("scan_lines/spots/{direction_str}")),
         cycle,
-        &rerun::Points2D::new(line_spots).with_colors(colors),
+        &rerun::Points2D::new(line_spots.clone()).with_colors(colors.clone()),
+    );
+
+    let projected_spots = line_spots
+        .iter()
+        .filter_map(|(x, y)| {
+            let point = Point2::new(*x as f32, *y as f32);
+            if let Ok(point) = matrix.pixel_to_ground(point, 0.0) {
+                let point = pose.as_3d().transform_point(&point);
+                return Some((point.x, point.y, point.z));
+            }
+            None
+        })
+        .collect::<Vec<_>>();
+
+    dbg.log_with_cycle(
+        T::make_entity_path(format!("projected_points")),
+        cycle,
+        &rerun::Points3D::new(projected_spots.clone()).with_colors(colors),
     );
 }
