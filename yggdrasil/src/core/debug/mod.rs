@@ -4,6 +4,8 @@ use bevy::prelude::*;
 use miette::IntoDiagnostic;
 use rerun::components::Scalar;
 use rerun::{AsComponents, ComponentBatch, EntityPath, RecordingStream, TimeColumn};
+use std::env;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{convert::Into, net::SocketAddr};
 use std::{marker::PhantomData, net::IpAddr};
@@ -12,6 +14,10 @@ use crate::{
     nao::{Cycle, CycleTime},
     prelude::*,
 };
+
+const DEFAULT_STORAGE_PATH: &str = "/mnt/usb";
+const STORAGE_PATH_ENV_NAME: &str = "RERUN_STORAGE_PATH";
+const DATE_TIME_FORMAT: &str = "%Y-%m-%d:%H-%M-%S";
 
 /// Plugin that adds debugging tools for the robot using the [rerun](https://rerun.io) viewer.
 ///
@@ -24,6 +30,37 @@ impl Plugin for DebugPlugin {
         app.add_systems(Startup, (init_rerun, setup_spl_field).chain())
             .add_systems(First, sync_cycle_number);
     }
+}
+
+fn get_storage_path() -> Option<PathBuf> {
+    env::var_os(STORAGE_PATH_ENV_NAME).map_or_else(
+        || {
+            let usb_path = PathBuf::from(DEFAULT_STORAGE_PATH);
+            if usb_path.exists() {
+                Some(usb_path)
+            } else {
+                None
+            }
+        },
+        |path| Some(PathBuf::from(path)),
+    )
+}
+
+fn make_rrd_file_path(storage_path: &Path) -> PathBuf {
+    if !storage_path.is_dir() {
+        return storage_path.into();
+    }
+    let mut path = PathBuf::new();
+
+    path.push(
+        storage_path
+            .to_str()
+            .expect("rerun rrd file path contains invalid unicode"),
+    );
+    path.push(chrono::Local::now().format(DATE_TIME_FORMAT).to_string());
+    path.set_extension("rrd");
+
+    path
 }
 
 fn init_rerun(mut commands: Commands) {
@@ -40,15 +77,23 @@ fn init_rerun(mut commands: Commands) {
             .and_then(|address| std::str::FromStr::from_str(address.as_str()).ok())
     };
 
-    if let Some(address) = server_address {
-        let rec = RerunStream::init("yggdrasil", address)
-            .expect("failed to initialize rerun::RecordingStream");
-
-        commands.insert_resource(rec);
+    let rec = if let Some(storage_path) = get_storage_path() {
+        let output_rrd_file_path = make_rrd_file_path(&storage_path);
+        tracing::info!(
+            "Rerun logging to {}",
+            output_rrd_file_path.as_path().display()
+        );
+        RerunStream::init_file_store("yggdrasil", output_rrd_file_path)
+            .expect("failed to initialize rerun::RecordingStream")
+    } else if let Some(address) = server_address {
+        RerunStream::init("yggdrasil", address)
+            .expect("failed to initialize rerun::RecordingStream")
     } else {
         tracing::warn!("`RERUN_HOST` not set, rerun debugging is disabled");
-        commands.insert_resource(RerunStream::disabled());
-    }
+        RerunStream::disabled()
+    };
+
+    commands.insert_resource(rec);
 }
 
 fn setup_spl_field(dbg: DebugContext) {
@@ -99,6 +144,7 @@ fn sync_cycle_number(
 pub struct RerunStream {
     stream: RecordingStream,
     cycle: Cycle,
+    logging_to_rrd_file: bool,
 }
 
 impl RerunStream {
@@ -117,6 +163,25 @@ impl RerunStream {
         Ok(RerunStream {
             stream: rec,
             cycle: Cycle(0),
+            logging_to_rrd_file: false,
+        })
+    }
+
+    /// Initialize a new [`RerunStream`].
+    ///
+    /// The stream is stored as an rrd file at the `path` location.
+    pub fn init_file_store(
+        recording_name: impl AsRef<str>,
+        path: impl Into<PathBuf>,
+    ) -> Result<Self> {
+        let stream = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
+            .save(path)
+            .into_diagnostic()?;
+
+        Ok(RerunStream {
+            stream,
+            cycle: Cycle(0),
+            logging_to_rrd_file: true,
         })
     }
 
@@ -126,6 +191,7 @@ impl RerunStream {
         RerunStream {
             stream: RecordingStream::disabled(),
             cycle: Cycle(0),
+            logging_to_rrd_file: false,
         }
     }
 
@@ -214,6 +280,12 @@ impl RerunStream {
         if let Err(error) = self.stream.send_columns(ent_path, timelines, components) {
             error!("{error}");
         }
+    }
+
+    /// Return whether the [`RerunStream`] is logging to an rrd file.
+    #[must_use]
+    pub fn logging_to_rrd_file(&self) -> bool {
+        self.logging_to_rrd_file
     }
 }
 
