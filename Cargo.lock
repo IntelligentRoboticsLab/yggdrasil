@@ -8365,6 +8365,7 @@ dependencies = [
 name = "spatial_derive"
 version = "0.1.0"
 dependencies = [
+ "petgraph",
  "proc-macro2",
  "quote",
  "syn 2.0.81",
