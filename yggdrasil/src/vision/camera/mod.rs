@@ -182,13 +182,23 @@ fn log_image<T: CameraLocation>(dbg: DebugContext, image: Res<Image<T>>) {
             let image = image.clone();
             let dbg = dbg.clone();
             async move {
-                let yuv_planar_image = YuvPlanarImage::from_yuyv(image.yuyv_image());
-                let Some(jpeg) = yuv_planar_image.to_jpeg(JPEG_QUALITY).ok_or_log_error() else {
-                    return;
-                };
-                let encoded_image = rerun::EncodedImage::from_file_contents(jpeg.to_owned())
-                    .with_media_type(rerun::MediaType::JPEG);
-                dbg.log_with_cycle(T::make_entity_path(""), image.cycle(), &encoded_image);
+                if dbg.logging_to_rrd_file() {
+                    let rerun_image = rerun::Image::from_pixel_format(
+                        [image.width() as u32, image.height() as u32],
+                        rerun::PixelFormat::YUY2,
+                        image.to_vec(),
+                    );
+                    dbg.log_with_cycle(T::make_entity_path(""), image.cycle(), &rerun_image);
+                } else {
+                    let yuv_planar_image = YuvPlanarImage::from_yuyv(image.yuyv_image());
+                    let Some(jpeg) = yuv_planar_image.to_jpeg(JPEG_QUALITY).ok_or_log_error()
+                    else {
+                        return;
+                    };
+                    let encoded_image = rerun::EncodedImage::from_file_contents(jpeg.to_owned())
+                        .with_media_type(rerun::MediaType::JPEG);
+                    dbg.log_with_cycle(T::make_entity_path(""), image.cycle(), &encoded_image);
+                }
             }
         })
         .detach();
