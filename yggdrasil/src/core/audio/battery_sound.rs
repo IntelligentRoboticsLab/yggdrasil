@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use nidhogg::NaoState;
 use std::time::{Duration, Instant};
 
-const THRESHOLD_LOW: u32 = 70;
+const THRESHOLD_LOW: u32 = 10;
 const THRESHOLD_CRITICAL: u32 = 5;
 
 pub struct BatterySoundPlugin;
