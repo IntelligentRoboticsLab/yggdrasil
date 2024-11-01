@@ -10,6 +10,7 @@ macro_rules! impl_space {
         impl Space for $space {}
         impl SpaceOver<na::Point3<f32>> for $space {}
         impl SpaceOver<na::Vector3<f32>> for $space {}
+        impl SpaceOver<na::Isometry3<f32>> for $space {}
     };
     ($space:ident<T>) => {
         pub struct $space<T>(T);
@@ -19,6 +20,8 @@ macro_rules! impl_space {
         impl SpaceOver<na::Point3<f32>> for $space<Right> {}
         impl SpaceOver<na::Vector3<f32>> for $space<Left> {}
         impl SpaceOver<na::Vector3<f32>> for $space<Right> {}
+        impl SpaceOver<na::Isometry3<f32>> for $space<Left> {}
+        impl SpaceOver<na::Isometry3<f32>> for $space<Right> {}
     };
 }
 

@@ -8,7 +8,7 @@ use nalgebra as na;
 use std::f32::consts::FRAC_1_SQRT_2;
 
 use nidhogg::types::JointArray;
-use spatial::{Transform, types::Isometry3};
+use spatial::{Space, SpaceOver, Transform, types::Isometry3};
 use super::{dimensions::*, spaces::*};
 
 #[derive(Debug, Resource, Transform)]
@@ -43,6 +43,16 @@ pub struct Kinematics {
 }
 
 impl Kinematics {
+    #[must_use]
+    pub fn isometry<S1, S2>(&self) -> Isometry3<S1, S2>
+    where
+        S1: Space + SpaceOver<na::Isometry3<f32>>,
+        S2: Space + SpaceOver<na::Isometry3<f32>>,
+        Self: Transform<na::Isometry3<f32>, na::Isometry3<f32>, S1, S2>,
+    {
+        self.transform(&na::Isometry3::identity().into()).inner.into()
+    }
+
 	#[must_use]
 	pub fn head_to_neck(head_pitch: f32) -> Isometry3<Head, Neck> {
 		na::Isometry3::rotation(

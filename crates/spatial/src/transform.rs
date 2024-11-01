@@ -159,6 +159,31 @@ where
     }
 }
 
+impl<S1, S2> Transform<na::Isometry2<f32>, na::Isometry2<f32>, S1, S2>
+    for BetweenSpaces<na::Isometry2<f32>, S1, S2>
+where
+    S1: SpaceOver<na::Isometry2<f32>>,
+    S2: SpaceOver<na::Isometry2<f32>>,
+{
+    fn transform(&self, x: &InSpace<na::Isometry2<f32>, S1>) -> InSpace<na::Isometry2<f32>, S2> {
+        (self.inner * x.inner).into()
+    }
+}
+
+impl<S1, S2> InverseTransform<na::Isometry2<f32>, na::Isometry2<f32>, S1, S2>
+    for BetweenSpaces<na::Isometry2<f32>, S1, S2>
+where
+    S1: SpaceOver<na::Isometry2<f32>>,
+    S2: SpaceOver<na::Isometry2<f32>>,
+{
+    fn inverse_transform(
+        &self,
+        x: &InSpace<na::Isometry2<f32>, S2>,
+    ) -> InSpace<na::Isometry2<f32>, S1> {
+        self.inner.inv_mul(&x.inner).into()
+    }
+}
+
 impl<S1, S2> Transform<na::Point3<f32>, na::Point3<f32>, S1, S2>
     for BetweenSpaces<na::Isometry3<f32>, S1, S2>
 where
@@ -203,5 +228,30 @@ where
         x: &InSpace<na::Vector3<f32>, S2>,
     ) -> InSpace<na::Vector3<f32>, S1> {
         self.inner.inverse_transform_vector(&x.inner).into()
+    }
+}
+
+impl<S1, S2> Transform<na::Isometry3<f32>, na::Isometry3<f32>, S1, S2>
+    for BetweenSpaces<na::Isometry3<f32>, S1, S2>
+where
+    S1: SpaceOver<na::Isometry3<f32>>,
+    S2: SpaceOver<na::Isometry3<f32>>,
+{
+    fn transform(&self, x: &InSpace<na::Isometry3<f32>, S1>) -> InSpace<na::Isometry3<f32>, S2> {
+        (self.inner * x.inner).into()
+    }
+}
+
+impl<S1, S2> InverseTransform<na::Isometry3<f32>, na::Isometry3<f32>, S1, S2>
+    for BetweenSpaces<na::Isometry3<f32>, S1, S2>
+where
+    S1: SpaceOver<na::Isometry3<f32>>,
+    S2: SpaceOver<na::Isometry3<f32>>,
+{
+    fn inverse_transform(
+        &self,
+        x: &InSpace<na::Isometry3<f32>, S2>,
+    ) -> InSpace<na::Isometry3<f32>, S1> {
+        self.inner.inv_mul(&x.inner).into()
     }
 }
