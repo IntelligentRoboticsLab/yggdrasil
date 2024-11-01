@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    ops::{Deref, Range, RangeBounds},
-    sync::Arc,
-};
+use std::{ops::Deref, sync::Arc};
 
 use crate::{
     core::debug::{
@@ -125,10 +121,12 @@ impl<T: CameraLocation> ScanLines<T> {
     pub fn vertical(&self) -> &ScanLine {
         &self.vertical
     }
-}
 
-fn ranges_overlap<T: PartialOrd<T>>(r1: &Range<T>, r2: &Range<T>) -> bool {
-    r1.contains(&r2.start) || r1.contains(&r2.end) || r2.contains(&r1.start) || r2.contains(&r1.end)
+    pub fn line_spots(&self) -> impl Iterator<Item = Point2<f32>> + use<'_, T> {
+        self.vertical
+            .line_spots()
+            .chain(self.horizontal.line_spots())
+    }
 }
 
 /// A set of classified scanline regions.
@@ -145,66 +143,6 @@ impl ScanLine {
 
     pub fn regions(&self) -> std::slice::Iter<ClassifiedScanLineRegion> {
         self.raw.iter()
-    }
-
-    // TODO: we can probably avoid some allocations but it's also probably not a big deal
-    // Also this code is just hideous
-    pub fn line_spot_groups(&self) -> Vec<Vec<Point2<f32>>> {
-        let mut groups: HashMap<usize, Vec<Point2<f32>>> = HashMap::new();
-        let mut idx = 0;
-
-        // (updated, idx, start..end of rightmost region)
-        let mut current_idxs: Vec<(bool, usize, std::ops::Range<usize>)> = Vec::new();
-
-        let mut current_fixed_point = None;
-
-        for region in self
-            .raw
-            .iter()
-            .filter(|r| r.color == RegionColor::WhiteOrBlack)
-        {
-            // remove stale idxs when we change scan line
-            let fixed_point = region.line.region.fixed_point();
-            if current_fixed_point != Some(fixed_point) {
-                current_fixed_point = Some(fixed_point);
-
-                current_idxs.retain(|(updated, _, _)| *updated);
-                current_idxs
-                    .iter_mut()
-                    .for_each(|(updated, _, _)| *updated = false);
-            }
-
-            let curr_range = region.line.start_point()..region.line.end_point();
-
-            // check if region overlaps with one of the previous groups
-            let mut appended = false;
-            for (updated, idx, range) in current_idxs.iter_mut() {
-                if !ranges_overlap(&curr_range, range) {
-                    continue;
-                }
-
-                *range = curr_range.clone();
-                *updated = true;
-
-                groups.get_mut(idx).unwrap().push(region.line.line_spot());
-
-                appended = true;
-                break;
-            }
-
-            // if point didn't overlap with any, start a new group
-            if !appended {
-                current_idxs.push((true, idx, curr_range));
-                groups
-                    .entry(idx)
-                    .or_insert_with(Vec::new)
-                    .push(region.line.line_spot());
-
-                idx += 1;
-            }
-        }
-
-        groups.into_values().collect()
     }
 
     /// Iterate over the line spots in these scanlines.

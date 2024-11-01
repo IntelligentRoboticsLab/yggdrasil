@@ -21,7 +21,7 @@ use crate::{
     sensor::orientation::RobotOrientation,
 };
 
-use super::CameraConfig;
+use super::{CameraConfig, Image};
 
 const CAMERA_TOP_PITCH_DEGREES: f32 = 1.2;
 const CAMERA_BOTTOM_PITCH_DEGREES: f32 = 39.7;
@@ -73,16 +73,6 @@ fn update_camera_matrix<T: CameraLocation>(
         kinematics.isometry::<Head, Robot>().inner,
         robot_to_ground(&swing_foot, &orientation, &kinematics),
     );
-
-    if T::POSITION == CameraPosition::Top {
-        // let _camera_matrix: CameraMatrix<T> = hardcoded_camera_matrix();
-        let _camera_matrix= serde_json::from_str(
-            r#"{"cc_optical_center":[343.0,213.0],"focal_lengths":[562.0,560.0],"field_of_view":[1.4411943,1.7243401],"camera_to_head":{"rotation":[0.0007647999,-0.015711073,0.011342259,0.9998119],"translation":[0.05871,0.0,0.06364]},"robot_to_camera":{"rotation":[-0.0008517001,0.005001376,-0.0044096964,0.99997735],"translation":[-0.062783465,0.0009073925,-0.2732542]},"camera_to_ground":{"rotation":[0.020922434,0.027881207,0.0036211489,0.9993856],"translation":[0.115930066,0.023309525,0.49370873]},"_marker":null}"#,
-            // r#"{"cc_optical_center":[343.0,213.0],"focal_lengths":[562.0,560.0],"field_of_view":[1.4411943,1.7243401],"camera_to_head":{"rotation":[0.0007647999,-0.015711073,0.011342259,0.9998119],"translation":[0.05871,0.0,0.06364]},"robot_to_camera":{"rotation":[-0.00086570246,0.0042345175,-0.004408989,0.99998087],"translation":[-0.062459126,0.00090003666,-0.2732572]},"camera_to_ground":{"rotation":[0.046335217,-0.034687445,0.0056173624,0.99830765],"translation":[0.063135184,0.005222939,0.50477487]},"_marker":null}"#
-            // r#"{"cc_optical_center":[343.0,213.0],"focal_lengths":[562.0,560.0],"field_of_view":[1.4411943,1.7243401],"camera_to_head":{"rotation":[0.0007647999,-0.015711073,0.011342259,0.9998119],"translation":[0.05871,0.0,0.06364]},"robot_to_camera":{"rotation":[-0.004193114,-0.07460136,0.020916395,0.99698526],"translation":[-0.029168002,0.00015003048,-0.2709035]},"camera_to_ground":{"rotation":[0.0034561588,0.04596643,-0.020926042,0.9987178],"translation":[0.07219979,0.0339504,0.4071355]},"_marker":null}"#
-        ).unwrap();
-        *matrix = _camera_matrix;
-    }
 }
 
 fn robot_to_ground(
