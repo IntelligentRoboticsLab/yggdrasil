@@ -1,7 +1,8 @@
 use nalgebra as na;
 use spatial::{Space, SpaceOver};
 
-pub(crate) use super::{Left, Right};
+pub struct Left;
+pub struct Right;
 
 macro_rules! impl_space {
     ($space:ident) => {

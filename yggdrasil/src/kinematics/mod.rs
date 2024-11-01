@@ -1,17 +1,18 @@
 use bevy::prelude::*;
-use std::{f32::consts::PI, marker::PhantomData};
+//use std::{f32::consts::PI, marker::PhantomData};
 
-use nalgebra::{Isometry3, Rotation3, Translation3, Vector3};
+//use nalgebra::{Isometry3, Rotation3, Translation3, Vector3};
 use nidhogg::NaoState;
 
-use self::robot_dimensions::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS};
+//use self::dimensions::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS};
+//use self::spaces::{Left, Right};
 
 pub mod forward;
 pub mod inverse;
-pub mod robot_dimensions;
+pub mod dimensions;
 pub mod spaces;
 
-pub use forward::RobotKinematics;
+pub use forward::Kinematics;
 
 /// Plugin for the kinematics of the robot.
 ///
@@ -20,16 +21,17 @@ pub struct KinematicsPlugin;
 
 impl Plugin for KinematicsPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<RobotKinematics>()
+        app.init_resource::<Kinematics>()
             .add_systems(PreUpdate, update_kinematics);
     }
 }
 
-/// System that updates the [`RobotKinematics`] resource.
-pub fn update_kinematics(mut robot_kinematics: ResMut<RobotKinematics>, state: Res<NaoState>) {
-    *robot_kinematics = RobotKinematics::from(&state.position);
+/// System that updates the [`Kinematics`] resource.
+pub fn update_kinematics(mut kinematics: ResMut<Kinematics>, state: Res<NaoState>) {
+    *kinematics = Kinematics::from(&state.position);
 }
 
+/*
 /// The position of a foot relative to the robot's torso.
 ///
 /// The origin is the center of the robot's torso, the x-axis points forward, the y-axis points left,
@@ -98,9 +100,6 @@ pub struct SidedFootOffset<T: FootKinematics> {
     pub lift: f32,
     _side: PhantomData<T>,
 }
-
-pub(crate) struct Left;
-pub(crate) struct Right;
 
 /// Trait for kinematics of a specific foot of the robot.
 ///
@@ -194,3 +193,4 @@ where
         (-1.0 * hip_rotation_c1.x).atan2(hip_rotation_c1.y)
     }
 }
+*/
