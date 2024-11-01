@@ -3,12 +3,15 @@ pub mod receive;
 pub mod transmit;
 
 use std::{
-    collections::HashMap, net::{Ipv4Addr, SocketAddrV4}, sync::Arc
+    any::{Any, TypeId},
+    collections::HashMap,
+    net::{Ipv4Addr, SocketAddrV4},
+    sync::Arc,
 };
 
 use async_std::net::TcpListener;
 use bevy::{
-    ecs::system::SystemId,
+    ecs::{schedule::ScheduleLabel, system::SystemId},
     prelude::*,
     tasks::{block_on, IoTaskPool},
 };
@@ -18,7 +21,10 @@ use connect::{listen_for_connection, setup_new_connection, ControlDataStream};
 use receive::{handle_message, ControlClientMessage, ControlReceiver};
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
-use transmit::{send_current_state, temp_system, ControlHostMessage, ControlSender, TransmitDebugEnabledResources};
+use transmit::{
+    send_current_state, temp_system, ControlHostMessage, ControlSender,
+    TransmitDebugEnabledResources,
+};
 
 pub const CONTROL_PORT: u16 = 40001;
 
@@ -45,7 +51,7 @@ impl Plugin for ControlPlugin {
                 Update,
                 send_current_state.run_if(resource_exists::<ControlSender<ControlHostMessage>>),
             );
-            // .add_systems(Update, temp_system);
+        // .add_systems(Update, temp_system);
     }
 }
 
@@ -75,12 +81,14 @@ fn setup(mut commands: Commands) {
 
 #[derive(Resource, Serialize, Deserialize, Debug, Clone)]
 pub struct DebugEnabledResources {
-    pub resources: HashMap<String, bool>
+    pub resources: HashMap<String, bool>,
 }
 
 impl Default for DebugEnabledResources {
     fn default() -> Self {
-        let mut map = Self { resources: Default::default() };
+        let mut map = Self {
+            resources: Default::default(),
+        };
         map.resources.insert("system_2".to_string(), true);
         map.resources.insert("system_1".to_string(), false);
         map
@@ -94,6 +102,33 @@ impl DebugEnabledResources {
         } else {
             tracing::error!("System `{}` does not exist", name);
         }
+    }
+}
+
+pub fn debug_enabled(system_name: impl ToString) -> impl Condition<()> {
+    let name = system_name.to_string();
+
+    IntoSystem::into_system(move |enabled: Res<DebugEnabledResources>| {
+        enabled.resources.get(&name).copied().unwrap_or(false)
+    })
+}
+
+pub trait DebugAppExt {
+    fn add_debug_systems<M>(
+        &mut self,
+        schedule: impl ScheduleLabel,
+        systems: impl IntoSystemConfigs<M>,
+    ) -> &mut Self;
+}
+
+impl DebugAppExt for App {
+    fn add_debug_systems<M>(
+        &mut self,
+        schedule: impl ScheduleLabel,
+        systems: impl IntoSystemConfigs<M>,
+    ) -> &mut Self {
+        let system_name = std::any::type_name_of_val(&systems);
+        self.add_systems(schedule, systems.run_if(debug_enabled(system_name)))
     }
 }
 
