@@ -24,6 +24,7 @@ bifrost = { workspace = true }
 heimdall = { workspace = true }
 ml = { workspace = true }
 odal = { workspace = true }
+spatial = { workspace = true }
 tasks = { workspace = true }
 
 # external crates here

@@ -53,6 +53,7 @@ heimdall = { path = "crates/heimdall" }
 ml = { path = "crates/ml" }
 nilfheim = { path = "crates/nilfheim" }
 odal = { path = "crates/odal" }
+spatial = { path = "crates/spatial" }
 tasks = { path = "crates/tasks" }
 
 # tools

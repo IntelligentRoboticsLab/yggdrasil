@@ -71,8 +71,8 @@ where
 impl<T, S1, S2> fmt::Debug for BetweenSpaces<T, S1, S2>
 where
     T: fmt::Debug,
-    S1: Space + fmt::Debug,
-    S2: Space + fmt::Debug,
+    S1: Space,
+    S2: Space,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(

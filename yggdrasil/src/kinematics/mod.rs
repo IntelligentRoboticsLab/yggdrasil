@@ -9,6 +9,7 @@ use self::robot_dimensions::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS};
 pub mod forward;
 pub mod inverse;
 pub mod robot_dimensions;
+pub mod spaces;
 
 pub use forward::RobotKinematics;
 
