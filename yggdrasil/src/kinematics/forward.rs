@@ -15,6 +15,7 @@ use super::robot_dimensions;
 #[derive(Resource, Default, Debug)]
 pub struct RobotKinematics {
     pub neck_to_robot: Isometry3<f32>,
+    pub neck_to_head: Isometry3<f32>,
     pub head_to_robot: Isometry3<f32>,
     pub torso_to_robot: Isometry3<f32>,
     pub left_shoulder_to_robot: Isometry3<f32>,
@@ -49,7 +50,8 @@ impl From<&JointArray<f32>> for RobotKinematics {
 
         // head
         let neck_to_robot = neck_to_robot(&head_joints);
-        let head_to_robot = neck_to_robot * head_to_neck(&head_joints);
+        let neck_to_head = neck_to_head(&head_joints);
+        let head_to_robot = neck_to_robot * neck_to_head;
 
         // torso
         let torso_to_robot = Isometry3::from(robot_dimensions::ROBOT_TO_TORSO);
@@ -106,6 +108,7 @@ impl From<&JointArray<f32>> for RobotKinematics {
 
         RobotKinematics {
             neck_to_robot,
+            neck_to_head,
             head_to_robot,
             torso_to_robot,
             left_shoulder_to_robot,
@@ -143,7 +146,7 @@ pub fn neck_to_robot(joints: &HeadJoints<f32>) -> Isometry3<f32> {
 }
 
 #[must_use]
-pub fn head_to_neck(joints: &HeadJoints<f32>) -> Isometry3<f32> {
+pub fn neck_to_head(joints: &HeadJoints<f32>) -> Isometry3<f32> {
     Isometry3::rotation(Vector3::y() * joints.pitch)
 }
 

@@ -46,11 +46,11 @@ impl<T: CameraLocation> CameraMatrix<T> {
         focal_lengths: Vector2<f32>,
         cc_optical_center: Point2<f32>,
         image_size: Vector2<f32>,
-        camera_to_head: Isometry3<f32>,
+        camera_to_neck: Isometry3<f32>,
         head_to_robot: Isometry3<f32>,
         robot_to_ground: Isometry3<f32>,
     ) -> Self {
-        let camera_to_robot = head_to_robot * camera_to_head;
+        let camera_to_robot = head_to_robot * camera_to_neck;
         let camera_to_ground = robot_to_ground * camera_to_robot;
 
         let field_of_view = Self::compute_field_of_view(focal_lengths, image_size);
@@ -59,7 +59,7 @@ impl<T: CameraLocation> CameraMatrix<T> {
             cc_optical_center,
             focal_lengths,
             field_of_view,
-            camera_to_head,
+            camera_to_head: camera_to_neck,
             robot_to_camera: camera_to_robot.inverse(),
             camera_to_ground,
             _marker: PhantomData,

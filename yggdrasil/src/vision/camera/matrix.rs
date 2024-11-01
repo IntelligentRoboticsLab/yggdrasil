@@ -62,7 +62,9 @@ fn update_camera_matrix<T: CameraLocation>(
 
     let image_size = vector![config.width as f32, config.height as f32];
     let camera_to_neck = camera_to_neck(T::POSITION, config.calibration.extrinsic_rotation);
+    let camera_to_robot = kinematics.head_to_robot * camera_to_neck;
     let robot_to_ground = robot_to_ground(&swing_foot, &imu, &kinematics);
+
     info!("== {:?} ==", T::POSITION);
     info!("camera_to_neck: {:?}", camera_to_neck);
     info!("neck_to_robot: {:?}", kinematics.neck_to_robot);
@@ -91,11 +93,11 @@ fn update_camera_matrix<T: CameraLocation>(
     let test_pixel = Point2::new((image.width() as f32 / 2.0), (image.height() as f32 / 2.0));
     match matrix.pixel_to_ground(test_pixel, 0.0) {
         Ok(point) => {
-            let transformed = pose.as_3d().transform_point(&point);
+            // let transformed = pose.as_3d().transform_point(&point);
             dbg.log_with_cycle(
                 T::make_entity_path("test_pixel"),
                 image.cycle(),
-                &rerun::Points3D::new(&[(transformed.x, transformed.y, transformed.z)]),
+                &rerun::Points3D::new(&[(point.x, point.y, point.z)]),
             )
         }
         Err(e) => error!(?e, "Failed to project test pixel"),
@@ -112,24 +114,18 @@ fn robot_to_ground(
     let pitch = roll_pitch.y;
 
     let imu_rotation =
-        Isometry3::rotation(Vector3::y() * pitch) * Isometry3::rotation(Vector3::x() * roll);
+        Isometry3::rotation(Vector3::x() * roll) * Isometry3::rotation(Vector3::y() * pitch);
 
-    match swing_foot.support() {
-        Side::Left => {
-            let left_sole_to_robot = kinematics.left_sole_to_robot;
+    let sole_to_robot = match swing_foot.support() {
+        Side::Left => kinematics.left_sole_to_robot,
+        Side::Right => kinematics.right_sole_to_robot,
+    };
 
-            imu_rotation * left_sole_to_robot.inverse()
-        }
-        Side::Right => {
-            let right_sole_to_robot = kinematics.right_sole_to_robot;
-
-            imu_rotation * right_sole_to_robot.inverse()
-        }
-    }
+    let robot_to_ground = imu_rotation.inverse() * sole_to_robot.inverse();
+    robot_to_ground
 }
 
 fn camera_to_neck(position: CameraPosition, extrinsic_rotations: Vector3<f32>) -> Isometry3<f32> {
-    // create quaternion, using the extrinsic rotations from config (in degrees!)
     let extrinsic_rotation = UnitQuaternion::from_euler_angles(
         extrinsic_rotations.x.to_radians(),
         extrinsic_rotations.y.to_radians(),
@@ -146,9 +142,20 @@ fn camera_to_neck(position: CameraPosition, extrinsic_rotations: Vector3<f32>) -
         CameraPosition::Bottom => CAMERA_BOTTOM_PITCH_DEGREES.to_radians(),
     };
 
-    Isometry3::from(neck_to_camera)
-        * Isometry3::rotation(Vector3::y() * camera_pitch)
-        * extrinsic_rotation
+    // First, translate from neck to camera
+    let translation = Isometry3::translation(neck_to_camera.x, neck_to_camera.y, neck_to_camera.z);
+
+    // Then apply fixed camera pitch rotation
+    let rotation = Isometry3::rotation(Vector3::y() * camera_pitch);
+
+    // Apply extrinsic calibration rotation
+    let extrinsic = Isometry3::from_parts(nalgebra::Translation3::identity(), extrinsic_rotation);
+
+    // Combine transformations: Translation -> Fixed Pitch -> Extrinsic Rotation
+    let neck_to_camera = translation * rotation * extrinsic;
+
+    // Since you need camera_to_neck, invert the transformation
+    neck_to_camera.inverse()
 }
 
 fn setup_camera_matrix_visualization<T: CameraLocation>(
@@ -191,6 +198,6 @@ fn visualize_camera_matrix<T: CameraLocation>(
     dbg.log_with_cycle(
         T::make_image_entity_path(""),
         image.cycle(),
-        &rerun::Transform3D::from_translation(translation).with_quaternion(quaternion),
+        &rerun::Transform3D::from_translation(translation),
     );
 }
