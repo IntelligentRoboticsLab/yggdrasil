@@ -369,7 +369,6 @@ pub fn step(
         .most_confident_ball()
         .map(|b| b.position)
         .or(top_balls.most_confident_ball().map(|b| b.position));
-    // let filtered_ball = filter_ball_position(&most_confident_ball, &layout_config.field);
 
     let context = Context {
         robot_info: robot_info.as_ref(),
