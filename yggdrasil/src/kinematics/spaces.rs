@@ -13,7 +13,7 @@ macro_rules! impl_space {
         impl SpaceOver<na::Isometry3<f32>> for $space {}
     };
     ($space:ident<T>) => {
-        pub struct $space<T>(T);
+        pub struct $space<T: ?Sized>(std::marker::PhantomData<T>);
         impl Space for $space<Left> {}
         impl Space for $space<Right> {}
         impl SpaceOver<na::Point3<f32>> for $space<Left> {}

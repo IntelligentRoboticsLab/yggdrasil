@@ -8,7 +8,7 @@ use nalgebra as na;
 use std::f32::consts::FRAC_1_SQRT_2;
 
 use nidhogg::types::JointArray;
-use spatial::{Space, SpaceOver, Transform, types::Isometry3};
+use spatial::{types::Isometry3, InSpace, Space, SpaceOver, Transform};
 use super::{dimensions::*, spaces::*};
 
 #[derive(Debug, Resource, Transform)]
@@ -43,6 +43,26 @@ pub struct Kinematics {
 }
 
 impl Kinematics {
+    #[must_use]
+    pub fn transform<T, S1, S2>(&self, x: &InSpace<T, S1>) -> InSpace<T, S2>
+    where
+        S1: Space + SpaceOver<T>,
+        S2: Space + SpaceOver<T>,
+        Self: Transform<T, T, S1, S2>,
+    {
+        Transform::transform(self, x)
+    }
+
+    #[must_use]
+    pub fn to_robot<T, S>(&self, x: &InSpace<T, S>) -> InSpace<T, Robot>
+    where
+        S: Space + SpaceOver<T>,
+        Robot: SpaceOver<T>,
+        Self: Transform<T, T, S, Robot>,
+    {
+        self.transform(x)
+    }
+
     #[must_use]
     pub fn isometry<S1, S2>(&self) -> Isometry3<S1, S2>
     where

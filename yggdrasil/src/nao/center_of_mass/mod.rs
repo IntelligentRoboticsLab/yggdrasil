@@ -7,10 +7,11 @@
 mod robot_masses;
 
 use crate::{
-    core::debug::DebugContext, kinematics::RobotKinematics, localization::RobotPose, prelude::*,
+    core::debug::DebugContext, kinematics::{spaces::Robot, Kinematics}, localization::RobotPose, prelude::*,
 };
 use bevy::prelude::*;
-use nalgebra::Point3;
+use nalgebra as na;
+use spatial::types::Point3;
 pub use robot_masses::*;
 
 /// Plugin which adds the `CoM` of the robot to the storage, and updates it each cycle.
@@ -40,37 +41,37 @@ impl Plugin for CenterOfMassPlugin {
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq)]
 pub struct CenterOfMass {
     /// The center of mass of the robot in *robot* frame.
-    pub position: Point3<f32>,
+    pub position: Point3<Robot>,
 }
 
-fn update_com(kinematics: Res<RobotKinematics>, mut com: ResMut<CenterOfMass>) {
-    let new_com = kinematics.torso_to_robot * TORSO.center * TORSO.mass
-        + kinematics.neck_to_robot * NECK.center * NECK.mass
-        + kinematics.head_to_robot * HEAD.center * HEAD.mass
-        + kinematics.left_shoulder_to_robot * LEFT_SHOULDER.center * LEFT_SHOULDER.mass
-        + kinematics.left_upper_arm_to_robot * LEFT_UPPER_ARM.center * LEFT_UPPER_ARM.mass
-        + kinematics.left_elbow_to_robot * LEFT_ELBOW.center * LEFT_ELBOW.mass
-        + kinematics.left_forearm_to_robot * LEFT_FOREARM.center * LEFT_FOREARM.mass
-        + kinematics.left_wrist_to_robot * LEFT_WRIST.center * LEFT_WRIST.mass
-        + kinematics.right_shoulder_to_robot * RIGHT_SHOULDER.center * RIGHT_SHOULDER.mass
-        + kinematics.right_upper_arm_to_robot * RIGHT_UPPER_ARM.center * RIGHT_UPPER_ARM.mass
-        + kinematics.right_elbow_to_robot * RIGHT_ELBOW.center * RIGHT_ELBOW.mass
-        + kinematics.right_forearm_to_robot * RIGHT_FOREARM.center * RIGHT_FOREARM.mass
-        + kinematics.right_wrist_to_robot * RIGHT_WRIST.center * RIGHT_WRIST.mass
-        + kinematics.left_hip_to_robot * LEFT_HIP.center * LEFT_HIP.mass
-        + kinematics.left_pelvis_to_robot * LEFT_PELVIS.center * LEFT_PELVIS.mass
-        + kinematics.left_thigh_to_robot * LEFT_THIGH.center * LEFT_THIGH.mass
-        + kinematics.left_tibia_to_robot * LEFT_TIBIA.center * LEFT_TIBIA.mass
-        + kinematics.left_ankle_to_robot * LEFT_ANKLE.center * LEFT_ANKLE.mass
-        + kinematics.left_foot_to_robot * LEFT_FOOT.center * LEFT_FOOT.mass
-        + kinematics.right_hip_to_robot * RIGHT_HIP.center * RIGHT_HIP.mass
-        + kinematics.right_pelvis_to_robot * RIGHT_PELVIS.center * RIGHT_PELVIS.mass
-        + kinematics.right_thigh_to_robot * RIGHT_THIGH.center * RIGHT_THIGH.mass
-        + kinematics.right_tibia_to_robot * RIGHT_TIBIA.center * RIGHT_TIBIA.mass
-        + kinematics.right_ankle_to_robot * RIGHT_ANKLE.center * RIGHT_ANKLE.mass;
+fn update_com(kinematics: Res<Kinematics>, mut com: ResMut<CenterOfMass>) {
+    let new_com: na::Vector3<f32> = kinematics.to_robot(&TORSO.center).inner * TORSO.mass
+        + kinematics.to_robot(&NECK.center).inner * NECK.mass
+        + kinematics.to_robot(&HEAD.center).inner * HEAD.mass
+        + kinematics.to_robot(&LEFT_SHOULDER.center).inner * LEFT_SHOULDER.mass
+        + kinematics.to_robot(&LEFT_UPPER_ARM.center).inner * LEFT_UPPER_ARM.mass
+        + kinematics.to_robot(&LEFT_ELBOW.center).inner * LEFT_ELBOW.mass
+        + kinematics.to_robot(&LEFT_FOREARM.center).inner * LEFT_FOREARM.mass
+        + kinematics.to_robot(&LEFT_WRIST.center).inner * LEFT_WRIST.mass
+        + kinematics.to_robot(&RIGHT_SHOULDER.center).inner * RIGHT_SHOULDER.mass
+        + kinematics.to_robot(&RIGHT_UPPER_ARM.center).inner * RIGHT_UPPER_ARM.mass
+        + kinematics.to_robot(&RIGHT_ELBOW.center).inner * RIGHT_ELBOW.mass
+        + kinematics.to_robot(&RIGHT_FOREARM.center).inner * RIGHT_FOREARM.mass
+        + kinematics.to_robot(&RIGHT_WRIST.center).inner * RIGHT_WRIST.mass
+        + kinematics.to_robot(&LEFT_HIP.center).inner * LEFT_HIP.mass
+        + kinematics.to_robot(&LEFT_PELVIS.center).inner * LEFT_PELVIS.mass
+        + kinematics.to_robot(&LEFT_THIGH.center).inner * LEFT_THIGH.mass
+        + kinematics.to_robot(&LEFT_TIBIA.center).inner * LEFT_TIBIA.mass
+        + kinematics.to_robot(&LEFT_ANKLE.center).inner * LEFT_ANKLE.mass
+        + kinematics.to_robot(&LEFT_FOOT.center).inner * LEFT_FOOT.mass
+        + kinematics.to_robot(&RIGHT_HIP.center).inner * RIGHT_HIP.mass
+        + kinematics.to_robot(&RIGHT_PELVIS.center).inner * RIGHT_PELVIS.mass
+        + kinematics.to_robot(&RIGHT_THIGH.center).inner * RIGHT_THIGH.mass
+        + kinematics.to_robot(&RIGHT_TIBIA.center).inner * RIGHT_TIBIA.mass
+        + kinematics.to_robot(&RIGHT_ANKLE.center).inner * RIGHT_ANKLE.mass;
 
     *com = CenterOfMass {
-        position: (new_com / TOTAL_MASS).into(),
+        position: na::Point3::from(new_com / TOTAL_MASS).into(),
     };
 }
 
@@ -83,13 +84,13 @@ fn setup_com_visualization(dbg: DebugContext) {
 }
 
 fn visualize_com(dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) {
-    let absolute_com_position = pose.robot_to_world(&com.position.xy());
+    let absolute_com_position = pose.robot_to_world(&com.position.inner.xy());
     dbg.log(
         "localization/pose/com",
         &rerun::Points3D::new([(
             absolute_com_position.x,
             absolute_com_position.y,
-            com.position.z,
+            com.position.inner.z,
         )])
         .with_radii([0.005]),
     );

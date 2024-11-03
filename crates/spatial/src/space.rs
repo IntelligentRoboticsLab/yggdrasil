@@ -15,13 +15,19 @@ pub struct InSpace<T, S: SpaceOver<T>> {
     phantom: PhantomData<S>,
 }
 
-impl<T, S: SpaceOver<T>> From<T> for InSpace<T, S> {
-    /// Wrap a `T` into a `InSpace<T, S>`.
-    fn from(inner: T) -> Self {
+impl<T, S: SpaceOver<T>> InSpace<T, S> {
+    pub const fn new(inner: T) -> Self {
         Self {
             inner,
             phantom: PhantomData,
         }
+    }
+}
+
+impl<T, S: SpaceOver<T>> From<T> for InSpace<T, S> {
+    /// Wrap a `T` into a `InSpace<T, S>`.
+    fn from(inner: T) -> Self {
+        Self::new(inner)
     }
 }
 
