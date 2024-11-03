@@ -3,9 +3,9 @@
 //!
 //! The origin is the center of the robot's torso, the x-axis vectors forward, the y-axis vectors left,
 //! and the z-axis vectors up.
+use crate::kinematics::spaces::*;
 use nalgebra as na;
 use spatial::{types::Vector3, Space, SpaceOver};
-use crate::kinematics::spaces::*;
 
 /// The mass and center of mass of a link.
 #[derive(Debug, Clone)]

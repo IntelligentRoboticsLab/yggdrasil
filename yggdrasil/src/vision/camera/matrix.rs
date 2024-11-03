@@ -6,7 +6,11 @@ use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    kinematics::{dimensions, spaces::{Head, Left, Right, Robot, Sole}, Kinematics},
+    kinematics::{
+        dimensions,
+        spaces::{Head, Left, Right, Robot, Sole},
+        Kinematics,
+    },
     motion::walk::{engine::Side, SwingFoot},
     sensor::imu::IMUValues,
 };

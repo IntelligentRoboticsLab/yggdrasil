@@ -1,6 +1,6 @@
 use nalgebra as na;
-use spatial::Transform;
 use spatial::types::{Isometry3, Point3};
+use spatial::Transform;
 
 macro_rules! kinematics_spaces {
     {$($space:ident,)*} => {

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use std::{f32::consts::PI, marker::PhantomData};
 use nalgebra as na;
+use std::{f32::consts::PI, marker::PhantomData};
 
 //use nalgebra::{Isometry3, Rotation3, Translation3, Vector3};
 use nidhogg::NaoState;
@@ -8,9 +8,9 @@ use nidhogg::NaoState;
 use self::dimensions::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS};
 use self::spaces::{Left, Right};
 
+pub mod dimensions;
 pub mod forward;
 pub mod inverse;
-pub mod dimensions;
 pub mod spaces;
 
 pub use forward::Kinematics;
@@ -112,7 +112,8 @@ pub trait FootKinematics {
 
 impl FootKinematics for Left {
     fn torso_to_pelvis() -> na::Isometry3<f32> {
-        na::Isometry3::rotation(na::Vector3::x() * PI / -4.0) * na::Translation3::from(-ROBOT_TO_LEFT_PELVIS)
+        na::Isometry3::rotation(na::Vector3::x() * PI / -4.0)
+            * na::Translation3::from(-ROBOT_TO_LEFT_PELVIS)
     }
 
     fn robot_to_pelvis() -> na::Isometry3<f32> {
@@ -126,7 +127,8 @@ impl FootKinematics for Left {
 
 impl FootKinematics for Right {
     fn torso_to_pelvis() -> na::Isometry3<f32> {
-        na::Isometry3::rotation(na::Vector3::x() * PI / 4.0) * na::Translation3::from(-ROBOT_TO_RIGHT_PELVIS)
+        na::Isometry3::rotation(na::Vector3::x() * PI / 4.0)
+            * na::Translation3::from(-ROBOT_TO_RIGHT_PELVIS)
     }
     fn robot_to_pelvis() -> na::Isometry3<f32> {
         na::Isometry3::from(ROBOT_TO_RIGHT_PELVIS)

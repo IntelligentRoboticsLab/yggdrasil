@@ -2,7 +2,10 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    kinematics::{spaces::{Hip, Left, Sole}, FootOffset, Kinematics},
+    kinematics::{
+        spaces::{Hip, Left, Sole},
+        FootOffset, Kinematics,
+    },
     sensor::low_pass_filter::LowPassFilter,
 };
 use std::{ops::Neg, time::Duration};

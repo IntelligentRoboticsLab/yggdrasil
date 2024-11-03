@@ -7,12 +7,15 @@
 mod robot_masses;
 
 use crate::{
-    core::debug::DebugContext, kinematics::{spaces::Robot, Kinematics}, localization::RobotPose, prelude::*,
+    core::debug::DebugContext,
+    kinematics::{spaces::Robot, Kinematics},
+    localization::RobotPose,
+    prelude::*,
 };
 use bevy::prelude::*;
 use nalgebra as na;
-use spatial::types::Point3;
 pub use robot_masses::*;
+use spatial::types::Point3;
 
 /// Plugin which adds the `CoM` of the robot to the storage, and updates it each cycle.
 ///

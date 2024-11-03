@@ -2,7 +2,10 @@ use nalgebra::{Isometry3, Matrix3x1, Vector3};
 use nidhogg::types::{LeftLegJoints, RightLegJoints};
 use std::f32::consts::PI;
 
-use super::{dimensions, spaces::{Left, Right}};
+use super::{
+    dimensions,
+    spaces::{Left, Right},
+};
 
 /// Compute the leg angles for the given foot positions.
 ///

@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     behavior::primary_state::PrimaryState,
-    kinematics::{spaces::{Left, Right, Sole}, Kinematics},
+    kinematics::{
+        spaces::{Left, Right, Sole},
+        Kinematics,
+    },
     motion::walk::{engine::Side, SwingFoot},
     sensor::orientation::RobotOrientation,
 };
