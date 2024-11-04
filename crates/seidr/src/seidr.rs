@@ -10,10 +10,12 @@ use re_viewer::external::{
     egui::{self, ScrollArea},
 };
 
-use yggdrasil::core::control::{
-    receive::{ControlClientMessage, ControlReceiver},
-    transmit::{ControlHostMessage, ControlSender},
-    DebugEnabledResources,
+use yggdrasil::core::{
+    control::{
+        receive::{ControlClientMessage, ControlReceiver},
+        transmit::{ControlHostMessage, ControlSender},
+    },
+    debug::debug_system::DebugEnabledSystems,
 };
 
 use crate::{
@@ -39,13 +41,13 @@ pub struct SeidrStates {
 
 #[derive(Default)]
 pub struct DebugEnabledResourcesView {
-    pub debug_enabled_resources: DebugEnabledResources,
+    pub debug_enabled_resources: DebugEnabledSystems,
     pub key_sequence: Vec<String>,
 }
 
-impl From<DebugEnabledResources> for DebugEnabledResourcesView {
-    fn from(debug_enabled_resources: DebugEnabledResources) -> Self {
-        let mut key_sequence: Vec<_> = debug_enabled_resources.resources.keys().cloned().collect();
+impl From<DebugEnabledSystems> for DebugEnabledResourcesView {
+    fn from(debug_enabled_resources: DebugEnabledSystems) -> Self {
+        let mut key_sequence: Vec<_> = debug_enabled_resources.systems.keys().cloned().collect();
         key_sequence.sort();
         Self {
             debug_enabled_resources,

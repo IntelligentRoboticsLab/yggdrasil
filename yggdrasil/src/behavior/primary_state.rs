@@ -1,5 +1,5 @@
 use crate::{
-    core::{audio::whistle_detection::Whistle, config::showtime::PlayerConfig},
+    core::{audio::whistle_detection::Whistle, config::showtime::PlayerConfig, debug::debug_system::DebugAppExt},
     nao::{NaoManager, Priority},
     sensor::button::{ChestButton, HeadButtons},
 };
@@ -33,7 +33,7 @@ impl Plugin for PrimaryStatePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PrimaryState::Sitting);
         app.register_type::<PrimaryState>();
-        app.add_systems(Update, update_primary_state);
+        app.add_debug_systems(Update, update_primary_state);
     }
 }
 

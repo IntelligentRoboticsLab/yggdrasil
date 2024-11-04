@@ -1,4 +1,4 @@
-use std::{any::TypeId, collections::HashMap, time::Duration};
+use std::{collections::HashMap, time::Duration};
 
 use async_std::{io::WriteExt, net::TcpStream};
 use bevy::{ecs::system::SystemId, prelude::*};
@@ -10,7 +10,7 @@ use futures::{
 use miette::IntoDiagnostic;
 use serde::{Deserialize, Serialize};
 
-use super::DebugEnabledResources;
+use super::DebugEnabledSystems;
 
 const SEND_STATE_DELAY: Duration = Duration::from_millis(2_000);
 
@@ -27,7 +27,7 @@ impl Default for ControlHostMessageDelay {
 pub enum ControlHostMessage {
     CloseStream,
     Resources(HashMap<String, String>),
-    DebugEnabledResources(DebugEnabledResources),
+    DebugEnabledResources(DebugEnabledSystems),
 }
 
 #[derive(Resource)]
@@ -104,7 +104,7 @@ impl FromWorld for TransmitDebugEnabledResources {
 }
 
 fn transmit_debug_enabled_resources(
-    debug_enabled_resources: Res<DebugEnabledResources>,
+    debug_enabled_resources: Res<DebugEnabledSystems>,
     sender: Res<ControlSender<ControlHostMessage>>,
 ) {
     let message = ControlHostMessage::DebugEnabledResources(debug_enabled_resources.clone());

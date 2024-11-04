@@ -1,3 +1,5 @@
+pub mod debug_system;
+
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 

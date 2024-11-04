@@ -10,7 +10,7 @@ use crate::core::control::connect::ControlDataStream;
 
 use super::{
     transmit::{ControlHostMessage, ControlSender},
-    DebugEnabledResources,
+    DebugEnabledSystems,
 };
 
 #[derive(Resource)]
@@ -67,7 +67,7 @@ pub async fn receive_messages(
 pub fn handle_message(
     mut commands: Commands,
     mut receiver: ResMut<ControlReceiver<ControlClientMessage>>,
-    mut debug_enabled_resources: ResMut<DebugEnabledResources>,
+    mut debug_enabled_resources: ResMut<DebugEnabledSystems>,
 ) {
     while let Some(message) = receiver.try_recv() {
         match message {

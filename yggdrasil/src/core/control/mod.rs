@@ -3,15 +3,13 @@ pub mod receive;
 pub mod transmit;
 
 use std::{
-    any::{Any, TypeId},
-    collections::HashMap,
     net::{Ipv4Addr, SocketAddrV4},
     sync::Arc,
 };
 
 use async_std::net::TcpListener;
 use bevy::{
-    ecs::{schedule::ScheduleLabel, system::SystemId},
+    ecs::system::SystemId,
     prelude::*,
     tasks::{block_on, IoTaskPool},
 };
@@ -19,12 +17,13 @@ use miette::{IntoDiagnostic, Result};
 
 use connect::{listen_for_connection, setup_new_connection, ControlDataStream};
 use receive::{handle_message, ControlClientMessage, ControlReceiver};
-use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
 use transmit::{
     send_current_state, temp_system, ControlHostMessage, ControlSender,
     TransmitDebugEnabledResources,
 };
+
+use super::debug::debug_system::{DebugAppExt, DebugEnabledSystems};
 
 pub const CONTROL_PORT: u16 = 40001;
 
@@ -34,7 +33,7 @@ impl Plugin for ControlPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CollectResourcesSystem>()
             .init_resource::<TransmitDebugEnabledResources>()
-            .init_resource::<DebugEnabledResources>()
+            .init_resource::<DebugEnabledSystems>()
             .add_systems(Startup, setup)
             .add_systems(
                 Update,
@@ -51,7 +50,7 @@ impl Plugin for ControlPlugin {
                 Update,
                 send_current_state.run_if(resource_exists::<ControlSender<ControlHostMessage>>),
             );
-        // .add_systems(Update, temp_system);
+        // .add_debug_systems(Update, temp_system);
     }
 }
 
@@ -79,58 +78,6 @@ fn setup(mut commands: Commands) {
     commands.insert_resource(control_listen_socket);
 }
 
-#[derive(Resource, Serialize, Deserialize, Debug, Clone)]
-pub struct DebugEnabledResources {
-    pub resources: HashMap<String, bool>,
-}
-
-impl Default for DebugEnabledResources {
-    fn default() -> Self {
-        let mut map = Self {
-            resources: Default::default(),
-        };
-        map.resources.insert("system_2".to_string(), true);
-        map.resources.insert("system_1".to_string(), false);
-        map
-    }
-}
-
-impl DebugEnabledResources {
-    pub fn set_resource(&mut self, name: String, enabled: bool) {
-        if let Some(current_enabled) = self.resources.get_mut(&name) {
-            *current_enabled = enabled;
-        } else {
-            tracing::error!("System `{}` does not exist", name);
-        }
-    }
-}
-
-pub fn debug_enabled(system_name: impl ToString) -> impl Condition<()> {
-    let name = system_name.to_string();
-
-    IntoSystem::into_system(move |enabled: Res<DebugEnabledResources>| {
-        enabled.resources.get(&name).copied().unwrap_or(false)
-    })
-}
-
-pub trait DebugAppExt {
-    fn add_debug_systems<M>(
-        &mut self,
-        schedule: impl ScheduleLabel,
-        systems: impl IntoSystemConfigs<M>,
-    ) -> &mut Self;
-}
-
-impl DebugAppExt for App {
-    fn add_debug_systems<M>(
-        &mut self,
-        schedule: impl ScheduleLabel,
-        systems: impl IntoSystemConfigs<M>,
-    ) -> &mut Self {
-        let system_name = std::any::type_name_of_val(&systems);
-        self.add_systems(schedule, systems.run_if(debug_enabled(system_name)))
-    }
-}
 
 #[derive(Resource)]
 struct CollectResourcesSystem(SystemId);

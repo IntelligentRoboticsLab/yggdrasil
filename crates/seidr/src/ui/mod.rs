@@ -102,7 +102,7 @@ pub fn debug_resources_ui(
             ui.horizontal(|ui| {
                 let enabled = debug_enabled_resources_view
                     .debug_enabled_resources
-                    .resources
+                    .systems
                     .get_mut(resource_name)
                     .unwrap();
                 ui.label(resource_name);

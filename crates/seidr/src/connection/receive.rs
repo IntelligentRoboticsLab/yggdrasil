@@ -74,7 +74,7 @@ pub fn handle_message(
             ControlHostMessage::DebugEnabledResources(debug_enabled_resources) => {
                 tracing::info!(
                     "Debug enabled resources init:\n{:#?}",
-                    debug_enabled_resources.resources
+                    debug_enabled_resources.systems
                 );
                 states.debug_enabled_resources_view = debug_enabled_resources.into();
             }
