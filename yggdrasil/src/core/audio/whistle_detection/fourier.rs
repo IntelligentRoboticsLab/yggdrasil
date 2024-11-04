@@ -53,10 +53,18 @@ impl Stft {
 
     /// Computes a single window of the fast fourier transform with hann window smoothing.
     /// Starts from `offset` within the audio array.
-    fn windowed_fft(&mut self, audio_pwr: &[f32], offset: usize) -> impl Iterator<Item = f32> + '_ {
+    // in nomine patris et filii et spiritus sancti banish these demons from my compiler amen
+    fn windowed_fft(
+        &mut self,
+        audio_pwr: &[f32],
+        offset: usize,
+    ) -> core::iter::Map<
+        core::iter::Take<core::iter::Copied<core::slice::Iter<'_, Complex<f32>>>>,
+        fn(Complex<f32>) -> f32,
+    > {
         // apply window smoothing
         for (i, w) in apodize::hanning_iter(self.window_size).enumerate() {
-            self.window_buff[i] = Complex::new(audio_pwr[offset + i] * w as f32, 0.0);
+            self.window_buff[i] = Complex::new(audio_pwr[offset + 1] * w as f32, 0.0);
         }
 
         // compute fft

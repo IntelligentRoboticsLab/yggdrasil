@@ -274,7 +274,8 @@ where
     }
 }
 
-/* TODO: DOESN'T COMPILE; POSSIBLE COMPILER REGRESSION 1.81 -> 1.82 !!!
+// TODO: This code summons eldritch horrors into the compiler starting from 1.82. These demons are
+// mostly harmless, however, they dislike you multiplying floats inside an `impl Iterator<Item=f32>`.
 impl<T, S> Mul<InSpace<T, S>> for f32
 where
     f32: Mul<T, Output = T>,
@@ -286,7 +287,6 @@ where
         (self * rhs.inner).into()
     }
 }
-*/
 
 impl<T1, T2, S> MulAssign<InSpace<T2, S>> for InSpace<T1, S>
 where
