@@ -19,11 +19,11 @@ use connect::{listen_for_connection, setup_new_connection, ControlDataStream};
 use receive::{handle_message, ControlClientMessage, ControlReceiver};
 use tasks::conditions::task_finished;
 use transmit::{
-    send_current_state, temp_system, ControlHostMessage, ControlSender,
-    TransmitDebugEnabledResources,
+    send_current_state, ControlHostMessage, ControlSender,
+    TransmitDebugEnabledSystems,
 };
 
-use super::debug::debug_system::{DebugAppExt, DebugEnabledSystems};
+use super::debug::debug_system::DebugEnabledSystems;
 
 pub const CONTROL_PORT: u16 = 40001;
 
@@ -32,7 +32,7 @@ pub struct ControlPlugin;
 impl Plugin for ControlPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CollectResourcesSystem>()
-            .init_resource::<TransmitDebugEnabledResources>()
+            .init_resource::<TransmitDebugEnabledSystems>()
             .init_resource::<DebugEnabledSystems>()
             .add_systems(Startup, setup)
             .add_systems(
@@ -73,7 +73,6 @@ fn setup(mut commands: Commands) {
     let io = IoTaskPool::get();
     let control_listen_socket = block_on(io.spawn(ControlListenSocket::bind()))
         .expect("Failed to bind control listen socket");
-    info!("Binded the control listen socket");
     commands.insert_resource(control_listen_socket);
 }
 

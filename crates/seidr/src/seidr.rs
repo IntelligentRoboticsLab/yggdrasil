@@ -36,21 +36,21 @@ pub struct SeidrStates {
     pub robot_resources: RobotResources,
     pub focused_resources: HashMap<String, bool>,
     pub last_resource_update: Option<Instant>,
-    pub debug_enabled_resources_view: DebugEnabledResourcesView,
+    pub debug_enabled_systems_view: DebugEnabledSystemsView,
 }
 
 #[derive(Default)]
-pub struct DebugEnabledResourcesView {
-    pub debug_enabled_resources: DebugEnabledSystems,
+pub struct DebugEnabledSystemsView {
+    pub debug_enabled_systems: DebugEnabledSystems,
     pub key_sequence: Vec<String>,
 }
 
-impl From<DebugEnabledSystems> for DebugEnabledResourcesView {
-    fn from(debug_enabled_resources: DebugEnabledSystems) -> Self {
-        let mut key_sequence: Vec<_> = debug_enabled_resources.systems.keys().cloned().collect();
+impl From<DebugEnabledSystems> for DebugEnabledSystemsView {
+    fn from(debug_enabled_systems: DebugEnabledSystems) -> Self {
+        let mut key_sequence: Vec<_> = debug_enabled_systems.systems.keys().cloned().collect();
         key_sequence.sort();
         Self {
-            debug_enabled_resources,
+            debug_enabled_systems,
             key_sequence,
         }
     }
@@ -165,7 +165,7 @@ impl Seidr {
         let mut resource_names: Vec<_> = self.states.robot_resources.0.keys().cloned().collect();
         resource_names.sort();
 
-        let mut resources = &mut self.states.robot_resources;
+        let resources = &mut self.states.robot_resources;
 
         for name in resource_names.into_iter() {
             if let Some(data) = resources.0.get_mut(&name) {
@@ -178,7 +178,7 @@ impl Seidr {
                         .get_or_default("override_button".to_string()),
                 );
                 if let Some(action) = followup_action {
-                    self.message_sender.tx.unbounded_send(action);
+                    self.message_sender.tx.unbounded_send(action).unwrap();
                 }
             }
         }
@@ -187,7 +187,7 @@ impl Seidr {
         ui.horizontal(|ui| {
             debug_resources_ui(
                 ui,
-                &mut self.states.debug_enabled_resources_view,
+                &mut self.states.debug_enabled_systems_view,
                 &self.message_sender,
             )
         });

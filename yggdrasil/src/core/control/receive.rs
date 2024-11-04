@@ -33,7 +33,7 @@ pub enum ControlClientMessage {
     CloseStream,
     UpdateResource(String, String),
     SendResourcesNow,
-    UpdateEnabledDebugResource(String, bool),
+    UpdateEnabledDebugSystem(String, bool),
 }
 
 pub async fn receive_messages(
@@ -50,7 +50,7 @@ pub async fn receive_messages(
         let num_bytes = stream.read(&mut size_buffer).await.unwrap();
 
         if num_bytes == 0 {
-            sender.unbounded_send(ControlClientMessage::CloseStream);
+            sender.unbounded_send(ControlClientMessage::CloseStream).unwrap();
             continue;
         }
 
@@ -60,14 +60,14 @@ pub async fn receive_messages(
 
         let msg = bincode::deserialize::<ControlClientMessage>(&buffer).unwrap();
 
-        sender.unbounded_send(msg);
+        sender.unbounded_send(msg).unwrap();
     }
 }
 
 pub fn handle_message(
     mut commands: Commands,
     mut receiver: ResMut<ControlReceiver<ControlClientMessage>>,
-    mut debug_enabled_resources: ResMut<DebugEnabledSystems>,
+    mut debug_enabled_systems: ResMut<DebugEnabledSystems>,
 ) {
     while let Some(message) = receiver.try_recv() {
         match message {
@@ -76,12 +76,12 @@ pub fn handle_message(
                 commands.remove_resource::<ControlSender<ControlHostMessage>>();
                 commands.remove_resource::<ControlDataStream>();
             }
-            ControlClientMessage::UpdateEnabledDebugResource(system_name, enabled) => {
-                debug_enabled_resources.set_resource(system_name.clone(), enabled);
-                tracing::info!("Set resource `{}` to `{}`", system_name, enabled)
+            ControlClientMessage::UpdateEnabledDebugSystem(system_name, enabled) => {
+                debug_enabled_systems.set_system(system_name.clone(), enabled);
+                tracing::debug!("Set resource `{}` to `{}`", system_name, enabled)
             }
             _ => {
-                info!("Got a message to handle: {:?}", message);
+                tracing::warn!("Received a message which is not handled: {:?}", message);
             }
         }
     }

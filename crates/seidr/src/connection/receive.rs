@@ -24,7 +24,7 @@ pub async fn receive_messages(
         let num_bytes = ReadExt::read(&mut stream, &mut size_buffer).await.unwrap();
 
         if num_bytes == 0 {
-            sender.unbounded_send(ControlHostMessage::CloseStream);
+            sender.unbounded_send(ControlHostMessage::CloseStream).unwrap();
             break;
         }
 
@@ -37,7 +37,7 @@ pub async fn receive_messages(
         let message: ControlHostMessage = bincode::deserialize(&buffer).unwrap();
 
         // transmit decoded message to the channel
-        sender.unbounded_send(message);
+        sender.unbounded_send(message).unwrap();
     }
 }
 
@@ -57,8 +57,8 @@ pub fn handle_message(
                 return HandleMessageStatus::Stopped;
             }
             ControlHostMessage::Resources(new_resources) => {
-                tracing::info!("Resource message: {:#?}", new_resources);
-                let last_update = &states.last_resource_update;
+                tracing::debug!("Resource message: {:?}", new_resources);
+                let _last_update = &states.last_resource_update;
 
                 // if let Err(err) = states
                 //     .robot_resources
@@ -71,12 +71,12 @@ pub fn handle_message(
                     .update_resources(new_resources, &mut states.focused_resources)
                     .unwrap();
             }
-            ControlHostMessage::DebugEnabledResources(debug_enabled_resources) => {
-                tracing::info!(
+            ControlHostMessage::DebugEnabledSystems(debug_enabled_systems) => {
+                tracing::debug!(
                     "Debug enabled resources init:\n{:#?}",
-                    debug_enabled_resources.systems
+                    debug_enabled_systems.systems
                 );
-                states.debug_enabled_resources_view = debug_enabled_resources.into();
+                states.debug_enabled_systems_view = debug_enabled_systems.into();
             }
         }
     }

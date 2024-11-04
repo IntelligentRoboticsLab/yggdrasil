@@ -27,7 +27,7 @@ impl Default for ControlHostMessageDelay {
 pub enum ControlHostMessage {
     CloseStream,
     Resources(HashMap<String, String>),
-    DebugEnabledResources(DebugEnabledSystems),
+    DebugEnabledSystems(DebugEnabledSystems),
 }
 
 #[derive(Resource)]
@@ -40,7 +40,7 @@ pub async fn send_messages(
     mut receiver: UnboundedReceiver<ControlHostMessage>,
 ) {
     while let Some(message) = receiver.next().await {
-        info!("Send message: {:#?}", message);
+        tracing::debug!("Send message: {:#?}", message);
         let serialized_msg = bincode::serialize(&message)
             .into_diagnostic()
             .expect("Was not able to serialize a ControlHostMessage");
@@ -59,7 +59,7 @@ pub async fn send_messages(
             .expect("Failed writing the control message to the stream");
     }
 
-    info!("Stopping send messages loop")
+    tracing::warn!("Stopping send messages loop");
 }
 
 pub fn send_current_state(
@@ -86,20 +86,20 @@ fn collect_resource_states(val: String) -> ControlHostMessage {
 }
 
 #[derive(Resource)]
-pub struct TransmitDebugEnabledResources {
+pub struct TransmitDebugEnabledSystems {
     system_id: SystemId,
 }
 
-impl TransmitDebugEnabledResources {
+impl TransmitDebugEnabledSystems {
     pub fn system_id(&self) -> SystemId {
         self.system_id
     }
 }
 
-impl FromWorld for TransmitDebugEnabledResources {
+impl FromWorld for TransmitDebugEnabledSystems {
     fn from_world(world: &mut World) -> Self {
         let system_id = world.register_system(transmit_debug_enabled_resources);
-        TransmitDebugEnabledResources { system_id }
+        TransmitDebugEnabledSystems { system_id }
     }
 }
 
@@ -107,7 +107,7 @@ fn transmit_debug_enabled_resources(
     debug_enabled_resources: Res<DebugEnabledSystems>,
     sender: Res<ControlSender<ControlHostMessage>>,
 ) {
-    let message = ControlHostMessage::DebugEnabledResources(debug_enabled_resources.clone());
+    let message = ControlHostMessage::DebugEnabledSystems(debug_enabled_resources.clone());
     sender.tx.unbounded_send(message).unwrap();
 }
 
@@ -120,5 +120,5 @@ pub fn temp_system(type_registry: Res<AppTypeRegistry>) {
         .map(|registration| registration.type_info().type_path())
         .collect();
 
-    info!("Registry: {:#?}", resources);
+    tracing::info!("Registry: {:#?}", resources);
 }

@@ -13,7 +13,7 @@ use yggdrasil::core::control::{
     transmit::ControlSender,
 };
 
-use crate::seidr::DebugEnabledResourcesView;
+use crate::seidr::DebugEnabledSystemsView;
 
 pub fn add_editable_resource(
     ui: &mut egui::Ui,
@@ -94,24 +94,24 @@ pub fn add_editable_resource(
 
 pub fn debug_resources_ui(
     ui: &mut egui::Ui,
-    debug_enabled_resources_view: &mut DebugEnabledResourcesView,
+    debug_enabled_systems_view: &mut DebugEnabledSystemsView,
     message_sender: &ControlSender<ControlClientMessage>,
 ) {
     ui.vertical(|ui| {
-        for resource_name in &debug_enabled_resources_view.key_sequence {
+        for system_name in &debug_enabled_systems_view.key_sequence {
             ui.horizontal(|ui| {
-                let enabled = debug_enabled_resources_view
-                    .debug_enabled_resources
+                let enabled = debug_enabled_systems_view
+                    .debug_enabled_systems
                     .systems
-                    .get_mut(resource_name)
+                    .get_mut(system_name)
                     .unwrap();
-                ui.label(resource_name);
+                ui.label(system_name);
                 if ui.toggle_switch(14.0, enabled).changed() {
-                    let message = ControlClientMessage::UpdateEnabledDebugResource(
-                        resource_name.clone(),
+                    let message = ControlClientMessage::UpdateEnabledDebugSystem(
+                        system_name.clone(),
                         enabled.clone(),
                     );
-                    message_sender.tx.unbounded_send(message);
+                    message_sender.tx.unbounded_send(message).unwrap();
                 };
             });
         }

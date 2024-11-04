@@ -7,10 +7,7 @@ use futures::{
 };
 use miette::IntoDiagnostic;
 
-use yggdrasil::core::control::{
-    receive::ControlClientMessage,
-    transmit::ControlHostMessage,
-};
+use yggdrasil::core::control::receive::ControlClientMessage;
 
 
 pub async fn send_messages(
@@ -31,8 +28,8 @@ pub async fn send_messages(
             .await
             .expect("Failed writing the control message to the stream");
 
-        tracing::info!("Send message: {:#?}", message);
+        tracing::debug!("Send message: {:#?}", message);
     }
 
-    tracing::info!("Stopping send messages loop")
+    tracing::debug!("Stopping send messages loop")
 }

@@ -9,7 +9,7 @@ pub struct DebugEnabledSystems {
 }
 
 impl DebugEnabledSystems {
-    pub fn set_resource(&mut self, name: String, enabled: bool) {
+    pub fn set_system(&mut self, name: String, enabled: bool) {
         if let Some(current_enabled) = self.systems.get_mut(&name) {
             *current_enabled = enabled;
         } else {

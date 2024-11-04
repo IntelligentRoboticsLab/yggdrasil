@@ -53,7 +53,10 @@ async fn main() -> Result<()> {
         re_memory::MemoryLimit::from_fraction_of_total(0.75)
     };
 
-    tracing::info!("Memory limit set to: {} MB", memory_limit.max_bytes.unwrap() / BYTES_IN_MB);
+    tracing::info!(
+        "Memory limit set to: {} MB",
+        memory_limit.max_bytes.unwrap() / BYTES_IN_MB
+    );
 
     let startup_options = re_viewer::StartupOptions {
         memory_limit,
