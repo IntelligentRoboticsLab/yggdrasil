@@ -50,7 +50,6 @@ impl Plugin for ControlPlugin {
                 Update,
                 send_current_state.run_if(resource_exists::<ControlSender<ControlHostMessage>>),
             );
-        // .add_debug_systems(Update, temp_system);
     }
 }
 
