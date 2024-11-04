@@ -11,12 +11,17 @@ pub struct BatterySoundPlugin;
 
 impl Plugin for BatterySoundPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_systems(Update, battery_sound_system);
+        app.add_systems(Update, battery_sound_system)
+            .add_systems(PostStartup, init_battery_level);
     }
 }
 
-#[derive(Default)]
-pub struct BatteryInfo {
+fn init_battery_level(mut battery_info: Local<BatteryInfo>, nao_state: Res<NaoState>) {
+    battery_info.prev_level = (nao_state.battery.charge * 100.0) as u32;
+}
+
+#[derive(Default, Resource)]
+struct BatteryInfo {
     last_played: Option<Instant>,
     prev_level: u32,
 }
@@ -28,17 +33,17 @@ impl BatteryInfo {
 
     fn check_level(&mut self, nao_state: &NaoState) -> bool {
         let battery_level = (nao_state.battery.charge * 100.0) as u32;
-
         let low_or_critical = battery_level == THRESHOLD_LOW || battery_level == THRESHOLD_CRITICAL;
-        let should_play_sound = (battery_level < self.prev_level && low_or_critical)
-            || (self.prev_level == 0 && battery_level <= THRESHOLD_LOW);
 
-        self.prev_level = battery_level;
+        //  At the exact thresholds, or when already below/at threshold at startup
+        let should_play_sound = (battery_level < self.prev_level && low_or_critical)
+            || (battery_level <= THRESHOLD_LOW && self.last_played.is_none());
+
         should_play_sound
     }
 }
 
-pub fn battery_sound_system(
+fn battery_sound_system(
     mut battery_info: Local<BatteryInfo>,
     sounds: Res<SoundManager>,
     nao_state: Res<NaoState>,
@@ -56,4 +61,5 @@ pub fn battery_sound_system(
 
         battery_info.last_played = Some(Instant::now());
     }
+    battery_info.prev_level = (nao_state.battery.charge * 100.0) as u32;
 }
