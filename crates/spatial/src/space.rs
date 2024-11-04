@@ -276,13 +276,13 @@ where
 
 impl<T, S> Mul<InSpace<T, S>> for f32
 where
-    f32: Mul<T, Output = T>,
+    T: Mul<f32, Output = T>,
     S: SpaceOver<T>,
 {
     type Output = InSpace<T, S>;
 
     fn mul(self, rhs: InSpace<T, S>) -> Self::Output {
-        (self * rhs.inner).into()
+        (rhs.inner * self).into()
     }
 }
 
