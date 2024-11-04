@@ -6,5 +6,3 @@
 deploy/yggdrasil
 
 dependency_graph.png
-
-crates/control/log

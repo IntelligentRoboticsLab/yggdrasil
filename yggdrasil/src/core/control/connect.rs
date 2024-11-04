@@ -65,6 +65,7 @@ pub fn setup_new_connection(
             commands.insert_resource(ControlReceiver { rx: reader_rx });
             commands.insert_resource(ControlSender { tx: writer_tx });
 
+            // Sends the debug enabled systems to rerun for initialization
             commands.run_system(transmit_debug_enabled_systems_system.system_id());
         }
     }

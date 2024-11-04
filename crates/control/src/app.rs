@@ -11,7 +11,7 @@ use re_viewer::{
 use crate::{connection::connect::RobotConnection, control::Control};
 
 // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
-const APP_ENV: &str = "My Wrapper";
+const APP_ENV: &str = "Control Wrapper";
 
 const WINDOW_TITLE: &str = "Rerun Control";
 

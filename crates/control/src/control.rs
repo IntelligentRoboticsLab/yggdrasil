@@ -116,22 +116,6 @@ impl Control {
         ui.separator();
 
         ui.horizontal(|ui| {
-            // Manual resource refresh button
-            // ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-            //     self.frame_styles
-            //         .get_or_default("refresh_button".to_string())
-            //         .show(ui, |ui| {
-            //             if ui
-            //                 .add(egui::Button::new(egui::RichText::new("Refresh").size(18.0)))
-            //                 .clicked()
-            //             {
-            //                 let request = ClientRequest::RobotState;
-            //                 let bytes = bincode::serialize(&request).into_diagnostic().unwrap();
-            //                 send_request(self.ws.clone(), bytes).unwrap();
-            //             }
-            //         });
-            // });
-
             ui.add_space(ui.available_width());
 
             // Shows the last resource update in miliseconds
@@ -157,11 +141,6 @@ impl Control {
         ui.add_space(10.0);
 
         // Sort the names to keep the resources in a fixed order
-        // let mut resource_names: Vec<String> = {
-        //     let robot_resources = self.states.robot_resources;
-        //     robot_resources.0.keys().cloned().collect()
-        // };
-        // resource_names.sort();
         let mut resource_names: Vec<_> = self.states.robot_resources.0.keys().cloned().collect();
         resource_names.sort();
 
@@ -184,6 +163,11 @@ impl Control {
         }
 
         ui.separator();
+
+        ui.vertical_centered(|ui| {
+            ui.strong("Systems debug on/off");
+        });
+
         ui.horizontal(|ui| {
             debug_resources_ui(
                 ui,

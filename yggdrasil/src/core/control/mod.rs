@@ -9,7 +9,6 @@ use std::{
 
 use async_std::net::TcpListener;
 use bevy::{
-    ecs::system::SystemId,
     prelude::*,
     tasks::{block_on, IoTaskPool},
 };
@@ -30,8 +29,7 @@ pub struct ControlPlugin;
 
 impl Plugin for ControlPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CollectResourcesSystem>()
-            .init_resource::<TransmitDebugEnabledSystems>()
+        app.init_resource::<TransmitDebugEnabledSystems>()
             .init_resource::<DebugEnabledSystems>()
             .add_systems(Startup, setup)
             .add_systems(
@@ -73,37 +71,4 @@ fn setup(mut commands: Commands) {
     let control_listen_socket = block_on(io.spawn(ControlListenSocket::bind()))
         .expect("Failed to bind control listen socket");
     commands.insert_resource(control_listen_socket);
-}
-
-#[derive(Resource)]
-struct CollectResourcesSystem(SystemId);
-
-impl FromWorld for CollectResourcesSystem {
-    fn from_world(world: &mut World) -> Self {
-        CollectResourcesSystem(world.register_system(print_resources))
-    }
-}
-
-fn print_resources(world: &World) {
-    let mut resources = collect_resources(world);
-
-    // sort list alphebetically
-    resources.sort();
-    for name in resources.iter() {
-        println!("{name}")
-    }
-}
-
-fn collect_resources(world: &World) -> Vec<&str> {
-    let components = world.components();
-
-    let resources: Vec<_> = world
-        .storages()
-        .resources
-        .iter()
-        .map(|(id, _)| components.get_info(id).unwrap())
-        .map(|info| info.name())
-        .collect();
-
-    resources
 }

@@ -59,12 +59,6 @@ pub fn handle_message(
                 tracing::debug!("Resource message: {:?}", new_resources);
                 let _last_update = &states.last_resource_update;
 
-                // if let Err(err) = states
-                //     .robot_resources
-                //     .update_resources(new_resources, &mut states.focused_resources)
-                // {
-                //     tracing::error!("Failed to update resources: {}", err);
-                // }
                 states
                     .robot_resources
                     .update_resources(new_resources, &mut states.focused_resources)
