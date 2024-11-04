@@ -3,7 +3,7 @@
 //!
 //! The origin is the center of the robot's torso, the x-axis vectors forward, the y-axis vectors left,
 //! and the z-axis vectors up.
-use crate::kinematics::spaces::*;
+use crate::kinematics::prelude::*;
 use nalgebra as na;
 use spatial::{types::Vector3, Space, SpaceOver};
 

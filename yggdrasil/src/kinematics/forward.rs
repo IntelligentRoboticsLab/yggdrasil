@@ -7,7 +7,7 @@ use nalgebra as na;
 
 use std::f32::consts::FRAC_1_SQRT_2;
 
-use super::{dimensions::*, spaces::*};
+use super::prelude::*;
 use nidhogg::types::JointArray;
 use spatial::{types::Isometry3, InSpace, Space, SpaceOver, Transform};
 

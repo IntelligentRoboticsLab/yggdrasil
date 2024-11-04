@@ -13,6 +13,12 @@ pub mod forward;
 pub mod inverse;
 pub mod spaces;
 
+pub mod prelude {
+    pub use super::dimensions::*;
+    pub use super::spaces::*;
+    pub use super::Kinematics;
+}
+
 pub use forward::Kinematics;
 
 /// Plugin for the kinematics of the robot.
