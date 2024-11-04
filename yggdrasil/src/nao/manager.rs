@@ -6,7 +6,7 @@ use std::{
 
 use crate::prelude::*;
 use bevy::prelude::*;
-use nalgebra::Quaternion;
+use nalgebra::UnitQuaternion;
 use nidhogg::{
     types::{
         color, ArmJoints, FillExt, HeadJoints, JointArray, LeftEar, LeftEye, LegJoints, RgbF32,
@@ -40,7 +40,7 @@ impl Plugin for NaoManagerPlugin {
     }
 }
 
-/// TODO: Do the interpolation here (states that need to be stored are in manager, we change 
+/// TODO: Do the interpolation here (states that need to be stored are in manager, we change
 /// position and stiffness in control_message.
 fn finalize(mut control_message: ResMut<NaoControlMessage>, mut manager: ResMut<NaoManager>) {
     control_message.position = manager.make_joint_positions();
@@ -131,8 +131,8 @@ pub struct NaoManager {
     arm_settings: JointSettings<ArmJoints<JointValue>>,
     head_settings: JointSettings<HeadJoints<JointValue>>,
 
-    head_target: Quaternion<f32>,
-    head_source: Quaternion<f32>,
+    head_target: UnitQuaternion<f32>,
+    head_source: UnitQuaternion<f32>,
     timestep: f32,
 
     led_left_ear: LedSettings<LeftEar>,
@@ -276,8 +276,8 @@ impl NaoManager {
     ///
     /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
     /// stiffness. A value of `-1` will disable the stiffness altogether.
-    /// 
-    /// TODO: Replace this function by a function that sets a target, and then 
+    ///
+    /// TODO: Replace this function by a function that sets a target, and then
     /// interpolate to that target.
     pub fn set_head(
         &mut self,
@@ -296,8 +296,21 @@ impl NaoManager {
     }
 
     /// Set the target position for the head.
-    pub fn set_head_target(&mut self, target: Quaternion<f32>, priority: Priority) -> &mut Self {
+    pub fn set_head_target(
+        &mut self,
+        joint_positions: HeadJoints<JointValue>,
+        joint_stiffness: HeadJoints<JointValue>,
+        priority: Priority,
+    ) -> &mut Self {
+        let target = UnitQuaternion::from_euler_angles(
+            0.0,
+            joint_positions.pitch,
+            joint_positions.yaw
+        );
         self.head_target = target;
+        let source = UnitQuaternion::from_euler_angles(0.0, , yaw)
+        self.head_source = UnitQuaternion::from_euler_angles(0.0, , yaw)
+        // Reset the timestamp to 0 when making new target
         self.timestep = 0.0;
 
         self
