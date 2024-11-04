@@ -53,7 +53,7 @@ impl Stft {
 
     /// Computes a single window of the fast fourier transform with hann window smoothing.
     /// Starts from `offset` within the audio array.
-    // in nomine patris et filii et spiritus sancti banish these demons from my compiler amen
+    // NOTE: Don't replace this return value with `impl Iterator<Item = f32> + '_`, it summons demons.
     fn windowed_fft(
         &mut self,
         audio_pwr: &[f32],
