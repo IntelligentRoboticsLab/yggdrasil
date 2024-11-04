@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use nalgebra as na;
 use std::{f32::consts::PI, marker::PhantomData};
 
-//use nalgebra::{Isometry3, Rotation3, Translation3, Vector3};
 use nidhogg::NaoState;
 
 use self::dimensions::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS};

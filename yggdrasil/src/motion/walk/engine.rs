@@ -161,7 +161,7 @@ impl WalkingEngine {
             .inner
             .translation
             .vector
-            .y;
+            .z;
 
         WalkingEngine {
             state: WalkState::from_hip_height(current_hip_height, config),
