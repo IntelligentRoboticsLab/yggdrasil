@@ -4,7 +4,7 @@ use clap::Parser;
 use miette::{IntoDiagnostic, Result};
 use re_viewer::external::{eframe, egui, re_log, re_memory};
 
-use seidr::{app::App, cli::Cli, connection::connect::RobotConnection};
+use control::{app::App, cli::Cli, connection::connect::RobotConnection};
 use yggdrasil::core::control::CONTROL_PORT;
 
 const BYTES_IN_MB: i64 = 1_000_000;
@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
 
-    tracing::info!("Starting seidr and connection with {}", args.robot_ip);
+    tracing::info!("Starting rerun control and connection with {}", args.robot_ip);
 
     // Install handlers for panics and crashes that prints to stderr and send
     // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
@@ -39,7 +39,7 @@ async fn main() -> Result<()> {
     .into_diagnostic()?;
 
     let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_app_id("seidr"),
+        viewport: egui::ViewportBuilder::default().with_app_id("control"),
         ..re_viewer::native::eframe_options(None)
     };
 

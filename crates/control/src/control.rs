@@ -32,7 +32,7 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct SeidrStates {
+pub struct ControlStates {
     pub robot_resources: RobotResources,
     pub focused_resources: HashMap<String, bool>,
     pub last_resource_update: Option<Instant>,
@@ -56,15 +56,15 @@ impl From<DebugEnabledSystems> for DebugEnabledSystemsView {
     }
 }
 
-pub struct Seidr {
+pub struct Control {
     app: re_viewer::App,
-    states: SeidrStates,
+    states: ControlStates,
     message_receiver: Option<ControlReceiver<ControlHostMessage>>,
     message_sender: ControlSender<ControlClientMessage>,
     frame_styles: FrameStyleMap,
 }
 
-impl eframe::App for Seidr {
+impl eframe::App for Control {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         // Store viewer state on disk
         self.app.save(storage);
@@ -94,14 +94,14 @@ impl eframe::App for Seidr {
     }
 }
 
-impl Seidr {
+impl Control {
     pub fn new(app: re_viewer::App, robot_connection: RobotConnection) -> Self {
-        let receiver = Seidr::listen_for_robot_messages(robot_connection.reader);
-        let sender = Seidr::setup_send_messages_to_robot(robot_connection.writer);
+        let receiver = Control::listen_for_robot_messages(robot_connection.reader);
+        let sender = Control::setup_send_messages_to_robot(robot_connection.writer);
 
-        Seidr {
+        Control {
             app,
-            states: SeidrStates::default(),
+            states: ControlStates::default(),
             message_receiver: Some(receiver),
             message_sender: sender,
             frame_styles: FrameStyleMap::default(),

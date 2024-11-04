@@ -13,8 +13,8 @@ use crate::{
     config::SindriConfig,
 };
 
-const SEIDR_BINARY_PATH: &str = "./target/release/seidr";
-const SEIDR_BINARY: &str = "seidr";
+const CONTROL_BINARY_PATH: &str = "./target/release/control";
+const CONTROL_BINARY: &str = "control";
 
 const DEFAULT_TRACY_PORT: u16 = 8086;
 
@@ -174,13 +174,13 @@ async fn has_rerun() -> bool {
     get_rerun_version().await.is_ok_and(|success| success)
 }
 
-/// Compiles the seidr binary
-async fn build_seidr() -> Result<()> {
+/// Compiles the control binary
+async fn build_rerun_control() -> Result<()> {
     let features = vec![];
     let envs = Vec::new();
 
     cargo::build(
-        SEIDR_BINARY,
+        CONTROL_BINARY,
         cargo::Profile::Release,
         None,
         &features,
@@ -193,7 +193,7 @@ async fn build_seidr() -> Result<()> {
 
 /// Spawn a rerun viewer in the background.
 async fn spawn_rerun_viewer(robot_ip: Ipv4Addr, memory_limit: Option<String>) -> Result<()> {
-    build_seidr().await?;
+    build_rerun_control().await?;
 
     let mut args = vec![];
     // Set robot ip to connection the viewer with
@@ -205,7 +205,7 @@ async fn spawn_rerun_viewer(robot_ip: Ipv4Addr, memory_limit: Option<String>) ->
         args.push(memory_limit.to_string());
     }
 
-    Command::new(SEIDR_BINARY_PATH)
+    Command::new(CONTROL_BINARY_PATH)
         .args(args)
         .stdin(Stdio::inherit())
         .stderr(Stdio::inherit())

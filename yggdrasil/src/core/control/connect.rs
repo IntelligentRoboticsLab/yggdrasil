@@ -51,7 +51,7 @@ pub fn setup_new_connection(
                 .into_diagnostic()
                 .expect("Could not read the control client address");
 
-            info!("Connected with a new control client: {}", addr.to_string());
+            tracing::info!("Connected with a new control client: {}", addr.to_string());
 
             let (reader, writer) = control_stream.stream.clone().split();
 

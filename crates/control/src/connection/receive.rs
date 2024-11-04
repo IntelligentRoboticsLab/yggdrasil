@@ -3,7 +3,7 @@ use futures::{channel::mpsc::UnboundedSender, io::ReadHalf};
 
 use yggdrasil::core::control::{receive::ControlReceiver, transmit::ControlHostMessage};
 
-use crate::seidr::SeidrStates;
+use crate::control::ControlStates;
 
 pub async fn receive_messages(
     mut stream: ReadHalf<TcpStream>,
@@ -47,7 +47,7 @@ pub enum HandleMessageStatus {
 
 pub fn handle_message(
     receiver: &mut ControlReceiver<ControlHostMessage>,
-    states: &mut SeidrStates,
+    states: &mut ControlStates,
 ) -> HandleMessageStatus {
     while let Some(message) = receiver.try_recv() {
         match message {

@@ -8,12 +8,12 @@ use re_viewer::{
     StartupOptions,
 };
 
-use crate::{connection::connect::RobotConnection, seidr::Seidr};
+use crate::{connection::connect::RobotConnection, control::Control};
 
 // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
 const APP_ENV: &str = "My Wrapper";
 
-const WINDOW_TITLE: &str = "Seidr";
+const WINDOW_TITLE: &str = "Rerun Control";
 
 pub struct App {
     rx: Receiver<LogMsg>,
@@ -53,8 +53,8 @@ impl App {
                 );
                 rerun_app.add_receiver(self.rx);
 
-                let seidr = Seidr::new(rerun_app, self.robot_connection);
-                Ok(Box::new(seidr))
+                let control = Control::new(rerun_app, self.robot_connection);
+                Ok(Box::new(control))
             }),
         )
         .unwrap();

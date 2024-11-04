@@ -10,7 +10,7 @@ use rerun::external::ecolor::Color32;
 
 use yggdrasil::core::control::{receive::ControlClientMessage, transmit::ControlSender};
 
-use crate::seidr::DebugEnabledSystemsView;
+use crate::control::DebugEnabledSystemsView;
 
 pub fn add_editable_resource(
     ui: &mut egui::Ui,
