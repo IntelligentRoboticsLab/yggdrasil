@@ -274,8 +274,6 @@ where
     }
 }
 
-// TODO: This code summons eldritch horrors into the compiler starting from 1.82. These demons are
-// mostly harmless, however, they dislike you multiplying floats inside an `impl Iterator<Item=f32>`.
 impl<T, S> Mul<InSpace<T, S>> for f32
 where
     f32: Mul<T, Output = T>,
