@@ -8,10 +8,7 @@ use re_viewer::external::{
 };
 use rerun::external::ecolor::Color32;
 
-use yggdrasil::core::control::{
-    receive::ControlClientMessage,
-    transmit::ControlSender,
-};
+use yggdrasil::core::control::{receive::ControlClientMessage, transmit::ControlSender};
 
 use crate::seidr::DebugEnabledSystemsView;
 
@@ -109,7 +106,7 @@ pub fn debug_resources_ui(
                 if ui.toggle_switch(14.0, enabled).changed() {
                     let message = ControlClientMessage::UpdateEnabledDebugSystem(
                         system_name.clone(),
-                        enabled.clone(),
+                        *enabled,
                     );
                     message_sender.tx.unbounded_send(message).unwrap();
                 };

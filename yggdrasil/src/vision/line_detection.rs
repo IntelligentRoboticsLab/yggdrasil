@@ -54,7 +54,7 @@ impl Plugin for LineDetectionPlugin {
         .add_named_debug_systems(
             PostUpdate,
             visualize_lines::<Top>.run_if(resource_exists_and_changed::<DetectedLines<Top>>),
-            "Visualize lines"
+            "Visualize lines",
         );
     }
 }

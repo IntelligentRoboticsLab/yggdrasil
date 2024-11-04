@@ -1,6 +1,7 @@
 use async_std::net::{TcpStream, ToSocketAddrs};
 use futures::{
-    io::{ReadHalf, WriteHalf}, AsyncReadExt
+    io::{ReadHalf, WriteHalf},
+    AsyncReadExt,
 };
 use miette::{IntoDiagnostic, Result};
 use tokio::time::Duration;

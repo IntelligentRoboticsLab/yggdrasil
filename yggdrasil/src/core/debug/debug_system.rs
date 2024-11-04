@@ -59,7 +59,9 @@ impl DebugAppExt for App {
     ) -> &mut Self {
         let world = self.world_mut();
         let mut debug_enabled_systems = world.resource_mut::<DebugEnabledSystems>();
-        debug_enabled_systems.systems.insert(systems_name.to_string(), true);
+        debug_enabled_systems
+            .systems
+            .insert(systems_name.to_string(), true);
         self.add_systems(schedule, systems.run_if(debug_enabled(systems_name)))
     }
 }

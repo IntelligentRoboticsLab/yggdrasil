@@ -19,8 +19,7 @@ use connect::{listen_for_connection, setup_new_connection, ControlDataStream};
 use receive::{handle_message, ControlClientMessage, ControlReceiver};
 use tasks::conditions::task_finished;
 use transmit::{
-    send_current_state, ControlHostMessage, ControlSender,
-    TransmitDebugEnabledSystems,
+    send_current_state, ControlHostMessage, ControlSender, TransmitDebugEnabledSystems,
 };
 
 use super::debug::debug_system::DebugEnabledSystems;
@@ -76,7 +75,6 @@ fn setup(mut commands: Commands) {
     commands.insert_resource(control_listen_socket);
 }
 
-
 #[derive(Resource)]
 struct CollectResourcesSystem(SystemId);
 
@@ -91,7 +89,9 @@ fn print_resources(world: &World) {
 
     // sort list alphebetically
     resources.sort();
-    resources.iter().for_each(|name| println!("{}", name));
+    for name in resources.iter() {
+        println!("{name}")
+    }
 }
 
 fn collect_resources(world: &World) -> Vec<&str> {

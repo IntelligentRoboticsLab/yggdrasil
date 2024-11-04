@@ -45,10 +45,8 @@ async fn main() -> Result<()> {
 
     // Setting a memory limit of 75% or a limit defined via the cli arguments
     let memory_limit = if let Some(max_memory) = args.max_mem {
-        re_memory::MemoryLimit::parse(&max_memory).expect(&format!(
-            "Failed to parse `{}` to a `MemoryLimit`",
-            max_memory
-        ))
+        re_memory::MemoryLimit::parse(&max_memory)
+            .unwrap_or_else(|_| panic!("Failed to parse `{}` to a `MemoryLimit`", max_memory))
     } else {
         re_memory::MemoryLimit::from_fraction_of_total(0.75)
     };

@@ -1,8 +1,5 @@
 use async_std::{io::ReadExt, net::TcpStream};
-use futures::{
-    channel::mpsc::UnboundedSender,
-    io::ReadHalf,
-};
+use futures::{channel::mpsc::UnboundedSender, io::ReadHalf};
 
 use yggdrasil::core::control::{receive::ControlReceiver, transmit::ControlHostMessage};
 
@@ -24,7 +21,9 @@ pub async fn receive_messages(
         let num_bytes = ReadExt::read(&mut stream, &mut size_buffer).await.unwrap();
 
         if num_bytes == 0 {
-            sender.unbounded_send(ControlHostMessage::CloseStream).unwrap();
+            sender
+                .unbounded_send(ControlHostMessage::CloseStream)
+                .unwrap();
             break;
         }
 

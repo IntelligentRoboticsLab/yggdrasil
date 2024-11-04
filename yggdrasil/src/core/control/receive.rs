@@ -50,13 +50,15 @@ pub async fn receive_messages(
         let num_bytes = stream.read(&mut size_buffer).await.unwrap();
 
         if num_bytes == 0 {
-            sender.unbounded_send(ControlClientMessage::CloseStream).unwrap();
+            sender
+                .unbounded_send(ControlClientMessage::CloseStream)
+                .unwrap();
             continue;
         }
 
         let msg_size = bincode::deserialize::<usize>(&size_buffer).unwrap();
         let mut buffer = vec![0; msg_size];
-        let _num_bytes = stream.read_exact(&mut buffer).await.unwrap();
+        stream.read_exact(&mut buffer).await.unwrap();
 
         let msg = bincode::deserialize::<ControlClientMessage>(&buffer).unwrap();
 
@@ -78,7 +80,7 @@ pub fn handle_message(
             }
             ControlClientMessage::UpdateEnabledDebugSystem(system_name, enabled) => {
                 debug_enabled_systems.set_system(system_name.clone(), enabled);
-                tracing::debug!("Set resource `{}` to `{}`", system_name, enabled)
+                tracing::debug!("Set resource `{}` to `{}`", system_name, enabled);
             }
             _ => {
                 tracing::warn!("Received a message which is not handled: {:?}", message);

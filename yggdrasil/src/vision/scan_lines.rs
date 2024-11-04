@@ -1,6 +1,10 @@
 use std::{ops::Deref, sync::Arc};
 
-use crate::{core::debug::{debug_system::DebugAppExt, DebugContext}, nao::Cycle, prelude::*};
+use crate::{
+    core::debug::{debug_system::DebugAppExt, DebugContext},
+    nao::Cycle,
+    prelude::*,
+};
 
 use super::{
     camera::{init_camera, Image},
@@ -64,7 +68,7 @@ impl Plugin for ScanLinesPlugin {
                     visualize_scan_lines::<Top>.run_if(resource_exists::<ScanLines<Top>>),
                     visualize_scan_lines::<Bottom>.run_if(resource_exists::<ScanLines<Bottom>>),
                 ),
-                "Visualize scan lines"
+                "Visualize scan lines",
             );
     }
 }

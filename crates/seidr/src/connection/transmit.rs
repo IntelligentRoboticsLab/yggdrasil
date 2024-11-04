@@ -1,14 +1,8 @@
-use async_std::{
-    io::WriteExt,
-    net::TcpStream,
-};
-use futures::{
-    channel::mpsc::UnboundedReceiver, io::WriteHalf, StreamExt
-};
+use async_std::{io::WriteExt, net::TcpStream};
+use futures::{channel::mpsc::UnboundedReceiver, io::WriteHalf, StreamExt};
 use miette::IntoDiagnostic;
 
 use yggdrasil::core::control::receive::ControlClientMessage;
-
 
 pub async fn send_messages(
     mut stream: WriteHalf<TcpStream>,
@@ -21,7 +15,10 @@ pub async fn send_messages(
 
         let msg_size = serialized_msg.len();
         let serialized_msg_size = bincode::serialize(&msg_size).into_diagnostic().unwrap();
-        stream.write(&serialized_msg_size).await.expect("Failed writing to the robot stream");
+        stream
+            .write(&serialized_msg_size)
+            .await
+            .expect("Failed writing to the robot stream");
 
         stream
             .write_all(&serialized_msg)

@@ -4,7 +4,9 @@ use futures::{channel::mpsc, io::WriteHalf, AsyncReadExt};
 use miette::IntoDiagnostic;
 use tasks::{CommandsExt, TaskPool};
 
-use super::{receive::ControlClientMessage, transmit::TransmitDebugEnabledSystems, ControlListenSocket};
+use super::{
+    receive::ControlClientMessage, transmit::TransmitDebugEnabledSystems, ControlListenSocket,
+};
 use crate::core::control::{
     receive::{receive_messages, ControlReceiver},
     transmit::{send_messages, ControlHostMessage, ControlSender},

@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddrV4};
 use std::{os::unix::process::CommandExt, process::Stdio};
 
@@ -16,10 +15,6 @@ use crate::{
 
 const SEIDR_BINARY_PATH: &str = "./target/release/seidr";
 const SEIDR_BINARY: &str = "seidr";
-
-const LOCAL_ROBOT_ID: u8 = 0;
-const DEFAULT_PLAYER_NUMBER: u8 = 3;
-const DEFAULT_TEAM_NUMBER: u8 = 8;
 
 const DEFAULT_TRACY_PORT: u16 = 8086;
 
