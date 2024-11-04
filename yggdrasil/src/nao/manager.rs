@@ -6,6 +6,7 @@ use std::{
 
 use crate::prelude::*;
 use bevy::prelude::*;
+use nalgebra::Quaternion;
 use nidhogg::{
     types::{
         color, ArmJoints, FillExt, HeadJoints, JointArray, LeftEar, LeftEye, LegJoints, RgbF32,
@@ -39,7 +40,7 @@ impl Plugin for NaoManagerPlugin {
     }
 }
 
-/// Do the interpolation here (states that need to be stored are in manager, we change 
+/// TODO: Do the interpolation here (states that need to be stored are in manager, we change 
 /// position and stiffness in control_message.
 fn finalize(mut control_message: ResMut<NaoControlMessage>, mut manager: ResMut<NaoManager>) {
     control_message.position = manager.make_joint_positions();
@@ -123,12 +124,16 @@ struct LedSettings<T> {
 /// priorities.
 /// If multiple requests with the same priority are made, the first request will be prioritized.
 
-// Store the stuff needed for interpolation here in the NaoManager
+// TODO: Store the stuff needed for interpolation here in the NaoManager
 #[derive(Default, Debug, Resource)]
 pub struct NaoManager {
     leg_settings: JointSettings<LegJoints<JointValue>>,
     arm_settings: JointSettings<ArmJoints<JointValue>>,
     head_settings: JointSettings<HeadJoints<JointValue>>,
+
+    head_target: Quaternion<f32>,
+    head_source: Quaternion<f32>,
+    timestep: f32,
 
     led_left_ear: LedSettings<LeftEar>,
     led_right_ear: LedSettings<RightEar>,
@@ -272,7 +277,7 @@ impl NaoManager {
     /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
     /// stiffness. A value of `-1` will disable the stiffness altogether.
     /// 
-    /// Replace this function by a function that sets a target, and then 
+    /// TODO: Replace this function by a function that sets a target, and then 
     /// interpolate to that target.
     pub fn set_head(
         &mut self,
@@ -286,6 +291,14 @@ impl NaoManager {
             joint_stiffness,
             priority,
         );
+
+        self
+    }
+
+    /// Set the target position for the head.
+    pub fn set_head_target(&mut self, target: Quaternion<f32>, priority: Priority) -> &mut Self {
+        self.head_target = target;
+        self.timestep = 0.0;
 
         self
     }

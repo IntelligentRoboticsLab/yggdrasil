@@ -17,8 +17,9 @@ pub struct StandLookAt {
 
 impl Behavior for StandLookAt {
     fn execute(&mut self, context: Context, control: &mut Control) {
-        let point3 = Point3::new(self.target.x, self.target.y, RobotPose::CAMERA_HEIGHT);
+        let point3 = Point3::new(-10.0, 0.0, 0.5);
         let look_at = context.pose.get_look_at_absolute(&point3);
+
         control.nao_manager.set_head(
             look_at,
             HeadJoints::fill(HEAD_STIFFNESS),

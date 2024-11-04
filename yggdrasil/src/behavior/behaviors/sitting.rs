@@ -2,10 +2,13 @@ use crate::{
     behavior::engine::{Behavior, Context, Control},
     nao::Priority,
 };
-use nidhogg::types::{color, FillExt, RightEye};
+use nalgebra::Point3;
+use nidhogg::types::{color, FillExt, HeadJoints, RightEye};
 
 // The robot shouldn't do anything while in unstiff state.
 const UNSTIFF_PRIORITY: Priority = Priority::Critical;
+
+const HEAD_STIFFNESS: f32 = 0.4;
 
 /// This is often the starting behavior of the robot.
 /// In this state the robot sits down, after which it unstiffens its legs, arms and head.
@@ -19,6 +22,9 @@ impl Behavior for Sitting {
             .nao_manager
             .set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());
 
+        let test_point3 = Point3::new(10.0, 0.0, 0.5);
+        let look_at_test = _context.pose.get_look_at_absolute(&test_point3);
+        
         if control.walking_engine.is_sitting() {
             // Makes robot floppy except for hip joints, locked in sitting position.
             control.nao_manager.unstiff_sit(UNSTIFF_PRIORITY);
@@ -26,9 +32,15 @@ impl Behavior for Sitting {
             control.walking_engine.request_sit();
         }
 
+        control.nao_manager.set_head(
+            look_at_test,
+            HeadJoints::fill(HEAD_STIFFNESS),
+            Priority::default(),
+        );
+
         control
             .nao_manager
-            .unstiff_arms(UNSTIFF_PRIORITY)
-            .unstiff_head(UNSTIFF_PRIORITY);
+            .unstiff_arms(UNSTIFF_PRIORITY);
+            // .unstiff_head(UNSTIFF_PRIORITY);
     }
 }
