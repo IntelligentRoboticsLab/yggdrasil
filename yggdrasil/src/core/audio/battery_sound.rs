@@ -35,11 +35,9 @@ impl BatteryInfo {
         let battery_level = (nao_state.battery.charge * 100.0) as u32;
         let low_or_critical = battery_level == THRESHOLD_LOW || battery_level == THRESHOLD_CRITICAL;
 
-        //  At the exact thresholds, or when already below/at threshold at startup
-        let should_play_sound = (battery_level < self.prev_level && low_or_critical)
-            || (battery_level <= THRESHOLD_LOW && self.last_played.is_none());
-
-        should_play_sound
+        //  Should play sound at the exact thresholds, or when already below/at threshold at startup
+        (battery_level < self.prev_level && low_or_critical)
+            || (battery_level <= THRESHOLD_LOW && self.last_played.is_none())
     }
 }
 
