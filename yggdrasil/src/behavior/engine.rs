@@ -369,7 +369,6 @@ pub fn step(
         .most_confident_ball()
         .map(|b| b.position)
         .or(top_balls.most_confident_ball().map(|b| b.position));
-    let filtered_ball = filter_ball_position(&most_confident_ball, &layout_config.field);
 
     let context = Context {
         robot_info: robot_info.as_ref(),
@@ -385,7 +384,7 @@ pub fn step(
         game_controller_config: &game_controller_config,
         fall_state: &fall_state,
         pose: &robot_pose,
-        ball_position: &filtered_ball,
+        ball_position: &most_confident_ball,
         current_behavior: engine.behavior.clone(),
     };
 
@@ -401,6 +400,9 @@ pub fn step(
 }
 
 /// Filter out the balls that are outside the field.
+/// TODO: Properly filter this, and then use it
+/// <https://github.com/IntelligentRoboticsLab/yggdrasil/issues/392>
+#[allow(unused)]
 fn filter_ball_position(
     ball_position: &Option<Point2<f32>>,
     field_config: &FieldConfig,
