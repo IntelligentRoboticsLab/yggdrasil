@@ -54,16 +54,6 @@ impl Kinematics {
     }
 
     #[must_use]
-    pub fn to_robot<T, S>(&self, x: &InSpace<T, S>) -> InSpace<T, Robot>
-    where
-        S: Space + SpaceOver<T>,
-        Robot: SpaceOver<T>,
-        Self: Transform<T, T, S, Robot>,
-    {
-        self.transform(x)
-    }
-
-    #[must_use]
     pub fn isometry<S1, S2>(&self) -> Isometry3<S1, S2>
     where
         S1: Space + SpaceOver<na::Isometry3<f32>>,
