@@ -12,8 +12,8 @@ use re_viewer::external::{
 
 use yggdrasil::core::{
     control::{
-        receive::{ControlClientMessage, ControlReceiver},
-        transmit::{ControlHostMessage, ControlSender},
+        receive::{ControlViewerMessage, ControlReceiver},
+        transmit::{ControlRobotMessage, ControlSender},
     },
     debug::debug_system::DebugEnabledSystems,
 };
@@ -59,8 +59,8 @@ impl From<DebugEnabledSystems> for DebugEnabledSystemsView {
 pub struct Control {
     app: re_viewer::App,
     states: ControlStates,
-    message_receiver: Option<ControlReceiver<ControlHostMessage>>,
-    message_sender: ControlSender<ControlClientMessage>,
+    message_receiver: Option<ControlReceiver<ControlRobotMessage>>,
+    message_sender: ControlSender<ControlViewerMessage>,
     frame_styles: FrameStyleMap,
 }
 
@@ -195,8 +195,8 @@ impl Control {
 
     fn listen_for_robot_messages(
         reader: ReadHalf<TcpStream>,
-    ) -> ControlReceiver<ControlHostMessage> {
-        let (reader_tx, reader_rx) = mpsc::unbounded::<ControlHostMessage>();
+    ) -> ControlReceiver<ControlRobotMessage> {
+        let (reader_tx, reader_rx) = mpsc::unbounded::<ControlRobotMessage>();
         tokio::spawn(async move {
             receive_messages(reader, reader_tx).await;
         });
@@ -206,8 +206,8 @@ impl Control {
 
     fn setup_send_messages_to_robot(
         writer: WriteHalf<TcpStream>,
-    ) -> ControlSender<ControlClientMessage> {
-        let (writer_tx, writer_rx) = mpsc::unbounded::<ControlClientMessage>();
+    ) -> ControlSender<ControlViewerMessage> {
+        let (writer_tx, writer_rx) = mpsc::unbounded::<ControlViewerMessage>();
         tokio::spawn(async move {
             send_messages(writer, writer_rx).await;
         });

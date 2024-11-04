@@ -5,11 +5,11 @@ use miette::IntoDiagnostic;
 use tasks::{CommandsExt, TaskPool};
 
 use super::{
-    receive::ControlClientMessage, transmit::TransmitDebugEnabledSystems, ControlListenSocket,
+    receive::ControlViewerMessage, transmit::TransmitDebugEnabledSystems, ControlListenSocket,
 };
 use crate::core::control::{
     receive::{receive_messages, ControlReceiver},
-    transmit::{send_messages, ControlHostMessage, ControlSender},
+    transmit::{send_messages, ControlRobotMessage, ControlSender},
 };
 
 #[derive(Resource)]
@@ -56,8 +56,8 @@ pub fn setup_new_connection(
             let (reader, writer) = control_stream.stream.clone().split();
 
             let io = IoTaskPool::get();
-            let (reader_tx, reader_rx) = mpsc::unbounded::<ControlClientMessage>();
-            let (writer_tx, writer_rx) = mpsc::unbounded::<ControlHostMessage>();
+            let (reader_tx, reader_rx) = mpsc::unbounded::<ControlViewerMessage>();
+            let (writer_tx, writer_rx) = mpsc::unbounded::<ControlRobotMessage>();
 
             io.spawn(receive_messages(reader, reader_tx)).detach();
             io.spawn(send_messages(writer, writer_rx)).detach();

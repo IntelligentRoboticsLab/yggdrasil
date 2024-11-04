@@ -16,10 +16,10 @@ use bevy::{
 use miette::{IntoDiagnostic, Result};
 
 use connect::{listen_for_connection, setup_new_connection, ControlDataStream};
-use receive::{handle_message, ControlClientMessage, ControlReceiver};
+use receive::{handle_message, ControlViewerMessage, ControlReceiver};
 use tasks::conditions::task_finished;
 use transmit::{
-    send_current_state, ControlHostMessage, ControlSender, TransmitDebugEnabledSystems,
+    send_current_state, ControlRobotMessage, ControlSender, TransmitDebugEnabledSystems,
 };
 
 use super::debug::debug_system::DebugEnabledSystems;
@@ -43,11 +43,11 @@ impl Plugin for ControlPlugin {
             )
             .add_systems(
                 Update,
-                handle_message.run_if(resource_exists::<ControlReceiver<ControlClientMessage>>),
+                handle_message.run_if(resource_exists::<ControlReceiver<ControlViewerMessage>>),
             )
             .add_systems(
                 Update,
-                send_current_state.run_if(resource_exists::<ControlSender<ControlHostMessage>>),
+                send_current_state.run_if(resource_exists::<ControlSender<ControlRobotMessage>>),
             );
     }
 }

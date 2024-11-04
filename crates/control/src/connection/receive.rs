@@ -1,13 +1,13 @@
 use async_std::{io::ReadExt, net::TcpStream};
 use futures::{channel::mpsc::UnboundedSender, io::ReadHalf};
 
-use yggdrasil::core::control::{receive::ControlReceiver, transmit::ControlHostMessage};
+use yggdrasil::core::control::{receive::ControlReceiver, transmit::ControlRobotMessage};
 
 use crate::control::ControlStates;
 
 pub async fn receive_messages(
     mut stream: ReadHalf<TcpStream>,
-    sender: UnboundedSender<ControlHostMessage>,
+    sender: UnboundedSender<ControlRobotMessage>,
 ) {
     let mut size_buffer = [0; std::mem::size_of::<usize>()];
     loop {
@@ -22,7 +22,7 @@ pub async fn receive_messages(
 
         if num_bytes == 0 {
             sender
-                .unbounded_send(ControlHostMessage::CloseStream)
+                .unbounded_send(ControlRobotMessage::CloseStream)
                 .unwrap();
             break;
         }
@@ -33,7 +33,7 @@ pub async fn receive_messages(
         let mut buffer = vec![0; msg_size];
         ReadExt::read_exact(&mut stream, &mut buffer).await.unwrap();
         // Decode message
-        let message: ControlHostMessage = bincode::deserialize(&buffer).unwrap();
+        let message: ControlRobotMessage = bincode::deserialize(&buffer).unwrap();
 
         // transmit decoded message to the channel
         sender.unbounded_send(message).unwrap();
@@ -46,16 +46,16 @@ pub enum HandleMessageStatus {
 }
 
 pub fn handle_message(
-    receiver: &mut ControlReceiver<ControlHostMessage>,
+    receiver: &mut ControlReceiver<ControlRobotMessage>,
     states: &mut ControlStates,
 ) -> HandleMessageStatus {
     while let Some(message) = receiver.try_recv() {
         match message {
-            ControlHostMessage::CloseStream => {
+            ControlRobotMessage::CloseStream => {
                 tracing::warn!("Connection is closed");
                 return HandleMessageStatus::Stopped;
             }
-            ControlHostMessage::Resources(new_resources) => {
+            ControlRobotMessage::Resources(new_resources) => {
                 tracing::debug!("Resource message: {:?}", new_resources);
                 let _last_update = &states.last_resource_update;
 
@@ -70,7 +70,7 @@ pub fn handle_message(
                     .update_resources(new_resources, &mut states.focused_resources)
                     .unwrap();
             }
-            ControlHostMessage::DebugEnabledSystems(debug_enabled_systems) => {
+            ControlRobotMessage::DebugEnabledSystems(debug_enabled_systems) => {
                 tracing::debug!(
                     "Debug enabled resources init:\n{:#?}",
                     debug_enabled_systems.systems

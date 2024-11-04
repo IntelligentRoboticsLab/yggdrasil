@@ -15,16 +15,16 @@ use super::DebugEnabledSystems;
 const SEND_STATE_DELAY: Duration = Duration::from_millis(2_000);
 
 #[derive(Deref, DerefMut)]
-pub struct ControlHostMessageDelay(Timer);
+pub struct ControlRobotMessageDelay(Timer);
 
-impl Default for ControlHostMessageDelay {
+impl Default for ControlRobotMessageDelay {
     fn default() -> Self {
         Self(Timer::new(Duration::ZERO, TimerMode::Repeating))
     }
 }
 
 #[derive(Resource, Serialize, Deserialize, Debug)]
-pub enum ControlHostMessage {
+pub enum ControlRobotMessage {
     CloseStream,
     Resources(HashMap<String, String>),
     DebugEnabledSystems(DebugEnabledSystems),
@@ -37,13 +37,13 @@ pub struct ControlSender<T> {
 
 pub async fn send_messages(
     mut stream: WriteHalf<TcpStream>,
-    mut receiver: UnboundedReceiver<ControlHostMessage>,
+    mut receiver: UnboundedReceiver<ControlRobotMessage>,
 ) {
     while let Some(message) = receiver.next().await {
         tracing::debug!("Send message: {:#?}", message);
         let serialized_msg = bincode::serialize(&message)
             .into_diagnostic()
-            .expect("Was not able to serialize a ControlHostMessage");
+            .expect("Was not able to serialize a ControlRobotMessage");
 
         let msg_size = serialized_msg.len();
         let serialized_msg_size = bincode::serialize(&msg_size).into_diagnostic().unwrap();
@@ -63,9 +63,9 @@ pub async fn send_messages(
 }
 
 pub fn send_current_state(
-    sender: Res<ControlSender<ControlHostMessage>>,
+    sender: Res<ControlSender<ControlRobotMessage>>,
     time: Res<Time>,
-    mut delay: Local<ControlHostMessageDelay>,
+    mut delay: Local<ControlRobotMessageDelay>,
 ) {
     delay.tick(time.delta());
 
@@ -79,10 +79,10 @@ pub fn send_current_state(
     delay.set_duration(SEND_STATE_DELAY);
 }
 
-fn collect_resource_states(val: String) -> ControlHostMessage {
+fn collect_resource_states(val: String) -> ControlRobotMessage {
     let mut resources = HashMap::new();
     resources.insert("Time".to_string(), val);
-    ControlHostMessage::Resources(resources)
+    ControlRobotMessage::Resources(resources)
 }
 
 #[derive(Resource)]
@@ -105,9 +105,9 @@ impl FromWorld for TransmitDebugEnabledSystems {
 
 fn transmit_debug_enabled_resources(
     debug_enabled_resources: Res<DebugEnabledSystems>,
-    sender: Res<ControlSender<ControlHostMessage>>,
+    sender: Res<ControlSender<ControlRobotMessage>>,
 ) {
-    let message = ControlHostMessage::DebugEnabledSystems(debug_enabled_resources.clone());
+    let message = ControlRobotMessage::DebugEnabledSystems(debug_enabled_resources.clone());
     sender.tx.unbounded_send(message).unwrap();
 }
 

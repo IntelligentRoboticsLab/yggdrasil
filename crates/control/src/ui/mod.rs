@@ -8,7 +8,7 @@ use re_viewer::external::{
 };
 use rerun::external::ecolor::Color32;
 
-use yggdrasil::core::control::{receive::ControlClientMessage, transmit::ControlSender};
+use yggdrasil::core::control::{receive::ControlViewerMessage, transmit::ControlSender};
 
 use crate::control::DebugEnabledSystemsView;
 
@@ -18,7 +18,7 @@ pub fn add_editable_resource(
     resource_data: &mut String,
     changed_resources: &mut HashMap<String, bool>,
     button_frame_style: Frame,
-) -> Option<ControlClientMessage> {
+) -> Option<ControlViewerMessage> {
     let mut followup_action = None;
 
     ui.vertical(|ui| {
@@ -62,7 +62,7 @@ pub fn add_editable_resource(
                     ))
                     .clicked()
                 {
-                    followup_action = Some(ControlClientMessage::UpdateResource(
+                    followup_action = Some(ControlViewerMessage::UpdateResource(
                         resource_name.to_string(),
                         resource_data.to_string(),
                     ));
@@ -92,7 +92,7 @@ pub fn add_editable_resource(
 pub fn debug_resources_ui(
     ui: &mut egui::Ui,
     debug_enabled_systems_view: &mut DebugEnabledSystemsView,
-    message_sender: &ControlSender<ControlClientMessage>,
+    message_sender: &ControlSender<ControlViewerMessage>,
 ) {
     ui.vertical(|ui| {
         for system_name in &debug_enabled_systems_view.key_sequence {
@@ -104,7 +104,7 @@ pub fn debug_resources_ui(
                     .unwrap();
                 ui.label(system_name);
                 if ui.toggle_switch(14.0, enabled).changed() {
-                    let message = ControlClientMessage::UpdateEnabledDebugSystem(
+                    let message = ControlViewerMessage::UpdateEnabledDebugSystem(
                         system_name.clone(),
                         *enabled,
                     );

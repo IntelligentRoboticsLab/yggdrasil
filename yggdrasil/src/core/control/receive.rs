@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::core::control::connect::ControlDataStream;
 
 use super::{
-    transmit::{ControlHostMessage, ControlSender},
+    transmit::{ControlRobotMessage, ControlSender},
     DebugEnabledSystems,
 };
 
@@ -29,7 +29,7 @@ impl<T> ControlReceiver<T> {
 }
 
 #[derive(Resource, Serialize, Deserialize, Debug)]
-pub enum ControlClientMessage {
+pub enum ControlViewerMessage {
     CloseStream,
     UpdateResource(String, String),
     SendResourcesNow,
@@ -38,7 +38,7 @@ pub enum ControlClientMessage {
 
 pub async fn receive_messages(
     mut stream: ReadHalf<TcpStream>,
-    sender: UnboundedSender<ControlClientMessage>,
+    sender: UnboundedSender<ControlViewerMessage>,
 ) {
     let mut size_buffer = [0; std::mem::size_of::<usize>()];
     loop {
@@ -51,7 +51,7 @@ pub async fn receive_messages(
 
         if num_bytes == 0 {
             sender
-                .unbounded_send(ControlClientMessage::CloseStream)
+                .unbounded_send(ControlViewerMessage::CloseStream)
                 .unwrap();
             continue;
         }
@@ -60,7 +60,7 @@ pub async fn receive_messages(
         let mut buffer = vec![0; msg_size];
         stream.read_exact(&mut buffer).await.unwrap();
 
-        let msg = bincode::deserialize::<ControlClientMessage>(&buffer).unwrap();
+        let msg = bincode::deserialize::<ControlViewerMessage>(&buffer).unwrap();
 
         sender.unbounded_send(msg).unwrap();
     }
@@ -68,17 +68,17 @@ pub async fn receive_messages(
 
 pub fn handle_message(
     mut commands: Commands,
-    mut receiver: ResMut<ControlReceiver<ControlClientMessage>>,
+    mut receiver: ResMut<ControlReceiver<ControlViewerMessage>>,
     mut debug_enabled_systems: ResMut<DebugEnabledSystems>,
 ) {
     while let Some(message) = receiver.try_recv() {
         match message {
-            ControlClientMessage::CloseStream => {
-                commands.remove_resource::<ControlReceiver<ControlClientMessage>>();
-                commands.remove_resource::<ControlSender<ControlHostMessage>>();
+            ControlViewerMessage::CloseStream => {
+                commands.remove_resource::<ControlReceiver<ControlViewerMessage>>();
+                commands.remove_resource::<ControlSender<ControlRobotMessage>>();
                 commands.remove_resource::<ControlDataStream>();
             }
-            ControlClientMessage::UpdateEnabledDebugSystem(system_name, enabled) => {
+            ControlViewerMessage::UpdateEnabledDebugSystem(system_name, enabled) => {
                 debug_enabled_systems.set_system(system_name.clone(), enabled);
                 tracing::debug!("Set resource `{}` to `{}`", system_name, enabled);
             }
