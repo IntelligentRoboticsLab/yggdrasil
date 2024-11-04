@@ -16,7 +16,7 @@ fn run_task_resource(mut commands: Commands, frame: Res<FrameCount>) {
         //
         // - to_resource() will insert the resulting Some(T) into Res<T>
         // - to_entities() will insert the resulting Some(T) into a new entity with component T
-        // - scope() will block on the inputted task and return a Vec<T> directly
+        // - spawn_blocking() will block on the inputted task and return a T directly
         .to_resource()
         // Spawn the given task on the pool
         .spawn({

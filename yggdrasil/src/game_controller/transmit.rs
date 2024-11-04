@@ -7,6 +7,7 @@ use bifrost::{
     serialization::Encode,
 };
 use futures::channel::mpsc::{self};
+use heimdall::{Bottom, Top};
 
 use crate::{
     core::config::showtime::PlayerConfig, localization::RobotPose, sensor::falling::FallState,
@@ -52,7 +53,7 @@ pub fn send_message(
     player_config: Res<PlayerConfig>,
     fall_state: Res<FallState>,
     robot_pose: Res<RobotPose>,
-    balls: Res<Balls>,
+    (bottom_balls, top_balls): (Res<Balls<Bottom>>, Res<Balls<Top>>),
     (sender, connection, config): (
         Res<GameControllerSender>,
         Res<GameControllerConnection>,
@@ -67,7 +68,7 @@ pub fn send_message(
         return;
     }
 
-    let (ball_age, pall_pos) = balls_to_game_controller_ball(&balls);
+    let (ball_age, pall_pos) = balls_to_game_controller_ball(&bottom_balls, &top_balls);
 
     let return_message = GameControllerReturnMessage::new(
         player_config.player_number,
@@ -95,16 +96,25 @@ fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {
     ]
 }
 
-fn balls_to_game_controller_ball(balls: &Balls) -> (f32, [f32; 2]) {
-    let Some(ball) = balls.most_confident_ball() else {
+fn balls_to_game_controller_ball(
+    bottom_balls: &Balls<Bottom>,
+    top_balls: &Balls<Top>,
+) -> (f32, [f32; 2]) {
+    let Some((timestamp, robot_to_ball)) = bottom_balls
+        .most_confident_ball()
+        .map(|b| (b.timestamp, b.robot_to_ball))
+        .or(top_balls
+            .most_confident_ball()
+            .map(|b| (b.timestamp, b.robot_to_ball)))
+    else {
         return NO_BALL_DETECTED_DATA;
     };
 
     (
-        ball.timestamp.elapsed().as_secs_f32(),
+        timestamp.elapsed().as_secs_f32(),
         [
-            ball.robot_to_ball.x * MILLIMETERS_PER_METER,
-            ball.robot_to_ball.y * MILLIMETERS_PER_METER,
+            robot_to_ball.x * MILLIMETERS_PER_METER,
+            robot_to_ball.y * MILLIMETERS_PER_METER,
         ],
     )
 }

@@ -1,6 +1,7 @@
 //! Result and Error types for the crate.
 use std::io;
 
+use fast_image_resize as fir;
 use miette::Diagnostic;
 use thiserror::Error;
 
@@ -46,5 +47,11 @@ pub enum Error {
     SetAutoExposureWeights(io::Error),
 
     #[error(transparent)]
-    Jpeg(turbojpeg::Error),
+    Jpeg(#[from] turbojpeg::Error),
+
+    #[error(transparent)]
+    ImageBuffer(#[from] fir::ImageBufferError),
+
+    #[error(transparent)]
+    Resize(#[from] fir::ResizeError),
 }

@@ -1,5 +1,6 @@
 use crate::{
-    core::{audio::whistle_detection::Whistle, config::showtime::PlayerConfig, debug::debug_system::DebugAppExt},
+    core::{audio::whistle_detection::Whistle, config::showtime::PlayerConfig},
+    game_controller::GameControllerMessageEvent,
     nao::{NaoManager, Priority},
     sensor::button::{ChestButton, HeadButtons},
 };
@@ -32,8 +33,11 @@ pub struct PrimaryStatePlugin;
 impl Plugin for PrimaryStatePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PrimaryState::Sitting);
-        app.register_type::<PrimaryState>();
-        app.add_debug_systems(Update, update_primary_state);
+
+        app.add_systems(
+            Update,
+            (update_gamecontroller_message, update_primary_state).chain(),
+        );
     }
 }
 
@@ -74,6 +78,15 @@ fn is_penalized_by_game_controller(
             .team(team_number)
             .is_some_and(|team| team.is_penalized(player_number))
     })
+}
+
+fn update_gamecontroller_message(
+    mut commands: Commands,
+    mut events: EventReader<GameControllerMessageEvent>,
+) {
+    for event in events.read() {
+        commands.insert_resource((*event).clone());
+    }
 }
 
 pub fn update_primary_state(

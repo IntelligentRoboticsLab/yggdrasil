@@ -119,8 +119,8 @@ impl DefaultBoxGenerator {
         let grids = meshgrid(&[all_shifts_y, all_shifts_x]).unwrap();
 
         // flatten into shape (total_features,)
-        let shift_x = grids[1].clone().into_shape(total_features).unwrap();
-        let shift_y = grids[0].clone().into_shape(total_features).unwrap();
+        let shift_x = grids[1].to_shape(total_features).unwrap();
+        let shift_y = grids[0].to_shape(total_features).unwrap();
 
         let num_pairs = self.wh_pairs[0].dim().0;
 

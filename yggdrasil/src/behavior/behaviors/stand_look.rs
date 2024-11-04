@@ -1,19 +1,15 @@
 use crate::{
     behavior::engine::{Behavior, Context, Control},
+    localization::RobotPose,
     nao::Priority,
 };
-use nalgebra::Point2;
+use nalgebra::{Point2, Point3};
 use nidhogg::types::{FillExt, HeadJoints};
 
 const HEAD_STIFFNESS: f32 = 0.4;
 
-/// During a match the chest button is pressed before starting a match.
-/// Once this is done, the robots are placed at the edge of the field from
-/// which they will walk to their `Ready` positions.
-///
-/// This is the behaviour of the robot once the chest button is pressed.
-/// In this state the robot will stand up straight and look at the middle
-/// circle to make it easier to place the robot in the correct position.
+/// Stand and look at a target point.
+/// This is used for when the robot is in the Set state.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct StandLookAt {
     pub target: Point2<f32>,
@@ -21,8 +17,10 @@ pub struct StandLookAt {
 
 impl Behavior for StandLookAt {
     fn execute(&mut self, context: Context, control: &mut Control) {
+        let point3 = Point3::new(self.target.x, self.target.y, RobotPose::CAMERA_HEIGHT);
+        let look_at = context.pose.get_look_at_absolute(&point3);
         control.nao_manager.set_head(
-            context.pose.get_look_at_absolute(&self.target),
+            look_at,
             HeadJoints::fill(HEAD_STIFFNESS),
             Priority::default(),
         );

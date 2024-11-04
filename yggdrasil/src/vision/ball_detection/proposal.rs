@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     core::debug::DebugContext,
+    nao::Cycle,
     vision::{
         camera::{init_camera, Image},
         scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLines},
@@ -293,8 +294,17 @@ fn init_ball_proposals<T: CameraLocation>(mut commands: Commands, image: Res<Ima
     commands.insert_resource(BallProposals::empty(image.clone()));
 }
 
-fn log_ball_proposals<T: CameraLocation>(dbg: DebugContext, proposals: Res<BallProposals<T>>) {
+fn log_ball_proposals<T: CameraLocation>(
+    dbg: DebugContext,
+    proposals: Res<BallProposals<T>>,
+    cycle: Res<Cycle>,
+) {
     if proposals.proposals.is_empty() {
+        dbg.log_with_cycle(
+            T::make_entity_path("balls/proposals"),
+            *cycle,
+            &rerun::Clear::flat(),
+        );
         return;
     }
     let (positions, half_sizes): (Vec<_>, Vec<_>) = proposals

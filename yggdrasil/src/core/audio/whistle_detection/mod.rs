@@ -53,11 +53,8 @@ impl Plugin for WhistleDetectionPlugin {
 pub struct WhistleDetectionModel;
 
 impl MlModel for WhistleDetectionModel {
-    type InputElem = f32;
-    type OutputElem = f32;
-
-    type InputShape = (Vec<f32>,);
-    type OutputShape = (Vec<f32>,);
+    type Inputs = Vec<f32>;
+    type Outputs = Vec<f32>;
 
     const ONNX_PATH: &'static str = "models/whistle_detection.onnx";
 }
@@ -163,11 +160,7 @@ fn detect_whistle(
 
     commands
         .infer_model(&mut model)
-        .with_input(&(spectrogram.powers[min_i..=max_i].to_vec(),))
+        .with_input(&spectrogram.powers[min_i..=max_i].to_vec())
         .create_resource()
-        .spawn(|result| {
-            Some(WhistleDetections {
-                detections: result.0,
-            })
-        });
+        .spawn(|detections| Some(WhistleDetections { detections }));
 }

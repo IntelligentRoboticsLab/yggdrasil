@@ -1,7 +1,6 @@
 //! Utility functions for machine learning.
 
-use fast_image_resize as fr;
-use std::num::NonZeroU32;
+use fast_image_resize::{self as fir, ResizeOptions};
 
 /// Returns the index of the maximum element in a [`Vec`].
 ///
@@ -43,24 +42,25 @@ pub fn sigmoid(logit: f32) -> f32 {
 #[allow(clippy::cast_possible_truncation)]
 #[must_use]
 pub fn resize_patch(original: (usize, usize), target: (usize, usize), patch: Vec<u8>) -> Vec<f32> {
-    let src_image = fr::Image::from_vec_u8(
-        NonZeroU32::new(original.0 as u32).unwrap(),
-        NonZeroU32::new(original.1 as u32).unwrap(),
+    let src_image = fir::images::Image::from_vec_u8(
+        original.0 as u32,
+        original.1 as u32,
         patch,
-        fr::PixelType::U8,
+        fir::PixelType::U8,
     )
     .expect("failed to create image for resizing");
 
     // Resize the image to the correct input shape for the model
-    let mut dst_image = fr::Image::new(
-        NonZeroU32::new(target.0 as u32).unwrap(),
-        NonZeroU32::new(target.1 as u32).unwrap(),
-        src_image.pixel_type(),
-    );
+    let mut dst_image =
+        fir::images::Image::new(target.0 as u32, target.1 as u32, src_image.pixel_type());
 
-    let mut resizer = fr::Resizer::new(fr::ResizeAlg::Nearest);
+    let mut resizer = fir::Resizer::new();
     resizer
-        .resize(&src_image.view(), &mut dst_image.view_mut())
+        .resize(
+            &src_image,
+            &mut dst_image,
+            &ResizeOptions::new().resize_alg(fir::ResizeAlg::Nearest),
+        )
         .expect("Failed to resize image");
 
     dst_image

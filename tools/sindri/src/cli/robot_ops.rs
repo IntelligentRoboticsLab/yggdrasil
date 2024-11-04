@@ -77,8 +77,8 @@ pub struct ConfigOptsRobotOps {
     pub team: Option<u8>,
 
     /// Whether to embed the rerun viewer for debugging [default: false]
-    #[clap(long, short)]
-    pub rerun: bool,
+    #[clap(long, short, default_value(None))]
+    pub rerun: Option<Option<String>>,
 
     /// Set a memory limit for the rerun viewer. --rerun required
     #[clap(long, requires = "rerun")]

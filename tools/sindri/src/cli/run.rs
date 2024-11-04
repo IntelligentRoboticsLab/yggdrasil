@@ -46,7 +46,7 @@ impl Run {
         self.robot_ops.prepare_showtime_config()?;
 
         let local = self.robot_ops.local;
-        let rerun = self.robot_ops.rerun;
+        let rerun = self.robot_ops.rerun.is_some();
         let has_rerun = has_rerun().await;
 
         if rerun && !has_rerun {
@@ -88,10 +88,12 @@ impl Run {
         }
 
         let volume_string = self.robot_ops.volume.to_string();
-        let mut envs = vec![("YGGDRASIL_VOLUME", volume_string.as_str())];
-
+        let mut envs = vec![("YGGDRASIL_VOLUME".to_owned(), volume_string)];
+        if let Some(Some(rerun_storage_path)) = self.robot_ops.rerun {
+            envs.push(("RERUN_STORAGE_PATH".to_owned(), rerun_storage_path));
+        }
         if self.debug {
-            envs.push(("RUST_LOG", "debug"));
+            envs.push(("RUST_LOG".to_owned(), "debug".to_owned()));
         }
 
         if rerun {
@@ -111,7 +113,7 @@ impl Run {
                 Ok(local_ip.to_string())
             });
 
-            envs.push(("RERUN_HOST", rerun_host?.leak()));
+            envs.push(("RERUN_HOST".to_owned(), rerun_host?));
 
             if has_rerun {
                 let robot_ip = if !self.robot_ops.local {

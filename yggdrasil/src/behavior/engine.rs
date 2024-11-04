@@ -1,19 +1,27 @@
 //! The engine managing behavior execution and role state.
 
 use bevy::prelude::*;
-use bifrost::communication::GameControllerMessage;
+use bifrost::communication::{GameControllerMessage, GamePhase};
 use enum_dispatch::enum_dispatch;
+use heimdall::{Bottom, Top};
 use nalgebra::Point2;
 
 use crate::{
     behavior::{
-        behaviors::{CatchFall, Observe, Sitting, Standup, StartUp, Walk},
+        behaviors::{
+            CatchFall, Observe, Sitting, Stand, StandLookAt, Standup, StartUp, Walk, WalkTo,
+            WalkToSet,
+        },
         primary_state::PrimaryState,
-        roles::Attacker,
+        roles::{Defender, Goalkeeper, Striker},
         BehaviorConfig,
     },
     core::{
-        config::{layout::LayoutConfig, showtime::PlayerConfig, yggdrasil::YggdrasilConfig},
+        config::{
+            layout::{FieldConfig, LayoutConfig},
+            showtime::PlayerConfig,
+            yggdrasil::YggdrasilConfig,
+        },
         debug::DebugContext,
     },
     game_controller::GameControllerConfig,
@@ -25,11 +33,7 @@ use crate::{
         falling::FallState,
         fsr::Contacts,
     },
-};
-
-use super::{
-    behaviors::{Stand, StandLookAt, WalkToSet},
-    roles::Keeper,
+    vision::ball_detection::classifier::Balls,
 };
 
 /// Context that is passed into the behavior engine.
@@ -127,6 +131,7 @@ pub enum BehaviorKind {
     Observe(Observe),
     Stand(Stand),
     Walk(Walk),
+    WalkTo(WalkTo),
     WalkToSet(WalkToSet),
     Standup(Standup),
     CatchFall(CatchFall),
@@ -185,13 +190,14 @@ pub trait Role {
 ///
 /// # Notes
 /// - New role implementations should be added as new variants to this enum
-/// - The specific struct for each role (e.g., [`Attacker`]) should implement the [`Role`] trait.
+/// - The specific struct for each role (e.g., [`Striker`]) should implement the [`Role`] trait.
 #[enum_dispatch(Role)]
 #[derive(Debug)]
 pub enum RoleKind {
-    Attacker(Attacker),
+    Striker(Striker),
+    Goalkeeper(Goalkeeper),
+    Defender(Defender),
     // Add new roles here!
-    Keeper(Keeper),
 }
 
 impl RoleKind {
@@ -199,9 +205,9 @@ impl RoleKind {
     fn by_player_number(player_number: u8) -> Self {
         // TODO: get the default role for each robot by player number
         match player_number {
-            1 => RoleKind::Keeper(Keeper),
-            5 => RoleKind::Attacker(Attacker),
-            _ => RoleKind::Attacker(Attacker),
+            1 => RoleKind::Goalkeeper(Goalkeeper),
+            5 => RoleKind::Striker(Striker::default()),
+            _ => RoleKind::Defender(Defender),
         }
     }
 }
@@ -210,7 +216,7 @@ impl RoleKind {
 #[derive(Debug, Resource)]
 pub struct BehaviorEngine {
     /// Current robot role
-    role: RoleKind,
+    pub role: RoleKind,
     /// Current robot behavior
     // TODO: Make private.
     pub behavior: BehaviorKind,
@@ -220,7 +226,7 @@ pub struct BehaviorEngine {
 impl Default for BehaviorEngine {
     fn default() -> Self {
         Self {
-            role: RoleKind::Attacker(Attacker),
+            role: RoleKind::Defender(Defender),
             behavior: BehaviorKind::default(),
             prev_behavior_for_standup: None,
         }
@@ -230,13 +236,20 @@ impl Default for BehaviorEngine {
 impl BehaviorEngine {
     /// Assigns roles based on player number and other information like what
     /// robot is closest to the ball, missing robots, etc.
-    fn assign_role(context: Context) -> RoleKind {
+    fn assign_role(&self, context: Context) -> RoleKind {
+        if context.ball_position.is_some() {
+            if let RoleKind::Striker(striker) = &self.role {
+                return RoleKind::Striker(*striker);
+            }
+            return RoleKind::Striker(Striker::default());
+        }
+
         RoleKind::by_player_number(context.player_config.player_number)
     }
 
     /// Executes one step of the behavior engine
     pub fn step(&mut self, context: Context, control: &mut Control) {
-        self.role = Self::assign_role(context.clone());
+        self.role = self.assign_role(context.clone());
 
         self.transition(context.clone(), control);
 
@@ -290,6 +303,17 @@ impl BehaviorEngine {
             }
         }
 
+        if let Some(message) = context.game_controller_message {
+            if message.game_phase == GamePhase::PenaltyShoot {
+                if message.kicking_team == 8 {
+                    self.role = RoleKind::Striker(Striker::WalkWithBall);
+                } else {
+                    self.behavior = BehaviorKind::Stand(Stand);
+                    return;
+                }
+            }
+        }
+
         let ball_or_origin = context.ball_position.unwrap_or(Point2::origin());
 
         self.behavior = match context.primary_state {
@@ -301,7 +325,9 @@ impl BehaviorEngine {
             PrimaryState::Initial => BehaviorKind::StandLookAt(StandLookAt {
                 target: Point2::origin(),
             }),
-            PrimaryState::Ready => BehaviorKind::WalkToSet(WalkToSet),
+            PrimaryState::Ready => BehaviorKind::WalkToSet(WalkToSet {
+                is_goalkeeper: matches!(self.role, RoleKind::Goalkeeper(_)),
+            }),
             PrimaryState::Set => BehaviorKind::StandLookAt(StandLookAt {
                 target: ball_or_origin,
             }),
@@ -330,12 +356,20 @@ pub fn step(
         ResMut<StepPlanner>,
     ),
     debug_context: DebugContext<'_>,
-    (robot_pose, fall_state, game_controller_message): (
+    (robot_pose, fall_state, top_balls, bottom_balls, game_controller_message): (
         Res<RobotPose>,
         Res<FallState>,
+        Res<Balls<Top>>,
+        Res<Balls<Bottom>>,
         Option<Res<GameControllerMessage>>,
     ),
 ) {
+    // we prefer balls in the bottom camera, as they are likely closer.
+    let most_confident_ball = bottom_balls
+        .most_confident_ball()
+        .map(|b| b.position)
+        .or(top_balls.most_confident_ball().map(|b| b.position));
+
     let context = Context {
         robot_info: robot_info.as_ref(),
         primary_state: primary_state.as_ref(),
@@ -350,7 +384,7 @@ pub fn step(
         game_controller_config: &game_controller_config,
         fall_state: &fall_state,
         pose: &robot_pose,
-        ball_position: &None,
+        ball_position: &most_confident_ball,
         current_behavior: engine.behavior.clone(),
     };
 
@@ -363,6 +397,24 @@ pub fn step(
     };
 
     engine.step(context, &mut control);
+}
+
+/// Filter out the balls that are outside the field.
+/// TODO: Properly filter this, and then use it
+/// <https://github.com/IntelligentRoboticsLab/yggdrasil/issues/392>
+#[allow(unused)]
+fn filter_ball_position(
+    ball_position: &Option<Point2<f32>>,
+    field_config: &FieldConfig,
+) -> Option<Point2<f32>> {
+    let half_field_size_x = field_config.length / 2.0 + field_config.border_strip_width;
+    let half_field_size_y = field_config.width / 2.0 + field_config.border_strip_width;
+    ball_position.filter(|position| {
+        position.x > half_field_size_x
+            || position.x < -half_field_size_x
+            || position.y > half_field_size_y
+            || position.y < -half_field_size_y
+    })
 }
 
 /// Plugin providing a state machine that keeps track of what behavior a

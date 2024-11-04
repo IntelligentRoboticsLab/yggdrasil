@@ -7,7 +7,7 @@ use std::{future::Future, marker::PhantomData, sync::atomic::AtomicU32};
 use bevy::{
     ecs::world::CommandQueue,
     prelude::*,
-    tasks::{AsyncComputeTaskPool, ComputeTaskPool, IoTaskPool, Scope, Task},
+    tasks::{block_on, AsyncComputeTaskPool, ComputeTaskPool, IoTaskPool, Task},
     utils::futures::check_ready,
 };
 use strategy::{entity::EntityStrategy, resource::ResourceStrategy};
@@ -102,13 +102,13 @@ impl<'a, 'w, 's> TaskBuilder<'a, 'w, 's, UnsetTask> {
         }
     }
 
-    pub fn scope<'env, F, T>(&self, f: F) -> Vec<T>
+    pub fn spawn_blocking<F, T>(&self, fut: F) -> T
     where
-        F: for<'scope> FnOnce(&'scope Scope<'scope, 'env, T>),
+        F: Future<Output = T> + Send + 'static,
         T: Send + 'static,
     {
         let pool = self.pool.get();
-        pool.scope(f)
+        block_on(pool.spawn(fut))
     }
 }
 
