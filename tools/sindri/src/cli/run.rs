@@ -111,10 +111,10 @@ impl Run {
             envs.push(("RERUN_HOST".to_owned(), rerun_host?));
 
             if has_rerun {
-                let robot_ip = if !self.robot_ops.local {
-                    robot.ip()
-                } else {
+                let robot_ip = if self.robot_ops.local {
                     Ipv4Addr::UNSPECIFIED
+                } else {
+                    robot.ip()
                 };
                 spawn_rerun_viewer(robot_ip, self.robot_ops.rerun_mem_limit).await?;
             }

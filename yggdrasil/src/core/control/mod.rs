@@ -15,7 +15,7 @@ use bevy::{
 use miette::{IntoDiagnostic, Result};
 
 use connect::{listen_for_connection, setup_new_connection, ControlDataStream};
-use receive::{handle_message, ControlViewerMessage, ControlReceiver};
+use receive::{handle_message, ControlReceiver, ControlViewerMessage};
 use tasks::conditions::task_finished;
 use transmit::{
     send_current_state, ControlRobotMessage, ControlSender, TransmitDebugEnabledSystems,

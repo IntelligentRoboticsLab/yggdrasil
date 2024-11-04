@@ -91,6 +91,7 @@ pub struct TransmitDebugEnabledSystems {
 }
 
 impl TransmitDebugEnabledSystems {
+    #[must_use]
     pub fn system_id(&self) -> SystemId {
         self.system_id
     }

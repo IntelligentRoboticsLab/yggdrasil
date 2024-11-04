@@ -12,7 +12,7 @@ use re_viewer::external::{
 
 use yggdrasil::core::{
     control::{
-        receive::{ControlViewerMessage, ControlReceiver},
+        receive::{ControlReceiver, ControlViewerMessage},
         transmit::{ControlRobotMessage, ControlSender},
     },
     debug::debug_system::DebugEnabledSystems,

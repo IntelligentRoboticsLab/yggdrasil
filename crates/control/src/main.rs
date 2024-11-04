@@ -23,7 +23,10 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
 
-    tracing::info!("Starting rerun control and connection with {}", args.robot_ip);
+    tracing::info!(
+        "Starting rerun control and connection with {}",
+        args.robot_ip
+    );
 
     // Install handlers for panics and crashes that prints to stderr and send
     // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
