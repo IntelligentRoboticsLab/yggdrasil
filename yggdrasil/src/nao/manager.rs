@@ -12,7 +12,7 @@ use nidhogg::{
         color, ArmJoints, FillExt, HeadJoints, JointArray, LeftEar, LeftEye, LegJoints, RgbF32,
         RightEar, RightEye, Skull,
     },
-    NaoControlMessage,
+    NaoControlMessage, NaoState,
 };
 
 /// The stiffness constant for the "unstiff"/"floppy" state for robot joints.
@@ -21,6 +21,8 @@ const STIFFNESS_UNSTIFF: f32 = -1.0;
 const HIP_LOCK_STIFFNESS: f32 = 0.1;
 /// The set hip position in sitting mode, where the robot sits and starts.
 const HIP_POSITION: f32 = -0.9;
+
+const HEAD_TIME_STEP: f32 = 0.2;
 
 type JointValue = f32;
 
@@ -115,6 +117,44 @@ impl Default for ChestBlink {
 struct LedSettings<T> {
     value: T,
     priority: Option<Priority>,
+}
+
+enum HeadTarget {
+    None,
+    New {
+        target: UnitQuaternion<f32>,
+    },
+    Moving {
+        source: UnitQuaternion<f32>,
+        target: UnitQuaternion<f32>,
+        timestep: f32,
+    },
+}
+
+impl HeadTarget {
+    fn update(self, nao_state: &NaoState) -> Self {
+        match self {
+            HeadTarget::None => HeadTarget::None,
+            HeadTarget::New { target } => HeadTarget::Moving {
+                source: UnitQuaternion::from_euler_angles(
+                    0.0,
+                    nao_state.position.head_pitch,
+                    nao_state.position.head_yaw,
+                ),
+                target: target,
+                timestep: 0.0,
+            },
+            HeadTarget::Moving {
+                source,
+                target,
+                timestep,
+            } => HeadTarget::Moving {
+                source: source,
+                target: target,
+                timestep: timestep + HEAD_TIME_STEP,
+            },
+        }
+    }
 }
 
 /// Manager that handles the requests of multiple systems changing the desired nao state at the same time.
@@ -302,14 +342,11 @@ impl NaoManager {
         joint_stiffness: HeadJoints<JointValue>,
         priority: Priority,
     ) -> &mut Self {
-        let target = UnitQuaternion::from_euler_angles(
-            0.0,
-            joint_positions.pitch,
-            joint_positions.yaw
-        );
+        let target =
+            UnitQuaternion::from_euler_angles(0.0, joint_positions.pitch, joint_positions.yaw);
         self.head_target = target;
-        let source = UnitQuaternion::from_euler_angles(0.0, , yaw)
-        self.head_source = UnitQuaternion::from_euler_angles(0.0, , yaw)
+        // let source = UnitQuaternion::from_euler_angles(0.0, , yaw)
+        // self.head_source = UnitQuaternion::from_euler_angles(0.0, , yaw)
         // Reset the timestamp to 0 when making new target
         self.timestep = 0.0;
 
