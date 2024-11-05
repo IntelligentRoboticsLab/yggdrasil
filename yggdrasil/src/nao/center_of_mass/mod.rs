@@ -14,7 +14,7 @@ use crate::{
 };
 use bevy::prelude::*;
 pub use robot_masses::*;
-use spatial::types::{Point3, Vector3};
+use spatial::types::Point3;
 
 /// Plugin which adds the `CoM` of the robot to the storage, and updates it each cycle.
 ///
