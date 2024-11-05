@@ -23,18 +23,27 @@ impl<T, S: SpaceOver<T>> InSpace<T, S> {
             phantom: PhantomData,
         }
     }
-}
 
-impl<T, S: SpaceOver<T>> From<T> for InSpace<T, S> {
-    /// Wrap a `T` into a `InSpace<T, S>`.
-    fn from(inner: T) -> Self {
-        Self::new(inner)
+    pub fn from<T2>(other: InSpace<T2, S>) -> InSpace<T, S>
+    where
+        T: From<T2>,
+        S: SpaceOver<T2>,
+    {
+        InSpace::new(From::from(other.inner))
+    }
+
+    pub fn into<T2>(self) -> InSpace<T2, S>
+    where
+        T: Into<T2>,
+        S: SpaceOver<T2>,
+    {
+        InSpace::new(self.inner.into())
     }
 }
 
 impl<T: Clone, S: SpaceOver<T>> Clone for InSpace<T, S> {
     fn clone(&self) -> Self {
-        self.inner.clone().into()
+        Self::new(self.inner.clone())
     }
 }
 
@@ -52,7 +61,7 @@ where
 
 impl<T: Default, S: SpaceOver<T>> Default for InSpace<T, S> {
     fn default() -> Self {
-        T::default().into()
+        Self::new(T::default())
     }
 }
 
@@ -86,7 +95,7 @@ where
     type Output = InSpace<T1::Output, S>;
 
     fn add(self, rhs: InSpace<T2, S>) -> Self::Output {
-        (self.inner + rhs.inner).into()
+        Self::Output::new(self.inner + rhs.inner)
     }
 }
 
@@ -98,7 +107,7 @@ where
     type Output = InSpace<T1::Output, S>;
 
     fn add(self, rhs: &'a InSpace<T2, S>) -> Self::Output {
-        (self.inner + &rhs.inner).into()
+        Self::Output::new(self.inner + &rhs.inner)
     }
 }
 
@@ -110,7 +119,7 @@ where
     type Output = InSpace<<&'a T1 as Add<T2>>::Output, S>;
 
     fn add(self, rhs: InSpace<T2, S>) -> Self::Output {
-        (&self.inner + rhs.inner).into()
+        Self::Output::new(&self.inner + rhs.inner)
     }
 }
 
@@ -122,7 +131,7 @@ where
     type Output = InSpace<<&'a T1 as Add<&'a T2>>::Output, S>;
 
     fn add(self, rhs: &'a InSpace<T2, S>) -> Self::Output {
-        (&self.inner + &rhs.inner).into()
+        Self::Output::new(&self.inner + &rhs.inner)
     }
 }
 
@@ -154,7 +163,7 @@ where
     type Output = InSpace<T1::Output, S>;
 
     fn sub(self, rhs: InSpace<T2, S>) -> Self::Output {
-        (self.inner - rhs.inner).into()
+        Self::Output::new(self.inner - rhs.inner)
     }
 }
 
@@ -166,7 +175,7 @@ where
     type Output = InSpace<T1::Output, S>;
 
     fn sub(self, rhs: &'a InSpace<T2, S>) -> Self::Output {
-        (self.inner - &rhs.inner).into()
+        Self::Output::new(self.inner - &rhs.inner)
     }
 }
 
@@ -178,7 +187,7 @@ where
     type Output = InSpace<<&'a T1 as Sub<T2>>::Output, S>;
 
     fn sub(self, rhs: InSpace<T2, S>) -> Self::Output {
-        (&self.inner - rhs.inner).into()
+        Self::Output::new(&self.inner - rhs.inner)
     }
 }
 
@@ -190,7 +199,7 @@ where
     type Output = InSpace<<&'a T1 as Sub<&'a T2>>::Output, S>;
 
     fn sub(self, rhs: &'a InSpace<T2, S>) -> Self::Output {
-        (&self.inner - &rhs.inner).into()
+        Self::Output::new(&self.inner - &rhs.inner)
     }
 }
 
@@ -222,7 +231,7 @@ where
     type Output = InSpace<T1::Output, S>;
 
     fn mul(self, rhs: InSpace<T2, S>) -> Self::Output {
-        (self.inner * rhs.inner).into()
+        Self::Output::new(self.inner * rhs.inner)
     }
 }
 
@@ -234,7 +243,7 @@ where
     type Output = InSpace<T1::Output, S>;
 
     fn mul(self, rhs: &'a InSpace<T2, S>) -> Self::Output {
-        (self.inner * &rhs.inner).into()
+        Self::Output::new(self.inner * &rhs.inner)
     }
 }
 
@@ -246,7 +255,7 @@ where
     type Output = InSpace<<&'a T1 as Mul<T2>>::Output, S>;
 
     fn mul(self, rhs: InSpace<T2, S>) -> Self::Output {
-        (&self.inner * rhs.inner).into()
+        Self::Output::new(&self.inner * rhs.inner)
     }
 }
 
@@ -258,7 +267,7 @@ where
     type Output = InSpace<<&'a T1 as Mul<&'a T2>>::Output, S>;
 
     fn mul(self, rhs: &'a InSpace<T2, S>) -> Self::Output {
-        (&self.inner * &rhs.inner).into()
+        Self::Output::new(&self.inner * &rhs.inner)
     }
 }
 
@@ -270,7 +279,7 @@ where
     type Output = InSpace<T, S>;
 
     fn mul(self, rhs: f32) -> Self::Output {
-        (self.inner * rhs).into()
+        Self::new(self.inner * rhs)
     }
 }
 
@@ -282,7 +291,7 @@ where
     type Output = InSpace<T, S>;
 
     fn mul(self, rhs: InSpace<T, S>) -> Self::Output {
-        (rhs.inner * self).into()
+        Self::Output::new(rhs.inner * self)
     }
 }
 
@@ -314,7 +323,7 @@ where
     type Output = InSpace<T1::Output, S>;
 
     fn div(self, rhs: InSpace<T2, S>) -> Self::Output {
-        (self.inner / rhs.inner).into()
+        Self::Output::new(self.inner / rhs.inner)
     }
 }
 
@@ -326,7 +335,7 @@ where
     type Output = InSpace<T1::Output, S>;
 
     fn div(self, rhs: &'a InSpace<T2, S>) -> Self::Output {
-        (self.inner / &rhs.inner).into()
+        Self::Output::new(self.inner / &rhs.inner)
     }
 }
 
@@ -338,7 +347,7 @@ where
     type Output = InSpace<<&'a T1 as Div<T2>>::Output, S>;
 
     fn div(self, rhs: InSpace<T2, S>) -> Self::Output {
-        (&self.inner / rhs.inner).into()
+        Self::Output::new(&self.inner / rhs.inner)
     }
 }
 
@@ -350,7 +359,7 @@ where
     type Output = InSpace<<&'a T1 as Div<&'a T2>>::Output, S>;
 
     fn div(self, rhs: &'a InSpace<T2, S>) -> Self::Output {
-        (&self.inner / &rhs.inner).into()
+        Self::Output::new(&self.inner / &rhs.inner)
     }
 }
 
@@ -362,7 +371,7 @@ where
     type Output = InSpace<T, S>;
 
     fn div(self, rhs: f32) -> Self::Output {
-        (self.inner / rhs).into()
+        Self::new(self.inner / rhs)
     }
 }
 

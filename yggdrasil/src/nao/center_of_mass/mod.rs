@@ -14,7 +14,7 @@ use crate::{
 };
 use bevy::prelude::*;
 pub use robot_masses::*;
-use spatial::types::Vector3;
+use spatial::types::{Point3, Vector3};
 
 /// Plugin which adds the `CoM` of the robot to the storage, and updates it each cycle.
 ///
@@ -43,7 +43,7 @@ impl Plugin for CenterOfMassPlugin {
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq)]
 pub struct CenterOfMass {
     /// The center of mass of the robot in *robot* frame.
-    pub position: Vector3<Robot>,
+    pub position: Point3<Robot>,
 }
 
 fn update_com(kinematics: Res<Kinematics>, mut com: ResMut<CenterOfMass>) {
@@ -73,7 +73,7 @@ fn update_com(kinematics: Res<Kinematics>, mut com: ResMut<CenterOfMass>) {
         + kinematics.transform(&RIGHT_ANKLE.center) * RIGHT_ANKLE.mass;
 
     *com = CenterOfMass {
-        position: new_com / TOTAL_MASS,
+        position: (new_com / TOTAL_MASS).into(),
     };
 }
 
@@ -86,7 +86,7 @@ fn setup_com_visualization(dbg: DebugContext) {
 }
 
 fn visualize_com(dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) {
-    let absolute_com_position = pose.robot_to_world(&com.position.inner.xy().into());
+    let absolute_com_position = pose.robot_to_world(&com.position.inner.xy());
     dbg.log(
         "localization/pose/com",
         &rerun::Points3D::new([(

@@ -60,7 +60,7 @@ impl Kinematics {
         S2: Space + SpaceOver<na::Isometry3<f32>>,
         Self: Transform<na::Isometry3<f32>, na::Isometry3<f32>, S1, S2>,
     {
-        self.transform(&na::Isometry3::identity().into())
+        self.transform(&InSpace::new(na::Isometry3::identity()))
             .inner
             .into()
     }
