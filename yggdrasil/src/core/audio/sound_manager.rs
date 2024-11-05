@@ -10,6 +10,7 @@ use kira::{
 use miette::{Context, IntoDiagnostic};
 use std::sync::{Arc, Mutex};
 
+use super::battery_sound::BatterySoundPlugin;
 use super::wee_sound::WeeSoundPlugin;
 
 const VOLUME_ENV_VARIABLE_NAME: &str = "YGGDRASIL_VOLUME";
@@ -22,6 +23,7 @@ const VOLUME_ENV_VARIABLE_NAME: &str = "YGGDRASIL_VOLUME";
 pub enum Sound {
     Weee,
     Ghast,
+    ChargeMe,
 }
 
 impl Sound {
@@ -29,6 +31,7 @@ impl Sound {
         match self {
             Self::Weee => "./assets/sounds/weeeee.wav",
             Self::Ghast => "./assets/sounds/ghast.wav",
+            Self::ChargeMe => "./assets/sounds/batterysound.wav",
         }
     }
 }
@@ -39,7 +42,8 @@ pub struct SoundManagerPlugin;
 impl Plugin for SoundManagerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SoundManager>()
-            .add_plugins(WeeSoundPlugin);
+            .add_plugins(WeeSoundPlugin)
+            .add_plugins(BatterySoundPlugin);
     }
 }
 
