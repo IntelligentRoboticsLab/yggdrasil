@@ -118,7 +118,7 @@ impl Control {
         ui.horizontal(|ui| {
             ui.add_space(ui.available_width());
 
-            // Shows the last resource update in miliseconds
+            // Shows the last resource update in milliseconds
             ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
                 let last_resource_update = {
                     match self.states.last_resource_update {
