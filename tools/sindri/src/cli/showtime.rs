@@ -26,7 +26,7 @@ impl Showtime {
     /// uploads binaries and other assets and the restarts the yggdrasil service
     /// on each robot.
     pub async fn showtime(self, config: SindriConfig) -> Result<()> {
-        self.robot_ops.prepare_showtime_config()?;
+        self.robot_ops.prepare_showtime_config(&config)?;
 
         let compile_bar = ProgressBar::new(1);
         let output = robot_ops::Output::Single(compile_bar.clone());

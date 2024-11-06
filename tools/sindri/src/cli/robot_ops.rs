@@ -181,17 +181,18 @@ impl ConfigOptsRobotOps {
         self.get_robot(&self.robots[0].robot_id, config)
     }
 
-    pub(crate) fn prepare_showtime_config(&self) -> miette::Result<()> {
+    pub(crate) fn prepare_showtime_config(&self, config:&SindriConfig) -> miette::Result<()> {
         let mut robot_assignments = HashMap::new();
         for RobotEntry {
             robot_id,
             player_number,
         } in &self.robots
         {
+            let robot = self.get_robot(robot_id, config).unwrap();
             if let Some(player_number) = player_number {
-                robot_assignments.insert((*robot_id).to_string(), *player_number);
+                robot_assignments.insert((robot.number).to_string(), *player_number);
             } else {
-                robot_assignments.insert((*robot_id).to_string(), DEFAULT_PLAYER_NUMBER);
+                robot_assignments.insert((robot.number).to_string(), DEFAULT_PLAYER_NUMBER);
             }
         }
         let showtime_config = ShowtimeConfig {
