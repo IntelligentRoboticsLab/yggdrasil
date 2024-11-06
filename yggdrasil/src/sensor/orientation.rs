@@ -1,10 +1,20 @@
+use std::time::Duration;
+
 use super::imu::IMUValues;
+use crate::core::debug::DebugContext;
+use crate::nao::Cycle;
 use crate::prelude::*;
 use crate::{behavior::primary_state::PrimaryState, nao::CycleTime};
 use bevy::prelude::*;
+use image::codecs::hdr::HdrMetadata;
 use nalgebra::{Quaternion, UnitComplex, UnitQuaternion, Vector3};
-use nidhogg::types::ForceSensitiveResistors;
+use nidhogg::types::{ForceSensitiveResistors, HeadJoints};
+use nidhogg::NaoState;
+use rerun::components::RotationQuat;
+use rerun::{ComponentBatch, Rotation3D};
+use serde::de::IntoDeserializer;
 use serde::{Deserialize, Serialize};
+use vqf::{Vqf, VqfParameters};
 
 const GRAVITY_CONSTANT: f32 = 9.81;
 
@@ -16,13 +26,126 @@ pub struct OrientationFilterPlugin;
 
 impl Plugin for OrientationFilterPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Sensor, update_orientation.after(super::imu::imu_sensor))
-            .add_systems(PostStartup, init_orientation_filter);
+        app.add_systems(
+            Sensor,
+            (update_orientation, update_vqf)
+                .chain()
+                .after(super::imu::imu_sensor),
+        )
+        .add_systems(PostStartup, (init_orientation_filter, init_vqf));
     }
 }
 
 fn init_orientation_filter(mut commands: Commands, config: Res<OrientationFilterConfig>) {
     commands.insert_resource(RobotOrientation::with_config(&config));
+}
+
+#[derive(Resource, Deref, DerefMut)]
+struct VqfOrientation(Vqf);
+
+fn init_vqf(mut commands: Commands, dbg: DebugContext, imu: Res<IMUValues>) {
+    // imu rate is 82Hz
+    let imu_rate = 82.0;
+    let imu_sample_period = Duration::from_secs_f32(1.0 / imu_rate);
+
+    let params = VqfParameters {
+        bias_sigma_initial: 0.5,
+        ..default()
+    };
+    let mut vqf = Vqf::new(imu_sample_period, imu_sample_period, params);
+    tracing::info!(?vqf.coefficients);
+
+    setup_orientation_log(&dbg, "vqf_orientation", (0.0, 0.0, 0.3));
+    setup_orientation_log(&dbg, "original_orientation", (0.0, 0.0, 0.3));
+
+    commands.insert_resource(VqfOrientation(vqf));
+}
+
+fn setup_orientation_log(dbg: &DebugContext<'_>, path: &'static str, origin: (f32, f32, f32)) {
+    dbg.log_static(
+        path,
+        &rerun::Arrows3D::from_vectors([(0., 0., 1.0)]).with_origins([origin]),
+    );
+
+    dbg.log_static(path, &rerun::ViewCoordinates::FRD);
+    dbg.log_component_batches(
+        path,
+        true,
+        [&rerun::components::AxisLength(0.3.into()) as _],
+    );
+}
+
+fn update_vqf(
+    dbg: DebugContext,
+    cycle: Res<Cycle>,
+    mut vqf: ResMut<VqfOrientation>,
+    original: Res<RobotOrientation>,
+    imu: Res<IMUValues>,
+) {
+    vqf.update(imu.gyroscope, imu.accelerometer);
+
+    let orientation = vqf.orientation();
+
+    dbg.log_with_cycle(
+        "vqf_orientation",
+        *cycle,
+        &rerun::Transform3D::from_rotation(rerun::Quaternion::from_wxyz([
+            orientation.w,
+            orientation.i,
+            orientation.j,
+            orientation.k,
+        ])),
+    );
+
+    let (roll, pitch, yaw) = orientation.euler_angles();
+    dbg.log_with_cycle(
+        "orientation/vqf_roll",
+        *cycle,
+        &rerun::Scalar::new(roll as f64),
+    );
+    dbg.log_with_cycle(
+        "orientation/vqf_pitch",
+        *cycle,
+        &rerun::Scalar::new(pitch as f64),
+    );
+    dbg.log_with_cycle(
+        "orientation/vqf_yaw",
+        *cycle,
+        &rerun::Scalar::new(yaw as f64),
+    );
+
+    let orientation =
+        original.orientation * UnitQuaternion::from_euler_angles(std::f32::consts::PI, 0., 0.);
+    dbg.log_with_cycle(
+        "original_orientation",
+        *cycle,
+        &rerun::Transform3D::from_rotation(rerun::Quaternion::from_wxyz([
+            orientation.w,
+            orientation.i,
+            orientation.j,
+            orientation.k,
+        ]))
+        .with_translation((2.0, 0.0, 0.)),
+    );
+
+    let (roll, pitch, yaw) = orientation.euler_angles();
+
+    dbg.log_with_cycle(
+        "orientation/original_roll",
+        *cycle,
+        &rerun::Scalar::new(roll as f64),
+    );
+    dbg.log_with_cycle(
+        "orientation/original_pitch",
+        *cycle,
+        &rerun::Scalar::new(pitch as f64),
+    );
+
+    dbg.log_with_cycle(
+        "orientation/original_yaw",
+        *cycle,
+        &rerun::Scalar::new(yaw as f64),
+    );
 }
 
 pub fn update_orientation(
@@ -32,14 +155,15 @@ pub fn update_orientation(
     cycle: Res<CycleTime>,
     primary_state: Res<PrimaryState>,
 ) {
-    match *primary_state {
-        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
-            orientation.reset();
-        }
-        _ => {
-            orientation.update(&imu, &fsr, &cycle);
-        }
-    }
+    orientation.update(&imu, &fsr, &cycle);
+    // match *primary_state {
+    //     PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
+    //         orientation.reset();
+    //     }
+    //     _ => {
+
+    //     }
+    // }
 }
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]
