@@ -8,6 +8,7 @@ use colored::Colorize;
 use futures::{stream::FuturesOrdered, TryStreamExt};
 use miette::{miette, IntoDiagnostic, Result};
 use tokio::process::Command;
+use crate::cli::robot_ops::NameOrNum;
 
 use crate::config::{Robot, SindriConfig};
 
@@ -56,7 +57,7 @@ impl Scan {
                     Robot::new("unknown", robot_number, team_number, self.scan.wired)
                 }
                 None => config
-                    .robot(robot_number, self.scan.wired)
+                    .robot(&NameOrNum::Number(robot_number), self.scan.wired)
                     .unwrap_or_else(|| {
                         Robot::new("unknown", robot_number, config.team_number, self.scan.wired)
                     }),

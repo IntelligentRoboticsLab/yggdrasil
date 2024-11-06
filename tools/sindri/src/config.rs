@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::{ffi::OsStr, net::Ipv4Addr};
 use tokio::process::{Child, Command};
+use crate::cli::robot_ops::NameOrNum;
 
 use crate::error::Error;
 
@@ -65,11 +66,15 @@ impl<'a> SindriConfig {
     /// Get a [`Robot`] instance using the provided number.
     ///
     /// If there's no [`Robot`] configured with the provided number, this will return an [`Option::None`].
-    #[must_use]
-    pub fn robot(&'a self, number: u8, wired: bool) -> Option<Robot> {
+    pub fn robot(&'a self, id: &NameOrNum, wired: bool) -> Option<Robot> {
         self.robots
             .iter()
-            .find(|r| r.number == number)
+            .find(|r| {
+                match id {
+                    NameOrNum::Name(name) => name == &r.name,
+                    NameOrNum::Number(number) => number == &r.number
+                }
+            })
             .cloned()
             .map(|c| c.to_robot(self.team_number, wired))
     }

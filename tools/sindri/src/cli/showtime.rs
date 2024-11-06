@@ -36,7 +36,7 @@ impl Showtime {
             let output = robot_ops::Output::Single(compile_bar.clone());
             let robot = config
                 .robot(
-                    self.robot_ops.robots.first().unwrap().robot_number,
+                    &self.robot_ops.robots.first().unwrap().robot_id,
                     self.robot_ops.wired,
                 )
                 .unwrap();
@@ -87,7 +87,7 @@ impl Showtime {
 
         for robot in &self.robot_ops.robots {
             let robot = config
-                .robot(robot.robot_number, self.robot_ops.wired)
+                .robot(&robot.robot_id, self.robot_ops.wired)
                 .unwrap();
             let multi = multi.clone();
             let network = self.robot_ops.network.clone();

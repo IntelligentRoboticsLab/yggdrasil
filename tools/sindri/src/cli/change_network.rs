@@ -8,6 +8,7 @@ use indicatif::HumanDuration;
 use indicatif::ProgressBar;
 use miette::miette;
 use miette::Result;
+use crate::cli::robot_ops::NameOrNum;
 
 /// Changes the default network a specified robot connects to.
 #[derive(Parser, Debug)]
@@ -22,7 +23,7 @@ pub struct ChangeNetwork {
 
 impl ChangeNetwork {
     pub async fn change_network(self, config: SindriConfig) -> Result<()> {
-        let robot = config.robot(self.robot, self.wired).ok_or(miette!(format!(
+        let robot = config.robot(&NameOrNum::Number(self.robot), self.wired).ok_or(miette!(format!(
             "Invalid robot specified, number {} is not configured!",
             self.robot
         )))?;

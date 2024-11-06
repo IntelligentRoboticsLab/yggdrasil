@@ -39,11 +39,27 @@ const LOCAL_ROBOT_ID_STR: &str = "0";
 /// is rather slow due to the locking mechanism.
 const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
 
+// enum for either the name or the number of a robot thats given
+#[derive(Clone, Debug)]
+pub enum NameOrNum {
+    Name(String),
+    Number(u8)
+}
+
+impl ToString for NameOrNum {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Name(name) => name.clone(),
+            Self::Number(number) => format!("{number}"),
+        }
+    }
+}
+
 /// Because clap does not support `HashMaps`, we have to implement a vector with
 /// a wrapper.
 #[derive(Clone, Debug)]
 pub struct RobotEntry {
-    pub robot_number: u8,
+    pub robot_id: NameOrNum,
     pub player_number: Option<u8>,
 }
 
@@ -53,17 +69,31 @@ impl FromStr for RobotEntry {
     // Parses robot:player_number pairs. Player numbers are optional, if they
     // are not passed, defaults are used. Valid arguments pairs could be: "23:1"
     // or "24".
+
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         let mut m = s.split(':');
-        let robot: u8 = m.next().unwrap().parse().into_diagnostic()?;
+
+        // unwrap robot number
+        // m.next().unwrap().parse().into_diagnostic()?;
+
+        // unwrap robot name or number
+        let name_or_number = m.next().unwrap();
+        let robot = if let Ok(robot) = name_or_number.parse::<u8>() {
+            NameOrNum::Number(robot)
+        } else {
+            NameOrNum::Name(name_or_number.to_string())
+        };
+
+        // get player number
         let player_number: Option<u8> = m
             .next()
             .map(FromStr::from_str)
             .transpose()
             .into_diagnostic()?;
 
+        // create robot entry with number
         Ok(RobotEntry {
-            robot_number: robot,
+            robot_id: robot,
             player_number,
         })
     }
@@ -135,10 +165,10 @@ impl ConfigOptsRobotOps {
     }
 
     /// Get a specific robot
-    pub fn get_robot(&self, robot: u8, config: &SindriConfig) -> miette::Result<Robot> {
+    pub fn get_robot(&self, robot:&NameOrNum , config: &SindriConfig) -> miette::Result<Robot> {
         config.robot(robot, self.wired).ok_or(miette!(format!(
             "Invalid robot specified, number {} is not configured!",
-            robot
+            robot.to_string()
         )))
     }
 
@@ -148,20 +178,20 @@ impl ConfigOptsRobotOps {
             return Err(miette!("Pass at least one robot number as argument"));
         }
 
-        self.get_robot(self.robots[0].robot_number, config)
+        self.get_robot(&self.robots[0].robot_id, config)
     }
 
     pub(crate) fn prepare_showtime_config(&self) -> miette::Result<()> {
         let mut robot_assignments = HashMap::new();
         for RobotEntry {
-            robot_number,
+            robot_id,
             player_number,
         } in &self.robots
         {
             if let Some(player_number) = player_number {
-                robot_assignments.insert((*robot_number).to_string(), *player_number);
+                robot_assignments.insert((*robot_id).to_string(), *player_number);
             } else {
-                robot_assignments.insert((*robot_number).to_string(), DEFAULT_PLAYER_NUMBER);
+                robot_assignments.insert((*robot_id).to_string(), DEFAULT_PLAYER_NUMBER);
             }
         }
         let showtime_config = ShowtimeConfig {
