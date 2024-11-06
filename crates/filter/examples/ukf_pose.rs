@@ -159,7 +159,7 @@ fn main() {
     }))
     .unwrap()
     .label("Ground truth")
-    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RED));
 
     ctx.draw_series(x_noisy.iter().map(|point| {
         let translation = point.isom.translation.vector;
@@ -167,7 +167,7 @@ fn main() {
     }))
     .unwrap()
     .label("Dead reckoning")
-    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE));
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], BLUE));
 
     ctx.draw_series(x_unscented.iter().map(|point| {
         let translation = point.isom.translation.vector;
@@ -175,11 +175,11 @@ fn main() {
     }))
     .unwrap()
     .label("Ukf values")
-    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &GREEN));
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], GREEN));
 
     ctx.configure_series_labels()
-        .border_style(&BLACK)
-        .background_style(&WHITE.mix(0.8))
+        .border_style(BLACK)
+        .background_style(WHITE.mix(0.8))
         .position(SeriesLabelPosition::UpperLeft)
         .draw()
         .unwrap();
