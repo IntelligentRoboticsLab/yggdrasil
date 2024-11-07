@@ -2,17 +2,13 @@ use std::time::Duration;
 
 use super::imu::IMUValues;
 use crate::core::debug::DebugContext;
+use crate::localization::RobotPose;
 use crate::nao::Cycle;
 use crate::prelude::*;
 use crate::{behavior::primary_state::PrimaryState, nao::CycleTime};
 use bevy::prelude::*;
-use image::codecs::hdr::HdrMetadata;
 use nalgebra::{Quaternion, UnitComplex, UnitQuaternion, Vector3};
-use nidhogg::types::{ForceSensitiveResistors, HeadJoints};
-use nidhogg::NaoState;
-use rerun::components::RotationQuat;
-use rerun::{ComponentBatch, Rotation3D};
-use serde::de::IntoDeserializer;
+use nidhogg::types::ForceSensitiveResistors;
 use serde::{Deserialize, Serialize};
 use vqf::{Vqf, VqfParameters};
 
@@ -43,7 +39,7 @@ fn init_orientation_filter(mut commands: Commands, config: Res<OrientationFilter
 #[derive(Resource, Deref, DerefMut)]
 struct VqfOrientation(Vqf);
 
-fn init_vqf(mut commands: Commands, dbg: DebugContext, imu: Res<IMUValues>) {
+fn init_vqf(mut commands: Commands, dbg: DebugContext) {
     // imu rate is 82Hz
     let imu_rate = 82.0;
     let imu_sample_period = Duration::from_secs_f32(1.0 / imu_rate);
@@ -52,11 +48,11 @@ fn init_vqf(mut commands: Commands, dbg: DebugContext, imu: Res<IMUValues>) {
         bias_sigma_initial: 0.5,
         ..default()
     };
-    let mut vqf = Vqf::new(imu_sample_period, imu_sample_period, params);
+    let vqf = Vqf::new(imu_sample_period, imu_sample_period, params);
     tracing::info!(?vqf.coefficients);
 
-    setup_orientation_log(&dbg, "vqf_orientation", (0.0, 0.0, 0.3));
-    setup_orientation_log(&dbg, "original_orientation", (0.0, 0.0, 0.3));
+    setup_orientation_log(&dbg, "vqf_orientation", (0.0, 0.0, 0.2));
+    setup_orientation_log(&dbg, "original_orientation", (0.0, 0.0, 0.2));
 
     commands.insert_resource(VqfOrientation(vqf));
 }
@@ -64,10 +60,10 @@ fn init_vqf(mut commands: Commands, dbg: DebugContext, imu: Res<IMUValues>) {
 fn setup_orientation_log(dbg: &DebugContext<'_>, path: &'static str, origin: (f32, f32, f32)) {
     dbg.log_static(
         path,
-        &rerun::Arrows3D::from_vectors([(0., 0., 1.0)]).with_origins([origin]),
+        &rerun::Boxes3D::from_half_sizes([(0.05, 0.1, 0.2)]).with_centers([origin]),
     );
 
-    dbg.log_static(path, &rerun::ViewCoordinates::FRD);
+    dbg.log_static(path, &rerun::ViewCoordinates::FLU);
     dbg.log_component_batches(
         path,
         true,
@@ -81,10 +77,18 @@ fn update_vqf(
     mut vqf: ResMut<VqfOrientation>,
     original: Res<RobotOrientation>,
     imu: Res<IMUValues>,
+    pose: Res<RobotPose>,
 ) {
     vqf.update(imu.gyroscope, imu.accelerometer);
 
-    let orientation = vqf.orientation();
+    let one_over_sqrt_2 = 1.0 / f32::sqrt(2.0);
+    let orientation = UnitQuaternion::from_euler_angles(0., 0., std::f32::consts::PI / 2.0)
+        * (UnitQuaternion::from_quaternion(Quaternion::new(
+            0.,
+            one_over_sqrt_2,
+            one_over_sqrt_2,
+            0.,
+        )) * vqf.orientation());
 
     dbg.log_with_cycle(
         "vqf_orientation",
@@ -94,28 +98,30 @@ fn update_vqf(
             orientation.i,
             orientation.j,
             orientation.k,
-        ])),
+        ]))
+        .with_translation((pose.inner.translation.x, pose.inner.translation.y, 0.1)),
     );
 
     let (roll, pitch, yaw) = orientation.euler_angles();
     dbg.log_with_cycle(
         "orientation/vqf_roll",
         *cycle,
-        &rerun::Scalar::new(roll as f64),
+        &rerun::Scalar::new(f64::from(roll)),
     );
     dbg.log_with_cycle(
         "orientation/vqf_pitch",
         *cycle,
-        &rerun::Scalar::new(pitch as f64),
+        &rerun::Scalar::new(f64::from(pitch)),
     );
     dbg.log_with_cycle(
         "orientation/vqf_yaw",
         *cycle,
-        &rerun::Scalar::new(yaw as f64),
+        &rerun::Scalar::new(f64::from(yaw)),
     );
 
-    let orientation =
-        original.orientation * UnitQuaternion::from_euler_angles(std::f32::consts::PI, 0., 0.);
+    let flip =
+        UnitQuaternion::from_euler_angles(std::f32::consts::PI, 0.0, -std::f32::consts::PI / 2.0);
+    let orientation = flip * original.orientation;
     dbg.log_with_cycle(
         "original_orientation",
         *cycle,
@@ -125,7 +131,7 @@ fn update_vqf(
             orientation.j,
             orientation.k,
         ]))
-        .with_translation((2.0, 0.0, 0.)),
+        .with_translation((pose.inner.translation.x, pose.inner.translation.y, 0.1)),
     );
 
     let (roll, pitch, yaw) = orientation.euler_angles();
@@ -133,18 +139,18 @@ fn update_vqf(
     dbg.log_with_cycle(
         "orientation/original_roll",
         *cycle,
-        &rerun::Scalar::new(roll as f64),
+        &rerun::Scalar::new(f64::from(roll)),
     );
     dbg.log_with_cycle(
         "orientation/original_pitch",
         *cycle,
-        &rerun::Scalar::new(pitch as f64),
+        &rerun::Scalar::new(f64::from(pitch)),
     );
 
     dbg.log_with_cycle(
         "orientation/original_yaw",
         *cycle,
-        &rerun::Scalar::new(yaw as f64),
+        &rerun::Scalar::new(f64::from(yaw)),
     );
 }
 
@@ -156,14 +162,12 @@ pub fn update_orientation(
     primary_state: Res<PrimaryState>,
 ) {
     orientation.update(&imu, &fsr, &cycle);
-    // match *primary_state {
-    //     PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
-    //         orientation.reset();
-    //     }
-    //     _ => {
-
-    //     }
-    // }
+    match *primary_state {
+        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
+            orientation.reset();
+        }
+        _ => {}
+    }
 }
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]

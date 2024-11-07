@@ -105,7 +105,7 @@ quote = "1.0.37"
 rand = "0.8.5"
 rayon = "1.10.0"
 regex = "1.11.1"
-rerun = { version = "0.19.0", features = ["image"] }
+rerun = { version = "0.19.1", features = ["image"] }
 rustc_version = "0.4.1"
 rustfft = "6.2.0"
 serde = "1.0.213"
@@ -123,5 +123,5 @@ tracing-appender = "0.2.3"
 tracing-subscriber = "0.3.18"
 tracing-tracy = "0.11.3"
 turbojpeg = "1.1.1"
-vqf = { path = "../vqf" }
+vqf = { version = "0.3.0" }
 walkdir = "2.5.0"
