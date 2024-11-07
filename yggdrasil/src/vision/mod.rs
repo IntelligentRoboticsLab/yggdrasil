@@ -23,7 +23,7 @@ impl PluginGroup for VisionPlugins {
             .add(camera::CameraPlugin::<Bottom>::default())
             .add(scan_grid::ScanGridPlugin)
             .add(scan_lines::ScanLinesPlugin)
-            .add(line_detection::LineDetectionPlugin)
+            // .add(line_detection::LineDetectionPlugin)
             .add(line_detection2::LineDetectionPlugin)
             .add(field_boundary::FieldBoundaryPlugin)
             .add(ball_detection::BallDetectionPlugin)
