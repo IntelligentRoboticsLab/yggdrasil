@@ -157,7 +157,7 @@ impl WalkingEngine {
 
     pub(super) fn new(config: &WalkingEngineConfig, kinematics: &Kinematics) -> Self {
         let current_hip_height = kinematics
-            .isometry::<LeftSole, LeftHip>()
+            .isometry::<LeftHip, LeftSole>()
             .inner
             .translation
             .vector
