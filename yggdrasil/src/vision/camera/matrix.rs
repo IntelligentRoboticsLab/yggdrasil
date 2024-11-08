@@ -6,7 +6,11 @@ use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    kinematics::{robot_dimensions, RobotKinematics},
+    kinematics::{
+        dimensions,
+        spaces::{Head, Left, Right, Robot, Sole},
+        Kinematics,
+    },
     motion::walk::{engine::Side, SwingFoot},
     sensor::imu::IMUValues,
 };
@@ -38,7 +42,7 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
 fn update_camera_matrix<T: CameraLocation>(
     swing_foot: Res<SwingFoot>,
     imu: Res<IMUValues>,
-    kinematics: Res<RobotKinematics>,
+    kinematics: Res<Kinematics>,
     mut matrix: ResMut<CameraMatrix<T>>,
     config: Res<CameraConfig>,
 ) {
@@ -54,7 +58,7 @@ fn update_camera_matrix<T: CameraLocation>(
         config.calibration.cc_optical_center,
         image_size,
         camera_to_head,
-        kinematics.head_to_robot,
+        kinematics.isometry::<Head, Robot>().inner,
         robot_to_ground(&swing_foot, &imu, &kinematics),
     );
 }
@@ -62,18 +66,18 @@ fn update_camera_matrix<T: CameraLocation>(
 fn robot_to_ground(
     swing_foot: &SwingFoot,
     imu: &IMUValues,
-    kinematics: &RobotKinematics,
+    kinematics: &Kinematics,
 ) -> Isometry3<f32> {
     let roll_pitch = imu.angles;
     let roll = roll_pitch.x;
     let pitch = roll_pitch.y;
 
-    let left_sole_to_robot = kinematics.left_sole_to_robot;
+    let left_sole_to_robot = kinematics.isometry::<Sole<Left>, Robot>().inner;
     let imu_adjusted_robot_to_left_sole = Isometry3::rotation(Vector3::y() * pitch)
         * Isometry3::rotation(Vector3::x() * roll)
         * Isometry3::from(left_sole_to_robot.translation.inverse());
 
-    let right_sole_to_robot = kinematics.right_sole_to_robot;
+    let right_sole_to_robot = kinematics.isometry::<Sole<Right>, Robot>().inner;
     let imu_adjusted_robot_to_right_sole = Isometry3::rotation(Vector3::y() * pitch)
         * Isometry3::rotation(Vector3::x() * roll)
         * Isometry3::from(right_sole_to_robot.translation.inverse());
@@ -93,8 +97,8 @@ fn camera_to_head(position: CameraPosition, extrinsic_rotations: Vector3<f32>) -
     );
 
     let neck_to_camera = match position {
-        CameraPosition::Top => robot_dimensions::NECK_TO_TOP_CAMERA,
-        CameraPosition::Bottom => robot_dimensions::NECK_TO_BOTTOM_CAMERA,
+        CameraPosition::Top => dimensions::NECK_TO_TOP_CAMERA,
+        CameraPosition::Bottom => dimensions::NECK_TO_BOTTOM_CAMERA,
     };
 
     let camera_pitch = match position {

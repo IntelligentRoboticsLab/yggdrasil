@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     behavior::primary_state::PrimaryState,
-    kinematics::RobotKinematics,
+    kinematics::{
+        spaces::{LeftSole, RightSole},
+        Kinematics,
+    },
     motion::walk::{engine::Side, SwingFoot},
     sensor::orientation::RobotOrientation,
 };
@@ -29,7 +32,7 @@ pub fn update_odometry(
     mut odometry: ResMut<Odometry>,
     odometry_config: Res<OdometryConfig>,
     swing_foot: Res<SwingFoot>,
-    kinematics: Res<RobotKinematics>,
+    kinematics: Res<Kinematics>,
     orientation: Res<RobotOrientation>,
     primary_state: Res<PrimaryState>,
 ) {
@@ -67,19 +70,20 @@ impl Odometry {
         Self::default()
     }
 
-    /// Update the odometry of the robot using the given [`RobotKinematics`].
+    /// Update the odometry of the robot using the given [`Kinematics`].
     pub fn update(
         &mut self,
         config: &OdometryConfig,
         swing_foot: &SwingFoot,
-        kinematics: &RobotKinematics,
+        kinematics: &Kinematics,
         orientation: &RobotOrientation,
     ) {
-        let left_sole_to_robot = kinematics.left_sole_to_robot;
-        let right_sole_to_robot = kinematics.right_sole_to_robot;
-
-        let left_sole_to_right_sole =
-            (right_sole_to_robot.translation.vector - left_sole_to_robot.translation.vector).xy();
+        let left_sole_to_right_sole = kinematics
+            .isometry::<RightSole, LeftSole>()
+            .inner
+            .translation
+            .vector
+            .xy();
 
         // Compute offset to last position, divided by 2 to get the center of the robot.
         let offset = match swing_foot.support() {

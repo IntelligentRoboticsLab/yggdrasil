@@ -1,16 +1,24 @@
 use bevy::prelude::*;
+use nalgebra as na;
 use std::{f32::consts::PI, marker::PhantomData};
 
-use nalgebra::{Isometry3, Rotation3, Translation3, Vector3};
 use nidhogg::NaoState;
 
-use self::robot_dimensions::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS};
+use self::dimensions::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS};
+use self::spaces::{Left, Right};
 
+pub mod dimensions;
 pub mod forward;
 pub mod inverse;
-pub mod robot_dimensions;
+pub mod spaces;
 
-pub use forward::RobotKinematics;
+pub mod prelude {
+    pub use super::dimensions::*;
+    pub use super::spaces::*;
+    pub use super::Kinematics;
+}
+
+pub use forward::Kinematics;
 
 /// Plugin for the kinematics of the robot.
 ///
@@ -19,14 +27,14 @@ pub struct KinematicsPlugin;
 
 impl Plugin for KinematicsPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<RobotKinematics>()
+        app.init_resource::<Kinematics>()
             .add_systems(PreUpdate, update_kinematics);
     }
 }
 
-/// System that updates the [`RobotKinematics`] resource.
-pub fn update_kinematics(mut robot_kinematics: ResMut<RobotKinematics>, state: Res<NaoState>) {
-    *robot_kinematics = RobotKinematics::from(&state.position);
+/// System that updates the [`Kinematics`] resource.
+pub fn update_kinematics(mut kinematics: ResMut<Kinematics>, state: Res<NaoState>) {
+    *kinematics = Kinematics::from(&state.position);
 }
 
 /// The position of a foot relative to the robot's torso.
@@ -98,42 +106,41 @@ pub struct SidedFootOffset<T: FootKinematics> {
     _side: PhantomData<T>,
 }
 
-pub(crate) struct Left;
-pub(crate) struct Right;
-
 /// Trait for kinematics of a specific foot of the robot.
 ///
 /// This trait is used to implement the kinematics of the left and right foot of the robot.
 pub trait FootKinematics {
-    fn torso_to_pelvis() -> Isometry3<f32>;
-    fn robot_to_pelvis() -> Isometry3<f32>;
-    fn foot_rotation(turn: f32) -> Isometry3<f32>;
+    fn torso_to_pelvis() -> na::Isometry3<f32>;
+    fn robot_to_pelvis() -> na::Isometry3<f32>;
+    fn foot_rotation(turn: f32) -> na::Isometry3<f32>;
 }
 
 impl FootKinematics for Left {
-    fn torso_to_pelvis() -> Isometry3<f32> {
-        Isometry3::rotation(Vector3::x() * PI / -4.0) * Translation3::from(-ROBOT_TO_LEFT_PELVIS)
+    fn torso_to_pelvis() -> na::Isometry3<f32> {
+        na::Isometry3::rotation(na::Vector3::x() * PI / -4.0)
+            * na::Translation3::from(-ROBOT_TO_LEFT_PELVIS)
     }
 
-    fn robot_to_pelvis() -> Isometry3<f32> {
-        Isometry3::from(ROBOT_TO_LEFT_PELVIS)
+    fn robot_to_pelvis() -> na::Isometry3<f32> {
+        na::Isometry3::from(ROBOT_TO_LEFT_PELVIS)
     }
 
-    fn foot_rotation(turn: f32) -> Isometry3<f32> {
-        Isometry3::rotation(Vector3::z() * turn)
+    fn foot_rotation(turn: f32) -> na::Isometry3<f32> {
+        na::Isometry3::rotation(na::Vector3::z() * turn)
     }
 }
 
 impl FootKinematics for Right {
-    fn torso_to_pelvis() -> Isometry3<f32> {
-        Isometry3::rotation(Vector3::x() * PI / 4.0) * Translation3::from(-ROBOT_TO_RIGHT_PELVIS)
+    fn torso_to_pelvis() -> na::Isometry3<f32> {
+        na::Isometry3::rotation(na::Vector3::x() * PI / 4.0)
+            * na::Translation3::from(-ROBOT_TO_RIGHT_PELVIS)
     }
-    fn robot_to_pelvis() -> Isometry3<f32> {
-        Isometry3::from(ROBOT_TO_RIGHT_PELVIS)
+    fn robot_to_pelvis() -> na::Isometry3<f32> {
+        na::Isometry3::from(ROBOT_TO_RIGHT_PELVIS)
     }
 
-    fn foot_rotation(turn: f32) -> Isometry3<f32> {
-        Isometry3::rotation(Vector3::z() * -turn)
+    fn foot_rotation(turn: f32) -> na::Isometry3<f32> {
+        na::Isometry3::rotation(na::Vector3::z() * -turn)
     }
 }
 
@@ -146,7 +153,7 @@ where
     /// The [`FootOffset`] is relative to the robot's torso, and the transformation is relative to the
     /// robot's torso.
     #[inline]
-    fn to_torso(&self, torso_offset: f32) -> Isometry3<f32> {
+    fn to_torso(&self, torso_offset: f32) -> na::Isometry3<f32> {
         let SidedFootOffset {
             forward,
             left,
@@ -156,7 +163,7 @@ where
             _side,
         } = self;
         let foot_translation =
-            Isometry3::translation(forward - torso_offset, *left, -hip_height + lift);
+            na::Isometry3::translation(forward - torso_offset, *left, -hip_height + lift);
         let rotation = Side::foot_rotation(*turn);
 
         Side::robot_to_pelvis() * foot_translation * rotation
@@ -167,12 +174,12 @@ where
     /// The [`FootOffset`] is relative to the robot's torso, and the transformation is relative to the
     /// robot's pelvis.
     #[inline]
-    fn to_pelvis(&self, torso_offset: f32) -> Isometry3<f32> {
+    fn to_pelvis(&self, torso_offset: f32) -> na::Isometry3<f32> {
         Side::torso_to_pelvis() * self.to_torso(torso_offset)
     }
 
     #[inline]
-    fn compute_hip_yaw_pitch(foot_to_pelvis: &Isometry3<f32>) -> f32 {
+    fn compute_hip_yaw_pitch(foot_to_pelvis: &na::Isometry3<f32>) -> f32 {
         // get vector pointing from pelvis to foot, to compute the angles
         let pelvis_to_foot = foot_to_pelvis.inverse().translation;
 
@@ -184,11 +191,11 @@ where
             .x
             .atan2((pelvis_to_foot.y.powi(2) + pelvis_to_foot.z.powi(2)).sqrt());
 
-        let rotation = Rotation3::new(Vector3::x() * -1.0 * foot_roll_in_pelvis)
-            * Rotation3::new(Vector3::y() * foot_pitch_in_pelvis);
+        let rotation = na::Rotation3::new(na::Vector3::x() * -1.0 * foot_roll_in_pelvis)
+            * na::Rotation3::new(na::Vector3::y() * foot_pitch_in_pelvis);
 
         // foot_to_pelvis contains z component, we apply the y component using the rotation computed earlier
-        let hip_rotation_c1 = foot_to_pelvis.rotation * (rotation * Vector3::y());
+        let hip_rotation_c1 = foot_to_pelvis.rotation * (rotation * na::Vector3::y());
 
         (-1.0 * hip_rotation_c1.x).atan2(hip_rotation_c1.y)
     }

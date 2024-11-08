@@ -2,7 +2,10 @@ use nalgebra::{Isometry3, Matrix3x1, Vector3};
 use nidhogg::types::{LeftLegJoints, RightLegJoints};
 use std::f32::consts::PI;
 
-use super::{robot_dimensions, Left, Right};
+use super::{
+    dimensions,
+    spaces::{Left, Right},
+};
 
 /// Compute the leg angles for the given foot positions.
 ///
@@ -107,8 +110,8 @@ fn compute_joint_angles(
         * Isometry3::rotation(Vector3::x() * -1.0 * hip_roll_in_hip)
         * (foot_to_hip.rotation * Vector3::z());
 
-    let thigh = robot_dimensions::HIP_TO_KNEE.z.abs();
-    let tibia = robot_dimensions::KNEE_TO_ANKLE.z.abs();
+    let thigh = dimensions::HIP_TO_KNEE.z.abs();
+    let tibia = dimensions::KNEE_TO_ANKLE.z.abs();
 
     let foot_height = foot_to_hip.translation.vector.norm();
 
