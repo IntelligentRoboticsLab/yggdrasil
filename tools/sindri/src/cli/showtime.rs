@@ -26,7 +26,7 @@ impl Showtime {
     /// uploads binaries and other assets and the restarts the yggdrasil service
     /// on each robot.
     pub async fn showtime(self, config: SindriConfig) -> Result<()> {
-        self.robot_ops.prepare_showtime_config()?;
+        self.robot_ops.prepare_showtime_config(&config)?;
 
         let compile_bar = ProgressBar::new(1);
         let output = robot_ops::Output::Single(compile_bar.clone());
@@ -36,7 +36,7 @@ impl Showtime {
             let output = robot_ops::Output::Single(compile_bar.clone());
             let robot = config
                 .robot(
-                    self.robot_ops.robots.first().unwrap().robot_number,
+                    &self.robot_ops.robots.first().unwrap().robot_id,
                     self.robot_ops.wired,
                 )
                 .unwrap();
@@ -86,9 +86,7 @@ impl Showtime {
         ));
 
         for robot in &self.robot_ops.robots {
-            let robot = config
-                .robot(robot.robot_number, self.robot_ops.wired)
-                .unwrap();
+            let robot = config.robot(&robot.robot_id, self.robot_ops.wired).unwrap();
             let multi = multi.clone();
             let network = self.robot_ops.network.clone();
 

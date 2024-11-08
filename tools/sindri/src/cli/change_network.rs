@@ -1,3 +1,4 @@
+use crate::cli::robot_ops::NameOrNum;
 use crate::{
     cli::robot_ops::{self, change_single_network},
     config::SindriConfig,
@@ -22,10 +23,12 @@ pub struct ChangeNetwork {
 
 impl ChangeNetwork {
     pub async fn change_network(self, config: SindriConfig) -> Result<()> {
-        let robot = config.robot(self.robot, self.wired).ok_or(miette!(format!(
-            "Invalid robot specified, number {} is not configured!",
-            self.robot
-        )))?;
+        let robot = config
+            .robot(&NameOrNum::Number(self.robot), self.wired)
+            .ok_or(miette!(format!(
+                "Invalid robot specified, number {} is not configured!",
+                self.robot
+            )))?;
 
         let pb = ProgressBar::new_spinner();
         let output = robot_ops::Output::Single(pb.clone());
