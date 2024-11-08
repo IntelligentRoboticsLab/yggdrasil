@@ -35,133 +35,133 @@ pub const HEAD: RobotMass<Head> = RobotMass {
 };
 
 /// Mass and `CoM` of the left.
-pub const LEFT_SHOULDER: RobotMass<Shoulder<Left>> = RobotMass {
+pub const LEFT_SHOULDER: RobotMass<LeftShoulder> = RobotMass {
     mass: 0.09304,
     center: Vector3::new(na::vector![-0.00165, -0.02663, 0.00014]),
 };
 
 /// Mass and `CoM` of the left upper arm.
-pub const LEFT_UPPER_ARM: RobotMass<UpperArm<Left>> = RobotMass {
+pub const LEFT_UPPER_ARM: RobotMass<LeftUpperArm> = RobotMass {
     mass: 0.15777,
     center: Vector3::new(na::vector![0.02455, 0.00563, 0.0033]),
 };
 
 /// Mass and `CoM` of the left elbow.
-pub const LEFT_ELBOW: RobotMass<Elbow<Left>> = RobotMass {
+pub const LEFT_ELBOW: RobotMass<LeftElbow> = RobotMass {
     mass: 0.06483,
     center: Vector3::new(na::vector![-0.02744, 0.0, -0.00014]),
 };
 
 /// Mass and `CoM` of the left forearm.
-pub const LEFT_FOREARM: RobotMass<Forearm<Left>> = RobotMass {
+pub const LEFT_FOREARM: RobotMass<LeftForearm> = RobotMass {
     mass: 0.07761,
     center: Vector3::new(na::vector![0.02556, 0.00281, 0.00076]),
 };
 
 /// Mass and `CoM` of the left wrist.
-pub const LEFT_WRIST: RobotMass<Wrist<Left>> = RobotMass {
+pub const LEFT_WRIST: RobotMass<LeftWrist> = RobotMass {
     mass: 0.18533,
     center: Vector3::new(na::vector![0.03434, -0.00088, 0.00308]),
 };
 
 /// Mass and `CoM` of the right shoulder.
-pub const RIGHT_SHOULDER: RobotMass<Shoulder<Right>> = RobotMass {
+pub const RIGHT_SHOULDER: RobotMass<RightShoulder> = RobotMass {
     mass: 0.09304,
     center: Vector3::new(na::vector![-0.00165, 0.02663, 0.00014]),
 };
 
 /// Mass and `CoM` of the right upper arm.
-pub const RIGHT_UPPER_ARM: RobotMass<UpperArm<Right>> = RobotMass {
+pub const RIGHT_UPPER_ARM: RobotMass<RightUpperArm> = RobotMass {
     mass: 0.15777,
     center: Vector3::new(na::vector![0.02455, -0.00563, 0.0033]),
 };
 
 /// Mass and `CoM` of the right elbow.
-pub const RIGHT_ELBOW: RobotMass<Elbow<Right>> = RobotMass {
+pub const RIGHT_ELBOW: RobotMass<RightElbow> = RobotMass {
     mass: 0.06483,
     center: Vector3::new(na::vector![-0.02744, 0.0, -0.00014]),
 };
 
 /// Mass and `CoM` of the right forearm.
-pub const RIGHT_FOREARM: RobotMass<Forearm<Right>> = RobotMass {
+pub const RIGHT_FOREARM: RobotMass<RightForearm> = RobotMass {
     mass: 0.07761,
     center: Vector3::new(na::vector![0.02556, -0.00281, 0.00076]),
 };
 
 /// Mass and `CoM` of the right wrist.
-pub const RIGHT_WRIST: RobotMass<Wrist<Right>> = RobotMass {
+pub const RIGHT_WRIST: RobotMass<RightWrist> = RobotMass {
     mass: 0.18533,
     center: Vector3::new(na::vector![0.03434, 0.00088, 0.00308]),
 };
 
 /// Mass and `CoM` of the left hip.
-pub const LEFT_PELVIS: RobotMass<Pelvis<Left>> = RobotMass {
+pub const LEFT_PELVIS: RobotMass<LeftPelvis> = RobotMass {
     mass: 0.06981,
     center: Vector3::new(na::vector![-0.00781, -0.01114, 0.02661]),
 };
 
 /// Mass and `CoM` of the left thigh.
-pub const LEFT_HIP: RobotMass<Hip<Left>> = RobotMass {
+pub const LEFT_HIP: RobotMass<LeftHip> = RobotMass {
     mass: 0.14053,
     center: Vector3::new(na::vector![-0.01549, 0.00029, -0.00515]),
 };
 
 /// Mass and `CoM` of the left thigh.
-pub const LEFT_THIGH: RobotMass<Thigh<Left>> = RobotMass {
+pub const LEFT_THIGH: RobotMass<LeftThigh> = RobotMass {
     mass: 0.38968,
     center: Vector3::new(na::vector![0.00138, 0.00221, -0.05373]),
 };
 
 /// Mass and `CoM` of the left tibia.
-pub const LEFT_TIBIA: RobotMass<Tibia<Left>> = RobotMass {
+pub const LEFT_TIBIA: RobotMass<LeftTibia> = RobotMass {
     mass: 0.30142,
     center: Vector3::new(na::vector![0.00453, 0.00225, -0.04936]),
 };
 
 /// Mass and `CoM` of the left ankle.
-pub const LEFT_ANKLE: RobotMass<Ankle<Left>> = RobotMass {
+pub const LEFT_ANKLE: RobotMass<LeftAnkle> = RobotMass {
     mass: 0.13416,
     center: Vector3::new(na::vector![0.00045, 0.00029, 0.00685]),
 };
 
 /// Mass and `CoM` of the left foot.
-pub const LEFT_FOOT: RobotMass<Foot<Left>> = RobotMass {
+pub const LEFT_FOOT: RobotMass<LeftFoot> = RobotMass {
     mass: 0.17184,
     center: Vector3::new(na::vector![0.02542, 0.0033, -0.03239]),
 };
 
 /// Mass and `CoM` of the right pelvis.
-pub const RIGHT_PELVIS: RobotMass<Pelvis<Right>> = RobotMass {
+pub const RIGHT_PELVIS: RobotMass<RightPelvis> = RobotMass {
     mass: 0.06981,
     center: Vector3::new(na::vector![-0.00781, 0.01114, 0.02661]),
 };
 
 /// Mass and `CoM` of the right thigh.
-pub const RIGHT_HIP: RobotMass<Hip<Right>> = RobotMass {
+pub const RIGHT_HIP: RobotMass<RightHip> = RobotMass {
     mass: 0.14053,
     center: Vector3::new(na::vector![-0.01549, -0.00029, -0.00515]),
 };
 
 /// Mass and `CoM` of the right thigh.
-pub const RIGHT_THIGH: RobotMass<Thigh<Right>> = RobotMass {
+pub const RIGHT_THIGH: RobotMass<RightThigh> = RobotMass {
     mass: 0.38968,
     center: Vector3::new(na::vector![0.00138, -0.00221, -0.05373]),
 };
 
 /// Mass and `CoM` of the right tibia.
-pub const RIGHT_TIBIA: RobotMass<Tibia<Right>> = RobotMass {
+pub const RIGHT_TIBIA: RobotMass<RightTibia> = RobotMass {
     mass: 0.30142,
     center: Vector3::new(na::vector![0.00453, -0.00225, -0.04936]),
 };
 
 /// Mass and `CoM` of the right ankle.
-pub const RIGHT_ANKLE: RobotMass<Ankle<Right>> = RobotMass {
+pub const RIGHT_ANKLE: RobotMass<RightAnkle> = RobotMass {
     mass: 0.13416,
     center: Vector3::new(na::vector![0.00045, -0.00029, 0.00685]),
 };
 
 /// Mass and `CoM` of the right foot.
-pub const RIGHT_FOOT: RobotMass<Foot<Right>> = RobotMass {
+pub const RIGHT_FOOT: RobotMass<RightFoot> = RobotMass {
     mass: 0.17184,
     center: Vector3::new(na::vector![0.02542, -0.0033, -0.03239]),
 };

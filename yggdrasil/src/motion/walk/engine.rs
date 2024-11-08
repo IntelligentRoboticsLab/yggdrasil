@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     kinematics::{
-        spaces::{Hip, Left, Sole},
+        spaces::{LeftHip, LeftSole},
         FootOffset, Kinematics,
     },
     sensor::low_pass_filter::LowPassFilter,
@@ -157,7 +157,7 @@ impl WalkingEngine {
 
     pub(super) fn new(config: &WalkingEngineConfig, kinematics: &Kinematics) -> Self {
         let current_hip_height = kinematics
-            .isometry::<Sole<Left>, Hip<Left>>()
+            .isometry::<LeftSole, LeftHip>()
             .inner
             .translation
             .vector

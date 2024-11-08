@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     behavior::primary_state::PrimaryState,
     kinematics::{
-        spaces::{Left, Right, Sole},
+        spaces::{LeftSole, RightSole},
         Kinematics,
     },
     motion::walk::{engine::Side, SwingFoot},
@@ -79,7 +79,7 @@ impl Odometry {
         orientation: &RobotOrientation,
     ) {
         let left_sole_to_right_sole = kinematics
-            .isometry::<Sole<Left>, Sole<Right>>()
+            .isometry::<RightSole, LeftSole>()
             .inner
             .translation
             .vector

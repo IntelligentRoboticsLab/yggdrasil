@@ -16,30 +16,30 @@ pub struct Kinematics {
     pub head_to_neck: Isometry3<Head, Neck>,
     pub neck_to_robot: Isometry3<Neck, Robot>,
     pub torso_to_robot: Isometry3<Torso, Robot>,
-    pub left_shoulder_to_robot: Isometry3<Shoulder<Left>, Robot>,
-    pub left_upper_arm_to_shoulder: Isometry3<UpperArm<Left>, Shoulder<Left>>,
-    pub left_elbow_to_upper_arm: Isometry3<Elbow<Left>, UpperArm<Left>>,
-    pub left_forearm_to_elbow: Isometry3<Forearm<Left>, Elbow<Left>>,
-    pub left_wrist_to_forearm: Isometry3<Wrist<Left>, Forearm<Left>>,
-    pub right_shoulder_to_robot: Isometry3<Shoulder<Right>, Robot>,
-    pub right_upper_arm_to_shoulder: Isometry3<UpperArm<Right>, Shoulder<Right>>,
-    pub right_elbow_to_upper_arm: Isometry3<Elbow<Right>, UpperArm<Right>>,
-    pub right_forearm_to_elbow: Isometry3<Forearm<Right>, Elbow<Right>>,
-    pub right_wrist_to_forearm: Isometry3<Wrist<Right>, Forearm<Right>>,
-    pub left_pelvis_to_robot: Isometry3<Pelvis<Left>, Robot>,
-    pub left_hip_to_pelvis: Isometry3<Hip<Left>, Pelvis<Left>>,
-    pub left_thigh_to_hip: Isometry3<Thigh<Left>, Hip<Left>>,
-    pub left_tibia_to_thigh: Isometry3<Tibia<Left>, Thigh<Left>>,
-    pub left_ankle_to_tibia: Isometry3<Ankle<Left>, Tibia<Left>>,
-    pub left_foot_to_ankle: Isometry3<Foot<Left>, Ankle<Left>>,
-    pub left_sole_to_foot: Isometry3<Sole<Left>, Foot<Left>>,
-    pub right_pelvis_to_robot: Isometry3<Pelvis<Right>, Robot>,
-    pub right_hip_to_pelvis: Isometry3<Hip<Right>, Pelvis<Right>>,
-    pub right_thigh_to_hip: Isometry3<Thigh<Right>, Hip<Right>>,
-    pub right_tibia_to_thigh: Isometry3<Tibia<Right>, Thigh<Right>>,
-    pub right_ankle_to_tibia: Isometry3<Ankle<Right>, Tibia<Right>>,
-    pub right_foot_to_ankle: Isometry3<Foot<Right>, Ankle<Right>>,
-    pub right_sole_to_foot: Isometry3<Sole<Right>, Foot<Right>>,
+    pub left_shoulder_to_robot: Isometry3<LeftShoulder, Robot>,
+    pub left_upper_arm_to_shoulder: Isometry3<LeftUpperArm, LeftShoulder>,
+    pub left_elbow_to_upper_arm: Isometry3<LeftElbow, LeftUpperArm>,
+    pub left_forearm_to_elbow: Isometry3<LeftForearm, LeftElbow>,
+    pub left_wrist_to_forearm: Isometry3<LeftWrist, LeftForearm>,
+    pub right_shoulder_to_robot: Isometry3<RightShoulder, Robot>,
+    pub right_upper_arm_to_shoulder: Isometry3<RightUpperArm, RightShoulder>,
+    pub right_elbow_to_upper_arm: Isometry3<RightElbow, RightUpperArm>,
+    pub right_forearm_to_elbow: Isometry3<RightForearm, RightElbow>,
+    pub right_wrist_to_forearm: Isometry3<RightWrist, RightForearm>,
+    pub left_pelvis_to_robot: Isometry3<LeftPelvis, Robot>,
+    pub left_hip_to_pelvis: Isometry3<LeftHip, LeftPelvis>,
+    pub left_thigh_to_hip: Isometry3<LeftThigh, LeftHip>,
+    pub left_tibia_to_thigh: Isometry3<LeftTibia, LeftThigh>,
+    pub left_ankle_to_tibia: Isometry3<LeftAnkle, LeftTibia>,
+    pub left_foot_to_ankle: Isometry3<LeftFoot, LeftAnkle>,
+    pub left_sole_to_foot: Isometry3<LeftSole, LeftFoot>,
+    pub right_pelvis_to_robot: Isometry3<RightPelvis, Robot>,
+    pub right_hip_to_pelvis: Isometry3<RightHip, RightPelvis>,
+    pub right_thigh_to_hip: Isometry3<RightThigh, RightHip>,
+    pub right_tibia_to_thigh: Isometry3<RightTibia, RightThigh>,
+    pub right_ankle_to_tibia: Isometry3<RightAnkle, RightTibia>,
+    pub right_foot_to_ankle: Isometry3<RightFoot, RightAnkle>,
+    pub right_sole_to_foot: Isometry3<RightSole, RightFoot>,
 }
 
 impl Kinematics {
@@ -81,7 +81,7 @@ impl Kinematics {
     }
 
     #[must_use]
-    pub fn left_shoulder_to_robot(left_shoulder_pitch: f32) -> Isometry3<Shoulder<Left>, Robot> {
+    pub fn left_shoulder_to_robot(left_shoulder_pitch: f32) -> Isometry3<LeftShoulder, Robot> {
         na::Isometry3::new(
             ROBOT_TO_LEFT_SHOULDER,
             na::Vector3::y() * left_shoulder_pitch,
@@ -92,12 +92,12 @@ impl Kinematics {
     #[must_use]
     pub fn left_upper_arm_to_shoulder(
         left_shoulder_roll: f32,
-    ) -> Isometry3<UpperArm<Left>, Shoulder<Left>> {
+    ) -> Isometry3<LeftUpperArm, LeftShoulder> {
         na::Isometry3::rotation(na::Vector3::z() * left_shoulder_roll).into()
     }
 
     #[must_use]
-    pub fn left_elbow_to_upper_arm(left_elbow_yaw: f32) -> Isometry3<Elbow<Left>, UpperArm<Left>> {
+    pub fn left_elbow_to_upper_arm(left_elbow_yaw: f32) -> Isometry3<LeftElbow, LeftUpperArm> {
         na::Isometry3::new(
             LEFT_SHOULDER_TO_LEFT_ELBOW,
             na::Vector3::x() * left_elbow_yaw,
@@ -106,17 +106,17 @@ impl Kinematics {
     }
 
     #[must_use]
-    pub fn left_forearm_to_elbow(left_elbow_roll: f32) -> Isometry3<Forearm<Left>, Elbow<Left>> {
+    pub fn left_forearm_to_elbow(left_elbow_roll: f32) -> Isometry3<LeftForearm, LeftElbow> {
         na::Isometry3::rotation(na::Vector3::z() * left_elbow_roll).into()
     }
 
     #[must_use]
-    pub fn left_wrist_to_forearm(left_wrist_yaw: f32) -> Isometry3<Wrist<Left>, Forearm<Left>> {
+    pub fn left_wrist_to_forearm(left_wrist_yaw: f32) -> Isometry3<LeftWrist, LeftForearm> {
         na::Isometry3::new(ELBOW_TO_WRIST, na::Vector3::x() * left_wrist_yaw).into()
     }
 
     #[must_use]
-    pub fn right_shoulder_to_robot(right_shoulder_pitch: f32) -> Isometry3<Shoulder<Right>, Robot> {
+    pub fn right_shoulder_to_robot(right_shoulder_pitch: f32) -> Isometry3<RightShoulder, Robot> {
         na::Isometry3::new(
             ROBOT_TO_RIGHT_SHOULDER,
             na::Vector3::y() * right_shoulder_pitch,
@@ -127,14 +127,12 @@ impl Kinematics {
     #[must_use]
     pub fn right_upper_arm_to_shoulder(
         right_shoulder_roll: f32,
-    ) -> Isometry3<UpperArm<Right>, Shoulder<Right>> {
+    ) -> Isometry3<RightUpperArm, RightShoulder> {
         na::Isometry3::rotation(na::Vector3::z() * right_shoulder_roll).into()
     }
 
     #[must_use]
-    pub fn right_elbow_to_upper_arm(
-        right_elbow_yaw: f32,
-    ) -> Isometry3<Elbow<Right>, UpperArm<Right>> {
+    pub fn right_elbow_to_upper_arm(right_elbow_yaw: f32) -> Isometry3<RightElbow, RightUpperArm> {
         na::Isometry3::new(
             RIGHT_SHOULDER_TO_RIGHT_ELBOW,
             na::Vector3::x() * right_elbow_yaw,
@@ -143,19 +141,17 @@ impl Kinematics {
     }
 
     #[must_use]
-    pub fn right_forearm_to_elbow(
-        right_elbow_roll: f32,
-    ) -> Isometry3<Forearm<Right>, Elbow<Right>> {
+    pub fn right_forearm_to_elbow(right_elbow_roll: f32) -> Isometry3<RightForearm, RightElbow> {
         na::Isometry3::rotation(na::Vector3::z() * right_elbow_roll).into()
     }
 
     #[must_use]
-    pub fn right_wrist_to_forearm(right_wrist_yaw: f32) -> Isometry3<Wrist<Right>, Forearm<Right>> {
+    pub fn right_wrist_to_forearm(right_wrist_yaw: f32) -> Isometry3<RightWrist, RightForearm> {
         na::Isometry3::new(ELBOW_TO_WRIST, na::Vector3::x() * right_wrist_yaw).into()
     }
 
     #[must_use]
-    pub fn left_pelvis_to_robot(left_hip_yaw_pitch: f32) -> Isometry3<Pelvis<Left>, Robot> {
+    pub fn left_pelvis_to_robot(left_hip_yaw_pitch: f32) -> Isometry3<LeftPelvis, Robot> {
         na::Isometry3::new(
             ROBOT_TO_LEFT_PELVIS,
             na::Vector3::new(0., FRAC_1_SQRT_2, -FRAC_1_SQRT_2) * left_hip_yaw_pitch,
@@ -164,37 +160,37 @@ impl Kinematics {
     }
 
     #[must_use]
-    pub fn left_hip_to_pelvis(left_hip_roll: f32) -> Isometry3<Hip<Left>, Pelvis<Left>> {
+    pub fn left_hip_to_pelvis(left_hip_roll: f32) -> Isometry3<LeftHip, LeftPelvis> {
         na::Isometry3::rotation(na::Vector3::x() * left_hip_roll).into()
     }
 
     #[must_use]
-    pub fn left_thigh_to_hip(left_hip_pitch: f32) -> Isometry3<Thigh<Left>, Hip<Left>> {
+    pub fn left_thigh_to_hip(left_hip_pitch: f32) -> Isometry3<LeftThigh, LeftHip> {
         na::Isometry3::rotation(na::Vector3::y() * left_hip_pitch).into()
     }
 
     #[must_use]
-    pub fn left_tibia_to_thigh(left_knee_pitch: f32) -> Isometry3<Tibia<Left>, Thigh<Left>> {
+    pub fn left_tibia_to_thigh(left_knee_pitch: f32) -> Isometry3<LeftTibia, LeftThigh> {
         na::Isometry3::new(HIP_TO_KNEE, na::Vector3::y() * left_knee_pitch).into()
     }
 
     #[must_use]
-    pub fn left_ankle_to_tibia(left_ankle_pitch: f32) -> Isometry3<Ankle<Left>, Tibia<Left>> {
+    pub fn left_ankle_to_tibia(left_ankle_pitch: f32) -> Isometry3<LeftAnkle, LeftTibia> {
         na::Isometry3::new(KNEE_TO_ANKLE, na::Vector3::y() * left_ankle_pitch).into()
     }
 
     #[must_use]
-    pub fn left_foot_to_ankle(left_ankle_roll: f32) -> Isometry3<Foot<Left>, Ankle<Left>> {
+    pub fn left_foot_to_ankle(left_ankle_roll: f32) -> Isometry3<LeftFoot, LeftAnkle> {
         na::Isometry3::rotation(na::Vector3::x() * left_ankle_roll).into()
     }
 
     #[must_use]
-    pub fn left_sole_to_foot() -> Isometry3<Sole<Left>, Foot<Left>> {
+    pub fn left_sole_to_foot() -> Isometry3<LeftSole, LeftFoot> {
         na::Isometry3::from(ANKLE_TO_SOLE).into()
     }
 
     #[must_use]
-    pub fn right_pelvis_to_robot(left_hip_yaw_pitch: f32) -> Isometry3<Pelvis<Right>, Robot> {
+    pub fn right_pelvis_to_robot(left_hip_yaw_pitch: f32) -> Isometry3<RightPelvis, Robot> {
         na::Isometry3::new(
             ROBOT_TO_RIGHT_PELVIS,
             na::Vector3::new(0., FRAC_1_SQRT_2, FRAC_1_SQRT_2) * left_hip_yaw_pitch,
@@ -203,32 +199,32 @@ impl Kinematics {
     }
 
     #[must_use]
-    pub fn right_hip_to_pelvis(right_hip_roll: f32) -> Isometry3<Hip<Right>, Pelvis<Right>> {
+    pub fn right_hip_to_pelvis(right_hip_roll: f32) -> Isometry3<RightHip, RightPelvis> {
         na::Isometry3::rotation(na::Vector3::x() * right_hip_roll).into()
     }
 
     #[must_use]
-    pub fn right_thigh_to_hip(right_hip_pitch: f32) -> Isometry3<Thigh<Right>, Hip<Right>> {
+    pub fn right_thigh_to_hip(right_hip_pitch: f32) -> Isometry3<RightThigh, RightHip> {
         na::Isometry3::rotation(na::Vector3::y() * right_hip_pitch).into()
     }
 
     #[must_use]
-    pub fn right_tibia_to_thigh(right_knee_pitch: f32) -> Isometry3<Tibia<Right>, Thigh<Right>> {
+    pub fn right_tibia_to_thigh(right_knee_pitch: f32) -> Isometry3<RightTibia, RightThigh> {
         na::Isometry3::new(HIP_TO_KNEE, na::Vector3::y() * right_knee_pitch).into()
     }
 
     #[must_use]
-    pub fn right_ankle_to_tibia(right_ankle_pitch: f32) -> Isometry3<Ankle<Right>, Tibia<Right>> {
+    pub fn right_ankle_to_tibia(right_ankle_pitch: f32) -> Isometry3<RightAnkle, RightTibia> {
         na::Isometry3::new(KNEE_TO_ANKLE, na::Vector3::y() * right_ankle_pitch).into()
     }
 
     #[must_use]
-    pub fn right_foot_to_ankle(right_ankle_roll: f32) -> Isometry3<Foot<Right>, Ankle<Right>> {
+    pub fn right_foot_to_ankle(right_ankle_roll: f32) -> Isometry3<RightFoot, RightAnkle> {
         na::Isometry3::rotation(na::Vector3::x() * right_ankle_roll).into()
     }
 
     #[must_use]
-    pub fn right_sole_to_foot() -> Isometry3<Sole<Right>, Foot<Right>> {
+    pub fn right_sole_to_foot() -> Isometry3<RightSole, RightFoot> {
         na::Isometry3::from(ANKLE_TO_SOLE).into()
     }
 }

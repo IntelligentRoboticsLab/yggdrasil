@@ -50,3 +50,29 @@ impl_spaces! {
     Foot<T>,
     Sole<T>,
 }
+
+pub type LeftShoulder = Shoulder<Left>;
+pub type LeftUpperArm = UpperArm<Left>;
+pub type LeftElbow = Elbow<Left>;
+pub type LeftForearm = Forearm<Left>;
+pub type LeftWrist = Wrist<Left>;
+pub type LeftPelvis = Pelvis<Left>;
+pub type LeftHip = Hip<Left>;
+pub type LeftThigh = Thigh<Left>;
+pub type LeftTibia = Tibia<Left>;
+pub type LeftAnkle = Ankle<Left>;
+pub type LeftFoot = Foot<Left>;
+pub type LeftSole = Sole<Left>;
+
+pub type RightShoulder = Shoulder<Right>;
+pub type RightUpperArm = UpperArm<Right>;
+pub type RightElbow = Elbow<Right>;
+pub type RightForearm = Forearm<Right>;
+pub type RightWrist = Wrist<Right>;
+pub type RightPelvis = Pelvis<Right>;
+pub type RightHip = Hip<Right>;
+pub type RightThigh = Thigh<Right>;
+pub type RightTibia = Tibia<Right>;
+pub type RightAnkle = Ankle<Right>;
+pub type RightFoot = Foot<Right>;
+pub type RightSole = Sole<Right>;
