@@ -6,7 +6,7 @@ use ssh2::{ErrorCode, OpenFlags, OpenType, Session, Sftp};
 use std::{
     borrow::Cow,
     collections::HashMap,
-    fs,
+    fmt, fs,
     io::BufWriter,
     net::Ipv4Addr,
     path::{Component, Path, PathBuf},
@@ -43,14 +43,14 @@ const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
 #[derive(Clone, Debug)]
 pub enum NameOrNum {
     Name(String),
-    Number(u8)
+    Number(u8),
 }
 
-impl ToString for NameOrNum {
-    fn to_string(&self) -> String {
+impl fmt::Display for NameOrNum {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Name(name) => name.clone(),
-            Self::Number(number) => format!("{number}"),
+            Self::Name(name) => f.write_str(name),
+            Self::Number(number) => write!(f, "{number}"),
         }
     }
 }
@@ -72,9 +72,6 @@ impl FromStr for RobotEntry {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         let mut m = s.split(':');
-
-        // unwrap robot number
-        // m.next().unwrap().parse().into_diagnostic()?;
 
         // unwrap robot name or number
         let name_or_number = m.next().unwrap();
@@ -165,7 +162,7 @@ impl ConfigOptsRobotOps {
     }
 
     /// Get a specific robot
-    pub fn get_robot(&self, robot:&NameOrNum , config: &SindriConfig) -> miette::Result<Robot> {
+    pub fn get_robot(&self, robot: &NameOrNum, config: &SindriConfig) -> miette::Result<Robot> {
         config.robot(robot, self.wired).ok_or(miette!(format!(
             "Invalid robot specified, number {} is not configured!",
             robot.to_string()
@@ -181,7 +178,7 @@ impl ConfigOptsRobotOps {
         self.get_robot(&self.robots[0].robot_id, config)
     }
 
-    pub(crate) fn prepare_showtime_config(&self, config:&SindriConfig) -> miette::Result<()> {
+    pub(crate) fn prepare_showtime_config(&self, config: &SindriConfig) -> miette::Result<()> {
         let mut robot_assignments = HashMap::new();
         for RobotEntry {
             robot_id,

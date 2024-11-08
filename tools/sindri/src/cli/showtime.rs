@@ -86,9 +86,7 @@ impl Showtime {
         ));
 
         for robot in &self.robot_ops.robots {
-            let robot = config
-                .robot(&robot.robot_id, self.robot_ops.wired)
-                .unwrap();
+            let robot = config.robot(&robot.robot_id, self.robot_ops.wired).unwrap();
             let multi = multi.clone();
             let network = self.robot_ops.network.clone();
 
