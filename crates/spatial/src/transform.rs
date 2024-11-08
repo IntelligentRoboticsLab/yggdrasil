@@ -4,6 +4,7 @@ pub use spatial_derive::Transform;
 
 use std::fmt;
 use std::marker::PhantomData;
+use std::ops::Mul;
 
 use nalgebra as na;
 
@@ -77,7 +78,7 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{:?} between {} and {}",
+            "{:?} ({} -> {})",
             self.inner,
             std::any::type_name::<S1>(),
             std::any::type_name::<S2>(),
@@ -112,146 +113,54 @@ where
     }
 }
 
-impl<S1, S2> Transform<na::Point2<f32>, na::Point2<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry2<f32>, S1, S2>
-where
-    S1: SpaceOver<na::Point2<f32>>,
-    S2: SpaceOver<na::Point2<f32>>,
-{
-    fn transform(&self, x: &InSpace<na::Point2<f32>, S1>) -> InSpace<na::Point2<f32>, S2> {
-        InSpace::new(self.inner.transform_point(&x.inner))
-    }
+macro_rules! impl_transform {
+    ($transform:ty, $inner:ty, $forward:ident, $inverse:ident) => {
+        impl<S1, S2> Transform<$inner, $inner, S1, S2> for BetweenSpaces<$transform, S1, S2>
+        where
+            S1: SpaceOver<$inner>,
+            S2: SpaceOver<$inner>,
+        {
+            fn transform(&self, x: &InSpace<$inner, S1>) -> InSpace<$inner, S2> {
+                InSpace::new(self.inner.$forward(&x.inner))
+            }
+        }
+
+        impl<S1, S2> InverseTransform<$inner, $inner, S1, S2> for BetweenSpaces<$transform, S1, S2>
+        where
+            S1: SpaceOver<$inner>,
+            S2: SpaceOver<$inner>,
+        {
+            fn inverse_transform(&self, x: &InSpace<$inner, S2>) -> InSpace<$inner, S1> {
+                InSpace::new(self.inner.$inverse(&x.inner))
+            }
+        }
+    };
 }
 
-impl<S1, S2> InverseTransform<na::Point2<f32>, na::Point2<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry2<f32>, S1, S2>
-where
-    S1: SpaceOver<na::Point2<f32>>,
-    S2: SpaceOver<na::Point2<f32>>,
-{
-    fn inverse_transform(&self, x: &InSpace<na::Point2<f32>, S2>) -> InSpace<na::Point2<f32>, S1> {
-        InSpace::new(self.inner.inverse_transform_point(&x.inner))
-    }
-}
+impl_transform!(
+    na::Isometry2<f32>,
+    na::Point2<f32>,
+    transform_point,
+    inverse_transform_point
+);
+impl_transform!(
+    na::Isometry2<f32>,
+    na::Vector2<f32>,
+    transform_vector,
+    inverse_transform_vector
+);
+impl_transform!(na::Isometry2<f32>, na::Isometry2<f32>, mul, inv_mul);
 
-impl<S1, S2> Transform<na::Vector2<f32>, na::Vector2<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry2<f32>, S1, S2>
-where
-    S1: SpaceOver<na::Vector2<f32>>,
-    S2: SpaceOver<na::Vector2<f32>>,
-{
-    fn transform(&self, x: &InSpace<na::Vector2<f32>, S1>) -> InSpace<na::Vector2<f32>, S2> {
-        InSpace::new(self.inner.transform_vector(&x.inner))
-    }
-}
-
-impl<S1, S2> InverseTransform<na::Vector2<f32>, na::Vector2<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry2<f32>, S1, S2>
-where
-    S1: SpaceOver<na::Vector2<f32>>,
-    S2: SpaceOver<na::Vector2<f32>>,
-{
-    fn inverse_transform(
-        &self,
-        x: &InSpace<na::Vector2<f32>, S2>,
-    ) -> InSpace<na::Vector2<f32>, S1> {
-        InSpace::new(self.inner.inverse_transform_vector(&x.inner))
-    }
-}
-
-impl<S1, S2> Transform<na::Isometry2<f32>, na::Isometry2<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry2<f32>, S1, S2>
-where
-    S1: SpaceOver<na::Isometry2<f32>>,
-    S2: SpaceOver<na::Isometry2<f32>>,
-{
-    fn transform(&self, x: &InSpace<na::Isometry2<f32>, S1>) -> InSpace<na::Isometry2<f32>, S2> {
-        InSpace::new(self.inner * x.inner)
-    }
-}
-
-impl<S1, S2> InverseTransform<na::Isometry2<f32>, na::Isometry2<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry2<f32>, S1, S2>
-where
-    S1: SpaceOver<na::Isometry2<f32>>,
-    S2: SpaceOver<na::Isometry2<f32>>,
-{
-    fn inverse_transform(
-        &self,
-        x: &InSpace<na::Isometry2<f32>, S2>,
-    ) -> InSpace<na::Isometry2<f32>, S1> {
-        InSpace::new(self.inner.inv_mul(&x.inner))
-    }
-}
-
-impl<S1, S2> Transform<na::Point3<f32>, na::Point3<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry3<f32>, S1, S2>
-where
-    S1: SpaceOver<na::Point3<f32>>,
-    S2: SpaceOver<na::Point3<f32>>,
-{
-    fn transform(&self, x: &InSpace<na::Point3<f32>, S1>) -> InSpace<na::Point3<f32>, S2> {
-        InSpace::new(self.inner.transform_point(&x.inner))
-    }
-}
-
-impl<S1, S2> InverseTransform<na::Point3<f32>, na::Point3<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry3<f32>, S1, S2>
-where
-    S1: SpaceOver<na::Point3<f32>>,
-    S2: SpaceOver<na::Point3<f32>>,
-{
-    fn inverse_transform(&self, x: &InSpace<na::Point3<f32>, S2>) -> InSpace<na::Point3<f32>, S1> {
-        InSpace::new(self.inner.inverse_transform_point(&x.inner))
-    }
-}
-
-impl<S1, S2> Transform<na::Vector3<f32>, na::Vector3<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry3<f32>, S1, S2>
-where
-    S1: SpaceOver<na::Vector3<f32>>,
-    S2: SpaceOver<na::Vector3<f32>>,
-{
-    fn transform(&self, x: &InSpace<na::Vector3<f32>, S1>) -> InSpace<na::Vector3<f32>, S2> {
-        InSpace::new(self.inner.transform_vector(&x.inner))
-    }
-}
-
-impl<S1, S2> InverseTransform<na::Vector3<f32>, na::Vector3<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry3<f32>, S1, S2>
-where
-    S1: SpaceOver<na::Vector3<f32>>,
-    S2: SpaceOver<na::Vector3<f32>>,
-{
-    fn inverse_transform(
-        &self,
-        x: &InSpace<na::Vector3<f32>, S2>,
-    ) -> InSpace<na::Vector3<f32>, S1> {
-        InSpace::new(self.inner.inverse_transform_vector(&x.inner))
-    }
-}
-
-impl<S1, S2> Transform<na::Isometry3<f32>, na::Isometry3<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry3<f32>, S1, S2>
-where
-    S1: SpaceOver<na::Isometry3<f32>>,
-    S2: SpaceOver<na::Isometry3<f32>>,
-{
-    fn transform(&self, x: &InSpace<na::Isometry3<f32>, S1>) -> InSpace<na::Isometry3<f32>, S2> {
-        InSpace::new(self.inner * x.inner)
-    }
-}
-
-impl<S1, S2> InverseTransform<na::Isometry3<f32>, na::Isometry3<f32>, S1, S2>
-    for BetweenSpaces<na::Isometry3<f32>, S1, S2>
-where
-    S1: SpaceOver<na::Isometry3<f32>>,
-    S2: SpaceOver<na::Isometry3<f32>>,
-{
-    fn inverse_transform(
-        &self,
-        x: &InSpace<na::Isometry3<f32>, S2>,
-    ) -> InSpace<na::Isometry3<f32>, S1> {
-        InSpace::new(self.inner.inv_mul(&x.inner))
-    }
-}
+impl_transform!(
+    na::Isometry3<f32>,
+    na::Point3<f32>,
+    transform_point,
+    inverse_transform_point
+);
+impl_transform!(
+    na::Isometry3<f32>,
+    na::Vector3<f32>,
+    transform_vector,
+    inverse_transform_vector
+);
+impl_transform!(na::Isometry3<f32>, na::Isometry3<f32>, mul, inv_mul);

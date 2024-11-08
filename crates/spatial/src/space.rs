@@ -10,7 +10,7 @@ pub trait Space {}
 /// Marker trait for spaces which contain `T`s within them.
 pub trait SpaceOver<T>: Space {}
 
-/// Wrapper type for tagging a `T` as existing in `S`.
+/// Wrapper type for tagging a `T` as existing in space `S`.
 pub struct InSpace<T, S: SpaceOver<T>> {
     pub inner: T,
     phantom: PhantomData<S>,
@@ -55,7 +55,7 @@ where
     S: SpaceOver<T>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?} in {}", self.inner, std::any::type_name::<S>())
+        write!(f, "{:?} ({})", self.inner, std::any::type_name::<S>())
     }
 }
 

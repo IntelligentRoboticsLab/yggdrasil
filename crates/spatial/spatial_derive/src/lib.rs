@@ -1,7 +1,3 @@
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-#![allow(dead_code)]
-
 use std::collections::HashMap;
 
 use petgraph::{
@@ -31,7 +27,7 @@ fn derive_transform(input: DeriveInput) -> Result<TokenStream, Error> {
         _ => {
             return Err(Error::new_spanned(
                 input,
-                "`Transform` can only be derived for structs.",
+                "`Transform` can only be derived for structs",
             ))
         }
     };
@@ -41,7 +37,7 @@ fn derive_transform(input: DeriveInput) -> Result<TokenStream, Error> {
         _ => {
             return Err(Error::new_spanned(
                 fields,
-                "`Transform` can only be derived for structs with named fields.",
+                "`Transform` can only be derived for structs with named fields",
             ))
         }
     };
@@ -59,14 +55,11 @@ fn build_transform_graph<'a>(
     let mut spaces = HashMap::new();
 
     for field in fields {
-        let (s1, s2) = match infer_spaces_from_type(&field.ty) {
-            Some(spaces) => spaces,
-            None => {
-                return Err(Error::new_spanned(
-                    field.ty.clone(),
-                    "Cannot infer spaces from type.",
-                ))
-            }
+        let Some((s1, s2)) = infer_spaces_from_type(&field.ty) else {
+            return Err(Error::new_spanned(
+                field.ty.clone(),
+                "Cannot infer spaces from type",
+            ));
         };
         let s1 = *spaces.entry(s1).or_insert_with(|| graph.add_node(s1));
         let s2 = *spaces.entry(s2).or_insert_with(|| graph.add_node(s2));
@@ -123,7 +116,7 @@ fn implement_transforms(
                     quote!(#node: ::spatial::space::Space + ::spatial::space::SpaceOver<T>)
                 }).collect();
 
-                bounds.extend(edges.iter().map(|(a, b, field, ty, inverse)| {
+                bounds.extend(edges.iter().map(|(a, b, _field, ty, inverse)| {
                     if *inverse {
                         quote!(#ty: ::spatial::transform::InverseTransform<T, T, #b, #a>)
                     } else {
@@ -133,7 +126,7 @@ fn implement_transforms(
 
                 let transforms: Vec<_> = edges
                     .iter()
-                    .map(|(a, b, field, ty, inverse)| {
+                    .map(|(_a, _b, field, _ty, inverse)| {
                         if *inverse {
                             quote!(let x = self.#field.inverse_transform(&x);)
                         } else {
@@ -170,6 +163,11 @@ fn implement_transforms(
     stream
 }
 
+type Route<'a> = (
+    Vec<&'a Path>,
+    Vec<(&'a Path, &'a Path, &'a Ident, &'a Type, bool)>,
+);
+
 fn find_transform_path<'a>(
     graph: &'a DiGraph<&Path, (&'a Ident, &'a Type, bool)>,
     s1: NodeIndex,
@@ -197,8 +195,3 @@ fn find_transform_path<'a>(
 
     Some((nodes, edges))
 }
-
-type Route<'a> = (
-    Vec<&'a Path>,
-    Vec<(&'a Path, &'a Path, &'a Ident, &'a Type, bool)>,
-);
