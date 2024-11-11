@@ -22,7 +22,7 @@ const HIP_LOCK_STIFFNESS: f32 = 0.1;
 /// The set hip position in sitting mode, where the robot sits and starts.
 const HIP_POSITION: f32 = -0.9;
 
-const HEAD_TIME_STEP: f32 = 0.2;
+const HEAD_TIME_STEP: f32 = 0.4;
 
 type JointValue = f32;
 
@@ -44,7 +44,31 @@ impl Plugin for NaoManagerPlugin {
 
 /// TODO: Do the interpolation here (states that need to be stored are in manager, we change
 /// position and stiffness in control_message.
-fn finalize(mut control_message: ResMut<NaoControlMessage>, mut manager: ResMut<NaoManager>) {
+fn finalize(
+    mut control_message: ResMut<NaoControlMessage>,
+    mut manager: ResMut<NaoManager>,
+    state: Res<NaoState>,
+) {
+    manager.head_target = manager.head_target.clone().update(&state);
+
+    if let HeadTarget::Moving { .. } = manager.head_target{
+        let head = match manager.head_target {
+            HeadTarget::Moving { source, target, timestep } => {
+                let head = source.slerp(&target, timestep);
+                head
+            }
+            _ => unreachable!(),
+        };
+
+        manager.set_head(
+            HeadJoints::builder()
+                .pitch(head.euler_angles().1)
+                .yaw(head.euler_angles().2)
+                .build(),
+            HeadJoints::fill(0.4),
+            Priority::High,
+        );
+    }
     control_message.position = manager.make_joint_positions();
     control_message.stiffness = manager.make_joint_stiffnesses();
 
@@ -119,7 +143,7 @@ struct LedSettings<T> {
     priority: Option<Priority>,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 enum HeadTarget {
     #[default]
     None,
@@ -152,22 +176,15 @@ impl HeadTarget {
                 timestep,
             } => {
                 if timestep >= 1.0 {
-                    return HeadTarget::None;
-                }
-                
-                let new_timestep = timestep + HEAD_TIME_STEP;
-                let new_position = source.slerp(&target, timestep / new_timestep);
-
-                if new_timestep >= 1.0 {
-                    HeadTarget::New { target: new_position }
+                    HeadTarget::None
                 } else {
                     HeadTarget::Moving {
-                        source: new_position,
+                        source: source,
                         target: target,
-                        timestep: new_timestep,
+                        timestep: timestep + HEAD_TIME_STEP,
                     }
                 }
-            },
+            }
         }
     }
 }

@@ -20,10 +20,8 @@ impl Behavior for StandLookAt {
         let point3 = Point3::new(-10.0, 0.0, 0.5);
         let look_at = context.pose.get_look_at_absolute(&point3);
 
-        control.nao_manager.set_head(
+        control.nao_manager.set_head_target(
             look_at,
-            HeadJoints::fill(HEAD_STIFFNESS),
-            Priority::default(),
         );
 
         control.walking_engine.request_stand();

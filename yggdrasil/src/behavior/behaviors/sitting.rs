@@ -32,10 +32,8 @@ impl Behavior for Sitting {
             control.walking_engine.request_sit();
         }
 
-        control.nao_manager.set_head(
+        control.nao_manager.set_head_target(
             look_at_test,
-            HeadJoints::fill(HEAD_STIFFNESS),
-            Priority::default(),
         );
 
         control
