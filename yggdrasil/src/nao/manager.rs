@@ -150,10 +150,23 @@ impl HeadTarget {
                 source,
                 target,
                 timestep,
-            } => HeadTarget::Moving {
-                source: source,
-                target: target,
-                timestep: timestep + HEAD_TIME_STEP,
+            } => {
+                if timestep >= 1.0 {
+                    return HeadTarget::None;
+                }
+                
+                let new_timestep = timestep + HEAD_TIME_STEP;
+                let new_position = source.slerp(&target, timestep / new_timestep);
+
+                if new_timestep >= 1.0 {
+                    HeadTarget::New { target: new_position }
+                } else {
+                    HeadTarget::Moving {
+                        source: new_position,
+                        target: target,
+                        timestep: new_timestep,
+                    }
+                }
             },
         }
     }
@@ -336,19 +349,10 @@ impl NaoManager {
     }
 
     /// Set the target position for the head.
-    pub fn set_head_target(
-        &mut self,
-        joint_positions: HeadJoints<JointValue>,
-        joint_stiffness: HeadJoints<JointValue>,
-        priority: Priority,
-    ) -> &mut Self {
+    pub fn set_head_target(&mut self, joint_positions: HeadJoints<JointValue>) -> &mut Self {
         let target =
             UnitQuaternion::from_euler_angles(0.0, joint_positions.pitch, joint_positions.yaw);
-        self.head_target = target;
-        // let source = UnitQuaternion::from_euler_angles(0.0, , yaw)
-        // self.head_source = UnitQuaternion::from_euler_angles(0.0, , yaw)
-        // Reset the timestamp to 0 when making new target
-        self.timestep = 0.0;
+        self.head_target = HeadTarget::New { target };
 
         self
     }
