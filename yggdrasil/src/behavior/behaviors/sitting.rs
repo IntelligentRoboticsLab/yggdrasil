@@ -1,6 +1,6 @@
 use crate::{
     behavior::engine::{Behavior, Context, Control},
-    nao::Priority,
+    nao::{Priority, HeadTarget},
 };
 use nalgebra::Point3;
 use nidhogg::types::{color, FillExt, HeadJoints, RightEye};
@@ -32,9 +32,11 @@ impl Behavior for Sitting {
             control.walking_engine.request_sit();
         }
 
-        control.nao_manager.set_head_target(
-            look_at_test,
-        );
+        if let HeadTarget::None = control.nao_manager.head_target {
+            control.nao_manager.set_head_target(
+                look_at_test,
+            );
+        }
 
         control
             .nao_manager

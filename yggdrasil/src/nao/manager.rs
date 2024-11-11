@@ -22,7 +22,7 @@ const HIP_LOCK_STIFFNESS: f32 = 0.1;
 /// The set hip position in sitting mode, where the robot sits and starts.
 const HIP_POSITION: f32 = -0.9;
 
-const HEAD_TIME_STEP: f32 = 0.4;
+const HEAD_TIME_STEP: f32 = 0.1;
 
 type JointValue = f32;
 
@@ -65,7 +65,7 @@ fn finalize(
                 .pitch(head.euler_angles().1)
                 .yaw(head.euler_angles().2)
                 .build(),
-            HeadJoints::fill(0.4),
+            HeadJoints::fill(0.2),
             Priority::High,
         );
     }
@@ -144,7 +144,7 @@ struct LedSettings<T> {
 }
 
 #[derive(Default, Debug, Clone)]
-enum HeadTarget {
+pub enum HeadTarget {
     #[default]
     None,
     New {
@@ -203,7 +203,7 @@ pub struct NaoManager {
     arm_settings: JointSettings<ArmJoints<JointValue>>,
     head_settings: JointSettings<HeadJoints<JointValue>>,
 
-    head_target: HeadTarget,
+    pub head_target: HeadTarget,
 
     led_left_ear: LedSettings<LeftEar>,
     led_right_ear: LedSettings<RightEar>,

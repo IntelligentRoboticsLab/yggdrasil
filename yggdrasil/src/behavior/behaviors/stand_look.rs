@@ -1,7 +1,7 @@
 use crate::{
     behavior::engine::{Behavior, Context, Control},
     localization::RobotPose,
-    nao::Priority,
+    nao::{HeadTarget, Priority},
 };
 use nalgebra::{Point2, Point3};
 use nidhogg::types::{FillExt, HeadJoints};
@@ -20,9 +20,11 @@ impl Behavior for StandLookAt {
         let point3 = Point3::new(-10.0, 0.0, 0.5);
         let look_at = context.pose.get_look_at_absolute(&point3);
 
-        control.nao_manager.set_head_target(
-            look_at,
-        );
+        if let HeadTarget::None = control.nao_manager.head_target {
+            control.nao_manager.set_head_target(
+                look_at,
+            );
+        }
 
         control.walking_engine.request_stand();
     }
