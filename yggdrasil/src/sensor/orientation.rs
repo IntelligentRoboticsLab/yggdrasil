@@ -37,24 +37,77 @@ fn init_orientation_filter(mut commands: Commands, config: Res<OrientationFilter
 }
 
 #[derive(Resource, Deref, DerefMut)]
-struct VqfOrientation(Vqf);
+pub struct VqfOrientation {
+    /// The inner VQF filter.
+    ///
+    /// See [`Vqf`] for more information.
+    #[deref]
+    vqf: Vqf,
+    /// Offset of the yaw angle in radians.
+    ///
+    /// The VQF algorithm cannot determine the yaw angle without a magnetometer,
+    /// it will always be relative to some initial orientation, which can be computed
+    /// from the accelerometer data. This offset is then stored here and added to
+    /// the yaw angle to get the absolute orientation.
+    yaw_offset: Option<UnitQuaternion<f32>>,
+}
 
-fn init_vqf(mut commands: Commands, dbg: DebugContext) {
-    // imu rate is 82Hz
-    let imu_rate = 82.0;
+impl VqfOrientation {
+    /// Returns whether the orientation filter is initialized.
+    pub fn is_initialized(&self) -> bool {
+        self.yaw_offset.is_some()
+    }
+
+    /// Initializes the orientation filter.
+    fn initialize(&mut self) {
+        let (_, _, yaw) = self.vqf.orientation().euler_angles();
+        // set the offset to the current yaw angle
+        self.yaw_offset = Some(UnitQuaternion::from_euler_angles(0., 0., -yaw))
+    }
+
+    /// Resets the orientation filter.
+    fn reset(&mut self) {
+        self.yaw_offset = None;
+        self.vqf.reset_orientation(UnitQuaternion::identity());
+    }
+
+    /// Returns the current orientation of the robot.
+    #[must_use]
+    pub fn orientation(&self) -> UnitQuaternion<f32> {
+        let imu_to_robot_frame =
+            UnitQuaternion::from_axis_angle(&Vector3::z_axis(), std::f32::consts::PI)
+                * UnitQuaternion::from_quaternion(Quaternion::new(
+                    0.,
+                    1. / 2_f32.sqrt(),
+                    1. / 2_f32.sqrt(),
+                    0.,
+                ));
+
+        if let Some(offset) = self.yaw_offset {
+            imu_to_robot_frame * (offset * self.vqf.orientation())
+        } else {
+            imu_to_robot_frame * self.vqf.orientation()
+        }
+    }
+}
+
+fn init_vqf(mut commands: Commands, dbg: DebugContext, imu: Res<IMUValues>) {
+    // imu rate is 41Hz (Richter-Klug, 2018)
+    let imu_rate = 41.0;
     let imu_sample_period = Duration::from_secs_f32(1.0 / imu_rate);
 
     let params = VqfParameters {
-        bias_sigma_initial: 0.5,
+        tau_accelerometer: Duration::from_secs_f32(1.),
         ..default()
     };
     let vqf = Vqf::new(imu_sample_period, imu_sample_period, params);
-    tracing::info!(?vqf.coefficients);
+    setup_orientation_log(&dbg, "vqf_orientation", (0.0, 0.0, 0.0));
+    setup_orientation_log(&dbg, "original_orientation", (0.0, 0.0, 0.0));
 
-    setup_orientation_log(&dbg, "vqf_orientation", (0.0, 0.0, 0.2));
-    setup_orientation_log(&dbg, "original_orientation", (0.0, 0.0, 0.2));
-
-    commands.insert_resource(VqfOrientation(vqf));
+    commands.insert_resource(VqfOrientation {
+        vqf,
+        yaw_offset: None,
+    });
 }
 
 fn setup_orientation_log(dbg: &DebugContext<'_>, path: &'static str, origin: (f32, f32, f32)) {
@@ -72,6 +125,7 @@ fn setup_orientation_log(dbg: &DebugContext<'_>, path: &'static str, origin: (f3
 }
 
 fn update_vqf(
+    mut last_gyro: Local<Vector3<f32>>,
     dbg: DebugContext,
     cycle: Res<Cycle>,
     mut vqf: ResMut<VqfOrientation>,
@@ -79,17 +133,16 @@ fn update_vqf(
     imu: Res<IMUValues>,
     pose: Res<RobotPose>,
 ) {
-    vqf.update(imu.gyroscope, imu.accelerometer);
+    if *last_gyro != imu.gyroscope {
+        *last_gyro = imu.gyroscope;
+        vqf.update(imu.gyroscope, imu.accelerometer);
 
-    let one_over_sqrt_2 = 1.0 / f32::sqrt(2.0);
-    let orientation = UnitQuaternion::from_euler_angles(0., 0., std::f32::consts::PI / 2.0)
-        * (UnitQuaternion::from_quaternion(Quaternion::new(
-            0.,
-            one_over_sqrt_2,
-            one_over_sqrt_2,
-            0.,
-        )) * vqf.orientation());
+        if !vqf.is_initialized() {
+            vqf.initialize();
+        }
+    }
 
+    let orientation = vqf.orientation();
     dbg.log_with_cycle(
         "vqf_orientation",
         *cycle,
