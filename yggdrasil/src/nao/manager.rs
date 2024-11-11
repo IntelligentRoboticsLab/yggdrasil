@@ -119,7 +119,9 @@ struct LedSettings<T> {
     priority: Option<Priority>,
 }
 
+#[derive(Default, Debug)]
 enum HeadTarget {
+    #[default]
     None,
     New {
         target: UnitQuaternion<f32>,
@@ -171,9 +173,7 @@ pub struct NaoManager {
     arm_settings: JointSettings<ArmJoints<JointValue>>,
     head_settings: JointSettings<HeadJoints<JointValue>>,
 
-    head_target: UnitQuaternion<f32>,
-    head_source: UnitQuaternion<f32>,
-    timestep: f32,
+    head_target: HeadTarget,
 
     led_left_ear: LedSettings<LeftEar>,
     led_right_ear: LedSettings<RightEar>,
