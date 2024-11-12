@@ -1,9 +1,6 @@
 use std::time::Duration;
 
 use super::imu::IMUValues;
-use crate::core::debug::DebugContext;
-use crate::localization::RobotPose;
-use crate::nao::Cycle;
 use crate::prelude::*;
 use bevy::prelude::*;
 use nalgebra::{Quaternion, UnitQuaternion, Vector3};
@@ -106,56 +103,22 @@ impl RobotOrientation {
     }
 }
 
-fn init_vqf(mut commands: Commands, dbg: DebugContext, config: Res<OrientationFilterConfig>) {
+fn init_vqf(mut commands: Commands, config: Res<OrientationFilterConfig>) {
     let imu_sample_period = Duration::from_secs_f32(1.0 / IMU_RATE);
 
-    let params = config.as_ref().into();
-    let vqf = Vqf::new(imu_sample_period, imu_sample_period, params);
-    dbg.log_static(
-        "orientation",
-        &rerun::Boxes3D::from_half_sizes([(0.75, 0.1375, 0.2865)]),
-    );
-
-    dbg.log_component_batches(
-        "orientation",
-        true,
-        [
-            &rerun::components::AxisLength(0.3.into()) as _,
-            &rerun::components::ViewCoordinates::FLU as _,
-        ],
-    );
-
+    let vqf = Vqf::new(imu_sample_period, imu_sample_period, config.as_ref().into());
     commands.insert_resource(RobotOrientation {
         vqf,
         yaw_offset: None,
     });
 }
 
-pub fn update_orientation(
-    dbg: DebugContext,
-    cycle: Res<Cycle>,
-    mut orientation: ResMut<RobotOrientation>,
-    imu: Res<IMUValues>,
-    pose: Res<RobotPose>,
-) {
+pub fn update_orientation(mut orientation: ResMut<RobotOrientation>, imu: Res<IMUValues>) {
     orientation.update(imu.gyroscope, imu.accelerometer);
 
     if !orientation.is_initialized() {
         orientation.initialize();
     }
-
-    let orientation = orientation.quaternion();
-    dbg.log_with_cycle(
-        "orientation",
-        *cycle,
-        &rerun::Transform3D::from_rotation(rerun::Quaternion::from_wxyz([
-            orientation.w,
-            orientation.i,
-            orientation.j,
-            orientation.k,
-        ]))
-        .with_translation((pose.inner.translation.x, pose.inner.translation.y, 0.1)),
-    );
 }
 
 /// Configuration for the orientation filter.

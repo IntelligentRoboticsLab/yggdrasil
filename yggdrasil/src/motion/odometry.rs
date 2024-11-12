@@ -95,15 +95,15 @@ impl Odometry {
         let scaled_offset = offset.component_mul(&config.scale_factor);
 
         let yaw = UnitComplex::from_angle(orientation.euler_angles().2);
+        let orientation_offset = self.last_orientation.rotation_to(&yaw).inverse();
+
         self.last_orientation = yaw;
 
         let odometry_offset =
-            Isometry2::from_parts(Translation2::from(scaled_offset), UnitComplex::identity());
-
-        let raw = Isometry2::from_parts(self.accumulated.translation, UnitComplex::identity());
+            Isometry2::from_parts(Translation2::from(scaled_offset), orientation_offset);
 
         // update the accumulated odometry
         self.offset_to_last = odometry_offset;
-        self.accumulated = Isometry2::from_parts((raw * odometry_offset).translation, yaw);
+        self.accumulated *= odometry_offset;
     }
 }
