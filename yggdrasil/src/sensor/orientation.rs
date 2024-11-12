@@ -161,15 +161,14 @@ pub fn update_orientation(
 #[serde_as]
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]
 pub struct OrientationFilterConfig {
-    /// Time constant $\tau_{acc}$ for accelerometer low-pass filtering.
+    /// Time constant τ<sub>acc</sub> for accelerometer low-pass filtering.
     ///
-    /// Small values for $\tau_{acc}$ imply trust on the accelerometer
-    /// measurements, while large values of $\tau_{acc}$ imply trust on the
+    /// Small values for τ<sub>acc</sub> imply trust on the accelerometer
+    /// measurements, while large values of τ<sub>acc</sub> imply trust on the
     /// gyroscope measurements.
     ///
-    /// The time constant $\tau_{acc}$ corresponds to the cutoff frequency $f_c$
-    /// of the second-order Butterworth low-pass filter as follows: $$f_c =
-    /// \frac{\sqrt(2)}{2 \pi \tau_{acc}}$$
+    /// The time constant τ<sub>acc</sub> corresponds to the cutoff frequency ƒ<sub>c</sub>
+    /// of the second-order Butterworth low-pass filter as follows: f<sub>c</sub> = √2 / (2 π τ<sub>acc</sub>)
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub tau_accelerometer: Duration,
     /// Enables gyroscope bias estimation during motion phases.
