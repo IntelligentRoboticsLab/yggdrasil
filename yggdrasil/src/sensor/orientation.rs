@@ -26,7 +26,7 @@ impl Plugin for OrientationFilterPlugin {
                 .after(super::imu::imu_sensor)
                 .run_if(super::imu::has_new_imu_sample),
         )
-        .add_systems(PostStartup, init_vqf);
+        .add_systems(Startup, init_vqf);
     }
 }
 
