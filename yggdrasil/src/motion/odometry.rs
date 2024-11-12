@@ -94,11 +94,9 @@ impl Odometry {
         self.last_left_sole_to_right_sole = left_sole_to_right_sole;
         let scaled_offset = offset.component_mul(&config.scale_factor);
 
-        let orientation_offset = self
-            .last_orientation
-            .rotation_to(&orientation.yaw())
-            .inverse();
-        self.last_orientation = orientation.yaw();
+        let yaw = UnitComplex::from_angle(orientation.orientation_euler().2);
+        let orientation_offset = self.last_orientation.rotation_to(&yaw).inverse();
+        self.last_orientation = yaw;
 
         let odometry_offset =
             Isometry2::from_parts(Translation2::from(scaled_offset), orientation_offset);

@@ -12,7 +12,7 @@ use crate::{
         Kinematics,
     },
     motion::walk::{engine::Side, SwingFoot},
-    sensor::{imu::IMUValues, orientation::VqfOrientation},
+    sensor::orientation::RobotOrientation,
 };
 
 use super::CameraConfig;
@@ -41,8 +41,7 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
 
 fn update_camera_matrix<T: CameraLocation>(
     swing_foot: Res<SwingFoot>,
-    imu: Res<IMUValues>,
-    vqf: Res<VqfOrientation>,
+    vqf: Res<RobotOrientation>,
     kinematics: Res<Kinematics>,
     mut matrix: ResMut<CameraMatrix<T>>,
     config: Res<CameraConfig>,
@@ -60,14 +59,13 @@ fn update_camera_matrix<T: CameraLocation>(
         image_size,
         camera_to_head,
         kinematics.isometry::<Head, Robot>().inner,
-        robot_to_ground(&swing_foot, &imu, &vqf, &kinematics),
+        robot_to_ground(&swing_foot, &vqf, &kinematics),
     );
 }
 
 fn robot_to_ground(
     swing_foot: &SwingFoot,
-    imu: &IMUValues,
-    vqf: &VqfOrientation,
+    vqf: &RobotOrientation,
     kinematics: &Kinematics,
 ) -> Isometry3<f32> {
     let (roll, pitch, _) = vqf.orientation().euler_angles();

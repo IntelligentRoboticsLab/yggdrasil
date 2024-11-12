@@ -9462,7 +9462,9 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vqf"
-version = "0.3.0"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fd1e5dacc7361a7748378bb9b70f318495696125c7a0d71e333b3db86e65d4a"
 dependencies = [
  "nalgebra",
  "serde",

@@ -1,18 +1,16 @@
 use std::time::Duration;
 
 use super::imu::IMUValues;
+use crate::behavior::primary_state::PrimaryState;
 use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
 use crate::nao::Cycle;
 use crate::prelude::*;
-use crate::{behavior::primary_state::PrimaryState, nao::CycleTime};
 use bevy::prelude::*;
-use nalgebra::{Quaternion, UnitComplex, UnitQuaternion, Vector3};
-use nidhogg::types::ForceSensitiveResistors;
+use nalgebra::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
-use vqf::{Vqf, VqfParameters};
-
-const GRAVITY_CONSTANT: f32 = 9.81;
+use serde_with::{serde_as, DurationMilliSeconds, DurationSeconds};
+use vqf::Vqf;
 
 /// Plugin which maintains the robot's orientation using the IMU data.
 ///
@@ -24,20 +22,17 @@ impl Plugin for OrientationFilterPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Sensor,
-            (update_orientation, update_vqf)
-                .chain()
-                .after(super::imu::imu_sensor),
+            update_orientation
+                .after(super::imu::imu_sensor)
+                .run_if(super::imu::has_new_imu_sample),
         )
-        .add_systems(PostStartup, (init_orientation_filter, init_vqf));
+        .add_systems(PostStartup, init_vqf);
     }
 }
 
-fn init_orientation_filter(mut commands: Commands, config: Res<OrientationFilterConfig>) {
-    commands.insert_resource(RobotOrientation::with_config(&config));
-}
-
+/// Orientation of the robot in 3D space, based on a VQF filter.
 #[derive(Resource, Deref, DerefMut)]
-pub struct VqfOrientation {
+pub struct RobotOrientation {
     /// The inner VQF filter.
     ///
     /// See [`Vqf`] for more information.
@@ -52,8 +47,9 @@ pub struct VqfOrientation {
     yaw_offset: Option<UnitQuaternion<f32>>,
 }
 
-impl VqfOrientation {
+impl RobotOrientation {
     /// Returns whether the orientation filter is initialized.
+    #[must_use]
     pub fn is_initialized(&self) -> bool {
         self.yaw_offset.is_some()
     }
@@ -62,7 +58,7 @@ impl VqfOrientation {
     fn initialize(&mut self) {
         let (_, _, yaw) = self.vqf.orientation().euler_angles();
         // set the offset to the current yaw angle
-        self.yaw_offset = Some(UnitQuaternion::from_euler_angles(0., 0., -yaw))
+        self.yaw_offset = Some(UnitQuaternion::from_euler_angles(0., 0., -yaw));
     }
 
     /// Resets the orientation filter.
@@ -72,6 +68,7 @@ impl VqfOrientation {
     }
 
     /// Returns the current orientation of the robot.
+    #[inline]
     #[must_use]
     pub fn orientation(&self) -> UnitQuaternion<f32> {
         let imu_to_robot_frame =
@@ -89,22 +86,31 @@ impl VqfOrientation {
             imu_to_robot_frame * self.vqf.orientation()
         }
     }
+
+    #[inline]
+    #[must_use]
+    pub fn orientation_euler(&self) -> (f32, f32, f32) {
+        self.orientation().euler_angles()
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn is_resting(&self) -> bool {
+        self.vqf.is_rest_phase()
+    }
 }
 
-fn init_vqf(mut commands: Commands, dbg: DebugContext, imu: Res<IMUValues>) {
+fn init_vqf(mut commands: Commands, dbg: DebugContext, config: Res<OrientationFilterConfig>) {
     // imu rate is 41Hz (Richter-Klug, 2018)
     let imu_rate = 41.0;
     let imu_sample_period = Duration::from_secs_f32(1.0 / imu_rate);
 
-    let params = VqfParameters {
-        tau_accelerometer: Duration::from_secs_f32(1.),
-        ..default()
-    };
+    let params = config.clone().into();
     let vqf = Vqf::new(imu_sample_period, imu_sample_period, params);
     setup_orientation_log(&dbg, "vqf_orientation", (0.0, 0.0, 0.0));
     setup_orientation_log(&dbg, "original_orientation", (0.0, 0.0, 0.0));
 
-    commands.insert_resource(VqfOrientation {
+    commands.insert_resource(RobotOrientation {
         vqf,
         yaw_offset: None,
     });
@@ -124,21 +130,24 @@ fn setup_orientation_log(dbg: &DebugContext<'_>, path: &'static str, origin: (f3
     );
 }
 
-fn update_vqf(
-    mut last_gyro: Local<Vector3<f32>>,
+pub fn update_orientation(
     dbg: DebugContext,
     cycle: Res<Cycle>,
-    mut vqf: ResMut<VqfOrientation>,
-    original: Res<RobotOrientation>,
+    mut vqf: ResMut<RobotOrientation>,
     imu: Res<IMUValues>,
     pose: Res<RobotPose>,
+    primary_state: Res<PrimaryState>,
 ) {
-    if *last_gyro != imu.gyroscope {
-        *last_gyro = imu.gyroscope;
-        vqf.update(imu.gyroscope, imu.accelerometer);
+    match *primary_state {
+        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
+            vqf.reset();
+        }
+        _ => {
+            vqf.update(imu.gyroscope, imu.accelerometer);
 
-        if !vqf.is_initialized() {
-            vqf.initialize();
+            if !vqf.is_initialized() {
+                vqf.initialize();
+            }
         }
     }
 
@@ -171,254 +180,114 @@ fn update_vqf(
         *cycle,
         &rerun::Scalar::new(f64::from(yaw)),
     );
-
-    let flip =
-        UnitQuaternion::from_euler_angles(std::f32::consts::PI, 0.0, -std::f32::consts::PI / 2.0);
-    let orientation = flip * original.orientation;
-    dbg.log_with_cycle(
-        "original_orientation",
-        *cycle,
-        &rerun::Transform3D::from_rotation(rerun::Quaternion::from_wxyz([
-            orientation.w,
-            orientation.i,
-            orientation.j,
-            orientation.k,
-        ]))
-        .with_translation((pose.inner.translation.x, pose.inner.translation.y, 0.1)),
-    );
-
-    let (roll, pitch, yaw) = orientation.euler_angles();
-
-    dbg.log_with_cycle(
-        "orientation/original_roll",
-        *cycle,
-        &rerun::Scalar::new(f64::from(roll)),
-    );
-    dbg.log_with_cycle(
-        "orientation/original_pitch",
-        *cycle,
-        &rerun::Scalar::new(f64::from(pitch)),
-    );
-
-    dbg.log_with_cycle(
-        "orientation/original_yaw",
-        *cycle,
-        &rerun::Scalar::new(f64::from(yaw)),
-    );
 }
 
-pub fn update_orientation(
-    mut orientation: ResMut<RobotOrientation>,
-    imu: Res<IMUValues>,
-    fsr: Res<ForceSensitiveResistors>,
-    cycle: Res<CycleTime>,
-    primary_state: Res<PrimaryState>,
-) {
-    orientation.update(&imu, &fsr, &cycle);
-    match *primary_state {
-        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
-            orientation.reset();
-        }
-        _ => {}
-    }
-}
-
+/// Configuration for the orientation filter.
+///
+/// this is an exact copy of [`vqf::VqfParameters`], but with [`serde_with`]
+/// attributes added to make it nice to serialize and deserialize.
+#[serde_as]
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]
 pub struct OrientationFilterConfig {
-    pub acceleration_weight: f32,
-    pub acceleration_threshold: f32,
-    pub gyro_threshold: f32,
-    pub fsr_threshold: f32,
-}
-
-#[derive(Resource, Debug)]
-pub struct RobotOrientation {
-    pub orientation: UnitQuaternion<f32>,
-    config: OrientationFilterConfig,
-    gyro_t0: Vector3<f32>,
-    gyro_bias: Vector3<f32>,
-    initialized: bool,
-}
-
-impl RobotOrientation {
-    /// Creates a new [`RobotOrientation`] with the provided configuration.
-    #[must_use]
-    pub fn with_config(config: &OrientationFilterConfig) -> Self {
-        Self {
-            orientation: UnitQuaternion::identity(),
-            config: config.clone(),
-            gyro_t0: Vector3::zeros(),
-            gyro_bias: Vector3::zeros(),
-            initialized: false,
-        }
-    }
-
-    /// Updates the orientation of the robot based on the IMU data.
-    pub fn update(&mut self, imu: &IMUValues, fsr: &ForceSensitiveResistors, cycle: &CycleTime) {
-        let gyro = Vector3::new(imu.gyroscope.x, imu.gyroscope.y, imu.gyroscope.z);
-        let linear_acceleration = Vector3::new(
-            imu.accelerometer.x,
-            imu.accelerometer.y,
-            imu.accelerometer.z,
-        );
-
-        if !self.initialized {
-            self.orientation = compute_initial(linear_acceleration);
-            self.initialized = true;
-            return;
-        }
-
-        if self.is_steady(
-            gyro,
-            linear_acceleration,
-            fsr,
-            self.config.gyro_threshold,
-            self.config.acceleration_threshold,
-            self.config.fsr_threshold,
-        ) {
-            // We cannot use a LowPassFilter here sadly, because it's implemented for nidhogg:Vector2,
-            // and we want to use it for nalgebra::Vector3, making the type more complex.
-            // https://github.com/IntelligentRoboticsLab/yggdrasil/issues/215
-            self.gyro_bias = 0.01 * gyro + 0.99 * self.gyro_bias;
-            self.gyro_t0 = gyro;
-        } else {
-            self.predict_next_orientation(gyro, cycle);
-            self.apply_correction(linear_acceleration);
-        }
-        self.gyro_t0 = gyro;
-    }
-
-    /// Returns the current yaw of the robot, in 2D
-    #[must_use]
-    pub fn yaw(&self) -> UnitComplex<f32> {
-        UnitComplex::new(self.orientation.inverse().euler_angles().2)
-    }
-
-    /// Predicts the next orientation based on the angular velocity and the cycle time.
-    /// This uses equation 38 and 42 from the paper.
-    fn predict_next_orientation(&mut self, gyro: Vector3<f32>, cycle: &CycleTime) {
-        let orientation = self.orientation.quaternion();
-        let gyro = gyro - self.gyro_bias;
-
-        let rate = Quaternion::new(0.0, gyro.x, gyro.y, gyro.z);
-
-        // equation 38
-        let rate_derivative = -(rate * orientation) / 2.0;
-
-        // equation 42
-        self.orientation = UnitQuaternion::from_quaternion(
-            orientation + rate_derivative * cycle.duration.as_secs_f32(),
-        );
-    }
-
-    #[must_use]
-    pub fn is_steady(
-        &self,
-        gyro: Vector3<f32>,
-        linear_acceleration: Vector3<f32>,
-        fsr: &ForceSensitiveResistors,
-        gyro_threshold: f32,
-        acceleration_threshold: f32,
-        fsr_threshold: f32,
-    ) -> bool {
-        if (linear_acceleration.norm() - GRAVITY_CONSTANT).abs() > acceleration_threshold {
-            return false;
-        }
-
-        let gyro_delta = (gyro - self.gyro_t0).abs();
-
-        if gyro_delta.x > gyro_threshold
-            || gyro_delta.y > gyro_threshold
-            || gyro_delta.z > gyro_threshold
-        {
-            return false;
-        }
-
-        if fsr.left_foot.sum() < fsr_threshold || fsr.right_foot.sum() < fsr_threshold {
-            return false;
-        }
-
-        true
-    }
-
-    /// Apply a correction to the orientation based on the linear acceleration and gravity.
+    /// Time constant $\tau_{acc}$ for accelerometer low-pass filtering.
     ///
-    /// This is section 5.2.1 in the paper.
-    fn apply_correction(&mut self, linear_acceleration: Vector3<f32>) {
-        let orientation = self.orientation;
-        let acceleration_weight = self.config.acceleration_weight;
-        let linear_acceleration = linear_acceleration.normalize();
-
-        // figure 5;
-        // When the vehicle moves with high acceleration, the magnitude and direction of the total measured acceleration vector are different from gravity;
-        // therefore the attitude is evaluated using a false reference, resulting in significant, possibly critical errors
-        // To solve this we scale the weight of the acceleration correction based on the magnitude error
-        let magnitude_error =
-            (linear_acceleration.norm() - GRAVITY_CONSTANT).abs() / GRAVITY_CONSTANT;
-
-        // threshold taken from paper (figure 5)
-        let interpolation_factor = if magnitude_error <= 0.1 {
-            acceleration_weight
-        } else if magnitude_error <= 0.2 {
-            10.0 * acceleration_weight * (0.2 - magnitude_error)
-        } else {
-            return;
-        };
-
-        // equation 44, use the predicted orientation to normalize the gravity vector into the global frame
-        let projected_gravity = orientation.inverse().transform_vector(&linear_acceleration);
-
-        // equation 47, compute the delta quaternion using the projected gravity vector
-        let delta = UnitQuaternion::from_quaternion(Quaternion::new(
-            ((projected_gravity.z + 1.0) / 2.0).sqrt(),
-            -(projected_gravity.y / (2.0 * (projected_gravity.z + 1.0)).sqrt()),
-            projected_gravity.x / (2.0 * (projected_gravity.z + 1.0)).sqrt(),
-            0.0,
-        ));
-
-        // figure 4;
-        // The delta may have a large value when the predicted gravity has a significant deviation from the real gravity.
-        // If that condition does not occur, the delta quaternion is very small; thus, we prefer using the LERP formula because it is computationally more efficient.
-
-        // equations 48, 49, 50, 51, 52
-        // threshold taken from paper (0.9)
-        let correction = if Quaternion::identity().dot(&delta) > 0.9 {
-            UnitQuaternion::from_quaternion(
-                UnitQuaternion::identity().lerp(&delta, interpolation_factor),
-            )
-        } else {
-            UnitQuaternion::identity().slerp(&delta, interpolation_factor)
-        };
-
-        self.orientation *= correction;
-    }
-
-    fn reset(&mut self) {
-        self.orientation = UnitQuaternion::identity();
-        self.initialized = false;
-    }
+    /// Small values for $\tau_{acc}$ imply trust on the accelerometer
+    /// measurements, while large values of $\tau_{acc}$ imply trust on the
+    /// gyroscope measurements.
+    ///
+    /// The time constant $\tau_{acc}$ corresponds to the cutoff frequency $f_c$
+    /// of the second-order Butterworth low-pass filter as follows: $$f_c =
+    /// \frac{\sqrt(2)}{2 \pi \tau_{acc}}$$
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub tau_accelerometer: Duration,
+    /// Enables gyroscope bias estimation during motion phases.
+    ///
+    /// # Note
+    ///
+    /// Gyroscope bias is estimated based on the inclination correction only!
+    pub do_bias_estimation: bool,
+    /// Enables gyroscope bias estimation during rest phases.
+    ///
+    /// # Note
+    ///
+    /// This enables "rest"-phase detection, phases in which the IMU is at rest.
+    /// During rest-phases, the gyroscope bias is estimated from the
+    /// low-pass filtered gyroscope readings.
+    pub do_rest_bias_estimation: bool,
+    /// Standard deviation of the initial bias estimation uncertainty, in
+    /// degrees per second.
+    pub bias_sigma_initial: f32,
+    /// Time in which the bias estimation uncertainty increases from 0 °/s to
+    /// 0.1 °/s. This value determines the system noise assumed by the
+    /// Kalman filter.
+    #[serde_as(as = "DurationSeconds<u64>")]
+    pub bias_forgetting_time: Duration,
+    /// Maximum expected gyroscope bias, in degrees per second.
+    ///
+    /// This value is used to clip the bias estimate and the measurement error
+    /// in the bias estimation update step.
+    /// It is further used by the rest detection algorithm in order to not
+    /// regard measurements with a large but constant angular rate as rest.
+    pub bias_clip: f32,
+    /// Standard deviation of the converged bias estimation uncertainty during
+    /// motion, in degrees per second.
+    pub bias_sigma_motion: f32,
+    /// Forgetting factor for unobservable bias in vertical direction during
+    /// motion.
+    ///
+    /// As magnetometer measurements are deliberately not used during motion
+    /// bias estimation, gyroscope bias is not observable in vertical
+    /// direction.
+    ///
+    /// This value is the relative weight of an artificial zero measurement that
+    /// ensures that the bias estimate in the unobservable direction will
+    /// eventually decay to zero.
+    pub bias_vertical_forgetting_factor: f32,
+    /// Standard deviation of the converged bias estimation uncertainty during a
+    /// rest phase, in degrees per second.
+    pub bias_sigma_rest: f32,
+    /// Time threshold for rest detection.
+    ///
+    /// A rest phase is detected when the measurements have been close to the
+    /// low-pass filtered reference for at least this duration.
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub rest_min_duration: Duration,
+    /// Time constant for the low-pass filter used in the rest detection.
+    ///
+    /// This time constant characterizes a second-order Butterworth low-pass
+    /// filter used to obtain the reference for rest detection.
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub rest_filter_tau: Duration,
+    /// Angular velocity threshold for rest detection, in degrees per second.
+    ///
+    /// For a rest phase to be detected, the norm of the deviation between
+    /// measurement and reference must be below the provided threshold.
+    /// The absolute value of each component must also be below
+    /// [`Self::bias_clip`].
+    pub rest_threshold_gyro: f32,
+    /// Acceleration threshold for rest phase detection in m/s^2.
+    ///
+    /// For a rest phase to be detected, the norm of the deviation between
+    /// measurement and reference must be below the provided threshold.
+    pub rest_threshold_accel: f32,
 }
 
-/// Computes the initial orientation of the robot based on the linear acceleration.
-/// This is based on equation 25 in the paper.
-fn compute_initial(linear_acceleration: Vector3<f32>) -> UnitQuaternion<f32> {
-    let linear_acceleration = linear_acceleration.normalize();
-
-    let (x, y, z, w) = if linear_acceleration.z >= 0.0 {
-        (
-            ((linear_acceleration.z + 1.0) / 2.0).sqrt(),
-            -(linear_acceleration.y / (2.0 * (linear_acceleration.z + 1.0)).sqrt()),
-            linear_acceleration.x / (2.0 * (linear_acceleration.z + 1.0)).sqrt(),
-            0.0,
-        )
-    } else {
-        (
-            -(linear_acceleration.y / (2.0 * (1.0 - linear_acceleration.z)).sqrt()),
-            ((1.0 - linear_acceleration.z) / 2.0).sqrt(),
-            0.0,
-            linear_acceleration.x / (2.0 * (1.0 - linear_acceleration.z)).sqrt(),
-        )
-    };
-
-    UnitQuaternion::from_quaternion(Quaternion::new(x, y, z, w))
+impl From<OrientationFilterConfig> for vqf::VqfParameters {
+    fn from(config: OrientationFilterConfig) -> Self {
+        Self {
+            tau_accelerometer: config.tau_accelerometer,
+            do_bias_estimation: config.do_bias_estimation,
+            do_rest_bias_estimation: config.do_rest_bias_estimation,
+            bias_sigma_initial: config.bias_sigma_initial,
+            bias_forgetting_time: config.bias_forgetting_time,
+            bias_clip: config.bias_clip,
+            bias_sigma_motion: config.bias_sigma_motion,
+            bias_vertical_forgetting_factor: config.bias_vertical_forgetting_factor,
+            bias_sigma_rest: config.bias_sigma_rest,
+            rest_min_duration: config.rest_min_duration,
+            rest_filter_tau: config.rest_filter_tau,
+            rest_threshold_gyro: config.rest_threshold_gyro,
+            rest_threshold_accel: config.rest_threshold_accel,
+        }
+    }
 }

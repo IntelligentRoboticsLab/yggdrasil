@@ -2,12 +2,10 @@ use super::{get_min_duration, lerp, types::Movement, ActiveMotion, KeyframeExecu
 use crate::motion::walk::engine::WalkingEngine;
 use crate::nao::NaoManager;
 use crate::nao::Priority;
-use crate::sensor::imu::IMUValues;
 use crate::sensor::orientation::RobotOrientation;
 use bevy::prelude::*;
 use miette::{miette, Result};
-use nalgebra::Vector3;
-use nidhogg::types::{ArmJoints, ForceSensitiveResistors, HeadJoints, LegJoints};
+use nidhogg::types::{ArmJoints, HeadJoints, LegJoints};
 use nidhogg::{
     types::{FillExt, JointArray},
     NaoState,
@@ -16,15 +14,6 @@ use std::time::{Duration, Instant};
 
 // maximum speed the robot is allowed to move to the starting position at
 const MAX_SPEED: f32 = 1.0;
-
-// maximum gyroscopic value the robot can take for it to be considered steady
-const MAX_GYRO_VALUE: f32 = 0.4;
-
-// maximum accelerometer value the robot can take for it to be considered steady
-const MAX_ACC_VALUE: f32 = 0.6;
-
-// minimum fsr value the robot can take to be considered steady
-const MIN_FSR_VALUE: f32 = 0.0;
 
 // minimum waittime duration, anything less will not be considered
 // (if we were to consider this waiting time, the amount of time to
@@ -44,7 +33,6 @@ pub fn keyframe_executor(
     mut keyframe_executor: ResMut<KeyframeExecutor>,
     mut nao_manager: ResMut<NaoManager>,
     orientation: Res<RobotOrientation>,
-    (fsr, imu): (Res<ForceSensitiveResistors>, Res<IMUValues>),
     mut walking_engine: ResMut<WalkingEngine>,
 ) {
     if keyframe_executor.active_motion.is_none() {
@@ -130,21 +118,8 @@ pub fn keyframe_executor(
             Priority::High,
         );
     } else {
-        let gyro = Vector3::new(imu.gyroscope.x, imu.gyroscope.y, imu.gyroscope.z);
-        let linear_acceleration = Vector3::new(
-            imu.accelerometer.x,
-            imu.accelerometer.y,
-            imu.accelerometer.z,
-        );
         // we check whether the robot is in a steady position
-        if !orientation.is_steady(
-            gyro,
-            linear_acceleration,
-            &fsr,
-            MAX_GYRO_VALUE,
-            MAX_ACC_VALUE,
-            MIN_FSR_VALUE,
-        ) {
+        if !orientation.is_resting() {
             // if not, we wait until it is either steady or the maximum wait time has elapsed
             if !exit_waittime_elapsed(
                 &mut keyframe_executor,
