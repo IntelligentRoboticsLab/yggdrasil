@@ -12,6 +12,9 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds, DurationSeconds};
 use vqf::Vqf;
 
+/// imu rate is 41Hz (Richter-Klug, 2018)
+const IMU_RATE: f32 = 41.0;
+
 /// Plugin which maintains the robot's orientation using the IMU data.
 ///
 /// This implementation is based on the paper <https://www.mdpi.com/1424-8220/15/8/19302/pdf>.
@@ -101,14 +104,11 @@ impl RobotOrientation {
 }
 
 fn init_vqf(mut commands: Commands, dbg: DebugContext, config: Res<OrientationFilterConfig>) {
-    // imu rate is 41Hz (Richter-Klug, 2018)
-    let imu_rate = 41.0;
-    let imu_sample_period = Duration::from_secs_f32(1.0 / imu_rate);
+    let imu_sample_period = Duration::from_secs_f32(1.0 / IMU_RATE);
 
     let params = config.clone().into();
     let vqf = Vqf::new(imu_sample_period, imu_sample_period, params);
-    setup_orientation_log(&dbg, "vqf_orientation", (0.0, 0.0, 0.0));
-    setup_orientation_log(&dbg, "original_orientation", (0.0, 0.0, 0.0));
+    setup_orientation_log(&dbg, "orientation", (0.0, 0.0, 0.0));
 
     commands.insert_resource(RobotOrientation {
         vqf,
@@ -162,23 +162,6 @@ pub fn update_orientation(
             orientation.k,
         ]))
         .with_translation((pose.inner.translation.x, pose.inner.translation.y, 0.1)),
-    );
-
-    let (roll, pitch, yaw) = orientation.euler_angles();
-    dbg.log_with_cycle(
-        "orientation/vqf_roll",
-        *cycle,
-        &rerun::Scalar::new(f64::from(roll)),
-    );
-    dbg.log_with_cycle(
-        "orientation/vqf_pitch",
-        *cycle,
-        &rerun::Scalar::new(f64::from(pitch)),
-    );
-    dbg.log_with_cycle(
-        "orientation/vqf_yaw",
-        *cycle,
-        &rerun::Scalar::new(f64::from(yaw)),
     );
 }
 
