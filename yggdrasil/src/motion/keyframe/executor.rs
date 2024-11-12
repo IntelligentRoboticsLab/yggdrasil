@@ -118,9 +118,9 @@ pub fn keyframe_executor(
             Priority::High,
         );
     } else {
-        // we check whether the robot is in a steady position
+        // we check whether the robot is in the "resting" phase, and thus in a steady position.
         if !orientation.is_resting() {
-            // if not, we wait until it is either steady or the maximum wait time has elapsed
+            // if not, we wait until it is either resting or the maximum wait time has elapsed
             if !exit_waittime_elapsed(
                 &mut keyframe_executor,
                 motion.submotions[&sub_motion_name].exit_waittime,

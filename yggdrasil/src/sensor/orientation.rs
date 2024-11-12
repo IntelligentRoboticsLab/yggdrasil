@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use super::imu::IMUValues;
-use crate::behavior::primary_state::PrimaryState;
 use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
 use crate::nao::Cycle;
@@ -73,7 +72,7 @@ impl RobotOrientation {
     /// Returns the current orientation of the robot.
     #[inline]
     #[must_use]
-    pub fn orientation(&self) -> UnitQuaternion<f32> {
+    pub fn quaternion(&self) -> UnitQuaternion<f32> {
         let imu_to_robot_frame =
             UnitQuaternion::from_axis_angle(&Vector3::z_axis(), std::f32::consts::PI)
                 * UnitQuaternion::from_quaternion(Quaternion::new(
@@ -92,8 +91,8 @@ impl RobotOrientation {
 
     #[inline]
     #[must_use]
-    pub fn orientation_euler(&self) -> (f32, f32, f32) {
-        self.orientation().euler_angles()
+    pub fn euler(&self) -> (f32, f32, f32) {
+        self.quaternion().euler_angles()
     }
 
     #[inline]
@@ -108,7 +107,19 @@ fn init_vqf(mut commands: Commands, dbg: DebugContext, config: Res<OrientationFi
 
     let params = config.clone().into();
     let vqf = Vqf::new(imu_sample_period, imu_sample_period, params);
-    setup_orientation_log(&dbg, "orientation", (0.0, 0.0, 0.0));
+    dbg.log_static(
+        "orientation",
+        &rerun::Boxes3D::from_half_sizes([(0.75, 0.1375, 0.2865)]),
+    );
+
+    dbg.log_component_batches(
+        "orientation",
+        true,
+        [
+            &rerun::components::AxisLength(0.3.into()) as _,
+            &rerun::components::ViewCoordinates::FLU as _,
+        ],
+    );
 
     commands.insert_resource(RobotOrientation {
         vqf,
@@ -116,35 +127,20 @@ fn init_vqf(mut commands: Commands, dbg: DebugContext, config: Res<OrientationFi
     });
 }
 
-fn setup_orientation_log(dbg: &DebugContext<'_>, path: &'static str, origin: (f32, f32, f32)) {
-    dbg.log_static(
-        path,
-        &rerun::Boxes3D::from_half_sizes([(0.01, 0.05, 0.2)]).with_centers([origin]),
-    );
-
-    dbg.log_static(path, &rerun::ViewCoordinates::FLU);
-    dbg.log_component_batches(
-        path,
-        true,
-        [&rerun::components::AxisLength(0.3.into()) as _],
-    );
-}
-
 pub fn update_orientation(
     dbg: DebugContext,
     cycle: Res<Cycle>,
-    mut vqf: ResMut<RobotOrientation>,
+    mut orientation: ResMut<RobotOrientation>,
     imu: Res<IMUValues>,
     pose: Res<RobotPose>,
-    primary_state: Res<PrimaryState>,
 ) {
-    vqf.update(imu.gyroscope, imu.accelerometer);
+    orientation.update(imu.gyroscope, imu.accelerometer);
 
-    if !vqf.is_initialized() {
-        vqf.initialize();
+    if !orientation.is_initialized() {
+        orientation.initialize();
     }
 
-    let orientation = vqf.orientation();
+    let orientation = orientation.quaternion();
     dbg.log_with_cycle(
         "orientation",
         *cycle,

@@ -68,7 +68,7 @@ fn robot_to_ground(
     vqf: &RobotOrientation,
     kinematics: &Kinematics,
 ) -> Isometry3<f32> {
-    let (roll, pitch, _) = vqf.orientation().euler_angles();
+    let (roll, pitch, _) = vqf.quaternion().euler_angles();
 
     let left_sole_to_robot = kinematics.isometry::<Sole<Left>, Robot>().inner;
     let imu_adjusted_robot_to_left_sole = Isometry3::rotation(Vector3::y() * pitch)
