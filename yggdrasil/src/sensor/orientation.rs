@@ -11,13 +11,14 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds, DurationSeconds};
 use vqf::Vqf;
 
-/// imu rate is 41Hz (Richter-Klug, 2018)
+/// The NAO's IMU update rate.
+///
+/// This is actually 41Hz and not 82Hz (Richter-Klug, 2018)
 const IMU_RATE: f32 = 41.0;
 
 /// Plugin which maintains the robot's orientation using the IMU data.
 ///
-/// This implementation is based on the paper <https://www.mdpi.com/1424-8220/15/8/19302/pdf>.
-/// And implementation by the HULKs team.
+/// This implementation is based on the VQF described in [this paper](https://arxiv.org/pdf/2203.17024).
 pub struct OrientationFilterPlugin;
 
 impl Plugin for OrientationFilterPlugin {
@@ -63,7 +64,10 @@ impl RobotOrientation {
         self.yaw_offset = Some(UnitQuaternion::from_euler_angles(0., 0., -yaw));
     }
 
-    /// Resets the orientation filter.
+    /// Resets the accumulated orientation, and the filter values.
+    // TODO: This should be called whenever the robot switches to penalized state or when the ready state is entered.
+    // See: https://github.com/IntelligentRoboticsLab/yggdrasil/issues/400
+    #[allow(unused)]
     fn reset(&mut self) {
         self.yaw_offset = None;
         self.vqf.reset_orientation(UnitQuaternion::identity());
@@ -91,7 +95,7 @@ impl RobotOrientation {
 
     #[inline]
     #[must_use]
-    pub fn euler(&self) -> (f32, f32, f32) {
+    pub fn euler_angles(&self) -> (f32, f32, f32) {
         self.quaternion().euler_angles()
     }
 
@@ -105,7 +109,7 @@ impl RobotOrientation {
 fn init_vqf(mut commands: Commands, dbg: DebugContext, config: Res<OrientationFilterConfig>) {
     let imu_sample_period = Duration::from_secs_f32(1.0 / IMU_RATE);
 
-    let params = config.clone().into();
+    let params = config.as_ref().into();
     let vqf = Vqf::new(imu_sample_period, imu_sample_period, params);
     dbg.log_static(
         "orientation",
@@ -236,15 +240,15 @@ pub struct OrientationFilterConfig {
     /// The absolute value of each component must also be below
     /// [`Self::bias_clip`].
     pub rest_threshold_gyro: f32,
-    /// Acceleration threshold for rest phase detection in m/s^2.
+    /// Acceleration threshold for rest phase detection in m/s<sup>2</sup>.
     ///
     /// For a rest phase to be detected, the norm of the deviation between
     /// measurement and reference must be below the provided threshold.
     pub rest_threshold_accel: f32,
 }
 
-impl From<OrientationFilterConfig> for vqf::VqfParameters {
-    fn from(config: OrientationFilterConfig) -> Self {
+impl From<&OrientationFilterConfig> for vqf::VqfParameters {
+    fn from(config: &OrientationFilterConfig) -> Self {
         Self {
             tau_accelerometer: config.tau_accelerometer,
             do_bias_estimation: config.do_bias_estimation,

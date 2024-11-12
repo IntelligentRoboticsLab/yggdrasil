@@ -94,7 +94,7 @@ impl Odometry {
         self.last_left_sole_to_right_sole = left_sole_to_right_sole;
         let scaled_offset = offset.component_mul(&config.scale_factor);
 
-        let yaw = UnitComplex::from_angle(orientation.euler().2);
+        let yaw = UnitComplex::from_angle(orientation.euler_angles().2);
         self.last_orientation = yaw;
 
         let odometry_offset =
