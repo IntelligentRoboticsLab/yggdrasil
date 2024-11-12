@@ -119,7 +119,7 @@ fn init_vqf(mut commands: Commands, dbg: DebugContext, config: Res<OrientationFi
 fn setup_orientation_log(dbg: &DebugContext<'_>, path: &'static str, origin: (f32, f32, f32)) {
     dbg.log_static(
         path,
-        &rerun::Boxes3D::from_half_sizes([(0.05, 0.1, 0.2)]).with_centers([origin]),
+        &rerun::Boxes3D::from_half_sizes([(0.01, 0.05, 0.2)]).with_centers([origin]),
     );
 
     dbg.log_static(path, &rerun::ViewCoordinates::FLU);
@@ -153,7 +153,7 @@ pub fn update_orientation(
 
     let orientation = vqf.orientation();
     dbg.log_with_cycle(
-        "vqf_orientation",
+        "orientation",
         *cycle,
         &rerun::Transform3D::from_rotation(rerun::Quaternion::from_wxyz([
             orientation.w,
