@@ -138,17 +138,10 @@ pub fn update_orientation(
     pose: Res<RobotPose>,
     primary_state: Res<PrimaryState>,
 ) {
-    match *primary_state {
-        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
-            vqf.reset();
-        }
-        _ => {
-            vqf.update(imu.gyroscope, imu.accelerometer);
+    vqf.update(imu.gyroscope, imu.accelerometer);
 
-            if !vqf.is_initialized() {
-                vqf.initialize();
-            }
-        }
+    if !vqf.is_initialized() {
+        vqf.initialize();
     }
 
     let orientation = vqf.orientation();

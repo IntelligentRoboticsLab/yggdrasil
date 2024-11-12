@@ -57,15 +57,15 @@ impl Plugin for ScanLinesPlugin {
                         .after(super::scan_grid::update_bottom_scan_grid)
                         .run_if(resource_exists_and_changed::<Image<Bottom>>),
                 ),
+            )
+            // These are really obnoxious to visualize, so they are disabled for now.
+            .add_systems(
+                PostUpdate,
+                (
+                    visualize_scan_lines::<Top>.run_if(resource_exists::<ScanLines<Top>>),
+                    visualize_scan_lines::<Bottom>.run_if(resource_exists::<ScanLines<Bottom>>),
+                ),
             );
-        // These are really obnoxious to visualize, so they are disabled for now.
-        // .add_systems(
-        //     PostUpdate,
-        //     (
-        //         visualize_scan_lines::<Top>.run_if(resource_exists::<ScanLines<Top>>),
-        //         visualize_scan_lines::<Bottom>.run_if(resource_exists::<ScanLines<Bottom>>),
-        //     ),
-        // );
     }
 }
 
