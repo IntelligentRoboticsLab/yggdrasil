@@ -7,6 +7,8 @@ use crate::{
         debug::DebugContext,
     },
     motion::odometry::{self, Odometry},
+    nao::Cycle,
+    sensor::orientation::RobotOrientation,
 };
 use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
@@ -189,20 +191,39 @@ fn find_closest_penalty_pose(
 }
 
 fn setup_pose_visualization(dbg: DebugContext) {
+    dbg.log_static(
+        "localization/pose",
+        &rerun::Boxes3D::from_half_sizes([(0.075, 0.1375, 0.2865)]),
+    );
+
     dbg.log_component_batches(
         "localization/pose",
         true,
-        [&rerun::Color::from_rgb(0, 64, 255) as _],
+        [
+            &rerun::Color::from_rgb(0, 120, 255) as _,
+            &rerun::components::AxisLength(0.3.into()) as _,
+            &rerun::components::ViewCoordinates::FLU as _,
+        ],
     );
-    dbg.log_static("localization/pose", &rerun::ViewCoordinates::FLU);
 }
 
-fn visualize_pose(dbg: DebugContext, pose: Res<RobotPose>) {
-    let origin = pose.inner.translation.vector;
-    let direction = pose.inner.rotation.transform_point(&Point2::new(0.1, 0.0));
-    dbg.log(
+fn visualize_pose(
+    dbg: DebugContext,
+    cycle: Res<Cycle>,
+    pose: Res<RobotPose>,
+    orientation: Res<RobotOrientation>,
+) {
+    let orientation = orientation.quaternion();
+    let position = pose.inner.translation.vector;
+    dbg.log_with_cycle(
         "localization/pose",
-        &rerun::Arrows3D::from_vectors([(direction.x, direction.y, 0.0)])
-            .with_origins([(origin.x, origin.y, 0.0)]),
+        *cycle,
+        &rerun::Transform3D::from_rotation(rerun::Quaternion::from_wxyz([
+            orientation.w,
+            orientation.i,
+            orientation.j,
+            orientation.k,
+        ]))
+        .with_translation((position.x, position.y, 0.2865)),
     );
 }

@@ -55,7 +55,7 @@ impl Plugin for ScanLinesPlugin {
                         .run_if(resource_exists_and_changed::<Image<Top>>),
                     update_scan_lines::<Bottom>
                         .after(super::scan_grid::update_bottom_scan_grid)
-                        .run_if(resource_exists_and_changed::<Image<Top>>),
+                        .run_if(resource_exists_and_changed::<Image<Bottom>>),
                 ),
             );
         // These are really obnoxious to visualize, so they are disabled for now.

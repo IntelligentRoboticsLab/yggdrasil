@@ -63,3 +63,4 @@ tracing = { workspace = true }
 tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tracing-tracy = { workspace = true, optional = true }
+vqf = { workspace = true }

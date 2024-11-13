@@ -4,7 +4,6 @@ use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    behavior::primary_state::PrimaryState,
     kinematics::{
         spaces::{LeftSole, RightSole},
         Kinematics,
@@ -34,16 +33,10 @@ pub fn update_odometry(
     swing_foot: Res<SwingFoot>,
     kinematics: Res<Kinematics>,
     orientation: Res<RobotOrientation>,
-    primary_state: Res<PrimaryState>,
 ) {
-    match *primary_state {
-        PrimaryState::Penalized | PrimaryState::Initial | PrimaryState::Sitting => {
-            *odometry = Odometry::default();
-        }
-        _ => {
-            odometry.update(&odometry_config, &swing_foot, &kinematics, &orientation);
-        }
-    }
+    // TODO: We should probably reset the odometry in some cases
+    // See: https://github.com/IntelligentRoboticsLab/yggdrasil/issues/400
+    odometry.update(&odometry_config, &swing_foot, &kinematics, &orientation);
 }
 
 /// Configuration for the odometry.
@@ -70,6 +63,13 @@ impl Odometry {
         Self::default()
     }
 
+    /// Reset the orientation of the robot to the given [`RobotOrientation`].
+    pub fn reset_orientation(&mut self, orientation: &RobotOrientation) {
+        self.last_orientation = UnitComplex::from_angle(orientation.euler_angles().2);
+        self.accumulated.rotation = self.last_orientation;
+        self.offset_to_last.rotation = UnitComplex::identity();
+    }
+
     /// Update the odometry of the robot using the given [`Kinematics`].
     pub fn update(
         &mut self,
@@ -94,11 +94,9 @@ impl Odometry {
         self.last_left_sole_to_right_sole = left_sole_to_right_sole;
         let scaled_offset = offset.component_mul(&config.scale_factor);
 
-        let orientation_offset = self
-            .last_orientation
-            .rotation_to(&orientation.yaw())
-            .inverse();
-        self.last_orientation = orientation.yaw();
+        let yaw = UnitComplex::from_angle(orientation.euler_angles().2);
+        let orientation_offset = self.last_orientation.rotation_to(&yaw);
+        self.last_orientation = yaw;
 
         let odometry_offset =
             Isometry2::from_parts(Translation2::from(scaled_offset), orientation_offset);
