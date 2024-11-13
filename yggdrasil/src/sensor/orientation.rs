@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use super::imu::IMUValues;
-use crate::prelude::*;
+use crate::{motion::odometry::Odometry, prelude::*};
 use bevy::prelude::*;
 use nalgebra::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
@@ -113,11 +113,16 @@ fn init_vqf(mut commands: Commands, config: Res<OrientationFilterConfig>) {
     });
 }
 
-pub fn update_orientation(mut orientation: ResMut<RobotOrientation>, imu: Res<IMUValues>) {
+pub fn update_orientation(
+    mut orientation: ResMut<RobotOrientation>,
+    mut odometry: ResMut<Odometry>,
+    imu: Res<IMUValues>,
+) {
     orientation.update(imu.gyroscope, imu.accelerometer);
 
     if !orientation.is_initialized() {
         orientation.initialize();
+        odometry.reset_orientation(&orientation);
     }
 }
 

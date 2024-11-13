@@ -193,7 +193,7 @@ fn find_closest_penalty_pose(
 fn setup_pose_visualization(dbg: DebugContext) {
     dbg.log_static(
         "localization/pose",
-        &rerun::Boxes3D::from_half_sizes([(0.75, 0.1375, 0.2865)]),
+        &rerun::Boxes3D::from_half_sizes([(0.075, 0.1375, 0.2865)]),
     );
 
     dbg.log_component_batches(
