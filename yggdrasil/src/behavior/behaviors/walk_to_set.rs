@@ -39,7 +39,7 @@ impl Behavior for WalkToSet {
 
         control
             .nao_manager
-            .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
+            .set_head_target(look_at);
 
         let target = Target {
             position: set_robot_position.isometry.translation.vector.into(),

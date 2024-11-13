@@ -14,6 +14,9 @@ use nidhogg::{
     },
     NaoControlMessage, NaoState,
 };
+use rerun::external::{arrow2::io::print, re_sdk_comms::PROTOCOL_HEADER};
+
+use super::Cycle;
 
 /// The stiffness constant for the "unstiff"/"floppy" state for robot joints.
 const STIFFNESS_UNSTIFF: f32 = -1.0;
@@ -22,8 +25,7 @@ const HIP_LOCK_STIFFNESS: f32 = 0.1;
 /// The set hip position in sitting mode, where the robot sits and starts.
 const HIP_POSITION: f32 = -0.9;
 
-const HEAD_TIME_STEP: f32 = 0.1;
-
+const HEAD_STIFFNESS: f32 = 0.8;
 type JointValue = f32;
 
 /// Plugin providing the [`NaoManager`].
@@ -48,28 +50,36 @@ fn finalize(
     mut control_message: ResMut<NaoControlMessage>,
     mut manager: ResMut<NaoManager>,
     state: Res<NaoState>,
+    cycle: Res<Cycle>,
 ) {
+    println!("\n\n\n\n\nCycle: {:?}", cycle);
+    println!("Function Target: {:?}", manager.head_target);
     manager.head_target = manager.head_target.clone().update(&state);
+    println!("After update: {:?}", manager.head_target);
 
-    if let HeadTarget::Moving { .. } = manager.head_target{
-        let head = match manager.head_target {
-            HeadTarget::Moving { source, target, timestep } => {
-                let head = source.slerp(&target, timestep);
-                head
-            }
-            _ => unreachable!(),
-        };
+    if let HeadTarget::Moving {
+        source,
+        target,
+        timestep,
+    } = manager.head_target
+    {
+        println!("Source: {}", source);
+        println!("Target: {}", target);
+        println!("Timestep: {}", timestep);
+        let head = source.slerp(&target, timestep);
 
         manager.set_head(
             HeadJoints::builder()
                 .pitch(head.euler_angles().1)
                 .yaw(head.euler_angles().2)
                 .build(),
-            HeadJoints::fill(0.2),
+            HeadJoints::fill(HEAD_STIFFNESS),
             Priority::High,
         );
     }
+    println!("Making joint positions");
     control_message.position = manager.make_joint_positions();
+    println!("Making joint stiffnesses");
     control_message.stiffness = manager.make_joint_stiffnesses();
 
     control_message.left_ear = manager.led_left_ear.value.clone();
@@ -80,6 +90,8 @@ fn finalize(
     control_message.left_foot = manager.led_left_foot.value;
     control_message.right_foot = manager.led_right_foot.value;
     control_message.skull = manager.led_skull.value.clone();
+
+    println!("Clearing Priorities");
 
     manager.clear_priorities();
 }
@@ -159,17 +171,25 @@ pub enum HeadTarget {
 
 impl HeadTarget {
     fn update(self, nao_state: &NaoState) -> Self {
+        println!("Current state: {:?}", self);
         match self {
             HeadTarget::None => HeadTarget::None,
-            HeadTarget::New { target } => HeadTarget::Moving {
-                source: UnitQuaternion::from_euler_angles(
+            HeadTarget::New { target } => {
+                let source = UnitQuaternion::from_euler_angles(
                     0.0,
                     nao_state.position.head_pitch,
                     nao_state.position.head_yaw,
-                ),
-                target: target,
-                timestep: 0.0,
-            },
+                );
+                if source.dot(&target) > 0.9 {
+                    HeadTarget::None
+                } else {
+                    HeadTarget::Moving {
+                        source: source,
+                        target: target,
+                        timestep: 0.0,
+                    }
+                }
+            }
             HeadTarget::Moving {
                 source,
                 target,
@@ -178,10 +198,13 @@ impl HeadTarget {
                 if timestep >= 1.0 {
                     HeadTarget::None
                 } else {
+                    let timestep_interval = source.dot(&target);
+                    let timestep = timestep + (0.05 * timestep_interval);
+                    println!("Timestep interval: {}", timestep_interval);
                     HeadTarget::Moving {
                         source: source,
                         target: target,
-                        timestep: timestep + HEAD_TIME_STEP,
+                        timestep: timestep,
                     }
                 }
             }
@@ -367,6 +390,9 @@ impl NaoManager {
 
     /// Set the target position for the head.
     pub fn set_head_target(&mut self, joint_positions: HeadJoints<JointValue>) -> &mut Self {
+        if matches!(self.head_target, HeadTarget::Moving { .. }) {
+            return self;
+        }
         let target =
             UnitQuaternion::from_euler_angles(0.0, joint_positions.pitch, joint_positions.yaw);
         self.head_target = HeadTarget::New { target };

@@ -20,7 +20,7 @@ impl Behavior for WalkTo {
         let look_at = context.pose.get_look_at_absolute(&target_point);
         control
             .nao_manager
-            .set_head(look_at, HeadJoints::fill(0.5), Priority::High);
+            .set_head_target(look_at);
 
         if control
             .step_planner
