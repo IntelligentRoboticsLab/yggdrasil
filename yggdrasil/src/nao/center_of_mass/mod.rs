@@ -78,11 +78,7 @@ fn update_com(kinematics: Res<Kinematics>, mut com: ResMut<CenterOfMass>) {
 }
 
 fn setup_com_visualization(dbg: DebugContext) {
-    dbg.log_component_batches(
-        "localization/pose/com",
-        true,
-        [&rerun::Color::from_rgb(255, 64, 0) as _],
-    );
+    dbg.log_static("localization/pose/com", &rerun::Color::from_rgb(255, 64, 0));
 }
 
 fn visualize_com(dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) {

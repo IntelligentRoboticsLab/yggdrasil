@@ -390,16 +390,14 @@ fn line_points_to_line<T: CameraLocation>(
 }
 
 fn setup_line_visualization<T: CameraLocation>(dbg: DebugContext) {
-    dbg.log_component_batches(
+    dbg.log_static(
         T::make_entity_path("lines"),
-        true,
-        [&rerun::Color::from_rgb(255, 0, 0) as _],
+        &rerun::Color::from_rgb(255, 0, 0),
     );
 
-    dbg.log_component_batches(
+    dbg.log_static(
         T::make_entity_path("projected_lines"),
-        true,
-        [&rerun::Color::from_rgb(255, 0, 0) as _],
+        &rerun::Color::from_rgb(255, 0, 0),
     );
 }
 
