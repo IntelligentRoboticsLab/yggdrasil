@@ -1,9 +1,13 @@
 use bevy::prelude::*;
-use nalgebra::{Isometry3, Point3, Quaternion, Translation3, UnitQuaternion, Vector3};
+use nalgebra::{Isometry3, Point3, Translation3, UnitQuaternion, Vector3};
 use nidhogg::types::{FillExt, LeftLegJoints, LegJoints, RightLegJoints};
 
 use crate::{
-    kinematics::{self, robot_dimensions, FootOffset, RobotKinematics},
+    kinematics::{
+        self,
+        spaces::{LeftAnkle, LeftSole, LeftThigh, LeftTibia, Robot},
+        FootOffset, Kinematics,
+    },
     nao::{NaoManager, Priority},
     sensor::button::ChestButton,
 };
@@ -81,7 +85,7 @@ fn stand_phase(
     mut command: ResMut<WalkCommand>,
     mut nao_manager: ResMut<NaoManager>,
     config: Res<WalkingEngineConfig>,
-    kinematics: Res<RobotKinematics>,
+    kinematics: Res<Kinematics>,
 ) {
     let WalkCommand::Stand(hip_height) = *command else {
         return;
@@ -108,40 +112,69 @@ fn stand_phase(
         Translation3::new(0., -0.05, 0.225),
         UnitQuaternion::identity(),
     );
-    let left_hip_to_ground = kinematics.left_ankle_to_robot.inverse();
+
+    let left_hip_to_ground = kinematics.isometry::<LeftAnkle, Robot>().inner.inverse();
 
     println!(
         "left_hip_to_robot: {:?}",
-        kinematics.left_hip_to_robot.translation.vector
+        kinematics
+            .isometry::<LeftAnkle, Robot>()
+            .inner
+            .translation
+            .vector
     );
 
     println!(
-        "left_thing_to_robot: {:?}",
-        kinematics.left_thigh_to_robot.translation.vector
+        "left_thigh_to_robot: {:?}",
+        kinematics
+            .isometry::<LeftThigh, Robot>()
+            .inner
+            .translation
+            .vector
     );
     println!(
         "left_knee_to_robot: {:?}",
-        kinematics.left_tibia_to_robot.translation.vector
+        kinematics
+            .isometry::<LeftTibia, Robot>()
+            .inner
+            .translation
+            .vector
     );
     println!(
         "left_ankle_to_robot: {:?}",
-        kinematics.left_ankle_to_robot.translation.vector
+        kinematics
+            .isometry::<LeftAnkle, Robot>()
+            .inner
+            .translation
+            .vector
     );
 
-    let zero_point = kinematics.left_ankle_to_robot.inverse() * Point3::new(0.0, 0.0, 0.0);
+    let zero_point =
+        kinematics.isometry::<LeftAnkle, Robot>().inner.inverse() * Point3::new(0.0, 0.0, 0.0);
     tracing::info!(
         "left_foot_to_robot: {}",
-        kinematics.left_sole_to_robot.translation.vector
+        kinematics
+            .isometry::<LeftSole, Robot>()
+            .inner
+            .translation
+            .vector
     );
 
-    let mut offset = kinematics.left_ankle_to_robot.inverse().translation.vector;
+    let mut offset = kinematics
+        .isometry::<LeftAnkle, Robot>()
+        .inner
+        .inverse()
+        .translation
+        .vector;
     offset.x = 0.0;
     offset.y = -0.05;
 
     // TODO: the torso offset is hard coded in the ik implementation!!
     let torso_offset = 0.025;
-    let foot_position =
-        (kinematics.left_sole_to_robot).translation.vector + Vector3::new(torso_offset, 0.0, 0.225);
+    let foot_position = (kinematics.isometry::<LeftSole, Robot>().inner)
+        .translation
+        .vector
+        + Vector3::new(torso_offset, 0.0, 0.225);
 
     tracing::info!("left_foot: {}", foot_position);
 }

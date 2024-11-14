@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use nalgebra::{Point2, Vector2};
 use nidhogg::types::{ForceSensitiveResistorFoot, ForceSensitiveResistors};
 
-use crate::sensor::{imu::IMUValues, orientation::GRAVITY_CONSTANT};
+use crate::sensor::imu::IMUValues;
 
 use super::center_of_mass;
 
@@ -20,6 +20,8 @@ const RIGHT_FOOT_SENSOR_OFFSETS: SensorOffsets = (
     Vector2::new(-0.03025, -0.0191),
     Vector2::new(-0.03025, 0.0299),
 );
+
+const GRAVITY_CONSTANT: f32 = 9.81;
 
 /// Plugin that adds systems and resources for calculating the center of pressure.
 pub(super) struct CenterOfPressurePlugin;
