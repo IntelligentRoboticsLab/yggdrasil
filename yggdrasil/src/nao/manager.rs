@@ -25,7 +25,7 @@ const HIP_LOCK_STIFFNESS: f32 = 0.1;
 /// The set hip position in sitting mode, where the robot sits and starts.
 const HIP_POSITION: f32 = -0.9;
 
-const HEAD_STIFFNESS: f32 = 0.5;
+const HEAD_STIFFNESS: f32 = 0.8;
 type JointValue = f32;
 
 /// Plugin providing the [`NaoManager`].
@@ -67,12 +67,11 @@ fn finalize(
         println!("Target: {}", target);
         println!("Timestep: {}", timestep);
         let head = source.slerp(&target, timestep);
-        let scale_factor = 1.2;
-        let scaled_head = UnitQuaternion::new_normalize(head.into_inner() * scale_factor);
+
         manager.set_head(
             HeadJoints::builder()
-                .pitch(scaled_head.euler_angles().1)
-                .yaw(scaled_head.euler_angles().2)
+                .pitch(head.euler_angles().1)
+                .yaw(head.euler_angles().2)
                 .build(),
             HeadJoints::fill(HEAD_STIFFNESS),
             Priority::Critical,
@@ -199,7 +198,7 @@ impl HeadTarget {
                 if timestep >= 1.0 {
                     HeadTarget::None
                 } else {
-                    let timestep_interval = 0.4 / source.dot(&target);
+                    let timestep_interval = 0.5 / source.dot(&target);
                     let timestep = timestep + (0.05 * timestep_interval);
                     println!("Timestep interval: {}", timestep_interval);
                     HeadTarget::Moving {
@@ -393,10 +392,14 @@ impl NaoManager {
     pub fn set_head_target(&mut self, joint_positions: HeadJoints<JointValue>) -> &mut Self {
         if let HeadTarget::Moving { source, target, timestep } = self.head_target {
             let new_target = UnitQuaternion::from_euler_angles(0.0, joint_positions.pitch, joint_positions.yaw);
+            let similarity = target.dot(&new_target);
+            if similarity > 0.9 {
+                return self;
+            }
             self.head_target = HeadTarget::Moving {
                 source: source,
                 target: new_target,
-                timestep: timestep * target.dot(&new_target),
+                timestep: timestep * similarity,
             };
             return self;
         }
