@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use nalgebra::{Isometry3, Point3, Translation3, UnitQuaternion, Vector3};
+use nalgebra::{Isometry3, Point3, Translation, Translation3, UnitQuaternion, Vector3};
 use nidhogg::types::{FillExt, LeftLegJoints, LegJoints, RightLegJoints};
 
 use crate::{
@@ -14,6 +14,7 @@ use crate::{
 
 use super::walk::WalkingEngineConfig;
 
+mod feet;
 mod step;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -93,6 +94,7 @@ fn stand_phase(
 
     let foot_offset_left = FootOffset {
         forward: 0.04,
+        turn: 0.3,
         hip_height,
         ..Default::default()
     };
@@ -106,7 +108,7 @@ fn stand_phase(
         .build();
 
     nao_manager.set_legs(leg_positions, leg_stiffness, Priority::Medium);
-    *command = WalkCommand::Stand((hip_height + 0.0015).min(0.18));
+    *command = WalkCommand::Stand((hip_height + 0.0015).min(0.20));
 
     let robot_to_foot = Isometry3::from_parts(
         Translation3::new(0., -0.05, 0.225),
@@ -171,10 +173,9 @@ fn stand_phase(
 
     // TODO: the torso offset is hard coded in the ik implementation!!
     let torso_offset = 0.025;
+    let hip_height = 0.225;
     let foot_position = (kinematics.isometry::<LeftSole, Robot>().inner)
-        .translation
-        .vector
-        + Vector3::new(torso_offset, 0.0, 0.225);
+        * Isometry3::from(Translation3::new(torso_offset, 0., hip_height));
 
     tracing::info!("left_foot: {}", foot_position);
 }
