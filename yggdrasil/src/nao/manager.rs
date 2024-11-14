@@ -198,7 +198,7 @@ impl HeadTarget {
                 if timestep >= 1.0 {
                     HeadTarget::None
                 } else {
-                    let timestep_interval = 0.5 / source.dot(&target);
+                    let timestep_interval = 0.5 * source.dot(&target);
                     let timestep = timestep + (0.05 * timestep_interval);
                     println!("Timestep interval: {}", timestep_interval);
                     HeadTarget::Moving {
