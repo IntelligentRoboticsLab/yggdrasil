@@ -9,7 +9,7 @@ use std::f32::consts::FRAC_1_SQRT_2;
 
 use super::prelude::*;
 use nidhogg::types::JointArray;
-use spatial::{types::Isometry3, InSpace, Space, SpaceOver, Transform};
+use spatial::{types::{Isometry3, Point3}, InSpace, Space, SpaceOver, Transform};
 
 #[derive(Debug, Resource, Transform)]
 pub struct Kinematics {
@@ -63,6 +63,17 @@ impl Kinematics {
         self.transform(&InSpace::new(na::Isometry3::identity()))
             .inner
             .into()
+    }
+
+    #[must_use]
+    pub fn origin<S1, S2>(&self) -> Point3<S2>
+    where
+        S1: Space + SpaceOver<na::Point3<f32>>,
+        S2: Space + SpaceOver<na::Point3<f32>>,
+        Self: Transform<na::Point3<f32>, na::Point3<f32>, S1, S2>,
+    {
+        let origin: Point3<S1> = Point3::new(na::Point3::origin());
+        self.transform(&origin)
     }
 
     #[must_use]
@@ -268,5 +279,60 @@ impl From<&JointArray<f32>> for Kinematics {
 impl Default for Kinematics {
     fn default() -> Self {
         Self::from(&JointArray::default())
+    }
+}
+
+pub struct Links {
+    // Center
+    pub head: Point3<Robot>,
+    pub neck: Point3<Robot>,
+    pub robot: Point3<Robot>,
+    // Left arm
+    pub left_shoulder: Point3<Robot>,
+    pub left_elbow: Point3<Robot>,
+    pub left_wrist: Point3<Robot>,
+    // Left leg
+    pub left_hip: Point3<Robot>,
+    pub left_knee: Point3<Robot>,
+    pub left_ankle: Point3<Robot>,
+    pub left_sole: Point3<Robot>,
+    // Right arm
+    pub right_shoulder: Point3<Robot>,
+    pub right_elbow: Point3<Robot>,
+    pub right_wrist: Point3<Robot>,
+    // Right leg
+    pub right_hip: Point3<Robot>,
+    pub right_knee: Point3<Robot>,
+    pub right_ankle: Point3<Robot>,
+    pub right_sole: Point3<Robot>,
+}
+
+impl Links {
+    #[must_use]
+    pub fn new(kinematics: &Kinematics) -> Self {
+        Self {
+            // Center
+            head: kinematics.transform(&Point3::<Head>::new(na::Point3::new(0., 0., 0.05))),
+            neck: kinematics.origin::<Neck, _>(),
+            robot: kinematics.origin::<Robot, _>(),
+            // Left arm
+            left_shoulder: kinematics.origin::<LeftShoulder, _>(),
+            left_elbow: kinematics.origin::<LeftElbow, _>(),
+            left_wrist: kinematics.origin::<LeftWrist, _>(),
+            // Left leg
+            left_hip: kinematics.origin::<LeftHip, _>(),
+            left_knee: kinematics.origin::<LeftTibia, _>(),
+            left_ankle: kinematics.origin::<LeftAnkle, _>(),
+            left_sole: kinematics.origin::<LeftSole, _>(),
+            // Right arm
+            right_shoulder: kinematics.origin::<RightShoulder, _>(),
+            right_elbow: kinematics.origin::<RightElbow, _>(),
+            right_wrist: kinematics.origin::<RightWrist, _>(),
+            // Right leg
+            right_hip: kinematics.origin::<RightHip, _>(),
+            right_knee: kinematics.origin::<RightTibia, _>(),
+            right_ankle: kinematics.origin::<RightAnkle, _>(),
+            right_sole: kinematics.origin::<RightSole, _>(),
+        }
     }
 }

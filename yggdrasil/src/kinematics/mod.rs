@@ -4,6 +4,9 @@ use std::{f32::consts::PI, marker::PhantomData};
 
 use nidhogg::NaoState;
 
+use crate::core::debug::DebugContext;
+use crate::localization::RobotPose;
+
 use self::dimensions::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS};
 use self::spaces::{Left, Right};
 
@@ -28,13 +31,73 @@ pub struct KinematicsPlugin;
 impl Plugin for KinematicsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Kinematics>()
-            .add_systems(PreUpdate, update_kinematics);
+            .add_systems(PreUpdate, update_kinematics)
+            .add_systems(PostUpdate, log_kinematics);
     }
 }
 
 /// System that updates the [`Kinematics`] resource.
 pub fn update_kinematics(mut kinematics: ResMut<Kinematics>, state: Res<NaoState>) {
     *kinematics = Kinematics::from(&state.position);
+}
+
+/// System that logs the [`Kinematics`] resource.
+pub fn log_kinematics(dbg: DebugContext, kinematics: Res<Kinematics>) {
+    let links = forward::Links::new(&kinematics);
+
+    let spine = vec![
+        links.head,
+        links.neck,
+        links.robot,
+    ];
+
+    let left_arm = vec![
+        links.neck,
+        links.left_shoulder,
+        links.left_elbow,
+        links.left_wrist,
+    ];
+
+    let right_arm = vec![
+        links.neck,
+        links.right_shoulder,
+        links.right_elbow,
+        links.right_wrist,
+    ];
+
+    let left_leg = vec![
+        links.robot,
+        links.left_hip,
+        links.left_knee,
+        links.left_ankle,
+        links.left_sole,
+    ];
+
+    let right_leg = vec![
+        links.robot,
+        links.right_hip,
+        links.right_knee,
+        links.right_ankle,
+        links.right_sole,
+    ];
+
+    let strips = [
+        spine,
+        left_arm,
+        right_arm,
+        left_leg,
+        right_leg,
+    ];
+
+    dbg.log(
+        "kinematics/visualizatoin",
+        &rerun::LineStrips3D::new(
+            strips
+                .into_iter()
+                .map(|strip| strip.into_iter().map(|p| rerun::Vec3D([p.inner.x, p.inner.y, p.inner.z])))
+        ),
+    );
+
 }
 
 /// The position of a foot relative to the robot's torso.
