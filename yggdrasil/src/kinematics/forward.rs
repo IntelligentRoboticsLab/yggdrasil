@@ -19,6 +19,10 @@ pub struct Kinematics {
     pub head_to_neck: Isometry3<Head, Neck>,
     pub neck_to_robot: Isometry3<Neck, Robot>,
     pub torso_to_robot: Isometry3<Torso, Robot>,
+    pub torso_to_chest_left: Isometry3<Torso, ChestLeft>,
+    pub torso_to_chest_centre_left: Isometry3<Torso, ChestCentreLeft>,
+    pub torso_to_chest_centre_right: Isometry3<Torso, ChestCentreRight>,
+    pub torso_to_chest_right: Isometry3<Torso, ChestRight>,
     pub left_shoulder_to_robot: Isometry3<LeftShoulder, Robot>,
     pub left_upper_arm_to_shoulder: Isometry3<LeftUpperArm, LeftShoulder>,
     pub left_elbow_to_upper_arm: Isometry3<LeftElbow, LeftUpperArm>,
@@ -126,6 +130,26 @@ impl Kinematics {
     #[must_use]
     pub fn neck_to_robot(head_yaw: f32) -> Isometry3<Neck, Robot> {
         na::Isometry3::new(ROBOT_TO_NECK, na::Vector3::z() * head_yaw).into()
+    }
+
+    #[must_use]
+    pub fn torso_to_chest_left() -> Isometry3<Torso, ChestLeft> {
+        na::Isometry3::from(TORSO_TO_CHEST_LEFT).into()
+    }
+
+    #[must_use]
+    pub fn torso_to_chest_centre_left() -> Isometry3<Torso, ChestCentreLeft> {
+        na::Isometry3::from(TORSO_TO_CHEST_CENTRE_LEFT).into()
+    }
+
+    #[must_use]
+    pub fn torso_to_chest_centre_right() -> Isometry3<Torso, ChestCentreRight> {
+        na::Isometry3::from(TORSO_TO_CHEST_CENTRE_RIGHT).into()
+    }
+
+    #[must_use]
+    pub fn torso_to_chest_right() -> Isometry3<Torso, ChestRight> {
+        na::Isometry3::from(TORSO_TO_CHEST_RIGHT).into()
     }
 
     #[must_use]
@@ -243,6 +267,11 @@ impl Kinematics {
     }
 
     #[must_use]
+    pub fn left_toe_to_left_sole() -> Isometry3<LeftToe, LeftSole> {
+        na::Isometry3::from(SOLE_TO_TOE).into()
+    }
+
+    #[must_use]
     pub fn right_pelvis_to_robot(left_hip_yaw_pitch: f32) -> Isometry3<RightPelvis, Robot> {
         na::Isometry3::new(
             ROBOT_TO_RIGHT_PELVIS,
@@ -280,6 +309,11 @@ impl Kinematics {
     pub fn right_sole_to_foot() -> Isometry3<RightSole, RightFoot> {
         na::Isometry3::from(ANKLE_TO_SOLE).into()
     }
+
+    #[must_use]
+    pub fn right_toe_to_right_sole() -> Isometry3<RightToe, RightSole> {
+        na::Isometry3::from(SOLE_TO_TOE).into()
+    }
 }
 
 impl From<&JointArray<f32>> for Kinematics {
@@ -288,6 +322,10 @@ impl From<&JointArray<f32>> for Kinematics {
             head_to_neck: Self::head_to_neck(joints.head_pitch),
             neck_to_robot: Self::neck_to_robot(joints.head_yaw),
             torso_to_robot: Self::torso_to_robot(),
+            torso_to_chest_left: Self::torso_to_chest_left(),
+            torso_to_chest_centre_left: Self::torso_to_chest_centre_left(),
+            torso_to_chest_centre_right: Self::torso_to_chest_centre_right(),
+            torso_to_chest_right: Self::torso_to_chest_right(),
             left_shoulder_to_robot: Self::left_shoulder_to_robot(joints.left_shoulder_pitch),
             left_upper_arm_to_shoulder: Self::left_upper_arm_to_shoulder(joints.left_shoulder_roll),
             left_elbow_to_upper_arm: Self::left_elbow_to_upper_arm(joints.left_elbow_yaw),

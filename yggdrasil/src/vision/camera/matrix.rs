@@ -10,7 +10,10 @@ use crate::{
     core::debug::DebugContext,
     kinematics::{
         dimensions,
-        spaces::{Head, LeftToe, RightToe, Robot},
+        spaces::{
+            ChestCentreLeft, ChestCentreRight, ChestLeft, ChestRight, Head, LeftToe, RightToe,
+            Robot,
+        },
         Kinematics,
     },
     localization::RobotPose,
@@ -48,8 +51,8 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
                     .chain(),
             )
             .add_systems(Update, print_toes::<Bottom>)
-            .add_systems(Update, print_chest::<Bottom>)
-            .add_systems(Update, print_shoulders::<Bottom>);
+            .add_systems(Update, print_chest::<Bottom>);
+        // .add_systems(Update, print_shoulders::<Bottom>);
     }
 }
 
@@ -148,8 +151,8 @@ fn print_toes<T: CameraLocation>(
 }
 
 fn print_chest<T: CameraLocation>(
-    imu: Res<IMUValues>,
-    kinematics: Res<RobotKinematics>,
+    orientation: Res<RobotOrientation>,
+    kinematics: Res<Kinematics>,
     debug_context: DebugContext,
     matrix: Res<CameraMatrix<T>>,
     current_cycle: Res<Cycle>,
@@ -159,7 +162,7 @@ fn print_chest<T: CameraLocation>(
         robot_to_chest_centre_left,
         robot_to_chest_centre_right,
         robot_to_chest_right,
-    ) = robot_to_chests(&imu, &kinematics);
+    ) = robot_to_chests(&orientation, &kinematics);
 
     let (
         Ok(chest_left_point),
@@ -208,85 +211,85 @@ fn print_chest<T: CameraLocation>(
     );
 }
 
-fn print_shoulders<T: CameraLocation>(
-    imu: Res<IMUValues>,
-    kinematics: Res<RobotKinematics>,
-    debug_context: DebugContext,
-    matrix: Res<CameraMatrix<T>>,
-    current_cycle: Res<Cycle>,
-) {
-    let (
-        left_shoulder_cap_back_to_robot,
-        left_shoulder_cap_front_to_robot,
-        right_shoulder_cap_front_to_robot,
-        right_shoulder_cap_back_to_robot,
-    ) = robot_to_shoulders(&imu, &kinematics);
-
-    eprintln!("robot_to_left_shoulder_cap_back: {left_shoulder_cap_back_to_robot}");
-    eprintln!("robot_to_left_shoulder_cap_front: {left_shoulder_cap_front_to_robot}");
-
-    let (
-        Ok(left_shoulder_cap_back_point),
-        Ok(left_shoulder_cap_front_point),
-        Ok(right_shoulder_cap_front_point),
-        Ok(right_shoulder_cap_back_point),
-    ) = (
-        matrix.ground_to_pixel(
-            (left_shoulder_cap_back_to_robot * matrix.robot_to_ground)
-                .inverse()
-                .translation
-                .vector
-                .into(),
-        ),
-        matrix.ground_to_pixel(
-            (left_shoulder_cap_front_to_robot * matrix.robot_to_ground)
-                .inverse()
-                .translation
-                .vector
-                .into(),
-        ),
-        matrix.ground_to_pixel(
-            (right_shoulder_cap_front_to_robot * matrix.robot_to_ground)
-                .inverse()
-                .translation
-                .vector
-                .into(),
-        ),
-        matrix.ground_to_pixel(
-            (right_shoulder_cap_back_to_robot * matrix.robot_to_ground)
-                .inverse()
-                .translation
-                .vector
-                .into(),
-        ),
-    )
-    else {
-        return;
-    };
-
-    debug_context.log_with_cycle(
-        T::make_entity_path("body_contour/shoulders"),
-        *current_cycle,
-        &rerun::Points2D::new([
-            (
-                left_shoulder_cap_back_point.x,
-                left_shoulder_cap_back_point.y,
-            ),
-            (
-                left_shoulder_cap_front_point.x,
-                left_shoulder_cap_front_point.y,
-            ),
-            (
-                right_shoulder_cap_front_point.x,
-                right_shoulder_cap_front_point.y,
-            ),
-            (
-                right_shoulder_cap_back_point.x,
-                right_shoulder_cap_back_point.y,
-            ),
-        ]),
-    );
-}
+// fn print_shoulders<T: CameraLocation>(
+//     orientation: Res<RobotOrientation>,
+//     kinematics: RobotKinematics,
+//     debug_context: DebugContext,
+//     matrix: Res<CameraMatrix<T>>,
+//     current_cycle: Res<Cycle>,
+// ) {
+//     let (
+//         left_shoulder_cap_back_to_robot,
+//         left_shoulder_cap_front_to_robot,
+//         right_shoulder_cap_front_to_robot,
+//         right_shoulder_cap_back_to_robot,
+//     ) = robot_to_shoulders(&orientation, &kinematics);
+//
+//     eprintln!("robot_to_left_shoulder_cap_back: {left_shoulder_cap_back_to_robot}");
+//     eprintln!("robot_to_left_shoulder_cap_front: {left_shoulder_cap_front_to_robot}");
+//
+//     let (
+//         Ok(left_shoulder_cap_back_point),
+//         Ok(left_shoulder_cap_front_point),
+//         Ok(right_shoulder_cap_front_point),
+//         Ok(right_shoulder_cap_back_point),
+//     ) = (
+//         matrix.ground_to_pixel(
+//             (left_shoulder_cap_back_to_robot * matrix.robot_to_ground)
+//                 .inverse()
+//                 .translation
+//                 .vector
+//                 .into(),
+//         ),
+//         matrix.ground_to_pixel(
+//             (left_shoulder_cap_front_to_robot * matrix.robot_to_ground)
+//                 .inverse()
+//                 .translation
+//                 .vector
+//                 .into(),
+//         ),
+//         matrix.ground_to_pixel(
+//             (right_shoulder_cap_front_to_robot * matrix.robot_to_ground)
+//                 .inverse()
+//                 .translation
+//                 .vector
+//                 .into(),
+//         ),
+//         matrix.ground_to_pixel(
+//             (right_shoulder_cap_back_to_robot * matrix.robot_to_ground)
+//                 .inverse()
+//                 .translation
+//                 .vector
+//                 .into(),
+//         ),
+//     )
+//     else {
+//         return;
+//     };
+//
+//     debug_context.log_with_cycle(
+//         T::make_entity_path("body_contour/shoulders"),
+//         *current_cycle,
+//         &rerun::Points2D::new([
+//             (
+//                 left_shoulder_cap_back_point.x,
+//                 left_shoulder_cap_back_point.y,
+//             ),
+//             (
+//                 left_shoulder_cap_front_point.x,
+//                 left_shoulder_cap_front_point.y,
+//             ),
+//             (
+//                 right_shoulder_cap_front_point.x,
+//                 right_shoulder_cap_front_point.y,
+//             ),
+//             (
+//                 right_shoulder_cap_back_point.x,
+//                 right_shoulder_cap_back_point.y,
+//             ),
+//         ]),
+//     );
+// }
 
 fn robot_to_ground(
     swing_foot: &SwingFoot,
@@ -334,41 +337,37 @@ fn robot_to_toes(
 }
 
 fn robot_to_chests(
-    imu: &IMUValues,
-    kinematics: &RobotKinematics,
+    orientation: &RobotOrientation,
+    kinematics: &Kinematics,
 ) -> (
     Isometry3<f32>,
     Isometry3<f32>,
     Isometry3<f32>,
     Isometry3<f32>,
 ) {
-    let roll_pitch = imu.angles;
-    let roll = roll_pitch.x;
-    let pitch = roll_pitch.y;
+    let (roll, pitch, _) = orientation.euler_angles();
 
-    let chest_left_to_robot = kinematics.chest_left_to_robot;
-    let imu_adjusted_chest_left_to_robot =
-        Isometry3::from(chest_left_to_robot.translation.inverse())
-            * Isometry3::rotation(Vector3::y() * pitch)
-            * Isometry3::rotation(Vector3::x() * roll);
+    let robot_to_chest_left = kinematics.isometry::<Robot, ChestLeft>().inner;
+    let imu_adjusted_chest_left_to_robot = Isometry3::from(robot_to_chest_left.translation)
+        * Isometry3::rotation(Vector3::y() * pitch)
+        * Isometry3::rotation(Vector3::x() * roll);
 
-    let chest_centre_left_to_robot = kinematics.chest_centre_left_to_robot;
+    let robot_to_chest_centre_left = kinematics.isometry::<Robot, ChestCentreLeft>().inner;
     let imu_adjusted_chest_centre_left_to_robot =
-        Isometry3::from(chest_centre_left_to_robot.translation.inverse())
+        Isometry3::from(robot_to_chest_centre_left.translation)
             * Isometry3::rotation(Vector3::y() * pitch)
             * Isometry3::rotation(Vector3::x() * roll);
 
-    let chest_centre_right_to_robot = kinematics.chest_centre_right_to_robot;
+    let robot_to_chest_centre_right = kinematics.isometry::<Robot, ChestCentreRight>().inner;
     let imu_adjusted_chest_centre_right_to_robot =
-        Isometry3::from(chest_centre_right_to_robot.translation.inverse())
+        Isometry3::from(robot_to_chest_centre_right.translation)
             * Isometry3::rotation(Vector3::y() * pitch)
             * Isometry3::rotation(Vector3::x() * roll);
 
-    let chest_right_to_robot = kinematics.chest_right_to_robot;
-    let imu_adjusted_chest_right_to_robot =
-        Isometry3::from(chest_right_to_robot.translation.inverse())
-            * Isometry3::rotation(Vector3::y() * pitch)
-            * Isometry3::rotation(Vector3::x() * roll);
+    let robot_to_chest_right = kinematics.isometry::<Robot, ChestRight>().inner;
+    let imu_adjusted_chest_right_to_robot = Isometry3::from(robot_to_chest_right.translation)
+        * Isometry3::rotation(Vector3::y() * pitch)
+        * Isometry3::rotation(Vector3::x() * roll);
 
     (
         imu_adjusted_chest_left_to_robot,
@@ -378,62 +377,60 @@ fn robot_to_chests(
     )
 }
 
-fn robot_to_shoulders(
-    imu: &IMUValues,
-    kinematics: &RobotKinematics,
-) -> (
-    Isometry3<f32>,
-    Isometry3<f32>,
-    Isometry3<f32>,
-    Isometry3<f32>,
-) {
-    let roll_pitch = imu.angles;
-    let roll = roll_pitch.x;
-    let pitch = roll_pitch.y;
-
-    let imu_adjusted_left_shoulder_cap_back_to_robot = Isometry3::from(
-        kinematics
-            .left_shoulder_cap_back_to_robot
-            .translation
-            .inverse(),
-    ) * Isometry3::rotation(
-        Vector3::y() * pitch,
-    ) * Isometry3::rotation(Vector3::x() * roll);
-
-    let imu_adjusted_left_shoulder_cap_front_to_robot =
-        Isometry3::from(
-            kinematics
-                .left_shoulder_cap_front_to_robot
-                .translation
-                .inverse(),
-        ) * Isometry3::rotation(Vector3::y() * pitch)
-            * Isometry3::rotation(Vector3::x() * roll);
-
-    let imu_adjusted_right_shoulder_cap_front_to_robot =
-        Isometry3::from(
-            kinematics
-                .right_shoulder_cap_front_to_robot
-                .translation
-                .inverse(),
-        ) * Isometry3::rotation(Vector3::y() * pitch)
-            * Isometry3::rotation(Vector3::x() * roll);
-
-    let imu_adjusted_right_shoulder_cap_back_to_robot =
-        Isometry3::from(
-            kinematics
-                .right_shoulder_cap_back_to_robot
-                .translation
-                .inverse(),
-        ) * Isometry3::rotation(Vector3::y() * pitch)
-            * Isometry3::rotation(Vector3::x() * roll);
-
-    (
-        imu_adjusted_left_shoulder_cap_back_to_robot,
-        imu_adjusted_left_shoulder_cap_front_to_robot,
-        imu_adjusted_right_shoulder_cap_front_to_robot,
-        imu_adjusted_right_shoulder_cap_back_to_robot,
-    )
-}
+// fn robot_to_shoulders(
+//     orientation: &RobotOrientation,
+//     kinematics: &Kinematics,
+// ) -> (
+//     Isometry3<f32>,
+//     Isometry3<f32>,
+//     Isometry3<f32>,
+//     Isometry3<f32>,
+// ) {
+//     let (roll, pitch, _) = orientation.euler_angles();
+//
+//     let imu_adjusted_left_shoulder_cap_back_to_robot = Isometry3::from(
+//         kinematics
+//             .left_shoulder_cap_back_to_robot
+//             .translation
+//             .inverse(),
+//     ) * Isometry3::rotation(
+//         Vector3::y() * pitch,
+//     ) * Isometry3::rotation(Vector3::x() * roll);
+//
+//     let imu_adjusted_left_shoulder_cap_front_to_robot =
+//         Isometry3::from(
+//             kinematics
+//                 .left_shoulder_cap_front_to_robot
+//                 .translation
+//                 .inverse(),
+//         ) * Isometry3::rotation(Vector3::y() * pitch)
+//             * Isometry3::rotation(Vector3::x() * roll);
+//
+//     let imu_adjusted_right_shoulder_cap_front_to_robot =
+//         Isometry3::from(
+//             kinematics
+//                 .right_shoulder_cap_front_to_robot
+//                 .translation
+//                 .inverse(),
+//         ) * Isometry3::rotation(Vector3::y() * pitch)
+//             * Isometry3::rotation(Vector3::x() * roll);
+//
+//     let imu_adjusted_right_shoulder_cap_back_to_robot =
+//         Isometry3::from(
+//             kinematics
+//                 .right_shoulder_cap_back_to_robot
+//                 .translation
+//                 .inverse(),
+//         ) * Isometry3::rotation(Vector3::y() * pitch)
+//             * Isometry3::rotation(Vector3::x() * roll);
+//
+//     (
+//         imu_adjusted_left_shoulder_cap_back_to_robot,
+//         imu_adjusted_left_shoulder_cap_front_to_robot,
+//         imu_adjusted_right_shoulder_cap_front_to_robot,
+//         imu_adjusted_right_shoulder_cap_back_to_robot,
+//     )
+// }
 
 fn camera_to_head(position: CameraPosition, extrinsic_rotations: Vector3<f32>) -> Isometry3<f32> {
     // create quaternion, using the extrinsic rotations from config (in degrees!)
