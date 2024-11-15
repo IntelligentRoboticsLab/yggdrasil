@@ -19,16 +19,15 @@ pub struct Kinematics {
     pub head_to_neck: Isometry3<Head, Neck>,
     pub neck_to_robot: Isometry3<Neck, Robot>,
     pub torso_to_robot: Isometry3<Torso, Robot>,
-    pub torso_to_chest_left: Isometry3<Torso, ChestLeft>,
-    pub torso_to_chest_centre_left: Isometry3<Torso, ChestCentreLeft>,
-    pub torso_to_chest_centre_right: Isometry3<Torso, ChestCentreRight>,
-    pub torso_to_chest_right: Isometry3<Torso, ChestRight>,
+    pub chest_to_torso: Isometry3<Chest, Torso>,
     pub left_shoulder_to_robot: Isometry3<LeftShoulder, Robot>,
+    pub left_shoulder_cap_to_robot: Isometry3<LeftShoulderCap, Robot>,
     pub left_upper_arm_to_shoulder: Isometry3<LeftUpperArm, LeftShoulder>,
     pub left_elbow_to_upper_arm: Isometry3<LeftElbow, LeftUpperArm>,
     pub left_forearm_to_elbow: Isometry3<LeftForearm, LeftElbow>,
     pub left_wrist_to_forearm: Isometry3<LeftWrist, LeftForearm>,
     pub right_shoulder_to_robot: Isometry3<RightShoulder, Robot>,
+    pub right_shoulder_cap_to_robot: Isometry3<RightShoulderCap, Robot>,
     pub right_upper_arm_to_shoulder: Isometry3<RightUpperArm, RightShoulder>,
     pub right_elbow_to_upper_arm: Isometry3<RightElbow, RightUpperArm>,
     pub right_forearm_to_elbow: Isometry3<RightForearm, RightElbow>,
@@ -133,23 +132,8 @@ impl Kinematics {
     }
 
     #[must_use]
-    pub fn torso_to_chest_left() -> Isometry3<Torso, ChestLeft> {
-        na::Isometry3::from(TORSO_TO_CHEST_LEFT).into()
-    }
-
-    #[must_use]
-    pub fn torso_to_chest_centre_left() -> Isometry3<Torso, ChestCentreLeft> {
-        na::Isometry3::from(TORSO_TO_CHEST_CENTRE_LEFT).into()
-    }
-
-    #[must_use]
-    pub fn torso_to_chest_centre_right() -> Isometry3<Torso, ChestCentreRight> {
-        na::Isometry3::from(TORSO_TO_CHEST_CENTRE_RIGHT).into()
-    }
-
-    #[must_use]
-    pub fn torso_to_chest_right() -> Isometry3<Torso, ChestRight> {
-        na::Isometry3::from(TORSO_TO_CHEST_RIGHT).into()
+    pub fn chest_to_torso() -> Isometry3<Chest, Torso> {
+        na::Isometry3::from(TORSO_TO_CHEST).into()
     }
 
     #[must_use]
@@ -164,6 +148,11 @@ impl Kinematics {
             na::Vector3::y() * left_shoulder_pitch,
         )
         .into()
+    }
+
+    #[must_use]
+    pub fn left_shoulder_cap_to_robot() -> Isometry3<LeftShoulderCap, Robot> {
+        na::Isometry3::from(ROBOT_TO_LEFT_SHOULDER_CAP).into()
     }
 
     #[must_use]
@@ -199,6 +188,11 @@ impl Kinematics {
             na::Vector3::y() * right_shoulder_pitch,
         )
         .into()
+    }
+
+    #[must_use]
+    pub fn right_shoulder_cap_to_robot() -> Isometry3<RightShoulderCap, Robot> {
+        na::Isometry3::from(ROBOT_TO_RIGHT_SHOULDER_CAP).into()
     }
 
     #[must_use]
@@ -322,16 +316,15 @@ impl From<&JointArray<f32>> for Kinematics {
             head_to_neck: Self::head_to_neck(joints.head_pitch),
             neck_to_robot: Self::neck_to_robot(joints.head_yaw),
             torso_to_robot: Self::torso_to_robot(),
-            torso_to_chest_left: Self::torso_to_chest_left(),
-            torso_to_chest_centre_left: Self::torso_to_chest_centre_left(),
-            torso_to_chest_centre_right: Self::torso_to_chest_centre_right(),
-            torso_to_chest_right: Self::torso_to_chest_right(),
+            chest_to_torso: Self::chest_to_torso(),
             left_shoulder_to_robot: Self::left_shoulder_to_robot(joints.left_shoulder_pitch),
+            left_shoulder_cap_to_robot: Self::left_shoulder_cap_to_robot(),
             left_upper_arm_to_shoulder: Self::left_upper_arm_to_shoulder(joints.left_shoulder_roll),
             left_elbow_to_upper_arm: Self::left_elbow_to_upper_arm(joints.left_elbow_yaw),
             left_forearm_to_elbow: Self::left_forearm_to_elbow(joints.left_elbow_roll),
             left_wrist_to_forearm: Self::left_wrist_to_forearm(joints.left_wrist_yaw),
             right_shoulder_to_robot: Self::right_shoulder_to_robot(joints.right_shoulder_pitch),
+            right_shoulder_cap_to_robot: Self::right_shoulder_cap_to_robot(),
             right_upper_arm_to_shoulder: Self::right_upper_arm_to_shoulder(
                 joints.right_shoulder_roll,
             ),
