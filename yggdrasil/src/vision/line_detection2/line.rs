@@ -145,42 +145,44 @@ impl LineCandidate {
         self.inliers.len()
     }
 
-    /// Split the line candidate into multiple candidates if the gap between two neighboring inliers is too large
+    /// Split the line candidate into multiple candidates, every time the gap between two neighboring inliers is too large
     ///
     /// Returns a list of new line candidates and the points that are not included in any of the candidates
-    pub fn split_at_gap(self, max_gap: f32) -> (Vec<LineCandidate>, Vec<Point2<f32>>) {
+    pub fn split_at_gap(mut self, max_gap: f32) -> Vec<Self> {
         let mut candidates = vec![];
-        let mut remaining_points = vec![];
 
-        let mut curr_inliers = vec![];
-        for (p1, p2) in self.inliers.iter().copied().tuple_windows() {
-            if nalgebra::distance(&p1, &p2) > max_gap {
-                if curr_inliers.len() >= 2 {
-                    candidates.push(LineCandidate::new_unchecked(
-                        self.line.clone(),
-                        curr_inliers,
-                    ));
-                } else {
-                    // if there are less than 2 points, add them to the remaining points
-                    remaining_points.extend(curr_inliers);
-                }
-                curr_inliers = vec![];
-            } else {
-                curr_inliers.push(p1);
-            }
+        while let Some(mut candidate) = self.split_at_gap_single(max_gap) {
+            std::mem::swap(&mut self, &mut candidate);
+            candidates.push(candidate);
         }
+        candidates.push(self);
 
-        // remainder
-        if curr_inliers.len() >= 2 {
-            candidates.push(LineCandidate::new_unchecked(self.line, curr_inliers));
-        } else {
-            remaining_points.extend(curr_inliers);
-        }
-
-        (candidates, remaining_points)
+        candidates
     }
 
-    fn sort_inliers(inliers: &mut Vec<Point2<f32>>) {
+    /// Split the line candidate into two candidates at the first point where the gap between two neighboring inliers is too large
+    ///
+    /// If no such point is found, leave the candidate unchanged and returns `None`
+    /// If a point is found, mutates the current candidate and returns the new candidate that was split off
+    fn split_at_gap_single(&mut self, max_gap: f32) -> Option<LineCandidate> {
+        let split_index = (1..self.inliers.len())
+            .find(|&i| nalgebra::distance(&self.inliers[i], &self.inliers[i - 1]) > max_gap);
+
+        let Some(split_index) = split_index else {
+            return None;
+        };
+
+        let new_inliers = self.inliers.split_off(split_index);
+
+        // we need to adjust the end point of the current segment after splitting
+        self.segment.end = *self.inliers.last().unwrap();
+
+        let new_candidate = LineCandidate::new_unchecked(self.line.clone(), new_inliers);
+
+        Some(new_candidate)
+    }
+
+    fn sort_inliers(inliers: &mut [Point2<f32>]) {
         inliers.sort_unstable_by(|a, b| a.x.partial_cmp(&b.x).unwrap());
     }
 }

@@ -2,14 +2,14 @@ pub mod arrsac;
 pub mod line;
 
 use core::f32;
+use std::f32::consts::FRAC_PI_4;
 
 use arrsac::Arrsac;
 use bevy::prelude::*;
 use heimdall::{CameraLocation, CameraMatrix, Top, YuyvImage};
 use itertools::Itertools;
 use line::{LineCandidate, LineSegment2};
-use nalgebra::{point, DVector, Matrix2, Point2, SymmetricEigen, Vector2};
-use nidhogg::types::color;
+use nalgebra::{point, DVector, Point2};
 use rand::seq::SliceRandom;
 use rand::{Rng, RngCore};
 use rerun::Color;
@@ -19,18 +19,19 @@ use super::{camera::Image, scan_lines::ScanLines};
 use crate::core::debug::RerunStream;
 use crate::{core::debug::DebugContext, localization::RobotPose};
 
-const MAX_ITERS: usize = 10;
-const ARRSAC_INLIER_THRESHOLD: f32 = 0.1;
-const LINE_SEGMENT_MIN_POINTS: usize = 4;
-const LINE_SEGMENT_MIN_LENGTH_SPLIT: f32 = 0.2;
-const LINE_SEGMENT_MAX_DISTANCE: f32 = 5.0;
-const MAX_LINE_GAP_DISTANCE: f32 = 0.2;
+const MAX_ITERS: usize = 20;
+const ARRSAC_INLIER_THRESHOLD: f32 = 0.025;
+const LINE_SEGMENT_MIN_POINTS: usize = 5;
+const LINE_SEGMENT_MIN_LENGTH_SPLIT: f32 = 0.3;
+const SPOT_MAX_DISTANCE: f32 = 5.0;
+const MAX_LINE_GAP_DISTANCE: f32 = 0.25;
 const WHITE_TEST_SAMPLES: usize = 10;
 const WHITE_TEST_SAMPLE_DISTANCE: f32 = 0.10;
 const WHITE_TEST_MERGE_RATIO: f32 = 0.75;
 // rad
-const WHITE_TEST_MAX_ANGLE: f32 = 0.15;
-const LINE_SEGMENT_MIN_LENGTH_MERGE: f32 = 0.3;
+const WHITE_TEST_MAX_ANGLE: f32 = FRAC_PI_4;
+const LINE_SEGMENT_MIN_LENGTH_POST_MERGE: f32 = 0.3;
+const LINE_SEGMENT_MAX_LENGTH_POST_MERGE: f32 = 5.0;
 
 /// Plugin that adds systems to detect lines from scan-lines.
 pub struct LineDetectionPlugin;
@@ -91,6 +92,10 @@ fn detect_lines<T: CameraLocation>(
         .map(|p| (pose.as_3d() * p).xy())
         .collect_vec();
 
+    projected_spots.retain(|p| nalgebra::distance(&p, &pose.world_position()) < SPOT_MAX_DISTANCE);
+
+    // TODO: filter out spots that are outside of the field (with some slack)
+
     dbg.log_with_cycle(
         T::make_entity_path("line_spots"),
         scan_lines.image().cycle(),
@@ -108,44 +113,16 @@ fn detect_lines<T: CameraLocation>(
     let mut line_candidates = vec![];
 
     for _ in 0..MAX_ITERS {
-        // we need at least two points to fit a line
-        if projected_spots.len() < 2 {
-            return None;
-        }
-
         projected_spots.shuffle(&mut rng);
         let Some((line, inlier_idx)) = arrsac.fit(projected_spots.iter().copied()) else {
             // probably no more good lines!
             break;
         };
 
-        // remove the inliers from the spots
+        // remove the inliers from the
         let inliers = extract_indices(&mut projected_spots, inlier_idx);
 
-        let candidate = LineCandidate::new(line, inliers);
-
-        // split the line into segments if neighboring points are too far apart
-        let (candidates, remainder) = candidate.split_at_gap(MAX_LINE_GAP_DISTANCE);
-        projected_spots.extend(remainder);
-
-        let candidates = candidates
-            .into_iter()
-            .filter_map(|c| {
-                let has_enough_inliers = c.n_inliers() >= LINE_SEGMENT_MIN_POINTS;
-                let is_close_enough =
-                    nalgebra::distance(&c.segment.center(), &pose.world_position())
-                        < LINE_SEGMENT_MAX_DISTANCE;
-                let is_long_enough = c.segment.length() > LINE_SEGMENT_MIN_LENGTH_SPLIT;
-
-                if has_enough_inliers && is_close_enough && is_long_enough {
-                    Some(c)
-                } else {
-                    // put the spots back :)
-                    projected_spots.extend(c.inliers.into_iter());
-                    None
-                }
-            })
-            .collect_vec();
+        let candidates = LineCandidate::new(line, inliers).split_at_gap(MAX_LINE_GAP_DISTANCE);
 
         line_candidates.extend(candidates);
     }
@@ -169,12 +146,18 @@ fn detect_lines<T: CameraLocation>(
             // do a white test
             let mut tests = vec![];
 
+            let pose_inverse = pose.as_3d().inverse();
+
             // TODO: sample based on the length of the segment too not just a fixed sample count
             for sample in connected.sample_uniform(WHITE_TEST_SAMPLES) {
                 let normal = connected.normal();
 
                 let tester1 = sample + normal * WHITE_TEST_SAMPLE_DISTANCE;
                 let tester2 = sample - normal * WHITE_TEST_SAMPLE_DISTANCE;
+
+                let sample = (pose_inverse * sample.coords.push(0.0)).xy().into();
+                let tester1 = (pose_inverse * tester1.coords.push(0.0)).xy().into();
+                let tester2 = (pose_inverse * tester2.coords.push(0.0)).xy().into();
 
                 // project the points back to the image
                 if let (Some(point_pixel), Some(tester1_pixel), Some(tester2_pixel)) = (
@@ -209,7 +192,13 @@ fn detect_lines<T: CameraLocation>(
         }
     }
 
-    line_candidates.retain(|c| c.segment.length() > LINE_SEGMENT_MIN_LENGTH_MERGE);
+    line_candidates.retain(|c| {
+        let is_long_enough = c.segment.length() > LINE_SEGMENT_MIN_LENGTH_POST_MERGE;
+        let is_short_enough = c.segment.length() < LINE_SEGMENT_MAX_LENGTH_POST_MERGE;
+        let has_enough_spots = c.inliers.len() >= LINE_SEGMENT_MIN_POINTS;
+
+        is_long_enough && is_short_enough && has_enough_spots
+    });
 
     let camera_line_candidates = line_candidates
         .iter()
