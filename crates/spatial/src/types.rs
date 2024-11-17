@@ -65,3 +65,5 @@ macro_rules! vector3 {
         ::spatial::types::Vector3::<$space>::new(::nalgebra::Vector3::new($x, $y, $z))
     };
 }
+pub type Pose2<S> = InSpace<na::Isometry2<f32>, S>;
+pub type Pose3<S> = InSpace<na::Isometry3<f32>, S>;
