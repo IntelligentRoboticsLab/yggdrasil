@@ -1,14 +1,20 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
+use feet::FootPositions;
 use nalgebra::{Isometry3, Point3, Translation, Translation3, UnitQuaternion, Vector3};
 use nidhogg::types::{FillExt, LeftLegJoints, LegJoints, RightLegJoints};
 
 use crate::{
     kinematics::{
         self,
-        spaces::{LeftAnkle, LeftSole, LeftThigh, LeftTibia, Robot},
+        spaces::{
+            LeftAnkle, LeftHip, LeftPelvis, LeftSole, LeftThigh, LeftTibia, RightHip, RightPelvis,
+            RightSole, Robot,
+        },
         FootOffset, Kinematics,
     },
-    nao::{NaoManager, Priority},
+    nao::{CycleTime, NaoManager, Priority},
     sensor::button::ChestButton,
 };
 
@@ -24,13 +30,23 @@ pub enum Side {
     Right,
 }
 
+impl Side {
+    #[must_use]
+    pub fn opposite(self) -> Self {
+        match self {
+            Side::Left => Side::Right,
+            Side::Right => Side::Left,
+        }
+    }
+}
+
 pub struct Walkv4EnginePlugin;
 
 impl Plugin for Walkv4EnginePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<WalkCommand>()
             .add_systems(Update, switch_phase)
-            .add_systems(PostUpdate, (sit_phase, stand_phase));
+            .add_systems(PostUpdate, (sit_phase, stand_phase, walk_phase));
     }
 }
 
@@ -38,6 +54,7 @@ impl Plugin for Walkv4EnginePlugin {
 enum WalkCommand {
     Sit(f32),
     Stand(f32),
+    Walk(f32),
 }
 
 impl Default for WalkCommand {
@@ -50,7 +67,8 @@ fn switch_phase(mut command: ResMut<WalkCommand>, button: Res<ChestButton>) {
     if button.state.is_tapped() {
         *command = match *command {
             WalkCommand::Sit(hip_height) => WalkCommand::Stand(hip_height),
-            WalkCommand::Stand(hip_height) => WalkCommand::Sit(hip_height),
+            WalkCommand::Stand(hip_height) => WalkCommand::Walk(hip_height),
+            WalkCommand::Walk(hip_height) => WalkCommand::Stand(hip_height),
         };
     }
 }
@@ -77,11 +95,6 @@ fn sit_phase(
     *command = WalkCommand::Sit((hip_height - 0.001).max(0.094));
 }
 
-struct FootPositions {
-    left: Isometry3<f32>,
-    right: Isometry3<f32>,
-}
-
 fn stand_phase(
     mut command: ResMut<WalkCommand>,
     mut nao_manager: ResMut<NaoManager>,
@@ -93,8 +106,8 @@ fn stand_phase(
     };
 
     let foot_offset_left = FootOffset {
-        forward: 0.04,
-        turn: 0.3,
+        forward: 0.0,
+        turn: 0.,
         hip_height,
         ..Default::default()
     };
@@ -174,8 +187,55 @@ fn stand_phase(
     // TODO: the torso offset is hard coded in the ik implementation!!
     let torso_offset = 0.025;
     let hip_height = 0.225;
-    let foot_position = (kinematics.isometry::<LeftSole, Robot>().inner)
-        * Isometry3::from(Translation3::new(torso_offset, 0., hip_height));
 
-    tracing::info!("left_foot: {}", foot_position);
+    let foot_positions = FootPositions::from_kinematics(Side::Left, &kinematics, torso_offset);
+
+    tracing::info!("feet: {:?}\n\n\n", foot_positions);
+}
+
+#[derive(Debug, Clone, Default)]
+struct WalkState {
+    phase: Duration,
+    planned_duration: Duration,
+    swing_foot: Side,
+}
+
+fn walk_phase(
+    mut state: Local<WalkState>,
+    mut command: ResMut<WalkCommand>,
+    mut nao_manager: ResMut<NaoManager>,
+    config: Res<WalkingEngineConfig>,
+    kinematics: Res<Kinematics>,
+    cycle_time: Res<CycleTime>,
+) {
+    let WalkCommand::Walk(hip_height) = *command else {
+        return;
+    };
+
+    state.phase += cycle_time.duration;
+
+    if state.phase.as_secs_f32() > 0.75 * state.planned_duration.as_secs_f32() {
+        state.phase = Duration::ZERO;
+        state.planned_duration = Duration::from_secs_f32(0.5);
+        state.swing_foot = state.swing_foot.opposite();
+    }
+
+    let foot_offset = FootOffset {
+        forward: 0.04,
+        turn: 0.,
+        hip_height,
+        ..Default::default()
+    };
+
+    let (left, right) =
+        kinematics::inverse::leg_angles(&foot_offset, &FootOffset::zero(hip_height));
+
+    let leg_positions = LegJoints::builder().left_leg(left).right_leg(right).build();
+    let leg_stiffness = LegJoints::builder()
+        .left_leg(LeftLegJoints::fill(config.leg_stiffness))
+        .right_leg(RightLegJoints::fill(config.leg_stiffness))
+        .build();
+
+    nao_manager.set_legs(leg_positions, leg_stiffness, Priority::Medium);
+    *command = WalkCommand::Walk(hip_height);
 }
