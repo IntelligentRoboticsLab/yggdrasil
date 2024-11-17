@@ -2,10 +2,7 @@ pub mod style;
 
 use std::collections::HashMap;
 
-use re_viewer::external::{
-    egui::{self, Frame},
-    re_ui::UiExt,
-};
+use re_viewer::external::egui::{self, Frame};
 use rerun::external::ecolor::Color32;
 
 use yggdrasil::core::control::{receive::ControlViewerMessage, transmit::ControlSender};
@@ -96,21 +93,18 @@ pub fn debug_resources_ui(
 ) {
     ui.vertical(|ui| {
         for system_name in &debug_enabled_systems_view.key_sequence {
-            ui.horizontal(|ui| {
-                let enabled = debug_enabled_systems_view
-                    .debug_enabled_systems
-                    .systems
-                    .get_mut(system_name)
-                    .unwrap();
-                ui.label(system_name);
-                if ui.toggle_switch(14.0, enabled).changed() {
-                    let message = ControlViewerMessage::UpdateEnabledDebugSystem(
-                        system_name.clone(),
-                        *enabled,
-                    );
-                    message_sender.tx.unbounded_send(message).unwrap();
-                };
-            });
+            let enabled = debug_enabled_systems_view
+                .debug_enabled_systems
+                .systems
+                .get_mut(system_name)
+                .unwrap();
+            if ui.checkbox(enabled, system_name).changed() {
+                let message = ControlViewerMessage::UpdateEnabledDebugSystem(
+                    system_name.clone(),
+                    *enabled,
+                );
+                message_sender.tx.unbounded_send(message).unwrap();
+            };
         }
     });
 }

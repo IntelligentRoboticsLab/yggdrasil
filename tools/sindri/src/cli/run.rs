@@ -7,14 +7,12 @@ use indicatif::ProgressBar;
 use miette::{bail, Context, IntoDiagnostic, Result};
 use tokio::process::Command;
 
-use crate::cargo;
 use crate::{
     cli::robot_ops::{self, ConfigOptsRobotOps},
     config::SindriConfig,
 };
 
-const CONTROL_BINARY_PATH: &str = "./target/release/control";
-const CONTROL_BINARY: &str = "control";
+use super::rerun_control::{build_rerun_control, has_rerun, spawn_rerun_viewer};
 
 const DEFAULT_TRACY_PORT: u16 = 8086;
 
@@ -41,7 +39,7 @@ impl Run {
         self.robot_ops.prepare_showtime_config()?;
 
         let local = self.robot_ops.local;
-        let rerun = self.robot_ops.rerun.is_some();
+        let rerun = self.robot_ops.rerun_args.rerun.is_some();
         let has_rerun = has_rerun().await;
 
         if rerun && !has_rerun {
@@ -84,7 +82,7 @@ impl Run {
 
         let volume_string = self.robot_ops.volume.to_string();
         let mut envs = vec![("YGGDRASIL_VOLUME".to_owned(), volume_string)];
-        if let Some(Some(rerun_storage_path)) = self.robot_ops.rerun {
+        if let Some(Some(rerun_storage_path)) = self.robot_ops.rerun_args.rerun {
             envs.push(("RERUN_STORAGE_PATH".to_owned(), rerun_storage_path));
         }
         if self.debug {
@@ -116,7 +114,8 @@ impl Run {
                 } else {
                     robot.ip()
                 };
-                spawn_rerun_viewer(robot_ip, self.robot_ops.rerun_mem_limit).await?;
+                build_rerun_control().await?;
+                spawn_rerun_viewer(robot_ip, self.robot_ops.rerun_args.rerun_mem_limit).await?;
             }
         }
 
@@ -153,67 +152,6 @@ impl Run {
 
         Ok(())
     }
-}
-
-/// Check if the `rerun` binary is installed.
-///
-/// We check if the `rerun` binary is installed by running `rerun --version` and checking if the
-/// command was successful.
-async fn has_rerun() -> bool {
-    async fn get_rerun_version() -> Result<bool> {
-        Ok(Command::new("rerun")
-            .arg("--version")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .await
-            .into_diagnostic()?
-            .success())
-    }
-
-    get_rerun_version().await.is_ok_and(|success| success)
-}
-
-/// Compiles the control binary
-async fn build_rerun_control() -> Result<()> {
-    let features = vec![];
-    let envs = Vec::new();
-
-    cargo::build(
-        CONTROL_BINARY,
-        cargo::Profile::Release,
-        None,
-        &features,
-        Some(envs),
-    )
-    .await?;
-
-    Ok(())
-}
-
-/// Spawn a rerun viewer in the background.
-async fn spawn_rerun_viewer(robot_ip: Ipv4Addr, memory_limit: Option<String>) -> Result<()> {
-    build_rerun_control().await?;
-
-    let mut args = vec![];
-    // Set robot ip to connection the viewer with
-    args.push(robot_ip.to_string());
-
-    // Additionally set a memory limit for the viewer
-    if let Some(memory_limit) = memory_limit {
-        args.push("--max-mem".to_string());
-        args.push(memory_limit.to_string());
-    }
-
-    Command::new(CONTROL_BINARY_PATH)
-        .args(args)
-        .stdin(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .kill_on_drop(false)
-        .spawn()
-        .into_diagnostic()?;
-
-    Ok(())
 }
 
 /// Check if the `tracy` binary is installed.

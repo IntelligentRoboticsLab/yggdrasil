@@ -24,7 +24,7 @@ use crate::{
     error::{Error, Result},
 };
 
-use super::showtime::{DEFAULT_PLAYER_NUMBER, DEFAULT_TEAM_NUMBER};
+use super::{rerun_control::RerunArgs, showtime::{DEFAULT_PLAYER_NUMBER, DEFAULT_TEAM_NUMBER}};
 
 const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
 const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
@@ -76,13 +76,8 @@ pub struct ConfigOptsRobotOps {
     #[clap(short, long)]
     pub team: Option<u8>,
 
-    /// Whether to embed the rerun viewer for debugging [default: false]
-    #[clap(long, short, default_value(None))]
-    pub rerun: Option<Option<String>>,
-
-    /// Set a memory limit for the rerun viewer. --rerun required
-    #[clap(long, requires = "rerun")]
-    pub rerun_mem_limit: Option<String>,
+    #[clap(flatten)]
+    pub rerun_args: RerunArgs,
 
     /// For running Yggdrasil locally with fake-lola
     #[clap(long, short)]
