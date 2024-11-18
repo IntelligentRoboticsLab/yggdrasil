@@ -92,35 +92,7 @@ impl Inliers {
     fn sort_by_x(&mut self) {
         self.0.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
     }
-}
 
-/// Candidate for a detected line
-#[derive(Debug)]
-struct LineCandidate {
-    /// A line that was fitted on the inliers of the candidate
-    line: Line2,
-    /// Inlier points, sorted by x-coordinate
-    inliers: Inliers,
-    /// A line segment that connecting the first and last inlier
-    segment: LineSegment2,
-}
-
-impl LineCandidate {
-    /// Merge two line candidates into one
-    fn merge(&mut self, other: LineCandidate) {
-        // add the inliers and resort them
-        self.inliers.0.extend(other.inliers.0);
-        self.inliers.sort_by_x();
-
-        // recompute the segment
-        self.segment = LineSegment2::new(
-            self.inliers.first().copied().unwrap(),
-            self.inliers.last().copied().unwrap(),
-        );
-    }
-}
-
-impl Inliers {
     /// Split the line candidate into multiple candidates, every time the gap between two neighboring inliers is too large
     ///
     /// Returns a vector of the separated line candidates
@@ -163,6 +135,32 @@ impl Inliers {
         let new_inliers = self.split_off(split_index);
 
         Some(Self(new_inliers))
+    }
+}
+
+/// Candidate for a detected line
+#[derive(Debug)]
+struct LineCandidate {
+    /// A line that was fitted on the inliers of the candidate
+    line: Line2,
+    /// Inlier points, sorted by x-coordinate
+    inliers: Inliers,
+    /// A line segment that connecting the first and last inlier
+    segment: LineSegment2,
+}
+
+impl LineCandidate {
+    /// Merge two line candidates into one
+    fn merge(&mut self, other: LineCandidate) {
+        // add the inliers and resort them
+        self.inliers.0.extend(other.inliers.0);
+        self.inliers.sort_by_x();
+
+        // recompute the segment
+        self.segment = LineSegment2::new(
+            self.inliers.first().copied().unwrap(),
+            self.inliers.last().copied().unwrap(),
+        );
     }
 }
 
