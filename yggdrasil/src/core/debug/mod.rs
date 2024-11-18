@@ -326,6 +326,7 @@ pub struct DebugContext<'w> {
 }
 
 impl<'w> DebugContext<'w> {
+    #[must_use]
     pub fn stream(&self) -> &RerunStream {
         &self.rec
     }

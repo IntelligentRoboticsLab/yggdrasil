@@ -144,7 +144,7 @@ impl Inliers {
     ///
     /// If such a point is found, mutates the current candidate and returns the new candidate that was split off
     fn split_at_gap_single(&mut self, max_gap: f32) -> Option<Self> {
-        let Some(split_index) = self
+        let split_index = self
             .iter()
             // (i, inlier)
             .enumerate()
@@ -158,11 +158,7 @@ impl Inliers {
                 } else {
                     None
                 }
-            })
-        // no split point found
-        else {
-            return None;
-        };
+            })?;
 
         let new_inliers = self.split_off(split_index);
 
@@ -203,10 +199,10 @@ fn handle_line_task(
     mut lines: Query<Entity, Or<(With<DetectedLines>, With<RejectedLines>)>>,
     mut task_handles: Query<(Entity, &mut LineTaskHandle)>,
 ) {
-    for (task_entity, mut task) in task_handles.iter_mut() {
+    for (task_entity, mut task) in &mut task_handles {
         if let Some((candidates, rejections)) = block_on(poll_once(&mut task.0)) {
             // remove the old lines
-            for entity in lines.iter_mut() {
+            for entity in &mut lines {
                 commands.entity(entity).despawn();
             }
 
@@ -259,7 +255,7 @@ fn detect_lines<T: CameraLocation>(
     let mut candidates = vec![];
 
     let mut rng = rand::thread_rng();
-    let mut arrsac = Arrsac::new(ARRSAC_INLIER_THRESHOLD as f64, rng.clone());
+    let mut arrsac = Arrsac::new(f64::from(ARRSAC_INLIER_THRESHOLD), rng.clone());
 
     for _ in 0..MAX_ITERS {
         projected_spots.shuffle(&mut rng);
@@ -286,8 +282,8 @@ fn detect_lines<T: CameraLocation>(
 
                 LineCandidate {
                     line,
-                    segment,
                     inliers,
+                    segment,
                 }
             });
 
@@ -341,13 +337,11 @@ fn detect_lines<T: CameraLocation>(
 
                 let tester1_pixel = camera_matrix
                     .ground_to_pixel(point![tester1.x, tester1.y, 0.0])
-                    .map(|p| is_less_bright_and_more_saturated(sample_pixel, p, image))
-                    .unwrap_or_default();
+                    .is_ok_and(|p| is_less_bright_and_more_saturated(sample_pixel, p, image));
 
                 let tester2_pixel = camera_matrix
                     .ground_to_pixel(point![tester2.x, tester2.y, 0.0])
-                    .map(|p| is_less_bright_and_more_saturated(sample_pixel, p, image))
-                    .unwrap_or_default();
+                    .is_ok_and(|p| is_less_bright_and_more_saturated(sample_pixel, p, image));
 
                 tests.extend([tester1_pixel, tester2_pixel]);
             }
@@ -409,8 +403,7 @@ pub fn is_less_bright_and_more_saturated<T: CameraLocation>(
 ///
 /// Tries to be efficient by sorting the indices in descending order and removing the elements in reverse order
 ///
-/// TODO: Can be with [`Vec::extract_if`] when it gets stabilized
-/// https://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.extract_if
+/// TODO: Can be with [`Vec::extract_if`](https://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.extract_if) when it gets stabilized
 fn extract_indices<T>(vec: &mut Vec<T>, mut idx: Vec<usize>) -> Vec<T> {
     idx.sort_unstable();
     idx.reverse();
@@ -430,7 +423,7 @@ fn debug_lines<T: CameraLocation>(
                 lines
                     .segments
                     .iter()
-                    .flat_map(|s| {
+                    .filter_map(|s| {
                         let (Ok(start), Ok(end)) = (
                             camera_matrix.ground_to_pixel(point![s.start.x, s.start.y, 0.0]),
                             camera_matrix.ground_to_pixel(point![s.end.x, s.end.y, 0.0]),
@@ -439,7 +432,7 @@ fn debug_lines<T: CameraLocation>(
                         };
                         Some(LineSegment2::new(start, end))
                     })
-                    .map(|s| <[(f32, f32); 2]>::from(s)),
+                    .map(<[(f32, f32); 2]>::from),
             )
             .with_colors(vec![(255, 255, 0); lines.segments.len()]),
         );
@@ -486,7 +479,7 @@ fn debug_lines_inliers<T: CameraLocation>(
 
             let p = inliers
                 .iter()
-                .flat_map(|p| {
+                .filter_map(|p| {
                     let Ok(point) = camera_matrix.ground_to_pixel(point![p.x, p.y, 0.0]) else {
                         return None;
                     };
@@ -523,7 +516,7 @@ fn debug_rejected_lines<T: CameraLocation>(
                 lines
                     .segments
                     .iter()
-                    .flat_map(|s| {
+                    .filter_map(|s| {
                         let (Ok(start), Ok(end)) = (
                             camera_matrix.ground_to_pixel(point![s.start.x, s.start.y, 0.0]),
                             camera_matrix.ground_to_pixel(point![s.end.x, s.end.y, 0.0]),
@@ -532,7 +525,7 @@ fn debug_rejected_lines<T: CameraLocation>(
                         };
                         Some(LineSegment2::new(start, end))
                     })
-                    .map(|s| <[(f32, f32); 2]>::from(s)),
+                    .map(<[(f32, f32); 2]>::from),
             )
             .with_colors(
                 lines

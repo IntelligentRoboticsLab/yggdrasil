@@ -6,7 +6,7 @@ use super::line::Line2;
 
 impl Model<Point2<f32>> for Line2 {
     fn residual(&self, point: &Point2<f32>) -> f64 {
-        (self.normal.dot(&point.coords) + self.d).abs() as f64
+        f64::from((self.normal.dot(&point.coords) + self.d).abs())
     }
 }
 
