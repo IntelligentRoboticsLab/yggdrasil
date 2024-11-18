@@ -24,7 +24,6 @@ impl Behavior for StandLookAt {
             control.nao_manager.set_head_target(
                 look_at,
             );
-            println!("Ball is at {:?}", ball);
         } else {
             let target_point3 = Point3::new(-10.0, 0.0, 0.5);
             let look_at = context.pose.get_look_at_absolute(&target_point3);
