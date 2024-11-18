@@ -12,23 +12,27 @@ use line::{Line2, LineSegment2};
 use nalgebra::{point, Point2};
 
 use rand::seq::SliceRandom;
+use rand::Rng;
 
 use super::{camera::Image, scan_lines::ScanLines};
+use crate::core::config::layout::{FieldConfig, LayoutConfig};
 use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
 use crate::nao::Cycle;
 
+// TODO: make config + explanation
+const FIELD_MARGIN: f32 = 0.25;
 const MAX_ITERS: usize = 20;
 const ARRSAC_INLIER_THRESHOLD: f32 = 0.025;
-const LINE_SEGMENT_MIN_POINTS: usize = 5;
+const LINE_SEGMENT_MIN_POINTS: usize = 4;
 const SPOT_MAX_DISTANCE: f32 = 5.0;
 const MAX_LINE_GAP_DISTANCE: f32 = 0.25;
 const WHITE_TEST_SAMPLES: usize = 10;
-const WHITE_TEST_SAMPLE_DISTANCE: f32 = 0.10;
+const WHITE_TEST_SAMPLE_DISTANCE: f32 = 0.15;
 const WHITE_TEST_MERGE_RATIO: f32 = 0.7;
 // rad
 const WHITE_TEST_MAX_ANGLE: f32 = FRAC_PI_4;
-const LINE_SEGMENT_MIN_LENGTH_POST_MERGE: f32 = 0.3;
+const LINE_SEGMENT_MIN_LENGTH_POST_MERGE: f32 = 0.25;
 const LINE_SEGMENT_MAX_LENGTH_POST_MERGE: f32 = 5.0;
 
 /// Plugin that adds systems to detect lines from scan-lines.
@@ -42,46 +46,10 @@ impl Plugin for LineDetectionPlugin {
                 detect_lines_system::<Top>.run_if(resource_exists_and_changed::<ScanLines<Top>>),
                 handle_line_task,
                 debug_lines::<Top>,
+                debug_lines_inliers::<Top>,
+                debug_lines_3d::<Top>,
                 debug_rejected_lines::<Top>,
             ),
-        );
-    }
-}
-
-fn debug_lines<T: CameraLocation>(
-    dbg: DebugContext,
-    accepted: Query<(&Cycle, &DetectedLines), Added<DetectedLines>>,
-) {
-    for (cycle, lines) in accepted.iter() {
-        dbg.log_with_cycle(
-            T::make_entity_image_path("detected_lines"),
-            *cycle,
-            &rerun::LineStrips2D::new(lines.segments.iter().map(|s| <[(f32, f32); 2]>::from(*s)))
-                .with_colors(vec![(180, 180, 180); lines.segments.len()]),
-        );
-    }
-}
-
-fn debug_rejected_lines<T: CameraLocation>(
-    dbg: DebugContext,
-    rejected: Query<(&Cycle, &RejectedLines), Added<RejectedLines>>,
-) {
-    for (cycle, lines) in rejected.iter() {
-        dbg.log_with_cycle(
-            T::make_entity_image_path("rejected_lines"),
-            *cycle,
-            &rerun::LineStrips2D::new(lines.segments.iter().map(|s| <[(f32, f32); 2]>::from(*s)))
-                .with_colors(
-                    lines
-                        .rejections
-                        .iter()
-                        .map(|r| match r {
-                            Rejection::TooShort => (255, 0, 0),
-                            Rejection::TooLong => (0, 255, 0),
-                            Rejection::NotEnoughSpots => (0, 0, 255),
-                        })
-                        .collect_vec(),
-                ),
         );
     }
 }
@@ -109,17 +77,25 @@ pub struct RejectedLines {
     pub rejections: Vec<Rejection>,
 }
 
+/// Reason why a line candidate was rejected
 pub enum Rejection {
     TooShort,
     TooLong,
     NotEnoughSpots,
 }
 
+/// Inlier points of a line candidate
 #[derive(Component, Debug, Deref, DerefMut)]
 pub struct Inliers(Vec<Point2<f32>>);
 
+impl Inliers {
+    fn sort_by_x(&mut self) {
+        self.0.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
+    }
+}
+
 /// Candidate for a detected line
-#[derive(Debug, Bundle)]
+#[derive(Debug)]
 struct LineCandidate {
     /// A line that was fitted on the inliers of the candidate
     line: Line2,
@@ -130,18 +106,17 @@ struct LineCandidate {
 }
 
 impl LineCandidate {
-    /// Merge the inliers of two line candidates
+    /// Merge two line candidates into one
     fn merge(&mut self, other: LineCandidate) {
+        // add the inliers and resort them
         self.inliers.0.extend(other.inliers.0);
-        Self::sort_inliers(&mut self.inliers);
+        self.inliers.sort_by_x();
+
+        // recompute the segment
         self.segment = LineSegment2::new(
             self.inliers.first().copied().unwrap(),
             self.inliers.last().copied().unwrap(),
         );
-    }
-
-    fn sort_inliers(inliers: &mut [Point2<f32>]) {
-        inliers.sort_unstable_by(|a, b| a.x.partial_cmp(&b.x).unwrap());
     }
 }
 
@@ -157,6 +132,9 @@ impl Inliers {
         }
         candidates.push(self);
 
+        // handle edge case where the first inlier is too far from the second
+        candidates.retain(|c| c.len() >= 2);
+
         candidates
     }
 
@@ -166,15 +144,13 @@ impl Inliers {
     ///
     /// If such a point is found, mutates the current candidate and returns the new candidate that was split off
     fn split_at_gap_single(&mut self, max_gap: f32) -> Option<Self> {
-        assert!(self.len() >= 2);
-
         let Some(split_index) = self
             .iter()
             // (i, inlier)
             .enumerate()
             .rev()
             // ((i, inlier), (i-1, prev_inlier))
-            .tuples::<(_, _)>()
+            .tuple_windows::<(_, _)>()
             .find_map(|((i, inlier), (_, prev_inlier))| {
                 // find the first point where the gap between two neighboring inliers is too large
                 if nalgebra::distance(inlier, prev_inlier) > max_gap {
@@ -201,6 +177,7 @@ fn detect_lines_system<T: CameraLocation>(
     mut commands: Commands,
     scan_lines: Res<ScanLines<T>>,
     camera_matrix: Res<CameraMatrix<T>>,
+    layout: Res<LayoutConfig>,
     pose: Res<RobotPose>,
 ) {
     // TODO: Current tasks API is not flexible enough for this :)
@@ -212,9 +189,10 @@ fn detect_lines_system<T: CameraLocation>(
     let handle = pool.spawn({
         let scan_lines = scan_lines.clone();
         let camera_matrix = camera_matrix.clone();
+        let field = layout.field.clone();
         let pose = pose.clone();
 
-        async move { detect_lines(scan_lines, camera_matrix, pose) }
+        async move { detect_lines(scan_lines, camera_matrix, field, pose) }
     });
 
     commands.entity(entity).insert(LineTaskHandle(handle));
@@ -250,6 +228,7 @@ fn handle_line_task(
             }
             commands.entity(task_entity).insert(detected);
             commands.entity(task_entity).insert(rejected);
+            commands.entity(task_entity).remove::<LineTaskHandle>();
         }
     }
 }
@@ -257,6 +236,7 @@ fn handle_line_task(
 fn detect_lines<T: CameraLocation>(
     scan_lines: ScanLines<T>,
     camera_matrix: CameraMatrix<T>,
+    field: FieldConfig,
     pose: RobotPose,
 ) -> (Vec<LineCandidate>, Vec<Option<Rejection>>) {
     let mut projected_spots = scan_lines
@@ -268,8 +248,13 @@ fn detect_lines<T: CameraLocation>(
     // filter out spots that are too far away
     projected_spots.retain(|p| p.coords.norm() < SPOT_MAX_DISTANCE);
 
-    // TODO: filter out spots that are outside of the field (with some slack)
-    // will need to apply the pose transformation to the spots first
+    // filter out spots that are outside of the field (with some margin)
+    projected_spots.retain(|p| {
+        // apply the pose transformation to the spots first
+
+        let position = pose.inner * p;
+        field.in_field_with_margin(position, FIELD_MARGIN)
+    });
 
     let mut candidates = vec![];
 
@@ -283,7 +268,11 @@ fn detect_lines<T: CameraLocation>(
             break;
         };
 
-        let curr_candidates = Inliers(extract_indices(&mut projected_spots, inlier_idx))
+        // sort the inliers by x-coordinate
+        let mut inliers = extract_indices(&mut projected_spots, inlier_idx);
+        inliers.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
+
+        let curr_candidates = Inliers(inliers)
             // split the line candidate into multiple candidates,
             // every time the gap between two neighboring inliers is too large
             .split_at_gap(MAX_LINE_GAP_DISTANCE)
@@ -426,4 +415,136 @@ fn extract_indices<T>(vec: &mut Vec<T>, mut idx: Vec<usize>) -> Vec<T> {
     idx.sort_unstable();
     idx.reverse();
     idx.into_iter().map(|i| vec.remove(i)).collect_vec()
+}
+
+fn debug_lines<T: CameraLocation>(
+    dbg: DebugContext,
+    camera_matrix: Res<CameraMatrix<T>>,
+    accepted: Query<(&Cycle, &DetectedLines), Added<DetectedLines>>,
+) {
+    for (cycle, lines) in accepted.iter() {
+        dbg.log_with_cycle(
+            T::make_entity_image_path("lines/detected"),
+            *cycle,
+            &rerun::LineStrips2D::new(
+                lines
+                    .segments
+                    .iter()
+                    .flat_map(|s| {
+                        let (Ok(start), Ok(end)) = (
+                            camera_matrix.ground_to_pixel(point![s.start.x, s.start.y, 0.0]),
+                            camera_matrix.ground_to_pixel(point![s.end.x, s.end.y, 0.0]),
+                        ) else {
+                            return None;
+                        };
+                        Some(LineSegment2::new(start, end))
+                    })
+                    .map(|s| <[(f32, f32); 2]>::from(s)),
+            )
+            .with_colors(vec![(255, 255, 0); lines.segments.len()]),
+        );
+    }
+}
+
+fn debug_lines_3d<T: CameraLocation>(
+    dbg: DebugContext,
+    pose: Res<RobotPose>,
+    accepted: Query<(&Cycle, &DetectedLines), Added<DetectedLines>>,
+) {
+    for (cycle, lines) in accepted.iter() {
+        dbg.log_with_cycle(
+            T::make_entity_path("lines/detected"),
+            *cycle,
+            &rerun::LineStrips3D::new(lines.segments.iter().map(|s| {
+                let point = pose.inner * *s;
+                [
+                    (point.start.x, point.start.y, 0.0),
+                    (point.end.x, point.end.y, 0.0),
+                ]
+            }))
+            .with_colors(vec![(255, 255, 0); lines.segments.len()]),
+        );
+    }
+}
+
+fn debug_lines_inliers<T: CameraLocation>(
+    dbg: DebugContext,
+    camera_matrix: Res<CameraMatrix<T>>,
+    accepted: Query<(&Cycle, &DetectedLines), Added<DetectedLines>>,
+) {
+    let mut rng = rand::thread_rng();
+    for (cycle, lines) in accepted.iter() {
+        let mut colors = vec![];
+        let mut points = vec![];
+
+        lines.inliers.iter().for_each(|inliers| {
+            let c = (
+                rng.gen_range(0..255),
+                rng.gen_range(0..255),
+                rng.gen_range(0..255),
+            );
+
+            let p = inliers
+                .iter()
+                .flat_map(|p| {
+                    let Ok(point) = camera_matrix.ground_to_pixel(point![p.x, p.y, 0.0]) else {
+                        return None;
+                    };
+                    Some(point)
+                })
+                .map(|p| (p.x, p.y))
+                .collect_vec();
+
+            colors.extend(vec![c; p.len()]);
+            points.extend(p);
+        });
+        let radii = vec![2.0; points.len()];
+
+        dbg.log_with_cycle(
+            T::make_entity_path("lines/inliers"),
+            *cycle,
+            &rerun::Points2D::new(points)
+                .with_colors(colors)
+                .with_radii(radii),
+        );
+    }
+}
+
+fn debug_rejected_lines<T: CameraLocation>(
+    dbg: DebugContext,
+    camera_matrix: Res<CameraMatrix<T>>,
+    rejected: Query<(&Cycle, &RejectedLines), Added<RejectedLines>>,
+) {
+    for (cycle, lines) in rejected.iter() {
+        dbg.log_with_cycle(
+            T::make_entity_image_path("lines/rejected"),
+            *cycle,
+            &rerun::LineStrips2D::new(
+                lines
+                    .segments
+                    .iter()
+                    .flat_map(|s| {
+                        let (Ok(start), Ok(end)) = (
+                            camera_matrix.ground_to_pixel(point![s.start.x, s.start.y, 0.0]),
+                            camera_matrix.ground_to_pixel(point![s.end.x, s.end.y, 0.0]),
+                        ) else {
+                            return None;
+                        };
+                        Some(LineSegment2::new(start, end))
+                    })
+                    .map(|s| <[(f32, f32); 2]>::from(s)),
+            )
+            .with_colors(
+                lines
+                    .rejections
+                    .iter()
+                    .map(|r| match r {
+                        Rejection::TooShort => (255, 0, 0),
+                        Rejection::TooLong => (0, 255, 0),
+                        Rejection::NotEnoughSpots => (0, 0, 255),
+                    })
+                    .collect_vec(),
+            ),
+        );
+    }
 }

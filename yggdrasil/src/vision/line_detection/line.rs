@@ -1,6 +1,8 @@
+use std::ops::Mul;
+
 use bevy::prelude::*;
 
-use nalgebra::{Point2, Vector2};
+use nalgebra::{Isometry2, Point2, Vector2};
 
 #[derive(Debug, Clone, Copy, Component)]
 pub struct Line2 {
@@ -43,6 +45,17 @@ impl LineSegment2 {
             let t = i as f32 / (n + 1) as f32;
             self.start + (self.end - self.start) * t
         })
+    }
+}
+
+impl Mul<LineSegment2> for Isometry2<f32> {
+    type Output = LineSegment2;
+
+    fn mul(self, segment: LineSegment2) -> LineSegment2 {
+        LineSegment2 {
+            start: self * segment.start,
+            end: self * segment.end,
+        }
     }
 }
 

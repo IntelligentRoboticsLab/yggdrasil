@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use nalgebra::Point2;
 use std::ops::Index;
 
 use nalgebra::Isometry2;
@@ -120,6 +121,16 @@ impl FieldConfig {
     #[must_use]
     pub fn diagonal(&self) -> Vector2<f32> {
         Vector2::new(self.length, self.width)
+    }
+
+    #[must_use]
+    pub fn in_field(&self, point: Point2<f32>) -> bool {
+        self.in_field_with_margin(point, 0.0)
+    }
+
+    #[must_use]
+    pub fn in_field_with_margin(&self, point: Point2<f32>, margin: f32) -> bool {
+        point.x.abs() < self.length / 2.0 + margin && point.y.abs() < self.width / 2.0 + margin
     }
 }
 
