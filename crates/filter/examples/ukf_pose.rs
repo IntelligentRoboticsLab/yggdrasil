@@ -1,4 +1,6 @@
-use filter::{StateVec, UkfState, UnscentedKalmanFilter};
+use std::ops::Mul;
+
+use filter::{StateVector, UkfState, UnscentedKalmanFilter};
 
 use plotters::prelude::*;
 use rand::Rng;
@@ -7,30 +9,35 @@ use nalgebra::{self as na, Complex, ComplexField, SVector, UnitComplex, Vector3}
 
 const UPDATE_INTERVAL: usize = 5;
 
-#[derive(Debug, Clone)]
-struct Pose {
-    isom: na::Isometry3<f32>,
+#[derive(Debug, Clone, Copy)]
+struct Pose2 {
+    inner: na::Isometry3<f32>,
 }
 
-impl Pose {
+impl Pose2 {
     fn new(x: f32, y: f32, theta: f32) -> Self {
         Self {
-            isom: na::Isometry3::from_parts(
+            inner: na::Isometry3::from_parts(
                 na::Translation3::from(na::Vector3::new(x, y, 0.0)),
                 na::UnitQuaternion::from_axis_angle(&Vector3::z_axis(), theta),
             ),
         }
     }
+}
 
-    fn apply_motion(&self, offset: &Self) -> Self {
+impl Mul for Pose2 {
+    type Output = Self;
+
+    /// Applies a motion to self
+    fn mul(self, rhs: Self) -> Self::Output {
         Self {
-            isom: offset.isom * self.isom,
+            inner: rhs.inner * self.inner,
         }
     }
 }
 
-impl UkfState<3> for Pose {
-    fn into_weighted_mean<T>(iter: T) -> StateVec<3>
+impl UkfState<3> for Pose2 {
+    fn into_weighted_mean<T>(iter: T) -> StateVector<3>
     where
         T: Iterator<Item = (f32, Self)>,
     {
@@ -38,8 +45,8 @@ impl UkfState<3> for Pose {
         let mut mean_angle = Complex::new(0.0, 0.0);
 
         for (weight, pose) in iter {
-            let translation = pose.isom.translation.vector;
-            let rotation = pose.isom.rotation.angle();
+            let translation = pose.inner.translation.vector;
+            let rotation = pose.inner.rotation.angle();
 
             mean_translation += weight * translation;
             mean_angle += weight * Complex::cis(rotation);
@@ -48,27 +55,27 @@ impl UkfState<3> for Pose {
         mean_translation.xy().push(mean_angle.argument())
     }
 
-    fn center(self, mean: &StateVec<3>) -> StateVec<3> {
-        let translation = self.isom.translation.vector;
-        let rotation = self.isom.rotation.angle();
+    fn center(self, mean: &StateVector<3>) -> StateVector<3> {
+        let translation = self.inner.translation.vector;
+        let rotation = self.inner.rotation.angle();
 
         (translation.xy() - mean.xy())
             .push((UnitComplex::new(rotation) / UnitComplex::new(mean.z)).angle())
     }
 }
 
-impl From<Pose> for StateVec<3> {
-    fn from(pose: Pose) -> Self {
-        let translation = pose.isom.translation.vector;
-        let rotation = pose.isom.rotation;
+impl From<Pose2> for StateVector<3> {
+    fn from(pose: Pose2) -> Self {
+        let translation = pose.inner.translation.vector;
+        let rotation = pose.inner.rotation;
         translation.xy().push(rotation.angle())
     }
 }
 
-impl From<StateVec<3>> for Pose {
-    fn from(state: StateVec<3>) -> Self {
+impl From<StateVector<3>> for Pose2 {
+    fn from(state: StateVector<3>) -> Self {
         Self {
-            isom: na::Isometry3::from_parts(
+            inner: na::Isometry3::from_parts(
                 na::Translation3::from(state.xy().push(0.0)),
                 na::UnitQuaternion::from_axis_angle(
                     &na::Unit::new_normalize(na::Vector3::z()),
@@ -80,12 +87,12 @@ impl From<StateVec<3>> for Pose {
 }
 
 fn main() {
-    let pose = Pose::new(1.0, 2.0, 0.0);
+    let pose = Pose2::new(1.0, 2.0, 0.0);
     let cov = na::SMatrix::<f32, 3, 3>::identity() * 0.05;
 
-    let mut ukf = UnscentedKalmanFilter::<3, 7, Pose>::new(pose, cov);
+    let mut ukf = UnscentedKalmanFilter::<3, 7, Pose2>::new(pose, cov);
 
-    // generate 100 noisy measurements
+    // generate measurements
     let mut rng = rand::thread_rng();
     let mut x_true = vec![];
     let mut x_noisy = vec![];
@@ -95,48 +102,51 @@ fn main() {
         let prev = x_true
             .last()
             .cloned()
-            .unwrap_or_else(|| Pose::new(1.0, 2.0, 0.0));
+            .unwrap_or_else(|| Pose2::new(1.0, 2.0, 0.0));
 
-        let offset = Pose::new(-0.05, 0.1, -0.02).apply_motion(&Pose::new(
+        let offset = Pose2::new(
             rng.gen_range(-0.001..0.001),
             rng.gen_range(-0.01..0.01),
             rng.gen_range(-0.01..0.01),
-        ));
+        ) * Pose2::new(-0.05, 0.1, -0.02);
 
-        let measurement = prev.apply_motion(&offset);
+        // true measurement
+        let measurement = offset * prev;
 
         x_true.push(measurement.clone());
 
-        let noisy_offset = offset.apply_motion(&Pose::new(
+        let noisy_offset = Pose2::new(
             rng.gen_range(-1.0..1.0) * cov[(0, 0)],
             rng.gen_range(-1.0..1.0) * cov[(1, 1)],
             rng.gen_range(-1.0..1.0) * cov[(2, 2)],
-        ));
+        ) * offset;
 
         let noisy_prev = x_noisy
             .last()
             .cloned()
-            .unwrap_or_else(|| Pose::new(1.0, 2.0, 0.0));
+            .unwrap_or_else(|| Pose2::new(1.0, 2.0, 0.0));
 
-        let noisy = noisy_prev.apply_motion(&noisy_offset);
+        // noisy, dead reckoning measurement
+        let noisy = noisy_offset * noisy_prev;
 
         x_noisy.push(noisy);
 
-        ukf.predict(
-            |p| p.apply_motion(&noisy_offset),
-            filter::CovMat::identity(),
-        )
-        .unwrap();
+        ukf.predict(|p| noisy_offset * p, filter::CovarianceMatrix::identity())
+            .unwrap();
 
-        // Every nth step, update the filter with a measurement
+        // Every nth step, updates the filter with a measurement
         //
         // Uses a very low covariance as we are very sure about our measurements
         if i % UPDATE_INTERVAL == 0 {
-            ukf.update(|p| p, measurement, filter::CovMat::identity() * 0.001)
-                .unwrap();
+            ukf.update(
+                |p| p,
+                measurement,
+                filter::CovarianceMatrix::identity() * 0.001,
+            )
+            .unwrap();
         }
 
-        x_unscented.push(ukf.state().clone());
+        x_unscented.push(ukf.state());
     }
 
     // plot the results
@@ -154,7 +164,7 @@ fn main() {
     ctx.configure_mesh().draw().unwrap();
 
     ctx.draw_series(x_true.iter().map(|point| {
-        let translation = point.isom.translation.vector;
+        let translation = point.inner.translation.vector;
         Circle::new((translation.x, translation.y), 2, RED.filled())
     }))
     .unwrap()
@@ -162,7 +172,7 @@ fn main() {
     .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RED));
 
     ctx.draw_series(x_noisy.iter().map(|point| {
-        let translation = point.isom.translation.vector;
+        let translation = point.inner.translation.vector;
         Circle::new((translation.x, translation.y), 2, BLUE.filled())
     }))
     .unwrap()
@@ -170,7 +180,7 @@ fn main() {
     .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], BLUE));
 
     ctx.draw_series(x_unscented.iter().map(|point| {
-        let translation = point.isom.translation.vector;
+        let translation = point.inner.translation.vector;
         Circle::new((translation.x, translation.y), 2, GREEN.filled())
     }))
     .unwrap()

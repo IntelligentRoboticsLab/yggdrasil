@@ -13,9 +13,9 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-pub type StateVec<const D: usize> = SVector<f32, D>;
-pub type CovMat<const D: usize> = SMatrix<f32, D, D>;
-pub type CrossCovMat<const D1: usize, const D2: usize> = SMatrix<f32, D1, D2>;
+pub type StateVector<const D: usize> = SVector<f32, D>;
+pub type CovarianceMatrix<const D: usize> = SMatrix<f32, D, D>;
+pub type CrossCovarianceMatrix<const D1: usize, const D2: usize> = SMatrix<f32, D1, D2>;
 
 pub type SigmaPoints1 = SigmaPoints<1, 3>;
 pub type SigmaPoints2 = SigmaPoints<2, 5>;
@@ -78,8 +78,8 @@ impl<const D_STATE: usize, const N_SIGMAS: usize> SigmaPoints<D_STATE, N_SIGMAS>
 
     fn calculate(
         &self,
-        mean: &StateVec<D_STATE>,
-        covariance: &CovMat<D_STATE>,
+        mean: &StateVector<D_STATE>,
+        covariance: &CovarianceMatrix<D_STATE>,
     ) -> Result<SMatrix<f32, N_SIGMAS, D_STATE>> {
         // get the lower triangular matrix from cholesky decomposition
         let cholesky_l = Cholesky::new(*covariance).ok_or(Error::Cholesky)?.l();
@@ -101,25 +101,29 @@ impl<const D_STATE: usize, const N_SIGMAS: usize> SigmaPoints<D_STATE, N_SIGMAS>
     }
 }
 
+/// An Unscented Kalman Filter
+///
+/// Uses the formulation found [here](https://nbviewer.org/github/sbitzer/UKF-exposed/blob/master/UKF.ipynb)
 pub struct UnscentedKalmanFilter<
     const D_STATE: usize,
     const N_SIGMAS: usize,
     Motion: UkfState<D_STATE>,
 > {
     sigmas: SigmaPoints<D_STATE, N_SIGMAS>,
-    state: StateVec<D_STATE>,
-    covariance: CovMat<D_STATE>,
+    state: StateVector<D_STATE>,
+    covariance: CovarianceMatrix<D_STATE>,
     _measurement: PhantomData<Motion>,
 }
 
 impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
     UnscentedKalmanFilter<D_STATE, N_SIGMAS, Motion>
 {
+    /// Creates self from a state and covariance, with the default sigma points parameters
     #[must_use]
     pub fn new<S, C>(state_0: S, covariance_0: C) -> Self
     where
-        S: Into<StateVec<D_STATE>>,
-        C: Into<CovMat<D_STATE>>,
+        S: Into<StateVector<D_STATE>>,
+        C: Into<CovarianceMatrix<D_STATE>>,
     {
         Self::with_sigma_points(
             SigmaPoints::new(1.0, 0.0, D_STATE as f32 * 3.0 / 2.0),
@@ -128,6 +132,9 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
         )
     }
 
+    /// Creates self from a state, covariance, and a set of sigma points.
+    ///
+    /// If you don't know which parameters to use, you probably want to use [`UnscentedKalmanFilter::new`] instead
     #[must_use]
     pub fn with_sigma_points<S, C>(
         sigmas: SigmaPoints<D_STATE, N_SIGMAS>,
@@ -135,8 +142,8 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
         covariance_0: C,
     ) -> Self
     where
-        S: Into<StateVec<D_STATE>>,
-        C: Into<CovMat<D_STATE>>,
+        S: Into<StateVector<D_STATE>>,
+        C: Into<CovarianceMatrix<D_STATE>>,
     {
         Self {
             sigmas,
@@ -146,20 +153,23 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
         }
     }
 
+    /// The current predicted filter state
     #[must_use]
     pub fn state(&self) -> Motion {
         self.state.into()
     }
 
+    /// The current covariance of the filter state
     #[must_use]
-    pub fn covariance(&self) -> CovMat<D_STATE> {
+    pub fn covariance(&self) -> CovarianceMatrix<D_STATE> {
         self.covariance
     }
 
+    /// Predict the next filter state based on the motion transition model and process noise.
     pub fn predict<F>(
         &mut self,
         transition_function: F,
-        transition_noise: CovMat<D_STATE>,
+        transition_noise: CovarianceMatrix<D_STATE>,
     ) -> Result<()>
     where
         F: Fn(Motion) -> Motion,
@@ -180,7 +190,7 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
                 .zip(transformed_sigma_points.clone()),
         );
 
-        let covariance: CovMat<D_STATE> = {
+        let covariance: CovarianceMatrix<D_STATE> = {
             // start with additive process noise
             let mut covariance = transition_noise;
 
@@ -198,11 +208,12 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
         Ok(())
     }
 
+    /// Updates the filter state with a measurement
     pub fn update<const D_MEASUREMENT: usize, Measurement, F>(
         &mut self,
         measurement_function: F,
         measurement: Measurement,
-        measurement_noise: CovMat<D_MEASUREMENT>,
+        measurement_noise: CovarianceMatrix<D_MEASUREMENT>,
     ) -> Result<()>
     where
         Measurement: UkfState<D_MEASUREMENT>,
@@ -227,7 +238,7 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
                 .zip(transformed_sigma_points.clone()),
         );
 
-        let covariance: CovMat<D_MEASUREMENT> = {
+        let covariance: CovarianceMatrix<D_MEASUREMENT> = {
             // start with additive measurement noise
             let mut covariance = measurement_noise;
 
@@ -239,8 +250,8 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
             covariance
         };
 
-        let cross_covariance: CrossCovMat<D_STATE, D_MEASUREMENT> = {
-            let mut cross_covariance = CrossCovMat::<D_STATE, D_MEASUREMENT>::zeros();
+        let cross_covariance: CrossCovarianceMatrix<D_STATE, D_MEASUREMENT> = {
+            let mut cross_covariance = CrossCovarianceMatrix::<D_STATE, D_MEASUREMENT>::zeros();
 
             for (i, (transformed_sigma_point, sigma_point)) in
                 transformed_sigma_points.zip(sigma_points).enumerate()
@@ -268,12 +279,13 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
     }
 }
 
-pub trait UkfState<const D: usize>: From<StateVec<D>> + Sized {
+/// Trait that describes how to transform state in the Unscented Kalman Filter
+pub trait UkfState<const D: usize>: From<StateVector<D>> + Sized {
     /// Calculates the mean state from an iterator over weights and points
-    fn into_weighted_mean<T>(iter: T) -> StateVec<D>
+    fn into_weighted_mean<T>(iter: T) -> StateVector<D>
     where
         T: Iterator<Item = (f32, Self)>;
 
     /// Centers `Self` around a mean state
-    fn center(self, mean: &StateVec<D>) -> StateVec<D>;
+    fn center(self, mean: &StateVector<D>) -> StateVector<D>;
 }
