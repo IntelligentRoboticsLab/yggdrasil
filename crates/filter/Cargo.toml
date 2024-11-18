@@ -1,10 +1,12 @@
 [package]
+name = "filter"
+description = "Filters and stuff"
+version.workspace = true
+
 authors.workspace = true
 categories.workspace = true
 edition.workspace = true
-name = "filter"
 rust-version.workspace = true
-version.workspace = true
 
 [dependencies]
 nalgebra = { workspace = true }

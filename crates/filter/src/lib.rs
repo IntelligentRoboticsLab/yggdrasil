@@ -36,13 +36,15 @@ pub struct SigmaPoints<const D_STATE: usize, const N_SIGMAS: usize> {
 }
 
 impl<const D_STATE: usize, const N_SIGMAS: usize> SigmaPoints<D_STATE, N_SIGMAS> {
+    // TODO: if const generic arithmetic stabilises we can remove the N_SIGMAS generic parameter.
+    const ASSERT_CONST_PARAMS: () = assert!(2 * D_STATE + 1 == N_SIGMAS);
+
     /// A typical recommendation is alpha = 1, beta = 0, and kappa ≈ 3D / 2.
     ///
     /// If the true distribution is Gaussian, beta = 2 is optimal.
     #[must_use]
     pub fn new(alpha: f32, beta: f32, kappa: f32) -> Self {
-        // TODO: if const generic arithmetic stabilises we can remove the N_SIGMAS generic parameter.
-        assert_eq!(2 * D_STATE + 1, N_SIGMAS);
+        let () = Self::ASSERT_CONST_PARAMS;
 
         let (w_m, w_c) = Self::calculate_weights(alpha, beta, kappa);
 
