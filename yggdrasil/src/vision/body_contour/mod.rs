@@ -257,6 +257,9 @@ fn visualize_body_contour(
     debug_context: DebugContext,
     bottom_image: Res<Image<Bottom>>,
 ) {
+    // # TODO: This function is very slow.
+    // It's probably better to let `BodyContour` return the points that should be
+    // visualized, instead of iterating over all points.
     let mut points = Vec::with_capacity(480 * 720);
 
     for x in 0..bottom_image.yuyv_image().width() {
