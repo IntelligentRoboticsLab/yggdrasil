@@ -3,7 +3,11 @@
 //! arrays, strings, vectors and the `SPLStandardMessage` struct.
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use std::io::{Read, Write};
+use std::{
+    collections::HashMap,
+    hash::BuildHasher,
+    io::{Read, Write},
+};
 
 use crate::{Error, Result};
 
@@ -442,6 +446,57 @@ where
     }
 }
 
+impl<K, V, S: BuildHasher> Encode for HashMap<K, V, S>
+where
+    K: Encode,
+    V: Encode,
+{
+    fn encode(&self, mut write: impl Write) -> Result<()> {
+        VarInt::from(self.len()).encode(&mut write)?;
+
+        for (k, v) in self {
+            k.encode(&mut write)?;
+            v.encode(&mut write)?;
+        }
+
+        Ok(())
+    }
+
+    fn encode_len(&self) -> usize {
+        let mut total_encode_len = VarInt::from(self.len()).encode_len();
+
+        for (key, value) in self {
+            total_encode_len += key.encode_len();
+            total_encode_len += value.encode_len();
+        }
+
+        total_encode_len
+    }
+}
+
+impl<K, V, S: BuildHasher + Default> Decode for HashMap<K, V, S>
+where
+    K: Decode + std::cmp::Eq + std::hash::Hash,
+    V: Decode,
+{
+    fn decode(mut read: impl Read) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        let length = VarInt::decode(&mut read)?.into();
+
+        let mut map = HashMap::<K, V, S>::with_capacity_and_hasher(length, Default::default());
+
+        for _ in 0..length {
+            let key = K::decode(&mut read)?;
+            let value = V::decode(&mut read)?;
+            map.insert(key, value);
+        }
+
+        Ok(map)
+    }
+}
+
 /// Calculates the amount of bytes needed to encode the zigzag encoded integer.
 /// If the continuation bit of the byte in question is 1, the loop continues
 /// and adds 1 to the amount of bytes needed to encode the integer.
@@ -699,6 +754,24 @@ mod tests {
         test_generic([VarInt::from(i32::MIN); 4])?;
         test_generic([VarInt::from(u32::MAX); 4])?;
         test_generic([VarInt::from(u32::MIN); 4])?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_hash_map() -> Result<()> {
+        let mut int_map = HashMap::<i32, u32>::new();
+        for i in 0..100 {
+            int_map.insert(-i, i as u32);
+        }
+        test_generic(int_map)?;
+
+        let mut string_map = HashMap::<String, String>::new();
+
+        for i in 0..100 {
+            string_map.insert(format!("foo{i}"), format!("bar{i}"));
+        }
+        test_generic(string_map)?;
 
         Ok(())
     }
