@@ -51,7 +51,7 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
     }
 }
 
-fn update_camera_matrix<T: CameraLocation>(
+pub fn update_camera_matrix<T: CameraLocation>(
     swing_foot: Res<SwingFoot>,
     orientation: Res<RobotOrientation>,
     kinematics: Res<Kinematics>,

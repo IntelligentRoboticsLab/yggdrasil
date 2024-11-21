@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, CameraMatrix};
 use nalgebra::{Isometry3, Point2, Vector3};
@@ -53,33 +51,33 @@ impl BodyContour {
     }
 
     fn is_part_of_shoulder(shoulder_point: Point2<f32>, image_coordinate: Point2<f32>) -> bool {
-        shoulder_point.x - 20.0 < image_coordinate.x
-            && shoulder_point.x + 20.0 > image_coordinate.x
-            && shoulder_point.y - 20.0 < image_coordinate.y
-            && shoulder_point.y + 20.0 > image_coordinate.y
+        shoulder_point.x - 200.0 < image_coordinate.x
+            && shoulder_point.x + 200.0 > image_coordinate.x
+            && shoulder_point.y - 300.0 < image_coordinate.y
+            && shoulder_point.y + 500.0 > image_coordinate.y
     }
 
     fn is_part_of_chest(chest_point: Point2<f32>, image_coordinate: Point2<f32>) -> bool {
-        chest_point.x - 40.0 < image_coordinate.x
-            && chest_point.x + 40.0 > image_coordinate.x
-            && chest_point.y - 20.0 < image_coordinate.y
-            && chest_point.y + 40.0 > image_coordinate.y
+        chest_point.x - 160.0 < image_coordinate.x
+            && chest_point.x + 160.0 > image_coordinate.x
+            && chest_point.y - 80.0 < image_coordinate.y
+            && chest_point.y + 100.0 > image_coordinate.y
     }
 
     // # TODO: This might be too simple for a body part that's not static.
     fn is_part_of_thigh(thigh_point: Point2<f32>, image_coordinate: Point2<f32>) -> bool {
-        thigh_point.x - 20.0 < image_coordinate.x
-            && thigh_point.x + 20.0 > image_coordinate.x
-            && thigh_point.y - 20.0 < image_coordinate.y
-            && thigh_point.y + 20.0 > image_coordinate.y
+        thigh_point.x - 60.0 < image_coordinate.x
+            && thigh_point.x + 60.0 > image_coordinate.x
+            && thigh_point.y - 100.0 < image_coordinate.y
+            && thigh_point.y + 80.0 > image_coordinate.y
     }
 
     // # TODO: This might be too simple for a body part that's not static.
     fn is_part_of_tibia(tibia_point: Point2<f32>, image_coordinate: Point2<f32>) -> bool {
-        tibia_point.x - 20.0 < image_coordinate.x
-            && tibia_point.x + 20.0 > image_coordinate.x
-            && tibia_point.y - 20.0 < image_coordinate.y
-            && tibia_point.y + 20.0 > image_coordinate.y
+        tibia_point.x - 40.0 < image_coordinate.x
+            && tibia_point.x + 80.0 > image_coordinate.x
+            && tibia_point.y - 0.0 < image_coordinate.y
+            && tibia_point.y + 80.0 > image_coordinate.y
     }
 
     fn update_toes(
@@ -213,7 +211,10 @@ impl Plugin for BodyContourPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<BodyContour>()
             .add_systems(PostStartup, setup_body_contour_visualization::<Bottom>)
-            .add_systems(Update, update_body_contours)
+            .add_systems(
+                Update,
+                update_body_contours.after(super::camera::matrix::update_camera_matrix::<Bottom>),
+            )
             .add_systems(Update, visualize_body_contour.after(update_body_contours));
     }
 }
@@ -222,7 +223,11 @@ fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
     dbg.log_component_batches(
         T::make_entity_path("body_contour"),
         true,
-        [&rerun::Color::from_rgb(219, 62, 177) as _],
+        [
+            &rerun::Color::from_rgb(219, 62, 177) as _,
+            // &rerun::Radius::new_ui_points(14.0) as _,
+            &rerun::Radius::new_ui_points(4.0) as _,
+        ],
     );
 }
 
@@ -234,33 +239,31 @@ fn update_body_contours(
     bottom_image: Res<Image<Bottom>>,
     current_cycle: Res<Cycle>,
 ) {
-    if bottom_image.is_from_cycle(*current_cycle) {
-        body_contour.update_toes(&orientation, &kinematics, &bottom_camera_matrix);
-        body_contour.update_chest(&orientation, &kinematics, &bottom_camera_matrix);
-        body_contour.update_shoulders(&orientation, &kinematics, &bottom_camera_matrix);
-        body_contour.update_thighs(&orientation, &kinematics, &bottom_camera_matrix);
-        body_contour.update_tibias(&orientation, &kinematics, &bottom_camera_matrix);
+    if !bottom_image.is_from_cycle(*current_cycle) {
+        return;
     }
 
-    // #TODO: for debugging, remove.
-    body_contour.chest_point = Some(Point2::new(200.0, 200.0));
-    body_contour.left_shoulder_cap_point = Some(Point2::new(160.0, 140.0));
-    body_contour.right_shoulder_cap_point = Some(Point2::new(240.0, 140.0));
-    body_contour.left_thigh_point = Some(Point2::new(160.0, 240.0));
-    body_contour.right_thigh_point = Some(Point2::new(240.0, 240.0));
-    body_contour.left_tibia_point = Some(Point2::new(180.0, 300.0));
-    body_contour.right_tibia_point = Some(Point2::new(220.0, 300.0));
+    body_contour.update_toes(&orientation, &kinematics, &bottom_camera_matrix);
+    body_contour.update_chest(&orientation, &kinematics, &bottom_camera_matrix);
+    body_contour.update_shoulders(&orientation, &kinematics, &bottom_camera_matrix);
+    body_contour.update_thighs(&orientation, &kinematics, &bottom_camera_matrix);
+    body_contour.update_tibias(&orientation, &kinematics, &bottom_camera_matrix);
 }
 
 fn visualize_body_contour(
     body_contour: Res<BodyContour>,
     debug_context: DebugContext,
     bottom_image: Res<Image<Bottom>>,
+    current_cycle: Res<Cycle>,
 ) {
+    if !bottom_image.is_from_cycle(*current_cycle) {
+        return;
+    }
     // # TODO: This function is very slow.
     // It's probably better to let `BodyContour` return the points that should be
     // visualized, instead of iterating over all points.
-    let mut points = Vec::with_capacity(480 * 720);
+    // let mut points = Vec::with_capacity(480 * 720);
+    let mut points = Vec::new();
 
     for x in 0..bottom_image.yuyv_image().width() {
         for y in 0..bottom_image.yuyv_image().height() {
@@ -274,9 +277,82 @@ fn visualize_body_contour(
 
     debug_context.log_with_cycle(
         Bottom::make_entity_path("body_contour"),
-        bottom_image.deref().cycle(),
+        *current_cycle,
         &rerun::Points2D::new(&points),
     );
+
+    // if let Some(point) = body_contour.left_shoulder_cap_point {
+    //     // points.push((point.x, point.y));
+    //     debug_context.log_with_cycle(
+    //         Bottom::make_entity_path("body_contour/left_shoulder"),
+    //         *current_cycle,
+    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(200.0, 300.0)]) as _,
+    //     );
+    // }
+    // if let Some(point) = body_contour.right_shoulder_cap_point {
+    //     // points.push((point.x, point.y));
+    //     debug_context.log_with_cycle(
+    //         Bottom::make_entity_path("body_contour/right_shoulder"),
+    //         *current_cycle,
+    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(200.0, 300.0)]) as _,
+    //     );
+    // }
+    // if let Some(point) = body_contour.chest_point {
+    //     // points.push((point.x, point.y));
+    //     debug_context.log_with_cycle(
+    //         Bottom::make_entity_path("body_contour/chest"),
+    //         *current_cycle,
+    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(300.0, 120.0)]) as _,
+    //     );
+    // }
+    // if let Some(point) = body_contour.left_thigh_point {
+    //     // points.push((point.x, point.y));
+    //     debug_context.log_with_cycle(
+    //         Bottom::make_entity_path("body_contour/left_thigh"),
+    //         *current_cycle,
+    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(160.0, 80.0)]) as _,
+    //     );
+    // }
+    // if let Some(point) = body_contour.right_thigh_point {
+    //     // points.push((point.x, point.y));
+    //     debug_context.log_with_cycle(
+    //         Bottom::make_entity_path("body_contour/right_thigh"),
+    //         *current_cycle,
+    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(160.0, 80.0)]) as _,
+    //     );
+    // }
+    // if let Some(point) = body_contour.left_tibia_point {
+    //     // points.push((point.x, point.y));
+    //     debug_context.log_with_cycle(
+    //         Bottom::make_entity_path("body_contour/left_tibia"),
+    //         *current_cycle,
+    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(120.0, 80.0)]) as _,
+    //     );
+    // }
+    // if let Some(point) = body_contour.right_tibia_point {
+    //     // points.push((point.x, point.y));
+    //     debug_context.log_with_cycle(
+    //         Bottom::make_entity_path("body_contour/right_tibia"),
+    //         *current_cycle,
+    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(120.0, 80.0)]) as _,
+    //     );
+    // }
+    // if let Some(point) = body_contour.left_toe_point {
+    //     // points.push((point.x, point.y));
+    //     debug_context.log_with_cycle(
+    //         Bottom::make_entity_path("body_contour/left_toe"),
+    //         *current_cycle,
+    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(120.0, 80.0)]) as _,
+    //     );
+    // }
+    // if let Some(point) = body_contour.right_toe_point {
+    //     // points.push((point.x, point.y));
+    //     debug_context.log_with_cycle(
+    //         Bottom::make_entity_path("body_contour/right_toe"),
+    //         *current_cycle,
+    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(120.0, 80.0)]) as _,
+    //     );
+    // }
 }
 
 fn robot_to_toes(
