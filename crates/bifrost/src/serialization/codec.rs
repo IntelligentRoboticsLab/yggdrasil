@@ -454,9 +454,9 @@ where
     fn encode(&self, mut write: impl Write) -> Result<()> {
         VarInt::from(self.len()).encode(&mut write)?;
 
-        for (k, v) in self {
-            k.encode(&mut write)?;
-            v.encode(&mut write)?;
+        for (key, value) in self {
+            key.encode(&mut write)?;
+            value.encode(&mut write)?;
         }
 
         Ok(())
