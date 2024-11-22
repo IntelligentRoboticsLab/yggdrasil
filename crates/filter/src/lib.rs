@@ -36,7 +36,7 @@ pub struct SigmaPoints<const D_STATE: usize, const N_SIGMAS: usize> {
 }
 
 impl<const D_STATE: usize, const N_SIGMAS: usize> SigmaPoints<D_STATE, N_SIGMAS> {
-    // TODO: if const generic arithmetic stabilises we can remove the N_SIGMAS generic parameter.
+    // TODO: if const generic arithmetic stabilizes we can remove the N_SIGMAS generic parameter.
     const ASSERT_CONST_PARAMS: () = assert!(2 * D_STATE + 1 == N_SIGMAS);
 
     /// A typical recommendation is alpha = 1, beta = 0, and kappa ≈ 3D / 2.
@@ -76,13 +76,14 @@ impl<const D_STATE: usize, const N_SIGMAS: usize> SigmaPoints<D_STATE, N_SIGMAS>
         (w_m, w_c)
     }
 
-    fn calculate(
+    /// Calculate the new sigma points from a state mean and covariance
+    pub fn calculate(
         &self,
-        mean: &StateVector<D_STATE>,
-        covariance: &CovarianceMatrix<D_STATE>,
+        mean: StateVector<D_STATE>,
+        covariance: CovarianceMatrix<D_STATE>,
     ) -> Result<SMatrix<f32, N_SIGMAS, D_STATE>> {
         // get the lower triangular matrix from cholesky decomposition
-        let cholesky_l = Cholesky::new(*covariance).ok_or(Error::Cholesky)?.l();
+        let cholesky_l = Cholesky::new(covariance).ok_or(Error::Cholesky)?.l();
 
         let mut sigma_points = SMatrix::<f32, N_SIGMAS, D_STATE>::zeros();
 
@@ -107,22 +108,21 @@ impl<const D_STATE: usize, const N_SIGMAS: usize> SigmaPoints<D_STATE, N_SIGMAS>
 pub struct UnscentedKalmanFilter<
     const D_STATE: usize,
     const N_SIGMAS: usize,
-    Motion: UkfState<D_STATE>,
+    State: UkfState<D_STATE>,
 > {
     sigmas: SigmaPoints<D_STATE, N_SIGMAS>,
-    state: StateVector<D_STATE>,
+    state: State,
     covariance: CovarianceMatrix<D_STATE>,
-    _measurement: PhantomData<Motion>,
+    _measurement: PhantomData<State>,
 }
 
-impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
-    UnscentedKalmanFilter<D_STATE, N_SIGMAS, Motion>
+impl<const D_STATE: usize, const N_SIGMAS: usize, State: UkfState<D_STATE>>
+    UnscentedKalmanFilter<D_STATE, N_SIGMAS, State>
 {
     /// Creates self from a state and covariance, with the default sigma points parameters
     #[must_use]
-    pub fn new<S, C>(state_0: S, covariance_0: C) -> Self
+    pub fn new<C>(state_0: State, covariance_0: C) -> Self
     where
-        S: Into<StateVector<D_STATE>>,
         C: Into<CovarianceMatrix<D_STATE>>,
     {
         Self::with_sigma_points(
@@ -136,18 +136,17 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
     ///
     /// If you don't know which parameters to use, you probably want to use [`UnscentedKalmanFilter::new`] instead
     #[must_use]
-    pub fn with_sigma_points<S, C>(
+    pub fn with_sigma_points<C>(
         sigmas: SigmaPoints<D_STATE, N_SIGMAS>,
-        state_0: S,
+        state_0: State,
         covariance_0: C,
     ) -> Self
     where
-        S: Into<StateVector<D_STATE>>,
         C: Into<CovarianceMatrix<D_STATE>>,
     {
         Self {
             sigmas,
-            state: state_0.into(),
+            state: state_0,
             covariance: covariance_0.into(),
             _measurement: PhantomData,
         }
@@ -155,8 +154,8 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
 
     /// The current predicted filter state
     #[must_use]
-    pub fn state(&self) -> Motion {
-        self.state.into()
+    pub fn state(&self) -> State {
+        self.state
     }
 
     /// The current covariance of the filter state
@@ -172,9 +171,10 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
         transition_noise: CovarianceMatrix<D_STATE>,
     ) -> Result<()>
     where
-        F: Fn(Motion) -> Motion,
+        F: Fn(State) -> State,
     {
-        let sigma_points = self.sigmas.calculate(&self.state, &self.covariance)?;
+        let state_vec: StateVector<D_STATE> = self.state.into();
+        let sigma_points = self.sigmas.calculate(state_vec, self.covariance)?;
 
         // apply the motion model to each sigma point
         let transformed_sigma_points = sigma_points
@@ -182,7 +182,7 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
             .map(|row| transition_function(row.transpose().into()));
 
         // calculate the new state mean and covariance
-        let mean = UkfState::into_weighted_mean(
+        let mean = UkfState::into_state_mean(
             self.sigmas
                 .w_m
                 .iter()
@@ -195,7 +195,7 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
             let mut covariance = transition_noise;
 
             for (i, point) in transformed_sigma_points.enumerate() {
-                let centered = point.center(&mean);
+                let centered: StateVector<D_STATE> = point.residual(&mean).into();
                 covariance += self.sigmas.w_c[i] * centered * centered.transpose();
             }
 
@@ -217,20 +217,20 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
     ) -> Result<()>
     where
         Measurement: UkfState<D_MEASUREMENT>,
-        F: Fn(Motion) -> Measurement,
+        F: Fn(State) -> Measurement,
     {
-        let sigma_points_matrix = self.sigmas.calculate(&self.state, &self.covariance)?;
+        let state_vec = self.state.into();
+        let sigma_points_matrix = self.sigmas.calculate(state_vec, self.covariance)?;
 
         let sigma_points = sigma_points_matrix
             .row_iter()
             .map(|row| row.transpose().into());
 
         // apply the measurement model to each sigma point
-        #[allow(clippy::redundant_closure)]
-        let transformed_sigma_points = sigma_points.clone().map(|p| measurement_function(p));
+        let transformed_sigma_points = sigma_points.clone().map(&measurement_function);
 
         // calculate the new state mean and covariance
-        let mean = UkfState::into_weighted_mean(
+        let mean = UkfState::into_state_mean(
             self.sigmas
                 .w_m
                 .iter()
@@ -243,7 +243,7 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
             let mut covariance = measurement_noise;
 
             for (i, point) in transformed_sigma_points.clone().enumerate() {
-                let centered = point.center(&mean);
+                let centered: StateVector<D_MEASUREMENT> = point.residual(&mean).into();
                 covariance += self.sigmas.w_c[i] * centered * centered.transpose();
             }
 
@@ -256,11 +256,13 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
             for (i, (transformed_sigma_point, sigma_point)) in
                 transformed_sigma_points.zip(sigma_points).enumerate()
             {
-                // we need to center the measurement
-                let measurement_centered = transformed_sigma_point.center(&mean);
+                // we need to get the residual the measurement
+                let measurement_centered: StateVector<D_MEASUREMENT> =
+                    transformed_sigma_point.residual(&mean).into();
 
                 // and also our predicted current motion state
-                let motion_centered = sigma_point.center(&self.state);
+                let motion_centered: StateVector<D_STATE> =
+                    sigma_point.residual(&self.state).into();
 
                 cross_covariance +=
                     self.sigmas.w_c[i] * motion_centered * measurement_centered.transpose();
@@ -270,9 +272,9 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
         };
 
         let kalman_gain = cross_covariance * covariance.try_inverse().ok_or(Error::Inversion)?;
-        let innovation = measurement.center(&mean);
+        let innovation: StateVector<D_MEASUREMENT> = measurement.residual(&mean).into();
 
-        self.state += kalman_gain * innovation;
+        self.state = (state_vec + kalman_gain * innovation).into();
         self.covariance -= kalman_gain * covariance * kalman_gain.transpose();
 
         Ok(())
@@ -280,12 +282,16 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, Motion: UkfState<D_STATE>>
 }
 
 /// Trait that describes how to transform state in the Unscented Kalman Filter
-pub trait UkfState<const D: usize>: From<StateVector<D>> + Sized {
-    /// Calculates the mean state from an iterator over weights and points
-    fn into_weighted_mean<T>(iter: T) -> StateVector<D>
+pub trait UkfState<const D: usize>
+where
+    Self: From<StateVector<D>> + Into<StateVector<D>> + Copy,
+{
+    /// Calculates the mean state from an iterator over weights and sigma points
+    fn into_state_mean<T>(iter: T) -> Self
     where
         T: Iterator<Item = (f32, Self)>;
 
-    /// Centers `Self` around a mean state
-    fn center(self, mean: &StateVector<D>) -> StateVector<D>;
+    /// Calculates the residual (difference) between self and the other value.
+    #[must_use]
+    fn residual(self, other: &Self) -> Self;
 }

@@ -37,7 +37,7 @@ impl Mul for Pose2 {
 }
 
 impl UkfState<3> for Pose2 {
-    fn into_weighted_mean<T>(iter: T) -> StateVector<3>
+    fn into_state_mean<T>(iter: T) -> Self
     where
         T: Iterator<Item = (f32, Self)>,
     {
@@ -52,15 +52,16 @@ impl UkfState<3> for Pose2 {
             mean_angle += weight * Complex::cis(rotation);
         }
 
-        mean_translation.xy().push(mean_angle.argument())
+        mean_translation.xy().push(mean_angle.argument()).into()
     }
 
-    fn center(self, mean: &StateVector<3>) -> StateVector<3> {
-        let translation = self.inner.translation.vector;
-        let rotation = self.inner.rotation.angle();
+    fn residual(self, other: &Self) -> Self {
+        let self_state = StateVector::<3>::from(self);
+        let other_state = StateVector::<3>::from(*other);
 
-        (translation.xy() - mean.xy())
-            .push((UnitComplex::new(rotation) / UnitComplex::new(mean.z)).angle())
+        (self_state.xy() - other_state.xy())
+            .push((UnitComplex::new(self_state.z) / UnitComplex::new(other_state.z)).angle())
+            .into()
     }
 }
 
@@ -141,7 +142,7 @@ fn main() {
             ukf.update(
                 |p| p,
                 measurement,
-                filter::CovarianceMatrix::identity() * 0.001,
+                filter::CovarianceMatrix::identity() * 0.01,
             )
             .unwrap();
         }
