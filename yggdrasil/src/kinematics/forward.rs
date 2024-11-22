@@ -283,7 +283,7 @@ macro_rules! impl_links {
             #[must_use]
             pub fn new(kinematics: &Kinematics) -> Self {
                 Self {
-                    $($field: impl_links_init!(kinematics, $space $(+ ($x, $y, $z))?),)*
+                    $($field: kinematics.transform(&spatial::point3!(as $space $(, $x, $y, $z)?)),)*
                 }
             }
         }
@@ -302,16 +302,6 @@ macro_rules! impl_links {
         }
     };
 }
-
-macro_rules! impl_links_init {
-    ($kinematics:ident, $space:ident) => {
-        $kinematics.transform(&Point3::<$space>::new(na::Point3::origin()))
-    };
-    ($kinematics:ident, $space:ident + ($x:expr, $y:expr, $z:expr)) => {
-        $kinematics.transform(&Point3::<$space>::new(na::Point3::new($x, $y, $z)))
-    };
-}
-
 
 impl_links! {
     head: Head + (0., 0., 0.05),

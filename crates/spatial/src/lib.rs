@@ -106,4 +106,5 @@ pub use space::*;
 pub mod transform;
 pub use transform::*;
 
+#[macro_use]
 pub mod types;
