@@ -5,7 +5,6 @@ use std::{f32::consts::PI, marker::PhantomData};
 use nidhogg::NaoState;
 
 use crate::core::debug::DebugContext;
-use crate::localization::RobotPose;
 
 use self::dimensions::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS};
 use self::spaces::{Left, Right};

@@ -66,17 +66,6 @@ impl Kinematics {
     }
 
     #[must_use]
-    pub fn origin<S1, S2>(&self) -> Point3<S2>
-    where
-        S1: Space + SpaceOver<na::Point3<f32>>,
-        S2: Space + SpaceOver<na::Point3<f32>>,
-        Self: Transform<na::Point3<f32>, na::Point3<f32>, S1, S2>,
-    {
-        let origin: Point3<S1> = Point3::new(na::Point3::origin());
-        self.transform(&origin)
-    }
-
-    #[must_use]
     pub fn head_to_neck(head_pitch: f32) -> Isometry3<Head, Neck> {
         na::Isometry3::rotation(na::Vector3::y() * head_pitch).into()
     }
@@ -282,57 +271,64 @@ impl Default for Kinematics {
     }
 }
 
-pub struct Links {
-    // Center
-    pub head: Point3<Robot>,
-    pub neck: Point3<Robot>,
-    pub robot: Point3<Robot>,
-    // Left arm
-    pub left_shoulder: Point3<Robot>,
-    pub left_elbow: Point3<Robot>,
-    pub left_wrist: Point3<Robot>,
-    // Left leg
-    pub left_hip: Point3<Robot>,
-    pub left_knee: Point3<Robot>,
-    pub left_ankle: Point3<Robot>,
-    pub left_sole: Point3<Robot>,
-    // Right arm
-    pub right_shoulder: Point3<Robot>,
-    pub right_elbow: Point3<Robot>,
-    pub right_wrist: Point3<Robot>,
-    // Right leg
-    pub right_hip: Point3<Robot>,
-    pub right_knee: Point3<Robot>,
-    pub right_ankle: Point3<Robot>,
-    pub right_sole: Point3<Robot>,
+macro_rules! impl_links {
+    {
+        $($field:ident: $space:ident $(+ ($x:expr, $y:expr, $z:expr))?,)*
+    } => {
+        pub struct Links<S: SpaceOver<na::Point3<f32>> = Robot> {
+            $(pub $field: Point3<S>,)*
+        }
+
+        impl Links<Robot> {
+            #[must_use]
+            pub fn new(kinematics: &Kinematics) -> Self {
+                Self {
+                    $($field: impl_links_init!(kinematics, $space $(+ ($x, $y, $z))?),)*
+                }
+            }
+        }
+
+        impl<S1: SpaceOver<na::Point3<f32>>> Links<S1> {
+            #[must_use]
+            pub fn map<S2, F>(&self, f: F) -> Links<S2>
+            where
+                F: Fn(&Point3<S1>) -> Point3<S2>,
+                S2: SpaceOver<na::Point3<f32>>,
+            {
+                Links {
+                    $($field: f(&self.$field),)*
+                }
+            }
+        }
+    };
 }
 
-impl Links {
-    #[must_use]
-    pub fn new(kinematics: &Kinematics) -> Self {
-        Self {
-            // Center
-            head: kinematics.transform(&Point3::<Head>::new(na::Point3::new(0., 0., 0.05))),
-            neck: kinematics.origin::<Neck, _>(),
-            robot: kinematics.origin::<Robot, _>(),
-            // Left arm
-            left_shoulder: kinematics.origin::<LeftShoulder, _>(),
-            left_elbow: kinematics.origin::<LeftElbow, _>(),
-            left_wrist: kinematics.origin::<LeftWrist, _>(),
-            // Left leg
-            left_hip: kinematics.origin::<LeftHip, _>(),
-            left_knee: kinematics.origin::<LeftTibia, _>(),
-            left_ankle: kinematics.origin::<LeftAnkle, _>(),
-            left_sole: kinematics.origin::<LeftSole, _>(),
-            // Right arm
-            right_shoulder: kinematics.origin::<RightShoulder, _>(),
-            right_elbow: kinematics.origin::<RightElbow, _>(),
-            right_wrist: kinematics.origin::<RightWrist, _>(),
-            // Right leg
-            right_hip: kinematics.origin::<RightHip, _>(),
-            right_knee: kinematics.origin::<RightTibia, _>(),
-            right_ankle: kinematics.origin::<RightAnkle, _>(),
-            right_sole: kinematics.origin::<RightSole, _>(),
-        }
-    }
+macro_rules! impl_links_init {
+    ($kinematics:ident, $space:ident) => {
+        $kinematics.transform(&Point3::<$space>::new(na::Point3::origin()))
+    };
+    ($kinematics:ident, $space:ident + ($x:expr, $y:expr, $z:expr)) => {
+        $kinematics.transform(&Point3::<$space>::new(na::Point3::new($x, $y, $z)))
+    };
+}
+
+
+impl_links! {
+    head: Head + (0., 0., 0.05),
+    neck: Neck,
+    robot: Robot,
+    left_shoulder: LeftShoulder,
+    left_elbow: LeftElbow,
+    left_wrist: LeftWrist,
+    left_hip: LeftHip,
+    left_knee: LeftTibia,
+    left_ankle: LeftAnkle,
+    left_sole: LeftSole,
+    right_shoulder: RightShoulder,
+    right_elbow: RightElbow,
+    right_wrist: RightWrist,
+    right_hip: RightHip,
+    right_knee: RightTibia,
+    right_ankle: RightAnkle,
+    right_sole: RightSole,
 }
