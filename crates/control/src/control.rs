@@ -8,6 +8,7 @@ use re_viewer::external::{
     eframe,
     egui::{self, ScrollArea},
 };
+use uuid::Uuid;
 
 use crate::{
     connection::{
@@ -92,14 +93,23 @@ impl Control {
         let mut control = Control {
             app,
             states: Arc::new(RwLock::new(ControlStates::default())),
-            handle,
+            handle: handle.clone(),
             frame_styles: FrameStyleMap::default(),
         };
 
         let states = Arc::clone(&control.states);
+
         control
             .handle
             .add_handler(move |msg: &RobotMessage| handle_message(msg, Arc::clone(&states)))
+            .expect("Failed to add handler");
+
+        let viewer_id = handle.clone().id();
+        control
+            .handle
+            .add_handler(move |msg: &RobotMessage| {
+                handle_connection_message(msg, viewer_id, handle.clone())
+            })
             .expect("Failed to add handler");
         control
     }
@@ -181,26 +191,26 @@ impl Control {
 
         ui.horizontal(|ui| debug_resources_ui(ui, Arc::clone(&self.states), &self.handle));
 
-    // fn listen_for_robot_messages(
-    //     reader: ReadHalf<TcpStream>,
-    // ) -> ControlReceiver<ControlRobotMessage> {
-    //     let (reader_tx, reader_rx) = mpsc::unbounded::<ControlRobotMessage>();
-    //     tokio::spawn(async move {
-    //         receive_messages(reader, reader_tx).await;
-    //     });
+        // fn listen_for_robot_messages(
+        //     reader: ReadHalf<TcpStream>,
+        // ) -> ControlReceiver<ControlRobotMessage> {
+        //     let (reader_tx, reader_rx) = mpsc::unbounded::<ControlRobotMessage>();
+        //     tokio::spawn(async move {
+        //         receive_messages(reader, reader_tx).await;
+        //     });
 
-    //     ControlReceiver { rx: reader_rx }
-    // }
+        //     ControlReceiver { rx: reader_rx }
+        // }
 
-    // fn setup_send_messages_to_robot(
-    //     writer: WriteHalf<TcpStream>,
-    // ) -> ControlSender<ControlViewerMessage> {
-    //     let (writer_tx, writer_rx) = mpsc::unbounded::<ControlViewerMessage>();
-    //     tokio::spawn(async move {
-    //         send_messages(writer, writer_rx).await;
-    //     });
-    //     ControlSender { tx: writer_tx }
-    // }
+        // fn setup_send_messages_to_robot(
+        //     writer: WriteHalf<TcpStream>,
+        // ) -> ControlSender<ControlViewerMessage> {
+        //     let (writer_tx, writer_rx) = mpsc::unbounded::<ControlViewerMessage>();
+        //     tokio::spawn(async move {
+        //         send_messages(writer, writer_rx).await;
+        //     });
+        //     ControlSender { tx: writer_tx }
+        // }
     }
 }
 
@@ -221,5 +231,20 @@ fn handle_message(message: &RobotMessage, states: Arc<RwLock<ControlStates>>) {
         RobotMessage::Resources(resources) => {
             tracing::info!("Got a resource update")
         }
+        _ => {}
+    }
+}
+
+fn handle_connection_message(
+    message: &RobotMessage,
+    viewer_id: Uuid,
+    handle: ControlViewerHandle<ViewerMessage, RobotMessage>,
+) {
+    match message {
+        RobotMessage::RequestViewerId => {
+            let msg = ViewerMessage::ViewerId(viewer_id);
+            handle.send(msg).expect("Failed to send message");
+        }
+        _ => {}
     }
 }

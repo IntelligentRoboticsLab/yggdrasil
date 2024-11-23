@@ -26,8 +26,7 @@ impl App {
     }
 
     pub async fn run(self) -> Result<()> {
-        let initial_message = ViewerMessage::Connected(self.viewer.id());
-        let handle = self.viewer.run_with_init_msg(initial_message).await;
+        let handle = self.viewer.run().await;
 
         let app_env = re_viewer::AppEnvironment::Custom(APP_ENV.to_string());
 

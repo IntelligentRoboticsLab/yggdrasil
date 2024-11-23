@@ -48,6 +48,7 @@ pub type HandlerFn<T> = Box<dyn Fn(&T) + Send + Sync + 'static>;
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum RobotMessage {
     Disconnect,
+    RequestViewerId(Uuid),
     Resources(HashMap<String, String>),
     DebugEnabledSystems(DebugEnabledSystems),
 }
@@ -55,7 +56,7 @@ pub enum RobotMessage {
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum ViewerMessage {
     Disconnect,
-    Connected(Uuid),
+    ViewerId(Uuid),
     UpdateResource(String, String),
     SendResourcesNow,
     UpdateEnabledDebugSystem(String, bool),

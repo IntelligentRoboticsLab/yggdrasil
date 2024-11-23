@@ -2,29 +2,24 @@ pub mod connect;
 pub mod receive;
 pub mod transmit;
 
-use std::{
-    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
-    sync::Arc,
-};
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
-use async_std::net::TcpListener;
 use bevy::{
     prelude::*,
     tasks::{block_on, IoTaskPool},
 };
-use connect::on_control_connection;
 use control::{
     connection::{
-        app::{ControlApp, ControlAppHandle},
+        app::ControlApp,
         protocol::{RobotMessage, ViewerMessage, CONTROL_PORT},
     },
     debug_system::DebugEnabledSystems,
 };
 use futures::channel::mpsc::unbounded;
-use miette::{IntoDiagnostic, Result};
 
 use receive::{handle_viewer_message, ViewerMessageReceiver};
-use transmit::{send_current_state, TransmitDebugEnabledSystems};
+use transmit::{debug_systems_on_connection, TransmitDebugEnabledSystems};
+use uuid::Uuid;
 
 pub struct ControlPlugin;
 
@@ -32,6 +27,7 @@ impl Plugin for ControlPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<TransmitDebugEnabledSystems>()
             .init_resource::<DebugEnabledSystems>()
+            .add_event::<ViewerConnectedEvent>()
             .add_systems(Startup, setup)
             // .add_systems(
             //     Update,
@@ -42,13 +38,14 @@ impl Plugin for ControlPlugin {
             // )
             .add_systems(
                 Update,
-                handle_viewer_message.run_if(resource_exists::<ViewerMessageReceiver>),
-            )
-            .add_systems(
-                Update,
-                send_current_state
-                    .run_if(resource_exists::<ControlAppHandle<RobotMessage, ViewerMessage>>),
+                (handle_viewer_message, debug_systems_on_connection)
+                    .run_if(resource_exists::<ViewerMessageReceiver>),
             );
+        // .add_systems(
+        //     Update,
+        //     send_current_state
+        //         .run_if(resource_exists::<ControlAppHandle<RobotMessage, ViewerMessage>>),
+        // );
     }
 }
 
@@ -80,9 +77,12 @@ fn setup(mut commands: Commands) {
 
     let io = IoTaskPool::get();
     let mut handle = block_on(io.spawn(async move {
-        let app = ControlApp::<RobotMessage, ViewerMessage>::bind(socket_addr)
+        let mut app = ControlApp::<RobotMessage, ViewerMessage>::bind(socket_addr)
             .await
             .expect(&format!("Failed to bind controlapp to {:?}", socket_addr));
+
+        let on_connection_message = |x| RobotMessage::RequestViewerId(x);
+        app.set_message_on_connection(on_connection_message);
 
         app.run()
     }));
@@ -95,3 +95,6 @@ fn setup(mut commands: Commands) {
     commands.insert_resource(viewer_message_receiver);
     commands.insert_resource(handle);
 }
+
+#[derive(Event)]
+pub struct ViewerConnectedEvent(Uuid);

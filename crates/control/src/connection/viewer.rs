@@ -60,14 +60,6 @@ where
     // }
 
     pub async fn run(self) -> ControlViewerHandle<T, U> {
-        self._run(None)
-    }
-
-    pub async fn run_with_init_msg(self, initial_message: T) -> ControlViewerHandle<T, U> {
-        self._run(Some(initial_message))
-    }
-
-    fn _run(self, initial_message: Option<T>) -> ControlViewerHandle<T, U> {
         tracing::info!("Starting client");
 
         // Spawn a background task to handle messages from the global channel.
@@ -87,14 +79,9 @@ where
             loop {
                 match TcpStream::connect(app.address.clone()).await {
                     Ok(socket) => {
-                        app.handle_connection(socket).await;
+                        tracing::info!("Handling connection");
 
-                        // Send a initial message when there is a new connection
-                        if let Some(ref msg) = initial_message {
-                            app.tx
-                                .unbounded_send(msg.clone())
-                                .expect("Failed to send message");
-                        }
+                        app.handle_connection(socket).await;
                     }
                     Err(e) => {
                         tracing::error!("Failed to connect to {}: {:?}", app.address, e);
@@ -105,10 +92,7 @@ where
             }
         });
 
-        let viewer_handle = ControlViewerHandle {
-            app: handle,
-            client_id: Uuid::new_v4(),
-        };
+        let viewer_handle = ControlViewerHandle { app: handle };
 
         viewer_handle
     }
@@ -131,9 +115,6 @@ where
                 Self::handle_write(write_half, message_queue, notify).await;
             })
         };
-
-        // Send a message on connection to note the other side
-        //
 
         // Wait for tasks to complete
         tokio::select! {
@@ -171,10 +152,7 @@ where
     async fn handle_read(mut read: ReadHalf<TcpStream>, handlers: Arc<RwLock<Vec<HandlerFn<U>>>>) {
         let mut buf = [0; 1024];
         loop {
-            tracing::info!("Loop Loop");
-            let a = read.read(&mut buf).await;
-            tracing::info!("Read some bytes");
-            match a {
+            match read.read(&mut buf).await {
                 Ok(0) => {
                     tracing::info!("Server closed connection");
                     break;
@@ -248,16 +226,16 @@ where
 
     pub fn id(&self) -> Uuid {
         self.viewer_id
-    } 
+    }
 }
 
+#[derive(Clone)]
 pub struct ControlViewerHandle<T, U>
 where
     T: Encode,
     U: Decode,
 {
     app: Arc<ControlViewer<T, U>>,
-    client_id: Uuid,
 }
 
 impl<T, U> ControlViewerHandle<T, U>
@@ -277,5 +255,9 @@ where
         H: Fn(&U) + Send + Sync + 'static,
     {
         self.app.add_handler(Box::new(handler))
+    }
+
+    pub fn id(&self) -> Uuid {
+        self.app.id()
     }
 }

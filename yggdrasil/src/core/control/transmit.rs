@@ -1,8 +1,12 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, time::Duration};
 
 use async_std::{io::WriteExt, net::TcpStream};
-use bevy::{ecs::system::SystemId, prelude::*, tasks::{futures_lite::stream::block_on, IoTaskPool}};
-use control::connection::{app::ControlAppHandle, protocol::{RobotMessage, ViewerMessage}};
+use bevy::{ecs::system::SystemId, prelude::*, tasks::IoTaskPool};
+use bifrost::serialization::Encode;
+use control::connection::{
+    app::ControlAppHandle,
+    protocol::{RobotMessage, ViewerMessage},
+};
 use futures::{
     channel::mpsc::{self, UnboundedReceiver},
     io::WriteHalf,
@@ -10,9 +14,8 @@ use futures::{
 };
 use miette::IntoDiagnostic;
 use serde::{Deserialize, Serialize};
-use bifrost::serialization::Encode;
 
-use super::DebugEnabledSystems;
+use super::{DebugEnabledSystems, ViewerConnectedEvent};
 
 const SEND_STATE_DELAY: Duration = Duration::from_millis(2_000);
 
@@ -30,6 +33,26 @@ pub enum ControlRobotMessage {
     CloseStream,
     Resources(HashMap<String, String>),
     DebugEnabledSystems(DebugEnabledSystems),
+}
+
+pub fn debug_systems_on_connection(
+    mut ev_viewer_connected: EventReader<ViewerConnectedEvent>,
+    debug_enabled_resources: Res<DebugEnabledSystems>,
+    control_handle: Res<ControlAppHandle<RobotMessage, ViewerMessage>>,
+) {
+    for ev in ev_viewer_connected.read() {
+        tracing::info!("Got an event!");
+        let viewer_id = ev.0;
+        let msg = RobotMessage::DebugEnabledSystems(debug_enabled_resources.clone());
+        let io = IoTaskPool::get();
+
+        let handle = control_handle.clone();
+        io.spawn(async move {
+            tracing::info!("Send debug systems to the viewer");
+            handle.send(msg, viewer_id).await;
+        })
+        .detach();
+    }
 }
 
 #[derive(Resource)]
@@ -86,7 +109,8 @@ pub fn send_current_state(
         tracing::info!("Prepare send state msg");
         handle.broadcast(msg).await;
         tracing::info!("Finish send state msg");
-    }).detach();
+    })
+    .detach();
 
     delay.set_duration(SEND_STATE_DELAY);
 }
@@ -118,16 +142,17 @@ impl FromWorld for TransmitDebugEnabledSystems {
 
 fn transmit_debug_enabled_resources(
     debug_enabled_resources: Res<DebugEnabledSystems>,
-    robot_handle: Res<ControlAppHandle<RobotMessage, ViewerMessage>>,
+    control_handle: Res<ControlAppHandle<RobotMessage, ViewerMessage>>,
 ) {
     let msg = RobotMessage::DebugEnabledSystems(debug_enabled_resources.clone());
     let io = IoTaskPool::get();
 
-    let handle = robot_handle.clone();
+    let handle = control_handle.clone();
     io.spawn(async move {
         tracing::info!("Running the task to broadcast the robot message");
         handle.broadcast(msg).await;
-    }).detach();
+    })
+    .detach();
 }
 
 pub fn temp_system(type_registry: Res<AppTypeRegistry>) {

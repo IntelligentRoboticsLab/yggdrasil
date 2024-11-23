@@ -1,15 +1,20 @@
 use async_std::{io::ReadExt, net::TcpStream};
 use bevy::prelude::*;
-use control::connection::protocol::ViewerMessage;
+use control::connection::{
+    app::ControlAppHandle,
+    protocol::{RobotMessage, ViewerMessage},
+};
 use futures::{
     channel::mpsc::{self, UnboundedReceiver, UnboundedSender},
     io::ReadHalf,
 };
 use serde::{Deserialize, Serialize};
 
+use super::ViewerConnectedEvent;
+
 #[derive(Resource)]
 pub struct ViewerMessageReceiver {
-    pub rx: UnboundedReceiver<ViewerMessage>
+    pub rx: UnboundedReceiver<ViewerMessage>,
 }
 
 impl ViewerMessageReceiver {
@@ -22,16 +27,20 @@ impl ViewerMessageReceiver {
     }
 }
 
-pub fn handle_viewer_message(mut message_receiver: ResMut<ViewerMessageReceiver>) {
+pub fn handle_viewer_message(
+    mut message_receiver: ResMut<ViewerMessageReceiver>,
+    mut ev_viewer_connected: EventWriter<ViewerConnectedEvent>,
+) {
     while let Some(message) = message_receiver.try_recv() {
         match message {
             ViewerMessage::Disconnect => {
                 tracing::info!("Viewer disconnected")
             }
-            ViewerMessage::Connected => {
-                tracing::info!("New client connected since now with a message");
+            ViewerMessage::ViewerId(viewer_id) => {
+                tracing::info!("New client connected: {viewer_id}");
+                ev_viewer_connected.send(ViewerConnectedEvent(viewer_id));
             }
-            _ => tracing::warn!("Unhandled message")
+            _ => tracing::warn!("Unhandled message"),
         }
     }
 }

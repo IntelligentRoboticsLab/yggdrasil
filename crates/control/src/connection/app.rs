@@ -24,11 +24,12 @@ where
     listener: TcpListener,
     handlers: RwLock<Vec<UnboundedSender<U>>>,
     clients: Arc<Mutex<HashMap<Uuid, UnboundedSender<T>>>>,
+    request_id: Uuid,
 }
 
 impl<T, U> ControlApp<T, U>
 where
-    T: Encode + Send + Clone + 'static,
+    T: Encode + Send + Sync + Clone + 'static,
     U: Decode + Debug + Send + Clone + 'static,
 {
     pub async fn bind(addr: SocketAddr) -> Result<Self> {
@@ -37,7 +38,12 @@ where
             listener,
             handlers: RwLock::new(Vec::new()),
             clients: Arc::new(Mutex::new(HashMap::new())),
+            request_id: Uuid::new_v4(),
         })
+    }
+
+    fn refresh_request_id(&mut self) {
+        self.request_id = Uuid::new_v4();
     }
 
     pub fn run(self) -> ControlAppHandle<T, U> {
@@ -83,6 +89,11 @@ where
         let reader_task = self.handle_reader(read_half);
         let writer_task = self.handle_writer(write_half, rx);
 
+        tracing::info!("Sending welcome message!");
+        tx
+            .unbounded_send()
+            .expect("Failed to send message");
+
         let _ = futures::join!(reader_task, writer_task);
 
         // Remove the client when the connection ends
@@ -107,9 +118,10 @@ where
                         let handlers = &mut self.handlers.read().expect("failed to get reader");
 
                         for handler in handlers.iter() {
-                            handler.unbounded_send(msg.clone()).expect("Failed to send message");
+                            handler
+                                .unbounded_send(msg.clone())
+                                .expect("Failed to send message");
                         }
-
                     }
                     Err(e) => {
                         tracing::error!("Failed to decode message: {:?}", e);
@@ -144,7 +156,7 @@ where
                         break;
                     }
                 }
-                Err(e) => tracing::error!("Failed to encode message: {}", e)
+                Err(e) => tracing::error!("Failed to encode message: {}", e),
             }
         }
     }
@@ -185,7 +197,7 @@ where
 
 impl<T, U> ControlAppHandle<T, U>
 where
-    T: Encode + Send + Clone + 'static,
+    T: Encode + Send + Sync + Clone + 'static,
     U: Decode + Debug + Send + Clone + 'static,
 {
     pub fn add_handler(
@@ -200,18 +212,25 @@ where
 
         clients.iter().for_each(|(_id, client)| {
             tracing::info!("Sending message to a client");
-            client.unbounded_send(message.clone()).expect("Failed to send message");
+            client
+                .unbounded_send(message.clone())
+                .expect("Failed to send message");
         });
     }
 
     pub async fn send(&self, message: T, client_id: Uuid) {
         let clients = self.app.clients.lock().await;
 
+        tracing::info!("Clients: {:#?}", clients);
+        tracing::info!("Client: {}", client_id);
+
         let Some(client) = clients.get(&client_id) else {
             tracing::error!("Client does not exist");
-            return
+            return;
         };
 
-        client.unbounded_send(message).expect("Failed to send message")
+        client
+            .unbounded_send(message)
+            .expect("Failed to send message")
     }
 }
