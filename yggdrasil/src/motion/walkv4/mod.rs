@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use feet::FootPositions;
 use nalgebra::{Isometry3, Point3, Translation, Translation3, UnitQuaternion, Vector3};
 use nidhogg::{
-    types::{FillExt, LeftLegJoints, LegJoints, RightLegJoints},
+    types::{FillExt, ForceSensitiveResistors, LeftLegJoints, LegJoints, RightLegJoints},
     NaoState,
 };
 use step::Step;
@@ -22,7 +22,7 @@ use crate::{
     },
     motion::walk::smoothing::{parabolic_return, parabolic_step},
     nao::{Cycle, CycleTime, NaoManager, Priority},
-    sensor::button::ChestButton,
+    sensor::{button::ChestButton, orientation::RobotOrientation},
 };
 
 use super::walk::WalkingEngineConfig;
@@ -173,6 +173,8 @@ fn walk_phase(
     kinematics: Res<Kinematics>,
     cycle: Res<Cycle>,
     cycle_time: Res<CycleTime>,
+    fsr: Res<ForceSensitiveResistors>,
+    orientation: Res<RobotOrientation>,
 ) {
     let WalkCommand::Walk(hip_height) = *command else {
         return;
@@ -180,11 +182,22 @@ fn walk_phase(
 
     walk_state.phase += cycle_time.duration;
 
-    if walk_state.phase.as_secs_f32() > 0.75 * walk_state.planned_duration.as_secs_f32() {
+    let config = config.clone();
+    let left_foot_fsr = fsr.left_foot.sum();
+    let right_foot_fsr = fsr.right_foot.sum();
+
+    let has_foot_switched = match walk_state.swing_foot {
+        Side::Left => left_foot_fsr,
+        Side::Right => right_foot_fsr,
+    } > config.cop_pressure_threshold;
+
+    if has_foot_switched
+        && walk_state.phase.as_secs_f32() >= 0.75 * walk_state.planned_duration.as_secs_f32()
+    {
         walk_state.phase = Duration::ZERO;
-        walk_state.planned_duration = Duration::from_secs_f32(0.5);
+        walk_state.planned_duration = Duration::from_secs_f32(0.25);
         walk_state.start =
-            FootPositions::from_kinematics(walk_state.swing_foot, &kinematics, 0.025);
+            FootPositions::from_kinematics(walk_state.swing_foot.opposite(), &kinematics, 0.025);
         walk_state.swing_foot = walk_state.swing_foot.opposite();
 
         println!("end_left: {:?}", walk_state.start.left.translation);
@@ -217,13 +230,52 @@ fn walk_phase(
         .lerp_slerp(&target.right.inner, right_t);
 
     let swing_lift = parabolic_return(linear) * 0.012;
-    let (left, right) = match &step.swing_foot {
-        Side::Left => (left * Translation3::new(0.0, 0.0, swing_lift), right),
-        Side::Right => (left, right * Translation3::new(0.0, 0.0, swing_lift)),
+    let (left_lift, right_lift) = match &step.swing_foot {
+        Side::Left => (swing_lift, 0.),
+        Side::Right => (0., swing_lift),
     };
 
     println!("left: {:?}", left.translation);
     println!("right: {:?}\n\n\n", right.translation);
+
+    let current =
+        FootPositions::from_kinematics(walk_state.swing_foot.opposite(), &kinematics, 0.025);
+
+    dbg.log_with_cycle(
+        "walk/left_lift_gt",
+        *cycle,
+        &rerun::Scalar::new(current.left.translation.z as f64),
+    );
+
+    dbg.log_with_cycle(
+        "walk/right_lift_gt",
+        *cycle,
+        &rerun::Scalar::new(current.right.translation.z as f64),
+    );
+
+    dbg.log_with_cycle(
+        "walk/left_lift",
+        *cycle,
+        &rerun::Scalar::new(left_lift as f64),
+    );
+
+    dbg.log_with_cycle(
+        "walk/right_lift",
+        *cycle,
+        &rerun::Scalar::new(right_lift as f64),
+    );
+
+    dbg.log_with_cycle(
+        "walk/left_forward_gt",
+        *cycle,
+        &rerun::Scalar::new(current.left.translation.x as f64),
+    );
+
+    dbg.log_with_cycle(
+        "walk/right_forward_gt",
+        *cycle,
+        &rerun::Scalar::new(current.right.translation.x as f64),
+    );
 
     dbg.log_with_cycle(
         "walk/left_forward",
@@ -242,7 +294,7 @@ fn walk_phase(
         forward: left.translation.x,
         left: left.translation.y - ROBOT_TO_LEFT_PELVIS.y,
         turn: 0.,
-        lift: left.translation.z,
+        lift: left_lift,
         hip_height,
         ..Default::default()
     };
@@ -251,12 +303,25 @@ fn walk_phase(
         forward: right.translation.x,
         left: right.translation.y - ROBOT_TO_RIGHT_PELVIS.y,
         turn: 0.,
-        lift: right.translation.z,
+        lift: right_lift,
         hip_height,
         ..Default::default()
     };
 
-    let (left, right) = kinematics::inverse::leg_angles(&left_foot_offset, &right_foot_offset);
+    let (mut left, mut right) =
+        kinematics::inverse::leg_angles(&left_foot_offset, &right_foot_offset);
+
+    // Balance adjustment
+    let balance_adjustment =
+        orientation.euler_angles().1 * config.balancing.filtered_gyro_y_multiplier;
+    match walk_state.swing_foot {
+        Side::Left => {
+            right.ankle_pitch += balance_adjustment;
+        }
+        Side::Right => {
+            left.ankle_pitch += balance_adjustment;
+        }
+    }
 
     let leg_positions = LegJoints::builder().left_leg(left).right_leg(right).build();
     let leg_stiffness = LegJoints::builder()
