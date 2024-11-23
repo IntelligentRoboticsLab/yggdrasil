@@ -123,6 +123,6 @@ tracing-appender = "0.2.3"
 tracing-subscriber = "0.3.18"
 tracing-tracy = "0.11.3"
 turbojpeg = "1.1.1"
-vqf = { version = "0.4.0", features = ["serde"] }
 uuid = "1.11.0"
+vqf = { version = "0.4.0", features = ["serde"] }
 walkdir = "2.5.0"

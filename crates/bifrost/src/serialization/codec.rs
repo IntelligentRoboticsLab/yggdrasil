@@ -506,6 +506,7 @@ impl Encode for Uuid {
     }
 
     fn encode_len(&self) -> usize {
+        // A UUID is defined to be [16 octets in size](https://www.ietf.org/rfc/rfc9562.html#section-4-1)
         16
     }
 }
