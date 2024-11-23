@@ -15,6 +15,7 @@ pub mod dimensions;
 pub mod forward;
 pub mod inverse;
 pub mod spaces;
+pub mod visualization;
 
 pub mod prelude {
     pub use super::dimensions::*;
@@ -32,7 +33,9 @@ pub struct KinematicsPlugin;
 impl Plugin for KinematicsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Kinematics>()
+            .add_systems(PostStartup, visualization::setup_meshes)
             .add_systems(PreUpdate, update_kinematics)
+            .add_systems(PostUpdate, visualization::update_meshes)
             .add_systems(PostUpdate, log_kinematics);
     }
 }

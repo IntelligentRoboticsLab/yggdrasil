@@ -47,6 +47,14 @@ impl<T, S1: Space, S2: Space> BetweenSpaces<T, S1, S2> {
         }
     }
 
+    pub fn chain<T2, S3>(self, other: BetweenSpaces<T2, S2, S3>) -> BetweenSpaces<T2::Output, S1, S3>
+    where
+        T2: Mul<T>,
+        S3: Space,
+    {
+        BetweenSpaces::new(other.inner * self.inner)
+    }
+
     pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> BetweenSpaces<U, S1, S2> {
         BetweenSpaces::new(f(self.inner))
     }
