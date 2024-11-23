@@ -100,22 +100,79 @@ time_budget = 3000
 # Values taken from rUNSWift 2014 walk
 scale_factor = [0.81, 1.19]
 
-# The configuration for the odometry filter.
-# The filter is an implementation of this paper https://www.mdpi.com/1424-8220/15/8/19302/pdf
+# The configuration for the vqf-based orientation filter.
+# See this paper https://arxiv.org/pdf/2203.17024 for more.
 [orientation]
-# The weight of the orientation correction computed from the accelerometer.
-# This weight is further scaled based on the acceleration relative to the gravity.
-acceleration_weight = 0.01
+# Time constant $\tau_{acc}$ for accelerometer low-pass filtering.
+#
+# Small values for $\tau_{acc}$ imply trust on the accelerometer
+# measurements, while large values of $\tau_{acc}$ imply trust on the
+# gyroscope measurements.
+#
+# The time constant $\tau_{acc}$ corresponds to the cutoff frequency $f_c$
+# of the second-order Butterworth low-pass filter as follows: $$f_c =
+# \frac{\sqrt(2)}{2 \pi \tau_{acc}}$$
+tau_accelerometer = 1000
 
-# The following values are used to determine if the robot is moving or not.
-# If the robot is not moving, the estimated orientation is updated.
+# Enable gyroscope bias estimation during motion phases
+# Gyroscope bias is estimated based on the inclination correction only!
+do_bias_estimation = true
 
-# The threshold for the acceleration values from the IMU.
-# If the acceleration is below this threshold,  the robot is considered to be moving
-acceleration_threshold = 0.2
-# The threshold for the gyro values from the IMU.
-# If any of the gyro valeus is below this threshold, the robot is considered to be moving.
-gyro_threshold = 0.1
-# The threshold for the sum of each FSR foot.
-# If the FSR value is below this threshold, the robot is considered to be moving.
-fsr_threshold = 5
+# Enables gyroscope bias estimation during rest phases.
+# This enables "rest"-phase detection, phases in which the IMU is at rest.
+# During rest-phases, the gyroscope bias is estimated from the
+# low-pass filtered gyroscope readings.
+do_rest_bias_estimation = true
+
+# Standard deviation of the initial bias estimation uncertainty, in
+# degrees per second.
+bias_sigma_initial = 0.5
+
+# Time in which the bias estimation uncertainty increases from 0 degrees to
+# 0.1 degrees. This value determines the system noise assumed by the
+# Kalman filter.
+bias_forgetting_time = 100
+
+# Maximum expected gyroscope bias, in degrees per second.
+bias_clip = 2.0
+
+# Standard deviation of the converged bias estimation uncertainty during
+# motion, in degrees per second.
+bias_sigma_motion = 0.1
+
+# Forgetting factor for unobservable bias in vertical direction during
+# motion.
+#
+# This value is the relative weight of an artificial zero measurement that
+# ensures that the bias estimate in the unobservable direction will
+# eventually decay to zero.
+bias_vertical_forgetting_factor = 0.0001
+
+# Standard deviation of the converged bias estimation uncertainty during a
+# rest phase, in degrees per second.
+bias_sigma_rest = 0.03
+
+# Time threshold in milliseconds for rest detection.
+#
+# A rest phase is detected when the measurements have been close to the
+# low-pass filtered reference for at least this duration.
+rest_min_duration = 1500
+
+# Time constant in milliseconds for the low-pass filter used in the rest detection.
+#
+# This time constant characterizes a second-order Butterworth low-pass
+# filter used to obtain the reference for rest detection.
+rest_filter_tau = 500
+
+# Angular velocity threshold for rest detection, in degrees per second.
+#
+# For a rest phase to be detected, the norm of the deviation between
+# measurement and reference must be below the provided threshold.
+# The absolute value of each component must also be below `bias_clip`
+rest_threshold_gyro = 2.0
+
+# Acceleration threshold for rest phase detection in m/s^2.
+#
+# For a rest phase to be detected, the norm of the deviation between
+# measurement and reference must be below the provided threshold.
+rest_threshold_accel = 0.5

@@ -36,7 +36,7 @@ impl Run {
         }
 
         // Generate showtime config
-        self.robot_ops.prepare_showtime_config()?;
+        self.robot_ops.prepare_showtime_config(&config)?;
 
         let local = self.robot_ops.local;
         let rerun = self.robot_ops.rerun_args.rerun.is_some();

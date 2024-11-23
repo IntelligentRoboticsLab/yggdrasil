@@ -156,7 +156,7 @@ impl RerunStream {
     /// [`RerunStream`] that does nothing.
     pub fn init(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
         let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
-            .connect_opts(
+            .connect_tcp_opts(
                 SocketAddr::new(rerun_host, rerun::default_server_addr().port()),
                 rerun::default_flush_timeout(),
             )

@@ -2,7 +2,7 @@ use crate::vision::field_boundary::FieldBoundary;
 
 use super::{init_camera, Camera, Image};
 use bevy::{prelude::*, tasks::IoTaskPool};
-use heimdall::{ExposureWeights, Top};
+use heimdall::{Bottom, ExposureWeights, Top};
 
 const SAMPLES_PER_COLUMN: usize = 4;
 const ABOVE_FIELD_WEIGHT: u8 = 0;
@@ -80,7 +80,7 @@ fn update_exposure_weights(
 fn sync_exposure_weights(
     exposure_weights: Res<ExposureWeights>,
     top_camera: Res<Camera<Top>>,
-    bottom_camera: Res<Camera<Top>>,
+    bottom_camera: Res<Camera<Bottom>>,
 ) {
     let exposure_weights = exposure_weights.clone();
     let top_camera = top_camera.inner.clone();

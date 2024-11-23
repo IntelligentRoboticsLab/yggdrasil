@@ -2,7 +2,10 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    kinematics::{forward::left_hip_to_ground, FootOffset, RobotKinematics},
+    kinematics::{
+        spaces::{LeftAnkle, LeftHip},
+        FootOffset, Kinematics,
+    },
     sensor::low_pass_filter::LowPassFilter,
 };
 use std::{ops::Neg, time::Duration};
@@ -109,7 +112,7 @@ pub struct WalkingEngine {
 
 impl Default for WalkingEngine {
     fn default() -> Self {
-        WalkingEngine::new(&WalkingEngineConfig::default(), &RobotKinematics::default())
+        WalkingEngine::new(&WalkingEngineConfig::default(), &Kinematics::default())
     }
 }
 
@@ -152,8 +155,13 @@ impl WalkingEngine {
         )
     }
 
-    pub(super) fn new(config: &WalkingEngineConfig, kinematics: &RobotKinematics) -> Self {
-        let current_hip_height = left_hip_to_ground(kinematics);
+    pub(super) fn new(config: &WalkingEngineConfig, kinematics: &Kinematics) -> Self {
+        let current_hip_height = kinematics
+            .isometry::<LeftHip, LeftAnkle>()
+            .inner
+            .translation
+            .vector
+            .z;
 
         WalkingEngine {
             state: WalkState::from_hip_height(current_hip_height, config),

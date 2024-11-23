@@ -7,7 +7,6 @@ use heimdall::{CameraLocation, Top};
 use lstsq::Lstsq;
 use ml::prelude::*;
 use nalgebra::Point2;
-use rerun::ComponentBatch;
 use tasks::conditions::task_finished;
 
 use super::camera::init_camera;
@@ -137,15 +136,14 @@ impl FieldBoundary {
 /// By logging a static [`rerun::Color`] component, we can avoid logging the color component
 /// for each ball proposal and classification.
 fn setup_boundary_debug_logging(dbg: DebugContext) {
-    dbg.log_component_batches(
+    dbg.log_static(
         Top::make_entity_path("boundary/points"),
-        true,
-        [&rerun::Color::from_rgb(255, 0, 255) as &dyn ComponentBatch],
+        &rerun::Color::from_rgb(255, 0, 255),
     );
-    dbg.log_component_batches(
+
+    dbg.log_static(
         Top::make_entity_path("boundary/segments"),
-        true,
-        [&rerun::Color::from_rgb(128, 0, 128) as &dyn ComponentBatch],
+        &rerun::Color::from_rgb(128, 0, 128),
     );
 }
 

@@ -2,7 +2,7 @@
 authors.workspace = true
 categories.workspace = true
 edition.workspace = true
-name = "niflheim"
+name = "spatial"
 rust-version.workspace = true
 version.workspace = true
 
@@ -11,3 +11,4 @@ workspace = true
 
 [dependencies]
 nalgebra = { workspace = true }
+spatial_derive = { path = "spatial_derive" }

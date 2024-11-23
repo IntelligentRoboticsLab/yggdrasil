@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use crate::{
     core::config::ConfigExt,
-    kinematics::RobotKinematics,
+    kinematics::Kinematics,
     nao::{CycleTime, NaoManager, Priority},
     prelude::*,
     sensor::imu::IMUValues,
@@ -88,7 +88,7 @@ fn init_walking_engine(
     config: Res<WalkingEngineConfig>,
     nao_state: Res<NaoState>,
 ) {
-    let kinematics = RobotKinematics::from(&nao_state.position);
+    let kinematics = Kinematics::from(&nao_state.position);
 
     commands.insert_resource(WalkingEngine::new(&config, &kinematics));
 }
