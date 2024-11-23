@@ -25,7 +25,7 @@ impl Behavior for StandLookAt {
 
             control.nao_manager.set_head_target(
                 look_at,
-                Duration::from_millis(1000),
+                Duration::from_millis(500),
             );
         } else {
             let target_point3 = Point3::new(-10.0, 0.0, 0.5);
@@ -33,7 +33,7 @@ impl Behavior for StandLookAt {
 
             control.nao_manager.set_head_target(
                 look_at,
-                Duration::from_millis(1000),
+                Duration::from_millis(500),
             );
         }
         control.walking_engine.request_stand();

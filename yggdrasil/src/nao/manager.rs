@@ -180,11 +180,17 @@ impl HeadTarget {
                     nao_state.position.head_yaw,
                 );
 
-                HeadTarget::Moving {
-                    source,
-                    target,
-                    timestep: 0.0,
-                    time_interval: 1.0 / (time_to_target.as_secs_f32() * CYCLES_PER_SECOND),
+                let similarity = source.dot(&target);
+                if similarity > 0.985 {
+                    HeadTarget::None
+                } else {
+
+                    HeadTarget::Moving {
+                        source,
+                        target,
+                        timestep: 0.0,
+                        time_interval: 1.0 / (time_to_target.as_secs_f32() * CYCLES_PER_SECOND),
+                    }
                 }
             }
             // If the target is already moving, we check if we have already reached the target.
@@ -194,13 +200,12 @@ impl HeadTarget {
                 timestep,
                 time_interval,
             } => {
-                if timestep >= 1.0 {
+                if timestep >= 0.95 {
                     HeadTarget::None
                 } else {
                     // // We scale the time increment by the difference between the current head target and the desired target.
                     // let timestep_interval = source.dot(&target);
                     let timestep = timestep + time_interval;
-                    println!("time_interval: {}", time_interval);
                     HeadTarget::Moving {
                         source: source,
                         target: target,
@@ -392,6 +397,9 @@ impl NaoManager {
         joint_positions: HeadJoints<JointValue>,
         time_to_target: Duration,
     ) -> &mut Self {
+        let new_target =
+                UnitQuaternion::from_euler_angles(0.0, joint_positions.pitch, joint_positions.yaw);
+
         if let HeadTarget::Moving {
             source,
             target,
@@ -399,9 +407,6 @@ impl NaoManager {
             time_interval,
         } = self.head_target
         {
-
-            let new_target =
-                UnitQuaternion::from_euler_angles(0.0, joint_positions.pitch, joint_positions.yaw);
             // If the head is already moving, only set a new target if its sufficiently different from old target.
             // This prevents stuttering
             let similarity = target.dot(&new_target);
@@ -424,10 +429,8 @@ impl NaoManager {
         }
 
         // If the head is not moving, we just set a new target.
-        let target =
-            UnitQuaternion::from_euler_angles(0.0, joint_positions.pitch, joint_positions.yaw);
         self.head_target = HeadTarget::New {
-            target,
+            target: new_target,
             time_to_target: time_to_target,
         };
 
