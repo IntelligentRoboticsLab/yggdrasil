@@ -2115,6 +2115,8 @@ name = "control"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "bevy",
+ "bifrost",
  "bincode",
  "clap",
  "futures",
@@ -2131,7 +2133,7 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
- "yggdrasil",
+ "uuid",
 ]
 
 [[package]]
@@ -10409,6 +10411,7 @@ dependencies = [
  "bifrost",
  "bincode",
  "chrono",
+ "control",
  "cpal",
  "derive_more",
  "enum_dispatch",

@@ -1,0 +1,281 @@
+use std::{
+    collections::VecDeque,
+    fmt::Debug,
+    net::SocketAddrV4,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
+
+use async_std::{net::TcpStream, sync::Mutex};
+use bifrost::serialization::{Decode, Encode};
+use futures::{
+    channel::mpsc::{unbounded, TrySendError, UnboundedReceiver, UnboundedSender},
+    io::{ReadHalf, WriteHalf},
+    AsyncReadExt, AsyncWriteExt, StreamExt,
+};
+use tokio::sync::Notify;
+use uuid::Uuid;
+
+use super::protocol::HandlerFn;
+
+/// `T` Send Message type \
+/// `U` Receive Message type
+pub struct ControlViewer<T, U>
+where
+    T: Encode,
+    U: Decode,
+{
+    address: SocketAddrV4,
+    tx: UnboundedSender<T>,
+    rx: Arc<Mutex<UnboundedReceiver<T>>>,
+    message_queue: Arc<Mutex<VecDeque<T>>>,
+    handlers: Arc<RwLock<Vec<HandlerFn<U>>>>,
+    notify: Arc<Notify>,
+    viewer_id: Uuid,
+}
+
+impl<T, U> ControlViewer<T, U>
+where
+    T: Encode + Debug + Send + Clone + 'static,
+    U: Decode + Debug + 'static,
+{
+    pub async fn connect(address: SocketAddrV4) -> tokio::io::Result<Self> {
+        let (tx, rx) = unbounded();
+        Ok(Self {
+            address,
+            tx,
+            rx: Arc::new(Mutex::new(rx)),
+            message_queue: Arc::new(Mutex::new(VecDeque::new())),
+            handlers: Arc::new(RwLock::new(Vec::new())),
+            notify: Arc::new(Notify::new()),
+            viewer_id: Uuid::new_v4(),
+        })
+    }
+
+    // pub fn handle(&self) -> ControlViewerHandle<T, U> {
+    //     ControlViewerHandle {
+    //         tx: self.tx.clone(),
+    //         app: Arc::clone(self),
+    //     }
+    // }
+
+    pub async fn run(self) -> ControlViewerHandle<T, U> {
+        self._run(None)
+    }
+
+    pub async fn run_with_init_msg(self, initial_message: T) -> ControlViewerHandle<T, U> {
+        self._run(Some(initial_message))
+    }
+
+    fn _run(self, initial_message: Option<T>) -> ControlViewerHandle<T, U> {
+        tracing::info!("Starting client");
+
+        // Spawn a background task to handle messages from the global channel.
+        {
+            let rx = Arc::clone(&self.rx);
+            let message_queue = Arc::clone(&self.message_queue);
+            let notify = Arc::clone(&self.notify);
+            tokio::spawn(async move {
+                Self::global_message_handler(rx, message_queue, notify).await;
+            });
+        }
+
+        let app = Arc::new(self);
+        let handle = app.clone();
+
+        tokio::spawn(async move {
+            loop {
+                match TcpStream::connect(app.address.clone()).await {
+                    Ok(socket) => {
+                        app.handle_connection(socket).await;
+
+                        // Send a initial message when there is a new connection
+                        if let Some(ref msg) = initial_message {
+                            app.tx
+                                .unbounded_send(msg.clone())
+                                .expect("Failed to send message");
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to connect to {}: {:?}", app.address, e);
+                    }
+                }
+                // Wait some time before attempting to reconnect
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+        });
+
+        let viewer_handle = ControlViewerHandle {
+            app: handle,
+            client_id: Uuid::new_v4(),
+        };
+
+        viewer_handle
+    }
+
+    async fn handle_connection(&self, socket: TcpStream) {
+        // if let Err(e) = socket.set_linger(Some(Duration::from_secs(2))) {
+        //     tracing::error!("Failed to set socket linger: {:?}", e);
+        // }
+
+        tracing::info!("Connected to {}", self.address);
+        let (read_half, write_half) = socket.split();
+
+        // Spawn tasks to handle read and write
+        let handlers = Arc::clone(&self.handlers);
+        let reader_task = tokio::spawn(Self::handle_read(read_half, handlers));
+        let writer_task = {
+            let message_queue = Arc::clone(&self.message_queue);
+            let notify = Arc::clone(&self.notify);
+            tokio::spawn(async move {
+                Self::handle_write(write_half, message_queue, notify).await;
+            })
+        };
+
+        // Send a message on connection to note the other side
+        //
+
+        // Wait for tasks to complete
+        tokio::select! {
+            result = reader_task => {
+                if let Err(e) = result {
+                    tracing::error!("Reader task ended with error: {:?}", e);
+                }
+            }
+            result = writer_task => {
+                if let Err(e) = result {
+                    tracing::error!("Writer task ended with error: {:?}", e);
+                }
+            }
+        }
+
+        tracing::info!("Connection lost. Attempting to reconnect...");
+    }
+
+    async fn global_message_handler(
+        rx: Arc<Mutex<UnboundedReceiver<T>>>,
+        message_queue: Arc<Mutex<VecDeque<T>>>,
+        notify: Arc<Notify>,
+    ) {
+        let mut rx_guard = rx.lock().await;
+        while let Some(message) = rx_guard.next().await {
+            // Store the message in the queue and notify the writer task
+            let mut queue_guard = message_queue.lock().await;
+            queue_guard.push_back(message);
+            drop(queue_guard);
+            notify.notify_one();
+        }
+        tracing::info!("Global message channel closed");
+    }
+
+    async fn handle_read(mut read: ReadHalf<TcpStream>, handlers: Arc<RwLock<Vec<HandlerFn<U>>>>) {
+        let mut buf = [0; 1024];
+        loop {
+            tracing::info!("Loop Loop");
+            let a = read.read(&mut buf).await;
+            tracing::info!("Read some bytes");
+            match a {
+                Ok(0) => {
+                    tracing::info!("Server closed connection");
+                    break;
+                }
+                Ok(n) => match U::decode(&buf[..n]) {
+                    Ok(message) => {
+                        // we received a message from the server, we can process it here if needed
+                        tracing::info!("Received message from server: {:?}", message);
+                        let handlers = handlers.read().expect("failed to get reader");
+                        for handler in handlers.iter() {
+                            tracing::info!("Handle handler");
+                            handler(&message);
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to decode message: {:?}", e);
+                    }
+                },
+                Err(e) => {
+                    tracing::error!("Error reading from server: {:?}", e);
+                    break;
+                }
+            }
+        }
+    }
+
+    async fn handle_write(
+        mut write: WriteHalf<TcpStream>,
+        message_queue: Arc<Mutex<VecDeque<T>>>,
+        notify: Arc<Notify>,
+    ) {
+        loop {
+            let message_option;
+            {
+                let mut queue_guard = message_queue.lock().await;
+                message_option = queue_guard.pop_front();
+            }
+
+            let Some(message) = message_option else {
+                // If no messages are available, wait for a new one to arrive
+                notify.notified().await;
+                continue;
+            };
+
+            // if message.is_disconnected() {
+            //     tracing::info!("Disconnecting...");
+            //     break;
+            // }
+
+            let mut data = vec![];
+            if message.encode(&mut data).is_ok() {
+                if let Err(e) = write.write_all(&data).await {
+                    tracing::info!("Failed to send message: {:?}, error: {:?}", message, e);
+                    break;
+                }
+            }
+        }
+    }
+
+    pub fn add_handler(
+        &self,
+        handler: HandlerFn<U>,
+    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let mut handlers = self
+            .handlers
+            .write()
+            .map_err(|_| "Failed to lock handlers")?;
+        handlers.push(handler);
+        Ok(())
+    }
+
+    pub fn id(&self) -> Uuid {
+        self.viewer_id
+    } 
+}
+
+pub struct ControlViewerHandle<T, U>
+where
+    T: Encode,
+    U: Decode,
+{
+    app: Arc<ControlViewer<T, U>>,
+    client_id: Uuid,
+}
+
+impl<T, U> ControlViewerHandle<T, U>
+where
+    T: Encode + Send + Debug + Clone + 'static,
+    U: Decode + Debug + 'static,
+{
+    pub fn send(&self, msg: T) -> Result<(), TrySendError<T>> {
+        self.app.tx.unbounded_send(msg)
+    }
+
+    pub fn add_handler<H>(
+        &mut self,
+        handler: H,
+    ) -> std::result::Result<(), Box<dyn std::error::Error>>
+    where
+        H: Fn(&U) + Send + Sync + 'static,
+    {
+        self.app.add_handler(Box::new(handler))
+    }
+}

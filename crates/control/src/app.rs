@@ -1,63 +1,59 @@
-use miette::Result;
-use re_smart_channel::Receiver;
-use re_viewer::{
-    external::{
-        eframe::{self, NativeOptions},
-        re_log_types::LogMsg,
-    },
-    StartupOptions,
-};
+use std::net::Ipv4Addr;
 
-use crate::{connection::connect::RobotConnection, control::Control};
+use miette::{IntoDiagnostic, Result};
+use re_viewer::StartupOptions;
+
+use crate::{connection::{protocol::{RobotMessage, ViewerMessage}, viewer::ControlViewer}, control::Control};
 
 // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
 const APP_ENV: &str = "Control Wrapper";
 
-const WINDOW_TITLE: &str = "Rerun Control";
-
 pub struct App {
-    rx: Receiver<LogMsg>,
     startup_options: StartupOptions,
-    native_options: NativeOptions,
-    robot_connection: RobotConnection,
+    viewer: ControlViewer<ViewerMessage, RobotMessage>,
 }
 
 impl App {
     pub fn new(
-        rx: Receiver<LogMsg>,
         startup_options: StartupOptions,
-        native_options: NativeOptions,
-        robot_connection: RobotConnection,
+        viewer: ControlViewer<ViewerMessage, RobotMessage>,
+
     ) -> Self {
         App {
-            rx,
             startup_options,
-            native_options,
-            robot_connection,
+            viewer,
         }
     }
 
-    pub fn run(self) -> Result<()> {
-        eframe::run_native(
-            WINDOW_TITLE,
-            self.native_options,
-            Box::new(move |cc| {
-                let _re_ui = re_viewer::customize_eframe_and_setup_renderer(cc);
+    pub async fn run(self) -> Result<()> {
+        let initial_message = ViewerMessage::Connected(self.viewer.id());
+        let handle = self.viewer.run_with_init_msg(initial_message).await;
 
-                let mut rerun_app = re_viewer::App::new(
+        let app_env = re_viewer::AppEnvironment::Custom(APP_ENV.to_string());
+
+        // Listen for TCP connections from Rerun's logging SDKs.
+        // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
+        let rx = re_sdk_comms::serve(
+            &Ipv4Addr::UNSPECIFIED.to_string(),
+            re_sdk_comms::DEFAULT_SERVER_PORT,
+            Default::default(),
+        )
+        .into_diagnostic()?;
+
+        re_viewer::run_native_app(
+            Box::new(move |cc| {
+                let mut app = re_viewer::App::new(
                     re_viewer::build_info(),
-                    &re_viewer::AppEnvironment::Custom(APP_ENV.to_string()),
+                    &app_env,
                     self.startup_options,
                     cc.egui_ctx.clone(),
                     cc.storage,
                 );
-                rerun_app.add_receiver(self.rx);
-
-                let control = Control::new(rerun_app, self.robot_connection);
-                Ok(Box::new(control))
+                app.add_receiver(rx);
+                Box::new(Control::new(app, handle))
             }),
-        )
-        .unwrap();
+            None,
+        ).into_diagnostic()?;
 
         Ok(())
     }

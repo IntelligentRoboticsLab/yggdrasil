@@ -21,6 +21,7 @@ timings = ["dep:tracing-tracy", "bevy/trace"]
 [dependencies]
 # our own crates here
 bifrost = { workspace = true }
+control = { workspace = true }
 heimdall = { workspace = true }
 ml = { workspace = true }
 odal = { workspace = true }

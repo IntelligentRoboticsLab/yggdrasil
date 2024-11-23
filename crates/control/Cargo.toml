@@ -4,7 +4,10 @@ name = "control"
 version = "0.1.0"
 
 [dependencies]
+bifrost = { workspace = true }
+
 async-std = { workspace = true }
+bevy = { workspace = true }
 bincode = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 futures = { workspace = true }
@@ -23,8 +26,9 @@ tokio = { workspace = true, features = [
   "time",
   "net",
   "io-util",
+  "sync",
 ] }
 tracing = { workspace = true }
 tracing-log = { workspace = true }
 tracing-subscriber = { workspace = true }
-yggdrasil = { path = "../../yggdrasil" }
+uuid = { workspace = true }

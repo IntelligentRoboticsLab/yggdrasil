@@ -1,11 +1,14 @@
-use std::net::{Ipv4Addr, SocketAddrV4};
+use std::net::SocketAddrV4;
 
 use clap::Parser;
 use miette::{IntoDiagnostic, Result};
-use re_viewer::external::{eframe, egui, re_log, re_memory};
+use re_viewer::external::{re_log, re_memory};
 
-use control::{app::App, cli::Cli, connection::connect::RobotConnection};
-use yggdrasil::core::control::CONTROL_PORT;
+use control::{
+    app::App,
+    cli::Cli,
+    connection::{protocol::CONTROL_PORT, viewer::ControlViewer},
+};
 
 const BYTES_IN_MB: i64 = 1_000_000;
 
@@ -32,20 +35,6 @@ async fn main() -> Result<()> {
     // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
-    // Listen for TCP connections from Rerun's logging SDKs.
-    // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let rx = re_sdk_comms::serve(
-        &Ipv4Addr::UNSPECIFIED.to_string(),
-        re_sdk_comms::DEFAULT_SERVER_PORT,
-        Default::default(),
-    )
-    .into_diagnostic()?;
-
-    let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_app_id("control"),
-        ..re_viewer::native::eframe_options(None)
-    };
-
     // Setting a memory limit of 75% or a limit defined via the cli arguments
     let memory_limit = if let Some(max_memory) = args.max_mem {
         re_memory::MemoryLimit::parse(&max_memory)
@@ -65,15 +54,13 @@ async fn main() -> Result<()> {
     };
 
     let socket_addr = SocketAddrV4::new(args.robot_ip, CONTROL_PORT);
-
-    // Tries to make a connection to the robot address
-    let connection_attempts = 10;
-    let connection = RobotConnection::try_connect(socket_addr, connection_attempts)
+    let viewer = ControlViewer::connect(socket_addr)
         .await
-        .unwrap();
+        .into_diagnostic()?;
 
-    let app = App::new(rx, startup_options, native_options, connection);
-    app.run()?;
+
+    let app = App::new(startup_options, viewer);
+    app.run().await?;
 
     Ok(())
 }

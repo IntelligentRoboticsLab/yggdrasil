@@ -1,22 +1,29 @@
 pub mod style;
 
-use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 use re_viewer::external::egui::{self, Frame};
 use rerun::external::ecolor::Color32;
 
-use yggdrasil::core::control::{receive::ControlViewerMessage, transmit::ControlSender};
-
-use crate::control::DebugEnabledSystemsView;
+use crate::{
+    connection::{
+        protocol::{RobotMessage, ViewerMessage},
+        viewer::ControlViewerHandle,
+    },
+    control::ControlStates,
+};
 
 pub fn add_editable_resource(
     ui: &mut egui::Ui,
     resource_name: &String,
     resource_data: &mut String,
-    changed_resources: &mut HashMap<String, bool>,
+    states: Arc<RwLock<ControlStates>>,
     button_frame_style: Frame,
-) -> Option<ControlViewerMessage> {
+) -> Option<ViewerMessage> {
     let mut followup_action = None;
+
+    let mut states = states.write().expect("Failed to lock states");
+    let changed_resources = &mut states.focused_resources;
 
     ui.vertical(|ui| {
         let mut resource_name_color = Color32::GRAY;
@@ -59,7 +66,7 @@ pub fn add_editable_resource(
                     ))
                     .clicked()
                 {
-                    followup_action = Some(ControlViewerMessage::UpdateResource(
+                    followup_action = Some(ViewerMessage::UpdateResource(
                         resource_name.to_string(),
                         resource_data.to_string(),
                     ));
@@ -88,10 +95,15 @@ pub fn add_editable_resource(
 
 pub fn debug_resources_ui(
     ui: &mut egui::Ui,
-    debug_enabled_systems_view: &mut DebugEnabledSystemsView,
-    message_sender: &ControlSender<ControlViewerMessage>,
+    states: Arc<RwLock<ControlStates>>,
+    handle: &ControlViewerHandle<ViewerMessage, RobotMessage>,
 ) {
     ui.vertical(|ui| {
+        let debug_enabled_systems_view = &mut states
+            .write()
+            .expect("Failed to read lock states")
+            .debug_enabled_systems_view;
+
         for system_name in &debug_enabled_systems_view.key_sequence {
             let enabled = debug_enabled_systems_view
                 .debug_enabled_systems
@@ -99,11 +111,11 @@ pub fn debug_resources_ui(
                 .get_mut(system_name)
                 .unwrap();
             if ui.checkbox(enabled, system_name).changed() {
-                let message = ControlViewerMessage::UpdateEnabledDebugSystem(
-                    system_name.clone(),
-                    *enabled,
-                );
-                message_sender.tx.unbounded_send(message).unwrap();
+                let message =
+                    ViewerMessage::UpdateEnabledDebugSystem(system_name.clone(), *enabled);
+                handle
+                    .send(message)
+                    .expect("Failed to send update debug system message");
             };
         }
     });

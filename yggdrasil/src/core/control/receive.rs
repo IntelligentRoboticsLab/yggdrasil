@@ -1,25 +1,19 @@
 use async_std::{io::ReadExt, net::TcpStream};
 use bevy::prelude::*;
+use control::connection::protocol::ViewerMessage;
 use futures::{
-    channel::mpsc::{self, UnboundedSender},
+    channel::mpsc::{self, UnboundedReceiver, UnboundedSender},
     io::ReadHalf,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::core::control::connect::ControlDataStream;
-
-use super::{
-    transmit::{ControlRobotMessage, ControlSender},
-    DebugEnabledSystems,
-};
-
 #[derive(Resource)]
-pub struct ControlReceiver<T> {
-    pub rx: mpsc::UnboundedReceiver<T>,
+pub struct ViewerMessageReceiver {
+    pub rx: UnboundedReceiver<ViewerMessage>
 }
 
-impl<T> ControlReceiver<T> {
-    pub fn try_recv(&mut self) -> Option<T> {
+impl ViewerMessageReceiver {
+    pub fn try_recv(&mut self) -> Option<ViewerMessage> {
         self.rx
             .try_next()
             .transpose()
@@ -27,6 +21,35 @@ impl<T> ControlReceiver<T> {
             .ok()
     }
 }
+
+pub fn handle_viewer_message(mut message_receiver: ResMut<ViewerMessageReceiver>) {
+    while let Some(message) = message_receiver.try_recv() {
+        match message {
+            ViewerMessage::Disconnect => {
+                tracing::info!("Viewer disconnected")
+            }
+            ViewerMessage::Connected => {
+                tracing::info!("New client connected since now with a message");
+            }
+            _ => tracing::warn!("Unhandled message")
+        }
+    }
+}
+
+// #[derive(Resource)]
+// pub struct ControlReceiver<T> {
+//     pub rx: mpsc::UnboundedReceiver<T>,
+// }
+
+// impl<T> ControlReceiver<T> {
+//     pub fn try_recv(&mut self) -> Option<T> {
+//         self.rx
+//             .try_next()
+//             .transpose()
+//             .expect("Control message receive channel closed")
+//             .ok()
+//     }
+// }
 
 #[derive(Resource, Serialize, Deserialize, Debug)]
 pub enum ControlViewerMessage {
@@ -66,31 +89,31 @@ pub async fn receive_messages(
     }
 }
 
-pub fn handle_message(
-    mut commands: Commands,
-    mut receiver: ResMut<ControlReceiver<ControlViewerMessage>>,
-    mut debug_enabled_systems: ResMut<DebugEnabledSystems>,
-) {
-    while let Some(message) = receiver.try_recv() {
-        match message {
-            ControlViewerMessage::CloseStream => {
-                commands.remove_resource::<ControlReceiver<ControlViewerMessage>>();
-                commands.remove_resource::<ControlSender<ControlRobotMessage>>();
-                commands.remove_resource::<ControlDataStream>();
-            }
-            ControlViewerMessage::UpdateEnabledDebugSystem(system_name, enabled) => {
-                debug_enabled_systems.set_system(system_name.clone(), enabled);
-                tracing::debug!("Set resource `{}` to `{}`", system_name, enabled);
-            }
-            _ => {
-                tracing::warn!("Received a message which is not handled: {:?}", message);
-            }
-        }
-    }
-}
+// pub fn handle_message(
+//     mut commands: Commands,
+//     mut receiver: ResMut<ControlReceiver<ControlViewerMessage>>,
+//     mut debug_enabled_systems: ResMut<DebugEnabledSystems>,
+// ) {
+//     while let Some(message) = receiver.try_recv() {
+//         match message {
+//             ControlViewerMessage::CloseStream => {
+//                 commands.remove_resource::<ControlReceiver<ControlViewerMessage>>();
+//                 commands.remove_resource::<ControlSender<ControlRobotMessage>>();
+//                 commands.remove_resource::<ControlDataStream>();
+//             }
+//             ControlViewerMessage::UpdateEnabledDebugSystem(system_name, enabled) => {
+//                 debug_enabled_systems.set_system(system_name.clone(), enabled);
+//                 tracing::debug!("Set resource `{}` to `{}`", system_name, enabled);
+//             }
+//             _ => {
+//                 tracing::warn!("Received a message which is not handled: {:?}", message);
+//             }
+//         }
+//     }
+// }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub enum ClientRequest {
-    RobotState,
-    ResourceUpdate(String, String),
-}
+// #[derive(Serialize, Deserialize, Debug)]
+// pub enum ClientRequest {
+//     RobotState,
+//     ResourceUpdate(String, String),
+// }

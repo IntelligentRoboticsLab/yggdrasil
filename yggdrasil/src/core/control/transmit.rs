@@ -1,7 +1,8 @@
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use async_std::{io::WriteExt, net::TcpStream};
-use bevy::{ecs::system::SystemId, prelude::*};
+use bevy::{ecs::system::SystemId, prelude::*, tasks::{futures_lite::stream::block_on, IoTaskPool}};
+use control::connection::{app::ControlAppHandle, protocol::{RobotMessage, ViewerMessage}};
 use futures::{
     channel::mpsc::{self, UnboundedReceiver},
     io::WriteHalf,
@@ -9,6 +10,7 @@ use futures::{
 };
 use miette::IntoDiagnostic;
 use serde::{Deserialize, Serialize};
+use bifrost::serialization::Encode;
 
 use super::DebugEnabledSystems;
 
@@ -63,7 +65,7 @@ pub async fn send_messages(
 }
 
 pub fn send_current_state(
-    sender: Res<ControlSender<ControlRobotMessage>>,
+    control_handle: Res<ControlAppHandle<RobotMessage, ViewerMessage>>,
     time: Res<Time>,
     mut delay: Local<ControlRobotMessageDelay>,
 ) {
@@ -73,16 +75,26 @@ pub fn send_current_state(
         return;
     }
 
-    let state = collect_resource_states(time.elapsed().as_secs().to_string());
-    sender.tx.unbounded_send(state).unwrap();
+    let resources = collect_resource_states(time.elapsed().as_secs().to_string());
+    let msg = RobotMessage::Resources(resources);
+    tracing::info!("Send message of {} bytes", msg.encode_len());
+
+    // Send/broadcast msg
+    let handle = control_handle.clone();
+    let io = IoTaskPool::get();
+    io.spawn(async move {
+        tracing::info!("Prepare send state msg");
+        handle.broadcast(msg).await;
+        tracing::info!("Finish send state msg");
+    }).detach();
 
     delay.set_duration(SEND_STATE_DELAY);
 }
 
-fn collect_resource_states(val: String) -> ControlRobotMessage {
+fn collect_resource_states(val: String) -> HashMap<String, String> {
     let mut resources = HashMap::new();
     resources.insert("Time".to_string(), val);
-    ControlRobotMessage::Resources(resources)
+    resources
 }
 
 #[derive(Resource)]
@@ -106,10 +118,16 @@ impl FromWorld for TransmitDebugEnabledSystems {
 
 fn transmit_debug_enabled_resources(
     debug_enabled_resources: Res<DebugEnabledSystems>,
-    sender: Res<ControlSender<ControlRobotMessage>>,
+    robot_handle: Res<ControlAppHandle<RobotMessage, ViewerMessage>>,
 ) {
-    let message = ControlRobotMessage::DebugEnabledSystems(debug_enabled_resources.clone());
-    sender.tx.unbounded_send(message).unwrap();
+    let msg = RobotMessage::DebugEnabledSystems(debug_enabled_resources.clone());
+    let io = IoTaskPool::get();
+
+    let handle = robot_handle.clone();
+    io.spawn(async move {
+        tracing::info!("Running the task to broadcast the robot message");
+        handle.broadcast(msg).await;
+    }).detach();
 }
 
 pub fn temp_system(type_registry: Res<AppTypeRegistry>) {

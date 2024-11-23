@@ -1,22 +1,5 @@
-use std::collections::HashMap;
-
 use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
-use serde::{Deserialize, Serialize};
-
-#[derive(Resource, Serialize, Deserialize, Debug, Default, Clone)]
-pub struct DebugEnabledSystems {
-    pub systems: HashMap<String, bool>,
-}
-
-impl DebugEnabledSystems {
-    pub fn set_system(&mut self, name: String, enabled: bool) {
-        if let Some(current_enabled) = self.systems.get_mut(&name) {
-            *current_enabled = enabled;
-        } else {
-            tracing::error!("System `{}` does not exist", name);
-        }
-    }
-}
+use control::debug_system::DebugEnabledSystems;
 
 pub fn debug_enabled(system_name: impl ToString) -> impl Condition<()> {
     let name = system_name.to_string();
