@@ -170,13 +170,13 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
         transition_noise: CovarianceMatrix<D_STATE>,
     ) -> Result<()>
     where
-        F: Fn(StateVector<D_STATE>) -> StateVector<D_STATE>,
+        F: Fn(S) -> S,
     {
         let sigma_points = self.sigmas.calculate(self.state, self.covariance)?;
 
         // apply the motion model to each sigma point
         let transformed_sigma_points =
-            self.transform_sigma_points(sigma_points, transition_function);
+            self.transform_sigma_points(sigma_points, |s| transition_function(s.into()).into());
 
         let (mean, covariance) = unscented_transform::<D_STATE, N_SIGMAS, S>(
             transformed_sigma_points,
@@ -212,7 +212,7 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
     ) -> Result<()>
     where
         M: StateTransform<D_MEASUREMENT>,
-        F: Fn(StateVector<D_STATE>) -> StateVector<D_MEASUREMENT>,
+        F: Fn(S) -> M,
     {
         let measurement = measurement.into();
 
@@ -220,7 +220,7 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
 
         // apply the measurement model to each sigma point
         let transformed_sigma_points =
-            self.transform_sigma_points(sigma_points, measurement_function);
+            self.transform_sigma_points(sigma_points, |s| measurement_function(s.into()).into());
 
         let (mean, covariance) = unscented_transform::<D_MEASUREMENT, N_SIGMAS, M>(
             transformed_sigma_points,

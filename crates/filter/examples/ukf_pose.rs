@@ -8,7 +8,7 @@ use rand::Rng;
 use nalgebra::{self as na, Complex, ComplexField, SVector, UnitComplex, Vector3};
 
 const NUM_SAMPLES: usize = 150;
-const UPDATE_INTERVAL: usize = 5;
+const UPDATE_INTERVAL: usize = 10;
 
 #[derive(Debug, Clone, Copy)]
 struct Pose2 {
@@ -32,7 +32,7 @@ impl Mul for Pose2 {
     /// Applies a motion to self
     fn mul(self, rhs: Self) -> Self::Output {
         Self {
-            inner: rhs.inner * self.inner,
+            inner: self.inner * rhs.inner,
         }
     }
 }
@@ -50,10 +50,7 @@ impl From<StateVector<3>> for Pose2 {
         Self {
             inner: na::Isometry3::from_parts(
                 na::Translation3::from(state.xy().push(0.0)),
-                na::UnitQuaternion::from_axis_angle(
-                    &na::Unit::new_normalize(na::Vector3::z()),
-                    state.z,
-                ),
+                na::UnitQuaternion::from_axis_angle(&na::Vector3::z_axis(), state.z),
             ),
         }
     }
@@ -84,7 +81,7 @@ impl StateTransform<3> for Pose2 {
 
 fn main() {
     let pose = Pose2::new(1.0, 2.0, 0.0);
-    let cov = na::SMatrix::<f32, 3, 3>::from_diagonal_element(0.1);
+    let cov = na::SMatrix::<f32, 3, 3>::from_diagonal_element(0.05);
 
     let mut ukf = UnscentedKalmanFilter::<3, 7, Pose2>::new(pose, cov);
 
@@ -104,7 +101,7 @@ fn main() {
             rng.gen_range(-0.001..0.001),
             rng.gen_range(-0.01..0.01),
             rng.gen_range(-0.01..0.01),
-        ) * Pose2::new(-0.03, 0.08, -0.02);
+        ) * Pose2::new(-0.05, 0.1, -0.02);
 
         // true measurement
         let measurement = offset * prev;
@@ -128,7 +125,7 @@ fn main() {
         x_noisy.push(noisy);
 
         ukf.predict(
-            |p| (noisy_offset * Pose2::from(p)).into(),
+            |p| noisy_offset * p,
             filter::CovarianceMatrix::from_diagonal_element(0.1),
         )
         .unwrap();
