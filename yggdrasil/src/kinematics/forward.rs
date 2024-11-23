@@ -82,6 +82,17 @@ impl Kinematics {
     }
 
     #[must_use]
+    pub fn robot_to_ground(&self) -> Isometry3<Robot, Ground> {
+        let height = self
+            .vector::<LeftSole, Robot>()
+            .inner
+            .z
+            .max(self.vector::<RightSole, Robot>().inner.z);
+
+        na::Isometry3::from(na::vector![0., 0., height]).into()
+    }
+
+    #[must_use]
     pub fn head_to_neck(head_pitch: f32) -> Isometry3<Head, Neck> {
         na::Isometry3::rotation(na::Vector3::y() * head_pitch).into()
     }

@@ -1,14 +1,33 @@
 use bevy::prelude::*;
-use nalgebra as na;
-use crate::{core::debug::DebugContext, localization::RobotPose};
 
-use spatial::types::Isometry3;
-
+use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle};
 use super::prelude::*;
+
+pub struct KinematicsVisualizationPlugin;
+
+impl Plugin for KinematicsVisualizationPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            .add_systems(PostStartup, setup_meshes)
+            .add_systems(PostUpdate, update_meshes);
+    }
+}
 
 macro_rules! log_meshes {
     {$($name:ident: $space:ty,)*} => {
-        pub fn setup_meshes(dbg: DebugContext) {
+        #[derive(Default)]
+        struct TransformBuffer {
+            cycle: Vec<i64>,
+            $($name: (Vec<rerun::components::Translation3D>, Vec<rerun::components::RotationQuat>),)*
+        }
+
+        fn setup_meshes(dbg: DebugContext) {
+            dbg.log_component_batches(
+                "nao",
+                true,
+                [&rerun::components::AxisLength(rerun::Float32(0.)) as _],
+            );
+
             $(
                 let path = concat!("nao/", stringify!($name));
 
@@ -23,53 +42,73 @@ macro_rules! log_meshes {
             )*
         }
 
-        pub fn update_meshes(dbg: DebugContext, kinematics: Res<Kinematics>, pose: Res<RobotPose>) {
-            let height = kinematics
-                .vector::<LeftSole, Robot>()
-                .inner
-                .z
-                .max(kinematics.vector::<RightSole, Robot>().inner.z);
+        fn update_meshes(
+            dbg: DebugContext,
+            kinematics: Res<Kinematics>,
+            pose: Res<RobotPose>,
+            cycle: Res<Cycle>,
+            mut buffer: Local<TransformBuffer>,
+        ) {
+            let pose = pose.as_3d();
 
-            let robot_to_field: Isometry3<Robot, Field> = pose.as_3d().into();
-            let robot_to_field = robot_to_field.map(|x| x * na::Translation3::new(0., 0., height));
+            dbg.log(
+                "nao",
+                &rerun::Transform3D::from_translation_rotation(
+                    pose.translation.vector.data.0[0],
+                    rerun::Quaternion(pose.rotation.coords.data.0[0]),
+                ),
+            );
+
+            let robot_to_ground = kinematics.robot_to_ground();
+
+            buffer.cycle.push(cycle.0 as i64);
 
             $(
-                let isometry = kinematics.isometry::<$space, Robot>().chain(robot_to_field.as_ref());
+                let isometry = kinematics.isometry::<$space, _>().chain(robot_to_ground.as_ref());
 
-                dbg.log(
-                    concat!("nao/", stringify!($name)),
-                    &rerun::Transform3D::from_translation_rotation(
-                        isometry.inner.translation.vector.data.0[0],
-                        rerun::Quaternion(isometry.inner.rotation.coords.data.0[0]),
-                    )
-                );
+                buffer.$name.0.push(isometry.inner.translation.vector.data.0[0].into());
+                buffer.$name.1.push(isometry.inner.rotation.coords.data.0[0].into());
             )*
+
+            if buffer.cycle.len() >= 50 {
+                let timeline = rerun::TimeColumn::new_sequence("cycle", std::mem::take(&mut buffer.cycle));
+
+                $(
+                    dbg.send_columns(concat!("nao/", stringify!($name)), [timeline.clone()], [
+                        &buffer.$name.0 as _,
+                        &buffer.$name.1 as _,
+                    ]);
+
+                    buffer.$name.0.clear();
+                    buffer.$name.1.clear();
+                )*
+            }
         }
     };
 }
 
 log_meshes! {
    	head: Head,
-	left_ankle: LeftAnkle,
-	left_foot: LeftFoot,
-	left_forearm: LeftForearm,
-	left_hip: LeftHip,
-	left_pelvis: LeftPelvis,
+	neck: Neck,
+	robot: Robot,
 	left_shoulder: LeftShoulder,
+	left_upper_arm: LeftUpperArm,
+	left_forearm: LeftForearm,
+	left_wrist: LeftWrist,
+	left_pelvis: LeftPelvis,
+	left_hip: LeftHip,
 	left_thigh: LeftThigh,
 	left_tibia: LeftTibia,
-	left_upper_arm: LeftUpperArm,
-	left_wrist: LeftWrist,
-	neck: Neck,
-	right_ankle: RightAnkle,
-	right_foot: RightFoot,
-	right_forearm: RightForearm,
-	right_hip: RightHip,
-	right_pelvis: RightPelvis,
+	left_ankle: LeftAnkle,
+	left_foot: LeftFoot,
 	right_shoulder: RightShoulder,
+	right_upper_arm: RightUpperArm,
+	right_forearm: RightForearm,
+	right_wrist: RightWrist,
+	right_pelvis: RightPelvis,
+	right_hip: RightHip,
 	right_thigh: RightThigh,
 	right_tibia: RightTibia,
-	right_upper_arm: RightUpperArm,
-	right_wrist: RightWrist,
-	robot: Robot,
+	right_ankle: RightAnkle,
+	right_foot: RightFoot,
 }
