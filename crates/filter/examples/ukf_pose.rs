@@ -8,7 +8,7 @@ use rand::Rng;
 use nalgebra::{self as na, Complex, ComplexField, SVector, UnitComplex, Vector3};
 
 const NUM_SAMPLES: usize = 150;
-const UPDATE_INTERVAL: usize = 500;
+const UPDATE_INTERVAL: usize = 10;
 
 #[derive(Debug, Clone, Copy)]
 struct Pose2 {
@@ -104,7 +104,7 @@ fn main() {
             rng.gen_range(-0.001..0.001),
             rng.gen_range(-0.01..0.01),
             rng.gen_range(-0.01..0.01),
-        ) * Pose2::new(-0.05, 0.1, -0.02);
+        ) * Pose2::new(-0.03, 0.08, -0.02);
 
         // true measurement
         let measurement = offset * prev;
@@ -129,7 +129,7 @@ fn main() {
 
         ukf.predict(
             |p| (noisy_offset * Pose2::from(p)).into(),
-            filter::CovarianceMatrix::identity(),
+            filter::CovarianceMatrix::from_diagonal_element(0.1),
         )
         .unwrap();
 
@@ -140,7 +140,7 @@ fn main() {
             ukf.update(
                 |p| p,
                 measurement,
-                filter::CovarianceMatrix::identity() * 0.1,
+                filter::CovarianceMatrix::from_diagonal_element(0.001),
             )
             .unwrap();
         }

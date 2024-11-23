@@ -253,7 +253,7 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
         };
 
         let kalman_gain = cross_covariance * covariance.try_inverse().ok_or(Error::Inversion)?;
-        let innovation: StateVector<D_MEASUREMENT> = M::residual(measurement, mean);
+        let innovation = measurement - mean;
 
         self.state += kalman_gain * innovation;
         self.covariance -= kalman_gain * covariance * kalman_gain.transpose();
