@@ -22,6 +22,7 @@ use super::walk::WalkingEngineConfig;
 
 mod feet;
 mod step;
+mod support_foot;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Side {
