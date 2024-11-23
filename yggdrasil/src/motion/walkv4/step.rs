@@ -5,7 +5,7 @@ use super::Side;
 #[derive(Debug, Clone)]
 pub struct Step {
     pub forward: f32,
-    pub lateral: f32,
+    pub left: f32,
     pub turn: f32,
     pub duration: Duration,
     pub apex: f32,
@@ -23,7 +23,7 @@ impl Step {
     ) -> Self {
         Self {
             forward,
-            lateral,
+            left: lateral,
             turn,
             duration,
             apex,
