@@ -1,9 +1,11 @@
 use bevy::prelude::*;
 use nidhogg::types::ForceSensitiveResistors;
 
+use crate::prelude::Sensor;
+
 use super::Side;
 
-#[derive(Debug, Clone, Resource)]
+#[derive(Debug, Default, Clone, Resource)]
 pub struct SupportFoot {
     side: Side,
 }
@@ -11,10 +13,16 @@ pub struct SupportFoot {
 pub(super) struct SupportFootPlugin;
 
 impl Plugin for SupportFootPlugin {
-    fn build(&self, app: &mut App) {}
+    fn build(&self, app: &mut App) {
+        app.init_resource::<SupportFoot>();
+        app.add_systems(
+            Sensor,
+            update_support_foot.after(crate::sensor::fsr::force_sensitive_resistor_sensor),
+        );
+    }
 }
 
-fn update_support_foot(fsr: &ForceSensitiveResistors, mut support_foot: ResMut<SupportFoot>) {
+fn update_support_foot(fsr: Res<ForceSensitiveResistors>, mut support_foot: ResMut<SupportFoot>) {
     let left_foot = fsr.left_foot.sum();
     let right_foot = fsr.right_foot.sum();
 

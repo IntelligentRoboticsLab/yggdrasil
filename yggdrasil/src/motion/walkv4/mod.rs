@@ -3,18 +3,25 @@ use std::time::Duration;
 use bevy::prelude::*;
 use feet::FootPositions;
 use nalgebra::{Isometry3, Point3, Translation, Translation3, UnitQuaternion, Vector3};
-use nidhogg::types::{FillExt, LeftLegJoints, LegJoints, RightLegJoints};
+use nidhogg::{
+    types::{FillExt, LeftLegJoints, LegJoints, RightLegJoints},
+    NaoState,
+};
+use step::Step;
 
 use crate::{
+    core::debug::DebugContext,
     kinematics::{
         self,
+        prelude::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS},
         spaces::{
             LeftAnkle, LeftHip, LeftPelvis, LeftSole, LeftThigh, LeftTibia, RightHip, RightPelvis,
             RightSole, Robot,
         },
         FootOffset, Kinematics,
     },
-    nao::{CycleTime, NaoManager, Priority},
+    motion::walk::smoothing::{parabolic_return, parabolic_step},
+    nao::{Cycle, CycleTime, NaoManager, Priority},
     sensor::button::ChestButton,
 };
 
@@ -45,6 +52,7 @@ pub struct Walkv4EnginePlugin;
 
 impl Plugin for Walkv4EnginePlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugins(support_foot::SupportFootPlugin);
         app.init_resource::<WalkCommand>()
             .add_systems(Update, switch_phase)
             .add_systems(PostUpdate, (sit_phase, stand_phase, walk_phase));
@@ -129,53 +137,6 @@ fn stand_phase(
         UnitQuaternion::identity(),
     );
 
-    let left_hip_to_ground = kinematics.isometry::<LeftAnkle, Robot>().inner.inverse();
-
-    println!(
-        "left_hip_to_robot: {:?}",
-        kinematics
-            .isometry::<LeftAnkle, Robot>()
-            .inner
-            .translation
-            .vector
-    );
-
-    println!(
-        "left_thigh_to_robot: {:?}",
-        kinematics
-            .isometry::<LeftThigh, Robot>()
-            .inner
-            .translation
-            .vector
-    );
-    println!(
-        "left_knee_to_robot: {:?}",
-        kinematics
-            .isometry::<LeftTibia, Robot>()
-            .inner
-            .translation
-            .vector
-    );
-    println!(
-        "left_ankle_to_robot: {:?}",
-        kinematics
-            .isometry::<LeftAnkle, Robot>()
-            .inner
-            .translation
-            .vector
-    );
-
-    let zero_point =
-        kinematics.isometry::<LeftAnkle, Robot>().inner.inverse() * Point3::new(0.0, 0.0, 0.0);
-    tracing::info!(
-        "left_foot_to_robot: {}",
-        kinematics
-            .isometry::<LeftSole, Robot>()
-            .inner
-            .translation
-            .vector
-    );
-
     let mut offset = kinematics
         .isometry::<LeftAnkle, Robot>()
         .inner
@@ -191,45 +152,111 @@ fn stand_phase(
 
     let foot_positions = FootPositions::from_kinematics(Side::Left, &kinematics, torso_offset);
 
-    tracing::info!("feet: {:?}\n\n\n", foot_positions);
+    // tracing::info!("feet: {:?}\n\n\n", foot_positions);
 }
 
 #[derive(Debug, Clone, Default)]
 struct WalkState {
     phase: Duration,
+    start: FootPositions,
     planned_duration: Duration,
     swing_foot: Side,
 }
 
 fn walk_phase(
-    mut state: Local<WalkState>,
+    dbg: DebugContext,
+    mut walk_state: Local<WalkState>,
+    nao_state: Res<NaoState>,
     mut command: ResMut<WalkCommand>,
     mut nao_manager: ResMut<NaoManager>,
     config: Res<WalkingEngineConfig>,
     kinematics: Res<Kinematics>,
+    cycle: Res<Cycle>,
     cycle_time: Res<CycleTime>,
 ) {
     let WalkCommand::Walk(hip_height) = *command else {
         return;
     };
 
-    state.phase += cycle_time.duration;
+    walk_state.phase += cycle_time.duration;
 
-    if state.phase.as_secs_f32() > 0.75 * state.planned_duration.as_secs_f32() {
-        state.phase = Duration::ZERO;
-        state.planned_duration = Duration::from_secs_f32(0.5);
-        state.swing_foot = state.swing_foot.opposite();
+    if walk_state.phase.as_secs_f32() > 0.75 * walk_state.planned_duration.as_secs_f32() {
+        walk_state.phase = Duration::ZERO;
+        walk_state.planned_duration = Duration::from_secs_f32(0.25);
+        walk_state.start =
+            FootPositions::from_kinematics(walk_state.swing_foot, &kinematics, 0.025);
+        walk_state.swing_foot = walk_state.swing_foot.opposite();
+
+        println!("end_left: {:?}", walk_state.start.left.translation);
+        println!("end_right: {:?}", walk_state.start.right.translation);
     }
 
-    let foot_offset = FootOffset {
-        forward: 0.04,
+    let linear = walk_state.phase.as_secs_f32() / walk_state.planned_duration.as_secs_f32();
+    let parabolic = parabolic_step(linear);
+
+    let step = Step::new(
+        0.03,
+        0.0,
+        0.0,
+        walk_state.planned_duration,
+        0.01,
+        walk_state.swing_foot,
+    );
+
+    let target = FootPositions::from_target(&step);
+
+    let (left_t, right_t) = match &step.swing_foot {
+        Side::Left => (parabolic, linear),
+        Side::Right => (linear, parabolic),
+    };
+
+    let left = walk_state.start.left.lerp_slerp(&target.left.inner, left_t);
+    let right = walk_state
+        .start
+        .right
+        .lerp_slerp(&target.right.inner, right_t);
+
+    let swing_lift = parabolic_return(linear) * 0.012;
+    let (left, right) = match &step.swing_foot {
+        Side::Left => (left * Translation3::new(0.0, 0.0, swing_lift), right),
+        Side::Right => (left, right * Translation3::new(0.0, 0.0, swing_lift)),
+    };
+
+    println!("left: {:?}", left.translation);
+    println!("right: {:?}\n\n\n", right.translation);
+
+    dbg.log_with_cycle(
+        "walk/left_forward",
+        *cycle,
+        &rerun::Scalar::new(left.translation.x as f64),
+    );
+    dbg.log_with_cycle(
+        "walk/right_forward",
+        *cycle,
+        &rerun::Scalar::new(right.translation.x as f64),
+    );
+
+    // info!("state phase: {:?}", state.phase.as_secs_f32());
+
+    let left_foot_offset = FootOffset {
+        forward: left.translation.x,
+        left: left.translation.y - ROBOT_TO_LEFT_PELVIS.y,
         turn: 0.,
+        lift: left.translation.z,
         hip_height,
         ..Default::default()
     };
 
-    let (left, right) =
-        kinematics::inverse::leg_angles(&foot_offset, &FootOffset::zero(hip_height));
+    let right_foot_offset = FootOffset {
+        forward: right.translation.x,
+        left: right.translation.y - ROBOT_TO_RIGHT_PELVIS.y,
+        turn: 0.,
+        lift: right.translation.z,
+        hip_height,
+        ..Default::default()
+    };
+
+    let (left, right) = kinematics::inverse::leg_angles(&left_foot_offset, &right_foot_offset);
 
     let leg_positions = LegJoints::builder().left_leg(left).right_leg(right).build();
     let leg_stiffness = LegJoints::builder()
