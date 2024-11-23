@@ -13,7 +13,12 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// The weight of a sigma point
+pub type Weight = f32;
+
 pub type StateVector<const D: usize> = SVector<f32, D>;
+pub type WeightVector<const N: usize> = SVector<Weight, N>;
+pub type StateMatrix<const D: usize, const N: usize> = SMatrix<f32, D, N>;
 pub type CovarianceMatrix<const D: usize> = SMatrix<f32, D, D>;
 pub type CrossCovarianceMatrix<const D1: usize, const D2: usize> = SMatrix<f32, D1, D2>;
 
@@ -31,8 +36,8 @@ pub struct SigmaPoints<const D_STATE: usize, const N_SIGMAS: usize> {
     pub beta: f32,
     pub kappa: f32,
     /// weights for means and covariances
-    pub w_m: SVector<f32, N_SIGMAS>,
-    pub w_c: SVector<f32, N_SIGMAS>,
+    pub w_m: SVector<Weight, N_SIGMAS>,
+    pub w_c: SVector<Weight, N_SIGMAS>,
 }
 
 impl<const D_STATE: usize, const N_SIGMAS: usize> SigmaPoints<D_STATE, N_SIGMAS> {
@@ -61,14 +66,14 @@ impl<const D_STATE: usize, const N_SIGMAS: usize> SigmaPoints<D_STATE, N_SIGMAS>
         alpha: f32,
         beta: f32,
         kappa: f32,
-    ) -> (SVector<f32, N_SIGMAS>, SVector<f32, N_SIGMAS>) {
+    ) -> (WeightVector<N_SIGMAS>, WeightVector<N_SIGMAS>) {
         let d = D_STATE as f32;
 
         let a_squared_k = alpha.powi(2) * kappa;
 
         let w = 1.0 / (2.0 * a_squared_k);
-        let mut w_m = SVector::<f32, N_SIGMAS>::repeat(w);
-        let mut w_c = SVector::<f32, N_SIGMAS>::repeat(w);
+        let mut w_m = SVector::<Weight, N_SIGMAS>::repeat(w);
+        let mut w_c = SVector::<Weight, N_SIGMAS>::repeat(w);
 
         w_m[0] = (a_squared_k - d) / a_squared_k;
         w_c[0] = w_m[0] + 1.0 - alpha.powi(2) + beta;
@@ -81,21 +86,21 @@ impl<const D_STATE: usize, const N_SIGMAS: usize> SigmaPoints<D_STATE, N_SIGMAS>
         &self,
         mean: StateVector<D_STATE>,
         covariance: CovarianceMatrix<D_STATE>,
-    ) -> Result<SMatrix<f32, N_SIGMAS, D_STATE>> {
+    ) -> Result<StateMatrix<D_STATE, N_SIGMAS>> {
         // get the lower triangular matrix from cholesky decomposition
         let cholesky_l = Cholesky::new(covariance).ok_or(Error::Cholesky)?.l();
 
-        let mut sigma_points = SMatrix::<f32, N_SIGMAS, D_STATE>::zeros();
+        let mut sigma_points = SMatrix::<Weight, D_STATE, N_SIGMAS>::zeros();
 
         // s_0 = mean
-        sigma_points.set_row(0, &mean.transpose());
+        sigma_points.set_column(0, &mean);
 
         for i in 0..D_STATE {
             let u = self.alpha * self.kappa.sqrt() * cholesky_l.column(i);
             // s_1, ..., s_n = mean + alpha * sqrt(kappa) * l.T_i
-            sigma_points.set_row(i + 1, &(mean + u).transpose());
+            sigma_points.set_column(i + 1, &(mean + u));
             // s_n+1, ..., s_2n = mean - alpha * sqrt(kappa) * l.T_i
-            sigma_points.set_row(i + 1 + D_STATE, &(mean - u).transpose());
+            sigma_points.set_column(i + 1 + D_STATE, &(mean - u));
         }
 
         Ok(sigma_points)
@@ -105,30 +110,27 @@ impl<const D_STATE: usize, const N_SIGMAS: usize> SigmaPoints<D_STATE, N_SIGMAS>
 /// An Unscented Kalman Filter
 ///
 /// Uses the formulation found [here](https://nbviewer.org/github/sbitzer/UKF-exposed/blob/master/UKF.ipynb)
-pub struct UnscentedKalmanFilter<
-    const D_STATE: usize,
-    const N_SIGMAS: usize,
-    State: UkfState<D_STATE>,
-> {
+pub struct UnscentedKalmanFilter<const D_STATE: usize, const N_SIGMAS: usize, S>
+where
+    S: StateTransform<D_STATE>,
+{
     sigmas: SigmaPoints<D_STATE, N_SIGMAS>,
-    state: State,
+    state: StateVector<D_STATE>,
     covariance: CovarianceMatrix<D_STATE>,
-    _measurement: PhantomData<State>,
+
+    _state_transform: PhantomData<S>,
 }
 
-impl<const D_STATE: usize, const N_SIGMAS: usize, State: UkfState<D_STATE>>
-    UnscentedKalmanFilter<D_STATE, N_SIGMAS, State>
+impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
+    UnscentedKalmanFilter<D_STATE, N_SIGMAS, S>
 {
     /// Creates self from a state and covariance, with the default sigma points parameters
     #[must_use]
-    pub fn new<C>(state_0: State, covariance_0: C) -> Self
-    where
-        C: Into<CovarianceMatrix<D_STATE>>,
-    {
+    pub fn new(state: S, covariance: CovarianceMatrix<D_STATE>) -> Self {
         Self::with_sigma_points(
             SigmaPoints::new(1.0, 0.0, D_STATE as f32 * 3.0 / 2.0),
-            state_0,
-            covariance_0,
+            state,
+            covariance,
         )
     }
 
@@ -136,29 +138,26 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, State: UkfState<D_STATE>>
     ///
     /// If you don't know which parameters to use, you probably want to use [`UnscentedKalmanFilter::new`] instead
     #[must_use]
-    pub fn with_sigma_points<C>(
+    pub fn with_sigma_points(
         sigmas: SigmaPoints<D_STATE, N_SIGMAS>,
-        state_0: State,
-        covariance_0: C,
-    ) -> Self
-    where
-        C: Into<CovarianceMatrix<D_STATE>>,
-    {
+        state: S,
+        covariance: CovarianceMatrix<D_STATE>,
+    ) -> Self {
         Self {
             sigmas,
-            state: state_0,
-            covariance: covariance_0.into(),
-            _measurement: PhantomData,
+            state: state.into(),
+            covariance,
+            _state_transform: PhantomData,
         }
     }
 
-    /// The current predicted filter state
+    /// The predicted filter state
     #[must_use]
-    pub fn state(&self) -> State {
-        self.state
+    pub fn state(&self) -> S {
+        self.state.into()
     }
 
-    /// The current covariance of the filter state
+    /// The current filter state covariance
     #[must_use]
     pub fn covariance(&self) -> CovarianceMatrix<D_STATE> {
         self.covariance
@@ -171,36 +170,20 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, State: UkfState<D_STATE>>
         transition_noise: CovarianceMatrix<D_STATE>,
     ) -> Result<()>
     where
-        F: Fn(State) -> State,
+        F: Fn(StateVector<D_STATE>) -> StateVector<D_STATE>,
     {
-        let state_vec: StateVector<D_STATE> = self.state.into();
-        let sigma_points = self.sigmas.calculate(state_vec, self.covariance)?;
+        let sigma_points = self.sigmas.calculate(self.state, self.covariance)?;
 
         // apply the motion model to each sigma point
-        let transformed_sigma_points = sigma_points
-            .row_iter()
-            .map(|row| transition_function(row.transpose().into()));
+        let transformed_sigma_points =
+            self.transform_sigma_points(sigma_points, transition_function);
 
-        // calculate the new state mean and covariance
-        let mean = UkfState::into_state_mean(
-            self.sigmas
-                .w_m
-                .iter()
-                .copied()
-                .zip(transformed_sigma_points.clone()),
-        );
-
-        let covariance: CovarianceMatrix<D_STATE> = {
-            // start with additive process noise
-            let mut covariance = transition_noise;
-
-            for (i, point) in transformed_sigma_points.enumerate() {
-                let centered: StateVector<D_STATE> = point.residual(&mean).into();
-                covariance += self.sigmas.w_c[i] * centered * centered.transpose();
-            }
-
-            covariance
-        };
+        let (mean, covariance) = unscented_transform::<D_STATE, N_SIGMAS, S>(
+            transformed_sigma_points,
+            transition_noise,
+            self.sigmas.w_m,
+            self.sigmas.w_c,
+        )?;
 
         self.state = mean;
         self.covariance = covariance;
@@ -208,61 +191,59 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, State: UkfState<D_STATE>>
         Ok(())
     }
 
+    fn transform_sigma_points<const D_FROM: usize, const D_TO: usize>(
+        &self,
+        sigma_points: StateMatrix<D_FROM, N_SIGMAS>,
+        transform: impl Fn(StateVector<D_FROM>) -> StateVector<D_TO>,
+    ) -> StateMatrix<D_TO, N_SIGMAS> {
+        let mut transformed_sigma_points = SMatrix::<f32, D_TO, N_SIGMAS>::zeros();
+        for (i, sigma_point) in sigma_points.column_iter().enumerate() {
+            transformed_sigma_points.set_column(i, &transform(sigma_point.into_owned()));
+        }
+        transformed_sigma_points
+    }
+
     /// Updates the filter state with a measurement
-    pub fn update<const D_MEASUREMENT: usize, Measurement, F>(
+    pub fn update<const D_MEASUREMENT: usize, M, F>(
         &mut self,
         measurement_function: F,
-        measurement: Measurement,
+        measurement: M,
         measurement_noise: CovarianceMatrix<D_MEASUREMENT>,
     ) -> Result<()>
     where
-        Measurement: UkfState<D_MEASUREMENT>,
-        F: Fn(State) -> Measurement,
+        M: StateTransform<D_MEASUREMENT>,
+        F: Fn(StateVector<D_STATE>) -> StateVector<D_MEASUREMENT>,
     {
-        let state_vec = self.state.into();
-        let sigma_points_matrix = self.sigmas.calculate(state_vec, self.covariance)?;
+        let measurement = measurement.into();
 
-        let sigma_points = sigma_points_matrix
-            .row_iter()
-            .map(|row| row.transpose().into());
+        let sigma_points = self.sigmas.calculate(self.state.into(), self.covariance)?;
 
         // apply the measurement model to each sigma point
-        let transformed_sigma_points = sigma_points.clone().map(&measurement_function);
+        let transformed_sigma_points =
+            self.transform_sigma_points(sigma_points, measurement_function);
 
-        // calculate the new state mean and covariance
-        let mean = UkfState::into_state_mean(
-            self.sigmas
-                .w_m
-                .iter()
-                .copied()
-                .zip(transformed_sigma_points.clone()),
-        );
-
-        let covariance: CovarianceMatrix<D_MEASUREMENT> = {
-            // start with additive measurement noise
-            let mut covariance = measurement_noise;
-
-            for (i, point) in transformed_sigma_points.clone().enumerate() {
-                let centered: StateVector<D_MEASUREMENT> = point.residual(&mean).into();
-                covariance += self.sigmas.w_c[i] * centered * centered.transpose();
-            }
-
-            covariance
-        };
+        let (mean, covariance) = unscented_transform::<D_MEASUREMENT, N_SIGMAS, M>(
+            transformed_sigma_points,
+            measurement_noise,
+            self.sigmas.w_m,
+            self.sigmas.w_c,
+        )?;
 
         let cross_covariance: CrossCovarianceMatrix<D_STATE, D_MEASUREMENT> = {
             let mut cross_covariance = CrossCovarianceMatrix::<D_STATE, D_MEASUREMENT>::zeros();
 
-            for (i, (transformed_sigma_point, sigma_point)) in
-                transformed_sigma_points.zip(sigma_points).enumerate()
+            for (i, (transformed_sigma_point, sigma_point)) in transformed_sigma_points
+                .column_iter()
+                .zip(sigma_points.column_iter())
+                .enumerate()
             {
                 // we need to get the residual the measurement
                 let measurement_centered: StateVector<D_MEASUREMENT> =
-                    transformed_sigma_point.residual(&mean).into();
+                    M::residual(transformed_sigma_point.into_owned(), mean).into();
 
                 // and also our predicted current motion state
                 let motion_centered: StateVector<D_STATE> =
-                    sigma_point.residual(&self.state).into();
+                    S::residual(sigma_point.into_owned(), self.state);
 
                 cross_covariance +=
                     self.sigmas.w_c[i] * motion_centered * measurement_centered.transpose();
@@ -272,26 +253,49 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, State: UkfState<D_STATE>>
         };
 
         let kalman_gain = cross_covariance * covariance.try_inverse().ok_or(Error::Inversion)?;
-        let innovation: StateVector<D_MEASUREMENT> = measurement.residual(&mean).into();
+        let innovation: StateVector<D_MEASUREMENT> = M::residual(measurement, mean);
 
-        self.state = (state_vec + kalman_gain * innovation).into();
+        self.state += kalman_gain * innovation;
         self.covariance -= kalman_gain * covariance * kalman_gain.transpose();
 
         Ok(())
     }
 }
 
+/// Performs the Unscented Transform on a set of sigma points
+fn unscented_transform<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>(
+    transformed_sigma_points: StateMatrix<D_STATE, N_SIGMAS>,
+    mut covariance: CovarianceMatrix<D_STATE>,
+    w_m: SVector<Weight, N_SIGMAS>,
+    w_c: SVector<Weight, N_SIGMAS>,
+) -> Result<(StateVector<D_STATE>, CovarianceMatrix<D_STATE>)> {
+    let mean = S::into_state_mean(w_m, transformed_sigma_points);
+
+    for (&weight, sigma_point) in w_c.iter().zip(transformed_sigma_points.column_iter()) {
+        let residual: StateVector<D_STATE> = S::residual(sigma_point.into_owned(), mean);
+        covariance += weight * residual * residual.transpose();
+    }
+
+    Ok((mean, covariance))
+}
+
 /// Trait that describes how to transform state in the Unscented Kalman Filter
-pub trait UkfState<const D: usize>
+pub trait StateTransform<const D: usize>
 where
-    Self: From<StateVector<D>> + Into<StateVector<D>> + Copy,
+    Self: From<StateVector<D>> + Into<StateVector<D>> + Sized,
 {
     /// Calculates the mean state from an iterator over weights and sigma points
-    fn into_state_mean<T>(iter: T) -> Self
-    where
-        T: Iterator<Item = (f32, Self)>;
-
-    /// Calculates the residual (difference) between self and the other value.
     #[must_use]
-    fn residual(self, other: &Self) -> Self;
+    fn into_state_mean<const N: usize>(
+        weights: SVector<Weight, N>,
+        states: SMatrix<f32, D, N>,
+    ) -> StateVector<D> {
+        states * weights
+    }
+
+    /// Calculates the residual (difference) between a measurement and the filter prediction.
+    #[must_use]
+    fn residual(measurement: StateVector<D>, prediction: StateVector<D>) -> StateVector<D> {
+        measurement - prediction
+    }
 }

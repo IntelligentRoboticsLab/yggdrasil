@@ -1,13 +1,14 @@
 use std::ops::Mul;
 
-use filter::{StateVector, UkfState, UnscentedKalmanFilter};
+use filter::{StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector};
 
 use plotters::prelude::*;
 use rand::Rng;
 
 use nalgebra::{self as na, Complex, ComplexField, SVector, UnitComplex, Vector3};
 
-const UPDATE_INTERVAL: usize = 5;
+const NUM_SAMPLES: usize = 150;
+const UPDATE_INTERVAL: usize = 500;
 
 #[derive(Debug, Clone, Copy)]
 struct Pose2 {
@@ -36,35 +37,6 @@ impl Mul for Pose2 {
     }
 }
 
-impl UkfState<3> for Pose2 {
-    fn into_state_mean<T>(iter: T) -> Self
-    where
-        T: Iterator<Item = (f32, Self)>,
-    {
-        let mut mean_translation = SVector::zeros();
-        let mut mean_angle = Complex::new(0.0, 0.0);
-
-        for (weight, pose) in iter {
-            let translation = pose.inner.translation.vector;
-            let rotation = pose.inner.rotation.angle();
-
-            mean_translation += weight * translation;
-            mean_angle += weight * Complex::cis(rotation);
-        }
-
-        mean_translation.xy().push(mean_angle.argument()).into()
-    }
-
-    fn residual(self, other: &Self) -> Self {
-        let self_state = StateVector::<3>::from(self);
-        let other_state = StateVector::<3>::from(*other);
-
-        (self_state.xy() - other_state.xy())
-            .push((UnitComplex::new(self_state.z) / UnitComplex::new(other_state.z)).angle())
-            .into()
-    }
-}
-
 impl From<Pose2> for StateVector<3> {
     fn from(pose: Pose2) -> Self {
         let translation = pose.inner.translation.vector;
@@ -87,6 +59,29 @@ impl From<StateVector<3>> for Pose2 {
     }
 }
 
+// In order to handle non-linear values (angles), we need a custom weighted mean and residual calculation
+impl StateTransform<3> for Pose2 {
+    fn into_state_mean<const N: usize>(
+        weights: WeightVector<N>,
+        states: StateMatrix<3, N>,
+    ) -> StateVector<3> {
+        let mut mean_translation = SVector::zeros();
+        let mut mean_angle = Complex::ZERO;
+
+        for (&weight, pose) in weights.iter().zip(states.column_iter()) {
+            mean_translation += weight * pose.xy();
+            mean_angle += weight * Complex::cis(pose.z);
+        }
+
+        mean_translation.xy().push(mean_angle.argument())
+    }
+
+    fn residual(measurement: StateVector<3>, prediction: StateVector<3>) -> StateVector<3> {
+        (measurement.xy() - prediction.xy())
+            .push((UnitComplex::new(measurement.z) / UnitComplex::new(prediction.z)).angle())
+    }
+}
+
 fn main() {
     let pose = Pose2::new(1.0, 2.0, 0.0);
     let cov = na::SMatrix::<f32, 3, 3>::identity() * 0.05;
@@ -99,7 +94,7 @@ fn main() {
     let mut x_noisy = vec![];
     let mut x_unscented = vec![];
 
-    for i in 0..150 {
+    for i in 0..NUM_SAMPLES {
         let prev = x_true
             .last()
             .cloned()
@@ -132,8 +127,11 @@ fn main() {
 
         x_noisy.push(noisy);
 
-        ukf.predict(|p| noisy_offset * p, filter::CovarianceMatrix::identity())
-            .unwrap();
+        ukf.predict(
+            |p| (noisy_offset * Pose2::from(p)).into(),
+            filter::CovarianceMatrix::identity(),
+        )
+        .unwrap();
 
         // Every nth step, updates the filter with a measurement
         //
@@ -142,7 +140,7 @@ fn main() {
             ukf.update(
                 |p| p,
                 measurement,
-                filter::CovarianceMatrix::identity() * 0.01,
+                filter::CovarianceMatrix::identity() * 0.1,
             )
             .unwrap();
         }
