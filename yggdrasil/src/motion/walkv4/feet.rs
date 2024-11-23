@@ -26,12 +26,28 @@ impl FootPositions {
             Side::Right => kinematics.right_hip_height(),
         };
 
+        println!(
+            "[{:?}] from kinematics hip height: {}",
+            support_foot, hip_height
+        );
+
+        println!(
+            "before: LEFT {:?}",
+            kinematics.isometry::<LeftSole, Robot>().inner.translation
+        );
+        println!(
+            "before: RIGHT {:?}",
+            kinematics.isometry::<RightSole, Robot>().inner.translation
+        );
+
         let offset = Translation3::new(torso_offset, 0., hip_height);
 
         // compute the pose of the feet in robot frame
         let left_foot = kinematics.isometry::<LeftSole, Robot>().inner * offset;
         let right_foot = kinematics.isometry::<RightSole, Robot>().inner * offset;
 
+        println!("after: LEFT {:?}", left_foot.translation);
+        println!("after: RIGHT {:?}", right_foot.translation);
         Self {
             left: Pose3::new(left_foot),
             right: Pose3::new(right_foot),
