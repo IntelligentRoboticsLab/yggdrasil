@@ -8,6 +8,7 @@ use std::{
     hash::BuildHasher,
     io::{Read, Write},
 };
+use uuid::Uuid;
 
 use crate::{Error, Result};
 
@@ -497,6 +498,31 @@ where
     }
 }
 
+impl Encode for Uuid {
+    fn encode(&self, mut write: impl Write) -> Result<()> {
+        write.write_all(self.as_bytes())?;
+
+        Ok(())
+    }
+
+    fn encode_len(&self) -> usize {
+        // A UUID is defined to be [16 octets in size](https://www.ietf.org/rfc/rfc9562.html#section-4-1)
+        16
+    }
+}
+
+impl Decode for Uuid {
+    fn decode(mut read: impl Read) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        let mut buf = [0; 16];
+        read.read_exact(&mut buf)?;
+
+        Ok(Uuid::from_bytes(buf))
+    }
+}
+
 /// Calculates the amount of bytes needed to encode the zigzag encoded integer.
 /// If the continuation bit of the byte in question is 1, the loop continues
 /// and adds 1 to the amount of bytes needed to encode the integer.
@@ -772,6 +798,19 @@ mod tests {
             string_map.insert(format!("foo{i}"), format!("bar{i}"));
         }
         test_generic(string_map)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_uuid() -> Result<()> {
+        let id_max = Uuid::max();
+        let id_nil = Uuid::nil();
+        let id = Uuid::new_v4();
+
+        test_generic(id_nil)?;
+        test_generic(id_max)?;
+        test_generic(id)?;
 
         Ok(())
     }
