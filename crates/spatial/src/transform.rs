@@ -38,17 +38,31 @@ where
     phantom: PhantomData<(S1, S2)>,
 }
 
-impl<T, S1, S2> From<T> for BetweenSpaces<T, S1, S2>
-where
-    S1: Space,
-    S2: Space,
-{
+impl<T, S1: Space, S2: Space> BetweenSpaces<T, S1, S2> {
     /// Wrap a `T` into a `BetweenSpaces<T, S1, S2>`.
-    fn from(inner: T) -> Self {
+    pub const fn new(inner: T) -> Self {
         Self {
             inner,
             phantom: PhantomData,
         }
+    }
+
+    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> BetweenSpaces<U, S1, S2> {
+        BetweenSpaces::new(f(self.inner))
+    }
+
+    pub fn as_ref(&self) -> BetweenSpaces<&T, S1, S2> {
+        BetweenSpaces::new(&self.inner)
+    }
+
+    pub fn as_mut(&mut self) -> BetweenSpaces<&mut T, S1, S2> {
+        BetweenSpaces::new(&mut self.inner)
+    }
+}
+
+impl<T, S1: Space, S2: Space> From<T> for BetweenSpaces<T, S1, S2> {
+    fn from(value: T) -> Self {
+        Self::new(value)
     }
 }
 

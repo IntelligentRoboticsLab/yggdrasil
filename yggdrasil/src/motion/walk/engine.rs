@@ -156,12 +156,7 @@ impl WalkingEngine {
     }
 
     pub(super) fn new(config: &WalkingEngineConfig, kinematics: &Kinematics) -> Self {
-        let current_hip_height = kinematics
-            .isometry::<LeftHip, LeftAnkle>()
-            .inner
-            .translation
-            .vector
-            .z;
+        let current_hip_height = kinematics.vector::<LeftAnkle, LeftHip>().inner.z;
 
         WalkingEngine {
             state: WalkState::from_hip_height(current_hip_height, config),

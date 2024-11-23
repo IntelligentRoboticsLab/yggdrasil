@@ -9,7 +9,10 @@ use std::f32::consts::FRAC_1_SQRT_2;
 
 use super::prelude::*;
 use nidhogg::types::JointArray;
-use spatial::{types::{Isometry3, Point3}, InSpace, Space, SpaceOver, Transform};
+use spatial::{
+    types::{Isometry3, Point3, Vector3},
+    InSpace, Space, SpaceOver, Transform,
+};
 
 #[derive(Debug, Resource, Transform)]
 pub struct Kinematics {
@@ -44,6 +47,7 @@ pub struct Kinematics {
 
 impl Kinematics {
     #[must_use]
+    /// Transform from `S1` to `S2`.
     pub fn transform<T, S1, S2>(&self, x: &InSpace<T, S1>) -> InSpace<T, S2>
     where
         S1: Space + SpaceOver<T>,
@@ -54,6 +58,7 @@ impl Kinematics {
     }
 
     #[must_use]
+    /// Get the isometry from `S1` to `S2`.
     pub fn isometry<S1, S2>(&self) -> Isometry3<S1, S2>
     where
         S1: Space + SpaceOver<na::Isometry3<f32>>,
@@ -63,6 +68,17 @@ impl Kinematics {
         self.transform(&InSpace::new(na::Isometry3::identity()))
             .inner
             .into()
+    }
+
+    #[must_use]
+    /// Get the vector from `S1` to `S2`.
+    pub fn vector<S1, S2>(&self) -> Vector3<S1>
+    where
+        S1: Space + SpaceOver<na::Point3<f32>> + SpaceOver<na::Vector3<f32>>,
+        S2: Space + SpaceOver<na::Point3<f32>> + SpaceOver<na::Vector3<f32>>,
+        Self: Transform<na::Point3<f32>, na::Point3<f32>, S2, S1>,
+    {
+        self.transform(&spatial::point3!(S2)).map(|x| x.coords)
     }
 
     #[must_use]
@@ -283,7 +299,7 @@ macro_rules! impl_links {
             #[must_use]
             pub fn new(kinematics: &Kinematics) -> Self {
                 Self {
-                    $($field: kinematics.transform(&spatial::point3!(as $space $(, $x, $y, $z)?)),)*
+                    $($field: kinematics.transform(&spatial::point3!($space $(, $x, $y, $z)?)),)*
                 }
             }
         }

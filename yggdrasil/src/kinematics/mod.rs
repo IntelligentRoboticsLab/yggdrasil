@@ -3,11 +3,13 @@ use nalgebra as na;
 use std::{f32::consts::PI, marker::PhantomData};
 
 use nidhogg::NaoState;
+use spatial::{types::Isometry3, Transform};
 
 use crate::core::debug::DebugContext;
+use crate::localization::RobotPose;
 
 use self::dimensions::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS};
-use self::spaces::{Left, Right};
+use self::spaces::{Field, Left, LeftSole, Right, RightSole, Robot};
 
 pub mod dimensions;
 pub mod forward;
@@ -41,14 +43,20 @@ pub fn update_kinematics(mut kinematics: ResMut<Kinematics>, state: Res<NaoState
 }
 
 /// System that logs the [`Kinematics`] resource.
-pub fn log_kinematics(dbg: DebugContext, kinematics: Res<Kinematics>) {
-    let links = forward::Links::new(&kinematics);
+pub fn log_kinematics(dbg: DebugContext, kinematics: Res<Kinematics>, pose: Res<RobotPose>) {
+    let height = kinematics
+        .vector::<LeftSole, Robot>()
+        .inner
+        .z
+        .max(kinematics.vector::<RightSole, Robot>().inner.z);
 
-    let spine = vec![
-        links.head,
-        links.neck,
-        links.robot,
-    ];
+    let robot_to_field: Isometry3<Robot, Field> = pose.as_3d().into();
+    let robot_to_field = robot_to_field.map(|x| x * na::Translation3::new(0., 0., height));
+
+    let links = forward::Links::new(&kinematics);
+    let links = links.map(|x| robot_to_field.transform(x));
+
+    let spine = vec![links.head, links.neck, links.robot];
 
     let left_arm = vec![
         links.neck,
@@ -80,23 +88,16 @@ pub fn log_kinematics(dbg: DebugContext, kinematics: Res<Kinematics>) {
         links.right_sole,
     ];
 
-    let strips = [
-        spine,
-        left_arm,
-        right_arm,
-        left_leg,
-        right_leg,
-    ];
+    let strips = [spine, left_arm, right_arm, left_leg, right_leg];
 
     dbg.log(
-        "kinematics/visualizatoin",
-        &rerun::LineStrips3D::new(
-            strips
+        "kinematics/visualization",
+        &rerun::LineStrips3D::new(strips.into_iter().map(|strip| {
+            strip
                 .into_iter()
-                .map(|strip| strip.into_iter().map(|p| rerun::Vec3D([p.inner.x, p.inner.y, p.inner.z])))
-        ),
+                .map(|p| rerun::Vec3D([p.inner.x, p.inner.y, p.inner.z]))
+        })),
     );
-
 }
 
 /// The position of a foot relative to the robot's torso.

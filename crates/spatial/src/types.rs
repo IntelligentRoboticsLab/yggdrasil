@@ -17,15 +17,15 @@ pub type Isometry3<S1, S2> = BetweenSpaces<na::Isometry3<f32>, S1, S2>;
 #[macro_export]
 macro_rules! point2 {
     () => {
-        ::spatial::point2!(as _)
+        ::spatial::point2!(_)
     };
-    (as $space:ty) => {
+    ($space:ty) => {
         ::spatial::types::Point2::<$space>::new(::nalgebra::Point2::origin())
     };
     ($x:expr, $y:expr) => {
-        ::spatial::point2!(as _, $x, $y)
+        ::spatial::point2!(_, $x, $y)
     };
-    (as $space:ty, $x:expr, $y:expr) => {
+    ($space:ty, $x:expr, $y:expr) => {
         ::spatial::types::Point2::<$space>::new(::nalgebra::Point2::new($x, $y))
     };
 }
@@ -33,15 +33,35 @@ macro_rules! point2 {
 #[macro_export]
 macro_rules! point3 {
     () => {
-        ::spatial::point3!(as _)
+        ::spatial::point3!(_)
     };
-    (as $space:ty) => {
+    ($space:ty) => {
         ::spatial::types::Point3::<$space>::new(::nalgebra::Point3::origin())
     };
     ($x:expr, $y:expr, $z:expr) => {
-        ::spatial::point3!(as _, $x, $y, $z)
+        ::spatial::point3!(_, $x, $y, $z)
     };
-    (as $space:ty, $x:expr, $y:expr, $z:expr) => {
+    ($space:ty, $x:expr, $y:expr, $z:expr) => {
         ::spatial::types::Point3::<$space>::new(::nalgebra::Point3::new($x, $y, $z))
+    };
+}
+
+#[macro_export]
+macro_rules! vector2 {
+    ($x:expr, $y:expr) => {
+        ::spatial::vector2!(_, $x, $y)
+    };
+    ($space:ty, $x:expr, $y:expr) => {
+        ::spatial::types::Vector2::<$space>::new(::nalgebra::Vector2::new($x, $y))
+    };
+}
+
+#[macro_export]
+macro_rules! vector3 {
+    ($x:expr, $y:expr, $z:expr) => {
+        ::spatial::vector3!(_, $x, $y, $z)
+    };
+    ($space:ty, $x:expr, $y:expr, $z:expr) => {
+        ::spatial::types::Vector3::<$space>::new(::nalgebra::Vector3::new($x, $y, $z))
     };
 }
