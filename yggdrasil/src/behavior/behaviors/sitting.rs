@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::{
     behavior::engine::{Behavior, Context, Control},
     nao::{HeadTarget, Priority},
@@ -32,7 +34,7 @@ impl Behavior for Sitting {
             control.walking_engine.request_sit();
         }
 
-        control.nao_manager.set_head_target(look_at_test);
+        control.nao_manager.set_head_target(look_at_test, Duration::from_millis(2000));
 
         control.nao_manager.unstiff_arms(UNSTIFF_PRIORITY);
         // .unstiff_head(UNSTIFF_PRIORITY);

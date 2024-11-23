@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use nalgebra::Point3;
 use nidhogg::types::{FillExt, HeadJoints};
 
@@ -20,7 +22,7 @@ impl Behavior for WalkTo {
         let look_at = context.pose.get_look_at_absolute(&target_point);
         control
             .nao_manager
-            .set_head_target(look_at);
+            .set_head_target(look_at, Duration::from_millis(500));
 
         if control
             .step_planner

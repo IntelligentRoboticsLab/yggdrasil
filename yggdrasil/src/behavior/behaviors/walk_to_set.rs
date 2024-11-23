@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use nidhogg::types::{FillExt, HeadJoints};
 
 use nalgebra::{Point2, Point3};
@@ -39,7 +41,7 @@ impl Behavior for WalkToSet {
 
         control
             .nao_manager
-            .set_head_target(look_at);
+            .set_head_target(look_at, Duration::from_millis(500));
 
         let target = Target {
             position: set_robot_position.isometry.translation.vector.into(),
