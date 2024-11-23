@@ -182,7 +182,7 @@ fn walk_phase(
 
     if walk_state.phase.as_secs_f32() > 0.75 * walk_state.planned_duration.as_secs_f32() {
         walk_state.phase = Duration::ZERO;
-        walk_state.planned_duration = Duration::from_secs_f32(0.25);
+        walk_state.planned_duration = Duration::from_secs_f32(0.5);
         walk_state.start =
             FootPositions::from_kinematics(walk_state.swing_foot, &kinematics, 0.025);
         walk_state.swing_foot = walk_state.swing_foot.opposite();
