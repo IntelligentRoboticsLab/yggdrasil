@@ -513,7 +513,8 @@ impl Encode for Uuid {
 impl Decode for Uuid {
     fn decode(mut read: impl Read) -> Result<Self>
     where
-        Self: Sized {
+        Self: Sized,
+    {
         let mut buf = [0; 16];
         read.read_exact(&mut buf)?;
 
