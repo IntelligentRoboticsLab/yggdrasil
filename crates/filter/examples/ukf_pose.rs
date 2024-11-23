@@ -8,7 +8,7 @@ use rand::Rng;
 use nalgebra::{self as na, Complex, ComplexField, SVector, UnitComplex, Vector3};
 
 const NUM_SAMPLES: usize = 150;
-const UPDATE_INTERVAL: usize = 10;
+const UPDATE_INTERVAL: usize = 5;
 
 #[derive(Debug, Clone, Copy)]
 struct Pose2 {
@@ -84,7 +84,7 @@ impl StateTransform<3> for Pose2 {
 
 fn main() {
     let pose = Pose2::new(1.0, 2.0, 0.0);
-    let cov = na::SMatrix::<f32, 3, 3>::identity() * 0.05;
+    let cov = na::SMatrix::<f32, 3, 3>::from_diagonal_element(0.1);
 
     let mut ukf = UnscentedKalmanFilter::<3, 7, Pose2>::new(pose, cov);
 

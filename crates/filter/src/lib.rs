@@ -238,12 +238,10 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
                 .enumerate()
             {
                 // we need to get the residual the measurement
-                let measurement_centered: StateVector<D_MEASUREMENT> =
-                    M::residual(transformed_sigma_point.into_owned(), mean).into();
+                let measurement_centered = M::residual(transformed_sigma_point.into_owned(), mean);
 
                 // and also our predicted current motion state
-                let motion_centered: StateVector<D_STATE> =
-                    S::residual(sigma_point.into_owned(), self.state);
+                let motion_centered = S::residual(sigma_point.into_owned(), self.state);
 
                 cross_covariance +=
                     self.sigmas.w_c[i] * motion_centered * measurement_centered.transpose();
@@ -253,7 +251,7 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
         };
 
         let kalman_gain = cross_covariance * covariance.try_inverse().ok_or(Error::Inversion)?;
-        let innovation = measurement - mean;
+        let innovation = M::residual(measurement, mean);
 
         self.state += kalman_gain * innovation;
         self.covariance -= kalman_gain * covariance * kalman_gain.transpose();
