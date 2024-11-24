@@ -1,8 +1,6 @@
 pub mod arrsac;
 pub mod line;
 
-use std::f32::consts::FRAC_PI_4;
-
 use arrsac::Arrsac;
 use bevy::prelude::*;
 use bevy::tasks::{block_on, poll_once, AsyncComputeTaskPool, Task};
@@ -11,38 +9,66 @@ use itertools::Itertools;
 use line::{Line2, LineSegment2};
 use nalgebra::{point, Point2};
 
+use odal::Config;
 use rand::seq::SliceRandom;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 use super::{camera::Image, scan_lines::ScanLines};
 use crate::core::config::layout::{FieldConfig, LayoutConfig};
 use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
 use crate::nao::Cycle;
-
-// TODO: make config + explanation
-const FIELD_MARGIN: f32 = 0.25;
-const MAX_ITERS: usize = 10;
-const ARRSAC_INLIER_THRESHOLD: f32 = 0.025;
-const LINE_SEGMENT_MIN_POINTS: usize = 4;
-const SPOT_MAX_DISTANCE: f32 = 5.0;
-const MAX_LINE_GAP_DISTANCE: f32 = 0.25;
-const WHITE_TEST_SAMPLES: usize = 10;
-const WHITE_TEST_SAMPLE_DISTANCE: f32 = 0.15;
-const WHITE_TEST_MERGE_RATIO: f32 = 0.7;
-// rad
-const WHITE_TEST_MAX_ANGLE: f32 = FRAC_PI_4;
-const LINE_SEGMENT_MIN_LENGTH_POST_MERGE: f32 = 0.25;
-const LINE_SEGMENT_MAX_LENGTH_POST_MERGE: f32 = 5.0;
+use crate::prelude::ConfigExt;
 
 const MAX_LINES: usize = 10;
+
+#[derive(Resource, Debug, Clone, Deserialize, Serialize, Reflect)]
+#[serde(deny_unknown_fields)]
+struct LineDetectionConfig {
+    // margin outside of the field in which lines will still be considered
+    pub field_margin: f32,
+    // maximum number of iterations for ARRSAC
+    pub max_iters: usize,
+    // residual threshold for ARRSAC inliers
+    pub arrsac_inlier_threshold: f32,
+    // minimum number of points in a valid line segment
+    pub line_segment_min_points: usize,
+    // maximum distance of a valid line spot from the camera
+    pub spot_max_distance: f32,
+    // maximum distance between two inliers of a line
+    pub max_line_gap_distance: f32,
+    // number of samples for the white test
+    pub white_test_samples: usize,
+    // sampling distance for the white test
+    pub white_test_sample_distance: f32,
+    // ratio of white tests that need to pass for two lines to be merged
+    pub white_test_merge_ratio: f32,
+    // maximum angle in radians between two lines for them to be considered parallel
+    pub white_test_max_angle: f32,
+    // minimum length of a line segment after merging
+    pub line_segment_min_length_post_merge: f32,
+    // maximum length of a line segment after merging
+    pub line_segment_max_length_post_merge: f32,
+}
+
+#[derive(Resource, Debug, Clone, Deserialize, Serialize, Reflect)]
+#[serde(deny_unknown_fields)]
+pub struct LineDetectionConfigs {
+    pub top: LineDetectionConfig,
+    pub bottom: LineDetectionConfig,
+}
+
+impl Config for LineDetectionConfigs {
+    const PATH: &'static str = "line_detection.toml";
+}
 
 /// Plugin that adds systems to detect lines from scan-lines.
 pub struct LineDetectionPlugin;
 
 impl Plugin for LineDetectionPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.init_config::<LineDetectionConfigs>().add_systems(
             Update,
             (
                 detect_lines_system::<Top>.run_if(resource_exists_and_changed::<ScanLines<Top>>),
@@ -175,9 +201,16 @@ fn detect_lines_system<T: CameraLocation>(
     camera_matrix: Res<CameraMatrix<T>>,
     layout: Res<LayoutConfig>,
     pose: Res<RobotPose>,
+    cfg: Res<LineDetectionConfigs>,
 ) {
     // TODO: Current tasks API is not flexible enough for this :)
     // Rewrite soon(tm) ?
+
+    let cfg = match T::POSITION {
+        heimdall::CameraPosition::Top => cfg.top.clone(),
+        heimdall::CameraPosition::Bottom => cfg.bottom.clone(),
+    };
+
     let cycle = scan_lines.image().cycle();
     let entity = commands.spawn(cycle).id();
     let pool = AsyncComputeTaskPool::get();
@@ -188,7 +221,7 @@ fn detect_lines_system<T: CameraLocation>(
         let field = layout.field.clone();
         let pose = pose.clone();
 
-        async move { detect_lines(scan_lines, camera_matrix, field, pose) }
+        async move { detect_lines(scan_lines, camera_matrix, field, pose, cfg) }
     });
 
     commands.entity(entity).insert(LineTaskHandle(handle));
@@ -234,6 +267,7 @@ fn detect_lines<T: CameraLocation>(
     camera_matrix: CameraMatrix<T>,
     field: FieldConfig,
     pose: RobotPose,
+    cfg: LineDetectionConfig,
 ) -> (Vec<LineCandidate>, Vec<Option<Rejection>>) {
     let mut projected_spots = scan_lines
         .line_spots()
@@ -242,21 +276,21 @@ fn detect_lines<T: CameraLocation>(
         .collect_vec();
 
     // filter out spots that are too far away
-    projected_spots.retain(|p| p.coords.norm() < SPOT_MAX_DISTANCE);
+    projected_spots.retain(|p| p.coords.norm() < cfg.spot_max_distance);
 
     // filter out spots that are outside of the field (with some margin)
     projected_spots.retain(|p| {
         // apply the pose transformation to the spots first
         let position = pose.inner * p;
-        field.in_field_with_margin(position, FIELD_MARGIN)
+        field.in_field_with_margin(position, cfg.field_margin)
     });
 
     let mut candidates = vec![];
 
     let mut rng = rand::thread_rng();
-    let mut arrsac = Arrsac::new(f64::from(ARRSAC_INLIER_THRESHOLD), rng.clone());
+    let mut arrsac = Arrsac::new(f64::from(cfg.arrsac_inlier_threshold), rng.clone());
 
-    for _ in 0..MAX_ITERS {
+    for _ in 0..cfg.max_iters {
         projected_spots.shuffle(&mut rng);
         let Some((line, inlier_idx)) = arrsac.fit(projected_spots.iter().copied()) else {
             // probably no more good lines!
@@ -270,7 +304,7 @@ fn detect_lines<T: CameraLocation>(
         let curr_candidates = Inliers(inliers)
             // split the line candidate into multiple candidates,
             // every time the gap between two neighboring inliers is too large
-            .split_at_gap(MAX_LINE_GAP_DISTANCE)
+            .split_at_gap(cfg.max_line_gap_distance)
             .into_iter()
             // create a LineCandidate for each split
             .map(|inliers| {
@@ -296,7 +330,7 @@ fn detect_lines<T: CameraLocation>(
             let c2 = &candidates[j];
 
             // if the two lines are not parallel enough, skip
-            if c1.line.normal.angle(&c2.line.normal) > WHITE_TEST_MAX_ANGLE {
+            if c1.line.normal.angle(&c2.line.normal) > cfg.white_test_max_angle {
                 continue;
             }
 
@@ -308,8 +342,8 @@ fn detect_lines<T: CameraLocation>(
 
             // if the segment connecting the centers is are not parallel enough, skip
             // stops the case where two lines are almost parallel, but they are far apart in the direction of their normal
-            if connected.normal().angle(&c1.line.normal) > WHITE_TEST_MAX_ANGLE
-                || connected.normal().angle(&c2.line.normal) > WHITE_TEST_MAX_ANGLE
+            if connected.normal().angle(&c1.line.normal) > cfg.white_test_max_angle
+                || connected.normal().angle(&c2.line.normal) > cfg.white_test_max_angle
             {
                 continue;
             }
@@ -318,11 +352,11 @@ fn detect_lines<T: CameraLocation>(
             let mut tests = vec![];
 
             // TODO: sample based on the length of the segment too and not just a fixed sample count
-            for sample in connected.sample_uniform(WHITE_TEST_SAMPLES) {
+            for sample in connected.sample_uniform(cfg.white_test_samples) {
                 let normal = connected.normal();
 
-                let tester1 = sample + normal * WHITE_TEST_SAMPLE_DISTANCE;
-                let tester2 = sample - normal * WHITE_TEST_SAMPLE_DISTANCE;
+                let tester1 = sample + normal * cfg.white_test_sample_distance;
+                let tester2 = sample - normal * cfg.white_test_sample_distance;
 
                 // project the points back to the image
                 let Ok(sample_pixel) =
@@ -348,7 +382,7 @@ fn detect_lines<T: CameraLocation>(
             // if the ratio of the white tests is high enough, merge the two candidates
             let ratio = tests.iter().filter(|&&t| t).count() as f32 / tests.len() as f32;
 
-            if ratio > WHITE_TEST_MERGE_RATIO {
+            if ratio > cfg.white_test_merge_ratio {
                 let candidate = candidates.remove(i);
                 candidates[j].merge(candidate);
                 break;
@@ -368,9 +402,9 @@ fn detect_lines<T: CameraLocation>(
     let rejections = candidates
         .iter()
         .map(|c| {
-            let not_enough_spots = c.inliers.len() < LINE_SEGMENT_MIN_POINTS;
-            let is_too_short = c.segment.length() < LINE_SEGMENT_MIN_LENGTH_POST_MERGE;
-            let is_too_long = c.segment.length() > LINE_SEGMENT_MAX_LENGTH_POST_MERGE;
+            let not_enough_spots = c.inliers.len() < cfg.line_segment_min_points;
+            let is_too_short = c.segment.length() < cfg.line_segment_min_length_post_merge;
+            let is_too_long = c.segment.length() > cfg.line_segment_max_length_post_merge;
 
             if not_enough_spots {
                 Some(Rejection::NotEnoughSpots)
