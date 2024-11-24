@@ -82,14 +82,36 @@ impl Kinematics {
     }
 
     #[must_use]
-    pub fn robot_to_ground(&self) -> Isometry3<Robot, Ground> {
-        let height = self
-            .vector::<LeftSole, Robot>()
-            .inner
-            .z
-            .max(self.vector::<RightSole, Robot>().inner.z);
+    pub fn robot_to_ground(
+        &self,
+        orientation: na::UnitQuaternion<f32>,
+    ) -> (Isometry3<Robot, Ground>, na::UnitQuaternion<f32>) {
+        let (roll, pitch, yaw) = orientation.euler_angles();
+        let residual = na::UnitQuaternion::from_euler_angles(0., 0., yaw);
 
-        na::Isometry3::from(na::vector![0., 0., height]).into()
+        let robot_to_ground: Isometry3<Robot, Ground> = na::Isometry3::from_parts(
+            Default::default(),
+            na::UnitQuaternion::from_euler_angles(roll, pitch, 0.),
+        ).into();
+
+        let contact_points: [Point3<Ground>; 6] = [
+            self.transform(&spatial::point3!(LeftSole)),
+            self.transform(&spatial::point3!(RightSole)),
+            self.transform(&spatial::point3!(LeftWrist)),
+            self.transform(&spatial::point3!(RightWrist)),
+            self.transform(&spatial::point3!(Robot, 0.05, 0., 0.)),
+            self.transform(&spatial::point3!(Robot, -0.05, 0., 0.)),
+        ].map(|p| robot_to_ground.transform(&p));
+
+        let height = contact_points
+            .into_iter()
+            .map(|p| -p.inner.coords.z)
+            .max_by(|a, b| a.total_cmp(&b))
+            .unwrap();
+
+        let robot_to_ground = robot_to_ground.map(|x| na::Translation3::new(0., 0., height) * x);
+
+        (robot_to_ground, residual)
     }
 
     #[must_use]
@@ -296,56 +318,4 @@ impl Default for Kinematics {
     fn default() -> Self {
         Self::from(&JointArray::default())
     }
-}
-
-macro_rules! impl_links {
-    {
-        $($field:ident: $space:ident $(+ ($x:expr, $y:expr, $z:expr))?,)*
-    } => {
-        pub struct Links<S: SpaceOver<na::Point3<f32>> = Robot> {
-            $(pub $field: Point3<S>,)*
-        }
-
-        impl Links<Robot> {
-            #[must_use]
-            pub fn new(kinematics: &Kinematics) -> Self {
-                Self {
-                    $($field: kinematics.transform(&spatial::point3!($space $(, $x, $y, $z)?)),)*
-                }
-            }
-        }
-
-        impl<S1: SpaceOver<na::Point3<f32>>> Links<S1> {
-            #[must_use]
-            pub fn map<S2, F>(&self, f: F) -> Links<S2>
-            where
-                F: Fn(&Point3<S1>) -> Point3<S2>,
-                S2: SpaceOver<na::Point3<f32>>,
-            {
-                Links {
-                    $($field: f(&self.$field),)*
-                }
-            }
-        }
-    };
-}
-
-impl_links! {
-    head: Head + (0., 0., 0.05),
-    neck: Neck,
-    robot: Robot,
-    left_shoulder: LeftShoulder,
-    left_elbow: LeftElbow,
-    left_wrist: LeftWrist,
-    left_hip: LeftHip,
-    left_knee: LeftTibia,
-    left_ankle: LeftAnkle,
-    left_sole: LeftSole,
-    right_shoulder: RightShoulder,
-    right_elbow: RightElbow,
-    right_wrist: RightWrist,
-    right_hip: RightHip,
-    right_knee: RightTibia,
-    right_ankle: RightAnkle,
-    right_sole: RightSole,
 }

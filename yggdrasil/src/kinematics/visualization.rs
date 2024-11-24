@@ -1,9 +1,11 @@
 use bevy::prelude::*;
 
-use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle};
+use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle, sensor::orientation::RobotOrientation};
 use super::prelude::*;
 
 pub struct KinematicsVisualizationPlugin;
+
+const RERUN_BATCH_SIZE: usize = 50;
 
 macro_rules! meshes {
     ($($x:tt)*) => {
@@ -77,20 +79,21 @@ fn update_meshes(
     dbg: DebugContext,
     kinematics: Res<Kinematics>,
     pose: Res<RobotPose>,
+    orientation: Res<RobotOrientation>,
     cycle: Res<Cycle>,
     mut buffer: Local<TransformBuffer>,
 ) {
     let pose = pose.as_3d();
+    let (robot_to_ground, orientation) = kinematics.robot_to_ground(orientation.quaternion());
 
     dbg.log(
         "nao",
         &rerun::Transform3D::from_translation_rotation(
             pose.translation.vector.data.0[0],
-            rerun::Quaternion(pose.rotation.coords.data.0[0]),
+            rerun::Quaternion(orientation.coords.data.0[0]),
         ),
     );
 
-    let robot_to_ground = kinematics.robot_to_ground();
 
     buffer.cycle.push(cycle.0 as i64);
 
@@ -101,7 +104,7 @@ fn update_meshes(
         buffer.$name.1.push(isometry.inner.rotation.coords.data.0[0].into());
     )*}}
 
-    if buffer.cycle.len() >= 50 {
+    if buffer.cycle.len() >= RERUN_BATCH_SIZE {
         let timeline = rerun::TimeColumn::new_sequence("cycle", std::mem::take(&mut buffer.cycle));
 
         meshes!{($($name:ident, $_space:ty)*) => {$(
