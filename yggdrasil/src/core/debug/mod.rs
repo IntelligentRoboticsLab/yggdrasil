@@ -5,6 +5,7 @@ use miette::IntoDiagnostic;
 use rerun::components::Scalar;
 use rerun::{AsComponents, ComponentBatch, EntityPath, RecordingStream, TimeColumn};
 use std::env;
+use std::f32::consts::PI;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{convert::Into, net::SocketAddr};
@@ -98,18 +99,33 @@ fn init_rerun(mut commands: Commands) {
 
 fn setup_spl_field(dbg: DebugContext) {
     dbg.log_static(
-        "field/mesh",
-        &rerun::Asset3D::from_file("./assets/rerun/spl_field.glb")
+        "field",
+        &rerun::Asset3D::from_file("./assets/rerun/field.glb")
             .expect("Failed to load field model")
             .with_media_type(rerun::MediaType::glb()),
     );
 
     dbg.log_static(
-        "field/mesh",
+        "field/goals",
+        &rerun::Asset3D::from_file("./assets/rerun/goal.glb")
+            .expect("Failed to load goal model")
+            .with_media_type(rerun::MediaType::glb()),
+    );
+
+    dbg.log_static(
+        "field",
         &rerun::Transform3D::from_translation([0.0, 0.0, -0.01]),
     );
 
-    dbg.log_static("field/mesh", &rerun::ViewCoordinates::FLU);
+    dbg.log_static(
+        "field/goals",
+        &rerun::InstancePoses3D::new()
+            .with_translations([(4.5, 0., 0.), (-4.5, 0., 0.)])
+            .with_rotation_axis_angles([((0., 0., 0.), 0.), ((0., 0., 1.), PI)]),
+    );
+
+    dbg.log_static("field", &rerun::ViewCoordinates::FLU);
+    dbg.log_static("field/goals", &rerun::ViewCoordinates::FLU);
 }
 
 fn sync_cycle_number(
