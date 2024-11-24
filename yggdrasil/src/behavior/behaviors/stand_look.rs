@@ -2,12 +2,9 @@ use std::time::Duration;
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
-    localization::RobotPose,
-    nao::{Priority},
+    nao::Priority,
 };
 use nalgebra::{Point2, Point3};
-use nidhogg::types::{FillExt, HeadJoints};
-use serde_with::PickFirst;
 
 const HEAD_STIFFNESS: f32 = 0.2;
 

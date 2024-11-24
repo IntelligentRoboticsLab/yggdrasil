@@ -1,16 +1,11 @@
-use std::time::Duration;
-
 use crate::{
     behavior::engine::{Behavior, Context, Control},
     nao::Priority,
 };
-use nalgebra::Point3;
-use nidhogg::types::{color, FillExt, HeadJoints, RightEye};
+use nidhogg::types::{color, FillExt, RightEye};
 
 // The robot shouldn't do anything while in unstiff state.
 const UNSTIFF_PRIORITY: Priority = Priority::Critical;
-
-const HEAD_STIFFNESS: f32 = 0.4;
 
 /// This is often the starting behavior of the robot.
 /// In this state the robot sits down, after which it unstiffens its legs, arms and head.

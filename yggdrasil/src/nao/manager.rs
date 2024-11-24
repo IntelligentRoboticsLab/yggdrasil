@@ -23,8 +23,6 @@ const HIP_LOCK_STIFFNESS: f32 = 0.1;
 /// The set hip position in sitting mode, where the robot sits and starts.
 const HIP_POSITION: f32 = -0.9;
 
-const HEAD_STIFFNESS: f32 = 0.2;
-
 const CYCLES_PER_SECOND: f32 = 82.0;
 
 type JointValue = f32;

@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use nalgebra::Point3;
-use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
