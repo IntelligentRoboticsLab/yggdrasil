@@ -10,6 +10,10 @@ pub trait Space {}
 /// Marker trait for spaces which contain `T`s within them.
 pub trait SpaceOver<T>: Space {}
 
+impl<T, S: SpaceOver<T>> SpaceOver<&T> for S {}
+
+impl<T, S: SpaceOver<T>> SpaceOver<&mut T> for S {}
+
 /// Wrapper type for tagging a `T` as existing in space `S`.
 pub struct InSpace<T, S: SpaceOver<T>> {
     pub inner: T,
@@ -24,20 +28,19 @@ impl<T, S: SpaceOver<T>> InSpace<T, S> {
         }
     }
 
-    pub fn from<T2>(other: InSpace<T2, S>) -> InSpace<T, S>
+    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> InSpace<U, S>
     where
-        T: From<T2>,
-        S: SpaceOver<T2>,
+        S: SpaceOver<U>,
     {
-        InSpace::new(From::from(other.inner))
+        InSpace::new(f(self.inner))
     }
 
-    pub fn into<T2>(self) -> InSpace<T2, S>
-    where
-        T: Into<T2>,
-        S: SpaceOver<T2>,
-    {
-        InSpace::new(self.inner.into())
+    pub fn as_ref(&self) -> InSpace<&T, S> {
+        InSpace::new(&self.inner)
+    }
+
+    pub fn as_mut(&mut self) -> InSpace<&mut T, S> {
+        InSpace::new(&mut self.inner)
     }
 }
 
@@ -84,6 +87,12 @@ impl<T: Eq, S: SpaceOver<T>> Eq for InSpace<T, S> {}
 impl<T: PartialEq, S: SpaceOver<T>> PartialEq for InSpace<T, S> {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
+    }
+}
+
+impl<T, S: SpaceOver<T>> From<T> for InSpace<T, S> {
+    fn from(value: T) -> Self {
+        Self::new(value)
     }
 }
 

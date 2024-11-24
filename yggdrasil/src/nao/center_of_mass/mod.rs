@@ -73,7 +73,7 @@ fn update_com(kinematics: Res<Kinematics>, mut com: ResMut<CenterOfMass>) {
         + kinematics.transform(&RIGHT_ANKLE.center) * RIGHT_ANKLE.mass;
 
     *com = CenterOfMass {
-        position: (new_com / TOTAL_MASS).into(),
+        position: (new_com / TOTAL_MASS).map(From::from),
     };
 }
 
