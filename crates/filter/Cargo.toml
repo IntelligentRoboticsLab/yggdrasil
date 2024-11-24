@@ -1,6 +1,6 @@
 [package]
-name = "filter"
 description = "Filters and stuff"
+name = "filter"
 version.workspace = true
 
 authors.workspace = true
