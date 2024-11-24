@@ -57,10 +57,7 @@ meshes! {($($name:ident, $_:ty)*) => {
 }}
 
 fn setup_meshes(dbg: DebugContext) {
-    dbg.log_static(
-        "nao",
-	    &rerun::components::AxisLength(rerun::Float32(0.)),
-    );
+    dbg.log_static("nao", &rerun::components::AxisLength(rerun::Float32(0.)));
 
     meshes! {($($name:ident, $_:ty)*) => {$(
         let path = concat!("nao/", stringify!($name));
