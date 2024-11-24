@@ -233,10 +233,9 @@ fn postprocess_detections(
 }
 
 fn setup_robot_detection(dbg: DebugContext) {
-    dbg.log_component_batches(
+    dbg.log_static(
         Top::make_entity_path("detected_robots"),
-        true,
-        [&rerun::Color::from_rgb(0, 255, 175) as _],
+        &rerun::Color::from_rgb(0, 255, 175),
     );
 }
 
