@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 
-use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle, sensor::orientation::RobotOrientation};
 use super::prelude::*;
+use crate::{
+    core::debug::DebugContext, localization::RobotPose, nao::Cycle,
+    sensor::orientation::RobotOrientation,
+};
 
 pub struct KinematicsVisualizationPlugin;
 
@@ -40,13 +43,12 @@ macro_rules! meshes {
 
 impl Plugin for KinematicsVisualizationPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_systems(PostStartup, setup_meshes)
+        app.add_systems(PostStartup, setup_meshes)
             .add_systems(PostUpdate, update_meshes);
     }
 }
 
-meshes!{($($name:ident, $_:ty)*) => {
+meshes! {($($name:ident, $_:ty)*) => {
     #[derive(Default)]
     struct TransformBuffer {
         cycle: Vec<i64>,
@@ -61,7 +63,7 @@ fn setup_meshes(dbg: DebugContext) {
         [&rerun::components::AxisLength(rerun::Float32(0.)) as _],
     );
 
-    meshes!{($($name:ident, $_:ty)*) => {$(
+    meshes! {($($name:ident, $_:ty)*) => {$(
         let path = concat!("nao/", stringify!($name));
 
         dbg.log_static(
@@ -94,10 +96,9 @@ fn update_meshes(
         ),
     );
 
-
     buffer.cycle.push(cycle.0 as i64);
 
-    meshes!{($($name:ident, $space:ty)*) => {$(
+    meshes! {($($name:ident, $space:ty)*) => {$(
         let isometry = kinematics.isometry::<$space, _>().chain(robot_to_ground.as_ref());
 
         buffer.$name.0.push(isometry.inner.translation.vector.data.0[0].into());
@@ -107,7 +108,7 @@ fn update_meshes(
     if buffer.cycle.len() >= RERUN_BATCH_SIZE {
         let timeline = rerun::TimeColumn::new_sequence("cycle", std::mem::take(&mut buffer.cycle));
 
-        meshes!{($($name:ident, $_space:ty)*) => {$(
+        meshes! {($($name:ident, $_space:ty)*) => {$(
             dbg.send_columns(concat!("nao/", stringify!($name)), [timeline.clone()], [
                 &buffer.$name.0 as _,
                 &buffer.$name.1 as _,

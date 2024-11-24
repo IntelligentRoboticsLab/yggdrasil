@@ -90,9 +90,10 @@ impl Kinematics {
         let residual = na::UnitQuaternion::from_euler_angles(0., 0., yaw);
 
         let robot_to_ground: Isometry3<Robot, Ground> = na::Isometry3::from_parts(
-            Default::default(),
+            na::Translation3::default(),
             na::UnitQuaternion::from_euler_angles(roll, pitch, 0.),
-        ).into();
+        )
+        .into();
 
         let contact_points: [Point3<Ground>; 6] = [
             self.transform(&spatial::point3!(LeftSole)),
@@ -101,12 +102,13 @@ impl Kinematics {
             self.transform(&spatial::point3!(RightWrist)),
             self.transform(&spatial::point3!(Robot, 0.05, 0., 0.)),
             self.transform(&spatial::point3!(Robot, -0.05, 0., 0.)),
-        ].map(|p| robot_to_ground.transform(&p));
+        ]
+        .map(|p| robot_to_ground.transform(&p));
 
         let height = contact_points
             .into_iter()
             .map(|p| -p.inner.coords.z)
-            .max_by(|a, b| a.total_cmp(&b))
+            .max_by(f32::total_cmp)
             .unwrap();
 
         let robot_to_ground = robot_to_ground.map(|x| na::Translation3::new(0., 0., height) * x);
