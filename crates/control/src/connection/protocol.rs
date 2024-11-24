@@ -1,7 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use bifrost::serialization::{Decode, Encode};
-use uuid::Uuid;
 
 use crate::debug_system::DebugEnabledSystems;
 
@@ -48,7 +47,6 @@ pub type HandlerFn<T> = Box<dyn Fn(&T) + Send + Sync + 'static>;
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum RobotMessage {
     Disconnect,
-    RequestViewerId(Uuid),
     Resources(HashMap<String, String>),
     DebugEnabledSystems(DebugEnabledSystems),
 }
@@ -56,7 +54,6 @@ pub enum RobotMessage {
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum ViewerMessage {
     Disconnect,
-    ViewerId(Uuid),
     UpdateResource(String, String),
     SendResourcesNow,
     UpdateEnabledDebugSystem(String, bool),

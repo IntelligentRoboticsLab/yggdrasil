@@ -7,7 +7,7 @@ use rerun::external::ecolor::Color32;
 
 use crate::{
     connection::{
-        protocol::{RobotMessage, ViewerMessage},
+        protocol::ViewerMessage,
         viewer::ControlViewerHandle,
     },
     control::ControlStates,
@@ -96,7 +96,7 @@ pub fn add_editable_resource(
 pub fn debug_resources_ui(
     ui: &mut egui::Ui,
     states: Arc<RwLock<ControlStates>>,
-    handle: &ControlViewerHandle<ViewerMessage, RobotMessage>,
+    handle: &ControlViewerHandle,
 ) {
     ui.vertical(|ui| {
         let debug_enabled_systems_view = &mut states

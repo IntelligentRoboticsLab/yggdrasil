@@ -1,16 +1,28 @@
 use async_std::{io::ReadExt, net::TcpStream};
 use bevy::prelude::*;
-use control::connection::{
-    app::ControlAppHandle,
-    protocol::{RobotMessage, ViewerMessage},
-};
+use control::{connection::{app::NotifyConnection, protocol::ViewerMessage}, debug_system::DebugEnabledSystems};
 use futures::{
-    channel::mpsc::{self, UnboundedReceiver, UnboundedSender},
+    channel::mpsc::{UnboundedReceiver, UnboundedSender},
     io::ReadHalf,
 };
 use serde::{Deserialize, Serialize};
 
 use super::ViewerConnectedEvent;
+
+#[derive(Resource)]
+pub struct NotifyConnectionReceiver {
+    pub rx: UnboundedReceiver<NotifyConnection>,
+}
+
+impl NotifyConnectionReceiver {
+    pub fn try_recv(&mut self) -> Option<NotifyConnection> {
+        self.rx
+            .try_next()
+            .transpose()
+            .expect("Notify on connection message receive channel closed")
+            .ok()
+    }
+}
 
 #[derive(Resource)]
 pub struct ViewerMessageReceiver {
@@ -29,19 +41,27 @@ impl ViewerMessageReceiver {
 
 pub fn handle_viewer_message(
     mut message_receiver: ResMut<ViewerMessageReceiver>,
-    mut ev_viewer_connected: EventWriter<ViewerConnectedEvent>,
+    mut debug_enabled_systems: ResMut<DebugEnabledSystems>,
 ) {
     while let Some(message) = message_receiver.try_recv() {
         match message {
             ViewerMessage::Disconnect => {
                 tracing::info!("Viewer disconnected")
             }
-            ViewerMessage::ViewerId(viewer_id) => {
-                tracing::info!("New client connected: {viewer_id}");
-                ev_viewer_connected.send(ViewerConnectedEvent(viewer_id));
+            ViewerMessage::UpdateEnabledDebugSystem(name, enabled) => {
+                debug_enabled_systems.set_system(name, enabled);
             }
             _ => tracing::warn!("Unhandled message"),
         }
+    }
+}
+
+pub fn handle_notify_on_connection(
+    mut notify_connection_receiver: ResMut<NotifyConnectionReceiver>,
+    mut ev_viewer_connected: EventWriter<ViewerConnectedEvent>,
+) {
+    while let Some(notify_connection) = notify_connection_receiver.try_recv() {
+        ev_viewer_connected.send(ViewerConnectedEvent(notify_connection.id));
     }
 }
 

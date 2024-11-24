@@ -1,10 +1,10 @@
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 
 use async_std::net::{TcpListener, TcpStream};
 use async_std::sync::Mutex;
+use async_std::task::spawn;
 use bevy::prelude::Resource;
 use bevy::tasks::IoTaskPool;
 use bifrost::serialization::{Decode, Encode};
@@ -14,39 +14,34 @@ use futures::{AsyncReadExt, AsyncWriteExt, StreamExt};
 use miette::{IntoDiagnostic, Result};
 use uuid::Uuid;
 
-/// `T` Send Message type \
-/// `U` Receive Message type
-pub struct ControlApp<T, U>
-where
-    T: Encode,
-    U: Decode,
-{
-    listener: TcpListener,
-    handlers: RwLock<Vec<UnboundedSender<U>>>,
-    clients: Arc<Mutex<HashMap<Uuid, UnboundedSender<T>>>>,
-    request_id: Uuid,
+use super::protocol::{RobotMessage, ViewerMessage};
+
+pub struct NotifyConnection {
+    pub id: Uuid,
 }
 
-impl<T, U> ControlApp<T, U>
-where
-    T: Encode + Send + Sync + Clone + 'static,
-    U: Decode + Debug + Send + Clone + 'static,
-{
-    pub async fn bind(addr: SocketAddr) -> Result<Self> {
+pub struct ControlApp {
+    listener: TcpListener,
+    handlers: Arc<RwLock<Vec<UnboundedSender<ViewerMessage>>>>,
+    clients: Arc<Mutex<HashMap<Uuid, UnboundedSender<RobotMessage>>>>,
+    new_clients: UnboundedSender<NotifyConnection>,
+}
+
+impl ControlApp {
+    pub async fn bind(
+        addr: SocketAddr,
+        new_clients: UnboundedSender<NotifyConnection>,
+    ) -> Result<Self> {
         let listener = TcpListener::bind(addr).await.into_diagnostic()?;
         Ok(Self {
             listener,
-            handlers: RwLock::new(Vec::new()),
+            handlers: Arc::new(RwLock::new(Vec::new())),
             clients: Arc::new(Mutex::new(HashMap::new())),
-            request_id: Uuid::new_v4(),
+            new_clients,
         })
     }
 
-    fn refresh_request_id(&mut self) {
-        self.request_id = Uuid::new_v4();
-    }
-
-    pub fn run(self) -> ControlAppHandle<T, U> {
+    pub fn run(self) -> ControlAppHandle {
         tracing::info!(
             "Server running on {:?}",
             self.listener.local_addr().unwrap()
@@ -79,20 +74,23 @@ where
     async fn handle_connection(&self, socket: TcpStream) {
         let (read_half, write_half) = socket.split();
         let (tx, rx) = mpsc::unbounded();
-
+        tracing::info!("Handling connection in app");
         // Add the client to the list
+        let id = Uuid::new_v4();
         {
-            self.clients.lock().await.insert(Uuid::new_v4(), tx.clone());
+            self.clients.lock().await.insert(id, tx.clone());
         }
 
         // Spawn reader and writer tasks
-        let reader_task = self.handle_reader(read_half);
-        let writer_task = self.handle_writer(write_half, rx);
+        let handlers = Arc::clone(&self.handlers);
+        let reader_task = spawn(async { Self::handle_reader(read_half, handlers).await });
+        let writer_task = spawn(async { Self::handle_writer(write_half, rx).await });
 
-        tracing::info!("Sending welcome message!");
-        tx
-            .unbounded_send()
+        let msg = NotifyConnection { id };
+        self.new_clients
+            .unbounded_send(msg)
             .expect("Failed to send message");
+        tracing::info!("Message sending done!");
 
         let _ = futures::join!(reader_task, writer_task);
 
@@ -103,7 +101,10 @@ where
         }
     }
 
-    async fn handle_reader(&self, mut read_half: ReadHalf<TcpStream>) {
+    async fn handle_reader(
+        mut read_half: ReadHalf<TcpStream>,
+        handlers: Arc<RwLock<Vec<UnboundedSender<ViewerMessage>>>>,
+    ) {
         let mut buf = [0; 1024];
         loop {
             match read_half.read(&mut buf).await {
@@ -111,11 +112,11 @@ where
                     tracing::info!("Connection closed by client");
                     break;
                 }
-                Ok(n) => match &U::decode(&buf[..n]) {
+                Ok(n) => match &ViewerMessage::decode(&buf[..n]) {
                     Ok(msg) => {
                         tracing::info!("Received message: {:?}", msg);
 
-                        let handlers = &mut self.handlers.read().expect("failed to get reader");
+                        let handlers = handlers.read().expect("failed to get reader");
 
                         for handler in handlers.iter() {
                             handler
@@ -136,15 +137,14 @@ where
     }
 
     async fn handle_writer(
-        &self,
         mut write_half: WriteHalf<TcpStream>,
-        mut rx: UnboundedReceiver<T>,
+        mut rx: UnboundedReceiver<RobotMessage>,
     ) {
         while let Some(message) = rx.next().await {
-            // if message.is_disconnected() {
-            //     tracing::info!("Received disconnect message, closing connection");
-            //     break;
-            // }
+            if matches!(message, RobotMessage::Disconnect) {
+                tracing::info!("Received disconnect message, closing connection");
+                break;
+            }
 
             // Encode and send response
             let mut data = vec![];
@@ -163,7 +163,7 @@ where
 
     pub fn add_handler(
         &self,
-        handler: UnboundedSender<U>,
+        handler: UnboundedSender<ViewerMessage>,
     ) -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut handlers = self
             .handlers
@@ -187,27 +187,19 @@ where
 }
 
 #[derive(Resource, Clone)]
-pub struct ControlAppHandle<T, U>
-where
-    T: Encode,
-    U: Decode,
-{
-    app: Arc<ControlApp<T, U>>,
+pub struct ControlAppHandle {
+    app: Arc<ControlApp>,
 }
 
-impl<T, U> ControlAppHandle<T, U>
-where
-    T: Encode + Send + Sync + Clone + 'static,
-    U: Decode + Debug + Send + Clone + 'static,
-{
+impl ControlAppHandle {
     pub fn add_handler(
         &mut self,
-        handler: UnboundedSender<U>,
+        handler: UnboundedSender<ViewerMessage>,
     ) -> std::result::Result<(), Box<dyn std::error::Error>> {
         self.app.add_handler(handler)
     }
 
-    pub async fn broadcast(&self, message: T) {
+    pub async fn broadcast(&self, message: RobotMessage) {
         let clients = self.app.clients.lock().await;
 
         clients.iter().for_each(|(_id, client)| {
@@ -218,11 +210,8 @@ where
         });
     }
 
-    pub async fn send(&self, message: T, client_id: Uuid) {
+    pub async fn send(&self, message: RobotMessage, client_id: Uuid) {
         let clients = self.app.clients.lock().await;
-
-        tracing::info!("Clients: {:#?}", clients);
-        tracing::info!("Client: {}", client_id);
 
         let Some(client) = clients.get(&client_id) else {
             tracing::error!("Client does not exist");

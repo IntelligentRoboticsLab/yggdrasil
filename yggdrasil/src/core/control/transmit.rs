@@ -5,7 +5,7 @@ use bevy::{ecs::system::SystemId, prelude::*, tasks::IoTaskPool};
 use bifrost::serialization::Encode;
 use control::connection::{
     app::ControlAppHandle,
-    protocol::{RobotMessage, ViewerMessage},
+    protocol::RobotMessage,
 };
 use futures::{
     channel::mpsc::{self, UnboundedReceiver},
@@ -38,7 +38,7 @@ pub enum ControlRobotMessage {
 pub fn debug_systems_on_connection(
     mut ev_viewer_connected: EventReader<ViewerConnectedEvent>,
     debug_enabled_resources: Res<DebugEnabledSystems>,
-    control_handle: Res<ControlAppHandle<RobotMessage, ViewerMessage>>,
+    control_handle: Res<ControlAppHandle>,
 ) {
     for ev in ev_viewer_connected.read() {
         tracing::info!("Got an event!");
@@ -88,7 +88,7 @@ pub async fn send_messages(
 }
 
 pub fn send_current_state(
-    control_handle: Res<ControlAppHandle<RobotMessage, ViewerMessage>>,
+    control_handle: Res<ControlAppHandle>,
     time: Res<Time>,
     mut delay: Local<ControlRobotMessageDelay>,
 ) {
@@ -142,7 +142,7 @@ impl FromWorld for TransmitDebugEnabledSystems {
 
 fn transmit_debug_enabled_resources(
     debug_enabled_resources: Res<DebugEnabledSystems>,
-    control_handle: Res<ControlAppHandle<RobotMessage, ViewerMessage>>,
+    control_handle: Res<ControlAppHandle>,
 ) {
     let msg = RobotMessage::DebugEnabledSystems(debug_enabled_resources.clone());
     let io = IoTaskPool::get();

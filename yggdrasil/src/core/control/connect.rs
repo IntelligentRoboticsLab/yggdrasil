@@ -30,17 +30,17 @@ use super::transmit::TransmitDebugEnabledSystems;
 //     });
 // }
 
-pub fn on_control_connection(
-    mut commands: Commands,
-    control_handle: Res<ControlAppHandle<RobotMessage, ViewerMessage>>,
-    transmit_debug_system: Res<TransmitDebugEnabledSystems>,
-) {
+// pub fn on_control_connection(
+//     mut commands: Commands,
+//     control_handle: Res<ControlAppHandle>,
+//     transmit_debug_system: Res<TransmitDebugEnabledSystems>,
+// ) {
     
-    if control_handle.is_added() {
-        tracing::info!("Send debug systems");
-        commands.run_system(transmit_debug_system.system_id());
-    }
-}
+//     if control_handle.is_added() {
+//         tracing::info!("Send debug systems");
+//         commands.run_system(transmit_debug_system.system_id());
+//     }
+// }
 
 // pub fn setup_new_connection(
 //     mut commands: Commands,

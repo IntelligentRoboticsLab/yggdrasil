@@ -8,11 +8,10 @@ use re_viewer::external::{
     eframe,
     egui::{self, ScrollArea},
 };
-use uuid::Uuid;
 
 use crate::{
     connection::{
-        protocol::{RobotMessage, ViewerMessage},
+        protocol::RobotMessage,
         viewer::ControlViewerHandle,
     },
     debug_system::DebugEnabledSystems,
@@ -51,7 +50,7 @@ impl From<DebugEnabledSystems> for DebugEnabledSystemsView {
 pub struct Control {
     app: re_viewer::App,
     states: Arc<RwLock<ControlStates>>,
-    handle: ControlViewerHandle<ViewerMessage, RobotMessage>,
+    handle: ControlViewerHandle,
     frame_styles: FrameStyleMap,
 }
 
@@ -88,7 +87,7 @@ impl eframe::App for Control {
 impl Control {
     pub fn new(
         app: re_viewer::App,
-        handle: ControlViewerHandle<ViewerMessage, RobotMessage>,
+        handle: ControlViewerHandle,
     ) -> Self {
         let mut control = Control {
             app,
@@ -104,13 +103,7 @@ impl Control {
             .add_handler(move |msg: &RobotMessage| handle_message(msg, Arc::clone(&states)))
             .expect("Failed to add handler");
 
-        let viewer_id = handle.clone().id();
-        control
-            .handle
-            .add_handler(move |msg: &RobotMessage| {
-                handle_connection_message(msg, viewer_id, handle.clone())
-            })
-            .expect("Failed to add handler");
+
         control
     }
 
@@ -228,22 +221,8 @@ fn handle_message(message: &RobotMessage, states: Arc<RwLock<ControlStates>>) {
                 .expect("Failed to write lock control states")
                 .debug_enabled_systems_view = enabled_systems.clone().into()
         }
-        RobotMessage::Resources(resources) => {
+        RobotMessage::Resources(_resources) => {
             tracing::info!("Got a resource update")
-        }
-        _ => {}
-    }
-}
-
-fn handle_connection_message(
-    message: &RobotMessage,
-    viewer_id: Uuid,
-    handle: ControlViewerHandle<ViewerMessage, RobotMessage>,
-) {
-    match message {
-        RobotMessage::RequestViewerId => {
-            let msg = ViewerMessage::ViewerId(viewer_id);
-            handle.send(msg).expect("Failed to send message");
         }
         _ => {}
     }

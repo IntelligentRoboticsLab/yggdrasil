@@ -1,6 +1,5 @@
 use std::{
     collections::VecDeque,
-    fmt::Debug,
     net::SocketAddrV4,
     sync::{Arc, RwLock},
     time::Duration,
@@ -14,31 +13,20 @@ use futures::{
     AsyncReadExt, AsyncWriteExt, StreamExt,
 };
 use tokio::sync::Notify;
-use uuid::Uuid;
 
-use super::protocol::HandlerFn;
+use super::protocol::{HandlerFn, RobotMessage, ViewerMessage};
 
-/// `T` Send Message type \
-/// `U` Receive Message type
-pub struct ControlViewer<T, U>
-where
-    T: Encode,
-    U: Decode,
-{
+
+pub struct ControlViewer {
     address: SocketAddrV4,
-    tx: UnboundedSender<T>,
-    rx: Arc<Mutex<UnboundedReceiver<T>>>,
-    message_queue: Arc<Mutex<VecDeque<T>>>,
-    handlers: Arc<RwLock<Vec<HandlerFn<U>>>>,
+    tx: UnboundedSender<ViewerMessage>,
+    rx: Arc<Mutex<UnboundedReceiver<ViewerMessage>>>,
+    message_queue: Arc<Mutex<VecDeque<ViewerMessage>>>,
+    handlers: Arc<RwLock<Vec<HandlerFn<RobotMessage>>>>,
     notify: Arc<Notify>,
-    viewer_id: Uuid,
 }
 
-impl<T, U> ControlViewer<T, U>
-where
-    T: Encode + Debug + Send + Clone + 'static,
-    U: Decode + Debug + 'static,
-{
+impl ControlViewer {
     pub async fn connect(address: SocketAddrV4) -> tokio::io::Result<Self> {
         let (tx, rx) = unbounded();
         Ok(Self {
@@ -48,7 +36,6 @@ where
             message_queue: Arc::new(Mutex::new(VecDeque::new())),
             handlers: Arc::new(RwLock::new(Vec::new())),
             notify: Arc::new(Notify::new()),
-            viewer_id: Uuid::new_v4(),
         })
     }
 
@@ -59,7 +46,7 @@ where
     //     }
     // }
 
-    pub async fn run(self) -> ControlViewerHandle<T, U> {
+    pub async fn run(self) -> ControlViewerHandle {
         tracing::info!("Starting client");
 
         // Spawn a background task to handle messages from the global channel.
@@ -79,8 +66,6 @@ where
             loop {
                 match TcpStream::connect(app.address.clone()).await {
                     Ok(socket) => {
-                        tracing::info!("Handling connection");
-
                         app.handle_connection(socket).await;
                     }
                     Err(e) => {
@@ -134,8 +119,8 @@ where
     }
 
     async fn global_message_handler(
-        rx: Arc<Mutex<UnboundedReceiver<T>>>,
-        message_queue: Arc<Mutex<VecDeque<T>>>,
+        rx: Arc<Mutex<UnboundedReceiver<ViewerMessage>>>,
+        message_queue: Arc<Mutex<VecDeque<ViewerMessage>>>,
         notify: Arc<Notify>,
     ) {
         let mut rx_guard = rx.lock().await;
@@ -149,7 +134,7 @@ where
         tracing::info!("Global message channel closed");
     }
 
-    async fn handle_read(mut read: ReadHalf<TcpStream>, handlers: Arc<RwLock<Vec<HandlerFn<U>>>>) {
+    async fn handle_read(mut read: ReadHalf<TcpStream>, handlers: Arc<RwLock<Vec<HandlerFn<RobotMessage>>>>) {
         let mut buf = [0; 1024];
         loop {
             match read.read(&mut buf).await {
@@ -157,7 +142,7 @@ where
                     tracing::info!("Server closed connection");
                     break;
                 }
-                Ok(n) => match U::decode(&buf[..n]) {
+                Ok(n) => match RobotMessage::decode(&buf[..n]) {
                     Ok(message) => {
                         // we received a message from the server, we can process it here if needed
                         tracing::info!("Received message from server: {:?}", message);
@@ -181,7 +166,7 @@ where
 
     async fn handle_write(
         mut write: WriteHalf<TcpStream>,
-        message_queue: Arc<Mutex<VecDeque<T>>>,
+        message_queue: Arc<Mutex<VecDeque<ViewerMessage>>>,
         notify: Arc<Notify>,
     ) {
         loop {
@@ -197,10 +182,10 @@ where
                 continue;
             };
 
-            // if message.is_disconnected() {
-            //     tracing::info!("Disconnecting...");
-            //     break;
-            // }
+            if matches!(message, ViewerMessage::Disconnect) {
+                tracing::info!("Disconnecting...");
+                break;
+            }
 
             let mut data = vec![];
             if message.encode(&mut data).is_ok() {
@@ -214,7 +199,7 @@ where
 
     pub fn add_handler(
         &self,
-        handler: HandlerFn<U>,
+        handler: HandlerFn<RobotMessage>,
     ) -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut handlers = self
             .handlers
@@ -223,27 +208,15 @@ where
         handlers.push(handler);
         Ok(())
     }
-
-    pub fn id(&self) -> Uuid {
-        self.viewer_id
-    }
 }
 
 #[derive(Clone)]
-pub struct ControlViewerHandle<T, U>
-where
-    T: Encode,
-    U: Decode,
-{
-    app: Arc<ControlViewer<T, U>>,
+pub struct ControlViewerHandle {
+    app: Arc<ControlViewer>,
 }
 
-impl<T, U> ControlViewerHandle<T, U>
-where
-    T: Encode + Send + Debug + Clone + 'static,
-    U: Decode + Debug + 'static,
-{
-    pub fn send(&self, msg: T) -> Result<(), TrySendError<T>> {
+impl ControlViewerHandle {
+    pub fn send(&self, msg: ViewerMessage) -> Result<(), TrySendError<ViewerMessage>> {
         self.app.tx.unbounded_send(msg)
     }
 
@@ -252,12 +225,8 @@ where
         handler: H,
     ) -> std::result::Result<(), Box<dyn std::error::Error>>
     where
-        H: Fn(&U) + Send + Sync + 'static,
+        H: Fn(&RobotMessage) + Send + Sync + 'static,
     {
         self.app.add_handler(Box::new(handler))
-    }
-
-    pub fn id(&self) -> Uuid {
-        self.app.id()
     }
 }

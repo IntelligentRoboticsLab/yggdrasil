@@ -3,20 +3,20 @@ use std::net::Ipv4Addr;
 use miette::{IntoDiagnostic, Result};
 use re_viewer::StartupOptions;
 
-use crate::{connection::{protocol::{RobotMessage, ViewerMessage}, viewer::ControlViewer}, control::Control};
+use crate::{connection::viewer::ControlViewer, control::Control};
 
 // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
 const APP_ENV: &str = "Control Wrapper";
 
 pub struct App {
     startup_options: StartupOptions,
-    viewer: ControlViewer<ViewerMessage, RobotMessage>,
+    viewer: ControlViewer,
 }
 
 impl App {
     pub fn new(
         startup_options: StartupOptions,
-        viewer: ControlViewer<ViewerMessage, RobotMessage>,
+        viewer: ControlViewer,
 
     ) -> Self {
         App {
