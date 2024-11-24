@@ -22,7 +22,7 @@ use crate::nao::Cycle;
 
 // TODO: make config + explanation
 const FIELD_MARGIN: f32 = 0.25;
-const MAX_ITERS: usize = 20;
+const MAX_ITERS: usize = 10;
 const ARRSAC_INLIER_THRESHOLD: f32 = 0.025;
 const LINE_SEGMENT_MIN_POINTS: usize = 4;
 const SPOT_MAX_DISTANCE: f32 = 5.0;
@@ -34,6 +34,8 @@ const WHITE_TEST_MERGE_RATIO: f32 = 0.7;
 const WHITE_TEST_MAX_ANGLE: f32 = FRAC_PI_4;
 const LINE_SEGMENT_MIN_LENGTH_POST_MERGE: f32 = 0.25;
 const LINE_SEGMENT_MAX_LENGTH_POST_MERGE: f32 = 5.0;
+
+const MAX_LINES: usize = 10;
 
 /// Plugin that adds systems to detect lines from scan-lines.
 pub struct LineDetectionPlugin;
@@ -245,7 +247,6 @@ fn detect_lines<T: CameraLocation>(
     // filter out spots that are outside of the field (with some margin)
     projected_spots.retain(|p| {
         // apply the pose transformation to the spots first
-
         let position = pose.inner * p;
         field.in_field_with_margin(position, FIELD_MARGIN)
     });
@@ -354,6 +355,15 @@ fn detect_lines<T: CameraLocation>(
             }
         }
     }
+
+    // sort candidates by distance (closest first)
+    candidates.sort_unstable_by(|a, b| {
+        let distance_a = a.segment.center().coords.norm();
+        let distance_b = b.segment.center().coords.norm();
+        distance_a.total_cmp(&distance_b)
+    });
+    // and remove ones we don't need
+    candidates.truncate(MAX_LINES);
 
     let rejections = candidates
         .iter()
