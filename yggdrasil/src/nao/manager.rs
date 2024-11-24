@@ -51,15 +51,17 @@ fn finalize(
     state: Res<NaoState>,
 ) {
     // Update the head target
-    manager.head_target = manager.head_target.clone().update(&state);
+    manager.head_state = manager.head_state.clone().update(&state);
 
     // If the head is moving, interpolate the desired head position and set the head joints.
-    if let HeadTarget::Moving {
+    if let HeadState::Moving {
         source,
         target,
         timestep,
-        ..
-    } = manager.head_target
+        time_interval: _,
+        priority,
+        stiffness,
+    } = manager.head_state
     {
         let head = source.slerp(&target, timestep);
 
@@ -68,8 +70,8 @@ fn finalize(
                 .pitch(head.euler_angles().1)
                 .yaw(head.euler_angles().2)
                 .build(),
-            HeadJoints::fill(HEAD_STIFFNESS),
-            Priority::Critical,
+            HeadJoints::fill(stiffness),
+            priority,
         );
     }
 
@@ -149,30 +151,36 @@ struct LedSettings<T> {
 
 // This enum represents the current state of the head target/motion.
 #[derive(Default, Debug, Clone)]
-pub enum HeadTarget {
+pub enum HeadState {
     #[default]
     None,
     New {
         target: UnitQuaternion<f32>,
         time_to_target: Duration,
+        priority: Priority,
+        stiffness: f32,
     },
     Moving {
         source: UnitQuaternion<f32>,
         target: UnitQuaternion<f32>,
         timestep: f32,
         time_interval: f32,
+        priority: Priority,
+        stiffness: f32,
     },
 }
 
-impl HeadTarget {
+impl HeadState {
     // This function is called every cycle to update the head target depending on the current state of the robot.
     fn update(self, nao_state: &NaoState) -> Self {
         match self {
-            HeadTarget::None => HeadTarget::None,
+            HeadState::None => HeadState::None,
             // If the target is new, we start moving towards it.
-            HeadTarget::New {
+            HeadState::New {
                 target,
                 time_to_target,
+                priority,
+                stiffness,
             } => {
                 let source = UnitQuaternion::from_euler_angles(
                     0.0,
@@ -181,36 +189,39 @@ impl HeadTarget {
                 );
 
                 let similarity = source.dot(&target);
-                if similarity > 0.985 {
-                    HeadTarget::None
+                if similarity > 0.99 {
+                    HeadState::None
                 } else {
-
-                    HeadTarget::Moving {
+                    HeadState::Moving {
                         source,
                         target,
                         timestep: 0.0,
                         time_interval: 1.0 / (time_to_target.as_secs_f32() * CYCLES_PER_SECOND),
+                        priority,
+                        stiffness,
                     }
                 }
             }
             // If the target is already moving, we check if we have already reached the target.
-            HeadTarget::Moving {
+            HeadState::Moving {
                 source,
                 target,
                 timestep,
                 time_interval,
+                priority,
+                stiffness,
             } => {
+                // 
                 if timestep >= 0.95 {
-                    HeadTarget::None
+                    HeadState::None
                 } else {
-                    // // We scale the time increment by the difference between the current head target and the desired target.
-                    // let timestep_interval = source.dot(&target);
-                    let timestep = timestep + time_interval;
-                    HeadTarget::Moving {
-                        source: source,
-                        target: target,
-                        timestep: timestep,
-                        time_interval: time_interval,
+                    HeadState::Moving {
+                        source,
+                        target,
+                        timestep: timestep + time_interval,
+                        time_interval,
+                        priority,
+                        stiffness,
                     }
                 }
             }
@@ -224,15 +235,13 @@ impl HeadTarget {
 /// Each cycle, the nao manager will update the [`NaoControlMessage`] with the requests that have the highest
 /// priorities.
 /// If multiple requests with the same priority are made, the first request will be prioritized.
-
-// TODO: Store the stuff needed for interpolation here in the NaoManager
 #[derive(Default, Debug, Resource)]
 pub struct NaoManager {
     leg_settings: JointSettings<LegJoints<JointValue>>,
     arm_settings: JointSettings<ArmJoints<JointValue>>,
     head_settings: JointSettings<HeadJoints<JointValue>>,
 
-    pub head_target: HeadTarget,
+    head_state: HeadState,
 
     led_left_ear: LedSettings<LeftEar>,
     led_right_ear: LedSettings<RightEar>,
@@ -396,42 +405,52 @@ impl NaoManager {
         &mut self,
         joint_positions: HeadJoints<JointValue>,
         time_to_target: Duration,
+        priority: Priority,
+        stiffness: f32,
     ) -> &mut Self {
         let new_target =
-                UnitQuaternion::from_euler_angles(0.0, joint_positions.pitch, joint_positions.yaw);
+            UnitQuaternion::from_euler_angles(0.0, joint_positions.pitch, joint_positions.yaw);
 
-        if let HeadTarget::Moving {
+        if let HeadState::Moving {
             source,
             target,
             timestep,
             time_interval,
-        } = self.head_target
+            priority,
+            stiffness,
+        } = self.head_state
         {
             // If the head is already moving, only set a new target if its sufficiently different from old target.
-            // This prevents stuttering
+            // This helps revents the head from stuttering
             let similarity = target.dot(&new_target);
             if similarity < 0.9 {
-                self.head_target = HeadTarget::New {
+                self.head_state = HeadState::New {
                     target: new_target,
-                    time_to_target: time_to_target,
+                    time_to_target,
+                    priority,
+                    stiffness,
                 };
                 return self;
             }
             // If it is not sufficiently different, we simply scale the timestep back a little bit
             // This "continues" the old trajectory just a little bit farther.
-            self.head_target = HeadTarget::Moving {
-                source: source,
+            self.head_state = HeadState::Moving {
+                source,
                 target: new_target,
-                timestep: timestep,
-                time_interval: time_interval,
+                timestep,
+                time_interval,
+                priority,
+                stiffness,
             };
             return self;
         }
 
-        // If the head is not moving, we just set a new target.
-        self.head_target = HeadTarget::New {
+        // If the head is not moving, we just set the new target.
+        self.head_state = HeadState::New {
             target: new_target,
-            time_to_target: time_to_target,
+            time_to_target,
+            priority,
+            stiffness,
         };
 
         self

@@ -3,12 +3,13 @@ use std::time::Duration;
 use crate::{
     behavior::engine::{Behavior, Context, Control},
     localization::RobotPose,
-    nao::{HeadTarget, Priority},
+    nao::{Priority},
 };
 use nalgebra::{Point2, Point3};
 use nidhogg::types::{FillExt, HeadJoints};
+use serde_with::PickFirst;
 
-const HEAD_STIFFNESS: f32 = 0.4;
+const HEAD_STIFFNESS: f32 = 0.2;
 
 /// Stand and look at a target point.
 /// This is used for when the robot is in the Set state.
@@ -26,6 +27,8 @@ impl Behavior for StandLookAt {
             control.nao_manager.set_head_target(
                 look_at,
                 Duration::from_millis(500),
+                Priority::default(),
+                HEAD_STIFFNESS
             );
         } else {
             let target_point3 = Point3::new(-10.0, 0.0, 0.5);
@@ -34,6 +37,8 @@ impl Behavior for StandLookAt {
             control.nao_manager.set_head_target(
                 look_at,
                 Duration::from_millis(500),
+                Priority::default(),
+                HEAD_STIFFNESS,
             );
         }
         control.walking_engine.request_stand();

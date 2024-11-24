@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
-    nao::{HeadTarget, Priority},
+    nao::Priority,
 };
 use nalgebra::Point3;
 use nidhogg::types::{color, FillExt, HeadJoints, RightEye};
@@ -24,17 +24,12 @@ impl Behavior for Sitting {
             .nao_manager
             .set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());
 
-        let test_point3 = Point3::new(10.0, 0.0, 0.5);
-        let look_at_test = _context.pose.get_look_at_absolute(&test_point3);
-
         if control.walking_engine.is_sitting() {
             // Makes robot floppy except for hip joints, locked in sitting position.
             control.nao_manager.unstiff_sit(UNSTIFF_PRIORITY);
         } else {
             control.walking_engine.request_sit();
         }
-
-        control.nao_manager.set_head_target(look_at_test, Duration::from_millis(2000));
 
         control.nao_manager.unstiff_arms(UNSTIFF_PRIORITY);
         // .unstiff_head(UNSTIFF_PRIORITY);

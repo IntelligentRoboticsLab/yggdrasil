@@ -20,9 +20,12 @@ impl Behavior for WalkTo {
         let target_point = Point3::new(self.target.position.x, self.target.position.y, 0.0);
 
         let look_at = context.pose.get_look_at_absolute(&target_point);
-        control
-            .nao_manager
-            .set_head_target(look_at, Duration::from_millis(500));
+        control.nao_manager.set_head_target(
+            look_at,
+            Duration::from_millis(500),
+            Priority::default(),
+            0.2,
+        );
 
         if control
             .step_planner

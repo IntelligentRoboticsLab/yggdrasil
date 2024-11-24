@@ -39,9 +39,12 @@ impl Behavior for WalkToSet {
                 .pose
                 .get_look_at_absolute(&Point3::new(set_position.x, set_position.y, RobotPose::CAMERA_HEIGHT));
 
-        control
-            .nao_manager
-            .set_head_target(look_at, Duration::from_millis(500));
+        control.nao_manager.set_head_target(
+            look_at,
+            Duration::from_millis(500),
+            Priority::default(),
+            0.4,
+        );
 
         let target = Target {
             position: set_robot_position.isometry.translation.vector.into(),
