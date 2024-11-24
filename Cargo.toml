@@ -51,13 +51,19 @@ yggdrasil = { path = "yggdrasil" }
 bifrost = { path = "crates/bifrost" }
 heimdall = { path = "crates/heimdall" }
 ml = { path = "crates/ml" }
+nilfheim = { path = "crates/nilfheim" }
 odal = { path = "crates/odal" }
 spatial = { path = "crates/spatial" }
 tasks = { path = "crates/tasks" }
 
+# tools
+simulation = { path = "tools/simulation" }
+sindri = { path = "tools/sindri" }
+
 # external crates
 apodize = "1.0.0"
 async-std = "1.13.0"
+async-trait = "0.1.83"
 bevy = { version = "0.14.2", default-features = false }
 byteorder = "1.5.0"
 cargo_toml = "0.20.5"
