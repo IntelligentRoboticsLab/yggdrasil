@@ -1,3 +1,7 @@
+//! # Filter
+//!
+//! This crate provides a set of filtering algorithms and utilities to help you filter your noisy ahh data.
+
 use std::{fmt::Debug, marker::PhantomData};
 
 use nalgebra::{Cholesky, SMatrix, SVector};
