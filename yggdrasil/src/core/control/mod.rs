@@ -1,4 +1,3 @@
-pub mod connect;
 pub mod receive;
 pub mod transmit;
 
@@ -31,13 +30,6 @@ impl Plugin for ControlPlugin {
         app.init_resource::<DebugEnabledSystems>()
             .add_event::<ViewerConnectedEvent>()
             .add_systems(Startup, setup)
-            // .add_systems(
-            //     Update,
-            //     (listen_for_connection, setup_new_connection)
-            //         .chain()
-            //         .run_if(not(resource_exists::<ControlDataStream>
-            //             .and_then(task_finished::<ControlDataStream>))),
-            // )
             .add_systems(
                 Update,
                 (handle_notify_on_connection, debug_systems_on_connection)
@@ -47,36 +39,8 @@ impl Plugin for ControlPlugin {
                 Update,
                 handle_viewer_message.run_if(resource_exists::<ViewerMessageReceiver>),
             );
-        // .add_systems(
-        //     Update,
-        //     send_current_state
-        //         .run_if(resource_exists::<ControlAppHandle<RobotMessage, ViewerMessage>>),
-        // );
     }
 }
-
-// #[derive(Resource, Clone)]
-// pub struct ControlListenSocket {
-//     socket: Arc<TcpListener>,
-// }
-
-// impl ControlListenSocket {
-//     async fn bind() -> Result<Self> {
-//         let socket_addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, CONTROL_PORT);
-//         let socket = TcpListener::bind(socket_addr).await.into_diagnostic()?;
-
-//         let socket = Arc::new(socket);
-
-//         Ok(Self { socket })
-//     }
-// }
-
-// fn _setup(mut commands: Commands) {
-//     let io = IoTaskPool::get();
-//     let control_listen_socket = block_on(io.spawn(ControlListenSocket::bind()))
-//         .expect("Failed to bind control listen socket");
-//     commands.insert_resource(control_listen_socket);
-// }
 
 fn setup(mut commands: Commands) {
     let socket_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, CONTROL_PORT));
@@ -90,7 +54,7 @@ fn setup(mut commands: Commands) {
     let mut handle = block_on(io.spawn(async move {
         let app = ControlApp::bind(socket_addr, tx_on_connection)
             .await
-            .expect(&format!("Failed to bind controlapp to {:?}", socket_addr));
+            .unwrap_or_else(|_| panic!("Failed to bind control app to {socket_addr:?}"));
 
         app.run()
     }));

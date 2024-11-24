@@ -11,6 +11,7 @@ use control::{
 };
 
 const BYTES_IN_MB: i64 = 1_000_000;
+const MEMORY_FRACTION_DEFAULT: f32 = 0.75;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -40,7 +41,7 @@ async fn main() -> Result<()> {
         re_memory::MemoryLimit::parse(&max_memory)
             .unwrap_or_else(|_| panic!("Failed to parse `{}` to a `MemoryLimit`", max_memory))
     } else {
-        re_memory::MemoryLimit::from_fraction_of_total(0.75)
+        re_memory::MemoryLimit::from_fraction_of_total(MEMORY_FRACTION_DEFAULT)
     };
 
     tracing::info!(
@@ -57,7 +58,6 @@ async fn main() -> Result<()> {
     let viewer = ControlViewer::connect(socket_addr)
         .await
         .into_diagnostic()?;
-
 
     let app = App::new(startup_options, viewer);
     app.run().await?;

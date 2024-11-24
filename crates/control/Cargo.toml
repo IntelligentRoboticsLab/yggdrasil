@@ -1,7 +1,11 @@
 [package]
-edition = "2021"
 name = "control"
-version = "0.1.0"
+
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [dependencies]
 bifrost = { workspace = true }

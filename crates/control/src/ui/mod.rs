@@ -4,14 +4,43 @@ use std::sync::{Arc, RwLock};
 
 use re_viewer::external::egui::{self, Frame};
 use rerun::external::ecolor::Color32;
+use style::FrameStyleMap;
 
 use crate::{
-    connection::{
-        protocol::ViewerMessage,
-        viewer::ControlViewerHandle,
-    },
+    connection::{protocol::ViewerMessage, viewer::ControlViewerHandle},
     control::ControlStates,
 };
+
+pub fn resource_ui(
+    ui: &mut egui::Ui,
+    states: Arc<RwLock<ControlStates>>,
+    handle: &ControlViewerHandle,
+    frame_styles: &FrameStyleMap,
+) {
+    // Sort the names to keep the resources in a fixed order
+    let mut resource_names: Vec<_>;
+    {
+        let states = states.read().expect("Failed to lock states");
+        resource_names = states.robot_resources.0.keys().cloned().collect();
+    }
+    resource_names.sort();
+
+    for name in resource_names {
+        let mut current_states = states.write().expect("Failed to lock states");
+        if let Some(data) = current_states.robot_resources.0.get_mut(&name) {
+            let followup_action = add_editable_resource(
+                ui,
+                &name,
+                data,
+                Arc::clone(&states),
+                frame_styles.get_or_default("override_button".to_string()),
+            );
+            if let Some(action) = followup_action {
+                handle.send(action).unwrap();
+            }
+        }
+    }
+}
 
 pub fn add_editable_resource(
     ui: &mut egui::Ui,
@@ -27,10 +56,8 @@ pub fn add_editable_resource(
 
     ui.vertical(|ui| {
         let mut resource_name_color = Color32::GRAY;
-        if let Some(changed_resource) = changed_resources.get(resource_name) {
-            if *changed_resource {
-                resource_name_color = Color32::LIGHT_RED;
-            }
+        if let Some(true) = changed_resources.get(resource_name) {
+            resource_name_color = Color32::LIGHT_RED;
         }
         ui.label(
             egui::RichText::new(resource_name)

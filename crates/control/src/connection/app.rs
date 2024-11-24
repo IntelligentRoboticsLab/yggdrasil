@@ -24,7 +24,7 @@ pub struct ControlApp {
     listener: TcpListener,
     handlers: Arc<RwLock<Vec<UnboundedSender<ViewerMessage>>>>,
     clients: Arc<Mutex<HashMap<Uuid, UnboundedSender<RobotMessage>>>>,
-    new_clients: UnboundedSender<NotifyConnection>,
+    new_connection_notifyer: UnboundedSender<NotifyConnection>,
 }
 
 impl ControlApp {
@@ -37,7 +37,7 @@ impl ControlApp {
             listener,
             handlers: Arc::new(RwLock::new(Vec::new())),
             clients: Arc::new(Mutex::new(HashMap::new())),
-            new_clients,
+            new_connection_notifyer: new_clients,
         })
     }
 
@@ -74,7 +74,7 @@ impl ControlApp {
     async fn handle_connection(&self, socket: TcpStream) {
         let (read_half, write_half) = socket.split();
         let (tx, rx) = mpsc::unbounded();
-        tracing::info!("Handling connection in app");
+
         // Add the client to the list
         let id = Uuid::new_v4();
         {
@@ -86,11 +86,11 @@ impl ControlApp {
         let reader_task = spawn(async { Self::handle_reader(read_half, handlers).await });
         let writer_task = spawn(async { Self::handle_writer(write_half, rx).await });
 
+        // Notify to a bevy system that a new connection is made
         let msg = NotifyConnection { id };
-        self.new_clients
+        self.new_connection_notifyer
             .unbounded_send(msg)
             .expect("Failed to send message");
-        tracing::info!("Message sending done!");
 
         let _ = futures::join!(reader_task, writer_task);
 
@@ -114,9 +114,7 @@ impl ControlApp {
                 }
                 Ok(n) => match &ViewerMessage::decode(&buf[..n]) {
                     Ok(msg) => {
-                        tracing::info!("Received message: {:?}", msg);
-
-                        let handlers = handlers.read().expect("failed to get reader");
+                        let handlers = handlers.read().expect("failed to lock handlers");
 
                         for handler in handlers.iter() {
                             handler
@@ -142,7 +140,6 @@ impl ControlApp {
     ) {
         while let Some(message) = rx.next().await {
             if matches!(message, RobotMessage::Disconnect) {
-                tracing::info!("Received disconnect message, closing connection");
                 break;
             }
 
@@ -150,7 +147,6 @@ impl ControlApp {
             let mut data = vec![];
             match message.encode(&mut data) {
                 Ok(_) => {
-                    tracing::info!("Writing all info");
                     if write_half.write_all(&data).await.is_err() {
                         tracing::error!("Failed to send response to client");
                         break;
@@ -172,18 +168,6 @@ impl ControlApp {
         handlers.push(handler);
         Ok(())
     }
-
-    // pub async fn broadcast(&self, message: T) -> Result<()>
-    // where
-    //     T: Message,
-    // {
-    //     let clients = self.clients.lock().await;
-    //     clients.iter().for_each(|mut client| {
-    //         let _ = client.send(message.clone());
-    //     });
-
-    //     Ok(())
-    // }
 }
 
 #[derive(Resource, Clone)]
@@ -199,17 +183,18 @@ impl ControlAppHandle {
         self.app.add_handler(handler)
     }
 
+    /// Send a `RobotMessage` to all connected clients
     pub async fn broadcast(&self, message: RobotMessage) {
         let clients = self.app.clients.lock().await;
 
         clients.iter().for_each(|(_id, client)| {
-            tracing::info!("Sending message to a client");
             client
                 .unbounded_send(message.clone())
                 .expect("Failed to send message");
         });
     }
 
+    /// Send a `RobotMessage` to a specific connected client
     pub async fn send(&self, message: RobotMessage, client_id: Uuid) {
         let clients = self.app.clients.lock().await;
 

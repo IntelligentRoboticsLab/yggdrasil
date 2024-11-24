@@ -1,9 +1,9 @@
+use crate::cargo;
 use clap::Parser;
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
-use std::{net::Ipv4Addr, process::Stdio, time::Duration};
 use miette::{IntoDiagnostic, Result};
-use crate::cargo;
+use std::{net::Ipv4Addr, process::Stdio, time::Duration};
 use tokio::process::Command;
 
 const CONTROL_BINARY_PATH: &str = "./target/release/control";
@@ -39,7 +39,7 @@ pub async fn has_rerun() -> bool {
     get_rerun_version().await.is_ok_and(|success| success)
 }
 
-/// Compiles the re_control binary
+/// Compiles the `re_control` binary
 pub async fn build_rerun_control() -> Result<()> {
     let features = vec![];
     let envs = Vec::new();
@@ -54,7 +54,7 @@ pub async fn build_rerun_control() -> Result<()> {
         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
     );
 
-    pb.set_prefix(format!("{}", "Compiling"));
+    pb.set_prefix("Compiling".to_string());
     pb.set_message(format!(
         "{} {}{}",
         "(release:".dimmed(),

@@ -14,11 +14,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(
-        startup_options: StartupOptions,
-        viewer: ControlViewer,
-
-    ) -> Self {
+    pub fn new(startup_options: StartupOptions, viewer: ControlViewer) -> Self {
         App {
             startup_options,
             viewer,
@@ -52,7 +48,8 @@ impl App {
                 Box::new(Control::new(app, handle))
             }),
             None,
-        ).into_diagnostic()?;
+        )
+        .into_diagnostic()?;
 
         Ok(())
     }

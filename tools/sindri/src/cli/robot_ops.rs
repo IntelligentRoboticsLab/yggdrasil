@@ -24,7 +24,10 @@ use crate::{
     error::{Error, Result},
 };
 
-use super::{rerun_control::RerunArgs, showtime::{DEFAULT_PLAYER_NUMBER, DEFAULT_TEAM_NUMBER}};
+use super::{
+    rerun_control::RerunArgs,
+    showtime::{DEFAULT_PLAYER_NUMBER, DEFAULT_TEAM_NUMBER},
+};
 
 const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
 const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";

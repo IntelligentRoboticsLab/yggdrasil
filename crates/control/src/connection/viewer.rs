@@ -16,7 +16,6 @@ use tokio::sync::Notify;
 
 use super::protocol::{HandlerFn, RobotMessage, ViewerMessage};
 
-
 pub struct ControlViewer {
     address: SocketAddrV4,
     tx: UnboundedSender<ViewerMessage>,
@@ -39,13 +38,6 @@ impl ControlViewer {
         })
     }
 
-    // pub fn handle(&self) -> ControlViewerHandle<T, U> {
-    //     ControlViewerHandle {
-    //         tx: self.tx.clone(),
-    //         app: Arc::clone(self),
-    //     }
-    // }
-
     pub async fn run(self) -> ControlViewerHandle {
         tracing::info!("Starting client");
 
@@ -64,7 +56,7 @@ impl ControlViewer {
 
         tokio::spawn(async move {
             loop {
-                match TcpStream::connect(app.address.clone()).await {
+                match TcpStream::connect(app.address).await {
                     Ok(socket) => {
                         app.handle_connection(socket).await;
                     }
@@ -77,9 +69,7 @@ impl ControlViewer {
             }
         });
 
-        let viewer_handle = ControlViewerHandle { app: handle };
-
-        viewer_handle
+        ControlViewerHandle { app: handle }
     }
 
     async fn handle_connection(&self, socket: TcpStream) {
@@ -134,7 +124,10 @@ impl ControlViewer {
         tracing::info!("Global message channel closed");
     }
 
-    async fn handle_read(mut read: ReadHalf<TcpStream>, handlers: Arc<RwLock<Vec<HandlerFn<RobotMessage>>>>) {
+    async fn handle_read(
+        mut read: ReadHalf<TcpStream>,
+        handlers: Arc<RwLock<Vec<HandlerFn<RobotMessage>>>>,
+    ) {
         let mut buf = [0; 1024];
         loop {
             match read.read(&mut buf).await {
@@ -144,11 +137,8 @@ impl ControlViewer {
                 }
                 Ok(n) => match RobotMessage::decode(&buf[..n]) {
                     Ok(message) => {
-                        // we received a message from the server, we can process it here if needed
-                        tracing::info!("Received message from server: {:?}", message);
                         let handlers = handlers.read().expect("failed to get reader");
                         for handler in handlers.iter() {
-                            tracing::info!("Handle handler");
                             handler(&message);
                         }
                     }
@@ -190,7 +180,7 @@ impl ControlViewer {
             let mut data = vec![];
             if message.encode(&mut data).is_ok() {
                 if let Err(e) = write.write_all(&data).await {
-                    tracing::info!("Failed to send message: {:?}, error: {:?}", message, e);
+                    tracing::error!("Failed to send message: {:?}, error: {:?}", message, e);
                     break;
                 }
             }
