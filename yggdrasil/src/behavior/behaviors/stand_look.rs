@@ -1,7 +1,9 @@
 use std::time::Duration;
 
 use crate::{
-    behavior::engine::{Behavior, Context, Control}, localization::RobotPose, nao::Priority
+    behavior::engine::{Behavior, Context, Control},
+    localization::RobotPose,
+    nao::Priority,
 };
 use nalgebra::{Point2, Point3};
 

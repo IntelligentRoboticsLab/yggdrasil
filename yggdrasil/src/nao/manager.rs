@@ -14,8 +14,6 @@ use nidhogg::{
     },
     NaoControlMessage, NaoState,
 };
-use rerun::external::{arrow2::io::print, re_sdk_comms::PROTOCOL_HEADER};
-
 /// The stiffness constant for the "unstiff"/"floppy" state for robot joints.
 const STIFFNESS_UNSTIFF: f32 = -1.0;
 /// Stiffness for the hip joints during sitting mode to prevent robot falling over backwards.
@@ -209,7 +207,7 @@ impl HeadState {
                 priority,
                 stiffness,
             } => {
-                // 
+                //
                 if timestep >= 1.0 {
                     HeadState::None
                 } else {
