@@ -94,7 +94,7 @@ fn main() {
     for i in 0..NUM_SAMPLES {
         let prev = x_true
             .last()
-            .cloned()
+            .copied()
             .unwrap_or_else(|| Pose2::new(1.0, 2.0, 0.0));
 
         let offset = Pose2::new(
@@ -106,7 +106,7 @@ fn main() {
         // true measurement
         let measurement = offset * prev;
 
-        x_true.push(measurement.clone());
+        x_true.push(measurement);
 
         let noisy_offset = Pose2::new(
             rng.gen_range(-1.0..1.0) * cov[(0, 0)],
@@ -116,7 +116,7 @@ fn main() {
 
         let noisy_prev = x_noisy
             .last()
-            .cloned()
+            .copied()
             .unwrap_or_else(|| Pose2::new(1.0, 2.0, 0.0));
 
         // noisy, dead reckoning measurement
