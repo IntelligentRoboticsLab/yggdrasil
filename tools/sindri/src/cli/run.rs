@@ -12,7 +12,7 @@ use crate::{
     config::SindriConfig,
 };
 
-use super::rerun_control::{build_rerun_control, has_rerun, spawn_rerun_viewer};
+use super::re_control::{build_rerun_control, has_rerun, spawn_rerun_viewer};
 
 const DEFAULT_TRACY_PORT: u16 = 8086;
 

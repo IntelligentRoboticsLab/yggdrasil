@@ -7,14 +7,12 @@ use bevy::{
     prelude::*,
     tasks::{block_on, IoTaskPool},
 };
-use control::{
-    connection::{
-        app::ControlApp,
-        protocol::{ViewerMessage, CONTROL_PORT},
-    },
-    debug_system::DebugEnabledSystems,
-};
 use futures::channel::mpsc::unbounded;
+use re_control_comms::{
+    debug_system::DebugEnabledSystems,
+    app::ControlApp,
+    protocol::{ViewerMessage, CONTROL_PORT},
+};
 
 use receive::{
     handle_notify_on_connection, handle_viewer_message, NotifyConnectionReceiver,

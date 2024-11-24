@@ -1,9 +1,10 @@
 use std::net::Ipv4Addr;
 
 use miette::{IntoDiagnostic, Result};
+use re_control_comms::viewer::ControlViewer;
 use re_viewer::StartupOptions;
 
-use crate::{connection::viewer::ControlViewer, control::Control};
+use crate::control::Control;
 
 // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
 const APP_ENV: &str = "Control Wrapper";

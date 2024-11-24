@@ -1,10 +1,10 @@
 use std::{collections::HashMap, time::Duration};
 
+use super::ViewerConnectedEvent;
 use bevy::{prelude::*, tasks::IoTaskPool};
-use control::connection::{app::ControlAppHandle, protocol::RobotMessage};
-use serde::{Deserialize, Serialize};
-
-use super::{DebugEnabledSystems, ViewerConnectedEvent};
+use re_control_comms::{
+    app::ControlAppHandle, debug_system::DebugEnabledSystems, protocol::RobotMessage,
+};
 
 const SEND_STATE_DELAY: Duration = Duration::from_millis(2_000);
 
@@ -17,13 +17,6 @@ impl Default for ControlRobotMessageDelay {
     }
 }
 
-#[derive(Resource, Serialize, Deserialize, Debug)]
-pub enum ControlRobotMessage {
-    CloseStream,
-    Resources(HashMap<String, String>),
-    DebugEnabledSystems(DebugEnabledSystems),
-}
-
 pub fn debug_systems_on_connection(
     mut ev_viewer_connected: EventReader<ViewerConnectedEvent>,
     debug_enabled_resources: Res<DebugEnabledSystems>,
@@ -31,7 +24,7 @@ pub fn debug_systems_on_connection(
 ) {
     for ev in ev_viewer_connected.read() {
         let viewer_id = ev.0;
-        let msg = RobotMessage::DebugEnabledSystems(debug_enabled_resources.clone());
+        let msg = RobotMessage::DebugEnabledSystems(debug_enabled_resources.systems.clone());
         let io = IoTaskPool::get();
 
         let handle = control_handle.clone();

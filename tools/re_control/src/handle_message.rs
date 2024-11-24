@@ -1,6 +1,8 @@
 use std::sync::{Arc, RwLock};
 
-use crate::{connection::protocol::RobotMessage, control::ControlStates};
+use re_control_comms::{debug_system::DebugEnabledSystems, protocol::RobotMessage};
+
+use crate::control::ControlStates;
 
 pub fn handle_message(message: &RobotMessage, states: Arc<RwLock<ControlStates>>) {
     match message {
@@ -12,7 +14,7 @@ pub fn handle_message(message: &RobotMessage, states: Arc<RwLock<ControlStates>>
                 .write()
                 .expect("Failed to lock states")
                 .debug_enabled_systems_view
-                .update(enabled_systems.clone());
+                .update(DebugEnabledSystems::from_map(enabled_systems.clone()));
         }
         RobotMessage::Resources(_resources) => {
             tracing::warn!("Got a resource update but is unhandled")

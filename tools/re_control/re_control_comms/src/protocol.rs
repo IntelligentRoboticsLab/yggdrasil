@@ -2,8 +2,6 @@ use std::{collections::HashMap, fmt::Debug};
 
 use bifrost::serialization::{Decode, Encode};
 
-use crate::debug_system::DebugEnabledSystems;
-
 pub type HandlerFn<T> = Box<dyn Fn(&T) + Send + Sync + 'static>;
 
 pub const CONTROL_PORT: u16 = 40001;
@@ -12,7 +10,7 @@ pub const CONTROL_PORT: u16 = 40001;
 pub enum RobotMessage {
     Disconnect,
     Resources(HashMap<String, String>),
-    DebugEnabledSystems(DebugEnabledSystems),
+    DebugEnabledSystems(HashMap<String, bool>),
 }
 
 #[derive(Encode, Decode, Debug, Clone)]

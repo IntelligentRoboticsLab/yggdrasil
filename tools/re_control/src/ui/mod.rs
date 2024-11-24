@@ -6,10 +6,9 @@ use re_viewer::external::egui::{self, Frame};
 use rerun::external::ecolor::Color32;
 use style::FrameStyleMap;
 
-use crate::{
-    connection::{protocol::ViewerMessage, viewer::ControlViewerHandle},
-    control::ControlStates,
-};
+use re_control_comms::{protocol::ViewerMessage, viewer::ControlViewerHandle};
+
+use crate::control::ControlStates;
 
 pub fn resource_ui(
     ui: &mut egui::Ui,

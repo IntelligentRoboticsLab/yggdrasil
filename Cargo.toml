@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*", "tools/sindri", "yggdrasil"]
+members = ["crates/*", "tools/sindri", "tools/re_control", "yggdrasil"]
 resolver = "2"
 
 [workspace.package]
@@ -49,11 +49,12 @@ yggdrasil = { path = "yggdrasil" }
 
 # yggdrasil libraries
 bifrost = { path = "crates/bifrost" }
-control = { path = "crates/control" }
 heimdall = { path = "crates/heimdall" }
 ml = { path = "crates/ml" }
 nilfheim = { path = "crates/nilfheim" }
 odal = { path = "crates/odal" }
+re_control = { path = "tools/re_control" }
+re_control_comms = { path = "tools/re_control/re_control_comms" }
 spatial = { path = "crates/spatial" }
 tasks = { path = "crates/tasks" }
 

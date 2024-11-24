@@ -2,13 +2,10 @@ use std::net::SocketAddrV4;
 
 use clap::Parser;
 use miette::{IntoDiagnostic, Result};
+use re_control::{app::App, cli::Cli};
 use re_viewer::external::{re_log, re_memory};
 
-use control::{
-    app::App,
-    cli::Cli,
-    connection::{protocol::CONTROL_PORT, viewer::ControlViewer},
-};
+use re_control_comms::{protocol::CONTROL_PORT, viewer::ControlViewer};
 
 const BYTES_IN_MB: i64 = 1_000_000;
 const MEMORY_FRACTION_DEFAULT: f32 = 0.75;

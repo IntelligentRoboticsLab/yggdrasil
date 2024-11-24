@@ -1,5 +1,5 @@
 use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
-use control::debug_system::DebugEnabledSystems;
+use re_control_comms::debug_system::DebugEnabledSystems;
 
 pub fn debug_enabled(system_name: impl ToString) -> impl Condition<()> {
     let name = system_name.to_string();

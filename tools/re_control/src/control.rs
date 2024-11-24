@@ -4,14 +4,15 @@ use std::{
     time::Instant,
 };
 
+use re_control_comms::{
+    debug_system::DebugEnabledSystems, protocol::RobotMessage, viewer::ControlViewerHandle,
+};
 use re_viewer::external::{
     eframe,
     egui::{self, ScrollArea},
 };
 
 use crate::{
-    connection::{protocol::RobotMessage, viewer::ControlViewerHandle},
-    debug_system::DebugEnabledSystems,
     handle_message::handle_message,
     resource::RobotResources,
     ui::{

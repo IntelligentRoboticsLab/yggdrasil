@@ -6,8 +6,8 @@ use miette::{IntoDiagnostic, Result};
 use std::{net::Ipv4Addr, process::Stdio, time::Duration};
 use tokio::process::Command;
 
-const CONTROL_BINARY_PATH: &str = "./target/release/control";
-const CONTROL_BINARY: &str = "control";
+const CONTROL_BINARY_PATH: &str = "./target/release/re_control";
+const CONTROL_BINARY: &str = "re_control";
 
 #[derive(Clone, Debug, Parser)]
 pub struct RerunArgs {

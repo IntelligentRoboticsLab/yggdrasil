@@ -25,7 +25,7 @@ use crate::{
 };
 
 use super::{
-    rerun_control::RerunArgs,
+    re_control::RerunArgs,
     showtime::{DEFAULT_PLAYER_NUMBER, DEFAULT_TEAM_NUMBER},
 };
 

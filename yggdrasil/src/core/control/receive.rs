@@ -1,8 +1,6 @@
 use bevy::prelude::*;
-use control::{
-    connection::{app::NotifyConnection, protocol::ViewerMessage},
-    debug_system::DebugEnabledSystems,
-};
+use re_control_comms::{app::NotifyConnection, protocol::ViewerMessage, debug_system::DebugEnabledSystems};
+
 use futures::channel::mpsc::UnboundedReceiver;
 
 use super::ViewerConnectedEvent;

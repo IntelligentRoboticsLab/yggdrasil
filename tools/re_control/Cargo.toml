@@ -1,5 +1,5 @@
 [package]
-name = "control"
+name = "re_control"
 
 authors.workspace = true
 categories.workspace = true
@@ -17,6 +17,7 @@ clap = { workspace = true, features = ["derive"] }
 futures = { workspace = true }
 miette = { workspace = true }
 mimalloc = { workspace = true }
+re_control_comms = { path = "re_control_comms" }
 re_crash_handler = { workspace = true }
 re_sdk_comms = { workspace = true, features = ["server"] }
 re_smart_channel = { workspace = true }
@@ -26,11 +27,10 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = [
   "macros",
+  "sync",
+  "rt",
   "rt-multi-thread",
   "time",
-  "net",
-  "io-util",
-  "sync",
 ] }
 tracing = { workspace = true }
 tracing-log = { workspace = true }
