@@ -130,7 +130,7 @@ fn stand_phase(
         .build();
 
     nao_manager.set_legs(leg_positions, leg_stiffness, Priority::Medium);
-    *command = WalkCommand::Stand((hip_height + 0.0015).min(0.20));
+    *command = WalkCommand::Stand((hip_height + 0.0015).min(0.18));
 
     let robot_to_foot = Isometry3::from_parts(
         Translation3::new(0., -0.05, 0.225),
