@@ -38,9 +38,11 @@ impl Plugin for BallDetectionPlugin {
                 init_subconfigs,
                 setup_ball_debug_logging::<Top>,
                 setup_ball_debug_logging::<Bottom>,
+                setup_3d_ball_debug_logging,
             ),
         )
-        .add_systems(Update, detected_ball_eye_color);
+        .add_systems(Update, detected_ball_eye_color)
+        .add_systems(PostUpdate, log_3d_balls);
     }
 }
 
@@ -109,5 +111,30 @@ fn detected_ball_eye_color(
         }
     } else {
         nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
+    }
+}
+
+fn setup_3d_ball_debug_logging(dbg: DebugContext) {
+    dbg.log_static(
+        "balls/best",
+        &rerun::Asset3D::from_file("./assets/rerun/ball.glb")
+            .expect("failed to load ball model")
+            .with_media_type(rerun::MediaType::glb()),
+    );
+
+    dbg.log_static("balls/best", &rerun::ViewCoordinates::FLU);
+}
+
+fn log_3d_balls(dbg: DebugContext, top_balls: Res<Balls<Top>>, bottom_balls: Res<Balls<Bottom>>) {
+    let most_confident_ball = bottom_balls
+        .most_confident_ball()
+        .map(|b| b.position)
+        .or(top_balls.most_confident_ball().map(|b| b.position));
+
+    if let Some(pos) = most_confident_ball {
+        dbg.log(
+            "balls/best",
+            &rerun::components::Translation3D((pos.coords.x, pos.coords.y, 0.05).into()),
+        );
     }
 }
