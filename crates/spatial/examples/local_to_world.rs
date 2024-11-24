@@ -17,7 +17,7 @@ fn main() {
     let local_to_world: Isometry3<LocalSpace, WorldSpace> =
         na::Isometry3::new(na::vector![1., 2., 3.], na::vector![0., 0., 0.]).into();
 
-    let x = spatial::point3!(as LocalSpace, 1., 0., 0.);
+    let x = spatial::point3!(LocalSpace, 1., 0., 0.);
     let y: Point3<WorldSpace> = local_to_world.transform(&x);
 
     println!("{x:?} is {y:?}");

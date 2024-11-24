@@ -57,10 +57,9 @@ meshes! {($($name:ident, $_:ty)*) => {
 }}
 
 fn setup_meshes(dbg: DebugContext) {
-    dbg.log_component_batches(
+    dbg.log_static(
         "nao",
-        true,
-        [&rerun::components::AxisLength(rerun::Float32(0.)) as _],
+	    &rerun::components::AxisLength(rerun::Float32(0.)),
     );
 
     meshes! {($($name:ident, $_:ty)*) => {$(
