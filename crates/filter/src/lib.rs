@@ -176,14 +176,14 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
 
         // apply the motion model to each sigma point
         let transformed_sigma_points =
-            self.transform_sigma_points(sigma_points, |s| transition_function(s.into()).into());
+            Self::transform_sigma_points(sigma_points, |s| transition_function(s.into()).into());
 
         let (mean, covariance) = unscented_transform::<D_STATE, N_SIGMAS, S>(
             transformed_sigma_points,
             transition_noise,
             self.sigmas.w_m,
             self.sigmas.w_c,
-        )?;
+        );
 
         self.state = mean;
         self.covariance = covariance;
@@ -192,7 +192,6 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
     }
 
     fn transform_sigma_points<const D_FROM: usize, const D_TO: usize>(
-        &self,
         sigma_points: StateMatrix<D_FROM, N_SIGMAS>,
         transform: impl Fn(StateVector<D_FROM>) -> StateVector<D_TO>,
     ) -> StateMatrix<D_TO, N_SIGMAS> {
@@ -216,18 +215,18 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
     {
         let measurement = measurement.into();
 
-        let sigma_points = self.sigmas.calculate(self.state.into(), self.covariance)?;
+        let sigma_points = self.sigmas.calculate(self.state, self.covariance)?;
 
         // apply the measurement model to each sigma point
         let transformed_sigma_points =
-            self.transform_sigma_points(sigma_points, |s| measurement_function(s.into()).into());
+            Self::transform_sigma_points(sigma_points, |s| measurement_function(s.into()).into());
 
         let (mean, covariance) = unscented_transform::<D_MEASUREMENT, N_SIGMAS, M>(
             transformed_sigma_points,
             measurement_noise,
             self.sigmas.w_m,
             self.sigmas.w_c,
-        )?;
+        );
 
         let cross_covariance: CrossCovarianceMatrix<D_STATE, D_MEASUREMENT> = {
             let mut cross_covariance = CrossCovarianceMatrix::<D_STATE, D_MEASUREMENT>::zeros();
@@ -266,7 +265,7 @@ fn unscented_transform<const D_STATE: usize, const N_SIGMAS: usize, S: StateTran
     mut covariance: CovarianceMatrix<D_STATE>,
     w_m: SVector<Weight, N_SIGMAS>,
     w_c: SVector<Weight, N_SIGMAS>,
-) -> Result<(StateVector<D_STATE>, CovarianceMatrix<D_STATE>)> {
+) -> (StateVector<D_STATE>, CovarianceMatrix<D_STATE>) {
     let mean = S::into_state_mean(w_m, transformed_sigma_points);
 
     for (&weight, sigma_point) in w_c.iter().zip(transformed_sigma_points.column_iter()) {
@@ -274,7 +273,7 @@ fn unscented_transform<const D_STATE: usize, const N_SIGMAS: usize, S: StateTran
         covariance += weight * residual * residual.transpose();
     }
 
-    Ok((mean, covariance))
+    (mean, covariance)
 }
 
 /// Trait that describes how to transform state in the Unscented Kalman Filter
