@@ -210,7 +210,7 @@ impl HeadState {
                 stiffness,
             } => {
                 // 
-                if timestep >= 0.95 {
+                if timestep >= 1.0 {
                     HeadState::None
                 } else {
                     HeadState::Moving {

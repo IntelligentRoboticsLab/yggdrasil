@@ -17,6 +17,9 @@ const GOAL_KEEPER_PRE_SET_POS: Target = Target {
     rotation: None,
 };
 
+const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
+const HEAD_STIFFNESS: f32 = 0.2;
+
 /// Walk to the set position of the robot.
 /// Only the Goalkeeper will first walk to the pre-set position before walking to the set position.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
@@ -41,9 +44,9 @@ impl Behavior for WalkToSet {
 
         control.nao_manager.set_head_target(
             look_at,
-            Duration::from_millis(500),
+            HEAD_ROTATION_TIME,
             Priority::default(),
-            0.4,
+            HEAD_STIFFNESS,
         );
 
         let target = Target {

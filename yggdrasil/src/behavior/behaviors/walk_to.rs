@@ -8,6 +8,9 @@ use crate::{
     nao::Priority,
 };
 
+const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
+const HEAD_STIFFNESS: f32 = 0.2;
+
 /// Walk to a target position using the step planner, whilst looking at the target.
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct WalkTo {
@@ -21,9 +24,9 @@ impl Behavior for WalkTo {
         let look_at = context.pose.get_look_at_absolute(&target_point);
         control.nao_manager.set_head_target(
             look_at,
-            Duration::from_millis(500),
+            HEAD_ROTATION_TIME,
             Priority::default(),
-            0.2,
+            HEAD_STIFFNESS,
         );
 
         if control
