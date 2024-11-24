@@ -9,7 +9,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Covariance matrix is not definite-positive")]
+    #[error("Covariance matrix is not positive-definite")]
     Cholesky,
     #[error("Matrix is not invertible")]
     Inversion,
