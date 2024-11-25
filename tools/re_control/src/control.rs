@@ -5,7 +5,9 @@ use std::{
 };
 
 use re_control_comms::{
-    debug_system::DebugEnabledSystems, protocol::RobotMessage, viewer::ControlViewerHandle,
+    debug_system::DebugEnabledSystems,
+    protocol::RobotMessage,
+    viewer::{ControlViewer, ControlViewerHandle},
 };
 use re_viewer::external::{
     eframe,
@@ -72,22 +74,25 @@ impl eframe::App for Control {
 }
 
 impl Control {
-    pub fn new(app: re_viewer::App, handle: ControlViewerHandle) -> Self {
-        let mut control = Control {
-            app,
-            states: Arc::new(RwLock::new(ControlStates::default())),
-            handle: handle.clone(),
-            frame_styles: FrameStyleMap::default(),
-        };
+    pub fn new(app: re_viewer::App, control_viewer: ControlViewer) -> Self {
+        let states = Arc::new(RwLock::new(ControlStates::default()));
 
-        let states = Arc::clone(&control.states);
+        let handler_states = Arc::clone(&states);
 
-        control
-            .handle
-            .add_handler(move |msg: &RobotMessage| handle_message(msg, Arc::clone(&states)))
+        control_viewer
+            .add_handler(Box::new(move |msg: &RobotMessage| {
+                handle_message(msg, Arc::clone(&handler_states))
+            }))
             .expect("Failed to add handler");
 
-        control
+        let handle = control_viewer.run();
+
+        Control {
+            app,
+            states: Arc::clone(&states),
+            handle: handle.clone(),
+            frame_styles: FrameStyleMap::default(),
+        }
     }
 
     fn ui(&mut self, ui: &mut egui::Ui) {

@@ -23,7 +23,7 @@ impl App {
     }
 
     pub async fn run(self) -> Result<()> {
-        let handle = self.viewer.run().await;
+        // let handle = self.viewer.run().await;
 
         let app_env = re_viewer::AppEnvironment::Custom(APP_ENV.to_string());
 
@@ -46,7 +46,7 @@ impl App {
                     cc.storage,
                 );
                 app.add_receiver(rx);
-                Box::new(Control::new(app, handle))
+                Box::new(Control::new(app, self.viewer))
             }),
             None,
         )

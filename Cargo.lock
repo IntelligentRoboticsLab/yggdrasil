@@ -6753,6 +6753,7 @@ dependencies = [
  "bifrost",
  "futures",
  "miette",
+ "socket2",
  "tokio",
  "tracing",
  "uuid",

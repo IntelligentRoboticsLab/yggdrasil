@@ -9,6 +9,7 @@ pub struct DebugEnabledSystems {
 }
 
 impl DebugEnabledSystems {
+    #[must_use]
     pub fn from_map(map: HashMap<String, bool>) -> Self {
         DebugEnabledSystems { systems: map }
     }

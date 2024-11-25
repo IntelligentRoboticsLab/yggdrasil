@@ -52,9 +52,7 @@ async fn main() -> Result<()> {
     };
 
     let socket_addr = SocketAddrV4::new(args.robot_ip, CONTROL_PORT);
-    let viewer = ControlViewer::connect(socket_addr)
-        .await
-        .into_diagnostic()?;
+    let viewer = ControlViewer::from_addr(socket_addr).into_diagnostic()?;
 
     let app = App::new(startup_options, viewer);
     app.run().await?;

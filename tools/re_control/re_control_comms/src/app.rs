@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 
-use async_std::net::{TcpListener, TcpStream};
+use async_std::net::TcpStream;
 use async_std::sync::Mutex;
 use async_std::task::spawn;
 use bevy::prelude::Resource;
@@ -12,27 +12,40 @@ use futures::channel::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use futures::io::{ReadHalf, WriteHalf};
 use futures::{AsyncReadExt, AsyncWriteExt, StreamExt};
 use miette::{IntoDiagnostic, Result};
+use socket2::{Domain, Protocol, Socket, Type};
 use uuid::Uuid;
 
 use super::protocol::{RobotMessage, ViewerMessage};
+
+const LISTEN_BACKLOG: i32 = 1024;
 
 pub struct NotifyConnection {
     pub id: Uuid,
 }
 
 pub struct ControlApp {
-    listener: TcpListener,
+    listener: async_std::net::TcpListener,
     handlers: Arc<RwLock<Vec<UnboundedSender<ViewerMessage>>>>,
     clients: Arc<Mutex<HashMap<Uuid, UnboundedSender<RobotMessage>>>>,
     new_connection_notifyer: UnboundedSender<NotifyConnection>,
 }
 
 impl ControlApp {
-    pub async fn bind(
-        addr: SocketAddr,
-        new_clients: UnboundedSender<NotifyConnection>,
-    ) -> Result<Self> {
-        let listener = TcpListener::bind(addr).await.into_diagnostic()?;
+    pub fn bind(addr: SocketAddr, new_clients: UnboundedSender<NotifyConnection>) -> Result<Self> {
+        let socket =
+            Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP)).into_diagnostic()?;
+        socket.set_reuse_address(true).into_diagnostic()?;
+
+        // Bind the socket to the given addr
+        socket.bind(&addr.into()).into_diagnostic()?;
+
+        // Set socket as a listener socket
+        socket.listen(LISTEN_BACKLOG).into_diagnostic()?;
+
+        // Transforming the `socket2::socket::Socket` to a `async_std::net::TcpListener`
+        let listener = std::net::TcpListener::from(socket);
+        let listener = async_std::net::TcpListener::from(listener);
+
         Ok(Self {
             listener,
             handlers: Arc::new(RwLock::new(Vec::new())),
@@ -52,17 +65,20 @@ impl ControlApp {
 
         let io = IoTaskPool::get();
         io.spawn(async move {
-            match app.listener.accept().await {
-                Ok((socket, addr)) => {
-                    tracing::info!("Connection with a new client: {:?}", addr);
+            loop {
+                match app.listener.accept().await {
+                    Ok((socket, addr)) => {
+                        tracing::info!("Connection with a new client: {:?}", addr);
 
-                    io.spawn(async move {
-                        app.handle_connection(socket).await;
-                    })
-                    .detach();
-                }
-                Err(e) => {
-                    tracing::error!("Failed to connect with client: {:?}", e)
+                        let app = Arc::clone(&app);
+                        io.spawn(async move {
+                            app.handle_connection(socket).await;
+                        })
+                        .detach();
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to connect with client: {:?}", e);
+                    }
                 }
             }
         })
@@ -78,7 +94,10 @@ impl ControlApp {
         // Add the client to the list
         let id = Uuid::new_v4();
         {
-            self.clients.lock().await.insert(id, tx.clone());
+            let c = self.clients.lock().await.insert(id, tx.clone());
+            if let Some(c) = c {
+                tracing::warn!("Something: {:?}", c);
+            }
         }
 
         // Spawn reader and writer tasks
@@ -146,7 +165,7 @@ impl ControlApp {
             // Encode and send response
             let mut data = vec![];
             match message.encode(&mut data) {
-                Ok(_) => {
+                Ok(()) => {
                     if write_half.write_all(&data).await.is_err() {
                         tracing::error!("Failed to send response to client");
                         break;
@@ -205,6 +224,6 @@ impl ControlAppHandle {
 
         client
             .unbounded_send(message)
-            .expect("Failed to send message")
+            .expect("Failed to send message");
     }
 }

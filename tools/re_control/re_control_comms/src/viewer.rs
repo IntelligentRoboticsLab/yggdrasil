@@ -12,9 +12,12 @@ use futures::{
     io::{ReadHalf, WriteHalf},
     AsyncReadExt, AsyncWriteExt, StreamExt,
 };
+use socket2::{Domain, Protocol, Socket, Type};
 use tokio::sync::Notify;
 
 use super::protocol::{HandlerFn, RobotMessage, ViewerMessage};
+
+const LINGER_DURATION: Duration = Duration::from_secs(2);
 
 pub struct ControlViewer {
     address: SocketAddrV4,
@@ -26,7 +29,7 @@ pub struct ControlViewer {
 }
 
 impl ControlViewer {
-    pub async fn connect(address: SocketAddrV4) -> tokio::io::Result<Self> {
+    pub fn from_addr(address: SocketAddrV4) -> tokio::io::Result<Self> {
         let (tx, rx) = unbounded();
         Ok(Self {
             address,
@@ -38,7 +41,7 @@ impl ControlViewer {
         })
     }
 
-    pub async fn run(self) -> ControlViewerHandle {
+    pub fn run(self) -> ControlViewerHandle {
         tracing::info!("Starting client");
 
         // Spawn a background task to handle messages from the global channel.
@@ -56,14 +59,29 @@ impl ControlViewer {
 
         tokio::spawn(async move {
             loop {
-                match TcpStream::connect(app.address).await {
-                    Ok(socket) => {
-                        app.handle_connection(socket).await;
+                let socket = Socket::new(
+                    Domain::for_address(app.address.into()),
+                    Type::STREAM,
+                    Some(Protocol::TCP),
+                )
+                .expect("Failed creating a socket");
+
+                match socket.connect(&app.address.into()) {
+                    Ok(()) => {
+                        socket
+                            .set_linger(Some(LINGER_DURATION))
+                            .expect("Failed to set linger for socket");
+
+                        let stream: std::net::TcpStream = socket.into();
+                        let stream: async_std::net::TcpStream = stream.into();
+                        app.handle_connection(stream).await;
                     }
+
                     Err(e) => {
                         tracing::error!("Failed to connect to {}: {:?}", app.address, e);
                     }
                 }
+
                 // Wait some time before attempting to reconnect
                 tokio::time::sleep(Duration::from_secs(5)).await;
             }
@@ -73,10 +91,6 @@ impl ControlViewer {
     }
 
     async fn handle_connection(&self, socket: TcpStream) {
-        // if let Err(e) = socket.set_linger(Some(Duration::from_secs(2))) {
-        //     tracing::error!("Failed to set socket linger: {:?}", e);
-        // }
-
         tracing::info!("Connected to {}", self.address);
         let (read_half, write_half) = socket.split();
 

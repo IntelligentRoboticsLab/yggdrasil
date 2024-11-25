@@ -3,14 +3,11 @@ pub mod transmit;
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
-use bevy::{
-    prelude::*,
-    tasks::{block_on, IoTaskPool},
-};
+use bevy::prelude::*;
 use futures::channel::mpsc::unbounded;
 use re_control_comms::{
-    debug_system::DebugEnabledSystems,
     app::ControlApp,
+    debug_system::DebugEnabledSystems,
     protocol::{ViewerMessage, CONTROL_PORT},
 };
 
@@ -48,14 +45,10 @@ fn setup(mut commands: Commands) {
         rx: rx_on_connection,
     };
 
-    let io = IoTaskPool::get();
-    let mut handle = block_on(io.spawn(async move {
-        let app = ControlApp::bind(socket_addr, tx_on_connection)
-            .await
-            .unwrap_or_else(|_| panic!("Failed to bind control app to {socket_addr:?}"));
+    let app = ControlApp::bind(socket_addr, tx_on_connection)
+        .unwrap_or_else(|_| panic!("Failed to bind control app to {socket_addr:?}"));
 
-        app.run()
-    }));
+    let mut handle = app.run();
 
     let (tx, rx) = unbounded::<ViewerMessage>();
     handle.add_handler(tx).unwrap();

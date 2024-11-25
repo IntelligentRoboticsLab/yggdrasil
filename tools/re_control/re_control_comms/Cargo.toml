@@ -20,6 +20,7 @@ async-std = { workspace = true }
 bevy = { workspace = true }
 futures = { workspace = true }
 miette = { workspace = true }
+socket2 = { workspace = true }
 tokio = { workspace = true, features = [
   "macros",
   "sync",

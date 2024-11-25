@@ -1,5 +1,7 @@
 use bevy::prelude::*;
-use re_control_comms::{app::NotifyConnection, protocol::ViewerMessage, debug_system::DebugEnabledSystems};
+use re_control_comms::{
+    app::NotifyConnection, debug_system::DebugEnabledSystems, protocol::ViewerMessage,
+};
 
 use futures::channel::mpsc::UnboundedReceiver;
 
