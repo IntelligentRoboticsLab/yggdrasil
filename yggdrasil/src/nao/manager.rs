@@ -23,6 +23,10 @@ const HIP_POSITION: f32 = -0.9;
 
 const CYCLES_PER_SECOND: f32 = 82.0;
 
+const SOURCE_TARGET_SIMILARITY_THRESHOLD: f32 = 0.99;
+
+const NEW_TARGET_SIMILARITY_THRESHOLD: f32 = 0.9;
+
 type JointValue = f32;
 
 /// Plugin providing the [`NaoManager`].
@@ -147,7 +151,7 @@ struct LedSettings<T> {
 
 // This enum represents the current state of the head target/motion.
 #[derive(Default, Debug, Clone)]
-pub enum HeadState {
+enum HeadState {
     #[default]
     None,
     New {
@@ -185,7 +189,7 @@ impl HeadState {
                 );
 
                 let similarity = source.dot(&target);
-                if similarity > 0.99 {
+                if similarity > SOURCE_TARGET_SIMILARITY_THRESHOLD {
                     HeadState::None
                 } else {
                     HeadState::Moving {
@@ -419,7 +423,7 @@ impl NaoManager {
             // If the head is already moving, only set a new target if its sufficiently different from old target.
             // This helps revents the head from stuttering
             let similarity = target.dot(&new_target);
-            if similarity < 0.9 {
+            if similarity < NEW_TARGET_SIMILARITY_THRESHOLD {
                 self.head_state = HeadState::New {
                     target: new_target,
                     time_to_target,

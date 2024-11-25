@@ -27,6 +27,5 @@ impl Behavior for Sitting {
         }
 
         control.nao_manager.unstiff_arms(UNSTIFF_PRIORITY);
-        // .unstiff_head(UNSTIFF_PRIORITY);
     }
 }
