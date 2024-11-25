@@ -37,7 +37,11 @@ pub struct Arrsac<R: RngCore> {
 impl<R: RngCore> Arrsac<R> {
     pub fn new(threshold: f64, rng: R) -> Self {
         Self {
-            inner: arrsac::Arrsac::new(threshold, rng),
+            inner: arrsac::Arrsac::new(threshold, rng)
+                .block_size(16)
+                .estimations_per_block(16)
+                .initialization_hypotheses(128)
+                .max_candidate_hypotheses(16),
         }
     }
 

@@ -1,10 +1,12 @@
 pub mod arrsac;
 pub mod line;
 
+use std::marker::PhantomData;
+
 use arrsac::Arrsac;
 use bevy::prelude::*;
 use bevy::tasks::{block_on, poll_once, AsyncComputeTaskPool, Task};
-use heimdall::{CameraLocation, CameraMatrix, Top, YuyvImage};
+use heimdall::{Bottom, CameraLocation, CameraMatrix, Top, YuyvImage};
 use itertools::Itertools;
 use line::{Line2, LineSegment2};
 use nalgebra::{point, Point2};
@@ -25,7 +27,7 @@ const MAX_LINES: usize = 10;
 
 #[derive(Resource, Debug, Clone, Deserialize, Serialize, Reflect)]
 #[serde(deny_unknown_fields)]
-struct LineDetectionConfig {
+pub struct LineDetectionConfig {
     // margin outside of the field in which lines will still be considered
     pub field_margin: f32,
     // maximum number of iterations for ARRSAC
@@ -72,11 +74,19 @@ impl Plugin for LineDetectionPlugin {
             Update,
             (
                 detect_lines_system::<Top>.run_if(resource_exists_and_changed::<ScanLines<Top>>),
-                handle_line_task,
+                handle_line_task::<Top>,
                 debug_lines::<Top>,
                 debug_lines_inliers::<Top>,
                 debug_lines_3d::<Top>,
                 debug_rejected_lines::<Top>,
+                //
+                detect_lines_system::<Bottom>
+                    .run_if(resource_exists_and_changed::<ScanLines<Bottom>>),
+                handle_line_task::<Bottom>,
+                debug_lines::<Bottom>,
+                debug_lines_inliers::<Bottom>,
+                debug_lines_3d::<Bottom>,
+                debug_rejected_lines::<Bottom>,
             ),
         );
     }
@@ -84,23 +94,24 @@ impl Plugin for LineDetectionPlugin {
 
 /// The lines that were detected in the image
 #[derive(Component, Default)]
-pub struct DetectedLines {
+pub struct DetectedLines<T: CameraLocation> {
     /// The line equations of the lines that were detected
     pub lines: Vec<Line2>,
     /// The line segments that were detected
     pub segments: Vec<LineSegment2>,
     /// The inliers points of the lines that were detected
     pub inliers: Vec<Inliers>,
+    _marker: PhantomData<T>,
 }
 
 /// The line candidates that were rejected
 #[derive(Component, Default, Deref, DerefMut)]
-pub struct RejectedLines {
+pub struct RejectedLines<T: CameraLocation> {
     /// Yes, this is deref polymorphism
     /// Yes, this might an anti-pattern
     /// No, I don't give a damn!
     #[deref]
-    detected: DetectedLines,
+    detected: DetectedLines<T>,
     /// The reasons why each line was rejected
     pub rejections: Vec<Rejection>,
 }
@@ -224,13 +235,15 @@ fn detect_lines_system<T: CameraLocation>(
         async move { detect_lines(scan_lines, camera_matrix, field, pose, cfg) }
     });
 
-    commands.entity(entity).insert(LineTaskHandle(handle));
+    commands
+        .entity(entity)
+        .insert((LineTaskHandle(handle), T::default()));
 }
 
-fn handle_line_task(
+fn handle_line_task<T: CameraLocation>(
     mut commands: Commands,
-    mut lines: Query<Entity, Or<(With<DetectedLines>, With<RejectedLines>)>>,
-    mut task_handles: Query<(Entity, &mut LineTaskHandle)>,
+    mut lines: Query<Entity, Or<(With<DetectedLines<T>>, With<RejectedLines<T>>)>>,
+    mut task_handles: Query<(Entity, &mut LineTaskHandle), With<T>>,
 ) {
     for (task_entity, mut task) in &mut task_handles {
         if let Some((candidates, rejections)) = block_on(poll_once(&mut task.0)) {
@@ -240,8 +253,8 @@ fn handle_line_task(
             }
 
             // and add the new lines
-            let mut detected = DetectedLines::default();
-            let mut rejected = RejectedLines::default();
+            let mut detected = DetectedLines::<T>::default();
+            let mut rejected = RejectedLines::<T>::default();
             for (candidate, rejection) in candidates.into_iter().zip(rejections) {
                 // TODO: this could be cleaner?
                 if let Some(rejection) = rejection {
@@ -292,12 +305,12 @@ fn detect_lines<T: CameraLocation>(
 
     for _ in 0..cfg.max_iters {
         projected_spots.shuffle(&mut rng);
+
         let Some((line, inlier_idx)) = arrsac.fit(projected_spots.iter().copied()) else {
             // probably no more good lines!
             break;
         };
 
-        // sort the inliers by x-coordinate
         let mut inliers = extract_indices(&mut projected_spots, inlier_idx);
         inliers.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
 
@@ -455,7 +468,7 @@ fn extract_indices<T>(vec: &mut Vec<T>, mut idx: Vec<usize>) -> Vec<T> {
 fn debug_lines<T: CameraLocation>(
     dbg: DebugContext,
     camera_matrix: Res<CameraMatrix<T>>,
-    accepted: Query<(&Cycle, &DetectedLines), Added<DetectedLines>>,
+    accepted: Query<(&Cycle, &DetectedLines<T>), Added<DetectedLines<T>>>,
 ) {
     for (cycle, lines) in accepted.iter() {
         dbg.log_with_cycle(
@@ -484,7 +497,7 @@ fn debug_lines<T: CameraLocation>(
 fn debug_lines_3d<T: CameraLocation>(
     dbg: DebugContext,
     pose: Res<RobotPose>,
-    accepted: Query<(&Cycle, &DetectedLines), Added<DetectedLines>>,
+    accepted: Query<(&Cycle, &DetectedLines<T>), Added<DetectedLines<T>>>,
 ) {
     for (cycle, lines) in accepted.iter() {
         dbg.log_with_cycle(
@@ -505,7 +518,7 @@ fn debug_lines_3d<T: CameraLocation>(
 fn debug_lines_inliers<T: CameraLocation>(
     dbg: DebugContext,
     camera_matrix: Res<CameraMatrix<T>>,
-    accepted: Query<(&Cycle, &DetectedLines), Added<DetectedLines>>,
+    accepted: Query<(&Cycle, &DetectedLines<T>), Added<DetectedLines<T>>>,
 ) {
     let mut rng = rand::thread_rng();
     for (cycle, lines) in accepted.iter() {
@@ -548,7 +561,7 @@ fn debug_lines_inliers<T: CameraLocation>(
 fn debug_rejected_lines<T: CameraLocation>(
     dbg: DebugContext,
     camera_matrix: Res<CameraMatrix<T>>,
-    rejected: Query<(&Cycle, &RejectedLines), Added<RejectedLines>>,
+    rejected: Query<(&Cycle, &RejectedLines<T>), Added<RejectedLines<T>>>,
 ) {
     for (cycle, lines) in rejected.iter() {
         dbg.log_with_cycle(
