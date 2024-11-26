@@ -6721,12 +6721,10 @@ dependencies = [
 name = "re_control"
 version = "0.1.0"
 dependencies = [
- "async-std",
  "bevy",
  "bifrost",
  "bincode",
  "clap",
- "futures",
  "miette",
  "mimalloc",
  "re_control_comms",

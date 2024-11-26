@@ -12,6 +12,7 @@ use re_control_comms::{
 use re_viewer::external::{
     eframe,
     egui::{self, ScrollArea},
+    re_ui::{list_item, UiExt},
 };
 
 use crate::{
@@ -131,23 +132,31 @@ impl Control {
             });
         });
 
-        ui.add_space(10.0);
-
         // Resource section
-        resource_ui(
-            ui,
-            Arc::clone(&self.states),
-            &self.handle,
-            &self.frame_styles,
-        );
-
-        ui.separator();
-
-        ui.vertical_centered(|ui| {
-            ui.strong("Systems debug on/off");
+        list_item::list_item_scope(ui, "Control resources", |ui| {
+            ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+            ui.section_collapsing_header("Resources")
+                .default_open(true)
+                .show(ui, |ui| {
+                    resource_ui(
+                        ui,
+                        Arc::clone(&self.states),
+                        &self.handle,
+                        &self.frame_styles,
+                    );
+                })
         });
 
         // Debug enabled/disabled systems sections
-        ui.horizontal(|ui| debug_resources_ui(ui, Arc::clone(&self.states), &self.handle));
+        list_item::list_item_scope(ui, "Control debug enabled systems", |ui| {
+            ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+            ui.section_collapsing_header("Debug system controls")
+                .default_open(true)
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        debug_resources_ui(ui, Arc::clone(&self.states), &self.handle)
+                    });
+                })
+        });
     }
 }

@@ -54,6 +54,8 @@ pub fn add_editable_resource(
     let changed_resources = &mut states.focused_resources;
 
     ui.vertical(|ui| {
+        ui.add_space(5.0);
+
         let mut resource_name_color = Color32::GRAY;
         if let Some(true) = changed_resources.get(resource_name) {
             resource_name_color = Color32::LIGHT_RED;
@@ -112,8 +114,6 @@ pub fn add_editable_resource(
                 {}
             })
         });
-
-        ui.add_space(5.0);
     });
 
     followup_action

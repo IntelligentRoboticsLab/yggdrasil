@@ -15,7 +15,7 @@ use receive::{
     handle_notify_on_connection, handle_viewer_message, NotifyConnectionReceiver,
     ViewerMessageReceiver,
 };
-use transmit::debug_systems_on_connection;
+use transmit::debug_systems_on_new_connection;
 use uuid::Uuid;
 
 pub struct ControlPlugin;
@@ -27,7 +27,7 @@ impl Plugin for ControlPlugin {
             .add_systems(Startup, setup)
             .add_systems(
                 Update,
-                (handle_notify_on_connection, debug_systems_on_connection)
+                (handle_notify_on_connection, debug_systems_on_new_connection)
                     .run_if(resource_exists::<ViewerMessageReceiver>),
             )
             .add_systems(

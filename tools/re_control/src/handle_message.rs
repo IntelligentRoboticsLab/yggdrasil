@@ -6,9 +6,6 @@ use crate::control::ControlStates;
 
 pub fn handle_message(message: &RobotMessage, states: Arc<RwLock<ControlStates>>) {
     match message {
-        RobotMessage::Disconnect => {
-            tracing::info!("Robot disconnected")
-        }
         RobotMessage::DebugEnabledSystems(enabled_systems) => {
             states
                 .write()

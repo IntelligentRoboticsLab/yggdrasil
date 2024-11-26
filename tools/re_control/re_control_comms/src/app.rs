@@ -31,7 +31,10 @@ pub struct ControlApp {
 }
 
 impl ControlApp {
-    pub fn bind(addr: SocketAddr, new_clients: UnboundedSender<NotifyConnection>) -> Result<Self> {
+    pub fn bind(
+        addr: SocketAddr,
+        new_connection_notifyer: UnboundedSender<NotifyConnection>,
+    ) -> Result<Self> {
         let socket =
             Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP)).into_diagnostic()?;
         socket.set_reuse_address(true).into_diagnostic()?;
@@ -50,13 +53,13 @@ impl ControlApp {
             listener,
             handlers: Arc::new(RwLock::new(Vec::new())),
             clients: Arc::new(Mutex::new(HashMap::new())),
-            new_connection_notifyer: new_clients,
+            new_connection_notifyer,
         })
     }
 
     pub fn run(self) -> ControlAppHandle {
         tracing::info!(
-            "Server running on {:?}",
+            "Control app is running on {:?}",
             self.listener.local_addr().unwrap()
         );
 
@@ -88,22 +91,24 @@ impl ControlApp {
     }
 
     async fn handle_connection(&self, socket: TcpStream) {
+        let client_addr = socket
+            .peer_addr()
+            .expect("Failed to get peer address from socket");
+
         let (read_half, write_half) = socket.split();
         let (tx, rx) = mpsc::unbounded();
 
         // Add the client to the list
         let id = Uuid::new_v4();
         {
-            let c = self.clients.lock().await.insert(id, tx.clone());
-            if let Some(c) = c {
-                tracing::warn!("Something: {:?}", c);
-            }
+            self.clients.lock().await.insert(id, tx.clone());
         }
+        tracing::info!("Number of clients: {}", self.clients.lock().await.len());
 
         // Spawn reader and writer tasks
         let handlers = Arc::clone(&self.handlers);
         let reader_task = spawn(async { Self::handle_reader(read_half, handlers).await });
-        let writer_task = spawn(async { Self::handle_writer(write_half, rx).await });
+        let _writer_task = spawn(async { Self::handle_writer(write_half, rx).await });
 
         // Notify to a bevy system that a new connection is made
         let msg = NotifyConnection { id };
@@ -111,13 +116,19 @@ impl ControlApp {
             .unbounded_send(msg)
             .expect("Failed to send message");
 
-        let _ = futures::join!(reader_task, writer_task);
+        // Only need to wait until the reader_task is done.
+        // reader_task is done when the connection ends. The writer task
+        // should also stop at that moment.
+        reader_task.await;
 
-        // Remove the client when the connection ends
+        // Remove the client when the connection ends. Removing the client
+        // will also stop the writer_task.
         {
             let mut clients = self.clients.lock().await;
             clients.retain(|_id, x| !x.same_receiver(&tx));
         }
+
+        tracing::info!("Connection closed by client at {client_addr}");
     }
 
     async fn handle_reader(
@@ -128,7 +139,6 @@ impl ControlApp {
         loop {
             match read_half.read(&mut buf).await {
                 Ok(0) => {
-                    tracing::info!("Connection closed by client");
                     break;
                 }
                 Ok(n) => match &ViewerMessage::decode(&buf[..n]) {
@@ -158,10 +168,6 @@ impl ControlApp {
         mut rx: UnboundedReceiver<RobotMessage>,
     ) {
         while let Some(message) = rx.next().await {
-            if matches!(message, RobotMessage::Disconnect) {
-                break;
-            }
-
             // Encode and send response
             let mut data = vec![];
             match message.encode(&mut data) {
@@ -223,7 +229,7 @@ impl ControlAppHandle {
         };
 
         client
-            .unbounded_send(message)
+            .unbounded_send(message.clone())
             .expect("Failed to send message");
     }
 }

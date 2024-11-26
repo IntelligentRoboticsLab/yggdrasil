@@ -17,19 +17,21 @@ impl Default for ControlRobotMessageDelay {
     }
 }
 
-pub fn debug_systems_on_connection(
+pub fn debug_systems_on_new_connection(
     mut ev_viewer_connected: EventReader<ViewerConnectedEvent>,
     debug_enabled_resources: Res<DebugEnabledSystems>,
     control_handle: Res<ControlAppHandle>,
 ) {
     for ev in ev_viewer_connected.read() {
         let viewer_id = ev.0;
-        let msg = RobotMessage::DebugEnabledSystems(debug_enabled_resources.systems.clone());
+
+        let msg_debug = RobotMessage::DebugEnabledSystems(debug_enabled_resources.systems.clone());
+
         let io = IoTaskPool::get();
 
         let handle = control_handle.clone();
         io.spawn(async move {
-            handle.send(msg, viewer_id).await;
+            handle.send(msg_debug, viewer_id).await;
         })
         .detach();
     }

@@ -42,7 +42,7 @@ impl ControlViewer {
     }
 
     pub fn run(self) -> ControlViewerHandle {
-        tracing::info!("Starting client");
+        tracing::info!("Starting control viewer");
 
         // Spawn a background task to handle messages from the global channel.
         {
@@ -105,19 +105,14 @@ impl ControlViewer {
             })
         };
 
-        // Wait for tasks to complete
-        tokio::select! {
-            result = reader_task => {
-                if let Err(e) = result {
-                    tracing::error!("Reader task ended with error: {:?}", e);
-                }
-            }
-            result = writer_task => {
-                if let Err(e) = result {
-                    tracing::error!("Writer task ended with error: {:?}", e);
-                }
-            }
+        // Wait for the reader to complete. This happens when the TCP
+        // connection ends or there was an error in the reader_task
+        if let Err(e) = reader_task.await {
+            tracing::error!("Reader task ended with error: {:?}", e);
         }
+        // There is no reason to keep the writer task going when the reader
+        // is completed.
+        writer_task.abort();
 
         tracing::info!("Connection lost. Attempting to reconnect...");
     }
@@ -143,23 +138,38 @@ impl ControlViewer {
         handlers: Arc<RwLock<Vec<HandlerFn<RobotMessage>>>>,
     ) {
         let mut buf = [0; 1024];
+
         loop {
+            // Read bytes received from the stream into a buffer. It is
+            // possible that there are multiple message in the buffer.
             match read.read(&mut buf).await {
                 Ok(0) => {
                     tracing::info!("Server closed connection");
                     break;
                 }
-                Ok(n) => match RobotMessage::decode(&buf[..n]) {
-                    Ok(message) => {
-                        let handlers = handlers.read().expect("failed to get reader");
-                        for handler in handlers.iter() {
-                            handler(&message);
+                Ok(n) => {
+                    // Keep track of the amount of bytes that have been read
+                    let mut bytes_read = 0;
+                    // Keep decoding bytes to messages until we read the whole
+                    // buffer
+                    while bytes_read < n {
+                        match RobotMessage::decode(&buf[bytes_read..n]) {
+                            Ok(message) => {
+                                let handlers = handlers.read().expect("failed to get reader");
+                                for handler in handlers.iter() {
+                                    handler(&message);
+                                }
+                                // The decoded message length in bytes is the
+                                // same as the encode length
+                                bytes_read += message.encode_len();
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to decode message: {:?}", e);
+                                break;
+                            }
                         }
                     }
-                    Err(e) => {
-                        tracing::error!("Failed to decode message: {:?}", e);
-                    }
-                },
+                }
                 Err(e) => {
                     tracing::error!("Error reading from server: {:?}", e);
                     break;
@@ -185,11 +195,6 @@ impl ControlViewer {
                 notify.notified().await;
                 continue;
             };
-
-            if matches!(message, ViewerMessage::Disconnect) {
-                tracing::info!("Disconnecting...");
-                break;
-            }
 
             let mut data = vec![];
             if message.encode(&mut data).is_ok() {

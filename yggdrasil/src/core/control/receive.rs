@@ -42,10 +42,8 @@ pub fn handle_viewer_message(
     mut debug_enabled_systems: ResMut<DebugEnabledSystems>,
 ) {
     while let Some(message) = message_receiver.try_recv() {
+        #[allow(clippy::single_match_else)]
         match message {
-            ViewerMessage::Disconnect => {
-                tracing::info!("Viewer disconnected");
-            }
             ViewerMessage::UpdateEnabledDebugSystem(name, enabled) => {
                 debug_enabled_systems.set_system(name, enabled);
             }
