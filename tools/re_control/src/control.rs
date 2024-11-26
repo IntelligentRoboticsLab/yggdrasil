@@ -77,15 +77,19 @@ impl eframe::App for Control {
 impl Control {
     pub fn new(app: re_viewer::App, control_viewer: ControlViewer) -> Self {
         let states = Arc::new(RwLock::new(ControlStates::default()));
-
         let handler_states = Arc::clone(&states);
 
+        // Add a handler for the `ControlViewer` before it runs. This is to
+        // make sure we do not miss any message send at the beginning of a
+        // connection
         control_viewer
             .add_handler(Box::new(move |msg: &RobotMessage| {
                 handle_message(msg, Arc::clone(&handler_states))
             }))
             .expect("Failed to add handler");
 
+        // Start up the `ControlViewer` which will try to connection to
+        // a `ControlApp`
         let handle = control_viewer.run();
 
         Control {
@@ -98,6 +102,7 @@ impl Control {
 
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.add_space(10.0);
+
         // Title of the side panel
         ui.vertical_centered(|ui| {
             ui.strong("Control panel");

@@ -41,16 +41,18 @@ async fn main() -> Result<()> {
         re_memory::MemoryLimit::from_fraction_of_total(MEMORY_FRACTION_DEFAULT)
     };
 
+    // Communicate the memory limit
     tracing::info!(
         "Memory limit set to: {} MB",
         memory_limit.max_bytes.unwrap() / BYTES_IN_MB
     );
-
+    // Setting startup options for the rerun viewer
     let startup_options = re_viewer::StartupOptions {
         memory_limit,
         ..Default::default()
     };
 
+    // Creating the `ControlViewer`. This does not start the viewer yet
     let socket_addr = SocketAddrV4::new(args.robot_ip, CONTROL_PORT);
     let viewer = ControlViewer::from_addr(socket_addr).into_diagnostic()?;
 

@@ -1,9 +1,11 @@
+mod events;
 pub mod receive;
 pub mod transmit;
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use bevy::prelude::*;
+use events::{DebugEnabledSystemUpdated, ViewerConnected};
 use futures::channel::mpsc::unbounded;
 use re_control_comms::{
     app::ControlApp,
@@ -15,15 +17,15 @@ use receive::{
     handle_notify_on_connection, handle_viewer_message, NotifyConnectionReceiver,
     ViewerMessageReceiver,
 };
-use transmit::debug_systems_on_new_connection;
-use uuid::Uuid;
+use transmit::{debug_systems_on_new_connection, update_debug_systems_for_clients};
 
 pub struct ControlPlugin;
 
 impl Plugin for ControlPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<DebugEnabledSystems>()
-            .add_event::<ViewerConnectedEvent>()
+            .add_event::<DebugEnabledSystemUpdated>()
+            .add_event::<ViewerConnected>()
             .add_systems(Startup, setup)
             .add_systems(
                 Update,
@@ -32,7 +34,8 @@ impl Plugin for ControlPlugin {
             )
             .add_systems(
                 Update,
-                handle_viewer_message.run_if(resource_exists::<ViewerMessageReceiver>),
+                (handle_viewer_message, update_debug_systems_for_clients)
+                    .run_if(resource_exists::<ViewerMessageReceiver>),
             );
     }
 }
@@ -40,25 +43,26 @@ impl Plugin for ControlPlugin {
 fn setup(mut commands: Commands) {
     let socket_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, CONTROL_PORT));
 
+    // New connections are registered and handled in the `ControlApp`. A
+    // channel is used to pass the message to a Bevy system for additional
+    // handling
     let (tx_on_connection, rx_on_connection) = unbounded();
     let notify_connection_receiver = NotifyConnectionReceiver {
         rx: rx_on_connection,
     };
 
+    // Starts the control app and opens a listener for a re_control viewer connection
     let app = ControlApp::bind(socket_addr, tx_on_connection)
         .unwrap_or_else(|_| panic!("Failed to bind control app to {socket_addr:?}"));
-
     let mut handle = app.run();
 
+    // A channel is used to pass a `ViewerMessage` from the `ControlApp` to
+    // `Resource` for use in a Bevy system
     let (tx, rx) = unbounded::<ViewerMessage>();
     handle.add_handler(tx).unwrap();
-
     let viewer_message_receiver = ViewerMessageReceiver { rx };
 
     commands.insert_resource(viewer_message_receiver);
     commands.insert_resource(handle);
     commands.insert_resource(notify_connection_receiver);
 }
-
-#[derive(Event)]
-pub struct ViewerConnectedEvent(Uuid);

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use super::ViewerConnectedEvent;
+use super::{events::DebugEnabledSystemUpdated, ViewerConnected};
 use bevy::{prelude::*, tasks::IoTaskPool};
 use re_control_comms::{
     app::ControlAppHandle, debug_system::DebugEnabledSystems, protocol::RobotMessage,
@@ -17,21 +17,45 @@ impl Default for ControlRobotMessageDelay {
     }
 }
 
+// Sends the current state of `DebugEnabledSystems` to the client that
+// connected.
 pub fn debug_systems_on_new_connection(
-    mut ev_viewer_connected: EventReader<ViewerConnectedEvent>,
+    mut ev_viewer_connected: EventReader<ViewerConnected>,
     debug_enabled_resources: Res<DebugEnabledSystems>,
     control_handle: Res<ControlAppHandle>,
 ) {
     for ev in ev_viewer_connected.read() {
         let viewer_id = ev.0;
 
-        let msg_debug = RobotMessage::DebugEnabledSystems(debug_enabled_resources.systems.clone());
+        let msg = RobotMessage::DebugEnabledSystems(debug_enabled_resources.systems.clone());
 
         let io = IoTaskPool::get();
 
         let handle = control_handle.clone();
         io.spawn(async move {
-            handle.send(msg_debug, viewer_id).await;
+            handle.send(msg, viewer_id).await;
+        })
+        .detach();
+    }
+}
+
+// This system sends the current `DebugEnabledSystems` to all connected
+// clients.
+// When an individual client updates a debug enabled system, the state of
+// other connected clients should also be updated.
+pub fn update_debug_systems_for_clients(
+    debug_enabled_resources: Res<DebugEnabledSystems>,
+    control_handle: Res<ControlAppHandle>,
+    mut ev_debug_enabled_system_updated: EventReader<DebugEnabledSystemUpdated>,
+) {
+    for _ev in ev_debug_enabled_system_updated.read() {
+        let msg = RobotMessage::DebugEnabledSystems(debug_enabled_resources.systems.clone());
+
+        let io = IoTaskPool::get();
+
+        let handle = control_handle.clone();
+        io.spawn(async move {
+            handle.broadcast(msg).await;
         })
         .detach();
     }

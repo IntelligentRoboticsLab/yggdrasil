@@ -23,8 +23,6 @@ impl App {
     }
 
     pub async fn run(self) -> Result<()> {
-        // let handle = self.viewer.run().await;
-
         let app_env = re_viewer::AppEnvironment::Custom(APP_ENV.to_string());
 
         // Listen for TCP connections from Rerun's logging SDKs.
