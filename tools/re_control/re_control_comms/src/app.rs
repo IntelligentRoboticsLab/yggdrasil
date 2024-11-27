@@ -137,24 +137,37 @@ impl ControlApp {
     ) {
         let mut buf = [0; 1024];
         loop {
+            // Read bytes received from the stream into a buffer. It is
+            // possible that there are multiple message in the buffer.
             match read_half.read(&mut buf).await {
                 Ok(0) => {
                     break;
                 }
-                Ok(n) => match &ViewerMessage::decode(&buf[..n]) {
-                    Ok(msg) => {
-                        let handlers = handlers.read().expect("failed to lock handlers");
+                Ok(n) => {
+                    // Keep track of the amount of bytes that have been read
+                    let mut bytes_read = 0;
+                    // Keep decoding bytes to messages until we read the whole
+                    // buffer
+                    while bytes_read < n {
+                        match &ViewerMessage::decode(&buf[..n]) {
+                            Ok(message) => {
+                                let handlers = handlers.read().expect("failed to lock handlers");
 
-                        for handler in handlers.iter() {
-                            handler
-                                .unbounded_send(msg.clone())
-                                .expect("Failed to send message");
+                                for handler in handlers.iter() {
+                                    handler
+                                        .unbounded_send(message.clone())
+                                        .expect("Failed to send message");
+                                }
+                                // The decoded message length in bytes is the
+                                // same as the encode length
+                                bytes_read += message.encode_len();
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to decode message: {:?}", e);
+                            }
                         }
                     }
-                    Err(e) => {
-                        tracing::error!("Failed to decode message: {:?}", e);
-                    }
-                },
+                }
                 Err(e) => {
                     tracing::error!("Error reading from socket: {:?}", e);
                     break;
