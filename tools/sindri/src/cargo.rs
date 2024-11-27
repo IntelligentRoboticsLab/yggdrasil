@@ -1,8 +1,11 @@
-use std::{ffi::OsStr, fmt::Debug, result::Result, string::FromUtf8Error};
+use core::str;
+use std::io::Write;
+use std::{ffi::OsStr, fmt::Debug, process::Stdio, result::Result, string::FromUtf8Error};
 
 use miette::Diagnostic;
 
 use thiserror::Error;
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
 /// Error kind that can occur when running cargo operations in sindri.
@@ -56,17 +59,42 @@ where
     E: IntoIterator<Item = (S, S)> + Debug + Clone,
     S: AsRef<OsStr>,
 {
-    let output = Command::new("cargo")
+    let mut child = Command::new("cargo")
         .args(args)
-        .args(["--color", "always"]) // always pass color, cargo doesn't pass color when it detects it's piped
+        .args(["--color", "always"])
+        .args(["--config", "term.progress.when='always'"])
+        .args(["--config", "term.progress.width=80"])
         .envs(envs)
-        .output()
-        .await?;
+        .kill_on_drop(true)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()?;
 
-    if !output.status.success() {
+    let mut output = String::new();
+    let mut stderr = BufReader::new(child.stderr.take().unwrap()).split(b'\r');
+
+    while let Some(line) = stderr.next_segment().await? {
+        let line = String::from_utf8(line)?;
+
+        let tail = match line.rsplit_once('\n') {
+            Some((head, tail)) => {
+                output += head;
+                output.push('\n');
+                tail
+            }
+            None => line.as_str(),
+        };
+
+        print!("\x1b[E{tail}\x1b[F");
+        std::io::stdout().flush().unwrap();
+    }
+
+    println!();
+
+    if !child.wait().await?.success() {
         // build failed for whatever reason, print to stdout
-        let stderr = String::from_utf8(output.stderr)?;
-        return Err(CargoError::Execution(stderr));
+        return Err(CargoError::Execution(output));
     }
 
     Ok(())
