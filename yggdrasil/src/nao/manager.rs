@@ -432,19 +432,17 @@ impl NaoManager {
                     priority,
                     stiffness,
                 };
+            } else {
+                self.head_state = HeadState::Moving {
+                    source,
+                    target: new_target,
+                    timestep,
+                    time_interval,
+                    priority,
+                    stiffness,
+                };
                 return self;
             }
-            // If it is not sufficiently different, we simply scale the timestep back a little bit
-            // This "continues" the old trajectory just a little bit farther.
-            self.head_state = HeadState::Moving {
-                source,
-                target: new_target,
-                timestep,
-                time_interval,
-                priority,
-                stiffness,
-            };
-            return self;
         }
 
         // If the head is not moving, we just set the new target.
