@@ -441,8 +441,8 @@ impl NaoManager {
                     priority,
                     stiffness,
                 };
-                return self;
             }
+            return self;
         }
 
         // If the head is not moving, we just set the new target.
