@@ -10,7 +10,7 @@ line_segment_min_points = 5
 # maximum distance of a valid line spot from the camera
 spot_max_distance = 5.0
 # maximum distance between two inliers of a line
-max_line_gap_distance = 0.25
+max_line_gap_distance = 0.5
 # number of samples for the white test
 white_test_samples = 10
 # sampling distance for the white test
@@ -36,7 +36,7 @@ line_segment_min_points = 5
 # maximum distance of a valid line spot from the camera
 spot_max_distance = 5.0
 # maximum distance between two inliers of a line
-max_line_gap_distance = 0.25
+max_line_gap_distance = 0.5
 # number of samples for the white test
 white_test_samples = 10
 # sampling distance for the white test

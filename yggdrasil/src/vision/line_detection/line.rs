@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use nalgebra::{Isometry2, Point2, Vector2};
 
-#[derive(Debug, Clone, Copy, Component)]
+#[derive(Debug, Clone, Copy, Component, PartialEq)]
 pub struct Line2 {
     /// Normal to the line itself
     pub normal: Vector2<f32>,
@@ -18,9 +18,31 @@ pub struct LineSegment2 {
     pub end: Point2<f32>,
 }
 
+impl Line2 {
+    // Creates a line from a normal and a distance to the origin
+    pub fn new(normal: Vector2<f32>, d: f32) -> Self {
+        Self { normal, d }
+    }
+
+    // Distance from the line to a point
+    pub fn distance_to_point(&self, point: Point2<f32>) -> f32 {
+        let signed_distance = self.normal.dot(&point.coords) - self.d;
+        signed_distance.abs()
+    }
+}
+
 impl LineSegment2 {
+    // Creates a new line segment from two points
     pub fn new(start: Point2<f32>, end: Point2<f32>) -> Self {
         Self { start, end }
+    }
+
+    // Creates a line from the line segment
+    pub fn to_line(&self) -> Line2 {
+        let dir = self.end - self.start;
+        let normal = Vector2::new(-dir.y, dir.x).normalize();
+        let d = normal.dot(&self.start.coords);
+        Line2::new(normal, d)
     }
 
     /// Length of the line segment

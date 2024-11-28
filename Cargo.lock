@@ -510,16 +510,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "arrsac"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73be62e5831762e913e77db9787cc44682c132ebc81fae4e1b7257cdffcc4702"
-dependencies = [
- "rand_core",
- "sample-consensus",
-]
-
-[[package]]
 name = "as-raw-xcb-connection"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8756,12 +8746,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sample-consensus"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3404fd9b14a035bdff14fc4097e5d7a16435fc4661e80f19ae5204f8bee3c718"
-
-[[package]]
 name = "scoped-tls"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11367,7 +11351,6 @@ name = "yggdrasil"
 version = "0.1.0"
 dependencies = [
  "apodize",
- "arrsac",
  "async-std",
  "bevy",
  "bifrost",
@@ -11394,7 +11377,6 @@ dependencies = [
  "re_control_comms",
  "rerun",
  "rustfft",
- "sample-consensus",
  "serde",
  "serde_json",
  "serde_with",

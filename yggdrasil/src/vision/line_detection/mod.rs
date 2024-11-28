@@ -1,9 +1,8 @@
-pub mod arrsac;
 pub mod line;
+pub mod ransac;
 
 use std::marker::PhantomData;
 
-use arrsac::Arrsac;
 use bevy::prelude::*;
 use bevy::tasks::{block_on, poll_once, AsyncComputeTaskPool, Task};
 use heimdall::{Bottom, CameraLocation, CameraMatrix, Top, YuyvImage};
@@ -12,8 +11,9 @@ use line::{Line2, LineSegment2};
 use nalgebra::{point, Point2};
 
 use odal::Config;
-use rand::seq::SliceRandom;
 use rand::Rng;
+use ransac::line::LineDetector;
+use ransac::Ransac;
 use serde::{Deserialize, Serialize};
 
 use super::{camera::Image, scan_lines::ScanLines};
@@ -73,16 +73,25 @@ impl Plugin for LineDetectionPlugin {
         app.init_config::<LineDetectionConfigs>().add_systems(
             Update,
             (
-                detect_lines_system::<Top>.run_if(resource_exists_and_changed::<ScanLines<Top>>),
-                handle_line_task::<Top>,
+                (
+                    handle_line_task::<Top>,
+                    detect_lines_system::<Top>
+                        .run_if(resource_exists_and_changed::<ScanLines<Top>>),
+                )
+                    .chain(),
                 debug_lines::<Top>,
                 debug_lines_inliers::<Top>,
                 debug_lines_3d::<Top>,
                 debug_rejected_lines::<Top>,
                 //
-                detect_lines_system::<Bottom>
-                    .run_if(resource_exists_and_changed::<ScanLines<Bottom>>),
-                handle_line_task::<Bottom>,
+                log_3d_line_spots::<Top>,
+                //
+                (
+                    handle_line_task::<Bottom>,
+                    detect_lines_system::<Bottom>
+                        .run_if(resource_exists_and_changed::<ScanLines<Bottom>>),
+                )
+                    .chain(),
                 debug_lines::<Bottom>,
                 debug_lines_inliers::<Bottom>,
                 debug_lines_3d::<Bottom>,
@@ -268,8 +277,14 @@ fn handle_line_task<T: CameraLocation>(
                     detected.inliers.push(candidate.inliers);
                 }
             }
-            commands.entity(task_entity).insert(detected);
-            commands.entity(task_entity).insert(rejected);
+
+            if !detected.lines.is_empty() {
+                commands.entity(task_entity).insert(detected);
+            }
+            if !rejected.lines.is_empty() {
+                commands.entity(task_entity).insert(rejected);
+            }
+
             commands.entity(task_entity).remove::<LineTaskHandle>();
         }
     }
@@ -300,18 +315,14 @@ fn detect_lines<T: CameraLocation>(
 
     let mut candidates = vec![];
 
-    let mut rng = rand::thread_rng();
-    let mut arrsac = Arrsac::new(f64::from(cfg.arrsac_inlier_threshold), rng.clone());
+    let mut ransac = LineDetector::new(projected_spots, 50, cfg.arrsac_inlier_threshold);
 
     for _ in 0..cfg.max_iters {
-        projected_spots.shuffle(&mut rng);
-
-        let Some((line, inlier_idx)) = arrsac.fit(projected_spots.iter().copied()) else {
+        let Some((line, mut inliers)) = ransac.next() else {
             // probably no more good lines!
             break;
         };
 
-        let mut inliers = extract_indices(&mut projected_spots, inlier_idx);
         inliers.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
 
         let curr_candidates = Inliers(inliers)
@@ -395,6 +406,8 @@ fn detect_lines<T: CameraLocation>(
             // if the ratio of the white tests is high enough, merge the two candidates
             let ratio = tests.iter().filter(|&&t| t).count() as f32 / tests.len() as f32;
 
+            // println!("ratio: {ratio}");
+
             if ratio > cfg.white_test_merge_ratio {
                 let candidate = candidates.remove(i);
                 candidates[j].merge(candidate);
@@ -454,17 +467,6 @@ pub fn is_less_bright_and_more_saturated<T: CameraLocation>(
     y1 < y2 && s1 > s2
 }
 
-/// Extracts the elements at the given indices from the vector and returns them in a new vector
-///
-/// Tries to be efficient by sorting the indices in descending order and removing the elements in reverse order
-///
-/// TODO: Can be with [`Vec::extract_if`](https://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.extract_if) when it gets stabilized
-fn extract_indices<T>(vec: &mut Vec<T>, mut idx: Vec<usize>) -> Vec<T> {
-    idx.sort_unstable();
-    idx.reverse();
-    idx.into_iter().map(|i| vec.remove(i)).collect_vec()
-}
-
 fn debug_lines<T: CameraLocation>(
     dbg: DebugContext,
     camera_matrix: Res<CameraMatrix<T>>,
@@ -489,7 +491,7 @@ fn debug_lines<T: CameraLocation>(
                     })
                     .map(<[(f32, f32); 2]>::from),
             )
-            .with_colors(vec![(255, 255, 0); lines.segments.len()]),
+            .with_colors(vec![(255, 100, 0); lines.segments.len()]),
         );
     }
 }
@@ -510,7 +512,7 @@ fn debug_lines_3d<T: CameraLocation>(
                     (point.end.x, point.end.y, 0.0),
                 ]
             }))
-            .with_colors(vec![(255, 255, 0); lines.segments.len()]),
+            .with_colors(vec![(255, 100, 0); lines.segments.len()]),
         );
     }
 }
@@ -595,4 +597,32 @@ fn debug_rejected_lines<T: CameraLocation>(
             ),
         );
     }
+}
+
+fn log_3d_line_spots<T: CameraLocation>(
+    dbg: DebugContext,
+    camera_matrix: Res<CameraMatrix<T>>,
+    pose: Res<RobotPose>,
+    scan_lines: Res<ScanLines<T>>,
+) {
+    let spots = scan_lines.line_spots();
+    let mut colors = vec![];
+    let mut points = vec![];
+
+    for spot in spots {
+        let c = (255, 0, 255);
+        let spot = pose.inner * spot;
+
+        let p = camera_matrix.pixel_to_ground(spot, 0.0).map(|p| (p.x, p.y));
+
+        if let Ok(p) = p {
+            colors.push(c);
+            points.push((p.0, p.1, 0.0));
+        }
+    }
+
+    dbg.log(
+        "line_spots",
+        &rerun::Points3D::new(points).with_colors(colors),
+    );
 }
