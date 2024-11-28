@@ -17,8 +17,8 @@
 //! ### Example
 //!
 //! ```rust
-//! #use nalgebra as na;
-//! #use spatial::{Space, SpaceOver};
+//! # use nalgebra as na;
+//! # use spatial::{Space, SpaceOver};
 //!
 //! // Define marker types for different spaces.
 //! struct LocalSpace;

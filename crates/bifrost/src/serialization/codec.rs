@@ -52,7 +52,6 @@ use crate::{Error, Result};
 /// ```
 ///
 /// [macro]: bifrost_derive::Encode
-
 pub trait Encode {
     /// # Arguments
     ///
@@ -407,7 +406,7 @@ where
 
 impl<T> Encode for Vec<T>
 where
-    T: Encode + num::traits::int::PrimInt,
+    T: Encode,
 {
     fn encode(&self, mut write: impl Write) -> Result<()> {
         VarInt::from(self.len()).encode(&mut write)?;
@@ -419,16 +418,19 @@ where
     }
 
     fn encode_len(&self) -> usize {
-        match self.len() {
-            0 => VarInt::from(0).encode_len(),
-            length => self[0].encode_len() * length + VarInt::from(self.len()).encode_len(),
+        let mut total_encode_len = VarInt::from(self.len()).encode_len();
+
+        for elem in self {
+            total_encode_len += elem.encode_len();
         }
+
+        total_encode_len
     }
 }
 
 impl<T> Decode for Vec<T>
 where
-    T: Decode + num::traits::int::PrimInt,
+    T: Decode,
 {
     fn decode(mut read: impl Read) -> Result<Self>
     where
@@ -544,7 +546,7 @@ pub struct VarInt<T> {
 impl<T> VarInt<T> {
     /// Calculates the max size of bytes an unsigned integer can take up.
     /// Takes the size of the type in bytes and divides it by 7.
-    pub const MAX_BYTES_UNSIGNED: usize = ((std::mem::size_of::<T>() * 8 + 7 - 1) / 7);
+    pub const MAX_BYTES_UNSIGNED: usize = (std::mem::size_of::<T>() * 8).div_ceil(7);
 
     /// Calculates the max size of bytes an signed integer can take up.
     /// Takes the size of the type in bytes and divides it by 7.
@@ -772,6 +774,19 @@ mod tests {
             string_map.insert(format!("foo{i}"), format!("bar{i}"));
         }
         test_generic(string_map)?;
+
+        Ok(())
+    }
+
+    #[test]
+    /// This test whether `encode_len` of a vector with variable `encode_len` elements works.
+    fn test_vec_of_strings() -> Result<()> {
+        let mut vec = Vec::<String>::new();
+        for i in 0..100 {
+            vec.push(i.to_string());
+        }
+
+        test_generic(vec)?;
 
         Ok(())
     }

@@ -404,17 +404,19 @@ pub fn step(
 /// <https://github.com/IntelligentRoboticsLab/yggdrasil/issues/392>
 #[allow(unused)]
 fn filter_ball_position(
-    ball_position: &Option<Point2<f32>>,
+    ball_position: Option<&Point2<f32>>,
     field_config: &FieldConfig,
 ) -> Option<Point2<f32>> {
     let half_field_size_x = field_config.length / 2.0 + field_config.border_strip_width;
     let half_field_size_y = field_config.width / 2.0 + field_config.border_strip_width;
-    ball_position.filter(|position| {
-        position.x > half_field_size_x
-            || position.x < -half_field_size_x
-            || position.y > half_field_size_y
-            || position.y < -half_field_size_y
-    })
+    ball_position
+        .filter(|position| {
+            position.x > half_field_size_x
+                || position.x < -half_field_size_x
+                || position.y > half_field_size_y
+                || position.y < -half_field_size_y
+        })
+        .copied()
 }
 
 /// Plugin providing a state machine that keeps track of what behavior a
