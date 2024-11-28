@@ -53,9 +53,10 @@ impl ConfigCommand {
         let editor = std::env::var("EDITOR").unwrap_or("code".to_string());
         let home_dir = home::home_dir().expect("Failed to get home directory");
 
+        #[allow(clippy::zombie_processes)]
         std::process::Command::new(editor)
             .arg(home_dir.join(".config/sindri/sindri.toml"))
-            .output()
+            .spawn()
             .expect("Failed to open sindri config");
 
         Ok(())
