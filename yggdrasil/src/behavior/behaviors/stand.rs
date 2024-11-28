@@ -1,10 +1,12 @@
+use std::time::Duration;
+
 use crate::{
     behavior::engine::{Behavior, Context, Control},
-    nao::Priority,
+    nao::{NaoManager, Priority},
 };
-use nidhogg::types::{FillExt, HeadJoints};
+use nidhogg::types::HeadJoints;
 
-const HEAD_STIFFNESS: f32 = 0.3;
+const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 /// Stand up and stop walking, while looking straight ahead.
 /// This is used for when the robot is penalized and not allowed to perform any actions.
@@ -16,10 +18,11 @@ impl Behavior for Stand {
         control.walking_engine.request_stand();
         control.walking_engine.end_step_phase();
 
-        control.nao_manager.set_head(
+        control.nao_manager.set_head_target(
             HeadJoints::default(),
-            HeadJoints::fill(HEAD_STIFFNESS),
+            HEAD_ROTATION_TIME,
             Priority::default(),
+            NaoManager::HEAD_STIFFNESS,
         );
     }
 }

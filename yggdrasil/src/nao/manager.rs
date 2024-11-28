@@ -6,20 +6,26 @@ use std::{
 
 use crate::prelude::*;
 use bevy::prelude::*;
+use nalgebra::UnitQuaternion;
 use nidhogg::{
     types::{
         color, ArmJoints, FillExt, HeadJoints, JointArray, LeftEar, LeftEye, LegJoints, RgbF32,
         RightEar, RightEye, Skull,
     },
-    NaoControlMessage,
+    NaoControlMessage, NaoState,
 };
-
 /// The stiffness constant for the "unstiff"/"floppy" state for robot joints.
 const STIFFNESS_UNSTIFF: f32 = -1.0;
 /// Stiffness for the hip joints during sitting mode to prevent robot falling over backwards.
 const HIP_LOCK_STIFFNESS: f32 = 0.1;
 /// The set hip position in sitting mode, where the robot sits and starts.
 const HIP_POSITION: f32 = -0.9;
+
+const CYCLES_PER_SECOND: f32 = 82.0;
+
+const SOURCE_TARGET_SIMILARITY_THRESHOLD: f32 = 0.99;
+
+const NEW_TARGET_SIMILARITY_THRESHOLD: f32 = 0.9;
 
 type JointValue = f32;
 
@@ -39,7 +45,36 @@ impl Plugin for NaoManagerPlugin {
     }
 }
 
-fn finalize(mut control_message: ResMut<NaoControlMessage>, mut manager: ResMut<NaoManager>) {
+fn finalize(
+    mut control_message: ResMut<NaoControlMessage>,
+    mut manager: ResMut<NaoManager>,
+    state: Res<NaoState>,
+) {
+    // Update the head target
+    manager.head_state = manager.head_state.clone().update(&state);
+
+    // If the head is moving, interpolate the desired head position and set the head joints.
+    if let HeadState::Moving {
+        source,
+        target,
+        timestep,
+        time_interval: _,
+        priority,
+        stiffness,
+    } = manager.head_state
+    {
+        let head = source.slerp(&target, timestep);
+
+        manager.set_head(
+            HeadJoints::builder()
+                .pitch(head.euler_angles().1)
+                .yaw(head.euler_angles().2)
+                .build(),
+            HeadJoints::fill(stiffness),
+            priority,
+        );
+    }
+
     control_message.position = manager.make_joint_positions();
     control_message.stiffness = manager.make_joint_stiffnesses();
 
@@ -114,6 +149,86 @@ struct LedSettings<T> {
     priority: Option<Priority>,
 }
 
+// This enum represents the current state of the head target/motion.
+#[derive(Default, Debug, Clone)]
+enum HeadState {
+    #[default]
+    Stationary,
+    New {
+        target: UnitQuaternion<f32>,
+        time_to_target: Duration,
+        priority: Priority,
+        stiffness: f32,
+    },
+    Moving {
+        source: UnitQuaternion<f32>,
+        target: UnitQuaternion<f32>,
+        timestep: f32,
+        time_interval: f32,
+        priority: Priority,
+        stiffness: f32,
+    },
+}
+
+impl HeadState {
+    // This function is called every cycle to update the head target depending on the current state of the robot.
+    fn update(self, nao_state: &NaoState) -> Self {
+        match self {
+            HeadState::Stationary => HeadState::Stationary,
+            // If the target is new, we start moving towards it.
+            HeadState::New {
+                target,
+                time_to_target,
+                priority,
+                stiffness,
+            } => {
+                let source = UnitQuaternion::from_euler_angles(
+                    0.0,
+                    nao_state.position.head_pitch,
+                    nao_state.position.head_yaw,
+                );
+
+                let similarity = source.dot(&target);
+                if similarity > SOURCE_TARGET_SIMILARITY_THRESHOLD {
+                    HeadState::Stationary
+                } else {
+                    HeadState::Moving {
+                        source,
+                        target,
+                        timestep: 0.0,
+                        time_interval: 1.0 / (time_to_target.as_secs_f32() * CYCLES_PER_SECOND),
+                        priority,
+                        stiffness,
+                    }
+                }
+            }
+            // If the target is already moving, we check if we have already reached the target.
+            HeadState::Moving {
+                source,
+                target,
+                timestep,
+                time_interval,
+                priority,
+                stiffness,
+            } => {
+                //
+                if timestep >= 1.0 {
+                    HeadState::Stationary
+                } else {
+                    HeadState::Moving {
+                        source,
+                        target,
+                        timestep: timestep + time_interval,
+                        time_interval,
+                        priority,
+                        stiffness,
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Manager that handles the requests of multiple systems changing the desired nao state at the same time.
 ///
 /// Modules can request through the nao manager with a given priority.
@@ -126,6 +241,8 @@ pub struct NaoManager {
     arm_settings: JointSettings<ArmJoints<JointValue>>,
     head_settings: JointSettings<HeadJoints<JointValue>>,
 
+    head_state: HeadState,
+
     led_left_ear: LedSettings<LeftEar>,
     led_right_ear: LedSettings<RightEar>,
     led_chest: LedSettings<ChestBlink>,
@@ -137,6 +254,8 @@ pub struct NaoManager {
 }
 
 impl NaoManager {
+    pub const HEAD_STIFFNESS: f32 = 0.2;
+
     fn set_joint_settings<T>(
         current_settings: &mut JointSettings<T>,
         joint_positions: T,
@@ -279,6 +398,60 @@ impl NaoManager {
             joint_stiffness,
             priority,
         );
+
+        self
+    }
+
+    /// Set the target position for the head.
+    pub fn set_head_target(
+        &mut self,
+        joint_positions: HeadJoints<JointValue>,
+        time_to_target: Duration,
+        priority: Priority,
+        stiffness: f32,
+    ) -> &mut Self {
+        let new_target =
+            UnitQuaternion::from_euler_angles(0.0, joint_positions.pitch, joint_positions.yaw);
+
+        if let HeadState::Moving {
+            source,
+            target,
+            timestep,
+            time_interval,
+            priority,
+            stiffness,
+        } = self.head_state
+        {
+            // If the head is already moving, only set a new target if its sufficiently different from old target.
+            // This helps revents the head from stuttering
+            let similarity = target.dot(&new_target);
+            if similarity < NEW_TARGET_SIMILARITY_THRESHOLD {
+                self.head_state = HeadState::New {
+                    target: new_target,
+                    time_to_target,
+                    priority,
+                    stiffness,
+                };
+            } else {
+                self.head_state = HeadState::Moving {
+                    source,
+                    target: new_target,
+                    timestep,
+                    time_interval,
+                    priority,
+                    stiffness,
+                };
+            }
+            return self;
+        }
+
+        // If the head is not moving, we just set the new target.
+        self.head_state = HeadState::New {
+            target: new_target,
+            time_to_target,
+            priority,
+            stiffness,
+        };
 
         self
     }

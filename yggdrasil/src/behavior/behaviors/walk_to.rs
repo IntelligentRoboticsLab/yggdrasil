@@ -1,11 +1,14 @@
+use std::time::Duration;
+
 use nalgebra::Point3;
-use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
     motion::step_planner::Target,
-    nao::Priority,
+    nao::{NaoManager, Priority},
 };
+
+const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 /// Walk to a target position using the step planner, whilst looking at the target.
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -18,9 +21,12 @@ impl Behavior for WalkTo {
         let target_point = Point3::new(self.target.position.x, self.target.position.y, 0.0);
 
         let look_at = context.pose.get_look_at_absolute(&target_point);
-        control
-            .nao_manager
-            .set_head(look_at, HeadJoints::fill(0.5), Priority::High);
+        control.nao_manager.set_head_target(
+            look_at,
+            HEAD_ROTATION_TIME,
+            Priority::default(),
+            NaoManager::HEAD_STIFFNESS,
+        );
 
         if control
             .step_planner
