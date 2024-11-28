@@ -8,7 +8,7 @@ use crate::{
     behavior::engine::{Behavior, Context, Control},
     localization::RobotPose,
     motion::step_planner::Target,
-    nao::Priority,
+    nao::{NaoManager, Priority},
 };
 
 /// To prevent the Goalkeeper from walking into the goalpost, we use this position for a better approach.
@@ -18,7 +18,6 @@ const GOAL_KEEPER_PRE_SET_POS: Target = Target {
 };
 
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
-const HEAD_STIFFNESS: f32 = 0.2;
 
 /// Walk to the set position of the robot.
 /// Only the Goalkeeper will first walk to the pre-set position before walking to the set position.
@@ -46,7 +45,7 @@ impl Behavior for WalkToSet {
             look_at,
             HEAD_ROTATION_TIME,
             Priority::default(),
-            HEAD_STIFFNESS,
+            NaoManager::HEAD_STIFFNESS,
         );
 
         let target = Target {

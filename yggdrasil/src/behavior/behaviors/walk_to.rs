@@ -5,11 +5,10 @@ use nalgebra::Point3;
 use crate::{
     behavior::engine::{Behavior, Context, Control},
     motion::step_planner::Target,
-    nao::Priority,
+    nao::{NaoManager, Priority},
 };
 
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
-const HEAD_STIFFNESS: f32 = 0.2;
 
 /// Walk to a target position using the step planner, whilst looking at the target.
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -26,7 +25,7 @@ impl Behavior for WalkTo {
             look_at,
             HEAD_ROTATION_TIME,
             Priority::default(),
-            HEAD_STIFFNESS,
+            NaoManager::HEAD_STIFFNESS,
         );
 
         if control

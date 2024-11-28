@@ -3,11 +3,10 @@ use std::time::Duration;
 use crate::{
     behavior::engine::{Behavior, Context, Control},
     localization::RobotPose,
-    nao::Priority,
+    nao::{NaoManager, Priority},
 };
 use nalgebra::{Point2, Point3};
 
-const HEAD_STIFFNESS: f32 = 0.2;
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 /// Stand and look at a target point.
@@ -26,7 +25,7 @@ impl Behavior for StandLookAt {
             look_at,
             HEAD_ROTATION_TIME,
             Priority::default(),
-            HEAD_STIFFNESS,
+            NaoManager::HEAD_STIFFNESS,
         );
         control.walking_engine.request_stand();
     }

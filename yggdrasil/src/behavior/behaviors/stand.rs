@@ -2,11 +2,10 @@ use std::time::Duration;
 
 use crate::{
     behavior::engine::{Behavior, Context, Control},
-    nao::Priority,
+    nao::{NaoManager, Priority},
 };
 use nidhogg::types::HeadJoints;
 
-const HEAD_STIFFNESS: f32 = 0.2;
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 /// Stand up and stop walking, while looking straight ahead.
@@ -23,7 +22,7 @@ impl Behavior for Stand {
             HeadJoints::default(),
             HEAD_ROTATION_TIME,
             Priority::default(),
-            HEAD_STIFFNESS,
+            NaoManager::HEAD_STIFFNESS,
         );
     }
 }
