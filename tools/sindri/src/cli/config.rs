@@ -55,7 +55,7 @@ impl ConfigCommand {
 
         std::process::Command::new(editor)
             .arg(home_dir.join(".config/sindri/sindri.toml"))
-            .spawn()
+            .output()
             .expect("Failed to open sindri config");
 
         Ok(())
