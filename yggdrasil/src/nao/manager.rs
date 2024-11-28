@@ -153,7 +153,7 @@ struct LedSettings<T> {
 #[derive(Default, Debug, Clone)]
 enum HeadState {
     #[default]
-    None,
+    Stationary,
     New {
         target: UnitQuaternion<f32>,
         time_to_target: Duration,
@@ -174,7 +174,7 @@ impl HeadState {
     // This function is called every cycle to update the head target depending on the current state of the robot.
     fn update(self, nao_state: &NaoState) -> Self {
         match self {
-            HeadState::None => HeadState::None,
+            HeadState::Stationary => HeadState::Stationary,
             // If the target is new, we start moving towards it.
             HeadState::New {
                 target,
@@ -190,7 +190,7 @@ impl HeadState {
 
                 let similarity = source.dot(&target);
                 if similarity > SOURCE_TARGET_SIMILARITY_THRESHOLD {
-                    HeadState::None
+                    HeadState::Stationary
                 } else {
                     HeadState::Moving {
                         source,
@@ -213,7 +213,7 @@ impl HeadState {
             } => {
                 //
                 if timestep >= 1.0 {
-                    HeadState::None
+                    HeadState::Stationary
                 } else {
                     HeadState::Moving {
                         source,
