@@ -22,7 +22,10 @@ use crate::{
     },
     motion::walk::smoothing::{parabolic_return, parabolic_step},
     nao::{Cycle, CycleTime, NaoManager, Priority},
-    sensor::{button::ChestButton, orientation::RobotOrientation},
+    sensor::{
+        button::{ChestButton, HeadButtons},
+        orientation::RobotOrientation,
+    },
 };
 
 use super::walk::WalkingEngineConfig;
@@ -54,7 +57,7 @@ impl Plugin for Walkv4EnginePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(support_foot::SupportFootPlugin);
         app.init_resource::<WalkCommand>()
-            .add_systems(Update, switch_phase)
+            .add_systems(Update, (switch_phase, switch_to_sitting))
             .add_systems(PostUpdate, (sit_phase, stand_phase, walk_phase));
     }
 }
@@ -163,6 +166,12 @@ struct WalkState {
     swing_foot: Side,
 }
 
+fn switch_to_sitting(head_buttons: Res<HeadButtons>, mut command: ResMut<WalkCommand>) {
+    if head_buttons.all_pressed() {
+        *command = WalkCommand::Sit(0.18);
+    }
+}
+
 fn walk_phase(
     dbg: DebugContext,
     mut walk_state: Local<WalkState>,
@@ -200,8 +209,9 @@ fn walk_phase(
             FootPositions::from_kinematics(walk_state.swing_foot.opposite(), &kinematics, 0.025);
         walk_state.swing_foot = walk_state.swing_foot.opposite();
 
-        println!("end_left: {:?}", walk_state.start.left.translation);
-        println!("end_right: {:?}", walk_state.start.right.translation);
+        // println!("end_left: {:?}", walk_state.start.left.translation);
+        // println!("end_right: {:?}", walk_state.start.right.translation);
+        println!("switched foot to: {:?}", walk_state.swing_foot);
     }
 
     let linear = walk_state.phase.as_secs_f32() / walk_state.planned_duration.as_secs_f32();
@@ -235,8 +245,8 @@ fn walk_phase(
         Side::Right => (0., swing_lift),
     };
 
-    println!("left: {:?}", left.translation);
-    println!("right: {:?}\n\n\n", right.translation);
+    // println!("left: {:?}", left.translation);
+    // println!("right: {:?}\n\n\n", right.translation);
 
     let current =
         FootPositions::from_kinematics(walk_state.swing_foot.opposite(), &kinematics, 0.025);
