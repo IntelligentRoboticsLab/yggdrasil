@@ -18,7 +18,7 @@ pub mod prelude {
     pub use crate::commands_ext::MlTaskCommandsExt;
     pub use crate::error::Error;
     pub use crate::util;
-    pub use crate::{MlModel, MlModelResourceExt, MlPlugin};
+    pub use crate::{MlArray, MlModel, MlModelResourceExt, MlPlugin};
 }
 
 /// Conveniency type representing an n-dimensional array.
@@ -50,10 +50,10 @@ impl Plugin for MlPlugin {
 ///
 /// impl MlModel for Mixtral8x7b {
 ///     // In this case, the model takes two inputs
-///     type InputShape = (MlArray<u8>, MlArray<u8>);
+///     type Inputs = (MlArray<u8>, MlArray<u8>);
 ///
 ///     // And produces a single output
-///     type OutputShape = MlArray<u8>;
+///     type Outputs = MlArray<u8>;
 ///
 ///     // This is the path to the model's ONNX file
 ///     const ONNX_PATH: &'static str = "deploy/models/mixtral8x7b.onnx";

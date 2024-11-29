@@ -69,6 +69,7 @@ impl ControlApp {
         let io = IoTaskPool::get();
         io.spawn(async move {
             loop {
+                tracing::info!("Ready for next connection!");
                 match app.listener.accept().await {
                     Ok((socket, addr)) => {
                         tracing::info!("Connection with a new client: {:?}", addr);
@@ -103,7 +104,6 @@ impl ControlApp {
         {
             self.clients.lock().await.insert(id, tx.clone());
         }
-        tracing::info!("Number of clients: {}", self.clients.lock().await.len());
 
         // Spawn reader and writer tasks
         let handlers = Arc::clone(&self.handlers);

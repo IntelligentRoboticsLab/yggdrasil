@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use nidhogg::types::{FillExt, HeadJoints};
 
 use nalgebra::{Point2, Point3};
@@ -6,7 +8,7 @@ use crate::{
     behavior::engine::{Behavior, Context, Control},
     localization::RobotPose,
     motion::step_planner::Target,
-    nao::Priority,
+    nao::{NaoManager, Priority},
 };
 
 /// To prevent the Goalkeeper from walking into the goalpost, we use this position for a better approach.
@@ -14,6 +16,8 @@ const GOAL_KEEPER_PRE_SET_POS: Target = Target {
     position: Point2::new(-2.85, 0.0),
     rotation: None,
 };
+
+const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 /// Walk to the set position of the robot.
 /// Only the Goalkeeper will first walk to the pre-set position before walking to the set position.
@@ -37,9 +41,12 @@ impl Behavior for WalkToSet {
                 .pose
                 .get_look_at_absolute(&Point3::new(set_position.x, set_position.y, RobotPose::CAMERA_HEIGHT));
 
-        control
-            .nao_manager
-            .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
+        control.nao_manager.set_head_target(
+            look_at,
+            HEAD_ROTATION_TIME,
+            Priority::default(),
+            NaoManager::HEAD_STIFFNESS,
+        );
 
         let target = Target {
             position: set_robot_position.isometry.translation.vector.into(),

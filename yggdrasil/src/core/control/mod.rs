@@ -30,11 +30,13 @@ impl Plugin for ControlPlugin {
             .add_systems(
                 Update,
                 (handle_notify_on_connection, debug_systems_on_new_connection)
+                    .chain()
                     .run_if(resource_exists::<ViewerMessageReceiver>),
             )
             .add_systems(
                 Update,
                 (handle_viewer_message, update_debug_systems_for_clients)
+                    .chain()
                     .run_if(resource_exists::<ViewerMessageReceiver>),
             );
     }

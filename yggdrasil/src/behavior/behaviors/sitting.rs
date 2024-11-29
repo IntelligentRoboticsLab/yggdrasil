@@ -26,9 +26,6 @@ impl Behavior for Sitting {
             control.walking_engine.request_sit();
         }
 
-        control
-            .nao_manager
-            .unstiff_arms(UNSTIFF_PRIORITY)
-            .unstiff_head(UNSTIFF_PRIORITY);
+        control.nao_manager.unstiff_arms(UNSTIFF_PRIORITY);
     }
 }

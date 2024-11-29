@@ -78,12 +78,7 @@ impl Odometry {
         kinematics: &Kinematics,
         orientation: &RobotOrientation,
     ) {
-        let left_sole_to_right_sole = kinematics
-            .isometry::<RightSole, LeftSole>()
-            .inner
-            .translation
-            .vector
-            .xy();
+        let left_sole_to_right_sole = kinematics.vector::<LeftSole, RightSole>().inner.xy();
 
         // Compute offset to last position, divided by 2 to get the center of the robot.
         let offset = match swing_foot.support() {

@@ -36,7 +36,8 @@ impl_spaces! {
     Head,
     Neck,
     Torso,
-    Robot;
+    Robot,
+    Ground;
     Shoulder<T>,
     UpperArm<T>,
     Elbow<T>,

@@ -1,0 +1,20 @@
+[package]
+description = "Filters and stuff"
+name = "filter"
+version.workspace = true
+
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+nalgebra = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+plotters = { workspace = true }
+rand = { workspace = true }

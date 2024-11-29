@@ -31,31 +31,31 @@ pub struct DefineOutput<'a, M>(&'a M::Inputs)
 where
     M: MlModel;
 
-impl<'a, M> MlInferenceBuilderState for DefineOutput<'a, M> where M: MlModel {}
+impl<M> MlInferenceBuilderState for DefineOutput<'_, M> where M: MlModel {}
 
 /// Type state for defining the output of the model with multiple batches.
 pub struct DefineBatchedOutput<'a, M>(&'a [&'a M::Inputs])
 where
     M: MlModel;
-impl<'a, M> MlInferenceBuilderState for DefineBatchedOutput<'a, M> where M: MlModel {}
+impl<M> MlInferenceBuilderState for DefineBatchedOutput<'_, M> where M: MlModel {}
 
 /// Type state for storing the output of the model in a resource.
 pub struct ResourceOutput<'a, M>(&'a M::Inputs)
 where
     M: MlModel;
-impl<'a, M> MlInferenceBuilderState for ResourceOutput<'a, M> where M: MlModel {}
+impl<M> MlInferenceBuilderState for ResourceOutput<'_, M> where M: MlModel {}
 
 /// Type state for storing the output of the model in a single entity.
 pub struct EntityOutput<'a, M>(&'a M::Inputs)
 where
     M: MlModel;
-impl<'a, M> MlInferenceBuilderState for EntityOutput<'a, M> where M: MlModel {}
+impl<M> MlInferenceBuilderState for EntityOutput<'_, M> where M: MlModel {}
 
 /// Type state for storing the output of the model in multiple entities.
 pub struct EntitiesOutput<'a, M>(&'a [&'a M::Inputs])
 where
     M: MlModel;
-impl<'a, M> MlInferenceBuilderState for EntitiesOutput<'a, M> where M: MlModel {}
+impl<M> MlInferenceBuilderState for EntitiesOutput<'_, M> where M: MlModel {}
 
 /// Extension trait for [`Commands`] to spawn an [`MlModel`] inference tasks.
 pub trait MlTaskCommandsExt<'a, 'w, 's> {
@@ -168,7 +168,7 @@ where
     }
 }
 
-impl<'a, 'w, 's, M> MlInferenceBuilder<'a, 'w, 's, M, ResourceOutput<'a, M>>
+impl<'a, M> MlInferenceBuilder<'a, '_, '_, M, ResourceOutput<'a, M>>
 where
     M: MlModel,
 {
@@ -201,7 +201,7 @@ where
     }
 }
 
-impl<'a, 'w, 's, M> MlInferenceBuilder<'a, 'w, 's, M, EntityOutput<'a, M>>
+impl<'a, M> MlInferenceBuilder<'a, '_, '_, M, EntityOutput<'a, M>>
 where
     M: MlModel,
 {
@@ -243,7 +243,7 @@ where
     }
 }
 
-impl<'a, 'w, 's, M> MlInferenceBuilder<'a, 'w, 's, M, EntitiesOutput<'a, M>>
+impl<'a, M> MlInferenceBuilder<'a, '_, '_, M, EntitiesOutput<'a, M>>
 where
     M: MlModel,
 {

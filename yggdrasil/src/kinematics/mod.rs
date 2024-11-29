@@ -6,11 +6,13 @@ use nidhogg::NaoState;
 
 use self::dimensions::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS};
 use self::spaces::{Left, Right};
+use self::visualization::KinematicsVisualizationPlugin;
 
 pub mod dimensions;
 pub mod forward;
 pub mod inverse;
 pub mod spaces;
+pub mod visualization;
 
 pub mod prelude {
     pub use super::dimensions::*;
@@ -28,6 +30,7 @@ pub struct KinematicsPlugin;
 impl Plugin for KinematicsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Kinematics>()
+            .add_plugins(KinematicsVisualizationPlugin)
             .add_systems(PreUpdate, update_kinematics);
     }
 }

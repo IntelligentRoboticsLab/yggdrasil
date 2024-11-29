@@ -108,7 +108,7 @@ fn setup_spl_field(dbg: DebugContext) {
 
     dbg.log_static(
         "field/mesh",
-        &rerun::Transform3D::from_translation([0.0, 0.0, -0.05]),
+        &rerun::Transform3D::from_translation([0.0, 0.0, -0.01]),
     );
 
     dbg.log_static("field/mesh", &rerun::ViewCoordinates::FLU);

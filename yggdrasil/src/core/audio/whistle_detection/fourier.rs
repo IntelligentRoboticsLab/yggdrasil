@@ -63,14 +63,13 @@ impl Stft {
         self.fft
             .process_with_scratch(&mut self.window_buff, &mut self.window_scratch);
 
-        return self
-            .window_buff
+        self.window_buff
             .iter()
             .copied()
             // ft result is symmetric, only first window_size / 2 + 1 samples are unique
             .take(self.window_size / 2 + 1)
             // square norm of complex fft output
-            .map(|c| c.norm_sqr());
+            .map(|c| c.norm_sqr())
     }
 }
 
