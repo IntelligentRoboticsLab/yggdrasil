@@ -80,11 +80,11 @@ impl Plugin for LineDetectionPlugin {
                 )
                     .chain(),
                 debug_lines::<Top>,
-                debug_lines_inliers::<Top>,
+                // debug_lines_inliers::<Top>,
                 debug_lines_3d::<Top>,
-                debug_rejected_lines::<Top>,
-                //
-                log_3d_line_spots::<Top>,
+                // debug_rejected_lines::<Top>,
+                // //
+                // log_3d_line_spots::<Top>,
                 //
                 (
                     handle_line_task::<Bottom>,
@@ -93,9 +93,9 @@ impl Plugin for LineDetectionPlugin {
                 )
                     .chain(),
                 debug_lines::<Bottom>,
-                debug_lines_inliers::<Bottom>,
+                // debug_lines_inliers::<Bottom>,
                 debug_lines_3d::<Bottom>,
-                debug_rejected_lines::<Bottom>,
+                // debug_rejected_lines::<Bottom>,
             ),
         );
     }
@@ -315,7 +315,7 @@ fn detect_lines<T: CameraLocation>(
 
     let mut candidates = vec![];
 
-    let mut ransac = LineDetector::new(projected_spots, 50, cfg.arrsac_inlier_threshold);
+    let mut ransac = LineDetector::new(projected_spots, 10, cfg.arrsac_inlier_threshold);
 
     for _ in 0..cfg.max_iters {
         let Some((line, mut inliers)) = ransac.next() else {

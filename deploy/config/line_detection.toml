@@ -1,6 +1,6 @@
 [top]
 # margin outside of the field in which lines will still be considered
-field_margin = 0.25
+field_margin = 0.05
 # maximum number of iterations for ARRSAC
 max_iters = 10
 # residual threshold for ARRSAC inliers
@@ -8,7 +8,7 @@ arrsac_inlier_threshold = 0.025
 # minimum number of points in a valid line segment
 line_segment_min_points = 5
 # maximum distance of a valid line spot from the camera
-spot_max_distance = 5.0
+spot_max_distance = 4.0
 # maximum distance between two inliers of a line
 max_line_gap_distance = 0.5
 # number of samples for the white test
@@ -16,25 +16,25 @@ white_test_samples = 10
 # sampling distance for the white test
 white_test_sample_distance = 0.15
 # ratio of white tests that need to pass for two lines to be merged
-white_test_merge_ratio = 0.7
+white_test_merge_ratio = 0.8
 # maximum angle in radians between two lines for them to be considered parallel
 white_test_max_angle = 0.15
 # minimum length of a line segment after merging
-line_segment_min_length_post_merge = 0.25
+line_segment_min_length_post_merge = 0.3
 # maximum length of a line segment after merging
 line_segment_max_length_post_merge = 5.0
 
 [bottom]
 # margin outside of the field in which lines will still be considered
-field_margin = 0.25
+field_margin = 0.05
 # maximum number of iterations for ARRSAC
-max_iters = 10
+max_iters = 5
 # residual threshold for ARRSAC inliers
 arrsac_inlier_threshold = 0.025
 # minimum number of points in a valid line segment
 line_segment_min_points = 5
 # maximum distance of a valid line spot from the camera
-spot_max_distance = 5.0
+spot_max_distance = 4.0
 # maximum distance between two inliers of a line
 max_line_gap_distance = 0.5
 # number of samples for the white test
@@ -42,7 +42,7 @@ white_test_samples = 10
 # sampling distance for the white test
 white_test_sample_distance = 0.15
 # ratio of white tests that need to pass for two lines to be merged
-white_test_merge_ratio = 0.7
+white_test_merge_ratio = 0.8
 # maximum angle in radians between two lines for them to be considered parallel
 white_test_max_angle = 0.15
 # minimum length of a line segment after merging
