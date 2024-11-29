@@ -24,6 +24,9 @@ use crate::{
     nao::{Cycle, CycleTime, NaoManager, Priority},
     sensor::{
         button::{ChestButton, HeadButtons},
+        fsr::Contacts,
+        imu::IMUValues,
+        low_pass_filter::LowPassFilter,
         orientation::RobotOrientation,
     },
 };
@@ -33,6 +36,8 @@ use super::walk::WalkingEngineConfig;
 mod feet;
 mod step;
 mod support_foot;
+
+const TORSO_OFFSET: f32 = 0.025;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Side {
@@ -95,7 +100,7 @@ fn sit_phase(
     };
 
     let foot_offset = FootOffset::zero(hip_height);
-    let (left, right) = kinematics::inverse::leg_angles(&foot_offset, &foot_offset);
+    let (left, right) = kinematics::inverse::leg_angles(&foot_offset, &foot_offset, TORSO_OFFSET);
 
     let leg_positions = LegJoints::builder().left_leg(left).right_leg(right).build();
     let leg_stiffness = LegJoints::builder()
@@ -124,7 +129,8 @@ fn stand_phase(
         ..Default::default()
     };
     let foot_offset = FootOffset::zero(hip_height);
-    let (left, right) = kinematics::inverse::leg_angles(&foot_offset_left, &foot_offset);
+    let (left, right) =
+        kinematics::inverse::leg_angles(&foot_offset_left, &foot_offset, TORSO_OFFSET);
 
     let leg_positions = LegJoints::builder().left_leg(left).right_leg(right).build();
     let leg_stiffness = LegJoints::builder()
@@ -149,21 +155,33 @@ fn stand_phase(
     offset.x = 0.0;
     offset.y = -0.05;
 
-    // TODO: the torso offset is hard coded in the ik implementation!!
-    let torso_offset = 0.025;
     let hip_height = 0.225;
 
-    let foot_positions = FootPositions::from_kinematics(Side::Left, &kinematics, torso_offset);
+    // TODO: the torso offset is hard coded in the ik implementation!!
+    let foot_positions = FootPositions::from_kinematics(Side::Left, &kinematics, TORSO_OFFSET);
 
     // tracing::info!("feet: {:?}\n\n\n", foot_positions);
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 struct WalkState {
     phase: Duration,
     start: FootPositions,
     planned_duration: Duration,
     swing_foot: Side,
+    filtered_gyro: LowPassFilter<3>,
+}
+
+impl Default for WalkState {
+    fn default() -> Self {
+        Self {
+            phase: Duration::ZERO,
+            start: FootPositions::default(),
+            planned_duration: Duration::from_secs_f32(0.25),
+            swing_foot: Side::Left,
+            filtered_gyro: LowPassFilter::new(0.115),
+        }
+    }
 }
 
 fn switch_to_sitting(head_buttons: Res<HeadButtons>, mut command: ResMut<WalkCommand>) {
@@ -183,13 +201,20 @@ fn walk_phase(
     cycle: Res<Cycle>,
     cycle_time: Res<CycleTime>,
     fsr: Res<ForceSensitiveResistors>,
-    orientation: Res<RobotOrientation>,
+    imu: Res<IMUValues>,
 ) {
     let WalkCommand::Walk(hip_height) = *command else {
         return;
     };
 
     walk_state.phase += cycle_time.duration;
+    walk_state.filtered_gyro.update(imu.gyroscope);
+
+    dbg.log_with_cycle(
+        "gyro/filtered_y",
+        *cycle,
+        &rerun::Scalar::new(walk_state.filtered_gyro.state().y as f64),
+    );
 
     let config = config.clone();
     let left_foot_fsr = fsr.left_foot.sum();
@@ -200,25 +225,12 @@ fn walk_phase(
         Side::Right => right_foot_fsr,
     } > config.cop_pressure_threshold;
 
-    if has_foot_switched
-        && walk_state.phase.as_secs_f32() >= 0.75 * walk_state.planned_duration.as_secs_f32()
-    {
-        walk_state.phase = Duration::ZERO;
-        walk_state.planned_duration = Duration::from_secs_f32(0.25);
-        walk_state.start =
-            FootPositions::from_kinematics(walk_state.swing_foot.opposite(), &kinematics, 0.025);
-        walk_state.swing_foot = walk_state.swing_foot.opposite();
-
-        // println!("end_left: {:?}", walk_state.start.left.translation);
-        // println!("end_right: {:?}", walk_state.start.right.translation);
-        println!("switched foot to: {:?}", walk_state.swing_foot);
-    }
-
-    let linear = walk_state.phase.as_secs_f32() / walk_state.planned_duration.as_secs_f32();
+    let linear = (walk_state.phase.as_secs_f32() / walk_state.planned_duration.as_secs_f32())
+        .clamp(0.0, 1.0);
     let parabolic = parabolic_step(linear);
 
     let step = Step::new(
-        0.03,
+        0.05,
         0.0,
         0.0,
         walk_state.planned_duration,
@@ -249,7 +261,16 @@ fn walk_phase(
     // println!("right: {:?}\n\n\n", right.translation);
 
     let current =
-        FootPositions::from_kinematics(walk_state.swing_foot.opposite(), &kinematics, 0.025);
+        FootPositions::from_kinematics(walk_state.swing_foot.opposite(), &kinematics, TORSO_OFFSET);
+
+    dbg.log_with_cycle(
+        "walk/swing_foot",
+        *cycle,
+        &rerun::Scalar::new(match walk_state.swing_foot {
+            Side::Left => 0.06,
+            Side::Right => -0.06,
+        }),
+    );
 
     dbg.log_with_cycle(
         "walk/left_lift_gt",
@@ -319,11 +340,22 @@ fn walk_phase(
     };
 
     let (mut left, mut right) =
-        kinematics::inverse::leg_angles(&left_foot_offset, &right_foot_offset);
+        kinematics::inverse::leg_angles(&left_foot_offset, &right_foot_offset, TORSO_OFFSET);
+
+    if has_foot_switched && linear > 0.95 {
+        walk_state.phase = Duration::ZERO;
+        walk_state.planned_duration = Duration::from_secs_f32(0.25);
+        walk_state.start = FootPositions::from_kinematics(
+            walk_state.swing_foot.opposite(),
+            &kinematics,
+            TORSO_OFFSET,
+        );
+        walk_state.swing_foot = walk_state.swing_foot.opposite();
+    }
 
     // Balance adjustment
     let balance_adjustment =
-        orientation.euler_angles().1 * config.balancing.filtered_gyro_y_multiplier;
+        walk_state.filtered_gyro.state().y * config.balancing.filtered_gyro_y_multiplier;
     match walk_state.swing_foot {
         Side::Left => {
             right.ankle_pitch += balance_adjustment;
@@ -332,6 +364,12 @@ fn walk_phase(
             left.ankle_pitch += balance_adjustment;
         }
     }
+
+    dbg.log_with_cycle(
+        "walk/balance_adjustment",
+        *cycle,
+        &rerun::Scalar::new(balance_adjustment as f64),
+    );
 
     let leg_positions = LegJoints::builder().left_leg(left).right_leg(right).build();
     let leg_stiffness = LegJoints::builder()

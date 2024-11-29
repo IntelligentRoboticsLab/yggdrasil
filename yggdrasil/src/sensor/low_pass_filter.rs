@@ -35,4 +35,9 @@ impl<const N: usize> LowPassFilter<N> {
         self.y = y;
         y
     }
+
+    #[must_use]
+    pub fn state(&self) -> SVector<f32, N> {
+        self.y
+    }
 }
