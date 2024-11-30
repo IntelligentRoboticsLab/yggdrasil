@@ -94,7 +94,7 @@ lstsq = "0.5.0"
 miette = "5.10.0"
 nalgebra = "0.32.6"
 ndarray = "0.16.1"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "583fe46" }
+nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "91e96228b0b0cb4efb9a4e7cd0ae3b8019e109a4" }
 num = "0.4.3"
 openvino = { version = "0.8.0", features = ["runtime-linking"] }
 ordered-float = "4.4.0"
