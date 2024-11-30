@@ -39,13 +39,15 @@ fast-math = { workspace = true }
 fast_image_resize = { workspace = true }
 futures = { workspace = true }
 geo = { workspace = true }
-image = { workspace = true }
 itertools = { workspace = true }
 kira = { workspace = true }
 linreg = { workspace = true }
 lstsq = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
-nalgebra = { workspace = true, features = ["serde-serialize"] }
+nalgebra = { workspace = true, features = [
+  "serde-serialize",
+  "convert-glam029",
+] }
 ndarray = { workspace = true }
 nidhogg = { workspace = true, features = ["lola", "bevy"] }
 num = { workspace = true }

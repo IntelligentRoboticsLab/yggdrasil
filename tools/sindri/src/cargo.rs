@@ -27,10 +27,6 @@ pub enum CargoError {
     Json(#[from] serde_json::Error),
 
     #[error(transparent)]
-    #[diagnostic(help("Failed to parse regex pattern!"))]
-    Regex(#[from] regex::Error),
-
-    #[error(transparent)]
     #[diagnostic(help("Failed to parse stderr"))]
     FromUtf8(#[from] FromUtf8Error),
 

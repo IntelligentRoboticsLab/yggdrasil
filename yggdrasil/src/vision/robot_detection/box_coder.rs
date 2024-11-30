@@ -1,5 +1,4 @@
 use ndarray::{s, stack, Array2, Axis};
-use num::complex::ComplexFloat;
 
 /// Utility that decodes bounding boxes from the regression format output by the model.
 ///
@@ -22,7 +21,7 @@ impl BoxCoder {
     ///
     /// This will default to a `bbox_xform_clip` of `ln(1000/16)`.
     pub fn new(weights: (f32, f32, f32, f32)) -> Self {
-        Self::new_with_clip(weights, (1000.0 / 16.0).ln())
+        Self::new_with_clip(weights, (1000.0 / 16_f32).ln())
     }
 
     /// Create a new [`BoxCoder`] with the given weights and clipping value.

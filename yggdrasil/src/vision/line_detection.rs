@@ -15,6 +15,7 @@ use super::scan_lines::{ScanLine, ScanLines};
 use bevy::prelude::*;
 use heimdall::{CameraLocation, CameraMatrix, Top};
 use nalgebra::Point2;
+use rerun::external::glam::{Quat, Vec2, Vec3};
 use tasks::conditions::task_finished;
 use tasks::CommandsExt;
 
@@ -413,7 +414,7 @@ fn visualize_lines<T: CameraLocation>(
             lines
                 .lines
                 .iter()
-                .map(|line| [(line.start.x, line.start.y), (line.end.x, line.end.y)]),
+                .map(|line| [Into::<Vec2>::into(line.start), Into::<Vec2>::into(line.end)]),
         ),
     );
 
@@ -422,21 +423,19 @@ fn visualize_lines<T: CameraLocation>(
         lines.image.cycle(),
         &rerun::LineStrips3D::new(lines.projected_lines.iter().map(|line| {
             [
-                (line.start.x, line.start.y, line.start.z),
-                (line.end.x, line.end.y, line.end.z),
+                Into::<Vec3>::into(line.start),
+                Into::<Vec3>::into(line.start),
             ]
         })),
     );
 
     let transform = robot_pose.as_3d();
-    let translation = transform.translation;
-    let rotation = transform.rotation.as_vector();
 
     dbg.log_with_cycle(
         T::make_entity_path("projected_lines"),
         lines.image.cycle(),
-        &rerun::Transform3D::from_translation((translation.x, translation.y, translation.z))
-            .with_quaternion([rotation.x, rotation.y, rotation.z, rotation.w]),
+        &rerun::Transform3D::from_translation(Into::<Vec3>::into(transform.translation))
+            .with_quaternion(Into::<Quat>::into(transform.rotation)),
     );
 }
 
