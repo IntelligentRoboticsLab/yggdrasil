@@ -44,7 +44,10 @@ kira = { workspace = true }
 linreg = { workspace = true }
 lstsq = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
-nalgebra = { workspace = true, features = ["serde-serialize"] }
+nalgebra = { workspace = true, features = [
+  "serde-serialize",
+  "convert-glam029",
+] }
 ndarray = { workspace = true }
 nidhogg = { workspace = true, features = ["lola", "bevy"] }
 num = { workspace = true }

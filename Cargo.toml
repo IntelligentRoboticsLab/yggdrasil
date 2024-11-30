@@ -103,6 +103,7 @@ proc-macro2 = "1.0.89"
 quote = "1.0.37"
 rand = "0.8.5"
 rayon = "1.10.0"
+
 # rerun uses an older version of wasm-bindgen, so we need to disable the default features
 rerun = { version = "0.20.2", default-features = false, features = [
   "sdk",
