@@ -1283,7 +1283,6 @@ dependencies = [
  "bevy",
  "bifrost_derive",
  "byteorder",
- "num",
  "thiserror",
 ]
 
