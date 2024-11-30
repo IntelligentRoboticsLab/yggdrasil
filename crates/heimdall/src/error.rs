@@ -33,10 +33,6 @@ pub enum Error {
     #[error("Failed to set the device to video capture mode")]
     VideoCapture(#[source] io::Error),
 
-    /// Image error, this wraps an [`image::ImageError`]
-    #[error(transparent)]
-    Image(#[from] image::ImageError),
-
     #[error("Failed to flip camera horizontally")]
     HorizontalFlip(#[source] io::Error),
 
