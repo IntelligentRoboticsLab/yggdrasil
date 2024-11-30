@@ -46,7 +46,7 @@ pub enum ErrorKind {
     #[error("Failed to deserialize toml:\n{message}\n")]
     Deserialize {
         #[source_code]
-        definition_source: NamedSource,
+        definition_source: NamedSource<String>,
         #[label("Failed here")]
         parse_error_pos: Option<SourceSpan>,
         message: String,
