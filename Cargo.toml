@@ -90,11 +90,11 @@ kira = { version = "0.9.5", default-features = false, features = [
 linreg = "0.2.0"
 linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo", rev = "b8536cf4da325de79f398e70a74cee5bf426f64c" }
 local-ip-address = "0.6.3"
-lstsq = "0.5.0"
+lstsq = "0.6.0"
 miette = "5.10.0"
-nalgebra = "0.32.6"
+nalgebra = { version = "0.33.2", features = ["convert-glam028"] }
 ndarray = "0.16.1"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "91e96228b0b0cb4efb9a4e7cd0ae3b8019e109a4" }
+nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "0f52d756d7a6d10f699d80e95fc1cc69342a54ce" }
 num = "0.4.3"
 openvino = { version = "0.8.0", features = ["runtime-linking"] }
 ordered-float = "4.4.0"
@@ -130,5 +130,5 @@ tracing-appender = "0.2.3"
 tracing-subscriber = "0.3.18"
 tracing-tracy = "0.11.3"
 turbojpeg = "1.1.1"
-vqf = { version = "0.4.0", features = ["serde"] }
+vqf = { version = "0.4.1", features = ["serde"] }
 walkdir = "2.5.0"
