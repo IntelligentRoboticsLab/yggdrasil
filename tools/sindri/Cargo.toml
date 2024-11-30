@@ -1,7 +1,7 @@
 [package]
 description = "tool that simplifies robot interaction by automating the process of building and deploying to the robots"
 name = "sindri"
-version = "0.12.0"
+version = "0.12.1"
 
 authors.workspace = true
 categories.workspace = true
@@ -18,7 +18,6 @@ cargo_toml = { workspace = true }
 clap = { workspace = true, features = ["derive", "string"] }
 colored = { workspace = true }
 dialoguer = { workspace = true }
-dot-structures = { workspace = true }
 futures = { workspace = true }
 glob = { workspace = true }
 home = { workspace = true }
