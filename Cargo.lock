@@ -6080,7 +6080,6 @@ dependencies = [
  "indicatif",
  "local-ip-address",
  "miette",
- "regex",
  "serde",
  "serde_json",
  "serde_with",

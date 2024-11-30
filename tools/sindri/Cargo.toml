@@ -24,7 +24,6 @@ home = { workspace = true }
 indicatif = { workspace = true, features = ["tokio"] }
 local-ip-address = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
-regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }

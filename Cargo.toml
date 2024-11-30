@@ -63,7 +63,6 @@ sindri = { path = "tools/sindri" }
 # external crates
 apodize = "1.0.0"
 async-std = "1.13.0"
-async-trait = "0.1.83"
 bevy = { version = "0.15.0", default-features = false }
 byteorder = "1.5.0"
 cargo_toml = "0.20.5"
@@ -73,7 +72,6 @@ colored = "2.1.0"
 cpal = "0.15.3"
 derive_more = { version = "1.0.0", features = ["full"] }
 dialoguer = "0.11.0"
-dyn-clone = "1.0.17"
 enum_dispatch = "0.3.13"
 fast-math = "0.1.1"
 fast_image_resize = "5.0.0"
@@ -105,7 +103,6 @@ proc-macro2 = "1.0.89"
 quote = "1.0.37"
 rand = "0.8.5"
 rayon = "1.10.0"
-regex = "1.11.1"
 # rerun uses an older version of wasm-bindgen, so we need to disable the default features
 rerun = { version = "0.20.2", default-features = false, features = [
   "sdk",
@@ -113,7 +110,6 @@ rerun = { version = "0.20.2", default-features = false, features = [
   "log",
   "glam",
 ] }
-rustc_version = "0.4.1"
 rustfft = "6.2.0"
 serde = "1.0.213"
 serde_json = "1.0.132"
