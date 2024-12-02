@@ -9,15 +9,22 @@ use crate::{
 
 use super::camera::Image;
 
+#[derive(Default, Resource, Debug)]
+struct ChestPoints {
+    chest_left_point: Point2<f32>,
+    chest_point: Point2<f32>,
+    chest_right_point: Point2<f32>,
+}
+
 #[derive(Default, Resource)]
-pub struct BodyContour {
+struct BodyContour {
     left_shoulder_cap_point: Option<Point2<f32>>,
     right_shoulder_cap_point: Option<Point2<f32>>,
 
     left_toe_point: Option<Point2<f32>>,
     right_toe_point: Option<Point2<f32>>,
 
-    chest_point: Option<Point2<f32>>,
+    chest_points: Option<ChestPoints>,
 
     left_thigh_point: Option<Point2<f32>>,
     right_thigh_point: Option<Point2<f32>>,
@@ -29,25 +36,29 @@ pub struct BodyContour {
 impl BodyContour {
     #[must_use]
     pub fn is_part_of_body(&self, image_coordinate: Point2<f32>) -> bool {
-        self.left_shoulder_cap_point.is_some_and(|shoulder_point| {
-            Self::is_part_of_shoulder(shoulder_point, image_coordinate)
-        }) || self.right_shoulder_cap_point.is_some_and(|shoulder_point| {
-            Self::is_part_of_shoulder(shoulder_point, image_coordinate)
-        }) || self
-            .chest_point
+        // self.left_shoulder_cap_point.is_some_and(|shoulder_point| {
+        //     Self::is_part_of_shoulder(shoulder_point, image_coordinate)
+        // }) || self.right_shoulder_cap_point.is_some_and(|shoulder_point| {
+        //     Self::is_part_of_shoulder(shoulder_point, image_coordinate)
+        // }) || self
+        //     .chest_points
+        //     .as_ref()
+        //     .is_some_and(|chest_point| Self::is_part_of_chest(chest_point, image_coordinate))
+        //     || self
+        //         .left_thigh_point
+        //         .is_some_and(|thigh_point| Self::is_part_of_thigh(thigh_point, image_coordinate))
+        //     || self
+        //         .right_thigh_point
+        //         .is_some_and(|thigh_point| Self::is_part_of_thigh(thigh_point, image_coordinate))
+        //     || self
+        //         .left_tibia_point
+        //         .is_some_and(|tibia_point| Self::is_part_of_tibia(tibia_point, image_coordinate))
+        //     || self
+        //         .right_tibia_point
+        //         .is_some_and(|tibia_point| Self::is_part_of_tibia(tibia_point, image_coordinate))
+        self.chest_points
+            .as_ref()
             .is_some_and(|chest_point| Self::is_part_of_chest(chest_point, image_coordinate))
-            || self
-                .left_thigh_point
-                .is_some_and(|thigh_point| Self::is_part_of_thigh(thigh_point, image_coordinate))
-            || self
-                .right_thigh_point
-                .is_some_and(|thigh_point| Self::is_part_of_thigh(thigh_point, image_coordinate))
-            || self
-                .left_tibia_point
-                .is_some_and(|tibia_point| Self::is_part_of_tibia(tibia_point, image_coordinate))
-            || self
-                .right_tibia_point
-                .is_some_and(|tibia_point| Self::is_part_of_tibia(tibia_point, image_coordinate))
     }
 
     fn is_part_of_shoulder(shoulder_point: Point2<f32>, image_coordinate: Point2<f32>) -> bool {
@@ -57,11 +68,39 @@ impl BodyContour {
             && shoulder_point.y + 500.0 > image_coordinate.y
     }
 
-    fn is_part_of_chest(chest_point: Point2<f32>, image_coordinate: Point2<f32>) -> bool {
-        chest_point.x - 160.0 < image_coordinate.x
-            && chest_point.x + 160.0 > image_coordinate.x
-            && chest_point.y - 80.0 < image_coordinate.y
-            && chest_point.y + 100.0 > image_coordinate.y
+    fn is_part_of_chest(chest_points: &ChestPoints, image_coordinate: Point2<f32>) -> bool {
+        if image_coordinate.x < chest_points.chest_left_point.x
+            || image_coordinate.x > chest_points.chest_right_point.x
+        {
+            return false;
+        }
+
+        if image_coordinate.x < chest_points.chest_point.x {
+            let a = (chest_points.chest_point.y - chest_points.chest_left_point.y)
+                / (chest_points.chest_point.x - chest_points.chest_left_point.x);
+            if (image_coordinate.x) * a >= image_coordinate.y {
+                return false;
+            } else {
+                return true;
+            }
+        }
+
+        // if image_coordinate.x > chest_points.chest_point.x {
+        //     let a = (chest_points.chest_point.y - chest_points.chest_right_point.y)
+        //         / (chest_points.chest_point.x - chest_points.chest_right_point.x);
+        //     if (image_coordinate.x - chest_points.chest_point.x) * a + chest_points.chest_point.y
+        //         > image_coordinate.y
+        //     {
+        //         return true;
+        //     }
+        // }
+
+        false
+
+        // chest_point.x - 160.0 < image_coordinate.x
+        //     && chest_point.x + 160.0 > image_coordinate.x
+        //     && chest_point.y - 80.0 < image_coordinate.y
+        //     && chest_point.y + 100.0 > image_coordinate.y
     }
 
     // # TODO: This might be too simple for a body part that's not static.
@@ -112,16 +151,42 @@ impl BodyContour {
         kinematics: &Kinematics,
         matrix: &CameraMatrix<Bottom>,
     ) {
-        let robot_to_chest = robot_to_chest(orientation, kinematics);
+        self.chest_points = None;
+        let (robot_to_chest_left, robot_to_chest, robot_to_chest_right) =
+            robot_to_chest(orientation, kinematics);
 
-        self.chest_point = matrix
-            .ground_to_pixel(
-                (robot_to_chest.inverse() * matrix.robot_to_ground)
-                    .translation
-                    .vector
-                    .into(),
-            )
-            .ok();
+        let Ok(chest_left_point) = matrix.ground_to_pixel(
+            (robot_to_chest_left.inverse() * matrix.robot_to_ground)
+                .translation
+                .vector
+                .into(),
+        ) else {
+            return;
+        };
+
+        let Ok(chest_point) = matrix.ground_to_pixel(
+            (robot_to_chest.inverse() * matrix.robot_to_ground)
+                .translation
+                .vector
+                .into(),
+        ) else {
+            return;
+        };
+
+        let Ok(chest_right_point) = matrix.ground_to_pixel(
+            (robot_to_chest_right.inverse() * matrix.robot_to_ground)
+                .translation
+                .vector
+                .into(),
+        ) else {
+            return;
+        };
+
+        self.chest_points = Some(ChestPoints {
+            chest_left_point,
+            chest_point,
+            chest_right_point,
+        });
     }
 
     fn update_shoulders(
@@ -229,6 +294,16 @@ fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
             &rerun::Radius::new_ui_points(4.0) as _,
         ],
     );
+
+    dbg.log_component_batches(
+        T::make_entity_path("body_contour/chests"),
+        true,
+        [
+            &rerun::Color::from_rgb(167, 82, 64) as _,
+            // &rerun::Radius::new_ui_points(14.0) as _,
+            &rerun::Radius::new_ui_points(4.0) as _,
+        ],
+    );
 }
 
 fn update_body_contours(
@@ -275,10 +350,36 @@ fn visualize_body_contour(
         }
     }
 
+    // if let Some(chest_points) = &body_contour.chest_points {
+    //     eprintln!("{}", chest_points.chest_point);
+    // } else {
+    //     eprintln!("");
+    // }
+
     debug_context.log_with_cycle(
         Bottom::make_entity_path("body_contour"),
         *current_cycle,
         &rerun::Points2D::new(&points),
+    );
+
+    let mut chest_log_points = Vec::new();
+    if let Some(chest_points) = &body_contour.chest_points {
+        chest_log_points.push((
+            chest_points.chest_left_point.x,
+            chest_points.chest_left_point.y,
+        ));
+        chest_log_points.push((chest_points.chest_point.x, chest_points.chest_point.y));
+        chest_log_points.push((
+            chest_points.chest_right_point.x,
+            chest_points.chest_right_point.y,
+        ));
+        chest_log_points.push((320.0 / 2.0, 240.0 / 2.0));
+    }
+
+    debug_context.log_with_cycle(
+        Bottom::make_entity_path("body_contour/chests"),
+        *current_cycle,
+        &rerun::Points2D::new(&chest_log_points).with_radii([0.14]),
     );
 
     // if let Some(point) = body_contour.left_shoulder_cap_point {
@@ -377,13 +478,32 @@ fn robot_to_toes(
     )
 }
 
-fn robot_to_chest(orientation: &RobotOrientation, kinematics: &Kinematics) -> Isometry3<f32> {
+fn robot_to_chest(
+    orientation: &RobotOrientation,
+    kinematics: &Kinematics,
+) -> (Isometry3<f32>, Isometry3<f32>, Isometry3<f32>) {
     let (roll, pitch, _) = orientation.euler_angles();
 
-    let robot_to_chest = kinematics.isometry::<Robot, Chest>().inner;
-    Isometry3::from(robot_to_chest.translation)
+    let robot_to_chest_left = kinematics.isometry::<Robot, ChestLeft>().inner;
+    let imu_adjusted_robot_to_chest_left = Isometry3::from(robot_to_chest_left.translation)
         * Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll)
+        * Isometry3::rotation(Vector3::x() * roll);
+
+    let robot_to_chest = kinematics.isometry::<Robot, Chest>().inner;
+    let imu_adjusted_robot_to_chest = Isometry3::from(robot_to_chest.translation)
+        * Isometry3::rotation(Vector3::y() * pitch)
+        * Isometry3::rotation(Vector3::x() * roll);
+
+    let robot_to_chest_right = kinematics.isometry::<Robot, ChestRight>().inner;
+    let imu_adjusted_robot_to_chest_right = Isometry3::from(robot_to_chest_right.translation)
+        * Isometry3::rotation(Vector3::y() * pitch)
+        * Isometry3::rotation(Vector3::x() * roll);
+
+    (
+        imu_adjusted_robot_to_chest_left,
+        imu_adjusted_robot_to_chest,
+        imu_adjusted_robot_to_chest_right,
+    )
 }
 
 fn robot_to_shoulders(

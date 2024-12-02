@@ -38,6 +38,10 @@ impl_spaces! {
     Torso,
     Ground,
     Chest,
+    ChestLeft,
+    ChestRight,
+    ChestCentreLeft,
+    ChestCentreRight,
     Robot;
     Shoulder<T>,
     ShoulderCap<T>,
