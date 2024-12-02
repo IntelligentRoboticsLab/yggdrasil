@@ -1596,7 +1596,6 @@ dependencies = [
  "byteorder",
  "num",
  "thiserror",
- "uuid",
 ]
 
 [[package]]
@@ -6895,7 +6894,6 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bifrost",
- "bincode",
  "clap",
  "miette",
  "mimalloc",
@@ -6911,7 +6909,6 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]
@@ -6926,7 +6923,6 @@ dependencies = [
  "socket2",
  "tokio",
  "tracing",
- "uuid",
 ]
 
 [[package]]
@@ -10861,7 +10857,6 @@ dependencies = [
  "async-std",
  "bevy",
  "bifrost",
- "bincode",
  "chrono",
  "cpal",
  "derive_more",
@@ -10900,7 +10895,6 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "tracing-tracy",
- "uuid",
  "vqf",
 ]
 

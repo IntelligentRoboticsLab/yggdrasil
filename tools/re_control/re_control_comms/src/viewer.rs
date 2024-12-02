@@ -8,16 +8,18 @@ use std::{
 use async_std::{net::TcpStream, sync::Mutex};
 use bifrost::serialization::{Decode, Encode};
 use futures::{
-    channel::mpsc::{unbounded, TrySendError, UnboundedReceiver, UnboundedSender},
+    channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender},
     io::{ReadHalf, WriteHalf},
     AsyncReadExt, AsyncWriteExt, StreamExt,
 };
+use miette::{IntoDiagnostic, Result};
 use socket2::{Domain, Protocol, Socket, Type};
 use tokio::sync::Notify;
 
 use super::protocol::{HandlerFn, RobotMessage, ViewerMessage};
 
 const LINGER_DURATION: Duration = Duration::from_secs(2);
+const CONNECTION_ATTEMPT_DELAY: Duration = Duration::from_secs(5);
 
 pub struct ControlViewer {
     address: SocketAddrV4,
@@ -28,19 +30,21 @@ pub struct ControlViewer {
     notify: Arc<Notify>,
 }
 
-impl ControlViewer {
-    pub fn from_addr(address: SocketAddrV4) -> tokio::io::Result<Self> {
+impl From<SocketAddrV4> for ControlViewer {
+    fn from(address: SocketAddrV4) -> Self {
         let (tx, rx) = unbounded();
-        Ok(Self {
+        Self {
             address,
             tx,
             rx: Arc::new(Mutex::new(rx)),
             message_queue: Arc::new(Mutex::new(VecDeque::new())),
             handlers: Arc::new(RwLock::new(Vec::new())),
             notify: Arc::new(Notify::new()),
-        })
+        }
     }
+}
 
+impl ControlViewer {
     pub fn run(self) -> ControlViewerHandle {
         tracing::info!("Starting control viewer");
 
@@ -64,7 +68,7 @@ impl ControlViewer {
                     Type::STREAM,
                     Some(Protocol::TCP),
                 )
-                .expect("Failed creating a socket");
+                .expect("failed to create viewer socket!");
 
                 match socket.connect(&app.address.into()) {
                     Ok(()) => {
@@ -76,14 +80,13 @@ impl ControlViewer {
                         let stream: async_std::net::TcpStream = stream.into();
                         app.handle_connection(stream).await;
                     }
-
-                    Err(e) => {
-                        tracing::error!("Failed to connect to {}: {:?}", app.address, e);
+                    Err(error) => {
+                        tracing::error!(?error, "failed to connect to {}", app.address);
                     }
                 }
 
                 // Wait some time before attempting to reconnect
-                tokio::time::sleep(Duration::from_secs(5)).await;
+                tokio::time::sleep(CONNECTION_ATTEMPT_DELAY).await;
             }
         });
 
@@ -108,7 +111,7 @@ impl ControlViewer {
         // Wait for the reader to complete. This happens when the TCP
         // connection ends or there was an error in the reader_task
         if let Err(e) = reader_task.await {
-            tracing::error!("Reader task ended with error: {:?}", e);
+            tracing::error!(?e, "reader task ended");
         }
         // There is no reason to keep the writer task going when the reader
         // is completed.
@@ -125,9 +128,10 @@ impl ControlViewer {
         let mut rx_guard = rx.lock().await;
         while let Some(message) = rx_guard.next().await {
             // Store the message in the queue and notify the writer task
-            let mut queue_guard = message_queue.lock().await;
-            queue_guard.push_back(message);
-            drop(queue_guard);
+            {
+                let mut queue_guard = message_queue.lock().await;
+                queue_guard.push_back(message);
+            }
             notify.notify_one();
         }
         tracing::info!("Global message channel closed");
@@ -148,30 +152,29 @@ impl ControlViewer {
                     break;
                 }
                 Ok(n) => {
+                    // Fails when received too many bytes at once. Message
+                    // might have been too big and got cut off.
+                    assert_ne!(n, buf.len());
                     // Keep track of the amount of bytes that have been read
                     let mut bytes_read = 0;
                     // Keep decoding bytes to messages until we read the whole
                     // buffer
                     while bytes_read < n {
-                        match RobotMessage::decode(&buf[bytes_read..n]) {
-                            Ok(message) => {
-                                let handlers = handlers.read().expect("failed to get reader");
-                                for handler in handlers.iter() {
-                                    handler(&message);
-                                }
-                                // The decoded message length in bytes is the
-                                // same as the encode length
-                                bytes_read += message.encode_len();
-                            }
-                            Err(e) => {
-                                tracing::error!("Failed to decode message: {:?}", e);
-                                break;
-                            }
+                        let message = RobotMessage::decode(&buf[bytes_read..n])
+                            .map_err(|error| format!("Failed to decode message: {error:?}"))
+                            .unwrap();
+
+                        let handlers = handlers.read().expect("failed to get reader");
+                        for handler in handlers.iter() {
+                            handler(&message);
                         }
+                        // The decoded message length in bytes is the
+                        // same as the encode length
+                        bytes_read += message.encode_len();
                     }
                 }
-                Err(e) => {
-                    tracing::error!("Error reading from server: {:?}", e);
+                Err(error) => {
+                    tracing::error!(?error, "Error reading from server");
                     break;
                 }
             }
@@ -198,22 +201,19 @@ impl ControlViewer {
 
             let mut data = vec![];
             if message.encode(&mut data).is_ok() {
-                if let Err(e) = write.write_all(&data).await {
-                    tracing::error!("Failed to send message: {:?}, error: {:?}", message, e);
+                if let Err(error) = write.write_all(&data).await {
+                    tracing::error!(?message, ?error, "failed to send message");
                     break;
                 }
             }
         }
     }
 
-    pub fn add_handler(
-        &self,
-        handler: HandlerFn<RobotMessage>,
-    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
+    pub fn add_handler(&self, handler: HandlerFn<RobotMessage>) -> Result<()> {
         let mut handlers = self
             .handlers
             .write()
-            .map_err(|_| "Failed to lock handlers")?;
+            .map_err(|_| miette::miette!("Failed to lock handlers"))?;
         handlers.push(handler);
         Ok(())
     }
@@ -225,14 +225,11 @@ pub struct ControlViewerHandle {
 }
 
 impl ControlViewerHandle {
-    pub fn send(&self, msg: ViewerMessage) -> Result<(), TrySendError<ViewerMessage>> {
-        self.app.tx.unbounded_send(msg)
+    pub fn send(&self, msg: ViewerMessage) -> Result<()> {
+        self.app.tx.unbounded_send(msg).into_diagnostic()
     }
 
-    pub fn add_handler<H>(
-        &mut self,
-        handler: H,
-    ) -> std::result::Result<(), Box<dyn std::error::Error>>
+    pub fn add_handler<H>(&mut self, handler: H) -> Result<()>
     where
         H: Fn(&RobotMessage) + Send + Sync + 'static,
     {

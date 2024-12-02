@@ -6,7 +6,8 @@ use re_viewer::StartupOptions;
 
 use crate::control::Control;
 
-// This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
+// Rerun can collect analytics if the `analytics` feature is enabled in
+// `Cargo.toml`. This variable is used for the rerun analytics
 const APP_ENV: &str = "Control Wrapper";
 
 pub struct App {

@@ -12,7 +12,7 @@ use crate::{
     config::SindriConfig,
 };
 
-use super::re_control::{build_rerun_control, has_rerun, spawn_rerun_viewer};
+use super::re_control::{has_rerun, run_re_control};
 
 const DEFAULT_TRACY_PORT: u16 = 8086;
 
@@ -114,8 +114,8 @@ impl Run {
                 } else {
                     robot.ip()
                 };
-                build_rerun_control().await?;
-                spawn_rerun_viewer(robot_ip, self.robot_ops.rerun_args.rerun_mem_limit).await?;
+
+                run_re_control(robot_ip, self.robot_ops.rerun_args.rerun_mem_limit).await?;
             }
         }
 

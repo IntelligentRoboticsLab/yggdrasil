@@ -2,7 +2,10 @@ pub mod style;
 
 use std::sync::{Arc, RwLock};
 
-use re_viewer::external::egui::{self, Frame};
+use re_viewer::external::{
+    egui::{self, Frame},
+    re_ui::UiExt,
+};
 use rerun::external::ecolor::Color32;
 use style::FrameStyleMap;
 
@@ -94,10 +97,10 @@ pub fn add_editable_resource(
                     ))
                     .clicked()
                 {
-                    followup_action = Some(ViewerMessage::UpdateResource(
-                        resource_name.to_string(),
-                        resource_data.to_string(),
-                    ));
+                    followup_action = Some(ViewerMessage::UpdateResource {
+                        resource_name: resource_name.to_string(),
+                        value: resource_data.to_string(),
+                    });
 
                     if let Some(changed_resource) = changed_resources.get_mut(resource_name) {
                         *changed_resource = false;
@@ -125,20 +128,32 @@ pub fn debug_resources_ui(
     handle: &ControlViewerHandle,
 ) {
     ui.vertical(|ui| {
-        let debug_enabled_systems_view = &mut states
-            .write()
-            .expect("Failed to read lock states")
-            .debug_enabled_systems_view;
+        let Ok(locked_states) = &mut states.write() else {
+            ui.centered_and_justified(|ui| {
+                ui.warning_label("Not able to access viewer states");
+            });
+            tracing::error!("Failed to lock states");
+            return;
+        };
 
-        for system_name in &debug_enabled_systems_view.key_sequence {
-            let enabled = debug_enabled_systems_view
+        let debug_enabled_systems_view = &mut locked_states.debug_enabled_systems_view;
+        let key_sequence = &debug_enabled_systems_view.key_sequence;
+
+        for system_name in key_sequence {
+            let Some(enabled) = debug_enabled_systems_view
                 .debug_enabled_systems
                 .systems
                 .get_mut(system_name)
-                .unwrap();
+            else {
+                ui.warning_label(format!("System `{}` does not exist", system_name));
+                continue;
+            };
+
             if ui.checkbox(enabled, system_name).changed() {
-                let message =
-                    ViewerMessage::UpdateEnabledDebugSystem(system_name.clone(), *enabled);
+                let message = ViewerMessage::UpdateEnabledDebugSystem {
+                    system_name: system_name.clone(),
+                    enabled: *enabled,
+                };
                 handle
                     .send(message)
                     .expect("Failed to send update debug system message");

@@ -16,13 +16,14 @@ use re_viewer::external::{
 };
 
 use crate::{
-    handle_message::handle_message,
     resource::RobotResources,
     ui::{
         debug_resources_ui, resource_ui,
         style::{FrameStyleMap, LAST_UPDATE_COLOR},
     },
 };
+
+const SIDE_PANEL_WIDTH: f32 = 400.0;
 
 #[derive(Default)]
 pub struct ControlStates {
@@ -63,7 +64,7 @@ impl eframe::App for Control {
     /// Called whenever we need repainting, which could be 60 Hz.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::SidePanel::right("Resource manipulation")
-            .default_width(400.0)
+            .default_width(SIDE_PANEL_WIDTH)
             .show(ctx, |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
                     self.ui(ui);
@@ -95,7 +96,7 @@ impl Control {
         Control {
             app,
             states: Arc::clone(&states),
-            handle: handle.clone(),
+            handle,
             frame_styles: FrameStyleMap::default(),
         }
     }
@@ -115,15 +116,12 @@ impl Control {
             // Shows the last resource update in milliseconds
             ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
                 let last_resource_update = {
-                    match self
-                        .states
+                    self.states
                         .read()
                         .expect("Failed to lock states")
                         .last_resource_update
-                    {
-                        Some(time) => time.elapsed().as_millis(),
-                        None => 0,
-                    }
+                        .map(|time| time.elapsed().as_millis())
+                        .unwrap_or_default()
                 };
 
                 ui.label(
@@ -163,5 +161,20 @@ impl Control {
                     });
                 })
         });
+    }
+}
+
+fn handle_message(message: &RobotMessage, states: Arc<RwLock<ControlStates>>) {
+    match message {
+        RobotMessage::DebugEnabledSystems(enabled_systems) => {
+            states
+                .write()
+                .expect("Failed to lock states")
+                .debug_enabled_systems_view
+                .update(DebugEnabledSystems::from(enabled_systems.clone()));
+        }
+        RobotMessage::Resources(_resources) => {
+            tracing::warn!("Got a resource update but is unhandled")
+        }
     }
 }

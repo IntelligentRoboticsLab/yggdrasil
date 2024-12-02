@@ -29,4 +29,3 @@ tokio = { workspace = true, features = [
   "time",
 ] }
 tracing = { workspace = true }
-uuid = { workspace = true }

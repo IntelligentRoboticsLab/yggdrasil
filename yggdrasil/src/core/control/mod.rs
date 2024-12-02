@@ -1,11 +1,9 @@
-mod events;
 pub mod receive;
 pub mod transmit;
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use bevy::prelude::*;
-use events::{DebugEnabledSystemUpdated, ViewerConnected};
 use futures::channel::mpsc::unbounded;
 use re_control_comms::{
     app::ControlApp,
@@ -68,3 +66,9 @@ fn setup(mut commands: Commands) {
     commands.insert_resource(handle);
     commands.insert_resource(notify_connection_receiver);
 }
+
+#[derive(Event)]
+pub struct ViewerConnected;
+
+#[derive(Event)]
+pub struct DebugEnabledSystemUpdated;

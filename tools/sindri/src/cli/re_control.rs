@@ -6,7 +6,6 @@ use miette::{IntoDiagnostic, Result};
 use std::{net::Ipv4Addr, process::Stdio, time::Duration};
 use tokio::process::Command;
 
-const CONTROL_BINARY_PATH: &str = "./target/release/re_control";
 const CONTROL_BINARY: &str = "re_control";
 
 #[derive(Clone, Debug, Parser)]
@@ -40,7 +39,7 @@ pub async fn has_rerun() -> bool {
 }
 
 /// Compiles the `re_control` binary
-pub async fn build_rerun_control() -> Result<()> {
+async fn build_re_control() -> Result<()> {
     let features = vec![];
     let envs = Vec::new();
 
@@ -91,7 +90,7 @@ pub async fn build_rerun_control() -> Result<()> {
 }
 
 /// Spawn a rerun viewer in the background.
-pub async fn spawn_rerun_viewer(robot_ip: Ipv4Addr, memory_limit: Option<String>) -> Result<()> {
+fn spawn_rerun_viewer(robot_ip: Ipv4Addr, memory_limit: Option<String>) -> Result<()> {
     let mut args = vec![];
     // Set robot ip to connection the viewer with
     args.push(robot_ip.to_string());
@@ -102,13 +101,21 @@ pub async fn spawn_rerun_viewer(robot_ip: Ipv4Addr, memory_limit: Option<String>
         args.push(memory_limit.to_string());
     }
 
-    Command::new(CONTROL_BINARY_PATH)
+    Command::new("cargo")
+        .args(vec!["run", "-r", "-q", "-p", CONTROL_BINARY, "--"])
         .args(args)
         .stdin(Stdio::inherit())
         .stderr(Stdio::inherit())
         .kill_on_drop(false)
         .spawn()
         .into_diagnostic()?;
+
+    Ok(())
+}
+
+pub async fn run_re_control(robot_ip: Ipv4Addr, memory_limit: Option<String>) -> Result<()> {
+    build_re_control().await?;
+    spawn_rerun_viewer(robot_ip, memory_limit)?;
 
     Ok(())
 }

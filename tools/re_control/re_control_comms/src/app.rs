@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 
@@ -13,20 +12,18 @@ use futures::io::{ReadHalf, WriteHalf};
 use futures::{AsyncReadExt, AsyncWriteExt, StreamExt};
 use miette::{IntoDiagnostic, Result};
 use socket2::{Domain, Protocol, Socket, Type};
-use uuid::Uuid;
 
 use super::protocol::{RobotMessage, ViewerMessage};
 
+/// The maximum length to which the queue of pending connections may grow
 const LISTEN_BACKLOG: i32 = 1024;
 
-pub struct NotifyConnection {
-    pub id: Uuid,
-}
+pub struct NotifyConnection;
 
 pub struct ControlApp {
     listener: async_std::net::TcpListener,
     handlers: Arc<RwLock<Vec<UnboundedSender<ViewerMessage>>>>,
-    clients: Arc<Mutex<HashMap<Uuid, UnboundedSender<RobotMessage>>>>,
+    clients: Arc<Mutex<Vec<UnboundedSender<RobotMessage>>>>,
     new_connection_notifyer: UnboundedSender<NotifyConnection>,
 }
 
@@ -52,7 +49,7 @@ impl ControlApp {
         Ok(Self {
             listener,
             handlers: Arc::new(RwLock::new(Vec::new())),
-            clients: Arc::new(Mutex::new(HashMap::new())),
+            clients: Arc::new(Mutex::new(Vec::new())),
             new_connection_notifyer,
         })
     }
@@ -69,10 +66,9 @@ impl ControlApp {
         let io = IoTaskPool::get();
         io.spawn(async move {
             loop {
-                tracing::info!("Ready for next connection!");
                 match app.listener.accept().await {
                     Ok((socket, addr)) => {
-                        tracing::info!("Connection with a new client: {:?}", addr);
+                        tracing::info!("new client connected: {:?}", addr);
 
                         let app = Arc::clone(&app);
                         io.spawn(async move {
@@ -100,9 +96,8 @@ impl ControlApp {
         let (tx, rx) = mpsc::unbounded();
 
         // Add the client to the list
-        let id = Uuid::new_v4();
         {
-            self.clients.lock().await.insert(id, tx.clone());
+            self.clients.lock().await.push(tx.clone());
         }
 
         // Spawn reader and writer tasks
@@ -111,7 +106,7 @@ impl ControlApp {
         let _writer_task = spawn(async { Self::handle_writer(write_half, rx).await });
 
         // Notify to a bevy system that a new connection is made
-        let msg = NotifyConnection { id };
+        let msg = NotifyConnection;
         self.new_connection_notifyer
             .unbounded_send(msg)
             .expect("Failed to send message");
@@ -125,7 +120,9 @@ impl ControlApp {
         // will also stop the writer_task.
         {
             let mut clients = self.clients.lock().await;
-            clients.retain(|_id, x| !x.same_receiver(&tx));
+            if let Some(pos) = clients.iter().position(|x| x.same_receiver(&tx)) {
+                clients.remove(pos);
+            }
         }
 
         tracing::info!("Connection closed by client at {client_addr}");
@@ -144,28 +141,28 @@ impl ControlApp {
                     break;
                 }
                 Ok(n) => {
+                    // Fails when received too many bytes at once. Message
+                    // might have been too big and got cut off.
+                    assert_ne!(n, buf.len());
                     // Keep track of the amount of bytes that have been read
                     let mut bytes_read = 0;
                     // Keep decoding bytes to messages until we read the whole
                     // buffer
                     while bytes_read < n {
-                        match &ViewerMessage::decode(&buf[..n]) {
-                            Ok(message) => {
-                                let handlers = handlers.read().expect("failed to lock handlers");
+                        let message = ViewerMessage::decode(&buf[bytes_read..n])
+                            .map_err(|error| format!("Failed to decode message: {error:?}"))
+                            .unwrap();
 
-                                for handler in handlers.iter() {
-                                    handler
-                                        .unbounded_send(message.clone())
-                                        .expect("Failed to send message");
-                                }
-                                // The decoded message length in bytes is the
-                                // same as the encode length
-                                bytes_read += message.encode_len();
-                            }
-                            Err(e) => {
-                                tracing::error!("Failed to decode message: {:?}", e);
-                            }
+                        let handlers = handlers.read().expect("failed to lock handlers");
+
+                        for handler in handlers.iter() {
+                            handler
+                                .unbounded_send(message.clone())
+                                .expect("Failed to send message");
                         }
+                        // The decoded message length in bytes is the
+                        // same as the encode length
+                        bytes_read += message.encode_len();
                     }
                 }
                 Err(e) => {
@@ -183,26 +180,23 @@ impl ControlApp {
         while let Some(message) = rx.next().await {
             // Encode and send response
             let mut data = vec![];
-            match message.encode(&mut data) {
-                Ok(()) => {
-                    if write_half.write_all(&data).await.is_err() {
-                        tracing::error!("Failed to send response to client");
-                        break;
-                    }
-                }
-                Err(e) => tracing::error!("Failed to encode message: {}", e),
+            if let Err(error) = message.encode(&mut data) {
+                tracing::error!(?error, "failed to encode message");
+                break;
+            }
+
+            if write_half.write_all(&data).await.is_err() {
+                tracing::error!("failed to send message to rerun client");
+                break;
             }
         }
     }
 
-    pub fn add_handler(
-        &self,
-        handler: UnboundedSender<ViewerMessage>,
-    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
+    pub fn add_handler(&self, handler: UnboundedSender<ViewerMessage>) -> Result<()> {
         let mut handlers = self
             .handlers
             .write()
-            .map_err(|_| "Failed to lock handlers")?;
+            .map_err(|_| miette::miette!("Failed to lock handlers"))?;
         handlers.push(handler);
         Ok(())
     }
@@ -214,35 +208,18 @@ pub struct ControlAppHandle {
 }
 
 impl ControlAppHandle {
-    pub fn add_handler(
-        &mut self,
-        handler: UnboundedSender<ViewerMessage>,
-    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
+    pub fn add_handler(&mut self, handler: UnboundedSender<ViewerMessage>) -> Result<()> {
         self.app.add_handler(handler)
     }
 
     /// Send a `RobotMessage` to all connected clients
-    pub async fn broadcast(&self, message: RobotMessage) {
+    pub async fn broadcast(&self, message: RobotMessage) -> Result<()> {
         let clients = self.app.clients.lock().await;
 
-        clients.iter().for_each(|(_id, client)| {
-            client
-                .unbounded_send(message.clone())
-                .expect("Failed to send message");
-        });
-    }
+        for client in clients.iter() {
+            client.unbounded_send(message.clone()).into_diagnostic()?;
+        }
 
-    /// Send a `RobotMessage` to a specific connected client
-    pub async fn send(&self, message: RobotMessage, client_id: Uuid) {
-        let clients = self.app.clients.lock().await;
-
-        let Some(client) = clients.get(&client_id) else {
-            tracing::error!("Client does not exist");
-            return;
-        };
-
-        client
-            .unbounded_send(message.clone())
-            .expect("Failed to send message");
+        Ok(())
     }
 }

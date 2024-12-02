@@ -1,13 +1,13 @@
 use std::net::SocketAddrV4;
 
 use clap::Parser;
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 use re_control::{app::App, cli::Cli};
 use re_viewer::external::{re_log, re_memory};
 
 use re_control_comms::{protocol::CONTROL_PORT, viewer::ControlViewer};
 
-const BYTES_IN_MB: i64 = 1_000_000;
+const BYTES_IN_GB: f32 = 1_000_000_000.0;
 const MEMORY_FRACTION_DEFAULT: f32 = 0.75;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
@@ -19,7 +19,6 @@ static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Direct calls using the `log` crate to stderr. Control with `RUST_LOG=debug` etc.
     re_log::setup_logging();
 
     let args = Cli::parse();
@@ -29,8 +28,6 @@ async fn main() -> Result<()> {
         args.robot_ip
     );
 
-    // Install handlers for panics and crashes that prints to stderr and send
-    // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
     // Setting a memory limit of 75% or a limit defined via the cli arguments
@@ -43,8 +40,8 @@ async fn main() -> Result<()> {
 
     // Communicate the memory limit
     tracing::info!(
-        "Memory limit set to: {} MB",
-        memory_limit.max_bytes.unwrap() / BYTES_IN_MB
+        "Memory limit set to: {:.2} GB",
+        memory_limit.max_bytes.unwrap() as f32 / BYTES_IN_GB
     );
     // Setting startup options for the rerun viewer
     let startup_options = re_viewer::StartupOptions {
@@ -54,7 +51,7 @@ async fn main() -> Result<()> {
 
     // Creating the `ControlViewer`. This does not start the viewer yet
     let socket_addr = SocketAddrV4::new(args.robot_ip, CONTROL_PORT);
-    let viewer = ControlViewer::from_addr(socket_addr).into_diagnostic()?;
+    let viewer = ControlViewer::from(socket_addr);
 
     let app = App::new(startup_options, viewer);
     app.run().await?;
