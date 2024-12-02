@@ -134,7 +134,9 @@ fn log_3d_balls(
     let most_confident_ball = bottom_balls
         .most_confident_ball()
         .map(|b| (b.cycle, b.position))
-        .or(top_balls.most_confident_ball().map(|b| (b.cycle, b.position)));
+        .or(top_balls
+            .most_confident_ball()
+            .map(|b| (b.cycle, b.position)));
 
     if let Some((cycle, pos)) = most_confident_ball {
         // since we always run this function in the same cycle in which the ball was found,
@@ -149,13 +151,10 @@ fn log_3d_balls(
                 &rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05)),
             );
         }
-    } else if let Some(_) = *last_logged {
+    } else if last_logged.is_some() {
         // this feels very hacky but i was told this is the most idiomatic way to hide stuff in
         // rerun.
         *last_logged = None;
-        dbg.log(
-            "balls/best",
-            &rerun::Transform3D::from_scale((0., 0., 0.)),
-        );
+        dbg.log("balls/best", &rerun::Transform3D::from_scale((0., 0., 0.)));
     }
 }
