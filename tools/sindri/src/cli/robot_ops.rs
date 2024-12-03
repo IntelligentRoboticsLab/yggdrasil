@@ -421,6 +421,9 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
     if config.timings {
         features.push("timings");
     }
+    if config.rerun_args.rerun.is_some() {
+        features.push("re_control");
+    }
 
     let target = if config.local {
         None

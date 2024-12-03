@@ -21,8 +21,7 @@ pub struct ControlPlugin;
 
 impl Plugin for ControlPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<DebugEnabledSystems>()
-            .add_event::<DebugEnabledSystemUpdated>()
+        app.add_event::<DebugEnabledSystemUpdated>()
             .add_event::<ViewerConnected>()
             .add_systems(Startup, setup)
             .add_systems(

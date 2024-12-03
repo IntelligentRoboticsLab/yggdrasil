@@ -4,6 +4,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use miette::IntoDiagnostic;
+use re_control_comms::debug_system::DebugEnabledSystems;
 use rerun::components::Scalar;
 use rerun::{AsComponents, ComponentBatch, EntityPath, RecordingStream, TimeColumn};
 use std::env;
@@ -29,7 +30,8 @@ pub struct DebugPlugin;
 
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, (init_rerun, setup_spl_field).chain())
+        app.init_resource::<DebugEnabledSystems>()
+            .add_systems(Startup, (init_rerun, setup_spl_field).chain())
             .add_systems(First, sync_cycle_number);
     }
 }
