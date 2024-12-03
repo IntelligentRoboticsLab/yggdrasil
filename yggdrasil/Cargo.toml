@@ -16,8 +16,8 @@ workspace = true
 default = []
 dependency_graph = []
 local = []
-timings = ["dep:tracing-tracy", "bevy/trace"]
 re_control = []
+timings = ["dep:tracing-tracy", "bevy/trace"]
 
 [dependencies]
 # our own crates here

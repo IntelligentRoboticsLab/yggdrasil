@@ -10,7 +10,9 @@ pub struct CorePlugins;
 
 impl PluginGroup for CorePlugins {
     fn build(self) -> PluginGroupBuilder {
-        let mut group = PluginGroupBuilder::start::<Self>()
+        let mut group = PluginGroupBuilder::start::<Self>();
+
+        group = group
             .add(config::ConfigPlugin)
             .add(debug::DebugPlugin)
             .add(audio::AudioPlugin);

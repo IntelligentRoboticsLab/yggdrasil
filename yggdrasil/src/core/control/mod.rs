@@ -7,7 +7,6 @@ use bevy::prelude::*;
 use futures::channel::mpsc::unbounded;
 use re_control_comms::{
     app::ControlApp,
-    debug_system::DebugEnabledSystems,
     protocol::{ViewerMessage, CONTROL_PORT},
 };
 
