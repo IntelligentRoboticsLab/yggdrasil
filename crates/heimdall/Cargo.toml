@@ -13,7 +13,6 @@ workspace = true
 bevy = { workspace = true }
 fast-math = { workspace = true }
 fast_image_resize = { workspace = true }
-image = { workspace = true }
 itertools = { workspace = true }
 linuxvideo = { workspace = true }
 miette = { workspace = true }

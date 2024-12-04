@@ -9,6 +9,7 @@ use itertools::Itertools;
 use ml::prelude::ModelExecutor;
 use nalgebra::{Point2, Vector2};
 
+use rerun::external::glam::Vec2;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
@@ -85,7 +86,7 @@ fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Bal
         .filter(|ball| ball.cycle == balls.cycle)
         .map(|ball| {
             (
-                (ball.position_image.x, ball.position_image.y),
+                Into::<Vec2>::into(ball.position_image),
                 (
                     (ball.scale / 2.0, ball.scale / 2.0),
                     format!("{:.2}", ball.confidence),
@@ -106,7 +107,7 @@ fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Bal
     dbg.log_with_cycle(
         T::make_entity_path("balls/classifications"),
         balls.cycle,
-        &rerun::Boxes2D::from_centers_and_half_sizes(&positions, &half_sizes)
+        &rerun::Boxes2D::from_centers_and_half_sizes(positions, &half_sizes)
             .with_labels(confidences),
     );
 }

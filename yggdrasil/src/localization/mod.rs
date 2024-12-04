@@ -16,6 +16,7 @@ use nalgebra::{
     Isometry2, Isometry3, Point2, Point3, Translation2, Translation3, UnitComplex, UnitQuaternion,
 };
 use nidhogg::types::HeadJoints;
+use rerun::external::glam::Quat;
 
 /// The localization plugin provides functionalities related to the localization of the robot.
 pub struct LocalizationPlugin;
@@ -218,12 +219,7 @@ fn visualize_pose(
     dbg.log_with_cycle(
         "localization/pose",
         *cycle,
-        &rerun::Transform3D::from_rotation(rerun::Quaternion::from_wxyz([
-            orientation.w,
-            orientation.i,
-            orientation.j,
-            orientation.k,
-        ]))
-        .with_translation((position.x, position.y, 0.2865)),
+        &rerun::Transform3D::from_rotation(Into::<Quat>::into(orientation))
+            .with_translation((position.x, position.y, 0.2865)),
     );
 }

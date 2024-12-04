@@ -66,9 +66,8 @@ impl Plugin for RobotDetectionPlugin {
             .add_systems(PostStartup, setup_robot_detection)
             .add_systems(
                 Update,
-                detect_robots.run_if(
-                    task_finished::<Image<Top>>.and_then(task_finished::<RobotDetectionData>),
-                ),
+                detect_robots
+                    .run_if(task_finished::<Image<Top>>.and(task_finished::<RobotDetectionData>)),
             )
             .add_systems(
                 PostUpdate,

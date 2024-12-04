@@ -65,8 +65,7 @@ sindri = { path = "tools/sindri" }
 # external crates
 apodize = "1.0.0"
 async-std = "1.13.0"
-async-trait = "0.1.83"
-bevy = { version = "0.14.2", default-features = false }
+bevy = { version = "0.15.0", default-features = false }
 byteorder = "1.5.0"
 cargo_toml = "0.20.5"
 chrono = "0.4.38"
@@ -75,29 +74,27 @@ colored = "2.1.0"
 cpal = "0.15.3"
 derive_more = { version = "1.0.0", features = ["full"] }
 dialoguer = "0.11.0"
-dot-structures = "0.1.1"
-dyn-clone = "1.0.17"
 enum_dispatch = "0.3.13"
 fast-math = "0.1.1"
 fast_image_resize = "5.0.0"
 futures = "0.3.31"
-geo = "0.28.0"
+geo = "0.29.2"
 glob = "0.3.1"
-graphviz-rust = "0.9.1"
 home = "0.5.9"
-image = "0.25.4"
 indicatif = "0.17.8"
 itertools = "0.13.0"
-kira = "0.9.5"
+kira = { version = "0.9.5", default-features = false, features = [
+  "cpal",
+  "wav",
+] }
 linreg = "0.2.0"
 linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo", rev = "b8536cf4da325de79f398e70a74cee5bf426f64c" }
 local-ip-address = "0.6.3"
-lstsq = "0.5.0"
-miette = "5.10.0"
-mimalloc = "0.1.39"
-nalgebra = "0.32.6"
+mimalloc = "0.1.42"
+miette = "7.4.0"
+nalgebra = { version = "0.33.2", features = ["convert-glam028"] }
 ndarray = "0.16.1"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "83cfed56533ff34fae2b92c0964f1c9284b9f9c5" }
+nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "2c4b00611e9ec94d72d185043619cfda1618476d" }
 num = "0.4.3"
 openvino = { version = "0.8.0", features = ["runtime-linking"] }
 ordered-float = "4.4.0"
@@ -113,7 +110,13 @@ re_crash_handler = "0.20.0"
 re_sdk_comms = { version = "0.20.0", features = ["server"] }
 re_smart_channel = "0.20.0"
 re_viewer = "0.20.0"
-rerun = { version = "0.20.0", features = ["image"] }
+# rerun uses an older version of wasm-bindgen, so we need to disable the default features
+rerun = { version = "0.20.2", default-features = false, features = [
+  "sdk",
+  "server",
+  "log",
+  "glam",
+] }
 
 regex = "1.11.1"
 rustc_version = "0.4.1"
@@ -123,11 +126,9 @@ serde_json = "1.0.132"
 serde_with = "3.11.0"
 socket2 = "0.5.7"
 ssh2 = "0.9.4"
-syn = "2.0.85"
-thiserror = "1.0.65"
-tokio = "1.41.0"
-tokio-test = "0.4.4"
-tokio-tungstenite = "0.24.0"
+syn = "2.0.90"
+thiserror = "2.0.3"
+tokio = "1.41.1"
 toml = "0.8.19"
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
@@ -135,5 +136,5 @@ tracing-log = "0.2.0"
 tracing-subscriber = "0.3.18"
 tracing-tracy = "0.11.3"
 turbojpeg = "1.1.1"
-vqf = { version = "0.4.0", features = ["serde"] }
+vqf = { version = "0.4.1", features = ["serde"] }
 walkdir = "2.5.0"

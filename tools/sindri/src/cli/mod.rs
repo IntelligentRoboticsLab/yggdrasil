@@ -2,8 +2,11 @@ use clap::Parser;
 
 pub mod change_network;
 pub mod config;
+<<<<<<< HEAD
 pub mod dependency_graph;
 pub mod re_control;
+=======
+>>>>>>> origin/main
 pub mod robot_ops;
 pub mod run;
 pub mod scan;
@@ -59,5 +62,4 @@ pub enum Commands {
     #[command(subcommand)]
     Config(config::ConfigCommand),
     Update(update::Update),
-    DependencyGraph(dependency_graph::DependencyGraph),
 }

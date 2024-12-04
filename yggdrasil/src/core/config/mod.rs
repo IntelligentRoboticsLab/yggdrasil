@@ -118,7 +118,9 @@ impl ConfigExt for App {
     where
         Self: Sized,
     {
-        self.world_mut().run_system_once(init_config::<T>);
+        self.world_mut()
+            .run_system_once(init_config::<T>)
+            .unwrap_or_else(|_| panic!("failed to initialize config at: {}", T::PATH));
         self
     }
 }

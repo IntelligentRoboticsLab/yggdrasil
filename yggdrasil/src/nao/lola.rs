@@ -34,8 +34,12 @@ impl Plugin for LolaPlugin {
 
         app.init_resource::<NaoControlMessage>();
 
-        app.world_mut().run_system_once(setup_lola);
-        app.world_mut().run_system_once(initialize_nao);
+        app.world_mut()
+            .run_system_once(setup_lola)
+            .expect("failed to setup lola!");
+        app.world_mut()
+            .run_system_once(initialize_nao)
+            .expect("failed to initialize nao resources!");
 
         app.add_systems(Write, sync_hardware.in_set(LolaCycle::Flush));
     }
