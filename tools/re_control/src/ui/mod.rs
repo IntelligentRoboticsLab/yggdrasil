@@ -7,11 +7,14 @@ use re_viewer::external::{
     re_ui::UiExt,
 };
 use rerun::external::ecolor::Color32;
-use style::FrameStyleMap;
+use style::{FrameStyleMap, LAST_UPDATE_COLOR};
 
 use re_control_comms::{protocol::ViewerMessage, viewer::ControlViewerHandle};
 
 use crate::control::ControlStates;
+
+pub const SIDE_PANEL_WIDTH: f32 = 400.0;
+pub const PANEL_TOP_PADDING: f32 = 10.0;
 
 pub fn resource_ui(
     ui: &mut egui::Ui,
@@ -19,6 +22,16 @@ pub fn resource_ui(
     handle: &ControlViewerHandle,
     frame_styles: &FrameStyleMap,
 ) {
+    // Shows the last resource update in milliseconds
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+        let last_resource_update = resource_update_time_ago(Arc::clone(&states));
+        ui.label(
+            egui::RichText::new(format!("Last updated: {last_resource_update}"))
+                .monospace()
+                .color(LAST_UPDATE_COLOR),
+        );
+    });
+
     // Sort the names to keep the resources in a fixed order
     let mut resource_names: Vec<_>;
     {
@@ -38,10 +51,28 @@ pub fn resource_ui(
                 frame_styles.get_or_default("override_button".to_string()),
             );
             if let Some(action) = followup_action {
-                handle.send(action).unwrap();
+                if let Err(error) = handle.send(action) {
+                    tracing::error!(?error, "Failed to send message");
+                }
             }
         }
     }
+}
+
+fn resource_update_time_ago(states: Arc<RwLock<ControlStates>>) -> String {
+    let Ok(locked_states) = states.read() else {
+        tracing::error!("Failed to lock states");
+        return "unknown".to_string();
+    };
+
+    let Some(time_ago) = locked_states
+        .last_resource_update
+        .map(|time| time.elapsed().as_millis())
+    else {
+        return "unknown".to_string();
+    };
+
+    format!("{:>4} ms ago", time_ago)
 }
 
 pub fn add_editable_resource(
@@ -154,9 +185,10 @@ pub fn debug_resources_ui(
                     system_name: system_name.clone(),
                     enabled: *enabled,
                 };
-                handle
-                    .send(message)
-                    .expect("Failed to send update debug system message");
+
+                if let Err(error) = handle.send(message) {
+                    tracing::error!(?error, "Failed to send update debug system message")
+                }
             };
         }
     });

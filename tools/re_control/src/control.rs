@@ -18,12 +18,9 @@ use re_viewer::external::{
 use crate::{
     resource::RobotResources,
     ui::{
-        debug_resources_ui, resource_ui,
-        style::{FrameStyleMap, LAST_UPDATE_COLOR},
+        debug_resources_ui, resource_ui, style::FrameStyleMap, PANEL_TOP_PADDING, SIDE_PANEL_WIDTH,
     },
 };
-
-const SIDE_PANEL_WIDTH: f32 = 400.0;
 
 #[derive(Default)]
 pub struct ControlStates {
@@ -102,7 +99,7 @@ impl Control {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.add_space(10.0);
+        ui.add_space(PANEL_TOP_PADDING);
 
         // Title of the side panel
         ui.vertical_centered(|ui| {
@@ -112,27 +109,6 @@ impl Control {
 
         ui.horizontal(|ui| {
             ui.add_space(ui.available_width());
-
-            // Shows the last resource update in milliseconds
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-                let last_resource_update = {
-                    self.states
-                        .read()
-                        .expect("Failed to lock states")
-                        .last_resource_update
-                        .map(|time| time.elapsed().as_millis())
-                        .unwrap_or_default()
-                };
-
-                ui.label(
-                    egui::RichText::new(format!(
-                        "Last updated: {:>4} ms ago",
-                        last_resource_update
-                    ))
-                    .monospace()
-                    .color(LAST_UPDATE_COLOR),
-                );
-            });
         });
 
         // Resource section
