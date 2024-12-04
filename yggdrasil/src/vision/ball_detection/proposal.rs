@@ -301,7 +301,7 @@ fn log_ball_proposals<T: CameraLocation>(
 ) {
     if proposals.proposals.is_empty() {
         dbg.log_with_cycle(
-            T::make_entity_path("balls/proposals"),
+            T::make_entity_image_path("balls/proposals"),
             *cycle,
             &rerun::Clear::flat(),
         );
@@ -319,7 +319,7 @@ fn log_ball_proposals<T: CameraLocation>(
         .unzip();
 
     dbg.log_with_cycle(
-        T::make_entity_path("balls/proposals"),
+        T::make_entity_image_path("balls/proposals"),
         proposals.image.cycle(),
         &rerun::Boxes2D::from_centers_and_half_sizes(&positions, &half_sizes),
     );

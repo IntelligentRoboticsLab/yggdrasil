@@ -5,7 +5,7 @@ max_classification_age_eye_color = 100
 # The minimum ratio of white pixels in the range around the proposed ball
 ball_ratio = 0.6
 # Height/width of the bounding box around the ball
-bounding_box_scale = 70.0
+bounding_box_scale = 85.0
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
 nms_threshold = 0.35
 # The minimum radius of the ball in pixels.
