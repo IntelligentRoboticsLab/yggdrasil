@@ -2,11 +2,7 @@ use clap::Parser;
 
 pub mod change_network;
 pub mod config;
-<<<<<<< HEAD
-pub mod dependency_graph;
 pub mod re_control;
-=======
->>>>>>> origin/main
 pub mod robot_ops;
 pub mod run;
 pub mod scan;
