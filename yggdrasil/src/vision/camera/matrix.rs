@@ -17,7 +17,6 @@ use crate::{
     motion::walk::{engine::Side, SwingFoot},
     nao::Cycle,
     sensor::orientation::RobotOrientation,
-    vision::scan_lines::ScanLines,
 };
 
 use super::CameraConfig;
@@ -43,9 +42,9 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
                 Update,
                 (
                     update_camera_matrix::<T>.before(super::fetch_latest_frame::<T>),
-                    visualize_camera_matrix::<T>.after(update_camera_matrix::<T>),
-                    log_3d_line_spots::<T>.run_if(resource_exists_and_changed::<ScanLines<T>>),
-                ),
+                    visualize_camera_matrix::<T>,
+                )
+                    .chain(),
             );
     }
 }
@@ -140,37 +139,6 @@ fn setup_camera_matrix_visualization<T: CameraLocation>(
     .with_image_plane_distance(0.35);
 
     dbg.log_static(T::make_entity_image_path(""), &pinhole);
-}
-
-fn log_3d_line_spots<T: CameraLocation>(
-    dbg: DebugContext,
-    camera_matrix: Res<CameraMatrix<T>>,
-    pose: Res<RobotPose>,
-    scan_lines: Res<ScanLines<T>>,
-) {
-    let spots = scan_lines.horizontal().line_spots();
-    let mut colors = vec![];
-    let mut points = vec![];
-
-    for spot in spots {
-        let c = (0, 255, 255);
-
-        let p = camera_matrix.pixel_to_ground(spot, 0.0);
-
-        if let Ok(p) = p {
-            let p = pose.inner * p.xy();
-            colors.push(c);
-            points.push((p.x, p.y, 0.0));
-        }
-    }
-
-    dbg.log_with_cycle(
-        T::make_entity_path("line_spots"),
-        scan_lines.image().cycle(),
-        &rerun::Points3D::new(points)
-            .with_radii(vec![0.02; colors.len()])
-            .with_colors(colors),
-    );
 }
 
 fn visualize_camera_matrix<T: CameraLocation>(
