@@ -94,7 +94,7 @@ impl ControlViewer {
     }
 
     async fn handle_connection(&self, socket: TcpStream) {
-        tracing::info!("Connected to {}", self.address);
+        tracing::info!("connected with app: {}", self.address);
         let (read_half, write_half) = socket.split();
 
         // Spawn tasks to handle read and write
@@ -117,7 +117,7 @@ impl ControlViewer {
         // is completed.
         writer_task.abort();
 
-        tracing::info!("Connection lost. Attempting to reconnect...");
+        tracing::warn!("connection termintaed with app: {}", self.address);
     }
 
     async fn global_message_handler(
@@ -161,8 +161,7 @@ impl ControlViewer {
                     // buffer
                     while bytes_read < n {
                         let message = RobotMessage::decode(&buf[bytes_read..n])
-                            .map_err(|error| format!("Failed to decode message: {error:?}"))
-                            .unwrap();
+                            .expect("Failed to decode message");
 
                         let handlers = handlers.read().expect("failed to get reader");
                         for handler in handlers.iter() {

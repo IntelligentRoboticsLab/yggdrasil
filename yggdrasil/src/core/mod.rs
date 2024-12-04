@@ -19,7 +19,7 @@ impl PluginGroup for CorePlugins {
 
         #[cfg(feature = "re_control")]
         {
-            group = group.add(control::ControlPlugin)
+            group = group.add(control::ControlPlugin);
         }
 
         group
