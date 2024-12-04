@@ -28,10 +28,23 @@ pub trait CameraLocation: Default + Send + Sync + 'static {
     /// - `top_camera/image/{ent_path}` for the top camera
     /// - `bottom_camera/image/{ent_path}` for the bottom camera
     #[must_use]
-    fn make_entity_path(ent_path: impl ToString) -> String {
+    fn make_entity_image_path(ent_path: impl Into<String>) -> String {
         match Self::POSITION {
-            CameraPosition::Top => format!("top_camera/image/{}", ent_path.to_string()),
-            CameraPosition::Bottom => format!("bottom_camera/image/{}", ent_path.to_string()),
+            CameraPosition::Top => format!("top_camera/image/{}", ent_path.into()),
+            CameraPosition::Bottom => format!("bottom_camera/image/{}", ent_path.into()),
+        }
+    }
+
+    /// Get a rerun entity path under the camera entity in 3d space.
+    ///
+    /// Depending on the camera position, the path will be different:
+    /// - `top_camera/{ent_path}` for the top camera
+    /// - `bottom_camera/{ent_path}` for the bottom camera
+    #[must_use]
+    fn make_entity_path(ent_path: impl Into<String>) -> String {
+        match Self::POSITION {
+            CameraPosition::Top => format!("top_camera/{}", ent_path.into()),
+            CameraPosition::Bottom => format!("bottom_camera/{}", ent_path.into()),
         }
     }
 }

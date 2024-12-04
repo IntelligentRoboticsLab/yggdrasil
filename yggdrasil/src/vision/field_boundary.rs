@@ -137,12 +137,12 @@ impl FieldBoundary {
 /// for each ball proposal and classification.
 fn setup_boundary_debug_logging(dbg: DebugContext) {
     dbg.log_static(
-        Top::make_entity_path("boundary/points"),
+        Top::make_entity_image_path("boundary/points"),
         &rerun::Color::from_rgb(255, 0, 255),
     );
 
     dbg.log_static(
-        Top::make_entity_path("boundary/segments"),
+        Top::make_entity_image_path("boundary/segments"),
         &rerun::Color::from_rgb(128, 0, 128),
     );
 }
@@ -155,14 +155,14 @@ fn log_boundary_points(dbg: DebugContext, image: Res<Image<Top>>, boundary: Res<
         .collect::<Vec<_>>();
 
     dbg.log_with_cycle(
-        Top::make_entity_path("boundary/points"),
+        Top::make_entity_image_path("boundary/points"),
         image.cycle(),
         &rerun::Points2D::new(&points),
     );
 
     let line_segments = boundary.line_segments();
     dbg.log_with_cycle(
-        Top::make_entity_path("boundary/segments"),
+        Top::make_entity_image_path("boundary/segments"),
         image.cycle(),
         &rerun::LineStrips2D::new(&line_segments),
     );

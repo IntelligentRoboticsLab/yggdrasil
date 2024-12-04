@@ -3,15 +3,19 @@ use std::marker::PhantomData;
 use bevy::prelude::*;
 use heimdall::{CameraLocation, CameraMatrix, CameraPosition};
 use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
+use rerun::external::glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    core::debug::DebugContext,
     kinematics::{
         dimensions,
         spaces::{Head, Left, Right, Robot, Sole},
         Kinematics,
     },
+    localization::RobotPose,
     motion::walk::{engine::Side, SwingFoot},
+    nao::Cycle,
     sensor::orientation::RobotOrientation,
 };
 
@@ -32,10 +36,16 @@ pub struct CameraMatrixPlugin<T: CameraLocation>(PhantomData<T>);
 
 impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CameraMatrix<T>>().add_systems(
-            Update,
-            update_camera_matrix::<T>.before(super::fetch_latest_frame::<T>),
-        );
+        app.init_resource::<CameraMatrix<T>>()
+            .add_systems(PostStartup, setup_camera_matrix_visualization::<T>)
+            .add_systems(
+                Update,
+                (
+                    update_camera_matrix::<T>.before(super::fetch_latest_frame::<T>),
+                    visualize_camera_matrix::<T>,
+                )
+                    .chain(),
+            );
     }
 }
 
@@ -73,12 +83,12 @@ fn robot_to_ground(
     let left_sole_to_robot = kinematics.isometry::<Sole<Left>, Robot>().inner;
     let imu_adjusted_robot_to_left_sole = Isometry3::rotation(Vector3::y() * pitch)
         * Isometry3::rotation(Vector3::x() * roll)
-        * Isometry3::from(left_sole_to_robot.translation.inverse());
+        * Isometry3::from(vector![0., 0., -left_sole_to_robot.translation.z]);
 
     let right_sole_to_robot = kinematics.isometry::<Sole<Right>, Robot>().inner;
     let imu_adjusted_robot_to_right_sole = Isometry3::rotation(Vector3::y() * pitch)
         * Isometry3::rotation(Vector3::x() * roll)
-        * Isometry3::from(right_sole_to_robot.translation.inverse());
+        * Isometry3::from(vector![0., 0., -right_sole_to_robot.translation.z]);
 
     match swing_foot.support() {
         Side::Left => imu_adjusted_robot_to_left_sole,
@@ -107,4 +117,42 @@ fn camera_to_head(position: CameraPosition, extrinsic_rotations: Vector3<f32>) -
     Isometry3::from(neck_to_camera)
         * Isometry3::rotation(Vector3::y() * camera_pitch)
         * extrinsic_rotation
+}
+
+fn setup_camera_matrix_visualization<T: CameraLocation>(
+    dbg: DebugContext,
+    config: Res<CameraConfig>,
+) {
+    let config = match T::POSITION {
+        CameraPosition::Top => &config.top,
+        CameraPosition::Bottom => &config.bottom,
+    };
+
+    let pinhole = rerun::Pinhole::from_focal_length_and_resolution(
+        [
+            config.calibration.focal_lengths.x,
+            config.calibration.focal_lengths.y,
+        ],
+        [config.width as f32, config.height as f32],
+    )
+    .with_camera_xyz(rerun::components::ViewCoordinates::FLU)
+    .with_image_plane_distance(0.35);
+
+    dbg.log_static(T::make_entity_image_path(""), &pinhole);
+}
+
+fn visualize_camera_matrix<T: CameraLocation>(
+    dbg: DebugContext,
+    matrix: Res<CameraMatrix<T>>,
+    cycle: Res<Cycle>,
+    pose: Res<RobotPose>,
+) {
+    let camera_pos = pose.as_3d() * matrix.camera_to_ground;
+
+    dbg.log_with_cycle(
+        T::make_entity_image_path(""),
+        *cycle,
+        &rerun::Transform3D::from_translation(Into::<Vec3>::into(camera_pos.translation))
+            .with_quaternion(Into::<Quat>::into(camera_pos.rotation)),
+    );
 }
