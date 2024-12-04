@@ -123,6 +123,11 @@ fn setup_3d_ball_debug_logging(dbg: DebugContext) {
     );
 
     dbg.log_static("balls/best", &rerun::ViewCoordinates::FLU);
+    dbg.log_with_cycle(
+        "balls/best",
+        Cycle::default(),
+        &rerun::Transform3D::from_scale((0., 0., 0.)),
+    );
 }
 
 fn log_3d_balls(
