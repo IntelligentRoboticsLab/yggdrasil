@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use nalgebra::{Isometry2, Point2, Vector2};
 
+/// A line in 2D space
 #[derive(Debug, Clone, Copy, Component, PartialEq)]
 pub struct Line2 {
     /// Normal to the line itself
@@ -12,9 +13,12 @@ pub struct Line2 {
     pub d: f32,
 }
 
+/// A line segment in 2D space
 #[derive(Debug, Clone, Copy, Component)]
 pub struct LineSegment2 {
+    /// Start point of the line segment
     pub start: Point2<f32>,
+    /// End point of the line segment
     pub end: Point2<f32>,
 }
 
@@ -61,7 +65,7 @@ impl LineSegment2 {
         Vector2::new(-dir.y, dir.x).normalize()
     }
 
-    // Samples n points uniformly *in between* the two endpoints (excluding the endpoints themselves).
+    /// Samples n points uniformly *in between* the two endpoints (excluding the endpoints themselves).
     pub fn sample_uniform(&self, n: usize) -> impl Iterator<Item = Point2<f32>> + use<'_> {
         (1..=n).map(move |i| {
             let t = i as f32 / (n + 1) as f32;

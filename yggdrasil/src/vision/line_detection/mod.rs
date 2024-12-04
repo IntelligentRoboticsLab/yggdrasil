@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 
 use bevy::prelude::*;
 use bevy::tasks::{block_on, poll_once, AsyncComputeTaskPool, Task};
-use heimdall::{Bottom, CameraLocation, CameraMatrix, Top, YuyvImage};
+use heimdall::{CameraLocation, CameraMatrix, YuyvImage};
 use itertools::Itertools;
 use line::{Line2, LineSegment2};
 use nalgebra::{point, Point2};
@@ -66,36 +66,24 @@ impl Config for LineDetectionConfigs {
 }
 
 /// Plugin that adds systems to detect lines from scan-lines.
-pub struct LineDetectionPlugin;
+#[derive(Default)]
+pub struct LineDetectionPlugin<T: CameraLocation>(PhantomData<T>);
 
-impl Plugin for LineDetectionPlugin {
+impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
     fn build(&self, app: &mut App) {
         app.init_config::<LineDetectionConfigs>().add_systems(
             Update,
             (
                 (
-                    handle_line_task::<Top>,
-                    detect_lines_system::<Top>
-                        .run_if(resource_exists_and_changed::<ScanLines<Top>>),
+                    handle_line_task::<T>,
+                    detect_lines_system::<T>.run_if(resource_exists_and_changed::<ScanLines<T>>),
                 )
                     .chain(),
-                debug_lines::<Top>,
-                // debug_lines_inliers::<Top>,
-                debug_lines_3d::<Top>,
-                // debug_rejected_lines::<Top>,
-                // //
-                // log_3d_line_spots::<Top>,
-                //
-                (
-                    handle_line_task::<Bottom>,
-                    detect_lines_system::<Bottom>
-                        .run_if(resource_exists_and_changed::<ScanLines<Bottom>>),
-                )
-                    .chain(),
-                debug_lines::<Bottom>,
-                // debug_lines_inliers::<Bottom>,
-                debug_lines_3d::<Bottom>,
-                // debug_rejected_lines::<Bottom>,
+                debug_lines::<T>,
+                debug_lines_projected::<T>,
+                debug_rejected_lines::<T>,
+                debug_lines_inliers::<T>,
+                // log_3d_line_spots::<Top>.run_if(resource_exists_and_changed::<ScanLines<Top>>),
             ),
         );
     }
@@ -126,6 +114,7 @@ pub struct RejectedLines<T: CameraLocation> {
 }
 
 /// Reason why a line candidate was rejected
+#[derive(Debug)]
 pub enum Rejection {
     TooShort,
     TooLong,
@@ -133,7 +122,7 @@ pub enum Rejection {
 }
 
 /// Inlier points of a line candidate
-#[derive(Component, Debug, Deref, DerefMut)]
+#[derive(Debug)]
 pub struct Inliers(Vec<Point2<f32>>);
 
 impl Inliers {
@@ -153,7 +142,7 @@ impl Inliers {
         candidates.push(self);
 
         // handle edge case where the first inlier is too far from the second
-        candidates.retain(|c| c.len() >= 2);
+        candidates.retain(|c| c.0.len() >= 2);
 
         candidates
     }
@@ -165,6 +154,7 @@ impl Inliers {
     /// If such a point is found, mutates the current candidate and returns the new candidate that was split off
     fn split_at_gap_single(&mut self, max_gap: f32) -> Option<Self> {
         let split_index = self
+            .0
             .iter()
             // (i, inlier)
             .enumerate()
@@ -180,7 +170,7 @@ impl Inliers {
                 }
             })?;
 
-        let new_inliers = self.split_off(split_index);
+        let new_inliers = self.0.split_off(split_index);
 
         Some(Self(new_inliers))
     }
@@ -206,8 +196,8 @@ impl LineCandidate {
 
         // recompute the segment
         self.segment = LineSegment2::new(
-            self.inliers.first().copied().unwrap(),
-            self.inliers.last().copied().unwrap(),
+            self.inliers.0.first().copied().unwrap(),
+            self.inliers.0.last().copied().unwrap(),
         );
     }
 }
@@ -297,8 +287,9 @@ fn detect_lines<T: CameraLocation>(
     pose: RobotPose,
     cfg: LineDetectionConfig,
 ) -> (Vec<LineCandidate>, Vec<Option<Rejection>>) {
-    let mut projected_spots = scan_lines
-        .line_spots()
+    let spots = scan_lines.vertical().line_spots();
+
+    let mut projected_spots = spots
         // project the points to the ground, in the field frame
         .flat_map(|p| camera_matrix.pixel_to_ground(p, 0.0).map(|p| p.xy()))
         .collect_vec();
@@ -315,7 +306,7 @@ fn detect_lines<T: CameraLocation>(
 
     let mut candidates = vec![];
 
-    let mut ransac = LineDetector::new(projected_spots, 10, cfg.arrsac_inlier_threshold);
+    let mut ransac = LineDetector::new(projected_spots, 50, cfg.arrsac_inlier_threshold);
 
     for _ in 0..cfg.max_iters {
         let Some((line, mut inliers)) = ransac.next() else {
@@ -333,8 +324,8 @@ fn detect_lines<T: CameraLocation>(
             // create a LineCandidate for each split
             .map(|inliers| {
                 let segment = LineSegment2::new(
-                    inliers.first().copied().unwrap(),
-                    inliers.last().copied().unwrap(),
+                    inliers.0.first().copied().unwrap(),
+                    inliers.0.last().copied().unwrap(),
                 );
 
                 LineCandidate {
@@ -428,7 +419,7 @@ fn detect_lines<T: CameraLocation>(
     let rejections = candidates
         .iter()
         .map(|c| {
-            let not_enough_spots = c.inliers.len() < cfg.line_segment_min_points;
+            let not_enough_spots = c.inliers.0.len() < cfg.line_segment_min_points;
             let is_too_short = c.segment.length() < cfg.line_segment_min_length_post_merge;
             let is_too_long = c.segment.length() > cfg.line_segment_max_length_post_merge;
 
@@ -496,7 +487,7 @@ fn debug_lines<T: CameraLocation>(
     }
 }
 
-fn debug_lines_3d<T: CameraLocation>(
+fn debug_lines_projected<T: CameraLocation>(
     dbg: DebugContext,
     pose: Res<RobotPose>,
     accepted: Query<(&Cycle, &DetectedLines<T>), Added<DetectedLines<T>>>,
@@ -535,6 +526,7 @@ fn debug_lines_inliers<T: CameraLocation>(
             );
 
             let p = inliers
+                .0
                 .iter()
                 .filter_map(|p| {
                     let Ok(point) = camera_matrix.ground_to_pixel(point![p.x, p.y, 0.0]) else {
@@ -610,19 +602,22 @@ fn log_3d_line_spots<T: CameraLocation>(
     let mut points = vec![];
 
     for spot in spots {
-        let c = (255, 0, 255);
-        let spot = pose.inner * spot;
+        let c = (0, 255, 255);
 
-        let p = camera_matrix.pixel_to_ground(spot, 0.0).map(|p| (p.x, p.y));
+        let p = camera_matrix.pixel_to_ground(spot, 0.0);
 
         if let Ok(p) = p {
+            let p = pose.inner * p.xy();
             colors.push(c);
-            points.push((p.0, p.1, 0.0));
+            points.push((p.x, p.y, 0.0));
         }
     }
 
-    dbg.log(
-        "line_spots",
-        &rerun::Points3D::new(points).with_colors(colors),
+    dbg.log_with_cycle(
+        T::make_entity_path("lines/line_spots"),
+        scan_lines.image().cycle(),
+        &rerun::Points3D::new(points)
+            .with_radii(vec![0.02; colors.len()])
+            .with_colors(colors),
     );
 }
