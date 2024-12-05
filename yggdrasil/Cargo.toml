@@ -16,6 +16,7 @@ workspace = true
 default = []
 dependency_graph = []
 local = []
+re_control = []
 timings = ["dep:tracing-tracy", "bevy/trace"]
 
 [dependencies]
@@ -24,6 +25,7 @@ bifrost = { workspace = true }
 heimdall = { workspace = true }
 ml = { workspace = true }
 odal = { workspace = true }
+re_control_comms = { workspace = true }
 spatial = { workspace = true }
 tasks = { workspace = true }
 

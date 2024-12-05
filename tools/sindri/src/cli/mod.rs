@@ -2,6 +2,7 @@ use clap::Parser;
 
 pub mod change_network;
 pub mod config;
+pub mod re_control;
 pub mod robot_ops;
 pub mod run;
 pub mod scan;

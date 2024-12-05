@@ -1,6 +1,10 @@
 use std::{ops::Deref, sync::Arc};
 
-use crate::{core::debug::DebugContext, nao::Cycle, prelude::*};
+use crate::{
+    core::debug::{debug_system::DebugAppExt, DebugContext},
+    nao::Cycle,
+    prelude::*,
+};
 
 use super::{
     camera::{init_camera, Image},
@@ -57,15 +61,15 @@ impl Plugin for ScanLinesPlugin {
                         .after(super::scan_grid::update_bottom_scan_grid)
                         .run_if(resource_exists_and_changed::<ScanGrid<Bottom>>),
                 ),
+            )
+            .add_named_debug_systems(
+                PostUpdate,
+                (
+                    visualize_scan_lines::<Top>.run_if(resource_exists::<ScanLines<Top>>),
+                    visualize_scan_lines::<Bottom>.run_if(resource_exists::<ScanLines<Bottom>>),
+                ),
+                "Visualize scan lines",
             );
-        // These are really obnoxious to visualize, so they are disabled for now.
-        // .add_systems(
-        //     PostUpdate,
-        //     (
-        //         visualize_scan_lines::<Top>.run_if(resource_exists::<ScanLines<Top>>),
-        //         visualize_scan_lines::<Bottom>.run_if(resource_exists::<ScanLines<Bottom>>),
-        //     ),
-        // );
     }
 }
 
