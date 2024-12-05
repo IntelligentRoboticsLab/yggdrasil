@@ -81,7 +81,7 @@ impl ControlViewer {
                         app.handle_connection(stream).await;
                     }
                     Err(error) => {
-                        tracing::error!(?error, "failed to connect to {}", app.address);
+                        // tracing::error!(?error, "failed to connect to {}", app.address);
                     }
                 }
 

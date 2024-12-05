@@ -110,6 +110,7 @@ rayon = "1.10.0"
 re_crash_handler = "0.21.0"
 re_sdk_comms = { version = "0.21.0", features = ["server"] }
 re_smart_channel = "0.21.0"
+re_ui = "0.21.0"
 re_viewer = "0.21.0"
 rerun = { version = "0.21.0", default-features = false, features = [
   "sdk",

@@ -155,10 +155,16 @@ impl Control {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.add_space(PANEL_TOP_PADDING);
+        ui.style_mut().spacing.item_spacing.y = 0.;
+        ui.add_space(4.);
+        ui.horizontal(|ui| {
+            let mut selected = true;
+            if ui
+                .medium_icon_toggle_button(&re_ui::icons::RIGHT_PANEL_TOGGLE, &mut selected)
+                .on_hover_text(format!("Toggle selection view",))
+                .clicked()
+            {}
 
-        // Title of the side panel
-        ui.vertical_centered(|ui| {
             ui.strong("Control panel");
         });
         ui.separator();
