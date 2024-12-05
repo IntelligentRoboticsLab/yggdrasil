@@ -1,12 +1,13 @@
 use std::marker::PhantomData;
 
 use bevy::prelude::*;
-use heimdall::{Bottom, CameraLocation, CameraMatrix, CameraPosition};
-use nalgebra::{vector, Isometry3, Point2, Point3, UnitQuaternion, Vector2, Vector3};
+use heimdall::{CameraLocation, CameraMatrix, CameraPosition};
+use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
 use rerun::external::glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    core::debug::DebugContext,
     kinematics::{
         dimensions,
         spaces::{Head, LeftToe, RightToe, Robot},
@@ -14,6 +15,7 @@ use crate::{
     },
     localization::RobotPose,
     motion::walk::{engine::Side, SwingFoot},
+    nao::Cycle,
     sensor::orientation::RobotOrientation,
 };
 
@@ -36,7 +38,6 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
     fn build(&self, app: &mut App) {
         app.init_resource::<CameraMatrix<T>>()
             .add_systems(PostStartup, setup_camera_matrix_visualization::<T>)
-            .add_systems(PostStartup, setup_body_contour_visualization::<Bottom>)
             .add_systems(
                 Update,
                 (
@@ -44,10 +45,7 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
                     visualize_camera_matrix::<T>,
                 )
                     .chain(),
-            )
-            .add_systems(Update, print_toes::<Bottom>)
-            .add_systems(Update, print_chest::<Bottom>)
-            .add_systems(Update, print_shoulders::<Bottom>);
+            );
     }
 }
 
