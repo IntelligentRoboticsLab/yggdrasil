@@ -9,12 +9,8 @@ use crate::{
 
 use super::camera::Image;
 
-#[derive(Default, Resource, Debug)]
-struct ChestPoints {
-    chest_left_point: Point2<f32>,
-    chest_point: Point2<f32>,
-    chest_right_point: Point2<f32>,
-}
+#[derive(Default, Resource, Debug, Deref)]
+struct ChestPoints([Point2<f32>; 3]);
 
 #[derive(Default, Resource)]
 struct BodyContour {
@@ -69,21 +65,30 @@ impl BodyContour {
     }
 
     fn is_part_of_chest(chest_points: &ChestPoints, image_coordinate: Point2<f32>) -> bool {
-        if image_coordinate.x < chest_points.chest_left_point.x
-            || image_coordinate.x > chest_points.chest_right_point.x
+        if image_coordinate.x <= chest_points.first().unwrap().x
+            || image_coordinate.x >= chest_points.last().unwrap().x
         {
             return false;
         }
 
-        if image_coordinate.x < chest_points.chest_point.x {
-            let a = (chest_points.chest_point.y - chest_points.chest_left_point.y)
-                / (chest_points.chest_point.x - chest_points.chest_left_point.x);
-            if (image_coordinate.x) * a >= image_coordinate.y {
-                return false;
-            } else {
-                return true;
+        for (left_point, right_point) in chest_points.iter().zip(chest_points.iter().skip(1)) {
+            if image_coordinate.x < right_point.x {
+                let a = (right_point.y - left_point.y) / (right_point.x - left_point.x);
+                return (image_coordinate.x) * a >= image_coordinate.y;
             }
         }
+
+        unreachable!();
+
+        // if image_coordinate.x < chest_points.chest_point.x {
+        //     let a = (chest_points.chest_point.y - chest_points.chest_left_point.y)
+        //         / (chest_points.chest_point.x - chest_points.chest_left_point.x);
+        //     if (image_coordinate.x) * a >= image_coordinate.y {
+        //         return false;
+        //     } else {
+        //         return true;
+        //     }
+        // }
 
         // if image_coordinate.x > chest_points.chest_point.x {
         //     let a = (chest_points.chest_point.y - chest_points.chest_right_point.y)
@@ -182,11 +187,11 @@ impl BodyContour {
             return;
         };
 
-        self.chest_points = Some(ChestPoints {
+        self.chest_points = Some(ChestPoints([
             chest_left_point,
             chest_point,
             chest_right_point,
-        });
+        ]));
     }
 
     fn update_shoulders(
@@ -350,110 +355,11 @@ fn visualize_body_contour(
         }
     }
 
-    // if let Some(chest_points) = &body_contour.chest_points {
-    //     eprintln!("{}", chest_points.chest_point);
-    // } else {
-    //     eprintln!("");
-    // }
-
     debug_context.log_with_cycle(
         Bottom::make_entity_path("body_contour"),
         *current_cycle,
         &rerun::Points2D::new(&points),
     );
-
-    let mut chest_log_points = Vec::new();
-    if let Some(chest_points) = &body_contour.chest_points {
-        chest_log_points.push((
-            chest_points.chest_left_point.x,
-            chest_points.chest_left_point.y,
-        ));
-        chest_log_points.push((chest_points.chest_point.x, chest_points.chest_point.y));
-        chest_log_points.push((
-            chest_points.chest_right_point.x,
-            chest_points.chest_right_point.y,
-        ));
-        chest_log_points.push((320.0 / 2.0, 240.0 / 2.0));
-    }
-
-    debug_context.log_with_cycle(
-        Bottom::make_entity_path("body_contour/chests"),
-        *current_cycle,
-        &rerun::Points2D::new(&chest_log_points).with_radii([0.14]),
-    );
-
-    // if let Some(point) = body_contour.left_shoulder_cap_point {
-    //     // points.push((point.x, point.y));
-    //     debug_context.log_with_cycle(
-    //         Bottom::make_entity_path("body_contour/left_shoulder"),
-    //         *current_cycle,
-    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(200.0, 300.0)]) as _,
-    //     );
-    // }
-    // if let Some(point) = body_contour.right_shoulder_cap_point {
-    //     // points.push((point.x, point.y));
-    //     debug_context.log_with_cycle(
-    //         Bottom::make_entity_path("body_contour/right_shoulder"),
-    //         *current_cycle,
-    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(200.0, 300.0)]) as _,
-    //     );
-    // }
-    // if let Some(point) = body_contour.chest_point {
-    //     // points.push((point.x, point.y));
-    //     debug_context.log_with_cycle(
-    //         Bottom::make_entity_path("body_contour/chest"),
-    //         *current_cycle,
-    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(300.0, 120.0)]) as _,
-    //     );
-    // }
-    // if let Some(point) = body_contour.left_thigh_point {
-    //     // points.push((point.x, point.y));
-    //     debug_context.log_with_cycle(
-    //         Bottom::make_entity_path("body_contour/left_thigh"),
-    //         *current_cycle,
-    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(160.0, 80.0)]) as _,
-    //     );
-    // }
-    // if let Some(point) = body_contour.right_thigh_point {
-    //     // points.push((point.x, point.y));
-    //     debug_context.log_with_cycle(
-    //         Bottom::make_entity_path("body_contour/right_thigh"),
-    //         *current_cycle,
-    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(160.0, 80.0)]) as _,
-    //     );
-    // }
-    // if let Some(point) = body_contour.left_tibia_point {
-    //     // points.push((point.x, point.y));
-    //     debug_context.log_with_cycle(
-    //         Bottom::make_entity_path("body_contour/left_tibia"),
-    //         *current_cycle,
-    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(120.0, 80.0)]) as _,
-    //     );
-    // }
-    // if let Some(point) = body_contour.right_tibia_point {
-    //     // points.push((point.x, point.y));
-    //     debug_context.log_with_cycle(
-    //         Bottom::make_entity_path("body_contour/right_tibia"),
-    //         *current_cycle,
-    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(120.0, 80.0)]) as _,
-    //     );
-    // }
-    // if let Some(point) = body_contour.left_toe_point {
-    //     // points.push((point.x, point.y));
-    //     debug_context.log_with_cycle(
-    //         Bottom::make_entity_path("body_contour/left_toe"),
-    //         *current_cycle,
-    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(120.0, 80.0)]) as _,
-    //     );
-    // }
-    // if let Some(point) = body_contour.right_toe_point {
-    //     // points.push((point.x, point.y));
-    //     debug_context.log_with_cycle(
-    //         Bottom::make_entity_path("body_contour/right_toe"),
-    //         *current_cycle,
-    //         &rerun::Boxes2D::from_centers_and_sizes([(point.x, point.y)], [(120.0, 80.0)]) as _,
-    //     );
-    // }
 }
 
 fn robot_to_toes(
