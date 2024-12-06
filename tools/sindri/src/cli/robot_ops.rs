@@ -611,6 +611,5 @@ pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<()> {
     }
 
     println!("{}", String::from_utf8_lossy(&output.stdout));
-    println!("{:?}", output.status.success());
     Ok(())
 }
