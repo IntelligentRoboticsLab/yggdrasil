@@ -2,7 +2,6 @@ use bevy::{app::PluginGroupBuilder, prelude::*};
 
 pub mod audio;
 pub mod config;
-// #[cfg(feature = "re_control")]
 pub mod control;
 pub mod debug;
 
