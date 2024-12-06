@@ -14,10 +14,9 @@ pub enum Error {
     #[error(transparent)]
     Cargo(crate::cargo::CargoError),
 
-    #[error("Rsync error: {msg}")]
+    #[error("Rsync error: {msg}, look up rsync error code: {code:?}")]
     Rsync {
-        #[source]
-        source: std::io::Error,
+        code: i32,
         msg: String,
     },
     #[error("Ssh error: {command}")]

@@ -592,21 +592,25 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
 }
 
 /// Copy the contents of the 'deploy' folder to the robot.
-pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<std::process::Output> {
-    Command::new("rsync")
+pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<()> {
+    let output = Command::new("rsync")
         .args(["-av", "deploy/", &format!("nao@{addr}:/home/nao")])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
         .await
-        .map_err(|e| Error::Rsync {
-            source: e,
-            msg: "Failed to execute rsync command!".to_owned(),
-        })
-        // Print the outputs of rsync
-        .map(|output| {
-            println!("{}", String::from_utf8_lossy(&output.stdout));
-            println!("{}", String::from_utf8_lossy(&output.stderr));
-            output
-        })
+        .unwrap();
+    
+    if !output.status.success() {
+        if let Some(code) = output.status.code() {
+            return Err(Error::Rsync {
+                code,
+                msg: "Failed to execute rsync command!".to_owned(),
+            });
+        }
+    }
+
+    println!("{}", String::from_utf8_lossy(&output.stdout));
+    println!("{:?}", output.status.success());
+    Ok(())
 }
