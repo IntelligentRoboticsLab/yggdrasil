@@ -14,7 +14,12 @@ use receive::{
     handle_notify_on_connection, handle_viewer_message, NotifyConnectionReceiver,
     ViewerMessageReceiver,
 };
-use transmit::{debug_systems_on_new_connection, update_debug_systems_for_clients};
+use transmit::{
+    send_on_connection, update_debug_systems_for_clients, SendCameraExtrinsic,
+    SendDebugEnabledSystems,
+};
+
+use super::debug::{init_rerun, RerunStream};
 
 pub struct ControlPlugin;
 
@@ -22,10 +27,12 @@ impl Plugin for ControlPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<DebugEnabledSystemUpdated>()
             .add_event::<ViewerConnected>()
-            .add_systems(Startup, setup)
+            .init_resource::<SendCameraExtrinsic>()
+            .init_resource::<SendDebugEnabledSystems>()
+            .add_systems(Startup, setup.after(init_rerun))
             .add_systems(
                 Update,
-                (handle_notify_on_connection, debug_systems_on_new_connection)
+                (handle_notify_on_connection, send_on_connection)
                     .chain()
                     .run_if(resource_exists::<ViewerMessageReceiver>),
             )
@@ -38,7 +45,11 @@ impl Plugin for ControlPlugin {
     }
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, rerun_stream: Res<RerunStream>) {
+    if !rerun_stream.is_enabled() {
+        return;
+    }
+
     let socket_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, CONTROL_PORT));
 
     // New connections are registered and handled in the `ControlApp`. A

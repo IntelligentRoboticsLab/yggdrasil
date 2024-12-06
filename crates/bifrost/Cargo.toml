@@ -13,4 +13,5 @@ workspace = true
 bevy = { workspace = true, default-features = false }
 bifrost_derive = { path = "bifrost_derive" }
 byteorder = { workspace = true }
+nalgebra = { workspace = true }
 thiserror = { workspace = true }

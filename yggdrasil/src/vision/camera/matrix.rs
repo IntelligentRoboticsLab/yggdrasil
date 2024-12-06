@@ -31,6 +31,15 @@ pub struct CalibrationConfig {
     cc_optical_center: Point2<f32>,
 }
 
+impl CalibrationConfig {
+    pub fn extrinsic_rotation(&self) -> Vector3<f32> {
+        self.extrinsic_rotation
+    }
+    pub fn set_extrinsic_rotation(&mut self, rotations: Vector3<f32>) {
+        self.extrinsic_rotation = rotations;
+    }
+}
+
 #[derive(Default)]
 pub struct CameraMatrixPlugin<T: CameraLocation>(PhantomData<T>);
 

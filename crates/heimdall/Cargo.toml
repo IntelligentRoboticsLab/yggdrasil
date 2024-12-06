@@ -10,6 +10,8 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+bifrost = { workspace = true }
+
 bevy = { workspace = true }
 fast-math = { workspace = true }
 fast_image_resize = { workspace = true }
