@@ -38,6 +38,21 @@ pub async fn has_rerun() -> bool {
     get_rerun_version().await.is_ok_and(|success| success)
 }
 
+pub async fn has_rsync() -> bool {
+    async fn get_rsync_version() -> Result<bool> {
+        Ok(Command::new("rsync")
+            .arg("--version")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .await
+            .into_diagnostic()?
+            .success())
+    }
+
+    get_rsync_version().await.is_ok_and(|success| success)
+}
+
 /// Compiles the `re_control` binary
 async fn build_re_control() -> Result<()> {
     let features = vec![];
