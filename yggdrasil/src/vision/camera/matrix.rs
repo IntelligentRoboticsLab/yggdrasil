@@ -32,9 +32,11 @@ pub struct CalibrationConfig {
 }
 
 impl CalibrationConfig {
+    #[must_use]
     pub fn extrinsic_rotation(&self) -> Vector3<f32> {
         self.extrinsic_rotation
     }
+
     pub fn set_extrinsic_rotation(&mut self, rotations: Vector3<f32>) {
         self.extrinsic_rotation = rotations;
     }

@@ -423,12 +423,12 @@ fn visualize_lines<T: CameraLocation>(
     dbg.log_with_cycle(
         T::make_entity_path("projected_lines"),
         lines.image.cycle(),
-        &rerun::LineStrips3D::new(lines.projected_lines.iter().map(|line| {
-            [
-                Into::<Vec3>::into(line.start),
-                Into::<Vec3>::into(line.end),
-            ]
-        })),
+        &rerun::LineStrips3D::new(
+            lines
+                .projected_lines
+                .iter()
+                .map(|line| [Into::<Vec3>::into(line.start), Into::<Vec3>::into(line.end)]),
+        ),
     );
 
     let transform = robot_pose.as_3d();

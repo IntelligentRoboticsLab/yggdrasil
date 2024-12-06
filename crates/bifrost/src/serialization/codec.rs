@@ -3,7 +3,9 @@
 //! arrays, strings, vectors and the `SPLStandardMessage` struct.
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use nalgebra::{allocator::Allocator, DefaultAllocator, Dim, RawStorageMut, Scalar, Storage, Vector};
+use nalgebra::{
+    allocator::Allocator, DefaultAllocator, Dim, RawStorageMut, Scalar, Storage, Vector,
+};
 use std::{
     collections::HashMap,
     hash::BuildHasher,
@@ -453,7 +455,7 @@ impl<T, D, S> Encode for Vector<T, D, S>
 where
     T: Scalar + Encode,
     D: Dim,
-    S: Storage<T, D>
+    S: Storage<T, D>,
 {
     fn encode(&self, mut write: impl Write) -> Result<()> {
         VarInt::from(self.len()).encode(&mut write)?;
@@ -494,7 +496,6 @@ where
             let item = vec.index_mut(index);
             *item = T::decode(&mut read)?;
         }
-
 
         Ok(vec)
     }
@@ -736,6 +737,8 @@ impl_varint!(i8, signed);
 
 #[cfg(test)]
 mod tests {
+    use nalgebra::{Vector2, Vector3, Vector4};
+
     use super::*;
     use crate::serialization::{Decode, Encode};
     use std::fmt::Debug;
@@ -802,6 +805,12 @@ mod tests {
         test_generic(vec![u16::MAX; 4])?;
         test_generic(vec![u32::MAX; 4])?;
         test_generic(vec![u64::MAX; 4])?;
+
+        // Vector from nalgebra
+        test_generic(Vector2::from_element(u8::MAX))?;
+        test_generic(Vector3::from_element(u16::MAX))?;
+        test_generic(Vector4::from_element(f32::MAX))?;
+        test_generic(Vector::from([f64::MAX; 8]))?;
 
         // Test array of Varints
         test_generic([VarInt::from(i32::MAX); 4])?;

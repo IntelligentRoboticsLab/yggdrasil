@@ -65,9 +65,9 @@ pub struct State<T> {
     original: T,
 }
 
-impl<T> State<T> 
+impl<T> State<T>
 where
-    T: Clone
+    T: Clone,
 {
     pub fn current(&self) -> &T {
         &self.current
@@ -232,8 +232,8 @@ fn handle_message(message: &RobotMessage, states: Arc<RwLock<ControlStates>>) {
                 CameraPosition::Bottom => &mut camera_config.config.bottom,
             };
 
-            camera_config.current_position = camera_position.clone();
-            camera.extrinsic_rotation.new_state(extrinsic_rotation.clone());
+            camera_config.current_position = *camera_position;
+            camera.extrinsic_rotation.new_state(*extrinsic_rotation);
         }
     }
 }

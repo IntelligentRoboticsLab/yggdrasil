@@ -58,7 +58,10 @@ pub fn handle_viewer_message(
                 debug_enabled_systems.set_system(system_name, enabled);
                 ev_debug_enabled_system_updated.send(DebugEnabledSystemUpdated);
             }
-            ViewerMessage::CameraExtrinsic { camera_position, extrinsic_rotation: rotation } => {
+            ViewerMessage::CameraExtrinsic {
+                camera_position,
+                extrinsic_rotation: rotation,
+            } => {
                 let config = match camera_position {
                     CameraPosition::Top => &mut camera_config.top,
                     CameraPosition::Bottom => &mut camera_config.bottom,
