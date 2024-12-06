@@ -216,6 +216,7 @@ impl RerunStream {
     }
 
     /// Whether the [`RecordingStream`] is enabled
+    #[must_use]
     pub fn is_enabled(&self) -> bool {
         self.stream.is_enabled()
     }

@@ -6,6 +6,7 @@ use std::{
 };
 
 use heimdall::CameraPosition;
+use nalgebra::Vector3;
 use re_viewer::external::{
     egui::{self, Frame},
     re_ui::UiExt,
@@ -218,6 +219,7 @@ pub fn camera_calibration_parameters_ui(
     let camera_state = &mut locked_states.camera_state;
     let camera_position = &mut camera_state.current_position;
 
+    // Selectable buttons to choose the camera position
     ui.horizontal(|ui| {
         ui.selectable_value(camera_position, CameraPosition::Top, "Top");
         ui.selectable_value(camera_position, CameraPosition::Bottom, "Bottom");
@@ -236,69 +238,17 @@ pub fn camera_calibration_parameters_ui(
             .num_columns(2)
             .spacing([20.0, 4.0])
             .show(ui, |ui| {
-                ui.label("Pitch:");
-                if ui
-                    .add(
-                        egui::Slider::new(&mut current_extrinsic_rotation.x, DEGREE_RANGE)
-                            .suffix(DEGREE_SUFFIX)
-                            .smart_aim(false)
-                            .drag_value_speed(SLIDER_STEP_SIZE)
-                            .step_by(SLIDER_STEP_SIZE),
-                    )
-                    .changed()
-                {
-                    let msg = ViewerMessage::CameraExtrinsic {
-                        camera_position: camera_position.clone(),
-                        extrinsic_rotation: current_extrinsic_rotation.clone(),
-                    };
-                    if let Err(error) = handle.send(msg) {
-                        tracing::error!(?error, "Failed to send message");
-                    }
-                };
-
-                ui.end_row();
-
-                ui.label("Roll:");
-                if ui
-                    .add(
-                        egui::Slider::new(&mut current_extrinsic_rotation.y, DEGREE_RANGE)
-                            .suffix(DEGREE_SUFFIX)
-                            .smart_aim(false)
-                            .drag_value_speed(SLIDER_STEP_SIZE)
-                            .step_by(SLIDER_STEP_SIZE),
-                    )
-                    .changed()
-                {
-                    let msg = ViewerMessage::CameraExtrinsic {
-                        camera_position: camera_position.clone(),
-                        extrinsic_rotation: current_extrinsic_rotation.clone(),
-                    };
-                    if let Err(error) = handle.send(msg) {
-                        tracing::error!(?error, "Failed to send message");
-                    }
-                };
-                ui.end_row();
-
-                ui.label("Yaw:");
-                if ui
-                    .add(
-                        egui::Slider::new(&mut current_extrinsic_rotation.z, DEGREE_RANGE)
-                            .suffix(DEGREE_SUFFIX)
-                            .smart_aim(false)
-                            .drag_value_speed(SLIDER_STEP_SIZE)
-                            .step_by(SLIDER_STEP_SIZE),
-                    )
-                    .changed()
-                {
-                    let msg = ViewerMessage::CameraExtrinsic {
-                        camera_position: camera_position.clone(),
-                        extrinsic_rotation: current_extrinsic_rotation.clone(),
-                    };
-                    if let Err(error) = handle.send(msg) {
-                        tracing::error!(?error, "Failed to send message");
-                    }
-                };
-                ui.end_row();
+                for (index, rotation_axis) in ["Pitch", "Roll", "Yaw"].iter().enumerate() {
+                    extrinsic_rotation_slider(
+                        ui,
+                        rotation_axis,
+                        index,
+                        current_extrinsic_rotation,
+                        *camera_position,
+                        handle,
+                    );
+                    ui.end_row();
+                }
             });
     }
 
@@ -306,11 +256,40 @@ pub fn camera_calibration_parameters_ui(
         extrinsic_rotation.restore_from_original();
 
         let msg = ViewerMessage::CameraExtrinsic {
-            camera_position: camera_position.clone(),
-            extrinsic_rotation: extrinsic_rotation.current().clone(),
+            camera_position: *camera_position,
+            extrinsic_rotation: *extrinsic_rotation.current(),
         };
         if let Err(error) = handle.send(msg) {
             tracing::error!(?error, "Failed to send message");
         }
     }
+}
+
+fn extrinsic_rotation_slider(
+    ui: &mut egui::Ui,
+    rotation_axis: &str,
+    rotation_axis_idx: usize,
+    rotations: &mut Vector3<f32>,
+    camera_position: CameraPosition,
+    handle: &ControlViewerHandle,
+) {
+    ui.label(rotation_axis);
+    if ui
+        .add(
+            egui::Slider::new(rotations.index_mut(rotation_axis_idx), DEGREE_RANGE)
+                .suffix(DEGREE_SUFFIX)
+                .smart_aim(false)
+                .drag_value_speed(SLIDER_STEP_SIZE)
+                .step_by(SLIDER_STEP_SIZE),
+        )
+        .changed()
+    {
+        let msg = ViewerMessage::CameraExtrinsic {
+            camera_position,
+            extrinsic_rotation: *rotations,
+        };
+        if let Err(error) = handle.send(msg) {
+            tracing::error!(?error, "Failed to send message");
+        }
+    };
 }
