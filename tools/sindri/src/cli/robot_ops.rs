@@ -2,20 +2,16 @@ use clap::{builder::ArgPredicate, Parser};
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use miette::{miette, Context, IntoDiagnostic};
-use ssh2::{ErrorCode, OpenFlags, OpenType, Session, Sftp};
 use std::{
     borrow::Cow,
     collections::HashMap,
     fmt, fs,
-    io::BufWriter,
     net::Ipv4Addr,
-    path::{Component, Path, PathBuf},
     process::{ExitStatus, Stdio},
     str::FromStr,
     time::Duration,
 };
-use tokio::{self, net::TcpStream, process::Command};
-use walkdir::{DirEntry, WalkDir};
+use tokio::{self, process::Command};
 use yggdrasil::core::config::showtime::ShowtimeConfig;
 use yggdrasil::prelude::*;
 
@@ -34,14 +30,8 @@ const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
 const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
 const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
 const DEPLOY_PATH: &str = "./deploy/yggdrasil";
-const CONNECTION_TIMEOUT: u64 = 5;
-const LOCAL_ROBOT_ID_STR: &str = "0";
 
-/// The size of the `BufWriter`'s buffer.
-///
-/// This is currently set to 1 MiB, as the [`Write`] implementation for [`ssh2::sftp::File`]
-/// is rather slow due to the locking mechanism.
-const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
+const LOCAL_ROBOT_ID_STR: &str = "0";
 
 // enum for either the name or the number of a robot thats given
 #[derive(Clone, Debug)]
@@ -604,7 +594,7 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
 /// Copy the contents of the 'deploy' folder to the robot.
 pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<ExitStatus> {
     Command::new("rsync")
-        .args(&["-av", "deploy/", &format!("nao@{}:/home/nao", addr)])
+        .args(["-av", "deploy/", &format!("nao@{addr}:/home/nao")])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
