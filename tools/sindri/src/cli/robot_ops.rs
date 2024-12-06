@@ -10,7 +10,7 @@ use std::{
     io::BufWriter,
     net::Ipv4Addr,
     path::{Component, Path, PathBuf},
-    process::Stdio,
+    process::{ExitStatus, Stdio},
     str::FromStr,
     time::Duration,
 };
@@ -602,9 +602,9 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
 }
 
 /// Copy the contents of the 'deploy' folder to the robot.
-pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<()> {
+pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<ExitStatus> {
     Command::new("rsync")
-        .args(&["-anv", "deploy/", &format!("nao@{}:/home/nao", addr)])
+        .args(&["-av", "deploy/", &format!("nao@{}:/home/nao", addr)])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
@@ -612,5 +612,5 @@ pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<()> {
         .map_err(|e| Error::Rsync {
             source: e,
             msg: "Failed to execute rsync command!".to_owned(),
-        }).map(|_|())
+        })
 }
