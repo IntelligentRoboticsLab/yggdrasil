@@ -14,10 +14,10 @@ pub enum Error {
     #[error(transparent)]
     Cargo(crate::cargo::CargoError),
 
-    #[error("Sftp error: {msg}")]
-    Sftp {
+    #[error("Rsync error: {msg}")]
+    Rsync {
         #[source]
-        source: ssh2::Error,
+        source: std::io::Error,
         msg: String,
     },
     #[error("Ssh error: {command}")]

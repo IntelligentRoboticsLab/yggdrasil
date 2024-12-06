@@ -602,71 +602,15 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
 }
 
 /// Copy the contents of the 'deploy' folder to the robot.
-pub(crate) async fn upload_to_robot(addr: &Ipv4Addr, output: Output) -> Result<()> {
+pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<()> {
     Command::new("rsync")
         .args(&["-anv", "deploy/", &format!("nao@{}:/home/nao", addr)])
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .await?;
-
-    Ok(())
-}
-
-async fn create_sftp_connection(ip: &Ipv4Addr) -> Result<Sftp> {
-    let tcp = tokio::time::timeout(
-        Duration::from_secs(CONNECTION_TIMEOUT),
-        TcpStream::connect(format!("{ip}:22")),
-    )
-    .await
-    .map_err(Error::Elapsed)??;
-    let mut session = Session::new().map_err(|e| Error::Sftp {
-        source: e,
-        msg: "Failed to create ssh session!".to_owned(),
-    })?;
-
-    session.set_tcp_stream(tcp);
-    session.handshake().map_err(|e| Error::Sftp {
-        source: e,
-        msg: "Failed to perform ssh handshake!".to_owned(),
-    })?;
-    session
-        .userauth_password("nao", "")
-        .map_err(|e| Error::Sftp {
+        .await
+        .map_err(|e| Error::Rsync {
             source: e,
-            msg: "Failed to authenticate using ssh!".to_owned(),
-        })?;
-
-    session.sftp().map_err(|e| Error::Sftp {
-        source: e,
-        msg: "Failed to create sftp session!".to_owned(),
-    })
-}
-
-fn ensure_directory_exists(sftp: &Sftp, remote_path: impl AsRef<Path>) -> Result<()> {
-    match sftp.mkdir(remote_path.as_ref(), 0o777) {
-        Ok(()) => Ok(()),
-        // Error code 4, means the directory already exists, so we can ignore it
-        Err(error) if error.code() == ErrorCode::SFTP(4) => Ok(()),
-        Err(error) => Err(Error::Sftp {
-            source: error,
-            msg: "Failed to ensure directory exists".to_owned(),
-        }),
-    }
-}
-
-fn get_remote_path(local_path: &Path) -> PathBuf {
-    let mut remote_path = PathBuf::from("/home/nao");
-
-    for component in local_path.components() {
-        // Would be nice to replace this with an if let chain once https://github.com/rust-lang/rust/issues/53667#issuecomment-1374336460 is stable.
-        match component {
-            // Prevent "deploy" from being added to the remote path, as we'll deploy directly to home directory.
-            Component::Normal(c) if c != "deploy" => remote_path.push(c),
-            // Any other component kind should ignored, such as ".".
-            _ => continue,
-        }
-    }
-
-    remote_path
+            msg: "Failed to execute rsync command!".to_owned(),
+        }).map(|_|())
 }
