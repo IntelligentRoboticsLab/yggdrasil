@@ -10,10 +10,11 @@ use std::{
     io::BufWriter,
     net::Ipv4Addr,
     path::{Component, Path, PathBuf},
+    process::Stdio,
     str::FromStr,
     time::Duration,
 };
-use tokio::{self, net::TcpStream};
+use tokio::{self, net::TcpStream, process::Command};
 use walkdir::{DirEntry, WalkDir};
 use yggdrasil::core::config::showtime::ShowtimeConfig;
 use yggdrasil::prelude::*;
@@ -603,7 +604,6 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
 /// Copy the contents of the 'deploy' folder to the robot.
 pub(crate) async fn upload_to_robot(addr: &Ipv4Addr, output: Output) -> Result<()> {
     output.connecting_phase(addr);
-    let sftp = create_sftp_connection(addr).await?;
     match output.clone() {
         Output::Silent => {}
         Output::Multi(pb) => {
@@ -614,86 +614,12 @@ pub(crate) async fn upload_to_robot(addr: &Ipv4Addr, output: Output) -> Result<(
         }
     }
 
-    let entries: Vec<DirEntry> = WalkDir::new("./deploy")
-        .into_iter()
-        .filter_map(std::result::Result::ok)
-        .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
-        .collect();
-    let num_files = entries
-        .iter()
-        .filter(|e| e.metadata().unwrap().is_file())
-        .count();
-
-    output.upload_phase(num_files as u64);
-
-    for entry in &entries {
-        let remote_path = get_remote_path(entry.path());
-
-        if entry.path().is_dir() {
-            // Ensure all directories exist on remote
-            ensure_directory_exists(&sftp, remote_path)?;
-            continue;
-        }
-
-        let file_remote = sftp
-            .open_mode(
-                &remote_path,
-                OpenFlags::WRITE | OpenFlags::TRUNCATE,
-                0o777,
-                OpenType::File,
-            )
-            .map_err(|e| Error::Sftp {
-                source: e,
-                msg: format!("Failed to open remote file {:?}!", entry.path()),
-            })?;
-
-        let mut file_local = std::fs::File::open(entry.path())?;
-
-        match output.clone() {
-            Output::Silent => {}
-            Output::Multi(pb) => {
-                pb.set_message(format!("{}", entry.path().to_string_lossy().dimmed()));
-            }
-            Output::Single(pb) => {
-                pb.set_length(file_local.metadata()?.len());
-                pb.set_message(format!("{}", entry.path().to_string_lossy()));
-            }
-        }
-
-        // Since `file_remote` impl's Write, we can just copy directly using a BufWriter!
-        // The Write impl is rather slow, so we set a large buffer size of 1 mb.
-        let mut buf_writer = BufWriter::with_capacity(UPLOAD_BUFFER_SIZE, file_remote);
-
-        match output.clone() {
-            Output::Silent => {
-                std::io::copy(&mut file_local, &mut buf_writer)?;
-            }
-            Output::Multi(pb) => {
-                std::io::copy(&mut file_local, &mut buf_writer)?;
-                pb.inc(1);
-            }
-            Output::Single(pb) => {
-                std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer))
-                    .map_err(Error::Io)?;
-
-                pb.println(format!(
-                    "{} {}",
-                    "    Uploaded".bright_blue().bold(),
-                    entry.path().to_string_lossy().dimmed()
-                ));
-            }
-        }
-    }
-
-    output.spinner();
-
-    if let Output::Multi(pb) = &output {
-        pb.set_message(format!(
-            "    {} {}",
-            "Uploaded".green().bold(),
-            addr.to_string().red()
-        ));
-    }
+    Command::new("rsync")
+        .arg("-anv deploy/ nao@{addr}:/home/nao")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .await?;
 
     Ok(())
 }
