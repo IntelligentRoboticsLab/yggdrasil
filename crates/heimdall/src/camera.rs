@@ -1,5 +1,6 @@
 use std::{io, path::Path};
 
+use bifrost::serialization::{Decode, Encode};
 use linuxvideo::{
     controls::Cid,
     format::{PixFormat, PixelFormat},
@@ -12,7 +13,7 @@ use crate::exposure_weights::ExposureWeightTable;
 
 use super::{Error, Result, YuyvImage};
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Encode, Decode)]
 pub enum CameraPosition {
     Top,
     Bottom,

@@ -1,7 +1,11 @@
 pub mod style;
 
-use std::sync::{Arc, RwLock};
+use std::{
+    ops::RangeInclusive,
+    sync::{Arc, RwLock},
+};
 
+use heimdall::CameraPosition;
 use re_viewer::external::{
     egui::{self, Frame},
     re_ui::UiExt,
@@ -15,6 +19,10 @@ use crate::control::ControlStates;
 
 pub const SIDE_PANEL_WIDTH: f32 = 400.0;
 pub const PANEL_TOP_PADDING: f32 = 10.0;
+
+const DEGREE_SUFFIX: &str = "°";
+const DEGREE_RANGE: RangeInclusive<f32> = -180.0..=180.0;
+const SLIDER_STEP_SIZE: f64 = 0.01;
 
 pub fn resource_ui(
     ui: &mut egui::Ui,
@@ -192,4 +200,117 @@ pub fn debug_resources_ui(
             };
         }
     });
+}
+
+pub fn camera_calibration_parameters_ui(
+    ui: &mut egui::Ui,
+    states: Arc<RwLock<ControlStates>>,
+    handle: &ControlViewerHandle,
+) {
+    let Ok(locked_states) = &mut states.write() else {
+        ui.centered_and_justified(|ui| {
+            ui.warning_label("Not able to access viewer states");
+        });
+        tracing::error!("Failed to lock states");
+        return;
+    };
+
+    let camera_state = &mut locked_states.camera_state;
+    let camera_position = &mut camera_state.current_position;
+
+    ui.horizontal(|ui| {
+        ui.selectable_value(camera_position, CameraPosition::Top, "Top");
+        ui.selectable_value(camera_position, CameraPosition::Bottom, "Bottom");
+    });
+
+    let camera_config = &mut camera_state.config;
+    let camera_settings = match camera_position {
+        CameraPosition::Top => &mut camera_config.top,
+        CameraPosition::Bottom => &mut camera_config.bottom,
+    };
+
+    let extrinsic_rotation = &mut camera_settings.extrinsic_rotation;
+    {
+        let current_extrinsic_rotation = extrinsic_rotation.current_mut();
+        egui::Grid::new("Top camera extrinsic rotations")
+            .num_columns(2)
+            .spacing([20.0, 4.0])
+            .show(ui, |ui| {
+                ui.label("Pitch:");
+                if ui
+                    .add(
+                        egui::Slider::new(&mut current_extrinsic_rotation.x, DEGREE_RANGE)
+                            .suffix(DEGREE_SUFFIX)
+                            .smart_aim(false)
+                            .drag_value_speed(SLIDER_STEP_SIZE)
+                            .step_by(SLIDER_STEP_SIZE),
+                    )
+                    .changed()
+                {
+                    let msg = ViewerMessage::CameraExtrinsic {
+                        camera_position: camera_position.clone(),
+                        extrinsic_rotation: current_extrinsic_rotation.clone(),
+                    };
+                    if let Err(error) = handle.send(msg) {
+                        tracing::error!(?error, "Failed to send message");
+                    }
+                };
+
+                ui.end_row();
+
+                ui.label("Roll:");
+                if ui
+                    .add(
+                        egui::Slider::new(&mut current_extrinsic_rotation.y, DEGREE_RANGE)
+                            .suffix(DEGREE_SUFFIX)
+                            .smart_aim(false)
+                            .drag_value_speed(SLIDER_STEP_SIZE)
+                            .step_by(SLIDER_STEP_SIZE),
+                    )
+                    .changed()
+                {
+                    let msg = ViewerMessage::CameraExtrinsic {
+                        camera_position: camera_position.clone(),
+                        extrinsic_rotation: current_extrinsic_rotation.clone(),
+                    };
+                    if let Err(error) = handle.send(msg) {
+                        tracing::error!(?error, "Failed to send message");
+                    }
+                };
+                ui.end_row();
+
+                ui.label("Yaw:");
+                if ui
+                    .add(
+                        egui::Slider::new(&mut current_extrinsic_rotation.z, DEGREE_RANGE)
+                            .suffix(DEGREE_SUFFIX)
+                            .smart_aim(false)
+                            .drag_value_speed(SLIDER_STEP_SIZE)
+                            .step_by(SLIDER_STEP_SIZE),
+                    )
+                    .changed()
+                {
+                    let msg = ViewerMessage::CameraExtrinsic {
+                        camera_position: camera_position.clone(),
+                        extrinsic_rotation: current_extrinsic_rotation.clone(),
+                    };
+                    if let Err(error) = handle.send(msg) {
+                        tracing::error!(?error, "Failed to send message");
+                    }
+                };
+                ui.end_row();
+            });
+    }
+
+    if ui.button("Restore original").clicked() {
+        extrinsic_rotation.restore_from_original();
+
+        let msg = ViewerMessage::CameraExtrinsic {
+            camera_position: camera_position.clone(),
+            extrinsic_rotation: extrinsic_rotation.current().clone(),
+        };
+        if let Err(error) = handle.send(msg) {
+            tracing::error!(?error, "Failed to send message");
+        }
+    }
 }

@@ -68,7 +68,7 @@ fn make_rrd_file_path(storage_path: &Path) -> PathBuf {
     path
 }
 
-fn init_rerun(mut commands: Commands) {
+pub fn init_rerun(mut commands: Commands) {
     #[cfg(feature = "local")]
     let server_address = Some(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED));
 
@@ -213,6 +213,11 @@ impl RerunStream {
             cycle: Cycle(0),
             logging_to_rrd_file: false,
         }
+    }
+
+    /// Whether the [`RecordingStream`] is enabled
+    pub fn is_enabled(&self) -> bool {
+        self.stream.is_enabled()
     }
 
     /// Log data to Rerun.
