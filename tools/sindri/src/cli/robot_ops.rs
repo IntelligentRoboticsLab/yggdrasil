@@ -604,9 +604,9 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
 /// Copy the contents of the 'deploy' folder to the robot.
 pub(crate) async fn upload_to_robot(addr: &Ipv4Addr, output: Output) -> Result<()> {
     Command::new("rsync")
-        .arg("-anv deploy/ nao@{addr}:/home/nao")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .args(&["-anv", "deploy/", &format!("nao@{}:/home/nao", addr)])
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
         .status()
         .await?;
 
