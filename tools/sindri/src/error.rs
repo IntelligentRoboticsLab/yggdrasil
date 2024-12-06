@@ -15,10 +15,7 @@ pub enum Error {
     Cargo(crate::cargo::CargoError),
 
     #[error("Rsync error: {msg}, look up rsync error code: {code:?}")]
-    Rsync {
-        code: i32,
-        msg: String,
-    },
+    Rsync { code: i32, msg: String },
     #[error("Ssh error: {command}")]
     Ssh {
         #[source]

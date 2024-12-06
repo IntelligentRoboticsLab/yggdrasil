@@ -3,12 +3,7 @@ use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use miette::{miette, Context, IntoDiagnostic};
 use std::{
-    borrow::Cow,
-    collections::HashMap,
-    fmt, fs,
-    net::Ipv4Addr,
-    process::{ExitStatus, Stdio},
-    str::FromStr,
+    borrow::Cow, collections::HashMap, fmt, fs, net::Ipv4Addr, process::Stdio, str::FromStr,
     time::Duration,
 };
 use tokio::{self, process::Command};
@@ -600,7 +595,7 @@ pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<()> {
         .output()
         .await
         .unwrap();
-    
+
     if !output.status.success() {
         if let Some(code) = output.status.code() {
             return Err(Error::Rsync {
