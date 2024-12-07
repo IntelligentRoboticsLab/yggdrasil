@@ -81,9 +81,4 @@ impl Ransac for LineDetector {
         // we want to optimize for the least squares error
         distance * distance
     }
-
-    fn score(&self, model: &Self::Model, point: &Self::Data) -> f32 {
-        let distance = model.distance_to_point(*point);
-        1.0 - distance.sqrt() / self.inlier_threshold
-    }
 }

@@ -1,3 +1,4 @@
+pub mod inlier;
 pub mod line;
 pub mod ransac;
 
@@ -6,52 +7,56 @@ use std::marker::PhantomData;
 use bevy::prelude::*;
 use bevy::tasks::{block_on, poll_once, AsyncComputeTaskPool, Task};
 use heimdall::{CameraLocation, CameraMatrix, YuyvImage};
+use inlier::Inliers;
 use itertools::Itertools;
 use line::{Line2, LineSegment2};
 use nalgebra::{point, Point2};
 
 use odal::Config;
 use rand::Rng;
-use ransac::line::LineDetector;
-use ransac::Ransac;
+use ransac::{line::LineDetector, Ransac};
 use serde::{Deserialize, Serialize};
 
 use super::{camera::Image, scan_lines::ScanLines};
-use crate::core::config::layout::{FieldConfig, LayoutConfig};
-use crate::core::debug::DebugContext;
-use crate::localization::RobotPose;
-use crate::nao::Cycle;
-use crate::prelude::ConfigExt;
-
-const MAX_LINES: usize = 10;
+use crate::{
+    core::{
+        config::layout::{FieldConfig, LayoutConfig},
+        debug::DebugContext,
+    },
+    localization::RobotPose,
+    nao::Cycle,
+    prelude::ConfigExt,
+};
 
 #[derive(Resource, Debug, Clone, Deserialize, Serialize, Reflect)]
 #[serde(deny_unknown_fields)]
 pub struct LineDetectionConfig {
-    // margin outside of the field in which lines will still be considered
+    /// margin outside of the field in which lines will still be considered
     pub field_margin: f32,
-    // maximum number of iterations for ARRSAC
-    pub max_iters: usize,
-    // residual threshold for ARRSAC inliers
-    pub arrsac_inlier_threshold: f32,
-    // minimum number of points in a valid line segment
-    pub line_segment_min_points: usize,
-    // maximum distance of a valid line spot from the camera
+    /// maximum number of iterations for RANSAC
+    pub ransac_iters: usize,
+    /// maximum number of models to fit in RANSAC
+    pub model_iters: usize,
+    /// residual threshold for RANSAC inliers
+    pub ransac_inlier_threshold: f32,
+    /// maximum distance of a valid line spot from the camera
     pub spot_max_distance: f32,
-    // maximum distance between two inliers of a line
+    /// minimum number of points in a valid line segment
+    pub line_segment_min_points: usize,
+    /// minimum length of a line segment after merging
+    pub line_segment_min_length: f32,
+    /// maximum length of a line segment after merging
+    pub line_segment_max_length: f32,
+    /// maximum distance between two inliers of a line
     pub max_line_gap_distance: f32,
-    // number of samples for the white test
+    /// number of samples for the white test
     pub white_test_samples: usize,
-    // sampling distance for the white test
+    /// sampling distance for the white test
     pub white_test_sample_distance: f32,
-    // ratio of white tests that need to pass for two lines to be merged
+    /// ratio of white tests that need to pass for two lines to be merged
     pub white_test_merge_ratio: f32,
-    // maximum angle in radians between two lines for them to be considered parallel
+    /// maximum angle in radians between two lines for them to be considered parallel
     pub white_test_max_angle: f32,
-    // minimum length of a line segment after merging
-    pub line_segment_min_length_post_merge: f32,
-    // maximum length of a line segment after merging
-    pub line_segment_max_length_post_merge: f32,
 }
 
 #[derive(Resource, Debug, Clone, Deserialize, Serialize, Reflect)]
@@ -83,7 +88,6 @@ impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
                 debug_lines_projected::<T>,
                 debug_rejected_lines::<T>,
                 debug_lines_inliers::<T>,
-                // log_3d_line_spots::<Top>.run_if(resource_exists_and_changed::<ScanLines<Top>>),
             ),
         );
     }
@@ -121,61 +125,6 @@ pub enum Rejection {
     NotEnoughSpots,
 }
 
-/// Inlier points of a line candidate
-#[derive(Debug)]
-pub struct Inliers(Vec<Point2<f32>>);
-
-impl Inliers {
-    fn sort_by_x(&mut self) {
-        self.0.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
-    }
-
-    /// Split the line candidate into multiple candidates, every time the gap between two neighboring inliers is too large
-    ///
-    /// Returns a vector of the separated line candidates
-    fn split_at_gap(mut self, max_gap: f32) -> Vec<Self> {
-        let mut candidates = vec![];
-
-        while let Some(candidate) = self.split_at_gap_single(max_gap) {
-            candidates.push(candidate);
-        }
-        candidates.push(self);
-
-        // handle edge case where the first inlier is too far from the second
-        candidates.retain(|c| c.0.len() >= 2);
-
-        candidates
-    }
-
-    /// Split the line candidate into two candidates at the first point where the gap between two neighboring inliers is too large
-    ///
-    /// If no such point is found, leaves the candidate unchanged and returns `None`
-    ///
-    /// If such a point is found, mutates the current candidate and returns the new candidate that was split off
-    fn split_at_gap_single(&mut self, max_gap: f32) -> Option<Self> {
-        let split_index = self
-            .0
-            .iter()
-            // (i, inlier)
-            .enumerate()
-            .rev()
-            // ((i, inlier), (i-1, prev_inlier))
-            .tuple_windows::<(_, _)>()
-            .find_map(|((i, inlier), (_, prev_inlier))| {
-                // find the first point where the gap between two neighboring inliers is too large
-                if nalgebra::distance(inlier, prev_inlier) > max_gap {
-                    Some(i)
-                } else {
-                    None
-                }
-            })?;
-
-        let new_inliers = self.0.split_off(split_index);
-
-        Some(Self(new_inliers))
-    }
-}
-
 /// Candidate for a detected line
 #[derive(Debug)]
 struct LineCandidate {
@@ -191,13 +140,12 @@ impl LineCandidate {
     /// Merge two line candidates into one
     fn merge(&mut self, other: LineCandidate) {
         // add the inliers and resort them
-        self.inliers.0.extend(other.inliers.0);
-        self.inliers.sort_by_x();
+        self.inliers.extend(other.inliers);
 
         // recompute the segment
         self.segment = LineSegment2::new(
-            self.inliers.0.first().copied().unwrap(),
-            self.inliers.0.last().copied().unwrap(),
+            self.inliers.first().copied().unwrap(),
+            self.inliers.last().copied().unwrap(),
         );
     }
 }
@@ -305,18 +253,19 @@ fn detect_lines<T: CameraLocation>(
     });
 
     let mut candidates = vec![];
+    let mut ransac = LineDetector::new(
+        projected_spots,
+        cfg.model_iters,
+        cfg.ransac_inlier_threshold,
+    );
 
-    let mut ransac = LineDetector::new(projected_spots, 50, cfg.arrsac_inlier_threshold);
-
-    for _ in 0..cfg.max_iters {
-        let Some((line, mut inliers)) = ransac.next() else {
+    for _ in 0..cfg.ransac_iters {
+        let Some((line, inliers)) = ransac.next() else {
             // probably no more good lines!
             break;
         };
 
-        inliers.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
-
-        let curr_candidates = Inliers(inliers)
+        let new_candidates = Inliers::new(inliers)
             // split the line candidate into multiple candidates,
             // every time the gap between two neighboring inliers is too large
             .split_at_gap(cfg.max_line_gap_distance)
@@ -324,8 +273,8 @@ fn detect_lines<T: CameraLocation>(
             // create a LineCandidate for each split
             .map(|inliers| {
                 let segment = LineSegment2::new(
-                    inliers.0.first().copied().unwrap(),
-                    inliers.0.last().copied().unwrap(),
+                    inliers.first().copied().unwrap(),
+                    inliers.last().copied().unwrap(),
                 );
 
                 LineCandidate {
@@ -335,9 +284,47 @@ fn detect_lines<T: CameraLocation>(
                 }
             });
 
-        candidates.extend(curr_candidates);
+        candidates.extend(new_candidates);
     }
 
+    // try to merge the candidates
+    merge_candidates(&mut candidates, &scan_lines, &camera_matrix, &cfg);
+
+    // sort candidates by distance (closest first)
+    candidates.sort_unstable_by(|a, b| {
+        let distance_a = a.segment.center().coords.norm();
+        let distance_b = b.segment.center().coords.norm();
+        distance_a.total_cmp(&distance_b)
+    });
+
+    let rejections = candidates
+        .iter()
+        .map(|c| {
+            let not_enough_spots = c.inliers.len() < cfg.line_segment_min_points;
+            let is_too_short = c.segment.length() < cfg.line_segment_min_length;
+            let is_too_long = c.segment.length() > cfg.line_segment_max_length;
+
+            if not_enough_spots {
+                Some(Rejection::NotEnoughSpots)
+            } else if is_too_short {
+                Some(Rejection::TooShort)
+            } else if is_too_long {
+                Some(Rejection::TooLong)
+            } else {
+                None
+            }
+        })
+        .collect_vec();
+
+    (candidates, rejections)
+}
+
+fn merge_candidates<T: CameraLocation>(
+    candidates: &mut Vec<LineCandidate>,
+    scan_lines: &ScanLines<T>,
+    camera_matrix: &CameraMatrix<T>,
+    cfg: &LineDetectionConfig,
+) {
     // check if we can merge two line candidates
     for i in (0..candidates.len()).rev() {
         for j in 0..i {
@@ -397,48 +384,16 @@ fn detect_lines<T: CameraLocation>(
             // if the ratio of the white tests is high enough, merge the two candidates
             let ratio = tests.iter().filter(|&&t| t).count() as f32 / tests.len() as f32;
 
-            // println!("ratio: {ratio}");
-
             if ratio > cfg.white_test_merge_ratio {
-                let candidate = candidates.remove(i);
+                let candidate = candidates.swap_remove(i);
                 candidates[j].merge(candidate);
                 break;
             }
         }
     }
-
-    // sort candidates by distance (closest first)
-    candidates.sort_unstable_by(|a, b| {
-        let distance_a = a.segment.center().coords.norm();
-        let distance_b = b.segment.center().coords.norm();
-        distance_a.total_cmp(&distance_b)
-    });
-    // and remove ones we don't need
-    candidates.truncate(MAX_LINES);
-
-    let rejections = candidates
-        .iter()
-        .map(|c| {
-            let not_enough_spots = c.inliers.0.len() < cfg.line_segment_min_points;
-            let is_too_short = c.segment.length() < cfg.line_segment_min_length_post_merge;
-            let is_too_long = c.segment.length() > cfg.line_segment_max_length_post_merge;
-
-            if not_enough_spots {
-                Some(Rejection::NotEnoughSpots)
-            } else if is_too_short {
-                Some(Rejection::TooShort)
-            } else if is_too_long {
-                Some(Rejection::TooLong)
-            } else {
-                None
-            }
-        })
-        .collect_vec();
-
-    (candidates, rejections)
 }
 
-pub fn is_less_bright_and_more_saturated<T: CameraLocation>(
+fn is_less_bright_and_more_saturated<T: CameraLocation>(
     p1: Point2<f32>,
     p2: Point2<f32>,
     image: &Image<T>,
@@ -526,7 +481,6 @@ fn debug_lines_inliers<T: CameraLocation>(
             );
 
             let p = inliers
-                .0
                 .iter()
                 .filter_map(|p| {
                     let Ok(point) = camera_matrix.ground_to_pixel(point![p.x, p.y, 0.0]) else {
@@ -589,35 +543,4 @@ fn debug_rejected_lines<T: CameraLocation>(
             ),
         );
     }
-}
-
-fn log_3d_line_spots<T: CameraLocation>(
-    dbg: DebugContext,
-    camera_matrix: Res<CameraMatrix<T>>,
-    pose: Res<RobotPose>,
-    scan_lines: Res<ScanLines<T>>,
-) {
-    let spots = scan_lines.line_spots();
-    let mut colors = vec![];
-    let mut points = vec![];
-
-    for spot in spots {
-        let c = (0, 255, 255);
-
-        let p = camera_matrix.pixel_to_ground(spot, 0.0);
-
-        if let Ok(p) = p {
-            let p = pose.inner * p.xy();
-            colors.push(c);
-            points.push((p.x, p.y, 0.0));
-        }
-    }
-
-    dbg.log_with_cycle(
-        T::make_entity_path("lines/line_spots"),
-        scan_lines.image().cycle(),
-        &rerun::Points3D::new(points)
-            .with_radii(vec![0.02; colors.len()])
-            .with_colors(colors),
-    );
 }

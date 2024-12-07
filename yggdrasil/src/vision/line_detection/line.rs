@@ -56,7 +56,7 @@ impl LineSegment2 {
 
     // Center of the line segment
     pub fn center(&self) -> Point2<f32> {
-        (self.start + self.end.coords) / 2.0
+        (self.start + self.end.coords) * 0.5
     }
 
     /// Normal vector of the line segment
