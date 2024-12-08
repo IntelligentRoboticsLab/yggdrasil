@@ -5,6 +5,7 @@ use crate::{
         debug_system::{DebugAppExt, SystemToggle},
         DebugContext,
     },
+    localization::RobotPose,
     nao::Cycle,
     prelude::*,
 };
@@ -17,7 +18,7 @@ use super::{
 };
 use bevy::prelude::*;
 
-use heimdall::{Bottom, CameraLocation, CameraPosition, Top, YuvPixel, YuyvImage};
+use heimdall::{Bottom, CameraLocation, CameraMatrix, CameraPosition, Top, YuvPixel, YuyvImage};
 use nalgebra::Point2;
 use serde::{Deserialize, Serialize};
 
@@ -68,8 +69,10 @@ impl Plugin for ScanLinesPlugin {
             .add_named_debug_systems(
                 PostUpdate,
                 (
-                    visualize_scan_lines::<Top>.run_if(resource_exists::<ScanLines<Top>>),
-                    visualize_scan_lines::<Bottom>.run_if(resource_exists::<ScanLines<Bottom>>),
+                    visualize_scan_lines::<Top>
+                        .run_if(resource_exists_and_changed::<ScanLines<Top>>),
+                    visualize_scan_lines::<Bottom>
+                        .run_if(resource_exists_and_changed::<ScanLines<Bottom>>),
                 ),
                 "Visualize scan lines",
                 SystemToggle::Disable,

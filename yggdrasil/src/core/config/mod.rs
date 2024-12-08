@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::{behavior::BehaviorConfig, nao::RobotInfo, prelude::*};
 use bevy::{ecs::system::RunSystemOnce, prelude::*};
+use miette::IntoDiagnostic;
 use odal::{ConfigKind, Error, ErrorKind};
 
 use layout::LayoutConfig;
@@ -153,7 +154,8 @@ fn init_config<T: Resource + Config + Send + Sync + 'static>(
         }
         Err(e) => Err(e),
     }
-    .unwrap_or_else(|_| panic!("failed to load config: {}", T::PATH));
+    .into_diagnostic()
+    .unwrap_or_else(|report| panic!("{report:?}"));
 
     commands.insert_resource(config);
 }
