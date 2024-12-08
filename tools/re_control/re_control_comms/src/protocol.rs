@@ -34,10 +34,3 @@ pub enum ViewerMessage {
         extrinsic_rotation: Vector3<f32>,
     },
 }
-
-// #[derive(Encode, Decode, Debug, Clone, PartialEq)]
-// pub enum ExtrinsicRotation {
-//     Pitch(f32),
-//     Roll(f32),
-//     Yaw(f32),
-// }

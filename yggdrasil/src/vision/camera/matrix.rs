@@ -26,20 +26,9 @@ const CAMERA_BOTTOM_PITCH_DEGREES: f32 = 39.7;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
 pub struct CalibrationConfig {
-    extrinsic_rotation: Vector3<f32>,
+    pub extrinsic_rotation: Vector3<f32>,
     focal_lengths: Vector2<f32>,
     cc_optical_center: Point2<f32>,
-}
-
-impl CalibrationConfig {
-    #[must_use]
-    pub fn extrinsic_rotation(&self) -> Vector3<f32> {
-        self.extrinsic_rotation
-    }
-
-    pub fn set_extrinsic_rotation(&mut self, rotations: Vector3<f32>) {
-        self.extrinsic_rotation = rotations;
-    }
 }
 
 #[derive(Default)]

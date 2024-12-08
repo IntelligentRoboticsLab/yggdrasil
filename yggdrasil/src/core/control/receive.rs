@@ -67,7 +67,7 @@ pub fn handle_viewer_message(
                     CameraPosition::Bottom => &mut camera_config.bottom,
                 };
 
-                config.calibration.set_extrinsic_rotation(rotation);
+                config.calibration.extrinsic_rotation = rotation;
             }
             _ => tracing::warn!(?message, "unhandled message"),
         }

@@ -23,11 +23,13 @@ impl Default for ControlRobotMessageDelay {
 
 pub fn send_on_connection(
     mut commands: Commands,
-    mut ev_viewer_connected: EventReader<ViewerConnected>,
+    mut viewer_events: EventReader<ViewerConnected>,
     send_debug_enabled_systems: Res<SendDebugEnabledSystems>,
     send_camera_extrinsic: Res<SendCameraExtrinsic>,
 ) {
-    for _ev in ev_viewer_connected.read() {
+    if !viewer_events.is_empty() {
+        viewer_events.clear();
+
         commands.run_system(send_debug_enabled_systems.0);
         commands.run_system(send_camera_extrinsic.0);
     }
@@ -56,8 +58,8 @@ pub fn send_camera_extrinsic(
     camera_config: Res<CameraConfig>,
     control_handle: Res<ControlAppHandle>,
 ) {
-    let top_extrinsic = camera_config.top.calibration.extrinsic_rotation();
-    let bottom_extrinsic = camera_config.bottom.calibration.extrinsic_rotation();
+    let top_extrinsic = camera_config.top.calibration.extrinsic_rotation;
+    let bottom_extrinsic = camera_config.bottom.calibration.extrinsic_rotation;
 
     let top_msg = RobotMessage::CameraExtrinsic {
         camera_position: CameraPosition::Top,
