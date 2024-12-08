@@ -75,10 +75,4 @@ impl Ransac for LineDetector {
 
         Some((lines, inliers))
     }
-
-    fn residual(&self, model: &Self::Model, point: &Self::Data) -> f32 {
-        let distance = model.distance_to_point(*point);
-        // we want to optimize for the least squares error
-        distance * distance
-    }
 }
