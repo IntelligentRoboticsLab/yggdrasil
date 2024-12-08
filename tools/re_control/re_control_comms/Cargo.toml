@@ -14,7 +14,7 @@ workspace = true
 crate-type = ["lib"]
 
 [dependencies]
-bifrost = { workspace = true }
+bifrost = { workspace = true, features = ["nalgebra"] }
 heimdall = { workspace = true }
 
 async-std = { workspace = true }

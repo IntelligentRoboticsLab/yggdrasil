@@ -14,14 +14,13 @@ use re_control_comms::{
 use re_viewer::external::{
     eframe,
     egui::{self, ScrollArea},
-    re_ui::{list_item, UiExt},
 };
 
 use crate::{
     resource::RobotResources,
     ui::{
-        camera_calibration_parameters_ui, debug_resources_ui, resource_ui, style::FrameStyleMap,
-        PANEL_TOP_PADDING, SIDE_PANEL_WIDTH,
+        camera_calibration::camera_calibration_ui, debug_systems::debug_enabled_systems_ui,
+        resource::resource_ui, style::FrameStyleMap, PANEL_TOP_PADDING, SIDE_PANEL_WIDTH,
     },
 };
 
@@ -169,41 +168,18 @@ impl Control {
         });
 
         // Resource section
-        list_item::list_item_scope(ui, "Control resources", |ui| {
-            ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-            ui.section_collapsing_header("Resources")
-                .default_open(false)
-                .show(ui, |ui| {
-                    resource_ui(
-                        ui,
-                        Arc::clone(&self.states),
-                        &self.handle,
-                        &self.frame_styles,
-                    );
-                })
-        });
+        resource_ui(
+            ui,
+            Arc::clone(&self.states),
+            &self.handle,
+            &self.frame_styles,
+        );
 
         // Debug enabled/disabled systems section
-        list_item::list_item_scope(ui, "Control debug enabled systems", |ui| {
-            ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-            ui.section_collapsing_header("Debug system controls")
-                .default_open(true)
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        debug_resources_ui(ui, Arc::clone(&self.states), &self.handle)
-                    });
-                })
-        });
+        debug_enabled_systems_ui(ui, Arc::clone(&self.states), &self.handle);
 
         // Camera calibration section
-        list_item::list_item_scope(ui, "Control camera calibration", |ui| {
-            ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-            ui.section_collapsing_header("Camera calibration parameters")
-                .default_open(true)
-                .show(ui, |ui| {
-                    camera_calibration_parameters_ui(ui, Arc::clone(&self.states), &self.handle);
-                })
-        });
+        camera_calibration_ui(ui, Arc::clone(&self.states), &self.handle);
     }
 }
 

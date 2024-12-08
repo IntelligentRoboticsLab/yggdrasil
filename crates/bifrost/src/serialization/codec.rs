@@ -1,11 +1,8 @@
 //! Implementing Encoding and Decoding for primitive types
 //! (u8, u16, u32, u64, i8, i16, i32, i64, f32, f64),
-//! arrays, strings, vectors and the `SPLStandardMessage` struct.
+//! arrays, strings, vectors, hashmaps and the `SPLStandardMessage` struct.
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use nalgebra::{
-    allocator::Allocator, DefaultAllocator, Dim, RawStorageMut, Scalar, Storage, Vector,
-};
 use std::{
     collections::HashMap,
     hash::BuildHasher,
@@ -451,56 +448,6 @@ where
     }
 }
 
-impl<T, D, S> Encode for Vector<T, D, S>
-where
-    T: Scalar + Encode,
-    D: Dim,
-    S: Storage<T, D>,
-{
-    fn encode(&self, mut write: impl Write) -> Result<()> {
-        VarInt::from(self.len()).encode(&mut write)?;
-
-        for item in self.iter() {
-            item.encode(&mut write)?;
-        }
-        Ok(())
-    }
-
-    fn encode_len(&self) -> usize {
-        let mut total_encode_len = VarInt::from(self.len()).encode_len();
-
-        for elem in self {
-            total_encode_len += elem.encode_len();
-        }
-
-        total_encode_len
-    }
-}
-
-impl<T, D, S> Decode for Vector<T, D, S>
-where
-    T: Scalar + Decode,
-    D: Dim,
-    S: RawStorageMut<T, D> + Default,
-    DefaultAllocator: Allocator<D>,
-{
-    fn decode(mut read: impl Read) -> Result<Self>
-    where
-        Self: Sized,
-    {
-        let length = VarInt::decode(&mut read)?.into();
-
-        let mut vec = Vector::<T, D, S>::default();
-
-        for index in 0..length {
-            let item = vec.index_mut(index);
-            *item = T::decode(&mut read)?;
-        }
-
-        Ok(vec)
-    }
-}
-
 impl<K, V, S: BuildHasher> Encode for HashMap<K, V, S>
 where
     K: Encode,
@@ -736,14 +683,12 @@ impl_varint!(i16, signed);
 impl_varint!(i8, signed);
 
 #[cfg(test)]
-mod tests {
-    use nalgebra::{Vector2, Vector3, Vector4};
-
+pub mod tests {
     use super::*;
     use crate::serialization::{Decode, Encode};
     use std::fmt::Debug;
 
-    fn test_generic<T>(input: T) -> Result<()>
+    pub fn test_generic<T>(input: T) -> Result<()>
     where
         T: Encode + Decode + Debug + PartialEq,
     {
@@ -805,12 +750,6 @@ mod tests {
         test_generic(vec![u16::MAX; 4])?;
         test_generic(vec![u32::MAX; 4])?;
         test_generic(vec![u64::MAX; 4])?;
-
-        // Vector from nalgebra
-        test_generic(Vector2::from_element(u8::MAX))?;
-        test_generic(Vector3::from_element(u16::MAX))?;
-        test_generic(Vector4::from_element(f32::MAX))?;
-        test_generic(Vector::from([f64::MAX; 8]))?;
 
         // Test array of Varints
         test_generic([VarInt::from(i32::MAX); 4])?;
