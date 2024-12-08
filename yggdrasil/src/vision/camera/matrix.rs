@@ -21,7 +21,7 @@ use crate::{
     sensor::orientation::RobotOrientation,
 };
 
-use super::{CameraConfig, Image};
+use super::CameraConfig;
 
 const CAMERA_TOP_PITCH_DEGREES: f32 = 1.2;
 const CAMERA_BOTTOM_PITCH_DEGREES: f32 = 39.7;
