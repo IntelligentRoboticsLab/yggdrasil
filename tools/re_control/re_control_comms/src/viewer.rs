@@ -46,7 +46,7 @@ impl From<SocketAddrV4> for ControlViewer {
 
 impl ControlViewer {
     pub fn run(self) -> ControlViewerHandle {
-        tracing::info!("Starting control viewer");
+        // tracing::info!("Starting control viewer");
 
         // Spawn a background task to handle messages from the global channel.
         {
