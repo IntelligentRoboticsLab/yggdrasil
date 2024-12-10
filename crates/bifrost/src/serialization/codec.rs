@@ -683,12 +683,12 @@ impl_varint!(i16, signed);
 impl_varint!(i8, signed);
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use super::*;
     use crate::serialization::{Decode, Encode};
     use std::fmt::Debug;
 
-    pub fn test_generic<T>(input: T) -> Result<()>
+    fn test_generic<T>(input: T) -> Result<()>
     where
         T: Encode + Decode + Debug + PartialEq,
     {

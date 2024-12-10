@@ -2,19 +2,18 @@
 
 use std::io::{Read, Write};
 
-use nalgebra::{
-    allocator::Allocator, DefaultAllocator, Dim, RawStorageMut, Scalar, Storage, Vector,
-};
+use nalgebra::{Dim, Matrix, Scalar, Storage, StorageMut};
 
 use super::{Decode, Encode, VarInt};
 
 use crate::Result;
 
-impl<T, D, S> Encode for Vector<T, D, S>
+impl<T, R, C, S> Encode for Matrix<T, R, C, S>
 where
     T: Scalar + Encode,
-    D: Dim,
-    S: Storage<T, D>,
+    R: Dim,
+    C: Dim,
+    S: Storage<T, R, C>,
 {
     fn encode(&self, mut write: impl Write) -> Result<()> {
         VarInt::from(self.len()).encode(&mut write)?;
@@ -36,12 +35,12 @@ where
     }
 }
 
-impl<T, D, S> Decode for Vector<T, D, S>
+impl<T, R, C, S> Decode for Matrix<T, R, C, S>
 where
     T: Scalar + Decode,
-    D: Dim,
-    S: RawStorageMut<T, D> + Default,
-    DefaultAllocator: Allocator<D>,
+    R: Dim,
+    C: Dim,
+    S: StorageMut<T, R, C> + Default,
 {
     fn decode(mut read: impl Read) -> Result<Self>
     where
@@ -49,30 +48,77 @@ where
     {
         let length = VarInt::decode(&mut read)?.into();
 
-        let mut vec = Vector::<T, D, S>::default();
+        let mut matrix = Matrix::<T, R, C, S>::default();
 
         for index in 0..length {
-            let item = vec.index_mut(index);
+            let item = matrix.index_mut(index);
             *item = T::decode(&mut read)?;
         }
 
-        Ok(vec)
+        Ok(matrix)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::serialization::codec::tests::test_generic;
-    use nalgebra::{Vector, Vector2, Vector3, Vector4};
+    use crate::serialization::{Decode, Encode};
+    use nalgebra::{Matrix2, Matrix3x6, Matrix4x2, Matrix6, Vector, Vector2, Vector3, Vector4};
+    use std::{fmt::Debug, u8};
+
+    fn test_vector<T, D, S>(input: Vector<T, D, S>) -> Result<()>
+    where
+        T: Encode + Decode + Debug + PartialEq + Scalar,
+        D: Dim,
+        S: StorageMut<T, D> + Default + Debug,
+    {
+        let mut encoded: Vec<u8> = Vec::new();
+        input.encode(&mut encoded)?;
+        let decoded = Vector::<T, D, S>::decode(&mut encoded.as_slice())?;
+
+        assert_eq!(input, decoded);
+        assert_eq!(input.encode_len(), decoded.encode_len());
+        assert_eq!(input.encode_len(), encoded.len());
+
+        Ok(())
+    }
+
+    fn test_matrix<T, R, C, S>(input: Matrix<T, R, C, S>) -> Result<()>
+    where
+        T: Encode + Decode + Debug + Scalar,
+        R: Dim,
+        C: Dim,
+        S: StorageMut<T, R, C> + Default + Debug,
+    {
+        let mut encoded: Vec<u8> = Vec::new();
+        input.encode(&mut encoded)?;
+        let decoded = Matrix::<T, R, C, S>::decode(&mut encoded.as_slice())?;
+
+        assert_eq!(input, decoded);
+        assert_eq!(input.encode_len(), decoded.encode_len());
+        assert_eq!(input.encode_len(), encoded.len());
+
+        Ok(())
+    }
 
     #[test]
-    fn test_vector() -> Result<()> {
+    fn test_vectors() -> Result<()> {
         // Vector from nalgebra
-        test_generic(Vector2::from_element(u8::MAX))?;
-        test_generic(Vector3::from_element(u16::MAX))?;
-        test_generic(Vector4::from_element(f32::MAX))?;
-        test_generic(Vector::from([f64::MAX; 8]))?;
+        test_vector(Vector2::from_element(u8::MAX))?;
+        test_vector(Vector3::from_element(u16::MAX))?;
+        test_vector(Vector4::from_element(f32::MAX))?;
+        test_vector(Vector::from([f64::MAX; 8]))?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_matrices() -> Result<()> {
+        // Matrix from nalgebra
+        test_matrix(Matrix2::from_element(u8::MAX))?;
+        test_matrix(Matrix4x2::from_element(u16::MAX))?;
+        test_matrix(Matrix3x6::from_element(f32::MAX))?;
+        test_matrix(Matrix6::from_element(f64::MAX))?;
 
         Ok(())
     }
