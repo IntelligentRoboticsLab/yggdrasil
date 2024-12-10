@@ -66,23 +66,6 @@ mod tests {
     use nalgebra::{Matrix2, Matrix3x6, Matrix4x2, Matrix6, Vector, Vector2, Vector3, Vector4};
     use std::{fmt::Debug, u8};
 
-    fn test_vector<T, D, S>(input: Vector<T, D, S>) -> Result<()>
-    where
-        T: Encode + Decode + Debug + PartialEq + Scalar,
-        D: Dim,
-        S: StorageMut<T, D> + Default + Debug,
-    {
-        let mut encoded: Vec<u8> = Vec::new();
-        input.encode(&mut encoded)?;
-        let decoded = Vector::<T, D, S>::decode(&mut encoded.as_slice())?;
-
-        assert_eq!(input, decoded);
-        assert_eq!(input.encode_len(), decoded.encode_len());
-        assert_eq!(input.encode_len(), encoded.len());
-
-        Ok(())
-    }
-
     fn test_matrix<T, R, C, S>(input: Matrix<T, R, C, S>) -> Result<()>
     where
         T: Encode + Decode + Debug + Scalar,
@@ -104,10 +87,10 @@ mod tests {
     #[test]
     fn test_vectors() -> Result<()> {
         // Vector from nalgebra
-        test_vector(Vector2::from_element(u8::MAX))?;
-        test_vector(Vector3::from_element(u16::MAX))?;
-        test_vector(Vector4::from_element(f32::MAX))?;
-        test_vector(Vector::from([f64::MAX; 8]))?;
+        test_matrix(Vector2::from_element(u8::MAX))?;
+        test_matrix(Vector3::from_element(u16::MAX))?;
+        test_matrix(Vector4::from_element(f32::MAX))?;
+        test_matrix(Vector::from([f64::MAX; 8]))?;
 
         Ok(())
     }
