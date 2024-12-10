@@ -64,7 +64,7 @@ mod tests {
     use super::*;
     use crate::serialization::{Decode, Encode};
     use nalgebra::{Matrix2, Matrix3x6, Matrix4x2, Matrix6, Vector, Vector2, Vector3, Vector4};
-    use std::{fmt::Debug, u8};
+    use std::fmt::Debug;
 
     fn test_matrix<T, R, C, S>(input: Matrix<T, R, C, S>) -> Result<()>
     where
