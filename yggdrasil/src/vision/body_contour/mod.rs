@@ -345,8 +345,8 @@ fn visualize_body_contour(
     // let mut points = Vec::with_capacity(480 * 720);
     let mut points = Vec::new();
 
-    for x in 0..bottom_image.yuyv_image().width() {
-        for y in 0..bottom_image.yuyv_image().height() {
+    for x in (0..bottom_image.yuyv_image().width()).step_by(10) {
+        for y in (0..bottom_image.yuyv_image().height()).step_by(10) {
             let x = x as f32;
             let y = y as f32;
             if body_contour.is_part_of_body(Point2::new(x, y)) {
