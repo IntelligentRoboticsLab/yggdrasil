@@ -32,30 +32,23 @@ struct BodyContour {
 impl BodyContour {
     #[must_use]
     pub fn is_part_of_body(&self, image_coordinate: Point2<f32>) -> bool {
-        // self.left_shoulder_cap_point.is_some_and(|shoulder_point| {
-        //     Self::is_part_of_shoulder(shoulder_point, image_coordinate)
-        // }) || self.right_shoulder_cap_point.is_some_and(|shoulder_point| {
-        //     Self::is_part_of_shoulder(shoulder_point, image_coordinate)
-        // }) || self
-        //     .chest_points
-        //     .as_ref()
-        //     .is_some_and(|chest_point| Self::is_part_of_chest(chest_point, image_coordinate))
-        //     || self
-        //         .left_thigh_point
-        //         .is_some_and(|thigh_point| Self::is_part_of_thigh(thigh_point, image_coordinate))
-        //     || self
-        //         .right_thigh_point
-        //         .is_some_and(|thigh_point| Self::is_part_of_thigh(thigh_point, image_coordinate))
-        //     || self
-        //         .left_tibia_point
-        //         .is_some_and(|tibia_point| Self::is_part_of_tibia(tibia_point, image_coordinate))
-        //     || self
-        //         .right_tibia_point
-        //         .is_some_and(|tibia_point| Self::is_part_of_tibia(tibia_point, image_coordinate))
-        //self.chest_points
-        //    .as_ref()
-        //    .is_some_and(|chest_point| Self::is_part_of_chest(chest_point, image_coordinate))
-        Self::is_part_of_chest(&self.chest_points, image_coordinate)
+        self.left_shoulder_cap_point.is_some_and(|shoulder_point| {
+            Self::is_part_of_shoulder(shoulder_point, image_coordinate)
+        }) || self.right_shoulder_cap_point.is_some_and(|shoulder_point| {
+            Self::is_part_of_shoulder(shoulder_point, image_coordinate)
+        }) || Self::is_part_of_chest(&self.chest_points, image_coordinate)
+            || self
+                .left_thigh_point
+                .is_some_and(|thigh_point| Self::is_part_of_thigh(thigh_point, image_coordinate))
+            || self
+                .right_thigh_point
+                .is_some_and(|thigh_point| Self::is_part_of_thigh(thigh_point, image_coordinate))
+            || self
+                .left_tibia_point
+                .is_some_and(|tibia_point| Self::is_part_of_tibia(tibia_point, image_coordinate))
+            || self
+                .right_tibia_point
+                .is_some_and(|tibia_point| Self::is_part_of_tibia(tibia_point, image_coordinate))
     }
 
     fn is_part_of_shoulder(shoulder_point: Point2<f32>, image_coordinate: Point2<f32>) -> bool {
