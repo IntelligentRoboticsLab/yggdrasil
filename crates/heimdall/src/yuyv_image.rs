@@ -253,6 +253,18 @@ impl YuvPixel {
 
         (y as f32, h, s)
     }
+
+    pub fn to_rgb(self) -> (f32, f32, f32) {
+        let y = f32::from(self.y);
+        let u = f32::from(self.u);
+        let v = f32::from(self.v);
+
+        let b = 1.164 * (y - 16.0) + 2.018 * (u - 128.0);
+        let g = 1.164 * (y - 16.0) - 0.813 * (v - 128.0) - 0.391 * (u - 128.0);
+        let r = 1.164 * (y - 16.0) + 1.596 * (v - 128.0);
+
+        (r, g, b)
+    }
 }
 
 pub struct ImageView<'a> {

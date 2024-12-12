@@ -667,9 +667,16 @@ impl RegionColor {
         _field: &FieldColorApproximate,
         pixel: YuvPixel,
     ) -> Self {
-        let yhs = pixel.to_yhs2();
+        let yhs = pixel.clone().to_yhs2();
+        let (r, g, b) = pixel.to_rgb();
 
-        if Self::is_green(config, yhs) {
+        let g_chromaticity = g / (r + g + b);
+        let green_treshold = 0.5;
+
+        // if Self::is_green(config, yhs) {
+        //     return RegionColor::Green;
+        // }
+        if g_chromaticity > green_treshold {
             return RegionColor::Green;
         }
 
