@@ -291,7 +291,7 @@ impl Plugin for BodyContourPlugin {
 
 fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
     dbg.log_component_batches(
-        T::make_entity_path("body_contour"),
+        T::make_entity_path("image/body_contour"),
         true,
         [
             &rerun::Color::from_rgb(219, 62, 177) as _,
@@ -300,15 +300,15 @@ fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
         ],
     );
 
-    dbg.log_component_batches(
-        T::make_entity_path("body_contour/chests"),
-        true,
-        [
-            &rerun::Color::from_rgb(167, 82, 64) as _,
-            // &rerun::Radius::new_ui_points(14.0) as _,
-            &rerun::Radius::new_ui_points(4.0) as _,
-        ],
-    );
+    //dbg.log_component_batches(
+    //    T::make_entity_path("body_contour/chests"),
+    //    true,
+    //    [
+    //        &rerun::Color::from_rgb(167, 82, 64) as _,
+    //        // &rerun::Radius::new_ui_points(14.0) as _,
+    //        &rerun::Radius::new_ui_points(4.0) as _,
+    //    ],
+    //);
 }
 
 fn update_body_contours(
@@ -356,7 +356,7 @@ fn visualize_body_contour(
     }
 
     debug_context.log_with_cycle(
-        Bottom::make_entity_path("body_contour"),
+        Bottom::make_entity_path("image/body_contour"),
         *current_cycle,
         &rerun::Points2D::new(&points),
     );
