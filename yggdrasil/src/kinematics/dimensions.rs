@@ -43,3 +43,6 @@ pub const CHEST_TO_CHEST_CENTRE_RIGHT: Vector3<f32> = Vector3::new(0.0, -0.03, 0
 // pub const ROBOT_TO_RIGHT_SHOULDER_CAP: Vector3<f32> = Vector3::new(0.0, -0.098, 0.22);
 pub const ROBOT_TO_LEFT_SHOULDER_CAP: Vector3<f32> = Vector3::new(-0.02, 0.098, 0.22);
 pub const ROBOT_TO_RIGHT_SHOULDER_CAP: Vector3<f32> = Vector3::new(-0.02, -0.098, 0.22);
+
+pub const SHOULDER_CAP_TO_SHOULDER_CAP_FRONT: Vector3<f32> = Vector3::new(0.01, 0.0, 0.0);
+pub const SHOULDER_CAP_TO_SHOULDER_CAP_BACK: Vector3<f32> = Vector3::new(-0.01, 0.0, 0.0);
