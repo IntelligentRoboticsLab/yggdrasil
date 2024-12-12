@@ -10,7 +10,7 @@ use crate::{
 use super::camera::Image;
 
 #[derive(Default, Resource, Debug, Deref)]
-struct ChestPoints([Point2<f32>; 3]);
+struct ChestPoints(Vec<Point2<f32>>);
 
 #[derive(Default, Resource)]
 struct BodyContour {
@@ -20,7 +20,7 @@ struct BodyContour {
     left_toe_point: Option<Point2<f32>>,
     right_toe_point: Option<Point2<f32>>,
 
-    chest_points: Option<ChestPoints>,
+    chest_points: ChestPoints,
 
     left_thigh_point: Option<Point2<f32>>,
     right_thigh_point: Option<Point2<f32>>,
@@ -52,9 +52,10 @@ impl BodyContour {
         //     || self
         //         .right_tibia_point
         //         .is_some_and(|tibia_point| Self::is_part_of_tibia(tibia_point, image_coordinate))
-        self.chest_points
-            .as_ref()
-            .is_some_and(|chest_point| Self::is_part_of_chest(chest_point, image_coordinate))
+        //self.chest_points
+        //    .as_ref()
+        //    .is_some_and(|chest_point| Self::is_part_of_chest(chest_point, image_coordinate))
+        Self::is_part_of_chest(&self.chest_points, image_coordinate)
     }
 
     fn is_part_of_shoulder(shoulder_point: Point2<f32>, image_coordinate: Point2<f32>) -> bool {
@@ -74,38 +75,12 @@ impl BodyContour {
         for (left_point, right_point) in chest_points.iter().zip(chest_points.iter().skip(1)) {
             if image_coordinate.x < right_point.x {
                 let a = (right_point.y - left_point.y) / (right_point.x - left_point.x);
-                return (image_coordinate.x) * a >= image_coordinate.y;
+                return left_point.y + (image_coordinate.x - left_point.x) * a
+                    <= image_coordinate.y;
             }
         }
 
         unreachable!();
-
-        // if image_coordinate.x < chest_points.chest_point.x {
-        //     let a = (chest_points.chest_point.y - chest_points.chest_left_point.y)
-        //         / (chest_points.chest_point.x - chest_points.chest_left_point.x);
-        //     if (image_coordinate.x) * a >= image_coordinate.y {
-        //         return false;
-        //     } else {
-        //         return true;
-        //     }
-        // }
-
-        // if image_coordinate.x > chest_points.chest_point.x {
-        //     let a = (chest_points.chest_point.y - chest_points.chest_right_point.y)
-        //         / (chest_points.chest_point.x - chest_points.chest_right_point.x);
-        //     if (image_coordinate.x - chest_points.chest_point.x) * a + chest_points.chest_point.y
-        //         > image_coordinate.y
-        //     {
-        //         return true;
-        //     }
-        // }
-
-        false
-
-        // chest_point.x - 160.0 < image_coordinate.x
-        //     && chest_point.x + 160.0 > image_coordinate.x
-        //     && chest_point.y - 80.0 < image_coordinate.y
-        //     && chest_point.y + 100.0 > image_coordinate.y
     }
 
     // # TODO: This might be too simple for a body part that's not static.
@@ -156,42 +131,38 @@ impl BodyContour {
         kinematics: &Kinematics,
         matrix: &CameraMatrix<Bottom>,
     ) {
-        self.chest_points = None;
         let (robot_to_chest_left, robot_to_chest, robot_to_chest_right) =
             robot_to_chest(orientation, kinematics);
 
-        let Ok(chest_left_point) = matrix.ground_to_pixel(
+        self.chest_points.0.clear();
+        let chest_points = &mut self.chest_points.0;
+
+        if let Ok(chest_left_point) = matrix.ground_to_pixel(
             (robot_to_chest_left.inverse() * matrix.robot_to_ground)
                 .translation
                 .vector
                 .into(),
-        ) else {
-            return;
+        ) {
+            chest_points.push(chest_left_point);
         };
 
-        let Ok(chest_point) = matrix.ground_to_pixel(
+        if let Ok(chest_point) = matrix.ground_to_pixel(
             (robot_to_chest.inverse() * matrix.robot_to_ground)
                 .translation
                 .vector
                 .into(),
-        ) else {
-            return;
+        ) {
+            chest_points.push(chest_point);
         };
 
-        let Ok(chest_right_point) = matrix.ground_to_pixel(
+        if let Ok(chest_right_point) = matrix.ground_to_pixel(
             (robot_to_chest_right.inverse() * matrix.robot_to_ground)
                 .translation
                 .vector
                 .into(),
-        ) else {
-            return;
+        ) {
+            chest_points.push(chest_right_point);
         };
-
-        self.chest_points = Some(ChestPoints([
-            chest_left_point,
-            chest_point,
-            chest_right_point,
-        ]));
     }
 
     fn update_shoulders(
@@ -300,15 +271,15 @@ fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
         ],
     );
 
-    //dbg.log_component_batches(
-    //    T::make_entity_path("body_contour/chests"),
-    //    true,
-    //    [
-    //        &rerun::Color::from_rgb(167, 82, 64) as _,
-    //        // &rerun::Radius::new_ui_points(14.0) as _,
-    //        &rerun::Radius::new_ui_points(4.0) as _,
-    //    ],
-    //);
+    dbg.log_component_batches(
+        T::make_entity_path("image/body_contour/chests"),
+        true,
+        [
+            &rerun::Color::from_rgb(167, 82, 64) as _,
+            // &rerun::Radius::new_ui_points(14.0) as _,
+            &rerun::Radius::new_ui_points(4.0) as _,
+        ],
+    );
 }
 
 fn update_body_contours(
@@ -336,9 +307,6 @@ fn visualize_body_contour(
     bottom_image: Res<Image<Bottom>>,
     current_cycle: Res<Cycle>,
 ) {
-    if !bottom_image.is_from_cycle(*current_cycle) {
-        return;
-    }
     // # TODO: This function is very slow.
     // It's probably better to let `BodyContour` return the points that should be
     // visualized, instead of iterating over all points.
@@ -356,9 +324,20 @@ fn visualize_body_contour(
     }
 
     debug_context.log_with_cycle(
-        Bottom::make_entity_path("image/body_contour"),
+        Bottom::make_entity_path("image/body_contour/chests"),
         *current_cycle,
         &rerun::Points2D::new(&points),
+    );
+
+    debug_context.log_with_cycle(
+        Bottom::make_entity_path("image/body_contour"),
+        *current_cycle,
+        &rerun::Points2D::new(
+            body_contour
+                .chest_points
+                .iter()
+                .map(|point| (point.x, point.y)),
+        ),
     );
 }
 
