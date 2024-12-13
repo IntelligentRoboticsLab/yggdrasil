@@ -9,8 +9,6 @@ use crate::{
 
 use super::camera::Image;
 
-//#[derive(Default, Resource, Debug, Deref)]
-//struct ChestPoints(Vec<Point2<f32>>);
 type ChestPoints = Vec<Point2<f32>>;
 
 struct ShoulderCapPoints {
@@ -385,25 +383,26 @@ fn visualize_body_contour(
     );
 }
 
+impl RobotOrientation {
+    fn adjust_for_imu(&self, isometry: Isometry3<f32>) -> Isometry3<f32> {
+        let (roll, pitch, _) = self.euler_angles();
+
+        Isometry3::from(isometry.translation)
+            * Isometry3::rotation(Vector3::y() * pitch)
+            * Isometry3::rotation(Vector3::x() * roll)
+    }
+}
+
 fn robot_to_toes(
     orientation: &RobotOrientation,
     kinematics: &Kinematics,
 ) -> (Isometry3<f32>, Isometry3<f32>) {
-    let (roll, pitch, _) = orientation.euler_angles();
-
     let robot_to_left_toe = kinematics.isometry::<Robot, LeftToe>().inner;
-    let imu_adjusted_robot_to_left_toe = Isometry3::from(robot_to_left_toe.translation)
-        * Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll);
-
     let robot_to_right_toe = kinematics.isometry::<Robot, RightToe>().inner;
-    let imu_adjusted_robot_to_right_toe = Isometry3::from(robot_to_right_toe.translation)
-        * Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll);
 
     (
-        imu_adjusted_robot_to_left_toe,
-        imu_adjusted_robot_to_right_toe,
+        orientation.adjust_for_imu(robot_to_left_toe),
+        orientation.adjust_for_imu(robot_to_right_toe),
     )
 }
 
@@ -411,27 +410,14 @@ fn robot_to_chest(
     orientation: &RobotOrientation,
     kinematics: &Kinematics,
 ) -> (Isometry3<f32>, Isometry3<f32>, Isometry3<f32>) {
-    let (roll, pitch, _) = orientation.euler_angles();
-
     let robot_to_chest_left = kinematics.isometry::<Robot, ChestLeft>().inner;
-    let imu_adjusted_robot_to_chest_left = Isometry3::from(robot_to_chest_left.translation)
-        * Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll);
-
     let robot_to_chest = kinematics.isometry::<Robot, Chest>().inner;
-    let imu_adjusted_robot_to_chest = Isometry3::from(robot_to_chest.translation)
-        * Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll);
-
     let robot_to_chest_right = kinematics.isometry::<Robot, ChestRight>().inner;
-    let imu_adjusted_robot_to_chest_right = Isometry3::from(robot_to_chest_right.translation)
-        * Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll);
 
     (
-        imu_adjusted_robot_to_chest_left,
-        imu_adjusted_robot_to_chest,
-        imu_adjusted_robot_to_chest_right,
+        orientation.adjust_for_imu(robot_to_chest_left),
+        orientation.adjust_for_imu(robot_to_chest),
+        orientation.adjust_for_imu(robot_to_chest_right),
     )
 }
 
@@ -442,41 +428,23 @@ fn robot_to_shoulders(
     (Isometry3<f32>, Isometry3<f32>),
     (Isometry3<f32>, Isometry3<f32>),
 ) {
-    let (roll, pitch, _) = orientation.euler_angles();
-
     let robot_to_left_shoulder_cap_front =
         kinematics.isometry::<Robot, LeftShoulderCapFront>().inner;
-    let imu_adjusted_robot_to_left_shoulder_cap_front =
-        Isometry3::from(robot_to_left_shoulder_cap_front.translation)
-            * Isometry3::rotation(Vector3::y() * pitch)
-            * Isometry3::rotation(Vector3::x() * roll);
     let robot_to_left_shoulder_cap_back = kinematics.isometry::<Robot, LeftShoulderCapBack>().inner;
-    let imu_adjusted_robot_to_left_shoulder_cap_back =
-        Isometry3::from(robot_to_left_shoulder_cap_back.translation)
-            * Isometry3::rotation(Vector3::y() * pitch)
-            * Isometry3::rotation(Vector3::x() * roll);
 
     let robot_to_right_shoulder_cap_front =
         kinematics.isometry::<Robot, RightShoulderCapFront>().inner;
-    let imu_adjusted_robot_to_right_shoulder_cap_front =
-        Isometry3::from(robot_to_right_shoulder_cap_front.translation)
-            * Isometry3::rotation(Vector3::y() * pitch)
-            * Isometry3::rotation(Vector3::x() * roll);
     let robot_to_right_shoulder_cap_back =
         kinematics.isometry::<Robot, RightShoulderCapBack>().inner;
-    let imu_adjusted_robot_to_right_shoulder_cap_back =
-        Isometry3::from(robot_to_right_shoulder_cap_back.translation)
-            * Isometry3::rotation(Vector3::y() * pitch)
-            * Isometry3::rotation(Vector3::x() * roll);
 
     (
         (
-            imu_adjusted_robot_to_left_shoulder_cap_front,
-            imu_adjusted_robot_to_left_shoulder_cap_back,
+            orientation.adjust_for_imu(robot_to_left_shoulder_cap_front),
+            orientation.adjust_for_imu(robot_to_left_shoulder_cap_back),
         ),
         (
-            imu_adjusted_robot_to_right_shoulder_cap_front,
-            imu_adjusted_robot_to_right_shoulder_cap_back,
+            orientation.adjust_for_imu(robot_to_right_shoulder_cap_front),
+            orientation.adjust_for_imu(robot_to_right_shoulder_cap_back),
         ),
     )
 }
@@ -485,21 +453,12 @@ fn robot_to_thighs(
     orientation: &RobotOrientation,
     kinematics: &Kinematics,
 ) -> (Isometry3<f32>, Isometry3<f32>) {
-    let (roll, pitch, _) = orientation.euler_angles();
-
     let robot_to_left_thigh = kinematics.isometry::<Robot, LeftThigh>().inner;
-    let imu_adjusted_robot_to_left_thigh = Isometry3::from(robot_to_left_thigh.translation)
-        * Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll);
-
     let robot_to_right_thigh = kinematics.isometry::<Robot, RightThigh>().inner;
-    let imu_adjusted_robot_to_right_thigh = Isometry3::from(robot_to_right_thigh.translation)
-        * Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll);
 
     (
-        imu_adjusted_robot_to_left_thigh,
-        imu_adjusted_robot_to_right_thigh,
+        orientation.adjust_for_imu(robot_to_left_thigh),
+        orientation.adjust_for_imu(robot_to_right_thigh),
     )
 }
 
@@ -507,20 +466,11 @@ fn robot_to_tibias(
     orientation: &RobotOrientation,
     kinematics: &Kinematics,
 ) -> (Isometry3<f32>, Isometry3<f32>) {
-    let (roll, pitch, _) = orientation.euler_angles();
-
     let robot_to_left_tibia = kinematics.isometry::<Robot, LeftTibia>().inner;
-    let imu_adjusted_robot_to_left_tibia = Isometry3::from(robot_to_left_tibia.translation)
-        * Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll);
-
     let robot_to_right_tibia = kinematics.isometry::<Robot, RightTibia>().inner;
-    let imu_adjusted_robot_to_right_tibia = Isometry3::from(robot_to_right_tibia.translation)
-        * Isometry3::rotation(Vector3::y() * pitch)
-        * Isometry3::rotation(Vector3::x() * roll);
 
     (
-        imu_adjusted_robot_to_left_tibia,
-        imu_adjusted_robot_to_right_tibia,
+        orientation.adjust_for_imu(robot_to_left_tibia),
+        orientation.adjust_for_imu(robot_to_right_tibia),
     )
 }
