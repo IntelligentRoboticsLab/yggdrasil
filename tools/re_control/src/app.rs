@@ -2,7 +2,10 @@ use std::net::Ipv4Addr;
 
 use miette::{IntoDiagnostic, Result};
 use re_control_comms::viewer::ControlViewer;
-use re_viewer::StartupOptions;
+use re_viewer::{
+    external::{eframe, egui},
+    StartupOptions,
+};
 
 use crate::control::Control;
 
@@ -23,7 +26,7 @@ impl App {
         }
     }
 
-    pub async fn run(self) -> Result<()> {
+    pub async fn run(self, main_thread_token: re_viewer::MainThreadToken) -> Result<()> {
         let app_env = re_viewer::AppEnvironment::Custom(APP_ENV.to_string());
 
         // Listen for TCP connections from Rerun's logging SDKs.
@@ -34,10 +37,20 @@ impl App {
             Default::default(),
         )
         .into_diagnostic()?;
+        let native_options = eframe::NativeOptions {
+            viewport: egui::ViewportBuilder::default()
+                .with_app_id("rerun_extend_viewer_ui_example"),
+            ..re_viewer::native::eframe_options(None)
+        };
 
-        re_viewer::run_native_app(
+        eframe::run_native(
+            "Rerun",
+            native_options,
             Box::new(move |cc| {
+                re_viewer::customize_eframe_and_setup_renderer(cc)?;
+
                 let mut app = re_viewer::App::new(
+                    main_thread_token,
                     re_viewer::build_info(),
                     &app_env,
                     self.startup_options,
@@ -45,9 +58,8 @@ impl App {
                     cc.storage,
                 );
                 app.add_receiver(rx);
-                Box::new(Control::new(app, self.viewer))
+                Ok(Box::new(Control::new(app, self.viewer)))
             }),
-            None,
         )
         .into_diagnostic()?;
 
