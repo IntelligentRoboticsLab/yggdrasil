@@ -2582,7 +2582,6 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb7330aeadfbe296029522e6c40f315320aba36fc43a5b3632f3795348f3bd22"
 dependencies = [
- "convert_case",
  "proc-macro2",
  "quote",
  "syn 2.0.90",
@@ -6071,7 +6070,6 @@ dependencies = [
  "serde",
  "thiserror 2.0.4",
  "toml",
- "tracing",
 ]
 
 [[package]]
@@ -7046,23 +7044,16 @@ dependencies = [
 name = "re_control"
 version = "0.1.0"
 dependencies = [
- "bevy",
- "bifrost",
  "clap",
  "miette 7.4.0",
  "mimalloc",
  "re_control_comms",
  "re_crash_handler",
  "re_sdk_comms",
- "re_smart_channel",
  "re_viewer",
  "rerun",
- "serde",
- "serde_json",
  "tokio",
  "tracing",
- "tracing-log",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -11345,10 +11336,7 @@ dependencies = [
  "bifrost",
  "chrono",
  "cpal",
- "derive_more",
  "enum_dispatch",
- "fast-math",
- "fast_image_resize",
  "futures",
  "geo",
  "heimdall",
@@ -11373,8 +11361,6 @@ dependencies = [
  "serde_with",
  "spatial",
  "tasks",
- "thiserror 2.0.4",
- "tokio",
  "toml",
  "tracing",
  "tracing-appender",
