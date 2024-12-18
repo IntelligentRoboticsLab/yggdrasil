@@ -14,9 +14,10 @@ use re_control_comms::{
 use re_ui::Icon;
 use re_viewer::external::{
     eframe,
-    egui::{self, ScrollArea},
+    egui::{self, Align2, ScrollArea, Vec2},
+    re_ui::{list_item, UiExt},
 };
-use rerun::external::re_log;
+use rerun::{external::re_log, Vec2D};
 
 use crate::{
     resource::RobotResources,
@@ -184,20 +185,57 @@ impl Control {
         ui.style_mut().spacing.item_spacing.y = 0.;
         // ui.add_space(2.);
 
-        ui.horizontal(|ui| {
-            if ui
-                .medium_icon_toggle_button(&TOGGLE_BUTTON, &mut self.side_bar_toggled)
-                .on_hover_text(format!("Toggle selection view",))
-                .clicked()
-            {}
-        });
+        egui::Area::new("eh".into())
+            .anchor(
+                Align2::RIGHT_TOP,
+                Vec2::new(if self.side_bar_toggled { -2. } else { -249. }, 5.),
+            )
+            .show(ui.ctx(), |ui| {
+                if ui
+                    .medium_icon_toggle_button(&TOGGLE_BUTTON, &mut self.side_bar_toggled)
+                    .on_hover_text(format!("Toggle selection view",))
+                    .clicked()
+                {}
+            });
+
         //     ui.separator();
 
-        //     if !self.side_bar_toggled {
-        //         ui.set_width(30.);
-        //         ui.shrink_width_to_current();
-        //         return;
-        //     }
+        if !self.side_bar_toggled {
+            ui.set_width(30.);
+            ui.shrink_width_to_current();
+            return;
+        }
+        egui::SidePanel::right("control")
+            .default_width(SIDE_PANEL_WIDTH)
+            .show(ui.ctx(), |ui| {
+                // Resource section
+                list_item::list_item_scope(ui, "Control resources", |ui| {
+                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+                    ui.section_collapsing_header("Resources")
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            resource_ui(
+                                ui,
+                                Arc::clone(&self.states),
+                                &self.handle,
+                                &self.frame_styles,
+                            );
+                        })
+                });
+
+                // Debug enabled/disabled systems sections
+                list_item::list_item_scope(ui, "Control debug enabled systems", |ui| {
+                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+                    ui.section_collapsing_header("Debug system controls")
+                        .default_open(true)
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                debug_resources_ui(ui, Arc::clone(&self.states), &self.handle)
+                            });
+                        })
+                });
+            });
+
         //     ui.horizontal(|ui| {
         //         ui.add_space(ui.available_width());
         //     });
