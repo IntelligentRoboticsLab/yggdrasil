@@ -5,6 +5,7 @@ use bifrost::communication::{GameControllerMessage, GamePhase};
 use enum_dispatch::enum_dispatch;
 use heimdall::{Bottom, Top};
 use nalgebra::Point2;
+use nidhogg::NaoState;
 
 use crate::{
     behavior::{
@@ -32,6 +33,7 @@ use crate::{
         button::{ChestButton, HeadButtons},
         falling::FallState,
         fsr::Contacts,
+        orientation::RobotOrientation,
     },
     vision::ball_detection::classifier::Balls,
 };
@@ -72,6 +74,10 @@ pub struct Context<'a> {
     pub ball_position: &'a Option<Point2<f32>>,
     /// Contains the current behavior.
     pub current_behavior: BehaviorKind,
+    // Contains the current state of the robot
+    pub nao_state: &'a NaoState,
+    // Contains the orientation of the robot
+    pub robot_orientation: &'a RobotOrientation,
 }
 
 /// Control that is passed into the behavior engine.
@@ -341,6 +347,8 @@ impl BehaviorEngine {
 pub fn step(
     (mut engine, primary_state): (ResMut<BehaviorEngine>, ResMut<PrimaryState>),
     robot_info: Res<RobotInfo>,
+    nao_state: Res<NaoState>,
+    robot_orientation: Res<RobotOrientation>,
     (head_buttons, chest_button, contacts): (Res<HeadButtons>, Res<ChestButton>, Res<Contacts>),
     (player_config, layout_config, yggdrasil_config, behavior_config, game_controller_config): (
         Res<PlayerConfig>,
@@ -386,6 +394,8 @@ pub fn step(
         pose: &robot_pose,
         ball_position: &most_confident_ball,
         current_behavior: engine.behavior.clone(),
+        nao_state: &nao_state,
+        robot_orientation: &robot_orientation, // why did I add this? --> only if we want to disable all motors (is_resting)
     };
 
     let mut control = Control {

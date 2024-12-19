@@ -480,6 +480,11 @@ impl NaoManager {
         self.set_legs(leg_positions, leg_stiffness, priority)
     }
 
+    pub fn stiff_sit(&mut self, leg_positions: LegJoints<f32>, priority: Priority) -> &mut Self {
+        let leg_stiffness = LegJoints::fill(0.3);
+        self.set_legs(leg_positions, leg_stiffness, priority)
+    }
+
     /// Disable all motors in the arms.
     pub fn unstiff_arms(&mut self, priority: Priority) -> &mut Self {
         self.set_arms(
