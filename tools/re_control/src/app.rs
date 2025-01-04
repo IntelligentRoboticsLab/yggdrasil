@@ -38,8 +38,7 @@ impl App {
         )
         .into_diagnostic()?;
         let native_options = eframe::NativeOptions {
-            viewport: egui::ViewportBuilder::default()
-                .with_app_id("yggdrasil_control"),
+            viewport: egui::ViewportBuilder::default().with_app_id("yggdrasil_control"),
             ..re_viewer::native::eframe_options(None)
         };
 
