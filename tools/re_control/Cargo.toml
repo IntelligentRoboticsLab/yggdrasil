@@ -8,20 +8,14 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-bifrost = { workspace = true }
-
-bevy = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 miette = { workspace = true }
 mimalloc = { workspace = true }
 re_control_comms = { path = "re_control_comms" }
 re_crash_handler = { workspace = true }
 re_sdk_comms = { workspace = true, features = ["server"] }
-re_smart_channel = { workspace = true }
 re_viewer = { workspace = true }
 rerun = { workspace = true, features = ["ecolor", "clap"] }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
 tokio = { workspace = true, features = [
   "macros",
   "rt",
@@ -31,5 +25,3 @@ tokio = { workspace = true, features = [
   "time",
 ] }
 tracing = { workspace = true }
-tracing-log = { workspace = true }
-tracing-subscriber = { workspace = true }
