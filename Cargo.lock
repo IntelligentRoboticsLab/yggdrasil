@@ -7046,7 +7046,6 @@ dependencies = [
 name = "re_control"
 version = "0.2.0"
 dependencies = [
- "bevy",
  "bifrost",
  "clap",
  "heimdall",
@@ -7056,12 +7055,8 @@ dependencies = [
  "re_control_comms",
  "re_crash_handler",
  "re_sdk_comms",
- "re_smart_channel",
- "re_ui",
  "re_viewer",
  "rerun",
- "serde",
- "serde_json",
  "tokio",
  "tracing",
 ]

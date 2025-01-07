@@ -11,10 +11,11 @@ use re_control_comms::{
     protocol::RobotMessage,
     viewer::{ControlViewer, ControlViewerHandle},
 };
-use re_ui::{Icon, UiExt};
+
 use re_viewer::external::{
     eframe,
     egui::{self, Align2, ScrollArea, Vec2},
+    re_ui::{Icon, UiExt},
 };
 
 use crate::{
