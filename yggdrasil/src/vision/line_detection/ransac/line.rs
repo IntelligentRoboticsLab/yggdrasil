@@ -5,6 +5,7 @@ use crate::vision::line_detection::line::{Line2, LineSegment2};
 
 use super::Ransac;
 
+/// Detects lines in a set of points using the RANSAC algorithm.
 pub struct LineDetector {
     rng: ThreadRng,
     unused_points: Vec<Point2<f32>>,

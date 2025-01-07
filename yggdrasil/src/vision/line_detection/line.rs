@@ -23,13 +23,13 @@ pub struct LineSegment2 {
 }
 
 impl Line2 {
-    // Creates a line from a normal and a distance to the origin
+    /// Creates a line from a normal and a distance to the origin
     #[must_use]
     pub fn new(normal: Vector2<f32>, d: f32) -> Self {
         Self { normal, d }
     }
 
-    // Distance from the line to a point
+    /// Distance from the line to a point
     #[must_use]
     pub fn distance_to_point(&self, point: Point2<f32>) -> f32 {
         let signed_distance = self.normal.dot(&point.coords) - self.d;
@@ -38,13 +38,13 @@ impl Line2 {
 }
 
 impl LineSegment2 {
-    // Creates a new line segment from two points
+    /// Creates a new line segment from two points
     #[must_use]
     pub fn new(start: Point2<f32>, end: Point2<f32>) -> Self {
         Self { start, end }
     }
 
-    // Creates a line from the line segment
+    /// Creates a line from the line segment
     #[must_use]
     pub fn to_line(&self) -> Line2 {
         let dir = self.end - self.start;
@@ -59,7 +59,7 @@ impl LineSegment2 {
         (self.end - self.start).norm()
     }
 
-    // Center of the line segment
+    /// Center of the line segment
     #[must_use]
     pub fn center(&self) -> Point2<f32> {
         (self.start + self.end.coords) * 0.5
