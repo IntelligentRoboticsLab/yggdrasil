@@ -8,7 +8,6 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-bifrost = { workspace = true }
 heimdall = { workspace = true }
 
 clap = { workspace = true, features = ["derive"] }
