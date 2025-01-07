@@ -51,8 +51,9 @@ fn resource_display_and_manage_ui(
     resource_names.sort();
 
     if resource_names.is_empty() {
-        ui.label("No resources available");
-        return;
+        ui.centered_and_justified(|ui| {
+            ui.warning_label("No resources available");
+        });
     }
 
     for name in resource_names {
