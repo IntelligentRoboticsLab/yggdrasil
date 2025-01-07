@@ -19,6 +19,5 @@ itertools = { workspace = true }
 linuxvideo = { workspace = true }
 miette = { workspace = true }
 nalgebra = { workspace = true }
-serde = { workspace = true }
 thiserror = { workspace = true }
 turbojpeg = { workspace = true }
