@@ -326,7 +326,7 @@ pub struct DebugContext<'w> {
 }
 
 impl<'w> DebugContext<'w> {
-    /// Get a clonable reference to the underlying [`RerunStream`] for access outside of systems (e.g. an async context).
+    /// Get a cloneable reference to the underlying [`RerunStream`] for access outside of systems (e.g. an async context).
     #[must_use]
     pub fn stream(&self) -> &RerunStream {
         &self.rec
