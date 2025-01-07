@@ -2,6 +2,7 @@ use std::{ops::Deref, sync::Arc};
 
 use crate::{
     core::debug::{debug_system::DebugAppExt, DebugContext},
+    localization::RobotPose,
     nao::Cycle,
     prelude::*,
 };
@@ -14,7 +15,7 @@ use super::{
 };
 use bevy::prelude::*;
 
-use heimdall::{Bottom, CameraLocation, CameraPosition, Top, YuvPixel, YuyvImage};
+use heimdall::{Bottom, CameraLocation, CameraMatrix, CameraPosition, Top, YuvPixel, YuyvImage};
 use nalgebra::Point2;
 use serde::{Deserialize, Serialize};
 
@@ -61,6 +62,18 @@ impl Plugin for ScanLinesPlugin {
                         .after(super::scan_grid::update_bottom_scan_grid)
                         .run_if(resource_exists_and_changed::<ScanGrid<Bottom>>),
                 ),
+            )
+            .add_systems(
+                Update,
+                vis_grid_points::<Top>
+                    .after(update_scan_lines::<Top>)
+                    .run_if(resource_exists_and_changed::<ScanLines<Top>>),
+            )
+            .add_systems(
+                Update,
+                vis_grid_points::<Bottom>
+                    .after(update_scan_lines::<Bottom>)
+                    .run_if(resource_exists_and_changed::<ScanLines<Bottom>>),
             )
             .add_named_debug_systems(
                 PostUpdate,
@@ -117,6 +130,30 @@ impl<T: CameraLocation> ScanLines<T> {
     pub fn vertical(&self) -> &ScanLine {
         &self.vertical
     }
+}
+
+fn vis_grid_points<T: CameraLocation>(
+    dbg: DebugContext,
+    camera_matrix: Res<CameraMatrix<T>>,
+    pose: Res<RobotPose>,
+    scan_lines: Res<ScanLines<T>>,
+) {
+    let spots = scan_lines
+        .horizontal()
+        .line_spots()
+        .chain(scan_lines.vertical().line_spots())
+        .flat_map(|s| camera_matrix.pixel_to_ground(s, 0.0))
+        .map(|p| pose.as_3d() * p)
+        .map(|s| (s.x, s.y, 0.0))
+        .collect::<Vec<_>>();
+
+    dbg.log_with_cycle(
+        T::make_entity_path("grid_points"),
+        scan_lines.image().cycle(),
+        &rerun::Points3D::new(spots.clone())
+            .with_radii(vec![0.02; spots.len()])
+            .with_colors(vec![rerun::Color::from_rgb(255, 255, 255); spots.len()]),
+    );
 }
 
 /// A set of classified scanline regions.
