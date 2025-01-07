@@ -7,6 +7,7 @@ use nalgebra::Point2;
 pub struct Inliers(Vec<Point2<f32>>);
 
 impl Inliers {
+    #[must_use]
     pub fn new(inliers: Vec<Point2<f32>>) -> Self {
         let mut inliers = Self(inliers);
         inliers.sort_by_x();
@@ -15,12 +16,13 @@ impl Inliers {
 
     /// Extend the inliers with the inliers of another line candidate
     pub fn extend(&mut self, other: Self) {
-        self.0.extend(other.0.into_iter());
+        self.0.extend(other.0);
     }
 
     /// Split the line candidate into multiple candidates, every time the gap between two neighboring inliers is too large
     ///
     /// Returns a vector of the separated line candidates
+    #[must_use]
     pub fn split_at_gap(mut self, max_gap: f32) -> Vec<Self> {
         let mut candidates = vec![];
 

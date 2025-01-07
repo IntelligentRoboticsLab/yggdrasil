@@ -13,6 +13,7 @@ pub struct LineDetector {
 }
 
 impl LineDetector {
+    #[must_use]
     pub fn new(
         unused_points: Vec<Point2<f32>>,
         iterations: usize,

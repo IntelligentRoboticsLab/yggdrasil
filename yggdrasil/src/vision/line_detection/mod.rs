@@ -80,14 +80,17 @@ impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
             Update,
             (
                 (
+                    clear_lines::<T>,
                     handle_line_task::<T>,
                     detect_lines_system::<T>.run_if(resource_exists_and_changed::<ScanLines<T>>),
                 )
                     .chain(),
+                // TODO: these should all be batched over multiple cycles, enabling all of them destroys cycle time
+                // - needs batching api in the debug module
                 debug_lines::<T>,
                 debug_lines_projected::<T>,
+                // debug_lines_inliers::<T>,
                 debug_rejected_lines::<T>,
-                debug_lines_inliers::<T>,
             ),
         );
     }
@@ -95,24 +98,23 @@ impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
 
 /// The lines that were detected in the image
 #[derive(Component, Default)]
-pub struct DetectedLines<T: CameraLocation> {
+pub struct DetectedLines {
     /// The line equations of the lines that were detected
     pub lines: Vec<Line2>,
     /// The line segments that were detected
     pub segments: Vec<LineSegment2>,
     /// The inliers points of the lines that were detected
     pub inliers: Vec<Inliers>,
-    _marker: PhantomData<T>,
 }
 
 /// The line candidates that were rejected
 #[derive(Component, Default, Deref, DerefMut)]
-pub struct RejectedLines<T: CameraLocation> {
+pub struct RejectedLines {
     /// Yes, this is deref polymorphism
     /// Yes, this might an anti-pattern
     /// No, I don't give a damn!
     #[deref]
-    detected: DetectedLines<T>,
+    detected: DetectedLines,
     /// The reasons why each line was rejected
     pub rejections: Vec<Rejection>,
 }
@@ -163,7 +165,6 @@ fn detect_lines_system<T: CameraLocation>(
 ) {
     // TODO: Current tasks API is not flexible enough for this :)
     // Rewrite soon(tm) ?
-
     let cfg = match T::POSITION {
         heimdall::CameraPosition::Top => cfg.top.clone(),
         heimdall::CameraPosition::Bottom => cfg.bottom.clone(),
@@ -189,19 +190,13 @@ fn detect_lines_system<T: CameraLocation>(
 
 fn handle_line_task<T: CameraLocation>(
     mut commands: Commands,
-    mut lines: Query<Entity, Or<(With<DetectedLines<T>>, With<RejectedLines<T>>)>>,
     mut task_handles: Query<(Entity, &mut LineTaskHandle), With<T>>,
 ) {
     for (task_entity, mut task) in &mut task_handles {
         if let Some((candidates, rejections)) = block_on(poll_once(&mut task.0)) {
-            // remove the old lines
-            for entity in &mut lines {
-                commands.entity(entity).despawn();
-            }
-
             // and add the new lines
-            let mut detected = DetectedLines::<T>::default();
-            let mut rejected = RejectedLines::<T>::default();
+            let mut detected = DetectedLines::default();
+            let mut rejected = RejectedLines::default();
             for (candidate, rejection) in candidates.into_iter().zip(rejections) {
                 // TODO: this could be cleaner?
                 if let Some(rejection) = rejection {
@@ -225,6 +220,16 @@ fn handle_line_task<T: CameraLocation>(
 
             commands.entity(task_entity).remove::<LineTaskHandle>();
         }
+    }
+}
+
+fn clear_lines<T: CameraLocation>(
+    mut commands: Commands,
+    mut lines: Query<Entity, (With<T>, Or<(With<DetectedLines>, With<RejectedLines>)>)>,
+) {
+    // remove the old lines
+    for entity in &mut lines {
+        commands.entity(entity).despawn();
     }
 }
 
@@ -416,7 +421,7 @@ fn is_less_bright_and_more_saturated<T: CameraLocation>(
 fn debug_lines<T: CameraLocation>(
     dbg: DebugContext,
     camera_matrix: Res<CameraMatrix<T>>,
-    accepted: Query<(&Cycle, &DetectedLines<T>), Added<DetectedLines<T>>>,
+    accepted: Query<(&Cycle, &DetectedLines), (With<T>, Added<DetectedLines>)>,
 ) {
     for (cycle, lines) in accepted.iter() {
         dbg.log_with_cycle(
@@ -445,7 +450,7 @@ fn debug_lines<T: CameraLocation>(
 fn debug_lines_projected<T: CameraLocation>(
     dbg: DebugContext,
     pose: Res<RobotPose>,
-    accepted: Query<(&Cycle, &DetectedLines<T>), Added<DetectedLines<T>>>,
+    accepted: Query<(&Cycle, &DetectedLines), (With<T>, Added<DetectedLines>)>,
 ) {
     for (cycle, lines) in accepted.iter() {
         dbg.log_with_cycle(
@@ -463,10 +468,11 @@ fn debug_lines_projected<T: CameraLocation>(
     }
 }
 
+#[allow(dead_code)]
 fn debug_lines_inliers<T: CameraLocation>(
     dbg: DebugContext,
     camera_matrix: Res<CameraMatrix<T>>,
-    accepted: Query<(&Cycle, &DetectedLines<T>), Added<DetectedLines<T>>>,
+    accepted: Query<(&Cycle, &DetectedLines), (With<T>, Added<DetectedLines>)>,
 ) {
     let mut rng = rand::thread_rng();
     for (cycle, lines) in accepted.iter() {
@@ -497,7 +503,7 @@ fn debug_lines_inliers<T: CameraLocation>(
         let radii = vec![2.0; points.len()];
 
         dbg.log_with_cycle(
-            T::make_entity_path("lines/inliers"),
+            T::make_entity_image_path("lines/inliers"),
             *cycle,
             &rerun::Points2D::new(points)
                 .with_colors(colors)
@@ -506,10 +512,11 @@ fn debug_lines_inliers<T: CameraLocation>(
     }
 }
 
+#[allow(dead_code)]
 fn debug_rejected_lines<T: CameraLocation>(
     dbg: DebugContext,
     camera_matrix: Res<CameraMatrix<T>>,
-    rejected: Query<(&Cycle, &RejectedLines<T>), Added<RejectedLines<T>>>,
+    rejected: Query<(&Cycle, &RejectedLines), (With<T>, Added<RejectedLines>)>,
 ) {
     for (cycle, lines) in rejected.iter() {
         dbg.log_with_cycle(

@@ -2,9 +2,7 @@ use std::marker::PhantomData;
 
 use bevy::prelude::*;
 use heimdall::{CameraLocation, CameraMatrix, CameraPosition};
-use nalgebra::{
-    point, vector, Isometry3, Point2, Quaternion, Translation3, UnitQuaternion, Vector2, Vector3,
-};
+use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
 use rerun::external::glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
@@ -157,47 +155,4 @@ fn visualize_camera_matrix<T: CameraLocation>(
         &rerun::Transform3D::from_translation(Into::<Vec3>::into(camera_pos.translation))
             .with_quaternion(Into::<Quat>::into(camera_pos.rotation)),
     );
-}
-
-// TODO: LOCAL TESTING ONLY REMOVE WHEN DONE
-fn hardcoded_camera_matrix<T: CameraLocation>() -> CameraMatrix<T> {
-    let focal_lengths = vector![562.0, 560.0];
-    let cc_optical_center = point![343.0, 213.0];
-    let image_size = vector![640.0, 480.0];
-    let camera_to_head = Isometry3::from_parts(
-        Translation3::new(0.05871, 0.0, 0.06364),
-        UnitQuaternion::from_quaternion(Quaternion::new(
-            0.0007647999,
-            -0.015711073,
-            0.011342259,
-            0.9998119,
-        )),
-    );
-    let head_to_robot = Isometry3::from_parts(
-        Translation3::new(-0.062783465, 0.0009073925, -0.2732542),
-        UnitQuaternion::from_quaternion(Quaternion::new(
-            -0.0008517001,
-            0.005001376,
-            -0.0044096964,
-            0.99997735,
-        )),
-    );
-    let robot_to_ground = Isometry3::from_parts(
-        Translation3::new(0.115930066, 0.023309525, 0.49370873),
-        UnitQuaternion::from_quaternion(Quaternion::new(
-            0.020922434,
-            0.027881207,
-            0.0036211489,
-            0.9993856,
-        )),
-    );
-
-    CameraMatrix::new(
-        focal_lengths,
-        cc_optical_center,
-        image_size,
-        camera_to_head,
-        head_to_robot,
-        robot_to_ground,
-    )
 }

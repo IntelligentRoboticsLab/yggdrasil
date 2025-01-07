@@ -1,16 +1,16 @@
 [top]
 # margin outside of the field in which lines will still be considered
-field_margin = 0.05
+field_margin = 0.15
 # maximum number of iterations for RANSAC
 ransac_iters = 10
 # number of models to sample for RANSAC
 model_iters = 100
 # residual threshold for RANSAC inliers
-ransac_inlier_threshold = 0.025
+ransac_inlier_threshold = 0.035
 # minimum number of points in a valid line segment
 line_segment_min_points = 5
 # maximum distance of a valid line spot from the camera
-spot_max_distance = 6.0
+spot_max_distance = 5.0
 # maximum distance between two inliers of a line
 max_line_gap_distance = 0.25
 # number of samples for the white test
@@ -40,7 +40,7 @@ line_segment_min_points = 5
 # maximum distance of a valid line spot from the camera
 spot_max_distance = 4.0
 # maximum distance between two inliers of a line
-max_line_gap_distance = 0.25
+max_line_gap_distance = 0.3
 # number of samples for the white test
 white_test_samples = 10
 # sampling distance for the white test

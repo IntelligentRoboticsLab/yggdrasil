@@ -18,7 +18,7 @@ use super::{
 };
 use bevy::prelude::*;
 
-use heimdall::{Bottom, CameraLocation, CameraMatrix, CameraPosition, Top, YuvPixel, YuyvImage};
+use heimdall::{Bottom, CameraLocation, CameraPosition, Top, YuvPixel, YuyvImage};
 use nalgebra::Point2;
 use serde::{Deserialize, Serialize};
 
