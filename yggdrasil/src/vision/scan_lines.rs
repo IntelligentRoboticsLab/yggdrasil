@@ -61,15 +61,16 @@ impl Plugin for ScanLinesPlugin {
                         .after(super::scan_grid::update_bottom_scan_grid)
                         .run_if(resource_exists_and_changed::<ScanGrid<Bottom>>),
                 ),
+            )
+            .add_named_debug_systems(
+                PostUpdate,
+                (
+                    visualize_scan_lines::<Top>.run_if(resource_exists::<ScanLines<Top>>),
+                    visualize_scan_lines::<Bottom>.run_if(resource_exists::<ScanLines<Bottom>>),
+                ),
+                "Visualize scan lines",
+                false,
             );
-        // .add_named_debug_systems(
-        //     PostUpdate,
-        //     (
-        //         visualize_scan_lines::<Top>.run_if(resource_exists::<ScanLines<Top>>),
-        //         visualize_scan_lines::<Bottom>.run_if(resource_exists::<ScanLines<Bottom>>),
-        //     ),
-        //     "Visualize scan lines",
-        // );
     }
 }
 

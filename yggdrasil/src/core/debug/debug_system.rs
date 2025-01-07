@@ -40,17 +40,25 @@ fn debug_enabled(system_name: impl ToString) -> impl Condition<()> {
 /// ```
 ///
 pub trait DebugAppExt {
+    /// Add a system to the schedule and add the system name to the
+    /// [`DebugEnabledSystems`] resource. The system will only run when the
+    /// flag for this system is enabled in the [`DebugEnabledSystems`].
     fn add_debug_systems<M>(
         &mut self,
         schedule: impl ScheduleLabel,
         systems: impl IntoSystemConfigs<M>,
+        enabled: bool,
     ) -> &mut Self;
 
+    /// Add a system to the schedule and add the system name to the
+    /// [`DebugEnabledSystems`] resource. The system will only run when the
+    /// flag for this system is enabled in the [`DebugEnabledSystems`].
     fn add_named_debug_systems<M>(
         &mut self,
         schedule: impl ScheduleLabel,
         systems: impl IntoSystemConfigs<M>,
         systems_name: impl ToString,
+        enabled: bool,
     ) -> &mut Self;
 }
 
@@ -59,9 +67,10 @@ impl DebugAppExt for App {
         &mut self,
         schedule: impl ScheduleLabel,
         systems: impl IntoSystemConfigs<M>,
+        enabled: bool,
     ) -> &mut Self {
         let system_name = std::any::type_name_of_val(&systems);
-        self.add_named_debug_systems(schedule, systems, system_name.to_string())
+        self.add_named_debug_systems(schedule, systems, system_name.to_string(), enabled)
     }
 
     fn add_named_debug_systems<M>(
@@ -69,12 +78,13 @@ impl DebugAppExt for App {
         schedule: impl ScheduleLabel,
         systems: impl IntoSystemConfigs<M>,
         systems_name: impl ToString,
+        enabled: bool,
     ) -> &mut Self {
         let world = self.world_mut();
         let mut debug_enabled_systems = world.resource_mut::<DebugEnabledSystems>();
         debug_enabled_systems
             .systems
-            .insert(systems_name.to_string(), false);
+            .insert(systems_name.to_string(), enabled);
         self.add_systems(schedule, systems.run_if(debug_enabled(systems_name)))
     }
 }

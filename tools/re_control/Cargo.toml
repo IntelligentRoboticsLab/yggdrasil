@@ -13,6 +13,7 @@ heimdall = { workspace = true }
 
 bevy = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
+itertools = { workspace = true }
 miette = { workspace = true }
 mimalloc = { workspace = true }
 nalgebra = { workspace = true }

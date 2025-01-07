@@ -56,6 +56,7 @@ impl Plugin for LineDetectionPlugin {
             PostUpdate,
             visualize_lines::<Top>.run_if(resource_exists_and_changed::<DetectedLines<Top>>),
             "Visualize lines",
+            true,
         );
     }
 }

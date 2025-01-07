@@ -17,7 +17,6 @@ use re_viewer::external::{
     egui::{self, Align2, ScrollArea, Vec2},
     re_ui::{list_item, UiExt},
 };
-use rerun::{external::re_log, Vec2D};
 
 use crate::{
     resource::RobotResources,
@@ -27,10 +26,21 @@ use crate::{
     },
 };
 
-const TOGGLE_BUTTON: Icon = Icon::new(
+pub const CONTROL_PANEL_VIEW: Icon = Icon::new(
     "../data/icons/robot.png",
     include_bytes!("../data/icons/robot.png"),
 );
+
+pub const CONTROL_PANEL_VIEW_OFF: Icon = Icon::new(
+    "../data/icons/robot_off.png",
+    include_bytes!("../data/icons/robot_off.png"),
+);
+
+/// Position of the toggle button when the side bar is visible.
+const SIDE_BAR_TOGGLE_BUTTON_POSITION_VISIBLE: Vec2 = Vec2::new(-10., 5.);
+
+/// Position of the toggle button when the side bar is hidden.
+const SIDE_BAR_TOGGLE_BUTTON_POSITION_HIDDEN: Vec2 = Vec2::new(-251., 4.);
 
 #[derive(Default)]
 pub struct ControlStates {
@@ -125,30 +135,11 @@ impl eframe::App for Control {
 
     /// Called whenever we need repainting, which could be 60 Hz.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        egui::Area::new(egui::Id::new("top_bar"))
-            // .anchor(egui::Align2::LEFT_TOP, egui::Vec2::new(190.0, 5.0))
-            .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| {
-                    self.ui(ui);
-                });
+        egui::Area::new(egui::Id::new("re_control")).show(ctx, |ui| {
+            ScrollArea::vertical().show(ui, |ui| {
+                self.ui(ui);
             });
-
-        // egui::SidePanel::right("Resource manipulation")
-        //     .default_width(if self.side_bar_toggled {
-        //         SIDE_PANEL_WIDTH
-        //     } else {
-        //         30.
-        //     })
-        //     .max_width(if self.side_bar_toggled {
-        //         SIDE_PANEL_WIDTH
-        //     } else {
-        //         30.
-        //     })
-        //     .show(ctx, |ui| {
-        //         ScrollArea::vertical().show(ui, |ui| {
-        //             self.ui(ui);
-        //         });
-        //     });
+        });
 
         self.app.update(ctx, frame);
     }
@@ -183,104 +174,52 @@ impl Control {
 
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.style_mut().spacing.item_spacing.y = 0.;
-        // ui.add_space(2.);
+        let extra_margin = (ui.available_height() - 24.0) / 2.0;
+        ui.add_space(extra_margin);
 
-        egui::Area::new("eh".into())
-            .anchor(
-                Align2::RIGHT_TOP,
-                Vec2::new(if self.side_bar_toggled { -2. } else { -249. }, 5.),
-            )
-            .show(ui.ctx(), |ui| {
-                if ui
-                    .medium_icon_toggle_button(&TOGGLE_BUTTON, &mut self.side_bar_toggled)
-                    .on_hover_text(format!("Toggle selection view",))
-                    .clicked()
-                {}
-            });
-
-        //     ui.separator();
+        self.toggle_button_overlay(ui);
 
         if !self.side_bar_toggled {
             ui.set_width(30.);
             ui.shrink_width_to_current();
             return;
         }
+
         egui::SidePanel::right("control")
             .default_width(SIDE_PANEL_WIDTH)
             .show(ui.ctx(), |ui| {
                 // Resource section
-                list_item::list_item_scope(ui, "Control resources", |ui| {
-                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-                    ui.section_collapsing_header("Resources")
-                        .default_open(true)
-                        .show(ui, |ui| {
-                            resource_ui(
-                                ui,
-                                Arc::clone(&self.states),
-                                &self.handle,
-                                &self.frame_styles,
-                            );
-                        })
-                });
+                resource_ui(
+                    ui,
+                    Arc::clone(&self.states),
+                    &self.handle,
+                    &self.frame_styles,
+                );
 
-                // Debug enabled/disabled systems sections
-                list_item::list_item_scope(ui, "Control debug enabled systems", |ui| {
-                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-                    ui.section_collapsing_header("Debug system controls")
-                        .default_open(true)
-                        .show(ui, |ui| {
-                            ui.horizontal(|ui| {
-                                debug_resources_ui(ui, Arc::clone(&self.states), &self.handle)
-                            });
-                        })
-                });
+                // Debug enabled/disabled systems section
+                debug_enabled_systems_ui(ui, Arc::clone(&self.states), &self.handle);
+
+                // Camera calibration section
+                camera_calibration_ui(ui, Arc::clone(&self.states), &self.handle);
             });
+    }
 
-        //     ui.horizontal(|ui| {
-        //         ui.add_space(ui.available_width());
-        //     });
+    fn toggle_button_overlay(&mut self, ui: &mut egui::Ui) {
+        let (icon, position) = if self.side_bar_toggled {
+            (
+                &CONTROL_PANEL_VIEW_OFF,
+                SIDE_BAR_TOGGLE_BUTTON_POSITION_VISIBLE,
+            )
+        } else {
+            (&CONTROL_PANEL_VIEW, SIDE_BAR_TOGGLE_BUTTON_POSITION_HIDDEN)
+        };
 
-        // Resource section
-        resource_ui(
-            ui,
-            Arc::clone(&self.states),
-            &self.handle,
-            &self.frame_styles,
-        );
-
-        // Debug enabled/disabled systems section
-        debug_enabled_systems_ui(ui, Arc::clone(&self.states), &self.handle);
-
-        // Camera calibration section
-        camera_calibration_ui(ui, Arc::clone(&self.states), &self.handle);
-
-        //     // Resource section
-        //     list_item::list_item_scope(ui, "Control resources", |ui| {
-        //         ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-        //         ui.section_collapsing_header("Resources")
-        //             .default_open(true)
-        //             .show(ui, |ui| {
-        //                 resource_ui(
-        //                     ui,
-        //                     Arc::clone(&self.states),
-        //                     &self.handle,
-        //                     &self.frame_styles,
-        //                 );
-        //             })
-        //     });
-
-        //     // Debug enabled/disabled systems sections
-        //     list_item::list_item_scope(ui, "Control debug enabled systems", |ui| {
-        //         ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-        //         ui.section_collapsing_header("Debug system controls")
-        //             .default_open(true)
-        //             .show(ui, |ui| {
-        //                 ui.horizontal(|ui| {
-        //                     debug_resources_ui(ui, Arc::clone(&self.states), &self.handle)
-        //                 });
-        //             })
-        //     });
-        // }
+        egui::Area::new("control_panel_toggle_overlay".into())
+            .anchor(Align2::RIGHT_TOP, position)
+            .show(ui.ctx(), |ui| {
+                ui.medium_icon_toggle_button(icon, &mut self.side_bar_toggled)
+                    .on_hover_text("Toggle control panel")
+            });
     }
 }
 

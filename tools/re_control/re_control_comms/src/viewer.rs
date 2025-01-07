@@ -45,9 +45,8 @@ impl From<SocketAddrV4> for ControlViewer {
 }
 
 impl ControlViewer {
+    #[must_use]
     pub fn run(self) -> ControlViewerHandle {
-        // tracing::info!("Starting control viewer");
-
         // Spawn a background task to handle messages from the global channel.
         {
             let rx = Arc::clone(&self.rx);
@@ -81,7 +80,7 @@ impl ControlViewer {
                         app.handle_connection(stream).await;
                     }
                     Err(error) => {
-                        // tracing::error!(?error, "failed to connect to {}", app.address);
+                        tracing::error!(?error, "failed to connect to {}", app.address);
                     }
                 }
 
