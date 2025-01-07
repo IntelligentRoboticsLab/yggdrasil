@@ -1,9 +1,12 @@
 use std::{collections::HashMap, time::Duration};
 
-use bevy::{prelude::*, tasks::IoTaskPool};
+use bevy::{ecs::system::SystemId, prelude::*, tasks::IoTaskPool};
+use heimdall::CameraPosition;
 use re_control_comms::{
     app::ControlAppHandle, debug_system::DebugEnabledSystems, protocol::RobotMessage,
 };
+
+use crate::vision::camera::CameraConfig;
 
 use super::{DebugEnabledSystemUpdated, ViewerConnected};
 
@@ -18,26 +21,67 @@ impl Default for ControlRobotMessageDelay {
     }
 }
 
+pub fn send_on_connection(
+    mut commands: Commands,
+    mut viewer_events: EventReader<ViewerConnected>,
+    send_debug_enabled_systems: Res<SendDebugEnabledSystems>,
+    send_camera_extrinsic: Res<SendCameraExtrinsic>,
+) {
+    if !viewer_events.is_empty() {
+        viewer_events.clear();
+
+        commands.run_system(send_debug_enabled_systems.0);
+        commands.run_system(send_camera_extrinsic.0);
+    }
+}
+
 // Sends the current state of `DebugEnabledSystems` to the client that
 // connected.
-pub fn debug_systems_on_new_connection(
-    mut ev_viewer_connected: EventReader<ViewerConnected>,
+pub fn send_debug_enabled_systems(
     debug_enabled_resources: Res<DebugEnabledSystems>,
     control_handle: Res<ControlAppHandle>,
 ) {
-    for _ev in ev_viewer_connected.read() {
-        let msg = RobotMessage::DebugEnabledSystems(debug_enabled_resources.systems.clone());
+    let msg = RobotMessage::DebugEnabledSystems(debug_enabled_resources.systems.clone());
 
-        let io = IoTaskPool::get();
+    let io = IoTaskPool::get();
 
-        let handle = control_handle.clone();
-        io.spawn(async move {
+    let handle = control_handle.clone();
+    io.spawn(async move {
+        if let Err(error) = handle.broadcast(msg).await {
+            tracing::error!(?error, "Failed to send DebugEnabledSystems");
+        }
+    })
+    .detach();
+}
+
+pub fn send_camera_extrinsic(
+    camera_config: Res<CameraConfig>,
+    control_handle: Res<ControlAppHandle>,
+) {
+    let top_extrinsic = camera_config.top.calibration.extrinsic_rotation;
+    let bottom_extrinsic = camera_config.bottom.calibration.extrinsic_rotation;
+
+    let top_msg = RobotMessage::CameraExtrinsic {
+        camera_position: CameraPosition::Top,
+        extrinsic_rotation: top_extrinsic,
+    };
+
+    let bot_msg = RobotMessage::CameraExtrinsic {
+        camera_position: CameraPosition::Bottom,
+        extrinsic_rotation: bottom_extrinsic,
+    };
+
+    let io = IoTaskPool::get();
+
+    let handle = control_handle.clone();
+    io.spawn(async move {
+        for msg in [bot_msg, top_msg] {
             if let Err(error) = handle.broadcast(msg).await {
-                tracing::error!(?error, "Failed to send DebugEnabledSystems");
+                tracing::error!(?error, "Failed to send camera extrinsic rotation");
             }
-        })
-        .detach();
-    }
+        }
+    })
+    .detach();
 }
 
 // This system sends the current [`DebugEnabledSystems`] to all connected
@@ -61,6 +105,26 @@ pub fn update_debug_systems_for_clients(
             }
         })
         .detach();
+    }
+}
+
+#[derive(Resource)]
+pub struct SendDebugEnabledSystems(SystemId);
+
+impl FromWorld for SendDebugEnabledSystems {
+    fn from_world(world: &mut World) -> Self {
+        let system_id = world.register_system(send_debug_enabled_systems);
+        Self(system_id)
+    }
+}
+
+#[derive(Resource)]
+pub struct SendCameraExtrinsic(SystemId);
+
+impl FromWorld for SendCameraExtrinsic {
+    fn from_world(world: &mut World) -> Self {
+        let system_id = world.register_system(send_camera_extrinsic);
+        Self(system_id)
     }
 }
 

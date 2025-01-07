@@ -1630,6 +1630,7 @@ dependencies = [
  "bevy",
  "bifrost_derive",
  "byteorder",
+ "nalgebra",
  "thiserror 2.0.4",
 ]
 
@@ -4054,6 +4055,7 @@ name = "heimdall"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bifrost",
  "fast-math",
  "fast_image_resize",
  "itertools 0.13.0",
@@ -7044,9 +7046,12 @@ dependencies = [
 name = "re_control"
 version = "0.2.0"
 dependencies = [
+ "bifrost",
  "clap",
+ "heimdall",
  "miette 7.4.0",
  "mimalloc",
+ "nalgebra",
  "re_control_comms",
  "re_crash_handler",
  "re_sdk_comms",
@@ -7064,7 +7069,9 @@ dependencies = [
  "bevy",
  "bifrost",
  "futures",
+ "heimdall",
  "miette 7.4.0",
+ "nalgebra",
  "socket2",
  "tokio",
  "tracing",

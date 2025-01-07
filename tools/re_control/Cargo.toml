@@ -8,9 +8,13 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+bifrost = { workspace = true }
+heimdall = { workspace = true }
+
 clap = { workspace = true, features = ["derive"] }
 miette = { workspace = true }
 mimalloc = { workspace = true }
+nalgebra = { workspace = true }
 re_control_comms = { path = "re_control_comms" }
 re_crash_handler = { workspace = true }
 re_sdk_comms = { workspace = true, features = ["server"] }

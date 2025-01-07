@@ -399,7 +399,7 @@ fn setup_line_visualization<T: CameraLocation>(dbg: DebugContext) {
     );
 
     dbg.log_static(
-        T::make_entity_image_path("projected_lines"),
+        T::make_entity_path("projected_lines"),
         &rerun::Color::from_rgb(255, 0, 0),
     );
 }
@@ -421,20 +421,20 @@ fn visualize_lines<T: CameraLocation>(
     );
 
     dbg.log_with_cycle(
-        T::make_entity_image_path("projected_lines"),
+        T::make_entity_path("projected_lines"),
         lines.image.cycle(),
-        &rerun::LineStrips3D::new(lines.projected_lines.iter().map(|line| {
-            [
-                Into::<Vec3>::into(line.start),
-                Into::<Vec3>::into(line.start),
-            ]
-        })),
+        &rerun::LineStrips3D::new(
+            lines
+                .projected_lines
+                .iter()
+                .map(|line| [Into::<Vec3>::into(line.start), Into::<Vec3>::into(line.end)]),
+        ),
     );
 
     let transform = robot_pose.as_3d();
 
     dbg.log_with_cycle(
-        T::make_entity_image_path("projected_lines"),
+        T::make_entity_path("projected_lines"),
         lines.image.cycle(),
         &rerun::Transform3D::from_translation(Into::<Vec3>::into(transform.translation))
             .with_quaternion(Into::<Quat>::into(transform.rotation)),

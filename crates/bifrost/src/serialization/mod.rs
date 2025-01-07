@@ -1,5 +1,7 @@
 //! Message protocol implementation based on serialization and deserialization.
 mod codec;
+#[cfg(feature = "nalgebra")]
+mod nalgebra;
 
 pub use codec::{Decode, Encode, VarInt};
 
