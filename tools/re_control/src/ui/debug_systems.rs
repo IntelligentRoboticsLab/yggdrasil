@@ -43,6 +43,13 @@ fn debug_enabled_systems_control_ui(
         let debug_enabled_systems_view = &mut locked_states.debug_enabled_systems_view;
         let key_sequence = &debug_enabled_systems_view.key_sequence;
 
+        if key_sequence.is_empty() {
+            ui.centered_and_justified(|ui| {
+                ui.warning_label("No debug systems available");
+            });
+            return;
+        }
+
         for system_name in key_sequence {
             let Some(enabled) = debug_enabled_systems_view
                 .debug_enabled_systems

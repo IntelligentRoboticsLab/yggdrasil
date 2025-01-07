@@ -11,11 +11,10 @@ use re_control_comms::{
     protocol::RobotMessage,
     viewer::{ControlViewer, ControlViewerHandle},
 };
-use re_ui::Icon;
+use re_ui::{Icon, UiExt};
 use re_viewer::external::{
     eframe,
     egui::{self, Align2, ScrollArea, Vec2},
-    re_ui::{list_item, UiExt},
 };
 
 use crate::{
@@ -173,10 +172,6 @@ impl Control {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.style_mut().spacing.item_spacing.y = 0.;
-        let extra_margin = (ui.available_height() - 24.0) / 2.0;
-        ui.add_space(extra_margin);
-
         self.toggle_button_overlay(ui);
 
         if !self.side_bar_toggled {
@@ -188,6 +183,13 @@ impl Control {
         egui::SidePanel::right("control")
             .default_width(SIDE_PANEL_WIDTH)
             .show(ui.ctx(), |ui| {
+                ui.add_space(PANEL_TOP_PADDING);
+
+                // Title of the side panel
+                ui.vertical_centered(|ui| {
+                    ui.strong("Control panel");
+                });
+
                 // Resource section
                 resource_ui(
                     ui,

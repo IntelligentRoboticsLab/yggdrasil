@@ -7050,7 +7050,6 @@ dependencies = [
  "bifrost",
  "clap",
  "heimdall",
- "itertools 0.13.0",
  "miette 7.4.0",
  "mimalloc",
  "nalgebra",
