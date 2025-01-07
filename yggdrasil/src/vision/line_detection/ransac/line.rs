@@ -58,6 +58,7 @@ impl Ransac for LineDetector {
                     .iter()
                     .map(|point| line.distance_to_point(*point))
                     .filter(|&distance| distance <= self.inlier_threshold)
+                    // HULKs score function
                     .map(|distance| 1.0 - distance / self.inlier_threshold)
                     .sum();
 
