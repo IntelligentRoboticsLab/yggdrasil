@@ -4,7 +4,7 @@ use std::io::{Read, Write};
 
 use nalgebra::{Dim, Matrix, Scalar, Storage, StorageMut};
 
-use super::{Decode, Encode, VarInt};
+use super::{Decode, Encode};
 
 use crate::Result;
 
@@ -16,8 +16,6 @@ where
     S: Storage<T, R, C>,
 {
     fn encode(&self, mut write: impl Write) -> Result<()> {
-        VarInt::from(self.len()).encode(&mut write)?;
-
         for item in self.iter() {
             item.encode(&mut write)?;
         }
@@ -25,7 +23,7 @@ where
     }
 
     fn encode_len(&self) -> usize {
-        let mut total_encode_len = VarInt::from(self.len()).encode_len();
+        let mut total_encode_len = 0;
 
         for elem in self {
             total_encode_len += elem.encode_len();
@@ -46,9 +44,8 @@ where
     where
         Self: Sized,
     {
-        let length = VarInt::decode(&mut read)?.into();
-
         let mut matrix = Matrix::<T, R, C, S>::default();
+        let length = matrix.len();
 
         for index in 0..length {
             let item = matrix.index_mut(index);

@@ -67,7 +67,7 @@ fn camera_extrinsic_rotation_ui(
             .num_columns(2)
             .spacing([20.0, 4.0])
             .show(ui, |ui| {
-                for (index, rotation_axis) in ["Pitch", "Roll", "Yaw"].iter().enumerate() {
+                for (index, rotation_axis) in ["Roll", "Pitch", "Yaw"].iter().enumerate() {
                     extrinsic_rotation_slider(
                         ui,
                         rotation_axis,
