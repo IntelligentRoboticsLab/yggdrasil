@@ -11,7 +11,6 @@ rust-version.workspace = true
 bifrost = { workspace = true }
 heimdall = { workspace = true }
 
-bevy = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 miette = { workspace = true }
 mimalloc = { workspace = true }
