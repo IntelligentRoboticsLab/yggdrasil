@@ -31,27 +31,27 @@ use crate::{
 #[derive(Resource, Debug, Clone, Deserialize, Serialize, Reflect)]
 #[serde(deny_unknown_fields)]
 pub struct LineDetectionConfig {
-    /// margin outside of the field in which lines will still be considered
+    /// margin outside of the field in which lines will still be considered in meters
     pub field_margin: f32,
     /// maximum number of iterations for RANSAC
     pub ransac_iters: usize,
     /// maximum number of models to fit in RANSAC
     pub model_iters: usize,
-    /// residual threshold for RANSAC inliers
+    /// residual threshold for RANSAC inliers in meters
     pub ransac_inlier_threshold: f32,
-    /// maximum distance of a valid line spot from the camera
+    /// maximum distance of a valid line spot from the camera in meters
     pub spot_max_distance: f32,
     /// minimum number of points in a valid line segment
     pub line_segment_min_points: usize,
-    /// minimum length of a line segment after merging
+    /// minimum length of a line segment after merging in meters
     pub line_segment_min_length: f32,
-    /// maximum length of a line segment after merging
+    /// maximum length of a line segment after merging in meters
     pub line_segment_max_length: f32,
-    /// maximum distance between two inliers of a line
+    /// maximum distance between two inliers of a line segment in meters
     pub max_line_gap_distance: f32,
     /// number of samples for the white test
     pub white_test_samples: usize,
-    /// sampling distance for the white test
+    /// sampling distance for the white test in meters
     pub white_test_sample_distance: f32,
     /// ratio of white tests that need to pass for two lines to be merged
     pub white_test_merge_ratio: f32,
