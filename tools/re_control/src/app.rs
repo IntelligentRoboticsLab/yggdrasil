@@ -2,10 +2,7 @@ use std::net::Ipv4Addr;
 
 use miette::{IntoDiagnostic, Result};
 use re_control_comms::viewer::ControlViewer;
-use re_viewer::{
-    external::{eframe, egui},
-    StartupOptions,
-};
+use re_viewer::{external::eframe, StartupOptions};
 
 use crate::control::Control;
 
@@ -37,9 +34,14 @@ impl App {
             Default::default(),
         )
         .into_diagnostic()?;
+
+        let rerun_native_options = re_viewer::native::eframe_options(None);
+
         let native_options = eframe::NativeOptions {
-            viewport: egui::ViewportBuilder::default().with_app_id("yggdrasil_control"),
-            ..re_viewer::native::eframe_options(None)
+            viewport: rerun_native_options
+                .viewport
+                .with_app_id("yggdrasil_control"),
+            ..rerun_native_options
         };
 
         eframe::run_native(
