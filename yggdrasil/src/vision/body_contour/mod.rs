@@ -299,7 +299,6 @@ fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
         true,
         [
             &rerun::Color::from_rgb(219, 62, 177) as _,
-            // &rerun::Radius::new_ui_points(14.0) as _,
             &rerun::Radius::new_ui_points(4.0) as _,
         ],
     );
@@ -309,7 +308,6 @@ fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
         true,
         [
             &rerun::Color::from_rgb(167, 82, 64) as _,
-            // &rerun::Radius::new_ui_points(14.0) as _,
             &rerun::Radius::new_ui_points(4.0) as _,
         ],
     );
