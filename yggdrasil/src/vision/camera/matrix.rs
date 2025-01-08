@@ -10,7 +10,7 @@ use crate::{
     core::debug::DebugContext,
     kinematics::{
         dimensions,
-        spaces::{Head, LeftToe, RightToe, Robot},
+        spaces::{Head, Left, Right, Robot, Sole},
         Kinematics,
     },
     localization::RobotPose,
@@ -49,7 +49,7 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
     }
 }
 
-pub fn update_camera_matrix<T: CameraLocation>(
+fn update_camera_matrix<T: CameraLocation>(
     swing_foot: Res<SwingFoot>,
     orientation: Res<RobotOrientation>,
     kinematics: Res<Kinematics>,
@@ -80,12 +80,12 @@ fn robot_to_ground(
 ) -> Isometry3<f32> {
     let (roll, pitch, _) = orientation.euler_angles();
 
-    let left_sole_to_robot = kinematics.isometry::<LeftToe, Robot>().inner;
+    let left_sole_to_robot = kinematics.isometry::<Sole<Left>, Robot>().inner;
     let imu_adjusted_robot_to_left_sole = Isometry3::rotation(Vector3::y() * pitch)
         * Isometry3::rotation(Vector3::x() * roll)
         * Isometry3::from(vector![0., 0., -left_sole_to_robot.translation.z]);
 
-    let right_sole_to_robot = kinematics.isometry::<RightToe, Robot>().inner;
+    let right_sole_to_robot = kinematics.isometry::<Sole<Right>, Robot>().inner;
     let imu_adjusted_robot_to_right_sole = Isometry3::rotation(Vector3::y() * pitch)
         * Isometry3::rotation(Vector3::x() * roll)
         * Isometry3::from(vector![0., 0., -right_sole_to_robot.translation.z]);
