@@ -40,8 +40,8 @@ impl_spaces! {
     Chest,
     ChestLeft,
     ChestRight,
-    ChestCentreLeft,
-    ChestCentreRight,
+    ChestCenterLeft,
+    ChestCenterRight,
     Robot;
     Shoulder<T>,
     ShoulderCap<T>,
