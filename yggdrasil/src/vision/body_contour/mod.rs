@@ -1,4 +1,4 @@
-use crate::core::debug::debug_system::DebugAppExt;
+use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, CameraMatrix};
 use nalgebra::{Isometry3, Point2, Vector3};
@@ -22,9 +22,6 @@ struct ShoulderCapPoints {
 struct BodyContour {
     left_shoulder_cap_points: ShoulderCapPoints,
     right_shoulder_cap_points: ShoulderCapPoints,
-
-    left_toe_point: Option<Point2<f32>>,
-    right_toe_point: Option<Point2<f32>>,
 
     chest_points: ChestPoints,
 
@@ -107,32 +104,6 @@ impl BodyContour {
             && tibia_point.x + 80.0 > image_coordinate.x
             && tibia_point.y - 0.0 < image_coordinate.y
             && tibia_point.y + 80.0 > image_coordinate.y
-    }
-
-    fn update_toes(
-        &mut self,
-        orientation: &RobotOrientation,
-        kinematics: &Kinematics,
-        matrix: &CameraMatrix<Bottom>,
-    ) {
-        let (robot_to_left_toe, robot_to_right_toe) = robot_to_toes(orientation, kinematics);
-
-        self.left_toe_point = matrix
-            .ground_to_pixel(
-                (robot_to_left_toe.inverse() * matrix.robot_to_ground)
-                    .translation
-                    .vector
-                    .into(),
-            )
-            .ok();
-        self.right_toe_point = matrix
-            .ground_to_pixel(
-                (robot_to_right_toe.inverse() * matrix.robot_to_ground)
-                    .translation
-                    .vector
-                    .into(),
-            )
-            .ok();
     }
 
     fn update_chest(
@@ -289,6 +260,7 @@ impl Plugin for BodyContourPlugin {
                 PostUpdate,
                 visualize_body_contour.run_if(resource_changed::<BodyContour>),
                 "visualize body contour",
+                SystemToggle::Disable,
             );
     }
 }
@@ -325,7 +297,6 @@ fn update_body_contours(
         return;
     }
 
-    body_contour.update_toes(&orientation, &kinematics, &bottom_camera_matrix);
     body_contour.update_chest(&orientation, &kinematics, &bottom_camera_matrix);
     body_contour.update_shoulders(&orientation, &kinematics, &bottom_camera_matrix);
     body_contour.update_thighs(&orientation, &kinematics, &bottom_camera_matrix);
@@ -380,19 +351,6 @@ impl RobotOrientation {
             * Isometry3::rotation(Vector3::y() * pitch)
             * Isometry3::rotation(Vector3::x() * roll)
     }
-}
-
-fn robot_to_toes(
-    orientation: &RobotOrientation,
-    kinematics: &Kinematics,
-) -> (Isometry3<f32>, Isometry3<f32>) {
-    let robot_to_left_toe = kinematics.isometry::<Robot, LeftToe>().inner;
-    let robot_to_right_toe = kinematics.isometry::<Robot, RightToe>().inner;
-
-    (
-        orientation.adjust_for_imu(robot_to_left_toe),
-        orientation.adjust_for_imu(robot_to_right_toe),
-    )
 }
 
 fn robot_to_chest(

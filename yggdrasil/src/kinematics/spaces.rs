@@ -58,7 +58,6 @@ impl_spaces! {
     Ankle<T>,
     Foot<T>,
     Sole<T>,
-    Toe<T>,
 }
 
 pub type LeftShoulder = Shoulder<Left>;
@@ -76,7 +75,6 @@ pub type LeftTibia = Tibia<Left>;
 pub type LeftAnkle = Ankle<Left>;
 pub type LeftFoot = Foot<Left>;
 pub type LeftSole = Sole<Left>;
-pub type LeftToe = Toe<Left>;
 
 pub type RightShoulder = Shoulder<Right>;
 pub type RightShoulderCap = ShoulderCap<Right>;
@@ -93,4 +91,3 @@ pub type RightTibia = Tibia<Right>;
 pub type RightAnkle = Ankle<Right>;
 pub type RightFoot = Foot<Right>;
 pub type RightSole = Sole<Right>;
-pub type RightToe = Toe<Right>;
