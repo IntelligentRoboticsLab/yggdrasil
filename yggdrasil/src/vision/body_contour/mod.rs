@@ -39,13 +39,13 @@ impl BodyContour {
         self.left_shoulder_cap_point
             .as_ref()
             .is_some_and(|shoulder_point| {
-                Self::is_part_of_shoulder(shoulder_point, image_coordinate)
+                Self::is_part_of_left_shoulder(shoulder_point, image_coordinate)
             })
             || self
                 .right_shoulder_cap_point
                 .as_ref()
                 .is_some_and(|shoulder_point| {
-                    Self::is_part_of_shoulder(shoulder_point, image_coordinate)
+                    Self::is_part_of_right_shoulder(shoulder_point, image_coordinate)
                 })
             || Self::is_part_of_chest(&self.chest_points, image_coordinate)
             || self
@@ -62,16 +62,18 @@ impl BodyContour {
                 .is_some_and(|tibia_point| Self::is_part_of_tibia(tibia_point, image_coordinate))
     }
 
-    fn is_part_of_shoulder(
+    fn is_part_of_left_shoulder(
         shoulder_point: &ShoulderCapPoints,
         image_coordinate: Point2<f32>,
     ) -> bool {
-        let (left_point, right_point) = match (shoulder_point.back, shoulder_point.front) {
-            (left_point, right_point) if left_point.x <= right_point.x => (left_point, right_point),
-            (right_point, left_point) => (left_point, right_point),
-        };
+        image_coordinate.x > shoulder_point.back.x && image_coordinate.x < shoulder_point.front.x
+    }
 
-        image_coordinate.x > left_point.x && image_coordinate.x < right_point.x
+    fn is_part_of_right_shoulder(
+        shoulder_point: &ShoulderCapPoints,
+        image_coordinate: Point2<f32>,
+    ) -> bool {
+        image_coordinate.x > shoulder_point.front.x && image_coordinate.x < shoulder_point.back.x
     }
 
     fn is_part_of_chest(chest_points: &ChestPoints, image_coordinate: Point2<f32>) -> bool {
@@ -185,9 +187,6 @@ impl BodyContour {
             (robot_to_right_shoulder_cap_front, robot_to_right_shoulder_cap_back),
         ) = robot_to_shoulders(orientation, kinematics);
 
-        eprintln!("LEFT FRONT: {robot_to_left_shoulder_cap_front}");
-        eprintln!("LEFT BACK: {robot_to_left_shoulder_cap_back}");
-
         if let (Ok(left_cap_point_front), Ok(left_cap_point_back)) = (
             matrix.ground_to_pixel(
                 (robot_to_left_shoulder_cap_front.inverse() * matrix.robot_to_ground)
@@ -202,7 +201,6 @@ impl BodyContour {
                     .into(),
             ),
         ) {
-            eprintln!("HERE HERE HERE");
             self.left_shoulder_cap_point = Some(ShoulderCapPoints {
                 front: left_cap_point_front,
                 back: left_cap_point_back,
@@ -225,12 +223,12 @@ impl BodyContour {
                     .into(),
             ),
         ) {
-            self.left_shoulder_cap_point = Some(ShoulderCapPoints {
+            self.right_shoulder_cap_point = Some(ShoulderCapPoints {
                 front: right_cap_point_front,
                 back: right_cap_point_back,
             });
         } else {
-            self.left_shoulder_cap_point = None;
+            self.right_shoulder_cap_point = None;
         }
     }
 
