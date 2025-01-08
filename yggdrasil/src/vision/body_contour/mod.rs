@@ -296,7 +296,7 @@ impl Plugin for BodyContourPlugin {
             .add_systems(PostStartup, setup_body_contour_visualization::<Bottom>)
             .add_systems(
                 Update,
-                update_body_contours.after(super::camera::matrix::update_camera_matrix::<Bottom>),
+                update_body_contours.after(super::camera::fetch_latest_frame::<Bottom>),
             )
             .add_systems(Update, visualize_body_contour.after(update_body_contours));
     }
