@@ -13,6 +13,22 @@ fn debug_enabled(system_name: impl ToString) -> impl Condition<()> {
     })
 }
 
+/// Enum describing whether a system will be enabled by default when yggdrasil starts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SystemToggle {
+    Enable,
+    Disable,
+}
+
+impl From<SystemToggle> for bool {
+    fn from(value: SystemToggle) -> Self {
+        match value {
+            SystemToggle::Enable => true,
+            SystemToggle::Disable => false,
+        }
+    }
+}
+
 /// The trait `DebugAppExt` gives wrapper functions around the bevy `App`.
 ///
 /// Instead of only adding system to the `App`, it also adds:
@@ -29,7 +45,7 @@ fn debug_enabled(system_name: impl ToString) -> impl Condition<()> {
 ///
 /// impl Plugin for CustomPlugin {
 ///     fn build(&self, app: &mut App) {
-///         app.add_debug_systems(Update, wee_sound_system)
+///         app.add_debug_systems(Update, wee_sound_system, SystemToggle::Enable)
 ///         .add_named_debug_systems(
 ///             PostUpdate,
 ///             visualize_lines::<Top>.run_if(resource_exists_and_changed::<DetectedLines<Top>>),
@@ -40,17 +56,25 @@ fn debug_enabled(system_name: impl ToString) -> impl Condition<()> {
 /// ```
 ///
 pub trait DebugAppExt {
+    /// Add a system to the schedule and add the system name to the
+    /// [`DebugEnabledSystems`] resource. The system will only run when the
+    /// flag for this system is enabled in the [`DebugEnabledSystems`].
     fn add_debug_systems<M>(
         &mut self,
         schedule: impl ScheduleLabel,
         systems: impl IntoSystemConfigs<M>,
+        toggle: SystemToggle,
     ) -> &mut Self;
 
+    /// Add a system to the schedule and add the system name to the
+    /// [`DebugEnabledSystems`] resource. The system will only run when the
+    /// flag for this system is enabled in the [`DebugEnabledSystems`].
     fn add_named_debug_systems<M>(
         &mut self,
         schedule: impl ScheduleLabel,
         systems: impl IntoSystemConfigs<M>,
         systems_name: impl ToString,
+        toggle: SystemToggle,
     ) -> &mut Self;
 }
 
@@ -59,9 +83,10 @@ impl DebugAppExt for App {
         &mut self,
         schedule: impl ScheduleLabel,
         systems: impl IntoSystemConfigs<M>,
+        toggle: SystemToggle,
     ) -> &mut Self {
         let system_name = std::any::type_name_of_val(&systems);
-        self.add_named_debug_systems(schedule, systems, system_name.to_string())
+        self.add_named_debug_systems(schedule, systems, system_name.to_string(), toggle)
     }
 
     fn add_named_debug_systems<M>(
@@ -69,12 +94,13 @@ impl DebugAppExt for App {
         schedule: impl ScheduleLabel,
         systems: impl IntoSystemConfigs<M>,
         systems_name: impl ToString,
+        toggle: SystemToggle,
     ) -> &mut Self {
         let world = self.world_mut();
         let mut debug_enabled_systems = world.resource_mut::<DebugEnabledSystems>();
         debug_enabled_systems
             .systems
-            .insert(systems_name.to_string(), false);
+            .insert(systems_name.to_string(), toggle.into());
         self.add_systems(schedule, systems.run_if(debug_enabled(systems_name)))
     }
 }

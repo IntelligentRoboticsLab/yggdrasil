@@ -36,7 +36,6 @@ impl App {
         .into_diagnostic()?;
 
         let rerun_native_options = re_viewer::native::eframe_options(None);
-
         let native_options = eframe::NativeOptions {
             viewport: rerun_native_options
                 .viewport

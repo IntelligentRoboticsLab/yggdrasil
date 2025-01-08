@@ -50,6 +50,12 @@ fn resource_display_and_manage_ui(
     }
     resource_names.sort();
 
+    if resource_names.is_empty() {
+        ui.centered_and_justified(|ui| {
+            ui.warning_label("No resources available");
+        });
+    }
+
     for name in resource_names {
         let mut current_states = states.write().expect("Failed to lock states");
         if let Some(data) = current_states.robot_resources.0.get_mut(&name) {

@@ -11,9 +11,11 @@ use re_control_comms::{
     protocol::RobotMessage,
     viewer::{ControlViewer, ControlViewerHandle},
 };
+
 use re_viewer::external::{
     eframe,
-    egui::{self, ScrollArea},
+    egui::{self, Align2, ScrollArea, Vec2},
+    re_ui::{Icon, UiExt},
 };
 
 use crate::{
@@ -23,6 +25,22 @@ use crate::{
         resource::resource_ui, style::FrameStyleMap, PANEL_TOP_PADDING, SIDE_PANEL_WIDTH,
     },
 };
+
+pub const CONTROL_PANEL_VIEW: Icon = Icon::new(
+    "../data/icons/robot.png",
+    include_bytes!("../data/icons/robot.png"),
+);
+
+pub const CONTROL_PANEL_VIEW_OFF: Icon = Icon::new(
+    "../data/icons/robot_off.png",
+    include_bytes!("../data/icons/robot_off.png"),
+);
+
+/// Position of the toggle button when the side bar is visible.
+const SIDE_BAR_TOGGLE_BUTTON_POSITION_VISIBLE: Vec2 = Vec2::new(-10., 5.);
+
+/// Position of the toggle button when the side bar is hidden.
+const SIDE_BAR_TOGGLE_BUTTON_POSITION_HIDDEN: Vec2 = Vec2::new(-251., 4.);
 
 #[derive(Default)]
 pub struct ControlStates {
@@ -106,6 +124,7 @@ pub struct Control {
     states: Arc<RwLock<ControlStates>>,
     handle: ControlViewerHandle,
     frame_styles: FrameStyleMap,
+    pub side_bar_toggled: bool,
 }
 
 impl eframe::App for Control {
@@ -116,13 +135,11 @@ impl eframe::App for Control {
 
     /// Called whenever we need repainting, which could be 60 Hz.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        egui::SidePanel::right("Resource manipulation")
-            .default_width(SIDE_PANEL_WIDTH)
-            .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| {
-                    self.ui(ui);
-                });
+        egui::Area::new(egui::Id::new("re_control")).show(ctx, |ui| {
+            ScrollArea::vertical().show(ui, |ui| {
+                self.ui(ui);
             });
+        });
 
         self.app.update(ctx, frame);
     }
@@ -151,35 +168,61 @@ impl Control {
             states: Arc::clone(&states),
             handle,
             frame_styles: FrameStyleMap::default(),
+            side_bar_toggled: true,
         }
     }
 
     fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.add_space(PANEL_TOP_PADDING);
+        self.toggle_button_overlay(ui);
 
-        // Title of the side panel
-        ui.vertical_centered(|ui| {
-            ui.strong("Control panel");
-        });
-        ui.separator();
+        if !self.side_bar_toggled {
+            ui.set_width(30.);
+            ui.shrink_width_to_current();
+            return;
+        }
 
-        ui.horizontal(|ui| {
-            ui.add_space(ui.available_width());
-        });
+        egui::SidePanel::right("control")
+            .default_width(SIDE_PANEL_WIDTH)
+            .show(ui.ctx(), |ui| {
+                ui.add_space(PANEL_TOP_PADDING);
 
-        // Resource section
-        resource_ui(
-            ui,
-            Arc::clone(&self.states),
-            &self.handle,
-            &self.frame_styles,
-        );
+                // Title of the side panel
+                ui.vertical_centered(|ui| {
+                    ui.strong("Control panel");
+                });
 
-        // Debug enabled/disabled systems section
-        debug_enabled_systems_ui(ui, Arc::clone(&self.states), &self.handle);
+                // Resource section
+                resource_ui(
+                    ui,
+                    Arc::clone(&self.states),
+                    &self.handle,
+                    &self.frame_styles,
+                );
 
-        // Camera calibration section
-        camera_calibration_ui(ui, Arc::clone(&self.states), &self.handle);
+                // Debug enabled/disabled systems section
+                debug_enabled_systems_ui(ui, Arc::clone(&self.states), &self.handle);
+
+                // Camera calibration section
+                camera_calibration_ui(ui, Arc::clone(&self.states), &self.handle);
+            });
+    }
+
+    fn toggle_button_overlay(&mut self, ui: &mut egui::Ui) {
+        let (icon, position) = if self.side_bar_toggled {
+            (
+                &CONTROL_PANEL_VIEW_OFF,
+                SIDE_BAR_TOGGLE_BUTTON_POSITION_VISIBLE,
+            )
+        } else {
+            (&CONTROL_PANEL_VIEW, SIDE_BAR_TOGGLE_BUTTON_POSITION_HIDDEN)
+        };
+
+        egui::Area::new("control_panel_toggle_overlay".into())
+            .anchor(Align2::RIGHT_TOP, position)
+            .show(ui.ctx(), |ui| {
+                ui.medium_icon_toggle_button(icon, &mut self.side_bar_toggled)
+                    .on_hover_text("Toggle control panel")
+            });
     }
 }
 

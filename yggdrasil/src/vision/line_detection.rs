@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::Deref;
 
-use crate::core::debug::debug_system::DebugAppExt;
+use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
 use crate::vision::camera::Image;
@@ -56,6 +56,7 @@ impl Plugin for LineDetectionPlugin {
             PostUpdate,
             visualize_lines::<Top>.run_if(resource_exists_and_changed::<DetectedLines<Top>>),
             "Visualize lines",
+            SystemToggle::Enable,
         );
     }
 }
