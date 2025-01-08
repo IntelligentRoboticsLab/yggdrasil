@@ -14,8 +14,8 @@ pub struct WeeSoundPlugin;
 
 impl Plugin for WeeSoundPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        // app.init_resource::<WeeSound>()
-        //     .add_systems(Update, wee_sound_system);
+        app.init_resource::<WeeSound>()
+            .add_systems(Update, wee_sound_system);
     }
 }
 
