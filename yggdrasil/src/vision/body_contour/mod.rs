@@ -10,6 +10,8 @@ use crate::{
 
 use super::camera::Image;
 
+const VISUALIZE_DOT_INTERVAL: usize = 10;
+
 type ChestPoints = Vec<Point2<f32>>;
 
 #[derive(Default)]
@@ -270,15 +272,6 @@ fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
         T::make_entity_path("image/body_contour"),
         true,
         [
-            &rerun::Color::from_rgb(219, 62, 177) as _,
-            &rerun::Radius::new_ui_points(4.0) as _,
-        ],
-    );
-
-    dbg.log_component_batches(
-        T::make_entity_path("image/body_contour/chests"),
-        true,
-        [
             &rerun::Color::from_rgb(167, 82, 64) as _,
             &rerun::Radius::new_ui_points(4.0) as _,
         ],
@@ -312,11 +305,9 @@ fn visualize_body_contour(
     // # TODO: This function is very slow.
     // It's probably better to let `BodyContour` return the points that should be
     // visualized, instead of iterating over all points.
-    // let mut points = Vec::with_capacity(480 * 720);
     let mut points = Vec::new();
-
-    for x in (0..bottom_image.yuyv_image().width()).step_by(10) {
-        for y in (0..bottom_image.yuyv_image().height()).step_by(10) {
+    for x in (0..bottom_image.yuyv_image().width()).step_by(VISUALIZE_DOT_INTERVAL) {
+        for y in (0..bottom_image.yuyv_image().height()).step_by(VISUALIZE_DOT_INTERVAL) {
             let x = x as f32;
             let y = y as f32;
             if body_contour.is_part_of_body(Point2::new(x, y)) {
@@ -326,20 +317,9 @@ fn visualize_body_contour(
     }
 
     debug_context.log_with_cycle(
-        Bottom::make_entity_path("image/body_contour/chests"),
-        *current_cycle,
-        &rerun::Points2D::new(&points),
-    );
-
-    debug_context.log_with_cycle(
         Bottom::make_entity_path("image/body_contour"),
         *current_cycle,
-        &rerun::Points2D::new(
-            body_contour
-                .chest_points
-                .iter()
-                .map(|point| (point.x, point.y)),
-        ),
+        &rerun::Points2D::new(&points),
     );
 }
 
