@@ -19,7 +19,7 @@ struct ShoulderCapPoints {
 }
 
 #[derive(Default, Resource)]
-struct BodyContour {
+pub struct BodyContour {
     left_shoulder_cap_points: ShoulderCapPoints,
     right_shoulder_cap_points: ShoulderCapPoints,
 
