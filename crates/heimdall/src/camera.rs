@@ -1,6 +1,7 @@
 use std::{io, path::Path};
 
 use bevy::prelude::Component;
+use bifrost::serialization::{Decode, Encode};
 use linuxvideo::{
     controls::Cid,
     format::{PixFormat, PixelFormat},

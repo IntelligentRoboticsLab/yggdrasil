@@ -5,7 +5,6 @@ use crate::{
         debug_system::{DebugAppExt, SystemToggle},
         DebugContext,
     },
-    localization::RobotPose,
     nao::Cycle,
     prelude::*,
 };
