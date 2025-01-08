@@ -1,3 +1,4 @@
+use crate::core::debug::debug_system::DebugAppExt;
 use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, CameraMatrix};
 use nalgebra::{Isometry3, Point2, Vector3};
@@ -284,7 +285,11 @@ impl Plugin for BodyContourPlugin {
                 Update,
                 update_body_contours.after(super::camera::fetch_latest_frame::<Bottom>),
             )
-            .add_systems(Update, visualize_body_contour.after(update_body_contours));
+            .add_named_debug_systems(
+                PostUpdate,
+                visualize_body_contour.run_if(resource_changed::<BodyContour>),
+                "visualize body contour",
+            );
     }
 }
 
