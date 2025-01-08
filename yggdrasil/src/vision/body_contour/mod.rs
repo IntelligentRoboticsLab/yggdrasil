@@ -11,15 +11,16 @@ use super::camera::Image;
 
 type ChestPoints = Vec<Point2<f32>>;
 
+#[derive(Default)]
 struct ShoulderCapPoints {
-    front: Point2<f32>,
-    back: Point2<f32>,
+    front: Option<Point2<f32>>,
+    back: Option<Point2<f32>>,
 }
 
 #[derive(Default, Resource)]
 struct BodyContour {
-    left_shoulder_cap_point: Option<ShoulderCapPoints>,
-    right_shoulder_cap_point: Option<ShoulderCapPoints>,
+    left_shoulder_cap_points: ShoulderCapPoints,
+    right_shoulder_cap_points: ShoulderCapPoints,
 
     left_toe_point: Option<Point2<f32>>,
     right_toe_point: Option<Point2<f32>>,
@@ -36,17 +37,8 @@ struct BodyContour {
 impl BodyContour {
     #[must_use]
     pub fn is_part_of_body(&self, image_coordinate: Point2<f32>) -> bool {
-        self.left_shoulder_cap_point
-            .as_ref()
-            .is_some_and(|shoulder_point| {
-                Self::is_part_of_left_shoulder(shoulder_point, image_coordinate)
-            })
-            || self
-                .right_shoulder_cap_point
-                .as_ref()
-                .is_some_and(|shoulder_point| {
-                    Self::is_part_of_right_shoulder(shoulder_point, image_coordinate)
-                })
+        self.is_part_of_left_shoulder(image_coordinate)
+            || self.is_part_of_right_shoulder(image_coordinate)
             || Self::is_part_of_chest(&self.chest_points, image_coordinate)
             || self
                 .left_thigh_point
@@ -62,18 +54,24 @@ impl BodyContour {
                 .is_some_and(|tibia_point| Self::is_part_of_tibia(tibia_point, image_coordinate))
     }
 
-    fn is_part_of_left_shoulder(
-        shoulder_point: &ShoulderCapPoints,
-        image_coordinate: Point2<f32>,
-    ) -> bool {
-        image_coordinate.x > shoulder_point.back.x && image_coordinate.x < shoulder_point.front.x
+    fn is_part_of_left_shoulder(&self, image_coordinate: Point2<f32>) -> bool {
+        self.left_shoulder_cap_points
+            .front
+            .is_some_and(|point| point.x > image_coordinate.x)
+            && self
+                .left_shoulder_cap_points
+                .back
+                .is_none_or(|point| point.x < image_coordinate.x)
     }
 
-    fn is_part_of_right_shoulder(
-        shoulder_point: &ShoulderCapPoints,
-        image_coordinate: Point2<f32>,
-    ) -> bool {
-        image_coordinate.x > shoulder_point.front.x && image_coordinate.x < shoulder_point.back.x
+    fn is_part_of_right_shoulder(&self, image_coordinate: Point2<f32>) -> bool {
+        self.right_shoulder_cap_points
+            .front
+            .is_some_and(|point| point.x < image_coordinate.x)
+            && self
+                .right_shoulder_cap_points
+                .back
+                .is_none_or(|point| point.x > image_coordinate.x)
     }
 
     fn is_part_of_chest(chest_points: &ChestPoints, image_coordinate: Point2<f32>) -> bool {
@@ -187,49 +185,39 @@ impl BodyContour {
             (robot_to_right_shoulder_cap_front, robot_to_right_shoulder_cap_back),
         ) = robot_to_shoulders(orientation, kinematics);
 
-        if let (Ok(left_cap_point_front), Ok(left_cap_point_back)) = (
-            matrix.ground_to_pixel(
+        self.left_shoulder_cap_points.front = matrix
+            .ground_to_pixel(
                 (robot_to_left_shoulder_cap_front.inverse() * matrix.robot_to_ground)
                     .translation
                     .vector
                     .into(),
-            ),
-            matrix.ground_to_pixel(
+            )
+            .ok();
+        self.left_shoulder_cap_points.back = matrix
+            .ground_to_pixel(
                 (robot_to_left_shoulder_cap_back.inverse() * matrix.robot_to_ground)
                     .translation
                     .vector
                     .into(),
-            ),
-        ) {
-            self.left_shoulder_cap_point = Some(ShoulderCapPoints {
-                front: left_cap_point_front,
-                back: left_cap_point_back,
-            });
-        } else {
-            self.left_shoulder_cap_point = None;
-        }
+            )
+            .ok();
 
-        if let (Ok(right_cap_point_front), Ok(right_cap_point_back)) = (
-            matrix.ground_to_pixel(
+        self.right_shoulder_cap_points.front = matrix
+            .ground_to_pixel(
                 (robot_to_right_shoulder_cap_front.inverse() * matrix.robot_to_ground)
                     .translation
                     .vector
                     .into(),
-            ),
-            matrix.ground_to_pixel(
+            )
+            .ok();
+        self.right_shoulder_cap_points.back = matrix
+            .ground_to_pixel(
                 (robot_to_right_shoulder_cap_back.inverse() * matrix.robot_to_ground)
                     .translation
                     .vector
                     .into(),
-            ),
-        ) {
-            self.right_shoulder_cap_point = Some(ShoulderCapPoints {
-                front: right_cap_point_front,
-                back: right_cap_point_back,
-            });
-        } else {
-            self.right_shoulder_cap_point = None;
-        }
+            )
+            .ok();
     }
 
     fn update_thighs(
