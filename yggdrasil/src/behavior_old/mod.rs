@@ -8,6 +8,8 @@ use bevy::{app::PluginGroupBuilder, prelude::*};
 use engine::BehaviorEnginePlugin;
 
 pub use behavior_config::BehaviorConfig;
+#[doc(inline)]
+pub use engine::BehaviorEngine;
 
 /// A collection of plugins related to behaviors.
 pub struct BehaviorPlugins;

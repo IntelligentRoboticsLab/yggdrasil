@@ -1,5 +1,3 @@
-//! All the behaviors that the robot can execute.
-
 mod catchfall;
 mod observe;
 mod sitting;
@@ -11,13 +9,22 @@ mod walk;
 mod walk_to;
 mod walk_to_set;
 
-pub use catchfall::CatchFall;
-pub use observe::{Observe, ObserveBehaviorConfig};
-pub use sitting::Sitting;
-pub use stand::Stand;
-pub use stand_look::StandLookAt;
-pub use standup::Standup;
-pub use startup::StartUp;
-pub use walk::Walk;
-pub use walk_to::WalkTo;
-pub use walk_to_set::WalkToSet;
+pub use catchfall::{CatchFall, CatchFallBehaviorPlugin};
+pub use observe::{Observe, ObserveBehaviorConfig, ObserveBehaviorPlugin};
+pub use sitting::{Sitting, SittingBehaviorPlugin};
+pub use stand::{Stand, StandBehaviorPlugin};
+pub use stand_look::{StandLookAt, StandLookAtBehaviorPlugin};
+pub use standup::{Standup, StandupBehaviorPlugin};
+pub use startup::{StartUp, StartUpBehaviorPlugin};
+pub use walk::{Walk, WalkBehaviorPlugin};
+pub use walk_to::{WalkTo, WalkToBehaviorPlugin};
+pub use walk_to_set::{WalkToSet, WalkToSetBehaviorPlugin};
+
+#[macro_export]
+macro_rules! impl_behavior {
+    ($behavior:ty, $state:ident) => {
+        impl Behavior for $behavior {
+            const STATE: BehaviorState = BehaviorState::$state;
+        }
+    };
+}

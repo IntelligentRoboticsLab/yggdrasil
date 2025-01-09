@@ -1,6 +1,9 @@
+use bevy::prelude::*;
+
 use crate::{
-    behavior::engine::{Behavior, Context, Control},
-    nao::Priority,
+    behavior::engine::{Behavior, BehaviorState},
+    impl_behavior,
+    nao::{NaoManager, Priority},
 };
 
 /// Behavior used for preventing damage when the robot is in a falling state.
@@ -16,13 +19,23 @@ use crate::{
 ///   Only by unstiffing the robot will it return to normal.
 ///   This should not be the case often however, once the falling filter
 ///   is more advanced.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Resource, Copy, Clone, Debug, PartialEq)]
 pub struct CatchFall;
 
-impl Behavior for CatchFall {
-    fn execute(&mut self, _: Context, control: &mut Control) {
-        control.nao_manager.unstiff_legs(Priority::Critical);
-        control.nao_manager.unstiff_arms(Priority::Critical);
-        control.nao_manager.unstiff_head(Priority::Critical);
+impl_behavior!(CatchFall, CatchFall);
+
+pub struct CatchFallBehaviorPlugin;
+impl Plugin for CatchFallBehaviorPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            catch_fall.run_if(in_state(BehaviorState::CatchFall)),
+        );
     }
+}
+
+pub fn catch_fall(mut nao_manager: ResMut<NaoManager>) {
+    nao_manager.unstiff_legs(Priority::Critical);
+    nao_manager.unstiff_arms(Priority::Critical);
+    nao_manager.unstiff_head(Priority::Critical);
 }

@@ -4,7 +4,7 @@ use heimdall::{Bottom, Top};
 use nalgebra::Point2;
 
 use crate::{
-    behavior2::{
+    behavior::{
         behaviors::{Sitting, Stand, StandLookAt, Standup, WalkToSet},
         engine::CommandsBehaviorExt,
         primary_state::PrimaryState,
@@ -16,7 +16,7 @@ use crate::{
 };
 
 use crate::{
-    behavior2::engine::{BehaviorState, Role, Roles},
+    behavior::engine::{BehaviorState, Role, Roles},
     impl_roles,
 };
 

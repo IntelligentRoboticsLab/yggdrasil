@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use odal::Config;
 use serde::{Deserialize, Serialize};
 
-use crate::behavior::behaviors::ObserveBehaviorConfig;
+use super::behaviors::ObserveBehaviorConfig;
 
 /// Config that contains information about the layout of the field and
 /// robot positions.
