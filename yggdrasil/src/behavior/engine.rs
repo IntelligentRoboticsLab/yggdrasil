@@ -354,7 +354,7 @@ pub fn step(
         ResMut<KeyframeExecutor>,
         ResMut<StepPlanner>,
     ),
-    (robot_pose, fall_state, game_controller_message): (
+    (robot_pose, fall_state, top_balls, bottom_balls, game_controller_message): (
         Res<RobotPose>,
         Res<FallState>,
         Res<Balls<Top>>,

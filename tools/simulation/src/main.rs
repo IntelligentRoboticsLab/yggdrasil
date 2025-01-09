@@ -30,6 +30,7 @@
 // 10.4x7.4
 // 270x270
 
+use bevy::app::AppLabel;
 use bevy::ecs::system::SystemParam;
 use bifrost::communication::{
     CompetitionPhase, CompetitionType, GameControllerMessage, GamePhase, GameState, Half, Penalty,
@@ -96,15 +97,28 @@ struct OccupiedScreenSpace {
 // }
 
 fn main() {
-    App::new()
-        .add_plugins((DefaultPlugins, EguiPlugin))
+    let mut app = App::new();
+
+    let app = app
+        .add_plugins(DefaultPlugins)
+        // .add_plugins(EguiPlugin)
         .insert_resource(WinitSettings::desktop_app())
         // .init_resource::<BehaviorEngine>()
         .init_resource::<Simulation>()
-        .add_systems(Startup, setup)
-        .add_systems(Update, (update_ui, update_panel_center))
-        .run();
+        .add_systems(Startup, setup);
+    // .add_systems(Update, (update_ui, update_panel_center));
+
+    // for player_number in 1..=5 {
+    let sub_app = SubApp::new();
+
+    app.insert_sub_app(ExampleApp, sub_app);
+    // }
+
+    app.run();
 }
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, AppLabel)]
+struct ExampleApp;
 
 // fn main() {
 //     App::new()
@@ -371,10 +385,10 @@ fn update_ui(_commands: Commands, mut contexts: EguiContexts, mut simulation: Re
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
-    commands.spawn(SpriteBundle {
-        texture: asset_server.load("../assets/field_simple.png"),
-        ..default()
-    });
+    // commands.spawn(SpriteBundle {
+    //     texture: asset_server.load("../assets/field_simple.png"),
+    //     ..default()
+    // });
 }
 
 fn update_panel_center(
@@ -519,7 +533,7 @@ impl Robot {
             &odometry,
             &self.primary_state,
             layout_config,
-            &Some(gamecontrollermessage.clone()),
+            Some(&gamecontrollermessage.clone()),
         );
     }
 
@@ -625,11 +639,21 @@ fn create_default_configs() -> (YggdrasilConfig, BehaviorConfig, GameControllerC
                 scale_factor: Default::default(),
             },
             orientation: OrientationFilterConfig {
-                acceleration_threshold: 0.0,
-                acceleration_weight: 0.0,
-                fsr_threshold: 0.0,
-                gyro_threshold: 0.0,
+                tau_accelerometer: todo!(),
+                do_bias_estimation: todo!(),
+                do_rest_bias_estimation: todo!(),
+                bias_sigma_initial: todo!(),
+                bias_forgetting_time: todo!(),
+                bias_clip: todo!(),
+                bias_sigma_motion: todo!(),
+                bias_vertical_forgetting_factor: todo!(),
+                bias_sigma_rest: todo!(),
+                rest_min_duration: todo!(),
+                rest_filter_tau: todo!(),
+                rest_threshold_gyro: todo!(),
+                rest_threshold_accel: todo!(),
             },
+
             primary_state: PrimaryStateConfig {
                 chest_blink_interval: Default::default(),
             },

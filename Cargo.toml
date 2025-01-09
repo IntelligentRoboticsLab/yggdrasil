@@ -69,7 +69,6 @@ async-trait = "0.1.82"
 bevy = { version = "0.15.0", default-features = false, features = [
   "bevy_state",
 ] }
-bevy_egui = "0.30"
 byteorder = "1.5.0"
 cargo_toml = "0.20.5"
 chrono = "0.4.38"
@@ -142,3 +141,4 @@ tracing-tracy = "0.11.3"
 turbojpeg = "1.1.1"
 vqf = { version = "0.4.1", features = ["serde"] }
 walkdir = "2.5.0"
+wasm-bindgen = "=0.2.95"

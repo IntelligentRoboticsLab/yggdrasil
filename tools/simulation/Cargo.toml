@@ -24,7 +24,7 @@ bevy = { workspace = true, features = [
 ] }
 bevy_gizmos = "^0.14.2"
 bevy_sprite = { version = "0.14.0-rc.4" }
-bevy_egui = { workspace = true }
+bevy_egui = "0.30"
 yggdrasil = { workspace = true, features = ["local"]}
 home = { workspace = true }
 miette = { workspace = true }
