@@ -111,7 +111,7 @@ pub struct DetectedLines {
 #[derive(Component, Default, Deref, DerefMut)]
 pub struct RejectedLines {
     /// Yes, this is deref polymorphism
-    /// Yes, this might an anti-pattern
+    /// Yes, this might be an anti-pattern
     /// No, I don't give a damn!
     #[deref]
     detected: DetectedLines,
