@@ -14,3 +14,6 @@ min_white_luminance = 90.0
 # Black color
 max_black_luminance = 70.0
 max_black_saturation = 120.0
+
+# Green chromaticity threshold
+green_chromaticity_threshold = 0.333

@@ -1,6 +1,7 @@
 use rerun::external::egui::{self, Frame, InnerResponse, RichText};
 
 pub mod camera_calibration;
+pub mod chromaticity;
 pub mod debug_systems;
 pub mod resource;
 pub mod selection_ui;

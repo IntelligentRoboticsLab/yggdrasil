@@ -16,6 +16,9 @@ pub enum RobotMessage {
         camera_position: CameraPosition,
         extrinsic_rotation: Vector3<f32>,
     },
+    Chromaticity {
+        green_threshold: f32,
+    },
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -32,5 +35,8 @@ pub enum ViewerMessage {
     CameraExtrinsic {
         camera_position: CameraPosition,
         extrinsic_rotation: Vector3<f32>,
+    },
+    Chromaticity {
+        green_threshold: f32,
     },
 }

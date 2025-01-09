@@ -6,7 +6,7 @@ use re_control_comms::{
 
 use futures::channel::mpsc::UnboundedReceiver;
 
-use crate::vision::camera::CameraConfig;
+use crate::vision::{camera::CameraConfig, scan_lines::ScanLinesConfig};
 
 use super::{DebugEnabledSystemUpdated, ViewerConnected};
 
@@ -47,6 +47,7 @@ pub fn handle_viewer_message(
     mut debug_enabled_systems: ResMut<DebugEnabledSystems>,
     mut ev_debug_enabled_system_updated: EventWriter<DebugEnabledSystemUpdated>,
     mut camera_config: ResMut<CameraConfig>,
+    mut scan_lines_config: ResMut<ScanLinesConfig>,
 ) {
     while let Some(message) = message_receiver.try_recv() {
         #[allow(clippy::single_match_else)]
@@ -68,6 +69,11 @@ pub fn handle_viewer_message(
                 };
 
                 config.calibration.extrinsic_rotation = rotation;
+            }
+            ViewerMessage::Chromaticity {
+                green_threshold: threshold,
+            } => {
+                scan_lines_config.green_chromaticity_threshold = threshold;
             }
             _ => tracing::warn!(?message, "unhandled message"),
         }

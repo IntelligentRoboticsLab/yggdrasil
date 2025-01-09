@@ -36,6 +36,8 @@ pub struct ScanLinesConfig {
     /// Black color
     max_black_luminance: f32,
     max_black_saturation: f32,
+    /// Green chromaticity threshold
+    pub green_chromaticity_threshold: f32,
 }
 
 impl Config for ScanLinesConfig {
@@ -671,12 +673,12 @@ impl RegionColor {
         let (r, g, b) = pixel.to_rgb();
 
         let g_chromaticity = g / (r + g + b);
-        let green_treshold = 0.5;
+        let green_threshold = config.green_chromaticity_threshold;
 
         // if Self::is_green(config, yhs) {
         //     return RegionColor::Green;
         // }
-        if g_chromaticity > green_treshold {
+        if g_chromaticity > green_threshold {
             return RegionColor::Green;
         }
 
