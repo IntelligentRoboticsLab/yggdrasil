@@ -110,11 +110,11 @@ quote = "1.0.37"
 rand = "0.8.5"
 rayon = "1.10.0"
 
-re_crash_handler = { git = "https://github.com/oxkitsune/rerun", rev="dd025f1384f9944d785d0fb75ca4ca1cd1792f17"}
-re_sdk_comms = {  git = "https://github.com/oxkitsune/rerun", rev="dd025f1384f9944d785d0fb75ca4ca1cd1792f17", features = ["server"] }
-re_smart_channel = { git = "https://github.com/oxkitsune/rerun", rev="dd025f1384f9944d785d0fb75ca4ca1cd1792f17" }
-re_viewer = { git = "https://github.com/oxkitsune/rerun", rev="dd025f1384f9944d785d0fb75ca4ca1cd1792f17" }
-rerun = { git = "https://github.com/oxkitsune/rerun", rev="dd025f1384f9944d785d0fb75ca4ca1cd1792f17", default-features = false, features = [
+re_crash_handler = { git = "https://github.com/oxkitsune/rerun", rev="fea33ce18a80f0b123fe9124f8893d40d1b28a9c"}
+re_sdk_comms = {  git = "https://github.com/oxkitsune/rerun", rev="fea33ce18a80f0b123fe9124f8893d40d1b28a9c", features = ["server"] }
+re_smart_channel = { git = "https://github.com/oxkitsune/rerun", rev="fea33ce18a80f0b123fe9124f8893d40d1b28a9c" }
+re_viewer = { git = "https://github.com/oxkitsune/rerun", rev="fea33ce18a80f0b123fe9124f8893d40d1b28a9c" }
+rerun = { git = "https://github.com/oxkitsune/rerun", rev="fea33ce18a80f0b123fe9124f8893d40d1b28a9c", default-features = false, features = [
   "sdk",
   "server",
   "log",
