@@ -4,7 +4,7 @@ use miette::{IntoDiagnostic, Result};
 use re_control_comms::viewer::ControlViewer;
 use re_viewer::{external::eframe, StartupOptions};
 
-use crate::control::Control;
+use crate::{control::Control, re_control_view::ControlView};
 
 // Rerun can collect analytics if the `analytics` feature is enabled in
 // `Cargo.toml`. This variable is used for the rerun analytics
@@ -58,6 +58,10 @@ impl App {
                     cc.storage,
                 );
                 app.add_receiver(rx);
+
+                // Register the view
+                app.add_view_class::<ControlView>().unwrap();
+
                 Ok(Box::new(Control::new(app, self.viewer)))
             }),
         )
