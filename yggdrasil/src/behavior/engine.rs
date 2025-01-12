@@ -59,8 +59,6 @@ pub trait CommandsBehaviorExt {
     fn set_behavior<T: Behavior>(&mut self, behavior: T);
 
     fn set_role<T: Roles>(&mut self, resource: T);
-
-    fn change_behavior(&mut self, state: BehaviorState);
 }
 
 impl CommandsBehaviorExt for Commands<'_, '_> {
@@ -72,10 +70,6 @@ impl CommandsBehaviorExt for Commands<'_, '_> {
     fn set_role<T: Roles>(&mut self, resource: T) {
         self.set_state(T::STATE);
         self.insert_resource(resource);
-    }
-
-    fn change_behavior(&mut self, state: BehaviorState) {
-        self.set_state(state);
     }
 }
 
