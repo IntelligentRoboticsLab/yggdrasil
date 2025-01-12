@@ -1,4 +1,4 @@
-use bevy::{prelude::*, state::app::StatesPlugin};
+use bevy::prelude::*;
 use heimdall::{Bottom, Top};
 
 use crate::{core::config::showtime::PlayerConfig, vision::ball_detection::classifier::Balls};
@@ -10,7 +10,7 @@ use super::{
         WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSetBehaviorPlugin,
     },
     primary_state::{update_primary_state, PrimaryState},
-    roles::{DefenderRolePlugin, GoalkeeperRolePlugin, StrikerRolePlugin},
+    roles::{DefenderRolePlugin, GoalkeeperRolePlugin, InstinctRolePlugin, StrikerRolePlugin},
 };
 
 pub(super) struct BehaviorEnginePlugin;
@@ -18,8 +18,7 @@ pub(super) struct BehaviorEnginePlugin;
 impl Plugin for BehaviorEnginePlugin {
     fn build(&self, app: &mut App) {
         // StatesPlugin should be added before init_state
-        app.add_plugins(StatesPlugin)
-            .init_state::<BehaviorState>()
+        app.init_state::<BehaviorState>()
             .init_state::<Role>()
             .add_plugins((
                 StandBehaviorPlugin,
@@ -32,6 +31,7 @@ impl Plugin for BehaviorEnginePlugin {
                 StartUpBehaviorPlugin,
                 WalkToBehaviorPlugin,
                 WalkToSetBehaviorPlugin,
+                InstinctRolePlugin,
                 DefenderRolePlugin,
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
