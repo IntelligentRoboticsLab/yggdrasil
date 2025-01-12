@@ -7,7 +7,6 @@ use crate::{
         engine::{BehaviorState, CommandsBehaviorExt, Role, Roles},
     },
     core::config::layout::LayoutConfig,
-    impl_roles,
     motion::step_planner::{StepPlanner, Target},
 };
 
@@ -24,7 +23,9 @@ impl Plugin for GoalkeeperRolePlugin {
 /// It's job is to prevent the ball from entering the goal, which it does by staying in the goal area.
 #[derive(Resource)]
 pub struct Goalkeeper;
-impl_roles!(Goalkeeper, Goalkeeper);
+impl Roles for Goalkeeper {
+    const STATE: Role = Role::Goalkeeper;
+}
 
 pub fn goalkeeper_role(
     mut commands: Commands,

@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use crate::{
     behavior::engine::{Behavior, BehaviorState},
-    impl_behavior,
     localization::RobotPose,
     motion::walk::engine::WalkingEngine,
     nao::{NaoManager, Priority},
@@ -17,7 +16,9 @@ pub struct StandLookAt {
     pub target: Point2<f32>,
 }
 
-impl_behavior!(StandLookAt, StandLookAt);
+impl Behavior for StandLookAt {
+    const STATE: BehaviorState = BehaviorState::StandLookAt;
+}
 
 pub struct StandLookAtBehaviorPlugin;
 impl Plugin for StandLookAtBehaviorPlugin {

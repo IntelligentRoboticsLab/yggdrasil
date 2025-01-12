@@ -7,7 +7,6 @@ use crate::{
         engine::{BehaviorState, CommandsBehaviorExt, Role, Roles},
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
-    impl_roles,
     localization::RobotPose,
     motion::step_planner::{StepPlanner, Target},
 };
@@ -25,7 +24,9 @@ impl Plugin for DefenderRolePlugin {
 /// It's job is to observe it's set position depending on player number.
 #[derive(Resource)]
 pub struct Defender;
-impl_roles!(Defender, Defender);
+impl Roles for Defender {
+    const STATE: Role = Role::Defender;
+}
 
 pub fn defender_role(
     mut commands: Commands,

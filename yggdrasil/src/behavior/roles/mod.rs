@@ -9,12 +9,3 @@ pub use defender::{Defender, DefenderRolePlugin};
 pub use goalkeeper::{Goalkeeper, GoalkeeperRolePlugin};
 pub use instinct::{Instinct, InstinctRolePlugin};
 pub use striker::{Striker, StrikerRolePlugin};
-
-#[macro_export]
-macro_rules! impl_roles {
-    ($role:ty, $state:ident) => {
-        impl Roles for $role {
-            const STATE: Role = Role::$state;
-        }
-    };
-}

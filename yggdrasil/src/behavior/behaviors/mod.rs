@@ -19,12 +19,3 @@ pub use startup::{StartUp, StartUpBehaviorPlugin};
 pub use walk::{Walk, WalkBehaviorPlugin};
 pub use walk_to::{WalkTo, WalkToBehaviorPlugin};
 pub use walk_to_set::{WalkToSet, WalkToSetBehaviorPlugin};
-
-#[macro_export]
-macro_rules! impl_behavior {
-    ($behavior:ty, $state:ident) => {
-        impl Behavior for $behavior {
-            const STATE: BehaviorState = BehaviorState::$state;
-        }
-    };
-}

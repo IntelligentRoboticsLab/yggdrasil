@@ -2,7 +2,6 @@ use bevy::prelude::*;
 
 use crate::{
     behavior::engine::{Behavior, BehaviorState},
-    impl_behavior,
     nao::{NaoManager, Priority},
 };
 
@@ -22,7 +21,9 @@ use crate::{
 #[derive(Resource, Copy, Clone, Debug, PartialEq)]
 pub struct CatchFall;
 
-impl_behavior!(CatchFall, CatchFall);
+impl Behavior for CatchFall {
+    const STATE: BehaviorState = BehaviorState::CatchFall;
+}
 
 pub struct CatchFallBehaviorPlugin;
 impl Plugin for CatchFallBehaviorPlugin {

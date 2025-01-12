@@ -2,7 +2,6 @@ use bevy::prelude::*;
 
 use crate::{
     behavior::engine::{Behavior, BehaviorState},
-    impl_behavior,
     motion::keyframe::{KeyframeExecutor, MotionType},
     nao::Priority,
     sensor::falling::{FallState, LyingDirection},
@@ -24,8 +23,9 @@ impl Standup {
     }
 }
 
-impl_behavior!(Standup, Standup);
-
+impl Behavior for Standup {
+    const STATE: BehaviorState = BehaviorState::Standup;
+}
 pub struct StandupBehaviorPlugin;
 impl Plugin for StandupBehaviorPlugin {
     fn build(&self, app: &mut App) {

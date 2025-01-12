@@ -5,7 +5,6 @@ use nidhogg::types::HeadJoints;
 
 use crate::{
     behavior::engine::{Behavior, BehaviorState},
-    impl_behavior,
     motion::walk::engine::WalkingEngine,
     nao::{NaoManager, Priority},
 };
@@ -20,7 +19,9 @@ impl Plugin for StandBehaviorPlugin {
 
 #[derive(Resource)]
 pub struct Stand;
-impl_behavior!(Stand, Stand);
+impl Behavior for Stand {
+    const STATE: BehaviorState = BehaviorState::Stand;
+}
 
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 

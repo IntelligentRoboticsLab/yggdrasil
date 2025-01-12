@@ -8,7 +8,6 @@ use crate::{
         engine::{Behavior, BehaviorState},
         BehaviorConfig,
     },
-    impl_behavior,
     motion::{
         step_planner::StepPlanner,
         walk::engine::{Step, WalkingEngine},
@@ -64,7 +63,9 @@ impl Observe {
     }
 }
 
-impl_behavior!(Observe, Observe);
+impl Behavior for Observe {
+    const STATE: BehaviorState = BehaviorState::Observe;
+}
 
 pub struct ObserveBehaviorPlugin;
 impl Plugin for ObserveBehaviorPlugin {

@@ -4,7 +4,6 @@ use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 
 use crate::{
     behavior::engine::{Behavior, BehaviorState},
-    impl_behavior,
     motion::walk::engine::WalkingEngine,
     nao::{NaoManager, Priority, RobotInfo},
 };
@@ -22,7 +21,9 @@ impl Plugin for StartUpBehaviorPlugin {
 #[derive(Resource)]
 pub struct StartUp;
 
-impl_behavior!(StartUp, StartUp);
+impl Behavior for StartUp {
+    const STATE: BehaviorState = BehaviorState::StartUp;
+}
 
 const DEFAULT_PASSIVE_STIFFNESS: f32 = 0.8;
 // This should run with priority over the walking engine.

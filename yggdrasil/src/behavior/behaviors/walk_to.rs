@@ -5,7 +5,6 @@ use nalgebra::Point3;
 
 use crate::{
     behavior::engine::{Behavior, BehaviorState},
-    impl_behavior,
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},
@@ -34,7 +33,9 @@ pub struct WalkTo {
     pub target: Target,
 }
 
-impl_behavior!(WalkTo, WalkTo);
+impl Behavior for WalkTo {
+    const STATE: BehaviorState = BehaviorState::WalkTo;
+}
 
 pub fn walk_to(
     walk_to: Res<WalkTo>,

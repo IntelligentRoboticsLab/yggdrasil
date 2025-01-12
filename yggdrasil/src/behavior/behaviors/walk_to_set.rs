@@ -8,7 +8,6 @@ use nalgebra::{Point2, Point3};
 use crate::{
     behavior::engine::{Behavior, BehaviorState, Role},
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
-    impl_behavior,
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},
@@ -37,8 +36,9 @@ pub struct WalkToSet {
     // pub is_goalkeeper: bool,
 }
 
-impl_behavior!(WalkToSet, WalkToSet);
-
+impl Behavior for WalkToSet {
+    const STATE: BehaviorState = BehaviorState::WalkToSet;
+}
 /// To prevent the Goalkeeper from walking into the goalpost, we use this position for a better approach.
 const GOAL_KEEPER_PRE_SET_POS: Target = Target {
     position: Point2::new(-2.85, 0.0),

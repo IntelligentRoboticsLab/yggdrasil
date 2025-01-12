@@ -4,7 +4,6 @@ use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, BehaviorState},
-    impl_behavior,
     localization::RobotPose,
     motion::{
         step_planner::StepPlanner,
@@ -34,7 +33,9 @@ pub struct Walk {
     pub look_target: Option<Point3<f32>>,
 }
 
-impl_behavior!(Walk, Walk);
+impl Behavior for Walk {
+    const STATE: BehaviorState = BehaviorState::Walk;
+}
 
 pub fn walk(
     walk: Res<Walk>,

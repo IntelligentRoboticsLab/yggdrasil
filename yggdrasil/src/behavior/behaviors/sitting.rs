@@ -4,7 +4,6 @@ use nidhogg::types::{color, FillExt, RightEye};
 
 use crate::{
     behavior::engine::{Behavior, BehaviorState},
-    impl_behavior,
     motion::walk::engine::WalkingEngine,
     nao::{NaoManager, Priority},
 };
@@ -22,7 +21,9 @@ impl Plugin for SittingBehaviorPlugin {
 #[derive(Resource)]
 pub struct Sitting;
 
-impl_behavior!(Sitting, Sitting);
+impl Behavior for Sitting {
+    const STATE: BehaviorState = BehaviorState::Sitting;
+}
 
 // The robot shouldn't do anything while in unstiff state.
 const UNSTIFF_PRIORITY: Priority = Priority::Critical;

@@ -12,7 +12,9 @@ pub struct Example {
     iter: i32,
 }
 
-impl_behavior!(Example, Example);
+impl Behavior for Example {
+    const STATE: BehaviorState = BehaviorState::Example;
+}
 
 pub struct ExampleBehaviorPlugin;
 impl Plugin for ExampleBehaviorPlugin {

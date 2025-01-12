@@ -8,7 +8,6 @@ use crate::{
         engine::{BehaviorState, CommandsBehaviorExt, Role, Roles},
     },
     core::config::layout::LayoutConfig,
-    impl_roles,
     localization::RobotPose,
     motion::{step_planner::Target, walk::engine::Step},
     vision::ball_detection::classifier::Balls,
@@ -31,7 +30,9 @@ pub enum Striker {
     WalkAlign,
     WalkWithBall,
 }
-impl_roles!(Striker, Striker);
+impl Roles for Striker {
+    const STATE: Role = Role::Striker;
+}
 
 pub fn striker_role(
     mut commands: Commands,

@@ -15,10 +15,7 @@ use crate::{
     vision::ball_detection::classifier::Balls,
 };
 
-use crate::{
-    behavior::engine::{BehaviorState, Role, Roles},
-    impl_roles,
-};
+use crate::behavior::engine::{BehaviorState, Role, Roles};
 
 /// Plugin for the Instinct role
 pub struct InstinctRolePlugin;
@@ -33,7 +30,9 @@ impl Plugin for InstinctRolePlugin {
 /// It's job is to prevent the ball from entering the goal, which it does by staying in the goal area.
 #[derive(Resource)]
 pub struct Instinct;
-impl_roles!(Instinct, Instinct);
+impl Roles for Instinct {
+    const STATE: Role = Role::Instinct;
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn formation_role(
