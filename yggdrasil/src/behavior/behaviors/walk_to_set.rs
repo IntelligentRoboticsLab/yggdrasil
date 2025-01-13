@@ -55,6 +55,7 @@ pub fn walk_to_set(
     mut step_planner: ResMut<StepPlanner>,
     mut walking_engine: ResMut<WalkingEngine>,
     mut nao_manager: ResMut<NaoManager>,
+    role: Res<State<Role>>,
 ) {
     let set_robot_position = layout_config
         .set_positions
@@ -86,7 +87,7 @@ pub fn walk_to_set(
             .is_some_and(|current_target| current_target == &GOAL_KEEPER_PRE_SET_POS)
             && !step_planner.reached_target());
 
-    let is_goalkeeper = Role::by_player_number(player_config.player_number) == Role::Goalkeeper;
+    let is_goalkeeper = role.get() == &Role::Goalkeeper;
 
     if is_goalkeeper && reached_pre_set {
         step_planner.set_absolute_target(GOAL_KEEPER_PRE_SET_POS);

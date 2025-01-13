@@ -10,7 +10,10 @@ use super::{
         WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSetBehaviorPlugin,
     },
     primary_state::{update_primary_state, PrimaryState},
-    roles::{DefenderRolePlugin, GoalkeeperRolePlugin, InstinctRolePlugin, StrikerRolePlugin},
+    roles::{
+        Defender, DefenderRolePlugin, Goalkeeper, GoalkeeperRolePlugin, Instinct,
+        InstinctRolePlugin, Striker, StrikerRolePlugin,
+    },
 };
 
 pub(super) struct BehaviorEnginePlugin;
@@ -90,21 +93,21 @@ pub enum Role {
 impl Role {
     /// Get the default role for each robot based on that robots player number
     #[must_use]
-    pub fn by_player_number(player_number: u8) -> Self {
+    pub fn by_player_number(mut commands: Commands, player_number: u8) {
         // TODO: get the default role for each robot by player number
         match player_number {
-            1 => Self::Goalkeeper,
-            5 => Self::Striker,
-            _ => Self::Defender,
+            1 => commands.set_role(Goalkeeper),
+            5 => commands.set_role(Striker::WalkToBall),
+            _ => commands.set_role(Defender),
         }
     }
 
-    fn assign_role(sees_ball: bool, player_number: u8) -> Self {
+    fn assign_role(mut commands: Commands, sees_ball: bool, player_number: u8) {
         if sees_ball {
-            return Self::Striker;
+            commands.set_role(Striker::WalkToBall)
+        } else {
+            Self::by_player_number(commands, player_number)
         }
-
-        Self::by_player_number(player_number)
     }
 }
 
@@ -129,11 +132,12 @@ fn behavior(
                 .or(top_balls.most_confident_ball().map(|b| b.position));
 
             // Only here should we activate the role deciding behavior
-            commands.set_state(Role::assign_role(
+            Role::assign_role(
+                commands,
                 most_confident_ball.is_some(),
                 player_config.player_number,
-            ));
+            );
         }
-        _ => commands.set_state(Role::Instinct),
+        _ => commands.set_role(Instinct),
     };
 }
