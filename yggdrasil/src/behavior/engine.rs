@@ -92,7 +92,6 @@ pub enum Role {
 
 impl Role {
     /// Get the default role for each robot based on that robots player number
-    #[must_use]
     pub fn by_player_number(mut commands: Commands, player_number: u8) {
         // TODO: get the default role for each robot by player number
         match player_number {
@@ -104,9 +103,9 @@ impl Role {
 
     fn assign_role(mut commands: Commands, sees_ball: bool, player_number: u8) {
         if sees_ball {
-            commands.set_role(Striker::WalkToBall)
+            commands.set_role(Striker::WalkToBall);
         } else {
-            Self::by_player_number(commands, player_number)
+            Self::by_player_number(commands, player_number);
         }
     }
 }
