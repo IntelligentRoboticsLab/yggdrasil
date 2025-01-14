@@ -226,7 +226,7 @@ impl Control {
     }
 }
 
-fn handle_message(message: &RobotMessage, states: Arc<RwLock<ControlStates>>) {
+pub fn handle_message(message: &RobotMessage, states: Arc<RwLock<ControlStates>>) {
     match message {
         RobotMessage::DebugEnabledSystems(enabled_systems) => {
             states

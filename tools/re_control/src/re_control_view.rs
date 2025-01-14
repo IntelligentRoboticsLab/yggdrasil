@@ -1,8 +1,18 @@
-use std::net::{Ipv4Addr, SocketAddrV4};
+use std::{
+    net::{Ipv4Addr, SocketAddrV4},
+    sync::{Arc, RwLock},
+};
 
-use re_control_comms::{protocol::CONTROL_PORT, viewer::{ControlViewer, ControlViewerHandle}};
+use heimdall::CameraPosition;
+use nalgebra::Vector3;
+use re_control_comms::{
+    debug_system::DebugEnabledSystems,
+    protocol::{RobotMessage, CONTROL_PORT},
+    viewer::{ControlViewer, ControlViewerHandle},
+};
 use re_viewer::external::{
-    egui, re_ui,
+    egui,
+    re_ui::{self, Icon},
     re_viewer_context::{
         SystemExecutionOutput, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError,
         ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewSystemExecutionError,
@@ -11,26 +21,66 @@ use re_viewer::external::{
 };
 use rerun::external::re_types::ViewClassIdentifier;
 
-use crate::{
-    control::{CameraState, DebugEnabledSystemsView},
-    ui::debug_systems::debug_enabled_systems_ui,
+use crate::ui::{
+    camera_calibration::camera_calibration_ui,
+    debug_systems::{debug_enabled_systems_ui, DebugEnabledState},
+    resource::{resource_ui, ResourcesState},
+    style::FrameStyleMap,
 };
 
-// #[derive(Default)]
+const CONTROL_PANEL_VIEW: Icon = Icon::new(
+    "../data/icons/robot.png",
+    include_bytes!("../data/icons/robot.png"),
+);
+
+/// The data of the [`ControlViewState`]. This is all data that is available/saved
+/// for the [`ControlView`] (which is the custom [`ViewClass`]).
+#[derive(Default)]
+pub struct ControlViewerData {
+    pub resources_state: ResourcesState,
+    pub debug_enabled_state: DebugEnabledState,
+    pub camera_state: CameraState,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+enum ControlViewerSection {
+    Resources,
+    #[default]
+    DebugEnabledSystems,
+    CameraCalibration,
+}
+
+// The state of the custom `ViewClass`. It consists of:
+// - `ControlViewerHandle`, used for communication between viewer and robot
+// - `ControlViewerData`, which consists of all data of the custom `ViewClass`
 struct ControlViewState {
     handle: ControlViewerHandle,
-    pub debug_enabled_systems_view: DebugEnabledSystemsView,
-    pub camera_state: CameraState,
+    control_view_section: ControlViewerSection,
+    data: Arc<RwLock<ControlViewerData>>,
 }
 
 impl Default for ControlViewState {
     fn default() -> Self {
         let socket_addr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), CONTROL_PORT);
-        let handle = ControlViewer::from(socket_addr).run();
+        let control_viewer = ControlViewer::from(socket_addr);
+
+        let data = Arc::new(RwLock::new(ControlViewerData::default()));
+        let handler_data = Arc::clone(&data);
+
+        // Add a handler for the `ControlViewer` before it runs. This is to
+        // make sure we do not miss any message send at the beginning of a
+        // connection
+        control_viewer
+            .add_handler(Box::new(move |msg: &RobotMessage| {
+                handle_message(msg, Arc::clone(&handler_data))
+            }))
+            .expect("Failed to add handler");
+
+        let handle = control_viewer.run();
         Self {
             handle,
-            debug_enabled_systems_view: Default::default(),
-            camera_state: Default::default(),
+            control_view_section: ControlViewerSection::default(),
+            data,
         }
     }
 }
@@ -58,7 +108,7 @@ impl ViewClass for ControlView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::APPLICATION
+        &CONTROL_PANEL_VIEW
     }
 
     fn help_markdown(&self, _egui_ctx: &re_viewer::external::egui::Context) -> String {
@@ -93,18 +143,48 @@ impl ViewClass for ControlView {
         _system_output: SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<ControlViewState>()?;
-        debug_enabled_systems_ui(ui, state.debug_enabled_systems_view, handle);
+
+        match state.control_view_section {
+            ControlViewerSection::Resources => {
+                // Resource section
+                let style = FrameStyleMap::default();
+                resource_ui(ui, Arc::clone(&state.data), &state.handle, &style);
+            }
+            ControlViewerSection::DebugEnabledSystems => {
+                // Debug enabled/disabled systems section
+                debug_enabled_systems_ui(ui, Arc::clone(&state.data), &state.handle);
+            }
+            ControlViewerSection::CameraCalibration => {
+                // Camera calibration section
+                camera_calibration_ui(ui, Arc::clone(&state.data), &state.handle);
+            }
+        }
+
         Ok(())
     }
 
     fn selection_ui(
         &self,
         _ctx: &ViewerContext<'_>,
-        _ui: &mut egui::Ui,
-        _state: &mut dyn ViewState,
+        ui: &mut egui::Ui,
+        state: &mut dyn ViewState,
         _space_origin: &rerun::EntityPath,
         _view_id: re_viewer::external::re_viewer_context::ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
+        let state = state.downcast_mut::<ControlViewState>()?;
+
+        ui.label("Viewer section selection");
+
+        let selected = &mut state.control_view_section;
+        egui::ComboBox::from_id_salt("control viewer section selection")
+            .selected_text(format!("{:?}", selected))
+            .show_ui(ui, |ui| {
+                ui.selectable_value(selected, ControlViewerSection::Resources, "Resources");
+                ui.selectable_value(selected, ControlViewerSection::DebugEnabledSystems, "DebugEnabledSystems");
+                ui.selectable_value(selected, ControlViewerSection::CameraCalibration, "CameraCalibration");
+            }
+        );
+
         Ok(())
     }
 
@@ -117,5 +197,87 @@ impl ViewClass for ControlView {
         _view_id: re_viewer::external::re_viewer_context::ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         Ok(())
+    }
+}
+
+fn handle_message(message: &RobotMessage, data: Arc<RwLock<ControlViewerData>>) {
+    match message {
+        RobotMessage::DebugEnabledSystems(enabled_systems) => {
+            data.write()
+                .expect("Failed to lock states")
+                .debug_enabled_state
+                .update(DebugEnabledSystems::from(enabled_systems.clone()));
+        }
+        RobotMessage::Resources(_resources) => {
+            tracing::warn!("Got a resource update but is unhandled")
+        }
+        RobotMessage::CameraExtrinsic {
+            camera_position,
+            extrinsic_rotation,
+        } => {
+            let mut data = data.write().expect("Failed to lock states");
+            let camera_config = &mut data.camera_state;
+
+            let camera = match camera_position {
+                CameraPosition::Top => &mut camera_config.config.top,
+                CameraPosition::Bottom => &mut camera_config.config.bottom,
+            };
+
+            camera_config.current_position = *camera_position;
+            camera.extrinsic_rotation.new_state(*extrinsic_rotation);
+        }
+    }
+}
+
+pub struct CameraState {
+    pub current_position: CameraPosition,
+    pub config: CameraConfig,
+}
+
+impl Default for CameraState {
+    fn default() -> Self {
+        Self {
+            current_position: CameraPosition::Top,
+            config: Default::default(),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct CameraConfig {
+    pub top: CameraSettings,
+    pub bottom: CameraSettings,
+}
+
+#[derive(Default)]
+pub struct CameraSettings {
+    pub extrinsic_rotation: State<Vector3<f32>>,
+}
+
+#[derive(Default)]
+pub struct State<T> {
+    current: T,
+    original: T,
+}
+
+impl<T> State<T>
+where
+    T: Clone,
+{
+    pub fn current(&self) -> &T {
+        &self.current
+    }
+
+    pub fn current_mut(&mut self) -> &mut T {
+        &mut self.current
+    }
+
+    pub fn new_state(&mut self, state: T) {
+        self.current = state.clone();
+        self.original = state;
+    }
+
+    pub fn restore_from_original(&mut self) {
+        self.current = self.original.clone();
     }
 }

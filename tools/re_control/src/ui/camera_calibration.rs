@@ -8,10 +8,12 @@ use nalgebra::Vector3;
 use re_control_comms::{protocol::ViewerMessage, viewer::ControlViewerHandle};
 use re_viewer::external::{
     egui,
-    re_ui::{list_item, UiExt},
+    re_ui::UiExt,
 };
 
-use crate::control::ControlStates;
+use crate::re_control_view::ControlViewerData;
+
+use super::view_section;
 
 const DEGREE_SUFFIX: &str = "°";
 const DEGREE_RANGE: RangeInclusive<f32> = -20.0..=20.0;
@@ -19,33 +21,28 @@ const SLIDER_STEP_SIZE: f64 = 0.01;
 
 pub fn camera_calibration_ui(
     ui: &mut egui::Ui,
-    states: Arc<RwLock<ControlStates>>,
+    viewer_data: Arc<RwLock<ControlViewerData>>,
     handle: &ControlViewerHandle,
 ) {
-    list_item::list_item_scope(ui, "Control camera calibration", |ui| {
-        ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-        ui.section_collapsing_header("Camera calibration parameters")
-            .default_open(true)
-            .show(ui, |ui| {
-                camera_extrinsic_rotation_ui(ui, states, handle);
-            })
+    view_section(ui, "Camera calibration".to_string(), |ui| {
+        camera_extrinsic_rotation_ui(ui, viewer_data, handle);
     });
 }
 
 fn camera_extrinsic_rotation_ui(
     ui: &mut egui::Ui,
-    states: Arc<RwLock<ControlStates>>,
+    viewer_data: Arc<RwLock<ControlViewerData>>,
     handle: &ControlViewerHandle,
 ) {
-    let Ok(locked_states) = &mut states.write() else {
-        ui.centered_and_justified(|ui| {
-            ui.warning_label("Not able to access viewer states");
+    let Ok(locked_data) = &mut viewer_data.write() else {
+        ui.vertical_centered_justified(|ui| {
+            ui.warning_label("Not able to access viewer data");
         });
-        tracing::error!("Failed to lock states");
+        tracing::error!("Failed to lock viewer data");
         return;
     };
 
-    let camera_state = &mut locked_states.camera_state;
+    let camera_state = &mut locked_data.camera_state;
     let camera_position = &mut camera_state.current_position;
 
     // Selectable buttons to choose the camera position

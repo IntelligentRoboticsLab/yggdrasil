@@ -2,9 +2,9 @@ use std::net::Ipv4Addr;
 
 use miette::{IntoDiagnostic, Result};
 use re_control_comms::viewer::ControlViewer;
-use re_viewer::{external::eframe, StartupOptions};
+use re_viewer::StartupOptions;
 
-use crate::{control::Control, re_control_view::ControlView};
+use crate::re_control_view::ControlView;
 
 // Rerun can collect analytics if the `analytics` feature is enabled in
 // `Cargo.toml`. This variable is used for the rerun analytics
@@ -35,20 +35,9 @@ impl App {
         )
         .into_diagnostic()?;
 
-        let rerun_native_options = re_viewer::native::eframe_options(None);
-        let native_options = eframe::NativeOptions {
-            viewport: rerun_native_options
-                .viewport
-                .with_app_id("yggdrasil_control"),
-            ..rerun_native_options
-        };
-
-        eframe::run_native(
-            "Rerun",
-            native_options,
+        re_viewer::run_native_app(
+            main_thread_token,
             Box::new(move |cc| {
-                re_viewer::customize_eframe_and_setup_renderer(cc)?;
-
                 let mut app = re_viewer::App::new(
                     main_thread_token,
                     re_viewer::build_info(),
@@ -59,11 +48,12 @@ impl App {
                 );
                 app.add_receiver(rx);
 
-                // Register the view
+                // Register the custom view class
                 app.add_view_class::<ControlView>().unwrap();
 
-                Ok(Box::new(Control::new(app, self.viewer)))
+                Box::new(app)
             }),
+            None,
         )
         .into_diagnostic()?;
 

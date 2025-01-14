@@ -1,40 +1,43 @@
-use std::sync::{Arc, RwLock};
+use std::{collections::HashMap, sync::{Arc, RwLock}, time::Instant};
 
-use crate::control::ControlStates;
 use re_control_comms::{protocol::ViewerMessage, viewer::ControlViewerHandle};
 use re_viewer::external::{
     egui::{self, Frame},
-    re_ui::{list_item, UiExt},
+    re_ui::UiExt,
 };
 use rerun::external::ecolor::Color32;
 
-use super::style::{FrameStyleMap, LAST_UPDATE_COLOR};
+use crate::{re_control_view::ControlViewerData, resource::RobotResources};
+
+use super::{style::{FrameStyleMap, LAST_UPDATE_COLOR}, view_section};
+
+#[derive(Default)]
+pub struct ResourcesState {
+    pub resources: RobotResources,
+    pub last_resource_update: Option<Instant>,
+    pub focused_resources: HashMap<String, bool>,
+}
 
 pub fn resource_ui(
     ui: &mut egui::Ui,
-    states: Arc<RwLock<ControlStates>>,
+    viewer_data: Arc<RwLock<ControlViewerData>>,
     handle: &ControlViewerHandle,
     frame_styles: &FrameStyleMap,
 ) {
-    list_item::list_item_scope(ui, "Control resources", |ui| {
-        ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-        ui.section_collapsing_header("Resources")
-            .default_open(false)
-            .show(ui, |ui| {
-                resource_display_and_manage_ui(ui, states, handle, frame_styles);
-            })
+    view_section(ui, "Resources".to_string(), |ui| {
+        resource_display_and_manage_ui(ui, viewer_data, handle, frame_styles);
     });
 }
 
 fn resource_display_and_manage_ui(
     ui: &mut egui::Ui,
-    states: Arc<RwLock<ControlStates>>,
+    viewer_data: Arc<RwLock<ControlViewerData>>,
     handle: &ControlViewerHandle,
     frame_styles: &FrameStyleMap,
 ) {
     // Shows the last resource update in milliseconds
     ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-        let last_resource_update = resource_update_time_ago(Arc::clone(&states));
+        let last_resource_update = resource_update_time_ago(Arc::clone(&viewer_data));
         ui.label(
             egui::RichText::new(format!("Last updated: {last_resource_update}"))
                 .monospace()
@@ -45,25 +48,25 @@ fn resource_display_and_manage_ui(
     // Sort the names to keep the resources in a fixed order
     let mut resource_names: Vec<_>;
     {
-        let states = states.read().expect("Failed to lock states");
-        resource_names = states.robot_resources.0.keys().cloned().collect();
+        let viewer_data = viewer_data.read().expect("Failed to lock states");
+        resource_names = viewer_data.resources_state.resources.0.keys().cloned().collect();
     }
     resource_names.sort();
 
     if resource_names.is_empty() {
-        ui.centered_and_justified(|ui| {
+        ui.vertical_centered_justified(|ui| {
             ui.warning_label("No resources available");
         });
     }
 
     for name in resource_names {
-        let mut current_states = states.write().expect("Failed to lock states");
-        if let Some(data) = current_states.robot_resources.0.get_mut(&name) {
+        let mut locked_data = viewer_data.write().expect("Failed to lock states");
+        if let Some(resource_data) = locked_data.resources_state.resources.0.get_mut(&name) {
             let followup_action = add_editable_resource(
                 ui,
                 &name,
-                data,
-                Arc::clone(&states),
+                resource_data,
+                Arc::clone(&viewer_data),
                 frame_styles.get_or_default("override_button".to_string()),
             );
             if let Some(action) = followup_action {
@@ -75,14 +78,14 @@ fn resource_display_and_manage_ui(
     }
 }
 
-fn resource_update_time_ago(states: Arc<RwLock<ControlStates>>) -> String {
-    let Ok(locked_states) = states.read() else {
+fn resource_update_time_ago(viewer_data: Arc<RwLock<ControlViewerData>>) -> String {
+    let Ok(locked_data) = viewer_data.read() else {
         tracing::error!("Failed to lock states");
         return "unknown".to_string();
     };
 
-    let Some(time_ago) = locked_states
-        .last_resource_update
+    let Some(time_ago) = locked_data
+        .resources_state.last_resource_update
         .map(|time| time.elapsed().as_millis())
     else {
         return "unknown".to_string();
@@ -95,13 +98,13 @@ fn add_editable_resource(
     ui: &mut egui::Ui,
     resource_name: &String,
     resource_data: &mut String,
-    states: Arc<RwLock<ControlStates>>,
+    viewer_data: Arc<RwLock<ControlViewerData>>,
     button_frame_style: Frame,
 ) -> Option<ViewerMessage> {
     let mut followup_action = None;
 
-    let mut states = states.write().expect("Failed to lock states");
-    let changed_resources = &mut states.focused_resources;
+    let mut locked_data = viewer_data.write().expect("Failed to lock states");
+    let changed_resources = &mut locked_data.resources_state.focused_resources;
 
     ui.vertical(|ui| {
         ui.add_space(5.0);
