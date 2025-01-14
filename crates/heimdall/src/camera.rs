@@ -1,5 +1,6 @@
 use std::{io, path::Path};
 
+use bevy::prelude::Component;
 use bifrost::serialization::{Decode, Encode};
 use linuxvideo::{
     controls::Cid,
@@ -20,7 +21,7 @@ pub enum CameraPosition {
 }
 
 /// Marker trait for a camera location marker type.
-pub trait CameraLocation: Default + Send + Sync + 'static {
+pub trait CameraLocation: Default + Component {
     const POSITION: CameraPosition;
 
     /// Get a rerun entity path under the camera image.
@@ -51,10 +52,10 @@ pub trait CameraLocation: Default + Send + Sync + 'static {
 }
 
 /// Marker type for the top camera.
-#[derive(Default, Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, Eq, PartialEq, Component)]
 pub struct Top;
 /// Marker type for the bottom camera.
-#[derive(Default, Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, Eq, PartialEq, Component)]
 pub struct Bottom;
 
 impl CameraLocation for Top {

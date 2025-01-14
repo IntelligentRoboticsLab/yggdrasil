@@ -579,7 +579,7 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "435a87a52755b8f27fcf321ac4f04b2802e337c8c4872923137471ec39c37532"
 dependencies = [
- "event-listener 5.3.1",
+ "event-listener 5.4.0",
  "event-listener-strategy",
  "futures-core",
  "pin-project-lite",
@@ -672,7 +672,7 @@ version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff6e472cdea888a4bd64f342f09b3f50e1886d32afe8df3d663c01140b811b18"
 dependencies = [
- "event-listener 5.3.1",
+ "event-listener 5.4.0",
  "event-listener-strategy",
  "pin-project-lite",
 ]
@@ -701,7 +701,7 @@ dependencies = [
  "async-task",
  "blocking",
  "cfg-if",
- "event-listener 5.3.1",
+ "event-listener 5.4.0",
  "futures-lite",
  "rustix",
  "tracing",
@@ -2650,17 +2650,6 @@ checksum = "bd0c93bb4b0c6d9b77f4435b0ae98c24d17f1c45b2ff844c6151a07256ca923b"
 
 [[package]]
 name = "displaydoc"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adc2ab4d5a16117f9029e9a6b5e4e79f4c67f6519bc134210d4d4a04ba31f41b"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "displaydoc"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97369cbbc041bc366949bc74d34658d6cda5621039731c6310521892a3a20ae0"
@@ -3231,9 +3220,9 @@ checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
 
 [[package]]
 name = "event-listener"
-version = "5.3.1"
+version = "5.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6032be9bd27023a771701cc49f9f053c751055f71efb2e0ae5c15809093675ba"
+checksum = "3492acde4c3fc54c845eaab3eed8bd00c7a7d881f78bfc801e43a93dec1331ae"
 dependencies = [
  "concurrent-queue",
  "parking",
@@ -3246,7 +3235,7 @@ version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c3e4e0dd3673c1139bf041f3008816d9cf2946bbfac2945c09e523b8d7b05b2"
 dependencies = [
- "event-listener 5.3.1",
+ "event-listener 5.4.0",
  "pin-project-lite",
 ]
 
@@ -4408,7 +4397,7 @@ version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db2fa452206ebee18c4b5c2274dbf1de17008e874b4dc4f0aea9d01ca79e4526"
 dependencies = [
- "displaydoc 0.2.5",
+ "displaydoc",
  "yoke",
  "zerofrom",
  "zerovec",
@@ -4420,7 +4409,7 @@ version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13acbb8371917fc971be86fc8057c41a64b521c184808a698c02acc242dbf637"
 dependencies = [
- "displaydoc 0.2.5",
+ "displaydoc",
  "litemap",
  "tinystr",
  "writeable",
@@ -4433,7 +4422,7 @@ version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01d11ac35de8e40fdeda00d9e1e9d92525f3f9d887cdd7aa81d727596788b54e"
 dependencies = [
- "displaydoc 0.2.5",
+ "displaydoc",
  "icu_locid",
  "icu_locid_transform_data",
  "icu_provider",
@@ -4453,7 +4442,7 @@ version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19ce3e0da2ec68599d193c93d088142efd7f9c5d6fc9b803774855747dc6a84f"
 dependencies = [
- "displaydoc 0.2.5",
+ "displaydoc",
  "icu_collections",
  "icu_normalizer_data",
  "icu_properties",
@@ -4477,7 +4466,7 @@ version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93d6020766cfc6302c15dbbc9c8778c37e62c14427cb7f6e601d849e092aeef5"
 dependencies = [
- "displaydoc 0.2.5",
+ "displaydoc",
  "icu_collections",
  "icu_locid_transform",
  "icu_properties_data",
@@ -4498,7 +4487,7 @@ version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ed421c8a8ef78d3e2dbc98a973be2f3770cb42b606e3ab18d6237c4dfde68d9"
 dependencies = [
- "displaydoc 0.2.5",
+ "displaydoc",
  "icu_locid",
  "icu_provider_macros",
  "stable_deref_trait",
@@ -5017,20 +5006,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
-name = "linreg"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8c6fd2f0b9338b6d298dbcee4b4ec2a6ec2e88dc0a5f6f92d5cecd65afdf445"
-dependencies = [
- "displaydoc 0.1.7",
- "num-traits",
-]
-
-[[package]]
 name = "linux-raw-sys"
-version = "0.4.14"
+version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78b3ae25bc7c8c38cec158d1f2757ee79e9b3740fbc7ccf0e59e4b08d793fa89"
+checksum = "d26c52dbd32dccf2d10cac7725f8eae5296885fb5703b261f7d0a0739ec807ab"
 
 [[package]]
 name = "linuxvideo"
@@ -8640,9 +8619,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.38.42"
+version = "0.38.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f93dc38ecbab2eb790ff964bb77fa94faf256fd3e73285fd7ba0903b76bedb85"
+checksum = "a78891ee6bf2340288408954ac787aa063d8e8817e9f53abb37c695c6d834ef6"
 dependencies = [
  "bitflags 2.6.0",
  "errno",
@@ -9672,7 +9651,7 @@ version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9117f5d4db391c1cf6927e7bea3db74b9a1c1add8f7eda9ffd5364f40f57b82f"
 dependencies = [
- "displaydoc 0.2.5",
+ "displaydoc",
  "zerovec",
 ]
 
@@ -10778,9 +10757,9 @@ dependencies = [
 
 [[package]]
 name = "wide"
-version = "0.7.31"
+version = "0.7.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc0ca27312d1e9218687a4e804cd4b7410bf54125d54d13e5170efbf09066d24"
+checksum = "41b5576b9a81633f3e8df296ce0063042a73507636cbe956c61133dd7034ab22"
 dependencies = [
  "bytemuck",
  "safe_arch",
@@ -11303,9 +11282,9 @@ checksum = "b9cc00251562a284751c9973bace760d86c0276c471b4be569fe6b068ee97a56"
 
 [[package]]
 name = "xml-rs"
-version = "0.8.24"
+version = "0.8.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea8b391c9a790b496184c29f7f93b9ed5b16abb306c05415b68bcc16e4d06432"
+checksum = "c5b940ebc25896e71dd073bad2dbaa2abfe97b0a391415e22ad1326d9c54e3c4"
 
 [[package]]
 name = "xmlwriter"
@@ -11361,7 +11340,6 @@ dependencies = [
  "heimdall",
  "itertools 0.13.0",
  "kira",
- "linreg",
  "lstsq",
  "miette 7.4.0",
  "ml",
@@ -11372,6 +11350,7 @@ dependencies = [
  "odal",
  "ordered-float",
  "pathfinding",
+ "rand",
  "re_control_comms",
  "rerun",
  "rustfft",
@@ -11429,7 +11408,7 @@ dependencies = [
  "async-trait",
  "blocking",
  "enumflags2",
- "event-listener 5.3.1",
+ "event-listener 5.4.0",
  "futures-core",
  "futures-sink",
  "futures-util",
@@ -11467,7 +11446,7 @@ dependencies = [
  "async-trait",
  "blocking",
  "enumflags2",
- "event-listener 5.3.1",
+ "event-listener 5.4.0",
  "futures-core",
  "futures-util",
  "hex",
