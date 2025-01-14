@@ -37,20 +37,24 @@ impl From<SystemToggle> for bool {
 ///   that this system will only run when it is flagged as enabled in the
 ///   [`DebugEnabledSystems`]
 ///
-/// ## Example
-/// ```no_run
+/// # Examples
+///
+/// ```
+/// # use yggdrasil::core::debug::debug_system::{DebugAppExt, SystemToggle};
+/// # use yggdrasil::core::audio::wee_sound::wee_sound_system;
 /// use bevy::prelude::*;
 ///
-/// struct CustomPlugin
+/// struct CustomPlugin;
 ///
 /// impl Plugin for CustomPlugin {
 ///     fn build(&self, app: &mut App) {
 ///         app.add_debug_systems(Update, wee_sound_system, SystemToggle::Enable)
-///         .add_named_debug_systems(
-///             PostUpdate,
-///             visualize_lines::<Top>.run_if(resource_exists_and_changed::<DetectedLines<Top>>),
-///             "Visualize lines",
-///         );
+///             .add_named_debug_systems(
+///                 Update,
+///                 wee_sound_system,
+///                 "Wee the sound",
+///                 SystemToggle::Enable,
+///             );
 ///     }
 /// }
 /// ```
