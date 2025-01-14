@@ -18,6 +18,7 @@ use ransac::{line::LineDetector, Ransac};
 use serde::{Deserialize, Serialize};
 
 use super::{camera::Image, scan_lines::ScanLines};
+use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use crate::{
     core::{
         config::layout::{FieldConfig, LayoutConfig},
@@ -88,13 +89,18 @@ impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
                             .run_if(resource_exists_and_changed::<ScanLines<T>>),
                     )
                         .chain(),
-                    // TODO: these should all be batched over multiple cycles, enabling all of them destroys cycle time
-                    // - needs batching api in the debug module
                     debug_lines::<T>,
                     debug_lines_projected::<T>,
-                    // debug_lines_inliers::<T>,
                     debug_rejected_lines::<T>,
                 ),
+            )
+            // TODO: these debug systems should ideally all be batched over multiple cycles
+            // but that needs a batching api in the debug module
+            .add_named_debug_systems(
+                Update,
+                debug_lines_inliers::<T>,
+                "Visualize line inliers",
+                SystemToggle::Disable,
             );
     }
 }
