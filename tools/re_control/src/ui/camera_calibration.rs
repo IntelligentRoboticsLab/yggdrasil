@@ -11,13 +11,38 @@ use re_viewer::external::{
     re_ui::UiExt,
 };
 
-use crate::re_control_view::ControlViewerData;
+use crate::{re_control_view::ControlViewerData, state::TrackedState};
 
 use super::view_section;
 
 const DEGREE_SUFFIX: &str = "°";
 const DEGREE_RANGE: RangeInclusive<f32> = -20.0..=20.0;
 const SLIDER_STEP_SIZE: f64 = 0.01;
+
+pub struct CameraState {
+    pub current_position: CameraPosition,
+    pub config: CameraConfig,
+}
+
+impl Default for CameraState {
+    fn default() -> Self {
+        Self {
+            current_position: CameraPosition::Top,
+            config: Default::default(),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct CameraConfig {
+    pub top: CameraSettings,
+    pub bottom: CameraSettings,
+}
+
+#[derive(Default)]
+pub struct CameraSettings {
+    pub extrinsic_rotation: TrackedState<Vector3<f32>>,
+}
 
 pub fn camera_calibration_ui(
     ui: &mut egui::Ui,
@@ -79,7 +104,7 @@ fn camera_extrinsic_rotation_ui(
     }
 
     if ui.button("Restore original").clicked() {
-        extrinsic_rotation.restore_from_original();
+        extrinsic_rotation.restore_original();
 
         let msg = ViewerMessage::CameraExtrinsic {
             camera_position: *camera_position,

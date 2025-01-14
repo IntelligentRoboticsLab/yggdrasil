@@ -4,7 +4,6 @@ use std::{
 };
 
 use heimdall::CameraPosition;
-use nalgebra::Vector3;
 use re_control_comms::{
     debug_system::DebugEnabledSystems,
     protocol::{RobotMessage, CONTROL_PORT},
@@ -22,10 +21,9 @@ use re_viewer::external::{
 use rerun::external::re_types::ViewClassIdentifier;
 
 use crate::ui::{
-    camera_calibration::camera_calibration_ui,
+    camera_calibration::{camera_calibration_ui, CameraState},
     debug_systems::{debug_enabled_systems_ui, DebugEnabledState},
     resource::{resource_ui, ResourcesState},
-    style::FrameStyleMap,
 };
 
 const CONTROL_PANEL_VIEW: Icon = Icon::new(
@@ -112,7 +110,11 @@ impl ViewClass for ControlView {
     }
 
     fn help_markdown(&self, _egui_ctx: &re_viewer::external::egui::Context) -> String {
-        "A view to control the robot".to_owned()
+        format!(
+            "# Control View
+
+A view to control the robot",
+        )
     }
 
     fn on_register(
@@ -144,11 +146,11 @@ impl ViewClass for ControlView {
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<ControlViewState>()?;
 
+        // Show different ui based on the chosen view section
         match state.control_view_section {
             ControlViewerSection::Resources => {
                 // Resource section
-                let style = FrameStyleMap::default();
-                resource_ui(ui, Arc::clone(&state.data), &state.handle, &style);
+                resource_ui(ui, Arc::clone(&state.data), &state.handle);
             }
             ControlViewerSection::DebugEnabledSystems => {
                 // Debug enabled/disabled systems section
@@ -180,10 +182,17 @@ impl ViewClass for ControlView {
             .selected_text(format!("{:?}", selected))
             .show_ui(ui, |ui| {
                 ui.selectable_value(selected, ControlViewerSection::Resources, "Resources");
-                ui.selectable_value(selected, ControlViewerSection::DebugEnabledSystems, "DebugEnabledSystems");
-                ui.selectable_value(selected, ControlViewerSection::CameraCalibration, "CameraCalibration");
-            }
-        );
+                ui.selectable_value(
+                    selected,
+                    ControlViewerSection::DebugEnabledSystems,
+                    "DebugEnabledSystems",
+                );
+                ui.selectable_value(
+                    selected,
+                    ControlViewerSection::CameraCalibration,
+                    "CameraCalibration",
+                );
+            });
 
         Ok(())
     }
@@ -204,7 +213,7 @@ fn handle_message(message: &RobotMessage, data: Arc<RwLock<ControlViewerData>>) 
     match message {
         RobotMessage::DebugEnabledSystems(enabled_systems) => {
             data.write()
-                .expect("Failed to lock states")
+                .expect("Failed to lock viewer data")
                 .debug_enabled_state
                 .update(DebugEnabledSystems::from(enabled_systems.clone()));
         }
@@ -215,8 +224,8 @@ fn handle_message(message: &RobotMessage, data: Arc<RwLock<ControlViewerData>>) 
             camera_position,
             extrinsic_rotation,
         } => {
-            let mut data = data.write().expect("Failed to lock states");
-            let camera_config = &mut data.camera_state;
+            let mut locked_data = data.write().expect("Failed to lock viewer data");
+            let camera_config = &mut locked_data.camera_state;
 
             let camera = match camera_position {
                 CameraPosition::Top => &mut camera_config.config.top,
@@ -226,58 +235,5 @@ fn handle_message(message: &RobotMessage, data: Arc<RwLock<ControlViewerData>>) 
             camera_config.current_position = *camera_position;
             camera.extrinsic_rotation.new_state(*extrinsic_rotation);
         }
-    }
-}
-
-pub struct CameraState {
-    pub current_position: CameraPosition,
-    pub config: CameraConfig,
-}
-
-impl Default for CameraState {
-    fn default() -> Self {
-        Self {
-            current_position: CameraPosition::Top,
-            config: Default::default(),
-        }
-    }
-}
-
-#[derive(Default)]
-pub struct CameraConfig {
-    pub top: CameraSettings,
-    pub bottom: CameraSettings,
-}
-
-#[derive(Default)]
-pub struct CameraSettings {
-    pub extrinsic_rotation: State<Vector3<f32>>,
-}
-
-#[derive(Default)]
-pub struct State<T> {
-    current: T,
-    original: T,
-}
-
-impl<T> State<T>
-where
-    T: Clone,
-{
-    pub fn current(&self) -> &T {
-        &self.current
-    }
-
-    pub fn current_mut(&mut self) -> &mut T {
-        &mut self.current
-    }
-
-    pub fn new_state(&mut self, state: T) {
-        self.current = state.clone();
-        self.original = state;
-    }
-
-    pub fn restore_from_original(&mut self) {
-        self.current = self.original.clone();
     }
 }

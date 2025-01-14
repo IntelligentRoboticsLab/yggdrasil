@@ -1,11 +1,6 @@
-// use std::sync::{Arc, RwLock};
-
 use std::sync::{Arc, RwLock};
 
-use re_viewer::external::{
-    egui,
-    re_ui::UiExt,
-};
+use re_viewer::external::{egui, re_ui::UiExt};
 
 use re_control_comms::{
     debug_system::DebugEnabledSystems, protocol::ViewerMessage, viewer::ControlViewerHandle,
@@ -50,7 +45,7 @@ fn debug_enabled_systems_control_ui(
             ui.vertical_centered_justified(|ui| {
                 ui.warning_label("Not able to access viewer data");
             });
-            tracing::error!("Failed to lock states");
+            tracing::error!("Failed to lock viewer data");
             return;
         };
 
