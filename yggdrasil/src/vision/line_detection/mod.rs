@@ -531,14 +531,11 @@ fn debug_lines_inliers<T: CameraLocation>(
             colors.extend(vec![c; p.len()]);
             points.extend(p);
         });
-        let radii = vec![2.0; points.len()];
 
         dbg.log_with_cycle(
             T::make_entity_image_path("lines/inliers"),
             *cycle,
-            &rerun::Points2D::new(points)
-                .with_colors(colors)
-                .with_radii(radii),
+            &rerun::Points2D::new(points).with_colors(colors),
         );
     }
 }
