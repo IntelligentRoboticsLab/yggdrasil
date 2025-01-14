@@ -76,27 +76,30 @@ pub struct LineDetectionPlugin<T: CameraLocation>(PhantomData<T>);
 
 impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.init_config::<LineDetectionConfigs>().add_systems(
-            Update,
-            (
+        app.init_config::<LineDetectionConfigs>()
+            .add_systems(PostStartup, setup_debug::<T>)
+            .add_systems(
+                Update,
                 (
-                    clear_lines::<T>,
-                    handle_line_task::<T>,
-                    detect_lines_system::<T>.run_if(resource_exists_and_changed::<ScanLines<T>>),
-                )
-                    .chain(),
-                // TODO: these should all be batched over multiple cycles, enabling all of them destroys cycle time
-                // - needs batching api in the debug module
-                debug_lines::<T>,
-                debug_lines_projected::<T>,
-                // debug_lines_inliers::<T>,
-                debug_rejected_lines::<T>,
-            ),
-        );
+                    (
+                        clear_lines::<T>,
+                        handle_line_task::<T>,
+                        detect_lines_system::<T>
+                            .run_if(resource_exists_and_changed::<ScanLines<T>>),
+                    )
+                        .chain(),
+                    // TODO: these should all be batched over multiple cycles, enabling all of them destroys cycle time
+                    // - needs batching api in the debug module
+                    debug_lines::<T>,
+                    debug_lines_projected::<T>,
+                    // debug_lines_inliers::<T>,
+                    debug_rejected_lines::<T>,
+                ),
+            );
     }
 }
 
-/// The lines that were detected in the image
+/// The detected field lines in field coordinates
 #[derive(Component, Default)]
 pub struct DetectedLines {
     /// The line equations of the lines that were detected
@@ -418,6 +421,36 @@ fn is_less_bright_and_more_saturated<T: CameraLocation>(
     y1 < y2 && s1 > s2
 }
 
+fn setup_debug<T: CameraLocation>(dbg: DebugContext) {
+    // lines
+    dbg.log_component_batches(
+        T::make_entity_image_path("lines/detected"),
+        true,
+        [&rerun::Color::from_rgb(255, 100, 0) as _],
+    );
+
+    // projected lines
+    dbg.log_component_batches(
+        T::make_entity_path("lines/detected"),
+        true,
+        [&rerun::Color::from_rgb(255, 100, 0) as _],
+    );
+
+    // inliers
+    dbg.log_component_batches(
+        T::make_entity_image_path("lines/inliers"),
+        true,
+        [&rerun::Radius::from(2.0) as _],
+    );
+
+    // rejected lines
+    dbg.log_component_batches(
+        T::make_entity_image_path("lines/rejected"),
+        true,
+        std::iter::empty(),
+    );
+}
+
 fn debug_lines<T: CameraLocation>(
     dbg: DebugContext,
     camera_matrix: Res<CameraMatrix<T>>,
@@ -441,8 +474,7 @@ fn debug_lines<T: CameraLocation>(
                         Some(LineSegment2::new(start, end))
                     })
                     .map(<[(f32, f32); 2]>::from),
-            )
-            .with_colors(vec![(255, 100, 0); lines.segments.len()]),
+            ),
         );
     }
 }
@@ -462,8 +494,7 @@ fn debug_lines_projected<T: CameraLocation>(
                     (point.start.x, point.start.y, 0.0),
                     (point.end.x, point.end.y, 0.0),
                 ]
-            }))
-            .with_colors(vec![(255, 100, 0); lines.segments.len()]),
+            })),
         );
     }
 }
