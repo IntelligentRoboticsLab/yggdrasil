@@ -348,8 +348,7 @@ impl BehaviorEngine {
 #[allow(clippy::type_complexity)]
 pub fn step(
     (mut engine, primary_state): (ResMut<BehaviorEngine>, ResMut<PrimaryState>),
-    robot_info: Res<RobotInfo>,
-    nao_state: Res<NaoState>,
+    (robot_info, nao_state): (Res<RobotInfo>, Res<NaoState>),
     (head_buttons, chest_button, contacts): (Res<HeadButtons>, Res<ChestButton>, Res<Contacts>),
     (player_config, layout_config, yggdrasil_config, behavior_config, game_controller_config): (
         Res<PlayerConfig>,

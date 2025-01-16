@@ -481,7 +481,7 @@ impl NaoManager {
     }
 
     pub fn stiff_sit(&mut self, leg_positions: LegJoints<f32>, priority: Priority) -> &mut Self {
-        let leg_stiffness = LegJoints::fill(0.1);
+        let leg_stiffness = LegJoints::fill(0.3);
         self.set_legs(leg_positions, leg_stiffness, priority)
     }
 
