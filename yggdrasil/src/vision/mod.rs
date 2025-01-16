@@ -5,7 +5,6 @@ pub mod ball_detection;
 pub mod camera;
 pub mod color;
 pub mod field_boundary;
-pub mod line;
 pub mod line_detection;
 pub mod robot_detection;
 pub mod scan_grid;
@@ -22,7 +21,8 @@ impl PluginGroup for VisionPlugins {
             .add(camera::CameraPlugin::<Bottom>::default())
             .add(scan_grid::ScanGridPlugin)
             .add(scan_lines::ScanLinesPlugin)
-            .add(line_detection::LineDetectionPlugin)
+            .add(line_detection::LineDetectionPlugin::<Top>::default())
+            .add(line_detection::LineDetectionPlugin::<Bottom>::default())
             .add(field_boundary::FieldBoundaryPlugin)
             .add(ball_detection::BallDetectionPlugin)
             .add(robot_detection::RobotDetectionPlugin);

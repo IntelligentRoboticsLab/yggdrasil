@@ -9,8 +9,12 @@ version.workspace = true
 [lints]
 workspace = true
 
+[features]
+nalgebra = ["dep:nalgebra"]
+
 [dependencies]
 bevy = { workspace = true, default-features = false }
 bifrost_derive = { path = "bifrost_derive" }
 byteorder = { workspace = true }
+nalgebra = { workspace = true, optional = true }
 thiserror = { workspace = true }

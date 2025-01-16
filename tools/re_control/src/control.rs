@@ -4,23 +4,43 @@ use std::{
     time::Instant,
 };
 
+use heimdall::CameraPosition;
+use nalgebra::Vector3;
 use re_control_comms::{
     debug_system::DebugEnabledSystems,
     protocol::RobotMessage,
     viewer::{ControlViewer, ControlViewerHandle},
 };
+
 use re_viewer::external::{
     eframe,
-    egui::{self, ScrollArea},
-    re_ui::{list_item, UiExt},
+    egui::{self, Align2, ScrollArea, Vec2},
+    re_ui::{Icon, UiExt},
 };
 
 use crate::{
     resource::RobotResources,
     ui::{
-        debug_resources_ui, resource_ui, style::FrameStyleMap, PANEL_TOP_PADDING, SIDE_PANEL_WIDTH,
+        camera_calibration::camera_calibration_ui, debug_systems::debug_enabled_systems_ui,
+        resource::resource_ui, style::FrameStyleMap, PANEL_TOP_PADDING, SIDE_PANEL_WIDTH,
     },
 };
+
+pub const CONTROL_PANEL_VIEW: Icon = Icon::new(
+    "../data/icons/robot.png",
+    include_bytes!("../data/icons/robot.png"),
+);
+
+pub const CONTROL_PANEL_VIEW_OFF: Icon = Icon::new(
+    "../data/icons/robot_off.png",
+    include_bytes!("../data/icons/robot_off.png"),
+);
+
+/// Position of the toggle button when the side bar is visible.
+const SIDE_BAR_TOGGLE_BUTTON_POSITION_VISIBLE: Vec2 = Vec2::new(-10., 5.);
+
+/// Position of the toggle button when the side bar is hidden.
+const SIDE_BAR_TOGGLE_BUTTON_POSITION_HIDDEN: Vec2 = Vec2::new(-251., 4.);
 
 #[derive(Default)]
 pub struct ControlStates {
@@ -28,6 +48,60 @@ pub struct ControlStates {
     pub focused_resources: HashMap<String, bool>,
     pub last_resource_update: Option<Instant>,
     pub debug_enabled_systems_view: DebugEnabledSystemsView,
+    pub camera_state: CameraState,
+}
+
+pub struct CameraState {
+    pub current_position: CameraPosition,
+    pub config: CameraConfig,
+}
+
+impl Default for CameraState {
+    fn default() -> Self {
+        Self {
+            current_position: CameraPosition::Top,
+            config: Default::default(),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct CameraConfig {
+    pub top: CameraSettings,
+    pub bottom: CameraSettings,
+}
+
+#[derive(Default)]
+pub struct CameraSettings {
+    pub extrinsic_rotation: State<Vector3<f32>>,
+}
+
+#[derive(Default)]
+pub struct State<T> {
+    current: T,
+    original: T,
+}
+
+impl<T> State<T>
+where
+    T: Clone,
+{
+    pub fn current(&self) -> &T {
+        &self.current
+    }
+
+    pub fn current_mut(&mut self) -> &mut T {
+        &mut self.current
+    }
+
+    pub fn new_state(&mut self, state: T) {
+        self.current = state.clone();
+        self.original = state;
+    }
+
+    pub fn restore_from_original(&mut self) {
+        self.current = self.original.clone();
+    }
 }
 
 #[derive(Default)]
@@ -50,6 +124,7 @@ pub struct Control {
     states: Arc<RwLock<ControlStates>>,
     handle: ControlViewerHandle,
     frame_styles: FrameStyleMap,
+    pub side_bar_toggled: bool,
 }
 
 impl eframe::App for Control {
@@ -60,13 +135,11 @@ impl eframe::App for Control {
 
     /// Called whenever we need repainting, which could be 60 Hz.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        egui::SidePanel::right("Resource manipulation")
-            .default_width(SIDE_PANEL_WIDTH)
-            .show(ctx, |ui| {
-                ScrollArea::vertical().show(ui, |ui| {
-                    self.ui(ui);
-                });
+        egui::Area::new(egui::Id::new("re_control")).show(ctx, |ui| {
+            ScrollArea::vertical().show(ui, |ui| {
+                self.ui(ui);
             });
+        });
 
         self.app.update(ctx, frame);
     }
@@ -95,48 +168,61 @@ impl Control {
             states: Arc::clone(&states),
             handle,
             frame_styles: FrameStyleMap::default(),
+            side_bar_toggled: true,
         }
     }
 
     fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.add_space(PANEL_TOP_PADDING);
+        self.toggle_button_overlay(ui);
 
-        // Title of the side panel
-        ui.vertical_centered(|ui| {
-            ui.strong("Control panel");
-        });
-        ui.separator();
+        if !self.side_bar_toggled {
+            ui.set_width(30.);
+            ui.shrink_width_to_current();
+            return;
+        }
 
-        ui.horizontal(|ui| {
-            ui.add_space(ui.available_width());
-        });
+        egui::SidePanel::right("control")
+            .default_width(SIDE_PANEL_WIDTH)
+            .show(ui.ctx(), |ui| {
+                ui.add_space(PANEL_TOP_PADDING);
 
-        // Resource section
-        list_item::list_item_scope(ui, "Control resources", |ui| {
-            ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-            ui.section_collapsing_header("Resources")
-                .default_open(true)
-                .show(ui, |ui| {
-                    resource_ui(
-                        ui,
-                        Arc::clone(&self.states),
-                        &self.handle,
-                        &self.frame_styles,
-                    );
-                })
-        });
+                // Title of the side panel
+                ui.vertical_centered(|ui| {
+                    ui.strong("Control panel");
+                });
 
-        // Debug enabled/disabled systems sections
-        list_item::list_item_scope(ui, "Control debug enabled systems", |ui| {
-            ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-            ui.section_collapsing_header("Debug system controls")
-                .default_open(true)
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        debug_resources_ui(ui, Arc::clone(&self.states), &self.handle)
-                    });
-                })
-        });
+                // Resource section
+                resource_ui(
+                    ui,
+                    Arc::clone(&self.states),
+                    &self.handle,
+                    &self.frame_styles,
+                );
+
+                // Debug enabled/disabled systems section
+                debug_enabled_systems_ui(ui, Arc::clone(&self.states), &self.handle);
+
+                // Camera calibration section
+                camera_calibration_ui(ui, Arc::clone(&self.states), &self.handle);
+            });
+    }
+
+    fn toggle_button_overlay(&mut self, ui: &mut egui::Ui) {
+        let (icon, position) = if self.side_bar_toggled {
+            (
+                &CONTROL_PANEL_VIEW_OFF,
+                SIDE_BAR_TOGGLE_BUTTON_POSITION_VISIBLE,
+            )
+        } else {
+            (&CONTROL_PANEL_VIEW, SIDE_BAR_TOGGLE_BUTTON_POSITION_HIDDEN)
+        };
+
+        egui::Area::new("control_panel_toggle_overlay".into())
+            .anchor(Align2::RIGHT_TOP, position)
+            .show(ui.ctx(), |ui| {
+                ui.medium_icon_toggle_button(icon, &mut self.side_bar_toggled)
+                    .on_hover_text("Toggle control panel")
+            });
     }
 }
 
@@ -151,6 +237,22 @@ fn handle_message(message: &RobotMessage, states: Arc<RwLock<ControlStates>>) {
         }
         RobotMessage::Resources(_resources) => {
             tracing::warn!("Got a resource update but is unhandled")
+        }
+        RobotMessage::CameraExtrinsic {
+            camera_position,
+            extrinsic_rotation,
+        } => {
+            let mut states = states.write().expect("Failed to lock states");
+
+            let camera_config = &mut states.camera_state;
+
+            let camera = match camera_position {
+                CameraPosition::Top => &mut camera_config.config.top,
+                CameraPosition::Bottom => &mut camera_config.config.bottom,
+            };
+
+            camera_config.current_position = *camera_position;
+            camera.extrinsic_rotation.new_state(*extrinsic_rotation);
         }
     }
 }

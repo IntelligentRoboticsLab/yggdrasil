@@ -1,6 +1,6 @@
 //! Implementing Encoding and Decoding for primitive types
 //! (u8, u16, u32, u64, i8, i16, i32, i64, f32, f64),
-//! arrays, strings, vectors and the `SPLStandardMessage` struct.
+//! arrays, strings, vectors, hashmaps and the `SPLStandardMessage` struct.
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::{

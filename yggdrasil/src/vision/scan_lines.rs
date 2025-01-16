@@ -1,7 +1,10 @@
 use std::{ops::Deref, sync::Arc};
 
 use crate::{
-    core::debug::{debug_system::DebugAppExt, DebugContext},
+    core::debug::{
+        debug_system::{DebugAppExt, SystemToggle},
+        DebugContext,
+    },
     nao::Cycle,
     prelude::*,
 };
@@ -65,10 +68,13 @@ impl Plugin for ScanLinesPlugin {
             .add_named_debug_systems(
                 PostUpdate,
                 (
-                    visualize_scan_lines::<Top>.run_if(resource_exists::<ScanLines<Top>>),
-                    visualize_scan_lines::<Bottom>.run_if(resource_exists::<ScanLines<Bottom>>),
+                    visualize_scan_lines::<Top>
+                        .run_if(resource_exists_and_changed::<ScanLines<Top>>),
+                    visualize_scan_lines::<Bottom>
+                        .run_if(resource_exists_and_changed::<ScanLines<Bottom>>),
                 ),
                 "Visualize scan lines",
+                SystemToggle::Disable,
             );
     }
 }
@@ -116,6 +122,12 @@ impl<T: CameraLocation> ScanLines<T> {
     #[must_use]
     pub fn vertical(&self) -> &ScanLine {
         &self.vertical
+    }
+
+    pub fn line_spots(&self) -> impl Iterator<Item = Point2<f32>> + use<'_, T> {
+        self.vertical
+            .line_spots()
+            .chain(self.horizontal.line_spots())
     }
 }
 

@@ -19,6 +19,7 @@ static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let main_thread_token = re_viewer::MainThreadToken::i_promise_i_am_on_the_main_thread();
     re_log::setup_logging();
 
     let args = Cli::parse();
@@ -54,7 +55,7 @@ async fn main() -> Result<()> {
     let viewer = ControlViewer::from(socket_addr);
 
     let app = App::new(startup_options, viewer);
-    app.run().await?;
+    app.run(main_thread_token).await?;
 
     Ok(())
 }

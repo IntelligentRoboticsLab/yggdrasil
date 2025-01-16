@@ -20,7 +20,7 @@ Building for Linux is incredibly simple, as it only requires the following depen
 **Ubuntu**
 
 ```bash
-sudo apt-get install cmake libasound2-dev libv4l-dev nasm
+sudo apt-get install cmake libasound2-dev libfontconfig1-dev libssl-dev libv4l-dev nasm
 ```
 
 **Arch**

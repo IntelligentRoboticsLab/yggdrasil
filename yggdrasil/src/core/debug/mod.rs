@@ -68,7 +68,7 @@ fn make_rrd_file_path(storage_path: &Path) -> PathBuf {
     path
 }
 
-fn init_rerun(mut commands: Commands) {
+pub fn init_rerun(mut commands: Commands) {
     #[cfg(feature = "local")]
     let server_address = Some(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED));
 
@@ -215,6 +215,12 @@ impl RerunStream {
         }
     }
 
+    /// Whether the [`RecordingStream`] is enabled
+    #[must_use]
+    pub fn is_enabled(&self) -> bool {
+        self.stream.is_enabled()
+    }
+
     /// Log data to Rerun.
     ///
     /// This is the main entry point for logging data to rerun. It can be used to log anything
@@ -317,4 +323,12 @@ pub struct DebugContext<'w> {
     #[deref]
     rec: Res<'w, RerunStream>,
     _marker: PhantomData<&'w ()>,
+}
+
+impl DebugContext<'_> {
+    /// Get a cloneable reference to the underlying [`RerunStream`] for access outside of systems (e.g. an async context).
+    #[must_use]
+    pub fn stream(&self) -> &RerunStream {
+        &self.rec
+    }
 }

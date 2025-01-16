@@ -107,16 +107,11 @@ quote = "1.0.37"
 rand = "0.8.5"
 rayon = "1.10.0"
 
-# TODO: Once rerun 0.22 is out, we can drop this hack as they updated to wasm-bindgen 0.2.95 in
-# https://github.com/rerun-io/rerun/pull/8183
-re_crash_handler = { git = "https://github.com/oxkitsune/rerun", rev = "b51fb5ed32" }
-re_sdk_comms = { git = "https://github.com/oxkitsune/rerun", rev = "b51fb5ed32", features = [
-  "server",
-] }
-re_smart_channel = { git = "https://github.com/oxkitsune/rerun", rev = "b51fb5ed32" }
-re_viewer = { git = "https://github.com/oxkitsune/rerun", rev = "b51fb5ed32" }
-# rerun uses an older version of wasm-bindgen, so we need to disable the default features
-rerun = { git = "https://github.com/oxkitsune/rerun", rev = "b51fb5ed32", default-features = false, features = [
+re_crash_handler = "0.21.0"
+re_sdk_comms = { version = "0.21.0", features = ["server"] }
+re_smart_channel = "0.21.0"
+re_viewer = "0.21.0"
+rerun = { version = "0.21.0", default-features = false, features = [
   "sdk",
   "server",
   "log",

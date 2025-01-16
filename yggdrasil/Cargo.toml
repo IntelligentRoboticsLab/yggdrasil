@@ -35,15 +35,11 @@ async-std = { workspace = true }
 bevy = { workspace = true, features = ["multi_threaded"] }
 chrono = { workspace = true }
 cpal = { workspace = true }
-derive_more = { workspace = true }
 enum_dispatch = { workspace = true }
-fast-math = { workspace = true }
-fast_image_resize = { workspace = true }
 futures = { workspace = true }
 geo = { workspace = true }
 itertools = { workspace = true }
 kira = { workspace = true }
-linreg = { workspace = true }
 lstsq = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 nalgebra = { workspace = true, features = [
@@ -55,13 +51,12 @@ nidhogg = { workspace = true, features = ["lola", "bevy"] }
 num = { workspace = true }
 ordered-float = { workspace = true }
 pathfinding = { workspace = true }
+rand = { workspace = true }
 rerun = { workspace = true }
 rustfft = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true }
 toml = { workspace = true }
 tracing = { workspace = true }
 tracing-appender = { workspace = true }
