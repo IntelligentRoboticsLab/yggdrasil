@@ -6,7 +6,7 @@ held_duration_threshold = 500
 
 [filter.fsr]
 # Threshold for ground contact detection using average FSR sensor values from both feet.
-ground_contact_threshold = 0.01
+ground_contact_threshold = 0.1
 
 [primary_state]
 # Time duration between chest blinks in ms.

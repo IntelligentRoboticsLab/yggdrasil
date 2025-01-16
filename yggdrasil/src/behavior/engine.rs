@@ -33,7 +33,6 @@ use crate::{
         button::{ChestButton, HeadButtons},
         falling::FallState,
         fsr::Contacts,
-        orientation::RobotOrientation,
     },
     vision::ball_detection::classifier::Balls,
 };
@@ -76,8 +75,6 @@ pub struct Context<'a> {
     pub current_behavior: BehaviorKind,
     // Contains the current state of the robot
     pub nao_state: &'a NaoState,
-    // Contains the orientation of the robot
-    pub robot_orientation: &'a RobotOrientation,
 }
 
 /// Control that is passed into the behavior engine.
@@ -265,7 +262,7 @@ impl BehaviorEngine {
     pub fn transition(&mut self, context: Context, control: &mut Control) {
         if let BehaviorKind::StartUp(_) = self.behavior {
             if control.walking_engine.is_sitting() || context.head_buttons.all_pressed() {
-                self.behavior = BehaviorKind::Sitting(Sitting);
+                self.behavior = BehaviorKind::Sitting(Sitting::default());
             }
             if *context.primary_state == PrimaryState::Initial {
                 self.behavior = BehaviorKind::Stand(Stand);
@@ -275,7 +272,12 @@ impl BehaviorEngine {
 
         // unstiff has the number 1 precedence
         if let PrimaryState::Sitting = context.primary_state {
-            self.behavior = BehaviorKind::Sitting(Sitting);
+            if !matches!(self.behavior, BehaviorKind::Sitting(_)) {
+                self.behavior = BehaviorKind::Sitting(Sitting::default());
+            }
+            // if matches!(context.current_behavior, BehaviorKind::Sitting(_)) {
+            //     self.behavior = BehaviorKind::Sitting(Sitting::default())
+            // }
             return;
         }
 
@@ -323,7 +325,7 @@ impl BehaviorEngine {
         let ball_or_origin = context.ball_position.unwrap_or(Point2::origin());
 
         self.behavior = match context.primary_state {
-            PrimaryState::Sitting => BehaviorKind::Sitting(Sitting),
+            PrimaryState::Sitting => BehaviorKind::Sitting(Sitting::default()),
             PrimaryState::Standby
             | PrimaryState::Penalized
             | PrimaryState::Finished
@@ -348,7 +350,6 @@ pub fn step(
     (mut engine, primary_state): (ResMut<BehaviorEngine>, ResMut<PrimaryState>),
     robot_info: Res<RobotInfo>,
     nao_state: Res<NaoState>,
-    robot_orientation: Res<RobotOrientation>,
     (head_buttons, chest_button, contacts): (Res<HeadButtons>, Res<ChestButton>, Res<Contacts>),
     (player_config, layout_config, yggdrasil_config, behavior_config, game_controller_config): (
         Res<PlayerConfig>,
@@ -395,7 +396,6 @@ pub fn step(
         ball_position: &most_confident_ball,
         current_behavior: engine.behavior.clone(),
         nao_state: &nao_state,
-        robot_orientation: &robot_orientation, // why did I add this? --> only if we want to disable all motors (is_resting)
     };
 
     let mut control = Control {

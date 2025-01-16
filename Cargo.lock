@@ -2010,9 +2010,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.22"
+version = "4.5.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69371e34337c4c984bbe322360c2547210bf632eb2814bbe78a6e87a2935bd2b"
+checksum = "3135e7ec2ef7b10c6ed8950f0f792ed96ee093fa088608f1c76e569722700c84"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -2020,9 +2020,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.22"
+version = "4.5.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e24c1b4099818523236a8ca881d2b45db98dadfb4625cf6608c12069fcbbde1"
+checksum = "30582fc632330df2bd26877bde0c1f4470d57c582bbc070376afcd04d8cb4838"
 dependencies = [
  "anstream",
  "anstyle",
@@ -2044,9 +2044,9 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afb84c814227b90d6895e01398aee0d8033c00e7466aca416fb6a8e0eb19d8a7"
+checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
 name = "clean-path"
@@ -3283,18 +3283,18 @@ checksum = "486f806e73c5707928240ddc295403b1b93c96a02038563881c4a2fd84b81ac4"
 
 [[package]]
 name = "fdeflate"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07c6f4c64c1d33a3111c4466f7365ebdcc37c5bd1ea0d62aae2e3d722aacbedb"
+checksum = "1e6853b52649d4ac5c0bd02320cddc5ba956bdb407c4b75a2c6b75bf51500f8c"
 dependencies = [
  "simd-adler32",
 ]
 
 [[package]]
 name = "ffmpeg-sidecar"
-version = "2.0.3"
+version = "2.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76937595b853d593e85575d87071af9f54f448638f732cc74d2032ce6cd4006c"
+checksum = "c849ce9aca06e9448975b4c6b7e8e3186e9f8131f9b3c9dfcf1ed558ba069632"
 dependencies = [
  "anyhow",
 ]
@@ -3581,9 +3581,9 @@ dependencies = [
 
 [[package]]
 name = "generator"
-version = "0.8.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbb949699c3e4df3a183b1d2142cb24277057055ed23c68ed58894f76c517223"
+checksum = "cc6bd114ceda131d3b1d665eba35788690ad37f5916457286b32ab6fd3c438dd"
 dependencies = [
  "cfg-if",
  "libc",
@@ -5226,8 +5226,8 @@ checksum = "c96aba5aa877601bb3f6dd6a63a969e1f82e60646e81e71b14496995e9853c91"
 
 [[package]]
 name = "nidhogg"
-version = "0.2.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=2c4b00611e9ec94d72d185043619cfda1618476d#2c4b00611e9ec94d72d185043619cfda1618476d"
+version = "0.3.0"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=d2bcd0db63d2a418fec98541158b7b33060fe661#d2bcd0db63d2a418fec98541158b7b33060fe661"
 dependencies = [
  "bevy_ecs",
  "miette",
@@ -5243,7 +5243,7 @@ dependencies = [
 [[package]]
 name = "nidhogg_derive"
 version = "0.1.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=2c4b00611e9ec94d72d185043619cfda1618476d#2c4b00611e9ec94d72d185043619cfda1618476d"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=d2bcd0db63d2a418fec98541158b7b33060fe661#d2bcd0db63d2a418fec98541158b7b33060fe661"
 dependencies = [
  "itertools 0.11.0",
  "proc-macro2",

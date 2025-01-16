@@ -10,7 +10,7 @@ use crate::sensor::low_pass_filter::LowPassFilter;
 use std::fs;
 use std::io::Write;
 
-const TIMEOUT: f32 = 0.00;
+const TIMEOUT: f32 = 0.015;
 // The sensor data ranges between 0.5 and 1.5. Therefore, value X is chosen.
 const OMEGA: f32 = 0.7;
 
