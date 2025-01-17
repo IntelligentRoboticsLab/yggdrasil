@@ -8,7 +8,7 @@ held_duration_threshold = 500
 # Threshold for ground contact detection using average FSR sensor values from both feet.
 ground_contact_threshold = 0.15
 # Timeout for changing the value of the ground contact state, in seconds.
-ground_contact_timeout = 0.005
+ground_contact_timeout = 0.02
 
 [primary_state]
 # Time duration between chest blinks in ms.
