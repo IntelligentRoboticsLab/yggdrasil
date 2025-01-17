@@ -275,9 +275,6 @@ impl BehaviorEngine {
             if !matches!(self.behavior, BehaviorKind::Sitting(_)) {
                 self.behavior = BehaviorKind::Sitting(Sitting::default());
             }
-            // if matches!(context.current_behavior, BehaviorKind::Sitting(_)) {
-            //     self.behavior = BehaviorKind::Sitting(Sitting::default())
-            // }
             return;
         }
 
