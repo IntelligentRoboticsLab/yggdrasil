@@ -1,7 +1,7 @@
 use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, CameraMatrix};
-use nalgebra::{Isometry3, Point2, Vector3};
+use nalgebra::{Isometry3, Point2, Translation3, Vector3};
 
 use crate::{
     core::debug::DebugContext, kinematics::prelude::*, nao::Cycle,
@@ -148,16 +148,11 @@ impl BodyContour {
         };
     }
 
-    fn update_shoulders(
-        &mut self,
-        orientation: &RobotOrientation,
-        kinematics: &Kinematics,
-        matrix: &CameraMatrix<Bottom>,
-    ) {
+    fn update_shoulders(&mut self, orientation: &RobotOrientation, matrix: &CameraMatrix<Bottom>) {
         let (
             (robot_to_left_shoulder_cap_front, robot_to_left_shoulder_cap_back),
             (robot_to_right_shoulder_cap_front, robot_to_right_shoulder_cap_back),
-        ) = robot_to_shoulders(orientation, kinematics);
+        ) = robot_to_shoulders(orientation);
 
         self.left_shoulder_cap_points.front = matrix
             .ground_to_pixel(
@@ -285,15 +280,9 @@ fn update_body_contours(
     orientation: Res<RobotOrientation>,
     kinematics: Res<Kinematics>,
     bottom_camera_matrix: Res<CameraMatrix<Bottom>>,
-    bottom_image: Res<Image<Bottom>>,
-    current_cycle: Res<Cycle>,
 ) {
-    if !bottom_image.is_from_cycle(*current_cycle) {
-        return;
-    }
-
     body_contour.update_chest(&orientation, &kinematics, &bottom_camera_matrix);
-    body_contour.update_shoulders(&orientation, &kinematics, &bottom_camera_matrix);
+    body_contour.update_shoulders(&orientation, &bottom_camera_matrix);
     body_contour.update_thighs(&orientation, &kinematics, &bottom_camera_matrix);
     body_contour.update_tibias(&orientation, &kinematics, &bottom_camera_matrix);
 }
@@ -339,9 +328,14 @@ fn robot_to_chest(
     orientation: &RobotOrientation,
     kinematics: &Kinematics,
 ) -> (Isometry3<f32>, Isometry3<f32>, Isometry3<f32>) {
-    let robot_to_chest_left = kinematics.isometry::<Robot, ChestLeft>().inner;
     let robot_to_chest = kinematics.isometry::<Robot, Chest>().inner;
-    let robot_to_chest_right = kinematics.isometry::<Robot, ChestRight>().inner;
+
+    let robot_to_chest_left = Isometry3::from(Translation3::from(
+        robot_to_chest.translation.vector + -CHEST_TO_CHEST_LEFT,
+    ));
+    let robot_to_chest_right = Isometry3::from(Translation3::from(
+        robot_to_chest.translation.vector + -CHEST_TO_CHEST_RIGHT,
+    ));
 
     (
         orientation.adjust_for_imu(robot_to_chest_left),
@@ -352,19 +346,27 @@ fn robot_to_chest(
 
 fn robot_to_shoulders(
     orientation: &RobotOrientation,
-    kinematics: &Kinematics,
 ) -> (
     (Isometry3<f32>, Isometry3<f32>),
     (Isometry3<f32>, Isometry3<f32>),
 ) {
-    let robot_to_left_shoulder_cap_front =
-        kinematics.isometry::<Robot, LeftShoulderCapFront>().inner;
-    let robot_to_left_shoulder_cap_back = kinematics.isometry::<Robot, LeftShoulderCapBack>().inner;
+    let robot_to_left_shoulder_cap =
+        Isometry3::from(Translation3::from(-ROBOT_TO_LEFT_SHOULDER_CAP));
+    let robot_to_left_shoulder_cap_front = Isometry3::from(Translation3::from(
+        robot_to_left_shoulder_cap.translation.vector + -SHOULDER_CAP_TO_SHOULDER_CAP_FRONT,
+    ));
+    let robot_to_left_shoulder_cap_back = Isometry3::from(Translation3::from(
+        robot_to_left_shoulder_cap.translation.vector + -SHOULDER_CAP_TO_SHOULDER_CAP_BACK,
+    ));
 
-    let robot_to_right_shoulder_cap_front =
-        kinematics.isometry::<Robot, RightShoulderCapFront>().inner;
-    let robot_to_right_shoulder_cap_back =
-        kinematics.isometry::<Robot, RightShoulderCapBack>().inner;
+    let robot_to_right_shoulder_cap =
+        Isometry3::from(Translation3::from(-ROBOT_TO_RIGHT_SHOULDER_CAP));
+    let robot_to_right_shoulder_cap_front = Isometry3::from(Translation3::from(
+        robot_to_right_shoulder_cap.translation.vector + -SHOULDER_CAP_TO_SHOULDER_CAP_FRONT,
+    ));
+    let robot_to_right_shoulder_cap_back = Isometry3::from(Translation3::from(
+        robot_to_right_shoulder_cap.translation.vector + -SHOULDER_CAP_TO_SHOULDER_CAP_BACK,
+    ));
 
     (
         (

@@ -20,10 +20,6 @@ pub struct Kinematics {
     pub neck_to_robot: Isometry3<Neck, Robot>,
     pub torso_to_robot: Isometry3<Torso, Robot>,
     pub chest_to_torso: Isometry3<Chest, Torso>,
-    pub chest_to_chest_left: Isometry3<Chest, ChestLeft>,
-    pub chest_to_chest_right: Isometry3<Chest, ChestRight>,
-    pub chest_to_chest_center_left: Isometry3<Chest, ChestCenterLeft>,
-    pub chest_to_chest_center_right: Isometry3<Chest, ChestCenterRight>,
     pub left_shoulder_to_robot: Isometry3<LeftShoulder, Robot>,
     pub left_shoulder_cap_to_robot: Isometry3<LeftShoulderCap, Robot>,
     pub left_shoulder_cap_front_to_left_shoulder_cap:
@@ -144,26 +140,6 @@ impl Kinematics {
     #[must_use]
     pub fn chest_to_torso() -> Isometry3<Chest, Torso> {
         na::Isometry3::from(TORSO_TO_CHEST).into()
-    }
-
-    #[must_use]
-    pub fn chest_to_chest_left() -> Isometry3<Chest, ChestLeft> {
-        na::Isometry3::from(CHEST_TO_CHEST_LEFT * -1.00).into()
-    }
-
-    #[must_use]
-    pub fn chest_to_chest_right() -> Isometry3<Chest, ChestRight> {
-        na::Isometry3::from(CHEST_TO_CHEST_RIGHT * -1.00).into()
-    }
-
-    #[must_use]
-    pub fn chest_to_chest_center_left() -> Isometry3<Chest, ChestCenterLeft> {
-        na::Isometry3::from(CHEST_TO_CHEST_CENTER_LEFT * -1.00).into()
-    }
-
-    #[must_use]
-    pub fn chest_to_chest_center_right() -> Isometry3<Chest, ChestCenterRight> {
-        na::Isometry3::from(CHEST_TO_CHEST_CENTER_RIGHT * -1.00).into()
     }
 
     #[must_use]
@@ -361,10 +337,6 @@ impl From<&JointArray<f32>> for Kinematics {
             neck_to_robot: Self::neck_to_robot(joints.head_yaw),
             torso_to_robot: Self::torso_to_robot(),
             chest_to_torso: Self::chest_to_torso(),
-            chest_to_chest_left: Self::chest_to_chest_left(),
-            chest_to_chest_right: Self::chest_to_chest_right(),
-            chest_to_chest_center_left: Self::chest_to_chest_center_left(),
-            chest_to_chest_center_right: Self::chest_to_chest_center_right(),
             left_shoulder_to_robot: Self::left_shoulder_to_robot(joints.left_shoulder_pitch),
             left_shoulder_cap_to_robot: Self::left_shoulder_cap_to_robot(),
             left_shoulder_cap_front_to_left_shoulder_cap:
