@@ -21,6 +21,7 @@ pub struct CameraMatrix<T: CameraLocation> {
     pub robot_to_camera: Isometry3<f32>,
     /// The transformation from camera frame to the ground frame.
     pub camera_to_ground: Isometry3<f32>,
+    /// The transformation from the robot to the ground frame.
     pub robot_to_ground: Isometry3<f32>,
     _marker: PhantomData<T>,
 }
