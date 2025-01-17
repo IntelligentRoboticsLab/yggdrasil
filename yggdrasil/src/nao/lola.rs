@@ -90,7 +90,6 @@ pub fn sync_hardware(
     mut robot_state: ResMut<NaoState>,
     update: Res<NaoControlMessage>,
 ) {
-    // println!("-----{:?}\n{:?}", robot_state.position, robot_state.stiffness);
     nao.send_control_msg(update.clone())
         .expect("failed to send control message to LoLA");
 
