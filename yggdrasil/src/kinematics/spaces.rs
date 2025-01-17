@@ -40,9 +40,6 @@ impl_spaces! {
     Chest,
     Robot;
     Shoulder<T>,
-    ShoulderCap<T>,
-    ShoulderCapFront<T>,
-    ShoulderCapBack<T>,
     UpperArm<T>,
     Elbow<T>,
     Forearm<T>,
@@ -57,9 +54,6 @@ impl_spaces! {
 }
 
 pub type LeftShoulder = Shoulder<Left>;
-pub type LeftShoulderCap = ShoulderCap<Left>;
-pub type LeftShoulderCapFront = ShoulderCapFront<Left>;
-pub type LeftShoulderCapBack = ShoulderCapBack<Left>;
 pub type LeftUpperArm = UpperArm<Left>;
 pub type LeftElbow = Elbow<Left>;
 pub type LeftForearm = Forearm<Left>;
@@ -73,9 +67,6 @@ pub type LeftFoot = Foot<Left>;
 pub type LeftSole = Sole<Left>;
 
 pub type RightShoulder = Shoulder<Right>;
-pub type RightShoulderCap = ShoulderCap<Right>;
-pub type RightShoulderCapFront = ShoulderCapFront<Right>;
-pub type RightShoulderCapBack = ShoulderCapBack<Right>;
 pub type RightUpperArm = UpperArm<Right>;
 pub type RightElbow = Elbow<Right>;
 pub type RightForearm = Forearm<Right>;
