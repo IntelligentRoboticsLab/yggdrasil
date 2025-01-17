@@ -336,9 +336,9 @@ fn robot_to_chest(
     ));
 
     (
-        adjust_for_imu(&orientation, robot_to_chest_left),
-        adjust_for_imu(&orientation, robot_to_chest),
-        adjust_for_imu(&orientation, robot_to_chest_right),
+        adjust_for_imu(orientation, robot_to_chest_left),
+        adjust_for_imu(orientation, robot_to_chest),
+        adjust_for_imu(orientation, robot_to_chest_right),
     )
 }
 
@@ -368,12 +368,12 @@ fn robot_to_shoulders(
 
     (
         (
-            adjust_for_imu(&orientation, robot_to_left_shoulder_cap_front),
-            adjust_for_imu(&orientation, robot_to_left_shoulder_cap_back),
+            adjust_for_imu(orientation, robot_to_left_shoulder_cap_front),
+            adjust_for_imu(orientation, robot_to_left_shoulder_cap_back),
         ),
         (
-            adjust_for_imu(&orientation, robot_to_right_shoulder_cap_front),
-            adjust_for_imu(&orientation, robot_to_right_shoulder_cap_back),
+            adjust_for_imu(orientation, robot_to_right_shoulder_cap_front),
+            adjust_for_imu(orientation, robot_to_right_shoulder_cap_back),
         ),
     )
 }
@@ -386,8 +386,8 @@ fn robot_to_thighs(
     let robot_to_right_thigh = kinematics.isometry::<Robot, RightThigh>().inner;
 
     (
-        adjust_for_imu(&orientation, robot_to_left_thigh),
-        adjust_for_imu(&orientation, robot_to_right_thigh),
+        adjust_for_imu(orientation, robot_to_left_thigh),
+        adjust_for_imu(orientation, robot_to_right_thigh),
     )
 }
 
@@ -399,7 +399,7 @@ fn robot_to_tibias(
     let robot_to_right_tibia = kinematics.isometry::<Robot, RightTibia>().inner;
 
     (
-        adjust_for_imu(&orientation, robot_to_left_tibia),
-        adjust_for_imu(&orientation, robot_to_right_tibia),
+        adjust_for_imu(orientation, robot_to_left_tibia),
+        adjust_for_imu(orientation, robot_to_right_tibia),
     )
 }
