@@ -36,8 +36,6 @@ pub const NECK_TO_BOTTOM_CAMERA: Vector3<f32> = Vector3::new(0.05071, 0.0, 0.017
 pub const TORSO_TO_CHEST: Vector3<f32> = Vector3::new(0.10, 0.0, 0.09);
 pub const CHEST_TO_CHEST_LEFT: Vector3<f32> = Vector3::new(0.0, 0.07, 0.0);
 pub const CHEST_TO_CHEST_RIGHT: Vector3<f32> = Vector3::new(0.0, -0.07, 0.0);
-pub const CHEST_TO_CHEST_CENTER_LEFT: Vector3<f32> = Vector3::new(0.0, 0.03, 0.0);
-pub const CHEST_TO_CHEST_CENTER_RIGHT: Vector3<f32> = Vector3::new(0.0, -0.03, 0.0);
 pub const ROBOT_TO_LEFT_SHOULDER_CAP: Vector3<f32> = Vector3::new(-0.02, 0.098, 0.22);
 pub const ROBOT_TO_RIGHT_SHOULDER_CAP: Vector3<f32> = Vector3::new(-0.02, -0.098, 0.22);
 
