@@ -46,7 +46,6 @@ pub fn formation_role(
     top_balls: Res<Balls<Top>>,
     bottom_balls: Res<Balls<Bottom>>,
 ) {
-    println!("Behavior: {state:?}");
     let behavior = state.get();
 
     if state.get() == &BehaviorState::StartUp {
