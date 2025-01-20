@@ -2,6 +2,7 @@ use bevy::app::{PluginGroup, PluginGroupBuilder};
 use heimdall::{Bottom, Top};
 
 pub mod ball_detection;
+pub mod body_contour;
 pub mod camera;
 pub mod color;
 pub mod field_boundary;
@@ -25,10 +26,11 @@ impl PluginGroup for VisionPlugins {
             .add(line_detection::LineDetectionPlugin::<Bottom>::default())
             .add(field_boundary::FieldBoundaryPlugin)
             .add(ball_detection::BallDetectionPlugin)
-            .add(robot_detection::RobotDetectionPlugin);
+            .add(robot_detection::RobotDetectionPlugin)
+            .add(body_contour::BodyContourPlugin);
 
-        // we only update the exposure weights for the top camera, so it cannot be part of
-        // the camera plugin.
+        // we only update the exposure weights for the top camera, so it cannot be part
+        // of the camera plugin.
         #[cfg(not(feature = "local"))]
         let builder = builder.add(camera::exposure_weights::ExposureWeightsPlugin);
 
