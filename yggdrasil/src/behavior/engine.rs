@@ -58,6 +58,7 @@ pub enum BehaviorState {
     WalkToSet,
 }
 
+#[must_use]
 pub fn in_behavior<T: Behavior>(state: Option<Res<State<BehaviorState>>>) -> bool {
     match state {
         Some(current_behavior) => *current_behavior == T::STATE,
@@ -122,6 +123,7 @@ pub trait Roles: Resource {
     const STATE: Role;
 }
 
+#[must_use]
 pub fn in_role<T: Roles>(state: Option<Res<State<Role>>>) -> bool {
     match state {
         Some(current_behavior) => *current_behavior == T::STATE,
