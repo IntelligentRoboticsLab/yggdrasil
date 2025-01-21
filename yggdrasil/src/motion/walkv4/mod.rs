@@ -34,6 +34,8 @@ use crate::{
 use super::walk::WalkingEngineConfig;
 
 mod feet;
+mod gait;
+mod scheduling;
 mod step;
 mod support_foot;
 
