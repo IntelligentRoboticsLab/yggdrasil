@@ -17,7 +17,7 @@ use rand::Rng;
 use ransac::{line::LineDetector, Ransac};
 use serde::{Deserialize, Serialize};
 
-use super::body_contour::BodyContour;
+use super::body_contour::{update_body_contours, BodyContour};
 use super::{camera::Image, scan_lines::ScanLines};
 use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use crate::{
@@ -87,7 +87,8 @@ impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
                         clear_lines::<T>,
                         handle_line_task::<T>,
                         detect_lines_system::<T>
-                            .run_if(resource_exists_and_changed::<ScanLines<T>>),
+                            .run_if(resource_exists_and_changed::<ScanLines<T>>)
+                            .after(update_body_contours),
                     )
                         .chain(),
                     debug_lines::<T>,
