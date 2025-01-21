@@ -5,7 +5,7 @@ use nalgebra::Point2;
 
 use crate::{
     behavior::{
-        behaviors::{Sitting, Stand, StandLookAt, Standup, WalkToSet},
+        behaviors::{CatchFall, Sitting, Stand, StandLookAt, Standup, WalkToSet},
         engine::{in_role, CommandsBehaviorExt},
         primary_state::PrimaryState,
         roles::Striker,
@@ -84,14 +84,14 @@ pub fn formation_role(
                 //     if self.prev_behavior_for_standup.is_none() {
                 //         self.prev_behavior_for_standup = Some(self.behavior.clone());
                 //     }
-                //     self.behavior = BehaviorState::CatchFall(CatchFall);
+                commands.set_behavior(CatchFall);
             }
             return;
         }
         FallState::None => {
             if matches!(behavior, BehaviorState::CatchFall) {
                 // self.behavior = self.prev_behavior_for_standup.take().unwrap();
-                return;
+                // return;
             }
         }
     }
