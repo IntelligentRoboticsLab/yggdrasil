@@ -45,10 +45,11 @@ pub fn formation_role(
     fall_state: Res<FallState>,
     top_balls: Res<Balls<Top>>,
     bottom_balls: Res<Balls<Bottom>>,
+    standup_state: Option<Res<Standup>>,
 ) {
     let behavior = state.get();
 
-    if state.get() == &BehaviorState::StartUp {
+    if behavior == &BehaviorState::StartUp {
         if walking_engine.is_sitting() || head_buttons.all_pressed() {
             commands.set_behavior(Sitting);
         }
@@ -64,12 +65,12 @@ pub fn formation_role(
         return;
     }
 
-    // if BehaviorState::Standup(standup) == self.behavior {
-    //     if standup.completed() {
-    //         self.behavior = self.prev_behavior_for_standup.take().unwrap();
-    //     }
-    //     return;
-    // }
+    if let Some(standup) = standup_state {
+        if matches!(behavior, BehaviorState::Standup) && standup.completed() {
+            commands.set_behavior(Stand);
+        }
+        return;
+    }
 
     // next up, damage prevention and standup motion take precedence
     match fall_state.as_ref() {
