@@ -13,7 +13,7 @@ use crate::{
     core::debug::DebugContext,
     nao::Cycle,
     vision::{
-        body_contour::BodyContour,
+        body_contour::{update_body_contours, BodyContour},
         camera::{init_camera, Image},
         scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLines},
         util::bbox::Bbox,
@@ -57,7 +57,10 @@ impl<T: CameraLocation> Plugin for BallProposalPlugin<T> {
         app.add_systems(Startup, init_ball_proposals::<T>.after(init_camera::<T>))
             .add_systems(
                 Update,
-                (update_ball_proposals::<T>, log_ball_proposals::<T>)
+                (
+                    update_ball_proposals::<T>.after(update_body_contours),
+                    log_ball_proposals::<T>,
+                )
                     .chain()
                     .run_if(resource_exists_and_changed::<ScanLines<T>>),
             );

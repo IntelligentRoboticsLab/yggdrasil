@@ -275,7 +275,7 @@ fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
     );
 }
 
-fn update_body_contours(
+pub fn update_body_contours(
     mut body_contour: ResMut<BodyContour>,
     orientation: Res<RobotOrientation>,
     kinematics: Res<Kinematics>,
