@@ -14,13 +14,13 @@ const VISUALIZE_DOT_INTERVAL: usize = 10;
 
 type ChestPoints = Vec<Point2<f32>>;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct ShoulderCapPoints {
     front: Option<Point2<f32>>,
     back: Option<Point2<f32>>,
 }
 
-#[derive(Default, Resource)]
+#[derive(Default, Resource, Clone)]
 pub struct BodyContour {
     left_shoulder_cap_points: ShoulderCapPoints,
     right_shoulder_cap_points: ShoulderCapPoints,

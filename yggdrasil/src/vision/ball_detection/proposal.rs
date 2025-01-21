@@ -13,6 +13,7 @@ use crate::{
     core::debug::DebugContext,
     nao::Cycle,
     vision::{
+        body_contour::BodyContour,
         camera::{init_camera, Image},
         scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLines},
         util::bbox::Bbox,
@@ -91,12 +92,13 @@ pub fn update_ball_proposals<T: CameraLocation>(
     scan_lines: Res<ScanLines<T>>,
     matrix: Res<CameraMatrix<T>>,
     configs: Res<BallProposalConfigs>,
+    body_contour: Res<BodyContour>,
 ) {
     let config = match T::POSITION {
         CameraPosition::Top => &configs.top,
         CameraPosition::Bottom => &configs.bottom,
     };
-    *ball_proposals = get_ball_proposals(&scan_lines, &matrix, config);
+    *ball_proposals = get_ball_proposals(&scan_lines, &matrix, config, &body_contour);
 
     // TODO: Add this back
     // if let Some(robots) = robots {
@@ -189,6 +191,7 @@ fn get_ball_proposals<T: CameraLocation>(
     scan_lines: &ScanLines<T>,
     matrix: &CameraMatrix<T>,
     config: &BallProposalConfig,
+    body_contour: &BodyContour,
 ) -> BallProposals<T> {
     let h_lines = scan_lines.horizontal();
 
@@ -211,6 +214,10 @@ fn get_ball_proposals<T: CameraLocation>(
 
         // Middle of the white region
         let mid_point = middle.line_spot();
+
+        if body_contour.is_part_of_body(mid_point) {
+            continue;
+        }
 
         // Distance to the ball
         let Ok(distance) = matrix

@@ -17,6 +17,7 @@ use rand::Rng;
 use ransac::{line::LineDetector, Ransac};
 use serde::{Deserialize, Serialize};
 
+use super::body_contour::BodyContour;
 use super::{camera::Image, scan_lines::ScanLines};
 use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use crate::{
@@ -171,6 +172,7 @@ fn detect_lines_system<T: CameraLocation>(
     layout: Res<LayoutConfig>,
     pose: Res<RobotPose>,
     cfg: Res<LineDetectionConfigs>,
+    body_contour: Res<BodyContour>,
 ) {
     // TODO: Current tasks API is not flexible enough for this :)
     // Rewrite soon(tm) ?
@@ -182,6 +184,7 @@ fn detect_lines_system<T: CameraLocation>(
     let cycle = scan_lines.image().cycle();
     let entity = commands.spawn(cycle).id();
     let pool = AsyncComputeTaskPool::get();
+    let body_contour = body_contour.clone();
 
     let handle = pool.spawn({
         let scan_lines = scan_lines.clone();
@@ -189,7 +192,7 @@ fn detect_lines_system<T: CameraLocation>(
         let field = layout.field.clone();
         let pose = pose.clone();
 
-        async move { detect_lines(scan_lines, camera_matrix, field, pose, cfg) }
+        async move { detect_lines(scan_lines, camera_matrix, field, pose, cfg, body_contour) }
     });
 
     commands
@@ -248,8 +251,12 @@ fn detect_lines<T: CameraLocation>(
     field: FieldConfig,
     pose: RobotPose,
     cfg: LineDetectionConfig,
+    body_contour: BodyContour,
 ) -> (Vec<LineCandidate>, Vec<Option<Rejection>>) {
-    let spots = scan_lines.vertical().line_spots();
+    let spots = scan_lines
+        .vertical()
+        .line_spots()
+        .filter(|point| !body_contour.is_part_of_body(*point));
 
     let mut projected_spots = spots
         // project the points to the ground, in the field frame
