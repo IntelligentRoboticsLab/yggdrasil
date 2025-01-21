@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use nalgebra::Point3;
 
 use crate::{
-    behavior::engine::{Behavior, BehaviorState},
+    behavior::engine::{in_behavior, Behavior, BehaviorState},
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},
@@ -19,12 +19,7 @@ pub struct WalkToBehaviorPlugin;
 
 impl Plugin for WalkToBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            walk_to
-                .run_if(in_state(BehaviorState::WalkTo))
-                .run_if(resource_exists::<WalkTo>),
-        );
+        app.add_systems(Update, walk_to.run_if(in_behavior::<WalkTo>));
     }
 }
 

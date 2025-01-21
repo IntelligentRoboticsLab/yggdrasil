@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use nidhogg::types::{color, FillExt, RightEye};
 
 use crate::{
-    behavior2::engine::{Behavior, BehaviorState},
+    behavior::engine::{in_behavior, Behavior, BehaviorState},
     impl_behavior,
     nao::{NaoManager, Priority},
 };
@@ -19,11 +19,7 @@ impl Behavior for Example {
 pub struct ExampleBehaviorPlugin;
 impl Plugin for ExampleBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            example_behavior
-                .run_if(in_state(BehaviorState::Example).run_if(resource_exists::<Example>)),
-        );
+        app.add_systems(Update, example_behavior.run_if(in_behavior::<Example>));
     }
 }
 

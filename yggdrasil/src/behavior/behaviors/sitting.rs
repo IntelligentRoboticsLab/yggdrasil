@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use nidhogg::types::{color, FillExt, RightEye};
 
 use crate::{
-    behavior::engine::{Behavior, BehaviorState},
+    behavior::engine::{in_behavior, Behavior, BehaviorState},
     motion::walk::engine::WalkingEngine,
     nao::{NaoManager, Priority},
 };
@@ -12,7 +12,7 @@ pub struct SittingBehaviorPlugin;
 
 impl Plugin for SittingBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, sitting.run_if(in_state(BehaviorState::Sitting)));
+        app.add_systems(Update, sitting.run_if(in_behavior::<Sitting>));
     }
 }
 

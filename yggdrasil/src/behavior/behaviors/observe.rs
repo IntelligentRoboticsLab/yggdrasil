@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use crate::{
     behavior::{
-        engine::{Behavior, BehaviorState},
+        engine::{in_behavior, Behavior, BehaviorState},
         BehaviorConfig,
     },
     motion::{
@@ -70,12 +70,7 @@ impl Behavior for Observe {
 pub struct ObserveBehaviorPlugin;
 impl Plugin for ObserveBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            observe
-                .run_if(in_state(BehaviorState::Observe))
-                .run_if(resource_exists::<Observe>),
-        );
+        app.add_systems(Update, observe.run_if(in_behavior::<Observe>));
     }
 }
 

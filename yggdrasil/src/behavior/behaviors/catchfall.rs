@@ -1,3 +1,4 @@
+use crate::behavior::engine::in_behavior;
 use bevy::prelude::*;
 
 use crate::{
@@ -28,10 +29,7 @@ impl Behavior for CatchFall {
 pub struct CatchFallBehaviorPlugin;
 impl Plugin for CatchFallBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            catch_fall.run_if(in_state(BehaviorState::CatchFall)),
-        );
+        app.add_systems(Update, catch_fall.run_if(in_behavior::<CatchFall>));
     }
 }
 

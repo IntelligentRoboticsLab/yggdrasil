@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 
 use crate::{
-    behavior::engine::{Behavior, BehaviorState},
+    behavior::engine::{in_behavior, Behavior, BehaviorState},
     motion::walk::engine::WalkingEngine,
     nao::{NaoManager, Priority, RobotInfo},
 };
@@ -12,7 +12,7 @@ pub struct StartUpBehaviorPlugin;
 
 impl Plugin for StartUpBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, startup.run_if(in_state(BehaviorState::StartUp)));
+        app.add_systems(Update, startup.run_if(in_behavior::<StartUp>));
     }
 }
 

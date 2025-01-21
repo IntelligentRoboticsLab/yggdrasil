@@ -6,7 +6,7 @@ use nalgebra::Point2;
 use crate::{
     behavior::{
         behaviors::{Sitting, Stand, StandLookAt, Standup, WalkToSet},
-        engine::CommandsBehaviorExt,
+        engine::{in_role, CommandsBehaviorExt},
         primary_state::PrimaryState,
         roles::Striker,
     },
@@ -22,7 +22,7 @@ pub struct InstinctRolePlugin;
 
 impl Plugin for InstinctRolePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, formation_role.run_if(in_state(Role::Instinct)));
+        app.add_systems(Update, formation_role.run_if(in_role::<Instinct>));
     }
 }
 

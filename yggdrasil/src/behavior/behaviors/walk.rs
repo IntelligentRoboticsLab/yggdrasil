@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
-    behavior::engine::{Behavior, BehaviorState},
+    behavior::engine::{in_behavior, Behavior, BehaviorState},
     localization::RobotPose,
     motion::{
         step_planner::StepPlanner,
@@ -18,11 +18,7 @@ pub struct WalkBehaviorPlugin;
 
 impl Plugin for WalkBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            walk.run_if(in_state(BehaviorState::Walk))
-                .run_if(resource_exists::<Walk>),
-        );
+        app.add_systems(Update, walk.run_if(in_behavior::<Walk>));
     }
 }
 

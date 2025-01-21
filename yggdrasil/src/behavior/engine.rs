@@ -58,6 +58,13 @@ pub enum BehaviorState {
     WalkToSet,
 }
 
+pub fn in_behavior<T: Behavior>(state: Option<Res<State<BehaviorState>>>) -> bool {
+    match state {
+        Some(current_behavior) => *current_behavior == T::STATE,
+        None => panic!("Failed to get the current behavior state"),
+    }
+}
+
 pub trait CommandsBehaviorExt {
     fn set_behavior<T: Behavior>(&mut self, behavior: T);
 
@@ -113,6 +120,13 @@ impl Role {
 // Link each behavior data struct with an enum variant of the Role
 pub trait Roles: Resource {
     const STATE: Role;
+}
+
+pub fn in_role<T: Roles>(state: Option<Res<State<Role>>>) -> bool {
+    match state {
+        Some(current_behavior) => *current_behavior == T::STATE,
+        None => panic!("Failed to get the current role state"),
+    }
 }
 
 fn behavior(

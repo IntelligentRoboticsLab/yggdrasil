@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use nidhogg::types::HeadJoints;
 
 use crate::{
-    behavior::engine::{Behavior, BehaviorState},
+    behavior::engine::{in_behavior, Behavior, BehaviorState},
     motion::walk::engine::WalkingEngine,
     nao::{NaoManager, Priority},
 };
@@ -13,7 +13,7 @@ pub struct StandBehaviorPlugin;
 
 impl Plugin for StandBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, stand.run_if(in_state(BehaviorState::Stand)));
+        app.add_systems(Update, stand.run_if(in_behavior::<Stand>));
     }
 }
 

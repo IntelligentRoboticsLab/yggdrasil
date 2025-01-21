@@ -3,7 +3,7 @@ use nalgebra::{Point2, Point3};
 use std::time::Duration;
 
 use crate::{
-    behavior::engine::{Behavior, BehaviorState},
+    behavior::engine::{in_behavior, Behavior, BehaviorState},
     localization::RobotPose,
     motion::walk::engine::WalkingEngine,
     nao::{NaoManager, Priority},
@@ -23,12 +23,7 @@ impl Behavior for StandLookAt {
 pub struct StandLookAtBehaviorPlugin;
 impl Plugin for StandLookAtBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            stand_look_at
-                .run_if(in_state(BehaviorState::StandLookAt))
-                .run_if(resource_exists::<StandLookAt>),
-        );
+        app.add_systems(Update, stand_look_at.run_if(in_behavior::<StandLookAt>));
     }
 }
 

@@ -5,7 +5,7 @@ use nalgebra::{Point2, Point3};
 use crate::{
     behavior::{
         behaviors::{Observe, Walk, WalkTo},
-        engine::{BehaviorState, CommandsBehaviorExt, Role, Roles},
+        engine::{in_role, BehaviorState, CommandsBehaviorExt, Role, Roles},
     },
     core::config::layout::LayoutConfig,
     localization::RobotPose,
@@ -18,7 +18,7 @@ pub struct StrikerRolePlugin;
 
 impl Plugin for StrikerRolePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, striker_role.run_if(in_state(Role::Striker)));
+        app.add_systems(Update, striker_role.run_if(in_role::<Striker>));
     }
 }
 

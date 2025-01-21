@@ -6,7 +6,7 @@ use nidhogg::types::{FillExt, HeadJoints};
 use nalgebra::{Point2, Point3};
 
 use crate::{
-    behavior::engine::{Behavior, BehaviorState, Role},
+    behavior::engine::{in_behavior, Behavior, BehaviorState, Role},
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
     localization::RobotPose,
     motion::{
@@ -20,12 +20,7 @@ pub struct WalkToSetBehaviorPlugin;
 
 impl Plugin for WalkToSetBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            walk_to_set
-                .run_if(in_state(BehaviorState::WalkToSet))
-                .run_if(resource_exists::<WalkToSet>),
-        );
+        app.add_systems(Update, walk_to_set.run_if(in_behavior::<WalkToSet>));
     }
 }
 
