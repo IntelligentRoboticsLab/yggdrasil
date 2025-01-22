@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 use heimdall::{Bottom, Top};
 
-use crate::{core::config::showtime::PlayerConfig, vision::ball_detection::classifier::Balls};
+use crate::{
+    core::config::showtime::PlayerConfig, sensor::falling::FallState,
+    vision::ball_detection::classifier::Balls,
+};
 
 use super::{
     behaviors::{
@@ -137,9 +140,10 @@ fn behavior(
     primary_state: Res<PrimaryState>,
     top_balls: Res<Balls<Top>>,
     bottom_balls: Res<Balls<Bottom>>,
+    fall_state: Res<FallState>,
 ) {
     match *primary_state {
-        PrimaryState::Playing { .. } => {
+        PrimaryState::Playing { .. } if matches!(fall_state.as_ref(), FallState::None) => {
             // Change this to a system, also in Stiker
             let most_confident_ball = bottom_balls
                 .most_confident_ball()
