@@ -9,7 +9,8 @@ use crate::kinematics::{
 
 use super::{step::Step, Side};
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+/// Position of the left and right foot of the robot, relative to the ground.
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct FootPositions {
     pub left: Pose3<Ground>,
     pub right: Pose3<Ground>,

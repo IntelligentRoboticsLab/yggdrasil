@@ -19,7 +19,8 @@ base_foot_lift = 0.01
 # The multiplier for each component of a step command to adjust the foot lift.
 # These values are multiplied by their respective component of the step command
 # and added to the base foot lift.
-foot_lift_modifier = { forward = 0.01, left = 0.02, turn = 0.02 }
+# TODO: Test effects of turn lift modifier
+foot_lift_modifier = { forward = 0.01, left = 0.02, turn = 0.00 }
 
 # The step size is clipped to this value; in both directions (e.g. range for forward is -max_step_size to max_step_size).
 max_step_size = { forward = 0.08, left = 0.08, turn = 3.14 }
