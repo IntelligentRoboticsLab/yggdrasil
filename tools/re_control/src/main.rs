@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
     let socket_addr = SocketAddrV4::new(args.robot_ip, CONTROL_PORT);
     let viewer = ControlViewer::from(socket_addr);
 
-    let app = App::new(startup_options, viewer);
+    let app = App::new(startup_options);
     app.run(main_thread_token).await?;
 
     Ok(())

@@ -1,7 +1,6 @@
 use std::net::Ipv4Addr;
 
 use miette::{IntoDiagnostic, Result};
-use re_control_comms::viewer::ControlViewer;
 use re_viewer::StartupOptions;
 
 use crate::re_control_view::ControlView;
@@ -12,15 +11,11 @@ const APP_ENV: &str = "Control Wrapper";
 
 pub struct App {
     startup_options: StartupOptions,
-    viewer: ControlViewer,
 }
 
 impl App {
-    pub fn new(startup_options: StartupOptions, viewer: ControlViewer) -> Self {
-        App {
-            startup_options,
-            viewer,
-        }
+    pub fn new(startup_options: StartupOptions) -> Self {
+        App { startup_options }
     }
 
     pub async fn run(self, main_thread_token: re_viewer::MainThreadToken) -> Result<()> {

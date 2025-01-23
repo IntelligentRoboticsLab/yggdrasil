@@ -7030,6 +7030,7 @@ dependencies = [
  "re_sdk_comms",
  "re_viewer",
  "rerun",
+ "sindri",
  "tokio",
  "tracing",
 ]

@@ -120,7 +120,12 @@ impl Run {
                     robot.ip()
                 };
 
-                run_re_control(robot_ip, self.robot_ops.rerun_args.rerun_mem_limit).await?;
+                run_re_control(
+                    robot_ip,
+                    self.robot_ops.rerun_args.rerun_mem_limit,
+                    self.robot_ops.rerun_args.rerun_output,
+                )
+                .await?;
             }
         }
 

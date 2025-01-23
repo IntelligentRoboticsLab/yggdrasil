@@ -7,7 +7,7 @@ use heimdall::CameraPosition;
 use re_control_comms::{
     debug_system::DebugEnabledSystems,
     protocol::{RobotMessage, CONTROL_PORT},
-    viewer::{ControlViewer, ControlViewerHandle},
+    viewer::ControlViewer,
 };
 use re_viewer::external::{
     egui,
@@ -18,12 +18,16 @@ use re_viewer::external::{
         ViewSystemRegistrator, ViewerContext,
     },
 };
-use rerun::external::re_types::ViewClassIdentifier;
+use rerun::external::{ecolor::Color32, re_types::ViewClassIdentifier};
 
-use crate::ui::{
-    camera_calibration::{camera_calibration_ui, CameraState},
-    debug_systems::{debug_enabled_systems_ui, DebugEnabledState},
-    resource::{resource_ui, ResourcesState},
+use crate::{
+    connection::ConnectionState,
+    ui::{
+        camera_calibration::{camera_calibration_ui, CameraState},
+        debug_systems::{debug_enabled_systems_ui, DebugEnabledState},
+        resource::{resource_ui, ResourcesState},
+        selection_ui,
+    },
 };
 
 const CONTROL_PANEL_VIEW: Icon = Icon::new(
@@ -48,18 +52,19 @@ enum ControlViewerSection {
     CameraCalibration,
 }
 
-// The state of the custom `ViewClass`. It consists of:
-// - `ControlViewerHandle`, used for communication between viewer and robot
-// - `ControlViewerData`, which consists of all data of the custom `ViewClass`
-struct ControlViewState {
-    handle: ControlViewerHandle,
+/// The state of the custom `ViewClass`. It consists of:
+/// - connection: `ControlViewerHandle`, used for communication between viewer and robot
+/// - data: `ControlViewerData`, which is the data from the connected robot
+pub struct ControlViewState {
+    pub connection: ConnectionState,
     control_view_section: ControlViewerSection,
-    data: Arc<RwLock<ControlViewerData>>,
+    pub data: Arc<RwLock<ControlViewerData>>,
 }
 
 impl Default for ControlViewState {
     fn default() -> Self {
-        let socket_addr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), CONTROL_PORT);
+        let ip_addr = Ipv4Addr::LOCALHOST;
+        let socket_addr = SocketAddrV4::new(ip_addr, CONTROL_PORT);
         let control_viewer = ControlViewer::from(socket_addr);
 
         let data = Arc::new(RwLock::new(ControlViewerData::default()));
@@ -75,8 +80,9 @@ impl Default for ControlViewState {
             .expect("Failed to add handler");
 
         let handle = control_viewer.run();
+
         Self {
-            handle,
+            connection: ConnectionState::from_handle(handle),
             control_view_section: ControlViewerSection::default(),
             data,
         }
@@ -110,11 +116,10 @@ impl ViewClass for ControlView {
     }
 
     fn help_markdown(&self, _egui_ctx: &re_viewer::external::egui::Context) -> String {
-        format!(
-            "# Control View
+        "# Control View
 
-A view to control the robot",
-        )
+A view to control the robot"
+            .to_string()
     }
 
     fn on_register(
@@ -146,19 +151,21 @@ A view to control the robot",
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<ControlViewState>()?;
 
+        let handle = &state.connection.handle;
+
         // Show different ui based on the chosen view section
         match state.control_view_section {
             ControlViewerSection::Resources => {
                 // Resource section
-                resource_ui(ui, Arc::clone(&state.data), &state.handle);
+                resource_ui(ui, Arc::clone(&state.data), handle);
             }
             ControlViewerSection::DebugEnabledSystems => {
                 // Debug enabled/disabled systems section
-                debug_enabled_systems_ui(ui, Arc::clone(&state.data), &state.handle);
+                debug_enabled_systems_ui(ui, Arc::clone(&state.data), handle);
             }
             ControlViewerSection::CameraCalibration => {
                 // Camera calibration section
-                camera_calibration_ui(ui, Arc::clone(&state.data), &state.handle);
+                camera_calibration_ui(ui, Arc::clone(&state.data), handle);
             }
         }
 
@@ -175,7 +182,21 @@ A view to control the robot",
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<ControlViewState>()?;
 
-        ui.label("Viewer section selection");
+        ui.add_space(5.0);
+        ui.label(
+            egui::RichText::new("Connection")
+                .color(Color32::WHITE)
+                .size(16.0),
+        );
+        selection_ui::re_control_selection_ui(ui, state);
+
+        ui.separator();
+
+        ui.label(
+            egui::RichText::new("Viewer section selection")
+                .color(Color32::WHITE)
+                .size(16.0),
+        );
 
         let selected = &mut state.control_view_section;
         egui::ComboBox::from_id_salt("control viewer section selection")
@@ -200,16 +221,36 @@ A view to control the robot",
     fn extra_title_bar_ui(
         &self,
         _ctx: &ViewerContext<'_>,
-        _ui: &mut egui::Ui,
-        _state: &mut dyn ViewState,
+        ui: &mut egui::Ui,
+        state: &mut dyn ViewState,
         _space_origin: &rerun::EntityPath,
         _view_id: re_viewer::external::re_viewer_context::ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
+        let state = state.downcast_mut::<ControlViewState>()?;
+
+        let robot_connection_ip_addr = *state.connection.handle.addr().ip();
+        let ip_addr_last_oct = robot_connection_ip_addr.octets()[3];
+
+        // Find a possible corresponding name based on the last octet of the robot ip address
+        let robot_name = if let Some(robot_config) = state
+            .connection
+            .possible_robot_connections
+            .iter()
+            .find(|config| config.number == ip_addr_last_oct)
+        {
+            format!("{} - ", robot_config.name)
+        } else {
+            "".to_string()
+        };
+
+        // Show the ip associated with the socket of the `ControlViewer`
+        ui.label(format!("{}{}", robot_name, robot_connection_ip_addr));
+
         Ok(())
     }
 }
 
-fn handle_message(message: &RobotMessage, data: Arc<RwLock<ControlViewerData>>) {
+pub fn handle_message(message: &RobotMessage, data: Arc<RwLock<ControlViewerData>>) {
     match message {
         RobotMessage::DebugEnabledSystems(enabled_systems) => {
             data.write()
