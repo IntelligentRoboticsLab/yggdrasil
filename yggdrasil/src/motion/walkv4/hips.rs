@@ -13,6 +13,10 @@ pub(super) struct HipHeightPlugin;
 
 impl Plugin for HipHeightPlugin {
     fn build(&self, app: &mut App) {
+        app.insert_resource(HipHeight {
+            current: 0f32,
+            requested: 0f32,
+        });
         app.add_systems(PostStartup, init_hip_height.in_set(MotionSet::StepPlanning));
         app.add_systems(Update, update_hip_height.in_set(MotionSet::StepPlanning));
     }
@@ -61,6 +65,7 @@ impl HipHeight {
 
 fn init_hip_height(mut commands: Commands, kinematics: Res<Kinematics>) {
     let hip_height = kinematics.left_hip_height();
+    info!(?hip_height, "INITIAL HIP HEIGHT");
     commands.insert_resource(HipHeight {
         current: hip_height,
         requested: hip_height,
@@ -76,6 +81,8 @@ fn update_hip_height(mut hip_height: ResMut<HipHeight>, cycle_time: Res<CycleTim
     } else {
         // Otherwise, perform exponential interpolation
         let t = 1.0 - (-HEIGHT_ADJUSTMENT_SMOOTHING * cycle_time.duration.as_secs_f32()).exp();
-        hip_height.current += difference * t;
+        hip_height.current = hip_height.current + difference * t;
     }
+
+    info!(?hip_height.current, ?hip_height.requested, "hip_height")
 }

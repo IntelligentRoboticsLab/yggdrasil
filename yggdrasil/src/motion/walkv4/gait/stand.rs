@@ -33,5 +33,5 @@ fn request_sit(config: Res<WalkingEngineConfig>, mut hip_height: ResMut<HipHeigh
 
 fn generate_foot_positions(mut target: ResMut<TargetFootPositions>) {
     // always set the foot offsets to 0,0,0.
-    target.apply_gait(FootPositions::default());
+    **target = FootPositions::default();
 }
