@@ -13,10 +13,16 @@ use crate::{
 use super::{step::Step, Side};
 
 /// Position of the left and right foot of the robot, relative to the ground.
-#[derive(Default, Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FootPositions {
     pub left: Pose3<Ground>,
     pub right: Pose3<Ground>,
+}
+
+impl Default for FootPositions {
+    fn default() -> Self {
+        Self::from_target(&Step::default())
+    }
 }
 
 impl FootPositions {
