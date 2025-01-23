@@ -60,7 +60,7 @@ impl HipHeight {
 
     /// Request a specific hip height.
     ///
-    /// This will be propogated automatically by the [`HipHeightPlugin`].
+    /// This will be propagated automatically by the [`HipHeightPlugin`].
     pub fn request(&mut self, hip_height: f32) {
         self.requested = hip_height;
     }
