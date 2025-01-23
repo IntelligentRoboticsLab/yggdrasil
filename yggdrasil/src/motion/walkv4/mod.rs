@@ -14,7 +14,7 @@ use crate::{
 };
 
 mod balancing;
-mod config;
+pub mod config;
 mod feet;
 mod gait;
 pub mod hips;
@@ -69,6 +69,20 @@ impl Side {
 /// Resource containing the current swing foot of the walking engine.
 #[derive(Resource, Clone, Copy, Debug, Default, Deref, DerefMut)]
 pub struct SwingFoot(Side);
+
+impl SwingFoot {
+    /// Get the side of the support foot.
+    #[must_use]
+    pub fn support(&self) -> Side {
+        self.opposite()
+    }
+
+    /// Get the side of the swing foot.
+    #[must_use]
+    pub fn swing(&self) -> Side {
+        self.0
+    }
+}
 
 /// Resource containing the currently requested [`FootPositions`], and the balance adjustment.
 #[derive(Debug, Default, Clone, Resource, Deref, DerefMut)]

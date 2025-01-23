@@ -1,12 +1,10 @@
 pub mod engine;
 pub mod smoothing;
-use std::time::Duration;
 
+use self::engine::{FootOffsets, Side, WalkState, WalkingEngine};
 use crate::{
-    core::config::ConfigExt,
     kinematics::Kinematics,
     nao::{CycleTime, NaoManager, Priority},
-    prelude::*,
     sensor::imu::IMUValues,
 };
 use bevy::prelude::*;
@@ -17,30 +15,8 @@ use nidhogg::{
     },
     NaoState,
 };
-use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationMilliSeconds};
 
-use self::engine::{FootOffsets, Side, Step, WalkState, WalkingEngine};
-
-#[derive(Debug, Default, Clone, Resource)]
-pub struct SwingFoot {
-    side: Side,
-}
-
-impl SwingFoot {
-    #[must_use]
-    pub fn support(&self) -> Side {
-        match self.side {
-            Side::Left => Side::Right,
-            Side::Right => Side::Left,
-        }
-    }
-
-    #[must_use]
-    pub fn swing(&self) -> Side {
-        self.side
-    }
-}
+use super::walkv4::config::WalkingEngineConfig;
 
 #[derive(Event, Debug, Default, Clone)]
 pub struct SwingFootSwitchedEvent(pub Side);
@@ -49,11 +25,6 @@ pub struct WalkingEnginePlugin;
 
 impl Plugin for WalkingEnginePlugin {
     fn build(&self, app: &mut App) {
-        app.init_config::<WalkingEngineConfig>()
-            .init_resource::<SwingFoot>()
-            .add_event::<SwingFootSwitchedEvent>();
-
-        app.add_systems(PostStartup, init_walking_engine);
         // app.add_systems(PostUpdate, (run_walking_engine, update_swing_side).chain());
     }
 }
@@ -176,8 +147,4 @@ fn run_walking_engine(
     nao_manager
         .set_legs(leg_positions, leg_stiffness, Priority::Medium)
         .set_arms(arm_positions, arm_stiffness, Priority::Medium);
-}
-
-fn update_swing_side(walking_engine: Res<WalkingEngine>, mut swing_foot: ResMut<SwingFoot>) {
-    swing_foot.side = walking_engine.swing_foot;
 }

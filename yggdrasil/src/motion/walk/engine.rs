@@ -6,11 +6,12 @@ use crate::{
         spaces::{LeftAnkle, LeftHip},
         FootOffset, Kinematics,
     },
+    motion::walkv4::config::WalkingEngineConfig,
     sensor::low_pass_filter::LowPassFilter,
 };
 use std::{ops::Neg, time::Duration};
 
-use super::{smoothing, WalkingEngineConfig};
+use super::smoothing;
 
 const FILTERED_GYRO_OMEGA: f32 = 0.115;
 
@@ -210,14 +211,14 @@ impl WalkingEngine {
                 let next_swing_foot = self.swing_foot.next();
 
                 // TODO: step duration increase?
-                self.current_step = step.clamped(self.config.max_step_size);
+                // self.current_step = step.clamped(self.config.max_step_size);
                 self.next_foot_switch = config.base_step_period;
 
                 self.swing_foot = next_swing_foot;
                 self.current_step = step.clamp_anatomic(self.swing_foot, 0.1);
-                self.max_swing_foot_lift = config.base_foot_lift
-                    + (step.forward.abs() * config.foot_lift_modifier.forward)
-                    + (step.left.abs() * config.foot_lift_modifier.left);
+                // self.max_swing_foot_lift = config.base_foot_lift
+                //     + (step.forward.abs() * config.foot_lift_modifier.forward)
+                //     + (step.left.abs() * config.foot_lift_modifier.left);
             }
             WalkState::Stopping => {
                 self.current_step = Step::default();
