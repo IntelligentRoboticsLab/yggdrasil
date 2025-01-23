@@ -1,10 +1,13 @@
 use nalgebra::{Isometry3, Translation3, UnitQuaternion, Vector3};
 use spatial::types::Pose3;
 
-use crate::kinematics::{
-    prelude::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS},
-    spaces::{Ground, LeftSole, RightSole, Robot},
-    Kinematics,
+use crate::{
+    kinematics::{
+        prelude::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS},
+        spaces::{Ground, LeftSole, RightSole, Robot},
+        FootOffset, Kinematics,
+    },
+    motion::walk::engine::FootOffsets,
 };
 
 use super::{step::Step, Side};
@@ -76,5 +79,28 @@ impl FootPositions {
         };
 
         Self { left, right }
+    }
+
+    // TODO: Re-implement the turning
+    pub fn to_offsets(&self, hip_height: f32) -> FootOffsets {
+        let left = FootOffset {
+            forward: self.left.translation.x,
+            left: self.left.translation.y - ROBOT_TO_LEFT_PELVIS.y,
+            turn: 0.,
+            lift: self.left.translation.z,
+            hip_height,
+            ..Default::default()
+        };
+
+        let right = FootOffset {
+            forward: self.right.translation.x,
+            left: self.right.translation.y - ROBOT_TO_RIGHT_PELVIS.y,
+            turn: 0.,
+            lift: self.right.translation.z,
+            hip_height,
+            ..Default::default()
+        };
+
+        FootOffsets { left, right }
     }
 }

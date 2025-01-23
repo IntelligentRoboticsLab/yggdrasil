@@ -3,7 +3,7 @@ base_step_period = 250
 
 # The stiffness value used for the leg joints, higher means the robot's joints will
 # wear out faster, but the robot will be more stable.
-leg_stiffness = 0.8
+leg_stiffness = 0.4
 
 # The stiffness value used for the arm joints, higher means the robot's joints will
 # wear out faster, but the robot will be more stable.

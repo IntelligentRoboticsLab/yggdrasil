@@ -1,15 +1,29 @@
+use balancing::BalanceAdjustment;
 use bevy::prelude::*;
 use feet::FootPositions;
-use nidhogg::types::{LeftLegJoints, RightLegJoints};
+use hips::HipHeight;
+use nidhogg::types::{FillExt, LeftLegJoints, LegJoints, RightLegJoints};
+use scheduling::{MotionSet, MotionState};
+
+use crate::{
+    kinematics,
+    nao::{NaoManager, Priority},
+    sensor::button::{ChestButton, HeadButtons},
+};
+
+use super::walk::WalkingEngineConfig;
 
 mod balancing;
 mod feet;
 mod gait;
 mod hips;
-mod mod_walk;
 mod scheduling;
 mod step;
 mod support_foot;
+
+// TODO: dynamically set this
+/// The offset of the torso w.r.t. the hips.
+pub const TORSO_OFFSET: f32 = 0.025;
 
 pub struct Walkv4EnginePlugin;
 
@@ -19,9 +33,18 @@ impl Plugin for Walkv4EnginePlugin {
         app.init_resource::<TargetFootPositions>();
         app.add_plugins((
             scheduling::MotionSchedulePlugin,
+            hips::HipHeightPlugin,
             gait::GaitPlugins,
             balancing::BalancingPlugin,
         ));
+
+        app.add_systems(
+            Update,
+            (
+                switch_state.in_set(MotionSet::StepPlanning),
+                finalize.in_set(MotionSet::Finalize),
+            ),
+        );
     }
 }
 
@@ -47,45 +70,64 @@ impl Side {
 pub struct SwingFoot(Side);
 
 /// Resource containing the currently requested [`FootPositions`], and the balance adjustment.
-#[derive(Debug, Default, Clone, Resource)]
-pub struct TargetFootPositions {
-    foot_positions: FootPositions,
-    balance_adjustment: f32,
-}
+#[derive(Debug, Default, Clone, Resource, Deref, DerefMut)]
+pub struct TargetFootPositions(FootPositions);
 
 impl TargetFootPositions {
-    /// Apply the [`FootPositions`] from the gait generator.
-    pub fn apply_gait(&mut self, foot_positions: FootPositions) {
-        self.foot_positions = foot_positions;
+    /// Compute the leg angles for the target foot positions.
+    pub fn leg_angles(
+        &self,
+        hip_height: f32,
+        torso_offset: f32,
+    ) -> (LeftLegJoints<f32>, RightLegJoints<f32>) {
+        let foot_offsets = self.to_offsets(hip_height);
+        // info!(?foot_offsets, "target foot offsets");
+        kinematics::inverse::leg_angles(&foot_offsets.left, &foot_offsets.right, torso_offset)
+    }
+}
+
+fn switch_state(
+    current_state: Res<State<MotionState>>,
+    mut next_state: ResMut<NextState<MotionState>>,
+    chest_button: Res<ChestButton>,
+    head_buttons: Res<HeadButtons>,
+) {
+    info!(?current_state, "\n\n\ncurrent state");
+    let chest_tapped = chest_button.state.is_tapped();
+    let head_tapped = head_buttons.all_pressed();
+
+    if chest_tapped {
+        if *current_state == MotionState::Sitting {
+            next_state.set(MotionState::Standing);
+        } else if *current_state == MotionState::Standing {
+            next_state.set(MotionState::Walking);
+        }
     }
 
-    /// Apply the balance adjustment value to the current [`TargetFootPositions`].
-    pub fn apply_balance_adjustment(&mut self, balance_adjustment: f32) {
-        self.balance_adjustment = balance_adjustment;
+    if head_tapped {
+        next_state.set(MotionState::Sitting);
     }
+}
 
-    pub fn leg_angles(&self) -> (LeftLegJoints<f32>, RightLegJoints<f32>) {
-        let FootPositions { left, right } = self.foot_positions;
+fn finalize(
+    mut nao: ResMut<NaoManager>,
+    config: Res<WalkingEngineConfig>,
+    hip_height: Res<HipHeight>,
+    target_foot_positions: Res<TargetFootPositions>,
+    balance_adjustment: Res<BalanceAdjustment>,
+) {
+    let (mut left_leg, mut right_leg) =
+        target_foot_positions.leg_angles(hip_height.current(), TORSO_OFFSET);
+    balance_adjustment.apply(&mut left_leg, &mut right_leg);
 
-        let left_foot_offset = FootOffset {
-            forward: left.translation.x,
-            left: left.translation.y - ROBOT_TO_LEFT_PELVIS.y,
-            turn: 0.,
-            lift: left_lift,
-            hip_height,
-            ..Default::default()
-        };
+    let leg_positions = LegJoints::builder()
+        .left_leg(left_leg)
+        .right_leg(right_leg)
+        .build();
+    let leg_stiffness = LegJoints::builder()
+        .left_leg(LeftLegJoints::fill(config.leg_stiffness))
+        .right_leg(RightLegJoints::fill(config.leg_stiffness))
+        .build();
 
-        let right_foot_offset = FootOffset {
-            forward: right.translation.x,
-            left: right.translation.y - ROBOT_TO_RIGHT_PELVIS.y,
-            turn: 0.,
-            lift: right_lift,
-            hip_height,
-            ..Default::default()
-        };
-
-        let (mut left, mut right) =
-            kinematics::inverse::leg_angles(&left_foot_offset, &right_foot_offset, TORSO_OFFSET);
-    }
+    nao.set_legs(leg_positions, leg_stiffness, Priority::Medium);
 }

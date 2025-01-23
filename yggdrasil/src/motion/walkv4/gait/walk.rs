@@ -11,6 +11,7 @@ use crate::{
     },
     motion::{
         walk::{
+            engine::FootOffsets,
             smoothing::{parabolic_return, parabolic_step},
             WalkingEngineConfig,
         },
@@ -18,16 +19,12 @@ use crate::{
             feet::FootPositions,
             scheduling::{MotionSet, MotionState},
             step::Step,
-            Side, SwingFoot, TargetFootPositions,
+            Side, SwingFoot, TargetFootPositions, TORSO_OFFSET,
         },
     },
     nao::CycleTime,
     sensor::low_pass_filter::LowPassFilter,
 };
-
-// TODO: dynamically set this
-/// The offset of the torso w.r.t. the hips.
-const TORSO_OFFSET: f32 = 0.025;
 
 pub(super) struct WalkGaitPlugin;
 
@@ -107,8 +104,8 @@ fn check_foot_switched(
 
 fn generate_foot_positions(
     mut state: ResMut<WalkState>,
+    mut target_positions: ResMut<TargetFootPositions>,
     swing_foot: Res<SwingFoot>,
-    mut target: ResMut<TargetFootPositions>,
     cycle_time: Res<CycleTime>,
     config: Res<WalkingEngineConfig>,
 ) {
@@ -133,8 +130,8 @@ fn generate_foot_positions(
         Side::Right => (linear, parabolic),
     };
 
-    let left = state.start.left.lerp_slerp(&target.left.inner, left_t);
-    let right = state.start.right.lerp_slerp(&target.right.inner, right_t);
+    let mut left = state.start.left.lerp_slerp(&target.left.inner, left_t);
+    let mut right = state.start.right.lerp_slerp(&target.right.inner, right_t);
 
     let swing_lift = parabolic_return(linear) * compute_step_apex(&config, &step);
     let (left_lift, right_lift) = match &step.swing_foot {
@@ -142,29 +139,13 @@ fn generate_foot_positions(
         Side::Right => (0., swing_lift),
     };
 
-    let left_foot_offset = FootOffset {
-        forward: left.translation.x,
-        left: left.translation.y - ROBOT_TO_LEFT_PELVIS.y,
-        turn: 0.,
-        lift: left_lift,
-        hip_height,
-        ..Default::default()
+    left.translation.z = left_lift;
+    right.translation.z = right_lift;
+
+    **target_positions = FootPositions {
+        left: left.into(),
+        right: right.into(),
     };
-
-    let right_foot_offset = FootOffset {
-        forward: right.translation.x,
-        left: right.translation.y - ROBOT_TO_RIGHT_PELVIS.y,
-        turn: 0.,
-        lift: right_lift,
-        hip_height,
-        ..Default::default()
-    };
-
-    let (mut left, mut right) =
-        kinematics::inverse::leg_angles(&left_foot_offset, &right_foot_offset, TORSO_OFFSET);
-
-    // always set the foot offsets to 0,0,0.
-    // **target = FootPositions::default();
 }
 
 /// System that switches the current swing foot when possible.
