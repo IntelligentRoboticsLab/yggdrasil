@@ -1,13 +1,16 @@
 use bevy::prelude::*;
 
-use crate::{kinematics::Kinematics, nao::CycleTime};
+use crate::{
+    kinematics::{self, Kinematics},
+    nao::CycleTime,
+};
 
 use super::scheduling::MotionSet;
 
 /// Threshold for snapping to the requested hip height.
-const REACHED_REQUESTED_THRESHOLD: f32 = 0.005;
+const REACHED_REQUESTED_THRESHOLD: f32 = 0.001;
 /// Smoothing parameter for the exponential interpolation applied to the hip height.
-const HEIGHT_ADJUSTMENT_SMOOTHING: f32 = 1.0;
+const HEIGHT_ADJUSTMENT_SMOOTHING: f32 = 0.1;
 
 pub(super) struct HipHeightPlugin;
 
@@ -38,7 +41,7 @@ impl HipHeight {
     /// Get whether the hip height is currently being adjusted to the requested position.
     #[inline]
     #[must_use]
-    fn is_adjusting(&self) -> bool {
+    pub fn is_adjusting(&self) -> bool {
         self.current != self.requested
     }
 
@@ -52,7 +55,7 @@ impl HipHeight {
     /// To obtain the physical hip height, use [`Kinematics`].
     #[must_use]
     pub fn current(&self) -> f32 {
-        self.current
+        self.current + kinematics::dimensions::ANKLE_TO_SOLE.z
     }
 
     /// Request a specific hip height.
@@ -79,9 +82,9 @@ fn update_hip_height(mut hip_height: ResMut<HipHeight>, cycle_time: Res<CycleTim
     if difference.abs() < REACHED_REQUESTED_THRESHOLD {
         hip_height.current = hip_height.requested;
     } else {
-        // Otherwise, perform exponential interpolation
-        let t = 1.0 - (-HEIGHT_ADJUSTMENT_SMOOTHING * cycle_time.duration.as_secs_f32()).exp();
-        hip_height.current = hip_height.current + difference * t;
+        let step = HEIGHT_ADJUSTMENT_SMOOTHING * cycle_time.duration.as_secs_f32();
+        let delta = difference.clamp(-step, step);
+        hip_height.current += delta;
     }
 
     info!(?hip_height.current, ?hip_height.requested, "hip_height")

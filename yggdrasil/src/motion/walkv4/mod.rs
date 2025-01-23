@@ -16,10 +16,9 @@ use super::walk::WalkingEngineConfig;
 mod balancing;
 mod feet;
 mod gait;
-mod hips;
+pub mod hips;
 mod scheduling;
 mod step;
-mod support_foot;
 
 // TODO: dynamically set this
 /// The offset of the torso w.r.t. the hips.

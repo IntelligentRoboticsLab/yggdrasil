@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 use nidhogg::types::{LeftLegJoints, RightLegJoints};
 
-use super::{scheduling::MotionSet, Side, SwingFoot};
+use super::{
+    scheduling::{MotionSet, MotionState},
+    Side, SwingFoot,
+};
 use crate::{
     motion::walk::WalkingEngineConfig,
     sensor::{imu::IMUValues, low_pass_filter::LowPassFilter},
@@ -16,13 +19,20 @@ pub(super) struct BalancingPlugin;
 impl Plugin for BalancingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<BalanceAdjustment>();
+
+        app.add_systems(OnEnter(MotionState::Walking), reset_balance_adjustment);
         app.add_systems(
             Update,
             (update_filtered_gyroscope, update_balance_adjustment)
                 .chain()
-                .in_set(MotionSet::Balancing),
+                .in_set(MotionSet::Balancing)
+                .run_if(in_state(MotionState::Walking)),
         );
     }
+}
+
+fn reset_balance_adjustment(mut commands: Commands) {
+    commands.insert_resource(BalanceAdjustment::default());
 }
 
 fn update_filtered_gyroscope(

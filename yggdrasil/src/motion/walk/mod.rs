@@ -5,12 +5,11 @@ use std::time::Duration;
 use crate::{
     core::config::ConfigExt,
     kinematics::Kinematics,
-    nao::{CenterOfPressure, CycleTime, NaoManager, Priority},
+    nao::{CycleTime, NaoManager, Priority},
     prelude::*,
     sensor::imu::IMUValues,
 };
 use bevy::prelude::*;
-use nalgebra::Point2;
 use nidhogg::{
     types::{
         ArmJoints, FillExt, Fsr, LeftArmJoints, LeftLegJoints, LegJoints, RightArmJoints,

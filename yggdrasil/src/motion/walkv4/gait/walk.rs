@@ -4,14 +4,9 @@ use bevy::prelude::*;
 use nidhogg::types::ForceSensitiveResistors;
 
 use crate::{
-    kinematics::{
-        self,
-        prelude::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS},
-        FootOffset, Kinematics,
-    },
+    kinematics::Kinematics,
     motion::{
         walk::{
-            engine::FootOffsets,
             smoothing::{parabolic_return, parabolic_step},
             WalkingEngineConfig,
         },
@@ -23,7 +18,6 @@ use crate::{
         },
     },
     nao::CycleTime,
-    sensor::low_pass_filter::LowPassFilter,
 };
 
 pub(super) struct WalkGaitPlugin;
@@ -50,7 +44,6 @@ struct WalkState {
     phase: Duration,
     start: FootPositions,
     planned_duration: Duration,
-    filtered_gyro: LowPassFilter<3>,
     foot_switched_fsr: bool,
 }
 
@@ -60,7 +53,6 @@ impl Default for WalkState {
             phase: Duration::ZERO,
             start: FootPositions::default(),
             planned_duration: Duration::ZERO,
-            filtered_gyro: LowPassFilter::new(0.3),
             foot_switched_fsr: false,
         }
     }
