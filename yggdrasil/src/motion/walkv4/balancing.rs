@@ -33,13 +33,11 @@ fn update_filtered_gyroscope(mut filtered_gyro: ResMut<FilteredGyroscope>, imu: 
     }
 }
 
-#[derive(Debug, Resource, Deref, DerefMut)]
-pub struct BalanceAdjustment(f32);
-
 fn update_balance_adjustment(
-    mut balance_adjustment: ResMut<BalanceAdjustment>,
+    mut target: ResMut<TargetFootPositions>,
     filtered_gyro: Res<FilteredGyroscope>,
     config: Res<WalkingEngineConfig>,
 ) {
-    **balance_adjustment = filtered_gyro.state().y * config.balancing.filtered_gyro_y_multiplier;
+    let balance_adjustment = filtered_gyro.state().y * config.balancing.filtered_gyro_y_multiplier;
+    target.apply_balance_adjustment(balance_adjustment);
 }

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{kinematics::Kinematics, motion::walk::WalkingEngineConfig, nao::CycleTime};
+use crate::{kinematics::Kinematics, nao::CycleTime};
 
 use super::scheduling::MotionSet;
 
@@ -13,7 +13,7 @@ pub(super) struct HipHeightPlugin;
 
 impl Plugin for HipHeightPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostStartup, init_hip_height);
+        app.add_systems(PostStartup, init_hip_height.in_set(MotionSet::StepPlanning));
         app.add_systems(Update, update_hip_height.in_set(MotionSet::StepPlanning));
     }
 }
@@ -23,11 +23,11 @@ impl Plugin for HipHeightPlugin {
 pub struct HipHeight {
     /// The current target hip height.
     /// This value is used when computing the joint angles for the legs.
-    pub current: f32,
+    current: f32,
     /// The current requested hip height.
     /// This value is separate from the current hip height, to allow smooth
     /// interpolation between the two.
-    pub requested: f32,
+    requested: f32,
 }
 
 impl HipHeight {
@@ -36,6 +36,26 @@ impl HipHeight {
     #[must_use]
     fn is_adjusting(&self) -> bool {
         self.current != self.requested
+    }
+
+    /// Get the current target hip height.
+    ///
+    /// # Important
+    ///
+    /// This is not the physical hip height, but the hip height used when computing
+    /// the joint angles for the legs of the robot.
+    ///
+    /// To obtain the physical hip height, use [`Kinematics`].
+    #[must_use]
+    pub fn current(&self) -> f32 {
+        self.current
+    }
+
+    /// Request a specific hip height.
+    ///
+    /// This will be propogated automatically by the [`HipHeightPlugin`].
+    pub fn request(&mut self, hip_height: f32) {
+        self.requested = hip_height;
     }
 }
 
