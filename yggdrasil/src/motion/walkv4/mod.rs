@@ -90,6 +90,7 @@ pub struct TargetFootPositions(FootPositions);
 
 impl TargetFootPositions {
     /// Compute the leg angles for the target foot positions.
+    #[must_use]
     pub fn leg_angles(
         &self,
         hip_height: f32,
