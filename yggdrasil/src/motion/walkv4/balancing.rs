@@ -2,13 +2,11 @@ use bevy::prelude::*;
 use nidhogg::types::{LeftLegJoints, RightLegJoints};
 
 use super::{
+    config::WalkingEngineConfig,
     scheduling::{MotionSet, MotionState},
     Side, SwingFoot,
 };
-use crate::{
-    motion::walk::WalkingEngineConfig,
-    sensor::{imu::IMUValues, low_pass_filter::LowPassFilter},
-};
+use crate::sensor::{imu::IMUValues, low_pass_filter::LowPassFilter};
 
 // TODO: Make config value
 const FILTERED_GYRO_OMEGA: f32 = 0.115;

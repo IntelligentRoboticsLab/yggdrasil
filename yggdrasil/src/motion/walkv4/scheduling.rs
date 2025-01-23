@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 
-use crate::{kinematics::Kinematics, motion::walk::WalkingEngineConfig};
+use crate::kinematics::Kinematics;
+
+use super::config::WalkingEngineConfig;
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MotionSet {
