@@ -68,7 +68,6 @@ impl HipHeight {
 
 fn init_hip_height(mut commands: Commands, kinematics: Res<Kinematics>) {
     let hip_height = kinematics.left_hip_height();
-    info!(?hip_height, "INITIAL HIP HEIGHT");
     commands.insert_resource(HipHeight {
         current: hip_height,
         requested: hip_height,
@@ -86,6 +85,4 @@ fn update_hip_height(mut hip_height: ResMut<HipHeight>, cycle_time: Res<CycleTim
         let delta = difference.clamp(-step, step);
         hip_height.current += delta;
     }
-
-    info!(?hip_height.current, ?hip_height.requested, "hip_height")
 }
