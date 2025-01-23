@@ -52,7 +52,7 @@ impl Default for WalkState {
         Self {
             phase: Duration::ZERO,
             start: FootPositions::default(),
-            planned_duration: Duration::ZERO,
+            planned_duration: Duration::from_millis(200),
             foot_switched_fsr: false,
         }
     }
