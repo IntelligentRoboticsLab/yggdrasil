@@ -42,38 +42,9 @@ impl SwingFoot {
     }
 }
 
-#[derive(Resource, Serialize, Deserialize, Debug, Clone, Default)]
-pub struct BalancingConfig {
-    pub arm_swing_multiplier: f32,
-    pub filtered_gyro_y_multiplier: f32,
-}
-
-/// Configuration for the walking engine.
-#[serde_as]
-#[derive(Resource, Serialize, Deserialize, Debug, Clone, Default)]
-#[serde(deny_unknown_fields)]
-pub struct WalkingEngineConfig {
-    #[serde_as(as = "DurationMilliSeconds")]
-    pub base_step_period: Duration,
-    pub leg_stiffness: f32,
-    pub arm_stiffness: f32,
-    pub cop_pressure_threshold: f32,
-    pub base_foot_lift: f32,
-    pub foot_lift_modifier: Step,
-    pub max_step_size: Step,
-    pub hip_height: f32,
-    pub sitting_hip_height: f32,
-    pub balancing: BalancingConfig,
-}
-
-impl Config for WalkingEngineConfig {
-    const PATH: &'static str = "walking_engine.toml";
-}
-
 #[derive(Event, Debug, Default, Clone)]
 pub struct SwingFootSwitchedEvent(pub Side);
 
-/// Plugin providing systems the walking engine for the robot.
 pub struct WalkingEnginePlugin;
 
 impl Plugin for WalkingEnginePlugin {

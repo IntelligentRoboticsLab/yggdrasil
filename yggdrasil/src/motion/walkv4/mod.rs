@@ -1,5 +1,6 @@
 use balancing::BalanceAdjustment;
 use bevy::prelude::*;
+use config::WalkingEngineConfig;
 use feet::FootPositions;
 use hips::HipHeight;
 use nidhogg::types::{FillExt, LeftLegJoints, LegJoints, RightLegJoints};
@@ -8,12 +9,12 @@ use scheduling::{MotionSet, MotionState};
 use crate::{
     kinematics,
     nao::{NaoManager, Priority},
+    prelude::ConfigExt,
     sensor::button::{ChestButton, HeadButtons},
 };
 
-use super::walk::WalkingEngineConfig;
-
 mod balancing;
+mod config;
 mod feet;
 mod gait;
 pub mod hips;
@@ -28,6 +29,7 @@ pub struct Walkv4EnginePlugin;
 
 impl Plugin for Walkv4EnginePlugin {
     fn build(&self, app: &mut App) {
+        app.init_config::<WalkingEngineConfig>();
         app.init_resource::<SwingFoot>();
         app.init_resource::<TargetFootPositions>();
         app.add_plugins((

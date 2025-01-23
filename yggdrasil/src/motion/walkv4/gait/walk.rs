@@ -6,11 +6,9 @@ use nidhogg::types::ForceSensitiveResistors;
 use crate::{
     kinematics::Kinematics,
     motion::{
-        walk::{
-            smoothing::{parabolic_return, parabolic_step},
-            WalkingEngineConfig,
-        },
+        walk::smoothing::{parabolic_return, parabolic_step},
         walkv4::{
+            config::WalkingEngineConfig,
             feet::FootPositions,
             scheduling::{MotionSet, MotionState},
             step::Step,

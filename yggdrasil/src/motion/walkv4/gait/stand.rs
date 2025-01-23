@@ -1,13 +1,11 @@
 use bevy::prelude::*;
 
-use crate::motion::{
-    walk::WalkingEngineConfig,
-    walkv4::{
-        feet::FootPositions,
-        hips::HipHeight,
-        scheduling::{MotionSet, MotionState},
-        TargetFootPositions,
-    },
+use crate::motion::walkv4::{
+    config::WalkingEngineConfig,
+    feet::FootPositions,
+    hips::HipHeight,
+    scheduling::{MotionSet, MotionState},
+    TargetFootPositions,
 };
 
 pub(super) struct StandGaitPlugin;
