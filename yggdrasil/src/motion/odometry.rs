@@ -8,9 +8,10 @@ use crate::{
         spaces::{LeftSole, RightSole},
         Kinematics,
     },
-    motion::walk::{engine::Side, SwingFoot},
     sensor::orientation::RobotOrientation,
 };
+
+use super::walkv4::{Side, SwingFoot};
 
 /// Plugin that keeps track of the odometry of the robot.
 pub(super) struct OdometryPlugin;

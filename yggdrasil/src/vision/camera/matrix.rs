@@ -14,7 +14,7 @@ use crate::{
         Kinematics,
     },
     localization::RobotPose,
-    motion::walk::{engine::Side, SwingFoot},
+    motion::walkv4::{Side, SwingFoot},
     nao::Cycle,
     sensor::orientation::RobotOrientation,
 };

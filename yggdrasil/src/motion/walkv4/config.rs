@@ -7,9 +7,12 @@ use serde_with::{serde_as, DurationMilliSeconds};
 
 /// A wrapper struct to simplify configuring values that affect each component of a step differently.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
-struct ConfigStep {
+pub struct ConfigStep {
+    /// The forward component
     pub forward: f32,
+    /// The left component
     pub left: f32,
+    /// The turn component
     pub turn: f32,
 }
 
