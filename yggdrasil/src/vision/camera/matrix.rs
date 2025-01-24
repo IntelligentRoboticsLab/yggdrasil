@@ -69,12 +69,12 @@ fn update_camera_matrix<T: CameraLocation>(
         image_size,
         camera_to_head,
         kinematics.isometry::<Head, Robot>().inner,
-        robot_to_ground(&swing_foot, &orientation, &kinematics),
+        robot_to_ground(*swing_foot, &orientation, &kinematics),
     );
 }
 
 fn robot_to_ground(
-    swing_foot: &SwingFoot,
+    swing_foot: SwingFoot,
     orientation: &RobotOrientation,
     kinematics: &Kinematics,
 ) -> Isometry3<f32> {
