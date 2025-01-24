@@ -88,6 +88,7 @@ impl FootPositions {
     }
 
     // TODO: Re-implement the turning
+    // TODO: Get rid of FootOffsets and use [`FootPositions`]
     pub fn to_offsets(&self, hip_height: f32) -> FootOffsets {
         let left = FootOffset {
             forward: self.left.translation.x,
