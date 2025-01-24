@@ -330,7 +330,7 @@ pub fn get_ball_proposals<T: CameraLocation>(
             continue;
         }
 
-        // if the white line is long, divy up white segment in multiple potential ball centers
+        // if the white line is long, divvy up white segment in multiple potential ball centers
         if middle.length() > (radius * 2.0 * config.ball_radius_max_error) as usize {
             // check point on left and right side of the white scanline
             let center = point![
@@ -375,7 +375,7 @@ pub fn get_ball_proposals<T: CameraLocation>(
         }
     }
 
-    // apply non-max suppresion
+    // apply non-max suppression
     let indices = crate::vision::util::non_max_suppression(&detections, config.nms_threshold);
     proposals = indices.iter().map(|&i| proposals[i].clone()).collect();
 
