@@ -12,15 +12,87 @@ use super::camera::Image;
 
 const VISUALIZE_DOT_INTERVAL: usize = 10;
 
+#[derive(Default)]
+pub struct BodyContourPlugin;
+
+impl Plugin for BodyContourPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<BodyContour>()
+            .add_systems(PostStartup, setup_body_contour_visualization::<Bottom>)
+            .add_systems(
+                Update,
+                update_body_contours
+                    .after(super::camera::fetch_latest_frame::<Bottom>)
+                    .run_if(resource_changed::<Image<Bottom>>),
+            )
+            .add_named_debug_systems(
+                PostUpdate,
+                visualize_body_contour.run_if(resource_changed::<BodyContour>),
+                "Visualize body contour",
+                SystemToggle::Disable,
+            );
+    }
+}
+
+fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
+    dbg.log_component_batches(
+        T::make_entity_path("image/body_contour"),
+        true,
+        [
+            &rerun::Color::from_rgb(167, 82, 64) as _,
+            &rerun::Radius::new_ui_points(4.0) as _,
+        ],
+    );
+}
+
+pub fn update_body_contours(
+    mut body_contour: ResMut<BodyContour>,
+    orientation: Res<RobotOrientation>,
+    kinematics: Res<Kinematics>,
+    bottom_camera_matrix: Res<CameraMatrix<Bottom>>,
+) {
+    body_contour.update_chest(&orientation, &kinematics, &bottom_camera_matrix);
+    body_contour.update_shoulders(&orientation, &bottom_camera_matrix);
+    body_contour.update_thighs(&orientation, &kinematics, &bottom_camera_matrix);
+    body_contour.update_tibias(&orientation, &kinematics, &bottom_camera_matrix);
+}
+
+fn visualize_body_contour(
+    body_contour: Res<BodyContour>,
+    debug_context: DebugContext,
+    bottom_image: Res<Image<Bottom>>,
+    current_cycle: Res<Cycle>,
+) {
+    // # TODO: This function is very slow.
+    // It's probably better to let `BodyContour` return the points that should be
+    // visualized, instead of iterating over all points.
+    let mut points = Vec::new();
+    for x in (0..bottom_image.yuyv_image().width()).step_by(VISUALIZE_DOT_INTERVAL) {
+        for y in (0..bottom_image.yuyv_image().height()).step_by(VISUALIZE_DOT_INTERVAL) {
+            let x = x as f32;
+            let y = y as f32;
+            if body_contour.is_part_of_body(Point2::new(x, y)) {
+                points.push((x, y));
+            }
+        }
+    }
+
+    debug_context.log_with_cycle(
+        Bottom::make_entity_path("image/body_contour"),
+        *current_cycle,
+        &rerun::Points2D::new(&points),
+    );
+}
+
 type ChestPoints = Vec<Point2<f32>>;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct ShoulderCapPoints {
     front: Option<Point2<f32>>,
     back: Option<Point2<f32>>,
 }
 
-#[derive(Default, Resource)]
+#[derive(Default, Resource, Clone)]
 pub struct BodyContour {
     left_shoulder_cap_points: ShoulderCapPoints,
     right_shoulder_cap_points: ShoulderCapPoints,
@@ -240,78 +312,6 @@ impl BodyContour {
             )
             .ok();
     }
-}
-
-#[derive(Default)]
-pub struct BodyContourPlugin;
-
-impl Plugin for BodyContourPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<BodyContour>()
-            .add_systems(PostStartup, setup_body_contour_visualization::<Bottom>)
-            .add_systems(
-                Update,
-                update_body_contours
-                    .after(super::camera::fetch_latest_frame::<Bottom>)
-                    .run_if(resource_changed::<Image<Bottom>>),
-            )
-            .add_named_debug_systems(
-                PostUpdate,
-                visualize_body_contour.run_if(resource_changed::<BodyContour>),
-                "visualize body contour",
-                SystemToggle::Disable,
-            );
-    }
-}
-
-fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
-    dbg.log_component_batches(
-        T::make_entity_path("image/body_contour"),
-        true,
-        [
-            &rerun::Color::from_rgb(167, 82, 64) as _,
-            &rerun::Radius::new_ui_points(4.0) as _,
-        ],
-    );
-}
-
-fn update_body_contours(
-    mut body_contour: ResMut<BodyContour>,
-    orientation: Res<RobotOrientation>,
-    kinematics: Res<Kinematics>,
-    bottom_camera_matrix: Res<CameraMatrix<Bottom>>,
-) {
-    body_contour.update_chest(&orientation, &kinematics, &bottom_camera_matrix);
-    body_contour.update_shoulders(&orientation, &bottom_camera_matrix);
-    body_contour.update_thighs(&orientation, &kinematics, &bottom_camera_matrix);
-    body_contour.update_tibias(&orientation, &kinematics, &bottom_camera_matrix);
-}
-
-fn visualize_body_contour(
-    body_contour: Res<BodyContour>,
-    debug_context: DebugContext,
-    bottom_image: Res<Image<Bottom>>,
-    current_cycle: Res<Cycle>,
-) {
-    // # TODO: This function is very slow.
-    // It's probably better to let `BodyContour` return the points that should be
-    // visualized, instead of iterating over all points.
-    let mut points = Vec::new();
-    for x in (0..bottom_image.yuyv_image().width()).step_by(VISUALIZE_DOT_INTERVAL) {
-        for y in (0..bottom_image.yuyv_image().height()).step_by(VISUALIZE_DOT_INTERVAL) {
-            let x = x as f32;
-            let y = y as f32;
-            if body_contour.is_part_of_body(Point2::new(x, y)) {
-                points.push((x, y));
-            }
-        }
-    }
-
-    debug_context.log_with_cycle(
-        Bottom::make_entity_path("image/body_contour"),
-        *current_cycle,
-        &rerun::Points2D::new(&points),
-    );
 }
 
 fn adjust_for_imu(orientation: &RobotOrientation, isometry: Isometry3<f32>) -> Isometry3<f32> {
