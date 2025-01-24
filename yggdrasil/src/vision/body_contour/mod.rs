@@ -28,7 +28,7 @@ impl Plugin for BodyContourPlugin {
             .add_named_debug_systems(
                 PostUpdate,
                 visualize_body_contour.run_if(resource_changed::<BodyContour>),
-                "visualize body contour",
+                "Visualize body contour",
                 SystemToggle::Disable,
             );
     }
