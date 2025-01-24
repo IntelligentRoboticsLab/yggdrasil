@@ -113,6 +113,11 @@ fn generate_foot_positions(
         swing_foot: **swing_foot,
     };
 
+    info!(
+        ?swing_foot,
+        "walking duration: {:?}, phase: {:?}", state.planned_duration, state.phase
+    );
+
     let target = FootPositions::from_target(&step);
 
     let (left_t, right_t) = match &step.swing_foot {
@@ -144,7 +149,7 @@ fn update_swing_foot(
     mut state: ResMut<WalkState>,
     kinematics: Res<Kinematics>,
 ) {
-    if !state.foot_switched_fsr && state.linear() <= 0.75 {
+    if !state.foot_switched_fsr || state.linear() <= 0.75 {
         return;
     }
 
@@ -152,6 +157,7 @@ fn update_swing_foot(
     state.planned_duration = Duration::from_secs_f32(0.25);
     state.start = FootPositions::from_kinematics(swing_foot.opposite(), &kinematics, TORSO_OFFSET);
     **swing_foot = swing_foot.opposite();
+    state.foot_switched_fsr = false;
 }
 
 fn compute_step_apex(config: &WalkingEngineConfig, step: &Step) -> f32 {

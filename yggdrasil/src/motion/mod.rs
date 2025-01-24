@@ -18,7 +18,8 @@ impl PluginGroup for MotionPlugins {
             .add(odometry::OdometryPlugin)
             .add(keyframe::KeyframePlugin)
             .add(step_planner::StepPlannerPlugin)
-            .add(sensor_data::VisualizeSensorDataPlugin)
+            // .add(sensor_data::VisualizeSensorDataPlugin)
+            .add(walk::WalkingEnginePlugin)
             .add(walkv4::Walkv4EnginePlugin)
     }
 }
