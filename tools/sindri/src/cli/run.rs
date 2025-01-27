@@ -123,7 +123,7 @@ impl Run {
                 run_re_control(
                     robot_ip,
                     self.robot_ops.rerun_args.rerun_mem_limit,
-                    self.robot_ops.rerun_args.rerun_output,
+                    self.robot_ops.rerun_args.rerun_log,
                 )
                 .await?;
             }

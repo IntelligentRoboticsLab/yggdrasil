@@ -139,7 +139,7 @@ impl ControlViewer {
             }
             notify.notify_one();
         }
-        tracing::info!("Global message channel closed");
+        tracing::debug!("Global message channel closed");
     }
 
     async fn handle_read(

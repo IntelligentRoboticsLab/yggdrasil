@@ -20,7 +20,7 @@ pub struct RerunArgs {
 
     // Whether to pipe the output of rerun to the terminal
     #[clap(long, action, requires = "rerun")]
-    pub rerun_output: bool,
+    pub rerun_log: bool,
 }
 
 /// Check if the `rerun` binary is installed.
@@ -116,7 +116,7 @@ async fn build_re_control() -> Result<()> {
 fn spawn_rerun_viewer(
     robot_ip: Ipv4Addr,
     memory_limit: Option<String>,
-    rerun_output: bool,
+    rerun_log: bool,
 ) -> Result<()> {
     let mut args = vec![];
     // Set robot ip to connection the viewer with
@@ -129,7 +129,7 @@ fn spawn_rerun_viewer(
     }
 
     let (stdio_out, stdio_err) = {
-        if rerun_output {
+        if rerun_log {
             (Stdio::inherit(), Stdio::inherit())
         } else {
             (Stdio::null(), Stdio::null())
@@ -152,10 +152,10 @@ fn spawn_rerun_viewer(
 pub async fn run_re_control(
     robot_ip: Ipv4Addr,
     memory_limit: Option<String>,
-    rerun_output: bool,
+    rerun_log: bool,
 ) -> Result<()> {
     build_re_control().await?;
-    spawn_rerun_viewer(robot_ip, memory_limit, rerun_output)?;
+    spawn_rerun_viewer(robot_ip, memory_limit, rerun_log)?;
 
     Ok(())
 }

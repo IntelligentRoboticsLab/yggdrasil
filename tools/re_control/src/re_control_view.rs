@@ -1,5 +1,7 @@
 use std::{
+    env,
     net::{Ipv4Addr, SocketAddrV4},
+    str::FromStr,
     sync::{Arc, RwLock},
 };
 
@@ -63,7 +65,11 @@ pub struct ControlViewState {
 
 impl Default for ControlViewState {
     fn default() -> Self {
-        let ip_addr = Ipv4Addr::LOCALHOST;
+        let ip_addr = match env::var("ROBOT_ADDR") {
+            Ok(ip_addr_str) => Ipv4Addr::from_str(&ip_addr_str).unwrap(),
+            Err(_) => Ipv4Addr::LOCALHOST,
+        };
+
         let socket_addr = SocketAddrV4::new(ip_addr, CONTROL_PORT);
         let control_viewer = ControlViewer::from(socket_addr);
 
