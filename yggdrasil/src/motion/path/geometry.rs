@@ -9,11 +9,13 @@ pub type Vector = na::Vector2<f32>;
 pub type Isometry = na::Isometry2<f32>;
 
 /// The counterclockwise distance from `start` to `end`, always greater than or equal to zero.
+#[must_use]
 pub fn ccw_angular_distance(start: f32, end: f32) -> f32 {
     (end - start).rem_euclid(TAU)
 }
 
 /// The clockwise distance from `start` to `end`, always less than or equal to zero.
+#[must_use]
 pub fn cw_angular_distance(start: f32, end: f32) -> f32 {
     -(start - end).rem_euclid(TAU)
 }
@@ -27,22 +29,26 @@ pub struct LineSegment {
 
 impl LineSegment {
     /// Creates a new line segment between `start` and `end`.
+    #[must_use]
     pub fn new(start: Point, end: Point) -> Self {
         Self { start, end }
     }
 
     /// Returns a vector in the direction of the line segment.
+    #[must_use]
     pub fn direction(self) -> Vector {
         (self.end - self.start) / self.length()
     }
 
     /// Returns the angle the line segment points to.
+    #[must_use]
     pub fn forward(self) -> f32 {
         let dir = self.direction();
         dir.y.atan2(dir.x)
     }
 
     /// Shortens the line to the parallel projection of the point.
+    #[must_use]
     pub fn enter(self, point: Point) -> Option<Self> {
         let direction = self.direction();
         let length = self.length();
@@ -68,11 +74,13 @@ pub struct Circle {
 
 impl Circle {
     /// Creates a new circle.
+    #[must_use]
     pub fn new(center: Point, radius: f32) -> Self {
         Self { center, radius }
     }
 
     /// Creates a new circle at the origin.
+    #[must_use]
     pub fn origin(radius: f32) -> Self {
         Self::new(Point::origin(), radius)
     }
@@ -80,6 +88,7 @@ impl Circle {
     /// Returns a copy of the circle with the dilation added to the radius.
     ///
     /// No checks are done to ensure the radius remains positive.
+    #[must_use]
     pub fn dilate(self, dilation: f32) -> Self {
         Self {
             center: self.center,
@@ -88,17 +97,20 @@ impl Circle {
     }
 
     /// Returns the point on the circumference of the circle at a given angle.
+    #[must_use]
     pub fn point_at_angle(self, angle: f32) -> Point {
         self.point_from_vector(Vector::new(angle.cos(), angle.sin()))
     }
 
     /// Projects a vector onto the circle such that a unit vector results in a point on the
     /// circumference.
+    #[must_use]
     pub fn point_from_vector(self, direction: Vector) -> Point {
         self.center + self.radius * direction
     }
 
     /// Returns the angle from the circle's center to the point.
+    #[must_use]
     pub fn angle_to_point(self, point: Point) -> f32 {
         let center_to_point = point - self.center;
         center_to_point.y.atan2(center_to_point.x)
@@ -107,6 +119,7 @@ impl Circle {
     /// Calculates the tangents from the circle to a point.
     ///
     /// Returns `None` if the tangents don't exist (i.e., the point is inside the circle).
+    #[must_use]
     pub fn tangents(self, point: Point) -> Option<Tangents> {
         let center_to_point = point - self.center;
         let dist = center_to_point.norm();
@@ -177,16 +190,19 @@ pub struct Tangents {
 
 impl Tangents {
     /// Returns the counterclockwise angles as a tuple.
+    #[must_use]
     pub fn ccw(self) -> (f32, f32) {
         (self.ccw, self.ccw)
     }
 
     /// Returns the clockwise angles as a tuple.
+    #[must_use]
     pub fn cw(self) -> (f32, f32) {
         (self.cw, self.cw)
     }
 
     /// Flips the direction of the tangents.
+    #[must_use]
     pub fn flip(self) -> Self {
         Self {
             ccw: self.cw,
@@ -203,6 +219,7 @@ pub struct InnerTangents {
 
 impl InnerTangents {
     /// Flips the direction of the tangents.
+    #[must_use]
     pub fn flip(self) -> Self {
         Self {
             ccw_to_cw: (self.ccw_to_cw.1, self.ccw_to_cw.0),
@@ -222,6 +239,7 @@ pub struct CircularArc {
 
 impl CircularArc {
     /// Creates a new counterclockwise circular arc (i.e., with a positive `step`).
+    #[must_use]
     pub fn ccw(circle: Circle, start: f32, end: f32) -> Self {
         Self {
             circle,
@@ -231,6 +249,7 @@ impl CircularArc {
     }
 
     /// Creates a new clockwise circular arc (i.e., with a negative `step`).
+    #[must_use]
     pub fn cw(circle: Circle, start: f32, end: f32) -> Self {
         Self {
             circle,
@@ -242,6 +261,7 @@ impl CircularArc {
     /// Creates a counterclockwise support arc to ease in/out of an isometry.
     ///
     /// The start of this arc is the angle at which the isometry is located.
+    #[must_use]
     pub fn ccw_from_isometry(isometry: Isometry, radius: f32) -> Self {
         Self {
             circle: Circle::new(isometry * na::point![0., radius], radius),
@@ -253,6 +273,7 @@ impl CircularArc {
     /// Creates a clockwise support arc to ease in/out of an isometry.
     ///
     /// The start of this arc is the angle at which the isometry is located.
+    #[must_use]
     pub fn cw_from_isometry(isometry: Isometry, radius: f32) -> Self {
         Self {
             circle: Circle::new(isometry * na::point![0., -radius], radius),
@@ -262,23 +283,27 @@ impl CircularArc {
     }
 
     /// Returns a copy of this arc with a different start.
+    #[must_use]
     pub fn with_start(mut self, start: f32) -> Self {
         self.start = start;
         self
     }
 
     /// Returns a copy of this arc with a different step.
+    #[must_use]
     pub fn with_step(mut self, step: f32) -> Self {
         self.step = step;
         self
     }
 
     /// Returns an arc on the same circle with a different start and step.
+    #[must_use]
     pub fn with_start_and_step(self, start: f32, step: f32) -> Self {
         self.with_start(start).with_step(step)
     }
 
     /// Flips the direction of the arc.
+    #[must_use]
     pub fn flip(self) -> Self {
         Self {
             circle: self.circle,
@@ -289,21 +314,25 @@ impl CircularArc {
 
     /// Returns whether the arc is counterclockwise, an arc with zero length is considered
     /// counterclockwise.
+    #[must_use]
     pub fn is_ccw(self) -> bool {
         self.step >= 0.
     }
 
     /// Returns whether the arc is clockwise.
+    #[must_use]
     pub fn is_cw(self) -> bool {
         !self.is_ccw()
     }
 
     /// Returns whether the arc is a full circle (i.e, the absolute step is or exceeds `TAU`).
+    #[must_use]
     pub fn circular(self) -> bool {
         self.step.abs() >= TAU
     }
 
     /// Flips clockwise arcs and leaves counterclockwise arcs unchanged.
+    #[must_use]
     pub fn to_ccw(self) -> Self {
         if self.is_cw() {
             self.flip()
@@ -313,6 +342,7 @@ impl CircularArc {
     }
 
     /// Flips counterclockwise arcs and leaves clockwise arcs unchanged.
+    #[must_use]
     pub fn to_cw(self) -> Self {
         if self.is_ccw() {
             self.flip()
@@ -322,31 +352,37 @@ impl CircularArc {
     }
 
     /// Returns the angle at the end of the arc.
+    #[must_use]
     pub fn end(self) -> f32 {
         self.start + self.step
     }
 
     /// Returns the turn such that a left (i.e., counterclockwise) turn is positive.
+    #[must_use]
     pub fn turn(self) -> f32 {
         self.step.signum() / self.circle.radius
     }
 
     /// Returns the angle pointing forward from the start.
+    #[must_use]
     pub fn forward_at_start(self) -> f32 {
         self.forward_at_angle(self.start)
     }
 
     /// Returns the angle pointing forward from the end.
+    #[must_use]
     pub fn forward_at_end(self) -> f32 {
         self.forward_at_angle(self.end())
     }
 
     /// Returns the angle pointing forward at an angle on the arc.
+    #[must_use]
     pub fn forward_at_angle(self, angle: f32) -> f32 {
         angle + self.step.signum() * 0.5 * PI
     }
 
     /// Returns whether the angle is contained within this arc.
+    #[must_use]
     pub fn contains_angle(self, angle: f32) -> bool {
         if self.is_ccw() {
             ccw_angular_distance(self.start, angle) <= self.step
@@ -356,21 +392,25 @@ impl CircularArc {
     }
 
     /// Returns the point at an angle.
+    #[must_use]
     pub fn point_at_angle(self, angle: f32) -> Point {
         self.circle.point_at_angle(angle)
     }
 
     /// Returns the point at the start.
+    #[must_use]
     pub fn point_at_start(self) -> Point {
         self.point_at_angle(self.start)
     }
 
     /// Returns the point at the end.
+    #[must_use]
     pub fn point_at_end(self) -> Point {
         self.point_at_angle(self.end())
     }
 
     /// Same as `enter_non_circular`, but preserves circles.
+    #[must_use]
     pub fn enter(self, start: f32) -> Option<Self> {
         if self.circular() {
             Some(self.with_start(start))
@@ -382,6 +422,7 @@ impl CircularArc {
     /// Returns a new arc that lies within this arc with the given start.
     ///
     /// Circles are not preserved.
+    #[must_use]
     pub fn enter_non_circular(self, start: f32) -> Option<Self> {
         if self.is_ccw() {
             let step = ccw_angular_distance(start, self.end());
@@ -393,6 +434,7 @@ impl CircularArc {
     }
 
     /// Returns a new shortened copy of this arc with a given end if that end lies on this arc.
+    #[must_use]
     pub fn exit(self, end: f32) -> Option<Self> {
         if self.is_ccw() {
             let step = ccw_angular_distance(self.start, end);
@@ -404,6 +446,7 @@ impl CircularArc {
     }
 
     /// Returns a copy of this arc such that it starts at the tangent line through `point`.
+    #[must_use]
     pub fn point_to_arc(mut self, point: Point) -> Option<(LineSegment, Self)> {
         let tangents = self.circle.tangents(point)?;
 
@@ -417,6 +460,7 @@ impl CircularArc {
     }
 
     /// Returns a copy of this arc such that it ends at the tangent line through `point`.
+    #[must_use]
     pub fn arc_to_point(mut self, point: Point) -> Option<(Self, LineSegment)> {
         let tangents = self.circle.tangents(point)?.flip();
 
@@ -430,6 +474,7 @@ impl CircularArc {
     }
 
     /// Connects two arcs together by their common tangent.
+    #[must_use]
     pub fn arc_to_arc(mut self, mut other: Self) -> Option<(Self, LineSegment, Self)> {
         let angles = match (self.is_ccw(), other.is_ccw()) {
             (true, true) => self.circle.outer_tangents(other.circle)?.ccw(),
@@ -458,9 +503,7 @@ impl CircularArc {
     pub fn n_vertices(self, n: usize) -> impl Iterator<Item = Point> {
         let factor = self.step * ((n - 1) as f32).recip();
 
-        (0..n)
-            .into_iter()
-            .map(move |i| self.circle.point_at_angle(self.start + i as f32 * factor))
+        (0..n).map(move |i| self.circle.point_at_angle(self.start + i as f32 * factor))
     }
 }
 
@@ -506,6 +549,10 @@ impl Intersects<LineSegment> for LineSegment {
     type Intersection = bool;
 
     fn intersects(self, other: LineSegment) -> Self::Intersection {
+        // evil but i can't be bothered to come up with better names
+        // + i'll probably rewrite the intersection interface and implementation
+        #![allow(clippy::many_single_char_names)]
+
         let u = self.end - self.start;
         let v = other.end - other.start;
         let w = other.start - self.start;
@@ -594,10 +641,10 @@ impl Intersects<LineSegment> for Circle {
         (
             range
                 .contains(&(distance - opposite))
-                .then(|| angle_to_line + angle_to_intersection),
+                .then_some(angle_to_line + angle_to_intersection),
             range
                 .contains(&(distance + opposite))
-                .then(|| angle_to_line - angle_to_intersection),
+                .then_some(angle_to_line - angle_to_intersection),
         )
     }
 }
@@ -641,6 +688,7 @@ pub enum Segment {
 
 impl Segment {
     /// Returns the start of this segment.
+    #[must_use]
     pub fn start(self) -> Point {
         match self {
             Segment::LineSegment(line) => line.start,
@@ -649,6 +697,7 @@ impl Segment {
     }
 
     /// Returns the end of this segment.
+    #[must_use]
     pub fn end(self) -> Point {
         match self {
             Segment::LineSegment(line) => line.end,
@@ -657,6 +706,7 @@ impl Segment {
     }
 
     /// Returns the turn such that a left (i.e., counterclockwise) turn is positive.
+    #[must_use]
     pub fn turn(self) -> f32 {
         match self {
             Segment::LineSegment(_) => 0.,
@@ -665,6 +715,7 @@ impl Segment {
     }
 
     /// Returns the forward angle of this segment.
+    #[must_use]
     pub fn forward_at_start(self) -> f32 {
         match self {
             Segment::LineSegment(line) => line.forward(),
@@ -673,6 +724,7 @@ impl Segment {
     }
 
     /// Returns the forward angle of this segment.
+    #[must_use]
     pub fn forward_at_end(self) -> f32 {
         match self {
             Segment::LineSegment(line) => line.forward(),
@@ -697,6 +749,7 @@ impl Segment {
     }
 
     /// Returns the vertices to render this segment.
+    #[must_use]
     pub fn vertices(self, resolution: f32) -> Vec<Point> {
         match self {
             Segment::LineSegment(line) => vec![line.start, line.end],

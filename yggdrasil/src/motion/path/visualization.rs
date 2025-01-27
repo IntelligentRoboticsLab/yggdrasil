@@ -22,7 +22,7 @@ pub fn visualize_obstacles(dbg: DebugContext, obstacles: Query<&Obstacle>) {
                 .vertices(RESOLUTION)
                 .map(|p| [p.x, p.y, OBSTACLE_HEIGHT])
         })),
-    )
+    );
 }
 
 /// Visualizes the path.
@@ -32,8 +32,7 @@ pub fn visualize_path(dbg: DebugContext, path: Res<Path>) {
         &rerun::LineStrips3D::new([path
             .0
             .iter()
-            .map(|s| s.vertices(RESOLUTION))
-            .flatten()
+            .flat_map(|s| s.vertices(RESOLUTION))
             .map(|p| [p.x, p.y, PATH_HEIGHT])]),
     );
 }

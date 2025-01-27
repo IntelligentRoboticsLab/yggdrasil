@@ -13,6 +13,7 @@ pub fn add_static_obstacles(mut commands: Commands) {
 }
 
 /// Checks if any obstacles have been changed.
+#[must_use]
 pub fn obstacles_changed(obstacles: Query<&Obstacle, Changed<Obstacle>>) -> bool {
     !obstacles.is_empty()
 }
@@ -53,8 +54,8 @@ pub struct Colliders {
 impl Colliders {
     /// Iterates over the segments that this struct contains.
     pub fn segments(&self) -> impl Iterator<Item = Segment> + '_ {
-        let arcs = self.arcs.iter().cloned().map(Into::into);
-        let lines = self.lines.iter().cloned().map(Into::into);
+        let arcs = self.arcs.iter().copied().map(Into::into);
+        let lines = self.lines.iter().copied().map(Into::into);
 
         arcs.chain(lines)
     }

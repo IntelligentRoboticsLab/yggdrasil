@@ -4,7 +4,10 @@ use nalgebra as na;
 use ordered_float::OrderedFloat;
 
 use super::obstacles::Colliders;
-use super::{geometry::*, PathSettings};
+use super::{
+    geometry::{CircularArc, Intersects, Isometry, Length, LineSegment, Point, Segment},
+    PathSettings,
+};
 
 type Cost = OrderedFloat<f32>;
 
@@ -24,6 +27,7 @@ pub struct Pathfinding<'a> {
 impl Pathfinding<'_> {
     /// Calculates the shortest path from `start` to `goal` and returns the segments that make up
     /// the path as well as the total length (if such a path exists).
+    #[must_use]
     pub fn path(&self) -> Option<(Vec<Segment>, f32)> {
         let (states, cost) = self.astar()?;
         let mut segments = Vec::new();
@@ -78,7 +82,7 @@ impl Pathfinding<'_> {
         Some((segments, cost.into()))
     }
 
-    /// FInds the shortest path using the A* algorithm.
+    /// `FInds` the shortest path using the A* algorithm.
     fn astar(&self) -> Option<(Vec<State>, Cost)> {
         pathfinding::directed::astar::astar(
             &State::Start,
@@ -149,7 +153,7 @@ impl Pathfinding<'_> {
             .arcs
             .iter()
             .enumerate()
-            .map(|(index, other)| {
+            .flat_map(|(index, other)| {
                 [
                     other
                         .to_ccw()
@@ -174,8 +178,7 @@ impl Pathfinding<'_> {
                 ]
                 .into_iter()
                 .flatten()
-            })
-            .flatten();
+            });
 
         direct.chain(indirect).collect()
     }
@@ -217,7 +220,7 @@ impl Pathfinding<'_> {
             .arcs
             .iter()
             .enumerate()
-            .map(|(index, other)| {
+            .flat_map(|(index, other)| {
                 [
                     arc.arc_to_arc(other.to_ccw())
                         .filter(|(a, b, _)| !self.collides(*a) && !self.collides(*b))
@@ -238,8 +241,7 @@ impl Pathfinding<'_> {
                 ]
                 .into_iter()
                 .flatten()
-            })
-            .flatten();
+            });
 
         direct.chain(indirect).collect()
     }
@@ -354,6 +356,7 @@ pub enum Position {
 
 impl Position {
     /// Discards the direction and returns the point this position represents.
+    #[must_use]
     pub fn to_point(self) -> Point {
         match self {
             Self::Isometry(isometry) => isometry.translation.vector.into(),
@@ -362,6 +365,7 @@ impl Position {
     }
 
     /// If this position is an isometry, returns it.
+    #[must_use]
     pub fn isometry(self) -> Option<Isometry> {
         match self {
             Self::Isometry(isometry) => Some(isometry),
@@ -370,6 +374,7 @@ impl Position {
     }
 
     /// If this position is a point, returns it.
+    #[must_use]
     pub fn point(self) -> Option<Point> {
         match self {
             Self::Isometry(_) => None,

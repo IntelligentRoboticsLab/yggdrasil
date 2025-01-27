@@ -33,8 +33,8 @@ pub fn update_path_and_step(
     colliders: Res<Colliders>,
     settings: Res<PathSettings>,
 ) {
-    if !path.ends_at(target.0, &*settings) || !path.sync(pose.inner, &*settings) {
-        *path = Path::new(pose.inner, target.0, &*colliders, &*settings);
+    if !path.ends_at(target.0, &settings) || !path.sync(pose.inner, &settings) {
+        *path = Path::new(pose.inner, target.0, &colliders, &settings);
     }
 
     *step = StepAlongPath(path.first().map(|first| Step {
@@ -46,6 +46,7 @@ pub fn update_path_and_step(
 
 impl Path {
     /// Create a new path based on the given pose, target, colliders, and settings.
+    #[must_use]
     pub fn new(
         pose: Isometry,
         target: Option<Position>,
@@ -69,18 +70,21 @@ impl Path {
     }
 
     /// Returns whether the path is empty.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
     /// Returns the first segment in the path.
+    #[must_use]
     pub fn first(&self) -> Option<Segment> {
-        self.0.first().cloned()
+        self.0.first().copied()
     }
 
     /// Returns the last segment in the path.
+    #[must_use]
     pub fn last(&self) -> Option<Segment> {
-        self.0.last().cloned()
+        self.0.last().copied()
     }
 
     /// Pop the first segment from the path.
@@ -89,6 +93,7 @@ impl Path {
     }
 
     /// Returns whether the path ends at the given target.
+    #[must_use]
     pub fn ends_at(&self, target: Option<Position>, settings: &PathSettings) -> bool {
         let Some(target) = target else {
             return self.is_empty();
@@ -110,7 +115,7 @@ impl Path {
             None => true,
         };
 
-        return ok_distance && ok_angle;
+        ok_distance && ok_angle
     }
 
     /// Shortens the path to the point the robot is located, returning whether the robot is
