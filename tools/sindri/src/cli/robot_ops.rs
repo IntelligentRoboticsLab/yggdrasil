@@ -599,8 +599,8 @@ pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<()> {
     if !output.status.success() {
         if let Some(code) = output.status.code() {
             return Err(Error::Rsync {
-                code,
-                msg: "Failed to execute rsync command!".to_owned(),
+                exit_code: code,
+                reason: String::from_utf8_lossy(&output.stderr).into_owned(),
             });
         }
     }
