@@ -11,7 +11,7 @@ use std::f32::consts::PI;
 use bevy::prelude::*;
 
 use obstacles::{add_static_obstacles, obstacles_changed, update_colliders, Colliders};
-use planning::{update_path_and_step, Path, StepAlongPath, Target};
+use planning::{update_target_path_and_step, Path, StepAlongPath, Target};
 use visualization::{visualize_obstacles, visualize_path};
 
 /// Plugin providing pathfinding capabilities.
@@ -25,7 +25,7 @@ impl Plugin for PathPlugin {
             .init_resource::<StepAlongPath>()
             .init_resource::<PathSettings>()
             .add_systems(Startup, add_static_obstacles)
-            .add_systems(Update, update_path_and_step)
+            .add_systems(Update, update_target_path_and_step)
             .add_systems(Update, update_colliders.run_if(obstacles_changed))
             .add_systems(Update, visualize_path.run_if(resource_changed::<Path>))
             .add_systems(

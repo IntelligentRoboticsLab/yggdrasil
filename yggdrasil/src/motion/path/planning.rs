@@ -24,15 +24,21 @@ pub struct Target(pub Option<Position>);
 #[derive(Copy, Clone, Default, Resource)]
 pub struct StepAlongPath(pub Option<Step>);
 
-/// Updates the [`Path`] and [`StepAlongPath`] resources.
-pub fn update_path_and_step(
+/// Updates the [`Target`], [`Path`] and [`StepAlongPath`] resources.
+pub fn update_target_path_and_step(
     mut path: ResMut<Path>,
     mut step: ResMut<StepAlongPath>,
+    mut target: ResMut<Target>,
     pose: Res<RobotPose>,
-    target: Res<Target>,
     colliders: Res<Colliders>,
     settings: Res<PathSettings>,
 ) {
+    if let Target(Some(position)) = *target {
+        if na::distance(&position.to_point(), &pose.world_position()) <= settings.tolerance {
+            *target = Target::default();
+        }
+    }
+
     if !path.ends_at(target.0, &settings) || !path.sync(pose.inner, &settings) {
         *path = Path::new(pose.inner, target.0, &colliders, &settings);
     }
