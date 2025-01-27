@@ -2,8 +2,8 @@
 
 pub mod finding;
 pub mod geometry;
-pub mod planning;
 pub mod obstacles;
+pub mod planning;
 pub mod visualization;
 
 use std::f32::consts::PI;
@@ -12,15 +12,14 @@ use bevy::prelude::*;
 
 use obstacles::{add_static_obstacles, obstacles_changed, update_colliders, Colliders};
 use planning::{update_path_and_step, Path, StepAlongPath, Target};
-use visualization::{visualize_path, visualize_obstacles};
+use visualization::{visualize_obstacles, visualize_path};
 
 /// Plugin providing pathfinding capabilities.
 pub struct PathPlugin;
 
 impl Plugin for PathPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .init_resource::<Colliders>()
+        app.init_resource::<Colliders>()
             .init_resource::<Path>()
             .init_resource::<Target>()
             .init_resource::<StepAlongPath>()
@@ -29,7 +28,10 @@ impl Plugin for PathPlugin {
             .add_systems(Update, update_path_and_step)
             .add_systems(Update, update_colliders.run_if(obstacles_changed))
             .add_systems(Update, visualize_path.run_if(resource_changed::<Path>))
-            .add_systems(Update, visualize_obstacles.run_if(resource_changed::<Colliders>));
+            .add_systems(
+                Update,
+                visualize_obstacles.run_if(resource_changed::<Colliders>),
+            );
     }
 }
 
@@ -67,4 +69,3 @@ impl Default for PathSettings {
         }
     }
 }
-

@@ -687,12 +687,12 @@ impl Segment {
                 if let Some(new) = line.enter(point) {
                     *line = new;
                 }
-            },
+            }
             Segment::CircularArc(arc) => {
                 if let Some(new) = arc.enter(arc.circle.angle_to_point(point)) {
                     *arc = new;
                 }
-            },
+            }
         }
     }
 

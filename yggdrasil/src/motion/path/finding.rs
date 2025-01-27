@@ -3,8 +3,8 @@
 use nalgebra as na;
 use ordered_float::OrderedFloat;
 
-use super::{geometry::*, PathSettings};
 use super::obstacles::Colliders;
+use super::{geometry::*, PathSettings};
 
 type Cost = OrderedFloat<f32>;
 

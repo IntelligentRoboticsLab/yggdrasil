@@ -1,11 +1,16 @@
 //! Higher-level pathfinding capabilities.
 
-use nalgebra as na;
 use bevy::prelude::*;
+use nalgebra as na;
 
 use crate::{localization::RobotPose, motion::walk::engine::Step};
 
-use super::{finding::{Pathfinding, Position}, geometry::{Isometry, Segment}, obstacles::Colliders, PathSettings};
+use super::{
+    finding::{Pathfinding, Position},
+    geometry::{Isometry, Segment},
+    obstacles::Colliders,
+    PathSettings,
+};
 
 /// Struct containing segments that make up a path.
 #[derive(Default, Resource)]
@@ -31,7 +36,7 @@ pub fn update_path_and_step(
     if !path.ends_at(target.0, &*settings) || !path.sync(pose.inner, &*settings) {
         *path = Path::new(pose.inner, target.0, &*colliders, &*settings);
     }
-    
+
     *step = StepAlongPath(path.first().map(|first| Step {
         forward: 1.,
         left: 0.,
@@ -41,9 +46,19 @@ pub fn update_path_and_step(
 
 impl Path {
     /// Create a new path based on the given pose, target, colliders, and settings.
-    pub fn new(pose: Isometry, target: Option<Position>, colliders: &Colliders, settings: &PathSettings) -> Self {
+    pub fn new(
+        pose: Isometry,
+        target: Option<Position>,
+        colliders: &Colliders,
+        settings: &PathSettings,
+    ) -> Self {
         if let Some(target) = target {
-            let pathfinding = Pathfinding { start: pose.into(), goal: target, colliders, settings };
+            let pathfinding = Pathfinding {
+                start: pose.into(),
+                goal: target,
+                colliders,
+                settings,
+            };
 
             if let Some((path, _)) = pathfinding.path() {
                 return Self(path);

@@ -1,7 +1,7 @@
 //! Obstacles and colliders.
 
-use nalgebra as na;
 use bevy::prelude::*;
+use nalgebra as na;
 
 use super::geometry::{Circle, CircularArc, Intersects, LineSegment, Point, Segment};
 
@@ -63,9 +63,12 @@ impl Colliders {
 impl<'a> FromIterator<&'a Obstacle> for Colliders {
     fn from_iter<T: IntoIterator<Item = &'a Obstacle>>(iter: T) -> Self {
         Self {
-            arcs: iter.into_iter().map(|obstacle| match obstacle {
-                &Obstacle::Circle(c) => c.dilate(0.5).into(),
-            }).collect(),
+            arcs: iter
+                .into_iter()
+                .map(|obstacle| match obstacle {
+                    &Obstacle::Circle(c) => c.dilate(0.5).into(),
+                })
+                .collect(),
             lines: Vec::new(),
         }
     }

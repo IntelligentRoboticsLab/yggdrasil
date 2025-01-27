@@ -3,6 +3,7 @@ use bevy::prelude::*;
 
 pub mod keyframe;
 pub mod odometry;
+pub mod path;
 pub mod path_finding;
 pub mod step_planner;
 pub mod walking_engine;
