@@ -26,7 +26,7 @@ const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/ygg
 const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
 const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 
-const LOCAL_ROBOT_ID_STR: &str = "0";
+const LOCAL_ROBOT_ID_STR: &str = "local";
 
 // enum for either the name or the number of a robot thats given
 #[derive(Clone, Debug)]
