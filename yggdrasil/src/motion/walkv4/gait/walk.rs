@@ -98,6 +98,7 @@ fn generate_foot_positions(
     swing_foot: Res<SwingFoot>,
     cycle_time: Res<CycleTime>,
     config: Res<WalkingEngineConfig>,
+    kinematics: Res<Kinematics>,
 ) {
     state.phase += cycle_time.duration;
     let linear = state.linear();
@@ -105,13 +106,14 @@ fn generate_foot_positions(
 
     // TODO: replace with proper step planning
     let step = Step {
-        forward: 0.03,
+        forward: 0.00,
         left: 0.0,
-        turn: 0.0,
+        turn: -0.3,
         duration: state.planned_duration,
         swing_foot_height: 0.01,
         swing_foot: **swing_foot,
-    };
+    }
+    .clamp_anatomic(0.1);
 
     info!(
         ?swing_foot,
@@ -119,6 +121,12 @@ fn generate_foot_positions(
     );
 
     let target = FootPositions::from_target(&step);
+    let turn_travel = match step.swing_foot {
+        Side::Left => target.left.rotation.angle_to(&state.start.left.rotation),
+        Side::Right => target.right.rotation.angle_to(&state.start.right.rotation),
+    };
+
+    info!("turn_travel: {:.5}", turn_travel);
 
     let (left_t, right_t) = match &step.swing_foot {
         Side::Left => (parabolic, linear),
@@ -127,6 +135,23 @@ fn generate_foot_positions(
 
     let mut left = state.start.left.lerp_slerp(&target.left.inner, left_t);
     let mut right = state.start.right.lerp_slerp(&target.right.inner, right_t);
+
+    let real = FootPositions::from_kinematics(**swing_foot, &kinematics, TORSO_OFFSET);
+
+    info!(
+        "[left] start: {:.4} target: {:.4}, current: {:.4} real: {:.4}",
+        state.start.left.rotation.euler_angles().2,
+        target.left.rotation.euler_angles().2,
+        left.rotation.euler_angles().2,
+        real.left.rotation.euler_angles().2
+    );
+    info!(
+        "[right] start: {:.4} target: {:.4}, current: {:.4} real: {:.4}",
+        state.start.right.rotation.euler_angles().2,
+        target.right.rotation.euler_angles().2,
+        right.rotation.euler_angles().2,
+        real.right.rotation.euler_angles().2
+    );
 
     let swing_lift = parabolic_return(linear) * compute_step_apex(&config, &step);
     let (left_lift, right_lift) = match &step.swing_foot {
@@ -153,6 +178,7 @@ fn update_swing_foot(
         return;
     }
 
+    info!("Switching foot!");
     state.phase = Duration::ZERO;
     state.planned_duration = Duration::from_secs_f32(0.25);
     state.start = FootPositions::from_kinematics(swing_foot.opposite(), &kinematics, TORSO_OFFSET);

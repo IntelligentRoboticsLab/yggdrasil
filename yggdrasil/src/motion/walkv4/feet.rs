@@ -1,6 +1,7 @@
 use nalgebra::{Isometry3, Translation3, UnitQuaternion, Vector3};
 use spatial::types::Pose3;
 
+use super::{step::Step, Side};
 use crate::{
     kinematics::{
         prelude::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS},
@@ -9,8 +10,7 @@ use crate::{
     },
     motion::walk::engine::FootOffsets,
 };
-
-use super::{step::Step, Side};
+use bevy::prelude::*;
 
 /// Position of the left and right foot of the robot, relative to the ground.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -51,13 +51,40 @@ impl FootPositions {
         // );
 
         let offset = Translation3::new(torso_offset, 0., hip_height);
+        info!("robot_to_walk: {:?}", offset);
 
         // compute the pose of the feet in robot frame
         let left_foot = kinematics.isometry::<LeftSole, Robot>().inner * offset;
         let right_foot = kinematics.isometry::<RightSole, Robot>().inner * offset;
 
-        // println!("after: LEFT {:?}", left_foot.translation);
-        // println!("after: RIGHT {:?}", right_foot.translation);
+        info!(
+            "left: {:?}, {:?}",
+            kinematics.isometry::<LeftSole, Robot>().inner.translation,
+            kinematics
+                .isometry::<LeftSole, Robot>()
+                .inner
+                .rotation
+                .euler_angles()
+        );
+        info!(
+            "left: {:?}, {:?}",
+            left_foot.translation,
+            left_foot.rotation.euler_angles()
+        );
+        info!(
+            "right: {:?}, {:?}",
+            kinematics.isometry::<RightSole, Robot>().inner.translation,
+            kinematics
+                .isometry::<RightSole, Robot>()
+                .inner
+                .rotation
+                .euler_angles()
+        );
+        info!(
+            "right: {:?}, {:?}",
+            right_foot.translation,
+            right_foot.rotation.euler_angles()
+        );
         Self {
             left: Pose3::new(left_foot),
             right: Pose3::new(right_foot),
@@ -69,6 +96,7 @@ impl FootPositions {
             Side::Left => (ROBOT_TO_RIGHT_PELVIS, ROBOT_TO_LEFT_PELVIS),
             Side::Right => (ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS),
         };
+
         let support_sole = Pose3::new(Isometry3::from_parts(
             Translation3::new(-step.forward / 2., -step.left / 2.0 + support_offset.y, 0.0),
             UnitQuaternion::from_axis_angle(&Vector3::z_axis(), -step.turn / 2.),
@@ -90,22 +118,28 @@ impl FootPositions {
     // TODO: Re-implement the turning
     // TODO: Get rid of FootOffsets and use [`FootPositions`]
     pub fn to_offsets(&self, hip_height: f32) -> FootOffsets {
+        info!(
+            "requesting left turn of: {:.4}",
+            self.left.rotation.euler_angles().2
+        );
+        info!(
+            "requesting right turn of: {:.4}",
+            -self.right.rotation.euler_angles().2
+        );
         let left = FootOffset {
             forward: self.left.translation.x,
             left: self.left.translation.y - ROBOT_TO_LEFT_PELVIS.y,
-            turn: 0.,
+            turn: self.left.rotation.euler_angles().2,
             lift: self.left.translation.z,
             hip_height,
-            ..Default::default()
         };
 
         let right = FootOffset {
             forward: self.right.translation.x,
             left: self.right.translation.y - ROBOT_TO_RIGHT_PELVIS.y,
-            turn: 0.,
+            turn: -self.right.rotation.euler_angles().2,
             lift: self.right.translation.z,
             hip_height,
-            ..Default::default()
         };
 
         FootOffsets { left, right }
