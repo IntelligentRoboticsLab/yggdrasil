@@ -107,8 +107,8 @@ fn generate_foot_positions(
     // TODO: replace with proper step planning
     let step = Step {
         forward: 0.00,
-        left: 0.0,
-        turn: -0.3,
+        left: 0.04,
+        turn: 0.0,
         duration: state.planned_duration,
         swing_foot_height: 0.01,
         swing_foot: **swing_foot,
@@ -137,21 +137,6 @@ fn generate_foot_positions(
     let mut right = state.start.right.lerp_slerp(&target.right.inner, right_t);
 
     let real = FootPositions::from_kinematics(**swing_foot, &kinematics, TORSO_OFFSET);
-
-    info!(
-        "[left] start: {:.4} target: {:.4}, current: {:.4} real: {:.4}",
-        state.start.left.rotation.euler_angles().2,
-        target.left.rotation.euler_angles().2,
-        left.rotation.euler_angles().2,
-        real.left.rotation.euler_angles().2
-    );
-    info!(
-        "[right] start: {:.4} target: {:.4}, current: {:.4} real: {:.4}",
-        state.start.right.rotation.euler_angles().2,
-        target.right.rotation.euler_angles().2,
-        right.rotation.euler_angles().2,
-        real.right.rotation.euler_angles().2
-    );
 
     let swing_lift = parabolic_return(linear) * compute_step_apex(&config, &step);
     let (left_lift, right_lift) = match &step.swing_foot {

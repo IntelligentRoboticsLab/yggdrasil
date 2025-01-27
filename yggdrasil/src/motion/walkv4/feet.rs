@@ -51,40 +51,11 @@ impl FootPositions {
         // );
 
         let offset = Translation3::new(torso_offset, 0., hip_height);
-        info!("robot_to_walk: {:?}", offset);
 
         // compute the pose of the feet in robot frame
         let left_foot = kinematics.isometry::<LeftSole, Robot>().inner * offset;
         let right_foot = kinematics.isometry::<RightSole, Robot>().inner * offset;
 
-        info!(
-            "left: {:?}, {:?}",
-            kinematics.isometry::<LeftSole, Robot>().inner.translation,
-            kinematics
-                .isometry::<LeftSole, Robot>()
-                .inner
-                .rotation
-                .euler_angles()
-        );
-        info!(
-            "left: {:?}, {:?}",
-            left_foot.translation,
-            left_foot.rotation.euler_angles()
-        );
-        info!(
-            "right: {:?}, {:?}",
-            kinematics.isometry::<RightSole, Robot>().inner.translation,
-            kinematics
-                .isometry::<RightSole, Robot>()
-                .inner
-                .rotation
-                .euler_angles()
-        );
-        info!(
-            "right: {:?}, {:?}",
-            right_foot.translation,
-            right_foot.rotation.euler_angles()
-        );
         Self {
             left: Pose3::new(left_foot),
             right: Pose3::new(right_foot),
@@ -118,14 +89,6 @@ impl FootPositions {
     // TODO: Re-implement the turning
     // TODO: Get rid of FootOffsets and use [`FootPositions`]
     pub fn to_offsets(&self, hip_height: f32) -> FootOffsets {
-        info!(
-            "requesting left turn of: {:.4}",
-            self.left.rotation.euler_angles().2
-        );
-        info!(
-            "requesting right turn of: {:.4}",
-            -self.right.rotation.euler_angles().2
-        );
         let left = FootOffset {
             forward: self.left.translation.x,
             left: self.left.translation.y - ROBOT_TO_LEFT_PELVIS.y,

@@ -145,7 +145,5 @@ fn finalize(
         .right_leg(RightLegJoints::fill(config.leg_stiffness))
         .build();
 
-    info!("hip yaw pitch: {:.5}", leg_positions.left_leg.hip_yaw_pitch);
-
     nao.set_legs(leg_positions, leg_stiffness, Priority::Medium);
 }
