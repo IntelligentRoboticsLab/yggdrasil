@@ -30,6 +30,31 @@ impl LineSegment {
     pub fn new(start: Point, end: Point) -> Self {
         Self { start, end }
     }
+
+    /// Returns a vector in the direction of the line segment.
+    pub fn direction(self) -> Vector {
+        (self.end - self.start) / self.length()
+    }
+
+    /// Returns the angle the line segment points to.
+    pub fn forward(self) -> f32 {
+        let dir = self.direction();
+        dir.y.atan2(dir.x)
+    }
+
+    /// Shortens the line to the parallel projection of the point.
+    pub fn enter(self, point: Point) -> Option<Self> {
+        let direction = self.direction();
+        let length = self.length();
+
+        let distance = (point - self.start).dot(&direction);
+
+        if distance < 0. || distance > length {
+            return None;
+        }
+
+        Some(Self::new(self.start + distance * direction, self.end))
+    }
 }
 
 /// A circle defined by a `center` and a `radius`.
@@ -299,6 +324,26 @@ impl CircularArc {
     /// Returns the angle at the end of the arc.
     pub fn end(self) -> f32 {
         self.start + self.step
+    }
+
+    /// Returns the turn such that a left (i.e., counterclockwise) turn is positive.
+    pub fn turn(self) -> f32 {
+        self.step.signum() / self.circle.radius
+    }
+
+    /// Returns the angle pointing forward from the start.
+    pub fn forward_at_start(self) -> f32 {
+        self.forward_at_angle(self.start)
+    }
+
+    /// Returns the angle pointing forward from the end.
+    pub fn forward_at_end(self) -> f32 {
+        self.forward_at_angle(self.end())
+    }
+
+    /// Returns the angle pointing forward at an angle on the arc.
+    pub fn forward_at_angle(self, angle: f32) -> f32 {
+        angle + self.step.signum() * 0.5 * PI
     }
 
     /// Returns whether the angle is contained within this arc.
@@ -595,8 +640,64 @@ pub enum Segment {
 }
 
 impl Segment {
+    /// Returns the start of this segment.
+    pub fn start(self) -> Point {
+        match self {
+            Segment::LineSegment(line) => line.start,
+            Segment::CircularArc(arc) => arc.point_at_start(),
+        }
+    }
+
+    /// Returns the end of this segment.
+    pub fn end(self) -> Point {
+        match self {
+            Segment::LineSegment(line) => line.end,
+            Segment::CircularArc(arc) => arc.point_at_end(),
+        }
+    }
+
+    /// Returns the turn such that a left (i.e., counterclockwise) turn is positive.
+    pub fn turn(self) -> f32 {
+        match self {
+            Segment::LineSegment(_) => 0.,
+            Segment::CircularArc(arc) => arc.turn(),
+        }
+    }
+
+    /// Returns the forward angle of this segment.
+    pub fn forward_at_start(self) -> f32 {
+        match self {
+            Segment::LineSegment(line) => line.forward(),
+            Segment::CircularArc(arc) => arc.forward_at_start(),
+        }
+    }
+
+    /// Returns the forward angle of this segment.
+    pub fn forward_at_end(self) -> f32 {
+        match self {
+            Segment::LineSegment(line) => line.forward(),
+            Segment::CircularArc(arc) => arc.forward_at_end(),
+        }
+    }
+
+    /// Shortens this segment to the poiht closest to the given point.
+    pub fn shorten(&mut self, point: Point) {
+        match self {
+            Segment::LineSegment(line) => {
+                if let Some(new) = line.enter(point) {
+                    *line = new;
+                }
+            },
+            Segment::CircularArc(arc) => {
+                if let Some(new) = arc.enter(arc.circle.angle_to_point(point)) {
+                    *arc = new;
+                }
+            },
+        }
+    }
+
     /// Returns the vertices to render this segment.
-    pub fn vertices(&self, resolution: f32) -> Vec<Point> {
+    pub fn vertices(self, resolution: f32) -> Vec<Point> {
         match self {
             Segment::LineSegment(line) => vec![line.start, line.end],
             Segment::CircularArc(arc) => arc.vertices(resolution).collect(),

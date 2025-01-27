@@ -3,42 +3,125 @@
 use nalgebra as na;
 use bevy::prelude::*;
 
-use crate::{core::debug::DebugContext, localization::RobotPose};
+use crate::{localization::RobotPose, motion::walk::engine::Step};
 
-use super::{finding::{Path, Pathfinding, PathfindingSettings}, obstacles::Colliders};
+use super::{finding::{Pathfinding, Position}, geometry::{Isometry, Segment}, obstacles::Colliders, PathSettings};
 
-pub fn update_path(
+/// Struct containing segments that make up a path.
+#[derive(Default, Resource)]
+pub struct Path(pub Vec<Segment>);
+
+/// The target to walk to.
+#[derive(Copy, Clone, Default, Resource)]
+pub struct Target(pub Option<Position>);
+
+/// The step to take to follow the path.
+#[derive(Copy, Clone, Default, Resource)]
+pub struct StepAlongPath(pub Option<Step>);
+
+/// Updates the [`Path`] and [`StepAlongPath`] resources.
+pub fn update_path_and_step(
     mut path: ResMut<Path>,
+    mut step: ResMut<StepAlongPath>,
     pose: Res<RobotPose>,
+    target: Res<Target>,
     colliders: Res<Colliders>,
+    settings: Res<PathSettings>,
 ) {
-    let pathfinding = Pathfinding {
-        start: pose.inner.into(),
-        goal: na::Isometry2::new(na::vector![3., -3.], 0.).into(),
-        colliders: &colliders,
-        settings: PathfindingSettings {
-            ccw_ease_in: 1.,
-            cw_ease_in: 1.,
-            ccw_ease_out: 1.,
-            cw_ease_out: 1.,
-        },
-    };
-
-    if let Some((new, _)) = pathfinding.path() {
-        *path = new;
+    if !path.ends_at(target.0, &*settings) || !path.sync(pose.inner, &*settings) {
+        *path = Path::new(pose.inner, target.0, &*colliders, &*settings);
     }
+    
+    *step = StepAlongPath(path.first().map(|first| Step {
+        forward: 1.,
+        left: 0.,
+        turn: first.turn(),
+    }));
 }
 
-pub fn visualize_path(dbg: DebugContext, path: Res<Path>) {
-    dbg.log(
-        "pathfinding/path",
-        &rerun::LineStrips3D::new([
-            path
-                .0
-                .iter()
-                .map(|s| s.vertices(64.))
-                .flatten()
-                .map(|p| [p.x, p.y, 0.10])
-        ]),
-    );
+impl Path {
+    /// Create a new path based on the given pose, target, colliders, and settings.
+    pub fn new(pose: Isometry, target: Option<Position>, colliders: &Colliders, settings: &PathSettings) -> Self {
+        if let Some(target) = target {
+            let pathfinding = Pathfinding { start: pose.into(), goal: target, colliders, settings };
+
+            if let Some((path, _)) = pathfinding.path() {
+                return Self(path);
+            }
+        }
+
+        Self::default()
+    }
+
+    /// Returns whether the path is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Returns the first segment in the path.
+    pub fn first(&self) -> Option<Segment> {
+        self.0.first().cloned()
+    }
+
+    /// Returns the last segment in the path.
+    pub fn last(&self) -> Option<Segment> {
+        self.0.last().cloned()
+    }
+
+    /// Pop the first segment from the path.
+    pub fn pop(&mut self) {
+        self.0.remove(0);
+    }
+
+    /// Returns whether the path ends at the given target.
+    pub fn ends_at(&self, target: Option<Position>, settings: &PathSettings) -> bool {
+        let Some(target) = target else {
+            return self.is_empty();
+        };
+
+        let Some(last) = self.last() else {
+            return false;
+        };
+
+        let target_point = target.to_point();
+        let target_angle = target.isometry().map(|isometry| isometry.rotation.angle());
+
+        let point = last.end();
+        let angle = last.forward_at_end();
+
+        let ok_distance = na::distance(&point, &target_point) <= settings.tolerance;
+        let ok_angle = match target_angle {
+            Some(target_angle) => (target_angle - angle).abs() <= settings.angular_tolerance,
+            None => true,
+        };
+
+        return ok_distance && ok_angle;
+    }
+
+    /// Shortens the path to the point the robot is located, returning whether the robot is
+    /// desynchronized (i.e., the robot is too far from the path).
+    pub fn sync(&mut self, pose: Isometry, settings: &PathSettings) -> bool {
+        let point = pose.translation.vector.into();
+        let angle = pose.rotation.angle();
+
+        loop {
+            if self.is_empty() {
+                return true;
+            }
+
+            let segment = &mut self.0[0];
+
+            if na::distance(&point, &segment.end()) <= settings.tolerance {
+                self.pop();
+                continue;
+            }
+
+            segment.shorten(point);
+
+            let ok_distance = na::distance(&point, &segment.start()) <= settings.tolerance;
+            let ok_angle = (segment.forward_at_start() - angle).abs() <= settings.angular_tolerance;
+
+            return ok_distance && ok_angle;
+        }
+    }
 }

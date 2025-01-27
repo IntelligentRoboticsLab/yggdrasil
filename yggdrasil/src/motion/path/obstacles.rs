@@ -3,8 +3,6 @@
 use nalgebra as na;
 use bevy::prelude::*;
 
-use crate::core::debug::DebugContext;
-
 use super::geometry::{Circle, CircularArc, Intersects, LineSegment, Point, Segment};
 
 /// Adds initial obstacles to the scene.
@@ -22,18 +20,6 @@ pub fn obstacles_changed(obstacles: Query<&Obstacle, Changed<Obstacle>>) -> bool
 /// Updates the [`Colliders`] based on the obstacles in the ECS.
 pub fn update_colliders(mut colliders: ResMut<Colliders>, obstacles: Query<&Obstacle>) {
     *colliders = Colliders::from_iter(&obstacles);
-}
-
-/// Visualizes the obstacles in Rerun.
-pub fn visualize_obstacles(dbg: DebugContext, obstacles: Query<&Obstacle>) {
-    dbg.log(
-        "pathfinding/obstacles",
-        &rerun::LineStrips3D::new(
-            obstacles
-                .iter()
-                .map(|obstacle| obstacle.vertices(64.).map(|p| [p.x, p.y, 0.09]))
-        ),
-    )
 }
 
 /// Obstacle that the pathfinding navigates around.

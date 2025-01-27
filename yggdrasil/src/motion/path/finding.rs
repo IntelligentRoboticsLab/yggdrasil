@@ -1,18 +1,12 @@
 //! Lower-level pathfinding capabilities.
 
-use bevy::prelude::*;
-
 use nalgebra as na;
 use ordered_float::OrderedFloat;
 
-use super::geometry::*;
+use super::{geometry::*, PathSettings};
 use super::obstacles::Colliders;
 
 type Cost = OrderedFloat<f32>;
-
-/// Struct containing segments that make up a path.
-#[derive(Default, Resource)]
-pub struct Path(pub Vec<Segment>);
 
 /// Struct containing all the data necessary for pathfinding.
 #[derive(Clone)]
@@ -24,26 +18,13 @@ pub struct Pathfinding<'a> {
     /// The colliders to navigate around.
     pub colliders: &'a Colliders,
     /// The settings for pathfinding.
-    pub settings: PathfindingSettings,
-}
-
-/// Struct containing the configuration for [`Pathfinding`].
-#[derive(Copy, Clone)]
-pub struct PathfindingSettings {
-    /// The radius of the arc to ease into the path from the start counterclockwise.
-    pub ccw_ease_in: f32,
-    /// The radius of the arc to ease into the path from the start clockwise.
-    pub cw_ease_in: f32,
-    /// The radius of the arc to ease out of the path into the goal counterclockwise.
-    pub ccw_ease_out: f32,
-    /// The radius of the arc to ease out of the path into the goal clockwise.
-    pub cw_ease_out: f32,
+    pub settings: &'a PathSettings,
 }
 
 impl Pathfinding<'_> {
-    /// Calculates the shortest path from `start` to `goal` and returns the the path as well as the
-    /// total length (if such a path exists).
-    pub fn path(&self) -> Option<(Path, f32)> {
+    /// Calculates the shortest path from `start` to `goal` and returns the segments that make up
+    /// the path as well as the total length (if such a path exists).
+    pub fn path(&self) -> Option<(Vec<Segment>, f32)> {
         let (states, cost) = self.astar()?;
         let mut segments = Vec::new();
 
@@ -94,7 +75,7 @@ impl Pathfinding<'_> {
             }
         }
 
-        Some((Path(segments), cost.into()))
+        Some((segments, cost.into()))
     }
 
     /// FInds the shortest path using the A* algorithm.
