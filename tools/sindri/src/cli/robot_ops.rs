@@ -598,8 +598,7 @@ pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<()> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
-        .await
-        .unwrap();
+        .await?;
 
     if !output.status.success() {
         if let Some(code) = output.status.code() {
