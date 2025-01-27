@@ -38,6 +38,10 @@ pub async fn has_rerun() -> bool {
     get_rerun_version().await.is_ok_and(|success| success)
 }
 
+/// Check if the `rsync` binary is installed.
+///
+/// We check if the `rsync` binary is installed by running `rsync --version` and checking if the
+/// command was successful.
 pub async fn has_rsync() -> bool {
     async fn get_rsync_version() -> Result<bool> {
         Ok(Command::new("rsync")
