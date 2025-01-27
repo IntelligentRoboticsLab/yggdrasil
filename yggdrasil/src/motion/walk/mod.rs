@@ -87,6 +87,7 @@ fn run_walking_engine(
 
     let (mut left_leg_joints, mut right_leg_joints) =
         crate::kinematics::inverse::leg_angles(&left_foot, &right_foot, 0.015);
+    info!("left: {:.5}, right: {:.5}", left_foot.turn, right_foot.turn);
 
     // TODO: proper balancing
 

@@ -108,7 +108,7 @@ fn switch_state(
     chest_button: Res<ChestButton>,
     head_buttons: Res<HeadButtons>,
 ) {
-    info!(?current_state, "\n\n\ncurrent state");
+    info!(?current_state, "\n\n\n");
     let chest_tapped = chest_button.state.is_tapped();
     let head_tapped = head_buttons.all_pressed();
 
@@ -144,6 +144,8 @@ fn finalize(
         .left_leg(LeftLegJoints::fill(config.leg_stiffness))
         .right_leg(RightLegJoints::fill(config.leg_stiffness))
         .build();
+
+    info!("hip yaw pitch: {:.5}", leg_positions.left_leg.hip_yaw_pitch);
 
     nao.set_legs(leg_positions, leg_stiffness, Priority::Medium);
 }
