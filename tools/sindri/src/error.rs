@@ -14,12 +14,8 @@ pub enum Error {
     #[error(transparent)]
     Cargo(crate::cargo::CargoError),
 
-    #[error("Sftp error: {msg}")]
-    Sftp {
-        #[source]
-        source: ssh2::Error,
-        msg: String,
-    },
+    #[error("Rsync error: {reason}, look up rsync error code: {exit_code:?}")]
+    Rsync { exit_code: i32, reason: String },
     #[error("Ssh error: {command}")]
     Ssh {
         #[source]

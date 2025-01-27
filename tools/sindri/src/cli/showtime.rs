@@ -43,7 +43,7 @@ impl Showtime {
 
             output.spinner();
             robot_ops::stop_single_yggdrasil_service(&robot, output.clone()).await?;
-            robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
+            robot_ops::upload_to_robot(&robot.ip()).await?;
             output.spinner();
             robot_ops::start_single_yggdrasil_service(&robot, output.clone()).await?;
 
@@ -101,7 +101,7 @@ impl Showtime {
                     .block_on(async move {
                         output.spinner();
                         robot_ops::stop_single_yggdrasil_service(&robot, output.clone()).await?;
-                        robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
+                        robot_ops::upload_to_robot(&robot.ip()).await?;
                         output.spinner();
                         robot_ops::start_single_yggdrasil_service(&robot, output.clone()).await?;
 

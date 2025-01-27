@@ -12,7 +12,7 @@ use crate::{
     config::SindriConfig,
 };
 
-use super::re_control::{has_rerun, run_re_control};
+use super::re_control::{has_rerun, has_rsync, run_re_control};
 
 const DEFAULT_TRACY_PORT: u16 = 8086;
 
@@ -40,8 +40,13 @@ impl Run {
 
         let local = self.robot_ops.local;
         let rerun = self.robot_ops.rerun_args.rerun.is_some();
-        let has_rerun = has_rerun().await;
 
+        let has_rsync = has_rsync().await;
+        if !has_rsync {
+            bail!("rsync is not installed, install it using your package manager!")
+        }
+
+        let has_rerun = has_rerun().await;
         if rerun && !has_rerun {
             println!(
                 "{}: {}",
@@ -70,7 +75,7 @@ impl Run {
         if !self.robot_ops.local {
             output.spinner();
             robot_ops::stop_single_yggdrasil_service(&robot, output.clone()).await?;
-            robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
+            robot_ops::upload_to_robot(&robot.ip()).await?;
 
             if let Some(network) = self.robot_ops.network {
                 output.spinner();

@@ -2,19 +2,11 @@ use clap::{builder::ArgPredicate, Parser};
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use miette::{miette, Context, IntoDiagnostic};
-use ssh2::{ErrorCode, OpenFlags, OpenType, Session, Sftp};
 use std::{
-    borrow::Cow,
-    collections::HashMap,
-    fmt, fs,
-    io::BufWriter,
-    net::Ipv4Addr,
-    path::{Component, Path, PathBuf},
-    str::FromStr,
+    borrow::Cow, collections::HashMap, fmt, fs, net::Ipv4Addr, process::Stdio, str::FromStr,
     time::Duration,
 };
-use tokio::{self, net::TcpStream};
-use walkdir::{DirEntry, WalkDir};
+use tokio::{self, process::Command};
 use yggdrasil::core::config::showtime::ShowtimeConfig;
 use yggdrasil::prelude::*;
 
@@ -33,14 +25,8 @@ const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
 const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
 const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
 const DEPLOY_PATH: &str = "./deploy/yggdrasil";
-const CONNECTION_TIMEOUT: u64 = 5;
-const LOCAL_ROBOT_ID_STR: &str = "0";
 
-/// The size of the `BufWriter`'s buffer.
-///
-/// This is currently set to 1 MiB, as the [`Write`] implementation for [`ssh2::sftp::File`]
-/// is rather slow due to the locking mechanism.
-const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
+const LOCAL_ROBOT_ID_STR: &str = "local";
 
 // enum for either the name or the number of a robot thats given
 #[derive(Clone, Debug)]
@@ -601,157 +587,28 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
 }
 
 /// Copy the contents of the 'deploy' folder to the robot.
-pub(crate) async fn upload_to_robot(addr: &Ipv4Addr, output: Output) -> Result<()> {
-    output.connecting_phase(addr);
-    let sftp = create_sftp_connection(addr).await?;
-    match output.clone() {
-        Output::Silent => {}
-        Output::Multi(pb) => {
-            pb.set_message(format!("{}", "Connected".bright_blue().bold()));
-        }
-        Output::Single(pb) => {
-            pb.set_message(format!("{}", "  Connected".bright_blue().bold()));
-        }
-    }
+pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<()> {
+    let output = Command::new("rsync")
+        .args([
+            "-az",
+            "deploy/",
+            &format!("nao@{addr}:/home/nao"),
+            "--out-format=\"%f\"",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await?;
 
-    let entries: Vec<DirEntry> = WalkDir::new("./deploy")
-        .into_iter()
-        .filter_map(std::result::Result::ok)
-        .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
-        .collect();
-    let num_files = entries
-        .iter()
-        .filter(|e| e.metadata().unwrap().is_file())
-        .count();
-
-    output.upload_phase(num_files as u64);
-
-    for entry in &entries {
-        let remote_path = get_remote_path(entry.path());
-
-        if entry.path().is_dir() {
-            // Ensure all directories exist on remote
-            ensure_directory_exists(&sftp, remote_path)?;
-            continue;
-        }
-
-        let file_remote = sftp
-            .open_mode(
-                &remote_path,
-                OpenFlags::WRITE | OpenFlags::TRUNCATE,
-                0o777,
-                OpenType::File,
-            )
-            .map_err(|e| Error::Sftp {
-                source: e,
-                msg: format!("Failed to open remote file {:?}!", entry.path()),
-            })?;
-
-        let mut file_local = std::fs::File::open(entry.path())?;
-
-        match output.clone() {
-            Output::Silent => {}
-            Output::Multi(pb) => {
-                pb.set_message(format!("{}", entry.path().to_string_lossy().dimmed()));
-            }
-            Output::Single(pb) => {
-                pb.set_length(file_local.metadata()?.len());
-                pb.set_message(format!("{}", entry.path().to_string_lossy()));
-            }
-        }
-
-        // Since `file_remote` impl's Write, we can just copy directly using a BufWriter!
-        // The Write impl is rather slow, so we set a large buffer size of 1 mb.
-        let mut buf_writer = BufWriter::with_capacity(UPLOAD_BUFFER_SIZE, file_remote);
-
-        match output.clone() {
-            Output::Silent => {
-                std::io::copy(&mut file_local, &mut buf_writer)?;
-            }
-            Output::Multi(pb) => {
-                std::io::copy(&mut file_local, &mut buf_writer)?;
-                pb.inc(1);
-            }
-            Output::Single(pb) => {
-                std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer))
-                    .map_err(Error::Io)?;
-
-                pb.println(format!(
-                    "{} {}",
-                    "    Uploaded".bright_blue().bold(),
-                    entry.path().to_string_lossy().dimmed()
-                ));
-            }
+    if !output.status.success() {
+        if let Some(code) = output.status.code() {
+            return Err(Error::Rsync {
+                exit_code: code,
+                reason: String::from_utf8_lossy(&output.stderr).into_owned(),
+            });
         }
     }
 
-    output.spinner();
-
-    if let Output::Multi(pb) = &output {
-        pb.set_message(format!(
-            "    {} {}",
-            "Uploaded".green().bold(),
-            addr.to_string().red()
-        ));
-    }
-
+    println!("{}", String::from_utf8_lossy(&output.stdout));
     Ok(())
-}
-
-async fn create_sftp_connection(ip: &Ipv4Addr) -> Result<Sftp> {
-    let tcp = tokio::time::timeout(
-        Duration::from_secs(CONNECTION_TIMEOUT),
-        TcpStream::connect(format!("{ip}:22")),
-    )
-    .await
-    .map_err(Error::Elapsed)??;
-    let mut session = Session::new().map_err(|e| Error::Sftp {
-        source: e,
-        msg: "Failed to create ssh session!".to_owned(),
-    })?;
-
-    session.set_tcp_stream(tcp);
-    session.handshake().map_err(|e| Error::Sftp {
-        source: e,
-        msg: "Failed to perform ssh handshake!".to_owned(),
-    })?;
-    session
-        .userauth_password("nao", "")
-        .map_err(|e| Error::Sftp {
-            source: e,
-            msg: "Failed to authenticate using ssh!".to_owned(),
-        })?;
-
-    session.sftp().map_err(|e| Error::Sftp {
-        source: e,
-        msg: "Failed to create sftp session!".to_owned(),
-    })
-}
-
-fn ensure_directory_exists(sftp: &Sftp, remote_path: impl AsRef<Path>) -> Result<()> {
-    match sftp.mkdir(remote_path.as_ref(), 0o777) {
-        Ok(()) => Ok(()),
-        // Error code 4, means the directory already exists, so we can ignore it
-        Err(error) if error.code() == ErrorCode::SFTP(4) => Ok(()),
-        Err(error) => Err(Error::Sftp {
-            source: error,
-            msg: "Failed to ensure directory exists".to_owned(),
-        }),
-    }
-}
-
-fn get_remote_path(local_path: &Path) -> PathBuf {
-    let mut remote_path = PathBuf::from("/home/nao");
-
-    for component in local_path.components() {
-        // Would be nice to replace this with an if let chain once https://github.com/rust-lang/rust/issues/53667#issuecomment-1374336460 is stable.
-        match component {
-            // Prevent "deploy" from being added to the remote path, as we'll deploy directly to home directory.
-            Component::Normal(c) if c != "deploy" => remote_path.push(c),
-            // Any other component kind should ignored, such as ".".
-            _ => continue,
-        }
-    }
-
-    remote_path
 }
