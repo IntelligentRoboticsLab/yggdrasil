@@ -339,11 +339,11 @@ enum State {
     CwAlongCollider(usize, OrderedFloat<f32>),
     /// Easing out of the path into the goal counterclockwise.
     ///
-    /// If goal is an isometry, this state preceeds [`State::Goal`].
+    /// If goal is an isometry, this state precedes [`State::Goal`].
     CcwEaseOut(OrderedFloat<f32>),
     /// Easing out of the path into the goal clockwise.
     ///
-    /// If goal is an isometry, this state preceeds [`State::Goal`].
+    /// If goal is an isometry, this state precedes [`State::Goal`].
     CwEaseOut(OrderedFloat<f32>),
 }
 
