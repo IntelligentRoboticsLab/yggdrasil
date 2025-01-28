@@ -3,7 +3,11 @@ use clap::Parser;
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
 use miette::{IntoDiagnostic, Result};
-use std::{net::Ipv4Addr, process::Stdio, time::Duration};
+use std::{
+    net::{IpAddr, Ipv4Addr},
+    process::Stdio,
+    time::Duration,
+};
 use tokio::process::Command;
 
 const CONTROL_BINARY: &str = "re_control";
@@ -21,6 +25,21 @@ pub struct RerunArgs {
     // Whether to pipe the output of rerun to the terminal
     #[clap(long, action, requires = "rerun")]
     pub rerun_log: bool,
+}
+
+pub fn setup_rerun_host(wired: bool) -> Result<String> {
+    std::env::var("RERUN_HOST").or_else(|_| {
+        let mut local_ip = local_ip_address::local_ip().into_diagnostic()?;
+
+        // Make sure the wired bit is set if we're running with `--wired`.
+        if wired {
+            if let IpAddr::V4(ipv4) = &mut local_ip {
+                *ipv4 |= Ipv4Addr::new(0, 1, 0, 0);
+            }
+        }
+
+        Ok(local_ip.to_string())
+    })
 }
 
 /// Check if the `rerun` binary is installed.
