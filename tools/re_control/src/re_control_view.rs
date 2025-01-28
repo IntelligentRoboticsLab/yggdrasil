@@ -66,7 +66,8 @@ pub struct ControlViewState {
 impl Default for ControlViewState {
     fn default() -> Self {
         let ip_addr = match env::var("ROBOT_ADDR") {
-            Ok(ip_addr_str) => Ipv4Addr::from_str(&ip_addr_str).unwrap(),
+            Ok(ip_addr_str) => Ipv4Addr::from_str(&ip_addr_str)
+                .expect("ROBOT_ADDR is set to an invalid ip address!"),
             Err(_) => Ipv4Addr::LOCALHOST,
         };
 
@@ -76,8 +77,9 @@ impl Default for ControlViewState {
         let data = Arc::new(RwLock::new(ControlViewerData::default()));
         let handler_data = Arc::clone(&data);
 
-        // Add a handler for the `ControlViewer` before it runs. This is to
-        // make sure we do not miss any message send at the beginning of a
+        // Add a handler for the `ControlViewer` before it runs.
+        // This is to make sure we do not miss any message sent at
+        // the beginning of a connection.
         // connection
         control_viewer
             .add_handler(Box::new(move |msg: &RobotMessage| {
@@ -246,7 +248,7 @@ A view to control the robot"
         {
             format!("{} - ", robot_config.name)
         } else {
-            "".to_string()
+            "unknown - ".to_string()
         };
 
         // Show the ip associated with the socket of the `ControlViewer`
