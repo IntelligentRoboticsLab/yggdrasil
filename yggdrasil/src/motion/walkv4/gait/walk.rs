@@ -98,7 +98,6 @@ fn generate_foot_positions(
     swing_foot: Res<SwingFoot>,
     cycle_time: Res<CycleTime>,
     config: Res<WalkingEngineConfig>,
-    kinematics: Res<Kinematics>,
 ) {
     state.phase += cycle_time.duration;
     let linear = state.linear();
@@ -106,8 +105,8 @@ fn generate_foot_positions(
 
     // TODO: replace with proper step planning
     let step = Step {
-        forward: 0.00,
-        left: 0.06,
+        forward: 0.0,
+        left: -0.08,
         turn: 0.0,
         duration: state.planned_duration,
         swing_foot_height: 0.01,
@@ -121,12 +120,6 @@ fn generate_foot_positions(
     );
 
     let target = FootPositions::from_target(&step);
-    let turn_travel = match step.swing_foot {
-        Side::Left => target.left.rotation.angle_to(&state.start.left.rotation),
-        Side::Right => target.right.rotation.angle_to(&state.start.right.rotation),
-    };
-
-    info!("turn_travel: {:.5}", turn_travel);
 
     let (left_t, right_t) = match &step.swing_foot {
         Side::Left => (parabolic, linear),
@@ -135,8 +128,6 @@ fn generate_foot_positions(
 
     let mut left = state.start.left.lerp_slerp(&target.left.inner, left_t);
     let mut right = state.start.right.lerp_slerp(&target.right.inner, right_t);
-
-    let real = FootPositions::from_kinematics(**swing_foot, &kinematics, TORSO_OFFSET);
 
     let swing_lift = parabolic_return(linear) * compute_step_apex(&config, &step);
     let (left_lift, right_lift) = match &step.swing_foot {
