@@ -147,12 +147,6 @@ impl BodyContour {
     }
 
     fn is_part_of_chest(chest_points: &ChestPoints, image_coordinate: Point2<f32>) -> bool {
-        if image_coordinate.x <= chest_points.first().unwrap().x
-            || image_coordinate.x >= chest_points.last().unwrap().x
-        {
-            return false;
-        }
-
         for (left_point, right_point) in chest_points.iter().zip(chest_points.iter().skip(1)) {
             if image_coordinate.x < right_point.x {
                 let a = (right_point.y - left_point.y) / (right_point.x - left_point.x);
@@ -161,7 +155,7 @@ impl BodyContour {
             }
         }
 
-        unreachable!();
+        false
     }
 
     // # TODO: This might be too simple for a body part that's not static.
