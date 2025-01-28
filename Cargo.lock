@@ -7018,7 +7018,7 @@ dependencies = [
 
 [[package]]
 name = "re_control"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "clap",
  "heimdall",
@@ -7030,6 +7030,7 @@ dependencies = [
  "re_sdk_comms",
  "re_viewer",
  "rerun",
+ "sindri",
  "tokio",
  "tracing",
 ]
@@ -8999,7 +9000,7 @@ dependencies = [
 
 [[package]]
 name = "sindri"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "cargo_toml",
  "clap",

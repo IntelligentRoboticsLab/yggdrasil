@@ -1,4 +1,4 @@
-use std::net::{IpAddr, Ipv4Addr, SocketAddrV4};
+use std::net::{Ipv4Addr, SocketAddrV4};
 use std::{os::unix::process::CommandExt, process::Stdio};
 
 use clap::Parser;
@@ -12,7 +12,7 @@ use crate::{
     config::SindriConfig,
 };
 
-use super::re_control::{has_rerun, has_rsync, run_re_control};
+use super::re_control::{has_rerun, has_rsync, run_re_control, setup_rerun_host};
 
 const DEFAULT_TRACY_PORT: u16 = 8086;
 
@@ -98,18 +98,7 @@ impl Run {
             // Always set the host, so that rerun can connect to the correct host.
             // even if the host doesn't have rerun viewer installed, there could be
             // some case where the viewer is launched through a different method than the cli.
-            let rerun_host: Result<_> = std::env::var("RERUN_HOST").or_else(|_| {
-                let mut local_ip = local_ip_address::local_ip().into_diagnostic()?;
-
-                // Make sure the wired bit is set if we're running with `--wired`.
-                if self.robot_ops.wired {
-                    if let IpAddr::V4(ipv4) = &mut local_ip {
-                        *ipv4 |= Ipv4Addr::new(0, 1, 0, 0);
-                    }
-                }
-
-                Ok(local_ip.to_string())
-            });
+            let rerun_host: Result<_> = setup_rerun_host(self.robot_ops.wired);
 
             envs.push(("RERUN_HOST".to_owned(), rerun_host?));
 
@@ -120,25 +109,17 @@ impl Run {
                     robot.ip()
                 };
 
-                run_re_control(robot_ip, self.robot_ops.rerun_args.rerun_mem_limit).await?;
+                run_re_control(
+                    robot_ip,
+                    self.robot_ops.rerun_args.rerun_mem_limit,
+                    self.robot_ops.rerun_args.rerun_log,
+                )
+                .await?;
             }
         }
 
         if tracy && has_tracy {
-            // Default to the robot's IP address, but allow the user to override it.
-            let robot_ip = if local {
-                Ipv4Addr::LOCALHOST
-            } else {
-                robot.ip()
-            };
-
-            let tracy_client_ip = std::env::var("TRACY_CLIENT")
-                .unwrap_or_else(|_| format!("{robot_ip}:{DEFAULT_TRACY_PORT}",))
-                .parse()
-                .into_diagnostic()
-                .wrap_err("Invalid tracy client ip address!")?;
-
-            spawn_tracy_profiler(tracy_client_ip)?;
+            spawn_tracy(local, &robot)?;
         }
 
         if local {
@@ -157,6 +138,23 @@ impl Run {
 
         Ok(())
     }
+}
+
+fn spawn_tracy(local: bool, robot: &crate::config::Robot) -> Result<(), miette::Error> {
+    // Default to the robot's IP address, but allow the user to override it.
+    let robot_ip = if local {
+        Ipv4Addr::LOCALHOST
+    } else {
+        robot.ip()
+    };
+
+    let tracy_client_ip = std::env::var("TRACY_CLIENT")
+        .unwrap_or_else(|_| format!("{robot_ip}:{DEFAULT_TRACY_PORT}",))
+        .parse()
+        .into_diagnostic()
+        .wrap_err("Invalid tracy client ip address!")?;
+    spawn_tracy_profiler(tracy_client_ip)?;
+    Ok(())
 }
 
 /// Check if the `tracy` binary is installed.

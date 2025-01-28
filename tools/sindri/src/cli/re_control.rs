@@ -3,7 +3,11 @@ use clap::Parser;
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
 use miette::{IntoDiagnostic, Result};
-use std::{net::Ipv4Addr, process::Stdio, time::Duration};
+use std::{
+    net::{IpAddr, Ipv4Addr},
+    process::Stdio,
+    time::Duration,
+};
 use tokio::process::Command;
 
 const CONTROL_BINARY: &str = "re_control";
@@ -17,6 +21,25 @@ pub struct RerunArgs {
     /// Set a memory limit for the rerun viewer. --rerun required
     #[clap(long, requires = "rerun")]
     pub rerun_mem_limit: Option<String>,
+
+    // Whether to pipe the output of rerun to the terminal
+    #[clap(long, action, requires = "rerun")]
+    pub rerun_log: bool,
+}
+
+pub fn setup_rerun_host(wired: bool) -> Result<String> {
+    std::env::var("RERUN_HOST").or_else(|_| {
+        let mut local_ip = local_ip_address::local_ip().into_diagnostic()?;
+
+        // Make sure the wired bit is set if we're running with `--wired`.
+        if wired {
+            if let IpAddr::V4(ipv4) = &mut local_ip {
+                *ipv4 |= Ipv4Addr::new(0, 1, 0, 0);
+            }
+        }
+
+        Ok(local_ip.to_string())
+    })
 }
 
 /// Check if the `rerun` binary is installed.
@@ -109,7 +132,11 @@ async fn build_re_control() -> Result<()> {
 }
 
 /// Spawn a rerun viewer in the background.
-fn spawn_rerun_viewer(robot_ip: Ipv4Addr, memory_limit: Option<String>) -> Result<()> {
+fn spawn_rerun_viewer(
+    robot_ip: Ipv4Addr,
+    memory_limit: Option<String>,
+    rerun_log: bool,
+) -> Result<()> {
     let mut args = vec![];
     // Set robot ip to connection the viewer with
     args.push(robot_ip.to_string());
@@ -120,11 +147,20 @@ fn spawn_rerun_viewer(robot_ip: Ipv4Addr, memory_limit: Option<String>) -> Resul
         args.push(memory_limit.to_string());
     }
 
+    let (stdio_out, stdio_err) = {
+        if rerun_log {
+            (Stdio::inherit(), Stdio::inherit())
+        } else {
+            (Stdio::null(), Stdio::null())
+        }
+    };
+
     Command::new("cargo")
         .args(vec!["run", "-r", "-q", "-p", CONTROL_BINARY, "--"])
         .args(args)
-        .stdin(Stdio::inherit())
-        .stderr(Stdio::inherit())
+        .stdin(Stdio::null())
+        .stdout(stdio_out)
+        .stderr(stdio_err)
         .kill_on_drop(false)
         .spawn()
         .into_diagnostic()?;
@@ -132,9 +168,13 @@ fn spawn_rerun_viewer(robot_ip: Ipv4Addr, memory_limit: Option<String>) -> Resul
     Ok(())
 }
 
-pub async fn run_re_control(robot_ip: Ipv4Addr, memory_limit: Option<String>) -> Result<()> {
+pub async fn run_re_control(
+    robot_ip: Ipv4Addr,
+    memory_limit: Option<String>,
+    rerun_log: bool,
+) -> Result<()> {
     build_re_control().await?;
-    spawn_rerun_viewer(robot_ip, memory_limit)?;
+    spawn_rerun_viewer(robot_ip, memory_limit, rerun_log)?;
 
     Ok(())
 }

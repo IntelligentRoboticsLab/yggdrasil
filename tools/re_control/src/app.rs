@@ -1,10 +1,9 @@
 use std::net::Ipv4Addr;
 
 use miette::{IntoDiagnostic, Result};
-use re_control_comms::viewer::ControlViewer;
-use re_viewer::{external::eframe, StartupOptions};
+use re_viewer::StartupOptions;
 
-use crate::control::Control;
+use crate::re_control_view::ControlView;
 
 // Rerun can collect analytics if the `analytics` feature is enabled in
 // `Cargo.toml`. This variable is used for the rerun analytics
@@ -12,15 +11,11 @@ const APP_ENV: &str = "Control Wrapper";
 
 pub struct App {
     startup_options: StartupOptions,
-    viewer: ControlViewer,
 }
 
 impl App {
-    pub fn new(startup_options: StartupOptions, viewer: ControlViewer) -> Self {
-        App {
-            startup_options,
-            viewer,
-        }
+    pub fn new(startup_options: StartupOptions) -> Self {
+        App { startup_options }
     }
 
     pub async fn run(self, main_thread_token: re_viewer::MainThreadToken) -> Result<()> {
@@ -35,20 +30,9 @@ impl App {
         )
         .into_diagnostic()?;
 
-        let rerun_native_options = re_viewer::native::eframe_options(None);
-        let native_options = eframe::NativeOptions {
-            viewport: rerun_native_options
-                .viewport
-                .with_app_id("yggdrasil_control"),
-            ..rerun_native_options
-        };
-
-        eframe::run_native(
-            "Rerun",
-            native_options,
+        re_viewer::run_native_app(
+            main_thread_token,
             Box::new(move |cc| {
-                re_viewer::customize_eframe_and_setup_renderer(cc)?;
-
                 let mut app = re_viewer::App::new(
                     main_thread_token,
                     re_viewer::build_info(),
@@ -58,8 +42,13 @@ impl App {
                     cc.storage,
                 );
                 app.add_receiver(rx);
-                Ok(Box::new(Control::new(app, self.viewer)))
+
+                // Register the custom view class
+                app.add_view_class::<ControlView>().unwrap();
+
+                Box::new(app)
             }),
+            None,
         )
         .into_diagnostic()?;
 
