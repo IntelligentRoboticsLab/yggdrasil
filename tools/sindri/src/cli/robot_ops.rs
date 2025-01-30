@@ -617,7 +617,7 @@ fn make_remote_directory(addr: Ipv4Addr) -> String {
 /// # Errors
 ///
 /// Returns an [`Error::Rsync`] if rsync fails, including the exit code and error message.
-pub async fn transfer_files(
+async fn transfer_files(
     local_directory: impl AsRef<str>,
     addr: &Ipv4Addr,
     files_to_transfer: &[String],
