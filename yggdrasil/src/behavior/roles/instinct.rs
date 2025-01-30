@@ -6,10 +6,11 @@ use nalgebra::Point2;
 use crate::{
     behavior::{
         behaviors::{CatchFall, Sitting, Stand, StandLookAt, Standup, WalkToSet},
-        engine::{in_role, CommandsBehaviorExt},
-        primary_state::PrimaryState,
+        engine::CommandsBehaviorExt,
+        primary_state::{update_primary_state, PrimaryState},
         roles::Striker,
     },
+    core::config::showtime::PlayerConfig,
     motion::walk::engine::WalkingEngine,
     sensor::{button::HeadButtons, falling::FallState},
     vision::ball_detection::classifier::Balls,
@@ -22,12 +23,14 @@ pub struct InstinctRolePlugin;
 
 impl Plugin for InstinctRolePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, formation_role.run_if(in_role::<Instinct>));
+        app.add_systems(
+            Update,
+            update_primary_state.after(behavior), // .run_if(resource_exists::<Instinct>),
+        );
     }
 }
 
-/// The [`Instinct`] role is held by a single robot at a time, usually player number 1.
-/// It's job is to prevent the ball from entering the goal, which it does by staying in the goal area.
+/// The [`Instinct`] role is a no-role state.
 #[derive(Resource)]
 pub struct Instinct;
 impl Roles for Instinct {
@@ -35,7 +38,7 @@ impl Roles for Instinct {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn formation_role(
+pub fn behavior(
     mut commands: Commands,
     state: Res<State<BehaviorState>>,
     walking_engine: Res<WalkingEngine>,
@@ -46,7 +49,10 @@ pub fn formation_role(
     top_balls: Res<Balls<Top>>,
     bottom_balls: Res<Balls<Bottom>>,
     standup_state: Option<Res<Standup>>,
+    player_config: Res<PlayerConfig>,
 ) {
+    commands.set_role(Instinct);
+
     let behavior = state.get();
 
     if behavior == &BehaviorState::StartUp {
@@ -130,6 +136,28 @@ pub fn formation_role(
         PrimaryState::Set => commands.set_behavior(StandLookAt {
             target: ball_or_origin,
         }),
-        PrimaryState::Playing { .. } => {}
+        PrimaryState::Playing { .. } => {
+            decide_role(commands, player_config, bottom_balls, top_balls);
+        }
     }
+}
+
+fn decide_role(
+    commands: Commands,
+    player_config: Res<PlayerConfig>,
+    bottom_balls: Res<Balls<Bottom>>,
+    top_balls: Res<Balls<Top>>,
+) {
+    // Change this to a system, also in Stiker
+    let most_confident_ball = bottom_balls
+        .most_confident_ball()
+        .map(|b| b.position)
+        .or(top_balls.most_confident_ball().map(|b| b.position));
+
+    // Only here should we activate the role deciding behavior
+    Role::assign_role(
+        commands,
+        most_confident_ball.is_some(),
+        player_config.player_number,
+    );
 }

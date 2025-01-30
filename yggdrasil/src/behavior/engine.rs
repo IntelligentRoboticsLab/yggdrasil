@@ -1,10 +1,10 @@
 use bevy::prelude::*;
-use heimdall::{Bottom, Top};
+// use heimdall::{Bottom, Top};
 
-use crate::{
-    core::config::showtime::PlayerConfig, sensor::falling::FallState,
-    vision::ball_detection::classifier::Balls,
-};
+// use crate::{
+//     core::config::showtime::PlayerConfig, sensor::falling::FallState,
+//     vision::ball_detection::classifier::Balls,
+// };
 
 use super::{
     behaviors::{
@@ -12,10 +12,10 @@ use super::{
         StandLookAtBehaviorPlugin, StandupBehaviorPlugin, StartUpBehaviorPlugin,
         WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSetBehaviorPlugin,
     },
-    primary_state::{update_primary_state, PrimaryState},
+    // primary_state::{update_primary_state, PrimaryState},
     roles::{
-        Defender, DefenderRolePlugin, Goalkeeper, GoalkeeperRolePlugin, Instinct,
-        InstinctRolePlugin, Striker, StrikerRolePlugin,
+        Defender, DefenderRolePlugin, Goalkeeper, GoalkeeperRolePlugin, InstinctRolePlugin,
+        Striker, StrikerRolePlugin,
     },
 };
 
@@ -41,8 +41,8 @@ impl Plugin for BehaviorEnginePlugin {
                 DefenderRolePlugin,
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
-            ))
-            .add_systems(Update, behavior.after(update_primary_state));
+            ));
+        // .add_systems(Update, behavior.after(update_primary_state));
     }
 }
 
@@ -112,7 +112,7 @@ impl Role {
         }
     }
 
-    fn assign_role(mut commands: Commands, sees_ball: bool, player_number: u8) {
+    pub fn assign_role(mut commands: Commands, sees_ball: bool, player_number: u8) {
         if sees_ball {
             commands.set_role(Striker::WalkToBall);
         } else {
@@ -134,29 +134,29 @@ pub fn in_role<T: Roles>(state: Option<Res<State<Role>>>) -> bool {
     }
 }
 
-fn behavior(
-    mut commands: Commands,
-    player_config: Res<PlayerConfig>,
-    primary_state: Res<PrimaryState>,
-    top_balls: Res<Balls<Top>>,
-    bottom_balls: Res<Balls<Bottom>>,
-    fall_state: Res<FallState>,
-) {
-    match *primary_state {
-        PrimaryState::Playing { .. } if matches!(fall_state.as_ref(), FallState::None) => {
-            // Change this to a system, also in Stiker
-            let most_confident_ball = bottom_balls
-                .most_confident_ball()
-                .map(|b| b.position)
-                .or(top_balls.most_confident_ball().map(|b| b.position));
+// pub fn behavior(
+//     mut commands: Commands,
+//     player_config: Res<PlayerConfig>,
+//     primary_state: Res<PrimaryState>,
+//     top_balls: Res<Balls<Top>>,
+//     bottom_balls: Res<Balls<Bottom>>,
+//     fall_state: Res<FallState>,
+// ) {
+//     match *primary_state {
+//         PrimaryState::Playing { .. } if matches!(fall_state.as_ref(), FallState::None) => {
+//             // Change this to a system, also in Stiker
+//             let most_confident_ball = bottom_balls
+//                 .most_confident_ball()
+//                 .map(|b| b.position)
+//                 .or(top_balls.most_confident_ball().map(|b| b.position));
 
-            // Only here should we activate the role deciding behavior
-            Role::assign_role(
-                commands,
-                most_confident_ball.is_some(),
-                player_config.player_number,
-            );
-        }
-        _ => commands.set_role(Instinct),
-    };
-}
+//             // Only here should we activate the role deciding behavior
+//             Role::assign_role(
+//                 commands,
+//                 most_confident_ball.is_some(),
+//                 player_config.player_number,
+//             );
+//         }
+//         _ => commands.set_role(Instinct),
+//     };
+// }
