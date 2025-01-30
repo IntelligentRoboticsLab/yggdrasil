@@ -25,7 +25,7 @@ impl Plugin for InstinctRolePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            update_primary_state.after(behavior), // .run_if(resource_exists::<Instinct>),
+            behavior.after(update_primary_state), // .run_if(resource_exists::<Instinct>),
         );
     }
 }
