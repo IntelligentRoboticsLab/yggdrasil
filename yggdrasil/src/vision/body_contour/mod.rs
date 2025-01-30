@@ -2,6 +2,7 @@ use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, CameraMatrix};
 use nalgebra::{Isometry3, Point2, Translation3, Vector3};
+use rerun::ComponentBatch;
 
 use crate::{
     core::debug::DebugContext, kinematics::prelude::*, nao::Cycle,
@@ -35,12 +36,15 @@ impl Plugin for BodyContourPlugin {
 }
 
 fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
-    dbg.log_component_batches(
+    dbg.log_static(
         T::make_entity_path("image/body_contour"),
-        true,
-        [
-            &rerun::Color::from_rgb(167, 82, 64) as _,
-            &rerun::Radius::new_ui_points(4.0) as _,
+        &[
+            rerun::Color::from_rgb(167, 82, 64)
+                .serialized()
+                .expect("failed to serialize rerun component"),
+            rerun::Radius::new_ui_points(4.0)
+                .serialized()
+                .expect("failed to serialize rerun component"),
         ],
     );
 }

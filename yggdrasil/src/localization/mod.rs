@@ -20,7 +20,7 @@ use nalgebra::{
     Isometry2, Isometry3, Point2, Point3, Translation2, Translation3, UnitComplex, UnitQuaternion,
 };
 use nidhogg::types::HeadJoints;
-use rerun::external::glam::Quat;
+use rerun::{external::glam::Quat, ComponentBatch};
 
 /// The localization plugin provides functionalities related to the localization of the robot.
 pub struct LocalizationPlugin;
@@ -205,13 +205,18 @@ fn setup_pose_visualization(dbg: DebugContext) {
         &rerun::Boxes3D::from_half_sizes([(0.075, 0.1375, 0.2865)]),
     );
 
-    dbg.log_component_batches(
+    dbg.log_static(
         "localization/pose",
-        true,
-        [
-            &rerun::Color::from_rgb(0, 120, 255) as _,
-            &rerun::components::AxisLength(0.3.into()) as _,
-            &rerun::components::ViewCoordinates::FLU as _,
+        &[
+            rerun::Color::from_rgb(0, 120, 255)
+                .serialized()
+                .expect("failed to serialize rerun component"),
+            rerun::components::AxisLength(0.3.into())
+                .serialized()
+                .expect("failed to serialize rerun component"),
+            rerun::components::ViewCoordinates::FLU
+                .serialized()
+                .expect("failed to serialize rerun component"),
         ],
     );
 }

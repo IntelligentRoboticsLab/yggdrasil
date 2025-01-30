@@ -6,7 +6,10 @@ use bevy::prelude::*;
 use miette::IntoDiagnostic;
 use re_control_comms::debug_system::DebugEnabledSystems;
 use rerun::components::Scalar;
-use rerun::{AsComponents, ComponentBatch, EntityPath, RecordingStream, TimeColumn};
+use rerun::{
+    AsComponents, ComponentBatch, EntityPath, RecordingStream, SerializedComponentColumn,
+    TimeColumn,
+};
 use std::env;
 use std::f32::consts::PI;
 use std::path::{Path, PathBuf};
@@ -128,8 +131,18 @@ fn setup_spl_field(dbg: DebugContext) {
             .with_rotation_axis_angles([((0., 0., 0.), 0.), ((0., 0., 1.), PI)]),
     );
 
-    dbg.log_static("field", &rerun::ViewCoordinates::FLU);
-    dbg.log_static("field/goals", &rerun::ViewCoordinates::FLU);
+    dbg.log_static(
+        "field",
+        &rerun::components::ViewCoordinates::FLU
+            .serialized()
+            .expect("failed to serialize ViewCoordinates component"),
+    );
+    dbg.log_static(
+        "field/goals",
+        &rerun::components::ViewCoordinates::FLU
+            .serialized()
+            .expect("failed to serialize ViewCoordinates component"),
+    );
 }
 
 fn sync_cycle_number(
@@ -145,10 +158,14 @@ fn sync_cycle_number(
             .map(|(cycle, duration)| (cycle as i64, duration.as_millis() as f64))
             .unzip();
 
-        let scalar_data: Vec<Scalar> = durations.into_iter().map(Into::into).collect();
+        // let scalar_data: Vec<_> = durations
+        //     .into_iter()
+        //     .map(Into::into)
+        //     .map(|s: Scalar| s.serialized().expect("wtf").into())
+        //     .collect();
 
         let timeline = TimeColumn::new_sequence("cycle", cycles);
-        ctx.send_columns("stats/cycle_time", [timeline], [&scalar_data as _]);
+        // ctx.send_columns("stats/cycle_time", [timeline], scalar_data);
         cycle_time_buffer.clear();
     } else {
         cycle_time_buffer.push((cycle.0, cycle_time.duration));
@@ -174,10 +191,10 @@ impl RerunStream {
     /// [`RerunStream`] that does nothing.
     pub fn init(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
         let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
-            .connect_tcp_opts(
-                SocketAddr::new(rerun_host, rerun::default_server_addr().port()),
-                rerun::default_flush_timeout(),
-            )
+            .connect_opts(format!(
+                "http://{rerun_host}:{}",
+                rerun::external::re_grpc_server::DEFAULT_SERVER_PORT
+            ))
             .into_diagnostic()?;
 
         Ok(RerunStream {
@@ -266,28 +283,6 @@ impl RerunStream {
         self.stream.set_time_sequence("cycle", self.cycle.0 as i64);
     }
 
-    /// Logs a set of [`ComponentBatch`]es into Rerun.
-    ///
-    /// If `static_` is set to `true`, all timestamp data associated with this message will be
-    /// dropped right before sending it to Rerun.
-    /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
-    /// any temporal data of the same type.
-    ///
-    /// See [`RecordingStream::log_component_batches`] for more information.
-    pub fn log_component_batches<'a>(
-        &self,
-        ent_path: impl Into<EntityPath>,
-        static_: bool,
-        comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
-    ) {
-        if let Err(error) = self
-            .stream
-            .log_component_batches(ent_path, static_, comp_batches)
-        {
-            error!("{error}");
-        }
-    }
-
     /// Lower-level logging API to provide data spanning multiple timepoints.
     ///
     /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
@@ -301,9 +296,9 @@ impl RerunStream {
         &self,
         ent_path: impl Into<EntityPath>,
         timelines: impl IntoIterator<Item = TimeColumn>,
-        components: impl IntoIterator<Item = &'a dyn ComponentBatch>,
+        columns: impl IntoIterator<Item = SerializedComponentColumn>,
     ) {
-        if let Err(error) = self.stream.send_columns(ent_path, timelines, components) {
+        if let Err(error) = self.stream.send_columns(ent_path, timelines, columns) {
             error!("{error}");
         }
     }

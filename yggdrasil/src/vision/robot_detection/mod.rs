@@ -15,6 +15,7 @@ use itertools::Itertools;
 use miette::IntoDiagnostic;
 use ml::{prelude::*, MlArray};
 use ndarray::{Array2, Axis};
+use rerun::ComponentBatch;
 use serde_with::{serde_as, DurationMilliSeconds};
 
 mod anchor_generator;
@@ -234,7 +235,9 @@ fn postprocess_detections(
 fn setup_robot_detection(dbg: DebugContext) {
     dbg.log_static(
         Top::make_entity_image_path("detected_robots"),
-        &rerun::Color::from_rgb(0, 255, 175),
+        &rerun::Color::from_rgb(0, 255, 175)
+            .serialized()
+            .expect("failed to serialize color component"),
     );
 }
 

@@ -104,22 +104,22 @@ openvino = { version = "0.8.0", features = ["runtime-linking"] }
 ordered-float = "4.4.0"
 pathfinding = "4.11.0"
 petgraph = "0.6.5"
-plotters = "0.3.7"
+plotters = { version = "0.3.7", default-features = false }
 proc-macro2 = "1.0.89"
 quote = "1.0.37"
 rand = "0.8.5"
 rayon = "1.10.0"
 
-re_crash_handler = "0.21.0"
-re_sdk_comms = { version = "0.21.0", features = ["server"] }
-re_smart_channel = "0.21.0"
-re_viewer = "0.21.0"
-rerun = { version = "0.21.0", default-features = false, features = [
+re_crash_handler = { git = "https://github.com/rerun-io/rerun", rev = "eb7505b736da49ce81dd9e7110da6547150ba187" }
+re_grpc_server = { git = "https://github.com/rerun-io/rerun", rev = "eb7505b736da49ce81dd9e7110da6547150ba187" }
+re_smart_channel = { git = "https://github.com/rerun-io/rerun", rev = "eb7505b736da49ce81dd9e7110da6547150ba187" }
+re_viewer = { git = "https://github.com/rerun-io/rerun", rev = "eb7505b736da49ce81dd9e7110da6547150ba187" }
+rerun = { git = "https://github.com/rerun-io/rerun", default-features = false, features = [
   "sdk",
   "server",
   "log",
   "glam",
-] }
+], rev = "eb7505b736da49ce81dd9e7110da6547150ba187" }
 
 regex = "1.11.1"
 rustc_version = "0.4.1"

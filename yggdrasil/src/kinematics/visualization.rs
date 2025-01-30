@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use rerun::ComponentBatch;
 
 use super::prelude::*;
 use crate::{
@@ -57,7 +58,12 @@ meshes! {($($name:ident, $_:ty)*) => {
 }}
 
 fn setup_meshes(dbg: DebugContext) {
-    dbg.log_static("nao", &rerun::components::AxisLength(rerun::Float32(0.)));
+    dbg.log_static(
+        "nao",
+        &rerun::components::AxisLength(rerun::Float32(0.))
+            .serialized()
+            .expect("failed to serialize color component"),
+    );
 
     meshes! {($($name:ident, $_:ty)*) => {$(
         let path = concat!("nao/", stringify!($name));
@@ -69,7 +75,7 @@ fn setup_meshes(dbg: DebugContext) {
                 .with_media_type(rerun::MediaType::glb()),
         );
 
-        dbg.log_static(path, &rerun::ViewCoordinates::FLU);
+        dbg.log_static(path, &rerun::components::ViewCoordinates::FLU.serialized().expect("failed to serialize color component"));
     )*}}
 }
 
@@ -105,10 +111,10 @@ fn update_meshes(
         let timeline = rerun::TimeColumn::new_sequence("cycle", std::mem::take(&mut buffer.cycle));
 
         meshes! {($($name:ident, $_space:ty)*) => {$(
-            dbg.send_columns(concat!("nao/", stringify!($name)), [timeline.clone()], [
-                &buffer.$name.0 as _,
-                &buffer.$name.1 as _,
-            ]);
+            // dbg.send_columns(concat!("nao/", stringify!($name)), [timeline.clone()], [
+            //     buffer.$name.0.serialized().expect("failed to serialize rerun component").into(),
+            //     buffer.$name.1.serialized().expect("failed to serialize rerun component").into(),
+            // ]);
 
             buffer.$name.0.clear();
             buffer.$name.1.clear();

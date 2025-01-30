@@ -15,6 +15,7 @@ use nalgebra::{point, Point2};
 use odal::Config;
 use rand::Rng;
 use ransac::{line::LineDetector, Ransac};
+use rerun::ComponentBatch;
 use serde::{Deserialize, Serialize};
 
 use super::body_contour::{update_body_contours, BodyContour};
@@ -437,32 +438,35 @@ fn is_less_bright_and_more_saturated<T: CameraLocation>(
 
 fn setup_debug<T: CameraLocation>(dbg: DebugContext) {
     // lines
-    dbg.log_component_batches(
+    dbg.log_static(
         T::make_entity_image_path("lines/detected"),
-        true,
-        [&rerun::Color::from_rgb(255, 100, 0) as _],
+        &rerun::Color::from_rgb(255, 100, 0)
+            .serialized()
+            .expect("failed to serialize color component"),
     );
 
     // projected lines
-    dbg.log_component_batches(
+    dbg.log_static(
         T::make_entity_path("lines/detected"),
-        true,
-        [&rerun::Color::from_rgb(255, 100, 0) as _],
+        &rerun::Color::from_rgb(255, 100, 0)
+            .serialized()
+            .expect("failed to serialize color component"),
     );
 
     // inliers
-    dbg.log_component_batches(
+    dbg.log_static(
         T::make_entity_image_path("lines/inliers"),
-        true,
-        [&rerun::Radius::from(2.0) as _],
+        &rerun::components::Radius::from(2.0)
+            .serialized()
+            .expect("failed to serialize color component"),
     );
 
     // rejected lines
-    dbg.log_component_batches(
-        T::make_entity_image_path("lines/rejected"),
-        true,
-        std::iter::empty(),
-    );
+    // dbg.log_static(
+    //     T::make_entity_image_path("lines/rejected"),
+    //     true,
+    //     std::iter::empty(),
+    // );
 }
 
 fn debug_lines<T: CameraLocation>(
