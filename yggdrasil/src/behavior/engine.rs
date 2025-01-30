@@ -49,13 +49,13 @@ impl Plugin for BehaviorEnginePlugin {
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BehaviorState {
     Walk,
-    #[default]
     Stand,
     CatchFall,
     Observe,
     Sitting,
     StandLookAt,
     Standup,
+    #[default]
     StartUp,
     WalkTo,
     WalkToSet,
