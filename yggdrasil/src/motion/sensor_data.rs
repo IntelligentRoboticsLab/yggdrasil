@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 use nalgebra::{Point2, Vector2};
+use nidhogg::types::{ForceSensitiveResistorFoot, ForceSensitiveResistors};
 use rerun::{components::Scalar, Color, ComponentBatch, EntityPath, TimeColumn};
 
 use crate::{
@@ -19,11 +20,12 @@ impl Plugin for VisualizeSensorDataPlugin {
             .add_systems(
                 PostUpdate,
                 (
-                    visualize_gyroscope,
-                    visualize_accelerometer,
-                    visualize_com,
-                    visualize_center_of_pressure,
-                    visualize_zero_moment_point,
+                    // visualize_gyroscope,
+                    // visualize_accelerometer,
+                    // visualize_com,
+                    // visualize_center_of_pressure,
+                    // visualize_zero_moment_point,
+                    visualize_fsr,
                 ),
             );
     }
@@ -239,5 +241,77 @@ fn visualize_zero_moment_point(
         buffer.clear();
     } else {
         buffer.push((cycle.clone(), zmp.point));
+    }
+}
+
+fn visualize_fsr(
+    dbg: DebugContext,
+    mut buffer: Local<Vec<(Cycle, ForceSensitiveResistors)>>,
+    cycle: Res<Cycle>,
+    fsr: Res<ForceSensitiveResistors>,
+) {
+    if buffer.len() >= 20 {
+        let (cycles, (left_fsr, right_fsr)): (Vec<_>, (Vec<_>, Vec<_>)) = buffer
+            .iter()
+            .cloned()
+            .map(|(cycle, reading)| (cycle.0 as i64, (reading.left_foot, reading.right_foot)))
+            .unzip();
+
+        let left_foot_fl: Vec<Scalar> = left_fsr
+            .iter()
+            .map(|f| f.front_left as f64)
+            .map(Into::into)
+            .collect();
+        let left_foot_fr: Vec<Scalar> = left_fsr
+            .iter()
+            .map(|f| f.front_right as f64)
+            .map(Into::into)
+            .collect();
+        let left_foot_rl: Vec<Scalar> = left_fsr
+            .iter()
+            .map(|f| f.rear_left as f64)
+            .map(Into::into)
+            .collect();
+        let left_foot_rr: Vec<Scalar> = left_fsr
+            .iter()
+            .map(|f| f.rear_right as f64)
+            .map(Into::into)
+            .collect();
+
+        let right_foot_fl: Vec<Scalar> = right_fsr
+            .iter()
+            .map(|f| f.front_left as f64)
+            .map(Into::into)
+            .collect();
+        let right_foot_fr: Vec<Scalar> = right_fsr
+            .iter()
+            .map(|f| f.front_right as f64)
+            .map(Into::into)
+            .collect();
+        let right_foot_rl: Vec<Scalar> = right_fsr
+            .iter()
+            .map(|f| f.rear_left as f64)
+            .map(Into::into)
+            .collect();
+        let right_foot_rr: Vec<Scalar> = right_fsr
+            .iter()
+            .map(|f| f.rear_right as f64)
+            .map(Into::into)
+            .collect();
+
+        let timeline = TimeColumn::new_sequence("cycle", cycles);
+        dbg.send_columns("fsr/left/fl", [timeline.clone()], [&left_foot_fl as _]);
+        dbg.send_columns("fsr/left/fr", [timeline.clone()], [&left_foot_fr as _]);
+        dbg.send_columns("fsr/left/rl", [timeline.clone()], [&left_foot_rl as _]);
+        dbg.send_columns("fsr/left/rr", [timeline.clone()], [&left_foot_rr as _]);
+
+        dbg.send_columns("fsr/right/fl", [timeline.clone()], [&right_foot_fl as _]);
+        dbg.send_columns("fsr/right/fr", [timeline.clone()], [&right_foot_fr as _]);
+        dbg.send_columns("fsr/right/rl", [timeline.clone()], [&right_foot_rl as _]);
+        dbg.send_columns("fsr/right/rr", [timeline.clone()], [&right_foot_rr as _]);
+
+        buffer.clear();
+    } else {
+        buffer.push((cycle.clone(), fsr.clone()));
     }
 }
