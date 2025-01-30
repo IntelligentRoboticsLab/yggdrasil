@@ -74,8 +74,8 @@ impl Run {
 
         if !self.robot_ops.local {
             output.spinner();
-            robot_ops::stop_single_yggdrasil_service(&robot, output.clone()).await?;
-            robot_ops::upload_to_robot(&robot.ip()).await?;
+            // robot_ops::stop_single_yggdrasil_service(&robot, output.clone()).await?;
+            robot_ops::upload_to_robot(&robot.ip(), output.clone()).await?;
 
             if let Some(network) = self.robot_ops.network {
                 output.spinner();
