@@ -105,8 +105,8 @@ fn generate_foot_positions(
 
     // TODO: replace with proper step planning
     let step = Step {
-        forward: 0.0,
-        left: -0.08,
+        forward: 0.06,
+        left: 0.0,
         turn: 0.0,
         duration: state.planned_duration,
         swing_foot_height: 0.01,
