@@ -1,10 +1,12 @@
 [package]
 authors.workspace = true
+name = "bifrost"
+version.workspace = true
+
 categories.workspace = true
 edition.workspace = true
-name = "bifrost"
+license.workspace = true
 rust-version.workspace = true
-version.workspace = true
 
 [lints]
 workspace = true
