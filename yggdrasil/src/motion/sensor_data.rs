@@ -11,6 +11,8 @@ use crate::{
     sensor::imu::IMUValues,
 };
 
+use super::walkv4::SwingFoot;
+
 /// Plugin for visualizing sensor data using Rerun.
 pub(super) struct VisualizeSensorDataPlugin;
 
@@ -249,12 +251,18 @@ fn visualize_fsr(
     mut buffer: Local<Vec<(Cycle, ForceSensitiveResistors)>>,
     cycle: Res<Cycle>,
     fsr: Res<ForceSensitiveResistors>,
+    swing_foot: Res<SwingFoot>,
 ) {
     if buffer.len() >= 20 {
-        let (cycles, (left_fsr, right_fsr)): (Vec<_>, (Vec<_>, Vec<_>)) = buffer
+        let (cycles, (left_fsr, (right_fsr, swing))): (Vec<_>, (Vec<_>, (Vec<_>, Vec<_>))) = buffer
             .iter()
             .cloned()
-            .map(|(cycle, reading)| (cycle.0 as i64, (reading.left_foot, reading.right_foot)))
+            .map(|(cycle, reading)| {
+                (
+                    cycle.0 as i64,
+                    (reading.left_foot, (reading.right_foot, swing_foot.clone())),
+                )
+            })
             .unzip();
 
         let left_foot: Vec<Scalar> = left_fsr
@@ -268,9 +276,19 @@ fn visualize_fsr(
             .map(Into::into)
             .collect();
 
+        let swing_foot: Vec<Scalar> = swing
+            .iter()
+            .map(|f| match **f {
+                super::walkv4::Side::Left => 1.0,
+                super::walkv4::Side::Right => -1.0,
+            })
+            .map(Into::into)
+            .collect();
+
         let timeline = TimeColumn::new_sequence("cycle", cycles);
         dbg.send_columns("fsr/left", [timeline.clone()], [&left_foot as _]);
         dbg.send_columns("fsr/right", [timeline.clone()], [&right_foot as _]);
+        dbg.send_columns("fsr/swing", [timeline.clone()], [&swing_foot as _]);
 
         buffer.clear();
     } else {
