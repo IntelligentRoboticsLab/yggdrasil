@@ -3,10 +3,14 @@ use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use miette::{miette, Context, IntoDiagnostic};
 use std::{
-    borrow::Cow, collections::HashMap, fmt, fs, net::Ipv4Addr, process::Stdio, str::FromStr,
-    time::Duration,
+    borrow::Cow, collections::HashMap, fmt, fs, net::Ipv4Addr, path::Path, process::Stdio,
+    str::FromStr, time::Duration,
 };
-use tokio::{self, process::Command};
+use tokio::{
+    self,
+    io::{AsyncBufReadExt, BufReader},
+    process::Command,
+};
 use yggdrasil::core::config::showtime::ShowtimeConfig;
 use yggdrasil::prelude::*;
 
@@ -249,11 +253,13 @@ impl Output {
         match self {
             Output::Silent => {}
             Output::Single(pb) => {
-                pb.set_message(format!("{}", "Ensuring host directories exist".dimmed()));
+                pb.set_message(format!("{}", "Connecting...".dimmed()));
                 pb.set_prefix(format!("{}", "Uploading".blue().bold()));
+                pb.set_length(num_files);
+
                 pb.set_style(
                     ProgressStyle::with_template(
-                        "   {prefix:.blue.bold} {msg} [{bar:.blue/cyan}] {spinner:.blue.bold}",
+                        "   {prefix:.blue.bold} {msg} [{bar:.blue/cyan}] [{pos}/{len}] {spinner:.blue.bold}",
                     )
                     .unwrap()
                     .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
@@ -261,6 +267,7 @@ impl Output {
                 );
             }
             Output::Multi(pb) => {
+                pb.set_message(format!("{}", "Connecting...".dimmed()));
                 pb.set_length(num_files);
                 pb.set_style(
                     ProgressStyle::with_template(
@@ -587,13 +594,127 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
 }
 
 /// Copy the contents of the 'deploy' folder to the robot.
-pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<()> {
-    let output = Command::new("rsync")
+pub(crate) async fn upload_to_robot(addr: &Ipv4Addr, output: Output) -> Result<()> {
+    let local_directory = "deploy/";
+    let transfer_list = get_rsync_transfer_list(local_directory, addr).await?;
+    output.upload_phase(transfer_list.len() as u64);
+
+    transfer_files(local_directory, addr, &transfer_list, output.clone()).await
+}
+
+fn make_remote_directory(addr: Ipv4Addr) -> String {
+    format!("nao@{addr}:/home/nao")
+}
+
+/// Transfers files using rsync and displays progress.
+///
+/// This function runs rsync to transfer the specified files while providing real-time progress updates.
+/// It reads `stdout` to track file transfers and `stderr` to capture any errors.
+///
+/// # Note
+///
+/// This function excludes hidden files (dotfiles) from the transfer using `--exclude=.*`.
+/// # Errors
+///
+/// Returns an [`Error::Rsync`] if rsync fails, including the exit code and error message.
+async fn transfer_files(
+    local_directory: impl AsRef<str>,
+    addr: &Ipv4Addr,
+    files_to_transfer: &[String],
+    output: Output,
+) -> Result<()> {
+    let total_files = files_to_transfer.len();
+    if total_files == 0 {
+        return Ok(());
+    }
+
+    let mut child = Command::new("rsync")
         .args([
             "-az",
-            "deploy/",
-            &format!("nao@{addr}:/home/nao"),
-            "--out-format=\"%f\"",
+            "--out-format=%f",
+            "--exclude=.*",
+            local_directory.as_ref(),
+            &make_remote_directory(*addr),
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let stdout = child.stdout.take().expect("failed to take stdiout!");
+    let reader = BufReader::new(stdout);
+    let mut lines = reader.lines();
+
+    let mut previous_line: Option<String> = None;
+
+    while let Some(line) = lines.next_line().await? {
+        if !is_valid_file_path(&line) {
+            continue;
+        }
+
+        match output.clone() {
+            Output::Silent => {}
+            Output::Multi(pb) => {
+                pb.set_message(format!("{}", line.dimmed()));
+                pb.inc(1);
+            }
+            Output::Single(pb) => {
+                if let Some(prev) = previous_line {
+                    pb.println(format!(
+                        "{} {}",
+                        "    Uploaded".bright_blue().bold(),
+                        prev.dimmed()
+                    ));
+                }
+
+                previous_line = Some(line.clone());
+                pb.set_message(format!("{}", line.dimmed()));
+                pb.inc(1);
+            }
+        }
+    }
+
+    output.spinner();
+
+    let status = child.wait().await?;
+    if !status.success() {
+        if let Some(code) = status.code() {
+            return Err(Error::Rsync {
+                exit_code: code,
+                reason: "No idea".to_string(),
+            });
+        }
+    }
+
+    if let Output::Multi(pb) = &output {
+        pb.set_message(format!(
+            "    {} {}",
+            "Uploaded".green().bold(),
+            addr.to_string().red()
+        ));
+    }
+
+    Ok(())
+}
+
+/// Runs rsync in dry-run mode to get a list of files that need to be transferred.
+///
+/// # Note
+///
+/// This transfer list is used only for display purposes and not for the actual transfer.
+/// As a result, it also filters out any "invalid" paths. See [`is_valid_file_path`] for details.
+async fn get_rsync_transfer_list(
+    local_directory: impl AsRef<str>,
+    addr: &Ipv4Addr,
+) -> Result<Vec<String>> {
+    let output = Command::new("rsync")
+        .args([
+            // run rsync in dry mode, to obtain the transfer list
+            "-azn",
+            local_directory.as_ref(),
+            &make_remote_directory(*addr),
+            "--out-format=%f",
+            // exclude hidden files
+            "--exclude=.*",
         ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -609,6 +730,21 @@ pub(crate) async fn upload_to_robot(addr: &Ipv4Addr) -> Result<()> {
         }
     }
 
-    println!("{}", String::from_utf8_lossy(&output.stdout));
-    Ok(())
+    Ok(String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(String::from)
+        .filter(|filepath| is_valid_file_path(filepath))
+        .collect())
+}
+
+/// Check whether the provided path is considered valid.
+///
+/// We consider all files as valid, except directories and hidden files.
+fn is_valid_file_path(filepath: impl AsRef<Path>) -> bool {
+    let path = filepath.as_ref();
+
+    !path.is_dir()
+        && path
+            .file_name()
+            .is_some_and(|name| !name.to_string_lossy().starts_with('.'))
 }
