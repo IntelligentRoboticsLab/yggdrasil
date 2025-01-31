@@ -257,58 +257,20 @@ fn visualize_fsr(
             .map(|(cycle, reading)| (cycle.0 as i64, (reading.left_foot, reading.right_foot)))
             .unzip();
 
-        let left_foot_fl: Vec<Scalar> = left_fsr
+        let left_foot: Vec<Scalar> = left_fsr
             .iter()
-            .map(|f| f.front_left as f64)
+            .map(|f| f.sum() as f64)
             .map(Into::into)
             .collect();
-        let left_foot_fr: Vec<Scalar> = left_fsr
+        let right_foot: Vec<Scalar> = right_fsr
             .iter()
-            .map(|f| f.front_right as f64)
-            .map(Into::into)
-            .collect();
-        let left_foot_rl: Vec<Scalar> = left_fsr
-            .iter()
-            .map(|f| f.rear_left as f64)
-            .map(Into::into)
-            .collect();
-        let left_foot_rr: Vec<Scalar> = left_fsr
-            .iter()
-            .map(|f| f.rear_right as f64)
-            .map(Into::into)
-            .collect();
-
-        let right_foot_fl: Vec<Scalar> = right_fsr
-            .iter()
-            .map(|f| f.front_left as f64)
-            .map(Into::into)
-            .collect();
-        let right_foot_fr: Vec<Scalar> = right_fsr
-            .iter()
-            .map(|f| f.front_right as f64)
-            .map(Into::into)
-            .collect();
-        let right_foot_rl: Vec<Scalar> = right_fsr
-            .iter()
-            .map(|f| f.rear_left as f64)
-            .map(Into::into)
-            .collect();
-        let right_foot_rr: Vec<Scalar> = right_fsr
-            .iter()
-            .map(|f| f.rear_right as f64)
+            .map(|f| f.sum() as f64)
             .map(Into::into)
             .collect();
 
         let timeline = TimeColumn::new_sequence("cycle", cycles);
-        dbg.send_columns("fsr/left/fl", [timeline.clone()], [&left_foot_fl as _]);
-        dbg.send_columns("fsr/left/fr", [timeline.clone()], [&left_foot_fr as _]);
-        dbg.send_columns("fsr/left/rl", [timeline.clone()], [&left_foot_rl as _]);
-        dbg.send_columns("fsr/left/rr", [timeline.clone()], [&left_foot_rr as _]);
-
-        dbg.send_columns("fsr/right/fl", [timeline.clone()], [&right_foot_fl as _]);
-        dbg.send_columns("fsr/right/fr", [timeline.clone()], [&right_foot_fr as _]);
-        dbg.send_columns("fsr/right/rl", [timeline.clone()], [&right_foot_rl as _]);
-        dbg.send_columns("fsr/right/rr", [timeline.clone()], [&right_foot_rr as _]);
+        dbg.send_columns("fsr/left", [timeline.clone()], [&left_foot as _]);
+        dbg.send_columns("fsr/right", [timeline.clone()], [&right_foot as _]);
 
         buffer.clear();
     } else {
