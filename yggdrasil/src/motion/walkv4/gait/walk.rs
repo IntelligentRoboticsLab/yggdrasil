@@ -12,7 +12,7 @@ use crate::{
             feet::FootPositions,
             scheduling::{MotionSet, MotionState},
             step::Step,
-            Side, SwingFoot, TargetFootPositions, TORSO_OFFSET,
+            FootSwitchedEvent, Side, SwingFoot, TargetFootPositions, TORSO_OFFSET,
         },
     },
     nao::CycleTime,
@@ -114,11 +114,6 @@ fn generate_foot_positions(
     }
     .clamp_anatomic(0.1);
 
-    info!(
-        ?swing_foot,
-        "walking duration: {:?}, phase: {:?}", state.planned_duration, state.phase
-    );
-
     let target = FootPositions::from_target(&step);
 
     let (left_t, right_t) = match &step.swing_foot {
@@ -146,6 +141,7 @@ fn generate_foot_positions(
 
 /// System that switches the current swing foot when possible.
 fn update_swing_foot(
+    mut event: EventWriter<FootSwitchedEvent>,
     mut swing_foot: ResMut<SwingFoot>,
     mut state: ResMut<WalkState>,
     kinematics: Res<Kinematics>,
@@ -160,6 +156,7 @@ fn update_swing_foot(
     state.start = FootPositions::from_kinematics(swing_foot.opposite(), &kinematics, TORSO_OFFSET);
     **swing_foot = swing_foot.opposite();
     state.foot_switched_fsr = false;
+    event.send(FootSwitchedEvent(**swing_foot));
 }
 
 fn compute_step_apex(config: &WalkingEngineConfig, step: &Step) -> f32 {

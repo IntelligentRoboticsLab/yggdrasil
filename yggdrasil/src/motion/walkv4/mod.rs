@@ -32,6 +32,7 @@ impl Plugin for Walkv4EnginePlugin {
         app.init_config::<WalkingEngineConfig>();
         app.init_resource::<SwingFoot>();
         app.init_resource::<TargetFootPositions>();
+        app.add_event::<FootSwitchedEvent>();
         app.add_plugins((
             scheduling::MotionSchedulePlugin,
             hips::HipHeightPlugin,
@@ -49,7 +50,7 @@ impl Plugin for Walkv4EnginePlugin {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Side {
     #[default]
     Left,
@@ -84,6 +85,9 @@ impl SwingFoot {
     }
 }
 
+#[derive(Event, Debug, Default, Clone, PartialEq, Eq, Hash)]
+pub struct FootSwitchedEvent(pub Side);
+
 /// Resource containing the currently requested [`FootPositions`], and the balance adjustment.
 #[derive(Debug, Default, Clone, Resource, Deref, DerefMut)]
 pub struct TargetFootPositions(FootPositions);
@@ -108,7 +112,6 @@ fn switch_state(
     chest_button: Res<ChestButton>,
     head_buttons: Res<HeadButtons>,
 ) {
-    info!(?current_state, "\n\n\n");
     let chest_tapped = chest_button.state.is_tapped();
     let head_tapped = head_buttons.all_pressed();
 
