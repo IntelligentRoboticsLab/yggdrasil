@@ -1,7 +1,13 @@
 use bevy::prelude::*;
 use nidhogg::types::{ForceSensitiveResistorFoot, ForceSensitiveResistors};
 
-use crate::{core::debug::DebugContext, sensor::fsr::FsrCalibration};
+use crate::{
+    core::debug::DebugContext,
+    sensor::{
+        fsr::{Contacts, FsrCalibration},
+        SensorConfig,
+    },
+};
 
 use super::{scheduling::MotionSet, Side, SwingFoot};
 
@@ -38,40 +44,65 @@ pub struct FootSupportState {
     trusted: bool,
 }
 
+const CURRENT_SUPPORT_MAX_PRESSURE: f32 = 0.36;
+const CURRENT_SWING_MAX_PRESSURE: f32 = 0.1;
+
 fn update_foot_support(
     dbg: DebugContext,
     mut state: ResMut<FootSupportState>,
     fsr: Res<ForceSensitiveResistors>,
     calibration: Res<FsrCalibration>,
-    swing_foot: Res<SwingFoot>,
+    contacts: Res<Contacts>,
+    config: Res<SensorConfig>,
 ) {
     let weighted_pressure = fsr.weighted_sum(&FSR_WEIGHTS);
-    let total_pressure = fsr.sum();
+    let total_pressure = fsr.left_foot.weighted_sum(&FSR_WEIGHTS.left_foot).abs()
+        + fsr.right_foot.weighted_sum(&FSR_WEIGHTS.right_foot).abs();
 
     if total_pressure > 0.0 {
         state.trusted = true;
         state.support = weighted_pressure / total_pressure;
 
         // TODO: make sure new support foot has pressure.
+        let support_has_pressure = (contacts.left_foot && state.support > 0.0)
+            || (contacts.right_foot && state.support < 0.0);
         let switched = (state.last_support_with_pressure * state.support < 0.0
-            || (state.last_support_with_pressure == 0.0 && state.support != 0.0));
+            || (state.last_support == 0.0 && state.support != 0.0))
+            && support_has_pressure;
 
-        state.last_support_with_pressure = match (**swing_foot, state.support > 0.) {
-            (Side::Left, true) => state.support,
-            (Side::Left, false) => state.last_support_with_pressure,
-            (Side::Right, true) => state.last_support_with_pressure,
-            (Side::Right, false) => state.support,
-        };
+        if support_has_pressure {
+            state.last_support_with_pressure = state.support;
+        }
 
         if switched {
             info!("switched normally?!");
         }
 
-        //float predictedSupport = theFootSupport.support + 3.f * (theFootSupport.support - lastSupport); //current vel
         let predicted_support = state.support + 3.0 * (state.support - state.last_support);
-        info!(
-            "support: {:.3}, predicted: {:.3}",
-            state.support, predicted_support
+
+        let pressures = calibration.normalized_foot_pressure(&fsr);
+        println!(
+            "fsr_left: {:.3}, fsr_right: {:.3}",
+            pressures.left_foot.sum(),
+            pressures.right_foot.sum()
+        );
+        let left_support_can_predict = state.support < 0.0
+            && pressures.right_foot.sum() < CURRENT_SUPPORT_MAX_PRESSURE
+            && pressures.left_foot.sum() > CURRENT_SWING_MAX_PRESSURE;
+        let right_support_can_predict = state.support > 0.0
+            && pressures.left_foot.sum() < CURRENT_SUPPORT_MAX_PRESSURE
+            && pressures.right_foot.sum() > CURRENT_SWING_MAX_PRESSURE;
+
+        let predicted_switch = predicted_support * state.support < 0.
+            && (left_support_can_predict || right_support_can_predict);
+
+        println!(
+            "support: {:.3}, predicted: {:.3}, predicted_switch: {} left: {}, right: {}",
+            state.support,
+            predicted_support,
+            predicted_switch,
+            left_support_can_predict,
+            right_support_can_predict,
         );
 
         state.last_support = state.support;

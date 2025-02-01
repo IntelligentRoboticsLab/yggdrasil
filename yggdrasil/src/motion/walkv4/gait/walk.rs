@@ -146,11 +146,11 @@ fn update_swing_foot(
     mut state: ResMut<WalkState>,
     kinematics: Res<Kinematics>,
 ) {
-    if !state.foot_switched_fsr || state.linear() <= 0.75 {
+    if !state.foot_switched_fsr || state.linear() <= 0.9 {
         return;
     }
 
-    info!("Switching foot!");
+    info!("\nSwitching foot!\n");
     state.phase = Duration::ZERO;
     state.planned_duration = Duration::from_secs_f32(0.25);
     state.start = FootPositions::from_kinematics(swing_foot.opposite(), &kinematics, TORSO_OFFSET);
