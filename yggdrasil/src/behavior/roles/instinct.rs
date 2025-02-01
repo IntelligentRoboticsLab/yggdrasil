@@ -71,14 +71,11 @@ pub fn behavior(
         return;
     }
 
-    if let Some(standup) = standup_state {
-        if matches!(behavior, BehaviorState::Standup) && standup.completed() {
-            commands.set_behavior(Stand);
-        }
+    if standup_state.is_some_and(|s| !s.completed()) {
         return;
     }
 
-    // next up, damage prevention and standup motion take precedence
+    // next up, damage prevention and standup motion takes precedence
     match fall_state.as_ref() {
         FallState::Lying(_) => {
             commands.set_behavior(Standup::default());
