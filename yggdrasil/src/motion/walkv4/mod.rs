@@ -16,6 +16,7 @@ use crate::{
 mod balancing;
 pub mod config;
 mod feet;
+mod foot_support;
 mod gait;
 pub mod hips;
 mod scheduling;
@@ -38,6 +39,7 @@ impl Plugin for Walkv4EnginePlugin {
             hips::HipHeightPlugin,
             gait::GaitPlugins,
             balancing::BalancingPlugin,
+            foot_support::FootSupportPlugin,
         ));
 
         app.add_systems(
