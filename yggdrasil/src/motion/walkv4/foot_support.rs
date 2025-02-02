@@ -1,10 +1,10 @@
 use bevy::prelude::*;
-use nidhogg::types::{ForceSensitiveResistors, FsrFoot};
+use nidhogg::types::{Fsr, FsrFoot};
 
 use crate::{
     core::debug::DebugContext,
     sensor::{
-        fsr::{Contacts, FsrCalibration},
+        fsr::{CalibratedFsr, Contacts},
         SensorConfig,
     },
 };
@@ -20,7 +20,7 @@ impl Plugin for FootSupportPlugin {
     }
 }
 
-const FSR_WEIGHTS: ForceSensitiveResistors = ForceSensitiveResistors {
+const FSR_WEIGHTS: Fsr = Fsr {
     left_foot: FsrFoot {
         front_left: 0.8,
         front_right: 0.3,
@@ -52,12 +52,12 @@ const CURRENT_SWING_MAX_PRESSURE: f32 = 0.1;
 fn update_foot_support(
     dbg: DebugContext,
     mut state: ResMut<FootSupportState>,
-    fsr: Res<ForceSensitiveResistors>,
-    calibration: Res<FsrCalibration>,
+    fsr: Res<Fsr>,
+    calibration: Res<CalibratedFsr>,
     contacts: Res<Contacts>,
     config: Res<SensorConfig>,
 ) {
-    let pressures = calibration.normalized_foot_pressure(&fsr);
+    let pressures = &calibration.normalized;
     let weighted_pressure = pressures.weighted_sum(&FSR_WEIGHTS);
     let total_pressure = pressures
         .left_foot
@@ -85,7 +85,7 @@ fn update_foot_support(
 
         state.foot_switched = switched;
         if switched {
-            info!("switched normally?!");
+            // info!("switched normally?!");
         }
 
         let predicted_support = state.support + 3.0 * (state.support - state.last_support);
@@ -100,19 +100,19 @@ fn update_foot_support(
         let predicted_switch = predicted_support * state.support < 0.
             && (left_support_can_predict || right_support_can_predict);
 
-        println!(
-            "support: {:.3}, predicted: {:.3}, predicted_switch: {} left: {}, right: {}",
-            state.support,
-            predicted_support,
-            predicted_switch,
-            left_support_can_predict,
-            right_support_can_predict,
-        );
-        println!(
-            "      fsr_left: {:.3}, fsr_right: {:.3}",
-            pressures.left_foot.sum(),
-            pressures.right_foot.sum()
-        );
+        // println!(
+        //     "support: {:.3}, predicted: {:.3}, predicted_switch: {} left: {}, right: {}",
+        //     state.support,
+        //     predicted_support,
+        //     predicted_switch,
+        //     left_support_can_predict,
+        //     right_support_can_predict,
+        // );
+        // println!(
+        //     "      fsr_left: {:.3}, fsr_right: {:.3}",
+        //     pressures.left_foot.sum(),
+        //     pressures.right_foot.sum()
+        // );
 
         state.last_support = state.support;
         state.predicted_switch = predicted_switch;

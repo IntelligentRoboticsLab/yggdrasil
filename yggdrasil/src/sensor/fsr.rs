@@ -3,10 +3,10 @@ use std::time::{Duration, Instant};
 use super::SensorConfig;
 use crate::prelude::*;
 use crate::sensor::low_pass_filter::LowPassFilter;
+use crate::{motion::walkv4::FootSwitchedEvent, prelude::*};
 use bevy::prelude::*;
 use nalgebra::SVector;
 
-use crate::motion::walk::SwingFootSwitchedEvent;
 use nidhogg::{
     types::{FillExt, Fsr, FsrFoot},
     NaoState,
@@ -38,7 +38,7 @@ impl Plugin for FSRSensorPlugin {
         );
         app.add_systems(
             Update,
-            update_min_pressure.run_if(on_event::<SwingFootSwitchedEvent>),
+            update_min_pressure.run_if(on_event::<FootSwitchedEvent>),
         );
     }
 }

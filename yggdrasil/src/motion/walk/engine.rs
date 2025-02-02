@@ -50,7 +50,7 @@ impl WalkState {
     /// This returns a new [`WalkState::Sitting`] using an estimated current `hip_height`.
     #[must_use]
     pub fn from_hip_height(hip_height: f32, config: &WalkingEngineConfig) -> Self {
-        if hip_height <= config.sitting_hip_height {
+        if hip_height <= config.max_sitting_hip_height {
             WalkState::Sitting(hip_height)
         } else {
             WalkState::Standing(hip_height)
@@ -65,7 +65,7 @@ impl WalkState {
                 WalkState::Standing((hip_height + 0.002).min(config.hip_height))
             }
             WalkState::Sitting(hip_height) => {
-                WalkState::Sitting((hip_height - 0.002).max(config.sitting_hip_height))
+                WalkState::Sitting((hip_height - 0.002).max(config.max_sitting_hip_height))
             }
             WalkState::Starting(step) => WalkState::Walking(*step),
             WalkState::Walking(_) => self.clone(),
@@ -138,7 +138,7 @@ impl WalkingEngine {
     /// TODO: Implement a better way to check if the robot is sitting, preferably by extracting sitting to a motion.
     #[must_use]
     pub fn is_sitting(&self) -> bool {
-        matches!(self.state, WalkState::Sitting(hip_height) if hip_height <= self.config.sitting_hip_height)
+        matches!(self.state, WalkState::Sitting(hip_height) if hip_height <= self.config.max_sitting_hip_height)
     }
 
     /// Returns whether the robot is currently standing.
@@ -167,8 +167,8 @@ impl WalkingEngine {
             t: Duration::ZERO,
             next_foot_switch: Duration::ZERO,
             swing_foot: Side::default(),
-            foot_offsets: FootOffsets::zero(config.sitting_hip_height),
-            foot_offsets_t0: FootOffsets::zero(config.sitting_hip_height),
+            foot_offsets: FootOffsets::zero(config.max_sitting_hip_height),
+            foot_offsets_t0: FootOffsets::zero(config.max_sitting_hip_height),
             hip_height: current_hip_height,
             max_swing_foot_lift: config.base_foot_lift,
             config: config.clone(),

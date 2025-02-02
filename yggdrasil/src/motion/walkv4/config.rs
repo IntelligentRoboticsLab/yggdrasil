@@ -36,7 +36,7 @@ pub struct WalkingEngineConfig {
     pub foot_lift_modifier: ConfigStep,
     pub max_step_size: ConfigStep,
     pub hip_height: f32,
-    pub sitting_hip_height: f32,
+    pub max_sitting_hip_height: f32,
     pub balancing: BalancingConfig,
 }
 
