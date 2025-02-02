@@ -5,6 +5,8 @@ use odal::Config;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 
+use super::foot_support::FootSupportConfig;
+
 /// A wrapper struct to simplify configuring values that affect each component of a step differently.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct ConfigStep {
@@ -38,6 +40,7 @@ pub struct WalkingEngineConfig {
     pub hip_height: f32,
     pub max_sitting_hip_height: f32,
     pub balancing: BalancingConfig,
+    pub foot_support: FootSupportConfig,
 }
 
 impl Config for WalkingEngineConfig {

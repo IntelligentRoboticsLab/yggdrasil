@@ -44,3 +44,18 @@ arm_swing_multiplier = 0.6
 # Increasing this value will use a larger portion of the filtered gyro value
 # to adjust the pitch of the robot's ankles
 filtered_gyro_y_multiplier = 0.2
+
+# This section contains parameters for the foot support while walking.
+[foot_support]
+# The maximum (normalized) pressure on the current support foot, before predicting a foot switch.
+predict_support_max_pressure = 0.36
+# The minimum (normalized) pressure on the current swing foot, before predicting a foot switch.
+predict_swing_min_pressure = 0.1
+# The number of cycles to look in the future when predicting a support foot switch.
+predict_num_cycles = 3.0
+
+# The weights for the normalized FSR values, as contact with outer part of the foot is more important
+# when deciding which foot is used as support foot.
+[foot_support.weights]
+left_foot = { front_left = 0.8, front_right = 0.3, rear_left = 0.8, rear_right = 0.3 }
+right_foot = { front_left = -0.8, front_right = -0.3, rear_left = -0.8, rear_right = -0.3 }

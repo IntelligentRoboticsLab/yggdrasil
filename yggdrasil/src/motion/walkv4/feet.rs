@@ -10,7 +10,6 @@ use crate::{
     },
     motion::walk::engine::FootOffsets,
 };
-use bevy::prelude::*;
 
 /// Position of the left and right foot of the robot, relative to the ground.
 #[derive(Debug, Clone, Copy, PartialEq)]
