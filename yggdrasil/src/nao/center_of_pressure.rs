@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use nalgebra::{Point2, Vector2};
-use nidhogg::types::{ForceSensitiveResistorFoot, ForceSensitiveResistors};
+use nidhogg::types::{ForceSensitiveResistors, FsrFoot};
 
 use crate::sensor::imu::IMUValues;
 
@@ -58,10 +58,7 @@ fn update_cop(mut center_of_pressure: ResMut<CenterOfPressure>, fsr: Res<ForceSe
         compute_center_of_pressure(&fsr.right_foot, RIGHT_FOOT_SENSOR_OFFSETS);
 }
 
-fn compute_center_of_pressure(
-    fsr_foot: &ForceSensitiveResistorFoot,
-    offsets: SensorOffsets,
-) -> Vector2<f32> {
+fn compute_center_of_pressure(fsr_foot: &FsrFoot, offsets: SensorOffsets) -> Vector2<f32> {
     let (front_left, front_right, rear_left, rear_right) = offsets;
     (fsr_foot.front_left * front_left
         + fsr_foot.front_right * front_right

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use nidhogg::types::{ForceSensitiveResistorFoot, ForceSensitiveResistors};
+use nidhogg::types::{ForceSensitiveResistors, FsrFoot};
 
 use crate::{
     core::debug::DebugContext,
@@ -21,13 +21,13 @@ impl Plugin for FootSupportPlugin {
 }
 
 const FSR_WEIGHTS: ForceSensitiveResistors = ForceSensitiveResistors {
-    left_foot: ForceSensitiveResistorFoot {
+    left_foot: FsrFoot {
         front_left: 0.8,
         front_right: 0.3,
         rear_left: 0.8,
         rear_right: 0.3,
     },
-    right_foot: ForceSensitiveResistorFoot {
+    right_foot: FsrFoot {
         front_left: -0.8,
         front_right: -0.3,
         rear_left: -0.8,
@@ -42,6 +42,8 @@ pub struct FootSupportState {
     last_support: f32,
     last_support_with_pressure: f32,
     trusted: bool,
+    pub foot_switched: bool,
+    pub predicted_switch: bool,
 }
 
 const CURRENT_SUPPORT_MAX_PRESSURE: f32 = 0.36;
@@ -55,9 +57,16 @@ fn update_foot_support(
     contacts: Res<Contacts>,
     config: Res<SensorConfig>,
 ) {
-    let weighted_pressure = fsr.weighted_sum(&FSR_WEIGHTS);
-    let total_pressure = fsr.left_foot.weighted_sum(&FSR_WEIGHTS.left_foot).abs()
-        + fsr.right_foot.weighted_sum(&FSR_WEIGHTS.right_foot).abs();
+    let pressures = calibration.normalized_foot_pressure(&fsr);
+    let weighted_pressure = pressures.weighted_sum(&FSR_WEIGHTS);
+    let total_pressure = pressures
+        .left_foot
+        .weighted_sum(&FSR_WEIGHTS.left_foot)
+        .abs()
+        + pressures
+            .right_foot
+            .weighted_sum(&FSR_WEIGHTS.right_foot)
+            .abs();
 
     if total_pressure > 0.0 {
         state.trusted = true;
@@ -74,24 +83,19 @@ fn update_foot_support(
             state.last_support_with_pressure = state.support;
         }
 
+        state.foot_switched = switched;
         if switched {
             info!("switched normally?!");
         }
 
         let predicted_support = state.support + 3.0 * (state.support - state.last_support);
 
-        let pressures = calibration.normalized_foot_pressure(&fsr);
-        println!(
-            "fsr_left: {:.3}, fsr_right: {:.3}",
-            pressures.left_foot.sum(),
-            pressures.right_foot.sum()
-        );
         let left_support_can_predict = state.support < 0.0
-            && pressures.right_foot.sum() < CURRENT_SUPPORT_MAX_PRESSURE
-            && pressures.left_foot.sum() > CURRENT_SWING_MAX_PRESSURE;
+            && pressures.right_foot.avg() < CURRENT_SUPPORT_MAX_PRESSURE
+            && pressures.left_foot.avg() > CURRENT_SWING_MAX_PRESSURE;
         let right_support_can_predict = state.support > 0.0
-            && pressures.left_foot.sum() < CURRENT_SUPPORT_MAX_PRESSURE
-            && pressures.right_foot.sum() > CURRENT_SWING_MAX_PRESSURE;
+            && pressures.left_foot.avg() < CURRENT_SUPPORT_MAX_PRESSURE
+            && pressures.right_foot.avg() > CURRENT_SWING_MAX_PRESSURE;
 
         let predicted_switch = predicted_support * state.support < 0.
             && (left_support_can_predict || right_support_can_predict);
@@ -104,7 +108,13 @@ fn update_foot_support(
             left_support_can_predict,
             right_support_can_predict,
         );
+        println!(
+            "      fsr_left: {:.3}, fsr_right: {:.3}",
+            pressures.left_foot.sum(),
+            pressures.right_foot.sum()
+        );
 
         state.last_support = state.support;
+        state.predicted_switch = predicted_switch;
     }
 }
