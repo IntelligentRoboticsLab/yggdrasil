@@ -56,7 +56,7 @@ fn setup_motion_state(
     kinematics: Res<Kinematics>,
 ) {
     let hip_height = kinematics.left_hip_height();
-    if hip_height >= config.sitting_hip_height {
+    if hip_height >= config.max_sitting_hip_height {
         state.set(MotionState::Standing);
     } else {
         state.set(MotionState::Sitting);

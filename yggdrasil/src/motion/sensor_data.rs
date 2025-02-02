@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use nalgebra::{Point2, Vector2};
-use nidhogg::types::{ForceSensitiveResistors, FsrFoot};
+use nidhogg::types::{Fsr, FsrFoot};
 use rerun::{components::Scalar, Color, ComponentBatch, EntityPath, TimeColumn};
 
 use crate::{
@@ -248,9 +248,9 @@ fn visualize_zero_moment_point(
 
 fn visualize_fsr(
     dbg: DebugContext,
-    mut buffer: Local<Vec<(Cycle, ForceSensitiveResistors)>>,
+    mut buffer: Local<Vec<(Cycle, Fsr)>>,
     cycle: Res<Cycle>,
-    fsr: Res<ForceSensitiveResistors>,
+    fsr: Res<Fsr>,
     swing_foot: Res<SwingFoot>,
 ) {
     if buffer.len() >= 20 {

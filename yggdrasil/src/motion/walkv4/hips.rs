@@ -58,6 +58,16 @@ impl HipHeight {
         self.current + kinematics::dimensions::ANKLE_TO_SOLE.z
     }
 
+    /// Get the requested hip height.
+    ///
+    /// # Important
+    ///
+    /// This is not the physical hip height, but the target hip height that is being interpolated towards.
+    #[must_use]
+    pub fn requested(&self) -> f32 {
+        self.requested + kinematics::dimensions::ANKLE_TO_SOLE.z
+    }
+
     /// Request a specific hip height.
     ///
     /// This will be propagated automatically by the [`HipHeightPlugin`].

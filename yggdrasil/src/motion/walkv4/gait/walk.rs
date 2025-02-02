@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
-use nidhogg::types::ForceSensitiveResistors;
+use nidhogg::types::Fsr;
 
 use crate::{
     kinematics::Kinematics,
@@ -81,7 +81,7 @@ impl WalkState {
 fn check_foot_switched(
     mut state: ResMut<WalkState>,
     swing_foot: Res<SwingFoot>,
-    fsr: Res<ForceSensitiveResistors>,
+    fsr: Res<Fsr>,
     config: Res<WalkingEngineConfig>,
     foot_support: Res<FootSupportState>,
     cycle: Res<Cycle>,

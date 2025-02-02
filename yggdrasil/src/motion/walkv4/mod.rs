@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use config::WalkingEngineConfig;
 use feet::FootPositions;
 use hips::HipHeight;
-use nidhogg::types::{FillExt, LeftLegJoints, LegJoints, RightLegJoints};
+use nidhogg::types::{LeftLegJoints, LegJoints, RightLegJoints};
 use scheduling::{MotionSet, MotionState};
 
 use crate::{
@@ -33,6 +33,7 @@ impl Plugin for Walkv4EnginePlugin {
         app.init_config::<WalkingEngineConfig>();
         app.init_resource::<SwingFoot>();
         app.init_resource::<TargetFootPositions>();
+        app.init_resource::<TargetLegStiffness>();
         app.add_event::<FootSwitchedEvent>();
         app.add_plugins((
             scheduling::MotionSchedulePlugin,
@@ -90,9 +91,13 @@ impl SwingFoot {
 #[derive(Event, Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct FootSwitchedEvent(pub Side);
 
-/// Resource containing the currently requested [`FootPositions`], and the balance adjustment.
+/// Resource containing the currently requested [`FootPositions`].
 #[derive(Debug, Default, Clone, Resource, Deref, DerefMut)]
 pub struct TargetFootPositions(FootPositions);
+
+/// Resource containing the currently requested leg stiffness.
+#[derive(Debug, Default, Clone, Resource, Deref, DerefMut)]
+pub struct TargetLegStiffness(LegJoints<f32>);
 
 impl TargetFootPositions {
     /// Compute the leg angles for the target foot positions.
@@ -132,9 +137,9 @@ fn switch_state(
 
 fn finalize(
     mut nao: ResMut<NaoManager>,
-    config: Res<WalkingEngineConfig>,
     hip_height: Res<HipHeight>,
     target_foot_positions: Res<TargetFootPositions>,
+    target_leg_stiffness: Res<TargetLegStiffness>,
     balance_adjustment: Res<BalanceAdjustment>,
 ) {
     let (mut left_leg, mut right_leg) =
@@ -145,9 +150,10 @@ fn finalize(
         .left_leg(left_leg)
         .right_leg(right_leg)
         .build();
+
     let leg_stiffness = LegJoints::builder()
-        .left_leg(LeftLegJoints::fill(config.leg_stiffness))
-        .right_leg(RightLegJoints::fill(config.leg_stiffness))
+        .left_leg(target_leg_stiffness.left_leg.clone())
+        .right_leg(target_leg_stiffness.right_leg.clone())
         .build();
 
     nao.set_legs(leg_positions, leg_stiffness, Priority::Medium);
