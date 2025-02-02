@@ -1,43 +1,38 @@
 use bevy::prelude::*;
-use nidhogg::types::{Fsr, FsrFoot};
+use nidhogg::types::Fsr;
+use serde::{Deserialize, Serialize};
 
-use crate::{
-    core::debug::DebugContext,
-    sensor::{
-        fsr::{CalibratedFsr, Contacts},
-        SensorConfig,
-    },
-};
+use crate::sensor::fsr::{CalibratedFsr, Contacts};
 
-use super::{scheduling::MotionSet, Side, SwingFoot};
+use super::{config::WalkingEngineConfig, scheduling::MotionSet, Side};
 
 pub(super) struct FootSupportPlugin;
 
 impl Plugin for FootSupportPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FootSupportState>();
+        app.add_systems(PostStartup, init_foot_support);
         app.add_systems(Update, update_foot_support.in_set(MotionSet::StepPlanning));
     }
 }
 
-const FSR_WEIGHTS: Fsr = Fsr {
-    left_foot: FsrFoot {
-        front_left: 0.8,
-        front_right: 0.3,
-        rear_left: 0.8,
-        rear_right: 0.3,
-    },
-    right_foot: FsrFoot {
-        front_left: -0.8,
-        front_right: -0.3,
-        rear_left: -0.8,
-        rear_right: -0.3,
-    },
-};
+/// Configuration for the foot support plugin.
+#[derive(Resource, Serialize, Deserialize, Debug, Default, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct FootSupportConfig {
+    /// The maximum (normalized) pressure on the current support foot, before predicting a foot switch.
+    predict_support_max_pressure: f32,
+    /// The minimum (normalized) pressure on the current swing foot, before predicting a foot switch.
+    predict_swing_min_pressure: f32,
+    /// The number of cycles to look in the future when predicting a support foot switch.
+    predict_num_cycles: f32,
+    /// The weights for the normalized FSR values, as contact with outer part of the foot is more important
+    /// when deciding which foot is used as support foot.
+    weights: Fsr,
+}
 
 #[derive(Resource, Debug, Default)]
 pub struct FootSupportState {
-    current_support: Side,
     support: f32,
     last_support: f32,
     last_support_with_pressure: f32,
@@ -46,33 +41,47 @@ pub struct FootSupportState {
     pub predicted_switch: bool,
 }
 
-const CURRENT_SUPPORT_MAX_PRESSURE: f32 = 0.36;
-const CURRENT_SWING_MAX_PRESSURE: f32 = 0.1;
+impl FootSupportState {
+    /// Get the current support foot.
+    pub fn current_support(&self) -> Side {
+        if self.support < 0.0 {
+            Side::Left
+        } else {
+            Side::Right
+        }
+    }
+
+    /// Get the current swing foot.
+    pub fn current_swing(&self) -> Side {
+        self.current_support().opposite()
+    }
+}
+
+fn init_foot_support(mut commands: Commands, config: Res<WalkingEngineConfig>) {
+    commands.insert_resource(config.foot_support.clone());
+}
 
 fn update_foot_support(
-    dbg: DebugContext,
+    config: Res<FootSupportConfig>,
     mut state: ResMut<FootSupportState>,
-    fsr: Res<Fsr>,
     calibration: Res<CalibratedFsr>,
     contacts: Res<Contacts>,
-    config: Res<SensorConfig>,
 ) {
     let pressures = &calibration.normalized;
-    let weighted_pressure = pressures.weighted_sum(&FSR_WEIGHTS);
+    let weighted_pressure = pressures.weighted_sum(&config.weights);
     let total_pressure = pressures
         .left_foot
-        .weighted_sum(&FSR_WEIGHTS.left_foot)
+        .weighted_sum(&config.weights.left_foot)
         .abs()
         + pressures
             .right_foot
-            .weighted_sum(&FSR_WEIGHTS.right_foot)
+            .weighted_sum(&config.weights.right_foot)
             .abs();
 
     if total_pressure > 0.0 {
         state.trusted = true;
         state.support = weighted_pressure / total_pressure;
 
-        // TODO: make sure new support foot has pressure.
         let support_has_pressure = (contacts.left_foot && state.support > 0.0)
             || (contacts.right_foot && state.support < 0.0);
         let switched = (state.last_support_with_pressure * state.support < 0.0
@@ -84,37 +93,24 @@ fn update_foot_support(
         }
 
         state.foot_switched = switched;
-        if switched {
-            // info!("switched normally?!");
-        }
-
-        let predicted_support = state.support + 3.0 * (state.support - state.last_support);
+        let predicted_support =
+            state.support + config.predict_num_cycles * (state.support - state.last_support);
 
         let left_support_can_predict = state.support < 0.0
-            && pressures.right_foot.avg() < CURRENT_SUPPORT_MAX_PRESSURE
-            && pressures.left_foot.avg() > CURRENT_SWING_MAX_PRESSURE;
+            && pressures.right_foot.avg() < config.predict_support_max_pressure
+            && pressures.left_foot.avg() > config.predict_swing_min_pressure;
         let right_support_can_predict = state.support > 0.0
-            && pressures.left_foot.avg() < CURRENT_SUPPORT_MAX_PRESSURE
-            && pressures.right_foot.avg() > CURRENT_SWING_MAX_PRESSURE;
+            && pressures.left_foot.avg() < config.predict_support_max_pressure
+            && pressures.right_foot.avg() > config.predict_swing_min_pressure;
 
         let predicted_switch = predicted_support * state.support < 0.
             && (left_support_can_predict || right_support_can_predict);
 
-        // println!(
-        //     "support: {:.3}, predicted: {:.3}, predicted_switch: {} left: {}, right: {}",
-        //     state.support,
-        //     predicted_support,
-        //     predicted_switch,
-        //     left_support_can_predict,
-        //     right_support_can_predict,
-        // );
-        // println!(
-        //     "      fsr_left: {:.3}, fsr_right: {:.3}",
-        //     pressures.left_foot.sum(),
-        //     pressures.right_foot.sum()
-        // );
-
         state.last_support = state.support;
-        state.predicted_switch = predicted_switch;
+
+        // Only predict a foot switch if the FSR is calibrated
+        if calibration.is_calibrated {
+            state.predicted_switch = predicted_switch;
+        }
     }
 }
