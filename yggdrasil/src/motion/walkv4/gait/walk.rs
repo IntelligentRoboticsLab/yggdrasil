@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
 use nidhogg::types::ForceSensitiveResistors;
@@ -10,12 +10,13 @@ use crate::{
         walkv4::{
             config::WalkingEngineConfig,
             feet::FootPositions,
+            foot_support::FootSupportState,
             scheduling::{MotionSet, MotionState},
             step::Step,
             FootSwitchedEvent, Side, SwingFoot, TargetFootPositions, TORSO_OFFSET,
         },
     },
-    nao::CycleTime,
+    nao::{Cycle, CycleTime},
 };
 
 pub(super) struct WalkGaitPlugin;
@@ -82,14 +83,31 @@ fn check_foot_switched(
     swing_foot: Res<SwingFoot>,
     fsr: Res<ForceSensitiveResistors>,
     config: Res<WalkingEngineConfig>,
+    foot_support: Res<FootSupportState>,
+    cycle: Res<Cycle>,
+    mut last_switched: Local<Cycle>,
 ) {
-    let left_foot_fsr = fsr.left_foot.sum();
-    let right_foot_fsr = fsr.right_foot.sum();
+    let switch_diff = cycle.0 - last_switched.0;
+    if foot_support.predicted_switch {
+        println!("switch diff: {switch_diff}");
+        if switch_diff >= 20 {
+            println!("predicted switch!");
+            state.foot_switched_fsr = true;
+        }
+    } else {
+        if switch_diff >= 20 {
+            state.foot_switched_fsr = foot_support.foot_switched;
+        }
+    }
 
-    state.foot_switched_fsr = match **swing_foot {
-        Side::Left => left_foot_fsr,
-        Side::Right => right_foot_fsr,
-    } > config.cop_pressure_threshold;
+    if state.foot_switched_fsr {
+        *last_switched = *cycle;
+    }
+
+    // state.foot_switched_fsr = match **swing_foot {
+    //     Side::Left => left_foot_fsr,
+    //     Side::Right => right_foot_fsr,
+    // } > config.cop_pressure_threshold;
 }
 
 fn generate_foot_positions(
@@ -146,7 +164,7 @@ fn update_swing_foot(
     mut state: ResMut<WalkState>,
     kinematics: Res<Kinematics>,
 ) {
-    if !state.foot_switched_fsr || state.linear() <= 0.9 {
+    if !state.foot_switched_fsr {
         return;
     }
 

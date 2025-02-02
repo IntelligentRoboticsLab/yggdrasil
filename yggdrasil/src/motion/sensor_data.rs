@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use nalgebra::{Point2, Vector2};
-use nidhogg::types::{ForceSensitiveResistorFoot, ForceSensitiveResistors};
+use nidhogg::types::{ForceSensitiveResistors, FsrFoot};
 use rerun::{components::Scalar, Color, ComponentBatch, EntityPath, TimeColumn};
 
 use crate::{
