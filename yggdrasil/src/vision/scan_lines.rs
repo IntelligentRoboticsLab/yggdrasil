@@ -672,24 +672,29 @@ impl RegionColor {
         let yhs = pixel.clone().to_yhs2();
         let (r, g, b) = pixel.to_rgb();
 
-        let g_chromaticity = g / (r + g + b);
+        let color_sum = r + g + b;
+        let g_chromaticity = g / color_sum;
+        let r_chromaticity = r / color_sum;
+        let b_chromaticity = 1.0 - g_chromaticity - r_chromaticity;
         let green_threshold = config.green_chromaticity_threshold;
-
-        // if Self::is_green(config, yhs) {
-        //     return RegionColor::Green;
-        // }
-        if g_chromaticity > green_threshold {
-            return RegionColor::Green;
-        }
 
         if Self::is_white(config, yhs) {
             return RegionColor::WhiteOrBlack;
+        }
+
+        if Self::is_green(config, yhs) {
+            return RegionColor::Green;
         }
 
         if Self::is_black(config, yhs) {
             // We mark black spots as white regions for ball detection
             return RegionColor::WhiteOrBlack;
         }
+
+        // if g_chromaticity > green_threshold {
+        //     return RegionColor::Green;
+        // }
+
 
         RegionColor::Unknown
     }

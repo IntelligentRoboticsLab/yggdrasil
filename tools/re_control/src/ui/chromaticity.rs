@@ -10,7 +10,7 @@ use re_viewer::external::{
     re_ui::{list_item, UiExt},
 };
 
-const DEGREE_RANGE: RangeInclusive<f32> = 0.0..=1.0;
+const DEGREE_RANGE: RangeInclusive<f32> = 0.25..=0.45;
 const SLIDER_STEP_SIZE: f64 = 0.001;
 
 pub fn chromaticity_ui(
