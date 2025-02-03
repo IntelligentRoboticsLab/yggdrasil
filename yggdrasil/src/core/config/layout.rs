@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use nalgebra::point;
 use nalgebra::Point2;
 use std::ops::Index;
 
@@ -6,6 +7,8 @@ use nalgebra::Isometry2;
 use nalgebra::Vector2;
 use odal::Config;
 use serde::{Deserialize, Serialize};
+
+use crate::vision::line_detection::line::LineSegment2;
 
 mod isometry_with_angle {
     use nalgebra::{Isometry, Isometry2, UnitComplex};
@@ -117,6 +120,12 @@ pub struct FieldConfig {
     pub border_strip_width: f32,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum FieldLine {
+    Segment(LineSegment2),
+    Circle { center: Point2<f32>, radius: f32 },
+}
+
 impl FieldConfig {
     #[must_use]
     pub fn diagonal(&self) -> Vector2<f32> {
@@ -131,6 +140,135 @@ impl FieldConfig {
     #[must_use]
     pub fn in_field_with_margin(&self, point: Point2<f32>, margin: f32) -> bool {
         point.x.abs() < self.length / 2.0 + margin && point.y.abs() < self.width / 2.0 + margin
+    }
+
+    pub fn field_lines(&self) -> [FieldLine; 18] {
+        [
+            // Center circle
+            FieldLine::Circle {
+                center: point![0.0, 0.0],
+                radius: self.centre_circle_diameter / 2.0,
+            },
+            // Field border
+            FieldLine::Segment(LineSegment2::new(
+                point![-self.length / 2.0, -self.width / 2.0],
+                point![self.length / 2.0, -self.width / 2.0],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![-self.length / 2.0, self.width / 2.0],
+                point![self.length / 2.0, self.width / 2.0],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![-self.length / 2.0, -self.width / 2.0],
+                point![-self.length / 2.0, self.width / 2.0],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![self.length / 2.0, -self.width / 2.0],
+                point![self.length / 2.0, self.width / 2.0],
+            )),
+            // Center line
+            FieldLine::Segment(LineSegment2::new(
+                point![0.0, -self.width / 2.0],
+                point![0.0, self.width / 2.0],
+            )),
+            // Goal areas & goal boxes
+            FieldLine::Segment(LineSegment2::new(
+                point![-self.length / 2.0, -self.goal_area_width / 2.0],
+                point![
+                    -self.length / 2.0 + self.goal_area_length,
+                    -self.goal_area_width / 2.0
+                ],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![-self.length / 2.0, self.goal_area_width / 2.0],
+                point![
+                    -self.length / 2.0 + self.goal_area_length,
+                    self.goal_area_width / 2.0
+                ],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![self.length / 2.0, -self.goal_area_width / 2.0],
+                point![
+                    self.length / 2.0 - self.goal_area_length,
+                    -self.goal_area_width / 2.0
+                ],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![self.length / 2.0, self.goal_area_width / 2.0],
+                point![
+                    self.length / 2.0 - self.goal_area_length,
+                    self.goal_area_width / 2.0
+                ],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![
+                    -self.length / 2.0 + self.goal_area_length,
+                    -self.goal_area_width / 2.0
+                ],
+                point![
+                    -self.length / 2.0 + self.goal_area_length,
+                    self.goal_area_width / 2.0
+                ],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![
+                    self.length / 2.0 - self.goal_area_length,
+                    -self.goal_area_width / 2.0
+                ],
+                point![
+                    self.length / 2.0 - self.goal_area_length,
+                    self.goal_area_width / 2.0
+                ],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![-self.length / 2.0, -self.penalty_area_width / 2.0],
+                point![
+                    -self.length / 2.0 + self.penalty_area_length,
+                    -self.penalty_area_width / 2.0
+                ],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![-self.length / 2.0, self.penalty_area_width / 2.0],
+                point![
+                    -self.length / 2.0 + self.penalty_area_length,
+                    self.penalty_area_width / 2.0
+                ],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![self.length / 2.0, -self.penalty_area_width / 2.0],
+                point![
+                    self.length / 2.0 - self.penalty_area_length,
+                    -self.penalty_area_width / 2.0
+                ],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![self.length / 2.0, self.penalty_area_width / 2.0],
+                point![
+                    self.length / 2.0 - self.penalty_area_length,
+                    self.penalty_area_width / 2.0
+                ],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![
+                    -self.length / 2.0 + self.penalty_area_length,
+                    -self.penalty_area_width / 2.0
+                ],
+                point![
+                    -self.length / 2.0 + self.penalty_area_length,
+                    self.penalty_area_width / 2.0
+                ],
+            )),
+            FieldLine::Segment(LineSegment2::new(
+                point![
+                    self.length / 2.0 - self.penalty_area_length,
+                    -self.penalty_area_width / 2.0
+                ],
+                point![
+                    self.length / 2.0 - self.penalty_area_length,
+                    self.penalty_area_width / 2.0
+                ],
+            )),
+        ]
     }
 }
 

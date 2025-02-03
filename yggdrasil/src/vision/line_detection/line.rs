@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use nalgebra::{Isometry2, Point2, Vector2};
 
-/// A line in 2D space
+/// A normal form line in 2D space
 #[derive(Debug, Clone, Copy, Component, PartialEq)]
 pub struct Line2 {
     /// Normal to the line itself
@@ -32,8 +32,19 @@ impl Line2 {
     /// Distance from the line to a point
     #[must_use]
     pub fn distance_to_point(&self, point: Point2<f32>) -> f32 {
-        let signed_distance = self.normal.dot(&point.coords) - self.d;
+        let signed_distance = self.signed_distance_to_point(point);
         signed_distance.abs()
+    }
+
+    /// Projects a point onto the line
+    #[must_use]
+    pub fn project(&self, point: Point2<f32>) -> Point2<f32> {
+        let signed_distance = self.signed_distance_to_point(point);
+        point - self.normal * signed_distance
+    }
+
+    fn signed_distance_to_point(&self, point: Point2<f32>) -> f32 {
+        self.normal.dot(&point.coords) - self.d
     }
 }
 
@@ -70,6 +81,50 @@ impl LineSegment2 {
     pub fn normal(&self) -> Vector2<f32> {
         let dir = self.end - self.start;
         Vector2::new(-dir.y, dir.x).normalize()
+    }
+
+    /// Projects a point onto the line segment
+    ///
+    /// Returns the projected point and the distance to the original point
+    #[must_use]
+    pub fn project_with_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
+        let line = self.to_line();
+        let projected = line.project(point);
+        if self.contains(projected) {
+            let distance = (projected - point).norm();
+            (projected, distance)
+        // If the projected point is not on the line segment we return the closest endpoint
+        } else {
+            let start_distance = (point - self.start).norm();
+            let end_distance = (point - self.end).norm();
+            if start_distance < end_distance {
+                (self.start, start_distance)
+            } else {
+                (self.end, end_distance)
+            }
+        }
+    }
+
+    /// Distance from the line segment to a point
+    #[must_use]
+    pub fn distance_to_point(&self, point: Point2<f32>) -> f32 {
+        let line = self.to_line();
+        let projected = line.project(point);
+        if self.contains(projected) {
+            line.distance_to_point(point)
+        } else {
+            let start_distance = (point - self.start).norm();
+            let end_distance = (point - self.end).norm();
+            start_distance.min(end_distance)
+        }
+    }
+
+    /// Checks if a point is contained within the line segment
+    pub fn contains(&self, point: Point2<f32>) -> bool {
+        let dir = self.end - self.start;
+        let start_dir = point - self.start;
+        let end_dir = point - self.end;
+        dir.dot(&start_dir) >= 0.0 && dir.dot(&end_dir) <= 0.0
     }
 
     /// Samples n points uniformly *in between* the two endpoints (excluding the endpoints themselves).
