@@ -8,6 +8,7 @@ use nalgebra::Vector2;
 use odal::Config;
 use serde::{Deserialize, Serialize};
 
+use crate::vision::line_detection::line::Circle;
 use crate::vision::line_detection::line::LineSegment2;
 
 mod isometry_with_angle {
@@ -123,7 +124,7 @@ pub struct FieldConfig {
 #[derive(Debug, Clone, Copy)]
 pub enum FieldLine {
     Segment(LineSegment2),
-    Circle { center: Point2<f32>, radius: f32 },
+    Circle(Circle),
 }
 
 impl FieldConfig {
@@ -145,10 +146,10 @@ impl FieldConfig {
     pub fn field_lines(&self) -> [FieldLine; 18] {
         [
             // Center circle
-            FieldLine::Circle {
+            FieldLine::Circle(Circle {
                 center: point![0.0, 0.0],
                 radius: self.centre_circle_diameter / 2.0,
-            },
+            }),
             // Field border
             FieldLine::Segment(LineSegment2::new(
                 point![-self.length / 2.0, -self.width / 2.0],

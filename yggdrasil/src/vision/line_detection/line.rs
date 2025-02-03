@@ -155,3 +155,18 @@ impl From<LineSegment2> for [(f32, f32); 2] {
         ]
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub struct Circle {
+    pub center: Point2<f32>,
+    pub radius: f32,
+}
+
+impl Circle {
+    pub fn project_with_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
+        let dir = point - self.center;
+        let distance = dir.norm();
+        let projected = self.center + dir / distance * self.radius;
+        (projected, distance - self.radius)
+    }
+}

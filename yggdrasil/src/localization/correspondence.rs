@@ -50,16 +50,27 @@ pub fn get_correspondences<T: CameraLocation>(
         for segment in &lines.segments {
             let mut closest = None;
             for field_line in layout.field.field_lines() {
-                let FieldLine::Segment(segment_field) = field_line else {
-                    continue;
-                };
-
                 let segment =
                     LineSegment2::new(pose.inner * segment.start, pose.inner * segment.end);
 
-                // project segment end points onto the line
-                let (start, start_distance) = segment_field.project_with_distance(segment.start);
-                let (end, end_distance) = segment_field.project_with_distance(segment.end);
+                // let FieldLine::Segment(segment_field) = field_line else {
+                //     continue;
+                // };
+
+                let ((start, start_distance), (end, end_distance)) = match field_line {
+                    FieldLine::Segment(segment_field) => {
+                        // project segment end points onto the line
+                        let start = segment_field.project_with_distance(segment.start);
+                        let end = segment_field.project_with_distance(segment.end);
+                        (start, end)
+                    }
+                    FieldLine::Circle(circle) => {
+                        // project segment end points onto the line
+                        let start = circle.project_with_distance(segment.start);
+                        let end = circle.project_with_distance(segment.end);
+                        (start, end)
+                    }
+                };
 
                 let error = start_distance.powi(2) + end_distance.powi(2);
 
@@ -116,18 +127,18 @@ pub fn get_correspondences<T: CameraLocation>(
                 .with_radii(vec![0.02; a.len()]),
         );
 
-        dbg.log_with_cycle(
-            "field_lines/points",
-            *cycle,
-            &rerun::Points3D::new(correspondences.iter().flat_map(|c| {
-                [
-                    (c.detected_line.start.x, c.detected_line.start.y, 0.0),
-                    (c.detected_line.end.x, c.detected_line.end.y, 0.0),
-                ]
-            }))
-            .with_colors(vec![(255, 0, 0); correspondences.len() * 2])
-            .with_radii(vec![0.1; correspondences.len() * 2]),
-        );
+        // dbg.log_with_cycle(
+        //     "field_lines/points",
+        //     *cycle,
+        //     &rerun::Points3D::new(correspondences.iter().flat_map(|c| {
+        //         [
+        //             (c.detected_line.start.x, c.detected_line.start.y, 0.0),
+        //             (c.detected_line.end.x, c.detected_line.end.y, 0.0),
+        //         ]
+        //     }))
+        //     .with_colors(vec![(255, 0, 0); correspondences.len() * 2])
+        //     .with_radii(vec![0.01; correspondences.len() * 2]),
+        // );
 
         // dbg.log_with_cycle(
         //     "field_lines/line",
