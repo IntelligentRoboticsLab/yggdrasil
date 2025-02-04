@@ -5,7 +5,10 @@ use itertools::Itertools;
 use crate::{
     core::{
         config::layout::{FieldLine, LayoutConfig},
-        debug::DebugContext,
+        debug::{
+            debug_system::{DebugAppExt, SystemToggle},
+            DebugContext,
+        },
     },
     nao::Cycle,
     vision::line_detection::{handle_line_task, line::LineSegment2, DetectedLines},
@@ -19,14 +22,17 @@ pub struct LineCorrespondencePlugin<T: CameraLocation>(std::marker::PhantomData<
 
 impl<T: CameraLocation> Plugin for LineCorrespondencePlugin<T> {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                get_correspondences::<T>.after(handle_line_task::<T>),
-                log_correspondences::<T>,
+        app.add_systems(PostStartup, setup_logging::<T>)
+            .add_systems(
+                Update,
+                (get_correspondences::<T>.after(handle_line_task::<T>),).chain(),
             )
-                .chain(),
-        );
+            .add_named_debug_systems(
+                Update,
+                log_correspondences::<T>.after(get_correspondences::<T>),
+                "Visualize line correspondences",
+                SystemToggle::Disable,
+            );
     }
 }
 
@@ -101,11 +107,19 @@ pub fn get_correspondences<T: CameraLocation>(
     }
 }
 
+fn setup_logging<T: CameraLocation>(dbg: DebugContext) {
+    let path = T::make_entity_path("localization/line_correspondences");
+
+    dbg.log_static(path.as_str(), &rerun::Color::from_rgb(0, 255, 255));
+}
+
 fn log_correspondences<T: CameraLocation>(
     dbg: DebugContext,
     correspondences: Query<(&Cycle, &LineCorrespondences), (With<T>, Added<LineCorrespondences>)>,
 ) {
     for (cycle, correspondences) in correspondences.iter() {
+        let path = T::make_entity_path("localization/line_correspondences");
+
         // projection lines from detected line to field line
         let lines = correspondences
             .0
@@ -124,12 +138,6 @@ fn log_correspondences<T: CameraLocation>(
             })
             .collect_vec();
 
-        dbg.log_with_cycle(
-            "field_lines/correspondences",
-            *cycle,
-            &rerun::LineStrips3D::new(&lines)
-                .with_colors(vec![(255, 0, 255); lines.len()])
-                .with_radii(vec![0.02; lines.len()]),
-        );
+        dbg.log_with_cycle(path.as_str(), *cycle, &rerun::LineStrips3D::new(&lines));
     }
 }
