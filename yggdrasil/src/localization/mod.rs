@@ -1,3 +1,5 @@
+pub mod correspondence;
+
 use std::f32::consts::PI;
 
 use crate::{
@@ -12,6 +14,8 @@ use crate::{
 };
 use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
+use correspondence::LineCorrespondencePlugin;
+use heimdall::{Bottom, Top};
 use nalgebra::{
     Isometry2, Isometry3, Point2, Point3, Translation2, Translation3, UnitComplex, UnitQuaternion,
 };
@@ -23,9 +27,13 @@ pub struct LocalizationPlugin;
 
 impl Plugin for LocalizationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostStartup, (init_pose, setup_pose_visualization))
-            .add_systems(Update, update_robot_pose.after(odometry::update_odometry))
-            .add_systems(PostUpdate, visualize_pose);
+        app.add_plugins((
+            LineCorrespondencePlugin::<Top>::default(),
+            LineCorrespondencePlugin::<Bottom>::default(),
+        ))
+        .add_systems(PostStartup, (init_pose, setup_pose_visualization))
+        .add_systems(Update, update_robot_pose.after(odometry::update_odometry))
+        .add_systems(PostUpdate, visualize_pose);
     }
 }
 

@@ -164,7 +164,7 @@ impl LineCandidate {
 }
 
 #[derive(Component)]
-struct LineTaskHandle(Task<(Vec<LineCandidate>, Vec<Option<Rejection>>)>);
+pub struct LineTaskHandle(Task<(Vec<LineCandidate>, Vec<Option<Rejection>>)>);
 
 fn detect_lines_system<T: CameraLocation>(
     mut commands: Commands,
@@ -201,7 +201,7 @@ fn detect_lines_system<T: CameraLocation>(
         .insert((LineTaskHandle(handle), T::default()));
 }
 
-fn handle_line_task<T: CameraLocation>(
+pub fn handle_line_task<T: CameraLocation>(
     mut commands: Commands,
     mut task_handles: Query<(Entity, &mut LineTaskHandle), With<T>>,
 ) {
