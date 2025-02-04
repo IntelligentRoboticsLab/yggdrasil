@@ -51,8 +51,6 @@ pub fn behavior(
     standup_state: Option<Res<Standup>>,
     player_config: Res<PlayerConfig>,
 ) {
-    commands.set_role(Instinct);
-
     let behavior = state.get();
 
     if behavior == &BehaviorState::StartUp {
