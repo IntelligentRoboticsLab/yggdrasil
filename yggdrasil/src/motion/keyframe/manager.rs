@@ -1,12 +1,7 @@
-use super::types::{
-    ConditionalVariable, ExitRoutine, FailRoutine, Motion, MotionCondition, MotionType,
-};
-use crate::motion::walk::engine::{WalkState, WalkingEngine};
-use crate::nao::Priority;
+use super::types::{Motion, MotionType};
 use bevy::prelude::*;
-use miette::{miette, Result};
+use miette::Result;
 use nidhogg::types::JointArray;
-use nidhogg::NaoState;
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Instant;
@@ -22,8 +17,6 @@ pub struct ActiveMotion {
     pub cur_keyframe_index: usize,
     /// Current movement starting time
     pub movement_start: Instant,
-    /// Priority of the current motion
-    pub priority: Priority,
 }
 
 impl ActiveMotion {
@@ -34,62 +27,16 @@ impl ActiveMotion {
         self.motion.settings.motion_order.get(next_index)
     }
 
-    /// Returns the next submotion to be executed, based on whether
-    /// or not the different conditions for the next submotion are
-    /// satisfied.
+    /// Returns the next submotion to be executed
     ///
     /// # Arguments
-    /// * `nao_state` - Current state of the Nao.
     /// * `submotion_name` - Name of the next submotion.
-    pub fn transition(
-        &mut self,
-        nao_state: &mut NaoState,
-        submotion_name: String,
-    ) -> Result<Option<ActiveMotion>> {
-        let next_submotion = self
-            .motion
-            .submotions
-            .get(&submotion_name)
-            .cloned()
-            .ok_or_else(|| {
-                miette!(format!(
-                    "Submotion to be transitioned to does not exist: {}",
-                    &submotion_name
-                ))
-            })?;
-
-        for condition in next_submotion.conditions {
-            if !check_condition(nao_state, condition) {
-                return Ok(select_routine(
-                    self.clone(),
-                    self.motion
-                        .submotions
-                        .get(&self.cur_sub_motion.0)
-                        .ok_or_else(|| miette!(format!(
-                            "Could not find current motion during checking of submotion condition: {}", &self.cur_sub_motion.0
-                        )))?
-                        .fail_routine
-                        .clone(),
-                ));
-            }
-        }
-
-        // if all conditions are satisfied, we simply move to the next submotion
+    pub fn transition(&mut self, submotion_name: String) -> Result<Option<ActiveMotion>> {
         self.cur_sub_motion = (submotion_name, self.cur_sub_motion.1 + 1);
         self.cur_keyframe_index = 0;
         self.movement_start = Instant::now();
 
         Ok(Some(self.clone()))
-    }
-
-    // executes the appropriate exit routine, connected to the chosen motion
-    pub fn execute_exit_routine(&self, walking_engine: &mut WalkingEngine) {
-        if let Some(ExitRoutine::Standing) = self.motion.settings.exit_routine {
-            // Since the robot is now standing, we can reset the hip height to the default value.
-            walking_engine.hip_height = walking_engine.config.hip_height;
-            walking_engine.state = WalkState::Standing(walking_engine.config.hip_height);
-        }
-        // Add more exit routines here! (along with adding an appropriate enum value)
     }
 }
 
@@ -112,7 +59,7 @@ pub struct KeyframeExecutor {
 }
 
 impl KeyframeExecutor {
-    /// Initializes a `MotionManger`.
+    /// Initializes a `KeyframeExecutor`.
     #[must_use]
     pub fn new() -> Self {
         KeyframeExecutor::default()
@@ -124,7 +71,7 @@ impl KeyframeExecutor {
         self.active_motion.is_some()
     }
 
-    /// Adds a motion to the `MotionManger`.
+    /// Adds a motion to the `KeyframeExecutor`.
     ///
     /// # Arguments
     /// * `motion_type` - Type of the motion.
@@ -145,19 +92,17 @@ impl KeyframeExecutor {
     }
 
     /// Starts a new motion if currently no motion is being executed.
-    /// Otherwise, it will check whether the new motion has a higher priority.
+    /// Otherwise, it will stop the current motion based on `override_motion`.
     ///
     /// # Arguments
     /// * `motion_type` - The type of motion to start.
-    /// * `priority` - The priority that the motion has.
-    pub fn start_new_motion(&mut self, motion_type: MotionType, priority: Priority) {
-        if let Some(active_motion) = self.active_motion.as_ref() {
-            // motions with a higher priority value take priority
-            if priority <= active_motion.priority {
-                return;
-            }
-            self.stop_motion();
+    /// * `override_motion` - Whether or not to override the current motion (If one is active).
+    pub fn start_new_motion(&mut self, motion_type: MotionType, override_motion: bool) {
+        // only stop the motion if override is on
+        if !override_motion {
+            return;
         }
+        self.stop_motion();
 
         self.motion_execution_starting_time = None;
 
@@ -172,49 +117,6 @@ impl KeyframeExecutor {
             cur_keyframe_index: 0,
             motion: chosen_motion,
             movement_start: Instant::now(),
-            priority,
         });
-    }
-}
-
-/// Checks whether the current `NaoState` fulfills a specified condition.
-///
-/// # Arguments
-/// * `nao_state` - Current state of the Nao.
-/// * `condition` - The condition which needs to be checked.
-fn check_condition(nao_state: &mut NaoState, condition: MotionCondition) -> bool {
-    match condition.variable {
-        ConditionalVariable::GyroscopeX => {
-            nao_state.gyroscope.x > condition.min && nao_state.gyroscope.x < condition.max
-        }
-        ConditionalVariable::GyroscopeY => {
-            nao_state.gyroscope.y > condition.min && nao_state.gyroscope.y < condition.max
-        }
-        ConditionalVariable::AngleX => {
-            nao_state.angles.x > condition.min && nao_state.angles.x < condition.max
-        }
-        ConditionalVariable::AngleY => {
-            nao_state.angles.y > condition.min && nao_state.angles.y < condition.max
-        }
-    }
-}
-
-/// Matches a specified motion fail routine with the correct next motion.
-///
-/// # Arguments
-/// * `active_motion` - The current active motion of the Nao.
-/// * `routine` - The routine that will be matched with an according motion.
-fn select_routine(mut active_motion: ActiveMotion, routine: FailRoutine) -> Option<ActiveMotion> {
-    match routine {
-        // aborts the current motion
-        FailRoutine::Abort => None,
-        // TODO implement catch routine
-        FailRoutine::Catch => None,
-        // retry the previous submotion
-        FailRoutine::Retry => {
-            active_motion.cur_keyframe_index = 0;
-            active_motion.movement_start = Instant::now();
-            Some(active_motion)
-        }
     }
 }

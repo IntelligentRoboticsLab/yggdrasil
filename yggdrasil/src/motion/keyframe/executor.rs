@@ -1,8 +1,9 @@
-use super::{get_min_duration, lerp, types::Movement, ActiveMotion, KeyframeExecutor};
-use crate::motion::walk::engine::WalkingEngine;
+use super::InterpolationType;
+use super::{
+    get_min_duration, interpolate_jointarrays, types::Movement, ActiveMotion, KeyframeExecutor,
+};
 use crate::nao::NaoManager;
 use crate::nao::Priority;
-use crate::sensor::orientation::RobotOrientation;
 use bevy::prelude::*;
 use miette::{miette, Result};
 use nidhogg::types::{ArmJoints, HeadJoints, LegJoints};
@@ -15,25 +16,17 @@ use std::time::{Duration, Instant};
 // maximum speed the robot is allowed to move to the starting position at
 const MAX_SPEED: f32 = 1.0;
 
-// minimum waittime duration, anything less will not be considered
-// (if we were to consider this waiting time, the amount of time to
-// process it would take longer than the actual waittime)
-const MINIMUM_WAIT_TIME: f32 = 0.05;
-
 /// Executes the current motion.
 ///
 /// # Arguments
 /// * `nao_state` - State of the robot.
 /// * `keyframe_executor` - Keeps track of state needed for playing motions.
 /// * `nao_manager` - Used to set the new joint positions.
-// TODO: Clean this up
 #[allow(clippy::too_many_lines)]
 pub fn keyframe_executor(
-    mut nao_state: ResMut<NaoState>,
+    nao_state: ResMut<NaoState>,
     mut keyframe_executor: ResMut<KeyframeExecutor>,
     mut nao_manager: ResMut<NaoManager>,
-    orientation: Res<RobotOrientation>,
-    mut walking_engine: ResMut<WalkingEngine>,
 ) {
     if keyframe_executor.active_motion.is_none() {
         return;
@@ -90,6 +83,7 @@ pub fn keyframe_executor(
             target_position,
             duration,
             &movement_start.elapsed(),
+            &motion.settings.interpolation_type,
         ) {
             nao_manager.set_all(
                 next_position,
@@ -118,26 +112,7 @@ pub fn keyframe_executor(
             Priority::High,
         );
     } else {
-        // we check whether the robot is in the "resting" phase, and thus in a steady position.
-        if !orientation.is_resting() {
-            // if not, we wait until it is either resting or the maximum wait time has elapsed
-            if !exit_waittime_elapsed(
-                &mut keyframe_executor,
-                motion.submotions[&sub_motion_name].exit_waittime,
-            ) {
-                // returning the current nao position to prohibit any other position requests from taking over
-                nao_manager.set_all(
-                    nao_state.position.clone(),
-                    HeadJoints::<f32>::fill(submotion_stiffness),
-                    ArmJoints::<f32>::fill(submotion_stiffness),
-                    LegJoints::<f32>::fill(submotion_stiffness),
-                    Priority::High,
-                );
-                return;
-            }
-        }
-
-        transition_to_next_submotion(&mut keyframe_executor, &mut nao_state, &mut walking_engine)
+        transition_to_next_submotion(&mut keyframe_executor)
             .inspect_err(|_| keyframe_executor.stop_motion())
             .expect("failed to transition to next submotion");
 
@@ -227,59 +202,27 @@ fn move_to_starting_position(
     target_position: &JointArray<f32>,
     duration: &Duration,
     elapsed_time_since_start_of_motion: &Duration,
+    interpolation_type: &InterpolationType,
 ) -> Option<JointArray<f32>> {
     if elapsed_time_since_start_of_motion <= duration {
-        return Some(lerp(
+        return Some(interpolate_jointarrays(
             keyframe_executor.source_position.as_ref().unwrap(),
             target_position,
             elapsed_time_since_start_of_motion.as_secs_f32() / duration.as_secs_f32(),
+            interpolation_type,
         ));
     }
 
     None
 }
 
-/// Assesses whether the required waiting time has elapsed.
-///
-/// # Arguments
-/// * `keyframe_executor` - Keeps track of state needed for playing motions.
-/// * `duration` - Intended duration of the waiting time.
-fn exit_waittime_elapsed(keyframe_executor: &mut KeyframeExecutor, exit_wait_time: f32) -> bool {
-    if exit_wait_time <= MINIMUM_WAIT_TIME {
-        return true;
-    }
-
-    // firstly, we record the current timestamp and check whether the motion needs to wait
-    if let Some(finishing_time) = keyframe_executor.submotion_finishing_time {
-        // checking whether the required waittime has elapsed
-        if finishing_time.elapsed().as_secs_f32() < exit_wait_time {
-            return false;
-        }
-
-        true
-    } else {
-        keyframe_executor.submotion_finishing_time = Some(Instant::now());
-        false
-    }
-}
-
 /// Handles the logic for transitioning to the next submotion.
 /// If a submotion is present, will transition to this submotion.
 /// If not, will reset the active motion and saved time values.
 ///
-/// # Notes
-/// More complex transitioning behaviour will be implemented, like
-/// having multiple movement paths the robot can decide to go in.
-/// But this will be implemented far later.
-///
 /// # Arguments
 /// * `keyframe_executor` - Keeps track of state needed for playing motions.
-/// * `nao_state` - Current state of the robot.
-fn transition_to_next_submotion(
-    keyframe_executor: &mut KeyframeExecutor,
-    nao_state: &mut NaoState,
-    walking_engine: &mut WalkingEngine,
-) -> Result<()> {
+fn transition_to_next_submotion(keyframe_executor: &mut KeyframeExecutor) -> Result<()> {
     // current submotion is finished, transition to next submotion.
     let active_motion: &mut ActiveMotion =
         keyframe_executor.active_motion.as_mut().ok_or_else(|| {
@@ -292,21 +235,14 @@ fn transition_to_next_submotion(
 
     if let Some(submotion_name) = active_motion.get_next_submotion() {
         // If there is a next submotion, we attempt a transition
-        let next_submotion = active_motion.transition(nao_state, submotion_name.clone())?;
+        let next_submotion = active_motion.transition(submotion_name.clone())?;
         keyframe_executor.active_motion = next_submotion;
 
         Ok(())
     }
     // if no submotion is found, the motion has finished
     else {
-        // we send the appropriate exit message (if present)
-        keyframe_executor
-            .active_motion
-            .as_ref()
-            .unwrap()
-            .execute_exit_routine(walking_engine);
-
-        // and we reset the KeyframeExecutor
+        // we reset the KeyframeExecutor
         keyframe_executor.active_motion = None;
         keyframe_executor.motion_execution_starting_time = None;
 

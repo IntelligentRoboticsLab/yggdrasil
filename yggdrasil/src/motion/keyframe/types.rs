@@ -11,7 +11,7 @@ use std::time::Instant;
 
 use toml;
 
-use super::{manager::ActiveMotion, util::lerp};
+use super::{manager::ActiveMotion, util::interpolate_jointarrays};
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -25,68 +25,20 @@ pub struct Movement {
 }
 
 /// An enum containing the possible interpolation types for a motion.
-///
-/// # Notes
-/// - New interpolation type implementations should be added as new variants to this enum.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum InterpolationType {
     Linear,
-    // TODO
-    SmoothIn,
-    // TODO
-    SmoothOut,
-}
-
-/// An enum containing the possible variables that can be used as conditions
-/// for entering a submotion for a robot.
-///
-/// # Notes
-/// - New conditional variables should be added as new variants to this enum.
-///   Furthermore, the implementation for checking this variable should be added
-///   to the '`check_condition`' function in '`keyframe_executor`'.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum ConditionalVariable {
-    GyroscopeX,
-    GyroscopeY,
-    AngleX,
-    AngleY,
-}
-
-/// An enum containing the failroutines that the robot can execute when it fails
-/// to satisfy a condition for entering a submotion.
-///
-/// # Notes
-/// - New failroutines should be added as new variants to this enum.
-///   Furthermore, the implementation for executing this failroutine should be added
-///   to the '`select_routine`' function in '`keyframe_executor`'.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum FailRoutine {
-    Retry,
-    Abort,
-    Catch,
-    // Add new fail routines here
+    EaseInOut,
+    EaseIn,
+    EaseOut,
 }
 
 /// Enum containing the different exit routines the robot can execute
 /// upon completion of a motion.
-///
-/// # Notes
-/// - Currently only the "Standing" routine is present, which is used
-///   to signify to the behaviour engine that the standup motion has
-///   executed successfully.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ExitRoutine {
     Standing,
     // Add new exit routines here
-}
-
-/// Stores information about a single conditional variable, keeping track
-/// of the minimum and maximum value the variable is allowed to take.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MotionCondition {
-    pub variable: ConditionalVariable,
-    pub min: f32,
-    pub max: f32,
 }
 
 /// Stores information about the different chosen motion settings.
@@ -99,8 +51,6 @@ pub struct MotionCondition {
 pub struct MotionSettings {
     // interpolation type used during the motion
     pub interpolation_type: InterpolationType,
-    // exit routine to be executed when the motion has finished successfully
-    pub exit_routine: Option<ExitRoutine>,
     // the standard order the submotions will be executed in
     pub motion_order: Vec<String>,
     // New motion settings can be added here
@@ -115,16 +65,8 @@ pub struct MotionSettings {
 pub struct SubMotion {
     /// Joint stiffness of the submotion.
     pub joint_stifness: f32,
-    /// TODO, upper limit for angle variable.
-    pub chest_angle_bound_upper: f32,
-    /// TODO, lower limit for angle variable.
-    pub chest_angle_bound_lower: f32,
     /// Amount of time in seconds that the submotion will wait after finishing.
     pub exit_waittime: f32,
-    /// Routine that the robot will execute if the current submotion fails.
-    pub fail_routine: FailRoutine,
-    /// Conditions the robot must fulfill to be able to enter the submotion.
-    pub conditions: Vec<MotionCondition>,
     /// The keyframes which comprise the submotion.
     pub keyframes: Vec<Movement>,
 }
@@ -140,8 +82,7 @@ pub struct Motion {
 
 impl Motion {
     /// Initializes a motion from a motion config file. Uses serde for deserialization.
-    /// Generates the appropriate motion file from a motion config file if this file
-    /// is not present. Otherwise, uses the existing motion file.
+    /// Generates the appropriate motion file from a motion config file.
     ///
     /// # Arguments
     /// * `path` - the `Path` to the file from which to read the motion.
@@ -205,6 +146,10 @@ impl Motion {
             return None;
         }
 
+        let previous_position =
+            &keyframes[active_motion.cur_keyframe_index.saturating_sub(1)].target_position;
+        let current_movement = &keyframes[active_motion.cur_keyframe_index];
+
         // if the current movement has been completed:
         if active_motion.movement_start.elapsed().as_secs_f32()
             > keyframes[active_motion.cur_keyframe_index]
@@ -223,13 +168,15 @@ impl Motion {
             active_motion.movement_start = Instant::now();
         }
 
-        Some(lerp(
-            &keyframes[active_motion.cur_keyframe_index.saturating_sub(1)].target_position,
-            &keyframes[active_motion.cur_keyframe_index].target_position,
+        // using the global interpolation type, unless the movement is assigned one already
+        let interpolation_type = &active_motion.motion.settings.interpolation_type;
+
+        Some(interpolate_jointarrays(
+            previous_position,
+            &current_movement.target_position,
             (active_motion.movement_start.elapsed()).as_secs_f32()
-                / keyframes[active_motion.cur_keyframe_index]
-                    .duration
-                    .as_secs_f32(),
+                / current_movement.duration.as_secs_f32(),
+            interpolation_type,
         ))
     }
 
