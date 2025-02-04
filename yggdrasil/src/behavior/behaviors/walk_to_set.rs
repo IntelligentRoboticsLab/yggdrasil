@@ -16,6 +16,14 @@ use crate::{
     nao::{NaoManager, Priority},
 };
 
+/// To prevent the Goalkeeper from walking into the goalpost, we use this position for a better approach.
+const GOAL_KEEPER_PRE_SET_POS: Target = Target {
+    position: Point2::new(-2.85, 0.0),
+    rotation: None,
+};
+
+const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
+
 pub struct WalkToSetBehaviorPlugin;
 
 impl Plugin for WalkToSetBehaviorPlugin {
@@ -34,13 +42,6 @@ pub struct WalkToSet {
 impl Behavior for WalkToSet {
     const STATE: BehaviorState = BehaviorState::WalkToSet;
 }
-/// To prevent the Goalkeeper from walking into the goalpost, we use this position for a better approach.
-const GOAL_KEEPER_PRE_SET_POS: Target = Target {
-    position: Point2::new(-2.85, 0.0),
-    rotation: None,
-};
-
-const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 pub fn walk_to_set(
     pose: Res<RobotPose>,
