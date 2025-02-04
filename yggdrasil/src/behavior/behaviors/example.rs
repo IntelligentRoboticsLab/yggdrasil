@@ -3,7 +3,6 @@ use nidhogg::types::{color, FillExt, RightEye};
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
-    impl_behavior,
     nao::{NaoManager, Priority},
 };
 
