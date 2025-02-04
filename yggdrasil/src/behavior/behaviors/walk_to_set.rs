@@ -43,7 +43,6 @@ const GOAL_KEEPER_PRE_SET_POS: Target = Target {
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 pub fn walk_to_set(
-    // walk_to_set: Res<WalkToSet>,
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
     player_config: Res<PlayerConfig>,

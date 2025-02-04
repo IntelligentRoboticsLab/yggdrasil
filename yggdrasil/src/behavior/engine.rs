@@ -1,10 +1,4 @@
 use bevy::prelude::*;
-// use heimdall::{Bottom, Top};
-
-// use crate::{
-//     core::config::showtime::PlayerConfig, sensor::falling::FallState,
-//     vision::ball_detection::classifier::Balls,
-// };
 
 use super::{
     behaviors::{
@@ -12,7 +6,6 @@ use super::{
         StandLookAtBehaviorPlugin, StandupBehaviorPlugin, StartUpBehaviorPlugin,
         WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSetBehaviorPlugin,
     },
-    // primary_state::{update_primary_state, PrimaryState},
     roles::{
         Defender, DefenderRolePlugin, Goalkeeper, GoalkeeperRolePlugin, InstinctRolePlugin,
         Striker, StrikerRolePlugin,
@@ -42,7 +35,6 @@ impl Plugin for BehaviorEnginePlugin {
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
             ));
-        // .add_systems(Update, behavior.after(update_primary_state));
     }
 }
 
@@ -133,30 +125,3 @@ pub fn in_role<T: Roles>(state: Option<Res<State<Role>>>) -> bool {
         None => panic!("Failed to get the current role state"),
     }
 }
-
-// pub fn behavior(
-//     mut commands: Commands,
-//     player_config: Res<PlayerConfig>,
-//     primary_state: Res<PrimaryState>,
-//     top_balls: Res<Balls<Top>>,
-//     bottom_balls: Res<Balls<Bottom>>,
-//     fall_state: Res<FallState>,
-// ) {
-//     match *primary_state {
-//         PrimaryState::Playing { .. } if matches!(fall_state.as_ref(), FallState::None) => {
-//             // Change this to a system, also in Stiker
-//             let most_confident_ball = bottom_balls
-//                 .most_confident_ball()
-//                 .map(|b| b.position)
-//                 .or(top_balls.most_confident_ball().map(|b| b.position));
-
-//             // Only here should we activate the role deciding behavior
-//             Role::assign_role(
-//                 commands,
-//                 most_confident_ball.is_some(),
-//                 player_config.player_number,
-//             );
-//         }
-//         _ => commands.set_role(Instinct),
-//     };
-// }

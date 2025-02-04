@@ -84,24 +84,16 @@ pub fn behavior(
         }
         FallState::Falling(_) => {
             if !matches!(*primary_state, PrimaryState::Penalized) {
-                //     if self.prev_behavior_for_standup.is_none() {
-                //         self.prev_behavior_for_standup = Some(self.behavior.clone());
-                //     }
                 commands.set_behavior(CatchFall);
             }
             return;
         }
-        FallState::None => {
-            if matches!(behavior, BehaviorState::CatchFall) {
-                // self.behavior = self.prev_behavior_for_standup.take().unwrap();
-                // return;
-            }
-        }
+        FallState::None => {}
     }
 
     if let Some(message) = game_controller_message {
         if message.game_phase == GamePhase::PenaltyShoot {
-            if message.kicking_team == 8 {
+            if message.kicking_team == player_config.team_number {
                 commands.set_role(Striker::WalkWithBall);
             } else {
                 commands.set_behavior(Stand);
@@ -127,9 +119,7 @@ pub fn behavior(
         PrimaryState::Initial => commands.set_behavior(StandLookAt {
             target: Point2::origin(),
         }),
-        PrimaryState::Ready => commands.set_behavior(WalkToSet {
-                // Replaced with check in the behavior
-            }),
+        PrimaryState::Ready => commands.set_behavior(WalkToSet {}),
         PrimaryState::Set => commands.set_behavior(StandLookAt {
             target: ball_or_origin,
         }),

@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-// use bevy::state::state_scoped::StateScoped;
 use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
