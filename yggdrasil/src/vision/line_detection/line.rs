@@ -13,15 +13,6 @@ pub struct Line2 {
     pub d: f32,
 }
 
-/// A line segment in 2D space
-#[derive(Debug, Clone, Copy, Component)]
-pub struct LineSegment2 {
-    /// Start point of the line segment
-    pub start: Point2<f32>,
-    /// End point of the line segment
-    pub end: Point2<f32>,
-}
-
 impl Line2 {
     /// Creates a line from a normal and a distance to the origin
     #[must_use]
@@ -46,6 +37,15 @@ impl Line2 {
     fn signed_distance_to_point(&self, point: Point2<f32>) -> f32 {
         self.normal.dot(&point.coords) - self.d
     }
+}
+
+/// A line segment in 2D space
+#[derive(Debug, Clone, Copy, Component)]
+pub struct LineSegment2 {
+    /// Start point of the line segment
+    pub start: Point2<f32>,
+    /// End point of the line segment
+    pub end: Point2<f32>,
 }
 
 impl LineSegment2 {

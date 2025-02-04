@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use heimdall::CameraLocation;
 use itertools::Itertools;
-use nalgebra::Point2;
 
 use crate::{
     core::{
@@ -14,7 +13,7 @@ use crate::{
 
 use super::RobotPose;
 
-/// This plugin matches detected lines to their corresponding lines in field space.
+/// This plugin matches detected lines to their closest lines in the ideal field.
 #[derive(Default)]
 pub struct LineCorrespondencePlugin<T: CameraLocation>(std::marker::PhantomData<T>);
 
@@ -22,98 +21,104 @@ impl<T: CameraLocation> Plugin for LineCorrespondencePlugin<T> {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            get_correspondences::<T>.after(handle_line_task::<T>),
+            (
+                get_correspondences::<T>.after(handle_line_task::<T>),
+                log_correspondences::<T>,
+            )
+                .chain(),
         );
     }
 }
 
+/// The correspondence between a detected line and a field line.
 #[derive(Debug, Clone)]
-pub struct Correspondence {
+pub struct LineCorrespondence {
+    // The line segment detected in the camera image
     pub detected_line: LineSegment2,
+    // The ideal field line that the detected line corresponds to
     pub field_line: FieldLine,
-
+    // The line segment of the detected line projected onto the field line
+    pub projected_line: LineSegment2,
+    // The squared sum error (in meters) of the correspondence projection
     pub error: f32,
-
-    pub start: Point2<f32>,
-    pub end: Point2<f32>,
 }
 
+/// A collection of line correspondences.
+#[derive(Debug, Component)]
+pub struct LineCorrespondences(pub Vec<LineCorrespondence>);
+
+/// Matches detected lines to their closest field lines.
 pub fn get_correspondences<T: CameraLocation>(
-    dbg: DebugContext,
+    mut commands: Commands,
     layout: Res<LayoutConfig>,
     pose: Res<RobotPose>,
-    lines: Query<(&Cycle, &DetectedLines), (With<T>, Added<DetectedLines>)>,
+    lines: Query<(Entity, &DetectedLines), (With<T>, Added<DetectedLines>)>,
 ) {
-    for (cycle, lines) in lines.iter() {
+    for (entity, lines) in lines.iter() {
         let mut correspondences = Vec::new();
-        // project segment end points onto all field lines
+
         for segment in &lines.segments {
-            let mut closest = None;
+            // we want to find the best projection of the line onto a field line
+            let mut best = None;
+
             for field_line in layout.field.field_lines() {
-                let segment =
+                // transform the detected line by the robot pose
+                let detected_line =
                     LineSegment2::new(pose.inner * segment.start, pose.inner * segment.end);
 
-                // let FieldLine::Segment(segment_field) = field_line else {
-                //     continue;
-                // };
-
-                let ((start, start_distance), (end, end_distance)) = match field_line {
-                    FieldLine::Segment(segment_field) => {
-                        // project segment end points onto the line
-                        let start = segment_field.project_with_distance(segment.start);
-                        let end = segment_field.project_with_distance(segment.end);
-                        (start, end)
-                    }
-                    FieldLine::Circle(circle) => {
-                        // project segment end points onto the line
-                        let start = circle.project_with_distance(segment.start);
-                        let end = circle.project_with_distance(segment.end);
-                        (start, end)
-                    }
-                };
+                // project the line segment onto the current field line
+                let (start, start_distance) = field_line.project_with_distance(detected_line.start);
+                let (end, end_distance) = field_line.project_with_distance(detected_line.end);
 
                 let error = start_distance.powi(2) + end_distance.powi(2);
 
-                match closest {
-                    None => {
-                        closest = Some(Correspondence {
-                            detected_line: segment,
-                            field_line,
-                            error,
-                            start,
-                            end,
-                        });
-                    }
-                    Some(ref current) => {
-                        if error < current.error {
-                            closest = Some(Correspondence {
-                                detected_line: segment,
-                                field_line,
-                                error,
-                                start,
-                                end,
-                            });
-                        }
-                    }
-                };
+                // only keep the correspondence that minimizes the error
+                if best
+                    .as_ref()
+                    .is_some_and(|current: &LineCorrespondence| current.error < error)
+                {
+                    continue;
+                }
+
+                let projected_line = LineSegment2::new(start, end);
+
+                best = Some(LineCorrespondence {
+                    detected_line,
+                    field_line,
+                    projected_line,
+                    error,
+                });
             }
 
-            if let Some(correspondence) = closest {
+            if let Some(correspondence) = best {
                 correspondences.push(correspondence);
             }
         }
 
-        let a = correspondences
+        commands
+            .entity(entity)
+            .insert(LineCorrespondences(correspondences));
+    }
+}
+
+fn log_correspondences<T: CameraLocation>(
+    dbg: DebugContext,
+    correspondences: Query<(&Cycle, &LineCorrespondences), (With<T>, Added<LineCorrespondences>)>,
+) {
+    for (cycle, correspondences) in correspondences.iter() {
+        // projection lines from detected line to field line
+        let lines = correspondences
+            .0
             .iter()
             .flat_map(|c| {
                 [
                     [
                         [c.detected_line.start.x, c.detected_line.start.y, 0.0],
-                        [c.start.x, c.start.y, 0.0],
+                        [c.projected_line.start.x, c.projected_line.start.y, 0.0],
                     ],
                     [
                         [c.detected_line.end.x, c.detected_line.end.y, 0.0],
-                        [c.end.x, c.end.y, 0.0],
+                        [c.projected_line.end.x, c.projected_line.end.y, 0.0],
                     ],
                 ]
             })
@@ -122,41 +127,9 @@ pub fn get_correspondences<T: CameraLocation>(
         dbg.log_with_cycle(
             "field_lines/correspondences",
             *cycle,
-            &rerun::LineStrips3D::new(&a)
-                .with_colors(vec![(255, 0, 255); a.len()])
-                .with_radii(vec![0.02; a.len()]),
+            &rerun::LineStrips3D::new(&lines)
+                .with_colors(vec![(255, 0, 255); lines.len()])
+                .with_radii(vec![0.02; lines.len()]),
         );
-
-        // dbg.log_with_cycle(
-        //     "field_lines/points",
-        //     *cycle,
-        //     &rerun::Points3D::new(correspondences.iter().flat_map(|c| {
-        //         [
-        //             (c.detected_line.start.x, c.detected_line.start.y, 0.0),
-        //             (c.detected_line.end.x, c.detected_line.end.y, 0.0),
-        //         ]
-        //     }))
-        //     .with_colors(vec![(255, 0, 0); correspondences.len() * 2])
-        //     .with_radii(vec![0.01; correspondences.len() * 2]),
-        // );
-
-        // dbg.log_with_cycle(
-        //     "field_lines/line",
-        //     *cycle,
-        //     &rerun::LineStrips3D::new(
-        //         flines
-        //             .iter()
-        //             .map(|l| [(l.start.x, l.start.y, 0.0), (l.end.x, l.end.y, 0.0)]),
-        //     )
-        //     .with_colors(vec![(255, 255, 0); flines.len()])
-        //     .with_radii(vec![0.1; flines.len()]),
-        // );
-        // dbg.log(
-        //     "field_lines/circle",
-        //     &rerun::Ellipsoids3D::from_centers_and_radii(
-        //         fcircles.iter().map(|(c, _r)| (c.x, c.y, 0.0)),
-        //         fcircles.iter().flat_map(|(_c, r)| [*r, *r, 0.0]),
-        //     ),
-        // );
     }
 }

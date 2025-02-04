@@ -121,28 +121,50 @@ pub struct FieldConfig {
     pub border_strip_width: f32,
 }
 
+/// A line on the field, which can be a line segment or a circle.
 #[derive(Debug, Clone, Copy)]
 pub enum FieldLine {
     Segment(LineSegment2),
     Circle(Circle),
 }
 
+impl FieldLine {
+    /// Projects a point onto the field line and returns the projected point, together with the projection distance.
+    pub fn project_with_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
+        match self {
+            FieldLine::Segment(segment) => {
+                let (projection, distance) = segment.project_with_distance(point);
+                (projection, distance)
+            }
+            FieldLine::Circle(circle) => {
+                let (projection, distance) = circle.project_with_distance(point);
+                (projection, distance)
+            }
+        }
+    }
+}
+
 impl FieldConfig {
+    /// Returns the diagonal of the field.
     #[must_use]
     pub fn diagonal(&self) -> Vector2<f32> {
         Vector2::new(self.length, self.width)
     }
 
+    /// Returns if the point is in the field.
     #[must_use]
     pub fn in_field(&self, point: Point2<f32>) -> bool {
         self.in_field_with_margin(point, 0.0)
     }
 
+    /// Returns if the point is in the field with a margin/slack distance.
     #[must_use]
     pub fn in_field_with_margin(&self, point: Point2<f32>, margin: f32) -> bool {
         point.x.abs() < self.length / 2.0 + margin && point.y.abs() < self.width / 2.0 + margin
     }
 
+    /// Returns the field lines described by the field configuration.
+    #[must_use]
     pub fn field_lines(&self) -> [FieldLine; 18] {
         [
             // Center circle
