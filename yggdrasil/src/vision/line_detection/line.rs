@@ -120,6 +120,7 @@ impl LineSegment2 {
     }
 
     /// Checks if a point is contained within the line segment
+    #[must_use]
     pub fn contains(&self, point: Point2<f32>) -> bool {
         let dir = self.end - self.start;
         let start_dir = point - self.start;
@@ -163,6 +164,7 @@ pub struct Circle {
 }
 
 impl Circle {
+    #[must_use]
     pub fn project_with_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
         let dir = point - self.center;
         let distance = dir.norm();

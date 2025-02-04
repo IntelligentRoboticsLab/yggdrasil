@@ -130,6 +130,7 @@ pub enum FieldLine {
 
 impl FieldLine {
     /// Projects a point onto the field line and returns the projected point, together with the projection distance.
+    #[must_use]
     pub fn project_with_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
         match self {
             FieldLine::Segment(segment) => {
@@ -164,6 +165,7 @@ impl FieldConfig {
     }
 
     /// Returns the field lines described by the field configuration.
+    #[allow(clippy::too_many_lines)]
     #[must_use]
     pub fn field_lines(&self) -> [FieldLine; 18] {
         [
