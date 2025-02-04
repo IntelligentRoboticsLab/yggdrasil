@@ -8,6 +8,9 @@ use crate::{
     nao::{NaoManager, Priority},
 };
 
+// The robot shouldn't do anything while in unstiff state.
+const UNSTIFF_PRIORITY: Priority = Priority::Critical;
+
 pub struct SittingBehaviorPlugin;
 
 impl Plugin for SittingBehaviorPlugin {
@@ -24,9 +27,6 @@ pub struct Sitting;
 impl Behavior for Sitting {
     const STATE: BehaviorState = BehaviorState::Sitting;
 }
-
-// The robot shouldn't do anything while in unstiff state.
-const UNSTIFF_PRIORITY: Priority = Priority::Critical;
 
 pub fn sitting(mut walking_engine: ResMut<WalkingEngine>, mut nao_manager: ResMut<NaoManager>) {
     // Makes right eye blue.

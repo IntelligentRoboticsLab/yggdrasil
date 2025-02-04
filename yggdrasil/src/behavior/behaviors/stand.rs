@@ -9,6 +9,8 @@ use crate::{
     nao::{NaoManager, Priority},
 };
 
+const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
+
 pub struct StandBehaviorPlugin;
 
 impl Plugin for StandBehaviorPlugin {
@@ -22,8 +24,6 @@ pub struct Stand;
 impl Behavior for Stand {
     const STATE: BehaviorState = BehaviorState::Stand;
 }
-
-const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 pub fn stand(mut walking_engine: ResMut<WalkingEngine>, mut nao_manager: ResMut<NaoManager>) {
     walking_engine.request_stand();

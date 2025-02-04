@@ -9,6 +9,8 @@ use crate::{
     nao::{NaoManager, Priority},
 };
 
+const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
+
 /// Stand and look at a target point.
 /// This is used for when the robot is in the Set state.
 #[derive(Resource)]
@@ -26,8 +28,6 @@ impl Plugin for StandLookAtBehaviorPlugin {
         app.add_systems(Update, stand_look_at.run_if(in_behavior::<StandLookAt>));
     }
 }
-
-const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 pub fn stand_look_at(
     stand_look_at: Res<StandLookAt>,
