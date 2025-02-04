@@ -13,6 +13,10 @@ use crate::{
     vision::ball_detection::classifier::Balls,
 };
 
+// Walk to the ball as long as the ball is furthe away than
+// `BALL_DISTANCE_WALK_THRESHOLD` meters.
+const BALL_DISTANCE_WALK_THRESHOLD: f32 = 0.5;
+
 /// Plugin for the Striker role
 pub struct StrikerRolePlugin;
 
@@ -30,6 +34,7 @@ pub enum Striker {
     WalkAlign,
     WalkWithBall,
 }
+
 impl Roles for Striker {
     const STATE: Role = Role::Striker;
 }
@@ -137,7 +142,7 @@ impl Striker {
         ball_goal_aligned: bool,
     ) {
         *self = match self {
-            _ if ball_distance > 0.5 => Striker::WalkToBall,
+            _ if ball_distance > BALL_DISTANCE_WALK_THRESHOLD => Striker::WalkToBall,
             Striker::WalkToBall if ball_distance < 0.3 => Striker::WalkAlign,
             Striker::WalkAlign if ball_goal_center_align && ball_aligned => Striker::WalkWithBall,
             Striker::WalkWithBall if !ball_goal_aligned => Striker::WalkAlign,
