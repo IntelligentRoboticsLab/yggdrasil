@@ -1,13 +1,18 @@
 use std::time::Duration;
 
+use bevy::prelude::*;
 use nidhogg::types::{FillExt, HeadJoints};
 
 use nalgebra::{Point2, Point3};
 
 use crate::{
-    behavior::engine::{Behavior, Context, Control},
+    behavior::engine::{in_behavior, Behavior, BehaviorState, Role},
+    core::config::{layout::LayoutConfig, showtime::PlayerConfig},
     localization::RobotPose,
-    motion::step_planner::Target,
+    motion::{
+        step_planner::{StepPlanner, Target},
+        walk::engine::WalkingEngine,
+    },
     nao::{NaoManager, Priority},
 };
 
@@ -19,64 +24,78 @@ const GOAL_KEEPER_PRE_SET_POS: Target = Target {
 
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
+pub struct WalkToSetBehaviorPlugin;
+
+impl Plugin for WalkToSetBehaviorPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, walk_to_set.run_if(in_behavior::<WalkToSet>));
+    }
+}
+
 /// Walk to the set position of the robot.
 /// Only the Goalkeeper will first walk to the pre-set position before walking to the set position.
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Resource)]
 pub struct WalkToSet {
-    pub is_goalkeeper: bool,
+    // pub is_goalkeeper: bool,
 }
 
 impl Behavior for WalkToSet {
-    fn execute(&mut self, context: Context, control: &mut Control) {
-        let set_robot_position = context
-            .layout_config
-            .set_positions
-            .player(context.player_config.player_number);
+    const STATE: BehaviorState = BehaviorState::WalkToSet;
+}
 
-        let set_position: Point2<f32> = set_robot_position.isometry.translation.vector.into();
+pub fn walk_to_set(
+    pose: Res<RobotPose>,
+    layout_config: Res<LayoutConfig>,
+    player_config: Res<PlayerConfig>,
+    mut step_planner: ResMut<StepPlanner>,
+    mut walking_engine: ResMut<WalkingEngine>,
+    mut nao_manager: ResMut<NaoManager>,
+    role: Res<State<Role>>,
+) {
+    let set_robot_position = layout_config
+        .set_positions
+        .player(player_config.player_number);
 
-        let look_at =
-            // Setting z to default `CAMERA_HEIGHT` (looking straight ahead).
-            context
-                .pose
-                .get_look_at_absolute(&Point3::new(set_position.x, set_position.y, RobotPose::CAMERA_HEIGHT));
+    let set_position: Point2<f32> = set_robot_position.isometry.translation.vector.into();
 
-        control.nao_manager.set_head_target(
-            look_at,
-            HEAD_ROTATION_TIME,
-            Priority::default(),
-            NaoManager::HEAD_STIFFNESS,
-        );
+    let look_at = pose.get_look_at_absolute(&Point3::new(
+        set_position.x,
+        set_position.y,
+        RobotPose::CAMERA_HEIGHT,
+    ));
 
-        let target = Target {
-            position: set_robot_position.isometry.translation.vector.into(),
-            rotation: Some(set_robot_position.isometry.rotation),
-        };
+    nao_manager.set_head_target(
+        look_at,
+        HEAD_ROTATION_TIME,
+        Priority::default(),
+        NaoManager::HEAD_STIFFNESS,
+    );
 
-        let reached_pre_set = !control.step_planner.has_target()
-            || (control
-                .step_planner
-                .current_absolute_target()
-                .is_some_and(|target| target == &GOAL_KEEPER_PRE_SET_POS)
-                && !control.step_planner.reached_target());
+    let target = Target {
+        position: set_robot_position.isometry.translation.vector.into(),
+        rotation: Some(set_robot_position.isometry.rotation),
+    };
 
-        if self.is_goalkeeper && reached_pre_set {
-            control
-                .step_planner
-                .set_absolute_target(GOAL_KEEPER_PRE_SET_POS);
-        } else {
-            control.step_planner.set_absolute_target(target);
-        }
+    let reached_pre_set = !step_planner.has_target()
+        || (step_planner
+            .current_absolute_target()
+            .is_some_and(|current_target| current_target == &GOAL_KEEPER_PRE_SET_POS)
+            && !step_planner.reached_target());
 
-        if let Some(step) = control.step_planner.plan(context.pose) {
-            control.walking_engine.request_walk(step);
-        } else {
-            let look_at = context.pose.get_look_at_absolute(&Point3::origin());
-            control
-                .nao_manager
-                .set_head(look_at, HeadJoints::fill(0.5), Priority::default());
+    let is_goalkeeper = role.get() == &Role::Goalkeeper;
 
-            control.walking_engine.request_stand();
-        }
+    if is_goalkeeper && reached_pre_set {
+        step_planner.set_absolute_target(GOAL_KEEPER_PRE_SET_POS);
+    } else {
+        step_planner.set_absolute_target(target);
+    }
+
+    if let Some(step) = step_planner.plan(&pose) {
+        walking_engine.request_walk(step);
+    } else {
+        let look_at = pose.get_look_at_absolute(&Point3::origin());
+        nao_manager.set_head(look_at, HeadJoints::fill(0.5), Priority::default());
+
+        walking_engine.request_stand();
     }
 }

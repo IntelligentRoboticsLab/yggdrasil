@@ -1,10 +1,17 @@
+use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::time::Instant;
 
 use crate::{
-    behavior::engine::{Behavior, Context, Control},
-    motion::walk::engine::Step,
+    behavior::{
+        engine::{in_behavior, Behavior, BehaviorState},
+        BehaviorConfig,
+    },
+    motion::{
+        step_planner::StepPlanner,
+        walk::engine::{Step, WalkingEngine},
+    },
     nao::{NaoManager, Priority},
 };
 use nidhogg::types::{FillExt, HeadJoints};
@@ -13,7 +20,7 @@ const ROTATION_STIFFNESS: f32 = 0.3;
 
 /// Config struct containing parameters for the initial behavior.
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Resource, Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct ObserveBehaviorConfig {
     // Controls how fast the robot moves its head back and forth while looking around
@@ -28,7 +35,7 @@ pub struct ObserveBehaviorConfig {
 
 /// This behavior makes the robot look around with a sinusoidal head movement with an optional step.
 /// With this behavior, the robot can observe its surroundings while standing still or turning.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Resource)]
 pub struct Observe {
     pub starting_time: Instant,
     pub step: Option<Step>,
@@ -57,27 +64,37 @@ impl Observe {
 }
 
 impl Behavior for Observe {
-    fn execute(&mut self, context: Context, control: &mut Control) {
-        let ObserveBehaviorConfig {
-            head_rotation_speed,
-            head_pitch_max: head_pitch_multiplier,
-            head_yaw_max: head_yaw_multiplier,
-        } = context.behavior_config.observe;
+    const STATE: BehaviorState = BehaviorState::Observe;
+}
 
-        look_around(
-            control.nao_manager,
-            self.starting_time,
-            head_rotation_speed,
-            head_yaw_multiplier,
-            head_pitch_multiplier,
-        );
+pub struct ObserveBehaviorPlugin;
+impl Plugin for ObserveBehaviorPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, observe.run_if(in_behavior::<Observe>));
+    }
+}
 
-        if let Some(step) = self.step {
-            control.step_planner.clear_target();
-            control.walking_engine.request_walk(step);
-        } else {
-            control.walking_engine.request_stand();
-        }
+pub fn observe(
+    mut nao_manager: ResMut<NaoManager>,
+    behavior_config: Res<BehaviorConfig>,
+    observe: Res<Observe>,
+    mut step_planner: ResMut<StepPlanner>,
+    mut walking_engine: ResMut<WalkingEngine>,
+) {
+    let observe_config = &behavior_config.observe;
+    look_around(
+        &mut nao_manager,
+        observe.starting_time,
+        observe_config.head_rotation_speed,
+        observe_config.head_yaw_max,
+        observe_config.head_pitch_max,
+    );
+
+    if let Some(step) = observe.step {
+        step_planner.clear_target();
+        walking_engine.request_walk(step);
+    } else {
+        walking_engine.request_stand();
     }
 }
 

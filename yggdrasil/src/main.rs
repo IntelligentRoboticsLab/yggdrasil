@@ -1,3 +1,4 @@
+use bevy::state::app::StatesPlugin;
 use miette::{Context, IntoDiagnostic};
 use tracing::Level;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
@@ -17,7 +18,7 @@ fn main() -> Result<()> {
     miette::set_panic_hook();
 
     App::new()
-        .add_plugins(MinimalPlugins)
+        .add_plugins((MinimalPlugins, StatesPlugin))
         .add_plugins((
             schedule::NaoSchedulePlugin,
             game_controller::GameControllerPlugin,

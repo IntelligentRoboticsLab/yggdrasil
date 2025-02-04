@@ -65,7 +65,9 @@ sindri = { path = "tools/sindri" }
 # external crates
 apodize = "1.0.0"
 async-std = "1.13.0"
-bevy = { version = "0.15.0", default-features = false }
+bevy = { version = "0.15.0", default-features = false, features = [
+  "bevy_state",
+] }
 byteorder = "1.5.0"
 cargo_toml = "0.20.5"
 chrono = "0.4.38"
