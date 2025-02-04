@@ -8,6 +8,10 @@ use crate::{
     nao::{NaoManager, Priority, RobotInfo},
 };
 
+const DEFAULT_PASSIVE_STIFFNESS: f32 = 0.8;
+// This should run with priority over the walking engine.
+const DEFAULT_PASSIVE_PRIORITY: Priority = Priority::High;
+
 pub struct StartUpBehaviorPlugin;
 
 impl Plugin for StartUpBehaviorPlugin {
@@ -24,10 +28,6 @@ pub struct StartUp;
 impl Behavior for StartUp {
     const STATE: BehaviorState = BehaviorState::StartUp;
 }
-
-const DEFAULT_PASSIVE_STIFFNESS: f32 = 0.8;
-// This should run with priority over the walking engine.
-const DEFAULT_PASSIVE_PRIORITY: Priority = Priority::High;
 
 pub fn startup(
     robot_info: Res<RobotInfo>,
