@@ -13,7 +13,7 @@ use crate::{
     vision::ball_detection::classifier::Balls,
 };
 
-// Walk to the ball as long as the ball is furthe away than
+// Walk to the ball as long as the ball is further away than
 // `BALL_DISTANCE_WALK_THRESHOLD` meters.
 const BALL_DISTANCE_WALK_THRESHOLD: f32 = 0.5;
 
