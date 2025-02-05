@@ -4,7 +4,6 @@ use config::WalkingEngineConfig;
 use feet::FootPositions;
 use hips::HipHeight;
 use nidhogg::types::{ArmJoints, FillExt, LeftLegJoints, LegJoints, RightLegJoints};
-use rerun::external::re_types_core::external::arrow::compute::num_days_from_monday;
 use scheduling::{MotionSet, MotionState};
 
 use crate::{
@@ -34,6 +33,7 @@ impl Plugin for Walkv4EnginePlugin {
     fn build(&self, app: &mut App) {
         app.init_config::<WalkingEngineConfig>();
         app.init_resource::<SwingFoot>();
+        app.init_resource::<RequestedStep>();
         app.init_resource::<TargetFootPositions>();
         app.init_resource::<TargetLegStiffness>();
         app.add_event::<FootSwitchedEvent>();
@@ -53,6 +53,13 @@ impl Plugin for Walkv4EnginePlugin {
             ),
         );
     }
+}
+
+#[derive(Resource, Debug, Default, Clone, Copy)]
+pub struct RequestedStep {
+    pub forward: f32,
+    pub left: f32,
+    pub turn: f32,
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
