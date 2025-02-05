@@ -38,6 +38,8 @@ pub struct ScanLinesConfig {
     max_black_saturation: f32,
     /// Green chromaticity threshold
     pub green_chromaticity_threshold: f32,
+    pub red_chromaticity_threshold: f32,
+    pub blue_chromaticity_threshold: f32,
 }
 
 impl Config for ScanLinesConfig {
@@ -677,23 +679,26 @@ impl RegionColor {
         let r_chromaticity = r / color_sum;
         let b_chromaticity = 1.0 - g_chromaticity - r_chromaticity;
         let green_threshold = config.green_chromaticity_threshold;
+        let red_threshold = config.red_chromaticity_threshold;
+        let blue_threshold = config.blue_chromaticity_threshold;
 
         if Self::is_white(config, yhs) {
             return RegionColor::WhiteOrBlack;
         }
 
-        if Self::is_green(config, yhs) {
+        if g_chromaticity > green_threshold {
             return RegionColor::Green;
         }
+
+        // if Self::is_green(config, yhs) {
+        //     return RegionColor::Green;
+        // }
 
         if Self::is_black(config, yhs) {
             // We mark black spots as white regions for ball detection
             return RegionColor::WhiteOrBlack;
         }
 
-        // if g_chromaticity > green_threshold {
-        //     return RegionColor::Green;
-        // }
 
 
         RegionColor::Unknown
