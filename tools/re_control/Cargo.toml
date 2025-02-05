@@ -8,6 +8,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+build_manager = { workspace = true }
 heimdall = { workspace = true }
 sindri = { workspace = true }
 

@@ -12,7 +12,7 @@ pub enum Error {
     Io(#[from] std::io::Error),
 
     #[error(transparent)]
-    Cargo(crate::cargo::CargoError),
+    Cargo(build_manager::cargo::CargoError),
 
     #[error("Rsync error: {reason}, look up rsync error code: {exit_code:?}")]
     Rsync { exit_code: i32, reason: String },

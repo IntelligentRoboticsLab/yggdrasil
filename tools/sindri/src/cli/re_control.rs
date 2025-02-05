@@ -1,4 +1,4 @@
-use crate::cargo;
+use build_manager::cargo;
 use clap::Parser;
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressStyle};

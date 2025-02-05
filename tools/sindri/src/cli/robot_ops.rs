@@ -14,8 +14,9 @@ use tokio::{
 use yggdrasil::core::config::showtime::ShowtimeConfig;
 use yggdrasil::prelude::*;
 
+use build_manager::cargo::{self, find_bin_manifest, Profile};
+
 use crate::{
-    cargo::{self, find_bin_manifest, Profile},
     config::{Robot, SindriConfig},
     error::{Error, Result},
 };

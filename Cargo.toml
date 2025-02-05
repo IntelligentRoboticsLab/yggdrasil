@@ -49,6 +49,7 @@ yggdrasil = { path = "yggdrasil" }
 
 # yggdrasil libraries
 bifrost = { path = "crates/bifrost" }
+build_manager = { path = "crates/build_manager" }
 heimdall = { path = "crates/heimdall" }
 ml = { path = "crates/ml" }
 nilfheim = { path = "crates/nilfheim" }

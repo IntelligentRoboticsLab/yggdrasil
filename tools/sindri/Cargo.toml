@@ -12,6 +12,7 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+build_manager = { workspace = true }
 yggdrasil = { workspace = true }
 
 cargo_toml = { workspace = true }
