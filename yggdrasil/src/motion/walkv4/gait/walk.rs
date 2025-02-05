@@ -13,7 +13,7 @@ use crate::{
             foot_support::FootSupportState,
             scheduling::{MotionSet, MotionState},
             step::Step,
-            FootSwitchedEvent, Side, SwingFoot, TargetFootPositions, TORSO_OFFSET,
+            FootSwitchedEvent, RequestedStep, Side, SwingFoot, TargetFootPositions, TORSO_OFFSET,
         },
     },
     nao::{Cycle, CycleTime},
@@ -88,14 +88,17 @@ fn check_foot_switched(
     mut last_switched: Local<Cycle>,
 ) {
     let switch_diff = cycle.0 - last_switched.0;
+    // only switch if we've completed 75% of the step
+    let is_switch_allowed = state.linear() > 0.75;
+
     if foot_support.predicted_switch {
         println!("switch diff: {switch_diff}");
-        if switch_diff >= 20 && state.linear() > 0.9 {
+        if switch_diff >= 20 && is_switch_allowed {
             println!("predicted switch!");
             state.foot_switched_fsr = true;
         }
     } else {
-        if switch_diff >= 20 {
+        if switch_diff >= 20 && is_switch_allowed {
             state.foot_switched_fsr = foot_support.foot_switched;
         }
     }
@@ -103,11 +106,6 @@ fn check_foot_switched(
     if state.foot_switched_fsr {
         *last_switched = *cycle;
     }
-
-    // state.foot_switched_fsr = match **swing_foot {
-    //     Side::Left => left_foot_fsr,
-    //     Side::Right => right_foot_fsr,
-    // } > config.cop_pressure_threshold;
 }
 
 fn generate_foot_positions(
@@ -116,6 +114,7 @@ fn generate_foot_positions(
     swing_foot: Res<SwingFoot>,
     cycle_time: Res<CycleTime>,
     config: Res<WalkingEngineConfig>,
+    requested_step: Res<RequestedStep>,
 ) {
     state.phase += cycle_time.duration;
     let linear = state.linear();
@@ -123,9 +122,9 @@ fn generate_foot_positions(
 
     // TODO: replace with proper step planning
     let step = Step {
-        forward: 0.05,
-        left: 0.00,
-        turn: 0.0,
+        forward: requested_step.forward,
+        left: requested_step.left,
+        turn: requested_step.turn,
         duration: state.planned_duration,
         swing_foot_height: 0.01,
         swing_foot: **swing_foot,

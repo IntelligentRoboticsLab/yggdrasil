@@ -155,29 +155,23 @@ impl StepPlanner {
         let target = self.target?;
         let (path, _total_walking_distance) = self.calc_path(robot_pose)?;
 
-        return Some(Step {
-            forward: 0.0,
-            left: 0.05,
-            turn: -1.5,
-        });
+        if let step @ Some(_) = Self::plan_translation(robot_pose, &path) {
+            if !self.reached_translation_target {
+                return step;
+            }
+        }
 
-        // if let step @ Some(_) = Self::plan_translation(robot_pose, &path) {
-        //     if !self.reached_translation_target {
-        //         return step;
-        //     }
-        // }
+        self.reached_translation_target = true;
 
-        // self.reached_translation_target = true;
+        if let Some(rotation) = target.rotation.as_ref() {
+            if let step @ Some(_) = Self::plan_rotation(robot_pose, *rotation) {
+                return step;
+            }
+        }
 
-        // if let Some(rotation) = target.rotation.as_ref() {
-        //     if let step @ Some(_) = Self::plan_rotation(robot_pose, *rotation) {
-        //         return step;
-        //     }
-        // }
+        self.reached_rotation_target = true;
 
-        // self.reached_rotation_target = true;
-
-        // None
+        None
     }
 
     #[must_use]
