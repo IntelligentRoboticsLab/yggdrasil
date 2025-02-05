@@ -60,5 +60,5 @@ pub enum Commands {
     ChangeNetwork(change_network::ChangeNetwork),
     #[command(subcommand)]
     Config(config::ConfigCommand),
-    Update(update::Update),
+    Update(update::UpdateCommand),
 }

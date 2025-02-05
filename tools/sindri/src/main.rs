@@ -18,7 +18,6 @@ async fn main() -> Result<()> {
     };
 
     let args = Cli::parse();
-
     Sindri::check_current_version();
 
     match args.action {
