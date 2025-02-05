@@ -52,7 +52,7 @@ impl UpdateCommand {
     }
 
     async fn update_pkg(pkg_name: &str, pkg_path: &str) -> Result<()> {
-        build_manager::cargo::find_bin_manifest(pkg_name)
+        build_utils::cargo::find_bin_manifest(pkg_name)
             .map_err(|_| miette!("Command must be executed from the yggdrasil directory"))?;
 
         tokio::process::Command::new("cargo")

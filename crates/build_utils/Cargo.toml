@@ -1,8 +1,9 @@
 [package]
+name = "build_utils"
+
 authors.workspace = true
 categories.workspace = true
 edition.workspace = true
-name = "build_manager"
 rust-version.workspace = true
 version.workspace = true
 

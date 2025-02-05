@@ -1,4 +1,4 @@
-use build_manager::version::Version;
+use build_utils::version::Version;
 
 pub mod cli;
 pub mod config;

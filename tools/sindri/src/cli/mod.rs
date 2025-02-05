@@ -1,4 +1,4 @@
-use build_manager::version::Version;
+use build_utils::version::Version;
 use clap::Parser;
 
 use crate::Sindri;

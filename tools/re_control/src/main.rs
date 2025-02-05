@@ -1,6 +1,6 @@
 use std::env;
 
-use build_manager::version::Version;
+use build_utils::version::Version;
 use clap::Parser;
 use miette::Result;
 use re_control::{app::App, cli::Cli, RerunControl};
