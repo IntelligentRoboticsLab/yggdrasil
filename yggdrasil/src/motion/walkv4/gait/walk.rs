@@ -90,7 +90,7 @@ fn check_foot_switched(
     let switch_diff = cycle.0 - last_switched.0;
     if foot_support.predicted_switch {
         println!("switch diff: {switch_diff}");
-        if switch_diff >= 20 {
+        if switch_diff >= 20 && state.linear() > 0.9 {
             println!("predicted switch!");
             state.foot_switched_fsr = true;
         }
@@ -123,8 +123,8 @@ fn generate_foot_positions(
 
     // TODO: replace with proper step planning
     let step = Step {
-        forward: 0.06,
-        left: 0.0,
+        forward: 0.05,
+        left: 0.00,
         turn: 0.0,
         duration: state.planned_duration,
         swing_foot_height: 0.01,
