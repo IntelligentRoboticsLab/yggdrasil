@@ -1,8 +1,9 @@
 use std::env;
 
+use build_utils::version::Version;
 use clap::Parser;
 use miette::Result;
-use re_control::{app::App, cli::Cli};
+use re_control::{app::App, cli::Cli, RerunControl};
 use re_viewer::external::{re_log, re_memory};
 
 const BYTES_IN_GB: f32 = 1_000_000_000.0;
@@ -17,6 +18,8 @@ static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    RerunControl::check_current_version();
+
     let main_thread_token = re_viewer::MainThreadToken::i_promise_i_am_on_the_main_thread();
     re_log::setup_logging();
 

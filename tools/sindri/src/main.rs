@@ -1,8 +1,10 @@
+use build_utils::version::Version;
 use clap::Parser;
 use miette::Result;
 use sindri::{
     cli::{config::ConfigCommand, Cli, Commands},
     config::load_config,
+    Sindri,
 };
 
 #[tokio::main]
@@ -16,8 +18,7 @@ async fn main() -> Result<()> {
     };
 
     let args = Cli::parse();
-
-    sindri::version::check_current_version();
+    Sindri::check_current_version();
 
     match args.action {
         Commands::Run(opts) => opts.run(config).await?,

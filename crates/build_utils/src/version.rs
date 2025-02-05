@@ -6,33 +6,8 @@ use std::{
 use colored::Colorize;
 use miette::{miette, Result};
 
-/// Checks if the current version of matches the current version in the workspace.
-/// If the versions differ, a message is printed to the console
-pub fn check_current_version() {
-    let sindri_version = VersionInfo::current();
-    let Ok(latest_version) = VersionInfo::find_latest() else {
-        return;
-    };
-    if sindri_version == latest_version {
-        return;
-    }
-
-    println!(
-        "{}: {} {}",
-        "warning".bold().yellow(),
-        "newer sindri version available:".bold(),
-        latest_version,
-    );
-    println!(
-        " {} {}",
-        "-->".dimmed().bold(),
-        "run `sindri update` to update".dimmed()
-    );
-    println!();
-}
-
-/// Information about the git repository where sindri was built.
-#[derive(PartialEq)]
+/// Information about the git repository where the crate was built.
+#[derive(PartialEq, Debug)]
 pub struct CommitInfo {
     pub short_commit_hash: String,
     pub commit_hash: String,
@@ -42,10 +17,10 @@ pub struct CommitInfo {
 /// Sindri's version.
 #[derive(PartialEq)]
 pub struct VersionInfo {
-    /// The version of sindri.
+    /// The version of crate.
     pub version: String,
 
-    /// Information about the git repository sindri may have been built from.
+    /// Information about the git repository the crate may have been built from.
     ///
     /// `None` if not built from a git repo.
     pub commit_info: Option<CommitInfo>,
@@ -68,17 +43,23 @@ impl From<VersionInfo> for clap::builder::Str {
     }
 }
 
-impl VersionInfo {
+pub trait Version {
+    const BIN_NAME: &'static str;
+    const CRATE_PATH: &'static str;
+
+    const PKG_VERSION: Option<&'static str>;
+    const COMMIT_SHORT_HASH: Option<&'static str>;
+    const COMMIT_HASH: Option<&'static str>;
+    const COMMIT_DATE: Option<&'static str>;
+
     #[must_use]
-    pub fn current() -> VersionInfo {
-        let version = option_env!("CARGO_PKG_VERSION")
-            .unwrap_or("0.0.0")
-            .to_string();
+    fn current() -> VersionInfo {
+        let version = Self::PKG_VERSION.unwrap_or("0.0.0").to_string();
 
         let commit_info = match (
-            option_env!("SINDRI_COMMIT_SHORT_HASH"),
-            option_env!("SINDRI_COMMIT_HASH"),
-            option_env!("SINDRI_COMMIT_DATE"),
+            Self::COMMIT_SHORT_HASH,
+            Self::COMMIT_HASH,
+            Self::COMMIT_DATE,
         ) {
             (Some(short_commit_hash), Some(commit_hash), Some(commit_date)) => Some(CommitInfo {
                 short_commit_hash: short_commit_hash.to_string(),
@@ -95,8 +76,8 @@ impl VersionInfo {
     }
 
     fn find_latest() -> Result<VersionInfo> {
-        let version = crate::cargo::find_bin_version("sindri")?;
-        // This command is executed in "tools/sindri", and as such
+        let version = crate::cargo::find_bin_version(Self::BIN_NAME)?;
+        // This command is executed in the `Self::CRATE_PATH`, and as such
         // we need to pass "." as last argument, to tell git that we
         // only care about changes in that directory.
         let output = match Command::new("git")
@@ -104,13 +85,14 @@ impl VersionInfo {
             .arg("-1")
             .arg("--date=short")
             .arg("--format=%H %h %cd")
-            .arg("tools/sindri")
+            .arg(Self::CRATE_PATH)
             .output()
         {
             Ok(output) if output.status.success() => output,
             Ok(_) => {
                 return Err(miette!(
-                    "Non-zero process exit while obtaining commit hash for sindri!"
+                    "Non-zero process exit while obtaining commit hash for {}!",
+                    Self::BIN_NAME,
                 ));
             }
             Err(e) => {
@@ -134,5 +116,31 @@ impl VersionInfo {
             version,
             commit_info,
         })
+    }
+
+    /// Checks if the current version of matches the current version in the workspace.
+    /// If the versions differ, a message is printed to the console
+    fn check_current_version() {
+        let current_version = Self::current();
+        let Ok(latest_version) = Self::find_latest() else {
+            return;
+        };
+
+        if current_version == latest_version {
+            return;
+        }
+
+        println!(
+            "{}: {} {}",
+            "warning".bold().yellow(),
+            format!("newer {} version available:", Self::BIN_NAME).bold(),
+            latest_version,
+        );
+        println!(
+            " {} {}",
+            "-->".dimmed().bold(),
+            format!("run `{} update` to update", Self::BIN_NAME).dimmed()
+        );
+        println!();
     }
 }

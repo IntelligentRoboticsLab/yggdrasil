@@ -1,4 +1,7 @@
+use build_utils::version::Version;
 use clap::Parser;
+
+use crate::Sindri;
 
 pub mod change_network;
 pub mod config;
@@ -42,7 +45,7 @@ pub mod update;
 /// For more advanced options use `sindri --help`.
 
 #[derive(Parser)]
-#[clap(name = "sindri", version = crate::version::VersionInfo::current())]
+#[clap(name = "sindri", version = Sindri::current())]
 pub struct Cli {
     #[clap(subcommand)]
     pub action: Commands,
@@ -57,5 +60,5 @@ pub enum Commands {
     ChangeNetwork(change_network::ChangeNetwork),
     #[command(subcommand)]
     Config(config::ConfigCommand),
-    Update(update::Update),
+    Update(update::UpdateCommand),
 }

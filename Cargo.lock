@@ -1807,6 +1807,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "build_utils"
+version = "0.1.0"
+dependencies = [
+ "cargo_toml",
+ "clap",
+ "colored",
+ "glob",
+ "miette 7.4.0",
+ "serde_json",
+ "thiserror 2.0.9",
+ "tokio",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7047,6 +7061,7 @@ dependencies = [
 name = "re_control"
 version = "0.4.0"
 dependencies = [
+ "build_utils",
  "clap",
  "heimdall",
  "miette 7.4.0",
@@ -9027,8 +9042,9 @@ dependencies = [
 
 [[package]]
 name = "sindri"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
+ "build_utils",
  "cargo_toml",
  "clap",
  "colored",
