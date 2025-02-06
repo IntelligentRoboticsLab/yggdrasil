@@ -20,14 +20,9 @@ pub struct Path(pub Vec<Segment>);
 #[derive(Copy, Clone, Default, Resource)]
 pub struct Target(pub Option<Position>);
 
-/// The step to take to follow the path.
-#[derive(Copy, Clone, Default, Resource)]
-pub struct StepAlongPath(pub Option<Step>);
-
-/// Updates the [`Target`], [`Path`] and [`StepAlongPath`] resources.
-pub fn update_target_path_and_step(
+/// Updates the [`Path`] and [`Target`] resources.
+pub fn update_path(
     mut path: ResMut<Path>,
-    mut step: ResMut<StepAlongPath>,
     mut target: ResMut<Target>,
     pose: Res<RobotPose>,
     colliders: Res<Colliders>,
@@ -35,19 +30,13 @@ pub fn update_target_path_and_step(
 ) {
     if let Target(Some(position)) = *target {
         if na::distance(&position.to_point(), &pose.world_position()) <= settings.tolerance {
-            *target = Target::default();
+            *target = Target(None);
         }
     }
 
     if !path.ends_at(target.0, &settings) || !path.sync(pose.inner, &settings) {
         *path = Path::new(pose.inner, target.0, &colliders, &settings);
     }
-
-    *step = StepAlongPath(path.first().map(|first| Step {
-        forward: 1.,
-        left: 0.,
-        turn: first.turn(),
-    }));
 }
 
 impl Path {
@@ -93,9 +82,14 @@ impl Path {
         self.0.last().copied()
     }
 
-    /// Pop the first segment from the path.
-    pub fn pop(&mut self) {
-        self.0.remove(0);
+    /// Returns the step required to follow the path.
+    #[must_use]
+    pub fn step(&self) -> Option<Step> {
+        self.first().map(|first| Step {
+            forward: 1.,
+            left: 0.,
+            turn: first.turn(),
+        })
     }
 
     /// Returns whether the path ends at the given target.
@@ -138,7 +132,7 @@ impl Path {
             let segment = &mut self.0[0];
 
             if na::distance(&point, &segment.end()) <= settings.tolerance {
-                self.pop();
+                self.0.remove(0);
                 continue;
             }
 
