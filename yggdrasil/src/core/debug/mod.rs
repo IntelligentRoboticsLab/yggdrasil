@@ -157,14 +157,15 @@ fn sync_cycle_number(
             .map(|(cycle, duration)| (cycle as i64, duration.as_millis() as f64))
             .unzip();
 
-        // let scalar_data: Vec<_> = durations
-        //     .into_iter()
-        //     .map(Into::into)
-        //     .map(|s: Scalar| s.serialized().expect("wtf").into())
-        //     .collect();
-
         let timeline = TimeColumn::new_sequence("cycle", cycles);
-        // ctx.send_columns("stats/cycle_time", [timeline], scalar_data);
+        ctx.send_columns(
+            "stats/cycle_time",
+            [timeline],
+            rerun::Scalar::update_fields()
+                .with_many_scalar(durations)
+                .columns_of_unit_batches()
+                .expect("failed to batch scalar values"),
+        );
         cycle_time_buffer.clear();
     } else {
         cycle_time_buffer.push((cycle.0, cycle_time.duration));

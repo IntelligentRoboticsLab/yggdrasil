@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use rerun::ComponentBatch;
+use rerun::{ComponentBatch, Transform3D};
 
 use super::prelude::*;
 use crate::{
@@ -111,10 +111,16 @@ fn update_meshes(
         let timeline = rerun::TimeColumn::new_sequence("cycle", std::mem::take(&mut buffer.cycle));
 
         meshes! {($($name:ident, $_space:ty)*) => {$(
-            // dbg.send_columns(concat!("nao/", stringify!($name)), [timeline.clone()], [
-            //     buffer.$name.0.serialized().expect("failed to serialize rerun component").into(),
-            //     buffer.$name.1.serialized().expect("failed to serialize rerun component").into(),
-            // ]);
+
+            dbg.send_columns(
+                concat!("nao/", stringify!($name)),
+                [timeline.clone()],
+                Transform3D::update_fields()
+                    .with_many_translation(buffer.$name.0.clone())
+                    .with_many_quaternion(buffer.$name.1.clone())
+                    .columns_of_unit_batches()
+                    .expect(concat!("failed to batch up kinematic transforms for", stringify!($name)))
+            );
 
             buffer.$name.0.clear();
             buffer.$name.1.clear();

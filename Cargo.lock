@@ -308,7 +308,7 @@ checksum = "df099ccb16cd014ff054ac1bf392c67feeef57164b05c42f037cd40f5d4357f4"
 dependencies = [
  "clipboard-win",
  "core-graphics",
- "image",
+ "image 0.25.5",
  "log",
  "objc2",
  "objc2-app-kit",
@@ -1276,7 +1276,7 @@ dependencies = [
  "bytemuck",
  "derive_more",
  "futures-lite",
- "image",
+ "image 0.25.5",
  "serde",
  "wgpu 23.0.1",
 ]
@@ -1504,7 +1504,7 @@ dependencies = [
  "downcast-rs",
  "encase",
  "futures-lite",
- "image",
+ "image 0.25.5",
  "js-sys",
  "naga 23.1.0",
  "naga_oil",
@@ -2165,6 +2165,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ecdffb913a326b6c642290a0d0ec8e8d6597291acdc07cc4c9cb4b3635d44cf9"
 
 [[package]]
+name = "color_quant"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
+
+[[package]]
 name = "colorchoice"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2754,7 +2760,7 @@ dependencies = [
  "glutin",
  "glutin-winit",
  "home",
- "image",
+ "image 0.25.5",
  "js-sys",
  "log",
  "objc2",
@@ -2871,7 +2877,7 @@ dependencies = [
  "egui",
  "ehttp",
  "enum-map",
- "image",
+ "image 0.25.5",
  "log",
  "mime_guess2",
  "profiling",
@@ -3320,6 +3326,7 @@ name = "filter"
 version = "0.1.0"
 dependencies = [
  "nalgebra",
+ "plotters",
  "rand",
  "thiserror 2.0.11",
 ]
@@ -3734,7 +3741,7 @@ dependencies = [
  "base64 0.13.1",
  "byteorder",
  "gltf-json",
- "image",
+ "image 0.25.5",
  "lazy_static",
  "serde_json",
  "urlencoding",
@@ -4355,6 +4362,20 @@ name = "ieee754"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9007da9cacbd3e6343da136e98b0d2df013f553d35bdec8b518f07bea768e19c"
+
+[[package]]
+name = "image"
+version = "0.24.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5690139d2f55868e080017335e4b94cb7414274c74f1669c84fb5feba2c9f69d"
+dependencies = [
+ "bytemuck",
+ "byteorder",
+ "color_quant",
+ "jpeg-decoder",
+ "num-traits",
+ "png",
+]
 
 [[package]]
 name = "image"
@@ -6096,6 +6117,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "plotters"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5aeb6f403d7a4911efb1e33402027fc44f29b5bf6def3effcc22d7bb75f2b747"
+dependencies = [
+ "num-traits",
+ "plotters-backend",
+ "plotters-bitmap",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "plotters-backend"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df42e13c12958a16b3f7f4386b9ab1f3e7933914ecea48da7139435263a4172a"
+
+[[package]]
+name = "plotters-bitmap"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72ce181e3f6bf82d6c1dc569103ca7b1bd964c60ba03d7e6cdfbb3e3eb7f7405"
+dependencies = [
+ "image 0.24.9",
+ "plotters-backend",
+]
+
+[[package]]
 name = "ply-rs"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6775,7 +6825,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "crossbeam",
- "image",
+ "image 0.25.5",
  "itertools 0.13.0",
  "notify",
  "once_cell",
@@ -6827,7 +6877,7 @@ dependencies = [
  "egui",
  "egui_extras",
  "egui_plot",
- "image",
+ "image 0.25.5",
  "itertools 0.13.0",
  "nohash-hasher",
  "re_byte_size",
@@ -7381,7 +7431,7 @@ dependencies = [
  "emath",
  "glam 0.28.0",
  "half",
- "image",
+ "image 0.25.5",
  "infer",
  "itertools 0.13.0",
  "linked-hash-map",
@@ -7642,7 +7692,7 @@ dependencies = [
  "egui",
  "glam 0.28.0",
  "hexasphere 14.1.0",
- "image",
+ "image 0.25.5",
  "itertools 0.13.0",
  "nohash-hasher",
  "once_cell",
@@ -7775,7 +7825,7 @@ dependencies = [
  "egui-wgpu",
  "egui_plot",
  "ehttp",
- "image",
+ "image 0.25.5",
  "itertools 0.13.0",
  "js-sys",
  "parking_lot",
@@ -7859,7 +7909,7 @@ dependencies = [
  "glam 0.28.0",
  "half",
  "home",
- "image",
+ "image 0.25.5",
  "indexmap 2.7.1",
  "itertools 0.13.0",
  "linked-hash-map",
