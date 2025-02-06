@@ -15,7 +15,7 @@ use rerun::external::{
     ecolor::Color32,
     egui,
     re_types::ViewClassIdentifier,
-    re_ui::{self, Icon},
+    re_ui::{self, Help, Icon},
     re_viewer_context::{
         self, SystemExecutionOutput, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError,
         ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewSystemExecutionError,
@@ -124,11 +124,12 @@ impl ViewClass for ControlView {
         &CONTROL_PANEL_VIEW
     }
 
-    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "# Control View
+    fn help(&self, _egui_ctx: &egui::Context) -> re_ui::Help<'_> {
+        Help::new(
+            "# Control View
 
-A view to control the robot"
-            .to_string()
+A view to control the robot",
+        )
     }
 
     fn on_register(
