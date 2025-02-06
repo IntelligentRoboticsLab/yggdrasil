@@ -5,7 +5,6 @@ use bevy::prelude::*;
 
 use miette::IntoDiagnostic;
 use re_control_comms::debug_system::DebugEnabledSystems;
-use rerun::components::Scalar;
 use rerun::{
     AsComponents, ComponentBatch, EntityPath, RecordingStream, SerializedComponentColumn,
     TimeColumn,

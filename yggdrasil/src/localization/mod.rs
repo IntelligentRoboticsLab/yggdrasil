@@ -20,7 +20,7 @@ use nalgebra::{
     Isometry2, Isometry3, Point2, Point3, Translation2, Translation3, UnitComplex, UnitQuaternion,
 };
 use nidhogg::types::HeadJoints;
-use rerun::{external::glam::Quat, ComponentBatch, TimeColumn};
+use rerun::{external::glam::Quat, TimeColumn};
 
 /// The localization plugin provides functionalities related to the localization of the robot.
 pub struct LocalizationPlugin;
