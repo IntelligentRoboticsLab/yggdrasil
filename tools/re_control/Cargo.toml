@@ -18,8 +18,14 @@ mimalloc = { workspace = true }
 nalgebra = { workspace = true }
 re_control_comms = { path = "re_control_comms" }
 re_crash_handler = { workspace = true }
-re_viewer = { workspace = true }
-rerun = { workspace = true, features = ["ecolor", "clap", "server"] }
+rerun = { workspace = true, features = [
+  "ecolor",
+  "clap",
+  "server",
+  "sdk",
+  "native_viewer",
+  "run",
+] }
 tokio = { workspace = true, features = [
   "macros",
   "rt",

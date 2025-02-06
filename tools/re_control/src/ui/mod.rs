@@ -1,4 +1,4 @@
-use re_viewer::external::egui::{self, Frame, InnerResponse, RichText};
+use rerun::external::egui::{self, Frame, InnerResponse, RichText};
 
 pub mod camera_calibration;
 pub mod debug_systems;

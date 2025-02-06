@@ -111,12 +111,12 @@ rand = "0.8.5"
 rayon = "1.10.0"
 
 re_crash_handler = "0.22.0-alpha.2"
-re_grpc_server = "0.22.0-alpha.2"
 re_smart_channel = "0.22.0-alpha.2"
 re_viewer = "0.22.0-alpha.2"
 rerun = { version = "0.22.0-alpha.2", default-features = false, features = [
   "sdk",
   "server",
+  "analytics",
   "log",
   "glam",
 ] }

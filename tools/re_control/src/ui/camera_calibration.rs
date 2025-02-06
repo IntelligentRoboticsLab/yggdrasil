@@ -6,7 +6,7 @@ use std::{
 use heimdall::CameraPosition;
 use nalgebra::Vector3;
 use re_control_comms::{protocol::ViewerMessage, viewer::ControlViewerHandle};
-use re_viewer::external::{egui, re_ui::UiExt};
+use rerun::external::{egui, re_ui::UiExt};
 
 use crate::{re_control_view::ControlViewerData, state::TrackedState};
 
