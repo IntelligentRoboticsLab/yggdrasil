@@ -1,4 +1,4 @@
-use nalgebra::{Isometry3, Translation3, UnitQuaternion, Vector3};
+use nalgebra::{Isometry3, Translation3, UnitQuaternion, Vector2, Vector3};
 use spatial::types::Pose3;
 
 use super::{step::Step, Side};
@@ -91,5 +91,16 @@ impl FootPositions {
         };
 
         FootOffsets { left, right }
+    }
+
+    pub fn swing_travel_over_ground(&self, swing_side: Side, end: &FootPositions) -> Vector2<f32> {
+        match swing_side {
+            Side::Left => ((self.right.inner.translation.vector - self.left.translation.vector)
+                + (end.left.translation.vector - end.right.translation.vector))
+                .xy(),
+            Side::Right => ((self.left.inner.translation.vector - self.right.translation.vector)
+                + (end.right.translation.vector - end.left.translation.vector))
+                .xy(),
+        }
     }
 }

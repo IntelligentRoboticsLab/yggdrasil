@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use nalgebra::{Point2, Vector2};
-use nidhogg::types::{Fsr, FsrFoot};
+use nidhogg::types::Fsr;
 use rerun::{components::Scalar, Color, ComponentBatch, EntityPath, TimeColumn};
 
 use crate::{

@@ -7,6 +7,7 @@ use crate::{
     motion::{
         step_planner::StepPlanner,
         walk::engine::{Step, WalkingEngine},
+        walkv4::RequestedStep,
     },
     nao::{NaoManager, Priority},
 };
@@ -38,6 +39,7 @@ pub fn walk(
     mut walking_engine: ResMut<WalkingEngine>,
     mut nao_manager: ResMut<NaoManager>,
     pose: Res<RobotPose>,
+    mut requested_step: ResMut<RequestedStep>,
 ) {
     if let Some(point) = walk.look_target {
         let look_at = pose.get_look_at_absolute(&point);
@@ -46,4 +48,9 @@ pub fn walk(
 
     step_planner.clear_target();
     walking_engine.request_walk(walk.step);
+    *requested_step = RequestedStep {
+        forward: walk.step.forward,
+        left: walk.step.left,
+        turn: walk.step.turn,
+    }
 }
