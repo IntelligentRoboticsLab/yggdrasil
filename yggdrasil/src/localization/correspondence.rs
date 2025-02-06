@@ -142,6 +142,10 @@ fn log_correspondences<T: CameraLocation>(
             })
             .collect_vec();
 
-        dbg.log_with_cycle(path.as_str(), *cycle, &rerun::LineStrips3D::new(&lines));
+        dbg.log_with_cycle(
+            path.as_str(),
+            *cycle,
+            &rerun::LineStrips3D::update_fields().with_strips(&lines),
+        );
     }
 }

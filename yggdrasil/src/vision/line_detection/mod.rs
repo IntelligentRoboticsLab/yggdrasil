@@ -470,7 +470,7 @@ fn debug_lines<T: CameraLocation>(
         dbg.log_with_cycle(
             T::make_entity_image_path("lines/detected"),
             *cycle,
-            &rerun::LineStrips2D::new(
+            &rerun::LineStrips2D::update_fields().with_strips(
                 lines
                     .segments
                     .iter()
@@ -498,7 +498,7 @@ fn debug_lines_projected<T: CameraLocation>(
         dbg.log_with_cycle(
             T::make_entity_path("lines/detected"),
             *cycle,
-            &rerun::LineStrips3D::new(lines.segments.iter().map(|s| {
+            &rerun::LineStrips3D::update_fields().with_strips(lines.segments.iter().map(|s| {
                 let point = pose.inner * *s;
                 [
                     (point.start.x, point.start.y, 0.0),

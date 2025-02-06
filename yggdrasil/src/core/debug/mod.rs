@@ -127,7 +127,7 @@ fn setup_spl_field(dbg: DebugContext) {
         &rerun::InstancePoses3D::new()
             .with_translations([(4.5, 0., 0.), (-4.5, 0., 0.)])
             .with_rotation_axis_angles([
-                ((0., 0., 0.), 0.),
+                ((0., 0., 1.), 0.),
                 ((0., 0., 1.), Angle::from_radians(PI).into()),
             ]),
     );
