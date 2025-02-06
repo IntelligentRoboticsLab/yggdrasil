@@ -35,13 +35,11 @@ impl Plugin for BodyContourPlugin {
 }
 
 fn setup_body_contour_visualization<T: CameraLocation>(dbg: DebugContext) {
-    dbg.log_component_batches(
+    dbg.log_static(
         T::make_entity_path("image/body_contour"),
-        true,
-        [
-            &rerun::Color::from_rgb(167, 82, 64) as _,
-            &rerun::Radius::new_ui_points(4.0) as _,
-        ],
+        &rerun::Points2D::update_fields()
+            .with_colors([(167, 82, 64)])
+            .with_radii([4.0]),
     );
 }
 

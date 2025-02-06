@@ -7,7 +7,7 @@ use re_control_comms::{
     protocol::{RobotMessage, CONTROL_PORT},
     viewer::ControlViewer,
 };
-use re_viewer::external::egui;
+use rerun::external::egui;
 
 use crate::{
     connection::ConnectionState,

@@ -5,8 +5,7 @@ use std::{
 };
 
 use re_control_comms::{protocol::ViewerMessage, viewer::ControlViewerHandle};
-use re_viewer::external::{egui, re_ui::UiExt};
-use rerun::external::ecolor::Color32;
+use rerun::external::{ecolor::Color32, egui, re_ui::UiExt};
 
 use crate::{re_control_view::ControlViewerData, resource::RobotResources};
 

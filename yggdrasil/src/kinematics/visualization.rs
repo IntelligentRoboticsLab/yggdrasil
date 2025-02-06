@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use rerun::Transform3D;
 
 use super::prelude::*;
 use crate::{
@@ -57,7 +58,10 @@ meshes! {($($name:ident, $_:ty)*) => {
 }}
 
 fn setup_meshes(dbg: DebugContext) {
-    dbg.log_static("nao", &rerun::components::AxisLength(rerun::Float32(0.)));
+    dbg.log_static(
+        "nao",
+        &rerun::Transform3D::update_fields().with_axis_length(0.),
+    );
 
     meshes! {($($name:ident, $_:ty)*) => {$(
         let path = concat!("nao/", stringify!($name));
@@ -68,8 +72,6 @@ fn setup_meshes(dbg: DebugContext) {
                 .expect(concat!("Failed to load ", stringify!($), " model"))
                 .with_media_type(rerun::MediaType::glb()),
         );
-
-        dbg.log_static(path, &rerun::ViewCoordinates::FLU);
     )*}}
 }
 
@@ -105,10 +107,16 @@ fn update_meshes(
         let timeline = rerun::TimeColumn::new_sequence("cycle", std::mem::take(&mut buffer.cycle));
 
         meshes! {($($name:ident, $_space:ty)*) => {$(
-            dbg.send_columns(concat!("nao/", stringify!($name)), [timeline.clone()], [
-                &buffer.$name.0 as _,
-                &buffer.$name.1 as _,
-            ]);
+
+            dbg.send_columns(
+                concat!("nao/", stringify!($name)),
+                [timeline.clone()],
+                Transform3D::update_fields()
+                    .with_many_translation(buffer.$name.0.clone())
+                    .with_many_quaternion(buffer.$name.1.clone())
+                    .columns_of_unit_batches()
+                    .expect(concat!("failed to batch up kinematic transforms for", stringify!($name)))
+            );
 
             buffer.$name.0.clear();
             buffer.$name.1.clear();

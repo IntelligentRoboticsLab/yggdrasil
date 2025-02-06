@@ -5,6 +5,7 @@ use clap::Parser;
 use miette::Result;
 use re_control::{app::App, cli::Cli, RerunControl};
 use re_viewer::external::{re_log, re_memory};
+use rerun::external::re_viewer;
 
 const BYTES_IN_GB: f32 = 1_000_000_000.0;
 const MEMORY_FRACTION_DEFAULT: f32 = 0.75;

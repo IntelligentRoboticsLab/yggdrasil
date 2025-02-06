@@ -1,4 +1,4 @@
-use re_viewer::external::egui::{self, Frame, InnerResponse, RichText};
+use rerun::external::egui::{self, Frame, InnerResponse, RichText};
 
 pub mod camera_calibration;
 pub mod debug_systems;
@@ -8,7 +8,7 @@ pub mod selection_ui;
 pub const SIDE_PANEL_WIDTH: f32 = 400.0;
 pub const PANEL_TOP_PADDING: f32 = 10.0;
 
-const VIEW_SECTION_MARGIN: f32 = 5.0;
+const VIEW_SECTION_MARGIN: i8 = 5;
 const HEADING_FONT_SIZE: f32 = 14.0;
 
 pub fn view_section<R>(

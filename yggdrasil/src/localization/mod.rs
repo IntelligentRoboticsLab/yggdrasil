@@ -20,7 +20,7 @@ use nalgebra::{
     Isometry2, Isometry3, Point2, Point3, Translation2, Translation3, UnitComplex, UnitQuaternion,
 };
 use nidhogg::types::HeadJoints;
-use rerun::external::glam::Quat;
+use rerun::{external::glam::Quat, TimeColumn};
 
 /// The localization plugin provides functionalities related to the localization of the robot.
 pub struct LocalizationPlugin;
@@ -200,19 +200,22 @@ fn find_closest_penalty_pose(
 }
 
 fn setup_pose_visualization(dbg: DebugContext) {
-    dbg.log_static(
-        "localization/pose",
-        &rerun::Boxes3D::from_half_sizes([(0.075, 0.1375, 0.2865)]),
-    );
+    let times = TimeColumn::new_sequence("cycle", [0]);
+    let color_and_shape = rerun::Boxes3D::update_fields()
+        .with_half_sizes([(0.075, 0.1375, 0.2865)])
+        .with_colors([rerun::Color::from_rgb(0, 120, 255)])
+        .columns_of_unit_batches()
+        .expect("failed to create pose visualization");
 
-    dbg.log_component_batches(
+    let transform = rerun::Transform3D::update_fields()
+        .with_axis_length(0.3)
+        .columns_of_unit_batches()
+        .expect("failed to create view coordinates for pose visualation");
+
+    dbg.send_columns(
         "localization/pose",
-        true,
-        [
-            &rerun::Color::from_rgb(0, 120, 255) as _,
-            &rerun::components::AxisLength(0.3.into()) as _,
-            &rerun::components::ViewCoordinates::FLU as _,
-        ],
+        [times],
+        color_and_shape.chain(transform),
     );
 }
 
