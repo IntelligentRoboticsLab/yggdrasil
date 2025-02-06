@@ -1,11 +1,17 @@
-use crate::{behavior::engine::in_behavior, motion::keyframe::lerp, sensor::falling::FallState};
+use crate::{
+    behavior::engine::in_behavior,
+    sensor::falling::{FallDirection, FallState},
+};
 use bevy::prelude::*;
 use nidhogg::{
-    types::{FillExt, HeadJoints, JointArray, LeftLegJoints, LegJoints, RightLegJoints},
+    types::{
+        ArmJoints, FillExt, HeadJoints, JointArray, LeftArmJoints, LeftLegJoints, LegJoints,
+        RightLegJoints,
+    },
     NaoState,
 };
 
-use crate::motion::keyframe::lerp_legs;
+use crate::motion::keyframe::{lerp_arms, lerp_legs};
 use crate::{
     behavior::engine::{Behavior, BehaviorState},
     nao::{NaoManager, Priority},
@@ -37,7 +43,7 @@ impl Plugin for CatchFallBehaviorPlugin {
     }
 }
 
-const LEFT_LEGT_JOINTS: LeftLegJoints<f32> = LeftLegJoints {
+const LEFT_LEGT_JOINTS_FORWARD_FALL: LeftLegJoints<f32> = LeftLegJoints {
     hip_yaw_pitch: 0.029187918,
     hip_roll: -0.323632,
     hip_pitch: -0.742414,
@@ -46,7 +52,7 @@ const LEFT_LEGT_JOINTS: LeftLegJoints<f32> = LeftLegJoints {
     ankle_roll: 0.16264606,
 };
 
-const RIGHT_LEG_JOINTS: RightLegJoints<f32> = RightLegJoints {
+const RIGHT_LEG_JOINTS_FORWARD_FALL: RightLegJoints<f32> = RightLegJoints {
     hip_roll: 0.07060599,
     hip_pitch: -0.28536606,
     knee_pitch: 1.4373999,
@@ -54,9 +60,52 @@ const RIGHT_LEG_JOINTS: RightLegJoints<f32> = RightLegJoints {
     ankle_roll: -0.024502039,
 };
 
-const LEG_JOINTS: LegJoints<f32> = LegJoints {
-    left_leg: LEFT_LEGT_JOINTS,
-    right_leg: RIGHT_LEG_JOINTS,
+const LEG_JOINTS_FORWARD_FALL: LegJoints<f32> = LegJoints {
+    left_leg: LEFT_LEGT_JOINTS_FORWARD_FALL,
+    right_leg: RIGHT_LEG_JOINTS_FORWARD_FALL,
+};
+
+const LEFT_LEG_JOINTS_SIDE_FALL: LeftLegJoints<f32> = LeftLegJoints {
+    hip_yaw_pitch: 0.0,
+    hip_roll: 0.003109932,
+    hip_pitch: -0.9310961,
+    knee_pitch: 2.12,
+    ankle_pitch: -1.18,
+    ankle_roll: 0.0015759468,
+};
+const RIGHT_LEG_JOINTS_SIDE_FALL: RightLegJoints<f32> = RightLegJoints {
+    hip_roll: 0.0,
+    hip_pitch: -0.9403839,
+    knee_pitch: 2.12,
+    ankle_pitch: -1.18,
+    ankle_roll: 0.0015759468,
+};
+const LEG_JOINTS_SIDE_FALL: LegJoints<f32> = LegJoints {
+    left_leg: LEFT_LEG_JOINTS_SIDE_FALL,
+    right_leg: RIGHT_LEG_JOINTS_SIDE_FALL,
+};
+
+const LEFT_ARM: LeftArmJoints<f32> = LeftArmJoints {
+    shoulder_pitch: 1.5585021,
+    shoulder_roll: 0.6304321,
+    elbow_yaw: -0.012313843,
+    elbow_roll: -0.92496014,
+    wrist_yaw: -1.6429558,
+    hand: 0.37,
+};
+
+const RIGHT_ARM: LeftArmJoints<f32> = LeftArmJoints {
+    shoulder_pitch: 1.5585021,
+    shoulder_roll: -0.6304321,
+    elbow_yaw: 0.012313843,
+    elbow_roll: 0.92496014,
+    wrist_yaw: 1.6429558,
+    hand: 0.37,
+};
+
+const ARM_JOINTS: ArmJoints<f32> = ArmJoints {
+    left_arm: LEFT_ARM,
+    right_arm: RIGHT_ARM,
 };
 
 pub fn catch_fall(
@@ -66,13 +115,17 @@ pub fn catch_fall(
     fall_state: Res<FallState>,
 ) {
     //eprintln!("{:?}", nao_state.position.left_leg_joints());
-    //eprintln!("{:?}", nao_state.position.right_leg_joints());
-
-    let target_leg_joints = lerp_legs(&nao_state.position.leg_joints(), &LEG_JOINTS, 0.5);
+    eprintln!("{:?}", nao_state.position.right_leg_joints());
+    //eprintln!("{:?}", nao_state.position.right_arm_joints());
 
     if let FallState::Falling(fall_direction) = fall_state.as_ref() {
         match fall_direction {
-            crate::sensor::falling::FallDirection::Forwards => {
+            FallDirection::Forwards => {
+                let target_leg_joints = lerp_legs(
+                    &nao_state.position.leg_joints(),
+                    &LEG_JOINTS_FORWARD_FALL,
+                    0.5,
+                );
                 nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.2), Priority::Critical);
                 nao_manager.set_head(
                     HeadJoints {
@@ -83,6 +136,20 @@ pub fn catch_fall(
                     Priority::Critical,
                 );
                 nao_manager.unstiff_arms(Priority::Critical);
+            }
+            FallDirection::Left | FallDirection::Right => {
+                let target_leg_joints =
+                    lerp_legs(&nao_state.position.leg_joints(), &LEG_JOINTS_SIDE_FALL, 0.5);
+                let target_arm_joints =
+                    lerp_arms(&nao_state.position.arm_joints(), &ARM_JOINTS, 0.5);
+
+                nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.2), Priority::Critical);
+                nao_manager.set_arms(target_arm_joints, ArmJoints::fill(0.3), Priority::Critical);
+                nao_manager.set_head(
+                    HeadJoints::default(),
+                    HeadJoints::fill(0.3),
+                    Priority::Critical,
+                );
             }
             _ => {
                 nao_manager.unstiff_legs(Priority::Critical);
