@@ -11,9 +11,11 @@ use super::{
 
 /// Adds initial obstacles to the scene.
 pub fn add_static_obstacles(mut commands: Commands) {
-    //commands.spawn(Obstacle::from(Circle::origin(1.)));
-    commands.spawn(Obstacle::from(Circle::new(na::point![-2.5, 2.], 0.25)));
-    //commands.spawn(Obstacle::from(Circle::new(na::point![-1., -2.], 0.75)));
+    // Goalposts
+    commands.spawn(Obstacle::from(Circle::new(na::point![-4.5, 0.8], 0.05)));
+    commands.spawn(Obstacle::from(Circle::new(na::point![-4.5, -0.8], 0.05)));
+    commands.spawn(Obstacle::from(Circle::new(na::point![4.5, 0.8], 0.05)));
+    commands.spawn(Obstacle::from(Circle::new(na::point![4.5, -0.8], 0.05)));
 }
 
 /// Checks if any obstacles have been changed.
