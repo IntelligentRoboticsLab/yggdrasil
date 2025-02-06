@@ -2,6 +2,7 @@ use std::net::Ipv4Addr;
 
 use miette::{IntoDiagnostic, Result};
 use re_viewer::StartupOptions;
+use rerun::external::re_sdk_comms;
 
 use crate::re_control_view::ControlView;
 
@@ -30,6 +31,12 @@ impl App {
         )
         .into_diagnostic()?;
 
+        // main_thread_token: MainThreadToken,
+        // build_info: re_build_info::BuildInfo,
+        // app_env: &crate::AppEnvironment,
+        // startup_options: StartupOptions,
+        // creation_context: &eframe::CreationContext<'_>,
+
         re_viewer::run_native_app(
             main_thread_token,
             Box::new(move |cc| {
@@ -38,8 +45,7 @@ impl App {
                     re_viewer::build_info(),
                     &app_env,
                     self.startup_options,
-                    cc.egui_ctx.clone(),
-                    cc.storage,
+                    cc,
                 );
                 app.add_receiver(rx);
 

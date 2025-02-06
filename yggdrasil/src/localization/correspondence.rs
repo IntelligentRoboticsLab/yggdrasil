@@ -110,7 +110,11 @@ pub fn get_correspondences<T: CameraLocation>(
 fn setup_logging<T: CameraLocation>(dbg: DebugContext) {
     let path = T::make_entity_path("localization/line_correspondences");
 
-    dbg.log_static(path.as_str(), &rerun::Color::from_rgb(0, 255, 255));
+    dbg.log_with_cycle(
+        path,
+        Cycle::default(),
+        &rerun::LineStrips3D::update_fields().with_colors([(0, 255, 255)]),
+    );
 }
 
 fn log_correspondences<T: CameraLocation>(

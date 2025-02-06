@@ -20,7 +20,7 @@ use nalgebra::{
     Isometry2, Isometry3, Point2, Point3, Translation2, Translation3, UnitComplex, UnitQuaternion,
 };
 use nidhogg::types::HeadJoints;
-use rerun::{external::glam::Quat, ComponentBatch};
+use rerun::{external::glam::Quat, ComponentBatch, TimeColumn};
 
 /// The localization plugin provides functionalities related to the localization of the robot.
 pub struct LocalizationPlugin;
@@ -200,24 +200,22 @@ fn find_closest_penalty_pose(
 }
 
 fn setup_pose_visualization(dbg: DebugContext) {
-    dbg.log_static(
-        "localization/pose",
-        &rerun::Boxes3D::from_half_sizes([(0.075, 0.1375, 0.2865)]),
-    );
+    let times = TimeColumn::new_sequence("cycle", [0]);
+    let color_and_shape = rerun::Boxes3D::update_fields()
+        .with_half_sizes([(0.075, 0.1375, 0.2865)])
+        .with_colors([rerun::Color::from_rgb(0, 120, 255)])
+        .columns_of_unit_batches()
+        .expect("failed to create pose visualization");
 
-    dbg.log_static(
+    let transform = rerun::Transform3D::update_fields()
+        .with_axis_length(0.3)
+        .columns_of_unit_batches()
+        .expect("failed to create view coordinates for pose visualation");
+
+    dbg.send_columns(
         "localization/pose",
-        &[
-            rerun::Color::from_rgb(0, 120, 255)
-                .serialized()
-                .expect("failed to serialize rerun component"),
-            rerun::components::AxisLength(0.3.into())
-                .serialized()
-                .expect("failed to serialize rerun component"),
-            rerun::components::ViewCoordinates::FLU
-                .serialized()
-                .expect("failed to serialize rerun component"),
-        ],
+        [times],
+        color_and_shape.chain(transform),
     );
 }
 

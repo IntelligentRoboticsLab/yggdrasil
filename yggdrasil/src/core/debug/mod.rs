@@ -191,10 +191,10 @@ impl RerunStream {
     /// [`RerunStream`] that does nothing.
     pub fn init(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
         let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
-            .connect_opts(format!(
-                "http://{rerun_host}:{}",
-                rerun::external::re_grpc_server::DEFAULT_SERVER_PORT
-            ))
+            .connect_tcp_opts(
+                SocketAddr::new(rerun_host, rerun::default_server_addr().port()),
+                rerun::default_flush_timeout(),
+            )
             .into_diagnostic()?;
 
         Ok(RerunStream {
@@ -247,8 +247,13 @@ impl RerunStream {
     /// Data that needs to be logged in a specific cycle should use [`RerunStream::log_with_cycle`] instead.
     ///
     /// See [`RecordingStream::log`] for more information.
-    pub fn log(&self, ent_path: impl Into<EntityPath>, arch: &impl AsComponents) {
-        if let Err(error) = self.stream.log(ent_path, arch) {
+    #[inline]
+    pub fn log<AS: ?Sized + AsComponents>(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        as_components: &AS,
+    ) {
+        if let Err(error) = self.stream.log(ent_path, as_components) {
             error!("{error}");
         }
     }
@@ -263,8 +268,13 @@ impl RerunStream {
     /// All timestamp data associated with this message will be dropped right before sending it to Rerun.
     ///
     /// See [`RecordingStream::log_static`] for more information.
-    pub fn log_static(&self, ent_path: impl Into<EntityPath>, arch: &impl AsComponents) {
-        if let Err(error) = self.stream.log_static(ent_path, arch) {
+    #[inline]
+    pub fn log_static<AS: ?Sized + AsComponents>(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        as_components: &AS,
+    ) {
+        if let Err(error) = self.stream.log_static(ent_path, as_components) {
             error!("{error}");
         }
     }
@@ -272,14 +282,14 @@ impl RerunStream {
     /// Log data to Rerun in the provided [`Cycle`].
     ///
     /// This is a utility function that sets the [`Cycle`] and defers all calls to log data to [`Self::log`].
-    pub fn log_with_cycle(
+    pub fn log_with_cycle<AS: ?Sized + AsComponents>(
         &self,
         ent_path: impl Into<EntityPath>,
         cycle: Cycle,
-        arch: &impl AsComponents,
+        as_components: &AS,
     ) {
         self.stream.set_time_sequence("cycle", cycle.0 as i64);
-        self.log(ent_path, arch);
+        self.log(ent_path, as_components);
         self.stream.set_time_sequence("cycle", self.cycle.0 as i64);
     }
 
@@ -292,13 +302,13 @@ impl RerunStream {
     ///
     /// See [`RecordingStream::send_columns`] for more information.
     #[inline]
-    pub fn send_columns<'a>(
+    pub fn send_columns(
         &self,
         ent_path: impl Into<EntityPath>,
-        timelines: impl IntoIterator<Item = TimeColumn>,
+        indexes: impl IntoIterator<Item = TimeColumn>,
         columns: impl IntoIterator<Item = SerializedComponentColumn>,
     ) {
-        if let Err(error) = self.stream.send_columns(ent_path, timelines, columns) {
+        if let Err(error) = self.stream.send_columns(ent_path, indexes, columns) {
             error!("{error}");
         }
     }

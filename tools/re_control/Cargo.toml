@@ -1,6 +1,6 @@
 [package]
 name = "re_control"
-version = "0.4.0"
+version = "0.5.0"
 
 authors.workspace = true
 categories.workspace = true
@@ -18,9 +18,8 @@ mimalloc = { workspace = true }
 nalgebra = { workspace = true }
 re_control_comms = { path = "re_control_comms" }
 re_crash_handler = { workspace = true }
-re_grpc_server = { workspace = true }
 re_viewer = { workspace = true }
-rerun = { workspace = true, features = ["ecolor", "clap"] }
+rerun = { workspace = true, features = ["ecolor", "clap", "server"] }
 tokio = { workspace = true, features = [
   "macros",
   "rt",
