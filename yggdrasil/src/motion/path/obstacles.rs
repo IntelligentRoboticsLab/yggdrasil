@@ -3,7 +3,11 @@
 use bevy::prelude::*;
 use nalgebra as na;
 
-use super::{geometry::{Circle, CircularArc, Intersects, LineSegment, Point, Segment}, PathSettings};
+use super::{
+    geometry::{Circle, CircularArc, Intersects, LineSegment, Point, Segment},
+    planning::Path,
+    PathSettings,
+};
 
 /// Adds initial obstacles to the scene.
 pub fn add_static_obstacles(mut commands: Commands) {
@@ -18,9 +22,10 @@ pub fn obstacles_changed(obstacles: Query<&Obstacle, Changed<Obstacle>>) -> bool
     !obstacles.is_empty()
 }
 
-/// Updates the [`Colliders`] based on the obstacles in the ECS.
-pub fn update_colliders(mut colliders: ResMut<Colliders>, settings: Res<PathSettings>, obstacles: Query<&Obstacle>) {
+/// Updates the [`Colliders`] based on the obstacles in the ECS (and reset [`Path`]).
+pub fn update_colliders(mut colliders: ResMut<Colliders>, mut path: ResMut<Path>, settings: Res<PathSettings>, obstacles: Query<&Obstacle>) {
     *colliders = Colliders::from_obstacles(&obstacles, &settings);
+    *path = Path::default();
 }
 
 /// Obstacle that the pathfinding navigates around.
