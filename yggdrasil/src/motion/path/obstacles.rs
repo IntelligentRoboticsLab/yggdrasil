@@ -3,13 +3,13 @@
 use bevy::prelude::*;
 use nalgebra as na;
 
-use super::geometry::{Circle, CircularArc, Intersects, LineSegment, Point, Segment};
+use super::{geometry::{Circle, CircularArc, Intersects, LineSegment, Point, Segment}, PathSettings};
 
 /// Adds initial obstacles to the scene.
 pub fn add_static_obstacles(mut commands: Commands) {
-    commands.spawn(Obstacle::from(Circle::origin(1.)));
-    commands.spawn(Obstacle::from(Circle::new(na::point![2., -2.], 0.25)));
-    commands.spawn(Obstacle::from(Circle::new(na::point![-1., -2.], 0.75)));
+    //commands.spawn(Obstacle::from(Circle::origin(1.)));
+    commands.spawn(Obstacle::from(Circle::new(na::point![-2.5, 2.], 0.25)));
+    //commands.spawn(Obstacle::from(Circle::new(na::point![-1., -2.], 0.75)));
 }
 
 /// Checks if any obstacles have been changed.
@@ -19,8 +19,8 @@ pub fn obstacles_changed(obstacles: Query<&Obstacle, Changed<Obstacle>>) -> bool
 }
 
 /// Updates the [`Colliders`] based on the obstacles in the ECS.
-pub fn update_colliders(mut colliders: ResMut<Colliders>, obstacles: Query<&Obstacle>) {
-    *colliders = Colliders::from_iter(&obstacles);
+pub fn update_colliders(mut colliders: ResMut<Colliders>, settings: Res<PathSettings>, obstacles: Query<&Obstacle>) {
+    *colliders = Colliders::from_obstacles(&obstacles, &settings);
 }
 
 /// Obstacle that the pathfinding navigates around.
@@ -52,26 +52,32 @@ pub struct Colliders {
 }
 
 impl Colliders {
+    pub fn new() -> Self {
+        Self {
+            arcs: Vec::new(),
+            lines: Vec::new(),
+        }
+    }
+
+    /// Creates a new [`Colliders`] from the given obstacles and settings.
+    pub fn from_obstacles<'a, T: IntoIterator<Item = &'a Obstacle>>(iter: T, settings: &PathSettings) -> Self {
+        Self {
+            arcs: iter
+                .into_iter()
+                .map(|obstacle| match obstacle {
+                    &Obstacle::Circle(c) => c.dilate(settings.robot_radius).into(),
+                })
+                .collect(),
+            lines: Vec::new(),
+        }
+    }
+
     /// Iterates over the segments that this struct contains.
     pub fn segments(&self) -> impl Iterator<Item = Segment> + '_ {
         let arcs = self.arcs.iter().copied().map(Into::into);
         let lines = self.lines.iter().copied().map(Into::into);
 
         arcs.chain(lines)
-    }
-}
-
-impl<'a> FromIterator<&'a Obstacle> for Colliders {
-    fn from_iter<T: IntoIterator<Item = &'a Obstacle>>(iter: T) -> Self {
-        Self {
-            arcs: iter
-                .into_iter()
-                .map(|obstacle| match obstacle {
-                    &Obstacle::Circle(c) => c.dilate(0.5).into(),
-                })
-                .collect(),
-            lines: Vec::new(),
-        }
     }
 }
 

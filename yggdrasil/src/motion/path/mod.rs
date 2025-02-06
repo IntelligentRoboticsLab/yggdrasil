@@ -45,6 +45,9 @@ pub struct PathSettings {
     /// The maximum angular distance the robot is allowed to be from the path before it is
     /// considered desynchronized.
     pub angular_tolerance: f32,
+    /// The maximum distance the robot is allowed to be from the target before it is considered
+    /// reached.
+    pub target_tolerance: f32,
     /// The radius ou the arc to ease into the path from the start counterclockwise.
     pub ccw_ease_in: f32,
     /// The radius ou the arc to ease into the path from the start clockwise.
@@ -59,12 +62,13 @@ impl Default for PathSettings {
     fn default() -> Self {
         Self {
             robot_radius: 0.25,
-            tolerance: 0.1,
-            angular_tolerance: 0.1 * PI,
-            ccw_ease_in: 1.0,
-            cw_ease_in: 1.0,
-            ccw_ease_out: 1.0,
-            cw_ease_out: 1.0,
+            tolerance: 0.2,
+            angular_tolerance: 0.2 * PI,
+            target_tolerance: 0.05,
+            ccw_ease_in: 0.25,
+            cw_ease_in: 0.25,
+            ccw_ease_out: 0.25,
+            cw_ease_out: 0.25,
         }
     }
 }

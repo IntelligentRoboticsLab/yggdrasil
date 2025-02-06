@@ -30,7 +30,7 @@ pub fn visualize_path(dbg: DebugContext, path: Res<Path>) {
     dbg.log(
         "pathfinding/path",
         &rerun::LineStrips3D::new([path
-            .0
+            .segments
             .iter()
             .flat_map(|s| s.vertices(RESOLUTION))
             .map(|p| [p.x, p.y, PATH_HEIGHT])]),

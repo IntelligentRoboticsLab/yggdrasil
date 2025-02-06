@@ -14,7 +14,12 @@ use super::{
 
 /// Struct containing segments that make up a path.
 #[derive(Default, Resource)]
-pub struct Path(pub Vec<Segment>);
+pub struct Path {
+    /// The segments that this path contains.
+    pub segments: Vec<Segment>,
+    /// Whether the path is considered suboptimal and should be recalculated.
+    pub suboptimal: bool,
+}
 
 /// The target to walk to.
 #[derive(Copy, Clone, Default, Resource)]
@@ -29,13 +34,25 @@ pub fn update_path(
     settings: Res<PathSettings>,
 ) {
     if let Target(Some(position)) = *target {
-        if na::distance(&position.to_point(), &pose.world_position()) <= settings.tolerance {
+        if na::distance(&position.to_point(), &pose.world_position()) <= settings.target_tolerance {
             *target = Target(None);
         }
     }
 
-    if !path.ends_at(target.0, &settings) || !path.sync(pose.inner, &settings) {
-        *path = Path::new(pose.inner, target.0, &colliders, &settings);
+    if !path.ends_at(target.0, &settings) {
+        let new = Path::new(pose.inner, target.0, &colliders, &settings, false);
+
+        if !new.is_empty() {
+            *path = new;
+        } else {
+            *path = Path::new(pose.inner, target.0, &Colliders::new(), &settings, true);
+        }
+    } else if path.suboptimal || !path.sync(pose.inner, &settings) {
+        let new = Path::new(pose.inner, target.0, &colliders, &settings, false);
+
+        if !new.is_empty() {
+            *path = new;
+        }
     }
 }
 
@@ -47,6 +64,7 @@ impl Path {
         target: Option<Position>,
         colliders: &Colliders,
         settings: &PathSettings,
+        suboptimal: bool,
     ) -> Self {
         if let Some(target) = target {
             let pathfinding = Pathfinding {
@@ -57,7 +75,10 @@ impl Path {
             };
 
             if let Some((path, _)) = pathfinding.path() {
-                return Self(path);
+                return Self {
+                    segments: path,
+                    suboptimal,
+                };
             }
         }
 
@@ -67,19 +88,19 @@ impl Path {
     /// Returns whether the path is empty.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.segments.is_empty()
     }
 
     /// Returns the first segment in the path.
     #[must_use]
     pub fn first(&self) -> Option<Segment> {
-        self.0.first().copied()
+        self.segments.first().copied()
     }
 
     /// Returns the last segment in the path.
     #[must_use]
     pub fn last(&self) -> Option<Segment> {
-        self.0.last().copied()
+        self.segments.last().copied()
     }
 
     /// Returns the step required to follow the path.
@@ -129,10 +150,10 @@ impl Path {
                 return true;
             }
 
-            let segment = &mut self.0[0];
+            let segment = &mut self.segments[0];
 
             if na::distance(&point, &segment.end()) <= settings.tolerance {
-                self.0.remove(0);
+                self.segments.remove(0);
                 continue;
             }
 
