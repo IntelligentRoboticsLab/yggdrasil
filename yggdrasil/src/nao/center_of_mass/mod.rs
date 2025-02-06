@@ -13,7 +13,6 @@ use crate::{
     prelude::*,
 };
 use bevy::prelude::*;
-use rerun::ComponentBatch;
 pub use robot_masses::*;
 use spatial::types::Point3;
 
@@ -81,9 +80,7 @@ fn update_com(kinematics: Res<Kinematics>, mut com: ResMut<CenterOfMass>) {
 fn setup_com_visualization(dbg: DebugContext) {
     dbg.log_static(
         "localization/pose/com",
-        &rerun::Color::from_rgb(255, 64, 0)
-            .serialized()
-            .expect("failed to serialize color component"),
+        &rerun::Points3D::update_fields().with_colors([(255, 64, 0)]),
     );
 }
 

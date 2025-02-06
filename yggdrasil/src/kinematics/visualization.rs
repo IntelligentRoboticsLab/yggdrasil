@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use rerun::{ComponentBatch, Transform3D};
+use rerun::Transform3D;
 
 use super::prelude::*;
 use crate::{
@@ -60,9 +60,7 @@ meshes! {($($name:ident, $_:ty)*) => {
 fn setup_meshes(dbg: DebugContext) {
     dbg.log_static(
         "nao",
-        &rerun::components::AxisLength(rerun::Float32(0.))
-            .serialized()
-            .expect("failed to serialize color component"),
+        &rerun::Transform3D::update_fields().with_axis_length(0.),
     );
 
     meshes! {($($name:ident, $_:ty)*) => {$(
@@ -74,8 +72,6 @@ fn setup_meshes(dbg: DebugContext) {
                 .expect(concat!("Failed to load ", stringify!($), " model"))
                 .with_media_type(rerun::MediaType::glb()),
         );
-
-        dbg.log_static(path, &rerun::components::ViewCoordinates::FLU.serialized().expect("failed to serialize color component"));
     )*}}
 }
 

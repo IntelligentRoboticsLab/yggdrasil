@@ -7,7 +7,6 @@ use heimdall::{CameraLocation, Top};
 use lstsq::Lstsq;
 use ml::prelude::*;
 use nalgebra::Point2;
-use rerun::ComponentBatch;
 use tasks::conditions::task_finished;
 
 use super::camera::init_camera;
@@ -139,16 +138,12 @@ impl FieldBoundary {
 fn setup_boundary_debug_logging(dbg: DebugContext) {
     dbg.log_static(
         Top::make_entity_image_path("boundary/points"),
-        &rerun::Color::from_rgb(255, 0, 255)
-            .serialized()
-            .expect("failed to serialize color component"),
+        &rerun::Points2D::update_fields().with_colors([(255, 0, 255)]),
     );
 
     dbg.log_static(
         Top::make_entity_image_path("boundary/segments"),
-        &rerun::Color::from_rgb(128, 0, 128)
-            .serialized()
-            .expect("failed to serialize color component"),
+        &rerun::LineStrips2D::update_fields().with_colors([(255, 0, 255)]),
     );
 }
 

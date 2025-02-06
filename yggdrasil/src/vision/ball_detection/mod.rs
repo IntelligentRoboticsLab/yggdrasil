@@ -10,7 +10,6 @@ use heimdall::{Bottom, CameraLocation, Top};
 use nidhogg::types::{color, FillExt, LeftEye};
 use proposal::BallProposalConfigs;
 
-use rerun::ComponentBatch;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 
@@ -74,21 +73,14 @@ fn init_subconfigs(mut commands: Commands, config: Res<BallDetectionConfig>) {
 fn setup_ball_debug_logging<T: CameraLocation>(dbg: DebugContext) {
     dbg.log_static(
         T::make_entity_image_path("balls/proposals"),
-        &rerun::Color::from_rgb(190, 190, 190)
-            .serialized()
-            .expect("failed to serialize rerun component"),
+        &rerun::Boxes2D::update_fields().with_colors([(190, 190, 190)]),
     );
 
     dbg.log_static(
         T::make_entity_image_path("balls/classifications"),
-        &[
-            rerun::Color::from_rgb(228, 153, 255)
-                .serialized()
-                .expect("failed to serialize rerun component"),
-            rerun::components::DrawOrder::from(11.0)
-                .serialized()
-                .expect("failed to serialize rerun component"),
-        ],
+        &rerun::Boxes2D::update_fields()
+            .with_colors([(228, 153, 255)])
+            .with_draw_order(11.0),
     );
 }
 
@@ -125,12 +117,6 @@ fn setup_3d_ball_debug_logging(dbg: DebugContext) {
             .with_media_type(rerun::MediaType::glb()),
     );
 
-    dbg.log_static(
-        "balls/best",
-        &rerun::components::ViewCoordinates::FLU
-            .serialized()
-            .expect("failed to serialize color component"),
-    );
     dbg.log_with_cycle(
         "balls/best",
         Cycle::default(),

@@ -15,7 +15,6 @@ use nalgebra::{point, Point2};
 use odal::Config;
 use rand::Rng;
 use ransac::{line::LineDetector, Ransac};
-use rerun::ComponentBatch;
 use serde::{Deserialize, Serialize};
 
 use super::body_contour::{update_body_contours, BodyContour};
@@ -440,33 +439,26 @@ fn setup_debug<T: CameraLocation>(dbg: DebugContext) {
     // lines
     dbg.log_static(
         T::make_entity_image_path("lines/detected"),
-        &rerun::Color::from_rgb(255, 100, 0)
-            .serialized()
-            .expect("failed to serialize color component"),
+        &rerun::LineStrips2D::update_fields().with_colors([(255, 100, 0)]),
     );
 
     // projected lines
     dbg.log_static(
         T::make_entity_path("lines/detected"),
-        &rerun::Color::from_rgb(255, 100, 0)
-            .serialized()
-            .expect("failed to serialize color component"),
+        &rerun::LineStrips3D::update_fields().with_colors([(255, 100, 0)]),
     );
 
     // inliers
     dbg.log_static(
         T::make_entity_image_path("lines/inliers"),
-        &rerun::components::Radius::from(2.0)
-            .serialized()
-            .expect("failed to serialize color component"),
+        &rerun::Points2D::update_fields().with_radii([2.0]),
     );
 
     // rejected lines
-    // dbg.log_static(
-    //     T::make_entity_image_path("lines/rejected"),
-    //     true,
-    //     std::iter::empty(),
-    // );
+    dbg.log_static(
+        T::make_entity_image_path("lines/rejected"),
+        &rerun::Clear::flat(),
+    );
 }
 
 fn debug_lines<T: CameraLocation>(
