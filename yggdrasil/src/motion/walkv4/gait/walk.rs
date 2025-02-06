@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
+use nalgebra::Vector2;
 use nidhogg::types::Fsr;
 
 use crate::{
@@ -8,7 +9,7 @@ use crate::{
     motion::{
         walk::smoothing::{parabolic_return, parabolic_step},
         walkv4::{
-            config::WalkingEngineConfig,
+            config::{ConfigStep, WalkingEngineConfig},
             feet::FootPositions,
             foot_support::FootSupportState,
             scheduling::{MotionSet, MotionState},
@@ -44,6 +45,7 @@ struct WalkState {
     start: FootPositions,
     planned_duration: Duration,
     foot_switched_fsr: bool,
+    last_step: ConfigStep,
 }
 
 impl Default for WalkState {
@@ -53,6 +55,7 @@ impl Default for WalkState {
             start: FootPositions::default(),
             planned_duration: Duration::from_millis(200),
             foot_switched_fsr: false,
+            last_step: ConfigStep::default(),
         }
     }
 }
@@ -80,9 +83,6 @@ impl WalkState {
 
 fn check_foot_switched(
     mut state: ResMut<WalkState>,
-    swing_foot: Res<SwingFoot>,
-    fsr: Res<Fsr>,
-    config: Res<WalkingEngineConfig>,
     foot_support: Res<FootSupportState>,
     cycle: Res<Cycle>,
     mut last_switched: Local<Cycle>,
@@ -121,7 +121,7 @@ fn generate_foot_positions(
     let parabolic = state.parabolic();
 
     // TODO: replace with proper step planning
-    let step = Step {
+    let mut step = Step {
         forward: requested_step.forward,
         left: requested_step.left,
         turn: requested_step.turn,
@@ -133,6 +133,29 @@ fn generate_foot_positions(
 
     let target = FootPositions::from_target(&step);
 
+    let turn_travel = match &step.swing_foot {
+        Side::Left => target
+            .left
+            .inner
+            .rotation
+            .angle_to(&state.start.left.inner.rotation),
+        Side::Right => target
+            .right
+            .inner
+            .rotation
+            .angle_to(&state.start.right.inner.rotation),
+    };
+
+    let swing_travel = state
+        .start
+        .swing_travel_over_ground(step.swing_foot, &target)
+        .abs();
+
+    let foot_lift_apex = config.base_foot_lift
+        + travel_weighting(swing_travel, turn_travel, config.foot_lift_modifier);
+
+    step.swing_foot_height = foot_lift_apex;
+
     let (left_t, right_t) = match &step.swing_foot {
         Side::Left => (parabolic, linear),
         Side::Right => (linear, parabolic),
@@ -141,7 +164,7 @@ fn generate_foot_positions(
     let mut left = state.start.left.lerp_slerp(&target.left.inner, left_t);
     let mut right = state.start.right.lerp_slerp(&target.right.inner, right_t);
 
-    let swing_lift = parabolic_return(linear) * compute_step_apex(&config, &step);
+    let swing_lift = parabolic_return(linear) * foot_lift_apex;
     let (left_lift, right_lift) = match &step.swing_foot {
         Side::Left => (swing_lift, 0.),
         Side::Right => (0., swing_lift),
@@ -156,12 +179,27 @@ fn generate_foot_positions(
     };
 }
 
+fn travel_weighting(
+    translation_travel: Vector2<f32>,
+    turn_travel: f32,
+    factors: ConfigStep,
+) -> f32 {
+    let translational = nalgebra::vector![
+        factors.forward * translation_travel.x,
+        factors.left * translation_travel.y,
+    ]
+    .norm();
+    let rotational = factors.turn * turn_travel;
+    translational + rotational
+}
+
 /// System that switches the current swing foot when possible.
 fn update_swing_foot(
     mut event: EventWriter<FootSwitchedEvent>,
     mut swing_foot: ResMut<SwingFoot>,
     mut state: ResMut<WalkState>,
     kinematics: Res<Kinematics>,
+    requested_step: Res<RequestedStep>,
 ) {
     if !state.foot_switched_fsr {
         return;
@@ -173,12 +211,10 @@ fn update_swing_foot(
     state.start = FootPositions::from_kinematics(swing_foot.opposite(), &kinematics, TORSO_OFFSET);
     **swing_foot = swing_foot.opposite();
     state.foot_switched_fsr = false;
+    state.last_step = ConfigStep {
+        forward: requested_step.forward,
+        left: requested_step.left,
+        turn: requested_step.turn,
+    };
     event.send(FootSwitchedEvent(**swing_foot));
-}
-
-fn compute_step_apex(config: &WalkingEngineConfig, step: &Step) -> f32 {
-    step.swing_foot_height
-        + config.foot_lift_modifier.forward * step.forward
-        + config.foot_lift_modifier.left * step.left
-        + config.foot_lift_modifier.turn * step.turn
 }

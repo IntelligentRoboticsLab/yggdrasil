@@ -11,6 +11,7 @@ use crate::{
     motion::{
         step_planner::StepPlanner,
         walk::engine::{Step, WalkingEngine},
+        walkv4::RequestedStep,
     },
     nao::{NaoManager, Priority},
 };
@@ -80,6 +81,7 @@ pub fn observe(
     observe: Res<Observe>,
     mut step_planner: ResMut<StepPlanner>,
     mut walking_engine: ResMut<WalkingEngine>,
+    mut requested_step: ResMut<RequestedStep>,
 ) {
     let observe_config = &behavior_config.observe;
     look_around(
@@ -93,6 +95,11 @@ pub fn observe(
     if let Some(step) = observe.step {
         step_planner.clear_target();
         walking_engine.request_walk(step);
+        *requested_step = RequestedStep {
+            forward: step.forward,
+            left: step.left,
+            turn: step.turn,
+        }
     } else {
         walking_engine.request_stand();
     }

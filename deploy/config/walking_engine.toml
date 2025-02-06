@@ -3,7 +3,7 @@ base_step_period = 250
 
 # The stiffness value used for the leg joints, higher means the robot's joints will
 # wear out faster, but the robot will be more stable.
-leg_stiffness = 0.8
+leg_stiffness = 0.5
 
 # The stiffness value used for the arm joints, higher means the robot's joints will
 # wear out faster, but the robot will be more stable.
@@ -14,13 +14,12 @@ cop_pressure_threshold = 0.6
 
 # The base amount to lift the feet in swing phase, in metres.
 # The foot lift is increased slightly, based on the forward and left in the command.
-base_foot_lift = 0.01
+base_foot_lift = 0.008
 
 # The multiplier for each component of a step command to adjust the foot lift.
 # These values are multiplied by their respective component of the step command
 # and added to the base foot lift.
-# TODO: Test effects of turn lift modifier
-foot_lift_modifier = { forward = 0.01, left = 0.02, turn = 0.00 }
+foot_lift_modifier = { forward = 0.11, left = 0.12, turn = 0.025 }
 
 # The step size is clipped to this value; in both directions (e.g. range for forward is -max_step_size to max_step_size).
 max_step_size = { forward = 0.08, left = 0.08, turn = 3.14 }
