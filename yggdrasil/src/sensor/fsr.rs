@@ -94,14 +94,14 @@ fn update_contacts(config: Res<SensorConfig>, fsr: Res<Fsr>, mut contacts: ResMu
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct CalibratedFsrFoot {
+pub struct FsrFootCalibrationState {
     max: FsrFoot,
     new_max: FsrFoot,
     min: FsrFoot,
     new_min: FsrFoot,
 }
 
-impl CalibratedFsrFoot {
+impl FsrFootCalibrationState {
     fn init(config: &FsrConfig) -> Self {
         Self {
             max: config.min_pressure_foot(),
@@ -151,10 +151,13 @@ pub struct CalibratedFsr {
     pub is_calibrated: bool,
     /// The normalized FSR readings for this cycle.
     pub normalized: Fsr,
-    left: CalibratedFsrFoot,
-    right: CalibratedFsrFoot,
+    /// Calibrated FSR state for the left foot.
+    left: FsrFootCalibrationState,
+    /// Calibrated FSR state for the right foot.
+    right: FsrFootCalibrationState,
     /// The maximum pressure ever recorded on a single foot.
     max_pressure: f32,
+    /// The timestamp when the calibration was last updated.
     last_updated: Instant,
 }
 
@@ -162,8 +165,8 @@ impl CalibratedFsr {
     #[must_use]
     pub fn init(config: &FsrConfig) -> Self {
         Self {
-            left: CalibratedFsrFoot::init(config),
-            right: CalibratedFsrFoot::init(config),
+            left: FsrFootCalibrationState::init(config),
+            right: FsrFootCalibrationState::init(config),
             max_pressure: config.min_pressure_foot().sum(),
             last_updated: Instant::now(),
             is_calibrated: false,
