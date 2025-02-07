@@ -26,7 +26,7 @@ impl MotionSet {
 }
 
 #[derive(States, Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MotionState {
+pub enum Gait {
     #[default]
     Sitting,
     Standing,
@@ -38,12 +38,13 @@ pub(super) struct MotionSchedulePlugin;
 
 impl Plugin for MotionSchedulePlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<MotionState>();
+        app.init_state::<Gait>();
         app.configure_sets(PostStartup, MotionSet::order())
             .configure_sets(Update, MotionSet::order())
-            .configure_sets(OnEnter(MotionState::Sitting), MotionSet::order())
-            .configure_sets(OnEnter(MotionState::Standing), MotionSet::order())
-            .configure_sets(OnEnter(MotionState::Walking), MotionSet::order());
+            .configure_sets(PostUpdate, MotionSet::order())
+            .configure_sets(OnEnter(Gait::Sitting), MotionSet::order())
+            .configure_sets(OnEnter(Gait::Standing), MotionSet::order())
+            .configure_sets(OnEnter(Gait::Walking), MotionSet::order());
 
         app.add_systems(PostStartup, setup_motion_state.in_set(MotionSet::Finalize));
     }
@@ -51,14 +52,14 @@ impl Plugin for MotionSchedulePlugin {
 
 /// System that sets the initial [`MotionState`] depending on the initial hip height.
 fn setup_motion_state(
-    mut state: ResMut<NextState<MotionState>>,
+    mut state: ResMut<NextState<Gait>>,
     config: Res<WalkingEngineConfig>,
     kinematics: Res<Kinematics>,
 ) {
     let hip_height = kinematics.left_hip_height();
     if hip_height >= config.max_sitting_hip_height {
-        state.set(MotionState::Standing);
+        state.set(Gait::Standing);
     } else {
-        state.set(MotionState::Sitting);
+        state.set(Gait::Sitting);
     }
 }

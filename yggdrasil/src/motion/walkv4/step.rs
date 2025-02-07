@@ -1,46 +1,28 @@
-use std::time::Duration;
+use std::{
+    ops::{Add, Neg, Sub},
+    time::Duration,
+};
 
-use super::Side;
+use super::{feet::FootPositions, Side};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Step {
     pub forward: f32,
     pub left: f32,
     pub turn: f32,
-    pub duration: Duration,
-    pub swing_foot_height: f32,
-    pub swing_foot: Side,
-}
-
-impl Default for Step {
-    fn default() -> Self {
-        Self {
-            forward: 0f32,
-            left: 0f32,
-            turn: 0f32,
-            duration: Duration::ZERO,
-            swing_foot_height: 0f32,
-            swing_foot: Side::default(),
-        }
-    }
 }
 
 impl Step {
-    /// Clamps the step to the provided `max_step_size`.
-    #[must_use]
-    pub fn clamped(&self, max_step_size: Step) -> Step {
-        Step {
-            forward: self
-                .forward
-                .clamp(-max_step_size.forward, max_step_size.forward),
-            left: self.left.clamp(-max_step_size.left, max_step_size.left),
-            turn: self.turn.clamp(-max_step_size.turn, max_step_size.turn),
-            ..*self
+    pub fn clamp(&self, min: Step, max: Step) -> Self {
+        Self {
+            forward: self.forward.clamp(min.forward, max.forward),
+            left: self.left.clamp(min.left, max.left),
+            turn: self.turn.clamp(min.turn, max.turn),
         }
     }
 
     /// Clamp the step to the anatomic limits of the robot.
-    pub fn clamp_anatomic(self, max_inside_turn: f32) -> Self {
+    pub fn clamp_anatomic(self, swing_foot: Side, max_inside_turn: f32) -> Self {
         let sideways_dir = if self.left.is_sign_positive() {
             Side::Left
         } else {
@@ -69,7 +51,54 @@ impl Step {
             forward: self.forward,
             left: clamped_sideways,
             turn: clamped_turn,
-            ..self
         }
     }
 }
+
+impl Add for Step {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            forward: self.forward + rhs.forward,
+            left: self.left + rhs.left,
+            turn: self.turn + rhs.turn,
+        }
+    }
+}
+
+impl Sub for Step {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            forward: self.forward - rhs.forward,
+            left: self.left - rhs.left,
+            turn: self.turn - rhs.turn,
+        }
+    }
+}
+
+impl Neg for Step {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self {
+            forward: -self.forward,
+            left: -self.left,
+            turn: -self.turn,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct PlannedStep {
+    pub step: Step,
+    pub start: FootPositions,
+    pub end: FootPositions,
+    pub duration: Duration,
+    pub swing_foot_height: f32,
+    pub swing_foot: Side,
+}
+
+impl PlannedStep {}
