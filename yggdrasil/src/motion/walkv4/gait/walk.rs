@@ -114,7 +114,6 @@ fn generate_foot_positions(
     };
 
     let planned = step_manager.planned_step;
-    info!(?planned.step, "planned step");
     let start = planned.start;
     let target = planned.target;
     let mut left = start.left.lerp_slerp(&target.left.inner, left_t);
