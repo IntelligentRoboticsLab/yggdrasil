@@ -23,15 +23,18 @@ impl Step {
 
     /// Clamp the step to the anatomic limits of the robot.
     pub fn clamp_anatomic(self, swing_foot: Side, max_inside_turn: f32) -> Self {
-        let sideways_dir = if self.left.is_sign_positive() {
+        let lateral_direction = if self.left.is_sign_positive() {
             Side::Left
         } else {
             Side::Right
         };
 
-        let clamped_sideways = if sideways_dir == self.swing_foot {
+        let clamped_sideways = if lateral_direction == swing_foot {
             self.left
         } else {
+            // lateral movement in the direction opposite to the current swing foot
+            // would result in the robot hitting its ankles together, we avoid this
+            // by clamping it to 0.
             0.0
         };
 
@@ -41,9 +44,12 @@ impl Step {
             Side::Right
         };
 
-        let clamped_turn = if turn_direction == self.swing_foot {
+        let clamped_turn = if turn_direction == swing_foot {
             self.turn
         } else {
+            // turning in the direction opposite to the current swing foot
+            // makes it difficult for the robot to effectively turn, so we
+            // clamp it to a small value to keep the motion
             self.turn.clamp(-max_inside_turn, max_inside_turn)
         };
 

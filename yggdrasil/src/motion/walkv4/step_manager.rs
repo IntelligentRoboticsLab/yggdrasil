@@ -1,8 +1,11 @@
 use std::time::Duration;
 
 use super::{
+    config::WalkingEngineConfig,
+    feet::FootPositions,
     scheduling::{Gait, MotionSet},
     step::{PlannedStep, Step},
+    Side,
 };
 use bevy::prelude::*;
 
@@ -24,7 +27,7 @@ impl Plugin for StepManagerPlugin {
 pub struct StepManager {
     requested_gait: Gait,
     requested_step: Step,
-    last_step: Step,
+    last_step: PlannedStep,
     pub planned_step: PlannedStep,
 }
 
@@ -38,18 +41,42 @@ impl StepManager {
         self.requested_step = step;
     }
 
-    pub fn plan_next_step(&mut self) {
+    pub fn plan_next_step(&mut self, start: FootPositions, config: &WalkingEngineConfig) {
         // clamp acceleration
         let delta_step =
-            (self.requested_step - self.last_step).clamp(-MAX_ACCELERATION, MAX_ACCELERATION);
+            (self.requested_step - self.last_step.step).clamp(-MAX_ACCELERATION, MAX_ACCELERATION);
         let next_step = self.requested_step + delta_step;
 
+        // TODO(gijsd): do we want to assume this each time?
+        let next_swing_foot = self.last_step.swing_foot.opposite();
+
+        let target = FootPositions::from_target(next_swing_foot, &next_step);
+        let turn_travel = match &next_swing_foot {
+            Side::Left => target
+                .left
+                .inner
+                .rotation
+                .angle_to(&start.left.inner.rotation),
+            Side::Right => target
+                .right
+                .inner
+                .rotation
+                .angle_to(&start.right.inner.rotation),
+        };
+
+        let swing_travel = start
+            .swing_travel_over_ground(next_swing_foot, &target)
+            .abs();
+
+        let foot_lift_apex = config.base_foot_lift
+            + travel_weighting(swing_travel, turn_travel, config.foot_lift_modifier);
+
         self.planned_step = PlannedStep {
-            forward: delta_step.forward,
-            left: delta_step.left,
-            turn: delta_step.turn,
+            step: next_step,
             duration: Duration::from_millis(250),
-            swing_foot_height: ,
+            start: todo!(),
+            end: target,
+            swing_foot_height: todo!(),
             swing_foot: todo!(),
         }
     }

@@ -1,7 +1,10 @@
 use nalgebra::{Isometry3, Translation3, UnitQuaternion, Vector2, Vector3};
 use spatial::types::Pose3;
 
-use super::{step::PlannedStep, Side};
+use super::{
+    step::{PlannedStep, Step},
+    Side,
+};
 use crate::{
     kinematics::{
         prelude::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS},
@@ -18,11 +21,11 @@ pub struct FootPositions {
     pub right: Pose3<Ground>,
 }
 
-impl Default for FootPositions {
-    fn default() -> Self {
-        Self::from_target(&PlannedStep::default())
-    }
-}
+// impl Default for FootPositions {
+//     fn default() -> Self {
+//         Self::from_target(&PlannedStep::default())
+//     }
+// }
 
 impl FootPositions {
     pub fn new(left: Pose3<Ground>, right: Pose3<Ground>) -> Self {
@@ -47,8 +50,8 @@ impl FootPositions {
         }
     }
 
-    pub fn from_target(step: &PlannedStep) -> Self {
-        let (support_offset, swing_offset) = match step.swing_foot {
+    pub fn from_target(swing_foot: Side, step: &Step) -> Self {
+        let (support_offset, swing_offset) = match swing_foot {
             Side::Left => (ROBOT_TO_RIGHT_PELVIS, ROBOT_TO_LEFT_PELVIS),
             Side::Right => (ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS),
         };
@@ -63,7 +66,7 @@ impl FootPositions {
             UnitQuaternion::from_axis_angle(&Vector3::z_axis(), step.turn / 2.),
         ));
 
-        let (left, right) = match step.swing_foot {
+        let (left, right) = match swing_foot {
             Side::Left => (swing_sole, support_sole),
             Side::Right => (support_sole, swing_sole),
         };
@@ -71,7 +74,6 @@ impl FootPositions {
         Self { left, right }
     }
 
-    // TODO: Re-implement the turning
     // TODO: Get rid of FootOffsets and use [`FootPositions`]
     pub fn to_offsets(&self, hip_height: f32) -> FootOffsets {
         let left = FootOffset {
@@ -95,12 +97,18 @@ impl FootPositions {
 
     pub fn swing_travel_over_ground(&self, swing_side: Side, end: &FootPositions) -> Vector2<f32> {
         match swing_side {
-            Side::Left => ((self.right.inner.translation.vector - self.left.translation.vector)
-                + (end.left.translation.vector - end.right.translation.vector))
-                .xy(),
-            Side::Right => ((self.left.inner.translation.vector - self.right.translation.vector)
-                + (end.right.translation.vector - end.left.translation.vector))
-                .xy(),
+            // (self.right - self.left) + (end.left - end.right)
+            Side::Left => {
+                (self.right.translation * self.left.translation.inverse())
+                    * (end.left.translation * end.right.translation.inverse())
+            }
+            // (self.left - self.right) + (end.right - end.left)
+            Side::Right => {
+                (self.left.translation * self.right.translation.inverse())
+                    * (end.right.translation * end.left.translation.inverse())
+            }
         }
+        .vector
+        .xy()
     }
 }
