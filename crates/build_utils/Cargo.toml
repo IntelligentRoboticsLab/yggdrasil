@@ -1,0 +1,21 @@
+[package]
+name = "build_utils"
+
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+cargo_toml = { workspace = true }
+clap = { workspace = true }
+colored = { workspace = true }
+glob = { workspace = true }
+miette = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[lints]
+workspace = true

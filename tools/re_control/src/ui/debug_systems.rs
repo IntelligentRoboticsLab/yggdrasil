@@ -1,57 +1,67 @@
 use std::sync::{Arc, RwLock};
 
-use re_viewer::external::{
-    egui,
-    re_ui::{list_item, UiExt},
+use re_viewer::external::{egui, re_ui::UiExt};
+
+use re_control_comms::{
+    debug_system::DebugEnabledSystems, protocol::ViewerMessage, viewer::ControlViewerHandle,
 };
 
-use re_control_comms::{protocol::ViewerMessage, viewer::ControlViewerHandle};
+use crate::re_control_view::ControlViewerData;
 
-use crate::control::ControlStates;
+use super::view_section;
+
+#[derive(Default)]
+pub struct DebugEnabledState {
+    debug_enabled_systems: DebugEnabledSystems,
+    key_sequence: Vec<String>,
+}
+
+impl DebugEnabledState {
+    pub fn update(&mut self, debug_enabled_systems: DebugEnabledSystems) {
+        let mut key_sequence: Vec<_> = debug_enabled_systems.systems.keys().cloned().collect();
+        key_sequence.sort();
+        self.debug_enabled_systems = debug_enabled_systems;
+        self.key_sequence = key_sequence;
+    }
+}
 
 pub fn debug_enabled_systems_ui(
     ui: &mut egui::Ui,
-    states: Arc<RwLock<ControlStates>>,
+    viewer_data: Arc<RwLock<ControlViewerData>>,
     handle: &ControlViewerHandle,
 ) {
-    list_item::list_item_scope(ui, "Control debug enabled systems", |ui| {
-        ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-        ui.section_collapsing_header("Debug system controls")
-            .default_open(true)
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    debug_enabled_systems_control_ui(ui, states, handle);
-                });
-            })
+    view_section(ui, "Debug enabled systems".to_string(), |ui| {
+        debug_enabled_systems_control_ui(ui, viewer_data, handle);
     });
 }
 
 fn debug_enabled_systems_control_ui(
     ui: &mut egui::Ui,
-    states: Arc<RwLock<ControlStates>>,
+    viewer_data: Arc<RwLock<ControlViewerData>>,
     handle: &ControlViewerHandle,
 ) {
     ui.vertical(|ui| {
-        let Ok(locked_states) = &mut states.write() else {
-            ui.centered_and_justified(|ui| {
-                ui.warning_label("Not able to access viewer states");
+        let Ok(locked_data) = &mut viewer_data.write() else {
+            ui.vertical_centered_justified(|ui| {
+                ui.warning_label("Not able to access viewer data");
             });
-            tracing::error!("Failed to lock states");
+            tracing::error!("Failed to lock viewer data");
             return;
         };
 
-        let debug_enabled_systems_view = &mut locked_states.debug_enabled_systems_view;
-        let key_sequence = &debug_enabled_systems_view.key_sequence;
+        let debug_enabled_state = &mut locked_data.debug_enabled_state;
+
+        let key_sequence = &debug_enabled_state.key_sequence;
 
         if key_sequence.is_empty() {
-            ui.centered_and_justified(|ui| {
+            ui.vertical_centered_justified(|ui| {
                 ui.warning_label("No debug systems available");
             });
             return;
         }
 
         for system_name in key_sequence {
-            let Some(enabled) = debug_enabled_systems_view
+            let Some(enabled) = debug_enabled_state
                 .debug_enabled_systems
                 .systems
                 .get_mut(system_name)

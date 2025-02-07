@@ -2,24 +2,21 @@ use clap::{builder::ArgPredicate, Parser};
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use miette::{miette, Context, IntoDiagnostic};
-use ssh2::{ErrorCode, OpenFlags, OpenType, Session, Sftp};
 use std::{
-    borrow::Cow,
-    collections::HashMap,
-    fmt, fs,
-    io::BufWriter,
-    net::Ipv4Addr,
-    path::{Component, Path, PathBuf},
-    str::FromStr,
-    time::Duration,
+    borrow::Cow, collections::HashMap, fmt, fs, net::Ipv4Addr, path::Path, process::Stdio,
+    str::FromStr, time::Duration,
 };
-use tokio::{self, net::TcpStream};
-use walkdir::{DirEntry, WalkDir};
+use tokio::{
+    self,
+    io::{AsyncBufReadExt, BufReader},
+    process::Command,
+};
 use yggdrasil::core::config::showtime::ShowtimeConfig;
 use yggdrasil::prelude::*;
 
+use build_utils::cargo::{self, find_bin_manifest, Profile};
+
 use crate::{
-    cargo::{self, find_bin_manifest, Profile},
     config::{Robot, SindriConfig},
     error::{Error, Result},
 };
@@ -33,14 +30,8 @@ const ROBOT_TARGET: &str = "x86_64-unknown-linux-gnu";
 const RELEASE_PATH_REMOTE: &str = "./target/x86_64-unknown-linux-gnu/release/yggdrasil";
 const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
 const DEPLOY_PATH: &str = "./deploy/yggdrasil";
-const CONNECTION_TIMEOUT: u64 = 5;
-const LOCAL_ROBOT_ID_STR: &str = "0";
 
-/// The size of the `BufWriter`'s buffer.
-///
-/// This is currently set to 1 MiB, as the [`Write`] implementation for [`ssh2::sftp::File`]
-/// is rather slow due to the locking mechanism.
-const UPLOAD_BUFFER_SIZE: usize = 1024 * 1024;
+const LOCAL_ROBOT_ID_STR: &str = "local";
 
 // enum for either the name or the number of a robot thats given
 #[derive(Clone, Debug)]
@@ -263,11 +254,13 @@ impl Output {
         match self {
             Output::Silent => {}
             Output::Single(pb) => {
-                pb.set_message(format!("{}", "Ensuring host directories exist".dimmed()));
+                pb.set_message(format!("{}", "Connecting...".dimmed()));
                 pb.set_prefix(format!("{}", "Uploading".blue().bold()));
+                pb.set_length(num_files);
+
                 pb.set_style(
                     ProgressStyle::with_template(
-                        "   {prefix:.blue.bold} {msg} [{bar:.blue/cyan}] {spinner:.blue.bold}",
+                        "   {prefix:.blue.bold} {msg} [{bar:.blue/cyan}] [{pos}/{len}] {spinner:.blue.bold}",
                     )
                     .unwrap()
                     .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
@@ -275,6 +268,7 @@ impl Output {
                 );
             }
             Output::Multi(pb) => {
+                pb.set_message(format!("{}", "Connecting...".dimmed()));
                 pb.set_length(num_files);
                 pb.set_style(
                     ProgressStyle::with_template(
@@ -602,90 +596,95 @@ pub(crate) async fn stop_single_yggdrasil_service(robot: &Robot, output: Output)
 
 /// Copy the contents of the 'deploy' folder to the robot.
 pub(crate) async fn upload_to_robot(addr: &Ipv4Addr, output: Output) -> Result<()> {
-    output.connecting_phase(addr);
-    let sftp = create_sftp_connection(addr).await?;
-    match output.clone() {
-        Output::Silent => {}
-        Output::Multi(pb) => {
-            pb.set_message(format!("{}", "Connected".bright_blue().bold()));
-        }
-        Output::Single(pb) => {
-            pb.set_message(format!("{}", "  Connected".bright_blue().bold()));
-        }
+    let local_directory = "deploy/";
+    let transfer_list = get_rsync_transfer_list(local_directory, addr).await?;
+    output.upload_phase(transfer_list.len() as u64);
+
+    transfer_files(local_directory, addr, &transfer_list, output.clone()).await
+}
+
+fn make_remote_directory(addr: Ipv4Addr) -> String {
+    format!("nao@{addr}:/home/nao")
+}
+
+/// Transfers files using rsync and displays progress.
+///
+/// This function runs rsync to transfer the specified files while providing real-time progress updates.
+/// It reads `stdout` to track file transfers and `stderr` to capture any errors.
+///
+/// # Note
+///
+/// This function excludes hidden files (dotfiles) from the transfer using `--exclude=.*`.
+/// # Errors
+///
+/// Returns an [`Error::Rsync`] if rsync fails, including the exit code and error message.
+async fn transfer_files(
+    local_directory: impl AsRef<str>,
+    addr: &Ipv4Addr,
+    files_to_transfer: &[String],
+    output: Output,
+) -> Result<()> {
+    let total_files = files_to_transfer.len();
+    if total_files == 0 {
+        return Ok(());
     }
 
-    let entries: Vec<DirEntry> = WalkDir::new("./deploy")
-        .into_iter()
-        .filter_map(std::result::Result::ok)
-        .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
-        .collect();
-    let num_files = entries
-        .iter()
-        .filter(|e| e.metadata().unwrap().is_file())
-        .count();
+    let mut child = Command::new("rsync")
+        .args([
+            "-az",
+            "--out-format=%f",
+            "--exclude=.*",
+            local_directory.as_ref(),
+            &make_remote_directory(*addr),
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
 
-    output.upload_phase(num_files as u64);
+    let stdout = child.stdout.take().expect("failed to take stdiout!");
+    let reader = BufReader::new(stdout);
+    let mut lines = reader.lines();
 
-    for entry in &entries {
-        let remote_path = get_remote_path(entry.path());
+    let mut previous_line: Option<String> = None;
 
-        if entry.path().is_dir() {
-            // Ensure all directories exist on remote
-            ensure_directory_exists(&sftp, remote_path)?;
+    while let Some(line) = lines.next_line().await? {
+        if !is_valid_file_path(&line) {
             continue;
         }
-
-        let file_remote = sftp
-            .open_mode(
-                &remote_path,
-                OpenFlags::WRITE | OpenFlags::TRUNCATE,
-                0o777,
-                OpenType::File,
-            )
-            .map_err(|e| Error::Sftp {
-                source: e,
-                msg: format!("Failed to open remote file {:?}!", entry.path()),
-            })?;
-
-        let mut file_local = std::fs::File::open(entry.path())?;
 
         match output.clone() {
             Output::Silent => {}
             Output::Multi(pb) => {
-                pb.set_message(format!("{}", entry.path().to_string_lossy().dimmed()));
-            }
-            Output::Single(pb) => {
-                pb.set_length(file_local.metadata()?.len());
-                pb.set_message(format!("{}", entry.path().to_string_lossy()));
-            }
-        }
-
-        // Since `file_remote` impl's Write, we can just copy directly using a BufWriter!
-        // The Write impl is rather slow, so we set a large buffer size of 1 mb.
-        let mut buf_writer = BufWriter::with_capacity(UPLOAD_BUFFER_SIZE, file_remote);
-
-        match output.clone() {
-            Output::Silent => {
-                std::io::copy(&mut file_local, &mut buf_writer)?;
-            }
-            Output::Multi(pb) => {
-                std::io::copy(&mut file_local, &mut buf_writer)?;
+                pb.set_message(format!("{}", line.dimmed()));
                 pb.inc(1);
             }
             Output::Single(pb) => {
-                std::io::copy(&mut file_local, &mut pb.wrap_write(buf_writer))
-                    .map_err(Error::Io)?;
+                if let Some(prev) = previous_line {
+                    pb.println(format!(
+                        "{} {}",
+                        "    Uploaded".bright_blue().bold(),
+                        prev.dimmed()
+                    ));
+                }
 
-                pb.println(format!(
-                    "{} {}",
-                    "    Uploaded".bright_blue().bold(),
-                    entry.path().to_string_lossy().dimmed()
-                ));
+                previous_line = Some(line.clone());
+                pb.set_message(format!("{}", line.dimmed()));
+                pb.inc(1);
             }
         }
     }
 
     output.spinner();
+
+    let status = child.wait().await?;
+    if !status.success() {
+        if let Some(code) = status.code() {
+            return Err(Error::Rsync {
+                exit_code: code,
+                reason: "No idea".to_string(),
+            });
+        }
+    }
 
     if let Output::Multi(pb) = &output {
         pb.set_message(format!(
@@ -698,60 +697,55 @@ pub(crate) async fn upload_to_robot(addr: &Ipv4Addr, output: Output) -> Result<(
     Ok(())
 }
 
-async fn create_sftp_connection(ip: &Ipv4Addr) -> Result<Sftp> {
-    let tcp = tokio::time::timeout(
-        Duration::from_secs(CONNECTION_TIMEOUT),
-        TcpStream::connect(format!("{ip}:22")),
-    )
-    .await
-    .map_err(Error::Elapsed)??;
-    let mut session = Session::new().map_err(|e| Error::Sftp {
-        source: e,
-        msg: "Failed to create ssh session!".to_owned(),
-    })?;
+/// Runs rsync in dry-run mode to get a list of files that need to be transferred.
+///
+/// # Note
+///
+/// This transfer list is used only for display purposes and not for the actual transfer.
+/// As a result, it also filters out any "invalid" paths. See [`is_valid_file_path`] for details.
+async fn get_rsync_transfer_list(
+    local_directory: impl AsRef<str>,
+    addr: &Ipv4Addr,
+) -> Result<Vec<String>> {
+    let output = Command::new("rsync")
+        .args([
+            // run rsync in dry mode, to obtain the transfer list
+            "-azn",
+            local_directory.as_ref(),
+            &make_remote_directory(*addr),
+            "--out-format=%f",
+            // exclude hidden files
+            "--exclude=.*",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await?;
 
-    session.set_tcp_stream(tcp);
-    session.handshake().map_err(|e| Error::Sftp {
-        source: e,
-        msg: "Failed to perform ssh handshake!".to_owned(),
-    })?;
-    session
-        .userauth_password("nao", "")
-        .map_err(|e| Error::Sftp {
-            source: e,
-            msg: "Failed to authenticate using ssh!".to_owned(),
-        })?;
-
-    session.sftp().map_err(|e| Error::Sftp {
-        source: e,
-        msg: "Failed to create sftp session!".to_owned(),
-    })
-}
-
-fn ensure_directory_exists(sftp: &Sftp, remote_path: impl AsRef<Path>) -> Result<()> {
-    match sftp.mkdir(remote_path.as_ref(), 0o777) {
-        Ok(()) => Ok(()),
-        // Error code 4, means the directory already exists, so we can ignore it
-        Err(error) if error.code() == ErrorCode::SFTP(4) => Ok(()),
-        Err(error) => Err(Error::Sftp {
-            source: error,
-            msg: "Failed to ensure directory exists".to_owned(),
-        }),
-    }
-}
-
-fn get_remote_path(local_path: &Path) -> PathBuf {
-    let mut remote_path = PathBuf::from("/home/nao");
-
-    for component in local_path.components() {
-        // Would be nice to replace this with an if let chain once https://github.com/rust-lang/rust/issues/53667#issuecomment-1374336460 is stable.
-        match component {
-            // Prevent "deploy" from being added to the remote path, as we'll deploy directly to home directory.
-            Component::Normal(c) if c != "deploy" => remote_path.push(c),
-            // Any other component kind should ignored, such as ".".
-            _ => continue,
+    if !output.status.success() {
+        if let Some(code) = output.status.code() {
+            return Err(Error::Rsync {
+                exit_code: code,
+                reason: String::from_utf8_lossy(&output.stderr).into_owned(),
+            });
         }
     }
 
-    remote_path
+    Ok(String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(String::from)
+        .filter(|filepath| is_valid_file_path(filepath))
+        .collect())
+}
+
+/// Check whether the provided path is considered valid.
+///
+/// We consider all files as valid, except directories and hidden files.
+fn is_valid_file_path(filepath: impl AsRef<Path>) -> bool {
+    let path = filepath.as_ref();
+
+    !path.is_dir()
+        && path
+            .file_name()
+            .is_some_and(|name| !name.to_string_lossy().starts_with('.'))
 }

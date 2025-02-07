@@ -33,7 +33,7 @@ pub fn load_config() -> Result<SindriConfig> {
 }
 
 /// A robot as defined in the sindri configuration
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 pub struct ConfigRobot {
     pub name: String,
     pub number: u8,

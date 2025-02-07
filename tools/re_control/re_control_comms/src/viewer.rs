@@ -20,6 +20,7 @@ use super::protocol::{HandlerFn, RobotMessage, ViewerMessage};
 
 const LINGER_DURATION: Duration = Duration::from_secs(2);
 const CONNECTION_ATTEMPT_DELAY: Duration = Duration::from_secs(5);
+const CONNECTION_ATTEMPTS: usize = 3;
 
 pub struct ControlViewer {
     address: SocketAddrV4,
@@ -61,7 +62,7 @@ impl ControlViewer {
         let handle = app.clone();
 
         tokio::spawn(async move {
-            loop {
+            for attempt in 1..=CONNECTION_ATTEMPTS {
                 let socket = Socket::new(
                     Domain::for_address(app.address.into()),
                     Type::STREAM,
@@ -80,7 +81,13 @@ impl ControlViewer {
                         app.handle_connection(stream).await;
                     }
                     Err(error) => {
-                        tracing::error!(?error, "failed to connect to {}", app.address);
+                        tracing::debug!(
+                            ?error,
+                            "failed to connect to {}, attempt [{}/{}]",
+                            app.address,
+                            attempt,
+                            CONNECTION_ATTEMPTS
+                        );
                     }
                 }
 
@@ -93,7 +100,6 @@ impl ControlViewer {
     }
 
     async fn handle_connection(&self, socket: TcpStream) {
-        tracing::info!("connected with app: {}", self.address);
         let (read_half, write_half) = socket.split();
 
         // Spawn tasks to handle read and write
@@ -116,7 +122,7 @@ impl ControlViewer {
         // is completed.
         writer_task.abort();
 
-        tracing::warn!("connection termintaed with app: {}", self.address);
+        tracing::warn!("connection terminated with app: {}", self.address);
     }
 
     async fn global_message_handler(
@@ -133,7 +139,7 @@ impl ControlViewer {
             }
             notify.notify_one();
         }
-        tracing::info!("Global message channel closed");
+        tracing::debug!("Global message channel closed");
     }
 
     async fn handle_read(
@@ -223,6 +229,11 @@ pub struct ControlViewerHandle {
 }
 
 impl ControlViewerHandle {
+    #[must_use]
+    pub fn addr(&self) -> SocketAddrV4 {
+        self.app.address
+    }
+
     pub fn send(&self, msg: ViewerMessage) -> Result<()> {
         self.app.tx.unbounded_send(msg).into_diagnostic()
     }

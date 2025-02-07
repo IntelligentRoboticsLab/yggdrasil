@@ -1,11 +1,10 @@
-use std::net::SocketAddrV4;
+use std::env;
 
+use build_utils::version::Version;
 use clap::Parser;
 use miette::Result;
-use re_control::{app::App, cli::Cli};
+use re_control::{app::App, cli::Cli, RerunControl};
 use re_viewer::external::{re_log, re_memory};
-
-use re_control_comms::{protocol::CONTROL_PORT, viewer::ControlViewer};
 
 const BYTES_IN_GB: f32 = 1_000_000_000.0;
 const MEMORY_FRACTION_DEFAULT: f32 = 0.75;
@@ -19,15 +18,12 @@ static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    RerunControl::check_current_version();
+
     let main_thread_token = re_viewer::MainThreadToken::i_promise_i_am_on_the_main_thread();
     re_log::setup_logging();
 
     let args = Cli::parse();
-
-    tracing::info!(
-        "Starting rerun control and connection with {}",
-        args.robot_ip
-    );
 
     re_crash_handler::install_crash_handlers(re_viewer::build_info());
 
@@ -40,7 +36,7 @@ async fn main() -> Result<()> {
     };
 
     // Communicate the memory limit
-    tracing::info!(
+    re_log::info!(
         "Memory limit set to: {:.2} GB",
         memory_limit.max_bytes.unwrap() as f32 / BYTES_IN_GB
     );
@@ -50,11 +46,12 @@ async fn main() -> Result<()> {
         ..Default::default()
     };
 
-    // Creating the `ControlViewer`. This does not start the viewer yet
-    let socket_addr = SocketAddrV4::new(args.robot_ip, CONTROL_PORT);
-    let viewer = ControlViewer::from(socket_addr);
+    // Storing the robot ip address (if specified) to be used in the `re_control_view`
+    if let Some(robot_ip) = args.robot_ip {
+        env::set_var("ROBOT_ADDR", robot_ip.to_string());
+    }
 
-    let app = App::new(startup_options, viewer);
+    let app = App::new(startup_options);
     app.run(main_thread_token).await?;
 
     Ok(())

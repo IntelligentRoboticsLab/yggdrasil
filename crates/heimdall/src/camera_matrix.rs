@@ -21,6 +21,8 @@ pub struct CameraMatrix<T: CameraLocation> {
     pub robot_to_camera: Isometry3<f32>,
     /// The transformation from camera frame to the ground frame.
     pub camera_to_ground: Isometry3<f32>,
+    /// The transformation from the robot to the ground frame.
+    pub robot_to_ground: Isometry3<f32>,
     _marker: PhantomData<T>,
 }
 
@@ -35,6 +37,7 @@ impl<T: CameraLocation> Clone for CameraMatrix<T> {
             camera_to_head: self.camera_to_head,
             robot_to_camera: self.robot_to_camera,
             camera_to_ground: self.camera_to_ground,
+            robot_to_ground: self.robot_to_ground,
             _marker: PhantomData,
         }
     }
@@ -63,6 +66,7 @@ impl<T: CameraLocation> CameraMatrix<T> {
             robot_to_camera: camera_to_robot.inverse(),
             camera_to_ground,
             _marker: PhantomData,
+            robot_to_ground,
         }
     }
 

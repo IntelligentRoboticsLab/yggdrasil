@@ -1,26 +1,41 @@
-use crate::{
-    behavior::engine::{Behavior, Context, Control},
-    nao::{NaoManager, Priority},
-};
+use bevy::prelude::*;
+
 use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
+
+use crate::{
+    behavior::engine::{in_behavior, Behavior, BehaviorState},
+    motion::walk::engine::WalkingEngine,
+    nao::{NaoManager, Priority, RobotInfo},
+};
 
 const DEFAULT_PASSIVE_STIFFNESS: f32 = 0.8;
 // This should run with priority over the walking engine.
 const DEFAULT_PASSIVE_PRIORITY: Priority = Priority::High;
 
+pub struct StartUpBehaviorPlugin;
+
+impl Plugin for StartUpBehaviorPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, startup.run_if(in_behavior::<StartUp>));
+    }
+}
+
 /// This is the startup behavior of the robot.
 /// In this state the robot does nothing and retains its previous position.
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Resource)]
 pub struct StartUp;
 
 impl Behavior for StartUp {
-    fn execute(&mut self, context: Context, control: &mut Control) {
-        control.walking_engine.request_stand();
-        set_initial_joint_values(
-            &context.robot_info.initial_joint_positions,
-            control.nao_manager,
-        );
-    }
+    const STATE: BehaviorState = BehaviorState::StartUp;
+}
+
+pub fn startup(
+    robot_info: Res<RobotInfo>,
+    mut walking_engine: ResMut<WalkingEngine>,
+    mut nao_manager: ResMut<NaoManager>,
+) {
+    walking_engine.request_stand();
+    set_initial_joint_values(&robot_info.initial_joint_positions, &mut nao_manager);
 }
 
 fn set_initial_joint_values(

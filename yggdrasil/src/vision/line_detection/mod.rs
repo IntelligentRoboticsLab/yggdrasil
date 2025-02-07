@@ -17,6 +17,7 @@ use rand::Rng;
 use ransac::{line::LineDetector, Ransac};
 use serde::{Deserialize, Serialize};
 
+use super::body_contour::{update_body_contours, BodyContour};
 use super::{camera::Image, scan_lines::ScanLines};
 use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use crate::{
@@ -86,7 +87,8 @@ impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
                         clear_lines::<T>,
                         handle_line_task::<T>,
                         detect_lines_system::<T>
-                            .run_if(resource_exists_and_changed::<ScanLines<T>>),
+                            .run_if(resource_exists_and_changed::<ScanLines<T>>)
+                            .after(update_body_contours),
                     )
                         .chain(),
                     debug_lines::<T>,
@@ -162,7 +164,7 @@ impl LineCandidate {
 }
 
 #[derive(Component)]
-struct LineTaskHandle(Task<(Vec<LineCandidate>, Vec<Option<Rejection>>)>);
+pub struct LineTaskHandle(Task<(Vec<LineCandidate>, Vec<Option<Rejection>>)>);
 
 fn detect_lines_system<T: CameraLocation>(
     mut commands: Commands,
@@ -171,6 +173,7 @@ fn detect_lines_system<T: CameraLocation>(
     layout: Res<LayoutConfig>,
     pose: Res<RobotPose>,
     cfg: Res<LineDetectionConfigs>,
+    body_contour: Res<BodyContour>,
 ) {
     // TODO: Current tasks API is not flexible enough for this :)
     // Rewrite soon(tm) ?
@@ -182,6 +185,7 @@ fn detect_lines_system<T: CameraLocation>(
     let cycle = scan_lines.image().cycle();
     let entity = commands.spawn(cycle).id();
     let pool = AsyncComputeTaskPool::get();
+    let body_contour = body_contour.clone();
 
     let handle = pool.spawn({
         let scan_lines = scan_lines.clone();
@@ -189,7 +193,7 @@ fn detect_lines_system<T: CameraLocation>(
         let field = layout.field.clone();
         let pose = pose.clone();
 
-        async move { detect_lines(scan_lines, camera_matrix, field, pose, cfg) }
+        async move { detect_lines(scan_lines, camera_matrix, field, pose, cfg, body_contour) }
     });
 
     commands
@@ -197,7 +201,7 @@ fn detect_lines_system<T: CameraLocation>(
         .insert((LineTaskHandle(handle), T::default()));
 }
 
-fn handle_line_task<T: CameraLocation>(
+pub fn handle_line_task<T: CameraLocation>(
     mut commands: Commands,
     mut task_handles: Query<(Entity, &mut LineTaskHandle), With<T>>,
 ) {
@@ -248,8 +252,12 @@ fn detect_lines<T: CameraLocation>(
     field: FieldConfig,
     pose: RobotPose,
     cfg: LineDetectionConfig,
+    body_contour: BodyContour,
 ) -> (Vec<LineCandidate>, Vec<Option<Rejection>>) {
-    let spots = scan_lines.vertical().line_spots();
+    let spots = scan_lines
+        .vertical()
+        .line_spots()
+        .filter(|point| !body_contour.is_part_of_body(*point));
 
     let mut projected_spots = spots
         // project the points to the ground, in the field frame
