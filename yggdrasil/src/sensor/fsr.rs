@@ -7,7 +7,7 @@ use nidhogg::{types::ForceSensitiveResistors, NaoState};
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 
-// Omega for the low pass filter.
+// Omega for the low-pass filter.
 const OMEGA: f32 = 0.7;
 
 /// Plugin offering the Force Sensitive Resistor (FSR) sensor data of the Nao,
@@ -48,8 +48,8 @@ pub struct Contacts {
 impl Default for Contacts {
     fn default() -> Self {
         Contacts {
-            ground: false,
-            last_pressure: false,
+            ground: true,
+            last_pressure: true,
             last_switched: Instant::now(),
             lpf: LowPassFilter::new(OMEGA),
         }
@@ -65,12 +65,11 @@ fn force_sensitive_resistor_sensor(
     force_sensitive_resistors.left_foot = nao_state.force_sensitive_resistors.left_foot.clone();
     force_sensitive_resistors.right_foot = nao_state.force_sensitive_resistors.right_foot.clone();
 
-    // Check pressure state
+    // Retrieve FSR values and apply low-pass filter.
     let fsr_vector = SVector::<f32, 1>::from([nao_state.force_sensitive_resistors.avg()]);
     let filtered_fsr = contacts.lpf.update(fsr_vector);
     let current_pressure = filtered_fsr.x > config.fsr.ground_contact_threshold;
 
-    // If change in pressure state has been detected
     if current_pressure != contacts.last_pressure {
         contacts.last_switched = Instant::now();
     }
