@@ -1,11 +1,17 @@
 use bevy::prelude::*;
 
+use crate::{
+    motion::walk::engine::WalkingEngine,
+    sensor::{button::HeadButtons, falling::FallState},
+};
+
 use super::{
     behaviors::{
-        CatchFallBehaviorPlugin, ObserveBehaviorPlugin, SittingBehaviorPlugin, StandBehaviorPlugin,
-        StandLookAtBehaviorPlugin, StandupBehaviorPlugin, StartUpBehaviorPlugin,
-        WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSetBehaviorPlugin,
+        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, Sitting, SittingBehaviorPlugin,
+        Stand, StandBehaviorPlugin, StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin,
+        StartUpBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSetBehaviorPlugin,
     },
+    primary_state::PrimaryState,
     roles::{
         DefenderRolePlugin, Goalkeeper, GoalkeeperRolePlugin, Instinct, InstinctRolePlugin,
         Striker, StrikerRolePlugin,
@@ -34,7 +40,8 @@ impl Plugin for BehaviorEnginePlugin {
                 DefenderRolePlugin,
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
-            ));
+            ))
+            .add_systems(PostUpdate, role_base);
     }
 }
 
@@ -123,5 +130,55 @@ pub fn in_role<T: Roles>(state: Option<Res<State<Role>>>) -> bool {
     match state {
         Some(current_behavior) => *current_behavior == T::STATE,
         None => panic!("Failed to get the current role state"),
+    }
+}
+
+pub fn role_base(
+    mut commands: Commands,
+    state: Res<State<BehaviorState>>,
+    walking_engine: Res<WalkingEngine>,
+    head_buttons: Res<HeadButtons>,
+    primary_state: Res<PrimaryState>,
+    fall_state: Res<FallState>,
+    standup_state: Option<Res<Standup>>,
+) {
+    let behavior = state.get();
+
+    if behavior == &BehaviorState::StartUp {
+        if walking_engine.is_sitting() || head_buttons.all_pressed() {
+            commands.set_behavior(Sitting);
+        }
+        if *primary_state == PrimaryState::Initial {
+            commands.set_behavior(Stand);
+        }
+        return;
+    }
+
+    if *primary_state == PrimaryState::Sitting {
+        commands.set_behavior(Sitting);
+        return;
+    }
+
+    if standup_state.is_some_and(|s| !s.completed()) {
+        return;
+    }
+
+    // next up, damage prevention and standup motion takes precedence
+    match fall_state.as_ref() {
+        FallState::Lying(_) => {
+            commands.set_behavior(Standup::default());
+            return;
+        }
+        FallState::Falling(_) => {
+            if !matches!(*primary_state, PrimaryState::Penalized) {
+                commands.set_behavior(CatchFall);
+                return;
+            }
+        }
+        FallState::None => {}
+    }
+
+    if let PrimaryState::Penalized = primary_state.as_ref() {
+        commands.set_behavior(Stand);
     }
 }
