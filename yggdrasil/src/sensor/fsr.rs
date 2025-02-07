@@ -1,7 +1,6 @@
 use std::time::{Duration, Instant};
 
 use super::SensorConfig;
-use crate::prelude::*;
 use crate::sensor::low_pass_filter::LowPassFilter;
 use crate::{motion::walkv4::FootSwitchedEvent, prelude::*};
 use bevy::prelude::*;
