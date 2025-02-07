@@ -7,7 +7,7 @@ use super::{
     feet::FootPositions,
     scheduling::{Gait, MotionSet},
     step::{PlannedStep, Step},
-    FootSwitchedEvent, Side, TORSO_OFFSET,
+    FootSwitchedEvent, TORSO_OFFSET,
 };
 use bevy::prelude::*;
 use nalgebra::Vector2;
@@ -36,9 +36,9 @@ pub struct StepManager {
 }
 
 impl StepManager {
-    pub fn new(gait: Gait, last_step: PlannedStep) -> Self {
+    pub fn init(gait: Gait, last_step: PlannedStep) -> Self {
         Self {
-            requested_gait: Gait::Standing,
+            requested_gait: gait,
             requested_step: Step::default(),
             last_step: last_step.clone(),
             planned_step: last_step.clone(),
@@ -124,12 +124,12 @@ fn plan_step(
     }
 }
 
-fn travel_weighting(translation_travel: Vector2<f32>, turn_travel: f32, factors: Step) -> f32 {
+fn travel_weighting(swing_travel: Vector2<f32>, turn_amount: f32, weights: Step) -> f32 {
     let translational = nalgebra::vector![
-        factors.forward * translation_travel.x,
-        factors.left * translation_travel.y,
+        weights.forward * swing_travel.x,
+        weights.left * swing_travel.y,
     ]
     .norm();
-    let rotational = factors.turn * turn_travel;
+    let rotational = weights.turn * turn_amount;
     translational + rotational
 }
