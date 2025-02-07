@@ -51,7 +51,7 @@ pub struct FsrConfig {
     #[serde_as(as = "DurationMilliSeconds")]
     pub highest_pressure_update_rate: Duration,
     /// The number of foot switches required before updating the minimum value for each sensor.
-    pub num_foot_switches: usize,
+    pub num_foot_switches: u32,
 }
 
 impl FsrConfig {
@@ -131,8 +131,7 @@ impl FsrFootCalibrationState {
     /// Update the current minimum pressure value, based on the minimum readings collected
     /// over the last N foot switches.
     fn recalibrate_min_pressure(&mut self, max_pressure: FsrFoot) {
-        self.min = self.new_min.clone();
-        self.new_min = max_pressure;
+        self.min = std::mem::replace(&mut self.new_min, max_pressure);
     }
 }
 
@@ -230,7 +229,7 @@ fn update_fsr_calibration(
 fn update_min_pressure(
     config: Res<SensorConfig>,
     mut calibration: ResMut<CalibratedFsr>,
-    mut num_foot_switches: Local<usize>,
+    mut num_foot_switches: Local<u32>,
 ) {
     *num_foot_switches += 1;
 
