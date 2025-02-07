@@ -89,6 +89,12 @@ fn setup_camera_device(settings: &CameraSettings) -> Result<CameraDevice> {
     #[cfg(not(feature = "local"))]
     camera_device.set_exposure_auto(settings.exposure_auto)?;
 
+    #[cfg(not(feature = "local"))]
+    camera_device.set_white_balance_temperature(2500)?;
+
+    #[cfg(not(feature = "local"))]
+    camera_device.set_white_balance_temperature_auto(true)?;
+
     Ok(camera_device)
 }
 
