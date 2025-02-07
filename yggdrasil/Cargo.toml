@@ -36,6 +36,7 @@ bevy = { workspace = true, features = ["bevy_state"] }
 chrono = { workspace = true }
 cpal = { workspace = true }
 fast_image_resize = { workspace = true }
+filter = { workspace = true }
 futures = { workspace = true }
 itertools = { workspace = true }
 kira = { workspace = true }

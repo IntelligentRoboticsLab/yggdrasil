@@ -1,4 +1,5 @@
 pub mod correspondence;
+pub mod pose_filter;
 
 use std::f32::consts::PI;
 
@@ -20,6 +21,7 @@ use nalgebra::{
     Isometry2, Isometry3, Point2, Point3, Translation2, Translation3, UnitComplex, UnitQuaternion,
 };
 use nidhogg::types::HeadJoints;
+use pose_filter::PoseFilterPlugin;
 use rerun::{external::glam::Quat, TimeColumn};
 
 /// The localization plugin provides functionalities related to the localization of the robot.
@@ -30,6 +32,7 @@ impl Plugin for LocalizationPlugin {
         app.add_plugins((
             LineCorrespondencePlugin::<Top>::default(),
             LineCorrespondencePlugin::<Bottom>::default(),
+            PoseFilterPlugin,
         ))
         .add_systems(PostStartup, (init_pose, setup_pose_visualization))
         .add_systems(
