@@ -1,4 +1,5 @@
 use super::types::InterpolationType;
+use miette::Result;
 use nidhogg::types::JointArray;
 use num::pow;
 use std::time::Duration;
@@ -85,7 +86,7 @@ pub fn reached_position(
 pub fn get_min_duration(
     current_position: &JointArray<f32>,
     target_position: &JointArray<f32>,
-    max_speed: f32,
+    max_speed: &f32,
 ) -> Duration {
     // calculating the absolute difference between joint values
     let abs_diff = current_position.diff(target_position.clone());
@@ -95,5 +96,28 @@ pub fn get_min_duration(
         .into_iter()
         .fold(f32::MIN, |joint_diff, max_diff| joint_diff.max(*max_diff));
 
-    Duration::from_secs_f32(max_distance / max_speed)
+    Duration::from_secs_f32(max_distance / *max_speed)
+}
+
+/// Clamps the speed of a movement to a specified speed limit.
+///
+/// # Arguments
+/// * `source_position` - The source position, from which the movement will be executed.
+/// * `target_position` - The target position of the initial movement.
+/// * `duration` - Intended duration of the initial movement.
+/// * `speed_limit` - Maximum allowed joint speed.
+#[must_use]
+pub fn clamp_speed(
+    source_position: &JointArray<f32>,
+    target_position: &JointArray<f32>,
+    duration: &Duration,
+    speed_limit: &f32,
+) -> Duration {
+    // checking whether the given duration will exceed our maximum speed limit
+    let min_duration = get_min_duration(source_position, target_position, speed_limit);
+    if duration > &min_duration {
+        return min_duration;
+    }
+
+    *duration
 }

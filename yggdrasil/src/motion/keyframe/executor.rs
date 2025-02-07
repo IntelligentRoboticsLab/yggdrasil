@@ -1,6 +1,6 @@
 use super::InterpolationType;
 use super::{
-    get_min_duration, interpolate_jointarrays, types::Movement, ActiveMotion, KeyframeExecutor,
+    clamp_speed, interpolate_jointarrays, types::Movement, ActiveMotion, KeyframeExecutor,
 };
 use crate::nao::NaoManager;
 use crate::nao::Priority;
@@ -48,7 +48,7 @@ pub fn keyframe_executor(
         .clone()
         .ok_or_else(|| {
             keyframe_executor.stop_motion();
-            miette!("KeyframeExecutor.ActiveMotion could not be cloned, likely contained None")
+            warn!("KeyframeExecutor.ActiveMotion could not be cloned, likely contained None")
         })
         .expect("failed to clone active motion");
 
@@ -68,13 +68,22 @@ pub fn keyframe_executor(
         if keyframe_executor.source_position.is_none() {
             // record the last position before motion initialization, or before transition
             keyframe_executor.source_position = Some(nao_state.position.clone());
-            prepare_initial_movement(
-                &mut keyframe_executor,
-                target_position,
-                duration,
-                &sub_motion_name,
-            )
-            .expect("failed to prepare initial movement");
+
+            if let Some(source_position) = &keyframe_executor.source_position {
+                let motion_duration =
+                    clamp_speed(source_position, target_position, duration, &MAX_SPEED);
+
+                // editing the movement duration in case it is too low to prevent dangerously quick movements
+                keyframe_executor
+                    .active_motion
+                    .as_mut()
+                    .unwrap()
+                    .motion
+                    .set_initial_duration(&sub_motion_name, motion_duration);
+            } else {
+                error!("Getting the source position failed during initial movement");
+                return;
+            }
         }
 
         // getting the next position for the robot
@@ -124,46 +133,6 @@ pub fn keyframe_executor(
             Priority::High,
         );
     }
-}
-
-/// Prepares the initial movement of a submotion.
-///
-///
-/// # Notes
-/// Currently only checks and possibly edits the movement duration to prevent dangerously
-/// quick movements, but will be expanded upon.
-///
-/// # Arguments
-/// * `keyframe_executor` - Keeps track of state needed for playing motions.
-/// * `target_position` - The target position of the initial movement.
-/// * `duration` - Intended duration of the initial movement.
-/// * `sub_motion_name` - Current submotion to be executed.
-fn prepare_initial_movement(
-    keyframe_executor: &mut KeyframeExecutor,
-    target_position: &JointArray<f32>,
-    duration: &Duration,
-    sub_motion_name: &String,
-) -> Result<()> {
-    // checking whether the given duration will exceed our maximum speed limit
-    let min_duration = get_min_duration(
-        keyframe_executor
-            .source_position
-            .as_ref()
-            .ok_or_else(|| miette!("Getting the source position failed during initial movement"))?,
-        target_position,
-        MAX_SPEED,
-    );
-    if duration > &min_duration {
-        // editing the movement duration to prevent dangerously quick movements
-        keyframe_executor
-            .active_motion
-            .as_mut()
-            .unwrap()
-            .motion
-            .set_initial_duration(sub_motion_name, min_duration);
-    }
-
-    Ok(())
 }
 
 /// Updates the active motion to begin executing the current submotion.
