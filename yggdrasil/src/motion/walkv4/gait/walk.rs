@@ -3,15 +3,13 @@ use std::time::Duration;
 use bevy::prelude::*;
 
 use crate::{
-    motion::{
-        walk::smoothing::{parabolic_return, parabolic_step},
-        walkv4::{
-            feet::FootPositions,
-            foot_support::FootSupportState,
-            scheduling::{Gait, MotionSet},
-            step_manager::StepManager,
-            FootSwitchedEvent, Side, SwingFoot, TargetFootPositions,
-        },
+    motion::walkv4::{
+        feet::FootPositions,
+        foot_support::FootSupportState,
+        scheduling::{Gait, MotionSet},
+        smoothing::{parabolic_return, parabolic_step},
+        step_manager::StepManager,
+        FootSwitchedEvent, Side, SwingFoot, TargetFootPositions,
     },
     nao::{Cycle, CycleTime},
 };

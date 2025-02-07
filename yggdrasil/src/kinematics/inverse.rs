@@ -2,6 +2,8 @@ use nalgebra::{Isometry3, Matrix3x1, Vector3};
 use nidhogg::types::{LeftLegJoints, RightLegJoints};
 use std::f32::consts::PI;
 
+use crate::motion::walkv4::feet::FootPositions;
+
 use super::{
     dimensions,
     spaces::{Left, Right},
@@ -18,12 +20,13 @@ use super::{
 /// Or something that can be set dynamically to balance the robot.
 #[must_use]
 pub fn leg_angles(
-    left_foot: &super::FootOffset,
-    right_foot: &super::FootOffset,
+    foot_positions: &FootPositions,
+    hip_height: f32,
     torso_offset: f32,
 ) -> (LeftLegJoints<f32>, RightLegJoints<f32>) {
-    let left_foot = left_foot.into_left();
-    let right_foot = right_foot.into_right();
+    let (left, right) = foot_positions.to_offsets(hip_height);
+    let left_foot = left.into_left();
+    let right_foot = right.into_right();
 
     let left_foot_to_left_pelvis = left_foot.to_pelvis(torso_offset);
     let left_hip_yaw_pitch =
