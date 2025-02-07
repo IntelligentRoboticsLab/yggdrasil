@@ -4,7 +4,7 @@ use config::WalkingEngineConfig;
 use feet::FootPositions;
 use hips::HipHeight;
 use nidhogg::types::{ArmJoints, FillExt, LeftLegJoints, LegJoints, RightLegJoints};
-use scheduling::{MotionSet, MotionState};
+use scheduling::{Gait, MotionSet};
 
 use crate::{
     kinematics,
@@ -22,6 +22,7 @@ mod gait;
 pub mod hips;
 mod scheduling;
 mod step;
+mod step_manager;
 
 // TODO: dynamically set this
 /// The offset of the torso w.r.t. the hips.
@@ -39,6 +40,7 @@ impl Plugin for Walkv4EnginePlugin {
         app.add_event::<FootSwitchedEvent>();
         app.add_plugins((
             scheduling::MotionSchedulePlugin,
+            step_manager::StepManagerPlugin,
             hips::HipHeightPlugin,
             gait::GaitPlugins,
             balancing::BalancingPlugin,
@@ -123,8 +125,8 @@ impl TargetFootPositions {
 }
 
 fn switch_state(
-    current_state: Res<State<MotionState>>,
-    mut next_state: ResMut<NextState<MotionState>>,
+    current_state: Res<State<Gait>>,
+    mut next_state: ResMut<NextState<Gait>>,
     chest_button: Res<ChestButton>,
     head_buttons: Res<HeadButtons>,
 ) {
@@ -132,15 +134,15 @@ fn switch_state(
     let head_tapped = head_buttons.all_pressed();
 
     if chest_tapped {
-        if *current_state == MotionState::Sitting {
-            next_state.set(MotionState::Standing);
-        } else if *current_state == MotionState::Standing {
-            next_state.set(MotionState::Walking);
+        if *current_state == Gait::Sitting {
+            next_state.set(Gait::Standing);
+        } else if *current_state == Gait::Standing {
+            next_state.set(Gait::Walking);
         }
     }
 
     if head_tapped {
-        next_state.set(MotionState::Sitting);
+        next_state.set(Gait::Sitting);
     }
 }
 
@@ -150,7 +152,7 @@ fn finalize(
     target_foot_positions: Res<TargetFootPositions>,
     target_leg_stiffness: Res<TargetLegStiffness>,
     balance_adjustment: Res<BalanceAdjustment>,
-    motion_state: Res<State<MotionState>>,
+    motion_state: Res<State<Gait>>,
 ) {
     let (mut left_leg, mut right_leg) =
         target_foot_positions.leg_angles(hip_height.current(), TORSO_OFFSET);
@@ -182,7 +184,7 @@ fn finalize(
         .right_leg(target_leg_stiffness.right_leg.clone())
         .build();
 
-    if *motion_state == MotionState::Walking {
+    if *motion_state == Gait::Walking {
         nao.set_arms(arm_positions, ArmJoints::fill(0.8), Priority::Medium);
     } else {
         nao.set_arms(

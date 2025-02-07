@@ -1,7 +1,7 @@
 use nalgebra::{Isometry3, Translation3, UnitQuaternion, Vector2, Vector3};
 use spatial::types::Pose3;
 
-use super::{step::Step, Side};
+use super::{step::PlannedStep, Side};
 use crate::{
     kinematics::{
         prelude::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS},
@@ -20,7 +20,7 @@ pub struct FootPositions {
 
 impl Default for FootPositions {
     fn default() -> Self {
-        Self::from_target(&Step::default())
+        Self::from_target(&PlannedStep::default())
     }
 }
 
@@ -47,7 +47,7 @@ impl FootPositions {
         }
     }
 
-    pub fn from_target(step: &Step) -> Self {
+    pub fn from_target(step: &PlannedStep) -> Self {
         let (support_offset, swing_offset) = match step.swing_foot {
             Side::Left => (ROBOT_TO_RIGHT_PELVIS, ROBOT_TO_LEFT_PELVIS),
             Side::Right => (ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS),

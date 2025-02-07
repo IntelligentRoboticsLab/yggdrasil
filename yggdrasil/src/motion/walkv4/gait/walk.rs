@@ -12,8 +12,8 @@ use crate::{
             config::{ConfigStep, WalkingEngineConfig},
             feet::FootPositions,
             foot_support::FootSupportState,
-            scheduling::{MotionSet, MotionState},
-            step::Step,
+            scheduling::{Gait, MotionSet},
+            step::PlannedStep,
             FootSwitchedEvent, RequestedStep, Side, SwingFoot, TargetFootPositions, TORSO_OFFSET,
         },
     },
@@ -34,7 +34,7 @@ impl Plugin for WalkGaitPlugin {
             )
                 .chain()
                 .in_set(MotionSet::GaitGeneration)
-                .run_if(in_state(MotionState::Walking)),
+                .run_if(in_state(Gait::Walking)),
         );
     }
 }
@@ -121,7 +121,7 @@ fn generate_foot_positions(
     let parabolic = state.parabolic();
 
     // TODO: replace with proper step planning
-    let mut step = Step {
+    let mut step = PlannedStep {
         forward: requested_step.forward,
         left: requested_step.left,
         turn: requested_step.turn,
