@@ -46,6 +46,9 @@ pub fn sitting(
     nao_manager.set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());
 
     if !walking_engine.is_sitting() {
+        // Makes robot floppy except for hip joints, locked in sitting position.
+        // nao_manager.unstiff_sit(UNSTIFF_PRIORITY);
+    } else {
         walking_engine.request_sit();
         nao_manager.unstiff_arms(UNSTIFF_PRIORITY);
         return;
