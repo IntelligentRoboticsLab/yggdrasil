@@ -36,7 +36,7 @@ bevy = { workspace = true, features = ["bevy_state"] }
 chrono = { workspace = true }
 cpal = { workspace = true }
 fast_image_resize = { workspace = true }
-filter = { version = "0.1.0", path = "../crates/filter" }
+filter = { workspace = true }
 futures = { workspace = true }
 geo = { workspace = true }
 itertools = { workspace = true }

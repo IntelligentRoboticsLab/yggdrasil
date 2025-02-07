@@ -128,7 +128,29 @@ pub enum FieldLine {
     Circle(Circle),
 }
 
+pub enum Direction {
+    AlongX,
+    AlongY,
+}
+
 impl FieldLine {
+    /// Get the direction of the field line.
+    /// TODO: this sucks
+    #[must_use]
+    pub fn direction(&self) -> Option<Direction> {
+        let FieldLine::Segment(segment) = self else {
+            return None;
+        };
+
+        let delta = segment.end - segment.start;
+
+        if delta.x.abs() > delta.y.abs() {
+            Some(Direction::AlongX)
+        } else {
+            Some(Direction::AlongY)
+        }
+    }
+
     /// Projects a point onto the field line and returns the projected point, together with the projection distance.
     #[must_use]
     pub fn project_with_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
