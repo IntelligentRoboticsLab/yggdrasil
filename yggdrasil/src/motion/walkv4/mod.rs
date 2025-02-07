@@ -5,6 +5,8 @@ use feet::FootPositions;
 use hips::HipHeight;
 use nidhogg::types::{ArmJoints, FillExt, LeftLegJoints, LegJoints, RightLegJoints};
 use scheduling::{Gait, MotionSet};
+use step::Step;
+use step_manager::StepManager;
 
 use crate::{
     kinematics,
@@ -50,7 +52,9 @@ impl Plugin for Walkv4EnginePlugin {
         app.add_systems(
             Update,
             (
-                switch_state.in_set(MotionSet::StepPlanning),
+                switch_state
+                    .in_set(MotionSet::StepPlanning)
+                    .before(step_manager::sync_gait_request),
                 finalize.in_set(MotionSet::Finalize),
             ),
         );
@@ -126,7 +130,7 @@ impl TargetFootPositions {
 
 fn switch_state(
     current_state: Res<State<Gait>>,
-    mut next_state: ResMut<NextState<Gait>>,
+    mut step_manager: ResMut<StepManager>,
     chest_button: Res<ChestButton>,
     head_buttons: Res<HeadButtons>,
 ) {
@@ -135,14 +139,18 @@ fn switch_state(
 
     if chest_tapped {
         if *current_state == Gait::Sitting {
-            next_state.set(Gait::Standing);
+            step_manager.request_stand();
         } else if *current_state == Gait::Standing {
-            next_state.set(Gait::Walking);
+            step_manager.request_walk(Step {
+                forward: 0.05,
+                left: 0.0,
+                turn: 0.0,
+            });
         }
     }
 
     if head_tapped {
-        next_state.set(Gait::Sitting);
+        step_manager.request_sit();
     }
 }
 

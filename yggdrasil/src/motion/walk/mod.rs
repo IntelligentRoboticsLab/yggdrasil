@@ -18,14 +18,11 @@ use nidhogg::{
 
 use super::walkv4::config::WalkingEngineConfig;
 
-#[derive(Event, Debug, Default, Clone)]
-pub struct SwingFootSwitchedEvent(pub Side);
-
 pub struct WalkingEnginePlugin;
 
 impl Plugin for WalkingEnginePlugin {
     fn build(&self, app: &mut App) {
-        // app.add_systems(PostUpdate, (run_walking_engine, update_swing_side).chain());
+        app.add_systems(PostStartup, init_walking_engine);
     }
 }
 
@@ -42,7 +39,6 @@ fn init_walking_engine(
 /// System that executes the walking engine.
 fn run_walking_engine(
     mut walking_engine: ResMut<WalkingEngine>,
-    mut foot_switched_event: EventWriter<SwingFootSwitchedEvent>,
     cycle_time: Res<CycleTime>,
     fsr: Res<Fsr>,
     imu: Res<IMUValues>,
@@ -76,8 +72,6 @@ fn run_walking_engine(
 
     if has_foot_switched && linear_time > 0.75 {
         walking_engine.end_step_phase();
-        // this is a temporary implementation, until walkv4 is merged!
-        foot_switched_event.send(SwingFootSwitchedEvent(walking_engine.swing_foot.next()));
     }
 
     let FootOffsets {

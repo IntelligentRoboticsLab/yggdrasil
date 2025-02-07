@@ -1,11 +1,13 @@
 use std::time::Duration;
 
+use crate::kinematics::Kinematics;
+
 use super::{
     config::WalkingEngineConfig,
     feet::FootPositions,
     scheduling::{Gait, MotionSet},
     step::{PlannedStep, Step},
-    Side,
+    FootSwitchedEvent, Side, TORSO_OFFSET,
 };
 use bevy::prelude::*;
 use nalgebra::Vector2;
@@ -20,7 +22,10 @@ pub(super) struct StepManagerPlugin;
 
 impl Plugin for StepManagerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, sync_gait_request.in_set(MotionSet::StepPlanning));
+        app.add_systems(
+            Update,
+            (sync_gait_request, plan_step).in_set(MotionSet::StepPlanning),
+        );
     }
 }
 
@@ -33,8 +38,21 @@ pub struct StepManager {
 }
 
 impl StepManager {
+    pub fn new(gait: Gait, last_step: PlannedStep) -> Self {
+        Self {
+            requested_gait: Gait::Standing,
+            requested_step: Step::default(),
+            last_step: last_step.clone(),
+            planned_step: last_step.clone(),
+        }
+    }
+
     pub fn request_sit(&mut self) {
         self.requested_gait = Gait::Sitting;
+    }
+
+    pub fn request_stand(&mut self) {
+        self.requested_gait = Gait::Standing;
     }
 
     pub fn request_walk(&mut self, step: Step) {
@@ -42,11 +60,16 @@ impl StepManager {
         self.requested_step = step;
     }
 
+    pub fn finish_step(&mut self) {
+        self.last_step = self.planned_step;
+    }
+
     pub fn plan_next_step(&mut self, start: FootPositions, config: &WalkingEngineConfig) {
         // clamp acceleration
         let delta_step =
             (self.requested_step - self.last_step.step).clamp(-MAX_ACCELERATION, MAX_ACCELERATION);
-        let next_step = self.requested_step + delta_step;
+        let next_step = self.last_step.step + delta_step;
+        info!(?delta_step, ?next_step, "delta step");
 
         // TODO(gijsd): do we want to assume this each time?
         let next_swing_foot = self.last_step.swing_foot.opposite();
@@ -63,14 +86,14 @@ impl StepManager {
             step: next_step,
             duration: Duration::from_millis(250),
             start,
-            end: target,
+            target,
             swing_foot_height: max_foot_lift,
             swing_foot: next_swing_foot,
         }
     }
 }
 
-fn sync_gait_request(
+pub(super) fn sync_gait_request(
     current: Res<State<Gait>>,
     mut next: ResMut<NextState<Gait>>,
     step_manager: Res<StepManager>,
@@ -79,7 +102,25 @@ fn sync_gait_request(
         return;
     }
 
+    info!(
+        "switching requested gait to {:?}",
+        step_manager.requested_gait
+    );
     next.set(step_manager.requested_gait);
+}
+
+fn plan_step(
+    mut event: EventReader<FootSwitchedEvent>,
+    mut step_manager: ResMut<StepManager>,
+    kinematics: Res<Kinematics>,
+    config: Res<WalkingEngineConfig>,
+) {
+    for e in event.read() {
+        let start = FootPositions::from_kinematics(e.0, &kinematics, TORSO_OFFSET);
+        step_manager.finish_step();
+        step_manager.plan_next_step(start, &config);
+        break;
+    }
 }
 
 fn travel_weighting(translation_travel: Vector2<f32>, turn_travel: f32, factors: Step) -> f32 {
