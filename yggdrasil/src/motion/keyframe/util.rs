@@ -37,7 +37,7 @@ pub fn lerp_legs(
         .map(|(curr, target)| curr * (1.0 - scalar) + target * scalar)
 }
 
-/// Performs linear interpolation between two [`SingleArmJoints<f32>`].
+/// Performs linear interpolation between two [`ArmJoints<f32>`].
 ///
 /// # Arguments
 /// * `current_position` - Starting position.
