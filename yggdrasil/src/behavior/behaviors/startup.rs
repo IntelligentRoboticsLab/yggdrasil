@@ -4,7 +4,7 @@ use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
-    motion::walk::engine::WalkingEngine,
+    motion::{walk::engine::WalkingEngine, walkv4::step_manager::StepManager},
     nao::{NaoManager, Priority, RobotInfo},
 };
 
@@ -31,10 +31,10 @@ impl Behavior for StartUp {
 
 pub fn startup(
     robot_info: Res<RobotInfo>,
-    mut walking_engine: ResMut<WalkingEngine>,
+    mut step_manager: ResMut<StepManager>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
-    walking_engine.request_stand();
+    step_manager.request_stand();
     set_initial_joint_values(&robot_info.initial_joint_positions, &mut nao_manager);
 }
 

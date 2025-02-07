@@ -3,7 +3,7 @@ use nidhogg::types::{LeftLegJoints, RightLegJoints};
 
 use super::{
     config::WalkingEngineConfig,
-    scheduling::{MotionSet, Gait},
+    scheduling::{Gait, MotionSet},
     Side, SwingFoot,
 };
 use crate::sensor::{imu::IMUValues, low_pass_filter::LowPassFilter};

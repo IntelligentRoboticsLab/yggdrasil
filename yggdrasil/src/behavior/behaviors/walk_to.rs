@@ -9,7 +9,7 @@ use crate::{
     motion::{
         step_planner::{StepPlanner, Target},
         walk::engine::WalkingEngine,
-        walkv4::RequestedStep,
+        walkv4::{step_manager::StepManager, RequestedStep},
     },
     nao::{NaoManager, Priority},
 };
@@ -37,9 +37,8 @@ pub fn walk_to(
     walk_to: Res<WalkTo>,
     pose: Res<RobotPose>,
     mut step_planner: ResMut<StepPlanner>,
-    mut walking_engine: ResMut<WalkingEngine>,
+    mut step_manager: ResMut<StepManager>,
     mut nao_manager: ResMut<NaoManager>,
-    mut requested_step: ResMut<RequestedStep>,
 ) {
     let target_point = Point3::new(walk_to.target.position.x, walk_to.target.position.y, 0.0);
 
@@ -64,13 +63,8 @@ pub fn walk_to(
 
     // Plan step or stand
     if let Some(step) = step_planner.plan(&pose) {
-        walking_engine.request_walk(step);
-        *requested_step = RequestedStep {
-            forward: step.forward,
-            left: step.left,
-            turn: step.turn,
-        }
+        step_manager.request_walk(step);
     } else {
-        walking_engine.request_stand();
+        step_manager.request_stand();
     }
 }

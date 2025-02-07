@@ -2,6 +2,7 @@ use super::types::{
     ConditionalVariable, ExitRoutine, FailRoutine, Motion, MotionCondition, MotionType,
 };
 use crate::motion::walk::engine::{WalkState, WalkingEngine};
+use crate::motion::walkv4::step_manager::StepManager;
 use crate::nao::Priority;
 use bevy::prelude::*;
 use miette::{miette, Result};
@@ -83,11 +84,10 @@ impl ActiveMotion {
     }
 
     // executes the appropriate exit routine, connected to the chosen motion
-    pub fn execute_exit_routine(&self, walking_engine: &mut WalkingEngine) {
+    pub fn execute_exit_routine(&self, step_manager: &mut StepManager) {
         if let Some(ExitRoutine::Standing) = self.motion.settings.exit_routine {
             // Since the robot is now standing, we can reset the hip height to the default value.
-            walking_engine.hip_height = walking_engine.config.hip_height;
-            walking_engine.state = WalkState::Standing(walking_engine.config.hip_height);
+            step_manager.request_stand();
         }
         // Add more exit routines here! (along with adding an appropriate enum value)
     }

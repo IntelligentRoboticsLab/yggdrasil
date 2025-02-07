@@ -5,7 +5,7 @@ use nidhogg::types::HeadJoints;
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
-    motion::walk::engine::WalkingEngine,
+    motion::{walk::engine::WalkingEngine, walkv4::step_manager::StepManager},
     nao::{NaoManager, Priority},
 };
 
@@ -25,9 +25,8 @@ impl Behavior for Stand {
     const STATE: BehaviorState = BehaviorState::Stand;
 }
 
-pub fn stand(mut walking_engine: ResMut<WalkingEngine>, mut nao_manager: ResMut<NaoManager>) {
-    walking_engine.request_stand();
-    walking_engine.end_step_phase();
+pub fn stand(mut step_manager: ResMut<StepManager>, mut nao_manager: ResMut<NaoManager>) {
+    step_manager.request_stand();
 
     nao_manager.set_head_target(
         HeadJoints::default(),
