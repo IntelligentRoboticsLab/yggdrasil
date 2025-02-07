@@ -7,18 +7,24 @@ use crate::{localization::RobotPose, motion::walk::engine::Step};
 
 use super::{
     finding::{Pathfinding, Position},
-    geometry::{Isometry, Segment},
+    geometry::{Isometry, LineSegment, Segment},
     obstacles::Colliders,
     PathSettings,
 };
 
 /// Struct containing segments that make up a path.
-#[derive(Default, Resource)]
+#[derive(Resource)]
 pub struct Path {
     /// The segments that this path contains.
     pub segments: Vec<Segment>,
     /// Whether the path is considered suboptimal and should be recalculated.
     pub suboptimal: bool,
+    /// Whether collisions were calculated.
+    pub collisions: bool,
+    /// Whether the pathfinding was able to ease in.
+    pub ease_in: bool,
+    /// Whether the pathfinding was able to ease out.
+    pub ease_out: bool,
 }
 
 /// The target to walk to.
@@ -40,18 +46,20 @@ pub fn update_path(
     }
 
     if !path.ends_at(target.0, &settings) {
-        let new = Path::new(pose.inner, target.0, &colliders, &settings, false);
+        if let Target(Some(target)) = *target {
+            let new = Path::new(pose.inner, target, &colliders, &settings);
 
-        if !new.is_empty() {
-            *path = new;
-        } else {
-            *path = Path::new(pose.inner, target.0, &Colliders::new(), &settings, true);
+            if !new.is_empty() && !new.suboptimal {
+                *path = new;
+            }
         }
     } else if path.suboptimal || !path.sync(pose.inner, &settings) {
-        let new = Path::new(pose.inner, target.0, &colliders, &settings, false);
+        if let Target(Some(target)) = *target {
+            let new = Path::new(pose.inner, target, &colliders, &settings);
 
-        if !new.is_empty() {
-            *path = new;
+            if !new.is_empty() {
+                *path = new;
+            }
         }
     }
 }
@@ -61,28 +69,73 @@ impl Path {
     #[must_use]
     pub fn new(
         pose: Isometry,
-        target: Option<Position>,
+        target: Position,
         colliders: &Colliders,
         settings: &PathSettings,
-        suboptimal: bool,
     ) -> Self {
-        if let Some(target) = target {
-            let pathfinding = Pathfinding {
-                start: pose.into(),
-                goal: target,
-                colliders,
-                settings,
-            };
+        let mut pathfinding = Pathfinding {
+            start: pose.into(),
+            goal: target,
+            colliders,
+            settings,
+        };
 
-            if let Some((path, _)) = pathfinding.path() {
-                return Self {
-                    segments: path,
-                    suboptimal,
-                };
+        let mut path = Self::default();
+        let empty = Colliders::new();
+
+        if let Some((segments, _)) = pathfinding.path() {
+            path.segments = segments;
+            return path;
+        }
+
+        pathfinding.start = pathfinding.start.to_point().into();
+        path.suboptimal = true;
+        path.ease_in = false;
+
+        if let Some((segments, _)) = pathfinding.path() {
+            path.segments = segments;
+            return path;
+        }
+
+        if pathfinding.goal.isometry().is_some() {
+            pathfinding.start = pose.into();
+            pathfinding.goal = target.to_point().into();
+            path.ease_in = true;
+            path.ease_out = false;
+
+            if let Some((segments, _)) = pathfinding.path() {
+                path.segments = segments;
+                return path;
+            }
+
+            pathfinding.start = pathfinding.start.to_point().into();
+            path.ease_in = false;
+
+            if let Some((segments, _)) = pathfinding.path() {
+                path.segments = segments;
+                return path;
             }
         }
 
-        Self::default()
+        pathfinding.start = pose.into();
+        pathfinding.goal = target;
+        pathfinding.colliders = &empty;
+        path.ease_in = true;
+        path.ease_out = true;
+        path.collisions = false;
+
+        if let Some((segments, _)) = pathfinding.path() {
+            path.segments = segments;
+            return path;
+        }
+
+        path.ease_in = false;
+        path.ease_out = false;
+        path.segments = vec![
+            LineSegment::new(pathfinding.start.to_point(), pathfinding.goal.to_point()).into(),
+        ];
+
+        return path;
     }
 
     /// Returns whether the path is empty.
@@ -163,6 +216,18 @@ impl Path {
             let ok_angle = (segment.forward_at_start() - angle).abs() <= settings.angular_tolerance;
 
             return ok_distance && ok_angle;
+        }
+    }
+}
+
+impl Default for Path {
+    fn default() -> Self {
+        Self {
+            segments: Vec::new(),
+            suboptimal: false,
+            collisions: true,
+            ease_in: true,
+            ease_out: true,
         }
     }
 }
