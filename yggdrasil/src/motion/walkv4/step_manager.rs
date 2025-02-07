@@ -8,6 +8,7 @@ use super::{
     Side,
 };
 use bevy::prelude::*;
+use nalgebra::Vector2;
 
 const MAX_ACCELERATION: Step = Step {
     forward: 0.01,
@@ -51,33 +52,20 @@ impl StepManager {
         let next_swing_foot = self.last_step.swing_foot.opposite();
 
         let target = FootPositions::from_target(next_swing_foot, &next_step);
-        let turn_travel = match &next_swing_foot {
-            Side::Left => target
-                .left
-                .inner
-                .rotation
-                .angle_to(&start.left.inner.rotation),
-            Side::Right => target
-                .right
-                .inner
-                .rotation
-                .angle_to(&start.right.inner.rotation),
-        };
-
-        let swing_travel = start
-            .swing_travel_over_ground(next_swing_foot, &target)
-            .abs();
-
-        let foot_lift_apex = config.base_foot_lift
-            + travel_weighting(swing_travel, turn_travel, config.foot_lift_modifier);
+        let max_foot_lift = config.base_foot_lift
+            + travel_weighting(
+                start.swing_travel(next_swing_foot, &target).abs(),
+                start.turn_amount(next_swing_foot, &target),
+                config.foot_lift_modifier,
+            );
 
         self.planned_step = PlannedStep {
             step: next_step,
             duration: Duration::from_millis(250),
-            start: todo!(),
+            start,
             end: target,
-            swing_foot_height: todo!(),
-            swing_foot: todo!(),
+            swing_foot_height: max_foot_lift,
+            swing_foot: next_swing_foot,
         }
     }
 }
@@ -92,4 +80,14 @@ fn sync_gait_request(
     }
 
     next.set(step_manager.requested_gait);
+}
+
+fn travel_weighting(translation_travel: Vector2<f32>, turn_travel: f32, factors: Step) -> f32 {
+    let translational = nalgebra::vector![
+        factors.forward * translation_travel.x,
+        factors.left * translation_travel.y,
+    ]
+    .norm();
+    let rotational = factors.turn * turn_travel;
+    translational + rotational
 }

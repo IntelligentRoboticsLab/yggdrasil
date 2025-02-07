@@ -95,20 +95,29 @@ impl FootPositions {
         FootOffsets { left, right }
     }
 
-    pub fn swing_travel_over_ground(&self, swing_side: Side, end: &FootPositions) -> Vector2<f32> {
+    /// Compute the distance travelled by the swing foot in the ground plane.
+    pub fn swing_travel(&self, swing_side: Side, target: &FootPositions) -> Vector2<f32> {
         match swing_side {
-            // (self.right - self.left) + (end.left - end.right)
+            // (self.right - self.left) + (target.left - target.right)
             Side::Left => {
                 (self.right.translation * self.left.translation.inverse())
-                    * (end.left.translation * end.right.translation.inverse())
+                    * (target.left.translation * target.right.translation.inverse())
             }
-            // (self.left - self.right) + (end.right - end.left)
+            // (self.left - self.right) + (target.right - target.left)
             Side::Right => {
                 (self.left.translation * self.right.translation.inverse())
-                    * (end.right.translation * end.left.translation.inverse())
+                    * (target.right.translation * target.left.translation.inverse())
             }
         }
         .vector
         .xy()
+    }
+
+    /// Compute the angle between the current foot positions and the provided target.
+    pub fn turn_amount(&self, swing_side: Side, target: &FootPositions) -> f32 {
+        match &swing_side {
+            Side::Left => target.left.rotation.angle_to(&self.left.rotation),
+            Side::Right => target.right.rotation.angle_to(&self.right.rotation),
+        }
     }
 }

@@ -146,10 +146,7 @@ fn generate_foot_positions(
             .angle_to(&state.start.right.inner.rotation),
     };
 
-    let swing_travel = state
-        .start
-        .swing_travel_over_ground(step.swing_foot, &target)
-        .abs();
+    let swing_travel = state.start.swing_travel(step.swing_foot, &target).abs();
 
     let foot_lift_apex = config.base_foot_lift
         + travel_weighting(swing_travel, turn_travel, config.foot_lift_modifier);
@@ -177,20 +174,6 @@ fn generate_foot_positions(
         left: left.into(),
         right: right.into(),
     };
-}
-
-fn travel_weighting(
-    translation_travel: Vector2<f32>,
-    turn_travel: f32,
-    factors: ConfigStep,
-) -> f32 {
-    let translational = nalgebra::vector![
-        factors.forward * translation_travel.x,
-        factors.left * translation_travel.y,
-    ]
-    .norm();
-    let rotational = factors.turn * turn_travel;
-    translational + rotational
 }
 
 /// System that switches the current swing foot when possible.
