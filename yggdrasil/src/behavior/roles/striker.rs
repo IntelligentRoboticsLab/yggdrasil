@@ -4,8 +4,9 @@ use nalgebra::{Point2, Point3};
 
 use crate::{
     behavior::{
-        behaviors::{Observe, Walk, WalkTo},
+        behaviors::{Observe, Stand, Walk, WalkTo},
         engine::{in_role, BehaviorState, CommandsBehaviorExt, Role, Roles},
+        primary_state::PrimaryState,
     },
     core::config::layout::LayoutConfig,
     localization::RobotPose,
@@ -47,7 +48,13 @@ pub fn striker_role(
     bottom_balls: Res<Balls<Bottom>>,
     mut state: ResMut<Striker>,
     behavior: Res<State<BehaviorState>>,
+    primary_state: Res<PrimaryState>,
 ) {
+    if let PrimaryState::Penalized = primary_state.as_ref() {
+        commands.set_behavior(Stand);
+        return;
+    }
+
     let most_confident_ball = bottom_balls
         .most_confident_ball()
         .map(|b| b.position)

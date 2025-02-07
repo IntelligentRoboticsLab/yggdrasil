@@ -3,8 +3,9 @@ use nalgebra::{Point2, UnitComplex};
 
 use crate::{
     behavior::{
-        behaviors::{Observe, WalkTo},
+        behaviors::{Observe, Stand, WalkTo},
         engine::{in_role, BehaviorState, CommandsBehaviorExt, Role, Roles},
+        primary_state::PrimaryState,
     },
     core::config::layout::LayoutConfig,
     motion::step_planner::{StepPlanner, Target},
@@ -32,7 +33,13 @@ pub fn goalkeeper_role(
     step_planner: Res<StepPlanner>,
     layout_config: Res<LayoutConfig>,
     behavior: Res<State<BehaviorState>>,
+    primary_state: Res<PrimaryState>,
 ) {
+    if let PrimaryState::Penalized = primary_state.as_ref() {
+        commands.set_behavior(Stand);
+        return;
+    }
+
     let field_length = layout_config.field.length;
     let keeper_target = Target {
         position: Point2::new(-field_length / 2., 0.),
