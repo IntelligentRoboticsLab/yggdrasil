@@ -47,10 +47,12 @@ impl StepManager {
 
     pub fn request_sit(&mut self) {
         self.requested_gait = Gait::Sitting;
+        self.finish_step();
     }
 
     pub fn request_stand(&mut self) {
         self.requested_gait = Gait::Standing;
+        self.finish_step();
     }
 
     pub fn request_walk(&mut self, step: Step) {
@@ -66,11 +68,12 @@ impl StepManager {
         // clamp acceleration
         let delta_step =
             (self.requested_step - self.last_step.step).clamp(-MAX_ACCELERATION, MAX_ACCELERATION);
-        let next_step = self.last_step.step + delta_step;
-        info!(?delta_step, ?next_step, "delta step");
 
         // TODO(gijsd): do we want to assume this each time?
         let next_swing_foot = self.last_step.swing_foot.opposite();
+        let next_step = (self.last_step.step + delta_step).clamp_anatomic(next_swing_foot, 0.1);
+
+        info!(?delta_step, ?next_step, "delta step");
 
         let target = FootPositions::from_target(next_swing_foot, &next_step);
         let max_foot_lift = config.base_foot_lift

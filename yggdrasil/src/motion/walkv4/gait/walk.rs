@@ -1,21 +1,16 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use bevy::prelude::*;
-use nalgebra::Vector2;
-use nidhogg::types::Fsr;
 
 use crate::{
-    kinematics::Kinematics,
     motion::{
         walk::smoothing::{parabolic_return, parabolic_step},
         walkv4::{
-            config::WalkingEngineConfig,
             feet::FootPositions,
             foot_support::FootSupportState,
             scheduling::{Gait, MotionSet},
-            step::PlannedStep,
             step_manager::StepManager,
-            FootSwitchedEvent, RequestedStep, Side, SwingFoot, TargetFootPositions, TORSO_OFFSET,
+            FootSwitchedEvent, Side, SwingFoot, TargetFootPositions,
         },
     },
     nao::{Cycle, CycleTime},
@@ -108,10 +103,7 @@ fn check_foot_switched(
 fn generate_foot_positions(
     mut state: ResMut<WalkState>,
     mut target_positions: ResMut<TargetFootPositions>,
-    swing_foot: Res<SwingFoot>,
     cycle_time: Res<CycleTime>,
-    config: Res<WalkingEngineConfig>,
-    requested_step: Res<RequestedStep>,
     step_manager: Res<StepManager>,
 ) {
     state.phase += cycle_time.duration;
