@@ -46,19 +46,19 @@ impl Plugin for CatchFallBehaviorPlugin {
 
 const LEG_JOINTS_FORWARD_FALL: LegJoints<f32> = LegJoints {
     left_leg: LeftLegJoints {
-        hip_yaw_pitch: 0.029187918,
-        hip_roll: -0.323632,
-        hip_pitch: -0.742414,
-        knee_pitch: 2.1521602,
-        ankle_pitch: -1.2333779,
-        ankle_roll: 0.16264606,
+        hip_yaw_pitch: -0.0014920235,
+        hip_roll: -0.05824995,
+        hip_pitch: -0.9525721,
+        knee_pitch: 1.7993401,
+        ankle_pitch: -1.175086,
+        ankle_roll: -0.013764143,
     },
     right_leg: RightLegJoints {
-        hip_roll: 0.07060599,
-        hip_pitch: -0.28536606,
-        knee_pitch: 1.4373999,
-        ankle_pitch: -1.142788,
-        ankle_roll: -0.024502039,
+        hip_roll: 0.004643917,
+        hip_pitch: -1.6030722,
+        knee_pitch: 2.155312,
+        ankle_pitch: -1.2225561,
+        ankle_roll: 0.006177902,
     },
 };
 
@@ -161,11 +161,6 @@ pub fn catch_fall(
 
     fall_state: Res<FallState>,
 ) {
-    //eprintln!("{:?}", nao_state.position.left_leg_joints());
-    //eprintln!("{:?}", nao_state.position.right_leg_joints());
-    //eprintln!("right_arm: {:?}", nao_state.position.right_arm_joints());
-    //eprintln!("left_arm: {:?}", nao_state.position.left_arm_joints());
-
     if let FallState::Falling(fall_direction) = fall_state.as_ref() {
         match fall_direction {
             FallDirection::Forwards => {
@@ -181,6 +176,7 @@ pub fn catch_fall(
                 );
 
                 nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.1), Priority::Critical);
+
                 nao_manager.set_head(
                     HeadJoints {
                         yaw: 0.0,
@@ -214,7 +210,7 @@ pub fn catch_fall(
                 let target_arm_joints = lerp_arms(
                     &nao_state.position.arm_joints(),
                     &ARM_JOINTS_BACKWARD_FALL,
-                    0.5,
+                    0.6,
                 );
 
                 nao_manager.set_head(
