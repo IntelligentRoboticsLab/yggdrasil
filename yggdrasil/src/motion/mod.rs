@@ -7,7 +7,6 @@ pub mod path;
 pub mod path_finding;
 pub mod step_planner;
 pub mod walking_engine;
-pub mod path;
 
 /// Plugin group containing all plugins related to robot motion.
 pub struct MotionPlugins;

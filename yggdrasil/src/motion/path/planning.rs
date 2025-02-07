@@ -3,11 +3,11 @@
 use bevy::prelude::*;
 use nalgebra as na;
 
-use crate::{localization::RobotPose, motion::walk::engine::Step};
+use crate::{localization::RobotPose, motion::walking_engine::step::Step};
 
 use super::{
     finding::{Pathfinding, Position},
-    geometry::{Isometry, LineSegment, Segment},
+    geometry::{Isometry, Segment},
     obstacles::Colliders,
     PathSettings,
 };
@@ -19,12 +19,12 @@ pub struct Path {
     pub segments: Vec<Segment>,
     /// Whether the path is considered suboptimal and should be recalculated.
     pub suboptimal: bool,
-    /// Whether collisions were calculated.
-    pub collisions: bool,
     /// Whether the pathfinding was able to ease in.
     pub ease_in: bool,
     /// Whether the pathfinding was able to ease out.
     pub ease_out: bool,
+    /// Whether collisions were calculated.
+    pub collisions: bool,
 }
 
 /// The target to walk to.
@@ -39,6 +39,7 @@ pub fn update_path(
     colliders: Res<Colliders>,
     settings: Res<PathSettings>,
 ) {
+    // reset the target if we reached it
     if let Target(Some(position)) = *target {
         if na::distance(&position.to_point(), &pose.world_position()) <= settings.target_tolerance {
             *target = Target(None);
@@ -46,96 +47,83 @@ pub fn update_path(
     }
 
     if !path.ends_at(target.0, &settings) {
-        if let Target(Some(target)) = *target {
-            let new = Path::new(pose.inner, target, &colliders, &settings);
-
-            if !new.is_empty() && !new.suboptimal {
-                *path = new;
-            }
-        }
+        // if the path doesn't go towards the target, find a new one.
+        *path = Path::new(pose.inner, target.0, &colliders, &settings);
     } else if path.suboptimal || !path.sync(pose.inner, &settings) {
-        if let Target(Some(target)) = *target {
-            let new = Path::new(pose.inner, target, &colliders, &settings);
+        // if the path is suboptimal or desynchronized, find a new one.
+        let new = Path::new(pose.inner, target.0, &colliders, &settings);
 
-            if !new.is_empty() {
-                *path = new;
-            }
+        // make sure we don't overwrite the old path with a worse one.
+        if !new.suboptimal && !new.is_empty() {
+            *path = new;
         }
     }
 }
 
 impl Path {
-    /// Create a new path based on the given pose, target, colliders, and settings.
+    /// Finds a path, potentially falling back on suboptimal paths.
     #[must_use]
     pub fn new(
         pose: Isometry,
-        target: Position,
+        target: Option<Position>,
         colliders: &Colliders,
-        settings: &PathSettings,
+        settings: &PathSettings
     ) -> Self {
-        let mut pathfinding = Pathfinding {
+        let Some(target) = target else {
+            return Self::default();
+        };
+
+        let pathfinding = Pathfinding {
             start: pose.into(),
             goal: target,
             colliders,
             settings,
         };
 
-        let mut path = Self::default();
-        let empty = Colliders::new();
+        Self::find(pathfinding, true, true, true)
+            .or_else(|| Self::find(pathfinding, false, true, true))
+            .or_else(|| Self::find(pathfinding, true, false, true))
+            .or_else(|| Self::find(pathfinding, false, false, true))
+            .or_else(|| Self::find(pathfinding, true, true, false))
+            .or_else(|| Self::find(pathfinding, false, true, false))
+            .or_else(|| Self::find(pathfinding, true, false, false))
+            .or_else(|| Self::find(pathfinding, false, false, false))
+            .unwrap()
+    }
 
-        if let Some((segments, _)) = pathfinding.path() {
-            path.segments = segments;
-            return path;
-        }
+    /// Finds a path with the given settings.
+    #[must_use]
+    fn find(
+        mut pathfinding: Pathfinding,
+        ease_in: bool,
+        ease_out: bool,
+        collisions: bool,
+    ) -> Option<Self> {
+        const EMPTY: &'static Colliders = &Colliders::new();
 
-        pathfinding.start = pathfinding.start.to_point().into();
-        path.suboptimal = true;
-        path.ease_in = false;
-
-        if let Some((segments, _)) = pathfinding.path() {
-            path.segments = segments;
-            return path;
-        }
-
-        if pathfinding.goal.isometry().is_some() {
-            pathfinding.start = pose.into();
-            pathfinding.goal = target.to_point().into();
-            path.ease_in = true;
-            path.ease_out = false;
-
-            if let Some((segments, _)) = pathfinding.path() {
-                path.segments = segments;
-                return path;
-            }
-
+        if !ease_in {
+            pathfinding.start.isometry()?;
             pathfinding.start = pathfinding.start.to_point().into();
-            path.ease_in = false;
-
-            if let Some((segments, _)) = pathfinding.path() {
-                path.segments = segments;
-                return path;
-            }
         }
 
-        pathfinding.start = pose.into();
-        pathfinding.goal = target;
-        pathfinding.colliders = &empty;
-        path.ease_in = true;
-        path.ease_out = true;
-        path.collisions = false;
-
-        if let Some((segments, _)) = pathfinding.path() {
-            path.segments = segments;
-            return path;
+        if !ease_out {
+            pathfinding.goal.isometry()?;
+            pathfinding.goal = pathfinding.goal.to_point().into();
         }
 
-        path.ease_in = false;
-        path.ease_out = false;
-        path.segments = vec![
-            LineSegment::new(pathfinding.start.to_point(), pathfinding.goal.to_point()).into(),
-        ];
+        if !collisions {
+            pathfinding.colliders = EMPTY;
+        }
 
-        return path;
+        let (segments, _) = pathfinding.path()?;
+
+        Some(Self {
+            segments,
+            ease_in,
+            ease_out,
+            collisions,
+            suboptimal: !(ease_in && ease_out && collisions),
+        })
     }
 
     /// Returns whether the path is empty.

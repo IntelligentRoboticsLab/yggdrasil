@@ -35,6 +35,8 @@ impl Behavior for WalkTo {
 pub fn walk_to(
     walk_to: Res<WalkTo>,
     pose: Res<RobotPose>,
+    path: Res<crate::motion::path::planning::Path>,
+    mut target: ResMut<crate::motion::path::planning::Target>,
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
@@ -60,8 +62,15 @@ pub fn walk_to(
     // Set absolute target if not set
     step_planner.set_absolute_target_if_unset(walk_to.target);
 
+    let position = match walk_to.target.rotation {
+        Some(rotation) => nalgebra::Isometry2::<f32>::from_parts(walk_to.target.position.into(), rotation).into(),
+        None => walk_to.target.position.into(),
+    };
+
+    *target = crate::motion::path::planning::Target(Some(position));
+
     // Plan step or stand
-    if let Some(step) = step_planner.plan(&pose) {
+    if let Some(step) = path.step() {
         step_context.request_walk(step);
     } else {
         step_context.request_stand();

@@ -59,7 +59,7 @@ pub struct Colliders {
 }
 
 impl Colliders {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             arcs: Vec::new(),
             lines: Vec::new(),

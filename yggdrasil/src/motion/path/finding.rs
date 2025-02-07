@@ -12,7 +12,7 @@ use super::{
 type Cost = OrderedFloat<f32>;
 
 /// Struct containing all the data necessary for pathfinding.
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct Pathfinding<'a> {
     /// The start position of the path.
     pub start: Position,
