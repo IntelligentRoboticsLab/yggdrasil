@@ -6,8 +6,7 @@ use crate::{
     localization::RobotPose,
     motion::{
         step_planner::StepPlanner,
-        walk::engine::{Step, WalkingEngine},
-        walkv4::RequestedStep,
+        walkv4::{step::Step, step_manager::StepManager},
     },
     nao::{NaoManager, Priority},
 };
@@ -36,10 +35,9 @@ impl Behavior for Walk {
 pub fn walk(
     walk: Res<Walk>,
     mut step_planner: ResMut<StepPlanner>,
-    mut walking_engine: ResMut<WalkingEngine>,
+    mut step_manager: ResMut<StepManager>,
     mut nao_manager: ResMut<NaoManager>,
     pose: Res<RobotPose>,
-    mut requested_step: ResMut<RequestedStep>,
 ) {
     if let Some(point) = walk.look_target {
         let look_at = pose.get_look_at_absolute(&point);
@@ -47,10 +45,5 @@ pub fn walk(
     }
 
     step_planner.clear_target();
-    walking_engine.request_walk(walk.step);
-    *requested_step = RequestedStep {
-        forward: walk.step.forward,
-        left: walk.step.left,
-        turn: walk.step.turn,
-    }
+    step_manager.request_walk(walk.step);
 }

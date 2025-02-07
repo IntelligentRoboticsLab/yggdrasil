@@ -9,7 +9,7 @@ use crate::{
     },
     core::config::layout::LayoutConfig,
     localization::RobotPose,
-    motion::{step_planner::Target, walk::engine::Step},
+    motion::{step_planner::Target, walkv4::step::Step},
     vision::ball_detection::classifier::Balls,
 };
 

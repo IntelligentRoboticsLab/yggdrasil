@@ -12,7 +12,7 @@ use crate::{
     motion::{
         step_planner::{StepPlanner, Target},
         walk::engine::WalkingEngine,
-        walkv4::RequestedStep,
+        walkv4::{step_manager::StepManager, RequestedStep},
     },
     nao::{NaoManager, Priority},
 };
@@ -49,10 +49,9 @@ pub fn walk_to_set(
     layout_config: Res<LayoutConfig>,
     player_config: Res<PlayerConfig>,
     mut step_planner: ResMut<StepPlanner>,
-    mut walking_engine: ResMut<WalkingEngine>,
+    mut step_manager: ResMut<StepManager>,
     mut nao_manager: ResMut<NaoManager>,
     role: Res<State<Role>>,
-    mut requested_step: ResMut<RequestedStep>,
 ) {
     let set_robot_position = layout_config
         .set_positions
@@ -93,16 +92,11 @@ pub fn walk_to_set(
     }
 
     if let Some(step) = step_planner.plan(&pose) {
-        walking_engine.request_walk(step);
-        *requested_step = RequestedStep {
-            forward: step.forward,
-            left: step.left,
-            turn: step.turn,
-        }
+        step_manager.request_walk(step);
     } else {
         let look_at = pose.get_look_at_absolute(&Point3::origin());
         nao_manager.set_head(look_at, HeadJoints::fill(0.5), Priority::default());
 
-        walking_engine.request_stand();
+        step_manager.request_stand();
     }
 }
