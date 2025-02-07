@@ -77,8 +77,8 @@ fn setup_motion_state(
     };
 
     if hip_height >= config.max_sitting_hip_height {
-        commands.insert_resource(StepManager::new(Gait::Standing, planned));
+        commands.insert_resource(StepManager::init(Gait::Standing, planned));
     } else {
-        commands.insert_resource(StepManager::new(Gait::Sitting, planned));
+        commands.insert_resource(StepManager::init(Gait::Sitting, planned));
     }
 }
