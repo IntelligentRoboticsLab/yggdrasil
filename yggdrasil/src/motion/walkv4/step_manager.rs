@@ -22,10 +22,8 @@ pub(super) struct StepManagerPlugin;
 
 impl Plugin for StepManagerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (sync_gait_request, plan_step).in_set(MotionSet::StepPlanning),
-        );
+        app.add_systems(Update, sync_gait_request.in_set(MotionSet::StepPlanning));
+        app.add_systems(PostUpdate, plan_step.in_set(MotionSet::StepPlanning));
     }
 }
 
