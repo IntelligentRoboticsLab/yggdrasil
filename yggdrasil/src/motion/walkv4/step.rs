@@ -3,9 +3,11 @@ use std::{
     time::Duration,
 };
 
+use serde::{Deserialize, Serialize};
+
 use super::{feet::FootPositions, Side};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
 pub struct Step {
     pub forward: f32,
     pub left: f32,
@@ -101,7 +103,7 @@ impl Neg for Step {
 pub struct PlannedStep {
     pub step: Step,
     pub start: FootPositions,
-    pub end: FootPositions,
+    pub target: FootPositions,
     pub duration: Duration,
     pub swing_foot_height: f32,
     pub swing_foot: Side,

@@ -9,11 +9,12 @@ use crate::{
     motion::{
         walk::smoothing::{parabolic_return, parabolic_step},
         walkv4::{
-            config::{ConfigStep, WalkingEngineConfig},
+            config::WalkingEngineConfig,
             feet::FootPositions,
             foot_support::FootSupportState,
             scheduling::{Gait, MotionSet},
             step::PlannedStep,
+            step_manager::StepManager,
             FootSwitchedEvent, RequestedStep, Side, SwingFoot, TargetFootPositions, TORSO_OFFSET,
         },
     },
@@ -42,20 +43,16 @@ impl Plugin for WalkGaitPlugin {
 #[derive(Debug, Clone, Resource)]
 struct WalkState {
     phase: Duration,
-    start: FootPositions,
     planned_duration: Duration,
     foot_switched_fsr: bool,
-    last_step: ConfigStep,
 }
 
 impl Default for WalkState {
     fn default() -> Self {
         Self {
             phase: Duration::ZERO,
-            start: FootPositions::default(),
             planned_duration: Duration::from_millis(200),
             foot_switched_fsr: false,
-            last_step: ConfigStep::default(),
         }
     }
 }
@@ -115,54 +112,26 @@ fn generate_foot_positions(
     cycle_time: Res<CycleTime>,
     config: Res<WalkingEngineConfig>,
     requested_step: Res<RequestedStep>,
+    step_manager: Res<StepManager>,
 ) {
     state.phase += cycle_time.duration;
     let linear = state.linear();
     let parabolic = state.parabolic();
 
-    // TODO: replace with proper step planning
-    let mut step = PlannedStep {
-        forward: requested_step.forward,
-        left: requested_step.left,
-        turn: requested_step.turn,
-        duration: state.planned_duration,
-        swing_foot_height: 0.01,
-        swing_foot: **swing_foot,
-    }
-    .clamp_anatomic(0.1);
-
-    let target = FootPositions::from_target(&step);
-
-    let turn_travel = match &step.swing_foot {
-        Side::Left => target
-            .left
-            .inner
-            .rotation
-            .angle_to(&state.start.left.inner.rotation),
-        Side::Right => target
-            .right
-            .inner
-            .rotation
-            .angle_to(&state.start.right.inner.rotation),
-    };
-
-    let swing_travel = state.start.swing_travel(step.swing_foot, &target).abs();
-
-    let foot_lift_apex = config.base_foot_lift
-        + travel_weighting(swing_travel, turn_travel, config.foot_lift_modifier);
-
-    step.swing_foot_height = foot_lift_apex;
-
-    let (left_t, right_t) = match &step.swing_foot {
+    let (left_t, right_t) = match &step_manager.planned_step.swing_foot {
         Side::Left => (parabolic, linear),
         Side::Right => (linear, parabolic),
     };
 
-    let mut left = state.start.left.lerp_slerp(&target.left.inner, left_t);
-    let mut right = state.start.right.lerp_slerp(&target.right.inner, right_t);
+    let planned = step_manager.planned_step;
+    info!(?planned.step, "planned step");
+    let start = planned.start;
+    let target = planned.target;
+    let mut left = start.left.lerp_slerp(&target.left.inner, left_t);
+    let mut right = start.right.lerp_slerp(&target.right.inner, right_t);
 
-    let swing_lift = parabolic_return(linear) * foot_lift_apex;
-    let (left_lift, right_lift) = match &step.swing_foot {
+    let swing_lift = parabolic_return(linear) * planned.swing_foot_height;
+    let (left_lift, right_lift) = match &planned.swing_foot {
         Side::Left => (swing_lift, 0.),
         Side::Right => (0., swing_lift),
     };
@@ -181,8 +150,6 @@ fn update_swing_foot(
     mut event: EventWriter<FootSwitchedEvent>,
     mut swing_foot: ResMut<SwingFoot>,
     mut state: ResMut<WalkState>,
-    kinematics: Res<Kinematics>,
-    requested_step: Res<RequestedStep>,
 ) {
     if !state.foot_switched_fsr {
         return;
@@ -191,13 +158,7 @@ fn update_swing_foot(
     info!("\nSwitching foot!\n");
     state.phase = Duration::ZERO;
     state.planned_duration = Duration::from_secs_f32(0.25);
-    state.start = FootPositions::from_kinematics(swing_foot.opposite(), &kinematics, TORSO_OFFSET);
     **swing_foot = swing_foot.opposite();
     state.foot_switched_fsr = false;
-    state.last_step = ConfigStep {
-        forward: requested_step.forward,
-        left: requested_step.left,
-        turn: requested_step.turn,
-    };
     event.send(FootSwitchedEvent(**swing_foot));
 }

@@ -1,8 +1,16 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 
 use crate::kinematics::Kinematics;
 
-use super::config::WalkingEngineConfig;
+use super::{
+    config::WalkingEngineConfig,
+    feet::FootPositions,
+    step::{PlannedStep, Step},
+    step_manager::StepManager,
+    Side, TORSO_OFFSET,
+};
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MotionSet {
@@ -52,14 +60,25 @@ impl Plugin for MotionSchedulePlugin {
 
 /// System that sets the initial [`MotionState`] depending on the initial hip height.
 fn setup_motion_state(
-    mut state: ResMut<NextState<Gait>>,
+    mut commands: Commands,
     config: Res<WalkingEngineConfig>,
     kinematics: Res<Kinematics>,
 ) {
+    let start = FootPositions::from_kinematics(Side::Left, &kinematics, TORSO_OFFSET);
+
     let hip_height = kinematics.left_hip_height();
+    let planned = PlannedStep {
+        step: Step::default(),
+        start: start.clone(),
+        target: start.clone(),
+        duration: Duration::from_millis(250),
+        swing_foot_height: 0.,
+        swing_foot: Side::Left,
+    };
+
     if hip_height >= config.max_sitting_hip_height {
-        state.set(Gait::Standing);
+        commands.insert_resource(StepManager::new(Gait::Standing, planned));
     } else {
-        state.set(Gait::Sitting);
+        commands.insert_resource(StepManager::new(Gait::Sitting, planned));
     }
 }

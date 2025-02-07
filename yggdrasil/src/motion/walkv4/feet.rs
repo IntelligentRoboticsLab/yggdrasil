@@ -21,11 +21,11 @@ pub struct FootPositions {
     pub right: Pose3<Ground>,
 }
 
-// impl Default for FootPositions {
-//     fn default() -> Self {
-//         Self::from_target(&PlannedStep::default())
-//     }
-// }
+impl Default for FootPositions {
+    fn default() -> Self {
+        Self::from_target(Side::Left, &Step::default())
+    }
+}
 
 impl FootPositions {
     pub fn new(left: Pose3<Ground>, right: Pose3<Ground>) -> Self {
