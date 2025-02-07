@@ -180,7 +180,7 @@ pub fn catch_fall(
                     0.5,
                 );
 
-                nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.2), Priority::Critical);
+                nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.1), Priority::Critical);
                 nao_manager.set_head(
                     HeadJoints {
                         yaw: 0.0,
@@ -197,7 +197,7 @@ pub fn catch_fall(
                 let target_arm_joints =
                     lerp_arms(&nao_state.position.arm_joints(), &ARM_JOINTS_SIDE_FALL, 0.5);
 
-                nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.2), Priority::Critical);
+                nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.1), Priority::Critical);
                 nao_manager.set_arms(target_arm_joints, ArmJoints::fill(0.1), Priority::Critical);
                 nao_manager.set_head(
                     HeadJoints::default(),
@@ -209,7 +209,7 @@ pub fn catch_fall(
                 let target_leg_joints = lerp_legs(
                     &nao_state.position.leg_joints(),
                     &LEG_JOINTS_BACKWARD_FALL,
-                    0.5,
+                    0.6,
                 );
                 let target_arm_joints = lerp_arms(
                     &nao_state.position.arm_joints(),
@@ -225,7 +225,7 @@ pub fn catch_fall(
                     HeadJoints::fill(0.3),
                     Priority::Critical,
                 );
-                nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.2), Priority::Critical);
+                nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.1), Priority::Critical);
                 nao_manager.set_arms(target_arm_joints, ArmJoints::fill(0.1), Priority::Critical);
             }
         }
