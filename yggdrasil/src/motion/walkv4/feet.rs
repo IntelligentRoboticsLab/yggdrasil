@@ -1,17 +1,11 @@
 use nalgebra::{Isometry3, Translation3, UnitQuaternion, Vector2, Vector3};
 use spatial::types::Pose3;
 
-use super::{
-    step::{PlannedStep, Step},
-    Side,
-};
-use crate::{
-    kinematics::{
-        prelude::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS},
-        spaces::{Ground, LeftSole, RightSole, Robot},
-        FootOffset, Kinematics,
-    },
-    motion::walk::engine::FootOffsets,
+use super::{step::Step, Side};
+use crate::kinematics::{
+    prelude::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS},
+    spaces::{Ground, LeftSole, RightSole, Robot},
+    FootOffset, Kinematics,
 };
 
 /// Position of the left and right foot of the robot, relative to the ground.
@@ -75,7 +69,7 @@ impl FootPositions {
     }
 
     // TODO: Get rid of FootOffsets and use [`FootPositions`]
-    pub fn to_offsets(&self, hip_height: f32) -> FootOffsets {
+    pub fn to_offsets(&self, hip_height: f32) -> (FootOffset, FootOffset) {
         let left = FootOffset {
             forward: self.left.translation.x,
             left: self.left.translation.y - ROBOT_TO_LEFT_PELVIS.y,
@@ -92,7 +86,7 @@ impl FootPositions {
             hip_height,
         };
 
-        FootOffsets { left, right }
+        (left, right)
     }
 
     /// Compute the distance travelled by the swing foot in the ground plane.

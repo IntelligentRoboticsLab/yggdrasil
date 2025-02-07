@@ -11,8 +11,6 @@ use crate::{
 };
 use std::{ops::Neg, time::Duration};
 
-use super::smoothing;
-
 const FILTERED_GYRO_OMEGA: f32 = 0.115;
 
 #[derive(Debug, Clone)]
@@ -287,7 +285,7 @@ impl WalkingEngine {
     pub(super) fn compute_foot_offsets(&self, step: Step) -> FootOffsets {
         let linear_time =
             (self.t.as_secs_f32() / self.next_foot_switch.as_secs_f32()).clamp(0.0, 1.0);
-        let swing_lift = self.max_swing_foot_lift * smoothing::parabolic_return(linear_time);
+        let swing_lift = self.max_swing_foot_lift * 1.0;
 
         let swing_foot = self.compute_swing_foot(step, swing_lift, linear_time);
         let support_foot = self.compute_support_foot(step, linear_time);
@@ -305,7 +303,8 @@ impl WalkingEngine {
     }
 
     fn compute_swing_foot(&self, step: Step, lift: f32, linear_time: f32) -> FootOffset {
-        let smoothing = smoothing::parabolic_step(linear_time);
+        // let smoothing = smoothing::parabolic_step(linear_time);
+        let smoothing = 0.0;
         let foot_t0 = match self.swing_foot {
             Side::Left => self.foot_offsets_t0.left,
             Side::Right => self.foot_offsets_t0.right,

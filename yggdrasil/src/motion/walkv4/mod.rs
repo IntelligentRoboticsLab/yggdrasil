@@ -18,11 +18,12 @@ use crate::{
 mod arm_swing;
 mod balancing;
 pub mod config;
-mod feet;
+pub mod feet;
 mod foot_support;
 mod gait;
 pub mod hips;
 mod scheduling;
+mod smoothing;
 pub mod step;
 pub mod step_manager;
 
@@ -121,9 +122,7 @@ impl TargetFootPositions {
         hip_height: f32,
         torso_offset: f32,
     ) -> (LeftLegJoints<f32>, RightLegJoints<f32>) {
-        let foot_offsets = self.to_offsets(hip_height);
-        // info!(?foot_offsets, "target foot offsets");
-        kinematics::inverse::leg_angles(&foot_offsets.left, &foot_offsets.right, torso_offset)
+        kinematics::inverse::leg_angles(&self.0, hip_height, torso_offset)
     }
 }
 
