@@ -95,8 +95,8 @@ impl StepManager {
 }
 
 pub(super) fn sync_gait_request(
+    mut commands: Commands,
     current: Res<State<Gait>>,
-    mut next: ResMut<NextState<Gait>>,
     step_manager: Res<StepManager>,
 ) {
     if *current == step_manager.requested_gait {
@@ -107,7 +107,7 @@ pub(super) fn sync_gait_request(
         "switching requested gait to {:?}",
         step_manager.requested_gait
     );
-    next.set(step_manager.requested_gait);
+    commands.set_state(step_manager.requested_gait);
 }
 
 fn plan_step(

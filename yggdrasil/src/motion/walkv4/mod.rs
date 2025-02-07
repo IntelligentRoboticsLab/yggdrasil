@@ -164,21 +164,21 @@ fn finalize(
         target_foot_positions.leg_angles(hip_height.current(), TORSO_OFFSET);
     balance_adjustment.apply(&mut left_leg, &mut right_leg);
 
-    // let left_arm = arm_swing::swinging_arm(
-    //     left_leg.hip_roll,
-    //     target_foot_positions.right.translation.x,
-    //     true,
-    // );
-    // let right_arm = arm_swing::swinging_arm(
-    //     -right_leg.hip_roll,
-    //     target_foot_positions.left.translation.x,
-    //     false,
-    // );
+    let left_arm = arm_swing::swinging_arm(
+        left_leg.hip_roll,
+        target_foot_positions.right.translation.x,
+        true,
+    );
+    let right_arm = arm_swing::swinging_arm(
+        -right_leg.hip_roll,
+        target_foot_positions.left.translation.x,
+        false,
+    );
 
-    // let arm_positions = ArmJoints::builder()
-    //     .left_arm(left_arm)
-    //     .right_arm(right_arm)
-    //     .build();
+    let arm_positions = ArmJoints::builder()
+        .left_arm(left_arm)
+        .right_arm(right_arm)
+        .build();
 
     let leg_positions = LegJoints::builder()
         .left_leg(left_leg)
@@ -191,16 +191,16 @@ fn finalize(
         .build();
 
     if *motion_state == Gait::Walking {
-        // nao.set_arms(arm_positions, ArmJoints::fill(0.8), Priority::Medium);
+        nao.set_arms(arm_positions, ArmJoints::fill(0.8), Priority::Medium);
     } else {
-        // nao.set_arms(
-        //     ArmJoints::builder()
-        //         .left_arm(arm_swing::swinging_arm(0.0, 0.0, true))
-        //         .right_arm(arm_swing::swinging_arm(0.0, 0.0, false))
-        //         .build(),
-        //     ArmJoints::fill(0.8),
-        //     Priority::Medium,
-        // );
+        nao.set_arms(
+            ArmJoints::builder()
+                .left_arm(arm_swing::swinging_arm(0.0, 0.0, true))
+                .right_arm(arm_swing::swinging_arm(0.0, 0.0, false))
+                .build(),
+            ArmJoints::fill(0.8),
+            Priority::Medium,
+        );
     }
 
     nao.set_legs(leg_positions, leg_stiffness, Priority::Medium);
