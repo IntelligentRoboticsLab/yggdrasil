@@ -674,17 +674,15 @@ impl RegionColor {
         let yhs = pixel.clone().to_yhs2();
         let (r, g, b) = pixel.to_rgb();
 
-
         let color_sum = r + g + b;
         let g_chromaticity = g / color_sum;
         let green_threshold = config.green_chromaticity_threshold;
 
-        
         if g_chromaticity > green_threshold {
             return RegionColor::Green;
         }
 
-        if Self::is_white(config, yhs){
+        if Self::is_white(config, yhs) {
             return RegionColor::WhiteOrBlack;
         }
 
@@ -697,16 +695,15 @@ impl RegionColor {
             return RegionColor::WhiteOrBlack;
         }
 
-
-
         RegionColor::Unknown
     }
 
-    fn is_green(config: &ScanLinesConfig, (y, h, s): (f32, f32, f32)) -> bool {
-        y <= config.max_field_luminance
-            && s >= config.min_field_saturation
-            && (config.min_field_hue..=config.max_field_hue).contains(&h)
-    }
+    // Old version for color detection, keeping it to compare with new version
+    // fn is_green(config: &ScanLinesConfig, (y, h, s): (f32, f32, f32)) -> bool {
+    //     y <= config.max_field_luminance
+    //         && s >= config.min_field_saturation
+    //         && (config.min_field_hue..=config.max_field_hue).contains(&h)
+    // }
 
     fn is_white(config: &ScanLinesConfig, (y, _h, s): (f32, f32, f32)) -> bool {
         y >= config.min_white_luminance && s <= config.max_white_saturation

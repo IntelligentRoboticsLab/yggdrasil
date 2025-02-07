@@ -254,6 +254,8 @@ impl YuvPixel {
         (y as f32, h, s)
     }
 
+    #[allow(clippy::many_single_char_names)]
+    #[must_use]
     pub fn to_rgb(self) -> (f32, f32, f32) {
         let y = f32::from(self.y);
         let u = f32::from(self.u);
