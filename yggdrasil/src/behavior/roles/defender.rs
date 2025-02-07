@@ -3,13 +3,17 @@ use nalgebra::Point2;
 
 use crate::{
     behavior::{
-        behaviors::{Observe, Stand, WalkTo},
+        behaviors::{CatchFall, Observe, Sitting, Stand, Standup, WalkTo},
         engine::{in_role, BehaviorState, CommandsBehaviorExt, Role, Roles},
         primary_state::PrimaryState,
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
     localization::RobotPose,
-    motion::step_planner::{StepPlanner, Target},
+    motion::{
+        step_planner::{StepPlanner, Target},
+        walk::engine::WalkingEngine,
+    },
+    sensor::{button::HeadButtons, falling::FallState},
 };
 
 /// Plugin for the Defender role
@@ -29,6 +33,7 @@ impl Roles for Defender {
     const STATE: Role = Role::Defender;
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn defender_role(
     mut commands: Commands,
     pose: Res<RobotPose>,
@@ -37,7 +42,47 @@ pub fn defender_role(
     step_planner: ResMut<StepPlanner>,
     behavior: Res<State<BehaviorState>>,
     primary_state: Res<PrimaryState>,
+    walking_engine: Res<WalkingEngine>,
+    head_buttons: Res<HeadButtons>,
+    standup_state: Option<Res<Standup>>,
+    fall_state: Res<FallState>,
 ) {
+    if behavior.as_ref() == &BehaviorState::StartUp {
+        if walking_engine.is_sitting() || head_buttons.all_pressed() {
+            commands.set_behavior(Sitting);
+        }
+        if *primary_state == PrimaryState::Initial {
+            commands.set_behavior(Stand);
+        }
+        return;
+    }
+
+    // unstiff has the number 1 precedence
+    if *primary_state == PrimaryState::Sitting {
+        commands.set_behavior(Sitting);
+        return;
+    }
+
+    if standup_state.is_some_and(|s| !s.completed()) {
+        return;
+    }
+
+    // next up, damage prevention and standup motion takes precedence
+    match fall_state.as_ref() {
+        FallState::Lying(_) => {
+            commands.set_behavior(Standup::default());
+
+            return;
+        }
+        FallState::Falling(_) => {
+            if !matches!(*primary_state, PrimaryState::Penalized) {
+                commands.set_behavior(CatchFall);
+            }
+            return;
+        }
+        FallState::None => {}
+    }
+
     if let PrimaryState::Penalized = primary_state.as_ref() {
         commands.set_behavior(Stand);
         return;
