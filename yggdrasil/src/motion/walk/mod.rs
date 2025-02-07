@@ -12,8 +12,8 @@ use crate::{
 use bevy::prelude::*;
 use nidhogg::{
     types::{
-        ArmJoints, FillExt, ForceSensitiveResistors, LeftArmJoints, LeftLegJoints, LegJoints,
-        RightArmJoints, RightLegJoints,
+        ArmJoints, FillExt, Fsr, LeftArmJoints, LeftLegJoints, LegJoints, RightArmJoints,
+        RightLegJoints,
     },
     NaoState,
 };
@@ -70,13 +70,17 @@ impl Config for WalkingEngineConfig {
     const PATH: &'static str = "walking_engine.toml";
 }
 
+#[derive(Event, Debug, Default, Clone)]
+pub struct SwingFootSwitchedEvent(pub Side);
+
 /// Plugin providing systems the walking engine for the robot.
 pub struct WalkingEnginePlugin;
 
 impl Plugin for WalkingEnginePlugin {
     fn build(&self, app: &mut App) {
         app.init_config::<WalkingEngineConfig>()
-            .init_resource::<SwingFoot>();
+            .init_resource::<SwingFoot>()
+            .add_event::<SwingFootSwitchedEvent>();
 
         app.add_systems(PostStartup, init_walking_engine);
         app.add_systems(PostUpdate, (run_walking_engine, update_swing_side).chain());
@@ -96,8 +100,9 @@ fn init_walking_engine(
 /// System that executes the walking engine.
 fn run_walking_engine(
     mut walking_engine: ResMut<WalkingEngine>,
+    mut foot_switched_event: EventWriter<SwingFootSwitchedEvent>,
     cycle_time: Res<CycleTime>,
-    fsr: Res<ForceSensitiveResistors>,
+    fsr: Res<Fsr>,
     imu: Res<IMUValues>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
@@ -129,6 +134,8 @@ fn run_walking_engine(
 
     if has_foot_switched && linear_time > 0.75 {
         walking_engine.end_step_phase();
+        // this is a temporary implementation, until walkv4 is merged!
+        foot_switched_event.send(SwingFootSwitchedEvent(walking_engine.swing_foot.next()));
     }
 
     let FootOffsets {
