@@ -175,20 +175,11 @@ impl CalibratedFsr {
     }
 
     fn update_foot_pressure(&mut self, fsr: &Fsr) {
-        self.normalized = Fsr {
-            left_foot: FsrFoot {
-                front_left: fsr.left_foot.front_left / self.left.max.front_left,
-                front_right: fsr.left_foot.front_right / self.left.max.front_right,
-                rear_left: fsr.left_foot.rear_left / self.left.max.rear_left,
-                rear_right: fsr.left_foot.rear_right / self.left.max.rear_right,
-            },
-            right_foot: FsrFoot {
-                front_left: fsr.right_foot.front_left / self.right.max.front_left,
-                front_right: fsr.right_foot.front_right / self.right.max.front_right,
-                rear_left: fsr.right_foot.rear_left / self.right.max.rear_left,
-                rear_right: fsr.right_foot.rear_right / self.right.max.rear_right,
-            },
-        };
+        self.normalized = fsr.clone()
+            / Fsr {
+                left_foot: self.left.max.clone(),
+                right_foot: self.right.max.clone(),
+            };
     }
 
     #[must_use]
