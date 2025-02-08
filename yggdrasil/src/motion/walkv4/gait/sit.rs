@@ -7,7 +7,7 @@ use crate::{
         config::WalkingEngineConfig,
         feet::FootPositions,
         hips::HipHeight,
-        scheduling::{MotionSet, Gait},
+        schedule::{Gait, GaitGeneration, MotionSet},
         TargetFootPositions, TargetLegStiffness,
     },
 };
@@ -26,8 +26,8 @@ pub(super) struct SitGaitPlugin;
 impl Plugin for SitGaitPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            Update,
-            (request_sit, generate_foot_positions)
+            GaitGeneration,
+            (request_sit, generate_sit_gait)
                 .chain()
                 .in_set(MotionSet::GaitGeneration)
                 .run_if(in_state(Gait::Sitting)),
@@ -64,7 +64,7 @@ fn request_sit(
     }
 }
 
-fn generate_foot_positions(mut target: ResMut<TargetFootPositions>) {
+fn generate_sit_gait(mut target: ResMut<TargetFootPositions>) {
     // always set the foot offsets to 0,0,0.
     **target = FootPositions::default();
 }

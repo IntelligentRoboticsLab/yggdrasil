@@ -1,11 +1,11 @@
 use std::time::Duration;
 
-use crate::kinematics::Kinematics;
+use crate::{kinematics::Kinematics, prelude::PreWrite};
 
 use super::{
     config::WalkingEngineConfig,
     feet::FootPositions,
-    scheduling::{Gait, MotionSet},
+    schedule::{Gait, MotionSet, StepPlanning},
     step::{PlannedStep, Step},
     FootSwitchedEvent, TORSO_OFFSET,
 };
@@ -22,8 +22,13 @@ pub(super) struct StepManagerPlugin;
 
 impl Plugin for StepManagerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, sync_gait_request.in_set(MotionSet::StepPlanning));
-        app.add_systems(PostUpdate, plan_step.in_set(MotionSet::StepPlanning));
+        app.add_systems(
+            StepPlanning,
+            sync_gait_request.in_set(MotionSet::StepPlanning),
+        );
+
+        // TODO: Probably want a separate schedule for this!
+        app.add_systems(PreWrite, plan_step.in_set(MotionSet::StepPlanning));
     }
 }
 
@@ -90,21 +95,12 @@ impl StepManager {
         let next_swing_foot = self.last_step.swing_foot.opposite();
         let next_step = (self.last_step.step + delta_step).clamp_anatomic(next_swing_foot, 0.1);
 
-        info!(?delta_step, ?next_step, "delta step");
-
         let target = FootPositions::from_target(next_swing_foot, &next_step);
         let swing_travel = start.swing_travel(next_swing_foot, &target).abs();
         let turn_amount = start.turn_amount(next_swing_foot, &target);
 
         let foot_lift_modifier =
             travel_weighting(swing_travel, turn_amount, config.foot_lift_modifier);
-
-        info!(
-            "base foot lift: {:?}, modifier: {:?}, final: {:?}",
-            config.base_foot_lift,
-            foot_lift_modifier,
-            config.base_foot_lift + foot_lift_modifier
-        );
 
         let step_duration_modifier = Duration::from_secs_f32(travel_weighting(
             swing_travel,
@@ -113,10 +109,9 @@ impl StepManager {
         ));
 
         info!(
-            "base duration: {:?}, modifier: {:?}, final: {:?}",
-            config.base_step_duration,
-            step_duration_modifier,
-            config.base_step_duration + step_duration_modifier
+            "[{:?}] foot lift: {}",
+            next_swing_foot,
+            config.base_foot_lift + foot_lift_modifier
         );
 
         self.planned_step = PlannedStep {

@@ -34,13 +34,6 @@ pub struct NaoSchedulePlugin;
 
 impl Plugin for NaoSchedulePlugin {
     fn build(&self, app: &mut App) {
-        // app.edit_schedule(Update, |schedule| {
-        //     schedule.set_build_settings(ScheduleBuildSettings {
-        //         ambiguity_detection: LogLevel::Warn,
-        //         ..default()
-        //     });
-        // });
-
         // Add the custom schedules to the main schedule.
         app.world_mut()
             .resource_scope(|_, mut schedule: Mut<MainScheduleOrder>| {

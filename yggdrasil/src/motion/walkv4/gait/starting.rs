@@ -2,14 +2,16 @@ use bevy::prelude::*;
 use std::time::Duration;
 
 use crate::{
+    kinematics::Kinematics,
     motion::walkv4::{
+        config::WalkingEngineConfig,
         feet::FootPositions,
         foot_support::FootSupportState,
-        scheduling::{Gait, MotionSet},
+        schedule::{Gait, GaitGeneration, MotionSet, StepPlanning},
         smoothing::{parabolic_return, parabolic_step},
         step::{PlannedStep, Step},
         step_manager::StepManager,
-        Side, TargetFootPositions,
+        Side, TargetFootPositions, TORSO_OFFSET,
     },
     nao::CycleTime,
 };
@@ -19,14 +21,14 @@ impl Plugin for StartingPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(Gait::Starting), init_starting_step);
         app.add_systems(
-            Update,
+            StepPlanning,
             end_starting_phase
                 .in_set(MotionSet::StepPlanning)
                 .run_if(in_state(Gait::Starting)),
         );
         app.add_systems(
-            Update,
-            (generate_starting_step)
+            GaitGeneration,
+            generate_starting_gait
                 .in_set(MotionSet::GaitGeneration)
                 .run_if(in_state(Gait::Starting)),
         );
@@ -69,7 +71,16 @@ impl StartingState {
     }
 }
 
-fn init_starting_step(mut commands: Commands, step_manager: Res<StepManager>) {
+fn init_starting_step(
+    mut commands: Commands,
+    mut step_manager: ResMut<StepManager>,
+    kinematics: Res<Kinematics>,
+    config: Res<WalkingEngineConfig>,
+) {
+    step_manager.plan_next_step(
+        FootPositions::from_kinematics(Side::Left, &kinematics, TORSO_OFFSET),
+        &config,
+    );
     commands.insert_resource(StartingState {
         phase: Duration::ZERO,
         planned_step: PlannedStep {
@@ -95,7 +106,7 @@ fn end_starting_phase(
     }
 }
 
-fn generate_starting_step(
+fn generate_starting_gait(
     mut state: ResMut<StartingState>,
     mut target_positions: ResMut<TargetFootPositions>,
 

@@ -6,7 +6,7 @@ use crate::{
     motion::walkv4::{
         feet::FootPositions,
         foot_support::FootSupportState,
-        scheduling::{Gait, MotionSet},
+        schedule::{Gait, GaitGeneration, MotionSet},
         smoothing::{parabolic_return, parabolic_step},
         step::PlannedStep,
         step_manager::StepManager,
@@ -21,12 +21,8 @@ impl Plugin for WalkGaitPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<WalkState>();
         app.add_systems(
-            Update,
-            (
-                check_foot_switched,
-                generate_foot_positions,
-                update_swing_foot,
-            )
+            GaitGeneration,
+            (check_foot_switched, generate_walk_gait, update_swing_foot)
                 .chain()
                 .in_set(MotionSet::GaitGeneration)
                 .run_if(in_state(Gait::Walking)),
@@ -83,9 +79,7 @@ fn check_foot_switched(
     let is_switch_allowed = state.linear() > 0.75;
 
     if foot_support.predicted_switch {
-        println!("switch diff: {switch_diff}");
         if switch_diff >= 20 && is_switch_allowed {
-            println!("predicted switch!");
             state.foot_switched_fsr = true;
         }
     } else {
@@ -99,13 +93,14 @@ fn check_foot_switched(
     }
 }
 
-fn generate_foot_positions(
+fn generate_walk_gait(
     mut state: ResMut<WalkState>,
     mut target_positions: ResMut<TargetFootPositions>,
     cycle_time: Res<CycleTime>,
     step_manager: Res<StepManager>,
 ) {
     state.phase += cycle_time.duration;
+
     let linear = state.linear();
     let parabolic = state.parabolic();
 
@@ -146,7 +141,6 @@ fn update_swing_foot(
         return;
     }
 
-    info!("\nSwitching foot!\n");
     state.phase = Duration::ZERO;
     **swing_foot = swing_foot.opposite();
     state.foot_switched_fsr = false;
