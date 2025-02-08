@@ -56,12 +56,29 @@ impl StepManager {
     }
 
     pub fn request_walk(&mut self, step: Step) {
-        self.requested_gait = Gait::Walking;
-        self.requested_step = step;
+        match self.requested_gait {
+            Gait::Sitting => error!(
+                "Cannot request walk while sitting! Call StepManager::request_stand() first!"
+            ),
+            Gait::Standing => {
+                // go to starting
+                self.requested_gait = Gait::Starting;
+                self.requested_step = step;
+            }
+            Gait::Starting | Gait::Walking => {
+                // the robot is currently starting or walking already, so we just change the requested step
+                self.requested_step = step;
+            }
+        }
     }
 
     pub fn finish_step(&mut self) {
         self.last_step = self.planned_step;
+    }
+
+    pub(super) fn finish_starting_step(&mut self, step: PlannedStep) {
+        self.last_step = step;
+        self.requested_gait = Gait::Walking;
     }
 
     pub fn plan_next_step(&mut self, start: FootPositions, config: &WalkingEngineConfig) {
@@ -79,22 +96,35 @@ impl StepManager {
         let swing_travel = start.swing_travel(next_swing_foot, &target).abs();
         let turn_amount = start.turn_amount(next_swing_foot, &target);
 
-        let max_foot_lift = config.base_foot_lift
-            + travel_weighting(swing_travel, turn_amount, config.foot_lift_modifier);
+        let foot_lift_modifier =
+            travel_weighting(swing_travel, turn_amount, config.foot_lift_modifier);
 
-        let duration = config.base_step_duration
-            + Duration::from_secs_f32(travel_weighting(
-                swing_travel,
-                turn_amount,
-                config.step_duration_modifier,
-            ));
+        info!(
+            "base foot lift: {:?}, modifier: {:?}, final: {:?}",
+            config.base_foot_lift,
+            foot_lift_modifier,
+            config.base_foot_lift + foot_lift_modifier
+        );
+
+        let step_duration_modifier = Duration::from_secs_f32(travel_weighting(
+            swing_travel,
+            turn_amount,
+            config.step_duration_modifier,
+        ));
+
+        info!(
+            "base duration: {:?}, modifier: {:?}, final: {:?}",
+            config.base_step_duration,
+            step_duration_modifier,
+            config.base_step_duration + step_duration_modifier
+        );
 
         self.planned_step = PlannedStep {
             step: next_step,
-            duration: Duration::from_millis(250),
+            duration: config.base_step_duration + step_duration_modifier,
             start,
             target,
-            swing_foot_height: max_foot_lift,
+            swing_foot_height: config.base_foot_lift + foot_lift_modifier,
             swing_foot: next_swing_foot,
         }
     }

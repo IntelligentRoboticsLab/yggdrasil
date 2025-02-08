@@ -109,4 +109,17 @@ pub struct PlannedStep {
     pub swing_foot: Side,
 }
 
+impl Default for PlannedStep {
+    fn default() -> Self {
+        Self {
+            step: Step::default(),
+            start: FootPositions::default(),
+            target: FootPositions::default(),
+            duration: Duration::from_millis(250),
+            swing_foot_height: 0.,
+            swing_foot: Side::Left,
+        }
+    }
+}
+
 impl PlannedStep {}

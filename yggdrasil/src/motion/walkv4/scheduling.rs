@@ -38,6 +38,7 @@ pub enum Gait {
     #[default]
     Sitting,
     Standing,
+    Starting,
     Walking,
 }
 
