@@ -8,19 +8,34 @@ pub type Point = na::Point2<f32>;
 pub type Vector = na::Vector2<f32>;
 pub type Isometry = na::Isometry2<f32>;
 
-/// The counterclockwise distance from `start` to `end`, always greater than or equal to zero.
-#[must_use]
-pub fn ccw_angular_distance(start: f32, end: f32) -> f32 {
-    (end - start).rem_euclid(TAU)
+/// The rotation direction around a circle.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum RotationDirection {
+    /// Counterclockwise
+    Ccw,
+    /// Clockwise
+    Cw,
 }
 
-/// The clockwise distance from `start` to `end`, always less than or equal to zero.
-#[must_use]
-pub fn cw_angular_distance(start: f32, end: f32) -> f32 {
-    -(start - end).rem_euclid(TAU)
+impl RotationDirection {
+    /// The angular distance from `start` to `end`.
+    pub fn angular_distance(self, start: f32, end: f32) -> f32 {
+        match self {
+            Self::Ccw => (end - start).rem_euclid(TAU),
+            Self::Cw => -(start - end).rem_euclid(TAU),
+        }
+    }
+
+    /// Checks whether `closer` is closer than `further`.
+    pub fn closer_or_equal(closer: f32, further: f32) -> bool {
+        match further >= 0. {
+            true => closer <= further,
+            false => closer >= further,
+        }
+    }
 }
 
-/// A line segment between `start` and `end`.
+/// A line segment from `start` to `end`.
 #[derive(Copy, Clone, Debug)]
 pub struct LineSegment {
     pub start: Point,
@@ -28,7 +43,7 @@ pub struct LineSegment {
 }
 
 impl LineSegment {
-    /// Creates a new line segment between `start` and `end`.
+    /// Creates a new line segment from `start` to `end`.
     #[must_use]
     pub fn new(start: Point, end: Point) -> Self {
         Self { start, end }
@@ -47,7 +62,7 @@ impl LineSegment {
         dir.y.atan2(dir.x)
     }
 
-    /// Shortens the line to the parallel projection of the point.
+    /// Shortens the line segment to the projection of the point onto the segment.
     #[must_use]
     pub fn enter(self, point: Point) -> Option<Self> {
         let direction = self.direction();
@@ -189,15 +204,24 @@ pub struct Tangents {
 }
 
 impl Tangents {
+    /// Gets the tangents associated with the given direction.
+    #[must_use]
+    pub fn get(self, direction: RotationDirection) -> f32 {
+        match direction {
+            RotationDirection::Ccw => self.ccw,
+            RotationDirection::Cw => self.cw,
+        }
+    }
+
     /// Returns the counterclockwise angles as a tuple.
     #[must_use]
-    pub fn ccw(self) -> (f32, f32) {
+    pub fn ccw_to_ccw(self) -> (f32, f32) {
         (self.ccw, self.ccw)
     }
 
     /// Returns the clockwise angles as a tuple.
     #[must_use]
-    pub fn cw(self) -> (f32, f32) {
+    pub fn cw_to_cw(self) -> (f32, f32) {
         (self.cw, self.cw)
     }
 
@@ -218,6 +242,15 @@ pub struct InnerTangents {
 }
 
 impl InnerTangents {
+    /// Gets the tangents associated with the given start direction.
+    #[must_use]
+    pub fn get(self, direction: RotationDirection) -> (f32, f32) {
+        match direction {
+            RotationDirection::Ccw => self.ccw_to_cw,
+            RotationDirection::Cw => self.cw_to_ccw,
+        }
+    }
+
     /// Flips the direction of the tangents.
     #[must_use]
     pub fn flip(self) -> Self {
@@ -238,31 +271,37 @@ pub struct CircularArc {
 }
 
 impl CircularArc {
-    /// Creates a new counterclockwise circular arc (i.e., with a positive `step`).
+    /// Creates a new arc.
     #[must_use]
-    pub fn ccw(circle: Circle, start: f32, end: f32) -> Self {
+    pub fn new(
+        circle: Circle,
+        direction: RotationDirection,
+        start: f32,
+        end: f32,
+    ) -> Self {
         Self {
             circle,
             start,
-            step: ccw_angular_distance(start, end),
+            step: direction.angular_distance(start, end),
         }
     }
 
-    /// Creates a new clockwise circular arc (i.e., with a negative `step`).
+    /// Creates an arc through an isometry with the given direction and radius.
     #[must_use]
-    pub fn cw(circle: Circle, start: f32, end: f32) -> Self {
-        Self {
-            circle,
-            start,
-            step: cw_angular_distance(start, end),
+    pub fn from_isometry(
+        isometry: Isometry,
+        direction: RotationDirection,
+        radius: f32,
+    ) -> Self {
+        match direction {
+            RotationDirection::Ccw => Self::ccw_from_isometry(isometry, radius),
+            RotationDirection::Cw => Self::cw_from_isometry(isometry, radius),
         }
     }
 
-    /// Creates a counterclockwise support arc to ease in/out of an isometry.
-    ///
-    /// The start of this arc is the angle at which the isometry is located.
+    /// Creates a counterclockwise arc through an isometry with the given radius.
     #[must_use]
-    pub fn ccw_from_isometry(isometry: Isometry, radius: f32) -> Self {
+    fn ccw_from_isometry(isometry: Isometry, radius: f32) -> Self {
         Self {
             circle: Circle::new(isometry * na::point![0., radius], radius),
             start: isometry.rotation.angle() - 0.5 * PI,
@@ -270,11 +309,9 @@ impl CircularArc {
         }
     }
 
-    /// Creates a clockwise support arc to ease in/out of an isometry.
-    ///
-    /// The start of this arc is the angle at which the isometry is located.
+    /// Creates a clockwise arc through an isometry with the given radius.
     #[must_use]
-    pub fn cw_from_isometry(isometry: Isometry, radius: f32) -> Self {
+    fn cw_from_isometry(isometry: Isometry, radius: f32) -> Self {
         Self {
             circle: Circle::new(isometry * na::point![0., -radius], radius),
             start: isometry.rotation.angle() + 0.5 * PI,
@@ -296,10 +333,14 @@ impl CircularArc {
         self
     }
 
-    /// Returns an arc on the same circle with a different start and step.
+    /// Changes the direction of the arc.
     #[must_use]
-    pub fn with_start_and_step(self, start: f32, step: f32) -> Self {
-        self.with_start(start).with_step(step)
+    pub fn with_direction(self, direction: RotationDirection) -> Self {
+        if self.direction() != direction {
+            self.flip()
+        } else {
+            self
+        }
     }
 
     /// Flips the direction of the arc.
@@ -312,44 +353,26 @@ impl CircularArc {
         }
     }
 
-    /// Returns whether the arc is counterclockwise, an arc with zero length is considered
-    /// counterclockwise.
+    /// Returns the direction of the arc.
     #[must_use]
-    pub fn is_ccw(self) -> bool {
-        self.step >= 0.
+    pub fn direction(self) -> RotationDirection {
+        match self.step >= 0. {
+            true => RotationDirection::Ccw,
+            false => RotationDirection::Cw,
+        }
     }
 
-    /// Returns whether the arc is clockwise.
-    #[must_use]
-    pub fn is_cw(self) -> bool {
-        !self.is_ccw()
+    /// The angular distance from `start` to `end`.
+    pub fn angular_distance(self, start: f32, end: f32) -> f32 {
+        self.direction().angular_distance(start, end)
     }
 
     /// Returns whether the arc is a full circle (i.e, the absolute step is or exceeds `TAU`).
     #[must_use]
-    pub fn circular(self) -> bool {
+    pub fn full_circle(self) -> bool {
         self.step.abs() >= TAU
     }
 
-    /// Flips clockwise arcs and leaves counterclockwise arcs unchanged.
-    #[must_use]
-    pub fn to_ccw(self) -> Self {
-        if self.is_cw() {
-            self.flip()
-        } else {
-            self
-        }
-    }
-
-    /// Flips counterclockwise arcs and leaves clockwise arcs unchanged.
-    #[must_use]
-    pub fn to_cw(self) -> Self {
-        if self.is_ccw() {
-            self.flip()
-        } else {
-            self
-        }
-    }
 
     /// Returns the angle at the end of the arc.
     #[must_use]
@@ -384,11 +407,8 @@ impl CircularArc {
     /// Returns whether the angle is contained within this arc.
     #[must_use]
     pub fn contains_angle(self, angle: f32) -> bool {
-        if self.is_ccw() {
-            ccw_angular_distance(self.start, angle) <= self.step
-        } else {
-            cw_angular_distance(self.start, angle) >= self.step
-        }
+        let distance = self.angular_distance(self.start, angle);
+        RotationDirection::closer_or_equal(distance, self.step)
     }
 
     /// Returns the point at an angle.
@@ -412,7 +432,7 @@ impl CircularArc {
     /// Same as `enter_non_circular`, but preserves circles.
     #[must_use]
     pub fn enter(self, start: f32) -> Option<Self> {
-        if self.circular() {
+        if self.full_circle() {
             Some(self.with_start(start))
         } else {
             self.enter_non_circular(start)
@@ -424,37 +444,24 @@ impl CircularArc {
     /// Circles are not preserved.
     #[must_use]
     pub fn enter_non_circular(self, start: f32) -> Option<Self> {
-        if self.is_ccw() {
-            let step = ccw_angular_distance(start, self.end());
-            (step <= self.step).then(|| self.with_start_and_step(start, step))
-        } else {
-            let step = cw_angular_distance(start, self.end());
-            (step >= self.step).then(|| self.with_start_and_step(start, step))
-        }
+        let step = self.angular_distance(start, self.end());
+
+        RotationDirection::closer_or_equal(step, self.step)
+            .then(|| self.with_start(start).with_step(step))
     }
 
     /// Returns a new shortened copy of this arc with a given end if that end lies on this arc.
     #[must_use]
     pub fn exit(self, end: f32) -> Option<Self> {
-        if self.is_ccw() {
-            let step = ccw_angular_distance(self.start, end);
-            (step <= self.step).then(|| self.with_step(step))
-        } else {
-            let step = cw_angular_distance(self.start, end);
-            (step >= self.step).then(|| self.with_step(step))
-        }
+        let step = self.angular_distance(self.start, end);
+
+        RotationDirection::closer_or_equal(step, self.step).then(|| self.with_step(step))
     }
 
     /// Returns a copy of this arc such that it starts at the tangent line through `point`.
     #[must_use]
     pub fn point_to_arc(mut self, point: Point) -> Option<(LineSegment, Self)> {
-        let tangents = self.circle.tangents(point)?;
-
-        self = if self.is_ccw() {
-            self.enter(tangents.ccw)?
-        } else {
-            self.enter(tangents.cw)?
-        };
+        self = self.enter(self.circle.tangents(point)?.get(self.direction()))?;
 
         Some((LineSegment::new(point, self.point_at_start()), self))
     }
@@ -462,13 +469,7 @@ impl CircularArc {
     /// Returns a copy of this arc such that it ends at the tangent line through `point`.
     #[must_use]
     pub fn arc_to_point(mut self, point: Point) -> Option<(Self, LineSegment)> {
-        let tangents = self.circle.tangents(point)?.flip();
-
-        self = if self.is_ccw() {
-            self.exit(tangents.ccw)?
-        } else {
-            self.exit(tangents.cw)?
-        };
+        self = self.enter(self.circle.tangents(point)?.flip().get(self.direction()))?;
 
         Some((self, LineSegment::new(self.point_at_end(), point)))
     }
@@ -476,11 +477,13 @@ impl CircularArc {
     /// Connects two arcs together by their common tangent.
     #[must_use]
     pub fn arc_to_arc(mut self, mut other: Self) -> Option<(Self, LineSegment, Self)> {
-        let angles = match (self.is_ccw(), other.is_ccw()) {
-            (true, true) => self.circle.outer_tangents(other.circle)?.ccw(),
-            (false, false) => self.circle.outer_tangents(other.circle)?.cw(),
-            (true, false) => self.circle.inner_tangents(other.circle)?.ccw_to_cw,
-            (false, true) => self.circle.inner_tangents(other.circle)?.cw_to_ccw,
+        use RotationDirection::{Ccw, Cw};
+
+        let angles = match (self.direction(), other.direction()) {
+            (Ccw, Ccw) => self.circle.outer_tangents(other.circle)?.ccw_to_ccw(),
+            (Ccw, Cw) => self.circle.inner_tangents(other.circle)?.ccw_to_cw,
+            (Cw, Ccw) => self.circle.inner_tangents(other.circle)?.cw_to_ccw,
+            (Cw, Cw) => self.circle.outer_tangents(other.circle)?.cw_to_cw(),
         };
 
         self = self.exit(angles.0)?;
