@@ -18,20 +18,11 @@ const LOLA_SOCKET_PATH: &str = "/tmp/yggdrasil";
 #[cfg(feature = "local")]
 const LOLA_SOCKET_PATH: &str = "/tmp/robocup";
 
-#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
-pub enum LolaCycle {
-    Main,
-    Flush,
-}
-
 /// Plugin that adds systems for reading and writing to the `LoLA` socket using [`nidhogg`].
 pub(super) struct LolaPlugin;
 
 impl Plugin for LolaPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_sets(Update, LolaCycle::Main)
-            .configure_sets(Write, LolaCycle::Flush);
-
         app.init_resource::<NaoControlMessage>();
 
         app.world_mut()
@@ -41,7 +32,7 @@ impl Plugin for LolaPlugin {
             .run_system_once(initialize_nao)
             .expect("failed to initialize nao resources!");
 
-        app.add_systems(Write, sync_hardware.in_set(LolaCycle::Flush));
+        app.add_systems(Write, sync_hardware);
     }
 }
 
