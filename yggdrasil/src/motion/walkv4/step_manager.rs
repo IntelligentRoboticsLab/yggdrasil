@@ -76,12 +76,18 @@ impl StepManager {
         info!(?delta_step, ?next_step, "delta step");
 
         let target = FootPositions::from_target(next_swing_foot, &next_step);
+        let swing_travel = start.swing_travel(next_swing_foot, &target).abs();
+        let turn_amount = start.turn_amount(next_swing_foot, &target);
+
         let max_foot_lift = config.base_foot_lift
-            + travel_weighting(
-                start.swing_travel(next_swing_foot, &target).abs(),
-                start.turn_amount(next_swing_foot, &target),
-                config.foot_lift_modifier,
-            );
+            + travel_weighting(swing_travel, turn_amount, config.foot_lift_modifier);
+
+        let duration = config.base_step_duration
+            + Duration::from_secs_f32(travel_weighting(
+                swing_travel,
+                turn_amount,
+                config.step_duration_modifier,
+            ));
 
         self.planned_step = PlannedStep {
             step: next_step,
