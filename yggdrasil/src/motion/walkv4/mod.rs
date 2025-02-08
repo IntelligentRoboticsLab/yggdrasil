@@ -4,7 +4,7 @@ use config::WalkingEngineConfig;
 use feet::FootPositions;
 use hips::HipHeight;
 use nidhogg::types::{ArmJoints, FillExt, LeftLegJoints, LegJoints, RightLegJoints};
-use scheduling::{Gait, MotionSet};
+use schedule::{Gait, MotionSet};
 use step::Step;
 use step_manager::StepManager;
 
@@ -22,7 +22,7 @@ pub mod feet;
 mod foot_support;
 mod gait;
 pub mod hips;
-mod scheduling;
+mod schedule;
 mod smoothing;
 pub mod step;
 pub mod step_manager;
@@ -41,7 +41,7 @@ impl Plugin for Walkv4EnginePlugin {
         app.init_resource::<TargetLegStiffness>();
         app.add_event::<FootSwitchedEvent>();
         app.add_plugins((
-            scheduling::MotionSchedulePlugin,
+            schedule::WalkingEngineSchedulePlugin,
             step_manager::StepManagerPlugin,
             hips::HipHeightPlugin,
             gait::GaitPlugins,

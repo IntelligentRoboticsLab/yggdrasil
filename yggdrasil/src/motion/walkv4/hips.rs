@@ -5,7 +5,7 @@ use crate::{
     nao::CycleTime,
 };
 
-use super::scheduling::MotionSet;
+use super::schedule::{MotionSet, StepPlanning};
 
 /// Threshold for snapping to the requested hip height.
 const REACHED_REQUESTED_THRESHOLD: f32 = 0.001;
@@ -21,7 +21,10 @@ impl Plugin for HipHeightPlugin {
             requested: 0f32,
         });
         app.add_systems(PostStartup, init_hip_height.in_set(MotionSet::StepPlanning));
-        app.add_systems(Update, update_hip_height.in_set(MotionSet::StepPlanning));
+        app.add_systems(
+            StepPlanning,
+            update_hip_height.in_set(MotionSet::StepPlanning),
+        );
     }
 }
 

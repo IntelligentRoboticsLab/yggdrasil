@@ -5,7 +5,7 @@ use crate::motion::walkv4::{
     config::WalkingEngineConfig,
     feet::FootPositions,
     hips::HipHeight,
-    scheduling::{MotionSet, Gait},
+    schedule::{Gait, GaitGeneration, MotionSet},
     TargetFootPositions, TargetLegStiffness,
 };
 
@@ -18,8 +18,8 @@ impl Plugin for StandGaitPlugin {
             request_sit.in_set(MotionSet::GaitGeneration),
         );
         app.add_systems(
-            Update,
-            generate_foot_positions
+            GaitGeneration,
+            generate_stand_gait
                 .in_set(MotionSet::GaitGeneration)
                 .run_if(in_state(Gait::Standing)),
         );
@@ -35,7 +35,7 @@ fn request_sit(
     **target_stiffness = LegJoints::fill(config.leg_stiffness);
 }
 
-fn generate_foot_positions(mut target: ResMut<TargetFootPositions>) {
+fn generate_stand_gait(mut target: ResMut<TargetFootPositions>) {
     // always set the foot offsets to 0,0,0.
     **target = FootPositions::default();
 }

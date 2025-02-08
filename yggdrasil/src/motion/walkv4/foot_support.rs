@@ -4,7 +4,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::sensor::fsr::{CalibratedFsr, Contacts};
 
-use super::{config::WalkingEngineConfig, scheduling::MotionSet, Side};
+use super::{
+    config::WalkingEngineConfig,
+    schedule::{MotionSet, StepPlanning},
+    Side,
+};
 
 pub(super) struct FootSupportPlugin;
 
@@ -12,7 +16,10 @@ impl Plugin for FootSupportPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FootSupportState>();
         app.add_systems(PostStartup, init_foot_support);
-        app.add_systems(Update, update_foot_support.in_set(MotionSet::StepPlanning));
+        app.add_systems(
+            StepPlanning,
+            update_foot_support.in_set(MotionSet::StepPlanning),
+        );
     }
 }
 

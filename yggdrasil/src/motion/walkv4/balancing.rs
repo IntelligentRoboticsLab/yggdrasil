@@ -3,12 +3,15 @@ use nidhogg::types::{LeftLegJoints, RightLegJoints};
 
 use super::{
     config::WalkingEngineConfig,
-    scheduling::{Gait, MotionSet},
+    schedule::{Balancing, Gait, MotionSet},
     Side, SwingFoot,
 };
 use crate::sensor::{imu::IMUValues, low_pass_filter::LowPassFilter};
 
 // TODO: Make config value
+/// The cut-off frequency for the butterworth lowpass filter used for the gyroscope values.
+/// Higher values means that the filtered gyroscope value responds to changes quicker,
+/// and lower values mean that it responds slower.
 const FILTERED_GYRO_OMEGA: f32 = 0.115;
 
 /// Plugin for balancing the robot during [`MotionSet::Balancing`]
@@ -18,9 +21,9 @@ impl Plugin for BalancingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<BalanceAdjustment>();
 
-        app.add_systems(OnEnter(Gait::Walking), reset_balance_adjustment);
+        app.add_systems(OnEnter(Gait::Standing), reset_balance_adjustment);
         app.add_systems(
-            Update,
+            Balancing,
             (update_filtered_gyroscope, update_balance_adjustment)
                 .chain()
                 .in_set(MotionSet::Balancing)
@@ -37,9 +40,7 @@ fn update_filtered_gyroscope(
     mut balance_adjustment: ResMut<BalanceAdjustment>,
     imu: Res<IMUValues>,
 ) {
-    if imu.has_new_gyroscope_measurement() {
-        balance_adjustment.filtered_gyro.update(imu.gyroscope);
-    }
+    balance_adjustment.filtered_gyro.update(imu.gyroscope);
 }
 
 /// Resource that stores balance adjustment values for the walking engine.
