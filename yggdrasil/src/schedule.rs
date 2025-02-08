@@ -1,8 +1,4 @@
-use bevy::{
-    app::MainScheduleOrder,
-    ecs::schedule::{LogLevel, ScheduleBuildSettings, ScheduleLabel},
-    prelude::*,
-};
+use bevy::{app::MainScheduleOrder, ecs::schedule::ScheduleLabel, prelude::*};
 
 /// The schedule that contains logic that updates resources using sensor data.
 ///
