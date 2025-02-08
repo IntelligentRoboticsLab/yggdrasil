@@ -12,7 +12,7 @@ use crate::sensor::{imu::IMUValues, low_pass_filter::LowPassFilter};
 /// The cut-off frequency for the butterworth lowpass filter used for the gyroscope values.
 /// Higher values means that the filtered gyroscope value responds to changes quicker,
 /// and lower values mean that it responds slower.
-const FILTERED_GYRO_OMEGA: f32 = 0.115;
+const FILTERED_GYRO_OMEGA: f32 = 0.055;
 
 /// Plugin for balancing the robot during [`MotionSet::Balancing`]
 pub(super) struct BalancingPlugin;

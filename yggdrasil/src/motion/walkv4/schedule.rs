@@ -93,17 +93,10 @@ impl WalkingEngine {
         world.resource_scope(|world, order: Mut<WalkingEngineScheduleOrder>| {
             for &label in &order.labels {
                 let _ = world.try_run_schedule(label);
-
-                // after each phase of the walking engine, we want to run the state transition.
-                let _ = world.try_run_schedule(StateTransition);
             }
         });
     }
 }
-
-/// Runs the [`WalkingEngineSchedule`]
-#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct RunWalkingEngineSchedule;
 
 /// Plugin that sets up the system sets that define the walking engine.
 pub(super) struct WalkingEngineSchedulePlugin;
