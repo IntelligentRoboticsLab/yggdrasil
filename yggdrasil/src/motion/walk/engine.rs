@@ -202,7 +202,7 @@ impl WalkingEngine {
             }
             WalkState::Starting(_) => {
                 self.current_step = Step::default();
-                self.next_foot_switch = config.base_step_period;
+                self.next_foot_switch = config.base_step_duration;
                 self.swing_foot = self.swing_foot.next();
             }
             WalkState::Walking(step) => {
@@ -210,7 +210,7 @@ impl WalkingEngine {
 
                 // TODO: step duration increase?
                 // self.current_step = step.clamped(self.config.max_step_size);
-                self.next_foot_switch = config.base_step_period;
+                self.next_foot_switch = config.base_step_duration;
 
                 self.swing_foot = next_swing_foot;
                 self.current_step = step.clamp_anatomic(self.swing_foot, 0.1);
@@ -220,7 +220,7 @@ impl WalkingEngine {
             }
             WalkState::Stopping => {
                 self.current_step = Step::default();
-                self.next_foot_switch = config.base_step_period;
+                self.next_foot_switch = config.base_step_duration;
                 self.swing_foot = self.swing_foot.next();
                 self.max_swing_foot_lift = config.base_foot_lift;
             }
