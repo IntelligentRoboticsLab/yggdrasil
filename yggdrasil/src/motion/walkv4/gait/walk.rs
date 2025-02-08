@@ -8,6 +8,7 @@ use crate::{
         foot_support::FootSupportState,
         scheduling::{Gait, MotionSet},
         smoothing::{parabolic_return, parabolic_step},
+        step::PlannedStep,
         step_manager::StepManager,
         FootSwitchedEvent, Side, SwingFoot, TargetFootPositions,
     },
@@ -36,7 +37,7 @@ impl Plugin for WalkGaitPlugin {
 #[derive(Debug, Clone, Resource)]
 struct WalkState {
     phase: Duration,
-    planned_duration: Duration,
+    planned_step: PlannedStep,
     foot_switched_fsr: bool,
 }
 
@@ -44,7 +45,7 @@ impl Default for WalkState {
     fn default() -> Self {
         Self {
             phase: Duration::ZERO,
-            planned_duration: Duration::from_millis(200),
+            planned_step: PlannedStep::default(),
             foot_switched_fsr: false,
         }
     }
@@ -58,7 +59,7 @@ impl WalkState {
     #[inline]
     #[must_use]
     fn linear(&self) -> f32 {
-        (self.phase.as_secs_f32() / self.planned_duration.as_secs_f32()).clamp(0.0, 1.0)
+        (self.phase.as_secs_f32() / self.planned_step.duration.as_secs_f32()).clamp(0.0, 1.0)
     }
 
     /// Get a value from [0, 1] describing the position of the current step, along a parabolic path.
@@ -114,6 +115,7 @@ fn generate_foot_positions(
     };
 
     let planned = step_manager.planned_step;
+    state.planned_step = planned;
     let start = planned.start;
     let target = planned.target;
     let mut left = start.left.lerp_slerp(&target.left.inner, left_t);
@@ -146,7 +148,6 @@ fn update_swing_foot(
 
     info!("\nSwitching foot!\n");
     state.phase = Duration::ZERO;
-    state.planned_duration = Duration::from_secs_f32(0.25);
     **swing_foot = swing_foot.opposite();
     state.foot_switched_fsr = false;
     event.send(FootSwitchedEvent(**swing_foot));
