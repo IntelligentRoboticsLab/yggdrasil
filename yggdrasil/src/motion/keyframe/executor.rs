@@ -1,5 +1,4 @@
 use super::{get_min_duration, lerp, types::Movement, ActiveMotion, KeyframeExecutor};
-use crate::motion::walk::engine::WalkingEngine;
 use crate::motion::walkv4::step_manager::StepManager;
 use crate::nao::NaoManager;
 use crate::nao::Priority;

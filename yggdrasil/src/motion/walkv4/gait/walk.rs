@@ -3,6 +3,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 
 use crate::{
+    core::debug::DebugContext,
     motion::walkv4::{
         feet::FootPositions,
         foot_support::FootSupportState,
@@ -72,24 +73,47 @@ fn check_foot_switched(
     mut state: ResMut<WalkState>,
     foot_support: Res<FootSupportState>,
     cycle: Res<Cycle>,
-    mut last_switched: Local<Cycle>,
+    ctx: DebugContext,
 ) {
-    let switch_diff = cycle.0 - last_switched.0;
     // only switch if we've completed 75% of the step
     let is_switch_allowed = state.linear() > 0.75;
 
-    if foot_support.predicted_switch {
-        if switch_diff >= 20 && is_switch_allowed {
+    ctx.log_with_cycle(
+        "foot_switch/linear",
+        *cycle,
+        &rerun::Scalar::new(if is_switch_allowed {
+            1.0
+        } else {
+            state.linear()
+        } as f64),
+    );
+
+    ctx.log_with_cycle(
+        "foot_switch/predicted",
+        *cycle,
+        &rerun::Scalar::new(if foot_support.predicted_switch {
+            1.0
+        } else {
+            -1.0
+        }),
+    );
+
+    ctx.log_with_cycle(
+        "foot_switch/normal",
+        *cycle,
+        &rerun::Scalar::new(if foot_support.foot_switched {
+            1.0
+        } else {
+            -1.0
+        }),
+    );
+
+    if is_switch_allowed {
+        if foot_support.predicted_switch {
             state.foot_switched_fsr = true;
-        }
-    } else {
-        if switch_diff >= 20 && is_switch_allowed {
+        } else {
             state.foot_switched_fsr = foot_support.foot_switched;
         }
-    }
-
-    if state.foot_switched_fsr {
-        *last_switched = *cycle;
     }
 }
 
