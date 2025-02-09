@@ -3,7 +3,7 @@ use bevy::app::PluginGroup;
 mod sit;
 mod stand;
 mod starting;
-mod walk;
+pub mod walk;
 
 pub(super) struct GaitPlugins;
 

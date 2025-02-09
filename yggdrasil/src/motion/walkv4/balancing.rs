@@ -13,6 +13,8 @@ pub(super) struct BalancingPlugin;
 
 impl Plugin for BalancingPlugin {
     fn build(&self, app: &mut App) {
+        // ensure balance adjustment resource exists!
+        app.add_systems(PostStartup, reset_balance_adjustment);
         app.add_systems(OnEnter(Gait::Standing), reset_balance_adjustment);
         app.add_systems(
             Balancing,
@@ -87,6 +89,7 @@ impl BalanceAdjustment {
     ) -> &Self {
         left_leg.ankle_pitch += self.left_ankle_pitch;
         right_leg.ankle_pitch += self.right_ankle_pitch;
+
         self
     }
 }

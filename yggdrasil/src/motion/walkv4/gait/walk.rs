@@ -3,7 +3,6 @@ use std::time::Duration;
 use bevy::prelude::*;
 
 use crate::{
-    core::debug::DebugContext,
     motion::walkv4::{
         feet::FootPositions,
         foot_support::FootSupportState,
@@ -13,7 +12,7 @@ use crate::{
         step_manager::StepManager,
         FootSwitchedEvent, Side, SwingFoot, TargetFootPositions,
     },
-    nao::{Cycle, CycleTime},
+    nao::CycleTime,
 };
 
 pub(super) struct WalkGaitPlugin;
@@ -69,44 +68,9 @@ impl WalkState {
     }
 }
 
-fn check_foot_switched(
-    mut state: ResMut<WalkState>,
-    foot_support: Res<FootSupportState>,
-    cycle: Res<Cycle>,
-    ctx: DebugContext,
-) {
+fn check_foot_switched(mut state: ResMut<WalkState>, foot_support: Res<FootSupportState>) {
     // only switch if we've completed 75% of the step
     let is_switch_allowed = state.linear() > 0.75;
-
-    ctx.log_with_cycle(
-        "foot_switch/linear",
-        *cycle,
-        &rerun::Scalar::new(if is_switch_allowed {
-            1.0
-        } else {
-            state.linear()
-        } as f64),
-    );
-
-    ctx.log_with_cycle(
-        "foot_switch/predicted",
-        *cycle,
-        &rerun::Scalar::new(if foot_support.predicted_switch {
-            1.0
-        } else {
-            -1.0
-        }),
-    );
-
-    ctx.log_with_cycle(
-        "foot_switch/normal",
-        *cycle,
-        &rerun::Scalar::new(if foot_support.foot_switched {
-            1.0
-        } else {
-            -1.0
-        }),
-    );
 
     if is_switch_allowed {
         if foot_support.predicted_switch {
