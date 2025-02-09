@@ -15,20 +15,16 @@ workspace = true
 build_utils = { workspace = true }
 yggdrasil = { workspace = true }
 
-cargo_toml = { workspace = true }
 clap = { workspace = true, features = ["derive", "string"] }
 colored = { workspace = true }
 dialoguer = { workspace = true }
 futures = { workspace = true }
-glob = { workspace = true }
 home = { workspace = true }
 indicatif = { workspace = true, features = ["tokio"] }
 local-ip-address = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 serde = { workspace = true }
-serde_json = { workspace = true }
 serde_with = { workspace = true }
-ssh2 = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = [
   "macros",
@@ -39,4 +35,3 @@ tokio = { workspace = true, features = [
   "time",
 ] }
 toml = { workspace = true }
-walkdir = { workspace = true }
