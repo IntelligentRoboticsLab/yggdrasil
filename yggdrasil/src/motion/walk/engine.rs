@@ -7,7 +7,7 @@ use crate::{
         FootOffset, Kinematics,
     },
     motion::walkv4::config::WalkingEngineConfig,
-    sensor::low_pass_filter::LowPassFilter,
+    sensor::low_pass_filter::ButterworthLpf,
 };
 use std::{ops::Neg, time::Duration};
 
@@ -90,7 +90,7 @@ pub struct WalkingEngine {
     /// The step that the engine is currently performing.
     pub current_step: Step,
     /// The filtered gyroscope values used for balancing.
-    pub filtered_gyroscope: LowPassFilter<3>,
+    pub filtered_gyroscope: ButterworthLpf<3>,
     /// The time into the current phase.
     pub t: Duration,
     /// The duration of the current step, e.g. the time until the next foot switch.
@@ -161,7 +161,7 @@ impl WalkingEngine {
             state: WalkState::from_hip_height(current_hip_height, config),
             request: WalkRequest::Sit,
             current_step: Step::default(),
-            filtered_gyroscope: LowPassFilter::new(FILTERED_GYRO_OMEGA),
+            filtered_gyroscope: ButterworthLpf::new(FILTERED_GYRO_OMEGA),
             t: Duration::ZERO,
             next_foot_switch: Duration::ZERO,
             swing_foot: Side::default(),
@@ -176,7 +176,7 @@ impl WalkingEngine {
     /// Resets the properties of the walking engine, such that it results in a stationary upright position.
     pub(super) fn reset(&mut self) {
         self.current_step = Step::default();
-        self.filtered_gyroscope = LowPassFilter::new(FILTERED_GYRO_OMEGA);
+        self.filtered_gyroscope = ButterworthLpf::new(FILTERED_GYRO_OMEGA);
         self.t = Duration::ZERO;
         self.foot_offsets = FootOffsets::zero(self.hip_height);
         self.foot_offsets_t0 = FootOffsets::zero(self.hip_height);
