@@ -39,8 +39,6 @@ impl Roles for Striker {
     const STATE: Role = Role::Striker;
 }
 
-#[allow(clippy::too_many_arguments)]
-#[allow(clippy::too_many_lines)]
 pub fn striker_role(
     mut commands: Commands,
     pose: Res<RobotPose>,

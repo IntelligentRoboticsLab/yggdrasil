@@ -28,7 +28,6 @@ impl Roles for Defender {
     const STATE: Role = Role::Defender;
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn defender_role(
     mut commands: Commands,
     pose: Res<RobotPose>,
