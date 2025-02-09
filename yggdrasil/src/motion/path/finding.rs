@@ -34,8 +34,14 @@ impl Pathfinding<'_> {
         let mut segments = Vec::new();
 
         for window in states.windows(2) {
-            let [prev, next] = *window else {
-                unreachable!()
+            let (prev, next) = match *window {
+                [State::Start, State::EaseIn(_)] => continue,
+                [prev @ State::EaseOut(_, _), _] => {
+                    segments.push(self.arc(prev).unwrap().into());
+                    continue;
+                },
+                [prev, next] => (prev, next),
+                _ => unreachable!(),
             };
 
             Connection::new(self.node(prev), self.node(next))
@@ -169,7 +175,7 @@ impl Pathfinding<'_> {
         Some(CircularArc::from_isometry(
             self.start.isometry()?,
             direction,
-            self.settings.ease_in_out,
+            self.settings.ease_in,
         ))
     }
 
@@ -178,7 +184,7 @@ impl Pathfinding<'_> {
         Some(CircularArc::from_isometry(
             self.goal.isometry()?,
             direction,
-            self.settings.ease_in_out,
+            self.settings.ease_out,
         ))
     }
 }

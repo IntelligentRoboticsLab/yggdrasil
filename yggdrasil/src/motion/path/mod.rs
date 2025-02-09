@@ -51,8 +51,10 @@ pub struct PathSettings {
     /// The maximum distance the robot is allowed to be from the target before it is considered
     /// reached.
     pub target_tolerance: f32,
-    /// The radius ou the arc to ease in/out of the path.
-    pub ease_in_out: f32,
+    /// The radius ou the arc to ease in into the path.
+    pub ease_in: f32,
+    /// The radius ou the arc to ease out of the path.
+    pub ease_out: f32,
 }
 
 impl Default for PathSettings {
@@ -62,7 +64,8 @@ impl Default for PathSettings {
             tolerance: 0.2,
             angular_tolerance: 0.2 * PI,
             target_tolerance: 0.05,
-            ease_in_out: 0.25,
+            ease_in: 0.15,
+            ease_out: 0.25,
         }
     }
 }
