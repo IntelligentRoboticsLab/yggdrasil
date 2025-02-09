@@ -24,6 +24,7 @@ impl Step {
     }
 
     /// Clamp the step to the anatomic limits of the robot.
+    #[must_use]
     pub fn clamp_anatomic(self, swing_foot: Side, max_inside_turn: f32) -> Self {
         let lateral_direction = if self.left.is_sign_positive() {
             Side::Left

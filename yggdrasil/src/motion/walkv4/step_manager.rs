@@ -1,6 +1,14 @@
 use std::time::Duration;
 
-use crate::{kinematics::Kinematics, prelude::PreWrite};
+use crate::{
+    core::debug::{
+        debug_system::{DebugAppExt, SystemToggle},
+        DebugContext,
+    },
+    kinematics::Kinematics,
+    nao::Cycle,
+    prelude::PreWrite,
+};
 
 use super::{
     config::WalkingEngineConfig,
@@ -11,6 +19,10 @@ use super::{
 };
 use bevy::prelude::*;
 use nalgebra::Vector2;
+use rerun::{
+    external::glam::{Quat, Vec3},
+    TransformRelation,
+};
 
 const MAX_ACCELERATION: Step = Step {
     forward: 0.01,
@@ -22,13 +34,27 @@ pub(super) struct StepManagerPlugin;
 
 impl Plugin for StepManagerPlugin {
     fn build(&self, app: &mut App) {
+        app.add_systems(PostStartup, setup_step_visualizer);
         app.add_systems(
             StepPlanning,
             sync_gait_request.in_set(MotionSet::StepPlanning),
         );
 
         // TODO: Probably want a separate schedule for this!
-        app.add_systems(PreWrite, plan_step.in_set(MotionSet::StepPlanning));
+        app.add_systems(
+            PreWrite,
+            plan_step
+                .run_if(on_event::<FootSwitchedEvent>)
+                .in_set(MotionSet::StepPlanning),
+        );
+        app.add_debug_systems(
+            PreWrite,
+            visualize_planned_step
+                .after(plan_step)
+                .run_if(on_event::<FootSwitchedEvent>)
+                .in_set(MotionSet::StepPlanning),
+            SystemToggle::Enable,
+        );
     }
 }
 
@@ -41,12 +67,13 @@ pub struct StepManager {
 }
 
 impl StepManager {
+    #[must_use]
     pub fn init(gait: Gait, last_step: PlannedStep) -> Self {
         Self {
             requested_gait: gait,
             requested_step: Step::default(),
-            last_step: last_step.clone(),
-            planned_step: last_step.clone(),
+            last_step,
+            planned_step: last_step,
         }
     }
 
@@ -125,6 +152,32 @@ impl StepManager {
     }
 }
 
+fn setup_step_visualizer(dbg: DebugContext) {
+    dbg.log_static(
+        "nao/planned_left_foot",
+        &rerun::Asset3D::from_file("./assets/rerun/left_foot.glb")
+            .expect("Failed to load left step model")
+            .with_media_type(rerun::MediaType::glb()),
+    );
+
+    dbg.log_static(
+        "nao/planned_left_foot",
+        &rerun::Transform3D::update_fields().with_relation(TransformRelation::ChildFromParent),
+    );
+
+    dbg.log_static(
+        "nao/planned_right_foot",
+        &rerun::Asset3D::from_file("./assets/rerun/right_foot.glb")
+            .expect("Failed to load left step model")
+            .with_media_type(rerun::MediaType::glb()),
+    );
+
+    dbg.log_static(
+        "nao/planned_right_foot",
+        &rerun::Transform3D::update_fields().with_relation(TransformRelation::ChildFromParent),
+    );
+}
+
 pub(super) fn sync_gait_request(
     mut commands: Commands,
     current: Res<State<Gait>>,
@@ -147,12 +200,13 @@ fn plan_step(
     kinematics: Res<Kinematics>,
     config: Res<WalkingEngineConfig>,
 ) {
-    for e in event.read() {
-        let start = FootPositions::from_kinematics(e.0, &kinematics, TORSO_OFFSET);
-        step_manager.finish_step();
-        step_manager.plan_next_step(start, &config);
-        break;
-    }
+    let Some(event) = event.read().next() else {
+        return;
+    };
+
+    let start = FootPositions::from_kinematics(event.0, &kinematics, TORSO_OFFSET);
+    step_manager.finish_step();
+    step_manager.plan_next_step(start, &config);
 }
 
 fn travel_weighting(swing_travel: Vector2<f32>, turn_amount: f32, weights: Step) -> f32 {
@@ -163,4 +217,23 @@ fn travel_weighting(swing_travel: Vector2<f32>, turn_amount: f32, weights: Step)
     .norm();
     let rotational = weights.turn * turn_amount;
     translational + rotational
+}
+
+fn visualize_planned_step(dbg: DebugContext, cycle: Res<Cycle>, step_manager: Res<StepManager>) {
+    let planned = step_manager.planned_step;
+    dbg.log_with_cycle(
+        "nao/planned_left_foot",
+        *cycle,
+        &rerun::Transform3D::update_fields()
+            .with_translation(Vec3::from(planned.target.left.translation))
+            .with_quaternion(Quat::from(planned.target.left.rotation)),
+    );
+
+    dbg.log_with_cycle(
+        "nao/planned_right_foot",
+        *cycle,
+        &rerun::Transform3D::update_fields()
+            .with_translation(Vec3::from(planned.target.right.translation))
+            .with_quaternion(Quat::from(planned.target.right.rotation)),
+    );
 }

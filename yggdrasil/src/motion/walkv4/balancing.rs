@@ -7,7 +7,7 @@ use super::{
     schedule::{Balancing, Gait, MotionSet},
     Side, SwingFoot,
 };
-use crate::sensor::{imu::IMUValues, low_pass_filter::LowPassFilter};
+use crate::sensor::imu::IMUValues;
 
 // TODO: Make config value
 /// The cut-off frequency for the butterworth lowpass filter used for the gyroscope values.
@@ -109,10 +109,10 @@ fn update_balance_adjustment(
     swing_foot: Res<SwingFoot>,
     config: Res<WalkingEngineConfig>,
 ) {
-    let adjustment =
+    let ankle_pitch_adjustment =
         balance_adjustment.filtered_gyro.y * config.balancing.filtered_gyro_y_multiplier;
 
     balance_adjustment
         .prepare()
-        .adjust_ankle_pitch(**swing_foot, adjustment);
+        .adjust_ankle_pitch(**swing_foot, ankle_pitch_adjustment);
 }

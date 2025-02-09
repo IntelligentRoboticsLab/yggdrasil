@@ -85,15 +85,15 @@ fn update_zmp(
     imu: Res<IMUValues>,
     center_of_mass: Res<center_of_mass::CenterOfMass>,
 ) {
-    let ddx = imu.accelerometer.x;
-    let ddy = imu.accelerometer.y;
+    let accel_x = imu.accelerometer.x;
+    let accel_y = imu.accelerometer.y;
 
     let x_com = center_of_mass.position.x;
     let y_com = center_of_mass.position.y;
     let z_com = center_of_mass.position.z;
 
     zero_moment_point.point = Point2::new(
-        x_com - (z_com / GRAVITY_CONSTANT) * ddx,
-        y_com - (z_com / GRAVITY_CONSTANT) * ddy,
+        x_com - (z_com / GRAVITY_CONSTANT) * accel_x,
+        y_com - (z_com / GRAVITY_CONSTANT) * accel_y,
     );
 }
