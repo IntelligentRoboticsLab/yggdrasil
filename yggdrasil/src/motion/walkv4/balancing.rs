@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use nalgebra::Vector3;
 use nidhogg::types::{LeftLegJoints, RightLegJoints};
 
 use super::{
@@ -12,7 +13,7 @@ use crate::sensor::{imu::IMUValues, low_pass_filter::LowPassFilter};
 /// The cut-off frequency for the butterworth lowpass filter used for the gyroscope values.
 /// Higher values means that the filtered gyroscope value responds to changes quicker,
 /// and lower values mean that it responds slower.
-const FILTERED_GYRO_OMEGA: f32 = 0.055;
+const FILTERED_GYRO_OMEGA: f32 = 0.2;
 
 /// Plugin for balancing the robot during [`MotionSet::Balancing`]
 pub(super) struct BalancingPlugin;
@@ -40,7 +41,8 @@ fn update_filtered_gyroscope(
     mut balance_adjustment: ResMut<BalanceAdjustment>,
     imu: Res<IMUValues>,
 ) {
-    balance_adjustment.filtered_gyro.update(imu.gyroscope);
+    let state = balance_adjustment.filtered_gyro;
+    balance_adjustment.filtered_gyro = 0.7 * state + 0.3 * imu.gyroscope;
 }
 
 /// Resource that stores balance adjustment values for the walking engine.
@@ -51,7 +53,7 @@ fn update_filtered_gyroscope(
 /// be extended further to the roll, and other joints as well.
 #[derive(Resource, Debug, Clone)]
 pub struct BalanceAdjustment {
-    filtered_gyro: LowPassFilter<3>,
+    filtered_gyro: Vector3<f32>,
     left_ankle_pitch: f32,
     right_ankle_pitch: f32,
 }
@@ -59,7 +61,7 @@ pub struct BalanceAdjustment {
 impl Default for BalanceAdjustment {
     fn default() -> Self {
         Self {
-            filtered_gyro: LowPassFilter::new(FILTERED_GYRO_OMEGA),
+            filtered_gyro: Vector3::default(),
             left_ankle_pitch: 0f32,
             right_ankle_pitch: 0f32,
         }
@@ -108,7 +110,7 @@ fn update_balance_adjustment(
     config: Res<WalkingEngineConfig>,
 ) {
     let adjustment =
-        balance_adjustment.filtered_gyro.state().y * config.balancing.filtered_gyro_y_multiplier;
+        balance_adjustment.filtered_gyro.y * config.balancing.filtered_gyro_y_multiplier;
 
     balance_adjustment
         .prepare()

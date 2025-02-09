@@ -8,7 +8,7 @@ use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
 use std::time::Instant;
 
 const TURN_SPEED: f32 = 0.2;
-const WALK_SPEED: f32 = 0.04;
+const WALK_SPEED: f32 = 0.05;
 
 /// Plugin that adds systems and resources for planning robot steps.
 pub(super) struct StepPlannerPlugin;
