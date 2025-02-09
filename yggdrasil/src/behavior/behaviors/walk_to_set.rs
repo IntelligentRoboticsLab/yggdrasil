@@ -49,7 +49,7 @@ pub fn walk_to_set(
     mut target: ResMut<crate::motion::path::planning::Target>,
     layout_config: Res<LayoutConfig>,
     player_config: Res<PlayerConfig>,
-    mut step_planner: ResMut<StepPlanner>,
+    step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
     role: Res<State<RoleState>>,

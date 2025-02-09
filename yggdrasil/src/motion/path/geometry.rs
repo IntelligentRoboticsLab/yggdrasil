@@ -1,23 +1,25 @@
-//! Geometric objects.
+//! Geometric types for pathfinding.
 
 use std::f32::consts::{PI, TAU};
 
 use nalgebra as na;
+
+pub use Winding::{Ccw, Cw};
 
 pub type Point = na::Point2<f32>;
 pub type Vector = na::Vector2<f32>;
 pub type Isometry = na::Isometry2<f32>;
 
 /// The rotation direction around a circle.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum RotationDirection {
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Winding {
     /// Counterclockwise
     Ccw,
     /// Clockwise
     Cw,
 }
 
-impl RotationDirection {
+impl Winding {
     /// The angular distance from `start` to `end`.
     pub fn angular_distance(self, start: f32, end: f32) -> f32 {
         match self {
@@ -206,10 +208,10 @@ pub struct Tangents {
 impl Tangents {
     /// Gets the tangents associated with the given direction.
     #[must_use]
-    pub fn get(self, direction: RotationDirection) -> f32 {
+    pub fn get(self, direction: Winding) -> f32 {
         match direction {
-            RotationDirection::Ccw => self.ccw,
-            RotationDirection::Cw => self.cw,
+            Winding::Ccw => self.ccw,
+            Winding::Cw => self.cw,
         }
     }
 
@@ -244,10 +246,10 @@ pub struct InnerTangents {
 impl InnerTangents {
     /// Gets the tangents associated with the given start direction.
     #[must_use]
-    pub fn get(self, direction: RotationDirection) -> (f32, f32) {
+    pub fn get(self, direction: Winding) -> (f32, f32) {
         match direction {
-            RotationDirection::Ccw => self.ccw_to_cw,
-            RotationDirection::Cw => self.cw_to_ccw,
+            Winding::Ccw => self.ccw_to_cw,
+            Winding::Cw => self.cw_to_ccw,
         }
     }
 
@@ -275,7 +277,7 @@ impl CircularArc {
     #[must_use]
     pub fn new(
         circle: Circle,
-        direction: RotationDirection,
+        direction: Winding,
         start: f32,
         end: f32,
     ) -> Self {
@@ -290,12 +292,12 @@ impl CircularArc {
     #[must_use]
     pub fn from_isometry(
         isometry: Isometry,
-        direction: RotationDirection,
+        direction: Winding,
         radius: f32,
     ) -> Self {
         match direction {
-            RotationDirection::Ccw => Self::ccw_from_isometry(isometry, radius),
-            RotationDirection::Cw => Self::cw_from_isometry(isometry, radius),
+            Winding::Ccw => Self::ccw_from_isometry(isometry, radius),
+            Winding::Cw => Self::cw_from_isometry(isometry, radius),
         }
     }
 
@@ -335,7 +337,7 @@ impl CircularArc {
 
     /// Changes the direction of the arc.
     #[must_use]
-    pub fn with_direction(self, direction: RotationDirection) -> Self {
+    pub fn with_direction(self, direction: Winding) -> Self {
         if self.direction() != direction {
             self.flip()
         } else {
@@ -355,10 +357,10 @@ impl CircularArc {
 
     /// Returns the direction of the arc.
     #[must_use]
-    pub fn direction(self) -> RotationDirection {
+    pub fn direction(self) -> Winding {
         match self.step >= 0. {
-            true => RotationDirection::Ccw,
-            false => RotationDirection::Cw,
+            true => Winding::Ccw,
+            false => Winding::Cw,
         }
     }
 
@@ -408,7 +410,7 @@ impl CircularArc {
     #[must_use]
     pub fn contains_angle(self, angle: f32) -> bool {
         let distance = self.angular_distance(self.start, angle);
-        RotationDirection::closer_or_equal(distance, self.step)
+        Winding::closer_or_equal(distance, self.step)
     }
 
     /// Returns the point at an angle.
@@ -446,7 +448,7 @@ impl CircularArc {
     pub fn enter_non_circular(self, start: f32) -> Option<Self> {
         let step = self.angular_distance(start, self.end());
 
-        RotationDirection::closer_or_equal(step, self.step)
+        Winding::closer_or_equal(step, self.step)
             .then(|| self.with_start(start).with_step(step))
     }
 
@@ -455,45 +457,7 @@ impl CircularArc {
     pub fn exit(self, end: f32) -> Option<Self> {
         let step = self.angular_distance(self.start, end);
 
-        RotationDirection::closer_or_equal(step, self.step).then(|| self.with_step(step))
-    }
-
-    /// Returns a copy of this arc such that it starts at the tangent line through `point`.
-    #[must_use]
-    pub fn point_to_arc(mut self, point: Point) -> Option<(LineSegment, Self)> {
-        self = self.enter(self.circle.tangents(point)?.get(self.direction()))?;
-
-        Some((LineSegment::new(point, self.point_at_start()), self))
-    }
-
-    /// Returns a copy of this arc such that it ends at the tangent line through `point`.
-    #[must_use]
-    pub fn arc_to_point(mut self, point: Point) -> Option<(Self, LineSegment)> {
-        self = self.enter(self.circle.tangents(point)?.flip().get(self.direction()))?;
-
-        Some((self, LineSegment::new(self.point_at_end(), point)))
-    }
-
-    /// Connects two arcs together by their common tangent.
-    #[must_use]
-    pub fn arc_to_arc(mut self, mut other: Self) -> Option<(Self, LineSegment, Self)> {
-        use RotationDirection::{Ccw, Cw};
-
-        let angles = match (self.direction(), other.direction()) {
-            (Ccw, Ccw) => self.circle.outer_tangents(other.circle)?.ccw_to_ccw(),
-            (Ccw, Cw) => self.circle.inner_tangents(other.circle)?.ccw_to_cw,
-            (Cw, Ccw) => self.circle.inner_tangents(other.circle)?.cw_to_ccw,
-            (Cw, Cw) => self.circle.outer_tangents(other.circle)?.cw_to_cw(),
-        };
-
-        self = self.exit(angles.0)?;
-        other = other.enter(angles.1)?;
-
-        Some((
-            self,
-            LineSegment::new(self.point_at_end(), other.point_at_start()),
-            other,
-        ))
+        Winding::closer_or_equal(step, self.step).then(|| self.with_step(step))
     }
 
     /// Returns an iterator of vertices on the arc such that a full circle has `resolution`
@@ -520,6 +484,208 @@ impl From<Circle> for CircularArc {
     }
 }
 
+/// A transition from one state to another state.
+#[derive(Copy, Clone, Debug)]
+pub struct Transition {
+    pub prev: Option<CircularArc>,
+    pub link: LineSegment,
+    pub next: Option<CircularArc>,
+}
+
+impl Transition {
+    /// Returns a transition from an arc/point to another arc/point.
+    #[must_use]
+    pub fn new(prev: impl Into<Node>, next: impl Into<Node>) -> Option<Self> {
+        match (prev.into(), next.into()) {
+            (Node::Point(prev), Node::Point(next)) => Self::point_to_point(prev, next),
+            (Node::Point(prev), Node::CircularArc(next)) => Self::point_to_arc(prev, next),
+            (Node::CircularArc(prev), Node::Point(next)) => Self::arc_to_point(prev, next),
+            (Node::CircularArc(prev), Node::CircularArc(next)) => Self::arc_to_arc(prev, next),
+        }
+    }
+
+    /// Returns a transition from a point to another point.
+    #[must_use]
+    pub fn point_to_point(prev: Point, next: Point) -> Option<Self> {
+        Some(Self {
+            prev: None,
+            link: LineSegment::new(prev, next),
+            next: None,
+        })
+    }
+
+    /// Returns a transition from a point to a arc.
+    #[must_use]
+    pub fn point_to_arc(prev: Point, next: CircularArc) -> Option<Self> {
+        let next = next.enter(next.circle.tangents(prev)?.get(next.direction()))?;
+
+        Some(Self {
+            prev: None,
+            link: LineSegment::new(prev, next.point_at_start()),
+            next: Some(next),
+        })
+    }
+
+    /// Returns a transition from an arc to a point.
+    #[must_use]
+    pub fn arc_to_point(prev: CircularArc, next: Point) -> Option<Self> {
+        let prev = prev.enter(prev.circle.tangents(next)?.flip().get(prev.direction()))?;
+
+        Some(Self {
+            prev: Some(prev),
+            link: LineSegment::new(prev.point_at_end(), next),
+            next: None,
+        })
+    }
+
+    /// Returns a transition from an arc to another arc.
+    #[must_use]
+    pub fn arc_to_arc(prev: CircularArc, next: CircularArc) -> Option<Self> {
+        let angles = match (prev.direction(), next.direction()) {
+            (Ccw, Ccw) => prev.circle.outer_tangents(next.circle)?.ccw_to_ccw(),
+            (Ccw, Cw) => prev.circle.inner_tangents(next.circle)?.ccw_to_cw,
+            (Cw, Ccw) => prev.circle.inner_tangents(next.circle)?.cw_to_ccw,
+            (Cw, Cw) => prev.circle.outer_tangents(next.circle)?.cw_to_cw(),
+        };
+
+        let prev = prev.exit(angles.0)?;
+        let next = next.enter(angles.1)?;
+
+        Some(Self {
+            prev: Some(prev),
+            link: LineSegment::new(prev.point_at_end(), next.point_at_start()),
+            next: Some(next),
+        })
+    }
+
+    /// Maps and reduces all the segments that are fully determined (i.e., `prev` and `link`).
+    pub fn map_reduce_determined<T>(
+        &self,
+        map: impl Fn(Segment) -> T,
+        reduce: impl Fn(T, T) -> T,
+    ) -> T {
+        match self.prev {
+            Some(prev) => reduce(map(prev.into()), map(self.link.into())),
+            None => map(self.link.into()),
+        }
+    }
+
+    pub fn for_each_determined(&self, mut f: impl FnMut(Segment)) {
+        self.prev.map(Segment::from).map(&mut f);
+        f(self.link.into());
+    }
+}
+
+/// Node in a path, which can be either a point or a circular arc.
+#[derive(Copy, Clone, Debug)]
+pub enum Node {
+    Point(Point),
+    CircularArc(CircularArc),
+}
+
+impl From<Point> for Node {
+    fn from(point: Point) -> Self {
+        Self::Point(point)
+    }
+}
+
+impl From<CircularArc> for Node {
+    fn from(arc: CircularArc) -> Self {
+        Self::CircularArc(arc)
+    }
+}
+
+/// Segment of a path, can be either a line segment or a circular arc.
+#[derive(Copy, Clone, Debug)]
+pub enum Segment {
+    LineSegment(LineSegment),
+    CircularArc(CircularArc),
+}
+
+impl Segment {
+    /// Returns the start of this segment.
+    #[must_use]
+    pub fn start(self) -> Point {
+        match self {
+            Segment::LineSegment(line) => line.start,
+            Segment::CircularArc(arc) => arc.point_at_start(),
+        }
+    }
+
+    /// Returns the end of this segment.
+    #[must_use]
+    pub fn end(self) -> Point {
+        match self {
+            Segment::LineSegment(line) => line.end,
+            Segment::CircularArc(arc) => arc.point_at_end(),
+        }
+    }
+
+    /// Returns the turn such that a left (i.e., counterclockwise) turn is positive.
+    #[must_use]
+    pub fn turn(self) -> f32 {
+        match self {
+            Segment::LineSegment(_) => 0.,
+            Segment::CircularArc(arc) => arc.turn(),
+        }
+    }
+
+    /// Returns the forward angle of this segment.
+    #[must_use]
+    pub fn forward_at_start(self) -> f32 {
+        match self {
+            Segment::LineSegment(line) => line.forward(),
+            Segment::CircularArc(arc) => arc.forward_at_start(),
+        }
+    }
+
+    /// Returns the forward angle of this segment.
+    #[must_use]
+    pub fn forward_at_end(self) -> f32 {
+        match self {
+            Segment::LineSegment(line) => line.forward(),
+            Segment::CircularArc(arc) => arc.forward_at_end(),
+        }
+    }
+
+    /// Shortens this segment to the poiht closest to the given point.
+    pub fn shorten(&mut self, point: Point) {
+        match self {
+            Segment::LineSegment(line) => {
+                if let Some(new) = line.enter(point) {
+                    *line = new;
+                }
+            }
+            Segment::CircularArc(arc) => {
+                if let Some(new) = arc.enter(arc.circle.angle_to_point(point)) {
+                    *arc = new;
+                }
+            }
+        }
+    }
+
+    /// Returns the vertices to render this segment.
+    #[must_use]
+    pub fn vertices(self, resolution: f32) -> Vec<Point> {
+        match self {
+            Segment::LineSegment(line) => vec![line.start, line.end],
+            Segment::CircularArc(arc) => arc.vertices(resolution).collect(),
+        }
+    }
+}
+
+impl From<LineSegment> for Segment {
+    fn from(line: LineSegment) -> Self {
+        Self::LineSegment(line)
+    }
+}
+
+impl From<CircularArc> for Segment {
+    fn from(arc: CircularArc) -> Self {
+        Self::CircularArc(arc)
+    }
+}
+
 /// Geometric objects that have a length.
 pub trait Length {
     /// Returns the geometric length of the object.
@@ -535,6 +701,21 @@ impl Length for LineSegment {
 impl Length for CircularArc {
     fn length(self) -> f32 {
         self.step.abs() * self.circle.radius
+    }
+}
+
+impl Length for Segment {
+    fn length(self) -> f32 {
+        match self {
+            Segment::LineSegment(line) => line.length(),
+            Segment::CircularArc(arc) => arc.length(),
+        }
+    }
+}
+
+impl Length for Transition {
+    fn length(self) -> f32 {
+        self.map_reduce_determined(Segment::length, |a, b| a + b)
     }
 }
 
@@ -682,97 +863,6 @@ impl Intersects<Circle> for Circle {
     }
 }
 
-/// Segment of a path, can be either a straight line segment or a circular arc.
-#[derive(Copy, Clone, Debug)]
-pub enum Segment {
-    LineSegment(LineSegment),
-    CircularArc(CircularArc),
-}
-
-impl Segment {
-    /// Returns the start of this segment.
-    #[must_use]
-    pub fn start(self) -> Point {
-        match self {
-            Segment::LineSegment(line) => line.start,
-            Segment::CircularArc(arc) => arc.point_at_start(),
-        }
-    }
-
-    /// Returns the end of this segment.
-    #[must_use]
-    pub fn end(self) -> Point {
-        match self {
-            Segment::LineSegment(line) => line.end,
-            Segment::CircularArc(arc) => arc.point_at_end(),
-        }
-    }
-
-    /// Returns the turn such that a left (i.e., counterclockwise) turn is positive.
-    #[must_use]
-    pub fn turn(self) -> f32 {
-        match self {
-            Segment::LineSegment(_) => 0.,
-            Segment::CircularArc(arc) => arc.turn(),
-        }
-    }
-
-    /// Returns the forward angle of this segment.
-    #[must_use]
-    pub fn forward_at_start(self) -> f32 {
-        match self {
-            Segment::LineSegment(line) => line.forward(),
-            Segment::CircularArc(arc) => arc.forward_at_start(),
-        }
-    }
-
-    /// Returns the forward angle of this segment.
-    #[must_use]
-    pub fn forward_at_end(self) -> f32 {
-        match self {
-            Segment::LineSegment(line) => line.forward(),
-            Segment::CircularArc(arc) => arc.forward_at_end(),
-        }
-    }
-
-    /// Shortens this segment to the poiht closest to the given point.
-    pub fn shorten(&mut self, point: Point) {
-        match self {
-            Segment::LineSegment(line) => {
-                if let Some(new) = line.enter(point) {
-                    *line = new;
-                }
-            }
-            Segment::CircularArc(arc) => {
-                if let Some(new) = arc.enter(arc.circle.angle_to_point(point)) {
-                    *arc = new;
-                }
-            }
-        }
-    }
-
-    /// Returns the vertices to render this segment.
-    #[must_use]
-    pub fn vertices(self, resolution: f32) -> Vec<Point> {
-        match self {
-            Segment::LineSegment(line) => vec![line.start, line.end],
-            Segment::CircularArc(arc) => arc.vertices(resolution).collect(),
-        }
-    }
-}
-
-impl From<LineSegment> for Segment {
-    fn from(line: LineSegment) -> Self {
-        Self::LineSegment(line)
-    }
-}
-
-impl From<CircularArc> for Segment {
-    fn from(arc: CircularArc) -> Self {
-        Self::CircularArc(arc)
-    }
-}
-
 impl Intersects<Segment> for Segment {
     type Intersection = bool;
 
@@ -792,5 +882,13 @@ impl Intersects<Segment> for Segment {
                 a.is_some() || b.is_some()
             }
         }
+    }
+}
+
+impl<T: Intersects<Segment, Intersection = bool> + Copy> Intersects<Transition> for T {
+    type Intersection = bool;
+
+    fn intersects(self, other: Transition) -> Self::Intersection {
+        other.map_reduce_determined(|s| self.intersects(s), |a, b| a && b)
     }
 }
