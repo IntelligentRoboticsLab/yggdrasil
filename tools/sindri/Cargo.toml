@@ -14,10 +14,7 @@ workspace = true
 [dependencies]
 build_utils = { workspace = true }
 yggdrasil = { workspace = true }
-<<<<<<< HEAD
 
-=======
->>>>>>> 9be7be1f (more stable stuff)
 clap = { workspace = true, features = ["derive", "string"] }
 colored = { workspace = true }
 dialoguer = { workspace = true }
