@@ -3,10 +3,10 @@
 use nalgebra as na;
 use ordered_float::OrderedFloat;
 
-use super::geometry::{Transition, Winding};
+use super::geometry::{Connection, Winding};
 use super::obstacles::Colliders;
 use super::{
-    geometry::{CircularArc, Intersects, Isometry, Length, Node, Point, Segment},
+    geometry::{Ccw, CircularArc, Cw, Intersects, Isometry, Length, Node, Point, Segment},
     PathSettings,
 };
 
@@ -38,7 +38,7 @@ impl Pathfinding<'_> {
                 unreachable!()
             };
 
-            Transition::new(self.node(prev), self.node(next))
+            Connection::new(self.node(prev), self.node(next))
                 .unwrap()
                 .for_each_determined(|s| segments.push(s));
         }
@@ -82,8 +82,8 @@ impl Pathfinding<'_> {
     fn start_successors(&self) -> Vec<(State, Float)> {
         match self.start {
             Position::Isometry(_) => vec![
-                State::EaseIn(Winding::Ccw).without_cost(),
-                State::EaseIn(Winding::Cw).without_cost(),
+                State::EaseIn(Ccw).without_cost(),
+                State::EaseIn(Cw).without_cost(),
             ],
             Position::Point(start) => self.node_successors(start.into()),
         }
@@ -91,30 +91,30 @@ impl Pathfinding<'_> {
 
     /// Returns the successors from a node.
     fn node_successors(&self, prev: Node) -> Vec<(State, Float)> {
+        let along_collider = |connection: Connection, index| {
+            let next = connection.next.unwrap();
+            State::AlongCollider(index, next.direction(), next.start.into())
+        };
+
         // Potential successors that directly lead to the goal.
-        let direct: [(_, fn(Transition) -> State); 3] = [
+        let direct: [(Option<Node>, fn(Connection) -> State); 3] = [
             (self.goal.point().map(Node::from), |_| State::Goal),
-            (self.ease_out(Winding::Ccw).map(Node::from), |transition| {
-                State::EaseOut(Winding::Ccw, transition.next.unwrap().start.into())
+            (self.ease_out(Ccw).map(Node::from), |connection| {
+                State::EaseOut(Ccw, connection.next.unwrap().start.into())
             }),
-            (self.ease_out(Winding::Cw).map(Node::from), |transition| {
-                State::EaseOut(Winding::Cw, transition.next.unwrap().start.into())
+            (self.ease_out(Winding::Cw).map(Node::from), |connection| {
+                State::EaseOut(Winding::Cw, connection.next.unwrap().start.into())
             }),
         ];
 
         let direct = direct
             .into_iter()
-            .flat_map(|(next, to_state)| Some((next?, to_state)))
+            .filter_map(|(next, to_state)| Some((next?, to_state)))
             .filter_map(|(next, to_state)| {
-                Transition::new(prev, next)
-                    .filter(|transition| !self.colliders.intersects(*transition))
-                    .map(|transition| to_state(transition).with_cost(transition))
+                Connection::new(prev, next)
+                    .filter(|connection| !self.colliders.intersects(*connection))
+                    .map(|connection| to_state(connection).with_cost(connection))
             });
-
-        let to_state = |transition: Transition, index| {
-            let next = transition.next.unwrap();
-            State::AlongCollider(index, next.direction(), next.start.into())
-        };
 
         // Potential successors that don't directly lead to the goal.
         let indirect = self
@@ -124,9 +124,9 @@ impl Pathfinding<'_> {
             .enumerate()
             .flat_map(|(index, next)| [(index, *next), (index, next.flip())])
             .filter_map(|(index, next)| {
-                Transition::new(prev, next)
-                    .filter(|transition| !self.colliders.intersects(*transition))
-                    .map(|transition| to_state(transition, index).with_cost(transition))
+                Connection::new(prev, next)
+                    .filter(|connection| !self.colliders.intersects(*connection))
+                    .map(|connection| along_collider(connection, index).with_cost(connection))
             });
 
         direct.chain(indirect).collect()

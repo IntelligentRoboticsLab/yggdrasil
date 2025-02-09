@@ -99,7 +99,7 @@ impl Path {
         ease_out: bool,
         collisions: bool,
     ) -> Option<Self> {
-        const EMPTY: &'static Colliders = &Colliders::new();
+        const EMPTY: &Colliders = &Colliders::new();
 
         if !ease_in {
             pathfinding.start.isometry()?;

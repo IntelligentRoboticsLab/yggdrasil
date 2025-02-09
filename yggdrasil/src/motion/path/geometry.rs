@@ -21,6 +21,7 @@ pub enum Winding {
 
 impl Winding {
     /// The angular distance from `start` to `end`.
+    #[must_use]
     pub fn angular_distance(self, start: f32, end: f32) -> f32 {
         match self {
             Self::Ccw => (end - start).rem_euclid(TAU),
@@ -29,10 +30,12 @@ impl Winding {
     }
 
     /// Checks whether `closer` is closer than `further`.
+    #[must_use]
     pub fn closer_or_equal(closer: f32, further: f32) -> bool {
-        match further >= 0. {
-            true => closer <= further,
-            false => closer >= further,
+        if further >= 0. {
+            closer <= further
+        } else {
+            closer >= further
         }
     }
 }
@@ -210,8 +213,8 @@ impl Tangents {
     #[must_use]
     pub fn get(self, direction: Winding) -> f32 {
         match direction {
-            Winding::Ccw => self.ccw,
-            Winding::Cw => self.cw,
+            Ccw => self.ccw,
+            Cw => self.cw,
         }
     }
 
@@ -248,8 +251,8 @@ impl InnerTangents {
     #[must_use]
     pub fn get(self, direction: Winding) -> (f32, f32) {
         match direction {
-            Winding::Ccw => self.ccw_to_cw,
-            Winding::Cw => self.cw_to_ccw,
+            Ccw => self.ccw_to_cw,
+            Cw => self.cw_to_ccw,
         }
     }
 
@@ -287,8 +290,8 @@ impl CircularArc {
     #[must_use]
     pub fn from_isometry(isometry: Isometry, direction: Winding, radius: f32) -> Self {
         match direction {
-            Winding::Ccw => Self::ccw_from_isometry(isometry, radius),
-            Winding::Cw => Self::cw_from_isometry(isometry, radius),
+            Ccw => Self::ccw_from_isometry(isometry, radius),
+            Cw => Self::cw_from_isometry(isometry, radius),
         }
     }
 
@@ -329,10 +332,10 @@ impl CircularArc {
     /// Changes the direction of the arc.
     #[must_use]
     pub fn with_direction(self, direction: Winding) -> Self {
-        if self.direction() != direction {
-            self.flip()
-        } else {
+        if self.direction() == direction {
             self
+        } else {
+            self.flip()
         }
     }
 
@@ -349,13 +352,15 @@ impl CircularArc {
     /// Returns the direction of the arc.
     #[must_use]
     pub fn direction(self) -> Winding {
-        match self.step >= 0. {
-            true => Winding::Ccw,
-            false => Winding::Cw,
+        if self.step >= 0. {
+            Ccw
+        } else {
+            Cw
         }
     }
 
     /// The angular distance from `start` to `end`.
+    #[must_use]
     pub fn angular_distance(self, start: f32, end: f32) -> f32 {
         self.direction().angular_distance(start, end)
     }
@@ -473,16 +478,16 @@ impl From<Circle> for CircularArc {
     }
 }
 
-/// A transition from one state to another state.
+/// A connection from one state to another state.
 #[derive(Copy, Clone, Debug)]
-pub struct Transition {
+pub struct Connection {
     pub prev: Option<CircularArc>,
     pub link: LineSegment,
     pub next: Option<CircularArc>,
 }
 
-impl Transition {
-    /// Returns a transition from an arc/point to another arc/point.
+impl Connection {
+    /// Returns a connection from an arc/point to another arc/point.
     #[must_use]
     pub fn new(prev: impl Into<Node>, next: impl Into<Node>) -> Option<Self> {
         match (prev.into(), next.into()) {
@@ -493,7 +498,7 @@ impl Transition {
         }
     }
 
-    /// Returns a transition from a point to another point.
+    /// Returns a connection from a point to another point.
     #[must_use]
     pub fn point_to_point(prev: Point, next: Point) -> Option<Self> {
         Some(Self {
@@ -503,7 +508,7 @@ impl Transition {
         })
     }
 
-    /// Returns a transition from a point to a arc.
+    /// Returns a connection from a point to a arc.
     #[must_use]
     pub fn point_to_arc(prev: Point, next: CircularArc) -> Option<Self> {
         let next = next.enter(next.circle.tangents(prev)?.get(next.direction()))?;
@@ -515,7 +520,7 @@ impl Transition {
         })
     }
 
-    /// Returns a transition from an arc to a point.
+    /// Returns a connection from an arc to a point.
     #[must_use]
     pub fn arc_to_point(prev: CircularArc, next: Point) -> Option<Self> {
         let prev = prev.enter(prev.circle.tangents(next)?.flip().get(prev.direction()))?;
@@ -527,7 +532,7 @@ impl Transition {
         })
     }
 
-    /// Returns a transition from an arc to another arc.
+    /// Returns a connection from an arc to another arc.
     #[must_use]
     pub fn arc_to_arc(prev: CircularArc, next: CircularArc) -> Option<Self> {
         let angles = match (prev.direction(), next.direction()) {
@@ -702,7 +707,7 @@ impl Length for Segment {
     }
 }
 
-impl Length for Transition {
+impl Length for Connection {
     fn length(self) -> f32 {
         self.map_reduce_determined(Segment::length, |a, b| a + b)
     }
@@ -874,10 +879,10 @@ impl Intersects<Segment> for Segment {
     }
 }
 
-impl<T: Intersects<Segment, Intersection = bool> + Copy> Intersects<Transition> for T {
+impl<T: Intersects<Segment, Intersection = bool> + Copy> Intersects<Connection> for T {
     type Intersection = bool;
 
-    fn intersects(self, other: Transition) -> Self::Intersection {
+    fn intersects(self, other: Connection) -> Self::Intersection {
         other.map_reduce_determined(|s| self.intersects(s), |a, b| a && b)
     }
 }

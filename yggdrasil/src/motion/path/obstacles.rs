@@ -64,6 +64,7 @@ pub struct Colliders {
 }
 
 impl Colliders {
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             arcs: Vec::new(),
