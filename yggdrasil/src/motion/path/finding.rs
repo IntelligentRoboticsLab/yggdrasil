@@ -293,7 +293,7 @@ impl From<Point> for Target {
 
 /// The colliders that the pathfinding navigates around, consists of circular arcs and line
 /// segments.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct Colliders {
     pub arcs: Vec<CircularArc>,
     pub lines: Vec<LineSegment>,

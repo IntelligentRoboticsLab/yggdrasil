@@ -207,8 +207,10 @@ impl PathPlanner {
     }
 
     pub fn set_colliders(&mut self, colliders: Colliders) {
-        self.colliders = colliders;
-        self.path = None;
+        if self.colliders != colliders {
+            self.colliders = colliders;
+            self.path = None;
+        }
     }
 
     #[must_use]
@@ -217,8 +219,10 @@ impl PathPlanner {
     }
 
     pub fn set_settings(&mut self, settings: PathSettings) {
-        self.settings = settings;
-        self.path = None;
+        if self.settings != settings {
+            self.settings = settings;
+            self.path = None;
+        }
     }
 }
 

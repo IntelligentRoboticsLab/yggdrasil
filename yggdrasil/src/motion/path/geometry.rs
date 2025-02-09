@@ -46,7 +46,7 @@ impl Winding {
 }
 
 /// A line segment from `start` to `end`.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct LineSegment {
     pub start: Point,
     pub end: Point,
@@ -97,7 +97,7 @@ impl LineSegment {
 /// A circle defined by a `center` and a `radius`.
 ///
 /// The behavior of a circle with a negative radius is unspecified.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Circle {
     pub center: Point,
     pub radius: f32,
@@ -285,7 +285,7 @@ impl InnerTangents {
 
 /// A circular arc with a direction, defined by a `circle`, a `start` angle, and a `step` such that
 /// the end angle is defined as `start + step`.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct CircularArc {
     pub circle: Circle,
     pub start: f32,
@@ -613,7 +613,7 @@ impl From<CircularArc> for Node {
 }
 
 /// Segment of a path, can be either a line segment or a circular arc.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Segment {
     LineSegment(LineSegment),
     CircularArc(CircularArc),

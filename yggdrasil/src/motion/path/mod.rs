@@ -30,7 +30,7 @@ impl Plugin for PathPlugin {
 }
 
 /// Struct containing the configuration for the pathfinding.
-#[derive(Copy, Clone, Resource)]
+#[derive(Copy, Clone, PartialEq, Resource)]
 pub struct PathSettings {
     pub robot_radius: f32,
     pub ease_in: f32,
