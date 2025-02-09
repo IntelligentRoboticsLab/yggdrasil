@@ -6,7 +6,7 @@ use ordered_float::OrderedFloat;
 use super::geometry::{Transition, Winding};
 use super::obstacles::Colliders;
 use super::{
-    geometry::{CircularArc, Intersects, Isometry, Length, Point, Segment, Node},
+    geometry::{CircularArc, Intersects, Isometry, Length, Node, Point, Segment},
     PathSettings,
 };
 
@@ -34,7 +34,9 @@ impl Pathfinding<'_> {
         let mut segments = Vec::new();
 
         for window in states.windows(2) {
-            let [prev, next] = *window else { unreachable!() };
+            let [prev, next] = *window else {
+                unreachable!()
+            };
 
             Transition::new(self.node(prev), self.node(next))
                 .unwrap()
@@ -103,10 +105,11 @@ impl Pathfinding<'_> {
         let direct = direct
             .into_iter()
             .flat_map(|(next, to_state)| Some((next?, to_state)))
-            .filter_map(|(next, to_state)| Transition::new(prev, next)
-                .filter(|transition| !self.colliders.intersects(*transition))
-                .map(|transition| to_state(transition).with_cost(transition))
-            );
+            .filter_map(|(next, to_state)| {
+                Transition::new(prev, next)
+                    .filter(|transition| !self.colliders.intersects(*transition))
+                    .map(|transition| to_state(transition).with_cost(transition))
+            });
 
         let to_state = |transition: Transition, index| {
             let next = transition.next.unwrap();
@@ -120,10 +123,11 @@ impl Pathfinding<'_> {
             .iter()
             .enumerate()
             .flat_map(|(index, next)| [(index, *next), (index, next.flip())])
-            .filter_map(|(index, next)| Transition::new(prev, next)
-                .filter(|transition| !self.colliders.intersects(*transition))
-                .map(|transition| to_state(transition, index).with_cost(transition))
-            );
+            .filter_map(|(index, next)| {
+                Transition::new(prev, next)
+                    .filter(|transition| !self.colliders.intersects(*transition))
+                    .map(|transition| to_state(transition, index).with_cost(transition))
+            });
 
         direct.chain(indirect).collect()
     }
@@ -151,12 +155,12 @@ impl Pathfinding<'_> {
             State::Start => None,
             State::Goal => None,
             State::EaseIn(direction) => self.ease_in(direction),
-            State::AlongCollider(index, direction, start) => {
-                self.colliders.arcs[index].with_direction(direction).enter(start.into())
-            },
+            State::AlongCollider(index, direction, start) => self.colliders.arcs[index]
+                .with_direction(direction)
+                .enter(start.into()),
             State::EaseOut(direction, start) => {
                 self.ease_out(direction)?.enter_non_circular(start.into())
-            },
+            }
         }
     }
 

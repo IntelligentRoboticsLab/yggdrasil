@@ -25,7 +25,10 @@ impl Plugin for PathPlugin {
             .init_resource::<PathSettings>()
             .add_systems(Startup, add_static_obstacles)
             .add_systems(PostStartup, init_visualization)
-            .add_systems(Update, (update_colliders.run_if(obstacles_changed), update_path).chain())
+            .add_systems(
+                Update,
+                (update_colliders.run_if(obstacles_changed), update_path).chain(),
+            )
             .add_systems(Update, visualize_path.run_if(resource_changed::<Path>))
             .add_systems(
                 Update,

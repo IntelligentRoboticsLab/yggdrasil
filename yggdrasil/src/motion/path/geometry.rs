@@ -275,12 +275,7 @@ pub struct CircularArc {
 impl CircularArc {
     /// Creates a new arc.
     #[must_use]
-    pub fn new(
-        circle: Circle,
-        direction: Winding,
-        start: f32,
-        end: f32,
-    ) -> Self {
+    pub fn new(circle: Circle, direction: Winding, start: f32, end: f32) -> Self {
         Self {
             circle,
             start,
@@ -290,11 +285,7 @@ impl CircularArc {
 
     /// Creates an arc through an isometry with the given direction and radius.
     #[must_use]
-    pub fn from_isometry(
-        isometry: Isometry,
-        direction: Winding,
-        radius: f32,
-    ) -> Self {
+    pub fn from_isometry(isometry: Isometry, direction: Winding, radius: f32) -> Self {
         match direction {
             Winding::Ccw => Self::ccw_from_isometry(isometry, radius),
             Winding::Cw => Self::cw_from_isometry(isometry, radius),
@@ -375,7 +366,6 @@ impl CircularArc {
         self.step.abs() >= TAU
     }
 
-
     /// Returns the angle at the end of the arc.
     #[must_use]
     pub fn end(self) -> f32 {
@@ -448,8 +438,7 @@ impl CircularArc {
     pub fn enter_non_circular(self, start: f32) -> Option<Self> {
         let step = self.angular_distance(start, self.end());
 
-        Winding::closer_or_equal(step, self.step)
-            .then(|| self.with_start(start).with_step(step))
+        Winding::closer_or_equal(step, self.step).then(|| self.with_start(start).with_step(step))
     }
 
     /// Returns a new shortened copy of this arc with a given end if that end lies on this arc.

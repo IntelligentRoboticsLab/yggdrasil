@@ -67,7 +67,7 @@ impl Path {
         pose: Isometry,
         target: Option<Position>,
         colliders: &Colliders,
-        settings: &PathSettings
+        settings: &PathSettings,
     ) -> Self {
         let Some(target) = target else {
             return Self::default();

@@ -25,7 +25,12 @@ pub fn obstacles_changed(obstacles: Query<&Obstacle, Changed<Obstacle>>) -> bool
 }
 
 /// Updates the [`Colliders`] based on the obstacles in the ECS (and reset [`Path`]).
-pub fn update_colliders(mut colliders: ResMut<Colliders>, mut path: ResMut<Path>, settings: Res<PathSettings>, obstacles: Query<&Obstacle>) {
+pub fn update_colliders(
+    mut colliders: ResMut<Colliders>,
+    mut path: ResMut<Path>,
+    settings: Res<PathSettings>,
+    obstacles: Query<&Obstacle>,
+) {
     *colliders = Colliders::from_obstacles(&obstacles, &settings);
     *path = Path::default();
 }
@@ -67,7 +72,10 @@ impl Colliders {
     }
 
     /// Creates a new [`Colliders`] from the given obstacles and settings.
-    pub fn from_obstacles<'a, T: IntoIterator<Item = &'a Obstacle>>(iter: T, settings: &PathSettings) -> Self {
+    pub fn from_obstacles<'a, T: IntoIterator<Item = &'a Obstacle>>(
+        iter: T,
+        settings: &PathSettings,
+    ) -> Self {
         Self {
             arcs: iter
                 .into_iter()

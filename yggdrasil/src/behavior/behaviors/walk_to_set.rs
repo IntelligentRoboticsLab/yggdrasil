@@ -82,7 +82,8 @@ pub fn walk_to_set(
     let is_goalkeeper = role.get() == &RoleState::Goalkeeper;
 
     if is_goalkeeper && reached_pre_set {
-        *target = crate::motion::path::planning::Target(Some(GOAL_KEEPER_PRE_SET_POS.position.into()));
+        *target =
+            crate::motion::path::planning::Target(Some(GOAL_KEEPER_PRE_SET_POS.position.into()));
     } else {
         *target = crate::motion::path::planning::Target(Some(set_robot_position.isometry.into()));
     }

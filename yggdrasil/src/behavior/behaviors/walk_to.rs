@@ -63,7 +63,9 @@ pub fn walk_to(
     step_planner.set_absolute_target_if_unset(walk_to.target);
 
     let position = match walk_to.target.rotation {
-        Some(rotation) => nalgebra::Isometry2::<f32>::from_parts(walk_to.target.position.into(), rotation).into(),
+        Some(rotation) => {
+            nalgebra::Isometry2::<f32>::from_parts(walk_to.target.position.into(), rotation).into()
+        }
         None => walk_to.target.position.into(),
     };
 
