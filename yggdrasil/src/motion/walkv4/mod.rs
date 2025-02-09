@@ -20,7 +20,7 @@ mod balancing;
 pub mod config;
 pub mod feet;
 mod foot_support;
-mod gait;
+pub(super) mod gait;
 pub mod hips;
 mod schedule;
 mod smoothing;

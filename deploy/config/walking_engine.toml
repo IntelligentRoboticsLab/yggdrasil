@@ -45,7 +45,7 @@ arm_swing_multiplier = 0.6
 #
 # Higher values mean that the filtered gyroscope value responds to changes quicker,
 # and lower values mean that it responds slower.
-gyro_lpf_alpha = 0.2
+gyro_lpf_alpha = 0.4
 
 # The weight of the balance adjustment based on the y gyroscope value.
 # Increasing this value will use a larger portion of the filtered gyro value

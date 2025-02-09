@@ -2,10 +2,7 @@ use bevy::prelude::*;
 use nidhogg::types::Fsr;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    core::debug::DebugContext,
-    sensor::fsr::{CalibratedFsr, Contacts},
-};
+use crate::sensor::fsr::{CalibratedFsr, Contacts};
 
 use super::{
     config::WalkingEngineConfig,
@@ -72,12 +69,10 @@ fn init_foot_support(mut commands: Commands, config: Res<WalkingEngineConfig>) {
 }
 
 fn update_foot_support(
-    ctx: DebugContext,
     config: Res<FootSupportConfig>,
     mut state: ResMut<FootSupportState>,
     calibration: Res<CalibratedFsr>,
     contacts: Res<Contacts>,
-    cycle: Res<crate::nao::Cycle>,
 ) {
     let pressures = &calibration.normalized;
     let weighted_pressure = pressures.weighted_sum(&config.weights);
@@ -119,22 +114,6 @@ fn update_foot_support(
             && (left_support_can_predict || right_support_can_predict);
 
         state.last_support = state.support;
-
-        ctx.log_with_cycle(
-            "foot_support/current",
-            *cycle,
-            &rerun::Scalar::new(state.support as f64),
-        );
-        ctx.log_with_cycle(
-            "foot_support/switched",
-            *cycle,
-            &rerun::Scalar::new(if state.foot_switched { 1.0 } else { -1.0 }),
-        );
-        ctx.log_with_cycle(
-            "foot_support/predicted",
-            *cycle,
-            &rerun::Scalar::new(if state.predicted_switch { 1.0 } else { -1.0 }),
-        );
 
         // Only predict a foot switch if the FSR is calibrated
         if calibration.is_calibrated {
