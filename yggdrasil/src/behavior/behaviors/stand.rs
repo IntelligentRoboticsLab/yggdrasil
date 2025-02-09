@@ -5,7 +5,7 @@ use nidhogg::types::HeadJoints;
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
-    motion::{walk::engine::WalkingEngine, walkv4::step_manager::StepManager},
+    motion::walkv4::step_manager::StepManager,
     nao::{NaoManager, Priority},
 };
 

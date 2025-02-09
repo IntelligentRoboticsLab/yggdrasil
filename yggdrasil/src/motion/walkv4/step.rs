@@ -15,6 +15,7 @@ pub struct Step {
 }
 
 impl Step {
+    #[must_use]
     pub fn clamp(&self, min: Step, max: Step) -> Self {
         Self {
             forward: self.forward.clamp(min.forward, max.forward),
@@ -122,5 +123,3 @@ impl Default for PlannedStep {
         }
     }
 }
-
-impl PlannedStep {}

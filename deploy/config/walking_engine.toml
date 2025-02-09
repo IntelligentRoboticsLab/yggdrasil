@@ -2,7 +2,7 @@
 base_step_duration = 250
 # Duration modifiers (in seconds) for a single step.
 # Modifies `base_step_duration` by adding (modifier * movement factor) seconds per step.
-step_duration_modifier = { forward = 0.1, left= 0.03, turn= 0.0}
+step_duration_modifier = { forward = 0.1, left = 0.03, turn = 0.0 }
 
 # The stiffness value used for the leg joints, higher means the robot's joints will
 # wear out faster, but the robot will be more stable.
@@ -38,15 +38,18 @@ max_sitting_hip_height = 0.145
 
 # This section contains parameters for the balance control
 [balancing]
-# The arm swing multiplier, this is used to adjust the amount of arm swing
-# based on the forward walk command.
-# The shoulder pitch value is "approximated" is computed by multiplying the
-# forward walk command by this value.
+# The amount to swing the arms based on the forward movement.
 arm_swing_multiplier = 0.6
 
-# The multiplier for the filtered gyro y value
+# The alpha parameter used for the low pass filter over the gyroscope values.
+#
+# Higher values mean that the filtered gyroscope value responds to changes quicker,
+# and lower values mean that it responds slower.
+gyro_lpf_alpha = 0.2
+
+# The weight of the balance adjustment based on the y gyroscope value.
 # Increasing this value will use a larger portion of the filtered gyro value
-# to adjust the pitch of the robot's ankles
+# to adjust the pitch of the robot's ankles, in order to balance the pendulum motion.
 filtered_gyro_y_multiplier = 0.05
 
 # This section contains parameters for the foot support while walking.
