@@ -5,7 +5,7 @@ pub mod keyframe;
 pub mod odometry;
 pub mod path_finding;
 pub mod step_planner;
-pub mod walk;
+
 pub mod walkv4;
 
 /// Plugin group containing all plugins related to robot motion.
@@ -17,7 +17,6 @@ impl PluginGroup for MotionPlugins {
             .add(odometry::OdometryPlugin)
             .add(keyframe::KeyframePlugin)
             .add(step_planner::StepPlannerPlugin)
-            .add(walk::WalkingEnginePlugin)
             .add(walkv4::Walkv4EnginePlugin)
     }
 }

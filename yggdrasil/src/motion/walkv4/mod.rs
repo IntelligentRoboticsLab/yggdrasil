@@ -4,7 +4,7 @@ use config::WalkingEngineConfig;
 use feet::FootPositions;
 use hips::HipHeight;
 use nidhogg::types::{ArmJoints, FillExt, LeftLegJoints, LegJoints, RightLegJoints};
-use schedule::{Gait, MotionSet};
+use schedule::MotionSet;
 use step::Step;
 use step_manager::StepManager;
 
@@ -20,12 +20,14 @@ mod balancing;
 pub mod config;
 pub mod feet;
 mod foot_support;
-pub(super) mod gait;
+mod gait;
 pub mod hips;
 mod schedule;
 mod smoothing;
 pub mod step;
 pub mod step_manager;
+
+pub use schedule::Gait;
 
 // TODO: dynamically set this
 /// The offset of the torso w.r.t. the hips.

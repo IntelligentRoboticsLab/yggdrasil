@@ -1,7 +1,6 @@
 use super::types::{
     ConditionalVariable, ExitRoutine, FailRoutine, Motion, MotionCondition, MotionType,
 };
-use crate::motion::walk::engine::{WalkState, WalkingEngine};
 use crate::motion::walkv4::step_manager::StepManager;
 use crate::nao::Priority;
 use bevy::prelude::*;
