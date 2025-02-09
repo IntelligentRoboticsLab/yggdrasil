@@ -35,8 +35,7 @@ impl Behavior for WalkTo {
 pub fn walk_to(
     walk_to: Res<WalkTo>,
     pose: Res<RobotPose>,
-    path: Res<crate::motion::path::planning::Path>,
-    mut target: ResMut<crate::motion::path::planning::Target>,
+    mut planner: ResMut<crate::motion::path::PathPlanner>,
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
@@ -69,10 +68,12 @@ pub fn walk_to(
         None => walk_to.target.position.into(),
     };
 
-    *target = crate::motion::path::planning::Target(Some(position));
+    if planner.target().map_or(true, |target| target.distance(position) >= planner.settings().target_tolerance) {
+        planner.set_target(Some(position));
+    }
 
     // Plan step or stand
-    if let Some(step) = path.step() {
+    if let Some(step) = planner.step(pose.inner.into()) {
         step_context.request_walk(step);
     } else {
         step_context.request_stand();

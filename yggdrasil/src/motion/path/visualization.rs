@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use crate::core::debug::DebugContext;
 
-use super::{obstacles::Obstacle, planning::Path};
+use super::{obstacles::Obstacle, planning::PathPlanner};
 
 /// Number of vertices per circle.
 const RESOLUTION: f32 = 64.0;
@@ -42,12 +42,13 @@ pub fn visualize_obstacles(dbg: DebugContext, obstacles: Query<&Obstacle>) {
 }
 
 /// Visualizes the path.
-pub fn visualize_path(dbg: DebugContext, path: Res<Path>) {
+pub fn visualize_path(dbg: DebugContext, planner: Res<PathPlanner>) {
     dbg.log(
         "pathfinding/path",
-        &rerun::LineStrips3D::new([path
-            .segments
-            .iter()
+        &rerun::LineStrips3D::new([planner
+            .current_path()
+            .into_iter()
+            .flatten()
             .flat_map(|s| s.vertices(RESOLUTION))
             .map(|p| [p.x, p.y, PATH_HEIGHT])]),
     );

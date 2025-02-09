@@ -5,7 +5,7 @@ use nalgebra as na;
 
 use super::{
     geometry::{Circle, CircularArc, Intersects, LineSegment, Point, Segment},
-    planning::Path,
+    planning::PathPlanner,
     PathSettings,
 };
 
@@ -26,13 +26,11 @@ pub fn obstacles_changed(obstacles: Query<&Obstacle, Changed<Obstacle>>) -> bool
 
 /// Updates the [`Colliders`] based on the obstacles in the ECS (and reset [`Path`]).
 pub fn update_colliders(
-    mut colliders: ResMut<Colliders>,
-    mut path: ResMut<Path>,
-    settings: Res<PathSettings>,
+    mut planner: ResMut<PathPlanner>,
     obstacles: Query<&Obstacle>,
 ) {
-    *colliders = Colliders::from_obstacles(&obstacles, &settings);
-    *path = Path::default();
+    let colliders = Colliders::from_obstacles(&obstacles, planner.settings());
+    planner.set_colliders(colliders);
 }
 
 /// Obstacle that the pathfinding navigates around.

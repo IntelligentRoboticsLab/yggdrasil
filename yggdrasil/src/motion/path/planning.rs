@@ -1,13 +1,12 @@
 //! Higher-level pathfinding capabilities.
 
 use bevy::prelude::*;
-use nalgebra as na;
 
-use crate::{localization::RobotPose, motion::walking_engine::step::Step};
+use crate::motion::walking_engine::step::Step;
 
 use super::{
     finding::{Pathfinding, Position},
-    geometry::Segment,
+    geometry::{Isometry, LineSegment, Segment, Winding},
     obstacles::Colliders,
     PathSettings,
 };
@@ -32,22 +31,41 @@ impl PathPlanner {
     }
 
     #[must_use]
-    pub fn step(&mut self, start: Position) -> Option<Step> {
-        Some(Step {
-            forward: 1.,
-            left: 0.,
-            turn: self.path(start).first().turn(),
-        })
+    pub fn step(&mut self, start: Isometry) -> Option<Step> {
+        let angular_tolerance = self.settings.angular_tolerance;
+        let first = self.path(start.into()).first()?;
+        let angle = Winding::shortest_distance(start.rotation.angle(), first.forward_at_start());
+
+        if angle.abs() > angular_tolerance {
+            Some(Step {
+                forward: 0.,
+                left: 0.,
+                turn: 0.8 * angle.signum(),
+            })
+            } else {
+            Some(Step {
+                forward: 1.,
+                left: 0.,
+                turn: first.turn()
+            })
+        }
     }
 
     #[must_use]
     pub fn path(&mut self, start: Position) -> &mut Vec<Segment> {
+        self.clear_target_if_reached(start);
+
         if self.ends_at_target() && self.begins_at_start(start) {
             self.trim_to_start(start);
             self.path.as_mut().unwrap()
         } else {
             self.path.insert(self.find_path(start))
         }
+    }
+
+    fn clear_target_if_reached(&mut self, start: Position) {
+        let tolerance = self.settings.target_tolerance;
+        self.target.take_if(|target| start.distance(*target) <= tolerance);
     }
 
     #[must_use]
@@ -60,14 +78,7 @@ impl PathPlanner {
             return self.target.is_none()
         };
 
-        let end = first.end().into();
-
-        let close = start.distance(end) <= self.settings.tolerance;
-        let aligned = start.angular_distance(end).map_or(true, |d| {
-             d.abs() <= self.settings.angular_tolerance
-        });
-
-        close && aligned
+        start.distance(first.start().into()) <= self.settings.tolerance
     }
 
     #[must_use]
@@ -95,12 +106,12 @@ impl PathPlanner {
         let point = start.to_point();
 
         while let Some(first) = path.first_mut() {
-            if start.distance(first.end().into()) <= self.settings.tolerance {
-                path.remove(0);
-                continue
+            if start.distance(first.end().into()) > self.settings.tolerance {
+                first.shorten(point);
+                break
             }
 
-            first.shorten(point);
+            path.remove(0);
         }
     }
 
@@ -113,8 +124,7 @@ impl PathPlanner {
             .or_else(|| self.find_path_with(start, Ease::InOut, false))
             .or_else(|| self.find_path_with(start, Ease::In, false))
             .or_else(|| self.find_path_with(start, Ease::Out, false))
-            .or_else(|| self.find_path_with(start, Ease::None, false))
-            .unwrap()
+            .unwrap_or_else(|| self.fallback_path(start))
     }
 
     #[must_use]
@@ -132,13 +142,13 @@ impl PathPlanner {
 
         let half_distance = 0.5 * start.distance(target);
 
-        let start = if ease.ease_in() && (half_distance >= settings.ease_in) {
+        let start = if ease.ease_in() && (half_distance >= settings.ease_in + settings.ease_out) {
             start
         } else {
             start.isometry_to_point()?
         };
 
-        let target = if ease.ease_out() && (half_distance >= settings.ease_in + settings.ease_out) {
+        let target = if ease.ease_out() && (half_distance >= settings.ease_out) {
             target
         } else {
             target.isometry_to_point()?
@@ -158,6 +168,20 @@ impl PathPlanner {
         };
 
         Some(pathfinding.path()?.0)
+    }
+
+    #[must_use]
+    pub fn fallback_path(&self, start: Position) -> Vec<Segment> {
+        self
+            .target
+            .map(|target| LineSegment::new(start.to_point(), target.to_point()).into())
+            .into_iter()
+            .collect()
+    }
+
+    #[must_use]
+    pub fn current_path(&self) -> Option<&Vec<Segment>> {
+        self.path.as_ref()
     }
 
     pub fn target(&self) -> Option<Position> {
@@ -187,6 +211,12 @@ impl PathPlanner {
     pub fn set_settings(&mut self, settings: PathSettings) {
         self.settings = settings;
         self.path = None;
+    }
+}
+
+impl Default for PathPlanner {
+    fn default() -> Self {
+        Self::new(PathSettings::default())
     }
 }
 

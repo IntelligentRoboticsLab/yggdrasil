@@ -6,12 +6,13 @@ pub mod obstacles;
 pub mod planning;
 pub mod visualization;
 
+pub use planning::PathPlanner;
+
 use std::f32::consts::PI;
 
 use bevy::prelude::*;
 
 use obstacles::{add_static_obstacles, obstacles_changed, update_colliders, Colliders};
-use planning::{update_path, Path, Target};
 use visualization::{init_visualization, visualize_obstacles, visualize_path};
 
 /// Plugin providing pathfinding capabilities.
@@ -19,21 +20,11 @@ pub struct PathPlugin;
 
 impl Plugin for PathPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Colliders>()
-            .init_resource::<Path>()
-            .init_resource::<Target>()
-            .init_resource::<PathSettings>()
+        app.init_resource::<PathPlanner>()
             .add_systems(Startup, add_static_obstacles)
             .add_systems(PostStartup, init_visualization)
-            .add_systems(
-                Update,
-                (update_colliders.run_if(obstacles_changed), update_path).chain(),
-            )
-            .add_systems(Update, visualize_path.run_if(resource_changed::<Path>))
-            .add_systems(
-                Update,
-                visualize_obstacles.run_if(resource_changed::<Colliders>),
-            );
+            .add_systems(Update, (update_colliders, visualize_obstacles).chain().run_if(obstacles_changed))
+            .add_systems(Update, visualize_path.run_if(resource_changed::<PathPlanner>));
     }
 }
 
@@ -62,9 +53,9 @@ impl Default for PathSettings {
         Self {
             robot_radius: 0.25,
             tolerance: 0.2,
-            angular_tolerance: 0.2 * PI,
-            target_tolerance: 0.05,
-            ease_in: 0.15,
+            angular_tolerance: 0.1 * PI,
+            target_tolerance: 0.2,
+            ease_in: 0.25,
             ease_out: 0.25,
         }
     }

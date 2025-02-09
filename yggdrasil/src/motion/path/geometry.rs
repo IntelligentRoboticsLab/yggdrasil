@@ -20,6 +20,17 @@ pub enum Winding {
 }
 
 impl Winding {
+    /// The shortest angular distance from 'start' to 'end'
+    #[must_use]
+    pub fn shortest_distance(start: f32, end: f32) -> f32 {
+        let ccw = Ccw.angular_distance(start, end);
+
+        if ccw > PI {
+            Cw.angular_distance(start, end)
+        } else {
+            ccw
+        }
+    }
     /// The angular distance from `start` to `end`.
     #[must_use]
     pub fn angular_distance(self, start: f32, end: f32) -> f32 {

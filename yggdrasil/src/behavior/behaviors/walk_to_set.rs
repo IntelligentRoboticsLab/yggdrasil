@@ -45,8 +45,7 @@ impl Behavior for WalkToSet {
 
 pub fn walk_to_set(
     pose: Res<RobotPose>,
-    path: Res<crate::motion::path::planning::Path>,
-    mut target: ResMut<crate::motion::path::planning::Target>,
+    mut planner: ResMut<crate::motion::path::PathPlanner>,
     layout_config: Res<LayoutConfig>,
     player_config: Res<PlayerConfig>,
     step_planner: ResMut<StepPlanner>,
@@ -81,14 +80,17 @@ pub fn walk_to_set(
 
     let is_goalkeeper = role.get() == &RoleState::Goalkeeper;
 
-    if is_goalkeeper && reached_pre_set {
-        *target =
-            crate::motion::path::planning::Target(Some(GOAL_KEEPER_PRE_SET_POS.position.into()));
+    let position = if is_goalkeeper && reached_pre_set {
+            GOAL_KEEPER_PRE_SET_POS.position.into()
     } else {
-        *target = crate::motion::path::planning::Target(Some(set_robot_position.isometry.into()));
+            set_robot_position.isometry.into()
+    };
+
+    if planner.target().map_or(true, |target| target.distance(position) >= planner.settings().target_tolerance) {
+        planner.set_target(Some(position));
     }
 
-    if let Some(step) = path.step() {
+    if let Some(step) = planner.step(pose.inner.into()) {
         step_context.request_walk(step);
     } else {
         let look_at = pose.get_look_at_absolute(&Point3::origin());
