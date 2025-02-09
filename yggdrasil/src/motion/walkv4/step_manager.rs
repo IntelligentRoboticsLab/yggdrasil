@@ -22,10 +22,7 @@ use super::{
 };
 use bevy::prelude::*;
 use nalgebra::Vector2;
-use rerun::{
-    external::glam::{Quat, Vec3},
-    TransformRelation,
-};
+use rerun::external::glam::{Quat, Vec3};
 
 const MAX_ACCELERATION: Step = Step {
     forward: 0.01,
@@ -83,12 +80,14 @@ impl StepManager {
 
     pub fn request_sit(&mut self) {
         self.requested_gait = Gait::Sitting;
-        self.finish_step();
+        self.last_step = PlannedStep::default();
+        self.requested_step = Step::default();
     }
 
     pub fn request_stand(&mut self) {
         self.requested_gait = Gait::Standing;
-        self.finish_step();
+        self.last_step = PlannedStep::default();
+        self.requested_step = Step::default();
     }
 
     pub fn request_walk(&mut self, step: Step) {
@@ -213,7 +212,6 @@ fn visualize_planned_step(dbg: DebugContext, cycle: Res<Cycle>, step_manager: Re
         "nao/planned_left_foot",
         *cycle,
         &rerun::Transform3D::update_fields()
-            .with_relation(TransformRelation::ChildFromParent)
             .with_translation(Vec3::from(
                 planned.target.left.translation.vector - ROBOT_TO_LEFT_PELVIS * 2.,
             ))
@@ -224,7 +222,6 @@ fn visualize_planned_step(dbg: DebugContext, cycle: Res<Cycle>, step_manager: Re
         "nao/planned_right_foot",
         *cycle,
         &rerun::Transform3D::update_fields()
-            .with_relation(TransformRelation::ChildFromParent)
             .with_translation(Vec3::from(
                 planned.target.right.translation.vector - ROBOT_TO_RIGHT_PELVIS * 2.,
             ))

@@ -86,6 +86,8 @@ fn init_starting_step(
         planned_step: PlannedStep {
             step: Step::default(),
             target: FootPositions::default(),
+            swing_foot_height: 0.009,
+            duration: Duration::from_millis(200),
             ..step_manager.planned_step
         },
     });
@@ -135,6 +137,8 @@ fn generate_starting_gait(
 
     left.translation.z = left_lift;
     right.translation.z = right_lift;
+
+    info!(?left_lift, ?right_lift, "starting step!");
 
     **target_positions = FootPositions {
         left: left.into(),
