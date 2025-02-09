@@ -143,8 +143,8 @@ fn setup_motion_state(
     let hip_height = kinematics.left_hip_height();
     let planned = PlannedStep {
         step: Step::default(),
-        start: start.clone(),
-        target: start.clone(),
+        start,
+        target: start,
         duration: Duration::from_millis(250),
         swing_foot_height: 0.,
         swing_foot: Side::Left,

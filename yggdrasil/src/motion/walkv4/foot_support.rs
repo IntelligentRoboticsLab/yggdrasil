@@ -50,6 +50,7 @@ pub struct FootSupportState {
 
 impl FootSupportState {
     /// Get the current support foot.
+    #[must_use]
     pub fn current_support(&self) -> Side {
         if self.support < 0.0 {
             Side::Left
@@ -59,6 +60,7 @@ impl FootSupportState {
     }
 
     /// Get the current swing foot.
+    #[must_use]
     pub fn current_swing(&self) -> Side {
         self.current_support().opposite()
     }

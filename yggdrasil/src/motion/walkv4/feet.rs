@@ -22,10 +22,12 @@ impl Default for FootPositions {
 }
 
 impl FootPositions {
+    #[must_use]
     pub fn new(left: Pose3<Ground>, right: Pose3<Ground>) -> Self {
         Self { left, right }
     }
 
+    #[must_use]
     pub fn from_kinematics(support_foot: Side, kinematics: &Kinematics, torso_offset: f32) -> Self {
         let hip_height = match support_foot {
             Side::Left => kinematics.left_hip_height(),
@@ -44,6 +46,7 @@ impl FootPositions {
         }
     }
 
+    #[must_use]
     pub fn from_target(swing_foot: Side, step: &Step) -> Self {
         let (support_offset, swing_offset) = match swing_foot {
             Side::Left => (ROBOT_TO_RIGHT_PELVIS, ROBOT_TO_LEFT_PELVIS),
@@ -68,7 +71,7 @@ impl FootPositions {
         Self { left, right }
     }
 
-    // TODO: Get rid of FootOffsets and use [`FootPositions`]
+    #[must_use]
     pub fn to_offsets(&self, hip_height: f32) -> (FootOffset, FootOffset) {
         let left = FootOffset {
             forward: self.left.translation.x,
@@ -90,14 +93,15 @@ impl FootPositions {
     }
 
     /// Compute the distance travelled by the swing foot in the ground plane.
+    #[must_use]
     pub fn swing_travel(&self, swing_side: Side, target: &FootPositions) -> Vector2<f32> {
         match swing_side {
-            // (self.right - self.left) + (target.left - target.right)
+            // this equals: (self.right - self.left) + (target.left - target.right)
             Side::Left => {
                 (self.right.translation * self.left.translation.inverse())
                     * (target.left.translation * target.right.translation.inverse())
             }
-            // (self.left - self.right) + (target.right - target.left)
+            // this equals: (self.left - self.right) + (target.right - target.left)
             Side::Right => {
                 (self.left.translation * self.right.translation.inverse())
                     * (target.right.translation * target.left.translation.inverse())
@@ -108,6 +112,7 @@ impl FootPositions {
     }
 
     /// Compute the angle between the current foot positions and the provided target.
+    #[must_use]
     pub fn turn_amount(&self, swing_side: Side, target: &FootPositions) -> f32 {
         match &swing_side {
             Side::Left => target.left.rotation.angle_to(&self.left.rotation),

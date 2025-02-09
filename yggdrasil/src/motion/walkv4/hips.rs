@@ -45,7 +45,7 @@ impl HipHeight {
     #[inline]
     #[must_use]
     pub fn is_adjusting(&self) -> bool {
-        self.current != self.requested
+        (self.current - self.requested).abs() > f32::EPSILON
     }
 
     /// Get the current target hip height.
