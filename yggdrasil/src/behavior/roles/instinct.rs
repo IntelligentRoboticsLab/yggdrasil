@@ -41,7 +41,7 @@ pub fn behavior(
     bottom_balls: Res<Balls<Bottom>>,
     behavior_state: Res<State<BehaviorState>>,
 ) {
-    //eprintln!("INSTINCTING");
+    // Change this to a system, also in Stiker
     let most_confident_ball = bottom_balls
         .most_confident_ball()
         .map(|b| b.position)
