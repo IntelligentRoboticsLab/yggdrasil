@@ -12,9 +12,6 @@ leg_stiffness = 0.8
 # wear out faster, but the robot will be more stable.
 arm_stiffness = 0.6
 
-# The center of pressure threshold for switching support foot
-cop_pressure_threshold = 0.6
-
 # The base amount to lift the feet in swing phase, in metres.
 # The foot lift is increased slightly, based on the forward and left in the command.
 base_foot_lift = 0.008
