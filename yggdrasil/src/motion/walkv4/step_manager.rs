@@ -5,7 +5,10 @@ use crate::{
         debug_system::{DebugAppExt, SystemToggle},
         DebugContext,
     },
-    kinematics::Kinematics,
+    kinematics::{
+        prelude::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS},
+        Kinematics,
+    },
     nao::Cycle,
     prelude::PreWrite,
 };
@@ -47,12 +50,13 @@ impl Plugin for StepManagerPlugin {
                 .run_if(on_event::<FootSwitchedEvent>)
                 .in_set(MotionSet::StepPlanning),
         );
-        app.add_debug_systems(
+        app.add_named_debug_systems(
             PreWrite,
             visualize_planned_step
                 .after(plan_step)
                 .run_if(on_event::<FootSwitchedEvent>)
                 .in_set(MotionSet::StepPlanning),
+            "Visualize planned step",
             SystemToggle::Enable,
         );
     }
@@ -135,12 +139,6 @@ impl StepManager {
             config.step_duration_modifier,
         ));
 
-        info!(
-            "[{:?}] foot lift: {}",
-            next_swing_foot,
-            config.base_foot_lift + foot_lift_modifier
-        );
-
         self.planned_step = PlannedStep {
             step: next_step,
             duration: config.base_step_duration + step_duration_modifier,
@@ -161,20 +159,10 @@ fn setup_step_visualizer(dbg: DebugContext) {
     );
 
     dbg.log_static(
-        "nao/planned_left_foot",
-        &rerun::Transform3D::update_fields().with_relation(TransformRelation::ChildFromParent),
-    );
-
-    dbg.log_static(
         "nao/planned_right_foot",
         &rerun::Asset3D::from_file("./assets/rerun/right_foot.glb")
             .expect("Failed to load left step model")
             .with_media_type(rerun::MediaType::glb()),
-    );
-
-    dbg.log_static(
-        "nao/planned_right_foot",
-        &rerun::Transform3D::update_fields().with_relation(TransformRelation::ChildFromParent),
     );
 }
 
@@ -225,7 +213,10 @@ fn visualize_planned_step(dbg: DebugContext, cycle: Res<Cycle>, step_manager: Re
         "nao/planned_left_foot",
         *cycle,
         &rerun::Transform3D::update_fields()
-            .with_translation(Vec3::from(planned.target.left.translation))
+            .with_relation(TransformRelation::ChildFromParent)
+            .with_translation(Vec3::from(
+                planned.target.left.translation.vector - ROBOT_TO_LEFT_PELVIS * 2.,
+            ))
             .with_quaternion(Quat::from(planned.target.left.rotation)),
     );
 
@@ -233,7 +224,10 @@ fn visualize_planned_step(dbg: DebugContext, cycle: Res<Cycle>, step_manager: Re
         "nao/planned_right_foot",
         *cycle,
         &rerun::Transform3D::update_fields()
-            .with_translation(Vec3::from(planned.target.right.translation))
+            .with_relation(TransformRelation::ChildFromParent)
+            .with_translation(Vec3::from(
+                planned.target.right.translation.vector - ROBOT_TO_RIGHT_PELVIS * 2.,
+            ))
             .with_quaternion(Quat::from(planned.target.right.rotation)),
     );
 }

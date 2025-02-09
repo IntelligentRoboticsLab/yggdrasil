@@ -4,7 +4,7 @@ use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
-    motion::{walk::engine::WalkingEngine, walkv4::step_manager::StepManager},
+    motion::walkv4::step_manager::StepManager,
     nao::{NaoManager, Priority, RobotInfo},
 };
 
