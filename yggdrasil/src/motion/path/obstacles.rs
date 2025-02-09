@@ -3,9 +3,7 @@
 use bevy::prelude::*;
 use nalgebra as na;
 
-use super::{
-    finding::Colliders, geometry::{Circle, CircularArc, Point}, planning::PathPlanner, PathSettings
-};
+use super::{finding::Colliders, geometry::{Circle, CircularArc, Point}, planning::PathPlanner};
 
 /// Adds initial obstacles to the scene.
 pub fn add_static_obstacles(mut commands: Commands) {
@@ -27,7 +25,14 @@ pub fn update_colliders(
     mut planner: ResMut<PathPlanner>,
     obstacles: Query<&Obstacle>,
 ) {
-    let colliders = Obstacle::into_colliders(&obstacles, planner.settings());
+    let radius = planner.settings().robot_radius;
+
+    let mut colliders = Colliders::new();
+
+    for obstacle in &obstacles {
+        obstacle.add_to_colliders(radius, &mut colliders);
+    }
+
     planner.set_colliders(colliders);
 }
 
@@ -38,19 +43,9 @@ pub enum Obstacle {
 }
 
 impl Obstacle {
-    /// Creates a new [`Colliders`] from the given obstacles and settings.
-    pub fn into_colliders<'a, T: IntoIterator<Item = &'a Obstacle>>(
-        iter: T,
-        settings: &PathSettings,
-    ) -> Colliders {
-        Colliders {
-            arcs: iter
-                .into_iter()
-                .map(|obstacle| match obstacle {
-                    &Obstacle::Circle(c) => c.dilate(settings.robot_radius).into(),
-                })
-                .collect(),
-            lines: Vec::new(),
+    pub fn add_to_colliders(&self, radius: f32, colliders: &mut Colliders) {
+        match self {
+            &Obstacle::Circle(circle) => colliders.arcs.push(circle.dilate(radius).into()),
         }
     }
 
