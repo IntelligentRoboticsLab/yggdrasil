@@ -136,8 +136,6 @@ fn generate_starting_gait(
     left.translation.z = left_lift;
     right.translation.z = right_lift;
 
-    info!(?left_lift, ?right_lift, "starting lifts");
-
     **target_positions = FootPositions {
         left: left.into(),
         right: right.into(),
