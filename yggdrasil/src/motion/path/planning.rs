@@ -5,16 +5,15 @@ use bevy::prelude::*;
 use crate::motion::walking_engine::step::Step;
 
 use super::{
-    finding::{Pathfinding, Position},
+    finding::{Colliders, Pathfinding, Target},
     geometry::{Isometry, LineSegment, Point, Segment, Winding},
-    obstacles::Colliders,
     PathSettings,
 };
 
 #[derive(Resource)]
 pub struct PathPlanner {
-    pub target: Option<Position>,
-    path: Option<Vec<Segment>>,
+    pub path: Option<Vec<Segment>>,
+    pub target: Option<Target>,
     colliders: Colliders,
     settings: PathSettings,
 }
@@ -78,7 +77,7 @@ impl PathPlanner {
     }
 
     #[must_use]
-    pub fn path(&mut self, start: Position) -> &mut Vec<Segment> {
+    pub fn path(&mut self, start: Target) -> &mut Vec<Segment> {
         let point = start.to_point();
 
         if self.ends_at_target(start) {
@@ -93,7 +92,7 @@ impl PathPlanner {
     }
 
     #[must_use]
-    fn begins_at_start(&self, start: Position) -> bool {
+    fn begins_at_start(&self, start: Target) -> bool {
         let Some(path) = self.path.as_ref() else {
             return false
         };
@@ -106,7 +105,7 @@ impl PathPlanner {
     }
 
     #[must_use]
-    fn ends_at_target(&self, start: Position) -> bool {
+    fn ends_at_target(&self, start: Target) -> bool {
         let Some(path) = self.path.as_ref() else {
             return false
         };
@@ -139,7 +138,7 @@ impl PathPlanner {
     }
 
     #[must_use]
-    pub fn find_path(&self, start: Position) -> Vec<Segment> {
+    pub fn find_path(&self, start: Target) -> Vec<Segment> {
         self.find_path_with(start, Ease::InOut, true)
             .or_else(|| self.find_path_with(start, Ease::In, true))
             .or_else(|| self.find_path_with(start, Ease::Out, true))
@@ -153,7 +152,7 @@ impl PathPlanner {
     #[must_use]
     pub fn find_path_with(
         &self,
-        start: Position,
+        start: Target,
         ease: Ease,
         collisions: bool,
     ) -> Option<Vec<Segment>> {
@@ -194,17 +193,12 @@ impl PathPlanner {
     }
 
     #[must_use]
-    pub fn fallback_path(&self, start: Position) -> Vec<Segment> {
+    pub fn fallback_path(&self, start: Target) -> Vec<Segment> {
         self
             .target
             .map(|target| LineSegment::new(start.to_point(), target.to_point()).into())
             .into_iter()
             .collect()
-    }
-
-    #[must_use]
-    pub fn current_path(&self) -> Option<&Vec<Segment>> {
-        self.path.as_ref()
     }
 
     #[must_use]

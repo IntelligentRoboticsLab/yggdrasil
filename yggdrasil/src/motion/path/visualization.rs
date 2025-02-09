@@ -46,7 +46,8 @@ pub fn visualize_path(dbg: DebugContext, planner: Res<PathPlanner>) {
     dbg.log(
         "pathfinding/path",
         &rerun::LineStrips3D::new([planner
-            .current_path()
+            .path
+            .as_ref()
             .into_iter()
             .flatten()
             .flat_map(|s| s.vertices(RESOLUTION))

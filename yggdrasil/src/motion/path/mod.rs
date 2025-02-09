@@ -7,6 +7,7 @@ pub mod planning;
 pub mod visualization;
 
 pub use planning::PathPlanner;
+pub use finding::Target;
 
 use std::f32::consts::PI;
 

@@ -4,9 +4,8 @@ use nalgebra as na;
 use ordered_float::OrderedFloat;
 
 use super::geometry::{Connection, Winding};
-use super::obstacles::Colliders;
 use super::{
-    geometry::{Ccw, CircularArc, Cw, Intersects, Isometry, Length, Node, Point, Segment},
+    geometry::{Ccw, CircularArc, LineSegment, Cw, Intersects, Isometry, Length, Node, Point, Segment},
     PathSettings,
 };
 
@@ -16,9 +15,9 @@ type Float = OrderedFloat<f32>;
 #[derive(Copy, Clone)]
 pub struct Pathfinding<'a> {
     /// The start position of the path.
-    pub start: Position,
+    pub start: Target,
     /// The target position of the path.
-    pub target: Position,
+    pub target: Target,
     /// The colliders to navigate around.
     pub colliders: &'a Colliders,
     /// The settings for pathfinding.
@@ -87,11 +86,11 @@ impl Pathfinding<'_> {
     /// Returns the successors from [`State::Start`].
     fn start_successors(&self) -> Vec<(State, Float)> {
         match self.start {
-            Position::Isometry(_) => vec![
+            Target::Isometry(_) => vec![
                 State::EaseIn(Ccw).without_cost(),
                 State::EaseIn(Cw).without_cost(),
             ],
-            Position::Point(start) => self.node_successors(start.into()),
+            Target::Point(start) => self.node_successors(start.into()),
         }
     }
 
@@ -220,27 +219,27 @@ impl State {
     }
 }
 
-/// A position with an optional direction, expressed as a point or isometry.
+/// A target with an optional direction, expressed as a point or an isometry.
 #[derive(Copy, Clone, Debug)]
-pub enum Position {
+pub enum Target {
     Isometry(Isometry),
     Point(Point),
 }
 
-impl Position {
-    /// Returns the distance between two [`Position`]s.
+impl Target {
+    /// Returns the distance between two [`Target`]s.
     #[must_use]
-    pub fn distance(self, other: Position) -> f32 {
+    pub fn distance(self, other: Target) -> f32 {
         na::distance(&self.to_point(), &other.to_point())
     }
 
-    /// Returns the angular distance between two [`Position`]s.
+    /// Returns the angular distance between two [`Target`]s.
     #[must_use]
-    pub fn angular_distance(self, other: Position) -> Option<f32> {
+    pub fn angular_distance(self, other: Target) -> Option<f32> {
         Some(other.angle()? - self.angle()?)
     }
 
-    /// Returns the angle of this [`Position`].
+    /// Returns the angle of this [`Target`].
     #[must_use]
     pub fn angle(self) -> Option<f32> {
         Some(self.isometry()?.rotation.angle())
@@ -255,13 +254,13 @@ impl Position {
         }
     }
 
-    /// Converts a [`Position::Isometry`] to a [`Position::Point`].
+    /// Converts a [`Target::Isometry`] to a [`Target::Point`].
     #[must_use]
     pub fn isometry_to_point(self) -> Option<Self> {
         Some(Self::Point(self.isometry()?.translation.vector.into()))
     }
 
-    /// If this position is an isometry, returns it.
+    /// If this target is an isometry, returns it.
     #[must_use]
     pub fn isometry(self) -> Option<Isometry> {
         match self {
@@ -270,7 +269,7 @@ impl Position {
         }
     }
 
-    /// If this position is a point, returns it.
+    /// If this target is a point, returns it.
     #[must_use]
     pub fn point(self) -> Option<Point> {
         match self {
@@ -280,14 +279,54 @@ impl Position {
     }
 }
 
-impl From<Isometry> for Position {
+impl From<Isometry> for Target {
     fn from(isometry: Isometry) -> Self {
         Self::Isometry(isometry)
     }
 }
 
-impl From<Point> for Position {
+impl From<Point> for Target {
     fn from(point: Point) -> Self {
         Self::Point(point)
+    }
+}
+
+/// The colliders that the pathfinding navigates around, consists of circular arcs and line
+/// segments.
+#[derive(Clone, Default)]
+pub struct Colliders {
+    pub arcs: Vec<CircularArc>,
+    pub lines: Vec<LineSegment>,
+}
+
+impl Colliders {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            arcs: Vec::new(),
+            lines: Vec::new(),
+        }
+    }
+
+    /// Iterates over the segments that this struct contains.
+    pub fn segments(&self) -> impl Iterator<Item = Segment> + '_ {
+        let arcs = self.arcs.iter().copied().map(Into::into);
+        let lines = self.lines.iter().copied().map(Into::into);
+
+        arcs.chain(lines)
+    }
+}
+
+impl Intersects<Segment> for &Colliders {
+    type Intersection = bool;
+
+    fn intersects(self, segment: Segment) -> bool {
+        for other in self.segments() {
+            if segment.intersects(other) {
+                return true;
+            }
+        }
+
+        false
     }
 }

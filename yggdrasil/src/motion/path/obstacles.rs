@@ -4,9 +4,7 @@ use bevy::prelude::*;
 use nalgebra as na;
 
 use super::{
-    geometry::{Circle, CircularArc, Intersects, LineSegment, Point, Segment},
-    planning::PathPlanner,
-    PathSettings,
+    finding::Colliders, geometry::{Circle, CircularArc, Point}, planning::PathPlanner, PathSettings
 };
 
 /// Adds initial obstacles to the scene.
@@ -29,7 +27,7 @@ pub fn update_colliders(
     mut planner: ResMut<PathPlanner>,
     obstacles: Query<&Obstacle>,
 ) {
-    let colliders = Colliders::from_obstacles(&obstacles, planner.settings());
+    let colliders = Obstacle::into_colliders(&obstacles, planner.settings());
     planner.set_colliders(colliders);
 }
 
@@ -40,42 +38,12 @@ pub enum Obstacle {
 }
 
 impl Obstacle {
-    pub fn vertices(&self, resolution: f32) -> impl Iterator<Item = Point> {
-        match self {
-            &Obstacle::Circle(c) => CircularArc::from(c).vertices(resolution),
-        }
-    }
-}
-
-impl From<Circle> for Obstacle {
-    fn from(circle: Circle) -> Self {
-        Self::Circle(circle)
-    }
-}
-
-/// The colliders that the pathfinding navigates around, consists of circular arcs and line
-/// segments.
-#[derive(Clone, Default, Resource)]
-pub struct Colliders {
-    pub arcs: Vec<CircularArc>,
-    pub lines: Vec<LineSegment>,
-}
-
-impl Colliders {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            arcs: Vec::new(),
-            lines: Vec::new(),
-        }
-    }
-
     /// Creates a new [`Colliders`] from the given obstacles and settings.
-    pub fn from_obstacles<'a, T: IntoIterator<Item = &'a Obstacle>>(
+    pub fn into_colliders<'a, T: IntoIterator<Item = &'a Obstacle>>(
         iter: T,
         settings: &PathSettings,
-    ) -> Self {
-        Self {
+    ) -> Colliders {
+        Colliders {
             arcs: iter
                 .into_iter()
                 .map(|obstacle| match obstacle {
@@ -86,25 +54,15 @@ impl Colliders {
         }
     }
 
-    /// Iterates over the segments that this struct contains.
-    pub fn segments(&self) -> impl Iterator<Item = Segment> + '_ {
-        let arcs = self.arcs.iter().copied().map(Into::into);
-        let lines = self.lines.iter().copied().map(Into::into);
-
-        arcs.chain(lines)
+    pub fn vertices(&self, resolution: f32) -> impl Iterator<Item = Point> {
+        match self {
+            &Obstacle::Circle(c) => CircularArc::from(c).vertices(resolution),
+        }
     }
 }
 
-impl Intersects<Segment> for &Colliders {
-    type Intersection = bool;
-
-    fn intersects(self, segment: Segment) -> bool {
-        for other in self.segments() {
-            if segment.intersects(other) {
-                return true;
-            }
-        }
-
-        false
+impl From<Circle> for Obstacle {
+    fn from(circle: Circle) -> Self {
+        Self::Circle(circle)
     }
 }
