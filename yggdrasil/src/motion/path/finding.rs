@@ -17,8 +17,8 @@ type Float = OrderedFloat<f32>;
 pub struct Pathfinding<'a> {
     /// The start position of the path.
     pub start: Position,
-    /// The goal position of the path.
-    pub goal: Position,
+    /// The target position of the path.
+    pub target: Position,
     /// The colliders to navigate around.
     pub colliders: &'a Colliders,
     /// The settings for pathfinding.
@@ -26,7 +26,7 @@ pub struct Pathfinding<'a> {
 }
 
 impl Pathfinding<'_> {
-    /// Calculates the shortest path from `start` to `goal` and returns the segments that make up
+    /// Calculates the shortest path from `start` to `target` and returns the segments that make up
     /// the path as well as the total length (if such a path exists).
     #[must_use]
     pub fn path(&self) -> Option<(Vec<Segment>, f32)> {
@@ -52,7 +52,7 @@ impl Pathfinding<'_> {
         Some((segments, cost.into()))
     }
 
-    /// `FInds` the shortest path using the A* algorithm.
+    /// Finds the shortest path using the A* algorithm.
     fn astar(&self) -> Option<(Vec<State>, Float)> {
         pathfinding::directed::astar::astar(
             &State::Start,
@@ -62,9 +62,9 @@ impl Pathfinding<'_> {
         )
     }
 
-    /// Returns the heuristic for A* based on the euclidean distance to the goal.
+    /// Returns the heuristic for A* based on the euclidean distance to the target.
     fn heuristic(&self, state: State) -> Float {
-        na::distance(&self.point(state), &self.goal.to_point()).into()
+        na::distance(&self.point(state), &self.target.to_point()).into()
     }
 
     /// Returns the successors of a given state.
@@ -102,14 +102,14 @@ impl Pathfinding<'_> {
             State::AlongCollider(index, next.direction(), next.start.into())
         };
 
-        // Potential successors that directly lead to the goal.
+        // Potential successors that directly lead to the target.
         let direct: [(Option<Node>, fn(Connection) -> State); 3] = [
-            (self.goal.point().map(Node::from), |_| State::Goal),
+            (self.target.point().map(Node::from), |_| State::Goal),
             (self.ease_out(Ccw).map(Node::from), |connection| {
                 State::EaseOut(Ccw, connection.next.unwrap().start.into())
             }),
             (self.ease_out(Winding::Cw).map(Node::from), |connection| {
-                State::EaseOut(Winding::Cw, connection.next.unwrap().start.into())
+                State::EaseOut(Cw, connection.next.unwrap().start.into())
             }),
         ];
 
@@ -122,7 +122,7 @@ impl Pathfinding<'_> {
                     .map(|connection| to_state(connection).with_cost(connection))
             });
 
-        // Potential successors that don't directly lead to the goal.
+        // Potential successors that don't directly lead to the target.
         let indirect = self
             .colliders
             .arcs
@@ -150,7 +150,7 @@ impl Pathfinding<'_> {
     fn point(&self, state: State) -> Point {
         match state {
             State::Start => self.start.to_point(),
-            State::Goal => self.goal.to_point(),
+            State::Goal => self.target.to_point(),
             state => self.arc(state).unwrap().point_at_start(),
         }
     }
@@ -182,7 +182,7 @@ impl Pathfinding<'_> {
     /// Returns the arc to ease in from the start.
     fn ease_out(&self, direction: Winding) -> Option<CircularArc> {
         Some(CircularArc::from_isometry(
-            self.goal.isometry()?,
+            self.target.isometry()?,
             direction,
             self.settings.ease_out,
         ))
@@ -194,7 +194,7 @@ impl Pathfinding<'_> {
 enum State {
     /// The start state.
     Start,
-    /// The goal state.
+    /// The target state.
     Goal,
     /// Easing into the path from the start.
     ///
@@ -204,9 +204,9 @@ enum State {
     ///
     /// The collider is identified by an index, and the start angle is determined.
     AlongCollider(usize, Winding, OrderedFloat<f32>),
-    /// Easing out of the path into the goal.
+    /// Easing out of the path into the target.
     ///
-    /// If goal is an isometry, this state precedes [`State::Goal`].
+    /// If target is an isometry, this state precedes [`State::Goal`].
     EaseOut(Winding, OrderedFloat<f32>),
 }
 
@@ -228,6 +228,24 @@ pub enum Position {
 }
 
 impl Position {
+    /// Returns the distance between two [`Position`]s.
+    #[must_use]
+    pub fn distance(self, other: Position) -> f32 {
+        na::distance(&self.to_point(), &other.to_point())
+    }
+
+    /// Returns the angular distance between two [`Position`]s.
+    #[must_use]
+    pub fn angular_distance(self, other: Position) -> Option<f32> {
+        Some(other.angle()? - self.angle()?)
+    }
+
+    /// Returns the angle of this [`Position`].
+    #[must_use]
+    pub fn angle(self) -> Option<f32> {
+        Some(self.isometry()?.rotation.angle())
+    }
+
     /// Discards the direction and returns the point this position represents.
     #[must_use]
     pub fn to_point(self) -> Point {
@@ -235,6 +253,12 @@ impl Position {
             Self::Isometry(isometry) => isometry.translation.vector.into(),
             Self::Point(point) => point,
         }
+    }
+
+    /// Converts a [`Position::Isometry`] to a [`Position::Point`].
+    #[must_use]
+    pub fn isometry_to_point(self) -> Option<Self> {
+        Some(Self::Point(self.isometry()?.translation.vector.into()))
     }
 
     /// If this position is an isometry, returns it.
