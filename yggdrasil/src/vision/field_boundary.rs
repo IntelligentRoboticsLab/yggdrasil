@@ -25,22 +25,18 @@ impl Plugin for FieldBoundaryPlugin {
         app.init_ml_model::<FieldBoundaryModel>()
             .add_systems(
                 PostStartup,
-                (
-                    init_field_boundary,
-                    // setup_boundary_debug_logging
-                )
-                    .after(init_camera::<Top>),
+                (init_field_boundary, setup_boundary_debug_logging).after(init_camera::<Top>),
             )
             .add_systems(
                 Update,
                 detect_field_boundary
                     .run_if(resource_exists_and_changed::<Image<Top>>)
                     .run_if(task_finished::<FieldBoundary>),
+            )
+            .add_systems(
+                PostUpdate,
+                log_boundary_points.run_if(resource_exists_and_changed::<FieldBoundary>),
             );
-        // .add_systems(
-        //     PostUpdate,
-        //     log_boundary_points.run_if(resource_exists_and_changed::<FieldBoundary>),
-        // );
     }
 }
 

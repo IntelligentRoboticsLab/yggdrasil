@@ -19,7 +19,7 @@ mod arm_swing;
 mod balancing;
 pub mod config;
 pub mod feet;
-mod foot_support;
+pub mod foot_support;
 mod gait;
 pub mod hips;
 mod schedule;
