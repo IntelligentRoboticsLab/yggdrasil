@@ -9,8 +9,17 @@ use super::{feet::FootPositions, Side};
 
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
 pub struct Step {
+    /// Forward component of the step in meters.
     pub forward: f32,
+    /// Sideways component of the step in meters.
+    ///
+    /// Positive values will result in a side step to the left, negative values will result
+    /// in a side step to the right.
     pub left: f32,
+    /// Turn component of the step in radians.
+    ///
+    /// Positive values will result in a turn to the left, and negative values will result
+    /// in a turn to the right.
     pub turn: f32,
 }
 

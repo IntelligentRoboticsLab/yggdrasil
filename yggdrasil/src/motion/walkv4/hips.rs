@@ -12,7 +12,7 @@ const REACHED_REQUESTED_THRESHOLD: f32 = 0.001;
 /// Smoothing parameter for the exponential interpolation applied to the hip height.
 const HEIGHT_ADJUSTMENT_SMOOTHING: f32 = 0.1;
 
-pub(super) struct HipHeightPlugin;
+pub struct HipHeightPlugin;
 
 impl Plugin for HipHeightPlugin {
     fn build(&self, app: &mut App) {
@@ -73,7 +73,7 @@ impl HipHeight {
 
     /// Request a specific hip height.
     ///
-    /// This will be propagated automatically by the [`HipHeightPlugin`].
+    /// This will be propagated automatically by the `HipHeightPlugin`.
     pub fn request(&mut self, hip_height: f32) {
         self.requested = hip_height;
     }
