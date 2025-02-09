@@ -12,7 +12,7 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 
-use obstacles::{add_static_obstacles, obstacles_changed, update_colliders, Colliders};
+use obstacles::{add_static_obstacles, obstacles_changed, update_colliders};
 use visualization::{init_visualization, visualize_obstacles, visualize_path};
 
 /// Plugin providing pathfinding capabilities.
@@ -31,32 +31,33 @@ impl Plugin for PathPlugin {
 /// Struct containing the configuration for the pathfinding.
 #[derive(Copy, Clone, Resource)]
 pub struct PathSettings {
-    /// The radius of the robot (minimum distance it keeps from obstacles).
     pub robot_radius: f32,
-    /// The maximum distance the robot is allowed to be from the path before it is considered
-    /// desynchronized.
-    pub tolerance: f32,
-    /// The maximum angular distance the robot is allowed to be from the path before it is
-    /// considered desynchronized.
-    pub angular_tolerance: f32,
-    /// The maximum distance the robot is allowed to be from the target before it is considered
-    /// reached.
-    pub target_tolerance: f32,
-    /// The radius ou the arc to ease in into the path.
     pub ease_in: f32,
-    /// The radius ou the arc to ease out of the path.
     pub ease_out: f32,
+    pub start_tolerance: f32,
+    pub target_tolerance: f32,
+    pub perpendicular_tolerance: f32,
+    pub angular_tolerance: f32,
+    pub walk_speed: f32,
+    pub turn_speed: f32,
+    pub perpendicular_speed: f32,
+    pub angular_speed: f32,
 }
 
 impl Default for PathSettings {
     fn default() -> Self {
         Self {
             robot_radius: 0.25,
-            tolerance: 0.2,
-            angular_tolerance: 0.1 * PI,
+            start_tolerance: 0.2,
             target_tolerance: 0.2,
+            perpendicular_tolerance: 0.05,
+            angular_tolerance: 0.1 * PI,
             ease_in: 0.25,
             ease_out: 0.25,
+            walk_speed: 0.05,
+            turn_speed: 0.2 * PI,
+            perpendicular_speed: 0.02,
+            angular_speed: 0.1 * PI,
         }
     }
 }

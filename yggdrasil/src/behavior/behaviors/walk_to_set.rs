@@ -86,11 +86,9 @@ pub fn walk_to_set(
             set_robot_position.isometry.into()
     };
 
-    if planner.target().map_or(true, |target| target.distance(position) >= planner.settings().target_tolerance) {
-        planner.set_target(Some(position));
-    }
+    planner.target = Some(position);
 
-    if let Some(step) = planner.step(pose.inner.into()) {
+    if let Some(step) = planner.step(pose.inner) {
         step_context.request_walk(step);
     } else {
         let look_at = pose.get_look_at_absolute(&Point3::origin());

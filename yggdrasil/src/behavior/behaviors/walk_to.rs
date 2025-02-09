@@ -68,12 +68,10 @@ pub fn walk_to(
         None => walk_to.target.position.into(),
     };
 
-    if planner.target().map_or(true, |target| target.distance(position) >= planner.settings().target_tolerance) {
-        planner.set_target(Some(position));
-    }
+    planner.target = Some(position);
 
     // Plan step or stand
-    if let Some(step) = planner.step(pose.inner.into()) {
+    if let Some(step) = planner.step(pose.inner) {
         step_context.request_walk(step);
     } else {
         step_context.request_stand();

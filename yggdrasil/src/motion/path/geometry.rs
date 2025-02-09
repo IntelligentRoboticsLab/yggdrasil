@@ -20,18 +20,12 @@ pub enum Winding {
 }
 
 impl Winding {
-    /// The shortest angular distance from 'start' to 'end'
+    /// Returns the shortest angular distance from 'start' to 'end'
     #[must_use]
     pub fn shortest_distance(start: f32, end: f32) -> f32 {
-        let ccw = Ccw.angular_distance(start, end);
-
-        if ccw > PI {
-            Cw.angular_distance(start, end)
-        } else {
-            ccw
-        }
+        Ccw.angular_distance(start + PI, end) - PI
     }
-    /// The angular distance from `start` to `end`.
+    /// Returns the angular distance from `start` to `end`.
     #[must_use]
     pub fn angular_distance(self, start: f32, end: f32) -> f32 {
         match self {
@@ -69,6 +63,12 @@ impl LineSegment {
     #[must_use]
     pub fn direction(self) -> Vector {
         (self.end - self.start) / self.length()
+    }
+
+    /// Returns the signed perpendicular distance to a point such that to the right is positive.
+    #[must_use]
+    pub fn signed_distance(self, point: Point) -> f32 {
+        (point - self.start).perp(&self.direction())
     }
 
     /// Returns the angle the line segment points to.
@@ -145,6 +145,12 @@ impl Circle {
     pub fn angle_to_point(self, point: Point) -> f32 {
         let center_to_point = point - self.center;
         center_to_point.y.atan2(center_to_point.x)
+    }
+
+    /// Returns the signed distance such that it's positive for a point outside the circle.
+    #[must_use]
+    pub fn signed_distance(self, point: Point) -> f32 {
+        (point - self.center).norm() - self.radius
     }
 
     /// Calculates the tangents from the circle to a point.
@@ -368,6 +374,12 @@ impl CircularArc {
         } else {
             Cw
         }
+    }
+
+    /// Returns the signed perpendicular distance to a point such that to the right is positive.
+    #[must_use]
+    pub fn signed_distance(self, point: Point) -> f32 {
+        self.step.signum() * self.circle.signed_distance(point)
     }
 
     /// The angular distance from `start` to `end`.
@@ -626,6 +638,15 @@ impl Segment {
         }
     }
 
+    /// Returns the signed perpendicular distance to a point such that to the right is positive.
+    #[must_use]
+    pub fn signed_distance(self, point: Point) -> f32 {
+        match self {
+            Segment::LineSegment(line) => line.signed_distance(point),
+            Segment::CircularArc(arc) => arc.signed_distance(point),
+        }
+    }
+
     /// Returns the turn such that a left (i.e., counterclockwise) turn is positive.
     #[must_use]
     pub fn turn(self) -> f32 {
@@ -653,8 +674,8 @@ impl Segment {
         }
     }
 
-    /// Shortens this segment to the poiht closest to the given point.
-    pub fn shorten(&mut self, point: Point) {
+    /// Trims this segment to the poiht closest to the given point.
+    pub fn trim(&mut self, point: Point) {
         match self {
             Segment::LineSegment(line) => {
                 if let Some(new) = line.enter(point) {
@@ -667,6 +688,12 @@ impl Segment {
                 }
             }
         }
+    }
+
+    /// Checks whether the point is beyond the end of the segment.
+    pub fn beyond(&self, point: Point) -> bool {
+        let angle = self.forward_at_end();
+        (point - self.end()).dot(&Vector::new(angle.cos(), angle.sin())) >= 0.
     }
 
     /// Returns the vertices to render this segment.

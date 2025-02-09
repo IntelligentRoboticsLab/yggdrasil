@@ -6,15 +6,15 @@ use crate::motion::walking_engine::step::Step;
 
 use super::{
     finding::{Pathfinding, Position},
-    geometry::{Isometry, LineSegment, Segment, Winding},
+    geometry::{Isometry, LineSegment, Point, Segment, Winding},
     obstacles::Colliders,
     PathSettings,
 };
 
 #[derive(Resource)]
 pub struct PathPlanner {
+    pub target: Option<Position>,
     path: Option<Vec<Segment>>,
-    target: Option<Position>,
     colliders: Colliders,
     settings: PathSettings,
 }
@@ -32,40 +32,64 @@ impl PathPlanner {
 
     #[must_use]
     pub fn step(&mut self, start: Isometry) -> Option<Step> {
-        let angular_tolerance = self.settings.angular_tolerance;
-        let first = self.path(start.into()).first()?;
-        let angle = Winding::shortest_distance(start.rotation.angle(), first.forward_at_start());
+        let PathSettings {
+            perpendicular_tolerance,
+            angular_tolerance,
+            walk_speed,
+            turn_speed,
+            perpendicular_speed,
+            angular_speed,
+            ..
+        } = self.settings;
 
-        if angle.abs() > angular_tolerance {
+        let point = start.translation.vector.into();
+        let first = self.path(start.into()).first()?;
+
+        let perpendicular_correction = {
+            let error = first.signed_distance(point);
+
+            if error > perpendicular_tolerance {
+                error.signum() * perpendicular_speed
+            } else {
+                0.
+            }
+        };
+
+        let angular_error = Winding::shortest_distance(
+            start.rotation.angle(),
+            first.forward_at_start(),
+        );
+
+        let angular_correction = angular_error.signum() * angular_speed;
+
+        if angular_error.abs() <= angular_tolerance {
             Some(Step {
-                forward: 0.,
-                left: 0.,
-                turn: 0.8 * angle.signum(),
+                forward: walk_speed,
+                left: perpendicular_correction,
+                turn: first.turn() * walk_speed + angular_correction,
             })
             } else {
             Some(Step {
-                forward: 1.,
-                left: 0.,
-                turn: first.turn()
+                forward: 0.,
+                left: perpendicular_correction,
+                turn: turn_speed,
             })
         }
     }
 
     #[must_use]
     pub fn path(&mut self, start: Position) -> &mut Vec<Segment> {
-        self.clear_target_if_reached(start);
+        let point = start.to_point();
 
-        if self.ends_at_target() && self.begins_at_start(start) {
-            self.trim_to_start(start);
-            self.path.as_mut().unwrap()
-        } else {
-            self.path.insert(self.find_path(start))
+        if self.ends_at_target(start) {
+            self.trim_to_start(point);
+
+            if self.begins_at_start(start) {
+                return self.path.as_mut().unwrap();
+            }
         }
-    }
 
-    fn clear_target_if_reached(&mut self, start: Position) {
-        let tolerance = self.settings.target_tolerance;
-        self.target.take_if(|target| start.distance(*target) <= tolerance);
+        self.path.insert(self.find_path(start))
     }
 
     #[must_use]
@@ -78,11 +102,11 @@ impl PathPlanner {
             return self.target.is_none()
         };
 
-        start.distance(first.start().into()) <= self.settings.tolerance
+        start.distance(first.start().into()) <= self.settings.start_tolerance
     }
 
     #[must_use]
-    fn ends_at_target(&self) -> bool {
+    fn ends_at_target(&self, start: Position) -> bool {
         let Some(path) = self.path.as_ref() else {
             return false
         };
@@ -92,26 +116,25 @@ impl PathPlanner {
         };
 
         let Some(last) = path.last() else {
-            return false
+            return target.distance(start) <= self.settings.target_tolerance
         };
 
         target.distance(last.end().into()) <= self.settings.target_tolerance
     }
 
-    fn trim_to_start(&mut self, start: Position) {
+    fn trim_to_start(&mut self, start: Point) {
         let Some(path) = self.path.as_mut() else {
             return
         };
 
-        let point = start.to_point();
-
         while let Some(first) = path.first_mut() {
-            if start.distance(first.end().into()) > self.settings.tolerance {
-                first.shorten(point);
-                break
-            }
+            first.trim(start);
 
-            path.remove(0);
+            if first.beyond(start) {
+                path.remove(0);
+            } else {
+                break;
+            }
         }
     }
 
@@ -182,15 +205,6 @@ impl PathPlanner {
     #[must_use]
     pub fn current_path(&self) -> Option<&Vec<Segment>> {
         self.path.as_ref()
-    }
-
-    pub fn target(&self) -> Option<Position> {
-        self.target
-    }
-
-    pub fn set_target(&mut self, target: Option<Position>) {
-        self.target = target;
-        self.path = None;
     }
 
     #[must_use]
