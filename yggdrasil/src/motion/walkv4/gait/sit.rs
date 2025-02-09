@@ -14,9 +14,9 @@ use crate::{
 
 /// The leg stiffness value that's used when the robot is sitting.
 /// Negative value means the motors will be turned off.
-const SITTING_LEG_STIFFNESS: f32 = -0.4;
+const SITTING_LEG_STIFFNESS: f32 = 0.0;
 /// Threshold between two hip height values, when exceeded the values are considered different.
-const HIP_HEIGHT_CHANGE_THRESHOLD: f32 = 0.005;
+const HIP_HEIGHT_CHANGE_THRESHOLD: f32 = 0.003;
 /// The number of cycles without any changes to the physical hip height
 /// before the robot is considered to be stationary.
 const NUM_CYCLES_BEFORE_CONSIDERED_STATIONARY: u32 = 120;
