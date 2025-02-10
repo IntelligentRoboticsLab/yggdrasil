@@ -161,6 +161,7 @@ fn finalize(
     target_leg_stiffness: Res<TargetLegStiffness>,
     balance_adjustment: Res<BalanceAdjustment>,
     motion_state: Res<State<Gait>>,
+    config: Res<WalkingEngineConfig>,
 ) {
     let (mut left_leg, mut right_leg) =
         target_foot_positions.leg_angles(hip_height.current(), TORSO_OFFSET);
@@ -193,7 +194,11 @@ fn finalize(
         .build();
 
     if *motion_state == Gait::Walking {
-        nao.set_arms(arm_positions, ArmJoints::fill(0.8), Priority::Medium);
+        nao.set_arms(
+            arm_positions,
+            ArmJoints::fill(config.arm_stiffness),
+            Priority::Medium,
+        );
     } else {
         nao.set_arms(
             ArmJoints::builder()
