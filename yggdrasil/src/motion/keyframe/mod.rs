@@ -31,6 +31,6 @@ impl Plugin for KeyframePlugin {
             .expect("failed to add standup motion (stomach)");
 
         app.insert_resource(keyframe_executor);
-        app.add_systems(PostWrite, executor::keyframe_executor);
+        app.add_systems(Update, executor::keyframe_executor);
     }
 }

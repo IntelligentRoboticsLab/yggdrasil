@@ -85,6 +85,7 @@ impl ActiveMotion {
     // executes the appropriate exit routine, connected to the chosen motion
     pub fn execute_exit_routine(&self, step_manager: &mut StepManager) {
         if let Some(ExitRoutine::Standing) = self.motion.settings.exit_routine {
+            info!("exit routine, request stand!");
             // Since the robot is now standing, we can reset the hip height to the default value.
             step_manager.request_stand();
         }
