@@ -2,8 +2,6 @@ pub mod executor;
 pub mod manager;
 pub mod types;
 mod util;
-
-use crate::prelude::*;
 use bevy::prelude::*;
 
 pub use manager::*;
