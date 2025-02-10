@@ -30,6 +30,14 @@ impl PathPlanner {
     }
 
     #[must_use]
+    pub fn reached_target(&self) -> bool {
+        match &self.path {
+            Some(path) => path.is_empty(),
+            None => false,
+        }
+    }
+
+    #[must_use]
     pub fn step(&mut self, start: Isometry) -> Option<Step> {
         let PathSettings {
             perpendicular_tolerance,
@@ -93,7 +101,7 @@ impl PathPlanner {
 
     #[must_use]
     fn begins_at_start(&self, start: Target) -> bool {
-        let Some(path) = self.path.as_ref() else {
+        let Some(path) = &self.path else {
             return false
         };
 
@@ -106,19 +114,20 @@ impl PathPlanner {
 
     #[must_use]
     fn ends_at_target(&self, start: Target) -> bool {
-        let Some(path) = self.path.as_ref() else {
+        let Some(path) = &self.path else {
             return false
         };
 
-        let Some(target) = self.target.as_ref() else {
+        let Some(target) = &self.target else {
             return path.is_empty()
         };
 
-        let Some(last) = path.last() else {
-            return target.distance(start) <= self.settings.target_tolerance
+        let end = match path.last() {
+            Some(last) => last.end().into(),
+            None => start,
         };
 
-        target.distance(last.end().into()) <= self.settings.target_tolerance
+        target.distance(end) <= self.settings.target_tolerance
     }
 
     fn trim_to_start(&mut self, start: Point) {

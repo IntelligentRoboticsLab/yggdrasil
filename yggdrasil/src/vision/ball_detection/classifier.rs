@@ -174,7 +174,6 @@ impl<T: CameraLocation> Balls<T> {
 
     #[must_use]
     pub fn most_confident_ball(&self) -> Option<&Ball<T>> {
-        return None;
         self.balls
             .iter()
             .reduce(|a, b| if a.confidence > b.confidence { a } else { b })
@@ -182,7 +181,6 @@ impl<T: CameraLocation> Balls<T> {
 
     #[must_use]
     pub fn most_recent_ball(&self) -> Option<&Ball<T>> {
-        return None;
         self.balls
             .iter()
             .reduce(|a, b| if a.timestamp > b.timestamp { a } else { b })

@@ -45,10 +45,9 @@ impl Behavior for WalkToSet {
 
 pub fn walk_to_set(
     pose: Res<RobotPose>,
-    mut planner: ResMut<crate::motion::path::PathPlanner>,
     layout_config: Res<LayoutConfig>,
     player_config: Res<PlayerConfig>,
-    step_planner: ResMut<StepPlanner>,
+    mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
     role: Res<State<RoleState>>,
@@ -72,6 +71,11 @@ pub fn walk_to_set(
         NaoManager::HEAD_STIFFNESS,
     );
 
+    let target = Target {
+        position: set_robot_position.isometry.translation.vector.into(),
+        rotation: Some(set_robot_position.isometry.rotation),
+    };
+
     let reached_pre_set = !step_planner.has_target()
         || (step_planner
             .current_absolute_target()
@@ -80,15 +84,13 @@ pub fn walk_to_set(
 
     let is_goalkeeper = role.get() == &RoleState::Goalkeeper;
 
-    let position = if is_goalkeeper && reached_pre_set {
-            GOAL_KEEPER_PRE_SET_POS.position.into()
+    if is_goalkeeper && reached_pre_set {
+        step_planner.set_absolute_target(GOAL_KEEPER_PRE_SET_POS);
     } else {
-            set_robot_position.isometry.into()
-    };
+        step_planner.set_absolute_target(target);
+    }
 
-    planner.target = Some(position);
-
-    if let Some(step) = planner.step(pose.inner) {
+    if let Some(step) = step_planner.plan(&pose) {
         step_context.request_walk(step);
     } else {
         let look_at = pose.get_look_at_absolute(&Point3::origin());

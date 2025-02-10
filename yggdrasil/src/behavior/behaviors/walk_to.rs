@@ -1,18 +1,19 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use nalgebra::Point3;
+use nalgebra as na;
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
     localization::RobotPose,
     motion::{
-        step_planner::{StepPlanner, Target},
+        path::{geometry::Isometry, PathPlanner, Target},
         walking_engine::step_context::StepContext,
     },
     nao::{NaoManager, Priority},
 };
 
+const TARGET_OFFSET: na::Point2<f32> = na::point![0., 1.];
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 pub struct WalkToBehaviorPlugin;
@@ -35,14 +36,18 @@ impl Behavior for WalkTo {
 pub fn walk_to(
     walk_to: Res<WalkTo>,
     pose: Res<RobotPose>,
-    mut planner: ResMut<crate::motion::path::PathPlanner>,
-    mut step_planner: ResMut<StepPlanner>,
+    mut planner: ResMut<PathPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
-    let target_point = Point3::new(walk_to.target.position.x, walk_to.target.position.y, 0.0);
+    let isometry = Isometry::new(
+        walk_to.target.to_point().coords,
+        walk_to.target.angle().unwrap_or(pose.inner.rotation.angle()),
+    );
 
-    let look_at = pose.get_look_at_absolute(&target_point);
+    let point = isometry * TARGET_OFFSET;
+    let look_at = pose.get_look_at_absolute(&na::point![point.x, point.y, 0.]);
+
     nao_manager.set_head_target(
         look_at,
         HEAD_ROTATION_TIME,
@@ -50,30 +55,10 @@ pub fn walk_to(
         NaoManager::HEAD_STIFFNESS,
     );
 
-    // Check and clear existing target if different
-    if step_planner
-        .current_absolute_target()
-        .is_some_and(|target| target != &walk_to.target)
-    {
-        step_planner.clear_target();
-    }
+    planner.target = Some(walk_to.target);
 
-    // Set absolute target if not set
-    step_planner.set_absolute_target_if_unset(walk_to.target);
-
-    let position = match walk_to.target.rotation {
-        Some(rotation) => {
-            nalgebra::Isometry2::<f32>::from_parts(walk_to.target.position.into(), rotation).into()
-        }
-        None => walk_to.target.position.into(),
-    };
-
-    planner.target = Some(position);
-
-    // Plan step or stand
-    if let Some(step) = planner.step(pose.inner) {
-        step_context.request_walk(step);
-    } else {
-        step_context.request_stand();
+    match planner.step(pose.inner) {
+        Some(step) => step_context.request_walk(step),
+        None => step_context.request_stand(),
     }
 }
