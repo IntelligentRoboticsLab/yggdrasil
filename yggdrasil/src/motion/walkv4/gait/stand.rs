@@ -14,10 +14,6 @@ pub(super) struct StandGaitPlugin;
 impl Plugin for StandGaitPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            OnEnter(Gait::Standing),
-            request_sit.in_set(MotionSet::GaitGeneration),
-        );
-        app.add_systems(
             GaitGeneration,
             generate_stand_gait
                 .in_set(MotionSet::GaitGeneration)
@@ -26,16 +22,15 @@ impl Plugin for StandGaitPlugin {
     }
 }
 
-fn request_sit(
-    config: Res<WalkingEngineConfig>,
+fn generate_stand_gait(
+    mut target: ResMut<TargetFootPositions>,
     mut hip_height: ResMut<HipHeight>,
     mut target_stiffness: ResMut<TargetLegStiffness>,
+    config: Res<WalkingEngineConfig>,
 ) {
-    hip_height.request(config.hip_height);
-    **target_stiffness = LegJoints::fill(config.leg_stiffness);
-}
-
-fn generate_stand_gait(mut target: ResMut<TargetFootPositions>) {
     // always set the foot offsets to 0,0,0.
     **target = FootPositions::default();
+
+    hip_height.request(config.hip_height.walking_hip_height);
+    **target_stiffness = LegJoints::fill(config.walking_leg_stiffness);
 }

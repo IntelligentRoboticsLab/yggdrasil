@@ -5,6 +5,8 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
+use crate::kinematics::Kinematics;
+
 use super::{feet::FootPositions, Side};
 
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
@@ -129,6 +131,18 @@ impl Default for PlannedStep {
             duration: Duration::from_millis(250),
             swing_foot_height: 0.,
             swing_foot: Side::Left,
+        }
+    }
+}
+
+impl PlannedStep {
+    /// Create a [`PlannedStep`] that is identical to [`PlannedStep::default`] but with
+    /// the starting positions inferred from the kinematics.
+    #[must_use]
+    pub fn default_from_kinematics(kinematics: &Kinematics, torso_offset: f32) -> Self {
+        Self {
+            start: FootPositions::from_kinematics(Side::Left, kinematics, torso_offset),
+            ..Default::default()
         }
     }
 }

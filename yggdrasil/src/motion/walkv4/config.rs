@@ -5,7 +5,7 @@ use odal::Config;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 
-use super::{foot_support::FootSupportConfig, step::Step};
+use super::{foot_support::FootSupportConfig, hips::HipHeightConfig, step::Step};
 
 #[derive(Resource, Serialize, Deserialize, Debug, Clone, Default)]
 pub struct BalancingConfig {
@@ -36,9 +36,21 @@ pub struct WalkingEngineConfig {
     /// Modifies `base_step_duration` by adding (modifier * movement factor) seconds per step.
     pub step_duration_modifier: Step,
 
+    /// The offset of the torso w.r.t. the hips in meters.
+    ///
+    /// Higher values will result in the robot leaning forward while walking.
+    /// Negative values will make the robot lean backwards while walking.
+    pub torso_offset: f32,
+
     /// The stiffness value used for the leg joints, higher means the robot's joints will
     /// wear out faster, but the robot will be more stable.
-    pub leg_stiffness: f32,
+    pub walking_leg_stiffness: f32,
+
+    /// The stiffness value used for the leg joints while walking, higher means the robot's joints will
+    /// wear out faster, but the robot will be more stable.
+    ///
+    /// Negative values will turn the motors off completely, sacrificing all stability.
+    pub sitting_leg_stiffness: f32,
 
     /// The stiffness value used for the arm joints, higher means the robot's joints will
     /// wear out faster, but the robot will be more stable.
@@ -57,20 +69,14 @@ pub struct WalkingEngineConfig {
     /// (e.g. range for forward is -max_step_size to max_step_size).
     pub max_step_size: Step,
 
-    /// The height of the robot's hips relative to the ankle joint, in metres.# The maximum step size the robot can take.
-    pub hip_height: f32,
-
-    /// The maximum distance from the hips to the ground for the robot to be considered
-    /// as sitting.
-    ///
-    /// This is NOT the actual hip height of the robot when sitting, that is determined automatically.
-    pub max_sitting_hip_height: f32,
-
     /// Balancing parameters
     pub balancing: BalancingConfig,
 
     /// Foot support parameters
     pub foot_support: FootSupportConfig,
+
+    /// Hip height parameters
+    pub hip_height: HipHeightConfig,
 }
 
 impl Config for WalkingEngineConfig {

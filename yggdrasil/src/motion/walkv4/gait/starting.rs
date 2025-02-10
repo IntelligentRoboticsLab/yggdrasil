@@ -11,7 +11,7 @@ use crate::{
         smoothing::{parabolic_return, parabolic_step},
         step::{PlannedStep, Step},
         step_manager::StepManager,
-        Side, TargetFootPositions, TORSO_OFFSET,
+        Side, TargetFootPositions,
     },
     nao::CycleTime,
 };
@@ -78,7 +78,7 @@ fn init_starting_step(
     config: Res<WalkingEngineConfig>,
 ) {
     step_manager.plan_next_step(
-        FootPositions::from_kinematics(Side::Left, &kinematics, TORSO_OFFSET),
+        FootPositions::from_kinematics(Side::Left, &kinematics, config.torso_offset),
         &config,
     );
     commands.insert_resource(StartingState {

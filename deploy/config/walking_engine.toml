@@ -1,12 +1,25 @@
 # The base amount of time (in milliseconds) for one step.
 base_step_duration = 250
+
 # Duration modifiers (in seconds) for a single step.
 # Modifies `base_step_duration` by adding (modifier * movement factor) seconds per step.
 step_duration_modifier = { forward = 0.1, left = 0.03, turn = 0.0 }
 
-# The stiffness value used for the leg joints, higher means the robot's joints will
+# The offset of the torso w.r.t. the hips in meters.
+#
+# Higher values will result in the robot leaning forward while walking.
+# Negative values will make the robot lean backwards while walking.
+torso_offset = 0.015
+
+# The stiffness value used for the leg joints while walking, higher means the robot's joints will
 # wear out faster, but the robot will be more stable.
-leg_stiffness = 0.8
+walking_leg_stiffness = 0.8
+
+# The stiffness value used for the leg joints while sitting, higher means the robot's joints will
+# wear out faster, but the robot will be more stable.
+#
+# Negative values will turn the motors off completely, sacrificing all stability.
+sitting_leg_stiffness = 0.0
 
 # The stiffness value used for the arm joints, higher means the robot's joints will
 # wear out faster, but the robot will be more stable.
@@ -24,14 +37,25 @@ foot_lift_modifier = { forward = 0.11, left = 0.12, turn = 0.025 }
 # The step size is clipped to this value; in both directions (e.g. range for forward is -max_step_size to max_step_size).
 max_step_size = { forward = 0.08, left = 0.08, turn = 3.14 }
 
+
+[hip_height]
 # The height of the robot's hips relative to the ground, in metres.
-hip_height = 0.22
+walking_hip_height = 0.22
 
 # The maximum distance from the hips to the ground in meters
 # for the robot to be considered as sitting.
 #
 # This is NOT the actual hip height of the robot when sitting, that is determined automatically.
 max_sitting_hip_height = 0.145
+
+# Threshold for snapping to the requested hip height.
+reached_requested_threshold = 0.001
+
+# Smoothing parameter for the exponential interpolation applied to the hip height.
+height_adjustment_smoothing = 0.1
+
+# Threshold between two hip height values, when exceeded the values are considered different.
+change_threshold = 0.003
 
 # This section contains parameters for the balance control
 [balancing]
