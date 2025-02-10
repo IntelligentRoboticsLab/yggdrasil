@@ -32,7 +32,7 @@ impl UpdateCommand {
                 PackagesToUpdate::ReControl => Self::update_re_control().await?,
             }
         } else {
-            Self::update_sindri().await?
+            Self::update_sindri().await?;
         }
 
         Ok(())
