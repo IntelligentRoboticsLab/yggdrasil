@@ -29,10 +29,6 @@ pub mod step_manager;
 
 pub use schedule::Gait;
 
-// TODO: dynamically set this
-/// The offset of the torso w.r.t. the hips.
-pub const TORSO_OFFSET: f32 = 0.015;
-
 pub struct Walkv4EnginePlugin;
 
 impl Plugin for Walkv4EnginePlugin {
@@ -164,7 +160,7 @@ fn finalize(
     config: Res<WalkingEngineConfig>,
 ) {
     let (mut left_leg, mut right_leg) =
-        target_foot_positions.leg_angles(hip_height.current(), TORSO_OFFSET);
+        target_foot_positions.leg_angles(hip_height.current(), config.torso_offset);
     balance_adjustment.apply(&mut left_leg, &mut right_leg);
 
     let left_arm = arm_swing::swinging_arm(

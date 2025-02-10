@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use bevy::{
     app::MainScheduleOrder,
     ecs::schedule::{
@@ -10,13 +8,7 @@ use bevy::{
 
 use crate::kinematics::Kinematics;
 
-use super::{
-    config::WalkingEngineConfig,
-    feet::FootPositions,
-    step::{PlannedStep, Step},
-    step_manager::StepManager,
-    Side, TORSO_OFFSET,
-};
+use super::{config::WalkingEngineConfig, step::PlannedStep, step_manager::StepManager};
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MotionSet {
@@ -138,19 +130,10 @@ fn setup_motion_state(
     config: Res<WalkingEngineConfig>,
     kinematics: Res<Kinematics>,
 ) {
-    let start = FootPositions::from_kinematics(Side::Left, &kinematics, TORSO_OFFSET);
-
     let hip_height = kinematics.left_hip_height();
-    let planned = PlannedStep {
-        step: Step::default(),
-        start,
-        target: start,
-        duration: Duration::from_millis(250),
-        swing_foot_height: 0.,
-        swing_foot: Side::Left,
-    };
+    let planned = PlannedStep::default_from_kinematics(&kinematics, config.torso_offset);
 
-    if hip_height >= config.max_sitting_hip_height {
+    if hip_height >= config.hip_height.max_sitting_hip_height {
         commands.insert_resource(StepManager::init(Gait::Standing, planned));
     } else {
         commands.insert_resource(StepManager::init(Gait::Sitting, planned));

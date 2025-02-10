@@ -18,7 +18,7 @@ use super::{
     feet::FootPositions,
     schedule::{Gait, MotionSet, StepPlanning},
     step::{PlannedStep, Step},
-    FootSwitchedEvent, TORSO_OFFSET,
+    FootSwitchedEvent,
 };
 use bevy::prelude::*;
 use nalgebra::Vector2;
@@ -123,7 +123,9 @@ impl StepManager {
 
         // TODO(gijsd): do we want to assume this each time?
         let next_swing_foot = self.last_step.swing_foot.opposite();
-        let next_step = (self.last_step.step + delta_step).clamp_anatomic(next_swing_foot, 0.1);
+        let next_step = (self.last_step.step + delta_step)
+            .clamp(-config.max_step_size, -config.max_step_size)
+            .clamp_anatomic(next_swing_foot, 0.1);
 
         let target = FootPositions::from_target(next_swing_foot, &next_step);
         let swing_travel = start.swing_travel(next_swing_foot, &target).abs();
@@ -191,7 +193,7 @@ fn plan_step(
         return;
     };
 
-    let start = FootPositions::from_kinematics(event.0, &kinematics, TORSO_OFFSET);
+    let start = FootPositions::from_kinematics(event.0, &kinematics, config.torso_offset);
     step_manager.finish_step();
     step_manager.plan_next_step(start, &config);
 }
