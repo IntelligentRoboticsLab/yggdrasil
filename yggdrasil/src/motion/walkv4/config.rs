@@ -52,6 +52,11 @@ pub struct WalkingEngineConfig {
     /// Negative values will turn the motors off completely, sacrificing all stability.
     pub sitting_leg_stiffness: f32,
 
+    /// The amount of time (in milliseconds) of no change in hip height
+    /// for the robot to be considered stable when sitting down.
+    #[serde_as(as = "DurationMilliSeconds")]
+    pub stable_sitting_timeout: Duration,
+
     /// The stiffness value used for the arm joints, higher means the robot's joints will
     /// wear out faster, but the robot will be more stable.
     pub arm_stiffness: f32,

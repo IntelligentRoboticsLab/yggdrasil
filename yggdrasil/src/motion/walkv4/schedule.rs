@@ -81,7 +81,7 @@ impl Default for WalkingEngineScheduleOrder {
 struct WalkingEngine;
 
 impl WalkingEngine {
-    fn run_walkinge_engine(world: &mut World) {
+    fn run_walking_engine(world: &mut World) {
         world.resource_scope(|world, order: Mut<WalkingEngineScheduleOrder>| {
             for &label in &order.labels {
                 let _ = world.try_run_schedule(label);
@@ -106,7 +106,7 @@ impl Plugin for WalkingEngineSchedulePlugin {
 
         app.add_schedule(walking_engine_schedule)
             .init_resource::<WalkingEngineScheduleOrder>()
-            .add_systems(WalkingEngine, WalkingEngine::run_walkinge_engine);
+            .add_systems(WalkingEngine, WalkingEngine::run_walking_engine);
 
         app.world_mut()
             .resource_mut::<MainScheduleOrder>()
