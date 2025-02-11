@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use bevy::prelude::*;
 use nidhogg::types::{FillExt, LegJoints};
 
@@ -10,7 +12,6 @@ use crate::{
         schedule::{Gait, GaitGeneration, MotionSet},
         TargetFootPositions, TargetLegStiffness,
     },
-    sensor::orientation::RobotOrientation,
 };
 
 pub(super) struct SitGaitPlugin;
@@ -32,7 +33,7 @@ fn request_sit(
     mut hip_height: ResMut<HipHeight>,
     kinematics: Res<Kinematics>,
     mut last_hip_height: Local<f32>,
-    orientation: Res<RobotOrientation>,
+    mut stable_since: Local<Option<Instant>>,
     mut target_stiffness: ResMut<TargetLegStiffness>,
 ) {
     let actual_hip_height = kinematics.left_hip_height();
@@ -41,7 +42,15 @@ fn request_sit(
         (actual_hip_height - *last_hip_height).abs() <= config.hip_height.change_threshold;
     *last_hip_height = actual_hip_height;
 
-    if !has_changed && orientation.is_resting() {
+    if has_changed {
+        *stable_since = None;
+    } else if stable_since.is_none() {
+        *stable_since = Some(Instant::now());
+    }
+
+    // if the robot is considered stable for atleast the configured timeout, we set the stiffness to the configured
+    // sitting leg stiffness.
+    if stable_since.is_some_and(|timestamp| timestamp.elapsed() <= config.stable_sitting_timeout) {
         let new_requested_hip_height =
             (actual_hip_height - 0.01).max(config.hip_height.max_sitting_hip_height);
 
