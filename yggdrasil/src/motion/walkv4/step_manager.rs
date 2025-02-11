@@ -124,7 +124,7 @@ impl StepManager {
         // TODO(gijsd): do we want to assume this each time?
         let next_swing_foot = self.last_step.swing_foot.opposite();
         let next_step = (self.last_step.step + delta_step)
-            .clamp(-config.max_step_size, -config.max_step_size)
+            .clamp(-config.max_step_size, config.max_step_size)
             .clamp_anatomic(next_swing_foot, 0.1);
 
         let target = FootPositions::from_target(next_swing_foot, &next_step);
