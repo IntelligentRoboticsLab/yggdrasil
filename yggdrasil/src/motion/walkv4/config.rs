@@ -70,6 +70,12 @@ pub struct WalkingEngineConfig {
     /// and added to the base foot lift.
     pub foot_lift_modifier: Step,
 
+    /// The maximum acceleration per step.
+    ///
+    /// E.g. the difference between the current and the last step is clamped to
+    /// -max_acceleration and max_acceleration.
+    pub max_acceleration: Step,
+
     /// The step size is clipped to this value; in both directions
     /// (e.g. range for forward is -max_step_size to max_step_size).
     pub max_step_size: Step,
