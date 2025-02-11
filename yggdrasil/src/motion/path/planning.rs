@@ -6,7 +6,7 @@ use crate::motion::walking_engine::step::Step;
 
 use super::{
     finding::{Colliders, Pathfinding, Target},
-    geometry::{Isometry, LineSegment, Point, Segment, Winding},
+    geometry::{Isometry, Length, LineSegment, Point, Segment, Winding},
     PathSettings,
 };
 
@@ -44,6 +44,7 @@ impl PathPlanner {
             angular_tolerance,
             walk_speed,
             turn_speed,
+            walking_turn_speed,
             perpendicular_speed,
             angular_speed,
             ..
@@ -55,8 +56,8 @@ impl PathPlanner {
         let perpendicular_correction = {
             let error = first.signed_distance(point);
 
-            if error > perpendicular_tolerance {
-                error.signum() * perpendicular_speed
+            if error.abs() > perpendicular_tolerance {
+                error.clamp(-perpendicular_speed, perpendicular_speed)
             } else {
                 0.
             }
@@ -67,19 +68,19 @@ impl PathPlanner {
             first.forward_at_start(),
         );
 
-        let angular_correction = angular_error.signum() * angular_speed;
+        let angular_correction = angular_error.clamp(-angular_speed, angular_speed);
 
         if angular_error.abs() <= angular_tolerance {
             Some(Step {
                 forward: walk_speed,
                 left: perpendicular_correction,
-                turn: first.turn() * walk_speed + angular_correction,
+                turn: walking_turn_speed * first.turn() + angular_correction,
             })
             } else {
             Some(Step {
                 forward: 0.,
                 left: perpendicular_correction,
-                turn: turn_speed,
+                turn: angular_error.clamp(-turn_speed, turn_speed)
             })
         }
     }
@@ -106,7 +107,10 @@ impl PathPlanner {
         };
 
         let Some(first) = path.first() else {
-            return self.target.is_none()
+            return match self.target {
+                Some(target) => start.distance(target) <= self.settings.target_tolerance,
+                None => true,
+            }
         };
 
         start.distance(first.start().into()) <= self.settings.start_tolerance

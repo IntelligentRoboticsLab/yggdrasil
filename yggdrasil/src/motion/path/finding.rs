@@ -37,7 +37,7 @@ impl Pathfinding<'_> {
                 [State::Start, State::EaseIn(_)] => continue,
                 [prev @ State::EaseOut(_, _), _] => {
                     segments.push(self.arc(prev).unwrap().into());
-                    continue;
+                    break;
                 },
                 [prev, next] => (prev, next),
                 _ => unreachable!(),

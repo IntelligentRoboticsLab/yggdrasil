@@ -546,7 +546,7 @@ impl Connection {
     /// Returns a connection from an arc to a point.
     #[must_use]
     pub fn arc_to_point(prev: CircularArc, next: Point) -> Option<Self> {
-        let prev = prev.enter(prev.circle.tangents(next)?.flip().get(prev.direction()))?;
+        let prev = prev.exit(prev.circle.tangents(next)?.flip().get(prev.direction()))?;
 
         Some(Self {
             prev: Some(prev),

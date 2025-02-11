@@ -41,6 +41,7 @@ pub struct PathSettings {
     pub angular_tolerance: f32,
     pub walk_speed: f32,
     pub turn_speed: f32,
+    pub walking_turn_speed: f32,
     pub perpendicular_speed: f32,
     pub angular_speed: f32,
 }
@@ -53,12 +54,13 @@ impl Default for PathSettings {
             target_tolerance: 0.2,
             perpendicular_tolerance: 0.05,
             angular_tolerance: 0.1 * PI,
-            ease_in: 0.25,
-            ease_out: 0.25,
+            ease_in: 0.333,
+            ease_out: 0.333,
             walk_speed: 0.05,
-            turn_speed: 0.2 * PI,
-            perpendicular_speed: 0.02,
-            angular_speed: 0.1 * PI,
+            turn_speed: 0.3 * PI,
+            walking_turn_speed: 0.15 * PI,
+            perpendicular_speed: 0.03,
+            angular_speed: 0.2 * PI,
         }
     }
 }
