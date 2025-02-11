@@ -50,14 +50,14 @@ fn request_sit(
 
     // if the robot is considered stable for atleast the configured timeout, we set the stiffness to the configured
     // sitting leg stiffness.
-    if stable_since.is_some_and(|timestamp| timestamp.elapsed() <= config.stable_sitting_timeout) {
+    if stable_since.is_some_and(|timestamp| timestamp.elapsed() >= config.stable_sitting_timeout) {
+        **target_stiffness = LegJoints::fill(config.sitting_leg_stiffness);
+    } else {
         let new_requested_hip_height =
             (actual_hip_height - 0.01).max(config.hip_height.max_sitting_hip_height);
 
         hip_height.request(new_requested_hip_height);
         **target_stiffness = LegJoints::fill(config.walking_leg_stiffness);
-    } else {
-        **target_stiffness = LegJoints::fill(config.sitting_leg_stiffness);
     }
 }
 
