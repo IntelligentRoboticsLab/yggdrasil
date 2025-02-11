@@ -41,7 +41,8 @@ impl PathPlanner {
     pub fn step(&mut self, start: Isometry) -> Option<Step> {
         let PathSettings {
             perpendicular_tolerance,
-            angular_tolerance,
+            min_angular_tolerance,
+            max_angular_tolerance,
             walk_speed,
             turn_speed,
             walking_turn_speed,
@@ -53,34 +54,37 @@ impl PathPlanner {
         let point = start.translation.vector.into();
         let first = self.path(start.into()).first()?;
 
-        let perpendicular_correction = {
-            let error = first.signed_distance(point);
-
-            if error.abs() > perpendicular_tolerance {
-                error.clamp(-perpendicular_speed, perpendicular_speed)
-            } else {
-                0.
-            }
-        };
-
         let angular_error =
             Winding::shortest_distance(start.rotation.angle(), first.forward_at_start());
 
-        let angular_correction = angular_error.clamp(-angular_speed, angular_speed);
-
-        if angular_error.abs() <= angular_tolerance {
-            Some(Step {
-                forward: walk_speed,
-                left: perpendicular_correction,
-                turn: walking_turn_speed * first.turn() + angular_correction,
-            })
+        let angular_correction = if angular_error.abs() <= min_angular_tolerance {
+            0.
         } else {
-            Some(Step {
+            angular_error.clamp(-angular_speed, angular_speed)
+        };
+
+        let mut step = if angular_error.abs() <= max_angular_tolerance {
+            Step {
+                forward: walk_speed,
+                left: 0.,
+                turn: walking_turn_speed * first.turn() + angular_correction,
+            }
+        } else {
+            Step {
                 forward: 0.,
-                left: perpendicular_correction,
+                left: 0.,
                 turn: angular_error.clamp(-turn_speed, turn_speed),
-            })
+            }
+        };
+
+        let perpendicular_error = first.signed_distance(point) + step.forward * angular_error.sin();
+
+        if perpendicular_error.abs() > perpendicular_tolerance {
+            step.left = (perpendicular_error / angular_error.cos())
+                .clamp(-perpendicular_speed, perpendicular_speed);
         }
+
+        Some(step)
     }
 
     #[must_use]
