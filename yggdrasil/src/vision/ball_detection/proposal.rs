@@ -45,7 +45,7 @@ pub struct BallProposalConfig {
     // Maximum allowed error factor on the computed ball radius.
     pub ball_radius_max_error: f32,
     // Y offset from the ball center from where the patch below the ball is checked for grass, as a factor of the ball radius.
-    pub grass_patch_yoffset_factor: f32,
+    pub grass_patch_y_offset_factor: f32,
     // Radius of the patch below the ball that is checked for grass, as a factor of the ball radius.
     pub grass_patch_radius_factor: f32,
 }
@@ -233,7 +233,7 @@ pub fn check_proposal(
         let line_surface_overlap = compute_surface_overlap(
             ball_center,
             radius,
-            radius * config.grass_patch_yoffset_factor,
+            radius * config.grass_patch_y_offset_factor,
             radius * config.grass_patch_radius_factor,
             line,
         );
@@ -259,27 +259,29 @@ pub fn check_proposal(
     // fraction of the surface underneath the ball proposal that is grass-colored
     let grass_ratio = surface_overlap.0 / (surface_overlap.0 + surface_overlap.1);
 
-    if ball_ratio >= config.ball_ratio && grass_ratio >= config.grass_ratio {
-        let proposal = BallProposal {
-            position: point![ball_center.x as usize, ball_center.y as usize],
-            scale: radius * 2.0,
-            distance_to_ball: distance,
-        };
-
-        // add proposal
-        proposals.push(proposal);
-
-        let proposal_box = Bbox::xyxy(
-            ball_center.x - radius,
-            ball_center.y - radius,
-            ball_center.x + radius,
-            ball_center.y + radius,
-        );
-
-        // add detection where the score of the bounding box is determined by the y-coordinate
-        //  (i.e., the lower in the image the higher the score)
-        detections.push((proposal_box, ball_ratio));
+    // abort if fractions do not equal or exceed the configured minimum requirements
+    if ball_ratio < config.ball_ratio || grass_ratio < config.grass_ratio {
+        return;
     }
+
+    let proposal = BallProposal {
+        position: point![ball_center.x as usize, ball_center.y as usize],
+        scale: radius * 2.0,
+        distance_to_ball: distance,
+    };
+
+    // add proposal
+    proposals.push(proposal);
+
+    let proposal_box = Bbox::xyxy(
+        ball_center.x - radius,
+        ball_center.y - radius,
+        ball_center.x + radius,
+        ball_center.y + radius,
+    );
+
+    // add detection, where the score of the bounding box is determined by the ball ratio
+    detections.push((proposal_box, ball_ratio));
 }
 
 #[must_use]
@@ -379,9 +381,8 @@ pub fn get_ball_proposals<T: CameraLocation>(
     let indices = crate::vision::util::non_max_suppression(&detections, config.nms_threshold);
     proposals = indices.iter().map(|&i| proposals[i].clone()).collect();
 
-    let image = scan_lines.image().clone();
     BallProposals {
-        image: image.clone(),
+        image: scan_lines.image().clone(),
         proposals,
     }
 }

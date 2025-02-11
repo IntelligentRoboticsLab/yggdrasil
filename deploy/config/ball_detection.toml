@@ -18,7 +18,7 @@ max_robot_intersection = 0.0
 # Maximum allowed error factor on the computed ball radius.
 ball_radius_max_error = 1.5
 # Y offset from the ball center from where the patch below the ball is checked for grass, as a factor of the ball radius.
-grass_patch_yoffset_factor = 0.5
+grass_patch_y_offset_factor = 0.5
 # Radius of the patch below the ball that is checked for grass, as a factor of the ball radius.
 grass_patch_radius_factor = 1.5
 
@@ -39,7 +39,7 @@ max_robot_intersection = 0.0
 # Maximum allowed error factor on the computed ball radius.
 ball_radius_max_error = 1.5
 # Y offset from the ball center from where the patch below the ball is checked for grass, as a factor of the ball radius.
-grass_patch_yoffset_factor = 0.5
+grass_patch_y_offset_factor = 0.5
 # Radius of the patch below the ball that is checked for grass, as a factor of the ball radius.
 grass_patch_radius_factor = 1.5
 
