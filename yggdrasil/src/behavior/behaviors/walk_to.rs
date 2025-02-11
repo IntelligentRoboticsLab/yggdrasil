@@ -13,7 +13,6 @@ use crate::{
     nao::{NaoManager, Priority},
 };
 
-const TARGET_OFFSET: na::Point2<f32> = na::point![0., 1.];
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 pub struct WalkToBehaviorPlugin;
@@ -40,15 +39,7 @@ pub fn walk_to(
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
-    let isometry = Isometry::new(
-        walk_to.target.to_point().coords,
-        walk_to
-            .target
-            .angle()
-            .unwrap_or(pose.inner.rotation.angle()),
-    );
-
-    let point = isometry * TARGET_OFFSET;
+    let point = walk_to.target.to_point();
     let look_at = pose.get_look_at_absolute(&na::point![point.x, point.y, 0.]);
 
     nao_manager.set_head_target(
