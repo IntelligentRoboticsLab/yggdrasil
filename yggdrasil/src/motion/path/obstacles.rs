@@ -3,7 +3,11 @@
 use bevy::prelude::*;
 use nalgebra as na;
 
-use super::{finding::Colliders, geometry::{Circle, CircularArc, Point}, planning::PathPlanner};
+use super::{
+    finding::Colliders,
+    geometry::{Circle, CircularArc, Point},
+    planning::PathPlanner,
+};
 
 /// Adds initial obstacles to the scene.
 pub fn add_static_obstacles(mut commands: Commands) {
@@ -21,10 +25,7 @@ pub fn obstacles_changed(obstacles: Query<&Obstacle, Changed<Obstacle>>) -> bool
 }
 
 /// Updates the [`Colliders`] based on the obstacles in the ECS (and reset [`Path`]).
-pub fn update_colliders(
-    mut planner: ResMut<PathPlanner>,
-    obstacles: Query<&Obstacle>,
-) {
+pub fn update_colliders(mut planner: ResMut<PathPlanner>, obstacles: Query<&Obstacle>) {
     let radius = planner.settings().robot_radius;
 
     let mut colliders = Colliders::new();

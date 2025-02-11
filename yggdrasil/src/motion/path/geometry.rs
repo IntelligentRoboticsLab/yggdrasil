@@ -691,6 +691,7 @@ impl Segment {
     }
 
     /// Checks whether the point is beyond the end of the segment.
+    #[must_use]
     pub fn beyond(&self, point: Point) -> bool {
         let angle = self.forward_at_end();
         (point - self.end()).dot(&Vector::new(angle.cos(), angle.sin())) >= 0.

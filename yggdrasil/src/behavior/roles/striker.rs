@@ -81,7 +81,9 @@ pub fn striker_role(
 
         match *state {
             Striker::WalkToBall | Striker::WalkWithBall => {
-                commands.set_behavior(WalkTo { target: ball.into() });
+                commands.set_behavior(WalkTo {
+                    target: ball.into(),
+                });
             }
             Striker::WalkAlign => {
                 let ball_target = Point3::new(ball.x, ball.y, 0.0);

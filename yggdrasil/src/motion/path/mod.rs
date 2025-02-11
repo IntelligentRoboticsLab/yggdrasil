@@ -6,8 +6,8 @@ pub mod obstacles;
 pub mod planning;
 pub mod visualization;
 
-pub use planning::PathPlanner;
 pub use finding::Target;
+pub use planning::PathPlanner;
 
 use std::f32::consts::PI;
 
@@ -24,8 +24,16 @@ impl Plugin for PathPlugin {
         app.init_resource::<PathPlanner>()
             .add_systems(Startup, add_static_obstacles)
             .add_systems(PostStartup, init_visualization)
-            .add_systems(Update, (update_colliders, visualize_obstacles).chain().run_if(obstacles_changed))
-            .add_systems(Update, visualize_path.run_if(resource_changed::<PathPlanner>));
+            .add_systems(
+                Update,
+                (update_colliders, visualize_obstacles)
+                    .chain()
+                    .run_if(obstacles_changed),
+            )
+            .add_systems(
+                Update,
+                visualize_path.run_if(resource_changed::<PathPlanner>),
+            );
     }
 }
 

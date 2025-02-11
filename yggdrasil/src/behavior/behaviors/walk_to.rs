@@ -42,7 +42,10 @@ pub fn walk_to(
 ) {
     let isometry = Isometry::new(
         walk_to.target.to_point().coords,
-        walk_to.target.angle().unwrap_or(pose.inner.rotation.angle()),
+        walk_to
+            .target
+            .angle()
+            .unwrap_or(pose.inner.rotation.angle()),
     );
 
     let point = isometry * TARGET_OFFSET;

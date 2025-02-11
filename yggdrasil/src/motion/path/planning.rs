@@ -6,7 +6,7 @@ use crate::motion::walking_engine::step::Step;
 
 use super::{
     finding::{Colliders, Pathfinding, Target},
-    geometry::{Isometry, Length, LineSegment, Point, Segment, Winding},
+    geometry::{Isometry, LineSegment, Point, Segment, Winding},
     PathSettings,
 };
 
@@ -63,10 +63,8 @@ impl PathPlanner {
             }
         };
 
-        let angular_error = Winding::shortest_distance(
-            start.rotation.angle(),
-            first.forward_at_start(),
-        );
+        let angular_error =
+            Winding::shortest_distance(start.rotation.angle(), first.forward_at_start());
 
         let angular_correction = angular_error.clamp(-angular_speed, angular_speed);
 
@@ -76,11 +74,11 @@ impl PathPlanner {
                 left: perpendicular_correction,
                 turn: walking_turn_speed * first.turn() + angular_correction,
             })
-            } else {
+        } else {
             Some(Step {
                 forward: 0.,
                 left: perpendicular_correction,
-                turn: angular_error.clamp(-turn_speed, turn_speed)
+                turn: angular_error.clamp(-turn_speed, turn_speed),
             })
         }
     }
@@ -102,15 +100,13 @@ impl PathPlanner {
 
     #[must_use]
     fn begins_at_start(&self, start: Target) -> bool {
-        let Some(path) = &self.path else {
-            return false
-        };
+        let Some(path) = &self.path else { return false };
 
         let Some(first) = path.first() else {
             return match self.target {
                 Some(target) => start.distance(target) <= self.settings.target_tolerance,
                 None => true,
-            }
+            };
         };
 
         start.distance(first.start().into()) <= self.settings.start_tolerance
@@ -118,12 +114,10 @@ impl PathPlanner {
 
     #[must_use]
     fn ends_at_target(&self, start: Target) -> bool {
-        let Some(path) = &self.path else {
-            return false
-        };
+        let Some(path) = &self.path else { return false };
 
         let Some(target) = &self.target else {
-            return path.is_empty()
+            return path.is_empty();
         };
 
         let end = match path.last() {
@@ -136,7 +130,7 @@ impl PathPlanner {
 
     fn trim_to_start(&mut self, start: Point) {
         let Some(path) = self.path.as_mut() else {
-            return
+            return;
         };
 
         while let Some(first) = path.first_mut() {
@@ -207,8 +201,7 @@ impl PathPlanner {
 
     #[must_use]
     pub fn fallback_path(&self, start: Target) -> Vec<Segment> {
-        self
-            .target
+        self.target
             .map(|target| LineSegment::new(start.to_point(), target.to_point()).into())
             .into_iter()
             .collect()
@@ -254,17 +247,13 @@ pub enum Ease {
 }
 
 impl Ease {
+    #[must_use]
     pub fn ease_in(self) -> bool {
-        match self {
-            Self::In | Self::InOut => true,
-            _ => false,
-        }
+        matches!(self, Self::In | Self::InOut)
     }
 
+    #[must_use]
     pub fn ease_out(self) -> bool {
-        match self {
-            Self::Out | Self::InOut => true,
-            _ => false,
-        }
+        matches!(self, Self::Out | Self::InOut)
     }
 }

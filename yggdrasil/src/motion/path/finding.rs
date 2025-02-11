@@ -5,7 +5,9 @@ use ordered_float::OrderedFloat;
 
 use super::geometry::{Connection, Winding};
 use super::{
-    geometry::{Ccw, CircularArc, LineSegment, Cw, Intersects, Isometry, Length, Node, Point, Segment},
+    geometry::{
+        Ccw, CircularArc, Cw, Intersects, Isometry, Length, LineSegment, Node, Point, Segment,
+    },
     PathSettings,
 };
 
@@ -38,7 +40,7 @@ impl Pathfinding<'_> {
                 [prev @ State::EaseOut(_, _), _] => {
                     segments.push(self.arc(prev).unwrap().into());
                     break;
-                },
+                }
                 [prev, next] => (prev, next),
                 _ => unreachable!(),
             };

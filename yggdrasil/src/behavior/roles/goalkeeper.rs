@@ -6,7 +6,10 @@ use crate::{
         engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::layout::LayoutConfig,
-    motion::path::{PathPlanner, geometry::{Isometry, Vector}},
+    motion::path::{
+        geometry::{Isometry, Vector},
+        PathPlanner,
+    },
 };
 
 /// Plugin for the Goalkeeper role
@@ -40,6 +43,8 @@ pub fn goalkeeper_role(
             commands.set_behavior(Observe::default());
         }
     } else {
-        commands.set_behavior(WalkTo { target: keeper_target.into() });
+        commands.set_behavior(WalkTo {
+            target: keeper_target.into(),
+        });
     }
 }
