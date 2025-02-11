@@ -322,7 +322,7 @@ pub fn get_ball_proposals<T: CameraLocation>(
         };
 
         // find radius to look around the point,
-        //  bbox scale is diameter, so divide by 2 to get radius
+        // bbox scale is diameter, so divide by 2 to get radius
         let scaling = config.bounding_box_scale * 0.5;
         let radius = scaling / distance;
 
