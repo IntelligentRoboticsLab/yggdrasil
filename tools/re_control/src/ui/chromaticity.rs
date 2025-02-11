@@ -1,40 +1,43 @@
 use std::{
-    ops::RangeInclusive,
-    sync::{Arc, RwLock},
+    ops::RangeInclusive, sync::{Arc, RwLock}
 };
 
-use crate::control::ControlStates;
+
 use re_control_comms::{protocol::ViewerMessage, viewer::ControlViewerHandle};
-use re_viewer::external::{
-    egui,
-    re_ui::{list_item, UiExt},
-};
+use rerun::external::{egui, re_ui::UiExt};
+
+use crate::re_control_view::ControlViewerData;
+
+use super::view_section;
 
 const DEGREE_RANGE: RangeInclusive<f32> = 0.25..=0.45;
 const SLIDER_STEP_SIZE: f64 = 0.001;
 
+#[derive(Default)]
+pub struct ChromaticityState {
+    pub green_threshold: f32,
+}
+
 pub fn chromaticity_ui(
     ui: &mut egui::Ui,
-    states: Arc<RwLock<ControlStates>>,
+    states: Arc<RwLock<ControlViewerData>>,
     handle: &ControlViewerHandle,
 ) {
-    list_item::list_item_scope(ui, "Chromaticity", |ui| {
+    view_section(ui, "Chromaticity".to_string(), |ui| {
         ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-        ui.section_collapsing_header("Chromaticity")
-            .default_open(false)
-            .show(ui, |ui| {
-                let Ok(locked_states) = &mut states.write() else {
-                    ui.centered_and_justified(|ui| {
-                        ui.warning_label("Not able to access viewer states");
-                    });
-                    tracing::error!("Failed to lock states");
-                    return;
-                };
 
-                threshold_slider(ui, &mut locked_states.chromaticity_threshold, handle);
-            })
+        let Ok(locked_states) = &mut states.write() else {
+            ui.centered_and_justified(|ui| {
+                ui.warning_label("Not able to access viewer states");
+            });
+            tracing::error!("Failed to lock states");
+            return;
+        };
+    
+        threshold_slider(ui, &mut locked_states.chromaticity_state.green_threshold, handle);
     });
 }
+
 
 fn threshold_slider(
     ui: &mut egui::Ui,

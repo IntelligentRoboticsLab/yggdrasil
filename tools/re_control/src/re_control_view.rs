@@ -26,10 +26,7 @@ use rerun::external::{
 use crate::{
     connection::ConnectionState,
     ui::{
-        camera_calibration::{camera_calibration_ui, CameraState},
-        debug_systems::{debug_enabled_systems_ui, DebugEnabledState},
-        resource::{resource_ui, ResourcesState},
-        selection_ui,
+        camera_calibration::{camera_calibration_ui, CameraState}, chromaticity::{chromaticity_ui, ChromaticityState}, debug_systems::{debug_enabled_systems_ui, DebugEnabledState}, resource::{resource_ui, ResourcesState}, selection_ui
     },
 };
 
@@ -45,6 +42,7 @@ pub struct ControlViewerData {
     pub resources_state: ResourcesState,
     pub debug_enabled_state: DebugEnabledState,
     pub camera_state: CameraState,
+    pub chromaticity_state: ChromaticityState,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -53,6 +51,7 @@ enum ControlViewerSection {
     #[default]
     DebugEnabledSystems,
     CameraCalibration,
+    Chromaticity,
 }
 
 /// The state of the custom `ViewClass`. It consists of:
@@ -177,6 +176,9 @@ A view to control the robot",
                 // Camera calibration section
                 camera_calibration_ui(ui, Arc::clone(&state.data), handle);
             }
+            ControlViewerSection::Chromaticity => {
+                chromaticity_ui(ui, Arc::clone(&state.data), handle);
+            }
         }
 
         Ok(())
@@ -222,6 +224,11 @@ A view to control the robot",
                     selected,
                     ControlViewerSection::CameraCalibration,
                     "CameraCalibration",
+                );
+                ui.selectable_value(
+                    selected,
+                    ControlViewerSection::Chromaticity,
+                    "Chromaticity",
                 );
             });
 
@@ -285,6 +292,10 @@ pub fn handle_message(message: &RobotMessage, data: Arc<RwLock<ControlViewerData
 
             camera_config.current_position = *camera_position;
             camera.extrinsic_rotation.new_state(*extrinsic_rotation);
+        }
+        RobotMessage::Chromaticity { green_threshold } =>{
+            let mut locked_data = data.write().expect("Failed to lock viewer data");
+            locked_data.chromaticity_state.green_threshold = *green_threshold;
         }
     }
 }
