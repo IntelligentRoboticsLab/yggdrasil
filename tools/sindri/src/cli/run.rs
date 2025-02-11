@@ -12,7 +12,7 @@ use crate::{
     config::SindriConfig,
 };
 
-use super::re_control::{has_rerun, has_rsync, run_re_control, setup_rerun_host};
+use super::re_control::{has_re_control, has_rsync, run_re_control, setup_rerun_host};
 
 const DEFAULT_TRACY_PORT: u16 = 8086;
 
@@ -46,12 +46,12 @@ impl Run {
             bail!("rsync is not installed, install it using your package manager!")
         }
 
-        let has_rerun = has_rerun().await;
+        let has_rerun = has_re_control().await;
         if rerun && !has_rerun {
             println!(
                 "{}: {}",
                 "warning".bold().yellow(),
-                "rerun is not installed, install it using `cargo install rerun-cli`".white()
+                "re_control is not installed, install it using `sindri update re-control` or `cargo install --locked --path ./tools/re_control`".white()
             );
         }
 

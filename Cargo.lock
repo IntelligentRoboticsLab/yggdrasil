@@ -6761,7 +6761,7 @@ dependencies = [
 
 [[package]]
 name = "re_control"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "build_utils",
  "clap",
@@ -8613,7 +8613,7 @@ dependencies = [
 
 [[package]]
 name = "sindri"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "build_utils",
  "clap",
