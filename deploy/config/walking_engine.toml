@@ -38,6 +38,12 @@ base_foot_lift = 0.008
 # and added to the base foot lift.
 foot_lift_modifier = { forward = 0.11, left = 0.12, turn = 0.025 }
 
+# The maximum acceleration per step.
+#
+# E.g. the difference between the current and the last step is clamped to
+# -max_acceleration and max_acceleration.
+max_acceleration = { forward = 0.01, left = 0.01, turn = 0.3 }
+
 # The step size is clipped to this value; in both directions (e.g. range for forward is -max_step_size to max_step_size).
 max_step_size = { forward = 0.08, left = 0.08, turn = 1.0 }
 

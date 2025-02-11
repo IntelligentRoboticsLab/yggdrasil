@@ -24,12 +24,6 @@ use bevy::prelude::*;
 use nalgebra::Vector2;
 use rerun::external::glam::{Quat, Vec3};
 
-const MAX_ACCELERATION: Step = Step {
-    forward: 0.01,
-    left: 0.01,
-    turn: 0.3,
-};
-
 pub(super) struct StepManagerPlugin;
 
 impl Plugin for StepManagerPlugin {
@@ -118,8 +112,8 @@ impl StepManager {
 
     pub fn plan_next_step(&mut self, start: FootPositions, config: &WalkingEngineConfig) {
         // clamp acceleration
-        let delta_step =
-            (self.requested_step - self.last_step.step).clamp(-MAX_ACCELERATION, MAX_ACCELERATION);
+        let delta_step = (self.requested_step - self.last_step.step)
+            .clamp(-config.max_acceleration, config.max_acceleration);
 
         // TODO(gijsd): do we want to assume this each time?
         let next_swing_foot = self.last_step.swing_foot.opposite();
