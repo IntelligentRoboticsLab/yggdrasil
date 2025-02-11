@@ -7,7 +7,7 @@ use crate::motion::walking_engine::step::Step;
 use super::{
     finding::{Colliders, Pathfinding, Target},
     geometry::{Isometry, LineSegment, Point, Segment, Winding},
-    PathSettings,
+    PathConfig,
 };
 
 #[derive(Resource)]
@@ -15,17 +15,17 @@ pub struct PathPlanner {
     pub path: Option<Vec<Segment>>,
     pub target: Option<Target>,
     colliders: Colliders,
-    settings: PathSettings,
+    config: PathConfig,
 }
 
 impl PathPlanner {
     #[must_use]
-    pub fn new(settings: PathSettings) -> Self {
+    pub fn new(config: PathConfig) -> Self {
         Self {
             path: Some(Vec::new()),
             target: None,
             colliders: Colliders::new(),
-            settings,
+            config,
         }
     }
 
@@ -39,7 +39,7 @@ impl PathPlanner {
 
     #[must_use]
     pub fn step(&mut self, start: Isometry) -> Option<Step> {
-        let PathSettings {
+        let PathConfig {
             perpendicular_tolerance,
             min_angular_tolerance,
             max_angular_tolerance,
@@ -49,7 +49,7 @@ impl PathPlanner {
             perpendicular_speed,
             angular_speed,
             ..
-        } = self.settings;
+        } = self.config;
 
         let point = start.translation.vector.into();
         let first = self.path(start.into()).first()?;
@@ -108,12 +108,12 @@ impl PathPlanner {
 
         let Some(first) = path.first() else {
             return match self.target {
-                Some(target) => start.distance(target) <= self.settings.target_tolerance,
+                Some(target) => start.distance(target) <= self.config.target_tolerance,
                 None => true,
             };
         };
 
-        start.distance(first.start().into()) <= self.settings.start_tolerance
+        start.distance(first.start().into()) <= self.config.start_tolerance
     }
 
     #[must_use]
@@ -129,7 +129,7 @@ impl PathPlanner {
             None => start,
         };
 
-        target.distance(end) <= self.settings.target_tolerance
+        target.distance(end) <= self.config.target_tolerance
     }
 
     fn trim_to_start(&mut self, start: Point) {
@@ -171,17 +171,17 @@ impl PathPlanner {
             return Some(Vec::new());
         };
 
-        let settings = self.settings();
+        let config = self.config();
 
         let half_distance = 0.5 * start.distance(target);
 
-        let start = if ease.ease_in() && (half_distance >= settings.ease_in + settings.ease_out) {
+        let start = if ease.ease_in() && (half_distance >= config.ease_in + config.ease_out) {
             start
         } else {
             start.isometry_to_point()?
         };
 
-        let target = if ease.ease_out() && (half_distance >= settings.ease_out) {
+        let target = if ease.ease_out() && (half_distance >= config.ease_out) {
             target
         } else {
             target.isometry_to_point()?
@@ -197,7 +197,7 @@ impl PathPlanner {
             start,
             target,
             colliders,
-            settings,
+            config,
         };
 
         Some(pathfinding.path()?.0)
@@ -224,21 +224,15 @@ impl PathPlanner {
     }
 
     #[must_use]
-    pub fn settings(&self) -> &PathSettings {
-        &self.settings
+    pub fn config(&self) -> &PathConfig {
+        &self.config
     }
 
-    pub fn set_settings(&mut self, settings: PathSettings) {
-        if self.settings != settings {
-            self.settings = settings;
+    pub fn set_config(&mut self, config: PathConfig) {
+        if self.config != config {
+            self.config = config;
             self.path = None;
         }
-    }
-}
-
-impl Default for PathPlanner {
-    fn default() -> Self {
-        Self::new(PathSettings::default())
     }
 }
 

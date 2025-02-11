@@ -26,7 +26,7 @@ pub fn obstacles_changed(obstacles: Query<&Obstacle, Changed<Obstacle>>) -> bool
 
 /// Updates the [`Colliders`] based on the obstacles in the ECS (and reset [`Path`]).
 pub fn update_colliders(mut planner: ResMut<PathPlanner>, obstacles: Query<&Obstacle>) {
-    let radius = planner.settings().robot_radius;
+    let radius = planner.config().robot_radius;
 
     let mut colliders = Colliders::new();
 

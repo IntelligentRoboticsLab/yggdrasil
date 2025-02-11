@@ -8,7 +8,7 @@ use super::{
     geometry::{
         Ccw, CircularArc, Cw, Intersects, Isometry, Length, LineSegment, Node, Point, Segment,
     },
-    PathSettings,
+    PathConfig,
 };
 
 type Float = OrderedFloat<f32>;
@@ -23,7 +23,7 @@ pub struct Pathfinding<'a> {
     /// The colliders to navigate around.
     pub colliders: &'a Colliders,
     /// The settings for pathfinding.
-    pub settings: &'a PathSettings,
+    pub config: &'a PathConfig,
 }
 
 impl Pathfinding<'_> {
@@ -176,7 +176,7 @@ impl Pathfinding<'_> {
         Some(CircularArc::from_isometry(
             self.start.isometry()?,
             direction,
-            self.settings.ease_in,
+            self.config.ease_in,
         ))
     }
 
@@ -185,7 +185,7 @@ impl Pathfinding<'_> {
         Some(CircularArc::from_isometry(
             self.target.isometry()?,
             direction,
-            self.settings.ease_out,
+            self.config.ease_out,
         ))
     }
 }

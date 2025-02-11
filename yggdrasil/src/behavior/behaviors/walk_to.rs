@@ -7,7 +7,7 @@ use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
     localization::RobotPose,
     motion::{
-        path::{geometry::Isometry, PathPlanner, Target},
+        path::{PathPlanner, Target},
         walking_engine::step_context::StepContext,
     },
     nao::{NaoManager, Priority},

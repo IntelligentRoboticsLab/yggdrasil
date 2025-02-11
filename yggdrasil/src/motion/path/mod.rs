@@ -9,9 +9,12 @@ pub mod visualization;
 pub use finding::Target;
 pub use planning::PathPlanner;
 
-use std::f32::consts::PI;
 
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
+
+use crate::core::config::ConfigExt;
+use odal::Config;
 
 use obstacles::{add_static_obstacles, obstacles_changed, update_colliders};
 use visualization::{init_visualization, visualize_obstacles, visualize_path};
@@ -21,7 +24,8 @@ pub struct PathPlugin;
 
 impl Plugin for PathPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PathPlanner>()
+        app.init_config::<PathConfig>()
+            .add_systems(Startup, init_path_planner)
             .add_systems(Startup, add_static_obstacles)
             .add_systems(PostStartup, init_visualization)
             .add_systems(
@@ -37,9 +41,14 @@ impl Plugin for PathPlugin {
     }
 }
 
+fn init_path_planner(mut commands: Commands, config: Res<PathConfig>) {
+    commands.insert_resource(PathPlanner::new(*config));
+}
+
 /// Struct containing the configuration for the pathfinding.
-#[derive(Copy, Clone, PartialEq, Resource)]
-pub struct PathSettings {
+#[derive(Resource, Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct PathConfig {
     pub robot_radius: f32,
     pub ease_in: f32,
     pub ease_out: f32,
@@ -55,22 +64,6 @@ pub struct PathSettings {
     pub angular_speed: f32,
 }
 
-impl Default for PathSettings {
-    fn default() -> Self {
-        Self {
-            robot_radius: 0.25,
-            start_tolerance: 0.2,
-            target_tolerance: 0.2,
-            perpendicular_tolerance: 0.05,
-            min_angular_tolerance: 0.05 * PI,
-            max_angular_tolerance: 0.2 * PI,
-            ease_in: 0.333,
-            ease_out: 0.333,
-            walk_speed: 0.05,
-            turn_speed: 0.3 * PI,
-            walking_turn_speed: 0.2 * PI,
-            perpendicular_speed: 0.03,
-            angular_speed: 0.2 * PI,
-        }
-    }
+impl Config for PathConfig {
+    const PATH: &'static str = "path_planner.toml";
 }
