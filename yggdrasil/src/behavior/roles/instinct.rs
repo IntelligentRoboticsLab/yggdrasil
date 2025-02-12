@@ -6,7 +6,7 @@ use nalgebra::Point2;
 use crate::{
     behavior::{
         behaviors::{CatchFall, Sitting, Stand, StandLookAt, Standup, WalkToSet},
-        engine::CommandsBehaviorExt,
+        engine::{in_role, CommandsBehaviorExt},
         primary_state::{update_primary_state, PrimaryState},
         roles::Striker,
     },
@@ -25,7 +25,9 @@ impl Plugin for InstinctRolePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            behavior.after(update_primary_state), // .run_if(resource_exists::<Instinct>),
+            behavior
+                .after(update_primary_state)
+                .run_if(in_role::<Instinct>),
         );
     }
 }
@@ -55,7 +57,7 @@ pub fn behavior(
 
     if behavior == &BehaviorState::StartUp {
         if walking_engine.is_sitting() || head_buttons.all_pressed() {
-            commands.set_behavior(Sitting);
+            commands.set_behavior(Sitting::default());
         }
         if *primary_state == PrimaryState::Initial {
             commands.set_behavior(Stand);
@@ -65,7 +67,9 @@ pub fn behavior(
 
     // unstiff has the number 1 precedence
     if *primary_state == PrimaryState::Sitting {
-        commands.set_behavior(Sitting);
+        if !matches!(behavior, BehaviorState::Sitting) {
+            commands.set_behavior(Sitting::default());
+        }
         return;
     }
 
@@ -109,7 +113,7 @@ pub fn behavior(
     let ball_or_origin = most_confident_ball.unwrap_or(Point2::origin());
 
     match *primary_state {
-        PrimaryState::Sitting => commands.set_behavior(Sitting),
+        PrimaryState::Sitting => commands.set_behavior(Sitting::default()),
         PrimaryState::Standby
         | PrimaryState::Penalized
         | PrimaryState::Finished

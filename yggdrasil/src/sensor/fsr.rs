@@ -1,14 +1,21 @@
 use std::time::{Duration, Instant};
 
 use super::SensorConfig;
-use crate::{motion::walk::SwingFootSwitchedEvent, prelude::*};
+use crate::prelude::*;
+use crate::sensor::low_pass_filter::LowPassFilter;
 use bevy::prelude::*;
+use nalgebra::SVector;
+
+use crate::motion::walk::SwingFootSwitchedEvent;
 use nidhogg::{
     types::{FillExt, Fsr, FsrFoot},
     NaoState,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
+
+// Omega for the low-pass filter.
+const OMEGA: f32 = 0.7;
 
 /// Plugin offering the Force Sensitive Resistor (FSR) sensor data of the Nao,
 /// derived from the raw [`NaoState`].
@@ -43,13 +50,21 @@ impl Plugin for FSRSensorPlugin {
 pub struct FsrConfig {
     /// Threshold for ground contact detection using average FSR sensor values from both feet.
     pub ground_contact_threshold: f32,
+
+    /// Timeout for change of value of the ground contact state in milliseconds.
+    #[serde_as(as = "DurationMilliSeconds")]
+    pub ground_contact_timeout: Duration,
+
     /// Maximum amount of pressure measured by a single sensor.
     pub max_pressure: f32,
+
     /// Initial value for minimum pressure measured by a single sensor.
     pub min_pressure: f32,
+
     /// The time to sample pressure values before updating the maximum value for each sensor, in milliseconds.
     #[serde_as(as = "DurationMilliSeconds")]
     pub highest_pressure_update_rate: Duration,
+
     /// The number of foot switches required before updating the minimum value for each sensor.
     pub num_foot_switches: u32,
 }
@@ -67,30 +82,67 @@ impl FsrConfig {
 }
 
 /// Struct containing the various contact points of the Nao.
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct Contacts {
     /// Whether the robot has ground contact.
     pub ground: bool,
+
     /// Whether the robot's left foot has ground contact.
     pub left_foot: bool,
+
     /// Whether the robot's right foot has ground contact.
     pub right_foot: bool,
+
+    /// Timestamp of detected change in pressure state.
+    pub last_switched: Instant,
+
+    /// The first-order Butterworth low-pass filter to apply to the FSR sensor data.
+    pub lpf: LowPassFilter<1>,
 }
 
-pub fn force_sensitive_resistor_sensor(
-    nao_state: Res<NaoState>,
-    mut force_sensitive_resistors: ResMut<Fsr>,
+impl Default for Contacts {
+    fn default() -> Self {
+        Contacts {
+            ground: true,
+            left_foot: false,
+            right_foot: false,
+            last_switched: Instant::now(),
+            lpf: LowPassFilter::new(OMEGA),
+        }
+    }
+}
+
+pub fn force_sensitive_resistor_sensor(nao_state: Res<NaoState>, mut fsr: ResMut<Fsr>) {
+    fsr.left_foot = nao_state.fsr.left_foot.clone();
+    fsr.right_foot = nao_state.fsr.right_foot.clone();
+}
+
+fn update_contacts(
+    config: Res<SensorConfig>,
+    fsr: Res<Fsr>,
+    mut contacts: ResMut<Contacts>,
+    mut last_pressure: Local<bool>,
 ) {
-    force_sensitive_resistors.left_foot = nao_state.fsr.left_foot.clone();
-    force_sensitive_resistors.right_foot = nao_state.fsr.right_foot.clone();
-}
-
-fn update_contacts(config: Res<SensorConfig>, fsr: Res<Fsr>, mut contacts: ResMut<Contacts>) {
     let config = &config.fsr;
 
-    contacts.ground = fsr.avg() >= config.ground_contact_threshold;
     contacts.left_foot = fsr.left_foot.sum() >= config.min_pressure;
     contacts.right_foot = fsr.right_foot.sum() >= config.min_pressure;
+
+    // Retrieve FSR values and apply low-pass filter.
+    let fsr_vector = SVector::<f32, 1>::from([fsr.avg()]);
+    let filtered_fsr = contacts.lpf.update(fsr_vector);
+    let current_pressure = filtered_fsr.x > config.ground_contact_threshold;
+
+    if current_pressure != *last_pressure {
+        contacts.last_switched = Instant::now();
+    }
+
+    // Only update the ground state if timeout duration has elapsed.
+    if contacts.last_switched.elapsed() >= config.ground_contact_timeout {
+        contacts.ground = current_pressure;
+    }
+
+    *last_pressure = current_pressure;
 }
 
 #[derive(Debug, Clone, Default)]
