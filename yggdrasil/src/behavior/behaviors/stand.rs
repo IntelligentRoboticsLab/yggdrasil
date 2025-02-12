@@ -21,6 +21,7 @@ impl Plugin for StandBehaviorPlugin {
 
 #[derive(Resource)]
 pub struct Stand;
+
 impl Behavior for Stand {
     const STATE: BehaviorState = BehaviorState::Stand;
 }
