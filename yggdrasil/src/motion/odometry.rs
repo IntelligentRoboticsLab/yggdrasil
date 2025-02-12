@@ -12,7 +12,7 @@ use crate::{
     sensor::orientation::RobotOrientation,
 };
 
-use super::walkv4::{Side, SwingFoot};
+use super::walkv4::{Side, SwingFoot, WalkingEngineSet};
 
 /// Plugin that keeps track of the odometry of the robot.
 pub(super) struct OdometryPlugin;
@@ -23,7 +23,8 @@ impl Plugin for OdometryPlugin {
             PreUpdate,
             update_odometry
                 .after(crate::kinematics::update_kinematics)
-                .after(crate::sensor::orientation::update_orientation),
+                .after(crate::sensor::orientation::update_orientation)
+                .after(WalkingEngineSet::Prepare),
         );
     }
 }

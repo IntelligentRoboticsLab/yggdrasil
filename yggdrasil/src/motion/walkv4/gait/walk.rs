@@ -13,6 +13,7 @@ use crate::{
         FootSwitchedEvent, Side, SwingFoot, TargetFootPositions,
     },
     nao::{Cycle, CycleTime},
+    prelude::Sensor,
 };
 
 pub(super) struct WalkGaitPlugin;
@@ -21,8 +22,14 @@ impl Plugin for WalkGaitPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<WalkState>();
         app.add_systems(
+            Sensor,
+            update_swing_foot
+                .after(crate::sensor::fsr::force_sensitive_resistor_sensor)
+                .after(WalkingEngineSet::Prepare),
+        );
+        app.add_systems(
             GaitGeneration,
-            (check_foot_switched, generate_walk_gait, update_swing_foot)
+            (generate_walk_gait)
                 .chain()
                 .in_set(WalkingEngineSet::GenerateGait)
                 .run_if(in_state(Gait::Walking)),
@@ -68,7 +75,14 @@ impl WalkState {
     }
 }
 
-fn check_foot_switched(mut state: ResMut<WalkState>, foot_support: Res<FootSupportState>) {
+/// System that checks whether the swing foot should be updated, and does so when possible.
+fn update_swing_foot(
+    mut state: ResMut<WalkState>,
+    foot_support: Res<FootSupportState>,
+    mut event: EventWriter<FootSwitchedEvent>,
+    mut swing_foot: ResMut<SwingFoot>,
+    cycle: Res<Cycle>,
+) {
     // only switch if we've completed 75% of the step
     let is_switch_allowed = state.linear() > 0.75;
 
@@ -78,6 +92,14 @@ fn check_foot_switched(mut state: ResMut<WalkState>, foot_support: Res<FootSuppo
         } else {
             state.foot_switched_fsr = foot_support.foot_switched;
         }
+    }
+
+    if state.foot_switched_fsr {
+        state.phase = Duration::ZERO;
+        **swing_foot = swing_foot.opposite();
+        state.foot_switched_fsr = false;
+        info!("[{:?}] foot switched!", *cycle);
+        event.send(FootSwitchedEvent(**swing_foot));
     }
 }
 
@@ -117,22 +139,4 @@ fn generate_walk_gait(
         left: left.into(),
         right: right.into(),
     };
-}
-
-/// System that switches the current swing foot when possible.
-fn update_swing_foot(
-    mut event: EventWriter<FootSwitchedEvent>,
-    mut swing_foot: ResMut<SwingFoot>,
-    mut state: ResMut<WalkState>,
-    cycle: Res<Cycle>,
-) {
-    if !state.foot_switched_fsr {
-        return;
-    }
-
-    state.phase = Duration::ZERO;
-    **swing_foot = swing_foot.opposite();
-    state.foot_switched_fsr = false;
-    info!("[{:?}] foot switched!", *cycle);
-    event.send(FootSwitchedEvent(**swing_foot));
 }

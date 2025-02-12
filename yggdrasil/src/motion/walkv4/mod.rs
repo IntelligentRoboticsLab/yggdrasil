@@ -4,7 +4,6 @@ use config::WalkingEngineConfig;
 use feet::FootPositions;
 use hips::HipHeight;
 use nidhogg::types::{ArmJoints, FillExt, LeftLegJoints, LegJoints, RightLegJoints};
-use schedule::WalkingEngineSet;
 use step::Step;
 use step_manager::StepManager;
 
@@ -27,7 +26,7 @@ mod smoothing;
 pub mod step;
 pub mod step_manager;
 
-pub use schedule::Gait;
+pub use schedule::{Gait, WalkingEngineSet};
 
 pub struct Walkv4EnginePlugin;
 
