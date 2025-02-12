@@ -138,7 +138,7 @@ fn update_contacts(
     }
 
     // Only update the ground state if timeout duration has elapsed.
-    if contacts.last_switched.elapsed() >= (config.ground_contact_timeout) {
+    if contacts.last_switched.elapsed() >= config.ground_contact_timeout {
         contacts.ground = current_pressure;
     }
 

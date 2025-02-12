@@ -7,7 +7,7 @@ use super::{
         WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSetBehaviorPlugin,
     },
     roles::{
-        Defender, DefenderRolePlugin, Goalkeeper, GoalkeeperRolePlugin, InstinctRolePlugin,
+        DefenderRolePlugin, Goalkeeper, GoalkeeperRolePlugin, Instinct, InstinctRolePlugin,
         Striker, StrikerRolePlugin,
     },
 };
@@ -100,7 +100,7 @@ impl Role {
         match player_number {
             1 => commands.set_role(Goalkeeper),
             5 => commands.set_role(Striker::WalkToBall),
-            _ => commands.set_role(Defender),
+            _ => commands.set_role(Instinct),
         }
     }
 

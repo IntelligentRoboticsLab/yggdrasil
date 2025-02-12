@@ -6,7 +6,7 @@ use nalgebra::Point2;
 use crate::{
     behavior::{
         behaviors::{CatchFall, Sitting, Stand, StandLookAt, Standup, WalkToSet},
-        engine::CommandsBehaviorExt,
+        engine::{in_role, CommandsBehaviorExt},
         primary_state::{update_primary_state, PrimaryState},
         roles::Striker,
     },
@@ -25,7 +25,9 @@ impl Plugin for InstinctRolePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            behavior.after(update_primary_state), // .run_if(resource_exists::<Instinct>),
+            behavior
+                .after(update_primary_state)
+                .run_if(in_role::<Instinct>),
         );
     }
 }

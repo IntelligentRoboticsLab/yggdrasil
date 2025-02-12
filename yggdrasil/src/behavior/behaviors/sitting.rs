@@ -64,7 +64,6 @@ pub fn sitting(
     } else {
         sitting.locked_leg_position = None;
         nao_manager.unstiff_sit(UNSTIFF_PRIORITY);
-
         nao_manager.unstiff_arms(UNSTIFF_PRIORITY);
     }
 }
@@ -72,25 +71,8 @@ pub fn sitting(
 fn capture_leg_position(nao_state: &NaoState) -> LegJoints<f32> {
     let position = nao_state.position.clone();
 
-    let left_leg_joints = LeftLegJoints::builder()
-        .hip_yaw_pitch(position.left_hip_yaw_pitch)
-        .hip_roll(position.left_hip_roll)
-        .hip_pitch(position.left_hip_pitch)
-        .knee_pitch(position.left_knee_pitch)
-        .ankle_pitch(position.left_ankle_pitch)
-        .ankle_roll(position.left_ankle_roll)
-        .build();
-
-    let right_leg_joints = RightLegJoints::builder()
-        .hip_roll(position.right_hip_roll)
-        .hip_pitch(position.right_hip_pitch)
-        .knee_pitch(position.right_knee_pitch)
-        .ankle_pitch(position.right_ankle_pitch)
-        .ankle_roll(position.right_ankle_roll)
-        .build();
-
     LegJoints::builder()
-        .left_leg(left_leg_joints)
-        .right_leg(right_leg_joints)
+        .left_leg(position.left_leg_joints())
+        .right_leg(position.right_leg_joints())
         .build()
 }
