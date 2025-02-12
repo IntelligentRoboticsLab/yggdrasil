@@ -8,7 +8,7 @@ use crate::{
 
 use super::{
     config::WalkingEngineConfig,
-    schedule::{MotionSet, StepPlanning},
+    schedule::{StepPlanning, WalkingEngineSet},
 };
 
 /// Config parameters related to the hip height of the robot.
@@ -40,10 +40,13 @@ pub struct HipHeightPlugin;
 impl Plugin for HipHeightPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<HipHeight>();
-        app.add_systems(PostStartup, init_hip_height.in_set(MotionSet::StepPlanning));
+        app.add_systems(
+            PostStartup,
+            init_hip_height.in_set(WalkingEngineSet::PlanStep),
+        );
         app.add_systems(
             StepPlanning,
-            update_hip_height.in_set(MotionSet::StepPlanning),
+            update_hip_height.in_set(WalkingEngineSet::PlanStep),
         );
     }
 }

@@ -4,7 +4,7 @@ use config::WalkingEngineConfig;
 use feet::FootPositions;
 use hips::HipHeight;
 use nidhogg::types::{ArmJoints, FillExt, LeftLegJoints, LegJoints, RightLegJoints};
-use schedule::MotionSet;
+use schedule::WalkingEngineSet;
 use step::Step;
 use step_manager::StepManager;
 
@@ -51,9 +51,9 @@ impl Plugin for Walkv4EnginePlugin {
             Update,
             (
                 switch_state
-                    .in_set(MotionSet::StepPlanning)
+                    .in_set(WalkingEngineSet::PlanStep)
                     .before(step_manager::sync_gait_request),
-                finalize.in_set(MotionSet::Finalize),
+                finalize.in_set(WalkingEngineSet::Finalize),
             ),
         );
     }

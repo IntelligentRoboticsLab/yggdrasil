@@ -6,13 +6,13 @@ use crate::{
     motion::walkv4::{
         feet::FootPositions,
         foot_support::FootSupportState,
-        schedule::{Gait, GaitGeneration, MotionSet},
+        schedule::{Gait, GaitGeneration, WalkingEngineSet},
         smoothing::{parabolic_return, parabolic_step},
         step::PlannedStep,
         step_manager::StepManager,
         FootSwitchedEvent, Side, SwingFoot, TargetFootPositions,
     },
-    nao::CycleTime,
+    nao::{Cycle, CycleTime},
 };
 
 pub(super) struct WalkGaitPlugin;
@@ -24,7 +24,7 @@ impl Plugin for WalkGaitPlugin {
             GaitGeneration,
             (check_foot_switched, generate_walk_gait, update_swing_foot)
                 .chain()
-                .in_set(MotionSet::GaitGeneration)
+                .in_set(WalkingEngineSet::GenerateGait)
                 .run_if(in_state(Gait::Walking)),
         );
     }
@@ -124,6 +124,7 @@ fn update_swing_foot(
     mut event: EventWriter<FootSwitchedEvent>,
     mut swing_foot: ResMut<SwingFoot>,
     mut state: ResMut<WalkState>,
+    cycle: Res<Cycle>,
 ) {
     if !state.foot_switched_fsr {
         return;
@@ -132,5 +133,6 @@ fn update_swing_foot(
     state.phase = Duration::ZERO;
     **swing_foot = swing_foot.opposite();
     state.foot_switched_fsr = false;
+    info!("[{:?}] foot switched!", *cycle);
     event.send(FootSwitchedEvent(**swing_foot));
 }

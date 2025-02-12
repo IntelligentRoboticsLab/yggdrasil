@@ -8,6 +8,7 @@ use crate::{
         spaces::{LeftSole, RightSole},
         Kinematics,
     },
+    nao::Cycle,
     sensor::orientation::RobotOrientation,
 };
 
@@ -34,10 +35,17 @@ pub fn update_odometry(
     swing_foot: Res<SwingFoot>,
     kinematics: Res<Kinematics>,
     orientation: Res<RobotOrientation>,
+    cycle: Res<Cycle>,
 ) {
     // TODO: We should probably reset the odometry in some cases
     // See: https://github.com/IntelligentRoboticsLab/yggdrasil/issues/400
-    odometry.update(&odometry_config, &swing_foot, &kinematics, &orientation);
+    odometry.update(
+        &odometry_config,
+        &swing_foot,
+        &kinematics,
+        &orientation,
+        &cycle,
+    );
 }
 
 /// Configuration for the odometry.
@@ -78,6 +86,7 @@ impl Odometry {
         swing_foot: &SwingFoot,
         kinematics: &Kinematics,
         orientation: &RobotOrientation,
+        cycle: &Cycle,
     ) {
         let left_sole_to_right_sole = kinematics.vector::<LeftSole, RightSole>().inner.xy();
 
@@ -86,6 +95,13 @@ impl Odometry {
             Side::Left => left_sole_to_right_sole - self.last_left_sole_to_right_sole,
             Side::Right => -left_sole_to_right_sole + self.last_left_sole_to_right_sole,
         } / 2.0;
+
+        info!(
+            "[{:?}] [{:?}] offset: {:?}",
+            *cycle,
+            swing_foot.support(),
+            offset
+        );
 
         self.last_left_sole_to_right_sole = left_sole_to_right_sole;
         let scaled_offset = offset.component_mul(&config.scale_factor);
