@@ -7,7 +7,7 @@ use crate::{
         config::WalkingEngineConfig,
         feet::FootPositions,
         foot_support::FootSupportState,
-        schedule::{Gait, GaitGeneration, MotionSet, StepPlanning},
+        schedule::{Gait, GaitGeneration, StepPlanning, WalkingEngineSet},
         smoothing::{parabolic_return, parabolic_step},
         step::{PlannedStep, Step},
         step_manager::StepManager,
@@ -23,13 +23,13 @@ impl Plugin for StartingPlugin {
         app.add_systems(
             StepPlanning,
             end_starting_phase
-                .in_set(MotionSet::StepPlanning)
+                .in_set(WalkingEngineSet::PlanStep)
                 .run_if(in_state(Gait::Starting)),
         );
         app.add_systems(
             GaitGeneration,
             generate_starting_gait
-                .in_set(MotionSet::GaitGeneration)
+                .in_set(WalkingEngineSet::GenerateGait)
                 .run_if(in_state(Gait::Starting)),
         );
     }

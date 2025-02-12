@@ -11,21 +11,31 @@ use crate::kinematics::Kinematics;
 use super::{config::WalkingEngineConfig, step::PlannedStep, step_manager::StepManager};
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MotionSet {
-    StepPlanning,
-    GaitGeneration,
-    Balancing,
+pub enum WalkingEngineSet {
+    /// this runs right after we obtain new sensor data, but before running any logic
+    Prepare,
+    /// this runs right before generating the gait, in order to plan any required steps.
+    PlanStep,
+    /// this runs as the "main" loop of the walking engine, and generates the foot positions
+    /// based on the current gait and state
+    GenerateGait,
+    /// this runs after the foot positions for the current gait have been computed and
+    /// updates any balancing systems required
+    Balance,
+    /// this takes the target foot positions and the balance adjustments required and turns it into
+    /// motion commands.
     Finalize,
 }
 
-impl MotionSet {
-    /// The order of the motion system sets.
+impl WalkingEngineSet {
+    /// The order of the walking engine system sets.
     fn order() -> impl IntoSystemSetConfigs {
         (
-            MotionSet::StepPlanning,
-            MotionSet::GaitGeneration,
-            MotionSet::Balancing,
-            MotionSet::Finalize,
+            Self::Prepare,
+            Self::PlanStep,
+            Self::GenerateGait,
+            Self::Balance,
+            Self::Finalize,
         )
             .chain()
     }
@@ -113,14 +123,17 @@ impl Plugin for WalkingEngineSchedulePlugin {
             .insert_after(PostUpdate, WalkingEngine);
 
         app.init_state::<Gait>();
-        app.configure_sets(PostStartup, MotionSet::order())
-            .configure_sets(Update, MotionSet::order())
-            .configure_sets(PostUpdate, MotionSet::order())
-            .configure_sets(OnEnter(Gait::Sitting), MotionSet::order())
-            .configure_sets(OnEnter(Gait::Standing), MotionSet::order())
-            .configure_sets(OnEnter(Gait::Walking), MotionSet::order());
+        app.configure_sets(PostStartup, WalkingEngineSet::order())
+            .configure_sets(Update, WalkingEngineSet::order())
+            .configure_sets(PostUpdate, WalkingEngineSet::order())
+            .configure_sets(OnEnter(Gait::Sitting), WalkingEngineSet::order())
+            .configure_sets(OnEnter(Gait::Standing), WalkingEngineSet::order())
+            .configure_sets(OnEnter(Gait::Walking), WalkingEngineSet::order());
 
-        app.add_systems(PostStartup, setup_motion_state.in_set(MotionSet::Finalize));
+        app.add_systems(
+            PostStartup,
+            setup_motion_state.in_set(WalkingEngineSet::Finalize),
+        );
     }
 }
 

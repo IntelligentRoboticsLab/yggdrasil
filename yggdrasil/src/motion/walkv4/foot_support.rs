@@ -6,7 +6,7 @@ use crate::sensor::fsr::{CalibratedFsr, Contacts};
 
 use super::{
     config::WalkingEngineConfig,
-    schedule::{MotionSet, StepPlanning},
+    schedule::{StepPlanning, WalkingEngineSet},
     Side,
 };
 
@@ -18,7 +18,7 @@ impl Plugin for FootSupportPlugin {
         app.add_systems(PostStartup, init_foot_support);
         app.add_systems(
             StepPlanning,
-            update_foot_support.in_set(MotionSet::StepPlanning),
+            update_foot_support.in_set(WalkingEngineSet::PlanStep),
         );
     }
 }

@@ -9,7 +9,7 @@ use crate::{
         config::WalkingEngineConfig,
         feet::FootPositions,
         hips::HipHeight,
-        schedule::{Gait, GaitGeneration, MotionSet},
+        schedule::{Gait, GaitGeneration, WalkingEngineSet},
         TargetFootPositions, TargetLegStiffness,
     },
 };
@@ -22,7 +22,7 @@ impl Plugin for SitGaitPlugin {
             GaitGeneration,
             (request_sit, generate_sit_gait)
                 .chain()
-                .in_set(MotionSet::GaitGeneration)
+                .in_set(WalkingEngineSet::GenerateGait)
                 .run_if(in_state(Gait::Sitting)),
         );
     }

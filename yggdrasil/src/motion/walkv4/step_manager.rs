@@ -16,7 +16,7 @@ use crate::{
 use super::{
     config::WalkingEngineConfig,
     feet::FootPositions,
-    schedule::{Gait, MotionSet, StepPlanning},
+    schedule::{Gait, StepPlanning, WalkingEngineSet},
     step::{PlannedStep, Step},
     FootSwitchedEvent,
 };
@@ -31,7 +31,7 @@ impl Plugin for StepManagerPlugin {
         app.add_systems(PostStartup, setup_step_visualizer);
         app.add_systems(
             StepPlanning,
-            sync_gait_request.in_set(MotionSet::StepPlanning),
+            sync_gait_request.in_set(WalkingEngineSet::PlanStep),
         );
 
         // TODO: Probably want a separate schedule for this!
@@ -39,14 +39,14 @@ impl Plugin for StepManagerPlugin {
             PreWrite,
             plan_step
                 .run_if(on_event::<FootSwitchedEvent>)
-                .in_set(MotionSet::StepPlanning),
+                .in_set(WalkingEngineSet::PlanStep),
         );
         app.add_named_debug_systems(
             PreWrite,
             visualize_planned_step
                 .after(plan_step)
                 .run_if(on_event::<FootSwitchedEvent>)
-                .in_set(MotionSet::StepPlanning),
+                .in_set(WalkingEngineSet::PlanStep),
             "Visualize planned step",
             SystemToggle::Enable,
         );
