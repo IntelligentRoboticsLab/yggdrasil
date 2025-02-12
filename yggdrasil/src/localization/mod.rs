@@ -171,6 +171,8 @@ pub fn next_robot_pose(
         }
     }
 
+    info!("robot_pose: {:?}", isometry.translation);
+
     RobotPose::new(isometry)
 }
 
