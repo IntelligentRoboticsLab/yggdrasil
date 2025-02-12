@@ -9,7 +9,7 @@ use crate::{
         config::WalkingEngineConfig,
         feet::FootPositions,
         hips::HipHeight,
-        schedule::{Gait, GaitGeneration, WalkingEngineSet},
+        schedule::{Gait, WalkingEngineSet},
         TargetFootPositions, TargetLegStiffness,
     },
     sensor::fsr::Contacts,
@@ -20,7 +20,7 @@ pub(super) struct SitGaitPlugin;
 impl Plugin for SitGaitPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            GaitGeneration,
+            Update,
             (request_sit, generate_sit_gait)
                 .chain()
                 .in_set(WalkingEngineSet::GenerateGait)

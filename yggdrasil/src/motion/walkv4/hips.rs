@@ -6,10 +6,7 @@ use crate::{
     nao::CycleTime,
 };
 
-use super::{
-    config::WalkingEngineConfig,
-    schedule::{StepPlanning, WalkingEngineSet},
-};
+use super::{config::WalkingEngineConfig, schedule::WalkingEngineSet};
 
 /// Config parameters related to the hip height of the robot.
 #[derive(Resource, Serialize, Deserialize, Debug, Clone, Default)]
@@ -44,10 +41,7 @@ impl Plugin for HipHeightPlugin {
             PostStartup,
             init_hip_height.in_set(WalkingEngineSet::PlanStep),
         );
-        app.add_systems(
-            StepPlanning,
-            update_hip_height.in_set(WalkingEngineSet::PlanStep),
-        );
+        app.add_systems(Update, update_hip_height.in_set(WalkingEngineSet::Prepare));
     }
 }
 

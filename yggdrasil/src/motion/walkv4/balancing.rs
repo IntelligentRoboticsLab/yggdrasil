@@ -3,7 +3,7 @@ use nidhogg::types::{LeftLegJoints, RightLegJoints};
 
 use super::{
     config::WalkingEngineConfig,
-    schedule::{Balancing, Gait, WalkingEngineSet},
+    schedule::{Gait, WalkingEngineSet},
     Side, SwingFoot,
 };
 use crate::sensor::{imu::IMUValues, low_pass_filter::ExponentialLpf};
@@ -17,7 +17,7 @@ impl Plugin for BalancingPlugin {
         app.add_systems(PostStartup, reset_balance_adjustment);
         app.add_systems(OnEnter(Gait::Standing), reset_balance_adjustment);
         app.add_systems(
-            Balancing,
+            Update,
             (update_filtered_gyroscope, update_balance_adjustment)
                 .chain()
                 .in_set(WalkingEngineSet::Balance)

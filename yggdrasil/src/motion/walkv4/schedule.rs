@@ -1,12 +1,7 @@
-use bevy::{
-    app::MainScheduleOrder,
-    ecs::schedule::{
-        ExecutorKind, InternedScheduleLabel, LogLevel, ScheduleBuildSettings, ScheduleLabel,
-    },
-    prelude::*,
-};
+use bevy::prelude::*;
 
 use crate::kinematics::Kinematics;
+use crate::prelude::*;
 
 use super::{config::WalkingEngineConfig, step::PlannedStep, step_manager::StepManager};
 
@@ -50,81 +45,16 @@ pub enum Gait {
     Walking,
 }
 
-#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct StepPlanning;
-
-#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct GaitGeneration;
-
-#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct Balancing;
-
-#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct Finalize;
-
-/// Defines the schedules to be run for the [`WalkingEngineSchedule`] schedule, including
-/// their order.
-#[derive(Resource, Debug)]
-pub struct WalkingEngineScheduleOrder {
-    /// The labels to run for [`WalkingEngineSchedule`] (in the order they will be run).
-    pub labels: Vec<InternedScheduleLabel>,
-}
-
-impl Default for WalkingEngineScheduleOrder {
-    fn default() -> Self {
-        Self {
-            labels: vec![
-                StepPlanning.intern(),
-                GaitGeneration.intern(),
-                Balancing.intern(),
-                Finalize.intern(),
-            ],
-        }
-    }
-}
-
-/// The schedule that contains all systems related to the walking engine.
-///
-/// This needs to be a separate schedule in order to ensure correct ordering and that state updates
-/// happen as soon as they can.
-#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
-struct WalkingEngine;
-
-impl WalkingEngine {
-    fn run_walking_engine(world: &mut World) {
-        world.resource_scope(|world, order: Mut<WalkingEngineScheduleOrder>| {
-            for &label in &order.labels {
-                let _ = world.try_run_schedule(label);
-            }
-        });
-    }
-}
-
 /// Plugin that sets up the system sets that define the walking engine.
 pub(super) struct WalkingEngineSchedulePlugin;
 
 impl Plugin for WalkingEngineSchedulePlugin {
     fn build(&self, app: &mut App) {
-        let mut walking_engine_schedule = Schedule::new(WalkingEngine);
-
-        // simple "facilitator" schedules benefit from simpler single threaded scheduling
-        walking_engine_schedule.set_executor_kind(ExecutorKind::SingleThreaded);
-        walking_engine_schedule.set_build_settings(ScheduleBuildSettings {
-            ambiguity_detection: LogLevel::Warn,
-            ..default()
-        });
-
-        app.add_schedule(walking_engine_schedule)
-            .init_resource::<WalkingEngineScheduleOrder>()
-            .add_systems(WalkingEngine, WalkingEngine::run_walking_engine);
-
-        app.world_mut()
-            .resource_mut::<MainScheduleOrder>()
-            .insert_after(PostUpdate, WalkingEngine);
-
         app.init_state::<Gait>();
         app.configure_sets(PostStartup, WalkingEngineSet::order())
+            .configure_sets(Sensor, WalkingEngineSet::order())
             .configure_sets(Update, WalkingEngineSet::order())
+            .configure_sets(PreUpdate, WalkingEngineSet::order())
             .configure_sets(PostUpdate, WalkingEngineSet::order())
             .configure_sets(OnEnter(Gait::Sitting), WalkingEngineSet::order())
             .configure_sets(OnEnter(Gait::Standing), WalkingEngineSet::order())
