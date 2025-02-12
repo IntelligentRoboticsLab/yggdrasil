@@ -97,12 +97,12 @@ impl Odometry {
             Side::Right => -left_sole_to_right_sole + self.last_left_sole_to_right_sole,
         } / 2.0;
 
-        info!(
-            "[{:?}] [{:?}] offset: {:?}",
-            *cycle,
-            swing_foot.support(),
-            offset
-        );
+        // info!(
+        //     "[{:?}] [{:?}] offset: {:?}",
+        //     *cycle,
+        //     swing_foot.support(),
+        //     offset
+        // );
 
         self.last_left_sole_to_right_sole = left_sole_to_right_sole;
         let scaled_offset = offset.component_mul(&config.scale_factor);

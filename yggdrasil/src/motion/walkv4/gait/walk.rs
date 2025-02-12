@@ -6,7 +6,7 @@ use crate::{
     motion::walkv4::{
         feet::FootPositions,
         foot_support::FootSupportState,
-        schedule::{Gait, GaitGeneration, WalkingEngineSet},
+        schedule::{Gait, WalkingEngineSet},
         smoothing::{parabolic_return, parabolic_step},
         step::PlannedStep,
         step_manager::StepManager,
@@ -28,7 +28,7 @@ impl Plugin for WalkGaitPlugin {
                 .after(WalkingEngineSet::Prepare),
         );
         app.add_systems(
-            GaitGeneration,
+            Update,
             (generate_walk_gait)
                 .chain()
                 .in_set(WalkingEngineSet::GenerateGait)

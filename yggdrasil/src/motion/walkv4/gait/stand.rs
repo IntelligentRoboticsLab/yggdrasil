@@ -5,7 +5,7 @@ use crate::motion::walkv4::{
     config::WalkingEngineConfig,
     feet::FootPositions,
     hips::HipHeight,
-    schedule::{Gait, GaitGeneration, WalkingEngineSet},
+    schedule::{Gait, WalkingEngineSet},
     TargetFootPositions, TargetLegStiffness,
 };
 
@@ -14,7 +14,7 @@ pub(super) struct StandGaitPlugin;
 impl Plugin for StandGaitPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            GaitGeneration,
+            Update,
             generate_stand_gait
                 .in_set(WalkingEngineSet::GenerateGait)
                 .run_if(in_state(Gait::Standing)),

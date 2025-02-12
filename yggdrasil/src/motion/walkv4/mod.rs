@@ -4,14 +4,11 @@ use config::WalkingEngineConfig;
 use feet::FootPositions;
 use hips::HipHeight;
 use nidhogg::types::{ArmJoints, FillExt, LeftLegJoints, LegJoints, RightLegJoints};
-use step::Step;
-use step_manager::StepManager;
 
 use crate::{
     kinematics,
     nao::{NaoManager, Priority},
     prelude::ConfigExt,
-    sensor::button::{ChestButton, HeadButtons},
 };
 
 mod arm_swing;
@@ -46,15 +43,7 @@ impl Plugin for Walkv4EnginePlugin {
             foot_support::FootSupportPlugin,
         ));
 
-        app.add_systems(
-            Update,
-            (
-                switch_state
-                    .in_set(WalkingEngineSet::PlanStep)
-                    .before(step_manager::sync_gait_request),
-                finalize.in_set(WalkingEngineSet::Finalize),
-            ),
-        );
+        app.add_systems(Update, finalize.in_set(WalkingEngineSet::Finalize));
     }
 }
 
@@ -120,32 +109,6 @@ impl TargetFootPositions {
         torso_offset: f32,
     ) -> (LeftLegJoints<f32>, RightLegJoints<f32>) {
         kinematics::inverse::leg_angles(&self.0, hip_height, torso_offset)
-    }
-}
-
-fn switch_state(
-    current_state: Res<State<Gait>>,
-    mut step_manager: ResMut<StepManager>,
-    chest_button: Res<ChestButton>,
-    head_buttons: Res<HeadButtons>,
-) {
-    let chest_tapped = chest_button.state.is_tapped();
-    let head_tapped = head_buttons.all_pressed();
-
-    if chest_tapped {
-        if *current_state == Gait::Sitting {
-            step_manager.request_stand();
-        } else if *current_state == Gait::Standing {
-            step_manager.request_walk(Step {
-                forward: 0.05,
-                left: 0.0,
-                turn: 0.0,
-            });
-        }
-    }
-
-    if head_tapped {
-        step_manager.request_sit();
     }
 }
 

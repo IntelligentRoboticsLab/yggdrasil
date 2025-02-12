@@ -208,7 +208,6 @@ fn setup_pose_visualization(dbg: DebugContext) {
         .expect("failed to create pose visualization");
 
     let transform = rerun::Transform3D::update_fields()
-        .with_relation(rerun::TransformRelation::ParentFromChild)
         .with_axis_length(0.3)
         .columns_of_unit_batches()
         .expect("failed to create view coordinates for pose visualation");

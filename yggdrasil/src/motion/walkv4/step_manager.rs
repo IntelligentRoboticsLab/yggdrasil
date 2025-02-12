@@ -10,13 +10,12 @@ use crate::{
         Kinematics,
     },
     nao::Cycle,
-    prelude::PreWrite,
 };
 
 use super::{
     config::WalkingEngineConfig,
     feet::FootPositions,
-    schedule::{Gait, StepPlanning, WalkingEngineSet},
+    schedule::{Gait, WalkingEngineSet},
     step::{PlannedStep, Step},
     FootSwitchedEvent,
 };
@@ -29,20 +28,17 @@ pub(super) struct StepManagerPlugin;
 impl Plugin for StepManagerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PostStartup, setup_step_visualizer);
-        app.add_systems(
-            StepPlanning,
-            sync_gait_request.in_set(WalkingEngineSet::PlanStep),
-        );
+        app.add_systems(Update, sync_gait_request.in_set(WalkingEngineSet::PlanStep));
 
         // TODO: Probably want a separate schedule for this!
         app.add_systems(
-            PreWrite,
+            Update,
             plan_step
                 .run_if(on_event::<FootSwitchedEvent>)
                 .in_set(WalkingEngineSet::PlanStep),
         );
         app.add_named_debug_systems(
-            PreWrite,
+            Update,
             visualize_planned_step
                 .after(plan_step)
                 .run_if(on_event::<FootSwitchedEvent>)

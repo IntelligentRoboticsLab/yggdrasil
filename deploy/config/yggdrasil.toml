@@ -108,7 +108,7 @@ time_budget = 3000
 # The scale factor for the odometry values along the x and y axis respectively.
 # This is used to calibrate the odometry values to the actual distance the robot has moved.
 # Values taken from rUNSWift 2014 walk
-scale_factor = [1.075, 1.125]
+scale_factor = [0.81, 1.19]
 
 # The configuration for the vqf-based orientation filter.
 # See this paper https://arxiv.org/pdf/2203.17024 for more.
