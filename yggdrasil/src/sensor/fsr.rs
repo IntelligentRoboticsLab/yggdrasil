@@ -5,19 +5,14 @@ use crate::prelude::*;
 use crate::sensor::low_pass_filter::LowPassFilter;
 use bevy::prelude::*;
 use nalgebra::SVector;
-use nidhogg::{types::ForceSensitiveResistors, NaoState};
-use serde::{Deserialize, Serialize};
-use std::time::{Duration, Instant};
 
-use crate::{motion::walk::SwingFootSwitchedEvent, prelude::*};
+use crate::motion::walk::SwingFootSwitchedEvent;
 use nidhogg::{
     types::{FillExt, Fsr, FsrFoot},
     NaoState,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
-
-
 
 // Omega for the low-pass filter.
 const OMEGA: f32 = 0.7;
@@ -55,15 +50,21 @@ impl Plugin for FSRSensorPlugin {
 pub struct FsrConfig {
     /// Threshold for ground contact detection using average FSR sensor values from both feet.
     pub ground_contact_threshold: f32,
-    /// Timeout for change of value of the ground contact state in seconds.
-    pub ground_contact_timeout: f32,
+
+    /// Timeout for change of value of the ground contact state in milliseconds.
+    #[serde_as(as = "DurationMilliSeconds")]
+    pub ground_contact_timeout: Duration,
+
     /// Maximum amount of pressure measured by a single sensor.
     pub max_pressure: f32,
+
     /// Initial value for minimum pressure measured by a single sensor.
     pub min_pressure: f32,
+
     /// The time to sample pressure values before updating the maximum value for each sensor, in milliseconds.
     #[serde_as(as = "DurationMilliSeconds")]
     pub highest_pressure_update_rate: Duration,
+
     /// The number of foot switches required before updating the minimum value for each sensor.
     pub num_foot_switches: u32,
 }
@@ -92,9 +93,6 @@ pub struct Contacts {
     /// Whether the robot's right foot has ground contact.
     pub right_foot: bool,
 
-    /// Whether pressure has been detected in the previous cycle.
-    pub last_pressure: bool,
-
     /// Timestamp of detected change in pressure state.
     pub last_switched: Instant,
 
@@ -106,7 +104,6 @@ impl Default for Contacts {
     fn default() -> Self {
         Contacts {
             ground: true,
-            last_pressure: true,
             left_foot: false,
             right_foot: false,
             last_switched: Instant::now(),
@@ -115,42 +112,37 @@ impl Default for Contacts {
     }
 }
 
-pub fn force_sensitive_resistor_sensor(
-    nao_state: Res<NaoState>,
-    mut contacts: ResMut<Contacts>,
-    mut fsr: ResMut<Fsr>,
-    config: Res<SensorConfig>,
-) {
-    fsr.left_foot = nao_state.fsr.left_foot.clone();
-    fsr.right_foot = nao_state.fsr.right_foot.clone();
-
-    // Retrieve FSR values and apply low-pass filter.
-    let fsr_vector = SVector::<f32, 1>::from([nao_state.fsr.avg()]);
-    let filtered_fsr = contacts.lpf.update(fsr_vector);
-    let current_pressure = filtered_fsr.x > config.fsr.ground_contact_threshold;
-
-    if current_pressure != contacts.last_pressure {
-        contacts.last_switched = Instant::now();
-    }
-
-    // Only update the ground state if timeout duration has elapsed.
-    if contacts.last_switched.elapsed()
-        >= Duration::from_secs_f32(config.fsr.ground_contact_timeout)
-    {
-        contacts.ground = current_pressure;
-    }
-
-    contacts.last_pressure = current_pressure;
+pub fn force_sensitive_resistor_sensor(nao_state: Res<NaoState>, mut fsr: ResMut<Fsr>) {
     fsr.left_foot = nao_state.fsr.left_foot.clone();
     fsr.right_foot = nao_state.fsr.right_foot.clone();
 }
 
-fn update_contacts(config: Res<SensorConfig>, fsr: Res<Fsr>, mut contacts: ResMut<Contacts>) {
+fn update_contacts(
+    config: Res<SensorConfig>,
+    fsr: Res<Fsr>,
+    mut contacts: ResMut<Contacts>,
+    mut last_pressure: Local<bool>,
+) {
     let config = &config.fsr;
 
-    contacts.ground = fsr.avg() >= config.ground_contact_threshold;
     contacts.left_foot = fsr.left_foot.sum() >= config.min_pressure;
     contacts.right_foot = fsr.right_foot.sum() >= config.min_pressure;
+
+    // Retrieve FSR values and apply low-pass filter.
+    let fsr_vector = SVector::<f32, 1>::from([fsr.avg()]);
+    let filtered_fsr = contacts.lpf.update(fsr_vector);
+    let current_pressure = filtered_fsr.x > config.ground_contact_threshold;
+
+    if current_pressure != *last_pressure {
+        contacts.last_switched = Instant::now();
+    }
+
+    // Only update the ground state if timeout duration has elapsed.
+    if contacts.last_switched.elapsed() >= (config.ground_contact_timeout) {
+        contacts.ground = current_pressure;
+    }
+
+    *last_pressure = current_pressure;
 }
 
 #[derive(Debug, Clone, Default)]
@@ -308,5 +300,4 @@ fn update_min_pressure(
     // we should only trust the calibration if we've calibrated the minimum pressure values.
     *num_foot_switches = 0;
     calibration.is_calibrated = true;
->>>>>>> origin/main
 }

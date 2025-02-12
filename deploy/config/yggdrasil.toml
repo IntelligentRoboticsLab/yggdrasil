@@ -7,8 +7,8 @@ held_duration_threshold = 500
 [filter.fsr]
 # Threshold for ground contact detection using average FSR sensor values from both feet.
 ground_contact_threshold = 0.12
-# Timeout for changing the value of the ground contact state, in seconds.
-ground_contact_timeout = 0.02
+# Timeout for changing the value of the ground contact state, in milliseconds.
+ground_contact_timeout = 20
 # Maximum amount of pressure measured by a single sensor.
 max_pressure = 5.0
 # Initial value for minimum pressure measured by a single sensor.
