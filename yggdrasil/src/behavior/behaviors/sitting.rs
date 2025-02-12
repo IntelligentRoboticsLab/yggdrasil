@@ -1,7 +1,5 @@
 use bevy::prelude::*;
 
-use crate::motion::keyframe::KeyframeExecutor;
-use crate::sensor::fsr::Contacts;
 use nidhogg::types::{color, FillExt, LegJoints, RightEye};
 use nidhogg::NaoState;
 
@@ -10,9 +8,6 @@ use crate::{
     motion::walkv4::step_manager::StepManager,
     nao::{NaoManager, Priority},
 };
-
-// The robot shouldn't do anything while in unstiff state.
-const UNSTIFF_PRIORITY: Priority = Priority::Critical;
 
 pub struct SittingBehaviorPlugin;
 
@@ -27,7 +22,7 @@ impl Plugin for SittingBehaviorPlugin {
 #[derive(Resource, Default)]
 pub struct Sitting {
     /// Stores the initial leg position when ground contact is lost.
-    locked_leg_position: Option<LegJoints<f32>>,
+    _locked_leg_position: Option<LegJoints<f32>>,
 }
 
 impl Behavior for Sitting {
@@ -41,7 +36,7 @@ pub fn sitting(mut step_manager: ResMut<StepManager>, mut nao_manager: ResMut<Na
     step_manager.request_sit();
 }
 
-fn capture_leg_position(nao_state: &NaoState) -> LegJoints<f32> {
+fn _capture_leg_position(nao_state: &NaoState) -> LegJoints<f32> {
     let position = nao_state.position.clone();
 
     LegJoints::builder()

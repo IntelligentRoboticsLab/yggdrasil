@@ -1,7 +1,6 @@
 use std::time::{Duration, Instant};
 
-use super::SensorConfig;
-use crate::sensor::low_pass_filter::LowPassFilter;
+use super::{low_pass_filter::ButterworthLpf, SensorConfig};
 use crate::{motion::walkv4::FootSwitchedEvent, prelude::*};
 use bevy::prelude::*;
 use nalgebra::SVector;
@@ -96,7 +95,7 @@ pub struct Contacts {
     pub last_switched: Instant,
 
     /// The first-order Butterworth low-pass filter to apply to the FSR sensor data.
-    pub lpf: LowPassFilter<1>,
+    pub lpf: ButterworthLpf<1>,
 }
 
 impl Default for Contacts {
@@ -106,7 +105,7 @@ impl Default for Contacts {
             left_foot: false,
             right_foot: false,
             last_switched: Instant::now(),
-            lpf: LowPassFilter::new(OMEGA),
+            lpf: ButterworthLpf::new(OMEGA),
         }
     }
 }
