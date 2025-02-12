@@ -115,7 +115,7 @@ pub fn force_sensitive_resistor_sensor(nao_state: Res<NaoState>, mut fsr: ResMut
     fsr.right_foot = nao_state.fsr.right_foot.clone();
 }
 
-fn update_contacts(
+pub fn update_contacts(
     config: Res<SensorConfig>,
     fsr: Res<Fsr>,
     mut contacts: ResMut<Contacts>,
