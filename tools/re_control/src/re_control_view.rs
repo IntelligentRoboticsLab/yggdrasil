@@ -11,16 +11,17 @@ use re_control_comms::{
     protocol::{RobotMessage, CONTROL_PORT},
     viewer::ControlViewer,
 };
-use re_viewer::external::{
+use rerun::external::{
+    ecolor::Color32,
     egui,
-    re_ui::{self, Icon},
+    re_types::ViewClassIdentifier,
+    re_ui::{self, Help, Icon},
     re_viewer_context::{
-        SystemExecutionOutput, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError,
+        self, SystemExecutionOutput, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError,
         ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewSystemExecutionError,
         ViewSystemRegistrator, ViewerContext,
     },
 };
-use rerun::external::{ecolor::Color32, re_types::ViewClassIdentifier};
 
 use crate::{
     connection::ConnectionState,
@@ -123,11 +124,12 @@ impl ViewClass for ControlView {
         &CONTROL_PANEL_VIEW
     }
 
-    fn help_markdown(&self, _egui_ctx: &re_viewer::external::egui::Context) -> String {
-        "# Control View
+    fn help(&self, _egui_ctx: &egui::Context) -> re_ui::Help<'_> {
+        Help::new(
+            "# Control View
 
-A view to control the robot"
-            .to_string()
+A view to control the robot",
+        )
     }
 
     fn on_register(
@@ -186,7 +188,7 @@ A view to control the robot"
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         _space_origin: &rerun::EntityPath,
-        _view_id: re_viewer::external::re_viewer_context::ViewId,
+        _view_id: re_viewer_context::ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<ControlViewState>()?;
 
@@ -232,7 +234,7 @@ A view to control the robot"
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         _space_origin: &rerun::EntityPath,
-        _view_id: re_viewer::external::re_viewer_context::ViewId,
+        _view_id: re_viewer_context::ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<ControlViewState>()?;
 

@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use re_viewer::external::{egui, re_ui::UiExt};
+use rerun::external::{egui, re_ui::UiExt};
 
 use re_control_comms::{
     debug_system::DebugEnabledSystems, protocol::ViewerMessage, viewer::ControlViewerHandle,

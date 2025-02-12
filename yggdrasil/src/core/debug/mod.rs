@@ -5,8 +5,9 @@ use bevy::prelude::*;
 
 use miette::IntoDiagnostic;
 use re_control_comms::debug_system::DebugEnabledSystems;
-use rerun::components::Scalar;
-use rerun::{AsComponents, ComponentBatch, EntityPath, RecordingStream, TimeColumn};
+use rerun::{
+    Angle, AsComponents, EntityPath, RecordingStream, SerializedComponentColumn, TimeColumn,
+};
 use std::env;
 use std::f32::consts::PI;
 use std::path::{Path, PathBuf};
@@ -125,11 +126,11 @@ fn setup_spl_field(dbg: DebugContext) {
         "field/goals",
         &rerun::InstancePoses3D::new()
             .with_translations([(4.5, 0., 0.), (-4.5, 0., 0.)])
-            .with_rotation_axis_angles([((0., 0., 0.), 0.), ((0., 0., 1.), PI)]),
+            .with_rotation_axis_angles([
+                ((0., 0., 1.), 0.),
+                ((0., 0., 1.), Angle::from_radians(PI).into()),
+            ]),
     );
-
-    dbg.log_static("field", &rerun::ViewCoordinates::FLU);
-    dbg.log_static("field/goals", &rerun::ViewCoordinates::FLU);
 }
 
 fn sync_cycle_number(
@@ -145,10 +146,15 @@ fn sync_cycle_number(
             .map(|(cycle, duration)| (cycle as i64, duration.as_millis() as f64))
             .unzip();
 
-        let scalar_data: Vec<Scalar> = durations.into_iter().map(Into::into).collect();
-
         let timeline = TimeColumn::new_sequence("cycle", cycles);
-        ctx.send_columns("stats/cycle_time", [timeline], [&scalar_data as _]);
+        ctx.send_columns(
+            "stats/cycle_time",
+            [timeline],
+            rerun::Scalar::update_fields()
+                .with_many_scalar(durations)
+                .columns_of_unit_batches()
+                .expect("failed to batch scalar values"),
+        );
         cycle_time_buffer.clear();
     } else {
         cycle_time_buffer.push((cycle.0, cycle_time.duration));
@@ -230,8 +236,13 @@ impl RerunStream {
     /// Data that needs to be logged in a specific cycle should use [`RerunStream::log_with_cycle`] instead.
     ///
     /// See [`RecordingStream::log`] for more information.
-    pub fn log(&self, ent_path: impl Into<EntityPath>, arch: &impl AsComponents) {
-        if let Err(error) = self.stream.log(ent_path, arch) {
+    #[inline]
+    pub fn log<AS: ?Sized + AsComponents>(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        as_components: &AS,
+    ) {
+        if let Err(error) = self.stream.log(ent_path, as_components) {
             error!("{error}");
         }
     }
@@ -246,8 +257,13 @@ impl RerunStream {
     /// All timestamp data associated with this message will be dropped right before sending it to Rerun.
     ///
     /// See [`RecordingStream::log_static`] for more information.
-    pub fn log_static(&self, ent_path: impl Into<EntityPath>, arch: &impl AsComponents) {
-        if let Err(error) = self.stream.log_static(ent_path, arch) {
+    #[inline]
+    pub fn log_static<AS: ?Sized + AsComponents>(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        as_components: &AS,
+    ) {
+        if let Err(error) = self.stream.log_static(ent_path, as_components) {
             error!("{error}");
         }
     }
@@ -255,37 +271,15 @@ impl RerunStream {
     /// Log data to Rerun in the provided [`Cycle`].
     ///
     /// This is a utility function that sets the [`Cycle`] and defers all calls to log data to [`Self::log`].
-    pub fn log_with_cycle(
+    pub fn log_with_cycle<AS: ?Sized + AsComponents>(
         &self,
         ent_path: impl Into<EntityPath>,
         cycle: Cycle,
-        arch: &impl AsComponents,
+        as_components: &AS,
     ) {
         self.stream.set_time_sequence("cycle", cycle.0 as i64);
-        self.log(ent_path, arch);
+        self.log(ent_path, as_components);
         self.stream.set_time_sequence("cycle", self.cycle.0 as i64);
-    }
-
-    /// Logs a set of [`ComponentBatch`]es into Rerun.
-    ///
-    /// If `static_` is set to `true`, all timestamp data associated with this message will be
-    /// dropped right before sending it to Rerun.
-    /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
-    /// any temporal data of the same type.
-    ///
-    /// See [`RecordingStream::log_component_batches`] for more information.
-    pub fn log_component_batches<'a>(
-        &self,
-        ent_path: impl Into<EntityPath>,
-        static_: bool,
-        comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
-    ) {
-        if let Err(error) = self
-            .stream
-            .log_component_batches(ent_path, static_, comp_batches)
-        {
-            error!("{error}");
-        }
     }
 
     /// Lower-level logging API to provide data spanning multiple timepoints.
@@ -297,13 +291,13 @@ impl RerunStream {
     ///
     /// See [`RecordingStream::send_columns`] for more information.
     #[inline]
-    pub fn send_columns<'a>(
+    pub fn send_columns(
         &self,
         ent_path: impl Into<EntityPath>,
-        timelines: impl IntoIterator<Item = TimeColumn>,
-        components: impl IntoIterator<Item = &'a dyn ComponentBatch>,
+        indexes: impl IntoIterator<Item = TimeColumn>,
+        columns: impl IntoIterator<Item = SerializedComponentColumn>,
     ) {
-        if let Err(error) = self.stream.send_columns(ent_path, timelines, components) {
+        if let Err(error) = self.stream.send_columns(ent_path, indexes, columns) {
             error!("{error}");
         }
     }

@@ -8,9 +8,9 @@ enum PackagesToUpdate {
 }
 
 #[derive(Parser, Debug)]
+/// Update a package. Default package that is updated is `sindri`.
 pub struct UpdateCommand {
     /// Update the installation of a specific package.
-    #[arg(required_unless_present = "all")]
     package: Option<PackagesToUpdate>,
 
     /// Update the installation of all packages.
@@ -31,6 +31,8 @@ impl UpdateCommand {
                 PackagesToUpdate::Sindri => Self::update_sindri().await?,
                 PackagesToUpdate::ReControl => Self::update_re_control().await?,
             }
+        } else {
+            Self::update_sindri().await?;
         }
 
         Ok(())

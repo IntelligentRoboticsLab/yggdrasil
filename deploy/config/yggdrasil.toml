@@ -9,6 +9,14 @@ held_duration_threshold = 500
 ground_contact_threshold = 0.12
 # Timeout for changing the value of the ground contact state, in seconds.
 ground_contact_timeout = 0.02
+# Maximum amount of pressure measured by a single sensor.
+max_pressure = 5.0
+# Initial value for minimum pressure measured by a single sensor.
+min_pressure = 0.3
+# The time to sample pressure values before updating the maximum value for each sensor, in milliseconds.
+highest_pressure_update_rate = 10000
+# The number of foot switches required before updating the minimum value for each sensor.
+num_foot_switches = 10
 
 [primary_state]
 # Time duration between chest blinks in ms.

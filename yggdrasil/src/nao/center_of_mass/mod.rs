@@ -78,7 +78,10 @@ fn update_com(kinematics: Res<Kinematics>, mut com: ResMut<CenterOfMass>) {
 }
 
 fn setup_com_visualization(dbg: DebugContext) {
-    dbg.log_static("localization/pose/com", &rerun::Color::from_rgb(255, 64, 0));
+    dbg.log_static(
+        "localization/pose/com",
+        &rerun::Points3D::update_fields().with_colors([(255, 64, 0)]),
+    );
 }
 
 fn visualize_com(dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) {

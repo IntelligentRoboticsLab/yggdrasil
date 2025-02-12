@@ -52,16 +52,11 @@ bifrost = { path = "crates/bifrost" }
 build_utils = { path = "crates/build_utils" }
 heimdall = { path = "crates/heimdall" }
 ml = { path = "crates/ml" }
-nilfheim = { path = "crates/nilfheim" }
 odal = { path = "crates/odal" }
-re_control = { path = "tools/re_control" }
 re_control_comms = { path = "tools/re_control/re_control_comms" }
+sindri = { path = "tools/sindri" }
 spatial = { path = "crates/spatial" }
 tasks = { path = "crates/tasks" }
-
-# tools
-simulation = { path = "tools/simulation" }
-sindri = { path = "tools/sindri" }
 
 # external crates
 apodize = "1.0.0"
@@ -75,9 +70,7 @@ chrono = "0.4.38"
 clap = "4.5.20"
 colored = "2.1.0"
 cpal = "0.15.3"
-derive_more = { version = "1.0.0", features = ["full"] }
 dialoguer = "0.11.0"
-enum_dispatch = "0.3.13"
 fast-math = "0.1.1"
 fast_image_resize = "5.0.0"
 futures = "0.3.31"
@@ -90,7 +83,6 @@ kira = { version = "0.9.5", default-features = false, features = [
   "cpal",
   "wav",
 ] }
-linreg = "0.2.0"
 linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo", rev = "b8536cf4da325de79f398e70a74cee5bf426f64c" }
 local-ip-address = "0.6.3"
 lstsq = "0.6.0"
@@ -98,46 +90,40 @@ miette = "7.4.0"
 mimalloc = "0.1.42"
 nalgebra = { version = "0.33.2", features = ["convert-glam028"] }
 ndarray = "0.16.1"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "d2bcd0db63d2a418fec98541158b7b33060fe661" }
+nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "088e9170c85a17e82c6fde237ed65f8efcbf571a" }
 num = "0.4.3"
 openvino = { version = "0.8.0", features = ["runtime-linking"] }
 ordered-float = "4.4.0"
 pathfinding = "4.11.0"
 petgraph = "0.6.5"
-plotters = "0.3.7"
+plotters = { version = "0.3.7", default-features = false, features = [
+  "bitmap_backend",
+  "bitmap_encoder",
+] }
 proc-macro2 = "1.0.89"
 quote = "1.0.37"
 rand = "0.8.5"
-rayon = "1.10.0"
 
-re_crash_handler = "0.21.0"
-re_sdk_comms = { version = "0.21.0", features = ["server"] }
-re_smart_channel = "0.21.0"
-re_viewer = "0.21.0"
-rerun = { version = "0.21.0", default-features = false, features = [
+re_crash_handler = "0.22.0"
+rerun = { version = "0.22.0", default-features = false, features = [
   "sdk",
   "server",
+  "analytics",
   "log",
   "glam",
 ] }
-
-regex = "1.11.1"
-rustc_version = "0.4.1"
 rustfft = "6.2.0"
 serde = "1.0.213"
 serde_json = "1.0.132"
 serde_with = "3.11.0"
 socket2 = "0.5.7"
-ssh2 = "0.9.4"
 syn = "2.0.90"
 thiserror = "2.0.3"
 tokio = "1.41.1"
 toml = "0.8.19"
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
-tracing-log = "0.2.0"
 tracing-subscriber = "0.3.18"
 tracing-tracy = "0.11.3"
 turbojpeg = "1.1.1"
 vqf = { version = "0.4.1", features = ["serde"] }
-walkdir = "2.5.0"

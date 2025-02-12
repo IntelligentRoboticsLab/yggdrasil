@@ -437,31 +437,27 @@ fn is_less_bright_and_more_saturated<T: CameraLocation>(
 
 fn setup_debug<T: CameraLocation>(dbg: DebugContext) {
     // lines
-    dbg.log_component_batches(
+    dbg.log_static(
         T::make_entity_image_path("lines/detected"),
-        true,
-        [&rerun::Color::from_rgb(255, 100, 0) as _],
+        &rerun::LineStrips2D::update_fields().with_colors([(255, 100, 0)]),
     );
 
     // projected lines
-    dbg.log_component_batches(
+    dbg.log_static(
         T::make_entity_path("lines/detected"),
-        true,
-        [&rerun::Color::from_rgb(255, 100, 0) as _],
+        &rerun::LineStrips3D::update_fields().with_colors([(255, 100, 0)]),
     );
 
     // inliers
-    dbg.log_component_batches(
+    dbg.log_static(
         T::make_entity_image_path("lines/inliers"),
-        true,
-        [&rerun::Radius::from(2.0) as _],
+        &rerun::Points2D::update_fields().with_radii([2.0]),
     );
 
     // rejected lines
-    dbg.log_component_batches(
+    dbg.log_static(
         T::make_entity_image_path("lines/rejected"),
-        true,
-        std::iter::empty(),
+        &rerun::Clear::flat(),
     );
 }
 
@@ -474,7 +470,7 @@ fn debug_lines<T: CameraLocation>(
         dbg.log_with_cycle(
             T::make_entity_image_path("lines/detected"),
             *cycle,
-            &rerun::LineStrips2D::new(
+            &rerun::LineStrips2D::update_fields().with_strips(
                 lines
                     .segments
                     .iter()
@@ -502,7 +498,7 @@ fn debug_lines_projected<T: CameraLocation>(
         dbg.log_with_cycle(
             T::make_entity_path("lines/detected"),
             *cycle,
-            &rerun::LineStrips3D::new(lines.segments.iter().map(|s| {
+            &rerun::LineStrips3D::update_fields().with_strips(lines.segments.iter().map(|s| {
                 let point = pose.inner * *s;
                 [
                     (point.start.x, point.start.y, 0.0),

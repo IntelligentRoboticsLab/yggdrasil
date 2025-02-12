@@ -40,9 +40,9 @@ pub fn setup_rerun_host(wired: bool) -> Result<String> {
 ///
 /// We check if the `rerun` binary is installed by running `rerun --version` and checking if the
 /// command was successful.
-pub async fn has_rerun() -> bool {
-    async fn get_rerun_version() -> Result<bool> {
-        Ok(Command::new("rerun")
+pub async fn has_re_control() -> bool {
+    async fn get_re_control_version() -> Result<bool> {
+        Ok(Command::new("re_control")
             .arg("--version")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -52,7 +52,7 @@ pub async fn has_rerun() -> bool {
             .success())
     }
 
-    get_rerun_version().await.is_ok_and(|success| success)
+    get_re_control_version().await.is_ok_and(|success| success)
 }
 
 /// Check if the `rsync` binary is installed.

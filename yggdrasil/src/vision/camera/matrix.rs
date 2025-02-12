@@ -152,7 +152,8 @@ fn visualize_camera_matrix<T: CameraLocation>(
     dbg.log_with_cycle(
         T::make_entity_image_path(""),
         *cycle,
-        &rerun::Transform3D::from_translation(Into::<Vec3>::into(camera_pos.translation))
+        &rerun::Transform3D::update_fields()
+            .with_translation(Into::<Vec3>::into(camera_pos.translation))
             .with_quaternion(Into::<Quat>::into(camera_pos.rotation)),
     );
 }

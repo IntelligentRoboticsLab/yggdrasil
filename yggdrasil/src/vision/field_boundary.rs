@@ -138,12 +138,12 @@ impl FieldBoundary {
 fn setup_boundary_debug_logging(dbg: DebugContext) {
     dbg.log_static(
         Top::make_entity_image_path("boundary/points"),
-        &rerun::Color::from_rgb(255, 0, 255),
+        &rerun::Points2D::update_fields().with_colors([(255, 0, 255)]),
     );
 
     dbg.log_static(
         Top::make_entity_image_path("boundary/segments"),
-        &rerun::Color::from_rgb(128, 0, 128),
+        &rerun::LineStrips2D::update_fields().with_colors([(255, 0, 255)]),
     );
 }
 

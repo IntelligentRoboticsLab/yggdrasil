@@ -71,21 +71,16 @@ fn init_subconfigs(mut commands: Commands, config: Res<BallDetectionConfig>) {
 /// By logging a static [`rerun::Color`] component, we can avoid logging the color component
 /// for each ball proposal and classification.
 fn setup_ball_debug_logging<T: CameraLocation>(dbg: DebugContext) {
-    dbg.log_component_batches(
+    dbg.log_static(
         T::make_entity_image_path("balls/proposals"),
-        true,
-        [
-            &rerun::Color::from_rgb(190, 190, 190) as _,
-            &rerun::components::DrawOrder::from(10.0) as _,
-        ],
+        &rerun::Boxes2D::update_fields().with_colors([(190, 190, 190)]),
     );
-    dbg.log_component_batches(
+
+    dbg.log_static(
         T::make_entity_image_path("balls/classifications"),
-        true,
-        [
-            &rerun::Color::from_rgb(228, 153, 255) as _,
-            &rerun::components::DrawOrder::from(11.0) as _,
-        ],
+        &rerun::Boxes2D::update_fields()
+            .with_colors([(228, 153, 255)])
+            .with_draw_order(11.0),
     );
 }
 
@@ -122,7 +117,6 @@ fn setup_3d_ball_debug_logging(dbg: DebugContext) {
             .with_media_type(rerun::MediaType::glb()),
     );
 
-    dbg.log_static("balls/best", &rerun::ViewCoordinates::FLU);
     dbg.log_with_cycle(
         "balls/best",
         Cycle::default(),
