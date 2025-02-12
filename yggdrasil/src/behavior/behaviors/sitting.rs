@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::motion::keyframe::KeyframeExecutor;
 use crate::sensor::fsr::Contacts;
-use nidhogg::types::{color, FillExt, LeftLegJoints, LegJoints, RightEye, RightLegJoints};
+use nidhogg::types::{color, FillExt, LegJoints, RightEye};
 use nidhogg::NaoState;
 
 use crate::{
