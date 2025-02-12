@@ -12,6 +12,7 @@ use crate::{
         schedule::{Gait, GaitGeneration, WalkingEngineSet},
         TargetFootPositions, TargetLegStiffness,
     },
+    sensor::fsr::Contacts,
 };
 
 pub(super) struct SitGaitPlugin;
@@ -35,6 +36,7 @@ fn request_sit(
     mut last_hip_height: Local<f32>,
     mut stable_since: Local<Option<Instant>>,
     mut target_stiffness: ResMut<TargetLegStiffness>,
+    (mut captured_hip_height, contacts): (Local<Option<f32>>, Res<Contacts>),
 ) {
     let actual_hip_height = kinematics.left_hip_height();
 
@@ -52,7 +54,20 @@ fn request_sit(
     // sitting leg stiffness.
     if stable_since.is_some_and(|timestamp| timestamp.elapsed() >= config.stable_sitting_timeout) {
         **target_stiffness = LegJoints::fill(config.sitting_leg_stiffness);
+
+        // capture hip height
+        *captured_hip_height =
+            Some(actual_hip_height.max(config.hip_height.max_sitting_hip_height));
     } else {
+        if !contacts.ground {
+            // robot got picked up, and we have captured sitting height before, so we can set it directly.
+            if let Some(captured) = *captured_hip_height {
+                hip_height.request(captured);
+                **target_stiffness = LegJoints::fill(config.walking_leg_stiffness);
+                return;
+            }
+        }
+
         let new_requested_hip_height =
             (actual_hip_height - 0.01).max(config.hip_height.max_sitting_hip_height);
 
