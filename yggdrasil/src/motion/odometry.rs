@@ -80,13 +80,18 @@ impl Odometry {
         kinematics: &Kinematics,
         orientation: &RobotOrientation,
     ) {
-        let left_sole_to_right_sole = kinematics.vector::<RightSole, LeftSole>().inner.xy();
+        let left_sole_to_right_sole = kinematics.vector::<LeftSole, RightSole>().inner.xy();
 
         // Compute offset to last position, divided by 2 to get the center of the robot.
         let offset = match swing_foot.support() {
             Side::Left => left_sole_to_right_sole - self.last_left_sole_to_right_sole,
             Side::Right => -left_sole_to_right_sole + self.last_left_sole_to_right_sole,
         } / 2.0;
+
+        info!(
+            "[{:?}] updating odometry with offset: {offset:?}",
+            *swing_foot
+        );
 
         self.last_left_sole_to_right_sole = left_sole_to_right_sole;
         let scaled_offset = offset.component_mul(&config.scale_factor);
