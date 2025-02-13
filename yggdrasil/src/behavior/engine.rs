@@ -1,8 +1,11 @@
 use bevy::prelude::*;
+use heimdall::{Bottom, Top};
 
 use crate::{
+    core::config::showtime::PlayerConfig,
     motion::walk::engine::WalkingEngine,
     sensor::{button::HeadButtons, falling::FallState},
+    vision::ball_detection::classifier::Balls,
 };
 
 use super::{
@@ -72,6 +75,8 @@ pub trait CommandsBehaviorExt {
     fn set_behavior<T: Behavior>(&mut self, behavior: T);
 
     fn set_role<T: Roles>(&mut self, resource: T);
+
+    fn disable_role(&mut self);
 }
 
 impl CommandsBehaviorExt for Commands<'_, '_> {
@@ -83,6 +88,10 @@ impl CommandsBehaviorExt for Commands<'_, '_> {
     fn set_role<T: Roles>(&mut self, resource: T) {
         self.set_state(T::STATE);
         self.insert_resource(resource);
+    }
+
+    fn disable_role(&mut self) {
+        self.set_state(Role::Disabled);
     }
 }
 
@@ -98,6 +107,7 @@ pub enum Role {
     Striker,
     Goalkeeper,
     Defender,
+    Disabled,
 }
 
 impl Role {
@@ -136,26 +146,33 @@ pub fn in_role<T: Roles>(state: Option<Res<State<Role>>>) -> bool {
 pub fn role_base(
     mut commands: Commands,
     state: Res<State<BehaviorState>>,
+    role: Res<State<Role>>,
     walking_engine: Res<WalkingEngine>,
     head_buttons: Res<HeadButtons>,
     primary_state: Res<PrimaryState>,
     fall_state: Res<FallState>,
     standup_state: Option<Res<Standup>>,
+    player_config: Res<PlayerConfig>,
+    top_balls: Res<Balls<Top>>,
+    bottom_balls: Res<Balls<Bottom>>,
 ) {
     let behavior = state.get();
 
     if behavior == &BehaviorState::StartUp {
         if walking_engine.is_sitting() || head_buttons.all_pressed() {
-            commands.set_behavior(Sitting);
+            commands.set_behavior(Sitting::default());
+            commands.disable_role();
         }
         if *primary_state == PrimaryState::Initial {
             commands.set_behavior(Stand);
+            commands.disable_role();
         }
         return;
     }
 
     if *primary_state == PrimaryState::Sitting {
-        commands.set_behavior(Sitting);
+        commands.set_behavior(Sitting::default());
+        commands.disable_role();
         return;
     }
 
@@ -167,11 +184,13 @@ pub fn role_base(
     match fall_state.as_ref() {
         FallState::Lying(_) => {
             commands.set_behavior(Standup::default());
+            commands.disable_role();
             return;
         }
         FallState::Falling(_) => {
             if !matches!(*primary_state, PrimaryState::Penalized) {
                 commands.set_behavior(CatchFall);
+                commands.disable_role();
                 return;
             }
         }
@@ -180,5 +199,20 @@ pub fn role_base(
 
     if let PrimaryState::Penalized = primary_state.as_ref() {
         commands.set_behavior(Stand);
+        commands.disable_role();
+        return;
+    }
+
+    let most_confident_ball = bottom_balls
+        .most_confident_ball()
+        .map(|b| b.position)
+        .or(top_balls.most_confident_ball().map(|b| b.position));
+
+    if let Role::Disabled = role.as_ref().get() {
+        Role::assign_role(
+            commands,
+            most_confident_ball.is_some(),
+            player_config.player_number,
+        );
     }
 }
