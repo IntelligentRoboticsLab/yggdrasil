@@ -143,6 +143,7 @@ pub fn in_role<T: Roles>(state: Option<Res<State<Role>>>) -> bool {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn role_base(
     mut commands: Commands,
     state: Res<State<BehaviorState>>,

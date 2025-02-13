@@ -88,7 +88,6 @@ pub fn striker_role(
         match *state {
             Striker::WalkToBall | Striker::WalkWithBall => {
                 commands.set_behavior(WalkTo { target: ball_pos });
-                return;
             }
             Striker::WalkAlign => {
                 let ball_target = Point3::new(ball.x, ball.y, RobotPose::CAMERA_HEIGHT);
@@ -113,15 +112,11 @@ pub fn striker_role(
                         },
                         look_target: Some(ball_target),
                     });
-                    return;
                 }
             }
         }
-    } else {
-        if behavior_state.get() == &BehaviorState::Observe {
-        } else {
-            commands.set_behavior(Observe::with_turning(0.4));
-        }
+    } else if behavior_state.get() != &BehaviorState::Observe {
+        commands.set_behavior(Observe::with_turning(0.4));
     }
 }
 
