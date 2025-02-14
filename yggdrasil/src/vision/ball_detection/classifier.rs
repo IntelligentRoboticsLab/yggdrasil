@@ -4,10 +4,11 @@ use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
+use filter::{StateTransform, StateVector, UnscentedKalmanFilter};
 use heimdall::{Bottom, CameraLocation, CameraMatrix, Top};
 use itertools::Itertools;
 use ml::prelude::ModelExecutor;
-use nalgebra::{Point2, Vector2, VectorSlice2};
+use nalgebra::{point, vector, Point2, Vector2, VectorSlice2};
 
 use rerun::external::glam::Vec2;
 use rerun::external::uuid::Timestamp;
@@ -186,6 +187,23 @@ impl<T: CameraLocation> Balls<T> {
     }
 }
 
+#[derive(Deref, DerefMut, Clone, Copy)]
+struct BallPosition(Point2<f32>);
+
+impl From<BallPosition> for StateVector<2> {
+    fn from(value: BallPosition) -> Self {
+        value.xy().coords
+    }
+}
+
+impl From<StateVector<2>> for BallPosition {
+    fn from(value: StateVector<2>) -> Self {
+        BallPosition(point![value.x, value.y])
+    }
+}
+
+impl StateTransform<2> for BallPosition {} 
+
 fn classify_balls<T: CameraLocation>(
     mut commands: Commands,
     mut proposals: ResMut<BallProposals<T>>,
@@ -241,12 +259,18 @@ fn classify_balls<T: CameraLocation>(
             continue;
         };
 
-        let position = robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy()));
+        let position = BallPosition(robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())));
+
+        let cov = nalgebra::SMatrix::<f32, 2, 2>::from_diagonal_element(0.05);
+        let mut ukf = UnscentedKalmanFilter::<2, 5, BallPosition>::new(position, cov);
+
+        
+
         let timestamp = Instant::now();
 
         let velocity = if let Some(most_recent_ball) = balls.most_confident_ball() {
             let time_diff = timestamp - most_recent_ball.timestamp;
-            let distance_diff = position - most_recent_ball.position;
+            let distance_diff = position.0 - most_recent_ball.position;
             distance_diff / time_diff.as_secs_f32()
         } else {
             Vector2::zeros()
