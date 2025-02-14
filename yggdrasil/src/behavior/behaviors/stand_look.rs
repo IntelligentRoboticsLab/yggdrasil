@@ -5,7 +5,7 @@ use std::time::Duration;
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
     localization::RobotPose,
-    motion::walkv4::step_manager::StepManager,
+    motion::walkv4::step_manager::StepContext,
     nao::{NaoManager, Priority},
 };
 
@@ -33,7 +33,7 @@ pub fn stand_look_at(
     stand_look_at: Res<StandLookAt>,
     pose: Res<RobotPose>,
     mut nao_manager: ResMut<NaoManager>,
-    mut step_manager: ResMut<StepManager>,
+    mut step_context: ResMut<StepContext>,
 ) {
     let point3 = Point3::new(
         stand_look_at.target.x,
@@ -48,5 +48,5 @@ pub fn stand_look_at(
         Priority::default(),
         NaoManager::HEAD_STIFFNESS,
     );
-    step_manager.request_stand();
+    step_context.request_stand();
 }

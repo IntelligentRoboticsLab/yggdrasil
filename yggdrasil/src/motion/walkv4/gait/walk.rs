@@ -9,7 +9,7 @@ use crate::{
         schedule::{Gait, WalkingEngineSet},
         smoothing::{parabolic_return, parabolic_step},
         step::PlannedStep,
-        step_manager::StepManager,
+        step_manager::StepContext,
         FootSwitchedEvent, Side, SwingFoot, TargetFootPositions,
     },
     nao::{Cycle, CycleTime},
@@ -107,19 +107,19 @@ fn generate_walk_gait(
     mut state: ResMut<WalkState>,
     mut target_positions: ResMut<TargetFootPositions>,
     cycle_time: Res<CycleTime>,
-    step_manager: Res<StepManager>,
+    step_context: Res<StepContext>,
 ) {
     state.phase += cycle_time.duration;
 
     let linear = state.linear();
     let parabolic = state.parabolic();
 
-    let (left_t, right_t) = match &step_manager.planned_step.swing_foot {
+    let (left_t, right_t) = match &step_context.planned_step.swing_foot {
         Side::Left => (parabolic, linear),
         Side::Right => (linear, parabolic),
     };
 
-    let planned = step_manager.planned_step;
+    let planned = step_context.planned_step;
     state.planned_step = planned;
     let start = planned.start;
     let target = planned.target;

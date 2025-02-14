@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::kinematics::Kinematics;
 use crate::prelude::*;
 
-use super::{config::WalkingEngineConfig, step::PlannedStep, step_manager::StepManager};
+use super::{config::WalkingEngineConfig, step::PlannedStep, step_manager::StepContext};
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum WalkingEngineSet {
@@ -77,8 +77,8 @@ fn setup_motion_state(
     let planned = PlannedStep::default_from_kinematics(&kinematics, config.torso_offset);
 
     if hip_height >= config.hip_height.max_sitting_hip_height {
-        commands.insert_resource(StepManager::init(Gait::Standing, planned));
+        commands.insert_resource(StepContext::init(Gait::Standing, planned));
     } else {
-        commands.insert_resource(StepManager::init(Gait::Sitting, planned));
+        commands.insert_resource(StepContext::init(Gait::Sitting, planned));
     }
 }

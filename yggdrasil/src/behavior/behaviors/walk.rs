@@ -6,7 +6,7 @@ use crate::{
     localization::RobotPose,
     motion::{
         step_planner::StepPlanner,
-        walkv4::{step::Step, step_manager::StepManager},
+        walkv4::{step::Step, step_manager::StepContext},
     },
     nao::{NaoManager, Priority},
 };
@@ -35,7 +35,7 @@ impl Behavior for Walk {
 pub fn walk(
     walk: Res<Walk>,
     mut step_planner: ResMut<StepPlanner>,
-    mut step_manager: ResMut<StepManager>,
+    mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
     pose: Res<RobotPose>,
 ) {
@@ -45,5 +45,5 @@ pub fn walk(
     }
 
     step_planner.clear_target();
-    step_manager.request_walk(walk.step);
+    step_context.request_walk(walk.step);
 }

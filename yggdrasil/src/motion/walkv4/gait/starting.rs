@@ -10,7 +10,7 @@ use crate::{
         schedule::{Gait, WalkingEngineSet},
         smoothing::{parabolic_return, parabolic_step},
         step::{PlannedStep, Step},
-        step_manager::StepManager,
+        step_manager::StepContext,
         Side, TargetFootPositions,
     },
     nao::CycleTime,
@@ -73,11 +73,11 @@ impl StartingState {
 
 fn init_starting_step(
     mut commands: Commands,
-    mut step_manager: ResMut<StepManager>,
+    mut step_context: ResMut<StepContext>,
     kinematics: Res<Kinematics>,
     config: Res<WalkingEngineConfig>,
 ) {
-    step_manager.plan_next_step(
+    step_context.plan_next_step(
         FootPositions::from_kinematics(Side::Left, &kinematics, config.torso_offset),
         &config,
     );
@@ -88,13 +88,13 @@ fn init_starting_step(
             target: FootPositions::default(),
             swing_foot_height: 0.009,
             duration: Duration::from_millis(200),
-            ..step_manager.planned_step
+            ..step_context.planned_step
         },
     });
 }
 
 fn end_starting_phase(
-    mut step_manager: ResMut<StepManager>,
+    mut step_context: ResMut<StepContext>,
     state: Res<StartingState>,
     foot_support: ResMut<FootSupportState>,
 ) {
@@ -103,7 +103,7 @@ fn end_starting_phase(
     let step_timeout = state.phase >= state.planned_step.duration;
 
     if (support_switched || step_timeout) && starting_end_allowed {
-        step_manager.finish_starting_step(state.planned_step);
+        step_context.finish_starting_step(state.planned_step);
         info!("finished starting state!");
     }
 }
