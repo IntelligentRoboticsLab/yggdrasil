@@ -244,7 +244,7 @@ fn classify_balls<T: CameraLocation>(
         let position = robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy()));
         let timestamp = Instant::now();
 
-        let velocity = if let Some(most_recent_ball) = balls.most_recent_ball() {
+        let velocity = if let Some(most_recent_ball) = balls.most_confident_ball() {
             let time_diff = timestamp - most_recent_ball.timestamp;
             let distance_diff = position - most_recent_ball.position;
             distance_diff / time_diff.as_secs_f32()
