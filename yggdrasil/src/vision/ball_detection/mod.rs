@@ -132,22 +132,28 @@ fn log_3d_balls(
 ) {
     let most_confident_ball = bottom_balls
         .most_confident_ball()
-        .map(|b| (b.cycle, b.position))
+        .map(|b| (b.cycle, b.position, b.velocity))
         .or(top_balls
             .most_confident_ball()
-            .map(|b| (b.cycle, b.position)));
+            .map(|b| (b.cycle, b.position, b.velocity)));
 
-    if let Some((cycle, pos)) = most_confident_ball {
-        // since we always run this function in the same cycle in which the ball was found,
-        // using `log_with_cycle` would be redundant.
-        //
-        // because `last_logged` starts off at 0, we wouldn't log the ball if it was detected in
-        // the very first cycle, i don't really care tho, deal with it.
+    if let Some((cycle, pos, velocity)) = most_confident_ball {
         if last_logged.map_or(true, |c| cycle > c) {
             *last_logged = Some(cycle);
-            dbg.log(
+            dbg.log_with_cycle(
                 "balls/best",
+                cycle,
                 &rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05)),
+            );
+
+            let velocities = [(velocity.x, velocity.y, 0.0)];
+            let positions = [(pos.x, pos.y, 0.0)];
+            let arrows = rerun::Arrows3D::from_vectors(&velocities).with_origins(&positions);
+
+            dbg.log_with_cycle(
+                "balls/velocity",
+                cycle,
+                &arrows,
             );
         }
     } else if last_logged.is_some() {

@@ -7,9 +7,11 @@ use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, CameraMatrix, Top};
 use itertools::Itertools;
 use ml::prelude::ModelExecutor;
-use nalgebra::{Point2, Vector2};
+use nalgebra::{Point2, Vector2, VectorSlice2};
 
 use rerun::external::glam::Vec2;
+use rerun::external::uuid::Timestamp;
+use rerun::time;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
@@ -104,12 +106,6 @@ fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Bal
         return;
     }
 
-    dbg.log_with_cycle(
-        T::make_entity_image_path("balls/classifications"),
-        balls.cycle,
-        &rerun::Boxes2D::from_centers_and_half_sizes(positions, &half_sizes)
-            .with_labels(confidences),
-    );
 }
 
 pub(super) struct BallClassifierModel;
@@ -129,6 +125,8 @@ pub struct Ball<T: CameraLocation> {
     pub robot_to_ball: Vector2<f32>,
     /// The absolute position of the ball proposal, in world frame.
     pub position: Point2<f32>,
+    /// Velocity of the ball proposal, in world frame.
+    pub velocity: Vector2<f32>,
     /// The scale of the ball proposal.
     pub scale: f32,
     /// The distance to the ball in meters, at the time of detection.
@@ -150,6 +148,7 @@ impl<T: CameraLocation> Clone for Ball<T> {
             position_image: self.position_image,
             robot_to_ball: self.robot_to_ball,
             position: self.position,
+            velocity: self.velocity,
             scale: self.scale,
             distance: self.distance,
             timestamp: self.timestamp,
@@ -242,11 +241,23 @@ fn classify_balls<T: CameraLocation>(
             continue;
         };
 
+        let position = robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy()));
+        let timestamp = Instant::now();
+
+        let velocity = if let Some(most_recent_ball) = balls.most_recent_ball() {
+            let time_diff = timestamp - most_recent_ball.timestamp;
+            let distance_diff = position - most_recent_ball.position;
+            distance_diff / time_diff.as_secs_f32()
+        } else {
+            Vector2::zeros()
+        };
+
         classified_balls.push(Ball {
             position_image: proposal.position.cast(),
             robot_to_ball: robot_to_ball.xy().coords,
             scale: proposal.scale,
             position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
+            velocity: velocity,
             distance: proposal.distance_to_ball,
             timestamp: Instant::now(),
             cycle: proposals.image.cycle(),
