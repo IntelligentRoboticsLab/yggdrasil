@@ -10,7 +10,7 @@ use crate::{
     },
     motion::{
         step_planner::StepPlanner,
-        walkv4::{step::Step, step_manager::StepManager},
+        walkv4::{step::Step, step_manager::StepContext},
     },
     nao::{NaoManager, Priority},
 };
@@ -79,7 +79,7 @@ pub fn observe(
     behavior_config: Res<BehaviorConfig>,
     observe: Res<Observe>,
     mut step_planner: ResMut<StepPlanner>,
-    mut step_manager: ResMut<StepManager>,
+    mut step_context: ResMut<StepContext>,
 ) {
     let observe_config = &behavior_config.observe;
     look_around(
@@ -92,9 +92,9 @@ pub fn observe(
 
     if let Some(step) = observe.step {
         step_planner.clear_target();
-        step_manager.request_walk(step);
+        step_context.request_walk(step);
     } else {
-        step_manager.request_stand();
+        step_context.request_stand();
     }
 }
 

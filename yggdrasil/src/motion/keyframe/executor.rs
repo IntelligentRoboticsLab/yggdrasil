@@ -1,5 +1,5 @@
 use super::{get_min_duration, lerp, types::Movement, ActiveMotion, KeyframeExecutor};
-use crate::motion::walkv4::step_manager::StepManager;
+use crate::motion::walkv4::step_manager::StepContext;
 use crate::nao::NaoManager;
 use crate::nao::Priority;
 use crate::sensor::orientation::RobotOrientation;
@@ -33,7 +33,7 @@ pub fn keyframe_executor(
     mut keyframe_executor: ResMut<KeyframeExecutor>,
     mut nao_manager: ResMut<NaoManager>,
     orientation: Res<RobotOrientation>,
-    mut step_manager: ResMut<StepManager>,
+    mut step_context: ResMut<StepContext>,
 ) {
     if keyframe_executor.active_motion.is_none() {
         return;
@@ -137,7 +137,7 @@ pub fn keyframe_executor(
             }
         }
 
-        transition_to_next_submotion(&mut keyframe_executor, &mut nao_state, &mut step_manager)
+        transition_to_next_submotion(&mut keyframe_executor, &mut nao_state, &mut step_context)
             .inspect_err(|_| keyframe_executor.stop_motion())
             .expect("failed to transition to next submotion");
 
@@ -278,7 +278,7 @@ fn exit_waittime_elapsed(keyframe_executor: &mut KeyframeExecutor, exit_wait_tim
 fn transition_to_next_submotion(
     keyframe_executor: &mut KeyframeExecutor,
     nao_state: &mut NaoState,
-    step_manager: &mut StepManager,
+    step_manager: &mut StepContext,
 ) -> Result<()> {
     // current submotion is finished, transition to next submotion.
     let active_motion: &mut ActiveMotion =

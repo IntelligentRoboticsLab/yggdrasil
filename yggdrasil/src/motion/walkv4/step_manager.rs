@@ -50,14 +50,14 @@ impl Plugin for StepManagerPlugin {
 }
 
 #[derive(Resource, Debug)]
-pub struct StepManager {
+pub struct StepContext {
     requested_gait: Gait,
     requested_step: Step,
     last_step: PlannedStep,
     pub planned_step: PlannedStep,
 }
 
-impl StepManager {
+impl StepContext {
     #[must_use]
     pub fn init(gait: Gait, last_step: PlannedStep) -> Self {
         Self {
@@ -160,22 +160,22 @@ fn setup_step_visualizer(dbg: DebugContext) {
 pub(super) fn sync_gait_request(
     mut commands: Commands,
     current: Res<State<Gait>>,
-    step_manager: Res<StepManager>,
+    step_context: Res<StepContext>,
 ) {
-    if *current == step_manager.requested_gait {
+    if *current == step_context.requested_gait {
         return;
     }
 
     info!(
         "switching requested gait to {:?}",
-        step_manager.requested_gait
+        step_context.requested_gait
     );
-    commands.set_state(step_manager.requested_gait);
+    commands.set_state(step_context.requested_gait);
 }
 
 fn plan_step(
     mut event: EventReader<FootSwitchedEvent>,
-    mut step_manager: ResMut<StepManager>,
+    mut step_context: ResMut<StepContext>,
     kinematics: Res<Kinematics>,
     config: Res<WalkingEngineConfig>,
 ) {
@@ -184,8 +184,8 @@ fn plan_step(
     };
 
     let start = FootPositions::from_kinematics(event.0, &kinematics, config.torso_offset);
-    step_manager.finish_step();
-    step_manager.plan_next_step(start, &config);
+    step_context.finish_step();
+    step_context.plan_next_step(start, &config);
 }
 
 fn travel_weighting(swing_travel: Vector2<f32>, turn_amount: f32, weights: Step) -> f32 {
@@ -198,8 +198,8 @@ fn travel_weighting(swing_travel: Vector2<f32>, turn_amount: f32, weights: Step)
     translational + rotational
 }
 
-fn visualize_planned_step(dbg: DebugContext, cycle: Res<Cycle>, step_manager: Res<StepManager>) {
-    let planned = step_manager.planned_step;
+fn visualize_planned_step(dbg: DebugContext, cycle: Res<Cycle>, step_context: Res<StepContext>) {
+    let planned = step_context.planned_step;
     dbg.log_with_cycle(
         "nao/planned_left_foot",
         *cycle,
