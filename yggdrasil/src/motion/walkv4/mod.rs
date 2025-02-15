@@ -21,7 +21,7 @@ pub mod hips;
 mod schedule;
 mod smoothing;
 pub mod step;
-pub mod step_manager;
+pub mod step_context;
 
 pub use schedule::{Gait, WalkingEngineSet};
 
@@ -35,7 +35,7 @@ impl Plugin for Walkv4EnginePlugin {
         app.add_event::<FootSwitchedEvent>();
         app.add_plugins((
             schedule::WalkingEngineSchedulePlugin,
-            step_manager::StepManagerPlugin,
+            step_context::StepContextPlugin,
             hips::HipHeightPlugin,
             gait::GaitPlugins,
             balancing::BalancingPlugin,

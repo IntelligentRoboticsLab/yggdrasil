@@ -9,7 +9,7 @@ use crate::{
         schedule::{Gait, WalkingEngineSet},
         smoothing::{parabolic_return, parabolic_step},
         step::PlannedStep,
-        step_manager::StepContext,
+        step_context::StepContext,
         FootSwitchedEvent, Side, TargetFootPositions,
     },
     nao::CycleTime,

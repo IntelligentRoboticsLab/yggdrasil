@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::kinematics::Kinematics;
 use crate::prelude::*;
 
-use super::{config::WalkingEngineConfig, step::PlannedStep, step_manager::StepContext};
+use super::{config::WalkingEngineConfig, step::PlannedStep, step_context::StepContext};
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum WalkingEngineSet {

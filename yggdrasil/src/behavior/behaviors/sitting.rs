@@ -4,7 +4,7 @@ use nidhogg::types::{color, FillExt, RightEye};
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
-    motion::walkv4::step_manager::StepContext,
+    motion::walkv4::step_context::StepContext,
     nao::{NaoManager, Priority},
 };
 

@@ -11,7 +11,7 @@ use crate::{
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},
-        walkv4::step_manager::StepContext,
+        walkv4::step_context::StepContext,
     },
     nao::{NaoManager, Priority},
 };
