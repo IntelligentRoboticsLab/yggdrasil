@@ -30,22 +30,6 @@ pub struct NaoSchedulePlugin;
 
 impl Plugin for NaoSchedulePlugin {
     fn build(&self, app: &mut App) {
-        // Enable ambiguity warnings for the Update schedule
-        app.edit_schedule(Sensor, |schedule| {
-            schedule.set_build_settings(bevy::ecs::schedule::ScheduleBuildSettings {
-                ambiguity_detection: bevy::ecs::schedule::LogLevel::Warn,
-                ..default()
-            });
-        });
-
-        // Enable ambiguity warnings for the Update schedule
-        app.edit_schedule(PreUpdate, |schedule| {
-            schedule.set_build_settings(bevy::ecs::schedule::ScheduleBuildSettings {
-                ambiguity_detection: bevy::ecs::schedule::LogLevel::Warn,
-                ..default()
-            });
-        });
-
         // Add the custom schedules to the main schedule.
         app.world_mut()
             .resource_scope(|_, mut schedule: Mut<MainScheduleOrder>| {

@@ -91,8 +91,8 @@ fn init_stopping_step(
         planned_step: PlannedStep {
             step: Step::default(),
             target: FootPositions::default(),
-            swing_foot_height: 0.009,
-            duration: Duration::from_millis(200),
+            swing_foot_height: 0.01,
+            duration: Duration::from_millis(250),
             ..step_context.planned_step
         },
     });
