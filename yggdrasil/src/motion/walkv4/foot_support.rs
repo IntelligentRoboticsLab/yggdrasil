@@ -84,11 +84,6 @@ impl FootSupportState {
 
     /// Switch the support foot side.
     pub(super) fn switch_support_side(&mut self) {
-        info!(
-            "switching support side from: {:?} to {:?}",
-            self.support,
-            self.support.opposite()
-        );
         self.support = self.support.opposite();
     }
 
