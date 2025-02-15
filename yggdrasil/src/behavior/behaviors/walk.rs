@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 use nidhogg::types::{FillExt, HeadJoints};
 
@@ -41,7 +43,7 @@ pub fn walk(
 ) {
     if let Some(point) = walk.look_target {
         let look_at = pose.get_look_at_absolute(&point);
-        nao_manager.set_head(look_at, HeadJoints::fill(0.5), Priority::High);
+        nao_manager.set_head_target(look_at, Duration::from_millis(500), Priority::High, 0.5);
     }
 
     step_planner.clear_target();

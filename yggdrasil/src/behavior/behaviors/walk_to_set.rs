@@ -94,7 +94,12 @@ pub fn walk_to_set(
         step_context.request_walk(step);
     } else {
         let look_at = pose.get_look_at_absolute(&Point3::origin());
-        nao_manager.set_head(look_at, HeadJoints::fill(0.5), Priority::default());
+        nao_manager.set_head_target(
+            look_at,
+            Duration::from_millis(500),
+            Priority::default(),
+            0.5,
+        );
 
         step_context.request_stand();
     }
