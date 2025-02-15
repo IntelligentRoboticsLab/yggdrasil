@@ -46,7 +46,7 @@ pub fn striker_role(
     top_balls: Res<Balls<Top>>,
     bottom_balls: Res<Balls<Bottom>>,
     mut state: ResMut<Striker>,
-    behavior: Res<State<BehaviorState>>,
+    behavior_state: Res<State<BehaviorState>>,
 ) {
     let most_confident_ball = bottom_balls
         .most_confident_ball()
@@ -88,7 +88,6 @@ pub fn striker_role(
         match *state {
             Striker::WalkToBall | Striker::WalkWithBall => {
                 commands.set_behavior(WalkTo { target: ball_pos });
-                return;
             }
             Striker::WalkAlign => {
                 let ball_target = Point3::new(ball.x, ball.y, RobotPose::CAMERA_HEIGHT);
@@ -113,23 +112,11 @@ pub fn striker_role(
                         },
                         look_target: Some(ball_target),
                     });
-                    return;
                 }
             }
         }
-    }
-
-    if pose.distance_to(&Point2::origin()) < 0.2 {
-        if behavior.get() != &BehaviorState::Observe {
-            commands.set_behavior(Observe::with_turning(0.4));
-        }
-    } else {
-        commands.set_behavior(WalkTo {
-            target: Target {
-                position: most_confident_ball.unwrap_or(Point2::new(0.0, 0.0)),
-                rotation: None,
-            },
-        });
+    } else if behavior_state.get() != &BehaviorState::Observe {
+        commands.set_behavior(Observe::with_turning(0.4));
     }
 }
 

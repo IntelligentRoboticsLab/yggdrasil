@@ -29,8 +29,8 @@ impl Roles for Goalkeeper {
 
 pub fn goalkeeper_role(
     mut commands: Commands,
-    step_planner: Res<StepPlanner>,
     layout_config: Res<LayoutConfig>,
+    step_planner: ResMut<StepPlanner>,
     behavior: Res<State<BehaviorState>>,
 ) {
     let field_length = layout_config.field.length;
