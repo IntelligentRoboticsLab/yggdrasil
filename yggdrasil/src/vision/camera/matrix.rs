@@ -14,7 +14,7 @@ use crate::{
         Kinematics,
     },
     localization::RobotPose,
-    motion::walkv4::{Side, SwingFoot},
+    motion::walkv4::{foot_support::FootSupportState, Side},
     nao::Cycle,
     sensor::orientation::RobotOrientation,
 };
@@ -50,7 +50,7 @@ impl<T: CameraLocation> Plugin for CameraMatrixPlugin<T> {
 }
 
 fn update_camera_matrix<T: CameraLocation>(
-    swing_foot: Res<SwingFoot>,
+    foot_support: Res<FootSupportState>,
     orientation: Res<RobotOrientation>,
     kinematics: Res<Kinematics>,
     mut matrix: ResMut<CameraMatrix<T>>,
@@ -69,12 +69,12 @@ fn update_camera_matrix<T: CameraLocation>(
         image_size,
         camera_to_head,
         kinematics.isometry::<Head, Robot>().inner,
-        robot_to_ground(*swing_foot, &orientation, &kinematics),
+        robot_to_ground(foot_support.support_side(), &orientation, &kinematics),
     );
 }
 
 fn robot_to_ground(
-    swing_foot: SwingFoot,
+    support_side: Side,
     orientation: &RobotOrientation,
     kinematics: &Kinematics,
 ) -> Isometry3<f32> {
@@ -90,7 +90,7 @@ fn robot_to_ground(
         * Isometry3::rotation(Vector3::x() * roll)
         * Isometry3::from(vector![0., 0., -right_sole_to_robot.translation.z]);
 
-    match swing_foot.support() {
+    match support_side {
         Side::Left => imu_adjusted_robot_to_left_sole,
         Side::Right => imu_adjusted_robot_to_right_sole,
     }

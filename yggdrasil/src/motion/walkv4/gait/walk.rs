@@ -10,9 +10,9 @@ use crate::{
         smoothing::{parabolic_return, parabolic_step},
         step::PlannedStep,
         step_manager::StepContext,
-        FootSwitchedEvent, Side, SwingFoot, TargetFootPositions,
+        FootSwitchedEvent, Side, TargetFootPositions,
     },
-    nao::{Cycle, CycleTime},
+    nao::CycleTime,
     prelude::Sensor,
 };
 
@@ -23,7 +23,7 @@ impl Plugin for WalkGaitPlugin {
         app.init_resource::<WalkState>();
         app.add_systems(
             Sensor,
-            update_swing_foot
+            update_support_foot
                 .after(crate::sensor::fsr::force_sensitive_resistor_sensor)
                 .after(WalkingEngineSet::Prepare),
         );
@@ -41,7 +41,6 @@ impl Plugin for WalkGaitPlugin {
 struct WalkState {
     phase: Duration,
     planned_step: PlannedStep,
-    foot_switched_fsr: bool,
 }
 
 impl Default for WalkState {
@@ -49,7 +48,6 @@ impl Default for WalkState {
         Self {
             phase: Duration::ZERO,
             planned_step: PlannedStep::default(),
-            foot_switched_fsr: false,
         }
     }
 }
@@ -76,30 +74,25 @@ impl WalkState {
 }
 
 /// System that checks whether the swing foot should be updated, and does so when possible.
-fn update_swing_foot(
+fn update_support_foot(
     mut state: ResMut<WalkState>,
-    foot_support: Res<FootSupportState>,
+    mut foot_support: ResMut<FootSupportState>,
     mut event: EventWriter<FootSwitchedEvent>,
-    mut swing_foot: ResMut<SwingFoot>,
-    cycle: Res<Cycle>,
 ) {
     // only switch if we've completed 75% of the step
     let is_switch_allowed = state.linear() > 0.75;
 
-    if is_switch_allowed {
-        if foot_support.predicted_switch {
-            state.foot_switched_fsr = true;
-        } else {
-            state.foot_switched_fsr = foot_support.foot_switched;
-        }
-    }
+    let foot_switched = is_switch_allowed && foot_support.predicted_or_switched();
 
-    if state.foot_switched_fsr {
+    if foot_switched {
         state.phase = Duration::ZERO;
-        **swing_foot = swing_foot.opposite();
-        state.foot_switched_fsr = false;
-        info!("[{:?}] foot switched!", *cycle);
-        event.send(FootSwitchedEvent(**swing_foot));
+        let next_support_side = foot_support.support_side().opposite();
+        foot_support.update_support_side(next_support_side);
+
+        event.send(FootSwitchedEvent {
+            new_support: foot_support.support_side(),
+            new_swing: foot_support.swing_side(),
+        });
     }
 }
 
