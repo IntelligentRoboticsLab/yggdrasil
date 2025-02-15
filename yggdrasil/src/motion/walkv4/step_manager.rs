@@ -5,10 +5,7 @@ use crate::{
         debug_system::{DebugAppExt, SystemToggle},
         DebugContext,
     },
-    kinematics::{
-        prelude::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS},
-        Kinematics,
-    },
+    kinematics::Kinematics,
     nao::Cycle,
 };
 
@@ -28,11 +25,14 @@ pub(super) struct StepManagerPlugin;
 impl Plugin for StepManagerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PostStartup, setup_step_visualizer);
-        app.add_systems(Update, sync_gait_request.in_set(WalkingEngineSet::PlanStep));
+        app.add_systems(
+            PreUpdate,
+            sync_gait_request.in_set(WalkingEngineSet::Prepare),
+        );
 
         // TODO: Probably want a separate schedule for this!
         app.add_systems(
-            Update,
+            PreUpdate,
             plan_step
                 .run_if(on_event::<FootSwitchedEvent>)
                 .in_set(WalkingEngineSet::PlanStep),
@@ -119,6 +119,7 @@ impl StepContext {
 
         // TODO(gijsd): do we want to assume this each time?
         let next_swing_foot = self.last_step.swing_side.opposite();
+        info!("next swing_foot: {:?}", next_swing_foot);
         let next_step = (self.last_step.step + delta_step)
             .clamp(-config.max_step_size, config.max_step_size)
             .clamp_anatomic(next_swing_foot, 0.1);
@@ -210,9 +211,7 @@ fn visualize_planned_step(dbg: DebugContext, cycle: Res<Cycle>, step_context: Re
         "nao/planned_left_foot",
         *cycle,
         &rerun::Transform3D::update_fields()
-            .with_translation(Vec3::from(
-                planned.target.left.translation.vector - ROBOT_TO_LEFT_PELVIS * 2.,
-            ))
+            .with_translation(Vec3::from(planned.target.left.translation.vector))
             .with_quaternion(Quat::from(planned.target.left.rotation)),
     );
 
@@ -220,9 +219,7 @@ fn visualize_planned_step(dbg: DebugContext, cycle: Res<Cycle>, step_context: Re
         "nao/planned_right_foot",
         *cycle,
         &rerun::Transform3D::update_fields()
-            .with_translation(Vec3::from(
-                planned.target.right.translation.vector - ROBOT_TO_RIGHT_PELVIS * 2.,
-            ))
+            .with_translation(Vec3::from(planned.target.right.translation.vector))
             .with_quaternion(Quat::from(planned.target.right.rotation)),
     );
 }

@@ -19,6 +19,7 @@ impl Plugin for FootSupportPlugin {
             Sensor,
             update_foot_support
                 .after(crate::sensor::fsr::update_contacts)
+                .after(crate::sensor::fsr::update_fsr_calibration)
                 .in_set(WalkingEngineSet::Prepare),
         );
     }
@@ -81,9 +82,14 @@ impl FootSupportState {
         self.support.opposite()
     }
 
-    /// Update the current support side.
-    pub(super) fn update_support_side(&mut self, new_support_side: Side) {
-        self.support = new_support_side;
+    /// Switch the support foot side.
+    pub(super) fn switch_support_side(&mut self) {
+        info!(
+            "switching support side from: {:?} to {:?}",
+            self.support,
+            self.support.opposite()
+        );
+        self.support = self.support.opposite();
     }
 
     /// Return `true` if a foot switch has occurred or is predicted in future cycles.

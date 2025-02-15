@@ -86,8 +86,7 @@ fn update_support_foot(
 
     if foot_switched {
         state.phase = Duration::ZERO;
-        let next_support_side = foot_support.support_side().opposite();
-        foot_support.update_support_side(next_support_side);
+        foot_support.switch_support_side();
 
         event.send(FootSwitchedEvent {
             new_support: foot_support.support_side(),
@@ -101,13 +100,14 @@ fn generate_walk_gait(
     mut target_positions: ResMut<TargetFootPositions>,
     cycle_time: Res<CycleTime>,
     step_context: Res<StepContext>,
+    foot_support: Res<FootSupportState>,
 ) {
     state.phase += cycle_time.duration;
 
     let linear = state.linear();
     let parabolic = state.parabolic();
 
-    let (left_t, right_t) = match &step_context.planned_step.swing_side {
+    let (left_t, right_t) = match &foot_support.swing_side() {
         Side::Left => (parabolic, linear),
         Side::Right => (linear, parabolic),
     };
@@ -120,7 +120,7 @@ fn generate_walk_gait(
     let mut right = start.right.lerp_slerp(&target.right.inner, right_t);
 
     let swing_lift = parabolic_return(linear) * planned.swing_foot_height;
-    let (left_lift, right_lift) = match &planned.swing_side {
+    let (left_lift, right_lift) = match &foot_support.swing_side() {
         Side::Left => (swing_lift, 0.),
         Side::Right => (0., swing_lift),
     };

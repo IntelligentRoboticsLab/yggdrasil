@@ -46,14 +46,6 @@ impl Plugin for NaoSchedulePlugin {
             });
         });
 
-        // Enable ambiguity warnings for the Update schedule
-        app.edit_schedule(Update, |schedule| {
-            schedule.set_build_settings(bevy::ecs::schedule::ScheduleBuildSettings {
-                ambiguity_detection: bevy::ecs::schedule::LogLevel::Warn,
-                ..default()
-            });
-        });
-
         // Add the custom schedules to the main schedule.
         app.world_mut()
             .resource_scope(|_, mut schedule: Mut<MainScheduleOrder>| {

@@ -11,37 +11,37 @@ use crate::{
         smoothing::{parabolic_return, parabolic_step},
         step::{PlannedStep, Step},
         step_manager::StepContext,
-        FootSwitchedEvent, Side, TargetFootPositions,
+        Side, TargetFootPositions,
     },
     nao::CycleTime,
 };
-pub(super) struct StartingPlugin;
+pub(super) struct StoppingPlugin;
 
-impl Plugin for StartingPlugin {
+impl Plugin for StoppingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(Gait::Starting), init_starting_step);
+        app.add_systems(OnEnter(Gait::Stopping), init_starting_step);
         app.add_systems(
-            PreUpdate,
+            Update,
             end_starting_phase
-                .in_set(WalkingEngineSet::Prepare)
-                .run_if(in_state(Gait::Starting)),
+                .in_set(WalkingEngineSet::PlanStep)
+                .run_if(in_state(Gait::Stopping)),
         );
         app.add_systems(
             Update,
             generate_starting_gait
                 .in_set(WalkingEngineSet::GenerateGait)
-                .run_if(in_state(Gait::Starting)),
+                .run_if(in_state(Gait::Stopping)),
         );
     }
 }
 
 #[derive(Resource, Debug)]
-struct StartingState {
+struct StoppingState {
     phase: Duration,
     planned_step: PlannedStep,
 }
 
-impl Default for StartingState {
+impl Default for StoppingState {
     fn default() -> Self {
         Self {
             phase: Duration::ZERO,
@@ -50,7 +50,7 @@ impl Default for StartingState {
     }
 }
 
-impl StartingState {
+impl StoppingState {
     /// Get a value from [0, 1] describing the linear progress of the current step.
     ///
     /// This value is based on the current `phase` and `planned_duration`, and will always be
@@ -77,14 +77,11 @@ fn init_starting_step(
     kinematics: Res<Kinematics>,
     config: Res<WalkingEngineConfig>,
 ) {
-    let start = FootPositions::from_kinematics(
-        step_context.planned_step.swing_side,
-        &kinematics,
-        config.torso_offset,
+    step_context.plan_next_step(
+        FootPositions::from_kinematics(Side::Left, &kinematics, config.torso_offset),
+        &config,
     );
-    step_context.plan_next_step(start, &config);
-
-    commands.insert_resource(StartingState {
+    commands.insert_resource(StoppingState {
         phase: Duration::ZERO,
         planned_step: PlannedStep {
             step: Step::default(),
@@ -98,9 +95,8 @@ fn init_starting_step(
 
 fn end_starting_phase(
     mut step_context: ResMut<StepContext>,
-    state: Res<StartingState>,
+    state: Res<StoppingState>,
     mut foot_support: ResMut<FootSupportState>,
-    mut event: EventWriter<FootSwitchedEvent>,
 ) {
     let starting_end_allowed = state.linear() > 0.75;
     let support_switched = foot_support.switched();
@@ -109,15 +105,12 @@ fn end_starting_phase(
     if (support_switched || step_timeout) && starting_end_allowed {
         step_context.finish_starting_step(state.planned_step);
         foot_support.switch_support_side();
-        event.send(FootSwitchedEvent {
-            new_support: foot_support.support_side(),
-            new_swing: foot_support.swing_side(),
-        });
+        info!("finished starting state!");
     }
 }
 
 fn generate_starting_gait(
-    mut state: ResMut<StartingState>,
+    mut state: ResMut<StoppingState>,
     mut target_positions: ResMut<TargetFootPositions>,
 
     cycle_time: Res<CycleTime>,
@@ -145,6 +138,8 @@ fn generate_starting_gait(
 
     left.translation.z = left_lift;
     right.translation.z = right_lift;
+
+    info!(?left_lift, ?right_lift, "starting step!");
 
     **target_positions = FootPositions {
         left: left.into(),
