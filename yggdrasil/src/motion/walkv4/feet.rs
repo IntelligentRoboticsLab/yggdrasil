@@ -28,8 +28,8 @@ impl FootPositions {
     }
 
     #[must_use]
-    pub fn from_kinematics(support_foot: Side, kinematics: &Kinematics, torso_offset: f32) -> Self {
-        let hip_height = match support_foot {
+    pub fn from_kinematics(swing_side: Side, kinematics: &Kinematics, torso_offset: f32) -> Self {
+        let hip_height = match swing_side {
             Side::Left => kinematics.left_hip_height(),
             Side::Right => kinematics.right_hip_height(),
         };
@@ -47,8 +47,8 @@ impl FootPositions {
     }
 
     #[must_use]
-    pub fn from_target(swing_foot: Side, step: &Step) -> Self {
-        let (support_offset, swing_offset) = match swing_foot {
+    pub fn from_target(swing_side: Side, step: &Step) -> Self {
+        let (support_offset, swing_offset) = match swing_side {
             Side::Left => (ROBOT_TO_RIGHT_PELVIS, ROBOT_TO_LEFT_PELVIS),
             Side::Right => (ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS),
         };
@@ -63,7 +63,7 @@ impl FootPositions {
             UnitQuaternion::from_axis_angle(&Vector3::z_axis(), step.turn / 2.),
         ));
 
-        let (left, right) = match swing_foot {
+        let (left, right) = match swing_side {
             Side::Left => (swing_sole, support_sole),
             Side::Right => (support_sole, swing_sole),
         };
@@ -94,7 +94,7 @@ impl FootPositions {
 
     /// Compute the distance travelled by the swing foot in the ground plane.
     #[must_use]
-    pub fn swing_travel(&self, swing_side: Side, target: &FootPositions) -> Vector2<f32> {
+    pub fn swing_translation(&self, swing_side: Side, target: &FootPositions) -> Vector2<f32> {
         match swing_side {
             // this equals: (self.right - self.left) + (target.left - target.right)
             Side::Left => {

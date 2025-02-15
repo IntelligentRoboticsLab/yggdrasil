@@ -39,31 +39,64 @@ pub struct FootSupportConfig {
     weights: Fsr,
 }
 
+/// Tracks the distribution of weight between feet during walking,
+/// to keep track which foot is supporting the body of the robot.
 #[derive(Resource, Debug, Default)]
 pub struct FootSupportState {
-    support: f32,
-    last_support: f32,
-    last_support_with_pressure: f32,
-    trusted: bool,
-    pub foot_switched: bool,
-    pub predicted_switch: bool,
+    /// Current weight distribution between feet (-1 for left support, 1 for right support).
+    support_ratio: f32,
+
+    /// Previous cycle's weight distribution, used to detect changes in support.
+    last_support_ratio: f32,
+
+    /// Last recorded weight distribution with reliable pressure data from the supporting foot.
+    last_support_ratio_with_pressure: f32,
+
+    /// Indicates if the current support data is considered trusted based on fsr calibration.
+    pub trusted: bool,
+
+    /// Indicates if the support foot changed during this cycle.
+    foot_switched: bool,
+
+    /// Indicates if a foot switch is predicted in the next few cycles.
+    predicted_switch: bool,
+
+    /// The current supporting foot.
+    ///
+    /// This value is not explicitly decided by `support_ratio`, because gait generators
+    /// might need more explicit control over which side is the support side.
+    support: Side,
 }
 
 impl FootSupportState {
-    /// Get the current support foot.
+    /// Get the current support side.
     #[must_use]
-    pub fn current_support(&self) -> Side {
-        if self.support < 0.0 {
-            Side::Left
-        } else {
-            Side::Right
-        }
+    pub fn support_side(&self) -> Side {
+        self.support
     }
 
-    /// Get the current swing foot.
+    /// Get the current swing side.
     #[must_use]
-    pub fn current_swing(&self) -> Side {
-        self.current_support().opposite()
+    pub fn swing_side(&self) -> Side {
+        self.support.opposite()
+    }
+
+    /// Update the current support side.
+    pub(super) fn update_support_side(&mut self, new_support_side: Side) {
+        self.support = new_support_side;
+    }
+
+    /// Return `true` if a foot switch has occurred or is predicted in future cycles.
+    #[must_use]
+    pub fn predicted_or_switched(&self) -> bool {
+        // we only trust prediction if fsr is calibrated
+        (self.trusted && self.predicted_switch) || self.foot_switched
+    }
+
+    /// Return `true` if a foot switch has occurred in the current cycle.
+    #[must_use]
+    pub fn switched(&self) -> bool {
+        self.foot_switched
     }
 }
 
@@ -90,33 +123,33 @@ fn update_foot_support(
 
     if total_pressure > 0.0 {
         state.trusted = true;
-        state.support = weighted_pressure / total_pressure;
+        state.support_ratio = weighted_pressure / total_pressure;
 
-        let support_has_pressure = (contacts.left_foot && state.support > 0.0)
-            || (contacts.right_foot && state.support < 0.0);
-        let switched = (state.last_support_with_pressure * state.support < 0.0
-            || (state.last_support == 0.0 && state.support != 0.0))
+        let support_has_pressure = (contacts.left_foot && state.support_ratio > 0.0)
+            || (contacts.right_foot && state.support_ratio < 0.0);
+        let switched = (state.last_support_ratio_with_pressure * state.support_ratio < 0.0
+            || (state.last_support_ratio == 0.0 && state.support_ratio != 0.0))
             && support_has_pressure;
 
         if support_has_pressure {
-            state.last_support_with_pressure = state.support;
+            state.last_support_ratio_with_pressure = state.support_ratio;
         }
 
         state.foot_switched = switched;
-        let predicted_support =
-            state.support + config.predict_num_cycles * (state.support - state.last_support);
+        let predicted_support = state.support_ratio
+            + config.predict_num_cycles * (state.support_ratio - state.last_support_ratio);
 
-        let left_support_can_predict = state.support < 0.0
+        let left_support_can_predict = state.support_ratio < 0.0
             && pressures.right_foot.avg() < config.predict_support_max_pressure
             && pressures.left_foot.avg() > config.predict_swing_min_pressure;
-        let right_support_can_predict = state.support > 0.0
+        let right_support_can_predict = state.support_ratio > 0.0
             && pressures.left_foot.avg() < config.predict_support_max_pressure
             && pressures.right_foot.avg() > config.predict_swing_min_pressure;
 
-        let predicted_switch = predicted_support * state.support < 0.
+        let predicted_switch = predicted_support * state.support_ratio < 0.
             && (left_support_can_predict || right_support_can_predict);
 
-        state.last_support = state.support;
+        state.last_support_ratio = state.support_ratio;
 
         // Only predict a foot switch if the FSR is calibrated
         if calibration.is_calibrated {

@@ -3,8 +3,9 @@ use nidhogg::types::{LeftLegJoints, RightLegJoints};
 
 use super::{
     config::WalkingEngineConfig,
+    foot_support::FootSupportState,
     schedule::{Gait, WalkingEngineSet},
-    Side, SwingFoot,
+    Side,
 };
 use crate::sensor::{imu::IMUValues, low_pass_filter::ExponentialLpf};
 
@@ -72,10 +73,10 @@ impl BalanceAdjustment {
     /// When swinging with the left foot, this will add the adjustment to the
     /// ankle pitch value of the right foot.
     // TODO: Add figure here
-    fn adjust_ankle_pitch(&mut self, swing_side: Side, amount: f32) -> &mut Self {
-        match swing_side {
-            Side::Left => self.right_ankle_pitch = amount,
-            Side::Right => self.left_ankle_pitch = amount,
+    fn adjust_ankle_pitch(&mut self, support_side: Side, amount: f32) -> &mut Self {
+        match support_side {
+            Side::Left => self.left_ankle_pitch = amount,
+            Side::Right => self.right_ankle_pitch = amount,
         }
 
         self
@@ -96,7 +97,7 @@ impl BalanceAdjustment {
 
 fn update_balance_adjustment(
     mut balance_adjustment: ResMut<BalanceAdjustment>,
-    swing_foot: Res<SwingFoot>,
+    foot_support: Res<FootSupportState>,
     config: Res<WalkingEngineConfig>,
 ) {
     let ankle_pitch_adjustment =
@@ -104,5 +105,5 @@ fn update_balance_adjustment(
 
     balance_adjustment
         .prepare()
-        .adjust_ankle_pitch(**swing_foot, ankle_pitch_adjustment);
+        .adjust_ankle_pitch(foot_support.support_side(), ankle_pitch_adjustment);
 }

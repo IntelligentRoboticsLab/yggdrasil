@@ -118,14 +118,14 @@ impl StepContext {
             .clamp_anatomic(next_swing_foot, 0.1);
 
         let target = FootPositions::from_target(next_swing_foot, &next_step);
-        let swing_travel = start.swing_travel(next_swing_foot, &target).abs();
+        let swing_translation = start.swing_translation(next_swing_foot, &target).abs();
         let turn_amount = start.turn_amount(next_swing_foot, &target);
 
         let foot_lift_modifier =
-            travel_weighting(swing_travel, turn_amount, config.foot_lift_modifier);
+            translation_weight(swing_translation, turn_amount, config.foot_lift_modifier);
 
-        let step_duration_modifier = Duration::from_secs_f32(travel_weighting(
-            swing_travel,
+        let step_duration_modifier = Duration::from_secs_f32(translation_weight(
+            swing_translation,
             turn_amount,
             config.step_duration_modifier,
         ));
@@ -183,12 +183,12 @@ fn plan_step(
         return;
     };
 
-    let start = FootPositions::from_kinematics(event.0, &kinematics, config.torso_offset);
+    let start = FootPositions::from_kinematics(event.new_swing, &kinematics, config.torso_offset);
     step_context.finish_step();
     step_context.plan_next_step(start, &config);
 }
 
-fn travel_weighting(swing_travel: Vector2<f32>, turn_amount: f32, weights: Step) -> f32 {
+fn translation_weight(swing_travel: Vector2<f32>, turn_amount: f32, weights: Step) -> f32 {
     let translational = nalgebra::vector![
         weights.forward * swing_travel.x,
         weights.left * swing_travel.y,

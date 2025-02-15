@@ -86,7 +86,7 @@ fn init_starting_step(
         planned_step: PlannedStep {
             step: Step::default(),
             target: FootPositions::default(),
-            swing_foot_height: 0.009,
+            swing_foot_height: 0.0045,
             duration: Duration::from_millis(200),
             ..step_context.planned_step
         },
@@ -99,7 +99,7 @@ fn end_starting_phase(
     foot_support: ResMut<FootSupportState>,
 ) {
     let starting_end_allowed = state.linear() > 0.75;
-    let support_switched = foot_support.foot_switched;
+    let support_switched = foot_support.switched();
     let step_timeout = state.phase >= state.planned_step.duration;
 
     if (support_switched || step_timeout) && starting_end_allowed {

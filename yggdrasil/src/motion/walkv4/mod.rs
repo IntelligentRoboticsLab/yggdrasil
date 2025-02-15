@@ -30,7 +30,6 @@ pub struct Walkv4EnginePlugin;
 impl Plugin for Walkv4EnginePlugin {
     fn build(&self, app: &mut App) {
         app.init_config::<WalkingEngineConfig>();
-        app.init_resource::<SwingFoot>();
         app.init_resource::<TargetFootPositions>();
         app.init_resource::<TargetLegStiffness>();
         app.add_event::<FootSwitchedEvent>();
@@ -71,26 +70,14 @@ impl Side {
     }
 }
 
-/// Resource containing the current swing foot of the walking engine.
-#[derive(Resource, Clone, Copy, Debug, Default, Deref, DerefMut)]
-pub struct SwingFoot(Side);
-
-impl SwingFoot {
-    /// Get the side of the support foot.
-    #[must_use]
-    pub fn support(&self) -> Side {
-        self.opposite()
-    }
-
-    /// Get the side of the swing foot.
-    #[must_use]
-    pub fn swing(&self) -> Side {
-        self.0
-    }
-}
-
+/// Event which is fired when the support foot has switched.
 #[derive(Event, Debug, Default, Clone, PartialEq, Eq, Hash)]
-pub struct FootSwitchedEvent(pub Side);
+pub struct FootSwitchedEvent {
+    /// The new support side.
+    pub new_support: Side,
+    /// The new swing side.
+    pub new_swing: Side,
+}
 
 /// Resource containing the currently requested [`FootPositions`].
 #[derive(Debug, Default, Clone, Resource, Deref, DerefMut)]
