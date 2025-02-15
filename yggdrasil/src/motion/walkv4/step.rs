@@ -119,7 +119,7 @@ pub struct PlannedStep {
     pub target: FootPositions,
     pub duration: Duration,
     pub swing_foot_height: f32,
-    pub swing_foot: Side,
+    pub swing_side: Side,
 }
 
 impl Default for PlannedStep {
@@ -130,7 +130,7 @@ impl Default for PlannedStep {
             target: FootPositions::default(),
             duration: Duration::from_millis(250),
             swing_foot_height: 0.,
-            swing_foot: Side::Left,
+            swing_side: Side::Left,
         }
     }
 }
