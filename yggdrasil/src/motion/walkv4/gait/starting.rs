@@ -10,7 +10,7 @@ use crate::{
         schedule::{Gait, WalkingEngineSet},
         smoothing::{parabolic_return, parabolic_step},
         step::{PlannedStep, Step},
-        step_manager::StepContext,
+        step_context::StepContext,
         FootSwitchedEvent, Side, TargetFootPositions,
     },
     nao::CycleTime,
@@ -23,6 +23,7 @@ impl Plugin for StartingPlugin {
         app.add_systems(
             PreUpdate,
             end_starting_phase
+                .after(crate::kinematics::update_kinematics)
                 .in_set(WalkingEngineSet::Prepare)
                 .run_if(in_state(Gait::Starting)),
         );

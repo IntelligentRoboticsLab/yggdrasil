@@ -20,9 +20,9 @@ use bevy::prelude::*;
 use nalgebra::Vector2;
 use rerun::external::glam::{Quat, Vec3};
 
-pub(super) struct StepManagerPlugin;
+pub(super) struct StepContextPlugin;
 
-impl Plugin for StepManagerPlugin {
+impl Plugin for StepContextPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PostStartup, setup_step_visualizer);
         app.add_systems(
@@ -30,12 +30,12 @@ impl Plugin for StepManagerPlugin {
             sync_gait_request.in_set(WalkingEngineSet::Prepare),
         );
 
-        // TODO: Probably want a separate schedule for this!
         app.add_systems(
             PreUpdate,
             plan_step
                 .run_if(on_event::<FootSwitchedEvent>)
-                .in_set(WalkingEngineSet::PlanStep),
+                .in_set(WalkingEngineSet::PlanStep)
+                .after(crate::kinematics::update_kinematics),
         );
         app.add_named_debug_systems(
             Update,
@@ -119,7 +119,6 @@ impl StepContext {
 
         // TODO(gijsd): do we want to assume this each time?
         let next_swing_foot = self.last_step.swing_side.opposite();
-        info!("next swing_foot: {:?}", next_swing_foot);
         let next_step = (self.last_step.step + delta_step)
             .clamp(-config.max_step_size, config.max_step_size)
             .clamp_anatomic(next_swing_foot, 0.1);

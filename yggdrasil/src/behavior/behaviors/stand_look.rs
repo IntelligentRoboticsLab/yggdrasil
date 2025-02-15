@@ -5,7 +5,7 @@ use std::time::Duration;
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
     localization::RobotPose,
-    motion::walkv4::step_manager::StepContext,
+    motion::walkv4::step_context::StepContext,
     nao::{NaoManager, Priority},
 };
 

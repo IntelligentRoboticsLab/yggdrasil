@@ -247,7 +247,7 @@ fn init_fsr_calibration(mut commands: Commands, config: Res<SensorConfig>) {
     commands.insert_resource(CalibratedFsr::init(&config.fsr));
 }
 
-/// System that updates the [`FsrCalibration`] struct using sensor values.
+/// System that updates the [`Fsr`] calibration using sensor values.
 pub fn update_fsr_calibration(
     config: Res<SensorConfig>,
     mut calibration: ResMut<CalibratedFsr>,
