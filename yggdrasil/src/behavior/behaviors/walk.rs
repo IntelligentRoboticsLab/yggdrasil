@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},

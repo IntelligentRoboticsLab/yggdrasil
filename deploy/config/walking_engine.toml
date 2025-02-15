@@ -1,5 +1,5 @@
 # The base amount of time (in milliseconds) for one step.
-base_step_duration = 240
+base_step_duration = 250
 
 # Duration modifiers (in seconds) for a single step.
 # Modifies `base_step_duration` by adding (modifier * movement factor) seconds per step.
