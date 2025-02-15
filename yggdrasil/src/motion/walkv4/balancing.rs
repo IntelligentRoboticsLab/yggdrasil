@@ -22,7 +22,11 @@ impl Plugin for BalancingPlugin {
             (update_filtered_gyroscope, update_balance_adjustment)
                 .chain()
                 .in_set(WalkingEngineSet::Balance)
-                .run_if(in_state(Gait::Walking)),
+                .run_if(
+                    in_state(Gait::Walking)
+                        .or(in_state(Gait::Starting))
+                        .or(in_state(Gait::Stopping)),
+                ),
         );
     }
 }
