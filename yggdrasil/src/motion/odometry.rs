@@ -4,12 +4,10 @@ use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    core::debug::DebugContext,
     kinematics::{
         spaces::{LeftSole, RightSole},
         Kinematics,
     },
-    nao::Cycle,
     sensor::orientation::RobotOrientation,
 };
 
@@ -32,24 +30,15 @@ impl Plugin for OdometryPlugin {
 
 /// System that updates the robot odometry, given the current state of the robot joints.
 pub fn update_odometry(
-    dbg: DebugContext,
     mut odometry: ResMut<Odometry>,
     odometry_config: Res<OdometryConfig>,
     foot_support: Res<FootSupportState>,
     kinematics: Res<Kinematics>,
     orientation: Res<RobotOrientation>,
-    cycle: Res<Cycle>,
 ) {
     // TODO: We should probably reset the odometry in some cases
     // See: https://github.com/IntelligentRoboticsLab/yggdrasil/issues/400
-    odometry.update(
-        &dbg,
-        &odometry_config,
-        &foot_support,
-        &kinematics,
-        &orientation,
-        &cycle,
-    );
+    odometry.update(&odometry_config, &foot_support, &kinematics, &orientation);
 }
 
 /// Configuration for the odometry.
@@ -86,12 +75,11 @@ impl Odometry {
     /// Update the odometry of the robot using the given [`Kinematics`].
     pub fn update(
         &mut self,
-        dbg: &DebugContext,
+
         config: &OdometryConfig,
         foot_support: &FootSupportState,
         kinematics: &Kinematics,
         orientation: &RobotOrientation,
-        cycle: &Cycle,
     ) {
         let left_sole_to_right_sole = kinematics.vector::<LeftSole, RightSole>().inner.xy();
 
@@ -100,33 +88,6 @@ impl Odometry {
             Side::Left => left_sole_to_right_sole - self.last_left_sole_to_right_sole,
             Side::Right => -left_sole_to_right_sole + self.last_left_sole_to_right_sole,
         } / 2.0;
-
-        let color = match foot_support.support_side() {
-            Side::Left => (82, 79, 255),
-            Side::Right => (255, 79, 79),
-        };
-
-        dbg.log_with_cycle(
-            "offset_x",
-            *cycle,
-            &rerun::Scalar::update_fields().with_scalar(f64::from(offset.x)),
-        );
-        dbg.log_with_cycle(
-            "offset_x",
-            *cycle,
-            &rerun::SeriesLine::update_fields().with_color(color),
-        );
-
-        dbg.log_with_cycle(
-            "offset_y",
-            *cycle,
-            &rerun::Scalar::update_fields().with_scalar(f64::from(offset.y)),
-        );
-        dbg.log_with_cycle(
-            "offset_y",
-            *cycle,
-            &rerun::SeriesLine::update_fields().with_color(color),
-        );
 
         self.last_left_sole_to_right_sole = left_sole_to_right_sole;
         let scaled_offset = offset.component_mul(&config.scale_factor);

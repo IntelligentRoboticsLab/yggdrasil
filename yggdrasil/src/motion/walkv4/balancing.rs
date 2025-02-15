@@ -68,11 +68,10 @@ impl BalanceAdjustment {
         self
     }
 
-    /// Apply the provided adjustment to the correct ankle pitch.
+    /// Apply the provided adjustment to the ankle pitch of the support foot.
     ///
     /// When swinging with the left foot, this will add the adjustment to the
     /// ankle pitch value of the right foot.
-    // TODO: Add figure here
     fn adjust_ankle_pitch(&mut self, support_side: Side, amount: f32) -> &mut Self {
         match support_side {
             Side::Left => self.left_ankle_pitch = amount,
