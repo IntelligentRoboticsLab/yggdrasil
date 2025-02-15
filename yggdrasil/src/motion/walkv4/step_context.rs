@@ -187,10 +187,6 @@ pub(super) fn sync_gait_request(
         return;
     }
 
-    info!(
-        "switching requested gait to {:?}",
-        step_context.requested_gait
-    );
     commands.set_state(step_context.requested_gait);
 }
 
