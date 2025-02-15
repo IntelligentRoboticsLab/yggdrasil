@@ -11,7 +11,7 @@ use crate::{
         smoothing::{parabolic_return, parabolic_step},
         step::{PlannedStep, Step},
         step_context::StepContext,
-        Side, TargetFootPositions,
+        FootSwitchedEvent, Side, TargetFootPositions,
     },
     nao::CycleTime,
 };
@@ -19,16 +19,17 @@ pub(super) struct StoppingPlugin;
 
 impl Plugin for StoppingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(Gait::Stopping), init_starting_step);
+        app.add_systems(OnEnter(Gait::Stopping), init_stopping_step);
         app.add_systems(
-            Update,
-            end_starting_phase
-                .in_set(WalkingEngineSet::PlanStep)
+            PreUpdate,
+            end_stopping_phase
+                .after(crate::kinematics::update_kinematics)
+                .in_set(WalkingEngineSet::Prepare)
                 .run_if(in_state(Gait::Stopping)),
         );
         app.add_systems(
             Update,
-            generate_starting_gait
+            generate_stopping_gait
                 .in_set(WalkingEngineSet::GenerateGait)
                 .run_if(in_state(Gait::Stopping)),
         );
@@ -71,45 +72,52 @@ impl StoppingState {
     }
 }
 
-fn init_starting_step(
+fn init_stopping_step(
     mut commands: Commands,
     mut step_context: ResMut<StepContext>,
     kinematics: Res<Kinematics>,
     config: Res<WalkingEngineConfig>,
 ) {
-    step_context.plan_next_step(
-        FootPositions::from_kinematics(Side::Left, &kinematics, config.torso_offset),
-        &config,
+    let start = FootPositions::from_kinematics(
+        step_context.planned_step.swing_side,
+        &kinematics,
+        config.torso_offset,
     );
+    step_context.plan_next_step(start, &config);
+
     commands.insert_resource(StoppingState {
         phase: Duration::ZERO,
         planned_step: PlannedStep {
             step: Step::default(),
             target: FootPositions::default(),
-            swing_foot_height: 0.0045,
+            swing_foot_height: 0.009,
             duration: Duration::from_millis(200),
             ..step_context.planned_step
         },
     });
 }
 
-fn end_starting_phase(
+fn end_stopping_phase(
     mut step_context: ResMut<StepContext>,
     state: Res<StoppingState>,
     mut foot_support: ResMut<FootSupportState>,
+    mut event: EventWriter<FootSwitchedEvent>,
 ) {
-    let starting_end_allowed = state.linear() > 0.75;
+    let stopping_end_allowed = state.linear() > 0.75;
     let support_switched = foot_support.switched();
     let step_timeout = state.phase >= state.planned_step.duration;
 
-    if (support_switched || step_timeout) && starting_end_allowed {
-        step_context.finish_starting_step(state.planned_step);
+    if (support_switched || step_timeout) && stopping_end_allowed {
+        step_context.finish_stopping_step(state.planned_step);
         foot_support.switch_support_side();
-        info!("finished starting state!");
+        event.send(FootSwitchedEvent {
+            new_support: foot_support.support_side(),
+            new_swing: foot_support.swing_side(),
+        });
     }
 }
 
-fn generate_starting_gait(
+fn generate_stopping_gait(
     mut state: ResMut<StoppingState>,
     mut target_positions: ResMut<TargetFootPositions>,
 
@@ -138,8 +146,6 @@ fn generate_starting_gait(
 
     left.translation.z = left_lift;
     right.translation.z = right_lift;
-
-    info!(?left_lift, ?right_lift, "starting step!");
 
     **target_positions = FootPositions {
         left: left.into(),

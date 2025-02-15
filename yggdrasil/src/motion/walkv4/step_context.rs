@@ -78,7 +78,16 @@ impl StepContext {
     }
 
     pub fn request_stand(&mut self) {
-        self.requested_gait = Gait::Standing;
+        match self.requested_gait {
+            Gait::Walking => {
+                self.requested_gait = Gait::Stopping;
+            }
+            Gait::Sitting | Gait::Standing | Gait::Starting | Gait::Stopping => {
+                // the robot can immediately move to Gait::Stand
+                self.requested_gait = Gait::Standing;
+            }
+        }
+
         self.last_step = PlannedStep {
             swing_side: self.last_step.swing_side,
             ..Default::default()
@@ -96,8 +105,9 @@ impl StepContext {
                 self.requested_gait = Gait::Starting;
                 self.requested_step = step;
             }
-            Gait::Starting | Gait::Walking => {
-                // the robot is currently starting or walking already, so we just change the requested step
+            Gait::Starting | Gait::Walking | Gait::Stopping => {
+                // the robot is currently starting, stopping or walking already
+                // so we just change the requested step
                 self.requested_step = step;
             }
         }
@@ -110,6 +120,11 @@ impl StepContext {
     pub(super) fn finish_starting_step(&mut self, step: PlannedStep) {
         self.last_step = step;
         self.requested_gait = Gait::Walking;
+    }
+
+    pub(super) fn finish_stopping_step(&mut self, step: PlannedStep) {
+        self.last_step = step;
+        self.requested_gait = Gait::Standing;
     }
 
     pub fn plan_next_step(&mut self, start: FootPositions, config: &WalkingEngineConfig) {
