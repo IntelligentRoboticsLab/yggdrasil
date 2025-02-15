@@ -278,7 +278,7 @@ fn exit_waittime_elapsed(keyframe_executor: &mut KeyframeExecutor, exit_wait_tim
 fn transition_to_next_submotion(
     keyframe_executor: &mut KeyframeExecutor,
     nao_state: &mut NaoState,
-    step_manager: &mut StepContext,
+    step_context: &mut StepContext,
 ) -> Result<()> {
     // current submotion is finished, transition to next submotion.
     let active_motion: &mut ActiveMotion =
@@ -304,7 +304,7 @@ fn transition_to_next_submotion(
             .active_motion
             .as_ref()
             .unwrap()
-            .execute_exit_routine(step_manager);
+            .execute_exit_routine(step_context);
 
         // and we reset the KeyframeExecutor
         keyframe_executor.active_motion = None;
