@@ -3,7 +3,7 @@ use heimdall::{Bottom, Top};
 
 use crate::{
     core::config::showtime::PlayerConfig,
-    motion::walk::engine::WalkingEngine,
+    motion::walkv4::Gait,
     sensor::{button::HeadButtons, falling::FallState},
     vision::ball_detection::classifier::Balls,
 };
@@ -16,8 +16,8 @@ use super::{
     },
     primary_state::PrimaryState,
     roles::{
-        DefenderRolePlugin, Goalkeeper, GoalkeeperRolePlugin, Instinct, InstinctRolePlugin,
-        Striker, StrikerRolePlugin,
+        Defender, DefenderRolePlugin, Goalkeeper, GoalkeeperRolePlugin, Instinct,
+        InstinctRolePlugin, Striker, StrikerRolePlugin,
     },
 };
 
@@ -117,7 +117,7 @@ impl Role {
         match player_number {
             1 => commands.set_role(Goalkeeper),
             5 => commands.set_role(Striker::WalkToBall),
-            _ => commands.set_role(Instinct),
+            _ => commands.set_role(Defender),
         }
     }
 
@@ -148,7 +148,7 @@ pub fn role_base(
     mut commands: Commands,
     state: Res<State<BehaviorState>>,
     role: Res<State<Role>>,
-    walking_engine: Res<WalkingEngine>,
+    gait: Res<State<Gait>>,
     head_buttons: Res<HeadButtons>,
     primary_state: Res<PrimaryState>,
     fall_state: Res<FallState>,
@@ -158,21 +158,21 @@ pub fn role_base(
     bottom_balls: Res<Balls<Bottom>>,
 ) {
     let behavior = state.get();
-
     if behavior == &BehaviorState::StartUp {
-        if walking_engine.is_sitting() || head_buttons.all_pressed() {
-            commands.set_behavior(Sitting::default());
-            commands.disable_role();
-        }
-        if *primary_state == PrimaryState::Initial {
-            commands.set_behavior(Stand);
+        if *gait == Gait::Sitting || head_buttons.all_pressed() {
+            commands.set_behavior(Sitting);
             commands.disable_role();
         }
         return;
     }
 
+    if *primary_state == PrimaryState::Initial {
+        commands.set_behavior(Stand);
+        commands.disable_role();
+    }
+
     if *primary_state == PrimaryState::Sitting {
-        commands.set_behavior(Sitting::default());
+        commands.set_behavior(Sitting);
         commands.disable_role();
         return;
     }
