@@ -16,9 +16,9 @@ use crate::{
     prelude::Sensor,
 };
 
-pub(super) struct WalkGaitPlugin;
+pub(super) struct WalkPlugin;
 
-impl Plugin for WalkGaitPlugin {
+impl Plugin for WalkPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<WalkState>();
         app.add_systems(
