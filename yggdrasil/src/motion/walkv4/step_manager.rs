@@ -71,7 +71,7 @@ impl StepContext {
     pub fn request_sit(&mut self) {
         self.requested_gait = Gait::Sitting;
         self.last_step = PlannedStep {
-            swing_foot: self.last_step.swing_foot,
+            swing_side: self.last_step.swing_side,
             ..Default::default()
         };
         self.requested_step = Step::default();
@@ -80,7 +80,7 @@ impl StepContext {
     pub fn request_stand(&mut self) {
         self.requested_gait = Gait::Standing;
         self.last_step = PlannedStep {
-            swing_foot: self.last_step.swing_foot,
+            swing_side: self.last_step.swing_side,
             ..Default::default()
         };
         self.requested_step = Step::default();
@@ -118,7 +118,7 @@ impl StepContext {
             .clamp(-config.max_acceleration, config.max_acceleration);
 
         // TODO(gijsd): do we want to assume this each time?
-        let next_swing_foot = self.last_step.swing_foot.opposite();
+        let next_swing_foot = self.last_step.swing_side.opposite();
         let next_step = (self.last_step.step + delta_step)
             .clamp(-config.max_step_size, config.max_step_size)
             .clamp_anatomic(next_swing_foot, 0.1);
@@ -142,7 +142,7 @@ impl StepContext {
             start,
             target,
             swing_foot_height: config.base_foot_lift + foot_lift_modifier,
-            swing_foot: next_swing_foot,
+            swing_side: next_swing_foot,
         }
     }
 }

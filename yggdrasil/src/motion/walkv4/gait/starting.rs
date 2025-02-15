@@ -119,7 +119,7 @@ fn generate_starting_gait(
     let parabolic = state.parabolic();
 
     let planned = state.planned_step;
-    let (left_t, right_t) = match &planned.swing_foot {
+    let (left_t, right_t) = match &planned.swing_side {
         Side::Left => (parabolic, linear),
         Side::Right => (linear, parabolic),
     };
@@ -130,7 +130,7 @@ fn generate_starting_gait(
     let mut right = start.right.lerp_slerp(&target.right.inner, right_t);
 
     let swing_lift = parabolic_return(linear) * planned.swing_foot_height;
-    let (left_lift, right_lift) = match &planned.swing_foot {
+    let (left_lift, right_lift) = match &planned.swing_side {
         Side::Left => (swing_lift, 0.),
         Side::Right => (0., swing_lift),
     };
