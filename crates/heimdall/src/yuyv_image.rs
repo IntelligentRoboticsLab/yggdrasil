@@ -14,7 +14,7 @@ pub struct YuyvImage {
 }
 
 impl YuyvImage {
-    fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
+    pub fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
         fn clamp(value: i32) -> u8 {
             #[allow(clippy::cast_sign_loss)]
             #[allow(clippy::cast_possible_truncation)]
@@ -59,6 +59,47 @@ impl YuyvImage {
             let ((red1, green1, blue1), (red2, green2, blue2)) = yuyv422_to_rgb(y1, u, y2, v);
 
             destination.write_all(&[red1, green1, blue1, red2, green2, blue2])?;
+        }
+
+        Ok(())
+    }
+
+    pub fn yuv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
+        fn clamp(value: i32) -> u8 {
+            #[allow(clippy::cast_sign_loss)]
+            #[allow(clippy::cast_possible_truncation)]
+            return value.clamp(0, 255) as u8;
+        }
+
+        fn yuv444_to_rgb(y: u8, u: u8, v: u8) -> (u8, u8, u8) {
+            let y = i32::from(y) - 16;
+            let u = i32::from(u) - 128;
+            let v = i32::from(v) - 128;
+
+            let red = (298 * y + 409 * v + 128) >> 8;
+            let green = (298 * y - 100 * u - 208 * v + 128) >> 8;
+            let blue = (298 * y + 516 * u + 128) >> 8;
+
+            (clamp(red), clamp(green), clamp(blue))
+        }
+
+        // Two pixels are stored in four bytes. Those four bytes are the y1, u, y2, v values in
+        // that order. Because two pixels share the same u and v value, we decode both pixels at
+        // the same time (using `yuyv422_to_rgb`), instead of one-by-one, to improve performance.
+        //
+        // A `pixel_duo` here refers to the two pixels with the same u and v values.
+        // We iterate over all the pixel duo's in `source`, which is why we take steps of four
+        // bytes.
+        for pixel_id in 0..(source.len() / 3) {
+            let input_offset = pixel_id * 3;
+
+            let y = source[input_offset];
+            let u = source[input_offset + 1];
+            let v = source[input_offset + 2];
+
+            let (red, green, blue) = yuv444_to_rgb(y, u, v);
+
+            destination.write_all(&[red, green, blue])?;
         }
 
         Ok(())

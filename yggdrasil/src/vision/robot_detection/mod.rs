@@ -10,7 +10,7 @@ use crate::vision::{
 use bevy::core::FrameCount;
 use bevy::prelude::*;
 use box_coder::BoxCoder;
-use heimdall::{CameraLocation, Top};
+use heimdall::{CameraLocation, Top, RgbImage, YuyvImage};
 use itertools::Itertools;
 use miette::IntoDiagnostic;
 use ml::{prelude::*, MlArray};
@@ -83,7 +83,7 @@ pub struct RobotDetectionModel;
 impl MlModel for RobotDetectionModel {
     type Inputs = Vec<u8>;
     type Outputs = (MlArray<f32>, MlArray<f32>);
-    const ONNX_PATH: &'static str = "models/robot_detection.onnx";
+    const ONNX_PATH: &'static str = "models/model_ext_cc.onnx";
 }
 
 /// A detected robot, with a bounding box and confidence.
@@ -108,6 +108,17 @@ pub struct RobotDetectionData {
     pub result_cycle: FrameCount,
 }
 
+pub fn to_rgb(image: &[u8]) -> Result<RgbImage> {
+    let mut rgb_image_buffer = Vec::<u8>::with_capacity(100 * 100 * 3);
+        YuyvImage::yuv_to_rgb(image, &mut rgb_image_buffer)?;
+
+    Ok(RgbImage {
+        frame: rgb_image_buffer,
+        width: 100,
+        height: 100,
+    })
+}
+
 fn detect_robots(
     mut commands: Commands,
     mut model: ResMut<ModelExecutor<RobotDetectionModel>>,
@@ -119,22 +130,24 @@ fn detect_robots(
         .resize(config.input_width, config.input_height)
         .expect("failed to resize image for robot detection");
 
+    let resized_image = to_rgb(&resized_image).expect("Couldn't convert to rgb");
+
     commands
         .infer_model(&mut model)
-        .with_input(&resized_image)
+        .with_input(&resized_image.frame)
         .create_resource()
         .spawn({
             let config = (*config).clone();
             let cycle = *cycle;
             let image = image.clone();
 
-            move |(box_regression, scores)| {
+            move |(box_regression, score)| {
                 let box_regression = box_regression
                     .to_shape(config.box_shape())
                     .into_diagnostic()
                     .expect("received box regression with incorrect shape")
                     .to_owned();
-                let scores = scores
+                let scores = score
                     .to_shape(config.score_shape())
                     .into_diagnostic()
                     .expect("received scores with incorrect shape")
