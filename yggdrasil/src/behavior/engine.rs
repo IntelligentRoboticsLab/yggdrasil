@@ -3,7 +3,7 @@ use heimdall::{Bottom, Top};
 
 use crate::{
     core::config::showtime::PlayerConfig,
-    motion::walk::engine::WalkingEngine,
+    motion::walkv4::Gait,
     sensor::{button::HeadButtons, falling::FallState},
     vision::ball_detection::classifier::Balls,
 };
@@ -148,7 +148,7 @@ pub fn role_base(
     mut commands: Commands,
     state: Res<State<BehaviorState>>,
     role: Res<State<Role>>,
-    walking_engine: Res<WalkingEngine>,
+    gait: Res<State<Gait>>,
     head_buttons: Res<HeadButtons>,
     primary_state: Res<PrimaryState>,
     fall_state: Res<FallState>,
@@ -160,8 +160,8 @@ pub fn role_base(
     let behavior = state.get();
 
     if behavior == &BehaviorState::StartUp {
-        if walking_engine.is_sitting() || head_buttons.all_pressed() {
-            commands.set_behavior(Sitting::default());
+        if *gait == Gait::Sitting || head_buttons.all_pressed() {
+            commands.set_behavior(Sitting);
             commands.disable_role();
         }
         if *primary_state == PrimaryState::Initial {
@@ -172,7 +172,7 @@ pub fn role_base(
     }
 
     if *primary_state == PrimaryState::Sitting {
-        commands.set_behavior(Sitting::default());
+        commands.set_behavior(Sitting);
         commands.disable_role();
         return;
     }
