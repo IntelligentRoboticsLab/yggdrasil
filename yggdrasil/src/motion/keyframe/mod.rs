@@ -15,22 +15,22 @@ pub(super) struct KeyframePlugin;
 
 impl Plugin for KeyframePlugin {
     fn build(&self, app: &mut App) {
-        let mut keyframe_executor = KeyframeExecutor::new();
+        let mut animation_manager: AnimationManager = AnimationManager::new();
         // Add new motions here!
-        keyframe_executor
+        animation_manager
             .add_motion(
                 MotionType::StandupBack,
                 "./assets/motions/standup_back.toml",
             )
             .expect("failed to add standup motion (back)");
-        keyframe_executor
+        animation_manager
             .add_motion(
                 MotionType::StandupStomach,
                 "./assets/motions/standup_stomach.toml",
             )
             .expect("failed to add standup motion (stomach)");
 
-        app.insert_resource(keyframe_executor);
-        app.add_systems(PostWrite, executor::keyframe_executor);
+        app.insert_resource(animation_manager);
+        app.add_systems(PostWrite, executor::animation_executor);
     }
 }

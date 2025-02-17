@@ -1,4 +1,4 @@
-use super::types::{Motion, MotionType};
+use super::types::{ActiveMotion, Motion, MotionType};
 use bevy::prelude::*;
 use miette::Result;
 use nidhogg::types::JointArray;
@@ -6,63 +6,23 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::time::Instant;
 
-/// Stores information about the currently active motion.
-#[derive(Debug, Clone)]
-pub struct ActiveMotion {
-    /// Current motion.
-    pub motion: Motion,
-    /// name and index of current submotion being executed
-    pub cur_sub_motion: (String, usize),
-    /// Current Keyframe index
-    pub cur_keyframe_index: usize,
-    /// Current movement starting time
-    pub movement_start: Instant,
-}
-
-impl ActiveMotion {
-    /// Fetches the next submotion name to be executed.
-    #[must_use]
-    pub fn get_next_submotion(&self) -> Option<&String> {
-        let next_index = self.cur_sub_motion.1 + 1;
-        self.motion.settings.motion_order.get(next_index)
-    }
-
-    /// Returns the next submotion to be executed
-    ///
-    /// # Arguments
-    /// * `submotion_name` - Name of the next submotion.
-    pub fn transition(&mut self, submotion_name: String) -> Result<Option<ActiveMotion>> {
-        self.cur_sub_motion = (submotion_name, self.cur_sub_motion.1 + 1);
-        self.cur_keyframe_index = 0;
-        self.movement_start = Instant::now();
-
-        Ok(Some(self.clone()))
-    }
-}
-
 /// Manages motions, stores all possible motions and keeps track of information
 /// about the motion that is currently being executed.
 #[derive(Default, Debug, Resource)]
-pub struct KeyframeExecutor {
-    /// Stores the currently active motion.
-    pub active_motion: Option<ActiveMotion>,
-    /// Keeps track of when the execution of a motion started.
-    pub motion_execution_starting_time: Option<Instant>,
-    // Keeps track of when the execution of the current submotion started.
-    pub submotion_execution_starting_time: Option<Instant>,
-    /// Keeps track of when the current submotion has finished
-    pub submotion_finishing_time: Option<Instant>,
-    // Keeps track of the source position from which the robot began executing a motion.
-    pub source_position: Option<JointArray<f32>>,
-    /// Contains the mapping from `MotionTypes` to `Motion`.
+pub struct AnimationManager {
     pub motions: HashMap<MotionType, Motion>,
+    pub active_motion: Option<ActiveMotion>,
+    pub source_position: Option<JointArray<f32>>,
+    pub motion_execution_starting_time: Option<Instant>,
+    pub submotion_execution_starting_time: Option<Instant>,
+    pub submotion_finishing_time: Option<Instant>,
 }
 
-impl KeyframeExecutor {
-    /// Initializes a `KeyframeExecutor`.
+impl AnimationManager {
+    /// Initializes a `AnimationManager`.
     #[must_use]
     pub fn new() -> Self {
-        KeyframeExecutor::default()
+        AnimationManager::default()
     }
 
     /// Simple abstraction function for checking whether a motion is currently active
@@ -71,7 +31,7 @@ impl KeyframeExecutor {
         self.active_motion.is_some()
     }
 
-    /// Adds a motion to the `KeyframeExecutor`.
+    /// Adds a motion to the `AnimationManager`.
     ///
     /// # Arguments
     /// * `motion_type` - Type of the motion.

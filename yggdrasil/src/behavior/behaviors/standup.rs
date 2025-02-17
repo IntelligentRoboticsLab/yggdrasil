@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
-    motion::keyframe::{KeyframeExecutor, MotionType},
+    motion::keyframe::{AnimationManager, MotionType},
     sensor::falling::{FallState, LyingDirection},
 };
 
@@ -41,7 +41,7 @@ impl Plugin for StandupBehaviorPlugin {
 pub fn standup(
     mut standup: ResMut<Standup>,
     fall_state: Res<FallState>,
-    mut keyframe_executor: ResMut<KeyframeExecutor>,
+    mut animation_manager: ResMut<AnimationManager>,
 ) {
     if standup.standup_type.is_none() {
         match fall_state.as_ref() {
@@ -78,19 +78,18 @@ pub fn standup(
     //  -> (WIP) Branching: Brannching paths for the standup motion
 
     // Update completed status based on motion activity (TODO change this)
-    standup.completed = !keyframe_executor.is_motion_active();
 
     // check the direction the robot is lying and execute the appropriate motion
     match fall_state.as_ref() {
         FallState::Lying(LyingDirection::FacingDown) => {
-            keyframe_executor.start_new_motion(MotionType::StandupStomach, false);
+            animation_manager.start_new_motion(MotionType::StandupStomach, false);
         }
         FallState::Lying(LyingDirection::FacingUp) => {
-            keyframe_executor.start_new_motion(MotionType::StandupBack, false);
+            animation_manager.start_new_motion(MotionType::StandupBack, false);
         }
         // if we are not lying down anymore, either standing up or falling, we do not execute any motion
         _ => {}
     }
 
-    standup.completed = !keyframe_executor.is_motion_active();
+    standup.completed = !animation_manager.is_motion_active();
 }

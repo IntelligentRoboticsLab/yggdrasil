@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::motion::keyframe::KeyframeExecutor;
+use crate::motion::keyframe::AnimationManager;
 
 use crate::sensor::fsr::Contacts;
 
@@ -37,14 +37,14 @@ pub fn wee_sound_system(
     sounds: Res<SoundManager>,
     contacts: Res<Contacts>,
     config: Res<AudioConfig>,
-    keyframe_executor: Res<KeyframeExecutor>,
+    animation_manager: Res<AnimationManager>,
 ) {
     if wee_sound.timed_out(config.wee_sound_timeout) {
         return;
     }
 
     // Play the sound once upon losing ground contact
-    if !contacts.ground && !wee_sound.sound_played && !keyframe_executor.is_motion_active() {
+    if !contacts.ground && !wee_sound.sound_played && !animation_manager.is_motion_active() {
         wee_sound.sound_played = true;
         wee_sound.last_played = Some(Instant::now());
         sounds

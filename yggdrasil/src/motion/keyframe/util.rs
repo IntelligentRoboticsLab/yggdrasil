@@ -1,5 +1,4 @@
 use super::types::InterpolationType;
-use miette::Result;
 use nidhogg::types::JointArray;
 use num::pow;
 use std::time::Duration;
