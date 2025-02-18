@@ -91,8 +91,8 @@ fn init_starting_step(
         planned_step: PlannedStep {
             step: Step::default(),
             target: FootPositions::default(),
-            swing_foot_height: 0.0045,
-            duration: Duration::from_millis(200),
+            swing_foot_height: config.starting_foot_lift,
+            duration: config.starting_step_duration,
             ..step_context.planned_step
         },
     });
@@ -103,8 +103,9 @@ fn end_starting_phase(
     state: Res<StartingState>,
     mut foot_support: ResMut<FootSupportState>,
     mut event: EventWriter<FootSwitchedEvent>,
+    config: Res<WalkingEngineConfig>,
 ) {
-    let starting_end_allowed = state.linear() > 0.75;
+    let starting_end_allowed = state.linear() > config.minimum_step_duration_ratio;
     let support_switched = foot_support.switched();
     let step_timeout = state.phase >= state.planned_step.duration;
 
@@ -121,7 +122,6 @@ fn end_starting_phase(
 fn generate_starting_gait(
     mut state: ResMut<StartingState>,
     mut target_positions: ResMut<TargetFootPositions>,
-
     cycle_time: Res<CycleTime>,
 ) {
     state.phase += cycle_time.duration;

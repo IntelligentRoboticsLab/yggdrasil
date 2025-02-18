@@ -123,11 +123,6 @@ fn finalize(
         false,
     );
 
-    let arm_positions = ArmJoints::builder()
-        .left_arm(left_arm)
-        .right_arm(right_arm)
-        .build();
-
     let leg_positions = LegJoints::builder()
         .left_leg(left_leg)
         .right_leg(right_leg)
@@ -139,6 +134,11 @@ fn finalize(
         .build();
 
     if *motion_state == Gait::Walking {
+        let arm_positions = ArmJoints::builder()
+            .left_arm(left_arm)
+            .right_arm(right_arm)
+            .build();
+
         nao.set_arms(
             arm_positions,
             ArmJoints::fill(config.arm_stiffness),

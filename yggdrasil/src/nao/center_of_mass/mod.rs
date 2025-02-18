@@ -4,6 +4,7 @@
 //! resource. The `CoM` is calculated by taking the kinematic chain from the torso to each body part,
 //! multiplying the mass of the body part by the position of the `CoM` of the body part, and summing
 //! the results. The total mass of the robot is then divided out to get the `CoM`.
+
 mod robot_masses;
 
 use crate::{

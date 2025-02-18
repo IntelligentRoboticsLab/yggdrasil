@@ -5,6 +5,19 @@ base_step_duration = 240
 # Modifies `base_step_duration` by adding (modifier * movement factor) seconds per step.
 step_duration_modifier = { forward = 0.1, left = 0.03, turn = 0.0 }
 
+# The amount of time (in milliseconds) for the starting step.
+starting_step_duration = 200
+
+# The amount of time (in milliseconds) for the stopping step.
+stopping_step_duration = 250
+
+# The minimum normalized duration a step must reach before allowing a foot switch.
+#
+# This value is normalized relative to the planned step duration. For example,
+# a value of `0.75` means the current step duration must be at least 75% of the
+# planned step duration before a foot switch can occur.
+minimum_step_duration_ratio = 0.75
+
 # The offset of the torso w.r.t. the hips in meters.
 #
 # Higher values will result in the robot leaning forward while walking.
@@ -37,6 +50,12 @@ base_foot_lift = 0.008
 # These values are multiplied by their respective component of the step command
 # and added to the base foot lift.
 foot_lift_modifier = { forward = 0.11, left = 0.12, turn = 0.025 }
+
+# The amount to lift the swing foot during the starting step.
+starting_foot_lift = 0.0045
+
+# The amount to lift the swing foot during the stopping step.
+stopping_foot_lift = 0.01
 
 # The maximum acceleration per step.
 #

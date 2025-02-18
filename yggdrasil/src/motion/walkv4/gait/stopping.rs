@@ -91,8 +91,8 @@ fn init_stopping_step(
         planned_step: PlannedStep {
             step: Step::default(),
             target: FootPositions::default(),
-            swing_foot_height: 0.01,
-            duration: Duration::from_millis(250),
+            swing_foot_height: config.stopping_foot_lift,
+            duration: config.stopping_step_duration,
             ..step_context.planned_step
         },
     });
@@ -103,8 +103,9 @@ fn end_stopping_phase(
     state: Res<StoppingState>,
     mut foot_support: ResMut<FootSupportState>,
     mut event: EventWriter<FootSwitchedEvent>,
+    config: Res<WalkingEngineConfig>,
 ) {
-    let stopping_end_allowed = state.linear() > 0.75;
+    let stopping_end_allowed = state.linear() > config.minimum_step_duration_ratio;
     let support_switched = foot_support.switched();
     let step_timeout = state.phase >= state.planned_step.duration;
 

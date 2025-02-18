@@ -63,6 +63,7 @@ impl BalanceAdjustment {
             right_ankle_pitch: 0.,
         }
     }
+
     /// Reset all adjustment values and prepare for new values.
     #[must_use]
     fn prepare(&mut self) -> &mut Self {

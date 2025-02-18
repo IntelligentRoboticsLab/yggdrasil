@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use crate::{
     motion::walkv4::{
+        config::WalkingEngineConfig,
         feet::FootPositions,
         foot_support::FootSupportState,
         schedule::{Gait, WalkingEngineSet},
@@ -78,9 +79,10 @@ fn update_support_foot(
     mut state: ResMut<WalkState>,
     mut foot_support: ResMut<FootSupportState>,
     mut event: EventWriter<FootSwitchedEvent>,
+    config: Res<WalkingEngineConfig>,
 ) {
-    // only switch if we've completed 75% of the step
-    let is_switch_allowed = state.linear() > 0.75;
+    // only switch if we've completed the minimum ratio of the step
+    let is_switch_allowed = state.linear() > config.minimum_step_duration_ratio;
 
     let foot_switched = is_switch_allowed && foot_support.predicted_or_switched();
 

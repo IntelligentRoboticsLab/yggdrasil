@@ -13,11 +13,6 @@ use super::{
 ///
 /// The foot positions are relative to the robot's torso, and the angles are relative to the robot's
 /// pelvis.
-///
-/// TODO:
-/// The torso offset is the offset of the torso w.r.t. the pelvis.
-/// Currently it's set to a constant 1.5 cm (forward), but it should perhaps be a parameter.
-/// Or something that can be set dynamically to balance the robot.
 #[must_use]
 pub fn leg_angles(
     foot_positions: &FootPositions,

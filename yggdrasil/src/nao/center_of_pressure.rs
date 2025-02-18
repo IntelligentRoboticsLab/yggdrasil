@@ -6,20 +6,32 @@ use crate::sensor::imu::IMUValues;
 
 use super::center_of_mass;
 
-type SensorOffsets = (Vector2<f32>, Vector2<f32>, Vector2<f32>, Vector2<f32>);
-const LEFT_FOOT_SENSOR_OFFSETS: SensorOffsets = (
-    Vector2::new(0.07025, -0.0299),
-    Vector2::new(0.07025, 0.0299),
-    Vector2::new(-0.03025, -0.0299),
-    Vector2::new(-0.03025, 0.0299),
-);
+/// Struct containing offsets of each FSR sensor relative to the center of the robot's foot.
+///
+/// See <http://doc.aldebaran.com/2-8/family/nao_technical/fsr_naov6.html> for more.
+#[derive(Debug, Default, Clone, Copy)]
+struct SensorOffsets {
+    front_left: Vector2<f32>,
+    front_right: Vector2<f32>,
+    rear_left: Vector2<f32>,
+    rear_right: Vector2<f32>,
+}
 
-const RIGHT_FOOT_SENSOR_OFFSETS: SensorOffsets = (
-    Vector2::new(0.07025, -0.0231),
-    Vector2::new(0.07025, 0.0299),
-    Vector2::new(-0.03025, -0.0191),
-    Vector2::new(-0.03025, 0.0299),
-);
+/// Offsets for the FSR sensors in the left foot of the robot, values taken from the NAO urdf.
+const LEFT_FOOT_SENSOR_OFFSETS: SensorOffsets = SensorOffsets {
+    front_left: Vector2::new(0.07025, -0.0299),
+    front_right: Vector2::new(0.07025, 0.0299),
+    rear_left: Vector2::new(-0.03025, -0.0299),
+    rear_right: Vector2::new(-0.03025, 0.0299),
+};
+
+/// Offsets for the FSR sensors in the right foot of the robot, values taken from the NAO urdf.
+const RIGHT_FOOT_SENSOR_OFFSETS: SensorOffsets = SensorOffsets {
+    front_left: Vector2::new(0.07025, -0.0231),
+    front_right: Vector2::new(0.07025, 0.0299),
+    rear_left: Vector2::new(-0.03025, -0.0191),
+    rear_right: Vector2::new(-0.03025, 0.0299),
+};
 
 const GRAVITY_CONSTANT: f32 = 9.81;
 
@@ -59,25 +71,17 @@ fn update_cop(mut center_of_pressure: ResMut<CenterOfPressure>, fsr: Res<Fsr>) {
 }
 
 fn compute_center_of_pressure(fsr_foot: &FsrFoot, offsets: SensorOffsets) -> Vector2<f32> {
-    let (front_left, front_right, rear_left, rear_right) = offsets;
-    (fsr_foot.front_left * front_left
-        + fsr_foot.front_right * front_right
-        + fsr_foot.rear_left * rear_left
-        + fsr_foot.rear_right * rear_right)
+    (fsr_foot.front_left * offsets.front_left
+        + fsr_foot.front_right * offsets.front_right
+        + fsr_foot.rear_left * offsets.rear_left
+        + fsr_foot.rear_right * offsets.rear_right)
         / fsr_foot.sum()
 }
 
-#[derive(Debug, Clone, Resource)]
+/// Resource containing the current Zero Moment Point (ZMP) of the robot.
+#[derive(Resource, Debug, Default, Clone, Copy)]
 pub struct ZeroMomentPoint {
     pub point: Point2<f32>,
-}
-
-impl Default for ZeroMomentPoint {
-    fn default() -> Self {
-        ZeroMomentPoint {
-            point: Point2::new(0.0, 0.0),
-        }
-    }
 }
 
 fn update_zmp(

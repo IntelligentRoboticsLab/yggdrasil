@@ -122,39 +122,43 @@ fn update_foot_support(
             .weighted_sum(&config.weights.right_foot)
             .abs();
 
-    if total_pressure > 0.0 {
-        state.trusted = true;
-        state.support_ratio = weighted_pressure / total_pressure;
+    // the robot is not grounded, so we do not update anything.
+    if total_pressure <= 0.0 {
+        state.trusted = false;
+        return;
+    }
 
-        let support_has_pressure = (contacts.left_foot && state.support_ratio > 0.0)
-            || (contacts.right_foot && state.support_ratio < 0.0);
-        let switched = (state.last_support_ratio_with_pressure * state.support_ratio < 0.0
-            || (state.last_support_ratio == 0.0 && state.support_ratio != 0.0))
-            && support_has_pressure;
+    state.trusted = true;
+    state.support_ratio = weighted_pressure / total_pressure;
 
-        if support_has_pressure {
-            state.last_support_ratio_with_pressure = state.support_ratio;
-        }
+    let support_has_pressure = (contacts.left_foot && state.support_ratio > 0.0)
+        || (contacts.right_foot && state.support_ratio < 0.0);
+    let switched = (state.last_support_ratio_with_pressure * state.support_ratio < 0.0
+        || (state.last_support_ratio == 0.0 && state.support_ratio != 0.0))
+        && support_has_pressure;
 
-        state.foot_switched = switched;
-        let predicted_support = state.support_ratio
-            + config.predict_num_cycles * (state.support_ratio - state.last_support_ratio);
+    if support_has_pressure {
+        state.last_support_ratio_with_pressure = state.support_ratio;
+    }
 
-        let left_support_can_predict = state.support_ratio < 0.0
-            && pressures.right_foot.avg() < config.predict_support_max_pressure
-            && pressures.left_foot.avg() > config.predict_swing_min_pressure;
-        let right_support_can_predict = state.support_ratio > 0.0
-            && pressures.left_foot.avg() < config.predict_support_max_pressure
-            && pressures.right_foot.avg() > config.predict_swing_min_pressure;
+    state.foot_switched = switched;
+    let predicted_support = state.support_ratio
+        + config.predict_num_cycles * (state.support_ratio - state.last_support_ratio);
 
-        let predicted_switch = predicted_support * state.support_ratio < 0.
-            && (left_support_can_predict || right_support_can_predict);
+    let left_support_can_predict = state.support_ratio < 0.0
+        && pressures.right_foot.avg() < config.predict_support_max_pressure
+        && pressures.left_foot.avg() > config.predict_swing_min_pressure;
+    let right_support_can_predict = state.support_ratio > 0.0
+        && pressures.left_foot.avg() < config.predict_support_max_pressure
+        && pressures.right_foot.avg() > config.predict_swing_min_pressure;
 
-        state.last_support_ratio = state.support_ratio;
+    let predicted_switch = predicted_support * state.support_ratio < 0.
+        && (left_support_can_predict || right_support_can_predict);
 
-        // Only predict a foot switch if the FSR is calibrated
-        if calibration.is_calibrated {
-            state.predicted_switch = predicted_switch;
-        }
+    state.last_support_ratio = state.support_ratio;
+
+    // Only predict a foot switch if the FSR is calibrated
+    if calibration.is_calibrated {
+        state.predicted_switch = predicted_switch;
     }
 }
