@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use crate::{
     kinematics::Kinematics,
-    motion::walkv4::{
+    motion::walking_engine::{
         config::WalkingEngineConfig,
         feet::FootPositions,
         foot_support::FootSupportState,

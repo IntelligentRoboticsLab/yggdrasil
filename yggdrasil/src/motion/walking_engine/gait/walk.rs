@@ -1,49 +1,50 @@
-use bevy::prelude::*;
 use std::time::Duration;
 
+use bevy::prelude::*;
+
 use crate::{
-    kinematics::Kinematics,
-    motion::walkv4::{
+    motion::walking_engine::{
         config::WalkingEngineConfig,
         feet::FootPositions,
         foot_support::FootSupportState,
         schedule::{Gait, WalkingEngineSet},
         smoothing::{parabolic_return, parabolic_step},
-        step::{PlannedStep, Step},
-        step_context::{self, StepContext},
+        step::PlannedStep,
+        step_context::StepContext,
         FootSwitchedEvent, Side, TargetFootPositions,
     },
     nao::CycleTime,
+    prelude::Sensor,
 };
-pub(super) struct StartingPlugin;
 
-impl Plugin for StartingPlugin {
+pub(super) struct WalkPlugin;
+
+impl Plugin for WalkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(Gait::Starting), init_starting_step);
+        app.init_resource::<WalkState>();
         app.add_systems(
-            PreUpdate,
-            end_starting_phase
-                .after(crate::kinematics::update_kinematics)
-                .before(step_context::sync_gait_request)
-                .in_set(WalkingEngineSet::Prepare)
-                .run_if(in_state(Gait::Starting)),
+            Sensor,
+            update_support_foot
+                .after(crate::sensor::fsr::force_sensitive_resistor_sensor)
+                .after(WalkingEngineSet::Prepare),
         );
         app.add_systems(
             Update,
-            generate_starting_gait
+            (generate_walk_gait)
+                .chain()
                 .in_set(WalkingEngineSet::GenerateGait)
-                .run_if(in_state(Gait::Starting)),
+                .run_if(in_state(Gait::Walking)),
         );
     }
 }
 
-#[derive(Resource, Debug)]
-struct StartingState {
+#[derive(Debug, Clone, Resource)]
+struct WalkState {
     phase: Duration,
     planned_step: PlannedStep,
 }
 
-impl Default for StartingState {
+impl Default for WalkState {
     fn default() -> Self {
         Self {
             phase: Duration::ZERO,
@@ -52,7 +53,7 @@ impl Default for StartingState {
     }
 }
 
-impl StartingState {
+impl WalkState {
     /// Get a value from [0, 1] describing the linear progress of the current step.
     ///
     /// This value is based on the current `phase` and `planned_duration`, and will always be
@@ -73,45 +74,22 @@ impl StartingState {
     }
 }
 
-fn init_starting_step(
-    mut commands: Commands,
-    mut step_context: ResMut<StepContext>,
-    kinematics: Res<Kinematics>,
-    config: Res<WalkingEngineConfig>,
-) {
-    let start = FootPositions::from_kinematics(
-        step_context.planned_step.swing_side,
-        &kinematics,
-        config.torso_offset,
-    );
-    step_context.plan_next_step(start, &config);
-
-    commands.insert_resource(StartingState {
-        phase: Duration::ZERO,
-        planned_step: PlannedStep {
-            step: Step::default(),
-            target: FootPositions::default(),
-            swing_foot_height: config.starting_foot_lift,
-            duration: config.starting_step_duration,
-            ..step_context.planned_step
-        },
-    });
-}
-
-fn end_starting_phase(
-    mut step_context: ResMut<StepContext>,
-    state: Res<StartingState>,
+/// System that checks whether the swing foot should be updated, and does so when possible.
+fn update_support_foot(
+    mut state: ResMut<WalkState>,
     mut foot_support: ResMut<FootSupportState>,
     mut event: EventWriter<FootSwitchedEvent>,
     config: Res<WalkingEngineConfig>,
 ) {
-    let starting_end_allowed = state.linear() > config.minimum_step_duration_ratio;
-    let support_switched = foot_support.switched();
-    let step_timeout = state.phase >= state.planned_step.duration;
+    // only switch if we've completed the minimum ratio of the step
+    let is_switch_allowed = state.linear() > config.minimum_step_duration_ratio;
 
-    if (support_switched || step_timeout) && starting_end_allowed {
-        step_context.finish_starting_step(state.planned_step);
+    let foot_switched = is_switch_allowed && foot_support.predicted_or_switched();
+
+    if foot_switched {
+        state.phase = Duration::ZERO;
         foot_support.switch_support_side();
+
         event.send(FootSwitchedEvent {
             new_support: foot_support.support_side(),
             new_swing: foot_support.swing_side(),
@@ -119,28 +97,32 @@ fn end_starting_phase(
     }
 }
 
-fn generate_starting_gait(
-    mut state: ResMut<StartingState>,
+fn generate_walk_gait(
+    mut state: ResMut<WalkState>,
     mut target_positions: ResMut<TargetFootPositions>,
     cycle_time: Res<CycleTime>,
+    step_context: Res<StepContext>,
+    foot_support: Res<FootSupportState>,
 ) {
     state.phase += cycle_time.duration;
+
     let linear = state.linear();
     let parabolic = state.parabolic();
 
-    let planned = state.planned_step;
-    let (left_t, right_t) = match &planned.swing_side {
+    let (left_t, right_t) = match &foot_support.swing_side() {
         Side::Left => (parabolic, linear),
         Side::Right => (linear, parabolic),
     };
 
+    let planned = step_context.planned_step;
+    state.planned_step = planned;
     let start = planned.start;
     let target = planned.target;
     let mut left = start.left.lerp_slerp(&target.left.inner, left_t);
     let mut right = start.right.lerp_slerp(&target.right.inner, right_t);
 
     let swing_lift = parabolic_return(linear) * planned.swing_foot_height;
-    let (left_lift, right_lift) = match &planned.swing_side {
+    let (left_lift, right_lift) = match &foot_support.swing_side() {
         Side::Left => (swing_lift, 0.),
         Side::Right => (0., swing_lift),
     };

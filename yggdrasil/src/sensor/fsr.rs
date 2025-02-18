@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use super::{low_pass_filter::ButterworthLpf, SensorConfig};
-use crate::{motion::walkv4::FootSwitchedEvent, prelude::*};
+use crate::{motion::walking_engine::FootSwitchedEvent, prelude::*};
 use bevy::prelude::*;
 use nalgebra::SVector;
 

@@ -10,7 +10,7 @@ use crate::{
     },
     motion::{
         step_planner::StepPlanner,
-        walkv4::{step::Step, step_context::StepContext},
+        walking_engine::{step::Step, step_context::StepContext},
     },
     nao::{NaoManager, Priority},
 };

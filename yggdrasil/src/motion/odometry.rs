@@ -11,7 +11,7 @@ use crate::{
     sensor::orientation::RobotOrientation,
 };
 
-use super::walkv4::{foot_support::FootSupportState, Side, WalkingEngineSet};
+use super::walking_engine::{foot_support::FootSupportState, Side, WalkingEngineSet};
 
 /// Plugin that keeps track of the odometry of the robot.
 pub(super) struct OdometryPlugin;

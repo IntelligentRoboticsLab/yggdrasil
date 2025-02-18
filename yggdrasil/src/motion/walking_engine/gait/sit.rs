@@ -5,7 +5,7 @@ use nidhogg::types::{FillExt, LegJoints};
 
 use crate::{
     kinematics::Kinematics,
-    motion::walkv4::{
+    motion::walking_engine::{
         config::WalkingEngineConfig,
         feet::FootPositions,
         hips::HipHeight,

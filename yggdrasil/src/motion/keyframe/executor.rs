@@ -1,5 +1,5 @@
 use super::{get_min_duration, lerp, types::Movement, ActiveMotion, KeyframeExecutor};
-use crate::motion::walkv4::step_context::StepContext;
+use crate::motion::walking_engine::step_context::StepContext;
 use crate::nao::NaoManager;
 use crate::nao::Priority;
 use crate::sensor::orientation::RobotOrientation;

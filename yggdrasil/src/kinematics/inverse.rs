@@ -2,7 +2,7 @@ use nalgebra::{Isometry3, Matrix3x1, Vector3};
 use nidhogg::types::{LeftLegJoints, RightLegJoints};
 use std::f32::consts::PI;
 
-use crate::motion::walkv4::feet::FootPositions;
+use crate::motion::walking_engine::feet::FootPositions;
 
 use super::{
     dimensions,

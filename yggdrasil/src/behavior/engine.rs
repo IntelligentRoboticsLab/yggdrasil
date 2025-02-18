@@ -3,7 +3,7 @@ use heimdall::{Bottom, Top};
 
 use crate::{
     core::config::showtime::PlayerConfig,
-    motion::walkv4::Gait,
+    motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState},
     vision::ball_detection::classifier::Balls,
 };

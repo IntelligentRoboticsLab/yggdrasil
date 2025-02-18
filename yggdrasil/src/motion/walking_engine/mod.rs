@@ -25,9 +25,9 @@ pub mod step_context;
 
 pub use schedule::{Gait, WalkingEngineSet};
 
-pub struct Walkv4EnginePlugin;
+pub struct WalkingEnginePlugin;
 
-impl Plugin for Walkv4EnginePlugin {
+impl Plugin for WalkingEnginePlugin {
     fn build(&self, app: &mut App) {
         app.init_config::<WalkingEngineConfig>();
         app.init_resource::<TargetFootPositions>();

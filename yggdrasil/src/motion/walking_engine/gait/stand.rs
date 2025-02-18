@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use nidhogg::types::{FillExt, LegJoints};
 
-use crate::motion::walkv4::{
+use crate::motion::walking_engine::{
     config::WalkingEngineConfig,
     feet::FootPositions,
     hips::HipHeight,
