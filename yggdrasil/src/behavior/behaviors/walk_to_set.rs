@@ -11,7 +11,7 @@ use crate::{
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},
-        walk::engine::WalkingEngine,
+        walking_engine::step_context::StepContext,
     },
     nao::{NaoManager, Priority},
 };
@@ -48,7 +48,7 @@ pub fn walk_to_set(
     layout_config: Res<LayoutConfig>,
     player_config: Res<PlayerConfig>,
     mut step_planner: ResMut<StepPlanner>,
-    mut walking_engine: ResMut<WalkingEngine>,
+    mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
     role: Res<State<Role>>,
 ) {
@@ -91,11 +91,11 @@ pub fn walk_to_set(
     }
 
     if let Some(step) = step_planner.plan(&pose) {
-        walking_engine.request_walk(step);
+        step_context.request_walk(step);
     } else {
         let look_at = pose.get_look_at_absolute(&Point3::origin());
         nao_manager.set_head(look_at, HeadJoints::fill(0.5), Priority::default());
 
-        walking_engine.request_stand();
+        step_context.request_stand();
     }
 }

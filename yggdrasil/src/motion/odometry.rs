@@ -8,9 +8,10 @@ use crate::{
         spaces::{LeftSole, RightSole},
         Kinematics,
     },
-    motion::walk::{engine::Side, SwingFoot},
     sensor::orientation::RobotOrientation,
 };
+
+use super::walking_engine::{foot_support::FootSupportState, Side, WalkingEngineSet};
 
 /// Plugin that keeps track of the odometry of the robot.
 pub(super) struct OdometryPlugin;
@@ -21,7 +22,8 @@ impl Plugin for OdometryPlugin {
             PreUpdate,
             update_odometry
                 .after(crate::kinematics::update_kinematics)
-                .after(crate::sensor::orientation::update_orientation),
+                .after(crate::sensor::orientation::update_orientation)
+                .after(WalkingEngineSet::Prepare),
         );
     }
 }
@@ -30,13 +32,13 @@ impl Plugin for OdometryPlugin {
 pub fn update_odometry(
     mut odometry: ResMut<Odometry>,
     odometry_config: Res<OdometryConfig>,
-    swing_foot: Res<SwingFoot>,
+    foot_support: Res<FootSupportState>,
     kinematics: Res<Kinematics>,
     orientation: Res<RobotOrientation>,
 ) {
     // TODO: We should probably reset the odometry in some cases
     // See: https://github.com/IntelligentRoboticsLab/yggdrasil/issues/400
-    odometry.update(&odometry_config, &swing_foot, &kinematics, &orientation);
+    odometry.update(&odometry_config, &foot_support, &kinematics, &orientation);
 }
 
 /// Configuration for the odometry.
@@ -73,15 +75,16 @@ impl Odometry {
     /// Update the odometry of the robot using the given [`Kinematics`].
     pub fn update(
         &mut self,
+
         config: &OdometryConfig,
-        swing_foot: &SwingFoot,
+        foot_support: &FootSupportState,
         kinematics: &Kinematics,
         orientation: &RobotOrientation,
     ) {
         let left_sole_to_right_sole = kinematics.vector::<LeftSole, RightSole>().inner.xy();
 
         // Compute offset to last position, divided by 2 to get the center of the robot.
-        let offset = match swing_foot.support() {
+        let offset = match foot_support.support_side() {
             Side::Left => left_sole_to_right_sole - self.last_left_sole_to_right_sole,
             Side::Right => -left_sole_to_right_sole + self.last_left_sole_to_right_sole,
         } / 2.0;

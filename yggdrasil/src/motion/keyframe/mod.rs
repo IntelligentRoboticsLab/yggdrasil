@@ -2,8 +2,6 @@ pub mod executor;
 pub mod manager;
 pub mod types;
 mod util;
-
-use crate::prelude::*;
 use bevy::prelude::*;
 
 pub use manager::*;
@@ -31,6 +29,6 @@ impl Plugin for KeyframePlugin {
             .expect("failed to add standup motion (stomach)");
 
         app.insert_resource(keyframe_executor);
-        app.add_systems(PostWrite, executor::keyframe_executor);
+        app.add_systems(Update, executor::keyframe_executor);
     }
 }

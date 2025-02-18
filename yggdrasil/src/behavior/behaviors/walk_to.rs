@@ -8,7 +8,7 @@ use crate::{
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},
-        walk::engine::WalkingEngine,
+        walking_engine::step_context::StepContext,
     },
     nao::{NaoManager, Priority},
 };
@@ -36,7 +36,7 @@ pub fn walk_to(
     walk_to: Res<WalkTo>,
     pose: Res<RobotPose>,
     mut step_planner: ResMut<StepPlanner>,
-    mut walking_engine: ResMut<WalkingEngine>,
+    mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
     let target_point = Point3::new(walk_to.target.position.x, walk_to.target.position.y, 0.0);
@@ -62,8 +62,8 @@ pub fn walk_to(
 
     // Plan step or stand
     if let Some(step) = step_planner.plan(&pose) {
-        walking_engine.request_walk(step);
+        step_context.request_walk(step);
     } else {
-        walking_engine.request_stand();
+        step_context.request_stand();
     }
 }

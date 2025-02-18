@@ -1,0 +1,156 @@
+use bevy::prelude::*;
+use std::time::Duration;
+
+use crate::{
+    kinematics::Kinematics,
+    motion::walking_engine::{
+        config::WalkingEngineConfig,
+        feet::FootPositions,
+        foot_support::FootSupportState,
+        schedule::{Gait, WalkingEngineSet},
+        smoothing::{parabolic_return, parabolic_step},
+        step::{PlannedStep, Step},
+        step_context::{self, StepContext},
+        FootSwitchedEvent, Side, TargetFootPositions,
+    },
+    nao::CycleTime,
+};
+pub(super) struct StoppingPlugin;
+
+impl Plugin for StoppingPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(OnEnter(Gait::Stopping), init_stopping_step);
+        app.add_systems(
+            PreUpdate,
+            end_stopping_phase
+                .after(crate::kinematics::update_kinematics)
+                .before(step_context::sync_gait_request)
+                .in_set(WalkingEngineSet::Prepare)
+                .run_if(in_state(Gait::Stopping)),
+        );
+        app.add_systems(
+            Update,
+            generate_stopping_gait
+                .in_set(WalkingEngineSet::GenerateGait)
+                .run_if(in_state(Gait::Stopping)),
+        );
+    }
+}
+
+#[derive(Resource, Debug)]
+struct StoppingState {
+    phase: Duration,
+    planned_step: PlannedStep,
+}
+
+impl Default for StoppingState {
+    fn default() -> Self {
+        Self {
+            phase: Duration::ZERO,
+            planned_step: PlannedStep::default(),
+        }
+    }
+}
+
+impl StoppingState {
+    /// Get a value from [0, 1] describing the linear progress of the current step.
+    ///
+    /// This value is based on the current `phase` and `planned_duration`, and will always be
+    /// within the inclusive range from 0 to 1.
+    #[inline]
+    #[must_use]
+    fn linear(&self) -> f32 {
+        (self.phase.as_secs_f32() / self.planned_step.duration.as_secs_f32()).clamp(0.0, 1.0)
+    }
+
+    /// Get a value from [0, 1] describing the position of the current step, along a parabolic path.
+    ///
+    /// See [`parabolic_step`] for more.
+    #[inline]
+    #[must_use]
+    fn parabolic(&self) -> f32 {
+        parabolic_step(self.linear())
+    }
+}
+
+fn init_stopping_step(
+    mut commands: Commands,
+    mut step_context: ResMut<StepContext>,
+    kinematics: Res<Kinematics>,
+    config: Res<WalkingEngineConfig>,
+) {
+    let start = FootPositions::from_kinematics(
+        step_context.planned_step.swing_side,
+        &kinematics,
+        config.torso_offset,
+    );
+    step_context.plan_next_step(start, &config);
+
+    commands.insert_resource(StoppingState {
+        phase: Duration::ZERO,
+        planned_step: PlannedStep {
+            step: Step::default(),
+            target: FootPositions::default(),
+            swing_foot_height: config.stopping_foot_lift,
+            duration: config.stopping_step_duration,
+            ..step_context.planned_step
+        },
+    });
+}
+
+fn end_stopping_phase(
+    mut step_context: ResMut<StepContext>,
+    state: Res<StoppingState>,
+    mut foot_support: ResMut<FootSupportState>,
+    mut event: EventWriter<FootSwitchedEvent>,
+    config: Res<WalkingEngineConfig>,
+) {
+    let stopping_end_allowed = state.linear() > config.minimum_step_duration_ratio;
+    let support_switched = foot_support.switched();
+    let step_timeout = state.phase >= state.planned_step.duration;
+
+    if (support_switched || step_timeout) && stopping_end_allowed {
+        step_context.finish_stopping_step(state.planned_step);
+        foot_support.switch_support_side();
+        event.send(FootSwitchedEvent {
+            new_support: foot_support.support_side(),
+            new_swing: foot_support.swing_side(),
+        });
+    }
+}
+
+fn generate_stopping_gait(
+    mut state: ResMut<StoppingState>,
+    mut target_positions: ResMut<TargetFootPositions>,
+
+    cycle_time: Res<CycleTime>,
+) {
+    state.phase += cycle_time.duration;
+    let linear = state.linear();
+    let parabolic = state.parabolic();
+
+    let planned = state.planned_step;
+    let (left_t, right_t) = match &planned.swing_side {
+        Side::Left => (parabolic, linear),
+        Side::Right => (linear, parabolic),
+    };
+
+    let start = planned.start;
+    let target = planned.target;
+    let mut left = start.left.lerp_slerp(&target.left.inner, left_t);
+    let mut right = start.right.lerp_slerp(&target.right.inner, right_t);
+
+    let swing_lift = parabolic_return(linear) * planned.swing_foot_height;
+    let (left_lift, right_lift) = match &planned.swing_side {
+        Side::Left => (swing_lift, 0.),
+        Side::Right => (0., swing_lift),
+    };
+
+    left.translation.z = left_lift;
+    right.translation.z = right_lift;
+
+    **target_positions = FootPositions {
+        left: left.into(),
+        right: right.into(),
+    };
+}

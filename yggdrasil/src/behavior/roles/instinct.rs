@@ -41,7 +41,6 @@ pub fn behavior(
     bottom_balls: Res<Balls<Bottom>>,
     behavior_state: Res<State<BehaviorState>>,
 ) {
-    //eprintln!("INSTINCTING");
     let most_confident_ball = bottom_balls
         .most_confident_ball()
         .map(|b| b.position)

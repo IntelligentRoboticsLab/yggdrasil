@@ -1,12 +1,10 @@
 use std::time::{Duration, Instant};
 
-use super::SensorConfig;
-use crate::prelude::*;
-use crate::sensor::low_pass_filter::LowPassFilter;
+use super::{low_pass_filter::ButterworthLpf, SensorConfig};
+use crate::{motion::walking_engine::FootSwitchedEvent, prelude::*};
 use bevy::prelude::*;
 use nalgebra::SVector;
 
-use crate::motion::walk::SwingFootSwitchedEvent;
 use nidhogg::{
     types::{FillExt, Fsr, FsrFoot},
     NaoState,
@@ -38,7 +36,7 @@ impl Plugin for FSRSensorPlugin {
         );
         app.add_systems(
             Update,
-            update_min_pressure.run_if(on_event::<SwingFootSwitchedEvent>),
+            update_min_pressure.run_if(on_event::<FootSwitchedEvent>),
         );
     }
 }
@@ -97,7 +95,7 @@ pub struct Contacts {
     pub last_switched: Instant,
 
     /// The first-order Butterworth low-pass filter to apply to the FSR sensor data.
-    pub lpf: LowPassFilter<1>,
+    pub lpf: ButterworthLpf<1>,
 }
 
 impl Default for Contacts {
@@ -107,7 +105,7 @@ impl Default for Contacts {
             left_foot: false,
             right_foot: false,
             last_switched: Instant::now(),
-            lpf: LowPassFilter::new(OMEGA),
+            lpf: ButterworthLpf::new(OMEGA),
         }
     }
 }
@@ -117,7 +115,7 @@ pub fn force_sensitive_resistor_sensor(nao_state: Res<NaoState>, mut fsr: ResMut
     fsr.right_foot = nao_state.fsr.right_foot.clone();
 }
 
-fn update_contacts(
+pub fn update_contacts(
     config: Res<SensorConfig>,
     fsr: Res<Fsr>,
     mut contacts: ResMut<Contacts>,
@@ -249,8 +247,8 @@ fn init_fsr_calibration(mut commands: Commands, config: Res<SensorConfig>) {
     commands.insert_resource(CalibratedFsr::init(&config.fsr));
 }
 
-/// System that updates the [`FsrCalibration`] struct using sensor values.
-fn update_fsr_calibration(
+/// System that updates the [`Fsr`] calibration using sensor values.
+pub fn update_fsr_calibration(
     config: Res<SensorConfig>,
     mut calibration: ResMut<CalibratedFsr>,
     fsr: Res<Fsr>,

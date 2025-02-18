@@ -9,7 +9,7 @@ use crate::{
     },
     core::config::layout::LayoutConfig,
     localization::RobotPose,
-    motion::{step_planner::Target, walk::engine::Step},
+    motion::{step_planner::Target, walking_engine::step::Step},
     vision::ball_detection::classifier::Balls,
 };
 
@@ -95,7 +95,7 @@ pub fn striker_role(
                 if absolute_ball_angle > absolute_goal_angle_left {
                     commands.set_behavior(Walk {
                         step: Step {
-                            left: 0.03,
+                            left: 0.06,
                             turn: -0.3,
                             ..Default::default()
                         },
@@ -106,7 +106,7 @@ pub fn striker_role(
                 if absolute_ball_angle < absolute_goal_angle_right {
                     commands.set_behavior(Walk {
                         step: Step {
-                            left: -0.03,
+                            left: -0.06,
                             turn: 0.3,
                             ..Default::default()
                         },
