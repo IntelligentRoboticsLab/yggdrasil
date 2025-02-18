@@ -2,6 +2,8 @@ use nalgebra::{Isometry3, Matrix3x1, Vector3};
 use nidhogg::types::{LeftLegJoints, RightLegJoints};
 use std::f32::consts::PI;
 
+use crate::motion::walking_engine::feet::FootPositions;
+
 use super::{
     dimensions,
     spaces::{Left, Right},
@@ -13,17 +15,14 @@ use super::{
 /// pelvis.
 #[must_use]
 pub fn leg_angles(
-    left_foot: &super::FootOffset,
-    right_foot: &super::FootOffset,
+    foot_positions: &FootPositions,
+    hip_height: f32,
+    torso_offset: f32,
 ) -> (LeftLegJoints<f32>, RightLegJoints<f32>) {
-    let left_foot = left_foot.into_left();
-    let right_foot = right_foot.into_right();
+    let (left, right) = foot_positions.to_offsets(hip_height);
+    let left_foot = left.into_left();
+    let right_foot = right.into_right();
 
-    // TODO: Properly use this value.
-    // The torso offset is the offset of the torso w.r.t. the pelvis.
-    // Currently it's set to a constant 1.5 cm (forward), but it should perhaps be a parameter.
-    // Or something that can be set dynamically to balance the robot.
-    let torso_offset = 0.015;
     let left_foot_to_left_pelvis = left_foot.to_pelvis(torso_offset);
     let left_hip_yaw_pitch =
         -1.0 * super::SidedFootOffset::<Left>::compute_hip_yaw_pitch(&left_foot_to_left_pelvis);

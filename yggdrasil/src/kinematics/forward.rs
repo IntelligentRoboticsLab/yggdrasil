@@ -71,6 +71,26 @@ impl Kinematics {
             .into()
     }
 
+    /// Get the height of the left hip, assuming that the left foot is on the ground.
+    #[must_use]
+    pub fn left_hip_height(&self) -> f32 {
+        self.isometry::<Robot, LeftSole>()
+            .inner
+            .translation
+            .vector
+            .z
+    }
+
+    /// Get the height of the right hip, assuming that the right foot is on the ground.
+    #[must_use]
+    pub fn right_hip_height(&self) -> f32 {
+        self.isometry::<Robot, RightSole>()
+            .inner
+            .translation
+            .vector
+            .z
+    }
+
     #[must_use]
     /// Get the vector from `S1` to `S2`.
     pub fn vector<S1, S2>(&self) -> Vector3<S1>

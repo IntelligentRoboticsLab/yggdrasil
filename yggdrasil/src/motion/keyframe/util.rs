@@ -1,4 +1,4 @@
-use nidhogg::types::JointArray;
+use nidhogg::types::{ArmJoints, JointArray, LegJoints};
 use std::time::Duration;
 
 /// Performs linear interpolation between two `JointArray<f32>`.
@@ -13,6 +13,42 @@ pub fn lerp(
     target_position: &JointArray<f32>,
     scalar: f32,
 ) -> JointArray<f32> {
+    current_position
+        .clone()
+        .zip(target_position.clone())
+        .map(|(curr, target)| curr * (1.0 - scalar) + target * scalar)
+}
+
+/// Performs linear interpolation between two [`LegJoints<f32>`].
+///
+/// # Arguments
+/// * `current_position` - Starting position.
+/// * `target_position` - Final position.
+/// * `scalar` - Scalar from 0-1 that indicates what weight to assign to each position.
+#[must_use]
+pub fn lerp_legs(
+    current_position: &LegJoints<f32>,
+    target_position: &LegJoints<f32>,
+    scalar: f32,
+) -> LegJoints<f32> {
+    current_position
+        .clone()
+        .zip(target_position.clone())
+        .map(|(curr, target)| curr * (1.0 - scalar) + target * scalar)
+}
+
+/// Performs linear interpolation between two [`ArmJoints<f32>`].
+///
+/// # Arguments
+/// * `current_position` - Starting position.
+/// * `target_position` - Final position.
+/// * `scalar` - Scalar from 0-1 that indicates what weight to assign to each position.
+#[must_use]
+pub fn lerp_arms(
+    current_position: &ArmJoints<f32>,
+    target_position: &ArmJoints<f32>,
+    scalar: f32,
+) -> ArmJoints<f32> {
     current_position
         .clone()
         .zip(target_position.clone())

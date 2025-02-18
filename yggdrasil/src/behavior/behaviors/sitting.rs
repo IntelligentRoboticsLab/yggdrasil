@@ -4,12 +4,9 @@ use nidhogg::types::{color, FillExt, RightEye};
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
-    motion::walk::engine::WalkingEngine,
+    motion::walking_engine::step_context::StepContext,
     nao::{NaoManager, Priority},
 };
-
-// The robot shouldn't do anything while in unstiff state.
-const UNSTIFF_PRIORITY: Priority = Priority::Critical;
 
 pub struct SittingBehaviorPlugin;
 
@@ -28,16 +25,8 @@ impl Behavior for Sitting {
     const STATE: BehaviorState = BehaviorState::Sitting;
 }
 
-pub fn sitting(mut walking_engine: ResMut<WalkingEngine>, mut nao_manager: ResMut<NaoManager>) {
+pub fn sitting(mut step_context: ResMut<StepContext>, mut nao_manager: ResMut<NaoManager>) {
     // Makes right eye blue.
     nao_manager.set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());
-
-    if walking_engine.is_sitting() {
-        // Makes robot floppy except for hip joints, locked in sitting position.
-        nao_manager.unstiff_sit(UNSTIFF_PRIORITY);
-    } else {
-        walking_engine.request_sit();
-    }
-
-    nao_manager.unstiff_arms(UNSTIFF_PRIORITY);
+    step_context.request_sit();
 }

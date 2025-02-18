@@ -70,3 +70,15 @@ jobs:
       - uses: ./.github/actions/install-ubuntu-deps/
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo doc --all-features --no-deps
+
+  shear:
+    name: cargo shear
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-github-pat/
+        with:
+          CI_TOKEN: ${{ secrets.CI_TOKEN }}
+      - uses: cargo-bins/cargo-binstall@main
+      - run: cargo binstall --no-confirm cargo-shear
+      - run: cargo shear

@@ -29,10 +29,15 @@ pub struct KinematicsPlugin;
 
 impl Plugin for KinematicsPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Kinematics>()
+        app.add_systems(Startup, init_kinematics)
             .add_plugins(KinematicsVisualizationPlugin)
             .add_systems(PreUpdate, update_kinematics);
     }
+}
+
+/// System that initializes the [`Kinematics`] struct based on the current state.
+pub fn init_kinematics(mut commands: Commands, state: Res<NaoState>) {
+    commands.insert_resource(Kinematics::from(&state.position));
 }
 
 /// System that updates the [`Kinematics`] resource.

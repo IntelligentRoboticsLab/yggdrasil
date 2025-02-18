@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use std::sync::{Arc, Mutex};
+use tracing::debug;
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{InputStreamTimestamp as Timestamp, SampleRate, StreamConfig};
@@ -76,8 +77,8 @@ fn setup(mut commands: Commands) {
                     buffer[n..].fill(0.0);
                 }
             },
-            |e| {
-                tracing::warn!("Audio input stream error: {e}");
+            |err| {
+                debug!(?err, "Audio input stream error");
             },
             None,
         )

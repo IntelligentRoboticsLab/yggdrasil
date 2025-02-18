@@ -1,4 +1,4 @@
-use clap::{builder::ArgPredicate, Parser};
+use clap::Parser;
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use miette::{miette, Context, IntoDiagnostic};
@@ -109,7 +109,7 @@ pub struct ConfigOptsRobotOps {
     pub network: Option<String>,
 
     /// Scan for wired (true) or wireless (false) robots [default: false]
-    #[clap(short, long, default_value_ifs([("network", ArgPredicate::IsPresent, "true")]))]
+    #[clap(short, long, default_value = "false")]
     pub wired: bool,
 
     /// Specify bin target

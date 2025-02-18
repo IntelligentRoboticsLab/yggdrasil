@@ -5,7 +5,6 @@ pub mod primary_state;
 pub mod roles;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
-use engine::BehaviorEnginePlugin;
 
 pub use behavior_config::BehaviorConfig;
 
@@ -15,7 +14,7 @@ pub struct BehaviorPlugins;
 impl PluginGroup for BehaviorPlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
-            .add(BehaviorEnginePlugin)
+            .add(engine::BehaviorEnginePlugin)
             .add(primary_state::PrimaryStatePlugin)
     }
 }
