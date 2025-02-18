@@ -48,6 +48,8 @@ pub struct BallProposalConfig {
     pub grass_patch_y_offset_factor: f32,
     // Radius of the patch below the ball that is checked for grass, as a factor of the ball radius.
     pub grass_patch_radius_factor: f32,
+    /// Padding factor applied to final proposal box sizes to account for camera calibration error.
+    pub bbox_padding_factor: f32,
 }
 
 /// Plugin for finding possible ball locations in the camera images.
@@ -227,14 +229,29 @@ pub fn check_proposal(
     // what parts of the area beneath the ball shape are colored green and another color
     let mut surface_overlap = (0.0, 0.0);
 
+    // radius of concentric circle where we look for grass
+    let outer_radius = radius * config.grass_patch_radius_factor;
+
     // for each scanline, compute how it overlaps with the shapes
     for line in h_lines.regions() {
+        // skip iteration if current scan line is guaranteed to not overlap the area of interest
+        if ball_center.y - line.fixed_point() as f32 > radius
+            || line.start_point() as f32 - ball_center.x > outer_radius
+            || ball_center.x - line.end_point() as f32 > outer_radius
+        {
+            continue;
+        }
+        // early exit if we are already past the area of interest
+        if line.fixed_point() as f32 - ball_center.y > outer_radius {
+            break;
+        }
+
         let line_ball_overlap = compute_ball_overlap(ball_center, radius, line);
         let line_surface_overlap = compute_surface_overlap(
             ball_center,
             radius,
             radius * config.grass_patch_y_offset_factor,
-            radius * config.grass_patch_radius_factor,
+            outer_radius,
             line,
         );
 
@@ -273,11 +290,13 @@ pub fn check_proposal(
     // add proposal
     proposals.push(proposal);
 
+    let padded_radius = radius * config.bbox_padding_factor;
+
     let proposal_box = Bbox::xyxy(
-        ball_center.x - radius,
-        ball_center.y - radius,
-        ball_center.x + radius,
-        ball_center.y + radius,
+        ball_center.x - padded_radius,
+        ball_center.y - padded_radius,
+        ball_center.x + padded_radius,
+        ball_center.y + padded_radius,
     );
 
     // add detection, where the score of the bounding box is determined by the ball ratio
@@ -324,7 +343,7 @@ pub fn get_ball_proposals<T: CameraLocation>(
         };
 
         // find radius to look around the point,
-        // bbox scale is diameter, so divide by 2 to get radius
+        //  bbox scale is diameter, so divide by 2 to get radius
         let scaling = config.bounding_box_scale * 0.5;
         let radius = scaling / distance;
 
