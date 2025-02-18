@@ -4,6 +4,8 @@ max_classification_age_eye_color = 100
 [proposal.top]
 # The minimum ratio of white pixels in the range around the proposed ball
 ball_ratio = 0.6
+# The ratio of green pixels in the patch below the ball.
+grass_ratio = 0.9
 # Height/width of the bounding box around the ball
 bounding_box_scale = 85.0
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
@@ -13,10 +15,20 @@ min_ball_radius = 10.0
 # The maximum area of intersection between a detected robot and a ball in pixels.
 # If the area of intersection is larger than this value, the proposal is discarded.
 max_robot_intersection = 0.0
+# Maximum allowed error factor on the computed ball radius.
+ball_radius_max_error = 1.5
+# Y offset from the ball center from where the patch below the ball is checked for grass, as a factor of the ball radius.
+grass_patch_y_offset_factor = 0.5
+# Radius of the patch below the ball that is checked for grass, as a factor of the ball radius.
+grass_patch_radius_factor = 1.5
+# Padding factor applied to final proposal box sizes to account for camera calibration error.
+bbox_padding_factor = 1.1
 
 [proposal.bottom]
 # The minimum ratio of white pixels in the range around the proposed ball
 ball_ratio = 0.7
+# The ratio of green pixels in the patch below the ball.
+grass_ratio = 0.9
 # Height/width of the bounding box around the ball
 bounding_box_scale = 35.0
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
@@ -26,6 +38,14 @@ min_ball_radius = 12.0
 # The maximum area of intersection between a detected robot and a ball in pixels.
 # If the area of intersection is larger than this value, the proposal is discarded.
 max_robot_intersection = 0.0
+# Maximum allowed error factor on the computed ball radius.
+ball_radius_max_error = 1.5
+# Y offset from the ball center from where the patch below the ball is checked for grass, as a factor of the ball radius.
+grass_patch_y_offset_factor = 0.5
+# Radius of the patch below the ball that is checked for grass, as a factor of the ball radius.
+grass_patch_radius_factor = 1.5
+# Padding factor applied to final proposal box sizes to account for camera calibration error.
+bbox_padding_factor = 1.1
 
 [classifier]
 # The threshold for the classifier to consider a proposal a ball

@@ -1,11 +1,10 @@
 //! See [`BallProposalPlugin`].
 
 use bevy::prelude::*;
-use std::ops::Add;
 
 use heimdall::{CameraLocation, CameraMatrix, CameraPosition};
 use itertools::Itertools;
-use nalgebra::Point2;
+use nalgebra::{point, Point2};
 
 use serde::{Deserialize, Serialize};
 
@@ -15,8 +14,8 @@ use crate::{
     vision::{
         body_contour::{update_body_contours, BodyContour},
         camera::{init_camera, Image},
-        scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLines},
-        util::bbox::Bbox,
+        scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLine, ScanLines},
+        util::bbox::{Bbox, Xyxy},
     },
 };
 
@@ -33,6 +32,8 @@ pub struct BallProposalConfigs {
 pub struct BallProposalConfig {
     /// The minimum ratio of white or black pixels in the range around the proposed ball
     pub ball_ratio: f32,
+    /// The ratio of green pixels in the patch below the ball.
+    pub grass_ratio: f32,
     /// Height/width of the bounding box around the ball
     pub bounding_box_scale: f32,
     /// The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
@@ -41,6 +42,14 @@ pub struct BallProposalConfig {
     pub min_ball_radius: f32,
     /// The maximum area of the intersection between a detected robot and a proposed ball in pixels.
     pub max_robot_intersection: f32,
+    // Maximum allowed error factor on the computed ball radius.
+    pub ball_radius_max_error: f32,
+    // Y offset from the ball center from where the patch below the ball is checked for grass, as a factor of the ball radius.
+    pub grass_patch_y_offset_factor: f32,
+    // Radius of the patch below the ball that is checked for grass, as a factor of the ball radius.
+    pub grass_patch_radius_factor: f32,
+    /// Padding factor applied to final proposal box sizes to account for camera calibration error.
+    pub bbox_padding_factor: f32,
 }
 
 /// Plugin for finding possible ball locations in the camera images.
@@ -123,74 +132,179 @@ pub fn update_ball_proposals<T: CameraLocation>(
     // }
 }
 
-#[derive(Debug, Default, Clone)]
-struct BallColorCounter {
-    ball_color: f32,
-    other: f32,
+/// Computes the overlap of two lines.
+#[must_use]
+pub fn range_overlap((start0, end0): (f32, f32), (start1, end1): (f32, f32)) -> f32 {
+    (end0.min(end1) - start0.max(start1)).max(0.0)
 }
 
-impl BallColorCounter {
-    fn from_regions<'a>(
-        start: f32,
-        end: f32,
-        regions: impl Iterator<Item = &'a ClassifiedScanLineRegion>,
-    ) -> Self {
-        let overlap = |region_start: usize, region_end: usize| -> f32 {
-            range_overlap((start, end), (region_start as f32, region_end as f32))
-                .unwrap_or_default()
-        };
+/// Computes the overlap of a scanline with the shape of the ball.
+#[must_use]
+pub fn compute_ball_overlap(
+    ball_center: Point2<f32>,
+    radius: f32,
+    line: &ClassifiedScanLineRegion,
+) -> f32 {
+    // line y relative to ball center
+    let y = line.fixed_point() as f32 - ball_center.y;
+    // y lies below or above ball
+    if y.abs() >= radius {
+        return 0.0;
+    }
 
-        let (white, other) =
-            regions.fold((0.0, 0.0), |(white, other), region| match region.color() {
-                RegionColor::WhiteOrBlack => (
-                    white + overlap(region.start_point(), region.end_point()),
-                    other,
-                ),
-                _ => (
-                    white,
-                    other + overlap(region.start_point(), region.end_point()),
-                ),
-            });
+    // circle boundary x coordinate relative to circle center
+    let x = (radius * radius - y * y).sqrt();
+    // overlap between shape and scanline
+    range_overlap(
+        (ball_center.x - x, ball_center.x + x),
+        (line.start_point() as f32, line.end_point() as f32),
+    )
+}
 
-        Self {
-            ball_color: white,
-            other,
+/// Computes the overlap of a scanline with the shape of the area underneath the ball.
+/// Specifically, that shape is the bottom half of the outer circle that encompasses the ball.
+///
+/// # Args
+/// - `radius`: radius of the ball
+/// - `start_y`: at which y the circle is cut off to determine the bottom part of the circle
+/// - `outer_radius`: radius of the circle around the ball
+#[must_use]
+pub fn compute_surface_overlap(
+    ball_center: Point2<f32>,
+    radius: f32,
+    start_y: f32,
+    outer_radius: f32,
+    line: &ClassifiedScanLineRegion,
+) -> f32 {
+    // line y relative to ball center
+    let y = line.fixed_point() as f32 - ball_center.y;
+    // ? and y lies on or outside outer circle
+    if y < start_y || y >= outer_radius {
+        return 0.0;
+    }
+
+    let inner_x = f32::max(0.0, (radius * radius - y * y).sqrt());
+    let outer_x = (outer_radius * outer_radius - y * y).sqrt();
+
+    // compute the overlap of the outer circle minus the ball circle
+    let left_overlap = range_overlap(
+        (ball_center.x - outer_radius, ball_center.x - inner_x),
+        (line.start_point() as f32, line.end_point() as f32),
+    );
+
+    let right_overlap = range_overlap(
+        (ball_center.x + inner_x, ball_center.x + outer_x),
+        (line.start_point() as f32, line.end_point() as f32),
+    );
+
+    left_overlap + right_overlap
+}
+
+/// Checks if a proposed circular area in the camera image at center `ball_center` with radius `radius` is likely to
+/// be a ball. If so, it is added to `proposals` so a more accurate, but more costly, classifier can later on
+/// classify the sample.
+/// The check consists out of two parts:
+/// 1. Shape check: What are the colors that constitute the proposed circular area?
+///     If the colors are predominantly black and white, it could be a ball.
+/// 2. What are the colors underneath the ball? We know the ball lies on grass, hence
+///     if the colors are predominantly green, the proposal could be a ball.
+///
+/// # Args
+/// - `ball_center`: proposed ball center
+/// - `radius`: expected ball radius for `ball_center`
+/// - `distance`: distance from ball to camera
+/// - `proposals`: proposal info
+/// - `detections`: proposal bounding boxes with relative quality score
+pub fn check_proposal(
+    ball_center: Point2<f32>,
+    radius: f32,
+    distance: f32,
+    proposals: &mut Vec<BallProposal>,
+    detections: &mut Vec<(Bbox<Xyxy>, f32)>,
+    h_lines: &ScanLine,
+    config: &BallProposalConfig,
+) {
+    // what parts of the the ball shape are colored white/black and another color
+    let mut ball_overlap = (0.0, 0.0);
+    // what parts of the area beneath the ball shape are colored green and another color
+    let mut surface_overlap = (0.0, 0.0);
+
+    // radius of concentric circle where we look for grass
+    let outer_radius = radius * config.grass_patch_radius_factor;
+
+    // for each scanline, compute how it overlaps with the shapes
+    for line in h_lines.regions() {
+        // skip iteration if current scan line is guaranteed to not overlap the area of interest
+        if ball_center.y - line.fixed_point() as f32 > radius
+            || line.start_point() as f32 - ball_center.x > outer_radius
+            || ball_center.x - line.end_point() as f32 > outer_radius
+        {
+            continue;
+        }
+        // early exit if we are already past the area of interest
+        if line.fixed_point() as f32 - ball_center.y > outer_radius {
+            break;
+        }
+
+        let line_ball_overlap = compute_ball_overlap(ball_center, radius, line);
+        let line_surface_overlap = compute_surface_overlap(
+            ball_center,
+            radius,
+            radius * config.grass_patch_y_offset_factor,
+            outer_radius,
+            line,
+        );
+
+        match line.color() {
+            RegionColor::WhiteOrBlack => {
+                ball_overlap.0 += line_ball_overlap;
+                surface_overlap.1 += line_surface_overlap;
+            }
+            RegionColor::Green => {
+                ball_overlap.1 += line_ball_overlap;
+                surface_overlap.0 += line_surface_overlap;
+            }
+            RegionColor::Unknown => {
+                ball_overlap.1 += line_ball_overlap;
+                surface_overlap.1 += line_surface_overlap;
+            }
         }
     }
 
-    fn ball_ratio(&self) -> f32 {
-        if self.other == 0.0 && self.ball_color == 0.0 {
-            return 0.0;
-        }
+    // fraction of the ball proposal that is ball-colored
+    let ball_ratio = ball_overlap.0 / (ball_overlap.0 + ball_overlap.1);
+    // fraction of the surface underneath the ball proposal that is grass-colored
+    let grass_ratio = surface_overlap.0 / (surface_overlap.0 + surface_overlap.1);
 
-        self.ball_color / (self.other + self.ball_color)
+    // abort if fractions do not equal or exceed the configured minimum requirements
+    if ball_ratio < config.ball_ratio || grass_ratio < config.grass_ratio {
+        return;
     }
+
+    let proposal = BallProposal {
+        position: point![ball_center.x as usize, ball_center.y as usize],
+        scale: radius * 2.0,
+        distance_to_ball: distance,
+    };
+
+    // add proposal
+    proposals.push(proposal);
+
+    let padded_radius = radius * config.bbox_padding_factor;
+
+    let proposal_box = Bbox::xyxy(
+        ball_center.x - padded_radius,
+        ball_center.y - padded_radius,
+        ball_center.x + padded_radius,
+        ball_center.y + padded_radius,
+    );
+
+    // add detection, where the score of the bounding box is determined by the ball ratio
+    detections.push((proposal_box, ball_ratio));
 }
 
-impl Add for BallColorCounter {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            other: self.other + rhs.other,
-            ball_color: self.ball_color + rhs.ball_color,
-        }
-    }
-}
-
-fn range_overlap((start1, end1): (f32, f32), (start2, end2): (f32, f32)) -> Option<f32> {
-    let start_overlap = start1.max(start2);
-    let end_overlap = end1.min(end2);
-
-    // Check if there is an overlap
-    if start_overlap < end_overlap {
-        Some(end_overlap - start_overlap)
-    } else {
-        None
-    }
-}
-
-fn get_ball_proposals<T: CameraLocation>(
+#[must_use]
+pub fn get_ball_proposals<T: CameraLocation>(
     scan_lines: &ScanLines<T>,
     matrix: &CameraMatrix<T>,
     config: &BallProposalConfig,
@@ -201,28 +315,26 @@ fn get_ball_proposals<T: CameraLocation>(
     let mut proposals = Vec::new();
     let mut detections = Vec::new();
     for (left, middle, right) in h_lines.regions().tuple_windows() {
-        // Check if the three scanlines have the same height
-        if (left.fixed_point() != middle.fixed_point())
-            || (middle.fixed_point() != right.fixed_point())
+        // check if scanlines are on same height
+        if left.fixed_point() != middle.fixed_point() || middle.fixed_point() != right.fixed_point()
         {
             continue;
         }
-
-        // Check if the white region is surrounded by green regions
+        // check if a white scanline is surrounded by green scanlines
         let (RegionColor::Green, RegionColor::WhiteOrBlack, RegionColor::Green) =
             (left.color(), middle.color(), right.color())
         else {
             continue;
         };
 
-        // Middle of the white region
+        // middle of the white region
         let mid_point = middle.line_spot();
 
         if body_contour.is_part_of_body(mid_point) {
             continue;
         }
 
-        // Distance to the ball
+        // distance to the ball
         let Ok(distance) = matrix
             .pixel_to_ground(mid_point, 0.0)
             .map(|p| p.coords.magnitude())
@@ -230,8 +342,8 @@ fn get_ball_proposals<T: CameraLocation>(
             continue;
         };
 
-        // Find radius to look around the point
-        // bbox scale is diameter, so divide by 2 to get radius
+        // find radius to look around the point,
+        //  bbox scale is diameter, so divide by 2 to get radius
         let scaling = config.bounding_box_scale * 0.5;
         let radius = scaling / distance;
 
@@ -239,65 +351,59 @@ fn get_ball_proposals<T: CameraLocation>(
             continue;
         }
 
-        // Scan circularly around the ball to find in the scanlines:
-        // - The average y position of the ball
-        // - The ratio of white pixels in the region
-        let (y_locations, color_count) = (-radius as usize..=radius as usize).fold(
-            (Vec::new(), BallColorCounter::default()),
-            |(mut valid_locs, count), y| {
-                let x = (radius * radius - (y * y) as f32).sqrt();
+        // if the white line is long, divvy up white segment in multiple potential ball centers
+        if middle.length() > (radius * 2.0 * config.ball_radius_max_error) as usize {
+            // check point on left and right side of the white scanline
+            let center = point![
+                middle.start_point() as f32 + radius,
+                middle.fixed_point() as f32
+            ];
+            check_proposal(
+                center,
+                radius,
+                distance,
+                &mut proposals,
+                &mut detections,
+                h_lines,
+                config,
+            );
 
-                let same_y_regions = h_lines
-                    .regions()
-                    .filter(|region| region.fixed_point() == mid_point.y as usize + y);
-
-                let new_count = BallColorCounter::from_regions(
-                    mid_point.x - x,
-                    mid_point.x + x,
-                    same_y_regions,
-                );
-
-                // only count the y location if there are actually white pixels in the region
-                if new_count.ball_color > 0.0 {
-                    valid_locs.push(mid_point.y as usize + y);
-                }
-
-                (valid_locs, count + new_count)
-            },
-        );
-
-        if color_count.ball_ratio() < config.ball_ratio {
-            continue;
+            let center = point![
+                middle.end_point() as f32 - radius,
+                middle.fixed_point() as f32
+            ];
+            check_proposal(
+                center,
+                radius,
+                distance,
+                &mut proposals,
+                &mut detections,
+                h_lines,
+                config,
+            );
         }
-
-        let y_len = y_locations.len();
-        let y_avg = y_locations.into_iter().sum::<usize>() as f32 / y_len as f32;
-
-        let new_mid_point = Point2::new(mid_point.x, y_avg);
-
-        let proposal = BallProposal {
-            position: new_mid_point.map(|x| x as usize),
-            scale: config.bounding_box_scale / distance,
-            distance_to_ball: distance,
-        };
-
-        proposals.push(proposal);
-        let proposal_box = Bbox::xyxy(
-            new_mid_point.x - radius,
-            new_mid_point.y - radius,
-            new_mid_point.x + radius,
-            new_mid_point.y + radius,
-        );
-
-        detections.push((proposal_box, color_count.ball_ratio()));
+        // otherwise only investigate center
+        else {
+            check_proposal(
+                mid_point,
+                radius,
+                distance,
+                &mut proposals,
+                &mut detections,
+                h_lines,
+                config,
+            );
+        }
     }
 
+    // apply non-max suppression
     let indices = crate::vision::util::non_max_suppression(&detections, config.nms_threshold);
+    proposals = indices.iter().map(|&i| proposals[i].clone()).collect();
 
-    let proposals: Vec<_> = indices.iter().map(|&i| proposals[i].clone()).collect();
-    let image = scan_lines.image().clone();
-
-    BallProposals { image, proposals }
+    BallProposals {
+        image: scan_lines.image().clone(),
+        proposals,
+    }
 }
 
 fn init_ball_proposals<T: CameraLocation>(mut commands: Commands, image: Res<Image<T>>) {
