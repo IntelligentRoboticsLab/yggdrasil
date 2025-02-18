@@ -1,7 +1,7 @@
 use std::{
-    ops::RangeInclusive, sync::{Arc, RwLock}
+    ops::RangeInclusive,
+    sync::{Arc, RwLock},
 };
-
 
 use re_control_comms::{protocol::ViewerMessage, viewer::ControlViewerHandle};
 use rerun::external::{egui, re_ui::UiExt};
@@ -33,11 +33,14 @@ pub fn chromaticity_ui(
             tracing::error!("Failed to lock states");
             return;
         };
-    
-        threshold_slider(ui, &mut locked_states.chromaticity_state.green_threshold, handle);
+
+        threshold_slider(
+            ui,
+            &mut locked_states.chromaticity_state.green_threshold,
+            handle,
+        );
     });
 }
-
 
 fn threshold_slider(
     ui: &mut egui::Ui,

@@ -26,7 +26,11 @@ use rerun::external::{
 use crate::{
     connection::ConnectionState,
     ui::{
-        camera_calibration::{camera_calibration_ui, CameraState}, chromaticity::{chromaticity_ui, ChromaticityState}, debug_systems::{debug_enabled_systems_ui, DebugEnabledState}, resource::{resource_ui, ResourcesState}, selection_ui
+        camera_calibration::{camera_calibration_ui, CameraState},
+        chromaticity::{chromaticity_ui, ChromaticityState},
+        debug_systems::{debug_enabled_systems_ui, DebugEnabledState},
+        resource::{resource_ui, ResourcesState},
+        selection_ui,
     },
 };
 
@@ -225,11 +229,7 @@ A view to control the robot",
                     ControlViewerSection::CameraCalibration,
                     "CameraCalibration",
                 );
-                ui.selectable_value(
-                    selected,
-                    ControlViewerSection::Chromaticity,
-                    "Chromaticity",
-                );
+                ui.selectable_value(selected, ControlViewerSection::Chromaticity, "Chromaticity");
             });
 
         Ok(())
@@ -293,7 +293,7 @@ pub fn handle_message(message: &RobotMessage, data: Arc<RwLock<ControlViewerData
             camera_config.current_position = *camera_position;
             camera.extrinsic_rotation.new_state(*extrinsic_rotation);
         }
-        RobotMessage::Chromaticity { green_threshold } =>{
+        RobotMessage::Chromaticity { green_threshold } => {
             let mut locked_data = data.write().expect("Failed to lock viewer data");
             locked_data.chromaticity_state.green_threshold = *green_threshold;
         }

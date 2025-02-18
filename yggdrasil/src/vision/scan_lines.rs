@@ -683,6 +683,7 @@ impl RegionColor {
             return RegionColor::WhiteOrBlack;
         }
 
+        // use chromaticity to find green pixels
         if g_chromaticity > green_threshold {
             return RegionColor::Green;
         }
@@ -691,19 +692,8 @@ impl RegionColor {
             return RegionColor::WhiteOrBlack;
         }
 
-        // if Self::is_green(config, yhs) {
-        //     return RegionColor::Green;
-        // }
-
         RegionColor::Unknown
     }
-
-    // Old version for color detection, keeping it to compare with new version
-    // fn is_green(config: &ScanLinesConfig, (y, h, s): (f32, f32, f32)) -> bool {
-    //     y <= config.max_field_luminance
-    //         && s >= config.min_field_saturation
-    //         && (config.min_field_hue..=config.max_field_hue).contains(&h)
-    // }
 
     fn is_white(config: &ScanLinesConfig, (y, _h, s): (f32, f32, f32)) -> bool {
         y >= config.min_white_luminance && s <= config.max_white_saturation
