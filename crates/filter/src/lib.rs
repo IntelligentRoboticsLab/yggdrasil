@@ -167,6 +167,12 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
         self.covariance
     }
 
+    /// The current filter state covariance as a mutable reference
+    #[must_use]
+    pub fn covariance_mut(&mut self) -> &mut CovarianceMatrix<D_STATE> {
+        &mut self.covariance
+    }
+
     /// Predict the next filter state based on the motion transition model and process noise.
     pub fn predict<F>(
         &mut self,
