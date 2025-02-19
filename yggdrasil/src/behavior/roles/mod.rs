@@ -2,10 +2,10 @@
 
 mod defender;
 mod goalkeeper;
-mod instinct;
+// mod instinct;
 mod striker;
 
 pub use defender::{Defender, DefenderRolePlugin};
 pub use goalkeeper::{Goalkeeper, GoalkeeperRolePlugin};
-pub use instinct::{Instinct, InstinctRolePlugin};
+// pub use instinct::{Instinct, InstinctRolePlugin};
 pub use striker::{Striker, StrikerRolePlugin};

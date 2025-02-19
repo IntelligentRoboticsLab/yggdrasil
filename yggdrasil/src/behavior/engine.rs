@@ -1,5 +1,7 @@
 use bevy::prelude::*;
+use bifrost::communication::{GameControllerMessage, GamePhase};
 use heimdall::{Bottom, Top};
+use nalgebra::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
@@ -11,13 +13,13 @@ use crate::{
 use super::{
     behaviors::{
         CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, Sitting, SittingBehaviorPlugin,
-        Stand, StandBehaviorPlugin, StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin,
-        StartUpBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSetBehaviorPlugin,
+        Stand, StandBehaviorPlugin, StandLookAt, StandLookAtBehaviorPlugin, Standup,
+        StandupBehaviorPlugin, StartUpBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin,
+        WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
-        DefenderRolePlugin, Goalkeeper, GoalkeeperRolePlugin, Instinct, InstinctRolePlugin,
-        Striker, StrikerRolePlugin,
+        Defender, DefenderRolePlugin, Goalkeeper, GoalkeeperRolePlugin, Striker, StrikerRolePlugin,
     },
 };
 
@@ -39,7 +41,6 @@ impl Plugin for BehaviorEnginePlugin {
                 StartUpBehaviorPlugin,
                 WalkToBehaviorPlugin,
                 WalkToSetBehaviorPlugin,
-                InstinctRolePlugin,
                 DefenderRolePlugin,
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
@@ -103,11 +104,11 @@ pub trait Behavior: Resource {
 #[derive(States, Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub enum Role {
     #[default]
-    Instinct,
+    // Instinct,
+    Disabled,
     Striker,
     Goalkeeper,
     Defender,
-    Disabled,
 }
 
 impl Role {
@@ -117,7 +118,7 @@ impl Role {
         match player_number {
             1 => commands.set_role(Goalkeeper),
             5 => commands.set_role(Striker::WalkToBall),
-            _ => commands.set_role(Instinct),
+            _ => commands.set_role(Defender),
         }
     }
 
@@ -147,7 +148,6 @@ pub fn in_role<T: Roles>(state: Option<Res<State<Role>>>) -> bool {
 pub fn role_base(
     mut commands: Commands,
     state: Res<State<BehaviorState>>,
-    role: Res<State<Role>>,
     gait: Res<State<Gait>>,
     head_buttons: Res<HeadButtons>,
     primary_state: Res<PrimaryState>,
@@ -156,24 +156,23 @@ pub fn role_base(
     player_config: Res<PlayerConfig>,
     top_balls: Res<Balls<Top>>,
     bottom_balls: Res<Balls<Bottom>>,
+    game_controller_message: Option<Res<GameControllerMessage>>,
 ) {
+    commands.disable_role();
     let behavior = state.get();
 
     if behavior == &BehaviorState::StartUp {
         if *gait == Gait::Sitting || head_buttons.all_pressed() {
             commands.set_behavior(Sitting);
-            commands.disable_role();
         }
         if *primary_state == PrimaryState::Initial {
             commands.set_behavior(Stand);
-            commands.disable_role();
         }
         return;
     }
 
     if *primary_state == PrimaryState::Sitting {
         commands.set_behavior(Sitting);
-        commands.disable_role();
         return;
     }
 
@@ -185,23 +184,31 @@ pub fn role_base(
     match fall_state.as_ref() {
         FallState::Lying(_) => {
             commands.set_behavior(Standup::default());
-            commands.disable_role();
             return;
         }
         FallState::Falling(_) => {
             if !matches!(*primary_state, PrimaryState::Penalized) {
                 commands.set_behavior(CatchFall);
-                commands.disable_role();
                 return;
             }
         }
         FallState::None => {}
     }
 
-    if let PrimaryState::Penalized = primary_state.as_ref() {
-        commands.set_behavior(Stand);
-        commands.disable_role();
-        return;
+    // if let PrimaryState::Penalized = primary_state.as_ref() {
+    //     commands.set_behavior(Stand);
+    //     commands.disable_role();
+    //     return;
+    // }
+    if let Some(message) = game_controller_message {
+        if message.game_phase == GamePhase::PenaltyShoot {
+            if message.kicking_team == player_config.team_number {
+                commands.set_role(Striker::WalkWithBall);
+            } else {
+                commands.set_behavior(Stand);
+                return;
+            }
+        }
     }
 
     let most_confident_ball = bottom_balls
@@ -209,11 +216,27 @@ pub fn role_base(
         .map(|b| b.position)
         .or(top_balls.most_confident_ball().map(|b| b.position));
 
-    if let Role::Disabled = role.as_ref().get() {
-        Role::assign_role(
-            commands,
-            most_confident_ball.is_some(),
-            player_config.player_number,
-        );
+    let ball_or_origin = most_confident_ball.unwrap_or(Point2::origin());
+
+    match *primary_state {
+        PrimaryState::Sitting => commands.set_behavior(Sitting),
+        PrimaryState::Standby
+        | PrimaryState::Penalized
+        | PrimaryState::Finished
+        | PrimaryState::Calibration => commands.set_behavior(Stand),
+        PrimaryState::Initial => commands.set_behavior(StandLookAt {
+            target: Point2::origin(),
+        }),
+        PrimaryState::Ready => commands.set_behavior(WalkToSet {}),
+        PrimaryState::Set => commands.set_behavior(StandLookAt {
+            target: ball_or_origin,
+        }),
+        PrimaryState::Playing { .. } => {
+            Role::assign_role(
+                commands,
+                most_confident_ball.is_some(),
+                player_config.player_number,
+            );
+        }
     }
 }
