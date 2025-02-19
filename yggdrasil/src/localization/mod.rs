@@ -31,7 +31,7 @@ impl Plugin for LocalizationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             LineCorrespondencePlugin::<Top>::default(),
-            LineCorrespondencePlugin::<Bottom>::default(),
+            // LineCorrespondencePlugin::<Bottom>::default(),
             PoseFilterPlugin,
         ))
         .add_systems(PostStartup, (init_pose, setup_pose_visualization))

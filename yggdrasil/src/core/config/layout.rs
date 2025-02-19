@@ -128,6 +128,7 @@ pub enum FieldLine {
     Circle(Circle),
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum Direction {
     AlongX,
     AlongY,

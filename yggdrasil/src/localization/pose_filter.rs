@@ -79,6 +79,13 @@ impl StateTransform<3> for RobotPose {
 #[derive(Component, Deref, DerefMut)]
 pub struct RobotPoseFilter(UnscentedKalmanFilter<3, 7, RobotPose>);
 
+impl RobotPoseFilter {
+    pub fn fix_covariance(&mut self) {
+        let cov = self.covariance_mut();
+        *cov = (cov.clone() + cov.transpose()) / 2.0;
+    }
+}
+
 fn initialize_particles(
     mut commands: Commands,
     layout: Res<LayoutConfig>,
@@ -144,6 +151,11 @@ fn line_update(
                 // the line on the field that the robot is expected to see
                 let projected = correspondence.projected_line;
 
+                // TODO: remove and make validity check
+                if projected.length() < 1.0 {
+                    continue;
+                }
+
                 let distance = match direction {
                     Direction::AlongX => detected.center().y - projected.center().y,
                     Direction::AlongY => detected.center().x - projected.center().x,
@@ -152,16 +164,17 @@ fn line_update(
                 // angle difference between the detected and projected lines
                 let angle_diff = detected.normal().angle(&projected.normal());
 
-                let measurement = match direction {
-                    Direction::AlongX => LineMeasurement {
-                        distance: detected.center().y - distance,
-                        angle: angle_diff,
-                    },
-                    Direction::AlongY => LineMeasurement {
-                        distance: detected.center().x + distance,
-                        angle: angle_diff,
-                    },
+                let measurement = LineMeasurement {
+                    distance,
+                    angle: angle_diff,
                 };
+
+                particle.fix_covariance();
+
+                println!(
+                    "Updating particle in direction {:?} with {:?}",
+                    direction, measurement
+                );
 
                 // update the particle with the difference
                 particle
@@ -219,6 +232,7 @@ fn initial_particles(
     })
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct LineMeasurement {
     pub distance: f32,
     pub angle: f32,
