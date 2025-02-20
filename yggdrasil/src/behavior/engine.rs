@@ -1,7 +1,12 @@
 use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
 use heimdall::{Bottom, Top};
+
 use nalgebra::Point2;
+use ml::{
+    prelude::{MlTaskCommandsExt, ModelExecutor},
+    MlModel,
+};
 
 use crate::{
     core::config::showtime::PlayerConfig,
@@ -54,6 +59,33 @@ impl Plugin for BehaviorEnginePlugin {
     }
 }
 
+pub trait RlBehaviorInput<T> {
+    fn to_input(&self) -> T;
+}
+
+pub trait RlBehaviorOutput<T> {
+    fn from_output(output: T) -> Self;
+}
+
+pub fn run_rl_behavior<M, I, O>(
+    commands: &mut Commands,
+    model_executor: &mut ModelExecutor<M>,
+    input: I,
+) -> O
+where
+    I: RlBehaviorInput<M::Inputs>,
+    O: RlBehaviorOutput<M::Outputs>,
+    M: MlModel,
+    <M as ml::MlModel>::Outputs: std::marker::Send,
+{
+    O::from_output(
+        commands
+            .infer_model(model_executor)
+            .with_input(&input.to_input())
+            .spawn_blocking(|output| output),
+    )
+}
+
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BehaviorState {
     Walk,
@@ -67,6 +99,7 @@ pub enum BehaviorState {
     StartUp,
     WalkTo,
     WalkToSet,
+    RlExampleBehavior,
 }
 
 #[must_use]
