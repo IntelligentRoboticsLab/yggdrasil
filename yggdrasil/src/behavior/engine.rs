@@ -104,7 +104,6 @@ pub trait Behavior: Resource {
 #[derive(States, Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub enum Role {
     #[default]
-    // Instinct,
     Disabled,
     Striker,
     Goalkeeper,
@@ -195,11 +194,6 @@ pub fn role_base(
         FallState::None => {}
     }
 
-    // if let PrimaryState::Penalized = primary_state.as_ref() {
-    //     commands.set_behavior(Stand);
-    //     commands.disable_role();
-    //     return;
-    // }
     if let Some(message) = game_controller_message {
         if message.game_phase == GamePhase::PenaltyShoot {
             if message.kicking_team == player_config.team_number {
