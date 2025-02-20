@@ -1,5 +1,6 @@
 mod catchfall;
 mod observe;
+mod rl_example;
 mod sitting;
 mod stand;
 mod stand_look;
