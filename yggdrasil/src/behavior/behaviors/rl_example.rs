@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use heimdall::{Bottom, Top};
 use ml::{prelude::ModelExecutor, MlModel};
 use nalgebra::Point2;
 
@@ -11,6 +12,7 @@ use crate::{
     },
     localization::RobotPose,
     motion::walking_engine::{step::Step, step_context::StepContext},
+    vision::ball_detection::classifier::Balls,
 };
 
 pub struct RlBehaviorPlugin;
@@ -39,20 +41,38 @@ impl Behavior for RlExampleBehavior {
 
 struct Input<'d> {
     robot_pose: &'d RobotPose,
-    target: &'d Point2<f32>,
+    ball_position: &'d Point2<f32>,
+    goal_position: &'d Point2<f32>,
+
+    field_width: f32,
+    field_height: f32,
 }
 
 impl RlBehaviorInput<ModelInput> for Input<'_> {
     fn to_input(&self) -> ModelInput {
-        let translation = self.robot_pose.inner.translation;
-        let rotation = self.robot_pose.inner.rotation;
+        let robot_position = self.robot_pose.inner.translation.vector.xy();
+        let robot_angle = self.robot_pose.inner.rotation.angle();
+
+        let relative_ball_position = self.ball_position - robot_position;
+        let relative_ball_angle = relative_ball_position.y.atan2(relative_ball_position.x);
+
+        let relative_goal_position = self.goal_position - robot_position;
+        let relative_goal_angle = relative_goal_position.y.atan2(relative_goal_position.x);
+
+        let last_seen_ball_pos_x = (self.ball_position.x - robot_position.x) / self.field_height;
+        let last_seen_ball_pos_y = (self.ball_position.y - robot_position.y) / self.field_height;
 
         vec![
-            translation.x,
-            translation.y,
-            rotation.angle(),
-            self.target.x,
-            self.target.y,
+            self.ball_position.x / self.field_height,
+            self.ball_position.y / self.field_width,
+            (relative_ball_angle - robot_angle).sin(),
+            (relative_ball_angle - robot_angle).sin(),
+            (self.goal_position.x - self.ball_position.x) / self.field_height,
+            (self.goal_position.y - self.ball_position.y) / self.field_width,
+            (relative_goal_angle - robot_angle).sin(),
+            (relative_goal_angle - robot_angle).cos(),
+            last_seen_ball_pos_x,
+            last_seen_ball_pos_y,
         ]
     }
 }
@@ -80,11 +100,26 @@ pub fn behave(
     mut model_executor: ResMut<ModelExecutor<RlExampleBehaviorModel>>,
     mut step_context: ResMut<StepContext>,
     robot_pose: Res<RobotPose>,
+    balls_top: Res<Balls<Top>>,
+    balls_bottom: Res<Balls<Bottom>>,
 ) {
-    let target = Point2::new(0.0, 0.0);
+    let Some(most_confident_ball) = balls_bottom
+        .most_confident_ball()
+        .map(|b| b.position)
+        .or(balls_top.most_confident_ball().map(|b| b.position))
+    else {
+        return;
+    };
+
+    let goal_position = Point2::new(4_500.0, 0.0);
+
     let input = Input {
         robot_pose: &robot_pose,
-        target: &target,
+        ball_position: &most_confident_ball,
+        goal_position: &goal_position,
+
+        field_width: 6.0,
+        field_height: 9.0,
     };
 
     let output: Output = run_rl_behavior(&mut commands, &mut *model_executor, input);
