@@ -13,7 +13,7 @@ use crate::{
         in_behavior, spawn_rl_behavior, Behavior, BehaviorState, RlBehaviorInput, RlBehaviorOutput,
     },
     localization::RobotPose,
-    motion::walking_engine::{step::Step, step_context::StepContext},
+    motion::walking_engine::{config::WalkingEngineConfig, step::Step, step_context::StepContext},
     vision::ball_detection::classifier::Balls,
 };
 
@@ -98,11 +98,10 @@ impl RlBehaviorOutput<ModelOutput> for Output {
         let (forward, left, turn) = output;
 
         Self {
-            // TODO: Convert forward and left to metres.
             step: Step {
                 forward,
                 left,
-                turn: turn * f32::consts::PI,
+                turn,
             },
         }
     }
@@ -137,6 +136,10 @@ fn run_inference(
     spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
 }
 
-fn handle_inference_output(mut step_context: ResMut<StepContext>, output: Res<Output>) {
-    step_context.request_walk(output.step);
+fn handle_inference_output(
+    mut step_context: ResMut<StepContext>,
+    output: Res<Output>,
+    config: Res<WalkingEngineConfig>,
+) {
+    step_context.request_walk(output.step * config.max_step_size);
 }
