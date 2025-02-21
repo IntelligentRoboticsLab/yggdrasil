@@ -155,7 +155,6 @@ fn run_inference(
         field_height: 9.0,
     };
 
-    eprintln!("Spawn RL behavior");
     running_inference.deref_mut().0 = true;
     spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
 }
@@ -179,14 +178,8 @@ fn handle_inference_output(
         .map(|b| b.position)
         .or(balls_top.most_confident_ball().map(|b| b.position))
     else {
-        eprintln!("RL: no balls found");
         return;
     };
-
-    eprintln!(
-        "Setting step using RL output\n{:?}",
-        output.step * config.max_step_size
-    );
 
     step_context.request_walk(output.step * config.max_step_size);
 
