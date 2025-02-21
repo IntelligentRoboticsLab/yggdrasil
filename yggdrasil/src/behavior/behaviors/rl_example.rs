@@ -1,3 +1,5 @@
+use std::f32;
+
 use bevy::prelude::*;
 use heimdall::{Bottom, Top};
 use ml::{prelude::ModelExecutor, MlModel};
@@ -96,10 +98,11 @@ impl RlBehaviorOutput<ModelOutput> for Output {
         let (forward, left, turn) = output;
 
         Self {
+            // TODO: Convert forward and left to metres.
             step: Step {
                 forward,
                 left,
-                turn,
+                turn: turn * f32::consts::PI,
             },
         }
     }
@@ -120,7 +123,7 @@ fn run_inference(
         return;
     };
 
-    let goal_position = Point2::new(4_500.0, 0.0);
+    let goal_position = Point2::new(4.5, 0.0);
 
     let input = Input {
         robot_pose: &robot_pose,
