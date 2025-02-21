@@ -64,7 +64,8 @@ stopping_foot_lift = 0.01
 max_acceleration = { forward = 0.01, left = 0.01, turn = 0.3 }
 
 # The step size is clipped to this value; in both directions (e.g. range for forward is -max_step_size to max_step_size).
-max_step_size = { forward = 0.08, left = 0.08, turn = 1.0 }
+# max_step_size = { forward = 0.08, left = 0.08, turn = 1.0 }
+max_step_size = { forward = 0.04, left = 0.04, turn = 1.0 }
 
 
 [hip_height]
