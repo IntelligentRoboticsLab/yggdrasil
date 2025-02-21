@@ -12,6 +12,7 @@ mod walk_to_set;
 
 pub use catchfall::{CatchFall, CatchFallBehaviorPlugin};
 pub use observe::{Observe, ObserveBehaviorConfig, ObserveBehaviorPlugin};
+pub use rl_example::{RlBehaviorPlugin, RlExampleBehavior};
 pub use sitting::{Sitting, SittingBehaviorPlugin};
 pub use stand::{Stand, StandBehaviorPlugin};
 pub use stand_look::{StandLookAt, StandLookAtBehaviorPlugin};
