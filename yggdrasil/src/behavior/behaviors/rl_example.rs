@@ -6,7 +6,6 @@ use ml::{prelude::ModelExecutor, MlModel, MlModelResourceExt};
 use nalgebra::{Point2, Point3};
 
 type ModelInput = Vec<f32>;
-//type ModelOutput = (f32, f32, f32);
 type ModelOutput = Vec<f32>;
 
 use crate::{
@@ -106,7 +105,6 @@ struct Output {
 
 impl RlBehaviorOutput<ModelOutput> for Output {
     fn from_output(output: ModelOutput) -> Self {
-        //let (forward, left, turn) = output;
         let forward = output[0];
         let left = output[1];
         let turn = output[2];
