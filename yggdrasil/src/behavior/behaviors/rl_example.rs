@@ -85,8 +85,8 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let last_seen_ball_pos_y = (self.ball_position.y - robot_position.y) / self.field_height;
 
         vec![
-            self.ball_position.x / self.field_height,
-            self.ball_position.y / self.field_width,
+            (self.ball_position.x - robot_position.x) / self.field_height,
+            (self.ball_position.y - robot_position.y) / self.field_width,
             (relative_ball_angle - robot_angle).sin(),
             (relative_ball_angle - robot_angle).sin(),
             (self.goal_position.x - self.ball_position.x) / self.field_height,
