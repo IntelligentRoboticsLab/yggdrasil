@@ -59,7 +59,7 @@ impl AnimationManager {
     /// * `override_motion` - Whether or not to override the current motion (If one is active).
     pub fn start_new_motion(&mut self, motion_type: MotionType, override_motion: bool) {
         // only stop the motion if override is on
-        if !override_motion {
+        if self.is_motion_active() && !override_motion {
             return;
         }
         self.stop_motion();

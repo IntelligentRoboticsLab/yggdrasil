@@ -45,7 +45,6 @@ pub struct MotionSettings {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SubMotion {
     pub joint_stifness: f32,
-    pub exit_waittime: f32,
     pub keyframes: Vec<Movement>,
 }
 
@@ -93,13 +92,6 @@ impl Motion {
             })?;
             motion.submotions.insert(submotion_name.clone(), submotion);
         }
-
-        // when the Motion has been created, we save it to the assets/motions folder
-        serde_json::to_writer(
-            &File::create(path.with_extension("json")).into_diagnostic()?,
-            &motion,
-        )
-        .into_diagnostic()?;
 
         Ok(motion)
     }
