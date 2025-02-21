@@ -16,6 +16,9 @@ use std::time::{Duration, Instant};
 // maximum speed the robot is allowed to move to the starting position at
 const MAX_SPEED: f32 = 1.0;
 
+// standard priority for all animations
+const ANIMATION_PRIORITY: Priority = Priority::High;
+
 /// Executes the currently chosen motion as a simple animation.
 ///
 /// # Arguments
@@ -92,7 +95,7 @@ pub fn animation_executor(
                 HeadJoints::<f32>::fill(submotion_stiffness),
                 ArmJoints::<f32>::fill(submotion_stiffness),
                 LegJoints::<f32>::fill(submotion_stiffness),
-                Priority::High,
+                ANIMATION_PRIORITY,
             );
         } else {
             // if the starting position has been reached,
@@ -113,7 +116,7 @@ pub fn animation_executor(
             HeadJoints::<f32>::fill(submotion_stiffness),
             ArmJoints::<f32>::fill(submotion_stiffness),
             LegJoints::<f32>::fill(submotion_stiffness),
-            Priority::High,
+            ANIMATION_PRIORITY,
         );
     } else {
         transition_to_next_submotion(&mut animation_manager)
@@ -125,7 +128,7 @@ pub fn animation_executor(
             HeadJoints::<f32>::fill(submotion_stiffness),
             ArmJoints::<f32>::fill(submotion_stiffness),
             LegJoints::<f32>::fill(submotion_stiffness),
-            Priority::High,
+            ANIMATION_PRIORITY,
         );
     }
 }
