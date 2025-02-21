@@ -8,7 +8,7 @@ type ModelOutput = (f32, f32, f32);
 
 use crate::{
     behavior::engine::{
-        in_behavior, run_rl_behavior, Behavior, BehaviorState, RlBehaviorInput, RlBehaviorOutput,
+        in_behavior, spawn_rl_behavior, Behavior, BehaviorState, RlBehaviorInput, RlBehaviorOutput,
     },
     localization::RobotPose,
     motion::walking_engine::{step::Step, step_context::StepContext},
@@ -19,7 +19,16 @@ pub struct RlBehaviorPlugin;
 
 impl Plugin for RlBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, behave.run_if(in_behavior::<RlExampleBehavior>));
+        app.add_systems(
+            Update,
+            run_inference.run_if(in_behavior::<RlExampleBehavior>),
+        )
+        .add_systems(
+            Update,
+            handle_inference_output
+                .run_if(in_behavior::<RlExampleBehavior>)
+                .run_if(resource_exists_and_changed::<Output>),
+        );
     }
 }
 
@@ -77,6 +86,7 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
     }
 }
 
+#[derive(Resource)]
 struct Output {
     step: Step,
 }
@@ -95,10 +105,9 @@ impl RlBehaviorOutput<ModelOutput> for Output {
     }
 }
 
-pub fn behave(
+fn run_inference(
     mut commands: Commands,
     mut model_executor: ResMut<ModelExecutor<RlExampleBehaviorModel>>,
-    mut step_context: ResMut<StepContext>,
     robot_pose: Res<RobotPose>,
     balls_top: Res<Balls<Top>>,
     balls_bottom: Res<Balls<Bottom>>,
@@ -122,6 +131,9 @@ pub fn behave(
         field_height: 9.0,
     };
 
-    let output: Output = run_rl_behavior(&mut commands, &mut *model_executor, input);
+    spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
+}
+
+fn handle_inference_output(mut step_context: ResMut<StepContext>, output: Res<Output>) {
     step_context.request_walk(output.step);
 }

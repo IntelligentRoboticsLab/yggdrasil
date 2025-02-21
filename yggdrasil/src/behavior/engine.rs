@@ -67,23 +67,21 @@ pub trait RlBehaviorOutput<T> {
     fn from_output(output: T) -> Self;
 }
 
-pub fn run_rl_behavior<M, I, O>(
+pub fn spawn_rl_behavior<M, I, O>(
     commands: &mut Commands,
     model_executor: &mut ModelExecutor<M>,
     input: I,
-) -> O
-where
+) where
     I: RlBehaviorInput<M::Inputs>,
-    O: RlBehaviorOutput<M::Outputs>,
+    O: RlBehaviorOutput<M::Outputs> + Resource,
     M: MlModel,
     <M as ml::MlModel>::Outputs: std::marker::Send,
 {
-    O::from_output(
-        commands
-            .infer_model(model_executor)
-            .with_input(&input.to_input())
-            .spawn_blocking(|output| output),
-    )
+    commands
+        .infer_model(model_executor)
+        .with_input(&input.to_input())
+        .create_resource()
+        .spawn(|output| Some(O::from_output(output)));
 }
 
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
