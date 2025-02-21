@@ -35,6 +35,12 @@ impl Plugin for RlBehaviorPlugin {
                     .after(run_inference)
                     .run_if(in_behavior::<RlExampleBehavior>)
                     .run_if(resource_exists_and_changed::<Output>),
+            )
+            .add_systems(
+                Update,
+                reset_inference
+                    .after(handle_inference_output)
+                    .run_if(resource_exists_and_changed::<Output>),
             );
     }
 }
@@ -154,6 +160,10 @@ fn run_inference(
     spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
 }
 
+fn reset_inference(mut running_inference: ResMut<RunningInference>) {
+    running_inference.deref_mut().0 = false;
+}
+
 fn handle_inference_output(
     mut step_context: ResMut<StepContext>,
     output: Res<Output>,
@@ -162,7 +172,7 @@ fn handle_inference_output(
     balls_bottom: Res<Balls<Bottom>>,
     pose: Res<RobotPose>,
     mut nao_manager: ResMut<NaoManager>,
-    mut running_inference: ResMut<RunningInference>,
+    running_inference: Res<RunningInference>,
 ) {
     let Some(most_confident_ball) = balls_bottom
         .most_confident_ball()
@@ -178,7 +188,6 @@ fn handle_inference_output(
         output.step * config.max_step_size
     );
 
-    running_inference.deref_mut().0 = false;
     step_context.request_walk(output.step * config.max_step_size);
 
     let point3 = Point3::new(most_confident_ball.x, most_confident_ball.y, 0.0);
