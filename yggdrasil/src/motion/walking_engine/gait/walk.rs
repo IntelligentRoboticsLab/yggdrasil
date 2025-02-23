@@ -186,16 +186,14 @@ fn foot_leveling(
         Side::Right => right_foot.rotation,
     };
 
-    // Calculate level orientation
     let level_orientation = orientation.quaternion() * robot_to_walk_rotation.inverse();
     let (level_roll, level_pitch, _) = level_orientation.euler_angles();
 
-    // Calculate return factor based on step phase
-    let return_factor = ((state.linear() - 0.5).max(0.0) * 2.0).powi(2);
+    // TODO(gijsd): make config values for these.
+    let weight = logistic_correction_weight(state.linear(), 0.7, 14.0);
 
-    // Calculate target angles
-    let target_roll = -level_roll * (1.0 - return_factor);
-    let target_pitch = -level_pitch * (1.0 - return_factor);
+    let target_roll = -level_roll * weight;
+    let target_pitch = -level_pitch * weight;
 
     let target_values = foot_leveling
         .state
@@ -206,4 +204,17 @@ fn foot_leveling(
         target_values.x,
         target_values.y,
     );
+}
+
+/// Weighing function for the foot leveling.
+///
+/// This is a logistic decay function (sigmoid), and returns a value between 0-1,
+/// which is used to weigh the impact of foot leveling.
+///
+/// View the function in desmos [here](https://www.desmos.com/calculator/akfitz58we).
+fn logistic_correction_weight(phase: f32, phase_shift: f32, decay: f32) -> f32 {
+    let decayed_phase = (-decay * (phase - phase_shift)).exp();
+    let factor = 1.0 / (1.0 + decayed_phase);
+
+    (1.0 - factor).clamp(0.0, 1.0)
 }
