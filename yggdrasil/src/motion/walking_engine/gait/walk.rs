@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use nalgebra::Translation3;
+use nalgebra::{Translation3, Vector2};
 
 use crate::{
     kinematics::{
@@ -9,6 +9,7 @@ use crate::{
         Kinematics,
     },
     motion::walking_engine::{
+        balancing::BalanceAdjustment,
         config::WalkingEngineConfig,
         feet::FootPositions,
         foot_support::FootSupportState,
@@ -20,7 +21,7 @@ use crate::{
     },
     nao::CycleTime,
     prelude::Sensor,
-    sensor::orientation::RobotOrientation,
+    sensor::{low_pass_filter::ExponentialLpf, orientation::RobotOrientation},
 };
 
 pub(super) struct WalkPlugin;
@@ -36,9 +37,16 @@ impl Plugin for WalkPlugin {
         );
         app.add_systems(
             Update,
-            (generate_walk_gait, foot_leveling)
-                .chain()
+            generate_walk_gait
                 .in_set(WalkingEngineSet::GenerateGait)
+                .run_if(in_state(Gait::Walking)),
+        );
+
+        app.add_systems(
+            Update,
+            foot_leveling
+                .after(WalkingEngineSet::Balance)
+                .before(WalkingEngineSet::Finalize)
                 .run_if(in_state(Gait::Walking)),
         );
     }
@@ -142,13 +150,29 @@ fn generate_walk_gait(
     };
 }
 
+#[derive(Debug, Clone)]
+struct FootLevelingState {
+    state: ExponentialLpf<2>,
+}
+
+impl Default for FootLevelingState {
+    fn default() -> Self {
+        Self {
+            state: ExponentialLpf::new(0.8),
+        }
+    }
+}
+
 fn foot_leveling(
     state: Res<WalkState>,
+    foot_support: Res<FootSupportState>,
     orientation: Res<RobotOrientation>,
     kinematics: Res<Kinematics>,
     config: Res<WalkingEngineConfig>,
+    mut balance_adjustment: ResMut<BalanceAdjustment>,
+    mut foot_leveling: Local<FootLevelingState>,
 ) {
-    let hip_height = match state.planned_step.swing_side {
+    let hip_height = match foot_support.support_side() {
         Side::Left => kinematics.left_hip_height(),
         Side::Right => kinematics.right_hip_height(),
     };
@@ -157,6 +181,29 @@ fn foot_leveling(
     let left_foot = kinematics.isometry::<LeftSole, Robot>().inner * offset;
     let right_foot = kinematics.isometry::<RightSole, Robot>().inner * offset;
 
-    println!("left: {:?}", left_foot.rotation.euler_angles());
-    println!("right: {:?}\n\n", right_foot.rotation.euler_angles());
+    let robot_to_walk_rotation = match foot_support.support_side() {
+        Side::Left => left_foot.rotation,
+        Side::Right => right_foot.rotation,
+    };
+
+    // Calculate level orientation
+    let level_orientation = orientation.quaternion() * robot_to_walk_rotation.inverse();
+    let (level_roll, level_pitch, _) = level_orientation.euler_angles();
+
+    // Calculate return factor based on step phase
+    let return_factor = ((state.linear() - 0.5).max(0.0) * 2.0).powi(2);
+
+    // Calculate target angles
+    let target_roll = -level_roll * (1.0 - return_factor);
+    let target_pitch = -level_pitch * (1.0 - return_factor);
+
+    let target_values = foot_leveling
+        .state
+        .update(Vector2::new(target_roll, target_pitch));
+
+    balance_adjustment.apply_foot_leveling(
+        foot_support.swing_side(),
+        target_values.x,
+        target_values.y,
+    );
 }

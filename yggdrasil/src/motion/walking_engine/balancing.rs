@@ -17,6 +17,7 @@ impl Plugin for BalancingPlugin {
         // ensure balance adjustment resource exists!
         app.add_systems(PostStartup, reset_balance_adjustment);
         app.add_systems(OnEnter(Gait::Standing), reset_balance_adjustment);
+        app.add_systems(OnEnter(Gait::Sitting), reset_balance_adjustment);
         app.add_systems(
             Update,
             (update_filtered_gyroscope, update_balance_adjustment)
@@ -77,11 +78,32 @@ impl BalanceAdjustment {
     ///
     /// When swinging with the left foot, this will add the adjustment to the
     /// ankle pitch value of the right foot.
-    fn adjust_ankle_pitch(&mut self, support_side: Side, amount: f32) -> &mut Self {
+    pub fn adjust_ankle_pitch(&mut self, support_side: Side, amount: f32) -> &mut Self {
         match support_side {
             Side::Left => self.left_leg.ankle_pitch = amount,
             Side::Right => self.right_leg.ankle_pitch = amount,
         }
+
+        self
+    }
+
+    /// Apply the provided target roll and pitch to the swing side.
+    pub fn apply_foot_leveling(
+        &mut self,
+        swing_side: Side,
+        target_roll: f32,
+        target_pitch: f32,
+    ) -> &mut Self {
+        match swing_side {
+            Side::Left => {
+                self.left_leg.ankle_roll += target_roll;
+                self.left_leg.ankle_pitch += target_pitch;
+            }
+            Side::Right => {
+                self.right_leg.ankle_roll += target_roll;
+                self.right_leg.ankle_pitch += target_pitch;
+            }
+        };
 
         self
     }
