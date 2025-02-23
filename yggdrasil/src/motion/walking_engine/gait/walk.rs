@@ -1,8 +1,13 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
+use nalgebra::Translation3;
 
 use crate::{
+    kinematics::{
+        spaces::{LeftSole, RightSole, Robot},
+        Kinematics,
+    },
     motion::walking_engine::{
         config::WalkingEngineConfig,
         feet::FootPositions,
@@ -15,6 +20,7 @@ use crate::{
     },
     nao::CycleTime,
     prelude::Sensor,
+    sensor::orientation::RobotOrientation,
 };
 
 pub(super) struct WalkPlugin;
@@ -30,7 +36,7 @@ impl Plugin for WalkPlugin {
         );
         app.add_systems(
             Update,
-            (generate_walk_gait)
+            (generate_walk_gait, foot_leveling)
                 .chain()
                 .in_set(WalkingEngineSet::GenerateGait)
                 .run_if(in_state(Gait::Walking)),
@@ -134,4 +140,23 @@ fn generate_walk_gait(
         left: left.into(),
         right: right.into(),
     };
+}
+
+fn foot_leveling(
+    state: Res<WalkState>,
+    orientation: Res<RobotOrientation>,
+    kinematics: Res<Kinematics>,
+    config: Res<WalkingEngineConfig>,
+) {
+    let hip_height = match state.planned_step.swing_side {
+        Side::Left => kinematics.left_hip_height(),
+        Side::Right => kinematics.right_hip_height(),
+    };
+
+    let offset = Translation3::new(config.torso_offset, 0., hip_height);
+    let left_foot = kinematics.isometry::<LeftSole, Robot>().inner * offset;
+    let right_foot = kinematics.isometry::<RightSole, Robot>().inner * offset;
+
+    println!("left: {:?}", left_foot.rotation.euler_angles());
+    println!("right: {:?}\n\n", right_foot.rotation.euler_angles());
 }

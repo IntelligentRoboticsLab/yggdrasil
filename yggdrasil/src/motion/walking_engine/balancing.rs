@@ -51,24 +51,24 @@ fn update_filtered_gyroscope(
 #[derive(Resource, Debug, Clone)]
 pub struct BalanceAdjustment {
     filtered_gyro: ExponentialLpf<3>,
-    left_ankle_pitch: f32,
-    right_ankle_pitch: f32,
+    left_leg: LeftLegJoints<f32>,
+    right_leg: RightLegJoints<f32>,
 }
 
 impl BalanceAdjustment {
     fn init(config: &WalkingEngineConfig) -> Self {
         Self {
             filtered_gyro: ExponentialLpf::new(config.balancing.gyro_lpf_alpha),
-            left_ankle_pitch: 0.,
-            right_ankle_pitch: 0.,
+            left_leg: LeftLegJoints::default(),
+            right_leg: RightLegJoints::default(),
         }
     }
 
     /// Reset all adjustment values and prepare for new values.
     #[must_use]
     fn prepare(&mut self) -> &mut Self {
-        self.left_ankle_pitch = 0f32;
-        self.right_ankle_pitch = 0f32;
+        self.left_leg = LeftLegJoints::default();
+        self.right_leg = RightLegJoints::default();
 
         self
     }
@@ -79,8 +79,8 @@ impl BalanceAdjustment {
     /// ankle pitch value of the right foot.
     fn adjust_ankle_pitch(&mut self, support_side: Side, amount: f32) -> &mut Self {
         match support_side {
-            Side::Left => self.left_ankle_pitch = amount,
-            Side::Right => self.right_ankle_pitch = amount,
+            Side::Left => self.left_leg.ankle_pitch = amount,
+            Side::Right => self.right_leg.ankle_pitch = amount,
         }
 
         self
@@ -92,8 +92,18 @@ impl BalanceAdjustment {
         left_leg: &mut LeftLegJoints<f32>,
         right_leg: &mut RightLegJoints<f32>,
     ) -> &Self {
-        left_leg.ankle_pitch += self.left_ankle_pitch;
-        right_leg.ankle_pitch += self.right_ankle_pitch;
+        left_leg.hip_yaw_pitch += self.left_leg.hip_yaw_pitch;
+        left_leg.hip_pitch += self.left_leg.hip_pitch;
+        left_leg.hip_roll += self.left_leg.hip_roll;
+        left_leg.knee_pitch += self.left_leg.knee_pitch;
+        left_leg.ankle_roll += self.left_leg.ankle_roll;
+        left_leg.ankle_pitch += self.left_leg.ankle_pitch;
+
+        right_leg.hip_pitch += self.right_leg.hip_pitch;
+        right_leg.hip_roll += self.right_leg.hip_roll;
+        right_leg.knee_pitch += self.right_leg.knee_pitch;
+        right_leg.ankle_roll += self.right_leg.ankle_roll;
+        right_leg.ankle_pitch += self.right_leg.ankle_pitch;
 
         self
     }
