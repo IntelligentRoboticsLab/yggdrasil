@@ -4,17 +4,22 @@ use bevy::prelude::*;
 use heimdall::{Bottom, Top};
 use ml::{prelude::ModelExecutor, MlModel, MlModelResourceExt};
 use nalgebra::{Point2, Point3};
+use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
 
 type ModelInput = Vec<f32>;
 type ModelOutput = Vec<f32>;
 
 use crate::{
-    behavior::engine::{
-        in_behavior, spawn_rl_behavior, Behavior, BehaviorState, RlBehaviorInput, RlBehaviorOutput,
+    behavior::{
+        engine::{
+            in_behavior, spawn_rl_behavior, Behavior, BehaviorState, RlBehaviorInput,
+            RlBehaviorOutput,
+        },
+        BehaviorConfig,
     },
     localization::RobotPose,
-    motion::walking_engine::{config::WalkingEngineConfig, step::Step, step_context::StepContext},
+    motion::walking_engine::{step::Step, step_context::StepContext},
     nao::{NaoManager, Priority},
     vision::ball_detection::classifier::Balls,
 };
@@ -36,6 +41,14 @@ impl Plugin for RlBehaviorPlugin {
                     .run_if(resource_exists_and_changed::<Output>),
             );
     }
+}
+
+#[derive(Resource, Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct RlExampleBehaviorConfig {
+    // The output of the policy is element wise multiplied with this value to determine the
+    // step that is requested to the walking engine.
+    policy_output_scaling: Step,
 }
 
 pub(super) struct RlExampleBehaviorModel;
@@ -145,7 +158,7 @@ fn run_inference(
 fn handle_inference_output(
     mut step_context: ResMut<StepContext>,
     output: Res<Output>,
-    config: Res<WalkingEngineConfig>,
+    behavior_config: Res<BehaviorConfig>,
     balls_top: Res<Balls<Top>>,
     balls_bottom: Res<Balls<Bottom>>,
     pose: Res<RobotPose>,
@@ -159,7 +172,7 @@ fn handle_inference_output(
         return;
     };
 
-    step_context.request_walk(output.step * config.max_step_size);
+    step_context.request_walk(output.step * behavior_config.rl_example.policy_output_scaling);
 
     let point3 = Point3::new(most_confident_ball.x, most_confident_ball.y, 0.0);
     let look_at = pose.get_look_at_absolute(&point3);
