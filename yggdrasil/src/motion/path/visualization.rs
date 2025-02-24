@@ -13,20 +13,19 @@ const OBSTACLE_HEIGHT: f32 = 0.0001;
 /// The height at which the path is rendered.
 const PATH_HEIGHT: f32 = 0.0002;
 
+/// Initializes the visualization.
 pub fn init_visualization(dbg: DebugContext) {
-    // TODO: i should fix this
-    let _ = dbg;
-    /*
+    use rerun::ComponentBatch;
+
     dbg.log_static(
         "pathfinding/obstacles",
-        &rerun::Color::from_rgb(0, 0, 255),
+        &rerun::Color::from_rgb(0, 0, 255).serialized().unwrap(),
     );
 
     dbg.log_static(
         "pathfinding/path",
-        &rerun::Color::from_rgb(255, 0, 0),
+        &rerun::Color::from_rgb(255, 0, 0).serialized().unwrap(),
     );
-    */
 }
 
 /// Visualizes the obstacles.

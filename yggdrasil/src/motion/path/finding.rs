@@ -212,10 +212,12 @@ enum State {
 }
 
 impl State {
+    /// Returns a new state-cost pair based on the given length.
     fn with_cost(self, cost: impl Length) -> (Self, Float) {
         (self, cost.length().into())
     }
 
+    /// Returns a new state-cost pair with zero cost.
     fn without_cost(self) -> (Self, Float) {
         (self, 0.0.into())
     }

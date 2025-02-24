@@ -11,7 +11,7 @@ use super::{
 
 /// Adds initial obstacles to the scene.
 pub fn add_static_obstacles(mut commands: Commands) {
-    // Goalposts
+    // Add goalposts
     commands.spawn(Obstacle::from(Circle::new(na::point![-4.5, 0.8], 0.05)));
     commands.spawn(Obstacle::from(Circle::new(na::point![-4.5, -0.8], 0.05)));
     commands.spawn(Obstacle::from(Circle::new(na::point![4.5, 0.8], 0.05)));
@@ -44,12 +44,14 @@ pub enum Obstacle {
 }
 
 impl Obstacle {
+    /// Adds this obstacle to the given colliders (based on the robot radius).
     pub fn add_to_colliders(&self, radius: f32, colliders: &mut Colliders) {
         match self {
             &Obstacle::Circle(circle) => colliders.arcs.push(circle.dilate(radius).into()),
         }
     }
 
+    /// Gets the vertices that represent this obstacle.
     pub fn vertices(&self, resolution: f32) -> impl Iterator<Item = Point> {
         match self {
             &Obstacle::Circle(c) => CircularArc::from(c).vertices(resolution),
