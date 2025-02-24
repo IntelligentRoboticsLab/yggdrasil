@@ -3,12 +3,11 @@
 pub mod finding;
 pub mod geometry;
 pub mod obstacles;
-pub mod planning;
+pub mod planner;
 pub mod visualization;
 
 pub use finding::Target;
-pub use planning::PathPlanner;
-
+pub use planner::PathPlanner;
 
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};

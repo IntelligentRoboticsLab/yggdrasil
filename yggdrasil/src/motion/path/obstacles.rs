@@ -6,7 +6,7 @@ use nalgebra as na;
 use super::{
     finding::Colliders,
     geometry::{Circle, CircularArc, Point},
-    planning::PathPlanner,
+    planner::PathPlanner,
 };
 
 /// Adds initial obstacles to the scene.

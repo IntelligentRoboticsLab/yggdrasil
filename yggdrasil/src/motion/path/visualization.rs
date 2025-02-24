@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use crate::core::debug::DebugContext;
 
-use super::{obstacles::Obstacle, planning::PathPlanner};
+use super::{obstacles::Obstacle, planner::PathPlanner};
 
 /// Number of vertices per circle.
 const RESOLUTION: f32 = 64.0;
