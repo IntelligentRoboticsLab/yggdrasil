@@ -34,7 +34,7 @@ impl PathPlanner {
     /// Returns whether a path has been found and is empty (i.e., because we reached the target).
     #[must_use]
     pub fn reached_target(&self) -> bool {
-        self.path.as_ref().map_or(false, Vec::is_empty)
+        self.path.as_ref().is_some_and(Vec::is_empty)
     }
 
     /// Returns the next step that would move the robot along the current path.
