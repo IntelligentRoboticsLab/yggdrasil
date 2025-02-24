@@ -176,7 +176,7 @@ impl Pathfinding<'_> {
         Some(CircularArc::from_isometry(
             self.start.isometry()?,
             direction,
-            self.config.ease_in,
+            self.config.ease_in_radius,
         ))
     }
 
@@ -185,7 +185,7 @@ impl Pathfinding<'_> {
         Some(CircularArc::from_isometry(
             self.target.isometry()?,
             direction,
-            self.config.ease_out,
+            self.config.ease_out_radius,
         ))
     }
 }

@@ -48,19 +48,32 @@ fn init_path_planner(mut commands: Commands, config: Res<PathConfig>) {
 #[derive(Resource, Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct PathConfig {
+    /// The radius of the robot's collider in meters.
     pub robot_radius: f32,
-    pub ease_in: f32,
-    pub ease_out: f32,
+    /// The radius of the arc to ease into the path.
+    pub ease_in_radius: f32,
+    /// The radius of the arc to ease out of the path.
+    pub ease_out_radius: f32,
+    /// The maximum distance the robot may be from the path.
     pub start_tolerance: f32,
+    /// The maximum distance the target may be from the path.
     pub target_tolerance: f32,
-    pub perpendicular_tolerance: f32,
-    pub min_angular_tolerance: f32,
-    pub max_angular_tolerance: f32,
-    pub walk_speed: f32,
-    pub turn_speed: f32,
-    pub walking_turn_speed: f32,
+    /// The deadband of the perpendicular error.
+    pub perpendicular_deadband: f32,
+    /// The speed at which the perpendicular error gets corrected.
     pub perpendicular_speed: f32,
+    /// The deadband of the angular error.
+    pub angular_deadband: f32,
+    /// The speed at which the angular error gets corrected while walking.
     pub angular_speed: f32,
+    /// The angular threshold at which the robot stops to turn.
+    pub stop_and_turn_threshold: f32,
+    /// The walking speed of the robot.
+    pub walk_speed: f32,
+    /// The turning speed of the robot while it's standing still.
+    pub turn_speed: f32,
+    /// The turning speed of the robot while it's walking.
+    pub walking_turn_speed: f32,
 }
 
 impl Config for PathConfig {

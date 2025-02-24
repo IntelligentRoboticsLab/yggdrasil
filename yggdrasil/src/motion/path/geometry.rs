@@ -788,7 +788,7 @@ impl Intersects<LineSegment> for CircularArc {
     fn intersects(self, other: LineSegment) -> Self::Intersection {
         // TODO: properly handle this
         let mut circle = self.circle;
-        circle.radius = (0.99 * circle.radius).max(0.);
+        circle.radius = (0.999 * circle.radius).max(0.);
 
         let (entry, exit) = circle.intersects(other);
         let contains = |angle: &f32| self.contains_angle(*angle);

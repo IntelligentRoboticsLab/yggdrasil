@@ -41,14 +41,14 @@ impl PathPlanner {
     #[must_use]
     pub fn step(&mut self, start: Isometry) -> Option<Step> {
         let PathConfig {
-            perpendicular_tolerance,
-            min_angular_tolerance,
-            max_angular_tolerance,
+            perpendicular_deadband,
+            perpendicular_speed,
+            angular_deadband,
+            angular_speed,
+            stop_and_turn_threshold,
             walk_speed,
             turn_speed,
             walking_turn_speed,
-            perpendicular_speed,
-            angular_speed,
             ..
         } = self.config;
 
@@ -61,18 +61,19 @@ impl PathPlanner {
             Winding::shortest_distance(start.rotation.angle(), first.forward_at_start());
 
         // Clamp and deadband the angular correction to apply.
-        let angular_correction = if angular_error.abs() <= min_angular_tolerance {
+        let angular_correction = if angular_error.abs() <= angular_deadband {
             0.
         } else {
             angular_error.clamp(-angular_speed, angular_speed)
         };
 
-        if angular_error.abs() <= max_angular_tolerance {
+        if angular_error.abs() <= stop_and_turn_threshold {
             // Calculate the perpendicular error (after projecting forward).
-            let perpendicular_error = first.signed_distance(point) + walk_speed * angular_error.sin();
+            let perpendicular_error =
+                first.signed_distance(point) + walk_speed * angular_error.sin();
 
-            // Calculate the side step from the perpendicular error, then clamp and deadband.
-            let left = if perpendicular_error.abs() <= perpendicular_tolerance {
+            // Clamp and deadband the perpendicular correction to apply.
+            let left = if perpendicular_error.abs() <= perpendicular_deadband {
                 0.
             } else {
                 (perpendicular_error / angular_error.cos())
@@ -192,7 +193,9 @@ impl PathPlanner {
 
         // If we're far away enough to ease in, try to do so (and fail if the start is not an
         // isometry).
-        let start = if ease.ease_in() && (half_distance >= config.ease_in + config.ease_out) {
+        let start = if ease.ease_in()
+            && (half_distance >= config.ease_in_radius + config.ease_out_radius)
+        {
             start
         } else {
             start.isometry_to_point()?
@@ -200,7 +203,7 @@ impl PathPlanner {
 
         // If we're far away enough to ease out, try to do so (and fail if the target is not an
         // isometry).
-        let target = if ease.ease_out() && (half_distance >= config.ease_out) {
+        let target = if ease.ease_out() && (half_distance >= config.ease_out_radius) {
             target
         } else {
             target.isometry_to_point()?
