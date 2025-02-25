@@ -17,10 +17,10 @@ use crate::{
     },
     motion::odometry::Odometry,
     nao::Cycle,
-    vision::line_detection::line::LineSegment2,
+    vision::line_detection::line::{Line2, LineSegment2},
 };
 
-use super::correspondence::{self, LineCorrespondences};
+use super::correspondence::LineCorrespondences;
 
 pub struct PoseFilterPlugin;
 
@@ -34,6 +34,16 @@ impl Plugin for PoseFilterPlugin {
 #[derive(Debug, Clone, Copy)]
 pub struct RobotPose {
     pub inner: na::Isometry2<f32>,
+}
+
+impl RobotPose {
+    pub fn position(&self) -> na::Point2<f32> {
+        point![self.inner.translation.x, self.inner.translation.y]
+    }
+
+    pub fn angle(&self) -> f32 {
+        self.inner.rotation.angle()
+    }
 }
 
 impl From<RobotPose> for StateVector<3> {
@@ -117,9 +127,9 @@ fn line_update(
         for new_correspondences in correspondences.iter() {
             for correspondence in &new_correspondences.0 {
                 // skip circles for now
-                if matches!(correspondence.field_line, FieldLine::Circle(_)) {
+                let FieldLine::Segment(field_line) = correspondence.field_line else {
                     continue;
-                }
+                };
 
                 let Some(direction) = correspondence.field_line.direction() else {
                     continue;
@@ -148,28 +158,75 @@ fn line_update(
                     _ => correspondence.detected_line,
                 };
 
-                // the line on the field that the robot is expected to see
                 let projected = correspondence.projected_line;
 
                 // TODO: remove and make validity check
-                if projected.length() < 1.0 {
+                if projected.length() < 0.5 {
                     continue;
                 }
 
-                let distance = match direction {
-                    Direction::AlongX => detected.center().y - projected.center().y,
-                    Direction::AlongY => detected.center().x - projected.center().x,
+                // let distance = match direction {
+                //     Direction::AlongX => detected.center().y - projected.center().y,
+                //     Direction::AlongY => detected.center().x - projected.center().x,
+                // };
+
+                // distance to current pose
+                let pose = particle.state();
+
+                // line from the robot to the detected line
+                let relative_line = (pose.inner.inverse() * detected).to_line();
+
+                let orthogonal_projection = relative_line.project(point![0.0, 0.0]);
+
+                let measured_angle = {
+                    let mut angle = -f32::atan2(
+                        orthogonal_projection.coords.x,
+                        orthogonal_projection.coords.y,
+                    );
+
+                    angle = match direction {
+                        Direction::AlongX => angle + std::f32::consts::FRAC_PI_2,
+                        Direction::AlongY => angle,
+                    };
+
+                    normalize_angle(angle)
+                };
+                let measured_angle_alternative =
+                    normalize_angle(measured_angle - std::f32::consts::PI);
+
+                let measured_angle = if normalize_angle(measured_angle_alternative - pose.angle())
+                    .abs()
+                    < normalize_angle(measured_angle - pose.angle()).abs()
+                {
+                    measured_angle_alternative
+                } else {
+                    measured_angle
                 };
 
-                // angle difference between the detected and projected lines
-                let angle_diff = detected.normal().angle(&projected.normal());
+                let c = measured_angle.cos();
+                let s = measured_angle.sin();
 
-                let measurement = LineMeasurement {
-                    distance,
-                    angle: angle_diff,
-                };
+                let angle_rotation_matrix = na::Matrix2::new(c, -s, s, c);
+
+                // const Vector2f orthogonalProjection = angleRotationMatrix * Vector2f(line.orthogonalProjection.x(), line.orthogonalProjection.y());
+
+                let orthogonal_projection = angle_rotation_matrix
+                    * na::Vector2::new(
+                        orthogonal_projection.coords.x,
+                        orthogonal_projection.coords.y,
+                    );
 
                 particle.fix_covariance();
+
+                let measured = match direction {
+                    Direction::AlongX => field_line.start.x - orthogonal_projection.x,
+                    Direction::AlongY => field_line.start.y - orthogonal_projection.y,
+                };
+
+                let measurement = LineMeasurement {
+                    distance: measured,
+                    angle: measured_angle,
+                };
 
                 println!(
                     "Updating particle in direction {:?} with {:?}",
@@ -275,4 +332,15 @@ impl StateTransform<2> for LineMeasurement {
             (na::UnitComplex::new(measurement.y) / na::UnitComplex::new(prediction.y)).angle()
         ]
     }
+}
+
+pub fn normalize_angle(mut angle: f32) -> f32 {
+    use std::f32::consts::{PI, TAU};
+    angle %= TAU;
+    if angle > PI {
+        angle -= TAU;
+    } else if angle < -PI {
+        angle += TAU;
+    }
+    angle
 }
