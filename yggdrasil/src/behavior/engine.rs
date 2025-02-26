@@ -178,7 +178,7 @@ pub fn in_role<T: Roles>(state: Option<Res<State<Role>>>) -> bool {
 #[allow(clippy::too_many_arguments)]
 pub fn role_base(
     mut commands: Commands,
-    state: Res<State<BehaviorState>>,
+    behavior_state: Res<State<BehaviorState>>,
     gait: Res<State<Gait>>,
     head_buttons: Res<HeadButtons>,
     primary_state: Res<PrimaryState>,
@@ -190,7 +190,7 @@ pub fn role_base(
     game_controller_message: Option<Res<GameControllerMessage>>,
 ) {
     commands.disable_role();
-    let behavior = state.get();
+    let behavior = behavior_state.get();
 
     if behavior == &BehaviorState::StartUp {
         if *gait == Gait::Sitting || head_buttons.all_pressed() {
