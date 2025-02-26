@@ -5,7 +5,7 @@ use nalgebra::{Point2, Point3};
 use crate::{
     behavior::{
         behaviors::{Observe, Walk, WalkTo},
-        engine::{in_role, BehaviorState, CommandsBehaviorExt, Role, Roles},
+        engine::{in_role, CommandsBehaviorExt, Role, Roles},
     },
     core::config::layout::LayoutConfig,
     localization::RobotPose,
@@ -46,7 +46,6 @@ pub fn striker_role(
     top_balls: Res<Balls<Top>>,
     bottom_balls: Res<Balls<Bottom>>,
     mut state: ResMut<Striker>,
-    behavior_state: Res<State<BehaviorState>>,
 ) {
     let most_confident_ball = bottom_balls
         .most_confident_ball()
@@ -115,7 +114,7 @@ pub fn striker_role(
                 }
             }
         }
-    } else if behavior_state.get() != &BehaviorState::Observe {
+    } else {
         commands.set_behavior(Observe::with_turning(0.4));
     }
 }
