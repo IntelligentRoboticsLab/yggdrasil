@@ -90,7 +90,7 @@ pub fn striker_role(
                 commands.set_behavior(WalkTo { target: ball_pos });
             }
             Striker::WalkAlign => {
-                let ball_target = Point3::new(ball.x, ball.y, RobotPose::CAMERA_HEIGHT);
+                let ball_target = Point3::new(ball.x, ball.y, 0.0);
 
                 if absolute_ball_angle > absolute_goal_angle_left {
                     commands.set_behavior(Walk {
