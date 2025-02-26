@@ -12,10 +12,11 @@ use crate::{
 
 use super::{
     behaviors::{
-        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, Sitting, SittingBehaviorPlugin,
-        Stand, StandBehaviorPlugin, StandLookAt, StandLookAtBehaviorPlugin, Standup,
-        StandupBehaviorPlugin, StartUpBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin,
-        WalkToSet, WalkToSetBehaviorPlugin,
+        CatchFall, CatchFallBehaviorPlugin, InitialStandLook, InitialStandLookBehaviorPlugin,
+        ObserveBehaviorPlugin, Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin,
+        StandLookAt, StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin,
+        StartUpBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSet,
+        WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
@@ -44,6 +45,7 @@ impl Plugin for BehaviorEnginePlugin {
                 DefenderRolePlugin,
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
+                InitialStandLookBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
     }
@@ -62,6 +64,7 @@ pub enum BehaviorState {
     StartUp,
     WalkTo,
     WalkToSet,
+    InitialStandLook,
 }
 
 #[must_use]
@@ -250,9 +253,7 @@ pub fn role_base(
         | PrimaryState::Penalized
         | PrimaryState::Finished
         | PrimaryState::Calibration => commands.set_behavior(Stand),
-        PrimaryState::Initial => commands.set_behavior(StandLookAt {
-            target: Point2::origin(),
-        }),
+        PrimaryState::Initial => commands.set_behavior(InitialStandLook),
         PrimaryState::Ready => commands.set_behavior(WalkToSet {}),
         PrimaryState::Set => commands.set_behavior(StandLookAt {
             target: ball_or_origin,
