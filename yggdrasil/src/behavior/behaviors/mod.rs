@@ -1,5 +1,4 @@
 mod catchfall;
-mod initial_stand_look;
 mod observe;
 mod sitting;
 mod stand;
@@ -11,7 +10,6 @@ mod walk_to;
 mod walk_to_set;
 
 pub use catchfall::{CatchFall, CatchFallBehaviorPlugin};
-pub use initial_stand_look::{InitialStandLook, InitialStandLookBehaviorPlugin};
 pub use observe::{Observe, ObserveBehaviorConfig, ObserveBehaviorPlugin};
 pub use sitting::{Sitting, SittingBehaviorPlugin};
 pub use stand::{Stand, StandBehaviorPlugin};
