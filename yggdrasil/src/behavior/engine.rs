@@ -177,8 +177,8 @@ pub fn in_role<T: Roles>(state: Option<Res<State<Role>>>) -> bool {
     }
 }
 
-fn robot_is_not_leaning(imu_values: &IMUValues) -> bool {
-    imu_values.angles.y < 0.2 && imu_values.angles.y > -0.2
+fn robot_is_leaning(imu_values: &IMUValues) -> bool {
+    imu_values.angles.y > 0.2 || imu_values.angles.y < -0.2
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -201,8 +201,7 @@ pub fn role_base(
     let behavior = behavior_state.get();
 
     if behavior == &BehaviorState::StartUp {
-        if (robot_is_not_leaning(&imu_values) && *gait == Gait::Sitting)
-            || head_buttons.all_pressed()
+        if (!robot_is_leaning(&imu_values) && *gait == Gait::Sitting) || head_buttons.all_pressed()
         {
             commands.set_behavior(Sitting);
         }
