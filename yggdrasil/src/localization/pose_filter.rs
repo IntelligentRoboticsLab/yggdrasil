@@ -120,6 +120,8 @@ fn odometry_update(odometry: Res<Odometry>, mut particles: Query<&mut RobotPoseF
 }
 
 fn line_update(
+    dbg: DebugContext,
+    cycle: Res<Cycle>,
     correspondences: Query<&LineCorrespondences, Added<LineCorrespondences>>,
     mut particles: Query<&mut RobotPoseFilter>,
 ) {
@@ -138,8 +140,8 @@ fn line_update(
                 // the line that the robot actually saw
                 let detected = match direction {
                     Direction::AlongX
-                        if correspondence.detected_line.end.x
-                            < correspondence.detected_line.start.x =>
+                        if correspondence.detected_line.end.y
+                            < correspondence.detected_line.start.y =>
                     {
                         LineSegment2::new(
                             correspondence.detected_line.end,
@@ -147,8 +149,8 @@ fn line_update(
                         )
                     }
                     Direction::AlongY
-                        if correspondence.detected_line.end.y
-                            < correspondence.detected_line.start.y =>
+                        if correspondence.detected_line.end.x
+                            < correspondence.detected_line.start.x =>
                     {
                         LineSegment2::new(
                             correspondence.detected_line.end,
@@ -180,8 +182,8 @@ fn line_update(
 
                 let measured_angle = {
                     let mut angle = -f32::atan2(
-                        orthogonal_projection.coords.x,
                         orthogonal_projection.coords.y,
+                        orthogonal_projection.coords.x,
                     );
 
                     angle = match direction {
@@ -209,6 +211,11 @@ fn line_update(
                 let angle_rotation_matrix = na::Matrix2::new(c, -s, s, c);
 
                 // const Vector2f orthogonalProjection = angleRotationMatrix * Vector2f(line.orthogonalProjection.x(), line.orthogonalProjection.y());
+                println!("Rotation matrix: {}", angle_rotation_matrix);
+
+                println!("Orthogonal projection: {:?}", orthogonal_projection);
+
+                let og_orthogonal_projection = orthogonal_projection.coords;
 
                 let orthogonal_projection = angle_rotation_matrix
                     * na::Vector2::new(
@@ -216,17 +223,49 @@ fn line_update(
                         orthogonal_projection.coords.y,
                     );
 
+                println!("Rotated orthogonal projection: {:?}", orthogonal_projection);
+
                 particle.fix_covariance();
 
                 let measured = match direction {
-                    Direction::AlongX => field_line.start.x - orthogonal_projection.x,
-                    Direction::AlongY => field_line.start.y - orthogonal_projection.y,
+                    Direction::AlongX => projected.start.y - orthogonal_projection.y,
+                    Direction::AlongY => projected.start.x - orthogonal_projection.x,
                 };
 
                 let measurement = LineMeasurement {
                     distance: measured,
                     angle: measured_angle,
                 };
+
+                dbg.log_with_cycle(
+                    "localization_shi",
+                    *cycle,
+                    &rerun::LineStrips3D::new([[
+                        (pose.position().coords.x, pose.position().coords.y, 0.0),
+                        (
+                            (pose.position().coords + orthogonal_projection).x,
+                            (pose.position().coords + orthogonal_projection).y,
+                            0.0,
+                        ),
+                    ]])
+                    .with_colors([(255, 0, 0), (255, 0, 0)])
+                    .with_radii([0.1, 0.1]),
+                );
+
+                dbg.log_with_cycle(
+                    "localization_shi_unrotated",
+                    *cycle,
+                    &rerun::LineStrips3D::new([[
+                        (pose.position().coords.x, pose.position().coords.y, 0.0),
+                        (
+                            (pose.position().coords + og_orthogonal_projection).x,
+                            (pose.position().coords + og_orthogonal_projection).y,
+                            0.0,
+                        ),
+                    ]])
+                    .with_colors([(0, 255, 0), (0, 255, 0)])
+                    .with_radii([0.1, 0.1]),
+                );
 
                 println!(
                     "Updating particle in direction {:?} with {:?}",
