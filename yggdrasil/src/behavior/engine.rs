@@ -25,6 +25,9 @@ use super::{
     },
 };
 
+const FORWARD_LEANING_THRESHOLD: f32 = 0.2;
+const BACKWARD_LEANING_THRESHOLD: f32 = -0.2;
+
 pub(super) struct BehaviorEnginePlugin;
 
 impl Plugin for BehaviorEnginePlugin {
@@ -178,7 +181,8 @@ pub fn in_role<T: Roles>(state: Option<Res<State<Role>>>) -> bool {
 }
 
 fn robot_is_leaning(imu_values: &IMUValues) -> bool {
-    imu_values.angles.y > 0.2 || imu_values.angles.y < -0.2
+    imu_values.angles.y > FORWARD_LEANING_THRESHOLD
+        || imu_values.angles.y < BACKWARD_LEANING_THRESHOLD
 }
 
 #[allow(clippy::too_many_arguments)]
