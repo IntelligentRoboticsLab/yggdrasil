@@ -262,7 +262,7 @@ pub fn role_base(
             commands.set_behavior(Stand);
         }
         PrimaryState::Standby | PrimaryState::Finished | PrimaryState::Calibration => {
-            commands.set_behavior(Stand)
+            commands.set_behavior(Stand);
         }
         PrimaryState::Initial => {
             orientation.reset();
