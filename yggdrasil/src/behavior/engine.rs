@@ -67,7 +67,6 @@ pub enum BehaviorState {
     StartUp,
     WalkTo,
     WalkToSet,
-    InitialStandLook,
 }
 
 #[must_use]
