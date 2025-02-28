@@ -6,17 +6,18 @@ use nalgebra::Point2;
 use crate::{
     core::config::showtime::PlayerConfig,
     motion::walking_engine::Gait,
-    sensor::{button::HeadButtons, falling::FallState},
+    sensor::{
+        button::HeadButtons, falling::FallState, imu::IMUValues, orientation::RobotOrientation,
+    },
     vision::ball_detection::classifier::Balls,
 };
 
 use super::{
     behaviors::{
-        CatchFall, CatchFallBehaviorPlugin, InitialStandLook, InitialStandLookBehaviorPlugin,
-        ObserveBehaviorPlugin, Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin,
-        StandLookAt, StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin,
-        StartUpBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSet,
-        WalkToSetBehaviorPlugin,
+        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, Sitting, SittingBehaviorPlugin,
+        Stand, StandBehaviorPlugin, StandLookAt, StandLookAtBehaviorPlugin, Standup,
+        StandupBehaviorPlugin, StartUpBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin,
+        WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
@@ -45,7 +46,6 @@ impl Plugin for BehaviorEnginePlugin {
                 DefenderRolePlugin,
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
-                InitialStandLookBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
     }
@@ -178,6 +178,10 @@ pub fn in_role<T: Roles>(state: Option<Res<State<Role>>>) -> bool {
     }
 }
 
+fn robot_is_not_leaning(imu_values: &IMUValues) -> bool {
+    imu_values.angles.y < 0.2 && imu_values.angles.y > -0.2
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn role_base(
     mut commands: Commands,
@@ -191,12 +195,16 @@ pub fn role_base(
     top_balls: Res<Balls<Top>>,
     bottom_balls: Res<Balls<Bottom>>,
     game_controller_message: Option<Res<GameControllerMessage>>,
+    imu_values: Res<IMUValues>,
+    mut orientation: ResMut<RobotOrientation>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
 
     if behavior == &BehaviorState::StartUp {
-        if *gait == Gait::Sitting || head_buttons.all_pressed() {
+        if (robot_is_not_leaning(&imu_values) && *gait == Gait::Sitting)
+            || head_buttons.all_pressed()
+        {
             commands.set_behavior(Sitting);
         }
         if *primary_state == PrimaryState::Initial {
@@ -249,11 +257,19 @@ pub fn role_base(
 
     match *primary_state {
         PrimaryState::Sitting => commands.set_behavior(Sitting),
-        PrimaryState::Standby
-        | PrimaryState::Penalized
-        | PrimaryState::Finished
-        | PrimaryState::Calibration => commands.set_behavior(Stand),
-        PrimaryState::Initial => commands.set_behavior(InitialStandLook),
+        PrimaryState::Penalized => {
+            orientation.reset();
+            commands.set_behavior(Stand);
+        }
+        PrimaryState::Standby | PrimaryState::Finished | PrimaryState::Calibration => {
+            commands.set_behavior(Stand)
+        }
+        PrimaryState::Initial => {
+            orientation.reset();
+            commands.set_behavior(StandLookAt {
+                target: Point2::default(),
+            });
+        }
         PrimaryState::Ready => commands.set_behavior(WalkToSet {}),
         PrimaryState::Set => commands.set_behavior(StandLookAt {
             target: ball_or_origin,
