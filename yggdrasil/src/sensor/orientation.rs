@@ -64,7 +64,7 @@ impl RobotOrientation {
     // TODO: This should be called whenever the robot switches to penalized state or when the ready state is entered.
     // See: https://github.com/IntelligentRoboticsLab/yggdrasil/issues/400
     #[allow(unused)]
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.yaw_offset = None;
         self.vqf.reset_orientation(UnitQuaternion::identity());
     }
