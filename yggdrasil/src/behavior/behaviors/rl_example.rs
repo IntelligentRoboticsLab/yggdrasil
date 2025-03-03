@@ -112,9 +112,9 @@ struct Output {
 
 impl RlBehaviorOutput<ModelOutput> for Output {
     fn from_output(output: ModelOutput) -> Self {
-        let forward = output[0];
-        let left = output[1];
-        let turn = output[2];
+        let forward = output[0].clamp(-1.0, 1.0);
+        let left = output[1].clamp(-1.0, 1.0);
+        let turn = output[2].clamp(-1.0, 1.0);
 
         Self {
             step: Step {
