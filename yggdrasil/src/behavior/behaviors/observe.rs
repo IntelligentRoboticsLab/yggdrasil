@@ -63,7 +63,8 @@ pub struct ObserveBehaviorPlugin;
 impl Plugin for ObserveBehaviorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, observe.run_if(in_behavior::<Observe>))
-            .add_systems(OnEnter(BehaviorState::Observe), reset_observe_starting_time);
+            .add_systems(OnEnter(BehaviorState::Observe), reset_observe_starting_time)
+            .insert_resource(ObserveStartingTime(Instant::now()));
     }
 }
 
