@@ -45,6 +45,8 @@ pub struct CameraSettings {
     pub calibration: CalibrationConfig,
     pub focus_auto: bool,
     pub exposure_auto: bool,
+    pub white_balance_temperature: i32,
+    pub white_balance_temperature_auto: bool,
 }
 
 /// This plugins captures images using the top- and bottom camera of the NAO.
@@ -88,6 +90,12 @@ fn setup_camera_device(settings: &CameraSettings) -> Result<CameraDevice> {
 
     #[cfg(not(feature = "local"))]
     camera_device.set_exposure_auto(settings.exposure_auto)?;
+
+    #[cfg(not(feature = "local"))]
+    camera_device.set_white_balance_temperature(settings.white_balance_temperature)?;
+
+    #[cfg(not(feature = "local"))]
+    camera_device.set_white_balance_temperature_auto(settings.white_balance_temperature_auto)?;
 
     Ok(camera_device)
 }

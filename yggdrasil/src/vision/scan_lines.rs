@@ -36,6 +36,10 @@ pub struct ScanLinesConfig {
     /// Black color
     max_black_luminance: f32,
     max_black_saturation: f32,
+    /// Green chromaticity threshold
+    pub green_chromaticity_threshold: f32,
+    pub red_chromaticity_threshold: f32,
+    pub blue_chromaticity_threshold: f32,
 }
 
 impl Config for ScanLinesConfig {
@@ -219,7 +223,7 @@ impl ScanLineRegion {
         config: &ScanLinesConfig,
         field: &FieldColorApproximate,
     ) -> ClassifiedScanLineRegion {
-        let color = RegionColor::classify_yuv_pixel(config, field, self.approx_color.clone());
+        let color = RegionColor::classify_yuv_pixel(config, field, self.approx_color);
 
         ClassifiedScanLineRegion { line: self, color }
     }
@@ -269,8 +273,7 @@ impl ClassifiedScanLineRegion {
                     .set_end_point(region.line.region.end_point());
 
                 let weight = curr.line.region.length();
-                curr.line
-                    .add_sample(region.line.approx_color.clone(), weight);
+                curr.line.add_sample(region.line.approx_color, weight);
 
                 current_region = Some(curr);
             } else {
@@ -668,8 +671,19 @@ impl RegionColor {
         pixel: YuvPixel,
     ) -> Self {
         let yhs = pixel.to_yhs2();
+        let (r, g, b) = pixel.to_rgb();
 
-        if Self::is_green(config, yhs) {
+        let color_sum = r + g + b;
+        let g_chromaticity = g / color_sum;
+        let green_threshold = config.green_chromaticity_threshold;
+
+        if Self::is_black(config, yhs) {
+            // We mark black spots as white regions for ball detection
+            return RegionColor::WhiteOrBlack;
+        }
+
+        // use chromaticity to find green pixels
+        if g_chromaticity > green_threshold {
             return RegionColor::Green;
         }
 
@@ -677,18 +691,7 @@ impl RegionColor {
             return RegionColor::WhiteOrBlack;
         }
 
-        if Self::is_black(config, yhs) {
-            // We mark black spots as white regions for ball detection
-            return RegionColor::WhiteOrBlack;
-        }
-
         RegionColor::Unknown
-    }
-
-    fn is_green(config: &ScanLinesConfig, (y, h, s): (f32, f32, f32)) -> bool {
-        y <= config.max_field_luminance
-            && s >= config.min_field_saturation
-            && (config.min_field_hue..=config.max_field_hue).contains(&h)
     }
 
     fn is_white(config: &ScanLinesConfig, (y, _h, s): (f32, f32, f32)) -> bool {

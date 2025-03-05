@@ -6,7 +6,7 @@ use re_control_comms::{
     app::ControlAppHandle, debug_system::DebugEnabledSystems, protocol::RobotMessage,
 };
 
-use crate::vision::camera::CameraConfig;
+use crate::vision::{camera::CameraConfig, scan_lines::ScanLinesConfig};
 
 use super::{DebugEnabledSystemUpdated, ViewerConnected};
 
@@ -26,12 +26,14 @@ pub fn send_on_connection(
     mut viewer_events: EventReader<ViewerConnected>,
     send_debug_enabled_systems: Res<SendDebugEnabledSystems>,
     send_camera_extrinsic: Res<SendCameraExtrinsic>,
+    send_green_chromaticity_threshold: Res<SendGreenChromaticityThreshold>,
 ) {
     if !viewer_events.is_empty() {
         viewer_events.clear();
 
         commands.run_system(send_debug_enabled_systems.0);
         commands.run_system(send_camera_extrinsic.0);
+        commands.run_system(send_green_chromaticity_threshold.0);
     }
 }
 
@@ -84,6 +86,25 @@ pub fn send_camera_extrinsic(
     .detach();
 }
 
+fn send_green_chromaticity_threshold(
+    scan_lines_config: Res<ScanLinesConfig>,
+    control_handle: Res<ControlAppHandle>,
+) {
+    let msg = RobotMessage::Chromaticity {
+        green_threshold: scan_lines_config.green_chromaticity_threshold,
+    };
+
+    let io = IoTaskPool::get();
+
+    let handle = control_handle.clone();
+    io.spawn(async move {
+        if let Err(error) = handle.broadcast(msg).await {
+            tracing::error!(?error, "Failed to send green chromaticity threshold");
+        }
+    })
+    .detach();
+}
+
 // This system sends the current [`DebugEnabledSystems`] to all connected
 // clients.
 // When an individual client updates a debug enabled system, the state of
@@ -124,6 +145,16 @@ pub struct SendCameraExtrinsic(SystemId);
 impl FromWorld for SendCameraExtrinsic {
     fn from_world(world: &mut World) -> Self {
         let system_id = world.register_system(send_camera_extrinsic);
+        Self(system_id)
+    }
+}
+
+#[derive(Resource)]
+pub struct SendGreenChromaticityThreshold(SystemId);
+
+impl FromWorld for SendGreenChromaticityThreshold {
+    fn from_world(world: &mut World) -> Self {
+        let system_id = world.register_system(send_green_chromaticity_threshold);
         Self(system_id)
     }
 }

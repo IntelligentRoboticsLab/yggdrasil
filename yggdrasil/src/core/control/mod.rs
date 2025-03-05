@@ -16,7 +16,7 @@ use receive::{
 };
 use transmit::{
     send_on_connection, update_debug_systems_for_clients, SendCameraExtrinsic,
-    SendDebugEnabledSystems,
+    SendDebugEnabledSystems, SendGreenChromaticityThreshold,
 };
 
 use super::debug::{init_rerun, RerunStream};
@@ -29,6 +29,7 @@ impl Plugin for ControlPlugin {
             .add_event::<ViewerConnected>()
             .init_resource::<SendCameraExtrinsic>()
             .init_resource::<SendDebugEnabledSystems>()
+            .init_resource::<SendGreenChromaticityThreshold>()
             .add_systems(Startup, setup.after(init_rerun))
             .add_systems(
                 Update,
