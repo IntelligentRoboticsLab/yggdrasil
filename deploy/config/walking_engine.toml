@@ -102,6 +102,14 @@ gyro_lpf_alpha = 0.4
 # to adjust the pitch of the robot's ankles, in order to balance the pendulum motion.
 filtered_gyro_y_multiplier = 0.05
 
+# Phase shift for foot leveling drop-off.
+#
+# Higher values mean the swing foot is leveled for longer.
+foot_leveling_phase_shift = 0.7
+
+# Decay rate for the foot leveling logistic filter.
+foot_leveling_decay = 14.0
+
 # This section contains parameters for the foot support while walking.
 [foot_support]
 # The maximum (normalized) pressure on the current support foot, before predicting a foot switch.

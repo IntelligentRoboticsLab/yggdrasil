@@ -189,8 +189,11 @@ fn foot_leveling(
     let level_orientation = orientation.quaternion() * robot_to_walk_rotation.inverse();
     let (level_roll, level_pitch, _) = level_orientation.euler_angles();
 
-    // TODO(gijsd): make config values for these.
-    let weight = logistic_correction_weight(state.linear(), 0.7, 14.0);
+    let weight = logistic_correction_weight(
+        state.linear(),
+        config.balancing.foot_leveling_phase_shift,
+        config.balancing.foot_leveling_decay,
+    );
 
     let target_roll = -level_roll * weight;
     let target_pitch = -level_pitch * weight;

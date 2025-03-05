@@ -12,16 +12,26 @@ use super::{foot_support::FootSupportConfig, hips::HipHeightConfig, step::Step};
 pub struct BalancingConfig {
     /// The amount to swing the arms based on the forward movement.
     pub arm_swing_multiplier: f32,
+
     /// The alpha parameter used for the low pass filter over the gyroscope values.
     ///
     /// Higher values mean that the filtered gyroscope value responds to changes quicker,
     /// and lower values mean that it responds slower.
     pub gyro_lpf_alpha: f32,
+
     /// The weight of the balance adjustment based on the y gyroscope value.
     ///
     /// Increasing this value will use a larger portion of the filtered gyro value
     /// to adjust the pitch of the robot's ankles, in order to balance the pendulum motion.
     pub filtered_gyro_y_multiplier: f32,
+
+    /// Phase shift for foot leveling drop-off.
+    ///
+    /// Higher values mean the swing foot is leveled for longer.
+    pub foot_leveling_phase_shift: f32,
+
+    /// Decay rate for the foot leveling logistic filter.
+    pub foot_leveling_decay: f32,
 }
 
 /// Configuration for the walking engine.
