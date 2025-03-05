@@ -61,7 +61,7 @@ fn threshold_slider(
             green_threshold: *chromaticity_threshold,
         };
         if let Err(error) = handle.send(msg) {
-            tracing::error!(?error, "Failed to send message");
+            tracing::error!(?error, "Failed to send chromaticity threshold");
         }
     };
 }
