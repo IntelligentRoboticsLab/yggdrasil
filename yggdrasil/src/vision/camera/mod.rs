@@ -46,7 +46,7 @@ pub struct CameraSettings {
     pub focus_auto: bool,
     pub exposure_auto: bool,
     pub white_balance_temperature: i32,
-    pub white_balance_temperature_auto:bool,
+    pub white_balance_temperature_auto: bool,
 }
 
 /// This plugins captures images using the top- and bottom camera of the NAO.

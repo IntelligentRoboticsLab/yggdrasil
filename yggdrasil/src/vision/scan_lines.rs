@@ -273,8 +273,7 @@ impl ClassifiedScanLineRegion {
                     .set_end_point(region.line.region.end_point());
 
                 let weight = curr.line.region.length();
-                curr.line
-                    .add_sample(region.line.approx_color, weight);
+                curr.line.add_sample(region.line.approx_color, weight);
 
                 current_region = Some(curr);
             } else {
