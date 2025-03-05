@@ -671,7 +671,7 @@ impl RegionColor {
         _field: &FieldColorApproximate,
         pixel: YuvPixel,
     ) -> Self {
-        let yhs = pixel.clone().to_yhs2();
+        let yhs = pixel.to_yhs2();
         let (r, g, b) = pixel.to_rgb();
 
         let color_sum = r + g + b;
