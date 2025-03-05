@@ -223,7 +223,7 @@ impl ScanLineRegion {
         config: &ScanLinesConfig,
         field: &FieldColorApproximate,
     ) -> ClassifiedScanLineRegion {
-        let color = RegionColor::classify_yuv_pixel(config, field, self.approx_color.clone());
+        let color = RegionColor::classify_yuv_pixel(config, field, self.approx_color);
 
         ClassifiedScanLineRegion { line: self, color }
     }
@@ -274,7 +274,7 @@ impl ClassifiedScanLineRegion {
 
                 let weight = curr.line.region.length();
                 curr.line
-                    .add_sample(region.line.approx_color.clone(), weight);
+                    .add_sample(region.line.approx_color, weight);
 
                 current_region = Some(curr);
             } else {
