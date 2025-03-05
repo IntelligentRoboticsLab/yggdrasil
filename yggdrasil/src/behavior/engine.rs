@@ -77,32 +77,10 @@ pub fn in_behavior<T: Behavior>(state: Option<Res<State<BehaviorState>>>) -> boo
     }
 }
 
-fn insert_behavior_resource_if_not_active<B: Behavior>(behavior_resource: B) -> impl Command {
-    move |world: &mut World| {
-        let behavior_state = world.get_resource::<State<BehaviorState>>();
-        if behavior_state.is_none_or(|behavior_state| *behavior_state.get() != B::STATE) {
-            world.get_resource_or_insert_with(|| behavior_resource);
-        }
-    }
-}
-
-fn insert_role_resource_if_not_active<R: Roles>(role_resource: R) -> impl Command {
-    move |world: &mut World| {
-        let role_state = world.get_resource::<State<Role>>();
-        if role_state.is_none_or(|role_state| *role_state.get() != R::STATE) {
-            world.get_resource_or_insert_with(|| role_resource);
-        }
-    }
-}
-
 pub trait CommandsBehaviorExt {
     fn set_behavior<T: Behavior>(&mut self, behavior: T);
 
-    fn reset_behavior<T: Behavior>(&mut self, behavior: T);
-
     fn set_role<T: Roles>(&mut self, role: T);
-
-    fn reset_role<T: Roles>(&mut self, role: T);
 
     fn disable_role(&mut self);
 }
@@ -110,20 +88,10 @@ pub trait CommandsBehaviorExt {
 impl CommandsBehaviorExt for Commands<'_, '_> {
     fn set_behavior<T: Behavior>(&mut self, behavior: T) {
         self.set_state(T::STATE);
-        self.queue(insert_behavior_resource_if_not_active(behavior));
-    }
-
-    fn reset_behavior<T: Behavior>(&mut self, behavior: T) {
-        self.set_state(T::STATE);
         self.insert_resource(behavior);
     }
 
     fn set_role<T: Roles>(&mut self, role: T) {
-        self.set_state(T::STATE);
-        self.queue(insert_role_resource_if_not_active(role));
-    }
-
-    fn reset_role<T: Roles>(&mut self, role: T) {
         self.set_state(T::STATE);
         self.insert_resource(role);
     }
