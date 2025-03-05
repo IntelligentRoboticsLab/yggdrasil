@@ -52,7 +52,7 @@ focus_auto = false
 exposure_auto = true
 # Temperature value for white balancing
 white_balance_temperature = 2500
-# Wheter to turn on auto white balancing
+# Whether to turn on auto white balancing
 white_balance_temperature_auto = true
 
 [camera.top.calibration]
