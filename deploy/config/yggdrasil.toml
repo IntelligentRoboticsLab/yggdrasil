@@ -50,6 +50,10 @@ flip_vertically = true
 focus_auto = false
 # Whether to turn on auto exposure
 exposure_auto = true
+# Temperature value for white balancing
+white_balance_temperature = 2500
+# Wheter to turn on auto white balancing
+white_balance_temperature_auto = true
 
 [camera.top.calibration]
 # The extrinsic rotation for the camera in degrees, xyz euler angles.
