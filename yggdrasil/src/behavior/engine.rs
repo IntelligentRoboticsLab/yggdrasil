@@ -34,7 +34,7 @@ impl Plugin for BehaviorEnginePlugin {
     fn build(&self, app: &mut App) {
         // StatesPlugin should be added before init_state
         app.init_state::<BehaviorState>()
-            .init_state::<Role>()
+            .init_state::<RoleState>()
             .add_plugins((
                 StandBehaviorPlugin,
                 WalkBehaviorPlugin,
@@ -97,7 +97,7 @@ impl CommandsBehaviorExt for Commands<'_, '_> {
     }
 
     fn disable_role(&mut self) {
-        self.set_state(Role::Disabled);
+        self.set_state(RoleState::Disabled);
     }
 }
 
@@ -106,8 +106,8 @@ pub trait Behavior: Resource {
     const STATE: BehaviorState;
 }
 
-#[derive(States, Debug, Default, Clone, PartialEq, Eq, Hash)]
-pub enum Role {
+#[derive(States, Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum RoleState {
     #[default]
     Disabled,
     Striker,
@@ -115,10 +115,9 @@ pub enum Role {
     Defender,
 }
 
-impl Role {
+impl RoleState {
     /// Get the default role for each robot based on that robots player number
     pub fn by_player_number(mut commands: Commands, player_number: u8) {
-        // TODO: get the default role for each robot by player number
         match player_number {
             1 => commands.set_role(Goalkeeper),
             5 => commands.set_role(Striker::WalkToBall),
@@ -126,8 +125,13 @@ impl Role {
         }
     }
 
-    pub fn assign_role(mut commands: Commands, sees_ball: bool, player_number: u8) {
-        if sees_ball {
+    pub fn assign_role(
+        mut commands: Commands,
+        sees_ball: bool,
+        player_number: u8,
+        current_role: RoleState,
+    ) {
+        if sees_ball && current_role != RoleState::Goalkeeper {
             commands.set_role(Striker::WalkToBall);
         } else {
             Self::by_player_number(commands, player_number);
@@ -137,11 +141,11 @@ impl Role {
 
 // Link each behavior data struct with an enum variant of the Role
 pub trait Roles: Resource {
-    const STATE: Role;
+    const STATE: RoleState;
 }
 
 #[must_use]
-pub fn in_role<T: Roles>(state: Option<Res<State<Role>>>) -> bool {
+pub fn in_role<T: Roles>(state: Option<Res<State<RoleState>>>) -> bool {
     match state {
         Some(current_behavior) => *current_behavior == T::STATE,
         None => panic!("Failed to get the current role state"),
@@ -168,6 +172,7 @@ pub fn role_base(
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
     mut orientation: ResMut<RobotOrientation>,
+    role: Res<State<RoleState>>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -245,10 +250,11 @@ pub fn role_base(
             target: ball_or_origin,
         }),
         PrimaryState::Playing { .. } => {
-            Role::assign_role(
+            RoleState::assign_role(
                 commands,
                 most_confident_ball.is_some(),
                 player_config.player_number,
+                *role.get(),
             );
         }
     }

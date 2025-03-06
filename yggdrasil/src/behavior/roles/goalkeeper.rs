@@ -4,7 +4,7 @@ use nalgebra::{Point2, UnitComplex};
 use crate::{
     behavior::{
         behaviors::{Observe, WalkTo},
-        engine::{in_role, BehaviorState, CommandsBehaviorExt, Role, Roles},
+        engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::layout::LayoutConfig,
     motion::step_planner::{StepPlanner, Target},
@@ -24,7 +24,7 @@ impl Plugin for GoalkeeperRolePlugin {
 #[derive(Resource)]
 pub struct Goalkeeper;
 impl Roles for Goalkeeper {
-    const STATE: Role = Role::Goalkeeper;
+    const STATE: RoleState = RoleState::Goalkeeper;
 }
 
 pub fn goalkeeper_role(

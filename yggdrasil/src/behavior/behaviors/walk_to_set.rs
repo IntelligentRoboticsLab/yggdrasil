@@ -6,7 +6,7 @@ use nidhogg::types::{FillExt, HeadJoints};
 use nalgebra::{Point2, Point3};
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState, Role},
+    behavior::engine::{in_behavior, Behavior, BehaviorState, RoleState},
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
     localization::RobotPose,
     motion::{
@@ -50,7 +50,7 @@ pub fn walk_to_set(
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
-    role: Res<State<Role>>,
+    role: Res<State<RoleState>>,
 ) {
     let set_robot_position = layout_config
         .set_positions
@@ -82,7 +82,7 @@ pub fn walk_to_set(
             .is_some_and(|current_target| current_target == &GOAL_KEEPER_PRE_SET_POS)
             && !step_planner.reached_target());
 
-    let is_goalkeeper = role.get() == &Role::Goalkeeper;
+    let is_goalkeeper = role.get() == &RoleState::Goalkeeper;
 
     if is_goalkeeper && reached_pre_set {
         step_planner.set_absolute_target(GOAL_KEEPER_PRE_SET_POS);
