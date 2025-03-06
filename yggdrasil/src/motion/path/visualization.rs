@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use crate::core::debug::DebugContext;
+use crate::nao::Cycle;
 
 use super::{obstacles::Obstacle, planner::PathPlanner};
 
@@ -15,24 +16,24 @@ const PATH_HEIGHT: f32 = 0.0002;
 
 /// Initializes the visualization.
 pub fn init_visualization(dbg: DebugContext) {
-    use rerun::ComponentBatch;
-
-    dbg.log_static(
+    dbg.log_with_cycle(
         "pathfinding/obstacles",
-        &rerun::Color::from_rgb(0, 0, 255).serialized().unwrap(),
+        Cycle::default(),
+        &rerun::LineStrips3D::update_fields().with_colors([(0, 0, 255)]),
     );
-
-    dbg.log_static(
+    dbg.log_with_cycle(
         "pathfinding/path",
-        &rerun::Color::from_rgb(255, 0, 0).serialized().unwrap(),
+        Cycle::default(),
+        &rerun::LineStrips3D::update_fields().with_colors([(255, 0, 0)]),
     );
 }
 
 /// Visualizes the obstacles.
-pub fn visualize_obstacles(dbg: DebugContext, obstacles: Query<&Obstacle>) {
-    dbg.log(
+pub fn visualize_obstacles(dbg: DebugContext, obstacles: Query<&Obstacle>, cycle: Res<Cycle>) {
+    dbg.log_with_cycle(
         "pathfinding/obstacles",
-        &rerun::LineStrips3D::new(obstacles.iter().map(|obstacle| {
+        *cycle,
+        &rerun::LineStrips3D::update_fields().with_strips(obstacles.iter().map(|obstacle| {
             obstacle
                 .vertices(RESOLUTION)
                 .map(|p| [p.x, p.y, OBSTACLE_HEIGHT])
@@ -41,10 +42,11 @@ pub fn visualize_obstacles(dbg: DebugContext, obstacles: Query<&Obstacle>) {
 }
 
 /// Visualizes the path.
-pub fn visualize_path(dbg: DebugContext, planner: Res<PathPlanner>) {
-    dbg.log(
+pub fn visualize_path(dbg: DebugContext, planner: Res<PathPlanner>, cycle: Res<Cycle>) {
+    dbg.log_with_cycle(
         "pathfinding/path",
-        &rerun::LineStrips3D::new([planner
+        *cycle,
+        &rerun::LineStrips3D::update_fields().with_strips([planner
             .path
             .as_ref()
             .into_iter()
