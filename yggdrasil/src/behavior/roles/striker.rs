@@ -5,7 +5,7 @@ use nalgebra::{Point2, Point3};
 use crate::{
     behavior::{
         behaviors::{Observe, Walk, WalkTo},
-        engine::{in_role, CommandsBehaviorExt, Role, Roles},
+        engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::layout::LayoutConfig,
     localization::RobotPose,
@@ -36,7 +36,7 @@ pub enum Striker {
 }
 
 impl Roles for Striker {
-    const STATE: Role = Role::Striker;
+    const STATE: RoleState = RoleState::Striker;
 }
 
 pub fn striker_role(

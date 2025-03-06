@@ -4,7 +4,7 @@ use nalgebra::Point2;
 use crate::{
     behavior::{
         behaviors::{Observe, WalkTo},
-        engine::{in_role, BehaviorState, CommandsBehaviorExt, Role, Roles},
+        engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
     localization::RobotPose,
@@ -25,7 +25,7 @@ impl Plugin for DefenderRolePlugin {
 #[derive(Resource)]
 pub struct Defender;
 impl Roles for Defender {
-    const STATE: Role = Role::Defender;
+    const STATE: RoleState = RoleState::Defender;
 }
 
 pub fn defender_role(
