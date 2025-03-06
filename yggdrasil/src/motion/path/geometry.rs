@@ -182,6 +182,7 @@ impl Circle {
     ///
     /// Returns `None` if the tangents don't exist (i.e., one of the circles is completely
     /// contained inside the other).
+    #[must_use]
     pub fn outer_tangents(&self, other: &Circle) -> Option<Tangents> {
         if self.radius <= other.radius {
             self.outer_tangents_ordered(other)
@@ -203,6 +204,7 @@ impl Circle {
     ///
     /// Returns `None` if the tangents don't exist (i.e., the circles partially or completely
     /// overlap).
+    #[must_use]
     pub fn inner_tangents(&self, other: &Circle) -> Option<InnerTangents> {
         if self.radius <= other.radius {
             self.inner_tangents_ordered(other)
