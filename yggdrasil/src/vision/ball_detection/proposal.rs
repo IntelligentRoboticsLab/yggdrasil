@@ -330,8 +330,11 @@ pub fn get_ball_proposals<T: CameraLocation>(
         // middle of the white region
         let mid_point = middle.line_spot();
 
-        if body_contour.is_part_of_body(mid_point) {
-            continue;
+        // only check for body contours on bottom camera
+        if T::POSITION == CameraPosition::Top {
+            if body_contour.is_part_of_body(mid_point) {
+                continue;
+            }
         }
 
         // distance to the ball
