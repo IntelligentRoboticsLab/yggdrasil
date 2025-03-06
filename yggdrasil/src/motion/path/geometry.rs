@@ -182,18 +182,20 @@ impl Circle {
     ///
     /// Returns `None` if the tangents don't exist (i.e., one of the circles is completely
     /// contained inside the other).
-    pub fn outer_tangents(&self, other: Circle) -> Option<Tangents> {
+    pub fn outer_tangents(&self, other: &Circle) -> Option<Tangents> {
         if self.radius <= other.radius {
             self.outer_tangents_ordered(other)
         } else {
-            other.outer_tangents_ordered(self).map(Tangents::flip)
+            other
+                .outer_tangents_ordered(self)
+                .map(|tangents| tangents.flip())
         }
     }
 
     /// Calculates the outer tangents from a smaller to a larger circle.
     ///
     /// The behavior of this function is unspecified if `larger` is not actually larger.
-    fn outer_tangents_ordered(&self, larger: Circle) -> Option<Tangents> {
+    fn outer_tangents_ordered(&self, larger: &Circle) -> Option<Tangents> {
         larger.dilate(-self.radius).tangents(self.center)
     }
 
@@ -201,18 +203,20 @@ impl Circle {
     ///
     /// Returns `None` if the tangents don't exist (i.e., the circles partially or completely
     /// overlap).
-    pub fn inner_tangents(&self, other: Circle) -> Option<InnerTangents> {
+    pub fn inner_tangents(&self, other: &Circle) -> Option<InnerTangents> {
         if self.radius <= other.radius {
             self.inner_tangents_ordered(other)
         } else {
-            other.inner_tangents_ordered(self).map(InnerTangents::flip)
+            other
+                .inner_tangents_ordered(self)
+                .map(|tangents| tangents.flip())
         }
     }
 
     /// Calculates the inner tangents from a smaller to a larger circle.
     ///
     /// The behavior of this function is unspecified if `larger` is not actually larger.
-    fn inner_tangents_ordered(&self, larger: Circle) -> Option<InnerTangents> {
+    fn inner_tangents_ordered(&self, larger: &Circle) -> Option<InnerTangents> {
         larger
             .dilate(self.radius)
             .tangents(self.center)
@@ -483,12 +487,12 @@ impl CircularArc {
 
     /// Returns an iterator of vertices on the arc such that a full circle has `resolution`
     /// vertices.
-    pub fn vertices(&self, resolution: f32) -> impl Iterator<Item = Point> {
+    pub fn vertices(self, resolution: f32) -> impl Iterator<Item = Point> {
         self.n_vertices(((resolution * self.step.abs() / TAU).ceil() as usize).max(2))
     }
 
     /// Returns an iterator of vertices on the arc such that there are `n` equally spaced vertices.
-    pub fn n_vertices(&self, n: usize) -> impl Iterator<Item = Point> {
+    pub fn n_vertices(self, n: usize) -> impl Iterator<Item = Point> {
         let factor = self.step * ((n - 1) as f32).recip();
 
         (0..n).map(move |i| self.circle.point_at_angle(self.start + i as f32 * factor))
@@ -563,10 +567,10 @@ impl Connection {
     #[must_use]
     pub fn arc_to_arc(prev: CircularArc, next: CircularArc) -> Option<Self> {
         let angles = match (prev.direction(), next.direction()) {
-            (Ccw, Ccw) => prev.circle.outer_tangents(next.circle)?.ccw_to_ccw(),
-            (Ccw, Cw) => prev.circle.inner_tangents(next.circle)?.ccw_to_cw,
-            (Cw, Ccw) => prev.circle.inner_tangents(next.circle)?.cw_to_ccw,
-            (Cw, Cw) => prev.circle.outer_tangents(next.circle)?.cw_to_cw(),
+            (Ccw, Ccw) => prev.circle.outer_tangents(&next.circle)?.ccw_to_ccw(),
+            (Ccw, Cw) => prev.circle.inner_tangents(&next.circle)?.ccw_to_cw,
+            (Cw, Ccw) => prev.circle.inner_tangents(&next.circle)?.cw_to_ccw,
+            (Cw, Cw) => prev.circle.outer_tangents(&next.circle)?.cw_to_cw(),
         };
 
         let prev = prev.exit(angles.0)?;

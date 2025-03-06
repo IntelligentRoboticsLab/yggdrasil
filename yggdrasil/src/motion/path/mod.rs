@@ -4,19 +4,30 @@ pub mod finding;
 pub mod geometry;
 pub mod obstacles;
 pub mod planner;
-pub mod visualization;
 
 pub use finding::Target;
+pub use obstacles::Obstacle;
 pub use planner::PathPlanner;
 
 use bevy::prelude::*;
+use nalgebra as na;
 use serde::{Deserialize, Serialize};
 
 use crate::core::config::ConfigExt;
+use crate::core::debug::DebugContext;
+use crate::nao::Cycle;
+
+use finding::Colliders;
+use geometry::Circle;
+
 use odal::Config;
 
-use obstacles::{add_static_obstacles, obstacles_changed, update_colliders};
-use visualization::{init_visualization, visualize_obstacles, visualize_path};
+/// Number of vertices per circle.
+const RESOLUTION: f32 = 64.0;
+/// The height at which the obstacles are rendered.
+const OBSTACLE_HEIGHT: f32 = 0.0001;
+/// The height at which the path is rendered.
+const PATH_HEIGHT: f32 = 0.0002;
 
 /// Plugin providing pathfinding capabilities.
 pub struct PathPlugin;
@@ -87,4 +98,74 @@ pub struct PathConfig {
 
 impl Config for PathConfig {
     const PATH: &'static str = "path_planner.toml";
+}
+
+/// Adds initial obstacles to the scene.
+pub fn add_static_obstacles(mut commands: Commands) {
+    // Add goalposts
+    commands.spawn(Obstacle::from(Circle::new(na::point![-4.5, 0.8], 0.05)));
+    commands.spawn(Obstacle::from(Circle::new(na::point![-4.5, -0.8], 0.05)));
+    commands.spawn(Obstacle::from(Circle::new(na::point![4.5, 0.8], 0.05)));
+    commands.spawn(Obstacle::from(Circle::new(na::point![4.5, -0.8], 0.05)));
+}
+
+/// Checks if any obstacles have been changed.
+#[must_use]
+pub fn obstacles_changed(obstacles: Query<&Obstacle, Changed<Obstacle>>) -> bool {
+    !obstacles.is_empty()
+}
+
+/// Updates the [`Colliders`] based on the obstacles in the ECS.
+pub fn update_colliders(mut planner: ResMut<PathPlanner>, obstacles: Query<&Obstacle>) {
+    let radius = planner.config().robot_radius;
+
+    let mut colliders = Colliders::new();
+
+    for obstacle in &obstacles {
+        obstacle.add_to_colliders(radius, &mut colliders);
+    }
+
+    planner.set_colliders(colliders);
+}
+
+/// Initializes the visualization.
+pub fn init_visualization(dbg: DebugContext) {
+    dbg.log_with_cycle(
+        "pathfinding/obstacles",
+        Cycle::default(),
+        &rerun::LineStrips3D::update_fields().with_colors([(0, 0, 255)]),
+    );
+    dbg.log_with_cycle(
+        "pathfinding/path",
+        Cycle::default(),
+        &rerun::LineStrips3D::update_fields().with_colors([(255, 0, 0)]),
+    );
+}
+
+/// Visualizes the obstacles.
+pub fn visualize_obstacles(dbg: DebugContext, obstacles: Query<&Obstacle>, cycle: Res<Cycle>) {
+    dbg.log_with_cycle(
+        "pathfinding/obstacles",
+        *cycle,
+        &rerun::LineStrips3D::update_fields().with_strips(obstacles.iter().map(|obstacle| {
+            obstacle
+                .vertices(RESOLUTION)
+                .map(|p| [p.x, p.y, OBSTACLE_HEIGHT])
+        })),
+    );
+}
+
+/// Visualizes the path.
+pub fn visualize_path(dbg: DebugContext, planner: Res<PathPlanner>, cycle: Res<Cycle>) {
+    dbg.log_with_cycle(
+        "pathfinding/path",
+        *cycle,
+        &rerun::LineStrips3D::update_fields().with_strips([planner
+            .path
+            .as_ref()
+            .into_iter()
+            .flatten()
+            .flat_map(|s| s.vertices(RESOLUTION))
+            .map(|p| [p.x, p.y, PATH_HEIGHT])]),
+    );
 }
