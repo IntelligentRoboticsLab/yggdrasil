@@ -29,7 +29,7 @@ impl Winding {
     }
     /// Returns the angular distance from `start` to `end`.
     #[must_use]
-    pub fn angular_distance(self, start: f32, end: f32) -> f32 {
+    pub fn angular_distance(&self, start: f32, end: f32) -> f32 {
         match self {
             Self::Ccw => (end - start).rem_euclid(TAU),
             Self::Cw => -(start - end).rem_euclid(TAU),
@@ -63,26 +63,26 @@ impl LineSegment {
 
     /// Returns a vector in the direction of the line segment.
     #[must_use]
-    pub fn direction(self) -> Vector {
+    pub fn direction(&self) -> Vector {
         (self.end - self.start) / self.length()
     }
 
     /// Returns the signed perpendicular distance to a point such that to the right is positive.
     #[must_use]
-    pub fn signed_distance(self, point: Point) -> f32 {
+    pub fn signed_distance(&self, point: Point) -> f32 {
         (point - self.start).perp(&self.direction())
     }
 
     /// Returns the angle the line segment points to.
     #[must_use]
-    pub fn forward(self) -> f32 {
+    pub fn forward(&self) -> f32 {
         let dir = self.direction();
         dir.y.atan2(dir.x)
     }
 
     /// Shortens the line segment to the projection of the point onto the segment.
     #[must_use]
-    pub fn enter(self, point: Point) -> Option<Self> {
+    pub fn enter(&self, point: Point) -> Option<Self> {
         let direction = self.direction();
         let length = self.length();
 
@@ -118,13 +118,13 @@ impl Circle {
         Self::new(Point::origin(), radius)
     }
 
-    /// Returns a copy of the circle with the dilation added to the radius.
+    /// Returns a copy of this circle with the dilation added to the radius.
     ///
     /// # Important
     ///
     /// No checks are done to ensure the radius remains positive.
     #[must_use]
-    pub fn dilate(self, dilation: f32) -> Self {
+    pub fn dilate(&self, dilation: f32) -> Self {
         Self {
             center: self.center,
             radius: self.radius + dilation,
@@ -133,27 +133,27 @@ impl Circle {
 
     /// Returns the point on the circumference of the circle at a given angle.
     #[must_use]
-    pub fn point_at_angle(self, angle: f32) -> Point {
+    pub fn point_at_angle(&self, angle: f32) -> Point {
         self.point_from_vector(Unit::new_normalize(Vector::new(angle.cos(), angle.sin())))
     }
 
     /// Projects a vector onto the circle such that a unit vector results in a point on the
     /// circumference.
     #[must_use]
-    pub fn point_from_vector(self, direction: Unit<Vector>) -> Point {
+    pub fn point_from_vector(&self, direction: Unit<Vector>) -> Point {
         self.center + self.radius * *direction
     }
 
     /// Returns the angle from the circle's center to the point.
     #[must_use]
-    pub fn angle_to_point(self, point: Point) -> f32 {
+    pub fn angle_to_point(&self, point: Point) -> f32 {
         let center_to_point = point - self.center;
         center_to_point.y.atan2(center_to_point.x)
     }
 
     /// Returns the signed distance such that it's positive for a point outside the circle.
     #[must_use]
-    pub fn signed_distance(self, point: Point) -> f32 {
+    pub fn signed_distance(&self, point: Point) -> f32 {
         (point - self.center).norm() - self.radius
     }
 
@@ -161,7 +161,7 @@ impl Circle {
     ///
     /// Returns `None` if the tangents don't exist (i.e., the point is inside the circle).
     #[must_use]
-    pub fn tangents(self, point: Point) -> Option<Tangents> {
+    pub fn tangents(&self, point: Point) -> Option<Tangents> {
         let center_to_point = point - self.center;
         let dist = center_to_point.norm();
 
@@ -182,7 +182,7 @@ impl Circle {
     ///
     /// Returns `None` if the tangents don't exist (i.e., one of the circles is completely
     /// contained inside the other).
-    pub fn outer_tangents(self, other: Circle) -> Option<Tangents> {
+    pub fn outer_tangents(&self, other: Circle) -> Option<Tangents> {
         if self.radius <= other.radius {
             self.outer_tangents_ordered(other)
         } else {
@@ -193,7 +193,7 @@ impl Circle {
     /// Calculates the outer tangents from a smaller to a larger circle.
     ///
     /// The behavior of this function is unspecified if `larger` is not actually larger.
-    fn outer_tangents_ordered(self, larger: Circle) -> Option<Tangents> {
+    fn outer_tangents_ordered(&self, larger: Circle) -> Option<Tangents> {
         larger.dilate(-self.radius).tangents(self.center)
     }
 
@@ -201,7 +201,7 @@ impl Circle {
     ///
     /// Returns `None` if the tangents don't exist (i.e., the circles partially or completely
     /// overlap).
-    pub fn inner_tangents(self, other: Circle) -> Option<InnerTangents> {
+    pub fn inner_tangents(&self, other: Circle) -> Option<InnerTangents> {
         if self.radius <= other.radius {
             self.inner_tangents_ordered(other)
         } else {
@@ -212,7 +212,7 @@ impl Circle {
     /// Calculates the inner tangents from a smaller to a larger circle.
     ///
     /// The behavior of this function is unspecified if `larger` is not actually larger.
-    fn inner_tangents_ordered(self, larger: Circle) -> Option<InnerTangents> {
+    fn inner_tangents_ordered(&self, larger: Circle) -> Option<InnerTangents> {
         larger
             .dilate(self.radius)
             .tangents(self.center)
@@ -232,7 +232,7 @@ pub struct Tangents {
 impl Tangents {
     /// Gets the tangents associated with the given direction.
     #[must_use]
-    pub fn get(self, direction: Winding) -> f32 {
+    pub fn get(&self, direction: Winding) -> f32 {
         match direction {
             Ccw => self.ccw,
             Cw => self.cw,
@@ -241,19 +241,19 @@ impl Tangents {
 
     /// Returns the counterclockwise angles as a tuple.
     #[must_use]
-    pub fn ccw_to_ccw(self) -> (f32, f32) {
+    pub fn ccw_to_ccw(&self) -> (f32, f32) {
         (self.ccw, self.ccw)
     }
 
     /// Returns the clockwise angles as a tuple.
     #[must_use]
-    pub fn cw_to_cw(self) -> (f32, f32) {
+    pub fn cw_to_cw(&self) -> (f32, f32) {
         (self.cw, self.cw)
     }
 
     /// Flips the direction of the tangents.
     #[must_use]
-    pub fn flip(self) -> Self {
+    pub fn flip(&self) -> Self {
         Self {
             ccw: self.cw,
             cw: self.ccw,
@@ -270,7 +270,7 @@ pub struct InnerTangents {
 impl InnerTangents {
     /// Gets the tangents associated with the given start direction.
     #[must_use]
-    pub fn get(self, direction: Winding) -> (f32, f32) {
+    pub fn get(&self, direction: Winding) -> (f32, f32) {
         match direction {
             Ccw => self.ccw_to_cw,
             Cw => self.cw_to_ccw,
@@ -279,7 +279,7 @@ impl InnerTangents {
 
     /// Flips the direction of the tangents.
     #[must_use]
-    pub fn flip(self) -> Self {
+    pub fn flip(&self) -> Self {
         Self {
             ccw_to_cw: (self.ccw_to_cw.1, self.ccw_to_cw.0),
             cw_to_ccw: (self.cw_to_ccw.1, self.cw_to_ccw.0),
@@ -336,14 +336,14 @@ impl CircularArc {
         }
     }
 
-    /// Returns a copy of this arc with a different start.
+    /// Returns this arc with a different start.
     #[must_use]
     pub fn with_start(mut self, start: f32) -> Self {
         self.start = start;
         self
     }
 
-    /// Returns a copy of this arc with a different step.
+    /// Returns this arc with a different step.
     #[must_use]
     pub fn with_step(mut self, step: f32) -> Self {
         self.step = step;
@@ -372,7 +372,7 @@ impl CircularArc {
 
     /// Returns the direction of the arc.
     #[must_use]
-    pub fn direction(self) -> Winding {
+    pub fn direction(&self) -> Winding {
         if self.step >= 0. {
             Ccw
         } else {
@@ -382,80 +382,80 @@ impl CircularArc {
 
     /// Returns the signed perpendicular distance to a point such that to the right is positive.
     #[must_use]
-    pub fn signed_distance(self, point: Point) -> f32 {
+    pub fn signed_distance(&self, point: Point) -> f32 {
         self.step.signum() * self.circle.signed_distance(point)
     }
 
     /// The angular distance from `start` to `end`.
     #[must_use]
-    pub fn angular_distance(self, start: f32, end: f32) -> f32 {
+    pub fn angular_distance(&self, start: f32, end: f32) -> f32 {
         self.direction().angular_distance(start, end)
     }
 
     /// Returns whether the arc is a full circle (i.e, the absolute step is or exceeds `TAU`).
     #[must_use]
-    pub fn full_circle(self) -> bool {
+    pub fn full_circle(&self) -> bool {
         self.step.abs() >= TAU
     }
 
     /// Returns the angle at the end of the arc.
     #[must_use]
-    pub fn end(self) -> f32 {
+    pub fn end(&self) -> f32 {
         self.start + self.step
     }
 
     /// Returns the turn such that a left (i.e., counterclockwise) turn is positive.
     #[must_use]
-    pub fn turn(self) -> f32 {
+    pub fn turn(&self) -> f32 {
         self.step.signum() / self.circle.radius
     }
 
     /// Returns the angle pointing forward from the start.
     #[must_use]
-    pub fn forward_at_start(self) -> f32 {
+    pub fn forward_at_start(&self) -> f32 {
         self.forward_at_angle(self.start)
     }
 
     /// Returns the angle pointing forward from the end.
     #[must_use]
-    pub fn forward_at_end(self) -> f32 {
+    pub fn forward_at_end(&self) -> f32 {
         self.forward_at_angle(self.end())
     }
 
     /// Returns the angle pointing forward at an angle on the arc.
     #[must_use]
-    pub fn forward_at_angle(self, angle: f32) -> f32 {
+    pub fn forward_at_angle(&self, angle: f32) -> f32 {
         angle + self.step.signum() * 0.5 * PI
     }
 
     /// Returns whether the angle is contained within this arc.
     #[must_use]
-    pub fn contains_angle(self, angle: f32) -> bool {
+    pub fn contains_angle(&self, angle: f32) -> bool {
         let distance = self.angular_distance(self.start, angle);
         Winding::closer_or_equal(distance, self.step)
     }
 
     /// Returns the point at an angle.
     #[must_use]
-    pub fn point_at_angle(self, angle: f32) -> Point {
+    pub fn point_at_angle(&self, angle: f32) -> Point {
         self.circle.point_at_angle(angle)
     }
 
     /// Returns the point at the start.
     #[must_use]
-    pub fn point_at_start(self) -> Point {
+    pub fn point_at_start(&self) -> Point {
         self.point_at_angle(self.start)
     }
 
     /// Returns the point at the end.
     #[must_use]
-    pub fn point_at_end(self) -> Point {
+    pub fn point_at_end(&self) -> Point {
         self.point_at_angle(self.end())
     }
 
     /// Same as `enter_non_circular`, but preserves circles.
     #[must_use]
-    pub fn enter(self, start: f32) -> Option<Self> {
+    pub fn enter(&self, start: f32) -> Option<Self> {
         if self.full_circle() {
             Some(self.with_start(start))
         } else {
@@ -467,15 +467,15 @@ impl CircularArc {
     ///
     /// Circles are not preserved.
     #[must_use]
-    pub fn enter_non_circular(self, start: f32) -> Option<Self> {
+    pub fn enter_non_circular(&self, start: f32) -> Option<Self> {
         let step = self.angular_distance(start, self.end());
 
         Winding::closer_or_equal(step, self.step).then(|| self.with_start(start).with_step(step))
     }
 
-    /// Returns a new shortened copy of this arc with a given end if that end lies on this arc.
+    /// Returns this arc shortened with a given end if that end lies on this arc.
     #[must_use]
-    pub fn exit(self, end: f32) -> Option<Self> {
+    pub fn exit(&self, end: f32) -> Option<Self> {
         let step = self.angular_distance(self.start, end);
 
         Winding::closer_or_equal(step, self.step).then(|| self.with_step(step))
@@ -483,12 +483,12 @@ impl CircularArc {
 
     /// Returns an iterator of vertices on the arc such that a full circle has `resolution`
     /// vertices.
-    pub fn vertices(self, resolution: f32) -> impl Iterator<Item = Point> {
+    pub fn vertices(&self, resolution: f32) -> impl Iterator<Item = Point> {
         self.n_vertices(((resolution * self.step.abs() / TAU).ceil() as usize).max(2))
     }
 
     /// Returns an iterator of vertices on the arc such that there are `n` equally spaced vertices.
-    pub fn n_vertices(self, n: usize) -> impl Iterator<Item = Point> {
+    pub fn n_vertices(&self, n: usize) -> impl Iterator<Item = Point> {
         let factor = self.step * ((n - 1) as f32).recip();
 
         (0..n).map(move |i| self.circle.point_at_angle(self.start + i as f32 * factor))
