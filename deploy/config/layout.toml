@@ -76,29 +76,41 @@ border_strip_width = 0.7
 [[initial_positions]]
 player_number = 1
 rotation = -90
-translation = [-2.85, 3]
+translation = [-3.9, 3]
 
 # Initial position of player two.
 [[initial_positions]]
 player_number = 2
 rotation = 90
-translation = [-2.85, -3]
+translation = [-3.9, -3]
 
 # Initial position of player three.
 [[initial_positions]]
 player_number = 3
 rotation = -90
-translation = [-1.8, 3]
+translation = [-2.8, 3]
 
 # Initial position of player four.
 [[initial_positions]]
 player_number = 4
 rotation = 90
-translation = [-0.75, -3]
+translation = [-2.8, -3]
 
 # Initial position of player five.
 [[initial_positions]]
 player_number = 5
+rotation = -90
+translation = [-1.8, 3]
+
+# Initial position of player six.
+[[initial_positions]]
+player_number = 6
+rotation = 90
+translation = [-0.75, -3]
+
+# Initial position of player seven.
+[[initial_positions]]
+player_number = 7
 rotation = -90
 translation = [-0.75, 3]
 
@@ -115,23 +127,35 @@ translation = [-4.5, 0]
 [[set_positions]]
 player_number = 2
 rotation = 0
-translation = [-3.15, -1.1]
+translation = [-3, -1.1]
 
 # Set position of player three.
 [[set_positions]]
 player_number = 3
 rotation = 0
-translation = [-3.15, 1.1]
+translation = [-3, 1.1]
 
 # Set position of player four.
 [[set_positions]]
 player_number = 4
 rotation = 45
-translation = [-0.8, -0.8]
+translation = [-1.8, -1.5]
 
 # Set position of player five.
 [[set_positions]]
 player_number = 5
+rotation = 0
+translation = [-1.8, 1.5]
+
+# Set position of player six.
+[[set_positions]]
+player_number = 6
+rotation = 0
+translation = [-0.8, -0.8]
+
+# Set position of player seven.
+[[set_positions]]
+player_number = 7
 rotation = 0
 translation = [-1, 0]
 

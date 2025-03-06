@@ -323,6 +323,10 @@ impl FieldPositionsConfig {
             .find(|elem| elem.player_number == player_num as usize)
             .unwrap_or_else(|| panic!("Player number {player_num:?} not in layout configuration!"))
     }
+
+    pub fn length(&self) -> usize {
+        self.0.len()
+    }
 }
 
 /// Contains the coordinates for one robot position.
