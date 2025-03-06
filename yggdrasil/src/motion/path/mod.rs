@@ -59,14 +59,23 @@ pub struct PathConfig {
     /// The maximum distance the target may be from the path.
     pub target_tolerance: f32,
     /// The deadband of the perpendicular error.
+    ///
+    /// This controls the maximum distance the robot is allowed to be from the path before it
+    /// starts side-stepping to correct the error.
     pub perpendicular_deadband: f32,
     /// The speed at which the perpendicular error gets corrected.
     pub perpendicular_speed: f32,
     /// The deadband of the angular error.
+    ///
+    /// This controls the maximum angle the robot is allowed to differ from the path before it
+    /// starts adding a turn to correct the error.
     pub angular_deadband: f32,
     /// The speed at which the angular error gets corrected while walking.
     pub angular_speed: f32,
     /// The angular threshold at which the robot stops to turn.
+    ///
+    /// This is the angle at which the robot stops correcting its angle while walking and stands
+    /// still to turn.
     pub stop_and_turn_threshold: f32,
     /// The walking speed of the robot.
     pub walk_speed: f32,

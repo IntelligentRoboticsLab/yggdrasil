@@ -4,6 +4,8 @@ use std::f32::consts::{PI, TAU};
 
 use nalgebra as na;
 
+use na::Unit;
+
 pub use Winding::{Ccw, Cw};
 
 pub type Point = na::Point2<f32>;
@@ -118,6 +120,8 @@ impl Circle {
 
     /// Returns a copy of the circle with the dilation added to the radius.
     ///
+    /// # Important
+    ///
     /// No checks are done to ensure the radius remains positive.
     #[must_use]
     pub fn dilate(self, dilation: f32) -> Self {
@@ -130,14 +134,14 @@ impl Circle {
     /// Returns the point on the circumference of the circle at a given angle.
     #[must_use]
     pub fn point_at_angle(self, angle: f32) -> Point {
-        self.point_from_vector(Vector::new(angle.cos(), angle.sin()))
+        self.point_from_vector(Unit::new_normalize(Vector::new(angle.cos(), angle.sin())))
     }
 
     /// Projects a vector onto the circle such that a unit vector results in a point on the
     /// circumference.
     #[must_use]
-    pub fn point_from_vector(self, direction: Vector) -> Point {
-        self.center + self.radius * direction
+    pub fn point_from_vector(self, direction: Unit<Vector>) -> Point {
+        self.center + self.radius * *direction
     }
 
     /// Returns the angle from the circle's center to the point.
@@ -161,7 +165,7 @@ impl Circle {
         let center_to_point = point - self.center;
         let dist = center_to_point.norm();
 
-        if dist <= self.radius {
+        if dist < self.radius {
             return None;
         }
 
@@ -501,10 +505,10 @@ impl From<Circle> for CircularArc {
     }
 }
 
-/// A connection from one state to another state.
+/// A connection between an arc/point to another arc/point.
 #[derive(Copy, Clone, Debug)]
 pub struct Connection {
-    pub prev: Option<CircularArc>,
+    pub previous: Option<CircularArc>,
     pub link: LineSegment,
     pub next: Option<CircularArc>,
 }
@@ -525,7 +529,7 @@ impl Connection {
     #[must_use]
     pub fn point_to_point(prev: Point, next: Point) -> Option<Self> {
         Some(Self {
-            prev: None,
+            previous: None,
             link: LineSegment::new(prev, next),
             next: None,
         })
@@ -537,7 +541,7 @@ impl Connection {
         let next = next.enter(next.circle.tangents(prev)?.get(next.direction()))?;
 
         Some(Self {
-            prev: None,
+            previous: None,
             link: LineSegment::new(prev, next.point_at_start()),
             next: Some(next),
         })
@@ -549,7 +553,7 @@ impl Connection {
         let prev = prev.exit(prev.circle.tangents(next)?.flip().get(prev.direction()))?;
 
         Some(Self {
-            prev: Some(prev),
+            previous: Some(prev),
             link: LineSegment::new(prev.point_at_end(), next),
             next: None,
         })
@@ -569,7 +573,7 @@ impl Connection {
         let next = next.enter(angles.1)?;
 
         Some(Self {
-            prev: Some(prev),
+            previous: Some(prev),
             link: LineSegment::new(prev.point_at_end(), next.point_at_start()),
             next: Some(next),
         })
@@ -581,14 +585,14 @@ impl Connection {
         map: impl Fn(Segment) -> T,
         reduce: impl Fn(T, T) -> T,
     ) -> T {
-        match self.prev {
+        match self.previous {
             Some(prev) => reduce(map(prev.into()), map(self.link.into())),
             None => map(self.link.into()),
         }
     }
 
     pub fn for_each_determined(&self, mut f: impl FnMut(Segment)) {
-        self.prev.map(Segment::from).map(&mut f);
+        self.previous.map(Segment::from).map(&mut f);
         f(self.link.into());
     }
 }
@@ -694,7 +698,7 @@ impl Segment {
     #[must_use]
     pub fn beyond(&self, point: Point) -> bool {
         let angle = self.forward_at_end();
-        (point - self.end()).dot(&Vector::new(angle.cos(), angle.sin())) >= 0.
+        (point - self.end()).dot(&Vector::new(angle.cos(), angle.sin())) > 0.
     }
 
     /// Returns the vertices to render this segment.
