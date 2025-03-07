@@ -14,10 +14,11 @@ use crate::{
 
 use super::{
     behaviors::{
-        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, Sitting, SittingBehaviorPlugin,
-        Stand, StandBehaviorPlugin, StandLookAt, StandLookAtBehaviorPlugin, Standup,
-        StandupBehaviorPlugin, StartUpBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin,
-        WalkToSet, WalkToSetBehaviorPlugin,
+        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, Possessed,
+        PossessedBehaviorPlugin, Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin,
+        StandLookAt, StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin,
+        StartUpBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSet,
+        WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
@@ -40,6 +41,7 @@ impl Plugin for BehaviorEnginePlugin {
                 WalkBehaviorPlugin,
                 CatchFallBehaviorPlugin,
                 ObserveBehaviorPlugin,
+                PossessedBehaviorPlugin,
                 SittingBehaviorPlugin,
                 StandLookAtBehaviorPlugin,
                 StandupBehaviorPlugin,
@@ -60,6 +62,7 @@ pub enum BehaviorState {
     Stand,
     CatchFall,
     Observe,
+    Possessed,
     Sitting,
     StandLookAt,
     Standup,
@@ -238,6 +241,9 @@ pub fn role_base(
         }
         PrimaryState::Standby | PrimaryState::Finished | PrimaryState::Calibration => {
             commands.set_behavior(Stand);
+        }
+        PrimaryState::Possessed => {
+            commands.set_behavior(Possessed);
         }
         PrimaryState::Initial => {
             orientation.reset();
