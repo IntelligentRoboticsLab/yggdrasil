@@ -3,9 +3,9 @@ max_classification_age_eye_color = 100
 
 [proposal.top]
 # The minimum ratio of white pixels in the range around the proposed ball
-ball_ratio = 0.6
+ball_ratio = 0.53
 # The ratio of green pixels in the patch below the ball.
-grass_ratio = 0.9
+grass_ratio = 0.78
 # Height/width of the bounding box around the ball
 bounding_box_scale = 85.0
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
@@ -26,9 +26,9 @@ bbox_padding_factor = 1.1
 
 [proposal.bottom]
 # The minimum ratio of white pixels in the range around the proposed ball
-ball_ratio = 0.7
+ball_ratio = 0.4
 # The ratio of green pixels in the patch below the ball.
-grass_ratio = 0.9
+grass_ratio = 0.6
 # Height/width of the bounding box around the ball
 bounding_box_scale = 35.0
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
