@@ -1,5 +1,6 @@
 use bevy::app::PluginGroup;
 
+mod kick;
 mod sit;
 mod stand;
 mod starting;

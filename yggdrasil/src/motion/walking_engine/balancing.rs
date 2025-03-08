@@ -108,6 +108,26 @@ impl BalanceAdjustment {
         self
     }
 
+    pub fn apply_swing_leg_adjustments(
+        &mut self,
+        swing_side: Side,
+        hip_pitch_override: f32,
+        ankle_pitch_override: f32,
+    ) -> &mut Self {
+        match swing_side {
+            Side::Left => {
+                self.left_leg.hip_pitch += hip_pitch_override;
+                self.left_leg.ankle_pitch += ankle_pitch_override;
+            }
+            Side::Right => {
+                self.right_leg.hip_pitch += hip_pitch_override;
+                self.right_leg.ankle_pitch += ankle_pitch_override;
+            }
+        };
+
+        self
+    }
+
     /// Apply this [`BalanceAdjustment`] to the provided leg joints.
     pub fn apply(
         &self,

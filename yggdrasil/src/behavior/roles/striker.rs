@@ -9,7 +9,14 @@ use crate::{
     },
     core::config::layout::LayoutConfig,
     localization::RobotPose,
-    motion::{step_planner::Target, walking_engine::step::Step},
+    motion::{
+        step_planner::Target,
+        walking_engine::{
+            step::Step,
+            step_context::{KickVariant, StepContext},
+            Side,
+        },
+    },
     vision::ball_detection::classifier::Balls,
 };
 
@@ -45,6 +52,7 @@ pub fn striker_role(
     layout_config: Res<LayoutConfig>,
     top_balls: Res<Balls<Top>>,
     bottom_balls: Res<Balls<Bottom>>,
+    mut step_context: ResMut<StepContext>,
     mut state: ResMut<Striker>,
 ) {
     let most_confident_ball = bottom_balls
@@ -71,6 +79,13 @@ pub fn striker_role(
         let ball_goal_center_align = (absolute_ball_angle - absolute_goal_angle).abs() < 0.2;
 
         let ball_distance = pose.distance_to(&ball);
+
+        println!("ball distance: {:?}", ball_distance);
+        if ball_distance <= 0.15 {
+            if step_context.is_ready_for_kick() && step_context.active_kick.is_none() {
+                step_context.request_kick(KickVariant::Forward, Side::Left, 0.6);
+            }
+        }
 
         let ball_pos = Target {
             position: ball,
