@@ -56,16 +56,26 @@ goal_area_width = 2.2
 penalty_area_length = 1.65
 
 # Width of the penalty area (H).
-penalty_area_width = 4
+penalty_area_width = 4.0
 
 # Distance to the penalty mark from the side of the field (I).
 penalty_mark_distance = 1.3
 
 # Diameter of the centre circle (J).
-centre_circle_diameter = 1.500
+centre_circle_diameter = 1.5
 
 # Width of the border strip (K).
 border_strip_width = 0.7
+
+# Diamater of the goal posts in m.
+goal_post_diamater = 0.1
+
+# Width of the goal in m.
+# Goal post diamater is 0.1m, and the distance between goal posts is 1.5m.
+goal_width = 1.6
+
+# Depth of the goal in m.
+goal_depth = 0.5
 
 
 # The fields below indicate the starting position of each robot based on its
