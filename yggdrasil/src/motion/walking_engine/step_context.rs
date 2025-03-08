@@ -16,12 +16,31 @@ use super::{
     gait::StandingHeight,
     schedule::{Gait, WalkingEngineSet},
     step::{PlannedStep, Step},
+    FootSwitchedEvent, Side,
 };
 use bevy::prelude::*;
 use nalgebra::Vector2;
 use rerun::external::glam::{Quat, Vec3};
 
 const RETURN_FROM_HIGH_STAND_COOLDOWN: Duration = Duration::from_secs(1);
+
+// Define kick variant type
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KickVariant {
+    Forward,
+    Turn,
+    Side,
+}
+
+// Define the kick sequence information
+#[derive(Debug, Clone)]
+pub struct KickSequence {
+    pub variant: KickVariant,
+    pub kicking_side: Side,
+    pub strength: f32,
+    pub step_index: usize,
+    pub total_steps: usize,
+}
 
 pub(super) struct StepContextPlugin;
 
@@ -60,6 +79,7 @@ pub struct StepContext {
     stand_return_start: Option<Instant>,
     last_step: PlannedStep,
     pub planned_step: PlannedStep,
+    pub active_kick: Option<KickSequence>,
 }
 
 impl StepContext {
@@ -72,6 +92,7 @@ impl StepContext {
             stand_return_start: None,
             last_step,
             planned_step: last_step,
+            active_kick: None,
         }
     }
 
@@ -82,6 +103,7 @@ impl StepContext {
             ..Default::default()
         };
         self.requested_step = Step::default();
+        self.active_kick = None;
     }
 
     pub fn request_stand(&mut self) {
@@ -89,7 +111,7 @@ impl StepContext {
             Gait::Walking => {
                 self.requested_gait = Gait::Stopping;
             }
-            Gait::Sitting | Gait::Standing | Gait::Starting | Gait::Stopping => {
+            Gait::Sitting | Gait::Standing | Gait::Starting | Gait::Stopping | Gait::Kicking => {
                 // the robot can immediately move to Gait::Stand
                 self.requested_gait = Gait::Standing;
                 self.requested_standing_height = None;
@@ -120,6 +142,7 @@ impl StepContext {
             ..Default::default()
         };
         self.requested_step = Step::default();
+        self.active_kick = None;
     }
 
     pub fn request_walk(&mut self, step: Step) {
@@ -146,10 +169,61 @@ impl StepContext {
                 self.requested_gait = Gait::Starting;
                 self.requested_step = step;
             }
-            Gait::Starting | Gait::Walking | Gait::Stopping => {
+            Gait::Starting | Gait::Walking | Gait::Stopping | Gait::Kicking => {
                 // the robot is currently starting, stopping or walking already
                 // so we just change the requested step
                 self.requested_step = step;
+
+                // If we're kicking and received a walk request, finish the kick sequence after the current step
+                if self.requested_gait == Gait::Kicking {
+                    if let Some(kick) = &mut self.active_kick {
+                        kick.total_steps = kick.step_index + 1; // End after current step
+                    }
+                }
+            }
+        }
+    }
+
+    // New method to request a kick
+    pub fn request_kick(&mut self, variant: KickVariant, kicking_side: Side, strength: f32) {
+        // Can only kick from standing, starting or walking
+        match self.requested_gait {
+            Gait::Sitting => error!(
+                "Cannot request kick while sitting! Call StepManager::request_stand() first!"
+            ),
+            Gait::Standing => {
+                // Need to start walking first
+                self.requested_gait = Gait::Starting;
+                self.requested_step = Step::default(); // Use default step for starting
+
+                // Set up kick to execute after starting
+                self.active_kick = Some(KickSequence {
+                    variant,
+                    kicking_side,
+                    strength,
+                    step_index: 0,
+                    total_steps: get_kick_steps_count(variant),
+                });
+            }
+            Gait::Starting | Gait::Walking | Gait::Stopping => {
+                // Set up the kick to execute on next foot switch
+                self.active_kick = Some(KickSequence {
+                    variant,
+                    kicking_side,
+                    strength,
+                    step_index: 0,
+                    total_steps: get_kick_steps_count(variant),
+                });
+            }
+            Gait::Kicking => {
+                // Already kicking, queue a new kick
+                self.active_kick = Some(KickSequence {
+                    variant,
+                    kicking_side,
+                    strength,
+                    step_index: 0,
+                    total_steps: get_kick_steps_count(variant),
+                });
             }
         }
     }
@@ -168,13 +242,103 @@ impl StepContext {
         self.requested_gait = Gait::Standing;
     }
 
+    // Check if we need to transition out of kicking
+    pub(super) fn check_kick_progress(&mut self) -> bool {
+        if let Some(kick) = &mut self.active_kick {
+            kick.step_index += 1;
+
+            if kick.step_index >= kick.total_steps {
+                // Kick sequence complete
+                self.requested_gait = Gait::Walking;
+                self.active_kick = None;
+                true
+            } else {
+                // Continue kicking
+                false
+            }
+        } else {
+            // No active kick
+            false
+        }
+    }
+
     pub fn plan_next_step(&mut self, start: FootPositions, config: &WalkingEngineConfig) {
-        // clamp acceleration
+        let next_swing_foot = self.last_step.swing_side.opposite();
+
+        // If we have an active kick and are about to use the kicking foot as support,
+        // we need a preparation step
+        if let Some(kick) = &self.active_kick {
+            if self.requested_gait != Gait::Kicking && next_swing_foot == kick.kicking_side {
+                // Need a preparation step - this ensures the kicking foot becomes the swing foot
+                let prep_step = create_preparation_step(kick.kicking_side);
+
+                let target = FootPositions::from_target(next_swing_foot, &prep_step);
+
+                self.planned_step = PlannedStep {
+                    step: prep_step,
+                    duration: config.base_step_duration,
+                    start,
+                    target,
+                    swing_foot_height: config.base_foot_lift,
+                    swing_side: next_swing_foot,
+                };
+
+                return;
+            } else if self.requested_gait == Gait::Kicking {
+                // We're in kicking mode, generate the appropriate kick step
+                let kick_step = generate_kick_step(
+                    kick.variant,
+                    kick.kicking_side,
+                    kick.strength,
+                    kick.step_index,
+                );
+
+                let target = FootPositions::from_target(next_swing_foot, &kick_step);
+
+                // Apply kick-specific foot lift height
+                let swing_foot_height = match kick.variant {
+                    KickVariant::Forward => match kick.step_index {
+                        0 => 0.015,
+                        1 => 0.02 * kick.strength,
+                        2 => 0.015,
+                        _ => 0.01,
+                    },
+                    KickVariant::Turn => match kick.step_index {
+                        0 => 0.01,
+                        1 => 0.02 * kick.strength,
+                        _ => 0.01,
+                    },
+                    KickVariant::Side => match kick.step_index {
+                        0 => 0.01,
+                        1 => 0.02 * kick.strength,
+                        _ => 0.01,
+                    },
+                };
+
+                // For main kick step, use longer duration
+                let duration = if kick.step_index == 1 {
+                    Duration::from_millis(280) // Slightly longer for the main kick motion
+                } else {
+                    Duration::from_millis(260)
+                };
+
+                self.planned_step = PlannedStep {
+                    step: kick_step,
+                    duration,
+                    start,
+                    target,
+                    swing_foot_height,
+                    swing_side: next_swing_foot,
+                };
+
+                return;
+            }
+        }
+
+        // Normal walking step planning
         let delta_step = (self.requested_step - self.last_step.step)
             .clamp(-config.max_acceleration, config.max_acceleration);
 
-        // TODO(gijsd): do we want to assume this each time?
-        let next_swing_foot = self.last_step.swing_side.opposite();
         let next_step = (self.last_step.step + delta_step)
             .clamp(-config.max_step_size, config.max_step_size)
             .clamp_anatomic(next_swing_foot, 0.1);
@@ -199,6 +363,133 @@ impl StepContext {
             target,
             swing_foot_height: config.base_foot_lift + foot_lift_modifier,
             swing_side: next_swing_foot,
+        }
+    }
+
+    // Utility to check if the support side is correct for kicking
+    pub fn is_ready_for_kick(&self) -> bool {
+        if let Some(kick) = &self.active_kick {
+            // The swing foot needs to be the kicking foot
+            self.last_step.swing_side.opposite() == kick.kicking_side
+        } else {
+            false
+        }
+    }
+}
+
+// Helper function to create a preparation step before a kick
+fn create_preparation_step(kicking_side: Side) -> Step {
+    // Use a small neutral step to ensure we're on the correct support foot
+    match kicking_side {
+        Side::Left => Step {
+            forward: 0.01,
+            left: -0.05, // Step slightly right to prepare for left kick
+            turn: 0.0,
+        },
+        Side::Right => Step {
+            forward: 0.01,
+            left: 0.05, // Step slightly left to prepare for right kick
+            turn: 0.0,
+        },
+    }
+}
+
+// Helper function to determine how many steps a kick sequence requires
+fn get_kick_steps_count(variant: KickVariant) -> usize {
+    match variant {
+        KickVariant::Forward => 4,
+        KickVariant::Turn => 3,
+        KickVariant::Side => 2,
+    }
+}
+
+// Generate appropriate step parameters for each phase of the kick
+fn generate_kick_step(
+    variant: KickVariant,
+    kicking_side: Side,
+    strength: f32,
+    step_index: usize,
+) -> Step {
+    match variant {
+        KickVariant::Forward => {
+            match step_index {
+                0 => {
+                    // First step: small step forward to position
+                    Step {
+                        forward: 0.04 * strength,
+                        left: 0.0,
+                        turn: 0.0,
+                    }
+                }
+                1 => {
+                    // Second step: main kick motion
+                    Step {
+                        forward: 0.08 * strength,
+                        left: 0.0,
+                        turn: 0.0,
+                    }
+                }
+                _ => {
+                    // Recovery steps
+                    Step::default()
+                }
+            }
+        }
+        KickVariant::Turn => {
+            match step_index {
+                0 => {
+                    // First step: turn to position
+                    let turn_value = -0.8 * strength; // Negative turn for positioning
+                    Step {
+                        forward: 0.0,
+                        left: 0.0,
+                        turn: if kicking_side == Side::Right {
+                            -turn_value
+                        } else {
+                            turn_value
+                        },
+                    }
+                }
+                1 => {
+                    // Second step: main kick motion with turn
+                    let turn_value = -0.2 * strength;
+                    Step {
+                        forward: 0.06 * strength,
+                        left: 0.0,
+                        turn: if kicking_side == Side::Right {
+                            -turn_value
+                        } else {
+                            turn_value
+                        },
+                    }
+                }
+                _ => {
+                    // Recovery step
+                    Step::default()
+                }
+            }
+        }
+        KickVariant::Side => {
+            match step_index {
+                0 => {
+                    // First step: preparation
+                    Step::default()
+                }
+                1 => {
+                    // Second step: side kick
+                    let side_value = 0.12 * strength;
+                    Step {
+                        forward: 0.0,
+                        left: if kicking_side == Side::Right {
+                            -side_value
+                        } else {
+                            side_value
+                        },
+                        turn: 0.0,
+                    }
+                }
+                _ => Step::default(),
+            }
         }
     }
 }

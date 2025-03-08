@@ -8,6 +8,7 @@ use super::{
 };
 use crate::prelude::*;
 
+mod kick;
 mod sit;
 mod stand;
 mod starting;
