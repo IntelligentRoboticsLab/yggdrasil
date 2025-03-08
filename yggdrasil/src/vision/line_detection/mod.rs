@@ -214,7 +214,7 @@ pub fn handle_line_task<T: CameraLocation>(
             }
 
             if !detected.lines.is_empty() {
-                commands.entity(task_entity).insert((detected));
+                commands.entity(task_entity).insert(detected);
             }
             if !rejected.lines.is_empty() {
                 commands.entity(task_entity).insert(rejected);

@@ -716,7 +716,7 @@ impl RegionColor {
         let g_chromaticity = g / color_sum;
         let green_threshold = config.green_chromaticity_threshold;
 
-        if Self::is_black(config, yhs) && g_chromaticity <= green_threshold {
+        if Self::is_black(config, yhs) {
             // We mark black spots as white regions for ball detection
             return RegionColor::WhiteOrBlack;
         }

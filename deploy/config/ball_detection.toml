@@ -3,7 +3,7 @@ max_classification_age_eye_color = 100
 
 [proposal.top]
 # The minimum ratio of white pixels in the range around the proposed ball
-ball_ratio = 0.3
+ball_ratio = 0.45
 
 # The ratio of green pixels in the patch below the ball.
 grass_ratio = 0.70
