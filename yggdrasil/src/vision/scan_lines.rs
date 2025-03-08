@@ -117,7 +117,7 @@ impl Plugin for ScanLinesPlugin {
                         .run_if(resource_exists_and_changed::<ScanLines<Bottom>>),
                 ),
                 "Visualize scan lines",
-                SystemToggle::Enable,
+                SystemToggle::Disable,
             );
     }
 }
