@@ -66,21 +66,21 @@ impl From<FieldColorConfig> for ScanLinesConfig {
     }
 }
 
-impl Into<FieldColorConfig> for &ScanLinesConfig {
-    fn into(self) -> FieldColorConfig {
+impl From<&ScanLinesConfig> for FieldColorConfig {
+    fn from(value: &ScanLinesConfig) -> Self {
         FieldColorConfig {
-            min_edge_luminance_difference: self.min_edge_luminance_difference,
-            max_field_luminance: self.max_field_luminance,
-            min_field_saturation: self.min_field_saturation,
-            min_field_hue: self.min_field_hue,
-            max_field_hue: self.max_field_hue,
-            min_white_luminance: self.min_white_luminance,
-            max_white_saturation: self.max_white_saturation,
-            max_black_luminance: self.max_black_luminance,
-            max_black_saturation: self.max_black_saturation,
-            green_chromaticity_threshold: self.green_chromaticity_threshold,
-            red_chromaticity_threshold: self.red_chromaticity_threshold,
-            blue_chromaticity_threshold: self.blue_chromaticity_threshold,
+            min_edge_luminance_difference: value.min_edge_luminance_difference,
+            max_field_luminance: value.max_field_luminance,
+            min_field_saturation: value.min_field_saturation,
+            min_field_hue: value.min_field_hue,
+            max_field_hue: value.max_field_hue,
+            min_white_luminance: value.min_white_luminance,
+            max_white_saturation: value.max_white_saturation,
+            max_black_luminance: value.max_black_luminance,
+            max_black_saturation: value.max_black_saturation,
+            green_chromaticity_threshold: value.green_chromaticity_threshold,
+            red_chromaticity_threshold: value.red_chromaticity_threshold,
+            blue_chromaticity_threshold: value.blue_chromaticity_threshold,
         }
     }
 }
