@@ -55,6 +55,7 @@ pub fn defender_role(
     } else {
         commands.set_behavior(WalkTo {
             target: defend_target,
+            look_at: None,
         });
     }
 }

@@ -1,14 +1,18 @@
 use bevy::prelude::*;
-use nalgebra::{Point2, UnitComplex};
+use heimdall::{Bottom, Top};
+use nalgebra::{Point2, Point3, UnitComplex, Vector2};
 
 use crate::{
     behavior::{
         behaviors::{Observe, WalkTo},
         engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
     },
-    core::config::layout::LayoutConfig,
+    core::config::layout::{FieldConfig, LayoutConfig},
     motion::step_planner::{StepPlanner, Target},
+    vision::ball_detection::classifier::Balls,
 };
+
+const GOAL_POST_DISTANCE_OFFSET: f32 = 0.1;
 
 /// Plugin for the Goalkeeper role
 pub struct GoalkeeperRolePlugin;
@@ -27,29 +31,70 @@ impl Roles for Goalkeeper {
     const STATE: RoleState = RoleState::Goalkeeper;
 }
 
-pub fn goalkeeper_role(
-    mut commands: Commands,
-    layout_config: Res<LayoutConfig>,
-    step_planner: ResMut<StepPlanner>,
+fn default_keeper_position(
+    commands: &mut Commands,
+    field_config: &FieldConfig,
+    step_planner: &StepPlanner,
 ) {
-    let field_length = layout_config.field.length;
     let keeper_target = Target {
-        position: Point2::new(-field_length / 2., 0.),
+        position: Point2::new(-field_config.length / 2.0, 0.0),
         rotation: Some(UnitComplex::<f32>::from_angle(0.0)),
     };
 
-    if !step_planner.has_target() {
-        commands.set_behavior(WalkTo {
-            target: keeper_target,
-        });
-        return;
-    }
-
-    if step_planner.reached_target() {
+    if step_planner
+        .current_absolute_target()
+        .is_some_and(|current_target| *current_target == keeper_target)
+        && step_planner.reached_target()
+    {
         commands.set_behavior(Observe::default());
     } else {
         commands.set_behavior(WalkTo {
             target: keeper_target,
+            look_at: None,
         });
+    }
+}
+
+fn block_ball(commands: &mut Commands, ball_position: Point2<f32>, field_config: &FieldConfig) {
+    let max_y_position = field_config.goal_width / 2.0
+        - field_config.goal_post_diamater / 2.0
+        - GOAL_POST_DISTANCE_OFFSET;
+    let y_target = ball_position.y.clamp(-max_y_position, max_y_position);
+
+    let keeper_position = Point2::new(-field_config.length / 2.0, y_target);
+    let keeper_rotation = UnitComplex::<f32>::rotation_between(
+        &Vector2::default(),
+        &Vector2::new(
+            ball_position.x - keeper_position.x,
+            ball_position.y - keeper_position.y,
+        ),
+    );
+    let keeper_target = Target {
+        position: keeper_position,
+        rotation: Some(keeper_rotation),
+    };
+
+    commands.set_behavior(WalkTo {
+        target: keeper_target,
+        look_at: Some(Point3::new(ball_position.x, ball_position.y, 0.0)),
+    });
+}
+
+pub fn goalkeeper_role(
+    mut commands: Commands,
+    layout_config: Res<LayoutConfig>,
+    step_planner: ResMut<StepPlanner>,
+    top_balls: Res<Balls<Top>>,
+    bottom_balls: Res<Balls<Bottom>>,
+) {
+    let most_confident_ball = bottom_balls
+        .most_confident_ball()
+        .map(|b| b.position)
+        .or(top_balls.most_confident_ball().map(|b| b.position));
+
+    if let Some(ball_position) = most_confident_ball {
+        block_ball(&mut commands, ball_position, &layout_config.field);
+    } else {
+        default_keeper_position(&mut commands, &layout_config.field, &step_planner);
     }
 }
