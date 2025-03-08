@@ -31,7 +31,7 @@ impl<T: CameraLocation> Plugin for LineCorrespondencePlugin<T> {
                 Update,
                 log_correspondences::<T>.after(get_correspondences::<T>),
                 "Visualize line correspondences",
-                SystemToggle::Disable,
+                SystemToggle::Enable,
             );
     }
 }
@@ -39,7 +39,8 @@ impl<T: CameraLocation> Plugin for LineCorrespondencePlugin<T> {
 /// The correspondence between a detected line and a field line.
 #[derive(Debug, Clone)]
 pub struct LineCorrespondence {
-    // The line segment detected in the camera image
+    pub pose: RobotPose,
+    // The line segment detected in the robot frame
     pub detected_line: LineSegment2,
     // The ideal field line that the detected line corresponds to
     pub field_line: FieldLine,
@@ -93,6 +94,7 @@ pub fn get_correspondences<T: CameraLocation>(
                     field_line,
                     projected_line,
                     error,
+                    pose: pose.clone(),
                 });
             }
 
