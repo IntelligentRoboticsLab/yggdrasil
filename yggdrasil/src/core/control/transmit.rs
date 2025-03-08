@@ -90,8 +90,8 @@ fn send_green_chromaticity_threshold(
     scan_lines_config: Res<ScanLinesConfig>,
     control_handle: Res<ControlAppHandle>,
 ) {
-    let msg = RobotMessage::Chromaticity {
-        green_threshold: scan_lines_config.green_chromaticity_threshold,
+    let msg = RobotMessage::FieldColor {
+        config: scan_lines_config.as_ref().into(),
     };
 
     let io = IoTaskPool::get();

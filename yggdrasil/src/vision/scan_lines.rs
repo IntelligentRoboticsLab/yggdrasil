@@ -19,6 +19,7 @@ use bevy::prelude::*;
 
 use heimdall::{Bottom, CameraLocation, CameraPosition, Top, YuvPixel, YuyvImage};
 use nalgebra::Point2;
+use re_control_comms::protocol::FieldColorConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]
@@ -46,6 +47,43 @@ impl Config for ScanLinesConfig {
     const PATH: &'static str = "scan_lines.toml";
 }
 
+impl From<FieldColorConfig> for ScanLinesConfig {
+    fn from(value: FieldColorConfig) -> Self {
+        ScanLinesConfig {
+            min_edge_luminance_difference: value.min_edge_luminance_difference,
+            max_field_luminance: value.max_field_luminance,
+            min_field_saturation: value.min_field_saturation,
+            min_field_hue: value.min_field_hue,
+            max_field_hue: value.max_field_hue,
+            min_white_luminance: value.min_white_luminance,
+            max_white_saturation: value.max_white_saturation,
+            max_black_luminance: value.max_black_luminance,
+            max_black_saturation: value.max_black_saturation,
+            green_chromaticity_threshold: value.green_chromaticity_threshold,
+            red_chromaticity_threshold: value.red_chromaticity_threshold,
+            blue_chromaticity_threshold: value.blue_chromaticity_threshold,
+        }
+    }
+}
+
+impl Into<FieldColorConfig> for &ScanLinesConfig {
+    fn into(self) -> FieldColorConfig {
+        FieldColorConfig {
+            min_edge_luminance_difference: self.min_edge_luminance_difference,
+            max_field_luminance: self.max_field_luminance,
+            min_field_saturation: self.min_field_saturation,
+            min_field_hue: self.min_field_hue,
+            max_field_hue: self.max_field_hue,
+            min_white_luminance: self.min_white_luminance,
+            max_white_saturation: self.max_white_saturation,
+            max_black_luminance: self.max_black_luminance,
+            max_black_saturation: self.max_black_saturation,
+            green_chromaticity_threshold: self.green_chromaticity_threshold,
+            red_chromaticity_threshold: self.red_chromaticity_threshold,
+            blue_chromaticity_threshold: self.blue_chromaticity_threshold,
+        }
+    }
+}
 /// Plugin that generates scan-lines from taken NAO images.
 pub struct ScanLinesPlugin;
 
@@ -78,7 +116,7 @@ impl Plugin for ScanLinesPlugin {
                         .run_if(resource_exists_and_changed::<ScanLines<Bottom>>),
                 ),
                 "Visualize scan lines",
-                SystemToggle::Disable,
+                SystemToggle::Enable,
             );
     }
 }
@@ -677,7 +715,7 @@ impl RegionColor {
         let g_chromaticity = g / color_sum;
         let green_threshold = config.green_chromaticity_threshold;
 
-        if Self::is_black(config, yhs) {
+        if Self::is_black(config, yhs) && g_chromaticity <= green_threshold {
             // We mark black spots as white regions for ball detection
             return RegionColor::WhiteOrBlack;
         }
