@@ -1,3 +1,4 @@
+use core::f32;
 use std::iter::IntoIterator;
 
 use bevy::prelude::*;
@@ -6,6 +7,7 @@ use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
 use nalgebra::{self as na, point, vector, ComplexField};
+use rerun::components::RotationAxisAngle;
 
 use crate::{
     core::{
@@ -86,7 +88,7 @@ impl StateTransform<3> for RobotPose {
     }
 }
 
-#[derive(Component, Deref, DerefMut)]
+#[derive(Clone, Component, Deref, DerefMut)]
 pub struct RobotPoseFilter(UnscentedKalmanFilter<3, 7, RobotPose>);
 
 impl RobotPoseFilter {
@@ -121,12 +123,11 @@ fn odometry_update(odometry: Res<Odometry>, mut particles: Query<&mut RobotPoseF
 
 fn line_update(
     dbg: DebugContext,
-    cycle: Res<Cycle>,
-    correspondences: Query<&LineCorrespondences, Added<LineCorrespondences>>,
+    correspondences: Query<(&Cycle, &LineCorrespondences), Added<LineCorrespondences>>,
     mut particles: Query<&mut RobotPoseFilter>,
 ) {
     for mut particle in &mut particles {
-        for new_correspondences in correspondences.iter() {
+        for (cycle, new_correspondences) in correspondences.iter() {
             for correspondence in &new_correspondences.0 {
                 // skip circles for now
                 let FieldLine::Segment(field_line) = correspondence.field_line else {
@@ -176,7 +177,8 @@ fn line_update(
                 let pose = particle.state();
 
                 // line from the robot to the detected line
-                let relative_line = (pose.inner.inverse() * detected).to_line();
+                let relative_line = (correspondence.pose.inner.inverse() * detected).to_line();
+                let relative_line_segm = correspondence.pose.inner.inverse() * detected;
 
                 let orthogonal_projection = relative_line.project(point![0.0, 0.0]);
 
@@ -211,9 +213,9 @@ fn line_update(
                 let angle_rotation_matrix = na::Matrix2::new(c, -s, s, c);
 
                 // const Vector2f orthogonalProjection = angleRotationMatrix * Vector2f(line.orthogonalProjection.x(), line.orthogonalProjection.y());
-                println!("Rotation matrix: {}", angle_rotation_matrix);
+                // println!("Rotation matrix: {}", angle_rotation_matrix);
 
-                println!("Orthogonal projection: {:?}", orthogonal_projection);
+                // println!("Orthogonal projection: {:?}", orthogonal_projection);
 
                 let og_orthogonal_projection = orthogonal_projection.coords;
 
@@ -223,14 +225,16 @@ fn line_update(
                         orthogonal_projection.coords.y,
                     );
 
-                println!("Rotated orthogonal projection: {:?}", orthogonal_projection);
+                // println!("Rotated orthogonal projection: {:?}", orthogonal_projection);
 
                 particle.fix_covariance();
 
                 let measured = match direction {
-                    Direction::AlongX => projected.start.y - orthogonal_projection.y,
-                    Direction::AlongY => projected.start.x - orthogonal_projection.x,
+                    Direction::AlongX => field_line.start.y - orthogonal_projection.y,
+                    Direction::AlongY => field_line.start.x - orthogonal_projection.x,
                 };
+
+                // println!("Measured distance: {}, angle: {}", measured, measured_angle);
 
                 let measurement = LineMeasurement {
                     distance: measured,
@@ -240,37 +244,80 @@ fn line_update(
                 dbg.log_with_cycle(
                     "localization_shi",
                     *cycle,
-                    &rerun::LineStrips3D::new([[
-                        (pose.position().coords.x, pose.position().coords.y, 0.0),
-                        (
-                            (pose.position().coords + orthogonal_projection).x,
-                            (pose.position().coords + orthogonal_projection).y,
-                            0.0,
-                        ),
-                    ]])
-                    .with_colors([(255, 0, 0), (255, 0, 0)])
-                    .with_radii([0.1, 0.1]),
+                    &rerun::LineStrips3D::new([
+                        [
+                            (relative_line_segm.start.x, relative_line_segm.start.y, 0.0),
+                            (0.0, 0.0, 0.0),
+                        ],
+                        [
+                            (relative_line_segm.end.x, relative_line_segm.end.y, 0.0),
+                            (0.0, 0.0, 0.0),
+                        ],
+                        [
+                            (0.0, 0.0, 0.0),
+                            (orthogonal_projection.x, orthogonal_projection.y, 0.0),
+                        ],
+                        [
+                            (relative_line_segm.start.x, relative_line_segm.start.y, 0.0),
+                            (relative_line_segm.end.x, relative_line_segm.end.y, 0.0),
+                        ],
+                    ])
+                    .with_colors([(255, 255, 0), (255, 255, 0), (255, 0, 0), (0, 255, 0)])
+                    .with_radii([0.02, 0.02, 0.05, 0.03])
+                    .with_labels([
+                        "",
+                        &format!("{}", measured_angle),
+                        "orthogonal proj",
+                        "relative line",
+                    ]),
                 );
 
-                dbg.log_with_cycle(
-                    "localization_shi_unrotated",
-                    *cycle,
-                    &rerun::LineStrips3D::new([[
-                        (pose.position().coords.x, pose.position().coords.y, 0.0),
-                        (
-                            (pose.position().coords + og_orthogonal_projection).x,
-                            (pose.position().coords + og_orthogonal_projection).y,
-                            0.0,
-                        ),
-                    ]])
-                    .with_colors([(0, 255, 0), (0, 255, 0)])
-                    .with_radii([0.1, 0.1]),
-                );
+                // dbg.log_with_cycle(
+                //     "localization_shi_unrotated",
+                //     *cycle,
+                //     &rerun::LineStrips3D::new([[
+                //         (0.0, 0.0, 0.0),
+                //         (
+                //             (og_orthogonal_projection).x,
+                //             (og_orthogonal_projection).y,
+                //             0.0,
+                //         ),
+                //     ]])
+                //     .with_colors([(0, 255, 0), (0, 255, 0)])
+                //     .with_radii([0.1, 0.1]),
+                // );
 
-                println!(
-                    "Updating particle in direction {:?} with {:?}",
-                    direction, measurement
-                );
+                // println!(
+                //     "Updating particle in direction {:?} with {:?}",
+                //     direction, measurement
+                // );
+
+                let mut cov_mat = CovarianceMatrix::from_diagonal_element(1.0);
+                cov_mat *= angle_rotation_matrix * cov_mat * angle_rotation_matrix.transpose();
+
+                // 4.f * yVariance / (line.perceptStart - line.perceptEnd).squaredNorm()
+                // const float angleVariance = sqr(std::atan(std::sqrt()));
+
+                let cov_mat = match direction {
+                    Direction::AlongX => {
+                        let y_variance = cov_mat[(1, 1)];
+                        let angle_variance = (4.0 * y_variance / (detected.length().powi(2)))
+                            .sqrt()
+                            .atan()
+                            .powi(2);
+
+                        CovarianceMatrix::<2>::new(y_variance, 0.0, 0.0, angle_variance)
+                    }
+                    Direction::AlongY => {
+                        let x_variance = cov_mat[(0, 0)];
+                        let angle_variance = (4.0 * x_variance / (detected.length().powi(2)))
+                            .sqrt()
+                            .atan()
+                            .powi(2);
+
+                        CovarianceMatrix::<2>::new(x_variance, 0.0, 0.0, angle_variance)
+                    }
+                };
 
                 // update the particle with the difference
                 particle
@@ -290,11 +337,29 @@ fn line_update(
                             }
                         },
                         measurement,
-                        CovarianceMatrix::from_diagonal_element(1.0),
+                        cov_mat,
                     )
                     .unwrap();
             }
         }
+    }
+
+    let mut weighted_state = StateVector::<3>::zeros();
+    let mut total_weight = 0.0;
+
+    for particle in &particles {
+        // Weight inversely to covariance sum - particles with lower covariance get higher weight
+        let weight = 1.0 / (particle.0.covariance().sum() + 1e-10);
+        weighted_state += weight * particle.0.state;
+        total_weight += weight;
+    }
+
+    // Normalize
+    weighted_state /= total_weight;
+
+    // Update all particles with the weighted state
+    for mut particle in &mut particles {
+        particle.0.state = weighted_state;
     }
 }
 
@@ -303,11 +368,23 @@ fn log_single(dbg: DebugContext, cycle: Res<Cycle>, particles: Query<&RobotPoseF
         let pos = a.state();
 
         dbg.log_with_cycle(
-            "localization",
+            "new_pose",
             *cycle,
-            &rerun::Points3D::new([(pos.inner.translation.x, pos.inner.translation.y, 0.0)])
-                .with_colors([(255, 0, 0)])
-                .with_radii([0.2]),
+            &rerun::Boxes3D::from_centers_and_half_sizes([(0.0, 0.0, 0.0)], [(0.1, 0.1, 0.1)])
+                .with_colors([(255, 0, 0)]),
+        );
+
+        dbg.log_with_cycle(
+            "new_pose",
+            *cycle,
+            &rerun::Transform3D::from_translation_rotation(
+                (pos.inner.translation.x, pos.inner.translation.y, 0.0),
+                rerun::Rotation3D::AxisAngle(RotationAxisAngle::new(
+                    (0.0, 0.0, 1.0),
+                    pos.inner.rotation.angle(),
+                )),
+            )
+            .with_axis_length(0.25),
         );
     };
 }
@@ -373,6 +450,7 @@ impl StateTransform<2> for LineMeasurement {
     }
 }
 
+// normalize an angle to be in the range [-PI, PI]
 pub fn normalize_angle(mut angle: f32) -> f32 {
     use std::f32::consts::{PI, TAU};
     angle %= TAU;
