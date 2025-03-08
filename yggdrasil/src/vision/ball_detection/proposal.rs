@@ -331,7 +331,7 @@ pub fn get_ball_proposals<T: CameraLocation>(
         let mid_point = middle.line_spot();
 
         // only check for body contours on bottom camera
-        if T::POSITION == CameraPosition::Top && body_contour.is_part_of_body(mid_point) {
+        if body_contour.is_part_of_body(mid_point) {
             continue;
         }
 
