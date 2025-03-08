@@ -59,24 +59,16 @@ pub fn field_color_ui(
                     changed = changed
                         || threshold_slider(
                             ui,
-                            "Max field hue",
-                            &mut config.max_field_hue,
-                            YHS_RANGE,
-                            YHS_SLIDE_STEP_SIZE,
-                        );
-                    changed = changed
-                        || threshold_slider(
-                            ui,
-                            "Max field luminance",
-                            &mut config.max_field_luminance,
-                            YHS_RANGE,
-                            YHS_SLIDE_STEP_SIZE,
-                        );
-                    changed = changed
-                        || threshold_slider(
-                            ui,
                             "Min field hue",
                             &mut config.min_field_hue,
+                            YHS_RANGE,
+                            YHS_SLIDE_STEP_SIZE,
+                        );
+                    changed = changed
+                        || threshold_slider(
+                            ui,
+                            "Max field hue",
+                            &mut config.max_field_hue,
                             YHS_RANGE,
                             YHS_SLIDE_STEP_SIZE,
                         );
@@ -88,22 +80,30 @@ pub fn field_color_ui(
                             YHS_RANGE,
                             YHS_SLIDE_STEP_SIZE,
                         );
+                    changed = changed
+                        || threshold_slider(
+                            ui,
+                            "Max field luminance",
+                            &mut config.max_field_luminance,
+                            YHS_RANGE,
+                            YHS_SLIDE_STEP_SIZE,
+                        );
                 });
 
                 columns[1].vertical(|ui| {
                     changed = changed
                         || threshold_slider(
                             ui,
-                            "Max white saturation",
-                            &mut config.max_white_saturation,
+                            "Min white luminance",
+                            &mut config.min_white_luminance,
                             YHS_RANGE,
                             YHS_SLIDE_STEP_SIZE,
                         );
                     changed = changed
                         || threshold_slider(
                             ui,
-                            "Min white luminance",
-                            &mut config.min_white_luminance,
+                            "Max white saturation",
+                            &mut config.max_white_saturation,
                             YHS_RANGE,
                             YHS_SLIDE_STEP_SIZE,
                         );
@@ -154,7 +154,6 @@ pub fn field_color_ui(
                 DEGREE_RANGE,
                 SLIDER_STEP_SIZE,
             );
-
         changed = changed
             || threshold_slider(
                 ui,

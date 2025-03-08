@@ -84,6 +84,7 @@ impl From<&ScanLinesConfig> for FieldColorConfig {
         }
     }
 }
+
 /// Plugin that generates scan-lines from taken NAO images.
 pub struct ScanLinesPlugin;
 
