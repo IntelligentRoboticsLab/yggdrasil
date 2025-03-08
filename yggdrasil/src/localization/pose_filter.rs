@@ -164,7 +164,7 @@ fn line_update(
                 let projected = correspondence.projected_line;
 
                 // TODO: remove and make validity check
-                if projected.length() < 0.5 {
+                if projected.length() < 0.1 {
                     continue;
                 }
 
@@ -397,7 +397,7 @@ fn initial_particles(
         inner: layout.initial_positions.player(player_num).isometry,
     };
 
-    (0..10).map(move |_| {
+    (0..25).map(move |_| {
         RobotPoseFilter(UnscentedKalmanFilter::new(
             position,
             CovarianceMatrix::from_diagonal_element(0.1),
