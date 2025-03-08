@@ -81,7 +81,9 @@ fn walk_to(
 
     // Plan step or stand
     if let Some(step) = step_planner.plan(&pose) {
-        step_context.request_walk(step);
+        if step_context.active_kick.is_none() {
+            step_context.request_walk(step);
+        }
     } else {
         step_context.request_stand();
     }

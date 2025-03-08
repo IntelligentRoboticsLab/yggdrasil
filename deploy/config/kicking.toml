@@ -1,0 +1,61 @@
+strength = 1.0
+
+[forward]
+[[forward.kick_steps]]
+duration = 260
+foot_height = 0.015
+step = { forward = 0.04, left = 0.0, turn = 0.0 }
+
+[[forward.kick_steps]]
+duration = 280
+foot_height = 0.02
+step = { forward = 0.08, left = 0.0, turn = 0.0 }
+
+joint_override.support.ankle_pitch = [
+  { offset = 0.0, timepoint = 0 },
+  { offset = 0.0, timepoint = 50 },
+  { offset = 0.0, timepoint = 150 },
+  { offset = -0.02, timepoint = 200 },
+]
+joint_override.support.hip_pitch = [
+  { offset = 0.0, timepoint = 0 },
+  { offset = -0.02, timepoint = 100 },
+  { offset = -0.04, timepoint = 150 },
+  { offset = -0.02, timepoint = 240 },
+]
+
+joint_override.swing.ankle_pitch = [
+  { offset = 0.0, timepoint = 0 },
+  { offset = 0.0, timepoint = 50 },
+  { offset = 0.1, timepoint = 150 },
+  { offset = 0.0, timepoint = 200 },
+]
+joint_override.swing.hip_pitch = [
+  { offset = 0.0, timepoint = 0 },
+  { offset = 0.0, timepoint = 100 },
+  { offset = -0.4, timepoint = 150 },
+  { offset = 0.0, timepoint = 240 },
+]
+
+[[forward.kick_steps]]
+duration = 260
+foot_height = 0.015
+step = { forward = 0.0, left = 0.0, turn = 0.0 }
+
+[[forward.kick_steps]]
+duration = 260
+foot_height = 0.01
+step = { forward = -0.02, left = 0.0, turn = 0.0 }
+
+[turn]
+[[turn.kick_steps]]
+duration = 260
+foot_height = 0.02
+step = { forward = 0.0, left = 0.0, turn = 0.0 }
+
+
+[side]
+[[side.kick_steps]]
+duration = 260
+foot_height = 0.02
+step = { forward = 0.0, left = 0.0, turn = 0.0 }

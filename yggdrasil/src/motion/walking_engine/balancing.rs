@@ -7,7 +7,10 @@ use super::{
     foot_support::FootSupportState,
     schedule::{Gait, WalkingEngineSet},
 };
-use crate::sensor::{imu::IMUValues, low_pass_filter::ExponentialLpf};
+use crate::{
+    motion::walking_engine::gait::kick::LegJointsOverride,
+    sensor::{imu::IMUValues, low_pass_filter::ExponentialLpf},
+};
 
 /// Plugin for balancing the robot during [`MotionSet::Balancing`]
 pub(super) struct BalancingPlugin;
@@ -26,7 +29,8 @@ impl Plugin for BalancingPlugin {
                 .run_if(
                     in_state(Gait::Walking)
                         .or(in_state(Gait::Starting))
-                        .or(in_state(Gait::Stopping)),
+                        .or(in_state(Gait::Stopping))
+                        .or(in_state(Gait::Kicking)),
                 ),
         );
     }
@@ -102,6 +106,26 @@ impl BalanceAdjustment {
             Side::Right => {
                 self.right_leg.ankle_roll += target_roll;
                 self.right_leg.ankle_pitch += target_pitch;
+            }
+        }
+
+        self
+    }
+
+    // TODO(Rick): Can be removed and instead use the "normal" `apply()`
+    pub fn apply_leg_adjustments(
+        &mut self,
+        side: Side,
+        leg_joints_override: LegJointsOverride,
+    ) -> &mut Self {
+        match side {
+            Side::Left => {
+                self.left_leg.hip_pitch += leg_joints_override.hip_pitch_override;
+                self.left_leg.ankle_pitch += leg_joints_override.ankle_pitch_override;
+            }
+            Side::Right => {
+                self.right_leg.hip_pitch += leg_joints_override.hip_pitch_override;
+                self.right_leg.ankle_pitch += leg_joints_override.ankle_pitch_override;
             }
         }
 

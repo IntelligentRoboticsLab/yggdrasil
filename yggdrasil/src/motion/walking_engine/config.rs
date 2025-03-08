@@ -6,6 +6,8 @@ use odal::Config;
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 
+use crate::motion::walking_engine::gait::kick::LegJointsOverrideSequence;
+
 use super::{foot_support::FootSupportConfig, hips::HipHeightConfig, step::Step};
 
 #[derive(Resource, Serialize, Deserialize, Debug, Clone, Default)]
@@ -168,4 +170,41 @@ pub struct WalkingEngineConfig {
 
 impl Config for WalkingEngineConfig {
     const PATH: &'static str = "walking_engine.toml";
+}
+
+/// Configuration for the kicking behavior.
+///
+/// This struct contains parameters that control how the robot behaves during the
+/// during kick for the swing and stance phases of the kicking gaits.
+#[derive(Resource, Serialize, Deserialize, Debug, Clone, Default)]
+pub struct KickingConfig {
+    pub strength: f32,
+    pub forward: KickSettings,
+    pub turn: KickSettings,
+    pub side: KickSettings,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct LegOverrides {
+    pub support: LegJointsOverrideSequence,
+    pub swing: LegJointsOverrideSequence,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct KickStep {
+    pub step: Step,
+    #[serde_as(as = "DurationMilliSeconds")]
+    pub duration: Duration,
+    pub foot_height: f32,
+    pub joint_override: Option<LegOverrides>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct KickSettings {
+    pub kick_steps: Vec<KickStep>,
+}
+
+impl Config for KickingConfig {
+    const PATH: &'static str = "kicking.toml";
 }

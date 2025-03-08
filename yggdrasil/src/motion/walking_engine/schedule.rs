@@ -44,6 +44,7 @@ pub enum Gait {
     Starting,
     Walking,
     Stopping,
+    Kicking,
 }
 
 /// Plugin that sets up the system sets that define the walking engine.
