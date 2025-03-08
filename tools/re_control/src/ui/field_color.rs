@@ -7,13 +7,17 @@ use re_control_comms::{
     protocol::{FieldColorConfig, ViewerMessage},
     viewer::ControlViewerHandle,
 };
-use rerun::external::{egui, re_ui::UiExt};
+use rerun::external::{
+    egui::{self, Color32},
+    re_log,
+    re_ui::UiExt,
+};
 
 use crate::re_control_view::ControlViewerData;
 
 use super::view_section;
 
-const YHS_RANGE: RangeInclusive<f32> = 0.0..=25.0;
+const YHS_RANGE: RangeInclusive<f32> = 0.0..=255.0;
 const YHS_SLIDE_STEP_SIZE: f64 = 1.0;
 
 const DEGREE_RANGE: RangeInclusive<f32> = 0.25..=0.45;
@@ -40,77 +44,100 @@ pub fn field_color_ui(
             return;
         };
 
-        let config = &mut locked_states.field_color.config;
+        let mut config = locked_states.field_color.config.clone();
         let mut changed = false;
-        ui.heading("Thresholds");
-        changed = changed
-            || threshold_slider(
-                ui,
-                "Max field hue",
-                &mut config.max_field_hue,
-                YHS_RANGE,
-                YHS_SLIDE_STEP_SIZE,
-            );
-        changed = changed
-            || threshold_slider(
-                ui,
-                "Max field luminance",
-                &mut config.max_field_luminance,
-                YHS_RANGE,
-                YHS_SLIDE_STEP_SIZE,
-            );
-        changed = changed
-            || threshold_slider(
-                ui,
-                "Min field hue",
-                &mut config.min_field_hue,
-                YHS_RANGE,
-                YHS_SLIDE_STEP_SIZE,
-            );
-        changed = changed
-            || threshold_slider(
-                ui,
-                "Min field saturation",
-                &mut config.min_field_saturation,
-                YHS_RANGE,
-                YHS_SLIDE_STEP_SIZE,
-            );
 
-        changed = changed
-            || threshold_slider(
-                ui,
-                "Max white saturation",
-                &mut config.max_white_saturation,
-                YHS_RANGE,
-                YHS_SLIDE_STEP_SIZE,
-            );
-        changed = changed
-            || threshold_slider(
-                ui,
-                "Min white luminance",
-                &mut config.min_white_luminance,
-                YHS_RANGE,
-                YHS_SLIDE_STEP_SIZE,
-            );
+        ui.add_space(5.0);
+        ui.label(
+            egui::RichText::new("Thresholds")
+                .color(Color32::WHITE)
+                .size(14.0),
+        );
+        ui.horizontal(|ui| {
+            ui.columns(3, |columns| {
+                columns[0].vertical(|ui| {
+                    changed = changed
+                        || threshold_slider(
+                            ui,
+                            "Max field hue",
+                            &mut config.max_field_hue,
+                            YHS_RANGE,
+                            YHS_SLIDE_STEP_SIZE,
+                        );
+                    changed = changed
+                        || threshold_slider(
+                            ui,
+                            "Max field luminance",
+                            &mut config.max_field_luminance,
+                            YHS_RANGE,
+                            YHS_SLIDE_STEP_SIZE,
+                        );
+                    changed = changed
+                        || threshold_slider(
+                            ui,
+                            "Min field hue",
+                            &mut config.min_field_hue,
+                            YHS_RANGE,
+                            YHS_SLIDE_STEP_SIZE,
+                        );
+                    changed = changed
+                        || threshold_slider(
+                            ui,
+                            "Min field saturation",
+                            &mut config.min_field_saturation,
+                            YHS_RANGE,
+                            YHS_SLIDE_STEP_SIZE,
+                        );
+                });
 
-        changed = changed
-            || threshold_slider(
-                ui,
-                "Max black saturation",
-                &mut config.max_black_saturation,
-                YHS_RANGE,
-                YHS_SLIDE_STEP_SIZE,
-            );
-        changed = changed
-            || threshold_slider(
-                ui,
-                "Max black luminance",
-                &mut config.max_black_luminance,
-                YHS_RANGE,
-                YHS_SLIDE_STEP_SIZE,
-            );
+                columns[1].vertical(|ui| {
+                    changed = changed
+                        || threshold_slider(
+                            ui,
+                            "Max white saturation",
+                            &mut config.max_white_saturation,
+                            YHS_RANGE,
+                            YHS_SLIDE_STEP_SIZE,
+                        );
+                    changed = changed
+                        || threshold_slider(
+                            ui,
+                            "Min white luminance",
+                            &mut config.min_white_luminance,
+                            YHS_RANGE,
+                            YHS_SLIDE_STEP_SIZE,
+                        );
+                });
 
-        ui.heading("Chromaticity");
+                columns[2].vertical(|ui| {
+                    changed = changed
+                        || threshold_slider(
+                            ui,
+                            "Max black saturation",
+                            &mut config.max_black_saturation,
+                            YHS_RANGE,
+                            YHS_SLIDE_STEP_SIZE,
+                        );
+                    changed = changed
+                        || threshold_slider(
+                            ui,
+                            "Max black luminance",
+                            &mut config.max_black_luminance,
+                            YHS_RANGE,
+                            YHS_SLIDE_STEP_SIZE,
+                        );
+                });
+            })
+        });
+
+        ui.separator();
+        ui.add_space(3.0);
+        ui.label(
+            egui::RichText::new("Chromaticity")
+                .color(Color32::WHITE)
+                .size(14.0),
+        );
+
         changed = changed
             || threshold_slider(
                 ui,
@@ -138,11 +165,12 @@ pub fn field_color_ui(
             );
 
         if changed {
-            handle
-                .send(ViewerMessage::FieldColor {
-                    config: locked_states.field_color.config.clone(),
-                })
-                .expect("failed to send message")
+            locked_states.field_color.config = config;
+            if let Err(err) = handle.send(ViewerMessage::FieldColor {
+                config: locked_states.field_color.config.clone(),
+            }) {
+                re_log::warn!("Failed to send field color update message: {err}");
+            }
         }
     });
 }

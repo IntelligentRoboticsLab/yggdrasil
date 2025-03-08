@@ -229,7 +229,7 @@ A view to control the robot",
                     ControlViewerSection::CameraCalibration,
                     "CameraCalibration",
                 );
-                ui.selectable_value(selected, ControlViewerSection::FieldColor, "Chromaticity");
+                ui.selectable_value(selected, ControlViewerSection::FieldColor, "Field color");
             });
 
         Ok(())
