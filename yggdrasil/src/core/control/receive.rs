@@ -70,10 +70,8 @@ pub fn handle_viewer_message(
 
                 config.calibration.extrinsic_rotation = rotation;
             }
-            ViewerMessage::Chromaticity {
-                green_threshold: threshold,
-            } => {
-                scan_lines_config.green_chromaticity_threshold = threshold;
+            ViewerMessage::FieldColor { config } => {
+                *scan_lines_config = config.into();
             }
             _ => tracing::warn!(?message, "unhandled message"),
         }

@@ -8,6 +8,26 @@ pub type HandlerFn<T> = Box<dyn Fn(&T) + Send + Sync + 'static>;
 
 pub const CONTROL_PORT: u16 = 1337;
 
+#[derive(Encode, Decode, Debug, Clone, Default)]
+pub struct FieldColorConfig {
+    pub min_edge_luminance_difference: f32,
+    /// Field color
+    pub max_field_luminance: f32,
+    pub min_field_saturation: f32,
+    pub min_field_hue: f32,
+    pub max_field_hue: f32,
+    /// White color
+    pub min_white_luminance: f32,
+    pub max_white_saturation: f32,
+    /// Black color
+    pub max_black_luminance: f32,
+    pub max_black_saturation: f32,
+    /// Green chromaticity threshold
+    pub green_chromaticity_threshold: f32,
+    pub red_chromaticity_threshold: f32,
+    pub blue_chromaticity_threshold: f32,
+}
+
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum RobotMessage {
     Resources(HashMap<String, String>),
@@ -16,8 +36,8 @@ pub enum RobotMessage {
         camera_position: CameraPosition,
         extrinsic_rotation: Vector3<f32>,
     },
-    Chromaticity {
-        green_threshold: f32,
+    FieldColor {
+        config: FieldColorConfig,
     },
 }
 
@@ -36,7 +56,7 @@ pub enum ViewerMessage {
         camera_position: CameraPosition,
         extrinsic_rotation: Vector3<f32>,
     },
-    Chromaticity {
-        green_threshold: f32,
+    FieldColor {
+        config: FieldColorConfig,
     },
 }
