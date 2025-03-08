@@ -11,7 +11,7 @@ use crate::{
     motion::walking_engine::{
         Side, TargetFootPositions,
         balancing::BalanceAdjustment,
-        config::WalkingEngineConfig,
+        config::{KickingConfig, WalkingEngineConfig},
         feet::FootPositions,
         foot_support::FootSupportState,
         schedule::{Gait, WalkingEngineSet},
@@ -50,14 +50,15 @@ fn init_walking_step(
     mut commands: Commands,
     mut step_context: ResMut<StepContext>,
     kinematics: Res<Kinematics>,
-    config: Res<WalkingEngineConfig>,
+    walking_engine_config: Res<WalkingEngineConfig>,
+    kicking_config: Res<KickingConfig>,
 ) {
     let start = FootPositions::from_kinematics(
         step_context.planned_step.swing_side,
         &kinematics,
-        config.torso_offset,
+        walking_engine_config.torso_offset,
     );
-    step_context.plan_next_step(start, &config);
+    step_context.plan_next_step(start, &walking_engine_config, &kicking_config);
 
     commands.insert_resource(WalkState {
         phase: Duration::ZERO,

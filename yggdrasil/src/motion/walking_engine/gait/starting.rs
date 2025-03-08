@@ -5,7 +5,7 @@ use crate::{
     kinematics::Kinematics,
     motion::walking_engine::{
         FootSwitchedEvent, Side, TargetFootPositions,
-        config::WalkingEngineConfig,
+        config::{KickingConfig, WalkingEngineConfig},
         feet::FootPositions,
         foot_support::FootSupportState,
         schedule::{Gait, WalkingEngineSet},
@@ -43,22 +43,23 @@ fn init_starting_step(
     mut commands: Commands,
     mut step_context: ResMut<StepContext>,
     kinematics: Res<Kinematics>,
-    config: Res<WalkingEngineConfig>,
+    walking_engine_config: Res<WalkingEngineConfig>,
+    kicking_config: Res<KickingConfig>,
 ) {
     let start = FootPositions::from_kinematics(
         step_context.planned_step.swing_side,
         &kinematics,
-        config.torso_offset,
+        walking_engine_config.torso_offset,
     );
-    step_context.plan_next_step(start, &config);
+    step_context.plan_next_step(start, &walking_engine_config, &kicking_config);
 
     commands.insert_resource(WalkState {
         phase: Duration::ZERO,
         planned_step: PlannedStep {
             step: Step::default(),
             target: FootPositions::default(),
-            swing_foot_height: config.starting_foot_lift,
-            duration: config.starting_step_duration,
+            swing_foot_height: walking_engine_config.starting_foot_lift,
+            duration: walking_engine_config.starting_step_duration,
             ..step_context.planned_step
         },
     });

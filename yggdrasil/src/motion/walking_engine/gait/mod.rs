@@ -8,6 +8,7 @@ use super::{
 };
 use crate::prelude::*;
 
+pub mod kick;
 mod sit;
 mod stand;
 mod starting;
@@ -34,6 +35,7 @@ impl Plugin for GaitPlugin {
             stand::StandGaitPlugin,
             starting::StartingPlugin,
             walk::WalkPlugin,
+            kick::KickPlugin,
             stopping::StoppingPlugin,
         ));
     }
