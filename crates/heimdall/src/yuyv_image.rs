@@ -14,6 +14,7 @@ pub struct YuyvImage {
 }
 
 impl YuyvImage {
+    #[inline]
     fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
         fn clamp(value: i32) -> u8 {
             #[allow(clippy::cast_sign_loss)]
@@ -80,6 +81,7 @@ impl YuyvImage {
     ///
     /// Panics if the index is out of bounds.
     #[must_use]
+    #[inline(always)]
     pub fn row(&self, index: usize) -> Option<ImageView<'_>> {
         assert!(index < self.height(), "index out of bounds");
 
@@ -97,6 +99,7 @@ impl YuyvImage {
     }
 
     #[must_use]
+    #[inline(always)]
     pub fn pixel(&self, x: usize, y: usize) -> Option<YuvPixel> {
         if x >= self.width || y >= self.height {
             return None;
@@ -111,19 +114,22 @@ impl YuyvImage {
     ///
     /// Don't be dumb
     #[must_use]
+    #[inline(always)]
     pub unsafe fn pixel_unchecked(&self, x: usize, y: usize) -> YuvPixel {
-        // every 4 bytes stores 2 pixels, so (width / 2) * 4 bytes in a row
-        let offset = (y * self.width + x) * 2;
+        let row_offset = y * self.width * 2;
+        let x_pair = x / 2;
+        let offset = row_offset + x_pair * 4;
 
-        let y = if y % 2 == 0 {
-            unsafe { *self.frame.get_unchecked(offset) }
+        let y_byte = if x % 2 == 0 {
+            *self.frame.get_unchecked(offset)
         } else {
-            unsafe { *self.frame.get_unchecked(offset + 2) }
+            *self.frame.get_unchecked(offset + 2)
         };
-        let u = unsafe { *self.frame.get_unchecked(offset + 1) };
-        let v = unsafe { *self.frame.get_unchecked(offset + 3) };
 
-        YuvPixel { y, u, v }
+        let u = *self.frame.get_unchecked(offset + 1);
+        let v = *self.frame.get_unchecked(offset + 3);
+
+        YuvPixel { y: y_byte, u, v }
     }
 
     #[must_use]
@@ -209,27 +215,21 @@ impl YuvPixel {
         v: 128,
     };
 
-    #[allow(
-        clippy::cast_sign_loss,
-        clippy::cast_possible_truncation,
-        clippy::cast_lossless,
-        clippy::cast_precision_loss
-    )]
+    #[allow(clippy::cast_precision_loss)]
     #[must_use]
     #[inline(always)]
     pub fn average(pixels: &[Self]) -> Self {
-        let mut y_sum = 0.0;
-        let mut u_sum = 0.0;
-        let mut v_sum = 0.0;
+        let mut y_sum = 0u32;
+        let mut u_sum = 0u32;
+        let mut v_sum = 0u32;
 
         for pixel in pixels {
-            y_sum += pixel.y as f32;
-            u_sum += pixel.u as f32;
-            v_sum += pixel.v as f32;
+            y_sum += u32::from(pixel.y);
+            u_sum += u32::from(pixel.u);
+            v_sum += u32::from(pixel.v);
         }
 
-        let len = pixels.len() as f32;
-
+        let len = pixels.len() as u32;
         YuvPixel {
             y: (y_sum / len) as u8,
             u: (u_sum / len) as u8,
@@ -286,21 +286,21 @@ impl Iterator for ImageView<'_> {
             return None;
         }
 
-        let offset = self.start * 2;
-        self.start += 1;
+        let x = self.start - (self.start / self.image.width());
+        let x_in_row = x % self.image.width();
+        let row_offset = (self.start / self.image.width()) * self.image.width() * 2;
+        let offset = row_offset + (x_in_row / 2) * 4;
 
-        let (y, u, v) = unsafe {
-            let y = if self.start % 2 == 1 {
-                self.image.get_unchecked(offset)
-            } else {
-                self.image.get_unchecked(offset + 2)
-            };
-            let u = self.image.get_unchecked(offset + 1);
-            let v = self.image.get_unchecked(offset + 3);
-
-            (*y, *u, *v)
+        let y = if x_in_row % 2 == 0 {
+            unsafe { *self.image.frame.get_unchecked(offset) }
+        } else {
+            unsafe { *self.image.frame.get_unchecked(offset + 2) }
         };
 
+        let u = unsafe { *self.image.frame.get_unchecked(offset + 1) };
+        let v = unsafe { *self.image.frame.get_unchecked(offset + 3) };
+
+        self.start += 1;
         Some(YuvPixel { y, u, v })
     }
 }

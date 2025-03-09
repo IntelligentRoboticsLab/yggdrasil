@@ -38,4 +38,6 @@ fn update_cycle_stats(mut cycle: ResMut<Cycle>, mut cycle_time: ResMut<CycleTime
     cycle.0 += 1;
     cycle_time.duration = Instant::now().duration_since(cycle_time.cycle_start);
     cycle_time.cycle_start = Instant::now();
+
+    info!("cycle time: {:?}", cycle_time.duration);
 }
