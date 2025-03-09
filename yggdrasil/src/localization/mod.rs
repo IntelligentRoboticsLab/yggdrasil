@@ -16,7 +16,7 @@ use crate::{
 use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
 use correspondence::LineCorrespondencePlugin;
-use heimdall::{Bottom, Top};
+use heimdall::Top;
 use nalgebra::{
     Isometry2, Isometry3, Point2, Point3, Translation2, Translation3, UnitComplex, UnitQuaternion,
 };
@@ -31,6 +31,7 @@ impl Plugin for LocalizationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             LineCorrespondencePlugin::<Top>::default(),
+            // Disabled for now as we kept seeing lines inside of the robot
             // LineCorrespondencePlugin::<Bottom>::default(),
             PoseFilterPlugin,
         ))
