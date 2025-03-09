@@ -10,8 +10,8 @@ use crate::vision::camera::Image;
 use super::DetectRefereePose;
 
 // TODO: Probably in a config file
-const INPUT_WIDTH: u32 = 640;
-const INPUT_HEIGHT: u32 = 640;
+const INPUT_WIDTH: u32 = 480;
+const INPUT_HEIGHT: u32 = 480;
 
 pub struct RefereePoseEstimatorPlugin;
 
@@ -52,14 +52,16 @@ pub fn estimate_referee_pose(
             .expect("Failed to convert image from yuyv to rgb");
 
         // Resize the image to fit the model input
-        let resized_image: Vec<u8> = rgb_image
-            .resize(INPUT_WIDTH, INPUT_HEIGHT)
-            .expect("Failed to resize image for robot detection");
-
-        // let resized_image = image
-        //     .yuyv_image()
+        // let resized_image: Vec<u8> = rgb_image
         //     .resize(INPUT_WIDTH, INPUT_HEIGHT)
         //     .expect("Failed to resize image for robot detection");
+
+        // Resized yuyv image but should be resized RGB image.
+        // Its to test.
+        let resized_image = image
+            .yuyv_image()
+            .resize(INPUT_WIDTH, INPUT_HEIGHT)
+            .expect("Failed to resize image for robot detection");
 
         println!("Image is resized");
 
