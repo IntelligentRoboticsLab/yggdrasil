@@ -5,6 +5,7 @@ pub mod debug_systems;
 pub mod field_color;
 pub mod resource;
 pub mod selection_ui;
+pub mod visual_referee;
 
 pub const SIDE_PANEL_WIDTH: f32 = 400.0;
 pub const PANEL_TOP_PADDING: f32 = 10.0;
