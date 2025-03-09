@@ -145,35 +145,11 @@ fn line_update(
                     continue;
                 };
 
-                // ⚠️⚠️⚠️⚠️
-                // TODO: I think this can be removed now, test this
-                // ⚠️⚠️⚠️⚠️
-                let detected = match axis {
-                    ParallelAxis::X
-                        if correspondence.detected_line.end.y
-                            < correspondence.detected_line.start.y =>
-                    {
-                        LineSegment2::new(
-                            correspondence.detected_line.end,
-                            correspondence.detected_line.start,
-                        )
-                    }
-                    ParallelAxis::Y
-                        if correspondence.detected_line.end.x
-                            < correspondence.detected_line.start.x =>
-                    {
-                        LineSegment2::new(
-                            correspondence.detected_line.end,
-                            correspondence.detected_line.start,
-                        )
-                    }
-                    _ => correspondence.detected_line,
-                };
-
                 let current_pose = particle.prediction();
 
                 // line from the robot to the detected line
-                let relative_line = (correspondence.pose.inner.inverse() * detected).to_line();
+                let relative_line =
+                    (correspondence.pose.inner.inverse() * correspondence.detected_line).to_line();
 
                 let orthogonal_projection = relative_line.project(point![0.0, 0.0]);
 
@@ -231,10 +207,11 @@ fn line_update(
                         ParallelAxis::Y => rotated_covariance[(0, 0)],
                     };
 
-                    let angle_variance = (4.0 * distance_variance / (detected.length().powi(2)))
-                        .sqrt()
-                        .atan()
-                        .powi(2);
+                    let angle_variance = (4.0 * distance_variance
+                        / (correspondence.detected_line.length().powi(2)))
+                    .sqrt()
+                    .atan()
+                    .powi(2);
 
                     CovarianceMatrix::<2>::new(distance_variance, 0.0, 0.0, angle_variance)
                 };
