@@ -67,11 +67,11 @@ centre_circle_diameter = 1.5
 # Width of the border strip (K).
 border_strip_width = 0.7
 
-# Diamater of the goal posts in m.
-goal_post_diamater = 0.1
+# Diameter of the goal posts in m.
+goal_post_diameter = 0.1
 
 # Width of the goal in m.
-# Goal post diamater is 0.1m, and the distance between goal posts is 1.5m.
+# Goal post diameter is 0.1m, and the distance between goal posts is 1.5m.
 goal_width = 1.6
 
 # Depth of the goal in m.

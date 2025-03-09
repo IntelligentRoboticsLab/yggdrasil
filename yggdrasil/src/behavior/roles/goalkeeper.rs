@@ -57,7 +57,7 @@ fn default_keeper_position(
 
 fn block_ball(commands: &mut Commands, ball_position: Point2<f32>, field_config: &FieldConfig) {
     let max_y_position = field_config.goal_width / 2.0
-        - field_config.goal_post_diamater / 2.0
+        - field_config.goal_post_diameter / 2.0
         - GOAL_POST_DISTANCE_OFFSET;
     let y_target = ball_position.y.clamp(-max_y_position, max_y_position);
 

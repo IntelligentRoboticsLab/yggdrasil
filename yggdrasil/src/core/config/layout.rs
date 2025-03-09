@@ -119,8 +119,8 @@ pub struct FieldConfig {
     pub centre_circle_diameter: f32,
     /// Width of the border strip (K)
     pub border_strip_width: f32,
-    /// Diamater of the goal posts in m.
-    pub goal_post_diamater: f32,
+    /// Diameter of the goal posts in m.
+    pub goal_post_diameter: f32,
     /// Width of the goal in m.
     pub goal_width: f32,
     /// The depth of the goal in m.
