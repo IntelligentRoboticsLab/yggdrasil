@@ -59,8 +59,6 @@ fn detect_visual_referee(
         NaoManager::HEAD_STIFFNESS,
     );
 
-    robot_pose.
-
     // Dont think I needs this. Only if it is necessary to update
     // the head position.
     // step_context.request_stand();
