@@ -89,16 +89,49 @@ pub fn striker_role(
     } else if ball_angle.abs() > WALK_WITH_BALL_ANGLE {
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::PURPLE), Priority::default());
 
-        if relative_ball.y < 0. {
-            commands.set_behavior(Walk {
-                step: Step::RIGHT,
-                look_target: Some(ball_target),
-            });
-        } else {
-            commands.set_behavior(Walk {
-                step: Step::LEFT,
-                look_target: Some(ball_target),
-            });
+        let ball_distance = pose.distance_to(&ball);
+
+        let ball_pos = Target {
+            position: ball,
+            rotation: None,
+        };
+
+        state.next_state(
+            ball_distance,
+            ball_goal_center_align,
+            ball_aligned,
+            ball_goal_aligned,
+        );
+
+        match *state {
+            Striker::WalkToBall | Striker::WalkWithBall => {
+                commands.set_behavior(WalkTo::new(ball_pos));
+            }
+            Striker::WalkAlign => {
+                let ball_target = Point3::new(ball.x, ball.y, 0.0);
+
+                if absolute_ball_angle > absolute_goal_angle_left {
+                    commands.set_behavior(Walk {
+                        step: Step {
+                            left: 0.06,
+                            turn: -0.3,
+                            ..Default::default()
+                        },
+                        look_target: Some(ball_target),
+                    });
+                    return;
+                }
+                if absolute_ball_angle < absolute_goal_angle_right {
+                    commands.set_behavior(Walk {
+                        step: Step {
+                            left: -0.06,
+                            turn: 0.3,
+                            ..Default::default()
+                        },
+                        look_target: Some(ball_target),
+                    });
+                }
+            }
         }
     } else {
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::RED), Priority::default());

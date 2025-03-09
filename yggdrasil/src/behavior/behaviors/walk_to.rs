@@ -25,9 +25,23 @@ impl Plugin for WalkToBehaviorPlugin {
 
 #[derive(Resource)]
 pub struct WalkTo {
-    pub target: Target,
-    // If `None`, look at `target`.
-    pub look_at: Option<Point3<f32>>,
+    target: Target,
+    look_at: Point3<f32>,
+}
+
+impl WalkTo {
+    #[must_use]
+    pub fn new(target: Target) -> Self {
+        Self {
+            target,
+            look_at: Point3::new(target.position.x, target.position.y, 0.0),
+        }
+    }
+
+    #[must_use]
+    pub fn new_with_look_at(target: Target, look_at: Point3<f32>) -> Self {
+        Self { target, look_at }
+    }
 }
 
 impl Behavior for WalkTo {
@@ -41,11 +55,7 @@ pub fn walk_to(
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
-    let look_head_joints = pose.get_look_at_absolute(&walk_to.look_at.unwrap_or(Point3::new(
-        walk_to.target.position.x,
-        walk_to.target.position.y,
-        0.0,
-    )));
+    let look_head_joints = pose.get_look_at_absolute(&walk_to.look_at);
     nao_manager.set_head_target(
         look_head_joints,
         HEAD_ROTATION_TIME,

@@ -48,10 +48,7 @@ fn default_keeper_position(
     {
         commands.set_behavior(Observe::default());
     } else {
-        commands.set_behavior(WalkTo {
-            target: keeper_target,
-            look_at: None,
-        });
+        commands.set_behavior(WalkTo::new(keeper_target));
     }
 }
 
@@ -74,10 +71,10 @@ fn block_ball(commands: &mut Commands, ball_position: Point2<f32>, field_config:
         rotation: Some(keeper_rotation),
     };
 
-    commands.set_behavior(WalkTo {
-        target: keeper_target,
-        look_at: Some(Point3::new(ball_position.x, ball_position.y, 0.0)),
-    });
+    commands.set_behavior(WalkTo::new_with_look_at(
+        keeper_target,
+        Point3::new(ball_position.x, ball_position.y, 0.0),
+    ));
 }
 
 pub fn goalkeeper_role(
