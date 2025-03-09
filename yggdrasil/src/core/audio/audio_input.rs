@@ -134,10 +134,10 @@ impl AudioSamples {
     }
 }
 
-#[derive(Event, Debug)]
+#[derive(Event, Debug, Clone)]
 pub struct AudioSamplesEvent {
-    pub left: Vec<f32>,
-    pub right: Vec<f32>,
+    pub left: Arc<Vec<f32>>,
+    pub right: Arc<Vec<f32>>,
 }
 
 fn emit_event(
@@ -153,5 +153,8 @@ fn emit_event(
     *last_timestamp = last_update;
 
     let (left, right) = samples.deinterleave();
-    ev.send(AudioSamplesEvent { left, right });
+    ev.send(AudioSamplesEvent {
+        left: Arc::new(left),
+        right: Arc::new(right),
+    });
 }
