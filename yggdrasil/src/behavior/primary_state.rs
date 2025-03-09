@@ -11,7 +11,7 @@ use serde_with::{serde_as, DurationMilliSeconds};
 use std::time::Duration;
 
 use bifrost::communication::{GameControllerMessage, GameState};
-use nidhogg::types::color;
+use nidhogg::types::{color, FillExt, LeftEye};
 
 #[serde_as]
 #[derive(Resource, Serialize, Deserialize, Debug, Clone)]
@@ -112,7 +112,11 @@ pub fn update_primary_state(
             config.chest_blink_interval,
             Priority::Medium,
         ),
-        PS::Standby => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
+        PS::Standby => {
+            // TODO: Should be removed
+            nao_manager.set_left_eye_led(LeftEye::fill(color::f32::YELLOW), Priority::Medium);
+            nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical)
+        },
         PS::Initial => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
         PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Critical),
         PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Critical),
