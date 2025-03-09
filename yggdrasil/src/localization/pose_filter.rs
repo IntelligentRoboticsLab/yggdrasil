@@ -19,11 +19,9 @@ use crate::{
     localization::correspondence::LineCorrespondences,
     motion::odometry::Odometry,
     nao::Cycle,
-    vision::line_detection::line::LineSegment2,
 };
 
-/// The maximum distance the robot is allowed to be outside the field before the pose is considered invalid
-const OUTSIDE_OF_FIELD_MARGIN: f32 = 0.2;
+const PARTICLE_DEFAULT_SCORE: f32 = 10.0;
 
 pub struct PoseFilterPlugin;
 
@@ -32,7 +30,14 @@ impl Plugin for PoseFilterPlugin {
         app.add_systems(PostStartup, initialize_particles)
             .add_systems(
                 Update,
-                (odometry_update, line_update, resample, log_single).chain(),
+                (
+                    odometry_update,
+                    line_update,
+                    resample,
+                    sensor_resetting,
+                    log_single,
+                )
+                    .chain(),
             );
     }
 }
@@ -96,13 +101,17 @@ impl StateTransform<3> for RobotPose {
 }
 
 #[derive(Clone, Component, Deref, DerefMut)]
-pub struct RobotPoseFilter(UnscentedKalmanFilter<3, 7, RobotPose>);
+pub struct RobotPoseFilter {
+    #[deref]
+    filter: UnscentedKalmanFilter<3, 7, RobotPose>,
+    score: f32,
+}
 
 impl RobotPoseFilter {
     // Mitigate numerical instability with covariance matrix by ensuring it is symmetric
     fn fix_covariance(&mut self) {
-        let cov = &mut self.0.covariance;
-        *cov = (*cov + cov.transpose()) / 2.0;
+        let cov = &mut self.filter.covariance;
+        *cov = (*cov + cov.transpose()) * 0.5;
     }
 }
 
@@ -123,7 +132,7 @@ fn odometry_update(odometry: Res<Odometry>, mut particles: Query<&mut RobotPoseF
                 |pose| RobotPose {
                     inner: pose.inner * odometry.offset_to_last,
                 },
-                CovarianceMatrix::from_diagonal_element(0.05),
+                CovarianceMatrix::from_diagonal(&na::Vector3::new(0.05, 0.05, 0.01)),
             )
             .unwrap();
     }
@@ -246,7 +255,11 @@ fn resample(
     layout: Res<LayoutConfig>,
     mut particles: Query<(Entity, &mut RobotPoseFilter)>,
 ) {
-    todo!();
+    // TODO: implement resampling
+}
+
+fn sensor_resetting(mut commands: Commands, mut particles: Query<(Entity, &mut RobotPoseFilter)>) {
+    // TODO: implement sensor resetting based on field features from which the pose can directly be derived
 }
 
 fn log_single(dbg: DebugContext, cycle: Res<Cycle>, particles: Query<&RobotPoseFilter>) {
@@ -273,22 +286,6 @@ fn log_single(dbg: DebugContext, cycle: Res<Cycle>, particles: Query<&RobotPoseF
             .with_axis_length(0.5),
         );
     };
-}
-
-fn initial_particles(
-    layout: &LayoutConfig,
-    player_num: u8,
-) -> impl IntoIterator<Item = RobotPoseFilter> {
-    let position = RobotPose {
-        inner: layout.initial_positions.player(player_num).isometry,
-    };
-
-    (0..20).map(move |_| {
-        RobotPoseFilter(UnscentedKalmanFilter::new(
-            position,
-            CovarianceMatrix::from_diagonal_element(0.1),
-        ))
-    })
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -334,6 +331,20 @@ impl StateTransform<2> for LineMeasurement {
             (na::UnitComplex::new(measurement.y) / na::UnitComplex::new(prediction.y)).angle()
         ]
     }
+}
+
+fn initial_particles(
+    layout: &LayoutConfig,
+    player_num: u8,
+) -> impl IntoIterator<Item = RobotPoseFilter> {
+    let position = RobotPose {
+        inner: layout.initial_positions.player(player_num).isometry,
+    };
+
+    (0..20).map(move |_| RobotPoseFilter {
+        filter: UnscentedKalmanFilter::new(position, CovarianceMatrix::from_diagonal_element(0.1)),
+        score: PARTICLE_DEFAULT_SCORE,
+    })
 }
 
 /// normalizes an angle to be in the range \[-pi, pi\]
