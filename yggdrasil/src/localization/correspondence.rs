@@ -51,7 +51,7 @@ pub struct LineCorrespondence {
 }
 
 /// A collection of line correspondences.
-#[derive(Debug, Component)]
+#[derive(Debug, Deref, Component)]
 pub struct LineCorrespondences(pub Vec<LineCorrespondence>);
 
 /// Matches detected lines to their closest field lines.
