@@ -7,9 +7,10 @@ use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
     motion::walking_engine::{step_context::StepContext, Gait},
     nao::{NaoManager, Priority},
+    sensor::fsr::Contacts,
 };
 
-const MIN_SITTING_DURATION_BEFORE_UNSTIFF: Duration = Duration::from_secs(5);
+const MIN_SITTING_DURATION_BEFORE_UNSTIFF: Duration = Duration::from_secs(2);
 
 pub struct SittingBehaviorPlugin;
 
@@ -41,13 +42,18 @@ pub fn sitting(
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
     gait: Res<State<Gait>>,
-    time_since_sitting: Res<SittingInstant>,
+    mut time_since_sitting: ResMut<SittingInstant>,
+    contacts: Res<Contacts>,
 ) {
     nao_manager.set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default());
 
     match &gait.get() {
         Gait::Sitting => {
-            if time_since_sitting.0.elapsed() > MIN_SITTING_DURATION_BEFORE_UNSTIFF {
+            if !contacts.ground {
+                time_since_sitting.0 = Instant::now();
+            } else if contacts.ground
+                && time_since_sitting.0.elapsed() > MIN_SITTING_DURATION_BEFORE_UNSTIFF
+            {
                 nao_manager.unstiff_sit(Priority::High);
             }
         }
