@@ -178,14 +178,15 @@ pub fn role_base(
     let behavior = behavior_state.get();
 
     if behavior == &BehaviorState::StartUp {
-        if (!robot_is_leaning(&imu_values) && *gait == Gait::Sitting) || head_buttons.all_pressed()
-        {
+        if *primary_state == PrimaryState::Sitting && robot_is_leaning(&imu_values) {
+            return;
+        } else if *gait == Gait::Sitting || head_buttons.all_pressed() {
             commands.set_behavior(Sitting);
-        }
-        if *primary_state == PrimaryState::Initial {
+            return;
+        } else {
             commands.set_behavior(Stand);
+            return;
         }
-        return;
     }
 
     if *primary_state == PrimaryState::Sitting {
