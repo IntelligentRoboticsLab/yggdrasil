@@ -6,6 +6,7 @@ use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
 use nalgebra::{self as na, point, vector, ComplexField};
+use nidhogg::types::HeadJoints;
 
 use crate::{
     core::{
@@ -53,6 +54,10 @@ pub struct RobotPose {
 }
 
 impl RobotPose {
+    // Constant for camera height that we set anywhere get_lookat_absolute is called.
+    // Set to zero if we are only looking at the ground, for example.
+    pub const CAMERA_HEIGHT: f32 = 0.5;
+
     pub fn new(inner: na::Isometry2<f32>) -> Self {
         Self { inner }
     }
@@ -67,6 +72,69 @@ impl RobotPose {
     #[must_use]
     pub fn angle(&self) -> f32 {
         self.inner.rotation.angle()
+    }
+
+    /// The current pose of the robot in the world, in 3D space.
+    ///
+    /// The z-axis is always 0.
+    /// The rotation is around the z-axis.
+    #[must_use]
+    pub fn as_3d(&self) -> na::Isometry3<f32> {
+        na::Isometry3::from_parts(
+            na::Translation3::new(self.inner.translation.x, self.inner.translation.y, 0.0),
+            na::UnitQuaternion::from_euler_angles(0.0, 0.0, self.inner.rotation.angle()),
+        )
+    }
+
+    /// The current position of the robot in the world, in absolute coordinates.
+    ///
+    /// The center of the world is at the center of the field, with the x-axis pointing towards the
+    /// opponent's goal.
+    #[must_use]
+    pub fn world_position(&self) -> na::Point2<f32> {
+        self.inner.translation.vector.into()
+    }
+
+    /// The current rotation of the robot in the world, in radians.
+    #[must_use]
+    pub fn world_rotation(&self) -> f32 {
+        self.inner.rotation.angle()
+    }
+
+    /// Transform a point from robot coordinates to world coordinates.
+    #[must_use]
+    pub fn robot_to_world(&self, point: &na::Point2<f32>) -> na::Point2<f32> {
+        self.inner.transform_point(point)
+    }
+
+    /// Transform a point from world coordinates to robot coordinates.
+    #[must_use]
+    pub fn world_to_robot(&self, point: &na::Point2<f32>) -> na::Point2<f32> {
+        self.inner.inverse_transform_point(point)
+    }
+
+    #[must_use]
+    pub fn get_look_at_absolute(&self, point_in_world: &na::Point3<f32>) -> HeadJoints<f32> {
+        let robot_to_point = self.world_to_robot(&point_in_world.xy());
+        let x = robot_to_point.x;
+        let y = robot_to_point.y;
+        let z = point_in_world.z;
+        let yaw = (robot_to_point.y / robot_to_point.x).atan();
+        // 0.5 is the height of the robot's primary camera while standing
+        let pitch = (0.5 - z).atan2((x * x + y * y).sqrt());
+
+        HeadJoints { yaw, pitch }
+    }
+
+    #[must_use]
+    pub fn distance_to(&self, point: &na::Point2<f32>) -> f32 {
+        (self.world_position() - point).norm()
+    }
+
+    #[must_use]
+    pub fn angle_to(&self, point: &na::Point2<f32>) -> f32 {
+        let robot_to_point = self.world_to_robot(point).xy();
+        robot_to_point.y.atan2(robot_to_point.x)
     }
 }
 
@@ -172,6 +240,15 @@ fn line_update(
                     continue;
                 };
 
+                if correspondence
+                    .detected_line
+                    .normal()
+                    .angle(&field_line.normal())
+                    > std::f32::consts::FRAC_PI_6
+                {
+                    continue;
+                }
+
                 let current_pose = particle.prediction();
 
                 // line from the robot to the detected line
@@ -212,8 +289,6 @@ fn line_update(
 
                 let rotated_projection = rotation * orthogonal_projection.coords;
 
-                particle.fix_covariance();
-
                 let measured = match axis {
                     ParallelAxis::X => field_line.start.y - rotated_projection.y,
                     ParallelAxis::Y => field_line.start.x - rotated_projection.x,
@@ -234,14 +309,27 @@ fn line_update(
                         ParallelAxis::Y => rotated_covariance[(0, 0)],
                     };
 
+                    let line_length_weight = if correspondence.detected_line.length() == 0.0 {
+                        1.0
+                    } else {
+                        1.0 / correspondence.detected_line.length()
+                    };
+
                     let angle_variance = (4.0 * distance_variance
                         / (correspondence.detected_line.length().powi(2)))
                     .sqrt()
                     .atan()
                     .powi(2);
 
-                    CovarianceMatrix::<2>::new(distance_variance, 0.0, 0.0, angle_variance)
+                    CovarianceMatrix::<2>::new(
+                        line_length_weight * distance_variance,
+                        0.0,
+                        0.0,
+                        angle_variance,
+                    )
                 };
+
+                particle.fix_covariance();
 
                 particle
                     .update(
@@ -291,6 +379,12 @@ fn filter_particles(
     }
 
     *pose = best_particle.prediction();
+
+    let particle_count = particles.iter().count();
+
+    if particle_count < 20 {
+        println!("amount of particles: {}", particle_count);
+    }
 }
 
 fn resample(
