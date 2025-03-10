@@ -392,7 +392,7 @@ fn resample(
     layout: Res<LayoutConfig>,
     mut particles: Query<(Entity, &mut RobotPoseFilter)>,
 ) {
-    // TODO: implement resampling
+    // TODO: implement particle resampling
 }
 
 fn sensor_resetting(mut commands: Commands, mut particles: Query<(Entity, &mut RobotPoseFilter)>) {
