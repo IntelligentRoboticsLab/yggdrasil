@@ -8,7 +8,14 @@ use crate::{
         engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::layout::{FieldConfig, LayoutConfig},
-    motion::step_planner::{StepPlanner, Target},
+    localization::RobotPose,
+    motion::{
+        step_planner::{StepPlanner, Target},
+        walking_engine::{
+            step::Step,
+            step_context::{self, StepContext},
+        },
+    },
     vision::ball_detection::classifier::Balls,
 };
 
@@ -52,29 +59,52 @@ fn default_keeper_position(
     }
 }
 
-fn block_ball(commands: &mut Commands, ball_position: Point2<f32>, field_config: &FieldConfig) {
+fn block_ball(
+    commands: &mut Commands,
+    ball_position: Point2<f32>,
+    field_config: &FieldConfig,
+    step_context: &mut StepContext,
+    robot_pose: &RobotPose,
+) {
     let max_y_position = field_config.goal_width / 2.0
         - field_config.goal_post_diameter / 2.0
         - GOAL_POST_DISTANCE_OFFSET;
     let y_target = ball_position.y.clamp(-max_y_position, max_y_position);
 
-    let keeper_position = Point2::new(-field_config.length / 2.0, y_target);
-    let keeper_rotation = UnitComplex::<f32>::rotation_between(
-        &Vector2::default(),
-        &Vector2::new(
-            ball_position.x - keeper_position.x,
-            ball_position.y - keeper_position.y,
-        ),
-    );
-    let keeper_target = Target {
-        position: keeper_position,
-        rotation: Some(keeper_rotation),
+    //let keeper_position = Point2::new(-field_config.length / 2.0, y_target);
+    //let keeper_rotation = UnitComplex::<f32>::rotation_between(
+    //    &Vector2::default(),
+    //    &Vector2::new(
+    //        ball_position.x - keeper_position.x,
+    //        ball_position.y - keeper_position.y,
+    //    ),
+    //);
+    //let keeper_target = Target {
+    //    position: keeper_position,
+    //    rotation: Some(keeper_rotation),
+    //};
+    //
+    //commands.set_behavior(WalkTo::new_with_look_at(
+    //    keeper_target,
+    //    Point3::new(ball_position.x, ball_position.y, 0.0),
+    //));
+
+    let current_y = robot_pose.world_position().y;
+    let step = if current_y > y_target {
+        Step {
+            forward: 0.0,
+            left: 0.1,
+            turn: 0.0,
+        }
+    } else {
+        Step {
+            forward: 0.0,
+            left: -0.1,
+            turn: 0.0,
+        }
     };
 
-    commands.set_behavior(WalkTo::new_with_look_at(
-        keeper_target,
-        Point3::new(ball_position.x, ball_position.y, 0.0),
-    ));
+    step_context.request_walk(step);
 }
 
 pub fn goalkeeper_role(
@@ -83,6 +113,8 @@ pub fn goalkeeper_role(
     step_planner: ResMut<StepPlanner>,
     top_balls: Res<Balls<Top>>,
     bottom_balls: Res<Balls<Bottom>>,
+    mut step_context: ResMut<StepContext>,
+    robot_pose: Res<RobotPose>,
 ) {
     let most_confident_ball = bottom_balls
         .most_confident_ball()
@@ -90,7 +122,13 @@ pub fn goalkeeper_role(
         .or(top_balls.most_confident_ball().map(|b| b.position));
 
     if let Some(ball_position) = most_confident_ball {
-        block_ball(&mut commands, ball_position, &layout_config.field);
+        block_ball(
+            &mut commands,
+            ball_position,
+            &layout_config.field,
+            &mut step_context,
+            &robot_pose,
+        );
     } else {
         default_keeper_position(&mut commands, &layout_config.field, &step_planner);
     }
