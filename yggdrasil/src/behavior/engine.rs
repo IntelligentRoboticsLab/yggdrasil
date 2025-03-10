@@ -2,11 +2,11 @@ use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
 use heimdall::{Bottom, Top};
 
-use nalgebra::Point2;
 use ml::{
     prelude::{MlTaskCommandsExt, ModelExecutor},
     MlModel,
 };
+use nalgebra::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
@@ -19,10 +19,10 @@ use crate::{
 
 use super::{
     behaviors::{
-        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlBehaviorPlugin, Sitting, SittingBehaviorPlugin,
-        Stand, StandBehaviorPlugin, StandLookAt, StandLookAtBehaviorPlugin, Standup,
-        StandupBehaviorPlugin, StartUpBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin,
-        WalkToSet, WalkToSetBehaviorPlugin,
+        CatchFall, CatchFallBehaviorPlugin, Observe, ObserveBehaviorPlugin, RlBehaviorPlugin,
+        RlExampleBehavior, Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
+        StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
+        WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
@@ -259,6 +259,17 @@ pub fn role_base(
         .most_confident_ball()
         .map(|b| b.position)
         .or(top_balls.most_confident_ball().map(|b| b.position));
+
+    // TODO: Remove after testing.
+    if most_confident_ball.is_some() {
+        if *gait == Gait::Sitting {
+            commands.set_behavior(Stand);
+        } else {
+            commands.set_behavior(RlExampleBehavior);
+        }
+    } else if behavior_state.get() != &BehaviorState::Observe {
+        commands.set_behavior(Observe::default());
+    }
 
     let ball_or_origin = most_confident_ball.unwrap_or(Point2::origin());
 
