@@ -66,7 +66,7 @@ bevy = { version = "0.15.3", default-features = false, features = [
 ] }
 byteorder = "1.5.0"
 cargo_toml = "0.20.5"
-chrono = "0.4.40"
+chrono = "=0.4.39"
 clap = "4.5.31"
 colored = "2.1.0"
 cpal = "0.15.3"
