@@ -182,12 +182,9 @@ fn spawn_whistle_preprocess_task(
     primary_state: Res<PrimaryState>,
     mut preprocessing_tasks: Query<&mut PreprocessingTask>,
 ) {
-    //if *primary_state != PrimaryState::Set {
-    //    return;
-    //}
-    if preprocessing_tasks.get_single_mut().is_ok() {
+    if *primary_state != PrimaryState::Set || preprocessing_tasks.get_single_mut().is_ok() {
         return;
-    };
+    }
 
     // Only take the last audio sample to reduce contention in case we are lagging behind
     let Some(audio_sample) = audio_samples.read().last() else {
