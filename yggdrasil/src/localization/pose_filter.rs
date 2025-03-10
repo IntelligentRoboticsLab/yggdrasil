@@ -6,7 +6,6 @@ use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
 use nalgebra::{self as na, point, vector, ComplexField};
-use rerun::components::RotationAxisAngle;
 
 use crate::{
     core::{
@@ -21,33 +20,43 @@ use crate::{
     nao::Cycle,
 };
 
-const PARTICLE_DEFAULT_SCORE: f32 = 10.0;
+const PARTICLE_SCORE_DECAY: f32 = 0.9;
+const PARTICLE_SCORE_DEFAULT: f32 = 10.0;
+const PARTICLE_SCORE_INCREASE: f32 = 0.5;
+const PARTICLE_SCORE_BONUS: f32 = 2.0;
+const PARTICLE_BONUS_THRESHOLD: f32 = 0.5;
+const PARTICLE_RETAIN_FACTOR: f32 = 0.5;
 
 pub struct PoseFilterPlugin;
 
 impl Plugin for PoseFilterPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostStartup, initialize_particles)
+        app.add_systems(PostStartup, initialize_particles_and_pose)
             .add_systems(
                 Update,
                 (
                     odometry_update,
                     line_update,
+                    filter_particles,
                     resample,
                     sensor_resetting,
-                    log_single,
+                    log_particles,
                 )
                     .chain(),
             );
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Resource, Default, Debug, Clone, Copy)]
 pub struct RobotPose {
     pub inner: na::Isometry2<f32>,
 }
 
 impl RobotPose {
+    pub fn new(inner: na::Isometry2<f32>) -> Self {
+        Self { inner }
+    }
+
     /// Position of the robot in the field
     #[must_use]
     pub fn position(&self) -> na::Point2<f32> {
@@ -115,7 +124,7 @@ impl RobotPoseFilter {
     }
 }
 
-fn initialize_particles(
+fn initialize_particles_and_pose(
     mut commands: Commands,
     layout: Res<LayoutConfig>,
     player: Res<PlayerConfig>,
@@ -123,6 +132,13 @@ fn initialize_particles(
     for particle in initial_particles(&layout, player.player_number) {
         commands.spawn(particle);
     }
+
+    commands.insert_resource(RobotPose::new(
+        layout
+            .initial_positions
+            .player(player.player_number)
+            .isometry,
+    ))
 }
 
 fn odometry_update(odometry: Res<Odometry>, mut particles: Query<&mut RobotPoseFilter>) {
@@ -135,6 +151,8 @@ fn odometry_update(odometry: Res<Odometry>, mut particles: Query<&mut RobotPoseF
                 CovarianceMatrix::from_diagonal(&na::Vector3::new(0.05, 0.05, 0.01)),
             )
             .unwrap();
+
+        particle.score *= PARTICLE_SCORE_DECAY;
     }
 }
 
@@ -245,9 +263,34 @@ fn line_update(
                         update_covariance,
                     )
                     .unwrap();
+
+                particle.score += PARTICLE_SCORE_INCREASE;
+                if correspondence.error.sqrt() < PARTICLE_BONUS_THRESHOLD {
+                    particle.score += PARTICLE_SCORE_BONUS;
+                }
             }
         }
     }
+}
+
+fn filter_particles(
+    mut commands: Commands,
+    mut pose: ResMut<RobotPose>,
+    particles: Query<(Entity, &RobotPoseFilter)>,
+) {
+    let best_particle = particles
+        .iter()
+        .map(|x| x.1)
+        .max_by(|a, b| a.score.total_cmp(&b.score))
+        .expect("There should always be at least one particle.");
+
+    for (entity, particle) in &particles {
+        if particle.score < PARTICLE_RETAIN_FACTOR * best_particle.score {
+            commands.entity(entity).despawn();
+        }
+    }
+
+    *pose = best_particle.prediction();
 }
 
 fn resample(
@@ -262,30 +305,56 @@ fn sensor_resetting(mut commands: Commands, mut particles: Query<(Entity, &mut R
     // TODO: implement sensor resetting based on field features from which the pose can directly be derived
 }
 
-fn log_single(dbg: DebugContext, cycle: Res<Cycle>, particles: Query<&RobotPoseFilter>) {
-    if let Some(a) = particles.iter().next() {
-        let pos = a.prediction();
+fn log_particles(dbg: DebugContext, cycle: Res<Cycle>, particles: Query<&RobotPoseFilter>) {
+    let particles = particles.iter().collect::<Vec<_>>();
 
-        dbg.log_with_cycle(
-            "new_pose",
-            *cycle,
-            &rerun::Boxes3D::from_centers_and_half_sizes([(0.0, 0.0, 0.0)], [(0.1, 0.1, 0.1)])
-                .with_colors([(255, 0, 0)]),
-        );
+    let best_particle_idx = particles
+        .iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| a.score.total_cmp(&b.score))
+        .map(|(index, _)| index)
+        .unwrap();
 
-        dbg.log_with_cycle(
-            "new_pose",
-            *cycle,
-            &rerun::Transform3D::from_translation_rotation(
-                (pos.inner.translation.x, pos.inner.translation.y, 0.0),
-                rerun::Rotation3D::AxisAngle(RotationAxisAngle::new(
+    dbg.log_with_cycle(
+        "particles",
+        *cycle,
+        &rerun::Boxes3D::from_centers_and_half_sizes(
+            (0..particles.len()).map(|_| (0.0, 0.0, 0.0)),
+            (0..particles.len()).map(|_| (0.1, 0.1, 0.1)),
+        )
+        .with_colors((0..particles.len()).map(|i| {
+            if i == best_particle_idx {
+                (0, 255, 0)
+            } else {
+                (255, 0, 0)
+            }
+        })),
+    );
+
+    dbg.log_with_cycle(
+        "particles",
+        *cycle,
+        &rerun::Transform3D::update_fields().with_axis_length(0.25),
+    );
+
+    dbg.log_with_cycle(
+        "particles",
+        *cycle,
+        &rerun::InstancePoses3D::new()
+            .with_translations(particles.iter().map(|particle| {
+                (
+                    particle.prediction().inner.translation.x,
+                    particle.prediction().inner.translation.y,
+                    0.0,
+                )
+            }))
+            .with_rotation_axis_angles(particles.iter().map(|particle| {
+                (
                     (0.0, 0.0, 1.0),
-                    pos.inner.rotation.angle(),
-                )),
-            )
-            .with_axis_length(0.5),
-        );
-    };
+                    particle.prediction().inner.rotation.angle(),
+                )
+            })),
+    );
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -343,7 +412,7 @@ fn initial_particles(
 
     (0..20).map(move |_| RobotPoseFilter {
         filter: UnscentedKalmanFilter::new(position, CovarianceMatrix::from_diagonal_element(0.1)),
-        score: PARTICLE_DEFAULT_SCORE,
+        score: PARTICLE_SCORE_DEFAULT,
     })
 }
 
