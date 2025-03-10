@@ -144,7 +144,6 @@ fn update_whistle_state(
         .fold(0, |acc, e| acc + usize::from(*e));
 
     if detections >= config.detections_needed {
-        eprintln!("HERE HERE HERE");
         whistle.detected = true;
         nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
