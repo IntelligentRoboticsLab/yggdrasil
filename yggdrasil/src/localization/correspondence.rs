@@ -40,7 +40,7 @@ impl<T: CameraLocation> Plugin for LineCorrespondencePlugin<T> {
 #[derive(Debug, Clone)]
 pub struct LineCorrespondence {
     pub pose: RobotPose,
-    // The line segment detected in the robot frame
+    // The line segment detected in the field frame (should be robot frame)
     pub detected_line: LineSegment2,
     // The ideal field line that the detected line corresponds to
     pub field_line: FieldLine,
