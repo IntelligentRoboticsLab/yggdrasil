@@ -270,6 +270,7 @@ pub fn role_base(
     } else if behavior_state.get() != &BehaviorState::Observe {
         commands.set_behavior(Observe::default());
     }
+    return;
 
     let ball_or_origin = most_confident_ball.unwrap_or(Point2::origin());
 
