@@ -41,7 +41,7 @@ fn request_sit(
     let actual_hip_height = kinematics.left_hip_height();
 
     let has_changed =
-        (actual_hip_height - *last_hip_height).abs() <= config.hip_height.change_threshold;
+        (actual_hip_height - *last_hip_height).abs() > config.hip_height.change_threshold;
     *last_hip_height = actual_hip_height;
 
     if has_changed {
