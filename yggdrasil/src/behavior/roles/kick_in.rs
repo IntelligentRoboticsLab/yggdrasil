@@ -74,7 +74,7 @@ pub fn kick_walk_role(
     if let Some(ball_position) = ball.as_ref().0 {
         let ball_distance = pose.distance_to(&ball_position);
 
-        if (kick_in_start.0.is_none()) {
+        if kick_in_start.0.is_none() {
             kick_in_start.0 = Some(ball_position);
         }
 
