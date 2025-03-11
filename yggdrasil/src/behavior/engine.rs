@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
 use heimdall::{Bottom, Top};
 use nalgebra::Point2;
+use spatial::types::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
@@ -50,6 +51,7 @@ impl Plugin for BehaviorEnginePlugin {
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
             ))
+            .add_systems(Update, chose_ball)
             .add_systems(PostUpdate, role_base);
     }
 }
@@ -259,4 +261,20 @@ pub fn role_base(
             );
         }
     }
+}
+
+#[derive(Resource)]
+pub struct BestBall(Option<Point2<f32>>);
+
+fn chose_ball(
+    mut commands: Commands,
+    top_balls: Res<Balls<Top>>,
+    bottom_balls: Res<Balls<Bottom>>,
+) {
+    let most_confident_ball = bottom_balls
+    .most_confident_ball()
+    .map(|b| b.position)
+    .or(top_balls.most_confident_ball().map(|b| b.position));
+
+    commands.insert_resource(BestBall(most_confident_ball));
 }
