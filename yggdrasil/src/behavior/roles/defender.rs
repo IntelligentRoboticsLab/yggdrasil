@@ -53,6 +53,8 @@ pub fn defender_role(
     if step_planner.reached_target() {
         commands.set_behavior(Observe::with_turning(-0.4));
     } else {
-        commands.set_behavior(WalkTo::new(defend_target));
+        commands.set_behavior(WalkTo {
+            target: defend_target,
+        });
     }
 }
