@@ -281,6 +281,11 @@ impl GameControllerMessage {
             .iter()
             .find(|team| team.team_number == team_number)
     }
+
+    pub fn is_penalized(&self, player_number: u8, team_number: u8) -> bool {
+        self.team(team_number)
+            .map_or(false, |team| team.is_penalized(player_number))
+    }
 }
 
 /// A struct representing the `RoboCupGameControlReturnMessage` send by the Robots.

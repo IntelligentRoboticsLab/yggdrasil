@@ -127,13 +127,13 @@ translation = [-3.15, 1.1]
 [[set_positions]]
 player_number = 4
 rotation = 45
-translation = [-0.8, -0.8]
+translation = [-0.8, 0]
 
 # Set position of player five.
 [[set_positions]]
 player_number = 5
-rotation = 0
-translation = [-1, 0]
+rotation = 180
+translation = [0.8, 0]
 
 # Penalty Positions
 # When returning from penalized to playing the robots position will be reset to a penalty position.

@@ -113,6 +113,7 @@ pub enum RoleState {
     Striker,
     Goalkeeper,
     Defender,
+    KickIn
 }
 
 impl RoleState {
