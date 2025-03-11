@@ -5,7 +5,7 @@ use nalgebra::Point2;
 use crate::{
     behavior::{
         behaviors::{Observe, WalkTo},
-        engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
+        engine::{in_role, BehaviorState, BestBall, CommandsBehaviorExt, RoleState, Roles},
     }, core::config::{layout::LayoutConfig, showtime::PlayerConfig}, game_controller, localization::RobotPose, motion::step_planner::{StepPlanner, Target}
 };
 
@@ -44,7 +44,7 @@ pub fn kick_walk_role(
     layout_config: Res<LayoutConfig>,
     step_planner: ResMut<StepPlanner>,
     behavior: Res<State<BehaviorState>>,
-   
+    ball: Res<BestBall>,
     game_controller_message: Option<Res<GameControllerMessage>>,
 ) {
     let set_robot_position = layout_config
@@ -61,7 +61,18 @@ pub fn kick_walk_role(
     let aligned_with_rotation = (pose.world_rotation() - set_robot_position.isometry.rotation.angle()).abs() < 0.2;
 
     // Check if the robot sees a ball and is close to it
-    let ball_distance = pose.distance_to(&pose);
+    if let Some(ball_position) = ball.as_ref().0 {
+        let ball_distance = pose.distance_to(&ball_position);
+
+        if ball_distance < 0.5 {
+            
+            commands.set_behavior(WalkTo { target: Target {
+                position: ball_position,
+                rotation: None,
+            } });
+        }
+
+    }
 
     if let Some(game_state) = game_controller_message.as_deref() {
         let penalized_robots = game_state.is_penalized(4, player_config.team_number);

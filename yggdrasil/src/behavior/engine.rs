@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
 use heimdall::{Bottom, Top};
 use nalgebra::Point2;
-use spatial::types::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
@@ -264,7 +263,7 @@ pub fn role_base(
 }
 
 #[derive(Resource)]
-pub struct BestBall(Option<Point2<f32>>);
+pub struct BestBall(pub Option<Point2<f32>>);
 
 fn chose_ball(
     mut commands: Commands,
