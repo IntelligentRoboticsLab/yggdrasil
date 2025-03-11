@@ -6,7 +6,11 @@ use crate::{
     behavior::{
         behaviors::{Observe, WalkTo},
         engine::{in_role, BehaviorState, BestBall, CommandsBehaviorExt, RoleState, Roles},
-    }, core::config::{layout::LayoutConfig, showtime::PlayerConfig}, game_controller, localization::RobotPose, motion::step_planner::{StepPlanner, Target}
+    },
+    core::config::{layout::LayoutConfig, showtime::PlayerConfig},
+    game_controller,
+    localization::RobotPose,
+    motion::step_planner::{StepPlanner, Target},
 };
 
 const GIJS_HAS_KICK_WORKING: bool = false;
@@ -20,10 +24,14 @@ impl Plugin for KickInRolePlugin {
         if GIJS_HAS_KICK_WORKING {
             app.add_systems(Update, kick_in_role.run_if(in_role::<KickIn>));
         } else {
-            app.add_systems(Update, kick_walk_role.run_if(in_role::<KickIn>));
+            app.add_systems(Update, kick_walk_role.run_if(in_role::<KickIn>))
+                .init_resource::<KickInStart>();
         }
     }
 }
+
+#[derive(Default, Resource)]
+pub struct KickInStart(pub Option<Point2<f32>>);
 
 /// The [`KickIn`] role is temporary held by a signle robot.
 /// It's first implementation will stay limited to the kick-in for the start of the game.
@@ -33,12 +41,13 @@ impl Roles for KickIn {
     const STATE: RoleState = RoleState::KickIn;
 }
 
-pub fn kick_in_role(){
+pub fn kick_in_role() {
     // TODO: Wait for @oxkitsune to make a kick in the walking engine
 }
 
 pub fn kick_walk_role(
     mut commands: Commands,
+    mut kick_in_start: ResMut<KickInStart>,
     pose: Res<RobotPose>,
     player_config: Res<PlayerConfig>,
     layout_config: Res<LayoutConfig>,
@@ -58,26 +67,29 @@ pub fn kick_walk_role(
     let close_to_target = pose.distance_to(&set_point) < DISTANCE_TO_SETPOSITION;
 
     // Check if the robot it is facing it's own side of the field. If in front of him the x is going negative
-    let aligned_with_rotation = (pose.world_rotation() - set_robot_position.isometry.rotation.angle()).abs() < 0.2;
+    let aligned_with_rotation =
+        (pose.world_rotation() - set_robot_position.isometry.rotation.angle()).abs() < 0.2;
 
     // Check if the robot sees a ball and is close to it
     if let Some(ball_position) = ball.as_ref().0 {
         let ball_distance = pose.distance_to(&ball_position);
 
-        if ball_distance < 0.5 {
-            
-            commands.set_behavior(WalkTo { target: Target {
-                position: ball_position,
-                rotation: None,
-            } });
+        if (kick_in_start.0.is_none()) {
+            kick_in_start.0 = Some(ball_position);
         }
 
+        if close_to_target && aligned_with_rotation && ball_distance < 0.5 {
+            commands.set_behavior(WalkTo {
+                target: Target {
+                    position: ball_position,
+                    rotation: None,
+                },
+            });
+        }
     }
 
-    if let Some(game_state) = game_controller_message.as_deref() {
-        let penalized_robots = game_state.is_penalized(4, player_config.team_number);
+    // if let Some(game_state) = game_controller_message.as_deref() {
+    //     let penalized_robots = game_state.is_penalized(4, player_config.team_number);
 
-    }
-
-
+    // }
 }
