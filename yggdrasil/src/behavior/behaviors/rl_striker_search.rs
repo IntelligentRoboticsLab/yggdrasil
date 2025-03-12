@@ -54,6 +54,14 @@ pub struct RlStrikerSearchBehaviorConfig {
     // The output of the policy is element wise multiplied with this value to determine the
     // step that is requested to the walking engine.
     policy_output_scaling: Step,
+    // Controls how fast the robot moves its head back and forth while looking around
+    pub head_rotation_speed: f32,
+    // Controls how far to the left and right the robot looks while looking around, in radians.
+    // If this value is one, the robot will look one radian to the left and one radian to the
+    // right.
+    pub head_pitch_max: f32,
+    // Controls how far to the bottom the robot looks while looking around, in radians
+    pub head_yaw_max: f32,
 }
 
 pub(super) struct RlStrikerSearchBehaviorModel;
@@ -153,7 +161,7 @@ fn handle_inference_output(
     step_context
         .request_walk(output.step * behavior_config.rl_striker_search.policy_output_scaling);
 
-    let observe_config = &behavior_config.observe;
+    let observe_config = &behavior_config.rl_striker_search;
     look_around(
         &mut nao_manager,
         **observe_starting_time,
