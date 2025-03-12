@@ -24,20 +24,21 @@ use crate::{
     vision::ball_detection::classifier::Balls,
 };
 
-pub struct RlBehaviorPlugin;
+pub struct RlStrikerSearchBehaviorPlugin;
 
-impl Plugin for RlBehaviorPlugin {
+impl Plugin for RlStrikerSearchBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.init_ml_model::<RlExampleBehaviorModel>()
+        app.init_ml_model::<RlStrikerSearchBehaviorModel>()
             .add_systems(
                 Update,
-                run_inference.run_if(in_behavior::<RlExampleBehavior>.and(task_finished::<Output>)),
+                run_inference
+                    .run_if(in_behavior::<RlStrikerSearchBehavior>.and(task_finished::<Output>)),
             )
             .add_systems(
                 Update,
                 handle_inference_output
                     .after(run_inference)
-                    .run_if(in_behavior::<RlExampleBehavior>)
+                    .run_if(in_behavior::<RlStrikerSearchBehavior>)
                     .run_if(resource_exists_and_changed::<Output>),
             );
     }
@@ -45,25 +46,25 @@ impl Plugin for RlBehaviorPlugin {
 
 #[derive(Resource, Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-pub struct RlExampleBehaviorConfig {
+pub struct RlStrikerSearchBehaviorConfig {
     // The output of the policy is element wise multiplied with this value to determine the
     // step that is requested to the walking engine.
     policy_output_scaling: Step,
 }
 
-pub(super) struct RlExampleBehaviorModel;
+pub(super) struct RlStrikerSearchBehaviorModel;
 
-impl MlModel for RlExampleBehaviorModel {
+impl MlModel for RlStrikerSearchBehaviorModel {
     type Inputs = ModelInput;
     type Outputs = ModelOutput;
 
-    const ONNX_PATH: &'static str = "models/rl_example_behavior.onnx";
+    const ONNX_PATH: &'static str = "models/rl_striker_search_behavior.onnx";
 }
 
 #[derive(Resource)]
-pub struct RlExampleBehavior;
+pub struct RlStrikerSearchBehavior;
 
-impl Behavior for RlExampleBehavior {
+impl Behavior for RlStrikerSearchBehavior {
     const STATE: BehaviorState = BehaviorState::RlExampleBehavior;
 }
 
@@ -128,7 +129,7 @@ impl RlBehaviorOutput<ModelOutput> for Output {
 
 fn run_inference(
     mut commands: Commands,
-    mut model_executor: ResMut<ModelExecutor<RlExampleBehaviorModel>>,
+    mut model_executor: ResMut<ModelExecutor<RlStrikerSearchBehaviorModel>>,
     robot_pose: Res<RobotPose>,
     balls_top: Res<Balls<Top>>,
     balls_bottom: Res<Balls<Bottom>>,
@@ -172,7 +173,8 @@ fn handle_inference_output(
         return;
     };
 
-    step_context.request_walk(output.step * behavior_config.rl_example.policy_output_scaling);
+    step_context
+        .request_walk(output.step * behavior_config.rl_striker_search.policy_output_scaling);
 
     let point3 = Point3::new(most_confident_ball.x, most_confident_ball.y, 0.0);
     let look_at = pose.get_look_at_absolute(&point3);
