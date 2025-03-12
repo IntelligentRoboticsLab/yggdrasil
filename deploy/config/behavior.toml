@@ -11,4 +11,4 @@ head_pitch_max = 0.2
 [rl_striker_search]
 # The output of the policy is element wise multiplied with this value to determine the
 # step that is requested to the walking engine.
-policy_output_scaling = {forward = 0.05, left = 0.07, turn = 0.4}
+policy_output_scaling = {forward = 0.05, left = 0.07, turn = 0.1}

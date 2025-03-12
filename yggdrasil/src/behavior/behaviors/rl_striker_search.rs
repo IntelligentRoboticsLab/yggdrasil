@@ -95,29 +95,11 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let relative_goal_position = self.goal_position - robot_position;
         let relative_goal_angle = relative_goal_position.y.atan2(relative_goal_position.x);
 
-        // vec![
-        //     (self.ball_position.x - robot_position.x) / self.field_height,
-        //     (self.ball_position.y - robot_position.y) / self.field_width,
-        //     (relative_ball_angle - robot_angle).sin(),
-        //     (relative_ball_angle - robot_angle).sin(),
-        //     (self.goal_position.x - self.ball_position.x) / self.field_height,
-        //     (self.goal_position.y - self.ball_position.y) / self.field_width,
-        //     (relative_goal_angle - robot_angle).sin(),
-        //     (relative_goal_angle - robot_angle).cos(),
-        //     last_seen_ball_pos_x,
-        //     last_seen_ball_pos_y,
-        // ]
         vec![
-            0.0,
-            0.0,
-            0.0,
-            0.0,
             (self.goal_position.x - robot_position.x) / self.field_height,
             (self.goal_position.y - robot_position.y) / self.field_width,
             (relative_goal_angle - robot_angle).sin(),
             (relative_goal_angle - robot_angle).cos(),
-            0.0,
-            0.0,
         ]
     }
 }
