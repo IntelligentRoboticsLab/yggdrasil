@@ -3,24 +3,19 @@ use std::time::Duration;
 use bevy::prelude::*;
 use nidhogg::types::{FillExt, HeadJoints};
 
-use nalgebra::{Point2, Point3};
+use nalgebra as na;
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState, RoleState},
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
     localization::RobotPose,
-    motion::{
-        step_planner::{StepPlanner, Target},
-        walking_engine::step_context::StepContext,
-    },
+    motion::{path::PathPlanner, walking_engine::step_context::StepContext},
     nao::{NaoManager, Priority},
 };
 
 /// To prevent the Goalkeeper from walking into the goalpost, we use this position for a better approach.
-const GOAL_KEEPER_PRE_SET_POS: Target = Target {
-    position: Point2::new(-2.85, 0.0),
-    rotation: None,
-};
+const GOAL_KEEPER_PRE_SET_POS: na::Point2<f32> = na::Point2::new(-2.85, 0.0);
+const GOAL_KEEPER_PRE_SET_DIST: f32 = 0.05;
 
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
@@ -34,31 +29,33 @@ impl Plugin for WalkToSetBehaviorPlugin {
 
 /// Walk to the set position of the robot.
 /// Only the Goalkeeper will first walk to the pre-set position before walking to the set position.
-#[derive(Resource)]
+#[derive(Default, Resource)]
 pub struct WalkToSet {
-    // pub is_goalkeeper: bool,
+    pub reached_pre_set: bool,
 }
 
 impl Behavior for WalkToSet {
     const STATE: BehaviorState = BehaviorState::WalkToSet;
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn walk_to_set(
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
     player_config: Res<PlayerConfig>,
-    mut step_planner: ResMut<StepPlanner>,
+    mut planner: ResMut<PathPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
+    mut walk_to_set: ResMut<WalkToSet>,
     role: Res<State<RoleState>>,
 ) {
     let set_robot_position = layout_config
         .set_positions
         .player(player_config.player_number);
 
-    let set_position: Point2<f32> = set_robot_position.isometry.translation.vector.into();
+    let set_position: na::Point2<f32> = set_robot_position.isometry.translation.vector.into();
 
-    let look_at = pose.get_look_at_absolute(&Point3::new(
+    let look_at = pose.get_look_at_absolute(&na::Point3::new(
         set_position.x,
         set_position.y,
         RobotPose::CAMERA_HEIGHT,
@@ -71,29 +68,22 @@ pub fn walk_to_set(
         NaoManager::HEAD_STIFFNESS,
     );
 
-    let target = Target {
-        position: set_robot_position.isometry.translation.vector.into(),
-        rotation: Some(set_robot_position.isometry.rotation),
-    };
+    if matches!(role.get(), RoleState::Goalkeeper) && !walk_to_set.reached_pre_set {
+        let dist = na::distance(&pose.world_position(), &GOAL_KEEPER_PRE_SET_POS);
 
-    let reached_pre_set = !step_planner.has_target()
-        || (step_planner
-            .current_absolute_target()
-            .is_some_and(|current_target| current_target == &GOAL_KEEPER_PRE_SET_POS)
-            && !step_planner.reached_target());
-
-    let is_goalkeeper = role.get() == &RoleState::Goalkeeper;
-
-    if is_goalkeeper && reached_pre_set {
-        step_planner.set_absolute_target(GOAL_KEEPER_PRE_SET_POS);
+        if dist <= GOAL_KEEPER_PRE_SET_DIST {
+            walk_to_set.reached_pre_set = true;
+        } else {
+            planner.target = Some(GOAL_KEEPER_PRE_SET_POS.into());
+        }
     } else {
-        step_planner.set_absolute_target(target);
+        planner.target = Some(set_robot_position.isometry.into());
     }
 
-    if let Some(step) = step_planner.plan(&pose) {
+    if let Some(step) = planner.step(pose.inner) {
         step_context.request_walk(step);
     } else {
-        let look_at = pose.get_look_at_absolute(&Point3::origin());
+        let look_at = pose.get_look_at_absolute(&na::Point3::origin());
         nao_manager.set_head(look_at, HeadJoints::fill(0.5), Priority::default());
 
         step_context.request_stand();

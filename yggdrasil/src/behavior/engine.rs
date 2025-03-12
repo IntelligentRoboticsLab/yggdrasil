@@ -245,7 +245,7 @@ pub fn role_base(
                 target: Point2::default(),
             });
         }
-        PrimaryState::Ready => commands.set_behavior(WalkToSet {}),
+        PrimaryState::Ready => commands.set_behavior(WalkToSet::default()),
         PrimaryState::Set => commands.set_behavior(StandLookAt {
             target: ball_or_origin,
         }),
