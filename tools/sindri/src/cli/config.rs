@@ -131,7 +131,7 @@ fn install_ssh_keys(home_dir: &Path, config: SindriConfig) -> io::Result<()> {
     if ssh_config.contains(include_directive) {
         Ok(())
     } else {
-        f.write_all(include_directive.as_bytes())
+        f.write_all(format!("\n{}", include_directive).as_bytes())
     }
 }
 
