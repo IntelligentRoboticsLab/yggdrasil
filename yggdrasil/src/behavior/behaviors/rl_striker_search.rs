@@ -1,7 +1,6 @@
 use std::{f32, time::Instant};
 
 use bevy::prelude::*;
-use heimdall::{Bottom, Top};
 use ml::{prelude::ModelExecutor, MlModel, MlModelResourceExt};
 use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};
@@ -22,7 +21,6 @@ use crate::{
     localization::RobotPose,
     motion::walking_engine::{step::Step, step_context::StepContext},
     nao::{NaoManager, Priority},
-    vision::ball_detection::classifier::Balls,
 };
 
 pub struct RlStrikerSearchBehaviorPlugin;
@@ -83,7 +81,6 @@ fn reset_observe_starting_time(mut observe_starting_time: ResMut<ObserveStarting
 
 struct Input<'d> {
     robot_pose: &'d RobotPose,
-    ball_position: &'d Point2<f32>,
     goal_position: &'d Point2<f32>,
 
     field_width: f32,
@@ -95,14 +92,8 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let robot_position = self.robot_pose.inner.translation.vector.xy();
         let robot_angle = self.robot_pose.inner.rotation.angle();
 
-        let relative_ball_position = self.ball_position - robot_position;
-        let relative_ball_angle = relative_ball_position.y.atan2(relative_ball_position.x);
-
         let relative_goal_position = self.goal_position - robot_position;
         let relative_goal_angle = relative_goal_position.y.atan2(relative_goal_position.x);
-
-        let last_seen_ball_pos_x = (self.ball_position.x - robot_position.x) / self.field_height;
-        let last_seen_ball_pos_y = (self.ball_position.y - robot_position.y) / self.field_height;
 
         // vec![
         //     (self.ball_position.x - robot_position.x) / self.field_height,
@@ -156,22 +147,11 @@ fn run_inference(
     mut commands: Commands,
     mut model_executor: ResMut<ModelExecutor<RlStrikerSearchBehaviorModel>>,
     robot_pose: Res<RobotPose>,
-    balls_top: Res<Balls<Top>>,
-    balls_bottom: Res<Balls<Bottom>>,
 ) {
-    let Some(most_confident_ball) = balls_bottom
-        .most_confident_ball()
-        .map(|b| b.position)
-        .or(balls_top.most_confident_ball().map(|b| b.position))
-    else {
-        return;
-    };
-
     let goal_position = Point2::new(4.5, 0.0);
 
     let input = Input {
         robot_pose: &robot_pose,
-        ball_position: &most_confident_ball,
         goal_position: &goal_position,
 
         field_width: 6.0,
@@ -185,20 +165,9 @@ fn handle_inference_output(
     mut step_context: ResMut<StepContext>,
     output: Res<Output>,
     behavior_config: Res<BehaviorConfig>,
-    balls_top: Res<Balls<Top>>,
-    balls_bottom: Res<Balls<Bottom>>,
-    pose: Res<RobotPose>,
     mut nao_manager: ResMut<NaoManager>,
     observe_starting_time: Res<ObserveStartingTime>,
 ) {
-    let Some(most_confident_ball) = balls_bottom
-        .most_confident_ball()
-        .map(|b| b.position)
-        .or(balls_top.most_confident_ball().map(|b| b.position))
-    else {
-        return;
-    };
-
     step_context
         .request_walk(output.step * behavior_config.rl_striker_search.policy_output_scaling);
 
