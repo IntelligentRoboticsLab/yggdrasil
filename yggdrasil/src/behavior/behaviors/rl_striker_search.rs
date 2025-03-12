@@ -1,9 +1,10 @@
-use std::{f32, time::Duration};
+use std::{f32, time::Instant};
 
 use bevy::prelude::*;
 use heimdall::{Bottom, Top};
 use ml::{prelude::ModelExecutor, MlModel, MlModelResourceExt};
-use nalgebra::{Point2, Point3};
+use nalgebra::Point2;
+use nidhogg::types::{FillExt, HeadJoints};
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
 
@@ -35,6 +36,11 @@ impl Plugin for RlStrikerSearchBehaviorPlugin {
                     .run_if(in_behavior::<RlStrikerSearchBehavior>.and(task_finished::<Output>)),
             )
             .add_systems(
+                OnEnter(BehaviorState::RlStrikerSearchBehavior),
+                reset_observe_starting_time,
+            )
+            .insert_resource(ObserveStartingTime(Instant::now()))
+            .add_systems(
                 Update,
                 handle_inference_output
                     .after(run_inference)
@@ -65,7 +71,14 @@ impl MlModel for RlStrikerSearchBehaviorModel {
 pub struct RlStrikerSearchBehavior;
 
 impl Behavior for RlStrikerSearchBehavior {
-    const STATE: BehaviorState = BehaviorState::RlExampleBehavior;
+    const STATE: BehaviorState = BehaviorState::RlStrikerSearchBehavior;
+}
+
+#[derive(Resource, Deref)]
+struct ObserveStartingTime(Instant);
+
+fn reset_observe_starting_time(mut observe_starting_time: ResMut<ObserveStartingTime>) {
+    observe_starting_time.0 = Instant::now();
 }
 
 struct Input<'d> {
@@ -104,12 +117,16 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         //     last_seen_ball_pos_y,
         // ]
         vec![
-            0.0, 0.0, 0.0, 0.0, 
+            0.0,
+            0.0,
+            0.0,
+            0.0,
             (self.goal_position.x - robot_position.x) / self.field_height,
             (self.goal_position.y - robot_position.y) / self.field_width,
             (relative_goal_angle - robot_angle).sin(),
             (relative_goal_angle - robot_angle).cos(),
-            0.0, 0.0
+            0.0,
+            0.0,
         ]
     }
 }
@@ -172,6 +189,7 @@ fn handle_inference_output(
     balls_bottom: Res<Balls<Bottom>>,
     pose: Res<RobotPose>,
     mut nao_manager: ResMut<NaoManager>,
+    observe_starting_time: Res<ObserveStartingTime>,
 ) {
     let Some(most_confident_ball) = balls_bottom
         .most_confident_ball()
@@ -184,13 +202,37 @@ fn handle_inference_output(
     step_context
         .request_walk(output.step * behavior_config.rl_striker_search.policy_output_scaling);
 
-    let point3 = Point3::new(most_confident_ball.x, most_confident_ball.y, 0.0);
-    let look_at = pose.get_look_at_absolute(&point3);
+    let observe_config = &behavior_config.observe;
+    look_around(
+        &mut nao_manager,
+        **observe_starting_time,
+        observe_config.head_rotation_speed,
+        observe_config.head_yaw_max,
+        observe_config.head_pitch_max,
+    );
+}
 
-    nao_manager.set_head_target(
-        look_at,
-        Duration::from_millis(500),
+fn look_around(
+    nao_manager: &mut NaoManager,
+    starting_time: Instant,
+    rotation_speed: f32,
+    yaw_multiplier: f32,
+    pitch_multiplier: f32,
+) {
+    // Used to parameterize the yaw and pitch angles, multiplying with a large
+    // rotation speed will make the rotation go faster.
+    let movement_progress = starting_time.elapsed().as_secs_f32() * rotation_speed;
+    let yaw = (movement_progress).sin() * yaw_multiplier;
+    let pitch = (movement_progress * 2.0 + std::f32::consts::FRAC_PI_2)
+        .sin()
+        .max(0.0)
+        * pitch_multiplier;
+
+    let position = HeadJoints { yaw, pitch };
+
+    nao_manager.set_head(
+        position,
+        HeadJoints::fill(NaoManager::HEAD_STIFFNESS),
         Priority::default(),
-        NaoManager::HEAD_STIFFNESS,
     );
 }

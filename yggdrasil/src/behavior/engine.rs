@@ -98,7 +98,7 @@ pub enum BehaviorState {
     StartUp,
     WalkTo,
     WalkToSet,
-    RlExampleBehavior,
+    RlStrikerSearchBehavior,
 }
 
 #[must_use]
