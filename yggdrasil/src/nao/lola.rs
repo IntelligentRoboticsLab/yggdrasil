@@ -6,9 +6,12 @@ use nidhogg::{
     types::{FillExt, JointArray},
     NaoBackend, NaoControlMessage, NaoState,
 };
+use rerun::ComponentBatch;
 
-use crate::nao::RobotInfo;
 use crate::prelude::*;
+use crate::{core::debug::DebugContext, nao::RobotInfo};
+
+use super::Cycle;
 
 const DEFAULT_STIFFNESS: f32 = 0.8;
 
@@ -32,7 +35,8 @@ impl Plugin for LolaPlugin {
             .run_system_once(initialize_nao)
             .expect("failed to initialize nao resources!");
 
-        app.add_systems(Write, sync_hardware);
+        app.add_systems(Write, sync_hardware)
+            .add_systems(Update, log_nao_state);
     }
 }
 
@@ -74,6 +78,19 @@ fn initialize_nao(mut commands: Commands, mut lola: ResMut<Lola>) {
 
     commands.insert_resource(state);
     commands.insert_resource(info);
+}
+
+fn log_nao_state(dbg: DebugContext, state: Res<NaoState>, cycle: Res<Cycle>) {
+    let state_str = serde_json::to_string(&*state).expect("Failed to serialize NAO state!");
+    let blob = state_str.as_bytes();
+
+    dbg.log_with_cycle(
+        "nao_state",
+        *cycle,
+        &rerun::components::Blob::from(blob)
+            .serialized()
+            .expect("Failed to serialize NAO state blob!"),
+    );
 }
 
 pub fn sync_hardware(
