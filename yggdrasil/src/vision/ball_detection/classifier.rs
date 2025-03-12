@@ -106,7 +106,12 @@ fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Bal
         );
         return;
     }
-
+    dbg.log_with_cycle(
+        T::make_entity_image_path("balls/classifications"),
+        balls.cycle,
+        &rerun::Boxes2D::from_centers_and_half_sizes(positions, &half_sizes)
+            .with_labels(confidences),
+    );
 }
 
 pub(super) struct BallClassifierModel;
