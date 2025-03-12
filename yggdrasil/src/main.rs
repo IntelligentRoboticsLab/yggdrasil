@@ -46,7 +46,7 @@ fn setup_tracing() -> Result<()> {
         ),
         "yggdrasil.log",
     );
-    let stdout = std::io::stdout.with_max_level(tracing::Level::INFO);
+    let stdout = std::io::stdout.with_max_level(tracing::Level::DEBUG);
 
     let subscriber = tracing_subscriber::registry();
 
