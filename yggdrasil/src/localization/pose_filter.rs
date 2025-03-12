@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
-use nalgebra::{self as na, point, vector, ComplexField};
+use nalgebra::{self as na, point, vector, ComplexField, Point2, Rotation2};
 use nidhogg::types::HeadJoints;
 
 use crate::{
@@ -231,126 +231,194 @@ fn line_update(
     for mut particle in &mut particles {
         for correspondences in &added_correspondences {
             for correspondence in correspondences.iter() {
-                // skip circles for now
-                let FieldLine::Segment {
-                    segment: field_line,
-                    axis,
-                } = correspondence.field_line
-                else {
-                    continue;
-                };
+                match correspondence.field_line {
+                    FieldLine::Segment {
+                        segment: field_line,
+                        axis,
+                    } => {
+                        if correspondence
+                            .detected_line
+                            .normal()
+                            .angle(&field_line.normal())
+                            > std::f32::consts::FRAC_PI_6
+                        {
+                            continue;
+                        }
 
-                if correspondence
-                    .detected_line
-                    .normal()
-                    .angle(&field_line.normal())
-                    > std::f32::consts::FRAC_PI_6
-                {
-                    continue;
+                        let current_pose = particle.prediction();
+
+                        // line from the robot to the detected line
+                        let relative_line = (correspondence.pose.inner.inverse()
+                            * correspondence.detected_line)
+                            .to_line();
+
+                        let orthogonal_projection = relative_line.project(point![0.0, 0.0]);
+
+                        let measured_angle = {
+                            let mut angle = -f32::atan2(
+                                orthogonal_projection.coords.y,
+                                orthogonal_projection.coords.x,
+                            );
+
+                            angle = match axis {
+                                ParallelAxis::X => angle + std::f32::consts::FRAC_PI_2,
+                                ParallelAxis::Y => angle,
+                            };
+
+                            normalize_angle(angle)
+                        };
+                        let measured_angle_alternative =
+                            normalize_angle(measured_angle - std::f32::consts::PI);
+
+                        let measured_angle =
+                            if normalize_angle(measured_angle_alternative - current_pose.angle())
+                                .abs()
+                                < normalize_angle(measured_angle - current_pose.angle()).abs()
+                            {
+                                measured_angle_alternative
+                            } else {
+                                measured_angle
+                            };
+
+                        let c = measured_angle.cos();
+                        let s = measured_angle.sin();
+
+                        let rotation = na::Matrix2::new(c, -s, s, c);
+
+                        let rotated_projection = rotation * orthogonal_projection.coords;
+
+                        let measured = match axis {
+                            ParallelAxis::X => field_line.start.y - rotated_projection.y,
+                            ParallelAxis::Y => field_line.start.x - rotated_projection.x,
+                        };
+
+                        let measurement = LineMeasurement {
+                            distance: measured,
+                            angle: measured_angle,
+                        };
+
+                        let update_covariance = {
+                            let rotated_covariance = rotation
+                                * CovarianceMatrix::from_diagonal_element(correspondence.error)
+                                * rotation.transpose();
+
+                            let distance_variance = match axis {
+                                ParallelAxis::X => rotated_covariance[(1, 1)],
+                                ParallelAxis::Y => rotated_covariance[(0, 0)],
+                            };
+
+                            let line_length_weight = if correspondence.detected_line.length() == 0.0
+                            {
+                                1.0
+                            } else {
+                                1.0 / correspondence.detected_line.length()
+                            };
+
+                            let angle_variance = (4.0 * distance_variance
+                                / (correspondence.detected_line.length().powi(2)))
+                            .sqrt()
+                            .atan()
+                            .powi(2);
+
+                            CovarianceMatrix::<2>::new(
+                                line_length_weight * distance_variance,
+                                0.0,
+                                0.0,
+                                angle_variance,
+                            )
+                        };
+
+                        particle.fix_covariance();
+
+                        if particle
+                            .update(
+                                |pose| {
+                                    let state: StateVector<3> = pose.into();
+
+                                    match axis {
+                                        ParallelAxis::X => LineMeasurement {
+                                            distance: state.y,
+                                            angle: state.z,
+                                        },
+                                        ParallelAxis::Y => LineMeasurement {
+                                            distance: state.x,
+                                            angle: state.z,
+                                        },
+                                    }
+                                },
+                                measurement,
+                                update_covariance,
+                            )
+                            .is_err()
+                        {
+                            warn!("cholesky failed");
+                            return;
+                        }
+                    }
+                    FieldLine::Circle(..) => {
+                        // line from the robot to the detected line
+                        let measured =
+                            correspondence.pose.inner.inverse() * correspondence.detected_line;
+                        let reference =
+                            correspondence.pose.inner.inverse() * correspondence.projected_line;
+
+                        if measured.normal().angle(&reference.normal())
+                            > std::f32::consts::FRAC_PI_8
+                        {
+                            continue;
+                        }
+
+                        let measured_line_vector = measured.end - measured.start;
+                        let reference_line_vector = reference.end - reference.start;
+                        let measured_line_point_start_to_robot_vector =
+                            correspondence.pose.position() - measured.start;
+
+                        // Signed angle between two vectors: https://wumbo.net/formulas/angle-between-two-vectors-2d/
+                        let measured_rotation = f32::atan2(
+                            measured_line_point_start_to_robot_vector.y * measured_line_vector.x
+                                - measured_line_point_start_to_robot_vector.x
+                                    * measured_line_vector.y,
+                            measured_line_point_start_to_robot_vector.x * measured_line_vector.x
+                                + measured_line_point_start_to_robot_vector.y
+                                    * measured_line_vector.y,
+                        );
+
+                        let reference_line_point_start_to_robot_vector =
+                            Rotation2::new(measured_rotation)
+                                * reference_line_vector.normalize()
+                                * measured_line_point_start_to_robot_vector.norm();
+
+                        let reference_robot_point =
+                            reference.start + reference_line_point_start_to_robot_vector;
+
+                        let measurement = CircleMeasurement {
+                            position: reference_robot_point,
+                        };
+
+                        let line_length_weight = if correspondence.detected_line.length() == 0.0 {
+                            1.0
+                        } else {
+                            1.0 / correspondence.detected_line.length()
+                        };
+
+                        if particle
+                            .update(
+                                |pose| {
+                                    let state: StateVector<3> = pose.into();
+                                    CircleMeasurement::from(state.xy())
+                                },
+                                measurement,
+                                CovarianceMatrix::from_diagonal_element(
+                                    correspondence.error * line_length_weight,
+                                ),
+                            )
+                            .is_err()
+                        {
+                            warn!("cholesky failed");
+                            return;
+                        };
+                    }
                 }
-
-                let current_pose = particle.prediction();
-
-                // line from the robot to the detected line
-                let relative_line =
-                    (correspondence.pose.inner.inverse() * correspondence.detected_line).to_line();
-
-                let orthogonal_projection = relative_line.project(point![0.0, 0.0]);
-
-                let measured_angle = {
-                    let mut angle = -f32::atan2(
-                        orthogonal_projection.coords.y,
-                        orthogonal_projection.coords.x,
-                    );
-
-                    angle = match axis {
-                        ParallelAxis::X => angle + std::f32::consts::FRAC_PI_2,
-                        ParallelAxis::Y => angle,
-                    };
-
-                    normalize_angle(angle)
-                };
-                let measured_angle_alternative =
-                    normalize_angle(measured_angle - std::f32::consts::PI);
-
-                let measured_angle =
-                    if normalize_angle(measured_angle_alternative - current_pose.angle()).abs()
-                        < normalize_angle(measured_angle - current_pose.angle()).abs()
-                    {
-                        measured_angle_alternative
-                    } else {
-                        measured_angle
-                    };
-
-                let c = measured_angle.cos();
-                let s = measured_angle.sin();
-
-                let rotation = na::Matrix2::new(c, -s, s, c);
-
-                let rotated_projection = rotation * orthogonal_projection.coords;
-
-                let measured = match axis {
-                    ParallelAxis::X => field_line.start.y - rotated_projection.y,
-                    ParallelAxis::Y => field_line.start.x - rotated_projection.x,
-                };
-
-                let measurement = LineMeasurement {
-                    distance: measured,
-                    angle: measured_angle,
-                };
-
-                let update_covariance = {
-                    let rotated_covariance = rotation
-                        * CovarianceMatrix::from_diagonal_element(correspondence.error)
-                        * rotation.transpose();
-
-                    let distance_variance = match axis {
-                        ParallelAxis::X => rotated_covariance[(1, 1)],
-                        ParallelAxis::Y => rotated_covariance[(0, 0)],
-                    };
-
-                    let line_length_weight = if correspondence.detected_line.length() == 0.0 {
-                        1.0
-                    } else {
-                        1.0 / correspondence.detected_line.length()
-                    };
-
-                    let angle_variance = (4.0 * distance_variance
-                        / (correspondence.detected_line.length().powi(2)))
-                    .sqrt()
-                    .atan()
-                    .powi(2);
-
-                    CovarianceMatrix::<2>::new(
-                        line_length_weight * distance_variance,
-                        0.0,
-                        0.0,
-                        angle_variance,
-                    )
-                };
-
-                particle.fix_covariance();
-
-                particle
-                    .update(
-                        |pose| {
-                            let state: StateVector<3> = pose.into();
-
-                            match axis {
-                                ParallelAxis::X => LineMeasurement {
-                                    distance: state.y,
-                                    angle: state.z,
-                                },
-                                ParallelAxis::Y => LineMeasurement {
-                                    distance: state.x,
-                                    angle: state.z,
-                                },
-                            }
-                        },
-                        measurement,
-                        update_covariance,
-                    )
-                    .unwrap();
 
                 particle.score += PARTICLE_SCORE_INCREASE;
                 if correspondence.error.sqrt() < PARTICLE_BONUS_THRESHOLD {
@@ -382,9 +450,9 @@ fn filter_particles(
 
     let particle_count = particles.iter().count();
 
-    if particle_count < 20 {
-        println!("amount of particles: {}", particle_count);
-    }
+    // if particle_count < 20 {
+    //     println!("amount of particles: {}", particle_count);
+    // }
 }
 
 fn resample(
@@ -509,6 +577,26 @@ fn initial_particles(
         score: PARTICLE_SCORE_DEFAULT,
     })
 }
+
+struct CircleMeasurement {
+    position: Point2<f32>,
+}
+
+impl From<StateVector<2>> for CircleMeasurement {
+    fn from(value: StateVector<2>) -> Self {
+        CircleMeasurement {
+            position: point![value.x, value.y],
+        }
+    }
+}
+
+impl From<CircleMeasurement> for StateVector<2> {
+    fn from(value: CircleMeasurement) -> Self {
+        vector![value.position.x, value.position.y]
+    }
+}
+
+impl StateTransform<2> for CircleMeasurement {}
 
 /// normalizes an angle to be in the range \[-pi, pi\]
 fn normalize_angle(mut angle: f32) -> f32 {
