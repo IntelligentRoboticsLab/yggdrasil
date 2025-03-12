@@ -99,6 +99,7 @@ fn block_ball(
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn goalkeeper_role(
     mut commands: Commands,
     layout_config: Res<LayoutConfig>,
