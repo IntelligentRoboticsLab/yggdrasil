@@ -16,7 +16,11 @@ use crate::{
     behavior::primary_state::PrimaryState,
     nao::{NaoManager, Priority},
     prelude::*,
+    communication::{TeamCommunication, TeamMessage},
 };
+
+use std::fs;
+use std::io::Write;
 
 use super::audio_input::{AudioSamplesEvent, SAMPLES_PER_CHANNEL};
 use ml::prelude::*;
@@ -96,6 +100,7 @@ impl Whistle {
 struct WhistleDetectionState {
     detections: Vec<bool>,
     stft: Arc<Mutex<Stft>>,
+    debug_file: std::fs::File,
 }
 
 impl Default for WhistleDetectionState {
@@ -103,13 +108,14 @@ impl Default for WhistleDetectionState {
         Self {
             detections: Vec::new(),
             stft: Arc::new(Mutex::new(Stft::new(WINDOW_SIZE, HOP_SIZE))),
+            debug_file: fs::File::options().write(true).create(true).open("whistle.txt").unwrap(), 
         }
     }
 }
 
 #[derive(Debug, Default, Resource)]
 struct WhistleDetections {
-    pub detections: Vec<f32>,
+    pub detections: Vec<f32>, 
 }
 
 fn update_whistle_state(
@@ -118,13 +124,31 @@ fn update_whistle_state(
     mut detection_state: ResMut<WhistleDetectionState>,
     config: Res<WhistleDetectionConfig>,
     mut nao_manager: ResMut<NaoManager>,
+    mut tc: ResMut<TeamCommunication>,
 ) {
     // resize state.detections if necessary
     detection_state
         .detections
         .resize(config.detection_tries, false);
 
+    let inc_msg = tc.inbound_mut().take_map(|_, _, msg| match msg {
+        TeamMessage::DetectedWhistle => Some(()),
+        _ => None,
+    }).is_some();
+
+   
+    if inc_msg {
+        whistle.detected = true;
+        nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
+        nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
+    }
+
     if detections.detections.is_empty() {
+        // writeln!(detection_state.debug_file, "Sending ping!").unwrap();
+        // let msg = TeamMessage::Ping;
+        // tc.outbound_mut()
+        //     .push(msg)
+        //     .expect("failed to send whistle message");
         return;
     }
 
@@ -140,10 +164,19 @@ fn update_whistle_state(
         whistle.detected = true;
         nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
+        writeln!(detection_state.debug_file, "WHISTLE DETECTED!!!").unwrap();
+
+        // Send message to all teammates
+        let msg = TeamMessage::DetectedWhistle;
+        tc.outbound_mut()
+            .push(msg)
+            .expect("failed to send whistle message");
+
     } else {
         whistle.detected = false;
         nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(0.0), Priority::High);
+        writeln!(detection_state.debug_file, "whistle.detected = false").unwrap();
     }
 }
 
