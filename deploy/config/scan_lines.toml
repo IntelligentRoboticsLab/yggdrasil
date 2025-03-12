@@ -17,5 +17,5 @@ max_black_saturation = 160.0
 
 # Green chromaticity threshold
 blue_chromaticity_threshold = 0.3    # not fine tuned
-green_chromaticity_threshold = 0.385 # tuned
+green_chromaticity_threshold = 0.400 # tuned
 red_chromaticity_threshold = 0.3     # not fine tuned
