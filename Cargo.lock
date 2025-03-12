@@ -10699,7 +10699,6 @@ dependencies = [
  "bifrost",
  "chrono",
  "cpal",
- "enum_dispatch",
  "filter",
  "futures",
  "heimdall",

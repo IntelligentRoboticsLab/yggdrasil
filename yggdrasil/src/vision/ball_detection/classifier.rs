@@ -169,6 +169,7 @@ impl<T: CameraLocation> Clone for Ball<T> {
 pub struct Balls<T: CameraLocation> {
     pub balls: Vec<Ball<T>>,
     pub cycle: Cycle,
+    
 }
 
 impl<T: CameraLocation> Balls<T> {
