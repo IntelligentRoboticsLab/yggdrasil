@@ -175,8 +175,7 @@ fn spawn_whistle_preprocess_task(
     primary_state: Res<PrimaryState>,
     mut preprocessing_tasks: Query<&mut PreprocessingTask>,
 ) {
-    //if *primary_state != PrimaryState::Set || preprocessing_tasks.get_single_mut().is_ok() {
-    if preprocessing_tasks.get_single_mut().is_ok() {
+    if *primary_state != PrimaryState::Set || preprocessing_tasks.get_single_mut().is_ok() {
         return;
     }
 
