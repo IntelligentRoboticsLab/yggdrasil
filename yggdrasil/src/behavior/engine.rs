@@ -19,8 +19,8 @@ use crate::{
 
 use super::{
     behaviors::{
-        CatchFall, CatchFallBehaviorPlugin, Observe, ObserveBehaviorPlugin, RlBehaviorPlugin,
-        RlExampleBehavior, Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
+        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
+        Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
         StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
         WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
@@ -54,7 +54,7 @@ impl Plugin for BehaviorEnginePlugin {
                 DefenderRolePlugin,
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
-                RlBehaviorPlugin,
+                RlStrikerSearchBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
     }
@@ -149,7 +149,7 @@ pub enum RoleState {
 
 impl RoleState {
     /// Get the default role for each robot based on that robots player number
-    pub fn by_player_number(mut commands: Commands, player_number: u8) {
+    pub fn by_player_number(commands: &mut Commands, player_number: u8) {
         match player_number {
             1 => commands.set_role(Goalkeeper),
             5 => commands.set_role(Striker::WalkToBall),
@@ -157,17 +157,9 @@ impl RoleState {
         }
     }
 
-    pub fn assign_role(
-        mut commands: Commands,
-        sees_ball: bool,
-        player_number: u8,
-        current_role: RoleState,
-    ) {
-        if sees_ball && current_role != RoleState::Goalkeeper {
-            commands.set_role(Striker::WalkToBall);
-        } else {
-            Self::by_player_number(commands, player_number);
-        }
+    pub fn assign_role(commands: &mut Commands, player_number: u8) {
+        // TODO: Check if robots have been penalized, or which robot is closed to the ball etc.
+        Self::by_player_number(commands, player_number);
     }
 }
 
@@ -204,7 +196,6 @@ pub fn role_base(
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
     mut orientation: ResMut<RobotOrientation>,
-    role: Res<State<RoleState>>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -260,18 +251,6 @@ pub fn role_base(
         .map(|b| b.position)
         .or(top_balls.most_confident_ball().map(|b| b.position));
 
-    // TODO: Remove after testing.
-    if most_confident_ball.is_some() {
-        if *gait == Gait::Sitting {
-            commands.set_behavior(Stand);
-        } else {
-            commands.set_behavior(RlExampleBehavior);
-        }
-    } else if behavior_state.get() != &BehaviorState::Observe {
-        commands.set_behavior(Observe::default());
-    }
-    return;
-
     let ball_or_origin = most_confident_ball.unwrap_or(Point2::origin());
 
     match *primary_state {
@@ -294,12 +273,7 @@ pub fn role_base(
             target: ball_or_origin,
         }),
         PrimaryState::Playing { .. } => {
-            RoleState::assign_role(
-                commands,
-                most_confident_ball.is_some(),
-                player_config.player_number,
-                *role.get(),
-            );
+            RoleState::assign_role(&mut commands, player_config.player_number);
         }
     }
 }
