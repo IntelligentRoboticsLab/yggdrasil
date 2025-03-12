@@ -173,9 +173,14 @@ fn spawn_whistle_preprocess_task(
     detection_state: ResMut<WhistleDetectionState>,
     mut audio_samples: EventReader<AudioSamplesEvent>,
     primary_state: Res<PrimaryState>,
-    mut preprocessing_tasks: Query<&mut PreprocessingTask>,
+    mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
 ) {
-    if *primary_state != PrimaryState::Set || preprocessing_tasks.get_single_mut().is_ok() {
+    let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() else {
+        return;
+    };
+
+    if *primary_state != PrimaryState::Set {
+        commands.entity(*entity).despawn();
         return;
     }
 
