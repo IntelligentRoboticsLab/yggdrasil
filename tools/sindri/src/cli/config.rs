@@ -125,13 +125,13 @@ fn install_ssh_keys(home_dir: &Path, config: SindriConfig) -> io::Result<()> {
         .open(&ssh_config_path)
         .expect("unable to open ssh config");
 
-    let include_directive = "Match all\nInclude nao/config\n";
+    let include_directive = "\nMatch all\nInclude nao/config\n";
     let ssh_config = read_to_string(&ssh_config_path)?;
 
     if ssh_config.contains(include_directive) {
         Ok(())
     } else {
-        f.write_all(format!("\n{}", include_directive).as_bytes())
+        f.write_all(include_directive.as_bytes())
     }
 }
 
