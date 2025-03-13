@@ -146,8 +146,8 @@ fn run_inference(
         robot_pose: &robot_pose,
         goal_position: &goal_position,
 
-        field_width: 6.0,
-        field_height: 9.0,
+        field_width: layout_config.field.width,
+        field_height: layout_config.field.length,
     };
 
     spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
