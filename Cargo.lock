@@ -10900,6 +10900,7 @@ dependencies = [
  "bifrost",
  "chrono",
  "cpal",
+ "fast_image_resize",
  "futures",
  "geo",
  "heimdall",
