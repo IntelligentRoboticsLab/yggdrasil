@@ -124,8 +124,6 @@ pub fn show_recognized_pose(
     cycle: Res<Cycle>,
 ) {
     for pose in recognized_pose.read() {
-        // TODO: Log to rerun
-        // println!("Pose recognized: {:?}", pose.pose);
         dbg.log_with_cycle(
             Top::make_entity_image_path("recognized_pose"),
             *cycle,
