@@ -18,6 +18,7 @@ use crate::{
         },
         BehaviorConfig,
     },
+    core::config::layout::LayoutConfig,
     localization::RobotPose,
     motion::walking_engine::{step::Step, step_context::StepContext},
     nao::{NaoManager, Priority},
@@ -137,8 +138,9 @@ fn run_inference(
     mut commands: Commands,
     mut model_executor: ResMut<ModelExecutor<RlStrikerSearchBehaviorModel>>,
     robot_pose: Res<RobotPose>,
+    layout_config: Res<LayoutConfig>,
 ) {
-    let goal_position = Point2::new(4.5, 0.0);
+    let goal_position = Point2::new(layout_config.field.length, 0.0);
 
     let input = Input {
         robot_pose: &robot_pose,
