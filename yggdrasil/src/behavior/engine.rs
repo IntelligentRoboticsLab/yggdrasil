@@ -1,6 +1,11 @@
 use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
 use heimdall::{Bottom, Top};
+
+use ml::{
+    prelude::{MlTaskCommandsExt, ModelExecutor},
+    MlModel,
+};
 use nalgebra::Point2;
 
 use crate::{
@@ -14,10 +19,10 @@ use crate::{
 
 use super::{
     behaviors::{
-        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, Sitting, SittingBehaviorPlugin,
-        Stand, StandBehaviorPlugin, StandLookAt, StandLookAtBehaviorPlugin, Standup,
-        StandupBehaviorPlugin, StartUpBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin,
-        WalkToSet, WalkToSetBehaviorPlugin,
+        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
+        Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
+        StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
+        WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
@@ -49,9 +54,35 @@ impl Plugin for BehaviorEnginePlugin {
                 DefenderRolePlugin,
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
+                RlStrikerSearchBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
     }
+}
+
+pub trait RlBehaviorInput<T> {
+    fn to_input(&self) -> T;
+}
+
+pub trait RlBehaviorOutput<T> {
+    fn from_output(output: T) -> Self;
+}
+
+pub fn spawn_rl_behavior<M, I, O>(
+    commands: &mut Commands,
+    model_executor: &mut ModelExecutor<M>,
+    input: I,
+) where
+    I: RlBehaviorInput<M::Inputs>,
+    O: RlBehaviorOutput<M::Outputs> + Resource,
+    M: MlModel,
+    <M as ml::MlModel>::Outputs: std::marker::Send,
+{
+    commands
+        .infer_model(model_executor)
+        .with_input(&input.to_input())
+        .create_resource()
+        .spawn(|output| Some(O::from_output(output)));
 }
 
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -67,6 +98,7 @@ pub enum BehaviorState {
     StartUp,
     WalkTo,
     WalkToSet,
+    RlStrikerSearchBehavior,
 }
 
 #[must_use]
@@ -117,7 +149,7 @@ pub enum RoleState {
 
 impl RoleState {
     /// Get the default role for each robot based on that robots player number
-    pub fn by_player_number(mut commands: Commands, player_number: u8) {
+    pub fn by_player_number(commands: &mut Commands, player_number: u8) {
         match player_number {
             1 => commands.set_role(Goalkeeper),
             5 => commands.set_role(Striker::WalkToBall),
@@ -125,17 +157,9 @@ impl RoleState {
         }
     }
 
-    pub fn assign_role(
-        mut commands: Commands,
-        sees_ball: bool,
-        player_number: u8,
-        current_role: RoleState,
-    ) {
-        if sees_ball && current_role != RoleState::Goalkeeper {
-            commands.set_role(Striker::WalkToBall);
-        } else {
-            Self::by_player_number(commands, player_number);
-        }
+    pub fn assign_role(commands: &mut Commands, player_number: u8) {
+        // TODO: Check if robots have been penalized, or which robot is closed to the ball etc.
+        Self::by_player_number(commands, player_number);
     }
 }
 
@@ -172,7 +196,6 @@ pub fn role_base(
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
     mut orientation: ResMut<RobotOrientation>,
-    role: Res<State<RoleState>>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -255,12 +278,7 @@ pub fn role_base(
             target: ball_or_origin,
         }),
         PrimaryState::Playing { .. } => {
-            RoleState::assign_role(
-                commands,
-                most_confident_ball.is_some(),
-                player_config.player_number,
-                *role.get(),
-            );
+            RoleState::assign_role(&mut commands, player_config.player_number);
         }
     }
 }
