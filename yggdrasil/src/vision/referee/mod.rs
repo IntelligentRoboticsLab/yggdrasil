@@ -1,23 +1,26 @@
 //! Module for detecting the referee pose
 
-mod classifier;
-mod estimator;
+mod detect;
+pub mod recognize;
 
 use bevy::prelude::*;
-use classifier::{RefereePoseClassifierPlugin, RefereePoseDetected};
-use estimator::RefereePoseEstimatorPlugin;
+use detect::{RefereePoseDetected, RefereePoseDetectionPlugin};
+use recognize::{RecognizeRefereePose, RefereePoseRecognitionPlugin};
 
 pub struct VisualRefereePlugin;
 
 impl Plugin for VisualRefereePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((RefereePoseEstimatorPlugin, RefereePoseClassifierPlugin))
+        app.add_plugins((RefereePoseDetectionPlugin, RefereePoseRecognitionPlugin))
+            .add_event::<RecognizeRefereePose>()
             .init_state::<VisualRefereeDetectionStatus>()
             .add_systems(
                 Update,
                 (
-                    activate_detection_status.run_if(in_state(VisualRefereeDetectionStatus::Inactive)),
-                    deactivate_detection_status.run_if(in_state(VisualRefereeDetectionStatus::Active)),
+                    activate_detection_status
+                        .run_if(in_state(VisualRefereeDetectionStatus::Inactive)),
+                    deactivate_detection_status
+                        .run_if(in_state(VisualRefereeDetectionStatus::Active)),
                 ),
             );
     }
@@ -50,22 +53,23 @@ pub enum VisualRefereeDetectionStatus {
     Active,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum RefereePose {
+    /// Class 0. Combination of `Idle`, `PlayerExchangeBlue`, `PlayerExchangeRed`,
+    /// `FullTime`
     Idle,
-    PlayerExchangeBlue,
-    GoalKickRed,
-    GoalBlue,
-    GoalKickBlue,
-    PushingFreeKickBlue,
-    CornerKickBlue,
-    PushingFreeKickRed,
-    KickInBlue,
-    PlayerExchangeRed,
-    GoalRed,
-    KickInRed,
-    CornerKickRed,
-    FullTime,
+    /// Class 1. Combination of `GoalKickRed`, `GoalKickBlue`
+    GoalKick,
+    /// Class 2. Combination of `GoalBlue`, `GoalRed`
+    Goal,
+    /// Class 3. Combination of `PushingFreeKickBlue`, `PushingFreeKickRed`
+    PushingFreeKick,
+    /// Class 4. Combination of `CornerKickBlue`, `CornerKickRed`
+    CornerKick,
+    /// Class 5. Combination of `KickInBlue`, `KickInRed`
+    KickIn,
+    /// Class 6.
+    Ready,
 }
 
 #[derive(Event)]

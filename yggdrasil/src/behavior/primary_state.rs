@@ -3,6 +3,7 @@ use crate::{
     game_controller::GameControllerMessageEvent,
     nao::{NaoManager, Priority},
     sensor::button::{ChestButton, HeadButtons},
+    vision::referee::{recognize::RefereePoseRecognised, RefereePose},
 };
 use bevy::prelude::*;
 
@@ -11,7 +12,7 @@ use serde_with::{serde_as, DurationMilliSeconds};
 use std::time::Duration;
 
 use bifrost::communication::{GameControllerMessage, GameState};
-use nidhogg::types::{color, FillExt, LeftEye};
+use nidhogg::types::color;
 
 #[serde_as]
 #[derive(Resource, Serialize, Deserialize, Debug, Clone)]
@@ -52,7 +53,7 @@ pub enum PrimaryState {
     /// State at the start of the match where the robots stand up
     Initial,
     /// State in which robots walk to their legal positions
-    Ready,
+    Ready { referee_in_standby: bool },
     /// State in which the robots wait for a kick-off or penalty
     Set,
     /// State in which the robots are playing soccer, with a bool to keep state after a whistle
@@ -95,6 +96,7 @@ pub fn update_primary_state(
     config: Res<PrimaryStateConfig>,
     player_config: Res<PlayerConfig>,
     whistle: Res<Whistle>,
+    mut recognized_pose: EventReader<RefereePoseRecognised>,
 ) {
     use PrimaryState as PS;
     let next_state = next_primary_state(
@@ -104,6 +106,9 @@ pub fn update_primary_state(
         &head_buttons,
         &player_config,
         &whistle,
+        recognized_pose
+            .read()
+            .any(|event| event.pose == RefereePose::Ready),
     );
 
     match next_state {
@@ -112,13 +117,9 @@ pub fn update_primary_state(
             config.chest_blink_interval,
             Priority::Medium,
         ),
-        PS::Standby => {
-            // TODO: Should be removed
-            nao_manager.set_left_eye_led(LeftEye::fill(color::f32::YELLOW), Priority::Medium);
-            nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical)
-        },
+        PS::Standby => nao_manager.set_chest_led(color::f32::CYAN, Priority::Critical),
         PS::Initial => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
-        PS::Ready => nao_manager.set_chest_led(color::f32::BLUE, Priority::Critical),
+        PS::Ready { .. } => nao_manager.set_chest_led(color::f32::BLUE, Priority::Critical),
         PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Critical),
         PS::Playing { .. } => nao_manager.set_chest_led(color::f32::GREEN, Priority::Critical),
         PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Critical),
@@ -137,6 +138,7 @@ pub fn next_primary_state(
     head_buttons: &HeadButtons,
     player_config: &PlayerConfig,
     whistle: &Whistle,
+    recognized_ready_pose: bool,
 ) -> PrimaryState {
     use PrimaryState as PS;
 
@@ -165,11 +167,22 @@ pub fn next_primary_state(
         }
     ) || whistle.detected();
 
+    let recognized_ready_pose = matches!(
+        primary_state,
+        PS::Ready {
+            referee_in_standby: true
+        }
+    ) || recognized_ready_pose;
+
     primary_state = match game_controller_message {
         Some(message) => match message.state {
             GameState::Initial => PS::Initial,
-            GameState::Ready => PS::Ready,
-
+            GameState::Standby if recognized_ready_pose => PS::Ready {
+                referee_in_standby: true,
+            },
+            GameState::Ready => PS::Ready {
+                referee_in_standby: false,
+            },
             GameState::Set if heard_whistle => PS::Playing {
                 whistle_in_set: true,
             },

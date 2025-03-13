@@ -4,7 +4,11 @@ use bevy::prelude::*;
 use nalgebra::Point3;
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState}, core::config::layout::LayoutConfig, localization::RobotPose, nao::{NaoManager, Priority}, vision::referee::{DetectRefereePose, VisualRefereeDetectionStatus}
+    behavior::engine::{in_behavior, Behavior, BehaviorState},
+    core::config::layout::LayoutConfig,
+    localization::RobotPose,
+    nao::{NaoManager, Priority},
+    vision::referee::recognize::{RecognizeRefereePose, VisualRefereeRecognitionStatus},
 };
 
 const REFEREE_AVG_HEIGHT: f32 = 1.62;
@@ -14,10 +18,17 @@ pub struct VisualRefereeBehaviorPlugin;
 
 impl Plugin for VisualRefereeBehaviorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            detect_visual_referee.run_if(in_behavior::<VisualReferee>.and(in_state(VisualRefereeDetectionStatus::Inactive))),
-        );
+        app.insert_resource(VisualRefHeadRotationTimer::new(HEAD_ROTATION_TIME))
+            .add_systems(
+                Update,
+                (
+                    detect_visual_referee.run_if(
+                        in_behavior::<VisualReferee>
+                            .and(in_state(VisualRefereeRecognitionStatus::Inactive)),
+                    ),
+                    reset_head_rotation_timer.run_if(not(in_behavior::<VisualReferee>)),
+                ),
+            );
     }
 }
 
@@ -28,22 +39,31 @@ impl Behavior for VisualReferee {
     const STATE: BehaviorState = BehaviorState::VisualReferee;
 }
 
+#[derive(Resource)]
+struct VisualRefHeadRotationTimer {
+    timer: Timer,
+}
+
+impl VisualRefHeadRotationTimer {
+    fn new(duration: Duration) -> Self {
+        VisualRefHeadRotationTimer {
+            timer: Timer::new(duration, TimerMode::Once),
+        }
+    }
+}
+
 fn detect_visual_referee(
-    // mut commands: Commands,
     layout_config: Res<LayoutConfig>,
     robot_pose: Res<RobotPose>,
     mut nao_manager: ResMut<NaoManager>,
-    // mut step_context: ResMut<StepContext>,
-    mut detect_pose: EventWriter<DetectRefereePose>,
+    mut recognise_pose: EventWriter<RecognizeRefereePose>,
+    mut timer: ResMut<VisualRefHeadRotationTimer>,
+    time: Res<Time>,
 ) {
     // Make the robot look at the opposite T junction (relative to the starting)
     // position.
     let field_y_max = layout_config.field.width / 2.;
     let world_position = robot_pose.world_position();
-
-    // commands.set_behavior(StandLookAt {
-    //     target: Point2::new(0., -field_y_max * world_position.y.signum()),
-    // });
 
     let point3 = Point3::new(
         0.,
@@ -59,12 +79,19 @@ fn detect_visual_referee(
         NaoManager::HEAD_STIFFNESS,
     );
 
-    // Dont think I needs this. Only if it is necessary to update
-    // the head position.
-    // step_context.request_stand();
+    timer.timer.tick(time.delta());
 
     // Request should be sended only after the HEAD_ROTATION_TIME is passed
+    if timer.timer.finished() {
+        // Request the detection of the visual referee post
+        recognise_pose.send(RecognizeRefereePose);
+    }
+}
 
-    // Request the detection of the visual referee post
-    detect_pose.send(DetectRefereePose);
+// Reset the head rotation timer. Runs when not in the behavior `VisualReferee`
+// and resets when the timer already started.
+fn reset_head_rotation_timer(mut timer: ResMut<VisualRefHeadRotationTimer>) {
+    if timer.timer.elapsed_secs() > 0.0 {
+        timer.timer.reset();
+    }
 }
