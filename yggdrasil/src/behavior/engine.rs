@@ -17,10 +17,11 @@ use crate::{
 
 use super::{
     behaviors::{
-        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
-        Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
-        StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
-        WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
+        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlDefenderDribbleBehaviorPlugin,
+        RlDefenderSearchBehaviorPlugin, RlStrikerSearchBehaviorPlugin, Sitting,
+        SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt, StandLookAtBehaviorPlugin,
+        Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin, WalkBehaviorPlugin,
+        WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
@@ -46,12 +47,16 @@ impl Plugin for BehaviorEnginePlugin {
                 SittingBehaviorPlugin,
                 StandLookAtBehaviorPlugin,
                 StandupBehaviorPlugin,
+            ))
+            .add_plugins((
                 StartUpBehaviorPlugin,
                 WalkToBehaviorPlugin,
                 WalkToSetBehaviorPlugin,
                 DefenderRolePlugin,
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
+                RlDefenderDribbleBehaviorPlugin,
+                RlDefenderSearchBehaviorPlugin,
                 RlStrikerSearchBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
@@ -96,6 +101,8 @@ pub enum BehaviorState {
     StartUp,
     WalkTo,
     WalkToSet,
+    RlDefenderDribbleBehavior,
+    RlDefenderSearchBehavior,
     RlStrikerSearchBehavior,
 }
 
