@@ -35,6 +35,7 @@ async-std = { workspace = true }
 bevy = { workspace = true, features = ["multi_threaded", "bevy_state"] }
 chrono = { workspace = true }
 cpal = { workspace = true }
+fast_image_resize = { workspace = true }
 futures = { workspace = true }
 itertools = { workspace = true }
 kira = { workspace = true }

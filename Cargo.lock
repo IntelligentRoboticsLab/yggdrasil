@@ -10764,6 +10764,7 @@ dependencies = [
  "bifrost",
  "chrono",
  "cpal",
+ "fast_image_resize",
  "futures",
  "heimdall",
  "itertools 0.13.0",

@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use super::{detect::RefereePoseDetected, DetectRefereePose, RefereePose};
 
 // TODO: Probably in a config
-const VISUAL_REFEREE_DETECT_ATTEMPTS: usize = 10;
+const VISUAL_REFEREE_DETECT_ATTEMPTS: usize = 5;
 
 pub struct RefereePoseRecognitionPlugin;
 

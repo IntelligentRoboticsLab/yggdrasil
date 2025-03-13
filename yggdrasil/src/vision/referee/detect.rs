@@ -8,7 +8,14 @@ use ml::{
 };
 use ndarray::{Array2, Axis};
 
-use crate::{core::debug::DebugContext, nao::Cycle, vision::camera::Image};
+use crate::{
+    core::debug::DebugContext,
+    nao::Cycle,
+    vision::{
+        camera::{CameraConfig, Image},
+        util::resize_image,
+    },
+};
 
 use super::{
     recognize::{recognising_pose, request_recognition},
@@ -16,6 +23,8 @@ use super::{
 };
 
 // TODO: Probably in a config file
+const CROP_WIDTH: u32 = 256;
+const CROP_HEIGHT: u32 = 480;
 const INPUT_WIDTH: u32 = 256;
 const INPUT_HEIGHT: u32 = 256;
 const OUTPUT_SHAPE: (usize, usize) = (17, 3);
@@ -57,14 +66,27 @@ pub fn detect_referee_pose(
     mut detect_pose: EventReader<DetectRefereePose>,
     mut model: ResMut<ModelExecutor<RefereePoseEstimatorModel>>,
     image: Res<Image<Top>>,
+    camera_config: Res<CameraConfig>,
 ) {
     for _ev in detect_pose.read() {
-        // Resize yuyv
-        let resized_image = image
-            .yuyv_image()
-            .resize(INPUT_WIDTH, INPUT_HEIGHT)
-            .expect("Failed to resize image for robot detection");
+        let top_camera = &camera_config.top;
+        let image_center = (
+            (top_camera.width / 2) as usize,
+            (top_camera.height / 2) as usize,
+        );
 
+        // Resize yuyv
+        let cropped_image =
+            image.get_yuyv_patch(image_center, CROP_WIDTH as usize, CROP_HEIGHT as usize);
+
+        let resized_image = resize_image(
+            cropped_image,
+            CROP_WIDTH,
+            CROP_HEIGHT,
+            INPUT_WIDTH,
+            INPUT_HEIGHT,
+        )
+        .expect("Failed to resize image for robot detection");
 
         // let mut file = File::create("yuv_image.npy").unwrap();
         // file.write_all(&resized_image).unwrap();
@@ -137,21 +159,30 @@ pub fn log_estimated_pose(
     cycle: Res<Cycle>,
 ) {
     for pose in pose_estimated.read() {
-        let image_height = image.height();
-        let image_width = image.width();
-
         let keypoints: Vec<(f32, f32)> = pose
             .keypoints
             .axis_iter(Axis(0))
-            .map(|v| (v[1] * image_width as f32, v[0] * image_height as f32))
+            .map(|v| {
+                (
+                    image.width() as f32 / 2.0 - v[1] * CROP_WIDTH as f32,
+                    v[0] * CROP_HEIGHT as f32,
+                )
+            })
             .collect();
 
-        let point_could = rerun::Points2D::new(keypoints).with_labels(vec!(format!("{:?}", pose.pose)));
+        let point_could =
+            rerun::Points2D::new(keypoints).with_labels(vec![format!("{:?}", pose.pose)]);
         dbg.log_with_cycle(
             Top::make_entity_image_path("referee_pose_keypoints"),
             *cycle,
             &point_could,
         );
+
+        // dbg.log_with_cycle(
+        //     Top::make_entity_image_path("crop"),
+        //     *cycle,
+        //     &rerun::LineStrip2D(vec!(Vec2D CROP_WIDTH, 0)),
+        // );
     }
 }
 
