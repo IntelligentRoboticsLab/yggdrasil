@@ -443,10 +443,9 @@ fn setup_debug<T: CameraLocation>(dbg: DebugContext) {
     );
 
     // projected lines
-    let color = if T::POSITION==CameraPosition::Top {
+    let color = if T::POSITION == CameraPosition::Top {
         (255, 100, 0)
-    }
-    else {
+    } else {
         (155, 60, 0)
     };
 
