@@ -12,10 +12,8 @@ use nalgebra::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
-    motion::{
-        step_planner::StepPlanner,
-        walking_engine::{step::Step, Gait},
-    },
+    localization::RobotPose,
+    motion::walking_engine::{step::Step, Gait},
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
     vision::ball_detection::classifier::Balls,
 };
@@ -163,7 +161,17 @@ impl RoleState {
         }
     }
 
-    pub fn assign_role(commands: &mut Commands, player_number: u8) {
+    pub fn assign_role(
+        commands: &mut Commands,
+        player_number: u8,
+        possible_ball_distance: Option<f32>,
+    ) {
+        if let Some(distance) = possible_ball_distance {
+            if distance < 1.0 {
+                commands.set_role(Striker::WalkToBall);
+                return;
+            }
+        }
         // TODO: Check if robots have been penalized, or which robot is closed to the ball etc.
         Self::by_player_number(commands, player_number);
     }
@@ -187,7 +195,7 @@ fn robot_is_leaning(imu_values: &IMUValues) -> bool {
         || imu_values.angles.y < BACKWARD_LEANING_THRESHOLD
 }
 
-struct LastPenalized(Instant);
+pub struct LastPenalized(Instant);
 
 impl Default for LastPenalized {
     fn default() -> Self {
@@ -210,6 +218,7 @@ pub fn role_base(
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
     mut last_penalized: Local<LastPenalized>,
+    pose: Res<RobotPose>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -255,6 +264,16 @@ pub fn role_base(
         commands.set_behavior(Stand);
         return;
     }
+
+    // commands.set_behavior(Walk {
+    //     step: Step {
+    //         forward: 0.00,
+    //         left: 0.04,
+    //         turn: -0.2,
+    //     },
+    //     look_target: None,
+    // });
+    // return;
 
     if let Some(message) = game_controller_message {
         if message.game_phase == GamePhase::PenaltyShoot {
@@ -309,7 +328,13 @@ pub fn role_base(
                 return;
             }
 
-            RoleState::assign_role(&mut commands, player_config.player_number);
+            let possible_ball_distance = most_confident_ball.map(|ball| pose.distance_to(&ball));
+
+            RoleState::assign_role(
+                &mut commands,
+                player_config.player_number,
+                possible_ball_distance,
+            );
         }
     }
 }

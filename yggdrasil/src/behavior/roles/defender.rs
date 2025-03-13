@@ -4,10 +4,9 @@ use nalgebra::Point2;
 use crate::{
     behavior::{
         behaviors::{Observe, WalkTo},
-        engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
+        engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
-    localization::RobotPose,
     motion::step_planner::{StepPlanner, Target},
 };
 
@@ -30,10 +29,10 @@ impl Roles for Defender {
 
 pub fn defender_role(
     mut commands: Commands,
-    pose: Res<RobotPose>,
     player_config: Res<PlayerConfig>,
     layout_config: Res<LayoutConfig>,
     step_planner: ResMut<StepPlanner>,
+    behavior: Res<State<BehaviorState>>,
 ) {
     let set_robot_position = layout_config
         .set_positions
@@ -53,7 +52,9 @@ pub fn defender_role(
     }
 
     if step_planner.reached_target() {
-        commands.set_behavior(Observe::with_turning(0.4));
+        if behavior.get() != &BehaviorState::Observe {
+            commands.set_behavior(Observe::with_turning(0.4));
+        }
     } else {
         commands.set_behavior(WalkTo {
             target: defend_target,
