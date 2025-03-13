@@ -13,7 +13,8 @@ pub fn visual_referee_ui(
     handle: &ControlViewerHandle,
 ) {
     view_section(ui, "Visual Referee".to_string(), |ui| {
-        if ui.button("Detect pose").clicked() {
+        // TODO: Only with connection
+        if ui.button("Recognise pose").clicked() {
             if let Err(error) = handle.send(ViewerMessage::VisualRefereeDetection) {
                 tracing::error!(?error, "Failed to send message");
             }

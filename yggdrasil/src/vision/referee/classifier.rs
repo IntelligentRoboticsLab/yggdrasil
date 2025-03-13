@@ -1,8 +1,6 @@
 use bevy::prelude::*;
 use ml::{prelude::*, MlModel, MlModelResourceExt};
 
-use crate::core::audio::sound_manager::{Sound, SoundManager};
-
 use super::{
     estimator::{send_referee_pose_estimate_output, RefereePoseEstimated},
     RefereePose,
@@ -41,10 +39,12 @@ fn classify_referee_pose(
     mut model: ResMut<ModelExecutor<RefereePoseClassifierModel>>,
 ) {
     for event in pose_estimated.read() {
+        // let input = &event.estimated_pose.flatten().to_vec();
+        let input: Vec<f32> = vec![0.; 17 * 2];
         println!("Start the pose classify");
         commands
             .infer_model(&mut model)
-            .with_input(&event.estimated_pose)
+            .with_input(&input)
             .create_resource()
             .spawn(|_model_output| {
                 let pose_idx = 0;
@@ -72,12 +72,9 @@ fn send_referee_pose_output(
     }
 }
 
-fn show_pose(mut pose_detected: EventReader<RefereePoseDetected>, sounds: Res<SoundManager>) {
+fn show_pose(mut pose_detected: EventReader<RefereePoseDetected>) {
     for _ev in pose_detected.read() {
         println!("Pose detected: {:?}", _ev.pose);
-        sounds
-            .play_sound(Sound::Ghast)
-            .expect("Failed to play wee sound");
         break;
     }
     pose_detected.clear();

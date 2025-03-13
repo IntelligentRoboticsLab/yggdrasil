@@ -7,7 +7,7 @@ use re_control_comms::{
 use futures::channel::mpsc::UnboundedReceiver;
 
 use crate::vision::{
-    camera::CameraConfig, referee::DetectRefereePose, scan_lines::ScanLinesConfig,
+    camera::CameraConfig, referee::recognize::RecognizeRefereePose, scan_lines::ScanLinesConfig,
 };
 
 use super::{DebugEnabledSystemUpdated, ViewerConnected};
@@ -50,7 +50,8 @@ pub fn handle_viewer_message(
     mut ev_debug_enabled_system_updated: EventWriter<DebugEnabledSystemUpdated>,
     mut camera_config: ResMut<CameraConfig>,
     mut scan_lines_config: ResMut<ScanLinesConfig>,
-    mut detect_pose: EventWriter<DetectRefereePose>,
+    // mut detect_pose: EventWriter<DetectRefereePose>,
+    mut recognize_pose: EventWriter<RecognizeRefereePose>
 ) {
     while let Some(message) = message_receiver.try_recv() {
         #[allow(clippy::single_match_else)]
@@ -77,7 +78,7 @@ pub fn handle_viewer_message(
                 *scan_lines_config = config.into();
             }
             ViewerMessage::VisualRefereeDetection => {
-                detect_pose.send(DetectRefereePose);
+                recognize_pose.send(RecognizeRefereePose);
             }
             _ => tracing::warn!(?message, "unhandled message"),
         }

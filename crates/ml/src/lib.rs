@@ -95,7 +95,7 @@ impl MlModelResourceExt for App {
             .expect("the `MlCore` resource does not exist. Did you forget to add the `MlPlugin`?");
 
         let model_executor = ModelExecutor::<M>::new(&mut ml_core)
-            .unwrap_or_else(|_| panic!("failed to create model executor for `{}`", M::ONNX_PATH));
+            .unwrap_or_else(|err| panic!("failed to create model executor for `{}`: {err:?  }", M::ONNX_PATH));
 
         self.insert_resource(model_executor)
     }
