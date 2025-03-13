@@ -11147,8 +11147,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.100",
-<<<<<<< HEAD
-=======
 ]
 
 [[package]]
@@ -11160,7 +11158,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.100",
->>>>>>> 03758fb9 (can recognize referee)
 ]
 
 [[package]]
