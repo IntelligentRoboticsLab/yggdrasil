@@ -261,14 +261,10 @@ pub fn role_base(
         .or(top_balls.most_confident_ball().map(|b| b.position));
 
     // TODO: Remove after testing.
-    if most_confident_ball.is_some() {
-        if *gait == Gait::Sitting {
-            commands.set_behavior(Stand);
-        } else {
-            commands.set_behavior(RlExampleBehavior);
-        }
-    } else if behavior_state.get() != &BehaviorState::Observe {
-        commands.set_behavior(Observe::default());
+    if *gait == Gait::Sitting {
+        commands.set_behavior(Stand);
+    } else {
+        commands.set_behavior(RlExampleBehavior);
     }
     return;
 

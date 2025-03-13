@@ -85,7 +85,8 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let target_y = 0.0;
         let target_angle = 0.0;
 
-        let relative_target_position = Point2::new(target_x - robot_position.x, target_y - robot_position.y);
+        let relative_target_position =
+            Point2::new(target_x - robot_position.x, target_y - robot_position.y);
         let relative_target_angle = relative_target_position.y.atan2(relative_target_position.x);
 
         // let relative_ball_position = self.ball_position - robot_position;
@@ -178,8 +179,6 @@ fn handle_inference_output(
     mut step_context: ResMut<StepContext>,
     output: Res<Output>,
     behavior_config: Res<BehaviorConfig>,
-    balls_top: Res<Balls<Top>>,
-    balls_bottom: Res<Balls<Bottom>>,
     pose: Res<RobotPose>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
