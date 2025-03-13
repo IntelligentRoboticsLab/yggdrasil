@@ -2,6 +2,7 @@
 
 pub mod classifier;
 pub mod proposal;
+pub mod ball_tracker;
 
 use std::time::Duration;
 

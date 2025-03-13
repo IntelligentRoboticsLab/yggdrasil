@@ -25,6 +25,7 @@ use crate::vision::camera::init_camera;
 use ml::prelude::*;
 
 use super::proposal::BallProposals;
+use super::ball_tracker::BallPosition;
 use super::BallDetectionConfig;
 
 const IMAGE_INPUT_SIZE: usize = 32;
@@ -193,22 +194,6 @@ impl<T: CameraLocation> Balls<T> {
     }
 }
 
-#[derive(Deref, DerefMut, Clone, Copy)]
-struct BallPosition(Point2<f32>);
-
-impl From<BallPosition> for StateVector<2> {
-    fn from(value: BallPosition) -> Self {
-        value.xy().coords
-    }
-}
-
-impl From<StateVector<2>> for BallPosition {
-    fn from(value: StateVector<2>) -> Self {
-        BallPosition(point![value.x, value.y])
-    }
-}
-
-impl StateTransform<2> for BallPosition {} 
 
 fn classify_balls<T: CameraLocation>(
     mut commands: Commands,
@@ -266,11 +251,6 @@ fn classify_balls<T: CameraLocation>(
         };
 
         let position = BallPosition(robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())));
-
-        let cov = nalgebra::SMatrix::<f32, 2, 2>::from_diagonal_element(0.05);
-        let mut ukf = UnscentedKalmanFilter::<2, 5, BallPosition>::new(position, cov);
-
-        
 
         let timestamp = Instant::now();
 

@@ -1,5 +1,4 @@
 pub mod correspondence;
-mod ball_tracker;
 
 use std::f32::consts::PI;
 
