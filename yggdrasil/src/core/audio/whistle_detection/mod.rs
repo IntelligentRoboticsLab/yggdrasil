@@ -7,7 +7,7 @@ use bevy::{
     prelude::*,
     tasks::{futures_lite::future, AsyncComputeTaskPool, Task},
 };
-use bifrost::broadcast::Deadline;
+
 use bifrost::broadcast::Deadline;
 use fourier::Stft;
 use nidhogg::types::{FillExt, LeftEar, RightEar};
@@ -19,11 +19,7 @@ use crate::{
     nao::{NaoManager, Priority},
     prelude::*,
     communication::{TeamCommunication, TeamMessage},
-    communication::{TeamCommunication, TeamMessage},
 };
-
-use std::fs;
-use std::io::Write;
 
 use std::fs;
 use std::io::Write;
@@ -115,7 +111,6 @@ impl Default for WhistleDetectionState {
             detections: Vec::new(),
             stft: Arc::new(Mutex::new(Stft::new(WINDOW_SIZE, HOP_SIZE))),
             debug_file: fs::File::options().write(true).create(true).open("whistle.txt").unwrap(), 
-            debug_file: fs::File::options().write(true).create(true).open("whistle.txt").unwrap(), 
         }
     }
 }
@@ -137,20 +132,6 @@ fn update_whistle_state(
     detection_state
         .detections
         .resize(config.detection_tries, false);
-
-    let inc_msg = tc.inbound_mut().take_map(|_, _, msg| match msg {
-        TeamMessage::DetectedWhistle => Some(()),
-        _ => None,
-    }).is_some();
-
-    writeln!(detection_state.debug_file, "incoming message: {inc_msg}").unwrap();
-
-    if inc_msg {
-        whistle.detected = true;
-        nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
-        nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
-        return;
-    }
 
     let inc_msg = tc.inbound_mut().take_map(|_, _, msg| match msg {
         TeamMessage::DetectedWhistle => Some(()),
@@ -197,17 +178,10 @@ fn update_whistle_state(
 
         writeln!(detection_state.debug_file, "whistle.detected = true").unwrap();
 
-        // Send message to all teammates
-        let msg = TeamMessage::DetectedWhistle;
-        tc.outbound_mut()
-            .push_by(msg, Deadline::ASAP)
-            .expect("failed to send whistle message");
-
     } else {
         whistle.detected = false;
         nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(0.0), Priority::High);
-        writeln!(detection_state.debug_file, "whistle.detected = false").unwrap();
         writeln!(detection_state.debug_file, "whistle.detected = false").unwrap();
     }
 }
@@ -240,7 +214,6 @@ fn spawn_whistle_preprocess_task(
     primary_state: Res<PrimaryState>,
     mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
 ) {
-    if preprocessing_tasks.get_single_mut().is_ok() {
     let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() else {
         return;
     };
@@ -264,6 +237,7 @@ fn spawn_whistle_preprocess_task(
     let entity = commands.spawn_empty().id();
     commands.entity(entity).insert(PreprocessingTask(task));
 }
+
 
 fn spawn_whistle_detection_model(
     mut commands: Commands,
