@@ -190,4 +190,8 @@ impl Message for TeamMessage {
     const MAX_PACKET_SIZE: usize = 128;
     const EXPECTED_SIZE: usize = 1;
     const DEAD_SPACE: usize = 16;
+
+    fn try_merge(&mut self, old: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(old)
+    }
 }
