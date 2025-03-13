@@ -2,6 +2,8 @@ use bevy::prelude::*;
 use filter::{CovarianceMatrix, StateTransform, StateVector, UnscentedKalmanFilter};
 use nalgebra::{point, Point2, Vector2};
 
+use crate::nao::Cycle;
+
 use super::classifier::Ball;
 
 // pub struct BallTrackerPlugin;
@@ -27,13 +29,14 @@ enum Hypothesis {
 #[derive(Resource, Deref, DerefMut)]
 pub struct BallTracker {
     #[deref]
-    position_kf: UnscentedKalmanFilter<2, 5, BallPosition>,
-    prediction_noise: CovarianceMatrix<2>,
-    sensor_noise: CovarianceMatrix<2>,
+    pub position_kf: UnscentedKalmanFilter<2, 5, BallPosition>,
+    pub prediction_noise: CovarianceMatrix<2>,
+    pub sensor_noise: CovarianceMatrix<2>,
+    pub cycle: Cycle
 }
 
 impl BallTracker {
-    fn initialize(&mut self, position: BallPosition, cov: CovarianceMatrix<2>) {
+    pub fn initialize(&mut self, position: BallPosition, cov: CovarianceMatrix<2>) {
         // let starting_position = BallPosition(Point2::new(0.0, 0.0));
         // let starting_position_cov = nalgebra::SMatrix::<f32, 2, 2>::from_diagonal_element(0.05);
         self.position_kf = UnscentedKalmanFilter::<2, 5, BallPosition>::new(position, cov);
@@ -42,7 +45,7 @@ impl BallTracker {
         self.sensor_noise = filter::CovarianceMatrix::from_diagonal_element(0.001);
     }
 
-    pub fn update(&mut self) {}
+    // pub fn update(&mut self) {}
 
     #[inline]
     #[must_use]

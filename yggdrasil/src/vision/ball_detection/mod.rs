@@ -133,10 +133,10 @@ fn log_3d_balls(
 ) {
     let most_confident_ball = bottom_balls
         .most_confident_ball()
-        .map(|b| (b.cycle, b.position, b.velocity))
+        .map(|b| (b.cycle, b.position))
         .or(top_balls
             .most_confident_ball()
-            .map(|b| (b.cycle, b.position, b.velocity)));
+            .map(|b| (b.cycle, b.position)));
 
     if let Some((cycle, pos, velocity)) = most_confident_ball {
         if last_logged.map_or(true, |c| cycle > c) {

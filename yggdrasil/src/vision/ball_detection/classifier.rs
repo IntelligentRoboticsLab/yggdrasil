@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
-use filter::{StateTransform, StateVector, UnscentedKalmanFilter};
+use filter::{CovarianceMatrix, StateTransform, StateVector, UnscentedKalmanFilter};
 use heimdall::{Bottom, CameraLocation, CameraMatrix, Top};
 use itertools::Itertools;
 use ml::prelude::ModelExecutor;
@@ -25,8 +25,7 @@ use crate::vision::camera::init_camera;
 use ml::prelude::*;
 
 use super::proposal::BallProposals;
-use super::ball_tracker::BallPosition;
-use super::ball_tracker::BallTracker;
+use super::ball_tracker::{BallPosition, BallTracker};
 use super::BallDetectionConfig;
 
 const IMAGE_INPUT_SIZE: usize = 32;
@@ -51,8 +50,7 @@ impl Plugin for BallClassifierPlugin {
             .add_systems(
                 PostStartup,
                 (
-                    init_ball_classifier::<Top>.after(init_camera::<Top>),
-                    init_ball_classifier::<Bottom>.after(init_camera::<Bottom>),
+                    init_ball_classifier.after(init_camera::<Top>),
                 ),
             )
             .add_systems(
@@ -75,13 +73,18 @@ impl Plugin for BallClassifierPlugin {
     }
 }
 
-fn init_ball_classifier<T: CameraLocation>(mut commands: Commands) {
-    let balls: Balls<T> = Balls {
-        balls: Vec::new(),
+fn init_ball_classifier(mut commands: Commands) {
+    //TODO: extract into ball tracker default init.
+    let ball_tracker = BallTracker {
+        position_kf: UnscentedKalmanFilter::<2, 5, BallPosition>::new(
+            BallPosition(Point2::new(0.0, 0.0)),
+            CovarianceMatrix::from_diagonal_element(0.05),
+        ),
+        prediction_noise: CovarianceMatrix::from_diagonal_element(0.1),
+        sensor_noise: CovarianceMatrix::from_diagonal_element(0.001),
         cycle: Cycle::default(),
     };
-
-    commands.insert_resource(balls);
+    commands.insert_resource(ball_tracker);
 }
 
 fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Balls<T>>) {
@@ -134,7 +137,7 @@ pub struct Ball<T: CameraLocation> {
     /// The absolute position of the ball proposal, in world frame.
     pub position: Point2<f32>,
     /// Velocity of the ball proposal, in world frame.
-    pub velocity: Vector2<f32>,
+    // pub velocity: Vector2<f32>,
     /// The scale of the ball proposal.
     pub scale: f32,
     /// The distance to the ball in meters, at the time of detection.
@@ -156,7 +159,7 @@ impl<T: CameraLocation> Clone for Ball<T> {
             position_image: self.position_image,
             robot_to_ball: self.robot_to_ball,
             position: self.position,
-            velocity: self.velocity,
+            // velocity: self.velocity,
             scale: self.scale,
             distance: self.distance,
             timestamp: self.timestamp,
@@ -200,7 +203,7 @@ fn classify_balls<T: CameraLocation>(
     mut commands: Commands,
     mut proposals: ResMut<BallProposals<T>>,
     mut model: ResMut<ModelExecutor<BallClassifierModel>>,
-    mut balls: ResMut<Balls<T>>,
+    mut ball_tracker: ResMut<BallTracker>,
     camera_matrix: Res<CameraMatrix<T>>,
     config: Res<BallDetectionConfig>,
     robot_pose: Res<RobotPose>,
@@ -208,7 +211,7 @@ fn classify_balls<T: CameraLocation>(
     let classifier = &config.classifier;
     let start = Instant::now();
 
-    let mut classified_balls = Vec::new();
+    // let mut classified_balls = Vec::new();
 
     for proposal in proposals
         .proposals
@@ -253,43 +256,48 @@ fn classify_balls<T: CameraLocation>(
 
         let position = BallPosition(robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())));
 
-        let timestamp = Instant::now();
+        // let timestamp = Instant::now();
 
-        let velocity = if let Some(most_recent_ball) = balls.most_confident_ball() {
-            let time_diff = timestamp - most_recent_ball.timestamp;
-            let distance_diff = position.0 - most_recent_ball.position;
-            distance_diff / time_diff.as_secs_f32()
-        } else {
-            Vector2::zeros()
-        };
+        // let velocity = if let Some(most_recent_ball) = balls.most_confident_ball() {
+        //     let time_diff = timestamp - most_recent_ball.timestamp;
+        //     let distance_diff = position.0 - most_recent_ball.position;
+        //     distance_diff / time_diff.as_secs_f32()
+        // } else {
+        //     Vector2::zeros()
+        // };
+        
+        // Prediction Update
+        ball_tracker.predict();
+        // Measurement Update
+        ball_tracker.measurement_update(position);
 
-        classified_balls.push(Ball {
-            position_image: proposal.position.cast(),
-            robot_to_ball: robot_to_ball.xy().coords,
-            scale: proposal.scale,
-            position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
-            velocity: velocity,
-            distance: proposal.distance_to_ball,
-            timestamp: Instant::now(),
-            cycle: proposals.image.cycle(),
-            confidence,
-            _marker: PhantomData,
-        });
+        // classified_balls.push(Ball {
+        //     position_image: proposal.position.cast(),
+        //     robot_to_ball: robot_to_ball.xy().coords,
+        //     scale: proposal.scale,
+        //     position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
+        //     // velocity: velocity,
+        //     distance: proposal.distance_to_ball,
+        //     timestamp: Instant::now(),
+        //     cycle: proposals.image.cycle(),
+        //     confidence,
+        //     _marker: PhantomData,
+        // });
 
         // TODO: we only store the closest ball with high enough confidence
         // Maybe we should store multiple candidates.
         break;
     }
 
-    if classified_balls.is_empty() {
-        for ball in &balls.balls {
-            if ball.timestamp.elapsed() < classifier.ball_life {
-                // keep the ball if it isn't too old, but mark it as not fresh
-                classified_balls.push(ball.clone());
-            }
-        }
-    }
+    // if classified_balls.is_empty() {
+    //     for ball in &balls.balls {
+    //         if ball.timestamp.elapsed() < classifier.ball_life {
+    //             // keep the ball if it isn't too old, but mark it as not fresh
+    //             classified_balls.push(ball.clone());
+    //         }
+    //     }
+    // }
 
-    balls.balls = classified_balls;
-    balls.cycle = proposals.image.cycle();
+    // balls.balls = classified_balls;
+    ball_tracker.cycle = proposals.image.cycle();
 }
