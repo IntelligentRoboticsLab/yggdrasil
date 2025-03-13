@@ -3,13 +3,13 @@ max_classification_age_eye_color = 100
 
 [proposal.top]
 # The minimum ratio of white pixels in the range around the proposed ball
-ball_ratio = 0.43
+ball_ratio = 0.3
 
 # The ratio of green pixels in the patch below the ball.
-grass_ratio = 0.78
+grass_ratio = 0.70
 
 # Height/width of the bounding box around the ball
-bounding_box_scale = 85.0
+bounding_box_scale = 95.0
 
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
 nms_threshold = 0.35
@@ -35,13 +35,13 @@ bbox_padding_factor = 1.1
 
 [proposal.bottom]
 # The minimum ratio of white pixels in the range around the proposed ball
-ball_ratio = 0.4
+ball_ratio = 0.3
 
 # The ratio of green pixels in the patch below the ball.
-grass_ratio = 0.6
+grass_ratio = 0.0
 
 # Height/width of the bounding box around the ball
-bounding_box_scale = 35.0
+bounding_box_scale = 30.0
 
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
 nms_threshold = 0.35
@@ -63,7 +63,7 @@ grass_patch_y_offset_factor = 0.5
 grass_patch_radius_factor = 1.5
 
 # Padding factor applied to final proposal box sizes to account for camera calibration error.
-bbox_padding_factor = 1.1
+bbox_padding_factor = 1.5
 
 [classifier]
 # The threshold for the classifier to consider a proposal a ball
