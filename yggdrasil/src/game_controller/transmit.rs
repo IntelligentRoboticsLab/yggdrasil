@@ -99,14 +99,14 @@ fn balls_to_game_controller_ball(
     ball_tracker: &BallTracker
 ) -> (f32, [f32; 2]) {
     if let Hypothesis::Stationary = ball_tracker.cutoff() {
-        return (
+        (
             ball_tracker.timestamp.elapsed().as_secs_f32(),
             [
                 ball_tracker.state().0.x * MILLIMETERS_PER_METER,
                 ball_tracker.state().0.y * MILLIMETERS_PER_METER,
             ],
-        );
+        )
     } else {
-        return NO_BALL_DETECTED_DATA;
+        NO_BALL_DETECTED_DATA
     }
 }

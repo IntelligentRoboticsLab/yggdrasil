@@ -89,17 +89,11 @@ fn setup_ball_debug_logging<T: CameraLocation>(dbg: DebugContext) {
 
 fn detected_ball_eye_color(
     mut nao: ResMut<NaoManager>,
-    bottom_balls: Res<Balls<Bottom>>,
-    top_balls: Res<Balls<Top>>,
+    ball_tracker: Res<BallTracker>,
     config: Res<BallDetectionConfig>,
 ) {
-    let best_ball = bottom_balls
-        .most_recent_ball()
-        .map(|b| b.timestamp)
-        .or(top_balls.most_recent_ball().map(|b| b.timestamp));
-
-    if let Some(timestamp) = best_ball {
-        if timestamp.elapsed() >= config.max_classification_age_eye_color {
+    if let Hypothesis::Stationary = ball_tracker.cutoff(){
+        if ball_tracker.timestamp.elapsed() >= config.max_classification_age_eye_color {
             nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
         } else {
             nao.set_left_eye_led(
