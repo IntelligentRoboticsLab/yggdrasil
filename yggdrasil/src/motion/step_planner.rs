@@ -139,11 +139,15 @@ impl StepPlanner {
         let angle = target_rotation.angle() - robot_pose.world_rotation();
         let turn = TURN_SPEED * angle.signum();
 
-        Some(Step {
-            forward: 0.,
-            left: 0.,
-            turn,
-        })
+        if angle.abs() < 0.2 {
+            None
+        } else {
+            Some(Step {
+                forward: 0.,
+                left: 0.,
+                turn,
+            })
+        }
     }
 
     pub fn plan(&mut self, robot_pose: &RobotPose) -> Option<Step> {

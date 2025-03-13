@@ -4,7 +4,7 @@ use nalgebra::Point2;
 use crate::{
     behavior::{
         behaviors::{Observe, WalkTo},
-        engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
+        engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
     localization::RobotPose,
