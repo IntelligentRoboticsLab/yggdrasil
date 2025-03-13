@@ -2,6 +2,7 @@ use std::io::ErrorKind;
 use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 use std::time::Duration;
 
+use nalgebra as na;
 use bevy::prelude::{App, *};
 use miette::IntoDiagnostic;
 
@@ -187,6 +188,7 @@ pub enum TeamMessage {
     Ping,
     Pong,
     DetectedWhistle,
+    DetectedBall(Option<na::Point2<f32>>),
 }
 
 impl Message for TeamMessage {
