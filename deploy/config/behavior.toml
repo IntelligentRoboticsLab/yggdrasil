@@ -8,7 +8,7 @@ head_yaw_max = 1.2
 # Controls how far to the bottom the robot looks while looking around, in radians
 head_pitch_max = 0.2
 
-[rl_striker_search]
+[rl_example]
 # The output of the policy is element wise multiplied with this value to determine the
 # step that is requested to the walking engine.
 policy_output_scaling = {forward = 0.05, left = 0.07, turn = 0.1 }

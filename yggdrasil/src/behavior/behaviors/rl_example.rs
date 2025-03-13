@@ -69,7 +69,7 @@ impl Behavior for RlExampleBehavior {
 
 struct Input<'d> {
     robot_pose: &'d RobotPose,
-    ball_position: &'d Point2<f32>,
+    // ball_position: &'d Point2<f32>,
     goal_position: &'d Point2<f32>,
 
     field_width: f32,
@@ -81,26 +81,45 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let robot_position = self.robot_pose.inner.translation.vector.xy();
         let robot_angle = self.robot_pose.inner.rotation.angle();
 
-        let relative_ball_position = self.ball_position - robot_position;
-        let relative_ball_angle = relative_ball_position.y.atan2(relative_ball_position.x);
+        let target_x = 0.0;
+        let target_y = 0.0;
+        let target_angle = 0.0;
+
+        let relative_target_position = Point2::new(target_x - robot_position.x, target_y - robot_position.y);
+        let relative_target_angle = relative_target_position.y.atan2(relative_target_position.x);
+
+        // let relative_ball_position = self.ball_position - robot_position;
+        // let relative_ball_angle = relative_ball_position.y.atan2(relative_ball_position.x);
 
         let relative_goal_position = self.goal_position - robot_position;
         let relative_goal_angle = relative_goal_position.y.atan2(relative_goal_position.x);
 
-        let last_seen_ball_pos_x = (self.ball_position.x - robot_position.x) / self.field_height;
-        let last_seen_ball_pos_y = (self.ball_position.y - robot_position.y) / self.field_height;
+        // let last_seen_ball_pos_x = (self.ball_position.x - robot_position.x) / self.field_height;
+        // let last_seen_ball_pos_y = (self.ball_position.y - robot_position.y) / self.field_height;
 
+        // vec![
+        //     (self.ball_position.x - robot_position.x) / self.field_height,
+        //     (self.ball_position.y - robot_position.y) / self.field_width,
+        //     (relative_ball_angle - robot_angle).sin(),
+        //     (relative_ball_angle - robot_angle).sin(),
+        //     (self.goal_position.x - self.ball_position.x) / self.field_height,
+        //     (self.goal_position.y - self.ball_position.y) / self.field_width,
+        //     (relative_goal_angle - robot_angle).sin(),
+        //     (relative_goal_angle - robot_angle).cos(),
+        //     last_seen_ball_pos_x,
+        //     last_seen_ball_pos_y,
+        // ]
         vec![
-            (self.ball_position.x - robot_position.x) / self.field_height,
-            (self.ball_position.y - robot_position.y) / self.field_width,
-            (relative_ball_angle - robot_angle).sin(),
-            (relative_ball_angle - robot_angle).sin(),
-            (self.goal_position.x - self.ball_position.x) / self.field_height,
-            (self.goal_position.y - self.ball_position.y) / self.field_width,
+            (target_x - robot_position.x) / self.field_height,
+            (target_y - robot_position.y) / self.field_width,
+            (relative_target_angle - robot_angle).sin(),
+            (relative_target_angle - robot_angle).cos(),
+            (self.goal_position.x - target_x) / self.field_height,
+            (self.goal_position.y - target_y) / self.field_width,
             (relative_goal_angle - robot_angle).sin(),
             (relative_goal_angle - robot_angle).cos(),
-            last_seen_ball_pos_x,
-            last_seen_ball_pos_y,
+            (target_angle - robot_angle).sin(),
+            (target_angle - robot_angle).cos(),
         ]
     }
 }
@@ -130,22 +149,22 @@ fn run_inference(
     mut commands: Commands,
     mut model_executor: ResMut<ModelExecutor<RlExampleBehaviorModel>>,
     robot_pose: Res<RobotPose>,
-    balls_top: Res<Balls<Top>>,
-    balls_bottom: Res<Balls<Bottom>>,
+    // balls_top: Res<Balls<Top>>,
+    // balls_bottom: Res<Balls<Bottom>>,
 ) {
-    let Some(most_confident_ball) = balls_bottom
-        .most_confident_ball()
-        .map(|b| b.position)
-        .or(balls_top.most_confident_ball().map(|b| b.position))
-    else {
-        return;
-    };
+    // let Some(most_confident_ball) = balls_bottom
+    //     .most_confident_ball()
+    //     .map(|b| b.position)
+    //     .or(balls_top.most_confident_ball().map(|b| b.position))
+    // else {
+    //     return;
+    // };
 
     let goal_position = Point2::new(4.5, 0.0);
 
     let input = Input {
         robot_pose: &robot_pose,
-        ball_position: &most_confident_ball,
+        // ball_position: &most_confident_ball,
         goal_position: &goal_position,
 
         field_width: 6.0,
@@ -164,23 +183,23 @@ fn handle_inference_output(
     pose: Res<RobotPose>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
-    let Some(most_confident_ball) = balls_bottom
-        .most_confident_ball()
-        .map(|b| b.position)
-        .or(balls_top.most_confident_ball().map(|b| b.position))
-    else {
-        return;
-    };
+    // let Some(most_confident_ball) = balls_bottom
+    //     .most_confident_ball()
+    //     .map(|b| b.position)
+    //     .or(balls_top.most_confident_ball().map(|b| b.position))
+    // else {
+    //     return;
+    // };
 
     step_context.request_walk(output.step * behavior_config.rl_example.policy_output_scaling);
 
-    let point3 = Point3::new(most_confident_ball.x, most_confident_ball.y, 0.0);
-    let look_at = pose.get_look_at_absolute(&point3);
+    // let point3 = Point3::new(most_confident_ball.x, most_confident_ball.y, 0.0);
+    // let look_at = pose.get_look_at_absolute(&point3);
 
-    nao_manager.set_head_target(
-        look_at,
-        Duration::from_millis(500),
-        Priority::default(),
-        NaoManager::HEAD_STIFFNESS,
-    );
+    // nao_manager.set_head_target(
+    //     look_at,
+    //     Duration::from_millis(500),
+    //     Priority::default(),
+    //     NaoManager::HEAD_STIFFNESS,
+    // );
 }
