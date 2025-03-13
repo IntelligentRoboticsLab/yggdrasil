@@ -10,10 +10,16 @@ use nalgebra::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
+<<<<<<< Updated upstream
     motion::walking_engine::Gait,
     sensor::{
         button::HeadButtons, falling::FallState, imu::IMUValues, orientation::RobotOrientation,
     },
+=======
+    localization::RobotPose,
+    motion::{step_planner::Target, walking_engine::Gait},
+    sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
+>>>>>>> Stashed changes
     vision::ball_detection::classifier::Balls,
 };
 
@@ -195,7 +201,11 @@ pub fn role_base(
     bottom_balls: Res<Balls<Bottom>>,
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
+<<<<<<< Updated upstream
     mut orientation: ResMut<RobotOrientation>,
+=======
+    pose: Res<RobotPose>,
+>>>>>>> Stashed changes
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -227,7 +237,9 @@ pub fn role_base(
             return;
         }
         FallState::Falling(_) => {
-            if !matches!(*primary_state, PrimaryState::Penalized) {
+            if !matches!(*primary_state, PrimaryState::Penalized)
+                && !matches!(*primary_state, PrimaryState::Initial)
+            {
                 commands.set_behavior(CatchFall);
                 return;
             }
@@ -261,14 +273,12 @@ pub fn role_base(
     match *primary_state {
         PrimaryState::Sitting => commands.set_behavior(Sitting),
         PrimaryState::Penalized => {
-            orientation.reset();
             commands.set_behavior(Stand);
         }
         PrimaryState::Standby | PrimaryState::Finished | PrimaryState::Calibration => {
             commands.set_behavior(Stand);
         }
         PrimaryState::Initial => {
-            orientation.reset();
             commands.set_behavior(StandLookAt {
                 target: Point2::default(),
             });

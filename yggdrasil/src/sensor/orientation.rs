@@ -1,5 +1,5 @@
 use super::imu::IMUValues;
-use crate::{motion::odometry::Odometry, prelude::*};
+use crate::{behavior::primary_state::PrimaryState, motion::odometry::Odometry, prelude::*};
 use bevy::prelude::*;
 use nalgebra::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
@@ -25,7 +25,8 @@ impl Plugin for OrientationFilterPlugin {
                 .after(super::imu::imu_sensor)
                 .run_if(super::imu::has_new_imu_sample),
         )
-        .add_systems(Startup, init_vqf);
+        .add_systems(Startup, init_vqf)
+        .add_systems(Update, reset_orientation);
     }
 }
 
@@ -110,6 +111,23 @@ fn init_vqf(mut commands: Commands, config: Res<OrientationFilterConfig>) {
         vqf,
         yaw_offset: None,
     });
+}
+
+pub fn reset_orientation(
+    mut orientation: ResMut<RobotOrientation>,
+    primary_state: Res<PrimaryState>,
+) {
+    match primary_state.as_ref() {
+        &PrimaryState::Sitting
+        | &PrimaryState::Initial
+        | &PrimaryState::Standby
+        | &PrimaryState::Penalized
+        | &PrimaryState::Finished => {
+            orientation.reset();
+            return;
+        }
+        _ => {}
+    }
 }
 
 pub fn update_orientation(
