@@ -206,22 +206,23 @@ fn spawn_whistle_preprocess_task(
     mut commands: Commands,
     detection_state: ResMut<WhistleDetectionState>,
     mut audio_samples: EventReader<AudioSamplesEvent>,
-    primary_state: Res<PrimaryState>,
+    // primary_state: Res<PrimaryState>,
     mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
 ) {
     if preprocessing_tasks.get_single_mut().is_ok() {
         return;
     };
 
-    if *primary_state != PrimaryState::Set {
-        if let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() {
-            commands.entity(*entity).despawn();
-        };
-        return;
-    }
+    // if *primary_state != PrimaryState::Set {
+    //     if let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() {
+    //         commands.entity(*entity).despawn();
+    //     };
+    //     return;
+    // }
 
     // Only take the last audio sample to reduce contention in case we are lagging behind
     let Some(audio_sample) = audio_samples.read().last() else {
+        eprintln!("NOT SPAWNING Preprocessing Task");
         return;
     };
 
@@ -243,6 +244,7 @@ fn despawn_whistle_preprocessing_task(
         return;
     };
 
+    eprintln!("DEEEESPAWN");
     commands.entity(*entity).despawn();
 }
 
@@ -252,16 +254,22 @@ fn spawn_whistle_detection_model(
     mut preprocessing_tasks: Query<&mut PreprocessingTask>,
 ) {
     let Ok(preprocessing_task) = &mut preprocessing_tasks.get_single_mut() else {
+        eprintln!("NOT SPAWNING MODEL, THERE IS NO PREPROCESSING TASK");
         return;
     };
 
     if !preprocessing_task.0.is_finished() {
+        eprintln!("NOT SPAWNING MODEL, TASK IS NOT FINISHED");
         return;
     };
 
+    eprintln!("POLLING PREPROCESSING TASK");
     let Some(model_input) = block_on(future::poll_once(&mut preprocessing_task.0)) else {
+        eprintln!("NOOOOOOOOOOOOOoo");
         return;
     };
+
+    eprintln!("SPAWN MODEL");
 
     commands
         .infer_model(&mut model)
