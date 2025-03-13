@@ -183,6 +183,7 @@ impl TeamCommunication {
 pub enum TeamMessage {
     Ping,
     Pong,
+    DetectedWhistle,
 }
 
 impl Message for TeamMessage {
