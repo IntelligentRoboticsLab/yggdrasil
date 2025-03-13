@@ -34,7 +34,6 @@ pub fn defender_role(
     player_config: Res<PlayerConfig>,
     layout_config: Res<LayoutConfig>,
     step_planner: ResMut<StepPlanner>,
-    behavior: Res<State<BehaviorState>>,
 ) {
     let set_robot_position = layout_config
         .set_positions
@@ -46,16 +45,14 @@ pub fn defender_role(
         rotation: Some(set_robot_position.isometry.rotation),
     };
 
-    let close_to_target = pose.distance_to(&set_point) < 0.4;
+    let close_to_target = pose.distance_to(&set_point) < 0.5;
     let aligned_with_rotation =
         (pose.world_rotation() - set_robot_position.isometry.rotation.angle()).abs() < 0.2;
 
     if step_planner.has_target() && step_planner.reached_target()
         || (close_to_target && aligned_with_rotation)
     {
-        if behavior.get() != &BehaviorState::Observe {
-            commands.set_behavior(Observe::with_turning(-0.4));
-        }
+        commands.set_behavior(Observe::with_turning(-0.4));
     } else {
         commands.set_behavior(WalkTo {
             target: defend_target,
