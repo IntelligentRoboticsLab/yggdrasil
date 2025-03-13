@@ -24,6 +24,7 @@ use anchor_generator::DefaultBoxGenerator;
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
 
+use super::referee::VisualRefereeDetectionStatus;
 use super::util::bbox::{ConvertBbox, Cxcywh};
 
 #[serde_as]
@@ -67,7 +68,8 @@ impl Plugin for RobotDetectionPlugin {
             .add_systems(
                 Update,
                 detect_robots
-                    .run_if(task_finished::<Image<Top>>.and(task_finished::<RobotDetectionData>)),
+                    .run_if(task_finished::<Image<Top>>.and(task_finished::<RobotDetectionData>))
+                    .run_if(in_state(VisualRefereeDetectionStatus::Inactive)),
             )
             .add_systems(
                 PostUpdate,
