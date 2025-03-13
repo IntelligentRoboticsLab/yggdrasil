@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::{
     behavior::{
         behaviors::{Observe, WalkTo},
-        engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
+        engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
     motion::path::PathPlanner,
@@ -28,16 +28,19 @@ impl Roles for Defender {
 
 pub fn defender_role(
     mut commands: Commands,
-    layout_config: Res<LayoutConfig>,
-    player_config: Res<PlayerConfig>,
     planner: Res<PathPlanner>,
+    player_config: Res<PlayerConfig>,
+    layout_config: Res<LayoutConfig>,
+    behavior: Res<State<BehaviorState>>,
 ) {
     let set_robot_position = layout_config
         .set_positions
         .player(player_config.player_number);
 
     if planner.reached_target() {
-        commands.set_behavior(Observe::with_turning(-0.4));
+        if behavior.get() != &BehaviorState::Observe {
+            commands.set_behavior(Observe::with_turning(0.4));
+        }
     } else {
         commands.set_behavior(WalkTo {
             target: set_robot_position.isometry.into(),
