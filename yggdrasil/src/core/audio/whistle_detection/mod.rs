@@ -16,9 +16,9 @@ use tasks::conditions::task_finished;
 
 use crate::{
     behavior::primary_state::PrimaryState,
+    communication::{TeamCommunication, TeamMessage},
     nao::{NaoManager, Priority},
     prelude::*,
-    communication::{TeamCommunication, TeamMessage},
 };
 
 use super::audio_input::{AudioSamplesEvent, SAMPLES_PER_CHANNEL};
@@ -128,10 +128,13 @@ fn update_whistle_state(
         .detections
         .resize(config.detection_tries, false);
 
-    let incoming_msg = tc.inbound_mut().take_map(|_, _, msg| match msg {
-        TeamMessage::DetectedWhistle => Some(()),
-        _ => None,
-    }).is_some();
+    let incoming_msg = tc
+        .inbound_mut()
+        .take_map(|_, _, msg| match msg {
+            TeamMessage::DetectedWhistle => Some(()),
+            _ => None,
+        })
+        .is_some();
 
     if incoming_msg {
         whistle.detected = true;
@@ -220,7 +223,6 @@ fn spawn_whistle_preprocess_task(
     let entity = commands.spawn_empty().id();
     commands.entity(entity).insert(PreprocessingTask(task));
 }
-
 
 fn spawn_whistle_detection_model(
     mut commands: Commands,
