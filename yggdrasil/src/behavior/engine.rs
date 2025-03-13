@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
 use heimdall::{Bottom, Top};
@@ -10,7 +12,10 @@ use nalgebra::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
-    motion::walking_engine::Gait,
+    motion::{
+        step_planner::StepPlanner,
+        walking_engine::{step::Step, Gait},
+    },
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
     vision::ball_detection::classifier::Balls,
 };
@@ -19,7 +24,7 @@ use super::{
     behaviors::{
         CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
         Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
-        StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
+        StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin, Walk,
         WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
@@ -179,6 +184,14 @@ fn robot_is_leaning(imu_values: &IMUValues) -> bool {
         || imu_values.angles.y < BACKWARD_LEANING_THRESHOLD
 }
 
+struct LastPenalized(Instant);
+
+impl Default for LastPenalized {
+    fn default() -> Self {
+        Self(Instant::now())
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn role_base(
     mut commands: Commands,
@@ -193,6 +206,7 @@ pub fn role_base(
     bottom_balls: Res<Balls<Bottom>>,
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
+    mut last_penalized: Local<LastPenalized>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -260,6 +274,7 @@ pub fn role_base(
     match *primary_state {
         PrimaryState::Sitting => commands.set_behavior(Sitting),
         PrimaryState::Penalized => {
+            last_penalized.0 = Instant::now();
             commands.set_behavior(Stand);
         }
         PrimaryState::Standby | PrimaryState::Finished | PrimaryState::Calibration => {
@@ -275,6 +290,19 @@ pub fn role_base(
             target: ball_or_origin,
         }),
         PrimaryState::Playing { .. } => {
+            // TODO: Proper solution.
+            if last_penalized.0.elapsed() < Duration::from_secs(4) {
+                commands.set_behavior(Walk {
+                    step: Step {
+                        forward: 0.04,
+                        left: 0.0,
+                        turn: 0.0,
+                    },
+                    look_target: None,
+                });
+                return;
+            }
+
             RoleState::assign_role(&mut commands, player_config.player_number);
         }
     }
