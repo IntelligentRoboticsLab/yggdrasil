@@ -173,6 +173,7 @@ fn update_whistle_state(
                 .update_or_push_by(msg, Deadline::ASAP)
                 .expect("failed to encode whistle message");
         }
+
     } else {
         whistle.detected = false;
         nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
