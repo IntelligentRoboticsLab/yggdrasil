@@ -110,9 +110,9 @@ struct GameControllerSocket {
 impl GameControllerSocket {
     async fn bind() -> io::Result<Self> {
         let socket =
-            Arc::new(UdpSocket::bind((Ipv4Addr::BROADCAST, GAME_CONTROLLER_DATA_PORT)).await?);
+            Arc::new(UdpSocket::bind((Ipv4Addr::UNSPECIFIED, GAME_CONTROLLER_DATA_PORT)).await?);
 
-        socket.set_broadcast(true).unwrap();
+        // socket.set_broadcast(true).unwrap();
 
         Ok(Self { socket })
     }

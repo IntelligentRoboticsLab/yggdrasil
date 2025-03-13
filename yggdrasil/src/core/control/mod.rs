@@ -51,7 +51,7 @@ fn setup(mut commands: Commands, rerun_stream: Res<RerunStream>) {
         return;
     }
 
-    let socket_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, CONTROL_PORT));
+    let socket_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::BROADCAST, CONTROL_PORT));
 
     // New connections are registered and handled in the `ControlApp`. A
     // channel is used to pass the message to a Bevy system for additional
