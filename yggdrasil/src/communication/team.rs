@@ -47,13 +47,16 @@ fn sync_budget(mut tc: ResMut<TeamCommunication>, message: Option<Res<GameContro
         }
     }
 
-    if tc.try_send().expect("failed to send packets") {
-        debug!("successfully sent out a new packet.");
+    match tc.try_send() {
+        Ok(true) => debug!("successfully sent out a new packet."),
+        Ok(false) => (),
+        Err(err) => warn!(?err, "unable to send packet"),
     }
 
-    let received = tc.try_receive().expect("failed to receive packets.");
-    if received > 0 {
-        debug!("received packet(s) from {} peer(s).", received);
+    match tc.try_receive() {
+        Ok(0) => (),
+        Ok(n) => debug!("received packet(s) from {} peer(s).", n),
+        Err(err) => warn!(?err, "unable to receive packet"),
     }
 }
 
