@@ -26,7 +26,7 @@ impl Plugin for OrientationFilterPlugin {
                 .run_if(super::imu::has_new_imu_sample),
         )
         .add_systems(Startup, init_vqf)
-        .add_systems(Update, reset_orientation);
+        .add_systems(PreUpdate, reset_orientation);
     }
 }
 
@@ -113,10 +113,8 @@ fn init_vqf(mut commands: Commands, config: Res<OrientationFilterConfig>) {
     });
 }
 
-pub fn reset_orientation(
-    mut orientation: ResMut<RobotOrientation>,
-    primary_state: Res<PrimaryState>,
-) {
+/// System that resets the orientation each cycle, iff we're in a state that doesn't need orientation data.
+fn reset_orientation(mut orientation: ResMut<RobotOrientation>, primary_state: Res<PrimaryState>) {
     match primary_state.as_ref() {
         &PrimaryState::Sitting
         | &PrimaryState::Initial
