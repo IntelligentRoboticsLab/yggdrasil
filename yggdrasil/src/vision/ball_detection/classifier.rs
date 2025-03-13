@@ -83,6 +83,7 @@ fn init_ball_classifier(mut commands: Commands) {
         prediction_noise: CovarianceMatrix::from_diagonal_element(0.1),
         sensor_noise: CovarianceMatrix::from_diagonal_element(0.001),
         cycle: Cycle::default(),
+        timestamp: Instant::now(),
     };
     commands.insert_resource(ball_tracker);
 }

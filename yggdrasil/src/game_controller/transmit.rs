@@ -11,7 +11,7 @@ use heimdall::{Bottom, Top};
 
 use crate::{
     core::config::showtime::PlayerConfig, localization::RobotPose, sensor::falling::FallState,
-    vision::ball_detection::classifier::Balls,
+    vision::ball_detection::{ball_tracker::BallTracker, classifier::Balls, Hypothesis},
 };
 
 use super::{GameControllerConfig, GameControllerConnection, GameControllerSocket};
@@ -53,7 +53,7 @@ pub fn send_message(
     player_config: Res<PlayerConfig>,
     fall_state: Res<FallState>,
     robot_pose: Res<RobotPose>,
-    (bottom_balls, top_balls): (Res<Balls<Bottom>>, Res<Balls<Top>>),
+    ball_tracker: Res<BallTracker>,
     (sender, connection, config): (
         Res<GameControllerSender>,
         Res<GameControllerConnection>,
@@ -68,8 +68,7 @@ pub fn send_message(
         return;
     }
 
-    let (ball_age, pall_pos) = balls_to_game_controller_ball(&bottom_balls, &top_balls);
-
+    let (ball_age, pall_pos) = balls_to_game_controller_ball(&ball_tracker);
     let return_message = GameControllerReturnMessage::new(
         player_config.player_number,
         player_config.team_number,
@@ -97,24 +96,17 @@ fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {
 }
 
 fn balls_to_game_controller_ball(
-    bottom_balls: &Balls<Bottom>,
-    top_balls: &Balls<Top>,
+    ball_tracker: &BallTracker
 ) -> (f32, [f32; 2]) {
-    let Some((timestamp, robot_to_ball)) = bottom_balls
-        .most_confident_ball()
-        .map(|b| (b.timestamp, b.robot_to_ball))
-        .or(top_balls
-            .most_confident_ball()
-            .map(|b| (b.timestamp, b.robot_to_ball)))
-    else {
+    if let Hypothesis::Stationary = ball_tracker.cutoff() {
+        return (
+            ball_tracker.timestamp.elapsed().as_secs_f32(),
+            [
+                ball_tracker.state().0.x * MILLIMETERS_PER_METER,
+                ball_tracker.state().0.y * MILLIMETERS_PER_METER,
+            ],
+        );
+    } else {
         return NO_BALL_DETECTED_DATA;
-    };
-
-    (
-        timestamp.elapsed().as_secs_f32(),
-        [
-            robot_to_ball.x * MILLIMETERS_PER_METER,
-            robot_to_ball.y * MILLIMETERS_PER_METER,
-        ],
-    )
+    }
 }

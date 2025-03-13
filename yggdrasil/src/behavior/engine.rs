@@ -12,7 +12,7 @@ use crate::{
     core::config::showtime::PlayerConfig,
     motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
-    vision::ball_detection::{ball_tracker::BallTracker, classifier::Balls},
+    vision::ball_detection::{ball_tracker::BallTracker, classifier::Balls, Hypothesis},
 };
 
 use super::{
@@ -251,7 +251,12 @@ pub fn role_base(
 
     let most_confident_ball = ball_tracker.state();
 
-    let ball_or_origin = most_confident_ball.unwrap_or(Point2::origin());
+    let ball_or_origin = if let Hypothesis::Stationary = ball_tracker.cutoff() {
+        most_confident_ball.0
+    } else {
+        Point2::default()
+    };
+
 
     match *primary_state {
         PrimaryState::Sitting => commands.set_behavior(Sitting),

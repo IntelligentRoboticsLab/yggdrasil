@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use bevy::prelude::*;
 use filter::{CovarianceMatrix, StateTransform, StateVector, UnscentedKalmanFilter};
 use nalgebra::{point, Point2, Vector2};
@@ -5,6 +7,8 @@ use nalgebra::{point, Point2, Vector2};
 use crate::nao::Cycle;
 
 use super::classifier::Ball;
+
+pub const STATIONARY_THRESHOLD: f32 = 0.1;
 
 // pub struct BallTrackerPlugin;
 
@@ -21,7 +25,7 @@ use super::classifier::Ball;
 //     }
 // }
 
-enum Hypothesis {
+pub enum Hypothesis {
     Moving,
     Stationary,
 }
@@ -32,7 +36,8 @@ pub struct BallTracker {
     pub position_kf: UnscentedKalmanFilter<2, 5, BallPosition>,
     pub prediction_noise: CovarianceMatrix<2>,
     pub sensor_noise: CovarianceMatrix<2>,
-    pub cycle: Cycle
+    pub cycle: Cycle,
+    pub timestamp: Instant,
 }
 
 impl BallTracker {
@@ -59,6 +64,14 @@ impl BallTracker {
         self.position_kf.covariance()
     }
 
+    pub fn cutoff(&self) -> Hypothesis {
+        if self.covariance().diagonal().iter().all(|&x| x < STATIONARY_THRESHOLD) {
+            Hypothesis::Stationary
+        } else {
+            Hypothesis::Moving
+        }
+    }
+
     pub fn predict(&mut self) {
         let f = |p: BallPosition| p;
         self.position_kf.predict(f, self.prediction_noise).unwrap();
@@ -67,6 +80,9 @@ impl BallTracker {
     pub fn measurement_update(&mut self, measurement: BallPosition) {
         let h = |p: BallPosition| p;
         self.position_kf.update(h, measurement, self.sensor_noise).unwrap();
+
+        // Putting timestamp update here for now
+        self.timestamp = Instant::now();
     }
 
     //TODO: implement uncertainty in the ball tracker (you want to know when to give up the estimate)
