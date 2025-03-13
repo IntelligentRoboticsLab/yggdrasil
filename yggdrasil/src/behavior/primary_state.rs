@@ -62,8 +62,10 @@ pub enum PrimaryState {
     Penalized,
     /// State of the robot when a half is finished
     Finished,
-    /// State the indicates the robot is performing automatic calibration
+    /// State that indicates the robot is performing automatic calibration
     Calibration,
+    /// State for when the robot is controlled by black magic (gamepad).
+    Possessed,
 }
 
 fn is_penalized_by_game_controller(
@@ -87,6 +89,7 @@ fn update_gamecontroller_message(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn update_primary_state(
     mut primary_state: ResMut<PrimaryState>,
     game_controller_message: Option<Res<GameControllerMessage>>,
@@ -95,6 +98,7 @@ pub fn update_primary_state(
     config: Res<PrimaryStateConfig>,
     player_config: Res<PlayerConfig>,
     whistle: Res<Whistle>,
+    gamepads: Query<&Gamepad>,
 ) {
     use PrimaryState as PS;
     let next_state = next_primary_state(
@@ -104,6 +108,7 @@ pub fn update_primary_state(
         &head_buttons,
         &player_config,
         &whistle,
+        !gamepads.is_empty(),
     );
 
     match next_state {
@@ -120,6 +125,7 @@ pub fn update_primary_state(
         PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Critical),
         PS::Finished => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
         PS::Calibration => nao_manager.set_chest_led(color::f32::PURPLE, Priority::Critical),
+        PS::Possessed => nao_manager.set_chest_led(color::f32::MAROON, Priority::Critical),
     };
 
     *primary_state = next_state;
@@ -133,8 +139,13 @@ pub fn next_primary_state(
     head_buttons: &HeadButtons,
     player_config: &PlayerConfig,
     whistle: &Whistle,
+    has_gamepad: bool,
 ) -> PrimaryState {
     use PrimaryState as PS;
+
+    if has_gamepad {
+        return PS::Possessed;
+    }
 
     let mut primary_state = match primary_state {
         PS::Sitting if chest_button.state.is_tapped() => PS::Initial,
