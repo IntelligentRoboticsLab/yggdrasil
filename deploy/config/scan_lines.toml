@@ -12,10 +12,10 @@ max_white_saturation = 100.0
 min_white_luminance = 90.0
 
 # Black color
-max_black_luminance = 70.0
-max_black_saturation = 120.0
+max_black_luminance = 60.0
+max_black_saturation = 160.0
 
 # Green chromaticity threshold
 blue_chromaticity_threshold = 0.3    # not fine tuned
-green_chromaticity_threshold = 0.355 # tuned
+green_chromaticity_threshold = 0.400 # tuned
 red_chromaticity_threshold = 0.3     # not fine tuned

@@ -1,12 +1,19 @@
 mod fourier;
 
-use bevy::prelude::*;
+use std::sync::{Arc, Mutex};
+
+use async_std::task::block_on;
+use bevy::{
+    prelude::*,
+    tasks::{futures_lite::future, AsyncComputeTaskPool, Task},
+};
 use fourier::Stft;
 use nidhogg::types::{FillExt, LeftEar, RightEar};
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
 
 use crate::{
+    behavior::primary_state::PrimaryState,
     nao::{NaoManager, Priority},
     prelude::*,
 };
@@ -38,9 +45,10 @@ impl Plugin for WhistleDetectionPlugin {
             .init_resource::<WhistleDetectionState>()
             .init_resource::<WhistleDetections>()
             .init_config::<WhistleDetectionConfig>()
+            .add_systems(Update, spawn_whistle_preprocess_task)
             .add_systems(
                 Update,
-                (update_whistle_state, detect_whistle)
+                (update_whistle_state, spawn_whistle_detection_model)
                     .chain()
                     .run_if(task_finished::<WhistleDetections>),
             );
@@ -87,14 +95,14 @@ impl Whistle {
 #[derive(Resource)]
 struct WhistleDetectionState {
     detections: Vec<bool>,
-    stft: Stft,
+    stft: Arc<Mutex<Stft>>,
 }
 
 impl Default for WhistleDetectionState {
     fn default() -> Self {
         Self {
             detections: Vec::new(),
-            stft: Stft::new(WINDOW_SIZE, HOP_SIZE),
+            stft: Arc::new(Mutex::new(Stft::new(WINDOW_SIZE, HOP_SIZE))),
         }
     }
 }
@@ -139,28 +147,75 @@ fn update_whistle_state(
     }
 }
 
-fn detect_whistle(
-    mut commands: Commands,
-    mut detection_state: ResMut<WhistleDetectionState>,
-    mut model: ResMut<ModelExecutor<WhistleDetectionModel>>,
-    mut audio_sample: EventReader<AudioSamplesEvent>,
-) {
-    // Only take the last audio sample to reduce contention in case we are lagging behind
-    let Some(AudioSamplesEvent { left, .. }) = audio_sample.read().last() else {
-        return;
-    };
-
-    let spectrogram = detection_state
-        .stft
-        .compute(left, 0, MEAN_WINDOWS)
+fn whistle_preprocessing(
+    stft: Arc<Mutex<Stft>>,
+    audio_sample: AudioSamplesEvent,
+) -> PreprocessingData {
+    let spectrogram = stft
+        .lock()
+        .unwrap()
+        .compute(&audio_sample.left, 0, MEAN_WINDOWS)
         .windows_mean();
 
     let min_i = MIN_FREQ * spectrogram.powers.len() / NYQUIST;
     let max_i = MAX_FREQ * spectrogram.powers.len() / NYQUIST;
 
+    PreprocessingData(spectrogram.powers[min_i..=max_i].to_vec())
+}
+
+struct PreprocessingData(Vec<f32>);
+
+#[derive(Component)]
+struct PreprocessingTask(Task<PreprocessingData>);
+
+fn spawn_whistle_preprocess_task(
+    mut commands: Commands,
+    detection_state: ResMut<WhistleDetectionState>,
+    mut audio_samples: EventReader<AudioSamplesEvent>,
+    primary_state: Res<PrimaryState>,
+    mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
+) {
+    let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() else {
+        return;
+    };
+
+    if *primary_state != PrimaryState::Set {
+        commands.entity(*entity).despawn();
+        return;
+    }
+
+    // Only take the last audio sample to reduce contention in case we are lagging behind
+    let Some(audio_sample) = audio_samples.read().last() else {
+        return;
+    };
+
+    let audio_sample = audio_sample.clone();
+    let stft = detection_state.stft.clone();
+
+    let task =
+        AsyncComputeTaskPool::get().spawn(async move { whistle_preprocessing(stft, audio_sample) });
+
+    let entity = commands.spawn_empty().id();
+    commands.entity(entity).insert(PreprocessingTask(task));
+}
+
+fn spawn_whistle_detection_model(
+    mut commands: Commands,
+    mut model: ResMut<ModelExecutor<WhistleDetectionModel>>,
+    mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
+) {
+    let Ok((preprocessing_task, entity)) = &mut preprocessing_tasks.get_single_mut() else {
+        return;
+    };
+
+    commands.entity(*entity).despawn();
+    let Some(model_input) = block_on(future::poll_once(&mut preprocessing_task.0)) else {
+        return;
+    };
+
     commands
         .infer_model(&mut model)
-        .with_input(&spectrogram.powers[min_i..=max_i].to_vec())
+        .with_input(&model_input.0)
         .create_resource()
         .spawn(|detections| Some(WhistleDetections { detections }));
 }

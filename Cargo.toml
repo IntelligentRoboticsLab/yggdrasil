@@ -61,13 +61,13 @@ tasks = { path = "crates/tasks" }
 # external crates
 apodize = "1.0.0"
 async-std = "1.13.0"
-bevy = { version = "0.15.0", default-features = false, features = [
+bevy = { version = "0.15.3", default-features = false, features = [
   "bevy_state",
 ] }
 byteorder = "1.5.0"
 cargo_toml = "0.20.5"
-chrono = "0.4.38"
-clap = "4.5.20"
+chrono = "=0.4.39"
+clap = "4.5.31"
 colored = "2.1.0"
 cpal = "0.15.3"
 dialoguer = "0.11.0"
@@ -99,12 +99,12 @@ plotters = { version = "0.3.7", default-features = false, features = [
   "bitmap_backend",
   "bitmap_encoder",
 ] }
-proc-macro2 = "1.0.89"
-quote = "1.0.37"
+proc-macro2 = "1.0.94"
+quote = "1.0.39"
 rand = "0.8.5"
 
-re_crash_handler = "0.22.0"
-rerun = { version = "0.22.0", default-features = false, features = [
+re_crash_handler = "0.22.1"
+rerun = { version = "0.22.1", default-features = false, features = [
   "sdk",
   "server",
   "analytics",
@@ -112,17 +112,17 @@ rerun = { version = "0.22.0", default-features = false, features = [
   "glam",
 ] }
 rustfft = "6.2.0"
-serde = "1.0.213"
-serde_json = "1.0.132"
+serde = "1.0.219"
+serde_json = "1.0.140"
 serde_with = "3.11.0"
 socket2 = "0.5.7"
-syn = "2.0.90"
-thiserror = "2.0.3"
-tokio = "1.41.1"
+syn = "2.0.100"
+thiserror = "2.0.12"
+tokio = "1.44.0"
 toml = "0.8.19"
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
 tracing-subscriber = "0.3.18"
 tracing-tracy = "0.11.3"
-turbojpeg = "1.1.1"
+turbojpeg = "1.2.2"
 vqf = { version = "0.4.1", features = ["serde"] }

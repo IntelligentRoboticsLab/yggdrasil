@@ -330,6 +330,7 @@ pub fn get_ball_proposals<T: CameraLocation>(
         // middle of the white region
         let mid_point = middle.line_spot();
 
+        // only check for body contours on bottom camera
         if body_contour.is_part_of_body(mid_point) {
             continue;
         }

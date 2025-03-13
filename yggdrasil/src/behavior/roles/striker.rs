@@ -4,7 +4,7 @@ use nalgebra::{Point2, Point3};
 
 use crate::{
     behavior::{
-        behaviors::{Observe, Walk, WalkTo},
+        behaviors::{RlStrikerSearchBehavior, Walk, WalkTo},
         engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::layout::LayoutConfig,
@@ -112,7 +112,7 @@ pub fn striker_role(
             }
         }
     } else {
-        commands.set_behavior(Observe::with_turning(0.4));
+        commands.set_behavior(RlStrikerSearchBehavior);
     }
 }
 
