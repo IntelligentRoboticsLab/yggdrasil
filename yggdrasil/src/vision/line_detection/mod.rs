@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 
 use bevy::prelude::*;
 use bevy::tasks::{block_on, poll_once, AsyncComputeTaskPool, Task};
-use heimdall::{CameraLocation, CameraMatrix, YuyvImage};
+use heimdall::{CameraLocation, CameraMatrix, CameraPosition, YuyvImage};
 use inlier::Inliers;
 use itertools::Itertools;
 use line::{Line2, LineSegment2};
@@ -18,6 +18,7 @@ use ransac::{line::LineDetector, Ransac};
 use serde::{Deserialize, Serialize};
 
 use super::body_contour::{update_body_contours, BodyContour};
+use super::scan_lines;
 use super::{camera::Image, scan_lines::ScanLines};
 use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use crate::{
@@ -82,19 +83,18 @@ impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
             .add_systems(PostStartup, setup_debug::<T>)
             .add_systems(
                 Update,
-                (
-                    (
-                        clear_lines::<T>,
-                        handle_line_task::<T>,
-                        detect_lines_system::<T>
-                            .run_if(resource_exists_and_changed::<ScanLines<T>>)
-                            .after(update_body_contours),
-                    )
-                        .chain(),
+                ((
+                    clear_lines::<T>,
+                    handle_line_task::<T>,
+                    detect_lines_system::<T>
+                        .run_if(resource_exists_and_changed::<ScanLines<T>>)
+                        .after(scan_lines::update_scan_lines::<T>)
+                        .after(update_body_contours),
                     debug_lines::<T>,
                     debug_lines_projected::<T>,
                     debug_rejected_lines::<T>,
-                ),
+                )
+                    .chain(),),
             )
             // TODO: these debug systems should ideally all be batched over multiple cycles
             // but that needs a batching api in the debug module
@@ -443,9 +443,15 @@ fn setup_debug<T: CameraLocation>(dbg: DebugContext) {
     );
 
     // projected lines
+    let color = if T::POSITION == CameraPosition::Top {
+        (255, 100, 0)
+    } else {
+        (155, 60, 0)
+    };
+
     dbg.log_static(
         T::make_entity_path("lines/detected"),
-        &rerun::LineStrips3D::update_fields().with_colors([(255, 100, 0)]),
+        &rerun::LineStrips3D::update_fields().with_colors([color]),
     );
 
     // inliers

@@ -4,12 +4,12 @@ use nalgebra::{Point2, Point3};
 
 use crate::{
     behavior::{
-        behaviors::{Observe, Walk, WalkTo},
+        behaviors::{RlStrikerSearchBehavior, Walk, WalkTo},
         engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::layout::LayoutConfig,
     localization::RobotPose,
-    motion::{step_planner::Target, walking_engine::step::Step},
+    motion::walking_engine::step::Step,
     vision::ball_detection::classifier::Balls,
 };
 
@@ -72,11 +72,6 @@ pub fn striker_role(
 
         let ball_distance = pose.distance_to(&ball);
 
-        let ball_pos = Target {
-            position: ball,
-            rotation: None,
-        };
-
         state.next_state(
             ball_distance,
             ball_goal_center_align,
@@ -86,7 +81,9 @@ pub fn striker_role(
 
         match *state {
             Striker::WalkToBall | Striker::WalkWithBall => {
-                commands.set_behavior(WalkTo { target: ball_pos });
+                commands.set_behavior(WalkTo {
+                    target: ball.into(),
+                });
             }
             Striker::WalkAlign => {
                 let ball_target = Point3::new(ball.x, ball.y, 0.0);
@@ -115,7 +112,7 @@ pub fn striker_role(
             }
         }
     } else {
-        commands.set_behavior(Observe::with_turning(0.4));
+        commands.set_behavior(RlStrikerSearchBehavior);
     }
 }
 

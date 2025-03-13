@@ -1,0 +1,47 @@
+# The radius of the robot's collider in meters.
+robot_radius = 0.25
+
+# The radius of the arc to ease into the path.
+ease_in_radius = 0.333
+
+# The radius of the arc to ease out of the path.
+ease_out_radius = 0.333
+
+# The maximum distance the robot may be from the path.
+start_tolerance = 0.2
+
+# The maximum distance the target may be from the path.
+target_tolerance = 0.2
+
+# The deadband of the perpendicular error.
+#
+# This controls the maximum distance the robot is allowed to be from the path before it
+# starts side-stepping to correct the error.
+perpendicular_deadband = 0.05
+
+# The speed at which the perpendicular error gets corrected.
+perpendicular_speed = 0.045
+
+# The deadband of the angular error.
+#
+# This controls the maximum angle the robot is allowed to differ from the path before it
+# starts adding a turn to correct the error.
+angular_deadband = 0.05
+
+# The speed at which the angular error gets corrected while walking.
+angular_speed = 0.1
+
+# The angular threshold at which the robot stops to turn.
+#
+# This is the angle at which the robot stops correcting its angle while walking and stands
+# still to turn.
+stop_and_turn_threshold = 1.0
+
+# The walking speed of the robot.
+walk_speed = 0.045
+
+# The turning speed of the robot while it's standing still.
+turn_speed = 0.8
+
+# The turning speed of the robot while it's walking.
+walking_turn_speed = 0.8

@@ -1,5 +1,5 @@
 use super::imu::IMUValues;
-use crate::{motion::odometry::Odometry, prelude::*};
+use crate::{behavior::primary_state::PrimaryState, motion::odometry::Odometry, prelude::*};
 use bevy::prelude::*;
 use nalgebra::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
@@ -25,7 +25,8 @@ impl Plugin for OrientationFilterPlugin {
                 .after(super::imu::imu_sensor)
                 .run_if(super::imu::has_new_imu_sample),
         )
-        .add_systems(Startup, init_vqf);
+        .add_systems(Startup, init_vqf)
+        .add_systems(PreUpdate, reset_orientation);
     }
 }
 
@@ -110,6 +111,41 @@ fn init_vqf(mut commands: Commands, config: Res<OrientationFilterConfig>) {
         vqf,
         yaw_offset: None,
     });
+}
+
+/// System that resets the orientation only when transitioning to a state that doesn't need orientation data.
+fn reset_orientation(
+    mut orientation: ResMut<RobotOrientation>,
+    primary_state: Res<PrimaryState>,
+    mut previous_state: Local<Option<PrimaryState>>,
+) {
+    let should_reset = match primary_state.as_ref() {
+        &PrimaryState::Sitting
+        | &PrimaryState::Initial
+        | &PrimaryState::Standby
+        | &PrimaryState::Penalized
+        | &PrimaryState::Finished => {
+            // only reset when we enter one of these states
+            match previous_state.as_ref() {
+                None => true, // previous state hasn't been set yet
+                Some(prev) => !matches!(
+                    prev,
+                    PrimaryState::Sitting
+                        | PrimaryState::Initial
+                        | PrimaryState::Standby
+                        | PrimaryState::Penalized
+                        | PrimaryState::Finished
+                ),
+            }
+        }
+        _ => false,
+    };
+
+    if should_reset {
+        orientation.reset();
+    }
+
+    *previous_state = Some(*primary_state);
 }
 
 pub fn update_orientation(

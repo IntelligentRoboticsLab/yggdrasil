@@ -1,6 +1,6 @@
 [camera.top.calibration]
 # The extrinsic rotation for the camera in degrees, xyz euler angles.
-extrinsic_rotation = [-0.46, -4.92, 2.37]
+extrinsic_rotation = [-1.80, -5.12, 2.67]
 # The focal length for the camera in pixels.
 focal_lengths = [608, 609]
 # The optical center of the camera sensor in pixels.

@@ -38,7 +38,7 @@ impl Plugin for ControlPlugin {
                     .run_if(resource_exists::<ViewerMessageReceiver>),
             )
             .add_systems(
-                Update,
+                PostUpdate,
                 (handle_viewer_message, update_debug_systems_for_clients)
                     .chain()
                     .run_if(resource_exists::<ViewerMessageReceiver>),

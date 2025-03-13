@@ -7,6 +7,8 @@ use bevy::{
     prelude::*,
     tasks::{futures_lite::future, AsyncComputeTaskPool, Task},
 };
+
+use bifrost::broadcast::Deadline;
 use fourier::Stft;
 use nidhogg::types::{FillExt, LeftEar, RightEar};
 use serde::{Deserialize, Serialize};
@@ -14,6 +16,7 @@ use tasks::conditions::task_finished;
 
 use crate::{
     behavior::primary_state::PrimaryState,
+    communication::{TeamCommunication, TeamMessage},
     nao::{NaoManager, Priority},
     prelude::*,
 };
@@ -45,19 +48,17 @@ impl Plugin for WhistleDetectionPlugin {
             .init_resource::<WhistleDetectionState>()
             .init_resource::<WhistleDetections>()
             .init_config::<WhistleDetectionConfig>()
-            //.add_systems(
-            //    Update,
-            //    spawn_whistle_preprocess_task.run_if(task_finished::<WhistleDetections>).before(),
-            //)
+            .add_systems(Update, spawn_whistle_preprocess_task)
             .add_systems(
                 Update,
-                (
-                    spawn_whistle_preprocess_task,
-                    update_whistle_state,
-                    spawn_whistle_detection_model,
-                )
+                (update_whistle_state, spawn_whistle_detection_model)
                     .chain()
                     .run_if(task_finished::<WhistleDetections>),
+            )
+            .add_systems(
+                Update,
+                despawn_whistle_preprocessing_task
+                    .run_if(resource_exists_and_changed::<WhistleDetections>),
             );
     }
 }
@@ -120,16 +121,33 @@ struct WhistleDetections {
 }
 
 fn update_whistle_state(
+    primary_state: Res<PrimaryState>,
     detections: Res<WhistleDetections>,
     mut whistle: ResMut<Whistle>,
     mut detection_state: ResMut<WhistleDetectionState>,
     config: Res<WhistleDetectionConfig>,
     mut nao_manager: ResMut<NaoManager>,
+    mut tc: ResMut<TeamCommunication>,
 ) {
     // resize state.detections if necessary
     detection_state
         .detections
         .resize(config.detection_tries, false);
+
+    let incoming_msg = tc
+        .inbound_mut()
+        .take_map(|_, _, msg| match msg {
+            TeamMessage::DetectedWhistle => Some(()),
+            _ => None,
+        })
+        .is_some();
+
+    if incoming_msg {
+        whistle.detected = true;
+        nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
+        nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
+        return;
+    }
 
     if detections.detections.is_empty() {
         return;
@@ -147,6 +165,14 @@ fn update_whistle_state(
         whistle.detected = true;
         nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
+
+        if *primary_state == PrimaryState::Set {
+            // Send message to all teammates
+            let msg = TeamMessage::DetectedWhistle;
+            tc.outbound_mut()
+                .update_or_push_by(msg, Deadline::ASAP)
+                .expect("failed to encode whistle message");
+        }
     } else {
         whistle.detected = false;
         nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
@@ -180,9 +206,14 @@ fn spawn_whistle_preprocess_task(
     detection_state: ResMut<WhistleDetectionState>,
     mut audio_samples: EventReader<AudioSamplesEvent>,
     primary_state: Res<PrimaryState>,
-    mut preprocessing_tasks: Query<&mut PreprocessingTask>,
+    mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
 ) {
-    if *primary_state != PrimaryState::Set || preprocessing_tasks.get_single_mut().is_ok() {
+    let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() else {
+        return;
+    };
+
+    if *primary_state != PrimaryState::Set {
+        commands.entity(*entity).despawn();
         return;
     }
 
@@ -201,19 +232,33 @@ fn spawn_whistle_preprocess_task(
     commands.entity(entity).insert(PreprocessingTask(task));
 }
 
+fn despawn_whistle_preprocessing_task(
+    mut commands: Commands,
+    mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
+) {
+    let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() else {
+        return;
+    };
+
+    commands.entity(*entity).despawn();
+}
+
 fn spawn_whistle_detection_model(
     mut commands: Commands,
     mut model: ResMut<ModelExecutor<WhistleDetectionModel>>,
-    mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
+    mut preprocessing_tasks: Query<&mut PreprocessingTask>,
 ) {
-    let Ok((preprocessing_task, entity)) = &mut preprocessing_tasks.get_single_mut() else {
+    let Ok(preprocessing_task) = &mut preprocessing_tasks.get_single_mut() else {
+        return;
+    };
+
+    if !preprocessing_task.0.is_finished() {
         return;
     };
 
     let Some(model_input) = block_on(future::poll_once(&mut preprocessing_task.0)) else {
         return;
     };
-    commands.entity(*entity).despawn();
 
     commands
         .infer_model(&mut model)

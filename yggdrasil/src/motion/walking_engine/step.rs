@@ -1,5 +1,5 @@
 use std::{
-    ops::{Add, Neg, Sub},
+    ops::{Add, Div, Mul, Neg, Sub},
     time::Duration,
 };
 
@@ -108,6 +108,30 @@ impl Neg for Step {
             forward: -self.forward,
             left: -self.left,
             turn: -self.turn,
+        }
+    }
+}
+
+impl Mul for Step {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self {
+            forward: self.forward * rhs.forward,
+            left: self.left * rhs.left,
+            turn: self.turn * rhs.turn,
+        }
+    }
+}
+
+impl Div for Step {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        Self {
+            forward: self.forward / rhs.forward,
+            left: self.left / rhs.left,
+            turn: self.turn / rhs.turn,
         }
     }
 }
