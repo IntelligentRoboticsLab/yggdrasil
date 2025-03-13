@@ -38,6 +38,15 @@ fn setup_team_communication(mut commands: Commands, config: Res<ShowtimeConfig>)
 }
 
 fn sync_budget(mut tc: ResMut<TeamCommunication>, message: Option<Res<GameControllerMessage>>) {
+    if tc.try_send().expect("failed to send packets") {
+        debug!("successfully sent out a new packet.");
+    }
+
+    let received = tc.try_receive().expect("failed to receive packets.");
+    if received > 0 {
+        debug!("received packet(s) from {} peer(s).", received);
+    }
+
     // We can't calibrate the budget if we aren't in a game.
     if let Some(game_controller_message) = message {
         if let Some(threshold) = tc.calibrate_budget(&game_controller_message) {
