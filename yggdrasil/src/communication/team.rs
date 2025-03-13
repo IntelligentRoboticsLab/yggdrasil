@@ -47,7 +47,24 @@ fn sync_budget(mut tc: ResMut<TeamCommunication>, message: Option<Res<GameContro
         debug!("received packet(s) from {} peer(s).", received);
     }
 
+    if tc.try_send().expect("failed to send packets") {
+        debug!("successfully sent out a new packet.");
+    }
+
+    let received = tc.try_receive().expect("failed to receive packets.");
+    if received > 0 {
+        debug!("received packet(s) from {} peer(s).", received);
+    }
+
     // We can't calibrate the budget if we aren't in a game.
+    let Some(game_controller_message) = message else {
+        return;
+    };
+
+    if let Some(threshold) = tc.calibrate_budget(&game_controller_message) {
+        // For now, make sure to never send messages faster than can be maintained.
+        tc.rate_mut().late_threshold = threshold;
+        tc.rate_mut().automatic_deadline = threshold;
     if let Some(game_controller_message) = message {
         if let Some(threshold) = tc.calibrate_budget(&game_controller_message) {
             // For now, make sure to never send messages faster than can be maintained.
@@ -192,6 +209,7 @@ impl TeamCommunication {
 pub enum TeamMessage {
     Ping,
     Pong,
+    DetectedWhistle,
     DetectedWhistle,
 }
 
