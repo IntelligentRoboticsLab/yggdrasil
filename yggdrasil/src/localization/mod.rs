@@ -32,7 +32,10 @@ impl Plugin for LocalizationPlugin {
             LineCorrespondencePlugin::<Bottom>::default(),
         ))
         .add_systems(PostStartup, (init_pose, setup_pose_visualization))
-        .add_systems(Update, update_robot_pose.after(odometry::update_odometry))
+        .add_systems(
+            PreUpdate,
+            update_robot_pose.after(odometry::update_odometry),
+        )
         .add_systems(PostUpdate, visualize_pose);
     }
 }

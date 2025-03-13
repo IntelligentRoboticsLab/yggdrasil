@@ -7,6 +7,8 @@ use bevy::{
     prelude::*,
     tasks::{futures_lite::future, AsyncComputeTaskPool, Task},
 };
+
+use bifrost::broadcast::Deadline;
 use fourier::Stft;
 use nidhogg::types::{FillExt, LeftEar, RightEar};
 use serde::{Deserialize, Serialize};
@@ -14,6 +16,7 @@ use tasks::conditions::task_finished;
 
 use crate::{
     behavior::primary_state::PrimaryState,
+    communication::{TeamCommunication, TeamMessage},
     nao::{NaoManager, Priority},
     prelude::*,
 };
@@ -118,11 +121,27 @@ fn update_whistle_state(
     mut detection_state: ResMut<WhistleDetectionState>,
     config: Res<WhistleDetectionConfig>,
     mut nao_manager: ResMut<NaoManager>,
+    mut tc: ResMut<TeamCommunication>,
 ) {
     // resize state.detections if necessary
     detection_state
         .detections
         .resize(config.detection_tries, false);
+
+    let incoming_msg = tc
+        .inbound_mut()
+        .take_map(|_, _, msg| match msg {
+            TeamMessage::DetectedWhistle => Some(()),
+            _ => None,
+        })
+        .is_some();
+
+    if incoming_msg {
+        whistle.detected = true;
+        nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
+        nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
+        return;
+    }
 
     if detections.detections.is_empty() {
         return;
@@ -140,6 +159,12 @@ fn update_whistle_state(
         whistle.detected = true;
         nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
+
+        // Send message to all teammates
+        let msg = TeamMessage::DetectedWhistle;
+        tc.outbound_mut()
+            .push_by(msg, Deadline::ASAP)
+            .expect("failed to send whistle message");
     } else {
         whistle.detected = false;
         nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);

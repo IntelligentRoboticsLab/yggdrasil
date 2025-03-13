@@ -1,5 +1,7 @@
 mod team;
 
+pub use team::{TeamCommunication, TeamMessage};
+
 use bevy::{app::PluginGroupBuilder, prelude::*};
 
 /// A collection of plugins related to communication.
