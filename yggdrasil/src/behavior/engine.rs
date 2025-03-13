@@ -12,7 +12,7 @@ use crate::{
     core::config::showtime::PlayerConfig,
     motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
-    vision::ball_detection::classifier::Balls,
+    vision::ball_detection::{ball_tracker::BallTracker, classifier::Balls},
 };
 
 use super::{
@@ -189,8 +189,7 @@ pub fn role_base(
     fall_state: Res<FallState>,
     standup_state: Option<Res<Standup>>,
     player_config: Res<PlayerConfig>,
-    top_balls: Res<Balls<Top>>,
-    bottom_balls: Res<Balls<Bottom>>,
+    ball_tracker: Res<BallTracker>,
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
 ) {
@@ -250,10 +249,7 @@ pub fn role_base(
         }
     }
 
-    let most_confident_ball = bottom_balls
-        .most_confident_ball()
-        .map(|b| b.position)
-        .or(top_balls.most_confident_ball().map(|b| b.position));
+    let most_confident_ball = ball_tracker.state();
 
     let ball_or_origin = most_confident_ball.unwrap_or(Point2::origin());
 

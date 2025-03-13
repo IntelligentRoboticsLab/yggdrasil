@@ -53,6 +53,12 @@ impl BallTracker {
         self.position_kf.state()
     }
 
+    #[inline]
+    #[must_use]
+    pub fn covariance(&self) -> CovarianceMatrix<2> {
+        self.position_kf.covariance()
+    }
+
     pub fn predict(&mut self) {
         let f = |p: BallPosition| p;
         self.position_kf.predict(f, self.prediction_noise).unwrap();
