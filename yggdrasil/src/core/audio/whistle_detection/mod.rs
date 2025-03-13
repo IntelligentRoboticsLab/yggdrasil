@@ -54,6 +54,11 @@ impl Plugin for WhistleDetectionPlugin {
                 (update_whistle_state, spawn_whistle_detection_model)
                     .chain()
                     .run_if(task_finished::<WhistleDetections>),
+            )
+            .add_systems(
+                Update,
+                despawn_whistle_preprocessing_task
+                    .run_if(resource_exists_and_changed::<WhistleDetections>),
             );
     }
 }
@@ -224,16 +229,30 @@ fn spawn_whistle_preprocess_task(
     commands.entity(entity).insert(PreprocessingTask(task));
 }
 
-fn spawn_whistle_detection_model(
+fn despawn_whistle_preprocessing_task(
     mut commands: Commands,
-    mut model: ResMut<ModelExecutor<WhistleDetectionModel>>,
     mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
 ) {
-    let Ok((preprocessing_task, entity)) = &mut preprocessing_tasks.get_single_mut() else {
+    let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() else {
         return;
     };
 
     commands.entity(*entity).despawn();
+}
+
+fn spawn_whistle_detection_model(
+    mut commands: Commands,
+    mut model: ResMut<ModelExecutor<WhistleDetectionModel>>,
+    mut preprocessing_tasks: Query<&mut PreprocessingTask>,
+) {
+    let Ok(preprocessing_task) = &mut preprocessing_tasks.get_single_mut() else {
+        return;
+    };
+
+    if !preprocessing_task.0.is_finished() {
+        return;
+    };
+
     let Some(model_input) = block_on(future::poll_once(&mut preprocessing_task.0)) else {
         return;
     };
