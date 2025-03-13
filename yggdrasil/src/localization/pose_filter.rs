@@ -2,6 +2,7 @@ use std::iter::IntoIterator;
 
 use bevy::prelude::*;
 
+use bifrost::communication::{GameControllerMessage, GamePhase};
 use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
@@ -9,6 +10,7 @@ use nalgebra::{self as na, point, vector, ComplexField, Point2, Rotation2};
 use nidhogg::types::HeadJoints;
 
 use crate::{
+    behavior::primary_state::PrimaryState,
     core::{
         config::{
             layout::{FieldLine, LayoutConfig, ParallelAxis},
@@ -17,8 +19,9 @@ use crate::{
         debug::DebugContext,
     },
     localization::correspondence::LineCorrespondences,
-    motion::odometry::Odometry,
+    motion::{keyframe::KeyframeExecutor, odometry::Odometry, walking_engine::Gait},
     nao::Cycle,
+    sensor::fsr::Contacts,
 };
 
 const PARTICLE_SCORE_DECAY: f32 = 0.9;
@@ -32,15 +35,18 @@ pub struct PoseFilterPlugin;
 
 impl Plugin for PoseFilterPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostStartup, initialize_particles_and_pose)
+        app.init_resource::<PrimaryStateHistory>()
+            .add_systems(PostStartup, initialize_particles_and_pose)
             .add_systems(
                 Update,
                 (
                     odometry_update,
-                    line_update,
-                    filter_particles,
-                    resample,
-                    sensor_resetting,
+                    update_primary_state_history,
+                    primary_state_resetting,
+                    (line_update, filter_particles, resample, sensor_resetting)
+                        .chain()
+                        .run_if(not(motion_is_unsafe))
+                        .run_if(not(is_penalized)),
                     log_particles,
                 )
                     .chain(),
@@ -58,6 +64,7 @@ impl RobotPose {
     // Set to zero if we are only looking at the ground, for example.
     pub const CAMERA_HEIGHT: f32 = 0.5;
 
+    #[must_use]
     pub fn new(inner: na::Isometry2<f32>) -> Self {
         Self { inner }
     }
@@ -206,7 +213,7 @@ fn initialize_particles_and_pose(
             .initial_positions
             .player(player.player_number)
             .isometry,
-    ))
+    ));
 }
 
 fn odometry_update(odometry: Res<Odometry>, mut particles: Query<&mut RobotPoseFilter>) {
@@ -224,13 +231,95 @@ fn odometry_update(odometry: Res<Odometry>, mut particles: Query<&mut RobotPoseF
     }
 }
 
+fn motion_is_unsafe(
+    keyframe_executor: Res<KeyframeExecutor>,
+    motion_state: Res<State<Gait>>,
+    contacts: Res<Contacts>,
+) -> bool {
+    keyframe_executor.active_motion.is_some()
+        // || !matches!(motion_state.get(), Gait::Standing | Gait::Walking)
+        || !contacts.ground
+}
+
+fn is_penalized(gcm: Option<Res<GameControllerMessage>>) -> bool {
+    if let Some(message) = gcm {
+        if message.game_phase == GamePhase::PenaltyShoot {
+            return true;
+        }
+    }
+    false
+}
+
+fn update_primary_state_history(
+    mut primary_state_history: ResMut<PrimaryStateHistory>,
+    primary_state: Res<PrimaryState>,
+) {
+    primary_state_history.previous = primary_state_history.current;
+    primary_state_history.current = *primary_state;
+}
+
+#[derive(Resource, Debug, Default, Clone, Copy)]
+struct PrimaryStateHistory {
+    previous: PrimaryState,
+    current: PrimaryState,
+}
+
+fn primary_state_resetting(
+    mut commands: Commands,
+    primary_state_history: Res<PrimaryStateHistory>,
+    mut particles: Query<Entity, With<RobotPoseFilter>>,
+    gcm: Option<Res<GameControllerMessage>>,
+    layout: Res<LayoutConfig>,
+    player: Res<PlayerConfig>,
+    robot_pose: Res<RobotPose>,
+) {
+    use crate::behavior::primary_state::PrimaryState as PS;
+
+    if is_penalized(gcm) {
+        for entity in &mut particles {
+            commands.entity(entity).despawn();
+        }
+
+        for particle in penalty_particles(&layout, *robot_pose) {
+            commands.spawn(particle);
+        }
+
+        return;
+    }
+
+    match (
+        primary_state_history.previous,
+        primary_state_history.current,
+    ) {
+        (PS::Initial | PS::Standby, PS::Ready) => {
+            for entity in &mut particles {
+                commands.entity(entity).despawn();
+            }
+
+            for particle in initial_particles(&layout, player.player_number) {
+                commands.spawn(particle);
+            }
+        }
+        (_, _) => (),
+    }
+
+    // TODO: penalty shootout
+}
+
 fn line_update(
-    added_correspondences: Query<&LineCorrespondences, Added<LineCorrespondences>>,
+    added_correspondences: Query<&LineCorrespondences>,
     mut particles: Query<&mut RobotPoseFilter>,
 ) {
+    println!("updating line");
     for mut particle in &mut particles {
+        println!("new particle");
+
         for correspondences in &added_correspondences {
+            println!("new correspondences");
+
             for correspondence in correspondences.iter() {
+                println!("new correspondence");
+
                 match correspondence.field_line {
                     FieldLine::Segment {
                         segment: field_line,
@@ -242,6 +331,7 @@ fn line_update(
                             .angle(&field_line.normal())
                             > std::f32::consts::FRAC_PI_6
                         {
+                            println!("angle issue line");
                             continue;
                         }
 
@@ -307,12 +397,13 @@ fn line_update(
                                 ParallelAxis::Y => rotated_covariance[(0, 0)],
                             };
 
-                            let line_length_weight = if correspondence.detected_line.length() == 0.0
-                            {
-                                1.0
-                            } else {
-                                1.0 / correspondence.detected_line.length()
-                            };
+                            // let line_length_weight = if correspondence.detected_line.length() == 0.0
+                            // {
+                            //     1.0
+                            // } else {
+                            //     1.0 / correspondence.detected_line.length()
+                            // };
+                            let line_length_weight = 1.0;
 
                             let angle_variance = (4.0 * distance_variance
                                 / (correspondence.detected_line.length().powi(2)))
@@ -365,6 +456,7 @@ fn line_update(
                         if measured.normal().angle(&reference.normal())
                             > std::f32::consts::FRAC_PI_8
                         {
+                            println!("angle issue circl");
                             continue;
                         }
 
@@ -424,6 +516,8 @@ fn line_update(
                 if correspondence.error.sqrt() < PARTICLE_BONUS_THRESHOLD {
                     particle.score += PARTICLE_SCORE_BONUS;
                 }
+
+                println!("particle score: {}", particle.score);
             }
         }
     }
@@ -440,6 +534,8 @@ fn filter_particles(
         .max_by(|a, b| a.score.total_cmp(&b.score))
         .expect("There should always be at least one particle.");
 
+    println!("best particle score: {}", best_particle.score);
+
     for (entity, particle) in &particles {
         if particle.score < PARTICLE_RETAIN_FACTOR * best_particle.score {
             commands.entity(entity).despawn();
@@ -450,20 +546,23 @@ fn filter_particles(
 
     let particle_count = particles.iter().count();
 
-    // if particle_count < 20 {
-    //     println!("amount of particles: {}", particle_count);
-    // }
+    if particle_count < 20 {
+        println!("amount of particles: {particle_count}");
+    }
 }
 
+// TODO: implement particle resampling
 fn resample(
-    mut commands: Commands,
-    layout: Res<LayoutConfig>,
-    mut particles: Query<(Entity, &mut RobotPoseFilter)>,
+    mut _commands: Commands,
+    _layout: Res<LayoutConfig>,
+    mut _particles: Query<(Entity, &mut RobotPoseFilter)>,
 ) {
-    // TODO: implement particle resampling
 }
 
-fn sensor_resetting(mut commands: Commands, mut particles: Query<(Entity, &mut RobotPoseFilter)>) {
+fn sensor_resetting(
+    mut _commands: Commands,
+    mut _particles: Query<(Entity, &mut RobotPoseFilter)>,
+) {
     // TODO: implement sensor resetting based on field features from which the pose can directly be derived
 }
 
@@ -564,20 +663,6 @@ impl StateTransform<2> for LineMeasurement {
     }
 }
 
-fn initial_particles(
-    layout: &LayoutConfig,
-    player_num: u8,
-) -> impl IntoIterator<Item = RobotPoseFilter> {
-    let position = RobotPose {
-        inner: layout.initial_positions.player(player_num).isometry,
-    };
-
-    (0..20).map(move |_| RobotPoseFilter {
-        filter: UnscentedKalmanFilter::new(position, CovarianceMatrix::from_diagonal_element(0.1)),
-        score: PARTICLE_SCORE_DEFAULT,
-    })
-}
-
 struct CircleMeasurement {
     position: Point2<f32>,
 }
@@ -597,6 +682,95 @@ impl From<CircleMeasurement> for StateVector<2> {
 }
 
 impl StateTransform<2> for CircleMeasurement {}
+
+fn noisy_isometry(x_max: f32, y_max: f32, angle_max: f32) -> na::Isometry2<f32> {
+    let translation = na::Translation2::new(
+        rand::random::<f32>() * x_max * 2.0 - x_max,
+        rand::random::<f32>() * y_max * 2.0 - y_max,
+    );
+    let angle = Rotation2::new(rand::random::<f32>() * angle_max * 2.0 - angle_max);
+    na::Isometry2::from_parts(translation, angle.into())
+}
+
+fn initial_particles(
+    layout: &LayoutConfig,
+    player_num: u8,
+) -> impl IntoIterator<Item = RobotPoseFilter> {
+    let position = RobotPose {
+        inner: layout.initial_positions.player(player_num).isometry,
+    };
+
+    std::iter::once(RobotPoseFilter {
+        filter: UnscentedKalmanFilter::new(position, CovarianceMatrix::from_diagonal_element(0.1)),
+        score: PARTICLE_SCORE_DEFAULT,
+    })
+    .chain((0..10).map(move |_| {
+        let noise_isom = noisy_isometry(0.1, 0.1, 0.05);
+        RobotPoseFilter {
+            filter: UnscentedKalmanFilter::new(
+                RobotPose {
+                    inner: position.inner * noise_isom,
+                },
+                CovarianceMatrix::from_diagonal_element(0.1),
+            ),
+            score: PARTICLE_SCORE_DEFAULT,
+        }
+    }))
+}
+
+fn penalty_particles(
+    layout: &LayoutConfig,
+    last_known_position: RobotPose,
+) -> impl IntoIterator<Item = RobotPoseFilter> + use<'_> {
+    const PARTICLES_PER_SIDE: u32 = 10;
+
+    // negative sign, we are on our side of the field
+    // positive sign, we are on the opponents side
+    let side_sign = last_known_position.position().x.signum();
+
+    (0..PARTICLES_PER_SIDE)
+        .map(move |i| {
+            let frac = i as f32 / PARTICLES_PER_SIDE as f32;
+
+            let angle = Rotation2::new(-std::f32::consts::FRAC_PI_2);
+            let pos = na::Translation2::new(
+                side_sign * frac * layout.field.length * 0.5,
+                layout.field.width * 0.5,
+            );
+            let pose = RobotPose {
+                inner: na::Isometry2::from_parts(pos, angle.into()),
+            };
+
+            RobotPoseFilter {
+                filter: UnscentedKalmanFilter::new(
+                    pose,
+                    CovarianceMatrix::from_diagonal_element(0.5),
+                ),
+                score: PARTICLE_SCORE_DEFAULT,
+            }
+        })
+        .chain((0..PARTICLES_PER_SIDE).map(move |i| {
+            let frac = i as f32 / PARTICLES_PER_SIDE as f32;
+
+            let angle = Rotation2::new(std::f32::consts::FRAC_PI_2);
+            let pos = na::Translation2::new(
+                side_sign * frac * -layout.field.length * 0.5,
+                layout.field.width * 0.5,
+            );
+            let pose = RobotPose {
+                inner: na::Isometry2::from_parts(pos, angle.into()),
+            };
+
+            RobotPoseFilter {
+                filter: UnscentedKalmanFilter::new(
+                    pose,
+                    CovarianceMatrix::from_diagonal_element(0.5),
+                ),
+                score: PARTICLE_SCORE_DEFAULT,
+            }
+        }))
+    // we are on the opponents side
+}
 
 /// normalizes an angle to be in the range \[-pi, pi\]
 fn normalize_angle(mut angle: f32) -> f32 {
