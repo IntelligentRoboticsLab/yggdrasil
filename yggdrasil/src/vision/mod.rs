@@ -6,6 +6,7 @@ pub mod body_contour;
 pub mod camera;
 pub mod color;
 pub mod field_boundary;
+pub mod field_marks;
 pub mod line_detection;
 pub mod referee;
 pub mod robot_detection;
