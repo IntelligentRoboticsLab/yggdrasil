@@ -19,7 +19,10 @@ use crate::{
         BehaviorConfig,
     },
     localization::RobotPose,
-    motion::walking_engine::{step::Step, step_context::StepContext},
+    motion::{
+        odometry::Odometry,
+        walking_engine::{step::Step, step_context::StepContext},
+    },
     nao::{NaoManager, Priority},
     vision::ball_detection::classifier::Balls,
 };
@@ -150,6 +153,7 @@ fn run_inference(
     mut commands: Commands,
     mut model_executor: ResMut<ModelExecutor<RlExampleBehaviorModel>>,
     robot_pose: Res<RobotPose>,
+    odometry: Res<Odometry>,
     // balls_top: Res<Balls<Top>>,
     // balls_bottom: Res<Balls<Bottom>>,
 ) {
@@ -160,6 +164,12 @@ fn run_inference(
     // else {
     //     return;
     // };
+
+    if robot_pose.distance_to(&Point2::origin()) < 0.05
+        && robot_pose.world_rotation().abs() < f32::consts::PI / 8.0
+    {
+        return;
+    }
 
     let goal_position = Point2::new(4.5, 0.0);
 
