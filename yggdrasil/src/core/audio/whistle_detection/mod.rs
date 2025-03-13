@@ -208,6 +208,7 @@ fn spawn_whistle_preprocess_task(
     primary_state: Res<PrimaryState>,
     mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
 ) {
+    return;
     let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() else {
         return;
     };

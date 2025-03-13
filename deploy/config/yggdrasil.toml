@@ -41,7 +41,7 @@ height = 480
 # It is recommended to have at least one more buffer than is required. This way, the next frame
 # from the camera can already be stored in a buffer, reducing the latency between destructing a
 # `TopImage` and being able to fetch the newest `TopImage`.
-num_buffers = 5
+num_buffers = 10
 # Whether the image should be flipped horizontally.
 flip_horizontally = true
 # Whether the image should be flipped vertically.

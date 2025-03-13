@@ -647,7 +647,13 @@ pub fn update_scan_lines<T: CameraLocation>(
     scan_grid: Res<ScanGrid<T>>,
     field_boundary: Res<FieldBoundary>,
 ) {
+    if T::POSITION == CameraPosition::Top {
+        println!("updating scan lines");
+    }
     *scan_lines = get_scan_lines(&config, image.clone(), &scan_grid, &field_boundary);
+    if T::POSITION == CameraPosition::Top {
+        println!("done updating scan lines");
+    }
 }
 
 /// Find the edge of a region in a scanline.

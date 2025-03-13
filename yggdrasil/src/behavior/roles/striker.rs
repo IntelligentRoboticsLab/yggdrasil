@@ -64,7 +64,7 @@ pub fn striker_role(
         let ball_angle = pose.angle_to(&ball);
         let absolute_ball_angle = ball_angle + pose.world_rotation();
 
-        let ball_aligned = ball_angle.abs() < 0.2;
+        let ball_aligned = ball_angle.abs() < 0.25;
         let ball_goal_aligned = absolute_ball_angle < absolute_goal_angle_left
             && absolute_ball_angle > absolute_goal_angle_right;
 
@@ -76,6 +76,13 @@ pub fn striker_role(
             position: ball,
             rotation: None,
         };
+
+        info!(
+            ?ball_goal_aligned,
+            ?ball_aligned,
+            ?ball_angle,
+            ?ball_distance
+        );
 
         state.next_state(
             ball_distance,
@@ -94,9 +101,9 @@ pub fn striker_role(
                 if absolute_ball_angle > absolute_goal_angle_left {
                     commands.set_behavior(Walk {
                         step: Step {
+                            forward: -0.01,
                             left: 0.06,
-                            turn: -0.3,
-                            ..Default::default()
+                            turn: -0.4,
                         },
                         look_target: Some(ball_target),
                     });
@@ -105,9 +112,9 @@ pub fn striker_role(
                 if absolute_ball_angle < absolute_goal_angle_right {
                     commands.set_behavior(Walk {
                         step: Step {
+                            forward: -0.01,
                             left: -0.06,
-                            turn: 0.3,
-                            ..Default::default()
+                            turn: 0.4,
                         },
                         look_target: Some(ball_target),
                     });
