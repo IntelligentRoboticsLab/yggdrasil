@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 
 use bevy::prelude::*;
 use bevy::tasks::{block_on, poll_once, AsyncComputeTaskPool, Task};
-use heimdall::{CameraLocation, CameraMatrix, YuyvImage};
+use heimdall::{CameraLocation, CameraMatrix, CameraPosition, YuyvImage};
 use inlier::Inliers;
 use itertools::Itertools;
 use line::{Line2, LineSegment2};
@@ -443,9 +443,16 @@ fn setup_debug<T: CameraLocation>(dbg: DebugContext) {
     );
 
     // projected lines
+    let color = if T::POSITION==CameraPosition::Top {
+        (255, 100, 0)
+    }
+    else {
+        (155, 60, 0)
+    };
+
     dbg.log_static(
         T::make_entity_path("lines/detected"),
-        &rerun::LineStrips3D::update_fields().with_colors([(255, 100, 0)]),
+        &rerun::LineStrips3D::update_fields().with_colors([color]),
     );
 
     // inliers
