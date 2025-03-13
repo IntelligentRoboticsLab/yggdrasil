@@ -19,7 +19,7 @@ use crate::localization::RobotPose;
 
 use crate::nao::Cycle;
 use crate::vision::camera::init_camera;
-use crate::vision::referee::VisualRefereeDetectionStatus;
+use crate::vision::referee::detect::VisualRefereeDetectionStatus;
 use ml::prelude::*;
 
 use super::proposal::BallProposals;

@@ -55,16 +55,20 @@ pub fn resize_image(
         image_height as u32,
         image,
         fir::PixelType::U8x4,
-    ).into_diagnostic()?;
+    )
+    .into_diagnostic()?;
 
-    let mut dst_image = fir::images::Image::new(target_width, target_height, src_image.pixel_type());
+    let mut dst_image =
+        fir::images::Image::new(target_width, target_height, src_image.pixel_type());
 
     let mut resizer = fir::Resizer::new();
-    resizer.resize(
-        &src_image,
-        &mut dst_image,
-        &ResizeOptions::new().resize_alg(fir::ResizeAlg::Nearest),
-    ).into_diagnostic()?;
+    resizer
+        .resize(
+            &src_image,
+            &mut dst_image,
+            &ResizeOptions::new().resize_alg(fir::ResizeAlg::Nearest),
+        )
+        .into_diagnostic()?;
 
     // Luma subsampling to make the ratio 4:4:4 again
     let mut out = Vec::with_capacity(target_width as usize * target_height as usize * 3);

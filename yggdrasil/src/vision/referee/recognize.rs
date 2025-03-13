@@ -1,47 +1,63 @@
 use bevy::prelude::*;
+use heimdall::{CameraLocation, Top};
 
-use super::{detect::RefereePoseDetected, DetectRefereePose, RefereePose};
+use crate::{core::debug::DebugContext, nao::Cycle};
 
-// TODO: Probably in a config
-const VISUAL_REFEREE_DETECT_ATTEMPTS: usize = 5;
+use super::{
+    detect::{DetectRefereePose, RefereePoseDetected},
+    RefereePose, RefereePoseConfig,
+};
 
 pub struct RefereePoseRecognitionPlugin;
 
 impl Plugin for RefereePoseRecognitionPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<RefereePoseRecognised>()
+        app.add_event::<RefereePoseRecognized>()
             .init_state::<VisualRefereeRecognitionStatus>()
             .init_resource::<DetectedRefereePoses>()
             .add_systems(
                 Update,
                 (
                     request_recognition,
-                    recognising_pose.run_if(in_state(VisualRefereeRecognitionStatus::Active)),
+                    recognizing_pose.run_if(in_state(VisualRefereeRecognitionStatus::Active)),
                     show_recognized_pose,
                 ),
             );
     }
 }
 
-pub fn recognising_pose(
+/// Recognize a referee pose.
+///
+/// - detected_poses ([`DetectedRefereePoses`]) keeps track of earlier detected
+/// referee poses.
+/// - detected_pose ([`RefereePoseDetected`]) is an event that is received when
+/// a pose detection is finished.
+/// - detect_pose ([`DetectRefereePose`]) is an event that is send when a pose
+/// detection is requested.
+/// - recognized_pose ([`RefereePoseRecognised`]) is an event that is send when
+/// enough poses are detected in a sequence
+pub fn recognizing_pose(
     mut detected_poses: ResMut<DetectedRefereePoses>,
     mut detected_pose: EventReader<RefereePoseDetected>,
     mut detect_pose: EventWriter<DetectRefereePose>,
-    mut recognized_pose: EventWriter<RefereePoseRecognised>,
+    mut recognized_pose: EventWriter<RefereePoseRecognized>,
     mut next_recognition_status: ResMut<NextState<VisualRefereeRecognitionStatus>>,
+    referee_pose_config: Res<RefereePoseConfig>,
 ) {
     for pose in detected_pose.read() {
-        if detected_poses.poses.len() < VISUAL_REFEREE_DETECT_ATTEMPTS {
+        let recognition_config = &referee_pose_config.recognition;
+        // Check whether we detected VISUAL_REFEREE_DETECT_ATTEMPTS number of times.
+        if detected_poses.poses.len() < recognition_config.referee_consecutive_pose_detections {
             // Add detected pose to vector remember
             detected_poses.poses.push(pose.pose.clone());
             // Resend a request to detect a new referee pose
             detect_pose.send(DetectRefereePose);
         } else {
             // Determine if pose was the same
-            if all_same(&detected_poses.poses) {
+            if all_same_poses(&detected_poses.poses) {
                 let pose = detected_poses.poses.first().expect("Does not happen :)");
                 // Send final pose recognition
-                recognized_pose.send(RefereePoseRecognised { pose: pose.clone() });
+                recognized_pose.send(RefereePoseRecognized { pose: pose.clone() });
             }
             // Deactivate the visual referee recogition state
             next_recognition_status.set(VisualRefereeRecognitionStatus::Inactive);
@@ -51,37 +67,39 @@ pub fn recognising_pose(
     }
 }
 
-/// Starts the recognition of a post.
-/// Activates the `VisualRefereeRecognitionStatus` state and starts the
-/// detection pose chain by sending an initial `DetectRefereePose` event.
+/// Starts the recognition of a referee pose when a request is received from
+/// [`RecognizeRefereePose`].
+///
+/// It first activates the [`VisualRefereeRecognitionStatus`] state and starts the
+/// detection pose chain by sending an request to detect a referee pose via the
+/// [`DetectRefereePose`] event.
 pub fn request_recognition(
     mut recognise_pose: EventReader<RecognizeRefereePose>,
     mut next_recognition_status: ResMut<NextState<VisualRefereeRecognitionStatus>>,
     mut detect_pose: EventWriter<DetectRefereePose>,
 ) {
-    for _ev in recognise_pose.read() {
+    if recognise_pose.read().last().is_some() {
         next_recognition_status.set(VisualRefereeRecognitionStatus::Active);
         // Send the initil request to detect a referee pose
         detect_pose.send(DetectRefereePose);
-        break;
     }
-    recognise_pose.clear();
 }
 
+/// [`DetectedRefereePoses`] functions as memory for detected referee poses
 #[derive(Resource, Default)]
 pub struct DetectedRefereePoses {
     poses: Vec<RefereePose>,
 }
 
 impl DetectedRefereePoses {
+    /// Clears the memory of earlier detected referee poses
     pub fn clear(&mut self) {
         self.poses.clear();
     }
 }
 
-#[derive(Event)]
-pub struct RecognizeRefereePose;
-
+/// A bevy state ([`States`]), which keeps track of whether the referee pose reconition
+/// is ongoing or not.
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum VisualRefereeRecognitionStatus {
     #[default]
@@ -89,18 +107,35 @@ pub enum VisualRefereeRecognitionStatus {
     Active,
 }
 
+/// A bevy [`Event`] that requests to start recognizing a referee pose
 #[derive(Event)]
-pub struct RefereePoseRecognised {
+pub struct RecognizeRefereePose;
+
+/// A bevy [`Event`] for when a referee pose is recognized
+#[derive(Event)]
+pub struct RefereePoseRecognized {
     pub pose: RefereePose,
 }
 
-pub fn show_recognized_pose(mut recognized_pose: EventReader<RefereePoseRecognised>) {
+/// Logs the recognized pose to rerun
+pub fn show_recognized_pose(
+    mut recognized_pose: EventReader<RefereePoseRecognized>,
+    dbg: DebugContext,
+    cycle: Res<Cycle>,
+) {
     for pose in recognized_pose.read() {
-        println!("Pose recognized: {:?}", pose.pose)
+        // TODO: Log to rerun
+        // println!("Pose recognized: {:?}", pose.pose);
+        dbg.log_with_cycle(
+            Top::make_entity_image_path("recognized_pose"),
+            *cycle,
+            &rerun::TextLog::new(format!("{:?}", pose.pose)),
+        );
     }
 }
 
-fn all_same(poses: &[RefereePose]) -> bool {
+// Determines whether all poses are the same
+fn all_same_poses(poses: &[RefereePose]) -> bool {
     poses
         .first()
         .map(|first| poses.iter().all(|x| x == first))

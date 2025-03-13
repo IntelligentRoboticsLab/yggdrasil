@@ -24,7 +24,7 @@ use anchor_generator::DefaultBoxGenerator;
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
 
-use super::referee::VisualRefereeDetectionStatus;
+use super::referee::detect::VisualRefereeDetectionStatus;
 use super::util::bbox::{ConvertBbox, Cxcywh};
 
 #[serde_as]

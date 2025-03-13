@@ -1,7 +1,7 @@
 mod catchfall;
 mod observe;
-mod rl_striker_search;
 mod referee;
+mod rl_striker_search;
 mod sitting;
 mod stand;
 mod stand_look;
@@ -13,6 +13,7 @@ mod walk_to_set;
 
 pub use catchfall::{CatchFall, CatchFallBehaviorPlugin};
 pub use observe::{Observe, ObserveBehaviorConfig, ObserveBehaviorPlugin};
+pub use referee::{VisualReferee, VisualRefereeBehaviorPlugin};
 pub use rl_striker_search::{
     RlStrikerSearchBehavior, RlStrikerSearchBehaviorConfig, RlStrikerSearchBehaviorPlugin,
 };
@@ -20,7 +21,6 @@ pub use sitting::{Sitting, SittingBehaviorPlugin};
 pub use stand::{Stand, StandBehaviorPlugin};
 pub use stand_look::{StandLookAt, StandLookAtBehaviorPlugin};
 pub use standup::{Standup, StandupBehaviorPlugin};
-pub use referee::{VisualReferee, VisualRefereeBehaviorPlugin};
 pub use startup::{StartUp, StartUpBehaviorPlugin};
 pub use walk::{Walk, WalkBehaviorPlugin};
 pub use walk_to::{WalkTo, WalkToBehaviorPlugin};

@@ -18,22 +18,16 @@ use crate::{
 };
 
 use super::{
-    recognize::{recognising_pose, request_recognition},
-    DetectRefereePose, RefereePose,
+    recognize::{recognizing_pose, request_recognition},
+    RefereePose, RefereePoseConfig,
 };
-
-// TODO: Probably in a config file
-const CROP_WIDTH: u32 = 256;
-const CROP_HEIGHT: u32 = 480;
-const INPUT_WIDTH: u32 = 256;
-const INPUT_HEIGHT: u32 = 256;
-const OUTPUT_SHAPE: (usize, usize) = (17, 3);
 
 pub struct RefereePoseDetectionPlugin;
 
 impl Plugin for RefereePoseDetectionPlugin {
     fn build(&self, app: &mut App) {
-        app.init_ml_model::<RefereePoseEstimatorModel>()
+        app.init_ml_model::<RefereePoseDetectionModel>()
+            .init_state::<VisualRefereeDetectionStatus>()
             .add_event::<DetectRefereePose>()
             .add_event::<RefereePoseDetected>()
             .add_systems(
@@ -41,19 +35,27 @@ impl Plugin for RefereePoseDetectionPlugin {
                 (
                     detect_referee_pose
                         .after(request_recognition)
-                        .after(recognising_pose),
+                        .after(recognizing_pose),
                     send_referee_pose_output,
                     log_estimated_pose,
-                    show_pose,
                 )
                     .chain(),
+            )
+            .add_systems(
+                Update,
+                (
+                    activate_detection_status
+                        .run_if(in_state(VisualRefereeDetectionStatus::Inactive)),
+                    deactivate_detection_status
+                        .run_if(in_state(VisualRefereeDetectionStatus::Active)),
+                ),
             );
     }
 }
 
-pub(super) struct RefereePoseEstimatorModel;
+pub(super) struct RefereePoseDetectionModel;
 
-impl MlModel for RefereePoseEstimatorModel {
+impl MlModel for RefereePoseDetectionModel {
     type Inputs = Vec<u8>;
 
     type Outputs = (MlArray<f32>, Vec<f32>);
@@ -61,12 +63,13 @@ impl MlModel for RefereePoseEstimatorModel {
     const ONNX_PATH: &'static str = "models/pose_estimator.onnx";
 }
 
-pub fn detect_referee_pose(
+pub(self) fn detect_referee_pose(
     mut commands: Commands,
     mut detect_pose: EventReader<DetectRefereePose>,
-    mut model: ResMut<ModelExecutor<RefereePoseEstimatorModel>>,
+    mut model: ResMut<ModelExecutor<RefereePoseDetectionModel>>,
     image: Res<Image<Top>>,
     camera_config: Res<CameraConfig>,
+    referee_pose_config: Res<RefereePoseConfig>
 ) {
     for _ev in detect_pose.read() {
         let top_camera = &camera_config.top;
@@ -75,38 +78,39 @@ pub fn detect_referee_pose(
             (top_camera.height / 2) as usize,
         );
 
+        let detection_config = referee_pose_config.detection.clone();
+
         // Resize yuyv
         let cropped_image =
-            image.get_yuyv_patch(image_center, CROP_WIDTH as usize, CROP_HEIGHT as usize);
+            image.get_yuyv_patch(image_center, detection_config.crop_width as usize, detection_config.crop_height as usize);
 
         let resized_image = resize_image(
             cropped_image,
-            CROP_WIDTH,
-            CROP_HEIGHT,
-            INPUT_WIDTH,
-            INPUT_HEIGHT,
+            detection_config.crop_width,
+            detection_config.crop_height,
+            detection_config.input_width,
+            detection_config.input_height,
         )
         .expect("Failed to resize image for robot detection");
 
         // let mut file = File::create("yuv_image.npy").unwrap();
         // file.write_all(&resized_image).unwrap();
 
+        let keypoints_shape = detection_config.keypoints_shape;
         commands
             .infer_model(&mut model)
             .with_input(&resized_image)
             .create_resource()
-            .spawn(|model_output| {
+            .spawn(move |model_output| {
                 let (keypoints, class_logits) = model_output;
 
                 let estimated_pose = keypoints
-                    .to_shape(OUTPUT_SHAPE)
+                    .to_shape(keypoints_shape)
                     .into_diagnostic()
                     .expect("received pose keypoints with incorrect shape")
                     .to_owned();
 
                 let probs = softmax(&class_logits);
-                // println!("Class logits: {:?}", class_logits);
-                // println!("Class probs {:?}", probs);
 
                 let pose_idx = argmax(&probs);
                 let pose = match pose_idx {
@@ -138,7 +142,7 @@ pub fn detect_referee_pose(
     detect_pose.clear();
 }
 
-pub fn send_referee_pose_output(
+pub(self) fn send_referee_pose_output(
     pose_detection_output: Option<Res<RefereePoseDetectionOutput>>,
     mut pose_detected: EventWriter<RefereePoseDetected>,
 ) {
@@ -152,20 +156,22 @@ pub fn send_referee_pose_output(
     }
 }
 
-pub fn log_estimated_pose(
+fn log_estimated_pose(
     mut pose_estimated: EventReader<RefereePoseDetected>,
     dbg: DebugContext,
     image: Res<Image<Top>>,
     cycle: Res<Cycle>,
+    referee_pose_config: Res<RefereePoseConfig>,
 ) {
     for pose in pose_estimated.read() {
+        let detection_config = &referee_pose_config.detection;
         let keypoints: Vec<(f32, f32)> = pose
             .keypoints
             .axis_iter(Axis(0))
             .map(|v| {
                 (
-                    image.width() as f32 / 2.0 - v[1] * CROP_WIDTH as f32,
-                    v[0] * CROP_HEIGHT as f32,
+                    image.width() as f32 / 2.0 - v[1] * detection_config.crop_width as f32,
+                    v[0] * detection_config.crop_height as f32,
                 )
             })
             .collect();
@@ -177,31 +183,52 @@ pub fn log_estimated_pose(
             *cycle,
             &point_could,
         );
-
-        // dbg.log_with_cycle(
-        //     Top::make_entity_image_path("crop"),
-        //     *cycle,
-        //     &rerun::LineStrip2D(vec!(Vec2D CROP_WIDTH, 0)),
-        // );
     }
 }
 
-fn show_pose(mut pose_detected: EventReader<RefereePoseDetected>) {
-    for _ev in pose_detected.read() {
-        println!("Pose detected: {:?}", _ev.pose);
-        break;
-    }
-    pose_detected.clear();
-}
+/// An bevy event ([`Event`]) that is a request to start detecting a referee pose
+#[derive(Event)]
+pub struct DetectRefereePose;
 
 #[derive(Resource)]
-pub struct RefereePoseDetectionOutput {
+pub(self) struct RefereePoseDetectionOutput {
     pub keypoints: Array2<f32>,
     pub pose: RefereePose,
 }
 
+/// A bevy event [`Event`] for when a referee pose is detected.
+/// It contains:
+/// - `keypoints`: 17 keypoints of the pose estimate model
+/// - `pose`: The pose that is detected (one of the poses in [`RefereePose`])
 #[derive(Event)]
 pub struct RefereePoseDetected {
     pub keypoints: Array2<f32>,
     pub pose: RefereePose,
+}
+
+/// A bevy state ([`States`]) that keeps track of whether the referee pose detection is
+/// active or not
+#[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum VisualRefereeDetectionStatus {
+    #[default]
+    Inactive,
+    Active,
+}
+
+fn activate_detection_status(
+    mut detect_pose: EventReader<DetectRefereePose>,
+    mut next_detection_status: ResMut<NextState<VisualRefereeDetectionStatus>>,
+) {
+    if detect_pose.read().last().is_some() {
+        next_detection_status.set(VisualRefereeDetectionStatus::Active);
+    }
+}
+
+fn deactivate_detection_status(
+    mut pose_detected: EventReader<RefereePoseDetected>,
+    mut next_detection_status: ResMut<NextState<VisualRefereeDetectionStatus>>,
+) {
+    if pose_detected.read().last().is_some() {
+        next_detection_status.set(VisualRefereeDetectionStatus::Inactive);
+    }
 }

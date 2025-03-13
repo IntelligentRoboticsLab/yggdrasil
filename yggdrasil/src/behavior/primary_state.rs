@@ -3,7 +3,7 @@ use crate::{
     game_controller::GameControllerMessageEvent,
     nao::{NaoManager, Priority},
     sensor::button::{ChestButton, HeadButtons},
-    vision::referee::{recognize::RefereePoseRecognised, RefereePose},
+    vision::referee::{recognize::RefereePoseRecognized, RefereePose},
 };
 use bevy::prelude::*;
 
@@ -96,7 +96,7 @@ pub fn update_primary_state(
     config: Res<PrimaryStateConfig>,
     player_config: Res<PlayerConfig>,
     whistle: Res<Whistle>,
-    mut recognized_pose: EventReader<RefereePoseRecognised>,
+    mut recognized_pose: EventReader<RefereePoseRecognized>,
 ) {
     use PrimaryState as PS;
     let next_state = next_primary_state(

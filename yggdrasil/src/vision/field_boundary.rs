@@ -9,7 +9,7 @@ use ml::prelude::*;
 use nalgebra::Point2;
 use tasks::conditions::task_finished;
 
-use super::{camera::init_camera, referee::VisualRefereeDetectionStatus};
+use super::{camera::init_camera, referee::detect::VisualRefereeDetectionStatus};
 
 const MODEL_INPUT_WIDTH: u32 = 40;
 const MODEL_INPUT_HEIGHT: u32 = 30;
