@@ -178,13 +178,13 @@ pub fn role_base(
     let behavior = behavior_state.get();
 
     if behavior == &BehaviorState::StartUp {
-        if (!robot_is_leaning(&imu_values) && *gait == Gait::Sitting) || head_buttons.all_pressed()
-        {
+        if *primary_state == PrimaryState::Sitting && robot_is_leaning(&imu_values) {
+        } else if *gait == Gait::Sitting || head_buttons.all_pressed() {
             commands.set_behavior(Sitting);
-        }
-        if *primary_state == PrimaryState::Initial {
+        } else {
             commands.set_behavior(Stand);
         }
+
         return;
     }
 
@@ -210,6 +210,11 @@ pub fn role_base(
             }
         }
         FallState::None => {}
+    }
+
+    if *gait == Gait::Sitting && *primary_state != PrimaryState::Sitting {
+        commands.set_behavior(Stand);
+        return;
     }
 
     if let Some(message) = game_controller_message {
@@ -245,7 +250,7 @@ pub fn role_base(
                 target: Point2::default(),
             });
         }
-        PrimaryState::Ready => commands.set_behavior(WalkToSet {}),
+        PrimaryState::Ready => commands.set_behavior(WalkToSet),
         PrimaryState::Set => commands.set_behavior(StandLookAt {
             target: ball_or_origin,
         }),
