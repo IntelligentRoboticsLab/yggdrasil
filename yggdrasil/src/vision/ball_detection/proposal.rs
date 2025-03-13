@@ -283,7 +283,7 @@ pub fn check_proposal(
 
     let proposal = BallProposal {
         position: point![ball_center.x as usize, ball_center.y as usize],
-        scale: radius * 2.0,
+        scale: radius * 2.0 * config.bbox_padding_factor,
         distance_to_ball: distance,
     };
 

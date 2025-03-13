@@ -41,7 +41,7 @@ ball_ratio = 0.3
 grass_ratio = 0.0
 
 # Height/width of the bounding box around the ball
-bounding_box_scale = 40.0
+bounding_box_scale = 30.0
 
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
 nms_threshold = 0.35
