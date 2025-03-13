@@ -7,6 +7,7 @@ use bevy::{
     prelude::*,
     tasks::{futures_lite::future, AsyncComputeTaskPool, Task},
 };
+use bifrost::broadcast::Deadline;
 use fourier::Stft;
 use nidhogg::types::{FillExt, LeftEar, RightEar};
 use serde::{Deserialize, Serialize};
@@ -143,11 +144,13 @@ fn update_whistle_state(
         _ => None,
     }).is_some();
 
-   
+    writeln!(detection_state.debug_file, "incoming message: {inc_msg}").unwrap();
+
     if inc_msg {
         whistle.detected = true;
         nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
+        return;
     }
 
     if detections.detections.is_empty() {
@@ -171,12 +174,12 @@ fn update_whistle_state(
         whistle.detected = true;
         nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
-        writeln!(detection_state.debug_file, "WHISTLE DETECTED!!!").unwrap();
+        writeln!(detection_state.debug_file, "whistle.detected = true").unwrap();
 
         // Send message to all teammates
         let msg = TeamMessage::DetectedWhistle;
         tc.outbound_mut()
-            .push(msg)
+            .push_by(msg, Deadline::ASAP)
             .expect("failed to send whistle message");
 
     } else {
@@ -215,7 +218,7 @@ fn spawn_whistle_preprocess_task(
     primary_state: Res<PrimaryState>,
     mut preprocessing_tasks: Query<&mut PreprocessingTask>,
 ) {
-    if *primary_state != PrimaryState::Set || preprocessing_tasks.get_single_mut().is_ok() {
+    if preprocessing_tasks.get_single_mut().is_ok() {
         return;
     }
 
