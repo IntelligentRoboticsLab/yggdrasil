@@ -2,6 +2,7 @@
 
 pub mod classifier;
 pub mod proposal;
+mod communication;
 
 use std::time::Duration;
 
