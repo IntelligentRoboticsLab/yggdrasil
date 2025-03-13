@@ -183,6 +183,8 @@ pub fn update_top_scan_grid(
 ) {
     if let Some(new_scan_grid) = get_scan_grid(&camera_matrix, &layout, &image) {
         *scan_grid = new_scan_grid;
+    } else {
+        warn!("failed to update top scan grid");
     }
 }
 
