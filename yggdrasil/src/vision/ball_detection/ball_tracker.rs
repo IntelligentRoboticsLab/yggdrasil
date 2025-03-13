@@ -49,7 +49,7 @@ impl BallTracker {
 
     #[inline]
     #[must_use]
-    pub fn get_state(&mut self) -> BallPosition {
+    pub fn state(&self) -> BallPosition {
         self.position_kf.state()
     }
 
@@ -62,6 +62,9 @@ impl BallTracker {
         let h = |p: BallPosition| p;
         self.position_kf.update(h, measurement, self.sensor_noise).unwrap();
     }
+
+    //TODO: implement uncertainty in the ball tracker (you want to know when to give up the estimate)
+    // Check cycle time form last cycle
 }
 
 #[derive(Deref, DerefMut, Clone, Copy, Resource)]

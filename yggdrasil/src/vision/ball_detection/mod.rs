@@ -6,6 +6,7 @@ pub mod ball_tracker;
 
 use std::time::Duration;
 
+use ball_tracker::BallTracker;
 use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, Top};
 use nidhogg::types::{color, FillExt, LeftEye};
@@ -127,18 +128,13 @@ fn setup_3d_ball_debug_logging(dbg: DebugContext) {
 
 fn log_3d_balls(
     dbg: DebugContext,
-    top_balls: Res<Balls<Top>>,
-    bottom_balls: Res<Balls<Bottom>>,
+    ball_tracker: Res<BallTracker>,
     mut last_logged: Local<Option<Cycle>>,
 ) {
-    let most_confident_ball = bottom_balls
-        .most_confident_ball()
-        .map(|b| (b.cycle, b.position))
-        .or(top_balls
-            .most_confident_ball()
-            .map(|b| (b.cycle, b.position)));
+    let most_confident_ball = ball_tracker.state();
+    let cycle = ball_tracker.cycle;
 
-    if let Some((cycle, pos, velocity)) = most_confident_ball {
+    if let pos = most_confident_ball {
         if last_logged.map_or(true, |c| cycle > c) {
             *last_logged = Some(cycle);
             dbg.log_with_cycle(
@@ -147,15 +143,15 @@ fn log_3d_balls(
                 &rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05)),
             );
 
-            let velocities = [(velocity.x, velocity.y, 0.0)];
-            let positions = [(pos.x, pos.y, 0.0)];
-            let arrows = rerun::Arrows3D::from_vectors(&velocities).with_origins(&positions);
+            // let velocities = [(velocity.x, velocity.y, 0.0)];
+            // let positions = [(pos.x, pos.y, 0.0)];
+            // let arrows = rerun::Arrows3D::from_vectors(&velocities).with_origins(&positions);
 
-            dbg.log_with_cycle(
-                "balls/velocity",
-                cycle,
-                &arrows,
-            );
+            // dbg.log_with_cycle(
+            //     "balls/velocity",
+            //     cycle,
+            //     &arrows,
+            // );
         }
     } else if last_logged.is_some() {
         // this feels very hacky but i was told this is the most idiomatic way to hide stuff in

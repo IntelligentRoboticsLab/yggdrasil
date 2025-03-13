@@ -174,7 +174,6 @@ impl<T: CameraLocation> Clone for Ball<T> {
 pub struct Balls<T: CameraLocation> {
     pub balls: Vec<Ball<T>>,
     pub cycle: Cycle,
-    
 }
 
 impl<T: CameraLocation> Balls<T> {
@@ -212,6 +211,7 @@ fn classify_balls<T: CameraLocation>(
     let start = Instant::now();
 
     // let mut classified_balls = Vec::new();
+    let mut confident_positions = Vec::new();
 
     for proposal in proposals
         .proposals
@@ -266,29 +266,26 @@ fn classify_balls<T: CameraLocation>(
         //     Vector2::zeros()
         // };
         
-        // Prediction Update
-        ball_tracker.predict();
-        // Measurement Update
         ball_tracker.measurement_update(position);
-
-        // classified_balls.push(Ball {
-        //     position_image: proposal.position.cast(),
-        //     robot_to_ball: robot_to_ball.xy().coords,
-        //     scale: proposal.scale,
-        //     position: robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())),
-        //     // velocity: velocity,
-        //     distance: proposal.distance_to_ball,
-        //     timestamp: Instant::now(),
-        //     cycle: proposals.image.cycle(),
-        //     confidence,
-        //     _marker: PhantomData,
-        // });
+        confident_positions.push((position, confidence));
 
         // TODO: we only store the closest ball with high enough confidence
         // Maybe we should store multiple candidates.
         break;
     }
+    // Prediction Update
+    ball_tracker.predict();
 
+    if !confident_positions.is_empty() {
+        let best_position = confident_positions
+            .iter()
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+            .unwrap()
+            .0;
+
+        // Measurement update
+        ball_tracker.measurement_update(best_position);
+    }
     // if classified_balls.is_empty() {
     //     for ball in &balls.balls {
     //         if ball.timestamp.elapsed() < classifier.ball_life {
