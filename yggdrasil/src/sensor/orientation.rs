@@ -124,7 +124,6 @@ pub fn reset_orientation(
         | &PrimaryState::Penalized
         | &PrimaryState::Finished => {
             orientation.reset();
-            return;
         }
         _ => {}
     }
