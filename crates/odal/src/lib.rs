@@ -1,6 +1,9 @@
 //! Odal helps you define configuration structs from toml files, overlay them, and catch silly🪿 mistakes while doing these things. 🗒️
 mod error;
 
+#[cfg(test)]
+mod tests;
+
 pub use error::*;
 
 use std::{
@@ -10,7 +13,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use toml::Table;
+use toml::{Table, Value};
 
 /// Trait that defines a configuration file for the implementor
 pub trait Config: for<'de> Deserialize<'de> + Serialize {
@@ -70,6 +73,15 @@ pub trait Config: for<'de> Deserialize<'de> + Serialize {
         })?;
 
         Ok(())
+    }
+    
+    /// Compares this config with the main config and saves the differences as an overlay
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the overlay cannot be created or written to the file.
+    fn save_as_overlay(&self, main: &Self, overlay_path: impl AsRef<Path>) -> Result<()> {
+        save_as_overlay(main, self, overlay_path)
     }
 }
 
@@ -147,4 +159,127 @@ fn from_table<T: Config>(table: Table) -> Result<T> {
     table
         .try_into()
         .map_err(|e| Error::from_kind::<T>(ErrorKind::Parse(e)))
+}
+
+/// Extracts the differences between two TOML tables
+///
+/// Creates a new table containing only values that differ between the main and changed tables.
+/// This is used to create an overlay config with only the changes.
+fn extract_diff(main: &Table, changed: &Table) -> Table {
+    let mut diff = Table::new();
+    
+    for (key, changed_value) in changed {
+        if let Some(main_value) = main.get(key) {
+            // If value is a nested table, recursively check for differences
+            if main_value.is_table() && changed_value.is_table() {
+                let main_subtable = main_value.as_table().unwrap();
+                let changed_subtable = changed_value.as_table().unwrap();
+                
+                let subtable_diff = extract_diff(main_subtable, changed_subtable);
+                
+                // Only add the subtable if it has differences
+                if !subtable_diff.is_empty() {
+                    diff.insert(key.clone(), Value::Table(subtable_diff));
+                }
+            } 
+            // If values are different, add to diff table
+            else if main_value != changed_value {
+                diff.insert(key.clone(), changed_value.clone());
+            }
+        }
+        // Key exists in changed but not in main (should not happen with proper validation)
+        else {
+            diff.insert(key.clone(), changed_value.clone());
+        }
+    }
+    
+    diff
+}
+
+/// Extracts and saves changes between two configurations as an overlay
+///
+/// Compares the `changed` configuration against the `main` configuration
+/// and creates an overlay file containing only the differences.
+///
+/// # Examples
+///
+/// ```no_run
+/// use serde::{Deserialize, Serialize};
+/// use odal::Config;
+/// use std::path::Path;
+///
+/// #[derive(Deserialize, Serialize, Clone)]
+/// struct TestConfig {
+///     value: i32,
+///     nested: NestedConfig,
+/// }
+///
+/// #[derive(Deserialize, Serialize, Clone)]
+/// struct NestedConfig {
+///     setting: String,
+/// }
+///
+/// impl Config for TestConfig {
+///     const PATH: &'static str = "test.toml";
+/// }
+///
+/// // Load main config
+/// let main = TestConfig::load(Path::new("./config")).unwrap();
+///
+/// // Create a modified version
+/// let mut modified = main.clone();
+/// modified.nested.setting = "new value".to_string();
+/// 
+/// // Save only the changes as an overlay
+/// modified.save_as_overlay(&main, Path::new("./config/overlay/robot")).unwrap();
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if the overlay cannot be created or written to the file.
+pub fn save_as_overlay<T: Config>(
+    main: &T,
+    changed: &T,
+    overlay_path: impl AsRef<Path>,
+) -> Result<()> {
+    let main_value = toml::to_string_pretty(main)
+        .map_err(|e| Error::from_kind::<T>(ErrorKind::Serialize(e)))?;
+    
+    let changed_value = toml::to_string_pretty(changed)
+        .map_err(|e| Error::from_kind::<T>(ErrorKind::Serialize(e)))?;
+
+    let main_table: Table = main_value
+        .parse()
+        .map_err(|e| Error::from_kind::<T>(ErrorKind::Parse(e)))?;
+    
+    let changed_table: Table = changed_value
+        .parse()
+        .map_err(|e| Error::from_kind::<T>(ErrorKind::Parse(e)))?;
+
+    let overlay_table = extract_diff(&main_table, &changed_table);
+    
+    // Create directory if it doesn't exist
+    if let Some(parent) = overlay_path.as_ref().parent() {
+        fs::create_dir_all(parent).map_err(|e| {
+            Error::from_kind::<T>(ErrorKind::Store {
+                path: parent.display().to_string(),
+                source: e,
+            })
+        })?;
+    }
+
+    // Write the overlay file
+    let overlay_string = toml::to_string_pretty(&overlay_table)
+        .map_err(|e| Error::from_kind::<T>(ErrorKind::Serialize(e)))?;
+    
+    let path = overlay_path.as_ref().join(T::PATH);
+
+    fs::write(&path, overlay_string).map_err(|e| {
+        Error::from_kind::<T>(ErrorKind::Store {
+            path: path.display().to_string(),
+            source: e,
+        })
+    })?;
+
+    Ok(())
 }
