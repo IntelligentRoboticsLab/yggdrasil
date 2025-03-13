@@ -218,14 +218,17 @@ fn initialize_particles_and_pose(
 
 fn odometry_update(odometry: Res<Odometry>, mut particles: Query<&mut RobotPoseFilter>) {
     for mut particle in &mut particles {
-        particle
+        if particle
             .predict(
                 |pose| RobotPose {
                     inner: pose.inner * odometry.offset_to_last,
                 },
                 CovarianceMatrix::from_diagonal(&na::Vector3::new(0.05, 0.05, 0.01)),
             )
-            .unwrap();
+            .is_err()
+        {
+            warn!("Cholesky failed in odometry")
+        }
 
         particle.score *= PARTICLE_SCORE_DECAY;
     }
@@ -264,6 +267,18 @@ struct PrimaryStateHistory {
     current: PrimaryState,
 }
 
+#[derive(Resource, Debug, Clone, Deref, DerefMut)]
+struct Timer2(Timer);
+
+impl Default for Timer2 {
+    fn default() -> Self {
+        Self(Timer::new(
+            std::time::Duration::from_secs(5),
+            TimerMode::Repeating,
+        ))
+    }
+}
+
 fn primary_state_resetting(
     mut commands: Commands,
     primary_state_history: Res<PrimaryStateHistory>,
@@ -272,53 +287,62 @@ fn primary_state_resetting(
     layout: Res<LayoutConfig>,
     player: Res<PlayerConfig>,
     robot_pose: Res<RobotPose>,
+    mut timer: Local<Timer2>,
+    mut mock_penalty: Local<bool>,
 ) {
-    use crate::behavior::primary_state::PrimaryState as PS;
+    // use crate::behavior::primary_state::PrimaryState as PS;
 
-    if is_penalized(gcm) {
-        for entity in &mut particles {
-            commands.entity(entity).despawn();
-        }
+    // timer.tick(std::time::Duration::from_millis(8));
 
-        for particle in penalty_particles(&layout, *robot_pose) {
-            commands.spawn(particle);
-        }
+    // if timer.finished() {
+    //     *mock_penalty = !*mock_penalty;
+    //     println!("Mock penalty: {}", *mock_penalty);
+    // }
 
-        return;
-    }
+    // // if is_penalized(gcm) {
+    // if *mock_penalty {
+    //     for entity in &mut particles {
+    //         commands.entity(entity).despawn();
+    //     }
 
-    match (
-        primary_state_history.previous,
-        primary_state_history.current,
-    ) {
-        (PS::Initial | PS::Standby, PS::Ready) => {
-            for entity in &mut particles {
-                commands.entity(entity).despawn();
-            }
+    //     for particle in penalty_particles(&layout, *robot_pose) {
+    //         commands.spawn(particle);
+    //     }
 
-            for particle in initial_particles(&layout, player.player_number) {
-                commands.spawn(particle);
-            }
-        }
-        (_, _) => (),
-    }
+    //     return;
+    // }
+
+    // match (
+    //     primary_state_history.previous,
+    //     primary_state_history.current,
+    // ) {
+    //     (PS::Initial | PS::Standby, PS::Ready) => {
+    //         for entity in &mut particles {
+    //             commands.entity(entity).despawn();
+    //         }
+
+    //         for particle in initial_particles(&layout, player.player_number) {
+    //             commands.spawn(particle);
+    //         }
+    //     }
+    //     (_, _) => (),
+    // }
 
     // TODO: penalty shootout
 }
 
 fn line_update(
-    added_correspondences: Query<&LineCorrespondences>,
+    added_correspondences: Query<&LineCorrespondences, Added<LineCorrespondences>>,
     mut particles: Query<&mut RobotPoseFilter>,
 ) {
-    println!("updating line");
     for mut particle in &mut particles {
-        println!("new particle");
-
         for correspondences in &added_correspondences {
-            println!("new correspondences");
+            println!("hi");
 
             for correspondence in correspondences.iter() {
-                println!("new correspondence");
+                if rand::random::<f32>() > 0.5 {
+                    continue;
+                }
 
                 match correspondence.field_line {
                     FieldLine::Segment {
@@ -331,7 +355,6 @@ fn line_update(
                             .angle(&field_line.normal())
                             > std::f32::consts::FRAC_PI_6
                         {
-                            println!("angle issue line");
                             continue;
                         }
 
@@ -397,13 +420,12 @@ fn line_update(
                                 ParallelAxis::Y => rotated_covariance[(0, 0)],
                             };
 
-                            // let line_length_weight = if correspondence.detected_line.length() == 0.0
-                            // {
-                            //     1.0
-                            // } else {
-                            //     1.0 / correspondence.detected_line.length()
-                            // };
-                            let line_length_weight = 1.0;
+                            let line_length_weight = if correspondence.detected_line.length() == 0.0
+                            {
+                                1.0
+                            } else {
+                                1.0 / correspondence.detected_line.length()
+                            };
 
                             let angle_variance = (4.0 * distance_variance
                                 / (correspondence.detected_line.length().powi(2)))
@@ -456,7 +478,6 @@ fn line_update(
                         if measured.normal().angle(&reference.normal())
                             > std::f32::consts::FRAC_PI_8
                         {
-                            println!("angle issue circl");
                             continue;
                         }
 
@@ -516,8 +537,6 @@ fn line_update(
                 if correspondence.error.sqrt() < PARTICLE_BONUS_THRESHOLD {
                     particle.score += PARTICLE_SCORE_BONUS;
                 }
-
-                println!("particle score: {}", particle.score);
             }
         }
     }
@@ -534,21 +553,15 @@ fn filter_particles(
         .max_by(|a, b| a.score.total_cmp(&b.score))
         .expect("There should always be at least one particle.");
 
-    println!("best particle score: {}", best_particle.score);
-
-    for (entity, particle) in &particles {
-        if particle.score < PARTICLE_RETAIN_FACTOR * best_particle.score {
-            commands.entity(entity).despawn();
-        }
-    }
+    // for (entity, particle) in &particles {
+    //     if particle.score < PARTICLE_RETAIN_FACTOR * best_particle.score {
+    //         commands.entity(entity).despawn();
+    //     }
+    // }
 
     *pose = best_particle.prediction();
 
     let particle_count = particles.iter().count();
-
-    if particle_count < 20 {
-        println!("amount of particles: {particle_count}");
-    }
 }
 
 // TODO: implement particle resampling
@@ -754,8 +767,8 @@ fn penalty_particles(
 
             let angle = Rotation2::new(std::f32::consts::FRAC_PI_2);
             let pos = na::Translation2::new(
-                side_sign * frac * -layout.field.length * 0.5,
-                layout.field.width * 0.5,
+                side_sign * frac * layout.field.length * 0.5,
+                -layout.field.width * 0.5,
             );
             let pose = RobotPose {
                 inner: na::Isometry2::from_parts(pos, angle.into()),

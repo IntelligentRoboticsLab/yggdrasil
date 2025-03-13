@@ -1,17 +1,22 @@
 use bevy::prelude::*;
 use heimdall::CameraLocation;
 use itertools::Itertools;
+use nalgebra::{Point2, Vector2};
 
 use crate::{
     core::{
-        config::layout::{FieldLine, LayoutConfig},
+        config::layout::{FieldLine, LayoutConfig, ParallelAxis},
         debug::{
             debug_system::{DebugAppExt, SystemToggle},
             DebugContext,
         },
     },
     nao::Cycle,
-    vision::line_detection::{handle_line_task, line::LineSegment2, DetectedLines},
+    vision::line_detection::{
+        handle_line_task,
+        line::{Line2, LineSegment2},
+        DetectedLines,
+    },
 };
 
 use super::RobotPose;
@@ -68,10 +73,32 @@ pub fn get_correspondences<T: CameraLocation>(
             // we want to find the best projection of the line onto a field line
             let mut best = None;
 
-            for field_line in layout.field.field_lines() {
+            let detected_line =
+                LineSegment2::new(pose.inner * segment.start, pose.inner * segment.end);
+
+            // closest angle to the positive x axis
+            let abs_angle = {
+                let line = detected_line.to_line();
+                line.normal.y.atan2(line.normal.x)
+            }
+            .abs();
+
+            for field_line in layout
+                .field
+                .field_lines()
+                .into_iter()
+                .filter(|line| match line {
+                    FieldLine::Segment { axis, .. } => {
+                        if abs_angle < std::f32::consts::FRAC_PI_2 {
+                            matches!(axis, ParallelAxis::X)
+                        } else {
+                            matches!(axis, ParallelAxis::Y)
+                        }
+                    }
+                    FieldLine::Circle(..) => true,
+                })
+            {
                 // transform the detected line by the robot pose
-                let detected_line =
-                    LineSegment2::new(pose.inner * segment.start, pose.inner * segment.end);
 
                 // project the line segment onto the current field line
                 let (start, start_distance) = field_line.project_with_distance(detected_line.start);
