@@ -139,19 +139,15 @@ impl StepPlanner {
         let angle = target_rotation.angle() - robot_pose.world_rotation();
         let turn = TURN_SPEED * angle.signum();
 
-        // TODO: This is currently necessary because, according to odometry, the robot walks around
-        // when it turns around its axis.
-        // Once that is fixed (with localization using line detection), this early return should
-        // probably be removed.
-        if angle.abs() <= 0.4 {
-            return None;
+        if angle.abs() < 0.2 {
+            None
+        } else {
+            Some(Step {
+                forward: 0.,
+                left: 0.,
+                turn,
+            })
         }
-
-        Some(Step {
-            forward: 0.,
-            left: 0.,
-            turn,
-        })
     }
 
     pub fn plan(&mut self, robot_pose: &RobotPose) -> Option<Step> {

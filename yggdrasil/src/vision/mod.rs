@@ -26,8 +26,8 @@ impl PluginGroup for VisionPlugins {
             .add(line_detection::LineDetectionPlugin::<Top>::default())
             .add(line_detection::LineDetectionPlugin::<Bottom>::default())
             .add(field_boundary::FieldBoundaryPlugin)
-            .add(ball_detection::BallDetectionPlugin)
-            .add(robot_detection::RobotDetectionPlugin);
+            .add(ball_detection::BallDetectionPlugin);
+        // .add(robot_detection::RobotDetectionPlugin);
 
         // we only update the exposure weights for the top camera, so it cannot be part
         // of the camera plugin.

@@ -39,23 +39,24 @@ fn setup_team_communication(mut commands: Commands, config: Res<ShowtimeConfig>)
 
 fn sync_budget(mut tc: ResMut<TeamCommunication>, message: Option<Res<GameControllerMessage>>) {
     // We can't calibrate the budget if we aren't in a game.
-    let Some(game_controller_message) = message else {
-        return;
-    };
-
-    if let Some(threshold) = tc.calibrate_budget(&game_controller_message) {
-        // For now, make sure to never send messages faster than can be maintained.
-        tc.rate_mut().late_threshold = threshold;
-        tc.rate_mut().automatic_deadline = threshold;
-
-        if tc.try_send().expect("failed to send packets") {
-            debug!("successfully sent out a new packet.");
+    if let Some(game_controller_message) = message {
+        if let Some(threshold) = tc.calibrate_budget(&game_controller_message) {
+            // For now, make sure to never send messages faster than can be maintained.
+            tc.rate_mut().late_threshold = threshold;
+            tc.rate_mut().automatic_deadline = threshold;
         }
+    }
 
-        let received = tc.try_receive().expect("failed to receive packets.");
-        if received > 0 {
-            debug!("received packet(s) from {} peer(s).", received);
-        }
+    match tc.try_send() {
+        Ok(true) => debug!("successfully sent out a new packet."),
+        Ok(false) => (),
+        Err(err) => warn!(?err, "unable to send packet"),
+    }
+
+    match tc.try_receive() {
+        Ok(0) => (),
+        Ok(n) => debug!("received packet(s) from {} peer(s).", n),
+        Err(err) => warn!(?err, "unable to receive packet"),
     }
 }
 
@@ -185,10 +186,15 @@ impl TeamCommunication {
 pub enum TeamMessage {
     Ping,
     Pong,
+    DetectedWhistle,
 }
 
 impl Message for TeamMessage {
     const MAX_PACKET_SIZE: usize = 128;
     const EXPECTED_SIZE: usize = 1;
     const DEAD_SPACE: usize = 16;
+
+    fn try_merge(&mut self, old: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(old)
+    }
 }

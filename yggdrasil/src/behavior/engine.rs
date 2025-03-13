@@ -1,23 +1,26 @@
 use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
 use heimdall::{Bottom, Top};
+
+use ml::{
+    prelude::{MlTaskCommandsExt, ModelExecutor},
+    MlModel,
+};
 use nalgebra::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
     motion::walking_engine::Gait,
-    sensor::{
-        button::HeadButtons, falling::FallState, imu::IMUValues, orientation::RobotOrientation,
-    },
+    sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
     vision::ball_detection::classifier::Balls,
 };
 
 use super::{
     behaviors::{
-        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, Sitting, SittingBehaviorPlugin,
-        Stand, StandBehaviorPlugin, StandLookAt, StandLookAtBehaviorPlugin, Standup,
-        StandupBehaviorPlugin, StartUpBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin,
-        WalkToSet, WalkToSetBehaviorPlugin,
+        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
+        Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
+        StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
+        WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
@@ -49,9 +52,35 @@ impl Plugin for BehaviorEnginePlugin {
                 DefenderRolePlugin,
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
+                RlStrikerSearchBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
     }
+}
+
+pub trait RlBehaviorInput<T> {
+    fn to_input(&self) -> T;
+}
+
+pub trait RlBehaviorOutput<T> {
+    fn from_output(output: T) -> Self;
+}
+
+pub fn spawn_rl_behavior<M, I, O>(
+    commands: &mut Commands,
+    model_executor: &mut ModelExecutor<M>,
+    input: I,
+) where
+    I: RlBehaviorInput<M::Inputs>,
+    O: RlBehaviorOutput<M::Outputs> + Resource,
+    M: MlModel,
+    <M as ml::MlModel>::Outputs: std::marker::Send,
+{
+    commands
+        .infer_model(model_executor)
+        .with_input(&input.to_input())
+        .create_resource()
+        .spawn(|output| Some(O::from_output(output)));
 }
 
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -67,6 +96,7 @@ pub enum BehaviorState {
     StartUp,
     WalkTo,
     WalkToSet,
+    RlStrikerSearchBehavior,
 }
 
 #[must_use]
@@ -117,25 +147,17 @@ pub enum RoleState {
 
 impl RoleState {
     /// Get the default role for each robot based on that robots player number
-    pub fn by_player_number(mut commands: Commands, player_number: u8) {
+    pub fn by_player_number(commands: &mut Commands, player_number: u8) {
         match player_number {
             1 => commands.set_role(Goalkeeper),
-            5 => commands.set_role(Striker::WalkToBall),
+            5 | 4 => commands.set_role(Striker::WalkToBall),
             _ => commands.set_role(Defender),
         }
     }
 
-    pub fn assign_role(
-        mut commands: Commands,
-        sees_ball: bool,
-        player_number: u8,
-        current_role: RoleState,
-    ) {
-        if sees_ball && current_role != RoleState::Goalkeeper {
-            commands.set_role(Striker::WalkToBall);
-        } else {
-            Self::by_player_number(commands, player_number);
-        }
+    pub fn assign_role(commands: &mut Commands, player_number: u8) {
+        // TODO: Check if robots have been penalized, or which robot is closed to the ball etc.
+        Self::by_player_number(commands, player_number);
     }
 }
 
@@ -171,20 +193,18 @@ pub fn role_base(
     bottom_balls: Res<Balls<Bottom>>,
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
-    mut orientation: ResMut<RobotOrientation>,
-    role: Res<State<RoleState>>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
 
     if behavior == &BehaviorState::StartUp {
-        if (!robot_is_leaning(&imu_values) && *gait == Gait::Sitting) || head_buttons.all_pressed()
-        {
+        if *primary_state == PrimaryState::Sitting && robot_is_leaning(&imu_values) {
+        } else if *gait == Gait::Sitting || head_buttons.all_pressed() {
             commands.set_behavior(Sitting);
-        }
-        if *primary_state == PrimaryState::Initial {
+        } else {
             commands.set_behavior(Stand);
         }
+
         return;
     }
 
@@ -204,12 +224,19 @@ pub fn role_base(
             return;
         }
         FallState::Falling(_) => {
-            if !matches!(*primary_state, PrimaryState::Penalized) {
+            if !matches!(*primary_state, PrimaryState::Penalized)
+                && !matches!(*primary_state, PrimaryState::Initial)
+            {
                 commands.set_behavior(CatchFall);
                 return;
             }
         }
         FallState::None => {}
+    }
+
+    if *gait == Gait::Sitting && *primary_state != PrimaryState::Sitting {
+        commands.set_behavior(Stand);
+        return;
     }
 
     if let Some(message) = game_controller_message {
@@ -233,29 +260,22 @@ pub fn role_base(
     match *primary_state {
         PrimaryState::Sitting => commands.set_behavior(Sitting),
         PrimaryState::Penalized => {
-            orientation.reset();
             commands.set_behavior(Stand);
         }
         PrimaryState::Standby | PrimaryState::Finished | PrimaryState::Calibration => {
             commands.set_behavior(Stand);
         }
         PrimaryState::Initial => {
-            orientation.reset();
             commands.set_behavior(StandLookAt {
                 target: Point2::default(),
             });
         }
-        PrimaryState::Ready => commands.set_behavior(WalkToSet {}),
+        PrimaryState::Ready => commands.set_behavior(WalkToSet),
         PrimaryState::Set => commands.set_behavior(StandLookAt {
             target: ball_or_origin,
         }),
         PrimaryState::Playing { .. } => {
-            RoleState::assign_role(
-                commands,
-                most_confident_ball.is_some(),
-                player_config.player_number,
-                *role.get(),
-            );
+            RoleState::assign_role(&mut commands, player_config.player_number);
         }
     }
 }

@@ -283,7 +283,7 @@ pub fn check_proposal(
 
     let proposal = BallProposal {
         position: point![ball_center.x as usize, ball_center.y as usize],
-        scale: radius * 2.0,
+        scale: radius * 2.0 * config.bbox_padding_factor,
         distance_to_ball: distance,
     };
 
@@ -331,7 +331,7 @@ pub fn get_ball_proposals<T: CameraLocation>(
         let mid_point = middle.line_spot();
 
         // only check for body contours on bottom camera
-        if body_contour.is_part_of_body(mid_point) {
+        if T::POSITION == CameraPosition::Top && body_contour.is_part_of_body(mid_point) {
             continue;
         }
 
