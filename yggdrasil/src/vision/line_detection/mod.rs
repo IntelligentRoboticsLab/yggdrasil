@@ -18,6 +18,7 @@ use ransac::{line::LineDetector, Ransac};
 use serde::{Deserialize, Serialize};
 
 use super::body_contour::{update_body_contours, BodyContour};
+use super::scan_lines;
 use super::{camera::Image, scan_lines::ScanLines};
 use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use crate::{
@@ -82,19 +83,18 @@ impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
             .add_systems(PostStartup, setup_debug::<T>)
             .add_systems(
                 Update,
-                (
-                    (
-                        clear_lines::<T>,
-                        handle_line_task::<T>,
-                        detect_lines_system::<T>
-                            .run_if(resource_exists_and_changed::<ScanLines<T>>)
-                            .after(update_body_contours),
-                    )
-                        .chain(),
+                ((
+                    clear_lines::<T>,
+                    handle_line_task::<T>,
+                    detect_lines_system::<T>
+                        .run_if(resource_exists_and_changed::<ScanLines<T>>)
+                        .after(scan_lines::update_scan_lines::<T>)
+                        .after(update_body_contours),
                     debug_lines::<T>,
                     debug_lines_projected::<T>,
                     debug_rejected_lines::<T>,
-                ),
+                )
+                    .chain(),),
             )
             // TODO: these debug systems should ideally all be batched over multiple cycles
             // but that needs a batching api in the debug module
