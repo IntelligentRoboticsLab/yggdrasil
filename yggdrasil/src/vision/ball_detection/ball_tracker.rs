@@ -19,7 +19,7 @@ use super::classifier::Ball;
 //     }
 // }
 
-enum Hypothesis{
+enum Hypothesis {
     Moving,
     Stationary,
 }
@@ -33,17 +33,16 @@ pub struct BallTracker {
 }
 
 impl BallTracker {
-    fn initialize(&mut self) {
-        let starting_position = BallPosition(Point2::new(0.0, 0.0));
-        let starting_position_cov = nalgebra::SMatrix::<f32, 2, 2>::from_diagonal_element(0.05);
-        self.position_kf = UnscentedKalmanFilter::<2, 5, BallPosition>::new(
-            starting_position,
-            starting_position_cov,
-        );
+    fn initialize(&mut self, position: BallPosition, cov: CovarianceMatrix<2>) {
+        // let starting_position = BallPosition(Point2::new(0.0, 0.0));
+        // let starting_position_cov = nalgebra::SMatrix::<f32, 2, 2>::from_diagonal_element(0.05);
+        self.position_kf = UnscentedKalmanFilter::<2, 5, BallPosition>::new(position, cov);
         // Default value for the position update noise
         self.prediction_noise = filter::CovarianceMatrix::from_diagonal_element(0.1);
         self.sensor_noise = filter::CovarianceMatrix::from_diagonal_element(0.001);
     }
+
+    pub fn update(&mut self) {}
 
     #[inline]
     #[must_use]
@@ -53,12 +52,12 @@ impl BallTracker {
 
     pub fn predict(&mut self) {
         let f = |p: BallPosition| p;
-        self.position_kf.predict(f, self.prediction_noise);
+        self.position_kf.predict(f, self.prediction_noise).unwrap();
     }
 
-    pub fn update(&mut self, measurement: BallPosition) {
+    pub fn measurement_update(&mut self, measurement: BallPosition) {
         let h = |p: BallPosition| p;
-        self.position_kf.update(h, measurement, self.sensor_noise);
+        self.position_kf.update(h, measurement, self.sensor_noise).unwrap();
     }
 }
 

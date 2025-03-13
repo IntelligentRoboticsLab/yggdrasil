@@ -26,6 +26,7 @@ use ml::prelude::*;
 
 use super::proposal::BallProposals;
 use super::ball_tracker::BallPosition;
+use super::ball_tracker::BallTracker;
 use super::BallDetectionConfig;
 
 const IMAGE_INPUT_SIZE: usize = 32;
