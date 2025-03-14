@@ -68,14 +68,16 @@ impl BallTracker {
 
     pub fn predict(&mut self) {
         let f = |p: BallPosition| p;
-        self.position_kf.predict(f, self.prediction_noise).unwrap();
+        if let Err(err) = self.position_kf.predict(f, self.prediction_noise) {
+            error!("failed to predict ball position: {err:?}")
+        }
     }
 
     pub fn measurement_update(&mut self, measurement: BallPosition) {
         let h = |p: BallPosition| p;
-        self.position_kf
-            .update(h, measurement, self.sensor_noise)
-            .unwrap();
+        if let Err(err) = self.position_kf.update(h, measurement, self.sensor_noise) {
+            error!("failed to do measurement update: {err:?}")
+        }
 
         // Putting timestamp update here for now
         self.timestamp = Instant::now();
