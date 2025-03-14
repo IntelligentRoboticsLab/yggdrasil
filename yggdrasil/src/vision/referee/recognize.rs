@@ -1,7 +1,4 @@
 use bevy::prelude::*;
-use heimdall::{CameraLocation, Top};
-
-use crate::{core::debug::DebugContext, nao::Cycle};
 
 use super::{
     detect::{DetectRefereePose, RefereePoseDetected},
