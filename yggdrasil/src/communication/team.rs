@@ -2,9 +2,9 @@ use std::io::ErrorKind;
 use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
 use std::time::Duration;
 
-use nalgebra as na;
 use bevy::prelude::{App, *};
 use miette::IntoDiagnostic;
+use nalgebra as na;
 
 use crate::core::config::showtime::ShowtimeConfig;
 use crate::prelude::*;
