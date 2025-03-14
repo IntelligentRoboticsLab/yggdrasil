@@ -94,7 +94,7 @@ fn detect_referee_pose(
             detection_config.input_width,
             detection_config.input_height,
         )
-        .expect("Failed to resize image for robot detection");
+        .expect("Failed to resize image for visual referee!");
 
         let keypoints_shape = detection_config.keypoints_shape;
         commands
