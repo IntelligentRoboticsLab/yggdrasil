@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use bevy::prelude::*;
 use heimdall::{Bottom, Top};
 use nalgebra::{Normed, Point2, Point3, UnitComplex};
@@ -26,9 +28,13 @@ pub struct StrikerRolePlugin;
 
 impl Plugin for StrikerRolePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, striker_role.run_if(in_role::<Striker>));
+        app.add_systems(Update, striker_role.run_if(in_role::<Striker>))
+            .insert_resource(StrikerWalkStart(None));
     }
 }
+
+#[derive(Resource, Deref)]
+pub struct StrikerWalkStart(pub Option<Instant>);
 
 /// Substates for the `Striker` role
 #[derive(Resource, Default, Debug)]
@@ -50,6 +56,7 @@ pub fn striker_role(
     top_balls: Res<Balls<Top>>,
     bottom_balls: Res<Balls<Bottom>>,
     step_planner: ResMut<step_planner::StepPlanner>,
+    mut striker_walk_start: ResMut<StrikerWalkStart>,
     mut state: ResMut<Striker>,
 ) {
     let most_confident_ball = bottom_balls
@@ -113,7 +120,7 @@ pub fn striker_role(
         // info!(?state, ?ball_distance, ?can_walk_with_ball, ?ball_angle,);
 
         match *state {
-            Striker::WalkToBall | Striker::WalkWithBall => {
+            Striker::WalkToBall => {
                 commands.set_behavior(WalkTo { target: ball_pos });
             }
             Striker::WalkAlign => {
@@ -139,6 +146,19 @@ pub fn striker_role(
                         },
                         look_target: Some(ball_target),
                     });
+                }
+            }
+            Striker::WalkWithBall => {
+                // walk with ball for a certain amount of seconds
+                if let Some(start) = striker_walk_start.0 {
+                    if start.elapsed().as_secs() <= 3 {
+                        commands.set_behavior(RlStrikerSearchBehavior);
+                        return;
+                    } else {
+                        striker_walk_start.0 = None;
+                    }
+                } else {
+                    striker_walk_start.0 = Some(Instant::now());
                 }
             }
         }
