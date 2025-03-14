@@ -255,7 +255,6 @@ fn detect_lines<T: CameraLocation>(
     body_contour: BodyContour,
 ) -> (Vec<LineCandidate>, Vec<Option<Rejection>>) {
     let spots = scan_lines
-        .vertical()
         .line_spots()
         .filter(|point| !body_contour.is_part_of_body(*point));
 
@@ -266,13 +265,6 @@ fn detect_lines<T: CameraLocation>(
 
     // filter out spots that are too far away
     projected_spots.retain(|p| p.coords.norm() < cfg.spot_max_distance);
-
-    // filter out spots that are outside of the field (with some margin)
-    projected_spots.retain(|p| {
-        // apply the pose transformation to the spots first
-        let position = pose.inner * p;
-        field.in_field_with_margin(position, cfg.field_margin)
-    });
 
     let mut candidates = vec![];
     let mut ransac = LineDetector::new(
