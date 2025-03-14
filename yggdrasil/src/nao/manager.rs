@@ -254,7 +254,7 @@ pub struct NaoManager {
 }
 
 impl NaoManager {
-    pub const HEAD_STIFFNESS: f32 = 0.2;
+    pub const HEAD_STIFFNESS: f32 = 0.7;
 
     fn set_joint_settings<T>(
         current_settings: &mut JointSettings<T>,

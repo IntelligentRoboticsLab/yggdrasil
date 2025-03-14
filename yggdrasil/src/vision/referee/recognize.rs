@@ -1,7 +1,4 @@
-use bevy::prelude::*;
-use heimdall::{CameraLocation, Top};
-
-use crate::{core::debug::DebugContext, nao::Cycle};
+use bevy::prelude::*;D
 
 use super::{
     detect::{DetectRefereePose, RefereePoseDetected},
@@ -20,8 +17,8 @@ impl Plugin for RefereePoseRecognitionPlugin {
                 (
                     request_recognition,
                     recognizing_pose.run_if(in_state(VisualRefereeRecognitionStatus::Active)),
-                    show_recognized_pose,
-                ),
+                )
+                    .chain(),
             );
     }
 }
@@ -55,8 +52,7 @@ pub fn recognizing_pose(
             detect_pose.send(DetectRefereePose);
         } else {
             // Determine if pose was the same
-            if all_same_poses(&detected_poses.poses) {
-                let pose = detected_poses.poses.first().expect("Does not happen :)");
+            if let Some(pose) = all_same_poses(&detected_poses.poses) {
                 // Send final pose recognition
                 recognized_pose.send(RefereePoseRecognized { pose: *pose });
             }
@@ -118,24 +114,15 @@ pub struct RefereePoseRecognized {
     pub pose: RefereePose,
 }
 
-/// Logs the recognized pose to rerun
-pub fn show_recognized_pose(
-    mut recognized_pose: EventReader<RefereePoseRecognized>,
-    dbg: DebugContext,
-    cycle: Res<Cycle>,
-) {
-    for pose in recognized_pose.read() {
-        dbg.log_with_cycle(
-            Top::make_entity_image_path("recognized_pose"),
-            *cycle,
-            &rerun::TextLog::new(format!("{:?}", pose.pose)),
-        );
-    }
-}
-
 // Determines whether all poses are the same
-fn all_same_poses(poses: &[RefereePose]) -> bool {
-    poses
+fn all_same_poses(poses: &[RefereePose]) -> Option<&RefereePose> {
+    let all_same = poses
         .first()
-        .is_none_or(|first| poses.iter().all(|x| x == first))
+        .is_none_or(|first| poses.iter().all(|x| x == first));
+
+    if all_same {
+        poses.first()
+    } else {
+        None
+    }
 }

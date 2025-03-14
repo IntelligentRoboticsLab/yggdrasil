@@ -41,6 +41,7 @@ where
     final_indices
 }
 
+/// Resizes a raw buffer of yuyv data.
 pub fn resize_image(
     image: Vec<u8>,
     image_width: u32,
