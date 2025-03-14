@@ -62,7 +62,6 @@ impl Config for RefereePoseConfig {
     const PATH: &'static str = "referee_pose.toml";
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RefereePoseDetectionConfig {
     crop_width: u32,
@@ -74,5 +73,5 @@ struct RefereePoseDetectionConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RefereePoseRecognitionConfig {
-    referee_consecutive_pose_detections: usize
+    referee_consecutive_pose_detections: usize,
 }

@@ -63,13 +63,13 @@ impl MlModel for RefereePoseDetectionModel {
     const ONNX_PATH: &'static str = "models/pose_estimator.onnx";
 }
 
-pub(self) fn detect_referee_pose(
+fn detect_referee_pose(
     mut commands: Commands,
     mut detect_pose: EventReader<DetectRefereePose>,
     mut model: ResMut<ModelExecutor<RefereePoseDetectionModel>>,
     image: Res<Image<Top>>,
     camera_config: Res<CameraConfig>,
-    referee_pose_config: Res<RefereePoseConfig>
+    referee_pose_config: Res<RefereePoseConfig>,
 ) {
     for _ev in detect_pose.read() {
         let top_camera = &camera_config.top;
@@ -81,8 +81,11 @@ pub(self) fn detect_referee_pose(
         let detection_config = referee_pose_config.detection.clone();
 
         // Resize yuyv
-        let cropped_image =
-            image.get_yuyv_patch(image_center, detection_config.crop_width as usize, detection_config.crop_height as usize);
+        let cropped_image = image.get_yuyv_patch(
+            image_center,
+            detection_config.crop_width as usize,
+            detection_config.crop_height as usize,
+        );
 
         let resized_image = resize_image(
             cropped_image,
@@ -92,9 +95,6 @@ pub(self) fn detect_referee_pose(
             detection_config.input_height,
         )
         .expect("Failed to resize image for robot detection");
-
-        // let mut file = File::create("yuv_image.npy").unwrap();
-        // file.write_all(&resized_image).unwrap();
 
         let keypoints_shape = detection_config.keypoints_shape;
         commands
@@ -122,7 +122,7 @@ pub(self) fn detect_referee_pose(
                     5 => RefereePose::KickIn,
                     6 => RefereePose::Ready,
                     _ => {
-                        eprintln!("unknown referee pose");
+                        tracing::warn!("Detected pose is an unknown referee pose");
                         return None;
                     }
                 };
@@ -170,7 +170,8 @@ fn log_estimated_pose(
             .axis_iter(Axis(0))
             .map(|v| {
                 (
-                    image.width() as f32 / 2.0 - v[1] * detection_config.crop_width as f32,
+                    detection_config.input_width as f32 * v[1]
+                        + (image.width() as u32 - detection_config.crop_width) as f32 / 2.0,
                     v[0] * detection_config.crop_height as f32,
                 )
             })
