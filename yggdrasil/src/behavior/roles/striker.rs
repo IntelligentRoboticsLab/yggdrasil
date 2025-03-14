@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use heimdall::{Bottom, Top};
-use nalgebra::{Point2, Point3};
+use nalgebra::{Point2, Point3, UnitComplex};
 
 use crate::{
     behavior::{
@@ -9,7 +9,10 @@ use crate::{
     },
     core::config::layout::LayoutConfig,
     localization::RobotPose,
-    motion::{step_planner::Target, walking_engine::step::Step},
+    motion::{
+        step_planner::{self, Target},
+        walking_engine::step::Step,
+    },
     vision::ball_detection::classifier::Balls,
 };
 
@@ -45,14 +48,53 @@ pub fn striker_role(
     layout_config: Res<LayoutConfig>,
     top_balls: Res<Balls<Top>>,
     bottom_balls: Res<Balls<Bottom>>,
+    step_planner: ResMut<step_planner::StepPlanner>,
     mut state: ResMut<Striker>,
 ) {
-    let relative_ball = bottom_balls
+    let possible_relative_ball = bottom_balls
         .most_confident_ball()
         .map(|b| b.robot_to_ball)
         .or(top_balls.most_confident_ball().map(|b| b.robot_to_ball));
 
-    info!(?relative_ball);
+    let possible_ball = bottom_balls
+        .most_confident_ball()
+        .map(|b| b.position)
+        .or(top_balls.most_confident_ball().map(|b| b.position));
+
+    // info!(?relative_ball);
+
+    // Posistions
+
+    let enemy_goal_center = Point2::new(layout_config.field.length / 2., 0.);
+
+    // Angles
+    let absolute_ball_angle = ball_angle + pose.world_rotation();
+
+    let ball_goal_aligned = absolute_ball_angle < absolute_goal_angle_left
+        && absolute_ball_angle > absolute_goal_angle_right;
+    let ball_goal_center_align = (absolute_ball_angle - absolute_goal_angle).abs() < 0.2;
+
+    if let Some(ball) = possible_relative_ball {
+        let ball_angle = ball.norm();
+
+        if ball.norm() > 0.5 {
+            commands.set_behavior(WalkTo {
+                target: Target {
+                    position: Point2::new(ball.x, ball.y),
+                    rotation: None,
+                },
+            });
+        } else {
+            commands.set_behavior(Walk {
+                step: Step {
+                    forward: 0.01,
+                    left: 0.08,
+                    turn: -0.25,
+                },
+                look_target: Some(Point3::new(ball.x, ball.y, 0.2)),
+            });
+        }
+    }
 }
 
 //     if let Some(ball) = most_confident_ball {
