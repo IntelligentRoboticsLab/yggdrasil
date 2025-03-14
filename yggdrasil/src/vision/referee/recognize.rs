@@ -20,8 +20,8 @@ impl Plugin for RefereePoseRecognitionPlugin {
                 (
                     request_recognition,
                     recognizing_pose.run_if(in_state(VisualRefereeRecognitionStatus::Active)),
-                    show_recognized_pose,
-                ),
+                )
+                    .chain(),
             );
     }
 }
@@ -115,21 +115,6 @@ pub struct RecognizeRefereePose;
 #[derive(Event)]
 pub struct RefereePoseRecognized {
     pub pose: RefereePose,
-}
-
-/// Logs the recognized pose to rerun
-pub fn show_recognized_pose(
-    mut recognized_pose: EventReader<RefereePoseRecognized>,
-    dbg: DebugContext,
-    cycle: Res<Cycle>,
-) {
-    for pose in recognized_pose.read() {
-        dbg.log_with_cycle(
-            Top::make_entity_image_path("recognized_pose"),
-            *cycle,
-            &rerun::TextLog::new(format!("{:?}", pose.pose)),
-        );
-    }
 }
 
 // Determines whether all poses are the same
