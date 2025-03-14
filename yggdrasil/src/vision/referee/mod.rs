@@ -16,6 +16,7 @@ pub mod recognize;
 
 use bevy::prelude::*;
 use bifrost::serialization::{Decode, Encode};
+use communication::RefereePoseCommunicationPlugin;
 use detect::RefereePoseDetectionPlugin;
 use odal::Config;
 use recognize::{RecognizeRefereePose, RefereePoseRecognitionPlugin};
@@ -28,9 +29,13 @@ pub struct VisualRefereePlugin;
 
 impl Plugin for VisualRefereePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((RefereePoseDetectionPlugin, RefereePoseRecognitionPlugin))
-            .init_config::<RefereePoseConfig>()
-            .add_event::<RecognizeRefereePose>();
+        app.add_plugins((
+            RefereePoseDetectionPlugin,
+            RefereePoseRecognitionPlugin,
+            RefereePoseCommunicationPlugin,
+        ))
+        .init_config::<RefereePoseConfig>()
+        .add_event::<RecognizeRefereePose>();
     }
 }
 
