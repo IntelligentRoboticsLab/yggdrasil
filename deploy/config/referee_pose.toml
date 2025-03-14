@@ -1,0 +1,15 @@
+[detection]
+# The width of the cropped image
+crop_width = 256
+# The height of the cropped image
+crop_height = 480
+# The width of the input image for the model
+input_width = 256
+# The height of the input image for the model
+input_height = 256
+# The shape of the keypoints, obtained from the referee pose detection model.
+# The output consists of 17 keypoints each having an x, y and confidence score 
+keypoints_shape = [17, 3]
+
+[recognition]
+referee_consecutive_pose_detections = 2
