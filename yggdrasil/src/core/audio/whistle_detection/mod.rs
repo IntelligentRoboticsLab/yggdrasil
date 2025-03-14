@@ -122,6 +122,7 @@ struct WhistleDetections {
 }
 
 fn update_whistle_state(
+    primary_state: Res<PrimaryState>,
     detections: Res<WhistleDetections>,
     mut whistle: ResMut<Whistle>,
     mut detection_state: ResMut<WhistleDetectionState>,
@@ -166,11 +167,13 @@ fn update_whistle_state(
         nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
 
-        // Send message to all teammates
-        let msg = TeamMessage::DetectedWhistle;
-        tc.outbound_mut()
-            .push_by(msg, Deadline::ASAP)
-            .expect("failed to send whistle message");
+        if *primary_state == PrimaryState::Set {
+            // Send message to all teammates
+            let msg = TeamMessage::DetectedWhistle;
+            tc.outbound_mut()
+                .update_or_push_by(msg, Deadline::ASAP)
+                .expect("failed to encode whistle message");
+        }
     } else {
         whistle.detected = false;
         nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);

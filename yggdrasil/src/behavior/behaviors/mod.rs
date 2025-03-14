@@ -1,5 +1,6 @@
 mod catchfall;
 mod observe;
+mod referee;
 mod rl_striker_search;
 mod sitting;
 mod stand;
@@ -12,6 +13,7 @@ mod walk_to_set;
 
 pub use catchfall::{CatchFall, CatchFallBehaviorPlugin};
 pub use observe::{Observe, ObserveBehaviorConfig, ObserveBehaviorPlugin};
+pub use referee::{VisualReferee, VisualRefereeBehaviorPlugin};
 pub use rl_striker_search::{
     RlStrikerSearchBehavior, RlStrikerSearchBehaviorConfig, RlStrikerSearchBehaviorPlugin,
 };

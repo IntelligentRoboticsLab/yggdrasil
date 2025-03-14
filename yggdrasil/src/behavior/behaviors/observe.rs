@@ -8,10 +8,7 @@ use crate::{
         engine::{in_behavior, Behavior, BehaviorState},
         BehaviorConfig,
     },
-    motion::{
-        step_planner::StepPlanner,
-        walking_engine::{step::Step, step_context::StepContext},
-    },
+    motion::walking_engine::{step::Step, step_context::StepContext},
     nao::{NaoManager, Priority},
 };
 use nidhogg::types::{FillExt, HeadJoints};
@@ -77,7 +74,6 @@ fn observe(
     behavior_config: Res<BehaviorConfig>,
     observe: Res<Observe>,
     observe_starting_time: Res<ObserveStartingTime>,
-    mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
 ) {
     let observe_config = &behavior_config.observe;
@@ -90,7 +86,6 @@ fn observe(
     );
 
     if let Some(step) = observe.step {
-        step_planner.clear_target();
         step_context.request_walk(step);
     } else {
         step_context.request_stand();

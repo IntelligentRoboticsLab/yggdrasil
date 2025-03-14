@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use nalgebra::Point2;
 
 use crate::{
     behavior::{
@@ -7,8 +6,7 @@ use crate::{
         engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
-    localization::RobotPose,
-    motion::step_planner::{StepPlanner, Target},
+    motion::path::PathPlanner,
 };
 
 /// Plugin for the Defender role
@@ -30,32 +28,19 @@ impl Roles for Defender {
 
 pub fn defender_role(
     mut commands: Commands,
-    pose: Res<RobotPose>,
-    player_config: Res<PlayerConfig>,
     layout_config: Res<LayoutConfig>,
-    step_planner: ResMut<StepPlanner>,
+    player_config: Res<PlayerConfig>,
+    planner: Res<PathPlanner>,
 ) {
     let set_robot_position = layout_config
         .set_positions
         .player(player_config.player_number);
-    let set_position = set_robot_position.isometry.translation.vector;
-    let set_point = Point2::new(set_position.x, set_position.y);
-    let defend_target = Target {
-        position: set_point,
-        rotation: Some(set_robot_position.isometry.rotation),
-    };
 
-    let close_to_target = pose.distance_to(&set_point) < 0.5;
-    let aligned_with_rotation =
-        (pose.world_rotation() - set_robot_position.isometry.rotation.angle()).abs() < 0.2;
-
-    if step_planner.has_target() && step_planner.reached_target()
-        || (close_to_target && aligned_with_rotation)
-    {
+    if planner.reached_target() {
         commands.set_behavior(Observe::with_turning(-0.4));
     } else {
         commands.set_behavior(WalkTo {
-            target: defend_target,
+            target: set_robot_position.isometry.into(),
         });
     }
 }

@@ -7,10 +7,7 @@ use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
     localization::RobotPose,
-    motion::{
-        step_planner::{StepPlanner, Target},
-        walking_engine::step_context::StepContext,
-    },
+    motion::{path::PathPlanner, walking_engine::step_context::StepContext},
     nao::{NaoManager, Priority},
 };
 
@@ -31,11 +28,12 @@ impl Behavior for WalkToSet {
     const STATE: BehaviorState = BehaviorState::WalkToSet;
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn walk_to_set(
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
     player_config: Res<PlayerConfig>,
-    mut step_planner: ResMut<StepPlanner>,
+    mut planner: ResMut<PathPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
@@ -43,19 +41,9 @@ pub fn walk_to_set(
         .set_positions
         .player(player_config.player_number);
 
-    let target = Target {
-        position: set_robot_position.isometry.translation.vector.into(),
-        rotation: Some(set_robot_position.isometry.rotation),
-    };
+    planner.target = Some(set_robot_position.isometry.into());
 
-    if step_planner
-        .current_absolute_target()
-        .is_none_or(|current_target| *current_target == target)
-    {
-        step_planner.set_absolute_target(target);
-    }
-
-    if let Some(step) = step_planner.plan(&pose) {
+    if let Some(step) = planner.step(pose.inner) {
         step_context.request_walk(step);
     } else {
         let look_at = pose.get_look_at_absolute(&Point3::origin());
