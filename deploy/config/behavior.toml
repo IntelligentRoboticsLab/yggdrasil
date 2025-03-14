@@ -20,3 +20,16 @@ head_rotation_speed = 1.0
 head_yaw_max = 1.2
 # Controls how far to the bottom the robot looks while looking around, in radians
 head_pitch_max = 0.2
+
+[rl_defender_search]
+# The output of the policy is element wise multiplied with this value to determine the
+# step that is requested to the walking engine.
+policy_output_scaling = { forward = 0.04, left = 0.06, turn = 0.1 }
+# Controls how fast the robot moves its head back and forth while looking around
+head_rotation_speed = 1.0
+# Controls how far to the left and right the robot looks while looking around, in radians.
+# If this value is one, the robot will look a maximum of one radian to the left and one
+# radian to the right, etc.
+head_yaw_max = 1.2
+# Controls how far to the bottom the robot looks while looking around, in radians
+head_pitch_max = 0.2
