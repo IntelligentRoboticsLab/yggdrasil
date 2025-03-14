@@ -66,7 +66,12 @@ impl BallTracker {
     }
 
     pub fn cutoff(&self) -> Hypothesis {
-        let max_variance = self.covariance().diagonal().iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        let max_variance = self
+            .covariance()
+            .diagonal()
+            .iter()
+            .cloned()
+            .fold(f32::NEG_INFINITY, f32::max);
         if max_variance < STATIONARY_THRESHOLD {
             Hypothesis::Stationary(max_variance)
         } else {
@@ -81,7 +86,9 @@ impl BallTracker {
 
     pub fn measurement_update(&mut self, measurement: BallPosition) {
         let h = |p: BallPosition| p;
-        self.position_kf.update(h, measurement, self.sensor_noise).unwrap();
+        self.position_kf
+            .update(h, measurement, self.sensor_noise)
+            .unwrap();
 
         // Putting timestamp update here for now
         self.timestamp = Instant::now();

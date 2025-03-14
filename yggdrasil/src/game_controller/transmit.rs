@@ -10,7 +10,9 @@ use futures::channel::mpsc::{self};
 use heimdall::{Bottom, Top};
 
 use crate::{
-    core::config::showtime::PlayerConfig, localization::RobotPose, sensor::falling::FallState,
+    core::config::showtime::PlayerConfig,
+    localization::RobotPose,
+    sensor::falling::FallState,
     vision::ball_detection::{ball_tracker::BallTracker, classifier::Balls, Hypothesis},
 };
 
@@ -95,9 +97,7 @@ fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {
     ]
 }
 
-fn balls_to_game_controller_ball(
-    ball_tracker: &BallTracker
-) -> (f32, [f32; 2]) {
+fn balls_to_game_controller_ball(ball_tracker: &BallTracker) -> (f32, [f32; 2]) {
     if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
         (
             ball_tracker.timestamp.elapsed().as_secs_f32(),

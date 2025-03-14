@@ -257,7 +257,6 @@ pub fn role_base(
         Point2::default()
     };
 
-
     match *primary_state {
         PrimaryState::Sitting => commands.set_behavior(Sitting),
         PrimaryState::Penalized => {

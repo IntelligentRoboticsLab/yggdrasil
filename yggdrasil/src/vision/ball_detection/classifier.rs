@@ -24,8 +24,8 @@ use crate::nao::Cycle;
 use crate::vision::camera::init_camera;
 use ml::prelude::*;
 
-use super::proposal::BallProposals;
 use super::ball_tracker::{BallPosition, BallTracker};
+use super::proposal::BallProposals;
 use super::BallDetectionConfig;
 
 const IMAGE_INPUT_SIZE: usize = 32;
@@ -49,9 +49,7 @@ impl Plugin for BallClassifierPlugin {
         app.init_ml_model::<BallClassifierModel>()
             .add_systems(
                 PostStartup,
-                (
-                    init_ball_classifier.after(init_camera::<Top>),
-                ),
+                (init_ball_classifier.after(init_camera::<Top>),),
             )
             .add_systems(
                 Update,
@@ -198,7 +196,6 @@ impl<T: CameraLocation> Balls<T> {
     }
 }
 
-
 fn classify_balls<T: CameraLocation>(
     mut commands: Commands,
     mut proposals: ResMut<BallProposals<T>>,
@@ -266,7 +263,7 @@ fn classify_balls<T: CameraLocation>(
         // } else {
         //     Vector2::zeros()
         // };
-        
+
         ball_tracker.measurement_update(position);
         confident_positions.push((position, confidence));
 
