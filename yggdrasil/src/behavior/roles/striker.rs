@@ -73,13 +73,13 @@ pub fn striker_role(
             ball_goal_aligned,
         );
 
-        info!(
-            ?ball_goal_center_align,
-            ?ball_goal_aligned,
-            ?ball_aligned,
-            ?ball_angle,
-            ?ball_distance
-        );
+        // info!(
+        //     ?ball_goal_center_align,
+        //     ?ball_goal_aligned,
+        //     ?ball_aligned,
+        //     ?ball_angle,
+        //     ?ball_distance
+        // );
 
         match *state {
             Striker::WalkToBall | Striker::WalkWithBall => {
@@ -129,7 +129,7 @@ impl Striker {
         *self = match self {
             _ if ball_distance > BALL_DISTANCE_WALK_THRESHOLD => Striker::WalkToBall,
             Striker::WalkToBall if ball_distance < 0.3 => Striker::WalkAlign,
-            Striker::WalkAlign if ball_goal_center_align && ball_aligned => Striker::WalkWithBall,
+            Striker::WalkAlign if ball_goal_center_align => Striker::WalkWithBall,
             Striker::WalkWithBall if !ball_goal_aligned => Striker::WalkAlign,
             _ => return,
         }

@@ -153,7 +153,7 @@ impl RoleState {
     pub fn by_player_number(commands: &mut Commands, player_number: u8) {
         match player_number {
             1 => commands.set_role(Goalkeeper),
-            5 | 4 => commands.set_role(Striker::WalkToBall),
+            2 | 3 | 4 | 5 => commands.set_role(Striker::WalkToBall),
             _ => commands.set_role(Defender),
         }
     }
@@ -163,11 +163,8 @@ impl RoleState {
         player_number: u8,
         possible_ball_distance: Option<f32>,
     ) {
-        if let Some(distance) = possible_ball_distance {
-            if distance < 1.0 {
-                commands.set_role(Striker::WalkToBall);
-                return;
-            }
+        if let Some(_) = possible_ball_distance {
+            commands.set_role(Striker::WalkToBall);
         }
         // TODO: Check if robots have been penalized, or which robot is closed to the ball etc.
         Self::by_player_number(commands, player_number);

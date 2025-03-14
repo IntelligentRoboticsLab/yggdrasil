@@ -625,9 +625,9 @@ fn get_scan_lines<T: CameraLocation>(
     let field = FieldColorApproximate::new(yuyv);
 
     let horizontal = get_horizontal_scan_lines(config, &field, yuyv, scan_grid, field_boundary);
-    let vertical = get_vertical_scan_lines(config, &field, yuyv, scan_grid, field_boundary);
+    // let vertical = get_vertical_scan_lines(config, &field, yuyv, scan_grid, field_boundary);
 
-    ScanLines::new(image, horizontal, vertical)
+    ScanLines::new(image, horizontal, ScanLine { raw: vec![] })
 }
 
 pub fn init_scan_lines<T: CameraLocation>(mut commands: Commands, image: Res<Image<T>>) {
