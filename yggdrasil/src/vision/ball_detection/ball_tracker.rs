@@ -42,17 +42,6 @@ pub struct BallTracker {
 }
 
 impl BallTracker {
-    pub fn initialize(&mut self, position: BallPosition, cov: CovarianceMatrix<2>) {
-        // let starting_position = BallPosition(Point2::new(0.0, 0.0));
-        // let starting_position_cov = nalgebra::SMatrix::<f32, 2, 2>::from_diagonal_element(0.05);
-        self.position_kf = UnscentedKalmanFilter::<2, 5, BallPosition>::new(position, cov);
-        // Default value for the position update noise
-        self.prediction_noise = filter::CovarianceMatrix::from_diagonal_element(0.01);
-        self.sensor_noise = filter::CovarianceMatrix::from_diagonal_element(0.00001);
-    }
-
-    // pub fn update(&mut self) {}
-
     #[inline]
     #[must_use]
     pub fn state(&self) -> BallPosition {
