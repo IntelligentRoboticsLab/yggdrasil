@@ -50,16 +50,15 @@ impl Plugin for WhistleDetectionPlugin {
             .add_systems(Update, spawn_whistle_preprocess_task)
             .add_systems(
                 Update,
-                (update_whistle_state, despawn_whistle_preprocessing_task, spawn_whistle_detection_model)
+                (update_whistle_state, spawn_whistle_detection_model)
                     .chain()
                     .run_if(task_finished::<WhistleDetections>),
             )
-            //.add_systems(
-            //    Update,
-            //    despawn_whistle_preprocessing_task
-            //        .run_if(resource_exists_and_changed::<WhistleDetections>),
-            //);
-            ;
+            .add_systems(
+                Update,
+                despawn_whistle_preprocessing_task
+                    .run_if(resource_exists_and_changed::<WhistleDetections>),
+            );
     }
 }
 
