@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
-use heimdall::{Bottom, Top};
 
 use ml::{
     prelude::{MlTaskCommandsExt, ModelExecutor},
@@ -12,7 +11,6 @@ use crate::{
     core::config::showtime::PlayerConfig,
     motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
-    vision::ball_detection::classifier::Balls,
 };
 
 use super::{
@@ -192,8 +190,6 @@ pub fn role_base(
     fall_state: Res<FallState>,
     standup_state: Option<Res<Standup>>,
     player_config: Res<PlayerConfig>,
-    top_balls: Res<Balls<Top>>,
-    bottom_balls: Res<Balls<Bottom>>,
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
 ) {
@@ -253,13 +249,6 @@ pub fn role_base(
         }
     }
 
-    let most_confident_ball = bottom_balls
-        .most_confident_ball()
-        .map(|b| b.position)
-        .or(top_balls.most_confident_ball().map(|b| b.position));
-
-    let ball_or_origin = most_confident_ball.unwrap_or(Point2::origin());
-
     match *primary_state {
         PrimaryState::Sitting => commands.set_behavior(Sitting),
         PrimaryState::Penalized => {
@@ -278,7 +267,7 @@ pub fn role_base(
         }
         PrimaryState::Ready { .. } => commands.set_behavior(WalkToSet {}),
         PrimaryState::Set => commands.set_behavior(StandLookAt {
-            target: ball_or_origin,
+            target: Point2::default(),
         }),
         PrimaryState::Playing { .. } => {
             RoleState::assign_role(&mut commands, player_config.player_number);
