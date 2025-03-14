@@ -10,13 +10,13 @@ ransac_inlier_threshold = 0.015
 # maximum distance of a valid line spot from the camera in meters
 spot_max_distance = 4.0
 # minimum number of points in a valid line segment
-line_segment_min_points = 20
+line_segment_min_points = 10
 # minimum length of a line segment after merging in meters
 line_segment_min_length = 0.3
 # maximum length of a line segment after merging in meters
 line_segment_max_length = 5.0
 # maximum distance between two inliers of a line segment in meters
-max_line_gap_distance = 0.25
+max_line_gap_distance = 0.15
 # number of samples for the white test
 white_test_samples = 10
 # sampling distance for the white test in meters
