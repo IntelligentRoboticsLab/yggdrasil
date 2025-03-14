@@ -46,6 +46,8 @@ impl Plugin for BehaviorEnginePlugin {
                 ObserveBehaviorPlugin,
                 SittingBehaviorPlugin,
                 StandLookAtBehaviorPlugin,
+            ))
+            .add_plugins((
                 StandupBehaviorPlugin,
                 StartUpBehaviorPlugin,
                 WalkToBehaviorPlugin,
