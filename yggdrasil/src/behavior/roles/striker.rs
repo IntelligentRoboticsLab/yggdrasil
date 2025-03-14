@@ -47,102 +47,105 @@ pub fn striker_role(
     bottom_balls: Res<Balls<Bottom>>,
     mut state: ResMut<Striker>,
 ) {
-    let most_confident_ball = bottom_balls
+    let relative_ball = bottom_balls
         .most_confident_ball()
-        .map(|b| b.position)
-        .or(top_balls.most_confident_ball().map(|b| b.position));
+        .map(|b| b.robot_to_ball)
+        .or(top_balls.most_confident_ball().map(|b| b.robot_to_ball));
 
-    if let Some(ball) = most_confident_ball {
-        let enemy_goal_center = Point2::new(layout_config.field.length / 2., 0.);
-        let enemy_goal_left = Point2::new(layout_config.field.length / 2., 0.8);
-        let enemy_goal_right = Point2::new(layout_config.field.length / 2., -0.8);
-
-        let absolute_goal_angle = pose.angle_to(&enemy_goal_center) + pose.world_rotation();
-        let absolute_goal_angle_left = pose.angle_to(&enemy_goal_left) + pose.world_rotation();
-        let absolute_goal_angle_right = pose.angle_to(&enemy_goal_right) + pose.world_rotation();
-
-        let ball_angle = pose.angle_to(&ball);
-        let absolute_ball_angle = ball_angle + pose.world_rotation();
-
-        let ball_aligned = ball_angle.abs() < 0.2;
-        let ball_goal_aligned = absolute_ball_angle < absolute_goal_angle_left
-            && absolute_ball_angle > absolute_goal_angle_right;
-
-        let ball_goal_center_align = (absolute_ball_angle - absolute_goal_angle).abs() < 0.2;
-
-        let ball_distance = pose.distance_to(&ball);
-
-        let ball_pos = Target {
-            position: ball,
-            rotation: None,
-        };
-
-        state.next_state(
-            ball_distance,
-            ball_goal_center_align,
-            ball_aligned,
-            ball_goal_aligned,
-        );
-
-        info!(
-            ?ball_goal_center_align,
-            ?ball_goal_aligned,
-            ?ball_aligned,
-            ?ball_angle,
-            ?ball_distance
-        );
-
-        match *state {
-            Striker::WalkToBall | Striker::WalkWithBall => {
-                commands.set_behavior(WalkTo { target: ball_pos });
-            }
-            Striker::WalkAlign => {
-                let ball_target = Point3::new(ball.x, ball.y, 0.0);
-
-                if absolute_ball_angle > absolute_goal_angle_left {
-                    commands.set_behavior(Walk {
-                        step: Step {
-                            forward: 0.01,
-                            left: 0.08,
-                            turn: -0.25,
-                        },
-                        look_target: Some(ball_target),
-                    });
-                    return;
-                }
-                if absolute_ball_angle < absolute_goal_angle_right {
-                    commands.set_behavior(Walk {
-                        step: Step {
-                            forward: 0.01,
-                            left: -0.08,
-                            turn: 0.25,
-                        },
-                        look_target: Some(ball_target),
-                    });
-                }
-            }
-        }
-    } else if pose.inner.translation.x.abs() > 7.0 && pose.inner.translation.y.abs() > 6.0 {
-        commands.set_behavior(WalkToSet);
-    } else {
-        commands.set_behavior(RlStrikerSearchBehavior);
-    }
+    info!(?relative_ball);
 }
 
-impl Striker {
-    fn next_state(
-        &mut self,
-        ball_distance: f32,
-        ball_goal_center_align: bool,
-        ball_aligned: bool,
-        ball_goal_aligned: bool,
-    ) {
-        *self = match self {
-            _ if ball_distance > BALL_DISTANCE_WALK_THRESHOLD => Striker::WalkToBall,
-            Striker::WalkToBall if ball_distance < 0.4 => Striker::WalkAlign,
-            Striker::WalkAlign if ball_goal_center_align && ball_aligned => Striker::WalkWithBall,
-            Striker::WalkWithBall if !ball_goal_aligned => Striker::WalkAlign,
-            _ => return,
-        }
-    }
-}
+//     if let Some(ball) = most_confident_ball {
+//         let enemy_goal_center = Point2::new(layout_config.field.length / 2., 0.);
+//         let enemy_goal_left = Point2::new(layout_config.field.length / 2., 0.8);
+//         let enemy_goal_right = Point2::new(layout_config.field.length / 2., -0.8);
+
+//         let absolute_goal_angle = pose.angle_to(&enemy_goal_center) + pose.world_rotation();
+//         let absolute_goal_angle_left = pose.angle_to(&enemy_goal_left) + pose.world_rotation();
+//         let absolute_goal_angle_right = pose.angle_to(&enemy_goal_right) + pose.world_rotation();
+
+//         let ball_angle = pose.angle_to(&ball);
+//         let absolute_ball_angle = ball_angle + pose.world_rotation();
+
+//         let ball_aligned = ball_angle.abs() < 0.2;
+//         let ball_goal_aligned = absolute_ball_angle < absolute_goal_angle_left
+//             && absolute_ball_angle > absolute_goal_angle_right;
+
+//         let ball_goal_center_align = (absolute_ball_angle - absolute_goal_angle).abs() < 0.2;
+
+//         let ball_distance = pose.distance_to(&ball);
+
+//         let ball_pos = Target {
+//             position: ball,
+//             rotation: None,
+//         };
+
+//         state.next_state(
+//             ball_distance,
+//             ball_goal_center_align,
+//             ball_aligned,
+//             ball_goal_aligned,
+//         );
+
+//         info!(
+//             ?ball_goal_center_align,
+//             ?ball_goal_aligned,
+//             ?ball_aligned,
+//             ?ball_angle,
+//             ?ball_distance
+//         );
+
+//         match *state {
+//             Striker::WalkToBall | Striker::WalkWithBall => {
+//                 commands.set_behavior(WalkTo { target: ball_pos });
+//             }
+//             Striker::WalkAlign => {
+//                 let ball_target = Point3::new(ball.x, ball.y, 0.0);
+
+//                 if absolute_ball_angle > absolute_goal_angle_left {
+//                     commands.set_behavior(Walk {
+//                         step: Step {
+//                             forward: 0.01,
+//                             left: 0.08,
+//                             turn: -0.25,
+//                         },
+//                         look_target: Some(ball_target),
+//                     });
+//                     return;
+//                 }
+//                 if absolute_ball_angle < absolute_goal_angle_right {
+//                     commands.set_behavior(Walk {
+//                         step: Step {
+//                             forward: 0.01,
+//                             left: -0.08,
+//                             turn: 0.25,
+//                         },
+//                         look_target: Some(ball_target),
+//                     });
+//                 }
+//             }
+//         }
+//     } else if pose.inner.translation.x.abs() > 7.0 && pose.inner.translation.y.abs() > 6.0 {
+//         commands.set_behavior(WalkToSet);
+//     } else {
+//         commands.set_behavior(RlStrikerSearchBehavior);
+//     }
+// }
+
+// impl Striker {
+//     fn next_state(
+//         &mut self,
+//         ball_distance: f32,
+//         ball_goal_center_align: bool,
+//         ball_aligned: bool,
+//         ball_goal_aligned: bool,
+//     ) {
+//         *self = match self {
+//             _ if ball_distance > BALL_DISTANCE_WALK_THRESHOLD => Striker::WalkToBall,
+//             Striker::WalkToBall if ball_distance < 0.4 => Striker::WalkAlign,
+//             Striker::WalkAlign if ball_goal_center_align && ball_aligned => Striker::WalkWithBall,
+//             Striker::WalkWithBall if !ball_goal_aligned => Striker::WalkAlign,
+//             _ => return,
+//         }
+//     }
+// }
