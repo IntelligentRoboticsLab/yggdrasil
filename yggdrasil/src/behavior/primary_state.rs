@@ -34,6 +34,7 @@ pub struct PrimaryStatePlugin;
 
 impl Plugin for PrimaryStatePlugin {
     fn build(&self, app: &mut App) {
+        app.add_event::<ReceivedRefereePose>();
         app.insert_resource(PrimaryState::Sitting);
 
         app.add_systems(
