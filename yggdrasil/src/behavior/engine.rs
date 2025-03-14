@@ -253,10 +253,10 @@ pub fn role_base(
 
     let most_confident_ball = ball_tracker.state();
 
-    let ball_or_origin = if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
-        most_confident_ball.0
+    let most_confident_ball = if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
+        Some(most_confident_ball.0)
     } else {
-        Point2::default()
+        None
     };
 
     match *primary_state {
@@ -277,7 +277,7 @@ pub fn role_base(
         }
         PrimaryState::Ready { .. } => commands.set_behavior(WalkToSet {}),
         PrimaryState::Set => commands.set_behavior(StandLookAt {
-            target: ball_or_origin,
+            target: Point2::default(),
         }),
         PrimaryState::Playing { .. } => {
             RoleState::assign_role(&mut commands, player_config.player_number);
