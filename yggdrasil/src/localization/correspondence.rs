@@ -76,27 +76,26 @@ pub fn get_correspondences<T: CameraLocation>(
             let detected_line =
                 LineSegment2::new(pose.inner * segment.start, pose.inner * segment.end);
 
+            // TODO
             // closest angle to the positive x axis
-            let abs_angle = {
-                let line = detected_line.to_line();
-                line.normal.y.atan2(line.normal.x)
-            }
-            .abs();
+            // let abs_angle = {
+            //     let line = detected_line.to_line();
+            //     line.normal.y.atan2(line.normal.x)
+            // }
+            // .abs();
 
-            for field_line in layout
-                .field
-                .field_lines()
-                .into_iter()
-                .filter(|line| match line {
-                    FieldLine::Segment { axis, .. } => {
-                        if abs_angle < std::f32::consts::FRAC_PI_2 {
-                            matches!(axis, ParallelAxis::X)
-                        } else {
-                            matches!(axis, ParallelAxis::Y)
-                        }
-                    }
-                    FieldLine::Circle(..) => true,
-                })
+            for field_line in layout.field.field_lines().into_iter()
+            // TODO
+            // .filter(|line| match line {
+            //     FieldLine::Segment { axis, .. } => {
+            //         if abs_angle > std::f32::consts::FRAC_PI_2 {
+            //             matches!(axis, ParallelAxis::X)
+            //         } else {
+            //             matches!(axis, ParallelAxis::Y)
+            //         }
+            //     }
+            //     FieldLine::Circle(..) => true,
+            // })
             {
                 // transform the detected line by the robot pose
 

@@ -1,16 +1,20 @@
-use std::iter::IntoIterator;
+use std::{
+    iter::IntoIterator,
+    time::{Duration, Instant},
+};
 
 use bevy::prelude::*;
 
-use bifrost::communication::{GameControllerMessage, GamePhase};
+use bifrost::communication::GameControllerMessage;
 use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
+use heimdall::{Bottom, Top};
 use nalgebra::{self as na, point, vector, ComplexField, Point2, Rotation2};
 use nidhogg::types::HeadJoints;
 
 use crate::{
-    behavior::primary_state::PrimaryState,
+    behavior::primary_state::{is_penalized_by_game_controller, PrimaryState},
     core::{
         config::{
             layout::{FieldLine, LayoutConfig, ParallelAxis},
@@ -24,6 +28,8 @@ use crate::{
     sensor::fsr::Contacts,
 };
 
+use super::correspondence::get_correspondences;
+
 const PARTICLE_SCORE_DECAY: f32 = 0.9;
 const PARTICLE_SCORE_DEFAULT: f32 = 10.0;
 const PARTICLE_SCORE_INCREASE: f32 = 0.5;
@@ -36,20 +42,27 @@ pub struct PoseFilterPlugin;
 impl Plugin for PoseFilterPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<PrimaryStateHistory>()
+            .init_resource::<PenalizedHistory>()
             .add_systems(PostStartup, initialize_particles_and_pose)
             .add_systems(
                 Update,
                 (
-                    odometry_update,
-                    update_primary_state_history,
-                    primary_state_resetting,
-                    (line_update, filter_particles, resample, sensor_resetting)
-                        .chain()
+                    odometry_update
                         .run_if(not(motion_is_unsafe))
                         .run_if(not(is_penalized)),
+                    update_primary_state_history,
+                    update_penalized_history,
+                    penalty_resetting,
+                    line_update
+                        .run_if(returned_shortly_ago)
+                        .run_if(not(motion_is_unsafe))
+                        .run_if(not(is_penalized)),
+                    filter_particles,
                     log_particles,
                 )
-                    .chain(),
+                    .chain()
+                    .after(get_correspondences::<Top>)
+                    .after(get_correspondences::<Bottom>),
             );
     }
 }
@@ -234,23 +247,18 @@ fn odometry_update(odometry: Res<Odometry>, mut particles: Query<&mut RobotPoseF
     }
 }
 
+fn returned_shortly_ago(penalized_history: Res<PenalizedHistory>) -> bool {
+    penalized_history.duration_since_return() < Duration::from_secs(4)
+}
+
 fn motion_is_unsafe(
     keyframe_executor: Res<KeyframeExecutor>,
-    motion_state: Res<State<Gait>>,
+    // motion_state: Res<State<Gait>>,
     contacts: Res<Contacts>,
 ) -> bool {
     keyframe_executor.active_motion.is_some()
         // || !matches!(motion_state.get(), Gait::Standing | Gait::Walking)
         || !contacts.ground
-}
-
-fn is_penalized(gcm: Option<Res<GameControllerMessage>>) -> bool {
-    if let Some(message) = gcm {
-        if message.game_phase == GamePhase::PenaltyShoot {
-            return true;
-        }
-    }
-    false
 }
 
 fn update_primary_state_history(
@@ -261,89 +269,84 @@ fn update_primary_state_history(
     primary_state_history.current = *primary_state;
 }
 
+fn is_penalized(gcm: Option<Res<GameControllerMessage>>, player_config: Res<PlayerConfig>) -> bool {
+    is_penalized_by_game_controller(
+        gcm.as_deref(),
+        player_config.team_number,
+        player_config.player_number,
+    )
+}
+
+fn update_penalized_history(
+    mut penalized_history: ResMut<PenalizedHistory>,
+    gcm: Option<Res<GameControllerMessage>>,
+    player_config: Res<PlayerConfig>,
+) {
+    penalized_history.previous = penalized_history.current;
+    penalized_history.current = is_penalized_by_game_controller(
+        gcm.as_deref(),
+        player_config.team_number,
+        player_config.player_number,
+    );
+
+    if !penalized_history.current && penalized_history.previous {
+        penalized_history.last_return = Some(Instant::now());
+    }
+}
+
+#[derive(Resource, Default, Debug, Clone, Copy)]
+struct PenalizedHistory {
+    previous: bool,
+    current: bool,
+    last_return: Option<Instant>,
+}
+
+impl PenalizedHistory {
+    fn duration_since_return(&self) -> Duration {
+        self.last_return.map_or(Duration::MAX, |last_return| {
+            Instant::now().duration_since(last_return)
+        })
+    }
+}
+
 #[derive(Resource, Debug, Default, Clone, Copy)]
 struct PrimaryStateHistory {
     previous: PrimaryState,
     current: PrimaryState,
 }
 
-#[derive(Resource, Debug, Clone, Deref, DerefMut)]
-struct Timer2(Timer);
-
-impl Default for Timer2 {
-    fn default() -> Self {
-        Self(Timer::new(
-            std::time::Duration::from_secs(5),
-            TimerMode::Repeating,
-        ))
-    }
-}
-
-fn primary_state_resetting(
+fn penalty_resetting(
     mut commands: Commands,
-    primary_state_history: Res<PrimaryStateHistory>,
+    penalized_history: Res<PenalizedHistory>,
     mut particles: Query<Entity, With<RobotPoseFilter>>,
-    gcm: Option<Res<GameControllerMessage>>,
     layout: Res<LayoutConfig>,
-    player: Res<PlayerConfig>,
     robot_pose: Res<RobotPose>,
-    mut timer: Local<Timer2>,
-    mut mock_penalty: Local<bool>,
 ) {
-    // use crate::behavior::primary_state::PrimaryState as PS;
+    match (penalized_history.previous, penalized_history.current) {
+        (false, true) => {
+            for entity in &mut particles {
+                commands.entity(entity).despawn();
+            }
 
-    // timer.tick(std::time::Duration::from_millis(8));
-
-    // if timer.finished() {
-    //     *mock_penalty = !*mock_penalty;
-    //     println!("Mock penalty: {}", *mock_penalty);
-    // }
-
-    // // if is_penalized(gcm) {
-    // if *mock_penalty {
-    //     for entity in &mut particles {
-    //         commands.entity(entity).despawn();
-    //     }
-
-    //     for particle in penalty_particles(&layout, *robot_pose) {
-    //         commands.spawn(particle);
-    //     }
-
-    //     return;
-    // }
-
-    // match (
-    //     primary_state_history.previous,
-    //     primary_state_history.current,
-    // ) {
-    //     (PS::Initial | PS::Standby, PS::Ready) => {
-    //         for entity in &mut particles {
-    //             commands.entity(entity).despawn();
-    //         }
-
-    //         for particle in initial_particles(&layout, player.player_number) {
-    //             commands.spawn(particle);
-    //         }
-    //     }
-    //     (_, _) => (),
-    // }
+            for particle in penalized_particles(&layout, *robot_pose) {
+                commands.spawn(particle);
+            }
+        }
+        (_, _) => (),
+    };
 
     // TODO: penalty shootout
 }
 
 fn line_update(
+    layout: Res<LayoutConfig>,
     added_correspondences: Query<&LineCorrespondences, Added<LineCorrespondences>>,
     mut particles: Query<&mut RobotPoseFilter>,
 ) {
     for mut particle in &mut particles {
+        // println!("Updating particle with score {}", particle.score);
         for correspondences in &added_correspondences {
-            println!("hi");
-
             for correspondence in correspondences.iter() {
-                if rand::random::<f32>() > 0.5 {
-                    continue;
-                }
-
                 match correspondence.field_line {
                     FieldLine::Segment {
                         segment: field_line,
@@ -359,6 +362,13 @@ fn line_update(
                         }
 
                         let current_pose = particle.prediction();
+
+                        if !layout
+                            .field
+                            .in_field_with_margin(current_pose.position(), 0.15)
+                        {
+                            continue;
+                        }
 
                         // line from the robot to the detected line
                         let relative_line = (correspondence.pose.inner.inverse()
@@ -465,10 +475,19 @@ fn line_update(
                             .is_err()
                         {
                             warn!("cholesky failed");
-                            return;
+                            continue;
                         }
                     }
                     FieldLine::Circle(..) => {
+                        let current_pose = particle.prediction();
+
+                        if !layout
+                            .field
+                            .in_field_with_margin(current_pose.position(), 0.15)
+                        {
+                            continue;
+                        }
+
                         // line from the robot to the detected line
                         let measured =
                             correspondence.pose.inner.inverse() * correspondence.detected_line;
@@ -528,7 +547,7 @@ fn line_update(
                             .is_err()
                         {
                             warn!("cholesky failed");
-                            return;
+                            continue;
                         };
                     }
                 }
@@ -539,6 +558,9 @@ fn line_update(
                 }
             }
         }
+    }
+    for mut particle in &mut particles {
+        particle.fix_covariance();
     }
 }
 
@@ -731,7 +753,7 @@ fn initial_particles(
     }))
 }
 
-fn penalty_particles(
+fn penalized_particles(
     layout: &LayoutConfig,
     last_known_position: RobotPose,
 ) -> impl IntoIterator<Item = RobotPoseFilter> + use<'_> {
