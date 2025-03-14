@@ -1,4 +1,4 @@
-use bevy::prelude::*;D
+use bevy::prelude::*;
 
 use super::{
     detect::{DetectRefereePose, RefereePoseDetected},
