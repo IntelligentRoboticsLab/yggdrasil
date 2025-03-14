@@ -148,7 +148,7 @@ pub fn send_referee_pose_output(
         if pose_detection_output.is_added() || pose_detection_output.is_changed() {
             pose_detected.send(RefereePoseDetected {
                 keypoints: pose_detection_output.keypoints.clone(),
-                pose: pose_detection_output.pose.clone(),
+                pose: pose_detection_output.pose,
             });
         }
     }
