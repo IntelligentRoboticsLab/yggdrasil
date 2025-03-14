@@ -113,6 +113,10 @@ pub fn add_static_obstacles(mut commands: Commands) {
         na::point![-4.5, -0.8],
         na::point![-5., -0.8],
     )));
+    commands.spawn(Obstacle::from(LineSegment::new(
+        na::point![-5., 0.8],
+        na::point![-5., -0.8],
+    )));
     commands.spawn(Obstacle::from(Circle::new(na::point![4.5, 0.8], 0.05)));
     commands.spawn(Obstacle::from(Circle::new(na::point![4.5, -0.8], 0.05)));
     commands.spawn(Obstacle::from(LineSegment::new(
@@ -121,6 +125,10 @@ pub fn add_static_obstacles(mut commands: Commands) {
     )));
     commands.spawn(Obstacle::from(LineSegment::new(
         na::point![4.5, -0.8],
+        na::point![5., -0.8],
+    )));
+    commands.spawn(Obstacle::from(LineSegment::new(
+        na::point![5., 0.8],
         na::point![5., -0.8],
     )));
 }
