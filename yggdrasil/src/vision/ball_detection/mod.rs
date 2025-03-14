@@ -134,16 +134,12 @@ fn log_3d_balls(
     bottom_balls: Res<Balls<Bottom>>,
     mut last_logged: Local<Option<Cycle>>,
 ) {
-    let mut most_confident_ball = bottom_balls
+    let most_confident_ball = bottom_balls
         .most_confident_ball()
         .map(|b| (b.cycle, b.position))
         .or(top_balls
             .most_confident_ball()
             .map(|b| (b.cycle, b.position)));
-
-    // Call the communication to check if we can use another robot's ball position and to send message about this robot's ball position
-    most_confident_ball =
-        CommunicatedBalls.communicate_balls(TeamCommunication, most_confident_ball);
 
     // Log the ball position
     if let Some((cycle, pos)) = most_confident_ball {
