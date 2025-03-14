@@ -197,7 +197,6 @@ impl PathPlanner {
             return None;
         }
 
-
         let half_distance = 0.5 * start.distance(target);
 
         // If we're far away enough to ease in, try to do so (and fail if the start is not an
