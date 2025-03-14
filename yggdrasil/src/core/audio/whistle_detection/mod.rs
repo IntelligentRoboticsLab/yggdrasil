@@ -46,7 +46,6 @@ impl Plugin for WhistleDetectionPlugin {
         app.init_ml_model::<WhistleDetectionModel>()
             .init_resource::<Whistle>()
             .init_resource::<WhistleDetectionState>()
-            .init_resource::<WhistleDetections>()
             .init_config::<WhistleDetectionConfig>()
             .add_systems(Update, spawn_whistle_preprocess_task)
             .add_systems(
@@ -116,14 +115,14 @@ impl Default for WhistleDetectionState {
     }
 }
 
-#[derive(Debug, Default, Resource)]
+#[derive(Debug, Default, Component)]
 struct WhistleDetections {
     pub detections: Vec<f32>,
 }
 
 fn update_whistle_state(
     primary_state: Res<PrimaryState>,
-    detections: Res<WhistleDetections>,
+    ear_detections: Query<&WhistleDetections>,
     mut whistle: ResMut<Whistle>,
     mut detection_state: ResMut<WhistleDetectionState>,
     config: Res<WhistleDetectionConfig>,
@@ -150,32 +149,36 @@ fn update_whistle_state(
         return;
     }
 
-    if detections.detections.is_empty() {
-        return;
+    whistle.detected = false;
+
+    // Detect whistle for all ears
+    for detections in ear_detections.iter() {
+        detection_state.detections.rotate_right(1);
+        detection_state.detections[0] = detections.detections[0] >= config.threshold;
+
+        let detections = detection_state
+            .detections
+            .iter()
+            .fold(0, |acc, e| acc + usize::from(*e));
+
+        if detections >= config.detections_needed {
+            whistle.detected = true;
+
+            if *primary_state == PrimaryState::Set {
+                // Send message to all teammates
+                let msg = TeamMessage::DetectedWhistle;
+                tc.outbound_mut()
+                    .update_or_push_by(msg, Deadline::ASAP)
+                    .expect("failed to encode whistle message");
+            }
+            break;
+        }
     }
 
-    detection_state.detections.rotate_right(1);
-    detection_state.detections[0] = detections.detections[0] >= config.threshold;
-
-    let detections = detection_state
-        .detections
-        .iter()
-        .fold(0, |acc, e| acc + usize::from(*e));
-
-    if detections >= config.detections_needed {
-        whistle.detected = true;
+    if whistle.detected {
         nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
-
-        if *primary_state == PrimaryState::Set {
-            // Send message to all teammates
-            let msg = TeamMessage::DetectedWhistle;
-            tc.outbound_mut()
-                .update_or_push_by(msg, Deadline::ASAP)
-                .expect("failed to encode whistle message");
-        }
     } else {
-        whistle.detected = false;
         nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(0.0), Priority::High);
     }
@@ -185,19 +188,31 @@ fn whistle_preprocessing(
     stft: Arc<Mutex<Stft>>,
     audio_sample: AudioSamplesEvent,
 ) -> PreprocessingData {
-    let spectrogram = stft
-        .lock()
-        .unwrap()
-        .compute(&audio_sample.left, 0, MEAN_WINDOWS)
-        .windows_mean();
+    let preprocess_ear = |sample: &[f32]| {
+        let spectrogram = stft
+            .lock()
+            .unwrap()
+            .compute(&sample, 0, MEAN_WINDOWS)
+            .windows_mean();
 
-    let min_i = MIN_FREQ * spectrogram.powers.len() / NYQUIST;
-    let max_i = MAX_FREQ * spectrogram.powers.len() / NYQUIST;
+        let min_i = MIN_FREQ * spectrogram.powers.len() / NYQUIST;
+        let max_i = MAX_FREQ * spectrogram.powers.len() / NYQUIST;
 
-    PreprocessingData(spectrogram.powers[min_i..=max_i].to_vec())
+        spectrogram.powers[min_i..=max_i].to_vec()
+    };
+
+    PreprocessingData {
+        left: preprocess_ear(&audio_sample.left),
+        right: preprocess_ear(&audio_sample.right),
+    }
 }
 
-struct PreprocessingData(Vec<f32>);
+struct PreprocessingData {
+    /// Left ear data.
+    left: Vec<f32>,
+    /// Right ear data.
+    right: Vec<f32>,
+}
 
 #[derive(Component)]
 struct PreprocessingTask(Task<PreprocessingData>);
@@ -265,7 +280,7 @@ fn spawn_whistle_detection_model(
 
     commands
         .infer_model(&mut model)
-        .with_input(&model_input.0)
-        .create_resource()
+        .with_batched_input(&[&model_input.left, &model_input.right])
+        .create_entities()
         .spawn(|detections| Some(WhistleDetections { detections }));
 }
