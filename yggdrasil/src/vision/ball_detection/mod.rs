@@ -22,6 +22,9 @@ use crate::{
 
 use self::classifier::{BallClassifierConfig, Balls};
 
+use crate::communication::{TeamCommunication, TeamMessage};
+use self::communication::CommunicatedBalls;
+
 /// Plugin for detecting balls in the top and bottom images.
 pub struct BallDetectionPlugin;
 
@@ -131,16 +134,20 @@ fn log_3d_balls(
     bottom_balls: Res<Balls<Bottom>>,
     mut last_logged: Local<Option<Cycle>>,
 ) {
-    let most_confident_ball = bottom_balls
+    let mut most_confident_ball = bottom_balls
         .most_confident_ball()
         .map(|b| (b.cycle, b.position))
         .or(top_balls
             .most_confident_ball()
             .map(|b| (b.cycle, b.position)));
+    
+    // Call the communication to check if we can use another robot's ball position and to send message about this robot's ball position
+    most_confident_ball = CommunicatedBalls.communicate_balls(TeamCommunication, most_confident_ball);
 
+    // Log the ball position
     if let Some((cycle, pos)) = most_confident_ball {
         // since we always run this function in the same cycle in which the ball was found,
-        // using `log_with_cycle` would be redundant.
+        // using `log_with_cycle` would be redundanta.
         //
         // because `last_logged` starts off at 0, we wouldn't log the ball if it was detected in
         // the very first cycle, i don't really care tho, deal with it.
