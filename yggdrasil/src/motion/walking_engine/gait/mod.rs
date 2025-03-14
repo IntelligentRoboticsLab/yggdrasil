@@ -35,6 +35,7 @@ impl Plugin for GaitPlugin {
             stand::StandGaitPlugin,
             starting::StartingPlugin,
             walk::WalkPlugin,
+            kick::KickPlugin,
             stopping::StoppingPlugin,
         ));
     }

@@ -111,6 +111,7 @@ impl StepContext {
             Gait::Walking => {
                 self.requested_gait = Gait::Stopping;
             }
+            // TODO: shouldn't Stopping be after kicking?
             Gait::Sitting | Gait::Standing | Gait::Starting | Gait::Stopping | Gait::Kicking => {
                 // the robot can immediately move to Gait::Stand
                 self.requested_gait = Gait::Standing;
@@ -191,23 +192,10 @@ impl StepContext {
             Gait::Sitting => error!(
                 "Cannot request kick while sitting! Call StepManager::request_stand() first!"
             ),
-            Gait::Standing => {
-                // Need to start walking first
-                self.requested_gait = Gait::Starting;
-                self.requested_step = Step::default(); // Use default step for starting
-
-                // Set up kick to execute after starting
-                self.active_kick = Some(KickSequence {
-                    variant,
-                    kicking_side,
-                    strength,
-                    step_index: 0,
-                    total_steps: get_kick_steps_count(variant),
-                });
-            }
-            Gait::Starting | Gait::Walking | Gait::Stopping => {
+            Gait::Walking | Gait::Stopping => {
+                println!("Activating kick!");
                 // Set up the kick to execute on next foot switch
-                self.active_kick = Some(KickSequence {
+                self.active_kick = Some(KickSequence { // TODO: cache current gait for reuse later?
                     variant,
                     kicking_side,
                     strength,
@@ -215,15 +203,9 @@ impl StepContext {
                     total_steps: get_kick_steps_count(variant),
                 });
             }
-            Gait::Kicking => {
-                // Already kicking, queue a new kick
-                self.active_kick = Some(KickSequence {
-                    variant,
-                    kicking_side,
-                    strength,
-                    step_index: 0,
-                    total_steps: get_kick_steps_count(variant),
-                });
+            Gait::Kicking | Gait::Standing | Gait::Starting => {
+                // Ignore kick request
+                // TODO: log?
             }
         }
     }
@@ -265,73 +247,91 @@ impl StepContext {
     pub fn plan_next_step(&mut self, start: FootPositions, config: &WalkingEngineConfig) {
         let next_swing_foot = self.last_step.swing_side.opposite();
 
-        // If we have an active kick and are about to use the kicking foot as support,
-        // we need a preparation step
+        // Kick planning
         if let Some(kick) = &self.active_kick {
-            if self.requested_gait != Gait::Kicking && next_swing_foot == kick.kicking_side {
-                // Need a preparation step - this ensures the kicking foot becomes the swing foot
-                let prep_step = create_preparation_step(kick.kicking_side);
+            if self.requested_gait != Gait::Kicking {
+                // Preparatory step
+                if next_swing_foot != kick.kicking_side {
+                    println!("Performing preparatory step!");
 
-                let target = FootPositions::from_target(next_swing_foot, &prep_step);
+                    // If we have an active kick and are about to use the kicking foot as support,
+                    //  we need a preparation step - this ensures the kicking foot becomes the swing foot
+                    let prep_step = create_preparation_step(kick.kicking_side);
 
-                self.planned_step = PlannedStep {
-                    step: prep_step,
-                    duration: config.base_step_duration,
-                    start,
-                    target,
-                    swing_foot_height: config.base_foot_lift,
-                    swing_side: next_swing_foot,
-                };
+                    let target = FootPositions::from_target(next_swing_foot, &prep_step);
 
-                return;
-            } else if self.requested_gait == Gait::Kicking {
-                // We're in kicking mode, generate the appropriate kick step
-                let kick_step = generate_kick_step(
-                    kick.variant,
-                    kick.kicking_side,
-                    kick.strength,
-                    kick.step_index,
-                );
+                    self.planned_step = PlannedStep {
+                        step: prep_step,
+                        duration: config.base_step_duration,
+                        start,
+                        target,
+                        swing_foot_height: config.base_foot_lift,
+                        swing_side: next_swing_foot,
+                    };
+                    return;
+                }
+                // Kick step
+                else {
+                    println!("Performing kick step!");
 
-                let target = FootPositions::from_target(next_swing_foot, &kick_step);
+                    self.requested_gait = Gait::Kicking;
 
-                // Apply kick-specific foot lift height
-                let swing_foot_height = match kick.variant {
-                    KickVariant::Forward => match kick.step_index {
-                        0 => 0.015,
-                        1 => 0.02 * kick.strength,
-                        2 => 0.015,
-                        _ => 0.01,
-                    },
-                    KickVariant::Turn => match kick.step_index {
-                        0 => 0.01,
-                        1 => 0.02 * kick.strength,
-                        _ => 0.01,
-                    },
-                    KickVariant::Side => match kick.step_index {
-                        0 => 0.01,
-                        1 => 0.02 * kick.strength,
-                        _ => 0.01,
-                    },
-                };
+                    // Kicking foot is ready to swing,
+                    //  generate the appropriate kick step
+                    let kick_step = generate_kick_step(
+                        kick.variant,
+                        kick.kicking_side,
+                        kick.strength,
+                        kick.step_index,
+                    );
 
-                // For main kick step, use longer duration
-                let duration = if kick.step_index == 1 {
-                    Duration::from_millis(280) // Slightly longer for the main kick motion
-                } else {
-                    Duration::from_millis(260)
-                };
+                    let target = FootPositions::from_target(next_swing_foot, &kick_step);
 
-                self.planned_step = PlannedStep {
-                    step: kick_step,
-                    duration,
-                    start,
-                    target,
-                    swing_foot_height,
-                    swing_side: next_swing_foot,
-                };
+                    // Apply kick-specific foot lift height
+                    let swing_foot_height = match kick.variant {
+                        KickVariant::Forward => match kick.step_index {
+                            0 => 0.015,
+                            1 => 0.02 * kick.strength,
+                            2 => 0.015,
+                            _ => 0.01,
+                        },
+                        KickVariant::Turn => match kick.step_index {
+                            0 => 0.01,
+                            1 => 0.02 * kick.strength,
+                            _ => 0.01,
+                        },
+                        KickVariant::Side => match kick.step_index {
+                            0 => 0.01,
+                            1 => 0.02 * kick.strength,
+                            _ => 0.01,
+                        },
+                    };
 
-                return;
+                    // For main kick step, use longer duration
+                    let duration = if kick.step_index == 1 {
+                        Duration::from_millis(280) // Slightly longer for the main kick motion
+                    } else {
+                        Duration::from_millis(260)
+                    };
+
+                    self.planned_step = PlannedStep {
+                        step: kick_step,
+                        duration,
+                        start,
+                        target,
+                        swing_foot_height,
+                        swing_side: next_swing_foot,
+                    };
+
+                    return;
+                }
+            }            
+            // End kick
+            else if self.requested_gait == Gait::Kicking && next_swing_foot != kick.kicking_side {
+                println!("Ending kick!");
+
+                self.requested_gait = Gait::Stopping; // TODO: really
+                self.active_kick = None;
             }
         }
 
@@ -366,14 +366,8 @@ impl StepContext {
         }
     }
 
-    // Utility to check if the support side is correct for kicking
-    pub fn is_ready_for_kick(&self) -> bool {
-        if let Some(kick) = &self.active_kick {
-            // The swing foot needs to be the kicking foot
-            self.last_step.swing_side.opposite() == kick.kicking_side
-        } else {
-            false
-        }
+    pub fn last_swing_side(&self) -> Side {
+        self.last_step.swing_side
     }
 }
 

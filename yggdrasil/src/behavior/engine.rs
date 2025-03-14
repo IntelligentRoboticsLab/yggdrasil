@@ -208,6 +208,10 @@ pub fn role_base(
     commands.disable_role();
     let behavior = behavior_state.get();
 
+    // TODO: for testing
+    RoleState::assign_role(&mut commands, player_config.player_number);
+    return;
+
     if behavior == &BehaviorState::StartUp {
         if *primary_state == PrimaryState::Sitting && robot_is_leaning(&imu_values) {
             // Do nothing cause the robot is leaning
