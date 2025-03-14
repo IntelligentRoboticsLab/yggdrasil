@@ -192,7 +192,7 @@ fn whistle_preprocessing(
         let spectrogram = stft
             .lock()
             .unwrap()
-            .compute(&sample, 0, MEAN_WINDOWS)
+            .compute(sample, 0, MEAN_WINDOWS)
             .windows_mean();
 
         let min_i = MIN_FREQ * spectrogram.powers.len() / NYQUIST;
