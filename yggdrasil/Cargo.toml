@@ -32,7 +32,7 @@ tasks = { workspace = true }
 # external crates here
 apodize = { workspace = true }
 async-std = { workspace = true }
-bevy = { workspace = true, features = ["multi_threaded", "bevy_state"] }
+bevy = { workspace = true, features = ["bevy_state"] }
 chrono = { workspace = true }
 cpal = { workspace = true }
 futures = { workspace = true }
