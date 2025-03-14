@@ -12,6 +12,9 @@ version.workspace = true
 [lints]
 workspace = true
 
+[profile.release]
+incremental = true
+
 [features]
 default = []
 dependency_graph = []

@@ -102,6 +102,12 @@ player_number = 5
 rotation = -90
 translation = [-0.75, 3]
 
+# Initial position of player six.
+[[initial_positions]]
+player_number = 6
+rotation = 0
+translation = [-4.5, 2]
+
 # Set Positions
 # In Set the robots will walk to this position
 
@@ -132,6 +138,12 @@ translation = [-0.8, -0.8]
 # Set position of player five.
 [[set_positions]]
 player_number = 5
+rotation = 0
+translation = [-1, 0]
+
+# Set position of player six.
+[[set_positions]]
+player_number = 6
 rotation = 0
 translation = [-1, 0]
 
