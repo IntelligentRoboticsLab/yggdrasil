@@ -2,7 +2,8 @@ mod receive;
 mod transmit;
 
 use std::{
-    net::{Ipv4Addr, SocketAddr},
+    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+    str::FromStr,
     sync::Arc,
     time::Duration,
 };
@@ -111,6 +112,19 @@ impl GameControllerSocket {
     async fn bind() -> io::Result<Self> {
         let socket =
             Arc::new(UdpSocket::bind((Ipv4Addr::UNSPECIFIED, GAME_CONTROLLER_DATA_PORT)).await?);
+
+        if let Ok(gc_host) = std::env::var("GC_HOST") {
+            eprintln!("GOT GC_HOST: {gc_host}");
+            let gc_ip_str = gc_host.split(":").next().expect("Invalid `GC_HOST`");
+            let gc_ip = Ipv4Addr::from_str(gc_ip_str).expect("Invalid `GC_HOST`");
+            let gc_port = 3939u16;
+
+            eprintln!("addr: {}", SocketAddrV4::new(gc_ip, gc_port));
+            socket.connect(SocketAddrV4::new(gc_ip, gc_port)).await?;
+            UdpSocket::peer_addr(&self)
+        } else {
+            eprintln!("DID NOT GET GC_HOST");
+        }
 
         Ok(Self { socket })
     }

@@ -93,6 +93,9 @@ impl Run {
         if self.debug {
             envs.push(("RUST_LOG".to_owned(), "debug".to_owned()));
         }
+        if let Ok(gc_host) = std::env::var("GC_HOST") {
+            envs.push(("GC_HOST".to_owned(), gc_host));
+        }
 
         if rerun {
             // Always set the host, so that rerun can connect to the correct host.

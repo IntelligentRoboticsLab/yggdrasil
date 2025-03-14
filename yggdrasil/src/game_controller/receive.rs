@@ -31,11 +31,11 @@ pub async fn receive_loop(
     sock: GameControllerSocket,
     tx: UnboundedSender<(GameControllerMessage, SocketAddr)>,
 ) {
-    loop {
-        // The buffer is larger than necessary, in case we somehow receive invalid data, which can be a
-        // bit longer than a normal `GameControllerMessage`.
-        let mut buffer = [0u8; 2 * size_of::<GameControllerMessage>()];
+    // The buffer is larger than necessary, in case we somehow receive invalid data, which can be a
+    // bit longer than a normal `GameControllerMessage`.
+    let mut buffer = [0u8; 2 * size_of::<GameControllerMessage>()];
 
+    loop {
         let Ok((_size, address)) = sock.recv_from(&mut buffer).await else {
             tracing::error!("Received invalid data from GameControllerSocket");
             continue;
