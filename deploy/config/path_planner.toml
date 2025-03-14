@@ -2,10 +2,10 @@
 robot_radius = 0.25
 
 # The radius of the arc to ease into the path.
-ease_in_radius = 0.333
+ease_in_radius = 0.0
 
 # The radius of the arc to ease out of the path.
-ease_out_radius = 0.333
+ease_out_radius = 0.0
 
 # The maximum distance the robot may be from the path.
 start_tolerance = 0.2

@@ -20,6 +20,7 @@ use crate::localization::RobotPose;
 
 use crate::nao::Cycle;
 use crate::vision::camera::init_camera;
+use crate::vision::referee::detect::VisualRefereeDetectionStatus;
 use ml::prelude::*;
 
 use super::ball_tracker::{BallPosition, BallTracker};
@@ -55,7 +56,8 @@ impl Plugin for BallClassifierPlugin {
                     classify_balls::<Top>.run_if(resource_exists_and_changed::<BallProposals<Top>>),
                     classify_balls::<Bottom>
                         .run_if(resource_exists_and_changed::<BallProposals<Bottom>>),
-                ),
+                )
+                    .run_if(in_state(VisualRefereeDetectionStatus::Inactive)),
             )
             .add_systems(
                 PostUpdate,

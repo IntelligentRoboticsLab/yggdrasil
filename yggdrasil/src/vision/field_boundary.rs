@@ -9,7 +9,7 @@ use ml::prelude::*;
 use nalgebra::Point2;
 use tasks::conditions::task_finished;
 
-use super::camera::init_camera;
+use super::{camera::init_camera, referee::detect::VisualRefereeDetectionStatus};
 
 const MODEL_INPUT_WIDTH: u32 = 40;
 const MODEL_INPUT_HEIGHT: u32 = 30;
@@ -31,7 +31,8 @@ impl Plugin for FieldBoundaryPlugin {
                 Update,
                 detect_field_boundary
                     .run_if(resource_exists_and_changed::<Image<Top>>)
-                    .run_if(task_finished::<FieldBoundary>),
+                    .run_if(task_finished::<FieldBoundary>)
+                    .run_if(in_state(VisualRefereeDetectionStatus::Inactive)),
             )
             .add_systems(
                 PostUpdate,

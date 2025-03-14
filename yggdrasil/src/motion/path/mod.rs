@@ -18,7 +18,7 @@ use crate::core::debug::DebugContext;
 use crate::nao::Cycle;
 
 use finding::Colliders;
-use geometry::Circle;
+use geometry::{Circle, LineSegment};
 
 use odal::Config;
 
@@ -105,8 +105,32 @@ pub fn add_static_obstacles(mut commands: Commands) {
     // Add goalposts
     commands.spawn(Obstacle::from(Circle::new(na::point![-4.5, 0.8], 0.05)));
     commands.spawn(Obstacle::from(Circle::new(na::point![-4.5, -0.8], 0.05)));
+    commands.spawn(Obstacle::from(LineSegment::new(
+        na::point![-4.5, 0.8],
+        na::point![-5., 0.8],
+    )));
+    commands.spawn(Obstacle::from(LineSegment::new(
+        na::point![-4.5, -0.8],
+        na::point![-5., -0.8],
+    )));
+    commands.spawn(Obstacle::from(LineSegment::new(
+        na::point![-5., 0.8],
+        na::point![-5., -0.8],
+    )));
     commands.spawn(Obstacle::from(Circle::new(na::point![4.5, 0.8], 0.05)));
     commands.spawn(Obstacle::from(Circle::new(na::point![4.5, -0.8], 0.05)));
+    commands.spawn(Obstacle::from(LineSegment::new(
+        na::point![4.5, 0.8],
+        na::point![5., 0.8],
+    )));
+    commands.spawn(Obstacle::from(LineSegment::new(
+        na::point![4.5, -0.8],
+        na::point![5., -0.8],
+    )));
+    commands.spawn(Obstacle::from(LineSegment::new(
+        na::point![5., 0.8],
+        na::point![5., -0.8],
+    )));
 }
 
 /// Checks if any obstacles have been changed.
@@ -150,6 +174,7 @@ pub fn visualize_obstacles(dbg: DebugContext, obstacles: Query<&Obstacle>, cycle
         &rerun::LineStrips3D::update_fields().with_strips(obstacles.iter().map(|obstacle| {
             obstacle
                 .vertices(RESOLUTION)
+                .into_iter()
                 .map(|p| [p.x, p.y, OBSTACLE_HEIGHT])
         })),
     );
