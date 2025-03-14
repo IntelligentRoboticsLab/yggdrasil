@@ -17,17 +17,18 @@ pub enum Obstacle {
 impl Obstacle {
     /// Adds this obstacle to the given colliders (based on the robot radius).
     pub fn add_to_colliders(&self, radius: f32, colliders: &mut Colliders) {
-        match self {
-            &Obstacle::Circle(circle) => colliders.arcs.push(circle.dilate(radius).into()),
-            &Obstacle::LineSegment(line) => colliders.lines.push(line),
+        match *self {
+            Obstacle::Circle(circle) => colliders.arcs.push(circle.dilate(radius).into()),
+            Obstacle::LineSegment(line) => colliders.lines.push(line),
         }
     }
 
     /// Gets the vertices that represent this obstacle.
+    #[must_use]
     pub fn vertices(&self, resolution: f32) -> impl IntoIterator<Item = Point> {
-        match self {
-            &Obstacle::Circle(c) => CircularArc::from(c).vertices(resolution).collect(),
-            &Obstacle::LineSegment(l) => vec![l.start, l.end],
+        match *self {
+            Obstacle::Circle(c) => CircularArc::from(c).vertices(resolution).collect(),
+            Obstacle::LineSegment(l) => vec![l.start, l.end],
         }
     }
 }
