@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::{
     behavior::{
         behaviors::{Observe, WalkTo},
-        engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
+        engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
     localization::RobotPose,
@@ -29,10 +29,10 @@ impl Roles for Defender {
 
 pub fn defender_role(
     mut commands: Commands,
-    layout_config: Res<LayoutConfig>,
-    player_config: Res<PlayerConfig>,
     planner: Res<PathPlanner>,
     pose: Res<RobotPose>,
+    player_config: Res<PlayerConfig>,
+    layout_config: Res<LayoutConfig>,
 ) {
     let set_robot_position = layout_config
         .set_positions

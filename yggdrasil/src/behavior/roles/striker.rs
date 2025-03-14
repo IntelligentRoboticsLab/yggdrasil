@@ -26,7 +26,7 @@ impl Plugin for StrikerRolePlugin {
 }
 
 /// Substates for the `Striker` role
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Debug)]
 pub enum Striker {
     #[default]
     WalkToBall,
@@ -73,6 +73,14 @@ pub fn striker_role(
             ball_goal_aligned,
         );
 
+        info!(
+            ?ball_goal_center_align,
+            ?ball_goal_aligned,
+            ?ball_aligned,
+            ?ball_angle,
+            ?ball_distance
+        );
+
         match *state {
             Striker::WalkToBall | Striker::WalkWithBall => {
                 commands.set_behavior(WalkTo {
@@ -85,9 +93,9 @@ pub fn striker_role(
                 if absolute_ball_angle > absolute_goal_angle_left {
                     commands.set_behavior(Walk {
                         step: Step {
-                            left: 0.06,
-                            turn: -0.3,
-                            ..Default::default()
+                            forward: 0.01,
+                            left: 0.08,
+                            turn: -0.25,
                         },
                         look_target: Some(ball_target),
                     });
@@ -96,9 +104,9 @@ pub fn striker_role(
                 if absolute_ball_angle < absolute_goal_angle_right {
                     commands.set_behavior(Walk {
                         step: Step {
-                            left: -0.06,
-                            turn: 0.3,
-                            ..Default::default()
+                            forward: 0.01,
+                            left: -0.08,
+                            turn: 0.25,
                         },
                         look_target: Some(ball_target),
                     });
