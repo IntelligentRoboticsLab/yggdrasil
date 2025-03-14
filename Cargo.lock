@@ -10751,6 +10751,7 @@ dependencies = [
  "chrono",
  "cpal",
  "fast_image_resize",
+ "filter",
  "futures",
  "heimdall",
  "itertools 0.13.0",
