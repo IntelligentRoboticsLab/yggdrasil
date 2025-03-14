@@ -8,7 +8,7 @@
 //!   multiple pose detections
 //!
 //! - Detection: A single referee pose prediction. For the referee pose this is a single
-//!   inference with the [`RefereePoseDetectionModel`]
+//!   inference with the [`RefereePoseDetectionModel`](crate::vision::referee::detect::RefereePoseDetectionModel)
 
 pub mod detect;
 pub mod recognize;
