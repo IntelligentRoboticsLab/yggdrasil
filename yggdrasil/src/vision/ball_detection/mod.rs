@@ -1,8 +1,8 @@
 //! Module for detecting balls in the top and bottom images.
 
 pub mod classifier;
-pub mod proposal;
 mod communication;
+pub mod proposal;
 
 use std::time::Duration;
 
@@ -22,8 +22,8 @@ use crate::{
 
 use self::classifier::{BallClassifierConfig, Balls};
 
-use crate::communication::{TeamCommunication, TeamMessage};
 use self::communication::CommunicatedBalls;
+use crate::communication::{TeamCommunication, TeamMessage};
 
 /// Plugin for detecting balls in the top and bottom images.
 pub struct BallDetectionPlugin;
@@ -140,9 +140,10 @@ fn log_3d_balls(
         .or(top_balls
             .most_confident_ball()
             .map(|b| (b.cycle, b.position)));
-    
+
     // Call the communication to check if we can use another robot's ball position and to send message about this robot's ball position
-    most_confident_ball = CommunicatedBalls.communicate_balls(TeamCommunication, most_confident_ball);
+    most_confident_ball =
+        CommunicatedBalls.communicate_balls(TeamCommunication, most_confident_ball);
 
     // Log the ball position
     if let Some((cycle, pos)) = most_confident_ball {

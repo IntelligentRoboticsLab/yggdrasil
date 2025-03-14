@@ -10,7 +10,7 @@ use super::classifier::Balls;
 const MIN_CHANGE: f32 = 0.1;
 
 pub struct CommunicatedBalls {
-	/// For keeping track what position we've sent out.
+    /// For keeping track what position we've sent out.
     sent: Option<na::Point2<f32>>,
     /// For keeping track what positions we've received.
     received: HashMap<SocketAddr, Option<na::Point2<f32>>>,
@@ -19,17 +19,18 @@ pub struct CommunicatedBalls {
 impl CommunicatedBalls {
     /// Check it the position has changed enough from last frame.
     fn change_enough(&mut self, ball: &Option<na::Point2<f32>>) -> bool {
-        match(ball, &self.sent){
+        match (ball, &self.sent) {
             (None, None) => false,
             (None, Some(_)) => true,
             (Some(_), None) => true,
-            (Some(old ), Some(new)) => na::distance(old, new) > MIN_CHANGE,
+            (Some(old), Some(new)) => na::distance(old, new) > MIN_CHANGE,
         }
     }
 
     /// Send your ball position (even if it's None) as a message.
-    fn send_message(&mut self, ball_position: Option<na::Point2<f32>>){
-        tc.outbound_mut().update_or_push(TeamMessage::Ball(ball_position));
+    fn send_message(&mut self, ball_position: Option<na::Point2<f32>>) {
+        tc.outbound_mut()
+            .update_or_push(TeamMessage::Ball(ball_position));
         self.sent = ball_position;
     }
 
@@ -49,12 +50,14 @@ impl CommunicatedBalls {
 
     fn communicate_balls(
         mut tc: ResMut<TeamCommunication>,
-        mut most_confident_ball: Option<na::Point2<f32>>
-        ) {
-            
+        mut most_confident_ball: Option<na::Point2<f32>>,
+    ) {
         // 1. Check if it has changed enough and if so, we send a message.
-        let has_changed = CommunicatedBalls::changed_enough(most_confident_ball, comunicated_balls.sent);
-        if has_changed { self.send_message(most_confident_ball) }
+        let has_changed =
+            CommunicatedBalls::changed_enough(most_confident_ball, comunicated_balls.sent);
+        if has_changed {
+            self.send_message(most_confident_ball)
+        }
 
         // 2. Receive messages only if our current ball is None.
         // 2.A. If its None we check the received messages.
