@@ -17,11 +17,11 @@ use crate::{
 
 use super::{
     behaviors::{
-        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
-        Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
-        StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
-        VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin,
-        WalkToSet, WalkToSetBehaviorPlugin,
+        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlDefenderSearchBehaviorPlugin,
+        RlStrikerSearchBehaviorPlugin, Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin,
+        StandLookAt, StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin,
+        StartUpBehaviorPlugin, VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin,
+        WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
@@ -54,6 +54,7 @@ impl Plugin for BehaviorEnginePlugin {
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
                 RlStrikerSearchBehaviorPlugin,
+                RlDefenderSearchBehaviorPlugin,
                 VisualRefereeBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
