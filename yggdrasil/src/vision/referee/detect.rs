@@ -71,7 +71,7 @@ fn detect_referee_pose(
     camera_config: Res<CameraConfig>,
     referee_pose_config: Res<RefereePoseConfig>,
 ) {
-    for _ev in detect_pose.read() {
+    if detect_pose.read().last().is_some() {
         let top_camera = &camera_config.top;
         let image_center = (
             (top_camera.width / 2) as usize,
@@ -133,8 +133,6 @@ fn detect_referee_pose(
                 };
                 Some(output)
             });
-
-        break;
     }
 
     // A single estimate is enough for multiple estimate pose requests so extra
@@ -142,7 +140,7 @@ fn detect_referee_pose(
     detect_pose.clear();
 }
 
-pub(self) fn send_referee_pose_output(
+pub fn send_referee_pose_output(
     pose_detection_output: Option<Res<RefereePoseDetectionOutput>>,
     mut pose_detected: EventWriter<RefereePoseDetected>,
 ) {
@@ -192,7 +190,7 @@ fn log_estimated_pose(
 pub struct DetectRefereePose;
 
 #[derive(Resource)]
-pub(self) struct RefereePoseDetectionOutput {
+pub struct RefereePoseDetectionOutput {
     pub keypoints: Array2<f32>,
     pub pose: RefereePose,
 }

@@ -56,7 +56,7 @@ fn detect_visual_referee(
     layout_config: Res<LayoutConfig>,
     robot_pose: Res<RobotPose>,
     mut nao_manager: ResMut<NaoManager>,
-    mut recognise_pose: EventWriter<RecognizeRefereePose>,
+    mut recognize_pose: EventWriter<RecognizeRefereePose>,
     mut timer: ResMut<VisualRefHeadRotationTimer>,
     time: Res<Time>,
 ) {
@@ -84,7 +84,7 @@ fn detect_visual_referee(
     // Request should be sended only after the HEAD_ROTATION_TIME is passed
     if timer.timer.finished() {
         // Request the detection of the visual referee post
-        recognise_pose.send(RecognizeRefereePose);
+        recognize_pose.send(RecognizeRefereePose);
     }
 }
 

@@ -5,10 +5,10 @@
 //!
 //! We make a distinction between "recognition" and "detection".
 //! - Recognition: This is the final prediction for a pose. A pose is "recognized" based on
-//! multiple pose detections
+//!   multiple pose detections
 //!
 //! - Detection: A single referee pose prediction. For the referee pose this is a single
-//! inference with the [`RefereePoseEstimatorModel`]
+//!   inference with the [`RefereePoseDetectionModel`]
 
 pub mod detect;
 pub mod recognize;

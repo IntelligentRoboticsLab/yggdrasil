@@ -28,14 +28,15 @@ impl Plugin for RefereePoseRecognitionPlugin {
 
 /// Recognize a referee pose.
 ///
-/// - detected_poses ([`DetectedRefereePoses`]) keeps track of earlier detected
-/// referee poses.
-/// - detected_pose ([`RefereePoseDetected`]) is an event that is received when
-/// a pose detection is finished.
-/// - detect_pose ([`DetectRefereePose`]) is an event that is send when a pose
-/// detection is requested.
-/// - recognized_pose ([`RefereePoseRecognised`]) is an event that is send when
-/// enough poses are detected in a sequence
+/// # Arguments
+/// - `detected_poses` ([`DetectedRefereePoses`]) keeps track of earlier detected
+///   referee poses.
+/// - `detected_pose` ([`RefereePoseDetected`]) is an event that is received when
+///   a pose detection is finished.
+/// - `detect_pose` ([`DetectRefereePose`]) is an event that is send when a pose
+///   detection is requested.
+/// - `recognized_pose` ([`RefereePoseRecognized`]) is an event that is send when
+///   enough poses are detected in a sequence
 pub fn recognizing_pose(
     mut detected_poses: ResMut<DetectedRefereePoses>,
     mut detected_pose: EventReader<RefereePoseDetected>,
@@ -74,11 +75,11 @@ pub fn recognizing_pose(
 /// detection pose chain by sending an request to detect a referee pose via the
 /// [`DetectRefereePose`] event.
 pub fn request_recognition(
-    mut recognise_pose: EventReader<RecognizeRefereePose>,
+    mut recognize_pose: EventReader<RecognizeRefereePose>,
     mut next_recognition_status: ResMut<NextState<VisualRefereeRecognitionStatus>>,
     mut detect_pose: EventWriter<DetectRefereePose>,
 ) {
-    if recognise_pose.read().last().is_some() {
+    if recognize_pose.read().last().is_some() {
         next_recognition_status.set(VisualRefereeRecognitionStatus::Active);
         // Send the initil request to detect a referee pose
         detect_pose.send(DetectRefereePose);
@@ -136,6 +137,5 @@ pub fn show_recognized_pose(
 fn all_same_poses(poses: &[RefereePose]) -> bool {
     poses
         .first()
-        .map(|first| poses.iter().all(|x| x == first))
-        .unwrap_or(true)
+        .map_or(true, |first| poses.iter().all(|x| x == first))
 }

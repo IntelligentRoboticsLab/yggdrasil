@@ -50,13 +50,9 @@ pub fn resize_image(
 ) -> Result<Vec<u8>> {
     assert!(target_width % 2 == 0, "width must be a multiple of 2");
 
-    let src_image = fir::images::Image::from_vec_u8(
-        image_width as u32 / 2,
-        image_height as u32,
-        image,
-        fir::PixelType::U8x4,
-    )
-    .into_diagnostic()?;
+    let src_image =
+        fir::images::Image::from_vec_u8(image_width / 2, image_height, image, fir::PixelType::U8x4)
+            .into_diagnostic()?;
 
     let mut dst_image =
         fir::images::Image::new(target_width, target_height, src_image.pixel_type());

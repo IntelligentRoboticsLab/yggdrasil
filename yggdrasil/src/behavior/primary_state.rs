@@ -88,6 +88,7 @@ fn update_gamecontroller_message(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn update_primary_state(
     mut primary_state: ResMut<PrimaryState>,
     game_controller_message: Option<Res<GameControllerMessage>>,
