@@ -7,6 +7,7 @@ use miette::IntoDiagnostic;
 
 use crate::core::config::showtime::ShowtimeConfig;
 use crate::prelude::*;
+use crate::vision::referee::RefereePose;
 
 use bifrost::broadcast::{Deadline, Inbound, Message, Outbound, Rate};
 use bifrost::communication::{GameControllerMessage, GameState, Half};
@@ -187,6 +188,7 @@ pub enum TeamMessage {
     Ping,
     Pong,
     DetectedWhistle,
+    RecognizedRefereePose(RefereePose),
 }
 
 impl Message for TeamMessage {
