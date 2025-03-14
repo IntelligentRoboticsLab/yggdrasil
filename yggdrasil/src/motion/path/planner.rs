@@ -189,6 +189,15 @@ impl PathPlanner {
 
         let config = self.config();
 
+        if ease.ease_in() && config.ease_in_radius == 0. {
+            return None;
+        }
+
+        if ease.ease_out() && config.ease_out_radius == 0. {
+            return None;
+        }
+
+
         let half_distance = 0.5 * start.distance(target);
 
         // If we're far away enough to ease in, try to do so (and fail if the start is not an
