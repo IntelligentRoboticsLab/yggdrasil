@@ -221,19 +221,11 @@ fn spawn_whistle_preprocess_task(
     mut commands: Commands,
     detection_state: ResMut<WhistleDetectionState>,
     mut audio_samples: EventReader<AudioSamplesEvent>,
-    // primary_state: Res<PrimaryState>,
     mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
 ) {
     if preprocessing_tasks.get_single_mut().is_ok() {
         return;
     };
-
-    // if *primary_state != PrimaryState::Set {
-    //     if let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() {
-    //         commands.entity(*entity).despawn();
-    //     };
-    //     return;
-    // }
 
     // Only take the last audio sample to reduce contention in case we are lagging behind
     let Some(audio_sample) = audio_samples.read().last() else {
