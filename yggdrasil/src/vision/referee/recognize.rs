@@ -47,14 +47,14 @@ pub fn recognizing_pose(
         // Check whether we detected VISUAL_REFEREE_DETECT_ATTEMPTS number of times.
         if detected_poses.poses.len() < recognition_config.referee_consecutive_pose_detections {
             // Add detected pose to vector remember
-            detected_poses.poses.push(pose.pose.clone());
+            detected_poses.poses.push(pose.pose);
             // Resend a request to detect a new referee pose
             detect_pose.send(DetectRefereePose);
         } else {
             // Determine if pose was the same
             if let Some(pose) = all_same_poses(&detected_poses.poses) {
                 // Send final pose recognition
-                recognized_pose.send(RefereePoseRecognized { pose: pose.clone() });
+                recognized_pose.send(RefereePoseRecognized { pose: *pose });
             }
             // Deactivate the visual referee recogition state
             next_recognition_status.set(VisualRefereeRecognitionStatus::Inactive);

@@ -10,10 +10,12 @@
 //! - Detection: A single referee pose prediction. For the referee pose this is a single
 //!   inference with the [`RefereePoseDetectionModel`](crate::vision::referee::detect::RefereePoseDetectionModel)
 
+pub mod communication;
 pub mod detect;
 pub mod recognize;
 
 use bevy::prelude::*;
+use bifrost::serialization::{Decode, Encode};
 use detect::RefereePoseDetectionPlugin;
 use odal::Config;
 use recognize::{RecognizeRefereePose, RefereePoseRecognitionPlugin};
@@ -33,7 +35,7 @@ impl Plugin for VisualRefereePlugin {
 }
 
 /// The referee poses that can be detected by a robot
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Encode, Decode, PartialEq)]
 pub enum RefereePose {
     /// Class 0. Combination of `Idle`, `PlayerExchangeBlue`, `PlayerExchangeRed`,
     /// `FullTime`
