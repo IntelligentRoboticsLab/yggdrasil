@@ -10,6 +10,7 @@ use nalgebra::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
+    localization::RobotPose,
     motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
     vision::ball_detection::classifier::Balls,
@@ -158,7 +159,17 @@ impl RoleState {
         }
     }
 
-    pub fn assign_role(commands: &mut Commands, player_number: u8) {
+    pub fn assign_role(
+        commands: &mut Commands,
+        player_number: u8,
+        possible_ball_distance: Option<f32>,
+    ) {
+        if let Some(distance) = possible_ball_distance {
+            if distance < 1.0 {
+                commands.set_role(Striker::WalkToBall);
+                return;
+            }
+        }
         // TODO: Check if robots have been penalized, or which robot is closed to the ball etc.
         Self::by_player_number(commands, player_number);
     }
@@ -196,6 +207,7 @@ pub fn role_base(
     bottom_balls: Res<Balls<Bottom>>,
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
+    pose: Res<RobotPose>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -242,6 +254,16 @@ pub fn role_base(
         return;
     }
 
+    // commands.set_behavior(Walk {
+    //     step: Step {
+    //         forward: 0.00,
+    //         left: 0.04,
+    //         turn: -0.2,
+    //     },
+    //     look_target: None,
+    // });
+    // return;
+
     if let Some(message) = game_controller_message {
         if message.game_phase == GamePhase::PenaltyShoot {
             if message.kicking_team == player_config.team_number {
@@ -281,7 +303,13 @@ pub fn role_base(
             target: ball_or_origin,
         }),
         PrimaryState::Playing { .. } => {
-            RoleState::assign_role(&mut commands, player_config.player_number);
+            let possible_ball_distance = most_confident_ball.map(|ball| pose.distance_to(&ball));
+
+            RoleState::assign_role(
+                &mut commands,
+                player_config.player_number,
+                possible_ball_distance,
+            );
         }
     }
 }
