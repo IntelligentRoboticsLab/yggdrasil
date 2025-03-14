@@ -55,8 +55,7 @@ pub fn recognizing_pose(
             detect_pose.send(DetectRefereePose);
         } else {
             // Determine if pose was the same
-            if all_same_poses(&detected_poses.poses) {
-                let pose = detected_poses.poses.first().expect("Does not happen :)");
+            if let Some(pose) = all_same_poses(&detected_poses.poses) {
                 // Send final pose recognition
                 recognized_pose.send(RefereePoseRecognized { pose: pose.clone() });
             }
@@ -134,8 +133,14 @@ pub fn show_recognized_pose(
 }
 
 // Determines whether all poses are the same
-fn all_same_poses(poses: &[RefereePose]) -> bool {
-    poses
+fn all_same_poses(poses: &[RefereePose]) -> Option<&RefereePose> {
+    let all_same = poses
         .first()
-        .is_none_or(|first| poses.iter().all(|x| x == first))
+        .is_none_or(|first| poses.iter().all(|x| x == first));
+
+    if all_same {
+        poses.first()
+    } else {
+        None
+    }
 }
