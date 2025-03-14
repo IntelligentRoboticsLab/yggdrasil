@@ -21,7 +21,7 @@ use crate::{
     prelude::*,
 };
 
-use super::audio_input::{AudioSamplesEvent, SAMPLES_PER_CHANNEL};
+use super::audio_input::AudioSamplesEvent;
 use ml::prelude::*;
 
 // the constants below need to match the parameters used for training
@@ -30,7 +30,7 @@ const WINDOW_SIZE: usize = 512;
 /// The interval between each window in samples.
 const HOP_SIZE: usize = 256;
 /// The number of windows to take the mean of before sending the average to the model.
-const MEAN_WINDOWS: usize = (SAMPLES_PER_CHANNEL as usize - WINDOW_SIZE) / HOP_SIZE + 1;
+const MEAN_WINDOWS: usize = 4;
 
 /// Nyquist assumed by the model.
 const NYQUIST: usize = 24001;
@@ -51,15 +51,16 @@ impl Plugin for WhistleDetectionPlugin {
             .add_systems(Update, spawn_whistle_preprocess_task)
             .add_systems(
                 Update,
-                (update_whistle_state, spawn_whistle_detection_model)
+                (update_whistle_state, despawn_whistle_preprocessing_task, spawn_whistle_detection_model)
                     .chain()
                     .run_if(task_finished::<WhistleDetections>),
             )
-            .add_systems(
-                Update,
-                despawn_whistle_preprocessing_task
-                    .run_if(resource_exists_and_changed::<WhistleDetections>),
-            );
+            //.add_systems(
+            //    Update,
+            //    despawn_whistle_preprocessing_task
+            //        .run_if(resource_exists_and_changed::<WhistleDetections>),
+            //);
+            ;
     }
 }
 
@@ -208,12 +209,14 @@ fn spawn_whistle_preprocess_task(
     primary_state: Res<PrimaryState>,
     mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
 ) {
-    let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() else {
+    if preprocessing_tasks.get_single_mut().is_ok() {
         return;
     };
 
     if *primary_state != PrimaryState::Set {
-        commands.entity(*entity).despawn();
+        if let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() {
+            commands.entity(*entity).despawn();
+        };
         return;
     }
 
