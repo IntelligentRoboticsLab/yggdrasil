@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
 
@@ -9,7 +11,7 @@ use nalgebra::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
-    motion::walking_engine::Gait,
+    motion::walking_engine::{step::Step, Gait},
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
 };
 
@@ -18,7 +20,7 @@ use super::{
         CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
         Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
         StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
-        VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin,
+        VisualReferee, VisualRefereeBehaviorPlugin, Walk, WalkBehaviorPlugin, WalkToBehaviorPlugin,
         WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
@@ -180,6 +182,14 @@ fn robot_is_leaning(imu_values: &IMUValues) -> bool {
         || imu_values.angles.y < BACKWARD_LEANING_THRESHOLD
 }
 
+pub struct Lastpenalized(pub Instant);
+
+impl Default for Lastpenalized {
+    fn default() -> Self {
+        Self(Instant::now())
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn role_base(
     mut commands: Commands,
@@ -192,6 +202,7 @@ pub fn role_base(
     player_config: Res<PlayerConfig>,
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
+    mut last_penalized: Local<Lastpenalized>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -253,6 +264,7 @@ pub fn role_base(
         PrimaryState::Sitting => commands.set_behavior(Sitting),
         PrimaryState::Penalized => {
             commands.set_behavior(Stand);
+            last_penalized.0 = Instant::now();
         }
         PrimaryState::Standby => {
             commands.set_behavior(VisualReferee);
@@ -270,6 +282,16 @@ pub fn role_base(
             target: Point2::default(),
         }),
         PrimaryState::Playing { .. } => {
+            if last_penalized.0.elapsed() < Duration::from_secs(5) {
+                commands.set_behavior(Walk {
+                    step: Step {
+                        forward: 0.04,
+                        left: 0.0,
+                        turn: 0.0,
+                    },
+                    look_target: None,
+                });
+            }
             RoleState::assign_role(&mut commands, player_config.player_number);
         }
     }
