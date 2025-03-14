@@ -66,7 +66,7 @@ pub fn better_striker(
         let current_world_rotation = pose.world_rotation();
 
         let direction = (enemy_goal_center - ball).normalize();
-        let target_point = ball + direction * 0.01;
+        let target_point = ball + direction * 0.1;
         let target_rotation = (enemy_goal_center - target_point).angle(&Vector2::new(1.0, 0.0))
             + current_world_rotation;
 
