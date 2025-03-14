@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
 
@@ -9,6 +11,7 @@ use nalgebra::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
+    localization::pose_filter::PenalizedHistory,
     localization::RobotPose,
     motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
@@ -17,11 +20,11 @@ use crate::{
 
 use super::{
     behaviors::{
-        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
-        Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
-        StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
-        VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin,
-        WalkToSet, WalkToSetBehaviorPlugin,
+        CatchFall, CatchFallBehaviorPlugin, Observe, ObserveBehaviorPlugin,
+        RlStrikerSearchBehaviorPlugin, Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin,
+        StandLookAt, StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin,
+        StartUpBehaviorPlugin, VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin,
+        WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
@@ -206,6 +209,7 @@ pub fn role_base(
     imu_values: Res<IMUValues>,
     ball_tracker: Res<BallTracker>,
     pose: Res<RobotPose>,
+    penalized_history: Res<PenalizedHistory>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -284,6 +288,19 @@ pub fn role_base(
             target: Point2::default(),
         }),
         PrimaryState::Playing { .. } => {
+            let tmp = penalized_history.duration_since_return();
+            info!(?tmp, "Duration since return");
+            if penalized_history.duration_since_return() < Duration::from_secs(8) {
+                info!(?tmp, "Whilst inreturn");
+
+                if behavior_state.get() != &BehaviorState::Observe {
+                    info!(?tmp, "Setting behavior?!?!");
+
+                    commands.set_behavior(Observe { step: None });
+                }
+                return;
+            }
+
             let possible_ball_distance = if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
                 Some(pose.distance_to(&ball_tracker.state().0))
             } else {

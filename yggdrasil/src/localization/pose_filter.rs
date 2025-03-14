@@ -248,7 +248,7 @@ fn odometry_update(odometry: Res<Odometry>, mut particles: Query<&mut RobotPoseF
 }
 
 fn returned_shortly_ago(penalized_history: Res<PenalizedHistory>) -> bool {
-    penalized_history.duration_since_return() < Duration::from_secs(4)
+    penalized_history.duration_since_return() < Duration::from_secs(8)
 }
 
 fn motion_is_unsafe(
@@ -295,14 +295,14 @@ fn update_penalized_history(
 }
 
 #[derive(Resource, Default, Debug, Clone, Copy)]
-struct PenalizedHistory {
+pub struct PenalizedHistory {
     previous: bool,
     current: bool,
     last_return: Option<Instant>,
 }
 
 impl PenalizedHistory {
-    fn duration_since_return(&self) -> Duration {
+    pub fn duration_since_return(&self) -> Duration {
         self.last_return.map_or(Duration::MAX, |last_return| {
             Instant::now().duration_since(last_return)
         })
