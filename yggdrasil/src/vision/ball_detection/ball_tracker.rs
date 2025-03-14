@@ -6,7 +6,6 @@ use nalgebra::{point, Point2};
 
 use crate::nao::Cycle;
 
-
 pub const STATIONARY_THRESHOLD: f32 = 80.0;
 
 // pub struct BallTrackerPlugin;
