@@ -137,5 +137,5 @@ pub fn show_recognized_pose(
 fn all_same_poses(poses: &[RefereePose]) -> bool {
     poses
         .first()
-        .map_or(true, |first| poses.iter().all(|x| x == first))
+        .is_none_or(|first| poses.iter().all(|x| x == first))
 }

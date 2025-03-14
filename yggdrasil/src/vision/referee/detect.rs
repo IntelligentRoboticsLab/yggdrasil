@@ -53,7 +53,7 @@ impl Plugin for RefereePoseDetectionPlugin {
     }
 }
 
-pub(super) struct RefereePoseDetectionModel;
+pub struct RefereePoseDetectionModel;
 
 impl MlModel for RefereePoseDetectionModel {
     type Inputs = Vec<u8>;
