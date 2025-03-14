@@ -2,9 +2,9 @@
 # margin outside of the field in which lines will still be considered in meters
 field_margin = 0.15
 # maximum number of iterations for RANSAC
-ransac_iters = 10
+ransac_iters = 50
 # maximum number of models to fit in RANSAC
-model_iters = 100
+model_iters = 250
 # residual threshold for RANSAC inliers in meters
 ransac_inlier_threshold = 0.025
 # maximum distance of a valid line spot from the camera in meters
