@@ -4,15 +4,13 @@ use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
-use filter::{CovarianceMatrix, StateTransform, StateVector, UnscentedKalmanFilter};
+use filter::{CovarianceMatrix, UnscentedKalmanFilter};
 use heimdall::{Bottom, CameraLocation, CameraMatrix, Top};
 use itertools::Itertools;
 use ml::prelude::ModelExecutor;
-use nalgebra::{point, vector, Point2, Vector2, VectorSlice2};
+use nalgebra::{Point2, Vector2};
 
 use rerun::external::glam::Vec2;
-use rerun::external::uuid::Timestamp;
-use rerun::time;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;

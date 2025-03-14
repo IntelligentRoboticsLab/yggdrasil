@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use heimdall::{Bottom, Top};
 use nalgebra::{Point2, Point3};
 
 use crate::{

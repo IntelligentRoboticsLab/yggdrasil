@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
-use heimdall::{Bottom, Top};
 
 use ml::{
     prelude::{MlTaskCommandsExt, ModelExecutor},
@@ -12,7 +11,7 @@ use crate::{
     core::config::showtime::PlayerConfig,
     motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
-    vision::ball_detection::{ball_tracker::BallTracker, classifier::Balls, Hypothesis},
+    vision::ball_detection::{ball_tracker::BallTracker, Hypothesis},
 };
 
 use super::{

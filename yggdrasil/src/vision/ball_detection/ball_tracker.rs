@@ -2,11 +2,10 @@ use std::time::Instant;
 
 use bevy::prelude::*;
 use filter::{CovarianceMatrix, StateTransform, StateVector, UnscentedKalmanFilter};
-use nalgebra::{point, Point2, Vector2};
+use nalgebra::{point, Point2};
 
 use crate::nao::Cycle;
 
-use super::classifier::Ball;
 
 pub const STATIONARY_THRESHOLD: f32 = 80.0;
 
@@ -59,7 +58,7 @@ impl BallTracker {
             .covariance()
             .diagonal()
             .iter()
-            .cloned()
+            .copied()
             .fold(f32::NEG_INFINITY, f32::max);
         if max_variance < STATIONARY_THRESHOLD {
             Hypothesis::Stationary(max_variance)

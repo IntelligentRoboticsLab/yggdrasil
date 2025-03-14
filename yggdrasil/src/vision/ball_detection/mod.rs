@@ -23,7 +23,7 @@ use crate::{
     prelude::*,
 };
 
-use self::classifier::{BallClassifierConfig, Balls};
+use self::classifier::BallClassifierConfig;
 
 /// Plugin for detecting balls in the top and bottom images.
 pub struct BallDetectionPlugin;

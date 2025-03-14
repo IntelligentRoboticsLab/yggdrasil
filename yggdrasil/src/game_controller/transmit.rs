@@ -7,13 +7,12 @@ use bifrost::{
     serialization::Encode,
 };
 use futures::channel::mpsc::{self};
-use heimdall::{Bottom, Top};
 
 use crate::{
     core::config::showtime::PlayerConfig,
     localization::RobotPose,
     sensor::falling::FallState,
-    vision::ball_detection::{ball_tracker::BallTracker, classifier::Balls, Hypothesis},
+    vision::ball_detection::{ball_tracker::BallTracker, Hypothesis},
 };
 
 use super::{GameControllerConfig, GameControllerConnection, GameControllerSocket};
