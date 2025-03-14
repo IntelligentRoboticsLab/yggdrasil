@@ -21,7 +21,7 @@ use crate::{
     prelude::*,
 };
 
-use super::audio_input::{AudioSamplesEvent, SAMPLES_PER_CHANNEL};
+use super::audio_input::AudioSamplesEvent;
 use ml::prelude::*;
 
 // the constants below need to match the parameters used for training
@@ -30,7 +30,7 @@ const WINDOW_SIZE: usize = 512;
 /// The interval between each window in samples.
 const HOP_SIZE: usize = 256;
 /// The number of windows to take the mean of before sending the average to the model.
-const MEAN_WINDOWS: usize = (SAMPLES_PER_CHANNEL as usize - WINDOW_SIZE) / HOP_SIZE + 1;
+const MEAN_WINDOWS: usize = 4;
 
 /// Nyquist assumed by the model.
 const NYQUIST: usize = 24001;
