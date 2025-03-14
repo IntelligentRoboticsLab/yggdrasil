@@ -81,7 +81,7 @@ fn init_ball_classifier(mut commands: Commands) {
             CovarianceMatrix::from_diagonal_element(0.05),
         ),
         prediction_noise: CovarianceMatrix::from_diagonal_element(0.1),
-        sensor_noise: CovarianceMatrix::from_diagonal_element(0.001),
+        sensor_noise: CovarianceMatrix::from_diagonal_element(0.6),
         cycle: Cycle::default(),
         timestamp: Instant::now(),
     };

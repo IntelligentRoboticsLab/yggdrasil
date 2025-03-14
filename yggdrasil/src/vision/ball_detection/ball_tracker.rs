@@ -8,7 +8,7 @@ use crate::nao::Cycle;
 
 use super::classifier::Ball;
 
-pub const STATIONARY_THRESHOLD: f32 = 1.0;
+pub const STATIONARY_THRESHOLD: f32 = 80.0;
 
 // pub struct BallTrackerPlugin;
 
@@ -47,7 +47,7 @@ impl BallTracker {
         // let starting_position_cov = nalgebra::SMatrix::<f32, 2, 2>::from_diagonal_element(0.05);
         self.position_kf = UnscentedKalmanFilter::<2, 5, BallPosition>::new(position, cov);
         // Default value for the position update noise
-        self.prediction_noise = filter::CovarianceMatrix::from_diagonal_element(0.1);
+        self.prediction_noise = filter::CovarianceMatrix::from_diagonal_element(0.01);
         self.sensor_noise = filter::CovarianceMatrix::from_diagonal_element(0.00001);
     }
 
