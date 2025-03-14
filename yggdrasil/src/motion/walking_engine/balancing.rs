@@ -67,7 +67,7 @@ impl BalanceAdjustment {
 
     /// Reset all adjustment values and prepare for new values.
     #[must_use]
-    fn prepare(&mut self) -> &mut Self {
+    pub fn prepare(&mut self) -> &mut Self {
         self.left_leg = LeftLegJoints::default();
         self.right_leg = RightLegJoints::default();
 

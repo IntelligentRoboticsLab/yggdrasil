@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use nidhogg::types::{FillExt, LegJoints};
 
 use crate::motion::walking_engine::{
+    balancing::BalanceAdjustment,
     config::WalkingEngineConfig,
     feet::FootPositions,
     hips::HipHeight,
@@ -27,10 +28,13 @@ fn generate_stand_gait(
     mut hip_height: ResMut<HipHeight>,
     mut target_stiffness: ResMut<TargetLegStiffness>,
     config: Res<WalkingEngineConfig>,
+    mut balancing: ResMut<BalanceAdjustment>,
 ) {
     // always set the foot offsets to 0,0,0.
     **target = FootPositions::default();
 
     hip_height.request(config.hip_height.walking_hip_height);
     **target_stiffness = LegJoints::fill(config.walking_leg_stiffness);
+
+    let _ = balancing.prepare();
 }
