@@ -46,7 +46,7 @@ pub fn striker_role(
     ball_tracker: Res<BallTracker>,
     mut state: ResMut<Striker>,
 ) {
-    if let Hypothesis::Stationary = ball_tracker.cutoff() {
+    if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
         let ball = ball_tracker.state().0;
         let enemy_goal_center = Point2::new(layout_config.field.length / 2., 0.);
         let enemy_goal_left = Point2::new(layout_config.field.length / 2., 0.8);

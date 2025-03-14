@@ -8,7 +8,7 @@ use crate::nao::Cycle;
 
 use super::classifier::Ball;
 
-pub const STATIONARY_THRESHOLD: f32 = 0.1;
+pub const STATIONARY_THRESHOLD: f32 = 1.0;
 
 // pub struct BallTrackerPlugin;
 
@@ -25,9 +25,10 @@ pub const STATIONARY_THRESHOLD: f32 = 0.1;
 //     }
 // }
 
+#[derive(Debug)]
 pub enum Hypothesis {
-    Moving,
-    Stationary,
+    Moving(f32),
+    Stationary(f32),
 }
 
 #[derive(Resource, Deref, DerefMut)]
@@ -47,7 +48,7 @@ impl BallTracker {
         self.position_kf = UnscentedKalmanFilter::<2, 5, BallPosition>::new(position, cov);
         // Default value for the position update noise
         self.prediction_noise = filter::CovarianceMatrix::from_diagonal_element(0.1);
-        self.sensor_noise = filter::CovarianceMatrix::from_diagonal_element(0.001);
+        self.sensor_noise = filter::CovarianceMatrix::from_diagonal_element(0.00001);
     }
 
     // pub fn update(&mut self) {}
@@ -65,10 +66,11 @@ impl BallTracker {
     }
 
     pub fn cutoff(&self) -> Hypothesis {
-        if self.covariance().diagonal().iter().all(|&x| x < STATIONARY_THRESHOLD) {
-            Hypothesis::Stationary
+        let max_variance = self.covariance().diagonal().iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        if max_variance < STATIONARY_THRESHOLD {
+            Hypothesis::Stationary(max_variance)
         } else {
-            Hypothesis::Moving
+            Hypothesis::Moving(max_variance)
         }
     }
 

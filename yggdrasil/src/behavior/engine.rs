@@ -251,7 +251,7 @@ pub fn role_base(
 
     let most_confident_ball = ball_tracker.state();
 
-    let ball_or_origin = if let Hypothesis::Stationary = ball_tracker.cutoff() {
+    let ball_or_origin = if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
         most_confident_ball.0
     } else {
         Point2::default()

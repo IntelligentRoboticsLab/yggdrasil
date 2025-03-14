@@ -1,18 +1,19 @@
 //! Module for detecting balls in the top and bottom images.
 
+pub mod ball_tracker;
 pub mod classifier;
 pub mod proposal;
-pub mod ball_tracker;
 
 use std::time::Duration;
 
 use ball_tracker::BallTracker;
+pub use ball_tracker::Hypothesis;
 use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, Top};
 use nidhogg::types::{color, FillExt, LeftEye};
 use proposal::BallProposalConfigs;
-pub use ball_tracker::Hypothesis;
 
+use rerun::ComponentBatch;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 
@@ -92,7 +93,7 @@ fn detected_ball_eye_color(
     ball_tracker: Res<BallTracker>,
     config: Res<BallDetectionConfig>,
 ) {
-    if let Hypothesis::Stationary = ball_tracker.cutoff(){
+    if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
         if ball_tracker.timestamp.elapsed() >= config.max_classification_age_eye_color {
             nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
         } else {
@@ -126,10 +127,18 @@ fn log_3d_balls(
     ball_tracker: Res<BallTracker>,
     mut last_logged: Local<Option<Cycle>>,
 ) {
-    let most_confident_ball = ball_tracker.state();
     let cycle = ball_tracker.cycle;
+    let state = ball_tracker.cutoff();
+    dbg.log_with_cycle(
+        "balls/best",
+        cycle,
+        &rerun::components::Text(format!("{state:?}").into())
+            .serialized()
+            .expect("i want to kms"),
+    );
 
-    if let pos = most_confident_ball {
+    if let Hypothesis::Stationary(_) = state {
+        let pos = ball_tracker.state();
         if last_logged.map_or(true, |c| cycle > c) {
             *last_logged = Some(cycle);
             dbg.log_with_cycle(
