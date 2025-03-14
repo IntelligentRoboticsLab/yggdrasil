@@ -31,6 +31,7 @@ use crate::{
         field_color::{field_color_ui, FieldColorState},
         resource::{resource_ui, ResourcesState},
         selection_ui,
+        visual_referee::visual_referee_ui,
     },
 };
 
@@ -56,6 +57,7 @@ enum ControlViewerSection {
     DebugEnabledSystems,
     CameraCalibration,
     FieldColor,
+    VisualReferee,
 }
 
 /// The state of the custom `ViewClass`. It consists of:
@@ -183,6 +185,9 @@ A view to control the robot",
             ControlViewerSection::FieldColor => {
                 field_color_ui(ui, Arc::clone(&state.data), handle);
             }
+            ControlViewerSection::VisualReferee => {
+                visual_referee_ui(ui, Arc::clone(&state.data), handle);
+            }
         }
 
         Ok(())
@@ -230,6 +235,11 @@ A view to control the robot",
                     "CameraCalibration",
                 );
                 ui.selectable_value(selected, ControlViewerSection::FieldColor, "Field color");
+                ui.selectable_value(
+                    selected,
+                    ControlViewerSection::VisualReferee,
+                    "Visual referee",
+                )
             });
 
         Ok(())

@@ -59,4 +59,5 @@ pub enum ViewerMessage {
     FieldColor {
         config: FieldColorConfig,
     },
+    VisualRefereeRecognition,
 }

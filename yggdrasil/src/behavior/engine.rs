@@ -20,7 +20,8 @@ use super::{
         CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
         Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
         StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
-        WalkBehaviorPlugin, WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
+        VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin,
+        WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
@@ -53,6 +54,7 @@ impl Plugin for BehaviorEnginePlugin {
                 GoalkeeperRolePlugin,
                 StrikerRolePlugin,
                 RlStrikerSearchBehaviorPlugin,
+                VisualRefereeBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
     }
@@ -94,6 +96,7 @@ pub enum BehaviorState {
     Standup,
     #[default]
     StartUp,
+    VisualReferee,
     WalkTo,
     WalkToSet,
     RlStrikerSearchBehavior,
@@ -262,7 +265,10 @@ pub fn role_base(
         PrimaryState::Penalized => {
             commands.set_behavior(Stand);
         }
-        PrimaryState::Standby | PrimaryState::Finished | PrimaryState::Calibration => {
+        PrimaryState::Standby => {
+            commands.set_behavior(VisualReferee);
+        }
+        PrimaryState::Finished | PrimaryState::Calibration => {
             commands.set_behavior(Stand);
         }
         PrimaryState::Initial => {
@@ -270,7 +276,7 @@ pub fn role_base(
                 target: Point2::default(),
             });
         }
-        PrimaryState::Ready => commands.set_behavior(WalkToSet),
+        PrimaryState::Ready { .. } => commands.set_behavior(WalkToSet {}),
         PrimaryState::Set => commands.set_behavior(StandLookAt {
             target: ball_or_origin,
         }),
