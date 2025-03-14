@@ -100,6 +100,7 @@ pub enum BehaviorState {
     WalkTo,
     WalkToSet,
     RlStrikerSearchBehavior,
+    RlDefenderSearchBehavior,
 }
 
 #[must_use]
@@ -150,17 +151,18 @@ pub enum RoleState {
 
 impl RoleState {
     /// Get the default role for each robot based on that robots player number
-    pub fn by_player_number(commands: &mut Commands, player_number: u8) {
+    pub fn by_player_number(commands: &mut Commands, player_number: u8, sees_ball: bool) {
         match player_number {
             1 => commands.set_role(Goalkeeper),
             5 | 4 => commands.set_role(Striker::WalkToBall),
+            _ if sees_ball => commands.set_role(Striker::WalkToBall),
             _ => commands.set_role(Defender),
         }
     }
 
-    pub fn assign_role(commands: &mut Commands, player_number: u8) {
+    pub fn assign_role(commands: &mut Commands, player_number: u8, sees_ball: bool) {
         // TODO: Check if robots have been penalized, or which robot is closed to the ball etc.
-        Self::by_player_number(commands, player_number);
+        Self::by_player_number(commands, player_number, sees_ball);
     }
 }
 
@@ -281,7 +283,11 @@ pub fn role_base(
             target: ball_or_origin,
         }),
         PrimaryState::Playing { .. } => {
-            RoleState::assign_role(&mut commands, player_config.player_number);
+            RoleState::assign_role(
+                &mut commands,
+                player_config.player_number,
+                most_confident_ball.is_some(),
+            );
         }
     }
 }

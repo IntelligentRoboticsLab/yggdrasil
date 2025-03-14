@@ -1,13 +1,13 @@
 use bevy::prelude::*;
+use heimdall::{Bottom, Top};
 
 use crate::{
     behavior::{
-        behaviors::{Observe, WalkTo},
+        behaviors::RlDefenderSearchBehavior,
         engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
+        roles::Striker,
     },
-    core::config::{layout::LayoutConfig, showtime::PlayerConfig},
-    localization::RobotPose,
-    motion::path::PathPlanner,
+    vision::ball_detection::classifier::Balls,
 };
 
 /// Plugin for the Defender role
@@ -29,20 +29,17 @@ impl Roles for Defender {
 
 pub fn defender_role(
     mut commands: Commands,
-    layout_config: Res<LayoutConfig>,
-    player_config: Res<PlayerConfig>,
-    planner: Res<PathPlanner>,
-    pose: Res<RobotPose>,
+    top_balls: Res<Balls<Top>>,
+    bottom_balls: Res<Balls<Bottom>>,
 ) {
-    let set_robot_position = layout_config
-        .set_positions
-        .player(player_config.player_number);
+    let most_confident_ball = bottom_balls
+        .most_confident_ball()
+        .map(|b| b.position)
+        .or(top_balls.most_confident_ball().map(|b| b.position));
 
-    if planner.reached_target(pose.inner) {
-        commands.set_behavior(Observe::with_turning(-0.4));
+    if most_confident_ball.is_none() {
+        commands.set_behavior(RlDefenderSearchBehavior);
     } else {
-        commands.set_behavior(WalkTo {
-            target: set_robot_position.isometry.into(),
-        });
+        commands.set_role(Striker::WalkToBall);
     }
 }
