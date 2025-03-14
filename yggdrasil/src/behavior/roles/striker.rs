@@ -108,12 +108,10 @@ pub fn striker_role(
             });
         }
 
-        if ball_distance <= 0.15 {
-            let kicking_side = step_context.last_swing_side();
-            
+        if ball_distance <= 0.3 {            
+            println!("Requesting kick! (ball distance: {:?})", ball_distance);
             // TODO: weg
-            // println!("Requesting kick w/ {:?}! (ball distance: {:?})", kicking_side, ball_distance);
-            step_context.request_kick(KickVariant::Forward, kicking_side, 0.6);
+            step_context.request_kick(KickVariant::Forward, 0.6);
         }
 
     } else {
