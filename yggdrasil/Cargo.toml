@@ -36,6 +36,7 @@ bevy = { workspace = true, features = ["bevy_state"] }
 chrono = { workspace = true }
 cpal = { workspace = true }
 fast_image_resize = { workspace = true }
+filter = { version = "0.1.0", path = "../crates/filter" }
 futures = { workspace = true }
 itertools = { workspace = true }
 kira = { workspace = true }
@@ -62,4 +63,3 @@ tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tracing-tracy = { workspace = true, optional = true }
 vqf = { workspace = true }
-filter = { version = "0.1.0", path = "../crates/filter" }

@@ -8,21 +8,6 @@ use crate::nao::Cycle;
 
 pub const STATIONARY_THRESHOLD: f32 = 80.0;
 
-// pub struct BallTrackerPlugin;
-
-// impl Plugin for BallTrackerPlugin {
-//     fn build(&self, app: &mut App) {
-//         app.add_systems(
-//             PostUpdate,
-//             (
-//                 log_ball_classifications::<Top>.run_if(resource_exists_and_changed::<Balls<Top>>),
-//                 log_ball_classifications::<Bottom>
-//                     .run_if(resource_exists_and_changed::<Balls<Bottom>>),
-//             ),
-//         );
-//     }
-// }
-
 #[derive(Debug)]
 pub enum Hypothesis {
     Moving(f32),
@@ -82,9 +67,6 @@ impl BallTracker {
         // Putting timestamp update here for now
         self.timestamp = Instant::now();
     }
-
-    //TODO: implement uncertainty in the ball tracker (you want to know when to give up the estimate)
-    // Check cycle time form last cycle
 }
 
 #[derive(Deref, DerefMut, Clone, Copy, Resource)]
