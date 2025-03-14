@@ -132,7 +132,6 @@ fn reset_orientation(
                     prev,
                     PrimaryState::Sitting
                         | PrimaryState::Initial
-                        | PrimaryState::Standby
                         | PrimaryState::Penalized
                         | PrimaryState::Finished
                 ),
