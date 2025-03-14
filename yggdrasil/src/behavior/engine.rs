@@ -5,13 +5,17 @@ use ml::{
     prelude::{MlTaskCommandsExt, ModelExecutor},
     MlModel,
 };
-use nalgebra::Point2;
+use nalgebra::{point, Point, Point2};
 
 use crate::{
     core::config::showtime::PlayerConfig,
     localization::RobotPose,
     motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
+    vision::ball_detection::{
+        ball_tracker::{self, BallTracker},
+        Hypothesis,
+    },
 };
 
 use super::{
@@ -204,6 +208,7 @@ pub fn role_base(
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
     pose: Res<RobotPose>,
+    ball_tracker: Res<BallTracker>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -250,16 +255,6 @@ pub fn role_base(
         return;
     }
 
-    // commands.set_behavior(Walk {
-    //     step: Step {
-    //         forward: 0.00,
-    //         left: 0.04,
-    //         turn: -0.2,
-    //     },
-    //     look_target: None,
-    // });
-    // return;
-
     if let Some(message) = game_controller_message {
         if message.game_phase == GamePhase::PenaltyShoot {
             if message.kicking_team == player_config.team_number {
@@ -270,6 +265,13 @@ pub fn role_base(
             }
         }
     }
+
+    let possible_ball_distance = if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
+        let ball = ball_tracker.state().0;
+        Some(pose.distance_to(&ball))
+    } else {
+        None
+    };
 
     match *primary_state {
         PrimaryState::Sitting => commands.set_behavior(Sitting),
@@ -292,8 +294,6 @@ pub fn role_base(
             target: Point2::default(),
         }),
         PrimaryState::Playing { .. } => {
-            let possible_ball_distance = most_confident_ball.map(|ball| pose.distance_to(&ball));
-
             RoleState::assign_role(
                 &mut commands,
                 player_config.player_number,
