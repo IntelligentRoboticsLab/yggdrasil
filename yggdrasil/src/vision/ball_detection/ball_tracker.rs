@@ -68,6 +68,7 @@ impl BallTracker {
         self.timestamp = Instant::now();
     }
 
+    #[must_use]
     pub fn get_stationary_ball(&self) -> Option<Point2<f32>> {
         if let Hypothesis::Stationary(_) = self.cutoff() {
             Some(self.state().0)

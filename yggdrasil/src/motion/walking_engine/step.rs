@@ -35,6 +35,7 @@ impl Step {
         }
     }
 
+    #[must_use]
     pub fn forward() -> Self {
         Self {
             forward: 0.06,
@@ -43,6 +44,7 @@ impl Step {
         }
     }
 
+    #[must_use]
     pub fn left() -> Self {
         Self {
             forward: 0.0,
@@ -51,6 +53,7 @@ impl Step {
         }
     }
 
+    #[must_use]
     pub fn right() -> Self {
         Self {
             forward: 0.0,
