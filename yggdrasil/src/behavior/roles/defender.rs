@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use heimdall::{Bottom, Top};
-use nalgebra::Point2;
 
 use crate::{
     behavior::{
@@ -9,25 +8,17 @@ use crate::{
         roles::Striker,
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
-    localization::{RobotFieldRegion, RobotPose},
+    localization::RobotFieldRegion,
     motion::path::Target,
     vision::ball_detection::classifier::Balls,
 };
-
-const DISTANCE_FROM_TARGET_FINISH: f32 = 0.2;
 
 /// Plugin for the Defender role
 pub struct DefenderRolePlugin;
 
 impl Plugin for DefenderRolePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-                Update,
-                (
-                    return_walk_progress.before(defender_role),
-                    defender_role.run_if(in_role::<Defender>),
-                ),
-            );
+        app.add_systems(Update, (defender_role.run_if(in_role::<Defender>),));
     }
 }
 
@@ -72,25 +63,5 @@ pub fn defender_role(
         }
     } else {
         commands.set_role(Striker::WalkToBall);
-    }
-}
-
-fn return_walk_progress(
-    mut walk_progress: ResMut<NextState<WalkToPosition>>,
-    robot_pose: Res<RobotPose>,
-    layout_config: Res<LayoutConfig>,
-    player_config: Res<PlayerConfig>,
-) {
-    let set_robot_position = layout_config
-        .set_positions
-        .player(player_config.player_number);
-
-    let target_point = Point2::from(set_robot_position.isometry.translation.vector);
-    let distance_to_target = robot_pose.distance_to(&target_point);
-
-    if distance_to_target < DISTANCE_FROM_TARGET_FINISH {
-        walk_progress.set(WalkToPosition::Walking);
-    } else {
-        walk_progress.set(WalkToPosition::Finished);
     }
 }

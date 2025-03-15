@@ -9,7 +9,8 @@ use ml::{
 use nalgebra::Point2;
 
 use crate::{
-    core::config::showtime::PlayerConfig,
+    core::config::{layout::LayoutConfig, showtime::PlayerConfig},
+    localization::RobotPose,
     motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
     vision::ball_detection::classifier::Balls,
@@ -31,6 +32,9 @@ use super::{
 
 const FORWARD_LEANING_THRESHOLD: f32 = 0.2;
 const BACKWARD_LEANING_THRESHOLD: f32 = -0.2;
+
+const DISTANCE_FROM_TARGET_FINISH: f32 = 0.2;
+
 
 pub(super) struct BehaviorEnginePlugin;
 
@@ -60,6 +64,7 @@ impl Plugin for BehaviorEnginePlugin {
                 RlDefenderSearchBehaviorPlugin,
                 VisualRefereeBehaviorPlugin,
             ))
+            .add_systems(Update, return_walk_progress)
             .add_systems(PostUpdate, role_base);
     }
 }
@@ -301,4 +306,24 @@ pub enum WalkToPosition {
     #[default]
     Walking,
     Finished,
+}
+
+fn return_walk_progress(
+    mut walk_progress: ResMut<NextState<WalkToPosition>>,
+    robot_pose: Res<RobotPose>,
+    layout_config: Res<LayoutConfig>,
+    player_config: Res<PlayerConfig>,
+) {
+    let set_robot_position = layout_config
+        .set_positions
+        .player(player_config.player_number);
+
+    let target_point = Point2::from(set_robot_position.isometry.translation.vector);
+    let distance_to_target = robot_pose.distance_to(&target_point);
+
+    if distance_to_target < DISTANCE_FROM_TARGET_FINISH {
+        walk_progress.set(WalkToPosition::Walking);
+    } else {
+        walk_progress.set(WalkToPosition::Finished);
+    }
 }

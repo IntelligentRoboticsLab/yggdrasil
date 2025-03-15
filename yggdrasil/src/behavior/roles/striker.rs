@@ -5,11 +5,11 @@ use nalgebra::{Point2, Point3};
 use crate::{
     behavior::{
         behaviors::{RlStrikerSearchBehavior, Walk, WalkTo},
-        engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
+        engine::{in_role, CommandsBehaviorExt, RoleState, Roles, WalkToPosition},
     },
-    core::config::layout::LayoutConfig,
-    localization::RobotPose,
-    motion::walking_engine::step::Step,
+    core::config::{layout::LayoutConfig, showtime::PlayerConfig},
+    localization::{RobotFieldRegion, RobotPose},
+    motion::{path::Target, walking_engine::step::Step},
     vision::ball_detection::classifier::Balls,
 };
 
@@ -43,9 +43,12 @@ pub fn striker_role(
     mut commands: Commands,
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
+    player_config: Res<PlayerConfig>,
     top_balls: Res<Balls<Top>>,
     bottom_balls: Res<Balls<Bottom>>,
     mut state: ResMut<Striker>,
+    return_walk: Res<State<WalkToPosition>>,
+    robot_field_region: Res<State<RobotFieldRegion>>,
 ) {
     let most_confident_ball = bottom_balls
         .most_confident_ball()
@@ -112,7 +115,23 @@ pub fn striker_role(
             }
         }
     } else {
-        commands.set_behavior(RlStrikerSearchBehavior);
+        match (robot_field_region.get(), return_walk.get()) {
+            (RobotFieldRegion::Inside, WalkToPosition::Finished) => {
+                commands.set_behavior(RlStrikerSearchBehavior);
+            }
+
+            (RobotFieldRegion::Outside, ..)
+            | (RobotFieldRegion::Inside, WalkToPosition::Walking) => {
+                let set_robot_position = layout_config
+                    .set_positions
+                    .player(player_config.player_number);
+
+                commands.set_behavior(WalkTo {
+                    target: Target::Isometry(set_robot_position.isometry),
+                });
+            }
+        }
+        // commands.set_behavior(RlStrikerSearchBehavior);
     }
 }
 
