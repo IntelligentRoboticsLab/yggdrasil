@@ -156,7 +156,7 @@ impl RoleState {
     pub fn by_player_number(commands: &mut Commands, player_number: u8) {
         match player_number {
             1 => commands.set_role(Goalkeeper),
-            5 | 4 => commands.set_role(Striker::WalkToBall),
+            5 | 4 => commands.set_role(Striker),
             _ => commands.set_role(Defender),
         }
     }
@@ -168,7 +168,7 @@ impl RoleState {
     ) {
         if let Some(distance) = possible_ball_distance {
             if distance < 1.0 {
-                commands.set_role(Striker::WalkToBall);
+                commands.set_role(Striker);
                 return;
             }
         }
@@ -278,7 +278,7 @@ pub fn role_base(
     if let Some(message) = game_controller_message {
         if message.game_phase == GamePhase::PenaltyShoot {
             if message.kicking_team == player_config.team_number {
-                commands.set_role(Striker::WalkWithBall);
+                commands.set_role(Striker);
             } else {
                 commands.set_behavior(Stand);
                 return;
