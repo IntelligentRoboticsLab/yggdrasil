@@ -25,6 +25,15 @@ pub struct Target {
     pub rotation: Option<UnitComplex<f32>>,
 }
 
+impl From<Point2<f32>> for Target {
+    fn from(position: Point2<f32>) -> Self {
+        Target {
+            position,
+            rotation: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Resource)]
 pub struct StepPlanner {
     target: Option<Target>,

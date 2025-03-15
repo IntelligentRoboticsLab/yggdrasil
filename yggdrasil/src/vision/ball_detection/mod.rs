@@ -93,20 +93,21 @@ fn detected_ball_eye_color(
     ball_tracker: Res<BallTracker>,
     config: Res<BallDetectionConfig>,
 ) {
-    if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
-        if ball_tracker.timestamp.elapsed() >= config.max_classification_age_eye_color {
-            nao.set_left_eye_led(
-                LeftEye::fill(color::Rgb::new(1.0, 1.0, 0.0)),
-                Priority::default(),
-            );
-        } else {
-            nao.set_left_eye_led(
-                LeftEye::fill(color::Rgb::new(0.9, 0.6, 1.0)),
-                Priority::default(),
-            );
-        }
-    } else {
+    let Some(_) = ball_tracker.get_stationary_ball() else {
         nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
+        return;
+    };
+
+    if ball_tracker.timestamp.elapsed() >= config.max_classification_age_eye_color {
+        nao.set_left_eye_led(
+            LeftEye::fill(color::Rgb::new(1.0, 1.0, 0.0)),
+            Priority::default(),
+        );
+    } else {
+        nao.set_left_eye_led(
+            LeftEye::fill(color::Rgb::new(0.9, 0.6, 1.0)),
+            Priority::default(),
+        );
     }
 }
 

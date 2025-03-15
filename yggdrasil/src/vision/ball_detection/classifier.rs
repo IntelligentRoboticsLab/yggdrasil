@@ -10,12 +10,10 @@ use itertools::Itertools;
 use ml::prelude::ModelExecutor;
 use nalgebra::{Point2, Vector2};
 
-use rerun::external::glam::Vec2;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
 
-use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
 
 use crate::nao::Cycle;
@@ -58,15 +56,6 @@ impl Plugin for BallClassifierPlugin {
                         .run_if(resource_exists_and_changed::<BallProposals<Bottom>>),
                 )
                     .run_if(in_state(VisualRefereeDetectionStatus::Inactive)),
-            )
-            .add_systems(
-                PostUpdate,
-                (
-                    log_ball_classifications::<Top>
-                        .run_if(resource_exists_and_changed::<Balls<Top>>),
-                    log_ball_classifications::<Bottom>
-                        .run_if(resource_exists_and_changed::<Balls<Bottom>>),
-                ),
             );
     }
 }
@@ -84,38 +73,6 @@ fn init_ball_classifier(mut commands: Commands) {
         timestamp: Instant::now(),
     };
     commands.insert_resource(ball_tracker);
-}
-
-fn log_ball_classifications<T: CameraLocation>(dbg: DebugContext, balls: Res<Balls<T>>) {
-    let (positions, (half_sizes, confidences)): (Vec<_>, (Vec<_>, Vec<_>)) = balls
-        .balls
-        .iter()
-        .filter(|ball| ball.cycle == balls.cycle)
-        .map(|ball| {
-            (
-                Into::<Vec2>::into(ball.position_image),
-                (
-                    (ball.scale / 2.0, ball.scale / 2.0),
-                    format!("{:.2}", ball.confidence),
-                ),
-            )
-        })
-        .unzip();
-
-    if positions.is_empty() {
-        dbg.log_with_cycle(
-            T::make_entity_image_path("balls/classifications"),
-            balls.cycle,
-            &rerun::Clear::flat(),
-        );
-        return;
-    }
-    dbg.log_with_cycle(
-        T::make_entity_image_path("balls/classifications"),
-        balls.cycle,
-        &rerun::Boxes2D::from_centers_and_half_sizes(positions, &half_sizes)
-            .with_labels(confidences),
-    );
 }
 
 pub(super) struct BallClassifierModel;
@@ -166,33 +123,6 @@ impl<T: CameraLocation> Clone for Ball<T> {
             cycle: self.cycle,
             _marker: PhantomData,
         }
-    }
-}
-
-#[derive(Resource, Clone)]
-pub struct Balls<T: CameraLocation> {
-    pub balls: Vec<Ball<T>>,
-    pub cycle: Cycle,
-}
-
-impl<T: CameraLocation> Balls<T> {
-    #[must_use]
-    pub fn no_balls(&self) -> bool {
-        self.balls.is_empty()
-    }
-
-    #[must_use]
-    pub fn most_confident_ball(&self) -> Option<&Ball<T>> {
-        self.balls
-            .iter()
-            .reduce(|a, b| if a.confidence > b.confidence { a } else { b })
-    }
-
-    #[must_use]
-    pub fn most_recent_ball(&self) -> Option<&Ball<T>> {
-        self.balls
-            .iter()
-            .reduce(|a, b| if a.timestamp > b.timestamp { a } else { b })
     }
 }
 
