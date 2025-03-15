@@ -1,13 +1,13 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use nalgebra as na;
+use nalgebra::Point3;
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
     localization::RobotPose,
     motion::{
-        path::{PathPlanner, Target},
+        step_planner::{StepPlanner, Target},
         walking_engine::step_context::StepContext,
     },
     nao::{NaoManager, Priority},
@@ -35,13 +35,13 @@ impl Behavior for WalkTo {
 pub fn walk_to(
     walk_to: Res<WalkTo>,
     pose: Res<RobotPose>,
-    mut planner: ResMut<PathPlanner>,
+    mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
-    let point = walk_to.target.to_point();
-    let look_at = pose.get_look_at_absolute(&na::point![point.x, point.y, 0.]);
+    let target_point = Point3::new(walk_to.target.position.x, walk_to.target.position.y, 0.0);
 
+    let look_at = pose.get_look_at_absolute(&target_point);
     nao_manager.set_head_target(
         look_at,
         HEAD_ROTATION_TIME,
@@ -49,10 +49,21 @@ pub fn walk_to(
         NaoManager::HEAD_STIFFNESS,
     );
 
-    planner.target = Some(walk_to.target);
+    // Check and clear existing target if different
+    if step_planner
+        .current_absolute_target()
+        .is_some_and(|target| target != &walk_to.target)
+    {
+        step_planner.clear_target();
+    }
 
-    match planner.step(pose.inner) {
-        Some(step) => step_context.request_walk(step),
-        None => step_context.request_stand(),
+    // Set absolute target if not set
+    step_planner.set_absolute_target_if_unset(walk_to.target);
+
+    // Plan step or stand
+    if let Some(step) = step_planner.plan(&pose) {
+        step_context.request_walk(step);
+    } else {
+        step_context.request_stand();
     }
 }
