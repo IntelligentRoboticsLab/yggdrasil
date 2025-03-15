@@ -1,9 +1,16 @@
 pub mod correspondence;
 
-use std::f32::consts::PI;
+use std::{
+    f32::consts::PI,
+    time::{Duration, Instant},
+};
 
 use crate::{
-    behavior::{behaviors::Standup, engine::in_behavior, primary_state::PrimaryState},
+    behavior::{
+        behaviors::Standup,
+        engine::in_behavior,
+        primary_state::{is_penalized_by_game_controller, PrimaryState},
+    },
     core::{
         config::{layout::LayoutConfig, showtime::PlayerConfig},
         debug::DebugContext,
@@ -31,12 +38,16 @@ impl Plugin for LocalizationPlugin {
             LineCorrespondencePlugin::<Top>::default(),
             LineCorrespondencePlugin::<Bottom>::default(),
         ))
+        .init_resource::<PenalizedHistory>()
         .add_systems(PostStartup, (init_pose, setup_pose_visualization))
         .add_systems(
             PreUpdate,
-            update_robot_pose
-                .after(odometry::update_odometry)
-                .run_if(not(in_behavior::<Standup>)),
+            (
+                update_robot_pose
+                    .after(odometry::update_odometry)
+                    .run_if(not(in_behavior::<Standup>)),
+                update_penalized_history,
+            ),
         )
         .add_systems(PostUpdate, visualize_pose);
     }
@@ -138,6 +149,7 @@ fn update_robot_pose(
     primary_state: Res<PrimaryState>,
     layout_config: Res<LayoutConfig>,
     game_controller_message: Option<Res<GameControllerMessage>>,
+    mut penalized_history: ResMut<PenalizedHistory>,
 ) {
     *robot_pose = next_robot_pose(
         robot_pose.as_mut(),
@@ -145,6 +157,7 @@ fn update_robot_pose(
         primary_state.as_ref(),
         layout_config.as_ref(),
         game_controller_message.as_deref(),
+        penalized_history.as_mut(),
     );
 }
 
@@ -155,9 +168,27 @@ pub fn next_robot_pose(
     primary_state: &PrimaryState,
     layout_config: &LayoutConfig,
     message: Option<&GameControllerMessage>,
+    penalized_history: &mut PenalizedHistory,
 ) -> RobotPose {
     let mut isometry = if *primary_state == PrimaryState::Penalized {
-        find_closest_penalty_pose(robot_pose, layout_config)
+        let mut closest = find_closest_penalty_pose(robot_pose, layout_config);
+
+        if penalized_history.duration_since_return() < Duration::from_secs(40)
+            && penalized_history.last_penalty_position.is_some()
+        {
+            let last = penalized_history.last_penalty_position.unwrap();
+            let last_sign = last.translation.vector.y.signum();
+
+            // flip the y and angle
+            if last_sign == closest.translation.vector.y.signum() {
+                closest.translation.vector.y = -closest.translation.vector.y;
+                closest.rotation = UnitComplex::from_angle(-closest.rotation.angle());
+            }
+            closest
+        } else {
+            penalized_history.last_penalty_position = Some(closest);
+            closest
+        }
     } else {
         robot_pose.inner * odometry.offset_to_last
     };
@@ -202,6 +233,49 @@ fn find_closest_penalty_pose(
             tracing::warn!("failed to find closest penalty pose for");
             &robot_pose.inner
         })
+}
+
+#[derive(Resource, Default, Debug, Clone, Copy)]
+pub struct PenalizedHistory {
+    previous: bool,
+    current: bool,
+    last_penalty_position: Option<Isometry2<f32>>,
+    last_return: Option<Instant>,
+}
+
+impl PenalizedHistory {
+    pub fn has_returned(&self) -> bool {
+        self.previous && !self.current
+    }
+
+    pub fn duration_since_return(&self) -> Duration {
+        self.last_return.map_or(Duration::MAX, |last_return| {
+            Instant::now().duration_since(last_return)
+        })
+    }
+}
+
+fn update_penalized_history(
+    mut penalized_history: ResMut<PenalizedHistory>,
+    gcm: Option<Res<GameControllerMessage>>,
+    player_config: Res<PlayerConfig>,
+) {
+    penalized_history.previous = penalized_history.current;
+    penalized_history.current = is_penalized_by_game_controller(
+        gcm.as_deref(),
+        player_config.team_number,
+        player_config.player_number,
+    );
+
+    if !penalized_history.current && penalized_history.previous {
+        penalized_history.last_return = Some(Instant::now());
+    }
+}
+
+fn returned_from_penalty_less_than(duration: Duration) -> impl Fn(Res<PenalizedHistory>) -> bool {
+    move |penalized_history: Res<PenalizedHistory>| {
+        penalized_history.duration_since_return() < duration
+    }
 }
 
 fn setup_pose_visualization(dbg: DebugContext) {
