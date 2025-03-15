@@ -22,10 +22,7 @@ use super::scan_lines;
 use super::{camera::Image, scan_lines::ScanLines};
 use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use crate::{
-    core::{
-        config::layout::{FieldConfig, LayoutConfig},
-        debug::DebugContext,
-    },
+    core::{config::layout::LayoutConfig, debug::DebugContext},
     localization::RobotPose,
     nao::Cycle,
     prelude::ConfigExt,
@@ -191,8 +188,6 @@ fn detect_lines_system<T: CameraLocation>(
     let handle = pool.spawn({
         let scan_lines = scan_lines.clone();
         let camera_matrix = camera_matrix.clone();
-        let field = layout.field.clone();
-        let pose = pose.clone();
 
         async move { detect_lines(scan_lines, camera_matrix, cfg, body_contour) }
     });
@@ -317,7 +312,7 @@ fn detect_lines<T: CameraLocation>(
             let is_too_short = c.segment.length() < cfg.line_segment_min_length;
             let is_too_long = c.segment.length() > cfg.line_segment_max_length;
 
-            let passes_white_test = passes_white_test(&c, &scan_lines, &camera_matrix, &cfg);
+            let passes_white_test = passes_white_test(c, &scan_lines, &camera_matrix, &cfg);
 
             if not_enough_spots {
                 Some(Rejection::NotEnoughSpots)
