@@ -136,6 +136,7 @@ pub enum Rejection {
     TooShort,
     TooLong,
     NotEnoughSpots,
+    FailedWhiteTest,
 }
 
 /// Candidate for a detected line
@@ -249,8 +250,6 @@ fn clear_lines<T: CameraLocation>(
 fn detect_lines<T: CameraLocation>(
     scan_lines: ScanLines<T>,
     camera_matrix: CameraMatrix<T>,
-    field: FieldConfig,
-    pose: RobotPose,
     cfg: LineDetectionConfig,
     body_contour: BodyContour,
 ) -> (Vec<LineCandidate>, Vec<Option<Rejection>>) {
@@ -326,12 +325,16 @@ fn detect_lines<T: CameraLocation>(
             let is_too_short = c.segment.length() < cfg.line_segment_min_length;
             let is_too_long = c.segment.length() > cfg.line_segment_max_length;
 
+            let passes_white_test = passes_white_test(&c, &scan_lines, &camera_matrix, &cfg);
+
             if not_enough_spots {
                 Some(Rejection::NotEnoughSpots)
             } else if is_too_short {
                 Some(Rejection::TooShort)
             } else if is_too_long {
                 Some(Rejection::TooLong)
+            } else if !passes_white_test {
+                Some(Rejection::FailedWhiteTest)
             } else {
                 None
             }
@@ -339,6 +342,54 @@ fn detect_lines<T: CameraLocation>(
         .collect_vec();
 
     (candidates, rejections)
+}
+
+// remove lines in robots or something
+fn passes_white_test<T: CameraLocation>(
+    candidate: &LineCandidate,
+    scan_lines: &ScanLines<T>,
+    camera_matrix: &CameraMatrix<T>,
+    cfg: &LineDetectionConfig,
+) -> bool {
+    // do a white test
+    let mut tests = vec![];
+
+    // let candidate_segment = pose.inner * candidate.segment;
+    let candidate_segment = candidate.segment;
+
+    for sample in candidate_segment.sample_uniform(cfg.white_test_samples) {
+        let normal = candidate_segment.normal();
+
+        let tester1 = sample + normal * cfg.white_test_sample_distance;
+        let tester2 = sample - normal * cfg.white_test_sample_distance;
+
+        // project the points back to the image
+        let Ok(sample_pixel) = camera_matrix.ground_to_pixel(point![sample.x, sample.y, 0.0])
+        else {
+            tests.extend([false, false]);
+            continue;
+        };
+
+        let image = scan_lines.image();
+
+        let tester1_pixel = camera_matrix
+            .ground_to_pixel(point![tester1.x, tester1.y, 0.0])
+            .is_ok_and(|p| is_less_bright_and_more_saturated(sample_pixel, p, image));
+
+        let tester2_pixel = camera_matrix
+            .ground_to_pixel(point![tester2.x, tester2.y, 0.0])
+            .is_ok_and(|p| is_less_bright_and_more_saturated(sample_pixel, p, image));
+
+        tests.extend([tester1_pixel, tester2_pixel]);
+    }
+
+    // if the ratio of the white tests is high enough, merge the two candidates
+    let ratio = tests.iter().filter(|&&t| t).count() as f32 / tests.len() as f32;
+
+    // TODO: add to config
+    const WHITE_TEST_RATIO: f32 = 0.7;
+
+    ratio < WHITE_TEST_RATIO
 }
 
 fn merge_candidates<T: CameraLocation>(
@@ -589,6 +640,7 @@ fn debug_rejected_lines<T: CameraLocation>(
                         Rejection::TooShort => (255, 0, 0),
                         Rejection::TooLong => (0, 255, 0),
                         Rejection::NotEnoughSpots => (0, 0, 255),
+                        Rejection::FailedWhiteTest => (0, 255, 255),
                     })
                     .collect_vec(),
             ),
