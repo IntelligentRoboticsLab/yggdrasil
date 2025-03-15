@@ -70,9 +70,9 @@ impl BallTracker {
     }
 
     pub fn measurement_update(&mut self, measurement: BallPosition) {
-        if self.is_out_of_bounds(measurement) {
-            return;
-        }
+        // if self.is_out_of_bounds(measurement) {
+        //     return;
+        // }
 
         let h = |p: BallPosition| p;
         if let Err(err) = self.position_kf.update(h, measurement, self.sensor_noise) {
