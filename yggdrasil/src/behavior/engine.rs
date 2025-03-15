@@ -256,6 +256,7 @@ pub fn role_base(
         if message.game_phase == GamePhase::PenaltyShoot {
             if message.kicking_team == player_config.team_number {
                 commands.set_role(Striker);
+                return;
             } else {
                 commands.set_behavior(Stand);
                 return;
