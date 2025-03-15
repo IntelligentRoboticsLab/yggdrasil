@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bifrost::communication::{GameControllerMessage, GamePhase};
+use bifrost::communication::{GameControllerMessage, Penalty};
 
 use ml::{
     prelude::{MlTaskCommandsExt, ModelExecutor},
@@ -162,7 +162,12 @@ impl RoleState {
         commands: &mut Commands,
         player_number: u8,
         possible_ball_distance: Option<f32>,
+        game_controller_message: Option<&GameControllerMessage>,
     ) {
+        if defender_should_striker(player_number, game_controller_message) {
+            commands.set_role(Striker);
+            return;
+        }
         if let Some(distance) = possible_ball_distance {
             if distance < 3.0 {
                 commands.set_role(Striker);
@@ -172,6 +177,34 @@ impl RoleState {
         // TODO: Check if robots have been penalized, or which robot is closed to the ball etc.
         Self::by_player_number(commands, player_number);
     }
+}
+
+fn defender_should_striker(
+    player_number: u8,
+    game_controller_message: Option<&GameControllerMessage>,
+) -> bool {
+    if let Some(message) = game_controller_message {
+        let players = message
+            .team(8)
+            .expect("No DNT team in GameControllerMessage")
+            .players;
+        let player4_penalty = players
+            .get(4)
+            .expect("No player 4 in GameControllerMessage")
+            .penalty;
+
+        let player5_penalty = players
+            .get(5)
+            .expect("No player 5 in GameControllerMessage")
+            .penalty;
+
+        if player_number == 3 && player5_penalty != Penalty::None
+            || player_number == 2 && player4_penalty != Penalty::None
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Link each behavior data struct with an enum variant of the Role
@@ -252,16 +285,16 @@ pub fn role_base(
         return;
     }
 
-    if let Some(message) = game_controller_message {
-        if message.game_phase == GamePhase::PenaltyShoot {
-            if message.kicking_team == player_config.team_number {
-                commands.set_role(Striker);
-            } else {
-                commands.set_behavior(Stand);
-                return;
-            }
-        }
-    }
+    // if let Some(message) = game_controller_message {
+    //     if message.game_phase == GamePhase::PenaltyShoot {
+    //         if message.kicking_team == player_config.team_number {
+    //             commands.set_role(Striker);
+    //         } else {
+    //             commands.set_behavior(Stand);
+    //             return;
+    //         }
+    //     }
+    // }
 
     match *primary_state {
         PrimaryState::Sitting => commands.set_behavior(Sitting),
@@ -289,10 +322,12 @@ pub fn role_base(
             } else {
                 None
             };
+
             RoleState::assign_role(
                 &mut commands,
                 player_config.player_number,
                 possible_ball_distance,
+                game_controller_message.as_ref().map(|v| &**v),
             );
         }
     }
