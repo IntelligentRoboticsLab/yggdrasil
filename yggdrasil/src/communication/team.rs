@@ -24,6 +24,9 @@ const PORT_RANGE_START: u16 = 10000;
 const MINIMAL_BUDGET: u16 = 5;
 /// Number of seconds in a half match.
 const SECS_PER_HALF: i16 = 10 * 60;
+/// The size of the MPSC channel that holds the inbound/outbound packets (further messages get
+/// silently dropped).
+const CHANNEL_SIZE: usize = 1024;
 
 /// Plugin for communication between team members.
 pub struct TeamCommunicationPlugin;
@@ -86,8 +89,8 @@ fn ping_response(mut tc: ResMut<TeamCommunication>) {
 #[derive(Resource)]
 pub struct TeamCommunication {
     team_number: u8,
-    tx: mpsc::UnboundedSender<([u8; 128], usize)>,
-    rx: mpsc::UnboundedReceiver<([u8; 128], usize, SocketAddr)>,
+    tx: mpsc::Sender<([u8; 128], usize)>,
+    rx: mpsc::Receiver<([u8; 128], usize, SocketAddr)>,
     inbound: Inbound<SocketAddr, TeamMessage>,
     outbound: Outbound<TeamMessage>,
 }
@@ -102,12 +105,12 @@ impl TeamCommunication {
 
         socket.set_broadcast(true).into_diagnostic()?;
 
-        let (tx, rx) = mpsc::unbounded();
+        let (tx, rx) = mpsc::channel(CHANNEL_SIZE);
 
         io.spawn(tx_worker(socket.clone(), (Ipv4Addr::BROADCAST, port), rx))
             .detach();
 
-        let (tx_, rx) = mpsc::unbounded();
+        let (tx_, rx) = mpsc::channel(CHANNEL_SIZE);
 
         io.spawn(rx_worker(socket, tx_)).detach();
 
@@ -148,7 +151,9 @@ impl TeamCommunication {
                 len += 1;
             }
 
-            self.tx.unbounded_send((buf, len)).unwrap();
+            if let Err(err) = self.tx.try_send((buf, len)) {
+                warn!(?err, "channel full, silently dropping outbound packet :')");
+            }
 
             true
         } else {
@@ -195,7 +200,7 @@ impl TeamCommunication {
 async fn tx_worker(
     socket: Arc<UdpSocket>,
     addr: (Ipv4Addr, u16),
-    mut rx: mpsc::UnboundedReceiver<([u8; 128], usize)>,
+    mut rx: mpsc::Receiver<([u8; 128], usize)>,
 ) {
     while let Some((buf, len)) = rx.next().await {
         if socket.send_to(&buf[..len], addr).await.is_err() {
@@ -205,7 +210,7 @@ async fn tx_worker(
 }
 async fn rx_worker(
     socket: Arc<UdpSocket>,
-    tx: mpsc::UnboundedSender<([u8; 128], usize, SocketAddr)>,
+    mut tx: mpsc::Sender<([u8; 128], usize, SocketAddr)>,
 ) {
     loop {
         let mut buf = [0; 128];
@@ -215,7 +220,9 @@ async fn rx_worker(
             continue;
         };
 
-        tx.unbounded_send((buf, len, addr)).ok();
+        if let Err(err) = tx.try_send((buf, len, addr)) {
+            warn!(?err, "channel full, silently dropping inbound packet :')");
+        }
     }
 }
 
