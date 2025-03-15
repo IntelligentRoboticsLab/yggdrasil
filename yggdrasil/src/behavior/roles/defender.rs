@@ -7,7 +7,6 @@ use crate::{
         engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
-    localization::RobotPose,
     motion::step_planner::{StepPlanner, Target},
 };
 
@@ -30,14 +29,13 @@ impl Roles for Defender {
 
 pub fn defender_role(
     mut commands: Commands,
-    pose: Res<RobotPose>,
     player_config: Res<PlayerConfig>,
     layout_config: Res<LayoutConfig>,
     step_planner: ResMut<StepPlanner>,
     behavior: Res<State<BehaviorState>>,
 ) {
     let set_robot_position = layout_config
-        .set_positions
+        .initial_positions
         .player(player_config.player_number);
     let set_position = set_robot_position.isometry.translation.vector;
     let set_point = Point2::new(set_position.x, set_position.y);
