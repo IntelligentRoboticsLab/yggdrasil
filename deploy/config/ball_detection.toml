@@ -39,7 +39,7 @@ bbox_padding_factor = 1.1
 ball_ratio = 0.35
 
 # The ratio of green pixels in the patch below the ball.
-grass_ratio = 0.70
+grass_ratio = 0.40
 
 # Height/width of the bounding box around the ball
 bounding_box_scale = 28.5
