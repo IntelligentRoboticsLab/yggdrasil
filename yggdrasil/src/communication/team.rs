@@ -159,7 +159,7 @@ impl TeamCommunication {
     fn try_receive(&mut self) -> Result<usize> {
         let mut received = 0;
 
-        while let Some((buf, len, addr)) = self.rx.try_next().into_diagnostic()? {
+        while let Ok(Some((buf, len, addr))) = self.rx.try_next() {
             self.inbound.unpack(&buf[..len], addr).into_diagnostic()?;
             received += 1;
         }
