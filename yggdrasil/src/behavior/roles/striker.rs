@@ -7,13 +7,15 @@ use crate::{
         behaviors::{RlStrikerSearchBehavior, Walk, WalkToBall},
         engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
     },
-    core::config::layout::LayoutConfig,
+    core::config::layout::{FieldConfig, LayoutConfig},
     localization::RobotPose,
     motion::walking_engine::step::Step,
     nao::{NaoManager, Priority},
     vision::ball_detection::ball_tracker::BallTracker,
 };
 
+const WALK_WITH_BALL_ANGLE: f32 = 0.3;
+const ALIGN_WITH_BALL_DISTANCE: f32 = 0.3;
 /// Plugin for the Striker role
 pub struct StrikerRolePlugin;
 
@@ -52,10 +54,10 @@ pub fn striker_role(
     let relative_goalpost_right =
         pose.world_to_robot(&Point2::new(layout_config.field.length / 2., -0.8));
 
-    let goal_aligned = goal_aligned(pose.as_ref(), layout_config.as_ref());
+    let goal_aligned = goal_aligned(pose.as_ref(), &layout_config.as_ref().field);
 
     let ball_target = Point3::new(ball.x, ball.y, 0.1);
-    if ball_distance > 0.3 {
+    if ball_distance > ALIGN_WITH_BALL_DISTANCE {
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::YELLOW), Priority::default());
 
         commands.set_behavior(WalkToBall);
@@ -83,7 +85,7 @@ pub fn striker_role(
             });
             return;
         }
-    } else if ball_angle.abs() > 0.3 {
+    } else if ball_angle.abs() > WALK_WITH_BALL_ANGLE {
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::PURPLE), Priority::default());
         let ball_target = Point3::new(ball.x, ball.y, 0.1);
         if relative_ball.y < 0. {
@@ -121,20 +123,20 @@ pub fn striker_role(
     }
 }
 
-pub fn goal_aligned(pose: &RobotPose, layout_config: &LayoutConfig) -> bool {
+pub fn goal_aligned(pose: &RobotPose, field_config: &FieldConfig) -> bool {
     if pose.inner.translation.x > 0.0 {
         // If on enemy side
-        is_aligned_with_goal(pose, layout_config)
+        is_aligned_with_goal(pose, field_config)
     } else {
         // If on own side
-        is_aligned_with_enemyside(pose, layout_config)
+        is_aligned_with_enemyside(pose, field_config)
     }
 }
 
 /// Returns true if we are angled inbetween the goal posts
-pub fn is_aligned_with_goal(pose: &RobotPose, layout_config: &LayoutConfig) -> bool {
-    let enemy_goal_left = Point2::new(layout_config.field.length / 2., 0.8);
-    let enemy_goal_right = Point2::new(layout_config.field.length / 2., -0.8);
+pub fn is_aligned_with_goal(pose: &RobotPose, field_config: &FieldConfig) -> bool {
+    let enemy_goal_left = Point2::new(field_config.length / 2., 0.8);
+    let enemy_goal_right = Point2::new(field_config.length / 2., -0.8);
 
     let relative_goalpost_left = pose.world_to_robot(&enemy_goal_left);
     let relative_goalpost_right = pose.world_to_robot(&enemy_goal_right);
@@ -146,15 +148,9 @@ pub fn is_aligned_with_goal(pose: &RobotPose, layout_config: &LayoutConfig) -> b
 }
 
 /// Returns true if we are angled inbetween the two corners of the enemy side
-pub fn is_aligned_with_enemyside(pose: &RobotPose, layout_config: &LayoutConfig) -> bool {
-    let enemy_goal_left = Point2::new(
-        layout_config.field.length / 2.,
-        layout_config.field.width / 2.,
-    );
-    let enemy_goal_right = Point2::new(
-        layout_config.field.length / 2.,
-        -layout_config.field.width / 2.,
-    );
+pub fn is_aligned_with_enemyside(pose: &RobotPose, field_config: &FieldConfig) -> bool {
+    let enemy_goal_left = Point2::new(field_config.length / 2., field_config.width / 2.);
+    let enemy_goal_right = Point2::new(field_config.length / 2., -field_config.width / 2.);
 
     let relative_goalpost_left = pose.world_to_robot(&enemy_goal_left);
     let relative_goalpost_right = pose.world_to_robot(&enemy_goal_right);
