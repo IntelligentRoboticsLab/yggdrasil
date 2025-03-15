@@ -9,8 +9,10 @@ use nalgebra::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
+    localization::RobotPose,
     motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
+    vision::ball_detection::{ball_tracker::BallTracker, Hypothesis},
 };
 
 use super::{
@@ -151,12 +153,22 @@ impl RoleState {
     pub fn by_player_number(commands: &mut Commands, player_number: u8) {
         match player_number {
             1 => commands.set_role(Goalkeeper),
-            5 | 4 => commands.set_role(Striker::WalkToBall),
+            5 | 4 => commands.set_role(Striker),
             _ => commands.set_role(Defender),
         }
     }
 
-    pub fn assign_role(commands: &mut Commands, player_number: u8) {
+    pub fn assign_role(
+        commands: &mut Commands,
+        player_number: u8,
+        possible_ball_distance: Option<f32>,
+    ) {
+        if let Some(distance) = possible_ball_distance {
+            if distance < 3.0 {
+                commands.set_role(Striker);
+                return;
+            }
+        }
         // TODO: Check if robots have been penalized, or which robot is closed to the ball etc.
         Self::by_player_number(commands, player_number);
     }
@@ -192,6 +204,8 @@ pub fn role_base(
     player_config: Res<PlayerConfig>,
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
+    ball_tracker: Res<BallTracker>,
+    pose: Res<RobotPose>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -241,7 +255,7 @@ pub fn role_base(
     if let Some(message) = game_controller_message {
         if message.game_phase == GamePhase::PenaltyShoot {
             if message.kicking_team == player_config.team_number {
-                commands.set_role(Striker::WalkWithBall);
+                commands.set_role(Striker);
             } else {
                 commands.set_behavior(Stand);
                 return;
@@ -270,7 +284,16 @@ pub fn role_base(
             target: Point2::default(),
         }),
         PrimaryState::Playing { .. } => {
-            RoleState::assign_role(&mut commands, player_config.player_number);
+            let possible_ball_distance = if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
+                Some(pose.distance_to(&ball_tracker.state().0))
+            } else {
+                None
+            };
+            RoleState::assign_role(
+                &mut commands,
+                player_config.player_number,
+                possible_ball_distance,
+            );
         }
     }
 }
