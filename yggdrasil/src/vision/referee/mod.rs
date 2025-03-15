@@ -10,13 +10,13 @@
 //! - Detection: A single referee pose prediction. For the referee pose this is a single
 //!   inference with the [`RefereePoseDetectionModel`](crate::vision::referee::detect::RefereePoseDetectionModel)
 
-pub mod communication;
+//pub mod communication;
 pub mod detect;
 pub mod recognize;
 
 use bevy::prelude::*;
 use bifrost::serialization::{Decode, Encode};
-use communication::RefereePoseCommunicationPlugin;
+//use communication::RefereePoseCommunicationPlugin;
 use detect::RefereePoseDetectionPlugin;
 use odal::Config;
 use recognize::{RecognizeRefereePose, RefereePoseRecognitionPlugin};
@@ -32,7 +32,7 @@ impl Plugin for VisualRefereePlugin {
         app.add_plugins((
             RefereePoseDetectionPlugin,
             RefereePoseRecognitionPlugin,
-            RefereePoseCommunicationPlugin,
+            //RefereePoseCommunicationPlugin,
         ))
         .init_config::<RefereePoseConfig>()
         .add_event::<RecognizeRefereePose>();
