@@ -5,11 +5,11 @@ use nalgebra::Point2;
 use crate::{
     behavior::{
         behaviors::{RlDefenderSearchBehavior, WalkTo},
-        engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
+        engine::{in_role, CommandsBehaviorExt, RoleState, Roles, WalkToPosition},
         roles::Striker,
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
-    localization::RobotPose,
+    localization::{RobotFieldRegion, RobotPose},
     motion::path::Target,
     vision::ball_detection::classifier::Balls,
 };
@@ -21,13 +21,10 @@ pub struct DefenderRolePlugin;
 
 impl Plugin for DefenderRolePlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<RobotFieldRegion>()
-            .init_state::<WalkToPosition>()
-            .add_systems(
+        app.add_systems(
                 Update,
                 (
                     return_walk_progress.before(defender_role),
-                    is_outside_field.before(defender_role),
                     defender_role.run_if(in_role::<Defender>),
                 ),
             );
@@ -76,44 +73,6 @@ pub fn defender_role(
     } else {
         commands.set_role(Striker::WalkToBall);
     }
-}
-
-/// A bevy state ([`States`]), which keeps track of whether the robot is inside
-/// or outside the field
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
-pub enum RobotFieldRegion {
-    #[default]
-    Inside,
-    Outside,
-}
-
-// Checks if the robot is outside or inside the field based on the robots position
-// and the field size. This updates the state `RobotFieldRegion`
-fn is_outside_field(
-    robot_pose: Res<RobotPose>,
-    layout_config: Res<LayoutConfig>,
-    mut next_field_region: ResMut<NextState<RobotFieldRegion>>,
-) {
-    let field_length = layout_config.field.length;
-    let field_width = layout_config.field.width;
-
-    let robot_position = robot_pose.world_position();
-
-    let outside_horizontal = robot_position.x.abs() > field_length / 2.0;
-    let outside_vertical = robot_position.y.abs() > field_width / 2.0;
-
-    if outside_horizontal || outside_vertical {
-        next_field_region.set(RobotFieldRegion::Outside);
-    } else {
-        next_field_region.set(RobotFieldRegion::Inside)
-    }
-}
-
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
-pub enum WalkToPosition {
-    #[default]
-    Walking,
-    Finished,
 }
 
 fn return_walk_progress(

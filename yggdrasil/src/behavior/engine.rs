@@ -39,6 +39,7 @@ impl Plugin for BehaviorEnginePlugin {
         // StatesPlugin should be added before init_state
         app.init_state::<BehaviorState>()
             .init_state::<RoleState>()
+            .init_state::<WalkToPosition>()
             .add_plugins((
                 StandBehaviorPlugin,
                 WalkBehaviorPlugin,
@@ -293,4 +294,11 @@ pub fn role_base(
             );
         }
     }
+}
+
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum WalkToPosition {
+    #[default]
+    Walking,
+    Finished,
 }

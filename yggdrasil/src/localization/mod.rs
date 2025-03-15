@@ -31,10 +31,15 @@ impl Plugin for LocalizationPlugin {
             LineCorrespondencePlugin::<Top>::default(),
             LineCorrespondencePlugin::<Bottom>::default(),
         ))
+        .init_state::<RobotFieldRegion>()
         .add_systems(PostStartup, (init_pose, setup_pose_visualization))
         .add_systems(
             PreUpdate,
             update_robot_pose.after(odometry::update_odometry),
+        )
+        .add_systems(
+            Update,
+            is_outside_field,
         )
         .add_systems(PostUpdate, visualize_pose);
     }
@@ -236,4 +241,35 @@ fn visualize_pose(
         &rerun::Transform3D::from_rotation(Into::<Quat>::into(orientation))
             .with_translation((position.x, position.y, 0.2865)),
     );
+}
+
+/// A bevy state ([`States`]), which keeps track of whether the robot is inside
+/// or outside the field
+#[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub enum RobotFieldRegion {
+    #[default]
+    Inside,
+    Outside,
+}
+
+// Checks if the robot is outside or inside the field based on the robots position
+// and the field size. This updates the state `RobotFieldRegion`
+fn is_outside_field(
+    robot_pose: Res<RobotPose>,
+    layout_config: Res<LayoutConfig>,
+    mut next_field_region: ResMut<NextState<RobotFieldRegion>>,
+) {
+    let field_length = layout_config.field.length;
+    let field_width = layout_config.field.width;
+
+    let robot_position = robot_pose.world_position();
+
+    let outside_horizontal = robot_position.x.abs() > field_length / 2.0;
+    let outside_vertical = robot_position.y.abs() > field_width / 2.0;
+
+    if outside_horizontal || outside_vertical {
+        next_field_region.set(RobotFieldRegion::Outside);
+    } else {
+        next_field_region.set(RobotFieldRegion::Inside)
+    }
 }
