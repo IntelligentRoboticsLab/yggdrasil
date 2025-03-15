@@ -23,17 +23,17 @@ use crate::{
         debug::DebugContext,
     },
     localization::correspondence::LineCorrespondences,
-    motion::{keyframe::KeyframeExecutor, odometry::Odometry, walking_engine::Gait},
+    motion::{keyframe::KeyframeExecutor, odometry::Odometry},
     nao::Cycle,
     sensor::fsr::Contacts,
 };
 
 use super::correspondence::get_correspondences;
 
-const PARTICLE_SCORE_DECAY: f32 = 0.9;
+const PARTICLE_SCORE_DECAY: f32 = 0.95;
 const PARTICLE_SCORE_DEFAULT: f32 = 10.0;
 const PARTICLE_SCORE_INCREASE: f32 = 0.5;
-const PARTICLE_SCORE_BONUS: f32 = 2.0;
+const PARTICLE_SCORE_BONUS: f32 = 2.5;
 const PARTICLE_BONUS_THRESHOLD: f32 = 0.5;
 const PARTICLE_RETAIN_FACTOR: f32 = 0.5;
 
@@ -52,9 +52,9 @@ impl Plugin for PoseFilterPlugin {
                         .run_if(not(is_penalized)),
                     update_primary_state_history,
                     update_penalized_history,
-                    penalty_resetting,
+                    penalized_resetting,
                     line_update
-                        .run_if(returned_shortly_ago)
+                        // .run_if(returned_shortly_ago)
                         .run_if(not(motion_is_unsafe))
                         .run_if(not(is_penalized)),
                     filter_particles,
@@ -240,7 +240,12 @@ fn odometry_update(odometry: Res<Odometry>, mut particles: Query<&mut RobotPoseF
             )
             .is_err()
         {
-            warn!("Cholesky failed in odometry")
+            warn!("Cholesky failed in odometry");
+            particle.covariance = CovarianceMatrix::from_diagonal(&na::Vector3::new(
+                1.0,
+                1.0,
+                std::f32::consts::FRAC_PI_4,
+            ));
         }
 
         particle.score *= PARTICLE_SCORE_DECAY;
@@ -315,16 +320,16 @@ struct PrimaryStateHistory {
     current: PrimaryState,
 }
 
-fn penalty_resetting(
+fn penalized_resetting(
     mut commands: Commands,
     penalized_history: Res<PenalizedHistory>,
-    mut particles: Query<Entity, With<RobotPoseFilter>>,
+    particles: Query<Entity, With<RobotPoseFilter>>,
     layout: Res<LayoutConfig>,
     robot_pose: Res<RobotPose>,
 ) {
     match (penalized_history.previous, penalized_history.current) {
         (false, true) => {
-            for entity in &mut particles {
+            for entity in &particles {
                 commands.entity(entity).despawn();
             }
 
@@ -344,7 +349,6 @@ fn line_update(
     mut particles: Query<&mut RobotPoseFilter>,
 ) {
     for mut particle in &mut particles {
-        // println!("Updating particle with score {}", particle.score);
         for correspondences in &added_correspondences {
             for correspondence in correspondences.iter() {
                 match correspondence.field_line {
@@ -361,11 +365,10 @@ fn line_update(
                             continue;
                         }
 
-                        let current_pose = particle.prediction();
+                        let current_pose = particle.state();
 
-                        if !layout
-                            .field
-                            .in_field_with_margin(current_pose.position(), 0.15)
+                        if !layout.field.in_field_with_margin(field_line.start, 0.15)
+                            || !layout.field.in_field_with_margin(field_line.end, 0.15)
                         {
                             continue;
                         }
@@ -474,12 +477,11 @@ fn line_update(
                             )
                             .is_err()
                         {
-                            warn!("cholesky failed");
                             continue;
                         }
                     }
                     FieldLine::Circle(..) => {
-                        let current_pose = particle.prediction();
+                        let current_pose = particle.state();
 
                         if !layout
                             .field
@@ -547,6 +549,9 @@ fn line_update(
                             .is_err()
                         {
                             warn!("cholesky failed");
+                            particle.covariance = CovarianceMatrix::from_diagonal(
+                                &na::Vector3::new(1.0, 1.0, std::f32::consts::FRAC_PI_4),
+                            );
                             continue;
                         };
                     }
@@ -555,6 +560,8 @@ fn line_update(
                 particle.score += PARTICLE_SCORE_INCREASE;
                 if correspondence.error.sqrt() < PARTICLE_BONUS_THRESHOLD {
                     particle.score += PARTICLE_SCORE_BONUS;
+                } else {
+                    particle.score *= 0.9;
                 }
             }
         }
@@ -581,7 +588,7 @@ fn filter_particles(
     //     }
     // }
 
-    *pose = best_particle.prediction();
+    *pose = best_particle.state();
 
     let particle_count = particles.iter().count();
 }
@@ -639,17 +646,33 @@ fn log_particles(dbg: DebugContext, cycle: Res<Cycle>, particles: Query<&RobotPo
         &rerun::InstancePoses3D::new()
             .with_translations(particles.iter().map(|particle| {
                 (
-                    particle.prediction().inner.translation.x,
-                    particle.prediction().inner.translation.y,
+                    particle.state().inner.translation.x,
+                    particle.state().inner.translation.y,
                     0.0,
                 )
             }))
-            .with_rotation_axis_angles(particles.iter().map(|particle| {
-                (
-                    (0.0, 0.0, 1.0),
-                    particle.prediction().inner.rotation.angle(),
-                )
-            })),
+            .with_rotation_axis_angles(
+                particles
+                    .iter()
+                    .map(|particle| ((0.0, 0.0, 1.0), particle.state().inner.rotation.angle())),
+            ),
+    );
+
+    dbg.log_with_cycle(
+        "particles",
+        *cycle,
+        &rerun::Points3D::new(particles.iter().map(|particle| {
+            (
+                particle.state().inner.translation.x,
+                particle.state().inner.translation.y,
+                0.0,
+            )
+        }))
+        .with_labels(
+            particles
+                .iter()
+                .map(|particle| format!("{:.2}", particle.score)),
+        ),
     );
 }
 
@@ -804,6 +827,7 @@ fn penalized_particles(
                 score: PARTICLE_SCORE_DEFAULT,
             }
         }))
+
     // we are on the opponents side
 }
 

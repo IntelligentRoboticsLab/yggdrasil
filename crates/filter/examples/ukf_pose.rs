@@ -142,7 +142,7 @@ fn main() {
             .unwrap();
         }
 
-        x_unscented.push(ukf.prediction());
+        x_unscented.push(ukf.state());
     }
 
     // plot the results
