@@ -2,10 +2,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_std::{
-    net::UdpSocket,
-    prelude::StreamExt,
-};
+use async_std::{net::UdpSocket, prelude::StreamExt};
 use bevy::{
     prelude::*,
     tasks::{block_on, IoTaskPool},
@@ -107,7 +104,8 @@ impl TeamCommunication {
 
         let (tx, rx) = mpsc::unbounded();
 
-        io.spawn(tx_worker(socket.clone(), (Ipv4Addr::BROADCAST, port), rx)).detach();
+        io.spawn(tx_worker(socket.clone(), (Ipv4Addr::BROADCAST, port), rx))
+            .detach();
 
         let (tx_, rx) = mpsc::unbounded();
 
@@ -194,15 +192,21 @@ impl TeamCommunication {
     }
 }
 
-async fn tx_worker(socket: Arc<UdpSocket>, addr: (Ipv4Addr, u16), mut rx: mpsc::UnboundedReceiver<([u8; 128], usize)>) {
+async fn tx_worker(
+    socket: Arc<UdpSocket>,
+    addr: (Ipv4Addr, u16),
+    mut rx: mpsc::UnboundedReceiver<([u8; 128], usize)>,
+) {
     while let Some((buf, len)) = rx.next().await {
         if socket.send_to(&buf[..len], addr).await.is_err() {
             tracing::warn!("unable to send packet");
         }
     }
 }
-async fn rx_worker(socket: Arc<UdpSocket>, tx: mpsc::UnboundedSender<([u8; 128], usize, SocketAddr)>,
-    ) {
+async fn rx_worker(
+    socket: Arc<UdpSocket>,
+    tx: mpsc::UnboundedSender<([u8; 128], usize, SocketAddr)>,
+) {
     loop {
         let mut buf = [0; 128];
 
