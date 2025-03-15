@@ -7,8 +7,8 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, EnvFilter};
 use yggdrasil::prelude::Result;
 use yggdrasil::{
-    behavior, communication, core, game_controller, kinematics, localization, motion, nao,
-    schedule, sensor, vision,
+    behavior, core, game_controller, kinematics, localization, motion, nao, schedule, sensor,
+    vision,
 };
 
 use bevy::prelude::*;
@@ -29,7 +29,7 @@ fn main() -> Result<()> {
             localization::LocalizationPlugin,
             sensor::SensorPlugins,
             behavior::BehaviorPlugins,
-            communication::CommunicationPlugins,
+            //communication::CommunicationPlugins,
             kinematics::KinematicsPlugin,
             motion::MotionPlugins,
             vision::VisionPlugins,

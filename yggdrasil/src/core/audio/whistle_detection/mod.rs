@@ -8,15 +8,15 @@ use bevy::{
     tasks::{futures_lite::future, AsyncComputeTaskPool, Task},
 };
 
-use bifrost::broadcast::Deadline;
+//use bifrost::broadcast::Deadline;
 use fourier::Stft;
 use nidhogg::types::{FillExt, LeftEar, RightEar};
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
 
 use crate::{
-    behavior::primary_state::PrimaryState,
-    communication::{TeamCommunication, TeamMessage},
+    //behavior::primary_state::PrimaryState,
+    //communication::{TeamCommunication, TeamMessage},
     nao::{NaoManager, Priority},
     prelude::*,
 };
@@ -121,33 +121,33 @@ struct WhistleDetections {
 }
 
 fn update_whistle_state(
-    primary_state: Res<PrimaryState>,
+    //primary_state: Res<PrimaryState>,
     ear_detections: Query<&WhistleDetections>,
     mut whistle: ResMut<Whistle>,
     mut detection_state: ResMut<WhistleDetectionState>,
     config: Res<WhistleDetectionConfig>,
     mut nao_manager: ResMut<NaoManager>,
-    mut tc: ResMut<TeamCommunication>,
+    //mut tc: ResMut<TeamCommunication>,
 ) {
     // resize state.detections if necessary
     detection_state
         .detections
         .resize(config.detection_tries, false);
 
-    let incoming_msg = tc
-        .inbound_mut()
-        .take_map(|_, _, msg| match msg {
-            TeamMessage::DetectedWhistle => Some(()),
-            _ => None,
-        })
-        .is_some();
+    //let incoming_msg = tc
+    //    .inbound_mut()
+    //    .take_map(|_, _, msg| match msg {
+    //        TeamMessage::DetectedWhistle => Some(()),
+    //        _ => None,
+    //    })
+    //    .is_some();
 
-    if incoming_msg {
-        whistle.detected = true;
-        nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
-        nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
-        return;
-    }
+    //if incoming_msg {
+    //    whistle.detected = true;
+    //    nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
+    //    nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
+    //    return;
+    //}
 
     whistle.detected = false;
 
@@ -164,13 +164,13 @@ fn update_whistle_state(
         if detections >= config.detections_needed {
             whistle.detected = true;
 
-            if *primary_state == PrimaryState::Set {
-                // Send message to all teammates
-                let msg = TeamMessage::DetectedWhistle;
-                tc.outbound_mut()
-                    .update_or_push_by(msg, Deadline::ASAP)
-                    .expect("failed to encode whistle message");
-            }
+            //if *primary_state == PrimaryState::Set {
+            //    // Send message to all teammates
+            //    let msg = TeamMessage::DetectedWhistle;
+            //    tc.outbound_mut()
+            //        .update_or_push_by(msg, Deadline::ASAP)
+            //        .expect("failed to encode whistle message");
+            //}
             break;
         }
     }
