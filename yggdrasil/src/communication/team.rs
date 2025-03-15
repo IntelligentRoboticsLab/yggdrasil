@@ -1,8 +1,16 @@
-use std::io::ErrorKind;
-use std::net::{Ipv4Addr, SocketAddr, UdpSocket};
+use std::net::{Ipv4Addr, SocketAddr};
+use std::sync::Arc;
 use std::time::Duration;
 
-use bevy::prelude::{App, *};
+use async_std::{
+    net::UdpSocket,
+    prelude::StreamExt,
+};
+use bevy::{
+    prelude::*,
+    tasks::{block_on, IoTaskPool},
+};
+use futures::channel::mpsc;
 use miette::IntoDiagnostic;
 
 use crate::core::config::showtime::ShowtimeConfig;
@@ -48,10 +56,8 @@ fn sync_budget(mut tc: ResMut<TeamCommunication>, message: Option<Res<GameContro
         }
     }
 
-    match tc.try_send() {
-        Ok(true) => debug!("successfully sent out a new packet."),
-        Ok(false) => (),
-        Err(err) => warn!(?err, "unable to send packet"),
+    if tc.try_send() {
+        debug!("successfully sent out a new packet.")
     }
 
     match tc.try_receive() {
@@ -82,20 +88,30 @@ fn ping_response(mut tc: ResMut<TeamCommunication>) {
 
 #[derive(Resource)]
 pub struct TeamCommunication {
-    port: u16,
     team_number: u8,
-    socket: UdpSocket,
+    tx: mpsc::UnboundedSender<([u8; 128], usize)>,
+    rx: mpsc::UnboundedReceiver<([u8; 128], usize, SocketAddr)>,
     inbound: Inbound<SocketAddr, TeamMessage>,
     outbound: Outbound<TeamMessage>,
 }
 
 impl TeamCommunication {
     fn new(team_number: u8) -> Result<Self> {
+        let io = IoTaskPool::get();
         let port = PORT_RANGE_START + u16::from(team_number);
 
-        let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, port)).into_diagnostic()?;
-        socket.set_nonblocking(true).into_diagnostic()?;
+        let socket =
+            Arc::new(block_on(UdpSocket::bind((Ipv4Addr::UNSPECIFIED, port))).into_diagnostic()?);
+
         socket.set_broadcast(true).into_diagnostic()?;
+
+        let (tx, rx) = mpsc::unbounded();
+
+        io.spawn(tx_worker(socket.clone(), (Ipv4Addr::BROADCAST, port), rx)).detach();
+
+        let (tx_, rx) = mpsc::unbounded();
+
+        io.spawn(rx_worker(socket, tx_)).detach();
 
         let rate = Rate {
             late_threshold: Duration::from_millis(2500),
@@ -104,9 +120,9 @@ impl TeamCommunication {
         };
 
         Ok(Self {
-            port,
             team_number,
-            socket,
+            tx,
+            rx,
             inbound: Inbound::new(),
             outbound: Outbound::new(rate),
         })
@@ -124,34 +140,30 @@ impl TeamCommunication {
         &mut self.outbound.rate
     }
 
-    fn try_send(&mut self) -> Result<bool> {
+    fn try_send(&mut self) -> bool {
         if let Some(packet) = self.outbound.try_pack() {
-            match self
-                .socket
-                .send_to(&packet, (Ipv4Addr::BROADCAST, self.port))
-            {
-                Ok(_) => Ok(true),
-                Err(e) if e.kind() == ErrorKind::WouldBlock => Ok(false),
-                Err(e) => Err(e).into_diagnostic(),
+            let mut buf = [0; 128];
+            let mut len = 0;
+
+            for (buf_i, packet_i) in buf.iter_mut().zip(packet) {
+                *buf_i = packet_i;
+                len += 1;
             }
+
+            self.tx.unbounded_send((buf, len)).unwrap();
+
+            true
         } else {
-            Ok(false)
+            false
         }
     }
 
     fn try_receive(&mut self) -> Result<usize> {
         let mut received = 0;
-        let mut buf = [0; 128];
 
-        loop {
-            match self.socket.recv_from(&mut buf) {
-                Ok((len, addr)) => {
-                    received += 1;
-                    self.inbound.unpack(&buf[..len], addr).into_diagnostic()?;
-                }
-                Err(e) if e.kind() == ErrorKind::WouldBlock => break,
-                Err(e) => return Err(e).into_diagnostic(),
-            }
+        while let Some((buf, len, addr)) = self.rx.try_next().into_diagnostic()? {
+            self.inbound.unpack(&buf[..len], addr).into_diagnostic()?;
+            received += 1;
         }
 
         Ok(received)
@@ -179,6 +191,27 @@ impl TeamCommunication {
         let secs_per_message = f32::from(secs_remaining.max(0)) / messages_per_player;
 
         Some(Duration::from_secs_f32(secs_per_message))
+    }
+}
+
+async fn tx_worker(socket: Arc<UdpSocket>, addr: (Ipv4Addr, u16), mut rx: mpsc::UnboundedReceiver<([u8; 128], usize)>) {
+    while let Some((buf, len)) = rx.next().await {
+        if socket.send_to(&buf[..len], addr).await.is_err() {
+            tracing::warn!("unable to send packet");
+        }
+    }
+}
+async fn rx_worker(socket: Arc<UdpSocket>, tx: mpsc::UnboundedSender<([u8; 128], usize, SocketAddr)>,
+    ) {
+    loop {
+        let mut buf = [0; 128];
+
+        let Ok((len, addr)) = socket.recv_from(&mut buf).await else {
+            tracing::warn!("unable to receive packet");
+            continue;
+        };
+
+        tx.unbounded_send((buf, len, addr)).ok();
     }
 }
 

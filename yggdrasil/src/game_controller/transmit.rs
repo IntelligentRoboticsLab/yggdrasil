@@ -6,7 +6,7 @@ use bifrost::{
     communication::{GameControllerReturnMessage, GAME_CONTROLLER_RETURN_PORT},
     serialization::Encode,
 };
-use futures::channel::mpsc::{self};
+use futures::channel::mpsc;
 
 use crate::{
     core::config::showtime::PlayerConfig,
