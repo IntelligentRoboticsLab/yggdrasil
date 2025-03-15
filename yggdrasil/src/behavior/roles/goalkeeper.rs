@@ -4,7 +4,7 @@ use nalgebra::{Point2, UnitComplex};
 use crate::{
     behavior::{
         behaviors::{Observe, WalkTo},
-        engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
+        engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::layout::LayoutConfig,
     motion::step_planner::{StepPlanner, Target},
@@ -31,7 +31,6 @@ pub fn goalkeeper_role(
     mut commands: Commands,
     layout_config: Res<LayoutConfig>,
     step_planner: ResMut<StepPlanner>,
-    behavior: Res<State<BehaviorState>>,
 ) {
     let field_length = layout_config.field.length;
     let keeper_target = Target {
@@ -47,9 +46,7 @@ pub fn goalkeeper_role(
     }
 
     if step_planner.reached_target() {
-        if behavior.get() != &BehaviorState::Observe {
-            commands.set_behavior(Observe::default());
-        }
+        commands.set_behavior(Observe::default());
     } else {
         commands.set_behavior(WalkTo {
             target: keeper_target,
