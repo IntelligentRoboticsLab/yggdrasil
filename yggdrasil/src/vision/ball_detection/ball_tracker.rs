@@ -3,6 +3,7 @@ use std::time::Instant;
 use bevy::prelude::*;
 use filter::{CovarianceMatrix, StateTransform, StateVector, UnscentedKalmanFilter};
 use nalgebra::{point, Point2};
+use rerun::datatypes::Bool;
 
 use crate::nao::Cycle;
 
@@ -60,12 +61,20 @@ impl BallTracker {
 
     pub fn measurement_update(&mut self, measurement: BallPosition) {
         let h = |p: BallPosition| p;
+        if self.check_field_boundaries(measurement) == false {
+            return;
+        }
         if let Err(err) = self.position_kf.update(h, measurement, self.sensor_noise) {
             error!("failed to do measurement update: {err:?}");
         }
 
         // Putting timestamp update here for now
         self.timestamp = Instant::now();
+    }
+
+    fn check_field_boundaries(&self, p: BallPosition) -> bool {
+        // Proper boundaries are -4.5 <= x <= 4.5 and -3.0 <= y <= 3.0
+        p.x >= -5.0 && p.x <= 5.0 && p.y >= -3.5 && p.y <= 3.5
     }
 }
 
