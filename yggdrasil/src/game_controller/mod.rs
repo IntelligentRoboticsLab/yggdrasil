@@ -127,7 +127,7 @@ impl GameControllerSocket {
 #[derive(Resource)]
 struct GameControllerTasks {
     _sender: Task<()>,
-    _reciever: Task<()>,
+    _receiver: Task<()>,
 }
 
 fn setup(mut commands: Commands) {
@@ -142,7 +142,7 @@ fn setup(mut commands: Commands) {
     let receiver_task = io.spawn(send_loop(socket, rx_send));
     commands.insert_resource(GameControllerTasks {
         _sender: sender_task,
-        _reciever: receiver_task,
+        _receiver: receiver_task,
     });
 
     commands.insert_resource(GameControllerReceiver { rx: rx_recv });
