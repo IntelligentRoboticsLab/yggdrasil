@@ -58,7 +58,22 @@ impl BallTracker {
         }
     }
 
+    fn is_out_of_bounds(&self, p: BallPosition) -> bool {
+        let x = p.x;
+        let y = p.y;
+        if x < -5.0 || x > 5.0 || y < -3.5 || y > 3.5 {
+            warn!("Ball position ({x}, {y}) is out of field boundaries");
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn measurement_update(&mut self, measurement: BallPosition) {
+        if self.is_out_of_bounds(measurement) {
+            return;
+        }
+
         let h = |p: BallPosition| p;
         if let Err(err) = self.position_kf.update(h, measurement, self.sensor_noise) {
             error!("failed to do measurement update: {err:?}");
