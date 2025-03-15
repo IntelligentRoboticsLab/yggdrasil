@@ -7,7 +7,6 @@ use crate::{
         engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
-    localization::RobotPose,
     motion::step_planner::{StepPlanner, Target},
 };
 
@@ -30,7 +29,6 @@ impl Roles for Defender {
 
 pub fn defender_role(
     mut commands: Commands,
-    pose: Res<RobotPose>,
     player_config: Res<PlayerConfig>,
     layout_config: Res<LayoutConfig>,
     step_planner: ResMut<StepPlanner>,
@@ -45,13 +43,14 @@ pub fn defender_role(
         rotation: Some(set_robot_position.isometry.rotation),
     };
 
-    let close_to_target = pose.distance_to(&set_point) < 0.5;
-    let aligned_with_rotation =
-        (pose.world_rotation() - set_robot_position.isometry.rotation.angle()).abs() < 0.2;
+    if !step_planner.has_target() {
+        commands.set_behavior(WalkTo {
+            target: defend_target,
+        });
+        return;
+    }
 
-    if step_planner.has_target() && step_planner.reached_target()
-        || (close_to_target && aligned_with_rotation)
-    {
+    if step_planner.reached_target() {
         commands.set_behavior(Observe::with_turning(-0.4));
     } else {
         commands.set_behavior(WalkTo {
