@@ -6,11 +6,11 @@ ransac_iters = 10
 # maximum number of models to fit in RANSAC
 model_iters = 100
 # residual threshold for RANSAC inliers in meters
-ransac_inlier_threshold = 0.035
+ransac_inlier_threshold = 0.025
 # maximum distance of a valid line spot from the camera in meters
 spot_max_distance = 5.0
 # minimum number of points in a valid line segment
-line_segment_min_points = 5
+line_segment_min_points = 8
 # minimum length of a line segment after merging in meters
 line_segment_min_length = 0.3
 # maximum length of a line segment after merging in meters
@@ -18,11 +18,11 @@ line_segment_max_length = 5.0
 # maximum distance between two inliers of a line segment in meters
 max_line_gap_distance = 0.25
 # number of samples for the white test
-white_test_samples = 10
+white_test_samples = 8
 # sampling distance for the white test in meters
-white_test_sample_distance = 0.15
+white_test_sample_distance = 0.05
 # ratio of white tests that need to pass for two lines to be merged
-white_test_merge_ratio = 0.8
+white_test_merge_ratio = 0.7
 # maximum angle in radians between two lines for them to be considered parallel
 white_test_max_angle = 0.15
 
