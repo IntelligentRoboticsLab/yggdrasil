@@ -13,7 +13,7 @@ use async_std::{
 };
 use bevy::{
     prelude::*,
-    tasks::{block_on, IoTaskPool},
+    tasks::{block_on, IoTaskPool, Task},
 };
 use bifrost::communication::{
     GameControllerMessage, GameControllerReturnMessage, GAME_CONTROLLER_DATA_PORT,
@@ -124,6 +124,12 @@ impl GameControllerSocket {
     }
 }
 
+#[derive(Resource)]
+struct GameControllerTasks {
+    _sender: Task<()>,
+    _receiver: Task<()>,
+}
+
 fn setup(mut commands: Commands) {
     let (tx_recv, rx_recv) = mpsc::unbounded::<(GameControllerMessage, SocketAddr)>();
     let (tx_send, rx_send) = mpsc::unbounded::<(GameControllerReturnMessage, SocketAddr)>();
@@ -132,8 +138,12 @@ fn setup(mut commands: Commands) {
     let socket = block_on(io.spawn(GameControllerSocket::bind()))
         .expect("Failed to bind game controller socket");
 
-    io.spawn(receive_loop(socket.clone(), tx_recv)).detach();
-    io.spawn(send_loop(socket, rx_send)).detach();
+    let sender_task = io.spawn(receive_loop(socket.clone(), tx_recv));
+    let receiver_task = io.spawn(send_loop(socket, rx_send));
+    commands.insert_resource(GameControllerTasks {
+        _sender: sender_task,
+        _receiver: receiver_task,
+    });
 
     commands.insert_resource(GameControllerReceiver { rx: rx_recv });
     commands.insert_resource(GameControllerSender { tx: tx_send });
