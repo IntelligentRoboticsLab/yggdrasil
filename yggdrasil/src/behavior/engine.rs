@@ -213,6 +213,7 @@ pub fn role_base(
 
     if behavior == &BehaviorState::StartUp {
         if *primary_state == PrimaryState::Sitting && robot_is_leaning(&imu_values) {
+            // Do nothing cause the robot is leaning
         } else if *gait == Gait::Sitting || head_buttons.all_pressed() {
             commands.set_behavior(Sitting);
         } else {
@@ -238,9 +239,10 @@ pub fn role_base(
             return;
         }
         FallState::Falling(_) => {
-            if !matches!(*primary_state, PrimaryState::Penalized)
-                && !matches!(*primary_state, PrimaryState::Initial)
-            {
+            if !matches!(
+                *primary_state,
+                PrimaryState::Penalized | PrimaryState::Initial
+            ) {
                 commands.set_behavior(CatchFall);
                 return;
             }
