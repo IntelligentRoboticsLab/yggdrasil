@@ -97,7 +97,7 @@ pub fn striker_role(
                 commands.set_behavior(Walk {
                     step: Step {
                         forward: 0.00,
-                        left: -0.04,
+                        left: -0.06,
                         turn: 0.0,
                     },
                     look_target: Some(ball_target),
@@ -107,7 +107,7 @@ pub fn striker_role(
                 commands.set_behavior(Walk {
                     step: Step {
                         forward: 0.00,
-                        left: 0.04,
+                        left: 0.06,
                         turn: 0.0,
                     },
                     look_target: Some(ball_target),
@@ -126,6 +126,7 @@ pub fn striker_role(
             });
         }
     } else {
+        nao_manager.set_right_eye_led(RightEye::fill(color::f32::EMPTY), Priority::default());
         commands.set_behavior(RlStrikerSearchBehavior);
     }
 }

@@ -141,9 +141,9 @@ translation = [-1, 0]
 # Position for returning after penalty.
 [[penalty_positions]]
 rotation = -90
-translation = [-2.85, 3]
+translation = [-2.8, 3.05]
 
 # Position for returning after penalty.
 [[penalty_positions]]
 rotation = 90
-translation = [-2.85, -3]
+translation = [-2.8, -3.05]
