@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use heimdall::{Bottom, Top};
 use nalgebra::{Point2, Point3};
 
 use crate::{
@@ -9,8 +8,8 @@ use crate::{
     },
     core::config::layout::LayoutConfig,
     localization::RobotPose,
-    motion::walking_engine::step::Step,
-    vision::ball_detection::classifier::Balls,
+    motion::{step_planner::Target, walking_engine::step::Step},
+    vision::ball_detection::{ball_tracker::BallTracker, Hypothesis},
 };
 
 // Walk to the ball as long as the ball is further away than
@@ -43,16 +42,11 @@ pub fn striker_role(
     mut commands: Commands,
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
-    top_balls: Res<Balls<Top>>,
-    bottom_balls: Res<Balls<Bottom>>,
+    ball_tracker: Res<BallTracker>,
     mut state: ResMut<Striker>,
 ) {
-    let most_confident_ball = bottom_balls
-        .most_confident_ball()
-        .map(|b| b.position)
-        .or(top_balls.most_confident_ball().map(|b| b.position));
-
-    if let Some(ball) = most_confident_ball {
+    if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
+        let ball = ball_tracker.state().0;
         let enemy_goal_center = Point2::new(layout_config.field.length / 2., 0.);
         let enemy_goal_left = Point2::new(layout_config.field.length / 2., 0.8);
         let enemy_goal_right = Point2::new(layout_config.field.length / 2., -0.8);
@@ -72,6 +66,11 @@ pub fn striker_role(
 
         let ball_distance = pose.distance_to(&ball);
 
+        let ball_pos = Target {
+            position: ball,
+            rotation: None,
+        };
+
         state.next_state(
             ball_distance,
             ball_goal_center_align,
@@ -81,9 +80,7 @@ pub fn striker_role(
 
         match *state {
             Striker::WalkToBall | Striker::WalkWithBall => {
-                commands.set_behavior(WalkTo {
-                    target: ball.into(),
-                });
+                commands.set_behavior(WalkTo { target: ball_pos });
             }
             Striker::WalkAlign => {
                 let ball_target = Point3::new(ball.x, ball.y, 0.0);

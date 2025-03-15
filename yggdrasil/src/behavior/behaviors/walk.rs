@@ -4,7 +4,10 @@ use nidhogg::types::{FillExt, HeadJoints};
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
     localization::RobotPose,
-    motion::walking_engine::{step::Step, step_context::StepContext},
+    motion::{
+        step_planner::StepPlanner,
+        walking_engine::{step::Step, step_context::StepContext},
+    },
     nao::{NaoManager, Priority},
 };
 
@@ -31,6 +34,7 @@ impl Behavior for Walk {
 
 pub fn walk(
     walk: Res<Walk>,
+    mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
     pose: Res<RobotPose>,
@@ -40,5 +44,6 @@ pub fn walk(
         nao_manager.set_head(look_at, HeadJoints::fill(0.5), Priority::High);
     }
 
+    step_planner.clear_target();
     step_context.request_walk(walk.step);
 }

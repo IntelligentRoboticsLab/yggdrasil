@@ -18,18 +18,9 @@ use ransac::{line::LineDetector, Ransac};
 use serde::{Deserialize, Serialize};
 
 use super::body_contour::{update_body_contours, BodyContour};
-use super::scan_lines;
 use super::{camera::Image, scan_lines::ScanLines};
 use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
-use crate::{
-    core::{
-        config::layout::{FieldConfig, LayoutConfig},
-        debug::DebugContext,
-    },
-    localization::RobotPose,
-    nao::Cycle,
-    prelude::ConfigExt,
-};
+use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle, prelude::ConfigExt};
 
 #[derive(Resource, Debug, Clone, Deserialize, Serialize, Reflect)]
 #[serde(deny_unknown_fields)]
@@ -83,18 +74,19 @@ impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
             .add_systems(PostStartup, setup_debug::<T>)
             .add_systems(
                 Update,
-                ((
-                    clear_lines::<T>,
-                    handle_line_task::<T>,
-                    detect_lines_system::<T>
-                        .run_if(resource_exists_and_changed::<ScanLines<T>>)
-                        .after(scan_lines::update_scan_lines::<T>)
-                        .after(update_body_contours),
+                (
+                    (
+                        clear_lines::<T>,
+                        handle_line_task::<T>,
+                        detect_lines_system::<T>
+                            .run_if(resource_exists_and_changed::<ScanLines<T>>)
+                            .after(update_body_contours),
+                    )
+                        .chain(),
                     debug_lines::<T>,
                     debug_lines_projected::<T>,
                     debug_rejected_lines::<T>,
-                )
-                    .chain(),),
+                ),
             )
             // TODO: these debug systems should ideally all be batched over multiple cycles
             // but that needs a batching api in the debug module
@@ -136,6 +128,7 @@ pub enum Rejection {
     TooShort,
     TooLong,
     NotEnoughSpots,
+    FailedWhiteTest,
 }
 
 /// Candidate for a detected line
@@ -170,8 +163,6 @@ fn detect_lines_system<T: CameraLocation>(
     mut commands: Commands,
     scan_lines: Res<ScanLines<T>>,
     camera_matrix: Res<CameraMatrix<T>>,
-    layout: Res<LayoutConfig>,
-    pose: Res<RobotPose>,
     cfg: Res<LineDetectionConfigs>,
     body_contour: Res<BodyContour>,
 ) {
@@ -190,10 +181,8 @@ fn detect_lines_system<T: CameraLocation>(
     let handle = pool.spawn({
         let scan_lines = scan_lines.clone();
         let camera_matrix = camera_matrix.clone();
-        let field = layout.field.clone();
-        let pose = pose.clone();
 
-        async move { detect_lines(scan_lines, camera_matrix, field, pose, cfg, body_contour) }
+        async move { detect_lines(scan_lines, camera_matrix, cfg, body_contour) }
     });
 
     commands
@@ -249,13 +238,10 @@ fn clear_lines<T: CameraLocation>(
 fn detect_lines<T: CameraLocation>(
     scan_lines: ScanLines<T>,
     camera_matrix: CameraMatrix<T>,
-    field: FieldConfig,
-    pose: RobotPose,
     cfg: LineDetectionConfig,
     body_contour: BodyContour,
 ) -> (Vec<LineCandidate>, Vec<Option<Rejection>>) {
     let spots = scan_lines
-        .vertical()
         .line_spots()
         .filter(|point| !body_contour.is_part_of_body(*point));
 
@@ -266,13 +252,6 @@ fn detect_lines<T: CameraLocation>(
 
     // filter out spots that are too far away
     projected_spots.retain(|p| p.coords.norm() < cfg.spot_max_distance);
-
-    // filter out spots that are outside of the field (with some margin)
-    projected_spots.retain(|p| {
-        // apply the pose transformation to the spots first
-        let position = pose.inner * p;
-        field.in_field_with_margin(position, cfg.field_margin)
-    });
 
     let mut candidates = vec![];
     let mut ransac = LineDetector::new(
@@ -326,12 +305,16 @@ fn detect_lines<T: CameraLocation>(
             let is_too_short = c.segment.length() < cfg.line_segment_min_length;
             let is_too_long = c.segment.length() > cfg.line_segment_max_length;
 
+            let passes_white_test = passes_white_test(c, &scan_lines, &camera_matrix, &cfg);
+
             if not_enough_spots {
                 Some(Rejection::NotEnoughSpots)
             } else if is_too_short {
                 Some(Rejection::TooShort)
             } else if is_too_long {
                 Some(Rejection::TooLong)
+            } else if !passes_white_test {
+                Some(Rejection::FailedWhiteTest)
             } else {
                 None
             }
@@ -339,6 +322,51 @@ fn detect_lines<T: CameraLocation>(
         .collect_vec();
 
     (candidates, rejections)
+}
+
+// remove lines in robots or something
+fn passes_white_test<T: CameraLocation>(
+    candidate: &LineCandidate,
+    scan_lines: &ScanLines<T>,
+    camera_matrix: &CameraMatrix<T>,
+    cfg: &LineDetectionConfig,
+) -> bool {
+    // do a white test
+    let mut tests = vec![];
+
+    // let candidate_segment = pose.inner * candidate.segment;
+    let candidate_segment = candidate.segment;
+
+    for sample in candidate_segment.sample_uniform(cfg.white_test_samples) {
+        let normal = candidate_segment.normal();
+
+        let tester1 = sample + normal * cfg.white_test_sample_distance;
+        let tester2 = sample - normal * cfg.white_test_sample_distance;
+
+        // project the points back to the image
+        let Ok(sample_pixel) = camera_matrix.ground_to_pixel(point![sample.x, sample.y, 0.0])
+        else {
+            tests.extend([false, false]);
+            continue;
+        };
+
+        let image = scan_lines.image();
+
+        let tester1_pixel = camera_matrix
+            .ground_to_pixel(point![tester1.x, tester1.y, 0.0])
+            .is_ok_and(|p| is_less_bright_and_more_saturated(sample_pixel, p, image));
+
+        let tester2_pixel = camera_matrix
+            .ground_to_pixel(point![tester2.x, tester2.y, 0.0])
+            .is_ok_and(|p| is_less_bright_and_more_saturated(sample_pixel, p, image));
+
+        tests.extend([tester1_pixel, tester2_pixel]);
+    }
+
+    // if the ratio of the white tests is high enough, merge the two candidates
+    let ratio = tests.iter().filter(|&&t| t).count() as f32 / tests.len() as f32;
+
+    ratio < cfg.white_test_merge_ratio
 }
 
 fn merge_candidates<T: CameraLocation>(
@@ -589,6 +617,7 @@ fn debug_rejected_lines<T: CameraLocation>(
                         Rejection::TooShort => (255, 0, 0),
                         Rejection::TooLong => (0, 255, 0),
                         Rejection::NotEnoughSpots => (0, 0, 255),
+                        Rejection::FailedWhiteTest => (0, 255, 255),
                     })
                     .collect_vec(),
             ),

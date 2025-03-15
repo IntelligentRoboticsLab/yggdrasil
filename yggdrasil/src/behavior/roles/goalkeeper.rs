@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use nalgebra::{Point2, UnitComplex};
 
 use crate::{
     behavior::{
@@ -6,10 +7,7 @@ use crate::{
         engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::layout::LayoutConfig,
-    motion::path::{
-        geometry::{Isometry, Vector},
-        PathPlanner,
-    },
+    motion::step_planner::{StepPlanner, Target},
 };
 
 /// Plugin for the Goalkeeper role
@@ -31,20 +29,30 @@ impl Roles for Goalkeeper {
 
 pub fn goalkeeper_role(
     mut commands: Commands,
-    planner: Res<PathPlanner>,
     layout_config: Res<LayoutConfig>,
+    step_planner: ResMut<StepPlanner>,
     behavior: Res<State<BehaviorState>>,
 ) {
     let field_length = layout_config.field.length;
-    let keeper_target = Isometry::new(Vector::new(-field_length / 2., 0.), 0.);
+    let keeper_target = Target {
+        position: Point2::new(-field_length / 2., 0.),
+        rotation: Some(UnitComplex::<f32>::from_angle(0.0)),
+    };
 
-    if planner.reached_target() {
+    if !step_planner.has_target() {
+        commands.set_behavior(WalkTo {
+            target: keeper_target,
+        });
+        return;
+    }
+
+    if step_planner.reached_target() {
         if behavior.get() != &BehaviorState::Observe {
             commands.set_behavior(Observe::default());
         }
     } else {
         commands.set_behavior(WalkTo {
-            target: keeper_target.into(),
+            target: keeper_target,
         });
     }
 }

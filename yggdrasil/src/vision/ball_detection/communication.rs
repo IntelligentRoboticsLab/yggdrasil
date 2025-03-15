@@ -1,6 +1,6 @@
-use std::net::SocketAddr;
+use std::{collections::HashMap, net::SocketAddr};
 
-use bevy::{ecs::system::ResMut, utils::HashMap};
+use bevy::prelude::*;
 use nalgebra as na;
 
 use crate::communication::{TeamCommunication, TeamMessage};
@@ -30,47 +30,60 @@ impl CommunicatedBalls {
     }
 
     /// Send your ball position (even if it's None) as a message.
-    fn send_message(&mut self, ball_position: Option<na::Point2<f32>>){
+    fn send_message(&mut self, ball_position: Option<na::Point2<f32>>, tc: &mut TeamCommunication){
         tc.outbound_mut()
-            .update_or_push(TeamMessage::DetectedBall(ball_position));
+            .update_or_push(TeamMessage::DetectedBall(ball_position))
+            .expect("Unable to encode detected ball");
         self.sent = ball_position;
     }
 
     /// Receive messages.
     // 2.A.a. If no other robot are detecting a ball, we return the same None we had
     // 2.A.b. If there are other robots detecting a ball, we take one from theirs as our own.
-    fn receive_messages(comms: &mut TeamCommunication) -> Option<na::Point2<f32>{
+    fn receive_messages(comms: &mut TeamCommunication) -> Option<na::Point2<f32>> {
         let mut received_ball = None;
-        while let Some((_, who, ball)) = comms.inbound_mut().take_map(|_, _, what| match what {
-            TeamMessage::DetectedBall(ball) => Some(ball),
+
+        while let Some((_, _, ball)) = comms.inbound_mut().take_map(|_, _, what| match what {
+            TeamMessage::DetectedBall(ball) => Some(*ball),
             _ => None,
         }) {
-            received_ball = received_ball.or(Some(ball));
+            received_ball = received_ball.or(ball);
         }
-        return received_ball
+
+        received_ball
     }
 
-    fn communicate_balls(&mut self,
-        mut tc: ResMut<TeamCommunication>,
-        mut most_confident_ball: Option<na::Point2<f32>>,
-    ) -> Option<na::Point2<f32>>{
+    fn communicate_balls(
+        &mut self,
+        tc: &mut TeamCommunication,
+        most_confident_ball: Option<na::Point2<f32>>,
+    ) -> Option<na::Point2<f32>> {
         // 1. Check if it has changed enough and if so, we send a message.
-        let has_changed =
-            self.change_enough(&most_confident_ball);
-        if has_changed {
-            self.send_message(most_confident_ball)
+        if self.change_enough(&most_confident_ball) {
+            self.send_message(most_confident_ball, tc)
         }
 
         // 2. Receive messages only if our current ball is None.
-        // 2.A. If its None we check the received messages.
-        if most_confident_ball.is_none() {
-            let ball = CommunicatedBalls::receive_messages(TeamCommunication);
-        // 2.B. If our current ball is not None, then we just use our ball.
+        if let ball @ Some(_) = most_confident_ball {
+            ball
         } else {
-            let ball = most_confident_ball;
+            Self::receive_messages(tc)
         }
-
-        // 3. We return the ball we are using
-        ball
     }
+}
+
+fn communicate_balls(
+    mut tc: ResMut<TeamCommunication>,
+    mut communicated_balls: ResMut<CommunicatedBalls>,
+    top_balls: Res<Balls<Top>>,
+    bottom_balls: Res<Balls<Bottom>>,
+) {
+    let ball = bottom_balls
+        .most_confident_ball()
+        .map(|b| (b.timestamp, b.robot_to_ball))
+        .or(top_balls
+            .most_confident_ball()
+            .map(|b| (b.timestamp, b.robot_to_ball)));
+
+    todo!("marinita pls finish спс)))")
 }
