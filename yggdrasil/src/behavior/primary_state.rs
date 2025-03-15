@@ -11,10 +11,14 @@ use bevy::prelude::*;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use bifrost::communication::{GameControllerMessage, GameState};
 use nidhogg::types::color;
+
+/// Time between whistle and game controller confirmation after a goal has been scored,
+/// as per the SPL 2025 regulations
+const GOAL_CONFIRM_WAIT: Duration = Duration::from_secs(15);
 
 #[serde_as]
 #[derive(Resource, Serialize, Deserialize, Debug, Clone)]
@@ -54,9 +58,12 @@ pub enum PrimaryState {
     Standby,
     /// State at the start of the match where the robots stand up
     Initial,
-    /// State in which robots walk to their legal positions
-    Ready { referee_in_standby: bool },
-    /// State in which the robots wait for a kick-off or penalty
+    /// State in which robots walk to their legal positions.
+    /// If this state was inferred during playing and not yet confirmed by the game controller, robots
+    /// will return to the playing state after `GOAL_CONFIRM_WAIT` time has passed.
+    /// If confirmed, the timer is set to `None`.
+    Ready { referee_in_standby: bool, confirm_timer: Option<Instant> },
+    /// State in which the robots wait for a kick-off or penalty.
     Set,
     /// State in which the robots are playing soccer, with a bool to keep state after a whistle
     Playing { whistle_in_set: bool },
@@ -127,7 +134,7 @@ pub fn update_primary_state(
         PS::Standby => nao_manager.set_chest_led(color::f32::CYAN, Priority::Critical),
         PS::Initial => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
         PS::Ready { .. } => nao_manager.set_chest_led(color::f32::BLUE, Priority::Critical),
-        PS::Set => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Critical),
+        PS::Set { .. } => nao_manager.set_chest_led(color::f32::YELLOW, Priority::Critical),
         PS::Playing { .. } => nao_manager.set_chest_led(color::f32::GREEN, Priority::Critical),
         PS::Penalized => nao_manager.set_chest_led(color::f32::RED, Priority::Critical),
         PS::Finished => nao_manager.set_chest_led(color::f32::GRAY, Priority::Critical),
@@ -154,6 +161,12 @@ pub fn next_primary_state(
         PS::Initial if chest_button.state.is_tapped() => PS::Playing {
             whistle_in_set: false,
         },
+        // Transition back to playing after goal whistle was detected
+        //  but no confirmation from the game controller has been received on time
+        PS::Ready { confirm_timer: Some(timer), .. } if timer.elapsed() > GOAL_CONFIRM_WAIT =>
+            PS::Playing {
+                whistle_in_set: false
+            },
         PS::Playing { .. } if chest_button.state.is_tapped() => PS::Penalized,
         PS::Penalized if chest_button.state.is_tapped() => PS::Playing {
             whistle_in_set: false,
@@ -177,7 +190,8 @@ pub fn next_primary_state(
     let recognized_ready_pose = matches!(
         primary_state,
         PS::Ready {
-            referee_in_standby: true
+            referee_in_standby: true,
+            ..
         }
     ) || recognized_ready_pose;
 
@@ -186,14 +200,21 @@ pub fn next_primary_state(
             GameState::Initial => PS::Initial,
             GameState::Standby if recognized_ready_pose => PS::Ready {
                 referee_in_standby: true,
+                confirm_timer: None,
             },
             GameState::Ready => PS::Ready {
                 referee_in_standby: false,
+                confirm_timer: None,
             },
             GameState::Set if heard_whistle => PS::Playing {
                 whistle_in_set: true,
             },
             GameState::Set => PS::Set,
+            // Prepare for kick-off, as a goal whistle has been detected during playing
+            GameState::Playing if heard_whistle => PS::Ready {
+                referee_in_standby: false,
+                confirm_timer: Some(Instant::now()),
+            },
             GameState::Playing => PS::Playing {
                 whistle_in_set: false,
             },
