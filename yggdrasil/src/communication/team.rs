@@ -208,10 +208,7 @@ async fn tx_worker(
         }
     }
 }
-async fn rx_worker(
-    socket: Arc<UdpSocket>,
-    mut tx: mpsc::Sender<([u8; 128], usize, SocketAddr)>,
-) {
+async fn rx_worker(socket: Arc<UdpSocket>, mut tx: mpsc::Sender<([u8; 128], usize, SocketAddr)>) {
     loop {
         let mut buf = [0; 128];
 
