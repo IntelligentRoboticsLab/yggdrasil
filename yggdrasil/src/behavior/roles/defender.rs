@@ -35,7 +35,7 @@ pub fn defender_role(
     behavior: Res<State<BehaviorState>>,
 ) {
     let set_robot_position = layout_config
-        .initial_positions
+        .set_positions
         .player(player_config.player_number);
     let set_position = set_robot_position.isometry.translation.vector;
     let set_point = Point2::new(set_position.x, set_position.y);
