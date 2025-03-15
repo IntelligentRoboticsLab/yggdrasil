@@ -173,7 +173,7 @@ pub fn next_robot_pose(
     let mut isometry = if *primary_state == PrimaryState::Penalized {
         let mut closest = find_closest_penalty_pose(robot_pose, layout_config);
 
-        if penalized_history.duration_since_return() < Duration::from_secs(40)
+        let closest = if penalized_history.duration_since_return() < Duration::from_secs(40)
             && penalized_history.last_penalty_position.is_some()
         {
             let last = penalized_history.last_penalty_position.unwrap();
@@ -186,9 +186,11 @@ pub fn next_robot_pose(
             }
             closest
         } else {
-            penalized_history.last_penalty_position = Some(closest);
             closest
-        }
+        };
+
+        penalized_history.last_penalty_position = Some(closest);
+        closest
     } else {
         robot_pose.inner * odometry.offset_to_last
     };
