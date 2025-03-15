@@ -16,6 +16,7 @@ use crate::{
 
 const WALK_WITH_BALL_ANGLE: f32 = 0.3;
 const ALIGN_WITH_BALL_DISTANCE: f32 = 0.3;
+
 /// Plugin for the Striker role
 pub struct StrikerRolePlugin;
 
@@ -48,6 +49,7 @@ pub fn striker_role(
     let relative_ball = pose.world_to_robot(&ball);
     let ball_angle = pose.angle_to(&ball);
     let ball_distance = pose.distance_to(&ball);
+    let ball_target = Point3::new(ball.x, ball.y, 0.2);
 
     let relative_goalpost_left =
         pose.world_to_robot(&Point2::new(layout_config.field.length / 2., 0.8));
@@ -56,7 +58,6 @@ pub fn striker_role(
 
     let goal_aligned = goal_aligned(pose.as_ref(), &layout_config.as_ref().field);
 
-    let ball_target = Point3::new(ball.x, ball.y, 0.1);
     if ball_distance > ALIGN_WITH_BALL_DISTANCE {
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::YELLOW), Priority::default());
 
@@ -87,25 +88,15 @@ pub fn striker_role(
         }
     } else if ball_angle.abs() > WALK_WITH_BALL_ANGLE {
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::PURPLE), Priority::default());
-        let ball_target = Point3::new(ball.x, ball.y, 0.1);
+
         if relative_ball.y < 0. {
-            // step right
             commands.set_behavior(Walk {
-                step: Step {
-                    forward: 0.00,
-                    left: -0.06,
-                    turn: 0.0,
-                },
+                step: Step::right(),
                 look_target: Some(ball_target),
             });
         } else {
-            // step left
             commands.set_behavior(Walk {
-                step: Step {
-                    forward: 0.00,
-                    left: 0.06,
-                    turn: 0.0,
-                },
+                step: Step::left(),
                 look_target: Some(ball_target),
             });
         }
@@ -113,11 +104,7 @@ pub fn striker_role(
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::RED), Priority::default());
 
         commands.set_behavior(Walk {
-            step: Step {
-                forward: 0.06,
-                left: 0.00,
-                turn: 0.0,
-            },
+            step: Step::forward(),
             look_target: Some(ball_target),
         });
     }
