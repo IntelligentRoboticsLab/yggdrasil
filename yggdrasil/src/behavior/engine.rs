@@ -12,10 +12,7 @@ use crate::{
     localization::RobotPose,
     motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
-    vision::ball_detection::{
-        ball_tracker::{self, BallTracker},
-        Hypothesis,
-    },
+    vision::ball_detection::{ball_tracker::BallTracker, Hypothesis},
 };
 
 use super::{

@@ -14,10 +14,6 @@ use crate::{
     vision::ball_detection::{ball_tracker::BallTracker, Hypothesis},
 };
 
-// Walk to the ball as long as the ball is further away than
-// `BALL_DISTANCE_WALK_THRESHOLD` meters.
-const BALL_DISTANCE_WALK_THRESHOLD: f32 = 0.75;
-
 /// Plugin for the Striker role
 pub struct StrikerRolePlugin;
 
@@ -40,21 +36,12 @@ pub fn striker_role(
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
     ball_tracker: Res<BallTracker>,
-    mut state: ResMut<Striker>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
     if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
         let ball = ball_tracker.state().0;
-        let enemy_goal_center = Point2::new(layout_config.field.length / 2., 0.);
-        let enemy_goal_left = Point2::new(layout_config.field.length / 2., 0.8);
-        let enemy_goal_right = Point2::new(layout_config.field.length / 2., -0.8);
-
-        let absolute_goal_angle = pose.angle_to(&enemy_goal_center) + pose.world_rotation();
-        let absolute_goal_angle_left = pose.angle_to(&enemy_goal_left) + pose.world_rotation();
-        let absolute_goal_angle_right = pose.angle_to(&enemy_goal_right) + pose.world_rotation();
 
         let ball_angle = pose.angle_to(&ball);
-        let absolute_ball_angle = ball_angle + pose.world_rotation();
 
         let enemy_goal_left = Point2::new(layout_config.field.length / 2., 0.8);
         let enemy_goal_right = Point2::new(layout_config.field.length / 2., -0.8);
@@ -75,14 +62,11 @@ pub fn striker_role(
 
         let ball_target = Point3::new(ball.x, ball.y, 0.1);
         if ball_distance > 0.3 {
-            println!("WalkingToBall");
             nao_manager.set_right_eye_led(RightEye::fill(color::f32::YELLOW), Priority::default());
 
             commands.set_behavior(WalkTo { target: ball_pos });
         } else {
             if !goal_aligned {
-                println!("Aligning with goal");
-
                 nao_manager
                     .set_right_eye_led(RightEye::fill(color::f32::ORANGE), Priority::default());
                 if relative_goal_left.y < 0. && relative_goal_right.y < 0. {
@@ -106,12 +90,8 @@ pub fn striker_role(
                         look_target: Some(ball_target),
                     });
                     return;
-                } else {
-                    println!("WATAAFAAAAK!?!?!?!");
                 }
             } else if ball_angle.abs() > 0.3 {
-                println!("Aligning with ball");
-
                 nao_manager
                     .set_right_eye_led(RightEye::fill(color::f32::PURPLE), Priority::default());
                 let ball_target = Point3::new(ball.x, ball.y, 0.1);
@@ -136,12 +116,7 @@ pub fn striker_role(
                         look_target: Some(ball_target),
                     });
                 }
-                println!("We Were goal algined, but not ball aligned!!!!");
-
-                // walk to align with ball
             } else {
-                println!("Walking with ball");
-
                 nao_manager.set_right_eye_led(RightEye::fill(color::f32::RED), Priority::default());
 
                 commands.set_behavior(Walk {
@@ -169,9 +144,8 @@ pub fn goal_aligned(pose: &RobotPose, layout_config: &LayoutConfig) -> bool {
     }
 }
 
+/// Returns true if we are angled inbetween the goal posts
 pub fn is_aligned_with_goal(pose: &RobotPose, layout_config: &LayoutConfig) -> bool {
-    // returns true if we are angled inbetween the goal posts
-
     let enemy_goal_left = Point2::new(layout_config.field.length / 2., 0.8);
     let enemy_goal_right = Point2::new(layout_config.field.length / 2., -0.8);
 
@@ -185,7 +159,7 @@ pub fn is_aligned_with_goal(pose: &RobotPose, layout_config: &LayoutConfig) -> b
     }
 }
 
-// returns true if we are angled inbetween the two corners of the enemy side
+/// Returns true if we are angled inbetween the two corners of the enemy side
 pub fn is_aligned_with_enemyside(pose: &RobotPose, layout_config: &LayoutConfig) -> bool {
     let enemy_goal_left = Point2::new(
         layout_config.field.length / 2.,
