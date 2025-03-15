@@ -10,6 +10,7 @@ use std::time::Duration;
 use ball_tracker::BallTracker;
 pub use ball_tracker::Hypothesis;
 use bevy::prelude::*;
+use communication::CommunicatedBallsPlugin;
 use heimdall::{Bottom, CameraLocation, Top};
 use nidhogg::types::{color, FillExt, LeftEye};
 use proposal::BallProposalConfigs;
@@ -31,6 +32,7 @@ pub struct BallDetectionPlugin;
 
 impl Plugin for BallDetectionPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugins(CommunicatedBallsPlugin);
         app.init_config::<BallDetectionConfig>();
         app.add_plugins((
             proposal::BallProposalPlugin::<Top>::default(),

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, net::SocketAddr};
 
 use bevy::prelude::*;
-use nalgebra as na;
+use nalgebra::{self as na, Point2};
 
 use crate::communication::{TeamCommunication, TeamMessage};
 
@@ -11,7 +11,20 @@ use super::ball_tracker::BallPosition;
 // Constant for the minimum acceptable change
 const MIN_CHANGE: f32 = 0.1;
 
-#[derive(Resource, Debug)]
+pub struct CommunicatedBallsPlugin;
+
+impl Plugin for CommunicatedBallsPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<TeamBallPosition>()
+            .init_resource::<CommunicatedBalls>()
+            .add_systems(Update, communicate_balls_system);
+    }
+}
+
+#[derive(Resource, Default, Debug)]
+pub struct TeamBallPosition(Option<Point2<f32>>);
+
+#[derive(Resource, Debug, Default)]
 pub struct CommunicatedBalls {
     /// For keeping track what position we've sent out.
     sent: Option<na::Point2<f32>>,
@@ -53,23 +66,20 @@ impl CommunicatedBalls {
 
         received_ball
     }
+}
 
-    fn communicate_balls(
-        &mut self,
-        tc: &mut TeamCommunication,
-        ball_position: Option<BallPosition>,
-    ) -> Option<na::Point2<f32>> {
-        // 1. Check if it has changed enough and if so, we send a message.
-        let optional_ball_position = ball_position.map(|ball_position| ball_position.0);
-        if self.change_enough(&optional_ball_position) {
-            self.send_message(optional_ball_position, tc)
-        }
-
-        // 2. Receive messages only if our current ball is None.
-        if let ball @ Some(_) = optional_ball_position {
-            ball
-        } else {
-            Self::receive_messages(tc)
-        }
+fn communicate_balls_system(
+    mut communicated_balls: ResMut<CommunicatedBalls>,
+    mut tc: ResMut<TeamCommunication>,
+    ball_position: Option<Res<BallPosition>>,
+    mut team_ball_position: ResMut<TeamBallPosition>,
+) {
+    // 1. Check if it has changed enough and if so, we send a message.
+    let optional_ball_position = ball_position.map(|ball_position| ball_position.0);
+    if communicated_balls.change_enough(&optional_ball_position) {
+        communicated_balls.send_message(optional_ball_position, &mut tc)
     }
+
+    team_ball_position.0 =
+        optional_ball_position.or_else(|| CommunicatedBalls::receive_messages(&mut tc));
 }
