@@ -114,17 +114,23 @@ fn init_vqf(mut commands: Commands, config: Res<OrientationFilterConfig>) {
 }
 
 /// System that resets the orientation each cycle, iff we're in a state that doesn't need orientation data.
-fn reset_orientation(mut orientation: ResMut<RobotOrientation>, primary_state: Res<PrimaryState>) {
-    match primary_state.as_ref() {
-        &PrimaryState::Sitting
-        | &PrimaryState::Initial
-        | &PrimaryState::Standby
-        | &PrimaryState::Penalized
-        | &PrimaryState::Finished => {
+fn reset_orientation(
+    mut orientation: ResMut<RobotOrientation>,
+    primary_state: Res<PrimaryState>,
+    mut prev_state: Local<Option<PrimaryState>>,
+) {
+    if prev_state.is_none() {
+        *prev_state = Some(*primary_state);
+        return;
+    }
+
+    if let Some(prev_state) = *prev_state {
+        if prev_state != PrimaryState::Standby && *primary_state == PrimaryState::Standby {
             orientation.reset();
         }
-        _ => {}
     }
+
+    *prev_state = Some(*primary_state);
 }
 
 pub fn update_orientation(

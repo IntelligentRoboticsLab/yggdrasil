@@ -1,9 +1,9 @@
 # The base amount of time (in milliseconds) for one step.
-base_step_duration = 240
+base_step_duration = 225
 
 # Duration modifiers (in seconds) for a single step.
 # Modifies `base_step_duration` by adding (modifier * movement factor) seconds per step.
-step_duration_modifier = { forward = 0.1, left = 0.03, turn = 0.0 }
+step_duration_modifier = { forward = 0.1, left = 0.08, turn = 0.0 }
 
 # The amount of time (in milliseconds) for the starting step.
 starting_step_duration = 200
@@ -44,7 +44,7 @@ arm_stiffness = 0.6
 
 # The base amount to lift the feet in swing phase, in metres.
 # The foot lift is increased slightly, based on the forward and left in the command.
-base_foot_lift = 0.008
+base_foot_lift = 0.005
 
 # The multiplier for each component of a step command to adjust the foot lift.
 # These values are multiplied by their respective component of the step command
@@ -61,10 +61,10 @@ stopping_foot_lift = 0.01
 #
 # E.g. the difference between the current and the last step is clamped to
 # -max_acceleration and max_acceleration.
-max_acceleration = { forward = 0.01, left = 0.08, turn = 0.3 }
+max_acceleration = { forward = 0.01, left = 0.05, turn = 0.3 }
 
 # The step size is clipped to this value; in both directions (e.g. range for forward is -max_step_size to max_step_size).
-max_step_size = { forward = 0.06, left = 0.07, turn = 1.0 }
+max_step_size = { forward = 0.055, left = 0.05, turn = 0.7 }
 
 
 [hip_height]
@@ -95,7 +95,7 @@ arm_swing_multiplier = 0.6
 #
 # Higher values mean that the filtered gyroscope value responds to changes quicker,
 # and lower values mean that it responds slower.
-gyro_lpf_alpha = 0.4
+gyro_lpf_alpha = 0.6
 
 # The weight of the balance adjustment based on the y gyroscope value.
 # Increasing this value will use a larger portion of the filtered gyro value
