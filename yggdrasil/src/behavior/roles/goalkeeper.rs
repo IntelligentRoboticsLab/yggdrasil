@@ -6,7 +6,6 @@ use crate::{
         engine::{in_role, BehaviorState, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::layout::LayoutConfig,
-    localization::RobotPose,
     motion::path::{
         geometry::{Isometry, Vector},
         PathPlanner,
@@ -33,14 +32,13 @@ impl Roles for Goalkeeper {
 pub fn goalkeeper_role(
     mut commands: Commands,
     planner: Res<PathPlanner>,
-    pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
     behavior: Res<State<BehaviorState>>,
 ) {
     let field_length = layout_config.field.length;
     let keeper_target = Isometry::new(Vector::new(-field_length / 2., 0.), 0.);
 
-    if planner.reached_target(pose.inner) {
+    if planner.reached_target() {
         if behavior.get() != &BehaviorState::Observe {
             commands.set_behavior(Observe::default());
         }

@@ -33,16 +33,7 @@ impl PathPlanner {
 
     /// Returns whether a path has been found and is empty (i.e., because we reached the target).
     #[must_use]
-    pub fn reached_target(&self, start: Isometry) -> bool {
-        if let Some(Target::Isometry(target)) = self.target {
-            let angular_error =
-                Winding::shortest_distance(start.rotation.angle(), target.rotation.angle());
-
-            if angular_error > self.config.angular_deadband {
-                return false;
-            }
-        }
-
+    pub fn reached_target(&self) -> bool {
         self.path.as_ref().is_some_and(Vec::is_empty)
     }
 
@@ -62,21 +53,7 @@ impl PathPlanner {
         } = self.config;
 
         // Recalculate the path and get the first segment.
-        let Some(first) = self.path(start.into()).first() else {
-            if let Some(Target::Isometry(target)) = self.target {
-                let angular_error =
-                    Winding::shortest_distance(start.rotation.angle(), target.rotation.angle());
-
-                return (angular_error.abs() > angular_deadband).then(|| Step {
-                    forward: 0.,
-                    left: 0.,
-                    turn: angular_error.clamp(-angular_speed, angular_speed),
-                });
-            }
-
-            return None;
-        };
-
+        let first = self.path(start.into()).first()?;
         let point = start.translation.vector.into();
 
         // Calculate the error between the segment being followed and the current position.
@@ -211,14 +188,6 @@ impl PathPlanner {
         };
 
         let config = self.config();
-
-        if ease.ease_in() && config.ease_in_radius == 0. {
-            return None;
-        }
-
-        if ease.ease_out() && config.ease_out_radius == 0. {
-            return None;
-        }
 
         let half_distance = 0.5 * start.distance(target);
 

@@ -6,7 +6,6 @@ use crate::{
         engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
-    localization::RobotPose,
     motion::path::PathPlanner,
 };
 
@@ -32,13 +31,12 @@ pub fn defender_role(
     layout_config: Res<LayoutConfig>,
     player_config: Res<PlayerConfig>,
     planner: Res<PathPlanner>,
-    pose: Res<RobotPose>,
 ) {
     let set_robot_position = layout_config
         .set_positions
         .player(player_config.player_number);
 
-    if planner.reached_target(pose.inner) {
+    if planner.reached_target() {
         commands.set_behavior(Observe::with_turning(-0.4));
     } else {
         commands.set_behavior(WalkTo {
