@@ -9,7 +9,7 @@ use crate::{
     core::config::layout::LayoutConfig,
     localization::RobotPose,
     motion::{step_planner::Target, walking_engine::step::Step},
-    vision::ball_detection::{ball_tracker::BallTracker, Hypothesis},
+    communication::TeamBallPosition
 };
 
 // Walk to the ball as long as the ball is further away than
@@ -42,11 +42,10 @@ pub fn striker_role(
     mut commands: Commands,
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
-    ball_tracker: Res<BallTracker>,
+    team_ball_position: Res<TeamBallPosition>,
     mut state: ResMut<Striker>,
 ) {
-    if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
-        let ball = ball_tracker.state().0;
+    if let Some(ball) = team_ball_position.0 {
         let enemy_goal_center = Point2::new(layout_config.field.length / 2., 0.);
         let enemy_goal_left = Point2::new(layout_config.field.length / 2., 0.8);
         let enemy_goal_right = Point2::new(layout_config.field.length / 2., -0.8);
