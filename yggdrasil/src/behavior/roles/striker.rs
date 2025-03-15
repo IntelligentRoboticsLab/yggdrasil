@@ -65,69 +65,65 @@ pub fn striker_role(
             nao_manager.set_right_eye_led(RightEye::fill(color::f32::YELLOW), Priority::default());
 
             commands.set_behavior(WalkTo { target: ball_pos });
-        } else {
-            if !goal_aligned {
-                nao_manager
-                    .set_right_eye_led(RightEye::fill(color::f32::ORANGE), Priority::default());
-                if relative_goal_left.y < 0. && relative_goal_right.y < 0. {
-                    commands.set_behavior(Walk {
-                        step: Step {
-                            forward: 0.00,
-                            left: 0.06,
-                            turn: -0.3,
-                        },
-                        look_target: Some(ball_target),
-                    });
-                    return;
-                }
-                if relative_goal_left.y > 0. && relative_goal_right.y > 0. {
-                    commands.set_behavior(Walk {
-                        step: Step {
-                            forward: 0.00,
-                            left: -0.06,
-                            turn: 0.3,
-                        },
-                        look_target: Some(ball_target),
-                    });
-                    return;
-                }
-            } else if ball_angle.abs() > 0.3 {
-                nao_manager
-                    .set_right_eye_led(RightEye::fill(color::f32::PURPLE), Priority::default());
-                let ball_target = Point3::new(ball.x, ball.y, 0.1);
-                if relative_ball.y < 0. {
-                    // step right
-                    commands.set_behavior(Walk {
-                        step: Step {
-                            forward: 0.00,
-                            left: -0.04,
-                            turn: 0.0,
-                        },
-                        look_target: Some(ball_target),
-                    });
-                } else {
-                    // step left
-                    commands.set_behavior(Walk {
-                        step: Step {
-                            forward: 0.00,
-                            left: 0.04,
-                            turn: 0.0,
-                        },
-                        look_target: Some(ball_target),
-                    });
-                }
-            } else {
-                nao_manager.set_right_eye_led(RightEye::fill(color::f32::RED), Priority::default());
-
+        } else if !goal_aligned {
+            nao_manager.set_right_eye_led(RightEye::fill(color::f32::ORANGE), Priority::default());
+            if relative_goal_left.y < 0. && relative_goal_right.y < 0. {
                 commands.set_behavior(Walk {
                     step: Step {
-                        forward: 0.06,
-                        left: 0.00,
+                        forward: 0.00,
+                        left: 0.06,
+                        turn: -0.3,
+                    },
+                    look_target: Some(ball_target),
+                });
+                return;
+            }
+            if relative_goal_left.y > 0. && relative_goal_right.y > 0. {
+                commands.set_behavior(Walk {
+                    step: Step {
+                        forward: 0.00,
+                        left: -0.06,
+                        turn: 0.3,
+                    },
+                    look_target: Some(ball_target),
+                });
+                return;
+            }
+        } else if ball_angle.abs() > 0.3 {
+            nao_manager.set_right_eye_led(RightEye::fill(color::f32::PURPLE), Priority::default());
+            let ball_target = Point3::new(ball.x, ball.y, 0.1);
+            if relative_ball.y < 0. {
+                // step right
+                commands.set_behavior(Walk {
+                    step: Step {
+                        forward: 0.00,
+                        left: -0.04,
+                        turn: 0.0,
+                    },
+                    look_target: Some(ball_target),
+                });
+            } else {
+                // step left
+                commands.set_behavior(Walk {
+                    step: Step {
+                        forward: 0.00,
+                        left: 0.04,
                         turn: 0.0,
                     },
                     look_target: Some(ball_target),
                 });
             }
+        } else {
+            nao_manager.set_right_eye_led(RightEye::fill(color::f32::RED), Priority::default());
+
+            commands.set_behavior(Walk {
+                step: Step {
+                    forward: 0.06,
+                    left: 0.00,
+                    turn: 0.0,
+                },
+                look_target: Some(ball_target),
+            });
         }
     } else {
         commands.set_behavior(RlStrikerSearchBehavior);
@@ -154,9 +150,8 @@ pub fn is_aligned_with_goal(pose: &RobotPose, layout_config: &LayoutConfig) -> b
 
     if relative_goal_left.y > 0. && relative_goal_right.y < 0. {
         return true;
-    } else {
-        return false;
     }
+    false
 }
 
 /// Returns true if we are angled inbetween the two corners of the enemy side
@@ -175,7 +170,6 @@ pub fn is_aligned_with_enemyside(pose: &RobotPose, layout_config: &LayoutConfig)
 
     if relative_goal_left.y > 0. && relative_goal_right.y < 0. {
         return true;
-    } else {
-        return false;
     }
+    false
 }
