@@ -3,7 +3,7 @@ pub mod correspondence;
 use std::f32::consts::PI;
 
 use crate::{
-    behavior::primary_state::PrimaryState,
+    behavior::{behaviors::Standup, engine::in_behavior, primary_state::PrimaryState},
     core::{
         config::{layout::LayoutConfig, showtime::PlayerConfig},
         debug::DebugContext,
@@ -34,7 +34,9 @@ impl Plugin for LocalizationPlugin {
         .add_systems(PostStartup, (init_pose, setup_pose_visualization))
         .add_systems(
             PreUpdate,
-            update_robot_pose.after(odometry::update_odometry),
+            update_robot_pose
+                .after(odometry::update_odometry)
+                .run_if(not(in_behavior::<Standup>)),
         )
         .add_systems(PostUpdate, visualize_pose);
     }
