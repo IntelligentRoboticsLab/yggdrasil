@@ -21,12 +21,7 @@ use super::body_contour::{update_body_contours, BodyContour};
 use super::scan_lines;
 use super::{camera::Image, scan_lines::ScanLines};
 use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
-use crate::{
-    core::{config::layout::LayoutConfig, debug::DebugContext},
-    localization::RobotPose,
-    nao::Cycle,
-    prelude::ConfigExt,
-};
+use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle, prelude::ConfigExt};
 
 #[derive(Resource, Debug, Clone, Deserialize, Serialize, Reflect)]
 #[serde(deny_unknown_fields)]
