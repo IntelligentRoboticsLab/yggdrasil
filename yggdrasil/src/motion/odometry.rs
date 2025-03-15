@@ -4,11 +4,12 @@ use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    behavior::{behaviors::Standup, engine::in_behavior},
     kinematics::{
         spaces::{LeftSole, RightSole},
         Kinematics,
     },
-    sensor::orientation::RobotOrientation,
+    sensor::{falling::FallState, orientation::RobotOrientation},
 };
 
 use super::walking_engine::{foot_support::FootSupportState, Side, WalkingEngineSet};
@@ -21,6 +22,7 @@ impl Plugin for OdometryPlugin {
         app.init_resource::<Odometry>().add_systems(
             PreUpdate,
             update_odometry
+                .run_if(not(in_behavior::<Standup>))
                 .after(crate::kinematics::update_kinematics)
                 .after(crate::sensor::orientation::update_orientation)
                 .after(WalkingEngineSet::Prepare),
@@ -35,7 +37,13 @@ pub fn update_odometry(
     foot_support: Res<FootSupportState>,
     kinematics: Res<Kinematics>,
     orientation: Res<RobotOrientation>,
+    fall_state: Res<FallState>,
 ) {
+    if !matches!(*fall_state, FallState::None) {
+        // Don't update odometry if the robot is falling, or getting up
+        return;
+    }
+
     // TODO: We should probably reset the odometry in some cases
     // See: https://github.com/IntelligentRoboticsLab/yggdrasil/issues/400
     odometry.update(&odometry_config, &foot_support, &kinematics, &orientation);
