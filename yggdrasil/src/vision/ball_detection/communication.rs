@@ -6,11 +6,12 @@ use nalgebra as na;
 use crate::communication::{TeamCommunication, TeamMessage};
 
 // Import camera proposals
-use super::classifier::Balls;
+use super::ball_tracker::BallPosition;
 
 // Constant for the minimum acceptable change
 const MIN_CHANGE: f32 = 0.1;
 
+#[derive(Resource, Debug)]
 pub struct CommunicatedBalls {
     /// For keeping track what position we've sent out.
     sent: Option<na::Point2<f32>>,
@@ -30,7 +31,7 @@ impl CommunicatedBalls {
     }
 
     /// Send your ball position (even if it's None) as a message.
-    fn send_message(&mut self, ball_position: Option<na::Point2<f32>>, tc: &mut TeamCommunication){
+    fn send_message(&mut self, ball_position: Option<na::Point2<f32>>, tc: &mut TeamCommunication) {
         tc.outbound_mut()
             .update_or_push(TeamMessage::DetectedBall(ball_position))
             .expect("Unable to encode detected ball");
@@ -56,34 +57,19 @@ impl CommunicatedBalls {
     fn communicate_balls(
         &mut self,
         tc: &mut TeamCommunication,
-        most_confident_ball: Option<na::Point2<f32>>,
+        ball_position: Option<BallPosition>,
     ) -> Option<na::Point2<f32>> {
         // 1. Check if it has changed enough and if so, we send a message.
-        if self.change_enough(&most_confident_ball) {
-            self.send_message(most_confident_ball, tc)
+        let optional_ball_position = ball_position.map(|ball_position| ball_position.0);
+        if self.change_enough(&optional_ball_position) {
+            self.send_message(optional_ball_position, tc)
         }
 
         // 2. Receive messages only if our current ball is None.
-        if let ball @ Some(_) = most_confident_ball {
+        if let ball @ Some(_) = optional_ball_position {
             ball
         } else {
             Self::receive_messages(tc)
         }
     }
-}
-
-fn communicate_balls(
-    mut tc: ResMut<TeamCommunication>,
-    mut communicated_balls: ResMut<CommunicatedBalls>,
-    top_balls: Res<Balls<Top>>,
-    bottom_balls: Res<Balls<Bottom>>,
-) {
-    let ball = bottom_balls
-        .most_confident_ball()
-        .map(|b| (b.timestamp, b.robot_to_ball))
-        .or(top_balls
-            .most_confident_ball()
-            .map(|b| (b.timestamp, b.robot_to_ball)));
-
-    todo!("marinita pls finish спс)))")
 }

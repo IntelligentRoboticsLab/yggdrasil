@@ -26,12 +26,6 @@ use crate::{
 
 use self::classifier::BallClassifierConfig;
 
-use self::communication::CommunicatedBalls;
-use crate::communication::{TeamCommunication, TeamMessage};
-
-use self::communication::CommunicatedBalls;
-use crate::communication::{TeamCommunication, TeamMessage};
-
 /// Plugin for detecting balls in the top and bottom images.
 pub struct BallDetectionPlugin;
 
