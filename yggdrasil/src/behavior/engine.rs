@@ -164,6 +164,17 @@ impl RoleState {
         possible_ball_distance: Option<f32>,
         game_controller_message: Option<&GameControllerMessage>,
     ) {
+        println!(
+            "Message {:?}",
+            game_controller_message.map(|f| {
+                f.team(8)
+                    .expect("No team")
+                    .players
+                    .get(5)
+                    .expect("No player 5")
+                    .penalty
+            })
+        );
         if defender_should_striker(player_number, game_controller_message) {
             commands.set_role(Striker);
             return;
@@ -198,8 +209,12 @@ fn defender_should_striker(
             .expect("No player 5 in GameControllerMessage")
             .penalty;
 
-        if player_number == 3 && player5_penalty != Penalty::None
-            || player_number == 2 && player4_penalty != Penalty::None
+        if player_number == 3
+            && player5_penalty != Penalty::None
+            && player5_penalty != Penalty::Substitute
+            || player_number == 2
+                && player4_penalty != Penalty::None
+                && player4_penalty != Penalty::Substitute
         {
             return true;
         }
@@ -241,6 +256,7 @@ pub fn role_base(
     pose: Res<RobotPose>,
 ) {
     commands.disable_role();
+
     let behavior = behavior_state.get();
 
     if behavior == &BehaviorState::StartUp {
@@ -286,14 +302,15 @@ pub fn role_base(
     }
 
     // if let Some(message) = game_controller_message {
-    //     if message.game_phase == GamePhase::PenaltyShoot {
-    //         if message.kicking_team == player_config.team_number {
-    //             commands.set_role(Striker);
-    //         } else {
-    //             commands.set_behavior(Stand);
-    //             return;
-    //         }
-    //     }
+    //     // if message.game_phase == GamePhase::PenaltyShoot {
+    //     //     if message.kicking_team == player_config.team_number {
+    //     //         commands.set_role(Striker);
+    //     //     } else {
+    //     //         commands.set_behavior(Stand);
+    //     //         return;
+    //     //     }
+    //     // }
+    //     println!("Message ", message.as_ref().team(8).unwrap().players.get(5). )
     // }
 
     match *primary_state {
