@@ -54,7 +54,7 @@ fn sync_budget(mut tc: ResMut<TeamCommunication>, message: Option<Res<GameContro
     }
 
     if tc.try_send() {
-        debug!("successfully sent out a new packet.")
+        debug!("successfully sent out a new packet.");
     }
 
     match tc.try_receive() {
