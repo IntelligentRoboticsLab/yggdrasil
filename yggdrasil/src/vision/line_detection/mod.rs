@@ -378,10 +378,7 @@ fn passes_white_test<T: CameraLocation>(
     // if the ratio of the white tests is high enough, merge the two candidates
     let ratio = tests.iter().filter(|&&t| t).count() as f32 / tests.len() as f32;
 
-    // TODO: add to config
-    const WHITE_TEST_RATIO: f32 = 0.7;
-
-    ratio < WHITE_TEST_RATIO
+    ratio < cfg.white_test_merge_ratio
 }
 
 fn merge_candidates<T: CameraLocation>(
