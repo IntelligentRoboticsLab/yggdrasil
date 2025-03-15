@@ -69,7 +69,7 @@ pub enum PrimaryState {
     Calibration,
 }
 
-fn is_penalized_by_game_controller(
+pub fn is_penalized_by_game_controller(
     game_controller_message: Option<&GameControllerMessage>,
     team_number: u8,
     player_number: u8,
