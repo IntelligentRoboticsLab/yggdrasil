@@ -168,8 +168,6 @@ fn detect_lines_system<T: CameraLocation>(
     mut commands: Commands,
     scan_lines: Res<ScanLines<T>>,
     camera_matrix: Res<CameraMatrix<T>>,
-    layout: Res<LayoutConfig>,
-    pose: Res<RobotPose>,
     cfg: Res<LineDetectionConfigs>,
     body_contour: Res<BodyContour>,
 ) {
