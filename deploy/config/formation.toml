@@ -1,0 +1,79 @@
+# The fields below indicate the starting position of each robot based on its
+# player number. This configuration assumes the center has coordinates (0, 0).
+# This configuration also assumes the robots always start on the left side.
+
+# Initial position of player one.
+[[initial_positions]]
+player_number = 1
+rotation = -90
+translation = [-2.85, 3]
+
+# Initial position of player two.
+[[initial_positions]]
+player_number = 2
+rotation = 90
+translation = [-2.85, -3]
+
+# Initial position of player three.
+[[initial_positions]]
+player_number = 3
+rotation = -90
+translation = [-1.8, 3]
+
+# Initial position of player four.
+[[initial_positions]]
+player_number = 4
+rotation = 90
+translation = [-0.75, -3]
+
+# Initial position of player five.
+[[initial_positions]]
+player_number = 5
+rotation = -90
+translation = [-0.75, 3]
+
+# Set Positions
+# In Set the robots will walk to this position
+
+# Set position of player one.
+[[set_positions]]
+player_number = 1
+rotation = 0
+translation = [-4.5, 0]
+
+# Set position of player two.
+[[set_positions]]
+player_number = 2
+rotation = 0
+translation = [-3.15, -1.1]
+
+# Set position of player three.
+[[set_positions]]
+player_number = 3
+rotation = 0
+translation = [-3.15, 1.1]
+
+# Set position of player four.
+[[set_positions]]
+player_number = 4
+rotation = 45
+translation = [-0.8, -0.8]
+
+# Set position of player five.
+[[set_positions]]
+player_number = 5
+rotation = 0
+translation = [-1, 0]
+
+# Penalty Positions
+# When returning from penalized to playing the robots position will be reset to a penalty position.
+
+# Position for returning after penalty.
+[[penalty_positions]]
+rotation = -90
+translation = [-2.8, 3.05]
+
+# Position for returning after penalty.
+[[penalty_positions]]
+rotation = 90
+translation = [-2.8, -3.05]

@@ -1,3 +1,4 @@
+pub mod formation;
 pub mod layout;
 pub mod showtime;
 pub mod yggdrasil;
@@ -9,6 +10,7 @@ use bevy::{ecs::system::RunSystemOnce, prelude::*};
 use miette::IntoDiagnostic;
 use odal::{ConfigKind, Error, ErrorKind};
 
+use formation::FormationConfig;
 use layout::LayoutConfig;
 use showtime::ShowtimeConfig;
 use yggdrasil::YggdrasilConfig;
@@ -67,6 +69,7 @@ impl Plugin for ConfigPlugin {
 
         app.init_config::<ShowtimeConfig>()
             .init_config::<LayoutConfig>()
+            .init_config::<FormationConfig>()
             .init_config::<BehaviorConfig>()
             .init_config::<YggdrasilConfig>();
 

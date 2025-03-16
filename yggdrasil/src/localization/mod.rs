@@ -5,7 +5,7 @@ use std::f32::consts::PI;
 use crate::{
     behavior::{behaviors::Standup, engine::in_behavior, primary_state::PrimaryState},
     core::{
-        config::{layout::LayoutConfig, showtime::PlayerConfig},
+        config::{formation::FormationConfig, showtime::PlayerConfig},
         debug::DebugContext,
     },
     motion::odometry::{self, Odometry},
@@ -44,10 +44,10 @@ impl Plugin for LocalizationPlugin {
 
 fn init_pose(
     mut commands: Commands,
-    layout_config: Res<LayoutConfig>,
+    formation_config: Res<FormationConfig>,
     player_config: Res<PlayerConfig>,
 ) {
-    let initial_position = layout_config
+    let initial_position = formation_config
         .initial_positions
         .player(player_config.player_number);
 
@@ -136,14 +136,14 @@ fn update_robot_pose(
     mut robot_pose: ResMut<RobotPose>,
     odometry: Res<Odometry>,
     primary_state: Res<PrimaryState>,
-    layout_config: Res<LayoutConfig>,
+    formation_config: Res<FormationConfig>,
     game_controller_message: Option<Res<GameControllerMessage>>,
 ) {
     *robot_pose = next_robot_pose(
         robot_pose.as_mut(),
         odometry.as_ref(),
         primary_state.as_ref(),
-        layout_config.as_ref(),
+        formation_config.as_ref(),
         game_controller_message.as_deref(),
     );
 }
@@ -153,11 +153,11 @@ pub fn next_robot_pose(
     robot_pose: &RobotPose,
     odometry: &Odometry,
     primary_state: &PrimaryState,
-    layout_config: &LayoutConfig,
+    formation_config: &FormationConfig,
     message: Option<&GameControllerMessage>,
 ) -> RobotPose {
     let mut isometry = if *primary_state == PrimaryState::Penalized {
-        find_closest_penalty_pose(robot_pose, layout_config)
+        find_closest_penalty_pose(robot_pose, formation_config)
     } else {
         robot_pose.inner * odometry.offset_to_last
     };
@@ -181,9 +181,9 @@ pub fn next_robot_pose(
 
 fn find_closest_penalty_pose(
     robot_pose: &RobotPose,
-    layout_config: &LayoutConfig,
+    formation_config: &FormationConfig,
 ) -> Isometry2<f32> {
-    *layout_config
+    *formation_config
         .penalty_positions
         .iter()
         .reduce(|a, b| {

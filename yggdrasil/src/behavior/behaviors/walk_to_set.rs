@@ -5,7 +5,7 @@ use nalgebra::Point3;
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
-    core::config::{layout::LayoutConfig, showtime::PlayerConfig},
+    core::config::{formation::FormationConfig, showtime::PlayerConfig},
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},
@@ -33,13 +33,13 @@ impl Behavior for WalkToSet {
 
 pub fn walk_to_set(
     pose: Res<RobotPose>,
-    layout_config: Res<LayoutConfig>,
+    formation_config: Res<FormationConfig>,
     player_config: Res<PlayerConfig>,
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
-    let set_robot_position = layout_config
+    let set_robot_position = formation_config
         .set_positions
         .player(player_config.player_number);
 

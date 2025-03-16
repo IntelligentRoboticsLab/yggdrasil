@@ -6,7 +6,7 @@ use crate::{
         behaviors::{Observe, WalkTo},
         engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
     },
-    core::config::{layout::LayoutConfig, showtime::PlayerConfig},
+    core::config::{formation::FormationConfig, showtime::PlayerConfig},
     motion::step_planner::{StepPlanner, Target},
 };
 
@@ -30,10 +30,10 @@ impl Roles for Defender {
 pub fn defender_role(
     mut commands: Commands,
     player_config: Res<PlayerConfig>,
-    layout_config: Res<LayoutConfig>,
+    formation_config: Res<FormationConfig>,
     step_planner: ResMut<StepPlanner>,
 ) {
-    let set_robot_position = layout_config
+    let set_robot_position = formation_config
         .set_positions
         .player(player_config.player_number);
     let set_position = set_robot_position.isometry.translation.vector;
