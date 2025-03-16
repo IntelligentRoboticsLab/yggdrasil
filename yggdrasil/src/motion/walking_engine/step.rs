@@ -35,32 +35,23 @@ impl Step {
         }
     }
 
-    #[must_use]
-    pub fn forward() -> Self {
-        Self {
-            forward: 0.06,
-            left: 0.0,
-            turn: 0.0,
-        }
-    }
+    pub const FORWARD: Self = Self {
+        forward: 0.06,
+        left: 0.0,
+        turn: 0.0,
+    };
 
-    #[must_use]
-    pub fn left() -> Self {
-        Self {
-            forward: 0.0,
-            left: 0.06,
-            turn: 0.0,
-        }
-    }
+    pub const LEFT: Self = Self {
+        forward: 0.0,
+        left: 0.06,
+        turn: 0.0,
+    };
 
-    #[must_use]
-    pub fn right() -> Self {
-        Self {
-            forward: 0.0,
-            left: -0.06,
-            turn: 0.0,
-        }
-    }
+    pub const RIGHT: Self = Self {
+        forward: 0.0,
+        left: -0.06,
+        turn: 0.0,
+    };
 
     /// Clamp the step to the anatomic limits of the robot.
     #[must_use]
