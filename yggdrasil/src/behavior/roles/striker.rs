@@ -91,12 +91,12 @@ pub fn striker_role(
 
         if relative_ball.y < 0. {
             commands.set_behavior(Walk {
-                step: Step::right(),
+                step: Step::RIGHT,
                 look_target: Some(ball_target),
             });
         } else {
             commands.set_behavior(Walk {
-                step: Step::left(),
+                step: Step::LEFT,
                 look_target: Some(ball_target),
             });
         }
@@ -104,7 +104,7 @@ pub fn striker_role(
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::RED), Priority::default());
 
         commands.set_behavior(Walk {
-            step: Step::forward(),
+            step: Step::FORWARD,
             look_target: Some(ball_target),
         });
     }
