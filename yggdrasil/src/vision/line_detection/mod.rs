@@ -159,7 +159,7 @@ impl LineCandidate {
 #[derive(Component)]
 pub struct LineTaskHandle(Task<(Vec<LineCandidate>, Vec<Option<Rejection>>)>);
 
-fn detect_lines_system<T: CameraLocation>(
+pub(super) fn detect_lines_system<T: CameraLocation>(
     mut commands: Commands,
     scan_lines: Res<ScanLines<T>>,
     camera_matrix: Res<CameraMatrix<T>>,
@@ -523,7 +523,7 @@ fn debug_lines<T: CameraLocation>(
     }
 }
 
-fn debug_lines_projected<T: CameraLocation>(
+pub fn debug_lines_projected<T: CameraLocation>(
     dbg: DebugContext,
     pose: Res<RobotPose>,
     accepted: Query<(&Cycle, &DetectedLines), (With<T>, Added<DetectedLines>)>,
