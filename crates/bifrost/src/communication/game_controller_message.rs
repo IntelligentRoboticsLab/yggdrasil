@@ -230,6 +230,7 @@ impl TeamInfo {
             .is_some_and(|robot: &RobotInfo| robot.is_penalized())
     }
 
+    #[must_use]
     pub fn dnt(mut players: Vec<RobotInfo>) -> Self {
         let dnt_team_number = 8;
         let goal_keeper_number = 1;
@@ -257,6 +258,7 @@ impl TeamInfo {
         }
     }
 
+    #[must_use]
     pub fn invisible() -> Self {
         TeamInfo {
             team_number: 0,
@@ -326,6 +328,7 @@ impl GameControllerMessage {
             .find(|team| team.team_number == team_number)
     }
 
+    #[must_use]
     pub fn create(
         packet_number: u8,
         players_per_team: u8,
@@ -334,7 +337,7 @@ impl GameControllerMessage {
         secondary_time: Duration,
     ) -> Self {
         let game_time = Duration::from_secs(600);
-        let message = GameControllerMessage {
+        GameControllerMessage {
             header: GAME_CONTROLLER_STRUCT_HEADER,
             version: GAME_CONTROLLER_STRUCT_VERSION,
             packet_number,
@@ -355,9 +358,7 @@ impl GameControllerMessage {
                 }]),
                 TeamInfo::invisible(),
             ],
-        };
-
-        message
+        }
     }
 }
 

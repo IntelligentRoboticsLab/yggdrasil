@@ -2,11 +2,11 @@ use rerun::external::egui::{self, Frame, InnerResponse, RichText};
 
 pub mod camera_calibration;
 pub mod debug_systems;
+pub mod fake_game_controller;
 pub mod field_color;
 pub mod resource;
 pub mod selection_ui;
 pub mod visual_referee;
-pub mod fake_game_controller;
 
 pub const SIDE_PANEL_WIDTH: f32 = 400.0;
 pub const PANEL_TOP_PADDING: f32 = 10.0;

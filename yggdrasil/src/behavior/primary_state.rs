@@ -74,7 +74,6 @@ fn update_gamecontroller_message(
     mut events: EventReader<GameControllerMessageEvent>,
 ) {
     for event in events.read() {
-        println!("Got event: {:?}", event.state);
         commands.insert_resource((*event).clone());
     }
 }
@@ -91,7 +90,6 @@ pub fn update_primary_state(
     mut recognized_pose: EventReader<RefereePoseRecognized>,
     mut received_pose: EventReader<ReceivedRefereePose>,
 ) {
-    println!("Primary state: {:?}", primary_state);
     use PrimaryState as PS;
 
     let next_state = next_primary_state(

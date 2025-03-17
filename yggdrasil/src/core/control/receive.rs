@@ -80,9 +80,7 @@ pub fn handle_viewer_message(
                 *scan_lines_config = config.into();
             }
             ViewerMessage::FakeGameControllerMessage { message } => {
-                println!("Receive fake game controller message");
                 game_controller_message_sender.send(GameControllerMessageEvent(message));
-                println!("Sended game controller message event");
             }
             ViewerMessage::VisualRefereeRecognition => {
                 recognize_pose.send(RecognizeRefereePose);
