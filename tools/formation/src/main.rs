@@ -1,30 +1,23 @@
-#! [windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 use bevy::{prelude::*, render::camera::Viewport, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
-use yggdrasil::core::config::layout::LayoutConfig;
+use yggdrasil::core::config::formation::{FormationConfig, RobotPosition};
 use yggdrasil::prelude::Config;
-use yggdrasil::core::config::layout::RobotPosition;
-
-
 
 // Constants for field dimensions
 const FIELD_WIDTH_METERS: f32 = 10.4;
 const FIELD_HEIGHT_METERS: f32 = 7.4;
 // Remove fixed visual dimensions since we'll calculate them dynamically
 const PIXELS_PER_METER: f32 = 100.0; // Base scale factor, will be adjusted dynamically
-// Robot size in meters
+                                     // Robot size in meters
 const ROBOT_SIZE_METERS: f32 = 0.5; // 50cm x 50cm robot
 
 // Components to distinguish position types
 #[derive(Component)]
-struct InitialPosition {
-    player_number: usize,
-}
+struct InitialPosition;
 
 #[derive(Component)]
-struct SetPosition {
-    player_number: usize,
-}
+struct SetPosition;
 
 // Scale factors to convert between meters and pixels - will be updated dynamically
 #[derive(Resource)]
@@ -45,15 +38,20 @@ enum PositionType {
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.25, 0.25, 0.25)))
-        .insert_resource(FieldScale { pixels_per_meter: PIXELS_PER_METER })
+        .insert_resource(FieldScale {
+            pixels_per_meter: PIXELS_PER_METER,
+        })
         .add_plugins((DefaultPlugins, EguiPlugin, MeshPickingPlugin))
         .add_systems(Startup, setup_system)
-        .add_systems(Update, (
-            ui_example_system,
-            update_robot_positions,
-            update_field_scale,
-            update_position_markers
-        ))
+        .add_systems(
+            Update,
+            (
+                ui_main,
+                update_robot_positions,
+                update_field_scale,
+                update_position_markers,
+            ),
+        )
         .run();
 }
 
@@ -95,17 +93,19 @@ impl Robot {
 // System to update visual positions based on Robot components
 fn update_robot_positions(
     field_scale: Res<FieldScale>,
-    mut query: Query<(&Robot, &mut Transform, &mut Sprite), With<RobotMarker>>
+    mut query: Query<(&Robot, &mut Transform, &mut Sprite), With<RobotMarker>>,
 ) {
     for (robot, mut transform, mut sprite) in query.iter_mut() {
         transform.translation = robot.to_screen_position(&field_scale);
         transform.rotation = Quat::from_rotation_z(robot.rotation);
         // Update robot sprite size based on field scale
-        sprite.custom_size = Some(Vec2::splat(ROBOT_SIZE_METERS * field_scale.pixels_per_meter));
+        sprite.custom_size = Some(Vec2::splat(
+            ROBOT_SIZE_METERS * field_scale.pixels_per_meter,
+        ));
     }
 }
 
-fn ui_example_system(
+fn ui_main(
     mut contexts: EguiContexts,
     mut camera: Single<&mut Camera>,
     window: Single<&mut Window, With<PrimaryWindow>>,
@@ -161,24 +161,24 @@ fn update_field_scale(
 ) {
     let window = window.single();
     let camera = camera.single();
-    
+
     if let Some(viewport) = &camera.viewport {
         let available_width = viewport.physical_size.x as f32 / window.scale_factor();
         let available_height = viewport.physical_size.y as f32 / window.scale_factor();
-        
+
         // Calculate scale factors to fit width and height
         let scale_x = available_width / FIELD_WIDTH_METERS;
         let scale_y = available_height / FIELD_HEIGHT_METERS;
-        
+
         // Use the smaller scale to maintain aspect ratio
         let new_scale = scale_x.min(scale_y);
         field_scale.pixels_per_meter = new_scale;
-        
+
         // Update field sprite size
         if let Ok(mut sprite) = field_query.get_single_mut() {
             sprite.custom_size = Some(Vec2::new(
                 FIELD_WIDTH_METERS * new_scale,
-                FIELD_HEIGHT_METERS * new_scale
+                FIELD_HEIGHT_METERS * new_scale,
             ));
         }
     }
@@ -187,10 +187,42 @@ fn update_field_scale(
 // Add new system to update position markers
 fn update_position_markers(
     field_scale: Res<FieldScale>,
-    mut initial_query: Query<(&Robot, &mut Transform), (With<InitialPosition>, Without<SetPosition>, Without<PositionCircle>, Without<PlayerNumber>)>,
-    mut set_query: Query<(&Robot, &mut Transform), (With<SetPosition>, Without<InitialPosition>, Without<PositionCircle>, Without<PlayerNumber>)>,
-    mut circle_query: Query<&mut Transform, (With<PositionCircle>, Without<InitialPosition>, Without<SetPosition>, Without<PlayerNumber>)>,
-    mut text_query: Query<(&mut Transform, &Parent), (With<PlayerNumber>, Without<InitialPosition>, Without<SetPosition>, Without<PositionCircle>)>,
+    mut initial_query: Query<
+        (&Robot, &mut Transform),
+        (
+            With<InitialPosition>,
+            Without<SetPosition>,
+            Without<PositionCircle>,
+            Without<PlayerNumber>,
+        ),
+    >,
+    mut set_query: Query<
+        (&Robot, &mut Transform),
+        (
+            With<SetPosition>,
+            Without<InitialPosition>,
+            Without<PositionCircle>,
+            Without<PlayerNumber>,
+        ),
+    >,
+    mut circle_query: Query<
+        &mut Transform,
+        (
+            With<PositionCircle>,
+            Without<InitialPosition>,
+            Without<SetPosition>,
+            Without<PlayerNumber>,
+        ),
+    >,
+    mut text_query: Query<
+        (&mut Transform, &Parent),
+        (
+            With<PlayerNumber>,
+            Without<InitialPosition>,
+            Without<SetPosition>,
+            Without<PositionCircle>,
+        ),
+    >,
 ) {
     // Update initial positions
     for (robot, mut transform) in initial_query.iter_mut() {
@@ -222,7 +254,7 @@ fn update_position_markers(
 }
 
 fn on_robot_drag(
-    drag: Trigger<Pointer<Drag>>, 
+    drag: Trigger<Pointer<Drag>>,
     mut robots: Query<(&mut Robot, &mut Transform), With<RobotMarker>>,
     field_scale: Res<FieldScale>,
     parents: Query<&Parent>,
@@ -231,7 +263,7 @@ fn on_robot_drag(
         if let Ok((mut robot, mut transform)) = robots.get_mut(parent.get()) {
             let world_delta = Vec2::new(
                 drag.delta.x / field_scale.pixels_per_meter,
-                - drag.delta.y / field_scale.pixels_per_meter,
+                -drag.delta.y / field_scale.pixels_per_meter,
             );
             robot.position += world_delta;
             transform.translation = robot.to_screen_position(&field_scale);
@@ -254,60 +286,67 @@ fn draw_robot_with_type(
         PositionType::Set => Color::srgba(1.0, 1.0, 0.2, 0.5),
     };
 
-    let robot_entity = commands.spawn((
-        Transform::default(),
-        Robot::new(
-            config.isometry.translation.vector.x,
-            config.isometry.translation.vector.y,
-            config.isometry.rotation.angle().to_degrees(),
-        ),
-        RobotMarker,
-        Visibility::default(),
-        InheritedVisibility::default(),
-    )).id();
+    let robot_entity = commands
+        .spawn((
+            Transform::default(),
+            Robot::new(
+                config.isometry.translation.vector.x,
+                config.isometry.translation.vector.y,
+                config.isometry.rotation.angle().to_degrees(),
+            ),
+            RobotMarker,
+            Visibility::default(),
+            InheritedVisibility::default(),
+        ))
+        .id();
 
     // Add position type component separately
     match position_type {
-        PositionType::Initial => commands.entity(robot_entity).insert(InitialPosition { player_number: config.player_number }),
-        PositionType::Set => commands.entity(robot_entity).insert(SetPosition { player_number: config.player_number }),
+        PositionType::Initial => commands.entity(robot_entity).insert(InitialPosition),
+        PositionType::Set => commands.entity(robot_entity).insert(SetPosition),
     };
 
     // Spawn the draggable circle
-    commands.spawn((
-        Mesh2d(meshes.add(Circle::new(1.0))),
-        MeshMaterial2d(materials.add(ColorMaterial::from_color(color))),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        PositionCircle,
-    ))
-    .observe(|over: Trigger<Pointer<Over>>| {
-        println!("Over event triggered for circle: {}", over.entity());
-    })
-    .set_parent(robot_entity);
+    commands
+        .spawn((
+            Mesh2d(meshes.add(Circle::new(1.0))),
+            MeshMaterial2d(materials.add(ColorMaterial::from_color(color))),
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            PositionCircle,
+        ))
+        .observe(|over: Trigger<Pointer<Over>>| {
+            println!("Over event triggered for circle: {}", over.entity());
+        })
+        .set_parent(robot_entity);
 
-    commands.spawn((
-        Sprite {
-            image: robot_texture.clone(),
-            custom_size: Some(Vec2::splat(ROBOT_SIZE_METERS * PIXELS_PER_METER)),
-            ..default()
-        },
-        Transform::from_xyz(0.0, 0.0, 0.1),
-    )).set_parent(robot_entity)
-    .observe(|over: Trigger<Pointer<Over>>| {
-        println!("Over event triggered for sprite: {}", over.entity());
-    })
-    .observe(on_robot_drag);
+    commands
+        .spawn((
+            Sprite {
+                image: robot_texture.clone(),
+                custom_size: Some(Vec2::splat(ROBOT_SIZE_METERS * PIXELS_PER_METER)),
+                ..default()
+            },
+            Transform::from_xyz(0.0, 0.0, 0.1),
+        ))
+        .set_parent(robot_entity)
+        .observe(|over: Trigger<Pointer<Over>>| {
+            println!("Over event triggered for sprite: {}", over.entity());
+        })
+        .observe(on_robot_drag);
 
-    commands.spawn((
-        Text2d::new(config.player_number.to_string()),
-        text_font.clone(),
-        TextLayout::new_with_justify(text_justification),
-        Transform::from_xyz(0.0, 0.0, 0.2),
-        TextColor(Color::srgb(0.2, 0.2, 0.2)),
-        PlayerNumber,
-    )).set_parent(robot_entity)
-    .observe(|over: Trigger<Pointer<Over>>| {
-        println!("Over event triggered for text: {}", over.entity());
-    });
+    commands
+        .spawn((
+            Text2d::new(config.player_number.to_string()),
+            text_font.clone(),
+            TextLayout::new_with_justify(text_justification),
+            Transform::from_xyz(0.0, 0.0, 0.2),
+            TextColor(Color::srgb(0.2, 0.2, 0.2)),
+            PlayerNumber,
+        ))
+        .set_parent(robot_entity)
+        .observe(|over: Trigger<Pointer<Over>>| {
+            println!("Over event triggered for text: {}", over.entity());
+        });
 }
 
 fn setup_system(
@@ -319,7 +358,8 @@ fn setup_system(
     let field_texture = asset_server.load("field_simple.png");
     let robot_texture = asset_server.load("nao.png");
     let font = asset_server.load("fonts/FiraSans-Bold.ttf");
-    let layout_config = LayoutConfig::load("deploy/config/").expect("Failed to load layout config");
+    let formation_config =
+        FormationConfig::load("deploy/config/").expect("Failed to load layout config");
 
     let text_font = TextFont {
         font: font.clone(),
@@ -343,13 +383,13 @@ fn setup_system(
     ));
 
     // Spawn all robots in a single loop
-    for i in 1..=layout_config.initial_positions.length() {
+    for i in 1..=formation_config.initial_positions.len() {
         // Draw initial position robot
         draw_robot_with_type(
             &mut commands,
             &mut meshes,
             &mut materials,
-            &layout_config.initial_positions.player(i as u8),
+            &formation_config.initial_positions.player(i as u8),
             PositionType::Initial,
             &robot_texture,
             &text_font,
@@ -361,7 +401,7 @@ fn setup_system(
             &mut commands,
             &mut meshes,
             &mut materials,
-            &layout_config.set_positions.player(i as u8),
+            &formation_config.set_positions.player(i as u8),
             PositionType::Set,
             &robot_texture,
             &text_font,

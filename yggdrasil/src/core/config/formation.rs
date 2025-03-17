@@ -78,6 +78,10 @@ impl FieldPositionsConfig {
                 panic!("Player number {player_num:?} not in formation configuration!")
             })
     }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 /// Contains the coordinates for one robot position.
