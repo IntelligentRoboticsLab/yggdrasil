@@ -11,6 +11,11 @@ use crate::re_control_view::ControlViewerData;
 
 use super::view_section;
 
+const PACKET_NUMBER: u8 = 0;
+const PLAYERS_PER_TEAM: u8 = 1;
+const KICKING_TEAM: u8 = 8;
+const SECONDARY_TIME: Duration = Duration::from_secs(0);
+
 pub fn game_controller_ui(
     ui: &mut egui::Ui,
     _viewer_data: Arc<RwLock<ControlViewerData>>,
@@ -38,7 +43,7 @@ fn state_buttons(ui: &mut egui::Ui, handle: &ControlViewerHandle) {
     state_button(ui, handle, "Ready", GameState::Ready);
     state_button(ui, handle, "Set", GameState::Set);
     state_button(ui, handle, "Playing", GameState::Playing);
-
+    state_button(ui, handle, "Playing", GameState::Finished);
 }
 
 fn state_button(
@@ -47,18 +52,13 @@ fn state_button(
     button_name: &str,
     state: GameState,
 ) {
-    let packet_number = 0;
-    let players_per_team = 1;
-    let kicking_team = 8;
-    let secondary_time = Duration::from_secs(0);
-
     if ui.button(button_name).clicked() {
         let message = GameControllerMessage::create(
-            packet_number,
-            players_per_team,
+            PACKET_NUMBER,
+            PLAYERS_PER_TEAM,
             state,
-            kicking_team,
-            secondary_time,
+            KICKING_TEAM,
+            SECONDARY_TIME,
         );
         let message = ViewerMessage::FakeGameControllerMessage { message };
 
