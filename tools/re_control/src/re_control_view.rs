@@ -28,6 +28,7 @@ use crate::{
     ui::{
         camera_calibration::{camera_calibration_ui, CameraState},
         debug_systems::{debug_enabled_systems_ui, DebugEnabledState},
+        fake_game_controller::game_controller_ui,
         field_color::{field_color_ui, FieldColorState},
         resource::{resource_ui, ResourcesState},
         selection_ui,
@@ -57,6 +58,7 @@ enum ControlViewerSection {
     DebugEnabledSystems,
     CameraCalibration,
     FieldColor,
+    GameController,
     VisualReferee,
 }
 
@@ -185,6 +187,9 @@ A view to control the robot",
             ControlViewerSection::FieldColor => {
                 field_color_ui(ui, Arc::clone(&state.data), handle);
             }
+            ControlViewerSection::GameController => {
+                game_controller_ui(ui, Arc::clone(&state.data), handle);
+            }
             ControlViewerSection::VisualReferee => {
                 visual_referee_ui(ui, Arc::clone(&state.data), handle);
             }
@@ -235,6 +240,11 @@ A view to control the robot",
                     "CameraCalibration",
                 );
                 ui.selectable_value(selected, ControlViewerSection::FieldColor, "Field color");
+                ui.selectable_value(
+                    selected,
+                    ControlViewerSection::GameController,
+                    "Game Controller",
+                );
                 ui.selectable_value(
                     selected,
                     ControlViewerSection::VisualReferee,

@@ -10,7 +10,7 @@ use super::{GameControllerConfig, GameControllerConnection, GameControllerSocket
 ///
 /// This event is emitted when a new [`GameControllerMessage`] is received.
 #[derive(Deref, Event)]
-pub struct GameControllerMessageEvent(GameControllerMessage);
+pub struct GameControllerMessageEvent(pub GameControllerMessage);
 
 #[derive(Resource)]
 pub struct GameControllerReceiver {

@@ -6808,6 +6808,7 @@ dependencies = [
 name = "re_control"
 version = "0.8.0"
 dependencies = [
+ "bifrost",
  "build_utils",
  "clap",
  "heimdall",

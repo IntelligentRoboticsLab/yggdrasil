@@ -19,6 +19,8 @@ use transmit::{
     SendDebugEnabledSystems, SendGreenChromaticityThreshold,
 };
 
+use crate::behavior::primary_state::update_gamecontroller_message;
+
 use super::debug::{init_rerun, RerunStream};
 
 pub struct ControlPlugin;
@@ -41,7 +43,8 @@ impl Plugin for ControlPlugin {
                 Update,
                 (handle_viewer_message, update_debug_systems_for_clients)
                     .chain()
-                    .run_if(resource_exists::<ViewerMessageReceiver>),
+                    .run_if(resource_exists::<ViewerMessageReceiver>)
+                    .after(update_gamecontroller_message),
             );
     }
 }

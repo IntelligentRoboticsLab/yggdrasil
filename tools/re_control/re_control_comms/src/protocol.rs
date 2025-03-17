@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
-use bifrost::serialization::{Decode, Encode};
+use bifrost::{communication::GameControllerMessage, serialization::{Decode, Encode}};
 use heimdall::CameraPosition;
 use nalgebra::Vector3;
 
@@ -60,4 +60,7 @@ pub enum ViewerMessage {
         config: FieldColorConfig,
     },
     VisualRefereeRecognition,
+    FakeGameControllerMessage {
+        message: GameControllerMessage,
+    }
 }

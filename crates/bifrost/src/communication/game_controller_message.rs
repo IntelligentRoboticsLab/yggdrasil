@@ -7,6 +7,8 @@
 //! # Example
 //! For an example of how to use this module, see the documentation for the `SPLStandardMessage` struct.
 //!
+use std::time::Duration;
+
 use crate::serialization::{Decode, Encode};
 use bevy::prelude::*;
 
@@ -138,9 +140,10 @@ pub enum SetPlay {
 }
 
 /// Enum for the different penalty states.
-#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq)]
+#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, Default)]
 #[repr(u8)]
 pub enum Penalty {
+    #[default]
     /// No penalty.
     None = 0,
     /// Ball holding / playing with hands.
@@ -172,7 +175,7 @@ pub enum Penalty {
 }
 
 /// A struct representing the state of each player.
-#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq)]
+#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, Default)]
 pub struct RobotInfo {
     /// Penalty state of the player
     pub penalty: Penalty,
@@ -225,6 +228,47 @@ impl TeamInfo {
         self.players
             .get(player_number as usize - 1)
             .is_some_and(|robot: &RobotInfo| robot.is_penalized())
+    }
+
+    pub fn dnt(mut players: Vec<RobotInfo>) -> Self {
+        let dnt_team_number = 8;
+        let goal_keeper_number = 1;
+        let team_score = 0;
+        let penalty_shots = 0;
+        let single_shots = 0;
+        let message_budget = 1200;
+
+        let mut all_players = [RobotInfo::default(); MAX_NUM_PLAYERS as usize];
+
+        for (i, player) in players.iter_mut().enumerate() {
+            all_players[i] = *player;
+        }
+
+        TeamInfo {
+            team_number: dnt_team_number,
+            field_player_colour: TeamColor::Orange,
+            goalkeeper_colour: TeamColor::Green,
+            goalkeeper: goal_keeper_number,
+            score: team_score,
+            penalty_shot: penalty_shots,
+            single_shots,
+            message_budget,
+            players: all_players,
+        }
+    }
+
+    pub fn invisible() -> Self {
+        TeamInfo {
+            team_number: 0,
+            field_player_colour: TeamColor::Blue,
+            goalkeeper_colour: TeamColor::Yellow,
+            goalkeeper: 1,
+            score: 0,
+            penalty_shot: 0,
+            single_shots: 0,
+            message_budget: 1200,
+            players: [RobotInfo::default(); MAX_NUM_PLAYERS as usize],
+        }
     }
 }
 
@@ -280,6 +324,40 @@ impl GameControllerMessage {
         self.teams
             .iter()
             .find(|team| team.team_number == team_number)
+    }
+
+    pub fn create(
+        packet_number: u8,
+        players_per_team: u8,
+        game_state: GameState,
+        kicking_team: u8,
+        secondary_time: Duration,
+    ) -> Self {
+        let game_time = Duration::from_secs(600);
+        let message = GameControllerMessage {
+            header: GAME_CONTROLLER_STRUCT_HEADER,
+            version: GAME_CONTROLLER_STRUCT_VERSION,
+            packet_number,
+            players_per_team,
+            competition_phase: CompetitionPhase::RoundRobin,
+            competition_type: CompetitionType::Normal,
+            game_phase: GamePhase::Normal,
+            state: game_state,
+            set_play: SetPlay::None,
+            first_half: Half::First,
+            kicking_team,
+            secs_remaining: game_time.as_secs() as i16,
+            secondary_time: secondary_time.as_secs() as i16,
+            teams: [
+                TeamInfo::dnt(vec![RobotInfo {
+                    penalty: Penalty::None,
+                    secs_till_unpenalised: 0,
+                }]),
+                TeamInfo::invisible(),
+            ],
+        };
+
+        message
     }
 }
 
