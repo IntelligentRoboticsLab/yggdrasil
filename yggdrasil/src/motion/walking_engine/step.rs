@@ -35,6 +35,24 @@ impl Step {
         }
     }
 
+    pub const FORWARD: Self = Self {
+        forward: 0.06,
+        left: 0.0,
+        turn: 0.0,
+    };
+
+    pub const LEFT: Self = Self {
+        forward: 0.0,
+        left: 0.06,
+        turn: 0.0,
+    };
+
+    pub const RIGHT: Self = Self {
+        forward: 0.0,
+        left: -0.06,
+        turn: 0.0,
+    };
+
     /// Clamp the step to the anatomic limits of the robot.
     #[must_use]
     pub fn clamp_anatomic(self, swing_foot: Side, max_inside_turn: f32) -> Self {

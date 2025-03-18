@@ -9,10 +9,8 @@ use bifrost::{
 use futures::channel::mpsc::{self};
 
 use crate::{
-    core::config::showtime::PlayerConfig,
-    localization::RobotPose,
-    sensor::falling::FallState,
-    vision::ball_detection::{ball_tracker::BallTracker, Hypothesis},
+    core::config::showtime::PlayerConfig, localization::RobotPose, sensor::falling::FallState,
+    vision::ball_detection::ball_tracker::BallTracker,
 };
 
 use super::{GameControllerConfig, GameControllerConnection, GameControllerSocket};
@@ -69,14 +67,14 @@ pub fn send_message(
         return;
     }
 
-    let (ball_age, pall_pos) = balls_to_game_controller_ball(&ball_tracker);
+    let (ball_age, ball_pos) = balls_to_game_controller_ball(&ball_tracker, &robot_pose);
     let return_message = GameControllerReturnMessage::new(
         player_config.player_number,
         player_config.team_number,
         u8::from(matches!(*fall_state, FallState::Lying(_))),
         robot_pose_to_game_controller_pose(&robot_pose),
         ball_age,
-        pall_pos,
+        ball_pos,
     );
 
     sender
@@ -96,16 +94,17 @@ fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {
     ]
 }
 
-fn balls_to_game_controller_ball(ball_tracker: &BallTracker) -> (f32, [f32; 2]) {
-    if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
-        (
-            ball_tracker.timestamp.elapsed().as_secs_f32(),
-            [
-                ball_tracker.state().0.x * MILLIMETERS_PER_METER,
-                ball_tracker.state().0.y * MILLIMETERS_PER_METER,
-            ],
-        )
-    } else {
-        NO_BALL_DETECTED_DATA
-    }
+fn balls_to_game_controller_ball(ball_tracker: &BallTracker, pose: &RobotPose) -> (f32, [f32; 2]) {
+    let Some(ball) = ball_tracker.get_stationary_ball() else {
+        return NO_BALL_DETECTED_DATA;
+    };
+
+    let relative_ball = pose.world_to_robot(&ball);
+    (
+        ball_tracker.timestamp.elapsed().as_secs_f32(),
+        [
+            relative_ball.x * MILLIMETERS_PER_METER,
+            relative_ball.y * MILLIMETERS_PER_METER,
+        ],
+    )
 }

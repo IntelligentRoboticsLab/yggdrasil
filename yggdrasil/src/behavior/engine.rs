@@ -12,7 +12,7 @@ use crate::{
     localization::RobotPose,
     motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
-    vision::ball_detection::{ball_tracker::BallTracker, Hypothesis},
+    vision::ball_detection::ball_tracker::BallTracker,
 };
 
 use super::{
@@ -99,6 +99,7 @@ pub enum BehaviorState {
     VisualReferee,
     WalkTo,
     WalkToSet,
+    WalkToBall,
     RlStrikerSearchBehavior,
 }
 
@@ -212,6 +213,7 @@ pub fn role_base(
 
     if behavior == &BehaviorState::StartUp {
         if *primary_state == PrimaryState::Sitting && robot_is_leaning(&imu_values) {
+            // Do nothing cause the robot is leaning
         } else if *gait == Gait::Sitting || head_buttons.all_pressed() {
             commands.set_behavior(Sitting);
         } else {
@@ -237,9 +239,10 @@ pub fn role_base(
             return;
         }
         FallState::Falling(_) => {
-            if !matches!(*primary_state, PrimaryState::Penalized)
-                && !matches!(*primary_state, PrimaryState::Initial)
-            {
+            if !matches!(
+                *primary_state,
+                PrimaryState::Penalized | PrimaryState::Initial
+            ) {
                 commands.set_behavior(CatchFall);
                 return;
             }
@@ -284,11 +287,10 @@ pub fn role_base(
             target: Point2::default(),
         }),
         PrimaryState::Playing { .. } => {
-            let possible_ball_distance = if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
-                Some(pose.distance_to(&ball_tracker.state().0))
-            } else {
-                None
-            };
+            let possible_ball_distance = ball_tracker
+                .get_stationary_ball()
+                .map(|ball| pose.distance_to(&ball));
+
             RoleState::assign_role(
                 &mut commands,
                 player_config.player_number,

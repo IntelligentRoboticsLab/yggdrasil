@@ -9,6 +9,7 @@ mod standup;
 mod startup;
 mod walk;
 mod walk_to;
+mod walk_to_ball;
 mod walk_to_set;
 
 pub use catchfall::{CatchFall, CatchFallBehaviorPlugin};
@@ -24,4 +25,5 @@ pub use standup::{Standup, StandupBehaviorPlugin};
 pub use startup::{StartUp, StartUpBehaviorPlugin};
 pub use walk::{Walk, WalkBehaviorPlugin};
 pub use walk_to::{WalkTo, WalkToBehaviorPlugin};
+pub use walk_to_ball::{WalkToBall, WalkToBallBehaviorPlugin};
 pub use walk_to_set::{WalkToSet, WalkToSetBehaviorPlugin};
