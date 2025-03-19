@@ -39,6 +39,7 @@ pub struct FieldMarksConfig {
     pub time_budget: usize,
 }
 
+#[derive(Default)]
 pub struct FieldMarksPlugin<T: CameraLocation>(PhantomData<T>);
 
 impl<T: CameraLocation> Plugin for FieldMarksPlugin<T> {
@@ -72,11 +73,12 @@ pub struct IntersectionPoint {
     pub confidence: f32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum IntersectionKind {
     L,
     T,
     X,
+    #[default]
     Unknown,
 }
 
@@ -101,6 +103,7 @@ pub struct FieldMarks<T: CameraLocation> {
 struct ProposedIntersection {
     point: Point2<f32>,
     distance_to_point: f32,
+    kind: IntersectionKind,
 }
 
 fn field_marks_system<T: CameraLocation>(
@@ -110,6 +113,7 @@ fn field_marks_system<T: CameraLocation>(
 ) {
     for (cycle, lines) in &detected_lines {
         let extended_lines = extend_line_segments(&lines.segments);
+        let proposals = make_proposals(&extended_lines);
 
         dbg.log_with_cycle(
             T::make_entity_path("lines/extended"),
@@ -121,6 +125,17 @@ fn field_marks_system<T: CameraLocation>(
                     (point.end.x, point.end.y, 0.0),
                 ]
             })),
+        );
+
+        dbg.log_with_cycle(
+            T::make_entity_path("lines/intersections"),
+            *cycle,
+            &rerun::Points3D::update_fields()
+                .with_positions(proposals.iter().map(|s| {
+                    let point = pose.inner * s.point;
+                    (point.x, point.y, 0.0)
+                }))
+                .with_labels(proposals.iter().map(|s| format!("{:?}", s.kind))),
         );
     }
 }
@@ -142,170 +157,67 @@ fn extend_line_segments(segments: &[LineSegment2]) -> Vec<LineSegment2> {
         .collect::<Vec<_>>()
 }
 
-// fn field_marks_system2<T: CameraLocation>(
-//     mut field_marks: ResMut<FieldMarks<T>>,
-//     matrix: Res<CameraMatrix<T>>,
-//     mut model: ResMut<ModelExecutor<FieldMarksModel>>,
-//     config: &FieldMarksConfig,
-//     ctx: &DebugContext,
-// ) -> Result<()> {
-//     let extended_lines = extend_lines(lines, &top_matrix);
+fn make_proposals(extended_lines: &[LineSegment2]) -> Vec<ProposedIntersection> {
+    let mut proposals = Vec::new();
+    for i in 0..extended_lines.len() {
+        let line = &extended_lines[i];
+        for other_line in extended_lines.iter().skip(i + 1) {
+            let Some(intersection) = line.intersection_point(other_line) else {
+                continue;
+            };
 
-//     ctx.log_lines2d_for_image(
-//         "top_camera/image/extended_lines",
-//         &extended_lines.iter().map(Into::into).collect::<Vec<_>>(),
-//         &lines.1,
-//         color::u8::YELLOW,
-//     )?;
+            let (start, end) = (line.start, line.end);
+            let (other_start, other_end) = (other_line.start, other_line.end);
 
-//     let proposals = make_proposals(&extended_lines, &top_matrix, config);
-//     ctx.log_points2d_for_image_with_radius(
-//         "top_camera/image/intersections",
-//         &proposals
-//             .iter()
-//             .map(|p| (p.point.x, p.point.y))
-//             .collect::<Vec<_>>(),
-//         lines.1.clone().cycle(),
-//         color::u8::CYAN,
-//         5.0,
-//     )?;
+            let line_direction = (end - start).normalize();
+            let other_line_direction = (other_end - other_start).normalize();
 
-//     if proposals.is_empty() {
-//         return Ok(());
-//     }
+            let angle = line_direction.xy().angle(&other_line_direction.xy());
+            let angle = (angle - std::f32::consts::FRAC_PI_2).abs().to_degrees();
+            let distance = intersection.coords.magnitude();
+            if angle > 10.0 || distance > 15.0 {
+                continue;
+            }
 
-//     let mut intersections = Vec::new();
-//     let start_time = Instant::now();
-//     'outer: for possible_intersection in proposals.iter() {
-//         let size = (config.patch_scale / possible_intersection.distance_to_point) as usize;
-//         let patch = lines.1.get_grayscale_patch(
-//             (
-//                 possible_intersection.point.x as usize,
-//                 possible_intersection.point.y as usize,
-//             ),
-//             size,
-//             size,
-//         );
+            proposals.push(ProposedIntersection {
+                point: intersection,
+                distance_to_point: distance,
+                kind: classify_intersection(line, other_line, &intersection),
+            });
+        }
+    }
 
-//         let patch = crate::core::ml::util::resize_patch(
-//             (size, size),
-//             (IMAGE_INPUT_SIZE, IMAGE_INPUT_SIZE),
-//             patch,
-//         );
+    proposals
+}
 
-//         if let Ok(()) = model.try_start_infer(&patch) {
-//             loop {
-//                 if start_time.elapsed().as_micros() >= config.time_budget as u128 {
-//                     if let Err(e) = model.try_cancel() {
-//                         tracing::warn!("Failed to cancel field mark inference: {:?}", e);
-//                     }
-//                     break 'outer;
-//                 }
+pub fn classify_intersection(
+    line1: &LineSegment2,
+    line2: &LineSegment2,
+    intersection: &Point2<f32>,
+) -> IntersectionKind {
+    // Compute the unit direction vectors for both lines.
+    let vec1 = (line1.end - line1.start).normalize();
+    let vec2 = (line2.end - line2.start).normalize();
 
-//                 if let Ok(Some(result)) = model.poll::<Vec<f32>>().transpose() {
-//                     let res = softmax(&result);
-//                     let max_idx = argmax(&res);
+    let dot = vec1.dot(&vec2).clamp(-1.0, 1.0);
+    let angle_rad = dot.acos();
 
-//                     let class = match (max_idx, res[max_idx] >= config.confidence_threshold) {
-//                         (0, true) => IntersectionKind::L,
-//                         (1, true) => IntersectionKind::T,
-//                         (2, true) => IntersectionKind::X,
-//                         _ => IntersectionKind::Unknown,
-//                     };
+    let deviation_deg = (angle_rad - std::f32::consts::FRAC_PI_2).abs().to_degrees();
 
-//                     intersections.push(IntersectionPoint {
-//                         kind: class,
-//                         point: possible_intersection.point,
-//                         distance_to_point: possible_intersection.distance_to_point,
-//                         confidence: res[max_idx],
-//                     });
-//                     break;
-//                 }
-//             }
-//         }
-//     }
+    if deviation_deg > 10.0 {
+        return IntersectionKind::Unknown;
+    }
 
-//     ctx.log_boxes2d_with_class(
-//         "top_camera/image/field_marks",
-//         &proposals
-//             .iter()
-//             .map(|p| (p.point.x, p.point.y))
-//             .collect::<Vec<_>>(),
-//         &vec![(16.0, 16.0); proposals.len()],
-//         intersections
-//             .iter()
-//             .map(|i| i.kind.as_str().to_string())
-//             .collect(),
-//         field_marks_image.0.cycle(),
-//     )?;
+    let d1 = (intersection - line1.start).norm();
+    let d2 = (intersection - line1.end).norm();
+    let d3 = (intersection - line2.start).norm();
+    let d4 = (intersection - line2.end).norm();
 
-//     field_marks.image = lines.1.clone();
-//     field_marks.field_marks = intersections;
-
-//     Ok(())
-// }
-
-// fn extend_lines(lines: &TopLines, matrix: &CameraMatrix) -> Vec<LineSegment2> {
-//     lines
-//         .iter()
-//         .filter_map(|line| line.project_to_3d(matrix).ok())
-//         .filter_map(|line| {
-//             let start_len = line.start.coords.magnitude();
-//             let end_len = line.end.coords.magnitude();
-
-//             let direction = (line.end - line.start).normalize();
-
-//             let start = line.start - direction / start_len;
-//             let end = line.end + direction / end_len;
-
-//             LineSegment3::new(start, end).project_to_2d(matrix).ok()
-//         })
-//         .collect::<Vec<_>>()
-// }
-
-// fn make_proposals(
-//     extended_lines: &[LineSegment2],
-//     matrix: &CameraMatrix,
-//     config: &FieldMarksConfig,
-// ) -> Vec<ProposedIntersection> {
-//     let mut proposals = Vec::new();
-//     for i in 0..extended_lines.len() {
-//         let line = &extended_lines[i];
-//         for other_line in extended_lines.iter().skip(i + 1) {
-//             let Some(intersection) = line.intersection_point(other_line) else {
-//                 continue;
-//             };
-
-//             let line_start = matrix.pixel_to_ground(line.start, 0.0);
-//             let line_end = matrix.pixel_to_ground(line.end, 0.0);
-
-//             let other_line_start = matrix.pixel_to_ground(other_line.start, 0.0);
-//             let other_line_end = matrix.pixel_to_ground(other_line.end, 0.0);
-
-//             if let (Ok(start), Ok(end), Ok(other_start), Ok(other_end)) =
-//                 (line_start, line_end, other_line_start, other_line_end)
-//             {
-//                 let line_direction = (end - start).normalize();
-//                 let other_line_direction = (other_end - other_start).normalize();
-
-//                 let distance = matrix
-//                     .pixel_to_ground(intersection, 0.0)
-//                     .unwrap()
-//                     .coords
-//                     .magnitude();
-//                 let angle = line_direction.xy().angle(&other_line_direction.xy());
-//                 let angle = (angle - std::f32::consts::FRAC_PI_2).abs().to_degrees();
-//                 if angle > config.angle_tolerance || distance > config.distance_threshold {
-//                     continue;
-//                 }
-
-//                 proposals.push(ProposedIntersection {
-//                     point: intersection,
-//                     distance_to_point: distance,
-//                 });
-//             }
-//         }
-//     }
-
-//     proposals
-// }
+    let near_line1 = d1 < 15.0 || d2 < 15.0;
+    let near_line2 = d3 < 15.0 || d4 < 15.0;
+    match (near_line1, near_line2) {
+        (false, false) => IntersectionKind::X, // Intersection is central in both lines.
+        (true, false) | (false, true) => IntersectionKind::T, // One line ends at the intersection.
+        (true, true) => IntersectionKind::L,   // Both lines end at the intersection.
+    }
+}

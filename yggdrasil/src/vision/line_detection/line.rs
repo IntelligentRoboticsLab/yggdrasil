@@ -2,7 +2,7 @@ use std::ops::Mul;
 
 use bevy::prelude::*;
 
-use nalgebra::{Isometry2, Point2, Vector2};
+use nalgebra::{point, vector, Isometry2, Point2, Vector2};
 
 /// A normal form line in 2D space
 #[derive(Debug, Clone, Copy, Component, PartialEq)]
@@ -134,6 +134,24 @@ impl LineSegment2 {
             let t = i as f32 / (n + 1) as f32;
             self.start + (self.end - self.start) * t
         })
+    }
+
+    #[must_use]
+    pub fn intersection_point(&self, other: &LineSegment2) -> Option<Point2<f32>> {
+        let d1 = self.end - self.start;
+        let d2 = other.end - other.start;
+        let denom = d1.x * d2.y - d1.y * d2.x;
+        if denom.abs() < f32::EPSILON {
+            return None;
+        }
+        let diff = other.start - self.start;
+        let t = (diff.x * d2.y - diff.y * d2.x) / denom;
+        let u = (diff.x * d1.y - diff.y * d1.x) / denom;
+        if t < 0.0 || t > 1.0 || u < 0.0 || u > 1.0 {
+            None
+        } else {
+            Some(self.start + d1 * t)
+        }
     }
 }
 

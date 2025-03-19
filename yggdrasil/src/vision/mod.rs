@@ -28,6 +28,7 @@ impl PluginGroup for VisionPlugins {
             .add(line_detection::LineDetectionPlugin::<Top>::default())
             .add(line_detection::LineDetectionPlugin::<Bottom>::default())
             .add(field_boundary::FieldBoundaryPlugin)
+            .add(field_marks::FieldMarksPlugin::<Top>::default())
             .add(ball_detection::BallDetectionPlugin)
             // .add(robot_detection::RobotDetectionPlugin)
             .add(referee::VisualRefereePlugin);
