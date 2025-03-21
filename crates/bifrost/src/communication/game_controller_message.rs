@@ -16,20 +16,23 @@ pub const GAME_CONTROLLER_DATA_PORT: u16 = 3838;
 /// The port on which the robots send the [`GameControllerReturnMessage`] data to the `GameController`.
 pub const GAME_CONTROLLER_RETURN_PORT: u16 = 3939;
 
-/// The header of the data sent by the `GameController`.
-const GAME_CONTROLLER_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'm', b'e'];
+/// The header of the data sent by the `GameController` to the players.
+pub const GAME_CONTROLLER_STRUCT_HEADER_PLAYER: [u8; 4] = [b'R', b'G', b'm', b'e'];
+
+/// The header of the data sent by the `GameController` to the monitors.
+pub const GAME_CONTROLLER_STRUCT_HEADER_MONITOR: [u8; 4] = [b'R', b'G', b'T', b'D'];
 
 /// The version of the data sent by the `GameController`.
-const GAME_CONTROLLER_STRUCT_VERSION: u8 = 18;
+pub const GAME_CONTROLLER_STRUCT_VERSION: u8 = 18;
 
 /// The header of the data sent by the robots.
-const GAME_CONTROLLER_RETURN_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'r', b't'];
+pub const GAME_CONTROLLER_RETURN_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'r', b't'];
 
 /// The version of the data sent by the robots.
-const GAME_CONTROLLER_RETURN_STRUCT_VERSION: u8 = 4;
+pub const GAME_CONTROLLER_RETURN_STRUCT_VERSION: u8 = 4;
 
 /// The maximum number of players
-const MAX_NUM_PLAYERS: u8 = 20;
+pub const MAX_NUM_PLAYERS: u8 = 20;
 
 /// Enum for each half of the game.
 #[derive(Encode, Decode, Clone, Copy, Debug, PartialEq)]
@@ -284,7 +287,7 @@ impl GameControllerMessage {
 }
 
 /// A struct representing the `RoboCupGameControlReturnMessage` send by the Robots.
-#[derive(Encode, Decode, Debug, PartialEq)]
+#[derive(Encode, Decode, Debug, PartialEq, Clone)]
 pub struct GameControllerReturnMessage {
     /// "`RGrt`"
     pub header: [u8; 4],
@@ -327,8 +330,10 @@ impl GameControllerMessage {
     /// the number of players does not exceed the maximum number of players per team.
     #[must_use]
     pub fn is_valid(&self) -> bool {
-        self.header == GAME_CONTROLLER_STRUCT_HEADER
-            && self.version == GAME_CONTROLLER_STRUCT_VERSION
+        matches!(
+            self.header,
+            GAME_CONTROLLER_STRUCT_HEADER_PLAYER | GAME_CONTROLLER_STRUCT_HEADER_MONITOR
+        ) && self.version == GAME_CONTROLLER_STRUCT_VERSION
             && self.players_per_team <= MAX_NUM_PLAYERS
     }
 }
