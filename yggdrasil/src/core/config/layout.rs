@@ -131,14 +131,14 @@ pub enum FieldLine {
 impl FieldLine {
     /// Projects a point onto the field line and returns the projected point, together with the projection distance.
     #[must_use]
-    pub fn project_with_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
+    pub fn project_with_signed_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
         match self {
             FieldLine::Segment(segment) => {
-                let (projection, distance) = segment.project_with_distance(point);
+                let (projection, distance) = segment.project_with_signed_distance(point);
                 (projection, distance)
             }
             FieldLine::Circle(circle) => {
-                let (projection, distance) = circle.project_with_distance(point);
+                let (projection, distance) = circle.project_with_signed_distance(point);
                 (projection, distance)
             }
         }

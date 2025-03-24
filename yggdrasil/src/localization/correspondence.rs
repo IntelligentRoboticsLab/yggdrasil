@@ -148,10 +148,10 @@ fn correspond_segment(reference: LineSegment2, measurement: LineSegment2) -> Lin
     let reference_direction = (reference.start - reference.end).normalize();
 
     let (projected_point_on_measurement, measured_distance) =
-        measurement.project_with_distance(reference.start);
+        measurement.project_with_signed_distance(reference.start);
 
     let (projected_point_on_reference, reference_distance) =
-        reference.project_with_distance(measurement.start);
+        reference.project_with_signed_distance(measurement.start);
 
     let correspondence_start = if measured_distance.abs() < reference_distance.abs() {
         PointCorrespondence {
@@ -166,9 +166,9 @@ fn correspond_segment(reference: LineSegment2, measurement: LineSegment2) -> Lin
     };
 
     let (projected_point_on_measurement, measured_distance) =
-        measurement.project_with_distance(reference.end);
+        measurement.project_with_signed_distance(reference.end);
     let (projected_point_on_reference, reference_distance) =
-        reference.project_with_distance(measurement.end);
+        reference.project_with_signed_distance(measurement.end);
 
     let correspondence_end = if measured_distance.abs() < reference_distance.abs() {
         PointCorrespondence {
