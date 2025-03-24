@@ -1,151 +1,229 @@
-use bevy::prelude::*;
-use heimdall::CameraLocation;
-use itertools::Itertools;
+use nalgebra::{Isometry2, Point2, Vector2};
 
 use crate::{
-    core::{
-        config::layout::{FieldLine, LayoutConfig},
-        debug::{
-            debug_system::{DebugAppExt, SystemToggle},
-            DebugContext,
-        },
+    core::config::layout::{FieldLine, LayoutConfig},
+    vision::line_detection::{
+        line::{Circle, LineSegment2},
+        DetectedLines,
     },
-    nao::Cycle,
-    vision::line_detection::{handle_line_task, line::LineSegment2, DetectedLines},
 };
 
-use super::RobotPose;
-
-/// This plugin matches detected lines to their closest lines in the ideal field.
-#[derive(Default)]
-pub struct LineCorrespondencePlugin<T: CameraLocation>(std::marker::PhantomData<T>);
-
-impl<T: CameraLocation> Plugin for LineCorrespondencePlugin<T> {
-    fn build(&self, app: &mut App) {
-        app.add_systems(PostStartup, setup_logging::<T>)
-            .add_systems(
-                Update,
-                (get_correspondences::<T>.after(handle_line_task::<T>),).chain(),
-            )
-            .add_named_debug_systems(
-                Update,
-                log_correspondences::<T>.after(get_correspondences::<T>),
-                "Visualize line correspondences",
-                SystemToggle::Disable,
-            );
-    }
+/// Correspondence between a measured line and a field line
+#[derive(Clone, Debug)]
+pub struct FieldLineCorrespondence {
+    /// Measured line in field space
+    pub measurement: LineSegment2,
+    /// Corresponding reference line in field space
+    pub reference: FieldLine,
+    /// Start point of the correspondence
+    pub start: PointCorrespondence,
+    /// End point of the correspondence
+    pub end: PointCorrespondence,
 }
 
-/// The correspondence between a detected line and a field line.
-#[derive(Debug, Clone)]
-pub struct LineCorrespondence {
-    // The line segment detected in the camera image
-    pub detected_line: LineSegment2,
-    // The ideal field line that the detected line corresponds to
-    pub field_line: FieldLine,
-    // The line segment of the detected line projected onto the field line
-    pub projected_line: LineSegment2,
-    // The squared sum error (in meters) of the correspondence projection
-    pub error: f32,
-}
-
-/// A collection of line correspondences.
-#[derive(Debug, Component)]
-pub struct LineCorrespondences(pub Vec<LineCorrespondence>);
+/// Factor by which the length of a measured line may be greater than the corresponding field line
+const LINE_LENGTH_ACCEPTANCE_FACTOR: f32 = 1.5;
 
 /// Matches detected lines to their closest field lines.
-pub fn get_correspondences<T: CameraLocation>(
-    mut commands: Commands,
-    layout: Res<LayoutConfig>,
-    pose: Res<RobotPose>,
-    lines: Query<(Entity, &DetectedLines), (With<T>, Added<DetectedLines>)>,
-) {
-    for (entity, lines) in lines.iter() {
-        let mut correspondences = Vec::new();
+#[must_use]
+pub fn correspond_field_lines(
+    lines: &DetectedLines,
+    layout: &LayoutConfig,
+    correction: Isometry2<f32>,
+) -> Vec<FieldLineCorrespondence> {
+    lines
+        .segments
+        .iter()
+        .filter_map(|&measurement| {
+            let (_weight, correspondences, corrected_measurement, reference) = layout
+                .field
+                .field_lines()
+                .iter()
+                .filter_map(|&reference| {
+                    let corrected_measurement = correction * measurement;
 
-        for segment in &lines.segments {
-            // we want to find the best projection of the line onto a field line
-            let mut best = None;
+                    let measurement_length = measurement.length();
+                    let reference_length = match reference {
+                        FieldLine::Segment(segment) => segment.length(),
+                        // approximate length of a detected line in the center circle
+                        FieldLine::Circle(circle) => circle.radius,
+                    };
 
-            for field_line in layout.field.field_lines() {
-                // transform the detected line by the robot pose
-                let detected_line =
-                    LineSegment2::new(pose.inner * segment.start, pose.inner * segment.end);
+                    if measurement_length < reference_length * LINE_LENGTH_ACCEPTANCE_FACTOR {
+                        return None;
+                    }
 
-                // project the line segment onto the current field line
-                let (start, start_distance) = field_line.project_with_distance(detected_line.start);
-                let (end, end_distance) = field_line.project_with_distance(detected_line.end);
+                    let correspondences = correspond_lines(reference, measurement);
 
-                let error = start_distance.powi(2) + end_distance.powi(2);
+                    let angle_weight = correspondences
+                        .measurement_direction
+                        .dot(&correspondences.reference_direction)
+                        .abs();
+                    let length_weight = measurement_length / reference_length;
 
-                // only keep the correspondence that minimizes the error
-                if best
-                    .as_ref()
-                    .is_some_and(|current: &LineCorrespondence| current.error < error)
-                {
-                    continue;
-                }
+                    let weight = 1.0 / (angle_weight + length_weight);
 
-                let projected_line = LineSegment2::new(start, end);
+                    if weight > 0.0 {
+                        Some((weight, correspondences, corrected_measurement, reference))
+                    } else {
+                        None
+                    }
+                })
+                .min_by(|(w1, c1, _, _), (w2, c2, _, _)| {
+                    let weighted_distance_1 = w1 * (c1.start.distance() + c1.end.distance());
+                    let weighted_distance_2 = w2 * (c2.start.distance() + c2.end.distance());
+                    weighted_distance_1.total_cmp(&weighted_distance_2)
+                })?;
 
-                best = Some(LineCorrespondence {
-                    detected_line,
-                    field_line,
-                    projected_line,
-                    error,
-                });
-            }
+            let inverse_correction = correction.inverse();
 
-            if let Some(correspondence) = best {
-                correspondences.push(correspondence);
-            }
-        }
+            Some(FieldLineCorrespondence {
+                measurement: inverse_correction * corrected_measurement,
+                reference,
+                start: PointCorrespondence {
+                    measurement: inverse_correction * correspondences.start.measurement,
+                    reference: correspondences.start.reference,
+                },
+                end: PointCorrespondence {
+                    measurement: inverse_correction * correspondences.end.measurement,
+                    reference: correspondences.end.reference,
+                },
+            })
+        })
+        .collect()
+}
 
-        commands
-            .entity(entity)
-            .insert(LineCorrespondences(correspondences));
+/// Correspondence between two points
+#[derive(Clone, Copy, Debug)]
+pub struct PointCorrespondence {
+    pub measurement: Point2<f32>,
+    pub reference: Point2<f32>,
+}
+
+impl PointCorrespondence {
+    /// Distance between measurement and reference points in meters
+    #[must_use]
+    pub fn distance(&self) -> f32 {
+        nalgebra::distance(&self.measurement, &self.reference)
     }
 }
 
-fn setup_logging<T: CameraLocation>(dbg: DebugContext) {
-    let path = T::make_entity_path("localization/line_correspondences");
-
-    dbg.log_with_cycle(
-        path,
-        Cycle::default(),
-        &rerun::LineStrips3D::update_fields().with_colors([(0, 255, 255)]),
-    );
+/// Correspondence between two line segments
+#[derive(Clone, Debug)]
+pub struct LineCorrespondence {
+    pub measurement_direction: Vector2<f32>,
+    pub reference_direction: Vector2<f32>,
+    /// Start point correspondence
+    pub start: PointCorrespondence,
+    /// End point correspondence
+    pub end: PointCorrespondence,
 }
 
-fn log_correspondences<T: CameraLocation>(
-    dbg: DebugContext,
-    correspondences: Query<(&Cycle, &LineCorrespondences), (With<T>, Added<LineCorrespondences>)>,
-) {
-    for (cycle, correspondences) in correspondences.iter() {
-        let path = T::make_entity_path("localization/line_correspondences");
+#[must_use]
+fn correspond_lines(reference: FieldLine, measurement: LineSegment2) -> LineCorrespondence {
+    match reference {
+        FieldLine::Segment(reference) => correspond_segment(reference, measurement),
+        FieldLine::Circle(reference) => correspond_circle(reference, measurement),
+    }
+}
 
-        // projection lines from detected line to field line
-        let lines = correspondences
-            .0
-            .iter()
-            .flat_map(|c| {
-                [
-                    [
-                        [c.detected_line.start.x, c.detected_line.start.y, 0.0],
-                        [c.projected_line.start.x, c.projected_line.start.y, 0.0],
-                    ],
-                    [
-                        [c.detected_line.end.x, c.detected_line.end.y, 0.0],
-                        [c.projected_line.end.x, c.projected_line.end.y, 0.0],
-                    ],
-                ]
-            })
-            .collect_vec();
+fn correspond_segment(reference: LineSegment2, measurement: LineSegment2) -> LineCorrespondence {
+    let measurement = match [
+        nalgebra::distance(&measurement.start, &reference.start),
+        nalgebra::distance(&measurement.end, &reference.end),
+        nalgebra::distance(&measurement.start, &reference.end),
+        nalgebra::distance(&measurement.end, &reference.start),
+    ]
+    .iter()
+    .enumerate()
+    .min_by(|(_, a), (_, b)| a.total_cmp(b))
+    .unwrap()
+    .0
+    {
+        2 | 3 => measurement.to_flipped(),
+        _ => measurement,
+    };
 
-        dbg.log_with_cycle(
-            path.as_str(),
-            *cycle,
-            &rerun::LineStrips3D::update_fields().with_strips(&lines),
-        );
+    let measurement_direction = (measurement.start - measurement.end).normalize();
+    let reference_direction = (reference.start - reference.end).normalize();
+
+    let (projected_point_on_measurement, measured_distance) =
+        measurement.project_with_distance(reference.start);
+
+    let (projected_point_on_reference, reference_distance) =
+        reference.project_with_distance(measurement.start);
+
+    let correspondence_start = if measured_distance < reference_distance {
+        PointCorrespondence {
+            measurement: projected_point_on_measurement,
+            reference: reference.start,
+        }
+    } else {
+        PointCorrespondence {
+            measurement: measurement.start,
+            reference: projected_point_on_reference,
+        }
+    };
+
+    let (projected_point_on_measurement, measured_distance) =
+        measurement.project_with_distance(reference.end);
+    let (projected_point_on_reference, reference_distance) =
+        reference.project_with_distance(measurement.end);
+
+    let correspondence_end = if measured_distance < reference_distance {
+        PointCorrespondence {
+            measurement: projected_point_on_measurement,
+            reference: reference.end,
+        }
+    } else {
+        PointCorrespondence {
+            measurement: measurement.end,
+            reference: projected_point_on_reference,
+        }
+    };
+
+    LineCorrespondence {
+        measurement_direction,
+        reference_direction,
+        start: correspondence_start,
+        end: correspondence_end,
+    }
+}
+
+fn correspond_circle(reference: Circle, measurement: LineSegment2) -> LineCorrespondence {
+    let center_to_start = measurement.start - reference.center;
+    let center_to_end = measurement.end - reference.center;
+
+    let reference_start = if let Some(norm) = center_to_start.try_normalize(f32::EPSILON) {
+        reference.center + norm * reference.radius
+    } else {
+        Point2::new(reference.center.x + reference.radius, reference.center.y)
+    };
+
+    let reference_end = if let Some(norm) = center_to_end.try_normalize(f32::EPSILON) {
+        reference.center + norm * reference.radius
+    } else {
+        Point2::new(reference.center.x + reference.radius, reference.center.y)
+    };
+
+    let correspondence_start = PointCorrespondence {
+        measurement: measurement.start,
+        reference: reference_start,
+    };
+    let correspondence_end = PointCorrespondence {
+        measurement: measurement.end,
+        reference: reference_end,
+    };
+
+    let measurement_direction = (measurement.start - measurement.end).normalize();
+    let center_vector = (reference_start - reference.center) + (reference_end - reference.center);
+    // rotate the center vector 90 degrees counterclockwise
+    let reference_direction = Vector2::new(-center_vector.y, center_vector.x).normalize();
+
+    LineCorrespondence {
+        measurement_direction,
+        reference_direction,
+        start: correspondence_start,
+        end: correspondence_end,
     }
 }

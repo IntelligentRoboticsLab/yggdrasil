@@ -64,6 +64,23 @@ impl LineSegment2 {
         Line2::new(normal, d)
     }
 
+    /// Flips the start and end points of the line segment
+    #[must_use]
+    pub fn to_flipped(&self) -> Self {
+        Self {
+            start: self.end,
+            end: self.start,
+        }
+    }
+
+    /// Smallest angle between two line segments
+    #[must_use]
+    pub fn angle(&self, other: &Self) -> f32 {
+        let dir1 = self.end - self.start;
+        let dir2 = other.end - other.start;
+        dir1.angle(&dir2)
+    }
+
     /// Length of the line segment
     #[must_use]
     pub fn length(&self) -> f32 {
