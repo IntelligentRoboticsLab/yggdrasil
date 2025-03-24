@@ -1,3 +1,4 @@
+pub mod correction;
 pub mod correspondence;
 pub mod pose;
 
