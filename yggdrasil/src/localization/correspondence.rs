@@ -61,7 +61,7 @@ pub fn correspond_field_lines(
                         .abs();
                     let length_weight = measurement_length / reference_length;
 
-                    let weight = 1.0 / (angle_weight + length_weight);
+                    let weight = angle_weight + length_weight;
 
                     if weight > 0.0 {
                         Some((weight, correspondences, corrected_measurement, reference))
@@ -70,8 +70,8 @@ pub fn correspond_field_lines(
                     }
                 })
                 .min_by(|(w1, c1, _, _), (w2, c2, _, _)| {
-                    let weighted_distance_1 = w1 * (c1.start.distance() + c1.end.distance());
-                    let weighted_distance_2 = w2 * (c2.start.distance() + c2.end.distance());
+                    let weighted_distance_1 = (c1.start.distance() + c1.end.distance()) / w1;
+                    let weighted_distance_2 = (c2.start.distance() + c2.end.distance()) / w2;
                     weighted_distance_1.total_cmp(&weighted_distance_2)
                 })?;
 
