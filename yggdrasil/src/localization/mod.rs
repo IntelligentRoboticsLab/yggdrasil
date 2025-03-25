@@ -18,9 +18,9 @@ use crate::{
         config::{layout::LayoutConfig, showtime::PlayerConfig},
         debug::DebugContext,
     },
-    motion::odometry,
+    motion::{keyframe::KeyframeExecutor, odometry, walking_engine::Gait},
     nao::Cycle,
-    sensor::orientation::RobotOrientation,
+    sensor::{fsr::Contacts, orientation::RobotOrientation},
 };
 
 /// The localization plugin provides functionalities related to the localization of the robot.
@@ -33,7 +33,8 @@ impl Plugin for LocalizationPlugin {
                 PreUpdate,
                 (odometry_update, line_update, filter_hypotheses)
                     .chain()
-                    .after(odometry::update_odometry),
+                    .after(odometry::update_odometry)
+                    .run_if(not(motion_is_unsafe)),
             )
             .add_systems(PostUpdate, visualize_pose);
     }
@@ -50,6 +51,16 @@ fn initialize_pose(mut commands: Commands, layout: Res<LayoutConfig>, player: Re
 
     commands.spawn(hypothesis);
     commands.insert_resource(pose);
+}
+
+fn motion_is_unsafe(
+    keyframe_executor: Res<KeyframeExecutor>,
+    motion_state: Res<State<Gait>>,
+    contacts: Res<Contacts>,
+) -> bool {
+    keyframe_executor.active_motion.is_some()
+        || !matches!(motion_state.get(), Gait::Standing | Gait::Walking)
+        || !contacts.ground
 }
 
 fn setup_pose_visualization(dbg: DebugContext) {

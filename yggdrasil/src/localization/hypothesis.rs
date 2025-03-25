@@ -11,6 +11,7 @@ use crate::{
         debug::DebugContext,
     },
     motion::odometry::Odometry,
+    nao::Cycle,
     vision::line_detection::DetectedLines,
 };
 
@@ -45,15 +46,26 @@ pub fn odometry_update(odometry: Res<Odometry>, mut hypotheses: Query<&mut Robot
 }
 
 pub fn line_update(
+    dbg: DebugContext,
     layout: Res<LayoutConfig>,
-    new_lines: Query<&DetectedLines, Added<DetectedLines>>,
+    new_lines: Query<(&Cycle, &DetectedLines), Added<DetectedLines>>,
     mut hypotheses: Query<&mut RobotPoseHypothesis>,
 ) {
     // get the measured lines in robot space
     let segments = new_lines
         .iter()
-        .flat_map(|lines| &lines.segments)
+        .flat_map(|(_, lines)| &lines.segments)
         .collect::<Vec<_>>();
+
+    if segments.is_empty() {
+        return;
+    }
+
+    let cycle = new_lines
+        .iter()
+        .map(|(cycle, _)| cycle)
+        .next()
+        .expect("No cycle found");
 
     for mut hypothesis in &mut hypotheses {
         let pose = hypothesis.filter.state();
@@ -62,9 +74,32 @@ pub fn line_update(
         let measured = segments
             .iter()
             .map(|&&segment| pose.inner * segment)
+            // .filter(|segment| layout.field.in_field_with_margin(segment.center(), 0.15))
             .collect::<Vec<_>>();
 
-        let (correspondences, fit_error) = fit_field_lines(&measured, &layout);
+        let Some((correspondences, fit_error)) = fit_field_lines(&measured, &layout) else {
+            continue;
+        };
+
+        // log correspondences
+        dbg.log_with_cycle(
+            "lines/correspondences",
+            *cycle,
+            &rerun::LineStrips3D::new(correspondences.iter().flat_map(|c| {
+                [
+                    [
+                        [c.start.measurement.x, c.start.measurement.y, 0.0],
+                        [c.start.reference.x, c.start.reference.y, 0.0],
+                    ],
+                    [
+                        [c.end.measurement.x, c.end.measurement.y, 0.0],
+                        [c.end.reference.x, c.end.reference.y, 0.0],
+                    ],
+                ]
+            }))
+            .with_colors(std::iter::once(rerun::Color::from_rgb(0, 255, 0)))
+            .with_radii(std::iter::once(0.05)),
+        );
 
         let clamped_fit_error = fit_error.max(MIN_FIT_ERROR);
         let num_measurements_weight = 1.0 / correspondences.len() as f32;
