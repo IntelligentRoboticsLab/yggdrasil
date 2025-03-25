@@ -2,10 +2,7 @@ use nalgebra::{Isometry2, Point2, Vector2};
 
 use crate::{
     core::config::layout::{FieldLine, LayoutConfig},
-    vision::line_detection::{
-        line::{Circle, LineSegment2},
-        DetectedLines,
-    },
+    vision::line_detection::line::{Circle, LineSegment2},
 };
 
 /// Correspondence between a measured line and a field line
@@ -24,15 +21,14 @@ pub struct FieldLineCorrespondence {
 /// Factor by which the length of a measured line may be greater than the corresponding field line
 const LINE_LENGTH_ACCEPTANCE_FACTOR: f32 = 1.5;
 
-/// Matches detected lines to their closest field lines.
+/// Matches detected lines in field space to their closest field lines.
 #[must_use]
 pub fn correspond_field_lines(
-    lines: &DetectedLines,
+    lines: &[LineSegment2],
     layout: &LayoutConfig,
     correction: Isometry2<f32>,
 ) -> Vec<FieldLineCorrespondence> {
     lines
-        .segments
         .iter()
         .filter_map(|&measurement| {
             let (_weight, correspondences, corrected_measurement, reference) = layout
