@@ -35,7 +35,7 @@ pub fn init_pose(
     commands.insert_resource(RobotPose::new(initial_position.isometry));
 }
 
-#[derive(Resource, Default, Debug, Clone)]
+#[derive(Resource, Default, Debug, Clone, Copy)]
 pub struct RobotPose {
     pub inner: Isometry2<f32>,
 }

@@ -18,6 +18,12 @@ pub struct FieldLineCorrespondence {
     pub end: PointCorrespondence,
 }
 
+impl FieldLineCorrespondence {
+    pub fn error(&self) -> f32 {
+        self.start.distance() + self.end.distance()
+    }
+}
+
 /// Factor by which the length of a measured line may be greater than the corresponding field line
 const LINE_LENGTH_ACCEPTANCE_FACTOR: f32 = 1.5;
 
@@ -40,7 +46,7 @@ pub fn correspond_field_lines(
 
                     let measurement_length = measurement.length();
                     let reference_length = match reference {
-                        FieldLine::Segment(segment) => segment.length(),
+                        FieldLine::Segment { segment, .. } => segment.length(),
                         // approximate length of a detected line in the center circle
                         FieldLine::Circle(circle) => circle.radius,
                     };
@@ -118,7 +124,9 @@ pub struct LineCorrespondence {
 #[must_use]
 fn correspond_lines(reference: FieldLine, measurement: LineSegment2) -> LineCorrespondence {
     match reference {
-        FieldLine::Segment(reference) => correspond_segment(reference, measurement),
+        FieldLine::Segment {
+            segment: reference, ..
+        } => correspond_segment(reference, measurement),
         FieldLine::Circle(reference) => correspond_circle(reference, measurement),
     }
 }
