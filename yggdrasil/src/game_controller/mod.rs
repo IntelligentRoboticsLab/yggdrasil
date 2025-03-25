@@ -2,7 +2,7 @@ mod receive;
 mod transmit;
 
 use std::{
-    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+    net::{Ipv4Addr, SocketAddr},
     str::FromStr,
     sync::Arc,
     time::Duration,
