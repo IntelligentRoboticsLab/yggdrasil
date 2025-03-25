@@ -20,6 +20,12 @@ impl Line2 {
         Self { normal, d }
     }
 
+    /// Signed distance from the line to a point
+    #[must_use]
+    pub fn signed_distance_to_point(&self, point: Point2<f32>) -> f32 {
+        self.normal.dot(&point.coords) - self.d
+    }
+
     /// Distance from the line to a point
     #[must_use]
     pub fn distance_to_point(&self, point: Point2<f32>) -> f32 {
@@ -32,10 +38,6 @@ impl Line2 {
     pub fn project(&self, point: Point2<f32>) -> Point2<f32> {
         let signed_distance = self.signed_distance_to_point(point);
         point - self.normal * signed_distance
-    }
-
-    fn signed_distance_to_point(&self, point: Point2<f32>) -> f32 {
-        self.normal.dot(&point.coords) - self.d
     }
 }
 
