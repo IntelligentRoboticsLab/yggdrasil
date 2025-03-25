@@ -20,10 +20,12 @@ impl RobotPose {
     // Set to zero if we are only looking at the ground, for example.
     pub const CAMERA_HEIGHT: f32 = 0.5;
 
+    #[must_use]
     pub fn from_isometry(pose: Isometry2<f32>) -> Self {
         Self { inner: pose }
     }
 
+    #[must_use]
     pub fn from_translation_and_rotation(translation: Vector2<f32>, angle: f32) -> Self {
         let inner = Isometry2::new(translation, angle);
         Self { inner }
@@ -131,14 +133,13 @@ impl StateTransform<3> for RobotPose {
     }
 }
 
+#[must_use]
 pub fn initial_pose(layout: &LayoutConfig, player_num: u8) -> RobotPose {
     RobotPose::from_isometry(layout.initial_positions.player(player_num).isometry)
 }
 
-pub fn penalized_pose(
-    layout: &LayoutConfig,
-    penalized_distance: f32,
-) -> impl IntoIterator<Item = RobotPose> {
+#[must_use]
+pub fn penalized_pose(layout: &LayoutConfig) -> impl IntoIterator<Item = RobotPose> {
     /// "The removed robot will be placed outside the field at a distance of approximately 50 cm
     /// away from the nearest touchline, facing towards the field of play."
     const PENALTY_DISTANCE_FROM_TOUCHLINE: f32 = 0.5;
@@ -147,7 +148,7 @@ pub fn penalized_pose(
         RobotPose::from_translation_and_rotation(
             vector![
                 -layout.field.length * 0.5 + layout.field.penalty_mark_distance,
-                -layout.field.width * 0.5 - penalized_distance,
+                -layout.field.width * 0.5 - PENALTY_DISTANCE_FROM_TOUCHLINE,
             ],
             std::f32::consts::FRAC_PI_2,
         ),
@@ -160,75 +161,3 @@ pub fn penalized_pose(
         ),
     ]
 }
-
-// pub fn update_robot_pose(
-//     mut robot_pose: ResMut<RobotPose>,
-//     odometry: Res<Odometry>,
-//     primary_state: Res<PrimaryState>,
-//     layout_config: Res<LayoutConfig>,
-//     game_controller_message: Option<Res<GameControllerMessage>>,
-// ) {
-//     *robot_pose = next_robot_pose(
-//         robot_pose.as_mut(),
-//         odometry.as_ref(),
-//         primary_state.as_ref(),
-//         layout_config.as_ref(),
-//         game_controller_message.as_deref(),
-//     );
-// }
-
-// #[must_use]
-// pub fn next_robot_pose(
-//     robot_pose: &RobotPose,
-//     odometry: &Odometry,
-//     primary_state: &PrimaryState,
-//     layout_config: &LayoutConfig,
-//     message: Option<&GameControllerMessage>,
-// ) -> RobotPose {
-//     let mut isometry = if *primary_state == PrimaryState::Penalized {
-//         find_closest_penalty_pose(robot_pose, layout_config)
-//     } else {
-//         robot_pose.inner * odometry.offset_to_last
-//     };
-
-//     if let Some(message) = message {
-//         if message.game_phase == GamePhase::PenaltyShoot {
-//             if message.kicking_team == 8 {
-//                 isometry = Isometry2::from_parts(
-//                     Translation2::new(3.2, 0.0),
-//                     UnitComplex::from_angle(0.0),
-//                 );
-//             } else {
-//                 isometry =
-//                     Isometry2::from_parts(Translation2::new(4.5, 0.0), UnitComplex::from_angle(PI));
-//             }
-//         }
-//     }
-
-//     RobotPose::new(isometry)
-// }
-
-// fn find_closest_penalty_pose(
-//     robot_pose: &RobotPose,
-//     layout_config: &LayoutConfig,
-// ) -> Isometry2<f32> {
-//     *layout_config
-//         .penalty_positions
-//         .iter()
-//         .reduce(|a, b| {
-//             let distance_a =
-//                 (robot_pose.inner.translation.vector - a.translation.vector).norm_squared();
-//             let distance_b =
-//                 (robot_pose.inner.translation.vector - b.translation.vector).norm_squared();
-
-//             if distance_b > distance_a {
-//                 a
-//             } else {
-//                 b
-//             }
-//         })
-//         .unwrap_or_else(|| {
-//             tracing::warn!("failed to find closest penalty pose for");
-//             &robot_pose.inner
-//         })
-// }

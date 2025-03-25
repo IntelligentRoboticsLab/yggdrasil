@@ -5,6 +5,8 @@ use crate::{
     vision::line_detection::line::{Circle, LineSegment2},
 };
 
+use super::LocalizationConfig;
+
 /// Correspondence between a measured line and a field line
 #[derive(Clone, Debug)]
 pub struct FieldLineCorrespondence {
@@ -25,13 +27,11 @@ impl FieldLineCorrespondence {
     }
 }
 
-/// Factor by which the length of a measured line may be greater than the corresponding field line
-const LINE_LENGTH_ACCEPTANCE_FACTOR: f32 = 1.5;
-
 /// Matches detected lines in field space to their closest field lines.
 #[must_use]
 pub fn correspond_field_lines(
     lines: &[LineSegment2],
+    cfg: &LocalizationConfig,
     layout: &LayoutConfig,
     correction: Isometry2<f32>,
 ) -> Vec<FieldLineCorrespondence> {
@@ -52,7 +52,8 @@ pub fn correspond_field_lines(
                         FieldLine::Circle(circle) => circle.radius,
                     };
 
-                    if measurement_length > reference_length * LINE_LENGTH_ACCEPTANCE_FACTOR {
+                    if measurement_length > reference_length * cfg.correspondence.elongation_factor
+                    {
                         return None;
                     }
 
