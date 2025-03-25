@@ -1,17 +1,17 @@
 use nalgebra::{matrix, vector, Isometry2, Matrix2, Vector2};
 
-use crate::{core::config::layout::LayoutConfig, vision::line_detection::DetectedLines};
+use crate::{core::config::layout::LayoutConfig, vision::line_detection::line::LineSegment2};
 
 use super::correspondence::{correspond_field_lines, FieldLineCorrespondence, PointCorrespondence};
 
 const GRADIENT_DESCENT_CONVERGENCE_THRESHOLD: f32 = 0.01;
 const GRADIENT_DESCENT_STEP_SIZE: f32 = 0.01;
-const GRADIENT_DESCENT_MAX_ITERS: usize = 1;
-const GRADIENT_DESCENT_MAX_OUTER_ITERS: usize = 1;
+const GRADIENT_DESCENT_MAX_ITERS: usize = 20;
+const GRADIENT_DESCENT_MAX_OUTER_ITERS: usize = 10;
 
 #[must_use]
 pub fn fit_field_lines(
-    lines: &DetectedLines,
+    lines: &[LineSegment2],
     layout: &LayoutConfig,
 ) -> (Vec<FieldLineCorrespondence>, f32) {
     let mut correction = Isometry2::identity();

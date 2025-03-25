@@ -1,9 +1,160 @@
 use bevy::prelude::*;
-use filter::{StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector};
-use nalgebra::{point, vector, ComplexField, Point2, UnitComplex};
+use filter::{
+    CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
+};
+use nalgebra::{point, vector, ComplexField, Point2, UnitComplex, Vector2, Vector3};
 use num::Complex;
 
-use super::RobotPose;
+use crate::{
+    core::config::layout::{FieldLine, LayoutConfig, ParallelAxis},
+    motion::odometry::Odometry,
+    vision::line_detection::DetectedLines,
+};
+
+use super::{correction::fit_field_lines, correspondence::FieldLineCorrespondence, RobotPose};
+
+const MIN_FIT_ERROR: f32 = 0.001;
+
+const HYPOTHESIS_SCORE_DECAY: f32 = 0.9;
+const HYPOTHESIS_SCORE_GOOD_CORRESPONDENCE_THRESHOLD: f32 = 0.5;
+const HYPOTHESIS_SCORE_GOOD_CORRESPONDENCE_BONUS: f32 = 2.0;
+const HYPOTHESIS_SCORE_DEFAULT_INCREASE: f32 = 0.1;
+const HYPOTHESIS_RETAIN_FACTOR: f32 = 0.05;
+
+fn odometry_update(odometry: Res<Odometry>, mut hypotheses: Query<&mut RobotPoseHypothesis>) {
+    for mut hypothesis in &mut hypotheses {
+        let _ = hypothesis
+            .filter
+            .predict(
+                |pose| RobotPose {
+                    inner: pose.inner * odometry.offset_to_last,
+                },
+                // TODO: replace hardcoded value with config
+                CovarianceMatrix::from_diagonal(&Vector3::new(0.05, 0.05, 0.01)),
+            )
+            .inspect_err(|_| warn!("Cholesky failed in odometry"));
+
+        // TODO: why is this necessary?
+        hypothesis.fix_covariance();
+
+        hypothesis.score *= HYPOTHESIS_SCORE_DECAY;
+    }
+}
+
+fn line_update(
+    layout: Res<LayoutConfig>,
+    new_lines: Query<&DetectedLines, Added<DetectedLines>>,
+    mut hypotheses: Query<&mut RobotPoseHypothesis>,
+) {
+    // get the measured lines in robot space
+    let segments = new_lines
+        .iter()
+        .flat_map(|lines| &lines.segments)
+        .collect::<Vec<_>>();
+
+    for mut hypothesis in hypotheses.iter_mut() {
+        let pose = hypothesis.filter.state();
+
+        // get measured lines in field space
+        let measured = segments
+            .iter()
+            .map(|&&segment| pose.inner * segment)
+            .collect::<Vec<_>>();
+
+        let (correspondences, fit_error) = fit_field_lines(&measured, &layout);
+
+        let clamped_fit_error = fit_error.max(MIN_FIT_ERROR);
+        let num_measurements_weight = 1.0 / correspondences.len() as f32;
+
+        for correspondence in correspondences {
+            let line_length = correspondence.measurement.length();
+            let line_length_weight = if line_length == 0.0 {
+                1.0
+            } else {
+                1.0 / line_length
+            };
+
+            let line_center = correspondence.measurement.center();
+            let line_distance_weight = nalgebra::distance(&line_center, &pose.world_position());
+
+            let covariance_weight = clamped_fit_error
+                * num_measurements_weight
+                * line_length_weight
+                * line_distance_weight;
+
+            match correspondence.reference {
+                FieldLine::Segment { axis, .. } => {
+                    let _ = hypothesis
+                        .filter
+                        .update(
+                            |pose| {
+                                let state: StateVector<3> = pose.into();
+
+                                match axis {
+                                    ParallelAxis::X => LineMeasurement {
+                                        distance: state.y,
+                                        angle: state.z,
+                                    },
+                                    ParallelAxis::Y => LineMeasurement {
+                                        distance: state.x,
+                                        angle: state.z,
+                                    },
+                                }
+                            },
+                            LineMeasurement::from_pose_and_correspondence(pose, &correspondence),
+                            // TODO: config values
+                            CovarianceMatrix::from_diagonal(&Vector2::from([1000.0, 320.0]))
+                                * covariance_weight,
+                        )
+                        .inspect_err(|_| warn!("Cholesky failed in line update"));
+                }
+                FieldLine::Circle(..) => {
+                    let _ = hypothesis
+                        .filter
+                        .update(
+                            |pose| {
+                                let state: StateVector<3> = pose.into();
+                                CircleMeasurement::from(state.xy())
+                            },
+                            CircleMeasurement::from_pose_and_correspondence(pose, &correspondence),
+                            // TODO: config values
+                            CovarianceMatrix::from_diagonal(&Vector2::from([1000.0, 1000.0]))
+                                * covariance_weight,
+                        )
+                        .inspect_err(|_| warn!("Cholesky failed in circle update"));
+                }
+            }
+
+            if correspondence.error() < HYPOTHESIS_SCORE_GOOD_CORRESPONDENCE_THRESHOLD {
+                hypothesis.score += HYPOTHESIS_SCORE_GOOD_CORRESPONDENCE_BONUS;
+            }
+        }
+
+        hypothesis.score += HYPOTHESIS_SCORE_DEFAULT_INCREASE;
+    }
+}
+
+fn filter_hypotheses(
+    mut commands: Commands,
+    mut pose: ResMut<RobotPose>,
+    hypotheses: Query<(Entity, &RobotPoseHypothesis)>,
+) {
+    let (new_pose, best_score) = hypotheses
+        .iter()
+        .max_by(|(_, a), (_, b)| a.score.total_cmp(&b.score))
+        .map(|(_, hypothesis)| (hypothesis.filter.state(), hypothesis.score))
+        .expect("Could not get best hypothesis");
+
+    // remove all hypotheses that are not good enough
+    for (entity, hypothesis) in hypotheses.iter() {
+        if hypothesis.score < HYPOTHESIS_RETAIN_FACTOR * best_score {
+            commands.entity(entity).despawn();
+        }
+    }
+
+    // set the new best pose
+    *pose = new_pose;
+}
 
 #[derive(Clone, Component)]
 pub struct RobotPoseHypothesis {
@@ -23,6 +174,15 @@ impl RobotPoseHypothesis {
 struct LineMeasurement {
     distance: f32,
     angle: f32,
+}
+
+impl LineMeasurement {
+    fn from_pose_and_correspondence(
+        pose: RobotPose,
+        correspondence: &FieldLineCorrespondence,
+    ) -> Self {
+        todo!();
+    }
 }
 
 impl From<StateVector<2>> for LineMeasurement {
@@ -66,6 +226,15 @@ impl StateTransform<2> for LineMeasurement {
 
 struct CircleMeasurement {
     position: Point2<f32>,
+}
+
+impl CircleMeasurement {
+    fn from_pose_and_correspondence(
+        pose: RobotPose,
+        correspondence: &FieldLineCorrespondence,
+    ) -> Self {
+        todo!()
+    }
 }
 
 impl From<StateVector<2>> for CircleMeasurement {
