@@ -64,6 +64,23 @@ impl LineSegment2 {
         Line2::new(normal, d)
     }
 
+    /// Flips the start and end points of the line segment
+    #[must_use]
+    pub fn to_flipped(&self) -> Self {
+        Self {
+            start: self.end,
+            end: self.start,
+        }
+    }
+
+    /// Smallest angle between two line segments
+    #[must_use]
+    pub fn angle(&self, other: &Self) -> f32 {
+        let dir1 = self.end - self.start;
+        let dir2 = other.end - other.start;
+        dir1.angle(&dir2)
+    }
+
     /// Length of the line segment
     #[must_use]
     pub fn length(&self) -> f32 {
@@ -85,9 +102,9 @@ impl LineSegment2 {
 
     /// Projects a point onto the line segment
     ///
-    /// Returns the projected point and the distance to the original point
+    /// Returns the projected point and the signed distance to the original point
     #[must_use]
-    pub fn project_with_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
+    pub fn project_with_signed_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
         let line = self.to_line();
         let projected = line.project(point);
         if self.contains(projected) {
@@ -165,7 +182,7 @@ pub struct Circle {
 
 impl Circle {
     #[must_use]
-    pub fn project_with_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
+    pub fn project_with_signed_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
         let dir = point - self.center;
         let distance = dir.norm();
         let projected = self.center + dir / distance * self.radius;
