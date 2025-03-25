@@ -117,11 +117,10 @@ impl GameControllerSocket {
             eprintln!("GOT GC_HOST: {gc_host}");
             let gc_ip_str = gc_host.split(":").next().expect("Invalid `GC_HOST`");
             let gc_ip = Ipv4Addr::from_str(gc_ip_str).expect("Invalid `GC_HOST`");
-            let gc_port = 3939u16;
+            let gc_port = bifrost::communication::GAME_CONTROLLER_DATA_PORT;
 
             eprintln!("addr: {}", SocketAddrV4::new(gc_ip, gc_port));
             socket.connect(SocketAddrV4::new(gc_ip, gc_port)).await?;
-            UdpSocket::peer_addr(&self)
         } else {
             eprintln!("DID NOT GET GC_HOST");
         }
