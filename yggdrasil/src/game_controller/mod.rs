@@ -115,8 +115,7 @@ impl GameControllerSocket {
             Arc::new(UdpSocket::bind((Ipv4Addr::UNSPECIFIED, GAME_CONTROLLER_DATA_PORT)).await?);
 
         let gc_address = std::env::var("GC_HOST").ok().map(|gc_host| {
-            let gc_ip_str = gc_host.split(":").next().expect("Invalid `GC_HOST`");
-            let gc_ip = Ipv4Addr::from_str(gc_ip_str).expect("Invalid `GC_HOST`");
+            let gc_ip = Ipv4Addr::from_str(&gc_host).expect("Invalid `GC_HOST`");
 
             gc_ip
         });
