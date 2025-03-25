@@ -1,3 +1,5 @@
+use bevy::prelude::*;
+
 use nalgebra::{matrix, vector, Isometry2, Matrix2, Vector2};
 
 use crate::{core::config::layout::LayoutConfig, vision::line_detection::line::LineSegment2};
@@ -6,19 +8,23 @@ use super::correspondence::{correspond_field_lines, FieldLineCorrespondence, Poi
 
 const GRADIENT_DESCENT_CONVERGENCE_THRESHOLD: f32 = 0.01;
 const GRADIENT_DESCENT_STEP_SIZE: f32 = 0.01;
-const GRADIENT_DESCENT_MAX_ITERS: usize = 20;
+const GRADIENT_DESCENT_MAX_ITERS: usize = 25;
 const GRADIENT_DESCENT_MAX_OUTER_ITERS: usize = 10;
 
 #[must_use]
 pub fn fit_field_lines(
     lines: &[LineSegment2],
     layout: &LayoutConfig,
-) -> (Vec<FieldLineCorrespondence>, f32) {
+) -> Option<(Vec<FieldLineCorrespondence>, f32)> {
     let mut correction = Isometry2::identity();
 
     for _ in 0..GRADIENT_DESCENT_MAX_OUTER_ITERS {
         let point_correspondences =
             get_point_correspondences(&correspond_field_lines(lines, layout, correction));
+
+        if point_correspondences.is_empty() {
+            return None;
+        }
 
         let weight_matrices = get_weight_matrices(&point_correspondences, correction);
 
@@ -64,6 +70,10 @@ pub fn fit_field_lines(
             ]
             .norm();
 
+            if gradient_norm.is_nan() {
+                warn!("Gradient norm is NaN");
+            }
+
             if gradient_norm < GRADIENT_DESCENT_CONVERGENCE_THRESHOLD {
                 break;
             }
@@ -75,7 +85,7 @@ pub fn fit_field_lines(
     let weight_matrices = get_weight_matrices(&point_correspondences, correction);
     let fit_error = get_fit_error(&point_correspondences, &weight_matrices, correction);
 
-    (field_line_correspondences, fit_error)
+    Some((field_line_correspondences, fit_error))
 }
 
 fn get_point_correspondences(
