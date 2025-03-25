@@ -1,5 +1,6 @@
 pub mod correction;
 pub mod correspondence;
+pub mod hypothesis;
 pub mod pose;
 
 pub use pose::RobotPose;

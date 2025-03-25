@@ -34,7 +34,7 @@ pub type SigmaPoints4 = SigmaPoints<4, 9>;
 /// Merwe scaled sigma points
 ///
 /// N should be `2 * D + 1` where D is the dimension of your state vector
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct SigmaPoints<const D_STATE: usize, const N_SIGMAS: usize> {
     pub alpha: f32,
     pub beta: f32,
@@ -114,13 +114,14 @@ impl<const D_STATE: usize, const N_SIGMAS: usize> SigmaPoints<D_STATE, N_SIGMAS>
 /// An Unscented Kalman Filter
 ///
 /// Uses the formulation found [here](https://nbviewer.org/github/sbitzer/UKF-exposed/blob/master/UKF.ipynb)
+#[derive(Debug, Clone, Copy)]
 pub struct UnscentedKalmanFilter<const D_STATE: usize, const N_SIGMAS: usize, S>
 where
     S: StateTransform<D_STATE>,
 {
     sigmas: SigmaPoints<D_STATE, N_SIGMAS>,
-    state: StateVector<D_STATE>,
-    covariance: CovarianceMatrix<D_STATE>,
+    pub state: StateVector<D_STATE>,
+    pub covariance: CovarianceMatrix<D_STATE>,
 
     _state_transform: PhantomData<S>,
 }
