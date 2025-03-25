@@ -19,6 +19,7 @@ pub struct FieldLineCorrespondence {
 }
 
 impl FieldLineCorrespondence {
+    #[must_use]
     pub fn error(&self) -> f32 {
         self.start.distance() + self.end.distance()
     }

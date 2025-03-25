@@ -2,11 +2,14 @@ use bevy::prelude::*;
 use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
-use nalgebra::{point, vector, ComplexField, Point2, UnitComplex, Vector2, Vector3};
+use nalgebra::{point, vector, ComplexField, Point2, Rotation2, UnitComplex, Vector2, Vector3};
 use num::Complex;
 
 use crate::{
-    core::config::layout::{FieldLine, LayoutConfig, ParallelAxis},
+    core::{
+        config::layout::{FieldLine, LayoutConfig, ParallelAxis},
+        debug::DebugContext,
+    },
     motion::odometry::Odometry,
     vision::line_detection::DetectedLines,
 };
@@ -21,7 +24,7 @@ const HYPOTHESIS_SCORE_GOOD_CORRESPONDENCE_BONUS: f32 = 2.0;
 const HYPOTHESIS_SCORE_DEFAULT_INCREASE: f32 = 0.1;
 const HYPOTHESIS_RETAIN_FACTOR: f32 = 0.05;
 
-fn odometry_update(odometry: Res<Odometry>, mut hypotheses: Query<&mut RobotPoseHypothesis>) {
+pub fn odometry_update(odometry: Res<Odometry>, mut hypotheses: Query<&mut RobotPoseHypothesis>) {
     for mut hypothesis in &mut hypotheses {
         let _ = hypothesis
             .filter
@@ -41,7 +44,7 @@ fn odometry_update(odometry: Res<Odometry>, mut hypotheses: Query<&mut RobotPose
     }
 }
 
-fn line_update(
+pub fn line_update(
     layout: Res<LayoutConfig>,
     new_lines: Query<&DetectedLines, Added<DetectedLines>>,
     mut hypotheses: Query<&mut RobotPoseHypothesis>,
@@ -52,7 +55,7 @@ fn line_update(
         .flat_map(|lines| &lines.segments)
         .collect::<Vec<_>>();
 
-    for mut hypothesis in hypotheses.iter_mut() {
+    for mut hypothesis in &mut hypotheses {
         let pose = hypothesis.filter.state();
 
         // get measured lines in field space
@@ -134,7 +137,7 @@ fn line_update(
     }
 }
 
-fn filter_hypotheses(
+pub fn filter_hypotheses(
     mut commands: Commands,
     mut pose: ResMut<RobotPose>,
     hypotheses: Query<(Entity, &RobotPoseHypothesis)>,
@@ -163,6 +166,20 @@ pub struct RobotPoseHypothesis {
 }
 
 impl RobotPoseHypothesis {
+    pub fn new(
+        initial_pose: RobotPose,
+        initial_covariance: CovarianceMatrix<3>,
+        initial_score: f32,
+    ) -> Self {
+        let filter =
+            UnscentedKalmanFilter::<3, 7, RobotPose>::new(initial_pose, initial_covariance);
+
+        Self {
+            filter,
+            score: initial_score,
+        }
+    }
+
     /// Mitigate numerical instability with covariance matrix by ensuring it is symmetric
     pub fn fix_covariance(&mut self) {
         let cov = &mut self.filter.covariance;
@@ -181,7 +198,40 @@ impl LineMeasurement {
         pose: RobotPose,
         correspondence: &FieldLineCorrespondence,
     ) -> Self {
-        todo!();
+        let FieldLine::Segment { segment, axis } = correspondence.reference else {
+            panic!("Tried to make line measurements from circle measurements");
+        };
+
+        let measurement_needs_flipping = match axis {
+            ParallelAxis::X => {
+                correspondence.measurement.end.x < correspondence.measurement.start.x
+            }
+            ParallelAxis::Y => {
+                correspondence.measurement.end.y < correspondence.measurement.start.y
+            }
+        };
+
+        let measurement = if measurement_needs_flipping {
+            correspondence.measurement.to_flipped()
+        } else {
+            correspondence.measurement
+        };
+
+        let measurement_vector = measurement.end - measurement.start;
+        let signed_distance = measurement
+            .to_line()
+            .signed_distance_to_point(pose.world_position());
+
+        match axis {
+            ParallelAxis::X => LineMeasurement {
+                distance: segment.start.y + signed_distance,
+                angle: (-measurement_vector.y).atan2(measurement_vector.x) + pose.world_rotation(),
+            },
+            ParallelAxis::Y => LineMeasurement {
+                distance: segment.start.x - signed_distance,
+                angle: measurement_vector.x.atan2(measurement_vector.y) + pose.world_rotation(),
+            },
+        }
     }
 }
 
@@ -233,7 +283,26 @@ impl CircleMeasurement {
         pose: RobotPose,
         correspondence: &FieldLineCorrespondence,
     ) -> Self {
-        todo!()
+        let measurement_vector = correspondence.end.measurement - correspondence.start.measurement;
+        let reference_vector = correspondence.end.reference - correspondence.start.reference;
+
+        let measurement_start_to_robot = pose.world_position() - correspondence.start.measurement;
+
+        // Signed angle between two vectors: https://wumbo.net/formulas/angle-between-two-vectors-2d/
+        let measured_rotation = f32::atan2(
+            measurement_start_to_robot.y * measurement_vector.x
+                - measurement_start_to_robot.x * measurement_vector.y,
+            measurement_start_to_robot.x * measurement_vector.x
+                + measurement_start_to_robot.y * measurement_vector.y,
+        );
+
+        let reference_start_to_robot = Rotation2::new(measured_rotation)
+            * reference_vector.normalize()
+            * measurement_start_to_robot.norm();
+
+        let position = correspondence.start.reference + reference_start_to_robot;
+
+        CircleMeasurement { position }
     }
 }
 

@@ -2,38 +2,13 @@ use bevy::prelude::*;
 use filter::{StateMatrix, StateTransform, StateVector, WeightVector};
 use num::Complex;
 
-use std::f32::consts::PI;
+use crate::core::config::layout::LayoutConfig;
 
-use crate::{
-    behavior::primary_state::PrimaryState,
-    core::{
-        config::{layout::LayoutConfig, showtime::PlayerConfig},
-        debug::DebugContext,
-    },
-    motion::odometry::Odometry,
-    nao::Cycle,
-    sensor::orientation::RobotOrientation,
-};
-
-use bifrost::communication::{GameControllerMessage, GamePhase};
 use nalgebra::{
-    ComplexField, Isometry2, Isometry3, Point2, Point3, SVector, Translation2, Translation3,
-    UnitComplex, UnitQuaternion,
+    vector, ComplexField, Isometry2, Isometry3, Point2, Point3, SVector, Translation3, UnitComplex,
+    UnitQuaternion, Vector2,
 };
 use nidhogg::types::HeadJoints;
-use rerun::{external::glam::Quat, TimeColumn};
-
-pub fn init_pose(
-    mut commands: Commands,
-    layout_config: Res<LayoutConfig>,
-    player_config: Res<PlayerConfig>,
-) {
-    let initial_position = layout_config
-        .initial_positions
-        .player(player_config.player_number);
-
-    commands.insert_resource(RobotPose::new(initial_position.isometry));
-}
 
 #[derive(Resource, Default, Debug, Clone, Copy)]
 pub struct RobotPose {
@@ -45,8 +20,13 @@ impl RobotPose {
     // Set to zero if we are only looking at the ground, for example.
     pub const CAMERA_HEIGHT: f32 = 0.5;
 
-    fn new(pose: Isometry2<f32>) -> Self {
+    pub fn from_isometry(pose: Isometry2<f32>) -> Self {
         Self { inner: pose }
+    }
+
+    pub fn from_translation_and_rotation(translation: Vector2<f32>, angle: f32) -> Self {
+        let inner = Isometry2::new(translation, angle);
+        Self { inner }
     }
 
     /// The current pose of the robot in the world, in 3D space.
@@ -151,110 +131,104 @@ impl StateTransform<3> for RobotPose {
     }
 }
 
-pub fn update_robot_pose(
-    mut robot_pose: ResMut<RobotPose>,
-    odometry: Res<Odometry>,
-    primary_state: Res<PrimaryState>,
-    layout_config: Res<LayoutConfig>,
-    game_controller_message: Option<Res<GameControllerMessage>>,
-) {
-    *robot_pose = next_robot_pose(
-        robot_pose.as_mut(),
-        odometry.as_ref(),
-        primary_state.as_ref(),
-        layout_config.as_ref(),
-        game_controller_message.as_deref(),
-    );
+pub fn initial_pose(layout: &LayoutConfig, player_num: u8) -> RobotPose {
+    RobotPose::from_isometry(layout.initial_positions.player(player_num).isometry)
 }
 
-#[must_use]
-pub fn next_robot_pose(
-    robot_pose: &RobotPose,
-    odometry: &Odometry,
-    primary_state: &PrimaryState,
-    layout_config: &LayoutConfig,
-    message: Option<&GameControllerMessage>,
-) -> RobotPose {
-    let mut isometry = if *primary_state == PrimaryState::Penalized {
-        find_closest_penalty_pose(robot_pose, layout_config)
-    } else {
-        robot_pose.inner * odometry.offset_to_last
-    };
+pub fn penalized_pose(
+    layout: &LayoutConfig,
+    penalized_distance: f32,
+) -> impl IntoIterator<Item = RobotPose> {
+    /// "The removed robot will be placed outside the field at a distance of approximately 50 cm
+    /// away from the nearest touchline, facing towards the field of play."
+    const PENALTY_DISTANCE_FROM_TOUCHLINE: f32 = 0.5;
 
-    if let Some(message) = message {
-        if message.game_phase == GamePhase::PenaltyShoot {
-            if message.kicking_team == 8 {
-                isometry = Isometry2::from_parts(
-                    Translation2::new(3.2, 0.0),
-                    UnitComplex::from_angle(0.0),
-                );
-            } else {
-                isometry =
-                    Isometry2::from_parts(Translation2::new(4.5, 0.0), UnitComplex::from_angle(PI));
-            }
-        }
-    }
-
-    RobotPose::new(isometry)
+    [
+        RobotPose::from_translation_and_rotation(
+            vector![
+                -layout.field.length * 0.5 + layout.field.penalty_mark_distance,
+                -layout.field.width * 0.5 - penalized_distance,
+            ],
+            std::f32::consts::FRAC_PI_2,
+        ),
+        RobotPose::from_translation_and_rotation(
+            vector![
+                -layout.field.length * 0.5 + layout.field.penalty_mark_distance,
+                layout.field.width * 0.5 + PENALTY_DISTANCE_FROM_TOUCHLINE
+            ],
+            -std::f32::consts::FRAC_PI_2,
+        ),
+    ]
 }
 
-fn find_closest_penalty_pose(
-    robot_pose: &RobotPose,
-    layout_config: &LayoutConfig,
-) -> Isometry2<f32> {
-    *layout_config
-        .penalty_positions
-        .iter()
-        .reduce(|a, b| {
-            let distance_a =
-                (robot_pose.inner.translation.vector - a.translation.vector).norm_squared();
-            let distance_b =
-                (robot_pose.inner.translation.vector - b.translation.vector).norm_squared();
+// pub fn update_robot_pose(
+//     mut robot_pose: ResMut<RobotPose>,
+//     odometry: Res<Odometry>,
+//     primary_state: Res<PrimaryState>,
+//     layout_config: Res<LayoutConfig>,
+//     game_controller_message: Option<Res<GameControllerMessage>>,
+// ) {
+//     *robot_pose = next_robot_pose(
+//         robot_pose.as_mut(),
+//         odometry.as_ref(),
+//         primary_state.as_ref(),
+//         layout_config.as_ref(),
+//         game_controller_message.as_deref(),
+//     );
+// }
 
-            if distance_b > distance_a {
-                a
-            } else {
-                b
-            }
-        })
-        .unwrap_or_else(|| {
-            tracing::warn!("failed to find closest penalty pose for");
-            &robot_pose.inner
-        })
-}
+// #[must_use]
+// pub fn next_robot_pose(
+//     robot_pose: &RobotPose,
+//     odometry: &Odometry,
+//     primary_state: &PrimaryState,
+//     layout_config: &LayoutConfig,
+//     message: Option<&GameControllerMessage>,
+// ) -> RobotPose {
+//     let mut isometry = if *primary_state == PrimaryState::Penalized {
+//         find_closest_penalty_pose(robot_pose, layout_config)
+//     } else {
+//         robot_pose.inner * odometry.offset_to_last
+//     };
 
-pub fn setup_pose_visualization(dbg: DebugContext) {
-    let times = TimeColumn::new_sequence("cycle", [0]);
-    let color_and_shape = rerun::Boxes3D::update_fields()
-        .with_half_sizes([(0.075, 0.1375, 0.2865)])
-        .with_colors([rerun::Color::from_rgb(0, 120, 255)])
-        .columns_of_unit_batches()
-        .expect("failed to create pose visualization");
+//     if let Some(message) = message {
+//         if message.game_phase == GamePhase::PenaltyShoot {
+//             if message.kicking_team == 8 {
+//                 isometry = Isometry2::from_parts(
+//                     Translation2::new(3.2, 0.0),
+//                     UnitComplex::from_angle(0.0),
+//                 );
+//             } else {
+//                 isometry =
+//                     Isometry2::from_parts(Translation2::new(4.5, 0.0), UnitComplex::from_angle(PI));
+//             }
+//         }
+//     }
 
-    let transform = rerun::Transform3D::update_fields()
-        .with_axis_length(0.3)
-        .columns_of_unit_batches()
-        .expect("failed to create view coordinates for pose visualation");
+//     RobotPose::new(isometry)
+// }
 
-    dbg.send_columns(
-        "localization/pose",
-        [times],
-        color_and_shape.chain(transform),
-    );
-}
+// fn find_closest_penalty_pose(
+//     robot_pose: &RobotPose,
+//     layout_config: &LayoutConfig,
+// ) -> Isometry2<f32> {
+//     *layout_config
+//         .penalty_positions
+//         .iter()
+//         .reduce(|a, b| {
+//             let distance_a =
+//                 (robot_pose.inner.translation.vector - a.translation.vector).norm_squared();
+//             let distance_b =
+//                 (robot_pose.inner.translation.vector - b.translation.vector).norm_squared();
 
-pub fn visualize_pose(
-    dbg: DebugContext,
-    cycle: Res<Cycle>,
-    pose: Res<RobotPose>,
-    orientation: Res<RobotOrientation>,
-) {
-    let orientation = orientation.quaternion();
-    let position = pose.inner.translation.vector;
-    dbg.log_with_cycle(
-        "localization/pose",
-        *cycle,
-        &rerun::Transform3D::from_rotation(Into::<Quat>::into(orientation))
-            .with_translation((position.x, position.y, 0.2865)),
-    );
-}
+//             if distance_b > distance_a {
+//                 a
+//             } else {
+//                 b
+//             }
+//         })
+//         .unwrap_or_else(|| {
+//             tracing::warn!("failed to find closest penalty pose for");
+//             &robot_pose.inner
+//         })
+// }
