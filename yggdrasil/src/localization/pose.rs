@@ -1,4 +1,6 @@
 use bevy::prelude::*;
+use filter::{StateMatrix, StateTransform, StateVector, WeightVector};
+use num::Complex;
 
 use std::f32::consts::PI;
 
@@ -15,7 +17,8 @@ use crate::{
 
 use bifrost::communication::{GameControllerMessage, GamePhase};
 use nalgebra::{
-    Isometry2, Isometry3, Point2, Point3, Translation2, Translation3, UnitComplex, UnitQuaternion,
+    ComplexField, Isometry2, Isometry3, Point2, Point3, SVector, Translation2, Translation3,
+    UnitComplex, UnitQuaternion,
 };
 use nidhogg::types::HeadJoints;
 use rerun::{external::glam::Quat, TimeColumn};
@@ -107,6 +110,44 @@ impl RobotPose {
     pub fn angle_to(&self, point: &Point2<f32>) -> f32 {
         let robot_to_point = self.world_to_robot(point).xy();
         robot_to_point.y.atan2(robot_to_point.x)
+    }
+}
+
+impl From<RobotPose> for StateVector<3> {
+    fn from(pose: RobotPose) -> Self {
+        let translation = pose.inner.translation.vector;
+        let rotation = pose.inner.rotation;
+        translation.xy().push(rotation.angle())
+    }
+}
+
+impl From<StateVector<3>> for RobotPose {
+    fn from(state: StateVector<3>) -> Self {
+        Self {
+            inner: Isometry2::new(state.xy(), state.z),
+        }
+    }
+}
+
+impl StateTransform<3> for RobotPose {
+    fn into_state_mean<const N: usize>(
+        weights: WeightVector<N>,
+        states: StateMatrix<3, N>,
+    ) -> StateVector<3> {
+        let mut mean_translation = SVector::zeros();
+        let mut mean_angle = Complex::ZERO;
+
+        for (&weight, pose) in weights.iter().zip(states.column_iter()) {
+            mean_translation += weight * pose.xy();
+            mean_angle += weight * Complex::cis(pose.z);
+        }
+
+        mean_translation.xy().push(mean_angle.argument())
+    }
+
+    fn residual(measurement: StateVector<3>, prediction: StateVector<3>) -> StateVector<3> {
+        (measurement.xy() - prediction.xy())
+            .push((UnitComplex::new(measurement.z) / UnitComplex::new(prediction.z)).angle())
     }
 }
 
