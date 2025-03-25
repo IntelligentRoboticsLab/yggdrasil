@@ -28,7 +28,7 @@ impl GameControllerReceiver {
 }
 
 pub async fn receive_loop(
-    sock: GameControllerSocket,
+    game_controller_socket: GameControllerSocket,
     tx: UnboundedSender<(GameControllerMessage, SocketAddr)>,
 ) {
     // The buffer is larger than necessary, in case we somehow receive invalid data, which can be a
@@ -36,10 +36,19 @@ pub async fn receive_loop(
     let mut buffer = [0u8; 2 * size_of::<GameControllerMessage>()];
 
     loop {
-        let Ok((_size, address)) = sock.recv_from(&mut buffer).await else {
+        let Ok((_size, address)) = game_controller_socket.recv_from(&mut buffer).await else {
             tracing::error!("Received invalid data from GameControllerSocket");
             continue;
         };
+
+        if game_controller_socket
+            .configured_game_controller_address()
+            .is_some_and(|configured_game_controller_socket| {
+                configured_game_controller_socket != address.ip()
+            })
+        {
+            continue;
+        }
 
         let Ok(message) = GameControllerMessage::decode(&mut buffer.as_slice()) else {
             tracing::error!("Could not decode GameControllerMessage");

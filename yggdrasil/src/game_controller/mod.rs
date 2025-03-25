@@ -106,6 +106,7 @@ impl GameControllerConnection {
 #[derive(Clone)]
 struct GameControllerSocket {
     socket: Arc<UdpSocket>,
+    gc_address: Option<Ipv4Addr>,
 }
 
 impl GameControllerSocket {
@@ -113,19 +114,18 @@ impl GameControllerSocket {
         let socket =
             Arc::new(UdpSocket::bind((Ipv4Addr::UNSPECIFIED, GAME_CONTROLLER_DATA_PORT)).await?);
 
-        if let Ok(gc_host) = std::env::var("GC_HOST") {
-            eprintln!("GOT GC_HOST: {gc_host}");
+        let gc_address = std::env::var("GC_HOST").ok().map(|gc_host| {
             let gc_ip_str = gc_host.split(":").next().expect("Invalid `GC_HOST`");
             let gc_ip = Ipv4Addr::from_str(gc_ip_str).expect("Invalid `GC_HOST`");
-            let gc_port = bifrost::communication::GAME_CONTROLLER_DATA_PORT;
 
-            eprintln!("addr: {}", SocketAddrV4::new(gc_ip, gc_port));
-            socket.connect(SocketAddrV4::new(gc_ip, gc_port)).await?;
-        } else {
-            eprintln!("DID NOT GET GC_HOST");
-        }
+            gc_ip
+        });
 
-        Ok(Self { socket })
+        Ok(Self { socket, gc_address })
+    }
+
+    pub fn configured_game_controller_address(&self) -> Option<Ipv4Addr> {
+        self.gc_address
     }
 
     pub async fn recv_from(&self, buffer: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
