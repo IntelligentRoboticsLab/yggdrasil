@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
-use nalgebra::{point, vector, ComplexField, Point2, Rotation2, UnitComplex, Vector2, Vector3};
+use nalgebra::{point, vector, ComplexField, Point2, Rotation2, UnitComplex};
 use num::Complex;
 
 use crate::{
@@ -15,17 +15,16 @@ use crate::{
     vision::line_detection::DetectedLines,
 };
 
-use super::{correction::fit_field_lines, correspondence::FieldLineCorrespondence, RobotPose};
+use super::{
+    correction::fit_field_lines, correspondence::FieldLineCorrespondence, LocalizationConfig,
+    RobotPose,
+};
 
-const MIN_FIT_ERROR: f32 = 0.001;
-
-const HYPOTHESIS_SCORE_DECAY: f32 = 0.9;
-const HYPOTHESIS_SCORE_GOOD_CORRESPONDENCE_THRESHOLD: f32 = 0.5;
-const HYPOTHESIS_SCORE_GOOD_CORRESPONDENCE_BONUS: f32 = 2.0;
-const HYPOTHESIS_SCORE_DEFAULT_INCREASE: f32 = 0.1;
-const HYPOTHESIS_RETAIN_FACTOR: f32 = 0.05;
-
-pub fn odometry_update(odometry: Res<Odometry>, mut hypotheses: Query<&mut RobotPoseHypothesis>) {
+pub fn odometry_update(
+    cfg: Res<LocalizationConfig>,
+    odometry: Res<Odometry>,
+    mut hypotheses: Query<&mut RobotPoseHypothesis>,
+) {
     for mut hypothesis in &mut hypotheses {
         let _ = hypothesis
             .filter
@@ -33,20 +32,20 @@ pub fn odometry_update(odometry: Res<Odometry>, mut hypotheses: Query<&mut Robot
                 |pose| RobotPose {
                     inner: pose.inner * odometry.offset_to_last,
                 },
-                // TODO: replace hardcoded value with config
-                CovarianceMatrix::from_diagonal(&Vector3::new(0.05, 0.05, 0.01)),
+                CovarianceMatrix::from_diagonal(&cfg.hypothesis.odometry_variance.into()),
             )
             .inspect_err(|_| warn!("Cholesky failed in odometry"));
 
         // TODO: why is this necessary?
         hypothesis.fix_covariance();
 
-        hypothesis.score *= HYPOTHESIS_SCORE_DECAY;
+        hypothesis.score *= cfg.hypothesis.score_decay;
     }
 }
 
 pub fn line_update(
     dbg: DebugContext,
+    cfg: Res<LocalizationConfig>,
     layout: Res<LayoutConfig>,
     new_lines: Query<(&Cycle, &DetectedLines), Added<DetectedLines>>,
     mut hypotheses: Query<&mut RobotPoseHypothesis>,
@@ -74,10 +73,9 @@ pub fn line_update(
         let measured = segments
             .iter()
             .map(|&&segment| pose.inner * segment)
-            // .filter(|segment| layout.field.in_field_with_margin(segment.center(), 0.15))
             .collect::<Vec<_>>();
 
-        let Some((correspondences, fit_error)) = fit_field_lines(&measured, &layout) else {
+        let Some((correspondences, fit_error)) = fit_field_lines(&measured, &cfg, &layout) else {
             continue;
         };
 
@@ -101,7 +99,7 @@ pub fn line_update(
             .with_radii(std::iter::once(0.05)),
         );
 
-        let clamped_fit_error = fit_error.max(MIN_FIT_ERROR);
+        let clamped_fit_error = fit_error.max(cfg.correspondence.min_fit_error);
         let num_measurements_weight = 1.0 / correspondences.len() as f32;
 
         for correspondence in correspondences {
@@ -140,9 +138,9 @@ pub fn line_update(
                                 }
                             },
                             LineMeasurement::from_pose_and_correspondence(pose, &correspondence),
-                            // TODO: config values
-                            CovarianceMatrix::from_diagonal(&Vector2::from([1000.0, 320.0]))
-                                * covariance_weight,
+                            CovarianceMatrix::from_diagonal(
+                                &cfg.hypothesis.line_measurement_variance.into(),
+                            ) * covariance_weight,
                         )
                         .inspect_err(|_| warn!("Cholesky failed in line update"));
                 }
@@ -155,26 +153,27 @@ pub fn line_update(
                                 CircleMeasurement::from(state.xy())
                             },
                             CircleMeasurement::from_pose_and_correspondence(pose, &correspondence),
-                            // TODO: config values
-                            CovarianceMatrix::from_diagonal(&Vector2::from([1000.0, 1000.0]))
-                                * covariance_weight,
+                            CovarianceMatrix::from_diagonal(
+                                &cfg.hypothesis.circle_measurement_variance.into(),
+                            ) * covariance_weight,
                         )
                         .inspect_err(|_| warn!("Cholesky failed in circle update"));
                 }
             }
 
-            if correspondence.error() < HYPOTHESIS_SCORE_GOOD_CORRESPONDENCE_THRESHOLD {
-                hypothesis.score += HYPOTHESIS_SCORE_GOOD_CORRESPONDENCE_BONUS;
+            if correspondence.error() < cfg.hypothesis.score_correspondence_bonus_threshold {
+                hypothesis.score += cfg.hypothesis.score_correspondence_bonus;
             }
         }
 
-        hypothesis.score += HYPOTHESIS_SCORE_DEFAULT_INCREASE;
+        hypothesis.score += cfg.hypothesis.score_default_increase;
     }
 }
 
 pub fn filter_hypotheses(
     mut commands: Commands,
     mut pose: ResMut<RobotPose>,
+    cfg: Res<LocalizationConfig>,
     hypotheses: Query<(Entity, &RobotPoseHypothesis)>,
 ) {
     let (new_pose, best_score) = hypotheses
@@ -185,7 +184,7 @@ pub fn filter_hypotheses(
 
     // remove all hypotheses that are not good enough
     for (entity, hypothesis) in hypotheses.iter() {
-        if hypothesis.score < HYPOTHESIS_RETAIN_FACTOR * best_score {
+        if hypothesis.score < cfg.hypothesis.retain_ratio * best_score {
             commands.entity(entity).despawn();
         }
     }
@@ -201,6 +200,7 @@ pub struct RobotPoseHypothesis {
 }
 
 impl RobotPoseHypothesis {
+    #[must_use]
     pub fn new(
         initial_pose: RobotPose,
         initial_covariance: CovarianceMatrix<3>,

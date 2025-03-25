@@ -7,11 +7,12 @@ use bevy::prelude::*;
 
 use filter::CovarianceMatrix;
 use hypothesis::{filter_hypotheses, line_update, odometry_update, RobotPoseHypothesis};
-use nalgebra::vector;
+use odal::Config;
 use pose::initial_pose;
 pub use pose::RobotPose;
 
 use rerun::{external::glam::Quat, TimeColumn};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     core::{
@@ -20,6 +21,7 @@ use crate::{
     },
     motion::{keyframe::KeyframeExecutor, odometry, walking_engine::Gait},
     nao::Cycle,
+    prelude::ConfigExt,
     sensor::{fsr::Contacts, orientation::RobotOrientation},
 };
 
@@ -28,7 +30,8 @@ pub struct LocalizationPlugin;
 
 impl Plugin for LocalizationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostStartup, (initialize_pose, setup_pose_visualization))
+        app.init_config::<LocalizationConfig>()
+            .add_systems(PostStartup, (initialize_pose, setup_pose_visualization))
             .add_systems(
                 PreUpdate,
                 (odometry_update, line_update, filter_hypotheses)
@@ -40,14 +43,74 @@ impl Plugin for LocalizationPlugin {
     }
 }
 
-fn initialize_pose(mut commands: Commands, layout: Res<LayoutConfig>, player: Res<PlayerConfig>) {
+#[derive(Resource, Debug, Clone, Serialize, Deserialize)]
+pub struct LocalizationConfig {
+    pub correspondence: CorrespondenceConfig,
+    pub hypothesis: HypothesisConfig,
+    pub gradient_descent: GradientDescentConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CorrespondenceConfig {
+    /// Minimum fitting error for a correspondence to be considered valid
+    pub min_fit_error: f32,
+    /// Factor by which the length of a measured line may be greater than the corresponding field line
+    pub elongation_factor: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HypothesisConfig {
+    /// Variance of the odometry
+    pub odometry_variance: [f32; 3],
+    /// Variance of the line measurement
+    pub line_measurement_variance: [f32; 2],
+    /// Variance of the circle measurement
+    pub circle_measurement_variance: [f32; 2],
+    /// Initial pose variance of a new hypothesis
+    pub variance_initial: [f32; 3],
+    /// Initial score of a new hypothesis
+    pub score_initial: f32,
+    /// Factor by which the score of a hypothesis decays every odometry update
+    pub score_decay: f32,
+    /// Error threshold for a well-fitted correspondence
+    pub score_correspondence_bonus_threshold: f32,
+    /// Score bonus for a well-fitted correspondence
+    pub score_correspondence_bonus: f32,
+    /// Score increase if new correspondences have been found
+    pub score_default_increase: f32,
+    /// Threshold ratio of the best hypothesis score in order to not remove the hypothesis
+    pub retain_ratio: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GradientDescentConfig {
+    /// Threshold at which the fit is considered converged
+    pub convergence_threshold: f32,
+    /// Step size for the gradient descent
+    pub step_size: f32,
+    /// Maximum number of correction iterations
+    pub max_correction_iters: usize,
+    /// Maximum number of refitting iterations
+    pub max_refit_iters: usize,
+}
+
+impl Config for LocalizationConfig {
+    const PATH: &'static str = "localization.toml";
+}
+
+fn initialize_pose(
+    mut commands: Commands,
+    layout: Res<LayoutConfig>,
+    player: Res<PlayerConfig>,
+    localization: Res<LocalizationConfig>,
+) {
     let pose = initial_pose(&layout, player.player_number);
 
-    // TODO: config
-    let initial_covariance = CovarianceMatrix::from_diagonal(&vector![0.01, 0.01, 0.01]);
-    let initial_score = 10.0;
-
-    let hypothesis = RobotPoseHypothesis::new(pose, initial_covariance, initial_score);
+    let hypothesis = RobotPoseHypothesis::new(
+        pose,
+        CovarianceMatrix::from_diagonal(&localization.hypothesis.variance_initial.into()),
+        localization.hypothesis.score_initial,
+    );
 
     commands.spawn(hypothesis);
     commands.insert_resource(pose);

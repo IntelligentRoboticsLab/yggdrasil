@@ -4,23 +4,22 @@ use nalgebra::{matrix, vector, Isometry2, Matrix2, Vector2};
 
 use crate::{core::config::layout::LayoutConfig, vision::line_detection::line::LineSegment2};
 
-use super::correspondence::{correspond_field_lines, FieldLineCorrespondence, PointCorrespondence};
-
-const GRADIENT_DESCENT_CONVERGENCE_THRESHOLD: f32 = 0.01;
-const GRADIENT_DESCENT_STEP_SIZE: f32 = 0.01;
-const GRADIENT_DESCENT_MAX_ITERS: usize = 25;
-const GRADIENT_DESCENT_MAX_OUTER_ITERS: usize = 10;
+use super::{
+    correspondence::{correspond_field_lines, FieldLineCorrespondence, PointCorrespondence},
+    LocalizationConfig,
+};
 
 #[must_use]
 pub fn fit_field_lines(
     lines: &[LineSegment2],
+    cfg: &LocalizationConfig,
     layout: &LayoutConfig,
 ) -> Option<(Vec<FieldLineCorrespondence>, f32)> {
     let mut correction = Isometry2::identity();
 
-    for _ in 0..GRADIENT_DESCENT_MAX_OUTER_ITERS {
+    for _ in 0..cfg.gradient_descent.max_refit_iters {
         let point_correspondences =
-            get_point_correspondences(&correspond_field_lines(lines, layout, correction));
+            get_point_correspondences(&correspond_field_lines(lines, cfg, layout, correction));
 
         if point_correspondences.is_empty() {
             return None;
@@ -28,7 +27,7 @@ pub fn fit_field_lines(
 
         let weight_matrices = get_weight_matrices(&point_correspondences, correction);
 
-        for _ in 0..GRADIENT_DESCENT_MAX_ITERS {
+        for _ in 0..cfg.gradient_descent.max_correction_iters {
             let translation_gradient = point_correspondences
                 .iter()
                 .zip(weight_matrices.iter())
@@ -59,8 +58,9 @@ pub fn fit_field_lines(
                 / point_correspondences.len() as f32;
 
             correction = nalgebra::Isometry2::new(
-                correction.translation.vector - (GRADIENT_DESCENT_STEP_SIZE * translation_gradient),
-                rotation - GRADIENT_DESCENT_STEP_SIZE * rotation_gradient,
+                correction.translation.vector
+                    - (cfg.gradient_descent.step_size * translation_gradient),
+                rotation - cfg.gradient_descent.step_size * rotation_gradient,
             );
 
             let gradient_norm = vector![
@@ -74,13 +74,13 @@ pub fn fit_field_lines(
                 warn!("Gradient norm is NaN");
             }
 
-            if gradient_norm < GRADIENT_DESCENT_CONVERGENCE_THRESHOLD {
+            if gradient_norm < cfg.gradient_descent.convergence_threshold {
                 break;
             }
         }
     }
 
-    let field_line_correspondences = correspond_field_lines(lines, layout, correction);
+    let field_line_correspondences = correspond_field_lines(lines, cfg, layout, correction);
     let point_correspondences = get_point_correspondences(&field_line_correspondences);
     let weight_matrices = get_weight_matrices(&point_correspondences, correction);
     let fit_error = get_fit_error(&point_correspondences, &weight_matrices, correction);
