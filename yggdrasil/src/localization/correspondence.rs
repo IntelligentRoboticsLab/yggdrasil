@@ -45,7 +45,7 @@ pub fn correspond_field_lines(
                         FieldLine::Circle(circle) => circle.radius,
                     };
 
-                    if measurement_length < reference_length * LINE_LENGTH_ACCEPTANCE_FACTOR {
+                    if measurement_length > reference_length * LINE_LENGTH_ACCEPTANCE_FACTOR {
                         return None;
                     }
 
