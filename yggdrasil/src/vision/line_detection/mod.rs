@@ -103,7 +103,7 @@ impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
     }
 }
 
-/// The detected field lines in field coordinates
+/// The detected field lines in robot frame
 #[derive(Component, Default)]
 pub struct DetectedLines {
     /// The line equations of the lines that were detected
