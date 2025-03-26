@@ -1,6 +1,6 @@
 use crate::{
     core::{audio::whistle_detection::Whistle, config::showtime::PlayerConfig},
-    game_controller::GameControllerMessageEvent,
+    game_controller::{is_penalized, GameControllerMessageEvent},
     nao::{NaoManager, Priority},
     sensor::button::{ChestButton, HeadButtons},
     vision::referee::{
@@ -67,18 +67,6 @@ pub enum PrimaryState {
     Finished,
     /// State the indicates the robot is performing automatic calibration
     Calibration,
-}
-
-fn is_penalized_by_game_controller(
-    game_controller_message: Option<&GameControllerMessage>,
-    team_number: u8,
-    player_number: u8,
-) -> bool {
-    game_controller_message.is_some_and(|game_controller_message| {
-        game_controller_message
-            .team(team_number)
-            .is_some_and(|team| team.is_penalized(player_number))
-    })
 }
 
 fn update_gamecontroller_message(
@@ -203,11 +191,7 @@ pub fn next_primary_state(
         None => primary_state,
     };
 
-    if is_penalized_by_game_controller(
-        game_controller_message,
-        player_config.team_number,
-        player_config.player_number,
-    ) {
+    if is_penalized(game_controller_message, player_config) {
         primary_state = PS::Penalized;
     }
 

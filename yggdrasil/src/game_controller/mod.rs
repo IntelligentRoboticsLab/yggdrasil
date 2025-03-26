@@ -1,5 +1,10 @@
+mod penalty;
 mod receive;
 mod transmit;
+
+pub mod conditions {
+    pub use super::penalty::elapsed_since_penalty_return_less_than;
+}
 
 use std::{
     net::{Ipv4Addr, SocketAddr},
