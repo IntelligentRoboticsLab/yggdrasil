@@ -3,6 +3,7 @@ mod transmit;
 
 use std::{
     net::{Ipv4Addr, SocketAddr},
+    str::FromStr,
     sync::Arc,
     time::Duration,
 };
@@ -105,6 +106,7 @@ impl GameControllerConnection {
 #[derive(Clone)]
 struct GameControllerSocket {
     socket: Arc<UdpSocket>,
+    gc_address: Option<Ipv4Addr>,
 }
 
 impl GameControllerSocket {
@@ -112,7 +114,15 @@ impl GameControllerSocket {
         let socket =
             Arc::new(UdpSocket::bind((Ipv4Addr::UNSPECIFIED, GAME_CONTROLLER_DATA_PORT)).await?);
 
-        Ok(Self { socket })
+        let gc_address = std::env::var("GC_HOST")
+            .ok()
+            .map(|gc_host| Ipv4Addr::from_str(&gc_host).expect("Invalid `GC_HOST`"));
+
+        Ok(Self { socket, gc_address })
+    }
+
+    pub fn configured_game_controller_address(&self) -> Option<Ipv4Addr> {
+        self.gc_address
     }
 
     pub async fn recv_from(&self, buffer: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
