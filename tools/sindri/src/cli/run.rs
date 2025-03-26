@@ -25,6 +25,9 @@ pub struct Run {
     /// Also print debug logs to stdout [default: false]
     #[clap(long, short)]
     pub debug: bool,
+    /// The IP address of the game-controller the robot should connect to.
+    #[clap(long)]
+    pub gc_host: Option<String>,
 }
 
 impl Run {
@@ -93,7 +96,7 @@ impl Run {
         if self.debug {
             envs.push(("RUST_LOG".to_owned(), "debug".to_owned()));
         }
-        if let Ok(gc_host) = std::env::var("GC_HOST") {
+        if let Some(gc_host) = self.gc_host {
             envs.push(("GC_HOST".to_owned(), gc_host));
         }
 
