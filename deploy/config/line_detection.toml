@@ -1,55 +1,64 @@
 [top]
-# margin outside of the field in which lines will still be considered in meters
-field_margin = 0.15
 # maximum number of iterations for RANSAC
 ransac_iters = 10
 # maximum number of models to fit in RANSAC
 model_iters = 100
 # residual threshold for RANSAC inliers in meters
-ransac_inlier_threshold = 0.025
+ransac_inlier_threshold = 0.02
 # maximum distance of a valid line spot from the camera in meters
-spot_max_distance = 5.0
+spot_max_distance = 4.0
 # minimum number of points in a valid line segment
-line_segment_min_points = 8
+line_segment_min_points = 10
 # minimum length of a line segment after merging in meters
-line_segment_min_length = 0.3
+line_segment_min_length = 0.35
 # maximum length of a line segment after merging in meters
 line_segment_max_length = 5.0
 # maximum distance between two inliers of a line segment in meters
 max_line_gap_distance = 0.25
 # number of samples for the white test
-white_test_samples = 8
+white_test_samples = 10
 # sampling distance for the white test in meters
-white_test_sample_distance = 0.05
-# ratio of white tests that need to pass for two lines to be merged
-white_test_merge_ratio = 0.7
+white_test_sample_distance = 0.03
+# ratio of white tests that need to pass for a line to be accepted
+white_test_merge_ratio = 0.9
+# number of samples for the white test
+merge_test_samples = 10
+# sampling distance for the merge test in meters
+merge_test_sample_distance = 0.05
+# ratio of merge tests that need to pass for two lines to be merged
+merge_test_merge_ratio = 0.8
 # maximum angle in radians between two lines for them to be considered parallel
-white_test_max_angle = 0.15
+merge_test_max_angle = 0.15
+
 
 [bottom]
-# margin outside of the field in which lines will still be considered in meters
-field_margin = 0.15
 # maximum number of iterations for RANSAC
-ransac_iters = 10
+ransac_iters = 5
 # maximum number of models to fit in RANSAC
-model_iters = 100
+model_iters = 50
 # residual threshold for RANSAC inliers in meters
 ransac_inlier_threshold = 0.025
 # maximum distance of a valid line spot from the camera in meters
 spot_max_distance = 2.5
 # minimum number of points in a valid line segment
-line_segment_min_points = 4
+line_segment_min_points = 10
 # minimum length of a line segment after merging in meters
-line_segment_min_length = 0.2
+line_segment_min_length = 0.15
 # maximum length of a line segment after merging in meters
-line_segment_max_length = 5.0
+line_segment_max_length = 2.0
 # maximum distance between two inliers of a line segment in meters
 max_line_gap_distance = 0.15
 # number of samples for the white test
-white_test_samples = 10
+white_test_samples = 5
 # sampling distance for the white test in meters
-white_test_sample_distance = 0.15
+white_test_sample_distance = 0.03
 # ratio of white tests that need to pass for two lines to be merged
 white_test_merge_ratio = 0.8
+# number of samples for the white test
+merge_test_samples = 8
+# sampling distance for the merge test in meters
+merge_test_sample_distance = 0.1
+# ratio of merge tests that need to pass for two lines to be merged
+merge_test_merge_ratio = 0.7
 # maximum angle in radians between two lines for them to be considered parallel
-white_test_max_angle = 0.15
+merge_test_max_angle = 0.15

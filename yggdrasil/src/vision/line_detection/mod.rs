@@ -25,8 +25,6 @@ use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle, prel
 #[derive(Resource, Debug, Clone, Deserialize, Serialize, Reflect)]
 #[serde(deny_unknown_fields)]
 pub struct LineDetectionConfig {
-    /// margin outside of the field in which lines will still be considered in meters
-    pub field_margin: f32,
     /// maximum number of iterations for RANSAC
     pub ransac_iters: usize,
     /// maximum number of models to fit in RANSAC
@@ -47,10 +45,16 @@ pub struct LineDetectionConfig {
     pub white_test_samples: usize,
     /// sampling distance for the white test in meters
     pub white_test_sample_distance: f32,
-    /// ratio of white tests that need to pass for two lines to be merged
+    /// ratio of white tests that need to pass for a line to be accepted
     pub white_test_merge_ratio: f32,
+    /// number of samples for the merge test
+    pub merge_test_samples: usize,
+    /// sampling distance for the merge test in meters
+    pub merge_test_sample_distance: f32,
+    /// ratio of merge tests that need to pass for two lines to be merged
+    pub merge_test_merge_ratio: f32,
     /// maximum angle in radians between two lines for them to be considered parallel
-    pub white_test_max_angle: f32,
+    pub merge_test_max_angle: f32,
 }
 
 #[derive(Resource, Debug, Clone, Deserialize, Serialize, Reflect)]
@@ -334,14 +338,10 @@ fn passes_white_test<T: CameraLocation>(
     // do a white test
     let mut tests = vec![];
 
-    // let candidate_segment = pose.inner * candidate.segment;
     let candidate_segment = candidate.segment;
 
     for sample in candidate_segment.sample_uniform(cfg.white_test_samples) {
         let normal = candidate_segment.normal();
-
-        let tester1 = sample + normal * cfg.white_test_sample_distance;
-        let tester2 = sample - normal * cfg.white_test_sample_distance;
 
         // project the points back to the image
         let Ok(sample_pixel) = camera_matrix.ground_to_pixel(point![sample.x, sample.y, 0.0])
@@ -350,23 +350,26 @@ fn passes_white_test<T: CameraLocation>(
             continue;
         };
 
+        let offset_1 = sample + normal * cfg.white_test_sample_distance;
+        let offset_2 = sample - normal * cfg.white_test_sample_distance;
+
         let image = scan_lines.image();
 
-        let tester1_pixel = camera_matrix
-            .ground_to_pixel(point![tester1.x, tester1.y, 0.0])
-            .is_ok_and(|p| is_less_bright_and_more_saturated(sample_pixel, p, image));
+        let test_1 = camera_matrix
+            .ground_to_pixel(point![offset_1.x, offset_1.y, 0.0])
+            .is_ok_and(|p| is_less_bright_and_more_saturated(p, sample_pixel, image));
 
-        let tester2_pixel = camera_matrix
-            .ground_to_pixel(point![tester2.x, tester2.y, 0.0])
-            .is_ok_and(|p| is_less_bright_and_more_saturated(sample_pixel, p, image));
+        let test_2 = camera_matrix
+            .ground_to_pixel(point![offset_2.x, offset_2.y, 0.0])
+            .is_ok_and(|p| is_less_bright_and_more_saturated(p, sample_pixel, image));
 
-        tests.extend([tester1_pixel, tester2_pixel]);
+        tests.extend([test_1, test_2]);
     }
 
     // if the ratio of the white tests is high enough, merge the two candidates
     let ratio = tests.iter().filter(|&&t| t).count() as f32 / tests.len() as f32;
 
-    ratio < cfg.white_test_merge_ratio
+    ratio > cfg.white_test_merge_ratio
 }
 
 fn merge_candidates<T: CameraLocation>(
@@ -382,7 +385,7 @@ fn merge_candidates<T: CameraLocation>(
             let c2 = &candidates[j];
 
             // if the two lines are not parallel enough, skip
-            if c1.line.normal.angle(&c2.line.normal) > cfg.white_test_max_angle {
+            if c1.line.normal.angle(&c2.line.normal) > cfg.merge_test_max_angle {
                 continue;
             }
 
@@ -394,8 +397,8 @@ fn merge_candidates<T: CameraLocation>(
 
             // if the segment connecting the centers is are not parallel enough, skip
             // stops the case where two lines are almost parallel, but they are far apart in the direction of their normal
-            if connected.normal().angle(&c1.line.normal) > cfg.white_test_max_angle
-                || connected.normal().angle(&c2.line.normal) > cfg.white_test_max_angle
+            if connected.normal().angle(&c1.line.normal) > cfg.merge_test_max_angle
+                || connected.normal().angle(&c2.line.normal) > cfg.merge_test_max_angle
             {
                 continue;
             }
@@ -404,11 +407,11 @@ fn merge_candidates<T: CameraLocation>(
             let mut tests = vec![];
 
             // TODO: sample based on the length of the segment too and not just a fixed sample count
-            for sample in connected.sample_uniform(cfg.white_test_samples) {
+            for sample in connected.sample_uniform(cfg.merge_test_samples) {
                 let normal = connected.normal();
 
-                let tester1 = sample + normal * cfg.white_test_sample_distance;
-                let tester2 = sample - normal * cfg.white_test_sample_distance;
+                let offset_1 = sample + normal * cfg.merge_test_sample_distance;
+                let offset_2 = sample - normal * cfg.merge_test_sample_distance;
 
                 // project the points back to the image
                 let Ok(sample_pixel) =
@@ -420,21 +423,21 @@ fn merge_candidates<T: CameraLocation>(
 
                 let image = scan_lines.image();
 
-                let tester1_pixel = camera_matrix
-                    .ground_to_pixel(point![tester1.x, tester1.y, 0.0])
-                    .is_ok_and(|p| is_less_bright_and_more_saturated(sample_pixel, p, image));
+                let test_1 = camera_matrix
+                    .ground_to_pixel(point![offset_1.x, offset_1.y, 0.0])
+                    .is_ok_and(|p| is_less_bright_and_more_saturated(p, sample_pixel, image));
 
-                let tester2_pixel = camera_matrix
-                    .ground_to_pixel(point![tester2.x, tester2.y, 0.0])
-                    .is_ok_and(|p| is_less_bright_and_more_saturated(sample_pixel, p, image));
+                let test_2 = camera_matrix
+                    .ground_to_pixel(point![offset_2.x, offset_2.y, 0.0])
+                    .is_ok_and(|p| is_less_bright_and_more_saturated(p, sample_pixel, image));
 
-                tests.extend([tester1_pixel, tester2_pixel]);
+                tests.extend([test_1, test_2]);
             }
 
-            // if the ratio of the white tests is high enough, merge the two candidates
+            // if the ratio of the merge tests is high enough, merge the two candidates
             let ratio = tests.iter().filter(|&&t| t).count() as f32 / tests.len() as f32;
 
-            if ratio > cfg.white_test_merge_ratio {
+            if ratio > cfg.merge_test_merge_ratio {
                 let candidate = candidates.swap_remove(i);
                 candidates[j].merge(candidate);
                 break;
