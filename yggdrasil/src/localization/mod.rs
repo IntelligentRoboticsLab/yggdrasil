@@ -6,7 +6,9 @@ pub mod pose;
 use bevy::prelude::*;
 
 use filter::CovarianceMatrix;
-use hypothesis::{filter_hypotheses, line_update, odometry_update, RobotPoseHypothesis};
+use hypothesis::{
+    filter_hypotheses, line_update, odometry_update, reset_hypotheses, RobotPoseHypothesis,
+};
 use odal::Config;
 use pose::initial_pose;
 pub use pose::RobotPose;
@@ -19,6 +21,7 @@ use crate::{
         config::{layout::LayoutConfig, showtime::PlayerConfig},
         debug::DebugContext,
     },
+    game_controller::penalty::is_penalized,
     motion::{keyframe::KeyframeExecutor, odometry, walking_engine::Gait},
     nao::Cycle,
     prelude::ConfigExt,
@@ -34,10 +37,13 @@ impl Plugin for LocalizationPlugin {
             .add_systems(PostStartup, (initialize_pose, setup_pose_visualization))
             .add_systems(
                 PreUpdate,
-                (odometry_update, line_update, filter_hypotheses)
+                (
+                    (odometry_update, line_update).run_if(not(motion_is_unsafe.or(is_penalized))),
+                    filter_hypotheses,
+                    reset_hypotheses,
+                )
                     .chain()
-                    .after(odometry::update_odometry)
-                    .run_if(not(motion_is_unsafe)),
+                    .after(odometry::update_odometry),
             )
             .add_systems(PostUpdate, visualize_pose);
     }

@@ -1,6 +1,6 @@
 use crate::{
     core::{audio::whistle_detection::Whistle, config::showtime::PlayerConfig},
-    game_controller::{is_penalized, GameControllerMessageEvent},
+    game_controller::GameControllerMessageEvent,
     nao::{NaoManager, Priority},
     sensor::button::{ChestButton, HeadButtons},
     vision::referee::{
@@ -123,6 +123,13 @@ pub fn update_primary_state(
     };
 
     *primary_state = next_state;
+}
+
+fn is_penalized(gcm: Option<&GameControllerMessage>, player_config: &PlayerConfig) -> bool {
+    gcm.is_some_and(|gcm| {
+        gcm.team(player_config.team_number)
+            .is_some_and(|team| team.is_penalized(player_config.player_number))
+    })
 }
 
 #[must_use]

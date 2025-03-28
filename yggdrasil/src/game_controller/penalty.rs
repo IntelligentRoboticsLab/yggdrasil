@@ -11,7 +11,8 @@ pub struct PenaltyStatePlugin;
 
 impl Plugin for PenaltyStatePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreUpdate, update_penalty_state.after(handle_messages));
+        app.init_resource::<PenaltyState>()
+            .add_systems(PreUpdate, update_penalty_state.after(handle_messages));
     }
 }
 
@@ -21,7 +22,10 @@ pub fn elapsed_since_penalty_return_less_than(
     move |penalty: Res<PenaltyState>| penalty.duration_since_return() < duration
 }
 
-pub fn is_penalized(gcm: Option<&GameControllerMessage>, player_config: &PlayerConfig) -> bool {
+pub fn is_penalized(
+    gcm: Option<Res<GameControllerMessage>>,
+    player_config: Res<PlayerConfig>,
+) -> bool {
     gcm.is_some_and(|gcm| {
         gcm.team(player_config.team_number)
             .is_some_and(|team| team.is_penalized(player_config.player_number))
@@ -34,7 +38,7 @@ fn update_penalty_state(
     player_config: Res<PlayerConfig>,
 ) {
     penalty.previous = penalty.current;
-    penalty.current = is_penalized(gcm.as_ref().as_deref(), &player_config);
+    penalty.current = is_penalized(gcm, player_config);
 
     if penalty.previous && !penalty.current {
         penalty.last_return = Some(Instant::now());
@@ -50,6 +54,16 @@ pub struct PenaltyState {
 }
 
 impl PenaltyState {
+    /// Returns true if the robot just entered a penalty
+    pub fn entered_penalty(&self) -> bool {
+        !self.previous && self.current
+    }
+
+    /// Returns true if the robot just left a penalty
+    pub fn left_penalty(&self) -> bool {
+        self.previous && !self.current
+    }
+
     /// Duration since the robot has returned from its last penalty
     pub fn duration_since_return(&self) -> Duration {
         self.last_return.map_or(Duration::MAX, |last_return| {

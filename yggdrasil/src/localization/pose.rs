@@ -163,12 +163,19 @@ pub fn penalized_pose(layout: &LayoutConfig) -> impl IntoIterator<Item = RobotPo
 }
 
 #[must_use]
-pub fn penalty_kick_pose(layout: &LayoutConfig) -> RobotPose {
-    RobotPose::from_translation_and_rotation(
-        vector![
-            layout.field.length / 2.0 - layout.field.penalty_area_length,
-            0.0
-        ],
-        0.0,
-    )
+pub fn penalty_kick_pose(layout: &LayoutConfig, is_kicking_team: bool) -> RobotPose {
+    if is_kicking_team {
+        RobotPose::from_translation_and_rotation(
+            vector![
+                layout.field.length / 2.0 - layout.field.penalty_area_length,
+                0.0
+            ],
+            0.0,
+        )
+    } else {
+        RobotPose::from_translation_and_rotation(
+            vector![layout.field.length / 2.0, 0.0],
+            std::f32::consts::PI,
+        )
+    }
 }
