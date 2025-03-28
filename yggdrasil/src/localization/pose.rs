@@ -147,17 +147,28 @@ pub fn penalized_pose(layout: &LayoutConfig) -> impl IntoIterator<Item = RobotPo
     [
         RobotPose::from_translation_and_rotation(
             vector![
-                -layout.field.length * 0.5 + layout.field.penalty_mark_distance,
-                -layout.field.width * 0.5 - PENALTY_DISTANCE_FROM_TOUCHLINE,
+                -layout.field.length / 2.0 + layout.field.penalty_mark_distance,
+                -layout.field.width / 2.0 - PENALTY_DISTANCE_FROM_TOUCHLINE,
             ],
             std::f32::consts::FRAC_PI_2,
         ),
         RobotPose::from_translation_and_rotation(
             vector![
-                -layout.field.length * 0.5 + layout.field.penalty_mark_distance,
-                layout.field.width * 0.5 + PENALTY_DISTANCE_FROM_TOUCHLINE
+                -layout.field.length / 2.0 + layout.field.penalty_mark_distance,
+                layout.field.width / 2.0 + PENALTY_DISTANCE_FROM_TOUCHLINE
             ],
             -std::f32::consts::FRAC_PI_2,
         ),
     ]
+}
+
+#[must_use]
+pub fn penalty_kick_pose(layout: &LayoutConfig) -> RobotPose {
+    RobotPose::from_translation_and_rotation(
+        vector![
+            layout.field.length / 2.0 - layout.field.penalty_area_length,
+            0.0
+        ],
+        0.0,
+    )
 }
