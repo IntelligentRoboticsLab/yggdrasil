@@ -169,6 +169,7 @@ pub fn filter_hypotheses(
     *pose = new_pose;
 }
 
+/// Resets the hypotheses to a known state based on game conditions
 pub fn reset_hypotheses(
     mut commands: Commands,
     mut hypotheses: Query<Entity, With<RobotPoseHypothesis>>,

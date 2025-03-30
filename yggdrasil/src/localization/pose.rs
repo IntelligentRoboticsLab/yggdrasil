@@ -133,11 +133,13 @@ impl StateTransform<3> for RobotPose {
     }
 }
 
+/// Returns the starting pose of the robot.
 #[must_use]
 pub fn initial_pose(layout: &LayoutConfig, player_num: u8) -> RobotPose {
     RobotPose::from_isometry(layout.initial_positions.player(player_num).isometry)
 }
 
+/// Returns the pose of the robot when it is penalized.
 #[must_use]
 pub fn penalized_pose(layout: &LayoutConfig) -> impl IntoIterator<Item = RobotPose> {
     /// "The removed robot will be placed outside the field at a distance of approximately 50 cm
@@ -162,6 +164,7 @@ pub fn penalized_pose(layout: &LayoutConfig) -> impl IntoIterator<Item = RobotPo
     ]
 }
 
+/// Returns the pose of the robot when taking a penalty kick.
 #[must_use]
 pub fn penalty_kick_pose(layout: &LayoutConfig, is_kicking_team: bool) -> RobotPose {
     if is_kicking_team {

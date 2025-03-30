@@ -16,12 +16,14 @@ impl Plugin for PenaltyStatePlugin {
     }
 }
 
+/// Returns true if the robot became unpenalized less than the given duration ago
 pub fn elapsed_since_penalty_return_less_than(
     duration: Duration,
 ) -> impl Fn(Res<PenaltyState>) -> bool {
     move |penalty: Res<PenaltyState>| penalty.duration_since_return() < duration
 }
 
+/// Returns true if the robot is currently penalized
 pub fn is_penalized(
     gcm: Option<Res<GameControllerMessage>>,
     player_config: Res<PlayerConfig>,
