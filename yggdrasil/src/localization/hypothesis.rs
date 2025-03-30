@@ -180,7 +180,7 @@ pub fn reset_hypotheses(
     gcm: Option<Res<GameControllerMessage>>,
 ) {
     if penalty_state.entered_penalty() {
-        for entity in hypotheses.iter_mut() {
+        for entity in &mut hypotheses {
             commands.entity(entity).despawn();
         }
 
@@ -195,7 +195,7 @@ pub fn reset_hypotheses(
 
     if let Some(gcm) = gcm {
         if matches!(gcm.game_phase, GamePhase::PenaltyShoot) {
-            for entity in hypotheses.iter_mut() {
+            for entity in &mut hypotheses {
                 commands.entity(entity).despawn();
             }
 

@@ -24,6 +24,7 @@ pub fn elapsed_since_penalty_return_less_than(
 }
 
 /// Returns true if the robot is currently penalized
+#[must_use]
 pub fn is_penalized(
     gcm: Option<Res<GameControllerMessage>>,
     player_config: Res<PlayerConfig>,
@@ -57,16 +58,19 @@ pub struct PenaltyState {
 
 impl PenaltyState {
     /// Returns true if the robot just entered a penalty
+    #[must_use]
     pub fn entered_penalty(&self) -> bool {
         !self.previous && self.current
     }
 
     /// Returns true if the robot just left a penalty
+    #[must_use]
     pub fn left_penalty(&self) -> bool {
         self.previous && !self.current
     }
 
     /// Duration since the robot has returned from its last penalty
+    #[must_use]
     pub fn duration_since_return(&self) -> Duration {
         self.last_return.map_or(Duration::MAX, |last_return| {
             Instant::now().duration_since(last_return)
