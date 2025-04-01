@@ -1,10 +1,10 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use heimdall::{Bottom, Top};
 use nalgebra::{Point2, Point3, UnitComplex};
 
 use crate::motion::walking_engine::{step::Step, step_context::StepContext};
+use crate::vision::ball_detection::ball_tracker::BallTracker;
 use crate::{
     behavior::{
         behaviors::{Observe, WalkTo},
@@ -14,7 +14,6 @@ use crate::{
     localization::RobotPose,
     motion::step_planner::{StepPlanner, Target},
     nao::{NaoManager, Priority},
-    vision::ball_detection::classifier::Balls,
 };
 
 const GOAL_POST_DISTANCE_OFFSET: f32 = 0.1;
@@ -104,18 +103,12 @@ pub fn goalkeeper_role(
     mut commands: Commands,
     layout_config: Res<LayoutConfig>,
     step_planner: ResMut<StepPlanner>,
-    top_balls: Res<Balls<Top>>,
-    bottom_balls: Res<Balls<Bottom>>,
+    ball_tracker: Res<BallTracker>,
     mut step_context: ResMut<StepContext>,
     robot_pose: Res<RobotPose>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
-    let most_confident_ball = bottom_balls
-        .most_confident_ball()
-        .map(|b| b.position)
-        .or(top_balls.most_confident_ball().map(|b| b.position));
-
-    if let Some(ball_position) = most_confident_ball {
+    if let Some(ball_position) = ball_tracker.get_stationary_ball() {
         block_ball(
             ball_position,
             &layout_config.field,
