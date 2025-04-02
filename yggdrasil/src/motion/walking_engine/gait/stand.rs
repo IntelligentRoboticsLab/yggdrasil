@@ -85,7 +85,7 @@ fn energy_efficient_stand(
         .into_iter()
         .enumerate()
         .max_by(|(_, a), (_, b)| a.total_cmp(b))
-        .expect("e");
+        .unwrap();
 
     state.has_reach_minimum_current = if *max_current < MIN_CURRENT {
         true
