@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
-use bifrost::communication::GameControllerMessage;
+use bifrost::communication::{GameControllerMessage, Penalty};
 
 use crate::core::config::showtime::PlayerConfig;
 
@@ -20,19 +20,25 @@ impl Plugin for PenaltyStatePlugin {
 pub fn elapsed_since_penalty_return_less_than(
     duration: Duration,
 ) -> impl Fn(Res<PenaltyState>) -> bool {
-    move |penalty: Res<PenaltyState>| penalty.duration_since_return() < duration
+    move |penalty: Res<PenaltyState>| {
+        matches!(penalty.current, Penalty::None) && penalty.duration_since_return() < duration
+    }
 }
 
-/// Returns true if the robot is currently penalized
 #[must_use]
-pub fn is_penalized(
+pub fn is_penalized(penalty: Res<PenaltyState>) -> bool {
+    matches!(penalty.current, Penalty::None)
+}
+
+fn get_penalty(
     gcm: Option<Res<GameControllerMessage>>,
     player_config: Res<PlayerConfig>,
-) -> bool {
-    gcm.is_some_and(|gcm| {
+) -> Penalty {
+    gcm.and_then(|gcm| {
         gcm.team(player_config.team_number)
-            .is_some_and(|team| team.is_penalized(player_config.player_number))
+            .map(|team| team.players[player_config.player_number as usize].penalty)
     })
+    .unwrap_or(Penalty::None)
 }
 
 fn update_penalty_state(
@@ -41,32 +47,58 @@ fn update_penalty_state(
     player_config: Res<PlayerConfig>,
 ) {
     penalty.previous = penalty.current;
-    penalty.current = is_penalized(gcm, player_config);
+    penalty.current = get_penalty(gcm, player_config);
 
-    if penalty.previous && !penalty.current {
+    if penalty.left_penalty() {
         penalty.last_return = Some(Instant::now());
     }
 }
 
 /// Tracks the state of the current and previous penalty
-#[derive(Resource, Default, Debug, Clone, Copy)]
+#[derive(Resource, Debug, Clone, Copy)]
 pub struct PenaltyState {
-    previous: bool,
-    current: bool,
+    previous: Penalty,
+    current: Penalty,
     last_return: Option<Instant>,
 }
 
+impl Default for PenaltyState {
+    fn default() -> Self {
+        Self {
+            previous: Penalty::None,
+            current: Penalty::None,
+            last_return: None,
+        }
+    }
+}
+
 impl PenaltyState {
+    #[must_use]
+    /// Returns the current game controller [`Penalty`] state.
+    ///
+    /// # Warning ⚠️
+    ///
+    /// This currently also has a None variant
+    pub fn current(&self) -> Penalty {
+        self.current
+    }
+
+    /// Returns true if the robot is currently penalized
+    #[must_use]
+    pub fn is_penalized(&self) -> bool {
+        matches!(self.current, Penalty::None)
+    }
+
     /// Returns true if the robot just entered a penalty
     #[must_use]
     pub fn entered_penalty(&self) -> bool {
-        !self.previous && self.current
+        matches!(self.previous, Penalty::None) && !matches!(self.current, Penalty::None)
     }
 
     /// Returns true if the robot just left a penalty
     #[must_use]
     pub fn left_penalty(&self) -> bool {
-        self.previous && !self.current
+        !matches!(self.previous, Penalty::None) && matches!(self.current, Penalty::None)
     }
 
     /// Duration since the robot has returned from its last penalty
