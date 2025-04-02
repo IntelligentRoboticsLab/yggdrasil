@@ -75,13 +75,13 @@ fn block_ball(
     let step = if current_y > y_target {
         Step {
             forward: 0.0,
-            left: 0.1,
+            left: -0.2,
             turn: 0.0,
         }
     } else {
         Step {
             forward: 0.0,
-            left: -0.1,
+            left: 0.2,
             turn: 0.0,
         }
     };
@@ -93,7 +93,7 @@ fn block_ball(
     nao_manager.set_head_target(
         look_at_head_joints,
         HEAD_ROTATION_TIME,
-        Priority::default(),
+        Priority::High,
         NaoManager::HEAD_STIFFNESS,
     );
 }
@@ -108,6 +108,7 @@ pub fn goalkeeper_role(
     robot_pose: Res<RobotPose>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
+    commands.disable_behavior();
     if let Some(ball_position) = ball_tracker.get_stationary_ball() {
         block_ball(
             ball_position,
