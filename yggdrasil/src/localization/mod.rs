@@ -38,7 +38,8 @@ impl Plugin for LocalizationPlugin {
             .add_systems(
                 PreUpdate,
                 (
-                    (odometry_update, line_update).run_if(not(motion_is_unsafe.or(is_penalized))),
+                    (odometry_update, line_update.run_if(not(motion_is_unsafe)))
+                        .run_if(not(is_penalized)),
                     filter_hypotheses,
                     reset_hypotheses,
                 )
