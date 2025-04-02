@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bifrost::communication::{GameControllerMessage, GamePhase};
+use bifrost::communication::{GameControllerMessage, GamePhase, Penalty};
 use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
@@ -169,6 +169,14 @@ pub fn filter_hypotheses(
     *pose = new_pose;
 }
 
+/// Checks if the penalty should be in place (and not be placed on the side of the field)
+fn is_penalized_in_place(penalty: Penalty) -> bool {
+    matches!(
+        penalty,
+        Penalty::IllegalMotionInStandby | Penalty::IllegalMotionInSet
+    )
+}
+
 /// Resets the hypotheses to a known state based on game conditions
 pub fn reset_hypotheses(
     mut commands: Commands,
@@ -179,7 +187,7 @@ pub fn reset_hypotheses(
     localization: Res<LocalizationConfig>,
     gcm: Option<Res<GameControllerMessage>>,
 ) {
-    if penalty_state.entered_penalty() {
+    if penalty_state.entered_penalty() && !is_penalized_in_place(penalty_state.current()) {
         for entity in &mut hypotheses {
             commands.entity(entity).despawn();
         }

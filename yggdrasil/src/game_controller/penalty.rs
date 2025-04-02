@@ -28,7 +28,7 @@ pub fn elapsed_since_penalty_return_less_than(
 /// Returns true if the robot is currently penalized
 #[must_use]
 pub fn is_penalized(penalty: Res<PenaltyState>) -> bool {
-    matches!(penalty.current, Penalty::None)
+    penalty.is_penalized()
 }
 
 fn get_penalty(
@@ -37,7 +37,7 @@ fn get_penalty(
 ) -> Penalty {
     gcm.and_then(|gcm| {
         gcm.team(player_config.team_number)
-            .map(|team| team.players[player_config.player_number as usize].penalty)
+            .map(|team| team.players[player_config.player_number as usize - 1].penalty)
     })
     .unwrap_or(Penalty::None)
 }

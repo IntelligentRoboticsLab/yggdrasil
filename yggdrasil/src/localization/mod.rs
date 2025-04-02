@@ -13,7 +13,7 @@ use odal::Config;
 use pose::initial_pose;
 pub use pose::RobotPose;
 
-use rerun::{external::glam::Quat, TimeColumn};
+use rerun::{components::RotationAxisAngle, Rotation3D, TimeColumn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -25,7 +25,7 @@ use crate::{
     motion::{keyframe::KeyframeExecutor, odometry, walking_engine::Gait},
     nao::Cycle,
     prelude::ConfigExt,
-    sensor::{fsr::Contacts, orientation::RobotOrientation},
+    sensor::fsr::Contacts,
 };
 
 /// The localization plugin provides functionalities related to the localization of the robot.
@@ -152,18 +152,15 @@ fn setup_pose_visualization(dbg: DebugContext) {
     );
 }
 
-fn visualize_pose(
-    dbg: DebugContext,
-    cycle: Res<Cycle>,
-    pose: Res<RobotPose>,
-    orientation: Res<RobotOrientation>,
-) {
-    let orientation = orientation.quaternion();
-    let position = pose.inner.translation.vector;
+fn visualize_pose(dbg: DebugContext, cycle: Res<Cycle>, pose: Res<RobotPose>) {
+    let position = pose.world_position();
     dbg.log_with_cycle(
         "localization/pose",
         *cycle,
-        &rerun::Transform3D::from_rotation(Into::<Quat>::into(orientation))
-            .with_translation((position.x, position.y, 0.2865)),
+        &rerun::Transform3D::from_rotation(Rotation3D::AxisAngle(RotationAxisAngle::new(
+            (0.0, 0.0, 1.0),
+            pose.world_rotation(),
+        )))
+        .with_translation((position.x, position.y, 0.2865)),
     );
 }
