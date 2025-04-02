@@ -46,7 +46,7 @@ impl Plugin for LocalizationPlugin {
                     .chain()
                     .after(odometry::update_odometry),
             )
-            .add_systems(PostUpdate, visualize_pose);
+            .add_systems(PostUpdate, (visualize_pose, visualize_pose_hypotheses));
     }
 }
 
@@ -163,5 +163,30 @@ fn visualize_pose(dbg: DebugContext, cycle: Res<Cycle>, pose: Res<RobotPose>) {
             pose.world_rotation(),
         )))
         .with_translation((position.x, position.y, 0.2865)),
+    );
+}
+
+fn visualize_pose_hypotheses(
+    dbg: DebugContext,
+    cycle: Res<Cycle>,
+    hypotheses: Query<&RobotPoseHypothesis>,
+) {
+    dbg.log_with_cycle(
+        "localization/hypotheses",
+        *cycle,
+        &rerun::Arrows3D::from_vectors(hypotheses.iter().map(|hypothesis| {
+            let rotation = hypothesis.filter.state().world_rotation();
+            (rotation.cos(), rotation.sin(), 0.0)
+        }))
+        .with_origins(hypotheses.iter().map(|hypothesis| {
+            let position = hypothesis.filter.state().world_position();
+            (position.x, position.y, 0.1)
+        }))
+        .with_labels(
+            hypotheses
+                .iter()
+                .map(|hypothesis| format!("{:.2}", hypothesis.score)),
+        )
+        .with_colors(hypotheses.iter().map(|_| (0, 255, 255))),
     );
 }

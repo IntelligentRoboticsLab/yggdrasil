@@ -159,7 +159,7 @@ pub fn filter_hypotheses(
         .expect("Could not get best hypothesis");
 
     // remove all hypotheses that are not good enough
-    for (entity, hypothesis) in hypotheses.iter() {
+    for (entity, hypothesis) in &hypotheses {
         if hypothesis.score < cfg.hypothesis.retain_ratio * best_score {
             commands.entity(entity).despawn();
         }
@@ -221,7 +221,7 @@ pub fn reset_hypotheses(
 
 #[derive(Clone, Component)]
 pub struct RobotPoseHypothesis {
-    filter: UnscentedKalmanFilter<3, 7, RobotPose>,
+    pub filter: UnscentedKalmanFilter<3, 7, RobotPose>,
     pub score: f32,
 }
 

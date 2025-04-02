@@ -83,7 +83,7 @@ fn update_meshes(
     cycle: Res<Cycle>,
     mut buffer: Local<TransformBuffer>,
 ) {
-    let pose = pose.as_3d();
+    let pose = pose.to_3d();
     let (robot_to_ground, orientation) = kinematics.robot_to_ground(orientation.quaternion());
 
     dbg.log(

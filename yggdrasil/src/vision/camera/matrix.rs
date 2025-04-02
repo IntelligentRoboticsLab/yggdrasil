@@ -147,7 +147,7 @@ fn visualize_camera_matrix<T: CameraLocation>(
     cycle: Res<Cycle>,
     pose: Res<RobotPose>,
 ) {
-    let camera_pos = pose.as_3d() * matrix.camera_to_ground;
+    let camera_pos = pose.to_3d() * matrix.camera_to_ground;
 
     dbg.log_with_cycle(
         T::make_entity_image_path(""),
