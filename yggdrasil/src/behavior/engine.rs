@@ -87,6 +87,7 @@ pub fn spawn_rl_behavior<M, I, O>(
 
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BehaviorState {
+    Disabled,
     Walk,
     Stand,
     CatchFall,
@@ -114,6 +115,8 @@ pub fn in_behavior<T: Behavior>(state: Option<Res<State<BehaviorState>>>) -> boo
 pub trait CommandsBehaviorExt {
     fn set_behavior<T: Behavior>(&mut self, behavior: T);
 
+    fn disable_behavior(&mut self);
+
     fn set_role<T: Roles>(&mut self, role: T);
 
     fn disable_role(&mut self);
@@ -123,6 +126,10 @@ impl CommandsBehaviorExt for Commands<'_, '_> {
     fn set_behavior<T: Behavior>(&mut self, behavior: T) {
         self.set_state(T::STATE);
         self.insert_resource(behavior);
+    }
+
+    fn disable_behavior(&mut self) {
+        self.set_state(BehaviorState::Disabled);
     }
 
     fn set_role<T: Roles>(&mut self, role: T) {
@@ -164,6 +171,10 @@ impl RoleState {
         player_number: u8,
         possible_ball_distance: Option<f32>,
     ) {
+        if player_number == 1 {
+            commands.set_role(Goalkeeper);
+            return;
+        }
         if let Some(distance) = possible_ball_distance {
             if distance < 3.0 {
                 commands.set_role(Striker);
