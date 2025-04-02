@@ -87,7 +87,7 @@ impl PenaltyState {
     /// Returns true if the robot is currently penalized
     #[must_use]
     pub fn is_penalized(&self) -> bool {
-        matches!(self.current, Penalty::None)
+        !matches!(self.current, Penalty::None)
     }
 
     /// Returns true if the robot just entered a penalty
