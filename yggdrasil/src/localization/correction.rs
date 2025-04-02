@@ -70,10 +70,6 @@ pub fn fit_field_lines(
             ]
             .norm();
 
-            if gradient_norm.is_nan() {
-                warn!("Gradient norm is NaN");
-            }
-
             if gradient_norm < cfg.gradient_descent.convergence_threshold {
                 break;
             }
