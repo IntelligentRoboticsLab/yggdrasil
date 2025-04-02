@@ -1,6 +1,6 @@
 use crate::{
-    core::{audio::whistle_detection::Whistle, config::showtime::PlayerConfig},
-    game_controller::GameControllerMessageEvent,
+    core::audio::whistle_detection::Whistle,
+    game_controller::{penalty::PenaltyState, GameControllerMessageEvent},
     nao::{NaoManager, Priority},
     sensor::button::{ChestButton, HeadButtons},
     vision::referee::{
@@ -69,18 +69,6 @@ pub enum PrimaryState {
     Calibration,
 }
 
-fn is_penalized_by_game_controller(
-    game_controller_message: Option<&GameControllerMessage>,
-    team_number: u8,
-    player_number: u8,
-) -> bool {
-    game_controller_message.is_some_and(|game_controller_message| {
-        game_controller_message
-            .team(team_number)
-            .is_some_and(|team| team.is_penalized(player_number))
-    })
-}
-
 fn update_gamecontroller_message(
     mut commands: Commands,
     mut events: EventReader<GameControllerMessageEvent>,
@@ -97,18 +85,19 @@ pub fn update_primary_state(
     mut nao_manager: ResMut<NaoManager>,
     (head_buttons, chest_button): (Res<HeadButtons>, Res<ChestButton>),
     config: Res<PrimaryStateConfig>,
-    player_config: Res<PlayerConfig>,
     whistle: Res<Whistle>,
+    penalty_state: Res<PenaltyState>,
     mut recognized_pose: EventReader<RefereePoseRecognized>,
     mut received_pose: EventReader<ReceivedRefereePose>,
 ) {
     use PrimaryState as PS;
+
     let next_state = next_primary_state(
         primary_state.as_mut(),
         game_controller_message.as_deref(),
+        penalty_state.as_ref(),
         &chest_button,
         &head_buttons,
-        &player_config,
         &whistle,
         recognized_pose
             .read()
@@ -141,9 +130,9 @@ pub fn update_primary_state(
 pub fn next_primary_state(
     primary_state: &PrimaryState,
     game_controller_message: Option<&GameControllerMessage>,
+    penalty_state: &PenaltyState,
     chest_button: &ChestButton,
     head_buttons: &HeadButtons,
-    player_config: &PlayerConfig,
     whistle: &Whistle,
     recognized_ready_pose: bool,
 ) -> PrimaryState {
@@ -203,11 +192,7 @@ pub fn next_primary_state(
         None => primary_state,
     };
 
-    if is_penalized_by_game_controller(
-        game_controller_message,
-        player_config.team_number,
-        player_config.player_number,
-    ) {
+    if penalty_state.is_penalized() {
         primary_state = PS::Penalized;
     }
 

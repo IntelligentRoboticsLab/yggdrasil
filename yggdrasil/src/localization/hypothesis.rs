@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bifrost::communication::{GameControllerMessage, GamePhase, Penalty};
 use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
@@ -6,14 +7,20 @@ use nalgebra::{point, vector, ComplexField, Point2, Rotation2, UnitComplex};
 use num::Complex;
 
 use crate::{
-    core::config::layout::{FieldLine, LayoutConfig, ParallelAxis},
+    core::config::{
+        layout::{FieldLine, LayoutConfig, ParallelAxis},
+        showtime::PlayerConfig,
+    },
+    game_controller::penalty::PenaltyState,
     motion::odometry::Odometry,
     vision::line_detection::DetectedLines,
 };
 
 use super::{
-    correction::fit_field_lines, correspondence::FieldLineCorrespondence, LocalizationConfig,
-    RobotPose,
+    correction::fit_field_lines,
+    correspondence::FieldLineCorrespondence,
+    pose::{penalized_pose, penalty_kick_pose},
+    LocalizationConfig, RobotPose,
 };
 
 pub fn odometry_update(
@@ -160,6 +167,56 @@ pub fn filter_hypotheses(
 
     // set the new best pose
     *pose = new_pose;
+}
+
+/// Checks if the penalty should be in place (and not be placed on the side of the field)
+fn is_penalized_in_place(penalty: Penalty) -> bool {
+    matches!(
+        penalty,
+        Penalty::IllegalMotionInStandby | Penalty::IllegalMotionInSet
+    )
+}
+
+/// Resets the hypotheses to a known state based on game conditions
+pub fn reset_hypotheses(
+    mut commands: Commands,
+    mut hypotheses: Query<Entity, With<RobotPoseHypothesis>>,
+    penalty_state: Res<PenaltyState>,
+    layout: Res<LayoutConfig>,
+    player: Res<PlayerConfig>,
+    localization: Res<LocalizationConfig>,
+    gcm: Option<Res<GameControllerMessage>>,
+) {
+    if penalty_state.entered_penalty() && !is_penalized_in_place(penalty_state.current()) {
+        for entity in &mut hypotheses {
+            commands.entity(entity).despawn();
+        }
+
+        for pose in penalized_pose(&layout) {
+            commands.spawn(RobotPoseHypothesis::new(
+                pose,
+                CovarianceMatrix::from_diagonal(&localization.hypothesis.variance_initial.into()),
+                localization.hypothesis.score_initial,
+            ));
+        }
+    }
+
+    if let Some(gcm) = gcm {
+        if matches!(gcm.game_phase, GamePhase::PenaltyShoot) {
+            for entity in &mut hypotheses {
+                commands.entity(entity).despawn();
+            }
+
+            let is_kicking_team = gcm.kicking_team == player.team_number;
+            let pose = penalty_kick_pose(&layout, is_kicking_team);
+
+            commands.spawn(RobotPoseHypothesis::new(
+                pose,
+                CovarianceMatrix::from_diagonal(&localization.hypothesis.variance_initial.into()),
+                localization.hypothesis.score_initial,
+            ));
+        }
+    }
 }
 
 #[derive(Clone, Component)]

@@ -18,9 +18,9 @@ max_line_gap_distance = 0.25
 # number of samples for the white test
 white_test_samples = 20
 # sampling distance for the white test in meters
-white_test_sample_distance = 0.03
+white_test_sample_distance = 0.04
 # ratio of white tests that need to pass for a line to be accepted
-white_test_merge_ratio = 0.9
+white_test_merge_ratio = 0.8
 # number of samples for the white test
 merge_test_samples = 10
 # sampling distance for the merge test in meters

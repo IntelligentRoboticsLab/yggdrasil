@@ -6,12 +6,14 @@ pub mod pose;
 use bevy::prelude::*;
 
 use filter::CovarianceMatrix;
-use hypothesis::{filter_hypotheses, line_update, odometry_update, RobotPoseHypothesis};
+use hypothesis::{
+    filter_hypotheses, line_update, odometry_update, reset_hypotheses, RobotPoseHypothesis,
+};
 use odal::Config;
 use pose::initial_pose;
 pub use pose::RobotPose;
 
-use rerun::{external::glam::Quat, TimeColumn};
+use rerun::{components::RotationAxisAngle, Rotation3D, TimeColumn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -19,10 +21,11 @@ use crate::{
         config::{layout::LayoutConfig, showtime::PlayerConfig},
         debug::DebugContext,
     },
+    game_controller::penalty::is_penalized,
     motion::{keyframe::KeyframeExecutor, odometry, walking_engine::Gait},
     nao::Cycle,
     prelude::ConfigExt,
-    sensor::{fsr::Contacts, orientation::RobotOrientation},
+    sensor::fsr::Contacts,
 };
 
 /// The localization plugin provides functionalities related to the localization of the robot.
@@ -34,10 +37,14 @@ impl Plugin for LocalizationPlugin {
             .add_systems(PostStartup, (initialize_pose, setup_pose_visualization))
             .add_systems(
                 PreUpdate,
-                (odometry_update, line_update, filter_hypotheses)
+                (
+                    (odometry_update, line_update.run_if(not(motion_is_unsafe)))
+                        .run_if(not(is_penalized)),
+                    filter_hypotheses,
+                    reset_hypotheses,
+                )
                     .chain()
-                    .after(odometry::update_odometry)
-                    .run_if(not(motion_is_unsafe)),
+                    .after(odometry::update_odometry),
             )
             .add_systems(PostUpdate, visualize_pose);
     }
@@ -146,18 +153,15 @@ fn setup_pose_visualization(dbg: DebugContext) {
     );
 }
 
-fn visualize_pose(
-    dbg: DebugContext,
-    cycle: Res<Cycle>,
-    pose: Res<RobotPose>,
-    orientation: Res<RobotOrientation>,
-) {
-    let orientation = orientation.quaternion();
-    let position = pose.inner.translation.vector;
+fn visualize_pose(dbg: DebugContext, cycle: Res<Cycle>, pose: Res<RobotPose>) {
+    let position = pose.world_position();
     dbg.log_with_cycle(
         "localization/pose",
         *cycle,
-        &rerun::Transform3D::from_rotation(Into::<Quat>::into(orientation))
-            .with_translation((position.x, position.y, 0.2865)),
+        &rerun::Transform3D::from_rotation(Rotation3D::AxisAngle(RotationAxisAngle::new(
+            (0.0, 0.0, 1.0),
+            pose.world_rotation(),
+        )))
+        .with_translation((position.x, position.y, 0.2865)),
     );
 }
