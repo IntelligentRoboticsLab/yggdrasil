@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use nidhogg::{
     types::{FillExt, JointArray, LegJoints},
-    NaoState,
+    NaoControlMessage, NaoState,
 };
 
 use crate::{
@@ -13,6 +13,7 @@ use crate::{
         TargetFootPositions, TargetLegStiffness,
     },
     nao::CycleTime,
+    prelude::*,
 };
 
 pub(super) struct StandGaitPlugin;
@@ -23,6 +24,13 @@ impl Plugin for StandGaitPlugin {
             Update,
             generate_stand_gait
                 .in_set(WalkingEngineSet::GenerateGait)
+                .run_if(in_state(Gait::Standing)),
+        );
+
+        app.add_systems(
+            PreWrite,
+            energy_efficient_stand
+                .after(crate::nao::finalize)
                 .run_if(in_state(Gait::Standing)),
         );
     }
@@ -43,13 +51,14 @@ fn generate_stand_gait(
 
 const MIN_CURRENT: f32 = 0.09;
 const MAX_CURRENT: f32 = 0.12;
-const REDUCTION: f32 = 0.000005;
+const REDUCTION: f32 = 0.000_005;
 
 /// System that optimises the requested joint positions based on the maximum current.
 ///
 /// Based on the implementation as described in the Berlin United 2019 Tech Report.
 fn energy_efficient_stand(
     state: Res<NaoState>,
+    mut control_msg: ResMut<NaoControlMessage>,
     mut minimum_reached: Local<bool>,
     mut joint_offsets: Local<JointArray<f32>>,
     cycle_time: Res<CycleTime>,
@@ -71,6 +80,19 @@ fn energy_efficient_stand(
 
     if !*minimum_reached {
         let max_adjustment = REDUCTION / cycle_time.duration.as_secs_f32();
-        // TODO(gijsd): apply to joint at index `joint_idx`
+
+        if let Some(joint_offset) = joint_offsets.get_mut(joint_idx) {
+            let requested_joints = control_msg.position.as_array();
+            let measured_joints = state.position.as_array();
+
+            *joint_offset += (requested_joints[joint_idx] - measured_joints[joint_idx])
+                .clamp(-max_adjustment, max_adjustment);
+        }
     }
+
+    control_msg.position = control_msg
+        .position
+        .clone()
+        .zip(joint_offsets.clone())
+        .map(|(position, offset)| position + offset);
 }
