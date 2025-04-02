@@ -25,6 +25,7 @@ pub fn elapsed_since_penalty_return_less_than(
     }
 }
 
+/// Returns true if the robot is currently penalized
 #[must_use]
 pub fn is_penalized(penalty: Res<PenaltyState>) -> bool {
     matches!(penalty.current, Penalty::None)
