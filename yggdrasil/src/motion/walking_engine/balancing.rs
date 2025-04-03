@@ -103,7 +103,7 @@ impl BalanceAdjustment {
                 self.right_leg.ankle_roll += target_roll;
                 self.right_leg.ankle_pitch += target_pitch;
             }
-        };
+        }
 
         self
     }

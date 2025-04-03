@@ -225,7 +225,7 @@ fn spawn_whistle_preprocess_task(
 ) {
     if preprocessing_tasks.get_single_mut().is_ok() {
         return;
-    };
+    }
 
     // Only take the last audio sample to reduce contention in case we are lagging behind
     let Some(audio_sample) = audio_samples.read().last() else {
@@ -264,7 +264,7 @@ fn spawn_whistle_detection_model(
 
     if !preprocessing_task.0.is_finished() {
         return;
-    };
+    }
 
     let Some(model_input) = block_on(future::poll_once(&mut preprocessing_task.0)) else {
         return;

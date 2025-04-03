@@ -143,7 +143,7 @@ fn log_3d_balls(
 
     if let Hypothesis::Stationary(_) = state {
         let pos = ball_tracker.state();
-        if last_logged.map_or(true, |c| cycle > c) {
+        if last_logged.is_none_or(|c| cycle > c) {
             *last_logged = Some(cycle);
             dbg.log_with_cycle(
                 "balls/best",

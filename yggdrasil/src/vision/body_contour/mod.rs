@@ -191,7 +191,7 @@ impl BodyContour {
                 .into(),
         ) {
             chest_points.push(chest_left_point);
-        };
+        }
 
         if let Ok(chest_point) = matrix.ground_to_pixel(
             (robot_to_chest.inverse() * matrix.robot_to_ground)
@@ -200,7 +200,7 @@ impl BodyContour {
                 .into(),
         ) {
             chest_points.push(chest_point);
-        };
+        }
 
         if let Ok(chest_right_point) = matrix.ground_to_pixel(
             (robot_to_chest_right.inverse() * matrix.robot_to_ground)
@@ -209,7 +209,7 @@ impl BodyContour {
                 .into(),
         ) {
             chest_points.push(chest_right_point);
-        };
+        }
     }
 
     fn update_shoulders(&mut self, orientation: &RobotOrientation, matrix: &CameraMatrix<Bottom>) {

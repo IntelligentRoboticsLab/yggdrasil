@@ -59,8 +59,7 @@ pub fn lerp_arms(
 /// margin of error.
 ///
 /// # Arguments
-/// * `current_position` - Position of which you want to check if it has reached a certain
-///                        position.
+/// * `current_position` - Position of which you want to check if it has reached a certain position.
 /// * `target_position` - Position of which you want to check if it has been reached.
 /// * `error_margin` - Range within which a target position has been reached.
 #[must_use]
