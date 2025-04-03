@@ -128,10 +128,6 @@ fn reset_orientation(
         if prev_state != PrimaryState::Standby && *primary_state == PrimaryState::Standby {
             orientation.reset();
         }
-
-        if prev_state == PrimaryState::Penalized && *primary_state != PrimaryState::Penalized {
-            orientation.reset();
-        }
     }
 
     *prev_state = Some(*primary_state);
