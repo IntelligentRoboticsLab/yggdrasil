@@ -3,6 +3,7 @@ use bifrost::communication::{GameControllerMessage, GamePhase, Penalty};
 use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
+use heimdall::Top;
 use nalgebra::{point, vector, ComplexField, Point2, Rotation2, UnitComplex};
 use num::Complex;
 use serde::{Deserialize, Serialize};
@@ -64,7 +65,7 @@ pub fn odometry_update(
             )
             .inspect_err(|_| warn!("Cholesky failed in odometry"));
 
-        // TODO: why is this necessary?
+        // TODO: B-Human and HULKs both do this. Need to put some research into the problem and if we can find a more elegant solution.
         hypothesis.fix_covariance();
 
         hypothesis.score *= cfg.hypothesis.score_decay;
@@ -74,7 +75,9 @@ pub fn odometry_update(
 pub fn line_update(
     cfg: Res<LocalizationConfig>,
     layout: Res<LayoutConfig>,
-    new_lines: Query<&DetectedLines, Added<DetectedLines>>,
+    // TODO: for now, we only use the top camera as lines are mistakenly connected in the shoulder sometimes.
+    // The [`With`] filter should be removed once the body contour works properly.
+    new_lines: Query<&DetectedLines, (Added<DetectedLines>, With<Top>)>,
     mut hypotheses: Query<&mut RobotPoseHypothesis>,
 ) {
     // get the measured lines in robot space

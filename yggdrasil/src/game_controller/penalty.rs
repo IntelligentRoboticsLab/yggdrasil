@@ -7,6 +7,8 @@ use crate::core::config::showtime::PlayerConfig;
 
 use super::receive::handle_messages;
 
+/// Plugin responsible for tracking the penalized state of the robot. With the [`PenaltyState`] resource,
+/// you can check if the robot is penalized, the type of penalty, and if it just entered or left a penalty.
 pub struct PenaltyStatePlugin;
 
 impl Plugin for PenaltyStatePlugin {
