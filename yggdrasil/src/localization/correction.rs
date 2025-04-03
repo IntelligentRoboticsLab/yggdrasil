@@ -1,4 +1,5 @@
 use nalgebra::{matrix, vector, Isometry2, Matrix2, Vector2};
+use serde::{Deserialize, Serialize};
 
 use crate::{core::config::layout::LayoutConfig, vision::line_detection::line::LineSegment2};
 
@@ -6,6 +7,18 @@ use super::{
     correspondence::{correspond_field_lines, FieldLineCorrespondence, PointCorrespondence},
     LocalizationConfig,
 };
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GradientDescentConfig {
+    /// Threshold at which the fit is considered converged
+    pub convergence_threshold: f32,
+    /// Step size for the gradient descent
+    pub step_size: f32,
+    /// Maximum number of correction iterations
+    pub max_correction_iters: usize,
+    /// Maximum number of refitting iterations
+    pub max_refit_iters: usize,
+}
 
 #[must_use]
 pub fn fit_field_lines(

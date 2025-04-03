@@ -5,6 +5,7 @@ use filter::{
 };
 use nalgebra::{point, vector, ComplexField, Point2, Rotation2, UnitComplex};
 use num::Complex;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     core::config::{
@@ -12,16 +13,40 @@ use crate::{
         showtime::PlayerConfig,
     },
     game_controller::penalty::PenaltyState,
-    motion::odometry::Odometry,
     vision::line_detection::DetectedLines,
 };
 
 use super::{
     correction::fit_field_lines,
     correspondence::FieldLineCorrespondence,
+    odometry::Odometry,
     pose::{penalized_pose, penalty_kick_pose},
     LocalizationConfig, RobotPose,
 };
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HypothesisConfig {
+    /// Variance of the odometry
+    pub odometry_variance: [f32; 3],
+    /// Variance of the line measurement
+    pub line_measurement_variance: [f32; 2],
+    /// Variance of the circle measurement
+    pub circle_measurement_variance: [f32; 2],
+    /// Initial pose variance of a new hypothesis
+    pub variance_initial: [f32; 3],
+    /// Initial score of a new hypothesis
+    pub score_initial: f32,
+    /// Factor by which the score of a hypothesis decays every odometry update
+    pub score_decay: f32,
+    /// Error threshold for a well-fitted correspondence
+    pub score_correspondence_bonus_threshold: f32,
+    /// Score bonus for a well-fitted correspondence
+    pub score_correspondence_bonus: f32,
+    /// Score increase if new correspondences have been found
+    pub score_default_increase: f32,
+    /// Threshold ratio of the best hypothesis score in order to not remove the hypothesis
+    pub retain_ratio: f32,
+}
 
 pub fn odometry_update(
     cfg: Res<LocalizationConfig>,

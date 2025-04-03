@@ -1,5 +1,5 @@
 use super::imu::IMUValues;
-use crate::{behavior::primary_state::PrimaryState, motion::odometry::Odometry, prelude::*};
+use crate::{behavior::primary_state::PrimaryState, localization::odometry::Odometry, prelude::*};
 use bevy::prelude::*;
 use nalgebra::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};

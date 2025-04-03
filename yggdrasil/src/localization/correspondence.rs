@@ -1,4 +1,5 @@
 use nalgebra::{Isometry2, Point2, Vector2};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     core::config::layout::{FieldLine, LayoutConfig},
@@ -6,6 +7,14 @@ use crate::{
 };
 
 use super::LocalizationConfig;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CorrespondenceConfig {
+    /// Minimum fitting error for a correspondence to be considered valid
+    pub min_fit_error: f32,
+    /// Factor by which the length of a measured line may be greater than the corresponding field line
+    pub elongation_factor: f32,
+}
 
 /// Correspondence between a measured line and a field line
 #[derive(Clone, Debug)]

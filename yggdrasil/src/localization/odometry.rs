@@ -12,7 +12,9 @@ use crate::{
     sensor::{falling::FallState, orientation::RobotOrientation},
 };
 
-use super::walking_engine::{foot_support::FootSupportState, Side, WalkingEngineSet};
+use crate::motion::walking_engine::{foot_support::FootSupportState, Side, WalkingEngineSet};
+
+use super::LocalizationConfig;
 
 /// Plugin that keeps track of the odometry of the robot.
 pub(super) struct OdometryPlugin;
@@ -33,7 +35,7 @@ impl Plugin for OdometryPlugin {
 /// System that updates the robot odometry, given the current state of the robot joints.
 pub fn update_odometry(
     mut odometry: ResMut<Odometry>,
-    odometry_config: Res<OdometryConfig>,
+    localization_config: Res<LocalizationConfig>,
     foot_support: Res<FootSupportState>,
     kinematics: Res<Kinematics>,
     orientation: Res<RobotOrientation>,
@@ -47,7 +49,12 @@ pub fn update_odometry(
 
     // TODO: We should probably reset the odometry in some cases
     // See: https://github.com/IntelligentRoboticsLab/yggdrasil/issues/400
-    odometry.update(&odometry_config, &foot_support, &kinematics, &orientation);
+    odometry.update(
+        &localization_config.odometry,
+        &foot_support,
+        &kinematics,
+        &orientation,
+    );
 }
 
 /// Configuration for the odometry.
@@ -84,7 +91,6 @@ impl Odometry {
     /// Update the odometry of the robot using the given [`Kinematics`].
     pub fn update(
         &mut self,
-
         config: &OdometryConfig,
         foot_support: &FootSupportState,
         kinematics: &Kinematics,
