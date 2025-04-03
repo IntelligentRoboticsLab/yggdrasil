@@ -37,7 +37,7 @@ impl Plugin for WalkingEnginePlugin {
             schedule::WalkingEngineSchedulePlugin,
             step_context::StepContextPlugin,
             hips::HipHeightPlugin,
-            gait::GaitPlugins,
+            gait::GaitPlugin,
             balancing::BalancingPlugin,
             foot_support::FootSupportPlugin,
         ));

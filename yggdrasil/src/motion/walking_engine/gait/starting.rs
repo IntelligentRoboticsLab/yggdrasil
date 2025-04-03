@@ -8,13 +8,15 @@ use crate::{
         feet::FootPositions,
         foot_support::FootSupportState,
         schedule::{Gait, WalkingEngineSet},
-        smoothing::{parabolic_return, parabolic_step},
+        smoothing::parabolic_return,
         step::{PlannedStep, Step},
         step_context::{self, StepContext},
         FootSwitchedEvent, Side, TargetFootPositions,
     },
     nao::CycleTime,
 };
+
+use super::WalkState;
 pub(super) struct StartingPlugin;
 
 impl Plugin for StartingPlugin {
@@ -37,42 +39,6 @@ impl Plugin for StartingPlugin {
     }
 }
 
-#[derive(Resource, Debug)]
-struct StartingState {
-    phase: Duration,
-    planned_step: PlannedStep,
-}
-
-impl Default for StartingState {
-    fn default() -> Self {
-        Self {
-            phase: Duration::ZERO,
-            planned_step: PlannedStep::default(),
-        }
-    }
-}
-
-impl StartingState {
-    /// Get a value from [0, 1] describing the linear progress of the current step.
-    ///
-    /// This value is based on the current `phase` and `planned_duration`, and will always be
-    /// within the inclusive range from 0 to 1.
-    #[inline]
-    #[must_use]
-    fn linear(&self) -> f32 {
-        (self.phase.as_secs_f32() / self.planned_step.duration.as_secs_f32()).clamp(0.0, 1.0)
-    }
-
-    /// Get a value from [0, 1] describing the position of the current step, along a parabolic path.
-    ///
-    /// See [`parabolic_step`] for more.
-    #[inline]
-    #[must_use]
-    fn parabolic(&self) -> f32 {
-        parabolic_step(self.linear())
-    }
-}
-
 fn init_starting_step(
     mut commands: Commands,
     mut step_context: ResMut<StepContext>,
@@ -86,7 +52,7 @@ fn init_starting_step(
     );
     step_context.plan_next_step(start, &config);
 
-    commands.insert_resource(StartingState {
+    commands.insert_resource(WalkState {
         phase: Duration::ZERO,
         planned_step: PlannedStep {
             step: Step::default(),
@@ -100,7 +66,7 @@ fn init_starting_step(
 
 fn end_starting_phase(
     mut step_context: ResMut<StepContext>,
-    state: Res<StartingState>,
+    state: Res<WalkState>,
     mut foot_support: ResMut<FootSupportState>,
     mut event: EventWriter<FootSwitchedEvent>,
     config: Res<WalkingEngineConfig>,
@@ -120,7 +86,7 @@ fn end_starting_phase(
 }
 
 fn generate_starting_gait(
-    mut state: ResMut<StartingState>,
+    mut state: ResMut<WalkState>,
     mut target_positions: ResMut<TargetFootPositions>,
     cycle_time: Res<CycleTime>,
 ) {

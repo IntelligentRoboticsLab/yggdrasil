@@ -45,7 +45,7 @@ impl Plugin for NaoManagerPlugin {
     }
 }
 
-fn finalize(
+pub fn finalize(
     mut control_message: ResMut<NaoControlMessage>,
     mut manager: ResMut<NaoManager>,
     state: Res<NaoState>,
