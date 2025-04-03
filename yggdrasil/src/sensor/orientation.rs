@@ -1,5 +1,5 @@
 use super::imu::IMUValues;
-use crate::{behavior::primary_state::PrimaryState, motion::odometry::Odometry, prelude::*};
+use crate::{behavior::primary_state::PrimaryState, localization::odometry::Odometry, prelude::*};
 use bevy::prelude::*;
 use nalgebra::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
@@ -126,10 +126,6 @@ fn reset_orientation(
 
     if let Some(prev_state) = *prev_state {
         if prev_state != PrimaryState::Standby && *primary_state == PrimaryState::Standby {
-            orientation.reset();
-        }
-
-        if prev_state == PrimaryState::Penalized && *primary_state != PrimaryState::Penalized {
             orientation.reset();
         }
     }

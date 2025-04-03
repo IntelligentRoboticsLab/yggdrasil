@@ -1,0 +1,43 @@
+[odometry]
+# The scale factor for the odometry values along the x and y axis respectively.
+# This is used to calibrate the odometry values to the actual distance the robot has moved.
+# Values taken from rUNSWift 2014 walk
+scale_factor = [1.075, 1.19]
+
+[correspondence]
+# Minimum fitting error for a correspondence to be considered valid
+min_fit_error = 0.001
+# Factor by which the length of a measured line may be greater than the corresponding field line
+elongation_factor = 1.5
+
+[hypothesis]
+# Variance of the odometry
+odometry_variance = [0.05, 0.025, 0.01]
+# Variance of the line measurement
+line_measurement_variance = [1000.0, 320.0]
+# Variance of the circle measurement
+circle_measurement_variance = [1000.0, 1000.0]
+# Initial pose variance of a new hypothesis
+variance_initial = [0.01, 0.01, 0.01]
+# Initial score of a new hypothesis
+score_initial = 0.1
+# Factor by which the score of a hypothesis decays every odometry update
+score_decay = 0.9
+# Error threshold for a well-fitted correspondence
+score_correspondence_bonus_threshold = 0.5
+# Score bonus for a well-fitted correspondence
+score_correspondence_bonus = 2.0
+# Score increase if new correspondences have been found
+score_default_increase = 0.1
+# Threshold ratio of the best hypothesis score in order to not remove the hypothesis
+retain_ratio = 0.05
+
+[gradient_descent]
+# Threshold at which the fit is considered converged
+convergence_threshold = 0.01
+# Step size for the gradient descent
+step_size = 0.01
+# Maximum number of correction iterations
+max_correction_iters = 25
+# Maximum number of refitting iterations
+max_refit_iters = 10

@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::game_controller::GameControllerConfig;
-use crate::motion::odometry::OdometryConfig;
 use crate::prelude::*;
 use crate::sensor::orientation::OrientationFilterConfig;
 use crate::vision::camera::CameraConfig;
@@ -17,7 +16,6 @@ pub struct YggdrasilConfig {
     pub primary_state: PrimaryStateConfig,
     // TODO: Add this back whenever we have something again
     // pub vision: VisionConfig,
-    pub odometry: OdometryConfig,
     pub orientation: OrientationFilterConfig,
 }
 

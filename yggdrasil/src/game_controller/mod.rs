@@ -1,3 +1,4 @@
+pub mod penalty;
 mod receive;
 mod transmit;
 
@@ -20,6 +21,7 @@ use bifrost::communication::{
     GameControllerMessage, GameControllerReturnMessage, GAME_CONTROLLER_DATA_PORT,
 };
 use futures::channel::mpsc;
+use penalty::PenaltyStatePlugin;
 use receive::{handle_messages, receive_loop, GameControllerReceiver};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
@@ -47,7 +49,8 @@ pub struct GameControllerPlugin;
 
 impl Plugin for GameControllerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<GameControllerMessageEvent>()
+        app.add_plugins(PenaltyStatePlugin)
+            .add_event::<GameControllerMessageEvent>()
             .add_systems(Startup, setup)
             .add_systems(PreUpdate, handle_messages)
             .add_systems(

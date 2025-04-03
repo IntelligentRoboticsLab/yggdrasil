@@ -1,201 +1,99 @@
+pub mod correction;
 pub mod correspondence;
+pub mod hypothesis;
+pub mod odometry;
+pub mod pose;
 
-use std::f32::consts::PI;
+use bevy::prelude::*;
+
+use correction::GradientDescentConfig;
+use correspondence::CorrespondenceConfig;
+use filter::CovarianceMatrix;
+use hypothesis::{
+    filter_hypotheses, line_update, odometry_update, reset_hypotheses, HypothesisConfig,
+    RobotPoseHypothesis,
+};
+use odal::Config;
+use odometry::OdometryConfig;
+use pose::initial_pose;
+pub use pose::RobotPose;
+
+use rerun::{components::RotationAxisAngle, Rotation3D, TimeColumn};
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    behavior::{behaviors::Standup, engine::in_behavior, primary_state::PrimaryState},
     core::{
         config::{layout::LayoutConfig, showtime::PlayerConfig},
         debug::DebugContext,
     },
-    motion::odometry::{self, Odometry},
+    game_controller::penalty::is_penalized,
+    motion::{keyframe::KeyframeExecutor, walking_engine::Gait},
     nao::Cycle,
-    sensor::orientation::RobotOrientation,
+    prelude::ConfigExt,
+    sensor::fsr::Contacts,
 };
-use bevy::prelude::*;
-use bifrost::communication::{GameControllerMessage, GamePhase};
-use nalgebra::{
-    Isometry2, Isometry3, Point2, Point3, Translation2, Translation3, UnitComplex, UnitQuaternion,
-};
-use nidhogg::types::HeadJoints;
-use rerun::{external::glam::Quat, TimeColumn};
 
 /// The localization plugin provides functionalities related to the localization of the robot.
 pub struct LocalizationPlugin;
 
 impl Plugin for LocalizationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostStartup, (init_pose, setup_pose_visualization))
+        app.init_config::<LocalizationConfig>()
+            .add_plugins(odometry::OdometryPlugin)
+            .add_systems(PostStartup, (initialize_pose, setup_pose_visualization))
             .add_systems(
                 PreUpdate,
-                update_robot_pose
-                    .after(odometry::update_odometry)
-                    .run_if(not(in_behavior::<Standup>)),
+                (
+                    (odometry_update, line_update.run_if(not(motion_is_unsafe)))
+                        .run_if(not(is_penalized)),
+                    filter_hypotheses,
+                    reset_hypotheses,
+                )
+                    .chain()
+                    .after(odometry::update_odometry),
             )
-            .add_systems(PostUpdate, visualize_pose);
+            .add_systems(PostUpdate, (visualize_pose, visualize_pose_hypotheses));
     }
 }
 
-fn init_pose(
+#[derive(Resource, Debug, Clone, Serialize, Deserialize)]
+pub struct LocalizationConfig {
+    pub odometry: OdometryConfig,
+    pub correspondence: CorrespondenceConfig,
+    pub hypothesis: HypothesisConfig,
+    pub gradient_descent: GradientDescentConfig,
+}
+
+impl Config for LocalizationConfig {
+    const PATH: &'static str = "localization.toml";
+}
+
+fn initialize_pose(
     mut commands: Commands,
-    layout_config: Res<LayoutConfig>,
-    player_config: Res<PlayerConfig>,
+    layout: Res<LayoutConfig>,
+    player: Res<PlayerConfig>,
+    localization: Res<LocalizationConfig>,
 ) {
-    let initial_position = layout_config
-        .initial_positions
-        .player(player_config.player_number);
+    let pose = initial_pose(&layout, player.player_number);
 
-    commands.insert_resource(RobotPose::new(initial_position.isometry));
-}
-
-#[derive(Resource, Default, Debug, Clone)]
-pub struct RobotPose {
-    pub inner: Isometry2<f32>,
-}
-
-impl RobotPose {
-    // Constant for camera height that we set anywhere get_lookat_absolute is called.
-    // Set to zero if we are only looking at the ground, for example.
-    pub const CAMERA_HEIGHT: f32 = 0.5;
-
-    fn new(pose: Isometry2<f32>) -> Self {
-        Self { inner: pose }
-    }
-
-    /// The current pose of the robot in the world, in 3D space.
-    ///
-    /// The z-axis is always 0.
-    /// The rotation is around the z-axis.
-    #[must_use]
-    pub fn as_3d(&self) -> Isometry3<f32> {
-        Isometry3::from_parts(
-            Translation3::new(self.inner.translation.x, self.inner.translation.y, 0.0),
-            UnitQuaternion::from_euler_angles(0.0, 0.0, self.inner.rotation.angle()),
-        )
-    }
-
-    /// The current position of the robot in the world, in absolute coordinates.
-    ///
-    /// The center of the world is at the center of the field, with the x-axis pointing towards the
-    /// opponent's goal.
-    #[must_use]
-    pub fn world_position(&self) -> Point2<f32> {
-        self.inner.translation.vector.into()
-    }
-
-    /// The current rotation of the robot in the world, in radians.
-    #[must_use]
-    pub fn world_rotation(&self) -> f32 {
-        self.inner.rotation.angle()
-    }
-
-    /// Transform a point from robot coordinates to world coordinates.
-    #[must_use]
-    pub fn robot_to_world(&self, point: &Point2<f32>) -> Point2<f32> {
-        self.inner.transform_point(point)
-    }
-
-    /// Transform a point from world coordinates to robot coordinates.
-    #[must_use]
-    pub fn world_to_robot(&self, point: &Point2<f32>) -> Point2<f32> {
-        self.inner.inverse_transform_point(point)
-    }
-
-    #[must_use]
-    pub fn get_look_at_absolute(&self, point_in_world: &Point3<f32>) -> HeadJoints<f32> {
-        let robot_to_point = self.world_to_robot(&point_in_world.xy());
-        let x = robot_to_point.x;
-        let y = robot_to_point.y;
-        let z = point_in_world.z;
-        let yaw = (robot_to_point.y / robot_to_point.x).atan();
-        // 0.5 is the height of the robot's primary camera while standing
-        let pitch = (0.5 - z).atan2((x * x + y * y).sqrt());
-
-        HeadJoints { yaw, pitch }
-    }
-
-    #[must_use]
-    pub fn distance_to(&self, point: &Point2<f32>) -> f32 {
-        (self.world_position() - point).norm()
-    }
-
-    #[must_use]
-    pub fn angle_to(&self, point: &Point2<f32>) -> f32 {
-        let robot_to_point = self.world_to_robot(point).xy();
-        robot_to_point.y.atan2(robot_to_point.x)
-    }
-}
-
-fn update_robot_pose(
-    mut robot_pose: ResMut<RobotPose>,
-    odometry: Res<Odometry>,
-    primary_state: Res<PrimaryState>,
-    layout_config: Res<LayoutConfig>,
-    game_controller_message: Option<Res<GameControllerMessage>>,
-) {
-    *robot_pose = next_robot_pose(
-        robot_pose.as_mut(),
-        odometry.as_ref(),
-        primary_state.as_ref(),
-        layout_config.as_ref(),
-        game_controller_message.as_deref(),
+    let hypothesis = RobotPoseHypothesis::new(
+        pose,
+        CovarianceMatrix::from_diagonal(&localization.hypothesis.variance_initial.into()),
+        localization.hypothesis.score_initial,
     );
+
+    commands.spawn(hypothesis);
+    commands.insert_resource(pose);
 }
 
-#[must_use]
-pub fn next_robot_pose(
-    robot_pose: &RobotPose,
-    odometry: &Odometry,
-    primary_state: &PrimaryState,
-    layout_config: &LayoutConfig,
-    message: Option<&GameControllerMessage>,
-) -> RobotPose {
-    let mut isometry = if *primary_state == PrimaryState::Penalized {
-        find_closest_penalty_pose(robot_pose, layout_config)
-    } else {
-        robot_pose.inner * odometry.offset_to_last
-    };
-
-    if let Some(message) = message {
-        if message.game_phase == GamePhase::PenaltyShoot {
-            if message.kicking_team == 8 {
-                isometry = Isometry2::from_parts(
-                    Translation2::new(3.2, 0.0),
-                    UnitComplex::from_angle(0.0),
-                );
-            } else {
-                isometry =
-                    Isometry2::from_parts(Translation2::new(4.5, 0.0), UnitComplex::from_angle(PI));
-            }
-        }
-    }
-
-    RobotPose::new(isometry)
-}
-
-fn find_closest_penalty_pose(
-    robot_pose: &RobotPose,
-    layout_config: &LayoutConfig,
-) -> Isometry2<f32> {
-    *layout_config
-        .penalty_positions
-        .iter()
-        .reduce(|a, b| {
-            let distance_a =
-                (robot_pose.inner.translation.vector - a.translation.vector).norm_squared();
-            let distance_b =
-                (robot_pose.inner.translation.vector - b.translation.vector).norm_squared();
-
-            if distance_b > distance_a {
-                a
-            } else {
-                b
-            }
-        })
-        .unwrap_or_else(|| {
-            tracing::warn!("failed to find closest penalty pose for");
-            &robot_pose.inner
-        })
+fn motion_is_unsafe(
+    keyframe_executor: Res<KeyframeExecutor>,
+    motion_state: Res<State<Gait>>,
+    contacts: Res<Contacts>,
+) -> bool {
+    keyframe_executor.active_motion.is_some()
+        || !matches!(motion_state.get(), Gait::Standing | Gait::Walking)
+        || !contacts.ground
 }
 
 fn setup_pose_visualization(dbg: DebugContext) {
@@ -218,18 +116,40 @@ fn setup_pose_visualization(dbg: DebugContext) {
     );
 }
 
-fn visualize_pose(
-    dbg: DebugContext,
-    cycle: Res<Cycle>,
-    pose: Res<RobotPose>,
-    orientation: Res<RobotOrientation>,
-) {
-    let orientation = orientation.quaternion();
-    let position = pose.inner.translation.vector;
+fn visualize_pose(dbg: DebugContext, cycle: Res<Cycle>, pose: Res<RobotPose>) {
+    let position = pose.world_position();
     dbg.log_with_cycle(
         "localization/pose",
         *cycle,
-        &rerun::Transform3D::from_rotation(Into::<Quat>::into(orientation))
-            .with_translation((position.x, position.y, 0.2865)),
+        &rerun::Transform3D::from_rotation(Rotation3D::AxisAngle(RotationAxisAngle::new(
+            (0.0, 0.0, 1.0),
+            pose.world_rotation(),
+        )))
+        .with_translation((position.x, position.y, 0.2865)),
+    );
+}
+
+fn visualize_pose_hypotheses(
+    dbg: DebugContext,
+    cycle: Res<Cycle>,
+    hypotheses: Query<&RobotPoseHypothesis>,
+) {
+    dbg.log_with_cycle(
+        "localization/hypotheses",
+        *cycle,
+        &rerun::Arrows3D::from_vectors(hypotheses.iter().map(|hypothesis| {
+            let rotation = hypothesis.filter.state().world_rotation();
+            (rotation.cos(), rotation.sin(), 0.0)
+        }))
+        .with_origins(hypotheses.iter().map(|hypothesis| {
+            let position = hypothesis.filter.state().world_position();
+            (position.x, position.y, 0.1)
+        }))
+        .with_labels(
+            hypotheses
+                .iter()
+                .map(|hypothesis| format!("{:.2}", hypothesis.score)),
+        )
+        .with_colors(hypotheses.iter().map(|_| (0, 255, 255))),
     );
 }

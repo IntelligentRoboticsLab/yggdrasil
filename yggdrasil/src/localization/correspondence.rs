@@ -1,9 +1,20 @@
 use nalgebra::{Isometry2, Point2, Vector2};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     core::config::layout::{FieldLine, LayoutConfig},
     vision::line_detection::line::{Circle, LineSegment2},
 };
+
+use super::LocalizationConfig;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CorrespondenceConfig {
+    /// Minimum fitting error for a correspondence to be considered valid
+    pub min_fit_error: f32,
+    /// Factor by which the length of a measured line may be greater than the corresponding field line
+    pub elongation_factor: f32,
+}
 
 /// Correspondence between a measured line and a field line
 #[derive(Clone, Debug)]
@@ -18,13 +29,18 @@ pub struct FieldLineCorrespondence {
     pub end: PointCorrespondence,
 }
 
-/// Factor by which the length of a measured line may be greater than the corresponding field line
-const LINE_LENGTH_ACCEPTANCE_FACTOR: f32 = 1.5;
+impl FieldLineCorrespondence {
+    #[must_use]
+    pub fn error(&self) -> f32 {
+        self.start.distance() + self.end.distance()
+    }
+}
 
 /// Matches detected lines in field space to their closest field lines.
 #[must_use]
 pub fn correspond_field_lines(
     lines: &[LineSegment2],
+    cfg: &LocalizationConfig,
     layout: &LayoutConfig,
     correction: Isometry2<f32>,
 ) -> Vec<FieldLineCorrespondence> {
@@ -40,12 +56,13 @@ pub fn correspond_field_lines(
 
                     let measurement_length = measurement.length();
                     let reference_length = match reference {
-                        FieldLine::Segment(segment) => segment.length(),
+                        FieldLine::Segment { segment, .. } => segment.length(),
                         // approximate length of a detected line in the center circle
                         FieldLine::Circle(circle) => circle.radius,
                     };
 
-                    if measurement_length > reference_length * LINE_LENGTH_ACCEPTANCE_FACTOR {
+                    if measurement_length > reference_length * cfg.correspondence.elongation_factor
+                    {
                         return None;
                     }
 
@@ -118,7 +135,9 @@ pub struct LineCorrespondence {
 #[must_use]
 fn correspond_lines(reference: FieldLine, measurement: LineSegment2) -> LineCorrespondence {
     match reference {
-        FieldLine::Segment(reference) => correspond_segment(reference, measurement),
+        FieldLine::Segment {
+            segment: reference, ..
+        } => correspond_segment(reference, measurement),
         FieldLine::Circle(reference) => correspond_circle(reference, measurement),
     }
 }
