@@ -203,11 +203,12 @@ pub fn compute_surface_overlap(
 /// Checks if a proposed circular area in the camera image at center `ball_center` with radius `radius` is likely to
 /// be a ball. If so, it is added to `proposals` so a more accurate, but more costly, classifier can later on
 /// classify the sample.
+///
 /// The check consists out of two parts:
-/// 1. Shape check: What are the colors that constitute the proposed circular area?
-///     If the colors are predominantly black and white, it could be a ball.
-/// 2. What are the colors underneath the ball? We know the ball lies on grass, hence
-///     if the colors are predominantly green, the proposal could be a ball.
+///
+/// 1. Shape check: What are the colors that constitute the proposed circular area? If the colors are predominantly black and white, it could be a ball.
+///
+/// 2. What are the colors underneath the ball? We know the ball lies on grass, hence if the colors are predominantly green, the proposal could be a ball.
 ///
 /// # Args
 /// - `ball_center`: proposed ball center

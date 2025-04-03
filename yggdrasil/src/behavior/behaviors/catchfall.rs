@@ -225,5 +225,5 @@ pub fn catch_fall(
                 nao_manager.set_arms(target_arm_joints, ArmJoints::fill(0.1), Priority::Critical);
             }
         }
-    };
+    }
 }
