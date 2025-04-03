@@ -1,5 +1,3 @@
-use bevy::prelude::*;
-
 use nalgebra::{matrix, vector, Isometry2, Matrix2, Vector2};
 
 use crate::{core::config::layout::LayoutConfig, vision::line_detection::line::LineSegment2};
