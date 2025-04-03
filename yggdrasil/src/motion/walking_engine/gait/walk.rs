@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 use nalgebra::{Translation3, Vector2};
 
@@ -32,6 +34,7 @@ impl Plugin for WalkPlugin {
                 .in_set(WalkingEngineSet::GenerateGait)
                 .run_if(in_state(Gait::Walking)),
         );
+        app.add_systems(OnEnter(Gait::Walking), init_walking_step);
 
         app.add_systems(
             Update,
@@ -41,6 +44,25 @@ impl Plugin for WalkPlugin {
                 .run_if(in_state(Gait::Walking)),
         );
     }
+}
+
+fn init_walking_step(
+    mut commands: Commands,
+    mut step_context: ResMut<StepContext>,
+    kinematics: Res<Kinematics>,
+    config: Res<WalkingEngineConfig>,
+) {
+    let start = FootPositions::from_kinematics(
+        step_context.planned_step.swing_side,
+        &kinematics,
+        config.torso_offset,
+    );
+    step_context.plan_next_step(start, &config);
+
+    commands.insert_resource(WalkState {
+        phase: Duration::ZERO,
+        planned_step: step_context.planned_step,
+    });
 }
 
 fn generate_walk_gait(

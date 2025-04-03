@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use super::{
     config::WalkingEngineConfig, foot_support::FootSupportState, smoothing::parabolic_step,
-    step::PlannedStep, FootSwitchedEvent, WalkingEngineSet,
+    step::PlannedStep, FootSwitchedEvent, Gait, WalkingEngineSet,
 };
 use crate::prelude::*;
 
@@ -23,7 +23,8 @@ impl Plugin for GaitPlugin {
             Sensor,
             update_support_foot
                 .after(crate::sensor::fsr::force_sensitive_resistor_sensor)
-                .after(WalkingEngineSet::Prepare),
+                .after(WalkingEngineSet::Prepare)
+                .run_if(in_state(Gait::Walking).or(in_state(Gait::Stopping))),
         );
 
         app.add_plugins((
