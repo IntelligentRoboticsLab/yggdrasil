@@ -25,6 +25,8 @@ use super::{
     LocalizationConfig, RobotPose,
 };
 
+type RobotPoseUkf = UnscentedKalmanFilter<3, 7, RobotPose>;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HypothesisConfig {
     /// Variance of the odometry
@@ -249,7 +251,7 @@ pub fn reset_hypotheses(
 
 #[derive(Clone, Component)]
 pub struct RobotPoseHypothesis {
-    pub filter: UnscentedKalmanFilter<3, 7, RobotPose>,
+    pub filter: RobotPoseUkf,
     pub score: f32,
 }
 
@@ -260,8 +262,7 @@ impl RobotPoseHypothesis {
         initial_covariance: CovarianceMatrix<3>,
         initial_score: f32,
     ) -> Self {
-        let filter =
-            UnscentedKalmanFilter::<3, 7, RobotPose>::new(initial_pose, initial_covariance);
+        let filter = RobotPoseUkf::new(initial_pose, initial_covariance);
 
         Self {
             filter,
