@@ -13,7 +13,7 @@ fn run_blocking_task(
 
     if stopwatch.elapsed() < Duration::from_secs(3) {
         return;
-    };
+    }
 
     stopwatch.reset();
 
