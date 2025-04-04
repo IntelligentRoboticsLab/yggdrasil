@@ -25,6 +25,7 @@ async fn main() -> Result<()> {
         Commands::Scan(opts) => opts.scan(config).await?,
         Commands::Showtime(opts) => opts.showtime(config).await?,
         Commands::ChangeNetwork(opts) => opts.change_network(config).await?,
+        Commands::Shutdown(opts) => opts.shutdown(config).await?,
         Commands::Config(opts) => opts.config()?,
         Commands::Update(opts) => opts.update().await?,
     }

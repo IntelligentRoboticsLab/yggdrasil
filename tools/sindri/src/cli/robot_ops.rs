@@ -403,6 +403,56 @@ pub(crate) async fn change_single_network(
     Ok(())
 }
 
+pub(crate) async fn shutdown_single_robot(robot: &Robot, restart: bool, output: Output) -> Result<()> {
+    
+    let mut command = "sudo shutdown now";
+    let mut command_string = "Shutting down";
+    if restart {
+        command = "sudo shutdown -r now";
+        command_string = "Restarting";
+    }
+    
+    match &output {
+        Output::Silent => {}
+        Output::Multi(pb) => {
+            pb.set_message(format!(
+                "{} {}",
+                command_string.bright_red().bold(),
+                robot.name,
+            ));
+        }
+        Output::Single(pb) => {
+            pb.set_prefix("    Changing");
+            pb.set_message(format!(
+                "{} {}",
+                command_string.bright_red().bold(),
+                robot.name,
+            ));
+        }
+    }
+
+    robot
+        .ssh::<&str, &str>(command, [], true)?
+        .wait()
+        .await?;
+
+    match output {
+        Output::Silent => {}
+        Output::Multi(pb) => pb.println(format!(
+            "     {} {}",
+            "Shut down".bold().blue(),
+            robot.name.bright_yellow()
+        )),
+        Output::Single(pb) => pb.println(format!(
+            "     {} {}",
+            "Shut down".bold().blue(),
+            robot.name.bright_yellow()
+        )),
+    }
+
+    Ok(())
+}
+
 /// Compile yggdrasil
 pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miette::Result<()> {
     find_bin_manifest(&config.bin)
