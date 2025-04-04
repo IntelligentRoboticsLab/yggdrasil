@@ -23,6 +23,7 @@ impl Plugin for FSRSensorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Fsr>();
         app.init_resource::<Contacts>();
+        app.init_resource::<GroundContact>();
 
         app.add_systems(PostStartup, init_fsr_calibration);
         app.add_systems(
@@ -30,6 +31,7 @@ impl Plugin for FSRSensorPlugin {
             (
                 force_sensitive_resistor_sensor,
                 update_contacts,
+                update_ground_contact,
                 update_fsr_calibration,
             )
                 .chain(),
@@ -107,6 +109,24 @@ impl Default for Contacts {
             last_switched: Instant::now(),
             lpf: ButterworthLpf::new(OMEGA),
         }
+    }
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct GroundContact {
+    pub grounded_since: Option<Instant>,
+    pub ungrounded_since: Option<Instant>,
+}
+
+fn update_ground_contact(mut ground_contact: ResMut<GroundContact>, contacts: Res<Contacts>) {
+    if contacts.ground && ground_contact.grounded_since.is_none() {
+        ground_contact.grounded_since = Some(Instant::now());
+        ground_contact.ungrounded_since = None;
+    }
+
+    if !contacts.ground && ground_contact.ungrounded_since.is_none() {
+        ground_contact.ungrounded_since = Some(Instant::now());
+        ground_contact.grounded_since = None;
     }
 }
 
