@@ -102,21 +102,21 @@ pub fn sync_hardware(
 
 fn log_nao_state(ctx: DebugContext, cycle: Res<Cycle>, nao_state: Res<NaoState>) {
     let joint_positions = serialized_component_batch_f32(
-        "yggdrasil::JointPosition",
+        "yggdrasil.components.JointPosition",
         nao_state.position.into_iter().copied(),
     );
     let joint_stiffness = serialized_component_batch_f32(
-        "yggdrasil::JointStiffness",
+        "yggdrasil.components.JointStiffness",
         nao_state.stiffness.into_iter().copied(),
     );
 
     let currents = serialized_component_batch_f32(
-        "yggdrasil::JointCurrent",
+        "yggdrasil.components.JointCurrent",
         nao_state.current.into_iter().copied(),
     );
 
     let temperature = serialized_component_batch_f32(
-        "yggdrasil::JointTemperature",
+        "yggdrasil.components.JointTemperature",
         nao_state.temperature.into_iter().copied(),
     );
 
@@ -133,11 +133,11 @@ fn log_nao_control_message(
     control_msg: Res<NaoControlMessage>,
 ) {
     let joint_positions = serialized_component_batch_f32(
-        "yggdrasil::JointPosition",
+        "yggdrasil.components.JointPosition",
         control_msg.position.into_iter().copied(),
     );
     let joint_stiffness = serialized_component_batch_f32(
-        "yggdrasil::JointStiffness",
+        "yggdrasil.components.JointStiffness",
         control_msg.stiffness.into_iter().copied(),
     );
 
