@@ -415,33 +415,54 @@ pub(crate) async fn change_single_network(
     Ok(())
 }
 
+#[derive(Clone)]
+pub enum ShutdownCommand {
+    Shutdown,
+    Restart,
+}
+impl ShutdownCommand {
+    #[must_use]
+    fn command(&self) -> &'static str {
+        match self {
+            Self::Shutdown => "sudo shutdown now",
+            Self::Restart => "sudo shutdown -r now",
+        }
+    }
+
+    #[must_use]
+    fn message(&self) -> &'static str {
+        match self {
+            Self::Shutdown => "Shutting down",
+            Self::Restart => "Restarting",
+        }
+    }
+}
+
 pub(crate) async fn shutdown_single_robot(
     robot: &Robot,
-    restart: bool,
+    kind: ShutdownCommand,
     output: Output,
 ) -> Result<()> {
-    let (command, command_message) = if restart {
-        ("sudo shutdown -r now", "Restarting")
-    } else {
-        ("sudo shutdown now", "Shutting down")
-    };
     match &output {
         Output::Silent => {}
         Output::Multi(pb) | Output::Single(pb) => {
             pb.set_message(format!(
-                "{} {}",
-                command_message.bright_red().bold(),
+                "    {} {}",
+                kind.message().bright_red().bold(),
                 robot.name,
             ));
         }
     }
 
-    robot.ssh::<&str, &str>(command, [], true)?.wait().await?;
+    robot
+        .ssh::<&str, &str>(kind.command(), [], true)?
+        .wait()
+        .await?;
 
     match output {
         Output::Silent => {}
         Output::Multi(pb) | Output::Single(pb) => pb.println(format!(
-            "     {} {}",
+            "    {} {}",
             "Shut down".bold().blue(),
             robot.name.bright_yellow()
         )),

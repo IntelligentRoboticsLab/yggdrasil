@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::cli::robot_ops::NameOrNum;
 use crate::{
-    cli::robot_ops::{self, shutdown_single_robot},
+    cli::robot_ops::{self, shutdown_single_robot, ShutdownCommand},
     config::SindriConfig,
 };
 use clap::Parser;
@@ -26,6 +26,12 @@ pub struct Shutdown {
 impl Shutdown {
     /// This command sends a signal to each robot to shutdown
     pub async fn shutdown(self, config: SindriConfig) -> Result<()> {
+        let kind = if self.restart {
+            ShutdownCommand::Restart
+        } else {
+            ShutdownCommand::Shutdown
+        };
+
         let multi = MultiProgress::new();
         multi.set_alignment(indicatif::MultiProgressAlignment::Bottom);
         let status_bar = multi.add(
@@ -38,14 +44,13 @@ impl Shutdown {
         );
 
         status_bar.enable_steady_tick(Duration::from_millis(80));
-        if self.restart {
-            status_bar.set_prefix("Restart signal");
-        } else {
-            status_bar.set_prefix("Shutdown signal");
+        match kind {
+            ShutdownCommand::Shutdown => status_bar.set_prefix("Shutting down"),
+            ShutdownCommand::Restart => status_bar.set_prefix("Restarting"),
         }
         status_bar.set_message(format!(
             "{}{}{}",
-            "robots: ".dimmed(),
+            "(robots: ".dimmed(),
             self.robot_ids.len().to_string().bold(),
             ")".dimmed()
         ));
@@ -58,6 +63,7 @@ impl Shutdown {
                 robot_id
             )))?;
             let multi = multi.clone();
+            let kind = kind.clone();
 
             join_set.spawn_blocking(move || {
                 let multi = multi.clone();
@@ -65,11 +71,12 @@ impl Shutdown {
                 let pb = ProgressBar::new(1);
                 let pb = multi.add(pb);
                 let output = robot_ops::Output::Multi(pb);
+                let kind = kind.clone();
 
                 handle
                     .block_on(async move {
                         output.spinner();
-                        shutdown_single_robot(&robot, self.restart, output.clone()).await?;
+                        shutdown_single_robot(&robot, kind, output.clone()).await?;
 
                         output.finished_deploying(&robot.ip());
                         Ok::<(), crate::error::Error>(())
