@@ -46,6 +46,7 @@ pub struct StandingHeight(f32);
 impl StandingHeight {
     pub const MAX: Self = Self(0.26);
 
+    #[must_use]
     pub fn new(height: f32) -> Self {
         Self(height)
     }
