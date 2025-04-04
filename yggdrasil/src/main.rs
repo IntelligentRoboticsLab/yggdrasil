@@ -17,8 +17,8 @@ fn main() -> Result<()> {
     setup_tracing()?;
     miette::set_panic_hook();
 
-    App::new()
-        .add_plugins((MinimalPlugins, StatesPlugin))
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, StatesPlugin))
         .add_plugins((
             schedule::NaoSchedulePlugin,
             game_controller::GameControllerPlugin,
@@ -33,8 +33,10 @@ fn main() -> Result<()> {
             kinematics::KinematicsPlugin,
             motion::MotionPlugins,
             vision::VisionPlugins,
-        ))
-        .run();
+        ));
+
+    bevy_mod_debugdump::print_schedule_graph(&mut app, Update);
+    // app.run();
     Ok(())
 }
 
