@@ -415,7 +415,7 @@ pub(crate) async fn change_single_network(
     Ok(())
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum ShutdownCommand {
     Shutdown,
     Restart,
