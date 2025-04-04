@@ -93,10 +93,10 @@ pub fn init_rerun(mut commands: Commands) {
             "Rerun logging to {}",
             output_rrd_file_path.as_path().display()
         );
-        RerunStream::init_file_store("yggdrasil", output_rrd_file_path)
+        RerunStream::init_file_sink("yggdrasil", output_rrd_file_path)
             .expect("failed to initialize rerun::RecordingStream")
     } else if let Some(address) = server_address {
-        RerunStream::init("yggdrasil", address)
+        RerunStream::init_tcp_stream("yggdrasil", address)
             .expect("failed to initialize rerun::RecordingStream")
     } else {
         tracing::warn!("`RERUN_HOST` not set, rerun debugging is disabled");
@@ -200,7 +200,10 @@ impl RerunStream {
     ///
     /// If yggdrasil is not compiled with the `rerun` feature, this will return a
     /// [`RerunStream`] that does nothing.
-    pub fn init(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
+    pub fn init_tcp_stream(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
+        std::env::set_var("RERUN_FLUSH_TICK_SECS", "0.05"); // 50 milliseconds
+        std::env::set_var("RERUN_FLUSH_NUM_BYTES", "655360"); // 5 MiB
+
         let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
             .connect_tcp_opts(
                 SocketAddr::new(rerun_host, rerun::default_server_addr().port()),
@@ -218,10 +221,13 @@ impl RerunStream {
     /// Initialize a new [`RerunStream`].
     ///
     /// The stream is stored as an rrd file at the `path` location.
-    pub fn init_file_store(
+    pub fn init_file_sink(
         recording_name: impl AsRef<str>,
         path: impl Into<PathBuf>,
     ) -> Result<Self> {
+        std::env::set_var("RERUN_FLUSH_TICK_SECS", "5"); // 5 seconds
+        std::env::set_var("RERUN_FLUSH_NUM_BYTES", "104857600"); // 100 MiB
+
         let stream = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
             .save(path)
             .into_diagnostic()?;
@@ -326,7 +332,7 @@ impl RerunStream {
 
     /// Return whether the [`RerunStream`] is logging to an rrd file.
     #[must_use]
-    pub fn logging_to_rrd_file(&self) -> bool {
+    pub fn logging_to_file_sink(&self) -> bool {
         self.logging_to_rrd_file
     }
 }
@@ -334,7 +340,7 @@ impl RerunStream {
 /// Run condition to test whether Rerun is being logged to a [`rerun::sink::FileSink`].
 #[must_use]
 pub fn logging_to_file_sink(dbg: DebugContext) -> bool {
-    dbg.logging_to_rrd_file()
+    dbg.logging_to_file_sink()
 }
 
 /// The central context used for logging debug data to [rerun](https://rerun.io).
