@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::{
     core::debug::{
@@ -20,6 +20,8 @@ use super::{
 use bevy::prelude::*;
 use nalgebra::Vector2;
 use rerun::external::glam::{Quat, Vec3};
+
+const RETURN_FROM_HIGH_STAND_COOLDOWN: Duration = Duration::from_secs(1);
 
 pub(super) struct StepContextPlugin;
 
@@ -55,6 +57,7 @@ pub struct StepContext {
     requested_gait: Gait,
     requested_step: Step,
     pub requested_standing_height: Option<StandingHeight>,
+    stand_return_start: Option<Instant>,
     last_step: PlannedStep,
     pub planned_step: PlannedStep,
 }
@@ -66,6 +69,7 @@ impl StepContext {
             requested_gait: gait,
             requested_step: Step::default(),
             requested_standing_height: None,
+            stand_return_start: None,
             last_step,
             planned_step: last_step,
         }
@@ -123,6 +127,20 @@ impl StepContext {
             Gait::Sitting => error!(
                 "Cannot request walk while sitting! Call StepManager::request_stand() first!"
             ),
+            // cooldown when returning from high stand
+            Gait::Standing
+                if self.requested_standing_height.is_some()
+                    || self.stand_return_start.is_some() =>
+            {
+                if let Some(stand_return_start) = self.stand_return_start {
+                    if stand_return_start.elapsed() > RETURN_FROM_HIGH_STAND_COOLDOWN {
+                        self.stand_return_start = None;
+                    }
+                } else {
+                    self.request_stand();
+                    self.stand_return_start = Some(Instant::now());
+                }
+            }
             Gait::Standing => {
                 // go to starting
                 self.requested_gait = Gait::Starting;
