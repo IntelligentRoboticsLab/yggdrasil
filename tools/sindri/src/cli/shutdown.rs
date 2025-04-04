@@ -26,8 +26,6 @@ pub struct Shutdown {
 impl Shutdown {
     /// This command sends a signal to each robot to shutdown
     pub async fn shutdown(self, config: SindriConfig) -> Result<()> {
-        let mut join_set = tokio::task::JoinSet::new();
-
         let multi = MultiProgress::new();
         multi.set_alignment(indicatif::MultiProgressAlignment::Bottom);
         let status_bar = multi.add(
@@ -51,6 +49,8 @@ impl Shutdown {
             self.robot_ids.len().to_string().bold(),
             ")".dimmed()
         ));
+
+        let mut join_set = tokio::task::JoinSet::new();
 
         for robot_id in self.robot_ids {
             let robot = config.robot(&robot_id, self.wired).ok_or(miette!(format!(
