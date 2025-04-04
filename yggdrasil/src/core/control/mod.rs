@@ -14,10 +14,7 @@ use receive::{
     handle_notify_on_connection, handle_viewer_message, NotifyConnectionReceiver,
     ViewerMessageReceiver,
 };
-use transmit::{
-    send_on_connection, update_debug_systems_for_clients, SendCameraExtrinsic,
-    SendDebugEnabledSystems, SendGreenChromaticityThreshold,
-};
+use transmit::{send_on_connection, update_debug_systems_for_clients, SendRobotInitialDataSystems};
 
 use crate::behavior::primary_state::update_gamecontroller_message;
 
@@ -29,9 +26,7 @@ impl Plugin for ControlPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<DebugEnabledSystemUpdated>()
             .add_event::<ViewerConnected>()
-            .init_resource::<SendCameraExtrinsic>()
-            .init_resource::<SendDebugEnabledSystems>()
-            .init_resource::<SendGreenChromaticityThreshold>()
+            .init_resource::<SendRobotInitialDataSystems>()
             .add_systems(Startup, setup.after(init_rerun))
             .add_systems(
                 Update,

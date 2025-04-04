@@ -1,12 +1,18 @@
 use std::{collections::HashMap, time::Duration};
 
 use bevy::{ecs::system::SystemId, prelude::*, tasks::IoTaskPool};
+use bifrost::communication::GameControllerMessage;
 use heimdall::CameraPosition;
 use re_control_comms::{
-    app::ControlAppHandle, debug_system::DebugEnabledSystems, protocol::RobotMessage,
+    app::ControlAppHandle,
+    debug_system::DebugEnabledSystems,
+    protocol::{Player, RobotGameController, RobotMessage},
 };
 
-use crate::vision::{camera::CameraConfig, scan_lines::ScanLinesConfig};
+use crate::{
+    core::config::showtime::PlayerConfig,
+    vision::{camera::CameraConfig, scan_lines::ScanLinesConfig},
+};
 
 use super::{DebugEnabledSystemUpdated, ViewerConnected};
 
@@ -24,16 +30,14 @@ impl Default for ControlRobotMessageDelay {
 pub fn send_on_connection(
     mut commands: Commands,
     mut viewer_events: EventReader<ViewerConnected>,
-    send_debug_enabled_systems: Res<SendDebugEnabledSystems>,
-    send_camera_extrinsic: Res<SendCameraExtrinsic>,
-    send_green_chromaticity_threshold: Res<SendGreenChromaticityThreshold>,
+    send_robot_initial_data_systems: Res<SendRobotInitialDataSystems>,
 ) {
     if !viewer_events.is_empty() {
         viewer_events.clear();
 
-        commands.run_system(send_debug_enabled_systems.0);
-        commands.run_system(send_camera_extrinsic.0);
-        commands.run_system(send_green_chromaticity_threshold.0);
+        for system_id in &send_robot_initial_data_systems.system_ids {
+            commands.run_system(*system_id);
+        }
     }
 }
 
@@ -105,6 +109,56 @@ fn send_green_chromaticity_threshold(
     .detach();
 }
 
+fn send_game_controller_player(
+    control_handle: Res<ControlAppHandle>,
+    player_config: Res<PlayerConfig>,
+) {
+    let msg = RobotMessage::RobotGameController(RobotGameController::PlayerInfo {
+        player: Player {
+            player_number: player_config.player_number,
+            team_number: player_config.team_number,
+        },
+    });
+
+    let io = IoTaskPool::get();
+
+    let handle = control_handle.clone();
+    io.spawn(async move {
+        if let Err(error) = handle.broadcast(msg).await {
+            tracing::error!(?error, "Failed to send game controller message");
+        }
+    })
+    .detach();
+}
+
+fn send_game_controller_message(
+    control_handle: Res<ControlAppHandle>,
+    game_controller_message: Option<Res<GameControllerMessage>>,
+    player_config: Res<PlayerConfig>,
+) {
+    let msg = {
+        if let Some(message) = game_controller_message {
+            RobotMessage::RobotGameController(RobotGameController::GameControllerMessage {
+                message: *message,
+            })
+        } else {
+            RobotMessage::RobotGameController(RobotGameController::GameControllerMessageInit {
+                team_number: player_config.team_number,
+            })
+        }
+    };
+
+    let io = IoTaskPool::get();
+
+    let handle = control_handle.clone();
+    io.spawn(async move {
+        if let Err(error) = handle.broadcast(msg).await {
+            tracing::error!(?error, "Failed to send game controller message");
+        }
+    })
+    .detach();
+}
+
 // This system sends the current [`DebugEnabledSystems`] to all connected
 // clients.
 // When an individual client updates a debug enabled system, the state of
@@ -130,32 +184,21 @@ pub fn update_debug_systems_for_clients(
 }
 
 #[derive(Resource)]
-pub struct SendDebugEnabledSystems(SystemId);
-
-impl FromWorld for SendDebugEnabledSystems {
-    fn from_world(world: &mut World) -> Self {
-        let system_id = world.register_system(send_debug_enabled_systems);
-        Self(system_id)
-    }
+pub struct SendRobotInitialDataSystems {
+    system_ids: Vec<SystemId>,
 }
 
-#[derive(Resource)]
-pub struct SendCameraExtrinsic(SystemId);
-
-impl FromWorld for SendCameraExtrinsic {
+impl FromWorld for SendRobotInitialDataSystems {
     fn from_world(world: &mut World) -> Self {
-        let system_id = world.register_system(send_camera_extrinsic);
-        Self(system_id)
-    }
-}
+        let mut system_ids = vec![];
 
-#[derive(Resource)]
-pub struct SendGreenChromaticityThreshold(SystemId);
+        system_ids.push(world.register_system(send_debug_enabled_systems));
+        system_ids.push(world.register_system(send_camera_extrinsic));
+        system_ids.push(world.register_system(send_green_chromaticity_threshold));
+        system_ids.push(world.register_system(send_game_controller_message));
+        system_ids.push(world.register_system(send_game_controller_player));
 
-impl FromWorld for SendGreenChromaticityThreshold {
-    fn from_world(world: &mut World) -> Self {
-        let system_id = world.register_system(send_green_chromaticity_threshold);
-        Self(system_id)
+        Self { system_ids }
     }
 }
 

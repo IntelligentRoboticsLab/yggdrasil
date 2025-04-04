@@ -7,10 +7,9 @@
 //! # Example
 //! For an example of how to use this module, see the documentation for the `SPLStandardMessage` struct.
 //!
-use std::time::Duration;
-
 use crate::serialization::{Decode, Encode};
 use bevy::prelude::*;
+use strum::EnumIter;
 
 /// The port from which the `GameController` sends the [`GameControllerMessage`] to the robots.
 pub const GAME_CONTROLLER_DATA_PORT: u16 = 3838;
@@ -19,10 +18,10 @@ pub const GAME_CONTROLLER_DATA_PORT: u16 = 3838;
 pub const GAME_CONTROLLER_RETURN_PORT: u16 = 3939;
 
 /// The header of the data sent by the `GameController`.
-const GAME_CONTROLLER_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'm', b'e'];
+pub const GAME_CONTROLLER_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'm', b'e'];
 
 /// The version of the data sent by the `GameController`.
-const GAME_CONTROLLER_STRUCT_VERSION: u8 = 18;
+pub const GAME_CONTROLLER_STRUCT_VERSION: u8 = 18;
 
 /// The header of the data sent by the robots.
 const GAME_CONTROLLER_RETURN_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'r', b't'];
@@ -104,7 +103,7 @@ pub enum GamePhase {
 }
 
 /// Enum for the different game states.
-#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq)]
+#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, EnumIter)]
 #[repr(u8)]
 pub enum GameState {
     /// Initial game state.
@@ -140,7 +139,7 @@ pub enum SetPlay {
 }
 
 /// Enum for the different penalty states.
-#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, Default)]
+#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, Default, EnumIter)]
 #[repr(u8)]
 pub enum Penalty {
     #[default]
@@ -231,39 +230,11 @@ impl TeamInfo {
     }
 
     #[must_use]
-    pub fn dnt(mut players: Vec<RobotInfo>) -> Self {
-        let dnt_team_number = 8;
-        let goal_keeper_number = 1;
-        let team_score = 0;
-        let penalty_shots = 0;
-        let single_shots = 0;
-        let message_budget = 1200;
-
-        let mut all_players = [RobotInfo::default(); MAX_NUM_PLAYERS as usize];
-
-        for (i, player) in players.iter_mut().enumerate() {
-            all_players[i] = *player;
-        }
-
-        TeamInfo {
-            team_number: dnt_team_number,
-            field_player_colour: TeamColor::Orange,
-            goalkeeper_colour: TeamColor::Green,
-            goalkeeper: goal_keeper_number,
-            score: team_score,
-            penalty_shot: penalty_shots,
-            single_shots,
-            message_budget,
-            players: all_players,
-        }
-    }
-
-    #[must_use]
     pub fn invisible() -> Self {
         TeamInfo {
             team_number: 0,
             field_player_colour: TeamColor::Blue,
-            goalkeeper_colour: TeamColor::Yellow,
+            goalkeeper_colour: TeamColor::Red,
             goalkeeper: 1,
             score: 0,
             penalty_shot: 0,
@@ -275,7 +246,7 @@ impl TeamInfo {
 }
 
 /// A struct representing the `RoboCupGameControlData` received by the Robots.
-#[derive(Resource, Encode, Decode, Debug, Clone, PartialEq)]
+#[derive(Resource, Encode, Decode, Debug, Clone, Copy, PartialEq)]
 pub struct GameControllerMessage {
     /// Header to identify the structure
     pub header: [u8; 4],
@@ -329,36 +300,10 @@ impl GameControllerMessage {
     }
 
     #[must_use]
-    pub fn create(
-        packet_number: u8,
-        players_per_team: u8,
-        game_state: GameState,
-        kicking_team: u8,
-        secondary_time: Duration,
-    ) -> Self {
-        let game_time = Duration::from_secs(600);
-        GameControllerMessage {
-            header: GAME_CONTROLLER_STRUCT_HEADER,
-            version: GAME_CONTROLLER_STRUCT_VERSION,
-            packet_number,
-            players_per_team,
-            competition_phase: CompetitionPhase::RoundRobin,
-            competition_type: CompetitionType::Normal,
-            game_phase: GamePhase::Normal,
-            state: game_state,
-            set_play: SetPlay::None,
-            first_half: Half::First,
-            kicking_team,
-            secs_remaining: game_time.as_secs() as i16,
-            secondary_time: secondary_time.as_secs() as i16,
-            teams: [
-                TeamInfo::dnt(vec![RobotInfo {
-                    penalty: Penalty::None,
-                    secs_till_unpenalised: 0,
-                }]),
-                TeamInfo::invisible(),
-            ],
-        }
+    pub fn team_mut(&mut self, team_number: u8) -> Option<&mut TeamInfo> {
+        self.teams
+            .iter_mut()
+            .find(|team| team.team_number == team_number)
     }
 }
 

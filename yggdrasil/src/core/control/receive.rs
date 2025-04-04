@@ -79,11 +79,15 @@ pub fn handle_viewer_message(
             ViewerMessage::FieldColor { config } => {
                 *scan_lines_config = config.into();
             }
-            ViewerMessage::FakeGameControllerMessage { message } => {
-                game_controller_message_sender.send(GameControllerMessageEvent(message));
-            }
             ViewerMessage::VisualRefereeRecognition => {
                 recognize_pose.send(RecognizeRefereePose);
+            }
+            ViewerMessage::ViewerGameController(game_controller_message) => {
+                match game_controller_message {
+                    re_control_comms::protocol::ViewerGameControllerMessage::GameControllerMessage { message } => {
+                        game_controller_message_sender.send(GameControllerMessageEvent(message));
+                    },
+                }
             }
             _ => tracing::warn!(?message, "unhandled message"),
         }

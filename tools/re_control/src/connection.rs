@@ -1,5 +1,9 @@
+use std::{env, net::Ipv4Addr, str::FromStr};
+
 use re_control_comms::viewer::ControlViewerHandle;
 use sindri::config::{ConfigRobot, Robot};
+
+pub const ROBOT_ADDR_ENV_KEY: &str = "ROBOT_ADDR";
 
 pub struct ConnectionState {
     pub handle: ControlViewerHandle,
@@ -28,5 +32,13 @@ impl ConnectionState {
         self.selected_robot_config
             .clone()
             .to_robot(self.team_number, self.wired_connection)
+    }
+}
+
+pub fn ip_from_env(env_key: &str) -> Ipv4Addr {
+    match env::var(env_key) {
+        Ok(ip_addr_str) => Ipv4Addr::from_str(&ip_addr_str)
+            .expect(&format!("{env_key} is set to an invalid ip address!")),
+        Err(_) => Ipv4Addr::LOCALHOST,
     }
 }

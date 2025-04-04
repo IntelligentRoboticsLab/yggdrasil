@@ -42,6 +42,7 @@ pub enum RobotMessage {
     FieldColor {
         config: FieldColorConfig,
     },
+    RobotGameController(RobotGameController)
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -63,7 +64,32 @@ pub enum ViewerMessage {
         config: FieldColorConfig,
     },
     VisualRefereeRecognition,
-    FakeGameControllerMessage {
-        message: GameControllerMessage,
-    },
+    ViewerGameController(ViewerGameControllerMessage),
+}
+
+#[derive(Encode, Decode, Debug, Clone)]
+pub enum GameControllerData {
+    GameControllerMessage(GameControllerMessage),
+    TeamUpdate { team_number: u8 },
+}
+
+#[derive(Encode, Decode, Debug, Clone, Copy)]
+pub struct Player {
+    pub player_number: u8,
+    pub team_number: u8,
+}
+
+#[derive(Encode, Decode, Debug, Clone)]
+pub enum RobotGameController {
+    GameControllerMessage { message: GameControllerMessage },
+    GameControllerMessageInit { team_number: u8 },
+    PlayerInfo {
+        player: Player
+    }
+}
+
+
+#[derive(Encode, Decode, Debug, Clone)]
+pub enum ViewerGameControllerMessage {
+    GameControllerMessage { message: GameControllerMessage },
 }
