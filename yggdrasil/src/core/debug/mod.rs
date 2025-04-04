@@ -202,7 +202,7 @@ impl RerunStream {
     /// [`RerunStream`] that does nothing.
     pub fn init_tcp_sink(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
         std::env::set_var("RERUN_FLUSH_TICK_SECS", "0.05"); // 50 milliseconds
-        std::env::set_var("RERUN_FLUSH_NUM_BYTES", "655360"); // 5 MiB
+        std::env::set_var("RERUN_FLUSH_NUM_BYTES", "5242880"); // 5 MiB
 
         let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
             .connect_tcp_opts(
