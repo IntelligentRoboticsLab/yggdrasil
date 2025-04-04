@@ -96,7 +96,7 @@ pub fn init_rerun(mut commands: Commands) {
         RerunStream::init_file_sink("yggdrasil", output_rrd_file_path)
             .expect("failed to initialize rerun::RecordingStream")
     } else if let Some(address) = server_address {
-        RerunStream::init_tcp_stream("yggdrasil", address)
+        RerunStream::init_tcp_sink("yggdrasil", address)
             .expect("failed to initialize rerun::RecordingStream")
     } else {
         tracing::warn!("`RERUN_HOST` not set, rerun debugging is disabled");
@@ -200,7 +200,7 @@ impl RerunStream {
     ///
     /// If yggdrasil is not compiled with the `rerun` feature, this will return a
     /// [`RerunStream`] that does nothing.
-    pub fn init_tcp_stream(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
+    pub fn init_tcp_sink(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
         std::env::set_var("RERUN_FLUSH_TICK_SECS", "0.05"); // 50 milliseconds
         std::env::set_var("RERUN_FLUSH_NUM_BYTES", "655360"); // 5 MiB
 

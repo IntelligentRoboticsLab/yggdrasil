@@ -27,8 +27,7 @@ use heimdall::{
 pub use image::Image;
 use matrix::CalibrationConfig;
 
-pub const NUM_FRAMES_TO_RETAIN: usize = 3;
-const JPEG_QUALITY: i32 = 20;
+const JPEG_QUALITY: i32 = 30;
 
 #[derive(Resource, Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
