@@ -423,7 +423,7 @@ pub enum ShutdownCommand {
 
 impl ShutdownCommand {
     #[must_use]
-    fn command(&self) -> &'static str {
+    fn command(self) -> &'static str {
         match self {
             Self::Shutdown => "sudo shutdown now",
             Self::Restart => "sudo shutdown -r now",
@@ -431,7 +431,7 @@ impl ShutdownCommand {
     }
 
     #[must_use]
-    fn message(&self) -> &'static str {
+    fn message(self) -> &'static str {
         match self {
             Self::Shutdown => "Shutting down",
             Self::Restart => "Restarting",

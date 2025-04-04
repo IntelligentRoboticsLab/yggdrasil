@@ -45,8 +45,8 @@ impl Shutdown {
 
         status_bar.enable_steady_tick(Duration::from_millis(80));
         match kind {
-            ShutdownCommand::Shutdown => status_bar.set_prefix("Shutting down"),
-            ShutdownCommand::Restart => status_bar.set_prefix("Restarting"),
+            ShutdownCommand::Shutdown => status_bar.set_prefix("Shutdown signal"),
+            ShutdownCommand::Restart => status_bar.set_prefix("Restart signal"),
         }
         status_bar.set_message(format!(
             "{}{}{}",
@@ -63,7 +63,6 @@ impl Shutdown {
                 robot_id
             )))?;
             let multi = multi.clone();
-            let kind = kind.clone();
 
             join_set.spawn_blocking(move || {
                 let multi = multi.clone();
@@ -71,7 +70,6 @@ impl Shutdown {
                 let pb = ProgressBar::new(1);
                 let pb = multi.add(pb);
                 let output = robot_ops::Output::Multi(pb);
-                let kind = kind.clone();
 
                 handle
                     .block_on(async move {
