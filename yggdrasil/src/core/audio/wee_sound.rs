@@ -8,7 +8,6 @@ use crate::sensor::fsr::GroundContact;
 use super::sound_manager::{Sound, SoundManager};
 use super::AudioConfig;
 
-/// Add the [`WeeSound`] as a resource, and [`wee_sound_system`] as a system to the framework.
 pub struct WeeSoundPlugin;
 
 impl Plugin for WeeSoundPlugin {
