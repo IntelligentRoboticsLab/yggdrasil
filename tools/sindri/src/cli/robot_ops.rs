@@ -420,6 +420,7 @@ pub enum ShutdownCommand {
     Shutdown,
     Restart,
 }
+
 impl ShutdownCommand {
     #[must_use]
     fn command(&self) -> &'static str {
