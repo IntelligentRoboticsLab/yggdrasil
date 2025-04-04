@@ -1,11 +1,9 @@
 # How long consecutive ground contact has to be not detected before the robot goes from
-# "grounded" to "ungrounded" state.
-# Time is in ms.
+# "grounded" to "ungrounded" state, in milliseconds.
 wee_sound_ungrounded_timeout = 1_000
 
 # How long consecutive ground contact needs to be detected before the robot goes from
-# "ungrounded" to "grounded" state.
-# Time is in ms.
+# "ungrounded" to "grounded" state, in milliseconds.
 wee_sound_grounded_timeout = 1_000
 
 # Time out time in ms for the battery sound.
