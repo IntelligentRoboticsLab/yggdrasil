@@ -331,6 +331,12 @@ impl RerunStream {
     }
 }
 
+/// Run condition to test whether Rerun is being logged to a [`rerun::sink::FileSink`].
+#[must_use]
+pub fn logging_to_file_sink(dbg: DebugContext) -> bool {
+    dbg.logging_to_rrd_file()
+}
+
 /// The central context used for logging debug data to [rerun](https://rerun.io).
 ///
 /// If yggdrasil is not compiled with the `rerun` feature, all calls will result in a no-op.

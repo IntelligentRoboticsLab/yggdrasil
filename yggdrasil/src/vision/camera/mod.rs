@@ -4,7 +4,11 @@ pub mod exposure_weights;
 pub mod image;
 pub mod matrix;
 
-use crate::{core::debug::DebugContext, nao::Cycle, prelude::*};
+use crate::{
+    core::debug::{self, DebugContext},
+    nao::Cycle,
+    prelude::*,
+};
 
 use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
 use miette::IntoDiagnostic;
@@ -12,6 +16,7 @@ use rerun::external::re_log::ResultExt;
 use serde::{Deserialize, Serialize};
 use std::{
     marker::PhantomData,
+    ops::Deref,
     sync::{Arc, Mutex},
 };
 use tasks::conditions::task_finished;
@@ -65,7 +70,14 @@ impl<T: CameraLocation> Plugin for CameraPlugin<T> {
         )
         .add_systems(
             PostUpdate,
-            log_image::<T>.run_if(resource_exists_and_changed::<Image<T>>),
+            (
+                log_image_jpeg::<T>.run_if(
+                    resource_exists_and_changed::<Image<T>>.and(not(debug::logging_to_file_sink)),
+                ),
+                log_image_yuyv::<T>.run_if(
+                    resource_exists_and_changed::<Image<T>>.and(debug::logging_to_file_sink),
+                ),
+            ),
         );
 
         app.add_plugins(matrix::CameraMatrixPlugin::<T>::default());
@@ -184,33 +196,37 @@ pub fn init_camera<T: CameraLocation>(mut commands: Commands, config: Res<Camera
     commands.insert_resource(image);
 }
 
-fn log_image<T: CameraLocation>(dbg: DebugContext, image: Res<Image<T>>) {
+fn log_image_jpeg<T: CameraLocation>(dbg: DebugContext, image: Res<Image<T>>) {
     AsyncComputeTaskPool::get()
         .spawn({
             let image = image.clone();
             let dbg = dbg.clone();
             async move {
-                if dbg.logging_to_rrd_file() {
-                    let rerun_image = rerun::Image::from_pixel_format(
-                        [image.width() as u32, image.height() as u32],
-                        rerun::PixelFormat::YUY2,
-                        image.to_vec(),
-                    );
-                    dbg.log_with_cycle(T::make_entity_image_path(""), image.cycle(), &rerun_image);
-                } else {
-                    let yuv_planar_image = YuvPlanarImage::from_yuyv(image.yuyv_image());
-                    let Some(jpeg) = yuv_planar_image.to_jpeg(JPEG_QUALITY).ok_or_log_error()
-                    else {
-                        return;
-                    };
-                    let encoded_image = rerun::EncodedImage::from_file_contents(jpeg.to_owned())
-                        .with_media_type(rerun::MediaType::JPEG);
-                    dbg.log_with_cycle(
-                        T::make_entity_image_path(""),
-                        image.cycle(),
-                        &encoded_image,
-                    );
-                }
+                let yuv_planar_image = YuvPlanarImage::from_yuyv(image.yuyv_image());
+                let Some(jpeg) = yuv_planar_image.to_jpeg(JPEG_QUALITY).ok_or_log_error() else {
+                    return;
+                };
+                let encoded_image =
+                    rerun::EncodedImage::new(jpeg.as_ref()).with_media_type(rerun::MediaType::JPEG);
+
+                dbg.log_with_cycle(T::make_entity_image_path(""), image.cycle(), &encoded_image);
+            }
+        })
+        .detach();
+}
+
+fn log_image_yuyv<T: CameraLocation>(dbg: DebugContext, image: Res<Image<T>>) {
+    AsyncComputeTaskPool::get()
+        .spawn({
+            let image = image.clone();
+            let dbg = dbg.clone();
+            async move {
+                let rerun_image = rerun::Image::from_pixel_format(
+                    [image.width() as u32, image.height() as u32],
+                    rerun::PixelFormat::YUY2,
+                    (*image).deref().as_ref(),
+                );
+                dbg.log_with_cycle(T::make_entity_image_path(""), image.cycle(), &rerun_image);
             }
         })
         .detach();
