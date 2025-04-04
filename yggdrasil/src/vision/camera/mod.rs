@@ -86,6 +86,7 @@ impl<T: CameraLocation> Plugin for CameraPlugin<T> {
 fn setup_camera_device(settings: &CameraSettings) -> Result<CameraDevice> {
     #[cfg(feature = "local")]
     let camera_device = CameraDevice::new(&settings.path)?;
+
     #[cfg(not(feature = "local"))]
     let mut camera_device = CameraDevice::new(&settings.path)?;
 
@@ -97,16 +98,13 @@ fn setup_camera_device(settings: &CameraSettings) -> Result<CameraDevice> {
     }
 
     #[cfg(not(feature = "local"))]
-    camera_device.set_focus_auto(settings.focus_auto)?;
-
-    #[cfg(not(feature = "local"))]
-    camera_device.set_exposure_auto(settings.exposure_auto)?;
-
-    #[cfg(not(feature = "local"))]
-    camera_device.set_white_balance_temperature(settings.white_balance_temperature)?;
-
-    #[cfg(not(feature = "local"))]
-    camera_device.set_white_balance_temperature_auto(settings.white_balance_temperature_auto)?;
+    {
+        camera_device.set_focus_auto(settings.focus_auto)?;
+        camera_device.set_exposure_auto(settings.exposure_auto)?;
+        camera_device.set_white_balance_temperature(settings.white_balance_temperature)?;
+        camera_device
+            .set_white_balance_temperature_auto(settings.white_balance_temperature_auto)?;
+    }
 
     Ok(camera_device)
 }
