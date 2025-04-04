@@ -49,6 +49,18 @@ impl fmt::Display for NameOrNum {
     }
 }
 
+impl std::str::FromStr for NameOrNum {
+    type Err = miette::Error;
+
+    fn from_str(s: &str) -> miette::Result<Self, Self::Err> {
+        if let Ok(num) = s.parse::<u8>() {
+            Ok(NameOrNum::Number(num))
+        } else {
+            Ok(NameOrNum::Name(s.to_string()))
+        }
+    }
+}
+
 /// Because clap does not support `HashMaps`, we have to implement a vector with
 /// a wrapper.
 #[derive(Clone, Debug)]
@@ -408,27 +420,17 @@ pub(crate) async fn shutdown_single_robot(
     restart: bool,
     output: Output,
 ) -> Result<()> {
-    let mut command = "sudo shutdown now";
-    let mut command_string = "Shutting down";
-    if restart {
-        command = "sudo shutdown -r now";
-        command_string = "Restarting";
-    }
-
+    let (command, command_message) = if restart {
+        ("sudo shutdown -r now", "Restarting")
+    } else {
+        ("sudo shutdown now", "Shutting down")
+    };
     match &output {
         Output::Silent => {}
-        Output::Multi(pb) => {
+        Output::Multi(pb) | Output::Single(pb) => {
             pb.set_message(format!(
                 "{} {}",
-                command_string.bright_red().bold(),
-                robot.name,
-            ));
-        }
-        Output::Single(pb) => {
-            pb.set_prefix("    Changing");
-            pb.set_message(format!(
-                "{} {}",
-                command_string.bright_red().bold(),
+                command_message.bright_red().bold(),
                 robot.name,
             ));
         }
@@ -438,12 +440,7 @@ pub(crate) async fn shutdown_single_robot(
 
     match output {
         Output::Silent => {}
-        Output::Multi(pb) => pb.println(format!(
-            "     {} {}",
-            "Shut down".bold().blue(),
-            robot.name.bright_yellow()
-        )),
-        Output::Single(pb) => pb.println(format!(
+        Output::Multi(pb) | Output::Single(pb) => pb.println(format!(
             "     {} {}",
             "Shut down".bold().blue(),
             robot.name.bright_yellow()

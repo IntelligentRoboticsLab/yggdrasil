@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::cli::robot_ops::NameOrNum;
 use crate::{
     cli::robot_ops::{self, shutdown_single_robot},
@@ -5,17 +7,18 @@ use crate::{
 };
 use clap::Parser;
 use colored::Colorize;
-use indicatif::HumanDuration;
-use indicatif::ProgressBar;
+use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressStyle};
 use miette::miette;
-use miette::Result;
+use miette::{IntoDiagnostic, Result};
+use tokio::runtime::Handle;
 
 /// Shuts down the robot
 #[derive(Parser, Debug)]
 pub struct Shutdown {
     #[clap(long, short)]
     pub wired: bool,
-    pub robot: u8,
+    #[clap(required = true)]
+    pub robot_ids: Vec<NameOrNum>,
     #[clap(long, short)]
     pub restart: bool,
 }
@@ -23,24 +26,67 @@ pub struct Shutdown {
 impl Shutdown {
     /// This command sends a signal to each robot to shutdown
     pub async fn shutdown(self, config: SindriConfig) -> Result<()> {
-        let robot = config
-            .robot(&NameOrNum::Number(self.robot), self.wired)
-            .ok_or(miette!(format!(
-                "Invalid robot specified, number {} is not configured!",
-                self.robot
-            )))?;
+        let mut join_set = tokio::task::JoinSet::new();
 
-        let pb = ProgressBar::new_spinner();
-        let output = robot_ops::Output::Single(pb.clone());
-        output.spinner();
-        shutdown_single_robot(&robot, self.restart, output).await?;
-        pb.finish();
+        let multi = MultiProgress::new();
+        multi.set_alignment(indicatif::MultiProgressAlignment::Bottom);
+        let status_bar = multi.add(
+            ProgressBar::new_spinner().with_style(
+                ProgressStyle::with_template(
+                    "   {prefix:.blue.bold} to robots {msg} {spinner:.blue.bold}",
+                )
+                .unwrap(),
+            ),
+        );
+
+        status_bar.enable_steady_tick(Duration::from_millis(80));
+        if self.restart {
+            status_bar.set_prefix("Restart signal");
+        } else {
+            status_bar.set_prefix("Shutdown signal");
+        }
+        status_bar.set_message(format!(
+            "{}{}{}",
+            "robots: ".dimmed(),
+            self.robot_ids.len().to_string().bold(),
+            ")".dimmed()
+        ));
+
+        for robot_id in self.robot_ids {
+            let robot = config.robot(&robot_id, self.wired).ok_or(miette!(format!(
+                "Invalid robot specified, robot {} is not configured!",
+                robot_id
+            )))?;
+            let multi = multi.clone();
+
+            join_set.spawn_blocking(move || {
+                let multi = multi.clone();
+                let handle = Handle::current();
+                let pb = ProgressBar::new(1);
+                let pb = multi.add(pb);
+                let output = robot_ops::Output::Multi(pb);
+
+                handle
+                    .block_on(async move {
+                        output.spinner();
+                        shutdown_single_robot(&robot, self.restart, output.clone()).await?;
+
+                        output.finished_deploying(&robot.ip());
+                        Ok::<(), crate::error::Error>(())
+                    })
+                    .into_diagnostic()
+            });
+        }
+
+        while let Some(result) = join_set.join_next().await {
+            result.into_diagnostic()??;
+        }
+
         println!(
             "     {} in {}",
             "Shut down robot(s)".magenta().bold(),
-            HumanDuration(pb.elapsed()),
+            HumanDuration(status_bar.elapsed()),
         );
-
         Ok(())
     }
 }
