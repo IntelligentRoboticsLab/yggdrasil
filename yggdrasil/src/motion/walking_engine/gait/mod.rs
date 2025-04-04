@@ -14,6 +14,8 @@ mod starting;
 mod stopping;
 pub mod walk;
 
+pub use stand::StandingHeight;
+
 pub(super) struct GaitPlugin;
 
 impl Plugin for GaitPlugin {

@@ -12,6 +12,7 @@ use crate::{
 use super::{
     config::WalkingEngineConfig,
     feet::FootPositions,
+    gait::StandingHeight,
     schedule::{Gait, WalkingEngineSet},
     step::{PlannedStep, Step},
     FootSwitchedEvent,
@@ -53,6 +54,7 @@ impl Plugin for StepContextPlugin {
 pub struct StepContext {
     requested_gait: Gait,
     requested_step: Step,
+    pub requested_standing_height: Option<StandingHeight>,
     last_step: PlannedStep,
     pub planned_step: PlannedStep,
 }
@@ -63,6 +65,7 @@ impl StepContext {
         Self {
             requested_gait: gait,
             requested_step: Step::default(),
+            requested_standing_height: None,
             last_step,
             planned_step: last_step,
         }
@@ -85,6 +88,26 @@ impl StepContext {
             Gait::Sitting | Gait::Standing | Gait::Starting | Gait::Stopping => {
                 // the robot can immediately move to Gait::Stand
                 self.requested_gait = Gait::Standing;
+                self.requested_standing_height = None;
+            }
+        }
+
+        self.last_step = PlannedStep {
+            swing_side: self.last_step.swing_side,
+            ..Default::default()
+        };
+        self.requested_step = Step::default();
+    }
+
+    pub fn request_stand_with_height(&mut self, height: StandingHeight) {
+        match self.requested_gait {
+            Gait::Walking => {
+                self.requested_gait = Gait::Stopping;
+            }
+            Gait::Sitting | Gait::Standing | Gait::Starting | Gait::Stopping => {
+                // the robot can immediately move to Gait::Stand
+                self.requested_gait = Gait::Standing;
+                self.requested_standing_height = Some(height);
             }
         }
 

@@ -23,6 +23,7 @@ mod smoothing;
 pub mod step;
 pub mod step_context;
 
+pub use gait::StandingHeight;
 pub use schedule::{Gait, WalkingEngineSet};
 
 pub struct WalkingEnginePlugin;

@@ -10,6 +10,7 @@ use crate::{
         feet::FootPositions,
         hips::HipHeight,
         schedule::{Gait, WalkingEngineSet},
+        step_context::StepContext,
         TargetFootPositions, TargetLegStiffness,
     },
     nao::CycleTime,
@@ -39,16 +40,33 @@ impl Plugin for StandGaitPlugin {
     }
 }
 
+#[derive(Debug, Deref)]
+pub struct StandingHeight(f32);
+
+impl StandingHeight {
+    pub const MAX: Self = Self(0.26);
+
+    pub fn new(height: f32) -> Self {
+        Self(height)
+    }
+}
+
 fn generate_stand_gait(
     mut target: ResMut<TargetFootPositions>,
     mut hip_height: ResMut<HipHeight>,
+    step_context: Res<StepContext>,
     mut target_stiffness: ResMut<TargetLegStiffness>,
     config: Res<WalkingEngineConfig>,
 ) {
     // always set the foot offsets to 0,0,0.
     **target = FootPositions::default();
 
-    hip_height.request(config.hip_height.walking_hip_height);
+    hip_height.request(
+        *step_context
+            .requested_standing_height
+            .as_deref()
+            .unwrap_or(&config.hip_height.walking_hip_height),
+    );
     **target_stiffness = LegJoints::fill(config.walking_leg_stiffness);
 }
 
@@ -59,7 +77,7 @@ const MAX_CURRENT: f32 = 0.12;
 /// incremental adjustment of 0.01/4096, scaled by cycle time.
 ///
 /// During longer cycles, smaller adjustments are enough, as the motor controllers run as part of HAL, not yggdrasil.
-const REDUCTION: f32 = 0.01 / 4096.;
+const REDUCTION: f32 = 0.01 / 4096.0;
 
 #[derive(Debug, Resource, Default)]
 struct JointCurrentOptimizer {
