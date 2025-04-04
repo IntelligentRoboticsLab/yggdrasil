@@ -403,15 +403,18 @@ pub(crate) async fn change_single_network(
     Ok(())
 }
 
-pub(crate) async fn shutdown_single_robot(robot: &Robot, restart: bool, output: Output) -> Result<()> {
-    
+pub(crate) async fn shutdown_single_robot(
+    robot: &Robot,
+    restart: bool,
+    output: Output,
+) -> Result<()> {
     let mut command = "sudo shutdown now";
     let mut command_string = "Shutting down";
     if restart {
         command = "sudo shutdown -r now";
         command_string = "Restarting";
     }
-    
+
     match &output {
         Output::Silent => {}
         Output::Multi(pb) => {
@@ -431,10 +434,7 @@ pub(crate) async fn shutdown_single_robot(robot: &Robot, restart: bool, output: 
         }
     }
 
-    robot
-        .ssh::<&str, &str>(command, [], true)?
-        .wait()
-        .await?;
+    robot.ssh::<&str, &str>(command, [], true)?.wait().await?;
 
     match output {
         Output::Silent => {}
