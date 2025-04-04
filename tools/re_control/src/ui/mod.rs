@@ -39,20 +39,20 @@ pub fn view_section<R>(
 }
 
 pub(crate) fn extra_title_bar_connection_ui(ui: &mut egui::Ui, connection: &ConnectionState) {
-        let robot_connection_ip_addr = *connection.handle.addr().ip();
-        let ip_addr_last_oct = robot_connection_ip_addr.octets()[3];
+    let robot_connection_ip_addr = *connection.handle.addr().ip();
+    let ip_addr_last_oct = robot_connection_ip_addr.octets()[3];
 
-        // Find a possible corresponding name based on the last octet of the robot ip address
-        let robot_name = if let Some(robot_config) = connection
-            .possible_robot_connections
-            .iter()
-            .find(|config| config.number == ip_addr_last_oct)
-        {
-            format!("{} - ", robot_config.name)
-        } else {
-            "unknown - ".to_string()
-        };
+    // Find a possible corresponding name based on the last octet of the robot ip address
+    let robot_name = if let Some(robot_config) = connection
+        .possible_robot_connections
+        .iter()
+        .find(|config| config.number == ip_addr_last_oct)
+    {
+        format!("{} - ", robot_config.name)
+    } else {
+        "unknown - ".to_string()
+    };
 
-        // Show the ip associated with the socket of the `ControlViewer`
-        ui.label(format!("{}{}", robot_name, robot_connection_ip_addr));
+    // Show the ip associated with the socket of the `ControlViewer`
+    ui.label(format!("{}{}", robot_name, robot_connection_ip_addr));
 }

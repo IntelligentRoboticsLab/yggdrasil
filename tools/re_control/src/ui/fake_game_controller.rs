@@ -4,7 +4,8 @@ use std::{
 };
 
 use bifrost::communication::{
-    CompetitionPhase, CompetitionType, GameControllerMessage, GamePhase, GameState, Half, Penalty, SetPlay, TeamInfo, GAME_CONTROLLER_STRUCT_HEADER, GAME_CONTROLLER_STRUCT_VERSION,
+    CompetitionPhase, CompetitionType, GameControllerMessage, GamePhase, GameState, Half, Penalty,
+    SetPlay, TeamInfo, GAME_CONTROLLER_STRUCT_HEADER, GAME_CONTROLLER_STRUCT_VERSION,
 };
 use miette::{Diagnostic, IntoDiagnostic, Result};
 use re_control_comms::{
@@ -254,21 +255,18 @@ fn penalize_robot(
             ui.set_width(ui.available_width() - 2.0 * margin);
             // Combo box to select the type of penalty
             egui::ComboBox::from_id_salt("Penalty type selection")
-            .selected_text(format!(
-                "{:?}",
-                locked_data.penalty_type
-            ))
-            .show_ui(ui, |ui| {
-                for penalty_type in
-                    Penalty::iter().filter(|penalty_type| *penalty_type != Penalty::None)
-                {
-                    ui.selectable_value(
-                        &mut locked_data.penalty_type,
-                        penalty_type,
-                        format!("{:?}", penalty_type),
-                    );
-                }
-            });
+                .selected_text(format!("{:?}", locked_data.penalty_type))
+                .show_ui(ui, |ui| {
+                    for penalty_type in
+                        Penalty::iter().filter(|penalty_type| *penalty_type != Penalty::None)
+                    {
+                        ui.selectable_value(
+                            &mut locked_data.penalty_type,
+                            penalty_type,
+                            format!("{:?}", penalty_type),
+                        );
+                    }
+                });
         });
         // The penalize and unpenalize buttons
         ui.horizontal(|ui| {

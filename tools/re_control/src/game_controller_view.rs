@@ -20,7 +20,13 @@ use rerun::external::{
 };
 
 use crate::{
-    connection::{ip_from_env, ConnectionState, ROBOT_ADDR_ENV_KEY}, state::{HandleState, SharedHandleState}, ui::{extra_title_bar_connection_ui, fake_game_controller::{game_controller_ui, GameControllerState}, selection_ui}
+    connection::{ip_from_env, ConnectionState, ROBOT_ADDR_ENV_KEY},
+    state::{HandleState, SharedHandleState},
+    ui::{
+        extra_title_bar_connection_ui,
+        fake_game_controller::{game_controller_ui, GameControllerState},
+        selection_ui,
+    },
 };
 
 pub(crate) struct GameControllerViewerData {
@@ -158,11 +164,7 @@ impl ViewClass for GameControllerView {
                 .size(16.0),
         );
 
-        selection_ui::connection_selection_ui(
-            ui,
-            &mut state.connection,
-            Arc::clone(&state.data)
-        );
+        selection_ui::connection_selection_ui(ui, &mut state.connection, Arc::clone(&state.data));
 
         Ok(())
     }

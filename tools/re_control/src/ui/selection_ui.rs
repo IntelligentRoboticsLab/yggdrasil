@@ -10,7 +10,8 @@ use re_control_comms::{
 use rerun::external::egui;
 
 use crate::{
-    connection::ConnectionState, state::{HandleState, SharedHandleState},
+    connection::ConnectionState,
+    state::{HandleState, SharedHandleState},
 };
 
 /// This is the ui in the selection ui (the ui "on the side") for making a connection to a robot
@@ -114,7 +115,7 @@ fn robot_connect_button<T: HandleState + Default + Send + Sync + 'static>(
         // connection
         control_viewer
             .add_handler(Box::new(move |msg: &RobotMessage| {
-                Arc::clone(&state_data).handle_message(&msg);
+                Arc::clone(&state_data).handle_message(msg);
             }))
             .expect("Failed to add handler");
 

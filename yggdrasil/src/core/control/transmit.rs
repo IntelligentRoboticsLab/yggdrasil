@@ -190,13 +190,13 @@ pub struct SendRobotInitialDataSystems {
 
 impl FromWorld for SendRobotInitialDataSystems {
     fn from_world(world: &mut World) -> Self {
-        let mut system_ids = vec![];
-
-        system_ids.push(world.register_system(send_debug_enabled_systems));
-        system_ids.push(world.register_system(send_camera_extrinsic));
-        system_ids.push(world.register_system(send_green_chromaticity_threshold));
-        system_ids.push(world.register_system(send_game_controller_message));
-        system_ids.push(world.register_system(send_game_controller_player));
+        let system_ids = vec![
+            world.register_system(send_debug_enabled_systems),
+            world.register_system(send_camera_extrinsic),
+            world.register_system(send_green_chromaticity_threshold),
+            world.register_system(send_game_controller_message),
+            world.register_system(send_game_controller_player),
+        ];
 
         Self { system_ids }
     }

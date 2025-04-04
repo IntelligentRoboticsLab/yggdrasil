@@ -23,9 +23,17 @@ use rerun::external::{
 use strum::{EnumIter, IntoEnumIterator};
 
 use crate::{
-    connection::{ip_from_env, ConnectionState, ROBOT_ADDR_ENV_KEY}, state::{HandleState, SharedHandleState}, ui::{
-        camera_calibration::{camera_calibration_ui, CameraState}, debug_systems::{debug_enabled_systems_ui, DebugEnabledState}, extra_title_bar_connection_ui, field_color::{field_color_ui, FieldColorState}, resource::{resource_ui, ResourcesState}, selection_ui, visual_referee::visual_referee_ui
-    }
+    connection::{ip_from_env, ConnectionState, ROBOT_ADDR_ENV_KEY},
+    state::{HandleState, SharedHandleState},
+    ui::{
+        camera_calibration::{camera_calibration_ui, CameraState},
+        debug_systems::{debug_enabled_systems_ui, DebugEnabledState},
+        extra_title_bar_connection_ui,
+        field_color::{field_color_ui, FieldColorState},
+        resource::{resource_ui, ResourcesState},
+        selection_ui,
+        visual_referee::visual_referee_ui,
+    },
 };
 
 const CONTROL_PANEL_VIEW: Icon = Icon::new(
@@ -198,11 +206,7 @@ A view to control the robot",
                 .size(16.0),
         );
 
-        selection_ui::connection_selection_ui(
-            ui,
-            &mut state.connection,
-            Arc::clone(&state.data),
-        );
+        selection_ui::connection_selection_ui(ui, &mut state.connection, Arc::clone(&state.data));
 
         ui.separator();
 

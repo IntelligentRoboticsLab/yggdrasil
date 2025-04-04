@@ -38,7 +38,7 @@ impl ConnectionState {
 pub fn ip_from_env(env_key: &str) -> Ipv4Addr {
     match env::var(env_key) {
         Ok(ip_addr_str) => Ipv4Addr::from_str(&ip_addr_str)
-            .expect(&format!("{env_key} is set to an invalid ip address!")),
+            .unwrap_or_else(|_| panic!("{env_key} is set to an invalid ip address!")),
         Err(_) => Ipv4Addr::LOCALHOST,
     }
 }

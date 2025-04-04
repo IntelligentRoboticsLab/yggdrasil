@@ -74,7 +74,7 @@ fn update_gamecontroller_message(
     mut events: EventReader<GameControllerMessageEvent>,
 ) {
     for event in events.read() {
-        commands.insert_resource((*event).clone());
+        commands.insert_resource(**event);
     }
 }
 

@@ -42,7 +42,7 @@ pub enum RobotMessage {
     FieldColor {
         config: FieldColorConfig,
     },
-    RobotGameController(RobotGameController)
+    RobotGameController(RobotGameController),
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -83,11 +83,8 @@ pub struct Player {
 pub enum RobotGameController {
     GameControllerMessage { message: GameControllerMessage },
     GameControllerMessageInit { team_number: u8 },
-    PlayerInfo {
-        player: Player
-    }
+    PlayerInfo { player: Player },
 }
-
 
 #[derive(Encode, Decode, Debug, Clone)]
 pub enum ViewerGameControllerMessage {

@@ -36,7 +36,7 @@ impl Plugin for ControlPlugin {
                 Update,
                 (handle_viewer_message, update_debug_systems_for_clients)
                     .chain()
-                    .run_if(resource_exists::<ViewerMessageReceiver>)
+                    .run_if(resource_exists::<ViewerMessageReceiver>),
             );
     }
 }
