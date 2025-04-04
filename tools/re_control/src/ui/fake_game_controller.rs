@@ -40,7 +40,7 @@ enum GameControllerViewerError {
         "The player number must be between 1 and 20, inclusive (got {player_number})."
     ))]
     InvalidPlayerNumber { player_number: u8 },
-    #[error("Invalid penaly duration")]
+    #[error("Invalid penalty duration")]
     #[diagnostic(help(
         "Penalty duration must be between 0 and {} seconds",
         MAX_PENALTY_SECONDS
