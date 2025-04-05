@@ -24,11 +24,7 @@ pub fn wee_sound_system(
     fall_state: Res<FallState>,
     mut sound_played: Local<bool>,
 ) {
-    if ground_contact
-        .ungrounded_since
-        .is_some_and(|grounded_since| {
-            grounded_since.elapsed() > audio_config.wee_sound_ungrounded_timeout
-        })
+    if ground_contact.ungrounded_for(audio_config.wee_sound_ungrounded_timeout)
         && !*sound_played
         && !keyframe_executor.is_motion_active()
         && !matches!(*fall_state, FallState::None)
@@ -39,9 +35,7 @@ pub fn wee_sound_system(
         *sound_played = true;
     }
 
-    if ground_contact.grounded_since.is_some_and(|grounded_since| {
-        grounded_since.elapsed() > audio_config.wee_sound_grounded_timeout
-    }) {
+    if ground_contact.grounded_for(audio_config.wee_sound_grounded_timeout) {
         *sound_played = false;
     }
 }
