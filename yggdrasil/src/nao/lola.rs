@@ -141,7 +141,11 @@ fn log_nao_control_message(
         control_msg.stiffness.into_iter().copied(),
     );
 
-    ctx.log_with_cycle("nao/action", *cycle, &[joint_positions, joint_stiffness]);
+    ctx.log_with_cycle(
+        "nao/control_message",
+        *cycle,
+        &[joint_positions, joint_stiffness],
+    );
 }
 
 #[must_use]
