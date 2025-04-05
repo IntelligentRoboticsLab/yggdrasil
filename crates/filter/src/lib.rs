@@ -312,11 +312,11 @@ pub fn mahalanobis_distance<const D: usize>(
     covariance: CovarianceMatrix<D>,
 ) -> Result<f32> {
     // compute how far away the point is from the mean, this is the "residual"
-    let diff = point - mean;
+    let residual = point - mean;
 
     // sqrt((x - mu)^T Sigma^-1 (x - mu))
     let cov_inv = covariance.try_inverse().ok_or(Error::Inversion)?;
-    let distance_squared = diff.transpose() * cov_inv * diff;
+    let distance_squared = residual.transpose() * cov_inv * residual;
 
     Ok(distance_squared.x.sqrt())
 }
