@@ -49,6 +49,18 @@ impl fmt::Display for NameOrNum {
     }
 }
 
+impl std::str::FromStr for NameOrNum {
+    type Err = miette::Error;
+
+    fn from_str(s: &str) -> miette::Result<Self, Self::Err> {
+        if let Ok(num) = s.parse::<u8>() {
+            Ok(NameOrNum::Number(num))
+        } else {
+            Ok(NameOrNum::Name(s.to_string()))
+        }
+    }
+}
+
 /// Because clap does not support `HashMaps`, we have to implement a vector with
 /// a wrapper.
 #[derive(Clone, Debug)]
@@ -397,6 +409,63 @@ pub(crate) async fn change_single_network(
             "Changed".bold().blue(),
             "network to".bold(),
             network.bright_yellow()
+        )),
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ShutdownCommand {
+    Shutdown,
+    Restart,
+}
+
+impl ShutdownCommand {
+    #[must_use]
+    fn command(self) -> &'static str {
+        match self {
+            Self::Shutdown => "sudo shutdown now",
+            Self::Restart => "sudo shutdown -r now",
+        }
+    }
+
+    #[must_use]
+    fn message(self) -> &'static str {
+        match self {
+            Self::Shutdown => "Shutting down",
+            Self::Restart => "Restarting",
+        }
+    }
+}
+
+pub(crate) async fn shutdown_single_robot(
+    robot: &Robot,
+    kind: ShutdownCommand,
+    output: Output,
+) -> Result<()> {
+    match &output {
+        Output::Silent => {}
+        Output::Multi(pb) | Output::Single(pb) => {
+            pb.set_message(format!(
+                "    {} {}",
+                kind.message().bright_red().bold(),
+                robot.name,
+            ));
+        }
+    }
+
+    robot
+        .ssh::<&str, &str>(kind.command(), [], true)?
+        .wait()
+        .await?;
+
+    match output {
+        Output::Silent => {}
+        Output::Multi(pb) | Output::Single(pb) => pb.println(format!(
+            "    {} {}",
+            "Shut down".bold().blue(),
+            robot.name.bright_yellow()
         )),
     }
 

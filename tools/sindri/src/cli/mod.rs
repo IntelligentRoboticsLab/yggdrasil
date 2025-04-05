@@ -10,6 +10,7 @@ pub mod robot_ops;
 pub mod run;
 pub mod scan;
 pub mod showtime;
+pub mod shutdown;
 pub mod update;
 
 /// `sindri` - The build tool for yggdrasil
@@ -58,6 +59,7 @@ pub enum Commands {
     Scan(scan::Scan),
     Showtime(showtime::Showtime),
     ChangeNetwork(change_network::ChangeNetwork),
+    Shutdown(shutdown::Shutdown),
     #[command(subcommand)]
     Config(config::ConfigCommand),
     Update(update::UpdateCommand),
