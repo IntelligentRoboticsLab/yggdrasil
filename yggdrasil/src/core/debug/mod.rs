@@ -90,7 +90,7 @@ pub fn init_rerun(mut commands: Commands) {
     let rec = if let Some(storage_path) = get_storage_path() {
         let output_rrd_file_path = make_rrd_file_path(&storage_path);
         tracing::info!(
-            "Rerun logging to {}",
+            "Rerun log sink set to file: {}",
             output_rrd_file_path.as_path().display()
         );
         RerunStream::init_file_sink("yggdrasil", output_rrd_file_path)
