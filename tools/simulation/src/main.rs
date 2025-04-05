@@ -55,7 +55,7 @@ use yggdrasil::motion::step_planner::StepPlanner;
 use yggdrasil::motion::walk::engine::WalkRequest;
 use yggdrasil::prelude::Config;
 use yggdrasil::sensor::orientation::OrientationFilterConfig;
-use yggdrasil::sensor::{ButtonConfig, FsrConfig, SensorConfig};
+use yggdrasil::sensor::{ButtonConfig, FsrConfig, FootBumperConfig, SensorConfig};
 use yggdrasil::vision::camera::{CameraConfig, CameraSettings};
 use yggdrasil::vision::field_marks::FieldMarksConfig;
 use yggdrasil::vision::VisionConfig;
@@ -565,6 +565,10 @@ fn create_default_configs() -> (YggdrasilConfig, BehaviorConfig, GameControllerC
                 },
                 fsr: FsrConfig {
                     ground_contact_threshold: 0.0,
+                },
+                footbumpers: FootBumperConfig {
+                    min_detection_count: 0,
+                    max_inactivity_time: Default::default(),
                 },
             },
             game_controller: GameControllerConfig {

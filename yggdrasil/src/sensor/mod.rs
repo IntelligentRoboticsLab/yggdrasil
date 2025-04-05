@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod button;
 pub mod falling;
+pub mod footbumpers;
 pub mod fsr;
 pub mod imu;
 pub mod low_pass_filter;
@@ -32,4 +33,6 @@ pub struct SensorConfig {
     pub fsr: fsr::FsrConfig,
     /// Configuration for the button sensitivies.
     pub button: button::ButtonConfig,
+    /// Configuration for the footbumpers.
+    pub footbumpers: footbumpers::FootBumperConfig,
 }
