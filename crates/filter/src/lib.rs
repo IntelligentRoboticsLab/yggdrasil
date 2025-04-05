@@ -321,7 +321,7 @@ pub fn mahalanobis_distance<const D: usize>(
     Ok(distance_squared.x.sqrt())
 }
 
-/// Extension trait to add Mahalanobis distance calculation to CovarianceMatrix
+/// Extension trait to add Mahalanobis distance calculation to [`CovarianceMatrix`]
 pub trait MahalanobisDistance<const D: usize> {
     /// Calculates the Mahalanobis distance between a point and a distribution with this covariance matrix.
     fn mahalanobis_distance(&self, point: StateVector<D>, mean: StateVector<D>) -> Result<f32>;
