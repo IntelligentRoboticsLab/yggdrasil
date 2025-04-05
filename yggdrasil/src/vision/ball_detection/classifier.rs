@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DurationMilliSeconds;
 
+use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
 
 use crate::nao::Cycle;
@@ -126,7 +127,10 @@ impl<T: CameraLocation> Clone for Ball<T> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn classify_balls<T: CameraLocation>(
+    ctx: DebugContext,
+    cycle: Res<Cycle>,
     mut commands: Commands,
     mut proposals: ResMut<BallProposals<T>>,
     mut model: ResMut<ModelExecutor<BallClassifierModel>>,
@@ -138,8 +142,7 @@ fn classify_balls<T: CameraLocation>(
     let classifier = &config.classifier;
     let start = Instant::now();
 
-    // let mut classified_balls = Vec::new();
-    let mut confident_positions = Vec::new();
+    let mut confident_balls = Vec::new();
 
     for proposal in proposals
         .proposals
@@ -184,18 +187,8 @@ fn classify_balls<T: CameraLocation>(
 
         let position = BallPosition(robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())));
 
-        // let timestamp = Instant::now();
-
-        // let velocity = if let Some(most_recent_ball) = balls.most_confident_ball() {
-        //     let time_diff = timestamp - most_recent_ball.timestamp;
-        //     let distance_diff = position.0 - most_recent_ball.position;
-        //     distance_diff / time_diff.as_secs_f32()
-        // } else {
-        //     Vector2::zeros()
-        // };
-
         ball_tracker.measurement_update(position);
-        confident_positions.push((position, confidence));
+        confident_balls.push((position, confidence, proposal));
 
         // TODO: we only store the closest ball with high enough confidence
         // Maybe we should store multiple candidates.
@@ -204,25 +197,30 @@ fn classify_balls<T: CameraLocation>(
     // Prediction Update
     ball_tracker.predict();
 
-    if !confident_positions.is_empty() {
-        let best_position = confident_positions
+    if confident_balls.is_empty() {
+        ctx.log_with_cycle(
+            T::make_entity_image_path("balls/classifications"),
+            *cycle,
+            &rerun::Clear::flat(),
+        );
+    } else {
+        let (best_position, confidence, proposal) = confident_balls
             .iter()
-            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
-            .unwrap()
-            .0;
+            .max_by(|a, b| a.1.total_cmp(&b.1))
+            .unwrap();
 
         // Measurement update
-        ball_tracker.measurement_update(best_position);
-    }
-    // if classified_balls.is_empty() {
-    //     for ball in &balls.balls {
-    //         if ball.timestamp.elapsed() < classifier.ball_life {
-    //             // keep the ball if it isn't too old, but mark it as not fresh
-    //             classified_balls.push(ball.clone());
-    //         }
-    //     }
-    // }
+        ball_tracker.measurement_update(*best_position);
 
-    // balls.balls = classified_balls;
+        let (x1, y1, x2, y2) = proposal.bbox.inner;
+
+        ctx.log_with_cycle(
+            T::make_entity_image_path("balls/classifications"),
+            proposals.image.cycle(),
+            &rerun::Boxes2D::from_mins_and_sizes([(x1, y1)], [(x2 - x1, y2 - y1)])
+                .with_labels([format!("{confidence:.2}")]),
+        );
+    }
+
     ball_tracker.cycle = proposals.image.cycle();
 }
