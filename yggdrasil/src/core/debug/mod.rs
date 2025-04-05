@@ -201,8 +201,8 @@ impl RerunStream {
     /// If yggdrasil is not compiled with the `rerun` feature, this will return a
     /// [`RerunStream`] that does nothing.
     pub fn init_tcp_sink(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
-        std::env::set_var("RERUN_FLUSH_TICK_SECS", "0.05"); // 50 milliseconds
-        std::env::set_var("RERUN_FLUSH_NUM_BYTES", "5242880"); // 5 MiB
+        std::env::set_var("RERUN_FLUSH_TICK_SECS", "0.15"); // 150 milliseconds
+        std::env::set_var("RERUN_FLUSH_NUM_BYTES", "512000"); // 500 KiB
 
         let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
             .connect_tcp_opts(
