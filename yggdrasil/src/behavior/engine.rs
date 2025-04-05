@@ -288,7 +288,7 @@ pub fn role_base(
         }),
         PrimaryState::Playing { .. } => {
             let possible_ball_distance = ball_tracker
-                .get_stationary_ball()
+                .stationary_ball()
                 .map(|ball| pose.distance_to(&ball));
 
             RoleState::assign_role(

@@ -49,10 +49,12 @@ impl Plugin for BallClassifierPlugin {
             .add_systems(
                 Update,
                 (
+                    update_ball_tracker, // prediction step should run once each cycle
                     classify_balls::<Top>.run_if(resource_exists_and_changed::<BallProposals<Top>>),
                     classify_balls::<Bottom>
                         .run_if(resource_exists_and_changed::<BallProposals<Bottom>>),
                 )
+                    .chain()
                     .run_if(in_state(VisualRefereeDetectionStatus::Inactive)),
             );
     }
@@ -65,8 +67,9 @@ fn init_ball_tracker(mut commands: Commands) {
             BallPosition(Point2::new(0.0, 0.0)),
             CovarianceMatrix::from_diagonal_element(0.05),
         ),
-        prediction_noise: CovarianceMatrix::from_diagonal_element(0.01),
-        sensor_noise: CovarianceMatrix::from_diagonal_element(1.0),
+        // prediction is done each cycle, this is roughly 1.7cm of std per cycle or 1.3 meters per second
+        prediction_noise: CovarianceMatrix::from_diagonal_element(0.0003),
+        sensor_noise: CovarianceMatrix::from_diagonal_element(0.01),
         cycle: Cycle::default(),
         timestamp: Instant::now(),
     };
@@ -123,6 +126,11 @@ impl<T: CameraLocation> Clone for Ball<T> {
             _marker: PhantomData,
         }
     }
+}
+
+/// System that runs the prediction step for the UKF backing the ball tracker.
+fn update_ball_tracker(mut ball_tracker: ResMut<BallTracker>) {
+    ball_tracker.predict();
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -192,8 +200,6 @@ fn classify_balls<T: CameraLocation>(
         // Maybe we should store multiple candidates.
         break;
     }
-    // Prediction Update
-    ball_tracker.predict();
 
     if confident_balls.is_empty() {
         ctx.log_with_cycle(

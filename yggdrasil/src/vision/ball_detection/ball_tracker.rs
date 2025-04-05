@@ -6,7 +6,7 @@ use nalgebra::{point, Point2};
 
 use crate::nao::Cycle;
 
-pub const STATIONARY_THRESHOLD: f32 = 7.5;
+pub const STATIONARY_VARIANCE_THRESHOLD: f32 = 80.0;
 
 #[derive(Debug)]
 pub enum BallHypothesis {
@@ -44,7 +44,7 @@ impl BallTracker {
             .iter()
             .copied()
             .fold(f32::NEG_INFINITY, f32::max);
-        if max_variance < STATIONARY_THRESHOLD {
+        if max_variance < STATIONARY_VARIANCE_THRESHOLD {
             BallHypothesis::Stationary(max_variance)
         } else {
             BallHypothesis::Moving(max_variance)
@@ -69,7 +69,7 @@ impl BallTracker {
     }
 
     #[must_use]
-    pub fn get_stationary_ball(&self) -> Option<Point2<f32>> {
+    pub fn stationary_ball(&self) -> Option<Point2<f32>> {
         if let BallHypothesis::Stationary(_) = self.cutoff() {
             Some(self.state().0)
         } else {
