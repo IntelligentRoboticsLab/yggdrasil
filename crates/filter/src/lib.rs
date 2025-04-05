@@ -301,3 +301,34 @@ where
         measurement - prediction
     }
 }
+
+/// Calculates the Mahalanobis distance between a point and a distribution.
+///
+/// The Mahalanobis distance measures how many standard deviations away a point is from
+/// the mean of a distribution, taking into account the covariance of the distribution.
+pub fn mahalanobis_distance<const D: usize>(
+    point: StateVector<D>,
+    mean: StateVector<D>,
+    covariance: CovarianceMatrix<D>,
+) -> Result<f32> {
+    // compute how far away the point is from the mean, this is the "residual"
+    let diff = point - mean;
+
+    // sqrt((x - mu)^T Sigma^-1 (x - mu))
+    let cov_inv = covariance.try_inverse().ok_or(Error::Inversion)?;
+    let distance_squared = diff.transpose() * cov_inv * diff;
+
+    Ok(distance_squared.x.sqrt())
+}
+
+/// Extension trait to add Mahalanobis distance calculation to CovarianceMatrix
+pub trait MahalanobisDistance<const D: usize> {
+    /// Calculates the Mahalanobis distance between a point and a distribution with this covariance matrix.
+    fn mahalanobis_distance(&self, point: StateVector<D>, mean: StateVector<D>) -> Result<f32>;
+}
+
+impl<const D: usize> MahalanobisDistance<D> for CovarianceMatrix<D> {
+    fn mahalanobis_distance(&self, point: StateVector<D>, mean: StateVector<D>) -> Result<f32> {
+        mahalanobis_distance(point, mean, *self)
+    }
+}
