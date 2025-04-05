@@ -45,10 +45,7 @@ pub struct BallClassifierPlugin;
 impl Plugin for BallClassifierPlugin {
     fn build(&self, app: &mut App) {
         app.init_ml_model::<BallClassifierModel>()
-            .add_systems(
-                PostStartup,
-                (init_ball_classifier.after(init_camera::<Top>),),
-            )
+            .add_systems(PostStartup, (init_ball_tracker.after(init_camera::<Top>),))
             .add_systems(
                 Update,
                 (
@@ -61,18 +58,19 @@ impl Plugin for BallClassifierPlugin {
     }
 }
 
-fn init_ball_classifier(mut commands: Commands) {
+fn init_ball_tracker(mut commands: Commands) {
     //TODO: extract into ball tracker default init.
     let ball_tracker = BallTracker {
         position_kf: UnscentedKalmanFilter::<2, 5, BallPosition>::new(
             BallPosition(Point2::new(0.0, 0.0)),
             CovarianceMatrix::from_diagonal_element(0.05),
         ),
-        prediction_noise: CovarianceMatrix::from_diagonal_element(0.1),
+        prediction_noise: CovarianceMatrix::from_diagonal_element(0.01),
         sensor_noise: CovarianceMatrix::from_diagonal_element(1.0),
         cycle: Cycle::default(),
         timestamp: Instant::now(),
     };
+
     commands.insert_resource(ball_tracker);
 }
 

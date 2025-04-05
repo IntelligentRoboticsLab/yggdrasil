@@ -6,10 +6,10 @@ use nalgebra::{point, Point2};
 
 use crate::nao::Cycle;
 
-pub const STATIONARY_THRESHOLD: f32 = 80.0;
+pub const STATIONARY_THRESHOLD: f32 = 7.5;
 
 #[derive(Debug)]
-pub enum Hypothesis {
+pub enum BallHypothesis {
     Moving(f32),
     Stationary(f32),
 }
@@ -37,7 +37,7 @@ impl BallTracker {
         self.position_kf.covariance()
     }
 
-    pub fn cutoff(&self) -> Hypothesis {
+    pub fn cutoff(&self) -> BallHypothesis {
         let max_variance = self
             .covariance()
             .diagonal()
@@ -45,9 +45,9 @@ impl BallTracker {
             .copied()
             .fold(f32::NEG_INFINITY, f32::max);
         if max_variance < STATIONARY_THRESHOLD {
-            Hypothesis::Stationary(max_variance)
+            BallHypothesis::Stationary(max_variance)
         } else {
-            Hypothesis::Moving(max_variance)
+            BallHypothesis::Moving(max_variance)
         }
     }
 
@@ -70,7 +70,7 @@ impl BallTracker {
 
     #[must_use]
     pub fn get_stationary_ball(&self) -> Option<Point2<f32>> {
-        if let Hypothesis::Stationary(_) = self.cutoff() {
+        if let BallHypothesis::Stationary(_) = self.cutoff() {
             Some(self.state().0)
         } else {
             None
