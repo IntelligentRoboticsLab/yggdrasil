@@ -5345,8 +5345,8 @@ checksum = "c96aba5aa877601bb3f6dd6a63a969e1f82e60646e81e71b14496995e9853c91"
 
 [[package]]
 name = "nidhogg"
-version = "0.7.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=a8851d17e41778485699e2c1e1e6907229809e4b#a8851d17e41778485699e2c1e1e6907229809e4b"
+version = "0.8.0"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=82d32b3b915848f553f4f8b99dab9ca1532f4416#82d32b3b915848f553f4f8b99dab9ca1532f4416"
 dependencies = [
  "bevy_ecs",
  "miette",
@@ -5362,7 +5362,7 @@ dependencies = [
 [[package]]
 name = "nidhogg_derive"
 version = "0.4.0"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=a8851d17e41778485699e2c1e1e6907229809e4b#a8851d17e41778485699e2c1e1e6907229809e4b"
+source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=82d32b3b915848f553f4f8b99dab9ca1532f4416#82d32b3b915848f553f4f8b99dab9ca1532f4416"
 dependencies = [
  "itertools 0.11.0",
  "proc-macro2",

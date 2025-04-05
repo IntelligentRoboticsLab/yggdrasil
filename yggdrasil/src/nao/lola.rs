@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use bevy::{ecs::system::RunSystemOnce, prelude::*};
 use nidhogg::{
@@ -6,9 +6,12 @@ use nidhogg::{
     types::{FillExt, JointArray},
     NaoBackend, NaoControlMessage, NaoState,
 };
+use rerun::{external::arrow, SerializedComponentBatch};
 
-use crate::nao::RobotInfo;
-use crate::prelude::*;
+use crate::{core::debug, prelude::*};
+use crate::{core::debug::DebugContext, nao::RobotInfo};
+
+use super::Cycle;
 
 const DEFAULT_STIFFNESS: f32 = 0.8;
 
@@ -32,7 +35,15 @@ impl Plugin for LolaPlugin {
             .run_system_once(initialize_nao)
             .expect("failed to initialize nao resources!");
 
-        app.add_systems(Write, sync_hardware);
+        app.add_systems(
+            Write,
+            (
+                log_nao_state.run_if(debug::logging_to_file_sink),
+                sync_hardware,
+                log_nao_control_message.run_if(debug::logging_to_file_sink),
+            )
+                .chain(),
+        );
     }
 }
 
@@ -87,4 +98,63 @@ pub fn sync_hardware(
     *robot_state = nao
         .read_nao_state()
         .expect("failed to read state from LoLA");
+}
+
+fn log_nao_state(ctx: DebugContext, cycle: Res<Cycle>, nao_state: Res<NaoState>) {
+    let joint_positions = serialized_component_batch_f32(
+        "yggdrasil.components.JointPosition",
+        nao_state.position.clone(),
+    );
+    let joint_stiffness = serialized_component_batch_f32(
+        "yggdrasil.components.JointStiffness",
+        nao_state.stiffness.clone(),
+    );
+
+    let currents = serialized_component_batch_f32(
+        "yggdrasil.components.JointCurrent",
+        nao_state.current.clone(),
+    );
+
+    let temperature = serialized_component_batch_f32(
+        "yggdrasil.components.JointTemperature",
+        nao_state.temperature.clone(),
+    );
+
+    ctx.log_with_cycle(
+        "nao/state",
+        *cycle,
+        &[joint_positions, joint_stiffness, currents, temperature],
+    );
+}
+
+fn log_nao_control_message(
+    ctx: DebugContext,
+    cycle: Res<Cycle>,
+    control_msg: Res<NaoControlMessage>,
+) {
+    let joint_positions = serialized_component_batch_f32(
+        "yggdrasil.components.JointPosition",
+        control_msg.position.clone(),
+    );
+    let joint_stiffness = serialized_component_batch_f32(
+        "yggdrasil.components.JointStiffness",
+        control_msg.stiffness.clone(),
+    );
+
+    ctx.log_with_cycle(
+        "nao/control_message",
+        *cycle,
+        &[joint_positions, joint_stiffness],
+    );
+}
+
+#[must_use]
+fn serialized_component_batch_f32<I: IntoIterator<Item = f32>>(
+    descriptor: &str,
+    iter: I,
+) -> SerializedComponentBatch {
+    rerun::SerializedComponentBatch::new(
+        Arc::new(arrow::array::Float32Array::from_iter_values(iter)),
+        rerun::ComponentDescriptor::new(descriptor),
+    )
 }
