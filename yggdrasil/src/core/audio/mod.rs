@@ -16,12 +16,12 @@ pub mod whistle_detection;
 #[serde(deny_unknown_fields)]
 pub struct AudioConfig {
     /// How long consecutive ground contact needs to be not detected before the robot goes from
-    /// "grounded" to "ungrounded" state.
+    /// "grounded" to "ungrounded" state., in milliseconds
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub wee_sound_ungrounded_timeout: Duration,
 
     /// How long consecutive ground contact needs to be detected before the robot goes from
-    /// "ungrounded" to "grounded" state.
+    /// "ungrounded" to "grounded" state, in milliseconds.
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub wee_sound_grounded_timeout: Duration,
 
