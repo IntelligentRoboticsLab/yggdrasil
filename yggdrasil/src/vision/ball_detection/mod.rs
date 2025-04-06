@@ -156,7 +156,7 @@ fn log_3d_balls(
                     rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05))
                         .as_serialized_batches(),
                     rerun::Ellipsoids3D::from_half_sizes([(std, std, 0.005)])
-                        .with_colors([(0, (126.0 * scale) as u8, (31.0 * scale) as u8)]) // field colour, scaled down over time
+                        .with_colors([(0, (126.0 * scale) as u8, (31.0 * scale) as u8)])
                         .as_serialized_batches(),
                     rerun::SerializedComponentBatch::new(
                         Arc::new(arrow::array::Float32Array::from_value(max_variance, 1)),
