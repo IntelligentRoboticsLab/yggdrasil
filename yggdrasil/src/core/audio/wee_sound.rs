@@ -27,7 +27,7 @@ pub fn wee_sound_system(
     if ground_contact.ungrounded_for(audio_config.wee_sound_ungrounded_timeout)
         && !*sound_played
         && !keyframe_executor.is_motion_active()
-        && !matches!(*fall_state, FallState::None)
+        && matches!(*fall_state, FallState::None)
     {
         sounds
             .play_sound(Sound::Weee)
