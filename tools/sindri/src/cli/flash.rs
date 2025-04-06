@@ -68,9 +68,9 @@ impl Flash {
 
             join_set.spawn({
                 let image = self.image.clone();
+                let multi = multi.clone();
 
                 async move {
-                    let multi = multi.clone();
                     let pb = ProgressBar::new_spinner();
                     let pb = multi.add(pb);
                     let output = robot_ops::Output::Multi(pb);
