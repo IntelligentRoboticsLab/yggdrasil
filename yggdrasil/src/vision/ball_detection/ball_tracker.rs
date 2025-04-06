@@ -6,7 +6,7 @@ use nalgebra::{point, Point2};
 
 use crate::nao::Cycle;
 
-pub const STATIONARY_VARIANCE_THRESHOLD: f32 = 80.0;
+pub const STATIONARY_VARIANCE_THRESHOLD: f32 = 0.6;
 
 #[derive(Debug)]
 pub enum BallHypothesis {
