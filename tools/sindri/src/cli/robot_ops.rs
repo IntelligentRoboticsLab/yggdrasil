@@ -333,7 +333,7 @@ impl Output {
                 self.spinner();
                 pb.set_message(format!(
                     "{} `{}` {} {}",
-                    " Uploading".cyan().bold(),
+                    "  Uploading".cyan().bold(),
                     image.file_name().unwrap().to_string_lossy().dimmed(),
                     "to robot".dimmed(),
                     robot.ip()
