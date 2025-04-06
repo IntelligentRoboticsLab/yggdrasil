@@ -325,6 +325,40 @@ impl Output {
             }
         }
     }
+
+    pub fn flashing_upload_phase(&self, image: &Path, robot: &Robot) {
+        match self {
+            Output::Silent => {}
+            Output::Single(pb) | Output::Multi(pb) => {
+                self.spinner();
+                pb.set_message(format!(
+                    "{} `{}` {} {}",
+                    " Uploading".cyan().bold(),
+                    image.file_name().unwrap().to_string_lossy().dimmed(),
+                    "to robot".dimmed(),
+                    robot.ip()
+                ));
+            }
+        }
+    }
+
+    pub fn finished_flashing(&self, ip: &Ipv4Addr) {
+        match self {
+            Output::Silent => {}
+            Output::Single(pb) | Output::Multi(pb) => {
+                pb.set_style(
+                    ProgressStyle::with_template(&format!(
+                        "    {{prefix:.green.bold}} {} {{msg}}",
+                        "robot".dimmed()
+                    ))
+                    .unwrap(),
+                );
+                pb.set_prefix("Rebooted");
+                pb.set_message(ip.to_string());
+                pb.finish();
+            }
+        }
+    }
 }
 
 /// Environment variables that are required to cross compile for the robot, depending

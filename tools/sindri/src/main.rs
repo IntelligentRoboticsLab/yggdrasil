@@ -28,6 +28,7 @@ async fn main() -> Result<()> {
         Commands::Shutdown(opts) => opts.shutdown(config).await?,
         Commands::Config(opts) => opts.config()?,
         Commands::Update(opts) => opts.update().await?,
+        Commands::Flash(opts) => opts.flash(config).await?,
     }
 
     Ok(())

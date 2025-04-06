@@ -24,6 +24,10 @@ pub struct Shutdown {
 }
 
 impl Shutdown {
+    pub async fn shutdown_with(self, config: SindriConfig) -> Result<()> {
+        self.shutdown(config).await
+    }
+
     /// This command sends a signal to each robot to shutdown
     pub async fn shutdown(self, config: SindriConfig) -> Result<()> {
         let kind = if self.restart {
