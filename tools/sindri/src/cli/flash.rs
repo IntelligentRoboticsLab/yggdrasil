@@ -16,7 +16,7 @@ use super::robot_ops::NameOrNum;
 /// Flashes a new `.opn` image to the specified robot
 #[derive(Parser, Debug)]
 pub struct Flash {
-    /// Scan for wired (true) or wireless (false) robots
+    /// Flash wired (true) or wireless (false) robots
     #[clap(long, short)]
     pub wired: bool,
     /// The robot ids to flash
