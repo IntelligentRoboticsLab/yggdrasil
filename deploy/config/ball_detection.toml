@@ -73,6 +73,16 @@ confidence_threshold = 0.96
 # The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
 time_budget = 1500
 
-# Lifetime of the ball in milliseconds, this is the time the robot will remember a classified balls' location.
-# If a new ball is detected it will restart the timer.
-ball_life = 3500
+# Process noise parameter for position prediction in the Kalman filter
+prediction_noise = 0.0003
+
+# Measurement noise parameter for the Kalman filter
+measurement_noise = 0.01
+
+# Maximum standard deviation threshold for stationary ball detection in the Kalman filter.
+#
+# Values below this threshold indicate the ball is stationary, while values above indicate movement.
+#
+# Note:
+# Currently we only track stationary balls, not moving ones.
+stationary_std_threshold = 0.75

@@ -7,7 +7,7 @@ pub mod proposal;
 use std::{sync::Arc, time::Duration};
 
 pub use ball_tracker::BallHypothesis;
-use ball_tracker::{BallTracker, STATIONARY_VARIANCE_THRESHOLD};
+use ball_tracker::BallTracker;
 use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, Top};
 use nidhogg::types::{color, FillExt, LeftEye};
@@ -146,7 +146,8 @@ fn log_3d_balls(
         {
             *last_logged = Some(last_ball_tracker_update);
             let std = max_variance.sqrt();
-            let scale = 1.0 - (max_variance / STATIONARY_VARIANCE_THRESHOLD).clamp(0.0, 1.0);
+            let scale =
+                1.0 - (max_variance / ball_tracker.stationary_variance_threshold).clamp(0.0, 1.0);
 
             dbg.log_with_cycle(
                 "balls/best",

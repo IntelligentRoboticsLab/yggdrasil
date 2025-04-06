@@ -11,8 +11,7 @@ use ml::prelude::ModelExecutor;
 use nalgebra::{Point2, Vector2};
 
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
-use serde_with::DurationMilliSeconds;
+use serde_with::{serde_as, DurationMicroSeconds};
 
 use crate::core::debug::DebugContext;
 use crate::localization::RobotPose;
@@ -31,10 +30,26 @@ const IMAGE_INPUT_SIZE: usize = 32;
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BallClassifierConfig {
+    /// Minimum confidence score threshold for accepting a ball detection
     pub confidence_threshold: f32,
-    pub time_budget: usize,
-    #[serde_as(as = "DurationMilliSeconds<u64>")]
-    pub ball_life: Duration,
+
+    /// The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
+    #[serde_as(as = "DurationMicroSeconds<u64>")]
+    pub time_budget: Duration,
+
+    /// Process noise parameter for position prediction in the Kalman filter
+    pub prediction_noise: f32,
+
+    /// Measurement noise parameter for the Kalman filter
+    pub measurement_noise: f32,
+
+    /// Maximum standard deviation threshold for stationary ball detection in the Kalman filter.
+    ///
+    /// Values below this threshold indicate the ball is stationary, while values above indicate movement.
+    ///
+    /// # Note:
+    /// Currently we only track stationary balls, not moving ones.
+    pub stationary_std_threshold: f32,
 }
 
 /// Plugin for classifying ball proposals produced by [`super::proposal::BallProposalPlugin`].
@@ -60,18 +75,20 @@ impl Plugin for BallClassifierPlugin {
     }
 }
 
-fn init_ball_tracker(mut commands: Commands) {
-    //TODO: extract into ball tracker default init.
+fn init_ball_tracker(mut commands: Commands, config: Res<BallDetectionConfig>) {
+    let config = config.classifier.clone();
+
     let ball_tracker = BallTracker {
         position_kf: UnscentedKalmanFilter::<2, 5, BallPosition>::new(
             BallPosition(Point2::new(0.0, 0.0)),
             CovarianceMatrix::from_diagonal_element(0.05),
         ),
         // prediction is done each cycle, this is roughly 1.7cm of std per cycle or 1.3 meters per second
-        prediction_noise: CovarianceMatrix::from_diagonal_element(0.0003),
-        sensor_noise: CovarianceMatrix::from_diagonal_element(0.01),
+        prediction_noise: CovarianceMatrix::from_diagonal_element(config.prediction_noise),
+        sensor_noise: CovarianceMatrix::from_diagonal_element(config.measurement_noise),
         cycle: Cycle::default(),
         timestamp: Instant::now(),
+        stationary_variance_threshold: config.stationary_std_threshold.powi(2), // variance = std^2
     };
 
     commands.insert_resource(ball_tracker);
@@ -148,18 +165,17 @@ fn classify_balls<T: CameraLocation>(
     let classifier = &config.classifier;
     let start = Instant::now();
 
-    let mut confident_balls = Vec::new();
-
-    for proposal in proposals
+    let sorted_proposals = proposals
         .proposals
         .drain(..)
+        .filter(|p| p.distance_to_ball <= 20.0)
         .sorted_by(|a, b| a.distance_to_ball.total_cmp(&b.distance_to_ball))
-    {
-        if proposal.distance_to_ball > 20.0 {
-            continue;
-        }
+        .collect::<Vec<_>>();
 
-        if start.elapsed().as_micros() > classifier.time_budget as u128 {
+    let mut confident_balls = Vec::new();
+
+    for proposal in sorted_proposals {
+        if start.elapsed() > classifier.time_budget {
             break;
         }
 
@@ -193,11 +209,9 @@ fn classify_balls<T: CameraLocation>(
 
         let position = BallPosition(robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())));
 
-        ball_tracker.measurement_update(position);
-        confident_balls.push((position, confidence, proposal));
+        confident_balls.push((position, confidence, proposal.clone()));
 
-        // TODO: we only store the closest ball with high enough confidence
-        // Maybe we should store multiple candidates.
+        // We only store the closest ball with high enough confidence
         break;
     }
 
@@ -213,7 +227,6 @@ fn classify_balls<T: CameraLocation>(
             .max_by(|a, b| a.1.total_cmp(&b.1))
             .unwrap();
 
-        // Measurement update
         ball_tracker.measurement_update(*best_position);
 
         let (x1, y1, x2, y2) = proposal.bbox.inner;
