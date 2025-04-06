@@ -112,37 +112,47 @@ impl Default for Contacts {
     }
 }
 
-#[derive(Resource, Debug, Default)]
-pub struct GroundContact {
-    pub grounded_since: Option<Instant>,
-    pub ungrounded_since: Option<Instant>,
+#[derive(Resource, Debug)]
+pub enum GroundContact {
+    Grounded { since: Instant },
+    Ungrounded { since: Instant },
+}
+
+impl Default for GroundContact {
+    fn default() -> Self {
+        Self::Grounded {
+            since: Instant::now(),
+        }
+    }
 }
 
 impl GroundContact {
     /// Return true if the robot has been grounded for at least `duration`.
     #[must_use]
     pub fn grounded_for(&self, duration: Duration) -> bool {
-        self.grounded_since
-            .is_some_and(|grounded_since| grounded_since.elapsed() > duration)
+        matches!(self, GroundContact::Grounded { since } if since.elapsed() > duration)
     }
 
     /// Return true if the robot has been ungrounded for at least `duration`.
     #[must_use]
     pub fn ungrounded_for(&self, duration: Duration) -> bool {
-        self.ungrounded_since
-            .is_some_and(|grounded_since| grounded_since.elapsed() > duration)
+        matches!(self, GroundContact::Ungrounded { since } if since.elapsed() > duration)
     }
 }
 
 fn update_ground_contact(mut ground_contact: ResMut<GroundContact>, contacts: Res<Contacts>) {
-    if contacts.ground && ground_contact.grounded_since.is_none() {
-        ground_contact.grounded_since = Some(Instant::now());
-        ground_contact.ungrounded_since = None;
-    }
-
-    if !contacts.ground && ground_contact.ungrounded_since.is_none() {
-        ground_contact.ungrounded_since = Some(Instant::now());
-        ground_contact.grounded_since = None;
+    match (contacts.ground, ground_contact.as_mut()) {
+        (true, GroundContact::Ungrounded { .. }) => {
+            *ground_contact = GroundContact::Grounded {
+                since: Instant::now(),
+            };
+        }
+        (false, GroundContact::Grounded { .. }) => {
+            *ground_contact = GroundContact::Ungrounded {
+                since: Instant::now(),
+            };
+        }
+        _ => (),
     }
 }
 
