@@ -15,10 +15,6 @@ name = "moos"
 number = 21
 
 [[robots]]
-name = "phineas"
-number = 22
-
-[[robots]]
 name = "ferb"
 number = 23
 
