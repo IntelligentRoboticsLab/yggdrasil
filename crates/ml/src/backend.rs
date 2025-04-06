@@ -33,7 +33,6 @@ impl Core {
                 (RwPropertyKey::HintPerformanceMode, "LATENCY"),
                 (RwPropertyKey::HintExecutionMode, "PERFORMANCE"),
                 (RwPropertyKey::EnableMmap, "YES"), // Faster model loading
-                (RwPropertyKey::CacheMode, "optimize_speed"), // Prioritize speed over memory
             ],
         )?;
 

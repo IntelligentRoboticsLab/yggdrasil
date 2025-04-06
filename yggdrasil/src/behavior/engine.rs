@@ -239,10 +239,7 @@ pub fn role_base(
             return;
         }
         FallState::Falling(_) => {
-            if !matches!(
-                *primary_state,
-                PrimaryState::Penalized | PrimaryState::Initial
-            ) {
+            if !matches!(*primary_state, PrimaryState::Penalized) {
                 commands.set_behavior(CatchFall);
                 return;
             }

@@ -22,37 +22,54 @@ use super::{camera::Image, scan_lines::ScanLines};
 use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle, prelude::ConfigExt};
 
+/// The amount of cycles to wait for new lines before clearing the lines.
+const LINE_DEBUG_CLEAR_CYCLES: usize = 5;
+
 #[derive(Resource, Debug, Clone, Deserialize, Serialize, Reflect)]
 #[serde(deny_unknown_fields)]
 pub struct LineDetectionConfig {
     /// maximum number of iterations for RANSAC
     pub ransac_iters: usize,
+
     /// maximum number of models to fit in RANSAC
     pub model_iters: usize,
+
     /// residual threshold for RANSAC inliers in meters
     pub ransac_inlier_threshold: f32,
+
     /// maximum distance of a valid line spot from the camera in meters
     pub spot_max_distance: f32,
+
     /// minimum number of points in a valid line segment
     pub line_segment_min_points: usize,
+
     /// minimum length of a line segment after merging in meters
     pub line_segment_min_length: f32,
+
     /// maximum length of a line segment after merging in meters
     pub line_segment_max_length: f32,
+
     /// maximum distance between two inliers of a line segment in meters
     pub max_line_gap_distance: f32,
+
     /// number of samples for the white test
     pub white_test_samples: usize,
+
     /// sampling distance for the white test in meters
     pub white_test_sample_distance: f32,
+
     /// ratio of white tests that need to pass for a line to be accepted
     pub white_test_merge_ratio: f32,
+
     /// number of samples for the merge test
     pub merge_test_samples: usize,
+
     /// sampling distance for the merge test in meters
     pub merge_test_sample_distance: f32,
+
     /// ratio of merge tests that need to pass for two lines to be merged
     pub merge_test_merge_ratio: f32,
+
     /// maximum angle in radians between two lines for them to be considered parallel
     pub merge_test_max_angle: f32,
 }
@@ -502,7 +519,21 @@ fn debug_lines<T: CameraLocation>(
     dbg: DebugContext,
     camera_matrix: Res<CameraMatrix<T>>,
     accepted: Query<(&Cycle, &DetectedLines), (With<T>, Added<DetectedLines>)>,
+    cycle: Res<Cycle>,
+    mut last_logged: Local<Option<Cycle>>,
 ) {
+    if accepted.is_empty()
+        && last_logged.is_some_and(|last_logged_cycle| {
+            last_logged_cycle.0 + LINE_DEBUG_CLEAR_CYCLES < cycle.0
+        })
+    {
+        dbg.log_with_cycle(
+            T::make_entity_image_path("lines/detected"),
+            *cycle,
+            &rerun::LineStrips2D::update_fields().with_strips(std::iter::empty::<&[(f32, f32)]>()),
+        );
+    }
+
     for (cycle, lines) in accepted.iter() {
         dbg.log_with_cycle(
             T::make_entity_image_path("lines/detected"),
@@ -523,6 +554,8 @@ fn debug_lines<T: CameraLocation>(
                     .map(<[(f32, f32); 2]>::from),
             ),
         );
+
+        *last_logged = Some(*cycle);
     }
 }
 
@@ -530,7 +563,22 @@ fn debug_lines_projected<T: CameraLocation>(
     dbg: DebugContext,
     pose: Res<RobotPose>,
     accepted: Query<(&Cycle, &DetectedLines), (With<T>, Added<DetectedLines>)>,
+    cycle: Res<Cycle>,
+    mut last_logged: Local<Option<Cycle>>,
 ) {
+    if accepted.is_empty()
+        && last_logged.is_some_and(|last_logged_cycle| {
+            last_logged_cycle.0 + LINE_DEBUG_CLEAR_CYCLES < cycle.0
+        })
+    {
+        dbg.log_with_cycle(
+            T::make_entity_path("lines/detected"),
+            *cycle,
+            &rerun::LineStrips3D::update_fields()
+                .with_strips(std::iter::empty::<&[(f32, f32, f32)]>()),
+        );
+    }
+
     for (cycle, lines) in accepted.iter() {
         dbg.log_with_cycle(
             T::make_entity_path("lines/detected"),
@@ -543,10 +591,11 @@ fn debug_lines_projected<T: CameraLocation>(
                 ]
             })),
         );
+
+        *last_logged = Some(*cycle);
     }
 }
 
-#[allow(dead_code)]
 fn debug_lines_inliers<T: CameraLocation>(
     dbg: DebugContext,
     camera_matrix: Res<CameraMatrix<T>>,
@@ -587,7 +636,6 @@ fn debug_lines_inliers<T: CameraLocation>(
     }
 }
 
-#[allow(dead_code)]
 fn debug_rejected_lines<T: CameraLocation>(
     dbg: DebugContext,
     camera_matrix: Res<CameraMatrix<T>>,
