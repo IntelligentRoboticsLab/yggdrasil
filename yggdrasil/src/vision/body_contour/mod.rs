@@ -179,22 +179,19 @@ impl BodyContour {
         matrix: &CameraMatrix<Bottom>,
     ) {
         self.chest_points.clear();
-
-        robot_to_chest(orientation, kinematics)
-            .iter()
-            .filter_map(|robot_to_chest_point| {
-                matrix
-                    .ground_to_pixel(
-                        (robot_to_chest_point.inverse() * matrix.robot_to_ground)
-                            .translation
-                            .vector
-                            .into(),
-                    )
-                    .ok()
-            })
-            .for_each(|chest_point| {
-                self.chest_points.push(chest_point);
-            });
+        self.chest_points
+            .extend(robot_to_chest(orientation, kinematics).iter().filter_map(
+                |robot_to_chest_point| {
+                    matrix
+                        .ground_to_pixel(
+                            (robot_to_chest_point.inverse() * matrix.robot_to_ground)
+                                .translation
+                                .vector
+                                .into(),
+                        )
+                        .ok()
+                },
+            ));
     }
 
     fn update_shoulders(&mut self, orientation: &RobotOrientation, matrix: &CameraMatrix<Bottom>) {
