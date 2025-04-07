@@ -10,5 +10,5 @@ updates:
         patterns:
           - "*"
         update-types:
-          - "semver-major"
-          - "semver-minor"
+          - "major"
+          - "minor"
