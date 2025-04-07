@@ -342,19 +342,19 @@ fn robot_to_shoulders(
     let robot_to_left_shoulder_cap =
         Isometry3::from(Translation3::from(-ROBOT_TO_LEFT_SHOULDER_CAP));
     let robot_to_left_shoulder_cap_front = Isometry3::from(Translation3::from(
-        robot_to_left_shoulder_cap.translation.vector + -SHOULDER_CAP_TO_SHOULDER_CAP_FRONT,
+        robot_to_left_shoulder_cap.translation.vector - SHOULDER_CAP_TO_SHOULDER_CAP_FRONT,
     ));
     let robot_to_left_shoulder_cap_back = Isometry3::from(Translation3::from(
-        robot_to_left_shoulder_cap.translation.vector + -SHOULDER_CAP_TO_SHOULDER_CAP_BACK,
+        robot_to_left_shoulder_cap.translation.vector - SHOULDER_CAP_TO_SHOULDER_CAP_BACK,
     ));
 
     let robot_to_right_shoulder_cap =
         Isometry3::from(Translation3::from(-ROBOT_TO_RIGHT_SHOULDER_CAP));
     let robot_to_right_shoulder_cap_front = Isometry3::from(Translation3::from(
-        robot_to_right_shoulder_cap.translation.vector + -SHOULDER_CAP_TO_SHOULDER_CAP_FRONT,
+        robot_to_right_shoulder_cap.translation.vector - SHOULDER_CAP_TO_SHOULDER_CAP_FRONT,
     ));
     let robot_to_right_shoulder_cap_back = Isometry3::from(Translation3::from(
-        robot_to_right_shoulder_cap.translation.vector + -SHOULDER_CAP_TO_SHOULDER_CAP_BACK,
+        robot_to_right_shoulder_cap.translation.vector - SHOULDER_CAP_TO_SHOULDER_CAP_BACK,
     ));
 
     (
