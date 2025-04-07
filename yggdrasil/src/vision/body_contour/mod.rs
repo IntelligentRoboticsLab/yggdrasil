@@ -192,7 +192,7 @@ impl BodyContour {
                     )
                     .ok()
             })
-            .filter_map(|chest_point| chest_point)
+            .flatten()
             .for_each(|chest_point| {
                 self.chest_points.push(chest_point);
             });
