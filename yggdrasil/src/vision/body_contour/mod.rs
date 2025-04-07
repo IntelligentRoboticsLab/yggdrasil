@@ -182,7 +182,7 @@ impl BodyContour {
 
         robot_to_chest(orientation, kinematics)
             .iter()
-            .map(|robot_to_chest_point| {
+            .filter_map(|robot_to_chest_point| {
                 matrix
                     .ground_to_pixel(
                         (robot_to_chest_point.inverse() * matrix.robot_to_ground)
@@ -192,7 +192,6 @@ impl BodyContour {
                     )
                     .ok()
             })
-            .flatten()
             .for_each(|chest_point| {
                 self.chest_points.push(chest_point);
             });
