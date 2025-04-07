@@ -5,6 +5,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    version-update: "semver-minor"
     groups:
       dependencies:
         patterns:
