@@ -239,10 +239,7 @@ pub fn role_base(
             return;
         }
         FallState::Falling(_) => {
-            if !matches!(
-                *primary_state,
-                PrimaryState::Penalized | PrimaryState::Initial
-            ) {
+            if !matches!(*primary_state, PrimaryState::Penalized) {
                 commands.set_behavior(CatchFall);
                 return;
             }
@@ -288,7 +285,7 @@ pub fn role_base(
         }),
         PrimaryState::Playing { .. } => {
             let possible_ball_distance = ball_tracker
-                .get_stationary_ball()
+                .stationary_ball()
                 .map(|ball| pose.distance_to(&ball));
 
             RoleState::assign_role(

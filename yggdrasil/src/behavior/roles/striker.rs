@@ -41,7 +41,7 @@ pub fn striker_role(
     ball_tracker: Res<BallTracker>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
-    let Some(ball) = ball_tracker.get_stationary_ball() else {
+    let Some(ball) = ball_tracker.stationary_ball() else {
         commands.set_behavior(RlStrikerSearchBehavior);
         return;
     };

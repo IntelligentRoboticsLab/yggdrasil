@@ -91,7 +91,7 @@ miette = "7.4.0"
 mimalloc = "0.1.42"
 nalgebra = { version = "0.33.2", features = ["convert-glam028"] }
 ndarray = "0.16.1"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "a8851d17e41778485699e2c1e1e6907229809e4b" }
+nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "82d32b3b915848f553f4f8b99dab9ca1532f4416" }
 num = "0.4.3"
 openvino = { version = "0.8.0", features = ["runtime-linking"] }
 ordered-float = "4.4.0"

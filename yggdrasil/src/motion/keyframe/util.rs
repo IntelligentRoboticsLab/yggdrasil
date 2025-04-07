@@ -96,9 +96,7 @@ pub fn get_min_duration(
     let abs_diff = current_position.diff(target_position.clone());
 
     // getting the joint value which will have to move the farthest
-    let max_distance = abs_diff
-        .into_iter()
-        .fold(f32::MIN, |joint_diff, max_diff| joint_diff.max(*max_diff));
+    let max_distance = abs_diff.into_iter().fold(f32::MIN, f32::max);
 
     Duration::from_secs_f32(max_distance / max_speed)
 }

@@ -38,7 +38,7 @@ pub fn walk_to_ball(
     mut nao_manager: ResMut<NaoManager>,
     ball_tracker: Res<BallTracker>,
 ) {
-    let Some(ball) = ball_tracker.get_stationary_ball() else {
+    let Some(ball) = ball_tracker.stationary_ball() else {
         return;
     };
 

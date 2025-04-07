@@ -5,7 +5,7 @@ use super::{
     MlModel,
 };
 use bevy::prelude::*;
-use openvino::{Node, Tensor};
+use openvino::{Node, RwPropertyKey, Tensor};
 use std::{marker::PhantomData, sync::Arc};
 
 /// Wrapper around [`openvino::Core`], i.e. the `OpenVINO` engine.
@@ -25,7 +25,17 @@ impl Core {
     ///
     /// Fails if the core cannot be created.
     pub fn new() -> Result<Self> {
-        let core = openvino::Core::new()?;
+        let mut core = openvino::Core::new()?;
+
+        core.set_properties(
+            &openvino::DeviceType::CPU,
+            [
+                (RwPropertyKey::HintPerformanceMode, "LATENCY"),
+                (RwPropertyKey::HintExecutionMode, "PERFORMANCE"),
+                (RwPropertyKey::EnableMmap, "YES"), // Faster model loading
+            ],
+        )?;
+
         Ok(Self(core))
     }
 }
@@ -68,10 +78,7 @@ impl<M: MlModel> ModelExecutor<M> {
                         source: e,
                     })?;
 
-            CompiledModel(
-                core.compile_model(&model, openvino::DeviceType::CPU)
-                    .map_err(Error::CompileError)?,
-            )
+            CompiledModel(core.compile_model(&model, openvino::DeviceType::CPU)?)
         };
 
         let input_descriptions = Self::get_input_descriptions(&compiled_model)?;

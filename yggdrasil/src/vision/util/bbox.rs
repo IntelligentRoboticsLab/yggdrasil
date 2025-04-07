@@ -26,7 +26,7 @@ use bevy::reflect::Reflect;
 /// - [`Xyxy`] (xmin, ymin, xmax, ymax)
 /// - [`Xywh`] (xmin, ymin, width, height)
 /// - [`Cxcywh`] (`center_x`, `center_y`, width, height)
-#[derive(Debug, Clone, Copy, Reflect)]
+#[derive(Debug, Default, Clone, Copy, Reflect)]
 pub struct Bbox<T> {
     pub inner: (f32, f32, f32, f32),
     #[reflect(ignore)]
@@ -113,7 +113,7 @@ pub trait ConvertBbox<T> {
 }
 
 /// Marker type for bounding boxes with coordinates of the top-left and bottom-right corners.
-#[derive(Debug, Clone, Copy, Reflect)]
+#[derive(Debug, Default, Clone, Copy, Reflect)]
 pub struct Xyxy;
 
 impl Bbox<Xyxy> {
@@ -163,7 +163,7 @@ impl ConvertBbox<Cxcywh> for Bbox<Xyxy> {
 }
 
 /// Marker type for bounding boxes with coordinates of the top-left corner and the width and height
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Xywh;
 
 impl Bbox<Xywh> {
@@ -199,7 +199,7 @@ impl ConvertBbox<Xywh> for Bbox<Xywh> {
 }
 
 /// Marker type for bounding boxes with coordinates of the center and the width and height.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Cxcywh;
 
 impl Bbox<Cxcywh> {

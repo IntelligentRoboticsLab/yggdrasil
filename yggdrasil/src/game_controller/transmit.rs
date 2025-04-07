@@ -95,7 +95,7 @@ fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {
 }
 
 fn balls_to_game_controller_ball(ball_tracker: &BallTracker, pose: &RobotPose) -> (f32, [f32; 2]) {
-    let Some(ball) = ball_tracker.get_stationary_ball() else {
+    let Some(ball) = ball_tracker.stationary_ball() else {
         return NO_BALL_DETECTED_DATA;
     };
 

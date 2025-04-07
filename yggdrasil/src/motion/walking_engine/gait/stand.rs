@@ -82,6 +82,7 @@ fn energy_efficient_stand(
 ) {
     let (joint_idx, max_current) = nao_state
         .current
+        .as_array_ref()
         .into_iter()
         .enumerate()
         .max_by(|(_, a), (_, b)| a.total_cmp(b))
@@ -99,8 +100,8 @@ fn energy_efficient_stand(
         let max_adjustment = REDUCTION / cycle_time.duration.as_secs_f32();
 
         if let Some(joint_offset) = state.joint_offsets.get_mut(joint_idx) {
-            let requested_joints = control_msg.position.as_array();
-            let measured_joints = nao_state.position.as_array();
+            let requested_joints = control_msg.position.as_array_ref();
+            let measured_joints = nao_state.position.as_array_ref();
 
             *joint_offset += (requested_joints[joint_idx] - measured_joints[joint_idx])
                 .clamp(-max_adjustment, max_adjustment);

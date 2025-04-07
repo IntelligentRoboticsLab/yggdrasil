@@ -4,16 +4,16 @@ pub mod ball_tracker;
 pub mod classifier;
 pub mod proposal;
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
+pub use ball_tracker::BallHypothesis;
 use ball_tracker::BallTracker;
-pub use ball_tracker::Hypothesis;
 use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, Top};
 use nidhogg::types::{color, FillExt, LeftEye};
 use proposal::BallProposalConfigs;
 
-use rerun::ComponentBatch;
+use rerun::{external::arrow, AsComponents, FillMode};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 
@@ -93,7 +93,7 @@ fn detected_ball_eye_color(
     ball_tracker: Res<BallTracker>,
     config: Res<BallDetectionConfig>,
 ) {
-    let Some(_) = ball_tracker.get_stationary_ball() else {
+    let Some(_) = ball_tracker.stationary_ball() else {
         nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
         return;
     };
@@ -114,9 +114,15 @@ fn detected_ball_eye_color(
 fn setup_3d_ball_debug_logging(dbg: DebugContext) {
     dbg.log_static(
         "balls/best",
-        &rerun::Asset3D::from_file("./assets/rerun/ball.glb")
-            .expect("failed to load ball model")
-            .with_media_type(rerun::MediaType::glb()),
+        &[
+            rerun::Asset3D::from_file("./assets/rerun/ball.glb")
+                .expect("failed to load ball model")
+                .with_media_type(rerun::MediaType::glb())
+                .as_serialized_batches(),
+            rerun::Ellipsoids3D::update_fields()
+                .with_fill_mode(FillMode::Solid)
+                .as_serialized_batches(),
+        ],
     );
 
     dbg.log_with_cycle(
@@ -131,35 +137,34 @@ fn log_3d_balls(
     ball_tracker: Res<BallTracker>,
     mut last_logged: Local<Option<Cycle>>,
 ) {
-    let cycle = ball_tracker.cycle;
+    let last_ball_tracker_update = ball_tracker.cycle;
     let state = ball_tracker.cutoff();
-    dbg.log_with_cycle(
-        "balls/best",
-        cycle,
-        &rerun::components::Text(format!("{state:?}").into())
-            .serialized()
-            .expect("i want to kms"),
-    );
 
-    if let Hypothesis::Stationary(_) = state {
+    if let BallHypothesis::Stationary(max_variance) = state {
         let pos = ball_tracker.state();
-        if last_logged.is_none_or(|c| cycle > c) {
-            *last_logged = Some(cycle);
+        if last_logged.is_none_or(|last_logged_cycle| last_ball_tracker_update > last_logged_cycle)
+        {
+            *last_logged = Some(last_ball_tracker_update);
+            let std = max_variance.sqrt();
+            let scale =
+                1.0 - (max_variance / ball_tracker.stationary_variance_threshold).clamp(0.0, 1.0);
+
             dbg.log_with_cycle(
                 "balls/best",
-                cycle,
-                &rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05)),
+                last_ball_tracker_update,
+                &[
+                    rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05))
+                        .as_serialized_batches(),
+                    rerun::Ellipsoids3D::from_half_sizes([(std, std, 0.005)])
+                        .with_colors([(0, (126.0 * scale) as u8, (31.0 * scale) as u8)])
+                        .as_serialized_batches(),
+                    rerun::SerializedComponentBatch::new(
+                        Arc::new(arrow::array::Float32Array::from_value(max_variance, 1)),
+                        rerun::ComponentDescriptor::new("yggdrasil.components.Variance"),
+                    )
+                    .as_serialized_batches(),
+                ],
             );
-
-            // let velocities = [(velocity.x, velocity.y, 0.0)];
-            // let positions = [(pos.x, pos.y, 0.0)];
-            // let arrows = rerun::Arrows3D::from_vectors(&velocities).with_origins(&positions);
-
-            // dbg.log_with_cycle(
-            //     "balls/velocity",
-            //     cycle,
-            //     &arrows,
-            // );
         }
     } else if last_logged.is_some() {
         // this feels very hacky but i was told this is the most idiomatic way to hide stuff in

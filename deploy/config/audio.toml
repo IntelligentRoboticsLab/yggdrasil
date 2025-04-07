@@ -1,7 +1,12 @@
-# Minimum time duration in ms between playing the wee sound on pick-up.
-wee_sound_timeout = 3000
+# How long consecutive ground contact has to be not detected before the robot goes from
+# "grounded" to "ungrounded" state, in milliseconds.
+wee_sound_ungrounded_timeout = 1_000
+
+# How long consecutive ground contact needs to be detected before the robot goes from
+# "ungrounded" to "grounded" state, in milliseconds.
+wee_sound_grounded_timeout = 1_000
 
 # Time out time in ms for the battery sound.
-battery_sound_timeout = 3000
+battery_sound_timeout = 3_000
 
-whistle_timeout = 3000
+whistle_timeout = 3_000

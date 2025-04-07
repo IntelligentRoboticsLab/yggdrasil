@@ -92,11 +92,12 @@ impl<T: CameraLocation> BallProposals<T> {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct BallProposal {
     pub position: Point2<usize>,
     pub scale: f32,
     pub distance_to_ball: f32,
+    pub bbox: Bbox<Xyxy>,
 }
 
 pub fn update_ball_proposals<T: CameraLocation>(
@@ -211,20 +212,20 @@ pub fn compute_surface_overlap(
 /// 2. What are the colors underneath the ball? We know the ball lies on grass, hence if the colors are predominantly green, the proposal could be a ball.
 ///
 /// # Args
+///
 /// - `ball_center`: proposed ball center
 /// - `radius`: expected ball radius for `ball_center`
 /// - `distance`: distance from ball to camera
-/// - `proposals`: proposal info
-/// - `detections`: proposal bounding boxes with relative quality score
+/// - `(image_width, image_height)`: dimension of the image.
+#[must_use]
 pub fn check_proposal(
     ball_center: Point2<f32>,
     radius: f32,
     distance: f32,
-    proposals: &mut Vec<BallProposal>,
-    detections: &mut Vec<(Bbox<Xyxy>, f32)>,
     h_lines: &ScanLine,
     config: &BallProposalConfig,
-) {
+    (image_width, image_height): (f32, f32),
+) -> Option<(BallProposal, (Bbox<Xyxy>, f32))> {
     // what parts of the the ball shape are colored white/black and another color
     let mut ball_overlap = (0.0, 0.0);
     // what parts of the area beneath the ball shape are colored green and another color
@@ -279,29 +280,25 @@ pub fn check_proposal(
 
     // abort if fractions do not equal or exceed the configured minimum requirements
     if ball_ratio < config.ball_ratio || grass_ratio < config.grass_ratio {
-        return;
+        return None;
     }
+
+    let padded_radius = radius * config.bbox_padding_factor;
+    let proposal_box = Bbox::xyxy(
+        (ball_center.x - padded_radius).clamp(0.0, image_width),
+        (ball_center.y - padded_radius).clamp(0.0, image_height),
+        (ball_center.x + padded_radius).clamp(0.0, image_width),
+        (ball_center.y + padded_radius).clamp(0.0, image_height),
+    );
 
     let proposal = BallProposal {
         position: point![ball_center.x as usize, ball_center.y as usize],
         scale: radius * 2.0 * config.bbox_padding_factor,
         distance_to_ball: distance,
+        bbox: proposal_box,
     };
 
-    // add proposal
-    proposals.push(proposal);
-
-    let padded_radius = radius * config.bbox_padding_factor;
-
-    let proposal_box = Bbox::xyxy(
-        ball_center.x - padded_radius,
-        ball_center.y - padded_radius,
-        ball_center.x + padded_radius,
-        ball_center.y + padded_radius,
-    );
-
-    // add detection, where the score of the bounding box is determined by the ball ratio
-    detections.push((proposal_box, ball_ratio));
+    Some((proposal, (proposal_box, ball_ratio)))
 }
 
 #[must_use]
@@ -353,6 +350,11 @@ pub fn get_ball_proposals<T: CameraLocation>(
             continue;
         }
 
+        let image_size = (
+            scan_lines.image().width() as f32,
+            scan_lines.image().height() as f32,
+        );
+
         // if the white line is long, divvy up white segment in multiple potential ball centers
         if middle.length() > (radius * 2.0 * config.ball_radius_max_error) as usize {
             // check point on left and right side of the white scanline
@@ -360,41 +362,31 @@ pub fn get_ball_proposals<T: CameraLocation>(
                 middle.start_point() as f32 + radius,
                 middle.fixed_point() as f32
             ];
-            check_proposal(
-                center,
-                radius,
-                distance,
-                &mut proposals,
-                &mut detections,
-                h_lines,
-                config,
-            );
+            if let Some((proposal, detection)) =
+                check_proposal(center, radius, distance, h_lines, config, image_size)
+            {
+                proposals.push(proposal);
+                detections.push(detection);
+            }
 
             let center = point![
                 middle.end_point() as f32 - radius,
                 middle.fixed_point() as f32
             ];
-            check_proposal(
-                center,
-                radius,
-                distance,
-                &mut proposals,
-                &mut detections,
-                h_lines,
-                config,
-            );
+
+            if let Some((proposal, detection)) =
+                check_proposal(center, radius, distance, h_lines, config, image_size)
+            {
+                proposals.push(proposal);
+                detections.push(detection);
+            }
         }
         // otherwise only investigate center
-        else {
-            check_proposal(
-                mid_point,
-                radius,
-                distance,
-                &mut proposals,
-                &mut detections,
-                h_lines,
-                config,
-            );
+        else if let Some((proposal, detection)) =
+            check_proposal(mid_point, radius, distance, h_lines, config, image_size)
+        {
+            proposals.push(proposal);
+            detections.push(detection);
         }
     }
 
@@ -425,20 +417,18 @@ fn log_ball_proposals<T: CameraLocation>(
         );
         return;
     }
-    let (positions, half_sizes): (Vec<_>, Vec<_>) = proposals
+    let (mins, sizes): (Vec<_>, Vec<_>) = proposals
         .proposals
         .iter()
         .map(|proposal| {
-            (
-                (proposal.position.x as f32, proposal.position.y as f32),
-                (proposal.scale / 2.0, proposal.scale / 2.0),
-            )
+            let (x1, y1, x2, y2) = proposal.bbox.inner;
+            ((x1, y1), (x2 - x1, y2 - y1))
         })
         .unzip();
 
     dbg.log_with_cycle(
         T::make_entity_image_path("balls/proposals"),
         proposals.image.cycle(),
-        &rerun::Boxes2D::from_centers_and_half_sizes(&positions, &half_sizes),
+        &rerun::Boxes2D::from_mins_and_sizes(&mins, &sizes),
     );
 }
