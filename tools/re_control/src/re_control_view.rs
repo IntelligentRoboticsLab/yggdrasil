@@ -260,12 +260,12 @@ impl HandleState for ControlViewerData {
                     extrinsic_rotation,
                 } => {
                     let camera_config = &mut self.camera_state;
-    
+
                     let camera = match camera_position {
                         CameraPosition::Top => &mut camera_config.config.top,
                         CameraPosition::Bottom => &mut camera_config.config.bottom,
                     };
-    
+
                     camera_config.current_position = *camera_position;
                     camera.extrinsic_rotation.new_state(*extrinsic_rotation);
                 }

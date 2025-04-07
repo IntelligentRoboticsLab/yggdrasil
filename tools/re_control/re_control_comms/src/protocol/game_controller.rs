@@ -1,4 +1,7 @@
-use bifrost::{communication::GameControllerMessage, serialization::{Decode, Encode}};
+use bifrost::{
+    communication::GameControllerMessage,
+    serialization::{Decode, Encode},
+};
 
 #[derive(Encode, Decode, Debug, Clone, Copy)]
 pub struct Player {

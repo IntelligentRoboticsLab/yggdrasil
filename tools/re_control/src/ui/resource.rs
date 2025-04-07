@@ -4,7 +4,10 @@ use std::{
     time::Instant,
 };
 
-use re_control_comms::{protocol::{control::ViewerControlMessage, ViewerMessage}, viewer::ControlViewerHandle};
+use re_control_comms::{
+    protocol::{control::ViewerControlMessage, ViewerMessage},
+    viewer::ControlViewerHandle,
+};
 use rerun::external::{ecolor::Color32, egui, re_ui::UiExt};
 
 use crate::{re_control_view::ControlViewerData, resource::RobotResources};

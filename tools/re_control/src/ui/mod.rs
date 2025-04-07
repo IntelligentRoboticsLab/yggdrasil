@@ -6,8 +6,8 @@ use crate::connection::ConnectionState;
 
 pub mod camera_calibration;
 pub mod debug_systems;
-pub mod game_controller;
 pub mod field_color;
+pub mod game_controller;
 pub mod resource;
 pub mod selection_ui;
 pub mod visual_referee;

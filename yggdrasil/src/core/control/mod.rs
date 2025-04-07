@@ -11,7 +11,8 @@ use re_control_comms::{
 };
 
 use receive::{
-    handle_notify_on_connection, handle_viewer_control_message, ControlReceivePlugin, NotifyConnectionReceiver, ViewerMessageReceiver
+    handle_notify_on_connection, handle_viewer_control_message, ControlReceivePlugin,
+    NotifyConnectionReceiver, ViewerMessageReceiver,
 };
 use transmit::ControlTransmitPlugin;
 
@@ -22,32 +23,29 @@ pub struct ControlPlugin;
 impl Plugin for ControlPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup.after(init_rerun))
-            .add_plugins((
-                ControlReceivePlugin,
-                ControlTransmitPlugin,
-            ));
-            // .add_systems(
-            //     Update,
-            //     (handle_notify_on_connection, send_on_connection)
-            //         .chain()
-            //         .run_if(resource_exists::<ViewerMessageReceiver>),
-            // )
-            // .add_systems(
-            //     Update,
-            //     (
-            //         handle_viewer_message,
-            //         (
-            //             (
-            //                 handle_viewer_control_message,
-            //                 update_debug_systems_for_clients,
-            //             )
-            //                 .chain(),
-            //             handle_viewer_game_controller_message,
-            //         ),
-            //     )
-            //         .chain()
-            //         .run_if(resource_exists::<ViewerMessageReceiver>),
-            // );
+            .add_plugins((ControlReceivePlugin, ControlTransmitPlugin));
+        // .add_systems(
+        //     Update,
+        //     (handle_notify_on_connection, send_on_connection)
+        //         .chain()
+        //         .run_if(resource_exists::<ViewerMessageReceiver>),
+        // )
+        // .add_systems(
+        //     Update,
+        //     (
+        //         handle_viewer_message,
+        //         (
+        //             (
+        //                 handle_viewer_control_message,
+        //                 update_debug_systems_for_clients,
+        //             )
+        //                 .chain(),
+        //             handle_viewer_game_controller_message,
+        //         ),
+        //     )
+        //         .chain()
+        //         .run_if(resource_exists::<ViewerMessageReceiver>),
+        // );
     }
 }
 
