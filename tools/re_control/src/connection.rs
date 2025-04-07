@@ -3,7 +3,7 @@ use std::{env, net::Ipv4Addr, str::FromStr};
 use re_control_comms::viewer::ControlViewerHandle;
 use sindri::config::{ConfigRobot, Robot};
 
-pub const ROBOT_ADDR_ENV_KEY: &str = "ROBOT_ADDR";
+pub const ROBOT_ADDRESS_ENV_KEY: &str = "RE_CONTROL_ROBOT_ADDRESS";
 
 pub struct ConnectionState {
     pub handle: ControlViewerHandle,

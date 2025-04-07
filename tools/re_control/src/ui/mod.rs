@@ -6,7 +6,7 @@ use crate::connection::ConnectionState;
 
 pub mod camera_calibration;
 pub mod debug_systems;
-pub mod fake_game_controller;
+pub mod game_controller;
 pub mod field_color;
 pub mod resource;
 pub mod selection_ui;
@@ -38,6 +38,7 @@ pub fn view_section<R>(
     })
 }
 
+/// Shows the name and IP of the connected or last connected robot.
 pub(crate) fn extra_title_bar_connection_ui(ui: &mut egui::Ui, connection: &ConnectionState) {
     let robot_connection_ip_addr = *connection.handle.addr().ip();
     let ip_addr_last_oct = robot_connection_ip_addr.octets()[3];

@@ -3,13 +3,10 @@ use std::{
     time::Duration,
 };
 
-use bifrost::communication::{
-    CompetitionPhase, CompetitionType, GameControllerMessage, GamePhase, GameState, Half, Penalty,
-    SetPlay, TeamInfo, GAME_CONTROLLER_STRUCT_HEADER, GAME_CONTROLLER_STRUCT_VERSION,
-};
+use bifrost::communication::{GameControllerMessage, GameState, Penalty, TeamInfo};
 use miette::{Diagnostic, IntoDiagnostic, Result};
 use re_control_comms::{
-    protocol::{ViewerGameControllerMessage, ViewerMessage},
+    protocol::{game_controller::ViewerGameControllerMessage, ViewerMessage},
     viewer::ControlViewerHandle,
 };
 use rerun::external::{
@@ -28,14 +25,14 @@ const MAX_PENALTY_SECONDS: u8 = u8::MAX;
 
 #[derive(Error, Diagnostic, Debug)]
 enum GameControllerViewerError {
-    #[error("There does not exist a game controller message")]
+    #[error("No game controller message exists")]
     EmptyGameControllerMessage,
     #[error("Team number {team_number} is not a team that is playing")]
     #[diagnostic(help(
         "The team number must correspond to one of the playing teams (got {team_number})."
     ))]
     InvalidTeamNumber { team_number: u8 },
-    #[error("Player {player_number} is an invalid player number")]
+    #[error("Player {player_number} is invalid")]
     #[diagnostic(help(
         "The player number must be between 1 and 20, inclusive (got {player_number})."
     ))]
@@ -54,35 +51,28 @@ pub(crate) struct GameControllerState {
 }
 
 impl GameControllerState {
+    /// Initialize/Reset the internal game controller message of the viewer
+    /// with a default [`GameControllerMessage`]. Also set the team number
+    /// of the first team in the game controller message.
     pub fn init_state(&mut self, team_number: u8) {
         let mut team = TeamInfo::invisible();
         team.team_number = team_number;
 
         let message = GameControllerMessage {
-            header: GAME_CONTROLLER_STRUCT_HEADER,
-            version: GAME_CONTROLLER_STRUCT_VERSION,
-            packet_number: 0,
-            players_per_team: 0,
-            competition_phase: CompetitionPhase::RoundRobin,
-            competition_type: CompetitionType::Normal,
-            game_phase: GamePhase::Normal,
-            state: GameState::Initial,
-            set_play: SetPlay::None,
-            first_half: Half::First,
-            kicking_team: 0,
-            secs_remaining: 0,
-            secondary_time: 0,
             teams: [team, TeamInfo::invisible()],
+            ..Default::default()
         };
 
         self.game_controller = Some(message);
     }
 
+    /// Set/overwrite the internal game controller message of the viewer
     pub fn update_message(&mut self, message: Option<GameControllerMessage>) {
         self.game_controller = message;
     }
 
-    pub fn get_message(&self) -> Option<GameControllerMessage> {
+    /// Get the game controller message of the viewer
+    pub fn message(&self) -> Option<GameControllerMessage> {
         self.game_controller
     }
 
@@ -140,7 +130,7 @@ pub(crate) fn game_controller_ui(
                 ui.vertical_centered_justified(|ui| {
                     ui.warning_label("Not able to access viewer data");
                 });
-                tracing::error!("Failed to lock viewer data");
+                tracing::warn!("Failed to lock viewer data");
                 return;
             };
 
@@ -154,11 +144,11 @@ pub(crate) fn game_controller_ui(
             }
         }
 
-        game_controller_gird(ui, viewer_data, handle);
+        game_controller_grid(ui, viewer_data, handle);
     });
 }
 
-fn game_controller_gird(
+fn game_controller_grid(
     ui: &mut egui::Ui,
     viewer_data: Arc<RwLock<GameControllerViewerData>>,
     handle: &ControlViewerHandle,
@@ -210,7 +200,7 @@ fn state_button(
         ui.vertical_centered_justified(|ui| {
             ui.warning_label("Not able to access viewer data");
         });
-        tracing::error!("Failed to lock viewer data");
+        tracing::warn!("Failed to lock viewer data");
         return;
     };
 
@@ -220,7 +210,7 @@ fn state_button(
             .game_controller_state
             .update_game_state(next_state);
 
-        if let Some(message) = locked_data.game_controller_state.get_message() {
+        if let Some(message) = locked_data.game_controller_state.message() {
             send_game_controller_message(handle, message);
         }
     }
@@ -235,7 +225,7 @@ fn penalize_robot(
         ui.vertical_centered_justified(|ui| {
             ui.warning_label("Not able to access viewer data");
         });
-        tracing::error!("Failed to lock viewer data");
+        tracing::warn!("Failed to lock viewer data");
         return;
     };
 
@@ -292,7 +282,7 @@ fn penalize_robot(
                     tracing::error!(?error, "Failed to penalize robot");
                 }
                 // Send the current state of the game controller to the robot
-                if let Some(message) = locked_data.game_controller_state.get_message() {
+                if let Some(message) = locked_data.game_controller_state.message() {
                     send_game_controller_message(handle, message);
                 }
             }
@@ -315,7 +305,7 @@ fn penalize_robot(
                     tracing::error!(?error, "Failed to unpenalize robot");
                 }
                 // Send the current state of the game controller to the robot
-                if let Some(message) = locked_data.game_controller_state.get_message() {
+                if let Some(message) = locked_data.game_controller_state.message() {
                     send_game_controller_message(handle, message);
                 }
             }

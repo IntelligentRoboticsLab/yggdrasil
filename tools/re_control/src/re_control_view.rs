@@ -6,7 +6,7 @@ use std::{
 use heimdall::CameraPosition;
 use re_control_comms::{
     debug_system::DebugEnabledSystems,
-    protocol::{RobotMessage, CONTROL_PORT},
+    protocol::{control::RobotControlMessage, RobotMessage, CONTROL_PORT},
     viewer::ControlViewer,
 };
 use rerun::external::{
@@ -23,7 +23,7 @@ use rerun::external::{
 use strum::{EnumIter, IntoEnumIterator};
 
 use crate::{
-    connection::{ip_from_env, ConnectionState, ROBOT_ADDR_ENV_KEY},
+    connection::{ip_from_env, ConnectionState, ROBOT_ADDRESS_ENV_KEY},
     state::{HandleState, SharedHandleState},
     ui::{
         camera_calibration::{camera_calibration_ui, CameraState},
@@ -72,7 +72,7 @@ pub struct ControlViewState {
 
 impl Default for ControlViewState {
     fn default() -> Self {
-        let ip_addr = ip_from_env(ROBOT_ADDR_ENV_KEY);
+        let ip_addr = ip_from_env(ROBOT_ADDRESS_ENV_KEY);
 
         let socket_addr = SocketAddrV4::new(ip_addr, CONTROL_PORT);
         let control_viewer = ControlViewer::from(socket_addr);
@@ -246,32 +246,33 @@ A view to control the robot",
 
 impl HandleState for ControlViewerData {
     fn handle_message(&mut self, message: &RobotMessage) {
-        match message {
-            RobotMessage::DebugEnabledSystems(enabled_systems) => {
-                self.debug_enabled_state
-                    .update(DebugEnabledSystems::from(enabled_systems.clone()));
+        if let RobotMessage::RobotControlMessage(message) = message {
+            match message {
+                RobotControlMessage::DebugEnabledSystems(enabled_systems) => {
+                    self.debug_enabled_state
+                        .update(DebugEnabledSystems::from(enabled_systems.clone()));
+                }
+                RobotControlMessage::Resources(_resources) => {
+                    tracing::warn!("Got a resource update but is unhandled")
+                }
+                RobotControlMessage::CameraExtrinsic {
+                    camera_position,
+                    extrinsic_rotation,
+                } => {
+                    let camera_config = &mut self.camera_state;
+    
+                    let camera = match camera_position {
+                        CameraPosition::Top => &mut camera_config.config.top,
+                        CameraPosition::Bottom => &mut camera_config.config.bottom,
+                    };
+    
+                    camera_config.current_position = *camera_position;
+                    camera.extrinsic_rotation.new_state(*extrinsic_rotation);
+                }
+                RobotControlMessage::FieldColor { config } => {
+                    self.field_color.config = config.clone();
+                }
             }
-            RobotMessage::Resources(_resources) => {
-                tracing::warn!("Got a resource update but is unhandled")
-            }
-            RobotMessage::CameraExtrinsic {
-                camera_position,
-                extrinsic_rotation,
-            } => {
-                let camera_config = &mut self.camera_state;
-
-                let camera = match camera_position {
-                    CameraPosition::Top => &mut camera_config.config.top,
-                    CameraPosition::Bottom => &mut camera_config.config.bottom,
-                };
-
-                camera_config.current_position = *camera_position;
-                camera.extrinsic_rotation.new_state(*extrinsic_rotation);
-            }
-            RobotMessage::FieldColor { config } => {
-                self.field_color.config = config.clone();
-            }
-            _ => {}
         }
     }
 }

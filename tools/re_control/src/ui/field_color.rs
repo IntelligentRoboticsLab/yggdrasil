@@ -4,7 +4,10 @@ use std::{
 };
 
 use re_control_comms::{
-    protocol::{FieldColorConfig, ViewerMessage},
+    protocol::{
+        control::{FieldColorConfig, ViewerControlMessage},
+        ViewerMessage,
+    },
     viewer::ControlViewerHandle,
 };
 use rerun::external::{
@@ -165,9 +168,11 @@ pub fn field_color_ui(
 
         if changed {
             locked_states.field_color.config = config;
-            if let Err(err) = handle.send(ViewerMessage::FieldColor {
-                config: locked_states.field_color.config.clone(),
-            }) {
+            if let Err(err) = handle.send(ViewerMessage::ViewerControlMessage(
+                ViewerControlMessage::FieldColor {
+                    config: locked_states.field_color.config.clone(),
+                },
+            )) {
                 re_log::warn!("Failed to send field color update message: {err}");
             }
         }

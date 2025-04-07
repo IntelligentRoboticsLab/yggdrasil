@@ -1,7 +1,11 @@
 use bevy::prelude::*;
 use heimdall::CameraPosition;
 use re_control_comms::{
-    app::NotifyConnection, debug_system::DebugEnabledSystems, protocol::ViewerMessage,
+    app::NotifyConnection,
+    debug_system::DebugEnabledSystems,
+    protocol::{
+        control::ViewerControlMessage, game_controller::ViewerGameControllerMessage, ViewerMessage,
+    },
 };
 
 use futures::channel::mpsc::UnboundedReceiver;
@@ -13,7 +17,38 @@ use crate::{
     },
 };
 
-use super::{DebugEnabledSystemUpdated, ViewerConnected};
+pub(super) struct ControlReceivePlugin;
+
+impl Plugin for ControlReceivePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_event::<DebugEnabledSystemUpdated>()
+            .add_event::<ViewerConnected>()
+            .add_event::<ViewerControlMessageEvent>()
+            .add_event::<ViewerGameControllerMessageEvent>()
+            .add_systems(
+                Update,
+                handle_notify_on_connection.run_if(resource_exists::<ViewerMessageReceiver>),
+            )
+            .add_systems(
+                Update,
+                (
+                    handle_viewer_message,
+                    (
+                        handle_viewer_control_message,
+                        handle_viewer_game_controller_message,
+                    ),
+                )
+                    .chain()
+                    .run_if(resource_exists::<ViewerMessageReceiver>),
+            );
+    }
+}
+
+#[derive(Event)]
+pub(crate) struct ViewerConnected;
+
+#[derive(Event)]
+pub(crate) struct DebugEnabledSystemUpdated;
 
 #[derive(Resource)]
 pub struct NotifyConnectionReceiver {
@@ -47,25 +82,50 @@ impl ViewerMessageReceiver {
 
 // System that handles every messages that are received from every connected
 // client
-pub fn handle_viewer_message(
+fn handle_viewer_message(
     mut message_receiver: ResMut<ViewerMessageReceiver>,
+    mut control_message: EventWriter<ViewerControlMessageEvent>,
+    mut game_controller_message: EventWriter<ViewerGameControllerMessageEvent>,
+) {
+    while let Some(message) = message_receiver.try_recv() {
+        match message {
+            ViewerMessage::ViewerControlMessage(viewer_control_message) => {
+                control_message.send(ViewerControlMessageEvent(viewer_control_message));
+            }
+            ViewerMessage::ViewerGameController(viewer_game_controller_message) => {
+                game_controller_message.send(ViewerGameControllerMessageEvent(
+                    viewer_game_controller_message,
+                ));
+            }
+        }
+    }
+}
+
+#[derive(Event)]
+pub(super) struct ViewerControlMessageEvent(ViewerControlMessage);
+
+#[derive(Event)]
+pub(super) struct ViewerGameControllerMessageEvent(ViewerGameControllerMessage);
+
+pub(super) fn handle_viewer_control_message(
+    mut message_event: EventReader<ViewerControlMessageEvent>,
     mut debug_enabled_systems: ResMut<DebugEnabledSystems>,
     mut ev_debug_enabled_system_updated: EventWriter<DebugEnabledSystemUpdated>,
     mut camera_config: ResMut<CameraConfig>,
     mut scan_lines_config: ResMut<ScanLinesConfig>,
     mut recognize_pose: EventWriter<RecognizeRefereePose>,
-    mut game_controller_message_sender: EventWriter<GameControllerMessageEvent>,
 ) {
-    while let Some(message) = message_receiver.try_recv() {
+    for message in message_event.read() {
+        let message = &message.0;
         match message {
-            ViewerMessage::UpdateEnabledDebugSystem {
+            ViewerControlMessage::UpdateEnabledDebugSystem {
                 system_name,
                 enabled,
             } => {
-                debug_enabled_systems.set_system(system_name, enabled);
+                debug_enabled_systems.set_system(system_name.clone(), *enabled);
                 ev_debug_enabled_system_updated.send(DebugEnabledSystemUpdated);
             }
-            ViewerMessage::CameraExtrinsic {
+            ViewerControlMessage::CameraExtrinsic {
                 camera_position,
                 extrinsic_rotation: rotation,
             } => {
@@ -74,28 +134,35 @@ pub fn handle_viewer_message(
                     CameraPosition::Bottom => &mut camera_config.bottom,
                 };
 
-                config.calibration.extrinsic_rotation = rotation;
+                config.calibration.extrinsic_rotation = *rotation;
             }
-            ViewerMessage::FieldColor { config } => {
-                *scan_lines_config = config.into();
+            ViewerControlMessage::FieldColor { config } => {
+                *scan_lines_config = config.clone().into();
             }
-            ViewerMessage::VisualRefereeRecognition => {
+            ViewerControlMessage::VisualRefereeRecognition => {
                 recognize_pose.send(RecognizeRefereePose);
-            }
-            ViewerMessage::ViewerGameController(game_controller_message) => {
-                match game_controller_message {
-                    re_control_comms::protocol::ViewerGameControllerMessage::GameControllerMessage { message } => {
-                        game_controller_message_sender.send(GameControllerMessageEvent(message));
-                    },
-                }
             }
             _ => tracing::warn!(?message, "unhandled message"),
         }
     }
 }
 
+fn handle_viewer_game_controller_message(
+    mut message_event: EventReader<ViewerGameControllerMessageEvent>,
+    mut game_controller_message_sender: EventWriter<GameControllerMessageEvent>,
+) {
+    for message in message_event.read() {
+        let message = &message.0;
+        match message {
+            ViewerGameControllerMessage::GameControllerMessage { message } => {
+                game_controller_message_sender.send(GameControllerMessageEvent(*message));
+            }
+        }
+    }
+}
+
 // System that keeps watch on new client connections
-pub fn handle_notify_on_connection(
+pub(super) fn handle_notify_on_connection(
     mut notify_connection_receiver: ResMut<NotifyConnectionReceiver>,
     mut ev_viewer_connected: EventWriter<ViewerConnected>,
 ) {

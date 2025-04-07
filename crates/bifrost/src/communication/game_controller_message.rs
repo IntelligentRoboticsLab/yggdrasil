@@ -307,6 +307,27 @@ impl GameControllerMessage {
     }
 }
 
+impl Default for GameControllerMessage {
+    fn default() -> Self {
+        Self {
+            header: GAME_CONTROLLER_STRUCT_HEADER,
+            version: GAME_CONTROLLER_STRUCT_VERSION,
+            packet_number: 0,
+            players_per_team: 0,
+            competition_phase: CompetitionPhase::RoundRobin,
+            competition_type: CompetitionType::Normal,
+            game_phase: GamePhase::Normal,
+            state: GameState::Initial,
+            set_play: SetPlay::None,
+            first_half: Half::First,
+            kicking_team: 0,
+            secs_remaining: 0,
+            secondary_time: 0,
+            teams: [TeamInfo::invisible(); 2],
+        }
+    }
+}
+
 /// A struct representing the `RoboCupGameControlReturnMessage` send by the Robots.
 #[derive(Encode, Decode, Debug, PartialEq)]
 pub struct GameControllerReturnMessage {

@@ -5,7 +5,10 @@ use std::{
 
 use bifrost::communication::Penalty;
 use re_control_comms::{
-    protocol::{Player, RobotGameController, RobotMessage, CONTROL_PORT},
+    protocol::{
+        game_controller::{Player, RobotGameController},
+        RobotMessage, CONTROL_PORT,
+    },
     viewer::ControlViewer,
 };
 use rerun::external::{
@@ -20,11 +23,11 @@ use rerun::external::{
 };
 
 use crate::{
-    connection::{ip_from_env, ConnectionState, ROBOT_ADDR_ENV_KEY},
+    connection::{ip_from_env, ConnectionState, ROBOT_ADDRESS_ENV_KEY},
     state::{HandleState, SharedHandleState},
     ui::{
         extra_title_bar_connection_ui,
-        fake_game_controller::{game_controller_ui, GameControllerState},
+        game_controller::{game_controller_ui, GameControllerState},
         selection_ui,
     },
 };
@@ -52,7 +55,7 @@ struct GameControllerViewState {
 
 impl Default for GameControllerViewState {
     fn default() -> Self {
-        let ip_addr = ip_from_env(ROBOT_ADDR_ENV_KEY);
+        let ip_addr = ip_from_env(ROBOT_ADDRESS_ENV_KEY);
 
         let socket_addr = SocketAddrV4::new(ip_addr, CONTROL_PORT);
         let control_viewer = ControlViewer::from(socket_addr);
@@ -100,7 +103,7 @@ impl ViewClass for GameControllerView {
     }
 
     fn display_name(&self) -> &'static str {
-        "Game Controller viewer"
+        "Game Controller"
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
