@@ -22,7 +22,7 @@ impl Plugin for GaitPlugin {
         app.add_systems(
             Sensor,
             update_support_foot
-                .after(crate::sensor::fsr::force_sensitive_resistor_sensor)
+                .after(crate::sensor::fsr::update_force_sensitive_resistor_sensor)
                 .after(WalkingEngineSet::Prepare)
                 .run_if(in_state(Gait::Walking).or(in_state(Gait::Stopping))),
         );

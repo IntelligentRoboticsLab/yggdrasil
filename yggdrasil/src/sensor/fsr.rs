@@ -23,15 +23,13 @@ impl Plugin for FSRSensorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Fsr>();
         app.init_resource::<Contacts>();
-        app.init_resource::<GroundContact>();
 
         app.add_systems(PostStartup, init_fsr_calibration);
         app.add_systems(
             Sensor,
             (
-                force_sensitive_resistor_sensor,
+                update_force_sensitive_resistor_sensor,
                 update_contacts,
-                update_ground_contact,
                 update_fsr_calibration,
             )
                 .chain(),
@@ -100,53 +98,33 @@ pub struct Contacts {
     pub lpf: ButterworthLpf<1>,
 }
 
+impl Contacts {
+    /// Return true if the robot has been grounded for at least `duration`.
+    #[must_use]
+    pub fn grounded_for(&self, duration: Duration) -> bool {
+        self.ground && self.last_switched.elapsed() > duration
+    }
+
+    /// Return true if the robot has been ungrounded for at least `duration`.
+    #[must_use]
+    pub fn ungrounded_for(&self, duration: Duration) -> bool {
+        !self.ground && self.last_switched.elapsed() > duration
+    }
+}
+
 impl Default for Contacts {
     fn default() -> Self {
         Contacts {
             ground: true,
-            left_foot: false,
-            right_foot: false,
+            left_foot: true,
+            right_foot: true,
             last_switched: Instant::now(),
             lpf: ButterworthLpf::new(OMEGA),
         }
     }
 }
 
-#[derive(Resource, Debug, Default)]
-pub struct GroundContact {
-    pub grounded_since: Option<Instant>,
-    pub ungrounded_since: Option<Instant>,
-}
-
-impl GroundContact {
-    /// Return true if the robot has been grounded for at least `duration`.
-    #[must_use]
-    pub fn grounded_for(&self, duration: Duration) -> bool {
-        self.grounded_since
-            .is_some_and(|grounded_since| grounded_since.elapsed() > duration)
-    }
-
-    /// Return true if the robot has been ungrounded for at least `duration`.
-    #[must_use]
-    pub fn ungrounded_for(&self, duration: Duration) -> bool {
-        self.ungrounded_since
-            .is_some_and(|grounded_since| grounded_since.elapsed() > duration)
-    }
-}
-
-fn update_ground_contact(mut ground_contact: ResMut<GroundContact>, contacts: Res<Contacts>) {
-    if contacts.ground && ground_contact.grounded_since.is_none() {
-        ground_contact.grounded_since = Some(Instant::now());
-        ground_contact.ungrounded_since = None;
-    }
-
-    if !contacts.ground && ground_contact.ungrounded_since.is_none() {
-        ground_contact.ungrounded_since = Some(Instant::now());
-        ground_contact.grounded_since = None;
-    }
-}
-
-pub fn force_sensitive_resistor_sensor(nao_state: Res<NaoState>, mut fsr: ResMut<Fsr>) {
+pub fn update_force_sensitive_resistor_sensor(nao_state: Res<NaoState>, mut fsr: ResMut<Fsr>) {
     fsr.left_foot = nao_state.fsr.left_foot.clone();
     fsr.right_foot = nao_state.fsr.right_foot.clone();
 }
