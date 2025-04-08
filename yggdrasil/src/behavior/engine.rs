@@ -55,6 +55,7 @@ impl Plugin for BehaviorEnginePlugin {
                 WalkToBehaviorPlugin,
                 WalkToSetBehaviorPlugin,
             ))
+            .add_plugins((WalkToBallBehaviorPlugin,))
             .add_systems(PostUpdate, role_base);
     }
 }

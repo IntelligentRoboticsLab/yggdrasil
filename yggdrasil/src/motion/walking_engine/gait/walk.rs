@@ -106,16 +106,26 @@ fn generate_walk_gait(
 
 #[derive(Debug, Clone)]
 struct FootLevelingState {
-    state: ExponentialLpf<2>,
+    pitch: f32,
+    roll: f32,
 }
 
 impl Default for FootLevelingState {
     fn default() -> Self {
         Self {
-            state: ExponentialLpf::new(0.8),
+            pitch: 0.0,
+            roll: 0.0,
         }
     }
 }
+
+pub const MAX_LEVEL_DELTA: f32 = 0.122173;
+pub const START_LEVEL_REDUCE_TO_ZERO: f32 = 0.75;
+pub const PITCH_LEVEL_SCALE: f32 = 0.0872665;
+pub const ROLL_LEVEL_SCALE: f32 = 0.0872665;
+pub const PITCH_POSITIVE_LEVEL_FACTOR: f32 = 0.75;
+pub const PITCH_NEGATIVE_LEVEL_FACTOR: f32 = 0.5;
+pub const ROLL_LEVEL_FACTOR: f32 = 0.5;
 
 fn foot_leveling(
     state: Res<WalkState>,
@@ -149,17 +159,32 @@ fn foot_leveling(
         config.balancing.foot_leveling_decay,
     );
 
-    let target_roll = -level_roll * weight;
-    let target_pitch = -level_pitch * weight;
+    let pitch_base_factor = if level_pitch > 0.0 {
+        PITCH_POSITIVE_LEVEL_FACTOR
+    } else {
+        PITCH_NEGATIVE_LEVEL_FACTOR
+    };
 
-    let target_values = foot_leveling
-        .state
-        .update(Vector2::new(target_roll, target_pitch));
+    let pitch_scale_factor = (level_pitch.abs() / PITCH_LEVEL_SCALE).min(1.0);
+    let target_pitch = -level_pitch * weight * pitch_base_factor * pitch_scale_factor;
+
+    let roll_scale_factor = (level_roll.abs() / ROLL_LEVEL_SCALE).min(1.0);
+    let target_roll = -level_roll * weight * ROLL_LEVEL_FACTOR * roll_scale_factor;
+
+    // let target_values = foot_leveling
+    //     .state
+    //     .update(Vector2::new(target_roll, target_pitch));
+
+    let max_delta = MAX_LEVEL_DELTA;
+    foot_leveling.roll =
+        foot_leveling.roll + (target_roll - foot_leveling.roll).clamp(-max_delta, max_delta);
+    foot_leveling.pitch =
+        foot_leveling.pitch + (target_pitch - foot_leveling.pitch).clamp(-max_delta, max_delta);
 
     balance_adjustment.apply_foot_leveling(
         foot_support.swing_side(),
-        target_values.x,
-        target_values.y,
+        foot_leveling.roll,
+        foot_leveling.pitch,
     );
 }
 

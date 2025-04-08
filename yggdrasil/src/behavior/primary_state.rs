@@ -16,6 +16,8 @@ use std::time::Duration;
 use bifrost::communication::{GameControllerMessage, GameState};
 use nidhogg::types::color;
 
+use super::engine::{Behavior, BehaviorState};
+
 #[serde_as]
 #[derive(Resource, Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
@@ -89,8 +91,11 @@ pub fn update_primary_state(
     penalty_state: Res<PenaltyState>,
     mut recognized_pose: EventReader<RefereePoseRecognized>,
     mut received_pose: EventReader<ReceivedRefereePose>,
+    behavior: Res<State<BehaviorState>>,
 ) {
     use PrimaryState as PS;
+
+    info!("behavior: {:?}", behavior.get());
 
     let next_state = next_primary_state(
         primary_state.as_mut(),

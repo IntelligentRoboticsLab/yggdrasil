@@ -105,7 +105,7 @@ filtered_gyro_y_multiplier = 0.05
 # Phase shift for foot leveling drop-off.
 #
 # Higher values mean the swing foot is leveled for longer.
-foot_leveling_phase_shift = 0.7
+foot_leveling_phase_shift = 0.8
 
 # Decay rate for the foot leveling logistic filter.
 foot_leveling_decay = 14.0
