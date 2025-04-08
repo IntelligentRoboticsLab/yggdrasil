@@ -39,7 +39,6 @@ fn walk_to_ball(
     ball_tracker: Res<BallTracker>,
 ) {
     let Some(ball) = ball_tracker.stationary_ball() else {
-        println!("no ball (walk to ball");
         return;
     };
 
@@ -58,7 +57,6 @@ fn walk_to_ball(
     if step_planner
         .current_absolute_target()
         .is_some_and(|target| {
-            println!("has absolute target: {target:?}");
             target
                 != &Target {
                     position: ball,
@@ -66,20 +64,16 @@ fn walk_to_ball(
                 }
         })
     {
-        println!("   clearing target!");
         step_planner.clear_target();
     }
 
     // Set absolute target if not set
-    step_planner.set_absolute_target(ball_target);
-    println!("set absolute target: {ball_target:?}");
+    step_planner.set_absolute_target_if_unset(ball_target);
 
     // Plan step or stand
     if let Some(step) = step_planner.plan(&pose) {
-        println!("requesting step: {step:?}");
         step_context.request_walk(step);
     } else {
-        println!("requesting stand");
         step_context.request_stand();
     }
 }
