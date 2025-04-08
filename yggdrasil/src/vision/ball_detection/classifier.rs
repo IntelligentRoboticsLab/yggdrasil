@@ -81,7 +81,7 @@ fn init_ball_tracker(mut commands: Commands, config: Res<BallDetectionConfig>) {
     let ball_tracker = BallTracker {
         position_kf: UnscentedKalmanFilter::<2, 5, BallPosition>::new(
             BallPosition(Point2::new(0.0, 0.0)),
-            CovarianceMatrix::from_diagonal_element(0.05),
+            CovarianceMatrix::from_diagonal_element(config.stationary_std_threshold.powi(2)), // variance = std^2, and we don't know where the ball is
         ),
         // prediction is done each cycle, this is roughly 1.7cm of std per cycle or 1.3 meters per second
         prediction_noise: CovarianceMatrix::from_diagonal_element(config.prediction_noise),

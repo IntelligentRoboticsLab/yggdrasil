@@ -31,7 +31,7 @@ impl Behavior for WalkToBall {
     const STATE: BehaviorState = BehaviorState::WalkToBall;
 }
 
-pub fn walk_to_ball(
+fn walk_to_ball(
     pose: Res<RobotPose>,
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,

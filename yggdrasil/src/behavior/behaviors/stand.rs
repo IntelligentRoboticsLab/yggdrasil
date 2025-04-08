@@ -26,7 +26,7 @@ impl Behavior for Stand {
     const STATE: BehaviorState = BehaviorState::Stand;
 }
 
-pub fn stand(mut step_context: ResMut<StepContext>, mut nao_manager: ResMut<NaoManager>) {
+fn stand(mut step_context: ResMut<StepContext>, mut nao_manager: ResMut<NaoManager>) {
     step_context.request_stand();
 
     nao_manager.set_head_target(

@@ -57,6 +57,7 @@ impl Behavior for Observe {
 }
 
 pub struct ObserveBehaviorPlugin;
+
 impl Plugin for ObserveBehaviorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, observe.run_if(in_behavior::<Observe>))

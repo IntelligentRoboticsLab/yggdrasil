@@ -20,8 +20,8 @@ use super::{
         CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
         Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
         StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
-        VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin,
-        WalkToSet, WalkToSetBehaviorPlugin,
+        VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin, WalkToBallBehaviorPlugin,
+        WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
@@ -39,22 +39,21 @@ impl Plugin for BehaviorEnginePlugin {
         // StatesPlugin should be added before init_state
         app.init_state::<BehaviorState>()
             .init_state::<RoleState>()
+            .add_plugins((DefenderRolePlugin, GoalkeeperRolePlugin, StrikerRolePlugin))
             .add_plugins((
-                StandBehaviorPlugin,
-                WalkBehaviorPlugin,
                 CatchFallBehaviorPlugin,
                 ObserveBehaviorPlugin,
+                RlStrikerSearchBehaviorPlugin,
                 SittingBehaviorPlugin,
+                StandBehaviorPlugin,
                 StandLookAtBehaviorPlugin,
                 StandupBehaviorPlugin,
                 StartUpBehaviorPlugin,
+                VisualRefereeBehaviorPlugin,
+                WalkBehaviorPlugin,
+                WalkToBallBehaviorPlugin,
                 WalkToBehaviorPlugin,
                 WalkToSetBehaviorPlugin,
-                DefenderRolePlugin,
-                GoalkeeperRolePlugin,
-                StrikerRolePlugin,
-                RlStrikerSearchBehaviorPlugin,
-                VisualRefereeBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
     }
