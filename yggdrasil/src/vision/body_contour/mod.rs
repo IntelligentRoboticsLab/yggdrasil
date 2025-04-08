@@ -12,6 +12,18 @@ use super::camera::Image;
 
 const VISUALIZE_DOT_INTERVAL: usize = 10;
 
+/// All points relative to the chest, ordered from left to right,
+/// which should be used for the chest body contour.
+const CHEST_POINTS: [Vector3<f32>; 7] = [
+    Vector3::new(-0.04, 0.1, 0.0),
+    Vector3::new(-0.03, 0.08, 0.0),
+    Vector3::new(-0.01, 0.06, 0.0),
+    Vector3::new(0.0, 0.0, 0.0),
+    Vector3::new(-0.01, -0.06, 0.0),
+    Vector3::new(-0.03, -0.08, 0.0),
+    Vector3::new(-0.04, -0.1, 0.0),
+];
+
 #[derive(Default)]
 pub struct BodyContourPlugin;
 
@@ -299,34 +311,13 @@ fn adjust_for_imu(orientation: &RobotOrientation, isometry: Isometry3<f32>) -> I
 fn robot_to_chest(orientation: &RobotOrientation, kinematics: &Kinematics) -> [Isometry3<f32>; 7] {
     let robot_to_chest = kinematics.isometry::<Robot, Chest>().inner;
 
-    let robot_to_chest_left_left_left = Isometry3::from(Translation3::from(
-        robot_to_chest.translation.vector + -CHEST_TO_CHEST_LEFT_LEFT_LEFT,
-    ));
-    let robot_to_chest_left_left = Isometry3::from(Translation3::from(
-        robot_to_chest.translation.vector + -CHEST_TO_CHEST_LEFT_LEFT,
-    ));
-    let robot_to_chest_left = Isometry3::from(Translation3::from(
-        robot_to_chest.translation.vector + -CHEST_TO_CHEST_LEFT,
-    ));
-    let robot_to_chest_right = Isometry3::from(Translation3::from(
-        robot_to_chest.translation.vector + -CHEST_TO_CHEST_RIGHT,
-    ));
-    let robot_to_chest_right_right = Isometry3::from(Translation3::from(
-        robot_to_chest.translation.vector + -CHEST_TO_CHEST_RIGHT_RIGHT,
-    ));
-    let robot_to_chest_right_right_right = Isometry3::from(Translation3::from(
-        robot_to_chest.translation.vector + -CHEST_TO_CHEST_RIGHT_RIGHT_RIGHT,
-    ));
+    std::array::from_fn(|index| {
+        let chest_point = Isometry3::from(Translation3::from(
+            robot_to_chest.translation.vector + -CHEST_POINTS[index],
+        ));
 
-    [
-        adjust_for_imu(orientation, robot_to_chest_left_left_left),
-        adjust_for_imu(orientation, robot_to_chest_left_left),
-        adjust_for_imu(orientation, robot_to_chest_left),
-        adjust_for_imu(orientation, robot_to_chest),
-        adjust_for_imu(orientation, robot_to_chest_right),
-        adjust_for_imu(orientation, robot_to_chest_right_right),
-        adjust_for_imu(orientation, robot_to_chest_right_right_right),
-    ]
+        adjust_for_imu(orientation, chest_point)
+    })
 }
 
 fn robot_to_shoulders(
