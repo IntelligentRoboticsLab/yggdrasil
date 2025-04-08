@@ -104,7 +104,7 @@ fn visualize_body_contour(
 type ChestPoints = Vec<Point2<f32>>;
 
 #[derive(Default, Clone)]
-struct ShouderPoints {
+struct ShoulderPoints {
     front: Option<Point2<f32>>,
     back: Option<Point2<f32>>,
     top: Option<Point2<f32>>,
@@ -118,8 +118,8 @@ struct RobotToShoulderPoints {
 
 #[derive(Default, Resource, Clone)]
 pub struct BodyContour {
-    left_shoulder_cap_points: ShouderPoints,
-    right_shoulder_cap_points: ShouderPoints,
+    left_shoulder_cap_points: ShoulderPoints,
+    right_shoulder_cap_points: ShoulderPoints,
 
     chest_points: ChestPoints,
 
@@ -231,7 +231,7 @@ impl BodyContour {
     fn calculate_shoulder_points(
         matrix: &CameraMatrix<Bottom>,
         robot_to_shoulder_points: &RobotToShoulderPoints,
-    ) -> ShouderPoints {
+    ) -> ShoulderPoints {
         let front = matrix
             .ground_to_pixel(
                 (robot_to_shoulder_points.front.inverse() * matrix.robot_to_ground)
@@ -257,7 +257,7 @@ impl BodyContour {
             )
             .ok();
 
-        ShouderPoints { front, back, top }
+        ShoulderPoints { front, back, top }
     }
 
     fn update_shoulders(&mut self, orientation: &RobotOrientation, matrix: &CameraMatrix<Bottom>) {
