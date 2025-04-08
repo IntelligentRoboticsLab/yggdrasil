@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use nalgebra::{Translation3, Vector2};
+use nalgebra::Translation3;
 
 use crate::{
     kinematics::{
@@ -19,7 +19,7 @@ use crate::{
         Side, TargetFootPositions,
     },
     nao::CycleTime,
-    sensor::{low_pass_filter::ExponentialLpf, orientation::RobotOrientation},
+    sensor::orientation::RobotOrientation,
 };
 
 use super::WalkState;
@@ -119,14 +119,6 @@ impl Default for FootLevelingState {
     }
 }
 
-pub const MAX_LEVEL_DELTA: f32 = 0.122173;
-pub const START_LEVEL_REDUCE_TO_ZERO: f32 = 0.75;
-pub const PITCH_LEVEL_SCALE: f32 = 0.0872665;
-pub const ROLL_LEVEL_SCALE: f32 = 0.0872665;
-pub const PITCH_POSITIVE_LEVEL_FACTOR: f32 = 0.75;
-pub const PITCH_NEGATIVE_LEVEL_FACTOR: f32 = 0.5;
-pub const ROLL_LEVEL_FACTOR: f32 = 0.5;
-
 fn foot_leveling(
     state: Res<WalkState>,
     foot_support: Res<FootSupportState>,
@@ -153,29 +145,22 @@ fn foot_leveling(
     let level_orientation = orientation.quaternion() * robot_to_walk_rotation.inverse();
     let (level_roll, level_pitch, _) = level_orientation.euler_angles();
 
-    let weight = logistic_correction_weight(
-        state.linear(),
-        config.balancing.foot_leveling_phase_shift,
-        config.balancing.foot_leveling_decay,
-    );
+    let config = config.balancing.foot_leveling.clone();
+    let weight = logistic_correction_weight(state.linear(), config.phase_shift, config.decay);
 
     let pitch_base_factor = if level_pitch > 0.0 {
-        PITCH_POSITIVE_LEVEL_FACTOR
+        config.pitch_positive_level_factor
     } else {
-        PITCH_NEGATIVE_LEVEL_FACTOR
+        config.pitch_negative_level_factor
     };
 
-    let pitch_scale_factor = (level_pitch.abs() / PITCH_LEVEL_SCALE).min(1.0);
+    let pitch_scale_factor = (level_pitch.abs() / config.pitch_level_scale).min(1.0);
     let target_pitch = -level_pitch * weight * pitch_base_factor * pitch_scale_factor;
 
-    let roll_scale_factor = (level_roll.abs() / ROLL_LEVEL_SCALE).min(1.0);
-    let target_roll = -level_roll * weight * ROLL_LEVEL_FACTOR * roll_scale_factor;
+    let roll_scale_factor = (level_roll.abs() / config.roll_level_scale).min(1.0);
+    let target_roll = -level_roll * weight * config.roll_level_factor * roll_scale_factor;
 
-    // let target_values = foot_leveling
-    //     .state
-    //     .update(Vector2::new(target_roll, target_pitch));
-
-    let max_delta = MAX_LEVEL_DELTA;
+    let max_delta = config.max_level_delta;
     foot_leveling.roll =
         foot_leveling.roll + (target_roll - foot_leveling.roll).clamp(-max_delta, max_delta);
     foot_leveling.pitch =

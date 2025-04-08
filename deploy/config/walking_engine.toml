@@ -102,13 +102,48 @@ gyro_lpf_alpha = 0.6
 # to adjust the pitch of the robot's ankles, in order to balance the pendulum motion.
 filtered_gyro_y_multiplier = 0.05
 
+# Configuration parameters for controlling foot leveling behavior during locomotion.
+#
+# This struct contains parameters that control how the robot's feet are leveled
+# during the swing and stance phases of walking or running gaits.
+[balancing.foot_leveling]
 # Phase shift for foot leveling drop-off.
 #
 # Higher values mean the swing foot is leveled for longer.
-foot_leveling_phase_shift = 0.8
+phase_shift = 0.8
 
 # Decay rate for the foot leveling logistic filter.
-foot_leveling_decay = 14.0
+decay = 14.0
+
+# Maximum allowed difference in leveling between steps.
+#
+# Limits how much the foot leveling can change from one step to the next.
+max_level_delta = 0.122173
+
+# Scaling factor for pitch leveling adjustments.
+#
+# Controls the intensity of foot leveling in the pitch direction.
+pitch_level_scale = 0.0872665
+
+# Multiplier for positive pitch corrections.
+#
+# Adjusts the strength of leveling when the foot needs to pitch upward.
+pitch_positive_level_factor = 0.75
+
+# Multiplier for negative pitch corrections.
+#
+# Adjusts the strength of leveling when the foot needs to pitch downward.
+pitch_negative_level_factor = 0.5
+
+# Scaling factor for roll leveling adjustments.
+#
+# Controls the intensity of foot leveling in the roll direction.
+roll_level_scale = 0.0872665
+
+# Multiplier for roll corrections.
+#
+# Adjusts the strength of leveling for roll adjustments in either direction.
+roll_level_factor = 0.5
 
 # This section contains parameters for the foot support while walking.
 [foot_support]

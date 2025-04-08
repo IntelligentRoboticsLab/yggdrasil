@@ -42,12 +42,9 @@ pub fn striker_role(
     mut nao_manager: ResMut<NaoManager>,
 ) {
     let Some(ball) = ball_tracker.stationary_ball() else {
-        println!("no ball");
         commands.set_behavior(RlStrikerSearchBehavior);
         return;
     };
-
-    println!("ball: {:?}", ball);
 
     let relative_ball = pose.world_to_robot(&ball);
     let ball_angle = pose.angle_to(&ball);

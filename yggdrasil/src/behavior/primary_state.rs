@@ -16,7 +16,7 @@ use std::time::Duration;
 use bifrost::communication::{GameControllerMessage, GameState};
 use nidhogg::types::color;
 
-use super::engine::{Behavior, BehaviorState};
+use super::engine::BehaviorState;
 
 #[serde_as]
 #[derive(Resource, Serialize, Deserialize, Debug, Clone)]
