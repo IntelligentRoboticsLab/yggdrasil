@@ -31,7 +31,7 @@ impl Behavior for WalkToSet {
     const STATE: BehaviorState = BehaviorState::WalkToSet;
 }
 
-pub fn walk_to_set(
+fn walk_to_set(
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
     player_config: Res<PlayerConfig>,

@@ -29,7 +29,7 @@ impl Plugin for StandLookAtBehaviorPlugin {
     }
 }
 
-pub fn stand_look_at(
+fn stand_look_at(
     stand_look_at: Res<StandLookAt>,
     pose: Res<RobotPose>,
     mut nao_manager: ResMut<NaoManager>,

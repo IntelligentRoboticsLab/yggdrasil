@@ -32,7 +32,7 @@ impl Behavior for WalkTo {
     const STATE: BehaviorState = BehaviorState::WalkTo;
 }
 
-pub fn walk_to(
+fn walk_to(
     walk_to: Res<WalkTo>,
     pose: Res<RobotPose>,
     mut step_planner: ResMut<StepPlanner>,

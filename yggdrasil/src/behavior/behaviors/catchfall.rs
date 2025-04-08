@@ -155,7 +155,7 @@ const ARM_JOINTS_BACKWARD_FALL: ArmJoints<f32> = ArmJoints {
     },
 };
 
-pub fn catch_fall(
+fn catch_fall(
     mut nao_manager: ResMut<NaoManager>,
     nao_state: ResMut<NaoState>,
 
