@@ -10,6 +10,12 @@ use crate::{
 
 use super::camera::Image;
 
+pub const ROBOT_TO_LEFT_SHOULDER_CAP: Vector3<f32> = Vector3::new(0.0, 0.098, 0.20);
+pub const ROBOT_TO_RIGHT_SHOULDER_CAP: Vector3<f32> = Vector3::new(0.0, -0.098, 0.20);
+
+pub const SHOULDER_CAP_TO_SHOULDER_CAP_FRONT: Vector3<f32> = Vector3::new(0.055, 0.0, 0.0);
+pub const SHOULDER_CAP_TO_SHOULDER_CAP_BACK: Vector3<f32> = Vector3::new(-0.05, 0.0, 0.0);
+
 const VISUALIZE_DOT_INTERVAL: usize = 10;
 
 /// All points relative to the chest, ordered from left to right,
@@ -97,15 +103,20 @@ fn visualize_body_contour(
 type ChestPoints = Vec<Point2<f32>>;
 
 #[derive(Default, Clone)]
-struct ShoulderCapPoints {
+struct ShouderPoints {
     front: Option<Point2<f32>>,
     back: Option<Point2<f32>>,
 }
 
+struct RobotToShoulderPoints {
+    front: Isometry3<f32>,
+    back: Isometry3<f32>,
+}
+
 #[derive(Default, Resource, Clone)]
 pub struct BodyContour {
-    left_shoulder_cap_points: ShoulderCapPoints,
-    right_shoulder_cap_points: ShoulderCapPoints,
+    left_shoulder_cap_points: ShouderPoints,
+    right_shoulder_cap_points: ShouderPoints,
 
     chest_points: ChestPoints,
 
@@ -206,45 +217,38 @@ impl BodyContour {
             ));
     }
 
+    fn calculate_shoulder_points(
+        matrix: &CameraMatrix<Bottom>,
+        robot_to_shoulder_points: &RobotToShoulderPoints,
+    ) -> ShouderPoints {
+        let front = matrix
+            .ground_to_pixel(
+                (robot_to_shoulder_points.front.inverse() * matrix.robot_to_ground)
+                    .translation
+                    .vector
+                    .into(),
+            )
+            .ok();
+        let back = matrix
+            .ground_to_pixel(
+                (robot_to_shoulder_points.back.inverse() * matrix.robot_to_ground)
+                    .translation
+                    .vector
+                    .into(),
+            )
+            .ok();
+
+        ShouderPoints { front, back }
+    }
+
     fn update_shoulders(&mut self, orientation: &RobotOrientation, matrix: &CameraMatrix<Bottom>) {
-        let (
-            (robot_to_left_shoulder_cap_front, robot_to_left_shoulder_cap_back),
-            (robot_to_right_shoulder_cap_front, robot_to_right_shoulder_cap_back),
-        ) = robot_to_shoulders(orientation);
+        let robot_to_left_shoulder_points = robot_to_left_shoulder(orientation);
+        let robot_to_right_shoulder_points = robot_to_right_shoulder(orientation);
 
-        self.left_shoulder_cap_points.front = matrix
-            .ground_to_pixel(
-                (robot_to_left_shoulder_cap_front.inverse() * matrix.robot_to_ground)
-                    .translation
-                    .vector
-                    .into(),
-            )
-            .ok();
-        self.left_shoulder_cap_points.back = matrix
-            .ground_to_pixel(
-                (robot_to_left_shoulder_cap_back.inverse() * matrix.robot_to_ground)
-                    .translation
-                    .vector
-                    .into(),
-            )
-            .ok();
-
-        self.right_shoulder_cap_points.front = matrix
-            .ground_to_pixel(
-                (robot_to_right_shoulder_cap_front.inverse() * matrix.robot_to_ground)
-                    .translation
-                    .vector
-                    .into(),
-            )
-            .ok();
-        self.right_shoulder_cap_points.back = matrix
-            .ground_to_pixel(
-                (robot_to_right_shoulder_cap_back.inverse() * matrix.robot_to_ground)
-                    .translation
-                    .vector
-                    .into(),
-            )
-            .ok();
+        self.left_shoulder_cap_points =
+            Self::calculate_shoulder_points(matrix, &robot_to_left_shoulder_points);
+        self.right_shoulder_cap_points =
+            Self::calculate_shoulder_points(matrix, &robot_to_right_shoulder_points);
     }
 
     fn update_thighs(
@@ -320,14 +324,10 @@ fn robot_to_chest(orientation: &RobotOrientation, kinematics: &Kinematics) -> [I
     })
 }
 
-fn robot_to_shoulders(
-    orientation: &RobotOrientation,
-) -> (
-    (Isometry3<f32>, Isometry3<f32>),
-    (Isometry3<f32>, Isometry3<f32>),
-) {
+fn robot_to_left_shoulder(orientation: &RobotOrientation) -> RobotToShoulderPoints {
     let robot_to_left_shoulder_cap =
         Isometry3::from(Translation3::from(-ROBOT_TO_LEFT_SHOULDER_CAP));
+
     let robot_to_left_shoulder_cap_front = Isometry3::from(Translation3::from(
         robot_to_left_shoulder_cap.translation.vector - SHOULDER_CAP_TO_SHOULDER_CAP_FRONT,
     ));
@@ -335,8 +335,16 @@ fn robot_to_shoulders(
         robot_to_left_shoulder_cap.translation.vector - SHOULDER_CAP_TO_SHOULDER_CAP_BACK,
     ));
 
+    RobotToShoulderPoints {
+        front: adjust_for_imu(orientation, robot_to_left_shoulder_cap_front),
+        back: adjust_for_imu(orientation, robot_to_left_shoulder_cap_back),
+    }
+}
+
+fn robot_to_right_shoulder(orientation: &RobotOrientation) -> RobotToShoulderPoints {
     let robot_to_right_shoulder_cap =
         Isometry3::from(Translation3::from(-ROBOT_TO_RIGHT_SHOULDER_CAP));
+
     let robot_to_right_shoulder_cap_front = Isometry3::from(Translation3::from(
         robot_to_right_shoulder_cap.translation.vector - SHOULDER_CAP_TO_SHOULDER_CAP_FRONT,
     ));
@@ -344,16 +352,10 @@ fn robot_to_shoulders(
         robot_to_right_shoulder_cap.translation.vector - SHOULDER_CAP_TO_SHOULDER_CAP_BACK,
     ));
 
-    (
-        (
-            adjust_for_imu(orientation, robot_to_left_shoulder_cap_front),
-            adjust_for_imu(orientation, robot_to_left_shoulder_cap_back),
-        ),
-        (
-            adjust_for_imu(orientation, robot_to_right_shoulder_cap_front),
-            adjust_for_imu(orientation, robot_to_right_shoulder_cap_back),
-        ),
-    )
+    RobotToShoulderPoints {
+        front: adjust_for_imu(orientation, robot_to_right_shoulder_cap_front),
+        back: adjust_for_imu(orientation, robot_to_right_shoulder_cap_back),
+    }
 }
 
 fn robot_to_thighs(
