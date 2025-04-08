@@ -173,7 +173,7 @@ impl BodyContour {
                 .back
                 .is_none_or(|point| point.x > image_coordinate.x)
             && self
-                .left_shoulder_cap_points
+                .right_shoulder_cap_points
                 .top
                 .is_none_or(|point| point.y < image_coordinate.y)
     }
