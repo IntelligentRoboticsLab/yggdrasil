@@ -262,9 +262,9 @@ fn detect_lines<T: CameraLocation>(
     cfg: LineDetectionConfig,
     body_contour: BodyContour,
 ) -> (Vec<LineCandidate>, Vec<Option<Rejection>>) {
-    let spots = scan_lines
-        .line_spots()
-        .filter(|point| !body_contour.is_part_of_body(*point));
+    let spots = scan_lines.line_spots().filter(|point| {
+        T::POSITION == CameraPosition::Top || !body_contour.is_part_of_body(*point)
+    });
 
     let mut projected_spots = spots
         // project the points to the ground, in the field frame
