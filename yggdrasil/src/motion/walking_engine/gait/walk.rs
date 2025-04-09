@@ -145,7 +145,7 @@ fn foot_leveling(
     let level_orientation = orientation.quaternion() * robot_to_walk_rotation.inverse();
     let (level_roll, level_pitch, _) = level_orientation.euler_angles();
 
-    let config = config.balancing.foot_leveling.clone();
+    let config = &config.balancing.foot_leveling;
     let weight = logistic_correction_weight(state.linear(), config.phase_shift, config.decay);
 
     let pitch_base_factor = if level_pitch > 0.0 {
