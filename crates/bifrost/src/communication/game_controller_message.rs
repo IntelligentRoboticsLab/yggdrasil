@@ -120,6 +120,19 @@ pub enum GameState {
     Standby = 5,
 }
 
+impl GameState {
+    pub const fn in_order() -> [GameState; 6] {
+        [
+            GameState::Initial,
+            GameState::Standby,
+            GameState::Ready,
+            GameState::Set,
+            GameState::Playing,
+            GameState::Finished,
+        ]
+    }
+}
+
 /// Enum for the different set plays.
 #[derive(Encode, Decode, Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]

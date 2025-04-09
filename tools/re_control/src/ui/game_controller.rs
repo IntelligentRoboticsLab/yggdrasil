@@ -23,15 +23,6 @@ use super::view_section;
 const PENALIZED_TIME: Duration = Duration::from_secs(45);
 const MAX_PENALTY_SECONDS: u8 = u8::MAX;
 
-const GAME_STATES_IN_ORDER: [GameState; 6] = [
-    GameState::Initial,
-    GameState::Standby,
-    GameState::Ready,
-    GameState::Set,
-    GameState::Playing,
-    GameState::Finished,
-];
-
 #[derive(Error, Diagnostic, Debug)]
 enum GameControllerViewerError {
     #[error("No game controller message exists")]
@@ -186,7 +177,7 @@ fn state_buttons(
     handle: &ControlViewerHandle,
 ) {
     ui.horizontal(|ui| {
-        for state in GAME_STATES_IN_ORDER {
+        for state in GameState::in_order() {
             state_button(
                 ui,
                 handle,
