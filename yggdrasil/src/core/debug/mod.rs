@@ -22,7 +22,7 @@ use crate::{
 
 const DEFAULT_STORAGE_PATH: &str = "/mnt/usb";
 const STORAGE_PATH_ENV_NAME: &str = "RERUN_STORAGE_PATH";
-const DATE_TIME_FORMAT: &str = "%Y_%m_%d_%H_%M_%S";
+const DATE_TIME_FORMAT: &str = "%Y_%m_%d-%H_%M_%S";
 
 /// Plugin that adds debugging tools for the robot using the [rerun](https://rerun.io) viewer.
 ///
