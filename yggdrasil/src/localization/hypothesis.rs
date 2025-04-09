@@ -77,9 +77,7 @@ pub fn odometry_update(
 pub fn line_update(
     cfg: Res<LocalizationConfig>,
     layout: Res<LayoutConfig>,
-    // TODO: for now, we only use the top camera as lines are mistakenly connected in the shoulder sometimes.
-    // The [`With`] filter should be removed once the body contour works properly.
-    new_lines: Query<&DetectedLines, (Added<DetectedLines>, With<Top>)>,
+    new_lines: Query<&DetectedLines, Added<DetectedLines>>,
     mut hypotheses: Query<&mut RobotPoseHypothesis>,
 ) {
     // get the measured lines in robot space
