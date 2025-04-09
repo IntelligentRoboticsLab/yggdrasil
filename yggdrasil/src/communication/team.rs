@@ -6,7 +6,6 @@ use bevy::prelude::{App, *};
 use miette::IntoDiagnostic;
 
 use crate::core::config::showtime::ShowtimeConfig;
-use crate::nao::Cycle;
 use crate::prelude::*;
 use crate::vision::referee::RefereePose;
 
