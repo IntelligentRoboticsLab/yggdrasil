@@ -9,7 +9,7 @@ use crate::{
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},
-        walking_engine::{step_context::StepContext, StandingHeight},
+        walking_engine::step_context::StepContext,
     },
     nao::{NaoManager, Priority},
 };
@@ -65,6 +65,6 @@ fn walk_to_set(
             Priority::default(),
         );
 
-        step_context.request_stand_with_height(StandingHeight::MAX);
+        step_context.request_stand();
     }
 }
