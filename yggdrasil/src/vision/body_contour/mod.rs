@@ -10,12 +10,12 @@ use crate::{
 
 use super::camera::Image;
 
-pub const ROBOT_TO_LEFT_SHOULDER: Vector3<f32> = Vector3::new(0.0, 0.098, 0.0);
-pub const ROBOT_TO_RIGHT_SHOULDER: Vector3<f32> = Vector3::new(0.0, -0.098, 0.0);
+pub const ROBOT_TO_LEFT_SHOULDER: Vector3<f32> = Vector3::new(0.0, 0.098, 0.20);
+pub const ROBOT_TO_RIGHT_SHOULDER: Vector3<f32> = Vector3::new(0.0, -0.098, 0.20);
 
 pub const SHOULDER_TO_SHOULDER_FRONT: Vector3<f32> = Vector3::new(0.055, 0.0, 0.0);
 pub const SHOULDER_TO_SHOULDER_BACK: Vector3<f32> = Vector3::new(-0.05, 0.0, 0.0);
-pub const SHOULDER_TO_SHOULDER_TOP: Vector3<f32> = Vector3::new(0.0, 0.0, 0.08);
+pub const SHOULDER_TO_SHOULDER_TOP: Vector3<f32> = Vector3::new(0.0, 0.0, 0.03);
 
 const VISUALIZE_DOT_INTERVAL: usize = 10;
 
