@@ -3,7 +3,6 @@ use bifrost::communication::{GameControllerMessage, GamePhase, Penalty};
 use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
-use heimdall::Top;
 use nalgebra::{point, vector, ComplexField, Point2, Rotation2, UnitComplex};
 use num::Complex;
 use serde::{Deserialize, Serialize};
