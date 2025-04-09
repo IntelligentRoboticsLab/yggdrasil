@@ -15,6 +15,7 @@ use serde_with::{serde_as, DurationMicroSeconds};
 
 use crate::core::debug::DebugContext;
 
+use crate::localization::odometry::Odometry;
 use crate::nao::Cycle;
 use crate::vision::camera::init_camera;
 use crate::vision::referee::detect::VisualRefereeDetectionStatus;
@@ -145,8 +146,8 @@ impl<T: CameraLocation> Clone for Ball<T> {
 }
 
 /// System that runs the prediction step for the UKF backing the ball tracker.
-fn update_ball_tracker(mut ball_tracker: ResMut<BallTracker>) {
-    ball_tracker.predict();
+fn update_ball_tracker(mut ball_tracker: ResMut<BallTracker>, odometry: Res<Odometry>) {
+    ball_tracker.predict(&odometry);
 }
 
 #[allow(clippy::too_many_arguments)]
