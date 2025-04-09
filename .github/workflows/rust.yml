@@ -3,7 +3,9 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    types: [ opened, synchronize ]
+    paths-ignore:
+      - "deploy/**"
 
 env:
   OPENVINO_SKIP_LINKING: 1
