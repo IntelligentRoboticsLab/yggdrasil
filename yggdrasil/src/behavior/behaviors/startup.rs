@@ -4,7 +4,7 @@ use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
 
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
-    motion::walking_engine::step_context::StepContext,
+    motion::walking_engine::{step_context::StepContext, StandingHeight},
     nao::{NaoManager, Priority, RobotInfo},
 };
 
@@ -34,7 +34,7 @@ pub fn startup(
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
-    step_context.request_stand();
+    step_context.request_stand_with_height(StandingHeight::MAX);
     set_initial_joint_values(&robot_info.initial_joint_positions, &mut nao_manager);
 }
 

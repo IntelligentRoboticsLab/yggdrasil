@@ -5,7 +5,7 @@ use std::time::Duration;
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
     localization::RobotPose,
-    motion::walking_engine::step_context::StepContext,
+    motion::walking_engine::{step_context::StepContext, StandingHeight},
     nao::{NaoManager, Priority},
 };
 
@@ -48,5 +48,5 @@ fn stand_look_at(
         Priority::default(),
         NaoManager::HEAD_STIFFNESS,
     );
-    step_context.request_stand();
+    step_context.request_stand_with_height(StandingHeight::MAX);
 }
