@@ -67,7 +67,7 @@ pub fn send_message(
         return;
     }
 
-    let (ball_age, ball_pos) = balls_to_game_controller_ball(&ball_tracker, &robot_pose);
+    let (ball_age, ball_pos) = balls_to_game_controller_ball(&ball_tracker);
     let return_message = GameControllerReturnMessage::new(
         player_config.player_number,
         player_config.team_number,
@@ -94,17 +94,16 @@ fn robot_pose_to_game_controller_pose(robot_pose: &RobotPose) -> [f32; 3] {
     ]
 }
 
-fn balls_to_game_controller_ball(ball_tracker: &BallTracker, pose: &RobotPose) -> (f32, [f32; 2]) {
+fn balls_to_game_controller_ball(ball_tracker: &BallTracker) -> (f32, [f32; 2]) {
     let Some(ball) = ball_tracker.stationary_ball() else {
         return NO_BALL_DETECTED_DATA;
     };
 
-    let relative_ball = pose.world_to_robot(&ball);
     (
         ball_tracker.timestamp.elapsed().as_secs_f32(),
         [
-            relative_ball.x * MILLIMETERS_PER_METER,
-            relative_ball.y * MILLIMETERS_PER_METER,
+            ball.x * MILLIMETERS_PER_METER,
+            ball.y * MILLIMETERS_PER_METER,
         ],
     )
 }

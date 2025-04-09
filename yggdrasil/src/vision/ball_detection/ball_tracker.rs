@@ -12,6 +12,7 @@ pub enum BallHypothesis {
     Stationary(f32),
 }
 
+/// Filtered ball position in robot coordinates
 #[derive(Resource, Deref, DerefMut)]
 pub struct BallTracker {
     #[deref]

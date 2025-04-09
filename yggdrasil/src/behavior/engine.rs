@@ -9,7 +9,6 @@ use nalgebra::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
-    localization::RobotPose,
     motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
     vision::ball_detection::ball_tracker::BallTracker,
@@ -205,7 +204,6 @@ pub fn role_base(
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
     ball_tracker: Res<BallTracker>,
-    pose: Res<RobotPose>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -285,7 +283,7 @@ pub fn role_base(
         PrimaryState::Playing { .. } => {
             let possible_ball_distance = ball_tracker
                 .stationary_ball()
-                .map(|ball| pose.distance_to(&ball));
+                .map(|ball| ball.coords.norm());
 
             RoleState::assign_role(
                 &mut commands,

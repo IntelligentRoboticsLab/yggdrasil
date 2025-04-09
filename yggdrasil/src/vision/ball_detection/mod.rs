@@ -19,6 +19,7 @@ use serde_with::{serde_as, DurationMilliSeconds};
 
 use crate::{
     core::debug::DebugContext,
+    localization::RobotPose,
     nao::{Cycle, NaoManager, Priority},
     prelude::*,
 };
@@ -135,13 +136,14 @@ fn setup_3d_ball_debug_logging(dbg: DebugContext) {
 fn log_3d_balls(
     dbg: DebugContext,
     ball_tracker: Res<BallTracker>,
+    robot_pose: Res<RobotPose>,
     mut last_logged: Local<Option<Cycle>>,
 ) {
     let last_ball_tracker_update = ball_tracker.cycle;
     let state = ball_tracker.cutoff();
 
     if let BallHypothesis::Stationary(max_variance) = state {
-        let pos = ball_tracker.state();
+        let pos = robot_pose.robot_to_world(&ball_tracker.state());
         if last_logged.is_none_or(|last_logged_cycle| last_ball_tracker_update > last_logged_cycle)
         {
             *last_logged = Some(last_ball_tracker_update);
