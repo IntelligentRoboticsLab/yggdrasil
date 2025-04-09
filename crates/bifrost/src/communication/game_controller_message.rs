@@ -103,7 +103,7 @@ pub enum GamePhase {
 }
 
 /// Enum for the different game states.
-#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, EnumIter)]
+#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum GameState {
     /// Initial game state.
@@ -121,6 +121,8 @@ pub enum GameState {
 }
 
 impl GameState {
+    /// The order of [`GameState`]s used in a match
+    #[must_use]
     pub const fn in_order() -> [GameState; 6] {
         [
             GameState::Initial,
