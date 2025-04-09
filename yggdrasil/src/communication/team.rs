@@ -6,6 +6,7 @@ use bevy::prelude::{App, *};
 use miette::IntoDiagnostic;
 
 use crate::core::config::showtime::ShowtimeConfig;
+use crate::nao::Cycle;
 use crate::prelude::*;
 use crate::vision::referee::RefereePose;
 
@@ -19,6 +20,8 @@ const PORT_RANGE_START: u16 = 10000;
 const MINIMAL_BUDGET: u16 = 5;
 /// Number of seconds in a half match.
 const SECS_PER_HALF: i16 = 10 * 60;
+/// Runs the team communication every `n` cycles, shouldn't fix anything but maybe idk who knows.
+const SNAKE_OIL: usize = 20;
 
 /// Plugin for communication between team members.
 pub struct TeamCommunicationPlugin;
@@ -27,7 +30,26 @@ impl Plugin for TeamCommunicationPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PostStartup, setup_team_communication);
 
-        app.add_systems(Update, (ping_response, sync_budget).chain());
+        app.add_systems(
+            Update,
+            (ping_response, sync_budget)
+                .chain()
+                .run_if(every_nth_cycle::<SNAKE_OIL>),
+        );
+    }
+}
+
+fn every_nth_cycle<const N: usize>(mut counter: Local<usize>) -> bool {
+    if N == 0 {
+        return false;
+    }
+
+    if *counter != 0 {
+        *counter -= 1;
+        false
+    } else {
+        *counter = N - 1;
+        true
     }
 }
 
