@@ -11,11 +11,10 @@ use rerun::{
 use std::env;
 use std::f32::consts::PI;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use std::{convert::Into, net::SocketAddr};
 use std::{marker::PhantomData, net::IpAddr};
 
-use crate::sensor::button::HeadButtons;
 use crate::{
     nao::{Cycle, CycleTime},
     prelude::*,
@@ -23,9 +22,7 @@ use crate::{
 
 const DEFAULT_STORAGE_PATH: &str = "/mnt/usb";
 const STORAGE_PATH_ENV_NAME: &str = "RERUN_STORAGE_PATH";
-const DATE_TIME_FORMAT: &str = "%Y-%m-%d:%H-%M-%S";
-
-const MANUAL_FLUSH_INTERVAL: Duration = Duration::from_secs(5);
+const DATE_TIME_FORMAT: &str = "%Y_%m_%d_%H_%M_%S";
 
 /// Plugin that adds debugging tools for the robot using the [rerun](https://rerun.io) viewer.
 ///
@@ -37,8 +34,7 @@ impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<DebugEnabledSystems>()
             .add_systems(Startup, (init_rerun, setup_spl_field).chain())
-            .add_systems(First, sync_cycle_number)
-            .add_systems(PostUpdate, flush_rrd);
+            .add_systems(First, sync_cycle_number);
     }
 }
 
@@ -165,24 +161,6 @@ fn sync_cycle_number(
     }
 
     ctx.cycle = *cycle;
-}
-
-fn flush_rrd(
-    ctx: Res<RerunStream>,
-    head_buttons: Res<HeadButtons>,
-    mut last_manual_flush: Local<Option<Instant>>,
-) {
-    let should_flush = match last_manual_flush.as_ref() {
-        Some(last_manual_flush) => last_manual_flush.elapsed() >= MANUAL_FLUSH_INTERVAL,
-        None => true,
-    };
-
-    if !should_flush || !head_buttons.all_pressed() || get_storage_path().is_none() {
-        return;
-    }
-
-    ctx.stream.flush_blocking();
-    *last_manual_flush = Some(Instant::now());
 }
 
 /// A wrapper around [`rerun::RecordingStream`] that provides an infallible interface for logging data to Rerun.
