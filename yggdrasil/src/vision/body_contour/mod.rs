@@ -359,7 +359,7 @@ fn robot_to_left_shoulder(orientation: &RobotOrientation) -> RobotToShoulderPoin
     RobotToShoulderPoints {
         front: adjust_for_imu(orientation, robot_to_left_shoulder_front),
         back: adjust_for_imu(orientation, robot_to_left_shoulder_back),
-        top: robot_to_left_shoulder_top,
+        top: adjust_for_imu(orientation, robot_to_left_shoulder_top),
     }
 }
 
