@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::{
     core::debug::{
@@ -13,7 +13,6 @@ use super::{
     config::WalkingEngineConfig,
     feet::FootPositions,
     gait::StandingHeight,
-    hips::HipHeight,
     schedule::{Gait, WalkingEngineSet},
     step::{PlannedStep, Step},
     FootSwitchedEvent,
@@ -58,6 +57,7 @@ pub struct StepContext {
     requested_gait: Gait,
     requested_step: Step,
     pub requested_standing_height: Option<StandingHeight>,
+    stand_return_start: Option<Instant>,
     last_step: PlannedStep,
     pub planned_step: PlannedStep,
 }
@@ -69,6 +69,7 @@ impl StepContext {
             requested_gait: gait,
             requested_step: Step::default(),
             requested_standing_height: None,
+            stand_return_start: None,
             last_step,
             planned_step: last_step,
         }
@@ -126,6 +127,20 @@ impl StepContext {
             Gait::Sitting => error!(
                 "Cannot request walk while sitting! Call StepManager::request_stand() first!"
             ),
+            // cooldown when returning from high stand
+            Gait::Standing
+                if self.requested_standing_height.is_some()
+                    || self.stand_return_start.is_some() =>
+            {
+                if let Some(stand_return_start) = self.stand_return_start {
+                    if stand_return_start.elapsed() > RETURN_FROM_HIGH_STAND_COOLDOWN {
+                        self.stand_return_start = None;
+                    }
+                } else {
+                    self.request_stand();
+                    self.stand_return_start = Some(Instant::now());
+                }
+            }
             Gait::Standing => {
                 // go to starting
                 self.requested_gait = Gait::Starting;
@@ -208,25 +223,7 @@ pub(super) fn sync_gait_request(
     mut commands: Commands,
     current: Res<State<Gait>>,
     step_context: Res<StepContext>,
-    hip_height: Res<HipHeight>,
 ) {
-    // if we're currently standing with a special height, and requesting `Gait::Starting``,
-    // check if we've been stable at the requested height long enough
-    if *current == Gait::Standing
-        && step_context.requested_gait == Gait::Starting
-        && step_context.requested_standing_height.is_some()
-    {
-        if let Some(time_stable) = hip_height.time_since_reached() {
-            if time_stable < RETURN_FROM_HIGH_STAND_COOLDOWN {
-                // not stable long enough, don't transition yet
-                return;
-            }
-        } else {
-            // still adjusting hip height, don't transition yet
-            return;
-        }
-    }
-
     if *current == step_context.requested_gait {
         return;
     }

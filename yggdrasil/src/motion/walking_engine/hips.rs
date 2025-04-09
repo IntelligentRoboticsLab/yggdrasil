@@ -1,5 +1,3 @@
-use std::time::{Duration, Instant};
-
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -53,14 +51,10 @@ pub struct HipHeight {
     /// The current target hip height.
     /// This value is used when computing the joint angles for the legs.
     current: f32,
-
     /// The current requested hip height.
     /// This value is separate from the current hip height, to allow smooth
     /// interpolation between the two.
     requested: f32,
-
-    /// The timestamp when the current hip height reached the requested value.
-    time_requested_reached: Option<Instant>,
 }
 
 impl HipHeight {
@@ -69,15 +63,6 @@ impl HipHeight {
     #[must_use]
     pub fn is_adjusting(&self) -> bool {
         (self.current - self.requested).abs() > f32::EPSILON
-    }
-
-    /// Returns the time elapsed since the current hip height has reached the requested value.
-    ///
-    /// Returns `None` if the hip height is still adjusting.
-    #[must_use]
-    pub fn time_since_reached(&self) -> Option<Duration> {
-        self.time_requested_reached
-            .map(|timestamp| timestamp.elapsed())
     }
 
     /// Get the current target hip height.
@@ -116,7 +101,6 @@ fn init_hip_height(mut commands: Commands, kinematics: Res<Kinematics>) {
     commands.insert_resource(HipHeight {
         current: hip_height,
         requested: hip_height,
-        time_requested_reached: None,
     });
 }
 
@@ -130,15 +114,7 @@ fn update_hip_height(
     // If the difference is very small, snap to the target
     if difference.abs() < config.hip_height.reached_requested_threshold {
         hip_height.current = hip_height.requested;
-
-        // set the timestamp when we first reach the requested height
-        if hip_height.time_requested_reached.is_none() {
-            hip_height.time_requested_reached = Some(Instant::now());
-        }
     } else {
-        // we're adjusting, so reset
-        hip_height.time_requested_reached = None;
-
         let step =
             config.hip_height.height_adjustment_smoothing * cycle_time.duration.as_secs_f32();
         let delta = difference.clamp(-step, step);
