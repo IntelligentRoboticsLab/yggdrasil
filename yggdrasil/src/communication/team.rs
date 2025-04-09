@@ -20,7 +20,7 @@ const MINIMAL_BUDGET: u16 = 5;
 /// Number of seconds in a half match.
 const SECS_PER_HALF: i16 = 10 * 60;
 /// Runs the team communication every `n` cycles, shouldn't fix anything but maybe idk who knows.
-const SNAKE_OIL: usize = 20;
+const EVERY_NTH_CYCLE: usize = 20;
 
 /// Plugin for communication between team members.
 pub struct TeamCommunicationPlugin;
@@ -33,7 +33,7 @@ impl Plugin for TeamCommunicationPlugin {
             Update,
             (ping_response, sync_budget)
                 .chain()
-                .run_if(every_nth_cycle::<SNAKE_OIL>),
+                .run_if(every_nth_cycle::<EVERY_NTH_CYCLE>),
         );
     }
 }
