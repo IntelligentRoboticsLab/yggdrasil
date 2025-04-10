@@ -1,12 +1,8 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::collections::HashMap;
 
 use bifrost::serialization::{Decode, Encode};
 use heimdall::CameraPosition;
 use nalgebra::Vector3;
-
-pub type HandlerFn<T> = Box<dyn Fn(&T) + Send + Sync + 'static>;
-
-pub const CONTROL_PORT: u16 = 1337;
 
 #[derive(Encode, Decode, Debug, Clone, Default)]
 pub struct FieldColorConfig {
@@ -28,8 +24,9 @@ pub struct FieldColorConfig {
     pub blue_chromaticity_threshold: f32,
 }
 
+/// Possible message that the robot can send to the "control" panel
 #[derive(Encode, Decode, Debug, Clone)]
-pub enum RobotMessage {
+pub enum RobotControlMessage {
     Resources(HashMap<String, String>),
     DebugEnabledSystems(HashMap<String, bool>),
     CameraExtrinsic {
@@ -41,8 +38,9 @@ pub enum RobotMessage {
     },
 }
 
+/// Possible message that the viewer can send in the "control" panel
 #[derive(Encode, Decode, Debug, Clone)]
-pub enum ViewerMessage {
+pub enum ViewerControlMessage {
     UpdateResource {
         resource_name: String,
         value: String,

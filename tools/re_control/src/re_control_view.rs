@@ -1,14 +1,12 @@
 use std::{
-    env,
-    net::{Ipv4Addr, SocketAddrV4},
-    str::FromStr,
+    net::SocketAddrV4,
     sync::{Arc, RwLock},
 };
 
 use heimdall::CameraPosition;
 use re_control_comms::{
     debug_system::DebugEnabledSystems,
-    protocol::{RobotMessage, CONTROL_PORT},
+    protocol::{control::RobotControlMessage, RobotMessage, CONTROL_PORT},
     viewer::ControlViewer,
 };
 use rerun::external::{
@@ -22,12 +20,15 @@ use rerun::external::{
         ViewSystemRegistrator, ViewerContext,
     },
 };
+use strum::{EnumIter, IntoEnumIterator};
 
 use crate::{
-    connection::ConnectionState,
+    connection::{ip_from_env, ConnectionState, ROBOT_ADDRESS_ENV_KEY},
+    state::{HandleState, SharedHandleState},
     ui::{
         camera_calibration::{camera_calibration_ui, CameraState},
         debug_systems::{debug_enabled_systems_ui, DebugEnabledState},
+        extra_title_bar_connection_ui,
         field_color::{field_color_ui, FieldColorState},
         resource::{resource_ui, ResourcesState},
         selection_ui,
@@ -50,13 +51,13 @@ pub struct ControlViewerData {
     pub field_color: FieldColorState,
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, EnumIter)]
 enum ControlViewerSection {
-    Resources,
+    CameraCalibration,
     #[default]
     DebugEnabledSystems,
-    CameraCalibration,
     FieldColor,
+    Resources,
     VisualReferee,
 }
 
@@ -71,11 +72,7 @@ pub struct ControlViewState {
 
 impl Default for ControlViewState {
     fn default() -> Self {
-        let ip_addr = match env::var("ROBOT_ADDR") {
-            Ok(ip_addr_str) => Ipv4Addr::from_str(&ip_addr_str)
-                .expect("ROBOT_ADDR is set to an invalid ip address!"),
-            Err(_) => Ipv4Addr::LOCALHOST,
-        };
+        let ip_addr = ip_from_env(ROBOT_ADDRESS_ENV_KEY);
 
         let socket_addr = SocketAddrV4::new(ip_addr, CONTROL_PORT);
         let control_viewer = ControlViewer::from(socket_addr);
@@ -86,10 +83,9 @@ impl Default for ControlViewState {
         // Add a handler for the `ControlViewer` before it runs.
         // This is to make sure we do not miss any message sent at
         // the beginning of a connection.
-        // connection
         control_viewer
             .add_handler(Box::new(move |msg: &RobotMessage| {
-                handle_message(msg, Arc::clone(&handler_data))
+                Arc::clone(&handler_data).handle_message(msg)
             }))
             .expect("Failed to add handler");
 
@@ -209,7 +205,8 @@ A view to control the robot",
                 .color(Color32::WHITE)
                 .size(16.0),
         );
-        selection_ui::re_control_selection_ui(ui, state);
+
+        selection_ui::connection_selection_ui(ui, &mut state.connection, Arc::clone(&state.data));
 
         ui.separator();
 
@@ -223,23 +220,9 @@ A view to control the robot",
         egui::ComboBox::from_id_salt("control viewer section selection")
             .selected_text(format!("{:?}", selected))
             .show_ui(ui, |ui| {
-                ui.selectable_value(selected, ControlViewerSection::Resources, "Resources");
-                ui.selectable_value(
-                    selected,
-                    ControlViewerSection::DebugEnabledSystems,
-                    "DebugEnabledSystems",
-                );
-                ui.selectable_value(
-                    selected,
-                    ControlViewerSection::CameraCalibration,
-                    "CameraCalibration",
-                );
-                ui.selectable_value(selected, ControlViewerSection::FieldColor, "Field color");
-                ui.selectable_value(
-                    selected,
-                    ControlViewerSection::VisualReferee,
-                    "Visual referee",
-                )
+                for section in ControlViewerSection::iter() {
+                    ui.selectable_value(selected, section, format!("{:?}", section));
+                }
             });
 
         Ok(())
@@ -255,57 +238,41 @@ A view to control the robot",
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<ControlViewState>()?;
 
-        let robot_connection_ip_addr = *state.connection.handle.addr().ip();
-        let ip_addr_last_oct = robot_connection_ip_addr.octets()[3];
-
-        // Find a possible corresponding name based on the last octet of the robot ip address
-        let robot_name = if let Some(robot_config) = state
-            .connection
-            .possible_robot_connections
-            .iter()
-            .find(|config| config.number == ip_addr_last_oct)
-        {
-            format!("{} - ", robot_config.name)
-        } else {
-            "unknown - ".to_string()
-        };
-
-        // Show the ip associated with the socket of the `ControlViewer`
-        ui.label(format!("{}{}", robot_name, robot_connection_ip_addr));
+        extra_title_bar_connection_ui(ui, &state.connection);
 
         Ok(())
     }
 }
 
-pub fn handle_message(message: &RobotMessage, data: Arc<RwLock<ControlViewerData>>) {
-    match message {
-        RobotMessage::DebugEnabledSystems(enabled_systems) => {
-            data.write()
-                .expect("Failed to lock viewer data")
-                .debug_enabled_state
-                .update(DebugEnabledSystems::from(enabled_systems.clone()));
-        }
-        RobotMessage::Resources(_resources) => {
-            tracing::warn!("Got a resource update but is unhandled")
-        }
-        RobotMessage::CameraExtrinsic {
-            camera_position,
-            extrinsic_rotation,
-        } => {
-            let mut locked_data = data.write().expect("Failed to lock viewer data");
-            let camera_config = &mut locked_data.camera_state;
+impl HandleState for ControlViewerData {
+    fn handle_message(&mut self, message: &RobotMessage) {
+        if let RobotMessage::RobotControlMessage(message) = message {
+            match message {
+                RobotControlMessage::DebugEnabledSystems(enabled_systems) => {
+                    self.debug_enabled_state
+                        .update(DebugEnabledSystems::from(enabled_systems.clone()));
+                }
+                RobotControlMessage::Resources(_resources) => {
+                    tracing::warn!("Got a resource update but is unhandled")
+                }
+                RobotControlMessage::CameraExtrinsic {
+                    camera_position,
+                    extrinsic_rotation,
+                } => {
+                    let camera_config = &mut self.camera_state;
 
-            let camera = match camera_position {
-                CameraPosition::Top => &mut camera_config.config.top,
-                CameraPosition::Bottom => &mut camera_config.config.bottom,
-            };
+                    let camera = match camera_position {
+                        CameraPosition::Top => &mut camera_config.config.top,
+                        CameraPosition::Bottom => &mut camera_config.config.bottom,
+                    };
 
-            camera_config.current_position = *camera_position;
-            camera.extrinsic_rotation.new_state(*extrinsic_rotation);
-        }
-        RobotMessage::FieldColor { config } => {
-            let mut locked_data = data.write().expect("Failed to lock viewer data");
-            locked_data.field_color.config = config.clone();
+                    camera_config.current_position = *camera_position;
+                    camera.extrinsic_rotation.new_state(*extrinsic_rotation);
+                }
+                RobotControlMessage::FieldColor { config } => {
+                    self.field_color.config = config.clone();
+                }
+            }
         }
     }
 }

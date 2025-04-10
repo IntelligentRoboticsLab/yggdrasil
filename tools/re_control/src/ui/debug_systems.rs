@@ -3,7 +3,9 @@ use std::sync::{Arc, RwLock};
 use rerun::external::{egui, re_ui::UiExt};
 
 use re_control_comms::{
-    debug_system::DebugEnabledSystems, protocol::ViewerMessage, viewer::ControlViewerHandle,
+    debug_system::DebugEnabledSystems,
+    protocol::{control::ViewerControlMessage, ViewerMessage},
+    viewer::ControlViewerHandle,
 };
 
 use crate::re_control_view::ControlViewerData;
@@ -45,7 +47,7 @@ fn debug_enabled_systems_control_ui(
             ui.vertical_centered_justified(|ui| {
                 ui.warning_label("Not able to access viewer data");
             });
-            tracing::error!("Failed to lock viewer data");
+            tracing::warn!("Failed to lock viewer data");
             return;
         };
 
@@ -71,10 +73,12 @@ fn debug_enabled_systems_control_ui(
             };
 
             if ui.checkbox(enabled, system_name).changed() {
-                let message = ViewerMessage::UpdateEnabledDebugSystem {
-                    system_name: system_name.clone(),
-                    enabled: *enabled,
-                };
+                let message = ViewerMessage::ViewerControlMessage(
+                    ViewerControlMessage::UpdateEnabledDebugSystem {
+                        system_name: system_name.clone(),
+                        enabled: *enabled,
+                    },
+                );
 
                 if let Err(error) = handle.send(message) {
                     tracing::error!(?error, "Failed to send update debug system message")

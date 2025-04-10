@@ -5,7 +5,10 @@ use std::{
 
 use heimdall::CameraPosition;
 use nalgebra::Vector3;
-use re_control_comms::{protocol::ViewerMessage, viewer::ControlViewerHandle};
+use re_control_comms::{
+    protocol::{control::ViewerControlMessage, ViewerMessage},
+    viewer::ControlViewerHandle,
+};
 use rerun::external::{egui, re_ui::UiExt};
 
 use crate::{re_control_view::ControlViewerData, state::TrackedState};
@@ -60,7 +63,7 @@ fn camera_extrinsic_rotation_ui(
         ui.vertical_centered_justified(|ui| {
             ui.warning_label("Not able to access viewer data");
         });
-        tracing::error!("Failed to lock viewer data");
+        tracing::warn!("Failed to lock viewer data");
         return;
     };
 
@@ -103,10 +106,10 @@ fn camera_extrinsic_rotation_ui(
     if ui.button("Restore original").clicked() {
         extrinsic_rotation.restore_original();
 
-        let msg = ViewerMessage::CameraExtrinsic {
+        let msg = ViewerMessage::ViewerControlMessage(ViewerControlMessage::CameraExtrinsic {
             camera_position: *camera_position,
             extrinsic_rotation: *extrinsic_rotation.current(),
-        };
+        });
         if let Err(error) = handle.send(msg) {
             tracing::error!(?error, "Failed to send message");
         }
@@ -132,10 +135,10 @@ fn extrinsic_rotation_slider(
         )
         .changed()
     {
-        let msg = ViewerMessage::CameraExtrinsic {
+        let msg = ViewerMessage::ViewerControlMessage(ViewerControlMessage::CameraExtrinsic {
             camera_position,
             extrinsic_rotation: *rotations,
-        };
+        });
         if let Err(error) = handle.send(msg) {
             tracing::error!(?error, "Failed to send message");
         }

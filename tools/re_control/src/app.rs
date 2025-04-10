@@ -6,7 +6,7 @@ use rerun::external::{
     re_viewer::{self, AppEnvironment, MainThreadToken, StartupOptions},
 };
 
-use crate::re_control_view::ControlView;
+use crate::{game_controller_view::GameControllerView, re_control_view::ControlView};
 
 // Rerun can collect analytics if the `analytics` feature is enabled in
 // `Cargo.toml`. This variable is used for the rerun analytics
@@ -45,8 +45,9 @@ impl App {
                 );
                 app.add_receiver(rx);
 
-                // Register the custom view class
+                // Register the custom view classes
                 app.add_view_class::<ControlView>().unwrap();
+                app.add_view_class::<GameControllerView>().unwrap();
 
                 Box::new(app)
             }),
