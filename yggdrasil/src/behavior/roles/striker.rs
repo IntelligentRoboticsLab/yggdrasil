@@ -47,9 +47,9 @@ pub fn striker_role(
     };
 
     let absolute_ball = pose.robot_to_world(&relative_ball);
-    let ball_angle = pose.angle_to(&relative_ball);
-    let ball_distance = pose.distance_to(&relative_ball);
-    let ball_target = Point3::new(relative_ball.x, relative_ball.y, 0.2);
+    let ball_angle = pose.angle_to(&absolute_ball);
+    let ball_distance = relative_ball.coords.norm();
+    let ball_target = Point3::new(absolute_ball.x, absolute_ball.y, 0.2);
 
     let relative_goalpost_left =
         pose.world_to_robot(&Point2::new(layout_config.field.length / 2., 0.8));
@@ -89,7 +89,7 @@ pub fn striker_role(
     } else if ball_angle.abs() > WALK_WITH_BALL_ANGLE {
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::PURPLE), Priority::default());
 
-        if absolute_ball.y < 0. {
+        if relative_ball.y.is_sign_negative() {
             commands.set_behavior(Walk {
                 step: Step::RIGHT,
                 look_target: Some(ball_target),
