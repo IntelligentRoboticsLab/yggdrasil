@@ -511,7 +511,7 @@ fn setup_debug<T: CameraLocation>(dbg: DebugContext) {
     // rejected lines
     dbg.log_static(
         T::make_entity_image_path("lines/rejected"),
-        &rerun::Clear::flat(),
+        &rerun::LineStrips3D::update_fields(),
     );
 }
 
@@ -640,7 +640,21 @@ fn debug_rejected_lines<T: CameraLocation>(
     dbg: DebugContext,
     camera_matrix: Res<CameraMatrix<T>>,
     rejected: Query<(&Cycle, &RejectedLines), (With<T>, Added<RejectedLines>)>,
+    cycle: Res<Cycle>,
+    mut last_logged: Local<Option<Cycle>>,
 ) {
+    if rejected.is_empty()
+        && last_logged.is_some_and(|last_logged_cycle| {
+            last_logged_cycle.0 + LINE_DEBUG_CLEAR_CYCLES < cycle.0
+        })
+    {
+        dbg.log_with_cycle(
+            T::make_entity_image_path("lines/rejected"),
+            *cycle,
+            &rerun::LineStrips2D::update_fields().with_strips(std::iter::empty::<&[(f32, f32)]>()),
+        );
+    }
+
     for (cycle, lines) in rejected.iter() {
         dbg.log_with_cycle(
             T::make_entity_image_path("lines/rejected"),
@@ -673,5 +687,7 @@ fn debug_rejected_lines<T: CameraLocation>(
                     .collect_vec(),
             ),
         );
+
+        *last_logged = Some(*cycle);
     }
 }
