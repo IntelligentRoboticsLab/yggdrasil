@@ -106,11 +106,16 @@ impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
                         .chain(),
                     debug_lines::<T>,
                     debug_lines_projected::<T>,
-                    debug_rejected_lines::<T>,
                 ),
             )
             // TODO: these debug systems should ideally all be batched over multiple cycles
             // but that needs a batching api in the debug module
+            .add_named_debug_systems(
+                Update,
+                debug_rejected_lines::<T>,
+                "Visualize rejected lines",
+                SystemToggle::Disable,
+            )
             .add_named_debug_systems(
                 Update,
                 debug_lines_inliers::<T>,
