@@ -74,7 +74,7 @@ confidence_threshold = 0.96
 time_budget = 1500
 
 # Process noise parameter for position prediction in the Kalman filter
-prediction_noise = 0.0006 # ~2.45 cm per cycle or ~1.96 m per second
+prediction_noise = 0.0018 # ~3.5 m per second
 
 # Measurement noise parameter for the Kalman filter
 measurement_noise = 0.01 # ~10cm per measurement
