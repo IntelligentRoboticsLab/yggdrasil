@@ -684,7 +684,7 @@ fn debug_rejected_lines<T: CameraLocation>(
                     .rejections
                     .iter()
                     .map(|r| match r {
-                        Rejection::TooShort => (255, 0, 0),
+                        Rejection::TooShort => (0, 120, 120),
                         Rejection::TooLong => (0, 255, 0),
                         Rejection::NotEnoughSpots => (0, 0, 255),
                         Rejection::FailedWhiteTest => (0, 255, 255),
