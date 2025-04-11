@@ -54,7 +54,6 @@ impl BallTracker {
 
     pub fn predict(&mut self, odometry: &Odometry) {
         // update last ball state with odometry, as we're moving relative to the ball.
-		// update last ball state with odometry, as we're moving relative to the ball.
         if let Err(err) = self.position_kf.predict(
             |p: BallPosition| BallPosition(odometry.offset_to_last.inverse() * p.0),
             self.prediction_noise,
