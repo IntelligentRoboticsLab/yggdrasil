@@ -1,10 +1,7 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    kinematics::{self, Kinematics},
-    nao::CycleTime,
-};
+use crate::{kinematics::Kinematics, nao::CycleTime};
 
 use super::{config::WalkingEngineConfig, schedule::WalkingEngineSet};
 
@@ -75,7 +72,7 @@ impl HipHeight {
     /// To obtain the physical hip height, use [`Kinematics`].
     #[must_use]
     pub fn current(&self) -> f32 {
-        self.current + kinematics::dimensions::ANKLE_TO_SOLE.z
+        self.current
     }
 
     /// Get the requested hip height.
@@ -85,7 +82,7 @@ impl HipHeight {
     /// This is not the physical hip height, but the target hip height that is being interpolated towards.
     #[must_use]
     pub fn requested(&self) -> f32 {
-        self.requested + kinematics::dimensions::ANKLE_TO_SOLE.z
+        self.requested
     }
 
     /// Request a specific hip height.

@@ -108,11 +108,15 @@ pub struct WalkingEngineConfig {
     /// Negative values will make the robot lean backwards while walking.
     pub torso_offset: f32,
 
-    /// The stiffness value used for the leg joints, higher means the robot's joints will
-    /// wear out faster, but the robot will be more stable.
+    /// The stiffness value used for the leg joints whilst the robot is walking
+    /// higher means the robot's joints will wear out faster, but the robot will be more stable.
     pub walking_leg_stiffness: f32,
 
-    /// The stiffness value used for the leg joints while walking, higher means the robot's joints will
+    /// The stiffness value used for the leg joints whilst the robot is standing
+    /// higher means the robot's joints will wear out faster, but the robot will be more stable.
+    pub standing_leg_stiffness: f32,
+
+    /// The stiffness value used for the leg joints while sitting, higher means the robot's joints will
     /// wear out faster, but the robot will be more stable.
     ///
     /// Negative values will turn the motors off completely, sacrificing all stability.

@@ -34,7 +34,9 @@ impl Plugin for ControlTransmitPlugin {
             )
             .add_systems(
                 Update,
-                update_debug_systems_for_clients.after(handle_viewer_control_message),
+                update_debug_systems_for_clients
+                    .after(handle_viewer_control_message)
+                    .run_if(resource_exists::<ControlAppHandle>),
             );
     }
 }

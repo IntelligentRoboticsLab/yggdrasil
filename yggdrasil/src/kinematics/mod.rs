@@ -170,8 +170,11 @@ where
             lift,
             _side,
         } = self;
-        let foot_translation =
-            na::Isometry3::translation(forward - torso_offset, *left, -hip_height + lift);
+        let foot_translation = na::Isometry3::translation(
+            forward - torso_offset,
+            *left,
+            -(hip_height + dimensions::ANKLE_TO_SOLE.z) + lift, // foot translation is computed from the ankle
+        );
         let rotation = Side::foot_rotation(*turn);
 
         Side::robot_to_pelvis() * foot_translation * rotation

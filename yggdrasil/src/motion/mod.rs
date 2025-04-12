@@ -1,10 +1,10 @@
 use bevy::app::PluginGroupBuilder;
 use bevy::prelude::*;
 
+pub mod energy_optimizer;
 pub mod keyframe;
 pub mod path_finding;
 pub mod step_planner;
-
 pub mod walking_engine;
 
 /// Plugin group containing all plugins related to robot motion.
@@ -15,6 +15,7 @@ impl PluginGroup for MotionPlugins {
         PluginGroupBuilder::start::<Self>()
             .add(keyframe::KeyframePlugin)
             .add(step_planner::StepPlannerPlugin)
+            .add(energy_optimizer::EnergyOptimizerPlugin)
             .add(walking_engine::WalkingEnginePlugin)
     }
 }
