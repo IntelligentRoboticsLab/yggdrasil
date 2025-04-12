@@ -114,10 +114,10 @@ filtered_gyro_y_multiplier = 0.05
 # Phase shift for foot leveling drop-off.
 #
 # Higher values mean the swing foot is leveled for longer.
-phase_shift = 0.8
+phase_shift = 0.6
 
 # Decay rate for the foot leveling logistic filter.
-decay = 14.0
+decay = 15.0
 
 # Maximum allowed difference in leveling between steps.
 #
@@ -147,7 +147,7 @@ roll_level_scale = 0.0872665
 # Multiplier for roll corrections.
 #
 # Adjusts the strength of leveling for roll adjustments in either direction.
-roll_level_factor = 0.5
+roll_level_factor = 0.8
 
 # This section contains parameters for the foot support while walking.
 [foot_support]

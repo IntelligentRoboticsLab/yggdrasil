@@ -183,5 +183,12 @@ fn logistic_correction_weight(phase: f32, phase_shift: f32, decay: f32) -> f32 {
     let decayed_phase = (-decay * (phase - phase_shift)).exp();
     let factor = 1.0 / (1.0 + decayed_phase);
 
-    (1.0 - factor).clamp(0.0, 1.0)
+    let weight = (1.0 - factor).clamp(0.0, 1.0);
+
+    // snap to 0.0, when approaching 0.0
+    if weight <= 0.05 {
+        0.0
+    } else {
+        weight
+    }
 }
