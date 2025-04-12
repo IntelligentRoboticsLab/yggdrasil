@@ -31,10 +31,8 @@ fn startup(
     let hip_height = kinematics.left_hip_height();
 
     if hip_height >= config.hip_height.max_sitting_hip_height {
-        info!("REQUESTING STAND");
         step_context.request_stand();
     } else {
-        info!("REQUESTING SIT");
         step_context.request_sit();
     }
 }
