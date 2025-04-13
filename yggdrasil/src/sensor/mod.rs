@@ -17,6 +17,7 @@ impl PluginGroup for SensorPlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(button::ButtonPlugin)
+            .add(footbumpers::FootBumperPlugin)
             .add(fsr::FSRSensorPlugin)
             .add(imu::IMUSensorPlugin)
             .add(sonar::SonarSensorPlugin)
