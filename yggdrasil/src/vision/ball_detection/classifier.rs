@@ -14,8 +14,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMicroSeconds};
 
 use crate::core::debug::DebugContext;
-use crate::localization::RobotPose;
 
+use crate::localization::odometry::Odometry;
 use crate::nao::Cycle;
 use crate::vision::camera::init_camera;
 use crate::vision::referee::detect::VisualRefereeDetectionStatus;
@@ -146,8 +146,8 @@ impl<T: CameraLocation> Clone for Ball<T> {
 }
 
 /// System that runs the prediction step for the UKF backing the ball tracker.
-fn update_ball_tracker(mut ball_tracker: ResMut<BallTracker>) {
-    ball_tracker.predict();
+fn update_ball_tracker(mut ball_tracker: ResMut<BallTracker>, odometry: Res<Odometry>) {
+    ball_tracker.predict(&odometry);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -160,7 +160,6 @@ fn classify_balls<T: CameraLocation>(
     mut ball_tracker: ResMut<BallTracker>,
     camera_matrix: Res<CameraMatrix<T>>,
     config: Res<BallDetectionConfig>,
-    robot_pose: Res<RobotPose>,
 ) {
     let classifier = &config.classifier;
     let start = Instant::now();
@@ -207,7 +206,7 @@ fn classify_balls<T: CameraLocation>(
             continue;
         };
 
-        let position = BallPosition(robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())));
+        let position = BallPosition(robot_to_ball.xy());
 
         confident_balls.push((position, confidence, proposal.clone()));
 
