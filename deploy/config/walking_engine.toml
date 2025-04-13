@@ -29,7 +29,7 @@ torso_offset = 0.015
 walking_leg_stiffness = 0.8
 
 # The stiffness value used for the leg joints whilst the robot is standing
-# higher means the robot's joints will wear out faster, but the robot will be more st
+# higher means the robot's joints will wear out faster, but the robot will be more stable.
 standing_leg_stiffness = 0.8
 
 # The stiffness value used for the leg joints while sitting, higher means the robot's joints will
