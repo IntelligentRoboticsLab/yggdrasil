@@ -84,10 +84,6 @@ pub struct FootSwitchedEvent {
 #[derive(Debug, Default, Clone, Resource, Deref, DerefMut)]
 pub struct TargetFootPositions(FootPositions);
 
-/// Resource containing the currently requested leg stiffness.
-#[derive(Debug, Default, Clone, Resource, Deref, DerefMut)]
-pub struct TargetLegStiffness(LegJoints<f32>);
-
 impl TargetFootPositions {
     /// Compute the leg angles for the target foot positions.
     #[must_use]
@@ -99,6 +95,10 @@ impl TargetFootPositions {
         kinematics::inverse::leg_angles(&self.0, hip_height, torso_offset)
     }
 }
+
+/// Resource containing the currently requested leg stiffness.
+#[derive(Debug, Default, Clone, Resource, Deref, DerefMut)]
+pub struct TargetLegStiffness(LegJoints<f32>);
 
 fn finalize(
     mut nao: ResMut<NaoManager>,
@@ -151,7 +151,7 @@ fn finalize(
                 .left_arm(arm_swing::swinging_arm(0.0, 0.0, true))
                 .right_arm(arm_swing::swinging_arm(0.0, 0.0, false))
                 .build(),
-            ArmJoints::fill(0.8),
+            ArmJoints::fill(0.0),
             Priority::Medium,
         );
     }

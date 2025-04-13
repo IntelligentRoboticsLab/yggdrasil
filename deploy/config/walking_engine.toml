@@ -28,6 +28,10 @@ torso_offset = 0.015
 # wear out faster, but the robot will be more stable.
 walking_leg_stiffness = 0.8
 
+# The stiffness value used for the leg joints whilst the robot is standing
+# higher means the robot's joints will wear out faster, but the robot will be more stable.
+standing_leg_stiffness = 0.8
+
 # The stiffness value used for the leg joints while sitting, higher means the robot's joints will
 # wear out faster, but the robot will be more stable.
 #
@@ -81,7 +85,7 @@ max_sitting_hip_height = 0.145
 reached_requested_threshold = 0.001
 
 # Smoothing parameter for the exponential interpolation applied to the hip height.
-height_adjustment_smoothing = 0.1
+height_adjustment_smoothing = 0.075
 
 # Threshold between two hip height values, when exceeded the values are considered different.
 change_threshold = 0.003
@@ -110,10 +114,10 @@ filtered_gyro_y_multiplier = 0.05
 # Phase shift for foot leveling drop-off.
 #
 # Higher values mean the swing foot is leveled for longer.
-phase_shift = 0.8
+phase_shift = 0.6
 
 # Decay rate for the foot leveling logistic filter.
-decay = 14.0
+decay = 15.0
 
 # Maximum allowed difference in leveling between steps.
 #
@@ -143,7 +147,7 @@ roll_level_scale = 0.0872665
 # Multiplier for roll corrections.
 #
 # Adjusts the strength of leveling for roll adjustments in either direction.
-roll_level_factor = 0.5
+roll_level_factor = 0.8
 
 # This section contains parameters for the foot support while walking.
 [foot_support]

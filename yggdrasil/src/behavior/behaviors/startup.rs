@@ -1,16 +1,10 @@
 use bevy::prelude::*;
 
-use nidhogg::types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints};
-
 use crate::{
     behavior::engine::{in_behavior, Behavior, BehaviorState},
-    motion::walking_engine::{step_context::StepContext, StandingHeight},
-    nao::{NaoManager, Priority, RobotInfo},
+    kinematics::Kinematics,
+    motion::walking_engine::{config::WalkingEngineConfig, step_context::StepContext},
 };
-
-const DEFAULT_PASSIVE_STIFFNESS: f32 = 0.8;
-// This should run with priority over the walking engine.
-const DEFAULT_PASSIVE_PRIORITY: Priority = Priority::High;
 
 pub struct StartUpBehaviorPlugin;
 
@@ -29,24 +23,16 @@ impl Behavior for StartUp {
     const STATE: BehaviorState = BehaviorState::StartUp;
 }
 
-pub fn startup(
-    robot_info: Res<RobotInfo>,
+fn startup(
     mut step_context: ResMut<StepContext>,
-    mut nao_manager: ResMut<NaoManager>,
+    config: Res<WalkingEngineConfig>,
+    kinematics: Res<Kinematics>,
 ) {
-    step_context.request_stand_with_height(StandingHeight::MAX);
-    set_initial_joint_values(&robot_info.initial_joint_positions, &mut nao_manager);
-}
+    let hip_height = kinematics.left_hip_height();
 
-fn set_initial_joint_values(
-    initial_joint_positions: &JointArray<f32>,
-    nao_manager: &mut NaoManager,
-) {
-    nao_manager.set_all(
-        initial_joint_positions.clone(),
-        HeadJoints::fill(DEFAULT_PASSIVE_STIFFNESS),
-        ArmJoints::fill(DEFAULT_PASSIVE_STIFFNESS),
-        LegJoints::fill(DEFAULT_PASSIVE_STIFFNESS),
-        DEFAULT_PASSIVE_PRIORITY,
-    );
+    if hip_height >= config.hip_height.max_sitting_hip_height {
+        step_context.request_stand();
+    } else {
+        step_context.request_sit();
+    }
 }

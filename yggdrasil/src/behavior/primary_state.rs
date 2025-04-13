@@ -1,6 +1,8 @@
 use crate::{
     core::audio::whistle_detection::Whistle,
     game_controller::{penalty::PenaltyState, GameControllerMessageEvent},
+    kinematics::Kinematics,
+    motion::walking_engine::config::WalkingEngineConfig,
     nao::{NaoManager, Priority},
     sensor::button::{ChestButton, HeadButtons},
     vision::referee::{
@@ -34,8 +36,7 @@ pub struct PrimaryStatePlugin;
 
 impl Plugin for PrimaryStatePlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(PrimaryState::Sitting);
-
+        app.add_systems(PostStartup, init_primary_state);
         app.add_systems(
             Update,
             (update_gamecontroller_message, update_primary_state).chain(),
@@ -67,6 +68,20 @@ pub enum PrimaryState {
     Finished,
     /// State the indicates the robot is performing automatic calibration
     Calibration,
+}
+
+fn init_primary_state(
+    mut commands: Commands,
+    config: Res<WalkingEngineConfig>,
+    kinematics: Res<Kinematics>,
+) {
+    let hip_height = kinematics.left_hip_height();
+
+    if hip_height >= config.hip_height.max_sitting_hip_height {
+        commands.insert_resource(PrimaryState::Initial);
+    } else {
+        commands.insert_resource(PrimaryState::Sitting);
+    }
 }
 
 fn update_gamecontroller_message(
