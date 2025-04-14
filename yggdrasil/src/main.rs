@@ -4,7 +4,7 @@ use tracing::Level;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt};
 use yggdrasil::prelude::Result;
 use yggdrasil::{
     behavior, communication, core, game_controller, kinematics, localization, motion, nao,

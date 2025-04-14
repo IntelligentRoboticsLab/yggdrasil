@@ -2,20 +2,20 @@ use std::time::{Duration, Instant};
 
 use crate::{
     core::debug::{
-        debug_system::{DebugAppExt, SystemToggle},
         DebugContext,
+        debug_system::{DebugAppExt, SystemToggle},
     },
     kinematics::Kinematics,
     nao::Cycle,
 };
 
 use super::{
+    FootSwitchedEvent,
     config::WalkingEngineConfig,
     feet::FootPositions,
     gait::StandingHeight,
     schedule::{Gait, WalkingEngineSet},
     step::{PlannedStep, Step},
-    FootSwitchedEvent,
 };
 use bevy::prelude::*;
 use nalgebra::Vector2;

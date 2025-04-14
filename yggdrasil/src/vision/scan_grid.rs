@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, CameraMatrix, Top, YuyvImage};
 use nalgebra::point;
 
-use super::camera::{init_camera, Image};
+use super::camera::{Image, init_camera};
 
 /// The step size for approximating the field color.
 const FIELD_APPROXIMATION_STEP_SIZE: usize = 8;

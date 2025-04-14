@@ -5,7 +5,7 @@ use std::{
 };
 
 use re_control_comms::{
-    protocol::{control::ViewerControlMessage, ViewerMessage},
+    protocol::{ViewerMessage, control::ViewerControlMessage},
     viewer::ControlViewerHandle,
 };
 use rerun::external::{ecolor::Color32, egui, re_ui::UiExt};

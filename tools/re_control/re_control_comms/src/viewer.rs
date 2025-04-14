@@ -8,9 +8,9 @@ use std::{
 use async_std::{net::TcpStream, sync::Mutex};
 use bifrost::serialization::{Decode, Encode};
 use futures::{
-    channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender},
-    io::{ReadHalf, WriteHalf},
     AsyncReadExt, AsyncWriteExt, StreamExt,
+    channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded},
+    io::{ReadHalf, WriteHalf},
 };
 use miette::{IntoDiagnostic, Result};
 use socket2::{Domain, Protocol, Socket, Type};

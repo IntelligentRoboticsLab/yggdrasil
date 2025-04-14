@@ -7,8 +7,8 @@ use clap::Parser;
 use colored::Colorize;
 use indicatif::HumanDuration;
 use indicatif::ProgressBar;
-use miette::miette;
 use miette::Result;
+use miette::miette;
 
 /// Changes the default network a specified robot connects to.
 #[derive(Parser, Debug)]

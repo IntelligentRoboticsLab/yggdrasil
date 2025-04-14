@@ -3,9 +3,9 @@ use nalgebra::{Point2, Point3};
 use std::time::Duration;
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState},
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     localization::RobotPose,
-    motion::walking_engine::{step_context::StepContext, StandingHeight},
+    motion::walking_engine::{StandingHeight, step_context::StepContext},
     nao::{NaoManager, Priority},
 };
 

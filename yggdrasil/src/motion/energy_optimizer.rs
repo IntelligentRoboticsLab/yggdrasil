@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use nidhogg::{types::JointArray, NaoControlMessage, NaoState};
+use nidhogg::{NaoControlMessage, NaoState, types::JointArray};
 
 use crate::{nao::CycleTime, prelude::PreWrite};
 

@@ -1,7 +1,7 @@
 use std::{f32, time::Instant};
 
 use bevy::prelude::*;
-use ml::{prelude::ModelExecutor, MlModel, MlModelResourceExt};
+use ml::{MlModel, MlModelResourceExt, prelude::ModelExecutor};
 use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};
 use serde::{Deserialize, Serialize};
@@ -12,11 +12,11 @@ type ModelOutput = Vec<f32>;
 
 use crate::{
     behavior::{
-        engine::{
-            in_behavior, spawn_rl_behavior, Behavior, BehaviorState, RlBehaviorInput,
-            RlBehaviorOutput,
-        },
         BehaviorConfig,
+        engine::{
+            Behavior, BehaviorState, RlBehaviorInput, RlBehaviorOutput, in_behavior,
+            spawn_rl_behavior,
+        },
     },
     core::config::layout::LayoutConfig,
     localization::RobotPose,

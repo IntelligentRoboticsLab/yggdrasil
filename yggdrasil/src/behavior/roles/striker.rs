@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 use nalgebra::{Point2, Point3};
-use nidhogg::types::{color, FillExt, RightEye};
+use nidhogg::types::{FillExt, RightEye, color};
 
 use crate::{
     behavior::{
         behaviors::{RlStrikerSearchBehavior, Walk, WalkToBall},
-        engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
+        engine::{CommandsBehaviorExt, RoleState, Roles, in_role},
     },
     core::config::layout::{FieldConfig, LayoutConfig},
     localization::RobotPose,

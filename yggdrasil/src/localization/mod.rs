@@ -10,15 +10,15 @@ use correction::GradientDescentConfig;
 use correspondence::CorrespondenceConfig;
 use filter::CovarianceMatrix;
 use hypothesis::{
-    filter_hypotheses, line_update, odometry_update, reset_hypotheses, HypothesisConfig,
-    RobotPoseHypothesis,
+    HypothesisConfig, RobotPoseHypothesis, filter_hypotheses, line_update, odometry_update,
+    reset_hypotheses,
 };
 use odal::Config;
 use odometry::OdometryConfig;
-use pose::initial_pose;
 pub use pose::RobotPose;
+use pose::initial_pose;
 
-use rerun::{components::RotationAxisAngle, Rotation3D, TimeColumn};
+use rerun::{Rotation3D, TimeColumn, components::RotationAxisAngle};
 use serde::{Deserialize, Serialize};
 
 use crate::{

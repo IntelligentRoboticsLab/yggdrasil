@@ -3,7 +3,7 @@ use std::env;
 use crate::prelude::*;
 use bevy::prelude::Resource;
 use miette::IntoDiagnostic;
-use nidhogg::{backend::ReadHardwareInfo, HardwareInfo, NaoControlMessage};
+use nidhogg::{HardwareInfo, NaoControlMessage, backend::ReadHardwareInfo};
 
 /// Information that uniquely identifies a robot
 #[derive(Clone, Debug, Default, Resource)]

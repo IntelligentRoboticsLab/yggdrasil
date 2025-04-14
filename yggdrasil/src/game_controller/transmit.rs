@@ -3,7 +3,7 @@ use std::{net::SocketAddr, time::Duration};
 use async_std::prelude::StreamExt;
 use bevy::prelude::*;
 use bifrost::{
-    communication::{GameControllerReturnMessage, GAME_CONTROLLER_RETURN_PORT},
+    communication::{GAME_CONTROLLER_RETURN_PORT, GameControllerReturnMessage},
     serialization::Encode,
 };
 use futures::channel::mpsc::{self};

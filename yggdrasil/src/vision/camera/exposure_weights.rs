@@ -1,6 +1,6 @@
 use crate::vision::field_boundary::FieldBoundary;
 
-use super::{init_camera, Camera, Image};
+use super::{Camera, Image, init_camera};
 use bevy::{prelude::*, tasks::IoTaskPool};
 use heimdall::{Bottom, ExposureWeights, Top};
 

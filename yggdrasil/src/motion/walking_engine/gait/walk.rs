@@ -5,10 +5,11 @@ use nalgebra::Translation3;
 
 use crate::{
     kinematics::{
-        spaces::{LeftSole, RightSole, Robot},
         Kinematics,
+        spaces::{LeftSole, RightSole, Robot},
     },
     motion::walking_engine::{
+        Side, TargetFootPositions,
         balancing::BalanceAdjustment,
         config::WalkingEngineConfig,
         feet::FootPositions,
@@ -16,7 +17,6 @@ use crate::{
         schedule::{Gait, WalkingEngineSet},
         smoothing::parabolic_return,
         step_context::StepContext,
-        Side, TargetFootPositions,
     },
     nao::CycleTime,
     sensor::orientation::RobotOrientation,
@@ -186,9 +186,5 @@ fn logistic_correction_weight(phase: f32, phase_shift: f32, decay: f32) -> f32 {
     let weight = (1.0 - factor).clamp(0.0, 1.0);
 
     // snap to 0.0, when approaching 0.0
-    if weight <= 0.05 {
-        0.0
-    } else {
-        weight
-    }
+    if weight <= 0.05 { 0.0 } else { weight }
 }

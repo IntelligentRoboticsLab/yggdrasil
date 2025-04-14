@@ -15,17 +15,17 @@ use async_std::{
 };
 use bevy::{
     prelude::*,
-    tasks::{block_on, IoTaskPool, Task},
+    tasks::{IoTaskPool, Task, block_on},
 };
 use bifrost::communication::{
-    GameControllerMessage, GameControllerReturnMessage, GAME_CONTROLLER_DATA_PORT,
+    GAME_CONTROLLER_DATA_PORT, GameControllerMessage, GameControllerReturnMessage,
 };
 use futures::channel::mpsc;
 use penalty::PenaltyStatePlugin;
-use receive::{handle_messages, receive_loop, GameControllerReceiver};
+use receive::{GameControllerReceiver, handle_messages, receive_loop};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationMilliSeconds};
-use transmit::{send_loop, send_message, GameControllerSender};
+use serde_with::{DurationMilliSeconds, serde_as};
+use transmit::{GameControllerSender, send_loop, send_message};
 
 pub use receive::GameControllerMessageEvent;
 

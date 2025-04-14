@@ -13,9 +13,9 @@ use box_coder::BoxCoder;
 use heimdall::{CameraLocation, Top};
 use itertools::Itertools;
 use miette::IntoDiagnostic;
-use ml::{prelude::*, MlArray};
+use ml::{MlArray, prelude::*};
 use ndarray::{Array2, Axis};
-use serde_with::{serde_as, DurationMilliSeconds};
+use serde_with::{DurationMilliSeconds, serde_as};
 
 mod anchor_generator;
 mod box_coder;

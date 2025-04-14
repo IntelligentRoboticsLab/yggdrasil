@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use nidhogg::{
-    types::{FillExt, JointArray, LegJoints},
     NaoState,
+    types::{FillExt, JointArray, LegJoints},
 };
 
 use crate::{
@@ -9,11 +9,11 @@ use crate::{
     motion::{
         energy_optimizer::EnergyOptimizerExt,
         walking_engine::{
+            TargetFootPositions, TargetLegStiffness,
             config::WalkingEngineConfig,
             feet::FootPositions,
             hips::HipHeight,
             schedule::{Gait, WalkingEngineSet},
-            TargetFootPositions, TargetLegStiffness,
         },
     },
     nao::{NaoManager, Priority},

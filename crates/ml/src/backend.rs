@@ -1,8 +1,8 @@
 //! Implementation of ML methods using an `OpenVINO` backend.
 use super::{
+    MlModel,
     element::Parameters,
     error::{Error, Result},
-    MlModel,
 };
 use bevy::prelude::*;
 use openvino::{Node, RwPropertyKey, Tensor};

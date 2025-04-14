@@ -69,8 +69,8 @@ mod tests {
 
     use super::*;
     use crate::{
-        serialization::{Decode, Encode},
         Result,
+        serialization::{Decode, Encode},
     };
 
     /// Dummy message that encodes to `n` bytes with value `n`.

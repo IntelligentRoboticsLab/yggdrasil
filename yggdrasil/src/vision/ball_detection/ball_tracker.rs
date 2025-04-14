@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use bevy::prelude::*;
 use filter::{CovarianceMatrix, StateTransform, StateVector, UnscentedKalmanFilter};
-use nalgebra::{point, Point2};
+use nalgebra::{Point2, point};
 
 use crate::{localization::odometry::Odometry, nao::Cycle};
 

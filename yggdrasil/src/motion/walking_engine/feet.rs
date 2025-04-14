@@ -1,11 +1,11 @@
 use nalgebra::{Isometry3, Translation3, UnitQuaternion, Vector2, Vector3};
 use spatial::types::Pose3;
 
-use super::{step::Step, Side};
+use super::{Side, step::Step};
 use crate::kinematics::{
+    FootOffset, Kinematics,
     prelude::{ROBOT_TO_LEFT_PELVIS, ROBOT_TO_RIGHT_PELVIS},
     spaces::{Ground, LeftSole, RightSole, Robot},
-    FootOffset, Kinematics,
 };
 
 /// Position of the left and right foot of the robot, relative to the ground.

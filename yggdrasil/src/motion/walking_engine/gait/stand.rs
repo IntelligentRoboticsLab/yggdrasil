@@ -4,12 +4,12 @@ use nidhogg::types::{FillExt, LegJoints};
 use crate::motion::{
     energy_optimizer::EnergyOptimizerExt,
     walking_engine::{
+        TargetFootPositions, TargetLegStiffness,
         config::WalkingEngineConfig,
         feet::FootPositions,
         hips::HipHeight,
         schedule::{Gait, WalkingEngineSet},
         step_context::StepContext,
-        TargetFootPositions, TargetLegStiffness,
     },
 };
 

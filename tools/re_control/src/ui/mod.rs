@@ -1,5 +1,5 @@
 use rerun::external::egui::{
-    self, scroll_area::ScrollAreaOutput, Frame, InnerResponse, RichText, ScrollArea,
+    self, Frame, InnerResponse, RichText, ScrollArea, scroll_area::ScrollAreaOutput,
 };
 
 use crate::connection::ConnectionState;

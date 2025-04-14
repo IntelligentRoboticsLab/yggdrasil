@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use heimdall::{CameraLocation, CameraMatrix, CameraPosition};
 use itertools::Itertools;
-use nalgebra::{point, Point2};
+use nalgebra::{Point2, point};
 
 use serde::{Deserialize, Serialize};
 
@@ -12,8 +12,8 @@ use crate::{
     core::debug::DebugContext,
     nao::Cycle,
     vision::{
-        body_contour::{update_body_contours, BodyContour},
-        camera::{init_camera, Image},
+        body_contour::{BodyContour, update_body_contours},
+        camera::{Image, init_camera},
         scan_lines::{ClassifiedScanLineRegion, RegionColor, ScanLine, ScanLines},
         util::bbox::{Bbox, Xyxy},
     },

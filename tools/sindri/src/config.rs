@@ -1,5 +1,5 @@
 use crate::cli::robot_ops::NameOrNum;
-use miette::{miette, Context, IntoDiagnostic, Result};
+use miette::{Context, IntoDiagnostic, Result, miette};
 use serde::Deserialize;
 use serde_with::serde_as;
 use std::ops::RangeInclusive;

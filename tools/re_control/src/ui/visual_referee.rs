@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use re_control_comms::{
-    protocol::{control::ViewerControlMessage, ViewerMessage},
+    protocol::{ViewerMessage, control::ViewerControlMessage},
     viewer::ControlViewerHandle,
 };
 use rerun::external::egui;

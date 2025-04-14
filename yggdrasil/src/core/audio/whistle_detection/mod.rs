@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use async_std::task::block_on;
 use bevy::{
     prelude::*,
-    tasks::{futures_lite::future, AsyncComputeTaskPool, Task},
+    tasks::{AsyncComputeTaskPool, Task, futures_lite::future},
 };
 
 use bifrost::broadcast::Deadline;

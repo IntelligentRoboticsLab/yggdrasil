@@ -4,7 +4,7 @@ use crate::prelude::*;
 use bevy::prelude::*;
 
 use kira::{
-    manager::{backend::DefaultBackend, AudioManager, AudioManagerSettings},
+    manager::{AudioManager, AudioManagerSettings, backend::DefaultBackend},
     sound::streaming::{StreamingSoundData, StreamingSoundSettings},
 };
 use miette::{Context, IntoDiagnostic};

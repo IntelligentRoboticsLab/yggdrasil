@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use nalgebra::point;
 use nalgebra::Point2;
+use nalgebra::point;
 use std::ops::Index;
 
 use nalgebra::Isometry2;

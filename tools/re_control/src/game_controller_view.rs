@@ -6,8 +6,8 @@ use std::{
 use bifrost::communication::Penalty;
 use re_control_comms::{
     protocol::{
+        CONTROL_PORT, RobotMessage,
         game_controller::{Player, RobotGameController},
-        RobotMessage, CONTROL_PORT,
     },
     viewer::ControlViewer,
 };
@@ -23,11 +23,11 @@ use rerun::external::{
 };
 
 use crate::{
-    connection::{ip_from_env, ConnectionState, ROBOT_ADDRESS_ENV_KEY},
+    connection::{ConnectionState, ROBOT_ADDRESS_ENV_KEY, ip_from_env},
     state::{HandleState, SharedHandleState},
     ui::{
         extra_title_bar_connection_ui,
-        game_controller::{game_controller_ui, GameControllerState},
+        game_controller::{GameControllerState, game_controller_ui},
         selection_ui,
     },
 };

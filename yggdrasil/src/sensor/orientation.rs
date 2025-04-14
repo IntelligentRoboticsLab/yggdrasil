@@ -3,7 +3,7 @@ use crate::{behavior::primary_state::PrimaryState, localization::odometry::Odome
 use bevy::prelude::*;
 use nalgebra::{Quaternion, UnitQuaternion, Vector3};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationMilliSeconds, DurationSeconds};
+use serde_with::{DurationMilliSeconds, DurationSeconds, serde_as};
 use std::time::Duration;
 use vqf::Vqf;
 

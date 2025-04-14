@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
 
 use ml::{
-    prelude::{MlTaskCommandsExt, ModelExecutor},
     MlModel,
+    prelude::{MlTaskCommandsExt, ModelExecutor},
 };
 use nalgebra::Point2;
 

@@ -4,7 +4,7 @@ use std::{
 };
 
 use colored::Colorize;
-use miette::{miette, Result};
+use miette::{Result, miette};
 
 /// Information about the git repository where the crate was built.
 #[derive(PartialEq, Debug)]

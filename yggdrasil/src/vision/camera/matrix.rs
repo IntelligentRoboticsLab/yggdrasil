@@ -2,19 +2,18 @@ use std::marker::PhantomData;
 
 use bevy::prelude::*;
 use heimdall::{CameraLocation, CameraMatrix, CameraPosition};
-use nalgebra::{vector, Isometry3, Point2, UnitQuaternion, Vector2, Vector3};
+use nalgebra::{Isometry3, Point2, UnitQuaternion, Vector2, Vector3, vector};
 use rerun::external::glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     core::debug::DebugContext,
     kinematics::{
-        dimensions,
+        Kinematics, dimensions,
         spaces::{Head, Left, Right, Robot, Sole},
-        Kinematics,
     },
     localization::RobotPose,
-    motion::walking_engine::{foot_support::FootSupportState, Side},
+    motion::walking_engine::{Side, foot_support::FootSupportState},
     nao::Cycle,
     sensor::orientation::RobotOrientation,
 };

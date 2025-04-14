@@ -1,8 +1,8 @@
 use crate::nao::Priority;
 use bevy::prelude::*;
 use nidhogg::{
-    types::{FillExt, Skull},
     NaoState,
+    types::{FillExt, Skull},
 };
 
 use super::manager::NaoManager;

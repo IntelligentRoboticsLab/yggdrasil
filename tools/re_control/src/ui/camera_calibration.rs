@@ -6,7 +6,7 @@ use std::{
 use heimdall::CameraPosition;
 use nalgebra::Vector3;
 use re_control_comms::{
-    protocol::{control::ViewerControlMessage, ViewerMessage},
+    protocol::{ViewerMessage, control::ViewerControlMessage},
     viewer::ControlViewerHandle,
 };
 use rerun::external::{egui, re_ui::UiExt};

@@ -15,9 +15,9 @@ pub mod spaces;
 pub mod visualization;
 
 pub mod prelude {
+    pub use super::Kinematics;
     pub use super::dimensions::*;
     pub use super::spaces::*;
-    pub use super::Kinematics;
 }
 
 pub use forward::Kinematics;

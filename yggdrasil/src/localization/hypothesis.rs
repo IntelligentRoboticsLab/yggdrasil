@@ -3,7 +3,7 @@ use bifrost::communication::{GameControllerMessage, GamePhase, Penalty};
 use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
-use nalgebra::{point, vector, ComplexField, Point2, Rotation2, UnitComplex};
+use nalgebra::{ComplexField, Point2, Rotation2, UnitComplex, point, vector};
 use num::Complex;
 use serde::{Deserialize, Serialize};
 
@@ -17,11 +17,11 @@ use crate::{
 };
 
 use super::{
+    LocalizationConfig, RobotPose,
     correction::fit_field_lines,
     correspondence::FieldLineCorrespondence,
     odometry::Odometry,
     pose::{penalized_pose, penalty_kick_pose},
-    LocalizationConfig, RobotPose,
 };
 
 type RobotPoseUkf = UnscentedKalmanFilter<3, 7, RobotPose>;

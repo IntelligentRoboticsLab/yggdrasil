@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
 use super::{
-    detect::{DetectRefereePose, RefereePoseDetected},
     RefereePose, RefereePoseConfig,
+    detect::{DetectRefereePose, RefereePoseDetected},
 };
 
 pub struct RefereePoseRecognitionPlugin;
@@ -120,9 +120,5 @@ fn all_same_poses(poses: &[RefereePose]) -> Option<&RefereePose> {
         .first()
         .is_none_or(|first| poses.iter().all(|x| x == first));
 
-    if all_same {
-        poses.first()
-    } else {
-        None
-    }
+    if all_same { poses.first() } else { None }
 }

@@ -1,6 +1,6 @@
 use bifrost::{
-    serialization::{Decode, Encode},
     Result,
+    serialization::{Decode, Encode},
 };
 use std::fmt::Debug;
 

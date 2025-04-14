@@ -2,15 +2,15 @@ use std::{ops::Deref, sync::Arc};
 
 use crate::{
     core::debug::{
-        debug_system::{DebugAppExt, SystemToggle},
         DebugContext,
+        debug_system::{DebugAppExt, SystemToggle},
     },
     nao::Cycle,
     prelude::*,
 };
 
 use super::{
-    camera::{init_camera, Image},
+    camera::{Image, init_camera},
     color,
     field_boundary::FieldBoundary,
     scan_grid::{FieldColorApproximate, ScanGrid},

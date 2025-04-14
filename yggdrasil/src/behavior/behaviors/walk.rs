@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState},
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     localization::RobotPose,
     motion::{
         step_planner::StepPlanner,

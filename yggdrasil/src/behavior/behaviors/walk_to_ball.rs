@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use nalgebra::Point3;
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState},
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},

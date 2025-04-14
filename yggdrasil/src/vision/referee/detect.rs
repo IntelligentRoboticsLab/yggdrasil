@@ -2,9 +2,9 @@ use bevy::prelude::*;
 use heimdall::{CameraLocation, Top};
 use miette::IntoDiagnostic;
 use ml::{
+    MlArray, MlModel, MlModelResourceExt,
     prelude::{MlTaskCommandsExt, ModelExecutor},
     util::{argmax, softmax},
-    MlArray, MlModel, MlModelResourceExt,
 };
 use ndarray::{Array2, Axis};
 
@@ -18,8 +18,8 @@ use crate::{
 };
 
 use super::{
-    recognize::{recognizing_pose, request_recognition},
     RefereePose, RefereePoseConfig,
+    recognize::{recognizing_pose, request_recognition},
 };
 
 pub struct RefereePoseDetectionPlugin;

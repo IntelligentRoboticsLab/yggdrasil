@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use num::Zero;
-use rustfft::{num_complex::Complex, FftPlanner};
+use rustfft::{FftPlanner, num_complex::Complex};
 use serde::Serialize;
 
 /// Short time fourier transform, which decomposes a signal into the energy levels for each frequency

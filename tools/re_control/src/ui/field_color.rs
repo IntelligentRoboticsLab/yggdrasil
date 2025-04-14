@@ -5,8 +5,8 @@ use std::{
 
 use re_control_comms::{
     protocol::{
-        control::{FieldColorConfig, ViewerControlMessage},
         ViewerMessage,
+        control::{FieldColorConfig, ViewerControlMessage},
     },
     viewer::ControlViewerHandle,
 };

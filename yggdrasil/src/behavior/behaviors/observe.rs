@@ -5,10 +5,10 @@ use std::time::Instant;
 
 use crate::{
     behavior::{
-        engine::{in_behavior, Behavior, BehaviorState},
         BehaviorConfig,
+        engine::{Behavior, BehaviorState, in_behavior},
     },
-    motion::walking_engine::{step::Step, step_context::StepContext, StandingHeight},
+    motion::walking_engine::{StandingHeight, step::Step, step_context::StepContext},
     nao::{NaoManager, Priority},
 };
 use nidhogg::types::{FillExt, HeadJoints};
