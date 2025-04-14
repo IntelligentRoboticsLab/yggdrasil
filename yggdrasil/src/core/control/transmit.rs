@@ -7,9 +7,9 @@ use re_control_comms::{
     app::ControlAppHandle,
     debug_system::DebugEnabledSystems,
     protocol::{
+        RobotMessage,
         control::RobotControlMessage,
         game_controller::{Player, RobotGameController},
-        RobotMessage,
     },
 };
 
@@ -259,7 +259,7 @@ pub fn send_current_state(
     io.spawn(async move {
         if let Err(error) = handle.broadcast(msg).await {
             tracing::error!(?error, "Failed to send Resource States");
-        };
+        }
     })
     .detach();
 

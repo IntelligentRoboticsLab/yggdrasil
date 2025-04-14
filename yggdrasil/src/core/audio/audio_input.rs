@@ -52,8 +52,8 @@ fn setup(mut commands: Commands) {
                 move |data: &[f32], info| {
                     let mut lock = buffer.lock().unwrap();
                     let AudioBuffer {
-                        ref mut last_update,
-                        ref mut buffer,
+                        last_update,
+                        buffer,
                     } = &mut *lock;
 
                     *last_update = Some(info.timestamp());
