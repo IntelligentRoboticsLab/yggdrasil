@@ -1,5 +1,5 @@
 use nalgebra::Point2;
-use rand::prelude::{IteratorRandom, ThreadRng};
+use rand::prelude::{IndexedRandom, ThreadRng};
 
 use crate::vision::line_detection::line::{Line2, LineSegment2};
 
