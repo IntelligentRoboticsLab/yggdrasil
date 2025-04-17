@@ -6,7 +6,7 @@ use std::{
 use bifrost::communication::{GameControllerMessage, GameState, Penalty, TeamInfo};
 use miette::{Diagnostic, IntoDiagnostic, Result};
 use re_control_comms::{
-    protocol::{game_controller::ViewerGameControllerMessage, ViewerMessage},
+    protocol::{ViewerMessage, game_controller::ViewerGameControllerMessage},
     viewer::ControlViewerHandle,
 };
 use rerun::external::{

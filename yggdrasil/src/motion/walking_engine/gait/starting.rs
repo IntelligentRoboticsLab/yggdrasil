@@ -4,6 +4,7 @@ use std::time::Duration;
 use crate::{
     kinematics::Kinematics,
     motion::walking_engine::{
+        FootSwitchedEvent, Side, TargetFootPositions,
         config::WalkingEngineConfig,
         feet::FootPositions,
         foot_support::FootSupportState,
@@ -11,7 +12,6 @@ use crate::{
         smoothing::parabolic_return,
         step::{PlannedStep, Step},
         step_context::{self, StepContext},
-        FootSwitchedEvent, Side, TargetFootPositions,
     },
     nao::CycleTime,
 };

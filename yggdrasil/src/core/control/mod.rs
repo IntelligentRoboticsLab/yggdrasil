@@ -7,16 +7,16 @@ use bevy::prelude::*;
 use futures::channel::mpsc::unbounded;
 use re_control_comms::{
     app::ControlApp,
-    protocol::{ViewerMessage, CONTROL_PORT},
+    protocol::{CONTROL_PORT, ViewerMessage},
 };
 
 use receive::{
-    handle_notify_on_connection, handle_viewer_control_message, ControlReceivePlugin,
-    NotifyConnectionReceiver, ViewerMessageReceiver,
+    ControlReceivePlugin, NotifyConnectionReceiver, ViewerMessageReceiver,
+    handle_notify_on_connection, handle_viewer_control_message,
 };
 use transmit::ControlTransmitPlugin;
 
-use super::debug::{init_rerun, RerunStream};
+use super::debug::{RerunStream, init_rerun};
 
 pub struct ControlPlugin;
 

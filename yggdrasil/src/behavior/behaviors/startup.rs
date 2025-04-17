@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState},
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     kinematics::Kinematics,
     motion::walking_engine::{config::WalkingEngineConfig, step_context::StepContext},
 };

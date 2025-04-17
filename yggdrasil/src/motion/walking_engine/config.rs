@@ -4,7 +4,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use odal::Config;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationMilliSeconds};
+use serde_with::{DurationMilliSeconds, serde_as};
 
 use super::{foot_support::FootSupportConfig, hips::HipHeightConfig, step::Step};
 

@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 
-use nidhogg::types::{color, FillExt, RightEye};
+use nidhogg::types::{FillExt, RightEye, color};
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState},
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     motion::walking_engine::step_context::StepContext,
     nao::{NaoManager, Priority},
 };

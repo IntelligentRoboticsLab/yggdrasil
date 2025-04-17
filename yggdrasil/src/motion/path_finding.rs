@@ -1,7 +1,7 @@
 use geo::{ClosestPoint, Coord, Line};
 use pathfinding::directed::astar;
 
-use nalgebra::{base::Vector2, Point2};
+use nalgebra::{Point2, base::Vector2};
 
 use std::hash::Hash;
 

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::cli::robot_ops::NameOrNum;
 use crate::{
-    cli::robot_ops::{self, shutdown_single_robot, ShutdownCommand},
+    cli::robot_ops::{self, ShutdownCommand, shutdown_single_robot},
     config::SindriConfig,
 };
 use clap::Parser;

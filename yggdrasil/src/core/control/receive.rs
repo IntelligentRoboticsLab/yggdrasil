@@ -4,7 +4,7 @@ use re_control_comms::{
     app::NotifyConnection,
     debug_system::DebugEnabledSystems,
     protocol::{
-        control::ViewerControlMessage, game_controller::ViewerGameControllerMessage, ViewerMessage,
+        ViewerMessage, control::ViewerControlMessage, game_controller::ViewerGameControllerMessage,
     },
 };
 

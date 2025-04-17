@@ -4,7 +4,7 @@ use nalgebra::{Point2, UnitComplex};
 use crate::{
     behavior::{
         behaviors::{Observe, WalkTo},
-        engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
+        engine::{CommandsBehaviorExt, RoleState, Roles, in_role},
     },
     core::config::layout::LayoutConfig,
     motion::step_planner::{StepPlanner, Target},

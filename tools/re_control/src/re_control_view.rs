@@ -6,7 +6,7 @@ use std::{
 use heimdall::CameraPosition;
 use re_control_comms::{
     debug_system::DebugEnabledSystems,
-    protocol::{control::RobotControlMessage, RobotMessage, CONTROL_PORT},
+    protocol::{CONTROL_PORT, RobotMessage, control::RobotControlMessage},
     viewer::ControlViewer,
 };
 use rerun::external::{
@@ -23,14 +23,14 @@ use rerun::external::{
 use strum::{EnumIter, IntoEnumIterator};
 
 use crate::{
-    connection::{ip_from_env, ConnectionState, ROBOT_ADDRESS_ENV_KEY},
+    connection::{ConnectionState, ROBOT_ADDRESS_ENV_KEY, ip_from_env},
     state::{HandleState, SharedHandleState},
     ui::{
-        camera_calibration::{camera_calibration_ui, CameraState},
-        debug_systems::{debug_enabled_systems_ui, DebugEnabledState},
+        camera_calibration::{CameraState, camera_calibration_ui},
+        debug_systems::{DebugEnabledState, debug_enabled_systems_ui},
         extra_title_bar_connection_ui,
-        field_color::{field_color_ui, FieldColorState},
-        resource::{resource_ui, ResourcesState},
+        field_color::{FieldColorState, field_color_ui},
+        resource::{ResourcesState, resource_ui},
         selection_ui,
         visual_referee::visual_referee_ui,
     },

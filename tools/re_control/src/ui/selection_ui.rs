@@ -4,7 +4,7 @@ use std::{
 };
 
 use re_control_comms::{
-    protocol::{RobotMessage, CONTROL_PORT},
+    protocol::{CONTROL_PORT, RobotMessage},
     viewer::ControlViewer,
 };
 use rerun::external::egui;

@@ -4,11 +4,11 @@ use crate::{
 };
 use bevy::prelude::*;
 use nidhogg::{
+    NaoState,
     types::{
         ArmJoints, FillExt, HeadJoints, LeftArmJoints, LeftLegJoints, LegJoints, RightArmJoints,
         RightLegJoints,
     },
-    NaoState,
 };
 
 use crate::motion::keyframe::{lerp_arms, lerp_legs};

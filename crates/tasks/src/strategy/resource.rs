@@ -8,10 +8,10 @@ pub trait ResourceStrategy<T, F: Future<Output = CommandQueue> + Send + 'static>
 {
 }
 impl<
-        T,
-        F: Future<Output = CommandQueue> + Send + 'static,
-        S: Fn(Entity, Option<T>) -> F + Send + Sync + 'static,
-    > ResourceStrategy<T, F> for S
+    T,
+    F: Future<Output = CommandQueue> + Send + 'static,
+    S: Fn(Entity, Option<T>) -> F + Send + Sync + 'static,
+> ResourceStrategy<T, F> for S
 {
 }
 

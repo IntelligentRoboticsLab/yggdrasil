@@ -1,14 +1,14 @@
 use std::{
-    fs::{self, read_to_string, OpenOptions},
+    fs::{self, OpenOptions, read_to_string},
     io::{self, Write},
     path::Path,
 };
 
 use clap::Subcommand;
-use dialoguer::{console::Style, theme::ColorfulTheme, Confirm};
+use dialoguer::{Confirm, console::Style, theme::ColorfulTheme};
 use miette::{IntoDiagnostic, Result};
 
-use crate::config::{load_config, SindriConfig};
+use crate::config::{SindriConfig, load_config};
 
 const INIT_DIR: &str = "init/";
 

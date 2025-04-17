@@ -10,8 +10,8 @@ use std::f32::consts::FRAC_1_SQRT_2;
 use super::prelude::*;
 use nidhogg::types::JointArray;
 use spatial::{
-    types::{Isometry3, Point3, Vector3},
     InSpace, Space, SpaceOver, Transform,
+    types::{Isometry3, Point3, Vector3},
 };
 
 #[derive(Debug, Resource, Transform)]

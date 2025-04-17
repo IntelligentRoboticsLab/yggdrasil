@@ -239,11 +239,13 @@ macro_rules! impl_parameters {
 
 
             unsafe fn from_tensors<'a>(mut iter: impl Iterator<Item = Tensor>) -> Self {
-                (
-                    $(
-                        $T::from_tensors(iter.by_ref())
-                    ,)*
-                )
+                unsafe {
+                    (
+                        $(
+                            $T::from_tensors(iter.by_ref())
+                        ,)*
+                    )
+                }
             }
         }
     };

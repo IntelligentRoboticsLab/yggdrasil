@@ -5,19 +5,19 @@ pub mod ransac;
 use std::marker::PhantomData;
 
 use bevy::prelude::*;
-use bevy::tasks::{block_on, poll_once, AsyncComputeTaskPool, Task};
+use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, poll_once};
 use heimdall::{CameraLocation, CameraMatrix, CameraPosition, YuyvImage};
 use inlier::Inliers;
 use itertools::Itertools;
 use line::{Line2, LineSegment2};
-use nalgebra::{point, Point2};
+use nalgebra::{Point2, point};
 
 use odal::Config;
 use rand::Rng;
-use ransac::{line::LineDetector, Ransac};
+use ransac::{Ransac, line::LineDetector};
 use serde::{Deserialize, Serialize};
 
-use super::body_contour::{update_body_contours, BodyContour};
+use super::body_contour::{BodyContour, update_body_contours};
 use super::{camera::Image, scan_lines::ScanLines};
 use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle, prelude::ConfigExt};

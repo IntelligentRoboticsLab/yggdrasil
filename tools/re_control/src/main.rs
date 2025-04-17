@@ -3,7 +3,7 @@ use std::env;
 use build_utils::version::Version;
 use clap::Parser;
 use miette::Result;
-use re_control::{app::App, cli::Cli, RerunControl};
+use re_control::{RerunControl, app::App, cli::Cli};
 use re_viewer::external::{re_log, re_memory};
 use rerun::external::re_viewer;
 
@@ -49,7 +49,9 @@ async fn main() -> Result<()> {
 
     // Storing the robot ip address (if specified) to be used in the `re_control_view`
     if let Some(robot_ip) = args.robot_ip {
-        env::set_var("RE_CONTROL_ROBOT_ADDRESS", robot_ip.to_string());
+        unsafe {
+            env::set_var("RE_CONTROL_ROBOT_ADDRESS", robot_ip.to_string());
+        }
     }
 
     let app = App::new(startup_options);

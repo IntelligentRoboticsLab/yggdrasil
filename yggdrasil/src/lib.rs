@@ -16,6 +16,6 @@ pub use miette::Result;
 /// in the framework.
 pub mod prelude {
     pub use crate::schedule::{PostWrite, PreWrite, Sensor, Write};
-    pub use crate::{core::config::ConfigExt, Result};
+    pub use crate::{Result, core::config::ConfigExt};
     pub use odal::Config;
 }

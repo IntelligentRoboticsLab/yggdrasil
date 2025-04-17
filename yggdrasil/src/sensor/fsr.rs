@@ -1,16 +1,16 @@
 use std::time::{Duration, Instant};
 
-use super::{low_pass_filter::ButterworthLpf, SensorConfig};
+use super::{SensorConfig, low_pass_filter::ButterworthLpf};
 use crate::{motion::walking_engine::FootSwitchedEvent, prelude::*};
 use bevy::prelude::*;
 use nalgebra::SVector;
 
 use nidhogg::{
-    types::{FillExt, Fsr, FsrFoot},
     NaoState,
+    types::{FillExt, Fsr, FsrFoot},
 };
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationMilliSeconds};
+use serde_with::{DurationMilliSeconds, serde_as};
 
 // Omega for the low-pass filter.
 const OMEGA: f32 = 0.7;

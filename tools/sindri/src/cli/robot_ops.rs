@@ -1,7 +1,7 @@
 use clap::Parser;
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressDrawTarget, ProgressStyle};
-use miette::{miette, Context, IntoDiagnostic};
+use miette::{Context, IntoDiagnostic, miette};
 use std::{
     borrow::Cow, collections::HashMap, fmt, fs, net::Ipv4Addr, path::Path, process::Stdio,
     str::FromStr, time::Duration,
@@ -14,7 +14,7 @@ use tokio::{
 use yggdrasil::core::config::showtime::ShowtimeConfig;
 use yggdrasil::prelude::*;
 
-use build_utils::cargo::{self, find_bin_manifest, Profile};
+use build_utils::cargo::{self, Profile, find_bin_manifest};
 
 use crate::{
     config::{Robot, SindriConfig},
@@ -389,8 +389,8 @@ mod cross {
             // This is required for the `tracy-client-sys` crate to cross-compile on mac
             // https://github.com/wolfpld/tracy/issues/730
             "TRACY_CLIENT_SYS_CXXFLAGS",
-            "-D__STDC_FORMAT_MACROS=1"
-        )
+            "-D__STDC_FORMAT_MACROS=1",
+        ),
     ];
 }
 

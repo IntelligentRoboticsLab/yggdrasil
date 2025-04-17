@@ -8,11 +8,11 @@ use crate::prelude::*;
 use bevy::prelude::*;
 use nalgebra::UnitQuaternion;
 use nidhogg::{
-    types::{
-        color, ArmJoints, FillExt, HeadJoints, JointArray, LeftEar, LeftEye, LegJoints, RgbF32,
-        RightEar, RightEye, Skull,
-    },
     NaoControlMessage, NaoState,
+    types::{
+        ArmJoints, FillExt, HeadJoints, JointArray, LeftEar, LeftEye, LegJoints, RgbF32, RightEar,
+        RightEye, Skull, color,
+    },
 };
 /// The stiffness constant for the "unstiff"/"floppy" state for robot joints.
 const STIFFNESS_UNSTIFF: f32 = -1.0;
@@ -125,11 +125,7 @@ impl ChestBlink {
                     *start = Instant::now();
                 }
 
-                if *on {
-                    *color
-                } else {
-                    color::f32::EMPTY
-                }
+                if *on { *color } else { color::f32::EMPTY }
             }
         }
     }

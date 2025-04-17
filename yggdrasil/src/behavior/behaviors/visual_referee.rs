@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use nalgebra::Point3;
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState},
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     core::config::layout::LayoutConfig,
     localization::RobotPose,
     nao::{NaoManager, Priority},

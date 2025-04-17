@@ -1,7 +1,7 @@
 use std::{io::Write, ops::Deref};
 
-use crate::rgb_image::RgbImage;
 use crate::Result;
+use crate::rgb_image::RgbImage;
 
 use fast_image_resize::{self as fir, ResizeOptions};
 use itertools::Itertools;

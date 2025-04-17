@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::communication::{TeamCommunication, TeamMessage};
 
-use super::{recognize::RefereePoseRecognized, RefereePose};
+use super::{RefereePose, recognize::RefereePoseRecognized};
 pub struct RefereePoseCommunicationPlugin;
 
 impl Plugin for RefereePoseCommunicationPlugin {

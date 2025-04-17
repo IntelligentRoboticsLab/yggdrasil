@@ -4,8 +4,8 @@ use bevy::prelude::*;
 use tasks::{CommandsExt, TaskPool};
 
 use super::{
-    backend::{InferRequest, ModelExecutor},
     MlModel,
+    backend::{InferRequest, ModelExecutor},
 };
 
 /// Type state for the inference builder.

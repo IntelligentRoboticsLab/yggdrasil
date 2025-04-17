@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use bevy::prelude::*;
-use nidhogg::{types::SonarValues, NaoState};
+use nidhogg::{NaoState, types::SonarValues};
 
 /// Plugin that offers a structured wrappers for sonar,
 /// derived from the raw [`NaoState`].

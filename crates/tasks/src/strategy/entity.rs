@@ -8,10 +8,10 @@ pub trait EntityStrategy<T, F: Future<Output = CommandQueue> + Send + 'static>:
 {
 }
 impl<
-        T,
-        F: Future<Output = CommandQueue> + Send + 'static,
-        S: Fn(Generation, Entity, Option<T>) -> F + Clone + Send + Sync + 'static,
-    > EntityStrategy<T, F> for S
+    T,
+    F: Future<Output = CommandQueue> + Send + 'static,
+    S: Fn(Generation, Entity, Option<T>) -> F + Clone + Send + Sync + 'static,
+> EntityStrategy<T, F> for S
 {
 }
 

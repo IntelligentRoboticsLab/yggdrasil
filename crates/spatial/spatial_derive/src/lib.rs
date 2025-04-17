@@ -7,8 +7,8 @@ use petgraph::{
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    parse_macro_input, Data, DeriveInput, Error, Field, Fields, GenericArgument, Ident, Path,
-    PathArguments, Type,
+    Data, DeriveInput, Error, Field, Fields, GenericArgument, Ident, Path, PathArguments, Type,
+    parse_macro_input,
 };
 
 #[proc_macro_derive(Transform)]
@@ -28,7 +28,7 @@ fn derive_transform(input: DeriveInput) -> Result<TokenStream, Error> {
             return Err(Error::new_spanned(
                 input,
                 "`Transform` can only be derived for structs",
-            ))
+            ));
         }
     };
 
@@ -38,7 +38,7 @@ fn derive_transform(input: DeriveInput) -> Result<TokenStream, Error> {
             return Err(Error::new_spanned(
                 fields,
                 "`Transform` can only be derived for structs with named fields",
-            ))
+            ));
         }
     };
 

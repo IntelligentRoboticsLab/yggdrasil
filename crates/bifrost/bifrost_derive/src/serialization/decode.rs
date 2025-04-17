@@ -5,8 +5,8 @@ use crate::serialization::tools::{
 use proc_macro2::TokenStream;
 
 use syn::{
-    parse, Attribute, Data, DataEnum, DataStruct, DataUnion, DeriveInput, Error, Fields,
-    FieldsNamed, FieldsUnnamed, Ident, Variant,
+    Attribute, Data, DataEnum, DataStruct, DataUnion, DeriveInput, Error, Fields, FieldsNamed,
+    FieldsUnnamed, Ident, Variant, parse,
 };
 
 use quote::quote;

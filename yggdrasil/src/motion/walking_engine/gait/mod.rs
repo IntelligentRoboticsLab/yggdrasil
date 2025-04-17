@@ -3,8 +3,8 @@ use std::time::Duration;
 use bevy::prelude::*;
 
 use super::{
-    config::WalkingEngineConfig, foot_support::FootSupportState, smoothing::parabolic_step,
-    step::PlannedStep, FootSwitchedEvent, Gait, WalkingEngineSet,
+    FootSwitchedEvent, Gait, WalkingEngineSet, config::WalkingEngineConfig,
+    foot_support::FootSupportState, smoothing::parabolic_step, step::PlannedStep,
 };
 use crate::prelude::*;
 

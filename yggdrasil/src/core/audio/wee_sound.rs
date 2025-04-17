@@ -5,8 +5,8 @@ use crate::motion::keyframe::KeyframeExecutor;
 use crate::sensor::falling::FallState;
 use crate::sensor::fsr::Contacts;
 
-use super::sound_manager::{Sound, SoundManager};
 use super::AudioConfig;
+use super::sound_manager::{Sound, SoundManager};
 
 pub struct WeeSoundPlugin;
 

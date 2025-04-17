@@ -5,8 +5,8 @@ use num::Complex;
 use crate::core::config::layout::LayoutConfig;
 
 use nalgebra::{
-    vector, ComplexField, Isometry2, Isometry3, Point2, Point3, SVector, Translation3, UnitComplex,
-    UnitQuaternion, Vector2,
+    ComplexField, Isometry2, Isometry3, Point2, Point3, SVector, Translation3, UnitComplex,
+    UnitQuaternion, Vector2, vector,
 };
 use nidhogg::types::HeadJoints;
 

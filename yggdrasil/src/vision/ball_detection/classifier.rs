@@ -11,7 +11,7 @@ use ml::prelude::ModelExecutor;
 use nalgebra::{Point2, Vector2};
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationMicroSeconds};
+use serde_with::{DurationMicroSeconds, serde_as};
 
 use crate::core::debug::DebugContext;
 
@@ -21,9 +21,9 @@ use crate::vision::camera::init_camera;
 use crate::vision::referee::detect::VisualRefereeDetectionStatus;
 use ml::prelude::*;
 
+use super::BallDetectionConfig;
 use super::ball_tracker::{BallPosition, BallTracker};
 use super::proposal::BallProposals;
-use super::BallDetectionConfig;
 
 const IMAGE_INPUT_SIZE: usize = 32;
 

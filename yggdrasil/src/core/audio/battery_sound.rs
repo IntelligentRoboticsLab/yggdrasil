@@ -1,5 +1,5 @@
-use super::sound_manager::{Sound, SoundManager};
 use super::AudioConfig;
+use super::sound_manager::{Sound, SoundManager};
 use bevy::prelude::*;
 use nidhogg::NaoState;
 use std::time::{Duration, Instant};

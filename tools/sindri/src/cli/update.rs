@@ -1,5 +1,5 @@
 use clap::{Parser, ValueEnum};
-use miette::{miette, IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Result, miette};
 
 #[derive(Debug, Clone, ValueEnum)]
 enum PackagesToUpdate {

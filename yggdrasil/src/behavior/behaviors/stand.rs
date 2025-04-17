@@ -4,8 +4,8 @@ use bevy::prelude::*;
 use nidhogg::types::HeadJoints;
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState},
-    motion::walking_engine::{step_context::StepContext, StandingHeight},
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
+    motion::walking_engine::{StandingHeight, step_context::StepContext},
     nao::{NaoManager, Priority},
 };
 

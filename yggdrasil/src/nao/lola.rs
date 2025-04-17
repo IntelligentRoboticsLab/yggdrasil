@@ -1,8 +1,8 @@
 use std::{sync::Arc, time::Duration};
 
 use bevy::{ecs::system::RunSystemOnce, prelude::*};
-use nidhogg::{backend::LolaBackend, NaoBackend, NaoControlMessage, NaoState};
-use rerun::{external::arrow, SerializedComponentBatch};
+use nidhogg::{NaoBackend, NaoControlMessage, NaoState, backend::LolaBackend};
+use rerun::{SerializedComponentBatch, external::arrow};
 
 use crate::{core::debug, prelude::*};
 use crate::{core::debug::DebugContext, nao::RobotInfo};

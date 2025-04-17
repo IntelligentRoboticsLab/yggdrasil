@@ -1,18 +1,18 @@
 use crate::{
     core::audio::whistle_detection::Whistle,
-    game_controller::{penalty::PenaltyState, GameControllerMessageEvent},
+    game_controller::{GameControllerMessageEvent, penalty::PenaltyState},
     kinematics::Kinematics,
     motion::walking_engine::config::WalkingEngineConfig,
     nao::{NaoManager, Priority},
     sensor::button::{ChestButton, HeadButtons},
     vision::referee::{
-        communication::ReceivedRefereePose, recognize::RefereePoseRecognized, RefereePose,
+        RefereePose, communication::ReceivedRefereePose, recognize::RefereePoseRecognized,
     },
 };
 use bevy::prelude::*;
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationMilliSeconds};
+use serde_with::{DurationMilliSeconds, serde_as};
 use std::time::Duration;
 
 use bifrost::communication::{GameControllerMessage, GameState};

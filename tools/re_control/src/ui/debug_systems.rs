@@ -4,7 +4,7 @@ use rerun::external::{egui, re_ui::UiExt};
 
 use re_control_comms::{
     debug_system::DebugEnabledSystems,
-    protocol::{control::ViewerControlMessage, ViewerMessage},
+    protocol::{ViewerMessage, control::ViewerControlMessage},
     viewer::ControlViewerHandle,
 };
 
