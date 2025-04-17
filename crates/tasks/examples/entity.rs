@@ -20,7 +20,7 @@ fn run_task_entity(mut commands: Commands, frame: Res<FrameCount>) {
             let frame = *frame;
 
             (0..5).map(move |number| async move {
-                let duration = rand::thread_rng().gen_range(0..5);
+                let duration = rand::rng().random_range(0..5);
 
                 task::sleep(Duration::from_secs(duration)).await;
 

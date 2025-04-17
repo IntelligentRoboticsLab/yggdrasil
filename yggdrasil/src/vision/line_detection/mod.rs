@@ -606,16 +606,16 @@ fn debug_lines_inliers<T: CameraLocation>(
     camera_matrix: Res<CameraMatrix<T>>,
     accepted: Query<(&Cycle, &DetectedLines), (With<T>, Added<DetectedLines>)>,
 ) {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     for (cycle, lines) in accepted.iter() {
         let mut colors = vec![];
         let mut points = vec![];
 
         lines.inliers.iter().for_each(|inliers| {
             let c = (
-                rng.gen_range(0..255),
-                rng.gen_range(0..255),
-                rng.gen_range(0..255),
+                rng.random_range(0..255),
+                rng.random_range(0..255),
+                rng.random_range(0..255),
             );
 
             let p = inliers

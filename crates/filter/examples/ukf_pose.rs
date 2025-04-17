@@ -86,7 +86,7 @@ fn main() {
     let mut ukf = UnscentedKalmanFilter::<3, 7, Pose2>::new(pose, cov);
 
     // generate measurements
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut x_true = vec![];
     let mut x_noisy = vec![];
     let mut x_unscented = vec![];
@@ -98,9 +98,9 @@ fn main() {
             .unwrap_or_else(|| Pose2::new(1.0, 2.0, 0.0));
 
         let offset = Pose2::new(
-            rng.gen_range(-0.001..0.001),
-            rng.gen_range(-0.01..0.01),
-            rng.gen_range(-0.01..0.01),
+            rng.random_range(-0.001..0.001),
+            rng.random_range(-0.01..0.01),
+            rng.random_range(-0.01..0.01),
         ) * Pose2::new(-0.05, 0.1, -0.02);
 
         // true measurement
@@ -109,9 +109,9 @@ fn main() {
         x_true.push(measurement);
 
         let noisy_offset = Pose2::new(
-            rng.gen_range(-1.0..1.0) * cov[(0, 0)],
-            rng.gen_range(-1.0..1.0) * cov[(1, 1)],
-            rng.gen_range(-1.0..1.0) * cov[(2, 2)],
+            rng.random_range(-1.0..1.0) * cov[(0, 0)],
+            rng.random_range(-1.0..1.0) * cov[(1, 1)],
+            rng.random_range(-1.0..1.0) * cov[(2, 2)],
         ) * offset;
 
         let noisy_prev = x_noisy
