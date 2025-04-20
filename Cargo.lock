@@ -5401,18 +5401,44 @@ checksum = "c96aba5aa877601bb3f6dd6a63a969e1f82e60646e81e71b14496995e9853c91"
 
 [[package]]
 name = "nidhogg"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "miette",
+ "nalgebra",
+ "nidhogg_derive 0.4.0",
+ "num",
+ "rmp-serde",
+ "serde",
+ "thiserror 2.0.12",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "nidhogg"
 version = "0.8.0"
 source = "git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=82d32b3b915848f553f4f8b99dab9ca1532f4416#82d32b3b915848f553f4f8b99dab9ca1532f4416"
 dependencies = [
  "bevy_ecs",
  "miette",
  "nalgebra",
- "nidhogg_derive",
+ "nidhogg_derive 0.4.0 (git+ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git?rev=82d32b3b915848f553f4f8b99dab9ca1532f4416)",
  "num",
  "rmp-serde",
  "serde",
  "thiserror 1.0.69",
  "tracing",
+]
+
+[[package]]
+name = "nidhogg_derive"
+version = "0.4.0"
+dependencies = [
+ "itertools 0.14.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
 ]
 
 [[package]]
@@ -11189,7 +11215,7 @@ dependencies = [
  "ml",
  "nalgebra",
  "ndarray",
- "nidhogg",
+ "nidhogg 0.8.0",
  "num",
  "odal",
  "ordered-float 4.6.0",
