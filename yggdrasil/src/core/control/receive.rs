@@ -90,10 +90,10 @@ fn handle_viewer_message(
     while let Some(message) = message_receiver.try_recv() {
         match message {
             ViewerMessage::ViewerControlMessage(viewer_control_message) => {
-                control_message.send(ViewerControlMessageEvent(viewer_control_message));
+                control_message.write(ViewerControlMessageEvent(viewer_control_message));
             }
             ViewerMessage::ViewerGameController(viewer_game_controller_message) => {
-                game_controller_message.send(ViewerGameControllerMessageEvent(
+                game_controller_message.write(ViewerGameControllerMessageEvent(
                     viewer_game_controller_message,
                 ));
             }
@@ -123,7 +123,7 @@ pub(super) fn handle_viewer_control_message(
                 enabled,
             } => {
                 debug_enabled_systems.set_system(system_name.clone(), *enabled);
-                ev_debug_enabled_system_updated.send(DebugEnabledSystemUpdated);
+                ev_debug_enabled_system_updated.write(DebugEnabledSystemUpdated);
             }
             ViewerControlMessage::CameraExtrinsic {
                 camera_position,
@@ -140,7 +140,7 @@ pub(super) fn handle_viewer_control_message(
                 *scan_lines_config = config.clone().into();
             }
             ViewerControlMessage::VisualRefereeRecognition => {
-                recognize_pose.send(RecognizeRefereePose);
+                recognize_pose.write(RecognizeRefereePose);
             }
             _ => tracing::warn!(?message, "unhandled message"),
         }
@@ -155,7 +155,7 @@ fn handle_viewer_game_controller_message(
         let message = &message.0;
         match message {
             ViewerGameControllerMessage::GameControllerMessage { message } => {
-                game_controller_message_sender.send(GameControllerMessageEvent(*message));
+                game_controller_message_sender.write(GameControllerMessageEvent(*message));
             }
         }
     }
@@ -167,6 +167,6 @@ pub(super) fn handle_notify_on_connection(
     mut ev_viewer_connected: EventWriter<ViewerConnected>,
 ) {
     while notify_connection_receiver.try_recv().is_some() {
-        ev_viewer_connected.send(ViewerConnected);
+        ev_viewer_connected.write(ViewerConnected);
     }
 }

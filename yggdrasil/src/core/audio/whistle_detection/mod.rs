@@ -223,7 +223,7 @@ fn spawn_whistle_preprocess_task(
     mut audio_samples: EventReader<AudioSamplesEvent>,
     mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
 ) {
-    if preprocessing_tasks.get_single_mut().is_ok() {
+    if preprocessing_tasks.single_mut().is_ok() {
         return;
     }
 
@@ -246,7 +246,7 @@ fn despawn_whistle_preprocessing_task(
     mut commands: Commands,
     mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
 ) {
-    let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() else {
+    let Ok((_, entity)) = &mut preprocessing_tasks.single_mut() else {
         return;
     };
 
@@ -258,7 +258,7 @@ fn spawn_whistle_detection_model(
     mut model: ResMut<ModelExecutor<WhistleDetectionModel>>,
     mut preprocessing_tasks: Query<&mut PreprocessingTask>,
 ) {
-    let Ok(preprocessing_task) = &mut preprocessing_tasks.get_single_mut() else {
+    let Ok(preprocessing_task) = &mut preprocessing_tasks.single_mut() else {
         return;
     };
 

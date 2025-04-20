@@ -7,7 +7,7 @@ pub mod matrix;
 use crate::{
     core::debug::{self, DebugContext},
     nao::Cycle,
-    prelude::*,
+    prelude::Result,
 };
 
 use bevy::{prelude::*, tasks::AsyncComputeTaskPool};

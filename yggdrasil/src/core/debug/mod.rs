@@ -18,7 +18,7 @@ use std::{marker::PhantomData, net::IpAddr};
 
 use crate::{
     nao::{Cycle, CycleTime},
-    prelude::*,
+    prelude::Result,
 };
 
 const DEFAULT_STORAGE_PATH: &str = "/mnt/usb";
@@ -254,7 +254,7 @@ impl RerunStream {
         as_components: &AS,
     ) {
         if let Err(error) = self.stream.log(ent_path, as_components) {
-            error!("{error}");
+            tracing::error!("{error}");
         }
     }
 
@@ -275,7 +275,7 @@ impl RerunStream {
         as_components: &AS,
     ) {
         if let Err(error) = self.stream.log_static(ent_path, as_components) {
-            error!("{error}");
+            tracing::error!("{error}");
         }
     }
 
@@ -309,7 +309,7 @@ impl RerunStream {
         columns: impl IntoIterator<Item = SerializedComponentColumn>,
     ) {
         if let Err(error) = self.stream.send_columns(ent_path, indexes, columns) {
-            error!("{error}");
+            tracing::error!("{error}");
         }
     }
 

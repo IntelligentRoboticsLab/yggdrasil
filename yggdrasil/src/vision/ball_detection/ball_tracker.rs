@@ -3,6 +3,7 @@ use std::time::Instant;
 use bevy::prelude::*;
 use filter::{CovarianceMatrix, StateTransform, StateVector, UnscentedKalmanFilter};
 use nalgebra::{Point2, point};
+use tracing::error;
 
 use crate::{localization::odometry::Odometry, nao::Cycle};
 

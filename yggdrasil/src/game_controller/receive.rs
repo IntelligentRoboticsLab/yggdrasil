@@ -90,7 +90,7 @@ pub fn handle_messages(
             // If we already have a connection, reset the timeout
             Some(con) if con.address == address => {
                 con.reset_timeout();
-                ev_message.send(GameControllerMessageEvent(message));
+                ev_message.write(GameControllerMessageEvent(message));
             }
             // If we have a connection, but the message is from a different address, ignore
             Some(con) => {
@@ -106,7 +106,7 @@ pub fn handle_messages(
                     cfg.game_controller_timeout,
                 ));
                 tracing::info!("Established gamecontroller connection with {}", address);
-                ev_message.send(GameControllerMessageEvent(message));
+                ev_message.write(GameControllerMessageEvent(message));
             }
         }
     }

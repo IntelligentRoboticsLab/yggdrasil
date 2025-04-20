@@ -1,4 +1,7 @@
-use bevy::{ecs::schedule::ScheduleLabel, prelude::*};
+use bevy::{
+    ecs::{schedule::ScheduleLabel, system::ScheduleSystem},
+    prelude::*,
+};
 use re_control_comms::debug_system::DebugEnabledSystems;
 
 /// Run condition for a specified system (using the system name) based on
@@ -66,7 +69,7 @@ pub trait DebugAppExt {
     fn add_debug_systems<M>(
         &mut self,
         schedule: impl ScheduleLabel,
-        systems: impl IntoSystemConfigs<M>,
+        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
         toggle: SystemToggle,
     ) -> &mut Self;
 
@@ -76,7 +79,7 @@ pub trait DebugAppExt {
     fn add_named_debug_systems<M>(
         &mut self,
         schedule: impl ScheduleLabel,
-        systems: impl IntoSystemConfigs<M>,
+        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
         systems_name: impl ToString,
         toggle: SystemToggle,
     ) -> &mut Self;
@@ -86,7 +89,7 @@ impl DebugAppExt for App {
     fn add_debug_systems<M>(
         &mut self,
         schedule: impl ScheduleLabel,
-        systems: impl IntoSystemConfigs<M>,
+        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
         toggle: SystemToggle,
     ) -> &mut Self {
         let system_name = std::any::type_name_of_val(&systems);
@@ -96,7 +99,7 @@ impl DebugAppExt for App {
     fn add_named_debug_systems<M>(
         &mut self,
         schedule: impl ScheduleLabel,
-        systems: impl IntoSystemConfigs<M>,
+        systems: impl IntoScheduleConfigs<ScheduleSystem, M>,
         systems_name: impl ToString,
         toggle: SystemToggle,
     ) -> &mut Self {
