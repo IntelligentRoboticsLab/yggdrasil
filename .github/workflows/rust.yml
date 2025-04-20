@@ -28,7 +28,7 @@ jobs:
           CI_TOKEN: ${{ secrets.CI_TOKEN }}
       - uses: ./.github/actions/install-ubuntu-deps/
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - run: cargo test --all-targets --all-features
+      - run: cargo test --all-features
 
   clippy:
     name: cargo clippy
