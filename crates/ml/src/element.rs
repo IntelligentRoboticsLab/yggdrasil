@@ -3,7 +3,6 @@
 //!
 //! This involves the type system in defining and utilizing models.
 
-use bevy::utils::all_tuples;
 use openvino::Tensor;
 
 use crate::MlArray;
@@ -251,4 +250,4 @@ macro_rules! impl_parameters {
     };
 }
 
-all_tuples!(impl_parameters, 1, 8, T);
+variadics_please::all_tuples!(impl_parameters, 1, 8, T);

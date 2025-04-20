@@ -1,7 +1,7 @@
 use std::future::Future;
 
 use crate::{Generation, Tag, YggdrasilTask};
-use bevy::{ecs::world::CommandQueue, prelude::*, utils::BoxedFuture};
+use bevy::{ecs::world::CommandQueue, prelude::*, tasks::BoxedFuture};
 
 pub trait EntityStrategy<T, F: Future<Output = CommandQueue> + Send + 'static>:
     Fn(Generation, Entity, Option<T>) -> F + Clone + Send + Sync + 'static
