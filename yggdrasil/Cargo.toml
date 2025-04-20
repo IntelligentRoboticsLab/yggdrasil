@@ -50,7 +50,6 @@ nalgebra = { workspace = true, features = [
   "convert-glam029",
 ] }
 ndarray = { workspace = true }
-
 num = { workspace = true }
 ordered-float = { workspace = true }
 pathfinding = { workspace = true }
