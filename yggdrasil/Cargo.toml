@@ -25,6 +25,7 @@ timings = ["dep:tracing-tracy", "bevy/trace"]
 bifrost = { workspace = true }
 heimdall = { workspace = true }
 ml = { workspace = true }
+nidhogg = { workspace = true, features = ["lola", "bevy"] }
 odal = { workspace = true }
 re_control_comms = { workspace = true }
 spatial = { workspace = true }
@@ -49,7 +50,6 @@ nalgebra = { workspace = true, features = [
   "convert-glam029",
 ] }
 ndarray = { workspace = true }
-nidhogg = { workspace = true, features = ["lola", "bevy"] }
 num = { workspace = true }
 ordered-float = { workspace = true }
 pathfinding = { workspace = true }
