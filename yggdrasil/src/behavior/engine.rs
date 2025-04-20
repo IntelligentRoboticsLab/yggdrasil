@@ -1,10 +1,11 @@
 use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
 
-use ml::{
-    prelude::{MlTaskCommandsExt, ModelExecutor},
-    MlModel,
-};
+// use ml::{
+//     prelude::{MlTaskCommandsExt, ModelExecutor},
+//     MlModel,
+// };
+use ml_ort::prelude::*;
 use nalgebra::Point2;
 
 use crate::{
@@ -74,7 +75,7 @@ pub fn spawn_rl_behavior<M, I, O>(
     I: RlBehaviorInput<M::Inputs>,
     O: RlBehaviorOutput<M::Outputs> + Resource,
     M: MlModel,
-    <M as ml::MlModel>::Outputs: std::marker::Send,
+    <M as MlModel>::Outputs: std::marker::Send,
 {
     commands
         .infer_model(model_executor)

@@ -53,6 +53,7 @@ bifrost = { path = "crates/bifrost" }
 build_utils = { path = "crates/build_utils" }
 heimdall = { path = "crates/heimdall" }
 ml = { path = "crates/ml" }
+ml-ort = { path = "crates/ml-ort" }
 odal = { path = "crates/odal" }
 re_control_comms = { path = "tools/re_control/re_control_comms" }
 sindri = { path = "tools/sindri" }
@@ -95,6 +96,7 @@ nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev
 num = "0.4.3"
 openvino = { version = "0.8.0", features = ["runtime-linking"] }
 ordered-float = "4.4.0"
+ort = "=2.0.0-rc.9"
 pathfinding = "4.11.0"
 petgraph = "0.6.5"
 plotters = { version = "0.3.7", default-features = false, features = [

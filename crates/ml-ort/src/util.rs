@@ -1,0 +1,71 @@
+//! Utility functions for machine learning.
+
+use fast_image_resize::{self as fir, ResizeOptions};
+
+/// Returns the index of the maximum element in a [`Vec`].
+///
+/// # Panics
+///
+/// If the input vector is empty this function will panic.
+#[must_use]
+pub fn argmax(v: &[f32]) -> usize {
+    v.iter()
+        .enumerate()
+        .max_by(|(_, v1), (_, v2)| v1.total_cmp(v2))
+        .expect("argmax: empty vector")
+        .0
+}
+
+/// Returns the softmax of [`Vec`].
+#[must_use]
+pub fn softmax(v: &[f32]) -> Vec<f32> {
+    let exps = v.iter().map(|f| f.exp()).collect::<Vec<_>>();
+
+    let sum: f32 = exps.iter().sum();
+    exps.iter().map(|x| x / sum).collect()
+}
+
+/// Computes the sigmoid score of the provided logit.
+#[must_use]
+pub fn sigmoid(logit: f32) -> f32 {
+    1.0 / (1.0 + (-logit).exp())
+}
+
+/// Resizes a grayscale patch to the target size.
+///
+/// # Panics
+///
+/// This function panics if:
+/// - the original image dimensions are zero
+/// - the patch is empty
+/// - the target image dimensions are zero
+#[allow(clippy::cast_possible_truncation)]
+#[must_use]
+pub fn resize_patch(original: (usize, usize), target: (usize, usize), patch: Vec<u8>) -> Vec<f32> {
+    let src_image = fir::images::Image::from_vec_u8(
+        original.0 as u32,
+        original.1 as u32,
+        patch,
+        fir::PixelType::U8,
+    )
+    .expect("failed to create image for resizing");
+
+    // Resize the image to the correct input shape for the model
+    let mut dst_image =
+        fir::images::Image::new(target.0 as u32, target.1 as u32, src_image.pixel_type());
+
+    let mut resizer = fir::Resizer::new();
+    resizer
+        .resize(
+            &src_image,
+            &mut dst_image,
+            &ResizeOptions::new().resize_alg(fir::ResizeAlg::Nearest),
+        )
+        .expect("Failed to resize image");
+
+    dst_image
+        .buffer()
+        .iter()
+        .map(|x| f32::from(*x) / 255.0)
+        .collect()
+}

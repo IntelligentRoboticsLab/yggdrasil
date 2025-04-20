@@ -1,7 +1,8 @@
 use std::{f32, time::Instant};
 
 use bevy::prelude::*;
-use ml::{prelude::ModelExecutor, MlModel, MlModelResourceExt};
+// use ml::{prelude::ModelExecutor, MlModel, MlModelResourceExt};
+use ml_ort::prelude::*;
 use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};
 use serde::{Deserialize, Serialize};

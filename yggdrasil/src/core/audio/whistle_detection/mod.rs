@@ -22,7 +22,9 @@ use crate::{
 };
 
 use super::audio_input::AudioSamplesEvent;
-use ml::prelude::*;
+use ml_ort::prelude::*;
+
+// TODO(Rick): No related to whistle. ort can likely be remove as dep from yggdrasil
 
 // the constants below need to match the parameters used for training
 /// The size of each window in samples.
@@ -274,5 +276,7 @@ fn spawn_whistle_detection_model(
         .infer_model(&mut model)
         .with_batched_input(&[&model_input.left, &model_input.right])
         .create_entities()
-        .spawn(|detections| Some(WhistleDetections { detections }));
+        .spawn(|detections| {
+            Some(WhistleDetections { detections })
+        });
 }

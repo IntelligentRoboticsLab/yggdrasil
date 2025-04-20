@@ -1,11 +1,12 @@
 use bevy::prelude::*;
 use heimdall::{CameraLocation, Top};
 use miette::IntoDiagnostic;
-use ml::{
-    prelude::{MlTaskCommandsExt, ModelExecutor},
-    util::{argmax, softmax},
-    MlArray, MlModel, MlModelResourceExt,
-};
+// use ml::{
+//     prelude::{MlTaskCommandsExt, ModelExecutor},
+//     util::{argmax, softmax},
+//     MlArray, MlModel, MlModelResourceExt,
+// };
+use ml_ort::{prelude::*, util::{argmax, softmax}};
 use ndarray::{Array2, Axis};
 
 use crate::{
