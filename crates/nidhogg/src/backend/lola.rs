@@ -2,11 +2,11 @@
 //!
 
 use crate::{
+    DisconnectExt, Error, HardwareInfo, NaoBackend, NaoControlMessage, NaoState, Result,
     types::{
         Battery, Fsr, FsrFoot, JointArray, LeftEar, LeftEye, Rgb, RgbF32, RightEar, RightEye,
         Skull, SonarEnabled, SonarValues, Touch,
     },
-    DisconnectExt, Error, HardwareInfo, NaoBackend, NaoControlMessage, NaoState, Result,
 };
 
 use nalgebra::{Vector2, Vector3};
@@ -338,11 +338,33 @@ impl FromNidhogg<Skull> for [f32; 12] {
 
 impl<T> FromLoLA<[T; 25]> for JointArray<T> {
     fn from_lola(value: [T; 25]) -> Self {
-        let [head_yaw, head_pitch, left_shoulder_pitch, left_shoulder_roll, left_elbow_yaw, // bad rustfmt
-             left_elbow_roll, left_wrist_yaw, left_hip_yaw_pitch, left_hip_roll, left_hip_pitch,
-             left_knee_pitch, left_ankle_pitch, left_ankle_roll, right_hip_roll, right_hip_pitch,
-             right_knee_pitch, right_ankle_pitch, right_ankle_roll, right_shoulder_pitch, right_shoulder_roll,
-             right_elbow_yaw, right_elbow_roll, right_wrist_yaw, left_hand, right_hand] = value;
+        let [
+            head_yaw,
+            head_pitch,
+            left_shoulder_pitch,
+            left_shoulder_roll,
+            left_elbow_yaw, // bad rustfmt
+            left_elbow_roll,
+            left_wrist_yaw,
+            left_hip_yaw_pitch,
+            left_hip_roll,
+            left_hip_pitch,
+            left_knee_pitch,
+            left_ankle_pitch,
+            left_ankle_roll,
+            right_hip_roll,
+            right_hip_pitch,
+            right_knee_pitch,
+            right_ankle_pitch,
+            right_ankle_roll,
+            right_shoulder_pitch,
+            right_shoulder_roll,
+            right_elbow_yaw,
+            right_elbow_roll,
+            right_wrist_yaw,
+            left_hand,
+            right_hand,
+        ] = value;
 
         Self {
             head_yaw,
@@ -750,8 +772,7 @@ impl FromLoLA<[f32; 24]> for RightEye {
             r3_b,
             r2_b,
             r1_b,
-            r0_b
-            // bad rustfmt
+            r0_b, // bad rustfmt
         ] = value;
 
         RightEye {

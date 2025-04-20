@@ -2,8 +2,8 @@ use itertools::MultiUnzip;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
-    parse_macro_input, Data, DataStruct, DeriveInput, Fields, FieldsNamed, Generics, Ident, Type,
-    Visibility,
+    Data, DataStruct, DeriveInput, Fields, FieldsNamed, Generics, Ident, Type, Visibility,
+    parse_macro_input,
 };
 
 fn error(loc: &impl syn::spanned::Spanned, msg: &'static str) -> proc_macro::TokenStream {
@@ -75,7 +75,9 @@ fn impl_builder_struct(
         .iter()
         .map(|ident| format!("Set the `{ident}` value to the provided value."))
         .collect();
-    let build_fn_doc = format!("Use the provided values to build a new instance of [`{ident}`].\n\nNot explicitly defined fields will use their [`Default`] value. ");
+    let build_fn_doc = format!(
+        "Use the provided values to build a new instance of [`{ident}`].\n\nNot explicitly defined fields will use their [`Default`] value. "
+    );
 
     let ty_generics_with_default = generic_type_params_with_default(generics);
     let (_impl_generics, ty_generics, where_clause) = generics.split_for_impl();

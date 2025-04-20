@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput, Field, Fields, Generics, Ident, Type};
+use syn::{Data, DeriveInput, Field, Fields, Generics, Ident, Type, parse_macro_input};
 
 /// Derive implementation for function that fills struct with one fixed value.
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
