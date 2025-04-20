@@ -234,7 +234,7 @@ impl<T> JointArray<T> {
     /// let joints = JointArray::<i32>::default();
     /// let values = joints.as_array_ref();
     /// assert_eq!(values.len(), 25);
-    /// assert!(values.iter().all(|&v| v == 0));
+    /// assert!(values.iter().all(|&v| *v == 0));
     /// ```
     pub fn as_array_ref(&self) -> [&T; 25] {
         [
@@ -274,10 +274,10 @@ impl<T> JointArray<T> {
     /// use nidhogg::types::JointArray;
     ///
     /// let mut joints = JointArray::<i32>::default();
-    /// for joint in joints.as_mut() {
+    /// for joint in joints.as_array_mut() {
     ///     *joint = 42;
     /// }
-    /// assert!(joints.as_ref().iter().all(|&v| v == 42));
+    /// assert!(joints.as_array_ref().iter().all(|&v| *v == 42));
     /// ```
     pub fn as_array_mut(&mut self) -> [&mut T; 25] {
         [
