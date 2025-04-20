@@ -19,7 +19,7 @@ pub mod foot_support;
 mod gait;
 pub mod hips;
 mod schedule;
-mod smoothing;
+pub mod smoothing;
 pub mod step;
 pub mod step_context;
 
