@@ -377,6 +377,7 @@ mod cross {
             #[cfg(target_arch = "x86_64")]
             "/usr/local/opt/x86_64-unknown-linux-gnu-alsa-lib/lib/x86_64-unknown-linux-gnu/pkgconfig",
         ),
+        ("PKG_CONFIG_LIBDIR", "/"),
         ("PKG_CONFIG_ALLOW_CROSS", "1"),
         ("TARGET_CC", "x86_64-unknown-linux-gnu-gcc"),
         ("TARGET_CXX", "x86_64-unknown-linux-gnu-g++"),

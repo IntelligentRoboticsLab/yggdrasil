@@ -1,9 +1,9 @@
 [package]
-name = "ml-ort"
 authors.workspace = true
 categories.workspace = true
 edition.workspace = true
 license.workspace = true
+name = "ml-ort"
 rust-version.workspace = true
 version.workspace = true
 
@@ -13,7 +13,10 @@ fast_image_resize = { workspace = true }
 itertools = { workspace = true }
 miette = { workspace = true }
 ndarray = { workspace = true }
-ort = { workspace = true }
+ort = { workspace = true, default-features = false, features = [
+  "download-binaries",
+  "load-dynamic",
+] }
 tasks = { workspace = true }
 thiserror = { workspace = true }
 

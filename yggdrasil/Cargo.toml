@@ -25,7 +25,7 @@ timings = ["dep:tracing-tracy", "bevy/trace"]
 bifrost = { workspace = true }
 heimdall = { workspace = true }
 ml = { workspace = true }
-ml-ort = {workspace = true }
+ml-ort = { workspace = true }
 odal = { workspace = true }
 re_control_comms = { workspace = true }
 spatial = { workspace = true }
@@ -53,7 +53,10 @@ ndarray = { workspace = true }
 nidhogg = { workspace = true, features = ["lola", "bevy"] }
 num = { workspace = true }
 ordered-float = { workspace = true }
-ort = { workspace = true }
+ort = { workspace = true, default-features = false, features = [
+  "download-binaries",
+  "load-dynamic",
+] }
 pathfinding = { workspace = true }
 rand = { workspace = true }
 rerun = { workspace = true }

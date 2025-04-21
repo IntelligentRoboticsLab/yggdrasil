@@ -6072,8 +6072,7 @@ version = "2.0.0-rc.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52afb44b6b0cffa9bf45e4d37e5a4935b0334a51570658e279e9e3e6cf324aa5"
 dependencies = [
- "half",
- "ndarray",
+ "libloading",
  "ort-sys",
  "tracing",
 ]
@@ -8895,7 +8894,7 @@ dependencies = [
 
 [[package]]
 name = "sindri"
-version = "0.23.0"
+version = "0.25.0"
 dependencies = [
  "build_utils",
  "clap",
