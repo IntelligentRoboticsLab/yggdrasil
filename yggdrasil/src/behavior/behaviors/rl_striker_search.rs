@@ -94,6 +94,7 @@ struct Input<'d> {
 
     field_width: f32,
     field_height: f32,
+    border_strip_width: f32,
 }
 
 impl RlBehaviorInput<ModelInput> for Input<'_> {
@@ -105,8 +106,10 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let relative_goal_angle = relative_goal_position.y.atan2(relative_goal_position.x);
 
         vec![
-            (self.goal_position.x - robot_position.x) / (self.field_height + 0.7),
-            (self.goal_position.y - robot_position.y) / (self.field_width + 0.7),
+            (self.goal_position.x - robot_position.x)
+                / (self.field_height + self.border_strip_width),
+            (self.goal_position.y - robot_position.y)
+                / (self.field_width + self.border_strip_width),
             (relative_goal_angle - robot_angle).sin(),
             (relative_goal_angle - robot_angle).cos(),
         ]
@@ -148,6 +151,7 @@ fn run_inference(
 
         field_width: layout_config.field.width,
         field_height: layout_config.field.length,
+        border_strip_width: layout_config.field.border_strip_width,
     };
 
     spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
