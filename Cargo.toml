@@ -101,7 +101,7 @@ plotters = { version = "0.3.7", default-features = false, features = [
   "bitmap_backend",
   "bitmap_encoder",
 ] }
-proc-macro2 = "1.0.94"
+proc-macro2 = "1.0.95"
 quote = "1.0.40"
 rand = "0.9.1"
 
