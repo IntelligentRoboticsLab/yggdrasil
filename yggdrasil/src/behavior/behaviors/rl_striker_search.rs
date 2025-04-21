@@ -1,10 +1,9 @@
-use std::{f32, sync::Arc, time::Instant};
+use std::{f32, time::Instant};
 
 use bevy::prelude::*;
 use ml::{MlModel, MlModelResourceExt, prelude::ModelExecutor};
 use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};
-use rerun::{SerializedComponentBatch, external::arrow};
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
 
@@ -19,10 +18,10 @@ use crate::{
             spawn_rl_behavior,
         },
     },
-    core::{config::layout::LayoutConfig, debug::DebugContext},
+    core::config::layout::LayoutConfig,
     localization::RobotPose,
     motion::walking_engine::{step::Step, step_context::StepContext},
-    nao::{Cycle, NaoManager, Priority},
+    nao::{NaoManager, Priority},
 };
 
 pub struct RlStrikerSearchBehaviorPlugin;
@@ -140,8 +139,6 @@ fn run_inference(
     mut model_executor: ResMut<ModelExecutor<RlStrikerSearchBehaviorModel>>,
     robot_pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
-    ctx: DebugContext,
-    cycle: Res<Cycle>,
 ) {
     let goal_position = Point2::new(layout_config.field.length, 0.0);
 
@@ -153,27 +150,7 @@ fn run_inference(
         field_height: layout_config.field.length,
     };
 
-    ctx.log_with_cycle(
-        "/search_policy/obs",
-        *cycle,
-        &serialized_component_batch_f32(
-            "yggdrasil.components.SearchPolicyObs",
-            input.to_input().iter().copied(),
-        ),
-    );
-
     spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
-}
-
-#[must_use]
-fn serialized_component_batch_f32<I: IntoIterator<Item = f32>>(
-    descriptor: &str,
-    iter: I,
-) -> SerializedComponentBatch {
-    rerun::SerializedComponentBatch::new(
-        Arc::new(arrow::array::Float32Array::from_iter_values(iter)),
-        rerun::ComponentDescriptor::new(descriptor),
-    )
 }
 
 fn handle_inference_output(
@@ -182,20 +159,9 @@ fn handle_inference_output(
     behavior_config: Res<BehaviorConfig>,
     mut nao_manager: ResMut<NaoManager>,
     observe_starting_time: Res<ObserveStartingTime>,
-    ctx: DebugContext,
-    cycle: Res<Cycle>,
 ) {
     step_context
         .request_walk(output.step * behavior_config.rl_striker_search.policy_output_scaling);
-
-    ctx.log_with_cycle(
-        "/search_policy/action",
-        *cycle,
-        &serialized_component_batch_f32(
-            "yggdrasil.components.SearchPolicyAction",
-            [output.step.forward, output.step.left, output.step.turn],
-        ),
-    );
 
     let observe_config = &behavior_config.rl_striker_search;
     look_around(
