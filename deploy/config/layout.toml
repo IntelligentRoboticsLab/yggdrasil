@@ -81,8 +81,8 @@ translation = [-2.85, 3]
 # Initial position of player two.
 [[initial_positions]]
 player_number = 2
-rotation = 90
-translation = [-2.85, -3]
+rotation = -90
+translation = [0, 3]
 
 # Initial position of player three.
 [[initial_positions]]
