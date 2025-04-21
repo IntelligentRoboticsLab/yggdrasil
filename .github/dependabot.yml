@@ -12,6 +12,3 @@ updates:
       dependencies:
         patterns:
           - "*"
-        update-types:
-          - "major"
-          - "minor"
