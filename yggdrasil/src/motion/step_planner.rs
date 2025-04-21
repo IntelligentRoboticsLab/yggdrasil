@@ -36,7 +36,7 @@ impl From<Point2<f32>> for Target {
 
 #[derive(Debug, Clone, Resource)]
 pub struct StepPlanner {
-    pub target: Option<Target>,
+    target: Option<Target>,
     reached_translation_target: bool,
     reached_rotation_target: bool,
 
