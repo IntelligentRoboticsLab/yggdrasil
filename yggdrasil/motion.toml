@@ -1,0 +1,19 @@
+[[motions]]
+[motions.head]
+angles = { pitch = 0.0, jaw = 0.0 }
+end_conditions = [{ field = "giro.x", min = -0.3, max = 0.3, contains = true }]
+interpolate = true
+max_delay = 3.0
+min_delay = 1.0
+start_conditions = ["e.g. arms not below body"]
+stiffness = { pitch = 0.0, jaw = 0.0 }
+
+[[motions]]
+[motions.head]
+angles = { pitch = 0.0, jaw = 0.0 }
+end_conditions = [{ field = "giro.x", min = -0.3, max = 0.3, contains = true }]
+interpolate = true
+max_delay = 3.0
+min_delay = 1.0
+start_conditions = ["e.g. arms not below body"]
+stiffness = { pitch = 0.0, jaw = 0.0 }
