@@ -6,7 +6,7 @@ use ml::{
     prelude::{MlTaskCommandsExt, ModelExecutor},
     util::{argmax, softmax},
 };
-use ndarray::{Array2, Axis};
+use ndarray::{Array1, Array2, Axis};
 
 use crate::{
     core::debug::DebugContext,
@@ -58,9 +58,9 @@ pub struct RefereePoseDetectionModel;
 impl MlModel for RefereePoseDetectionModel {
     type Inputs = Vec<u8>;
 
-    type Outputs = (MlArray<f32>, Vec<f32>);
+    type Outputs = (MlArray<f32>, MlArray<f32>);
 
-    const ONNX_PATH: &'static str = "models/pose_estimator.onnx";
+    const ONNX_PATH: &'static str = "models/yolo11n-pose.onnx";
 }
 
 fn detect_referee_pose(
@@ -70,6 +70,7 @@ fn detect_referee_pose(
     image: Res<Image<Top>>,
     camera_config: Res<CameraConfig>,
     referee_pose_config: Res<RefereePoseConfig>,
+    cycle: Res<Cycle>,
 ) {
     if detect_pose.read().last().is_some() {
         let top_camera = &camera_config.top;
@@ -96,39 +97,29 @@ fn detect_referee_pose(
         )
         .expect("Failed to resize image for visual referee!");
 
+        std::fs::write(format!("poses/out_{}.yuv", cycle.0), resized_image.clone())
+            .expect("failed to write");
+
         let keypoints_shape = detection_config.keypoints_shape;
         commands
             .infer_model(&mut model)
             .with_input(&resized_image)
             .create_resource()
             .spawn(move |model_output| {
-                let (keypoints, class_logits) = model_output;
+                let (_, keypoints) = model_output;
 
-                let estimated_pose = keypoints
-                    .to_shape(keypoints_shape)
-                    .into_diagnostic()
-                    .expect("received pose keypoints with incorrect shape")
+                let best_pose = keypoints
+                    .to_shape((17, 3))
+                    .expect("wrong shape homie")
                     .to_owned();
 
-                let probs = softmax(&class_logits);
+                // let pose_idx = argmax(&probs);
+                let pose = RefereePose::Idle;
 
-                let pose_idx = argmax(&probs);
-                let pose = match pose_idx {
-                    0 => RefereePose::Idle,
-                    1 => RefereePose::GoalKick,
-                    2 => RefereePose::Goal,
-                    3 => RefereePose::PushingFreeKick,
-                    4 => RefereePose::CornerKick,
-                    5 => RefereePose::KickIn,
-                    6 => RefereePose::Ready,
-                    _ => {
-                        tracing::warn!("Detected pose is an unknown referee pose");
-                        return None;
-                    }
-                };
+                println!("pose: {best_pose:?}");
 
                 let output = RefereePoseDetectionOutput {
-                    keypoints: estimated_pose,
+                    keypoints: best_pose,
                     pose,
                 };
                 Some(output)
@@ -166,13 +157,7 @@ fn log_estimated_pose(
         let keypoints: Vec<(f32, f32)> = pose
             .keypoints
             .axis_iter(Axis(0))
-            .map(|v| {
-                (
-                    detection_config.input_width as f32 * v[1]
-                        + (image.width() as u32 - detection_config.crop_width) as f32 / 2.0,
-                    v[0] * detection_config.crop_height as f32,
-                )
-            })
+            .map(|v| (((v[0] / 256.0) * 640.0), ((v[1] / 256.0) * 480.0) as f32))
             .collect();
 
         let point_could =
