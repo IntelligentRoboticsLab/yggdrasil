@@ -50,7 +50,7 @@ impl CommunicatedBalls {
     /// Receive messages.
     // 2.A.a. If no other robot are detecting a ball, we return the same None we had
     // 2.A.b. If there are other robots detecting a ball, we take one from theirs as our own.
-    fn receive_messages(comms: &mut TeamCommunication) -> Option<na::Point2<f32>> {
+    fn receive_messages(comms: &mut TeamCommunication,  pose: &RobotPose) -> Option<na::Point2<f32>> {
         let mut received_ball = None;
 
         while let Some((_, _, ball)) = comms.inbound_mut().take_map(|_, _, what| match what {
@@ -59,8 +59,8 @@ impl CommunicatedBalls {
         }) {
             received_ball = received_ball.or(ball);
         }
-
-        received_ball
+    // If we received a ball, transform it from world coordinates to robot coordinates
+    received_ball.map(|ball| pose.world_to_robot(&ball))
     }
 }
 
@@ -68,7 +68,8 @@ fn communicate_balls_system(
     mut communicated_balls: ResMut<CommunicatedBalls>,
     mut tc: ResMut<TeamCommunication>,
     ball_tracker: Res<BallTracker>,
-    mut team_ball_position: ResMut<TeamBallPosition>,
+    mut team_ball_position: ResMut<TeamBallPosition>,    
+    pose: Res<RobotPose>,
 ) {
     let optional_ball_position = if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
         Some(ball_tracker.state().0)
@@ -79,9 +80,14 @@ fn communicate_balls_system(
     // 1. Check if it has changed enough and if so, we send a message.
     // let optional_ball_position = ball_position.map(|ball_position| ball_position.0);
     if communicated_balls.change_enough(&optional_ball_position) {
-        communicated_balls.send_message(optional_ball_position, &mut tc)
+        if let Some(local_ball_pos) = optional_ball_position {
+            let transformed_position = optional_ball_position.map(|pos| pose.robot_to_world(&pos));
+            communicated_balls.send_message(transformed_position, &mut tc)
+        } else {
+            communicated_balls.send_message(None, &mut tc); // optional_ball_position = None in this case
+        }
     }
 
     team_ball_position.0 =
-        optional_ball_position.or_else(|| CommunicatedBalls::receive_messages(&mut tc));
+        optional_ball_position.or_else(|| CommunicatedBalls::receive_messages(&mut tc, &pose));
 }
