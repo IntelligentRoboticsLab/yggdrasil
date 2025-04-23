@@ -33,7 +33,7 @@ pub struct CommunicatedBalls {
 
 impl CommunicatedBalls {
     /// Check it the position has changed enough from last frame.
-    fn change_enough(&mut self, ball: &Option<na::Point2<f32>>) -> bool {
+    fn change_enough(&mut self, ball: Option<&na::Point2<f32>>) -> bool {
         match (ball, &self.sent) {
             (None, None) => false,
             (None, Some(_)) => true,
@@ -85,7 +85,7 @@ fn communicate_balls_system(
 
     // 1. Check if it has changed enough and if so, we send a message.
     // let optional_ball_position = ball_position.map(|ball_position| ball_position.0);
-    if communicated_balls.change_enough(&optional_ball_position) {
+    if communicated_balls.change_enough(optional_ball_position.as_ref()) {
         let transformed_position = optional_ball_position.map(|pos| pose.robot_to_world(&pos));
         communicated_balls.send_message(transformed_position, &mut tc);
     }
