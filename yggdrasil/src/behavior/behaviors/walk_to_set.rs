@@ -50,8 +50,7 @@ impl Behavior for WalkToSet {
 
 fn walk_to_set(
     pose: Res<RobotPose>,
-    layout_config: Res<LayoutConfig>,
-    player_config: Res<PlayerConfig>,
+    (layout_config, player_config): (Res<LayoutConfig>, Res<PlayerConfig>),
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
