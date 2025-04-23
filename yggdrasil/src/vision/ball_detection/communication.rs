@@ -86,12 +86,8 @@ fn communicate_balls_system(
     // 1. Check if it has changed enough and if so, we send a message.
     // let optional_ball_position = ball_position.map(|ball_position| ball_position.0);
     if communicated_balls.change_enough(&optional_ball_position) {
-        if let Some(local_ball_pos) = optional_ball_position {
-            let transformed_position = optional_ball_position.map(|pos| pose.robot_to_world(&pos));
-            communicated_balls.send_message(transformed_position, &mut tc)
-        } else {
-            communicated_balls.send_message(None, &mut tc); // optional_ball_position = None in this case
-        }
+        let transformed_position = optional_ball_position.map(|pos| pose.robot_to_world(&pos));
+        communicated_balls.send_message(transformed_position, &mut tc);
     }
 
     team_ball_position.0 =
