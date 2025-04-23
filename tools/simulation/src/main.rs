@@ -569,6 +569,12 @@ fn create_default_configs() -> (YggdrasilConfig, BehaviorConfig, GameControllerC
                 footbumpers: FootBumperConfig {
                     min_detection_count: 0,
                     max_inactivity_time: Default::default(),
+                    malfunction_count: 0,
+                    object_angle: 0.0,
+                    object_distance: 0.0,
+                    object_radius: 0.0,
+                    merge_distance: 0.0,
+                    ttl: Default::default(),
                 },
             },
             game_controller: GameControllerConfig {
