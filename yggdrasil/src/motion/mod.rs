@@ -3,6 +3,7 @@ use bevy::prelude::*;
 
 pub mod energy_optimizer;
 pub mod keyframe;
+pub mod motion_manager;
 pub mod path_finding;
 pub mod step_planner;
 pub mod walking_engine;
@@ -17,5 +18,6 @@ impl PluginGroup for MotionPlugins {
             .add(step_planner::StepPlannerPlugin)
             .add(energy_optimizer::EnergyOptimizerPlugin)
             .add(walking_engine::WalkingEnginePlugin)
+            .add(motion_manager::MotionManagerPlugin)
     }
 }
