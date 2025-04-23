@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use heimdall::{CameraLocation, Top};
+use miette::IntoDiagnostic;
 use ml::{
     MlArray, MlModel, MlModelResourceExt,
     prelude::{MlTaskCommandsExt, ModelExecutor},
@@ -105,7 +106,8 @@ fn detect_referee_pose(
 
                 let best_pose = keypoints
                     .to_shape(keypoints_shape)
-                    .expect("wrong shape homie")
+                    .into_diagnostic()
+                    .expect("received keypoints of unexpected shape")
                     .to_owned();
 
                 let pose_idx = argmax(&softmax_scores);
