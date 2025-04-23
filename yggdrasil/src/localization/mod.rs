@@ -22,6 +22,7 @@ use rerun::{Rotation3D, TimeColumn, components::RotationAxisAngle};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    behavior::primary_state::PrimaryState,
     core::{
         config::{layout::LayoutConfig, showtime::PlayerConfig},
         debug::DebugContext,
@@ -44,12 +45,14 @@ impl Plugin for LocalizationPlugin {
             .add_systems(
                 PreUpdate,
                 (
-                    (odometry_update, line_update.run_if(not(motion_is_unsafe)))
-                        .run_if(not(is_penalized)),
+                    (
+                        odometry_update,
+                        line_update.run_if(not(in_standby.or(motion_is_unsafe))),
+                    )
+                        .run_if(not(is_penalized.or(in_sitting))),
                     filter_hypotheses,
                     reset_hypotheses,
                 )
-                    .chain()
                     .after(odometry::update_odometry),
             )
             .add_systems(PostUpdate, (visualize_pose, visualize_pose_hypotheses));
@@ -94,6 +97,14 @@ fn motion_is_unsafe(
     keyframe_executor.active_motion.is_some()
         || !matches!(motion_state.get(), Gait::Standing | Gait::Walking)
         || !contacts.ground
+}
+
+fn in_sitting(state: Res<PrimaryState>) -> bool {
+    matches!(state.as_ref(), PrimaryState::Sitting)
+}
+
+fn in_standby(state: Res<PrimaryState>) -> bool {
+    matches!(state.as_ref(), PrimaryState::Standby)
 }
 
 fn setup_pose_visualization(dbg: DebugContext) {
