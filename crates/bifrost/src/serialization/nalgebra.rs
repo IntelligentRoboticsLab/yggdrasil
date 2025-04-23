@@ -3,7 +3,7 @@
 use std::io::{Read, Write};
 
 use nalgebra::{Dim, Matrix, Scalar, Storage, StorageMut, 
-    allocator::Allocator, base::default_allocator::DefaultAllocator, DinName, OPoint};
+    allocator::Allocator, base::default_allocator::DefaultAllocator, DimName, OPoint};
 
 use super::{Decode, Encode};
 
