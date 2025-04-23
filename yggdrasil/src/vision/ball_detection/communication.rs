@@ -76,12 +76,9 @@ fn communicate_balls_system(
     ball_tracker: Res<BallTracker>,
     mut team_ball_position: ResMut<TeamBallPosition>,
     pose: Res<RobotPose>,
+    mut last_received: Local<Option<Point2<f32>>>,
 ) {
-    let optional_ball_position = if let BallHypothesis::Stationary(_) = ball_tracker.cutoff() {
-        Some(ball_tracker.state().0)
-    } else {
-        None
-    };
+    let optional_ball_position = ball_tracker.stationary_ball();
 
     // 1. Check if it has changed enough and if so, we send a message.
     // let optional_ball_position = ball_position.map(|ball_position| ball_position.0);
@@ -90,6 +87,9 @@ fn communicate_balls_system(
         communicated_balls.send_message(transformed_position, &mut tc);
     }
 
-    team_ball_position.0 =
-        optional_ball_position.or_else(|| CommunicatedBalls::receive_messages(&mut tc, &pose));
+    if let Some(new_pos) = CommunicatedBalls::receive_messages(&mut tc, &pose) {
+        *last_received = Some(new_pos);
+    }
+
+    team_ball_position.0 = optional_ball_position.or_else(|| *last_received);
 }
