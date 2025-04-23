@@ -1,13 +1,17 @@
+use super::button::{LeftFootButtons, RightFootButtons};
+use super::SensorConfig;
 use crate::prelude::*;
+use crate::{
+    localization::RobotPose,
+    motion::path_finding::Obstacle,
+    motion::step_planner::{DynamicObstacle, StepPlanner},
+    nao::{NaoManager, Priority},
+};
 use bevy::prelude::*;
+use nidhogg::types::color;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
 use std::time::{Duration, Instant};
-// use std::collections::VecDeque;
-use super::button::{LeftFootButtons, RightFootButtons};
-use super::SensorConfig;
-use crate::nao::{NaoManager, Priority};
-use nidhogg::types::color;
 
 use std::fs;
 use std::io::Write;
@@ -18,7 +22,7 @@ impl Plugin for FootBumperPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Sensor, obstacle_detection)
             .init_resource::<ObstacleStateFromBumpers>()
-            .init_resource::<FootBumperState>();
+            .init_resource::<FootBumperValues>();
     }
 }
 
@@ -27,9 +31,6 @@ impl Plugin for FootBumperPlugin {
 pub struct ObstacleStateFromBumpers {
     current_state: ObstacleStatus,
     prev_state: ObstacleStatus,
-    pub enabled: bool,
-    // obstacle_count: 0,
-    // obstacle_start_time: None,
 }
 
 impl Default for ObstacleStateFromBumpers {
@@ -37,36 +38,41 @@ impl Default for ObstacleStateFromBumpers {
         Self {
             current_state: ObstacleStatus::NotDetected,
             prev_state: ObstacleStatus::NotDetected,
-            enabled: true,
         }
     }
 }
 
 impl ObstacleStateFromBumpers {
-    /// Get the next obstacle state, based on the foot bumper data.
-    pub fn update_state(&mut self, config: &FootBumperConfig, footbumper: &FootBumperState) {
+    /// Get the next obstacle state, based on the foot bumper values.
+    pub fn update_state(&mut self, config: &FootBumperConfig, footbumper: &FootBumperValues) {
         self.prev_state = self.current_state;
 
         let left_sum = footbumper.left_outer_count + footbumper.left_inner_count;
         let right_sum = footbumper.right_outer_count + footbumper.right_inner_count;
         let inner_sum = footbumper.left_inner_count + footbumper.right_inner_count;
 
-        if inner_sum >= config.min_detection_count
-            || left_sum >= config.min_detection_count && right_sum >= config.min_detection_count
-        {
-            self.current_state = ObstacleStatus::Middle;
-        } else if left_sum >= config.min_detection_count {
-            self.current_state = ObstacleStatus::Left;
-        } else if right_sum >= config.min_detection_count {
-            self.current_state = ObstacleStatus::Right;
-        } else {
-            self.current_state = ObstacleStatus::NotDetected;
-        }
+        let left_detected = left_sum >= config.min_detection_count && footbumper.left_active;
+        let right_detected = right_sum >= config.min_detection_count && footbumper.right_active;
+        let inner_detected = inner_sum >= config.min_detection_count
+            && footbumper.left_active
+            && footbumper.right_active
+            && left_sum > 0
+            && right_sum > 0;
 
-        // Interpret Left <-> Right transition as Middle.
+        self.current_state = if inner_detected || (left_detected && right_detected) {
+            ObstacleStatus::Middle
+        } else if left_detected {
+            ObstacleStatus::Left
+        } else if right_detected {
+            ObstacleStatus::Right
+        } else {
+            ObstacleStatus::NotDetected
+        };
+
+        // Interpret L <-> R transition as an object in the middle.
         self.current_state = match (self.prev_state, self.current_state) {
-            (ObstacleStatus::Left, ObstacleStatus::Right) |
-            (ObstacleStatus::Right, ObstacleStatus::Left) => ObstacleStatus::Middle,
+            (ObstacleStatus::Left, ObstacleStatus::Right)
+            | (ObstacleStatus::Right, ObstacleStatus::Left) => ObstacleStatus::Middle,
             _ => self.current_state,
         };
     }
@@ -109,36 +115,49 @@ pub enum ObstacleStatus {
 pub struct FootBumperConfig {
     /// Minimum number of pressure detections needed to consider it an obstacle.
     pub min_detection_count: i32,
-    /// Time of no contact after which contact counts will be reset.
+    /// Time of no contact after which the foot bumper values will be reset.
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub max_inactivity_time: Duration,
+    /// Minimum number of pressure detections needed for one bumper to consider it malfunctioning.
+    pub malfunction_count: i32,
+    /// Angle that is used in spawning an obstacle on the left or right.
+    pub object_angle: f32,
+    /// Distance from robot to object that is used in spawning an obstacle.
+    pub object_distance: f32,
+    /// Radius of an object that will be spawned.
+    pub object_radius: f32,
+    /// Merge distance of an object that will be spawned.
+    pub merge_distance: f32,
+    /// Time-to-live of an object that will be spawned.
+    #[serde_as(as = "DurationMilliSeconds<u64>")]
+    pub ttl: Duration,
 }
 
 #[derive(Resource, Debug)]
-pub struct FootBumperState {
-    // Counts the consecutive bumps and resets after a certain time of no detections.
+pub struct FootBumperValues {
+    // Counts bumps and resets to 0 after a certain time of no detections.
     left_outer_count: i32,
     left_inner_count: i32,
     right_outer_count: i32,
     right_inner_count: i32,
-    // Contact buffers containing the history of bumps
-    // left_contact_buffer: VecDeque<bool>,
-    // right_contact_buffer: VecDeque<bool>,
-    // Time since the last detected contact
+    // Whether the foot bumper will be in use.
+    left_active: bool,
+    right_active: bool,
+    // Time since the last detected contact.
     left_prev_bump_time: Option<Instant>,
     right_prev_bump_time: Option<Instant>,
     debug_file: std::fs::File, // Remove later
 }
 
-impl Default for FootBumperState {
+impl Default for FootBumperValues {
     fn default() -> Self {
-        FootBumperState {
+        FootBumperValues {
             left_outer_count: 0,
             left_inner_count: 0,
             right_outer_count: 0,
             right_inner_count: 0,
-            // left_contact_buffer: VecDeque::from(vec![false; 25]),    // to do make config
-            // right_contact_buffer: VecDeque::from(vec![false; 25]),   // to do make config
+            left_active: true,
+            right_active: true,
             left_prev_bump_time: None,
             right_prev_bump_time: None,
             debug_file: fs::File::options()
@@ -150,14 +169,13 @@ impl Default for FootBumperState {
     }
 }
 
-impl FootBumperState {
-    pub fn update_bumper_data(
+impl FootBumperValues {
+    pub fn update_bumper_values(
         &mut self,
         config: &FootBumperConfig,
         left_foot: &LeftFootButtons,
         right_foot: &RightFootButtons,
     ) {
-        // Change into bool
         let left_outer = left_foot.left.is_pressed();
         let left_inner = left_foot.right.is_pressed();
         let right_outer = right_foot.right.is_pressed();
@@ -189,7 +207,7 @@ impl FootBumperState {
             self.right_prev_bump_time = Some(Instant::now());
         }
 
-        // Resets left inner and left outer bumper data
+        // Reset bumper values after inactivity
         if let Some(left_prev_bump_time) = self.left_prev_bump_time {
             if left_prev_bump_time.elapsed() >= config.max_inactivity_time {
                 self.left_outer_count = 0;
@@ -198,7 +216,6 @@ impl FootBumperState {
             }
         }
 
-        // Resets right inner and right outer bumper data
         if let Some(right_prev_bump_time) = self.right_prev_bump_time {
             if right_prev_bump_time.elapsed() >= config.max_inactivity_time {
                 self.right_outer_count = 0;
@@ -207,7 +224,7 @@ impl FootBumperState {
             }
         }
 
-        // Will remove later
+        // Remove later
         writeln!(
             self.debug_file,
             "{:?}, {:?}, {:?}, {:?},",
@@ -217,68 +234,155 @@ impl FootBumperState {
             self.right_inner_count
         )
         .unwrap();
+    }
 
+    /// Sets foot bumpers inactive if they appear to be constantly in a pressed state,
+    /// and back to active if they get out of the constantly pressed state.
+    pub fn ignore_foot(&mut self, config: &FootBumperConfig) {
+        let left_malfunction = self.left_inner_count >= config.malfunction_count
+            || self.left_outer_count >= config.malfunction_count;
+        let right_malfunction = self.right_inner_count >= config.malfunction_count
+            || self.right_outer_count >= config.malfunction_count;
+
+        self.left_active = !left_malfunction;
+        self.right_active = !right_malfunction;
     }
 }
 
 fn obstacle_detection(
     config: Res<SensorConfig>,
-    mut footbumpers: ResMut<FootBumperState>,
+    mut footbumpers: ResMut<FootBumperValues>,
     mut obstacle_state: ResMut<ObstacleStateFromBumpers>,
     mut manager: ResMut<NaoManager>,
+    mut step_planner: ResMut<StepPlanner>,
+    robot_pose: Res<RobotPose>,
     left_foot: Res<LeftFootButtons>,
     right_foot: Res<RightFootButtons>,
 ) {
     let config = &config.footbumpers;
-    footbumpers.update_bumper_data(config, &left_foot, &right_foot);
+    footbumpers.update_bumper_values(config, &left_foot, &right_foot);
     obstacle_state.update_state(config, &footbumpers);
 
-    if obstacle_state.new_obstacle_left()
-        || obstacle_state.new_obstacle_right()
-        || obstacle_state.new_obstacle_middle()
-    {
-        println!("new_obstacle_left = {}", obstacle_state.new_obstacle_left());
+    // if obstacle_state.new_obstacle_left()
+    //     || obstacle_state.new_obstacle_right()
+    //     || obstacle_state.new_obstacle_middle()
+    // {
+    //     println!("new_obstacle_left = {}", obstacle_state.new_obstacle_left());
+    //     println!(
+    //         "new_obstacle_right = {}",
+    //         obstacle_state.new_obstacle_right()
+    //     );
+    //     println!(
+    //         "new_obstacle_middle = {}",
+    //         obstacle_state.new_obstacle_middle()
+    //     );
+    //     println!("----------------");
+    // }
+
+    // Show current object detection state from the foot bumpers by showing lights.
+    // Maybe should change when they light up: to just detected
+
+    // match obstacle_state.current_state {
+    //     ObstacleStatus::Left => {
+    //         manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
+    //         manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
+    //     }
+    //     ObstacleStatus::Right => {
+    //         manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
+    //         manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
+    //     }
+    //     ObstacleStatus::Middle => {
+    //         manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
+    //         manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
+    //     }
+    //     ObstacleStatus::NotDetected => {
+    //         manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
+    //         manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
+    //     }
+    // }
+
+    if obstacle_state.new_obstacle_left() {
+        let angle = config.object_angle;
+        spawn_obstacle(
+            &mut step_planner,
+            &robot_pose,
+            config.object_radius,
+            angle,
+            config.object_distance,
+            config.merge_distance,
+            config.ttl,
+        );
+        println!(
+            "new_obstacle_left = {}",
+            obstacle_state.new_obstacle_left()
+        );
+        manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
+        manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
+    } else if obstacle_state.new_obstacle_right() {
+        let angle = -config.object_angle;
+        spawn_obstacle(
+            &mut step_planner,
+            &robot_pose,
+            config.object_radius,
+            angle,
+            config.object_distance,
+            config.merge_distance,
+            config.ttl,
+        );
         println!(
             "new_obstacle_right = {}",
             obstacle_state.new_obstacle_right()
+        );
+        manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
+        manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
+    } else if obstacle_state.new_obstacle_middle() {
+        spawn_obstacle(
+            &mut step_planner,
+            &robot_pose,
+            config.object_radius,
+            0.0,
+            config.object_distance,
+            config.merge_distance,
+            config.ttl,
         );
         println!(
             "new_obstacle_middle = {}",
             obstacle_state.new_obstacle_middle()
         );
-        println!("----------------");
-    }
-
-    // Show current object detection state from the foot bumpers by showing lights.
-    // Maybe should change when they light up.
-    match obstacle_state.current_state {
-        ObstacleStatus::Left => {
-            manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
-            manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
-        }
-        ObstacleStatus::Right => {
-            manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
-            manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
-        }
-        ObstacleStatus::Middle => {
-            manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
-            manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
-        }
-        ObstacleStatus::NotDetected => {
-            manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
-            manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
-        }
+        manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
+        manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
+    } else {
+        manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
+        manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
     }
 }
 
-// Maybe nicer to have this as impl of footbumperstate(?)
-// fn check_working_bumpers(
-// Count based on buffer
-// let left_buffer_count = self.left_contact_buffer.iter().filter(|&&x| x).count() as i32;
-// let right_buffer_count = self.right_contact_buffer.iter().filter(|&&x| x).count() as i32;
-// Push and pop the buffer
-// self.left_contact_buffer.push_back(left_outer || left_inner);
-// self.left_contact_buffer.pop_front();
-// self.right_contact_buffer.push_back(right_outer || right_inner);
-// self.right_contact_buffer.pop_front();
-// )
+fn spawn_obstacle(
+    step_planner: &mut StepPlanner,
+    robot_pose: &RobotPose,
+    radius: f32,
+    angle: f32,
+    distance: f32,
+    merge_distance: f32,
+    ttl: Duration,
+) {
+    // Get the center coordinates of new object.
+    let dx = distance * angle.cos();
+    let dy = distance * angle.sin();
+    let rotated_dx =
+        dx * robot_pose.world_rotation().cos() - dy * robot_pose.world_rotation().sin();
+    let rotated_dy =
+        dx * robot_pose.world_rotation().sin() + dy * robot_pose.world_rotation().cos();
+    let new_x = robot_pose.world_position().x + rotated_dx;
+    let new_y = robot_pose.world_position().x + rotated_dy;
+
+    println!("robot x,y: {}", robot_pose.world_position());
+    println!("obstacle x,y {}, {}", new_x, new_y);
+
+    let obstacle = DynamicObstacle {
+        obs: Obstacle::new(new_x, new_y, radius),
+        ttl: Instant::now() + ttl, // Is this necessary (???)
+    };
+
+    step_planner.add_dynamic_obstacle(obstacle, merge_distance);
+}
