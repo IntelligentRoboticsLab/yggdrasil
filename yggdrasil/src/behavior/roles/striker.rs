@@ -11,7 +11,7 @@ use crate::{
     localization::RobotPose,
     motion::walking_engine::step::Step,
     nao::{NaoManager, Priority},
-    vision::ball_detection::ball_tracker::BallTracker,
+    vision::ball_detection::TeamBallPosition,
 };
 
 const WALK_WITH_BALL_ANGLE: f32 = 0.3;
@@ -38,10 +38,11 @@ pub fn striker_role(
     mut commands: Commands,
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
-    ball_tracker: Res<BallTracker>,
+    team_ball_position: Res<TeamBallPosition>,
     mut nao_manager: ResMut<NaoManager>,
+    mut state: ResMut<Striker>,
 ) {
-    let Some(relative_ball) = ball_tracker.stationary_ball() else {
+    let Some(relative_ball) = team_ball_position.0 else {
         commands.set_behavior(RlStrikerSearchBehavior);
         return;
     };

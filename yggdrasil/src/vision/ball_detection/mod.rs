@@ -2,6 +2,7 @@
 
 pub mod ball_tracker;
 pub mod classifier;
+mod communication;
 pub mod proposal;
 
 use std::{sync::Arc, time::Duration};
@@ -9,6 +10,8 @@ use std::{sync::Arc, time::Duration};
 pub use ball_tracker::BallHypothesis;
 use ball_tracker::BallTracker;
 use bevy::prelude::*;
+use communication::CommunicatedBallsPlugin;
+pub use communication::TeamBallPosition;
 use heimdall::{Bottom, CameraLocation, Top};
 use nidhogg::types::{FillExt, LeftEye, color};
 use proposal::BallProposalConfigs;
@@ -31,6 +34,7 @@ pub struct BallDetectionPlugin;
 
 impl Plugin for BallDetectionPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugins(CommunicatedBallsPlugin);
         app.init_config::<BallDetectionConfig>();
         app.add_plugins((
             proposal::BallProposalPlugin::<Top>::default(),
@@ -144,6 +148,7 @@ fn log_3d_balls(
 
     if let BallHypothesis::Stationary(max_variance) = state {
         let pos = robot_pose.robot_to_world(&ball_tracker.state());
+        
         if last_logged.is_none_or(|last_logged_cycle| last_ball_tracker_update > last_logged_cycle)
         {
             *last_logged = Some(last_ball_tracker_update);
