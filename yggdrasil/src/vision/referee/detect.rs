@@ -69,7 +69,6 @@ fn detect_referee_pose(
     image: Res<Image<Top>>,
     camera_config: Res<CameraConfig>,
     referee_pose_config: Res<RefereePoseConfig>,
-    cycle: Res<Cycle>,
 ) {
     if detect_pose.read().last().is_some() {
         let top_camera = &camera_config.top;
