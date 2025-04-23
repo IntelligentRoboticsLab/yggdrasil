@@ -3,7 +3,9 @@ use nalgebra::{self as na, Point2};
 
 use crate::{
     communication::{TeamCommunication, TeamMessage},
+    core::debug::DebugContext,
     localization::RobotPose,
+    nao::Cycle,
 };
 
 // Import camera proposals
@@ -77,6 +79,8 @@ fn communicate_balls_system(
     mut team_ball_position: ResMut<TeamBallPosition>,
     pose: Res<RobotPose>,
     mut last_received: Local<Option<Point2<f32>>>,
+    ctx: DebugContext,
+    cycle: Res<Cycle>,
 ) {
     let optional_ball_position = ball_tracker.stationary_ball();
 
@@ -92,4 +96,15 @@ fn communicate_balls_system(
     }
 
     team_ball_position.0 = optional_ball_position.or_else(|| *last_received);
+
+    if let Some(pos) = team_ball_position.0 {
+        let global = pose.robot_to_world(&pos);
+        ctx.log_with_cycle(
+            "/team_ball",
+            *cycle,
+            &rerun::Points3D::new([(global.x, global.y, 0.01)])
+                .with_radii([0.1])
+                .with_labels(["team_ball"]),
+        );
+    }
 }
