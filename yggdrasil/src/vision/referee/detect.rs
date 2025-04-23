@@ -96,9 +96,6 @@ fn detect_referee_pose(
         )
         .expect("Failed to resize image for visual referee!");
 
-        std::fs::write(format!("poses/out_{}.yuv", cycle.0), resized_image.clone())
-            .expect("failed to write");
-
         let keypoints_shape = detection_config.keypoints_shape;
         commands
             .infer_model(&mut model)
