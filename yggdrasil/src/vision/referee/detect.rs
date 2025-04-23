@@ -58,7 +58,7 @@ pub struct RefereePoseDetectionModel;
 impl MlModel for RefereePoseDetectionModel {
     type Inputs = Vec<u8>;
 
-    type Outputs = (MlArray<f32>, MlArray<f32>);
+    type Outputs = (Vec<f32>, MlArray<f32>);
 
     const ONNX_PATH: &'static str = "models/pose_estimator.onnx";
 }
@@ -114,9 +114,21 @@ fn detect_referee_pose(
                     .to_owned();
 
                 // let pose_idx = argmax(&probs);
-                let pose = RefereePose::Idle;
 
-                println!("pose: {softmax_scores:?}");
+                let pose_idx = argmax(&softmax_scores);
+                let pose = match pose_idx {
+                    0 => RefereePose::Idle,
+                    1 => RefereePose::GoalKick,
+                    2 => RefereePose::Goal,
+                    3 => RefereePose::PushingFreeKick,
+                    4 => RefereePose::CornerKick,
+                    5 => RefereePose::KickIn,
+                    6 => RefereePose::Ready,
+                    _ => {
+                        tracing::warn!("Detected pose is an unknown referee pose");
+                        return None;
+                    }
+                };
 
                 let output = RefereePoseDetectionOutput {
                     keypoints: best_pose,
@@ -159,9 +171,9 @@ fn log_estimated_pose(
             .axis_iter(Axis(0))
             .map(|v| {
                 (
-                    ((v[0] / 256.0) * 640.0),
-                    // + (image.width() as u32 - detection_config.crop_width) as f32 / 2.0,
-                    ((v[1] / 256.0) * 480.0) as f32,
+                    ((v[0] / detection_config.input_width as f32) * 320.0)
+                        + (image.width() as u32 - detection_config.crop_width) as f32 / 2.0,
+                    ((v[1] / detection_config.input_height as f32) * image.height() as f32),
                 )
             })
             .collect();

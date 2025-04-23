@@ -12,4 +12,4 @@ input_height = 320
 keypoints_shape = [17, 3]
 
 [recognition]
-referee_consecutive_pose_detections = 2
+referee_consecutive_pose_detections = 4
