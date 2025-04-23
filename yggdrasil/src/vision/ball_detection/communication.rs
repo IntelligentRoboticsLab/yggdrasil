@@ -1,10 +1,13 @@
 use bevy::prelude::*;
 use nalgebra::{self as na, Point2};
 
-use crate::communication::{TeamCommunication, TeamMessage};
+use crate::{
+    communication::{TeamCommunication, TeamMessage},
+    localization::RobotPose,
+};
 
 // Import camera proposals
-use super::{Hypothesis, ball_tracker::BallTracker};
+use super::ball_tracker::{BallHypothesis, BallTracker};
 
 // Constant for the minimum acceptable change
 const MIN_CHANGE: f32 = 0.1;
@@ -74,7 +77,7 @@ fn communicate_balls_system(
     mut team_ball_position: ResMut<TeamBallPosition>,
     pose: Res<RobotPose>,
 ) {
-    let optional_ball_position = if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
+    let optional_ball_position = if let BallHypothesis::Stationary(_) = ball_tracker.cutoff() {
         Some(ball_tracker.state().0)
     } else {
         None

@@ -40,7 +40,6 @@ pub fn striker_role(
     layout_config: Res<LayoutConfig>,
     team_ball_position: Res<TeamBallPosition>,
     mut nao_manager: ResMut<NaoManager>,
-    mut state: ResMut<Striker>,
 ) {
     let Some(relative_ball) = team_ball_position.0 else {
         commands.set_behavior(RlStrikerSearchBehavior);
