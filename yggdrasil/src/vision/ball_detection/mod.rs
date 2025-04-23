@@ -148,7 +148,7 @@ fn log_3d_balls(
 
     if let BallHypothesis::Stationary(max_variance) = state {
         let pos = robot_pose.robot_to_world(&ball_tracker.state());
-        
+
         if last_logged.is_none_or(|last_logged_cycle| last_ball_tracker_update > last_logged_cycle)
         {
             *last_logged = Some(last_ball_tracker_update);

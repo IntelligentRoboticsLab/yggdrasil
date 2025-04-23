@@ -413,7 +413,7 @@ where
             Some(inner) => {
                 write.write_u8(1)?;
                 inner.encode(write)
-            },
+            }
             None => Ok(write.write_u8(0)?),
         }
     }
@@ -428,7 +428,7 @@ where
 
 impl<T> Decode for Option<T>
 where
-    T: Decode
+    T: Decode,
 {
     fn decode(mut read: impl Read) -> Result<Self>
     where

@@ -4,7 +4,7 @@ use nalgebra::{self as na, Point2};
 use crate::communication::{TeamCommunication, TeamMessage};
 
 // Import camera proposals
-use super::{ball_tracker::BallTracker, Hypothesis};
+use super::{Hypothesis, ball_tracker::BallTracker};
 
 // Constant for the minimum acceptable change
 const MIN_CHANGE: f32 = 0.1;
@@ -50,7 +50,10 @@ impl CommunicatedBalls {
     /// Receive messages.
     // 2.A.a. If no other robot are detecting a ball, we return the same None we had
     // 2.A.b. If there are other robots detecting a ball, we take one from theirs as our own.
-    fn receive_messages(comms: &mut TeamCommunication,  pose: &RobotPose) -> Option<na::Point2<f32>> {
+    fn receive_messages(
+        comms: &mut TeamCommunication,
+        pose: &RobotPose,
+    ) -> Option<na::Point2<f32>> {
         let mut received_ball = None;
 
         while let Some((_, _, ball)) = comms.inbound_mut().take_map(|_, _, what| match what {
@@ -59,8 +62,8 @@ impl CommunicatedBalls {
         }) {
             received_ball = received_ball.or(ball);
         }
-    // If we received a ball, transform it from world coordinates to robot coordinates
-    received_ball.map(|ball| pose.world_to_robot(&ball))
+        // If we received a ball, transform it from world coordinates to robot coordinates
+        received_ball.map(|ball| pose.world_to_robot(&ball))
     }
 }
 
@@ -68,7 +71,7 @@ fn communicate_balls_system(
     mut communicated_balls: ResMut<CommunicatedBalls>,
     mut tc: ResMut<TeamCommunication>,
     ball_tracker: Res<BallTracker>,
-    mut team_ball_position: ResMut<TeamBallPosition>,    
+    mut team_ball_position: ResMut<TeamBallPosition>,
     pose: Res<RobotPose>,
 ) {
     let optional_ball_position = if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
