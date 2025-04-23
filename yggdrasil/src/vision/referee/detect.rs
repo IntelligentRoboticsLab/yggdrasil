@@ -157,7 +157,13 @@ fn log_estimated_pose(
         let keypoints: Vec<(f32, f32)> = pose
             .keypoints
             .axis_iter(Axis(0))
-            .map(|v| (((v[0] / 256.0) * 640.0), ((v[1] / 256.0) * 480.0) as f32))
+            .map(|v| {
+                (
+                    ((v[0] / 256.0) * 640.0),
+                    // + (image.width() as u32 - detection_config.crop_width) as f32 / 2.0,
+                    ((v[1] / 256.0) * 480.0) as f32,
+                )
+            })
             .collect();
 
         let point_could =
