@@ -1,12 +1,11 @@
 use bevy::prelude::*;
 use heimdall::{CameraLocation, Top};
-use miette::IntoDiagnostic;
 use ml::{
     MlArray, MlModel, MlModelResourceExt,
     prelude::{MlTaskCommandsExt, ModelExecutor},
-    util::{argmax, softmax},
+    util::argmax,
 };
-use ndarray::{Array1, Array2, Axis};
+use ndarray::{Array2, Axis};
 
 use crate::{
     core::debug::DebugContext,
@@ -109,7 +108,7 @@ fn detect_referee_pose(
                 let (softmax_scores, keypoints) = model_output;
 
                 let best_pose = keypoints
-                    .to_shape((17, 3))
+                    .to_shape(keypoints_shape)
                     .expect("wrong shape homie")
                     .to_owned();
 
@@ -171,7 +170,8 @@ fn log_estimated_pose(
             .axis_iter(Axis(0))
             .map(|v| {
                 (
-                    ((v[0] / detection_config.input_width as f32) * 320.0)
+                    ((v[0] / detection_config.input_width as f32)
+                        * detection_config.crop_width as f32)
                         + (image.width() as u32 - detection_config.crop_width) as f32 / 2.0,
                     ((v[1] / detection_config.input_height as f32) * image.height() as f32),
                 )
