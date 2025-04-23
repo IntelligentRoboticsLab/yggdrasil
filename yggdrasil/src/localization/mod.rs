@@ -99,10 +99,10 @@ fn motion_is_unsafe(
 /// Checks if we are in any of the pre-walking states.
 ///
 /// We assume we start in the perfect position, so we don't need to do any type of localization.
-fn started_walking(state: Res<PrimaryState>) -> bool {
+pub fn started_walking(state: Res<PrimaryState>) -> bool {
     matches!(
         state.as_ref(),
-        PrimaryState::Sitting | PrimaryState::Standby
+        PrimaryState::Sitting | PrimaryState::Standby | PrimaryState::Initial
     )
 }
 
