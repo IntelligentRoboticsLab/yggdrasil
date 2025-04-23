@@ -112,8 +112,6 @@ fn detect_referee_pose(
                     .expect("wrong shape homie")
                     .to_owned();
 
-                // let pose_idx = argmax(&probs);
-
                 let pose_idx = argmax(&softmax_scores);
                 let pose = match pose_idx {
                     0 => RefereePose::Idle,
@@ -178,12 +176,15 @@ fn log_estimated_pose(
             })
             .collect();
 
-        let point_could =
-            rerun::Points2D::new(keypoints).with_labels(vec![format!("{:?}", pose.pose)]);
+        let referee_keypoints = rerun::Points2D::new(keypoints)
+            .with_labels([format!("{:?}", pose.pose)])
+            .with_colors([(255, 0, 0); 17])
+            .with_radii([5.0; 17]);
+
         dbg.log_with_cycle(
             Top::make_entity_image_path("referee_pose_keypoints"),
             *cycle,
-            &point_could,
+            &referee_keypoints,
         );
     }
 }
