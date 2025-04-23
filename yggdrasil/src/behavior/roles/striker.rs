@@ -9,7 +9,7 @@ use crate::{
     core::config::layout::LayoutConfig,
     localization::RobotPose,
     motion::{step_planner::Target, walking_engine::step::Step},
-    communication::TeamBallPosition
+    vision::ball_detection::TeamBallPosition,
 };
 
 // Walk to the ball as long as the ball is further away than

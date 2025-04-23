@@ -11,6 +11,7 @@ use ball_tracker::BallTracker;
 pub use ball_tracker::Hypothesis;
 use bevy::prelude::*;
 use communication::CommunicatedBallsPlugin;
+pub use communication::TeamBallPosition;
 use heimdall::{Bottom, CameraLocation, Top};
 use nidhogg::types::{color, FillExt, LeftEye};
 use proposal::BallProposalConfigs;

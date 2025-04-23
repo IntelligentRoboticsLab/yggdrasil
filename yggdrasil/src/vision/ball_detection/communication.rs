@@ -1,12 +1,10 @@
-use std::{collections::HashMap, net::SocketAddr};
-
 use bevy::prelude::*;
 use nalgebra::{self as na, Point2};
 
 use crate::communication::{TeamCommunication, TeamMessage};
 
 // Import camera proposals
-use super::ball_tracker::BallPosition;
+use super::{ball_tracker::BallTracker, Hypothesis};
 
 // Constant for the minimum acceptable change
 const MIN_CHANGE: f32 = 0.1;
@@ -22,14 +20,12 @@ impl Plugin for CommunicatedBallsPlugin {
 }
 
 #[derive(Resource, Default, Debug)]
-pub struct TeamBallPosition(Option<Point2<f32>>);
+pub struct TeamBallPosition(pub Option<Point2<f32>>);
 
 #[derive(Resource, Debug, Default)]
 pub struct CommunicatedBalls {
     /// For keeping track what position we've sent out.
     sent: Option<na::Point2<f32>>,
-    /// For keeping track what positions we've received.
-    received: HashMap<SocketAddr, Option<na::Point2<f32>>>,
 }
 
 impl CommunicatedBalls {
@@ -71,11 +67,17 @@ impl CommunicatedBalls {
 fn communicate_balls_system(
     mut communicated_balls: ResMut<CommunicatedBalls>,
     mut tc: ResMut<TeamCommunication>,
-    ball_position: Option<Res<BallPosition>>,
+    ball_tracker: Res<BallTracker>,
     mut team_ball_position: ResMut<TeamBallPosition>,
 ) {
+    let optional_ball_position = if let Hypothesis::Stationary(_) = ball_tracker.cutoff() {
+        Some(ball_tracker.state().0)
+    } else {
+        None
+    };
+
     // 1. Check if it has changed enough and if so, we send a message.
-    let optional_ball_position = ball_position.map(|ball_position| ball_position.0);
+    // let optional_ball_position = ball_position.map(|ball_position| ball_position.0);
     if communicated_balls.change_enough(&optional_ball_position) {
         communicated_balls.send_message(optional_ball_position, &mut tc)
     }
