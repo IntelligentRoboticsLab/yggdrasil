@@ -45,11 +45,8 @@ impl Plugin for LocalizationPlugin {
             .add_systems(
                 PreUpdate,
                 (
-                    (
-                        odometry_update,
-                        line_update.run_if(not(in_standby.or(motion_is_unsafe))),
-                    )
-                        .run_if(not(is_penalized.or(in_sitting))),
+                    (odometry_update, line_update.run_if(not(motion_is_unsafe)))
+                        .run_if(not(is_penalized.or(started_walking))),
                     filter_hypotheses,
                     reset_hypotheses,
                 )
@@ -99,12 +96,14 @@ fn motion_is_unsafe(
         || !contacts.ground
 }
 
-fn in_sitting(state: Res<PrimaryState>) -> bool {
-    matches!(state.as_ref(), PrimaryState::Sitting)
-}
-
-fn in_standby(state: Res<PrimaryState>) -> bool {
-    matches!(state.as_ref(), PrimaryState::Standby)
+/// Checks if we are in any of the pre-walking states.
+///
+/// We assume we start in the perfect position, so we don't need to do any type of localization.
+fn started_walking(state: Res<PrimaryState>) -> bool {
+    matches!(
+        state.as_ref(),
+        PrimaryState::Sitting | PrimaryState::Standby
+    )
 }
 
 fn setup_pose_visualization(dbg: DebugContext) {
