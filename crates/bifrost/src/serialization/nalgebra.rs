@@ -2,8 +2,10 @@
 
 use std::io::{Read, Write};
 
-use nalgebra::{Dim, Matrix, Scalar, Storage, StorageMut, 
-    allocator::Allocator, base::default_allocator::DefaultAllocator, DimName, OPoint};
+use nalgebra::{
+    Dim, DimName, Matrix, OPoint, Scalar, Storage, StorageMut, allocator::Allocator,
+    base::default_allocator::DefaultAllocator,
+};
 
 use super::{Decode, Encode};
 
