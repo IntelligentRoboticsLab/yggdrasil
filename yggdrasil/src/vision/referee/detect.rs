@@ -60,7 +60,7 @@ impl MlModel for RefereePoseDetectionModel {
 
     type Outputs = (MlArray<f32>, MlArray<f32>);
 
-    const ONNX_PATH: &'static str = "models/yolo11n-pose.onnx";
+    const ONNX_PATH: &'static str = "models/pose_estimator.onnx";
 }
 
 fn detect_referee_pose(
@@ -106,7 +106,7 @@ fn detect_referee_pose(
             .with_input(&resized_image)
             .create_resource()
             .spawn(move |model_output| {
-                let (_, keypoints) = model_output;
+                let (softmax_scores, keypoints) = model_output;
 
                 let best_pose = keypoints
                     .to_shape((17, 3))
@@ -116,7 +116,7 @@ fn detect_referee_pose(
                 // let pose_idx = argmax(&probs);
                 let pose = RefereePose::Idle;
 
-                println!("pose: {best_pose:?}");
+                println!("pose: {softmax_scores:?}");
 
                 let output = RefereePoseDetectionOutput {
                     keypoints: best_pose,
