@@ -3566,6 +3566,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "game_controller"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "bevy",
+ "bifrost",
+ "futures",
+ "serde",
+ "serde_with",
+ "tracing",
+]
+
+[[package]]
 name = "gcd"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11178,6 +11191,7 @@ dependencies = [
  "fast_image_resize",
  "filter",
  "futures",
+ "game_controller",
  "geo",
  "heimdall",
  "itertools 0.14.0",

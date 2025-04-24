@@ -23,6 +23,7 @@ timings = ["dep:tracing-tracy", "bevy/trace"]
 [dependencies]
 # our own crates here
 bifrost = { workspace = true }
+game_controller = { workspace = true }
 heimdall = { workspace = true }
 ml = { workspace = true }
 nidhogg = { workspace = true, features = ["lola", "bevy"] }

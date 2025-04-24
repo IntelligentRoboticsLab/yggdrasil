@@ -1,0 +1,21 @@
+[package]
+authors.workspace = true
+name = "game_controller"
+version.workspace = true
+
+categories.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+async-std = { workspace = true }
+bevy = { workspace = true, default-features = false }
+bifrost = { path = "../bifrost/" }
+futures = { workspace = true }
+serde = { workspace = true }
+serde_with = { workspace = true }
+tracing = { workspace = true }
