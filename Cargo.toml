@@ -53,9 +53,11 @@ bifrost = { path = "crates/bifrost" }
 build_utils = { path = "crates/build_utils" }
 game_controller = { path = "crates/game_controller" }
 heimdall = { path = "crates/heimdall" }
+# localization = { path = "crates/localization" }
 ml = { path = "crates/ml" }
 nidhogg = { path = "crates/nidhogg" }
 odal = { path = "crates/odal" }
+re_control = { path = "./tools/re_control" }
 re_control_comms = { path = "tools/re_control/re_control_comms" }
 sindri = { path = "tools/sindri" }
 spatial = { path = "crates/spatial" }
