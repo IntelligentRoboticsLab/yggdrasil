@@ -319,6 +319,30 @@ impl NaoManager {
         self.led_skull.priority = None;
     }
 
+    pub fn head_position(&self) -> &HeadJoints<JointValue> {
+        &self.head_settings.joints_positions
+    }
+
+    pub fn head_stiffness(&self) -> &HeadJoints<JointValue> {
+        &self.head_settings.joints_stiffness
+    }
+
+    pub fn arm_position(&self) -> &ArmJoints<JointValue> {
+        &self.arm_settings.joints_positions
+    }
+
+    pub fn arm_stiffness(&self) -> &ArmJoints<JointValue> {
+        &self.arm_settings.joints_stiffness
+    }
+
+    pub fn leg_position(&self) -> &LegJoints<JointValue> {
+        &self.leg_settings.joints_positions
+    }
+
+    pub fn leg_stiffness(&self) -> &LegJoints<JointValue> {
+        &self.leg_settings.joints_stiffness
+    }
+
     /// Try to set all the joint position and stiffness of the legs, arms and head.
     /// The joint positions are angles in radians.
     ///
@@ -350,30 +374,6 @@ impl NaoManager {
             head_stiffness,
             priority,
         )
-    }
-
-    pub fn head_position(&self) -> &HeadJoints<JointValue> {
-        &self.head_settings.joints_positions
-    }
-
-    pub fn head_stiffness(&self) -> &HeadJoints<JointValue> {
-        &self.head_settings.joints_stiffness
-    }
-
-    pub fn arm_position(&self) -> &ArmJoints<JointValue> {
-        &self.arm_settings.joints_positions
-    }
-
-    pub fn arm_stiffness(&self) -> &ArmJoints<JointValue> {
-        &self.arm_settings.joints_stiffness
-    }
-
-    pub fn leg_position(&self) -> &LegJoints<JointValue> {
-        &self.leg_settings.joints_positions
-    }
-
-    pub fn leg_stiffness(&self) -> &LegJoints<JointValue> {
-        &self.leg_settings.joints_stiffness
     }
 
     /// Sets the joint position and stiffness of the leg joints.
