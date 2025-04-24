@@ -3,7 +3,7 @@ use odal::Config;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::nao::RobotInfo;
+use nao::RobotInfo;
 
 /// This config store general information for matches, for example things like
 /// team number and player numbers.

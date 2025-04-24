@@ -8,8 +8,6 @@ use nalgebra::Vector2;
 use odal::Config;
 use serde::{Deserialize, Serialize};
 
-use line_detection::line::{Circle, LineSegment2};
-
 mod isometry_with_angle {
     use nalgebra::{Isometry, Isometry2, UnitComplex};
 
@@ -120,45 +118,6 @@ pub struct FieldConfig {
     pub border_strip_width: f32,
 }
 
-/// A line on the field, which can be a line segment or a circle.
-#[derive(Debug, Clone, Copy)]
-pub enum FieldLine {
-    Segment {
-        segment: LineSegment2,
-        axis: ParallelAxis,
-    },
-    Circle(Circle),
-}
-
-impl FieldLine {
-    /// Projects a point onto the field line and returns the projected point, together with the projection distance.
-    #[must_use]
-    pub fn project_with_signed_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
-        match self {
-            FieldLine::Segment { segment, .. } => {
-                let (projection, distance) = segment.project_with_signed_distance(point);
-                (projection, distance)
-            }
-            FieldLine::Circle(circle) => {
-                let (projection, distance) = circle.project_with_signed_distance(point);
-                (projection, distance)
-            }
-        }
-    }
-
-    fn from_segment(segment: LineSegment2) -> Self {
-        let delta = segment.end - segment.start;
-
-        let axis = if delta.x.abs() > delta.y.abs() {
-            ParallelAxis::X
-        } else {
-            ParallelAxis::Y
-        };
-
-        FieldLine::Segment { segment, axis }
-    }
-}
-
 /// The axis along which the field line is parallel.
 #[derive(Debug, Clone, Copy)]
 pub enum ParallelAxis {
@@ -183,138 +142,6 @@ impl FieldConfig {
     #[must_use]
     pub fn in_field_with_margin(&self, point: Point2<f32>, margin: f32) -> bool {
         point.x.abs() < self.length / 2.0 + margin && point.y.abs() < self.width / 2.0 + margin
-    }
-
-    /// Returns the field lines described by the field configuration.
-    #[allow(clippy::too_many_lines)]
-    #[must_use]
-    pub fn field_lines(&self) -> [FieldLine; 18] {
-        [
-            // Center circle
-            FieldLine::Circle(Circle {
-                center: point![0.0, 0.0],
-                radius: self.centre_circle_diameter / 2.0,
-            }),
-            // Field border
-            FieldLine::from_segment(LineSegment2::new(
-                point![-self.length / 2.0, -self.width / 2.0],
-                point![self.length / 2.0, -self.width / 2.0],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![-self.length / 2.0, self.width / 2.0],
-                point![self.length / 2.0, self.width / 2.0],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![-self.length / 2.0, -self.width / 2.0],
-                point![-self.length / 2.0, self.width / 2.0],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![self.length / 2.0, -self.width / 2.0],
-                point![self.length / 2.0, self.width / 2.0],
-            )),
-            // Center line
-            FieldLine::from_segment(LineSegment2::new(
-                point![0.0, -self.width / 2.0],
-                point![0.0, self.width / 2.0],
-            )),
-            // Goal areas & goal boxes
-            FieldLine::from_segment(LineSegment2::new(
-                point![-self.length / 2.0, -self.goal_area_width / 2.0],
-                point![
-                    -self.length / 2.0 + self.goal_area_length,
-                    -self.goal_area_width / 2.0
-                ],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![-self.length / 2.0, self.goal_area_width / 2.0],
-                point![
-                    -self.length / 2.0 + self.goal_area_length,
-                    self.goal_area_width / 2.0
-                ],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![self.length / 2.0, -self.goal_area_width / 2.0],
-                point![
-                    self.length / 2.0 - self.goal_area_length,
-                    -self.goal_area_width / 2.0
-                ],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![self.length / 2.0, self.goal_area_width / 2.0],
-                point![
-                    self.length / 2.0 - self.goal_area_length,
-                    self.goal_area_width / 2.0
-                ],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![
-                    -self.length / 2.0 + self.goal_area_length,
-                    -self.goal_area_width / 2.0
-                ],
-                point![
-                    -self.length / 2.0 + self.goal_area_length,
-                    self.goal_area_width / 2.0
-                ],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![
-                    self.length / 2.0 - self.goal_area_length,
-                    -self.goal_area_width / 2.0
-                ],
-                point![
-                    self.length / 2.0 - self.goal_area_length,
-                    self.goal_area_width / 2.0
-                ],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![-self.length / 2.0, -self.penalty_area_width / 2.0],
-                point![
-                    -self.length / 2.0 + self.penalty_area_length,
-                    -self.penalty_area_width / 2.0
-                ],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![-self.length / 2.0, self.penalty_area_width / 2.0],
-                point![
-                    -self.length / 2.0 + self.penalty_area_length,
-                    self.penalty_area_width / 2.0
-                ],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![self.length / 2.0, -self.penalty_area_width / 2.0],
-                point![
-                    self.length / 2.0 - self.penalty_area_length,
-                    -self.penalty_area_width / 2.0
-                ],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![self.length / 2.0, self.penalty_area_width / 2.0],
-                point![
-                    self.length / 2.0 - self.penalty_area_length,
-                    self.penalty_area_width / 2.0
-                ],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![
-                    -self.length / 2.0 + self.penalty_area_length,
-                    -self.penalty_area_width / 2.0
-                ],
-                point![
-                    -self.length / 2.0 + self.penalty_area_length,
-                    self.penalty_area_width / 2.0
-                ],
-            )),
-            FieldLine::from_segment(LineSegment2::new(
-                point![
-                    self.length / 2.0 - self.penalty_area_length,
-                    -self.penalty_area_width / 2.0
-                ],
-                point![
-                    self.length / 2.0 - self.penalty_area_length,
-                    self.penalty_area_width / 2.0
-                ],
-            )),
-        ]
     }
 }
 

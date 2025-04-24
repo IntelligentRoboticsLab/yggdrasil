@@ -4913,6 +4913,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "localization"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "nalgebra",
+ "serde",
+ "yggdrasil_config",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5297,6 +5307,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.100",
+]
+
+[[package]]
+name = "nao"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "miette",
+ "nidhogg",
+ "spatial",
 ]
 
 [[package]]
@@ -10104,10 +10124,12 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "heimdall",
+ "localization",
  "miette",
  "nalgebra",
  "re_control",
  "serde",
+ "yggdrasil_config",
 ]
 
 [[package]]
@@ -11257,12 +11279,12 @@ dependencies = [
  "bevy",
  "miette",
  "nalgebra",
+ "nao",
  "odal",
  "serde",
  "serde_with",
  "thiserror 2.0.12",
  "tracing",
- "vision",
 ]
 
 [[package]]

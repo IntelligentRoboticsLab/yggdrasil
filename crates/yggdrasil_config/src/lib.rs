@@ -1,11 +1,10 @@
-pub mod configs;
 pub mod layout;
 pub mod showtime;
 pub mod yggdrasil;
 
 use std::path::{Path, PathBuf};
 
-use crate::{behavior::BehaviorConfig, nao::RobotInfo, prelude::*};
+use crate::{behavior::BehaviorConfig, nao::RobotInfo};
 use bevy::{ecs::system::RunSystemOnce, prelude::*};
 use miette::IntoDiagnostic;
 use odal::{ConfigKind, Error, ErrorKind};

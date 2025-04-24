@@ -1,11 +1,12 @@
-use nalgebra::{Isometry2, Matrix2, Vector2, matrix, vector};
+use nalgebra::{matrix, vector, Isometry2, Matrix2, Vector2};
 use serde::{Deserialize, Serialize};
 
-use crate::{core::config::layout::LayoutConfig, vision::line_detection::line::LineSegment2};
+use vision::line_detection::line::LineSegment2;
+use yggdrasil_config::layout::LayoutConfig;
 
 use super::{
+    correspondence::{correspond_field_lines, FieldLineCorrespondence, PointCorrespondence},
     LocalizationConfig,
-    correspondence::{FieldLineCorrespondence, PointCorrespondence, correspond_field_lines},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

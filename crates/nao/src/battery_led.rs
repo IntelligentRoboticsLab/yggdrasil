@@ -1,4 +1,4 @@
-use crate::nao::Priority;
+use crate::manager::Priority;
 use bevy::prelude::*;
 use nidhogg::{
     NaoState,

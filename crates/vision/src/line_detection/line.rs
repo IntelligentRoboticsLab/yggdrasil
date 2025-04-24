@@ -2,7 +2,203 @@ use std::ops::Mul;
 
 use bevy::prelude::*;
 
-use nalgebra::{Isometry2, Point2, Vector2};
+use nalgebra::{Isometry2, Point2, Vector2, point};
+use yggdrasil_config::layout::{FieldConfig, ParallelAxis};
+
+/// A line on the field, which can be a line segment or a circle.
+#[derive(Debug, Clone, Copy)]
+pub enum FieldLine {
+    Segment {
+        segment: LineSegment2,
+        axis: ParallelAxis,
+    },
+    Circle(Circle),
+}
+
+impl FieldLine {
+    /// Projects a point onto the field line and returns the projected point, together with the projection distance.
+    #[must_use]
+    pub fn project_with_signed_distance(&self, point: Point2<f32>) -> (Point2<f32>, f32) {
+        match self {
+            FieldLine::Segment { segment, .. } => {
+                let (projection, distance) = segment.project_with_signed_distance(point);
+                (projection, distance)
+            }
+            FieldLine::Circle(circle) => {
+                let (projection, distance) = circle.project_with_signed_distance(point);
+                (projection, distance)
+            }
+        }
+    }
+
+    fn from_segment(segment: LineSegment2) -> Self {
+        let delta = segment.end - segment.start;
+
+        let axis = if delta.x.abs() > delta.y.abs() {
+            ParallelAxis::X
+        } else {
+            ParallelAxis::Y
+        };
+
+        FieldLine::Segment { segment, axis }
+    }
+}
+
+impl From<&FieldConfig> for FieldLine {
+    /// Returns the field lines described by the field configuration.
+    fn from(field_config: &FieldConfig) -> [FieldLine; 18] {
+        [
+            // Center circle
+            FieldLine::Circle(Circle {
+                center: point![0.0, 0.0],
+                radius: field_config.centre_circle_diameter / 2.0,
+            }),
+            // Field border
+            FieldLine::from_segment(LineSegment2::new(
+                point![-field_config.length / 2.0, -field_config.width / 2.0],
+                point![field_config.length / 2.0, -field_config.width / 2.0],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![-field_config.length / 2.0, field_config.width / 2.0],
+                point![field_config.length / 2.0, field_config.width / 2.0],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![-field_config.length / 2.0, -field_config.width / 2.0],
+                point![-field_config.length / 2.0, field_config.width / 2.0],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![field_config.length / 2.0, -field_config.width / 2.0],
+                point![field_config.length / 2.0, field_config.width / 2.0],
+            )),
+            // Center line
+            FieldLine::from_segment(LineSegment2::new(
+                point![0.0, -field_config.width / 2.0],
+                point![0.0, field_config.width / 2.0],
+            )),
+            // Goal areas & goal boxes
+            FieldLine::from_segment(LineSegment2::new(
+                point![
+                    -field_config.length / 2.0,
+                    -field_config.goal_area_width / 2.0
+                ],
+                point![
+                    -field_config.length / 2.0 + field_config.goal_area_length,
+                    -field_config.goal_area_width / 2.0
+                ],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![
+                    -field_config.length / 2.0,
+                    field_config.goal_area_width / 2.0
+                ],
+                point![
+                    -field_config.length / 2.0 + field_config.goal_area_length,
+                    field_config.goal_area_width / 2.0
+                ],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![
+                    field_config.length / 2.0,
+                    -field_config.goal_area_width / 2.0
+                ],
+                point![
+                    field_config.length / 2.0 - field_config.goal_area_length,
+                    -field_config.goal_area_width / 2.0
+                ],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![
+                    field_config.length / 2.0,
+                    field_config.goal_area_width / 2.0
+                ],
+                point![
+                    field_config.length / 2.0 - field_config.goal_area_length,
+                    field_config.goal_area_width / 2.0
+                ],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![
+                    -field_config.length / 2.0 + field_config.goal_area_length,
+                    -field_config.goal_area_width / 2.0
+                ],
+                point![
+                    -field_config.length / 2.0 + field_config.goal_area_length,
+                    field_config.goal_area_width / 2.0
+                ],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![
+                    field_config.length / 2.0 - field_config.goal_area_length,
+                    -field_config.goal_area_width / 2.0
+                ],
+                point![
+                    field_config.length / 2.0 - field_config.goal_area_length,
+                    field_config.goal_area_width / 2.0
+                ],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![
+                    -field_config.length / 2.0,
+                    -field_config.penalty_area_width / 2.0
+                ],
+                point![
+                    -field_config.length / 2.0 + field_config.penalty_area_length,
+                    -field_config.penalty_area_width / 2.0
+                ],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![
+                    -field_config.length / 2.0,
+                    field_config.penalty_area_width / 2.0
+                ],
+                point![
+                    -field_config.length / 2.0 + field_config.penalty_area_length,
+                    field_config.penalty_area_width / 2.0
+                ],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![
+                    field_config.length / 2.0,
+                    -field_config.penalty_area_width / 2.0
+                ],
+                point![
+                    field_config.length / 2.0 - field_config.penalty_area_length,
+                    -field_config.penalty_area_width / 2.0
+                ],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![
+                    field_config.length / 2.0,
+                    field_config.penalty_area_width / 2.0
+                ],
+                point![
+                    field_config.length / 2.0 - field_config.penalty_area_length,
+                    field_config.penalty_area_width / 2.0
+                ],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![
+                    -field_config.length / 2.0 + field_config.penalty_area_length,
+                    -field_config.penalty_area_width / 2.0
+                ],
+                point![
+                    -field_config.length / 2.0 + field_config.penalty_area_length,
+                    field_config.penalty_area_width / 2.0
+                ],
+            )),
+            FieldLine::from_segment(LineSegment2::new(
+                point![
+                    field_config.length / 2.0 - field_config.penalty_area_length,
+                    -field_config.penalty_area_width / 2.0
+                ],
+                point![
+                    field_config.length / 2.0 - field_config.penalty_area_length,
+                    field_config.penalty_area_width / 2.0
+                ],
+            )),
+        ]
+    }
+}
 
 /// A normal form line in 2D space
 #[derive(Debug, Clone, Copy, Component, PartialEq)]

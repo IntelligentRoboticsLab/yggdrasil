@@ -6,12 +6,11 @@
 //! the results. The total mass of the robot is then divided out to get the `CoM`.
 
 mod robot_masses;
+use localization::RobotPose;
 
 use crate::{
     core::debug::DebugContext,
     kinematics::{Kinematics, spaces::Robot},
-    localization::RobotPose,
-    prelude::*,
 };
 use bevy::prelude::*;
 pub use robot_masses::*;

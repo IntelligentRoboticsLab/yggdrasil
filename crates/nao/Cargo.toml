@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-name = "vision"
+name = "nao"
 version.workspace = true
 
 categories.workspace = true
@@ -16,10 +16,12 @@ local = []
 
 [dependencies]
 bevy = { workspace = true, default-features = false }
-heimdall = { workspace = true }
-localization = { workspace = true }
+nidhogg = { workspace = true }
+spatial = { workspace = true }
+# heimdall = { workspace = true }
+# localization = { workspace = true }
 miette = { workspace = true }
-nalgebra = { workspace = true }
-re_control = { workspace = true }
-serde = { workspace = true }
-yggdrasil_config = { workspace = true }
+# nalgebra = { workspace = true }
+# re_control = { workspace = true }
+# serde = { workspace = true }
+# yggdrasil_config = { workspace = true }
