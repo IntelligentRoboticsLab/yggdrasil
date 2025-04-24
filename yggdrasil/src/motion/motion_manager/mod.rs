@@ -87,16 +87,19 @@ fn run_motion(
         if let (Some(angles), Some(stiffness)) =
             (&motion_config.angles.head, &motion_config.stiffness.head)
         {
+            // TODO: Add interpolation to the nao manager.
             nao_manager.set_head(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
         }
         if let (Some(angles), Some(stiffness)) =
             (&motion_config.angles.arms, &motion_config.stiffness.arms)
         {
+            // TODO: Add interpolation to the nao manager.
             nao_manager.set_arms(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
         }
         if let (Some(angles), Some(stiffness)) =
             (&motion_config.angles.legs, &motion_config.stiffness.legs)
         {
+            // TODO: Add interpolation to the nao manager.
             nao_manager.set_legs(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
         }
 
