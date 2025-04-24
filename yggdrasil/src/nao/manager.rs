@@ -110,7 +110,7 @@ pub fn finalize(
 
 #[derive(Default, Debug)]
 struct JointSettings<T> {
-    joints_position: T,
+    joints_positions: T,
     joints_stiffness: T,
     priority: Option<Priority>,
 }
@@ -286,7 +286,7 @@ impl NaoManager {
             return;
         }
 
-        current_settings.joints_position = joint_positions;
+        current_settings.joints_positions = joint_positions;
         current_settings.joints_stiffness = joint_stiffness;
         current_settings.priority = Some(priority);
     }
@@ -350,6 +350,30 @@ impl NaoManager {
             head_stiffness,
             priority,
         )
+    }
+
+    pub fn head_position(&self) -> &HeadJoints<JointValue> {
+        &self.head_settings.joints_positions
+    }
+
+    pub fn head_stiffness(&self) -> &HeadJoints<JointValue> {
+        &self.head_settings.joints_stiffness
+    }
+
+    pub fn arm_position(&self) -> &ArmJoints<JointValue> {
+        &self.arm_settings.joints_positions
+    }
+
+    pub fn arm_stiffness(&self) -> &ArmJoints<JointValue> {
+        &self.arm_settings.joints_stiffness
+    }
+
+    pub fn leg_position(&self) -> &LegJoints<JointValue> {
+        &self.leg_settings.joints_positions
+    }
+
+    pub fn leg_stiffness(&self) -> &LegJoints<JointValue> {
+        &self.leg_settings.joints_stiffness
     }
 
     /// Sets the joint position and stiffness of the leg joints.
@@ -592,7 +616,7 @@ impl NaoManager {
     /// Disable all motors in the legs.
     pub fn unstiff_legs(&mut self, priority: Priority) -> &mut Self {
         self.set_legs(
-            self.leg_settings.joints_position.clone(),
+            self.leg_settings.joints_positions.clone(),
             LegJoints::fill(STIFFNESS_UNSTIFF),
             priority,
         )
@@ -606,7 +630,7 @@ impl NaoManager {
         leg_stiffness.left_leg.hip_yaw_pitch = HIP_LOCK_STIFFNESS;
         leg_stiffness.right_leg.hip_pitch = HIP_LOCK_STIFFNESS;
 
-        let mut leg_positions = self.leg_settings.joints_position.clone();
+        let mut leg_positions = self.leg_settings.joints_positions.clone();
         leg_positions.left_leg.hip_pitch = HIP_POSITION;
         leg_positions.right_leg.hip_pitch = HIP_POSITION;
 
@@ -621,7 +645,7 @@ impl NaoManager {
     /// Disable all motors in the arms.
     pub fn unstiff_arms(&mut self, priority: Priority) -> &mut Self {
         self.set_arms(
-            self.arm_settings.joints_position.clone(),
+            self.arm_settings.joints_positions.clone(),
             ArmJoints::fill(STIFFNESS_UNSTIFF),
             priority,
         )
@@ -630,7 +654,7 @@ impl NaoManager {
     /// Disable all motors in the head.
     pub fn unstiff_head(&mut self, priority: Priority) -> &mut Self {
         self.set_head(
-            self.head_settings.joints_position.clone(),
+            self.head_settings.joints_positions.clone(),
             HeadJoints::fill(STIFFNESS_UNSTIFF),
             priority,
         )
@@ -726,9 +750,9 @@ impl NaoManager {
 
     fn make_joint_positions(&self) -> JointArray<JointValue> {
         JointArray::builder()
-            .leg_joints(self.leg_settings.joints_position.clone())
-            .arm_joints(self.arm_settings.joints_position.clone())
-            .head_joints(self.head_settings.joints_position.clone())
+            .leg_joints(self.leg_settings.joints_positions.clone())
+            .arm_joints(self.arm_settings.joints_positions.clone())
+            .head_joints(self.head_settings.joints_positions.clone())
             .build()
     }
 

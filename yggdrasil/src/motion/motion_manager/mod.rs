@@ -1,12 +1,18 @@
 use std::{ops::Sub, time::Instant};
 
 use bevy::prelude::*;
-use nidhogg::NaoState;
+use nidhogg::types::{ArmJoints, HeadJoints, LegJoints};
 use odal::Config;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use crate::{prelude::ConfigExt, sensor::imu::IMUValues};
+use crate::{
+    nao::{NaoManager, Priority},
+    prelude::ConfigExt,
+    sensor::imu::IMUValues,
+};
+
+const MOTION_MANAGER_PRIORITY: Priority = Priority::High;
 
 pub struct MotionManagerPlugin;
 
@@ -14,7 +20,7 @@ impl Plugin for MotionManagerPlugin {
     fn build(&self, app: &mut App) {
         app.init_config::<GetUpBackMotionConfig>()
             .init_resource::<MotionManager>()
-            .add_systems(Update, load_next_motion);
+            .add_systems(Update, (load_next_motion, run_motion));
     }
 }
 
@@ -36,6 +42,7 @@ fn load_next_motion(
 fn run_motion(
     mut motion_manager: ResMut<MotionManager>,
     imu_values: Res<IMUValues>,
+    mut nao_manager: ResMut<NaoManager>,
     completed_motion_at: Local<Option<Instant>>,
 ) {
     let motion_config = loop {
@@ -67,8 +74,28 @@ fn run_motion(
         return;
     }
 
-    // Check joing angles for complete motion.
-    //  else set joints and return
+    if !motion_config
+        .angles
+        .is_close(&nao_manager, motion_config.angle_threshold)
+    {
+        if let (Some(angles), Some(stiffness)) =
+            (&motion_config.angles.head, &motion_config.stiffness.head)
+        {
+            nao_manager.set_head(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
+        }
+        if let (Some(angles), Some(stiffness)) =
+            (&motion_config.angles.arms, &motion_config.stiffness.arms)
+        {
+            nao_manager.set_arms(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
+        }
+        if let (Some(angles), Some(stiffness)) =
+            (&motion_config.angles.legs, &motion_config.stiffness.legs)
+        {
+            nao_manager.set_legs(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
+        }
+
+        return;
+    }
 
     // If angles are correct, set `completed_motion_at` if unset.
 
@@ -121,27 +148,6 @@ impl MotionManager {
 pub enum Motion {
     GetUpBack,
 }
-
-// #[derive(Serialize, Deserialize, Debug, Clone)]
-// #[serde(deny_unknown_fields)]
-// // #[serde(tag = "field")]
-// #[serde(untagged)]
-// enum Condition {
-//     Range {
-//         field: String,
-//         smaller_than: f32,
-//         bigger_than: f32,
-//         contains: Option<bool>,
-//     },
-//     Smaller {
-//         field: String,
-//         smaller_than: f32,
-//     },
-//     BiggerThan {
-//         field: String,
-//         bigger_than: f32,
-//     },
-// }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
@@ -200,6 +206,7 @@ struct MotionConfig {
     min_delay: f32,
     max_delay: f32,
     angles: Joints,
+    angle_threshold: f32,
     stiffness: Joints,
 }
 
@@ -207,21 +214,28 @@ struct MotionConfig {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 struct Joints {
-    head_pitch: Option<f32>,
-    head_yaw: Option<f32>,
-    right_leg_angle: Option<f32>,
-    left_leg_angle: Option<f32>,
+    head: Option<HeadJoints<f32>>,
+    arms: Option<ArmJoints<f32>>,
+    legs: Option<LegJoints<f32>>,
 }
 
 impl Joints {
-    fn is_close(&self, nao_state: &NaoState, threshold: f32) -> bool {
-        let joint_angles = nao_state.position;
+    fn is_close(&self, nao_manager: &NaoManager, threshold: f32) -> bool {
+        self.head_is_close(nao_manager, threshold)
+        // TODO: Arms
+        // TODO: LEGS
+    }
 
-        self.head_pitch
-            .is_none_or(|head_pitch| head_pitch.sub(joint_angles.head_pitch).abs().le(&threshold))
+    fn head_is_close(&self, nao_manager: &NaoManager, threshold: f32) -> bool {
+        let head_angles = nao_manager.head_position();
+
+        self.head
+            .as_ref()
+            .is_none_or(|head| head.pitch.sub(head_angles.pitch).abs().le(&threshold))
             && self
-                .head_yaw
-                .is_none_or(|head_yaw| head_yaw.sub(joint_angles.head_yaw).abs().le(&threshold))
+                .head
+                .as_ref()
+                .is_none_or(|head| head.yaw.sub(head_angles.yaw).abs().le(&threshold))
     }
 }
 

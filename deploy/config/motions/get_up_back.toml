@@ -1,6 +1,7 @@
 [[motions]]
 abort_conditions = []
-angles = { head_pitch = 0.0, head_yaw = 0.0 }
+angle_threshold = 0.3
+angles = { head = { pitch = 0.0, yaw = 0.0 } }
 end_conditions = [
   { field = "GiroX", smaller_than = -0.3, bigger_than = 0.3 },
   { field = "GiroY", smaller_than = 0.3 },
