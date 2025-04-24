@@ -1,8 +1,8 @@
 [[motions]]
 abort_conditions = []
-angles = { head_pitch = 0.0, head_jaw = 0.0 }
+angles = { head_pitch = 0.0, head_yaw = 0.0 }
 end_conditions = [
-  { field = "GiroX", smaller_than = -0.3, bigger_than = 0.3, negate = true },
+  { field = "GiroX", smaller_than = -0.3, bigger_than = 0.3 },
   { field = "GiroY", smaller_than = 0.3 },
   { field = "GiroY", bigger_than = -0.3 },
 ]
@@ -11,4 +11,4 @@ max_delay = 3.0
 min_delay = 1.0
 # start_conditions = ["e.g. arms not below body"]
 start_conditions = []
-stiffness = { head_pitch = 0.0, head_jaw = 0.0 }
+stiffness = { head_pitch = 0.0, head_yaw = 0.0 }

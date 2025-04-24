@@ -1,6 +1,7 @@
-use std::time::Instant;
+use std::{ops::Sub, time::Instant};
 
 use bevy::prelude::*;
+use nidhogg::NaoState;
 use odal::Config;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -21,16 +22,15 @@ fn load_next_motion(
     mut motion_manager: ResMut<MotionManager>,
     getup_back_motion_config: Res<GetUpBackMotionConfig>,
 ) {
-    let Some(next_motion) = &motion_manager.next_motion else {
+    let Some(next_motion) = &motion_manager.next_motion.take() else {
         return;
     };
 
-    match next_motion {
-        Motion::GetUpBack => {
-            motion_manager.current_motions = Some((0, getup_back_motion_config.motions.clone()));
-            motion_manager.next_motion = None;
-        }
-    }
+    motion_manager.motion_configs = match next_motion {
+        Motion::GetUpBack => getup_back_motion_config.motions.clone(),
+    };
+
+    motion_manager.current_motion_config_id = 0;
 }
 
 fn run_motion(
@@ -38,14 +38,37 @@ fn run_motion(
     imu_values: Res<IMUValues>,
     completed_motion_at: Local<Option<Instant>>,
 ) {
-    let Some((current_motion_id, motions)) = motion_manager.current_motions.as_ref() else {
+    let motion_config = loop {
+        let Some(motion_config) = motion_manager.current_motion() else {
+            break None;
+        };
+
+        if motion_config
+            .start_conditions
+            .iter()
+            .all(|condition| condition.is_satisfied(imu_values.as_ref()))
+        {
+            motion_manager.next_motion();
+            continue;
+        }
+
+        break Some(motion_config);
+    };
+    let Some(motion_config) = motion_config else {
         return;
     };
 
-    let current_motion = &motions[*current_motion_id];
+    if motion_config
+        .abort_conditions
+        .iter()
+        .all(|condition| condition.is_satisfied(imu_values.as_ref()))
+    {
+        motion_manager.abort_motion();
+        return;
+    }
 
     // Check joing angles for complete motion.
-    //  else return
+    //  else set joints and return
 
     // If angles are correct, set `completed_motion_at` if unset.
 
@@ -62,7 +85,9 @@ fn run_motion(
 
 #[derive(Default, Resource)]
 pub struct MotionManager {
-    current_motions: Option<(usize, Vec<Motions>)>,
+    motion_configs: Vec<MotionConfig>,
+    current_motion_config_id: usize,
+
     next_motion: Option<Motion>,
 }
 
@@ -75,24 +100,21 @@ impl MotionManager {
         self.next_motion = Some(motion);
     }
 
-    fn current_motion<'a>(&'a self) -> Option<&'a Motions> {
-        self.current_motions
-            .iter()
-            .flat_map(|(current_motion_id, motions)| motions.get(*current_motion_id))
-            .next()
+    pub fn abort_motion(&mut self) {
+        self.motion_configs.clear();
+        self.current_motion_config_id = 0;
+    }
+
+    fn current_motion<'a>(&'a self) -> Option<&'a MotionConfig> {
+        self.motion_configs.get(self.current_motion_config_id)
     }
 
     fn next_motion(&mut self) {
-        let Some((current_motion_id, motions)) = self.current_motions.as_mut() else {
-            return;
-        };
-
-        *current_motion_id += 1;
-        if *current_motion_id == motions.len() {
-            *current_motion_id = 0;
-            motions.clear();
+        self.current_motion_config_id += 1;
+        if self.current_motion_config_id == self.motion_configs.len() {
+            self.current_motion_config_id = 0;
+            self.motion_configs.clear();
         }
-        return;
     }
 }
 
@@ -128,17 +150,14 @@ enum Condition {
     GiroX {
         smaller_than: Option<f32>,
         bigger_than: Option<f32>,
-        contains: Option<bool>,
     },
     GiroY {
         smaller_than: Option<f32>,
         bigger_than: Option<f32>,
-        contains: Option<bool>,
     },
     GiroZ {
         smaller_than: Option<f32>,
         bigger_than: Option<f32>,
-        contains: Option<bool>,
     },
 }
 
@@ -148,41 +167,23 @@ impl Condition {
             Condition::GiroX {
                 smaller_than,
                 bigger_than,
-                contains,
             } => {
-                (smaller_than
-                    .map(|threshold| imu_values.gyroscope.x < threshold)
-                    .unwrap_or(true)
-                    && bigger_than
-                        .map(|threshold| imu_values.gyroscope.x > threshold)
-                        .unwrap_or(true))
-                    ^ contains.unwrap_or_default()
+                smaller_than.is_none_or(|threshold| imu_values.gyroscope.x < threshold)
+                    && bigger_than.is_none_or(|threshold| imu_values.gyroscope.x > threshold)
             }
             Condition::GiroY {
                 smaller_than,
                 bigger_than,
-                contains,
             } => {
-                (smaller_than
-                    .map(|threshold| imu_values.gyroscope.y < threshold)
-                    .unwrap_or(true)
-                    && bigger_than
-                        .map(|threshold| imu_values.gyroscope.y > threshold)
-                        .unwrap_or(true))
-                    ^ contains.unwrap_or_default()
+                smaller_than.is_none_or(|threshold| imu_values.gyroscope.y < threshold)
+                    && bigger_than.is_none_or(|threshold| imu_values.gyroscope.y > threshold)
             }
             Condition::GiroZ {
                 smaller_than,
                 bigger_than,
-                contains,
             } => {
-                (smaller_than
-                    .map(|threshold| imu_values.gyroscope.z < threshold)
-                    .unwrap_or(true)
-                    && bigger_than
-                        .map(|threshold| imu_values.gyroscope.z > threshold)
-                        .unwrap_or(true))
-                    ^ contains.unwrap_or_default()
+                smaller_than.is_none_or(|threshold| imu_values.gyroscope.z < threshold)
+                    && bigger_than.is_none_or(|threshold| imu_values.gyroscope.z > threshold)
             }
         }
     }
@@ -191,7 +192,7 @@ impl Condition {
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-struct Motions {
+struct MotionConfig {
     abort_conditions: Vec<Condition>,
     interpolate: bool,
     end_conditions: Vec<Condition>,
@@ -207,16 +208,28 @@ struct Motions {
 #[serde(deny_unknown_fields)]
 struct Joints {
     head_pitch: Option<f32>,
-    head_jaw: Option<f32>,
+    head_yaw: Option<f32>,
     right_leg_angle: Option<f32>,
     left_leg_angle: Option<f32>,
+}
+
+impl Joints {
+    fn is_close(&self, nao_state: &NaoState, threshold: f32) -> bool {
+        let joint_angles = nao_state.position;
+
+        self.head_pitch
+            .is_none_or(|head_pitch| head_pitch.sub(joint_angles.head_pitch).abs().le(&threshold))
+            && self
+                .head_yaw
+                .is_none_or(|head_yaw| head_yaw.sub(joint_angles.head_yaw).abs().le(&threshold))
+    }
 }
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, Resource)]
 #[serde(deny_unknown_fields)]
 pub struct GetUpBackMotionConfig {
-    motions: Vec<Motions>,
+    motions: Vec<MotionConfig>,
 }
 
 impl Config for GetUpBackMotionConfig {
