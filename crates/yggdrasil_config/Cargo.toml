@@ -13,10 +13,12 @@ workspace = true
 
 [dependencies]
 bevy = { workspace = true, default-features = false }
-game_controller = { workspace = true }
+# game_controller = { workspace = true }
 miette = { workspace = true }
 nalgebra = { workspace = true }
 odal = { workspace = true }
 serde = { workspace = true }
+serde_with = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+vision = { workspace = true }

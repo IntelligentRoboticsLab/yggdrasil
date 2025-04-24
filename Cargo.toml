@@ -1,5 +1,11 @@
 [workspace]
-members = ["crates/*", "tools/sindri", "tools/re_control", "yggdrasil"]
+members = [
+  "crates/*",
+  "tools/sindri",
+  "tools/sindri_config",
+  "tools/re_control",
+  "yggdrasil",
+]
 resolver = "2"
 
 [workspace.package]
@@ -60,8 +66,11 @@ odal = { path = "crates/odal" }
 re_control = { path = "./tools/re_control" }
 re_control_comms = { path = "tools/re_control/re_control_comms" }
 sindri = { path = "tools/sindri" }
+sindri_config = { path = "tools/sindri_config" }
 spatial = { path = "crates/spatial" }
 tasks = { path = "crates/tasks" }
+vision = { path = "crates/vision" }
+yggdrasil_config = { path = "crates/yggdrasil_config" }
 
 # external crates
 apodize = "1.0.0"

@@ -9,9 +9,10 @@ use bifrost::{
 use futures::channel::mpsc::{self};
 
 use crate::{
-    core::config::showtime::PlayerConfig, localization::RobotPose, sensor::falling::FallState,
+    localization::RobotPose, sensor::falling::FallState,
     vision::ball_detection::ball_tracker::BallTracker,
 };
+use yggdrasil_config::showtime::PlayerConfig;
 
 use super::{GameControllerConfig, GameControllerConnection, GameControllerSocket};
 

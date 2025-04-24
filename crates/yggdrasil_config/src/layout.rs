@@ -8,8 +8,7 @@ use nalgebra::Vector2;
 use odal::Config;
 use serde::{Deserialize, Serialize};
 
-use crate::vision::line_detection::line::Circle;
-use crate::vision::line_detection::line::LineSegment2;
+use line_detection::line::{Circle, LineSegment2};
 
 mod isometry_with_angle {
     use nalgebra::{Isometry, Isometry2, UnitComplex};

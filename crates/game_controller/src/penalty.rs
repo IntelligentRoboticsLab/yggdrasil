@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, Penalty};
 
-use crate::core::config::showtime::PlayerConfig;
+use yggdrasil_config::showtime::PlayerConfig;
 
 use super::receive::handle_messages;
 

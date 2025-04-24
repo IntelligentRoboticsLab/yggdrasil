@@ -11,15 +11,12 @@ use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
 };
-use yggdrasil::core::config::showtime::ShowtimeConfig;
-use yggdrasil::prelude::*;
 
 use build_utils::cargo::{self, Profile, find_bin_manifest};
 
-use crate::{
-    config::{Robot, SindriConfig},
-    error::{Error, Result},
-};
+use crate::error::{Error, Result};
+use yggdrasil_config::showtime::ShowtimeConfig;
+use yggdrasil_config::{Robot, SindriConfig};
 
 use super::{
     re_control::RerunArgs,
@@ -32,13 +29,6 @@ const RELEASE_PATH_LOCAL: &str = "./target/release/yggdrasil";
 const DEPLOY_PATH: &str = "./deploy/yggdrasil";
 
 const LOCAL_ROBOT_ID_STR: &str = "local";
-
-// enum for either the name or the number of a robot thats given
-#[derive(Clone, Debug)]
-pub enum NameOrNum {
-    Name(String),
-    Number(u8),
-}
 
 impl fmt::Display for NameOrNum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

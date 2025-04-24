@@ -3576,6 +3576,7 @@ dependencies = [
  "serde",
  "serde_with",
  "tracing",
+ "yggdrasil_config",
 ]
 
 [[package]]
@@ -7012,7 +7013,7 @@ dependencies = [
  "re_control_comms",
  "re_crash_handler",
  "rerun",
- "sindri",
+ "sindri_config",
  "strum 0.27.1",
  "thiserror 2.0.12",
  "tokio",
@@ -8883,7 +8884,21 @@ dependencies = [
  "thiserror 2.0.12",
  "tokio",
  "toml",
- "yggdrasil",
+ "yggdrasil_config",
+]
+
+[[package]]
+name = "sindri_config"
+version = "0.24.0"
+dependencies = [
+ "build_utils",
+ "home",
+ "miette",
+ "serde",
+ "serde_with",
+ "thiserror 2.0.12",
+ "tokio",
+ "toml",
 ]
 
 [[package]]
@@ -11240,13 +11255,14 @@ name = "yggdrasil_config"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "game_controller",
  "miette",
  "nalgebra",
  "odal",
  "serde",
+ "serde_with",
  "thiserror 2.0.12",
  "tracing",
+ "vision",
 ]
 
 [[package]]

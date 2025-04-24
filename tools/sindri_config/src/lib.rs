@@ -1,4 +1,3 @@
-use crate::cli::robot_ops::NameOrNum;
 use miette::{Context, IntoDiagnostic, Result, miette};
 use serde::Deserialize;
 use serde_with::serde_as;
@@ -8,7 +7,8 @@ use std::process::Stdio;
 use std::{ffi::OsStr, net::Ipv4Addr};
 use tokio::process::{Child, Command};
 
-use crate::error::Error;
+pub mod error;
+use error::Error;
 
 // Config location relative to home directory
 const CONFIG_FILE: &str = ".config/sindri/sindri.toml";
@@ -100,6 +100,13 @@ impl SindriConfig {
 
         Ok(min..=max)
     }
+}
+
+// enum for either the name or the number of a robot thats given
+#[derive(Clone, Debug)]
+pub enum NameOrNum {
+    Name(String),
+    Number(u8),
 }
 
 /// Struct representing a robot to which we can connect

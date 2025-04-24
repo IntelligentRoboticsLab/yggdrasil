@@ -1,7 +1,7 @@
 use std::{env, net::Ipv4Addr, str::FromStr};
 
 use re_control_comms::viewer::ControlViewerHandle;
-use sindri::config::{ConfigRobot, Robot};
+use sindri_config::{ConfigRobot, Robot};
 
 pub const ROBOT_ADDRESS_ENV_KEY: &str = "RE_CONTROL_ROBOT_ADDRESS";
 
@@ -15,7 +15,7 @@ pub struct ConnectionState {
 
 impl ConnectionState {
     pub fn from_handle(handle: ControlViewerHandle) -> Self {
-        let sindri_config = sindri::config::load_config().unwrap();
+        let sindri_config = sindri_config::load_config().unwrap();
 
         let robots = sindri_config.robots;
 

@@ -1,3 +1,4 @@
+pub mod configs;
 pub mod layout;
 pub mod showtime;
 pub mod yggdrasil;

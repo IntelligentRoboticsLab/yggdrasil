@@ -19,3 +19,4 @@ futures = { workspace = true }
 serde = { workspace = true }
 serde_with = { workspace = true }
 tracing = { workspace = true }
+yggdrasil_config = { workspace = true }

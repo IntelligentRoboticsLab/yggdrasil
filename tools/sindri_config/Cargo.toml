@@ -1,6 +1,6 @@
 [package]
-description = "tool that simplifies robot interaction by automating the process of building and deploying to the robots"
-name = "sindri"
+description = "config for sindri"
+name = "sindri_config"
 version = "0.24.0"
 
 authors.workspace = true
@@ -14,15 +14,8 @@ workspace = true
 
 [dependencies]
 build_utils = { workspace = true }
-yggdrasil_config = { workspace = true }
 
-clap = { workspace = true, features = ["derive", "string"] }
-colored = { workspace = true }
-dialoguer = { workspace = true }
-futures = { workspace = true }
 home = { workspace = true }
-indicatif = { workspace = true, features = ["tokio"] }
-local-ip-address = { workspace = true }
 miette = { workspace = true, features = ["fancy"] }
 serde = { workspace = true }
 serde_with = { workspace = true }
