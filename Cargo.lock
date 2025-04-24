@@ -11224,6 +11224,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "yggdrasil_config"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "game_controller",
+ "miette",
+ "nalgebra",
+ "odal",
+ "serde",
+ "thiserror 2.0.12",
+ "tracing",
+]
+
+[[package]]
 name = "yoke"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
