@@ -43,7 +43,7 @@ fn run_motion(
     mut motion_manager: ResMut<MotionManager>,
     imu_values: Res<IMUValues>,
     mut nao_manager: ResMut<NaoManager>,
-    completed_motion_at: Local<Option<Instant>>,
+    mut angles_reached_at: Local<Option<Instant>>,
 ) {
     let motion_config = loop {
         let Some(motion_config) = motion_manager.current_motion() else {
@@ -64,6 +64,12 @@ fn run_motion(
     let Some(motion_config) = motion_config else {
         return;
     };
+
+    if motion_config.is_complete(&imu_values, angles_reached_at.as_ref()) {
+        motion_manager.next_motion();
+        *angles_reached_at = None;
+        return;
+    }
 
     if motion_config
         .abort_conditions
@@ -98,16 +104,13 @@ fn run_motion(
     }
 
     // If angles are correct, set `completed_motion_at` if unset.
+    *angles_reached_at = Some(Instant::now());
 
-    // Check `end_conditions`,
-    //  if (end_conditions.all() == true && completed_motion_at.elapsed > min_delay) ||
-    //  completed_motion_at.elapsed > max_delay {
-    //
-    //  } else {
-    //      continue;
-    //  }
-
-    // Set next motion.
+    if motion_config.is_complete(&imu_values, angles_reached_at.as_ref()) {
+        motion_manager.next_motion();
+        *angles_reached_at = None;
+        return;
+    }
 }
 
 #[derive(Default, Resource)]
@@ -201,13 +204,33 @@ impl Condition {
 struct MotionConfig {
     abort_conditions: Vec<Condition>,
     interpolate: bool,
-    end_conditions: Vec<Condition>,
+    complete_conditions: Vec<Condition>,
     start_conditions: Vec<Condition>,
     min_delay: f32,
     max_delay: f32,
     angles: Joints,
     angle_threshold: f32,
     stiffness: Joints,
+}
+
+impl MotionConfig {
+    fn is_complete(&self, imu_values: &IMUValues, angles_reached_at: Option<&Instant>) -> bool {
+        let Some(angles_reached_at) = angles_reached_at else {
+            return false;
+        };
+
+        if angles_reached_at.elapsed().as_secs_f32() < self.min_delay {
+            return false;
+        }
+
+        if angles_reached_at.elapsed().as_secs_f32() > self.max_delay {
+            return true;
+        }
+
+        self.complete_conditions
+            .iter()
+            .all(|condition| condition.is_satisfied(imu_values))
+    }
 }
 
 #[serde_as]
