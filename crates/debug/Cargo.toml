@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-name = "nao"
+name = "debug"
 version.workspace = true
 
 categories.workspace = true
@@ -15,10 +15,9 @@ workspace = true
 local = []
 
 [dependencies]
-bevy = { workspace = true, default-features = false }
-kinematics = { workspace = true }
-nidhogg = { workspace = true }
-spatial = { workspace = true }
+rerun = { workspace = true }
+# bevy = { workspace = true, default-features = false }
+# localization = { workspace = true }
 # heimdall = { workspace = true }
 # localization = { workspace = true }
 miette = { workspace = true }

@@ -2,10 +2,9 @@ use bevy::prelude::*;
 use rerun::Transform3D;
 
 use super::prelude::*;
-use crate::{
-    core::debug::DebugContext, localization::RobotPose, nao::Cycle,
-    sensor::orientation::RobotOrientation,
-};
+use debug::DebugContext;
+use localization::RobotPose, nao::Cycle;
+use sensor::orientation::RobotOrientation,
 
 pub struct KinematicsVisualizationPlugin;
 

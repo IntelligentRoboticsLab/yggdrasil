@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-name = "yggdrasil_config"
+name = "motion"
 version.workspace = true
 
 categories.workspace = true
@@ -11,15 +11,15 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
+[features]
+local = []
+
 [dependencies]
 bevy = { workspace = true, default-features = false }
-# game_controller = { workspace = true }
+heimdall = { workspace = true }
+localization = { workspace = true }
 miette = { workspace = true }
 nalgebra = { workspace = true }
-# nao = { workspace = true }
-odal = { workspace = true }
+re_control = { workspace = true }
 serde = { workspace = true }
-serde_with = { workspace = true }
-thiserror = { workspace = true }
-tracing = { workspace = true }
-# vision = { workspace = true }
+yggdrasil_config = { workspace = true }

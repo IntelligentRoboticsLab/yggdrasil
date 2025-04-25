@@ -4,7 +4,8 @@ use bevy::prelude::*;
 use filter::{CovarianceMatrix, StateTransform, StateVector, UnscentedKalmanFilter};
 use nalgebra::{Point2, point};
 
-use crate::{localization::odometry::Odometry, nao::Cycle};
+use localization::odometry::Odometry;
+use nao::Cycle;
 
 #[derive(Debug)]
 pub enum BallHypothesis {

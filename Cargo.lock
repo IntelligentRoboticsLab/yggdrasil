@@ -2583,6 +2583,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "575f75dfd25738df5b91b8e43e14d44bda14637a58fae779fd2b064f8bf3e010"
 
 [[package]]
+name = "debug"
+version = "0.1.0"
+dependencies = [
+ "miette",
+ "rerun",
+]
+
+[[package]]
 name = "deprecate-until"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4703,6 +4711,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
+name = "kinematics"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "debug",
+ "localization",
+ "miette",
+ "sensor",
+ "spatial",
+]
+
+[[package]]
 name = "kira"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5216,6 +5236,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "motion"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "heimdall",
+ "localization",
+ "miette",
+ "nalgebra",
+ "re_control",
+ "serde",
+ "yggdrasil_config",
+]
+
+[[package]]
 name = "naga"
 version = "23.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5314,6 +5348,7 @@ name = "nao"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "kinematics",
  "miette",
  "nidhogg",
  "spatial",
@@ -8682,6 +8717,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 
 [[package]]
+name = "sensor"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "miette",
+]
+
+[[package]]
 name = "seq-macro"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10123,13 +10166,8 @@ name = "vision"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "heimdall",
  "localization",
  "miette",
- "nalgebra",
- "re_control",
- "serde",
- "yggdrasil_config",
 ]
 
 [[package]]
@@ -11279,7 +11317,6 @@ dependencies = [
  "bevy",
  "miette",
  "nalgebra",
- "nao",
  "odal",
  "serde",
  "serde_with",

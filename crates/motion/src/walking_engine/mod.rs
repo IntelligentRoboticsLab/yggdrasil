@@ -47,6 +47,37 @@ impl Plugin for WalkingEnginePlugin {
     }
 }
 
+/// Compute the leg angles for the given foot positions.
+///
+/// The foot positions are relative to the robot's torso, and the angles are relative to the robot's
+/// pelvis.
+#[must_use]
+pub fn leg_angles(
+    foot_positions: &FootPositions,
+    hip_height: f32,
+    torso_offset: f32,
+) -> (LeftLegJoints<f32>, RightLegJoints<f32>) {
+    let (left, right) = foot_positions.to_offsets(hip_height);
+    let left_foot = left.into_left();
+    let right_foot = right.into_right();
+
+    let left_foot_to_left_pelvis = left_foot.to_pelvis(torso_offset);
+    let left_hip_yaw_pitch =
+        -1.0 * super::SidedFootOffset::<Left>::compute_hip_yaw_pitch(&left_foot_to_left_pelvis);
+
+    let right_foot_to_right_pelvis = right_foot.to_pelvis(torso_offset);
+    let right_hip_yaw_pitch =
+        super::SidedFootOffset::<Right>::compute_hip_yaw_pitch(&right_foot_to_right_pelvis);
+
+    // the NAO robot has a single hip yaw pitch joint, so we average the two
+    let hip_yaw_pitch_combined = (left_hip_yaw_pitch + right_hip_yaw_pitch) / 2.0;
+
+    (
+        left_leg_angles(left_foot_to_left_pelvis, hip_yaw_pitch_combined),
+        right_leg_angles(right_foot_to_right_pelvis, -hip_yaw_pitch_combined),
+    )
+}
+
 #[derive(Resource, Debug, Default, Clone, Copy)]
 pub struct RequestedStep {
     pub forward: f32,

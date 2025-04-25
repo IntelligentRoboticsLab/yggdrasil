@@ -2,11 +2,13 @@ pub mod layout;
 pub mod showtime;
 pub mod yggdrasil;
 
+use odal::Config;
 use std::path::{Path, PathBuf};
 
-use crate::{behavior::BehaviorConfig, nao::RobotInfo};
+use behavior::BehaviorConfig;
 use bevy::{ecs::system::RunSystemOnce, prelude::*};
 use miette::IntoDiagnostic;
+use nao::RobotInfo;
 use odal::{ConfigKind, Error, ErrorKind};
 
 use layout::LayoutConfig;

@@ -57,15 +57,19 @@ yggdrasil = { path = "yggdrasil" }
 # yggdrasil libraries
 bifrost = { path = "crates/bifrost" }
 build_utils = { path = "crates/build_utils" }
+debug = { path = "crates/debug" }
 game_controller = { path = "crates/game_controller" }
 heimdall = { path = "crates/heimdall" }
+kinematics = { path = "crates/kinematics" }
 localization = { path = "crates/localization" }
 ml = { path = "crates/ml" }
+motion = { path = "crates/motion" }
 nao = { path = "crates/nao" }
 nidhogg = { path = "crates/nidhogg" }
 odal = { path = "crates/odal" }
 re_control = { path = "./tools/re_control" }
 re_control_comms = { path = "tools/re_control/re_control_comms" }
+sensor = { path = "crates/sensor" }
 sindri = { path = "tools/sindri" }
 sindri_config = { path = "tools/sindri_config" }
 spatial = { path = "crates/spatial" }
