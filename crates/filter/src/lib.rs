@@ -22,9 +22,11 @@ pub type Weight = f32;
 
 pub type StateVector<const D: usize> = SVector<f32, D>;
 pub type WeightVector<const N: usize> = SVector<Weight, N>;
-pub type StateMatrix<const D: usize, const N: usize> = SMatrix<f32, D, N>;
-pub type CovarianceMatrix<const D: usize> = SMatrix<f32, D, D>;
-pub type CrossCovarianceMatrix<const D1: usize, const D2: usize> = SMatrix<f32, D1, D2>;
+
+type Matrix<const M: usize, const N: usize> = SMatrix<f32, M, N>;
+pub type StateMatrix<const D: usize, const N: usize> = Matrix<D, N>;
+pub type CovarianceMatrix<const D: usize> = Matrix<D, D>;
+pub type CrossCovarianceMatrix<const D1: usize, const D2: usize> = Matrix<D1, D2>;
 
 pub type SigmaPoints1 = SigmaPoints<1, 3>;
 pub type SigmaPoints2 = SigmaPoints<2, 5>;
@@ -172,7 +174,7 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
     pub fn predict<F>(
         &mut self,
         transition_function: F,
-        transition_noise: CovarianceMatrix<D_STATE>,
+        process_noise: CovarianceMatrix<D_STATE>,
     ) -> Result<()>
     where
         F: Fn(S) -> S,
@@ -185,7 +187,7 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
 
         let (mean, covariance) = unscented_transform::<D_STATE, N_SIGMAS, S>(
             transformed_sigma_points,
-            transition_noise,
+            process_noise,
             self.sigmas.w_m,
             self.sigmas.w_c,
         );
@@ -200,7 +202,7 @@ impl<const D_STATE: usize, const N_SIGMAS: usize, S: StateTransform<D_STATE>>
         sigma_points: StateMatrix<D_FROM, N_SIGMAS>,
         transform: impl Fn(StateVector<D_FROM>) -> StateVector<D_TO>,
     ) -> StateMatrix<D_TO, N_SIGMAS> {
-        let mut transformed_sigma_points = SMatrix::<f32, D_TO, N_SIGMAS>::zeros();
+        let mut transformed_sigma_points = Matrix::<D_TO, N_SIGMAS>::zeros();
         for (i, sigma_point) in sigma_points.column_iter().enumerate() {
             transformed_sigma_points.set_column(i, &transform(sigma_point.into_owned()));
         }
@@ -281,16 +283,28 @@ fn unscented_transform<const D_STATE: usize, const N_SIGMAS: usize, S: StateTran
     (mean, covariance)
 }
 
+/// Trait that describes how to convert a type into a state vector
+pub trait Vectorize<const D: usize>
+where
+    Self: From<StateVector<D>> + Into<StateVector<D>> + Sized,
+{
+}
+
+impl<T, const D: usize> Vectorize<D> for T where
+    T: From<StateVector<D>> + Into<StateVector<D>> + Sized
+{
+}
+
 /// Trait that describes how to transform state in the Unscented Kalman Filter
 pub trait StateTransform<const D: usize>
 where
-    Self: From<StateVector<D>> + Into<StateVector<D>> + Sized,
+    Self: Vectorize<D>,
 {
     /// Calculates the mean state from an iterator over weights and sigma points
     #[must_use]
     fn into_state_mean<const N: usize>(
         weights: SVector<Weight, N>,
-        states: SMatrix<f32, D, N>,
+        states: Matrix<D, N>,
     ) -> StateVector<D> {
         states * weights
     }
@@ -300,6 +314,96 @@ where
     fn residual(measurement: StateVector<D>, prediction: StateVector<D>) -> StateVector<D> {
         measurement - prediction
     }
+}
+
+/// A Linear Kalman Filter
+#[derive(Debug, Clone, Copy)]
+pub struct KalmanFilter<const D_STATE: usize, S>
+where
+    S: Vectorize<D_STATE>,
+{
+    pub state: StateVector<D_STATE>,
+    pub covariance: CovarianceMatrix<D_STATE>,
+    _state_transform: PhantomData<S>,
+}
+
+impl<const D_STATE: usize, S> KalmanFilter<D_STATE, S>
+where
+    S: Vectorize<D_STATE>,
+{
+    /// Creates self from a state and covariance
+    #[must_use]
+    pub fn new(state: S, covariance: CovarianceMatrix<D_STATE>) -> Self {
+        Self {
+            state: state.into(),
+            covariance,
+            _state_transform: PhantomData,
+        }
+    }
+
+    /// The predicted filter state
+    #[must_use]
+    pub fn state(&self) -> S {
+        self.state.into()
+    }
+
+    /// The current filter state covariance
+    #[must_use]
+    pub fn covariance(&self) -> CovarianceMatrix<D_STATE> {
+        self.covariance
+    }
+
+    /// Predict the next filter state based on the state transition model and process noise.
+    pub fn predict<const D_CONTROL: usize, C: Vectorize<D_CONTROL>, StateModel, ControlModel>(
+        &mut self,
+        state_transition_model: StateModel,
+        control_input_model: ControlModel,
+        control: C,
+        process_noise: CovarianceMatrix<D_STATE>,
+    ) where
+        StateModel: MatrixModel<D_STATE, D_STATE>,
+        ControlModel: MatrixModel<D_STATE, D_CONTROL>,
+    {
+        let state_transition_model = state_transition_model.as_model();
+        let control_input_model = control_input_model.as_model();
+
+        self.state = state_transition_model * self.state + control_input_model * control.into();
+        self.covariance =
+            state_transition_model * self.covariance * state_transition_model.transpose()
+                + process_noise;
+    }
+
+    /// Updates the filter state with a measurement
+    pub fn update<const D_MEASUREMENT: usize, M: Vectorize<D_MEASUREMENT>, MeasurementModel>(
+        &mut self,
+        measurement: M,
+        measurement_model: MeasurementModel,
+        measurement_noise: CovarianceMatrix<D_MEASUREMENT>,
+    ) -> Result<()>
+    where
+        MeasurementModel: MatrixModel<D_MEASUREMENT, D_STATE>,
+    {
+        let measurement = measurement.into();
+        let measurement_model = measurement_model.as_model();
+
+        let residual = measurement - measurement_model * self.state;
+        let residual_covariance =
+            measurement_model * self.covariance * measurement_model.transpose() + measurement_noise;
+
+        let kalman_gain = self.covariance
+            * measurement_model.transpose()
+            * residual_covariance.try_inverse().ok_or(Error::Inversion)?;
+
+        self.state += kalman_gain * residual;
+        self.covariance -= kalman_gain * measurement_model * self.covariance;
+
+        Ok(())
+    }
+}
+
+/// Trait that describes how to create a model matrix from a type
+pub trait MatrixModel<const M: usize, const N: usize> {
+    fn as_model(&self) -> Matrix<M, N>;
 }
 
 /// Calculates the Mahalanobis distance between a point and a distribution.
