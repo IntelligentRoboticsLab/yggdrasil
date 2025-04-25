@@ -16,6 +16,7 @@ ndarray = { workspace = true }
 ort = { workspace = true, default-features = false, features = [
   "download-binaries",
   "load-dynamic",
+  "openvino",
 ] }
 tasks = { workspace = true }
 thiserror = { workspace = true }

@@ -24,7 +24,7 @@ fn main() -> Result<()> {
             game_controller::GameControllerPlugin,
             nao::NaoPlugins,
             tasks::TaskPlugin,
-            ml::MlPlugin,
+            ml_ort::MlPlugin,
             core::CorePlugins,
             localization::LocalizationPlugin,
             sensor::SensorPlugins,

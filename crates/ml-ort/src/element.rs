@@ -9,7 +9,7 @@ use ort::{
 
 use crate::MlArray;
 
-trait DataType: PrimitiveTensorElementType + IntoTensorElementType {}
+trait DataType: PrimitiveTensorElementType + IntoTensorElementType + Sized + Send + Sync {}
 impl DataType for f32 {}
 impl DataType for u8 {}
 
@@ -34,7 +34,11 @@ impl<T: DataType + Copy + Debug + 'static> Parameters for T {
         mut input_descriptions: impl Iterator<Item = &'a Input>,
     ) -> impl Iterator<Item = Value> {
         let input_description = input_descriptions.next().unwrap();
-        let dimension = input_description.input_type.tensor_dimensions().unwrap();
+        let dimension = input_description
+            .input_type
+            .tensor_shape()
+            .unwrap()
+            .to_vec();
         let tensor = Tensor::from_array((dimension.as_slice(), vec![*self])).unwrap();
         std::iter::once(tensor.into())
     }
@@ -46,7 +50,7 @@ impl<T: DataType + Copy + Debug + 'static> Parameters for T {
             panic!("Input is not a tensor");
         }
 
-        let (_dim, tensor) = value.try_extract_raw_tensor::<T>().unwrap();
+        let (_dim, tensor) = value.try_extract_tensor::<T>().unwrap();
         tensor[0]
     }
 }
@@ -61,8 +65,13 @@ impl<T: DataType + Copy + Debug + 'static> Parameters for Vec<T> {
         mut input_descriptions: impl Iterator<Item = &'a Input>,
     ) -> impl Iterator<Item = Value> {
         let input_description = input_descriptions.next().unwrap();
-        let dimension = input_description.input_type.tensor_dimensions().unwrap();
-        let tensor = Tensor::from_array((dimension.as_slice(), self.as_slice())).unwrap();
+        let dimension = input_description
+            .input_type
+            .tensor_shape()
+            .unwrap()
+            .to_vec();
+        // TODO(Rick): Needed the .clone but not sure if I should use it
+        let tensor = Tensor::from_array((dimension.as_slice(), self.clone())).unwrap();
         std::iter::once(tensor.into())
     }
 
@@ -74,7 +83,7 @@ impl<T: DataType + Copy + Debug + 'static> Parameters for Vec<T> {
             panic!("Input is not a tensor");
         }
 
-        let (_dims, tensor) = value.try_extract_raw_tensor::<T>().unwrap();
+        let (_dims, tensor) = value.try_extract_tensor::<T>().unwrap();
         tensor.to_vec()
     }
 }
@@ -91,7 +100,11 @@ impl<T: DataType + Copy + Debug + 'static> Parameters for MlArray<T> {
         let data: Vec<T> = self.iter().map(|item| *item).collect();
 
         let input_description = input_descriptions.next().unwrap();
-        let dimension = input_description.input_type.tensor_dimensions().unwrap();
+        let dimension = input_description
+            .input_type
+            .tensor_shape()
+            .unwrap()
+            .to_vec();
         let tensor = Tensor::from_array((dimension.as_slice(), data)).unwrap();
         std::iter::once(tensor.into())
     }
@@ -104,7 +117,7 @@ impl<T: DataType + Copy + Debug + 'static> Parameters for MlArray<T> {
             panic!("Input is not a tensor");
         }
 
-        let (dims, tensor) = value.try_extract_raw_tensor::<T>().unwrap();
+        let (dims, tensor) = value.try_extract_tensor::<T>().unwrap();
         let dims = dims.iter().map(|&dim| dim as usize).collect::<Vec<_>>();
 
         MlArray::from_shape_vec(dims, tensor.to_vec()).unwrap()

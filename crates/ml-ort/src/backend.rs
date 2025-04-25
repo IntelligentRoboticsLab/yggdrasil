@@ -18,7 +18,10 @@ use ort::{
     tensor::TensorElementType,
     value::{Tensor, ValueType},
 };
-use std::marker::PhantomData;
+use std::{
+    marker::PhantomData,
+    sync::{Arc, Mutex},
+};
 
 // TODO(Rick): Setup environment as part of the ml-ort plugin
 
@@ -37,12 +40,11 @@ unsafe impl Sync for CompiledModel {}
 /// Used to run inference on the model.
 #[derive(Resource)]
 pub struct ModelExecutor<M: MlModel> {
-    compiled_model: CompiledModel,
+    pub compiled_model: Arc<Mutex<CompiledModel>>,
     // TODO(Rick): I think this can be removed since the Session contains Inputs and Outpus
     // Descriptions of in- and output layer tensors
     // input_descriptions: Arc<[TensorDescription]>,
     // output_descriptions: Arc<[TensorDescription]>,
-    // binding: Arc<Mutex<IoBinding>>,
     _marker: PhantomData<M>,
 }
 
@@ -71,7 +73,7 @@ impl<M: MlModel> ModelExecutor<M> {
                 .commit_from_file(M::ONNX_PATH)
                 .into_diagnostic()?;
 
-            CompiledModel(model)
+            Arc::new(Mutex::new(CompiledModel(model)))
         };
 
         Ok(Self {
@@ -80,13 +82,13 @@ impl<M: MlModel> ModelExecutor<M> {
         })
     }
 
-    fn inputs(&self) -> std::slice::Iter<Input> {
-        self.compiled_model.inputs.iter()
-    }
+    // fn inputs(&self) -> std::slice::Iter<Input> {
+    //     self.compiled_model.inputs.iter()
+    // }
 
-    fn outputs(&self) -> std::slice::Iter<Output> {
-        self.compiled_model.outputs.iter()
-    }
+    // fn outputs(&self) -> std::slice::Iter<Output> {
+    //     self.compiled_model.outputs.iter()
+    // }
 
     // TODO(Rick): Probably only support tensors. So give error and/or message if input
     // is not a tensor.
@@ -100,9 +102,10 @@ impl<M: MlModel> ModelExecutor<M> {
     ///
     /// Panics if a mutable reference to the model executor cannot be obtained.
     pub fn request_infer(&mut self, inputs: &M::Inputs) -> Result<InferRequest<M>> {
-        let mut binding = self.compiled_model.create_binding().into_diagnostic()?;
+        let model = self.compiled_model.lock().unwrap();
+        let mut binding = model.create_binding().into_diagnostic()?;
 
-        let input_descriptions = self.compiled_model.inputs.iter();
+        let input_descriptions = model.inputs.iter();
         // for (description, input) in
         //     itertools::izip!(&self.compiled_model.inputs, inputs.iter_data())
         // {
@@ -130,24 +133,22 @@ impl<M: MlModel> ModelExecutor<M> {
         //         .bind_input(description.name.clone(), &input)
         //         .into_diagnostic()?;
         // }
-        for (description, input) in itertools::izip!(
-            &self.compiled_model.inputs,
-            inputs.iter_data(input_descriptions)
-        ) {
+        for (description, input) in
+            itertools::izip!(&model.inputs, inputs.iter_data(input_descriptions))
+        {
             binding
                 .bind_input(description.name.clone(), &input)
                 .into_diagnostic()?;
         }
 
         let allocator = Allocator::default();
-        for description in &self.compiled_model.outputs {
+        for description in &model.outputs {
             binding
                 .bind_output_to_device(description.name.clone(), &allocator.memory_info())
                 .into_diagnostic()?;
         }
 
-        let tensor_descriptions = self
-            .compiled_model
+        let tensor_descriptions = model
             .outputs
             .iter()
             .map(|output| TensorDescription::from_output(output))
@@ -155,20 +156,21 @@ impl<M: MlModel> ModelExecutor<M> {
 
         Ok(InferRequest {
             binding,
+            model: Arc::clone(&self.compiled_model),
             tensor_descriptions,
             _marker: PhantomData,
         })
     }
 
-    /// Iterator over the input tensors.
-    pub fn input_descriptions(&self) -> std::slice::Iter<Input> {
-        self.inputs()
-    }
+    // Iterator over the input tensors.
+    // pub fn input_descriptions(&self) -> std::slice::Iter<Input> {
+    //     self.inputs()
+    // }
 
-    /// Iterator over the output tensors.
-    pub fn output_descriptions(&self) -> std::slice::Iter<Output> {
-        self.outputs()
-    }
+    // Iterator over the output tensors.
+    // pub fn output_descriptions(&self) -> std::slice::Iter<Output> {
+    //     self.outputs()
+    // }
 }
 
 /// Model inference request.
@@ -176,8 +178,9 @@ impl<M: MlModel> ModelExecutor<M> {
 /// This contains the openvino inference request, as well as the
 /// descriptions of the output tensors.
 pub struct InferRequest<M: MlModel> {
-    binding: IoBinding,
-    tensor_descriptions: Vec<TensorDescription>,
+    pub binding: IoBinding,
+    pub model: Arc<Mutex<CompiledModel>>,
+    pub tensor_descriptions: Vec<TensorDescription>,
     // note `fn() -> M` as opposed to just `M`, such that
     // `Self` implements Send, even though `M` does not
     //
@@ -193,7 +196,9 @@ impl<M: MlModel> InferRequest<M> {
     /// Returns an error if the inference fails for any reason.
     /// See [`Error`] for more details.
     pub fn run(&mut self) -> M::Outputs {
-        let mut outputs = self.binding.run().into_diagnostic().unwrap();
+        let mut model = self.model.lock().unwrap();
+        let binding = &self.binding;
+        let mut outputs = model.run_binding(binding).into_diagnostic().unwrap();
 
         // TODO(Rick): Put check like in the `crate:ml` for output name and number of
         // expected elements
@@ -253,7 +258,7 @@ unsafe impl Sync for Shape {}
 
 /// Description of a tensor parameter.
 pub struct TensorDescription {
-    name: String,
+    pub name: String,
     shape: Vec<i64>,
     dtype: TensorElementType,
 }
@@ -272,7 +277,7 @@ impl TensorDescription {
             name: output.name.clone(),
             shape: output
                 .output_type
-                .tensor_dimensions()
+                .tensor_shape()
                 .expect("invalid tensor")
                 .to_vec(),
             dtype: output.output_type.tensor_type().expect("invalid tensor"),

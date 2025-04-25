@@ -56,6 +56,7 @@ ordered-float = { workspace = true }
 ort = { workspace = true, default-features = false, features = [
   "download-binaries",
   "load-dynamic",
+  "openvino",
 ] }
 pathfinding = { workspace = true }
 rand = { workspace = true }

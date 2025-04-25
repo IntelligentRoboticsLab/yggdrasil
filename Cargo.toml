@@ -96,10 +96,16 @@ nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev
 num = "0.4.3"
 openvino = { version = "0.8.0", features = ["runtime-linking"] }
 ordered-float = "4.4.0"
-ort = { version = "=2.0.0-rc.9", default-features = false, features = [
+# ort = { version = "=2.0.0-rc.9", default-features = false, features = [
+#  "download-binaries",
+#  "load-dynamic",
+#  "openvino",
+#] }
+ort = { git = "https://github.com/pykeio/ort.git", rev="49a5cbf801a2bc0c10edb7388e4e4d01e6078390", default-features = false, features = [
   "download-binaries",
   "load-dynamic",
-] }
+  "openvino",
+]}
 pathfinding = "4.11.0"
 petgraph = "0.6.5"
 plotters = { version = "0.3.7", default-features = false, features = [

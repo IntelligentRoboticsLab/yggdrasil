@@ -8,6 +8,8 @@ use super::{
     MlModel,
 };
 
+use crate::element::Parameters;
+
 /// Type state for the inference builder.
 pub trait MlInferenceBuilderState {}
 
@@ -21,7 +23,6 @@ where
     executor: &'a mut ModelExecutor<M>,
     state: S,
 }
-
 
 /// Type state for defining the input of the model.
 pub struct DefineInput;
@@ -93,7 +94,7 @@ where
 {
     /// Define the input of the model with a single batch.
     pub fn with_input(
-        &'a mut self,
+        self,
         input: &'a M::Inputs,
     ) -> MlInferenceBuilder<'a, 'w, 's, M, DefineOutput<'a, M>> {
         MlInferenceBuilder {
@@ -105,7 +106,7 @@ where
 
     /// Define the input of the model with multiple batches.
     pub fn with_batched_input(
-        &'a mut self,
+        self,
         input: &'a [&'a M::Inputs],
     ) -> MlInferenceBuilder<'a, 'w, 's, M, DefineBatchedOutput<'a, M>> {
         MlInferenceBuilder {
@@ -159,8 +160,7 @@ where
         self.commands
             .prepare_task(TaskPool::Compute)
             .spawn_blocking(async move {
-                let output = request
-                    .run();
+                let output = request.run();
                 f(output)
             })
     }
@@ -171,7 +171,7 @@ where
     M: MlModel,
 {
     /// Spawn the model inference task, providing a closure to convert the output to a [`Resource`].
-    pub fn spawn<F, R>(&mut self, f: F)
+    pub fn spawn<F, R>(self, f: F)
     where
         F: (FnOnce(M::Outputs) -> Option<R>) + Send + Sync + 'static,
         R: Resource,
@@ -192,6 +192,20 @@ where
             .spawn({
                 async move {
                     let output = request.run();
+
+                    // let outputs = self
+                    //     .executor
+                    //     .compiled_model
+                    //     .run_binding(&request.binding)
+                    //     .unwrap();
+
+                    // let mut tensors = vec![];
+                    // for description in &request.tensor_descriptions {
+                    //     let value = outputs.remove(description.name.clone()).unwrap();
+                    //     tensors.push(value);
+                    // }
+
+                    // let output = M::Outputs::from_tensors(tensors.iter());
 
                     f(output)
                 }

@@ -11,6 +11,7 @@ use bevy::prelude::*;
 
 use backend::ModelExecutor;
 use element::Parameters;
+use ort::execution_providers::OpenVINOExecutionProvider;
 
 #[allow(missing_docs)]
 pub mod prelude {
@@ -30,7 +31,10 @@ pub struct MlPlugin;
 
 impl Plugin for MlPlugin {
     fn build(&self, _app: &mut bevy::prelude::App) {
-
+        ort::init_from("/home/rick/onnxruntime/build/Linux/RelWithDebInfo/libonnxruntime.so")
+            .with_execution_providers([OpenVINOExecutionProvider::default().with_device_type("CPU").build()])
+            .commit()
+            .unwrap();
     }
 }
 
