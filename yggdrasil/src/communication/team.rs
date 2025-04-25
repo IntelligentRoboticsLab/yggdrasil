@@ -164,18 +164,18 @@ impl TeamCommunication {
             mut secs_remaining,
             first_half,
             ..
-        } = message
+        } = *message
         else {
             return None;
         };
 
-        if *first_half == Half::First {
+        if first_half == Half::First {
             secs_remaining += SECS_PER_HALF;
         }
 
         let team_info = message.team(self.team_number)?;
         let messages = f32::from(team_info.message_budget.saturating_sub(MINIMAL_BUDGET));
-        let messages_per_player = messages / f32::from(*players_per_team);
+        let messages_per_player = messages / f32::from(players_per_team);
         let secs_per_message = f32::from(secs_remaining.max(0)) / messages_per_player;
 
         Some(Duration::from_secs_f32(secs_per_message))
@@ -194,7 +194,7 @@ pub enum TeamMessage {
 impl Message for TeamMessage {
     const MAX_PACKET_SIZE: usize = 128;
     const EXPECTED_SIZE: usize = 1;
-    const DEAD_SPACE: usize = 16;
+    const DEAD_SPACE: usize = 64;
 
     fn try_merge(&mut self, old: &Self) -> bool {
         std::mem::discriminant(self) == std::mem::discriminant(old)

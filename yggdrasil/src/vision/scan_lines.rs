@@ -2,15 +2,15 @@ use std::{ops::Deref, sync::Arc};
 
 use crate::{
     core::debug::{
-        debug_system::{DebugAppExt, SystemToggle},
         DebugContext,
+        debug_system::{DebugAppExt, SystemToggle},
     },
     nao::Cycle,
     prelude::*,
 };
 
 use super::{
-    camera::{init_camera, Image},
+    camera::{Image, init_camera},
     color,
     field_boundary::FieldBoundary,
     scan_grid::{FieldColorApproximate, ScanGrid},
@@ -19,7 +19,7 @@ use bevy::prelude::*;
 
 use heimdall::{Bottom, CameraLocation, CameraPosition, Top, YuvPixel, YuyvImage};
 use nalgebra::Point2;
-use re_control_comms::protocol::FieldColorConfig;
+use re_control_comms::protocol::control::FieldColorConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]

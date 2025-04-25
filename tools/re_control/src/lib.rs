@@ -3,6 +3,7 @@ use build_utils::version::Version;
 pub mod app;
 pub mod cli;
 pub mod connection;
+pub mod game_controller_view;
 pub mod re_control_view;
 pub mod resource;
 pub mod state;

@@ -1,7 +1,7 @@
 use clap::Parser;
 use colored::Colorize;
 use indicatif::{HumanDuration, ProgressBar, ProgressDrawTarget, ProgressStyle};
-use miette::{miette, Context, IntoDiagnostic};
+use miette::{Context, IntoDiagnostic, miette};
 use std::{
     borrow::Cow, collections::HashMap, fmt, fs, net::Ipv4Addr, path::Path, process::Stdio,
     str::FromStr, time::Duration,
@@ -14,7 +14,7 @@ use tokio::{
 use yggdrasil::core::config::showtime::ShowtimeConfig;
 use yggdrasil::prelude::*;
 
-use build_utils::cargo::{self, find_bin_manifest, Profile};
+use build_utils::cargo::{self, Profile, find_bin_manifest};
 
 use crate::{
     config::{Robot, SindriConfig},
@@ -325,6 +325,40 @@ impl Output {
             }
         }
     }
+
+    pub fn flashing_upload_phase(&self, image: &Path, robot: &Robot) {
+        match self {
+            Output::Silent => {}
+            Output::Single(pb) | Output::Multi(pb) => {
+                self.spinner();
+                pb.set_message(format!(
+                    "{} `{}` {} {}",
+                    "  Uploading".cyan().bold(),
+                    image.file_name().unwrap().to_string_lossy().dimmed(),
+                    "to robot".dimmed(),
+                    robot.ip()
+                ));
+            }
+        }
+    }
+
+    pub fn finished_flashing(&self, ip: &Ipv4Addr) {
+        match self {
+            Output::Silent => {}
+            Output::Single(pb) | Output::Multi(pb) => {
+                pb.set_style(
+                    ProgressStyle::with_template(&format!(
+                        "    {{prefix:.green.bold}} {} {{msg}}",
+                        "robot".dimmed()
+                    ))
+                    .unwrap(),
+                );
+                pb.set_prefix("Rebooted");
+                pb.set_message(ip.to_string());
+                pb.finish();
+            }
+        }
+    }
 }
 
 /// Environment variables that are required to cross compile for the robot, depending
@@ -355,8 +389,8 @@ mod cross {
             // This is required for the `tracy-client-sys` crate to cross-compile on mac
             // https://github.com/wolfpld/tracy/issues/730
             "TRACY_CLIENT_SYS_CXXFLAGS",
-            "-D__STDC_FORMAT_MACROS=1"
-        )
+            "-D__STDC_FORMAT_MACROS=1",
+        ),
     ];
 }
 

@@ -4,7 +4,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use odal::Config;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationMilliSeconds};
+use serde_with::{DurationMilliSeconds, serde_as};
 
 use super::{foot_support::FootSupportConfig, hips::HipHeightConfig, step::Step};
 
@@ -25,13 +25,53 @@ pub struct BalancingConfig {
     /// to adjust the pitch of the robot's ankles, in order to balance the pendulum motion.
     pub filtered_gyro_y_multiplier: f32,
 
+    /// Foot leveling config
+    pub foot_leveling: FootLevelingConfig,
+}
+
+/// Configuration for foot leveling behavior during locomotion.
+///
+/// This struct contains parameters that control how the robot's feet are leveled
+/// during the swing and stance phases of the walking gaits.
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct FootLevelingConfig {
     /// Phase shift for foot leveling drop-off.
     ///
     /// Higher values mean the swing foot is leveled for longer.
-    pub foot_leveling_phase_shift: f32,
+    pub phase_shift: f32,
 
     /// Decay rate for the foot leveling logistic filter.
-    pub foot_leveling_decay: f32,
+    pub decay: f32,
+
+    /// Maximum allowed difference in leveling between steps.
+    ///
+    /// Limits how much the foot leveling can change from one step to the next.
+    pub max_level_delta: f32,
+
+    /// Scaling factor for pitch leveling adjustments.
+    ///
+    /// Controls the intensity of foot leveling in the pitch direction.
+    pub pitch_level_scale: f32,
+
+    /// Scaling factor for roll leveling adjustments.
+    ///
+    /// Controls the intensity of foot leveling in the roll direction.
+    pub roll_level_scale: f32,
+
+    /// Multiplier for positive pitch corrections.
+    ///
+    /// Adjusts the strength of leveling when the foot needs to pitch upward.
+    pub pitch_positive_level_factor: f32,
+
+    /// Multiplier for negative pitch corrections.
+    ///
+    /// Adjusts the strength of leveling when the foot needs to pitch downward.
+    pub pitch_negative_level_factor: f32,
+
+    /// Multiplier for roll corrections.
+    ///
+    /// Adjusts the strength of leveling for roll adjustments in either direction.
+    pub roll_level_factor: f32,
 }
 
 /// Configuration for the walking engine.
@@ -68,11 +108,15 @@ pub struct WalkingEngineConfig {
     /// Negative values will make the robot lean backwards while walking.
     pub torso_offset: f32,
 
-    /// The stiffness value used for the leg joints, higher means the robot's joints will
-    /// wear out faster, but the robot will be more stable.
+    /// The stiffness value used for the leg joints whilst the robot is walking
+    /// higher means the robot's joints will wear out faster, but the robot will be more stable.
     pub walking_leg_stiffness: f32,
 
-    /// The stiffness value used for the leg joints while walking, higher means the robot's joints will
+    /// The stiffness value used for the leg joints whilst the robot is standing
+    /// higher means the robot's joints will wear out faster, but the robot will be more stable.
+    pub standing_leg_stiffness: f32,
+
+    /// The stiffness value used for the leg joints while sitting, higher means the robot's joints will
     /// wear out faster, but the robot will be more stable.
     ///
     /// Negative values will turn the motors off completely, sacrificing all stability.

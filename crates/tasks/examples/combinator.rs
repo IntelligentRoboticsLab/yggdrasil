@@ -3,7 +3,7 @@
 use std::time::{self, Duration};
 
 use bevy::{core::FrameCount, prelude::*};
-use tasks::{combinators::Combinators, CommandsExt, TaskPool};
+use tasks::{CommandsExt, TaskPool, combinators::Combinators};
 
 #[derive(Resource, Default)]
 pub struct Foo(FrameCount);

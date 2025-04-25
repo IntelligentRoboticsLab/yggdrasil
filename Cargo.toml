@@ -5,9 +5,9 @@ resolver = "2"
 [workspace.package]
 authors = ["Dutch Nao Team"]
 categories = []
-edition = "2021"
+edition = "2024"
 license = "MIT OR Apache-2.0"
-rust-version = "1.82.0"
+rust-version = "1.85.0"
 version = "0.1.0"
 
 [workspace.lints.rust]
@@ -53,6 +53,7 @@ bifrost = { path = "crates/bifrost" }
 build_utils = { path = "crates/build_utils" }
 heimdall = { path = "crates/heimdall" }
 ml = { path = "crates/ml" }
+nidhogg = { path = "crates/nidhogg" }
 odal = { path = "crates/odal" }
 re_control_comms = { path = "tools/re_control/re_control_comms" }
 sindri = { path = "tools/sindri" }
@@ -68,12 +69,12 @@ bevy = { version = "0.15.3", default-features = false, features = [
 byteorder = "1.5.0"
 cargo_toml = "0.20.5"
 chrono = "=0.4.39"
-clap = "4.5.32"
+clap = "4.5.36"
 colored = "2.1.0"
 cpal = "0.15.3"
 dialoguer = "0.11.0"
 fast-math = "0.1.1"
-fast_image_resize = "5.0.0"
+fast_image_resize = "5.1.3"
 futures = "0.3.31"
 geo = "0.29.2"
 glob = "0.3.1"
@@ -88,10 +89,9 @@ linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo", r
 local-ip-address = "0.6.3"
 lstsq = "0.6.0"
 miette = "7.4.0"
-mimalloc = "0.1.42"
+mimalloc = "0.1.45"
 nalgebra = { version = "0.33.2", features = ["convert-glam028"] }
 ndarray = "0.16.1"
-nidhogg = { git = "ssh://git@github.com/IntelligentRoboticsLab/nidhogg.git", rev = "82d32b3b915848f553f4f8b99dab9ca1532f4416" }
 num = "0.4.3"
 openvino = { version = "0.8.0", features = ["runtime-linking"] }
 ordered-float = "4.4.0"
@@ -101,9 +101,9 @@ plotters = { version = "0.3.7", default-features = false, features = [
   "bitmap_backend",
   "bitmap_encoder",
 ] }
-proc-macro2 = "1.0.94"
+proc-macro2 = "1.0.95"
 quote = "1.0.40"
-rand = "0.8.5"
+rand = "0.9.1"
 
 re_crash_handler = "0.22.1"
 rerun = { version = "0.22.1", default-features = false, features = [
@@ -113,18 +113,20 @@ rerun = { version = "0.22.1", default-features = false, features = [
   "log",
   "glam",
 ] }
-rustfft = "6.2.0"
+rmp-serde = "1.1.1"
+rustfft = "6.3.0"
 serde = "1.0.219"
 serde_json = "1.0.140"
 serde_with = "3.11.0"
-socket2 = "0.5.7"
+socket2 = "0.5.9"
+strum = { version = "0.27", features = ["derive"] }
 syn = "2.0.100"
 thiserror = "2.0.12"
-tokio = "1.44.1"
+tokio = "1.44.2"
 toml = "0.8.19"
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
 tracing-subscriber = "0.3.18"
 tracing-tracy = "0.11.3"
-turbojpeg = { git = "https://github.com/Aemulation/rust-turbojpeg.git" }
+turbojpeg = "1.3.2"
 vqf = { version = "0.4.1", features = ["serde"] }

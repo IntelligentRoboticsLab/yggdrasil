@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use nalgebra::Point3;
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState},
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},
@@ -32,7 +32,7 @@ impl Behavior for WalkTo {
     const STATE: BehaviorState = BehaviorState::WalkTo;
 }
 
-pub fn walk_to(
+fn walk_to(
     walk_to: Res<WalkTo>,
     pose: Res<RobotPose>,
     mut step_planner: ResMut<StepPlanner>,

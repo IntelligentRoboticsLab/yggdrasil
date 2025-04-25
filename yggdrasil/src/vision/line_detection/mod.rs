@@ -5,19 +5,19 @@ pub mod ransac;
 use std::marker::PhantomData;
 
 use bevy::prelude::*;
-use bevy::tasks::{block_on, poll_once, AsyncComputeTaskPool, Task};
+use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, poll_once};
 use heimdall::{CameraLocation, CameraMatrix, CameraPosition, YuyvImage};
 use inlier::Inliers;
 use itertools::Itertools;
 use line::{Line2, LineSegment2};
-use nalgebra::{point, Point2};
+use nalgebra::{Point2, point};
 
 use odal::Config;
 use rand::Rng;
-use ransac::{line::LineDetector, Ransac};
+use ransac::{Ransac, line::LineDetector};
 use serde::{Deserialize, Serialize};
 
-use super::body_contour::{update_body_contours, BodyContour};
+use super::body_contour::{BodyContour, update_body_contours};
 use super::{camera::Image, scan_lines::ScanLines};
 use crate::core::debug::debug_system::{DebugAppExt, SystemToggle};
 use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle, prelude::ConfigExt};
@@ -106,11 +106,16 @@ impl<T: CameraLocation> Plugin for LineDetectionPlugin<T> {
                         .chain(),
                     debug_lines::<T>,
                     debug_lines_projected::<T>,
-                    debug_rejected_lines::<T>,
                 ),
             )
             // TODO: these debug systems should ideally all be batched over multiple cycles
             // but that needs a batching api in the debug module
+            .add_named_debug_systems(
+                Update,
+                debug_rejected_lines::<T>,
+                "Visualize rejected lines",
+                SystemToggle::Disable,
+            )
             .add_named_debug_systems(
                 Update,
                 debug_lines_inliers::<T>,
@@ -262,9 +267,9 @@ fn detect_lines<T: CameraLocation>(
     cfg: LineDetectionConfig,
     body_contour: BodyContour,
 ) -> (Vec<LineCandidate>, Vec<Option<Rejection>>) {
-    let spots = scan_lines
-        .line_spots()
-        .filter(|point| !body_contour.is_part_of_body(*point));
+    let spots = scan_lines.line_spots().filter(|point| {
+        T::POSITION == CameraPosition::Top || !body_contour.is_part_of_body(*point)
+    });
 
     let mut projected_spots = spots
         // project the points to the ground, in the field frame
@@ -511,7 +516,7 @@ fn setup_debug<T: CameraLocation>(dbg: DebugContext) {
     // rejected lines
     dbg.log_static(
         T::make_entity_image_path("lines/rejected"),
-        &rerun::Clear::flat(),
+        &rerun::LineStrips3D::update_fields(),
     );
 }
 
@@ -601,16 +606,16 @@ fn debug_lines_inliers<T: CameraLocation>(
     camera_matrix: Res<CameraMatrix<T>>,
     accepted: Query<(&Cycle, &DetectedLines), (With<T>, Added<DetectedLines>)>,
 ) {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     for (cycle, lines) in accepted.iter() {
         let mut colors = vec![];
         let mut points = vec![];
 
         lines.inliers.iter().for_each(|inliers| {
             let c = (
-                rng.gen_range(0..255),
-                rng.gen_range(0..255),
-                rng.gen_range(0..255),
+                rng.random_range(0..255),
+                rng.random_range(0..255),
+                rng.random_range(0..255),
             );
 
             let p = inliers
@@ -640,7 +645,21 @@ fn debug_rejected_lines<T: CameraLocation>(
     dbg: DebugContext,
     camera_matrix: Res<CameraMatrix<T>>,
     rejected: Query<(&Cycle, &RejectedLines), (With<T>, Added<RejectedLines>)>,
+    cycle: Res<Cycle>,
+    mut last_logged: Local<Option<Cycle>>,
 ) {
+    if rejected.is_empty()
+        && last_logged.is_some_and(|last_logged_cycle| {
+            last_logged_cycle.0 + LINE_DEBUG_CLEAR_CYCLES < cycle.0
+        })
+    {
+        dbg.log_with_cycle(
+            T::make_entity_image_path("lines/rejected"),
+            *cycle,
+            &rerun::LineStrips2D::update_fields().with_strips(std::iter::empty::<&[(f32, f32)]>()),
+        );
+    }
+
     for (cycle, lines) in rejected.iter() {
         dbg.log_with_cycle(
             T::make_entity_image_path("lines/rejected"),
@@ -665,7 +684,7 @@ fn debug_rejected_lines<T: CameraLocation>(
                     .rejections
                     .iter()
                     .map(|r| match r {
-                        Rejection::TooShort => (255, 0, 0),
+                        Rejection::TooShort => (0, 120, 120),
                         Rejection::TooLong => (0, 255, 0),
                         Rejection::NotEnoughSpots => (0, 0, 255),
                         Rejection::FailedWhiteTest => (0, 255, 255),
@@ -673,5 +692,7 @@ fn debug_rejected_lines<T: CameraLocation>(
                     .collect_vec(),
             ),
         );
+
+        *last_logged = Some(*cycle);
     }
 }

@@ -1,14 +1,14 @@
-use super::{get_min_duration, lerp, types::Movement, ActiveMotion, KeyframeExecutor};
+use super::{ActiveMotion, KeyframeExecutor, get_min_duration, lerp, types::Movement};
 use crate::motion::walking_engine::step_context::StepContext;
 use crate::nao::NaoManager;
 use crate::nao::Priority;
 use crate::sensor::orientation::RobotOrientation;
 use bevy::prelude::*;
-use miette::{miette, Result};
+use miette::{Result, miette};
 use nidhogg::types::{ArmJoints, HeadJoints, LegJoints};
 use nidhogg::{
-    types::{FillExt, JointArray},
     NaoState,
+    types::{FillExt, JointArray},
 };
 use std::time::{Duration, Instant};
 

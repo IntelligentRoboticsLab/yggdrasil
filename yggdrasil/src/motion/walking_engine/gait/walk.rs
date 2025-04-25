@@ -1,14 +1,15 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use nalgebra::{Translation3, Vector2};
+use nalgebra::Translation3;
 
 use crate::{
     kinematics::{
-        spaces::{LeftSole, RightSole, Robot},
         Kinematics,
+        spaces::{LeftSole, RightSole, Robot},
     },
     motion::walking_engine::{
+        Side, TargetFootPositions,
         balancing::BalanceAdjustment,
         config::WalkingEngineConfig,
         feet::FootPositions,
@@ -16,10 +17,9 @@ use crate::{
         schedule::{Gait, WalkingEngineSet},
         smoothing::parabolic_return,
         step_context::StepContext,
-        Side, TargetFootPositions,
     },
     nao::CycleTime,
-    sensor::{low_pass_filter::ExponentialLpf, orientation::RobotOrientation},
+    sensor::orientation::RobotOrientation,
 };
 
 use super::WalkState;
@@ -106,13 +106,15 @@ fn generate_walk_gait(
 
 #[derive(Debug, Clone)]
 struct FootLevelingState {
-    state: ExponentialLpf<2>,
+    pitch: f32,
+    roll: f32,
 }
 
 impl Default for FootLevelingState {
     fn default() -> Self {
         Self {
-            state: ExponentialLpf::new(0.8),
+            pitch: 0.0,
+            roll: 0.0,
         }
     }
 }
@@ -143,23 +145,31 @@ fn foot_leveling(
     let level_orientation = orientation.quaternion() * robot_to_walk_rotation.inverse();
     let (level_roll, level_pitch, _) = level_orientation.euler_angles();
 
-    let weight = logistic_correction_weight(
-        state.linear(),
-        config.balancing.foot_leveling_phase_shift,
-        config.balancing.foot_leveling_decay,
-    );
+    let config = &config.balancing.foot_leveling;
+    let weight = logistic_correction_weight(state.linear(), config.phase_shift, config.decay);
 
-    let target_roll = -level_roll * weight;
-    let target_pitch = -level_pitch * weight;
+    let pitch_base_factor = if level_pitch > 0.0 {
+        config.pitch_positive_level_factor
+    } else {
+        config.pitch_negative_level_factor
+    };
 
-    let target_values = foot_leveling
-        .state
-        .update(Vector2::new(target_roll, target_pitch));
+    let pitch_scale_factor = (level_pitch.abs() / config.pitch_level_scale).min(1.0);
+    let target_pitch = -level_pitch * weight * pitch_base_factor * pitch_scale_factor;
+
+    let roll_scale_factor = (level_roll.abs() / config.roll_level_scale).min(1.0);
+    let target_roll = -level_roll * weight * config.roll_level_factor * roll_scale_factor;
+
+    let max_delta = config.max_level_delta;
+    foot_leveling.roll =
+        foot_leveling.roll + (target_roll - foot_leveling.roll).clamp(-max_delta, max_delta);
+    foot_leveling.pitch =
+        foot_leveling.pitch + (target_pitch - foot_leveling.pitch).clamp(-max_delta, max_delta);
 
     balance_adjustment.apply_foot_leveling(
         foot_support.swing_side(),
-        target_values.x,
-        target_values.y,
+        foot_leveling.roll,
+        foot_leveling.pitch,
     );
 }
 
@@ -173,5 +183,8 @@ fn logistic_correction_weight(phase: f32, phase_shift: f32, decay: f32) -> f32 {
     let decayed_phase = (-decay * (phase - phase_shift)).exp();
     let factor = 1.0 / (1.0 + decayed_phase);
 
-    (1.0 - factor).clamp(0.0, 1.0)
+    let weight = (1.0 - factor).clamp(0.0, 1.0);
+
+    // snap to 0.0, when approaching 0.0
+    if weight <= 0.05 { 0.0 } else { weight }
 }

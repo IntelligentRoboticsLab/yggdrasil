@@ -1,6 +1,9 @@
 use std::sync::{Arc, RwLock};
 
-use re_control_comms::{protocol::ViewerMessage, viewer::ControlViewerHandle};
+use re_control_comms::{
+    protocol::{ViewerMessage, control::ViewerControlMessage},
+    viewer::ControlViewerHandle,
+};
 use rerun::external::egui;
 
 use crate::re_control_view::ControlViewerData;
@@ -14,7 +17,9 @@ pub fn visual_referee_ui(
 ) {
     view_section(ui, "Visual Referee".to_string(), |ui| {
         if ui.button("Recognize pose").clicked() {
-            if let Err(error) = handle.send(ViewerMessage::VisualRefereeRecognition) {
+            if let Err(error) = handle.send(ViewerMessage::ViewerControlMessage(
+                ViewerControlMessage::VisualRefereeRecognition,
+            )) {
                 tracing::error!(?error, "Failed to send message");
             }
         }

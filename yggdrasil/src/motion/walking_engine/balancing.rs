@@ -2,10 +2,10 @@ use bevy::prelude::*;
 use nidhogg::types::{LeftLegJoints, RightLegJoints};
 
 use super::{
+    Side,
     config::WalkingEngineConfig,
     foot_support::FootSupportState,
     schedule::{Gait, WalkingEngineSet},
-    Side,
 };
 use crate::sensor::{imu::IMUValues, low_pass_filter::ExponentialLpf};
 

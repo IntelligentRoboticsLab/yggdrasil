@@ -4,30 +4,21 @@ use std::{
 };
 
 use re_control_comms::{
-    protocol::{RobotMessage, CONTROL_PORT},
+    protocol::{CONTROL_PORT, RobotMessage},
     viewer::ControlViewer,
 };
 use rerun::external::egui;
 
 use crate::{
     connection::ConnectionState,
-    re_control_view::{handle_message, ControlViewState, ControlViewerData},
+    state::{HandleState, SharedHandleState},
 };
 
-/// This is the ui for the whole selection ui (the ui "on the side")
-pub fn re_control_selection_ui(ui: &mut egui::Ui, control_view_state: &mut ControlViewState) {
-    connection_selection_ui(
-        ui,
-        &mut control_view_state.connection,
-        Arc::clone(&control_view_state.data),
-    );
-}
-
-// This is the ui in the selection ui for making a connection to a robot
-fn connection_selection_ui(
+/// This is the ui in the selection ui (the ui "on the side") for making a connection to a robot
+pub(crate) fn connection_selection_ui<T: HandleState + Default + Send + Sync + 'static>(
     ui: &mut egui::Ui,
     connection_state: &mut ConnectionState,
-    control_view_state_data: Arc<RwLock<ControlViewerData>>,
+    state_data: Arc<RwLock<T>>,
 ) {
     egui::Grid::new("re_control selection ui")
         .num_columns(2)
@@ -42,7 +33,7 @@ fn connection_selection_ui(
             robot_connection_selection(ui, connection_state);
             ui.end_row();
 
-            robot_connect_button(ui, connection_state, control_view_state_data);
+            robot_connect_button(ui, connection_state, state_data);
             ui.end_row();
         });
 }
@@ -99,10 +90,10 @@ fn robot_connection_selection(ui: &mut egui::Ui, connection_state: &mut Connecti
         });
 }
 
-fn robot_connect_button(
+fn robot_connect_button<T: HandleState + Default + Send + Sync + 'static>(
     ui: &mut egui::Ui,
     connection_state: &mut ConnectionState,
-    control_view_state_data: Arc<RwLock<ControlViewerData>>,
+    state_data: Arc<RwLock<T>>,
 ) {
     ui.label("Connect");
 
@@ -117,20 +108,14 @@ fn robot_connect_button(
         let socket_addr = SocketAddrV4::new(robot_ip, CONTROL_PORT);
         let control_viewer = ControlViewer::from(socket_addr);
 
-        // Reset the control viewer data. This data was received from the robot
-        {
-            let mut locked_data = control_view_state_data
-                .write()
-                .expect("Failed to lock viewer data");
-            *locked_data = ControlViewerData::default();
-        }
+        state_data.reset();
 
         // Add a handler for the `ControlViewer` before it runs. This is to
         // make sure we do not miss any message send at the beginning of a
         // connection
         control_viewer
             .add_handler(Box::new(move |msg: &RobotMessage| {
-                handle_message(msg, Arc::clone(&control_view_state_data))
+                Arc::clone(&state_data).handle_message(msg);
             }))
             .expect("Failed to add handler");
 

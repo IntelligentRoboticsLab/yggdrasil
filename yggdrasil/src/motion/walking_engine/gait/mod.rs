@@ -3,8 +3,8 @@ use std::time::Duration;
 use bevy::prelude::*;
 
 use super::{
-    config::WalkingEngineConfig, foot_support::FootSupportState, smoothing::parabolic_step,
-    step::PlannedStep, FootSwitchedEvent, Gait, WalkingEngineSet,
+    FootSwitchedEvent, Gait, WalkingEngineSet, config::WalkingEngineConfig,
+    foot_support::FootSupportState, smoothing::parabolic_step, step::PlannedStep,
 };
 use crate::prelude::*;
 
@@ -14,6 +14,8 @@ mod starting;
 mod stopping;
 pub mod walk;
 
+pub use stand::StandingHeight;
+
 pub(super) struct GaitPlugin;
 
 impl Plugin for GaitPlugin {
@@ -22,7 +24,7 @@ impl Plugin for GaitPlugin {
         app.add_systems(
             Sensor,
             update_support_foot
-                .after(crate::sensor::fsr::force_sensitive_resistor_sensor)
+                .after(crate::sensor::fsr::update_force_sensitive_resistor_sensor)
                 .after(WalkingEngineSet::Prepare)
                 .run_if(in_state(Gait::Walking).or(in_state(Gait::Stopping))),
         );

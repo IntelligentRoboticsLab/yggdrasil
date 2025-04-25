@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState},
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     localization::RobotPose,
     motion::{
         step_planner::StepPlanner,
@@ -32,7 +32,7 @@ impl Behavior for Walk {
     const STATE: BehaviorState = BehaviorState::Walk;
 }
 
-pub fn walk(
+fn walk(
     walk: Res<Walk>,
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,

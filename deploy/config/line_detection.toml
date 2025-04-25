@@ -4,11 +4,11 @@ ransac_iters = 10
 # maximum number of models to fit in RANSAC
 model_iters = 100
 # residual threshold for RANSAC inliers in meters
-ransac_inlier_threshold = 0.02
+ransac_inlier_threshold = 0.025
 # maximum distance of a valid line spot from the camera in meters
 spot_max_distance = 4.0
 # minimum number of points in a valid line segment
-line_segment_min_points = 10
+line_segment_min_points = 8
 # minimum length of a line segment after merging in meters
 line_segment_min_length = 0.35
 # maximum length of a line segment after merging in meters

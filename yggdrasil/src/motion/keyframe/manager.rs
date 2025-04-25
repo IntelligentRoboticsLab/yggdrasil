@@ -4,9 +4,9 @@ use super::types::{
 use crate::motion::walking_engine::step_context::StepContext;
 use crate::nao::Priority;
 use bevy::prelude::*;
-use miette::{miette, Result};
-use nidhogg::types::JointArray;
+use miette::{Result, miette};
 use nidhogg::NaoState;
+use nidhogg::types::JointArray;
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Instant;

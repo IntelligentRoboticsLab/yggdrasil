@@ -1,16 +1,18 @@
 use crate::{
     core::audio::whistle_detection::Whistle,
-    game_controller::{penalty::PenaltyState, GameControllerMessageEvent},
+    game_controller::{GameControllerMessageEvent, penalty::PenaltyState},
+    kinematics::Kinematics,
+    motion::walking_engine::config::WalkingEngineConfig,
     nao::{NaoManager, Priority},
     sensor::button::{ChestButton, HeadButtons},
     vision::referee::{
-        communication::ReceivedRefereePose, recognize::RefereePoseRecognized, RefereePose,
+        RefereePose, communication::ReceivedRefereePose, recognize::RefereePoseRecognized,
     },
 };
 use bevy::prelude::*;
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationMilliSeconds};
+use serde_with::{DurationMilliSeconds, serde_as};
 use std::time::Duration;
 
 use bifrost::communication::{GameControllerMessage, GameState};
@@ -34,8 +36,7 @@ pub struct PrimaryStatePlugin;
 
 impl Plugin for PrimaryStatePlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(PrimaryState::Sitting);
-
+        app.add_systems(PostStartup, init_primary_state);
         app.add_systems(
             Update,
             (update_gamecontroller_message, update_primary_state).chain(),
@@ -69,12 +70,26 @@ pub enum PrimaryState {
     Calibration,
 }
 
+fn init_primary_state(
+    mut commands: Commands,
+    config: Res<WalkingEngineConfig>,
+    kinematics: Res<Kinematics>,
+) {
+    let hip_height = kinematics.left_hip_height();
+
+    if hip_height >= config.hip_height.max_sitting_hip_height {
+        commands.insert_resource(PrimaryState::Initial);
+    } else {
+        commands.insert_resource(PrimaryState::Sitting);
+    }
+}
+
 fn update_gamecontroller_message(
     mut commands: Commands,
     mut events: EventReader<GameControllerMessageEvent>,
 ) {
     for event in events.read() {
-        commands.insert_resource((*event).clone());
+        commands.insert_resource(**event);
     }
 }
 

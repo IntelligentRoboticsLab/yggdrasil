@@ -4,8 +4,8 @@ use bevy::prelude::*;
 use nidhogg::types::HeadJoints;
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState},
-    motion::walking_engine::step_context::StepContext,
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
+    motion::walking_engine::{StandingHeight, step_context::StepContext},
     nao::{NaoManager, Priority},
 };
 
@@ -26,8 +26,8 @@ impl Behavior for Stand {
     const STATE: BehaviorState = BehaviorState::Stand;
 }
 
-pub fn stand(mut step_context: ResMut<StepContext>, mut nao_manager: ResMut<NaoManager>) {
-    step_context.request_stand();
+fn stand(mut step_context: ResMut<StepContext>, mut nao_manager: ResMut<NaoManager>) {
+    step_context.request_stand_with_height(StandingHeight::MAX);
 
     nao_manager.set_head_target(
         HeadJoints::default(),

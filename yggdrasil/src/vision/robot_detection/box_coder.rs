@@ -1,4 +1,4 @@
-use ndarray::{s, stack, Array2, Axis};
+use ndarray::{Array2, Axis, s, stack};
 
 /// Utility that decodes bounding boxes from the regression format output by the model.
 ///

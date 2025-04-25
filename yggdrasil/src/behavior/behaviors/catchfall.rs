@@ -4,11 +4,11 @@ use crate::{
 };
 use bevy::prelude::*;
 use nidhogg::{
+    NaoState,
     types::{
         ArmJoints, FillExt, HeadJoints, LeftArmJoints, LeftLegJoints, LegJoints, RightArmJoints,
         RightLegJoints,
     },
-    NaoState,
 };
 
 use crate::motion::keyframe::{lerp_arms, lerp_legs};
@@ -155,7 +155,7 @@ const ARM_JOINTS_BACKWARD_FALL: ArmJoints<f32> = ArmJoints {
     },
 };
 
-pub fn catch_fall(
+fn catch_fall(
     mut nao_manager: ResMut<NaoManager>,
     nao_state: ResMut<NaoState>,
 

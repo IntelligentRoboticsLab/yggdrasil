@@ -14,8 +14,6 @@ pub use cycle::*;
 pub use manager::*;
 pub use robot_info::*;
 
-const DEFAULT_STIFFNESS: f32 = 0.8;
-
 /// Plugin group which contains convenience plugins for the robot.
 pub struct NaoPlugins;
 

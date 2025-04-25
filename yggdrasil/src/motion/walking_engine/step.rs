@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::kinematics::Kinematics;
 
-use super::{feet::FootPositions, Side};
+use super::{Side, feet::FootPositions};
 
 #[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
 pub struct Step {

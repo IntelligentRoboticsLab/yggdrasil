@@ -2,9 +2,9 @@ use std::time::Instant;
 
 use bevy::prelude::*;
 use filter::{CovarianceMatrix, StateTransform, StateVector, UnscentedKalmanFilter};
-use nalgebra::{point, Point2};
+use nalgebra::{Point2, point};
 
-use crate::nao::Cycle;
+use crate::{localization::odometry::Odometry, nao::Cycle};
 
 #[derive(Debug)]
 pub enum BallHypothesis {
@@ -12,6 +12,7 @@ pub enum BallHypothesis {
     Stationary(f32),
 }
 
+/// Filtered ball position in robot coordinates
 #[derive(Resource, Deref, DerefMut)]
 pub struct BallTracker {
     #[deref]
@@ -51,16 +52,21 @@ impl BallTracker {
         }
     }
 
-    pub fn predict(&mut self) {
-        let f = |p: BallPosition| p;
-        if let Err(err) = self.position_kf.predict(f, self.prediction_noise) {
+    pub fn predict(&mut self, odometry: &Odometry) {
+        // update last ball state with odometry, as we're moving relative to the ball.
+        if let Err(err) = self.position_kf.predict(
+            |p: BallPosition| BallPosition(odometry.offset_to_last.inverse() * p.0),
+            self.prediction_noise,
+        ) {
             error!("failed to predict ball position: {err:?}");
         }
     }
 
     pub fn measurement_update(&mut self, measurement: BallPosition) {
-        let h = |p: BallPosition| p;
-        if let Err(err) = self.position_kf.update(h, measurement, self.sensor_noise) {
+        if let Err(err) =
+            self.position_kf
+                .update(std::convert::identity, measurement, self.sensor_noise)
+        {
             error!("failed to do measurement update: {err:?}");
         }
 

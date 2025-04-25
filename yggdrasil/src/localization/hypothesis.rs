@@ -3,8 +3,7 @@ use bifrost::communication::{GameControllerMessage, GamePhase, Penalty};
 use filter::{
     CovarianceMatrix, StateMatrix, StateTransform, StateVector, UnscentedKalmanFilter, WeightVector,
 };
-use heimdall::Top;
-use nalgebra::{point, vector, ComplexField, Point2, Rotation2, UnitComplex};
+use nalgebra::{ComplexField, Point2, Rotation2, UnitComplex, point, vector};
 use num::Complex;
 use serde::{Deserialize, Serialize};
 
@@ -18,11 +17,11 @@ use crate::{
 };
 
 use super::{
+    LocalizationConfig, RobotPose,
     correction::fit_field_lines,
     correspondence::FieldLineCorrespondence,
     odometry::Odometry,
     pose::{penalized_pose, penalty_kick_pose},
-    LocalizationConfig, RobotPose,
 };
 
 type RobotPoseUkf = UnscentedKalmanFilter<3, 7, RobotPose>;
@@ -77,9 +76,7 @@ pub fn odometry_update(
 pub fn line_update(
     cfg: Res<LocalizationConfig>,
     layout: Res<LayoutConfig>,
-    // TODO: for now, we only use the top camera as lines are mistakenly connected in the shoulder sometimes.
-    // The [`With`] filter should be removed once the body contour works properly.
-    new_lines: Query<&DetectedLines, (Added<DetectedLines>, With<Top>)>,
+    new_lines: Query<&DetectedLines, Added<DetectedLines>>,
     mut hypotheses: Query<&mut RobotPoseHypothesis>,
 ) {
     // get the measured lines in robot space

@@ -1,8 +1,9 @@
 [package]
+name = "bifrost_derive"
+
 authors.workspace = true
 categories.workspace = true
 edition.workspace = true
-name = "bifrost_derive"
 rust-version.workspace = true
 version.workspace = true
 

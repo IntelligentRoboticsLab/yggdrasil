@@ -111,7 +111,7 @@ impl<T: CameraLocation> Image<T> {
         let src = self.yuyv_image();
         let src_width = src.width(); // in pixels
         let src_height = src.height(); // in pixels
-                                       // Each pixel is effectively 2 bytes, so reserve space accordingly.
+        // Each pixel is effectively 2 bytes, so reserve space accordingly.
         let mut result = Vec::with_capacity(width * height * 2);
 
         // Compute the top-left corner of the patch.

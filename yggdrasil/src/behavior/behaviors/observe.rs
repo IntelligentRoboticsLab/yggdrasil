@@ -5,10 +5,10 @@ use std::time::Instant;
 
 use crate::{
     behavior::{
-        engine::{in_behavior, Behavior, BehaviorState},
         BehaviorConfig,
+        engine::{Behavior, BehaviorState, in_behavior},
     },
-    motion::walking_engine::{step::Step, step_context::StepContext},
+    motion::walking_engine::{StandingHeight, step::Step, step_context::StepContext},
     nao::{NaoManager, Priority},
 };
 use nidhogg::types::{FillExt, HeadJoints};
@@ -57,6 +57,7 @@ impl Behavior for Observe {
 }
 
 pub struct ObserveBehaviorPlugin;
+
 impl Plugin for ObserveBehaviorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, observe.run_if(in_behavior::<Observe>))
@@ -88,7 +89,7 @@ fn observe(
     if let Some(step) = observe.step {
         step_context.request_walk(step);
     } else {
-        step_context.request_stand();
+        step_context.request_stand_with_height(StandingHeight::MAX);
     }
 }
 

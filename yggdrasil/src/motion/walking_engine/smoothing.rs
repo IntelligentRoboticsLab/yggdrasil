@@ -8,8 +8,8 @@ use std::f32::consts::{FRAC_PI_2, PI};
 /// Visualised in Desmos: [link](https://www.desmos.com/calculator/kw2ywp6qvh)
 ///
 /// # Examples
-/// ```no_run
-/// use yggdrasil::motion::walk::smoothing::parabolic_return;
+/// ```
+/// use yggdrasil::motion::walking_engine::smoothing::parabolic_return;
 ///
 /// assert_eq!(parabolic_return(0.0), 0.0);
 /// assert_eq!(parabolic_return(0.5), 1.0);
@@ -26,8 +26,8 @@ pub fn parabolic_return(t: f32) -> f32 {
 /// Visualised in Desmos: [link](https://www.desmos.com/calculator/fwyo4ggnyy)
 ///
 /// # Examples
-/// ```no_run
-/// use yggdrasil::motion::walk::smoothing::parabolic_step;
+/// ```
+/// use yggdrasil::motion::walking_engine::smoothing::parabolic_step;
 ///
 /// assert_eq!(parabolic_step(0.0), 0.0);
 /// assert_eq!(parabolic_step(0.5), 0.5);

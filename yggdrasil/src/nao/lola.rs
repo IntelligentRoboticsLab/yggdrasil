@@ -1,19 +1,13 @@
 use std::{sync::Arc, time::Duration};
 
 use bevy::{ecs::system::RunSystemOnce, prelude::*};
-use nidhogg::{
-    backend::LolaBackend,
-    types::{FillExt, JointArray},
-    NaoBackend, NaoControlMessage, NaoState,
-};
-use rerun::{external::arrow, SerializedComponentBatch};
+use nidhogg::{NaoBackend, NaoControlMessage, NaoState, backend::LolaBackend};
+use rerun::{SerializedComponentBatch, external::arrow};
 
 use crate::{core::debug, prelude::*};
 use crate::{core::debug::DebugContext, nao::RobotInfo};
 
 use super::Cycle;
-
-const DEFAULT_STIFFNESS: f32 = 0.8;
 
 #[cfg(not(feature = "local"))]
 const LOLA_SOCKET_PATH: &str = "/tmp/yggdrasil";
@@ -67,8 +61,8 @@ fn initialize_nao(mut commands: Commands, mut lola: ResMut<Lola>) {
         .read_nao_state()
         .expect("failed to read initial state from LoLA");
     let msg = NaoControlMessage {
-        position: info.initial_joint_positions.clone(),
-        stiffness: JointArray::fill(DEFAULT_STIFFNESS),
+        position: state.position.clone(),
+        stiffness: state.stiffness.clone(),
         ..Default::default()
     };
     lola.send_control_msg(msg)

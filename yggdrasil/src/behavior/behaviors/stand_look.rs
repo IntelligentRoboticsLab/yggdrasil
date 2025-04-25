@@ -3,9 +3,9 @@ use nalgebra::{Point2, Point3};
 use std::time::Duration;
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState},
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     localization::RobotPose,
-    motion::walking_engine::step_context::StepContext,
+    motion::walking_engine::{StandingHeight, step_context::StepContext},
     nao::{NaoManager, Priority},
 };
 
@@ -29,7 +29,7 @@ impl Plugin for StandLookAtBehaviorPlugin {
     }
 }
 
-pub fn stand_look_at(
+fn stand_look_at(
     stand_look_at: Res<StandLookAt>,
     pose: Res<RobotPose>,
     mut nao_manager: ResMut<NaoManager>,
@@ -48,5 +48,5 @@ pub fn stand_look_at(
         Priority::default(),
         NaoManager::HEAD_STIFFNESS,
     );
-    step_context.request_stand();
+    step_context.request_stand_with_height(StandingHeight::MAX);
 }

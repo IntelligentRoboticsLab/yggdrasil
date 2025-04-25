@@ -1,8 +1,8 @@
-use miette::{miette, IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Result, miette};
 use nidhogg::types::JointArray;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use serde_with::{serde_as, DurationSecondsWithFrac};
+use serde_with::{DurationSecondsWithFrac, serde_as};
 use std::collections::HashMap;
 use std::fs::File;
 use std::{path::Path, time::Duration};

@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationMilliSeconds};
+use serde_with::{DurationMilliSeconds, serde_as};
 use std::time::Duration;
 
 pub mod audio_input;

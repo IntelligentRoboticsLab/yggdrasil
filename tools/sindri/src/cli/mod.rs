@@ -5,6 +5,7 @@ use crate::Sindri;
 
 pub mod change_network;
 pub mod config;
+pub mod flash;
 pub mod re_control;
 pub mod robot_ops;
 pub mod run;
@@ -59,6 +60,7 @@ pub enum Commands {
     Scan(scan::Scan),
     Showtime(showtime::Showtime),
     ChangeNetwork(change_network::ChangeNetwork),
+    Flash(flash::Flash),
     Shutdown(shutdown::Shutdown),
     #[command(subcommand)]
     Config(config::ConfigCommand),

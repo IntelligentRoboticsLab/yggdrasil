@@ -19,4 +19,5 @@ bevy = { workspace = true, default-features = false }
 bifrost_derive = { path = "bifrost_derive" }
 byteorder = { workspace = true }
 nalgebra = { workspace = true, optional = true }
+strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }

@@ -9,6 +9,7 @@
 //!
 use crate::serialization::{Decode, Encode};
 use bevy::prelude::*;
+use strum::EnumIter;
 
 /// The port from which the `GameController` sends the [`GameControllerMessage`] to the robots.
 pub const GAME_CONTROLLER_DATA_PORT: u16 = 3838;
@@ -17,10 +18,10 @@ pub const GAME_CONTROLLER_DATA_PORT: u16 = 3838;
 pub const GAME_CONTROLLER_RETURN_PORT: u16 = 3939;
 
 /// The header of the data sent by the `GameController`.
-const GAME_CONTROLLER_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'm', b'e'];
+pub const GAME_CONTROLLER_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'm', b'e'];
 
 /// The version of the data sent by the `GameController`.
-const GAME_CONTROLLER_STRUCT_VERSION: u8 = 18;
+pub const GAME_CONTROLLER_STRUCT_VERSION: u8 = 18;
 
 /// The header of the data sent by the robots.
 const GAME_CONTROLLER_RETURN_STRUCT_HEADER: [u8; 4] = [b'R', b'G', b'r', b't'];
@@ -119,6 +120,21 @@ pub enum GameState {
     Standby = 5,
 }
 
+impl GameState {
+    /// The order of [`GameState`]s used in a match
+    #[must_use]
+    pub const fn in_order() -> [GameState; 6] {
+        [
+            GameState::Initial,
+            GameState::Standby,
+            GameState::Ready,
+            GameState::Set,
+            GameState::Playing,
+            GameState::Finished,
+        ]
+    }
+}
+
 /// Enum for the different set plays.
 #[derive(Encode, Decode, Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
@@ -138,9 +154,10 @@ pub enum SetPlay {
 }
 
 /// Enum for the different penalty states.
-#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq)]
+#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, Default, EnumIter)]
 #[repr(u8)]
 pub enum Penalty {
+    #[default]
     /// No penalty.
     None = 0,
     /// Ball holding / playing with hands.
@@ -172,7 +189,7 @@ pub enum Penalty {
 }
 
 /// A struct representing the state of each player.
-#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq)]
+#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, Default)]
 pub struct RobotInfo {
     /// Penalty state of the player
     pub penalty: Penalty,
@@ -226,10 +243,25 @@ impl TeamInfo {
             .get(player_number as usize - 1)
             .is_some_and(|robot: &RobotInfo| robot.is_penalized())
     }
+
+    #[must_use]
+    pub fn invisible() -> Self {
+        TeamInfo {
+            team_number: 0,
+            field_player_colour: TeamColor::Blue,
+            goalkeeper_colour: TeamColor::Red,
+            goalkeeper: 1,
+            score: 0,
+            penalty_shot: 0,
+            single_shots: 0,
+            message_budget: 1200,
+            players: [RobotInfo::default(); MAX_NUM_PLAYERS as usize],
+        }
+    }
 }
 
 /// A struct representing the `RoboCupGameControlData` received by the Robots.
-#[derive(Resource, Encode, Decode, Debug, Clone, PartialEq)]
+#[derive(Resource, Encode, Decode, Debug, Clone, Copy, PartialEq)]
 pub struct GameControllerMessage {
     /// Header to identify the structure
     pub header: [u8; 4],
@@ -280,6 +312,34 @@ impl GameControllerMessage {
         self.teams
             .iter()
             .find(|team| team.team_number == team_number)
+    }
+
+    #[must_use]
+    pub fn team_mut(&mut self, team_number: u8) -> Option<&mut TeamInfo> {
+        self.teams
+            .iter_mut()
+            .find(|team| team.team_number == team_number)
+    }
+}
+
+impl Default for GameControllerMessage {
+    fn default() -> Self {
+        Self {
+            header: GAME_CONTROLLER_STRUCT_HEADER,
+            version: GAME_CONTROLLER_STRUCT_VERSION,
+            packet_number: 0,
+            players_per_team: 0,
+            competition_phase: CompetitionPhase::RoundRobin,
+            competition_type: CompetitionType::Normal,
+            game_phase: GamePhase::Normal,
+            state: GameState::Initial,
+            set_play: SetPlay::None,
+            first_half: Half::First,
+            kicking_team: 0,
+            secs_remaining: 0,
+            secondary_time: 0,
+            teams: [TeamInfo::invisible(); 2],
+        }
     }
 }
 

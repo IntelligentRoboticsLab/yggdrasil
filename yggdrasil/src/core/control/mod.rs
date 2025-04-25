@@ -7,42 +7,23 @@ use bevy::prelude::*;
 use futures::channel::mpsc::unbounded;
 use re_control_comms::{
     app::ControlApp,
-    protocol::{ViewerMessage, CONTROL_PORT},
+    protocol::{CONTROL_PORT, ViewerMessage},
 };
 
 use receive::{
-    handle_notify_on_connection, handle_viewer_message, NotifyConnectionReceiver,
-    ViewerMessageReceiver,
+    ControlReceivePlugin, NotifyConnectionReceiver, ViewerMessageReceiver,
+    handle_notify_on_connection, handle_viewer_control_message,
 };
-use transmit::{
-    send_on_connection, update_debug_systems_for_clients, SendCameraExtrinsic,
-    SendDebugEnabledSystems, SendGreenChromaticityThreshold,
-};
+use transmit::ControlTransmitPlugin;
 
-use super::debug::{init_rerun, RerunStream};
+use super::debug::{RerunStream, init_rerun};
 
 pub struct ControlPlugin;
 
 impl Plugin for ControlPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<DebugEnabledSystemUpdated>()
-            .add_event::<ViewerConnected>()
-            .init_resource::<SendCameraExtrinsic>()
-            .init_resource::<SendDebugEnabledSystems>()
-            .init_resource::<SendGreenChromaticityThreshold>()
-            .add_systems(Startup, setup.after(init_rerun))
-            .add_systems(
-                Update,
-                (handle_notify_on_connection, send_on_connection)
-                    .chain()
-                    .run_if(resource_exists::<ViewerMessageReceiver>),
-            )
-            .add_systems(
-                Update,
-                (handle_viewer_message, update_debug_systems_for_clients)
-                    .chain()
-                    .run_if(resource_exists::<ViewerMessageReceiver>),
-            );
+        app.add_systems(Startup, setup.after(init_rerun))
+            .add_plugins((ControlReceivePlugin, ControlTransmitPlugin));
     }
 }
 
@@ -76,9 +57,3 @@ fn setup(mut commands: Commands, rerun_stream: Res<RerunStream>) {
     commands.insert_resource(handle);
     commands.insert_resource(notify_connection_receiver);
 }
-
-#[derive(Event)]
-pub struct ViewerConnected;
-
-#[derive(Event)]
-pub struct DebugEnabledSystemUpdated;

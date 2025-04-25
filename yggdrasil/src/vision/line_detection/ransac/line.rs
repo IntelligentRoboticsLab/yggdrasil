@@ -1,5 +1,5 @@
 use nalgebra::Point2;
-use rand::prelude::{SliceRandom, ThreadRng};
+use rand::prelude::{IndexedRandom, ThreadRng};
 
 use crate::vision::line_detection::line::{Line2, LineSegment2};
 
@@ -20,7 +20,7 @@ impl LineDetector {
         iterations: usize,
         inlier_threshold: f32,
     ) -> LineDetector {
-        let rng = rand::thread_rng();
+        let rng = rand::rng();
 
         LineDetector {
             rng,

@@ -1,8 +1,9 @@
 use bevy::prelude::*;
+use bifrost::broadcast::Deadline;
 
 use crate::communication::{TeamCommunication, TeamMessage};
 
-use super::{recognize::RefereePoseRecognized, RefereePose};
+use super::{RefereePose, recognize::RefereePoseRecognized};
 pub struct RefereePoseCommunicationPlugin;
 
 impl Plugin for RefereePoseCommunicationPlugin {
@@ -19,7 +20,10 @@ fn send_message(
     for pose_event in recognized_pose.read() {
         if pose_event.pose == RefereePose::Ready {
             tc.outbound_mut()
-                .update_or_push(TeamMessage::RecognizedRefereePose(pose_event.pose))
+                .update_or_push_by(
+                    TeamMessage::RecognizedRefereePose(pose_event.pose),
+                    Deadline::ASAP,
+                )
                 .expect("unable to encode recognized referee pose");
         }
     }

@@ -3,7 +3,9 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    types: [ opened, synchronize ]
+    paths-ignore:
+      - "deploy/**"
 
 env:
   OPENVINO_SKIP_LINKING: 1
@@ -26,7 +28,7 @@ jobs:
           CI_TOKEN: ${{ secrets.CI_TOKEN }}
       - uses: ./.github/actions/install-ubuntu-deps/
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - run: cargo test --all-targets --all-features
+      - run: cargo test --all-features
 
   clippy:
     name: cargo clippy

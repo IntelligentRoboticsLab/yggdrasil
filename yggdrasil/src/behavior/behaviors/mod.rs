@@ -1,29 +1,27 @@
 mod catchfall;
 mod observe;
-mod referee;
 mod rl_striker_search;
 mod sitting;
 mod stand;
 mod stand_look;
 mod standup;
 mod startup;
+mod visual_referee;
 mod walk;
 mod walk_to;
 mod walk_to_ball;
 mod walk_to_set;
 
-pub use catchfall::{CatchFall, CatchFallBehaviorPlugin};
-pub use observe::{Observe, ObserveBehaviorConfig, ObserveBehaviorPlugin};
-pub use referee::{VisualReferee, VisualRefereeBehaviorPlugin};
-pub use rl_striker_search::{
-    RlStrikerSearchBehavior, RlStrikerSearchBehaviorConfig, RlStrikerSearchBehaviorPlugin,
-};
-pub use sitting::{Sitting, SittingBehaviorPlugin};
-pub use stand::{Stand, StandBehaviorPlugin};
-pub use stand_look::{StandLookAt, StandLookAtBehaviorPlugin};
-pub use standup::{Standup, StandupBehaviorPlugin};
-pub use startup::{StartUp, StartUpBehaviorPlugin};
-pub use walk::{Walk, WalkBehaviorPlugin};
-pub use walk_to::{WalkTo, WalkToBehaviorPlugin};
-pub use walk_to_ball::{WalkToBall, WalkToBallBehaviorPlugin};
-pub use walk_to_set::{WalkToSet, WalkToSetBehaviorPlugin};
+pub use catchfall::*;
+pub use observe::*;
+pub use rl_striker_search::*;
+pub use sitting::*;
+pub use stand::*;
+pub use stand_look::*;
+pub use standup::*;
+pub use startup::*;
+pub use visual_referee::*;
+pub use walk::*;
+pub use walk_to::*;
+pub use walk_to_ball::*;
+pub use walk_to_set::*;

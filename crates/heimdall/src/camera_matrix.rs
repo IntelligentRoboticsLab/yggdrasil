@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
 use bevy::prelude::Resource;
-use miette::{bail, Result};
-use nalgebra::{point, vector, Isometry3, Point2, Point3, Vector2, Vector3};
+use miette::{Result, bail};
+use nalgebra::{Isometry3, Point2, Point3, Vector2, Vector3, point, vector};
 
 use crate::camera::CameraLocation;
 

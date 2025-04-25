@@ -3,11 +3,11 @@ use std::{io, path::Path};
 use bevy::prelude::Component;
 use bifrost::serialization::{Decode, Encode};
 use linuxvideo::{
+    Device,
     controls::Cid,
     format::{PixFormat, PixelFormat},
     stream::FrameProvider,
     uvc::UvcExt,
-    Device,
 };
 
 use crate::exposure_weights::ExposureWeightTable;

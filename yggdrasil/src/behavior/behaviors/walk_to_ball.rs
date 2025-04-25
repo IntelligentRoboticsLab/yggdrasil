@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use nalgebra::Point3;
 
 use crate::{
-    behavior::engine::{in_behavior, Behavior, BehaviorState},
+    behavior::engine::{Behavior, BehaviorState, in_behavior},
     localization::RobotPose,
     motion::{
         step_planner::{StepPlanner, Target},
@@ -31,14 +31,17 @@ impl Behavior for WalkToBall {
     const STATE: BehaviorState = BehaviorState::WalkToBall;
 }
 
-pub fn walk_to_ball(
+fn walk_to_ball(
     pose: Res<RobotPose>,
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
     ball_tracker: Res<BallTracker>,
 ) {
-    let Some(ball) = ball_tracker.stationary_ball() else {
+    let Some(ball) = ball_tracker
+        .stationary_ball()
+        .map(|ball| pose.robot_to_world(&ball))
+    else {
         return;
     };
 

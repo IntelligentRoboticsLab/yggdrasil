@@ -10,18 +10,19 @@ use correction::GradientDescentConfig;
 use correspondence::CorrespondenceConfig;
 use filter::CovarianceMatrix;
 use hypothesis::{
-    filter_hypotheses, line_update, odometry_update, reset_hypotheses, HypothesisConfig,
-    RobotPoseHypothesis,
+    HypothesisConfig, RobotPoseHypothesis, filter_hypotheses, line_update, odometry_update,
+    reset_hypotheses,
 };
 use odal::Config;
 use odometry::OdometryConfig;
-use pose::initial_pose;
 pub use pose::RobotPose;
+use pose::initial_pose;
 
-use rerun::{components::RotationAxisAngle, Rotation3D, TimeColumn};
+use rerun::{Rotation3D, TimeColumn, components::RotationAxisAngle};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    behavior::primary_state::PrimaryState,
     core::{
         config::{layout::LayoutConfig, showtime::PlayerConfig},
         debug::DebugContext,
@@ -45,11 +46,10 @@ impl Plugin for LocalizationPlugin {
                 PreUpdate,
                 (
                     (odometry_update, line_update.run_if(not(motion_is_unsafe)))
-                        .run_if(not(is_penalized)),
+                        .run_if(not(is_penalized.or(in_pre_walking_state))),
                     filter_hypotheses,
                     reset_hypotheses,
                 )
-                    .chain()
                     .after(odometry::update_odometry),
             )
             .add_systems(PostUpdate, (visualize_pose, visualize_pose_hypotheses));
@@ -94,6 +94,16 @@ fn motion_is_unsafe(
     keyframe_executor.active_motion.is_some()
         || !matches!(motion_state.get(), Gait::Standing | Gait::Walking)
         || !contacts.ground
+}
+
+/// Checks if we are in any of the pre-walking states.
+///
+/// We assume we start in the perfect position, so we don't need to do any type of localization.
+fn in_pre_walking_state(state: Res<PrimaryState>) -> bool {
+    matches!(
+        state.as_ref(),
+        PrimaryState::Sitting | PrimaryState::Standby | PrimaryState::Initial
+    )
 }
 
 fn setup_pose_visualization(dbg: DebugContext) {

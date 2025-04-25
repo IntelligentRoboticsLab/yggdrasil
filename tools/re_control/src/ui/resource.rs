@@ -4,7 +4,10 @@ use std::{
     time::Instant,
 };
 
-use re_control_comms::{protocol::ViewerMessage, viewer::ControlViewerHandle};
+use re_control_comms::{
+    protocol::{ViewerMessage, control::ViewerControlMessage},
+    viewer::ControlViewerHandle,
+};
 use rerun::external::{ecolor::Color32, egui, re_ui::UiExt};
 
 use crate::{re_control_view::ControlViewerData, resource::RobotResources};
@@ -163,10 +166,12 @@ fn add_editable_resource(
                 .button(egui::RichText::new("Override resource").size(12.0))
                 .clicked()
             {
-                followup_action = Some(ViewerMessage::UpdateResource {
-                    resource_name: resource_name.to_string(),
-                    value: resource_data.to_string(),
-                });
+                followup_action = Some(ViewerMessage::ViewerControlMessage(
+                    ViewerControlMessage::UpdateResource {
+                        resource_name: resource_name.to_string(),
+                        value: resource_data.to_string(),
+                    },
+                ));
 
                 if let Some(changed_resource) = changed_resources.get_mut(resource_name) {
                     *changed_resource = false;

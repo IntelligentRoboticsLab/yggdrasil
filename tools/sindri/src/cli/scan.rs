@@ -6,8 +6,8 @@ use std::{
 use crate::cli::robot_ops::NameOrNum;
 use clap::Parser;
 use colored::Colorize;
-use futures::{stream::FuturesOrdered, TryStreamExt};
-use miette::{miette, IntoDiagnostic, Result};
+use futures::{TryStreamExt, stream::FuturesOrdered};
+use miette::{IntoDiagnostic, Result, miette};
 use tokio::process::Command;
 
 use crate::config::{Robot, SindriConfig};

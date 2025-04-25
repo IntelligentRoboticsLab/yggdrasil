@@ -11,19 +11,19 @@ use ml::prelude::ModelExecutor;
 use nalgebra::{Point2, Vector2};
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationMicroSeconds};
+use serde_with::{DurationMicroSeconds, serde_as};
 
 use crate::core::debug::DebugContext;
-use crate::localization::RobotPose;
 
+use crate::localization::odometry::Odometry;
 use crate::nao::Cycle;
 use crate::vision::camera::init_camera;
 use crate::vision::referee::detect::VisualRefereeDetectionStatus;
 use ml::prelude::*;
 
+use super::BallDetectionConfig;
 use super::ball_tracker::{BallPosition, BallTracker};
 use super::proposal::BallProposals;
-use super::BallDetectionConfig;
 
 const IMAGE_INPUT_SIZE: usize = 32;
 
@@ -81,7 +81,7 @@ fn init_ball_tracker(mut commands: Commands, config: Res<BallDetectionConfig>) {
     let ball_tracker = BallTracker {
         position_kf: UnscentedKalmanFilter::<2, 5, BallPosition>::new(
             BallPosition(Point2::new(0.0, 0.0)),
-            CovarianceMatrix::from_diagonal_element(0.05),
+            CovarianceMatrix::from_diagonal_element(config.stationary_std_threshold.powi(2)), // variance = std^2, and we don't know where the ball is
         ),
         // prediction is done each cycle, this is roughly 1.7cm of std per cycle or 1.3 meters per second
         prediction_noise: CovarianceMatrix::from_diagonal_element(config.prediction_noise),
@@ -146,8 +146,8 @@ impl<T: CameraLocation> Clone for Ball<T> {
 }
 
 /// System that runs the prediction step for the UKF backing the ball tracker.
-fn update_ball_tracker(mut ball_tracker: ResMut<BallTracker>) {
-    ball_tracker.predict();
+fn update_ball_tracker(mut ball_tracker: ResMut<BallTracker>, odometry: Res<Odometry>) {
+    ball_tracker.predict(&odometry);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -160,7 +160,6 @@ fn classify_balls<T: CameraLocation>(
     mut ball_tracker: ResMut<BallTracker>,
     camera_matrix: Res<CameraMatrix<T>>,
     config: Res<BallDetectionConfig>,
-    robot_pose: Res<RobotPose>,
 ) {
     let classifier = &config.classifier;
     let start = Instant::now();
@@ -207,7 +206,7 @@ fn classify_balls<T: CameraLocation>(
             continue;
         };
 
-        let position = BallPosition(robot_pose.robot_to_world(&Point2::from(robot_to_ball.xy())));
+        let position = BallPosition(robot_to_ball.xy());
 
         confident_balls.push((position, confidence, proposal.clone()));
 

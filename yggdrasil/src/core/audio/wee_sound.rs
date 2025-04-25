@@ -3,10 +3,10 @@ use bevy::prelude::*;
 use crate::motion::keyframe::KeyframeExecutor;
 
 use crate::sensor::falling::FallState;
-use crate::sensor::fsr::GroundContact;
+use crate::sensor::fsr::Contacts;
 
-use super::sound_manager::{Sound, SoundManager};
 use super::AudioConfig;
+use super::sound_manager::{Sound, SoundManager};
 
 pub struct WeeSoundPlugin;
 
@@ -18,13 +18,13 @@ impl Plugin for WeeSoundPlugin {
 
 pub fn wee_sound_system(
     sounds: Res<SoundManager>,
-    ground_contact: Res<GroundContact>,
+    contacts: Res<Contacts>,
     audio_config: Res<AudioConfig>,
     keyframe_executor: Res<KeyframeExecutor>,
     fall_state: Res<FallState>,
     mut sound_played: Local<bool>,
 ) {
-    if ground_contact.ungrounded_for(audio_config.wee_sound_ungrounded_timeout)
+    if contacts.ungrounded_for(audio_config.wee_sound_ungrounded_timeout)
         && !*sound_played
         && !keyframe_executor.is_motion_active()
         && matches!(*fall_state, FallState::None)
@@ -35,7 +35,7 @@ pub fn wee_sound_system(
         *sound_played = true;
     }
 
-    if ground_contact.grounded_for(audio_config.wee_sound_grounded_timeout) {
+    if contacts.grounded_for(audio_config.wee_sound_grounded_timeout) {
         *sound_played = false;
     }
 }

@@ -7,7 +7,7 @@ use crate::{
     sensor::fsr::{CalibratedFsr, Contacts},
 };
 
-use super::{config::WalkingEngineConfig, schedule::WalkingEngineSet, Side};
+use super::{Side, config::WalkingEngineConfig, schedule::WalkingEngineSet};
 
 pub(super) struct FootSupportPlugin;
 

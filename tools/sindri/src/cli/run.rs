@@ -4,7 +4,7 @@ use std::{os::unix::process::CommandExt, process::Stdio};
 use clap::Parser;
 use colored::Colorize;
 use indicatif::ProgressBar;
-use miette::{bail, Context, IntoDiagnostic, Result};
+use miette::{Context, IntoDiagnostic, Result, bail};
 use tokio::process::Command;
 
 use crate::{

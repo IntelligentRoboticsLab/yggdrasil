@@ -2,14 +2,13 @@ use bevy::prelude::*;
 use bifrost::communication::{GameControllerMessage, GamePhase};
 
 use ml::{
-    prelude::{MlTaskCommandsExt, ModelExecutor},
     MlModel,
+    prelude::{MlTaskCommandsExt, ModelExecutor},
 };
 use nalgebra::Point2;
 
 use crate::{
     core::config::showtime::PlayerConfig,
-    localization::RobotPose,
     motion::walking_engine::Gait,
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
     vision::ball_detection::ball_tracker::BallTracker,
@@ -20,8 +19,8 @@ use super::{
         CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
         Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
         StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
-        VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin, WalkToBehaviorPlugin,
-        WalkToSet, WalkToSetBehaviorPlugin,
+        VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin, WalkToBallBehaviorPlugin,
+        WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
@@ -39,22 +38,21 @@ impl Plugin for BehaviorEnginePlugin {
         // StatesPlugin should be added before init_state
         app.init_state::<BehaviorState>()
             .init_state::<RoleState>()
+            .add_plugins((DefenderRolePlugin, GoalkeeperRolePlugin, StrikerRolePlugin))
             .add_plugins((
-                StandBehaviorPlugin,
-                WalkBehaviorPlugin,
                 CatchFallBehaviorPlugin,
                 ObserveBehaviorPlugin,
+                RlStrikerSearchBehaviorPlugin,
                 SittingBehaviorPlugin,
+                StandBehaviorPlugin,
                 StandLookAtBehaviorPlugin,
                 StandupBehaviorPlugin,
                 StartUpBehaviorPlugin,
+                VisualRefereeBehaviorPlugin,
+                WalkBehaviorPlugin,
+                WalkToBallBehaviorPlugin,
                 WalkToBehaviorPlugin,
                 WalkToSetBehaviorPlugin,
-                DefenderRolePlugin,
-                GoalkeeperRolePlugin,
-                StrikerRolePlugin,
-                RlStrikerSearchBehaviorPlugin,
-                VisualRefereeBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
     }
@@ -206,7 +204,6 @@ pub fn role_base(
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
     ball_tracker: Res<BallTracker>,
-    pose: Res<RobotPose>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -286,7 +283,7 @@ pub fn role_base(
         PrimaryState::Playing { .. } => {
             let possible_ball_distance = ball_tracker
                 .stationary_ball()
-                .map(|ball| pose.distance_to(&ball));
+                .map(|ball| ball.coords.norm());
 
             RoleState::assign_role(
                 &mut commands,

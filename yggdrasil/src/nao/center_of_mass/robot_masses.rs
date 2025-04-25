@@ -5,7 +5,7 @@
 //! and the z-axis vectors up.
 use crate::kinematics::prelude::*;
 use nalgebra as na;
-use spatial::{types::Vector3, Space, SpaceOver};
+use spatial::{Space, SpaceOver, types::Vector3};
 
 /// The mass and center of mass of a link.
 #[derive(Debug, Clone)]

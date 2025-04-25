@@ -6,13 +6,13 @@ use serde::{Deserialize, Serialize};
 use crate::{
     behavior::{behaviors::Standup, engine::in_behavior},
     kinematics::{
-        spaces::{LeftSole, RightSole},
         Kinematics,
+        spaces::{LeftSole, RightSole},
     },
     sensor::{falling::FallState, orientation::RobotOrientation},
 };
 
-use crate::motion::walking_engine::{foot_support::FootSupportState, Side, WalkingEngineSet};
+use crate::motion::walking_engine::{Side, WalkingEngineSet, foot_support::FootSupportState};
 
 use super::LocalizationConfig;
 

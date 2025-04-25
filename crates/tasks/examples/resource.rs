@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use bevy::{core::FrameCount, prelude::*};
-use tasks::{conditions::task_finished, CommandsExt, TaskPlugin, TaskPool};
+use tasks::{CommandsExt, TaskPlugin, TaskPool, conditions::task_finished};
 
 #[derive(Resource, Default)]
 pub struct Foo(FrameCount);
@@ -33,7 +33,7 @@ fn query_foo_resource(foo: Res<Foo>) {
         return;
     }
 
-    println!("Foo has changed! Dispatched in frame: {:?}", foo.0 .0);
+    println!("Foo has changed! Dispatched in frame: {:?}", foo.0.0);
 }
 
 fn main() {

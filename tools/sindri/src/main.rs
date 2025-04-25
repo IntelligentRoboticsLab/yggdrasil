@@ -2,9 +2,9 @@ use build_utils::version::Version;
 use clap::Parser;
 use miette::Result;
 use sindri::{
-    cli::{config::ConfigCommand, Cli, Commands},
-    config::load_config,
     Sindri,
+    cli::{Cli, Commands, config::ConfigCommand},
+    config::load_config,
 };
 
 #[tokio::main]
@@ -28,6 +28,7 @@ async fn main() -> Result<()> {
         Commands::Shutdown(opts) => opts.shutdown(config).await?,
         Commands::Config(opts) => opts.config()?,
         Commands::Update(opts) => opts.update().await?,
+        Commands::Flash(opts) => opts.flash(config).await?,
     }
 
     Ok(())
