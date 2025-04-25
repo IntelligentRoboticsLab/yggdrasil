@@ -8,6 +8,7 @@ use crate::{
     nao::{NaoManager, Priority},
 };
 use bevy::prelude::*;
+use nalgebra::Point2;
 use nidhogg::types::color;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationMilliSeconds};
@@ -176,6 +177,8 @@ impl FootBumperValues {
         left_foot: &LeftFootButtons,
         right_foot: &RightFootButtons,
     ) {
+        self.ignore_foot(&config);
+
         let left_outer = left_foot.left.is_pressed();
         let left_inner = left_foot.right.is_pressed();
         let right_outer = right_foot.right.is_pressed();
@@ -263,45 +266,28 @@ fn obstacle_detection(
     footbumpers.update_bumper_values(config, &left_foot, &right_foot);
     obstacle_state.update_state(config, &footbumpers);
 
-    // if obstacle_state.new_obstacle_left()
-    //     || obstacle_state.new_obstacle_right()
-    //     || obstacle_state.new_obstacle_middle()
-    // {
-    //     println!("new_obstacle_left = {}", obstacle_state.new_obstacle_left());
-    //     println!(
-    //         "new_obstacle_right = {}",
-    //         obstacle_state.new_obstacle_right()
-    //     );
-    //     println!(
-    //         "new_obstacle_middle = {}",
-    //         obstacle_state.new_obstacle_middle()
-    //     );
-    //     println!("----------------");
-    // }
-
-    // Show current object detection state from the foot bumpers by showing lights.
-    // Maybe should change when they light up: to just detected
-
-    // match obstacle_state.current_state {
-    //     ObstacleStatus::Left => {
-    //         manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
-    //         manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
-    //     }
-    //     ObstacleStatus::Right => {
-    //         manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
-    //         manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
-    //     }
-    //     ObstacleStatus::Middle => {
-    //         manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
-    //         manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
-    //     }
-    //     ObstacleStatus::NotDetected => {
-    //         manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
-    //         manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
-    //     }
-    // }
+    // Set LEDs
+    match obstacle_state.current_state {
+        ObstacleStatus::Left => {
+            manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
+            manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
+        }
+        ObstacleStatus::Right => {
+            manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
+            manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
+        }
+        ObstacleStatus::Middle => {
+            manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
+            manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
+        }
+        ObstacleStatus::NotDetected => {
+            manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
+            manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
+        }
+    }
 
     if obstacle_state.new_obstacle_left() {
+        println!("new_obstacle_left = {}", obstacle_state.new_obstacle_left());
         let angle = config.object_angle;
         spawn_obstacle(
             &mut step_planner,
@@ -312,13 +298,11 @@ fn obstacle_detection(
             config.merge_distance,
             config.ttl,
         );
-        println!(
-            "new_obstacle_left = {}",
-            obstacle_state.new_obstacle_left()
-        );
-        manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
-        manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
     } else if obstacle_state.new_obstacle_right() {
+        println!(
+            "new_obstacle_right = {}",
+            obstacle_state.new_obstacle_right()
+        );
         let angle = -config.object_angle;
         spawn_obstacle(
             &mut step_planner,
@@ -329,13 +313,11 @@ fn obstacle_detection(
             config.merge_distance,
             config.ttl,
         );
-        println!(
-            "new_obstacle_right = {}",
-            obstacle_state.new_obstacle_right()
-        );
-        manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
-        manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
     } else if obstacle_state.new_obstacle_middle() {
+        println!(
+            "new_obstacle_middle = {}",
+            obstacle_state.new_obstacle_middle()
+        );
         spawn_obstacle(
             &mut step_planner,
             &robot_pose,
@@ -345,15 +327,6 @@ fn obstacle_detection(
             config.merge_distance,
             config.ttl,
         );
-        println!(
-            "new_obstacle_middle = {}",
-            obstacle_state.new_obstacle_middle()
-        );
-        manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
-        manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
-    } else {
-        manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
-        manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
     }
 }
 
@@ -369,15 +342,24 @@ fn spawn_obstacle(
     // Get the center coordinates of new object.
     let dx = distance * angle.cos();
     let dy = distance * angle.sin();
+
+    let point = Point2::new(dx, dy);
+    let world_pos = robot_pose.robot_to_world(&point);
+
+    // OPTION 2:
     let rotated_dx =
         dx * robot_pose.world_rotation().cos() - dy * robot_pose.world_rotation().sin();
     let rotated_dy =
         dx * robot_pose.world_rotation().sin() + dy * robot_pose.world_rotation().cos();
     let new_x = robot_pose.world_position().x + rotated_dx;
-    let new_y = robot_pose.world_position().x + rotated_dy;
+    let new_y = robot_pose.world_position().y + rotated_dy;
 
     println!("robot x,y: {}", robot_pose.world_position());
+    println!("dx, dy = {}, {}", dx, dy);
+    println!("rotated_dx, rotated_dy = {}, {}", rotated_dx, rotated_dy);
     println!("obstacle x,y {}, {}", new_x, new_y);
+    println!("obstacle x,y {}, {}", world_pos.x, world_pos.y); // should give same answer (test)
+    println!("-----------------");
 
     let obstacle = DynamicObstacle {
         obs: Obstacle::new(new_x, new_y, radius),
