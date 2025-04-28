@@ -471,7 +471,8 @@ pub struct Touch {
 }
 
 /// Wrapper struct containing the head joints of the robot.
-#[derive(Builder, Clone, Debug, Default, Filler, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Default, Filler, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct HeadJoints<T> {
     pub yaw: T,
     pub pitch: T,
@@ -525,7 +526,8 @@ impl<T> HeadJoints<T> {
 }
 
 /// Wrapper struct containing the left leg joints of the robot.
-#[derive(Builder, Clone, Debug, Default, Filler, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Default, Filler, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct LeftLegJoints<T> {
     pub hip_yaw_pitch: T,
     pub hip_roll: T,
@@ -591,7 +593,8 @@ impl<T> LeftLegJoints<T> {
 }
 
 /// Wrapper struct containing right left leg joints of the robot.
-#[derive(Builder, Clone, Debug, Default, Filler, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Builder, Clone, Debug, Default, Filler, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RightLegJoints<T> {
     // This value does not exist
     // pub hip_yaw_pitch: T,
@@ -656,7 +659,8 @@ impl<T> RightLegJoints<T> {
 }
 
 /// Wrapper struct containing joint values for both legs of the robot.
-#[derive(Builder, Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct LegJoints<T> {
     pub left_leg: LeftLegJoints<T>,
     pub right_leg: RightLegJoints<T>,
@@ -719,7 +723,8 @@ impl<T: Clone> FillExt<T> for LegJoints<T> {
 }
 
 /// Wrapper struct containing the joints for a single arm of the robot.
-#[derive(Builder, Clone, Debug, Default, Filler, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Builder, Clone, Debug, Default, Filler, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SingleArmJoints<T> {
     pub shoulder_pitch: T,
     pub shoulder_roll: T,
@@ -790,7 +795,8 @@ pub type LeftArmJoints<T> = SingleArmJoints<T>;
 pub type RightArmJoints<T> = SingleArmJoints<T>;
 
 /// Wrapper struct containing the arm joints of the robot.
-#[derive(Builder, Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ArmJoints<T> {
     pub left_arm: SingleArmJoints<T>,
     pub right_arm: SingleArmJoints<T>,
