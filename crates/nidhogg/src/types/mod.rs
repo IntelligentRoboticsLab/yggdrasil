@@ -477,6 +477,53 @@ pub struct HeadJoints<T> {
     pub pitch: T,
 }
 
+impl<T> HeadJoints<T> {
+    /// Transforms each element in the [`HeadJoints`] using the provided closure `f`,
+    /// producing a new [`HeadJoints`] with the transformed values.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use nidhogg::types::HeadJoints;
+    /// use nidhogg::types::FillExt;
+    ///
+    /// let joints = HeadJoints::<u32>::default();
+    ///
+    /// let transformed = joints.map(|x| x + 1);
+    ///
+    /// assert_eq!(transformed, HeadJoints::fill(1));
+    /// ```
+    pub fn map<F, U>(self, mut f: F) -> HeadJoints<U>
+    where
+        F: FnMut(T) -> U,
+    {
+        HeadJoints {
+            yaw: f(self.yaw),
+            pitch: f(self.pitch),
+        }
+    }
+
+    /// Zips two [`HeadJoints`] instances element-wise, creating a new [`HeadJoints`]
+    /// containing tuples of corresponding elements from the two arrays.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use nidhogg::types::HeadJoints;
+    /// use nidhogg::types::FillExt;
+    ///
+    /// let zipped = HeadJoints::<u32>::default().zip(HeadJoints::<u32>::default());
+    ///
+    /// assert_eq!(zipped, HeadJoints::<(u32, u32)>::fill((0_u32, 0_u32)));
+    /// ```
+    pub fn zip<U>(self, other: HeadJoints<U>) -> HeadJoints<(T, U)> {
+        HeadJoints {
+            yaw: (self.yaw, other.yaw),
+            pitch: (self.pitch, other.pitch),
+        }
+    }
+}
+
 /// Wrapper struct containing the left leg joints of the robot.
 #[derive(Builder, Clone, Debug, Default, Filler, PartialEq, Eq)]
 pub struct LeftLegJoints<T> {
