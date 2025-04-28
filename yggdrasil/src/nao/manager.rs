@@ -40,9 +40,27 @@ pub(super) struct NaoManagerPlugin;
 
 impl Plugin for NaoManagerPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<NaoManager>()
+        app.add_systems(Startup, init_nao_manager)
             .add_systems(PreWrite, finalize);
     }
+}
+
+fn init_nao_manager(mut commands: Commands, nao_state: Res<NaoState>) {
+    commands.insert_resource(NaoManager {
+        nao_state: nao_state.clone(),
+        leg_settings: Default::default(),
+        arm_settings: Default::default(),
+        head_settings: Default::default(),
+        head_state: Default::default(),
+        led_left_ear: Default::default(),
+        led_right_ear: Default::default(),
+        led_chest: Default::default(),
+        led_left_eye: Default::default(),
+        led_right_eye: Default::default(),
+        led_left_foot: Default::default(),
+        led_right_foot: Default::default(),
+        led_skull: Default::default(),
+    });
 }
 
 pub fn finalize(
@@ -231,8 +249,10 @@ impl HeadState {
 /// Each cycle, the nao manager will update the [`NaoControlMessage`] with the requests that have the highest
 /// priorities.
 /// If multiple requests with the same priority are made, the first request will be prioritized.
-#[derive(Default, Debug, Resource)]
+#[derive(Debug, Resource)]
 pub struct NaoManager {
+    nao_state: NaoState,
+
     leg_settings: JointSettings<LegJoints<JointValue>>,
     arm_settings: JointSettings<ArmJoints<JointValue>>,
     head_settings: JointSettings<HeadJoints<JointValue>>,
@@ -354,6 +374,45 @@ impl NaoManager {
         self
     }
 
+    /// Sets the joint position and stiffness of the leg joints.
+    ///
+    /// The joint positions are degrees in radians.
+    ///
+    /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// stiffness. A value of `-1` will disable the stiffness altogether.
+    ///
+    /// The `interpolation_weight` should be a value between 0 and 1, where 1 is the same as
+    /// [`set_legs`](NaoManager::set_legs).
+    pub fn set_legs_interpolate(
+        &mut self,
+        joint_positions: LegJoints<JointValue>,
+        joint_stiffness: LegJoints<JointValue>,
+        priority: Priority,
+        interpolation_weight: JointValue,
+    ) -> &mut Self {
+        let interpolation_weight = interpolation_weight.clamp(num::zero(), num::one());
+
+        let target_positions = self
+            .nao_state
+            .position
+            .leg_joints()
+            .clone()
+            .zip(joint_positions)
+            .map(|(curr, target)| {
+                curr * (JointValue::from(1.0) - interpolation_weight)
+                    + target * interpolation_weight
+            });
+
+        Self::set_joint_settings(
+            &mut self.leg_settings,
+            target_positions,
+            joint_stiffness,
+            priority,
+        );
+
+        self
+    }
+
     /// Sets the joint position and stiffness of the arm joints.
     ///
     /// The joint positions are degrees in radians.
@@ -376,6 +435,45 @@ impl NaoManager {
         self
     }
 
+    /// Sets the joint position and stiffness of the arm joints.
+    ///
+    /// The joint positions are degrees in radians.
+    ///
+    /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// stiffness. A value of `-1` will disable the stiffness altogether.
+    ///
+    /// The `interpolation_weight` should be a value between 0 and 1, where 1 is the same as
+    /// [`set_arms`](NaoManager::set_arms).
+    pub fn set_arms_interpolate(
+        &mut self,
+        joint_positions: ArmJoints<JointValue>,
+        joint_stiffness: ArmJoints<JointValue>,
+        priority: Priority,
+        interpolation_weight: JointValue,
+    ) -> &mut Self {
+        let interpolation_weight = interpolation_weight.clamp(num::zero(), num::one());
+
+        let target_positions = self
+            .nao_state
+            .position
+            .arm_joints()
+            .clone()
+            .zip(joint_positions)
+            .map(|(curr, target)| {
+                curr * (JointValue::from(1.0) - interpolation_weight)
+                    + target * interpolation_weight
+            });
+
+        Self::set_joint_settings(
+            &mut self.arm_settings,
+            target_positions,
+            joint_stiffness,
+            priority,
+        );
+
+        self
+    }
+
     /// Sets the joint position and stiffness of the head joints.
     ///
     /// The joint positions are degrees in radians.
@@ -391,6 +489,45 @@ impl NaoManager {
         Self::set_joint_settings(
             &mut self.head_settings,
             joint_positions,
+            joint_stiffness,
+            priority,
+        );
+
+        self
+    }
+
+    /// Sets the joint position and stiffness of the head joints.
+    ///
+    /// The joint positions are degrees in radians.
+    ///
+    /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// stiffness. A value of `-1` will disable the stiffness altogether.
+    ///
+    /// The `interpolation_weight` should be a value between 0 and 1, where 1 is the same as
+    /// [`set_head`](NaoManager::set_head).
+    pub fn set_head_interpolate(
+        &mut self,
+        joint_positions: HeadJoints<JointValue>,
+        joint_stiffness: HeadJoints<JointValue>,
+        priority: Priority,
+        interpolation_weight: JointValue,
+    ) -> &mut Self {
+        let interpolation_weight = interpolation_weight.clamp(num::zero(), num::one());
+
+        let target_positions = self
+            .nao_state
+            .position
+            .head_joints()
+            .clone()
+            .zip(joint_positions)
+            .map(|(curr, target)| {
+                curr * (JointValue::from(1.0) - interpolation_weight)
+                    + target * interpolation_weight
+            });
+
+        Self::set_joint_settings(
+            &mut self.head_settings,
+            target_positions,
             joint_stiffness,
             priority,
         );
