@@ -105,8 +105,8 @@ proc-macro2 = "1.0.95"
 quote = "1.0.40"
 rand = "0.9.1"
 
-re_crash_handler = "0.23.0"
-rerun = { version = "0.23.0", default-features = false, features = [
+re_crash_handler = "0.23.1"
+rerun = { version = "0.23.1", default-features = false, features = [
   "sdk",
   "server",
   "analytics",
