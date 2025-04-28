@@ -1,7 +1,10 @@
 use std::{ops::Sub, time::Instant};
 
 use bevy::prelude::*;
-use nidhogg::types::{ArmJoints, FillExt, HeadJoints, LegJoints};
+use nidhogg::{
+    NaoState,
+    types::{ArmJoints, FillExt, HeadJoints, LegJoints},
+};
 use odal::Config;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -43,6 +46,7 @@ fn run_motion(
     mut motion_manager: ResMut<MotionManager>,
     imu_values: Res<IMUValues>,
     mut nao_manager: ResMut<NaoManager>,
+    nao_state: ResMut<NaoState>,
     mut angles_reached_at: Local<Option<Instant>>,
 ) {
     let motion_config = loop {
@@ -82,7 +86,7 @@ fn run_motion(
 
     if !motion_config
         .angles
-        .is_close(&nao_manager, motion_config.angle_threshold)
+        .is_close(&nao_state, motion_config.angle_threshold)
     {
         if let Some(angles) = &motion_config.angles.head {
             if let Some(interpolation_weight) = motion_config.interpolation_weight {
@@ -276,18 +280,18 @@ struct Joints {
 }
 
 impl Joints {
-    fn is_close(&self, nao_manager: &NaoManager, threshold: f32) -> bool {
-        self.head_is_close(nao_manager, threshold)
-            && self.arms_are_close(nao_manager, threshold)
-            && self.legs_are_close(nao_manager, threshold)
+    fn is_close(&self, nao_state: &NaoState, threshold: f32) -> bool {
+        self.head_is_close(nao_state, threshold)
+            && self.arms_are_close(nao_state, threshold)
+            && self.legs_are_close(nao_state, threshold)
     }
 
-    fn head_is_close(&self, nao_manager: &NaoManager, threshold: f32) -> bool {
+    fn head_is_close(&self, nao_state: &NaoState, threshold: f32) -> bool {
         let Some(requested_head_position) = &self.head else {
             return true;
         };
 
-        let current_head_position = nao_manager.head_position();
+        let current_head_position = nao_state.position.head_joints();
 
         requested_head_position
             .clone()
@@ -301,12 +305,12 @@ impl Joints {
             })
     }
 
-    fn arms_are_close(&self, nao_manager: &NaoManager, threshold: f32) -> bool {
+    fn arms_are_close(&self, nao_state: &NaoState, threshold: f32) -> bool {
         let Some(requested_arms_position) = &self.arms else {
             return true;
         };
 
-        let current_arms_position = nao_manager.arm_position();
+        let current_arms_position = nao_state.position.arm_joints();
 
         let left_arm_is_close = requested_arms_position
             .left_arm
@@ -335,12 +339,12 @@ impl Joints {
         left_arm_is_close && right_arm_is_close
     }
 
-    fn legs_are_close(&self, nao_manager: &NaoManager, threshold: f32) -> bool {
+    fn legs_are_close(&self, nao_state: &NaoState, threshold: f32) -> bool {
         let Some(requested_legs_position) = &self.legs else {
             return true;
         };
 
-        let current_legs_position = nao_manager.leg_position();
+        let current_legs_position = nao_state.position.leg_joints();
 
         let left_leg_is_close = requested_legs_position
             .left_leg
