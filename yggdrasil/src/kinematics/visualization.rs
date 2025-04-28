@@ -68,7 +68,7 @@ fn setup_meshes(dbg: DebugContext) {
 
         dbg.log_static(
             path,
-            &rerun::Asset3D::from_file(concat!("./assets/rerun/nao/", stringify!($name), ".glb"))
+            &rerun::Asset3D::from_file_path(concat!("./assets/rerun/nao/", stringify!($name), ".glb"))
                 .expect(concat!("Failed to load ", stringify!($), " model"))
                 .with_media_type(rerun::MediaType::glb()),
         );

@@ -68,7 +68,7 @@ bevy = { version = "0.15.3", default-features = false, features = [
 ] }
 byteorder = "1.5.0"
 cargo_toml = "0.20.5"
-chrono = "=0.4.39"
+chrono = "0.4.40"
 clap = "4.5.36"
 colored = "2.1.0"
 cpal = "0.15.3"
@@ -105,8 +105,8 @@ proc-macro2 = "1.0.95"
 quote = "1.0.40"
 rand = "0.9.1"
 
-re_crash_handler = "0.22.1"
-rerun = { version = "0.22.1", default-features = false, features = [
+re_crash_handler = "0.23.1"
+rerun = { version = "0.23.1", default-features = false, features = [
   "sdk",
   "server",
   "analytics",

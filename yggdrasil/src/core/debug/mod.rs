@@ -6,13 +6,14 @@ use bevy::prelude::*;
 use miette::IntoDiagnostic;
 use re_control_comms::debug_system::DebugEnabledSystems;
 use rerun::{
-    Angle, AsComponents, EntityPath, RecordingStream, SerializedComponentColumn, TimeColumn,
+    Angle, AsComponents, DEFAULT_SERVER_PORT, EntityPath, RecordingStream,
+    SerializedComponentColumn, TimeColumn,
 };
+use std::convert::Into;
 use std::env;
 use std::f32::consts::PI;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use std::{convert::Into, net::SocketAddr};
 use std::{marker::PhantomData, net::IpAddr};
 
 use crate::{
@@ -92,7 +93,7 @@ pub fn init_rerun(mut commands: Commands) {
         RerunStream::init_file_sink("yggdrasil", output_rrd_file_path)
             .expect("failed to initialize rerun::RecordingStream")
     } else if let Some(address) = server_address {
-        RerunStream::init_tcp_sink("yggdrasil", address)
+        RerunStream::init_grpc_server("yggdrasil", address)
             .expect("failed to initialize rerun::RecordingStream")
     } else {
         tracing::warn!("`RERUN_HOST` not set, rerun debugging is disabled");
@@ -105,14 +106,14 @@ pub fn init_rerun(mut commands: Commands) {
 fn setup_spl_field(dbg: DebugContext) {
     dbg.log_static(
         "field",
-        &rerun::Asset3D::from_file("./assets/rerun/field.glb")
+        &rerun::Asset3D::from_file_path("./assets/rerun/field.glb")
             .expect("Failed to load field model")
             .with_media_type(rerun::MediaType::glb()),
     );
 
     dbg.log_static(
         "field/goals",
-        &rerun::Asset3D::from_file("./assets/rerun/goal.glb")
+        &rerun::Asset3D::from_file_path("./assets/rerun/goal.glb")
             .expect("Failed to load goal model")
             .with_media_type(rerun::MediaType::glb()),
     );
@@ -150,8 +151,8 @@ fn sync_cycle_number(
         ctx.send_columns(
             "stats/cycle_time",
             [timeline],
-            rerun::Scalar::update_fields()
-                .with_many_scalar(durations)
+            rerun::Scalars::update_fields()
+                .with_scalars(durations)
                 .columns_of_unit_batches()
                 .expect("failed to batch scalar values"),
         );
@@ -178,15 +179,15 @@ impl RerunStream {
     ///
     /// If yggdrasil is not compiled with the `rerun` feature, this will return a
     /// [`RerunStream`] that does nothing.
-    pub fn init_tcp_sink(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
+    pub fn init_grpc_server(recording_name: impl AsRef<str>, rerun_host: IpAddr) -> Result<Self> {
         unsafe {
             std::env::set_var("RERUN_FLUSH_TICK_SECS", "0.15"); // 150 milliseconds
             std::env::set_var("RERUN_FLUSH_NUM_BYTES", "512000"); // 500 KiB
         }
 
         let rec = rerun::RecordingStreamBuilder::new(recording_name.as_ref())
-            .connect_tcp_opts(
-                SocketAddr::new(rerun_host, rerun::default_server_addr().port()),
+            .connect_grpc_opts(
+                format!("rerun+http://{rerun_host}:{DEFAULT_SERVER_PORT}/proxy",),
                 rerun::default_flush_timeout(),
             )
             .into_diagnostic()?;
