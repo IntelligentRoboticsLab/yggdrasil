@@ -523,6 +523,22 @@ impl<T> HeadJoints<T> {
             pitch: (self.pitch, other.pitch),
         }
     }
+
+    /// Return an iterator over references to the elements of the [`HeadJoints`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use nidhogg::types::HeadJoints;
+    ///
+    /// let joints = HeadJoints::<f32>::default();
+    /// for joint in joints.iter() {
+    ///     assert_eq!(joint, 0.0);
+    /// }
+    /// ```
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        [&self.yaw, &self.pitch].into_iter()
+    }
 }
 
 /// Wrapper struct containing the left leg joints of the robot.
@@ -590,6 +606,30 @@ impl<T> LeftLegJoints<T> {
             ankle_roll: (self.ankle_roll, other.ankle_roll),
         }
     }
+
+    /// Return an iterator over references to the elements of the [`LeftLegJoints`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use nidhogg::types::LeftLegJoints;
+    ///
+    /// let joints = LeftLegJoints::<f32>::default();
+    /// for joint in joints.iter() {
+    ///     assert_eq!(joint, 0.0);
+    /// }
+    /// ```
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        [
+            &self.hip_yaw_pitch,
+            &self.hip_roll,
+            &self.hip_pitch,
+            &self.knee_pitch,
+            &self.ankle_pitch,
+            &self.ankle_roll,
+        ]
+        .into_iter()
+    }
 }
 
 /// Wrapper struct containing right left leg joints of the robot.
@@ -655,6 +695,29 @@ impl<T> RightLegJoints<T> {
             ankle_pitch: (self.ankle_pitch, other.ankle_pitch),
             ankle_roll: (self.ankle_roll, other.ankle_roll),
         }
+    }
+
+    /// Return an iterator over references to the elements of the [`RightLegJoints`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use nidhogg::types::RightLegJoints;
+    ///
+    /// let joints = RightLegJoints::<f32>::default();
+    /// for joint in joints.iter() {
+    ///     assert_eq!(joint, 0.0);
+    /// }
+    /// ```
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        [
+            &self.hip_roll,
+            &self.hip_pitch,
+            &self.knee_pitch,
+            &self.ankle_pitch,
+            &self.ankle_roll,
+        ]
+        .into_iter()
     }
 }
 
@@ -783,6 +846,30 @@ impl<T> SingleArmJoints<T> {
             wrist_yaw: (self.wrist_yaw, other.wrist_yaw),
             hand: (self.hand, other.hand),
         }
+    }
+
+    /// Return an iterator over references to the elements of the [`SingleArmJoints`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use nidhogg::types::SingleArmJoints;
+    ///
+    /// let joints = SingleArmJoints::<f32>::default();
+    /// for joint in joints.iter() {
+    ///     assert_eq!(joint, 0.0);
+    /// }
+    /// ```
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        [
+            &self.shoulder_pitch,
+            &self.shoulder_roll,
+            &self.elbow_yaw,
+            &self.elbow_roll,
+            &self.wrist_yaw,
+            &self.hand,
+        ]
+        .into_iter()
     }
 }
 
