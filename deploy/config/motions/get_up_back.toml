@@ -7,7 +7,7 @@ complete_conditions = [
   { field = "GiroY", smaller_than = 0.3 },
   { field = "GiroY", bigger_than = -0.3 },
 ]
-interpolate = true
+interpolation_weight = 0.5
 max_delay = 3.0
 min_delay = 1.0
 # start_conditions = ["e.g. arms not below body"]

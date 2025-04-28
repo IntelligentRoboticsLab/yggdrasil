@@ -87,20 +87,44 @@ fn run_motion(
         if let (Some(angles), Some(stiffness)) =
             (&motion_config.angles.head, &motion_config.stiffness.head)
         {
-            // TODO: Add interpolation to the nao manager.
-            nao_manager.set_head(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
+            if let Some(interpolation_weight) = motion_config.interpolation_weight {
+                nao_manager.set_head_interpolate(
+                    angles.clone(),
+                    stiffness.clone(),
+                    interpolation_weight,
+                    MOTION_MANAGER_PRIORITY,
+                );
+            } else {
+                nao_manager.set_head(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
+            }
         }
         if let (Some(angles), Some(stiffness)) =
             (&motion_config.angles.arms, &motion_config.stiffness.arms)
         {
-            // TODO: Add interpolation to the nao manager.
-            nao_manager.set_arms(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
+            if let Some(interpolation_weight) = motion_config.interpolation_weight {
+                nao_manager.set_arms_interpolate(
+                    angles.clone(),
+                    stiffness.clone(),
+                    interpolation_weight,
+                    MOTION_MANAGER_PRIORITY,
+                );
+            } else {
+                nao_manager.set_arms(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
+            }
         }
         if let (Some(angles), Some(stiffness)) =
             (&motion_config.angles.legs, &motion_config.stiffness.legs)
         {
-            // TODO: Add interpolation to the nao manager.
-            nao_manager.set_legs(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
+            if let Some(interpolation_weight) = motion_config.interpolation_weight {
+                nao_manager.set_legs_interpolate(
+                    angles.clone(),
+                    stiffness.clone(),
+                    interpolation_weight,
+                    MOTION_MANAGER_PRIORITY,
+                );
+            } else {
+                nao_manager.set_legs(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
+            }
         }
 
         return;
@@ -206,7 +230,7 @@ impl Condition {
 #[serde(deny_unknown_fields)]
 struct MotionConfig {
     abort_conditions: Vec<Condition>,
-    interpolate: bool,
+    interpolation_weight: Option<f32>,
     complete_conditions: Vec<Condition>,
     start_conditions: Vec<Condition>,
     min_delay: f32,
