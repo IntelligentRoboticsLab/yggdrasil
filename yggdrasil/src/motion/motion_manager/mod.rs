@@ -278,20 +278,95 @@ struct Joints {
 impl Joints {
     fn is_close(&self, nao_manager: &NaoManager, threshold: f32) -> bool {
         self.head_is_close(nao_manager, threshold)
-        // TODO: Arms
-        // TODO: LEGS
+            && self.arms_are_close(nao_manager, threshold)
+            && self.legs_are_close(nao_manager, threshold)
     }
 
     fn head_is_close(&self, nao_manager: &NaoManager, threshold: f32) -> bool {
-        let head_angles = nao_manager.head_position();
+        let Some(requested_head_position) = &self.head else {
+            return true;
+        };
 
-        self.head
-            .as_ref()
-            .is_none_or(|head| head.pitch.sub(head_angles.pitch).abs().le(&threshold))
-            && self
-                .head
-                .as_ref()
-                .is_none_or(|head| head.yaw.sub(head_angles.yaw).abs().le(&threshold))
+        let current_head_position = nao_manager.head_position();
+
+        requested_head_position
+            .clone()
+            .zip(current_head_position.clone())
+            .iter()
+            .all(|(requested_position, current_position)| {
+                requested_position
+                    .sub(current_position)
+                    .abs()
+                    .le(&threshold)
+            })
+    }
+
+    fn arms_are_close(&self, nao_manager: &NaoManager, threshold: f32) -> bool {
+        let Some(requested_arms_position) = &self.arms else {
+            return true;
+        };
+
+        let current_arms_position = nao_manager.arm_position();
+
+        let left_arm_is_close = requested_arms_position
+            .left_arm
+            .clone()
+            .zip(current_arms_position.left_arm.clone())
+            .iter()
+            .all(|(requested_position, current_position)| {
+                requested_position
+                    .sub(current_position)
+                    .abs()
+                    .le(&threshold)
+            });
+
+        let right_arm_is_close = requested_arms_position
+            .right_arm
+            .clone()
+            .zip(current_arms_position.right_arm.clone())
+            .iter()
+            .all(|(requested_position, current_position)| {
+                requested_position
+                    .sub(current_position)
+                    .abs()
+                    .le(&threshold)
+            });
+
+        left_arm_is_close && right_arm_is_close
+    }
+
+    fn legs_are_close(&self, nao_manager: &NaoManager, threshold: f32) -> bool {
+        let Some(requested_legs_position) = &self.legs else {
+            return true;
+        };
+
+        let current_legs_position = nao_manager.leg_position();
+
+        let left_leg_is_close = requested_legs_position
+            .left_leg
+            .clone()
+            .zip(current_legs_position.left_leg.clone())
+            .iter()
+            .all(|(requested_position, current_position)| {
+                requested_position
+                    .sub(current_position)
+                    .abs()
+                    .le(&threshold)
+            });
+
+        let right_leg_is_close = requested_legs_position
+            .right_leg
+            .clone()
+            .zip(current_legs_position.right_leg.clone())
+            .iter()
+            .all(|(requested_position, current_position)| {
+                requested_position
+                    .sub(current_position)
+                    .abs()
+                    .le(&threshold)
+            });
+
+        left_leg_is_close && right_leg_is_close
     }
 }
 
