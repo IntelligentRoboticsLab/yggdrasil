@@ -1,15 +1,212 @@
 [[motions]]
 abort_conditions = []
 angle_threshold = 0.3
-angles = { head = { pitch = 0.0, yaw = 0.0 } }
 complete_conditions = [
-  { field = "GiroX", smaller_than = -0.3, bigger_than = 0.3 },
-  { field = "GiroY", smaller_than = 0.3 },
-  { field = "GiroY", bigger_than = -0.3 },
+  # { field = "GiroX", smaller_than = -0.3, bigger_than = 0.3 },
+  # { field = "GiroY", smaller_than = 0.3 },
+  # { field = "GiroY", bigger_than = -0.3 },
 ]
 interpolation_weight = 0.5
 max_delay = 3.0
 min_delay = 1.0
+stiffness = 0.8
+
+[motions.angles.arms.left_arm]
+shoulder_pitch = 1.57
+
+[motions.angles.arms.right_arm]
+shoulder_pitch = 1.57
+
 # start_conditions = ["e.g. arms not below body"]
 start_conditions = []
-stiffness = { head_pitch = 0.0, head_yaw = 0.0 }
+
+
+[[motions]]
+abort_conditions = []
+angle_threshold = 0.3
+complete_conditions = [
+  # { field = "GiroX", smaller_than = -0.3, bigger_than = 0.3 },
+  # { field = "GiroY", smaller_than = 0.3 },
+  # { field = "GiroY", bigger_than = -0.3 },
+]
+interpolation_weight = 0.5
+max_delay = 3.0
+min_delay = 1.0
+stiffness = 0.8
+
+# start_conditions = ["e.g. arms not below body"]
+start_conditions = []
+
+[motions.angles.head]
+pitch = 0.3839724354387525
+yaw = 0.0
+
+[motions.angles.arms.left_arm]
+elbow_roll = 0.0
+elbow_yaw = 0.0
+hand = 0.0
+shoulder_pitch = 2.1467549799530254
+shoulder_roll = 0.0
+wrist_yaw = 0.11355805397033691
+
+[motions.angles.arms.right_arm]
+elbow_roll = 0.0
+elbow_yaw = 0.0
+hand = 0.0
+shoulder_pitch = 2.1467549799530254
+shoulder_roll = 0.0
+wrist_yaw = -0.11355805397033691
+
+[motions.angles.legs.left_leg]
+ankle_pitch = 0.4065520763397217
+ankle_roll = 0.0
+hip_pitch = 0.5521979331970215
+hip_roll = 0.0
+hip_yaw_pitch = 0.0
+knee_pitch = 1.1198620796203613
+
+[motions.angles.legs.right_leg]
+ankle_pitch = 0.4065520763397217
+ankle_roll = 0.0
+hip_pitch = 0.5521979331970215
+hip_roll = 0.0
+knee_pitch = 1.1198620796203613
+
+[[motions]]
+abort_conditions = []
+angle_threshold = 0.3
+complete_conditions = [
+  # { field = "GiroX", smaller_than = -0.3, bigger_than = 0.3 },
+  # { field = "GiroY", smaller_than = 0.3 },
+  # { field = "GiroY", bigger_than = -0.3 },
+]
+interpolation_weight = 0.5
+max_delay = 3.0
+min_delay = 1.0
+stiffness = 0.8
+
+[motions.angles.head]
+pitch = 0.3839724354387525
+yaw = 0.0
+
+[motions.angles.arms.left_arm]
+elbow_roll = 0.0
+elbow_yaw = 0.0
+hand = 0.0
+shoulder_pitch = 2.1467549799530254
+shoulder_roll = 0.0
+wrist_yaw = 0.11355805397033691
+
+[motions.angles.arms.right_arm]
+elbow_roll = 0.0
+elbow_yaw = 0.0
+hand = 0.0
+shoulder_pitch = 2.1467549799530254
+shoulder_roll = 0.0
+wrist_yaw = -0.11355805397033691
+
+[motions.angles.legs.left_leg]
+ankle_pitch = 0.4065520763397217
+ankle_roll = 0.0
+hip_pitch = 0.5521979331970215
+hip_roll = 0.0
+hip_yaw_pitch = 0.0
+knee_pitch = 1.1198620796203613
+
+[motions.angles.legs.right_leg]
+ankle_pitch = 0.4065520763397217
+ankle_roll = 0.0
+hip_pitch = 0.5521979331970215
+hip_roll = 0.0
+hip_yaw_pitch = 0.0
+knee_pitch = 1.1198620796203613
+
+[[motions]]
+abort_conditions = []
+angle_threshold = 0.3
+complete_conditions = [
+  # { field = "GiroX", smaller_than = -0.3, bigger_than = 0.3 },
+  # { field = "GiroY", smaller_than = 0.3 },
+  # { field = "GiroY", bigger_than = -0.3 },
+]
+interpolation_weight = 0.5
+max_delay = 3.0
+min_delay = 1.0
+stiffness = 0.8
+
+[motions.angles.head]
+pitch = 0.3839724354387525
+yaw = 0.0
+
+[motions.angles.arms.left_arm]
+elbow_roll = 1.376039981842041
+elbow_yaw = -0.14883995056152344
+hand = 0.0
+shoulder_pitch = 1.918992042541504
+shoulder_roll = 0.12421202659606934
+wrist_yaw = 0.056715965270996094
+
+[motions.angles.arms.right_arm]
+shoulder_pitch = 1.9620280265808105
+shoulder_roll = -0.26695799827575684
+
+[motions.angles.legs.left_leg]
+ankle_pitch = 0.4065520763397217
+ankle_roll = 0.0
+hip_pitch = 0.5521979331970215
+hip_roll = 0.0
+hip_yaw_pitch = 0.0
+knee_pitch = 1.1198620796203613
+
+[motions.angles.legs.right_leg]
+ankle_pitch = 0.4065520763397217
+ankle_roll = 0.0
+hip_pitch = 0.5521979331970215
+hip_roll = 0.0
+hip_yaw_pitch = 0.0
+knee_pitch = 1.1198620796203613
+
+[[motions]]
+abort_conditions = []
+angle_threshold = 0.3
+complete_conditions = [
+  # { field = "GiroX", smaller_than = -0.3, bigger_than = 0.3 },
+  # { field = "GiroY", smaller_than = 0.3 },
+  # { field = "GiroY", bigger_than = -0.3 },
+]
+interpolation_weight = 0.5
+max_delay = 3.0
+min_delay = 1.0
+stiffness = 0.8
+
+[motions.angles.head]
+pitch = 0.3839724354387525
+yaw = 0.0
+
+[motions.angles.arms.left_arm]
+elbow_roll = 1.376039981842041
+elbow_yaw = -0.14883995056152344
+hand = 0.0
+shoulder_pitch = 1.918992042541504
+shoulder_roll = 0.12421202659606934
+wrist_yaw = 0.056715965270996094
+
+[motions.angles.arms.right_arm]
+shoulder_pitch = 1.9620280265808105
+shoulder_roll = -0.26695799827575684
+
+[motions.angles.legs.left_leg]
+ankle_pitch = 0.0
+ankle_roll = 0.0
+hip_pitch = 0.0
+hip_roll = 0.0
+hip_yaw_pitch = 0.0
+knee_pitch = 1.9198621771937625
+
+[motions.angles.legs.right_leg]
+ankle_pitch = 0.0
+ankle_roll = 0.0
+hip_pitch = 0.0
+hip_roll = 0.0
+hip_yaw_pitch = 0.0
+knee_pitch = 1.9198621771937625
