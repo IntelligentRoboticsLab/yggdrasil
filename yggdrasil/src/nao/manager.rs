@@ -419,7 +419,7 @@ impl NaoManager {
         } = self.head_state
         {
             // If the head is already moving, only set a new target if its sufficiently different from old target.
-            // This helps revents the head from stuttering
+            // This prevents the head from stuttering
             let similarity = target.dot(&new_target);
             if similarity < NEW_TARGET_SIMILARITY_THRESHOLD {
                 self.head_state = HeadState::New {
