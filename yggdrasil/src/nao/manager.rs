@@ -387,8 +387,8 @@ impl NaoManager {
         &mut self,
         joint_positions: LegJoints<JointValue>,
         joint_stiffness: LegJoints<JointValue>,
-        priority: Priority,
         interpolation_weight: JointValue,
+        priority: Priority,
     ) -> &mut Self {
         let interpolation_weight = interpolation_weight.clamp(num::zero(), num::one());
 
@@ -448,8 +448,8 @@ impl NaoManager {
         &mut self,
         joint_positions: ArmJoints<JointValue>,
         joint_stiffness: ArmJoints<JointValue>,
-        priority: Priority,
         interpolation_weight: JointValue,
+        priority: Priority,
     ) -> &mut Self {
         let interpolation_weight = interpolation_weight.clamp(num::zero(), num::one());
 
@@ -509,8 +509,8 @@ impl NaoManager {
         &mut self,
         joint_positions: HeadJoints<JointValue>,
         joint_stiffness: HeadJoints<JointValue>,
-        priority: Priority,
         interpolation_weight: JointValue,
+        priority: Priority,
     ) -> &mut Self {
         let interpolation_weight = interpolation_weight.clamp(num::zero(), num::one());
 
