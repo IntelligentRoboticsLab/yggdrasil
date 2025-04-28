@@ -1,7 +1,7 @@
 use std::{ops::Sub, time::Instant};
 
 use bevy::prelude::*;
-use nidhogg::types::{ArmJoints, HeadJoints, LegJoints};
+use nidhogg::types::{ArmJoints, FillExt, HeadJoints, LegJoints};
 use odal::Config;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -84,46 +84,52 @@ fn run_motion(
         .angles
         .is_close(&nao_manager, motion_config.angle_threshold)
     {
-        if let (Some(angles), Some(stiffness)) =
-            (&motion_config.angles.head, &motion_config.stiffness.head)
-        {
+        if let Some(angles) = &motion_config.angles.head {
             if let Some(interpolation_weight) = motion_config.interpolation_weight {
                 nao_manager.set_head_interpolate(
                     angles.clone(),
-                    stiffness.clone(),
+                    HeadJoints::fill(motion_config.stiffness),
                     interpolation_weight,
                     MOTION_MANAGER_PRIORITY,
                 );
             } else {
-                nao_manager.set_head(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
+                nao_manager.set_head(
+                    angles.clone(),
+                    HeadJoints::fill(motion_config.stiffness),
+                    MOTION_MANAGER_PRIORITY,
+                );
             }
         }
-        if let (Some(angles), Some(stiffness)) =
-            (&motion_config.angles.arms, &motion_config.stiffness.arms)
-        {
+        if let Some(angles) = &motion_config.angles.arms {
             if let Some(interpolation_weight) = motion_config.interpolation_weight {
                 nao_manager.set_arms_interpolate(
                     angles.clone(),
-                    stiffness.clone(),
+                    ArmJoints::fill(motion_config.stiffness),
                     interpolation_weight,
                     MOTION_MANAGER_PRIORITY,
                 );
             } else {
-                nao_manager.set_arms(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
+                nao_manager.set_arms(
+                    angles.clone(),
+                    ArmJoints::fill(motion_config.stiffness),
+                    MOTION_MANAGER_PRIORITY,
+                );
             }
         }
-        if let (Some(angles), Some(stiffness)) =
-            (&motion_config.angles.legs, &motion_config.stiffness.legs)
-        {
+        if let Some(angles) = &motion_config.angles.legs {
             if let Some(interpolation_weight) = motion_config.interpolation_weight {
                 nao_manager.set_legs_interpolate(
                     angles.clone(),
-                    stiffness.clone(),
+                    LegJoints::fill(motion_config.stiffness),
                     interpolation_weight,
                     MOTION_MANAGER_PRIORITY,
                 );
             } else {
-                nao_manager.set_legs(angles.clone(), stiffness.clone(), MOTION_MANAGER_PRIORITY);
+                nao_manager.set_legs(
+                    angles.clone(),
+                    LegJoints::fill(motion_config.stiffness),
+                    MOTION_MANAGER_PRIORITY,
+                );
             }
         }
 
@@ -237,7 +243,7 @@ struct MotionConfig {
     max_delay: f32,
     angles: Joints,
     angle_threshold: f32,
-    stiffness: Joints,
+    stiffness: f32,
 }
 
 impl MotionConfig {
