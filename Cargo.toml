@@ -63,7 +63,7 @@ tasks = { path = "crates/tasks" }
 # external crates
 apodize = "1.0.0"
 async-std = "1.13.1"
-bevy = { version = "0.16.0-rc.5", default-features = false, features = [
+bevy = { version = "0.16.0", default-features = false, features = [
   "bevy_state",
 ] }
 byteorder = "1.5.0"
