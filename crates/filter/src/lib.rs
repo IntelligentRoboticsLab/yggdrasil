@@ -354,19 +354,13 @@ where
     }
 
     /// Predict the next filter state based on the state transition model and process noise.
-    pub fn predict<const D_CONTROL: usize, C: Vectorize<D_CONTROL>, StateModel, ControlModel>(
+    pub fn predict<const D_CONTROL: usize, C: Vectorize<D_CONTROL>>(
         &mut self,
-        state_transition_model: StateModel,
-        control_input_model: ControlModel,
+        state_transition_model: Matrix<D_STATE, D_STATE>,
+        control_input_model: Matrix<D_STATE, D_CONTROL>,
         control: C,
         process_noise: CovarianceMatrix<D_STATE>,
-    ) where
-        StateModel: MatrixModel<D_STATE, D_STATE>,
-        ControlModel: MatrixModel<D_STATE, D_CONTROL>,
-    {
-        let state_transition_model = state_transition_model.as_model();
-        let control_input_model = control_input_model.as_model();
-
+    ) {
         self.state = state_transition_model * self.state + control_input_model * control.into();
         self.covariance =
             state_transition_model * self.covariance * state_transition_model.transpose()
@@ -374,17 +368,13 @@ where
     }
 
     /// Updates the filter state with a measurement
-    pub fn update<const D_MEASUREMENT: usize, M: Vectorize<D_MEASUREMENT>, MeasurementModel>(
+    pub fn update<const D_MEASUREMENT: usize, M: Vectorize<D_MEASUREMENT>>(
         &mut self,
         measurement: M,
-        measurement_model: MeasurementModel,
+        measurement_model: Matrix<D_MEASUREMENT, D_STATE>,
         measurement_noise: CovarianceMatrix<D_MEASUREMENT>,
-    ) -> Result<()>
-    where
-        MeasurementModel: MatrixModel<D_MEASUREMENT, D_STATE>,
-    {
+    ) -> Result<()> {
         let measurement = measurement.into();
-        let measurement_model = measurement_model.as_model();
 
         let residual = measurement - measurement_model * self.state;
         let residual_covariance =
@@ -399,11 +389,6 @@ where
 
         Ok(())
     }
-}
-
-/// Trait that describes how to create a model matrix from a type
-pub trait MatrixModel<const M: usize, const N: usize> {
-    fn as_model(&self) -> Matrix<M, N>;
 }
 
 /// Calculates the Mahalanobis distance between a point and a distribution.

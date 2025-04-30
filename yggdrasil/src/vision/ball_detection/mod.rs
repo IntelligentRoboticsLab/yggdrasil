@@ -2,6 +2,7 @@
 
 pub mod ball_tracker;
 pub mod classifier;
+pub mod hypothesis;
 pub mod proposal;
 
 use std::{sync::Arc, time::Duration};
