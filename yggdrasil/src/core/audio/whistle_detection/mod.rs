@@ -18,7 +18,7 @@ use crate::{
     behavior::primary_state::PrimaryState,
     communication::{TeamCommunication, TeamMessage},
     nao::{NaoManager, Priority},
-    prelude::*,
+    prelude::{Config, ConfigExt},
 };
 
 use super::audio_input::AudioSamplesEvent;
@@ -128,7 +128,7 @@ fn update_whistle_state(
     config: Res<WhistleDetectionConfig>,
     mut nao_manager: ResMut<NaoManager>,
     mut tc: ResMut<TeamCommunication>,
-) {
+) -> Result {
     // resize state.detections if necessary
     detection_state
         .detections
@@ -146,7 +146,7 @@ fn update_whistle_state(
         whistle.detected = true;
         nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
-        return;
+        return Ok(());
     }
 
     whistle.detected = false;
@@ -167,9 +167,7 @@ fn update_whistle_state(
             if *primary_state == PrimaryState::Set {
                 // Send message to all teammates
                 let msg = TeamMessage::DetectedWhistle;
-                tc.outbound_mut()
-                    .update_or_push_by(msg, Deadline::ASAP)
-                    .expect("failed to encode whistle message");
+                tc.outbound_mut().update_or_push_by(msg, Deadline::ASAP)?;
             }
             break;
         }
@@ -182,6 +180,8 @@ fn update_whistle_state(
         nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(0.0), Priority::High);
     }
+
+    Ok(())
 }
 
 fn whistle_preprocessing(

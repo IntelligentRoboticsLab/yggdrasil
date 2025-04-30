@@ -19,11 +19,7 @@ pub struct GameControllerReceiver {
 
 impl GameControllerReceiver {
     fn try_recv(&mut self) -> Option<(GameControllerMessage, SocketAddr)> {
-        self.rx
-            .try_next()
-            .transpose()
-            .expect("GameControllerMessage channel closed")
-            .ok()
+        self.rx.try_next().transpose()?.ok()
     }
 }
 

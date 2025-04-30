@@ -170,27 +170,31 @@ pub fn fetch_latest_frame<T: CameraLocation>(
     }
 }
 
-pub fn init_camera<T: CameraLocation>(mut commands: Commands, config: Res<CameraConfig>) {
+pub fn init_camera<T: CameraLocation>(
+    mut commands: Commands,
+    config: Res<CameraConfig>,
+) -> bevy::ecs::error::Result {
     let settings = match T::POSITION {
         CameraPosition::Top => &config.top,
         CameraPosition::Bottom => &config.bottom,
     };
 
-    let camera_device = setup_camera_device(settings).expect("failed to setup camera device");
+    let camera_device = setup_camera_device(settings)?;
     let hardware_camera = HardwareCamera::new(
         camera_device,
         settings.width,
         settings.height,
         settings.num_buffers,
-    )
-    .expect("failed to create camera hardware");
+    )?;
 
     let camera = Camera::<T>::new(hardware_camera);
 
-    let image = camera.loop_fetch_image().expect("failed to fetch image");
+    let image = camera.loop_fetch_image()?;
 
     commands.insert_resource(camera);
     commands.insert_resource(image);
+
+    Ok(())
 }
 
 fn log_image_jpeg<T: CameraLocation>(dbg: DebugContext, image: Res<Image<T>>) {
