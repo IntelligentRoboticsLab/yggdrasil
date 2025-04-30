@@ -195,7 +195,7 @@ fn classify_balls<T: CameraLocation>(
         let confidence = commands
             .infer_model(&mut model)
             .with_input(&patch)
-            .spawn_blocking(|output| ml::util::sigmoid(output));
+            .spawn_blocking(ml::util::sigmoid);
 
         if confidence < classifier.confidence_threshold {
             continue;
