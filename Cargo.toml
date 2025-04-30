@@ -51,6 +51,7 @@ yggdrasil = { path = "yggdrasil" }
 # yggdrasil libraries
 bifrost = { path = "crates/bifrost" }
 build_utils = { path = "crates/build_utils" }
+filter = { path = "crates/filter" }
 heimdall = { path = "crates/heimdall" }
 ml = { path = "crates/ml" }
 nidhogg = { path = "crates/nidhogg" }
