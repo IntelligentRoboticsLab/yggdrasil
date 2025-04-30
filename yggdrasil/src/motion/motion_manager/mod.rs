@@ -54,7 +54,7 @@ fn run_motion(
             break None;
         };
 
-        if motion_config
+        if !motion_config
             .start_conditions
             .iter()
             .all(|condition| condition.is_satisfied(imu_values.as_ref()))
@@ -75,10 +75,11 @@ fn run_motion(
         return;
     }
 
-    if motion_config
-        .abort_conditions
-        .iter()
-        .all(|condition| condition.is_satisfied(imu_values.as_ref()))
+    if !motion_config.abort_conditions.is_empty()
+        && motion_config
+            .abort_conditions
+            .iter()
+            .all(|condition| condition.is_satisfied(imu_values.as_ref()))
     {
         motion_manager.abort_motion();
         return;

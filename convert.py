@@ -18,14 +18,14 @@ data = {
     "right_hand": 0.0,
     "left_hip_yaw_pitch": 0.0,
     "left_hip_roll": 0.0,
-    "left_hip_pitch": 0.0,
-    "left_knee_pitch": 1.9198621771937625,
+    "left_hip_pitch": -1.3962634015954636,
+    "left_knee_pitch": -0.08726646259971647,
     "left_ankle_pitch": 0.0,
     "left_ankle_roll": 0.0,
     "right_hip_yaw_pitch": 0.0,
     "right_hip_roll": 0.0,
-    "right_hip_pitch": 0.0,
-    "right_knee_pitch": 1.9198621771937625,
+    "right_hip_pitch": -1.3962634015954636,
+    "right_knee_pitch": -0.08726646259971647,
     "right_ankle_pitch": 0.0,
     "right_ankle_roll": 0.0,
 }
@@ -42,21 +42,13 @@ for key, value in data.items():
     if key.startswith("head_"):
         part = key.split("_")[1]
         sections["head"][part] = value
-    elif (
-        key.startswith("left_")
-        and "shoulder" in key
-        or "elbow" in key
-        or "wrist" in key
-        or "hand" in key
+    elif key.startswith("left_") and (
+        "shoulder" in key or "elbow" in key or "wrist" in key or "hand" in key
     ):
         part = "_".join(key.split("_")[1:])
         sections["arms"]["left_arm"][part] = value
-    elif (
-        key.startswith("right_")
-        and "shoulder" in key
-        or "elbow" in key
-        or "wrist" in key
-        or "hand" in key
+    elif key.startswith("right_") and (
+        "shoulder" in key or "elbow" in key or "wrist" in key or "hand" in key
     ):
         part = "_".join(key.split("_")[1:])
         sections["arms"]["right_arm"][part] = value
