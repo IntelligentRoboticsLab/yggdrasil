@@ -1,4 +1,5 @@
 use std::{ops::Sub, time::Instant};
+mod joint_interpolator;
 
 use bevy::prelude::*;
 use nidhogg::{
