@@ -97,7 +97,7 @@ fn init_ball_tracker(mut commands: Commands, config: Res<BallDetectionConfig>) {
 pub(super) struct BallClassifierModel;
 
 impl MlModel for BallClassifierModel {
-    type Inputs = Vec<f32>;
+    type Inputs = Vec<u8>;
     type Outputs = f32;
 
     const ONNX_PATH: &'static str = "models/ball_classifier.onnx";

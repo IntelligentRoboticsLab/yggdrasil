@@ -41,7 +41,11 @@ pub fn sigmoid(logit: f32) -> f32 {
 /// - the target image dimensions are zero
 #[allow(clippy::cast_possible_truncation)]
 #[must_use]
-pub fn resize_patch(original: (usize, usize), target: (usize, usize), patch: Vec<u8>) -> Vec<f32> {
+pub fn resize_patch<'a>(
+    original: (usize, usize),
+    target: (usize, usize),
+    patch: Vec<u8>,
+) -> Vec<u8> {
     let src_image = fir::images::Image::from_vec_u8(
         original.0 as u32,
         original.1 as u32,
@@ -63,9 +67,5 @@ pub fn resize_patch(original: (usize, usize), target: (usize, usize), patch: Vec
         )
         .expect("Failed to resize image");
 
-    dst_image
-        .buffer()
-        .iter()
-        .map(|x| f32::from(*x) / 255.0)
-        .collect()
+    dst_image.buffer().to_vec()
 }
