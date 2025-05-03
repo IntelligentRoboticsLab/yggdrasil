@@ -19,7 +19,7 @@ impl JointInterpolator {
     }
 }
 
-trait Joint: Sized + std::ops::Add<Output = Self> + std::ops::Mul<f32, Output = Self> {}
+pub trait Joint: Sized + std::ops::Add<Output = Self> + std::ops::Mul<f32, Output = Self> {}
 
 impl Joint for HeadJoints<f32> {}
 impl Joint for ArmJoints<f32> {}

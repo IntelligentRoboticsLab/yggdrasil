@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use joint_interpolator::JointInterpolator;
 use nidhogg::{
     NaoState,
-    types::{ArmJoints, FillExt, HeadJoints, LegJoints},
+    types::{ArmJoints, FillExt, HeadJoints, JointArray, LegJoints},
 };
 use odal::Config;
 use serde::{Deserialize, Serialize};
@@ -46,6 +46,11 @@ fn load_next_motion(
     };
 
     motion_manager.current_key_frame_id = 0;
+    let key_frame_duration = motion_manager
+        .current_key_frame()
+        .map(|key_frame| key_frame.duration)
+        .unwrap_or(Duration::ZERO);
+    motion_manager.joint_interpolator = JointInterpolator::new(key_frame_duration);
 }
 
 fn run_motion(
@@ -55,35 +60,37 @@ fn run_motion(
     nao_state: ResMut<NaoState>,
     mut angles_reached_at: Local<Option<Instant>>,
 ) {
-    let motion_config = loop {
-        let Some(motion_config) = motion_manager.current_motion() else {
+    let key_frame = loop {
+        let Some(key_frame) = motion_manager.current_key_frame() else {
             break None;
         };
 
-        if !motion_config
+        if !key_frame
             .start_conditions
             .iter()
             .all(|condition| condition.is_satisfied(imu_values.as_ref()))
         {
-            motion_manager.next_motion();
+            motion_manager.next_key_frame(nao_state.position.clone());
+            *angles_reached_at = None;
             continue;
         }
 
-        break Some(motion_config);
+        break Some(key_frame);
     };
-    let Some(motion_config) = motion_config else {
+    let Some(key_frame) = key_frame else {
         return;
     };
 
-    if motion_config.is_complete(&imu_values, angles_reached_at.as_ref()) {
-        eprintln!("MOTION COMPLETE, GOING NEXT MOTION");
-        motion_manager.next_motion();
+    // TODO: Is this check still necessary?
+    if key_frame.is_complete(&imu_values, angles_reached_at.as_ref()) {
+        eprintln!("KEY FRAME COMPLETE, GOING NEXT KEY FRAME 1");
+        motion_manager.next_key_frame(nao_state.position.clone());
         *angles_reached_at = None;
         return;
     }
 
-    if !motion_config.abort_conditions.is_empty()
-        && motion_config
+    if !key_frame.abort_conditions.is_empty()
+        && key_frame
             .abort_conditions
             .iter()
             .all(|condition| condition.is_satisfied(imu_values.as_ref()))
@@ -93,57 +100,42 @@ fn run_motion(
         return;
     }
 
-    if !motion_config
+    if !key_frame
         .angles
-        .is_close(&nao_state, motion_config.angle_threshold)
+        .is_close(&nao_state, key_frame.angle_threshold)
     {
-        if let Some(angles) = &motion_config.angles.head {
-            if let Some(interpolation_weight) = motion_config.interpolation_weight {
-                nao_manager.set_head_interpolate(
-                    angles.clone(),
-                    HeadJoints::fill(motion_config.stiffness),
-                    interpolation_weight,
-                    MOTION_MANAGER_PRIORITY,
-                );
-            } else {
-                nao_manager.set_head(
-                    angles.clone(),
-                    HeadJoints::fill(motion_config.stiffness),
-                    MOTION_MANAGER_PRIORITY,
-                );
-            }
+        if let Some(angles) = &key_frame.angles.head {
+            let target_angles = motion_manager.joint_interpolator.interpolated_positions(
+                motion_manager.key_frame_start_joint_angles.head_joints(),
+                angles.clone(),
+            );
+            nao_manager.set_head(
+                target_angles,
+                HeadJoints::fill(key_frame.stiffness),
+                MOTION_MANAGER_PRIORITY,
+            );
         }
-        if let Some(angles) = &motion_config.angles.arms {
-            if let Some(interpolation_weight) = motion_config.interpolation_weight {
-                nao_manager.set_arms_interpolate(
-                    angles.clone(),
-                    ArmJoints::fill(motion_config.stiffness),
-                    interpolation_weight,
-                    MOTION_MANAGER_PRIORITY,
-                );
-            } else {
-                nao_manager.set_arms(
-                    angles.clone(),
-                    ArmJoints::fill(motion_config.stiffness),
-                    MOTION_MANAGER_PRIORITY,
-                );
-            }
+        if let Some(angles) = &key_frame.angles.arms {
+            let target_angles = motion_manager.joint_interpolator.interpolated_positions(
+                motion_manager.key_frame_start_joint_angles.arm_joints(),
+                angles.clone(),
+            );
+            nao_manager.set_arms(
+                target_angles,
+                ArmJoints::fill(key_frame.stiffness),
+                MOTION_MANAGER_PRIORITY,
+            );
         }
-        if let Some(angles) = &motion_config.angles.legs {
-            if let Some(interpolation_weight) = motion_config.interpolation_weight {
-                nao_manager.set_legs_interpolate(
-                    angles.clone(),
-                    LegJoints::fill(motion_config.stiffness),
-                    interpolation_weight,
-                    MOTION_MANAGER_PRIORITY,
-                );
-            } else {
-                nao_manager.set_legs(
-                    angles.clone(),
-                    LegJoints::fill(motion_config.stiffness),
-                    MOTION_MANAGER_PRIORITY,
-                );
-            }
+        if let Some(angles) = &key_frame.angles.legs {
+            let target_angles = motion_manager.joint_interpolator.interpolated_positions(
+                motion_manager.key_frame_start_joint_angles.leg_joints(),
+                angles.clone(),
+            );
+            nao_manager.set_legs(
+                target_angles,
+                LegJoints::fill(key_frame.stiffness),
+                MOTION_MANAGER_PRIORITY,
+            );
         }
 
         return;
@@ -152,24 +144,22 @@ fn run_motion(
     // If angles are correct, set `completed_motion_at` if unset.
     *angles_reached_at = Some(Instant::now());
 
-    if motion_config.is_complete(&imu_values, angles_reached_at.as_ref()) {
-        eprintln!("MOTION IS COMPLETE");
-        motion_manager.next_motion();
+    if key_frame.is_complete(&imu_values, angles_reached_at.as_ref()) {
+        eprintln!("KEY FRAME COMPLETE, GOING NEXT KEY FRAME 2");
+        motion_manager.next_key_frame(nao_state.position.clone());
         *angles_reached_at = None;
         return;
     }
 }
 
-#[derive(Default, Resource)]
+#[derive(Resource)]
 pub struct MotionManager {
     key_frames: Vec<KeyFrame>,
     current_key_frame_id: usize,
 
-    head_joint_interpolator: Option<JointInterpolator<HeadJoints<f32>>>,
-    arm_joint_interpolator: Option<JointInterpolator<ArmJoints<f32>>>,
-    leg_joint_interpolator: Option<JointInterpolator<LegJoints<f32>>>,
-
     next_motion: Option<Motion>,
+    joint_interpolator: JointInterpolator,
+    key_frame_start_joint_angles: JointArray<f32>,
 }
 
 impl MotionManager {
@@ -186,15 +176,33 @@ impl MotionManager {
         self.current_key_frame_id = 0;
     }
 
-    fn current_motion<'a>(&'a self) -> Option<&'a KeyFrame> {
+    fn current_key_frame<'a>(&'a self) -> Option<&'a KeyFrame> {
         self.key_frames.get(self.current_key_frame_id)
     }
 
-    fn next_motion(&mut self) {
+    fn next_key_frame(&mut self, current_joint_angles: JointArray<f32>) {
         self.current_key_frame_id += 1;
-        if self.current_key_frame_id == self.key_frames.len() {
+
+        let Some(next_motion) = self.current_key_frame() else {
             self.current_key_frame_id = 0;
             self.key_frames.clear();
+            return;
+        };
+
+        self.joint_interpolator = JointInterpolator::new(next_motion.duration);
+        self.key_frame_start_joint_angles = current_joint_angles;
+    }
+}
+
+impl Default for MotionManager {
+    fn default() -> Self {
+        Self {
+            key_frames: Vec::new(),
+            current_key_frame_id: 0,
+
+            next_motion: None,
+            joint_interpolator: JointInterpolator::new(Duration::ZERO),
+            key_frame_start_joint_angles: JointArray::default(),
         }
     }
 }
