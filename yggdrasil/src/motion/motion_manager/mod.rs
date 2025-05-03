@@ -1,14 +1,19 @@
-use std::{ops::Sub, time::Instant};
 mod joint_interpolator;
 
+use std::{
+    ops::Sub,
+    time::{Duration, Instant},
+};
+
 use bevy::prelude::*;
+use joint_interpolator::JointInterpolator;
 use nidhogg::{
     NaoState,
     types::{ArmJoints, FillExt, HeadJoints, LegJoints},
 };
 use odal::Config;
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
+use serde_with::{DurationSeconds, serde_as};
 
 use crate::{
     nao::{NaoManager, Priority},
@@ -36,11 +41,11 @@ fn load_next_motion(
         return;
     };
 
-    motion_manager.motion_configs = match next_motion {
-        Motion::GetUpBack => getup_back_motion_config.motions.clone(),
+    motion_manager.key_frames = match next_motion {
+        Motion::GetUpBack => getup_back_motion_config.key_frames.clone(),
     };
 
-    motion_manager.current_motion_config_id = 0;
+    motion_manager.current_key_frame_id = 0;
 }
 
 fn run_motion(
@@ -71,6 +76,7 @@ fn run_motion(
     };
 
     if motion_config.is_complete(&imu_values, angles_reached_at.as_ref()) {
+        eprintln!("MOTION COMPLETE, GOING NEXT MOTION");
         motion_manager.next_motion();
         *angles_reached_at = None;
         return;
@@ -82,6 +88,7 @@ fn run_motion(
             .iter()
             .all(|condition| condition.is_satisfied(imu_values.as_ref()))
     {
+        eprintln!("ABORTING MOTION");
         motion_manager.abort_motion();
         return;
     }
@@ -146,6 +153,7 @@ fn run_motion(
     *angles_reached_at = Some(Instant::now());
 
     if motion_config.is_complete(&imu_values, angles_reached_at.as_ref()) {
+        eprintln!("MOTION IS COMPLETE");
         motion_manager.next_motion();
         *angles_reached_at = None;
         return;
@@ -154,8 +162,12 @@ fn run_motion(
 
 #[derive(Default, Resource)]
 pub struct MotionManager {
-    motion_configs: Vec<MotionConfig>,
-    current_motion_config_id: usize,
+    key_frames: Vec<KeyFrame>,
+    current_key_frame_id: usize,
+
+    head_joint_interpolator: Option<JointInterpolator<HeadJoints<f32>>>,
+    arm_joint_interpolator: Option<JointInterpolator<ArmJoints<f32>>>,
+    leg_joint_interpolator: Option<JointInterpolator<LegJoints<f32>>>,
 
     next_motion: Option<Motion>,
 }
@@ -170,19 +182,19 @@ impl MotionManager {
     }
 
     pub fn abort_motion(&mut self) {
-        self.motion_configs.clear();
-        self.current_motion_config_id = 0;
+        self.key_frames.clear();
+        self.current_key_frame_id = 0;
     }
 
-    fn current_motion<'a>(&'a self) -> Option<&'a MotionConfig> {
-        self.motion_configs.get(self.current_motion_config_id)
+    fn current_motion<'a>(&'a self) -> Option<&'a KeyFrame> {
+        self.key_frames.get(self.current_key_frame_id)
     }
 
     fn next_motion(&mut self) {
-        self.current_motion_config_id += 1;
-        if self.current_motion_config_id == self.motion_configs.len() {
-            self.current_motion_config_id = 0;
-            self.motion_configs.clear();
+        self.current_key_frame_id += 1;
+        if self.current_key_frame_id == self.key_frames.len() {
+            self.current_key_frame_id = 0;
+            self.key_frames.clear();
         }
     }
 }
@@ -240,9 +252,10 @@ impl Condition {
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-struct MotionConfig {
+struct KeyFrame {
     abort_conditions: Vec<Condition>,
-    interpolation_weight: Option<f32>,
+    #[serde_as(as = "DurationSeconds")]
+    duration: Duration,
     complete_conditions: Vec<Condition>,
     start_conditions: Vec<Condition>,
     min_delay: f32,
@@ -252,7 +265,7 @@ struct MotionConfig {
     stiffness: f32,
 }
 
-impl MotionConfig {
+impl KeyFrame {
     fn is_complete(&self, imu_values: &IMUValues, angles_reached_at: Option<&Instant>) -> bool {
         let Some(angles_reached_at) = angles_reached_at else {
             return false;
@@ -300,6 +313,12 @@ impl Joints {
             .zip(current_head_position.clone())
             .iter()
             .all(|(requested_position, current_position)| {
+                eprintln!(
+                    "head joints difference (requested - current): ({} - {}).abs() =  {}",
+                    requested_position,
+                    current_position,
+                    requested_position.sub(current_position).abs()
+                );
                 requested_position
                     .sub(current_position)
                     .abs()
@@ -320,6 +339,12 @@ impl Joints {
             .zip(current_arms_position.left_arm.clone())
             .iter()
             .all(|(requested_position, current_position)| {
+                eprintln!(
+                    "left arm joints difference (requested - current): ({} - {}).abs() =  {}",
+                    requested_position,
+                    current_position,
+                    requested_position.sub(current_position).abs()
+                );
                 requested_position
                     .sub(current_position)
                     .abs()
@@ -332,6 +357,12 @@ impl Joints {
             .zip(current_arms_position.right_arm.clone())
             .iter()
             .all(|(requested_position, current_position)| {
+                eprintln!(
+                    "right arm joints difference (requested - current): ({} - {}).abs() =  {}",
+                    requested_position,
+                    current_position,
+                    requested_position.sub(current_position).abs()
+                );
                 requested_position
                     .sub(current_position)
                     .abs()
@@ -354,6 +385,12 @@ impl Joints {
             .zip(current_legs_position.left_leg.clone())
             .iter()
             .all(|(requested_position, current_position)| {
+                eprintln!(
+                    "left leg joints difference (requested - current): ({} - {}).abs() =  {}",
+                    requested_position,
+                    current_position,
+                    requested_position.sub(current_position).abs()
+                );
                 requested_position
                     .sub(current_position)
                     .abs()
@@ -366,6 +403,12 @@ impl Joints {
             .zip(current_legs_position.right_leg.clone())
             .iter()
             .all(|(requested_position, current_position)| {
+                eprintln!(
+                    "right leg joints difference (requested - current): ({} - {}).abs() =  {}",
+                    requested_position,
+                    current_position,
+                    requested_position.sub(current_position).abs()
+                );
                 requested_position
                     .sub(current_position)
                     .abs()
@@ -380,7 +423,7 @@ impl Joints {
 #[derive(Serialize, Deserialize, Debug, Clone, Resource)]
 #[serde(deny_unknown_fields)]
 pub struct GetUpBackMotionConfig {
-    motions: Vec<MotionConfig>,
+    key_frames: Vec<KeyFrame>,
 }
 
 impl Config for GetUpBackMotionConfig {
