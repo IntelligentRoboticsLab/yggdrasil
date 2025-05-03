@@ -19,14 +19,64 @@ impl JointInterpolator {
     }
 }
 
-pub trait Joint: Sized + std::ops::Add<Output = Self> + std::ops::Mul<f32, Output = Self> {}
+// TODO: Move to nidhogg.
+pub trait Joint<T>:
+    Sized
+    + std::ops::Add<Output = Self>
+    + std::ops::Add<T, Output = Self>
+    + std::ops::Sub<Output = Self>
+    + std::ops::Sub<T, Output = Self>
+    + std::ops::Mul<Output = Self>
+    + std::ops::Mul<T, Output = Self>
+    + std::ops::Div<Output = Self>
+    + std::ops::Div<T, Output = Self>
+{
+}
 
-impl Joint for HeadJoints<f32> {}
-impl Joint for ArmJoints<f32> {}
-impl Joint for LegJoints<f32> {}
+// TODO: Move to nidhogg.
+impl<T> Joint<T> for HeadJoints<T> where
+    T: Clone
+        + std::ops::Add<Output = T>
+        + std::ops::Add<T, Output = T>
+        + std::ops::Sub<Output = T>
+        + std::ops::Sub<T, Output = T>
+        + std::ops::Mul<Output = T>
+        + std::ops::Mul<T, Output = T>
+        + std::ops::Div<Output = T>
+        + std::ops::Div<T, Output = T>
+{
+}
+
+// TODO: Move to nidhogg.
+impl<T> Joint<T> for ArmJoints<T> where
+    T: Clone
+        + std::ops::Add<Output = T>
+        + std::ops::Add<T, Output = T>
+        + std::ops::Sub<Output = T>
+        + std::ops::Sub<T, Output = T>
+        + std::ops::Mul<Output = T>
+        + std::ops::Mul<T, Output = T>
+        + std::ops::Div<Output = T>
+        + std::ops::Div<T, Output = T>
+{
+}
+
+// TODO: Move to nidhogg.
+impl<T> Joint<T> for LegJoints<T> where
+    T: Clone
+        + std::ops::Add<Output = T>
+        + std::ops::Add<T, Output = T>
+        + std::ops::Sub<Output = T>
+        + std::ops::Sub<T, Output = T>
+        + std::ops::Mul<Output = T>
+        + std::ops::Mul<T, Output = T>
+        + std::ops::Div<Output = T>
+        + std::ops::Div<T, Output = T>
+{
+}
 
 impl JointInterpolator {
-    pub fn interpolated_positions<T: Joint>(
+    pub fn interpolated_positions<T: Joint<f32>>(
         &self,
         start_joint_positions: T,
         end_joint_positions: T,
