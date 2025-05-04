@@ -1,4 +1,3 @@
-use crate::cli::robot_ops::NameOrNum;
 use miette::{Context, IntoDiagnostic, Result, miette};
 use serde::Deserialize;
 use serde_with::serde_as;
@@ -8,6 +7,8 @@ use std::process::Stdio;
 use std::{ffi::OsStr, net::Ipv4Addr};
 use tokio::process::{Child, Command};
 
+#[cfg(feature = "cli")]
+use crate::cli::robot_ops::NameOrNum;
 use crate::error::Error;
 
 // Config location relative to home directory
