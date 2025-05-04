@@ -12,9 +12,14 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
+[features]
+cli = ["yggdrasil"]
+config = []
+default = ["cli", "config"]
+
 [dependencies]
 build_utils = { workspace = true }
-yggdrasil = { workspace = true }
+yggdrasil = { workspace = true, optional = true }
 
 clap = { workspace = true, features = ["derive", "string"] }
 colored = { workspace = true }

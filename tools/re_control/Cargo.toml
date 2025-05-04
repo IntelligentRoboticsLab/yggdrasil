@@ -12,7 +12,7 @@ rust-version.workspace = true
 bifrost = { workspace = true }
 build_utils = { workspace = true }
 heimdall = { workspace = true }
-sindri = { workspace = true }
+sindri = { workspace = true, default-features = false, features = ["config"] }
 
 clap = { workspace = true, features = ["derive"] }
 miette = { workspace = true }

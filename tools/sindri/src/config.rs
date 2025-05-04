@@ -63,6 +63,7 @@ pub struct SindriConfig {
 }
 
 impl SindriConfig {
+    #[cfg(feature = "cli")]
     /// Get a [`Robot`] instance using the provided number.
     ///
     /// If there's no [`Robot`] configured with the provided number, this will return an [`Option::None`].
