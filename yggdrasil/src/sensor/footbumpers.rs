@@ -103,7 +103,7 @@ impl ObstacleStateFromBumpers {
 /// Represents the current status of obstacle detection, based on the foot bumpers.
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum ObstacleStatus {
-    #[default] // Maybe bit double as default is manually set in foot bumpers (?)
+    #[default]
     NotDetected,
     Left,
     Right,
@@ -339,30 +339,20 @@ fn spawn_obstacle(
     merge_distance: f32,
     ttl: Duration,
 ) {
-    // Get the center coordinates of new object.
-    let dx = distance * angle.cos();
-    let dy = distance * angle.sin();
-
-    let point = Point2::new(dx, dy);
+    // Split distance (from robot to the center of the object) into components.
+    let delta_x = distance * angle.cos();
+    let delta_y = distance * angle.sin();
+    let point = Point2::new(delta_x, delta_y);
+    // Translate and rotate so that it aligns with the robot's position.
     let world_pos = robot_pose.robot_to_world(&point);
 
-    // OPTION 2:
-    let rotated_dx =
-        dx * robot_pose.world_rotation().cos() - dy * robot_pose.world_rotation().sin();
-    let rotated_dy =
-        dx * robot_pose.world_rotation().sin() + dy * robot_pose.world_rotation().cos();
-    let new_x = robot_pose.world_position().x + rotated_dx;
-    let new_y = robot_pose.world_position().y + rotated_dy;
-
     println!("robot x,y: {}", robot_pose.world_position());
-    println!("dx, dy = {}, {}", dx, dy);
-    println!("rotated_dx, rotated_dy = {}, {}", rotated_dx, rotated_dy);
-    println!("obstacle x,y {}, {}", new_x, new_y);
-    println!("obstacle x,y {}, {}", world_pos.x, world_pos.y); // should give same answer (test)
+    println!("dx, dy = {}, {}", delta_x, delta_y);
+    println!("obstacle x,y {}, {}", world_pos.x, world_pos.y); 
     println!("-----------------");
 
     let obstacle = DynamicObstacle {
-        obs: Obstacle::new(new_x, new_y, radius),
+        obs: Obstacle::new(world_pos.x, world_pos.y, radius),
         ttl: Instant::now() + ttl, // Is this necessary (???)
     };
 

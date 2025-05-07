@@ -2,7 +2,7 @@ use super::{
     path_finding::{self, Obstacle},
     walking_engine::step::Step,
 };
-use crate::localization::RobotPose;
+use crate::{core::debug::DebugContext, localization::RobotPose};
 use bevy::prelude::*;
 use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
 use std::time::Instant;
@@ -15,7 +15,8 @@ pub(super) struct StepPlannerPlugin;
 
 impl Plugin for StepPlannerPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<StepPlanner>();
+        app.init_resource::<StepPlanner>()
+            .add_systems(PostUpdate, log_dynamic_obstacles);
     }
 }
 
@@ -227,4 +228,33 @@ fn calc_distance(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: Point2
     let robot_point = pose.translation.vector.into();
 
     distance(robot_point, target_point)
+}
+
+fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>) {
+    let centers = step_planner
+        .dynamic_obstacles
+        .iter()
+        .map(|obs| [obs.obs.x.0, obs.obs.y.0, 0.0])
+        .collect::<Vec<_>>();
+
+    let half_sizes = step_planner
+        .dynamic_obstacles
+        .iter()
+        .map(|obs| [obs.obs.radius.0, obs.obs.radius.0, 0.01])
+        .collect::<Vec<_>>();
+
+    let len = centers.len();
+
+    println!("centers: {:?}", centers);
+    println!("half_sizes: {:?}", half_sizes);
+
+    dbg.log(
+        "dynamic_obstacle",
+        &rerun::Ellipsoids3D::from_centers_and_half_sizes(centers, half_sizes).with_colors(vec![
+            [
+                255, 0, 0
+            ];
+            len
+        ]),
+    )
 }
