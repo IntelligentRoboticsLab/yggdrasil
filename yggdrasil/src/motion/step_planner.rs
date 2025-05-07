@@ -18,7 +18,7 @@ impl Plugin for StepPlannerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<StepPlanner>();
         app.add_systems(PostStartup, setup_path_visualizer);
-        app.add_systems(Update, log_planned_path);
+        app.add_systems(PostUpdate, (log_planned_path, log_dynamic_obstacles));
     }
 }
 
@@ -265,4 +265,30 @@ fn log_planned_path(
             &rerun::LineStrips3D::update_fields().with_strips(std::iter::empty::<LineStrip3D>()),
         );
     }
+}
+
+fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>) {
+    let centers = step_planner
+        .dynamic_obstacles
+        .iter()
+        .map(|obs| [obs.obs.x.0, obs.obs.y.0, 0.0])
+        .collect::<Vec<_>>();
+
+    let half_sizes = step_planner
+        .dynamic_obstacles
+        .iter()
+        .map(|obs| [obs.obs.radius.0, obs.obs.radius.0, 0.01])
+        .collect::<Vec<_>>();
+
+    let len = centers.len();
+
+    dbg.log(
+        "dynamic_obstacle",
+        &rerun::Ellipsoids3D::from_centers_and_half_sizes(centers, half_sizes).with_colors(vec![
+            [
+                255, 0, 0
+            ];
+            len
+        ]),
+    );
 }

@@ -158,9 +158,9 @@ impl Point {
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Obstacle {
-    x: OrderedFloat<f32>,
-    y: OrderedFloat<f32>,
-    radius: OrderedFloat<f32>,
+    pub x: OrderedFloat<f32>,
+    pub y: OrderedFloat<f32>,
+    pub radius: OrderedFloat<f32>,
 }
 
 impl Obstacle {
