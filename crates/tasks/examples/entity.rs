@@ -2,7 +2,7 @@
 use std::time::Duration;
 
 use async_std::task;
-use bevy::{core::FrameCount, prelude::*};
+use bevy::{diagnostic::FrameCount, prelude::*};
 use rand::Rng;
 use tasks::{CommandsExt, TaskPlugin, TaskPool, conditions::task_finished};
 

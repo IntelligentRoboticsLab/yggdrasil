@@ -91,7 +91,7 @@ fn update_support_foot(
         state.phase = Duration::ZERO;
         foot_support.switch_support_side();
 
-        event.send(FootSwitchedEvent {
+        event.write(FootSwitchedEvent {
             new_support: foot_support.support_side(),
             new_swing: foot_support.swing_side(),
         });

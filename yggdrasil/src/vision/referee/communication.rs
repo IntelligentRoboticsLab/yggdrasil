@@ -39,7 +39,7 @@ fn receive_message(
     });
 
     if let Some((_, _, pose)) = incoming_msg {
-        writer.send(ReceivedRefereePose { pose });
+        writer.write(ReceivedRefereePose { pose });
     }
 }
 

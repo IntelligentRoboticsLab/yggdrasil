@@ -4,9 +4,10 @@ use std::time::Duration;
 
 use bevy::prelude::{App, *};
 use miette::IntoDiagnostic;
+use tracing::{debug, warn};
 
 use crate::core::config::showtime::ShowtimeConfig;
-use crate::prelude::*;
+use crate::prelude::Result;
 use crate::vision::referee::RefereePose;
 
 use bifrost::broadcast::{Deadline, Inbound, Message, Outbound, Rate};
