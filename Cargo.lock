@@ -6957,7 +6957,7 @@ dependencies = [
 
 [[package]]
 name = "re_control"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "bifrost",
  "build_utils",
@@ -9017,7 +9017,7 @@ checksum = "832ddd7df0d98d6fd93b973c330b7c8e0742d5cb8f1afc7dea89dba4d2531aa1"
 
 [[package]]
 name = "sindri"
-version = "0.25.0"
+version = "0.25.1"
 dependencies = [
  "build_utils",
  "clap",
