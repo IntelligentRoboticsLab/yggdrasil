@@ -93,7 +93,9 @@ mimalloc = "0.1.45"
 nalgebra = { version = "0.33.2", features = ["convert-glam028"] }
 ndarray = "0.16.1"
 num = "0.4.3"
-openvino = { version = "0.8.0", features = ["runtime-linking"] }
+openvino = { git = "https://github.com/Rickvanderveen/openvino-rs.git", rev = "eef188a4f0fd52020bfe95822ead35f37ee4efaf", features = [
+  "runtime-linking",
+] }
 ordered-float = "5.0.0"
 pathfinding = "4.11.0"
 petgraph = "0.8.1"
