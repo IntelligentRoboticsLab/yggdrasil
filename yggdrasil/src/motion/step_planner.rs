@@ -88,7 +88,6 @@ impl StepPlanner {
     }
 
     pub fn add_dynamic_obstacle(&mut self, obstacle: DynamicObstacle, merge_distance: f32) {
-        println!("dynamic obstacle added");
         match self
             .dynamic_obstacles
             .iter_mut()
@@ -100,7 +99,6 @@ impl StepPlanner {
     }
 
     fn collect_and_gc_dynamic_obstacles(&mut self) -> Vec<Obstacle> {
-        println!("collect is called");
         let now = Instant::now();
 
         self.dynamic_obstacles.retain(|obs| now < obs.ttl);
@@ -164,7 +162,6 @@ impl StepPlanner {
     }
 
     pub fn plan(&mut self, robot_pose: &RobotPose) -> Option<Step> {
-        println!("call plan");
         let target = self.target?;
         let (path, _total_walking_distance) = self.calc_path(robot_pose)?;
 
@@ -244,18 +241,15 @@ fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>) {
     let half_sizes = step_planner
         .dynamic_obstacles
         .iter()
-        .map(|obs| (obs.obs.radius.0, obs.obs.radius.0, 0.05))
+        .map(|obs| (obs.obs.radius.0, obs.obs.radius.0, 0.02))
         .collect::<Vec<_>>();
 
     let len = centers.len();
 
-    // println!("centers: {:?}", centers);
-    // println!("half_sizes: {:?}", half_sizes);
-
     dbg.log(
         "dynamic_obstacle",
         &rerun::Ellipsoids3D::from_centers_and_half_sizes(centers, half_sizes)
-            .with_colors(vec![[0, 141, 28]; len])
+            .with_colors(vec![[69, 255, 249]; len])
             .with_fill_mode(FillMode::Solid),
     )
 }
