@@ -36,6 +36,7 @@ impl Plugin for MotionManagerPlugin {
 fn load_next_motion(
     mut motion_manager: ResMut<MotionManager>,
     getup_back_motion_config: Res<GetUpBackMotionConfig>,
+    nao_state: ResMut<NaoState>,
 ) {
     let Some(next_motion) = &motion_manager.next_motion.take() else {
         return;
@@ -51,6 +52,7 @@ fn load_next_motion(
         .map(|key_frame| key_frame.duration)
         .unwrap_or(Duration::ZERO);
     motion_manager.joint_interpolator = JointInterpolator::new(key_frame_duration);
+    motion_manager.key_frame_start_joint_angles = nao_state.position.clone();
 }
 
 fn run_motion(
@@ -170,7 +172,8 @@ fn run_motion(
     }
 
     // If angles are correct, set `completed_motion_at` if unset.
-    *angles_reached_at = Some(Instant::now());
+    // *angles_reached_at = Some(Instant::now());
+    angles_reached_at.get_or_insert(Instant::now());
 
     if key_frame.is_complete(&imu_values, angles_reached_at.as_ref()) {
         eprintln!("KEY FRAME COMPLETE, GOING NEXT KEY FRAME 2");
@@ -228,7 +231,6 @@ impl MotionManager {
         let Some(next_motion) = self.current_key_frame() else {
             self.current_key_frame_id = 0;
             self.key_frames.clear();
-            std::process::exit(0);
             return;
         };
 
@@ -319,14 +321,17 @@ struct KeyFrame {
 impl KeyFrame {
     fn is_complete(&self, imu_values: &IMUValues, angles_reached_at: Option<&Instant>) -> bool {
         let Some(angles_reached_at) = angles_reached_at else {
+            eprintln!("ANGLES NOT REACHED");
             return false;
         };
 
         if angles_reached_at.elapsed().as_secs_f32() < self.min_delay {
+            eprintln!("MIN DELAY NOT ELAPSED");
             return false;
         }
 
         if angles_reached_at.elapsed().as_secs_f32() > self.max_delay {
+            eprintln!("MAX DELAY ELAPSED");
             return true;
         }
 
@@ -364,12 +369,12 @@ impl Joints {
             .zip(current_head_position.clone())
             .iter()
             .all(|(requested_position, current_position)| {
-                // eprintln!(
-                //     "head joints difference (requested - current): ({} - {}).abs() =  {}",
-                //     requested_position,
-                //     current_position,
-                //     requested_position.sub(current_position).abs()
-                // );
+                eprintln!(
+                    "head joints difference (requested - current): ({} - {}).abs() =  {}",
+                    requested_position,
+                    current_position,
+                    requested_position.sub(current_position).abs()
+                );
                 requested_position
                     .sub(current_position)
                     .abs()
@@ -390,12 +395,12 @@ impl Joints {
             .zip(current_arms_position.left_arm.clone())
             .iter()
             .all(|(requested_position, current_position)| {
-                // eprintln!(
-                //     "left arm joints difference (requested - current): ({} - {}).abs() =  {}",
-                //     requested_position,
-                //     current_position,
-                //     requested_position.sub(current_position).abs()
-                // );
+                eprintln!(
+                    "left arm joints difference (requested - current): ({} - {}).abs() =  {}",
+                    requested_position,
+                    current_position,
+                    requested_position.sub(current_position).abs()
+                );
                 requested_position
                     .sub(current_position)
                     .abs()
@@ -408,12 +413,12 @@ impl Joints {
             .zip(current_arms_position.right_arm.clone())
             .iter()
             .all(|(requested_position, current_position)| {
-                // eprintln!(
-                //     "right arm joints difference (requested - current): ({} - {}).abs() =  {}",
-                //     requested_position,
-                //     current_position,
-                //     requested_position.sub(current_position).abs()
-                // );
+                eprintln!(
+                    "right arm joints difference (requested - current): ({} - {}).abs() =  {}",
+                    requested_position,
+                    current_position,
+                    requested_position.sub(current_position).abs()
+                );
                 requested_position
                     .sub(current_position)
                     .abs()
@@ -436,12 +441,12 @@ impl Joints {
             .zip(current_legs_position.left_leg.clone())
             .iter()
             .all(|(requested_position, current_position)| {
-                // eprintln!(
-                //     "left leg joints difference (requested - current): ({} - {}).abs() =  {}",
-                //     requested_position,
-                //     current_position,
-                //     requested_position.sub(current_position).abs()
-                // );
+                eprintln!(
+                    "left leg joints difference (requested - current): ({} - {}).abs() =  {}",
+                    requested_position,
+                    current_position,
+                    requested_position.sub(current_position).abs()
+                );
                 requested_position
                     .sub(current_position)
                     .abs()
@@ -454,12 +459,12 @@ impl Joints {
             .zip(current_legs_position.right_leg.clone())
             .iter()
             .all(|(requested_position, current_position)| {
-                // eprintln!(
-                //     "right leg joints difference (requested - current): ({} - {}).abs() =  {}",
-                //     requested_position,
-                //     current_position,
-                //     requested_position.sub(current_position).abs()
-                // );
+                eprintln!(
+                    "right leg joints difference (requested - current): ({} - {}).abs() =  {}",
+                    requested_position,
+                    current_position,
+                    requested_position.sub(current_position).abs()
+                );
                 requested_position
                     .sub(current_position)
                     .abs()
