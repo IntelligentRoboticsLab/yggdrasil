@@ -251,5 +251,5 @@ fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>) {
         &rerun::Ellipsoids3D::from_centers_and_half_sizes(centers, half_sizes)
             .with_colors(vec![[69, 255, 249]; len])
             .with_fill_mode(FillMode::Solid),
-    )
+    );
 }
