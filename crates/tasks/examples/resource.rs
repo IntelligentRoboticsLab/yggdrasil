@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use bevy::{core::FrameCount, prelude::*};
+use bevy::{diagnostic::FrameCount, prelude::*};
 use tasks::{CommandsExt, TaskPlugin, TaskPool, conditions::task_finished};
 
 #[derive(Resource, Default)]

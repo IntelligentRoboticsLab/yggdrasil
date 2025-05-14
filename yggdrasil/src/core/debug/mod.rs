@@ -3,7 +3,7 @@ pub mod debug_system;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use miette::IntoDiagnostic;
+use miette::IntoDiagnostic as _;
 use re_control_comms::debug_system::DebugEnabledSystems;
 use rerun::{
     Angle, AsComponents, DEFAULT_SERVER_PORT, EntityPath, RecordingStream,
@@ -16,10 +16,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{marker::PhantomData, net::IpAddr};
 
-use crate::{
-    nao::{Cycle, CycleTime},
-    prelude::*,
-};
+use crate::nao::{Cycle, CycleTime};
 
 const DEFAULT_STORAGE_PATH: &str = "/mnt/usb";
 const STORAGE_PATH_ENV_NAME: &str = "RERUN_STORAGE_PATH";
@@ -78,7 +75,7 @@ pub fn init_rerun(mut commands: Commands) {
     // to ensure the rerun server prints the correct connection URL on startup
     #[cfg(not(feature = "local"))]
     let server_address = {
-        let host = std::env::var("RERUN_HOST").into_diagnostic();
+        let host = std::env::var("RERUN_HOST");
 
         host.ok()
             .and_then(|address| std::str::FromStr::from_str(address.as_str()).ok())
@@ -103,11 +100,10 @@ pub fn init_rerun(mut commands: Commands) {
     commands.insert_resource(rec);
 }
 
-fn setup_spl_field(dbg: DebugContext) {
+fn setup_spl_field(dbg: DebugContext) -> Result {
     dbg.log_static(
         "field",
-        &rerun::Asset3D::from_file_path("./assets/rerun/field.glb")
-            .expect("Failed to load field model")
+        &rerun::Asset3D::from_file_path("./assets/rerun/field.glb")?
             .with_media_type(rerun::MediaType::glb()),
     );
 
@@ -132,6 +128,8 @@ fn setup_spl_field(dbg: DebugContext) {
                 ((0., 0., 1.), Angle::from_radians(PI).into()),
             ]),
     );
+
+    Ok(())
 }
 
 fn sync_cycle_number(
@@ -254,7 +252,7 @@ impl RerunStream {
         as_components: &AS,
     ) {
         if let Err(error) = self.stream.log(ent_path, as_components) {
-            error!("{error}");
+            tracing::error!("{error}");
         }
     }
 
@@ -275,7 +273,7 @@ impl RerunStream {
         as_components: &AS,
     ) {
         if let Err(error) = self.stream.log_static(ent_path, as_components) {
-            error!("{error}");
+            tracing::error!("{error}");
         }
     }
 
@@ -309,7 +307,7 @@ impl RerunStream {
         columns: impl IntoIterator<Item = SerializedComponentColumn>,
     ) {
         if let Err(error) = self.stream.send_columns(ent_path, indexes, columns) {
-            error!("{error}");
+            tracing::error!("{error}");
         }
     }
 

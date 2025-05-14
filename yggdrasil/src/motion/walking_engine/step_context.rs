@@ -124,7 +124,7 @@ impl StepContext {
 
     pub fn request_walk(&mut self, step: Step) {
         match self.requested_gait {
-            Gait::Sitting => error!(
+            Gait::Sitting => tracing::error!(
                 "Cannot request walk while sitting! Call StepManager::request_stand() first!"
             ),
             // cooldown when returning from high stand

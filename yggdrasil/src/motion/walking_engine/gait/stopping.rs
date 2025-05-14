@@ -79,7 +79,7 @@ fn end_stopping_phase(
     if (support_switched || step_timeout) && stopping_end_allowed {
         step_context.finish_stopping_step(state.planned_step);
         foot_support.switch_support_side();
-        event.send(FootSwitchedEvent {
+        event.write(FootSwitchedEvent {
             new_support: foot_support.support_side(),
             new_swing: foot_support.swing_side(),
         });

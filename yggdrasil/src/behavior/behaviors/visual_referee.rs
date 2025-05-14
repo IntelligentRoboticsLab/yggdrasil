@@ -84,7 +84,7 @@ fn detect_visual_referee(
     // Request should be sended only after the HEAD_ROTATION_TIME is passed
     if timer.timer.finished() {
         // Request the detection of the visual referee post
-        recognize_pose.send(RecognizeRefereePose);
+        recognize_pose.write(RecognizeRefereePose);
     }
 }
 

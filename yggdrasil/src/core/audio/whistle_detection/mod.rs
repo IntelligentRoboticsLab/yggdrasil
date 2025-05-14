@@ -18,7 +18,7 @@ use crate::{
     behavior::primary_state::PrimaryState,
     communication::{TeamCommunication, TeamMessage},
     nao::{NaoManager, Priority},
-    prelude::*,
+    prelude::{Config, ConfigExt},
 };
 
 use super::audio_input::AudioSamplesEvent;
@@ -128,7 +128,7 @@ fn update_whistle_state(
     config: Res<WhistleDetectionConfig>,
     mut nao_manager: ResMut<NaoManager>,
     mut tc: ResMut<TeamCommunication>,
-) {
+) -> Result {
     // resize state.detections if necessary
     detection_state
         .detections
@@ -146,7 +146,7 @@ fn update_whistle_state(
         whistle.detected = true;
         nao_manager.set_left_ear_led(LeftEar::fill(1.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(1.0), Priority::High);
-        return;
+        return Ok(());
     }
 
     whistle.detected = false;
@@ -167,9 +167,7 @@ fn update_whistle_state(
             if *primary_state == PrimaryState::Set {
                 // Send message to all teammates
                 let msg = TeamMessage::DetectedWhistle;
-                tc.outbound_mut()
-                    .update_or_push_by(msg, Deadline::ASAP)
-                    .expect("failed to encode whistle message");
+                tc.outbound_mut().update_or_push_by(msg, Deadline::ASAP)?;
             }
             break;
         }
@@ -182,6 +180,8 @@ fn update_whistle_state(
         nao_manager.set_left_ear_led(LeftEar::fill(0.0), Priority::High);
         nao_manager.set_right_ear_led(RightEar::fill(0.0), Priority::High);
     }
+
+    Ok(())
 }
 
 fn whistle_preprocessing(
@@ -223,7 +223,7 @@ fn spawn_whistle_preprocess_task(
     mut audio_samples: EventReader<AudioSamplesEvent>,
     mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
 ) {
-    if preprocessing_tasks.get_single_mut().is_ok() {
+    if preprocessing_tasks.single_mut().is_ok() {
         return;
     }
 
@@ -246,7 +246,7 @@ fn despawn_whistle_preprocessing_task(
     mut commands: Commands,
     mut preprocessing_tasks: Query<(&mut PreprocessingTask, Entity)>,
 ) {
-    let Ok((_, entity)) = &mut preprocessing_tasks.get_single_mut() else {
+    let Ok((_, entity)) = &mut preprocessing_tasks.single_mut() else {
         return;
     };
 
@@ -258,7 +258,7 @@ fn spawn_whistle_detection_model(
     mut model: ResMut<ModelExecutor<WhistleDetectionModel>>,
     mut preprocessing_tasks: Query<&mut PreprocessingTask>,
 ) {
-    let Ok(preprocessing_task) = &mut preprocessing_tasks.get_single_mut() else {
+    let Ok(preprocessing_task) = &mut preprocessing_tasks.single_mut() else {
         return;
     };
 

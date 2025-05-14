@@ -153,7 +153,7 @@ fn emit_event(
     *last_timestamp = last_update;
 
     let (left, right) = samples.deinterleave();
-    ev.send(AudioSamplesEvent {
+    ev.write(AudioSamplesEvent {
         left: Arc::new(left),
         right: Arc::new(right),
     });

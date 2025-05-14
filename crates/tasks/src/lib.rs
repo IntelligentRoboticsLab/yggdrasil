@@ -7,8 +7,8 @@ use std::{future::Future, marker::PhantomData, sync::atomic::AtomicU32};
 use bevy::{
     ecs::world::CommandQueue,
     prelude::*,
+    tasks::futures::check_ready,
     tasks::{AsyncComputeTaskPool, ComputeTaskPool, IoTaskPool, Task, block_on},
-    utils::futures::check_ready,
 };
 use strategy::{entity::EntityStrategy, resource::ResourceStrategy};
 

@@ -1,3 +1,4 @@
+use bevy::ecs::error::{GLOBAL_ERROR_HANDLER, warn};
 use bevy::state::app::StatesPlugin;
 use miette::{Context, IntoDiagnostic};
 use tracing::Level;
@@ -14,6 +15,10 @@ use yggdrasil::{
 use bevy::prelude::*;
 
 fn main() -> Result<()> {
+    GLOBAL_ERROR_HANDLER
+        .set(warn)
+        .expect("The error handler can only be set once, globally.");
+
     setup_tracing()?;
     miette::set_panic_hook();
 
