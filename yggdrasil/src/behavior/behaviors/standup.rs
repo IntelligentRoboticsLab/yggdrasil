@@ -2,7 +2,10 @@ use bevy::prelude::*;
 
 use crate::{
     behavior::engine::{Behavior, BehaviorState, in_behavior},
-    motion::keyframe::{KeyframeExecutor, MotionType},
+    motion::{
+        keyframe::{KeyframeExecutor, MotionType},
+        motion_manager::{Motion, MotionManager},
+    },
     nao::Priority,
     sensor::falling::{FallState, LyingDirection},
 };
@@ -38,6 +41,7 @@ fn standup(
     mut standup: ResMut<Standup>,
     fall_state: Res<FallState>,
     mut keyframe_executor: ResMut<KeyframeExecutor>,
+    mut motion_manager: ResMut<MotionManager>,
 ) {
     // check the direction the robot is lying and execute the appropriate motion
     match fall_state.as_ref() {
@@ -45,12 +49,13 @@ fn standup(
             keyframe_executor.start_new_motion(MotionType::StandupStomach, Priority::High);
         }
         FallState::Lying(LyingDirection::FacingUp) => {
-            keyframe_executor.start_new_motion(MotionType::StandupBack, Priority::High);
+            // keyframe_executor.start_new_motion(MotionType::StandupBack, Priority::High);
+            motion_manager.set_motion_if_not_running(Motion::GetUpBack);
         }
         // if we are not lying down anymore, either standing up or falling, we do not execute any motion
         _ => {}
     }
 
     // Update completed status based on motion activity
-    standup.completed = !keyframe_executor.is_motion_active();
+    standup.completed = !(keyframe_executor.is_motion_active() || motion_manager.in_motion());
 }

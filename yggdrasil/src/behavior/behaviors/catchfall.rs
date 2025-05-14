@@ -221,8 +221,8 @@ fn catch_fall(
                     HeadJoints::fill(0.3),
                     Priority::Critical,
                 );
-                nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.1), Priority::Critical);
-                nao_manager.set_arms(target_arm_joints, ArmJoints::fill(0.1), Priority::Critical);
+                // nao_manager.set_legs(target_leg_joints, LegJoints::fill(0.1), Priority::Critical);
+                // nao_manager.set_arms(target_arm_joints, ArmJoints::fill(0.1), Priority::Critical);
             }
         }
     }
