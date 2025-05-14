@@ -14,8 +14,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 use std::time::{Duration, Instant};
 
-use std::fs;
-use std::io::Write;
+// use std::fs;
+// use std::io::Write;
 
 pub struct FootBumperPlugin;
 
@@ -28,35 +28,35 @@ impl Plugin for FootBumperPlugin {
 }
 
 /// Represents the current and previous state of obstacle detection, based on the foot bumpers.
-#[derive(Resource, Debug)]
+#[derive(Resource, Debug, Default)]
 pub struct ObstacleStateFromBumpers {
     current_state: ObstacleStatus,
     prev_state: ObstacleStatus,
 }
 
-impl Default for ObstacleStateFromBumpers {
-    fn default() -> Self {
-        Self {
-            current_state: ObstacleStatus::NotDetected,
-            prev_state: ObstacleStatus::NotDetected,
-        }
-    }
-}
+// impl Default for ObstacleStateFromBumpers {
+//     fn default() -> Self {
+//         Self {
+//             current_state: ObstacleStatus::NotDetected,
+//             prev_state: ObstacleStatus::NotDetected,
+//         }
+//     }
+// }
 
 impl ObstacleStateFromBumpers {
     /// Get the next obstacle state, based on the foot bumper values.
-    pub fn update_state(&mut self, config: &FootBumperConfig, footbumper: &FootBumperValues) {
+    fn update_state(&mut self, config: &FootBumperConfig, footbumper: &FootBumperValues) {
         self.prev_state = self.current_state;
 
         let left_sum = footbumper.left_outer_count + footbumper.left_inner_count;
         let right_sum = footbumper.right_outer_count + footbumper.right_inner_count;
         let inner_sum = footbumper.left_inner_count + footbumper.right_inner_count;
 
-        let left_detected = left_sum >= config.min_detection_count && footbumper.left_active;
-        let right_detected = right_sum >= config.min_detection_count && footbumper.right_active;
+        let left_detected = left_sum >= config.min_detection_count && !footbumper.left_inactive;
+        let right_detected = right_sum >= config.min_detection_count && !footbumper.right_inactive;
         let inner_detected = inner_sum >= config.min_detection_count
-            && footbumper.left_active
-            && footbumper.right_active
+            && !footbumper.left_inactive
+            && !footbumper.right_inactive
             && left_sum > 0
             && right_sum > 0;
 
@@ -70,7 +70,7 @@ impl ObstacleStateFromBumpers {
             ObstacleStatus::NotDetected
         };
 
-        // Interpret L <-> R transition as an object in the middle.
+        // Interpret L <-> R transition as an obstacle in the middle.
         self.current_state = match (self.prev_state, self.current_state) {
             (ObstacleStatus::Left, ObstacleStatus::Right)
             | (ObstacleStatus::Right, ObstacleStatus::Left) => ObstacleStatus::Middle,
@@ -100,7 +100,7 @@ impl ObstacleStateFromBumpers {
     }
 }
 
-/// Represents the current status of obstacle detection, based on the foot bumpers.
+/// The possible obstacle states.
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum ObstacleStatus {
     #[default]
@@ -122,53 +122,54 @@ pub struct FootBumperConfig {
     /// Minimum number of pressure detections needed for one bumper to consider it malfunctioning.
     pub malfunction_count: i32,
     /// Angle that is used in spawning an obstacle on the left or right.
-    pub object_angle: f32,
-    /// Distance from robot to object that is used in spawning an obstacle.
-    pub object_distance: f32,
-    /// Radius of an object that will be spawned.
-    pub object_radius: f32,
-    /// Merge distance of an object that will be spawned.
+    pub obstacle_angle: f32,
+    /// Distance from robot to obstacle that is used in spawning an obstacle.
+    pub obstacle_distance: f32,
+    /// Radius of an obstacle that will be spawned.
+    pub obstacle_radius: f32,
+    /// Merge distance used in spawning obstacles.
     pub merge_distance: f32,
-    /// Time-to-live of an object that will be spawned.
+    /// Time-to-live of an obstacle that will be spawned.
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub ttl: Duration,
 }
 
-#[derive(Resource, Debug)]
+#[derive(Resource, Debug, Default)]
 pub struct FootBumperValues {
-    // Counts bumps and resets to 0 after a certain time of no detections.
+    // Counts bumps. It resets to 0 after a certain time of no detections.
     left_outer_count: i32,
     left_inner_count: i32,
     right_outer_count: i32,
     right_inner_count: i32,
-    // Whether the foot bumper will be in use.
-    left_active: bool,
-    right_active: bool,
-    // Time since the last detected contact.
+    // Whether the foot bumpers should be ignored.
+    left_inactive: bool,
+    right_inactive: bool,
+    // Timestamp at the last detected contact.
     left_prev_bump_time: Option<Instant>,
     right_prev_bump_time: Option<Instant>,
-    debug_file: std::fs::File, // Remove later
+    // debug_file: std::fs::File, // Remove later
 }
 
-impl Default for FootBumperValues {
-    fn default() -> Self {
-        FootBumperValues {
-            left_outer_count: 0,
-            left_inner_count: 0,
-            right_outer_count: 0,
-            right_inner_count: 0,
-            left_active: true,
-            right_active: true,
-            left_prev_bump_time: None,
-            right_prev_bump_time: None,
-            debug_file: fs::File::options()
-                .write(true)
-                .create(true)
-                .open("bumpers_1500_70.txt")
-                .unwrap(), // remove later
-        }
-    }
-}
+// impl Default for FootBumperValues {
+//     // If debug file is removed this will use the predefined default
+//     fn default() -> Self {
+//         FootBumperValues {
+//             left_outer_count: 0,
+//             left_inner_count: 0,
+//             right_outer_count: 0,
+//             right_inner_count: 0,
+//             left_inactive: false,
+//             right_inactive: false,
+//             left_prev_bump_time: None,
+//             right_prev_bump_time: None,
+//             // debug_file: fs::File::options()
+//             //     .write(true)
+//             //     .create(true)
+//             //     .open("bumpers_1500_70.txt")
+//             //     .unwrap(), // remove later
+//         }
+//     }
+// }
 
 impl FootBumperValues {
     pub fn update_bumper_values(
@@ -210,7 +211,7 @@ impl FootBumperValues {
             self.right_prev_bump_time = Some(Instant::now());
         }
 
-        // Reset bumper values after inactivity
+        // Reset bumper values after inactivity.
         if let Some(left_prev_bump_time) = self.left_prev_bump_time {
             if left_prev_bump_time.elapsed() >= config.max_inactivity_time {
                 self.left_outer_count = 0;
@@ -228,27 +229,45 @@ impl FootBumperValues {
         }
 
         // Remove later
-        writeln!(
-            self.debug_file,
-            "{:?}, {:?}, {:?}, {:?},",
-            self.left_outer_count,
-            self.left_inner_count,
-            self.right_outer_count,
-            self.right_inner_count
-        )
-        .unwrap();
+        // writeln!(
+        //     self.debug_file,
+        //     "{:?}, {:?}, {:?}, {:?},",
+        //     self.left_outer_count,
+        //     self.left_inner_count,
+        //     self.right_outer_count,
+        //     self.right_inner_count
+        // )
+        // .unwrap();
     }
 
     /// Sets foot bumpers inactive if they appear to be constantly in a pressed state,
     /// and back to active if they get out of the constantly pressed state.
-    pub fn ignore_foot(&mut self, config: &FootBumperConfig) {
-        let left_malfunction = self.left_inner_count >= config.malfunction_count
+    fn ignore_foot(&mut self, config: &FootBumperConfig) {
+        self.left_inactive = self.left_inner_count >= config.malfunction_count
             || self.left_outer_count >= config.malfunction_count;
-        let right_malfunction = self.right_inner_count >= config.malfunction_count
+        self.right_inactive = self.right_inner_count >= config.malfunction_count
             || self.right_outer_count >= config.malfunction_count;
+    }
+}
 
-        self.left_active = !left_malfunction;
-        self.right_active = !right_malfunction;
+fn set_foot_leds(manager: &mut NaoManager, current_state: ObstacleStatus) {
+    match current_state {
+        ObstacleStatus::Left => {
+            manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
+            manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
+        }
+        ObstacleStatus::Right => {
+            manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
+            manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
+        }
+        ObstacleStatus::Middle => {
+            manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
+            manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
+        }
+        ObstacleStatus::NotDetected => {
+            manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
+            manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
+        }
     }
 }
 
@@ -265,96 +284,64 @@ fn obstacle_detection(
     let config = &config.footbumpers;
     footbumpers.update_bumper_values(config, &left_foot, &right_foot);
     obstacle_state.update_state(config, &footbumpers);
+    set_foot_leds(&mut manager, obstacle_state.current_state);
 
-    // Set LEDs
-    match obstacle_state.current_state {
-        ObstacleStatus::Left => {
-            manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
-            manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
-        }
-        ObstacleStatus::Right => {
-            manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
-            manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
-        }
-        ObstacleStatus::Middle => {
-            manager.set_left_foot_led(color::f32::BLUE, Priority::Critical);
-            manager.set_right_foot_led(color::f32::BLUE, Priority::Critical);
-        }
-        ObstacleStatus::NotDetected => {
-            manager.set_left_foot_led(color::f32::EMPTY, Priority::Critical);
-            manager.set_right_foot_led(color::f32::EMPTY, Priority::Critical);
-        }
-    }
+    if obstacle_state.new_obstacle_left()
+        || obstacle_state.new_obstacle_right()
+        || obstacle_state.new_obstacle_middle()
+    {
+        let angle = if obstacle_state.new_obstacle_left() {
+            config.obstacle_angle
+        } else if obstacle_state.new_obstacle_right() {
+            -config.obstacle_angle
+        } else {
+            0.0
+        };
 
-    if obstacle_state.new_obstacle_left() {
-        println!("new_obstacle_left = {}", obstacle_state.new_obstacle_left());
-        let angle = config.object_angle;
-        spawn_obstacle(
-            &mut step_planner,
-            &robot_pose,
-            config.object_radius,
-            angle,
-            config.object_distance,
-            config.merge_distance,
-            config.ttl,
+        let relative_pos = Point2::new(
+            config.obstacle_distance * angle.cos(),
+            config.obstacle_distance * angle.sin(),
         );
-    } else if obstacle_state.new_obstacle_right() {
-        println!(
-            "new_obstacle_right = {}",
-            obstacle_state.new_obstacle_right()
-        );
-        let angle = -config.object_angle;
-        spawn_obstacle(
-            &mut step_planner,
-            &robot_pose,
-            config.object_radius,
-            angle,
-            config.object_distance,
-            config.merge_distance,
-            config.ttl,
-        );
-    } else if obstacle_state.new_obstacle_middle() {
-        println!(
-            "new_obstacle_middle = {}",
-            obstacle_state.new_obstacle_middle()
-        );
-        spawn_obstacle(
-            &mut step_planner,
-            &robot_pose,
-            config.object_radius,
-            0.0,
-            config.object_distance,
-            config.merge_distance,
-            config.ttl,
-        );
+        let world_pos = robot_pose.robot_to_world(&relative_pos);
+
+        let obstacle = DynamicObstacle {
+            obs: Obstacle::new(world_pos.x, world_pos.y, config.obstacle_radius),
+            ttl: Instant::now() + config.ttl, // Is this necessary (???)
+        };
+
+        step_planner.add_dynamic_obstacle(obstacle, config.merge_distance);
+
+        // spawn_obstacle(
+        //     &mut step_planner,
+        //     &robot_pose,
+        //     config.obstacle_radius,
+        //     angle,
+        //     config.obstacle_distance,
+        //     config.merge_distance,
+        //     config.ttl,
+        // );
     }
 }
 
-fn spawn_obstacle(
-    step_planner: &mut StepPlanner,
-    robot_pose: &RobotPose,
-    radius: f32,
-    angle: f32,
-    distance: f32,
-    merge_distance: f32,
-    ttl: Duration,
-) {
-    // Split distance (from robot to the center of the object) into components.
-    let delta_x = distance * angle.cos();
-    let delta_y = distance * angle.sin();
-    let point = Point2::new(delta_x, delta_y);
-    // Translate and rotate so that it aligns with the robot's position.
-    let world_pos = robot_pose.robot_to_world(&point);
+// fn spawn_obstacle(
+//     step_planner: &mut StepPlanner,
+//     robot_pose: &RobotPose,
+//     radius: f32,
+//     angle: f32,
+//     distance: f32,
+//     merge_distance: f32,
+//     ttl: Duration,
+// ) {
+//     // let delta_x = distance * angle.cos();
+//     // let delta_y = distance * angle.sin();
+//     // let relative_pos = Point2::new(delta_x, delta_y);
+//     let relative_pos = Point2::new(distance * angle.cos(), distance * angle.sin());
+//     let world_pos = robot_pose.robot_to_world(&relative_pos);
 
-    println!("robot x,y: {}", robot_pose.world_position());
-    println!("dx, dy = {}, {}", delta_x, delta_y);
-    println!("obstacle x,y {}, {}", world_pos.x, world_pos.y);
-    println!("-----------------");
+//     let obstacle = DynamicObstacle {
+//         obs: Obstacle::new(world_pos.x, world_pos.y, radius),
+//         ttl: Instant::now() + ttl, // Is this necessary (???)
+//     };
 
-    let obstacle = DynamicObstacle {
-        obs: Obstacle::new(world_pos.x, world_pos.y, radius),
-        ttl: Instant::now() + ttl, // Is this necessary (???)
-    };
-
-    step_planner.add_dynamic_obstacle(obstacle, merge_distance);
-}
+//     step_planner.add_dynamic_obstacle(obstacle, merge_distance);
+// }
