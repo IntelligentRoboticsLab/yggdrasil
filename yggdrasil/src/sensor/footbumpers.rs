@@ -143,7 +143,7 @@ impl FootBumperValues {
         left_foot: &LeftFootButtons,
         right_foot: &RightFootButtons,
     ) {
-        self.ignore_foot(&config);
+        self.ignore_foot(config);
 
         let left_outer = left_foot.left.is_pressed();
         let left_inner = left_foot.right.is_pressed();
@@ -219,6 +219,7 @@ fn set_foot_leds(manager: &mut NaoManager, current_state: ObstacleStatus) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn obstacle_detection(
     config: Res<SensorConfig>,
     mut footbumpers: ResMut<FootBumperValues>,
