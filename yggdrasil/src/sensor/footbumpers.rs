@@ -13,10 +13,6 @@ use nidhogg::types::color;
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 use std::time::{Duration, Instant};
-
-// use std::fs;
-// use std::io::Write;
-
 pub struct FootBumperPlugin;
 
 impl Plugin for FootBumperPlugin {
@@ -33,15 +29,6 @@ pub struct ObstacleStateFromBumpers {
     current_state: ObstacleStatus,
     prev_state: ObstacleStatus,
 }
-
-// impl Default for ObstacleStateFromBumpers {
-//     fn default() -> Self {
-//         Self {
-//             current_state: ObstacleStatus::NotDetected,
-//             prev_state: ObstacleStatus::NotDetected,
-//         }
-//     }
-// }
 
 impl ObstacleStateFromBumpers {
     /// Get the next obstacle state, based on the foot bumper values.
@@ -147,29 +134,7 @@ pub struct FootBumperValues {
     // Timestamp at the last detected contact.
     left_prev_bump_time: Option<Instant>,
     right_prev_bump_time: Option<Instant>,
-    // debug_file: std::fs::File, // Remove later
 }
-
-// impl Default for FootBumperValues {
-//     // If debug file is removed this will use the predefined default
-//     fn default() -> Self {
-//         FootBumperValues {
-//             left_outer_count: 0,
-//             left_inner_count: 0,
-//             right_outer_count: 0,
-//             right_inner_count: 0,
-//             left_inactive: false,
-//             right_inactive: false,
-//             left_prev_bump_time: None,
-//             right_prev_bump_time: None,
-//             // debug_file: fs::File::options()
-//             //     .write(true)
-//             //     .create(true)
-//             //     .open("bumpers_1500_70.txt")
-//             //     .unwrap(), // remove later
-//         }
-//     }
-// }
 
 impl FootBumperValues {
     pub fn update_bumper_values(
@@ -184,12 +149,6 @@ impl FootBumperValues {
         let left_inner = left_foot.right.is_pressed();
         let right_outer = right_foot.right.is_pressed();
         let right_inner = right_foot.left.is_pressed();
-
-        // println!("left_outer = {}", self.left_outer_count);
-        // println!("left_inner = {}", self.left_inner_count);
-        // println!("right_outer = {}", self.right_outer_count);
-        // println!("right_inner = {}", self.right_inner_count);
-        // println!("----------------");
 
         if left_outer || left_inner {
             if left_outer {
@@ -227,17 +186,6 @@ impl FootBumperValues {
                 self.right_prev_bump_time = None;
             }
         }
-
-        // Remove later
-        // writeln!(
-        //     self.debug_file,
-        //     "{:?}, {:?}, {:?}, {:?},",
-        //     self.left_outer_count,
-        //     self.left_inner_count,
-        //     self.right_outer_count,
-        //     self.right_inner_count
-        // )
-        // .unwrap();
     }
 
     /// Sets foot bumpers inactive if they appear to be constantly in a pressed state,
@@ -306,42 +254,9 @@ fn obstacle_detection(
 
         let obstacle = DynamicObstacle {
             obs: Obstacle::new(world_pos.x, world_pos.y, config.obstacle_radius),
-            ttl: Instant::now() + config.ttl, // Is this necessary (???)
+            ttl: Instant::now() + config.ttl,
         };
 
         step_planner.add_dynamic_obstacle(obstacle, config.merge_distance);
-
-        // spawn_obstacle(
-        //     &mut step_planner,
-        //     &robot_pose,
-        //     config.obstacle_radius,
-        //     angle,
-        //     config.obstacle_distance,
-        //     config.merge_distance,
-        //     config.ttl,
-        // );
     }
 }
-
-// fn spawn_obstacle(
-//     step_planner: &mut StepPlanner,
-//     robot_pose: &RobotPose,
-//     radius: f32,
-//     angle: f32,
-//     distance: f32,
-//     merge_distance: f32,
-//     ttl: Duration,
-// ) {
-//     // let delta_x = distance * angle.cos();
-//     // let delta_y = distance * angle.sin();
-//     // let relative_pos = Point2::new(delta_x, delta_y);
-//     let relative_pos = Point2::new(distance * angle.cos(), distance * angle.sin());
-//     let world_pos = robot_pose.robot_to_world(&relative_pos);
-
-//     let obstacle = DynamicObstacle {
-//         obs: Obstacle::new(world_pos.x, world_pos.y, radius),
-//         ttl: Instant::now() + ttl, // Is this necessary (???)
-//     };
-
-//     step_planner.add_dynamic_obstacle(obstacle, merge_distance);
-// }
