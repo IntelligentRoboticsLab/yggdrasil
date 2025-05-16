@@ -116,11 +116,11 @@ impl<T: CameraLocation> Image<T> {
 
         // Compute the top-left corner of the patch.
         // If the computed starting x is odd, adjust to the previous even number.
-        let mut x0 = if cx >= width / 2 { cx - width / 2 } else { 0 };
+        let mut x0 = cx.saturating_sub(width / 2);
         if x0 % 2 != 0 {
             x0 = x0.saturating_sub(1);
         }
-        let y0 = if cy >= height / 2 { cy - height / 2 } else { 0 };
+        let y0 = cy.saturating_sub(height / 2);
 
         // Process each row of the patch.
         for i in 0..height {
