@@ -244,6 +244,13 @@ pub fn role_base(
         FallState::None => {}
     }
 
+    
+    if *gait == Gait::Sitting && *primary_state != PrimaryState::Sitting && *primary_state != PrimaryState::Finished
+    {
+        commands.set_behavior(Stand);
+        return;
+    }
+
     if let Some(message) = game_controller_message {
         if message.game_phase == GamePhase::PenaltyShoot {
             if message.kicking_team == player_config.team_number {
