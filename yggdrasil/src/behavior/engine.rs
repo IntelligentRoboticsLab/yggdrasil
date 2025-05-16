@@ -275,11 +275,9 @@ pub fn role_base(
             commands.set_behavior(Sitting);
             commands.disable_role();
         }
-
         PrimaryState::Calibration => {
             commands.set_behavior(Stand);
         }
-
         PrimaryState::Initial => {
             commands.set_behavior(StandLookAt {
                 target: Point2::default(),
