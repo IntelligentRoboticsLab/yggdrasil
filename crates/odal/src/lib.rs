@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 //! Odal helps you define configuration structs from toml files, overlay them, and catch silly🪿 mistakes while doing these things. 🗒️
 mod error;
 

@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 use std::{fmt::Display, fs::read_to_string, path::Path};
 
 use miette::NamedSource;
