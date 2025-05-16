@@ -14,7 +14,6 @@ use miette::{IntoDiagnostic, Result};
 use tokio::runtime::Handle;
 
 use super::scan;
-use super::showtime::DEFAULT_TEAM_NUMBER;
 
 /// Shuts down the robot
 #[derive(Parser, Debug)]
@@ -34,7 +33,9 @@ pub struct Shutdown {
 impl Shutdown {
     /// This command sends a signal to each robot to shutdown
     pub async fn shutdown(self, mut config: SindriConfig) -> Result<()> {
-        config.team_number = self.team_number.unwrap_or(DEFAULT_TEAM_NUMBER);
+        if let Some(team_number) = self.team_number {
+            config.team_number = team_number;
+        }
 
         let kind = if self.restart {
             ShutdownCommand::Restart
