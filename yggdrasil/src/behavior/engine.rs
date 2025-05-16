@@ -244,7 +244,6 @@ pub fn role_base(
         FallState::None => {}
     }
 
-
     if let Some(message) = game_controller_message {
         if message.game_phase == GamePhase::PenaltyShoot {
             if message.kicking_team == player_config.team_number {
