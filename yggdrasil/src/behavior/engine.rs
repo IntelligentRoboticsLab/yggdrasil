@@ -244,10 +244,6 @@ pub fn role_base(
         FallState::None => {}
     }
 
-    if *gait == Gait::Sitting && *primary_state != PrimaryState::Sitting {
-        commands.set_behavior(Stand);
-        return;
-    }
 
     if let Some(message) = game_controller_message {
         if message.game_phase == GamePhase::PenaltyShoot {
@@ -268,9 +264,15 @@ pub fn role_base(
         PrimaryState::Standby => {
             commands.set_behavior(VisualReferee);
         }
-        PrimaryState::Finished | PrimaryState::Calibration => {
+        PrimaryState::Finished => {
+            commands.set_behavior(Sitting);
+            commands.disable_role();
+        }
+
+        PrimaryState::Calibration => {
             commands.set_behavior(Stand);
         }
+
         PrimaryState::Initial => {
             commands.set_behavior(StandLookAt {
                 target: Point2::default(),
