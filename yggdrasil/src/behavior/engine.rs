@@ -244,8 +244,9 @@ pub fn role_base(
         FallState::None => {}
     }
 
-    
-    if *gait == Gait::Sitting && *primary_state != PrimaryState::Sitting && *primary_state != PrimaryState::Finished
+    if *gait == Gait::Sitting
+        && *primary_state != PrimaryState::Sitting
+        && *primary_state != PrimaryState::Finished
     {
         commands.set_behavior(Stand);
         return;
