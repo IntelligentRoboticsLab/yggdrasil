@@ -12,20 +12,28 @@ use miette::miette;
 use miette::{IntoDiagnostic, Result};
 use tokio::runtime::Handle;
 
+use super::showtime::DEFAULT_TEAM_NUMBER;
+
 /// Shuts down the robot
 #[derive(Parser, Debug)]
 pub struct Shutdown {
     #[clap(long, short)]
     pub wired: bool,
-    #[clap(required = true)]
+    #[clap(required_unless_present("all"))]
     pub robot_ids: Vec<NameOrNum>,
     #[clap(long, short)]
     pub restart: bool,
+    #[clap(long, short)]
+    pub team_number: Option<u8>,
+    #[clap(long, short)]
+    pub all: bool,
 }
 
 impl Shutdown {
     /// This command sends a signal to each robot to shutdown
-    pub async fn shutdown(self, config: SindriConfig) -> Result<()> {
+    pub async fn shutdown(self, mut config: SindriConfig) -> Result<()> {
+        config.team_number = self.team_number.unwrap_or(DEFAULT_TEAM_NUMBER);
+
         let kind = if self.restart {
             ShutdownCommand::Restart
         } else {
@@ -57,10 +65,19 @@ impl Shutdown {
 
         let mut join_set = tokio::task::JoinSet::new();
 
-        for robot_id in self.robot_ids {
-            let robot = config.robot(&robot_id, self.wired).ok_or(miette!(format!(
-                "Invalid robot specified, robot {} is not configured!",
-                robot_id
+        let robots = if self.all {
+            config
+                .robots
+                .iter()
+                .map(|robot_config| NameOrNum::Number(robot_config.number))
+                .collect()
+        } else {
+            self.robot_ids
+        };
+
+        for robot in robots {
+            let robot = config.robot(&robot, self.wired).ok_or(miette!(format!(
+                "Invalid robot specified, robot {robot} is not configured!"
             )))?;
             let multi = multi.clone();
 
