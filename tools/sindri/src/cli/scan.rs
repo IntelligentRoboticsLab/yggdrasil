@@ -79,7 +79,7 @@ impl Scan {
     }
 }
 
-async fn ping(ip: Ipv4Addr) -> Result<ExitStatus> {
+pub async fn ping(ip: Ipv4Addr) -> Result<ExitStatus> {
     let ping_status = Command::new("ping")
         .arg("-W1") // 1 second time out
         .arg("-q") // quiet output
