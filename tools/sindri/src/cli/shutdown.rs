@@ -70,37 +70,15 @@ impl Shutdown {
 
         let mut join_set = tokio::task::JoinSet::new();
 
-        let robots = if self.all {
-            config
-                .robots
-                .iter()
-                .filter(|robot| robot.number != 0)
-                .map(|robot_config| {
-                    config
-                        .robot(&NameOrNum::Number(robot_config.number), self.wired)
-                        .unwrap()
-                })
-                .map(|robot| scan::ping(robot.ip()))
-                .collect::<FuturesOrdered<_>>()
-                .try_collect::<Vec<_>>()
-                .await?
-                .iter()
-                .zip(&config.robots)
-                .filter_map(|(scan_result, robot)| {
-                    if scan_result.success() {
-                        Some(NameOrNum::Number(robot.number))
-                    } else {
-                        None
-                    }
-                })
-                .collect()
+        let robot_ids = if self.all {
+            self.get_pingable_robots(&config).await?
         } else {
             self.robot_ids
         };
 
-        for robot in robots {
-            let robot = config.robot(&robot, self.wired).ok_or(miette!(format!(
-                "Invalid robot specified, robot {robot} is not configured!"
+        for robot_id in robot_ids {
+            let robot = config.robot(&robot_id, self.wired).ok_or(miette!(format!(
+                "Invalid robot specified, robot {robot_id} is not configured!"
             )))?;
             let multi = multi.clone();
 
@@ -133,5 +111,31 @@ impl Shutdown {
             HumanDuration(status_bar.elapsed()),
         );
         Ok(())
+    }
+
+    async fn get_pingable_robots(&self, config: &SindriConfig) -> Result<Vec<NameOrNum>> {
+        Ok(config
+            .robots
+            .iter()
+            .filter(|robot| robot.number != 0)
+            .map(|robot_config| {
+                config
+                    .robot(&NameOrNum::Number(robot_config.number), self.wired)
+                    .unwrap()
+            })
+            .map(|robot| scan::ping(robot.ip()))
+            .collect::<FuturesOrdered<_>>()
+            .try_collect::<Vec<_>>()
+            .await?
+            .iter()
+            .zip(&config.robots)
+            .filter_map(|(scan_result, robot)| {
+                if scan_result.success() {
+                    Some(NameOrNum::Number(robot.number))
+                } else {
+                    None
+                }
+            })
+            .collect())
     }
 }
