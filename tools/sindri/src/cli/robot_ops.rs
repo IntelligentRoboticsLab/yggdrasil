@@ -195,7 +195,7 @@ impl ConfigOptsRobotOps {
             }
         }
         let showtime_config = ShowtimeConfig {
-            team_number: config.team_number,
+            team_number: self.team.unwrap_or(config.team_number),
             robot_numbers_map: robot_assignments,
         };
 
