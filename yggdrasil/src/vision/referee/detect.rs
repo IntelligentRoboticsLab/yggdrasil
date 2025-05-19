@@ -4,7 +4,7 @@ use miette::IntoDiagnostic;
 use ml::{
     MlArray, MlModel, MlModelResourceExt,
     prelude::{MlTaskCommandsExt, ModelExecutor},
-    util::{argmax, softmax},
+    util::argmax,
 };
 use ndarray::{Array2, Axis};
 
@@ -58,7 +58,7 @@ pub struct RefereePoseDetectionModel;
 impl MlModel for RefereePoseDetectionModel {
     type Inputs = Vec<u8>;
 
-    type Outputs = (MlArray<f32>, Vec<f32>);
+    type Outputs = (Vec<f32>, MlArray<f32>);
 
     const ONNX_PATH: &'static str = "models/pose_estimator.onnx";
 }
@@ -102,17 +102,15 @@ fn detect_referee_pose(
             .with_input(&resized_image)
             .create_resource()
             .spawn(move |model_output| {
-                let (keypoints, class_logits) = model_output;
+                let (softmax_scores, keypoints) = model_output;
 
-                let estimated_pose = keypoints
+                let best_pose = keypoints
                     .to_shape(keypoints_shape)
                     .into_diagnostic()
-                    .expect("received pose keypoints with incorrect shape")
+                    .expect("received keypoints of unexpected shape")
                     .to_owned();
 
-                let probs = softmax(&class_logits);
-
-                let pose_idx = argmax(&probs);
+                let pose_idx = argmax(&softmax_scores);
                 let pose = match pose_idx {
                     0 => RefereePose::Idle,
                     1 => RefereePose::GoalKick,
@@ -128,7 +126,7 @@ fn detect_referee_pose(
                 };
 
                 let output = RefereePoseDetectionOutput {
-                    keypoints: estimated_pose,
+                    keypoints: best_pose,
                     pose,
                 };
                 Some(output)
@@ -146,7 +144,7 @@ pub fn send_referee_pose_output(
 ) {
     if let Some(pose_detection_output) = pose_detection_output {
         if pose_detection_output.is_added() || pose_detection_output.is_changed() {
-            pose_detected.send(RefereePoseDetected {
+            pose_detected.write(RefereePoseDetected {
                 keypoints: pose_detection_output.keypoints.clone(),
                 pose: pose_detection_output.pose,
             });
@@ -168,19 +166,23 @@ fn log_estimated_pose(
             .axis_iter(Axis(0))
             .map(|v| {
                 (
-                    detection_config.input_width as f32 * v[1]
+                    ((v[0] / detection_config.input_width as f32)
+                        * detection_config.crop_width as f32)
                         + (image.width() as u32 - detection_config.crop_width) as f32 / 2.0,
-                    v[0] * detection_config.crop_height as f32,
+                    ((v[1] / detection_config.input_height as f32) * image.height() as f32),
                 )
             })
             .collect();
 
-        let point_could =
-            rerun::Points2D::new(keypoints).with_labels(vec![format!("{:?}", pose.pose)]);
+        let referee_keypoints = rerun::Points2D::new(keypoints)
+            .with_labels([format!("{:?}", pose.pose)])
+            .with_colors([(255, 0, 0); 17])
+            .with_radii([5.0; 17]);
+
         dbg.log_with_cycle(
             Top::make_entity_image_path("referee_pose_keypoints"),
             *cycle,
-            &point_could,
+            &referee_keypoints,
         );
     }
 }

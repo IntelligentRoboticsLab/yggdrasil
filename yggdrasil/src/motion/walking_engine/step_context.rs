@@ -124,7 +124,7 @@ impl StepContext {
 
     pub fn request_walk(&mut self, step: Step) {
         match self.requested_gait {
-            Gait::Sitting => error!(
+            Gait::Sitting => tracing::error!(
                 "Cannot request walk while sitting! Call StepManager::request_stand() first!"
             ),
             // cooldown when returning from high stand
@@ -206,14 +206,14 @@ impl StepContext {
 fn setup_step_visualizer(dbg: DebugContext) {
     dbg.log_static(
         "nao/planned_left_foot",
-        &rerun::Asset3D::from_file("./assets/rerun/left_foot.glb")
+        &rerun::Asset3D::from_file_path("./assets/rerun/left_foot.glb")
             .expect("Failed to load left step model")
             .with_media_type(rerun::MediaType::glb()),
     );
 
     dbg.log_static(
         "nao/planned_right_foot",
-        &rerun::Asset3D::from_file("./assets/rerun/right_foot.glb")
+        &rerun::Asset3D::from_file_path("./assets/rerun/right_foot.glb")
             .expect("Failed to load left step model")
             .with_media_type(rerun::MediaType::glb()),
     );

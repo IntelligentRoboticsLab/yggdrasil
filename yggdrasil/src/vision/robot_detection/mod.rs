@@ -1,13 +1,13 @@
 use std::time::{Duration, Instant};
 
 use crate::core::debug::DebugContext;
+use crate::nao::Cycle;
 use crate::prelude::*;
 use crate::vision::util::non_max_suppression;
 use crate::vision::{
     camera::Image,
     util::bbox::{Bbox, Xyxy},
 };
-use bevy::core::FrameCount;
 use bevy::prelude::*;
 use box_coder::BoxCoder;
 use heimdall::{CameraLocation, Top};
@@ -106,7 +106,7 @@ pub struct RobotDetectionData {
     /// The image the robots have been detected in.
     pub image: Image<Top>,
     /// The cycle the detection was completed on.
-    pub result_cycle: FrameCount,
+    pub result_cycle: Cycle,
 }
 
 fn detect_robots(
@@ -114,7 +114,7 @@ fn detect_robots(
     mut model: ResMut<ModelExecutor<RobotDetectionModel>>,
     config: Res<RobotDetectionConfig>,
     image: Res<Image<Top>>,
-    cycle: Res<FrameCount>,
+    cycle: Res<Cycle>,
 ) {
     let resized_image = image
         .resize(config.input_width, config.input_height)

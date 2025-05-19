@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bifrost::broadcast::Deadline;
 
 use crate::communication::{TeamCommunication, TeamMessage};
 
@@ -19,7 +20,10 @@ fn send_message(
     for pose_event in recognized_pose.read() {
         if pose_event.pose == RefereePose::Ready {
             tc.outbound_mut()
-                .update_or_push(TeamMessage::RecognizedRefereePose(pose_event.pose))
+                .update_or_push_by(
+                    TeamMessage::RecognizedRefereePose(pose_event.pose),
+                    Deadline::ASAP,
+                )
                 .expect("unable to encode recognized referee pose");
         }
     }
@@ -35,7 +39,7 @@ fn receive_message(
     });
 
     if let Some((_, _, pose)) = incoming_msg {
-        writer.send(ReceivedRefereePose { pose });
+        writer.write(ReceivedRefereePose { pose });
     }
 }
 

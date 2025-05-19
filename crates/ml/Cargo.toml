@@ -21,3 +21,4 @@ ndarray = { workspace = true }
 openvino = { workspace = true }
 tasks = { workspace = true }
 thiserror = { workspace = true }
+variadics_please = { workspace = true }

@@ -14,7 +14,7 @@ use re_control_comms::{
 use rerun::external::{
     egui::{self, Color32},
     re_types::ViewClassIdentifier,
-    re_ui::{self, Help},
+    re_ui::{self},
     re_viewer_context::{
         self, SystemExecutionOutput, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError,
         ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewSystemExecutionError,
@@ -110,10 +110,6 @@ impl ViewClass for GameControllerView {
         &re_ui::icons::APPLICATION
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
-        todo!()
-    }
-
     fn on_register(
         &self,
         _system_registry: &mut ViewSystemRegistrator<'_>,
@@ -127,10 +123,6 @@ impl ViewClass for GameControllerView {
 
     fn layout_priority(&self) -> ViewClassLayoutPriority {
         Default::default()
-    }
-
-    fn spawn_heuristics(&self, _ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
-        ViewSpawnHeuristics::root()
     }
 
     fn ui(
@@ -185,6 +177,18 @@ impl ViewClass for GameControllerView {
         extra_title_bar_connection_ui(ui, &state.connection);
 
         Ok(())
+    }
+
+    fn help(&self, _egui_ctx: &egui::Context) -> re_ui::Help {
+        re_ui::Help::new("Mock GameController messages to connected robot")
+    }
+
+    fn spawn_heuristics(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _suggested_filter: &rerun::external::re_log_types::ResolvedEntityPathFilter,
+    ) -> ViewSpawnHeuristics {
+        ViewSpawnHeuristics::empty()
     }
 }
 

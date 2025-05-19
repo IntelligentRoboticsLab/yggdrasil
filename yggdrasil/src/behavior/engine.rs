@@ -244,7 +244,10 @@ pub fn role_base(
         FallState::None => {}
     }
 
-    if *gait == Gait::Sitting && *primary_state != PrimaryState::Sitting {
+    if *gait == Gait::Sitting
+        && *primary_state != PrimaryState::Sitting
+        && *primary_state != PrimaryState::Finished
+    {
         commands.set_behavior(Stand);
         return;
     }
@@ -268,7 +271,11 @@ pub fn role_base(
         PrimaryState::Standby => {
             commands.set_behavior(VisualReferee);
         }
-        PrimaryState::Finished | PrimaryState::Calibration => {
+        PrimaryState::Finished => {
+            commands.set_behavior(Sitting);
+            commands.disable_role();
+        }
+        PrimaryState::Calibration => {
             commands.set_behavior(Stand);
         }
         PrimaryState::Initial => {

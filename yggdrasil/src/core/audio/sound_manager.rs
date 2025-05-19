@@ -1,6 +1,6 @@
 //! TODO: We should migrate this module to either cpal or bevy's audio implementation!
 
-use crate::prelude::*;
+use crate::prelude::Result;
 use bevy::prelude::*;
 
 use kira::{
