@@ -9,7 +9,7 @@ use crate::{
 };
 
 // Import camera proposals
-use super::ball_tracker::{BallTracker};
+use super::ball_tracker::BallTracker;
 
 // Constant for the minimum acceptable change
 const MIN_CHANGE: f32 = 0.1;
@@ -72,6 +72,7 @@ impl CommunicatedBalls {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn communicate_balls_system(
     mut communicated_balls: ResMut<CommunicatedBalls>,
     mut tc: ResMut<TeamCommunication>,
