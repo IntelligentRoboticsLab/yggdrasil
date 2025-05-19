@@ -6,6 +6,7 @@ use bevy::prelude::{App, *};
 use miette::IntoDiagnostic;
 use tracing::{debug, warn};
 use nalgebra as na;
+use tracing::{debug, warn};
 
 use crate::core::config::showtime::ShowtimeConfig;
 use crate::prelude::Result;
