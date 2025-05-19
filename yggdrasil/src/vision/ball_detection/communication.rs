@@ -9,7 +9,7 @@ use crate::{
 };
 
 // Import camera proposals
-use super::ball_tracker::{BallHypothesis, BallTracker};
+use super::ball_tracker::{BallTracker};
 
 // Constant for the minimum acceptable change
 const MIN_CHANGE: f32 = 0.1;
