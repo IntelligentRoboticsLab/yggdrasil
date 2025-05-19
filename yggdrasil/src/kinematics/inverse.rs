@@ -32,7 +32,7 @@ pub fn leg_angles(
         super::SidedFootOffset::<Right>::compute_hip_yaw_pitch(&right_foot_to_right_pelvis);
 
     // the NAO robot has a single hip yaw pitch joint, so we average the two
-    let hip_yaw_pitch_combined = (left_hip_yaw_pitch + right_hip_yaw_pitch) / 2.0;
+    let hip_yaw_pitch_combined = f32::midpoint(left_hip_yaw_pitch, right_hip_yaw_pitch);
 
     (
         left_leg_angles(left_foot_to_left_pelvis, hip_yaw_pitch_combined),

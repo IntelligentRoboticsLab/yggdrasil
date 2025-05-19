@@ -34,7 +34,10 @@ tasks = { workspace = true }
 # external crates here
 apodize = { workspace = true }
 async-std = { workspace = true }
-bevy = { workspace = true, features = ["bevy_state"] }
+bevy = { workspace = true, features = [
+  "bevy_state",
+  "configurable_error_handler",
+] }
 chrono = { workspace = true }
 cpal = { workspace = true }
 fast_image_resize = { workspace = true }

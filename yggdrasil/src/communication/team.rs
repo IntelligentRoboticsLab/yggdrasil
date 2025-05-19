@@ -8,7 +8,7 @@ use nalgebra as na;
 use tracing::{debug, warn};
 
 use crate::core::config::showtime::ShowtimeConfig;
-use crate::prelude::*;
+use crate::prelude::Result;
 use crate::vision::referee::RefereePose;
 
 use bifrost::broadcast::{Deadline, Inbound, Message, Outbound, Rate};
@@ -197,7 +197,7 @@ pub enum TeamMessage {
 impl Message for TeamMessage {
     const MAX_PACKET_SIZE: usize = 128;
     const EXPECTED_SIZE: usize = 1;
-    const DEAD_SPACE: usize = 16;
+    const DEAD_SPACE: usize = 64;
 
     fn try_merge(&mut self, old: &Self) -> bool {
         std::mem::discriminant(self) == std::mem::discriminant(old)

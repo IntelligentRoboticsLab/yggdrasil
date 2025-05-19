@@ -120,7 +120,7 @@ fn setup_3d_ball_debug_logging(dbg: DebugContext) {
     dbg.log_static(
         "balls/best",
         &[
-            rerun::Asset3D::from_file("./assets/rerun/ball.glb")
+            rerun::Asset3D::from_file_path("./assets/rerun/ball.glb")
                 .expect("failed to load ball model")
                 .with_media_type(rerun::MediaType::glb())
                 .as_serialized_batches(),

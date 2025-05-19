@@ -180,7 +180,7 @@ impl YuyvImage {
             // PERF: We use extend here because calling map and then flattening is somehow *extremely* slow
             // Seems to be because of: https://github.com/rust-lang/rust/issues/79992#issuecomment-743937191
             .for_each(|(y1, u, y2, v)| {
-                out.extend([((u16::from(y1) + u16::from(y2)) / 2) as u8, u, v]);
+                out.extend([u16::midpoint(u16::from(y1), u16::from(y2)) as u8, u, v]);
             });
 
         Ok(out)

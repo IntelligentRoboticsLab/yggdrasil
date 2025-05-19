@@ -49,12 +49,12 @@ pub fn recognizing_pose(
             // Add detected pose to vector remember
             detected_poses.poses.push(pose.pose);
             // Resend a request to detect a new referee pose
-            detect_pose.send(DetectRefereePose);
+            detect_pose.write(DetectRefereePose);
         } else {
             // Determine if pose was the same
             if let Some(pose) = all_same_poses(&detected_poses.poses) {
                 // Send final pose recognition
-                recognized_pose.send(RefereePoseRecognized { pose: *pose });
+                recognized_pose.write(RefereePoseRecognized { pose: *pose });
             }
             // Deactivate the visual referee recogition state
             next_recognition_status.set(VisualRefereeRecognitionStatus::Inactive);
@@ -78,7 +78,7 @@ pub fn request_recognition(
     if recognize_pose.read().last().is_some() {
         next_recognition_status.set(VisualRefereeRecognitionStatus::Active);
         // Send the initil request to detect a referee pose
-        detect_pose.send(DetectRefereePose);
+        detect_pose.write(DetectRefereePose);
     }
 }
 

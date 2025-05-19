@@ -64,9 +64,10 @@ pub fn odometry_update(
                 },
                 CovarianceMatrix::from_diagonal(&cfg.hypothesis.odometry_variance.into()),
             )
-            .inspect_err(|_| warn!("Cholesky failed in odometry"));
+            .inspect_err(|_| tracing::warn!("Cholesky failed in odometry"));
 
-        // TODO: B-Human and HULKs both do this. Need to put some research into the problem and if we can find a more elegant solution.
+        // TODO: B-Human and HULKs both do this.
+        // Need to put some research into the problem and if we can find a more elegant solution.
         hypothesis.fix_covariance();
 
         hypothesis.score *= cfg.hypothesis.score_decay;
@@ -145,7 +146,7 @@ pub fn line_update(
                                 &cfg.hypothesis.line_measurement_variance.into(),
                             ) * covariance_weight,
                         )
-                        .inspect_err(|_| warn!("Cholesky failed in line update"));
+                        .inspect_err(|_| tracing::warn!("Cholesky failed in line update"));
                 }
                 FieldLine::Circle(..) => {
                     let _ = hypothesis
@@ -160,7 +161,7 @@ pub fn line_update(
                                 &cfg.hypothesis.circle_measurement_variance.into(),
                             ) * covariance_weight,
                         )
-                        .inspect_err(|_| warn!("Cholesky failed in circle update"));
+                        .inspect_err(|_| tracing::warn!("Cholesky failed in circle update"));
                 }
             }
 

@@ -158,7 +158,12 @@ impl ConvertBbox<Xywh> for Bbox<Xyxy> {
 impl ConvertBbox<Cxcywh> for Bbox<Xyxy> {
     fn convert(&self) -> Bbox<Cxcywh> {
         let (x1, y1, x2, y2) = self.inner;
-        Bbox::new(((x1 + x2) / 2.0, (y1 + y2) / 2.0, x2 - x1, y2 - y1))
+        Bbox::new((
+            f32::midpoint(x1, x2),
+            f32::midpoint(y1, y2),
+            x2 - x1,
+            y2 - y1,
+        ))
     }
 }
 

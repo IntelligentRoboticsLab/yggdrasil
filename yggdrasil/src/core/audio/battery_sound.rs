@@ -46,18 +46,18 @@ fn battery_sound_system(
     sounds: Res<SoundManager>,
     nao_state: Res<NaoState>,
     config: Res<AudioConfig>,
-) {
+) -> Result {
     // Timeout or already charging
     if battery_info.timed_out(config.battery_sound_timeout) || nao_state.battery.status > 0.0 {
-        return;
+        return Ok(());
     }
 
     if battery_info.check_level(&nao_state) {
-        sounds
-            .play_sound(Sound::ChargeMe)
-            .expect("Failed to play battery sound");
+        sounds.play_sound(Sound::ChargeMe)?;
 
         battery_info.last_played = Some(Instant::now());
     }
     battery_info.prev_level = (nao_state.battery.charge * 100.0) as u32;
+
+    Ok(())
 }

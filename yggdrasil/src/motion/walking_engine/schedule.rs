@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{ecs::schedule::InternedSystemSet, prelude::*};
 
 use crate::kinematics::Kinematics;
 use crate::prelude::*;
@@ -24,7 +24,7 @@ pub enum WalkingEngineSet {
 
 impl WalkingEngineSet {
     /// The order of the walking engine system sets.
-    fn order() -> impl IntoSystemSetConfigs {
+    fn order() -> impl IntoScheduleConfigs<InternedSystemSet, ()> {
         (
             Self::Prepare,
             Self::PlanStep,

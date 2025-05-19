@@ -1,8 +1,10 @@
 use build_utils::version::Version;
 
+#[cfg(feature = "cli")]
 pub mod cli;
+#[cfg(feature = "config")]
 pub mod config;
-pub mod error;
+mod error;
 
 pub struct Sindri;
 

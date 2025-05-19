@@ -125,7 +125,7 @@ impl ViewClass for ControlView {
         &CONTROL_PANEL_VIEW
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> re_ui::Help<'_> {
+    fn help(&self, _egui_ctx: &egui::Context) -> re_ui::Help {
         Help::new(
             "# Control View
 
@@ -148,7 +148,11 @@ A view to control the robot",
         Default::default()
     }
 
-    fn spawn_heuristics(&self, _ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _suggested_filter: &rerun::external::re_log_types::ResolvedEntityPathFilter,
+    ) -> ViewSpawnHeuristics {
         ViewSpawnHeuristics::root()
     }
 
