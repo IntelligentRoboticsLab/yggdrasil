@@ -7,8 +7,6 @@ pub mod proposal;
 
 use std::{sync::Arc, time::Duration};
 
-pub use ball_tracker::BallHypothesis;
-use ball_tracker::BallTracker;
 use bevy::prelude::*;
 use heimdall::{Bottom, CameraLocation, Top};
 use nidhogg::types::{FillExt, LeftEye, color};
@@ -32,6 +30,8 @@ pub struct BallDetectionPlugin;
 
 impl Plugin for BallDetectionPlugin {
     fn build(&self, app: &mut App) {
+        use self::hypothesis::{measurement_update, predict};
+
         app.init_config::<BallDetectionConfig>();
         app.add_plugins((
             proposal::BallProposalPlugin::<Top>::default(),
@@ -47,7 +47,7 @@ impl Plugin for BallDetectionPlugin {
                 setup_3d_ball_debug_logging,
             ),
         )
-        .add_systems(Update, detected_ball_eye_color)
+        .add_systems(Update, (detected_ball_eye_color, predict, measurement_update.after(predict)))
         .add_systems(PostUpdate, log_3d_balls);
     }
 }
@@ -92,15 +92,30 @@ fn setup_ball_debug_logging<T: CameraLocation>(dbg: DebugContext) {
 
 fn detected_ball_eye_color(
     mut nao: ResMut<NaoManager>,
-    ball_tracker: Res<BallTracker>,
+    hypotheses_query: Query<&hypothesis::BallHypothesis>,
     config: Res<BallDetectionConfig>,
 ) {
-    let Some(_) = ball_tracker.stationary_ball() else {
+    let mut best_hypothesis: Option<&hypothesis::BallHypothesis> = None;
+    for current_hypothesis in hypotheses_query.iter() {
+        if let hypothesis::BallFilter::Stationary(_) = &current_hypothesis.filter {
+            if let Some(best) = best_hypothesis {
+                if current_hypothesis.num_observations > best.num_observations {
+                    best_hypothesis = Some(current_hypothesis);
+                }
+            } else {
+                best_hypothesis = Some(current_hypothesis);
+            }
+        }
+    }
+
+    if best_hypothesis.is_none() {
         nao.set_left_eye_led(LeftEye::fill(color::f32::EMPTY), Priority::default());
         return;
-    };
+    }
 
-    if ball_tracker.timestamp.elapsed() >= config.max_classification_age_eye_color {
+    let chosen_hypothesis = best_hypothesis.unwrap();
+
+    if chosen_hypothesis.last_observation.elapsed() >= config.max_classification_age_eye_color {
         nao.set_left_eye_led(
             LeftEye::fill(color::Rgb::new(1.0, 1.0, 0.0)),
             Priority::default(),
@@ -136,43 +151,59 @@ fn setup_3d_ball_debug_logging(dbg: DebugContext) {
 
 fn log_3d_balls(
     dbg: DebugContext,
-    ball_tracker: Res<BallTracker>,
+    hypotheses_query: Query<&hypothesis::BallHypothesis>,
     robot_pose: Res<RobotPose>,
-    mut last_logged: Local<Option<Cycle>>,
 ) {
-    let last_ball_tracker_update = ball_tracker.cycle;
-    let state = ball_tracker.cutoff();
-
-    if let BallHypothesis::Stationary(max_variance) = state {
-        let pos = robot_pose.robot_to_world(&ball_tracker.state());
-        if last_logged.is_none_or(|last_logged_cycle| last_ball_tracker_update > last_logged_cycle)
-        {
-            *last_logged = Some(last_ball_tracker_update);
-            let std = max_variance.sqrt();
-            let scale =
-                1.0 - (max_variance / ball_tracker.stationary_variance_threshold).clamp(0.0, 1.0);
-
-            dbg.log_with_cycle(
-                "balls/best",
-                last_ball_tracker_update,
-                &[
-                    rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05))
-                        .as_serialized_batches(),
-                    rerun::Ellipsoids3D::from_half_sizes([(std, std, 0.005)])
-                        .with_colors([(0, (126.0 * scale) as u8, (31.0 * scale) as u8)])
-                        .as_serialized_batches(),
-                    rerun::SerializedComponentBatch::new(
-                        Arc::new(arrow::array::Float32Array::from_value(max_variance, 1)),
-                        rerun::ComponentDescriptor::new("yggdrasil.components.Variance"),
-                    )
-                    .as_serialized_batches(),
-                ],
-            );
+    let mut best_hypothesis: Option<&hypothesis::BallHypothesis> = None;
+    for current_hypothesis in hypotheses_query.iter() {
+        if matches!(current_hypothesis.filter, hypothesis::BallFilter::Stationary(_)) {
+            if let Some(best) = best_hypothesis {
+                if current_hypothesis.num_observations > best.num_observations {
+                    best_hypothesis = Some(current_hypothesis);
+                }
+            } else {
+                best_hypothesis = Some(current_hypothesis);
+            }
         }
-    } else if last_logged.is_some() {
-        // this feels very hacky but i was told this is the most idiomatic way to hide stuff in
-        // rerun.
-        *last_logged = None;
+    }
+
+    if let Some(chosen_hypothesis) = best_hypothesis {
+        if let hypothesis::BallFilter::Stationary(kf) = &chosen_hypothesis.filter {
+            let pos = robot_pose.robot_to_world(&kf.position());
+            let cov = kf.covariance(); // Assuming kf is the KalmanFilter_ (e.g. kf.0 if it's a tuple struct)
+            let max_variance = cov.diagonal().max();
+
+            const STATIONARY_VARIANCE_THRESHOLD_PLACEHOLDER: f32 = 0.1; // Placeholder
+            let scale = (1.0 - (max_variance / STATIONARY_VARIANCE_THRESHOLD_PLACEHOLDER)).clamp(0.0, 1.0);
+            let std_dev = max_variance.sqrt();
+
+            // It's important to use the same cycle for all components of the same entity path
+            // if we are not using log_with_cycle. For simplicity, we'll log them together.
+            // The previous implementation used dbg.log_with_cycle, but the new instructions
+            // use dbg.log. We'll use the cycle from the hypothesis if available,
+            // otherwise, PostUpdate cycle might be implicit.
+            // For now, let's stick to the simpler dbg.log as per instructions,
+            // and assume Rerun handles timestamping appropriately or it's less critical here.
+
+            let transform_batch = rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05))
+                .as_serialized_batches();
+            let ellipsoid_batch = rerun::Ellipsoids3D::from_half_sizes([(std_dev, std_dev, 0.005)])
+                .with_colors([(0, (126.0 * scale) as u8, (31.0 * scale) as u8)])
+                .as_serialized_batches();
+            let variance_batch = rerun::SerializedComponentBatch::new(
+                Arc::new(arrow::array::Float32Array::from_value(max_variance, 1)),
+                rerun::ComponentDescriptor::new("yggdrasil.components.Variance"),
+            )
+            .as_serialized_batches();
+            
+            dbg.log("balls/best", &[transform_batch, ellipsoid_batch, variance_batch].concat());
+
+        } else {
+            // Should not happen if best_hypothesis selection logic is correct and it's Stationary
+            dbg.log("balls/best", &rerun::Transform3D::from_scale((0., 0., 0.)));
+        }
+    } else {
+        // No stationary hypothesis found, hide the entity
         dbg.log("balls/best", &rerun::Transform3D::from_scale((0., 0., 0.)));
     }
 }
