@@ -85,16 +85,10 @@ fn setup_com_visualization(dbg: DebugContext) {
     );
 }
 
-fn visualize_com(dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) {
-    let robot_pose_3d = pose.to_3d();
-    let com_position_world = robot_pose_3d * com.position.inner;
+fn visualize_com(dbg: DebugContext, com: Res<CenterOfMass>) {
     dbg.log(
         "localization/pose/com",
-        &rerun::Points3D::new([(
-            com_position_world.x,
-            com_position_world.y,
-            com_position_world.z,
-        )])
-        .with_radii([0.005]),
+        &rerun::Points3D::new([(com.position.x, com.position.y, com.position.z)])
+            .with_radii([0.05]),
     );
 }
