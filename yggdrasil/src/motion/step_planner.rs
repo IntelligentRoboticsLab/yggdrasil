@@ -2,10 +2,10 @@ use super::{
     path_finding::{self, Obstacle},
     walking_engine::step::Step,
 };
-use crate::{core::debug::DebugContext, localization::RobotPose};
+use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle};
 use bevy::prelude::*;
 use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
-use rerun::FillMode;
+use rerun::{FillMode, LineStrip3D};
 use std::time::Instant;
 
 const TURN_SPEED: f32 = 0.2;
@@ -16,9 +16,12 @@ pub(super) struct StepPlannerPlugin;
 
 impl Plugin for StepPlannerPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<StepPlanner>()
-            .add_systems(PostStartup, setup_dynamic_obstacle_logging)
-            .add_systems(PostUpdate, log_dynamic_obstacles);
+        app.init_resource::<StepPlanner>();
+        app.add_systems(
+            PostStartup,
+            (setup_path_visualizer, setup_dynamic_obstacle_logging),
+        );
+        app.add_systems(PostUpdate, (log_planned_path, log_dynamic_obstacles));
     }
 }
 
@@ -232,6 +235,41 @@ fn calc_distance(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: Point2
     distance(robot_point, target_point)
 }
 
+fn setup_path_visualizer(dbg: DebugContext) {
+    dbg.log_with_cycle(
+        "field/path",
+        Cycle::default(),
+        &rerun::LineStrips3D::update_fields()
+            .with_colors([(66, 135, 245)])
+            .with_radii([2.0]),
+    );
+}
+
+fn log_planned_path(
+    dbg: DebugContext,
+    cycle: Res<Cycle>,
+    robot_pose: Res<RobotPose>,
+    mut step_planner: ResMut<StepPlanner>,
+) {
+    let path = step_planner.calc_path(&robot_pose);
+
+    if let Some((path, _)) = path {
+        dbg.log_with_cycle(
+            "field/path",
+            *cycle,
+            &rerun::LineStrips3D::update_fields().with_strips([LineStrip3D::from_iter(
+                path.iter().map(|point| (point.x, point.y, 0.05)),
+            )]),
+        );
+    } else {
+        dbg.log_with_cycle(
+            "field/path",
+            *cycle,
+            &rerun::LineStrips3D::update_fields().with_strips(std::iter::empty::<LineStrip3D>()),
+        );
+    }
+}
+
 fn setup_dynamic_obstacle_logging(dbg: DebugContext) {
     dbg.log_static(
         "field/obstacles",
@@ -254,9 +292,10 @@ fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>) {
         .map(|obs| (obs.obs.radius.0, obs.obs.radius.0, 0.02))
         .collect::<Vec<_>>();
 
-
     dbg.log(
         "field/obstacles",
-        &rerun::Ellipsoids3D::update_fields().with_centers(centers).with_half_sizes(half_sizes)
+        &rerun::Ellipsoids3D::update_fields()
+            .with_centers(centers)
+            .with_half_sizes(half_sizes),
     );
 }
