@@ -102,12 +102,12 @@ pub enum ObstacleStatus {
 #[serde(deny_unknown_fields)]
 pub struct FootBumperConfig {
     /// Minimum number of pressure detections needed to consider it an obstacle.
-    pub min_detection_count: i32,
+    pub min_detection_count: u32,
     /// Time of no contact after which the foot bumper values will be reset.
     #[serde_as(as = "DurationMilliSeconds<u64>")]
     pub max_inactivity_time: Duration,
     /// Minimum number of pressure detections needed for one bumper to consider it malfunctioning.
-    pub malfunction_count: i32,
+    pub malfunction_count: u32,
     /// Angle that is used in spawning an obstacle on the left or right.
     pub obstacle_angle: f32,
     /// Distance from robot to obstacle that is used in spawning an obstacle.
@@ -124,10 +124,10 @@ pub struct FootBumperConfig {
 #[derive(Resource, Debug, Default)]
 pub struct FootBumperValues {
     // Counts bumps. It resets to 0 after a certain time of no detections.
-    left_outer_count: i32,
-    left_inner_count: i32,
-    right_outer_count: i32,
-    right_inner_count: i32,
+    left_outer_count: u32,
+    left_inner_count: u32,
+    right_outer_count: u32,
+    right_inner_count: u32,
     // Whether the foot bumpers should be ignored.
     left_inactive: bool,
     right_inactive: bool,
