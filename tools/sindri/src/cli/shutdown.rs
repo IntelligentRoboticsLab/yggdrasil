@@ -7,25 +7,36 @@ use crate::{
 };
 use clap::Parser;
 use colored::Colorize;
+use futures::{TryStreamExt, stream::FuturesOrdered};
 use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressStyle};
 use miette::miette;
 use miette::{IntoDiagnostic, Result};
 use tokio::runtime::Handle;
+
+use super::scan;
 
 /// Shuts down the robot
 #[derive(Parser, Debug)]
 pub struct Shutdown {
     #[clap(long, short)]
     pub wired: bool,
-    #[clap(required = true)]
+    #[clap(required_unless_present("all"))]
     pub robot_ids: Vec<NameOrNum>,
     #[clap(long, short)]
     pub restart: bool,
+    #[clap(long, short)]
+    pub team_number: Option<u8>,
+    #[clap(long, short)]
+    pub all: bool,
 }
 
 impl Shutdown {
     /// This command sends a signal to each robot to shutdown
-    pub async fn shutdown(self, config: SindriConfig) -> Result<()> {
+    pub async fn shutdown(self, mut config: SindriConfig) -> Result<()> {
+        if let Some(team_number) = self.team_number {
+            config.team_number = team_number;
+        }
+
         let kind = if self.restart {
             ShutdownCommand::Restart
         } else {
@@ -43,24 +54,31 @@ impl Shutdown {
             ),
         );
 
+        let robot_ids = if self.all {
+            self.get_pingable_robots(&config).await?
+        } else {
+            self.robot_ids
+        };
+
         status_bar.enable_steady_tick(Duration::from_millis(80));
         match kind {
             ShutdownCommand::Shutdown => status_bar.set_prefix("Shutdown signal"),
             ShutdownCommand::Restart => status_bar.set_prefix("Restart signal"),
         }
         status_bar.set_message(format!(
-            "{}{}{}",
+            "{}{}{}{}{}",
             "(robots: ".dimmed(),
-            self.robot_ids.len().to_string().bold(),
+            robot_ids.len().to_string().bold(),
+            ", team number: ".dimmed(),
+            config.team_number.to_string().bold(),
             ")".dimmed()
         ));
 
         let mut join_set = tokio::task::JoinSet::new();
 
-        for robot_id in self.robot_ids {
+        for robot_id in robot_ids {
             let robot = config.robot(&robot_id, self.wired).ok_or(miette!(format!(
-                "Invalid robot specified, robot {} is not configured!",
-                robot_id
+                "Invalid robot specified, robot {robot_id} is not configured!"
             )))?;
             let multi = multi.clone();
 
@@ -93,5 +111,30 @@ impl Shutdown {
             HumanDuration(status_bar.elapsed()),
         );
         Ok(())
+    }
+
+    async fn get_pingable_robots(&self, config: &SindriConfig) -> Result<Vec<NameOrNum>> {
+        Ok(config
+            .robots
+            .iter()
+            .map(|robot_config| {
+                config
+                    .robot(&NameOrNum::Number(robot_config.number), self.wired)
+                    .unwrap()
+            })
+            .map(|robot| scan::ping(robot.ip()))
+            .collect::<FuturesOrdered<_>>()
+            .try_collect::<Vec<_>>()
+            .await?
+            .iter()
+            .zip(&config.robots)
+            .filter_map(|(scan_result, robot)| {
+                if scan_result.success() {
+                    Some(NameOrNum::Number(robot.number))
+                } else {
+                    None
+                }
+            })
+            .collect())
     }
 }

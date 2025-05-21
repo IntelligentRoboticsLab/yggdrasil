@@ -11,7 +11,6 @@ use crate::{cli::robot_ops::ConfigOptsRobotOps, config::SindriConfig};
 use super::robot_ops;
 
 pub(crate) const DEFAULT_PLAYER_NUMBER: u8 = 3;
-pub(crate) const DEFAULT_TEAM_NUMBER: u8 = 8;
 
 /// Compile, deploy and run the specified binary on multiple robots, with the option of setting
 /// player numbers.

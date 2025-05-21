@@ -383,7 +383,7 @@ impl CameraDevice {
 
 /// Struct for retrieving images from the NAO camera.
 pub struct Camera {
-    camera: FrameProvider,
+    frame_provider: FrameProvider,
     device: CameraDevice,
     width: usize,
     height: usize,
@@ -430,7 +430,7 @@ impl Camera {
 
         let mut camera = Self {
             device: camera_device,
-            camera,
+            frame_provider: camera,
             width,
             height,
         };
@@ -449,7 +449,7 @@ impl Camera {
     /// # Errors
     /// This function fails if the [`Camera`] cannot take an image.
     pub fn try_get_yuyv_image(&mut self) -> Result<YuyvImage> {
-        let frame = self.camera.fetch_frame()?;
+        let frame = self.frame_provider.fetch_frame()?;
 
         Ok(YuyvImage {
             frame,
@@ -467,12 +467,12 @@ impl Camera {
     /// # Errors
     /// This function fails if the [`Camera`] cannot take an image.
     pub fn loop_try_get_yuyv_image(&mut self) -> Result<YuyvImage> {
-        let mut fetch_frame_result = self.camera.fetch_frame();
+        let mut fetch_frame_result = self.frame_provider.fetch_frame();
         while fetch_frame_result
             .as_ref()
             .is_err_and(|io_error| io_error.kind() == std::io::ErrorKind::WouldBlock)
         {
-            fetch_frame_result = self.camera.fetch_frame();
+            fetch_frame_result = self.frame_provider.fetch_frame();
         }
 
         let frame = fetch_frame_result?;
