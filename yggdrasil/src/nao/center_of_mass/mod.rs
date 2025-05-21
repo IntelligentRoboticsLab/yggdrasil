@@ -10,7 +10,6 @@ mod robot_masses;
 use crate::{
     core::debug::DebugContext,
     kinematics::{Kinematics, spaces::Robot},
-    localization::RobotPose,
     prelude::*,
 };
 use bevy::prelude::*;
