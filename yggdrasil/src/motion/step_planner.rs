@@ -2,9 +2,10 @@ use super::{
     path_finding::{self, Obstacle},
     walking_engine::step::Step,
 };
-use crate::localization::RobotPose;
+use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle};
 use bevy::prelude::*;
 use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
+use rerun::LineStrip3D;
 use std::time::Instant;
 
 const TURN_SPEED: f32 = 0.2;
@@ -16,6 +17,8 @@ pub(super) struct StepPlannerPlugin;
 impl Plugin for StepPlannerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<StepPlanner>();
+        app.add_systems(PostStartup, setup_path_visualizer);
+        app.add_systems(Update, log_planned_path);
     }
 }
 
@@ -227,4 +230,39 @@ fn calc_distance(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: Point2
     let robot_point = pose.translation.vector.into();
 
     distance(robot_point, target_point)
+}
+
+fn setup_path_visualizer(dbg: DebugContext) {
+    dbg.log_with_cycle(
+        "field/path",
+        Cycle::default(),
+        &rerun::LineStrips3D::update_fields()
+            .with_colors([(66, 135, 245)])
+            .with_radii([2.0]),
+    );
+}
+
+fn log_planned_path(
+    dbg: DebugContext,
+    cycle: Res<Cycle>,
+    robot_pose: Res<RobotPose>,
+    mut step_planner: ResMut<StepPlanner>,
+) {
+    let path = step_planner.calc_path(&robot_pose);
+
+    if let Some((path, _)) = path {
+        dbg.log_with_cycle(
+            "field/path",
+            *cycle,
+            &rerun::LineStrips3D::update_fields().with_strips([LineStrip3D::from_iter(
+                path.iter().map(|point| (point.x, point.y, 0.05)),
+            )]),
+        );
+    } else {
+        dbg.log_with_cycle(
+            "field/path",
+            *cycle,
+            &rerun::LineStrips3D::update_fields().with_strips(std::iter::empty::<LineStrip3D>()),
+        );
+    }
 }
