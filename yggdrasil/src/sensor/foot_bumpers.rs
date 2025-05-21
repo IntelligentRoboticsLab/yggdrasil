@@ -13,6 +13,7 @@ use nidhogg::types::color;
 use serde::{Deserialize, Serialize};
 use serde_with::{DurationMilliSeconds, serde_as};
 use std::time::{Duration, Instant};
+
 pub struct FootBumperPlugin;
 
 impl Plugin for FootBumperPlugin {
