@@ -4,7 +4,7 @@ activation_threshold = 0.5
 # The time (in ms) a button needs to be held down, in order to be considered held down.
 held_duration_threshold = 500
 
-[filter.footbumpers]
+[filter.foot_bumpers]
 # Minimum number of pressure detections needed for one foot to consider it an obstacle.
 min_detection_count = 70
 # Time of no pressure after which the pressure counts will be reset, in milliseconds.
