@@ -54,6 +54,13 @@ impl Shutdown {
             ),
         );
 
+        let robot_ids = if self.all {
+            self.get_pingable_robots(&config).await?
+        } else {
+            self.robot_ids
+        };
+        eprintln!("{robot_ids:?}");
+
         status_bar.enable_steady_tick(Duration::from_millis(80));
         match kind {
             ShutdownCommand::Shutdown => status_bar.set_prefix("Shutdown signal"),
@@ -62,19 +69,13 @@ impl Shutdown {
         status_bar.set_message(format!(
             "{}{}{}{}{}",
             "(robots: ".dimmed(),
-            self.robot_ids.len().to_string().bold(),
+            robot_ids.len().to_string().bold(),
             ", team number: ".dimmed(),
             config.team_number.to_string().bold(),
             ")".dimmed()
         ));
 
         let mut join_set = tokio::task::JoinSet::new();
-
-        let robot_ids = if self.all {
-            self.get_pingable_robots(&config).await?
-        } else {
-            self.robot_ids
-        };
 
         for robot_id in robot_ids {
             let robot = config.robot(&robot_id, self.wired).ok_or(miette!(format!(
@@ -117,7 +118,6 @@ impl Shutdown {
         Ok(config
             .robots
             .iter()
-            .filter(|robot| robot.number != 0)
             .map(|robot_config| {
                 config
                     .robot(&NameOrNum::Number(robot_config.number), self.wired)
