@@ -46,7 +46,6 @@ pub fn striker_role(
         return;
     };
 
-    println!("we have a ball");
 
     let absolute_ball = pose.robot_to_world(&relative_ball);
     let ball_angle = pose.angle_to(&absolute_ball);
