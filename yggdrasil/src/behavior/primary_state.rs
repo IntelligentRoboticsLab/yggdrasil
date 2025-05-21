@@ -162,7 +162,7 @@ pub fn next_primary_state(
         PS::Penalized if chest_button.state.is_tapped() => PS::Playing {
             whistle_in_set: false,
         },
-
+        PS::Finished => PS::Sitting,
         _ => *primary_state,
     };
 

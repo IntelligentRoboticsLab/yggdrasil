@@ -111,7 +111,6 @@ fn finalize(
 ) {
     let (mut left_leg, mut right_leg) =
         target_foot_positions.leg_angles(hip_height.current(), config.torso_offset);
-    balance_adjustment.apply(&mut left_leg, &mut right_leg);
 
     let left_arm = arm_swing::swinging_arm(
         left_leg.hip_roll,
@@ -123,6 +122,11 @@ fn finalize(
         target_foot_positions.left.translation.x,
         false,
     );
+
+    // Only apply balance adjustment while walking
+    if *motion_state.get() == Gait::Walking {
+        balance_adjustment.apply(&mut left_leg, &mut right_leg);
+    }
 
     let leg_positions = LegJoints::builder()
         .left_leg(left_leg)
