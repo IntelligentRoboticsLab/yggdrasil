@@ -2,9 +2,10 @@ use super::{
     path_finding::{self, Obstacle},
     walking_engine::step::Step,
 };
-use crate::localization::RobotPose;
+use crate::{core::debug::DebugContext, localization::RobotPose};
 use bevy::prelude::*;
 use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
+use rerun::external::re_ui::list_item::DebugContent;
 use std::time::Instant;
 
 const TURN_SPEED: f32 = 0.2;
@@ -227,4 +228,8 @@ fn calc_distance(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: Point2
     let robot_point = pose.translation.vector.into();
 
     distance(robot_point, target_point)
+}
+
+fn log_planned_path(dbg: DebugContext, robot_pose: Res<RobotPose>, step_planner: Res<StepPlanner>) {
+    let path = step_planner.calc_path(robot_pose);
 }
