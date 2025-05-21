@@ -32,18 +32,18 @@ pub struct ObstacleStateFromBumpers {
 
 impl ObstacleStateFromBumpers {
     /// Get the next obstacle state, based on the foot bumper values.
-    fn update_state(&mut self, config: &FootBumperConfig, footbumper: &FootBumperValues) {
+    fn update_state(&mut self, config: &FootBumperConfig, foot_bumper: &FootBumperValues) {
         self.prev_state = self.current_state;
 
-        let left_sum = footbumper.left_outer_count + footbumper.left_inner_count;
-        let right_sum = footbumper.right_outer_count + footbumper.right_inner_count;
-        let inner_sum = footbumper.left_inner_count + footbumper.right_inner_count;
+        let left_sum = foot_bumper.left_outer_count + foot_bumper.left_inner_count;
+        let right_sum = foot_bumper.right_outer_count + foot_bumper.right_inner_count;
+        let inner_sum = foot_bumper.left_inner_count + foot_bumper.right_inner_count;
 
-        let left_detected = left_sum >= config.min_detection_count && !footbumper.left_inactive;
-        let right_detected = right_sum >= config.min_detection_count && !footbumper.right_inactive;
+        let left_detected = left_sum >= config.min_detection_count && !foot_bumper.left_inactive;
+        let right_detected = right_sum >= config.min_detection_count && !foot_bumper.right_inactive;
         let inner_detected = inner_sum >= config.min_detection_count
-            && !footbumper.left_inactive
-            && !footbumper.right_inactive
+            && !foot_bumper.left_inactive
+            && !foot_bumper.right_inactive
             && left_sum > 0
             && right_sum > 0;
 
@@ -222,7 +222,7 @@ fn set_foot_leds(manager: &mut NaoManager, current_state: ObstacleStatus) {
 #[allow(clippy::too_many_arguments)]
 fn obstacle_detection(
     config: Res<SensorConfig>,
-    mut footbumpers: ResMut<FootBumperValues>,
+    mut foot_bumpers: ResMut<FootBumperValues>,
     mut obstacle_state: ResMut<ObstacleStateFromBumpers>,
     mut manager: ResMut<NaoManager>,
     mut step_planner: ResMut<StepPlanner>,
@@ -230,9 +230,9 @@ fn obstacle_detection(
     left_foot: Res<LeftFootButtons>,
     right_foot: Res<RightFootButtons>,
 ) {
-    let config = &config.footbumpers;
-    footbumpers.update_bumper_values(config, &left_foot, &right_foot);
-    obstacle_state.update_state(config, &footbumpers);
+    let config = &config.foot_bumpers;
+    foot_bumpers.update_bumper_values(config, &left_foot, &right_foot);
+    obstacle_state.update_state(config, &foot_bumpers);
     set_foot_leds(&mut manager, obstacle_state.current_state);
 
     if obstacle_state.new_obstacle_left()

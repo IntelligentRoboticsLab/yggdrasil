@@ -17,6 +17,7 @@ pub(super) struct StepPlannerPlugin;
 impl Plugin for StepPlannerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<StepPlanner>()
+            .add_systems(PostStartup, setup_dynamic_obstacle_logging)
             .add_systems(PostUpdate, log_dynamic_obstacles);
     }
 }
@@ -231,6 +232,15 @@ fn calc_distance(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: Point2
     distance(robot_point, target_point)
 }
 
+fn setup_dynamic_obstacle_logging(dbg: DebugContext) {
+    dbg.log_static(
+        "field/obstacles",
+        &rerun::Ellipsoids3D::update_fields()
+            .with_colors([(69, 255, 249)])
+            .with_fill_mode(FillMode::Solid),
+    );
+}
+
 fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>) {
     let centers = step_planner
         .dynamic_obstacles
@@ -244,12 +254,9 @@ fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>) {
         .map(|obs| (obs.obs.radius.0, obs.obs.radius.0, 0.02))
         .collect::<Vec<_>>();
 
-    let len = centers.len();
 
     dbg.log(
-        "dynamic_obstacle",
-        &rerun::Ellipsoids3D::from_centers_and_half_sizes(centers, half_sizes)
-            .with_colors(vec![[69, 255, 249]; len])
-            .with_fill_mode(FillMode::Solid),
+        "field/obstacles",
+        &rerun::Ellipsoids3D::update_fields().with_centers(centers).with_half_sizes(half_sizes)
     );
 }
