@@ -46,7 +46,6 @@ pub fn striker_role(
         return;
     };
 
-
     let absolute_ball = pose.robot_to_world(&relative_ball);
     let ball_angle = pose.angle_to(&absolute_ball);
     let ball_distance = relative_ball.coords.norm();
