@@ -20,7 +20,6 @@ use super::{
 use bevy::prelude::*;
 use nalgebra::Vector2;
 use rerun::external::glam::{Quat, Vec3};
-use tracing::info;
 
 const RETURN_FROM_HIGH_STAND_COOLDOWN: Duration = Duration::from_secs(1);
 
