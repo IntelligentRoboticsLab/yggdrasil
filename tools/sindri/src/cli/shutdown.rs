@@ -59,7 +59,6 @@ impl Shutdown {
         } else {
             self.robot_ids
         };
-        eprintln!("{robot_ids:?}");
 
         status_bar.enable_steady_tick(Duration::from_millis(80));
         match kind {
