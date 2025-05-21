@@ -32,8 +32,10 @@ impl PluginGroup for SensorPlugins {
 pub struct SensorConfig {
     /// Configuration for the FSR sensor.
     pub fsr: fsr::FsrConfig,
+
     /// Configuration for the button sensitivies.
     pub button: button::ButtonConfig,
+
     /// Configuration for the foot bumpers.
     pub foot_bumpers: foot_bumpers::FootBumperConfig,
 }
