@@ -5,7 +5,7 @@ use super::{
 use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle};
 use bevy::prelude::*;
 use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
-use rerun::LineStrip3D;
+use rerun::{FillMode, LineStrip3D};
 use std::time::Instant;
 
 const TURN_SPEED: f32 = 0.2;
@@ -17,8 +17,11 @@ pub(super) struct StepPlannerPlugin;
 impl Plugin for StepPlannerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<StepPlanner>();
-        app.add_systems(PostStartup, setup_path_visualizer);
-        app.add_systems(Update, log_planned_path);
+        app.add_systems(
+            PostStartup,
+            (setup_path_visualizer, setup_dynamic_obstacle_logging),
+        );
+        app.add_systems(PostUpdate, (log_planned_path, log_dynamic_obstacles));
     }
 }
 
@@ -265,4 +268,34 @@ fn log_planned_path(
             &rerun::LineStrips3D::update_fields().with_strips(std::iter::empty::<LineStrip3D>()),
         );
     }
+}
+
+fn setup_dynamic_obstacle_logging(dbg: DebugContext) {
+    dbg.log_static(
+        "field/obstacles",
+        &rerun::Ellipsoids3D::update_fields()
+            .with_colors([(69, 255, 249)])
+            .with_fill_mode(FillMode::Solid),
+    );
+}
+
+fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>) {
+    let centers = step_planner
+        .dynamic_obstacles
+        .iter()
+        .map(|obs| (obs.obs.x.0, obs.obs.y.0, 0.0))
+        .collect::<Vec<_>>();
+
+    let half_sizes = step_planner
+        .dynamic_obstacles
+        .iter()
+        .map(|obs| (obs.obs.radius.0, obs.obs.radius.0, 0.02))
+        .collect::<Vec<_>>();
+
+    dbg.log(
+        "field/obstacles",
+        &rerun::Ellipsoids3D::update_fields()
+            .with_centers(centers)
+            .with_half_sizes(half_sizes),
+    );
 }
