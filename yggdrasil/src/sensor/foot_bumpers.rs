@@ -252,10 +252,10 @@ fn obstacle_detection(
             config.obstacle_distance * angle.cos(),
             config.obstacle_distance * angle.sin(),
         );
-        let world_pos = robot_pose.robot_to_world(&relative_pos);
+        // let world_pos = robot_pose.robot_to_world(&relative_pos);
 
         let obstacle = DynamicObstacle {
-            obs: Obstacle::new(world_pos.x, world_pos.y, config.obstacle_radius),
+            obs: Obstacle::new(relative_pos.x, relative_pos.y, config.obstacle_radius),
             ttl: Instant::now() + config.ttl,
         };
 
