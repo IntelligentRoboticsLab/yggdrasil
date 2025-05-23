@@ -1,6 +1,7 @@
 mod catchfall;
 mod observe;
 mod rl_striker_search;
+mod rl_walk_to;
 mod sitting;
 mod stand;
 mod stand_look;
@@ -15,6 +16,7 @@ mod walk_to_set;
 pub use catchfall::*;
 pub use observe::*;
 pub use rl_striker_search::*;
+pub use rl_walk_to::*;
 pub use sitting::*;
 pub use stand::*;
 pub use stand_look::*;

@@ -17,7 +17,7 @@ use crate::{
 use super::{
     behaviors::{
         CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
-        Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
+        RlWalkToBehaviorPlugin, Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
         StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
         VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin, WalkToBallBehaviorPlugin,
         WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
@@ -43,6 +43,7 @@ impl Plugin for BehaviorEnginePlugin {
                 CatchFallBehaviorPlugin,
                 ObserveBehaviorPlugin,
                 RlStrikerSearchBehaviorPlugin,
+                RlWalkToBehaviorPlugin,
                 SittingBehaviorPlugin,
                 StandBehaviorPlugin,
                 StandLookAtBehaviorPlugin,
@@ -99,6 +100,7 @@ pub enum BehaviorState {
     WalkToSet,
     WalkToBall,
     RlStrikerSearchBehavior,
+    RlWalkToBehavior,
 }
 
 #[must_use]
