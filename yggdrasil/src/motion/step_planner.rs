@@ -120,7 +120,16 @@ impl StepPlanner {
         let target_position = self.target?.position;
         let all_obstacles = self.get_all_obstacles();
 
-        path_finding::find_path(robot_pose.world_position(), target_position, &all_obstacles)
+        let abs_obstacles: Vec<_> = all_obstacles
+            .iter()
+            .map(|obs| {
+                let abs_pos = robot_pose.robot_to_world(&Point2::new(obs.x.0, obs.y.0));
+
+                Obstacle::new(abs_pos.x, abs_pos.y, obs.radius.0)
+            })
+            .collect();
+
+        path_finding::find_path(robot_pose.world_position(), target_position, &abs_obstacles)
     }
 
     fn plan_translation(robot_pose: &RobotPose, path: &[Point2<f32>]) -> Option<Step> {
@@ -272,14 +281,14 @@ fn log_planned_path(
 
 fn setup_dynamic_obstacle_logging(dbg: DebugContext) {
     dbg.log_static(
-        "field/obstacles",
+        "localization/pose/obstacles",
         &rerun::Ellipsoids3D::update_fields()
             .with_colors([(69, 255, 249)])
             .with_fill_mode(FillMode::Solid),
     );
 }
 
-fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>) {
+fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>, cycle: Res<Cycle>) {
     let centers = step_planner
         .dynamic_obstacles
         .iter()
@@ -289,11 +298,12 @@ fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>) {
     let half_sizes = step_planner
         .dynamic_obstacles
         .iter()
-        .map(|obs| (obs.obs.radius.0, obs.obs.radius.0, 0.02))
+        .map(|obs| (obs.obs.radius.0, obs.obs.radius.0, -0.28))
         .collect::<Vec<_>>();
 
-    dbg.log(
-        "field/obstacles",
+    dbg.log_with_cycle(
+        "localization/pose/obstacles",
+        *cycle,
         &rerun::Ellipsoids3D::update_fields()
             .with_centers(centers)
             .with_half_sizes(half_sizes),
