@@ -39,7 +39,7 @@ impl Plugin for RlWalkToBehaviorPlugin {
                     .run_if(in_behavior::<RlStrikerSearchBehavior>.and(task_finished::<Output>)),
             )
             .add_systems(
-                OnEnter(BehaviorState::RlStrikerSearchBehavior),
+                OnEnter(BehaviorState::RlWalkToBehavior),
                 reset_observe_starting_time,
             )
             .insert_resource(ObserveStartingTime(Instant::now()))
@@ -47,7 +47,7 @@ impl Plugin for RlWalkToBehaviorPlugin {
                 Update,
                 handle_inference_output
                     .after(run_inference)
-                    .run_if(in_behavior::<RlStrikerSearchBehavior>)
+                    .run_if(in_behavior::<RlWalkToBehavior>)
                     .run_if(resource_exists_and_changed::<Output>),
             );
     }
@@ -67,34 +67,45 @@ impl MlModel for RlWalkToBehaviorModel {
 }
 
 #[derive(Resource)]
-pub struct RlWalkToBehavior {
-    target: Point2<f32>, // need to verify if this is the correct input for the model
-}
+pub struct RlWalkToBehavior;
 
 impl Behavior for RlWalkToBehavior {
     const STATE: BehaviorState = BehaviorState::RlWalkToBehavior;
 }
 
-#[derive(Resource, Deref)]
-struct ObserveStartingTime(Instant);
-
-fn reset_observe_starting_time(mut observe_starting_time: ResMut<ObserveStartingTime>) {
-    observe_starting_time.0 = Instant::now();
-}
-
 struct Input<'d> {
     robot_pose: &'d RobotPose,
-    goal_position: &'d Point2<f32>,
-
+    target_position: &'d Point2<f32>,
     field_width: f32,
     field_height: f32,
 }
 
+#[derive(Resource)]
+struct Output {
+    step: Step,
+}
+
+impl RlBehaviorOutput<ModelOutput> for Output {
+    fn from_output(output: ModelOutput) -> Self {
+        let forward = output[0].clamp(-1.0, 1.0);
+        let left = output[1].clamp(-1.0, 1.0);
+        let turn = output[2].clamp(-1.0, 1.0);
+
+        Self {
+            step: Step {
+                forward,
+                left,
+                turn,
+            },
+        }
+    }
+}
+
+// TODO -> termination condition
+//Success ⇨  distance < goal_distance_threshold  AND
+//                alignment > goal_alignment_threshold
 fn walk_to(
     walk_to: Res<RlWalkToBehavior>,
-    pose: Res<RobotPose>,
-    mut step_planner: ResMut<StepPlanner>,
-    mut step_context: ResMut<StepContext>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
     let target_point = Point3::new(walk_to.target.position.x, walk_to.target.position.y, 0.0);
@@ -106,22 +117,4 @@ fn walk_to(
         Priority::default(),
         NaoManager::HEAD_STIFFNESS,
     );
-
-    // Check and clear existing target if different
-    if step_planner
-        .current_absolute_target()
-        .is_some_and(|target| target != &walk_to.target)
-    {
-        step_planner.clear_target();
-    }
-
-    // Set absolute target if not set
-    step_planner.set_absolute_target_if_unset(walk_to.target);
-
-    // Plan step or stand
-    if let Some(step) = step_planner.plan(&pose) {
-        step_context.request_walk(step);
-    } else {
-        step_context.request_stand();
-    }
 }
