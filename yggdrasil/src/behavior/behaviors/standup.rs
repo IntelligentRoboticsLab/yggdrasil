@@ -45,9 +45,9 @@ fn standup(
 ) {
     // check the direction the robot is lying and execute the appropriate motion
     match fall_state.as_ref() {
-        FallState::Lying(LyingDirection::FacingDown) => {
-            keyframe_executor.start_new_motion(MotionType::StandupStomach, Priority::High);
-        }
+        // FallState::Lying(LyingDirection::FacingDown) => {
+        //     keyframe_executor.start_new_motion(MotionType::StandupStomach, Priority::High);
+        // }
         FallState::Lying(LyingDirection::FacingUp) => {
             // keyframe_executor.start_new_motion(MotionType::StandupBack, Priority::High);
             motion_manager.set_motion_if_not_running(Motion::GetUpBack);

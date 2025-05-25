@@ -13,7 +13,7 @@ use nidhogg::{
 };
 use odal::Config;
 use serde::{Deserialize, Serialize};
-use serde_with::{DurationSeconds, serde_as};
+use serde_with::{DurationSecondsWithFrac, serde_as};
 
 use crate::{
     nao::{NaoManager, Priority},
@@ -21,7 +21,7 @@ use crate::{
     sensor::imu::IMUValues,
 };
 
-const MOTION_MANAGER_PRIORITY: Priority = Priority::High;
+const MOTION_MANAGER_PRIORITY: Priority = Priority::Custom(91);
 
 pub struct MotionManagerPlugin;
 
@@ -37,7 +37,13 @@ fn load_next_motion(
     mut motion_manager: ResMut<MotionManager>,
     getup_back_motion_config: Res<GetUpBackMotionConfig>,
     nao_state: ResMut<NaoState>,
+    // TODO: Remove after testing.
+    mut already_run: Local<bool>,
 ) {
+    if *already_run {
+        return;
+    }
+
     let Some(next_motion) = &motion_manager.next_motion.take() else {
         return;
     };
@@ -50,9 +56,15 @@ fn load_next_motion(
     let key_frame_duration = motion_manager
         .current_key_frame()
         .map(|key_frame| key_frame.duration)
-        .unwrap_or(Duration::ZERO);
+        .unwrap();
+    // eprintln!("KEY_FRAME_DURATION: {key_frame_duration:?}");
+    // assert_ne!(key_frame_duration, Duration::from_secs(0));
+    // assert!(false);
     motion_manager.joint_interpolator = JointInterpolator::new(key_frame_duration);
     motion_manager.key_frame_start_joint_angles = nao_state.position.clone();
+    motion_manager.key_frame_start = Instant::now();
+
+    *already_run = true;
 }
 
 fn run_motion(
@@ -89,13 +101,13 @@ fn run_motion(
         return;
     };
 
-    // TODO: Is this check still necessary?
-    if key_frame.is_complete(&imu_values, angles_reached_at.as_ref()) {
-        eprintln!("KEY FRAME COMPLETE, GOING NEXT KEY FRAME 1");
-        motion_manager.next_key_frame(nao_state.position.clone());
-        *angles_reached_at = None;
-        return;
-    }
+    // // TODO: Is this check still necessary?
+    // if key_frame.is_complete(&imu_values, angles_reached_at.as_ref()) {
+    //     eprintln!("KEY FRAME COMPLETE, GOING NEXT KEY FRAME 1");
+    //     motion_manager.next_key_frame(nao_state.position.clone());
+    //     *angles_reached_at = None;
+    //     return;
+    // }
     eprintln!("key frame not complete");
 
     if !key_frame.abort_conditions.is_empty()
@@ -110,72 +122,49 @@ fn run_motion(
     }
     eprintln!("not aborting");
 
-    let mut close = true;
-    if !key_frame
-        .angles
-        .head_is_close(&nao_state, key_frame.angle_threshold)
-    {
-        eprintln!("head not close");
-        if let Some(angles) = &key_frame.angles.head {
-            let target_angles = motion_manager.joint_interpolator.interpolated_positions(
-                motion_manager.key_frame_start_joint_angles.head_joints(),
-                angles.clone(),
-            );
-            nao_manager.set_head(
-                target_angles,
-                HeadJoints::fill(key_frame.stiffness),
-                MOTION_MANAGER_PRIORITY,
-            );
-        }
-        close = false;
+    if let Some(angles) = &key_frame.angles.head {
+        let target_angles = motion_manager.joint_interpolator.interpolated_positions(
+            motion_manager.key_frame_start_joint_angles.head_joints(),
+            angles.clone(),
+        );
+        nao_manager.set_head(
+            target_angles,
+            HeadJoints::fill(key_frame.stiffness),
+            MOTION_MANAGER_PRIORITY,
+        );
     }
-    if !key_frame
-        .angles
-        .arms_are_close(&nao_state, key_frame.angle_threshold)
-    {
-        eprintln!("arms not close");
-        if let Some(angles) = &key_frame.angles.arms {
-            let target_angles = motion_manager.joint_interpolator.interpolated_positions(
-                motion_manager.key_frame_start_joint_angles.arm_joints(),
-                angles.clone(),
-            );
-            nao_manager.set_arms(
-                target_angles,
-                ArmJoints::fill(key_frame.stiffness),
-                MOTION_MANAGER_PRIORITY,
-            );
-        }
-        close = false;
+    if let Some(angles) = &key_frame.angles.arms {
+        let target_angles = motion_manager.joint_interpolator.interpolated_positions(
+            motion_manager.key_frame_start_joint_angles.arm_joints(),
+            angles.clone(),
+        );
+        nao_manager.set_arms(
+            target_angles,
+            ArmJoints::fill(key_frame.stiffness),
+            MOTION_MANAGER_PRIORITY,
+        );
     }
-    if !key_frame
-        .angles
-        .legs_are_close(&nao_state, key_frame.angle_threshold)
-    {
-        eprintln!("legs not close");
-        if let Some(angles) = &key_frame.angles.legs {
-            let target_angles = motion_manager.joint_interpolator.interpolated_positions(
-                motion_manager.key_frame_start_joint_angles.leg_joints(),
-                angles.clone(),
-            );
-            nao_manager.set_legs(
-                target_angles,
-                LegJoints::fill(key_frame.stiffness),
-                MOTION_MANAGER_PRIORITY,
-            );
-        }
-        close = false;
+    if let Some(angles) = &key_frame.angles.legs {
+        let target_angles = motion_manager.joint_interpolator.interpolated_positions(
+            motion_manager.key_frame_start_joint_angles.leg_joints(),
+            angles.clone(),
+        );
+        nao_manager.set_legs(
+            target_angles,
+            LegJoints::fill(key_frame.stiffness),
+            MOTION_MANAGER_PRIORITY,
+        );
     }
 
-    if !close {
-        eprintln!("!close");
+    if motion_manager.key_frame_start.elapsed() <= key_frame.duration {
         return;
     }
+    eprintln!("KEY FRAME ELAPSED");
 
     // If angles are correct, set `completed_motion_at` if unset.
-    // *angles_reached_at = Some(Instant::now());
     angles_reached_at.get_or_insert(Instant::now());
 
-    if key_frame.is_complete(&imu_values, angles_reached_at.as_ref()) {
+    if key_frame.is_complete(&imu_values, angles_reached_at.unwrap()) {
         eprintln!("KEY FRAME COMPLETE, GOING NEXT KEY FRAME 2");
         motion_manager.next_key_frame(nao_state.position.clone());
         *angles_reached_at = None;
@@ -193,6 +182,7 @@ pub struct MotionManager {
     next_motion: Option<Motion>,
     joint_interpolator: JointInterpolator,
     key_frame_start_joint_angles: JointArray<f32>,
+    key_frame_start: Instant,
 }
 
 impl MotionManager {
@@ -227,6 +217,7 @@ impl MotionManager {
 
     fn next_key_frame(&mut self, current_joint_angles: JointArray<f32>) {
         self.current_key_frame_id += 1;
+        self.key_frame_start = Instant::now();
 
         let Some(next_motion) = self.current_key_frame() else {
             self.current_key_frame_id = 0;
@@ -248,6 +239,8 @@ impl Default for MotionManager {
             next_motion: None,
             joint_interpolator: JointInterpolator::new(Duration::ZERO),
             key_frame_start_joint_angles: JointArray::default(),
+
+            key_frame_start: Instant::now(),
         }
     }
 }
@@ -307,7 +300,7 @@ impl Condition {
 #[serde(deny_unknown_fields)]
 struct KeyFrame {
     abort_conditions: Vec<Condition>,
-    #[serde_as(as = "DurationSeconds<f64>")]
+    #[serde_as(as = "DurationSecondsWithFrac<f64>")]
     duration: Duration,
     complete_conditions: Vec<Condition>,
     start_conditions: Vec<Condition>,
@@ -319,12 +312,7 @@ struct KeyFrame {
 }
 
 impl KeyFrame {
-    fn is_complete(&self, imu_values: &IMUValues, angles_reached_at: Option<&Instant>) -> bool {
-        let Some(angles_reached_at) = angles_reached_at else {
-            eprintln!("ANGLES NOT REACHED");
-            return false;
-        };
-
+    fn is_complete(&self, imu_values: &IMUValues, angles_reached_at: Instant) -> bool {
         if angles_reached_at.elapsed().as_secs_f32() < self.min_delay {
             eprintln!("MIN DELAY NOT ELAPSED");
             return false;
@@ -348,131 +336,6 @@ struct Joints {
     head: Option<HeadJoints<f32>>,
     arms: Option<ArmJoints<f32>>,
     legs: Option<LegJoints<f32>>,
-}
-
-impl Joints {
-    fn is_close(&self, nao_state: &NaoState, threshold: f32) -> bool {
-        self.head_is_close(nao_state, threshold)
-            && self.arms_are_close(nao_state, threshold)
-            && self.legs_are_close(nao_state, threshold)
-    }
-
-    fn head_is_close(&self, nao_state: &NaoState, threshold: f32) -> bool {
-        let Some(requested_head_position) = &self.head else {
-            return true;
-        };
-
-        let current_head_position = nao_state.position.head_joints();
-
-        requested_head_position
-            .clone()
-            .zip(current_head_position.clone())
-            .iter()
-            .all(|(requested_position, current_position)| {
-                eprintln!(
-                    "head joints difference (requested - current): ({} - {}).abs() =  {}",
-                    requested_position,
-                    current_position,
-                    requested_position.sub(current_position).abs()
-                );
-                requested_position
-                    .sub(current_position)
-                    .abs()
-                    .le(&threshold)
-            })
-    }
-
-    fn arms_are_close(&self, nao_state: &NaoState, threshold: f32) -> bool {
-        let Some(requested_arms_position) = &self.arms else {
-            return true;
-        };
-
-        let current_arms_position = nao_state.position.arm_joints();
-
-        let left_arm_is_close = requested_arms_position
-            .left_arm
-            .clone()
-            .zip(current_arms_position.left_arm.clone())
-            .iter()
-            .all(|(requested_position, current_position)| {
-                eprintln!(
-                    "left arm joints difference (requested - current): ({} - {}).abs() =  {}",
-                    requested_position,
-                    current_position,
-                    requested_position.sub(current_position).abs()
-                );
-                requested_position
-                    .sub(current_position)
-                    .abs()
-                    .le(&threshold)
-            });
-
-        let right_arm_is_close = requested_arms_position
-            .right_arm
-            .clone()
-            .zip(current_arms_position.right_arm.clone())
-            .iter()
-            .all(|(requested_position, current_position)| {
-                eprintln!(
-                    "right arm joints difference (requested - current): ({} - {}).abs() =  {}",
-                    requested_position,
-                    current_position,
-                    requested_position.sub(current_position).abs()
-                );
-                requested_position
-                    .sub(current_position)
-                    .abs()
-                    .le(&threshold)
-            });
-
-        left_arm_is_close && right_arm_is_close
-    }
-
-    fn legs_are_close(&self, nao_state: &NaoState, threshold: f32) -> bool {
-        let Some(requested_legs_position) = &self.legs else {
-            return true;
-        };
-
-        let current_legs_position = nao_state.position.leg_joints();
-
-        let left_leg_is_close = requested_legs_position
-            .left_leg
-            .clone()
-            .zip(current_legs_position.left_leg.clone())
-            .iter()
-            .all(|(requested_position, current_position)| {
-                eprintln!(
-                    "left leg joints difference (requested - current): ({} - {}).abs() =  {}",
-                    requested_position,
-                    current_position,
-                    requested_position.sub(current_position).abs()
-                );
-                requested_position
-                    .sub(current_position)
-                    .abs()
-                    .le(&threshold)
-            });
-
-        let right_leg_is_close = requested_legs_position
-            .right_leg
-            .clone()
-            .zip(current_legs_position.right_leg.clone())
-            .iter()
-            .all(|(requested_position, current_position)| {
-                eprintln!(
-                    "right leg joints difference (requested - current): ({} - {}).abs() =  {}",
-                    requested_position,
-                    current_position,
-                    requested_position.sub(current_position).abs()
-                );
-                requested_position
-                    .sub(current_position)
-                    .abs()
-                    .le(&threshold)
-            });
-
-        left_leg_is_close && right_leg_is_close
-    }
 }
 
 #[serde_as]

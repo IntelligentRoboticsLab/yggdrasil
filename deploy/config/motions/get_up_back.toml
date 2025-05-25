@@ -1,56 +1,56 @@
 # ready_to_kick 1
-[[key_frames]]
-abort_conditions = []
-angle_threshold = 0.15
-complete_conditions = []
-duration = 0.6
-max_delay = 3.0
-min_delay = 0.1
-start_conditions = []
-stiffness = 0.8
-
-[key_frames.angles.head]
-pitch = 0.0
-yaw = 0.0
-
-[key_frames.angles.arms.left_arm]
-elbow_roll = 0.0
-elbow_yaw = 0.0
-hand = 0.0
-shoulder_pitch = 1.57
-shoulder_roll = 0.0
-wrist_yaw = 0.0
-
-[key_frames.angles.arms.right_arm]
-elbow_roll = 0.0
-elbow_yaw = 0.0
-hand = 0.0
-shoulder_pitch = 1.57
-shoulder_roll = 0.0
-wrist_yaw = 0.0
-
-[key_frames.angles.legs.left_leg]
-ankle_pitch = 0.0
-ankle_roll = 0.0
-hip_pitch = 0.0
-hip_roll = 0.0
-hip_yaw_pitch = 0.0
-knee_pitch = 0.0
-
-[key_frames.angles.legs.right_leg]
-ankle_pitch = 0.0
-ankle_roll = 0.0
-hip_pitch = 0.0
-hip_roll = 0.0
-hip_yaw_pitch = 0.0
-knee_pitch = 0.0
+# [[key_frames]]
+# abort_conditions = []
+# angle_threshold = 0.2
+# complete_conditions = []
+# duration = 6
+# max_delay = 3.0
+# min_delay = 0.1
+# start_conditions = []
+# stiffness = 0.8
+#
+# [key_frames.angles.head]
+# pitch = 0.0
+# yaw = 0.0
+#
+# [key_frames.angles.arms.left_arm]
+# elbow_roll = 0.0
+# elbow_yaw = 0.0
+# hand = 0.0
+# shoulder_pitch = 1.57
+# shoulder_roll = 0.0
+# wrist_yaw = 0.0
+#
+# [key_frames.angles.arms.right_arm]
+# elbow_roll = 0.0
+# elbow_yaw = 0.0
+# hand = 0.0
+# shoulder_pitch = 1.57
+# shoulder_roll = 0.0
+# wrist_yaw = 0.0
+#
+# [key_frames.angles.legs.left_leg]
+# ankle_pitch = 0.0
+# ankle_roll = 0.0
+# hip_pitch = 0.0
+# hip_roll = 0.0
+# hip_yaw_pitch = 0.0
+# knee_pitch = 0.0
+#
+# [key_frames.angles.legs.right_leg]
+# ankle_pitch = 0.0
+# ankle_roll = 0.0
+# hip_pitch = 0.0
+# hip_roll = 0.0
+# hip_yaw_pitch = 0.0
+# knee_pitch = 0.0
 
 # ----------------------------------------------------
 
 # ready_to_kick 2
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = []
 duration = 0.3
 max_delay = 0.3
@@ -67,7 +67,7 @@ elbow_roll = 0.0
 elbow_yaw = 0.0
 hand = 0.0
 shoulder_pitch = 1.57
-shoulder_roll = 0.0
+shoulder_roll = 0.1
 wrist_yaw = 0.11355805397033691
 
 [key_frames.angles.arms.right_arm]
@@ -75,7 +75,7 @@ elbow_roll = 0.0
 elbow_yaw = 0.0
 hand = 0.0
 shoulder_pitch = 1.57
-shoulder_roll = 0.0
+shoulder_roll = -0.1
 wrist_yaw = -0.11355805397033691
 
 [key_frames.angles.legs.left_leg]
@@ -94,12 +94,12 @@ hip_roll = 0.0
 hip_yaw_pitch = 0.0
 knee_pitch = 0.8299360275268555
 
-# # ----------------------------------------------------
+# ----------------------------------------------------
 
 # ready_to_kick 3
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = []
 duration = 0.3
 max_delay = 0.3
@@ -116,7 +116,7 @@ elbow_roll = 0.0
 elbow_yaw = 0.0
 hand = 0.0
 shoulder_pitch = 2.1467549799530254
-shoulder_roll = 0.0
+shoulder_roll = 0.1
 wrist_yaw = 0.11355805397033691
 
 [key_frames.angles.arms.right_arm]
@@ -124,13 +124,13 @@ elbow_roll = 0.0
 elbow_yaw = 0.0
 hand = 0.0
 shoulder_pitch = 2.1467549799530254
-shoulder_roll = 0.0
+shoulder_roll = -0.1
 wrist_yaw = -0.11355805397033691
 
 [key_frames.angles.legs.left_leg]
 ankle_pitch = 0.4065520763397217
 ankle_roll = 0.0
-hip_pitch = 0.5521979331970215
+hip_pitch = 0.47
 hip_roll = 0.0
 hip_yaw_pitch = 0.0
 knee_pitch = 1.1198620796203613
@@ -138,17 +138,17 @@ knee_pitch = 1.1198620796203613
 [key_frames.angles.legs.right_leg]
 ankle_pitch = 0.4065520763397217
 ankle_roll = 0.0
-hip_pitch = 0.5521979331970215
+hip_pitch = 0.47
 hip_roll = 0.0
 hip_yaw_pitch = 0.0
 knee_pitch = 1.1198620796203613
 
-# # ----------------------------------------------------
+# ----------------------------------------------------
 
 # ready_to_kick 4
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = []
 duration = 0.3
 max_delay = 0.3
@@ -179,7 +179,7 @@ wrist_yaw = 0.056715965270996094
 [key_frames.angles.legs.left_leg]
 ankle_pitch = 0.4065520763397217
 ankle_roll = 0.0
-hip_pitch = 0.5521979331970215
+hip_pitch = 0.47
 hip_roll = 0.0
 hip_yaw_pitch = 0.0
 knee_pitch = 1.1198620796203613
@@ -187,7 +187,7 @@ knee_pitch = 1.1198620796203613
 [key_frames.angles.legs.right_leg]
 ankle_pitch = 0.4065520763397217
 ankle_roll = 0.0
-hip_pitch = 0.5521979331970215
+hip_pitch = 0.47
 hip_roll = 0.0
 hip_yaw_pitch = 0.0
 knee_pitch = 1.1198620796203613
@@ -197,7 +197,7 @@ knee_pitch = 1.1198620796203613
 # ready_to_kick 5
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = []
 duration = 0.3
 max_delay = 0.3
@@ -246,7 +246,7 @@ knee_pitch = 1.9198621771937625
 # kick_up 1
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = [
   # { field = "GiroX", smaller_than = -0.3, bigger_than = 0.3 },
   # { field = "GiroY", smaller_than = 0.3 },
@@ -299,7 +299,7 @@ knee_pitch = -0.08726646259971647
 # kick_up 2
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = [
   # { field = "GiroX", smaller_than = -0.3, bigger_than = 0.3 },
   # { field = "GiroY", smaller_than = 0.3 },
@@ -352,7 +352,7 @@ knee_pitch = -0.08726646259971647
 # kick_up 3
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = [
   # { field = "GiroX", smaller_than = -0.3, bigger_than = 0.3 },
   # { field = "GiroY", smaller_than = 0.3 },
@@ -405,7 +405,7 @@ knee_pitch = -0.08726646259971647
 # half_sit_to_crouch 1
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = []
 duration = 0.5
 max_delay = 0.5
@@ -426,7 +426,7 @@ shoulder_roll = -0.08726646259971647
 wrist_yaw = -1.5707963267948966
 
 [key_frames.angles.arms.right_arm]
-elbow_roll = -0.3839724354387525
+elbow_roll = 0.3839724354387525
 elbow_yaw = 1.5184364492350666
 hand = 0.0
 shoulder_pitch = 2.111848394913139
@@ -454,7 +454,7 @@ knee_pitch = 1.4311699866353502
 # half_sit_to_crouch 2
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = []
 duration = 1.1
 max_delay = 1.1
@@ -503,13 +503,14 @@ knee_pitch = 0.8377580409572781
 # half_crouch_to_sit 1
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = [
   # { field = "GiroX", smaller_than = -0.3, bigger_than = 0.3 },
   # { field = "GiroY", smaller_than = 0.3 },
   # { field = "GiroY", bigger_than = -0.3 },
 ]
-duration = 0.7
+# duration = 0.7
+duration = 1.4
 max_delay = 3.0
 min_delay = 0.1
 start_conditions = []
@@ -539,6 +540,7 @@ wrist_yaw = 1.5707963267948966
 ankle_pitch = -1.0122909661567112
 ankle_roll = 0.17453292519943295
 hip_pitch = -0.5585053606381855
+# hip_pitch = -0.6585053606381855
 hip_roll = 0.06981317007977318
 hip_yaw_pitch = -1.1344640137963142
 knee_pitch = 2.111848394913139
@@ -547,6 +549,7 @@ knee_pitch = 2.111848394913139
 ankle_pitch = 0.9250245035569946
 ankle_roll = 0.06981317007977318
 hip_pitch = -0.3141592653589793
+# hip_pitch = -0.4141592653589793
 hip_roll = -0.2617993877991494
 hip_yaw_pitch = -1.1344640137963142
 knee_pitch = -0.08726646259971647
@@ -556,9 +559,10 @@ knee_pitch = -0.08726646259971647
 # half_crouch_to_sit 2
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+# angle_threshold = 0.2
+angle_threshold = 1.0
 complete_conditions = []
-duration = 0.5
+duration = 0.2
 max_delay = 3.0
 min_delay = 0.1
 start_conditions = []
@@ -605,7 +609,7 @@ knee_pitch = 1.6580627893946132
 # half_crouch_to_sit 3
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = []
 duration = 0.4
 max_delay = 3.0
@@ -654,7 +658,7 @@ knee_pitch = 2.111848394913139
 # # half_crouch_to_sit 4
 # [[key_frames]]
 # abort_conditions = []
-# angle_threshold = 0.15
+# angle_threshold = 0.2
 # complete_conditions = []
 # duration = 0.2
 # max_delay = 3.0
@@ -703,7 +707,7 @@ knee_pitch = 2.111848394913139
 # half_crouch_to_sit 5
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = []
 duration = 0.2
 max_delay = 3.0
@@ -752,7 +756,7 @@ knee_pitch = 2.111848394913139
 # half_crouch_to_sit 6
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = []
 duration = 0.2
 max_delay = 3.0
@@ -798,16 +802,67 @@ knee_pitch = 2.111848394913139
 
 # # ----------------------------------------------------
 
-# extend_legs 1
+# # extend_legs 1
+# [[key_frames]]
+# abort_conditions = []
+# angle_threshold = 0.2
+# complete_conditions = []
+# duration = 0.4
+# max_delay = 0.4
+# min_delay = 0.4
+# start_conditions = []
+# stiffness = 0.8
+#
+# [key_frames.angles.head]
+# pitch = 0.3490658503988659
+# yaw = 0.0
+#
+# [key_frames.angles.arms.left_arm]
+# elbow_roll = -0.008
+# elbow_yaw = -1.57
+# hand = 0.0
+# shoulder_pitch = 1.57
+# shoulder_roll = 0.2
+# wrist_yaw = 0.0
+#
+# [key_frames.angles.arms.right_arm]
+# elbow_roll = 0.008
+# elbow_yaw = 1.57
+# hand = 0.0
+# shoulder_pitch = 1.57
+# shoulder_roll = -0.2
+# wrist_yaw = 0.0
+#
+# [key_frames.angles.legs.left_leg]
+# ankle_pitch = -0.6
+# ankle_roll = 0.0
+# hip_pitch = -0.3
+# hip_roll = 0.0
+# hip_yaw_pitch = 0.0138
+# knee_pitch = 0.93
+#
+# [key_frames.angles.legs.right_leg]
+# ankle_pitch = -0.6
+# ankle_roll = 0.0
+# hip_pitch = -0.3
+# hip_roll = 0.0
+# hip_yaw_pitch = 0.0138
+# knee_pitch = 0.93
+
+# # ----------------------------------------------------
+
+# extend_legs 2
+# NOTE: This is a "waiting" keyframe, same joint values as previous
 [[key_frames]]
 abort_conditions = []
-angle_threshold = 0.15
+angle_threshold = 0.2
 complete_conditions = []
 duration = 0.2
 max_delay = 0.4
-min_delay = 0.1
+min_delay = 0.4
 start_conditions = []
 stiffness = 0.8
+
 
 [key_frames.angles.head]
 pitch = 0.3490658503988659
@@ -844,54 +899,3 @@ hip_pitch = -0.3
 hip_roll = 0.0
 hip_yaw_pitch = 0.0138
 knee_pitch = 0.93
-
-# # ----------------------------------------------------
-#
-# # # extend_legs 2
-# # # NOTE: This is a "waiting" keyframe, same joint values as previous
-# # [[key_frames]]
-# # start_conditions = []
-# # abort_conditions = []
-# # angle_threshold = 0.15
-# # complete_conditions = []
-# # max_delay = 0.4
-# # min_delay = 0.1
-# # stiffness = 0.8
-# #
-# #
-# # [key_frames.angles.head]
-# # pitch = 0.3490658503988659
-# # yaw = 0.0
-# #
-# # [key_frames.angles.arms.left_arm]
-# # shoulder_pitch = 1.57
-# # shoulder_roll = 0.2
-# # elbow_yaw = -1.57
-# # elbow_roll = -0.008
-# # wrist_yaw = 0.0
-# # hand = 0.0
-# #
-# # [key_frames.angles.arms.right_arm]
-# # shoulder_pitch = 1.57
-# # shoulder_roll = -0.2
-# # elbow_yaw = 1.57
-# # elbow_roll = 0.008
-# # wrist_yaw = 0.0
-# # hand = 0.0
-# #
-# # [key_frames.angles.legs.left_leg]
-# # hip_yaw_pitch = 0.0138
-# # hip_roll = 0.0
-# # hip_pitch = -0.3
-# # knee_pitch = 0.93
-# # ankle_pitch = -0.6
-# # ankle_roll = 0.0
-# #
-# # [key_frames.angles.legs.right_leg]
-# # hip_yaw_pitch = 0.0138
-# # hip_roll = 0.0
-# # hip_pitch = -0.3
-# # knee_pitch = 0.93
-# # ankle_pitch = -0.6
-# # ankle_roll = 0.0
-# #
