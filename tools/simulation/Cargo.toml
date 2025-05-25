@@ -15,8 +15,12 @@ workspace = true
 bifrost = { workspace = true }
 yggdrasil = { workspace = true }
 
-eframe = "0.28.1"
-egui = "0.28.1"
-egui_extras = { version = "0.28.1", features = ["default", "image"] }
-env_logger = "0.11.5"
+bevy = { workspace = true }
+bevy_egui = { workspace = true }
 nalgebra = { workspace = true }
+
+ml = { workspace = true }
+tasks = { workspace = true }
+
+nidhogg = { workspace = true }
+serde = { workspace = true }

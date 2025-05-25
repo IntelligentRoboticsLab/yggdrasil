@@ -42,6 +42,7 @@ pub fn update_odometry(
     fall_state: Res<FallState>,
 ) {
     if !matches!(*fall_state, FallState::None) {
+        println!("We falllllinnn!");
         // Don't update odometry if the robot is falling, or getting up
         odometry.offset_to_last = Isometry2::default();
         return;

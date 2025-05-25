@@ -1,618 +1,570 @@
-// // .---------------------------------------------------------------------------.
-// // |                                                                           |
-// // |                                                                           |
-// // |        <----------------------------720--------------------------->         |
-// // |      .------------------------------------------------------------.       |
-// // |    ^ |                              |                             |       |
-// // |    | | <--G-->                      |                             |       |
-// // |    | |----------.                   |                  .----------|       |
-// // |    | |          | ^                 |                  |          |       |
-// // |    | |<E>       | |                 |                  |          |       |
-// // |    | |---.      | |                 |                  |      .---|       |
-// // |    2 |   | ^    | |               -----                |      |   |       |
-// // |    1 |   | |    | |              /  |  \               |      |   |       |
-// // |    5 |   | F 0  | H             |<--J-->|              |  0<--I-->|       |
-// // |    | |   | |    | |              \  |  /               |      |   |       |
-// // |    | |   | v    | |               -----                |      |   |       |
-// // |    | |---.      | |                 |                  |      .---|       |
-// // |    | |          | |                 |                  |          |       |
-// // |    | |          | v                 |                  |          |       |
-// // |    | |----------.                   |                  .----------|       |
-// // |    | |                              |                             |       |
-// // |    v |                              |                             |<--K-->|
-// // |      .------------------------------------------------------------.       |
-// // |                                                                 ^         |
-// // |                                                                 K         |
-// // |                                                                 v         |
-// // .---------------------------------------------------------------------------.
-// 2811x2000
-// 702.75 x 500
-// 10.4x7.4
-// 270x270
-
+use bevy::app::{AppLabel, MainSchedulePlugin};
+use bevy::ecs::event::EventRegistry;
+use bevy::state::app::StatesPlugin;
+use bevy::{prelude::*, render::camera::Viewport, window::PrimaryWindow};
+use bevy_egui::egui::{Direction, Layout, RichText, Ui};
+use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use bifrost::communication::{
     CompetitionPhase, CompetitionType, GameControllerMessage, GamePhase, GameState, Half, Penalty,
     RobotInfo, SetPlay, TeamColor, TeamInfo,
 };
-use egui::{emath::RectTransform, Pos2, Rect};
-use egui::{
-    Color32, Direction, Image, Layout, Painter, Response, RichText, Sense, Stroke, Ui, Vec2,
-};
-use nalgebra::{Isometry2, Point2, Vector2};
-use std::time::Duration;
-use yggdrasil::behavior::behaviors::ObserveBehaviorConfig;
-use yggdrasil::behavior::engine::{BehaviorKind, Context};
-use yggdrasil::behavior::primary_state::{next_primary_state, PrimaryStateConfig};
-use yggdrasil::behavior::BehaviorConfig;
-use yggdrasil::core::config::showtime::PlayerConfig;
-use yggdrasil::core::config::yggdrasil::YggdrasilConfig;
-use yggdrasil::core::debug::DebugContext;
-use yggdrasil::core::whistle::WhistleState;
-use yggdrasil::game_controller::GameControllerConfig;
-use yggdrasil::localization::{next_robot_pose, RobotPose};
-use yggdrasil::motion::odometry::{Odometry, OdometryConfig};
-use yggdrasil::motion::step_planner::StepPlanner;
-use yggdrasil::motion::walk::engine::WalkRequest;
+use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
+use tasks::TaskPlugin;
+use yggdrasil::behavior::behaviors::Stand;
+use yggdrasil::behavior::engine::CommandsBehaviorExt;
+use yggdrasil::behavior::primary_state::PrimaryState;
+use yggdrasil::core::audio::whistle_detection::Whistle;
+use yggdrasil::core::config::layout::LayoutConfig;
+use yggdrasil::core::config::layout::RobotPosition;
+use yggdrasil::core::config::showtime::{self, PlayerConfig};
+use yggdrasil::core::{config, control, debug};
+use yggdrasil::localization::RobotPose;
+use yggdrasil::motion::odometry::{self, Odometry};
+use yggdrasil::motion::walking_engine::step_context::StepContext;
 use yggdrasil::prelude::Config;
-use yggdrasil::sensor::orientation::OrientationFilterConfig;
-use yggdrasil::sensor::{ButtonConfig, FootBumperConfig, FsrConfig, SensorConfig};
-use yggdrasil::vision::camera::{CameraConfig, CameraSettings};
-use yggdrasil::vision::field_marks::FieldMarksConfig;
-use yggdrasil::vision::VisionConfig;
+
+use yggdrasil::sensor::orientation::update_orientation;
+use yggdrasil::vision::ball_detection::ball_tracker::BallTracker;
+use yggdrasil::vision::referee::communication::ReceivedRefereePose;
+use yggdrasil::vision::referee::recognize::RefereePoseRecognized;
 use yggdrasil::{
-    behavior::{engine::Control, primary_state::PrimaryState, BehaviorEngine},
-    core::config::layout::LayoutConfig,
-    motion::walk::engine::WalkingEngine,
+    behavior, game_controller, kinematics, localization, motion, nao, schedule, sensor,
 };
 
-#[derive(Default)]
-struct OccupiedScreenSpace {
-    right: f32,
-    bottom: f32,
+use bevy::ecs::schedule::ScheduleLabel;
+
+// Constants for field dimensions
+const FIELD_WIDTH_METERS: f32 = 10.4;
+const FIELD_HEIGHT_METERS: f32 = 7.4;
+// Remove fixed visual dimensions since we'll calculate them dynamically
+const PIXELS_PER_METER: f32 = 100.0; // Base scale factor, will be adjusted dynamically
+                                     // Robot size in meters
+const ROBOT_SIZE_METERS: f32 = 0.5; // 50cm x 50cm robot
+
+// Scale factors to convert between meters and pixels - will be updated dynamically
+#[derive(Resource)]
+struct FieldScale {
+    pixels_per_meter: f32,
 }
 
-fn main() -> eframe::Result<()> {
-    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_fullscreen(true),
-        ..Default::default()
-    };
-    eframe::run_native(
-        "Behavior Simulation",
-        options,
-        Box::new(|cc| {
-            // Provide image support:
-            egui_extras::install_image_loaders(&cc.egui_ctx);
+#[derive(Component)]
+struct PlayerNumber;
 
-            Ok(Box::<Simulation>::default())
-        }),
-    )
-}
-
-const NUMBER_OF_PLAYERS: usize = 5;
-const FRAMES_PER_SECOND: u64 = 120;
-
-struct Simulation {
-    occupied_screen_space: OccupiedScreenSpace,
-    gamecontrollermessage: GameControllerMessage,
-    penalties: [bool; NUMBER_OF_PLAYERS],
-    game_state: GameState,
-    robots: Vec<Robot>,
-    layout_config: LayoutConfig,
-    global_ball: Option<Point2<f32>>,
+#[derive(Resource)]
+pub struct Simulation {
+    state: GameState,
 }
 
 impl Default for Simulation {
     fn default() -> Self {
-        let layout_config = LayoutConfig::load("../../deploy/config/").unwrap();
-
-        let gamecontrollermessage = GameControllerMessage {
-            competition_phase: CompetitionPhase::PlayOff,
-
-            competition_type: CompetitionType::Normal,
-
-            game_phase: GamePhase::Normal,
-
-            state: GameState::Initial,
-
-            set_play: SetPlay::None,
-
-            first_half: Half::First,
-
-            teams: [TeamInfo {
-                field_player_colour: TeamColor::Blue,
-                goalkeeper_colour: TeamColor::Blue,
-                players: [RobotInfo {
-                    penalty: Penalty::None,
-                    secs_till_unpenalised: 0,
-                }; 20],
-                team_number: 8,
-                goalkeeper: Default::default(),
-                score: Default::default(),
-                penalty_shot: Default::default(),
-                single_shots: Default::default(),
-                message_budget: Default::default(),
-            }; 2],
-            header: Default::default(),
-            version: Default::default(),
-            packet_number: Default::default(),
-            players_per_team: Default::default(),
-            kicking_team: Default::default(),
-            secs_remaining: Default::default(),
-            secondary_time: Default::default(),
-        };
-
-        let robots = (0..NUMBER_OF_PLAYERS)
-            .map(|i| {
-                Robot::new(
-                    PlayerConfig {
-                        player_number: (i + 1) as u8,
-                        team_number: 8,
-                    },
-                    layout_config
-                        .initial_positions
-                        .player((i + 1) as u8)
-                        .isometry,
-                )
-            })
-            .collect();
-
         Self {
-            occupied_screen_space: OccupiedScreenSpace::default(),
-            gamecontrollermessage,
-            penalties: [false; NUMBER_OF_PLAYERS],
-            game_state: GameState::Initial,
-            robots,
-            layout_config,
-            global_ball: Some(Point2::new(0.0, 0.0)),
+            state: GameState::Initial,
         }
     }
 }
 
-impl Simulation {
-    fn absolute_to_simulation(image_response: &Response, point: Point2<f32>) -> Pos2 {
-        let to_screen = RectTransform::from_to(
-            Rect::from_min_size(Pos2::ZERO, image_response.rect.size()),
-            image_response.rect,
+fn main() {
+    let mut app = App::new();
+
+    app.insert_resource(ClearColor(Color::srgb(0.25, 0.25, 0.25)))
+        .insert_resource(FieldScale {
+            pixels_per_meter: PIXELS_PER_METER,
+        })
+        .init_resource::<Simulation>()
+        .add_plugins((DefaultPlugins, EguiPlugin, MeshPickingPlugin))
+        .add_systems(Startup, setup_system)
+        .add_systems(
+            Update,
+            (
+                ui_main,
+                update_robot_positions,
+                update_field_scale,
+                update_position_markers,
+            ),
         );
 
-        let field_scaler = image_response.rect.size().y / 7.4;
-        let field_center = image_response.rect.size().to_pos2() / 2.0;
+    app.insert_sub_app(Robot1, create_full_robot(1));
+    app.insert_sub_app(Robot2, create_full_robot(2));
+    app.insert_sub_app(Robot3, create_full_robot(3));
+    app.insert_sub_app(Robot4, create_full_robot(4));
+    app.insert_sub_app(Robot5, create_full_robot(5));
 
-        let pos =
-            to_screen.transform_pos(field_center + field_scaler * Vec2::new(point.x, -point.y));
-        Pos2::new(pos.x, pos.y)
-    }
+    app.run();
+}
 
-    fn simulation_to_absolute(image_response: &Response, pos: Pos2) -> Point2<f32> {
-        let from_screen = RectTransform::from_to(
-            Rect::from_min_size(Pos2::ZERO, image_response.rect.size()),
-            image_response.rect,
+macro_rules! define_robot_labels {
+    ($($name:ident),*) => {
+        $(
+            #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, AppLabel)]
+            struct $name;
+        )*
+    };
+}
+
+define_robot_labels!(Robot1, Robot2, Robot3, Robot4, Robot5);
+
+#[derive(Resource)]
+struct PlayNum(u8);
+
+fn create_full_robot(player_number: u8) -> SubApp {
+    let mut sub_app = SubApp::new();
+
+    sub_app.init_resource::<AppTypeRegistry>();
+    sub_app.init_resource::<EventRegistry>();
+    sub_app.insert_resource(PlayNum(player_number));
+
+    sub_app
+        .add_plugins((MinimalPlugins, MainSchedulePlugin, StatesPlugin))
+        .add_plugins((
+            schedule::NaoSchedulePlugin,
+            game_controller::GameControllerPlugin,
+            nao::SimulationNaoPlugins,
+            TaskPlugin,
+            ml::MlPlugin,
+            config::ConfigPlugin,
+            debug::DebugPlugin,
+            control::ControlPlugin,
+            localization::LocalizationPlugin,
+            sensor::SensorPlugins,
+            behavior::BehaviorPlugins,
+            //TODO: Implement communication::CommunicationPlugins,
+            kinematics::KinematicsPlugin,
+            motion::MotionPlugins,
+            // Removed vision::VisionPlugins,
+        ))
+        .insert_resource(BallTracker::default())
+        .insert_resource(Whistle::default())
+        .insert_resource(initial_gamecontroller())
+        .add_event::<RefereePoseRecognized>()
+        .add_event::<ReceivedRefereePose>()
+        .add_systems(PostStartup, (setup_robot, update_orientation))
+        .add_systems(
+            PreUpdate,
+            (update_simulated_odometry
+                .after(odometry::update_odometry)
+                .before(localization::update_robot_pose),),
         )
-        .inverse();
+        .add_systems(
+            PreStartup,
+            set_player_number.after(showtime::configure_showtime),
+        );
 
-        let field_scaler = image_response.rect.size().y / 7.4;
-        let field_center = image_response.rect.size().to_pos2() / 2.0;
-
-        let pos = (from_screen.transform_pos(pos) - field_center) / field_scaler;
-
-        Point2::new(pos.x, -pos.y)
+    fn setup_robot(mut commands: Commands) {
+        commands.insert_resource(PrimaryState::Initial);
+        commands.set_behavior(Stand);
     }
 
-    fn check_ball_collisions(&mut self) {
-        let ball = self.global_ball.unwrap();
+    fn set_player_number(mut commands: Commands, play_num: Res<PlayNum>) {
+        commands.insert_resource(PlayerConfig {
+            player_number: play_num.0,
+            team_number: 8,
+        });
+    }
 
-        for robot in self.robots.iter() {
-            let robot_pos = robot.pose.world_position();
-            let robot_radius = 0.1; // Robot radius
-            let ball_radius = 0.05; // Ball radius
+    fn update_simulated_odometry(mut commands: Commands, step_context: Res<StepContext>) {
+        let step = step_context.requested_step;
 
-            let distance = (robot_pos - ball).norm();
-            if distance < robot_radius + ball_radius {
-                // Move the ball to the edge of the robot
-                let direction = (ball - robot_pos).normalize();
-                let new_ball_pos = robot_pos + direction * (robot_radius + ball_radius);
-                self.global_ball = Some(new_ball_pos);
+        let translation = Vector2::new(step.forward, step.left);
+        let rotation = UnitComplex::from_angle(step.turn / 30.0);
+
+        let mut new_odom = Odometry::new();
+        new_odom.offset_to_last =
+            Isometry2::from_parts(Translation2::from(translation * 0.2), rotation);
+        commands.insert_resource(new_odom);
+    }
+
+    sub_app.set_extract(|main_world, sub_world| {
+        let simulation = main_world.resource_mut::<Simulation>();
+        sub_world.resource_mut::<GameControllerMessage>().state = simulation.state;
+
+        let robot_pose = sub_world.resource::<RobotPose>();
+
+        let player_config = sub_world.resource::<PlayerConfig>();
+
+        for mut robot in main_world.query::<&mut Robot>().iter_mut(main_world) {
+            if robot.player_number == player_config.player_number {
+                robot.position = robot_pose.inner.translation.vector.into();
+                robot.rotation = robot_pose.inner.rotation.angle();
             }
         }
-    }
+    });
 
-    fn draw_ball(&self, painter: &Painter, image_response: &Response) {
-        if let Some(ball) = self.global_ball {
-            painter.circle_filled(
-                Simulation::absolute_to_simulation(image_response, ball),
-                12.0f32,
-                Color32::BLUE,
-            );
-        }
-    }
+    sub_app.update_schedule = Some(Main.intern());
+    sub_app.run_default_schedule();
 
-    fn update_global_ball(&mut self, response: &Response) {
-        if let Some(pointer_pos) = response.interact_pointer_pos() {
-            self.global_ball = Some(Simulation::simulation_to_absolute(response, pointer_pos));
-        }
-        self.check_ball_collisions();
-    }
+    sub_app
+}
 
-    fn ui_panel_top(&mut self, ui: &mut Ui) {
-        let layout = Layout {
-            main_dir: Direction::LeftToRight,
-            main_wrap: false,
-            cross_justify: false,
-            ..Default::default()
-        };
-        ui.with_layout(layout, |ui| {
-            let mut button_size = ui.available_size();
-            button_size.x /= 5.0;
-
-            let layout = Layout::centered_and_justified(Direction::TopDown);
-            let game_states = [
-                GameState::Initial,
-                GameState::Ready,
-                GameState::Set,
-                GameState::Playing,
-                GameState::Finished,
-            ];
-            for state in &game_states {
-                ui.allocate_ui_with_layout(button_size, layout, |ui| {
-                    ui.selectable_value(
-                        &mut self.game_state,
-                        *state,
-                        RichText::new(format!("{:?}", state))
-                            .size(40.0)
-                            .text_style(egui::TextStyle::Heading),
-                    );
-                });
-            }
-        });
-    }
-
-    fn ui_panel_right(&mut self, ui: &mut Ui) {
-        ui.label(RichText::new("Penalties").heading());
-        ui.columns(NUMBER_OF_PLAYERS, |columns| {
-            for (i, column) in columns.iter_mut().enumerate() {
-                column.label(RichText::new(format!("{:?}", i + 1)));
-                column.checkbox(&mut self.penalties[i], "");
-            }
-        });
-    }
-
-    fn ui_panel_bottom(&mut self, ui: &mut Ui) {
-        ui.columns(NUMBER_OF_PLAYERS, |columns| {
-            self.robots.iter().enumerate().for_each(|(i, robot)| {
-                columns[i].label(
-                    RichText::new(format!("Robot {:?}", robot.player_config.player_number))
-                        .strong(),
-                );
-                columns[i].label(format!("{:?}", robot.primary_state));
-                columns[i].label(format!("{:?}", robot.engine.behavior));
-                columns[i].label(format!("{:?}", robot.engine.role));
-            });
-        });
-    }
-
-    fn update_panel_top(&mut self, ctx: &egui::Context) {
-        egui::TopBottomPanel::top("top_panel")
-            .resizable(true)
-            .min_height(100.0)
-            .show(ctx, |ui| {
-                self.ui_panel_top(ui);
-            });
-    }
-
-    fn update_panel_right(&mut self, ctx: &egui::Context) {
-        self.occupied_screen_space.right = egui::SidePanel::right("right_panel")
-            .resizable(true)
-            .min_width(500.0)
-            .show(ctx, |ui| {
-                self.ui_panel_right(ui);
-            })
-            .response
-            .rect
-            .width();
-    }
-
-    fn update_panel_bottom(&mut self, ctx: &egui::Context) {
-        self.occupied_screen_space.bottom = egui::TopBottomPanel::bottom("bottom_panel")
-            .resizable(true)
-            .min_height(250.0)
-            .show(ctx, |ui| {
-                self.ui_panel_bottom(ui);
-            })
-            .response
-            .rect
-            .height();
-    }
-
-    fn update_panel_center(&mut self, ctx: &egui::Context) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let img_source = egui::include_image!("./assets/field_simple.png");
-
-            let image_response = ui.add(
-                Image::new(img_source)
-                    .sense(Sense::click_and_drag())
-                    .maintain_aspect_ratio(true)
-                    .max_width(ui.available_width() - self.occupied_screen_space.right)
-                    .max_height(ui.available_height() - self.occupied_screen_space.bottom)
-                    .rounding(10.0),
-            );
-
-            let painter = ui.painter_at(image_response.rect);
-
-            self.gamecontrollermessage.state = self.game_state;
-
-            for (i, penalty) in self.penalties.iter().enumerate() {
-                if *penalty {
-                    self.gamecontrollermessage.teams[0].players[i].penalty = Penalty::Manual;
-                } else {
-                    self.gamecontrollermessage.teams[0].players[i].penalty = Penalty::None;
-                }
-            }
-
-            for robot in self.robots.iter_mut() {
-                robot.update(
-                    &self.gamecontrollermessage,
-                    &self.global_ball,
-                    &self.layout_config,
-                );
-                robot.draw(ui, &painter, &image_response, &self.global_ball);
-            }
-            self.update_global_ball(&image_response);
-            self.draw_ball(&painter, &image_response);
-        });
+fn initial_gamecontroller() -> GameControllerMessage {
+    GameControllerMessage {
+        header: Default::default(),
+        version: Default::default(),
+        packet_number: Default::default(),
+        players_per_team: Default::default(),
+        competition_phase: CompetitionPhase::RoundRobin,
+        competition_type: CompetitionType::Normal,
+        game_phase: GamePhase::Normal,
+        state: GameState::Initial,
+        set_play: SetPlay::None,
+        first_half: Half::First,
+        kicking_team: Default::default(),
+        secs_remaining: Default::default(),
+        secondary_time: Default::default(),
+        teams: [TeamInfo {
+            team_number: 8,
+            field_player_colour: TeamColor::Red,
+            goalkeeper_colour: TeamColor::Black,
+            goalkeeper: 1,
+            score: 0,
+            penalty_shot: 0,
+            single_shots: 0,
+            message_budget: 1200,
+            players: [RobotInfo {
+                penalty: Penalty::None,
+                secs_till_unpenalised: 0,
+            }; 20],
+        }; 2],
     }
 }
 
-impl eframe::App for Simulation {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ctx.request_repaint_after(Duration::from_millis(1000 / FRAMES_PER_SECOND));
-        self.update_panel_top(ctx);
-        self.update_panel_center(ctx);
-        self.update_panel_right(ctx);
-        self.update_panel_bottom(ctx);
-    }
-}
+#[derive(Component)]
+struct Field;
 
+#[derive(Component)]
+struct PositionCircle;
+
+// Real-world robot position in meters
+#[derive(Component)]
 struct Robot {
-    player_config: PlayerConfig,
-    primary_state: PrimaryState,
-    pose: RobotPose,
-    engine: BehaviorEngine,
-    walking_engine: WalkingEngine,
-    step_planner: StepPlanner,
-    sees_ball: bool,
+    player_number: u8,
+    // Position in meters from field center
+    position: Vec2,
+    // Rotation in radians
+    rotation: f32,
 }
 
 impl Robot {
-    fn new(player_config: PlayerConfig, isometry: Isometry2<f32>) -> Self {
+    fn new(player_number: u8, x_meters: f32, y_meters: f32, rotation_degrees: f32) -> Self {
         Self {
-            walking_engine: WalkingEngine::default(),
-            step_planner: StepPlanner::default(),
-            engine: BehaviorEngine::default(),
-            primary_state: PrimaryState::Initial,
-            pose: RobotPose { inner: isometry },
-            sees_ball: false,
-            player_config,
+            player_number,
+            position: Vec2::new(x_meters, y_meters),
+            rotation: rotation_degrees.to_radians(),
         }
     }
 
-    fn update(
-        &mut self,
-        gamecontrollermessage: &GameControllerMessage,
-        ball: &Option<Point2<f32>>,
-        layout_config: &LayoutConfig,
-    ) {
-        self.primary_state = next_primary_state(
-            &self.primary_state,
-            &Some(gamecontrollermessage.clone()),
-            &Default::default(),
-            &Default::default(),
-            &self.player_config,
-            // &WhistleState::default(),
-        );
-        let mut control = Control {
-            nao_manager: &mut Default::default(),
-            keyframe_executor: &mut Default::default(),
-            step_planner: &mut self.step_planner,
-            walking_engine: &mut self.walking_engine,
-            debug_context: &mut DebugContext::init("kaas", std::net::IpAddr::from([0, 0, 0, 0]))
-                .unwrap(),
-        };
-        let (yggdrasil_config, behavior_config, game_controller_config) = create_default_configs();
-        let context = Context {
-            robot_info: &Default::default(),
-            head_buttons: &Default::default(),
-            chest_button: &Default::default(),
-            contacts: &Default::default(),
-            behavior_config: &behavior_config,
-            // game_controller_config: &game_controller_config,
-            yggdrasil_config: &yggdrasil_config,
+    fn to_screen_position(&self, field_scale: &FieldScale) -> Vec3 {
+        Vec3::new(
+            self.position.x * field_scale.pixels_per_meter,
+            self.position.y * field_scale.pixels_per_meter,
+            1.0,
+        )
+    }
+}
 
-            fall_state: &Default::default(),
-            primary_state: &self.primary_state,
-            player_config: &self.player_config,
-            layout_config,
-            game_controller_message: Some(gamecontrollermessage),
-            pose: &self.pose,
-            current_behavior: BehaviorKind::Stand(Default::default()),
-            ball_position: if self.sees_ball { ball } else { &None },
-        };
-
-        self.engine.step(context, &mut control);
-
-        self.update_ball(ball);
-        self.walk(0.1, layout_config, gamecontrollermessage);
+// System to update visual positions based on Robot components
+fn update_robot_positions(
+    field_scale: Res<FieldScale>,
+    mut query: Query<(&Robot, &mut Transform)>,
+    mut sprite_query: Query<&mut Sprite, With<Robot>>,
+) {
+    // Update positions
+    for (robot, mut transform) in query.iter_mut() {
+        transform.translation = robot.to_screen_position(&field_scale);
+        transform.rotation = Quat::from_rotation_z(robot.rotation);
     }
 
-    fn walk(
-        &mut self,
-        walk_scalar: f32,
-        layout_config: &LayoutConfig,
-        gamecontrollermessage: &GameControllerMessage,
-    ) {
-        let step = match self.walking_engine.request {
-            WalkRequest::Walk(step) => Some(step),
-            _ => None,
-        };
-        let mut odometry = Odometry::default();
-        odometry.offset_to_last = if let Some(step) = step {
-            Isometry2::new(
-                Vector2::new(step.forward, step.left) * walk_scalar,
-                step.turn / FRAMES_PER_SECOND as f32,
-            )
-        } else {
-            Isometry2::identity()
-        };
-
-        self.pose = next_robot_pose(
-            &self.pose,
-            &odometry,
-            &self.primary_state,
-            layout_config,
-            &Some(gamecontrollermessage.clone()),
-        );
+    // Update sprite sizes
+    for mut sprite in sprite_query.iter_mut() {
+        sprite.custom_size = Some(Vec2::splat(
+            ROBOT_SIZE_METERS * field_scale.pixels_per_meter,
+        ));
     }
+}
 
-    fn update_ball(&mut self, ball: &Option<Point2<f32>>) {
-        let Some(ball) = ball else {
-            self.sees_ball = false;
-            return;
-        };
+fn ui_main(
+    mut contexts: EguiContexts,
+    mut camera: Single<&mut Camera>,
+    mut simulation: ResMut<Simulation>,
+    window: Single<&mut Window, With<PrimaryWindow>>,
+) {
+    let ctx = contexts.ctx_mut();
 
-        let relative_ball = self.pose.world_to_robot(ball);
-        let angle = self.pose.angle_to(&ball);
+    let top_height = egui::TopBottomPanel::top("top_panel")
+        .resizable(true)
+        .min_height(100.0)
+        .show(ctx, |ui| {
+            ui_panel_top(&mut simulation, ui);
+        })
+        .response
+        .rect
+        .height();
 
-        self.sees_ball = relative_ball.coords.norm() < 3.0 && angle.abs() < 45.0f32.to_radians();
-    }
+    // Set initial size to 25% of window width, max 50%
+    let right = egui::SidePanel::right("right_panel")
+        .default_width(window.width() * 0.25)
+        .max_width(window.width() * 0.5)
+        .resizable(true)
+        .show(ctx, |ui| {
+            ui.label("Right resizeable panel");
+            ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
+        })
+        .response
+        .rect
+        .width();
 
-    fn draw(
-        &self,
-        ui: &mut Ui,
-        painter: &Painter,
-        image_response: &Response,
-        ball: &Option<Point2<f32>>,
-    ) {
-        let robot_rotation = self.pose.inner.rotation.inverse().angle();
+    // Set initial size to 25% of window height, max 33%
+    let bottom = egui::TopBottomPanel::bottom("bottom_panel")
+        .default_height(window.height() * 0.25)
+        .max_height(window.height() * 0.33)
+        .resizable(true)
+        .show(ctx, |ui| {
+            ui.label("Bottom resizeable panel");
+            ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
+        })
+        .response
+        .rect
+        .height();
 
-        let robot_pos_screen =
-            Simulation::absolute_to_simulation(image_response, self.pose.world_position());
+    // Scale from logical units to physical units
+    let right_scaled = right * window.scale_factor();
+    let bottom_scaled = bottom * window.scale_factor();
+    let top_scaled = top_height * window.scale_factor();
 
-        painter.circle_filled(robot_pos_screen, 13.0f32, Color32::RED);
-        painter.text(
-            robot_pos_screen,
-            egui::Align2::CENTER_CENTER,
-            format!("{}", self.player_config.player_number),
-            egui::FontId {
-                size: 20.0,
-                family: egui::FontFamily::Proportional,
-            },
-            Color32::BLACK,
+    let pos = UVec2::new(0, top_scaled as u32);
+    let size = UVec2::new(window.physical_width(), window.physical_height())
+        - UVec2::new(
+            right_scaled as u32,
+            bottom_scaled as u32 + top_scaled as u32,
         );
 
-        ui.put(
-            Rect::from_center_size(robot_pos_screen, Vec2::splat(40.0)),
-            Image::new(egui::include_image!("./assets/nao.png"))
-                .max_width(40.0)
-                .rotate(robot_rotation, Vec2::splat(0.5)),
-        );
+    camera.viewport = Some(Viewport {
+        physical_position: pos,
+        physical_size: size,
+        ..default()
+    });
+}
 
-        let Some(ball) = ball else {
-            return;
-        };
-        if self.sees_ball {
-            painter.line_segment(
-                [
-                    robot_pos_screen,
-                    Simulation::absolute_to_simulation(image_response, *ball),
-                ],
-                Stroke::new(2.0, Color32::GREEN),
-            );
+fn ui_panel_top(simulation: &mut Simulation, ui: &mut Ui) {
+    let layout = Layout {
+        main_dir: Direction::LeftToRight,
+        main_wrap: false,
+        cross_justify: false,
+        ..Default::default()
+    };
+    ui.with_layout(layout, |ui| {
+        let mut button_size = ui.available_size();
+        button_size.x /= 5.0;
+
+        let layout = Layout::centered_and_justified(Direction::TopDown);
+        let game_states = [
+            GameState::Initial,
+            GameState::Ready,
+            GameState::Set,
+            GameState::Playing,
+            GameState::Finished,
+        ];
+        for state in &game_states {
+            ui.allocate_ui_with_layout(button_size, layout, |ui| {
+                ui.selectable_value(
+                    &mut simulation.state,
+                    *state,
+                    RichText::new(format!("{:?}", state))
+                        .size(40.0)
+                        .text_style(egui::TextStyle::Heading),
+                );
+            });
+        }
+    });
+}
+
+fn update_field_scale(
+    window: Query<&Window, With<PrimaryWindow>>,
+    mut field_scale: ResMut<FieldScale>,
+    mut field_query: Query<&mut Sprite, With<Field>>,
+    camera: Query<&Camera>,
+) {
+    let window = window.single();
+    let camera = camera.single();
+
+    if let Some(viewport) = &camera.viewport {
+        let available_width = viewport.physical_size.x as f32 / window.scale_factor();
+        let available_height = viewport.physical_size.y as f32 / window.scale_factor();
+
+        // Calculate scale factors to fit width and height
+        let scale_x = available_width / FIELD_WIDTH_METERS;
+        let scale_y = available_height / FIELD_HEIGHT_METERS;
+
+        // Use the smaller scale to maintain aspect ratio
+        let new_scale = scale_x.min(scale_y);
+        field_scale.pixels_per_meter = new_scale;
+
+        // Update field sprite size
+        if let Ok(mut sprite) = field_query.get_single_mut() {
+            sprite.custom_size = Some(Vec2::new(
+                FIELD_WIDTH_METERS * new_scale,
+                FIELD_HEIGHT_METERS * new_scale,
+            ));
         }
     }
 }
 
-fn create_default_configs() -> (YggdrasilConfig, BehaviorConfig, GameControllerConfig) {
-    (
-        YggdrasilConfig {
-            // camera: CameraConfig {
-            //     top: CameraSettings {
-            //         path: Default::default(),
-            //         width: 0,
-            //         height: 0,
-            //         calibration: Default::default(),
-            //         exposure_auto: Default::default(),
-            //         flip_horizontally: Default::default(),
-            //         flip_vertically: Default::default(),
-            //         focus_auto: Default::default(),
-            //         num_buffers: 0,
-            //     },
-            //     bottom: CameraSettings {
-            //         path: Default::default(),
-            //         width: 0,
-            //         height: 0,
-            //         calibration: Default::default(),
-            //         exposure_auto: Default::default(),
-            //         flip_horizontally: Default::default(),
-            //         flip_vertically: Default::default(),
-            //         focus_auto: Default::default(),
-            //         num_buffers: 0,
-            //     },
-            // },
-            filter: SensorConfig {
-                button: ButtonConfig {
-                    activation_threshold: 0.0,
-                    held_duration_threshold: Default::default(),
-                },
-                fsr: FsrConfig {
-                    ground_contact_threshold: 0.0,
-                },
-                foot_bumpers: FootBumperConfig {
-                    min_detection_count: 0,
-                    max_inactivity_time: Default::default(),
-                    malfunction_count: 0,
-                    obstacle_angle: 0.0,
-                    obstacle_distance: 0.0,
-                    obstacle_radius: 0.0,
-                    merge_distance: 0.0,
-                    ttl: Default::default(),
-                },
+// Add new system to update position markers
+fn update_position_markers(
+    field_scale: Res<FieldScale>,
+    mut circle_query: Query<&mut Transform, (With<PositionCircle>, Without<PlayerNumber>)>,
+    mut text_query: Query<(&mut Transform, &Parent), (With<PlayerNumber>, Without<PositionCircle>)>,
+    robot_transforms: Query<
+        &Transform,
+        (With<Robot>, Without<PositionCircle>, Without<PlayerNumber>),
+    >,
+) {
+    // Update circle transforms (they will inherit position from parent)
+    let circle_scale = ROBOT_SIZE_METERS * 0.30 * field_scale.pixels_per_meter;
+    for mut transform in circle_query.iter_mut() {
+        transform.scale = Vec3::splat(circle_scale);
+    }
+
+    // Update text transforms - counter-rotate against parent
+    for (mut transform, parent) in text_query.iter_mut() {
+        // Get the parent's rotation and apply the inverse to keep text upright
+        if let Ok(parent_transform) = robot_transforms.get(parent.get()) {
+            transform.rotation = parent_transform.rotation.inverse();
+        }
+    }
+}
+
+#[allow(dead_code)]
+fn on_robot_drag(
+    drag: Trigger<Pointer<Drag>>,
+    mut robots: Query<(&mut Robot, &mut Transform)>,
+    field_scale: Res<FieldScale>,
+) {
+    // First try direct access (in case the Robot component is on the dragged entity)
+    if let Ok((mut robot, mut transform)) = robots.get_mut(drag.entity()) {
+        let world_delta = Vec2::new(
+            drag.delta.x / field_scale.pixels_per_meter,
+            -drag.delta.y / field_scale.pixels_per_meter,
+        );
+        robot.position += world_delta;
+        transform.translation = robot.to_screen_position(&field_scale);
+    }
+}
+
+fn draw_robot(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+    config: &RobotPosition,
+    robot_texture: &Handle<Image>,
+    text_font: &TextFont,
+    text_justification: JustifyText,
+    field_scale: &FieldScale,
+) {
+    let color = Color::srgba(0.2, 1.0, 0.2, 0.5);
+
+    // Create the robot with proper initial position
+    let robot = Robot::new(
+        config.player_number as u8,
+        config.isometry.translation.vector.x,
+        config.isometry.translation.vector.y,
+        config.isometry.rotation.angle().to_degrees(),
+    );
+
+    // Calculate initial screen position
+    let screen_pos = robot.to_screen_position(field_scale);
+
+    // Create robot entity with correct initial transform
+    let robot_entity = commands
+        .spawn((
+            Transform::from_translation(screen_pos),
+            robot,
+            Visibility::default(),
+            InheritedVisibility::default(),
+            Sprite {
+                image: robot_texture.clone(),
+                custom_size: Some(Vec2::splat(
+                    ROBOT_SIZE_METERS * field_scale.pixels_per_meter,
+                )),
+                ..default()
             },
-            game_controller: GameControllerConfig {
-                game_controller_return_delay: Default::default(),
-                game_controller_timeout: Default::default(),
-            },
-            odometry: OdometryConfig {
-                scale_factor: Default::default(),
-            },
-            orientation: OrientationFilterConfig {
-                acceleration_threshold: 0.0,
-                acceleration_weight: 0.0,
-                fsr_threshold: 0.0,
-                gyro_threshold: 0.0,
-            },
-            primary_state: PrimaryStateConfig {
-                chest_blink_interval: Default::default(),
-            },
-            // vision: VisionConfig {
-            //     field_marks: FieldMarksConfig {
-            //         angle_tolerance: 0.0,
-            //         confidence_threshold: 0.0,
-            //         distance_threshold: 0.0,
-            //         patch_scale: 0.0,
-            //         time_budget: 0,
-            //     },
-            // },
+        ))
+        .id();
+
+    // Spawn the draggable circle
+    commands
+        .spawn((
+            Mesh2d(meshes.add(Circle::new(1.0))),
+            MeshMaterial2d(materials.add(ColorMaterial::from_color(color))),
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            PositionCircle,
+        ))
+        // .observe(|over: Trigger<Pointer<Over>>| {
+        //     println!("Over event triggered for circle: {}", over.entity());
+        // })
+        .set_parent(robot_entity);
+
+    commands
+        .spawn((
+            Text2d::new(config.player_number.to_string()),
+            text_font.clone(),
+            TextLayout::new_with_justify(text_justification),
+            Transform::from_xyz(0.0, 0.0, 0.2),
+            TextColor(Color::srgb(0.2, 0.2, 0.2)),
+            PlayerNumber,
+        ))
+        .set_parent(robot_entity);
+
+    // Add drag observer directly to the robot entity
+    // commands.entity(robot_entity).observe(on_robot_drag);
+}
+
+fn setup_system(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    field_scale: Res<FieldScale>,
+) {
+    let field_texture = asset_server.load("field_simple.png");
+    let robot_texture = asset_server.load("nao.png");
+    let font = asset_server.load("fonts/FiraSans-Bold.ttf");
+    let layout_config = LayoutConfig::load("config/").expect("Failed to load layout config");
+
+    let text_font = TextFont {
+        font: font.clone(),
+        font_size: 20.0,
+        ..default()
+    };
+    let text_justification = JustifyText::Center;
+
+    // Spawn the field
+    commands.spawn((
+        Sprite {
+            image: field_texture.clone(),
+            custom_size: Some(Vec2::new(
+                FIELD_WIDTH_METERS * PIXELS_PER_METER,
+                FIELD_HEIGHT_METERS * PIXELS_PER_METER,
+            )),
+            ..default()
         },
-        BehaviorConfig {
-            observe: ObserveBehaviorConfig {
-                head_pitch_max: 0.0,
-                head_rotation_speed: 0.0,
-                head_yaw_max: 0.0,
-            },
-        },
-        GameControllerConfig {
-            game_controller_timeout: Default::default(),
-            game_controller_return_delay: Default::default(),
-        },
-    )
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        Field,
+    ));
+
+    // Spawn all robots in a single loop
+    for i in 1..=layout_config.initial_positions.len() {
+        // Draw initial position robot
+        draw_robot(
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            &layout_config.initial_positions.player(i as u8),
+            &robot_texture,
+            &text_font,
+            text_justification,
+            &field_scale, // Pass field_scale here
+        );
+    }
+
+    commands.spawn(Camera2d);
 }

@@ -7,6 +7,7 @@ mod cycle;
 mod lola;
 mod manager;
 mod robot_info;
+mod sim_lola;
 
 pub use center_of_mass::*;
 pub use center_of_pressure::*;
@@ -21,6 +22,20 @@ impl PluginGroup for NaoPlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(lola::LolaPlugin)
+            .add(cycle::CycleTimePlugin)
+            .add(battery_led::BatteryLedPlugin)
+            .add(manager::NaoManagerPlugin)
+            .add(center_of_mass::CenterOfMassPlugin)
+            .add(center_of_pressure::CenterOfPressurePlugin)
+    }
+}
+
+pub struct SimulationNaoPlugins;
+
+impl PluginGroup for SimulationNaoPlugins {
+    fn build(self) -> PluginGroupBuilder {
+        PluginGroupBuilder::start::<Self>()
+            .add(sim_lola::SimLolaPlugin)
             .add(cycle::CycleTimePlugin)
             .add(battery_led::BatteryLedPlugin)
             .add(manager::NaoManagerPlugin)

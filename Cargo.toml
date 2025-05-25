@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*", "tools/sindri", "tools/yggdrasil_rerun", "yggdrasil"]
+members = ["crates/*", "tools/*", "yggdrasil"]
 resolver = "2"
 
 [workspace.package]
@@ -65,7 +65,23 @@ apodize = "1.0.0"
 async-std = "1.13.1"
 bevy = { version = "0.16.0", default-features = false, features = [
   "bevy_state",
+      "bevy_asset",
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    "bevy_mesh_picking_backend",
+    "bevy_sprite",
+    "bevy_window",
+    "bevy_winit",
+    "bevy_text",
+    "bevy_picking",
+    "android-game-activity",
+    "png",
+    "tonemapping_luts",
+    "webgl2",
+    "x11",
+    "wayland",
 ] }
+bevy_egui = { version = "0.33.0"}
 byteorder = "1.5.0"
 cargo_toml = "0.22.1"
 chrono = "0.4.40"
@@ -122,7 +138,9 @@ serde_json = "1.0.140"
 serde_with = "3.14.0"
 socket2 = "0.5.9"
 strum = { version = "0.27", features = ["derive"] }
-syn = "2.0.100"
+
+CONFLICT (content): Merge conflict in Cargo.toml
+Auto-merging yggdrasil/Cargo.toml0"
 thiserror = "2.0.12"
 tokio = "1.46.1"
 toml = "0.8.19"

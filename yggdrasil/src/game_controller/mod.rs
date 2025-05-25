@@ -114,8 +114,28 @@ struct GameControllerSocket {
 
 impl GameControllerSocket {
     async fn bind() -> io::Result<Self> {
-        let socket =
-            Arc::new(UdpSocket::bind((Ipv4Addr::UNSPECIFIED, GAME_CONTROLLER_DATA_PORT)).await?);
+        // use std::os::linux::net::UnixSocketExt;
+        use std::os::unix::io::AsRawFd;
+
+        let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0)).await?;
+
+        // Get the underlying fd and set SO_REUSEADDR option
+        let fd = socket.as_raw_fd();
+        unsafe {
+            let val: libc::c_int = 1;
+            libc::setsockopt(
+                fd,
+                libc::SOL_SOCKET,
+                libc::SO_REUSEADDR,
+                &val as *const _ as *const libc::c_void,
+                std::mem::size_of_val(&val) as libc::socklen_t,
+            );
+        }
+
+        // Now bind to desired port
+        async_std::net::UdpSocket::bind((Ipv4Addr::UNSPECIFIED, GAME_CONTROLLER_DATA_PORT)).await?;
+
+        let socket = Arc::new(socket);
 
         let gc_address = std::env::var("GC_HOST")
             .ok()
