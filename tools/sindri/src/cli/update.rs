@@ -4,7 +4,7 @@ use miette::{IntoDiagnostic, Result, miette};
 #[derive(Debug, Clone, ValueEnum)]
 enum PackagesToUpdate {
     Sindri,
-    ReControl,
+    YggdrasilRerun,
 }
 
 #[derive(Parser, Debug)]
@@ -29,7 +29,7 @@ impl UpdateCommand {
         if let Some(package) = self.package {
             match package {
                 PackagesToUpdate::Sindri => Self::update_sindri().await?,
-                PackagesToUpdate::ReControl => Self::update_yggdrasil_rerun().await?,
+                PackagesToUpdate::YggdrasilRerun => Self::update_yggdrasil_rerun().await?,
             }
         } else {
             Self::update_sindri().await?;
