@@ -23,6 +23,7 @@ use ml::prelude::*;
 
 use super::BallDetectionConfig;
 use super::ball_tracker::{BallPosition, BallTracker};
+use super::hypothesis::BallPerception;
 use super::proposal::BallProposals;
 
 const IMAGE_INPUT_SIZE: usize = 32;
@@ -207,6 +208,11 @@ fn classify_balls<T: CameraLocation>(
         };
 
         let position = BallPosition(robot_to_ball.xy());
+
+        commands.spawn(BallPerception {
+            position: robot_to_ball.xy(),
+            cycle: *cycle,
+        });
 
         confident_balls.push((position, confidence, proposal.clone()));
 

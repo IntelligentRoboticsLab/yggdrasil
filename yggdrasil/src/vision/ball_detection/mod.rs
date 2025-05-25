@@ -37,6 +37,7 @@ impl Plugin for BallDetectionPlugin {
             proposal::BallProposalPlugin::<Top>::default(),
             proposal::BallProposalPlugin::<Bottom>::default(),
             classifier::BallClassifierPlugin,
+            hypothesis::BallHypothesisPlugin,
         ))
         .add_systems(
             PostStartup,
