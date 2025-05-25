@@ -22,9 +22,7 @@ const DEFAULT_TRACY_PORT: u16 = 8086;
 pub struct Run {
     #[clap(flatten)]
     pub robot_ops: ConfigOptsRobotOps,
-    /// Also print debug logs to stdout [default: false]
-    #[clap(long, short)]
-    pub debug: bool,
+
     /// The IP address of the game-controller the robot should connect to.
     #[clap(long)]
     pub gc_host: Option<String>,
@@ -93,7 +91,7 @@ impl Run {
         if let Some(Some(rerun_storage_path)) = self.robot_ops.rerun_args.rerun {
             envs.push(("RERUN_STORAGE_PATH".to_owned(), rerun_storage_path));
         }
-        if self.debug {
+        if self.robot_ops.debug {
             envs.push(("RUST_LOG".to_owned(), "debug".to_owned()));
         }
         if let Some(gc_host) = self.gc_host {

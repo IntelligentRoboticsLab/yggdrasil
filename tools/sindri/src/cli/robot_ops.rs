@@ -109,6 +109,10 @@ pub struct ConfigOptsRobotOps {
     #[clap(flatten)]
     pub rerun_args: RerunArgs,
 
+    /// Debug compile and print debug logs to stdout [default: false]
+    #[clap(short, long)]
+    pub debug: bool,
+
     /// For running Yggdrasil locally with fake-lola
     #[clap(long, short)]
     pub local: bool,
@@ -545,16 +549,20 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
     pb.set_message(format!(
         "{}{}, {}{}{}",
         "(release: ".dimmed(),
-        "true".red(),
+        format!("{}", !config.debug).red(),
         "target: ".dimmed(),
         ROBOT_TARGET.bold(),
         ")".dimmed()
     ));
     pb.set_prefix("Compiling");
-
+    let profile = if config.debug {
+        Profile::Debug
+    } else {
+        Profile::Release
+    };
     cargo::build(
         &config.bin,
-        Profile::Release,
+        profile,
         target,
         &features,
         Some(cross::ENV_VARS.to_vec()),
@@ -567,7 +575,7 @@ pub(crate) async fn compile(config: ConfigOptsRobotOps, output: Output) -> miett
             "   Compiling".green().bold(),
             "yggdrasil".bold(),
             "(release: ".dimmed(),
-            "true".red(),
+            format!("{}", !config.debug).red(),
             "target: ".dimmed(),
             ROBOT_TARGET.bold(),
             ")".dimmed()
