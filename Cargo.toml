@@ -55,10 +55,10 @@ heimdall = { path = "crates/heimdall" }
 ml = { path = "crates/ml" }
 nidhogg = { path = "crates/nidhogg" }
 odal = { path = "crates/odal" }
-yggdrasil_rerun_comms = { path = "tools/yggdrasil_rerun/yggdrasil_rerun_comms" }
 sindri = { path = "tools/sindri", default-features = false }
 spatial = { path = "crates/spatial" }
 tasks = { path = "crates/tasks" }
+yggdrasil_rerun_comms = { path = "tools/yggdrasil_rerun/yggdrasil_rerun_comms" }
 
 # external crates
 apodize = "1.0.0"
