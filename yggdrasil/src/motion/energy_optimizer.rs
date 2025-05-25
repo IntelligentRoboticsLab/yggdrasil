@@ -17,12 +17,12 @@ pub struct EnergyOptimizerPlugin;
 impl Plugin for EnergyOptimizerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<JointCurrentOptimizer>();
-        // app.add_systems(
-        //     PreWrite,
-        //     optimize_joint_currents
-        //         .after(crate::nao::finalize)
-        //         .run_if(should_optimize_joint_current),
-        // );
+        app.add_systems(
+            PreWrite,
+            optimize_joint_currents
+                .after(crate::nao::finalize)
+                .run_if(should_optimize_joint_current),
+        );
     }
 }
 
@@ -56,7 +56,9 @@ impl<'w, 's> EnergyOptimizerExt<'w, 's> for Commands<'w, 's> {
 
     fn reset_joint_current_optimizer(&mut self) {
         self.queue(|world: &mut World| {
-            world.init_resource::<JointCurrentOptimizer>();
+            if let Some(mut state) = world.get_resource_mut::<JointCurrentOptimizer>() {
+                *state = JointCurrentOptimizer::default();
+            }
         });
     }
 }
