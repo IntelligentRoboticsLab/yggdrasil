@@ -14,7 +14,7 @@ use filter::{CovarianceMatrix, UnscentedKalmanFilter};
 use nalgebra::{Isometry2, Point2, Translation2, UnitComplex, Vector2};
 use tasks::TaskPlugin;
 use yggdrasil::behavior::behaviors::Stand;
-use yggdrasil::behavior::engine::CommandsBehaviorExt;
+use yggdrasil::behavior::engine::{BehaviorState, CommandsBehaviorExt, RoleState};
 use yggdrasil::behavior::primary_state::PrimaryState;
 use yggdrasil::core::audio::whistle_detection::Whistle;
 use yggdrasil::core::config::layout::LayoutConfig;
@@ -22,6 +22,7 @@ use yggdrasil::core::config::layout::RobotPosition;
 use yggdrasil::core::config::showtime::{self, PlayerConfig};
 use yggdrasil::core::{config, control, debug};
 use yggdrasil::localization::RobotPose;
+use yggdrasil::localization::hypothesis::odometry_update;
 use yggdrasil::localization::odometry::{self, Odometry};
 use yggdrasil::motion::walking_engine::step_context::StepContext;
 use yggdrasil::nao::Cycle;
@@ -132,7 +133,7 @@ fn create_full_robot(player_number: u8) -> SubApp {
         sensor_noise: CovarianceMatrix::from_diagonal_element(0.001),
         cycle: Cycle::default(),
         timestamp: Instant::now(),
-        stationary_variance_threshold: 0.001, // variance = std^2
+        stationary_variance_threshold: 0.1, // variance = std^2
     };
 
     sub_app
@@ -162,12 +163,46 @@ fn create_full_robot(player_number: u8) -> SubApp {
         .add_systems(PostStartup, (setup_robot, update_orientation))
         .add_systems(
             PreUpdate,
-            (update_simulated_odometry.after(odometry::update_odometry)),
+            // (update_simulated_odometry.after(odometry::update_odometry)),
+            (
+                test,
+                update_simulated_odometry
+                    .after(odometry::update_odometry)
+                    .before(odometry_update),
+                update_ball_position.after(update_simulated_odometry),
+            ),
         )
         .add_systems(
             PreStartup,
             set_player_number.after(showtime::configure_showtime),
         );
+
+    fn test(state: Option<Res<State<RoleState>>>) {
+        println!("Current behavior state: {:?}", state);
+    }
+    fn update_ball_position(
+        mut commands: Commands,
+        mut ball_tracker: ResMut<BallTracker>,
+        pose: Res<RobotPose>,
+        odometry: Res<Odometry>,
+    ) {
+        // Update the ball position based on the tracker
+        ball_tracker.measurement_update(BallPosition(pose.world_to_robot(&Point2::new(0.0, 0.0))));
+        ball_tracker.predict(&odometry);
+
+        let ball_position = ball_tracker.stationary_ball();
+
+        if let Some(ball) = ball_position {
+            println!(
+                "Global Ball position: {:?}, Relative {:?}",
+                pose.robot_to_world(&ball),
+                ball
+            );
+            return;
+        }
+
+        println!("No stationary ball detected!");
+    }
 
     fn setup_robot(mut commands: Commands) {
         commands.insert_resource(PrimaryState::Initial);
@@ -514,28 +549,26 @@ fn draw_robot(
         .id();
 
     // Spawn the draggable circle
-    commands
-        .spawn((
-            Mesh2d(meshes.add(Circle::new(1.0))),
-            MeshMaterial2d(materials.add(ColorMaterial::from_color(color))),
-            Transform::from_xyz(0.0, 0.0, 0.0),
-            PositionCircle,
-        ))
-        // .observe(|over: Trigger<Pointer<Over>>| {
-        //     println!("Over event triggered for circle: {}", over.entity());
-        // })
-        .set_parent(robot_entity);
+    commands.spawn((
+        Mesh2d(meshes.add(Circle::new(1.0))),
+        MeshMaterial2d(materials.add(ColorMaterial::from_color(color))),
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        PositionCircle,
+        ChildOf(robot_entity),
+    ));
+    // .observe(|over: Trigger<Pointer<Over>>| {
+    //     println!("Over event triggered for circle: {}", over.entity());
+    // })
 
-    commands
-        .spawn((
-            Text2d::new(config.player_number.to_string()),
-            text_font.clone(),
-            TextLayout::new_with_justify(text_justification),
-            Transform::from_xyz(0.0, 0.0, 0.2),
-            TextColor(Color::srgb(0.2, 0.2, 0.2)),
-            PlayerNumber,
-        ))
-        .set_parent(robot_entity);
+    commands.spawn((
+        Text2d::new(config.player_number.to_string()),
+        text_font.clone(),
+        TextLayout::new_with_justify(text_justification),
+        Transform::from_xyz(0.0, 0.0, 0.2),
+        TextColor(Color::srgb(0.2, 0.2, 0.2)),
+        PlayerNumber,
+        ChildOf(robot_entity),
+    ));
 
     // Add drag observer directly to the robot entity
     // commands.entity(robot_entity).observe(on_robot_drag);
