@@ -19,7 +19,7 @@ use bevy::prelude::*;
 
 use heimdall::{Bottom, CameraLocation, CameraPosition, Top, YuvPixel, YuyvImage};
 use nalgebra::Point2;
-use re_control_comms::protocol::control::FieldColorConfig;
+use yggdrasil_rerun_comms::protocol::control::FieldColorConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]

@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*", "tools/sindri", "tools/re_control", "yggdrasil"]
+members = ["crates/*", "tools/sindri", "tools/yggdrasil_rerun", "yggdrasil"]
 resolver = "2"
 
 [workspace.package]
@@ -55,7 +55,7 @@ heimdall = { path = "crates/heimdall" }
 ml = { path = "crates/ml" }
 nidhogg = { path = "crates/nidhogg" }
 odal = { path = "crates/odal" }
-re_control_comms = { path = "tools/re_control/re_control_comms" }
+yggdrasil_rerun_comms = { path = "tools/yggdrasil_rerun/yggdrasil_rerun_comms" }
 sindri = { path = "tools/sindri", default-features = false }
 spatial = { path = "crates/spatial" }
 tasks = { path = "crates/tasks" }

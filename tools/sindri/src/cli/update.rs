@@ -29,7 +29,7 @@ impl UpdateCommand {
         if let Some(package) = self.package {
             match package {
                 PackagesToUpdate::Sindri => Self::update_sindri().await?,
-                PackagesToUpdate::ReControl => Self::update_re_control().await?,
+                PackagesToUpdate::ReControl => Self::update_yggdrasil_rerun().await?,
             }
         } else {
             Self::update_sindri().await?;
@@ -42,13 +42,13 @@ impl UpdateCommand {
         Self::update_pkg("sindri", "tools/sindri").await
     }
 
-    async fn update_re_control() -> Result<()> {
-        Self::update_pkg("re_control", "tools/re_control").await
+    async fn update_yggdrasil_rerun() -> Result<()> {
+        Self::update_pkg("yggdrasil_rerun", "tools/yggdrasil_rerun").await
     }
 
     async fn update_all() -> Result<()> {
         Self::update_sindri().await?;
-        Self::update_re_control().await?;
+        Self::update_yggdrasil_rerun().await?;
 
         Ok(())
     }

@@ -6,7 +6,7 @@ use crate::RerunControl;
 use build_utils::version::Version;
 
 #[derive(Parser, Debug)]
-#[clap(name = "re_control", version = RerunControl::current())]
+#[clap(name = "yggdrasil_rerun", version = RerunControl::current())]
 pub struct Cli {
     /// Robot ip address
     pub robot_ip: Option<Ipv4Addr>,

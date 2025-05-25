@@ -4,7 +4,7 @@ use std::{
 };
 
 use bifrost::communication::Penalty;
-use re_control_comms::{
+use yggdrasil_rerun_comms::{
     protocol::{
         CONTROL_PORT, RobotMessage,
         game_controller::{Player, RobotGameController},

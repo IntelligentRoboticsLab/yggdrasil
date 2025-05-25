@@ -4,7 +4,7 @@ use std::{
 };
 
 use heimdall::CameraPosition;
-use re_control_comms::{
+use yggdrasil_rerun_comms::{
     debug_system::DebugEnabledSystems,
     protocol::{CONTROL_PORT, RobotMessage, control::RobotControlMessage},
     viewer::ControlViewer,

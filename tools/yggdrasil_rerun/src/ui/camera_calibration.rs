@@ -5,13 +5,13 @@ use std::{
 
 use heimdall::CameraPosition;
 use nalgebra::Vector3;
-use re_control_comms::{
+use yggdrasil_rerun_comms::{
     protocol::{ViewerMessage, control::ViewerControlMessage},
     viewer::ControlViewerHandle,
 };
 use rerun::external::{egui, re_ui::UiExt};
 
-use crate::{re_control_view::ControlViewerData, state::TrackedState};
+use crate::{yggdrasil_rerun_view::ControlViewerData, state::TrackedState};
 
 use super::view_section;
 

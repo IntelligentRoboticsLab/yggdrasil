@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use re_control_comms::{
+use yggdrasil_rerun_comms::{
     protocol::{
         ViewerMessage,
         control::{FieldColorConfig, ViewerControlMessage},
@@ -16,7 +16,7 @@ use rerun::external::{
     re_ui::UiExt,
 };
 
-use crate::re_control_view::ControlViewerData;
+use crate::yggdrasil_rerun_view::ControlViewerData;
 
 use super::view_section;
 

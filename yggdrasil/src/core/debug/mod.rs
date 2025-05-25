@@ -4,7 +4,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use miette::IntoDiagnostic as _;
-use re_control_comms::debug_system::DebugEnabledSystems;
+use yggdrasil_rerun_comms::debug_system::DebugEnabledSystems;
 use rerun::{
     Angle, AsComponents, DEFAULT_SERVER_PORT, EntityPath, RecordingStream,
     SerializedComponentColumn, TimeColumn,

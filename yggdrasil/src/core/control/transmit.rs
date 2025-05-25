@@ -3,7 +3,7 @@ use std::{collections::HashMap, time::Duration};
 use bevy::{ecs::system::SystemId, prelude::*, tasks::IoTaskPool};
 use bifrost::communication::GameControllerMessage;
 use heimdall::CameraPosition;
-use re_control_comms::{
+use yggdrasil_rerun_comms::{
     app::ControlAppHandle,
     debug_system::DebugEnabledSystems,
     protocol::{

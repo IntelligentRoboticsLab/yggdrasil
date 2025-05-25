@@ -5,7 +5,7 @@ use std::{
 
 use bifrost::communication::{GameControllerMessage, GameState, Penalty, TeamInfo};
 use miette::{Diagnostic, IntoDiagnostic, Result};
-use re_control_comms::{
+use yggdrasil_rerun_comms::{
     protocol::{ViewerMessage, game_controller::ViewerGameControllerMessage},
     viewer::ControlViewerHandle,
 };

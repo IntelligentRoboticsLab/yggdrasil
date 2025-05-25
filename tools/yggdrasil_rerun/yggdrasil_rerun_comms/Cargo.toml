@@ -1,5 +1,5 @@
 [package]
-name = "re_control_comms"
+name = "yggdrasil_rerun_comms"
 
 authors.workspace = true
 categories.workspace = true

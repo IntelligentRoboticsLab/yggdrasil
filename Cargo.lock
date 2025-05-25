@@ -7053,43 +7053,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_control"
-version = "0.12.0"
-dependencies = [
- "bifrost",
- "build_utils",
- "clap",
- "heimdall",
- "miette",
- "mimalloc",
- "nalgebra",
- "re_control_comms",
- "re_crash_handler",
- "rerun",
- "sindri",
- "strum 0.27.1",
- "thiserror 2.0.12",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "re_control_comms"
-version = "0.1.0"
-dependencies = [
- "async-std",
- "bevy",
- "bifrost",
- "futures",
- "heimdall",
- "miette",
- "nalgebra",
- "socket2",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "re_crash_handler"
 version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11573,7 +11536,6 @@ dependencies = [
  "ordered-float 5.0.0",
  "pathfinding",
  "rand 0.9.1",
- "re_control_comms",
  "rerun",
  "rustfft",
  "serde",
@@ -11587,6 +11549,44 @@ dependencies = [
  "tracing-subscriber",
  "tracing-tracy",
  "vqf",
+ "yggdrasil_rerun_comms",
+]
+
+[[package]]
+name = "yggdrasil_rerun"
+version = "0.13.0"
+dependencies = [
+ "bifrost",
+ "build_utils",
+ "clap",
+ "heimdall",
+ "miette",
+ "mimalloc",
+ "nalgebra",
+ "re_crash_handler",
+ "rerun",
+ "sindri",
+ "strum 0.27.1",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "yggdrasil_rerun_comms",
+]
+
+[[package]]
+name = "yggdrasil_rerun_comms"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "bevy",
+ "bifrost",
+ "futures",
+ "heimdall",
+ "miette",
+ "nalgebra",
+ "socket2",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

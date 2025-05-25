@@ -4,13 +4,13 @@ use std::{
     time::Instant,
 };
 
-use re_control_comms::{
+use yggdrasil_rerun_comms::{
     protocol::{ViewerMessage, control::ViewerControlMessage},
     viewer::ControlViewerHandle,
 };
 use rerun::external::{ecolor::Color32, egui, re_ui::UiExt};
 
-use crate::{re_control_view::ControlViewerData, resource::RobotResources};
+use crate::{yggdrasil_rerun_view::ControlViewerData, resource::RobotResources};
 
 use super::view_section;
 

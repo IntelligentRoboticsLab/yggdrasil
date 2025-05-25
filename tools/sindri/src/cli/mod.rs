@@ -6,13 +6,13 @@ use crate::Sindri;
 pub mod change_network;
 pub mod config;
 pub mod flash;
-pub mod re_control;
 pub mod robot_ops;
 pub mod run;
 pub mod scan;
 pub mod showtime;
 pub mod shutdown;
 pub mod update;
+pub mod yggdrasil_rerun;
 
 /// `sindri` - The build tool for yggdrasil
 ///
