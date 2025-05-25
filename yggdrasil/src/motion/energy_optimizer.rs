@@ -17,19 +17,19 @@ pub struct EnergyOptimizerPlugin;
 impl Plugin for EnergyOptimizerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<JointCurrentOptimizer>();
-        app.add_systems(
-            PreWrite,
-            optimize_joint_currents
-                .after(crate::nao::finalize)
-                .run_if(should_optimize_joint_current),
-        );
+        // app.add_systems(
+        //     PreWrite,
+        //     optimize_joint_currents
+        //         .after(crate::nao::finalize)
+        //         .run_if(should_optimize_joint_current),
+        // );
     }
 }
 
 #[derive(Debug, Resource, Default)]
 pub struct JointCurrentOptimizer {
     enabled: bool,
-    has_reach_minimum_current: bool,
+    has_reached_minimum_current: bool,
     joint_offsets: JointArray<f32>,
 }
 
@@ -83,15 +83,15 @@ fn optimize_joint_currents(
         .max_by(|(_, a), (_, b)| a.total_cmp(b))
         .unwrap();
 
-    state.has_reach_minimum_current = if *max_current < MIN_CURRENT {
+    state.has_reached_minimum_current = if *max_current < MIN_CURRENT {
         true
     } else if *max_current > MAX_CURRENT {
         false
     } else {
-        state.has_reach_minimum_current
+        state.has_reached_minimum_current
     };
 
-    if !state.has_reach_minimum_current {
+    if !state.has_reached_minimum_current {
         let max_adjustment = REDUCTION / cycle_time.duration.as_secs_f32();
 
         if let Some(joint_offset) = state.joint_offsets.get_mut(joint_idx) {
