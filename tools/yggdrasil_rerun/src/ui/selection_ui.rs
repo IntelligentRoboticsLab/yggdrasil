@@ -3,11 +3,11 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use rerun::external::egui;
 use yggdrasil_rerun_comms::{
     protocol::{CONTROL_PORT, RobotMessage},
     viewer::ControlViewer,
 };
-use rerun::external::egui;
 
 use crate::{
     connection::ConnectionState,

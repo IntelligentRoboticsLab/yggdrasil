@@ -3,17 +3,17 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use rerun::external::{
+    egui::{self, Color32},
+    re_log,
+    re_ui::UiExt,
+};
 use yggdrasil_rerun_comms::{
     protocol::{
         ViewerMessage,
         control::{FieldColorConfig, ViewerControlMessage},
     },
     viewer::ControlViewerHandle,
-};
-use rerun::external::{
-    egui::{self, Color32},
-    re_log,
-    re_ui::UiExt,
 };
 
 use crate::control_view::ControlViewerData;

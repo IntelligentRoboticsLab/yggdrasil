@@ -12,7 +12,9 @@ use crate::{
     config::SindriConfig,
 };
 
-use super::yggdrasil_rerun::{has_yggdrasil_rerun, has_rsync, run_yggdrasil_rerun, setup_rerun_host};
+use super::yggdrasil_rerun::{
+    has_rsync, has_yggdrasil_rerun, run_yggdrasil_rerun, setup_rerun_host,
+};
 
 const DEFAULT_TRACY_PORT: u16 = 8086;
 

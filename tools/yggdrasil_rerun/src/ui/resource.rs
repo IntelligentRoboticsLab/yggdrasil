@@ -4,11 +4,11 @@ use std::{
     time::Instant,
 };
 
+use rerun::external::{ecolor::Color32, egui, re_ui::UiExt};
 use yggdrasil_rerun_comms::{
     protocol::{ViewerMessage, control::ViewerControlMessage},
     viewer::ControlViewerHandle,
 };
-use rerun::external::{ecolor::Color32, egui, re_ui::UiExt};
 
 use crate::{control_view::ControlViewerData, resource::RobotResources};
 

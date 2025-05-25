@@ -4,11 +4,6 @@ use std::{
 };
 
 use heimdall::CameraPosition;
-use yggdrasil_rerun_comms::{
-    debug_system::DebugEnabledSystems,
-    protocol::{CONTROL_PORT, RobotMessage, control::RobotControlMessage},
-    viewer::ControlViewer,
-};
 use rerun::external::{
     ecolor::Color32,
     egui,
@@ -21,6 +16,11 @@ use rerun::external::{
     },
 };
 use strum::{EnumIter, IntoEnumIterator};
+use yggdrasil_rerun_comms::{
+    debug_system::DebugEnabledSystems,
+    protocol::{CONTROL_PORT, RobotMessage, control::RobotControlMessage},
+    viewer::ControlViewer,
+};
 
 use crate::{
     connection::{ConnectionState, ROBOT_ADDRESS_ENV_KEY, ip_from_env},

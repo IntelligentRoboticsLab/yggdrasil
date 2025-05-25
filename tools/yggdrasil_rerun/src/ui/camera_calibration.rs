@@ -5,11 +5,11 @@ use std::{
 
 use heimdall::CameraPosition;
 use nalgebra::Vector3;
+use rerun::external::{egui, re_ui::UiExt};
 use yggdrasil_rerun_comms::{
     protocol::{ViewerMessage, control::ViewerControlMessage},
     viewer::ControlViewerHandle,
 };
-use rerun::external::{egui, re_ui::UiExt};
 
 use crate::{control_view::ControlViewerData, state::TrackedState};
 
