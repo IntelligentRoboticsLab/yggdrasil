@@ -7,7 +7,6 @@ use crate::{
 };
 use clap::Parser;
 use colored::Colorize;
-use futures::{TryStreamExt, stream::FuturesOrdered};
 use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressStyle};
 use miette::miette;
 use miette::{IntoDiagnostic, Result};
@@ -55,7 +54,7 @@ impl Shutdown {
         );
 
         let robot_ids = if self.all {
-            self.get_pingable_robots(&config).await?
+            scan::get_pingable_robots(&config, self.wired).await?
         } else {
             self.robot_ids
         };
@@ -111,30 +110,5 @@ impl Shutdown {
             HumanDuration(status_bar.elapsed()),
         );
         Ok(())
-    }
-
-    async fn get_pingable_robots(&self, config: &SindriConfig) -> Result<Vec<NameOrNum>> {
-        Ok(config
-            .robots
-            .iter()
-            .map(|robot_config| {
-                config
-                    .robot(&NameOrNum::Number(robot_config.number), self.wired)
-                    .unwrap()
-            })
-            .map(|robot| scan::ping(robot.ip()))
-            .collect::<FuturesOrdered<_>>()
-            .try_collect::<Vec<_>>()
-            .await?
-            .iter()
-            .zip(&config.robots)
-            .filter_map(|(scan_result, robot)| {
-                if scan_result.success() {
-                    Some(NameOrNum::Number(robot.number))
-                } else {
-                    None
-                }
-            })
-            .collect())
     }
 }

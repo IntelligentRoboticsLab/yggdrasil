@@ -95,6 +95,31 @@ pub async fn ping(ip: Ipv4Addr) -> Result<ExitStatus> {
     Ok(ping_status)
 }
 
+pub async fn get_pingable_robots(config: &SindriConfig, wired: bool) -> Result<Vec<NameOrNum>> {
+    Ok(config
+        .robots
+        .iter()
+        .map(|robot_config| {
+            config
+                .robot(&NameOrNum::Number(robot_config.number), wired)
+                .unwrap()
+        })
+        .map(|robot| ping(robot.ip()))
+        .collect::<FuturesOrdered<_>>()
+        .try_collect::<Vec<_>>()
+        .await?
+        .iter()
+        .zip(&config.robots)
+        .filter_map(|(scan_result, robot)| {
+            if scan_result.success() {
+                Some(NameOrNum::Number(robot.number))
+            } else {
+                None
+            }
+        })
+        .collect())
+}
+
 fn print_ping_status(robot: Robot, online: bool) {
     let online_status = if online {
         "ONLINE ".green().bold()
