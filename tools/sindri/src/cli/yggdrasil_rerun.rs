@@ -40,9 +40,9 @@ pub fn setup_rerun_host(wired: bool) -> Result<String> {
 ///
 /// We check if the `rerun` binary is installed by running `rerun --version` and checking if the
 /// command was successful.
-pub async fn has_re_control() -> bool {
-    async fn get_re_control_version() -> Result<bool> {
-        Ok(Command::new("re_control")
+pub async fn has_yggdrasil_rerun() -> bool {
+    async fn get_yggdrasil_rerun_version() -> Result<bool> {
+        Ok(Command::new("yggdrasil_rerun")
             .arg("--version")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -52,7 +52,9 @@ pub async fn has_re_control() -> bool {
             .success())
     }
 
-    get_re_control_version().await.is_ok_and(|success| success)
+    get_yggdrasil_rerun_version()
+        .await
+        .is_ok_and(|success| success)
 }
 
 /// Check if the `rsync` binary is installed.
@@ -98,7 +100,7 @@ fn spawn_rerun_viewer(
         }
     };
 
-    Command::new("re_control")
+    Command::new("yggdrasil_rerun")
         .args(args)
         .stdin(Stdio::null())
         .stdout(stdio_out)
@@ -110,7 +112,7 @@ fn spawn_rerun_viewer(
     Ok(())
 }
 
-pub async fn run_re_control(
+pub async fn run_yggdrasil_rerun(
     robot_ip: Ipv4Addr,
     memory_limit: Option<String>,
     rerun_log: bool,

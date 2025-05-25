@@ -4,7 +4,6 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use miette::IntoDiagnostic as _;
-use re_control_comms::debug_system::DebugEnabledSystems;
 use rerun::{
     Angle, AsComponents, DEFAULT_SERVER_PORT, EntityPath, RecordingStream,
     SerializedComponentColumn, TimeColumn,
@@ -15,6 +14,7 @@ use std::f32::consts::PI;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{marker::PhantomData, net::IpAddr};
+use yggdrasil_rerun_comms::debug_system::DebugEnabledSystems;
 
 use crate::nao::{Cycle, CycleTime};
 

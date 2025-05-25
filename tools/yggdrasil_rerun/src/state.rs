@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use re_control_comms::protocol::RobotMessage;
+use yggdrasil_rerun_comms::protocol::RobotMessage;
 
 /// A wrapper around a type that keeps two version of a state: The current
 /// state, and the original state. The current state can be overwritten by

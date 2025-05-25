@@ -4,13 +4,6 @@ use std::{
 };
 
 use bifrost::communication::Penalty;
-use re_control_comms::{
-    protocol::{
-        CONTROL_PORT, RobotMessage,
-        game_controller::{Player, RobotGameController},
-    },
-    viewer::ControlViewer,
-};
 use rerun::external::{
     egui::{self, Color32},
     re_types::ViewClassIdentifier,
@@ -20,6 +13,13 @@ use rerun::external::{
         ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt, ViewSystemExecutionError,
         ViewSystemRegistrator, ViewerContext,
     },
+};
+use yggdrasil_rerun_comms::{
+    protocol::{
+        CONTROL_PORT, RobotMessage,
+        game_controller::{Player, RobotGameController},
+    },
+    viewer::ControlViewer,
 };
 
 use crate::{
