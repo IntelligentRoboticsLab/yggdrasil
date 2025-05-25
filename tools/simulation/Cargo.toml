@@ -18,7 +18,7 @@ yggdrasil = { workspace = true }
 bevy = { workspace = true }
 bevy_egui = { workspace = true }
 nalgebra = { workspace = true }
-
+filter = { version = "0.1.0", path = "../../crates/filter" }
 ml = { workspace = true }
 tasks = { workspace = true }
 

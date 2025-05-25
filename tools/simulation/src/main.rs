@@ -1,14 +1,17 @@
+use std::time::Instant;
+
 use bevy::app::{AppLabel, MainSchedulePlugin};
 use bevy::ecs::event::EventRegistry;
 use bevy::state::app::StatesPlugin;
 use bevy::{prelude::*, render::camera::Viewport, window::PrimaryWindow};
 use bevy_egui::egui::{Direction, Layout, RichText, Ui};
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::{EguiContexts, EguiPlugin, egui};
 use bifrost::communication::{
     CompetitionPhase, CompetitionType, GameControllerMessage, GamePhase, GameState, Half, Penalty,
     RobotInfo, SetPlay, TeamColor, TeamInfo,
 };
-use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
+use filter::{CovarianceMatrix, UnscentedKalmanFilter};
+use nalgebra::{Isometry2, Point2, Translation2, UnitComplex, Vector2};
 use tasks::TaskPlugin;
 use yggdrasil::behavior::behaviors::Stand;
 use yggdrasil::behavior::engine::CommandsBehaviorExt;
@@ -19,12 +22,13 @@ use yggdrasil::core::config::layout::RobotPosition;
 use yggdrasil::core::config::showtime::{self, PlayerConfig};
 use yggdrasil::core::{config, control, debug};
 use yggdrasil::localization::RobotPose;
-use yggdrasil::motion::odometry::{self, Odometry};
+use yggdrasil::localization::odometry::{self, Odometry};
 use yggdrasil::motion::walking_engine::step_context::StepContext;
+use yggdrasil::nao::Cycle;
 use yggdrasil::prelude::Config;
 
 use yggdrasil::sensor::orientation::update_orientation;
-use yggdrasil::vision::ball_detection::ball_tracker::BallTracker;
+use yggdrasil::vision::ball_detection::ball_tracker::{BallPosition, BallTracker};
 use yggdrasil::vision::referee::communication::ReceivedRefereePose;
 use yggdrasil::vision::referee::recognize::RefereePoseRecognized;
 use yggdrasil::{
@@ -38,7 +42,7 @@ const FIELD_WIDTH_METERS: f32 = 10.4;
 const FIELD_HEIGHT_METERS: f32 = 7.4;
 // Remove fixed visual dimensions since we'll calculate them dynamically
 const PIXELS_PER_METER: f32 = 100.0; // Base scale factor, will be adjusted dynamically
-                                     // Robot size in meters
+// Robot size in meters
 const ROBOT_SIZE_METERS: f32 = 0.5; // 50cm x 50cm robot
 
 // Scale factors to convert between meters and pixels - will be updated dynamically
@@ -71,7 +75,12 @@ fn main() {
             pixels_per_meter: PIXELS_PER_METER,
         })
         .init_resource::<Simulation>()
-        .add_plugins((DefaultPlugins, EguiPlugin, MeshPickingPlugin))
+        .add_plugins((
+            DefaultPlugins,
+            EguiPlugin {
+                enable_multipass_for_primary_context: false,
+            },
+        ))
         .add_systems(Startup, setup_system)
         .add_systems(
             Update,
@@ -113,6 +122,19 @@ fn create_full_robot(player_number: u8) -> SubApp {
     sub_app.init_resource::<EventRegistry>();
     sub_app.insert_resource(PlayNum(player_number));
 
+    let ball_tracker = BallTracker {
+        position_kf: UnscentedKalmanFilter::<2, 5, BallPosition>::new(
+            BallPosition(Point2::new(0.0, 0.0)),
+            CovarianceMatrix::from_diagonal_element(0.001), // variance = std^2, and we don't know where the ball is
+        ),
+        // prediction is done each cycle, this is roughly 1.7cm of std per cycle or 1.3 meters per second
+        prediction_noise: CovarianceMatrix::from_diagonal_element(0.001),
+        sensor_noise: CovarianceMatrix::from_diagonal_element(0.001),
+        cycle: Cycle::default(),
+        timestamp: Instant::now(),
+        stationary_variance_threshold: 0.001, // variance = std^2
+    };
+
     sub_app
         .add_plugins((MinimalPlugins, MainSchedulePlugin, StatesPlugin))
         .add_plugins((
@@ -132,7 +154,7 @@ fn create_full_robot(player_number: u8) -> SubApp {
             motion::MotionPlugins,
             // Removed vision::VisionPlugins,
         ))
-        .insert_resource(BallTracker::default())
+        .insert_resource(ball_tracker)
         .insert_resource(Whistle::default())
         .insert_resource(initial_gamecontroller())
         .add_event::<RefereePoseRecognized>()
@@ -140,9 +162,7 @@ fn create_full_robot(player_number: u8) -> SubApp {
         .add_systems(PostStartup, (setup_robot, update_orientation))
         .add_systems(
             PreUpdate,
-            (update_simulated_odometry
-                .after(odometry::update_odometry)
-                .before(localization::update_robot_pose),),
+            (update_simulated_odometry.after(odometry::update_odometry)),
         )
         .add_systems(
             PreStartup,
@@ -383,8 +403,8 @@ fn update_field_scale(
     mut field_query: Query<&mut Sprite, With<Field>>,
     camera: Query<&Camera>,
 ) {
-    let window = window.single();
-    let camera = camera.single();
+    let window = window.single().expect("Simulation did not find a window!");
+    let camera = camera.single().expect("Simulation did not find a camera!");
 
     if let Some(viewport) = &camera.viewport {
         let available_width = viewport.physical_size.x as f32 / window.scale_factor();
@@ -399,7 +419,7 @@ fn update_field_scale(
         field_scale.pixels_per_meter = new_scale;
 
         // Update field sprite size
-        if let Ok(mut sprite) = field_query.get_single_mut() {
+        if let Ok(mut sprite) = field_query.single_mut() {
             sprite.custom_size = Some(Vec2::new(
                 FIELD_WIDTH_METERS * new_scale,
                 FIELD_HEIGHT_METERS * new_scale,
@@ -412,7 +432,10 @@ fn update_field_scale(
 fn update_position_markers(
     field_scale: Res<FieldScale>,
     mut circle_query: Query<&mut Transform, (With<PositionCircle>, Without<PlayerNumber>)>,
-    mut text_query: Query<(&mut Transform, &Parent), (With<PlayerNumber>, Without<PositionCircle>)>,
+    mut text_query: Query<
+        (&mut Transform, &ChildOf),
+        (With<PlayerNumber>, Without<PositionCircle>),
+    >,
     robot_transforms: Query<
         &Transform,
         (With<Robot>, Without<PositionCircle>, Without<PlayerNumber>),
@@ -425,9 +448,9 @@ fn update_position_markers(
     }
 
     // Update text transforms - counter-rotate against parent
-    for (mut transform, parent) in text_query.iter_mut() {
+    for (mut transform, child) in text_query.iter_mut() {
         // Get the parent's rotation and apply the inverse to keep text upright
-        if let Ok(parent_transform) = robot_transforms.get(parent.get()) {
+        if let Ok(parent_transform) = robot_transforms.get(child.parent()) {
             transform.rotation = parent_transform.rotation.inverse();
         }
     }
@@ -440,7 +463,7 @@ fn on_robot_drag(
     field_scale: Res<FieldScale>,
 ) {
     // First try direct access (in case the Robot component is on the dragged entity)
-    if let Ok((mut robot, mut transform)) = robots.get_mut(drag.entity()) {
+    if let Ok((mut robot, mut transform)) = robots.get_mut(drag.target.entity()) {
         let world_delta = Vec2::new(
             drag.delta.x / field_scale.pixels_per_meter,
             -drag.delta.y / field_scale.pixels_per_meter,

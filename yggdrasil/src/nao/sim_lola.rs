@@ -1,7 +1,7 @@
 use bevy::{ecs::system::RunSystemOnce, prelude::*};
 use nidhogg::{
-    types::{FillExt, JointArray},
     DisconnectExt, HardwareInfo, NaoBackend, NaoControlMessage, NaoState, Result,
+    types::{FillExt, JointArray},
 };
 
 use nidhogg::backend::{ConnectWithRetry, ReadHardwareInfo};
@@ -47,7 +47,6 @@ fn initialize_nao(mut commands: Commands, mut lola: ResMut<SimLola>) {
         head_version: Default::default(),
         body_id: Default::default(),
         body_version: Default::default(),
-        initial_joint_positions: Default::default(),
     };
 
     // Read state and reply with a message.
@@ -55,7 +54,7 @@ fn initialize_nao(mut commands: Commands, mut lola: ResMut<SimLola>) {
         .read_nao_state()
         .expect("failed to read initial state from LoLA");
     let msg = NaoControlMessage {
-        position: info.initial_joint_positions.clone(),
+        position: Default::default(),
         stiffness: JointArray::fill(DEFAULT_STIFFNESS),
         ..Default::default()
     };
