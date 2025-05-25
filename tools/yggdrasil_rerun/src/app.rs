@@ -23,7 +23,7 @@ impl App {
 
     /// Check whether another server is running, if that's the case we should not spawn another instance.
     pub fn is_another_server_running(server_addr: &SocketAddr) -> bool {
-        TcpStream::connect_timeout(&server_addr, std::time::Duration::from_secs(1)).is_ok()
+        TcpStream::connect_timeout(server_addr, std::time::Duration::from_secs(1)).is_ok()
     }
 
     pub async fn run(self, main_thread_token: MainThreadToken) -> Result<()> {
