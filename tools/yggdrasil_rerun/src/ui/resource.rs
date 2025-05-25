@@ -10,7 +10,7 @@ use yggdrasil_rerun_comms::{
 };
 use rerun::external::{ecolor::Color32, egui, re_ui::UiExt};
 
-use crate::{yggdrasil_rerun_view::ControlViewerData, resource::RobotResources};
+use crate::{control_view::ControlViewerData, resource::RobotResources};
 
 use super::view_section;
 

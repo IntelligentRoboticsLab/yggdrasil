@@ -16,7 +16,7 @@ use rerun::external::{
     re_ui::UiExt,
 };
 
-use crate::yggdrasil_rerun_view::ControlViewerData;
+use crate::control_view::ControlViewerData;
 
 use super::view_section;
 

@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
         ..Default::default()
     };
 
-    // Storing the robot ip address (if specified) to be used in the `yggdrasil_rerun_view`
+    // Storing the robot ip address (if specified) to be used in the `control_view`
     if let Some(robot_ip) = args.robot_ip {
         unsafe {
             env::set_var("YGGDRASIL_RERUN_ROBOT_ADDRESS", robot_ip.to_string());

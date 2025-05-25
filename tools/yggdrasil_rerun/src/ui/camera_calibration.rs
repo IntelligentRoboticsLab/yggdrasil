@@ -11,7 +11,7 @@ use yggdrasil_rerun_comms::{
 };
 use rerun::external::{egui, re_ui::UiExt};
 
-use crate::{yggdrasil_rerun_view::ControlViewerData, state::TrackedState};
+use crate::{control_view::ControlViewerData, state::TrackedState};
 
 use super::view_section;
 

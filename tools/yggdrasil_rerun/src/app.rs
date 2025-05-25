@@ -6,7 +6,7 @@ use rerun::external::{
     re_viewer::{self, AppEnvironment, AsyncRuntimeHandle, MainThreadToken, StartupOptions},
 };
 
-use crate::{game_controller_view::GameControllerView, yggdrasil_rerun_view::ControlView};
+use crate::{control_view::ControlView, game_controller_view::GameControllerView};
 
 // Rerun can collect analytics if the `analytics` feature is enabled in
 // `Cargo.toml`. This variable is used for the rerun analytics

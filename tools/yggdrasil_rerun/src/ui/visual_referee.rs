@@ -6,7 +6,7 @@ use yggdrasil_rerun_comms::{
 };
 use rerun::external::egui;
 
-use crate::yggdrasil_rerun_view::ControlViewerData;
+use crate::control_view::ControlViewerData;
 
 use super::view_section;
 

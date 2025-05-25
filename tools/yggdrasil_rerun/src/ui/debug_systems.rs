@@ -8,7 +8,7 @@ use yggdrasil_rerun_comms::{
     viewer::ControlViewerHandle,
 };
 
-use crate::yggdrasil_rerun_view::ControlViewerData;
+use crate::control_view::ControlViewerData;
 
 use super::view_section;
 
