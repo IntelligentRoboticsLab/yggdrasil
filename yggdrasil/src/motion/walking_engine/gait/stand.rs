@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use nidhogg::types::{FillExt, LegJoints};
 
 use crate::motion::{
-    energy_optimizer::EnergyOptimizerExt,
+    energy_optimizer::{EnergyOptimizerExt, reset_joint_current_optimizer},
     walking_engine::{
         TargetFootPositions, TargetLegStiffness,
         config::WalkingEngineConfig,
@@ -24,9 +24,8 @@ impl Plugin for StandGaitPlugin {
                 .run_if(in_state(Gait::Standing)),
         );
 
-        app.add_systems(OnExit(Gait::Standing), |mut commands: Commands| {
-            commands.reset_joint_current_optimizer();
-        });
+        app.add_systems(OnEnter(Gait::Standing), reset_joint_current_optimizer);
+        app.add_systems(OnExit(Gait::Standing), reset_joint_current_optimizer);
     }
 }
 
