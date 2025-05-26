@@ -14,7 +14,7 @@ use tokio::runtime::Handle;
 
 use super::scan;
 
-const STOP_COMMAND: &'static str = "sudo systemctl stop yggdrasil";
+const STOP_COMMAND: &str = "sudo systemctl stop yggdrasil";
 
 /// Shuts down the robot
 #[derive(Parser, Debug)]
