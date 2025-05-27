@@ -14,8 +14,6 @@ use tokio::runtime::Handle;
 
 use super::scan;
 
-const STOP_COMMAND: &str = "sudo systemctl stop yggdrasil";
-
 /// Shuts down the robot
 #[derive(Parser, Debug)]
 pub struct StopCommand {
@@ -40,21 +38,19 @@ impl StopCommand {
         multi.set_alignment(indicatif::MultiProgressAlignment::Bottom);
         let status_bar = multi.add(
             ProgressBar::new_spinner().with_style(
-                ProgressStyle::with_template(
-                    "   {prefix:.blue.bold} to robots {msg} {spinner:.blue.bold}",
-                )
-                .unwrap(),
+                ProgressStyle::with_template("   {prefix:.blue.bold} {msg} {spinner:.blue.bold}")
+                    .unwrap(),
             ),
         );
 
         let robot_ids = if self.all {
-            scan::get_pingable_robots(&config, self.wired).await?
+            scan::scan_online_robots(&config, self.wired).await?
         } else {
             self.robot_ids
         };
 
         status_bar.enable_steady_tick(Duration::from_millis(80));
-        status_bar.set_prefix("Stop signal");
+        status_bar.set_prefix("Stopping yggdrasil");
         status_bar.set_message(format!(
             "{}{}{}{}{}",
             "(robots: ".dimmed(),
@@ -73,7 +69,6 @@ impl StopCommand {
 
             let multi = multi.clone();
             join_set.spawn_blocking(move || {
-                let multi = multi;
                 let handle = Handle::current();
                 let pb = ProgressBar::new(1);
                 let pb = multi.add(pb);
@@ -82,13 +77,7 @@ impl StopCommand {
                 handle
                     .block_on(async move {
                         output.spinner();
-                        robot
-                            .ssh::<&str, &str>(STOP_COMMAND, [], true)?
-                            .wait()
-                            .await?;
-
-                        output.finished_deploying(&robot.ip());
-                        Ok::<(), crate::error::Error>(())
+                        robot_ops::stop_single_yggdrasil_service(&robot, output).await
                     })
                     .into_diagnostic()
             });

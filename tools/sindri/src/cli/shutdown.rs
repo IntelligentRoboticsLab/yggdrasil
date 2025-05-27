@@ -54,7 +54,7 @@ impl Shutdown {
         );
 
         let robot_ids = if self.all {
-            scan::get_pingable_robots(&config, self.wired).await?
+            scan::scan_online_robots(&config, self.wired).await?
         } else {
             self.robot_ids
         };

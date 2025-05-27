@@ -95,15 +95,9 @@ pub async fn ping(ip: Ipv4Addr) -> Result<ExitStatus> {
     Ok(ping_status)
 }
 
-pub async fn get_pingable_robots(config: &SindriConfig, wired: bool) -> Result<Vec<NameOrNum>> {
+pub async fn scan_online_robots(config: &SindriConfig, wired: bool) -> Result<Vec<NameOrNum>> {
     Ok(config
-        .robots
-        .iter()
-        .map(|robot_config| {
-            config
-                .robot(&NameOrNum::Number(robot_config.number), wired)
-                .unwrap()
-        })
+        .all_robots(wired)
         .map(|robot| ping(robot.ip()))
         .collect::<FuturesOrdered<_>>()
         .try_collect::<Vec<_>>()
