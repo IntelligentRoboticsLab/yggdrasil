@@ -28,6 +28,14 @@ use crate::{
 // we want the robot to look at the target
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
+#[derive(Resource, Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct RlWalkToBehaviorConfig {
+    // The output of the policy is element wise multiplied with this value to determine the
+    // step that is requested to the walking engine.
+    policy_output_scaling: Step,
+}
+
 pub struct RlWalkToBehaviorPlugin;
 
 impl Plugin for RlWalkToBehaviorPlugin {
@@ -36,13 +44,8 @@ impl Plugin for RlWalkToBehaviorPlugin {
             .add_systems(
                 Update,
                 run_inference
-                    .run_if(in_behavior::<RlStrikerSearchBehavior>.and(task_finished::<Output>)),
+                    .run_if(in_behavior::<RlWalkToBehavior>.and(task_finished::<Output>)),
             )
-            .add_systems(
-                OnEnter(BehaviorState::RlWalkToBehavior),
-                reset_observe_starting_time,
-            )
-            .insert_resource(ObserveStartingTime(Instant::now()))
             .add_systems(
                 Update,
                 handle_inference_output
@@ -76,8 +79,46 @@ impl Behavior for RlWalkToBehavior {
 struct Input<'d> {
     robot_pose: &'d RobotPose,
     target_position: &'d Point2<f32>,
+
     field_width: f32,
     field_height: f32,
+}
+
+impl RlBehaviorInput<ModelInput> for Input<'_> {
+    fn to_input(&self) -> ModelInput {
+        // pos = self.robot.get_pos()  # [B, 1, 2]
+        // yaw = self.robot.get_yaw()  # [B, 1, 1]
+        let robot_position = self.robot_pose.inner.translation.vector.xy();
+        let robot_angle = self.robot_pose.inner.rotation.angle();
+
+        // # Relative position to current episode’s target
+        // rel_pos = self.target_pos - pos
+        // rel_pos /= torch.tensor([self.field.full_field_length, self.field.full_field_width], device=self.device).view(
+        //     1, 1, 2
+        // )
+        let target_position = self.target_position.coords;
+        let mut relative_position = target_position - robot_position;
+        relative_position.x /= self.field_height;
+        relative_position.y /= self.field_width;
+
+        // # Use trigonometric representation for yaw
+        // cos_yaw = torch.cos(yaw)  # [B, 1, 1]
+        // sin_yaw = torch.sin(yaw)  # [B, 1, 1]
+        let cos_angle = robot_angle.cos();
+        let sin_angle = robot_angle.sin();
+
+        // # concatenate along the last dimension -> shape [B, 1, 4]
+        // obs_batch_dim_preserved = torch.cat([rel_pos, cos_yaw.unsqueeze(-1), sin_yaw.unsqueeze(-1)], dim=-1)
+        // obs = obs_batch_dim_preserved.squeeze(1)  # [B, 4]
+        // return obs
+        vec![
+            relative_position.x,
+            relative_position.y,
+            // note that the angles are not relative
+            sin_angle,
+            cos_angle,
+        ]
+    }
 }
 
 #[derive(Resource)]
@@ -104,17 +145,31 @@ impl RlBehaviorOutput<ModelOutput> for Output {
 // TODO -> termination condition
 //Success ⇨  distance < goal_distance_threshold  AND
 //                alignment > goal_alignment_threshold
-fn walk_to(
-    walk_to: Res<RlWalkToBehavior>,
-    mut nao_manager: ResMut<NaoManager>,
+fn run_inference(
+    mut commands: Commands,
+    mut model_executor: ResMut<ModelExecutor<RlWalkToBehaviorModel>>,
+    robot_pose: Res<RobotPose>,
+    layout_config: Res<LayoutConfig>,   
 ) {
-    let target_point = Point3::new(walk_to.target.position.x, walk_to.target.position.y, 0.0);
+    // one of the goals
+    let target_position = Point2::new(layout_config.field.length, 0.0);
 
-    let look_at = pose.get_look_at_absolute(&target_point);
-    nao_manager.set_head_target(
-        look_at,
-        HEAD_ROTATION_TIME,
-        Priority::default(),
-        NaoManager::HEAD_STIFFNESS,
-    );
+    let input = Input {
+        robot_pose: &robot_pose,
+        target_position: &target_position,
+
+        field_width: layout_config.field.width,
+        field_height: layout_config.field.length,
+    };
+
+    spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
+}
+
+fn handle_inference_output(
+    mut step_context: ResMut<StepContext>,
+    output: Res<Output>,
+    behavior_config: Res<BehaviorConfig>,
+) {
+    step_context
+        .request_walk(output.step * behavior_config.rl_walk_to.policy_output_scaling);
 }
