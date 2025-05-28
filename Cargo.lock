@@ -11492,7 +11492,7 @@ dependencies = [
 
 [[package]]
 name = "yggdrasil_rerun"
-version = "0.13.0"
+version = "0.13.1"
 dependencies = [
  "bifrost",
  "build_utils",
