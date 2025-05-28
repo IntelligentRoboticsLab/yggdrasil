@@ -1,9 +1,8 @@
-use std::{f32, time::{Instant, Duration}};
+use std::{f32, time::Duration};
 
 use bevy::prelude::*;
 use ml::{MlModel, MlModelResourceExt, prelude::ModelExecutor};
-use nalgebra::Point2;
-use nidhogg::types::FillExt;
+use nalgebra::{Point2, Point3};
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
 
@@ -43,8 +42,7 @@ impl Plugin for RlWalkToBehaviorPlugin {
         app.init_ml_model::<RlWalkToBehaviorModel>()
             .add_systems(
                 Update,
-                run_inference
-                    .run_if(in_behavior::<RlWalkToBehavior>.and(task_finished::<Output>)),
+                run_inference.run_if(in_behavior::<RlWalkToBehavior>.and(task_finished::<Output>)),
             )
             .add_systems(
                 Update,
@@ -114,9 +112,9 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         vec![
             relative_position.x,
             relative_position.y,
-            // note that the angles are not relative
-            sin_angle,
+            // note that the angles are not relative because a point does not have an angle
             cos_angle,
+            sin_angle,
         ]
     }
 }
@@ -148,11 +146,22 @@ impl RlBehaviorOutput<ModelOutput> for Output {
 fn run_inference(
     mut commands: Commands,
     mut model_executor: ResMut<ModelExecutor<RlWalkToBehaviorModel>>,
+    pose: Res<RobotPose>,
     robot_pose: Res<RobotPose>,
-    layout_config: Res<LayoutConfig>,   
+    layout_config: Res<LayoutConfig>,
+    mut nao_manager: ResMut<NaoManager>,
 ) {
     // one of the goals
-    let target_position = Point2::new(layout_config.field.length, 0.0);
+    let target_position = Point2::new(0.0, 0.0);
+    let target_point = Point3::new(target_position.x, target_position.y, 0.0);
+
+    let look_at = pose.get_look_at_absolute(&target_point);
+    nao_manager.set_head_target(
+        look_at,
+        HEAD_ROTATION_TIME,
+        Priority::default(),
+        NaoManager::HEAD_STIFFNESS,
+    );
 
     let input = Input {
         robot_pose: &robot_pose,
@@ -170,6 +179,5 @@ fn handle_inference_output(
     output: Res<Output>,
     behavior_config: Res<BehaviorConfig>,
 ) {
-    step_context
-        .request_walk(output.step * behavior_config.rl_walk_to.policy_output_scaling);
+    step_context.request_walk(output.step * behavior_config.rl_walk_to.policy_output_scaling);
 }

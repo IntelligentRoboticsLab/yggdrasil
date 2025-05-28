@@ -17,10 +17,10 @@ use crate::{
 use super::{
     behaviors::{
         CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
-        RlWalkToBehaviorPlugin, Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
-        StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
-        VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin, WalkToBallBehaviorPlugin,
-        WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
+        RlWalkToBehaviorPlugin, Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin,
+        StandLookAt, StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin,
+        StartUpBehaviorPlugin, VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin,
+        WalkToBallBehaviorPlugin, WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{

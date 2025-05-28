@@ -2,7 +2,9 @@ use bevy::prelude::*;
 use odal::Config;
 use serde::{Deserialize, Serialize};
 
-use super::behaviors::{ObserveBehaviorConfig, RlStrikerSearchBehaviorConfig, RlWalkToBehaviorConfig};
+use super::behaviors::{
+    ObserveBehaviorConfig, RlStrikerSearchBehaviorConfig, RlWalkToBehaviorConfig,
+};
 
 /// Config that contains information about the layout of the field and
 /// robot positions.

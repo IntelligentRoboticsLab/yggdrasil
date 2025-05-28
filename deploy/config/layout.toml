@@ -34,10 +34,10 @@
 # The x axis points towards the opponents' goal and runs parallel with A.
 # The y axis points towards the top and runs parallel with B.
 
-# Field length in millimeters (A).
+# Field length in meters (A).
 length = 9.0
 
-# Field width in millimeters (B).
+# Field width in meters (B).
 width = 6.0
 
 # Width of lines on the field (|).
