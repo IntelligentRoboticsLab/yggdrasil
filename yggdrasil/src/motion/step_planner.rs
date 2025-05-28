@@ -292,13 +292,13 @@ fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>, cycl
     let centers = step_planner
         .dynamic_obstacles
         .iter()
-        .map(|obs| (obs.obs.x.0, obs.obs.y.0, 0.0))
+        .map(|obs| (obs.obs.x.0, obs.obs.y.0, -0.28))
         .collect::<Vec<_>>();
 
     let half_sizes = step_planner
         .dynamic_obstacles
         .iter()
-        .map(|obs| (obs.obs.radius.0, obs.obs.radius.0, -0.28))
+        .map(|obs| (obs.obs.radius.0, obs.obs.radius.0, 0.5))
         .collect::<Vec<_>>();
 
     dbg.log_with_cycle(
