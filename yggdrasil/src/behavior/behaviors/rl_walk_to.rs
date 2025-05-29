@@ -27,14 +27,6 @@ use crate::{
 // we want the robot to look at the target
 const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
-#[derive(Resource, Serialize, Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
-pub struct RlWalkToBehaviorConfig {
-    // The output of the policy is element wise multiplied with this value to determine the
-    // step that is requested to the walking engine.
-    policy_output_scaling: Step,
-}
-
 pub struct RlWalkToBehaviorPlugin;
 
 impl Plugin for RlWalkToBehaviorPlugin {
@@ -52,6 +44,14 @@ impl Plugin for RlWalkToBehaviorPlugin {
                     .run_if(resource_exists_and_changed::<Output>),
             );
     }
+}
+
+#[derive(Resource, Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct RlWalkToBehaviorConfig {
+    // The output of the policy is element wise multiplied with this value to determine the
+    // step that is requested to the walking engine.
+    policy_output_scaling: Step,
 }
 
 pub(super) struct RlWalkToBehaviorModel;
@@ -84,35 +84,20 @@ struct Input<'d> {
 
 impl RlBehaviorInput<ModelInput> for Input<'_> {
     fn to_input(&self) -> ModelInput {
-        // pos = self.robot.get_pos()  # [B, 1, 2]
-        // yaw = self.robot.get_yaw()  # [B, 1, 1]
         let robot_position = self.robot_pose.inner.translation.vector.xy();
         let robot_angle = self.robot_pose.inner.rotation.angle();
 
-        // # Relative position to current episode’s target
-        // rel_pos = self.target_pos - pos
-        // rel_pos /= torch.tensor([self.field.full_field_length, self.field.full_field_width], device=self.device).view(
-        //     1, 1, 2
-        // )
         let target_position = self.target_position.coords;
         let mut relative_position = target_position - robot_position;
         relative_position.x /= self.field_height;
         relative_position.y /= self.field_width;
 
-        // # Use trigonometric representation for yaw
-        // cos_yaw = torch.cos(yaw)  # [B, 1, 1]
-        // sin_yaw = torch.sin(yaw)  # [B, 1, 1]
         let cos_angle = robot_angle.cos();
         let sin_angle = robot_angle.sin();
 
-        // # concatenate along the last dimension -> shape [B, 1, 4]
-        // obs_batch_dim_preserved = torch.cat([rel_pos, cos_yaw.unsqueeze(-1), sin_yaw.unsqueeze(-1)], dim=-1)
-        // obs = obs_batch_dim_preserved.squeeze(1)  # [B, 4]
-        // return obs
         vec![
             relative_position.x,
             relative_position.y,
-            // note that the angles are not relative because a point does not have an angle
             cos_angle,
             sin_angle,
         ]
@@ -140,16 +125,13 @@ impl RlBehaviorOutput<ModelOutput> for Output {
     }
 }
 
-// TODO -> termination condition
-//Success ⇨  distance < goal_distance_threshold  AND
-//                alignment > goal_alignment_threshold
 fn run_inference(
     mut commands: Commands,
     mut model_executor: ResMut<ModelExecutor<RlWalkToBehaviorModel>>,
+    mut nao_manager: ResMut<NaoManager>,
     pose: Res<RobotPose>,
     robot_pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
-    mut nao_manager: ResMut<NaoManager>,
 ) {
     // one of the goals
     let target_position = Point2::new(0.0, 0.0);
