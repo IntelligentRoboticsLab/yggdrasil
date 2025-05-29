@@ -108,22 +108,12 @@ fn in_pre_walking_state(state: Res<PrimaryState>) -> bool {
 
 fn setup_pose_visualization(dbg: DebugContext) {
     let times = TimeColumn::new_sequence("cycle", [0]);
-    let color_and_shape = rerun::Boxes3D::update_fields()
-        .with_half_sizes([(0.075, 0.1375, 0.2865)])
-        .with_colors([rerun::Color::from_rgb(0, 120, 255)])
-        .columns_of_unit_batches()
-        .expect("failed to create pose visualization");
-
     let transform = rerun::Transform3D::update_fields()
         .with_axis_length(0.3)
         .columns_of_unit_batches()
         .expect("failed to create view coordinates for pose visualation");
 
-    dbg.send_columns(
-        "localization/pose",
-        [times],
-        color_and_shape.chain(transform),
-    );
+    dbg.send_columns("localization/pose", [times], transform);
 }
 
 fn visualize_pose(dbg: DebugContext, cycle: Res<Cycle>, pose: Res<RobotPose>) {

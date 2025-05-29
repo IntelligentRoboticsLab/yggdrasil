@@ -4,18 +4,18 @@ use nidhogg::types::{FillExt, RightEye, color};
 
 use crate::{
     behavior::{
-        behaviors::{RlStrikerSearchBehavior, Walk, WalkToBall},
+        behaviors::{RlStrikerSearchBehavior, Walk, WalkTo, WalkToBall},
         engine::{CommandsBehaviorExt, RoleState, Roles, in_role},
     },
     core::config::layout::{FieldConfig, LayoutConfig},
     localization::RobotPose,
-    motion::walking_engine::step::Step,
+    motion::{step_planner::Target, walking_engine::step::Step},
     nao::{NaoManager, Priority},
     vision::ball_detection::ball_tracker::BallTracker,
 };
 
 const WALK_WITH_BALL_ANGLE: f32 = 0.3;
-const ALIGN_WITH_BALL_DISTANCE: f32 = 0.3;
+const ALIGN_WITH_BALL_DISTANCE: f32 = 0.1;
 
 /// Plugin for the Striker role
 pub struct StrikerRolePlugin;
