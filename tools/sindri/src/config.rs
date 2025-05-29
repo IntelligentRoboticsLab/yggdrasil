@@ -80,11 +80,12 @@ impl SindriConfig {
             .map(|c| c.to_robot(self.team_number, wired))
     }
 
-    // pub fn all_robots(&self, wired: bool) -> Vec<Robot> {
     pub fn all_robots(&self, wired: bool) -> impl Iterator<Item = Robot> {
         self.robots
             .iter()
-            .map(move |robot_config| robot_config.clone().to_robot(self.team_number, wired))
+            .cloned()
+            .into_iter()
+            .map(move |robot_config| robot_config.to_robot(self.team_number, wired))
     }
 
     /// Retrieve a range from the minimum robot number to the maximum robot number defined in this config.
