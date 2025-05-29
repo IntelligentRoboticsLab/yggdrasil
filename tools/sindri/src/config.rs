@@ -84,7 +84,6 @@ impl SindriConfig {
         self.robots
             .iter()
             .cloned()
-            .into_iter()
             .map(move |robot_config| robot_config.to_robot(self.team_number, wired))
     }
 
