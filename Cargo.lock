@@ -8450,6 +8450,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "reeds_shepp"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9da1a5fbdf442305cf7a02bf1e2089d0f725863dac774788b48a5a65bc2a576c"
+
+[[package]]
 name = "regex"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11537,6 +11543,7 @@ dependencies = [
  "ordered-float 5.0.0",
  "pathfinding",
  "rand 0.9.1",
+ "reeds_shepp",
  "rerun",
  "rustfft",
  "serde",

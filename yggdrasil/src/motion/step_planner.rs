@@ -8,6 +8,8 @@ use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
 use rerun::{FillMode, LineStrip3D};
 use std::time::Instant;
 
+use reeds_shepp_lib::{Gear, Pose, Steering, get_optimal_path};
+
 const TURN_SPEED: f32 = 0.2;
 const WALK_SPEED: f32 = 0.045;
 
@@ -123,69 +125,54 @@ impl StepPlanner {
         path_finding::find_path(robot_pose.world_position(), target_position, &all_obstacles)
     }
 
-    fn plan_translation(robot_pose: &RobotPose, path: &[Point2<f32>]) -> Option<Step> {
-        let first_target_position = path[1];
-        let distance = calc_distance(&robot_pose.inner, first_target_position);
-
-        // We've reached the target.
-        if distance < 0.05 && path.len() == 2 {
-            return None;
-        }
-
-        let angle = calc_angle_to_point(&robot_pose.inner, first_target_position);
-        let turn = calc_turn(&robot_pose.inner, first_target_position);
-
-        if angle > 0.5 {
-            Some(Step {
-                forward: 0.,
-                left: 0.,
-                turn,
-            })
-        } else {
-            Some(Step {
-                forward: WALK_SPEED,
-                left: 0.,
-                turn,
-            })
-        }
-    }
-
-    fn plan_rotation(robot_pose: &RobotPose, target_rotation: UnitComplex<f32>) -> Option<Step> {
-        let angle = target_rotation.angle() - robot_pose.world_rotation();
-        let turn = TURN_SPEED * angle.signum();
-
-        if angle.abs() < 0.2 {
-            None
-        } else {
-            Some(Step {
-                forward: 0.,
-                left: 0.,
-                turn,
-            })
-        }
-    }
-
     pub fn plan(&mut self, robot_pose: &RobotPose) -> Option<Step> {
         let target = self.target?;
         let (path, _total_walking_distance) = self.calc_path(robot_pose)?;
 
-        if let step @ Some(_) = Self::plan_translation(robot_pose, &path) {
-            if !self.reached_translation_target {
-                return step;
-            }
-        }
+        let start = Pose {
+            x: robot_pose.inner.translation.x as f64,
+            y: robot_pose.inner.translation.y as f64,
+            theta_degree: robot_pose.inner.rotation.angle() as f64,
+        };
 
-        self.reached_translation_target = true;
+        let end_angle = target.rotation.map_or_else(
+            || {
+                let diff = Vec2::from(path[0]) - Vec2::from(robot_pose.inner.translation);
+                diff.y.atan2(diff.x)
+            },
+            |rotation| rotation.angle(),
+        );
+        let end = Pose {
+            x: path[0].x as f64,
+            y: path[0].y as f64,
+            theta_degree: end_angle as f64,
+        };
 
-        if let Some(rotation) = target.rotation.as_ref() {
-            if let step @ Some(_) = Self::plan_rotation(robot_pose, *rotation) {
-                return step;
-            }
-        }
+        let path = get_optimal_path(start, end)?;
+        let next_step = &path[0];
 
-        self.reached_rotation_target = true;
-
-        None
+        let forward_multiplier = if next_step.gear == Gear::Forward {
+            1.0
+        } else {
+            -1.0
+        };
+        Some(match path[0].steering {
+            Steering::Left => Step {
+                forward: WALK_SPEED * forward_multiplier,
+                left: 0.0,
+                turn: TURN_SPEED,
+            },
+            Steering::Right => Step {
+                forward: WALK_SPEED * forward_multiplier,
+                left: 0.0,
+                turn: -TURN_SPEED,
+            },
+            Steering::Straight => Step {
+                forward: WALK_SPEED * forward_multiplier,
+                left: 0.0,
+                turn: 0.0,
+            },
+        })
     }
 
     #[must_use]
