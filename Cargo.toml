@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*", "tools/sindri", "tools/re_control", "yggdrasil"]
+members = ["crates/*", "tools/sindri", "tools/yggdrasil_rerun", "yggdrasil"]
 resolver = "2"
 
 [workspace.package]
@@ -55,10 +55,10 @@ heimdall = { path = "crates/heimdall" }
 ml = { path = "crates/ml" }
 nidhogg = { path = "crates/nidhogg" }
 odal = { path = "crates/odal" }
-re_control_comms = { path = "tools/re_control/re_control_comms" }
 sindri = { path = "tools/sindri", default-features = false }
 spatial = { path = "crates/spatial" }
 tasks = { path = "crates/tasks" }
+yggdrasil_rerun_comms = { path = "tools/yggdrasil_rerun/yggdrasil_rerun_comms" }
 
 # external crates
 apodize = "1.0.0"
@@ -86,7 +86,7 @@ kira = { version = "0.9.5", default-features = false, features = [
   "wav",
 ] }
 linuxvideo = { git = "ssh://git@github.com/IntelligentRoboticsLab/linuxvideo", rev = "b8536cf4da325de79f398e70a74cee5bf426f64c" }
-local-ip-address = "0.6.3"
+local-ip-address = "0.6.2"
 lstsq = "0.6.0"
 miette = "7.6.0"
 mimalloc = "0.1.45"

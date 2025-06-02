@@ -5,7 +5,7 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use bevy::prelude::*;
 use futures::channel::mpsc::unbounded;
-use re_control_comms::{
+use yggdrasil_rerun_comms::{
     app::ControlApp,
     protocol::{CONTROL_PORT, ViewerMessage},
 };
@@ -42,7 +42,7 @@ fn setup(mut commands: Commands, rerun_stream: Res<RerunStream>) {
         rx: rx_on_connection,
     };
 
-    // Starts the control app and opens a listener for a re_control viewer connection
+    // Starts the control app and opens a listener for a yggdrasil_rerun viewer connection
     let app = ControlApp::bind(socket_addr, tx_on_connection)
         .unwrap_or_else(|_| panic!("Failed to bind control app to {socket_addr:?}"));
     let mut handle = app.run();

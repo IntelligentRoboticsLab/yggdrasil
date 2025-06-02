@@ -1,12 +1,12 @@
 use std::sync::{Arc, RwLock};
 
-use re_control_comms::{
+use rerun::external::egui;
+use yggdrasil_rerun_comms::{
     protocol::{ViewerMessage, control::ViewerControlMessage},
     viewer::ControlViewerHandle,
 };
-use rerun::external::egui;
 
-use crate::re_control_view::ControlViewerData;
+use crate::control_view::ControlViewerData;
 
 use super::view_section;
 

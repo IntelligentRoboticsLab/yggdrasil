@@ -27,7 +27,7 @@ fn set_rerun_opts() {
 }
 
 fn set_commit_info() {
-    // This command is executed in "tools/re_control"", and as such
+    // This command is executed in "tools/yggdrasil_rerun"", and as such
     // we need to pass "." as last argument, to tell git that we
     // only care about changes in that directory.
     let output = match Command::new("git")
@@ -41,7 +41,7 @@ fn set_commit_info() {
         Ok(output) if output.status.success() => output,
         Ok(_) => {
             println!(
-                "cargo:warning=Non-zero process exit while obtaining commit hash for re_control!"
+                "cargo:warning=Non-zero process exit while obtaining commit hash for yggdrasil_rerun!"
             );
             return;
         }
@@ -55,7 +55,10 @@ fn set_commit_info() {
     let mut parts = stdout.split_whitespace();
     let mut next = || parts.next().unwrap();
 
-    println!("cargo:rustc-env=RE_CONTROL_COMMIT_HASH={}", next());
-    println!("cargo:rustc-env=RE_CONTROL_COMMIT_SHORT_HASH={}", next());
-    println!("cargo:rustc-env=RE_CONTROL_COMMIT_DATE={}", next());
+    println!("cargo:rustc-env=YGGDRASIL_RERUN_COMMIT_HASH={}", next());
+    println!(
+        "cargo:rustc-env=YGGDRASIL_RERUN_COMMIT_SHORT_HASH={}",
+        next()
+    );
+    println!("cargo:rustc-env=YGGDRASIL_RERUN_COMMIT_DATE={}", next());
 }

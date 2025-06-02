@@ -1,9 +1,9 @@
 use std::{env, net::Ipv4Addr, str::FromStr};
 
-use re_control_comms::viewer::ControlViewerHandle;
 use sindri::config::{ConfigRobot, Robot};
+use yggdrasil_rerun_comms::viewer::ControlViewerHandle;
 
-pub const ROBOT_ADDRESS_ENV_KEY: &str = "RE_CONTROL_ROBOT_ADDRESS";
+pub const ROBOT_ADDRESS_ENV_KEY: &str = "YGGDRASIL_RERUN_ROBOT_ADDRESS";
 
 pub struct ConnectionState {
     pub handle: ControlViewerHandle,

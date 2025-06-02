@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use heimdall::CameraPosition;
-use re_control_comms::{
+use yggdrasil_rerun_comms::{
     app::NotifyConnection,
     debug_system::DebugEnabledSystems,
     protocol::{

@@ -5,16 +5,16 @@ use std::{
 
 use bifrost::communication::{GameControllerMessage, GameState, Penalty, TeamInfo};
 use miette::{Diagnostic, IntoDiagnostic, Result};
-use re_control_comms::{
-    protocol::{ViewerMessage, game_controller::ViewerGameControllerMessage},
-    viewer::ControlViewerHandle,
-};
 use rerun::external::{
     egui::{self, Color32},
     re_ui::UiExt,
 };
 use strum::IntoEnumIterator;
 use thiserror::Error;
+use yggdrasil_rerun_comms::{
+    protocol::{ViewerMessage, game_controller::ViewerGameControllerMessage},
+    viewer::ControlViewerHandle,
+};
 
 use crate::game_controller_view::GameControllerViewerData;
 

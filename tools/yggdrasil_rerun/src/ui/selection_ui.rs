@@ -3,11 +3,11 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use re_control_comms::{
+use rerun::external::egui;
+use yggdrasil_rerun_comms::{
     protocol::{CONTROL_PORT, RobotMessage},
     viewer::ControlViewer,
 };
-use rerun::external::egui;
 
 use crate::{
     connection::ConnectionState,
@@ -20,7 +20,7 @@ pub(crate) fn connection_selection_ui<T: HandleState + Default + Send + Sync + '
     connection_state: &mut ConnectionState,
     state_data: Arc<RwLock<T>>,
 ) {
-    egui::Grid::new("re_control selection ui")
+    egui::Grid::new("yggdrasil_rerun selection ui")
         .num_columns(2)
         .spacing([20.0, 10.0])
         .show(ui, |ui| {

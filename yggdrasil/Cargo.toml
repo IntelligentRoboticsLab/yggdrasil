@@ -17,8 +17,8 @@ workspace = true
 default = []
 dependency_graph = []
 local = []
-re_control = []
 timings = ["dep:tracing-tracy", "bevy/trace"]
+yggdrasil_rerun = []
 
 [dependencies]
 # our own crates here
@@ -27,9 +27,9 @@ heimdall = { workspace = true }
 ml = { workspace = true }
 nidhogg = { workspace = true, features = ["lola", "bevy"] }
 odal = { workspace = true }
-re_control_comms = { workspace = true }
 spatial = { workspace = true }
 tasks = { workspace = true }
+yggdrasil_rerun_comms = { workspace = true }
 
 # external crates here
 apodize = { workspace = true }
