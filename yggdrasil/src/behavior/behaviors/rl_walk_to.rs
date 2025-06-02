@@ -57,13 +57,8 @@ pub struct RlWalkToBehaviorConfig {
 pub(super) struct RlWalkToBehaviorModel;
 
 impl MlModel for RlWalkToBehaviorModel {
-    /// The model input shape.
     type Inputs = ModelInput;
-
-    /// The model output shape.
     type Outputs = ModelOutput;
-
-    /// Path to the model's ONNX file.
     const ONNX_PATH: &'static str = "models/rl_walk_to.onnx";
 }
 

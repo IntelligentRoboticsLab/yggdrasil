@@ -4,8 +4,8 @@ use nidhogg::types::{FillExt, RightEye, color};
 
 use crate::{
     behavior::{
-        behaviors::{RlStrikerSearchBehavior, Walk, WalkToBall},
-        engine::{CommandsBehaviorExt, RoleState, Roles, in_role},
+        behaviors::{RlStrikerSearchBehavior, RlWalkToBehavior, Walk, WalkToBall},
+        engine::{in_role, CommandsBehaviorExt, RoleState, Roles},
     },
     core::config::layout::{FieldConfig, LayoutConfig},
     localization::RobotPose,

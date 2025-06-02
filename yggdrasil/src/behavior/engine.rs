@@ -42,8 +42,8 @@ impl Plugin for BehaviorEnginePlugin {
             .add_plugins((
                 CatchFallBehaviorPlugin,
                 ObserveBehaviorPlugin,
-                RlStrikerSearchBehaviorPlugin,
                 RlWalkToBehaviorPlugin,
+                RlStrikerSearchBehaviorPlugin,
                 SittingBehaviorPlugin,
                 StandBehaviorPlugin,
                 StandLookAtBehaviorPlugin,
