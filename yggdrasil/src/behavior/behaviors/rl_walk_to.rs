@@ -133,7 +133,6 @@ fn run_inference(
     robot_pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
 ) {
-    // one of the goals
     let target_position = Point2::new(0.0, 0.0);
     let target_point = Point3::new(target_position.x, target_position.y, 0.0);
 
