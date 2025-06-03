@@ -65,7 +65,7 @@ impl StepPlanner {
         } else {
             let error = self.rotation? - pose.world_rotation();
 
-            (error > TOLERANCE).then_some(Step {
+            (error.abs() > TOLERANCE).then_some(Step {
                 forward: 0.,
                 left: 0.,
                 turn: error.min(TURN_SPEED).max(-TURN_SPEED),
