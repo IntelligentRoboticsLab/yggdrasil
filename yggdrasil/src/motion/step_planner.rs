@@ -8,11 +8,12 @@ use nalgebra::{Isometry2, Point2, UnitComplex, Vector2};
 use rerun::{FillMode, LineStrip3D};
 
 const WALK_SPEED: f32 = 0.045;
-const TURN_SPEED: f32 = 0.2;
+const TURN_SPEED: f32 = 0.3;
 
 const DISTANCE: f32 = 0.05;
-const MOMENTUM: f32 = 0.8;
-const COMPENSATION: f32 = 0.2;
+const TOLERANCE: f32 = 0.1;
+const MOMENTUM: f32 = 0.9;
+const COMPENSATION: f32 = 0.1;
 
 /// Plugin that adds systems and resources for planning robot steps.
 pub(super) struct StepPlannerPlugin;
@@ -25,11 +26,26 @@ impl Plugin for StepPlannerPlugin {
     }
 }
 
-#[derive(Debug, Default, Clone, Resource)]
+#[derive(Debug, Clone, Resource)]
 pub struct StepPlanner {
     waypoints: Vec<Point2<f32>>,
     rotation: Option<f32>,
     momentum: Vector2<f32>,
+}
+
+impl Default for StepPlanner {
+    fn default() -> Self {
+        Self {
+            waypoints: vec![
+                Point2::new(-1., -1.),
+                Point2::new( 1., -1.),
+                Point2::new( 1.,  1.),
+                Point2::new(-1.,  1.),
+            ],
+            rotation: Some(0.),
+            momentum: Vector2::new(0., 0.),
+        }
+    }
 }
 
 impl StepPlanner {
@@ -44,13 +60,15 @@ impl StepPlanner {
             Some(Step {
                 forward: WALK_SPEED * direction.x,
                 left: WALK_SPEED * direction.y,
-                turn: -direction.y.atan2(direction.x).min(TURN_SPEED).max(-TURN_SPEED),
+                turn: direction.y.atan2(direction.x).min(TURN_SPEED).max(-TURN_SPEED),
             })
         } else {
-            Some(Step {
+            let error = self.rotation? - pose.world_rotation();
+
+            (error > TOLERANCE).then_some(Step {
                 forward: 0.,
                 left: 0.,
-                turn: (self.rotation? - pose.world_rotation()).min(TURN_SPEED).max(-TURN_SPEED),
+                turn: error.min(TURN_SPEED).max(-TURN_SPEED),
             })
         }
     }
@@ -77,6 +95,67 @@ impl StepPlanner {
 
         Some(self.momentum)
     }
+
+    #[deprecated]
+    pub fn set_absolute_target(&mut self, target: Target) {
+        let _ = target;
+    }
+
+    #[deprecated]
+    pub fn set_absolute_target_if_unset(&mut self, target: Target) {
+        let _ = target;
+    }
+
+    #[must_use]
+    #[deprecated]
+    pub fn current_absolute_target(&self) -> Option<&Target> {
+        None
+    }
+
+    #[deprecated]
+    pub fn clear_target(&mut self) {
+    }
+
+    #[deprecated]
+    pub fn add_dynamic_obstacle(&mut self, obstacle: DynamicObstacle, merge_distance: f32) {
+        let _ = (obstacle, merge_distance);
+    }
+
+    #[must_use]
+    #[deprecated]
+    pub fn reached_target(&self) -> bool {
+        false
+    }
+
+    #[must_use]
+    #[deprecated]
+    pub fn has_target(&self) -> bool {
+        true
+    }
+
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+#[deprecated]
+pub struct Target {
+    pub position: Point2<f32>,
+    pub rotation: Option<UnitComplex<f32>>,
+}
+
+impl From<Point2<f32>> for Target {
+    fn from(position: Point2<f32>) -> Self {
+        Target {
+            position,
+            rotation: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+#[deprecated]
+pub struct DynamicObstacle {
+    pub obs: Obstacle,
+    pub ttl: std::time::Instant,
 }
 
 fn setup_path_visualizer(dbg: DebugContext) {
