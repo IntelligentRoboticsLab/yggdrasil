@@ -82,8 +82,9 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let robot_position = self.robot_pose.inner.translation.vector.xy();
         let robot_angle = self.robot_pose.inner.rotation.angle();
 
-        let target_position = self.target_position.coords;
+        let target_position = self.target_position;
         let mut relative_position = target_position - robot_position;
+        
         relative_position.x /= self.field_height;
         relative_position.y /= self.field_width;
 
