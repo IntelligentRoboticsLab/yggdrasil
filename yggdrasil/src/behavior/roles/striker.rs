@@ -22,16 +22,29 @@ pub struct StrikerRolePlugin;
 
 impl Plugin for StrikerRolePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, striker_role.run_if(in_role::<Striker>));
+        app.add_systems(Update, striker_role.run_if(in_role::<Striker>))
+            .add_systems(OnExit(RoleState::Striker), reset_striker_role);
     }
 }
 
-/// Substates for the `Striker` role
+/// The `Striker` role has five substates, each indicated by the right eye LED color:
+///
+/// | LED Color | Substate             | Description                                                      |
+/// |-----------|---------------------|------------------------------------------------------------------|
+/// | Green     | RL Striker Search   | No ball detected; search for the ball.                           |
+/// | Yellow    | Walk to Ball        | Ball is far; walk straight towards it.                           |
+/// | Orange    | Align with Goal     | Close to the ball but not aligned with the goal; circle step.    |
+/// | Purple    | Align with Ball     | Aligned with the goal but not with the ball; side step to align. |
+/// | Red       | Walk with Ball      | Aligned with both goal and ball; walk straight forward.          |
 #[derive(Resource, Default, Debug)]
 pub struct Striker;
 
 impl Roles for Striker {
     const STATE: RoleState = RoleState::Striker;
+}
+
+fn reset_striker_role(mut nao_manager: ResMut<NaoManager>) {
+    nao_manager.set_right_eye_led(RightEye::fill(color::f32::EMPTY), Priority::default());
 }
 
 pub fn striker_role(
@@ -42,6 +55,8 @@ pub fn striker_role(
     mut nao_manager: ResMut<NaoManager>,
 ) {
     let Some(relative_ball) = ball_tracker.stationary_ball() else {
+        nao_manager.set_right_eye_led(RightEye::fill(color::f32::GREEN), Priority::default());
+
         commands.set_behavior(RlStrikerSearchBehavior);
         return;
     };
