@@ -2,7 +2,6 @@ use super::SensorConfig;
 use super::button::{LeftFootButtons, RightFootButtons};
 use crate::prelude::*;
 use crate::{
-    localization::RobotPose,
     motion::path_finding::Obstacle,
     motion::step_planner::{DynamicObstacle, StepPlanner},
     nao::{NaoManager, Priority},
@@ -220,14 +219,12 @@ fn set_foot_leds(manager: &mut NaoManager, current_state: ObstacleStatus) {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn obstacle_detection(
     config: Res<SensorConfig>,
     mut foot_bumpers: ResMut<FootBumperValues>,
     mut obstacle_state: ResMut<ObstacleStateFromBumpers>,
     mut manager: ResMut<NaoManager>,
     mut step_planner: ResMut<StepPlanner>,
-    robot_pose: Res<RobotPose>,
     left_foot: Res<LeftFootButtons>,
     right_foot: Res<RightFootButtons>,
 ) {
@@ -252,7 +249,6 @@ fn obstacle_detection(
             config.obstacle_distance * angle.cos(),
             config.obstacle_distance * angle.sin(),
         );
-        // let world_pos = robot_pose.robot_to_world(&relative_pos);
 
         let obstacle = DynamicObstacle {
             obs: Obstacle::new(relative_pos.x, relative_pos.y, config.obstacle_radius),

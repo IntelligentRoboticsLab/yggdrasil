@@ -91,6 +91,7 @@ impl StepPlanner {
         self.target.as_ref()
     }
 
+    /// Dynamic obstacles need to be added in relative coordinates.
     pub fn add_dynamic_obstacle(&mut self, obstacle: DynamicObstacle, merge_distance: f32) {
         match self
             .dynamic_obstacles
@@ -109,27 +110,29 @@ impl StepPlanner {
         self.dynamic_obstacles.iter().map(|obs| obs.obs).collect()
     }
 
-    fn get_all_obstacles(&mut self) -> Vec<Obstacle> {
+    /// Retrieves all currently relevant objects, in absolute coordinates.
+    fn get_all_obstacles(&mut self, robot_pose: &RobotPose) -> Vec<Obstacle> {
+        let all_dynamic_obstacles = self.collect_and_gc_dynamic_obstacles();
+
+        let abs_dynamic_obstacles: Vec<_> = all_dynamic_obstacles
+            .iter()
+            .map(|obs| {
+                let abs_pos = robot_pose.robot_to_world(&Point2::new(obs.x.0, obs.y.0));
+                Obstacle::new(abs_pos.x, abs_pos.y, obs.radius.0)
+            })
+            .collect();
+
         let mut all_obstacles = self.static_obstacles.clone();
-        all_obstacles.extend_from_slice(&self.collect_and_gc_dynamic_obstacles());
+        all_obstacles.extend_from_slice(&abs_dynamic_obstacles);
 
         all_obstacles
     }
 
     fn calc_path(&mut self, robot_pose: &RobotPose) -> Option<(Vec<Point2<f32>>, f32)> {
         let target_position = self.target?.position;
-        let all_obstacles = self.get_all_obstacles();
+        let all_obstacles = self.get_all_obstacles(robot_pose);
 
-        let abs_obstacles: Vec<_> = all_obstacles
-            .iter()
-            .map(|obs| {
-                let abs_pos = robot_pose.robot_to_world(&Point2::new(obs.x.0, obs.y.0));
-
-                Obstacle::new(abs_pos.x, abs_pos.y, obs.radius.0)
-            })
-            .collect();
-
-        path_finding::find_path(robot_pose.world_position(), target_position, &abs_obstacles)
+        path_finding::find_path(robot_pose.world_position(), target_position, &all_obstacles)
     }
 
     fn plan_translation(robot_pose: &RobotPose, path: &[Point2<f32>]) -> Option<Step> {
@@ -298,7 +301,7 @@ fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>, cycl
     let half_sizes = step_planner
         .dynamic_obstacles
         .iter()
-        .map(|obs| (obs.obs.radius.0, obs.obs.radius.0, 0.5))
+        .map(|obs| (obs.obs.radius.0, obs.obs.radius.0, 0.4))
         .collect::<Vec<_>>();
 
     dbg.log_with_cycle(
