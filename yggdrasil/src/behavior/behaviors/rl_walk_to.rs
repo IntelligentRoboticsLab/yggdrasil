@@ -34,14 +34,14 @@ impl Plugin for RlWalkToBehaviorPlugin {
         app.init_ml_model::<RlWalkToBehaviorModel>()
             .add_systems(
                 Update,
-                run_inference.run_if(in_behavior::<RlWalkToBehavior>.and(task_finished::<Output>)),
+                run_inference.run_if(in_behavior::<RlWalkToBehavior>.and(task_finished::<RlModelOutput>)),
             )
             .add_systems(
                 Update,
                 handle_inference_output
                     .after(run_inference)
                     .run_if(in_behavior::<RlWalkToBehavior>)
-                    .run_if(resource_exists_and_changed::<Output>),
+                    .run_if(resource_exists_and_changed::<RlModelOutput>),
             );
     }
 }
@@ -69,7 +69,7 @@ impl Behavior for RlWalkToBehavior {
     const STATE: BehaviorState = BehaviorState::RlWalkToBehavior;
 }
 
-struct Input<'d> {
+struct RlModelInput<'d> {
     robot_pose: &'d RobotPose,
     target_position: &'d Point2<f32>,
 
@@ -77,7 +77,7 @@ struct Input<'d> {
     field_height: f32,
 }
 
-impl RlBehaviorInput<ModelInput> for Input<'_> {
+impl RlBehaviorInput<ModelInput> for RlModelInput<'_> {
     fn to_input(&self) -> ModelInput {
         let robot_position = self.robot_pose.inner.translation.vector.xy();
         let robot_angle = self.robot_pose.inner.rotation.angle();
@@ -101,11 +101,11 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
 }
 
 #[derive(Resource)]
-struct Output {
+struct RlModelOutput {
     step: Step,
 }
 
-impl RlBehaviorOutput<ModelOutput> for Output {
+impl RlBehaviorOutput<ModelOutput> for RlModelOutput {
     fn from_output(output: ModelOutput) -> Self {
         let forward = output[0].clamp(-1.0, 1.0);
         let left = output[1].clamp(-1.0, 1.0);
@@ -140,7 +140,7 @@ fn run_inference(
         NaoManager::HEAD_STIFFNESS,
     );
 
-    let input = Input {
+    let input = RlModelInput {
         robot_pose: &robot_pose,
         target_position: &target_position,
 
@@ -148,12 +148,12 @@ fn run_inference(
         field_height: layout_config.field.length,
     };
 
-    spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
+    spawn_rl_behavior::<_, _, RlModelOutput>(&mut commands, &mut *model_executor, input);
 }
 
 fn handle_inference_output(
     mut step_context: ResMut<StepContext>,
-    output: Res<Output>,
+    output: Res<RlModelOutput>,
     behavior_config: Res<BehaviorConfig>,
 ) {
     step_context.request_walk(output.step * behavior_config.rl_walk_to.policy_output_scaling);
