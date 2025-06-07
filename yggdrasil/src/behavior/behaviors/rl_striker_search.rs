@@ -20,7 +20,7 @@ use crate::{
     },
     core::config::layout::LayoutConfig,
     localization::RobotPose,
-    motion::walking_engine::{step::Step, step_context::StepContext},
+    motion::walking_engine::{FootSwitchedEvent, Gait, step::Step, step_context::StepContext},
     nao::{NaoManager, Priority},
 };
 
@@ -30,9 +30,10 @@ impl Plugin for RlStrikerSearchBehaviorPlugin {
     fn build(&self, app: &mut App) {
         app.init_ml_model::<RlStrikerSearchBehaviorModel>()
             .add_systems(
-                Update,
+                PreUpdate,
                 run_inference
-                    .run_if(in_behavior::<RlStrikerSearchBehavior>.and(task_finished::<Output>)),
+                    .run_if(in_behavior::<RlStrikerSearchBehavior>.and(task_finished::<Output>))
+                    .run_if(on_event::<FootSwitchedEvent>.or(in_state(Gait::Standing))),
             )
             .add_systems(
                 OnEnter(BehaviorState::RlStrikerSearchBehavior),
@@ -90,7 +91,7 @@ fn reset_observe_starting_time(mut observe_starting_time: ResMut<ObserveStarting
 
 struct Input<'d> {
     robot_pose: &'d RobotPose,
-    goal_position: &'d Point2<f32>,
+    last_action: Step,
 
     field_width: f32,
     field_height: f32,
@@ -101,15 +102,25 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let robot_position = self.robot_pose.inner.translation.vector.xy();
         let robot_angle = self.robot_pose.inner.rotation.angle();
 
-        let relative_goal_position = self.goal_position - robot_position;
-        let relative_goal_angle = relative_goal_position.y.atan2(relative_goal_position.x);
+        let normalized_position_x = robot_position.x / self.field_width;
+        let normalized_position_y = robot_position.y / self.field_height;
 
-        vec![
-            (self.goal_position.x - robot_position.x) / (self.field_height + 700.0),
-            (self.goal_position.y - robot_position.y) / (self.field_width + 700.0),
-            (relative_goal_angle - robot_angle).sin(),
-            (relative_goal_angle - robot_angle).cos(),
-        ]
+        let cos_yaw = robot_angle.cos();
+        let sin_yaw = robot_angle.sin();
+
+        let input = vec![
+            normalized_position_x,
+            normalized_position_y,
+            sin_yaw,
+            cos_yaw,
+            self.last_action.forward,
+            self.last_action.left,
+            self.last_action.turn,
+        ];
+
+        eprintln!("input: {input:?}");
+
+        input
     }
 }
 
@@ -139,12 +150,20 @@ fn run_inference(
     mut model_executor: ResMut<ModelExecutor<RlStrikerSearchBehaviorModel>>,
     robot_pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
+    last_action: Option<Res<Output>>,
 ) {
-    let goal_position = Point2::new(layout_config.field.length, 0.0);
-
     let input = Input {
         robot_pose: &robot_pose,
-        goal_position: &goal_position,
+        last_action: last_action
+            .map(|o| {
+                o.step
+                    * Step {
+                        forward: 0.05,
+                        left: 0.07,
+                        turn: 0.1,
+                    }
+            })
+            .unwrap_or_default(),
 
         field_width: layout_config.field.width,
         field_height: layout_config.field.length,
@@ -160,6 +179,11 @@ fn handle_inference_output(
     mut nao_manager: ResMut<NaoManager>,
     observe_starting_time: Res<ObserveStartingTime>,
 ) {
+    eprintln!("output: {:?}", output.step);
+    eprintln!(
+        "after rescale: {:?}\n\n",
+        output.step * behavior_config.rl_striker_search.policy_output_scaling
+    );
     step_context
         .request_walk(output.step * behavior_config.rl_striker_search.policy_output_scaling);
 
