@@ -83,6 +83,10 @@ impl StopCommand {
             });
         }
 
+        while let Some(result) = join_set.join_next().await {
+            result.into_diagnostic()??;
+        }
+
         Ok(())
     }
 }
