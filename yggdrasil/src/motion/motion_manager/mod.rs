@@ -156,7 +156,10 @@ fn run_motion(
         );
     }
 
-    if motion_manager.key_frame_start.elapsed() <= key_frame.duration {
+    // TODO: Also check for complete conditions.
+    if motion_manager.key_frame_start.elapsed() + Duration::from_secs_f32(key_frame.min_delay)
+        <= key_frame.duration
+    {
         return;
     }
     eprintln!("KEY FRAME ELAPSED");
