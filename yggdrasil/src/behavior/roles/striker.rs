@@ -29,7 +29,7 @@ impl Plugin for StrikerRolePlugin {
 
 /// The `Striker` role has five substates, each indicated by the right eye LED color:
 ///
-/// | LED Color | Substate             | Description                                                      |
+/// | LED Color | Substate            | Description                                                      |
 /// |-----------|---------------------|------------------------------------------------------------------|
 /// | Green     | RL Striker Search   | No ball detected; search for the ball.                           |
 /// | Yellow    | Walk to Ball        | Ball is far; walk straight towards it.                           |
