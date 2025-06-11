@@ -88,13 +88,6 @@ impl JointInterpolator {
             .div(self.duration.as_secs_f32())
             .min(1.0);
 
-        eprintln!(
-            "WEIGHT: |_{}/{} = {}_|",
-            self.start.elapsed().as_secs_f32(),
-            self.duration.as_secs_f32(),
-            weight
-        );
-
         start_joint_positions * (1.0 - weight) + end_joint_positions * weight
     }
 }

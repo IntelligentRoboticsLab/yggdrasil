@@ -57,7 +57,6 @@ fn load_next_motion(
         .current_key_frame()
         .map(|key_frame| key_frame.duration)
         .unwrap();
-    // eprintln!("KEY_FRAME_DURATION: {key_frame_duration:?}");
     // assert_ne!(key_frame_duration, Duration::from_secs(0));
     // assert!(false);
     motion_manager.joint_interpolator = JointInterpolator::new(key_frame_duration);
@@ -74,11 +73,8 @@ fn run_motion(
     nao_state: ResMut<NaoState>,
     mut angles_reached_at: Local<Option<Instant>>,
 ) {
-    eprintln!("keyframe id: {}", motion_manager.current_key_frame_id);
     let key_frame = loop {
-        eprintln!("loop");
         let Some(key_frame) = motion_manager.current_key_frame() else {
-            eprintln!("break none");
             break None;
         };
 
@@ -89,26 +85,21 @@ fn run_motion(
         {
             motion_manager.next_key_frame(nao_state.position.clone());
             *angles_reached_at = None;
-            eprintln!("continue");
             continue;
         }
 
-        eprintln!("break some");
         break Some(key_frame);
     };
     let Some(key_frame) = key_frame else {
-        eprintln!("return");
         return;
     };
 
     // // TODO: Is this check still necessary?
     // if key_frame.is_complete(&imu_values, angles_reached_at.as_ref()) {
-    //     eprintln!("KEY FRAME COMPLETE, GOING NEXT KEY FRAME 1");
     //     motion_manager.next_key_frame(nao_state.position.clone());
     //     *angles_reached_at = None;
     //     return;
     // }
-    eprintln!("key frame not complete");
 
     if !key_frame.abort_conditions.is_empty()
         && key_frame
@@ -116,11 +107,9 @@ fn run_motion(
             .iter()
             .all(|condition| condition.is_satisfied(imu_values.as_ref()))
     {
-        eprintln!("ABORTING MOTION");
         motion_manager.abort_motion();
         return;
     }
-    eprintln!("not aborting");
 
     if let Some(angles) = &key_frame.angles.head {
         let target_angles = motion_manager.joint_interpolator.interpolated_positions(
@@ -162,19 +151,15 @@ fn run_motion(
     {
         return;
     }
-    eprintln!("KEY FRAME ELAPSED");
 
     // If angles are correct, set `completed_motion_at` if unset.
     angles_reached_at.get_or_insert(Instant::now());
 
     if key_frame.is_complete(&imu_values, angles_reached_at.unwrap()) {
-        eprintln!("KEY FRAME COMPLETE, GOING NEXT KEY FRAME 2");
         motion_manager.next_key_frame(nao_state.position.clone());
         *angles_reached_at = None;
         return;
     }
-
-    eprintln!("key frame not complete");
 }
 
 #[derive(Resource)]
@@ -316,12 +301,10 @@ struct KeyFrame {
 impl KeyFrame {
     fn is_complete(&self, imu_values: &IMUValues, angles_reached_at: Instant) -> bool {
         if angles_reached_at.elapsed().as_secs_f32() < self.min_delay {
-            eprintln!("MIN DELAY NOT ELAPSED");
             return false;
         }
 
         if angles_reached_at.elapsed().as_secs_f32() > self.max_delay {
-            eprintln!("MAX DELAY ELAPSED");
             return true;
         }
 
