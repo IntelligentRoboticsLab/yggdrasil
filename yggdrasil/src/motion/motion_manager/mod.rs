@@ -157,8 +157,8 @@ fn run_motion(
     }
 
     // TODO: Also check for complete conditions.
-    if motion_manager.key_frame_start.elapsed() + Duration::from_secs_f32(key_frame.min_delay)
-        <= key_frame.duration
+    if motion_manager.key_frame_start.elapsed()
+        <= key_frame.duration + Duration::from_secs_f32(key_frame.min_delay)
     {
         return;
     }
@@ -310,7 +310,6 @@ struct KeyFrame {
     min_delay: f32,
     max_delay: f32,
     angles: Joints,
-    angle_threshold: f32,
     stiffness: f32,
 }
 
