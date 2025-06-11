@@ -28,9 +28,9 @@ impl Plugin for StepPlannerPlugin {
 
 #[derive(Debug, Clone, Resource)]
 pub struct StepPlanner {
-    waypoints: Vec<Point2<f32>>,
-    rotation: Option<f32>,
-    momentum: Vector2<f32>,
+    pub waypoints: Vec<Point2<f32>>,
+    pub rotation: Option<f32>,
+    pub momentum: Vector2<f32>,
 }
 
 impl Default for StepPlanner {
