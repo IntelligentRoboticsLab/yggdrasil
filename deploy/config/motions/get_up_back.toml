@@ -1,7 +1,7 @@
 [[key_frames]]
 abort_conditions = []
 complete_conditions = []
-duration = 3.0
+duration = 0.300000012
 max_delay = 0.0
 min_delay = 0.0
 start_conditions = []
@@ -32,7 +32,7 @@ ankle_pitch = 0.0
 ankle_roll = 0.0
 hip_pitch = 0.0
 hip_roll = 0.0
-hip_yaw_pitch = -0.0
+hip_yaw_pitch = 0.0
 knee_pitch = 1.919862151145935
 
 [key_frames.angles.legs.right_leg]
@@ -45,7 +45,7 @@ knee_pitch = 1.919862151145935
 [[key_frames]]
 abort_conditions = []
 complete_conditions = []
-duration = 3.0
+duration = 0.300000012
 max_delay = 0.0
 min_delay = 0.0
 start_conditions = []
@@ -76,7 +76,7 @@ ankle_pitch = 0.0
 ankle_roll = 0.0
 hip_pitch = -0.20000000298023224
 hip_roll = 0.0
-hip_yaw_pitch = -0.0
+hip_yaw_pitch = 0.0
 knee_pitch = -0.0872664600610733
 
 [key_frames.angles.legs.right_leg]
@@ -89,7 +89,7 @@ knee_pitch = -0.0872664600610733
 [[key_frames]]
 abort_conditions = []
 complete_conditions = []
-duration = 3.0
+duration = 0.300000012
 max_delay = 0.0
 min_delay = 0.0
 start_conditions = []
@@ -120,7 +120,7 @@ ankle_pitch = 1.0471975803375244
 ankle_roll = 0.0872664600610733
 hip_pitch = 0.27925267815589905
 hip_roll = 0.0
-hip_yaw_pitch = -0.0
+hip_yaw_pitch = 0.0
 knee_pitch = -0.0872664600610733
 
 [key_frames.angles.legs.right_leg]
@@ -133,7 +133,7 @@ knee_pitch = -0.0872664600610733
 [[key_frames]]
 abort_conditions = []
 complete_conditions = []
-duration = 4.0
+duration = 0.400000006
 max_delay = 0.0
 min_delay = 0.0
 start_conditions = []
@@ -164,7 +164,7 @@ ankle_pitch = 0.0
 ankle_roll = 0.0
 hip_pitch = -1.3962633609771729
 hip_roll = 0.0
-hip_yaw_pitch = -0.0
+hip_yaw_pitch = 0.0
 knee_pitch = -0.0872664600610733
 
 [key_frames.angles.legs.right_leg]
@@ -177,7 +177,7 @@ knee_pitch = -0.0872664600610733
 [[key_frames]]
 abort_conditions = []
 complete_conditions = []
-duration = 3.0
+duration = 0.300000012
 max_delay = 0.0
 min_delay = 0.0
 start_conditions = []
@@ -208,7 +208,7 @@ ankle_pitch = 0.1745329201221466
 ankle_roll = -0.1745329201221466
 hip_pitch = -0.8726646304130554
 hip_roll = 0.2617993950843811
-hip_yaw_pitch = 0.9599310755729675
+hip_yaw_pitch = -0.9599310755729675
 knee_pitch = -0.0872664600610733
 
 [key_frames.angles.legs.right_leg]
@@ -221,7 +221,7 @@ knee_pitch = -0.0872664600610733
 [[key_frames]]
 abort_conditions = []
 complete_conditions = []
-duration = 3.0
+duration = 0.300000012
 max_delay = 0.0
 min_delay = 0.0
 start_conditions = []
@@ -252,7 +252,7 @@ ankle_pitch = 0.8552113175392151
 ankle_roll = -0.12217304855585098
 hip_pitch = -1.3962633609771729
 hip_roll = 0.7330383062362671
-hip_yaw_pitch = 1.1344640254974365
+hip_yaw_pitch = -1.1344640254974365
 knee_pitch = 1.3351768255233765
 
 [key_frames.angles.legs.right_leg]
@@ -265,7 +265,7 @@ knee_pitch = 1.4311699867248535
 [[key_frames]]
 abort_conditions = []
 complete_conditions = []
-duration = 4.0
+duration = 0.400000006
 max_delay = 0.0
 min_delay = 0.0
 start_conditions = []
@@ -296,7 +296,7 @@ ankle_pitch = -0.7155849933624268
 ankle_roll = -0.33161255717277527
 hip_pitch = -0.5235987901687622
 hip_roll = 0.20943951606750488
-hip_yaw_pitch = 1.1344640254974365
+hip_yaw_pitch = -1.1344640254974365
 knee_pitch = 2.1118483543395996
 
 [key_frames.angles.legs.right_leg]
@@ -309,7 +309,7 @@ knee_pitch = 0.8377580642700195
 [[key_frames]]
 abort_conditions = []
 complete_conditions = []
-duration = 3.0
+duration = 0.300000012
 max_delay = 0.0
 min_delay = 0.0
 start_conditions = []
@@ -340,7 +340,7 @@ ankle_pitch = -0.7155849933624268
 ankle_roll = -0.33161255717277527
 hip_pitch = -0.5235987901687622
 hip_roll = 0.20943951606750488
-hip_yaw_pitch = 1.1344640254974365
+hip_yaw_pitch = -1.1344640254974365
 knee_pitch = 2.1118483543395996
 
 [key_frames.angles.legs.right_leg]
@@ -353,7 +353,7 @@ knee_pitch = 0.8377580642700195
 [[key_frames]]
 abort_conditions = []
 complete_conditions = []
-duration = 4.0
+duration = 0.400000006
 max_delay = 0.0
 min_delay = 0.0
 start_conditions = []
@@ -384,7 +384,7 @@ ankle_pitch = -1.0122909545898438
 ankle_roll = 0.1745329201221466
 hip_pitch = -0.5585053563117981
 hip_roll = 0.06981316953897476
-hip_yaw_pitch = 1.1344640254974365
+hip_yaw_pitch = -1.1344640254974365
 knee_pitch = 2.1118483543395996
 
 [key_frames.angles.legs.right_leg]
@@ -397,7 +397,7 @@ knee_pitch = -0.0872664600610733
 [[key_frames]]
 abort_conditions = []
 complete_conditions = []
-duration = 4.0
+duration = 0.400000006
 max_delay = 0.0
 min_delay = 0.0
 start_conditions = []
@@ -428,7 +428,7 @@ ankle_pitch = -0.9773843884468079
 ankle_roll = 0.15707963705062866
 hip_pitch = -0.9599310755729675
 hip_roll = 0.20943951606750488
-hip_yaw_pitch = 0.7592182159423828
+hip_yaw_pitch = -0.7592182159423828
 knee_pitch = 2.1118483543395996
 
 [key_frames.angles.legs.right_leg]
@@ -441,7 +441,7 @@ knee_pitch = 1.6580628156661987
 [[key_frames]]
 abort_conditions = []
 complete_conditions = []
-duration = 3.0
+duration = 0.300000012
 max_delay = 0.0
 min_delay = 0.0
 start_conditions = []
@@ -472,7 +472,7 @@ ankle_pitch = -0.8552113175392151
 ankle_roll = 0.13089969754219055
 hip_pitch = -1.0471975803375244
 hip_roll = -0.12217304855585098
-hip_yaw_pitch = 0.5759586691856384
+hip_yaw_pitch = -0.5759586691856384
 knee_pitch = 2.1118483543395996
 
 [key_frames.angles.legs.right_leg]
@@ -485,7 +485,7 @@ knee_pitch = 2.1118483543395996
 [[key_frames]]
 abort_conditions = []
 complete_conditions = []
-duration = 6.0
+duration = 0.600000024
 max_delay = 0.0
 min_delay = 0.0
 start_conditions = []
@@ -516,7 +516,7 @@ ankle_pitch = -0.8552113175392151
 ankle_roll = 0.13089969754219055
 hip_pitch = -1.0471975803375244
 hip_roll = -0.12217304855585098
-hip_yaw_pitch = 0.44999998807907104
+hip_yaw_pitch = -0.44999998807907104
 knee_pitch = 2.1118483543395996
 
 [key_frames.angles.legs.right_leg]
@@ -529,7 +529,7 @@ knee_pitch = 2.1118483543395996
 [[key_frames]]
 abort_conditions = []
 complete_conditions = []
-duration = 5.0
+duration = 0.5
 max_delay = 0.0
 min_delay = 0.0
 start_conditions = []
@@ -560,7 +560,7 @@ ankle_pitch = -0.6000000238418579
 ankle_roll = 0.0
 hip_pitch = -0.30000001192092896
 hip_roll = 0.0
-hip_yaw_pitch = -0.013799999840557575
+hip_yaw_pitch = 0.013799999840557575
 knee_pitch = 0.9300000071525574
 
 [key_frames.angles.legs.right_leg]
