@@ -6053,8 +6053,8 @@ checksum = "d05e27ee213611ffe7d6348b942e8f942b37114c00cc03cec254295a4a17852e"
 
 [[package]]
 name = "openvino"
-version = "0.9.0"
-source = "git+https://github.com/Rickvanderveen/openvino-rs.git?rev=eef188a4f0fd52020bfe95822ead35f37ee4efaf#eef188a4f0fd52020bfe95822ead35f37ee4efaf"
+version = "0.8.0"
+source = "git+https://github.com/intel/openvino-rs?rev=2f6b500#2f6b500c125da0c38267da93d0aa4e814b46eaa8"
 dependencies = [
  "openvino-finder",
  "openvino-sys",
@@ -6062,8 +6062,8 @@ dependencies = [
 
 [[package]]
 name = "openvino-finder"
-version = "0.9.0"
-source = "git+https://github.com/Rickvanderveen/openvino-rs.git?rev=eef188a4f0fd52020bfe95822ead35f37ee4efaf#eef188a4f0fd52020bfe95822ead35f37ee4efaf"
+version = "0.8.0"
+source = "git+https://github.com/intel/openvino-rs?rev=2f6b500#2f6b500c125da0c38267da93d0aa4e814b46eaa8"
 dependencies = [
  "cfg-if",
  "log",
@@ -6071,12 +6071,11 @@ dependencies = [
 
 [[package]]
 name = "openvino-sys"
-version = "0.9.0"
-source = "git+https://github.com/Rickvanderveen/openvino-rs.git?rev=eef188a4f0fd52020bfe95822ead35f37ee4efaf#eef188a4f0fd52020bfe95822ead35f37ee4efaf"
+version = "0.8.0"
+source = "git+https://github.com/intel/openvino-rs?rev=2f6b500#2f6b500c125da0c38267da93d0aa4e814b46eaa8"
 dependencies = [
  "env_logger",
  "libloading",
- "once_cell",
  "openvino-finder",
 ]
 
