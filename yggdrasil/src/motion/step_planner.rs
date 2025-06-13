@@ -253,7 +253,7 @@ fn setup_path_visualizer(dbg: DebugContext) {
         Cycle::default(),
         &rerun::LineStrips3D::update_fields()
             .with_colors([(66, 135, 245)])
-            .with_radii([2.0]),
+            .with_radii([0.01]),
     );
 }
 

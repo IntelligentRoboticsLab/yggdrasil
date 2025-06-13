@@ -18,10 +18,10 @@ malfunction_count = 1500
 obstacle_angle = 0.4
 
 # Distance from the robot to the center of an obstacle that will be spawned, in meters.
-obstacle_distance = 0.25
+obstacle_distance = 0.22
 
 # Radius of an obstacle that will be spawned, in meters.
-obstacle_radius = 0.13
+obstacle_radius = 0.15
 
 # The maximum distance between two obstacles to consider them the same, in meters.
 merge_distance = 0.05
