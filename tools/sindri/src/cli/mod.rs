@@ -11,6 +11,7 @@ pub mod run;
 pub mod scan;
 pub mod showtime;
 pub mod shutdown;
+pub mod stop;
 pub mod update;
 pub mod yggdrasil_rerun;
 
@@ -65,4 +66,5 @@ pub enum Commands {
     #[command(subcommand)]
     Config(config::ConfigCommand),
     Update(update::UpdateCommand),
+    Stop(stop::StopCommand),
 }

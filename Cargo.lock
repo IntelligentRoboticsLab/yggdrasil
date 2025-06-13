@@ -4950,7 +4950,7 @@ checksum = "cd945864f07fe9f5371a27ad7b52a172b4b499999f1d97574c9fa68373937e12"
 [[package]]
 name = "linuxvideo"
 version = "0.3.3"
-source = "git+ssh://git@github.com/IntelligentRoboticsLab/linuxvideo?rev=b8536cf4da325de79f398e70a74cee5bf426f64c#b8536cf4da325de79f398e70a74cee5bf426f64c"
+source = "git+https://github.com/IntelligentRoboticsLab/linuxvideo?rev=b8536cf4da325de79f398e70a74cee5bf426f64c#b8536cf4da325de79f398e70a74cee5bf426f64c"
 dependencies = [
  "bitflags 1.3.2",
  "log",
@@ -6053,8 +6053,8 @@ checksum = "d05e27ee213611ffe7d6348b942e8f942b37114c00cc03cec254295a4a17852e"
 
 [[package]]
 name = "openvino"
-version = "0.9.0"
-source = "git+https://github.com/Rickvanderveen/openvino-rs.git?rev=eef188a4f0fd52020bfe95822ead35f37ee4efaf#eef188a4f0fd52020bfe95822ead35f37ee4efaf"
+version = "0.8.0"
+source = "git+https://github.com/intel/openvino-rs?rev=2f6b500#2f6b500c125da0c38267da93d0aa4e814b46eaa8"
 dependencies = [
  "openvino-finder",
  "openvino-sys",
@@ -6062,8 +6062,8 @@ dependencies = [
 
 [[package]]
 name = "openvino-finder"
-version = "0.9.0"
-source = "git+https://github.com/Rickvanderveen/openvino-rs.git?rev=eef188a4f0fd52020bfe95822ead35f37ee4efaf#eef188a4f0fd52020bfe95822ead35f37ee4efaf"
+version = "0.8.0"
+source = "git+https://github.com/intel/openvino-rs?rev=2f6b500#2f6b500c125da0c38267da93d0aa4e814b46eaa8"
 dependencies = [
  "cfg-if",
  "log",
@@ -6071,12 +6071,11 @@ dependencies = [
 
 [[package]]
 name = "openvino-sys"
-version = "0.9.0"
-source = "git+https://github.com/Rickvanderveen/openvino-rs.git?rev=eef188a4f0fd52020bfe95822ead35f37ee4efaf#eef188a4f0fd52020bfe95822ead35f37ee4efaf"
+version = "0.8.0"
+source = "git+https://github.com/intel/openvino-rs?rev=2f6b500#2f6b500c125da0c38267da93d0aa4e814b46eaa8"
 dependencies = [
  "env_logger",
  "libloading",
- "once_cell",
  "openvino-finder",
 ]
 
@@ -9094,7 +9093,7 @@ checksum = "832ddd7df0d98d6fd93b973c330b7c8e0742d5cb8f1afc7dea89dba4d2531aa1"
 
 [[package]]
 name = "sindri"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "build_utils",
  "clap",
