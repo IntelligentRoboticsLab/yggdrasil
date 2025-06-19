@@ -379,7 +379,6 @@ fn ui_main(
             // Score display with team colors using columns with constrained height
             let score_a = simulation.gamecontroller.teams[0].score;
             let score_b = simulation.gamecontroller.teams[1].score;
-            
             ui.allocate_ui_with_layout(
                 egui::Vec2::new(ui.available_width(), 70.0), // Fixed height
                 egui::Layout::top_down(egui::Align::Center),
@@ -389,11 +388,10 @@ fn ui_main(
                             ui.label(
                                 egui::RichText::new(format!("{}", score_a))
                                     .size(60.0)
-                                    .color(egui::Color32::from_rgb(220, 20, 60))
+                                    .color(egui::Color32::from_rgb(255, 140, 0)) // Orange
                                     .strong()
                             );
                         });
-                        
                         columns[1].centered_and_justified(|ui| {
                             ui.label(
                                 egui::RichText::new("-")
@@ -402,12 +400,11 @@ fn ui_main(
                                     .strong()
                             );
                         });
-                        
                         columns[2].with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                             ui.label(
                                 egui::RichText::new(format!("{}", score_b))
                                     .size(60.0)
-                                    .color(egui::Color32::from_rgb(30, 144, 255))
+                                    .color(egui::Color32::from_rgb(0, 191, 255)) // DeepSkyBlue (opposite to orange)
                                     .strong()
                             );
                         });
