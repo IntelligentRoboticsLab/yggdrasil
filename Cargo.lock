@@ -9735,7 +9735,11 @@ dependencies = [
 
 [[package]]
 name = "sindri"
+<<<<<<< HEAD
 version = "0.28.0"
+=======
+version = "0.27.0"
+>>>>>>> 0eb7fc8d (Add simulation command to sindri and update version)
 dependencies = [
  "build_utils",
  "clap",

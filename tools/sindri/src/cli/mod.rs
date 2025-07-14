@@ -11,6 +11,7 @@ pub mod run;
 pub mod scan;
 pub mod showtime;
 pub mod shutdown;
+pub mod simulation;
 pub mod stop;
 pub mod update;
 pub mod yggdrasil_rerun;
@@ -63,6 +64,7 @@ pub enum Commands {
     ChangeNetwork(change_network::ChangeNetwork),
     Flash(flash::Flash),
     Shutdown(shutdown::Shutdown),
+    Simulation(simulation::Simulation),
     #[command(subcommand)]
     Config(config::ConfigCommand),
     Update(update::UpdateCommand),

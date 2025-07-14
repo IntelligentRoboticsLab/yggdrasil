@@ -14,7 +14,7 @@ use filter::{CovarianceMatrix, UnscentedKalmanFilter};
 use nalgebra::{Isometry2, Point2, Translation2, UnitComplex, Vector2};
 use tasks::TaskPlugin;
 use yggdrasil::behavior::behaviors::Stand;
-use yggdrasil::behavior::engine::{BehaviorState, CommandsBehaviorExt, RoleState};
+use yggdrasil::behavior::engine::{CommandsBehaviorExt};
 use yggdrasil::behavior::primary_state::PrimaryState;
 use yggdrasil::core::audio::whistle_detection::Whistle;
 use yggdrasil::core::config::layout::LayoutConfig;
@@ -23,7 +23,7 @@ use yggdrasil::core::config::showtime::{self, PlayerConfig};
 use yggdrasil::core::{config, control, debug};
 use yggdrasil::localization::hypothesis::odometry_update;
 use yggdrasil::localization::odometry::{self, Odometry};
-use yggdrasil::localization::{RobotPose, pose};
+use yggdrasil::localization::{RobotPose};
 use yggdrasil::motion::walking_engine::step_context::StepContext;
 use yggdrasil::nao::Cycle;
 use yggdrasil::prelude::Config;
@@ -61,7 +61,7 @@ struct PlayerNumber;
 pub struct Simulation {
     state: GameState,
     ball_position: Point2<f32>,
-    ball_velocity: Vec2, // Add velocity
+    ball_velocity: Vec2,                   // Add velocity
     gamecontroller: GameControllerMessage, // Add gamecontroller
 }
 
@@ -70,7 +70,7 @@ impl Default for Simulation {
         Self {
             state: GameState::Initial,
             ball_position: Point2::new(1.0, 1.0),
-            ball_velocity: Vec2::ZERO, // Start stationary
+            ball_velocity: Vec2::ZERO,                // Start stationary
             gamecontroller: initial_gamecontroller(), // Initialize
         }
     }
@@ -106,7 +106,7 @@ fn main() {
                 update_position_markers,
                 update_ball_motion,           // Add ball motion system
                 handle_ball_robot_collisions, // Add collision system
-                update_ball_visual, // <-- add this
+                update_ball_visual,           // <-- add this
             ),
         );
 
@@ -360,68 +360,74 @@ fn ui_main(
 
     // Set initial size to 25% of window width, max 50%
     let right = egui::SidePanel::right("right_panel")
-    .default_width(window.width() * 0.25)
-    .max_width(window.width() * 0.5)
-    .resizable(true)
-    .show(ctx, |ui| {
-        // Top-aligned, horizontally centered scoreboard
-        ui.add_space(20.0);
-        ui.vertical_centered(|ui| {
-            ui.label(
-                egui::RichText::new("SCOREBOARD")
-                    .size(32.0)
-                    .color(egui::Color32::from_rgb(255, 215, 0))
-                    .strong()
-                    .underline(),
-            );
+        .default_width(window.width() * 0.25)
+        .max_width(window.width() * 0.5)
+        .resizable(true)
+        .show(ctx, |ui| {
+            // Top-aligned, horizontally centered scoreboard
             ui.add_space(20.0);
-            
-            // Score display with team colors using columns with constrained height
-            let score_a = simulation.gamecontroller.teams[0].score;
-            let score_b = simulation.gamecontroller.teams[1].score;
-            ui.allocate_ui_with_layout(
-                egui::Vec2::new(ui.available_width(), 70.0), // Fixed height
-                egui::Layout::top_down(egui::Align::Center),
-                |ui| {
-                    ui.columns(3, |columns| {
-                        columns[0].with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            ui.label(
-                                egui::RichText::new(format!("{}", score_a))
-                                    .size(60.0)
-                                    .color(egui::Color32::from_rgb(255, 140, 0)) // Orange
-                                    .strong()
+            ui.vertical_centered(|ui| {
+                ui.label(
+                    egui::RichText::new("SCOREBOARD")
+                        .size(32.0)
+                        .color(egui::Color32::from_rgb(255, 215, 0))
+                        .strong()
+                        .underline(),
+                );
+                ui.add_space(20.0);
+
+                // Score display with team colors using columns with constrained height
+                let score_a = simulation.gamecontroller.teams[0].score;
+                let score_b = simulation.gamecontroller.teams[1].score;
+                ui.allocate_ui_with_layout(
+                    egui::Vec2::new(ui.available_width(), 70.0), // Fixed height
+                    egui::Layout::top_down(egui::Align::Center),
+                    |ui| {
+                        ui.columns(3, |columns| {
+                            columns[0].with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    ui.label(
+                                        egui::RichText::new(format!("{}", score_a))
+                                            .size(60.0)
+                                            .color(egui::Color32::from_rgb(255, 140, 0)) // Orange
+                                            .strong(),
+                                    );
+                                },
+                            );
+                            columns[1].centered_and_justified(|ui| {
+                                ui.label(
+                                    egui::RichText::new("-")
+                                        .size(48.0)
+                                        .color(egui::Color32::WHITE)
+                                        .strong(),
+                                );
+                            });
+                            columns[2].with_layout(
+                                egui::Layout::left_to_right(egui::Align::Center),
+                                |ui| {
+                                    ui.label(
+                                        egui::RichText::new(format!("{}", score_b))
+                                            .size(60.0)
+                                            .color(egui::Color32::from_rgb(0, 191, 255)) // DeepSkyBlue (opposite to orange)
+                                            .strong(),
+                                    );
+                                },
                             );
                         });
-                        columns[1].centered_and_justified(|ui| {
-                            ui.label(
-                                egui::RichText::new("-")
-                                    .size(48.0)
-                                    .color(egui::Color32::WHITE)
-                                    .strong()
-                            );
-                        });
-                        columns[2].with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                            ui.label(
-                                egui::RichText::new(format!("{}", score_b))
-                                    .size(60.0)
-                                    .color(egui::Color32::from_rgb(0, 191, 255)) // DeepSkyBlue (opposite to orange)
-                                    .strong()
-                            );
-                        });
-                    });
-                }
-            );
-            
-            ui.add_space(20.0);
-            ui.separator();
-        });
-        
-        // Fill the rest of the available rect
-        ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
-    })
-    .response
-    .rect
-    .width();
+                    },
+                );
+
+                ui.add_space(20.0);
+                ui.separator();
+            });
+
+            // Fill the rest of the available rect
+            ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
+        })
+        .response
+        .rect
+        .width();
 
     // Set initial size to 25% of window height, max 33%
     let bottom = egui::TopBottomPanel::bottom("bottom_panel")
@@ -687,7 +693,10 @@ fn setup_system(
             1.0 * field_scale.pixels_per_meter,
             1.0 * field_scale.pixels_per_meter,
             2.0,
-        ).with_scale(Vec3::splat(BALL_RADIUS_METERS * 2.0 * field_scale.pixels_per_meter)),
+        )
+        .with_scale(Vec3::splat(
+            BALL_RADIUS_METERS * 2.0 * field_scale.pixels_per_meter,
+        )),
         SimBall,
     ));
 
@@ -700,7 +709,7 @@ fn update_ball_visual(
     field_scale: Res<FieldScale>,
     mut query: Query<&mut Transform, With<SimBall>>,
 ) {
-    if let Ok(mut transform) = query.get_single_mut() {
+    if let Ok(mut transform) = query.single_mut() {
         transform.translation.x = simulation.ball_position.x * field_scale.pixels_per_meter;
         transform.translation.y = simulation.ball_position.y * field_scale.pixels_per_meter;
         transform.scale = Vec3::splat(BALL_RADIUS_METERS * 2.0 * field_scale.pixels_per_meter);

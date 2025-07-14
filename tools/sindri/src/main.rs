@@ -30,6 +30,7 @@ async fn main() -> Result<()> {
         Commands::Update(opts) => opts.update().await?,
         Commands::Flash(opts) => opts.flash(config).await?,
         Commands::Stop(opts) => opts.stop(config).await?,
+        Commands::Simulation(opts) => opts.run().await?,
     }
 
     Ok(())
