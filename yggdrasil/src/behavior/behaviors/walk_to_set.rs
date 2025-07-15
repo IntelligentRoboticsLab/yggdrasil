@@ -68,12 +68,22 @@ fn walk_to_set(
 
     if step_planner
         .current_absolute_target()
-        .is_none_or(|current_target| *current_target == target)
+        .is_none_or(|current_target| *current_target != target)
     {
         step_planner.set_absolute_target(target);
     }
 
     if let Some(step) = step_planner.plan(&pose) {
+        let observe_config = &config.observe;
+
+        look_around(
+            &mut nao_manager,
+            **observe_starting_time,
+            observe_config.head_rotation_speed,
+            observe_config.head_yaw_max,
+            observe_config.head_pitch_max,
+        );
+
         step_context.request_walk(step);
     } else {
         let look_at = pose.get_look_at_absolute(&Point3::origin());
@@ -85,16 +95,6 @@ fn walk_to_set(
 
         step_context.request_stand();
     }
-
-    let observe_config = &config.observe;
-
-    look_around(
-        &mut nao_manager,
-        **observe_starting_time,
-        observe_config.head_rotation_speed,
-        observe_config.head_yaw_max,
-        observe_config.head_pitch_max,
-    );
 }
 
 fn look_around(

@@ -69,9 +69,8 @@ impl Default for StepPlanner {
 
 impl StepPlanner {
     pub fn set_absolute_target(&mut self, target: Target) {
+        self.clear_target();
         self.target = Some(target);
-        self.reached_translation_target = false;
-        self.reached_rotation_target = false;
     }
 
     pub fn set_absolute_target_if_unset(&mut self, target: Target) {
