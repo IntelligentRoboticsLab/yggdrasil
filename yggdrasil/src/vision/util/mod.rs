@@ -6,39 +6,50 @@ use bbox::{ConvertBbox, Xyxy};
 use fast_image_resize::{self as fir, ResizeOptions};
 use itertools::Itertools;
 
-/// Applies Non-Maximum Suppression (NMS) to the given bounding boxes and scores.
+/// Fast Non-Maximum Suppression (NMS) on the given bounding boxes and scores.
 ///
 /// NMS is used to remove overlapping boxes with lower scores, keeping only the highest scoring
-/// boxes.
+/// boxes. This implementation is more efficient than a naive O(n^2) approach.
 pub fn non_max_suppression<B>(detections: &[(B, f32)], threshold: f32) -> Vec<usize>
 where
     B: ConvertBbox<Xyxy> + Clone + Copy,
 {
-    let mut final_indices = Vec::new();
+    if detections.is_empty() {
+        return Vec::new();
+    }
 
-    for i in 0..detections.len() {
-        let mut discard = false;
-        for j in 0..detections.len() {
-            if i == j {
+    // Create a vec of indices and sort them by score in descending order
+    // This allows us to process the highest scoring boxes first, and suppress overlapping boxes more efficiently.
+    let mut indices: Vec<usize> = (0..detections.len()).collect();
+    indices.sort_unstable_by(|&a, &b| detections[b].1.total_cmp(&detections[a].1));
+
+    let mut kept_indices = Vec::new();
+    let mut suppressed = vec![false; detections.len()];
+
+    for i in 0..indices.len() {
+        let idx1 = indices[i];
+        if suppressed[idx1] {
+            continue;
+        }
+
+        kept_indices.push(idx1);
+        suppressed[idx1] = true;
+
+        let box1 = detections[idx1].0;
+
+        for idx2 in indices.iter().skip(i + 1) {
+            if suppressed[*idx2] {
                 continue;
             }
 
-            let (box_i, score_i) = detections[i];
-            let (box_j, score_j) = detections[j];
-
-            let iou = box_i.convert().iou(&box_j);
-            if iou >= threshold && score_j >= score_i {
-                discard = true;
-                break;
+            let box2 = detections[*idx2].0;
+            if box1.convert().iou(&box2) > threshold {
+                suppressed[*idx2] = true;
             }
-        }
-
-        if !discard {
-            final_indices.push(i);
         }
     }
 
-    final_indices
+    kept_indices
 }
 
 /// Resizes a raw buffer of yuyv data.
