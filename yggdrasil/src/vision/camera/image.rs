@@ -61,8 +61,6 @@ impl<T: CameraLocation> Image<T> {
 
     /// Get a grayscale patch from the image centered at the given point.
     /// The patch is of size `width` x `height`, and padded with zeros if the patch goes out of bounds.
-    ///
-    /// The grayscale values are normalized to the range [0, 1].
     #[must_use]
     pub fn get_grayscale_patch(
         &self,
@@ -71,25 +69,43 @@ impl<T: CameraLocation> Image<T> {
         height: usize,
     ) -> Vec<u8> {
         let (cx, cy) = center;
-
         let yuyv_image = self.yuyv_image();
-        let mut result = Vec::with_capacity(width * height);
+        let src_width = yuyv_image.width();
+        let src_height = yuyv_image.height();
+
+        let mut result = vec![0; width * height];
+
+        let x_start = cx.saturating_sub(width / 2);
+        let y_start = cy.saturating_sub(height / 2);
 
         for i in 0..height {
-            for j in 0..width {
-                let x = cx + j - width / 2;
-                let y = cy + i - height / 2;
+            let y_dst = i;
+            let y_src = y_start + i;
 
-                if x >= self.yuyv_image().width() || y >= self.yuyv_image().height() {
-                    result.push(0);
-                    continue;
+            if y_src >= src_height {
+                // The rest of the patch is out of bounds (padding is already zero)
+                break;
+            }
+            let x_src_start = x_start;
+
+            // Calculate the valid intersection of the patch row and the image
+            let copy_start_src = x_src_start;
+            let copy_start_dst = 0;
+
+            let copy_end_src = (x_src_start + width).min(src_width);
+            let copy_len = copy_end_src.saturating_add(copy_start_src);
+
+            if copy_len > 0 {
+                let dst_slice_start = y_dst * width + copy_start_dst;
+                let dst_slice_end = dst_slice_start + copy_len;
+                let dst_slice = &mut result[dst_slice_start..dst_slice_end];
+
+                for (j, item) in dst_slice.iter_mut().enumerate() {
+                    let src_idx = (y_src * src_width + copy_start_src + j) * 2;
+                    *item = yuyv_image[src_idx];
                 }
-
-                let index = y * yuyv_image.width() + x;
-                result.push(yuyv_image[index * 2]);
             }
         }
-
         result
     }
 
