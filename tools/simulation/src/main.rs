@@ -14,16 +14,16 @@ use filter::{CovarianceMatrix, UnscentedKalmanFilter};
 use nalgebra::{Isometry2, Point2, Translation2, UnitComplex, Vector2};
 use tasks::TaskPlugin;
 use yggdrasil::behavior::behaviors::Stand;
-use yggdrasil::behavior::engine::{CommandsBehaviorExt};
+use yggdrasil::behavior::engine::CommandsBehaviorExt;
 use yggdrasil::behavior::primary_state::PrimaryState;
 use yggdrasil::core::audio::whistle_detection::Whistle;
 use yggdrasil::core::config::layout::LayoutConfig;
 use yggdrasil::core::config::layout::RobotPosition;
 use yggdrasil::core::config::showtime::{self, PlayerConfig};
 use yggdrasil::core::{config, control, debug};
+use yggdrasil::localization::RobotPose;
 use yggdrasil::localization::hypothesis::odometry_update;
 use yggdrasil::localization::odometry::{self, Odometry};
-use yggdrasil::localization::{RobotPose};
 use yggdrasil::motion::walking_engine::step_context::StepContext;
 use yggdrasil::nao::Cycle;
 use yggdrasil::prelude::Config;
@@ -92,6 +92,7 @@ fn main() {
         .init_resource::<Simulation>()
         .add_plugins((
             DefaultPlugins,
+            MeshPickingPlugin,
             EguiPlugin {
                 enable_multipass_for_primary_context: false,
             },
@@ -611,16 +612,17 @@ fn draw_robot(
         .id();
 
     // Spawn the draggable circle
-    commands.spawn((
-        Mesh2d(meshes.add(Circle::new(1.0))),
-        MeshMaterial2d(materials.add(ColorMaterial::from_color(color))),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        PositionCircle,
-        ChildOf(robot_entity),
-    ));
-    // .observe(|over: Trigger<Pointer<Over>>| {
-    //     println!("Over event triggered for circle: {}", over.entity());
-    // })
+    commands
+        .spawn((
+            Mesh2d(meshes.add(Circle::new(1.0))),
+            MeshMaterial2d(materials.add(ColorMaterial::from_color(color))),
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            PositionCircle,
+            ChildOf(robot_entity),
+        ))
+        .observe(|over: Trigger<Pointer<Over>>| {
+            println!("Over event triggered for circle: {}", over.target.entity());
+        });
 
     commands.spawn((
         Text2d::new(config.player_number.to_string()),
@@ -645,6 +647,7 @@ fn setup_system(
 ) {
     let field_texture = asset_server.load("field_simple.png");
     let robot_texture = asset_server.load("nao.png");
+    let ball_texture = asset_server.load("ball2.png");
     let font = asset_server.load("fonts/FiraSans-Bold.ttf");
     let layout_config = LayoutConfig::load("config/").expect("Failed to load layout config");
 
@@ -684,21 +687,39 @@ fn setup_system(
     }
 
     // Spawn the ball as a simple colored circle using Mesh2d and MeshMaterial2d
-    let ball_color = Color::srgba(0.0, 0.0, 0.0, 0.5);
+    let ball_color = Color::srgba(1.0, 1.0, 1.0, 1.0);
 
-    commands.spawn((
-        Mesh2d(meshes.add(Circle::new(1.0))),
-        MeshMaterial2d(materials.add(ColorMaterial::from_color(ball_color))),
-        Transform::from_xyz(
-            1.0 * field_scale.pixels_per_meter,
-            1.0 * field_scale.pixels_per_meter,
-            2.0,
-        )
-        .with_scale(Vec3::splat(
-            BALL_RADIUS_METERS * 2.0 * field_scale.pixels_per_meter,
-        )),
-        SimBall,
-    ));
+    let ball_entitiy = commands
+        .spawn((
+            Transform::from_xyz(0.0, 0.0, 2.0),
+            Visibility::default(),
+            InheritedVisibility::default(),
+            Sprite {
+                image: ball_texture.clone(),
+                custom_size: Some(Vec2::splat(
+                    BALL_RADIUS_METERS / 2.0 * field_scale.pixels_per_meter,
+                )),
+                ..default()
+            },
+            Pickable::default(),
+            SimBall,
+        ))
+        .observe(|over: Trigger<Pointer<Over>>| {
+            println!("Over event triggered for circle: {}", over.target.entity());
+        })
+        .id();
+
+    commands
+        .spawn((
+            Mesh2d(meshes.add(Circle::new(1.2))),
+            MeshMaterial2d(materials.add(ColorMaterial::from_color(ball_color))),
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            Pickable::default(),
+            ChildOf(ball_entitiy),
+        ))
+        .observe(|over: Trigger<Pointer<Over>>| {
+            println!("Over event triggered for circle: {}", over.target.entity());
+        });
 
     commands.spawn(Camera2d);
 }
@@ -708,11 +729,21 @@ fn update_ball_visual(
     simulation: Res<Simulation>,
     field_scale: Res<FieldScale>,
     mut query: Query<&mut Transform, With<SimBall>>,
+    time: Res<Time>,
 ) {
     if let Ok(mut transform) = query.single_mut() {
         transform.translation.x = simulation.ball_position.x * field_scale.pixels_per_meter;
         transform.translation.y = simulation.ball_position.y * field_scale.pixels_per_meter;
         transform.scale = Vec3::splat(BALL_RADIUS_METERS * 2.0 * field_scale.pixels_per_meter);
+
+        let velocity_magnitude = simulation.ball_velocity.length();
+        if velocity_magnitude > 0.001 {
+            let circumference = 2.0 * std::f32::consts::PI * BALL_RADIUS_METERS;
+            let rotation_speed = velocity_magnitude / circumference * 2.0 * std::f32::consts::PI;
+
+            let rotation_delta = rotation_speed * time.delta_secs();
+            transform.rotation *= Quat::from_rotation_z(rotation_delta);
+        }
     }
 }
 
