@@ -105,8 +105,8 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let normalized_position_x = robot_position.x / 5.1 * -1.0;
         let normalized_position_y = robot_position.y / 3.6 * -1.0; //TODO
 
-        let cos_yaw = robot_angle.cos();
-        let sin_yaw = robot_angle.sin();
+        let cos_yaw = robot_angle.cos() * -1.0;
+        let sin_yaw = robot_angle.sin() * -1.0;
 
         let input = vec![
             normalized_position_x,
@@ -187,14 +187,14 @@ fn handle_inference_output(
     step_context
         .request_walk(output.step * behavior_config.rl_striker_search.policy_output_scaling);
 
-    // let observe_config = &behavior_config.rl_striker_search;
-    // look_around(
-    //     &mut nao_manager,
-    //     **observe_starting_time,
-    //     observe_config.head_rotation_speed,
-    //     observe_config.head_yaw_max,
-    //     observe_config.head_pitch_max,
-    // );
+    let observe_config = &behavior_config.rl_striker_search;
+    look_around(
+        &mut nao_manager,
+        **observe_starting_time,
+        observe_config.head_rotation_speed,
+        observe_config.head_yaw_max,
+        observe_config.head_pitch_max,
+    );
 }
 
 fn look_around(
