@@ -102,8 +102,8 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let robot_position = self.robot_pose.inner.translation.vector.xy();
         let robot_angle = self.robot_pose.inner.rotation.angle();
 
-        let normalized_position_x = robot_position.x / self.field_width;
-        let normalized_position_y = robot_position.y / self.field_height;
+        let normalized_position_x = robot_position.x / 5.1;
+        let normalized_position_y = robot_position.y / 3.6;
 
         let cos_yaw = robot_angle.cos();
         let sin_yaw = robot_angle.sin();
@@ -111,11 +111,11 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let input = vec![
             normalized_position_x,
             normalized_position_y,
-            sin_yaw,
             cos_yaw,
-            self.last_action.forward,
-            self.last_action.left,
-            self.last_action.turn,
+            sin_yaw,
+            // self.last_action.forward,
+            // self.last_action.left,
+            // self.last_action.turn,
         ];
 
         eprintln!("input: {input:?}");
