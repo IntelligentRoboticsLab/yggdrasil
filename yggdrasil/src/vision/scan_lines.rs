@@ -468,7 +468,8 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
             };
 
             // Use integer arithmetic for luminance difference
-            let lum_diff = (pixel.y as i16 - curr_region.approx_color.y as i16).abs() as f32;
+            let lum_diff =
+                f32::from((i16::from(pixel.y) - i16::from(curr_region.approx_color.y)).abs());
 
             if lum_diff >= min_edge_lum_diff {
                 let x_edge = find_edge_optimized(
@@ -560,7 +561,8 @@ fn get_vertical_scan_lines<T: CameraLocation>(
                 continue;
             };
 
-            let lum_diff = (pixel.y as i16 - curr_region.approx_color.y as i16).abs() as f32;
+            let lum_diff =
+                f32::from((i16::from(pixel.y) - i16::from(curr_region.approx_color.y)).abs());
 
             if lum_diff >= min_edge_lum_diff {
                 let y_edge = find_edge_optimized(
@@ -602,27 +604,31 @@ fn get_vertical_scan_lines<T: CameraLocation>(
 // Specialized average functions to avoid allocations and improve cache locality
 #[inline(always)]
 unsafe fn average_yuv_3_horizontal_unchecked(yuyv: &YuyvImage, x: usize, y: usize) -> YuvPixel {
-    let p1 = yuyv.pixel_unchecked(x - 1, y);
-    let p2 = yuyv.pixel_unchecked(x, y);
-    let p3 = yuyv.pixel_unchecked(x + 1, y);
+    unsafe {
+        let p1 = yuyv.pixel_unchecked(x - 1, y);
+        let p2 = yuyv.pixel_unchecked(x, y);
+        let p3 = yuyv.pixel_unchecked(x + 1, y);
 
-    YuvPixel {
-        y: ((p1.y as u16 + p2.y as u16 + p3.y as u16) / 3) as u8,
-        u: ((p1.u as u16 + p2.u as u16 + p3.u as u16) / 3) as u8,
-        v: ((p1.v as u16 + p2.v as u16 + p3.v as u16) / 3) as u8,
+        YuvPixel {
+            y: ((u16::from(p1.y) + u16::from(p2.y) + u16::from(p3.y)) / 3) as u8,
+            u: ((u16::from(p1.u) + u16::from(p2.u) + u16::from(p3.u)) / 3) as u8,
+            v: ((u16::from(p1.v) + u16::from(p2.v) + u16::from(p3.v)) / 3) as u8,
+        }
     }
 }
 
 #[inline(always)]
 unsafe fn average_yuv_3_vertical_unchecked(yuyv: &YuyvImage, x: usize, y: usize) -> YuvPixel {
-    let p1 = yuyv.pixel_unchecked(x, y - 1);
-    let p2 = yuyv.pixel_unchecked(x, y);
-    let p3 = yuyv.pixel_unchecked(x, y + 1);
+    unsafe {
+        let p1 = yuyv.pixel_unchecked(x, y - 1);
+        let p2 = yuyv.pixel_unchecked(x, y);
+        let p3 = yuyv.pixel_unchecked(x, y + 1);
 
-    YuvPixel {
-        y: ((p1.y as u16 + p2.y as u16 + p3.y as u16) / 3) as u8,
-        u: ((p1.u as u16 + p2.u as u16 + p3.u as u16) / 3) as u8,
-        v: ((p1.v as u16 + p2.v as u16 + p3.v as u16) / 3) as u8,
+        YuvPixel {
+            y: ((u16::from(p1.y) + u16::from(p2.y) + u16::from(p3.y)) / 3) as u8,
+            u: ((u16::from(p1.u) + u16::from(p2.u) + u16::from(p3.u)) / 3) as u8,
+            v: ((u16::from(p1.v) + u16::from(p2.v) + u16::from(p3.v)) / 3) as u8,
+        }
     }
 }
 
@@ -686,13 +692,13 @@ fn find_edge_optimized(
                     let p1 = yuyv.pixel_unchecked(pos, fixed);
                     let p2 = yuyv.pixel_unchecked(pos + 1, fixed);
                     let p3 = yuyv.pixel_unchecked(pos + 2, fixed);
-                    (p1.y as i16, p2.y as i16, p3.y as i16)
+                    (i16::from(p1.y), i16::from(p2.y), i16::from(p3.y))
                 }
                 Direction::Vertical => {
                     let p1 = yuyv.pixel_unchecked(fixed, pos);
                     let p2 = yuyv.pixel_unchecked(fixed, pos + 1);
                     let p3 = yuyv.pixel_unchecked(fixed, pos + 2);
-                    (p1.y as i16, p2.y as i16, p3.y as i16)
+                    (i16::from(p1.y), i16::from(p2.y), i16::from(p3.y))
                 }
             };
 
@@ -725,7 +731,7 @@ fn find_edge_optimized(
                 ),
             };
 
-            let diff = (pixel_next.y as i16 - pixel.y as i16).abs();
+            let diff = (i16::from(pixel_next.y) - i16::from(pixel.y)).abs();
             if diff > diff_edge {
                 pos_edge = pos;
             }
