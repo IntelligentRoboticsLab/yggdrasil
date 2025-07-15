@@ -106,9 +106,12 @@ impl Run {
             // Always set the host, so that rerun can connect to the correct host.
             // even if the host doesn't have rerun viewer installed, there could be
             // some case where the viewer is launched through a different method than the cli.
-            let rerun_host: Result<_> = setup_rerun_host(self.robot_ops.wired, self.robot_ops.rerun_args.rerun_host.clone());
+            let rerun_host = setup_rerun_host(
+                self.robot_ops.wired,
+                self.robot_ops.rerun_args.rerun_host.clone(),
+            );
 
-            envs.push(("RERUN_HOST".to_owned(), rerun_host?));
+            envs.push(("RERUN_HOST".to_owned(), rerun_host));
 
             if has_rerun {
                 let robot_ip = if self.robot_ops.local {

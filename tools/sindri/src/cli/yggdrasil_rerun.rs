@@ -21,27 +21,24 @@ pub struct RerunArgs {
     pub rerun_log: bool,
 
     /// Override the rerun host address. --rerun required
-    #[clap(long, requires = "rerun")]
+    #[clap(long, requires = "rerun", env = "RERUN_HOST")]
     pub rerun_host: Option<String>,
 }
 
-pub fn setup_rerun_host(wired: bool, rerun_host: Option<String>) -> Result<String> {
-    if let Some(host) = rerun_host {
-        Ok(host)
-    } else {
-        std::env::var("RERUN_HOST").or_else(|_| {
-            let mut local_ip = local_ip_address::local_ip().into_diagnostic()?;
+#[must_use]
+pub fn setup_rerun_host(wired: bool, rerun_host: Option<String>) -> String {
+    rerun_host.unwrap_or_else(|| {
+        let mut local_ip = local_ip_address::local_ip().expect("Failed to obtain local ip address");
 
-            // Make sure the wired bit is set if we're running with `--wired`.
-            if wired {
-                if let IpAddr::V4(ipv4) = &mut local_ip {
-                    *ipv4 |= Ipv4Addr::new(0, 1, 0, 0);
-                }
+        // Make sure the wired bit is set if we're running with `--wired`.
+        if wired {
+            if let IpAddr::V4(ipv4) = &mut local_ip {
+                *ipv4 |= Ipv4Addr::new(0, 1, 0, 0);
             }
+        }
 
-            Ok(local_ip.to_string())
-        })
-    }
+        local_ip.to_string()
+    })
 }
 
 /// Check if the `rerun` binary is installed.

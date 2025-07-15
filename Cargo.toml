@@ -69,7 +69,7 @@ bevy = { version = "0.16.0", default-features = false, features = [
 byteorder = "1.5.0"
 cargo_toml = "0.22.1"
 chrono = "0.4.40"
-clap = "4.5.37"
+clap = { version = "4.5.37", features = ["env"]}
 colored = "3.0.0"
 cpal = "0.15.3"
 dialoguer = "0.11.0"
