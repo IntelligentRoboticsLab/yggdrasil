@@ -447,7 +447,7 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
             }
 
             let pixels = unsafe {
-                // Unsafe pixel access is safe assuming scan_grid.lines ensure x-1 and x+1 are within bounds
+                // SAFETY: pixel access is safe because scan_grid ensures x-1 and x+1 are within bounds
                 [
                     yuyv.pixel_unchecked(x - 1, y),
                     yuyv.pixel_unchecked(x, y),
@@ -551,7 +551,7 @@ fn get_vertical_scan_lines<T: CameraLocation>(
             }
 
             let pixels = unsafe {
-                // Unsafe pixel access is safe assuming scan_grid.y ensure y-1 and y+1 are within bounds
+                // SAFETY: pixel access is safe because scan_grid ensures y-1 and y+1 are within bounds
                 [
                     yuyv.pixel_unchecked(x, y - 1),
                     yuyv.pixel_unchecked(x, y),
@@ -672,14 +672,14 @@ fn find_edge(
     for pos_next in start..end {
         let (pixel, pixel_next) = match direction {
             Direction::Horizontal => unsafe {
-                // Unsafe is safe assuming pos_next+1 <= end <= image width
+                // SAFETY: safe assuming pos_next+1 <= end <= image width
                 (
                     yuyv.pixel_unchecked(pos_next, fixed),
                     yuyv.pixel_unchecked(pos_next + 1, fixed),
                 )
             },
             Direction::Vertical => unsafe {
-                // Unsafe is safe assuming pos_next+1 <= end <= image height
+                // SAFETY: safe assuming pos_next+1 <= end <= image height
                 (
                     yuyv.pixel_unchecked(fixed, pos_next),
                     yuyv.pixel_unchecked(fixed, pos_next + 1),
