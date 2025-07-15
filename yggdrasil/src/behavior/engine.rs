@@ -283,7 +283,7 @@ pub fn role_base(
                 target: Point2::default(),
             });
         }
-        PrimaryState::Ready { .. } => commands.set_behavior(WalkToSet {}),
+        PrimaryState::Ready { .. } => commands.set_behavior(WalkToSet),
         PrimaryState::Set => commands.set_behavior(StandLookAt {
             target: Point2::default(),
         }),
