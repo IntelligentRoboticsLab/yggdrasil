@@ -235,14 +235,14 @@ impl ScanLineRegion {
             return;
         }
 
-        let y = ((self.approx_color.y as u32 * self_weight as u32
-            + sample.y as u32 * weight as u32)
+        let y = ((u32::from(self.approx_color.y) * self_weight as u32
+            + u32::from(sample.y) * weight as u32)
             / total as u32) as u8;
-        let u = ((self.approx_color.u as u32 * self_weight as u32
-            + sample.u as u32 * weight as u32)
+        let u = ((u32::from(self.approx_color.u) * self_weight as u32
+            + u32::from(sample.u) * weight as u32)
             / total as u32) as u8;
-        let v = ((self.approx_color.v as u32 * self_weight as u32
-            + sample.v as u32 * weight as u32)
+        let v = ((u32::from(self.approx_color.v) * self_weight as u32
+            + u32::from(sample.v) * weight as u32)
             / total as u32) as u8;
 
         self.approx_color = YuvPixel { y, u, v };
@@ -303,14 +303,14 @@ impl ClassifiedScanLineRegion {
                     continue;
                 }
 
-                let y = ((curr.line.approx_color.y as u32 * old_length as u32
-                    + region.line.approx_color.y as u32 * added_length as u32)
+                let y = ((u32::from(curr.line.approx_color.y) * old_length as u32
+                    + u32::from(region.line.approx_color.y) * added_length as u32)
                     / total_length as u32) as u8;
-                let u = ((curr.line.approx_color.u as u32 * old_length as u32
-                    + region.line.approx_color.u as u32 * added_length as u32)
+                let u = ((u32::from(curr.line.approx_color.u) * old_length as u32
+                    + u32::from(region.line.approx_color.u) * added_length as u32)
                     / total_length as u32) as u8;
-                let v = ((curr.line.approx_color.v as u32 * old_length as u32
-                    + region.line.approx_color.v as u32 * added_length as u32)
+                let v = ((u32::from(curr.line.approx_color.v) * old_length as u32
+                    + u32::from(region.line.approx_color.v) * added_length as u32)
                     / total_length as u32) as u8;
 
                 curr.line.approx_color = YuvPixel { y, u, v };
