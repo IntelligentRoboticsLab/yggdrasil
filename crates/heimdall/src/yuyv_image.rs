@@ -216,6 +216,7 @@ impl YuvPixel {
         clippy::cast_precision_loss
     )]
     #[must_use]
+    #[inline(always)]
     pub fn average(pixels: &[Self]) -> Self {
         let mut y_sum = 0.0;
         let mut u_sum = 0.0;
@@ -238,6 +239,7 @@ impl YuvPixel {
 
     #[allow(clippy::cast_precision_loss, clippy::many_single_char_names)]
     #[must_use]
+    #[inline(always)]
     pub fn to_yhs2(self) -> (f32, f32, f32) {
         let y = i32::from(self.y);
         let u = i32::from(self.u);
@@ -256,6 +258,7 @@ impl YuvPixel {
 
     #[allow(clippy::many_single_char_names)]
     #[must_use]
+    #[inline(always)]
     pub fn to_rgb(self) -> (f32, f32, f32) {
         let y = f32::from(self.y);
         let u = f32::from(self.u);

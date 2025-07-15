@@ -381,22 +381,31 @@ fn get_scan_grid<T: CameraLocation>(
 }
 
 fn get_bottom_scan_grid(image: &Image<Bottom>) -> ScanGrid<Bottom> {
-    const GAP: usize = 8;
+    const GAP_SIZE_BOTTOM: usize = 8;
     let image = image.clone();
-    let (width, height) = (image.yuyv_image().width(), image.yuyv_image().height());
+    let height = image.yuyv_image().height();
+    let width = image.yuyv_image().width();
 
-    let y: Vec<usize> = (GAP / 2..height).step_by(GAP).collect();
+    // // Get the step size after padding with (gap size)/2 pixels
+    // let step_y = (height - GAP_SIZE_BOTTOM) / GAP_SIZE_BOTTOM;
+    // let step_x = (width - GAP_SIZE_BOTTOM) / GAP_SIZE_BOTTOM;
 
-    // Pre‑allocate `lines` with exact capacity, to avoid reallocations.
-    let mut lines = Vec::with_capacity((width - GAP / 2) / GAP);
+    let y = (0..height)
+        // pad with (gap size)/2 pixels
+        .skip(GAP_SIZE_BOTTOM / 2)
+        .step_by(GAP_SIZE_BOTTOM)
+        .collect();
 
-    for x in (GAP / 2..width).step_by(GAP) {
-        lines.push(super::scan_grid::Line {
+    let lines = (0..width)
+        // pad with (gap size)/2 pixels
+        .skip(GAP_SIZE_BOTTOM / 2)
+        .step_by(GAP_SIZE_BOTTOM)
+        .map(|x| Line {
             x: x as i32,
             y_max: height as i32,
             max_index: 0,
-        });
-    }
+        })
+        .collect();
 
     ScanGrid {
         image,

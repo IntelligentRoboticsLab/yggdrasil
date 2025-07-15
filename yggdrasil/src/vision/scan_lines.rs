@@ -17,7 +17,7 @@ use super::{
 };
 use bevy::prelude::*;
 
-use heimdall::{Bottom, CameraLocation, CameraPosition, Top, YuvPixel};
+use heimdall::{Bottom, CameraLocation, CameraPosition, Top, YuvPixel, YuyvImage};
 use nalgebra::Point2;
 use serde::{Deserialize, Serialize};
 use yggdrasil_rerun_comms::protocol::control::FieldColorConfig;
@@ -122,19 +122,6 @@ impl Plugin for ScanLinesPlugin {
     }
 }
 
-/// Compute the average of three YUV pixels, without allocation.
-#[inline]
-fn avg_three(
-    p1: heimdall::YuvPixel,
-    p2: heimdall::YuvPixel,
-    p3: heimdall::YuvPixel,
-) -> heimdall::YuvPixel {
-    let y = ((u16::from(p1.y) + u16::from(p2.y) + u16::from(p3.y) + 1) / 3) as u8;
-    let u = ((u16::from(p1.u) + u16::from(p2.u) + u16::from(p3.u) + 1) / 3) as u8;
-    let v = ((u16::from(p1.v) + u16::from(p2.v) + u16::from(p3.v) + 1) / 3) as u8;
-    heimdall::YuvPixel { y, u, v }
-}
-
 /// Horizontal and vertical scanlines for an image.
 #[derive(Resource)]
 pub struct ScanLines<T: CameraLocation> {
@@ -219,7 +206,7 @@ impl ScanLine {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ScanLineRegion {
     region: Region,
     approx_color: YuvPixel,
@@ -352,7 +339,7 @@ impl ClassifiedScanLineRegion {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Region {
     Vertical {
         x: usize,
@@ -436,80 +423,91 @@ pub enum Direction {
 fn get_horizontal_scan_lines<T: CameraLocation>(
     config: &ScanLinesConfig,
     field: &FieldColorApproximate,
-    yuyv: &heimdall::YuyvImage,
+    yuyv: &YuyvImage,
     scan_grid: &ScanGrid<T>,
     field_boundary: &FieldBoundary,
 ) -> ScanLine {
-    let mut regions = Vec::with_capacity(scan_grid.lines.len() * 4);
-    let edge_threshold = config.min_edge_luminance_difference;
+    let mut regions = Vec::new();
 
-    let mut boundary_cache = Vec::new();
-    if T::POSITION == CameraPosition::Top {
-        boundary_cache = scan_grid
-            .lines
-            .iter()
-            .map(|l| field_boundary.height_at_pixel(l.x as f32) as usize)
-            .collect();
-    }
+    for y in &scan_grid.y {
+        let mut current_region = None;
+        for line in &scan_grid.lines {
+            let x = line.x as usize;
+            let y = *y;
 
-    for &y in &scan_grid.y {
-        let mut current: Option<ScanLineRegion> = None;
-
-        for (line_idx, line) in scan_grid.lines.iter().enumerate() {
-            if T::POSITION == CameraPosition::Top && y < boundary_cache[line_idx] {
-                continue;
+            if T::POSITION == CameraPosition::Top {
+                // skip lines below the field boundary
+                let boundary = field_boundary.height_at_pixel(x as f32) as usize;
+                if y < boundary {
+                    continue;
+                }
             }
 
-            let x = line.x as usize;
-            // SAFETY: we access x‑1, x, x+1; scan grid guarantees these are in‑bounds.
-            let p = unsafe {
-                avg_three(
+            let pixels = unsafe {
+                [
                     yuyv.pixel_unchecked(x - 1, y),
                     yuyv.pixel_unchecked(x, y),
                     yuyv.pixel_unchecked(x + 1, y),
-                )
+                ]
             };
 
-            if let Some(curr) = current.as_mut() {
-                let diff = f32::from(u8::abs_diff(p.y, curr.approx_color.y));
+            let pixel = YuvPixel::average(&pixels);
 
-                if diff >= edge_threshold {
-                    let edge_x =
-                        find_edge(yuyv, curr.region.end_point(), x, y, Direction::Horizontal);
-                    curr.region.set_end_point(edge_x);
-
-                    let finished = std::mem::replace(
-                        curr,
-                        ScanLineRegion {
-                            region: Region::Horizontal {
-                                y,
-                                x_start: edge_x,
-                                x_end: x,
-                            },
-                            approx_color: p,
-                        },
-                    );
-
-                    regions.push(finished.classify(config, field));
-                } else {
-                    let len = x - curr.region.end_point();
-                    curr.region.set_end_point(x);
-                    curr.add_sample(p, len);
-                }
-            } else {
-                current = Some(ScanLineRegion {
+            let Some(curr_region) = &mut current_region else {
+                // first region of this y coordinate
+                current_region = Some(ScanLineRegion {
                     region: Region::Horizontal {
                         y,
                         x_start: x,
                         x_end: x,
                     },
-                    approx_color: p,
+                    approx_color: pixel,
                 });
+                continue;
+            };
+
+            let lum_diff = (f32::from(pixel.y) - f32::from(curr_region.approx_color.y)).abs();
+
+            if lum_diff >= config.min_edge_luminance_difference {
+                // find the exact pixel where the largest difference is
+                let x_edge = find_edge(
+                    yuyv,
+                    curr_region.region.end_point(),
+                    x,
+                    y,
+                    Direction::Horizontal,
+                );
+
+                curr_region.region.set_end_point(x_edge);
+
+                // create new region starting from the edge
+                let mut new_region = ScanLineRegion {
+                    region: Region::Horizontal {
+                        y,
+                        x_start: x_edge,
+                        x_end: x,
+                    },
+                    approx_color: pixel,
+                };
+
+                // put new region in place of curr_region
+                std::mem::swap(curr_region, &mut new_region);
+                // and push the old region to the vec
+                regions.push(new_region.classify(config, field));
+            } else {
+                // get the length of the region inbetween
+                let weight = x - curr_region.region.end_point();
+
+                // set the end point to the current x
+                curr_region.region.set_end_point(x);
+
+                // add the pixel color sample to the region with a weight of the added length
+                curr_region.add_sample(pixel, weight);
             }
         }
 
-        if let Some(region) = current.take() {
-            regions.push(region.classify(config, field));
+        if let Some(curr_region) = current_region.take() {
+            regions.push(curr_region.classify(config, field));
         }
     }
 
@@ -519,87 +517,97 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
 fn get_vertical_scan_lines<T: CameraLocation>(
     config: &ScanLinesConfig,
     field: &FieldColorApproximate,
-    yuyv: &heimdall::YuyvImage,
+    yuyv: &YuyvImage,
     scan_grid: &ScanGrid<T>,
     field_boundary: &FieldBoundary,
 ) -> ScanLine {
-    let mut regions = Vec::with_capacity(scan_grid.lines.len() * 4);
-    let edge_threshold = config.min_edge_luminance_difference;
+    let mut regions = Vec::new();
 
-    let mut boundary_cache = Vec::new();
-    if T::POSITION == CameraPosition::Top {
-        boundary_cache = scan_grid
-            .lines
+    for line in &scan_grid.lines {
+        let mut current_region = None;
+
+        // take the y coordinates of the scan grid, skipping the first and last line
+        for y in scan_grid
+            .y
             .iter()
-            .map(|l| field_boundary.height_at_pixel(l.x as f32) as usize)
-            .collect();
-    }
+            .skip(1)
+            .take(scan_grid.y.len().saturating_sub(2))
+        {
+            let x = line.x as usize;
+            let y = *y;
 
-    let usable_y = &scan_grid.y[1..scan_grid.y.len() - 1];
-
-    for (idx, line) in scan_grid.lines.iter().enumerate() {
-        let mut current: Option<ScanLineRegion> = None;
-        let x = line.x as usize;
-        let boundary_y = if T::POSITION == CameraPosition::Top {
-            boundary_cache[idx]
-        } else {
-            0
-        };
-
-        for &y in usable_y {
-            if T::POSITION == CameraPosition::Top && y < boundary_y {
-                continue;
+            if T::POSITION == CameraPosition::Top {
+                // skip lines above the field boundary
+                let boundary = field_boundary.height_at_pixel(x as f32) as usize;
+                if y < boundary {
+                    continue;
+                }
             }
 
-            // SAFETY: we access y‑1, y, y+1; usable_y skips the first & last rows.
-            let p = unsafe {
-                avg_three(
+            let pixels = unsafe {
+                [
                     yuyv.pixel_unchecked(x, y - 1),
                     yuyv.pixel_unchecked(x, y),
                     yuyv.pixel_unchecked(x, y + 1),
-                )
+                ]
             };
+            let pixel = YuvPixel::average(&pixels);
 
-            if let Some(curr) = current.as_mut() {
-                let diff = f32::from(u8::abs_diff(p.y, curr.approx_color.y));
-
-                if diff >= edge_threshold {
-                    let edge_y =
-                        find_edge(yuyv, curr.region.end_point(), y, x, Direction::Vertical);
-                    curr.region.set_end_point(edge_y);
-
-                    let finished = std::mem::replace(
-                        curr,
-                        ScanLineRegion {
-                            region: Region::Vertical {
-                                x,
-                                y_start: edge_y,
-                                y_end: y,
-                            },
-                            approx_color: p,
-                        },
-                    );
-
-                    regions.push(finished.classify(config, field));
-                } else {
-                    let len = y - curr.region.end_point();
-                    curr.region.set_end_point(y);
-                    curr.add_sample(p, len);
-                }
-            } else {
-                current = Some(ScanLineRegion {
+            let Some(curr_region) = &mut current_region else {
+                // first region of this y coordinate
+                current_region = Some(ScanLineRegion {
                     region: Region::Vertical {
                         x,
                         y_start: y,
                         y_end: y,
                     },
-                    approx_color: p,
+                    approx_color: pixel,
                 });
+                continue;
+            };
+
+            let lum_diff = (f32::from(pixel.y) - f32::from(curr_region.approx_color.y)).abs();
+
+            if lum_diff >= config.min_edge_luminance_difference {
+                // find the exact pixel where the largest difference is
+                let y_edge = find_edge(
+                    yuyv,
+                    curr_region.region.end_point(),
+                    y,
+                    x,
+                    Direction::Vertical,
+                );
+
+                curr_region.region.set_end_point(y_edge);
+
+                // create new region starting from the edge
+                let mut new_region = ScanLineRegion {
+                    region: Region::Vertical {
+                        x,
+                        y_start: y_edge,
+                        y_end: y,
+                    },
+                    approx_color: pixel,
+                };
+
+                // put new region in place of curr_region
+                std::mem::swap(curr_region, &mut new_region);
+                // and push the old region to the vec
+                regions.push(new_region.classify(config, field));
+            } else {
+                // get the length of the region inbetween
+                let weight = y - curr_region.region.end_point();
+
+                // set the end point to the current y
+                curr_region.region.set_end_point(y);
+
+                // add the pixel color sample to the region with a weight of the added length
+                curr_region.add_sample(pixel, weight);
             }
         }
 
-        if let Some(region) = current.take() {
-            regions.push(region.classify(config, field));
+        if let Some(curr_region) = current_region.take() {
+            regions.push(curr_region.classify(config, field));
         }
     }
 
@@ -642,46 +650,48 @@ pub fn update_scan_lines<T: CameraLocation>(
     *scan_lines = get_scan_lines(&config, image.clone(), &scan_grid, &field_boundary);
 }
 
-/// Find the strongest luminance edge between `start` and `end` (inclusive).
-#[inline]
+/// Find the edge of a region in a scanline.
+///
+/// The edge is the pixel where the luminance difference between the current pixel and the next pixel is the largest.
+#[inline(always)]
 fn find_edge(
-    yuyv: &heimdall::YuyvImage,
+    yuyv: &YuyvImage,
     start: usize,
     end: usize,
     fixed: usize,
     direction: Direction,
 ) -> usize {
-    let mut best_pos = start;
-    let mut best_diff = 0u8;
+    let (pos_edge, _value_edge) =
+        (start..=end).fold((start, 0.0), |(pos_edge, diff_edge), pos_next| {
+            // get the current pixel and next pixels
+            let (pixel, pixel_next) = match direction {
+                Direction::Horizontal => unsafe {
+                    (
+                        yuyv.pixel_unchecked(pos_next, fixed),
+                        yuyv.pixel_unchecked(pos_next + 1, fixed),
+                    )
+                },
+                Direction::Vertical => unsafe {
+                    (
+                        yuyv.pixel_unchecked(fixed, pos_next),
+                        yuyv.pixel_unchecked(fixed, pos_next + 1),
+                    )
+                },
+            };
 
-    match direction {
-        Direction::Horizontal => {
-            let mut prev_y = unsafe { yuyv.pixel_unchecked(start, fixed).y };
-            for pos in (start + 1)..=end {
-                let y = unsafe { yuyv.pixel_unchecked(pos, fixed).y };
-                let diff = prev_y.abs_diff(y);
-                if diff > best_diff {
-                    best_diff = diff;
-                    best_pos = pos - 1;
-                }
-                prev_y = y;
-            }
-        }
-        Direction::Vertical => {
-            let mut prev_y = unsafe { yuyv.pixel_unchecked(fixed, start).y };
-            for pos in (start + 1)..=end {
-                let y = unsafe { yuyv.pixel_unchecked(fixed, pos).y };
-                let diff = prev_y.abs_diff(y);
-                if diff > best_diff {
-                    best_diff = diff;
-                    best_pos = pos - 1;
-                }
-                prev_y = y;
-            }
-        }
-    }
+            let lum = f32::from(pixel.y);
+            let lum_next = f32::from(pixel_next.y);
 
-    best_pos
+            let next_diff = (lum_next - lum).abs();
+
+            if next_diff > diff_edge {
+                (pos_next, next_diff)
+            } else {
+                (pos_edge, diff_edge)
+            }
+        });
+
+    pos_edge
 }
 
 /// The classified color of a scan-line region.
