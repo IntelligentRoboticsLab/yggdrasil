@@ -5,7 +5,7 @@ use bevy::ecs::event::EventRegistry;
 use bevy::state::app::StatesPlugin;
 use bevy::{prelude::*, render::camera::Viewport, window::PrimaryWindow};
 use bevy_egui::egui::{Direction, Layout, RichText, Ui};
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::{EguiContexts, EguiPlugin, egui};
 use bifrost::communication::{
     CompetitionPhase, CompetitionType, GameControllerMessage, GamePhase, GameState, Half, Penalty,
     RobotInfo, SetPlay, TeamColor, TeamInfo,
@@ -21,9 +21,9 @@ use yggdrasil::core::config::layout::LayoutConfig;
 use yggdrasil::core::config::layout::RobotPosition;
 use yggdrasil::core::config::showtime::{self, PlayerConfig};
 use yggdrasil::core::{config, control, debug};
+use yggdrasil::localization::RobotPose;
 use yggdrasil::localization::hypothesis::odometry_update;
 use yggdrasil::localization::odometry::{self, Odometry};
-use yggdrasil::localization::RobotPose;
 use yggdrasil::motion::walking_engine::step_context::StepContext;
 use yggdrasil::nao::Cycle;
 use yggdrasil::prelude::Config;
@@ -43,9 +43,9 @@ const FIELD_WIDTH_METERS: f32 = 10.4;
 const FIELD_HEIGHT_METERS: f32 = 7.4;
 // Remove fixed visual dimensions since we'll calculate them dynamically
 const PIXELS_PER_METER: f32 = 100.0; // Base scale factor, will be adjusted dynamically
-                                     // Robot size in meters
+// Robot size in meters
 const ROBOT_SIZE_METERS: f32 = 0.5; // 50cm x 50cm robot
-                                    // Ball size in meters (SPL standard)
+// Ball size in meters (SPL standard)
 const BALL_RADIUS_METERS: f32 = 0.055;
 
 // Scale factors to convert between meters and pixels - will be updated dynamically

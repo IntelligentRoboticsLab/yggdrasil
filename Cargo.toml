@@ -138,9 +138,7 @@ serde_json = "1.0.140"
 serde_with = "3.14.0"
 socket2 = "0.5.9"
 strum = { version = "0.27", features = ["derive"] }
-
-CONFLICT (content): Merge conflict in Cargo.toml
-Auto-merging yggdrasil/Cargo.toml0"
+syn = "2.0.100"
 thiserror = "2.0.12"
 tokio = "1.46.1"
 toml = "0.8.19"
