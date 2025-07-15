@@ -4,7 +4,6 @@ use std::time::Instant;
 use bevy::prelude::*;
 use ml::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_with::{DurationMicroSeconds, serde_as};
 use tasks::conditions::task_finished;
 
 use filter::{CovarianceMatrix, UnscentedKalmanFilter};
@@ -29,15 +28,10 @@ use super::{
 
 const IMAGE_INPUT_SIZE: usize = 32; // 32 × 32 CNN input
 
-#[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BallClassifierConfig {
     /// Minimum confidence score threshold for accepting a ball detection
     pub confidence_threshold: f32,
-
-    /// The amount of time in microseconds we allow the classifier to run, proposals that take longer are discarded.
-    #[serde_as(as = "DurationMicroSeconds<u64>")]
-    pub time_budget: std::time::Duration,
 
     /// Process noise parameter for position prediction in the Kalman filter
     pub prediction_noise: f32,
