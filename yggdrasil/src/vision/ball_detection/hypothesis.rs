@@ -1,11 +1,21 @@
-use std::time::{Duration, Instant};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
+
+use rerun::AsComponents;
 
 use bevy::prelude::*;
 
 use filter::{CovarianceMatrix, KalmanFilter};
 use nalgebra::{Matrix2, Matrix2x4, Matrix4, Matrix4x2, Point2, Vector2, Vector4, matrix};
+use rerun::{FillMode, external::arrow};
 
-use crate::{localization::odometry::Odometry, nao::Cycle};
+use crate::{
+    core::debug::DebugContext,
+    localization::{RobotPose, odometry::Odometry},
+    nao::Cycle,
+};
 
 const MAX_CONCURRENT_HYPOTHESES: usize = 12;
 const INITIAL_NLL_OF_MEASUREMENTS: f32 = 0.0;
@@ -15,19 +25,67 @@ pub struct BallHypothesisPlugin;
 
 impl Plugin for BallHypothesisPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                predict,
-                measurement_update,
-                merge_balls,
-                clean_old_hypotheses,
-                visualize_balls,
+        app.init_resource::<Ball>()
+            .add_systems(PostStartup, setup_3d_ball_debug_logging)
+            .add_systems(
+                Update,
+                (
+                    predict,
+                    measurement_update,
+                    merge_balls,
+                    clean_old_hypotheses,
+                    normalize_measurement_nll,
+                    set_best_ball,
+                    visualize_balls,
+                )
+                    .chain(),
             )
-                .chain(),
-        );
+            .add_systems(PostUpdate, log_3d_balls);
     }
 }
+
+// pub struct PerceptBuffer {
+//     start: Option<BallPerception>,
+//     end: Option<BallPerception>,
+// }
+
+// impl PerceptBuffer {
+//     #[must_use]
+//     pub fn new() -> Self {
+//         Self {
+//             start: None,
+//             end: None,
+//         }
+//     }
+
+//     pub fn push(&mut self, measurement: BallPerception) {
+//         if self.measurements.len() == self.size {
+//             self.measurements.pop_front();
+//         }
+//         self.measurements.push_back(measurement);
+//     }
+
+//     pub fn clear(&mut self) {
+//         self.measurements.clear();
+//     }
+
+//     pub fn velocity(&self) -> Option<Vector2<f32>> {
+//         if self.measurements.len() < 2 {
+//             return None;
+//         }
+
+//         let first = self.measurements.front()?;
+//         let last = self.measurements.back()?;
+
+//         let dt = last.cycle - first.cycle;
+//         if dt == 0 {
+//             return None;
+//         }
+
+//         let delta_position = last.position - first.position;
+//         Some(delta_position.coords / dt.as_secs_f32())
+//     }
+// }
 
 #[derive(Clone, Debug, Deref, DerefMut)]
 pub struct StationaryBallKf(KalmanFilter<2, StationaryBall>);
@@ -212,14 +270,22 @@ impl BallHypothesis {
                 *nll_of_measurements += gain;
                 *nll_weight = *nll_of_measurements + nll_of_mean(cov_2d);
 
-                // demote to stationary
-                if filter.state().velocity.norm() < MIN_SPEED {
-                    self.filter = BallFilter::Stationary {
-                        filter: StationaryBallKf::new(pos, cov_2d),
-                        nll_of_measurements: *nll_of_measurements,
-                        nll_weight: *nll_weight,
-                    };
-                }
+                println!(
+                    "BallHypothesis: pos: {:?}, vel: {:?}, nll: {}, weight: {}",
+                    pos,
+                    filter.state().velocity,
+                    nll_of_measurements,
+                    nll_weight
+                );
+
+                // // demote to stationary
+                // if filter.state().velocity.norm() < MIN_SPEED {
+                //     self.filter = BallFilter::Stationary {
+                //         filter: StationaryBallKf::new(pos, cov_2d),
+                //         nll_of_measurements: *nll_of_measurements,
+                //         nll_weight: *nll_weight,
+                //     };
+                // }
             }
         }
     }
@@ -362,6 +428,47 @@ fn merge_balls(mut commands: Commands, mut hypotheses: Query<(Entity, &mut BallH
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, Resource)]
+pub struct Ball {
+    pub cycle: Cycle,
+    pub covariance: Matrix2<f32>,
+    pub position: Point2<f32>,
+    pub velocity: Option<Vector2<f32>>,
+}
+
+fn set_best_ball(hypotheses: Query<&BallHypothesis>, mut ball: ResMut<Ball>) {
+    let best_ball = hypotheses
+        .iter()
+        .map(|hypothesis| match hypothesis.filter {
+            BallFilter::Stationary {
+                nll_of_measurements,
+                ..
+            } => (hypothesis, nll_of_measurements),
+            BallFilter::Moving {
+                nll_of_measurements,
+                ..
+            } => (hypothesis, nll_of_measurements),
+        })
+        .min_by(|(_, a), (_, b)| a.total_cmp(b))
+        .map(|(hypothesis, _)| hypothesis);
+
+    if let Some(best_ball) = best_ball {
+        ball.cycle = best_ball.last_cycle;
+        ball.position = best_ball.filter.position();
+
+        match &best_ball.filter {
+            BallFilter::Stationary { filter, .. } => {
+                ball.velocity = None;
+                ball.covariance = filter.covariance;
+            }
+            BallFilter::Moving { filter, .. } => {
+                ball.velocity = Some(filter.state().velocity);
+                ball.covariance = filter.covariance.fixed_view::<2, 2>(0, 0).into_owned();
+            }
+        }
+    }
+}
+
 fn clean_old_hypotheses(mut commands: Commands, hypotheses: Query<(Entity, &BallHypothesis)>) {
     const DESPAWN_TIME: Duration = Duration::from_secs(4);
 
@@ -369,6 +476,41 @@ fn clean_old_hypotheses(mut commands: Commands, hypotheses: Query<(Entity, &Ball
         // todo dont do time
         if hypothesis.last_update.elapsed() > DESPAWN_TIME {
             commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn normalize_measurement_nll(mut hypotheses: Query<&mut BallHypothesis>) {
+    let lowest = hypotheses
+        .iter()
+        .map(|hypothesis| match hypothesis.filter {
+            BallFilter::Stationary {
+                nll_of_measurements,
+                ..
+            } => nll_of_measurements,
+            BallFilter::Moving {
+                nll_of_measurements,
+                ..
+            } => nll_of_measurements,
+        })
+        .min_by(f32::total_cmp);
+
+    if let Some(lowest) = lowest {
+        for mut hypothesis in &mut hypotheses {
+            match &mut hypothesis.filter {
+                BallFilter::Stationary {
+                    nll_of_measurements,
+                    ..
+                } => {
+                    *nll_of_measurements -= lowest;
+                }
+                BallFilter::Moving {
+                    nll_of_measurements,
+                    ..
+                } => {
+                    *nll_of_measurements -= lowest;
+                }
+            }
         }
     }
 }
@@ -391,6 +533,74 @@ fn visualize_balls(hypotheses: Query<&BallHypothesis>) {
                 hypothesis.last_cycle
             ),
         }
+    }
+}
+
+fn setup_3d_ball_debug_logging(dbg: DebugContext) {
+    dbg.log_static(
+        "balls/best",
+        &[
+            rerun::Asset3D::from_file_path("./assets/rerun/ball.glb")
+                .expect("failed to load ball model")
+                .with_media_type(rerun::MediaType::glb())
+                .as_serialized_batches(),
+            rerun::Ellipsoids3D::update_fields()
+                .with_fill_mode(FillMode::Solid)
+                .with_colors([(0, 200, 0)])
+                .as_serialized_batches(),
+            rerun::Arrows3D::update_fields()
+                .with_colors([(255, 0, 0)])
+                .as_serialized_batches(),
+        ],
+    );
+
+    dbg.log_with_cycle(
+        "balls/best",
+        Cycle::default(),
+        &rerun::Transform3D::from_scale((0., 0., 0.)),
+    );
+}
+
+fn log_3d_balls(
+    dbg: DebugContext,
+    ball: Res<Ball>,
+    robot_pose: Res<RobotPose>,
+    mut last_logged: Local<Option<Cycle>>,
+) {
+    let last_ball_tracker_update = ball.cycle;
+    let pos = robot_pose.robot_to_world(&ball.position);
+
+    if last_logged.is_none_or(|last_logged_cycle| last_ball_tracker_update > last_logged_cycle) {
+        *last_logged = Some(last_ball_tracker_update);
+        // max variance
+        let variance = ball.covariance.diagonal().max();
+        let std = variance.sqrt();
+
+        let mut to_log = vec![
+            rerun::Transform3D::from_translation((pos.coords.x, pos.coords.y, 0.05))
+                .as_serialized_batches(),
+            rerun::Ellipsoids3D::from_half_sizes([(std, std, 0.005)]).as_serialized_batches(),
+            rerun::SerializedComponentBatch::new(
+                Arc::new(arrow::array::Float32Array::from_value(variance, 1)),
+                rerun::ComponentDescriptor::new("yggdrasil.components.Variance"),
+            )
+            .as_serialized_batches(),
+        ];
+
+        to_log.push(
+            rerun::Arrows3D::from_vectors([(
+                ball.velocity.unwrap_or_default().x,
+                ball.velocity.unwrap_or_default().y,
+                0.1,
+            )])
+            // .with_origins([(pos.coords.x, pos.coords.y, 0.1)])
+            .as_serialized_batches(),
+        );
+
+        dbg.log_with_cycle("balls/best", last_ball_tracker_update, &to_log);
+    } else if last_logged.is_some() {
+        *last_logged = None;
+        // dbg.log("balls/best", &rerun::Transform3D::from_scale((0., 0., 0.)));
     }
 }
 

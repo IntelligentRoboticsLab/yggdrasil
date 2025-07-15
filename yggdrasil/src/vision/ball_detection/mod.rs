@@ -43,13 +43,13 @@ impl Plugin for BallDetectionPlugin {
             PostStartup,
             (
                 init_subconfigs,
-                setup_ball_debug_logging::<Top>,
-                setup_ball_debug_logging::<Bottom>,
-                setup_3d_ball_debug_logging,
+                // setup_ball_debug_logging::<Top>,
+                // setup_ball_debug_logging::<Bottom>,
+                // setup_3d_ball_debug_logging,
             ),
         )
-        .add_systems(Update, detected_ball_eye_color)
-        .add_systems(PostUpdate, log_3d_balls);
+        .add_systems(Update, detected_ball_eye_color);
+        // .add_systems(PostUpdate, log_3d_balls);
     }
 }
 
