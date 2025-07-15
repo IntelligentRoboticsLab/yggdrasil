@@ -13,7 +13,7 @@ use super::{
     camera::{Image, init_camera},
     color,
     field_boundary::FieldBoundary,
-    scan_grid::{FieldColorApproximate, ScanGrid},
+    scan_grid::ScanGrid,
 };
 use bevy::prelude::*;
 
@@ -230,39 +230,27 @@ impl ScanLineRegion {
     /// Using a color sample and a weight, update the approximated color of the region.
     fn add_sample(&mut self, sample: YuvPixel, weight: usize) {
         let self_weight = self.region.length();
+        let total = self_weight + weight;
+        if total == 0 {
+            return;
+        }
 
-        let (y, u, v) = (
-            f32::from(self.approx_color.y),
-            f32::from(self.approx_color.u),
-            f32::from(self.approx_color.v),
-        );
+        let y = ((self.approx_color.y as u32 * self_weight as u32
+            + sample.y as u32 * weight as u32)
+            / total as u32) as u8;
+        let u = ((self.approx_color.u as u32 * self_weight as u32
+            + sample.u as u32 * weight as u32)
+            / total as u32) as u8;
+        let v = ((self.approx_color.v as u32 * self_weight as u32
+            + sample.v as u32 * weight as u32)
+            / total as u32) as u8;
 
-        let (y_sample, u_sample, v_sample) = (
-            f32::from(sample.y),
-            f32::from(sample.u),
-            f32::from(sample.v),
-        );
-
-        let y_sum = y * self_weight as f32 + y_sample * weight as f32;
-        let u_sum = u * self_weight as f32 + u_sample * weight as f32;
-        let v_sum = v * self_weight as f32 + v_sample * weight as f32;
-
-        let total = self_weight as f32 + weight as f32;
-
-        self.approx_color = YuvPixel {
-            y: (y_sum / total) as u8,
-            u: (u_sum / total) as u8,
-            v: (v_sum / total) as u8,
-        };
+        self.approx_color = YuvPixel { y, u, v };
     }
 
     /// Classify the region color based on the approximate color.
-    fn classify(
-        self,
-        config: &ScanLinesConfig,
-        field: &FieldColorApproximate,
-    ) -> ClassifiedScanLineRegion {
-        let color = RegionColor::classify_yuv_pixel(config, field, self.approx_color);
+    fn classify(self, config: &ScanLinesConfig) -> ClassifiedScanLineRegion {
+        let color = RegionColor::classify_yuv_pixel(config, self.approx_color);
 
         ClassifiedScanLineRegion { line: self, color }
     }
@@ -292,7 +280,7 @@ impl ClassifiedScanLineRegion {
     /// Merges adjacent regions with the same color.
     #[must_use]
     pub fn simplify(regions: Vec<Self>) -> Vec<Self> {
-        let mut new_regions = Vec::new();
+        let mut new_regions = Vec::with_capacity(regions.len());
 
         let mut current_region = None;
         for region in regions {
@@ -306,13 +294,29 @@ impl ClassifiedScanLineRegion {
             let same_color = region.color == curr.color;
 
             if same_fixed_point && same_color {
-                // merge scan lines
+                // merge scan lines with correct weighted average
+                let old_length = curr.line.region.length();
+                let added_length = region.line.region.length();
+                let total_length = old_length + added_length;
+                if total_length == 0 {
+                    current_region = Some(curr);
+                    continue;
+                }
+
+                let y = ((curr.line.approx_color.y as u32 * old_length as u32
+                    + region.line.approx_color.y as u32 * added_length as u32)
+                    / total_length as u32) as u8;
+                let u = ((curr.line.approx_color.u as u32 * old_length as u32
+                    + region.line.approx_color.u as u32 * added_length as u32)
+                    / total_length as u32) as u8;
+                let v = ((curr.line.approx_color.v as u32 * old_length as u32
+                    + region.line.approx_color.v as u32 * added_length as u32)
+                    / total_length as u32) as u8;
+
+                curr.line.approx_color = YuvPixel { y, u, v };
                 curr.line
                     .region
                     .set_end_point(region.line.region.end_point());
-
-                let weight = curr.line.region.length();
-                curr.line.add_sample(region.line.approx_color, weight);
 
                 current_region = Some(curr);
             } else {
@@ -422,12 +426,11 @@ pub enum Direction {
 
 fn get_horizontal_scan_lines<T: CameraLocation>(
     config: &ScanLinesConfig,
-    field: &FieldColorApproximate,
     yuyv: &YuyvImage,
     scan_grid: &ScanGrid<T>,
     field_boundary: &FieldBoundary,
 ) -> ScanLine {
-    let mut regions = Vec::new();
+    let mut regions = Vec::with_capacity(scan_grid.y.len() * 16);
 
     for y in &scan_grid.y {
         let mut current_region = None;
@@ -444,6 +447,7 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
             }
 
             let pixels = unsafe {
+                // Unsafe pixel access is safe assuming scan_grid.lines ensure x-1 and x+1 are within bounds
                 [
                     yuyv.pixel_unchecked(x - 1, y),
                     yuyv.pixel_unchecked(x, y),
@@ -493,21 +497,21 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
                 // put new region in place of curr_region
                 std::mem::swap(curr_region, &mut new_region);
                 // and push the old region to the vec
-                regions.push(new_region.classify(config, field));
+                regions.push(new_region.classify(config));
             } else {
                 // get the length of the region inbetween
                 let weight = x - curr_region.region.end_point();
 
-                // set the end point to the current x
-                curr_region.region.set_end_point(x);
-
                 // add the pixel color sample to the region with a weight of the added length
                 curr_region.add_sample(pixel, weight);
+
+                // set the end point to the current x
+                curr_region.region.set_end_point(x);
             }
         }
 
         if let Some(curr_region) = current_region.take() {
-            regions.push(curr_region.classify(config, field));
+            regions.push(curr_region.classify(config));
         }
     }
 
@@ -516,15 +520,22 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
 
 fn get_vertical_scan_lines<T: CameraLocation>(
     config: &ScanLinesConfig,
-    field: &FieldColorApproximate,
     yuyv: &YuyvImage,
     scan_grid: &ScanGrid<T>,
     field_boundary: &FieldBoundary,
 ) -> ScanLine {
-    let mut regions = Vec::new();
+    let mut regions = Vec::with_capacity(scan_grid.lines.len() * 16);
 
     for line in &scan_grid.lines {
         let mut current_region = None;
+
+        let x = line.x as usize;
+
+        let boundary = if T::POSITION == CameraPosition::Top {
+            field_boundary.height_at_pixel(x as f32) as usize
+        } else {
+            0
+        };
 
         // take the y coordinates of the scan grid, skipping the first and last line
         for y in scan_grid
@@ -533,18 +544,14 @@ fn get_vertical_scan_lines<T: CameraLocation>(
             .skip(1)
             .take(scan_grid.y.len().saturating_sub(2))
         {
-            let x = line.x as usize;
             let y = *y;
 
-            if T::POSITION == CameraPosition::Top {
-                // skip lines above the field boundary
-                let boundary = field_boundary.height_at_pixel(x as f32) as usize;
-                if y < boundary {
-                    continue;
-                }
+            if y < boundary {
+                continue;
             }
 
             let pixels = unsafe {
+                // Unsafe pixel access is safe assuming scan_grid.y ensure y-1 and y+1 are within bounds
                 [
                     yuyv.pixel_unchecked(x, y - 1),
                     yuyv.pixel_unchecked(x, y),
@@ -593,21 +600,21 @@ fn get_vertical_scan_lines<T: CameraLocation>(
                 // put new region in place of curr_region
                 std::mem::swap(curr_region, &mut new_region);
                 // and push the old region to the vec
-                regions.push(new_region.classify(config, field));
+                regions.push(new_region.classify(config));
             } else {
                 // get the length of the region inbetween
                 let weight = y - curr_region.region.end_point();
 
-                // set the end point to the current y
-                curr_region.region.set_end_point(y);
-
                 // add the pixel color sample to the region with a weight of the added length
                 curr_region.add_sample(pixel, weight);
+
+                // set the end point to the current y
+                curr_region.region.set_end_point(y);
             }
         }
 
         if let Some(curr_region) = current_region.take() {
-            regions.push(curr_region.classify(config, field));
+            regions.push(curr_region.classify(config));
         }
     }
 
@@ -622,10 +629,8 @@ fn get_scan_lines<T: CameraLocation>(
 ) -> ScanLines<T> {
     let yuyv = image.yuyv_image();
 
-    let field = FieldColorApproximate::new(yuyv);
-
-    let horizontal = get_horizontal_scan_lines(config, &field, yuyv, scan_grid, field_boundary);
-    let vertical = get_vertical_scan_lines(config, &field, yuyv, scan_grid, field_boundary);
+    let horizontal = get_horizontal_scan_lines(config, yuyv, scan_grid, field_boundary);
+    let vertical = get_vertical_scan_lines(config, yuyv, scan_grid, field_boundary);
 
     ScanLines::new(image, horizontal, vertical)
 }
@@ -661,35 +666,41 @@ fn find_edge(
     fixed: usize,
     direction: Direction,
 ) -> usize {
-    let (pos_edge, _value_edge) =
-        (start..=end).fold((start, 0.0), |(pos_edge, diff_edge), pos_next| {
-            // get the current pixel and next pixels
-            let (pixel, pixel_next) = match direction {
-                Direction::Horizontal => unsafe {
-                    (
-                        yuyv.pixel_unchecked(pos_next, fixed),
-                        yuyv.pixel_unchecked(pos_next + 1, fixed),
-                    )
-                },
-                Direction::Vertical => unsafe {
-                    (
-                        yuyv.pixel_unchecked(fixed, pos_next),
-                        yuyv.pixel_unchecked(fixed, pos_next + 1),
-                    )
-                },
-            };
+    let mut pos_edge = start;
+    let mut diff_edge: u8 = 0;
 
-            let lum = f32::from(pixel.y);
-            let lum_next = f32::from(pixel_next.y);
+    for pos_next in start..end {
+        let (pixel, pixel_next) = match direction {
+            Direction::Horizontal => unsafe {
+                // Unsafe is safe assuming pos_next+1 <= end <= image width
+                (
+                    yuyv.pixel_unchecked(pos_next, fixed),
+                    yuyv.pixel_unchecked(pos_next + 1, fixed),
+                )
+            },
+            Direction::Vertical => unsafe {
+                // Unsafe is safe assuming pos_next+1 <= end <= image height
+                (
+                    yuyv.pixel_unchecked(fixed, pos_next),
+                    yuyv.pixel_unchecked(fixed, pos_next + 1),
+                )
+            },
+        };
 
-            let next_diff = (lum_next - lum).abs();
+        let lum = pixel.y;
+        let lum_next = pixel_next.y;
 
-            if next_diff > diff_edge {
-                (pos_next, next_diff)
-            } else {
-                (pos_edge, diff_edge)
-            }
-        });
+        let next_diff = if lum_next > lum {
+            lum_next - lum
+        } else {
+            lum - lum_next
+        };
+
+        if next_diff > diff_edge {
+            diff_edge = next_diff;
+            pos_edge = pos_next;
+        }
+    }
 
     pos_edge
 }
@@ -705,11 +716,7 @@ pub enum RegionColor {
 impl RegionColor {
     // TODO: use our field color approximate
     #[must_use]
-    pub fn classify_yuv_pixel(
-        config: &ScanLinesConfig,
-        _field: &FieldColorApproximate,
-        pixel: YuvPixel,
-    ) -> Self {
+    pub fn classify_yuv_pixel(config: &ScanLinesConfig, pixel: YuvPixel) -> Self {
         let yhs = pixel.to_yhs2();
         let (r, g, b) = pixel.to_rgb();
 
