@@ -11,7 +11,7 @@ use std::time::Instant;
 const TURN_SPEED: f32 = 0.2;
 const WALK_SPEED: f32 = 0.045;
 
-const PRECISE_WALK_DISTANCE: f32 = 0.25;
+const PRECISE_WALK_DISTANCE: f32 = 0.2;
 
 /// Plugin that adds systems and resources for planning robot steps.
 pub(super) struct StepPlannerPlugin;
@@ -237,7 +237,13 @@ impl StepPlanner {
         let raw_left = relative_transformed_target_point.y;
 
         // Scale the step components based on distance to target
-        let forward = Self::scale_step_component(raw_forward, distance);
+        let mut forward = Self::scale_step_component(raw_forward, distance);
+
+        // if forward is negative, we need half it
+        if forward < 0. {
+            forward /= 2.;
+        }
+
         let left = Self::scale_step_component(raw_left, distance);
 
         println!(
