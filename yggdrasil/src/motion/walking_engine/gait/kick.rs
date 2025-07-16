@@ -43,13 +43,13 @@ impl Plugin for KickPlugin {
                 .run_if(in_state(Gait::Kicking)),
         );
 
-        app.add_systems(
-            Update,
-            foot_leveling
-                .after(WalkingEngineSet::Balance)
-                .before(WalkingEngineSet::Finalize)
-                .run_if(in_state(Gait::Kicking)),
-        );
+        // app.add_systems(
+        //     Update,
+        //     foot_leveling
+        //         .after(WalkingEngineSet::Balance)
+        //         .before(WalkingEngineSet::Finalize)
+        //         .run_if(in_state(Gait::Kicking)),
+        // );
     }
 }
 
@@ -462,11 +462,11 @@ fn generate_kick_gait(
         state.compute_leg_joint_override(&state.support_leg_joints_override, state.phase);
 
     // Apply the leg joint offsets/overrides using the balance adjustment
-    // balance_adjustment.apply_leg_adjustments(state.planned_step.swing_side, swing_leg_override);
-    // balance_adjustment.apply_leg_adjustments(
-    //     state.planned_step.swing_side.opposite(),
-    //     support_leg_override,
-    // );
+    // balance_adjustment.apply_leg_adjustments(state.planned_step.swing_side, support_leg_override);
+    balance_adjustment.apply_leg_adjustments(
+        state.planned_step.swing_side.opposite(),
+        swing_leg_override,
+    );
 }
 
 // #[derive(Debug, Clone)]
