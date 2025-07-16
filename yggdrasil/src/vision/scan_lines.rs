@@ -446,7 +446,6 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
             let x = line.x as usize;
 
             if is_top_camera {
-                // Use cached boundary value
                 if y < boundary_cache[line_idx] {
                     continue;
                 }
@@ -467,7 +466,6 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
                 continue;
             };
 
-            // Use integer arithmetic for luminance difference
             let lum_diff =
                 f32::from((i16::from(pixel.y) - i16::from(curr_region.approx_color.y)).abs());
 
@@ -521,7 +519,6 @@ fn get_vertical_scan_lines<T: CameraLocation>(
     let min_edge_lum_diff = config.min_edge_luminance_difference;
     let is_top_camera = T::POSITION == CameraPosition::Top;
 
-    // Pre-compute y indices to avoid repeated bounds checking
     let y_indices: Vec<_> = scan_grid
         .y
         .iter()
@@ -534,7 +531,6 @@ fn get_vertical_scan_lines<T: CameraLocation>(
         let mut current_region = None;
         let x = line.x as usize;
 
-        // Pre-compute field boundary for this x if needed
         let boundary = if is_top_camera {
             field_boundary.height_at_pixel(x as f32) as usize
         } else {
@@ -601,7 +597,7 @@ fn get_vertical_scan_lines<T: CameraLocation>(
     ScanLine::new(ClassifiedScanLineRegion::simplify(regions))
 }
 
-// Specialized average functions to avoid allocations and improve cache locality
+/// Average three YUV pixels horizontally without checking bounds or allocations.
 #[inline(always)]
 unsafe fn average_yuv_3_horizontal_unchecked(yuyv: &YuyvImage, x: usize, y: usize) -> YuvPixel {
     unsafe {
@@ -617,6 +613,7 @@ unsafe fn average_yuv_3_horizontal_unchecked(yuyv: &YuyvImage, x: usize, y: usiz
     }
 }
 
+/// Average three YUV pixels vertically without checking bounds or allocations.
 #[inline(always)]
 unsafe fn average_yuv_3_vertical_unchecked(yuyv: &YuyvImage, x: usize, y: usize) -> YuvPixel {
     unsafe {
@@ -717,7 +714,6 @@ fn find_edge_optimized(
         pos += 2;
     }
 
-    // Handle last element if needed
     if pos == end {
         unsafe {
             let (pixel, pixel_next) = match direction {
@@ -758,11 +754,9 @@ impl RegionColor {
         _field: &FieldColorApproximate,
         pixel: YuvPixel,
     ) -> Self {
-        // Pre-compute RGB once
         let (r, g, b) = pixel.to_rgb();
         let color_sum = r + g + b;
 
-        // Early exit if color_sum is 0 to avoid division
         if color_sum < 0.001 {
             return RegionColor::Unknown;
         }
@@ -770,18 +764,16 @@ impl RegionColor {
         let g_chromaticity = g / color_sum;
         let green_threshold = config.green_chromaticity_threshold;
 
-        // Check black first (often more common than white)
+        // black is more common than white
         let yhs = pixel.to_yhs2();
         if Self::is_black(config, yhs) && g_chromaticity <= green_threshold {
             return RegionColor::WhiteOrBlack;
         }
 
-        // Check green
         if g_chromaticity > green_threshold {
             return RegionColor::Green;
         }
 
-        // Check white
         if Self::is_white(config, yhs) {
             return RegionColor::WhiteOrBlack;
         }
