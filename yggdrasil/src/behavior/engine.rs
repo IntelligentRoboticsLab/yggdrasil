@@ -6,7 +6,6 @@ use ml::{
     prelude::{MlTaskCommandsExt, ModelExecutor},
 };
 use nalgebra::Point2;
-use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     core::config::showtime::PlayerConfig,
@@ -32,6 +31,8 @@ use super::{
 
 const FORWARD_LEANING_THRESHOLD: f32 = 0.2;
 const BACKWARD_LEANING_THRESHOLD: f32 = -0.2;
+
+const BROKEN_ROBOT_NAME: &str = "ken";
 
 pub(super) struct BehaviorEnginePlugin;
 
@@ -62,12 +63,8 @@ impl Plugin for BehaviorEnginePlugin {
 
 fn ken_behavior_override(robot_info: Res<RobotInfo>, mut nao_manager: ResMut<NaoManager>) {
     // Override the behavior for ken to not use its head joints, as they are broken
-    if robot_info.robot_name.to_lowercase() == "ken" {
-        nao_manager.set_head(
-            HeadJoints::default(),
-            HeadJoints::fill(0.0),
-            Priority::Critical,
-        );
+    if robot_info.robot_name.to_lowercase() == BROKEN_ROBOT_NAME {
+        nao_manager.set_head_yaw(0.0, 0.0, Priority::Critical);
     }
 }
 
