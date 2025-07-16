@@ -30,9 +30,15 @@ pub async fn send_loop(
     let mut buffer = Vec::new();
 
     while let Some((message, mut addr)) = rx.next().await {
-        message.encode(&mut buffer).unwrap();
+        if let Err(err) = message.encode(&mut buffer) {
+            tracing::warn!("Failed to encode game controller return message: {err}");
+            continue;
+        }
+
         addr.set_port(GAME_CONTROLLER_RETURN_PORT);
-        sock.send_to(&buffer, addr).await.unwrap();
+        if let Err(err) = sock.send_to(&buffer, addr).await {
+            tracing::warn!("Failed to send game controller return message: {err}");
+        }
         buffer.clear();
     }
 
@@ -77,10 +83,12 @@ pub fn send_message(
         ball_pos,
     );
 
-    sender
+    if let Err(err) = sender
         .tx
         .unbounded_send((return_message, connection.address))
-        .unwrap();
+    {
+        tracing::warn!("Failed to send game controller return message: {err}");
+    }
 
     delay.set_duration(config.game_controller_return_delay);
 }
