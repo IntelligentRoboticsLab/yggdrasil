@@ -106,6 +106,7 @@ plotters = { version = "0.3.7", default-features = false, features = [
 proc-macro2 = "1.0.95"
 quote = "1.0.40"
 rand = "0.9.1"
+rand_distr = "0.5.1"
 
 re_crash_handler = "0.23.1"
 rerun = { version = "0.23.1", default-features = false, features = [

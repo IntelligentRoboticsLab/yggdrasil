@@ -4,6 +4,7 @@ use bevy::prelude::*;
 pub mod energy_optimizer;
 pub mod keyframe;
 pub mod path_finding;
+pub mod rrt_path_planner;
 pub mod step_planner;
 pub mod walking_engine;
 

@@ -57,6 +57,7 @@ num = { workspace = true }
 ordered-float = { workspace = true }
 pathfinding = { workspace = true }
 rand = { workspace = true }
+rand_distr = { workspace = true }
 rerun = { workspace = true }
 rustfft = { workspace = true }
 serde = { workspace = true }

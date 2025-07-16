@@ -2,7 +2,7 @@ use super::SensorConfig;
 use super::button::{LeftFootButtons, RightFootButtons};
 use crate::prelude::*;
 use crate::{
-    motion::path_finding::Obstacle,
+    motion::rrt_path_planner::Obstacle,
     motion::step_planner::{DynamicObstacle, StepPlanner},
     nao::{NaoManager, Priority},
 };
