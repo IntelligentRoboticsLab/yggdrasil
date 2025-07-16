@@ -59,7 +59,6 @@ impl PatchResizer {
         }
 
         #[cfg(target_arch = "x86_64")]
-        #[cfg(target_arch = "x86_64")]
         {
             let mut resizer = Resizer::new();
 
