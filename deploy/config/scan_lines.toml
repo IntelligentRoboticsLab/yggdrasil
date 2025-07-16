@@ -17,5 +17,5 @@ max_black_saturation = 160.0
 
 # Green chromaticity threshold
 blue_chromaticity_threshold = 0.3    # not fine tuned
-green_chromaticity_threshold = 0.393 # tuned for A, B, D. C and E need 0.415, E still needs to be tested with sun
+green_chromaticity_threshold = 0.393 # tuned for A, B, D. C and E need 0.415, E needs 0.4 in morning, 0.41 when sun in afternoon, 0.42 in evening
 red_chromaticity_threshold = 0.3     # not fine tuned
