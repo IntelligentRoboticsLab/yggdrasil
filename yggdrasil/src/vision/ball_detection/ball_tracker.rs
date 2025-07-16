@@ -1,9 +1,14 @@
+// comes from the chi-squared distribution with 2 degrees of freedom at 95% confidence (our 2-sigma threshold)
+const SIGMA_THRESHOLD: f32 = 5.991;
+
 use std::time::Instant;
 
 use bevy::prelude::*;
-use filter::{CovarianceMatrix, StateTransform, StateVector, UnscentedKalmanFilter};
+use filter::{
+    CovarianceMatrix, MahalanobisDistance, StateTransform, StateVector, UnscentedKalmanFilter,
+};
 use nalgebra::{Point2, point};
-use tracing::error;
+use tracing::{error, warn};
 
 use crate::{localization::odometry::Odometry, nao::Cycle};
 
@@ -63,6 +68,19 @@ impl BallTracker {
         }
     }
 
+    pub fn is_reliable(&mut self, measurement: BallPosition) -> bool {
+        let mean = self.position_kf.state();
+        let distance = self
+            .covariance()
+            .mahalanobis_distance(measurement.into(), mean.into());
+        if let Ok(distance) = distance {
+            return distance < SIGMA_THRESHOLD;
+        }
+
+        warn!("failed to calculate mahalanobis distance");
+        false
+    }
+
     pub fn measurement_update(&mut self, measurement: BallPosition) {
         if let Err(err) =
             self.position_kf
@@ -71,8 +89,13 @@ impl BallTracker {
             error!("failed to do measurement update: {err:?}");
         }
 
-        // Putting timestamp update here for now
-        self.timestamp = Instant::now();
+        // check if measurement is an outlier
+        let reliable = self.is_reliable(measurement);
+
+        if reliable {
+            // Putting timestamp update here for now
+            self.timestamp = Instant::now();
+        }
     }
 
     #[must_use]

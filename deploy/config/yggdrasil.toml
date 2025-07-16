@@ -4,6 +4,31 @@ activation_threshold = 0.5
 # The time (in ms) a button needs to be held down, in order to be considered held down.
 held_duration_threshold = 500
 
+[filter.foot_bumpers]
+# Minimum number of pressure detections needed for one foot to consider it an obstacle.
+min_detection_count = 55
+
+# Time of no pressure after which the pressure counts will be reset, in milliseconds.
+max_inactivity_time = 1500
+
+# Minimum number of pressure detections needed for one bumper to consider it malfunctioning.
+malfunction_count = 1500
+
+# Angle that is used to set the location of a new obstacle on the left or right, in radians.
+obstacle_angle = 0.4
+
+# Distance from the robot to the center of an obstacle that will be spawned, in meters.
+obstacle_distance = 0.22
+
+# Radius of an obstacle that will be spawned, in meters.
+obstacle_radius = 0.15
+
+# The maximum distance between two obstacles to consider them the same, in meters.
+merge_distance = 0.05
+
+# Time-to-live of an obstacle, in milliseconds.
+ttl = 5000
+
 [filter.fsr]
 # Threshold for ground contact detection using average FSR sensor values from both feet.
 ground_contact_threshold = 0.12

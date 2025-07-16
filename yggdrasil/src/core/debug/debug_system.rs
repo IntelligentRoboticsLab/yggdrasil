@@ -2,7 +2,7 @@ use bevy::{
     ecs::{schedule::ScheduleLabel, system::ScheduleSystem},
     prelude::*,
 };
-use re_control_comms::debug_system::DebugEnabledSystems;
+use yggdrasil_rerun_comms::debug_system::DebugEnabledSystems;
 
 /// Run condition for a specified system (using the system name) based on
 /// the corresponding flag for that systems, stored in the resource

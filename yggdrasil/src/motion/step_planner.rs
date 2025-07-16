@@ -2,9 +2,10 @@ use super::{
     path_finding::{self, Obstacle},
     walking_engine::step::Step,
 };
-use crate::localization::RobotPose;
+use crate::{core::debug::DebugContext, localization::RobotPose, nao::Cycle};
 use bevy::prelude::*;
 use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
+use rerun::{FillMode, LineStrip3D};
 use std::time::Instant;
 
 const TURN_SPEED: f32 = 0.2;
@@ -16,6 +17,11 @@ pub(super) struct StepPlannerPlugin;
 impl Plugin for StepPlannerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<StepPlanner>();
+        app.add_systems(
+            PostStartup,
+            (setup_path_visualizer, setup_dynamic_obstacle_logging),
+        );
+        app.add_systems(PostUpdate, (log_planned_path, log_dynamic_obstacles));
     }
 }
 
@@ -63,9 +69,8 @@ impl Default for StepPlanner {
 
 impl StepPlanner {
     pub fn set_absolute_target(&mut self, target: Target) {
+        self.clear_target();
         self.target = Some(target);
-        self.reached_translation_target = false;
-        self.reached_rotation_target = false;
     }
 
     pub fn set_absolute_target_if_unset(&mut self, target: Target) {
@@ -85,6 +90,7 @@ impl StepPlanner {
         self.target.as_ref()
     }
 
+    /// Dynamic obstacles need to be added in relative coordinates.
     pub fn add_dynamic_obstacle(&mut self, obstacle: DynamicObstacle, merge_distance: f32) {
         match self
             .dynamic_obstacles
@@ -103,16 +109,27 @@ impl StepPlanner {
         self.dynamic_obstacles.iter().map(|obs| obs.obs).collect()
     }
 
-    fn get_all_obstacles(&mut self) -> Vec<Obstacle> {
+    /// Retrieves all currently relevant objects, in absolute coordinates.
+    fn get_all_obstacles(&mut self, robot_pose: &RobotPose) -> Vec<Obstacle> {
+        let all_dynamic_obstacles = self.collect_and_gc_dynamic_obstacles();
+
+        let abs_dynamic_obstacles: Vec<_> = all_dynamic_obstacles
+            .iter()
+            .map(|obs| {
+                let abs_pos = robot_pose.robot_to_world(&Point2::new(obs.x.0, obs.y.0));
+                Obstacle::new(abs_pos.x, abs_pos.y, obs.radius.0)
+            })
+            .collect();
+
         let mut all_obstacles = self.static_obstacles.clone();
-        all_obstacles.extend_from_slice(&self.collect_and_gc_dynamic_obstacles());
+        all_obstacles.extend_from_slice(&abs_dynamic_obstacles);
 
         all_obstacles
     }
 
     fn calc_path(&mut self, robot_pose: &RobotPose) -> Option<(Vec<Point2<f32>>, f32)> {
         let target_position = self.target?.position;
-        let all_obstacles = self.get_all_obstacles();
+        let all_obstacles = self.get_all_obstacles(robot_pose);
 
         path_finding::find_path(robot_pose.world_position(), target_position, &all_obstacles)
     }
@@ -227,4 +244,70 @@ fn calc_distance(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: Point2
     let robot_point = pose.translation.vector.into();
 
     distance(robot_point, target_point)
+}
+
+fn setup_path_visualizer(dbg: DebugContext) {
+    dbg.log_with_cycle(
+        "field/path",
+        Cycle::default(),
+        &rerun::LineStrips3D::update_fields()
+            .with_colors([(66, 135, 245)])
+            .with_radii([0.01]),
+    );
+}
+
+fn log_planned_path(
+    dbg: DebugContext,
+    cycle: Res<Cycle>,
+    robot_pose: Res<RobotPose>,
+    mut step_planner: ResMut<StepPlanner>,
+) {
+    let path = step_planner.calc_path(&robot_pose);
+
+    if let Some((path, _)) = path {
+        dbg.log_with_cycle(
+            "field/path",
+            *cycle,
+            &rerun::LineStrips3D::update_fields().with_strips([LineStrip3D::from_iter(
+                path.iter().map(|point| (point.x, point.y, 0.05)),
+            )]),
+        );
+    } else {
+        dbg.log_with_cycle(
+            "field/path",
+            *cycle,
+            &rerun::LineStrips3D::update_fields().with_strips(std::iter::empty::<LineStrip3D>()),
+        );
+    }
+}
+
+fn setup_dynamic_obstacle_logging(dbg: DebugContext) {
+    dbg.log_static(
+        "localization/pose/obstacles",
+        &rerun::Ellipsoids3D::update_fields()
+            .with_colors([(69, 255, 249)])
+            .with_fill_mode(FillMode::Solid),
+    );
+}
+
+fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>, cycle: Res<Cycle>) {
+    let centers = step_planner
+        .dynamic_obstacles
+        .iter()
+        .map(|obs| (obs.obs.x.0, obs.obs.y.0, -0.28))
+        .collect::<Vec<_>>();
+
+    let half_sizes = step_planner
+        .dynamic_obstacles
+        .iter()
+        .map(|obs| (obs.obs.radius.0, obs.obs.radius.0, 0.4))
+        .collect::<Vec<_>>();
+
+    dbg.log_with_cycle(
+        "localization/pose/obstacles",
+        *cycle,
+        &rerun::Ellipsoids3D::update_fields()
+            .with_centers(centers)
+            .with_half_sizes(half_sizes),
+    );
 }

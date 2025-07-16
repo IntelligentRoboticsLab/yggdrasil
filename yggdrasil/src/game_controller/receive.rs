@@ -52,7 +52,9 @@ pub async fn receive_loop(
         };
 
         if message.is_valid() {
-            tx.unbounded_send((message, address)).unwrap();
+            if let Err(err) = tx.unbounded_send((message, address)) {
+                tracing::error!("Failed to send game controller message: {err}");
+            }
         }
     }
 }

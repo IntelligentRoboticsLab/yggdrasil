@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    types: [ opened, synchronize ]
+    types: [opened, synchronize]
     paths-ignore:
       - "deploy/**"
 
@@ -23,11 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-github-pat/
-        with:
-          CI_TOKEN: ${{ secrets.CI_TOKEN }}
       - uses: ./.github/actions/install-ubuntu-deps/
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: 1.87.0
       - run: cargo test --all-features
 
   clippy:
@@ -35,12 +34,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-github-pat/
-        with:
-          CI_TOKEN: ${{ secrets.CI_TOKEN }}
       - uses: ./.github/actions/install-ubuntu-deps/
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
+          toolchain: 1.87.0
           components: clippy
       - run: cargo clippy --all-targets --all-features -- -D warnings
 
@@ -49,11 +46,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-github-pat/
-        with:
-          CI_TOKEN: ${{ secrets.CI_TOKEN }}
       - uses: ./.github/actions/install-ubuntu-deps/
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: 1.87.0
+          components: rustfmt
       - uses: uncenter/setup-taplo@v1
         with:
           version: "0.8.1"
@@ -66,11 +63,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-github-pat/
-        with:
-          CI_TOKEN: ${{ secrets.CI_TOKEN }}
       - uses: ./.github/actions/install-ubuntu-deps/
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: 1.87.0
+          components: clippy
       - run: cargo doc --all-features --no-deps
 
   shear:
@@ -78,9 +75,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-github-pat/
-        with:
-          CI_TOKEN: ${{ secrets.CI_TOKEN }}
       - uses: cargo-bins/cargo-binstall@main
       - run: cargo binstall --no-confirm cargo-shear
       - run: cargo shear

@@ -1,6 +1,6 @@
 [package]
-name = "re_control"
-version = "0.12.0"
+name = "yggdrasil_rerun"
+version = "0.13.1"
 
 authors.workspace = true
 categories.workspace = true
@@ -18,7 +18,6 @@ clap = { workspace = true, features = ["derive"] }
 miette = { workspace = true }
 mimalloc = { workspace = true }
 nalgebra = { workspace = true }
-re_control_comms = { path = "re_control_comms" }
 re_crash_handler = { workspace = true }
 rerun = { workspace = true, features = [
   "ecolor",
@@ -39,3 +38,4 @@ tokio = { workspace = true, features = [
   "time",
 ] }
 tracing = { workspace = true }
+yggdrasil_rerun_comms = { path = "yggdrasil_rerun_comms" }

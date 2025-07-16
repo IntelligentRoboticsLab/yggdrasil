@@ -19,8 +19,8 @@ use bevy::prelude::*;
 
 use heimdall::{Bottom, CameraLocation, CameraPosition, Top, YuvPixel, YuyvImage};
 use nalgebra::Point2;
-use re_control_comms::protocol::control::FieldColorConfig;
 use serde::{Deserialize, Serialize};
+use yggdrasil_rerun_comms::protocol::control::FieldColorConfig;
 
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]
 pub struct ScanLinesConfig {

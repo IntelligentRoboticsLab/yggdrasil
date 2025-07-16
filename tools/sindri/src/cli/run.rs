@@ -12,7 +12,9 @@ use crate::{
     config::SindriConfig,
 };
 
-use super::re_control::{has_re_control, has_rsync, run_re_control, setup_rerun_host};
+use super::yggdrasil_rerun::{
+    has_rsync, has_yggdrasil_rerun, run_yggdrasil_rerun, setup_rerun_host,
+};
 
 const DEFAULT_TRACY_PORT: u16 = 8086;
 
@@ -49,12 +51,12 @@ impl Run {
             bail!("rsync is not installed, install it using your package manager!")
         }
 
-        let has_rerun = has_re_control().await;
+        let has_rerun = has_yggdrasil_rerun().await;
         if rerun && !has_rerun {
             println!(
                 "{}: {}",
                 "warning".bold().yellow(),
-                "re_control is not installed, install it using `sindri update re-control` or `cargo install --locked --path ./tools/re_control`".white()
+                "yggdrasil_rerun is not installed, install it using `sindri update yggdrasil_rerun` or `cargo install --locked --path ./tools/yggdrasil_rerun`".white()
             );
         }
 
@@ -115,7 +117,7 @@ impl Run {
                     robot.ip()
                 };
 
-                run_re_control(
+                run_yggdrasil_rerun(
                     robot_ip,
                     self.robot_ops.rerun_args.rerun_mem_limit,
                     self.robot_ops.rerun_args.rerun_log,

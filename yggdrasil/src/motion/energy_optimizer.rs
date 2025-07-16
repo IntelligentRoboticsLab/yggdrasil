@@ -29,7 +29,7 @@ impl Plugin for EnergyOptimizerPlugin {
 #[derive(Debug, Resource, Default)]
 pub struct JointCurrentOptimizer {
     enabled: bool,
-    has_reach_minimum_current: bool,
+    has_reached_minimum_current: bool,
     joint_offsets: JointArray<f32>,
 }
 
@@ -56,7 +56,9 @@ impl<'w, 's> EnergyOptimizerExt<'w, 's> for Commands<'w, 's> {
 
     fn reset_joint_current_optimizer(&mut self) {
         self.queue(|world: &mut World| {
-            world.init_resource::<JointCurrentOptimizer>();
+            if let Some(mut state) = world.get_resource_mut::<JointCurrentOptimizer>() {
+                *state = JointCurrentOptimizer::default();
+            }
         });
     }
 }
@@ -83,15 +85,15 @@ fn optimize_joint_currents(
         .max_by(|(_, a), (_, b)| a.total_cmp(b))
         .unwrap();
 
-    state.has_reach_minimum_current = if *max_current < MIN_CURRENT {
+    state.has_reached_minimum_current = if *max_current < MIN_CURRENT {
         true
     } else if *max_current > MAX_CURRENT {
         false
     } else {
-        state.has_reach_minimum_current
+        state.has_reached_minimum_current
     };
 
-    if !state.has_reach_minimum_current {
+    if !state.has_reached_minimum_current {
         let max_adjustment = REDUCTION / cycle_time.duration.as_secs_f32();
 
         if let Some(joint_offset) = state.joint_offsets.get_mut(joint_idx) {

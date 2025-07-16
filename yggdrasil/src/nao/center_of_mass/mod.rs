@@ -10,7 +10,6 @@ mod robot_masses;
 use crate::{
     core::debug::DebugContext,
     kinematics::{Kinematics, spaces::Robot},
-    localization::RobotPose,
     prelude::*,
 };
 use bevy::prelude::*;
@@ -85,15 +84,10 @@ fn setup_com_visualization(dbg: DebugContext) {
     );
 }
 
-fn visualize_com(dbg: DebugContext, com: Res<CenterOfMass>, pose: Res<RobotPose>) {
-    let absolute_com_position = pose.robot_to_world(&com.position.inner.xy());
+fn visualize_com(dbg: DebugContext, com: Res<CenterOfMass>) {
     dbg.log(
         "localization/pose/com",
-        &rerun::Points3D::new([(
-            absolute_com_position.x,
-            absolute_com_position.y,
-            com.position.inner.z,
-        )])
-        .with_radii([0.005]),
+        &rerun::Points3D::new([(com.position.x, com.position.y, com.position.z)])
+            .with_radii([0.05]),
     );
 }

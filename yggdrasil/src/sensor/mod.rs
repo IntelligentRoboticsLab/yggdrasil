@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod button;
 pub mod falling;
+pub mod foot_bumpers;
 pub mod fsr;
 pub mod imu;
 pub mod low_pass_filter;
@@ -16,6 +17,7 @@ impl PluginGroup for SensorPlugins {
     fn build(self) -> PluginGroupBuilder {
         PluginGroupBuilder::start::<Self>()
             .add(button::ButtonPlugin)
+            .add(foot_bumpers::FootBumperPlugin)
             .add(fsr::FSRSensorPlugin)
             .add(imu::IMUSensorPlugin)
             .add(sonar::SonarSensorPlugin)
@@ -30,6 +32,10 @@ impl PluginGroup for SensorPlugins {
 pub struct SensorConfig {
     /// Configuration for the FSR sensor.
     pub fsr: fsr::FsrConfig,
+
     /// Configuration for the button sensitivies.
     pub button: button::ButtonConfig,
+
+    /// Configuration for the foot bumpers.
+    pub foot_bumpers: foot_bumpers::FootBumperConfig,
 }

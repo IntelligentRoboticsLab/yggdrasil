@@ -398,6 +398,37 @@ impl NaoManager {
         self
     }
 
+    /// Sets specifically the yaw of the head, but preserves the pitch.
+    ///
+    /// The yaw is the horizontal rotation of the head, in radians.
+    /// The joint stiffness should be between 0 and 1, where 1 is maximum stiffness, and 0 minimum
+    /// stiffness. A value of `-1` will disable the stiffness altogether.
+    pub fn set_head_yaw(
+        &mut self,
+        yaw: JointValue,
+        stiffness: JointValue,
+        priority: Priority,
+    ) -> &mut Self {
+        let joint_positions = HeadJoints {
+            yaw,
+            ..self.head_settings.joints_position.clone()
+        };
+
+        let join_stiffness = HeadJoints {
+            yaw: stiffness,
+            ..self.head_settings.joints_stiffness.clone()
+        };
+
+        Self::set_joint_settings(
+            &mut self.head_settings,
+            joint_positions,
+            join_stiffness,
+            priority,
+        );
+
+        self
+    }
+
     /// Set the target position for the head.
     pub fn set_head_target(
         &mut self,
