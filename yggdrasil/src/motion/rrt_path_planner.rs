@@ -1,6 +1,5 @@
 use core::f32::consts::PI;
-use nalgebra::{Point2, Vector2, Vector3};
-use rand::rngs::OsRng;
+use nalgebra::{Point2, Vector3};
 use rand::{Rng, SeedableRng, rngs::StdRng};
 
 //
@@ -13,7 +12,7 @@ use rand::{Rng, SeedableRng, rngs::StdRng};
 #[inline(always)]
 pub fn wrap_to_pi(angle: f32) -> f32 {
     let two_pi = 2.0 * PI;
-    let mut a = (angle + PI).rem_euclid(two_pi) - PI;
+    let a = (angle + PI).rem_euclid(two_pi) - PI;
     if a <= -PI { a + two_pi } else { a }
 }
 
@@ -210,20 +209,15 @@ impl RRTStarSE2 {
         }
     }
 
-    /// Run planning. Returns path states start→goal, if found.
+    /// Attempt to plan a path from start to goal.
     pub fn plan(&mut self) -> Option<Vec<Vector3<f32>>> {
         for _ in 0..self.max_iters {
-            // 1. Sample
             let x_rand = self.sample_state();
-
-            // 2. Nearest
             let nearest_idx = self.nearest_neighbor(&x_rand);
             let x_nearest = &self.nodes[nearest_idx].state;
 
-            // 3. Steer
             let x_new = se2_steer(x_nearest, &x_rand, self.step_size);
 
-            // 4. Collision
             if !(self.node_free)(&x_new) {
                 continue;
             }
@@ -231,7 +225,6 @@ impl RRTStarSE2 {
                 continue;
             }
 
-            // 5. Neighbors
             let neighbor_indices = self.find_neighbors(&x_new);
 
             // 6. Choose parent
@@ -293,12 +286,12 @@ impl RRTStarSE2 {
 
     #[inline]
     fn sample_state(&mut self) -> Vector3<f32> {
-        if self.rng.gen_bool(self.goal_bias as f64) {
+        if self.rng.random_bool(self.goal_bias as f64) {
             return self.goal.clone();
         }
         let mut s = Vector3::zeros();
         for i in 0..3 {
-            s[i] = self.rng.gen_range(self.x_min[i]..self.x_max[i]);
+            s[i] = self.rng.random_range(self.x_min[i]..self.x_max[i]);
         }
         s[2] = wrap_to_pi(s[2]);
         s
@@ -344,14 +337,8 @@ impl RRTStarSE2 {
     }
 }
 
-//
-// ------------------------------------------------------------
-// Helpers: build closures from Obstacle slice
-// ------------------------------------------------------------
-//
-
 /// Build collision functors from a slice of circular obstacles.
-/// θ is ignored (XY only).
+/// theta is ignored (XY only).
 pub fn make_obstacle_checkers(
     obstacles: Vec<Obstacle>,
 ) -> (
@@ -366,12 +353,6 @@ pub fn make_obstacle_checkers(
         move |a: &Vector3<f32>, b: &Vector3<f32>| segment_clear(a[0], a[1], b[0], b[1], &obstacles);
     (node_free, edge_free)
 }
-
-//
-// ------------------------------------------------------------
-// Convenience: run planner directly from 2D inputs
-// ------------------------------------------------------------
-//
 
 /// Quick wrapper to run SE(2) RRT* given 2D start/goal + yaw seeds.
 /// Bounding box auto‑computed from obstacles w/ margin (or override).
