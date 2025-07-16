@@ -13,7 +13,7 @@ use crate::{
 };
 
 use super::yggdrasil_rerun::{
-    has_rsync, has_yggdrasil_rerun, run_yggdrasil_rerun, setup_rerun_host,
+    default_rerun_host, has_rsync, has_yggdrasil_rerun, run_yggdrasil_rerun,
 };
 
 const DEFAULT_TRACY_PORT: u16 = 8086;
@@ -106,7 +106,7 @@ impl Run {
             // Always set the host, so that rerun can connect to the correct host.
             // even if the host doesn't have rerun viewer installed, there could be
             // some case where the viewer is launched through a different method than the cli.
-            let rerun_host = setup_rerun_host(
+            let rerun_host = default_rerun_host(
                 self.robot_ops.wired,
                 self.robot_ops.rerun_args.rerun_host.clone(),
             );

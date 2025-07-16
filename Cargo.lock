@@ -9155,7 +9155,7 @@ checksum = "832ddd7df0d98d6fd93b973c330b7c8e0742d5cb8f1afc7dea89dba4d2531aa1"
 
 [[package]]
 name = "sindri"
-version = "0.28.0"
+version = "0.29.0"
 dependencies = [
  "build_utils",
  "clap",

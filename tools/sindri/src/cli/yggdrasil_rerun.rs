@@ -26,7 +26,7 @@ pub struct RerunArgs {
 }
 
 #[must_use]
-pub fn setup_rerun_host(wired: bool, rerun_host: Option<String>) -> String {
+pub fn default_rerun_host(wired: bool, rerun_host: Option<String>) -> String {
     rerun_host.unwrap_or_else(|| {
         let mut local_ip = local_ip_address::local_ip().expect("Failed to obtain local ip address");
 
