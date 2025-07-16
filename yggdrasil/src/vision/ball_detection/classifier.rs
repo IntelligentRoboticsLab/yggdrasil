@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::time::Instant;
 
 use bevy::prelude::*;
-use ml::prelude::*;
+use ml::{prelude::*, util::PatchResizer};
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
 
@@ -125,11 +125,15 @@ fn dispatch_ball_classification<T: CameraLocation + Clone>(
     mut commands: Commands,
     mut proposals: ResMut<BallProposals<T>>,
     mut model: ResMut<ModelExecutor<BallClassifierModel>>,
+    mut patch_resizer: Local<Option<PatchResizer>>,
 ) {
     // nothing left to classify
     if proposals.proposals.is_empty() {
         return;
     }
+
+    let resizer = patch_resizer
+        .get_or_insert_with(|| PatchResizer::new(IMAGE_INPUT_SIZE as u32, IMAGE_INPUT_SIZE as u32));
 
     // pick the "best" proposal (closest ball = smallest distance)
     let idx_best = proposals
@@ -142,23 +146,20 @@ fn dispatch_ball_classification<T: CameraLocation + Clone>(
 
     // remove it from the queue so we won't touch it again
     let proposal = proposals.proposals.remove(idx_best);
-    let patch_side = proposal.scale as usize;
+    let patch_size = proposal.scale as usize;
     let patch = proposals.image.get_grayscale_patch(
         (proposal.position.x, proposal.position.y),
-        patch_side,
-        patch_side,
+        patch_size,
+        patch_size,
     );
-    let patch = ml::util::resize_patch(
-        (patch_side, patch_side),
-        (IMAGE_INPUT_SIZE, IMAGE_INPUT_SIZE),
-        patch,
-    );
+
+    resizer.resize_patch(&patch, (patch_size, patch_size));
 
     let cycle = proposals.image.cycle();
 
     commands
         .infer_model(&mut model)
-        .with_input(&patch)
+        .with_input(&resizer.take())
         .create_resource()
         .spawn(move |raw_output| {
             let confidence = ml::util::sigmoid(raw_output);
