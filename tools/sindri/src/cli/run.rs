@@ -56,7 +56,7 @@ impl Run {
             println!(
                 "{}: {}",
                 "warning".bold().yellow(),
-                "yggdrasil_rerun is not installed, install it using `sindri update re-control` or `cargo install --locked --path ./tools/yggdrasil_rerun`".white()
+                "yggdrasil_rerun is not installed, install it using `sindri update yggdrasil_rerun` or `cargo install --locked --path ./tools/yggdrasil_rerun`".white()
             );
         }
 
