@@ -221,16 +221,11 @@ impl StepPlanner {
         let distance = calc_distance(&robot_pose.inner, first_target_position);
 
         if distance < 0.1 {
-            // If the distance is less than 5 cm, we are close enough to the target.
+            // If the distance is less than 10 cm, we are close enough to the target.
             return None;
         }
         // Use the components of the vector to the target in local position to determine the step, forward and left only
         let relative_transformed_target_point = robot_pose.world_to_robot(&first_target_position);
-
-        println!(
-            "Walking towards target: {:?} (distance: {})",
-            first_target_position, distance
-        );
 
         // x: forward (+ is in front), y: left (+ is left, - is right)
         let raw_forward = relative_transformed_target_point.x;
