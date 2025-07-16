@@ -61,8 +61,8 @@ impl Plugin for BehaviorEnginePlugin {
 }
 
 fn ken_behavior_override(robot_info: Res<RobotInfo>, mut nao_manager: ResMut<NaoManager>) {
+    // Override the behavior for ken to not use its head joints, as they are broken
     if robot_info.robot_name.to_lowercase() == "ken" {
-        // Override the behavior for player 1 to always look at the ball
         nao_manager.set_head(
             HeadJoints::default(),
             HeadJoints::fill(0.0),
