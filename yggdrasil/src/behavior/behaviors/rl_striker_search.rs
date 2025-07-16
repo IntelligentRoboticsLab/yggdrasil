@@ -161,7 +161,7 @@ fn run_inference(
     };
 
     dbg.log_with_cycle(
-        "rl_search_obs",
+        "behavior/striker_search/observation",
         *cycle,
         &[serialized_component_batch_f32(
             "yggdrasil.components.RlSearchObs",
