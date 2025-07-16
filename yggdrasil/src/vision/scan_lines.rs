@@ -462,7 +462,7 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
                 }
             }
 
-            // SAFETY: y_slice excludes first/last row, so y-1 and y+1 are in-bounds.
+            // SAFETY: x_slice excludes first/last row, so x-1 and x+1 are in-bounds.
             // scan_grid guarantees x lies within image width.
             let pixels = unsafe {
                 [
