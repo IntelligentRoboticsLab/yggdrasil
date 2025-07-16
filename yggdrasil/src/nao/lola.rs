@@ -1,9 +1,9 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use bevy::{ecs::system::RunSystemOnce, prelude::*};
 use nidhogg::{NaoBackend, NaoControlMessage, NaoState, backend::LolaBackend};
-use rerun::{SerializedComponentBatch, external::arrow};
 
+use crate::core::debug::serialized_component_batch_f32;
 use crate::{core::debug, prelude::*};
 use crate::{core::debug::DebugContext, nao::RobotInfo};
 
@@ -140,15 +140,4 @@ fn log_nao_control_message(
         *cycle,
         &[joint_positions, joint_stiffness],
     );
-}
-
-#[must_use]
-fn serialized_component_batch_f32<I: IntoIterator<Item = f32>>(
-    descriptor: &str,
-    iter: I,
-) -> SerializedComponentBatch {
-    rerun::SerializedComponentBatch::new(
-        Arc::new(arrow::array::Float32Array::from_iter_values(iter)),
-        rerun::ComponentDescriptor::new(descriptor),
-    )
 }
