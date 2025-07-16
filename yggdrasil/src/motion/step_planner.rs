@@ -11,6 +11,8 @@ use std::time::Instant;
 const TURN_SPEED: f32 = 0.2;
 const WALK_SPEED: f32 = 0.045;
 
+const PRECISE_WALK_DISTANCE: f32 = 0.25;
+
 /// Plugin that adds systems and resources for planning robot steps.
 pub(super) struct StepPlannerPlugin;
 
@@ -176,9 +178,49 @@ impl StepPlanner {
         }
     }
 
+    fn plan_precise(robot_pose: &RobotPose, path: &[Point2<f32>]) -> Option<Step> {
+        let first_target_position = path[1];
+
+        let distance = calc_distance(&robot_pose.inner, first_target_position);
+
+        if distance < 0.04 {
+            // If the distance is less than 4 cm, we are close enough to the target.
+            return None;
+        }
+        // Use the components of the vector to the target in local position to determine the step, forward and left only
+        let relative_transformed_target_point = robot_pose.world_to_robot(&first_target_position);
+
+        println!(
+            "Walking towards target: {:?} (distance: {})",
+            first_target_position, distance
+        );
+
+        // x: forward (+ is in front), y: left (+ is left, - is right)
+        let forward = relative_transformed_target_point.x;
+        let left = relative_transformed_target_point.y;
+
+        println!(
+            "Relative transformed target point: {:?} (forward: {}, left: {})",
+            relative_transformed_target_point, forward, left
+        );
+
+        return Some(Step {
+            forward,
+            left,
+            turn: 0.,
+        });
+    }
+
     pub fn plan(&mut self, robot_pose: &RobotPose) -> Option<Step> {
         let target = self.target?;
+
         let (path, _total_walking_distance) = self.calc_path(robot_pose)?;
+
+        if robot_pose.distance_to(&target.position) < PRECISE_WALK_DISTANCE {
+            if let step @ Some(_) = Self::plan_precise(robot_pose, &path) {
+                return step;
+            }
+        }
 
         if let step @ Some(_) = Self::plan_translation(robot_pose, &path) {
             if !self.reached_translation_target {
