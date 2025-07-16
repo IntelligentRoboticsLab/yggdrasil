@@ -22,11 +22,56 @@ use crate::{
 };
 
 use super::{
-    BallDetectionConfig,                       // overall detector config
-    ball_tracker::{BallPosition, BallTracker}, // UKF tracker
+    BallDetectionConfig,
+    ball_tracker::{BallPosition, BallTracker},
 };
 
-const IMAGE_INPUT_SIZE: usize = 32; // 32 × 32 CNN input
+const IMAGE_INPUT_SIZE: usize = 32;
+
+/// Plugin for classifying ball proposals using a neural network.
+pub struct BallClassifierPlugin;
+
+impl Plugin for BallClassifierPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_ml_model::<BallClassifierModel>()
+            .add_systems(PostStartup, init_ball_tracker.after(init_camera::<Top>))
+            .add_systems(
+                Update,
+                (
+                    update_ball_tracker,
+                    dispatch_ball_classification::<Top>
+                        .run_if(task_finished::<BallClassification<Top>>)
+                        .run_if(|p: Res<BallProposals<Top>>| !p.proposals.is_empty()),
+                    handle_ball_classification_result::<Top>
+                        .run_if(resource_exists_and_changed::<BallClassification<Top>>),
+                    dispatch_ball_classification::<Bottom>
+                        .run_if(task_finished::<BallClassification<Bottom>>)
+                        .run_if(|p: Res<BallProposals<Bottom>>| !p.proposals.is_empty()),
+                    handle_ball_classification_result::<Bottom>
+                        .run_if(resource_exists_and_changed::<BallClassification<Bottom>>),
+                )
+                    .chain()
+                    .run_if(in_state(VisualRefereeDetectionStatus::Inactive)),
+            );
+    }
+}
+
+fn init_ball_tracker(mut commands: Commands, config: Res<BallDetectionConfig>) {
+    let config = &config.classifier;
+
+    commands.insert_resource(BallTracker {
+        position_kf: UnscentedKalmanFilter::<2, 5, BallPosition>::new(
+            BallPosition(Point2::origin()),
+            CovarianceMatrix::from_diagonal_element(config.stationary_std_threshold.powi(2)), // variance = std^2, and we don't know where the ball is
+        ),
+        // prediction is done each cycle, this is roughly 1.7cm of std per cycle or 1.3 meters per second
+        prediction_noise: CovarianceMatrix::from_diagonal_element(config.prediction_noise),
+        sensor_noise: CovarianceMatrix::from_diagonal_element(config.measurement_noise),
+        cycle: Cycle::default(),
+        timestamp: Instant::now(),
+        stationary_variance_threshold: config.stationary_std_threshold.powi(2),
+    });
+}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BallClassifierConfig {
@@ -165,47 +210,4 @@ fn handle_ball_classification_result<T: CameraLocation + Clone>(
 
     // keep tracker cycle in sync
     ball_tracker.cycle = result.cycle;
-}
-
-pub struct BallClassifierPlugin;
-
-impl Plugin for BallClassifierPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_ml_model::<BallClassifierModel>()
-            .add_systems(PostStartup, init_ball_tracker.after(init_camera::<Top>))
-            .add_systems(
-                Update,
-                (
-                    update_ball_tracker,
-                    dispatch_ball_classification::<Top>
-                        .run_if(task_finished::<BallClassification<Top>>)
-                        .run_if(|p: Res<BallProposals<Top>>| !p.proposals.is_empty()),
-                    handle_ball_classification_result::<Top>
-                        .run_if(resource_exists_and_changed::<BallClassification<Top>>),
-                    dispatch_ball_classification::<Bottom>
-                        .run_if(task_finished::<BallClassification<Bottom>>)
-                        .run_if(|p: Res<BallProposals<Bottom>>| !p.proposals.is_empty()),
-                    handle_ball_classification_result::<Bottom>
-                        .run_if(resource_exists_and_changed::<BallClassification<Bottom>>),
-                )
-                    .chain()
-                    .run_if(in_state(VisualRefereeDetectionStatus::Inactive)),
-            );
-    }
-}
-
-fn init_ball_tracker(mut commands: Commands, config: Res<BallDetectionConfig>) {
-    let config = &config.classifier;
-
-    commands.insert_resource(BallTracker {
-        position_kf: UnscentedKalmanFilter::<2, 5, BallPosition>::new(
-            BallPosition(Point2::origin()),
-            CovarianceMatrix::from_diagonal_element(config.stationary_std_threshold.powi(2)),
-        ),
-        prediction_noise: CovarianceMatrix::from_diagonal_element(config.prediction_noise),
-        sensor_noise: CovarianceMatrix::from_diagonal_element(config.measurement_noise),
-        cycle: Cycle::default(),
-        timestamp: Instant::now(),
-        stationary_variance_threshold: config.stationary_std_threshold.powi(2),
-    });
 }
