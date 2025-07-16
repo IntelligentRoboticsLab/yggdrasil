@@ -571,8 +571,9 @@ fn get_vertical_scan_lines<T: CameraLocation>(
                 continue;
             }
 
-            // SAFETY: y_slice excludes first/last row, so y-1 and y+1 are in-bounds.
-            // scan_grid guarantees x lies within image width.
+            // SAFETY: y_slice excludes the first and last elements of scan_grid.y,
+            // ensuring that for any y in y_slice, both y-1 and y+1 are valid pixel
+            // coordinates within the bounds of the image.
             let pixels = unsafe {
                 [
                     yuyv.pixel_unchecked(x, y - 1),
