@@ -6,10 +6,12 @@ use ml::{
     prelude::{MlTaskCommandsExt, ModelExecutor},
 };
 use nalgebra::Point2;
+use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     core::config::showtime::PlayerConfig,
     motion::walking_engine::Gait,
+    nao::{NaoManager, Priority, RobotInfo},
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
     vision::ball_detection::ball_tracker::BallTracker,
 };
@@ -54,7 +56,18 @@ impl Plugin for BehaviorEnginePlugin {
                 WalkToBehaviorPlugin,
                 WalkToSetBehaviorPlugin,
             ))
-            .add_systems(PostUpdate, role_base);
+            .add_systems(PostUpdate, (role_base, ken_behavior_override));
+    }
+}
+
+fn ken_behavior_override(robot_info: Res<RobotInfo>, mut nao_manager: ResMut<NaoManager>) {
+    if robot_info.robot_name.to_lowercase() == "ken" {
+        // Override the behavior for player 1 to always look at the ball
+        nao_manager.set_head(
+            HeadJoints::default(),
+            HeadJoints::fill(0.0),
+            Priority::Critical,
+        );
     }
 }
 
