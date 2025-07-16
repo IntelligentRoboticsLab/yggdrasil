@@ -148,7 +148,6 @@ fn run_inference(
     mut model_executor: ResMut<ModelExecutor<RlStrikerSearchBehaviorModel>>,
     robot_pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
-    last_action: Option<Res<Output>>,
     cycle: Res<Cycle>,
     dbg: DebugContext,
 ) {
