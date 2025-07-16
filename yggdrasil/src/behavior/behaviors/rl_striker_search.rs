@@ -1,9 +1,9 @@
-use std::{f32, time::Instant};
+use std::{f32, sync::Arc, time::Instant};
 
 use bevy::prelude::*;
 use ml::{MlModel, MlModelResourceExt, prelude::ModelExecutor};
-use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};
+use rerun::{SerializedComponentBatch, external::arrow};
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
 
@@ -18,10 +18,10 @@ use crate::{
             spawn_rl_behavior,
         },
     },
-    core::config::layout::LayoutConfig,
+    core::{config::layout::LayoutConfig, debug::DebugContext},
     localization::RobotPose,
     motion::walking_engine::{FootSwitchedEvent, Gait, step::Step, step_context::StepContext},
-    nao::{NaoManager, Priority},
+    nao::{Cycle, NaoManager, Priority},
 };
 
 pub struct RlStrikerSearchBehaviorPlugin;
@@ -91,10 +91,9 @@ fn reset_observe_starting_time(mut observe_starting_time: ResMut<ObserveStarting
 
 struct Input<'d> {
     robot_pose: &'d RobotPose,
-    last_action: Step,
-
     field_width: f32,
     field_height: f32,
+    border_strip_width: f32,
 }
 
 impl RlBehaviorInput<ModelInput> for Input<'_> {
@@ -102,20 +101,19 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let robot_position = self.robot_pose.inner.translation.vector.xy();
         let robot_angle = self.robot_pose.inner.rotation.angle();
 
-        let normalized_position_x = robot_position.x / 5.1 * -1.0;
-        let normalized_position_y = robot_position.y / 3.6 * -1.0; //TODO
+        let normalized_position_x =
+            robot_position.x / (self.field_width * 0.5 + self.border_strip_width);
+        let normalized_position_y =
+            robot_position.y / (self.field_height * 0.5 + self.border_strip_width);
 
-        let cos_yaw = robot_angle.cos() * -1.0;
-        let sin_yaw = robot_angle.sin() * -1.0;
+        let cos_yaw = robot_angle.cos();
+        let sin_yaw = robot_angle.sin();
 
         let input = vec![
             normalized_position_x,
             normalized_position_y,
             cos_yaw,
             sin_yaw,
-            // self.last_action.forward,
-            // self.last_action.left,
-            // self.last_action.turn,
         ];
 
         eprintln!("input: {input:?}");
@@ -151,25 +149,33 @@ fn run_inference(
     robot_pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
     last_action: Option<Res<Output>>,
+    cycle: Res<Cycle>,
+    dbg: DebugContext,
 ) {
     let input = Input {
         robot_pose: &robot_pose,
-        last_action: last_action
-            .map(|o| {
-                o.step
-                    * Step {
-                        forward: 0.05,
-                        left: 0.07,
-                        turn: 0.1,
-                    }
-            })
-            .unwrap_or_default(),
-
         field_width: layout_config.field.width,
         field_height: layout_config.field.length,
+        border_strip_width: layout_config.field.border_strip_width,
     };
 
+    let search_obs =
+        serialized_component_batch_f32("yggdrasil.components.RlSearchObs", input.to_input());
+
+    dbg.log_with_cycle("rl_search_obs", *cycle, &[search_obs]);
+
     spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
+}
+
+#[must_use]
+fn serialized_component_batch_f32<I: IntoIterator<Item = f32>>(
+    descriptor: &str,
+    iter: I,
+) -> SerializedComponentBatch {
+    rerun::SerializedComponentBatch::new(
+        Arc::new(arrow::array::Float32Array::from_iter_values(iter)),
+        rerun::ComponentDescriptor::new(descriptor),
+    )
 }
 
 fn handle_inference_output(
