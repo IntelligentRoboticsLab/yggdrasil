@@ -1,6 +1,6 @@
 //! Utility functions for machine learning.
 
-use fast_image_resize::{self as fir, ResizeOptions};
+use fast_image_resize::{self as fir, ResizeOptions, Resizer, images::Image};
 
 /// Returns the index of the maximum element in a [`Vec`].
 ///
@@ -40,9 +40,7 @@ pub fn sigmoid(logit: f32) -> f32 {
     1.0 / (1.0 + (-logit).exp())
 }
 
-use fir::Resizer;
-use fir::images::Image;
-
+/// Helper utility to resize patches without copying data.
 pub struct PatchResizer {
     resizer: Resizer,
     dst_image: Image<'static>,
