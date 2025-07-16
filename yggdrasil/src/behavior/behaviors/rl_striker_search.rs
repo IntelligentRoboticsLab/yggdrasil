@@ -179,11 +179,6 @@ fn handle_inference_output(
     mut nao_manager: ResMut<NaoManager>,
     observe_starting_time: Res<ObserveStartingTime>,
 ) {
-    eprintln!("output: {:?}", output.step);
-    eprintln!(
-        "after rescale: {:?}\n\n",
-        output.step * behavior_config.rl_striker_search.policy_output_scaling
-    );
     step_context
         .request_walk(output.step * behavior_config.rl_striker_search.policy_output_scaling);
 
