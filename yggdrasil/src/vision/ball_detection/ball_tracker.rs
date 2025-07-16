@@ -8,7 +8,7 @@ use filter::{
     CovarianceMatrix, MahalanobisDistance, StateTransform, StateVector, UnscentedKalmanFilter,
 };
 use nalgebra::{Point2, point};
-use tracing::error;
+use tracing::{error, warn};
 
 use crate::{localization::odometry::Odometry, nao::Cycle};
 
@@ -68,7 +68,7 @@ impl BallTracker {
         }
     }
 
-    pub fn check_reliability(&mut self, measurement: BallPosition) -> bool {
+    pub fn is_reliable(&mut self, measurement: BallPosition) -> bool {
         let mean = self.position_kf.state();
         let distance = self
             .covariance()
@@ -77,7 +77,7 @@ impl BallTracker {
             return distance < SIGMA_THRESHOLD;
         }
 
-        error!("failed to calculate mahalanobis distance");
+        warn!("failed to calculate mahalanobis distance");
         false
     }
 
@@ -90,7 +90,7 @@ impl BallTracker {
         }
 
         // check if measurement is an outlier
-        let reliable = self.check_reliability(measurement);
+        let reliable = self.is_reliable(measurement);
 
         if reliable {
             // Putting timestamp update here for now
