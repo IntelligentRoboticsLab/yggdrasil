@@ -22,6 +22,9 @@ use nalgebra::Point2;
 use serde::{Deserialize, Serialize};
 use yggdrasil_rerun_comms::protocol::control::FieldColorConfig;
 
+/// Threshold value to early exit color classification if the sum of all channels is close to zero.
+const COLOR_SUM_THRESHOLD: f32 = 0.001;
+
 #[derive(Resource, Debug, Clone, Serialize, Deserialize)]
 pub struct ScanLinesConfig {
     /// Minimum luminance delta for there to be considered an edge between pixels.
@@ -445,10 +448,8 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
         for (line_idx, line) in scan_grid.lines.iter().enumerate() {
             let x = line.x as usize;
 
-            if is_top_camera {
-                if y < boundary_cache[line_idx] {
-                    continue;
-                }
+            if is_top_camera && y < boundary_cache[line_idx] {
+                continue;
             }
 
             // SAFETY: Boundaries are checked by scan grid
@@ -757,7 +758,7 @@ impl RegionColor {
         let (r, g, b) = pixel.to_rgb();
         let color_sum = r + g + b;
 
-        if color_sum < 0.001 {
+        if color_sum < COLOR_SUM_THRESHOLD {
             return RegionColor::Unknown;
         }
 
