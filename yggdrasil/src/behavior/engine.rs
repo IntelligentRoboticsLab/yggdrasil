@@ -32,7 +32,8 @@ use super::{
 const FORWARD_LEANING_THRESHOLD: f32 = 0.2;
 const BACKWARD_LEANING_THRESHOLD: f32 = -0.2;
 
-const BROKEN_ROBOT_NAME: &str = "ken";
+/// This is the robot ID of ken, which has a broken head joint.
+const BROKEN_ROBOT_ID: u32 = 29;
 
 pub(super) struct BehaviorEnginePlugin;
 
@@ -62,8 +63,8 @@ impl Plugin for BehaviorEnginePlugin {
 }
 
 fn ken_behavior_override(robot_info: Res<RobotInfo>, mut nao_manager: ResMut<NaoManager>) {
-    // Override the behavior for ken to not use its head joints, as they are broken
-    if robot_info.robot_name.to_lowercase() == BROKEN_ROBOT_NAME {
+    // Override the behavior so it does not use its head joints, when they are broken
+    if robot_info.robot_id == BROKEN_ROBOT_ID {
         nao_manager.set_head_yaw(0.0, 0.0, Priority::Critical);
     }
 }
