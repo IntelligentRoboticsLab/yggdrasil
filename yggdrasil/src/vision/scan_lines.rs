@@ -417,6 +417,7 @@ pub enum Direction {
 // Pre-allocate capacity based on typical scan grid sizes
 const ESTIMATED_REGIONS_PER_LINE: usize = 10;
 
+#[inline(always)]
 fn get_horizontal_scan_lines<T: CameraLocation>(
     config: &ScanLinesConfig,
     field: &FieldColorApproximate,
@@ -424,36 +425,53 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
     scan_grid: &ScanGrid<T>,
     field_boundary: &FieldBoundary,
 ) -> ScanLine {
+    if scan_grid.lines.len() < 3 {
+        return ScanLine::new(Vec::new());
+    }
+
     let estimated_capacity = scan_grid.y.len() * ESTIMATED_REGIONS_PER_LINE;
     let mut regions = Vec::with_capacity(estimated_capacity);
 
-    // Cache frequently accessed config values
     let min_edge_lum_diff = config.min_edge_luminance_difference;
     let is_top_camera = T::POSITION == CameraPosition::Top;
+    let x_slice = &scan_grid.lines[1..scan_grid.lines.len() - 1];
 
-    for &y in &scan_grid.y {
-        let mut current_region = None;
-
-        // Pre-compute field boundary for this y if needed
-        let boundary_cache: Vec<_> = if is_top_camera {
+    let boundary_cache: Option<Vec<usize>> = if is_top_camera {
+        Some(
             scan_grid
                 .lines
                 .iter()
                 .map(|line| field_boundary.height_at_pixel(line.x as f32) as usize)
-                .collect()
-        } else {
-            Vec::new()
-        };
+                .collect(),
+        )
+    } else {
+        None
+    };
 
-        for (line_idx, line) in scan_grid.lines.iter().enumerate() {
+    for &y in &scan_grid.y {
+        let mut current_region: Option<ScanLineRegion> = None;
+
+        for (i, line) in x_slice.iter().enumerate() {
+            let global_idx = i + 1;
             let x = line.x as usize;
 
-            if is_top_camera && y < boundary_cache[line_idx] {
-                continue;
+            if is_top_camera {
+                let boundary = boundary_cache.as_ref().unwrap()[global_idx];
+                if y < boundary {
+                    continue;
+                }
             }
 
-            // SAFETY: Boundaries are checked by scan grid
-            let pixel = unsafe { average_yuv_3_horizontal_unchecked(yuyv, x, y) };
+            // SAFETY: y_slice excludes first/last row, so y-1 and y+1 are in-bounds.
+            // scan_grid guarantees x lies within image width.
+            let pixels = unsafe {
+                [
+                    yuyv.pixel_unchecked(x - 1, y),
+                    yuyv.pixel_unchecked(x, y),
+                    yuyv.pixel_unchecked(x + 1, y),
+                ]
+            };
+            let pixel = YuvPixel::average(&pixels);
 
             let Some(curr_region) = &mut current_region else {
                 current_region = Some(ScanLineRegion {
@@ -471,7 +489,7 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
                 f32::from((i16::from(pixel.y) - i16::from(curr_region.approx_color.y)).abs());
 
             if lum_diff >= min_edge_lum_diff {
-                let x_edge = find_edge_optimized(
+                let x_edge = find_edge(
                     yuyv,
                     curr_region.region.end_point(),
                     x,
@@ -493,12 +511,14 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
                 std::mem::swap(curr_region, &mut new_region);
                 regions.push(new_region.classify(config, field));
             } else {
+                // Extend existing region.
                 let weight = x - curr_region.region.end_point();
                 curr_region.region.set_end_point(x);
                 curr_region.add_sample(pixel, weight);
             }
         }
 
+        // Flush last region for this row.
         if let Some(curr_region) = current_region.take() {
             regions.push(curr_region.classify(config, field));
         }
@@ -507,6 +527,7 @@ fn get_horizontal_scan_lines<T: CameraLocation>(
     ScanLine::new(ClassifiedScanLineRegion::simplify(regions))
 }
 
+#[inline(always)]
 fn get_vertical_scan_lines<T: CameraLocation>(
     config: &ScanLinesConfig,
     field: &FieldColorApproximate,
@@ -514,37 +535,52 @@ fn get_vertical_scan_lines<T: CameraLocation>(
     scan_grid: &ScanGrid<T>,
     field_boundary: &FieldBoundary,
 ) -> ScanLine {
+    if scan_grid.y.len() < 3 {
+        return ScanLine::new(Vec::new());
+    }
+
     let estimated_capacity = scan_grid.lines.len() * ESTIMATED_REGIONS_PER_LINE;
     let mut regions = Vec::with_capacity(estimated_capacity);
-
     let min_edge_lum_diff = config.min_edge_luminance_difference;
     let is_top_camera = T::POSITION == CameraPosition::Top;
 
-    let y_indices: Vec<_> = scan_grid
-        .y
-        .iter()
-        .skip(1)
-        .take(scan_grid.y.len().saturating_sub(2))
-        .copied()
-        .collect();
+    let y_slice = &scan_grid.y[1..scan_grid.y.len() - 1];
 
-    for line in &scan_grid.lines {
-        let mut current_region = None;
+    let boundary_cache: Option<Vec<usize>> = if is_top_camera {
+        Some(
+            scan_grid
+                .lines
+                .iter()
+                .map(|line| field_boundary.height_at_pixel(line.x as f32) as usize)
+                .collect(),
+        )
+    } else {
+        None
+    };
+
+    for (line_idx, line) in scan_grid.lines.iter().enumerate() {
         let x = line.x as usize;
+        let boundary = boundary_cache
+            .as_ref()
+            .map_or(0usize, |cache| cache[line_idx]);
 
-        let boundary = if is_top_camera {
-            field_boundary.height_at_pixel(x as f32) as usize
-        } else {
-            0
-        };
+        let mut current_region: Option<ScanLineRegion> = None;
 
-        for &y in &y_indices {
+        for &y in y_slice {
             if is_top_camera && y < boundary {
                 continue;
             }
 
-            // SAFETY: Boundaries are checked by scan grid
-            let pixel = unsafe { average_yuv_3_vertical_unchecked(yuyv, x, y) };
+            // SAFETY: y_slice excludes first/last row, so y-1 and y+1 are in-bounds.
+            // scan_grid guarantees x lies within image width.
+            let pixels = unsafe {
+                [
+                    yuyv.pixel_unchecked(x, y - 1),
+                    yuyv.pixel_unchecked(x, y),
+                    yuyv.pixel_unchecked(x, y + 1),
+                ]
+            };
+            let pixel = YuvPixel::average(&pixels);
 
             let Some(curr_region) = &mut current_region else {
                 current_region = Some(ScanLineRegion {
@@ -562,7 +598,8 @@ fn get_vertical_scan_lines<T: CameraLocation>(
                 f32::from((i16::from(pixel.y) - i16::from(curr_region.approx_color.y)).abs());
 
             if lum_diff >= min_edge_lum_diff {
-                let y_edge = find_edge_optimized(
+                // Edge: refine to precise transition pixel.
+                let y_edge = find_edge(
                     yuyv,
                     curr_region.region.end_point(),
                     y,
@@ -572,6 +609,7 @@ fn get_vertical_scan_lines<T: CameraLocation>(
 
                 curr_region.region.set_end_point(y_edge);
 
+                // Start new region at edge
                 let mut new_region = ScanLineRegion {
                     region: Region::Vertical {
                         x,
@@ -581,9 +619,11 @@ fn get_vertical_scan_lines<T: CameraLocation>(
                     approx_color: pixel,
                 };
 
+                // Swap so `new_region` becomes the finished (old) one.
                 std::mem::swap(curr_region, &mut new_region);
                 regions.push(new_region.classify(config, field));
             } else {
+                // Extend existing region.
                 let weight = y - curr_region.region.end_point();
                 curr_region.region.set_end_point(y);
                 curr_region.add_sample(pixel, weight);
@@ -596,38 +636,6 @@ fn get_vertical_scan_lines<T: CameraLocation>(
     }
 
     ScanLine::new(ClassifiedScanLineRegion::simplify(regions))
-}
-
-/// Average three YUV pixels horizontally without checking bounds or allocations.
-#[inline(always)]
-unsafe fn average_yuv_3_horizontal_unchecked(yuyv: &YuyvImage, x: usize, y: usize) -> YuvPixel {
-    unsafe {
-        let p1 = yuyv.pixel_unchecked(x - 1, y);
-        let p2 = yuyv.pixel_unchecked(x, y);
-        let p3 = yuyv.pixel_unchecked(x + 1, y);
-
-        YuvPixel {
-            y: ((u16::from(p1.y) + u16::from(p2.y) + u16::from(p3.y)) / 3) as u8,
-            u: ((u16::from(p1.u) + u16::from(p2.u) + u16::from(p3.u)) / 3) as u8,
-            v: ((u16::from(p1.v) + u16::from(p2.v) + u16::from(p3.v)) / 3) as u8,
-        }
-    }
-}
-
-/// Average three YUV pixels vertically without checking bounds or allocations.
-#[inline(always)]
-unsafe fn average_yuv_3_vertical_unchecked(yuyv: &YuyvImage, x: usize, y: usize) -> YuvPixel {
-    unsafe {
-        let p1 = yuyv.pixel_unchecked(x, y - 1);
-        let p2 = yuyv.pixel_unchecked(x, y);
-        let p3 = yuyv.pixel_unchecked(x, y + 1);
-
-        YuvPixel {
-            y: ((u16::from(p1.y) + u16::from(p2.y) + u16::from(p3.y)) / 3) as u8,
-            u: ((u16::from(p1.u) + u16::from(p2.u) + u16::from(p3.u)) / 3) as u8,
-            v: ((u16::from(p1.v) + u16::from(p2.v) + u16::from(p3.v)) / 3) as u8,
-        }
-    }
 }
 
 fn get_scan_lines<T: CameraLocation>(
@@ -670,69 +678,92 @@ pub fn update_scan_lines<T: CameraLocation>(
 ///
 /// The edge is the pixel where the luminance difference between the current pixel and the next pixel is the largest.
 #[inline(always)]
-fn find_edge_optimized(
+fn find_edge(
     yuyv: &YuyvImage,
     start: usize,
     end: usize,
     fixed: usize,
     direction: Direction,
 ) -> usize {
-    let mut pos_edge = start;
-    let mut diff_edge = 0i16; // Use i16 to avoid float operations
-
-    // Unroll by 2 for better performance on embedded systems
-    let mut pos = start;
-    while pos + 1 < end {
-        unsafe {
-            // Process two positions at once
-            let (lum1, lum2, lum3) = match direction {
-                Direction::Horizontal => {
-                    let p1 = yuyv.pixel_unchecked(pos, fixed);
-                    let p2 = yuyv.pixel_unchecked(pos + 1, fixed);
-                    let p3 = yuyv.pixel_unchecked(pos + 2, fixed);
-                    (i16::from(p1.y), i16::from(p2.y), i16::from(p3.y))
-                }
-                Direction::Vertical => {
-                    let p1 = yuyv.pixel_unchecked(fixed, pos);
-                    let p2 = yuyv.pixel_unchecked(fixed, pos + 1);
-                    let p3 = yuyv.pixel_unchecked(fixed, pos + 2);
-                    (i16::from(p1.y), i16::from(p2.y), i16::from(p3.y))
-                }
-            };
-
-            let diff1 = (lum2 - lum1).abs();
-            let diff2 = (lum3 - lum2).abs();
-
-            if diff1 > diff_edge {
-                diff_edge = diff1;
-                pos_edge = pos;
-            }
-            if diff2 > diff_edge {
-                diff_edge = diff2;
-                pos_edge = pos + 1;
-            }
-        }
-        pos += 2;
+    /// Helper function to get the luminance of a pixel in a horizontal scanline.
+    #[inline(always)]
+    unsafe fn horizontal_luminance(img: &YuyvImage, x: usize, y: usize) -> i16 {
+        unsafe { i16::from(img.pixel_unchecked(x, y).y) }
+    }
+    /// Helper function to get the luminance of a pixel in a vertical scanline.
+    #[inline(always)]
+    unsafe fn vertical_luminance(img: &YuyvImage, x: usize, y: usize) -> i16 {
+        unsafe { i16::from(img.pixel_unchecked(y, x).y) }
     }
 
-    if pos == end {
-        unsafe {
-            let (pixel, pixel_next) = match direction {
-                Direction::Horizontal => (
-                    yuyv.pixel_unchecked(pos, fixed),
-                    yuyv.pixel_unchecked(pos + 1, fixed),
-                ),
-                Direction::Vertical => (
-                    yuyv.pixel_unchecked(fixed, pos),
-                    yuyv.pixel_unchecked(fixed, pos + 1),
-                ),
-            };
+    let mut pos_edge = start;
+    let mut diff_edge: i16 = 0;
 
-            let diff = (i16::from(pixel_next.y) - i16::from(pixel.y)).abs();
-            if diff > diff_edge {
-                pos_edge = pos;
+    // PERF: manually unroll and process in 2 pixel chunks, this seems to be ~1.2x faster
+    // than not unrolling it manually.
+    // Unrolling it further to 4 pixels is madness and I do not want to think about it.
+    match direction {
+        Direction::Horizontal => unsafe {
+            let mut pos = start;
+            while pos + 2 < end {
+                let lum1 = horizontal_luminance(yuyv, pos, fixed);
+                let lum2 = horizontal_luminance(yuyv, pos + 1, fixed);
+                let lum3 = horizontal_luminance(yuyv, pos + 2, fixed);
+
+                let diff1 = (lum2 - lum1).abs();
+                if diff1 > diff_edge {
+                    diff_edge = diff1;
+                    pos_edge = pos;
+                }
+
+                let diff2 = (lum3 - lum2).abs();
+                if diff2 > diff_edge {
+                    diff_edge = diff2;
+                    pos_edge = pos + 1;
+                }
+
+                pos += 2;
             }
-        }
+            if pos + 1 < end {
+                let lum1 = horizontal_luminance(yuyv, pos, fixed);
+                let lum2 = horizontal_luminance(yuyv, pos + 1, fixed);
+                let diff = (lum2 - lum1).abs();
+                if diff > diff_edge {
+                    pos_edge = pos;
+                }
+            }
+        },
+        Direction::Vertical => unsafe {
+            let mut pos = start;
+            while pos + 2 < end {
+                let lum1 = vertical_luminance(yuyv, fixed, pos);
+                let lum2 = vertical_luminance(yuyv, fixed, pos + 1);
+                let lum3 = vertical_luminance(yuyv, fixed, pos + 2);
+
+                let diff1 = (lum2 - lum1).abs();
+                if diff1 > diff_edge {
+                    diff_edge = diff1;
+                    pos_edge = pos;
+                }
+
+                let diff2 = (lum3 - lum2).abs();
+                if diff2 > diff_edge {
+                    diff_edge = diff2;
+                    pos_edge = pos + 1;
+                }
+
+                pos += 2;
+            }
+
+            if pos + 1 < end {
+                let lum1 = vertical_luminance(yuyv, fixed, pos);
+                let lum2 = vertical_luminance(yuyv, fixed, pos + 1);
+                let diff = (lum2 - lum1).abs();
+                if diff > diff_edge {
+                    pos_edge = pos;
+                }
+            }
+        },
     }
 
     pos_edge

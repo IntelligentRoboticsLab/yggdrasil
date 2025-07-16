@@ -14,6 +14,7 @@ pub struct YuyvImage {
 }
 
 impl YuyvImage {
+    #[inline]
     fn yuyv_to_rgb(source: &[u8], mut destination: impl Write) -> Result<()> {
         fn clamp(value: i32) -> u8 {
             #[allow(clippy::cast_sign_loss)]
@@ -80,6 +81,7 @@ impl YuyvImage {
     ///
     /// Panics if the index is out of bounds.
     #[must_use]
+    #[inline]
     pub fn row(&self, index: usize) -> Option<ImageView<'_>> {
         assert!(index < self.height(), "index out of bounds");
 
@@ -97,6 +99,7 @@ impl YuyvImage {
     }
 
     #[must_use]
+    #[inline(always)]
     pub fn pixel(&self, x: usize, y: usize) -> Option<YuvPixel> {
         if x >= self.width || y >= self.height {
             return None;
@@ -111,6 +114,7 @@ impl YuyvImage {
     ///
     /// Don't be dumb
     #[must_use]
+    #[inline(always)]
     pub unsafe fn pixel_unchecked(&self, x: usize, y: usize) -> YuvPixel {
         // every 4 bytes stores 2 pixels, so (width / 2) * 4 bytes in a row
         let offset = (y * self.width + x) * 2;
@@ -127,6 +131,7 @@ impl YuyvImage {
     }
 
     #[must_use]
+    #[inline]
     pub fn row_iter(&self) -> RowIter<'_> {
         RowIter {
             image: self,
@@ -138,6 +143,7 @@ impl YuyvImage {
     ///
     /// # Errors
     /// This function fails if it cannot allocate an [`RgbImage`].
+    #[inline]
     pub fn to_rgb(&self) -> Result<RgbImage> {
         let mut rgb_image_buffer = Vec::<u8>::with_capacity(self.width * self.height * 3);
         Self::yuyv_to_rgb(self, &mut rgb_image_buffer)?;
@@ -152,6 +158,7 @@ impl YuyvImage {
     /// Resizes the image to the given width and height.
     ///
     /// Returns a *YUV444* vec of bytes.
+    #[inline]
     pub fn resize(&self, width: u32, height: u32) -> Result<Vec<u8>> {
         assert!(width % 2 == 0, "width must be a multiple of 2");
 
