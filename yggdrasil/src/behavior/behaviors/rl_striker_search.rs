@@ -1,9 +1,8 @@
-use std::{f32, sync::Arc, time::Instant};
+use std::{f32, time::Instant};
 
 use bevy::prelude::*;
 use ml::{MlModel, MlModelResourceExt, prelude::ModelExecutor};
 use nidhogg::types::{FillExt, HeadJoints};
-use rerun::{SerializedComponentBatch, external::arrow};
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
 
@@ -18,7 +17,10 @@ use crate::{
             spawn_rl_behavior,
         },
     },
-    core::{config::layout::LayoutConfig, debug::DebugContext},
+    core::{
+        config::layout::LayoutConfig,
+        debug::{DebugContext, serialized_component_batch_f32},
+    },
     localization::RobotPose,
     motion::walking_engine::{FootSwitchedEvent, Gait, step::Step, step_context::StepContext},
     nao::{Cycle, NaoManager, Priority},
@@ -158,23 +160,16 @@ fn run_inference(
         border_strip_width: layout_config.field.border_strip_width,
     };
 
-    let search_obs =
-        serialized_component_batch_f32("yggdrasil.components.RlSearchObs", input.to_input());
-
-    dbg.log_with_cycle("rl_search_obs", *cycle, &[search_obs]);
+    dbg.log_with_cycle(
+        "rl_search_obs",
+        *cycle,
+        &[serialized_component_batch_f32(
+            "yggdrasil.components.RlSearchObs",
+            input.to_input(),
+        )],
+    );
 
     spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
-}
-
-#[must_use]
-fn serialized_component_batch_f32<I: IntoIterator<Item = f32>>(
-    descriptor: &str,
-    iter: I,
-) -> SerializedComponentBatch {
-    rerun::SerializedComponentBatch::new(
-        Arc::new(arrow::array::Float32Array::from_iter_values(iter)),
-        rerun::ComponentDescriptor::new(descriptor),
-    )
 }
 
 fn handle_inference_output(
