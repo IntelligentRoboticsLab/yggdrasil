@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
 use nidhogg::types::{FillExt, HeadJoints};
@@ -18,6 +18,10 @@ use crate::{
     },
     nao::{NaoManager, Priority},
 };
+
+const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
+
+const MAX_POSITION_ERROR: f32 = 0.20;
 
 #[derive(Resource, Deref)]
 struct ObserveStartingTime(Instant);
@@ -85,16 +89,25 @@ fn walk_to_set(
         );
 
         step_context.request_walk(step);
-    } else {
-        let look_at = pose.get_look_at_absolute(&Point3::origin());
-        nao_manager.set_head(
-            look_at,
-            HeadJoints::fill(NaoManager::HEAD_STIFFNESS),
-            Priority::default(),
-        );
 
-        step_context.request_stand();
+        return;
     }
+
+    if step_planner.reached_target() && pose.distance_to(&target.position) > MAX_POSITION_ERROR {
+        println!("Clearing the target!!!");
+        step_planner.clear_target();
+        return;
+    }
+
+    let look_at = pose.get_look_at_absolute(&Point3::origin());
+    nao_manager.set_head_target(
+        look_at,
+        HEAD_ROTATION_TIME,
+        Priority::default(),
+        NaoManager::HEAD_STIFFNESS,
+    );
+
+    step_context.request_stand();
 }
 
 fn look_around(
