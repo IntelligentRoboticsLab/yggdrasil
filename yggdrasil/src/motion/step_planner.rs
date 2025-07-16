@@ -257,12 +257,6 @@ impl StepPlanner {
 
         let (path, _total_walking_distance) = self.calc_path(robot_pose)?;
 
-        if robot_pose.distance_to(&target.position) < PRECISE_WALK_DISTANCE {
-            if let step @ Some(_) = Self::plan_precise(robot_pose, &path) {
-                return step;
-            }
-        }
-
         if let step @ Some(_) = Self::plan_translation(robot_pose, &path) {
             if !self.reached_translation_target {
                 return step;
@@ -278,6 +272,12 @@ impl StepPlanner {
         }
 
         self.reached_rotation_target = true;
+
+        if robot_pose.distance_to(&target.position) > PRECISE_WALK_DISTANCE {
+            if let step @ Some(_) = Self::plan_precise(robot_pose, &path) {
+                return step;
+            }
+        }
 
         None
     }
