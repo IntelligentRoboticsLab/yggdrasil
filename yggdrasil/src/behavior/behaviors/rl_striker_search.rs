@@ -58,12 +58,15 @@ pub struct RlStrikerSearchBehaviorConfig {
     // The output of the policy is element wise multiplied with this value to determine the
     // step that is requested to the walking engine.
     policy_output_scaling: Step,
+
     // Controls how fast the robot moves its head back and forth while looking around
     pub head_rotation_speed: f32,
+
     // Controls how far to the left and right the robot looks while looking around, in radians.
     // If this value is one, the robot will look one radian to the left and one radian to the
     // right.
     pub head_pitch_max: f32,
+
     // Controls how far to the bottom the robot looks while looking around, in radians
     pub head_yaw_max: f32,
 }
@@ -111,16 +114,12 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let cos_yaw = robot_angle.cos();
         let sin_yaw = robot_angle.sin();
 
-        let input = vec![
+        vec![
             normalized_position_x,
             normalized_position_y,
             cos_yaw,
             sin_yaw,
-        ];
-
-        eprintln!("input: {input:?}");
-
-        input
+        ]
     }
 }
 
