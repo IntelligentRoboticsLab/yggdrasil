@@ -26,7 +26,8 @@ impl Plugin for BalancingPlugin {
                 .run_if(
                     in_state(Gait::Walking)
                         .or(in_state(Gait::Starting))
-                        .or(in_state(Gait::Stopping)),
+                        .or(in_state(Gait::Stopping))
+                        .or(in_state(Gait::Kicking)),
                 ),
         );
     }

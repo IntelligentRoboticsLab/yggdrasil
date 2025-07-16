@@ -111,7 +111,7 @@ pub fn striker_role(
         if ball_distance <= 0.3 {            
             println!("Requesting kick! (ball distance: {:?})", ball_distance);
             // TODO: weg
-            step_context.request_kick(KickVariant::Forward, 0.6);
+            step_context.request_kick(KickVariant::Forward, 1.0);
         }
 
     } else {
