@@ -33,7 +33,6 @@ where
         }
 
         kept_indices.push(idx1);
-        suppressed[idx1] = true;
 
         let box1 = detections[idx1].0;
 
