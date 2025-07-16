@@ -42,7 +42,7 @@ where
             }
 
             let box2 = detections[*idx2].0;
-            if box1.convert().iou(&box2) > threshold {
+            if box1.convert().iou(&box2) >= threshold {
                 suppressed[*idx2] = true;
             }
         }
