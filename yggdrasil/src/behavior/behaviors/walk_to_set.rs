@@ -1,9 +1,7 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use bevy::prelude::*;
 use nidhogg::types::{FillExt, HeadJoints};
-
-use nalgebra::Point3;
 
 use crate::{
     behavior::{
@@ -18,8 +16,6 @@ use crate::{
     },
     nao::{NaoManager, Priority},
 };
-
-const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 #[derive(Resource, Deref)]
 struct ObserveStartingTime(Instant);
