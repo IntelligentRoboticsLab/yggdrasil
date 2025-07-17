@@ -23,6 +23,7 @@ use crate::{
 };
 
 use std::time::Duration;
+use crate::vision::ball_detection::ball_tracker::BallTracker;
 
 const WALK_WITH_BALL_ANGLE: f32 = 0.3;
 const ALIGN_WITH_BALL_DISTANCE: f32 = 0.3;
