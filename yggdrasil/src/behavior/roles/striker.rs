@@ -156,7 +156,7 @@ pub fn striker_role(
     }
 }
 
-//TODO: Make this a seperate stand-alone behavior
+//TODO: Make this a separate stand-alone behavior
 fn set_play(
     mut commands: Commands,
     ball_tracker: Res<BallTracker>,
