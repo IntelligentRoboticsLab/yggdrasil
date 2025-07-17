@@ -76,28 +76,20 @@ fn walk_to_set(
     }
 
     if let Some(step) = step_planner.plan(&pose) {
-        let observe_config = &config.observe;
-
-        look_around(
-            &mut nao_manager,
-            **observe_starting_time,
-            observe_config.head_rotation_speed,
-            observe_config.head_yaw_max,
-            observe_config.head_pitch_max,
-        );
-
         step_context.request_walk(step);
     } else {
-        let look_at = pose.get_look_at_absolute(&Point3::origin());
-        nao_manager.set_head_target(
-            look_at,
-            HEAD_ROTATION_TIME,
-            Priority::default(),
-            NaoManager::HEAD_STIFFNESS,
-        );
-
         step_context.request_stand();
     }
+
+    let observe_config = &config.observe;
+
+    look_around(
+        &mut nao_manager,
+        **observe_starting_time,
+        observe_config.head_rotation_speed,
+        observe_config.head_yaw_max,
+        observe_config.head_pitch_max,
+    );
 }
 
 fn look_around(
