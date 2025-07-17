@@ -8,8 +8,10 @@ use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
 use rerun::{FillMode, LineStrip3D};
 use std::time::Instant;
 
-const TURN_SPEED: f32 = 0.2;
-const WALK_SPEED: f32 = 0.045;
+const TURN_SPEED: f32 = 0.4;
+const MIN_TURN_MULTIPLIER: f32 = 0.5;
+const MAX_TURN_MULTIPLIER: f32 = 1.0;
+const WALK_SPEED: f32 = 0.050;
 
 const PRECISE_WALK_DISTANCE: f32 = 0.2;
 
@@ -169,10 +171,10 @@ impl StepPlanner {
     }
 
     fn plan_rotation(robot_pose: &RobotPose, target_rotation: UnitComplex<f32>) -> Option<Step> {
-        let angle = target_rotation.angle() - robot_pose.world_rotation();
-        let turn = TURN_SPEED * angle.signum();
+        let angle_err = target_rotation.angle() - robot_pose.world_rotation();
+        let turn = scale_turn_speed(angle_err);
 
-        if angle.abs() < 0.2 {
+        if angle_err.abs() < 0.2 {
             None
         } else {
             Some(Step {
@@ -379,4 +381,27 @@ fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>, cycl
             .with_centers(centers)
             .with_half_sizes(half_sizes),
     );
+}
+
+#[inline(always)]
+fn scale_turn_speed(yaw_err: f32) -> f32 {
+    use std::f32::consts::PI;
+
+    // Wrap to (-PI, PI]
+    let mut e = yaw_err;
+    if e > PI || e <= -PI {
+        e = (e + PI).rem_euclid(2.0 * PI) - PI;
+    }
+
+    let mag = e.abs();
+
+    if mag < 1e-4 {
+        return 0.0;
+    }
+
+    // Linear ramp: MIN_TURN_SPEED .. TURN_SPEED over 0..FULL_SPEED_ANGLE
+    let frac = (mag / MAX_TURN_MULTIPLIER).min(1.0);
+    let spd = MIN_TURN_MULTIPLIER + frac * (TURN_SPEED - MIN_TURN_MULTIPLIER);
+
+    spd.copysign(e)
 }
