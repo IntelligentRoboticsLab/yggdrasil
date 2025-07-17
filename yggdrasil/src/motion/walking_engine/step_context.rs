@@ -1,13 +1,12 @@
 use std::time::{Duration, Instant};
 
 use crate::{
-    behavior::{behaviors::Standup, engine::in_behavior},
     core::debug::{
         DebugContext,
         debug_system::{DebugAppExt, SystemToggle},
     },
     kinematics::Kinematics,
-    motion::walking_engine::{Side, foot_support::FootSupportState},
+    motion::walking_engine::foot_support::FootSupportState,
     nao::Cycle,
 };
 

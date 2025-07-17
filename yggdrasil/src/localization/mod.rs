@@ -86,6 +86,7 @@ fn initialize_pose(
     commands.insert_resource(pose);
 }
 
+#[must_use]
 pub fn motion_is_unsafe(
     keyframe_executor: Res<KeyframeExecutor>,
     motion_state: Res<State<Gait>>,

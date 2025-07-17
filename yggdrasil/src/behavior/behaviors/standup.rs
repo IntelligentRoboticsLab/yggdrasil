@@ -7,7 +7,7 @@ use crate::{
     behavior::engine::{Behavior, BehaviorState, in_behavior},
     motion::{
         keyframe::{KeyframeExecutor, MotionType},
-        walking_engine::step_context::{self, StepContext},
+        walking_engine::step_context::StepContext,
     },
     nao::{NaoManager, Priority},
     sensor::falling::{FallState, LyingDirection},
