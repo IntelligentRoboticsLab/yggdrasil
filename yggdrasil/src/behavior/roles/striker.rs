@@ -9,12 +9,10 @@ use crate::{
     },
     core::config::layout::{FieldConfig, LayoutConfig},
     localization::RobotPose,
-    motion::{
-        walking_engine::{
-            step::Step,
-            step_context::{KickVariant, StepContext},
-            Side,
-        },
+    motion::walking_engine::{
+        config::KickingConfig,
+        step::Step,
+        step_context::{KickVariant, StepContext},
     },
     nao::{NaoManager, Priority},
     vision::ball_detection::ball_tracker::BallTracker,
@@ -47,6 +45,7 @@ pub fn striker_role(
     ball_tracker: Res<BallTracker>,
     mut nao_manager: ResMut<NaoManager>,
     mut step_context: ResMut<StepContext>,
+    kicking_config: Res<KickingConfig>,
 ) {
     let Some(relative_ball) = ball_tracker.stationary_ball() else {
         commands.set_behavior(RlStrikerSearchBehavior);
@@ -108,12 +107,15 @@ pub fn striker_role(
             });
         }
 
-        if ball_distance <= 0.3 {            
-            println!("Requesting kick! (ball distance: {:?})", ball_distance);
+        if ball_distance <= 0.3 {
+            println!("Requesting kick! (ball distance: {ball_distance:?})");
             // TODO: weg
-            step_context.request_kick(KickVariant::Forward, 1.0);
+            step_context.request_kick(
+                KickVariant::Forward,
+                kicking_config.strength,
+                &kicking_config,
+            );
         }
-
     } else {
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::RED), Priority::default());
 

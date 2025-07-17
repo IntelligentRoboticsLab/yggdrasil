@@ -7,7 +7,10 @@ use super::{
     foot_support::FootSupportState,
     schedule::{Gait, WalkingEngineSet},
 };
-use crate::{motion::walking_engine::gait::kick::LegJointsOverride, sensor::{imu::IMUValues, low_pass_filter::ExponentialLpf}};
+use crate::{
+    motion::walking_engine::gait::kick::LegJointsOverride,
+    sensor::{imu::IMUValues, low_pass_filter::ExponentialLpf},
+};
 
 /// Plugin for balancing the robot during [`MotionSet::Balancing`]
 pub(super) struct BalancingPlugin;
@@ -124,7 +127,7 @@ impl BalanceAdjustment {
                 self.right_leg.hip_pitch += leg_joints_override.hip_pitch_override;
                 self.right_leg.ankle_pitch += leg_joints_override.ankle_pitch_override;
             }
-        };
+        }
 
         self
     }

@@ -7,6 +7,7 @@ use nidhogg::types::{ArmJoints, FillExt, LeftLegJoints, LegJoints, RightLegJoint
 
 use crate::{
     kinematics,
+    motion::walking_engine::config::KickingConfig,
     nao::{NaoManager, Priority},
     prelude::ConfigExt,
 };
@@ -31,6 +32,7 @@ pub struct WalkingEnginePlugin;
 impl Plugin for WalkingEnginePlugin {
     fn build(&self, app: &mut App) {
         app.init_config::<WalkingEngineConfig>();
+        app.init_config::<KickingConfig>();
         app.init_resource::<TargetFootPositions>();
         app.init_resource::<TargetLegStiffness>();
         app.add_event::<FootSwitchedEvent>();
