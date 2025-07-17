@@ -9,7 +9,7 @@ use crate::kinematics::Kinematics;
 
 use super::{Side, feet::FootPositions};
 
-#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Step {
     /// Forward component of the step in meters.
     pub forward: f32,
@@ -50,6 +50,12 @@ impl Step {
     pub const RIGHT: Self = Self {
         forward: 0.0,
         left: -0.06,
+        turn: 0.0,
+    };
+
+    pub const BACK: Self = Self {
+        forward: -0.06,
+        left: 0.0,
         turn: 0.0,
     };
 
