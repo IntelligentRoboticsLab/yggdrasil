@@ -20,7 +20,7 @@ const LAST_RECEIVED: usize = 500;
 pub struct CommunicatedBallsPlugin;
 
 #[derive(Resource, Default, Debug)]
-pub struct LastReceivedBall{
+pub struct LastReceivedBall {
     pub position: Option<Point2<f32>>,
     pub cycles_since_last_received: usize,
 }
@@ -131,10 +131,6 @@ fn communicate_balls_system(
                 .with_labels(["team_ball"]),
         );
     } else {
-        ctx.log_with_cycle(
-            "/team_ball",
-            *cycle,
-            &rerun::Clear::recursive(),
-        );
+        ctx.log_with_cycle("/team_ball", *cycle, &rerun::Clear::recursive());
     }
 }
