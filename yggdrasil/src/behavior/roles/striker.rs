@@ -44,17 +44,18 @@ fn in_set_play(
     player_config: Res<PlayerConfig>,
 ) -> bool {
     if let Some(message) = gamecontroller_message {
-        match *primary_state {
+        return match *primary_state {
+            // return true if there is a set play OR we are in Playing state with a secondary time (Kick-Off)
             PrimaryState::Playing { .. } => {
-                return message.set_play != SetPlay::None
-                    || message.secondary_time != 0
-                        && message.kicking_team != player_config.team_number;
+                message.set_play != SetPlay::None
+                    || (message.secondary_time != 0
+                        && message.kicking_team != player_config.team_number)
             }
-            _ => return false,
-        }
+            _ => false,
+        };
     }
 
-    return false;
+    false
 }
 
 /// The `Striker` role has five substates, each indicated by the right eye LED color:
@@ -199,8 +200,6 @@ fn set_play(
     commands.set_behavior(StandLookAt {
         target: absolute_ball,
     });
-
-    return;
 }
 
 pub fn goal_aligned(pose: &RobotPose, field_config: &FieldConfig) -> bool {
