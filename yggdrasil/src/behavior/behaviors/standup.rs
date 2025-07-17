@@ -51,5 +51,6 @@ fn standup(
         _ => {}
     }
 
+    // Update completed status based on motion activity
     standup.completed = !keyframe_executor.is_motion_active();
 }
