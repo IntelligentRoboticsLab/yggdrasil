@@ -4,10 +4,7 @@ use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    behavior::{
-        behaviors::Standup,
-        engine::{BehaviorState, in_behavior},
-    },
+    behavior::engine::BehaviorState,
     kinematics::{
         Kinematics,
         spaces::{LeftSole, RightSole},
@@ -29,7 +26,6 @@ impl Plugin for OdometryPlugin {
             .add_systems(
                 PreUpdate,
                 update_odometry
-                    .run_if(not(in_behavior::<Standup>))
                     .after(crate::kinematics::update_kinematics)
                     .after(crate::sensor::orientation::update_orientation)
                     .after(WalkingEngineSet::Prepare),
