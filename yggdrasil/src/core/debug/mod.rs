@@ -1,4 +1,5 @@
 pub mod debug_system;
+mod utils;
 
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
@@ -17,6 +18,8 @@ use std::{marker::PhantomData, net::IpAddr};
 use yggdrasil_rerun_comms::debug_system::DebugEnabledSystems;
 
 use crate::nao::{Cycle, CycleTime};
+
+pub use utils::serialized_component_batch_f32;
 
 const DEFAULT_STORAGE_PATH: &str = "/mnt/usb";
 const STORAGE_PATH_ENV_NAME: &str = "RERUN_STORAGE_PATH";

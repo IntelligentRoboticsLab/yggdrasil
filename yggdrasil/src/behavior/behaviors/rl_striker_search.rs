@@ -2,7 +2,6 @@ use std::{f32, time::Instant};
 
 use bevy::prelude::*;
 use ml::{MlModel, MlModelResourceExt, prelude::ModelExecutor};
-use nalgebra::Point2;
 use nidhogg::types::{FillExt, HeadJoints};
 use serde::{Deserialize, Serialize};
 use tasks::conditions::task_finished;
@@ -18,10 +17,13 @@ use crate::{
             spawn_rl_behavior,
         },
     },
-    core::config::layout::LayoutConfig,
+    core::{
+        config::layout::LayoutConfig,
+        debug::{DebugContext, serialized_component_batch_f32},
+    },
     localization::RobotPose,
-    motion::walking_engine::{step::Step, step_context::StepContext},
-    nao::{NaoManager, Priority},
+    motion::walking_engine::{FootSwitchedEvent, Gait, step::Step, step_context::StepContext},
+    nao::{Cycle, NaoManager, Priority},
 };
 
 pub struct RlStrikerSearchBehaviorPlugin;
@@ -30,9 +32,10 @@ impl Plugin for RlStrikerSearchBehaviorPlugin {
     fn build(&self, app: &mut App) {
         app.init_ml_model::<RlStrikerSearchBehaviorModel>()
             .add_systems(
-                Update,
+                PreUpdate,
                 run_inference
-                    .run_if(in_behavior::<RlStrikerSearchBehavior>.and(task_finished::<Output>)),
+                    .run_if(in_behavior::<RlStrikerSearchBehavior>.and(task_finished::<Output>))
+                    .run_if(on_event::<FootSwitchedEvent>.or(in_state(Gait::Standing))),
             )
             .add_systems(
                 OnEnter(BehaviorState::RlStrikerSearchBehavior),
@@ -55,12 +58,15 @@ pub struct RlStrikerSearchBehaviorConfig {
     // The output of the policy is element wise multiplied with this value to determine the
     // step that is requested to the walking engine.
     policy_output_scaling: Step,
+
     // Controls how fast the robot moves its head back and forth while looking around
     pub head_rotation_speed: f32,
+
     // Controls how far to the left and right the robot looks while looking around, in radians.
     // If this value is one, the robot will look one radian to the left and one radian to the
     // right.
     pub head_pitch_max: f32,
+
     // Controls how far to the bottom the robot looks while looking around, in radians
     pub head_yaw_max: f32,
 }
@@ -90,10 +96,9 @@ fn reset_observe_starting_time(mut observe_starting_time: ResMut<ObserveStarting
 
 struct Input<'d> {
     robot_pose: &'d RobotPose,
-    goal_position: &'d Point2<f32>,
-
     field_width: f32,
     field_height: f32,
+    border_strip_width: f32,
 }
 
 impl RlBehaviorInput<ModelInput> for Input<'_> {
@@ -101,14 +106,19 @@ impl RlBehaviorInput<ModelInput> for Input<'_> {
         let robot_position = self.robot_pose.inner.translation.vector.xy();
         let robot_angle = self.robot_pose.inner.rotation.angle();
 
-        let relative_goal_position = self.goal_position - robot_position;
-        let relative_goal_angle = relative_goal_position.y.atan2(relative_goal_position.x);
+        let normalized_position_x =
+            robot_position.x / (self.field_width * 0.5 + self.border_strip_width);
+        let normalized_position_y =
+            robot_position.y / (self.field_height * 0.5 + self.border_strip_width);
+
+        let cos_yaw = robot_angle.cos();
+        let sin_yaw = robot_angle.sin();
 
         vec![
-            (self.goal_position.x - robot_position.x) / (self.field_height + 700.0),
-            (self.goal_position.y - robot_position.y) / (self.field_width + 700.0),
-            (relative_goal_angle - robot_angle).sin(),
-            (relative_goal_angle - robot_angle).cos(),
+            normalized_position_x,
+            normalized_position_y,
+            cos_yaw,
+            sin_yaw,
         ]
     }
 }
@@ -139,16 +149,24 @@ fn run_inference(
     mut model_executor: ResMut<ModelExecutor<RlStrikerSearchBehaviorModel>>,
     robot_pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
+    cycle: Res<Cycle>,
+    dbg: DebugContext,
 ) {
-    let goal_position = Point2::new(layout_config.field.length, 0.0);
-
     let input = Input {
         robot_pose: &robot_pose,
-        goal_position: &goal_position,
-
         field_width: layout_config.field.width,
         field_height: layout_config.field.length,
+        border_strip_width: layout_config.field.border_strip_width,
     };
+
+    dbg.log_with_cycle(
+        "behavior/striker_search/observation",
+        *cycle,
+        &[serialized_component_batch_f32(
+            "yggdrasil.components.RlSearchObs",
+            input.to_input(),
+        )],
+    );
 
     spawn_rl_behavior::<_, _, Output>(&mut commands, &mut *model_executor, input);
 }

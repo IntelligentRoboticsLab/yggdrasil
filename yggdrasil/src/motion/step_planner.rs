@@ -8,8 +8,17 @@ use nalgebra::{Isometry, Point2, UnitComplex, Vector2};
 use rerun::{FillMode, LineStrip3D};
 use std::time::Instant;
 
-const TURN_SPEED: f32 = 0.2;
-const WALK_SPEED: f32 = 0.045;
+const TURN_SPEED: f32 = 0.4;
+const MIN_TURN_MULTIPLIER: f32 = 0.5;
+const MAX_TURN_MULTIPLIER: f32 = 1.0;
+const WALK_SPEED: f32 = 0.050;
+
+const PRECISE_WALK_DISTANCE: f32 = 0.2;
+
+const MIN_DISTANCE: f32 = 0.05; // Distance at which we stop (5 cm)
+const MAX_DISTANCE: f32 = 0.25; // Maximum distance for precise walking (25 cm)
+const MIN_STEP: f32 = 0.01; // Minimum step size (1 cm)
+const MAX_STEP: f32 = 0.055; // Maximum absolute step size (5.5 cm)
 
 /// Plugin that adds systems and resources for planning robot steps.
 pub(super) struct StepPlannerPlugin;
@@ -69,9 +78,8 @@ impl Default for StepPlanner {
 
 impl StepPlanner {
     pub fn set_absolute_target(&mut self, target: Target) {
+        self.clear_target();
         self.target = Some(target);
-        self.reached_translation_target = false;
-        self.reached_rotation_target = false;
     }
 
     pub fn set_absolute_target_if_unset(&mut self, target: Target) {
@@ -140,7 +148,7 @@ impl StepPlanner {
         let distance = calc_distance(&robot_pose.inner, first_target_position);
 
         // We've reached the target.
-        if distance < 0.05 && path.len() == 2 {
+        if distance < 0.1 && path.len() == 2 {
             return None;
         }
 
@@ -163,10 +171,10 @@ impl StepPlanner {
     }
 
     fn plan_rotation(robot_pose: &RobotPose, target_rotation: UnitComplex<f32>) -> Option<Step> {
-        let angle = target_rotation.angle() - robot_pose.world_rotation();
-        let turn = TURN_SPEED * angle.signum();
+        let angle_err = target_rotation.angle() - robot_pose.world_rotation();
+        let turn = scale_turn_speed(angle_err);
 
-        if angle.abs() < 0.2 {
+        if angle_err.abs() < 0.2 {
             None
         } else {
             Some(Step {
@@ -177,8 +185,39 @@ impl StepPlanner {
         }
     }
 
+    fn plan_precise(robot_pose: &RobotPose, path: &[Point2<f32>]) -> Option<Step> {
+        let first_target_position = path[1];
+
+        let distance = calc_distance(&robot_pose.inner, first_target_position);
+
+        // If the distance is less than 10 cm, we are close enough to the target.
+        if distance < 0.1 {
+            return None;
+        }
+
+        // Use the components of the target vector to determine the step
+        let relative_transformed_target_point = robot_pose.world_to_robot(&first_target_position);
+
+        // Scale the step components based on distance to target
+        let mut forward = scale_step_component(relative_transformed_target_point.x, distance);
+
+        // if forward is negative, we need half it
+        if forward < 0. {
+            forward /= 2.;
+        }
+
+        let left = scale_step_component(relative_transformed_target_point.y, distance);
+
+        Some(Step {
+            forward,
+            left,
+            turn: 0.,
+        })
+    }
+
     pub fn plan(&mut self, robot_pose: &RobotPose) -> Option<Step> {
         let target = self.target?;
+
         let (path, _total_walking_distance) = self.calc_path(robot_pose)?;
 
         if let step @ Some(_) = Self::plan_translation(robot_pose, &path) {
@@ -196,6 +235,12 @@ impl StepPlanner {
         }
 
         self.reached_rotation_target = true;
+
+        if robot_pose.distance_to(&target.position) > PRECISE_WALK_DISTANCE {
+            if let step @ Some(_) = Self::plan_precise(robot_pose, &path) {
+                return step;
+            }
+        }
 
         None
     }
@@ -215,6 +260,31 @@ impl StepPlanner {
 pub struct DynamicObstacle {
     pub obs: Obstacle,
     pub ttl: Instant,
+}
+
+fn scale_step_component(component: f32, distance: f32) -> f32 {
+    if distance <= MIN_DISTANCE {
+        return 0.0;
+    }
+
+    // Calculate scaling factor based on distance
+    let scale_factor = if distance >= MAX_DISTANCE {
+        1.0
+    } else {
+        // Linear interpolation between MIN_STEP and full scale
+        let normalized_distance = (distance - MIN_DISTANCE) / (MAX_DISTANCE - MIN_DISTANCE);
+        MIN_STEP + normalized_distance * (MAX_STEP - MIN_STEP)
+    };
+
+    // Apply scaling
+    let scaled_component = component * scale_factor;
+
+    // Ensure minimum step size if component is non-zero (supports both positive and negative)
+    if scaled_component.abs() > 0.0 && scaled_component.abs() < MIN_STEP {
+        MIN_STEP * scaled_component.signum()
+    } else {
+        scaled_component
+    }
 }
 
 fn calc_turn(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: Point2<f32>) -> f32 {
@@ -311,4 +381,27 @@ fn log_dynamic_obstacles(dbg: DebugContext, step_planner: Res<StepPlanner>, cycl
             .with_centers(centers)
             .with_half_sizes(half_sizes),
     );
+}
+
+#[inline(always)]
+fn scale_turn_speed(yaw_err: f32) -> f32 {
+    use std::f32::consts::PI;
+
+    // Wrap to (-PI, PI]
+    let mut e = yaw_err;
+    if e > PI || e <= -PI {
+        e = (e + PI).rem_euclid(2.0 * PI) - PI;
+    }
+
+    let mag = e.abs();
+
+    if mag < 1e-4 {
+        return 0.0;
+    }
+
+    // Linear ramp: MIN_TURN_SPEED .. TURN_SPEED over 0..FULL_SPEED_ANGLE
+    let frac = (mag / MAX_TURN_MULTIPLIER).min(1.0);
+    let spd = MIN_TURN_MULTIPLIER + frac * (TURN_SPEED - MIN_TURN_MULTIPLIER);
+
+    spd.copysign(e)
 }

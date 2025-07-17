@@ -6,15 +6,12 @@ use nidhogg::{
 
 use crate::{
     kinematics::Kinematics,
-    motion::{
-        energy_optimizer::EnergyOptimizerExt,
-        walking_engine::{
-            TargetFootPositions, TargetLegStiffness,
-            config::WalkingEngineConfig,
-            feet::FootPositions,
-            hips::HipHeight,
-            schedule::{Gait, WalkingEngineSet},
-        },
+    motion::walking_engine::{
+        TargetFootPositions, TargetLegStiffness,
+        config::WalkingEngineConfig,
+        feet::FootPositions,
+        hips::HipHeight,
+        schedule::{Gait, WalkingEngineSet},
     },
     nao::{NaoManager, Priority},
 };
@@ -34,7 +31,6 @@ impl Plugin for SitGaitPlugin {
 }
 
 fn request_sit(
-    mut commands: Commands,
     config: Res<WalkingEngineConfig>,
     mut hip_height: ResMut<HipHeight>,
     kinematics: Res<Kinematics>,
@@ -61,8 +57,6 @@ fn request_sit(
                 Priority::High,
             );
 
-            commands.optimize_joint_currents();
-
             return;
         }
     } else {
@@ -73,7 +67,6 @@ fn request_sit(
         **target_stiffness = LegJoints::fill(config.standing_leg_stiffness);
     }
 
-    commands.reset_joint_current_optimizer();
     *sitting_pose = None;
 }
 

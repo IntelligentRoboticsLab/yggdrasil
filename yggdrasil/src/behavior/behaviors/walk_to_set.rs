@@ -3,8 +3,6 @@ use std::time::Instant;
 use bevy::prelude::*;
 use nidhogg::types::{FillExt, HeadJoints};
 
-use nalgebra::Point3;
-
 use crate::{
     behavior::{
         BehaviorConfig,
@@ -68,7 +66,7 @@ fn walk_to_set(
 
     if step_planner
         .current_absolute_target()
-        .is_none_or(|current_target| *current_target == target)
+        .is_none_or(|current_target| *current_target != target)
     {
         step_planner.set_absolute_target(target);
     }
@@ -76,13 +74,6 @@ fn walk_to_set(
     if let Some(step) = step_planner.plan(&pose) {
         step_context.request_walk(step);
     } else {
-        let look_at = pose.get_look_at_absolute(&Point3::origin());
-        nao_manager.set_head(
-            look_at,
-            HeadJoints::fill(NaoManager::HEAD_STIFFNESS),
-            Priority::default(),
-        );
-
         step_context.request_stand();
     }
 

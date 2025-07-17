@@ -10,6 +10,7 @@ use nalgebra::Point2;
 use crate::{
     core::config::showtime::PlayerConfig,
     motion::walking_engine::Gait,
+    nao::{NaoManager, Priority, RobotInfo},
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
     vision::ball_detection::ball_tracker::BallTracker,
 };
@@ -30,6 +31,9 @@ use super::{
 
 const FORWARD_LEANING_THRESHOLD: f32 = 0.2;
 const BACKWARD_LEANING_THRESHOLD: f32 = -0.2;
+
+/// This is the robot ID of ken, which has a broken head joint.
+const BROKEN_ROBOT_ID: u32 = 29;
 
 pub(super) struct BehaviorEnginePlugin;
 
@@ -55,6 +59,14 @@ impl Plugin for BehaviorEnginePlugin {
                 WalkToSetBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
+    }
+}
+
+#[allow(dead_code)]
+fn broken_robot_behavior_override(robot_info: Res<RobotInfo>, mut nao_manager: ResMut<NaoManager>) {
+    // Override the behavior so it does not use its head joints, when they are broken
+    if robot_info.robot_id == BROKEN_ROBOT_ID {
+        nao_manager.set_head_yaw(0.0, 0.0, Priority::Critical);
     }
 }
 
@@ -283,7 +295,7 @@ pub fn role_base(
                 target: Point2::default(),
             });
         }
-        PrimaryState::Ready { .. } => commands.set_behavior(WalkToSet {}),
+        PrimaryState::Ready { .. } => commands.set_behavior(WalkToSet),
         PrimaryState::Set => commands.set_behavior(StandLookAt {
             target: Point2::default(),
         }),
