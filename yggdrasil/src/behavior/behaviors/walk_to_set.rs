@@ -1,6 +1,9 @@
 use std::time::Instant;
 
 use bevy::prelude::*;
+use bifrost::communication::GameControllerMessage;
+use nalgebra::UnitComplex;
+use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, BehaviorState, in_behavior},
@@ -42,21 +45,35 @@ impl Behavior for WalkToSet {
     const STATE: BehaviorState = BehaviorState::WalkToSet;
 }
 
+const INDIRECT_KICK_POSITION: [f32; 2] = [0.4, 0.4];
+const INDIRECT_KICK_ROTATION: f32 = -135.0;
+
 fn walk_to_set(
     pose: Res<RobotPose>,
     (layout_config, player_config): (Res<LayoutConfig>, Res<PlayerConfig>),
     mut step_planner: ResMut<StepPlanner>,
     mut step_context: ResMut<StepContext>,
     mut head_motion_manager: ResMut<HeadMotionManager>,
+    config: Res<BehaviorConfig>,
+    gamecontrollermessage: Res<GameControllerMessage>,
 ) {
     let set_robot_position = layout_config
         .set_positions
         .player(player_config.player_number);
 
-    let target = Target {
+    let mut target = Target {
         position: set_robot_position.isometry.translation.vector.into(),
         rotation: Some(set_robot_position.isometry.rotation),
     };
+
+    if player_config.player_number == 5
+        && gamecontrollermessage.kicking_team == player_config.team_number
+    {
+        target = Target {
+            position: INDIRECT_KICK_POSITION.into(),
+            rotation: Some(UnitComplex::new(INDIRECT_KICK_ROTATION.to_radians())),
+        };
+    }
 
     if step_planner
         .current_absolute_target()
