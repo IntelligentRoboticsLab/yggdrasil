@@ -103,7 +103,6 @@ fn communicate_balls_system(
     }
 
     if let Some(new_pos) = CommunicatedBalls::receive_messages(&mut tc, &pose) {
-        println!("Received new ball position: {:?}", new_pos);
         last_received.position = Some(new_pos);
     } else {
         last_received.cycles_since_last_received += 1;
@@ -118,8 +117,6 @@ fn communicate_balls_system(
     }
 
     team_ball_position.0 = optional_ball_position.or_else(|| last_received.position);
-    println!("last received position: {:?}", last_received.position);
-    println!("team ball position: {:?}", team_ball_position.0);
 
     if let Some(pos) = team_ball_position.0 {
         let global = pose.robot_to_world(&pos);
