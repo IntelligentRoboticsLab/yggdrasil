@@ -1,16 +1,13 @@
 use bevy::prelude::*;
 use nidhogg::types::{FillExt, LegJoints};
 
-use crate::motion::{
-    energy_optimizer::{EnergyOptimizerExt, reset_joint_current_optimizer},
-    walking_engine::{
-        TargetFootPositions, TargetLegStiffness,
-        config::WalkingEngineConfig,
-        feet::FootPositions,
-        hips::HipHeight,
-        schedule::{Gait, WalkingEngineSet},
-        step_context::StepContext,
-    },
+use crate::motion::walking_engine::{
+    TargetFootPositions, TargetLegStiffness,
+    config::WalkingEngineConfig,
+    feet::FootPositions,
+    hips::HipHeight,
+    schedule::{Gait, WalkingEngineSet},
+    step_context::StepContext,
 };
 
 pub(super) struct StandGaitPlugin;
@@ -23,9 +20,6 @@ impl Plugin for StandGaitPlugin {
                 .in_set(WalkingEngineSet::GenerateGait)
                 .run_if(in_state(Gait::Standing)),
         );
-
-        app.add_systems(OnEnter(Gait::Standing), reset_joint_current_optimizer);
-        app.add_systems(OnExit(Gait::Standing), reset_joint_current_optimizer);
     }
 }
 
@@ -42,7 +36,6 @@ impl StandingHeight {
 }
 
 fn generate_stand_gait(
-    mut commands: Commands,
     mut target: ResMut<TargetFootPositions>,
     mut hip_height: ResMut<HipHeight>,
     step_context: Res<StepContext>,
@@ -59,8 +52,4 @@ fn generate_stand_gait(
             .unwrap_or(&config.hip_height.walking_hip_height),
     );
     **target_stiffness = LegJoints::fill(config.standing_leg_stiffness);
-
-    if !hip_height.is_adjusting() {
-        commands.optimize_joint_currents();
-    }
 }
