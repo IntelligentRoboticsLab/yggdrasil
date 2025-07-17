@@ -4,7 +4,7 @@ use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    behavior::{behaviors::Standup, engine::in_behavior},
+    behavior::{behaviors::Standup, engine::in_behavior, primary_state::PrimaryState},
     kinematics::{
         Kinematics,
         spaces::{LeftSole, RightSole},
@@ -35,13 +35,14 @@ impl Plugin for OdometryPlugin {
 /// System that updates the robot odometry, given the current state of the robot joints.
 pub fn update_odometry(
     mut odometry: ResMut<Odometry>,
+    primary_state: Res<PrimaryState>,
     localization_config: Res<LocalizationConfig>,
     foot_support: Res<FootSupportState>,
     kinematics: Res<Kinematics>,
     orientation: Res<RobotOrientation>,
     fall_state: Res<FallState>,
 ) {
-    if !matches!(*fall_state, FallState::None) {
+    if !matches!(*fall_state, FallState::None) || *primary_state == PrimaryState::Penalized {
         // Don't update odometry if the robot is falling, or getting up
         odometry.offset_to_last = Isometry2::default();
         return;

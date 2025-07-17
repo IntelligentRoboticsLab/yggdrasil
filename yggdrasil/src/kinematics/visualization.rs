@@ -84,13 +84,13 @@ fn update_meshes(
     mut buffer: Local<TransformBuffer>,
 ) {
     let pose = pose.to_3d();
-    let (robot_to_ground, orientation) = kinematics.robot_to_ground(orientation.quaternion());
+    let (robot_to_ground, _) = kinematics.robot_to_ground(orientation.quaternion());
 
     dbg.log(
         "nao",
         &rerun::Transform3D::from_translation_rotation(
             pose.translation.vector.data.0[0],
-            rerun::Quaternion(orientation.coords.data.0[0]),
+            rerun::Quaternion(pose.rotation.coords.data.0[0]),
         ),
     );
 

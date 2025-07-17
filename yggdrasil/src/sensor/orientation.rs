@@ -62,8 +62,6 @@ impl RobotOrientation {
     }
 
     /// Resets the accumulated orientation, and the filter values.
-    // TODO: This should be called whenever the robot switches to penalized state or when the ready state is entered.
-    // See: https://github.com/IntelligentRoboticsLab/yggdrasil/issues/400
     #[allow(unused)]
     pub fn reset(&mut self) {
         self.yaw_offset = None;
@@ -116,6 +114,7 @@ fn init_vqf(mut commands: Commands, config: Res<OrientationFilterConfig>) {
 /// System that resets the orientation each cycle, iff we're in a state that doesn't need orientation data.
 fn reset_orientation(
     mut orientation: ResMut<RobotOrientation>,
+    mut odometry: ResMut<Odometry>,
     primary_state: Res<PrimaryState>,
     mut prev_state: Local<Option<PrimaryState>>,
 ) {
@@ -127,6 +126,7 @@ fn reset_orientation(
     if let Some(prev_state) = *prev_state {
         if prev_state != PrimaryState::Standby && *primary_state == PrimaryState::Standby {
             orientation.reset();
+            odometry.reset_orientation(&orientation);
         }
     }
 
