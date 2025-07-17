@@ -58,10 +58,11 @@ impl Plugin for BehaviorEnginePlugin {
                 WalkToBehaviorPlugin,
                 WalkToSetBehaviorPlugin,
             ))
-            .add_systems(PostUpdate, (role_base, broken_robot_behavior_override));
+            .add_systems(PostUpdate, role_base);
     }
 }
 
+#[allow(dead_code)]
 fn broken_robot_behavior_override(robot_info: Res<RobotInfo>, mut nao_manager: ResMut<NaoManager>) {
     // Override the behavior so it does not use its head joints, when they are broken
     if robot_info.robot_id == BROKEN_ROBOT_ID {
