@@ -6,7 +6,8 @@ use nidhogg::types::{FillExt, RightEye, color};
 use crate::{
     behavior::{
         behaviors::{RlStrikerSearchBehavior, StandLookAt, Walk, WalkTo, WalkToBall},
-        engine::{CommandsBehaviorExt, RoleState, Roles, in_role},
+        engine::{BehaviorState, CommandsBehaviorExt, RoleState, Roles, in_role},
+        primary_state::PrimaryState,
     },
     core::config::{
         layout::{FieldConfig, LayoutConfig},
@@ -26,9 +27,34 @@ pub struct StrikerRolePlugin;
 
 impl Plugin for StrikerRolePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, striker_role.run_if(in_role::<Striker>))
-            .add_systems(OnExit(RoleState::Striker), reset_striker_role);
+        app.add_systems(
+            Update,
+            (
+                striker_role.run_if(in_role::<Striker>.and(not(in_set_play))),
+                set_play.run_if(in_set_play),
+            ),
+        )
+        .add_systems(OnExit(RoleState::Striker), reset_striker_role);
     }
+}
+
+fn in_set_play(
+    gamecontroller_message: Option<Res<GameControllerMessage>>,
+    primary_state: Res<PrimaryState>,
+    player_config: Res<PlayerConfig>,
+) -> bool {
+    if let Some(message) = gamecontroller_message {
+        match *primary_state {
+            PrimaryState::Playing { .. } => {
+                return message.set_play != SetPlay::None
+                    || message.secondary_time != 0
+                        && message.kicking_team != player_config.team_number;
+            }
+            _ => return false,
+        }
+    }
+
+    return false;
 }
 
 /// The `Striker` role has five substates, each indicated by the right eye LED color:
@@ -57,8 +83,6 @@ pub fn striker_role(
     layout_config: Res<LayoutConfig>,
     ball_tracker: Res<BallTracker>,
     mut nao_manager: ResMut<NaoManager>,
-    message: Res<GameControllerMessage>,
-    player_config: Res<PlayerConfig>,
 ) {
     let Some(relative_ball) = ball_tracker.stationary_ball() else {
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::GREEN), Priority::default());
@@ -68,24 +92,6 @@ pub fn striker_role(
     };
 
     let absolute_ball = pose.robot_to_world(&relative_ball);
-
-    if message.set_play != SetPlay::None && message.kicking_team != player_config.team_number {
-        if relative_ball.coords.norm() > 0.5 {
-            commands.set_behavior(WalkTo {
-                target: Target {
-                    position: absolute_ball,
-                    rotation: None,
-                },
-            });
-            return;
-        } else {
-            commands.set_behavior(StandLookAt {
-                target: absolute_ball,
-            });
-        }
-        return;
-    }
-
     let ball_angle = pose.angle_to(&absolute_ball);
     let ball_distance = relative_ball.coords.norm();
     let ball_target = Point3::new(absolute_ball.x, absolute_ball.y, 0.2);
@@ -147,6 +153,53 @@ pub fn striker_role(
             look_target: Some(ball_target),
         });
     }
+}
+
+fn set_play(
+    mut commands: Commands,
+    ball_tracker: Res<BallTracker>,
+    pose: Res<RobotPose>,
+    behavior_state: Res<State<BehaviorState>>,
+    walk: Option<Res<Walk>>,
+) {
+    let Some(relative_ball) = ball_tracker.stationary_ball() else {
+        return;
+    };
+    let absolute_ball = pose.robot_to_world(&relative_ball);
+    let ball_distance = relative_ball.coords.norm();
+    let ball_target = Point3::new(absolute_ball.x, absolute_ball.y, 0.2);
+
+    if ball_distance > 1.2 {
+        commands.set_behavior(WalkTo {
+            target: Target {
+                position: absolute_ball,
+                rotation: None,
+            },
+        });
+        return;
+    }
+
+    if behavior_state.get() == &BehaviorState::Walk {
+        if let Some(walk) = walk {
+            if matches!(walk.step, Step::BACK) && ball_distance < 0.875 {
+                return;
+            }
+        }
+    }
+
+    if ball_distance < 0.75 {
+        commands.set_behavior(Walk {
+            step: Step::BACK,
+            look_target: Some(ball_target),
+        });
+        return;
+    }
+
+    commands.set_behavior(StandLookAt {
+        target: absolute_ball,
+    });
+
+    return;
 }
 
 pub fn goal_aligned(pose: &RobotPose, field_config: &FieldConfig) -> bool {
