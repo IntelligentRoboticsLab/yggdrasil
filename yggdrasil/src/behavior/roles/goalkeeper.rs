@@ -7,6 +7,7 @@ use crate::{
         engine::{CommandsBehaviorExt, RoleState, Roles, in_role},
     },
     core::config::layout::LayoutConfig,
+    localization::RobotPose,
     motion::step_planner::{StepPlanner, Target},
 };
 
@@ -30,7 +31,8 @@ impl Roles for Goalkeeper {
 pub fn goalkeeper_role(
     mut commands: Commands,
     layout_config: Res<LayoutConfig>,
-    step_planner: ResMut<StepPlanner>,
+    mut step_planner: ResMut<StepPlanner>,
+    pose: Res<RobotPose>,
 ) {
     let field_length = layout_config.field.length;
     let keeper_target = Target {
@@ -42,6 +44,11 @@ pub fn goalkeeper_role(
         commands.set_behavior(WalkTo {
             target: keeper_target,
         });
+        return;
+    }
+
+    if step_planner.reached_target() && pose.distance_to(&keeper_target.position) >= 0.2 {
+        step_planner.clear_target();
         return;
     }
 
