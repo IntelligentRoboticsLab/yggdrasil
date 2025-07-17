@@ -97,14 +97,7 @@ impl FootSupportState {
 
     /// Reset the foot support state to default values and re-initialize support side detection.
     pub(super) fn reset_after_standup(&mut self) {
-        self.support_ratio = 0.0;
-        self.last_support_ratio = 0.0;
-        self.last_support_ratio_with_pressure = 0.0;
-        self.trusted = false;
-        self.foot_switched = false;
-        self.predicted_switch = false;
-        // Reset to default support side - this will be corrected by FSR readings
-        self.support = Side::default();
+        *self = Self::default();
     }
 
     /// Return `true` if a foot switch has occurred or is predicted in future cycles.
