@@ -2,22 +2,17 @@ use bevy::prelude::*;
 use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
 
 use serde::{Deserialize, Serialize};
-use tracing::info;
 
 use crate::{
     behavior::{
         behaviors::Standup,
         engine::{BehaviorState, in_behavior},
-        primary_state::{self, PrimaryState},
     },
     kinematics::{
         Kinematics,
         spaces::{LeftSole, RightSole},
     },
-    sensor::{
-        falling::FallState,
-        orientation::{self, RobotOrientation},
-    },
+    sensor::{falling::FallState, orientation::RobotOrientation},
 };
 
 use crate::motion::walking_engine::{Side, WalkingEngineSet, foot_support::FootSupportState};
@@ -121,12 +116,6 @@ impl Odometry {
             Side::Left => left_sole_to_right_sole - self.last_left_sole_to_right_sole,
             Side::Right => -left_sole_to_right_sole + self.last_left_sole_to_right_sole,
         } / 2.0;
-        tracing::info!(
-            "Odometry Update: last_s2s: {:?}, current_s2s: {:?}, resulting_offset: {:?}",
-            self.last_left_sole_to_right_sole,
-            left_sole_to_right_sole,
-            offset
-        );
         self.last_left_sole_to_right_sole = left_sole_to_right_sole;
         let scaled_offset = offset.component_mul(&config.scale_factor);
 

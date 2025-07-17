@@ -1,9 +1,15 @@
+use std::time::Instant;
+
 use bevy::prelude::*;
+use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::engine::{Behavior, BehaviorState, in_behavior},
-    motion::keyframe::{KeyframeExecutor, MotionType},
-    nao::Priority,
+    motion::{
+        keyframe::{KeyframeExecutor, MotionType},
+        walking_engine::step_context::{self, StepContext},
+    },
+    nao::{NaoManager, Priority},
     sensor::falling::{FallState, LyingDirection},
 };
 
@@ -38,6 +44,9 @@ fn standup(
     mut standup: ResMut<Standup>,
     fall_state: Res<FallState>,
     mut keyframe_executor: ResMut<KeyframeExecutor>,
+    mut completed: Local<Option<Instant>>,
+    mut nao_manager: ResMut<NaoManager>,
+    mut step_context: ResMut<StepContext>,
 ) {
     // check the direction the robot is lying and execute the appropriate motion
     match fall_state.as_ref() {
@@ -52,5 +61,42 @@ fn standup(
     }
 
     // Update completed status based on motion activity
-    standup.completed = !keyframe_executor.is_motion_active();
+    if !keyframe_executor.is_motion_active() && completed.is_none() {
+        *completed = Some(Instant::now());
+        return;
+    }
+
+    if let Some(start_time) = *completed {
+        look_around(&mut nao_manager, start_time, 2.0, 1.0, 0.25);
+        step_context.request_stand();
+        if start_time.elapsed().as_secs() > 2 {
+            // If the motion has been inactive for more than 2 seconds, we consider it completed
+            standup.completed = true;
+        }
+    }
+}
+
+fn look_around(
+    nao_manager: &mut NaoManager,
+    starting_time: Instant,
+    rotation_speed: f32,
+    yaw_multiplier: f32,
+    pitch_multiplier: f32,
+) {
+    // Used to parameterize the yaw and pitch angles, multiplying with a large
+    // rotation speed will make the rotation go faster.
+    let movement_progress = starting_time.elapsed().as_secs_f32() * rotation_speed;
+    let yaw = (movement_progress).sin() * yaw_multiplier;
+    let pitch = (movement_progress * 2.0 + std::f32::consts::FRAC_PI_2)
+        .sin()
+        .max(0.0)
+        * pitch_multiplier;
+
+    let position = HeadJoints { yaw, pitch };
+
+    nao_manager.set_head(
+        position,
+        HeadJoints::fill(NaoManager::HEAD_STIFFNESS),
+        Priority::default(),
+    );
 }

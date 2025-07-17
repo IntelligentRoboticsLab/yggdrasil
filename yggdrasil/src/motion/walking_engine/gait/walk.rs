@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 use nalgebra::Translation3;
+use tracing::info;
 
 use crate::{
     kinematics::{
@@ -57,6 +58,7 @@ fn init_walking_step(
         &kinematics,
         config.torso_offset,
     );
+    info!("initializing walking step...");
     step_context.plan_next_step(start, &config);
 
     commands.insert_resource(WalkState {

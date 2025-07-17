@@ -1,12 +1,13 @@
 use std::time::{Duration, Instant};
 
 use crate::{
+    behavior::{behaviors::Standup, engine::in_behavior},
     core::debug::{
         DebugContext,
         debug_system::{DebugAppExt, SystemToggle},
     },
     kinematics::Kinematics,
-    motion::walking_engine::foot_support::FootSupportState,
+    motion::walking_engine::{Side, foot_support::FootSupportState},
     nao::Cycle,
 };
 
@@ -80,10 +81,7 @@ impl StepContext {
 
     pub fn request_sit(&mut self) {
         self.requested_gait = Gait::Sitting;
-        self.last_step = PlannedStep {
-            swing_side: self.last_step.swing_side,
-            ..Default::default()
-        };
+        self.last_step = PlannedStep::default();
         self.requested_step = Step::default();
     }
 
@@ -146,6 +144,10 @@ impl StepContext {
             }
             Gait::Standing => {
                 // go to starting
+                self.last_step = PlannedStep {
+                    swing_side: self.last_step.swing_side,
+                    ..Default::default()
+                };
                 self.requested_gait = Gait::Starting;
                 self.requested_step = step;
             }
@@ -155,12 +157,6 @@ impl StepContext {
                 self.requested_step = step;
             }
         }
-    }
-
-    pub fn request_reset(&mut self) {
-        self.requested_reset = true;
-        self.request_stand();
-        self.requested_gait = Gait::Standing;
     }
 
     pub fn finish_step(&mut self) {
@@ -208,7 +204,7 @@ impl StepContext {
             target,
             swing_foot_height: config.base_foot_lift + foot_lift_modifier,
             swing_side: next_swing_foot,
-        }
+        };
     }
 }
 
