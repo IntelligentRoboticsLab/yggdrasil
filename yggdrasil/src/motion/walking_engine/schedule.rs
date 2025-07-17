@@ -1,7 +1,7 @@
 use bevy::{ecs::schedule::InternedSystemSet, prelude::*};
 
-use crate::kinematics::Kinematics;
 use crate::prelude::*;
+use crate::{behavior::engine::BehaviorState, kinematics::Kinematics};
 
 use super::{config::WalkingEngineConfig, step::PlannedStep, step_context::StepContext};
 
@@ -63,6 +63,12 @@ impl Plugin for WalkingEngineSchedulePlugin {
 
         app.add_systems(
             PostStartup,
+            setup_motion_state.in_set(WalkingEngineSet::Finalize),
+        );
+
+        // Dirty hack: Reset the entire step context after standing up.
+        app.add_systems(
+            OnExit(BehaviorState::Standup),
             setup_motion_state.in_set(WalkingEngineSet::Finalize),
         );
     }
