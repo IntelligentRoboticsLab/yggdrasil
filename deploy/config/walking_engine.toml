@@ -48,7 +48,7 @@ arm_stiffness = 0.6
 
 # The base amount to lift the feet in swing phase, in metres.
 # The foot lift is increased slightly, based on the forward and left in the command.
-base_foot_lift = 0.01
+base_foot_lift = 0.007
 
 # The multiplier for each component of a step command to adjust the foot lift.
 # These values are multiplied by their respective component of the step command
