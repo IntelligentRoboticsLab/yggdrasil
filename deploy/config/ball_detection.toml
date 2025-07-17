@@ -6,10 +6,10 @@ max_classification_age_eye_color = 100
 ball_ratio = 0.35
 
 # The ratio of green pixels in the patch below the ball.
-grass_ratio = 0.70
+grass_ratio = 0.7
 
 # Height/width of the bounding box around the ball
-bounding_box_scale = 95.0
+bounding_box_scale = 80.0
 
 
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
@@ -39,10 +39,10 @@ bbox_padding_factor = 1.1
 ball_ratio = 0.35
 
 # The ratio of green pixels in the patch below the ball.
-grass_ratio = 0.70
+grass_ratio = 0.1
 
 # Height/width of the bounding box around the ball
-bounding_box_scale = 28.5
+bounding_box_scale = 30.0
 
 # The minimum overlap ratio between for bounding boxes to be merged using non-maximum suppression
 nms_threshold = 0.3
@@ -64,7 +64,7 @@ grass_patch_y_offset_factor = 0.5
 grass_patch_radius_factor = 1.5
 
 # Padding factor applied to final proposal box sizes to account for camera calibration error.
-bbox_padding_factor = 1.4
+bbox_padding_factor = 1.1
 
 [classifier]
 # The threshold for the classifier to consider a proposal a ball
