@@ -1,20 +1,15 @@
 use bevy::prelude::*;
-use bifrost::communication::{GameControllerMessage, SetPlay};
 use nalgebra::{Point2, Point3};
 use nidhogg::types::{FillExt, RightEye, color};
 
 use crate::{
     behavior::{
-        behaviors::{RlStrikerSearchBehavior, StandLookAt, Walk, WalkTo, WalkToBall},
-        engine::{BehaviorState, CommandsBehaviorExt, RoleState, Roles, in_role},
-        primary_state::PrimaryState,
+        behaviors::{RlStrikerSearchBehavior, Walk, WalkToBall},
+        engine::{CommandsBehaviorExt, RoleState, Roles, in_role},
     },
-    core::config::{
-        layout::{FieldConfig, LayoutConfig},
-        showtime::PlayerConfig,
-    },
+    core::config::layout::{FieldConfig, LayoutConfig},
     localization::RobotPose,
-    motion::{step_planner::Target, walking_engine::step::Step},
+    motion::walking_engine::step::Step,
     nao::{NaoManager, Priority},
     vision::ball_detection::ball_tracker::BallTracker,
 };
@@ -27,35 +22,9 @@ pub struct StrikerRolePlugin;
 
 impl Plugin for StrikerRolePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                striker_role.run_if(in_role::<Striker>.and(not(in_set_play))),
-                set_play.run_if(in_set_play),
-            ),
-        )
-        .add_systems(OnExit(RoleState::Striker), reset_striker_role);
+        app.add_systems(Update, striker_role.run_if(in_role::<Striker>))
+            .add_systems(OnExit(RoleState::Striker), reset_striker_role);
     }
-}
-
-fn in_set_play(
-    gamecontroller_message: Option<Res<GameControllerMessage>>,
-    primary_state: Res<PrimaryState>,
-    player_config: Res<PlayerConfig>,
-) -> bool {
-    if let Some(message) = gamecontroller_message {
-        return match *primary_state {
-            // return true if there is a set play OR we are in Playing state with a secondary time (Kick-Off)
-            PrimaryState::Playing { .. } => {
-                message.set_play != SetPlay::None
-                    || (message.secondary_time != 0
-                        && message.kicking_team != player_config.team_number)
-            }
-            _ => false,
-        };
-    }
-
-    false
 }
 
 /// The `Striker` role has five substates, each indicated by the right eye LED color:
@@ -154,52 +123,6 @@ pub fn striker_role(
             look_target: Some(ball_target),
         });
     }
-}
-
-//TODO: Make this a separate stand-alone behavior
-fn set_play(
-    mut commands: Commands,
-    ball_tracker: Res<BallTracker>,
-    pose: Res<RobotPose>,
-    behavior_state: Res<State<BehaviorState>>,
-    walk: Option<Res<Walk>>,
-) {
-    let Some(relative_ball) = ball_tracker.stationary_ball() else {
-        return;
-    };
-    let absolute_ball = pose.robot_to_world(&relative_ball);
-    let ball_distance = relative_ball.coords.norm();
-    let ball_target = Point3::new(absolute_ball.x, absolute_ball.y, 0.2);
-
-    if ball_distance > 1.2 {
-        commands.set_behavior(WalkTo {
-            target: Target {
-                position: absolute_ball,
-                rotation: None,
-            },
-        });
-        return;
-    }
-
-    if behavior_state.get() == &BehaviorState::Walk {
-        if let Some(walk) = walk {
-            if matches!(walk.step, Step::BACK) && ball_distance < 0.875 {
-                return;
-            }
-        }
-    }
-
-    if ball_distance < 0.75 {
-        commands.set_behavior(Walk {
-            step: Step::BACK,
-            look_target: Some(ball_target),
-        });
-        return;
-    }
-
-    commands.set_behavior(StandLookAt {
-        target: absolute_ball,
-    });
 }
 
 pub fn goal_aligned(pose: &RobotPose, field_config: &FieldConfig) -> bool {
