@@ -70,7 +70,6 @@ pub fn striker_role(
     let absolute_ball = pose.robot_to_world(&relative_ball);
 
     if message.set_play != SetPlay::None && message.kicking_team != player_config.team_number {
-        //distance to relative ball, using math
         if relative_ball.coords.norm() > 0.5 {
             commands.set_behavior(WalkTo {
                 target: Target {

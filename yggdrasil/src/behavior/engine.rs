@@ -264,8 +264,6 @@ pub fn role_base(
         return;
     }
 
-    let possible_ball_distance = ball_tracker.stationary_ball();
-
     if let Some(message) = game_controller_message {
         if message.game_phase == GamePhase::PenaltyShoot {
             if message.kicking_team == player_config.team_number {
@@ -302,10 +300,12 @@ pub fn role_base(
             target: Point2::default(),
         }),
         PrimaryState::Playing { .. } => {
+            let possible_ball_distance = ball_tracker.stationary_ball().map(|p| p.coords.norm());
+
             RoleState::assign_role(
                 &mut commands,
                 player_config.player_number,
-                possible_ball_distance.map(|p| p.coords.norm()),
+                possible_ball_distance,
             );
         }
     }
