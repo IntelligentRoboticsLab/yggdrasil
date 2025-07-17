@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use bevy::prelude::*;
 use nidhogg::types::{FillExt, HeadJoints};
@@ -18,6 +18,8 @@ use crate::{
     },
     nao::{NaoManager, Priority},
 };
+
+const HEAD_ROTATION_TIME: Duration = Duration::from_millis(500);
 
 #[derive(Resource, Deref)]
 struct ObserveStartingTime(Instant);
@@ -87,10 +89,11 @@ fn walk_to_set(
         step_context.request_walk(step);
     } else {
         let look_at = pose.get_look_at_absolute(&Point3::origin());
-        nao_manager.set_head(
+        nao_manager.set_head_target(
             look_at,
-            HeadJoints::fill(NaoManager::HEAD_STIFFNESS),
+            HEAD_ROTATION_TIME,
             Priority::default(),
+            NaoManager::HEAD_STIFFNESS,
         );
 
         step_context.request_stand();
