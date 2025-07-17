@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bifrost::communication::{GameControllerMessage, GamePhase, SetPlay};
+use bifrost::communication::{GameControllerMessage, GamePhase};
 
 use ml::{
     MlModel,
@@ -8,10 +8,8 @@ use ml::{
 use nalgebra::Point2;
 
 use crate::{
-    behavior::behaviors::WalkTo,
     core::config::showtime::PlayerConfig,
-    localization::RobotPose,
-    motion::{step_planner::Target, walking_engine::Gait},
+    motion::walking_engine::Gait,
     nao::{NaoManager, Priority, RobotInfo},
     sensor::{button::HeadButtons, falling::FallState, imu::IMUValues},
     vision::ball_detection::ball_tracker::BallTracker,
@@ -218,7 +216,6 @@ pub fn role_base(
     game_controller_message: Option<Res<GameControllerMessage>>,
     imu_values: Res<IMUValues>,
     ball_tracker: Res<BallTracker>,
-    pose: Res<RobotPose>,
 ) {
     commands.disable_role();
     let behavior = behavior_state.get();
@@ -270,23 +267,6 @@ pub fn role_base(
     let possible_ball_distance = ball_tracker.stationary_ball();
 
     if let Some(message) = game_controller_message {
-        if message.set_play != SetPlay::None && message.kicking_team != player_config.team_number {
-            if let Some(ball) = possible_ball_distance {
-                if pose.distance_to(&ball) > 0.5 {
-                    commands.set_behavior(WalkTo {
-                        target: Target {
-                            position: ball,
-                            rotation: None,
-                        },
-                    });
-                    return;
-                } else {
-                    commands.set_behavior(StandLookAt { target: ball });
-                }
-                return;
-            }
-        }
-
         if message.game_phase == GamePhase::PenaltyShoot {
             if message.kicking_team == player_config.team_number {
                 commands.set_role(Striker);

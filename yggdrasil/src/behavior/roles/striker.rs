@@ -1,15 +1,19 @@
 use bevy::prelude::*;
+use bifrost::communication::{GameControllerMessage, SetPlay};
 use nalgebra::{Point2, Point3};
 use nidhogg::types::{FillExt, RightEye, color};
 
 use crate::{
     behavior::{
-        behaviors::{RlStrikerSearchBehavior, Walk, WalkToBall},
+        behaviors::{RlStrikerSearchBehavior, StandLookAt, Walk, WalkTo, WalkToBall},
         engine::{CommandsBehaviorExt, RoleState, Roles, in_role},
     },
-    core::config::layout::{FieldConfig, LayoutConfig},
+    core::config::{
+        layout::{FieldConfig, LayoutConfig},
+        showtime::PlayerConfig,
+    },
     localization::RobotPose,
-    motion::walking_engine::step::Step,
+    motion::{step_planner::Target, walking_engine::step::Step},
     nao::{NaoManager, Priority},
     vision::ball_detection::ball_tracker::BallTracker,
 };
@@ -53,6 +57,8 @@ pub fn striker_role(
     layout_config: Res<LayoutConfig>,
     ball_tracker: Res<BallTracker>,
     mut nao_manager: ResMut<NaoManager>,
+    message: Res<GameControllerMessage>,
+    player_config: Res<PlayerConfig>,
 ) {
     let Some(relative_ball) = ball_tracker.stationary_ball() else {
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::GREEN), Priority::default());
@@ -62,6 +68,25 @@ pub fn striker_role(
     };
 
     let absolute_ball = pose.robot_to_world(&relative_ball);
+
+    if message.set_play != SetPlay::None && message.kicking_team != player_config.team_number {
+        //distance to relative ball, using math
+        if relative_ball.coords.norm() > 0.5 {
+            commands.set_behavior(WalkTo {
+                target: Target {
+                    position: absolute_ball,
+                    rotation: None,
+                },
+            });
+            return;
+        } else {
+            commands.set_behavior(StandLookAt {
+                target: absolute_ball,
+            });
+        }
+        return;
+    }
+
     let ball_angle = pose.angle_to(&absolute_ball);
     let ball_distance = relative_ball.coords.norm();
     let ball_target = Point3::new(absolute_ball.x, absolute_ball.y, 0.2);
