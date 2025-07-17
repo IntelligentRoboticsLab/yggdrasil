@@ -13,6 +13,11 @@ const WALK_SPEED: f32 = 0.045;
 
 const PRECISE_WALK_DISTANCE: f32 = 0.2;
 
+const MIN_DISTANCE: f32 = 0.05; // Distance at which we stop (5 cm)
+const MAX_DISTANCE: f32 = 0.25; // Maximum distance for precise walking (25 cm)
+const MIN_STEP: f32 = 0.01; // Minimum step size (1 cm)
+const MAX_STEP: f32 = 0.055; // Maximum absolute step size (5.5 cm)
+
 /// Plugin that adds systems and resources for planning robot steps.
 pub(super) struct StepPlannerPlugin;
 
@@ -178,73 +183,28 @@ impl StepPlanner {
         }
     }
 
-    fn scale_step_component(component: f32, distance: f32) -> f32 {
-        const MIN_DISTANCE: f32 = 0.05; // Distance at which we stop (5 cm)
-        const MAX_DISTANCE: f32 = 0.25; // Maximum distance for precise walking (25 cm)
-        const MIN_STEP: f32 = 0.01; // Minimum step size (1 cm)
-        const MAX_STEP: f32 = 0.055; // Maximum absolute step size (5.5 cm)
-
-        if distance <= MIN_DISTANCE {
-            return 0.0;
-        }
-
-        // Calculate scaling factor based on distance
-        let scale_factor = if distance >= MAX_DISTANCE {
-            1.0
-        } else {
-            // Linear interpolation between MIN_STEP and full scale
-            let normalized_distance = (distance - MIN_DISTANCE) / (MAX_DISTANCE - MIN_DISTANCE);
-            MIN_STEP + normalized_distance * (1.0 - MIN_STEP)
-        };
-
-        // Apply scaling
-        let scaled_component = component * scale_factor;
-
-        // Clamp to maximum absolute step size while preserving sign
-        let clamped_component = if scaled_component.abs() > MAX_STEP {
-            MAX_STEP * scaled_component.signum()
-        } else {
-            scaled_component
-        };
-
-        // Ensure minimum step size if component is non-zero (supports both positive and negative)
-        if clamped_component.abs() > 0.0 && clamped_component.abs() < MIN_STEP {
-            MIN_STEP * clamped_component.signum()
-        } else {
-            clamped_component
-        }
-    }
-
     fn plan_precise(robot_pose: &RobotPose, path: &[Point2<f32>]) -> Option<Step> {
         let first_target_position = path[1];
 
         let distance = calc_distance(&robot_pose.inner, first_target_position);
 
+        // If the distance is less than 10 cm, we are close enough to the target.
         if distance < 0.1 {
-            // If the distance is less than 10 cm, we are close enough to the target.
             return None;
         }
-        // Use the components of the vector to the target in local position to determine the step, forward and left only
+
+        // Use the components of the target vector to determine the step
         let relative_transformed_target_point = robot_pose.world_to_robot(&first_target_position);
 
-        // x: forward (+ is in front), y: left (+ is left, - is right)
-        let raw_forward = relative_transformed_target_point.x;
-        let raw_left = relative_transformed_target_point.y;
-
         // Scale the step components based on distance to target
-        let mut forward = Self::scale_step_component(raw_forward, distance);
+        let mut forward = scale_step_component(relative_transformed_target_point.x, distance);
 
         // if forward is negative, we need half it
         if forward < 0. {
             forward /= 2.;
         }
 
-        let left = Self::scale_step_component(raw_left, distance);
-
-        println!(
-            "Raw components: forward: {}, left: {} | Scaled: forward: {}, left: {} (distance: {})",
-            raw_forward, raw_left, forward, left, distance
-        );
+        let left = scale_step_component(relative_transformed_target_point.y, distance);
 
         return Some(Step {
             forward,
@@ -298,6 +258,31 @@ impl StepPlanner {
 pub struct DynamicObstacle {
     pub obs: Obstacle,
     pub ttl: Instant,
+}
+
+fn scale_step_component(component: f32, distance: f32) -> f32 {
+    if distance <= MIN_DISTANCE {
+        return 0.0;
+    }
+
+    // Calculate scaling factor based on distance
+    let scale_factor = if distance >= MAX_DISTANCE {
+        1.0
+    } else {
+        // Linear interpolation between MIN_STEP and full scale
+        let normalized_distance = (distance - MIN_DISTANCE) / (MAX_DISTANCE - MIN_DISTANCE);
+        MIN_STEP + normalized_distance * (MAX_STEP - MIN_STEP)
+    };
+
+    // Apply scaling
+    let scaled_component = component * scale_factor;
+
+    // Ensure minimum step size if component is non-zero (supports both positive and negative)
+    if scaled_component.abs() > 0.0 && scaled_component.abs() < MIN_STEP {
+        MIN_STEP * scaled_component.signum()
+    } else {
+        scaled_component
+    }
 }
 
 fn calc_turn(pose: &Isometry<f32, UnitComplex<f32>, 2>, target_point: Point2<f32>) -> f32 {
