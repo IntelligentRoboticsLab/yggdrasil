@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use std::time::Duration;
-use tracing::info;
 
 use crate::{
     kinematics::Kinematics,
@@ -51,7 +50,6 @@ fn init_starting_step(
         &kinematics,
         config.torso_offset,
     );
-    info!("initializing starting step...");
     step_context.plan_next_step(start, &config);
 
     commands.insert_resource(WalkState {
