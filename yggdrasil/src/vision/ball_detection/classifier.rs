@@ -94,7 +94,7 @@ fn init_ball_tracker(mut commands: Commands, config: Res<BallDetectionConfig>) {
     commands.insert_resource(ball_tracker);
 }
 
-pub(super) struct BallClassifierModel;
+pub struct BallClassifierModel;
 
 impl MlModel for BallClassifierModel {
     type Inputs = Vec<u8>;
@@ -151,7 +151,7 @@ fn update_ball_tracker(mut ball_tracker: ResMut<BallTracker>, odometry: Res<Odom
 }
 
 #[allow(clippy::too_many_arguments)]
-fn classify_balls<T: CameraLocation>(
+pub fn classify_balls<T: CameraLocation>(
     ctx: DebugContext,
     cycle: Res<Cycle>,
     mut commands: Commands,
