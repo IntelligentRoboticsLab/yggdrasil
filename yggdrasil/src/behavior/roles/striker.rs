@@ -47,9 +47,8 @@ fn in_set_play(
         return match *primary_state {
             // return true if there is a set play OR we are in Playing state with a secondary time (Kick-Off)
             PrimaryState::Playing { .. } => {
-                message.set_play != SetPlay::None
-                    || (message.secondary_time != 0
-                        && message.kicking_team != player_config.team_number)
+                (message.set_play != SetPlay::None || message.secondary_time != 0)
+                    && message.kicking_team != player_config.team_number
             }
             _ => false,
         };
