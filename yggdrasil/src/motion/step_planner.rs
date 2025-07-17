@@ -206,11 +206,11 @@ impl StepPlanner {
 
         let left = scale_step_component(relative_transformed_target_point.y, distance);
 
-        return Some(Step {
+        Some(Step {
             forward,
             left,
             turn: 0.,
-        });
+        })
     }
 
     pub fn plan(&mut self, robot_pose: &RobotPose) -> Option<Step> {
