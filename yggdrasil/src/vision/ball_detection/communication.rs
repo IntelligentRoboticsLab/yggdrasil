@@ -14,12 +14,22 @@ use super::ball_tracker::BallTracker;
 // Constant for the minimum acceptable change
 const MIN_CHANGE: f32 = 0.1;
 
+// constant for last received team ball position
+const LAST_RECEIVED: usize = 500;
+
 pub struct CommunicatedBallsPlugin;
+
+#[derive(Resource, Default, Debug)]
+pub struct LastReceivedBall{
+    pub position: Option<Point2<f32>>,
+    pub cycles_since_last_received: usize,
+}
 
 impl Plugin for CommunicatedBallsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<TeamBallPosition>()
             .init_resource::<CommunicatedBalls>()
+            .init_resource::<LastReceivedBall>()
             .add_systems(Update, communicate_balls_system);
     }
 }
@@ -79,7 +89,7 @@ fn communicate_balls_system(
     ball_tracker: Res<BallTracker>,
     mut team_ball_position: ResMut<TeamBallPosition>,
     pose: Res<RobotPose>,
-    mut last_received: Local<Option<Point2<f32>>>,
+    mut last_received: ResMut<LastReceivedBall>,
     ctx: DebugContext,
     cycle: Res<Cycle>,
 ) {
@@ -93,10 +103,23 @@ fn communicate_balls_system(
     }
 
     if let Some(new_pos) = CommunicatedBalls::receive_messages(&mut tc, &pose) {
-        *last_received = Some(new_pos);
+        println!("Received new ball position: {:?}", new_pos);
+        last_received.position = Some(new_pos);
+    } else {
+        last_received.cycles_since_last_received += 1;
+        println!(
+            "No team ball position received for {} cycles",
+            last_received.cycles_since_last_received
+        );
+        if last_received.cycles_since_last_received > LAST_RECEIVED {
+            last_received.position = None;
+            last_received.cycles_since_last_received = 0;
+        }
     }
 
-    team_ball_position.0 = optional_ball_position.or_else(|| *last_received);
+    team_ball_position.0 = optional_ball_position.or_else(|| last_received.position);
+    println!("last received position: {:?}", last_received.position);
+    println!("team ball position: {:?}", team_ball_position.0);
 
     if let Some(pos) = team_ball_position.0 {
         let global = pose.robot_to_world(&pos);
@@ -106,6 +129,12 @@ fn communicate_balls_system(
             &rerun::Points3D::new([(global.x, global.y, 0.01)])
                 .with_radii([0.1])
                 .with_labels(["team_ball"]),
+        );
+    } else {
+        ctx.log_with_cycle(
+            "/team_ball",
+            *cycle,
+            &rerun::Clear::recursive(),
         );
     }
 }
