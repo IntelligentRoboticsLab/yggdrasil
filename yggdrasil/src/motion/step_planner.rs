@@ -9,8 +9,8 @@ use rerun::{FillMode, LineStrip3D};
 use std::time::Instant;
 
 const TURN_SPEED: f32 = 0.4;
-const MIN_TURN_SPEED: f32 = 0.5;
-const FULL_SPEED_ANGLE: f32 = 1.0;
+const MIN_TURN_MULTIPLIER: f32 = 0.5;
+const MAX_TURN_MULTIPLIER: f32 = 1.0;
 const WALK_SPEED: f32 = 0.050;
 
 const PRECISE_WALK_DISTANCE: f32 = 0.2;
@@ -400,8 +400,8 @@ fn scale_turn_speed(yaw_err: f32) -> f32 {
     }
 
     // Linear ramp: MIN_TURN_SPEED .. TURN_SPEED over 0..FULL_SPEED_ANGLE
-    let frac = (mag / FULL_SPEED_ANGLE).min(1.0);
-    let spd = MIN_TURN_SPEED + frac * (TURN_SPEED - MIN_TURN_SPEED);
+    let frac = (mag / MAX_TURN_MULTIPLIER).min(1.0);
+    let spd = MIN_TURN_MULTIPLIER + frac * (TURN_SPEED - MIN_TURN_MULTIPLIER);
 
     spd.copysign(e)
 }
