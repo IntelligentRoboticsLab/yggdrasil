@@ -103,12 +103,12 @@ pub fn striker_role(
     mut commands: Commands,
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
-    team_ball_position: Res<TeamBallPosition>,
+    detected_ball_position: Res<TeamBallPosition>,
     mut nao_manager: ResMut<NaoManager>,
     lost_ball_timer: Option<ResMut<LostBallSearchTimer>>,
     time: Res<Time>,
 ) {
-    let Some(relative_ball) = team_ball_position.0 else {
+    let Some(relative_ball) = detected_ball_position.0 else {
         if let Some(mut timer) = lost_ball_timer {
             timer.timer.tick(time.delta()); // <- tick the timer
 
