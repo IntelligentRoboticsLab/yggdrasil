@@ -232,10 +232,15 @@ pub(super) fn sync_gait_request(
     mut commands: Commands,
     current: Res<State<Gait>>,
     mut step_context: ResMut<StepContext>,
+    kinematics: Res<Kinematics>,
+    config: Res<WalkingEngineConfig>,
 ) {
     if step_context.requested_reset {
         commands.insert_resource(FootSupportState::default());
+
         step_context.requested_reset = false;
+        step_context.last_step =
+            PlannedStep::default_from_kinematics(&kinematics, config.torso_offset)
     }
 
     if *current == step_context.requested_gait {
