@@ -1,5 +1,7 @@
 use super::SensorConfig;
 use super::button::{LeftFootButtons, RightFootButtons};
+use crate::behavior::behaviors::Standup;
+use crate::behavior::engine::in_behavior;
 use crate::prelude::*;
 use crate::{
     motion::path_finding::Obstacle,
@@ -17,9 +19,12 @@ pub struct FootBumperPlugin;
 
 impl Plugin for FootBumperPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Sensor, obstacle_detection)
-            .init_resource::<ObstacleStateFromBumpers>()
-            .init_resource::<FootBumperValues>();
+        app.add_systems(
+            Sensor,
+            obstacle_detection.run_if(not(in_behavior::<Standup>)),
+        )
+        .init_resource::<ObstacleStateFromBumpers>()
+        .init_resource::<FootBumperValues>();
     }
 }
 

@@ -124,7 +124,7 @@ fn reset_orientation(
 
     if let Some(prev_state) = *prev_state {
         if (prev_state != PrimaryState::Standby && *primary_state == PrimaryState::Standby)
-            || (prev_state == PrimaryState::Penalized && *primary_state == PrimaryState::Penalized)
+            || (prev_state == PrimaryState::Penalized && *primary_state != PrimaryState::Penalized)
         {
             orientation.reset();
         }

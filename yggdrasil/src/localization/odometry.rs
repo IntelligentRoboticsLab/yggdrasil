@@ -2,14 +2,22 @@ use bevy::prelude::*;
 use nalgebra::{Isometry2, Translation2, UnitComplex, Vector2};
 
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 use crate::{
-    behavior::{behaviors::Standup, engine::in_behavior},
+    behavior::{
+        behaviors::Standup,
+        engine::{BehaviorState, in_behavior},
+        primary_state::{self, PrimaryState},
+    },
     kinematics::{
         Kinematics,
         spaces::{LeftSole, RightSole},
     },
-    sensor::{falling::FallState, orientation::RobotOrientation},
+    sensor::{
+        falling::FallState,
+        orientation::{self, RobotOrientation},
+    },
 };
 
 use crate::motion::walking_engine::{Side, WalkingEngineSet, foot_support::FootSupportState};
@@ -21,14 +29,16 @@ pub(super) struct OdometryPlugin;
 
 impl Plugin for OdometryPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Odometry>().add_systems(
-            PreUpdate,
-            update_odometry
-                .run_if(not(in_behavior::<Standup>))
-                .after(crate::kinematics::update_kinematics)
-                .after(crate::sensor::orientation::update_orientation)
-                .after(WalkingEngineSet::Prepare),
-        );
+        app.init_resource::<Odometry>()
+            .add_systems(OnExit(BehaviorState::Standup), reset_odometry)
+            .add_systems(
+                PreUpdate,
+                update_odometry
+                    .run_if(not(in_behavior::<Standup>))
+                    .after(crate::kinematics::update_kinematics)
+                    .after(crate::sensor::orientation::update_orientation)
+                    .after(WalkingEngineSet::Prepare),
+            );
     }
 }
 
@@ -47,14 +57,22 @@ pub fn update_odometry(
         return;
     }
 
-    // TODO: We should probably reset the odometry in some cases
-    // See: https://github.com/IntelligentRoboticsLab/yggdrasil/issues/400
     odometry.update(
         &localization_config.odometry,
         &foot_support,
         &kinematics,
         &orientation,
     );
+}
+
+fn reset_odometry(
+    mut odometry: ResMut<Odometry>,
+    orientation: Res<RobotOrientation>,
+    kinematics: Res<Kinematics>,
+) {
+    odometry.offset_to_last = Isometry2::default();
+    odometry.last_left_sole_to_right_sole = kinematics.vector::<LeftSole, RightSole>().inner.xy();
+    odometry.reset_orientation(&orientation);
 }
 
 /// Configuration for the odometry.
@@ -103,7 +121,12 @@ impl Odometry {
             Side::Left => left_sole_to_right_sole - self.last_left_sole_to_right_sole,
             Side::Right => -left_sole_to_right_sole + self.last_left_sole_to_right_sole,
         } / 2.0;
-
+        tracing::info!(
+            "Odometry Update: last_s2s: {:?}, current_s2s: {:?}, resulting_offset: {:?}",
+            self.last_left_sole_to_right_sole,
+            left_sole_to_right_sole,
+            offset
+        );
         self.last_left_sole_to_right_sole = left_sole_to_right_sole;
         let scaled_offset = offset.component_mul(&config.scale_factor);
 

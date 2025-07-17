@@ -24,6 +24,12 @@ impl Plugin for FootSupportPlugin {
                 .run_if(not(in_state(BehaviorState::Standup)))
                 .in_set(WalkingEngineSet::Prepare),
         );
+
+        // Reset foot support state when exiting standup to ensure correct foot selection
+        app.add_systems(
+            OnExit(BehaviorState::Standup),
+            reset_foot_support_after_standup,
+        );
     }
 }
 
@@ -87,6 +93,18 @@ impl FootSupportState {
     /// Switch the support foot side.
     pub(super) fn switch_support_side(&mut self) {
         self.support = self.support.opposite();
+    }
+
+    /// Reset the foot support state to default values and re-initialize support side detection.
+    pub(super) fn reset_after_standup(&mut self) {
+        self.support_ratio = 0.0;
+        self.last_support_ratio = 0.0;
+        self.last_support_ratio_with_pressure = 0.0;
+        self.trusted = false;
+        self.foot_switched = false;
+        self.predicted_switch = false;
+        // Reset to default support side - this will be corrected by FSR readings
+        self.support = Side::default();
     }
 
     /// Return `true` if a foot switch has occurred or is predicted in future cycles.
@@ -163,4 +181,8 @@ fn update_foot_support(
     if calibration.is_calibrated {
         state.predicted_switch = predicted_switch;
     }
+}
+
+fn reset_foot_support_after_standup(mut foot_support: ResMut<FootSupportState>) {
+    foot_support.reset_after_standup();
 }
