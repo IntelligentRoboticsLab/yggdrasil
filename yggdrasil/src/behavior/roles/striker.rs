@@ -5,7 +5,10 @@ use nidhogg::types::{FillExt, RightEye, color};
 
 use crate::{
     behavior::{
-        behaviors::{RlStrikerSearchBehavior, StandLookAt, Walk, WalkTo, WalkToBall},
+        behaviors::{
+            LostBallSearch, LostBallSearchTimer, RlStrikerSearchBehavior, StandLookAt, Walk,
+            WalkTo, WalkToBall,
+        },
         engine::{BehaviorState, CommandsBehaviorExt, RoleState, Roles, in_role},
         primary_state::PrimaryState,
     },
@@ -83,18 +86,43 @@ pub fn striker_role(
     layout_config: Res<LayoutConfig>,
     ball_tracker: Res<BallTracker>,
     mut nao_manager: ResMut<NaoManager>,
+    lost_ball_timer: Option<ResMut<LostBallSearchTimer>>,
 ) {
-    let Some(relative_ball) = ball_tracker.stationary_ball() else {
-        nao_manager.set_right_eye_led(RightEye::fill(color::f32::GREEN), Priority::default());
+    if ball_tracker.timestamp.elapsed().as_secs_f32() > 0.5
+        && lost_ball_timer.is_none_or(|timer| !timer.timer.finished())
+    {
+        nao_manager.set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default()); // TEMP LED
+        commands.set_behavior(LostBallSearch);
+        println!("Striker role: SWITCHING Lost ball search");
+        return;
+    }
 
+    let Some(relative_ball) = ball_tracker.stationary_ball() else {
+        // if let Some(mut timer) = lost_ball_timer {
+        //     if !timer.timer.finished() {
+        //         nao_manager
+        //             .set_right_eye_led(RightEye::fill(color::f32::BLUE), Priority::default()); // TEMP LED
+
+        //         // determine the side we need to turn to by using timer.last_ball
+        //         let relative_last_ball = &timer.last_ball;
+        //         commands.set_behavior(LostBallSearch::with_turning(
+        //             relative_last_ball.y.signum() * 0.4,
+        //         ));
+        //     }
+        // } else {
+        nao_manager.set_right_eye_led(RightEye::fill(color::f32::GREEN), Priority::default());
         commands.set_behavior(RlStrikerSearchBehavior);
+        // }
         return;
     };
 
-    let absolute_ball = pose.robot_to_world(&relative_ball);
+    let absolute_ball: nalgebra::OPoint<f32, nalgebra::Const<2>> =
+        pose.robot_to_world(&relative_ball);
+
     let ball_angle = pose.angle_to(&absolute_ball);
     let ball_distance = relative_ball.coords.norm();
-    let ball_target = Point3::new(absolute_ball.x, absolute_ball.y, 0.2);
+    let ball_target: nalgebra::OPoint<f32, nalgebra::Const<3>> =
+        Point3::new(absolute_ball.x, absolute_ball.y, 0.2);
 
     let relative_goalpost_left =
         pose.world_to_robot(&Point2::new(layout_config.field.length / 2., 0.8));

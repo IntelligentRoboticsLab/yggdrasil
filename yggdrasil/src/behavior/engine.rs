@@ -17,11 +17,11 @@ use crate::{
 
 use super::{
     behaviors::{
-        CatchFall, CatchFallBehaviorPlugin, ObserveBehaviorPlugin, RlStrikerSearchBehaviorPlugin,
-        Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin, StandLookAt,
-        StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin, StartUpBehaviorPlugin,
-        VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin, WalkToBallBehaviorPlugin,
-        WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
+        CatchFall, CatchFallBehaviorPlugin, LostBallSearchBehaviorPlugin, ObserveBehaviorPlugin,
+        RlStrikerSearchBehaviorPlugin, Sitting, SittingBehaviorPlugin, Stand, StandBehaviorPlugin,
+        StandLookAt, StandLookAtBehaviorPlugin, Standup, StandupBehaviorPlugin,
+        StartUpBehaviorPlugin, VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin,
+        WalkToBallBehaviorPlugin, WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
     primary_state::PrimaryState,
     roles::{
@@ -57,6 +57,7 @@ impl Plugin for BehaviorEnginePlugin {
                 WalkToBallBehaviorPlugin,
                 WalkToBehaviorPlugin,
                 WalkToSetBehaviorPlugin,
+                LostBallSearchBehaviorPlugin,
             ))
             .add_systems(PostUpdate, role_base);
     }
@@ -111,6 +112,7 @@ pub enum BehaviorState {
     WalkToSet,
     WalkToBall,
     RlStrikerSearchBehavior,
+    LostBallSearch,
 }
 
 #[must_use]
