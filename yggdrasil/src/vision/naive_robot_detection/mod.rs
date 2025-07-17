@@ -30,8 +30,10 @@ struct NaiveRobotDetectionConfig {
     /// Maximum distance between two points to be considered a cluster
     max_cluster_distance: f32,
 
-    /// Maximum width for a cluster to be used for robot detection
-    max_cluster_width: f32,
+    /// Minimum radius for a cluster to be used for robot detection
+    min_cluster_radius: f32,
+    /// Maximum radius for a cluster to be used for robot detection
+    max_cluster_radius: f32,
 }
 
 impl Config for NaiveRobotDetectionConfig {
@@ -97,14 +99,25 @@ struct NaiveDetectedRobots {
     cycle: Cycle,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn detect_robots(
+    dbg: DebugContext,
+    robot_pose: Res<RobotPose>,
     scan_lines: Res<ScanLines<Top>>,
     camera_matrix: Res<CameraMatrix<Top>>,
-    detected_lines: Query<&DetectedLines>,
+    detected_lines: Query<&DetectedLines, Added<DetectedLines>>,
     ball_tracker: Res<BallTracker>,
     config: Res<NaiveRobotDetectionConfig>,
     mut detected_robots: ResMut<NaiveDetectedRobots>,
+    mut segments: Local<Vec<LineSegment2>>,
 ) {
+    if !detected_lines.is_empty() {
+        *segments = detected_lines
+            .iter()
+            .flat_map(|line| line.segments.clone())
+            .collect::<Vec<_>>();
+    }
+
     // Get the cluster points from the scan lines.
     //
     // Points are ordered by the vertical scan lines and represent the lowest
@@ -114,13 +127,8 @@ fn detect_robots(
     // project the cluster points to the ground plane
     let mut projected_points = project_cluster_points(cluster_points, &camera_matrix);
 
-    let lines = detected_lines
-        .iter()
-        .flat_map(|lines| project_lines(lines, &camera_matrix))
-        .collect::<Vec<_>>();
-
     projected_points.retain(|point| {
-        lines
+        segments
             .iter()
             .all(|line| line.distance_to_point(*point) > config.min_line_distance)
             && ball_tracker
@@ -128,13 +136,25 @@ fn detect_robots(
                 .is_none_or(|ball| nalgebra::distance(&ball, point) > config.min_ball_distance)
     });
 
+    dbg.log_with_cycle(
+        Top::make_entity_path("naive_detected_robots/filtered_points"),
+        detected_robots.cycle,
+        &rerun::Points3D::new(projected_points.iter().map(|point| {
+            let point = robot_pose.robot_to_world(point);
+            (point.coords.x, point.coords.y, 0.1)
+        }))
+        .with_colors((0..projected_points.len()).map(|_| (255, 0, 0))),
+    );
+
     // filter out points that are in lines or balls
 
     let mut clusters = create_clusters(projected_points, &config);
 
     clusters.retain(|cluster| {
         // filter out clusters that are too small or too large
-        cluster.width < config.max_cluster_width && cluster.count > config.min_cluster_count
+        cluster.width > config.min_cluster_radius
+            && cluster.width < config.max_cluster_radius
+            && cluster.count > config.min_cluster_count
     });
 
     *detected_robots = NaiveDetectedRobots {
@@ -221,13 +241,16 @@ fn create_clusters(
     let mut last_point: Option<Point2<f32>> = None;
     for point in cluster_points {
         // if the current cluster is empty, we can start a new one
-        let Some(last) = last_point else {
+        let Some(_) = last_point else {
             current_cluster.push(point);
             last_point = Some(point);
             continue;
         };
 
-        if nalgebra::distance(&point, &last) < config.max_cluster_distance {
+        if current_cluster
+            .iter()
+            .any(|p| nalgebra::distance(&point, p) < config.max_cluster_distance)
+        {
             current_cluster.push(point);
         } else {
             clusters.push(Cluster::from_points(std::mem::take(&mut current_cluster)));
@@ -240,16 +263,4 @@ fn create_clusters(
     }
 
     clusters
-}
-
-fn project_lines(lines: &DetectedLines, camera_matrix: &CameraMatrix<Top>) -> Vec<LineSegment2> {
-    lines
-        .segments
-        .iter()
-        .filter_map(|line| {
-            let start = camera_matrix.pixel_to_ground(line.start, 0.0).ok()?;
-            let end = camera_matrix.pixel_to_ground(line.end, 0.0).ok()?;
-            Some(LineSegment2::new(start.xy(), end.xy()))
-        })
-        .collect()
 }
