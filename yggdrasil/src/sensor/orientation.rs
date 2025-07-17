@@ -62,8 +62,6 @@ impl RobotOrientation {
     }
 
     /// Resets the accumulated orientation, and the filter values.
-    // TODO: This should be called whenever the robot switches to penalized state or when the ready state is entered.
-    // See: https://github.com/IntelligentRoboticsLab/yggdrasil/issues/400
     #[allow(unused)]
     pub fn reset(&mut self) {
         self.yaw_offset = None;
@@ -125,7 +123,9 @@ fn reset_orientation(
     }
 
     if let Some(prev_state) = *prev_state {
-        if prev_state != PrimaryState::Standby && *primary_state == PrimaryState::Standby {
+        if (prev_state != PrimaryState::Standby && *primary_state == PrimaryState::Standby)
+            || (prev_state == PrimaryState::Penalized && *primary_state == PrimaryState::Penalized)
+        {
             orientation.reset();
         }
     }
