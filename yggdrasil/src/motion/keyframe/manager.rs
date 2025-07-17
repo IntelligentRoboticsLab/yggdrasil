@@ -86,6 +86,7 @@ impl ActiveMotion {
     pub fn execute_exit_routine(&self, step_context: &mut StepContext) {
         if let Some(ExitRoutine::Standing) = self.motion.settings.exit_routine {
             // Since the robot is now standing, we can reset the hip height to the default value.
+            step_context.finish_step();
             step_context.request_stand();
         }
         // Add more exit routines here! (along with adding an appropriate enum value)
