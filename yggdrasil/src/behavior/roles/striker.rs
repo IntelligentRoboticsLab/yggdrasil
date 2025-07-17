@@ -51,10 +51,10 @@ pub fn striker_role(
     mut commands: Commands,
     pose: Res<RobotPose>,
     layout_config: Res<LayoutConfig>,
-    team_ball_position: Res<TeamBallPosition>,
+    detected_ball_position: Res<TeamBallPosition>,
     mut nao_manager: ResMut<NaoManager>,
 ) {
-    let Some(relative_ball) = team_ball_position.0 else {
+    let Some(relative_ball) = detected_ball_position.0 else {
         nao_manager.set_right_eye_led(RightEye::fill(color::f32::GREEN), Priority::default());
         commands.set_behavior(RlStrikerSearchBehavior);
         return;
