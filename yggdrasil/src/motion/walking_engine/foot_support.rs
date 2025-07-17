@@ -3,6 +3,7 @@ use nidhogg::types::Fsr;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    behavior::engine::BehaviorState,
     prelude::*,
     sensor::fsr::{CalibratedFsr, Contacts},
 };
@@ -20,6 +21,7 @@ impl Plugin for FootSupportPlugin {
             update_foot_support
                 .after(crate::sensor::fsr::update_contacts)
                 .after(crate::sensor::fsr::update_fsr_calibration)
+                .run_if(not(in_state(BehaviorState::Standup)))
                 .in_set(WalkingEngineSet::Prepare),
         );
     }
