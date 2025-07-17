@@ -7,7 +7,6 @@ focal_lengths = [591, 591]
 cc_optical_center = [309, 230]
 
 [camera.bottom.calibration]
-extrinsic_rotation = [0.83, -2.74, 0.00]
 # The focal length for the camera in pixels.
 focal_lengths = [290, 293]
 # The optical center of the camera sensor in pixels.
