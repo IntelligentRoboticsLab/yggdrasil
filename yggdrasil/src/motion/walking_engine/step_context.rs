@@ -81,7 +81,10 @@ impl StepContext {
 
     pub fn request_sit(&mut self) {
         self.requested_gait = Gait::Sitting;
-        self.last_step = PlannedStep::default();
+        self.last_step = PlannedStep {
+            swing_side: self.last_step.swing_side,
+            ..Default::default()
+        };
         self.requested_step = Step::default();
     }
 
@@ -144,10 +147,6 @@ impl StepContext {
             }
             Gait::Standing => {
                 // go to starting
-                self.last_step = PlannedStep {
-                    swing_side: self.last_step.swing_side,
-                    ..Default::default()
-                };
                 self.requested_gait = Gait::Starting;
                 self.requested_step = step;
             }
