@@ -56,10 +56,7 @@ pub enum PrimaryState {
     /// State at the start of the match where the robots stand up
     Initial,
     /// State in which robots walk to their legal positions
-    Ready {
-        referee_in_standby: bool,
-        whistle_in_playing: bool,
-    },
+    Ready { referee_in_standby: bool },
     /// State in which the robots wait for a kick-off or penalty
     Set,
     /// State in which the robots are playing soccer, with a bool to keep state after a whistle
@@ -179,19 +176,12 @@ pub fn next_primary_state(
         PS::Playing {
             whistle_in_set: true
         }
-    ) || matches!(
-        primary_state,
-        PS::Ready {
-            referee_in_standby: false,
-            whistle_in_playing: true
-        }
     ) || whistle.detected();
 
     let recognized_ready_pose = matches!(
         primary_state,
         PS::Ready {
-            referee_in_standby: true,
-            whistle_in_playing: false
+            referee_in_standby: true
         }
     ) || recognized_ready_pose;
 
@@ -200,20 +190,14 @@ pub fn next_primary_state(
             GameState::Initial => PS::Initial,
             GameState::Standby if recognized_ready_pose => PS::Ready {
                 referee_in_standby: true,
-                whistle_in_playing: false,
             },
             GameState::Ready => PS::Ready {
                 referee_in_standby: false,
-                whistle_in_playing: false,
             },
             GameState::Set if heard_whistle => PS::Playing {
                 whistle_in_set: true,
             },
             GameState::Set => PS::Set,
-            GameState::Playing if heard_whistle => PS::Ready {
-                referee_in_standby: false,
-                whistle_in_playing: true,
-            },
             GameState::Playing => PS::Playing {
                 whistle_in_set: false,
             },
