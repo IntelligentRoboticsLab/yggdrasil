@@ -204,12 +204,18 @@ impl RoleState {
         }
 
         // check if the current role is striker
-        if *role_state == RoleState::Striker && (player_number == 3 || player_number == 2) {
+        if *role_state == RoleState::Striker
+            && (player_number != 4 && player_number != 5)
+        {
             if let Some(mut timer) = defender_switch_timer {
                 timer.timer.tick(time.delta());
                 if timer.timer.finished() {
                     commands.remove_resource::<DefenderSwitchTimer>();
-                    commands.set_role(Defender);
+                    if player_number == 1 {
+                        commands.set_role(Goalkeeper);
+                    } else {
+                        commands.set_role(Defender);
+                    }
                 } else {
                     commands.set_role(Striker);
                 }
