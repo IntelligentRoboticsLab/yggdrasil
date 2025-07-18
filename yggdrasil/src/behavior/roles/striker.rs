@@ -19,11 +19,10 @@ use crate::{
     localization::RobotPose,
     motion::{step_planner::Target, walking_engine::step::Step},
     nao::{NaoManager, Priority},
-    vision::ball_detection::TeamBallPosition,
+    vision::ball_detection::{TeamBallPosition, ball_tracker::BallTracker},
 };
 
 use std::time::Duration;
-use crate::vision::ball_detection::ball_tracker::BallTracker;
 
 const WALK_WITH_BALL_ANGLE: f32 = 0.3;
 const ALIGN_WITH_BALL_DISTANCE: f32 = 0.3;
@@ -99,6 +98,7 @@ fn reset_striker_role(mut nao_manager: ResMut<NaoManager>) {
     nao_manager.set_right_eye_led(RightEye::fill(color::f32::EMPTY), Priority::default());
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn striker_role(
     mut commands: Commands,
     pose: Res<RobotPose>,
