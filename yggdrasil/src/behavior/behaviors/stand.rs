@@ -27,7 +27,7 @@ impl Behavior for Stand {
 }
 
 fn stand(mut step_context: ResMut<StepContext>, mut nao_manager: ResMut<NaoManager>) {
-    step_context.request_stand_with_height(StandingHeight::MAX);
+    step_context.request_stand();
 
     nao_manager.set_head_target(
         HeadJoints::default(),
