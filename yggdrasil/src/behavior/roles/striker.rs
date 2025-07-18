@@ -88,6 +88,14 @@ pub fn striker_role(
     mut nao_manager: ResMut<NaoManager>,
     lost_ball_timer: Option<ResMut<LostBallSearchTimer>>,
 ) {
+    println!(
+        "Condition values: {:?}, {:?}",
+        ball_tracker.timestamp.elapsed().as_secs_f32(),
+        lost_ball_timer.as_ref().is_none_or(|timer| {
+            println!("Timer finsihed: {:?}", !timer.timer.finished());
+            !timer.timer.finished()
+        }),
+    );
     if ball_tracker.timestamp.elapsed().as_secs_f32() > 0.5
         && lost_ball_timer.is_none_or(|timer| !timer.timer.finished())
     {

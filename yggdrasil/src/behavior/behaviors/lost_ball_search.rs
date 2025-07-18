@@ -77,6 +77,12 @@ impl Plugin for LostBallSearchBehaviorPlugin {
             .add_systems(
                 OnEnter(BehaviorState::LostBallSearch),
                 init_ball_search_starting_time,
+            )
+            .add_systems(
+                OnExit(BehaviorState::LostBallSearch),
+                |mut commands: Commands| {
+                    commands.remove_resource::<LostBallSearchTimer>();
+                },
             );
     }
 }
