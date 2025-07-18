@@ -354,6 +354,8 @@ impl NaoManager {
         self
     }
 
+    /// The current settings for the leg joints.
+    #[must_use]
     pub fn current_legs(&self) -> &JointSettings<LegJoints<JointValue>> {
         &self.leg_settings
     }
@@ -380,6 +382,12 @@ impl NaoManager {
         self
     }
 
+    /// The current settings for the arm joints.
+    #[must_use]
+    pub fn current_arms(&self) -> &JointSettings<ArmJoints<JointValue>> {
+        &self.arm_settings
+    }
+
     /// Sets the joint position and stiffness of the head joints.
     ///
     /// The joint positions are degrees in radians.
@@ -400,6 +408,12 @@ impl NaoManager {
         );
 
         self
+    }
+
+    /// The current settings for the head joints.
+    #[must_use]
+    pub fn current_head(&self) -> &JointSettings<HeadJoints<JointValue>> {
+        &self.head_settings
     }
 
     /// Sets specifically the yaw of the head, but preserves the pitch.
