@@ -14,15 +14,11 @@ use super::ball_tracker::BallTracker;
 // Constant for the minimum acceptable change
 const MIN_CHANGE: f32 = 0.1;
 
-// constant for last received team ball position
-const LAST_RECEIVED: usize = 500;
-
 pub struct CommunicatedBallsPlugin;
 
 #[derive(Resource, Default, Debug)]
 pub struct LastReceivedBall {
     pub position: Option<Point2<f32>>,
-    pub cycles_since_last_received: usize,
 }
 
 impl Plugin for CommunicatedBallsPlugin {
@@ -105,15 +101,7 @@ fn communicate_balls_system(
     if let Some(new_pos) = CommunicatedBalls::receive_messages(&mut tc, &pose) {
         last_received.position = Some(new_pos);
     } else {
-        last_received.cycles_since_last_received += 1;
-        println!(
-            "No team ball position received for {} cycles",
-            last_received.cycles_since_last_received
-        );
-        if last_received.cycles_since_last_received > LAST_RECEIVED {
-            last_received.position = None;
-            last_received.cycles_since_last_received = 0;
-        }
+        last_received.position = None;
     }
 
     team_ball_position.0 = optional_ball_position.or_else(|| last_received.position);
