@@ -1,7 +1,14 @@
 use crate::{
-    behavior::primary_state, core::audio::whistle_detection::Whistle, game_controller::{penalty::PenaltyState, GameControllerMessageEvent}, kinematics::Kinematics, motion::walking_engine::config::WalkingEngineConfig, nao::{NaoManager, Priority}, sensor::button::{ChestButton, HeadButtons}, vision::referee::{
-        communication::ReceivedRefereePose, recognize::RefereePoseRecognized, RefereePose
-    }
+    behavior::primary_state,
+    core::audio::whistle_detection::{self, Whistle},
+    game_controller::{GameControllerMessageEvent, penalty::PenaltyState},
+    kinematics::Kinematics,
+    motion::walking_engine::config::WalkingEngineConfig,
+    nao::{NaoManager, Priority},
+    sensor::button::{ChestButton, HeadButtons},
+    vision::referee::{
+        RefereePose, communication::ReceivedRefereePose, recognize::RefereePoseRecognized,
+    },
 };
 use bevy::prelude::*;
 
@@ -11,6 +18,10 @@ use std::time::Duration;
 
 use bifrost::communication::{GameControllerMessage, GameState};
 use nidhogg::types::color;
+
+use std::time::Instant;
+
+const GOAL_DELAY: u64 = 15;
 
 #[serde_as]
 #[derive(Resource, Serialize, Deserialize, Debug, Clone)]
@@ -27,6 +38,11 @@ pub struct PrimaryStateConfig {
 /// This module provides the following resources to the application:
 /// - [`PrimaryState`]
 pub struct PrimaryStatePlugin;
+
+#[derive(Default)]
+pub struct WhistleTimer {
+    whistle_timer: Option<Instant>,
+}
 
 impl Plugin for PrimaryStatePlugin {
     fn build(&self, app: &mut App) {
@@ -101,6 +117,7 @@ pub fn update_primary_state(
     penalty_state: Res<PenaltyState>,
     mut recognized_pose: EventReader<RefereePoseRecognized>,
     mut received_pose: EventReader<ReceivedRefereePose>,
+    mut whistle_timer: Local<WhistleTimer>,
 ) {
     use PrimaryState as PS;
 
@@ -117,6 +134,7 @@ pub fn update_primary_state(
             || received_pose
                 .read()
                 .any(|event| event.pose == RefereePose::Ready),
+        &mut whistle_timer,
     );
 
     match next_state {
@@ -147,6 +165,7 @@ pub fn next_primary_state(
     head_buttons: &HeadButtons,
     whistle: &Whistle,
     recognized_ready_pose: bool,
+    whistle_timer: &mut WhistleTimer,
 ) -> PrimaryState {
     use PrimaryState as PS;
 
@@ -168,10 +187,18 @@ pub fn next_primary_state(
         return primary_state;
     }
 
-    if let Some(GameControllerMessage { state: GameState::Set, .. }) = game_controller_message {
+    // makes sure "set" is not skipped
+    if let Some(GameControllerMessage {
+        state: GameState::Set,
+        ..
+    }) = game_controller_message
+    {
         if matches!(
             primary_state,
-            PS::Ready { whistle_in_playing: true, .. }
+            PS::Ready {
+                whistle_in_playing: true,
+                ..
+            }
         ) {
             primary_state = PS::Ready {
                 referee_in_standby: false,
@@ -186,13 +213,12 @@ pub fn next_primary_state(
             whistle_in_set: true
         }
     ) || matches!(
-        primary_state, 
+        primary_state,
         PS::Ready {
             whistle_in_playing: true,
             ..
         }
-    )
-    || whistle.detected();
+    ) || whistle.detected();
 
     let recognized_ready_pose = matches!(
         primary_state,
@@ -202,7 +228,7 @@ pub fn next_primary_state(
         }
     ) || recognized_ready_pose;
 
-    let previous_primary_state = primary_state; 
+    let previous_primary_state = primary_state;
     primary_state = match game_controller_message {
         Some(message) => match message.state {
             GameState::Initial => PS::Initial,
@@ -231,9 +257,38 @@ pub fn next_primary_state(
         None => primary_state,
     };
 
-    // if previous_primary_state != primary_state {
-    //     println!("primary state is set to: {:?}", primary_state);
-    // }
+    // set a timer after switching to the ready state due to a whistle
+    if previous_primary_state != primary_state
+        && matches!(
+            primary_state,
+            PS::Ready {
+                whistle_in_playing: true,
+                ..
+            }
+        )
+    {
+        whistle_timer.whistle_timer = Some(Instant::now());
+    }
+
+    // check if a timer was set
+    if let Some(start_time) = whistle_timer.whistle_timer {
+        // if it lasted over GOAL_DELAY it should be reset
+        // either it was a false positive, or it was okay and should also be reset
+        if start_time.elapsed().as_secs() > GOAL_DELAY {
+            whistle_timer.whistle_timer = None;
+            // if it still has whistle_in_playing:true after the GOAL_DELAY, change to false
+            if matches! (primary_state, PS::Ready {whistle_in_playing:true, .. }) {
+                primary_state = PS::Ready {
+                    referee_in_standby: false,
+                    whistle_in_playing: false,
+                };
+            }
+        }
+    }
+
+    if previous_primary_state != primary_state {
+        println!("primary state is set to: {:?}", primary_state);
+    }
 
     if penalty_state.is_penalized() {
         primary_state = PS::Penalized;
