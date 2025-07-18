@@ -9,7 +9,7 @@ const MIN_FALL_ANGLE_RIGHT: f32 = 0.52;
 // Minimum angle for lying confirmation.
 const MIN_LYING_ANGLE: f32 = 1.0;
 /// Minimum accelerometer deviation for lying confirmation.
-const MAX_ACC_DEVIATION: f32 = 0.175;
+const MAX_ACC_DEVIATION: f32 = 0.575;
 
 /// A module offering a Pose resource, containing the current pose state of the robot, and rudimentary falling detection.
 ///
