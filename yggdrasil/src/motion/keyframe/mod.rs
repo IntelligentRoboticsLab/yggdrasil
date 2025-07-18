@@ -8,8 +8,6 @@ pub use manager::*;
 pub use types::*;
 pub use util::*;
 
-use crate::nao;
-
 /// Plugin that provides keyframe motion functionalities.
 pub(super) struct KeyframePlugin;
 
