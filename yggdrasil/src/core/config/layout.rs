@@ -338,6 +338,12 @@ impl Index<usize> for FieldPositionsConfig {
 }
 
 impl FieldPositionsConfig {
+    pub fn len(&self) -> usize {
+        self.0.iter().len()
+    }
+}
+
+impl FieldPositionsConfig {
     #[must_use]
     pub fn player(&self, player_num: u8) -> &RobotPosition {
         self.0

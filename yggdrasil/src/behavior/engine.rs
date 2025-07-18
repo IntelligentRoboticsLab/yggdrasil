@@ -8,6 +8,7 @@ use ml::{
 use nalgebra::Point2;
 
 use crate::{
+    behavior::primary_state::PrimaryState,
     core::config::showtime::PlayerConfig,
     motion::walking_engine::Gait,
     nao::{NaoManager, Priority, RobotInfo},
@@ -23,7 +24,6 @@ use super::{
         VisualReferee, VisualRefereeBehaviorPlugin, WalkBehaviorPlugin, WalkToBallBehaviorPlugin,
         WalkToBehaviorPlugin, WalkToSet, WalkToSetBehaviorPlugin,
     },
-    primary_state::PrimaryState,
     roles::{
         Defender, DefenderRolePlugin, Goalkeeper, GoalkeeperRolePlugin, Striker, StrikerRolePlugin,
     },
@@ -58,7 +58,8 @@ impl Plugin for BehaviorEnginePlugin {
                 WalkToBehaviorPlugin,
                 WalkToSetBehaviorPlugin,
             ))
-            .add_systems(PostUpdate, role_base);
+            // .add_systems(Update, choose_ball)
+            .add_systems(Update, role_base);
     }
 }
 
@@ -228,12 +229,12 @@ pub fn role_base(
         } else {
             commands.set_behavior(Stand);
         }
-
         return;
     }
 
     if *primary_state == PrimaryState::Sitting {
         commands.set_behavior(Sitting);
+
         return;
     }
 
@@ -312,3 +313,20 @@ pub fn role_base(
         }
     }
 }
+
+// #[derive(Resource)]
+// pub struct BestBall(pub Option<Point2<f32>>);
+
+// fn choose_ball(
+//     mut commands: Commands,
+//     top_balls: Res<Balls<Top>>,
+//     bottom_balls: Res<Balls<Bottom>>,
+// ) {
+//     let most_confident_ball = bottom_balls
+//         .most_confident_ball()
+//         .map(|b| b.position)
+//         .or(top_balls.most_confident_ball().map(|b| b.position));
+//     println!("Running behavior now!");
+
+//     commands.insert_resource(BestBall(most_confident_ball));
+// }

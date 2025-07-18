@@ -30,7 +30,7 @@ pub struct PlayerConfig {
     pub team_number: u8,
 }
 
-pub(super) fn configure_showtime(
+pub fn configure_showtime(
     mut commands: Commands,
     showtime_config: Res<ShowtimeConfig>,
     robot_info: Res<RobotInfo>,

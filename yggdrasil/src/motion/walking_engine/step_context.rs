@@ -3,8 +3,8 @@ use std::time::{Duration, Instant};
 use crate::{
     behavior::{behaviors::Standup, engine::in_behavior},
     core::debug::{
-        DebugContext,
         debug_system::{DebugAppExt, SystemToggle},
+        DebugContext,
     },
     kinematics::Kinematics,
     motion::walking_engine::foot_support::FootSupportState,
@@ -12,12 +12,12 @@ use crate::{
 };
 
 use super::{
-    FootSwitchedEvent,
     config::WalkingEngineConfig,
     feet::FootPositions,
     gait::StandingHeight,
     schedule::{Gait, WalkingEngineSet},
     step::{PlannedStep, Step},
+    FootSwitchedEvent,
 };
 use bevy::prelude::*;
 use nalgebra::Vector2;
@@ -58,7 +58,7 @@ impl Plugin for StepContextPlugin {
 #[derive(Resource, Debug)]
 pub struct StepContext {
     requested_gait: Gait,
-    requested_step: Step,
+    pub requested_step: Step,
     pub requested_standing_height: Option<StandingHeight>,
     stand_return_start: Option<Instant>,
     last_step: PlannedStep,

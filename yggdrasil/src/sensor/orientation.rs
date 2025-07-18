@@ -37,14 +37,14 @@ pub struct RobotOrientation {
     ///
     /// See [`Vqf`] for more information.
     #[deref]
-    vqf: Vqf,
+    pub vqf: Vqf,
     /// Offset of the yaw angle in radians.
     ///
     /// The VQF algorithm cannot determine the yaw angle without a magnetometer,
     /// it will always be relative to some initial orientation, which can be computed
     /// from the accelerometer data. This offset is then stored here and added to
     /// the yaw angle to get the absolute orientation.
-    yaw_offset: Option<UnitQuaternion<f32>>,
+    pub yaw_offset: Option<UnitQuaternion<f32>>,
 }
 
 impl RobotOrientation {
