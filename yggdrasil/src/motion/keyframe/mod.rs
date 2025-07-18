@@ -8,6 +8,8 @@ pub use manager::*;
 pub use types::*;
 pub use util::*;
 
+use crate::nao;
+
 /// Plugin that provides keyframe motion functionalities.
 pub(super) struct KeyframePlugin;
 
@@ -29,6 +31,6 @@ impl Plugin for KeyframePlugin {
             .expect("failed to add standup motion (stomach)");
 
         app.insert_resource(keyframe_executor);
-        app.add_systems(Update, executor::keyframe_executor);
+        app.add_systems(Update, executor::keyframe_executor.before(nao::finalize));
     }
 }
