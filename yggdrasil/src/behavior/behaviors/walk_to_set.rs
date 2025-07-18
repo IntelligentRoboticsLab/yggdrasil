@@ -1,7 +1,6 @@
 use std::time::Instant;
 
 use bevy::prelude::*;
-use nidhogg::types::{FillExt, HeadJoints};
 
 use crate::{
     behavior::{
@@ -15,7 +14,7 @@ use crate::{
         step_planner::{StepPlanner, Target},
         walking_engine::step_context::StepContext,
     },
-    nao::{NaoManager, Priority},
+    nao::NaoManager,
 };
 
 #[derive(Resource, Deref)]
