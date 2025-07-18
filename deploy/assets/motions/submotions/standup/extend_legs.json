@@ -7,7 +7,7 @@
     "conditions": [],
     "keyframes": [
         {
-            "duration": 0.4,
+            "duration": 0.6,
             "target_position": {
                 "head_yaw": 0.0,
                 "head_pitch": 0.3490658503988659,
@@ -69,6 +69,6 @@
                 "right_ankle_roll": 0.0
             }
         }
-        
+
     ]
 }
