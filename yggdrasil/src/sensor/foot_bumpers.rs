@@ -1,5 +1,6 @@
 use super::SensorConfig;
 use super::button::{LeftFootButtons, RightFootButtons};
+use crate::localization::motion_is_unsafe;
 use crate::prelude::*;
 use crate::{
     motion::path_finding::Obstacle,
@@ -17,7 +18,7 @@ pub struct FootBumperPlugin;
 
 impl Plugin for FootBumperPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Sensor, obstacle_detection)
+        app.add_systems(Sensor, obstacle_detection.run_if(not(motion_is_unsafe)))
             .init_resource::<ObstacleStateFromBumpers>()
             .init_resource::<FootBumperValues>();
     }
