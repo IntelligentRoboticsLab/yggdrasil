@@ -1,13 +1,7 @@
 use crate::{
-    core::audio::whistle_detection::Whistle,
-    game_controller::{GameControllerMessageEvent, penalty::PenaltyState},
-    kinematics::Kinematics,
-    motion::walking_engine::config::WalkingEngineConfig,
-    nao::{NaoManager, Priority},
-    sensor::button::{ChestButton, HeadButtons},
-    vision::referee::{
-        RefereePose, communication::ReceivedRefereePose, recognize::RefereePoseRecognized,
-    },
+    behavior::primary_state, core::audio::whistle_detection::Whistle, game_controller::{penalty::PenaltyState, GameControllerMessageEvent}, kinematics::Kinematics, motion::walking_engine::config::WalkingEngineConfig, nao::{NaoManager, Priority}, sensor::button::{ChestButton, HeadButtons}, vision::referee::{
+        communication::ReceivedRefereePose, recognize::RefereePoseRecognized, RefereePose
+    }
 };
 use bevy::prelude::*;
 
@@ -174,27 +168,41 @@ pub fn next_primary_state(
         return primary_state;
     }
 
+    if let Some(GameControllerMessage { state: GameState::Set, .. }) = game_controller_message {
+        if matches!(
+            primary_state,
+            PS::Ready { whistle_in_playing: true, .. }
+        ) {
+            primary_state = PS::Ready {
+                referee_in_standby: false,
+                whistle_in_playing: false,
+            };
+        }
+    }
+
     let heard_whistle = matches!(
         primary_state,
         PS::Playing {
             whistle_in_set: true
         }
     ) || matches!(
-        primary_state,
+        primary_state, 
         PS::Ready {
-            referee_in_standby: false,
-            whistle_in_playing: true
+            whistle_in_playing: true,
+            ..
         }
-    ) || whistle.detected();
+    )
+    || whistle.detected();
 
     let recognized_ready_pose = matches!(
         primary_state,
         PS::Ready {
             referee_in_standby: true,
-            whistle_in_playing: false
+            ..
         }
     ) || recognized_ready_pose;
 
+    let previous_primary_state = primary_state; 
     primary_state = match game_controller_message {
         Some(message) => match message.state {
             GameState::Initial => PS::Initial,
@@ -222,6 +230,10 @@ pub fn next_primary_state(
         },
         None => primary_state,
     };
+
+    // if previous_primary_state != primary_state {
+    //     println!("primary state is set to: {:?}", primary_state);
+    // }
 
     if penalty_state.is_penalized() {
         primary_state = PS::Penalized;
