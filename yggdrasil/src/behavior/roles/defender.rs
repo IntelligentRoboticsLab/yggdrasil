@@ -3,7 +3,7 @@ use nalgebra::Point2;
 
 use crate::{
     behavior::{
-        behaviors::{Observe, WalkTo},
+        behaviors::{LookMode, Observe, WalkTo},
         engine::{CommandsBehaviorExt, RoleState, Roles, in_role},
     },
     core::config::{layout::LayoutConfig, showtime::PlayerConfig},
@@ -46,6 +46,7 @@ pub fn defender_role(
     if !step_planner.has_target() {
         commands.set_behavior(WalkTo {
             target: defend_target,
+            look_mode: LookMode::Observe,
         });
         return;
     }
@@ -55,6 +56,7 @@ pub fn defender_role(
     } else {
         commands.set_behavior(WalkTo {
             target: defend_target,
+            look_mode: LookMode::Observe,
         });
     }
 }

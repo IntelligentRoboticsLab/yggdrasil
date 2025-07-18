@@ -3,7 +3,7 @@ use nalgebra::{Point2, UnitComplex};
 
 use crate::{
     behavior::{
-        behaviors::{Observe, WalkTo},
+        behaviors::{LookMode, Observe, WalkTo},
         engine::{CommandsBehaviorExt, RoleState, Roles, in_role},
     },
     core::config::layout::LayoutConfig,
@@ -41,6 +41,7 @@ pub fn goalkeeper_role(
     if !step_planner.has_target() {
         commands.set_behavior(WalkTo {
             target: keeper_target,
+            look_mode: LookMode::Observe,
         });
         return;
     }
@@ -50,6 +51,7 @@ pub fn goalkeeper_role(
     } else {
         commands.set_behavior(WalkTo {
             target: keeper_target,
+            look_mode: LookMode::Observe,
         });
     }
 }

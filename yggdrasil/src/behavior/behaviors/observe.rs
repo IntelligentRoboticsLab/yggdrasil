@@ -93,7 +93,7 @@ fn observe(
     }
 }
 
-fn look_around(
+pub fn look_around(
     nao_manager: &mut NaoManager,
     starting_time: Instant,
     rotation_speed: f32,
